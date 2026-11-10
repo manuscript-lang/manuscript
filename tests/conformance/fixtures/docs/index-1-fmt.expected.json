@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n    arguments from \"@std/os/env.ms\",\n    stdout from \"@std/io/io.ms\",\n)\n\nfn main() Unit!:\n    let name = arguments().get(0, default: \"world\")\n    let message = \"Hello, {name}!\\n\"\n    try stdout().write(message)\n"
+    "fmt": "import (\n    arguments from \"@std/os/env.ms\",\n    stdout from \"@std/io/io.ms\",\n)\n\nfn main() Unit!:\n    name := arguments().get(0, default: \"world\")\n    message := \"Hello, {name}!\\n\"\n    try stdout().write(message)\n"
   }
 }

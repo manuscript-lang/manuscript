@@ -27,25 +27,25 @@ fn open(n: String) Door!Error:
 
 fn collect() List[Door]!Error:
     var found = List[Door]()
-    let first = open("try-move")
+    first := open("try-move")
     found.append(try first)
 
-    let second = open("try-read")
+    second := open("try-read")
     say("read {(try second).name}")
     return ok(found)
 
 fn main() Unit:
-    let count = doors().length()
+    count := doors().length()
     say("--result")
 
-    let opened = open("result").is_ok()
+    opened := open("result").is_ok()
     say("--try")
 
-    let found = collect().get()
+    found := collect().get()
     say("--closeable")
 
-    let _held: Closeable = Door("closeable")
-    let many: List[Closeable] = [Door("list")]
+    _held: Closeable = Door("closeable")
+    many: List[Closeable] = [Door("list")]
     say("--map of records")
 
     var pairs: Map[String, Pair] = {}

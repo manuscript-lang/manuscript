@@ -8,23 +8,23 @@ fn fail(msg: String) Int:
     return 0
 
 export fn main() Int:
-    let dr = [-1, 1, 0, 0]
-    let dc = [0, 0, -1, 1]
-    let rows = read_lines(stdin()).get()
+    dr := [-1, 1, 0, 0]
+    dc := [0, 0, -1, 1]
+    rows := read_lines(stdin()).get()
     var n = rows.length()
     while n > 0 and rows[n - 1] == "":
         n -= 1
     if n == 0: return fail("no start")
 
     for r in 0..n:
-        let chars = rows[r].chars()
+        chars := rows[r].chars()
 
         for c in 0..chars.length():
-            let ch = chars[c]
+            ch := chars[c]
             if ch != "#" and ch != "." and ch != "S" and ch != "E":
                 return fail("bad character at {r + 1},{c + 1}")
 
-    let width = rows[0].scalar_length()
+    width := rows[0].scalar_length()
     for r in 0..n:
         if rows[r].scalar_length() != width: return fail("ragged grid")
 
@@ -63,18 +63,18 @@ export fn main() Int:
     var head = 0
 
     while head < queue.length():
-        let cur = queue[head]
+        cur := queue[head]
         head += 1
 
-        let r = cur / width
-        let c = cur % width
+        r := cur / width
+        c := cur % width
 
         for d in 0..4:
-            let nr = r + dr[d]
-            let nc = c + dc[d]
+            nr := r + dr[d]
+            nc := c + dc[d]
             if nr < 0 or nr >= n or nc < 0 or nc >= width: continue
 
-            let nb = nr * width + nc
+            nb := nr * width + nc
             if cells[nb] == "#" or dist[nb] != -1: continue
 
             dist[nb] = dist[cur] + 1

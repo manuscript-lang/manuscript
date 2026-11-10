@@ -197,11 +197,11 @@ test "builder appends variable text of every length across growth":
     try expect_equal((try built.slice(0, 10)), "0010120123")
 
 test "search indexes count scalars for ascii, inline and unicode text":
-    let long = "a".repeat(100).get().concat("!").concat("é").concat("!")
+    long := "a".repeat(100).get().concat("!").concat("é").concat("!")
     try expect_equal(long.index_of("!").get(-1), 100)
     try expect_equal(long.last_index_of("!").get(-1), 102)
 
-    let ascii = "a".repeat(100).get().concat("!")
+    ascii := "a".repeat(100).get().concat("!")
     try expect_equal(ascii.index_of("!").get(-1), 100)
     try expect_equal(ascii.last_index_of("!").get(-1), 100)
     try expect_equal(ascii.last_index_of("a").get(-1), 99)

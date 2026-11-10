@@ -237,7 +237,7 @@ test "rows and parse agree on malformed and odd inputs under every chunk size":
 
 test "oversized EOF records stay rejected after a failed read":
     for text in ["abcd", "\"ab\"", "é日", "\"a\nb\"", "\"\""]:
-        let bytes = text.byte_length()
+        bytes := text.byte_length()
 
         for size in [1, 2, bytes]:
             var rows = csv_rows(

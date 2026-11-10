@@ -14,8 +14,8 @@ Save as `names.ms` and run `ms run names.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"Ada and Grace\n"} -->
 ```manuscript
 fn main() Unit:
-    let names = ["Ada", "Grace"]
-    let [first_name, second_name] = names
+    names := ["Ada", "Grace"]
+    [first_name, second_name] := names
     print("{first_name} and {second_name}")
 ```
 
@@ -23,13 +23,13 @@ fn main() Unit:
 Ada and Grace
 ```
 
-Positions bind left to right. A `List[T]` binds each position as `T`, and its length must match the pattern exactly. A mismatch is a compile error when the initializer is a list literal, and a runtime fault otherwise. Parenthesized patterns such as `let (a, b) = value` are not binding patterns.
+Positions bind left to right. A `List[T]` binds each position as `T`, and its length must match the pattern exactly. A mismatch is a compile error when the initializer is a list literal, and a runtime fault otherwise. Parenthesized patterns such as `(a, b) := value` are not binding patterns.
 
 ## Type bindings
 
 ```manuscript
-let {name, email} = customer
-let {name: customer_name, email: customer_email} = customer
+{name, email} := customer
+{name: customer_name, email: customer_email} := customer
 ```
 
 Shorthand binds a field to a same-named local; `field: local` renames it. A pattern may select a subset of fields, which must exist on the statically known type. A `Map` has no named fields and takes no field patterns.
@@ -37,10 +37,10 @@ Shorthand binds a field to a same-named local; `field: local` renames it. A patt
 ## Nested patterns
 
 ```manuscript
-let {customer: {name}, shipping: {city: destination}} = order
-let [{name: first_name}, {name: second_name}] = customers
+{customer: {name}, shipping: {city: destination}} := order
+[{name: first_name}, {name: second_name}] := customers
 ```
 
 Patterns nest freely. The initializer is evaluated once and extraction follows pattern order. Duplicate binding names are rejected.
 
-`let` makes every introduced local immutable and `var` makes them reassignable. Elisions, rest patterns, defaults, destructuring assignment, and parameter patterns are rejected.
+`:=` makes every introduced local immutable and `var` makes them reassignable. Elisions, rest patterns, defaults, destructuring assignment, and parameter patterns are rejected.

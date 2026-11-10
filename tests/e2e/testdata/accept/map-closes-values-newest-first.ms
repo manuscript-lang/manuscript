@@ -10,11 +10,11 @@ type Item:
 
 impl Closeable for Item:
     var fn close() Unit!:
-        let _ = append_file(self.log, "{self.id},").wait()
+        _ := append_file(self.log, "{self.id},").wait()
 
 fn logged(path: String) String:
-    let read = read_file(path).wait()
-    if let bytes = read: return bytes.decode_utf8().get("")
+    read := read_file(path).wait()
+    if bytes := read: return bytes.decode_utf8().get("")
 
     return ""
 
@@ -27,7 +27,7 @@ fn fill(log: String) Unit:
     items.remove("b")  // the removed value closes at once
 
 test "a map of resources closes the values it holds newest entry first at scope end":
-    let tmp = temporary("ms-log-") | try expect_ok
-    let log = "{tmp.path()}/log"
+    tmp := temporary("ms-log-") | try expect_ok
+    log := "{tmp.path()}/log"
     fill(log.clone())
     logged(log.clone()) | try expect_equal("2,4,3,1,")

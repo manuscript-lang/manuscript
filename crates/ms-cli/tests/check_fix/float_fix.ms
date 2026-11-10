@@ -1,3 +1,3 @@
 fn main() Unit:
-    let n = 3
-    let _a: Float = n
+    n := 3
+    _a: Float = n

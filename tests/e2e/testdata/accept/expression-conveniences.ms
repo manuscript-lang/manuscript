@@ -13,16 +13,16 @@ type Resource:
 // Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
     var fn close() Unit!:
-        let _written = write_file(self.marker, "closed", true).wait()
+        _written := write_file(self.marker, "closed", true).wait()
 
 fn closed(marker: String) Bool: read_file(marker).wait().is_ok()
 
 fn identity[T](value: T) T: return value
 
 fn amount(text: String, marker: String) Int!Error:
-    let _resource = Resource(marker: marker.clone())
+    _resource := Resource(marker: marker.clone())
 
-    let cents = match text.parse_int():
+    cents := match text.parse_int():
         value:
             value
         none:
@@ -31,14 +31,14 @@ fn amount(text: String, marker: String) Int!Error:
     return ok(value: cents + 1)
 
 fn early(value: Int?) Int:
-    let number = match value:
+    number := match value:
         number: number
         none: return 9
 
     return number + 1
 
 fn all_return(value: Int?) Int:
-    let _unreachable = match value:
+    _unreachable := match value:
         number: return number
         none: return 9
 
@@ -52,9 +52,9 @@ fn values(var counter: Counter) List[Int]:
     return [7, 8]
 
 test "indexing and generic applications coexist":
-    let items = [10, 20]
-    let index = 1
-    let indices = [0, 1]
+    items := [10, 20]
+    index := 1
+    indices := [0, 1]
     var counter = Counter(count: 0)
     ((items[0] != 10 or items[index] != 20 or items[-1] != 20)) | try expect_false
     (items[indices[index]] != 20 or items[index - 1] != 10) | try expect_false
@@ -62,28 +62,28 @@ test "indexing and generic applications coexist":
     (values(var counter)[(try tick(var counter))] != 7 or counter.count != 2) | try expect_false
     identity[Int](items[0]) | try expect_equal(10)
 
-    let callbacks: List[fn(Int) Int] = [identity[Int]]
+    callbacks: List[fn(Int) Int] = [identity[Int]]
     (callbacks[0](2) != 2 or callbacks[indices[0]](3) != 3) | try expect_false
 
 test "empty list constructors have fresh typed storage":
     var empty = List[String]()
-    let contextual: List[Int] = List()
-    let other = List[String]()
+    contextual: List[Int] = List()
+    other := List[String]()
     empty.append("a")
     (empty[0] != "a" or not other.is_empty() or not contextual.is_empty()) | try expect_false
 
-    let map = Map[String, Int]()
+    map := Map[String, Int]()
     map.length() | try expect_equal(0)
 
 test "string concatenation and scalar ordering":
-    let lines = ["a", "b"]
+    lines := ["a", "b"]
     (lines.join("\n") + "\n") | try expect_equal("a\nb\n")
     (("" < "a" and "a" < "aa" and "é" > "z" and "a" <= "a" and "a" >= "a")) | try expect_true
     ("a" < "a" or "a" > "a" or "b" <= "a" or "a" >= "b") | try expect_false
     ("" + "value" != "value" or "value" + "" != "value") | try expect_false
     ("\u{e000}" < "\u{10000}") | try expect_true
 
-    let sorted = ["z", "a", "b"].sorted(
+    sorted := ["z", "a", "b"].sorted(
         fn(left: String, right: String) Int:
             if left < right: return -1
             if left > right: return 1
@@ -94,22 +94,22 @@ test "string concatenation and scalar ordering":
     sorted | try expect_equal(["a", "b", "z"])
 
 test "match expressions preserve returns and cleanup":
-    let present: Int? = 4
-    let absent: Int? = none
+    present: Int? = 4
+    absent: Int? = none
     (early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | try expect_false
 
     var temporary = temporary("manuscript-match-") | try expect_ok
-    let dir = temporary.path()
-    let parsed = amount(text: "3", marker: "{dir}/parsed")
+    dir := temporary.path()
+    parsed := amount(text: "3", marker: "{dir}/parsed")
     (parsed != Result[Int, Error].ok(value: 4)) | try expect_false
     closed("{dir}/parsed") | try expect_true
 
-    let invalid = amount(text: "invalid", marker: "{dir}/invalid")
+    invalid := amount(text: "invalid", marker: "{dir}/invalid")
     (invalid != Result[Int, Error].error(cause: Error("Invalid amount"))) | try expect_false
     closed("{dir}/invalid") | try expect_true
     try temporary.close()
 
-    let nested = match present:
+    nested := match present:
         value:
             // manuscript:allow-nested-match regression for nested expression values and the absent branch
             match absent:
@@ -119,21 +119,21 @@ test "match expressions preserve returns and cleanup":
 
     nested | try expect_equal(4)
 
-    let contextual: List[Int] = match absent:
+    contextual: List[Int] = match absent:
         value: [value]
         none: []
 
     contextual.length() | try expect_equal(0)
 
-    let result = identity[Int](
+    result := identity[Int](
         match present:
             value: value
             none: 0
     )
     result | try expect_equal(4)
 
-    let callback = fn(value: Int?) Int:
-        let number = match value:
+    callback := fn(value: Int?) Int:
+        number := match value:
             number: number
             none: return 42
 
@@ -142,7 +142,7 @@ test "match expressions preserve returns and cleanup":
     callback(absent) | try expect_equal(42)
 
 test "indexes read elements and get supplies defaults":
-    let values = [1, 2]
+    values := [1, 2]
     values.get(2, default: 0) | try expect_equal(0)
     values.get(-3, default: 0) | try expect_equal(0)
     values.get(-9223372036854775808, default: 0) | try expect_equal(0)
@@ -150,11 +150,11 @@ test "indexes read elements and get supplies defaults":
     List[Int]().get(0, default: 7) | try expect_equal(7)
 
 test "match blocks produce their final value":
-    let present: Int? = 5
+    present: Int? = 5
 
-    let result = match present:
+    result := match present:
         value:
-            let doubled = value * 2
+            doubled := value * 2
             doubled + 1
         none: 0
 
@@ -175,22 +175,22 @@ test "match blocks produce their final value":
     count | try expect_equal(5)
 
 test "contextual values infer from later arms":
-    let present: Int? = 5
+    present: Int? = 5
 
-    let optional: Int? = match present:
+    optional: Int? = match present:
         none: none
         value: value
 
     optional.get() | try expect_equal(5)
 
-    let list = match present:
+    list := match present:
         none: []
         value: [value]
 
     list[0] | try expect_equal(5)
 
 fn returned_argument(var counter: Counter) Int!:
-    let absent: Int? = none
+    absent: Int? = none
     return ok(
         combine(
             first: match absent:
@@ -204,7 +204,7 @@ fn returned_argument(var counter: Counter) Int!:
 fn combine(first: Int, second: Int) Int: return first + second
 
 fn propagated(text: String) Int!Error:
-    let result = match text.parse_int():
+    result := match text.parse_int():
         value:
             try Result[Int, Error].ok(value: value)
         none:
@@ -234,14 +234,14 @@ test "expression exits preserve caller boundaries and evaluation order":
         Result[Int, Error].error(cause: Error("missing"))
     )
 
-    let present: Int? = 1
-    let absent: Int? = none
+    present: Int? = 1
+    absent: Int? = none
     (returned_loop(present) != 23 or returned_loop(absent) != 24) | try expect_false
 
     var iterations = 0
 
     while true:
-        let value = match present:
+        value := match present:
             number:
                 while iterations < 3:
                     iterations += 1
@@ -266,14 +266,14 @@ fn condition_exit(value: Int?) Int:
     return 2
 
 test "match in a loop header exits its lexical enclosing loop":
-    let absent: Int? = none
+    absent: Int? = none
     condition_exit(absent) | try expect_equal(2)
 
 test "indexing preserves zero and nested optionals":
-    let numbers = [0]
+    numbers := [0]
     (numbers[0] != 0 or numbers.get(0, default: 99) != 0) | try expect_false
 
-    let nested: List[Int?] = [none, 0]
+    nested: List[Int?] = [none, 0]
     (nested[0].is_some() or nested[1].get() != 0) | try expect_false
 
 fn observed_optional(var counter: Counter) Int?:
@@ -283,7 +283,7 @@ fn observed_optional(var counter: Counter) Int?:
 test "match evaluates its input once and only the selected arm":
     var counter = Counter(count: 0)
 
-    let result = match observed_optional(var counter):
+    result := match observed_optional(var counter):
         value:
             counter.count += 10
             value + 1
@@ -298,15 +298,15 @@ fn inline_match(value: Int?) Int: match value:
     none: 0
 
 test "match composes with inferred callbacks and map literals":
-    let values: List[Int?] = [3, none]
-    let mapped = values.map(
+    values: List[Int?] = [3, none]
+    mapped := values.map(
         fn value: match value:
             number: number + 1
             none: 0
     )
     (mapped[0] != 4 or mapped[1] != 0) | try expect_false
 
-    let lookup = {
+    lookup := {
         "value": match values[0]:
             number: number
             none: 0

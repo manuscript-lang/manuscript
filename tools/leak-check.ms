@@ -21,7 +21,7 @@ fn live_blocks(text: String) List[Int]:
     var counts = List[Int]()
     for line in text.split("\n"):
         if line.starts_with("ms-rt live blocks at exit: "):
-            if let n = line.slice(27, line.length()).get("").trim().parse_int(): counts.append(
+            if n := line.slice(27, line.length()).get("").trim().parse_int(): counts.append(
                 n
             )
     return counts
@@ -35,7 +35,7 @@ fn leaking_tests(text: String) List[String]:
     for line in text.split("\n"):
         if line.starts_with("RUN "): current = line.slice(4, line.length()).get("")
         else if line.starts_with("ms-rt live blocks at exit: "):
-            let n = line.slice(27, line.length()).get("").trim().parse_int().get(0)
+            n := line.slice(27, line.length()).get("").trim().parse_int().get(0)
             if n != 0: leaks.append("{current}: {n}")
 
     return leaks
@@ -49,15 +49,15 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
     var lines = List[String]()
 
     for f in files:
-        let absolute = "{root}/{f}"
-        let source = read_file(absolute.clone()).wait().get().decode_utf8().get("")
+        absolute := "{root}/{f}"
+        source := read_file(absolute.clone()).wait().get().decode_utf8().get("")
 
         if has_tests(source):
-            if let out = run(
+            if out := run(
                 ms.clone(), ["test", absolute.clone()],
                 RunOptions(timeout: seconds(600))
             ).wait():
-                let found = leaking_tests(out.stderr.decode_utf8().get(""))
+                found := leaking_tests(out.stderr.decode_utf8().get(""))
                 lines.append("swept")
                 if not found.is_empty(): lines.append(
                     "leak: {absolute}\n  {found.join("\n  ")}"
@@ -65,24 +65,24 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 
             continue
 
-        if let out = run(
+        if out := run(
             ms.clone(), ["run", absolute.clone()], RunOptions(timeout: seconds(60))
         ).wait():
-            let counts = live_blocks(out.stderr.decode_utf8().get(""))
+            counts := live_blocks(out.stderr.decode_utf8().get(""))
             if counts.is_empty(): continue
 
             lines.append("swept")
 
-            let total = counts.fold(0, fn(a: Int, b: Int) Int: a + b)
+            total := counts.fold(0, fn(a: Int, b: Int) Int: a + b)
             if total != 0: lines.append("leak: {absolute} left {total} live blocks")
 
     return lines
 
 fn main() Int:
-    let code = use_stats_runtime()
+    code := use_stats_runtime()
     if code != 0: return code
 
-    let root = working_directory().get()
+    root := working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
 
@@ -92,27 +92,27 @@ fn main() Int:
             "tests/conformance/fixtures/examples"
         ]:
             for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
-                let path = "{dir}/{f.path}"
+                path := "{dir}/{f.path}"
                 if read_file(path.clone()).wait().get().decode_utf8().get(
                     ""
                 ).contains("fn main"): files.append(path.clone())
 
     if files.is_empty():
         for f in glob("tests/e2e/testdata", GlobOptions(patterns: ["**/*.ms"])).get([]):
-            let path = "tests/e2e/testdata/{f.path}"
+            path := "tests/e2e/testdata/{f.path}"
             if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(
                 path.clone()
             )
 
-    let ms = tool_ms(root.clone())
-    let scratch = temporary("ms-leak-").get()
+    ms := tool_ms(root.clone())
+    scratch := temporary("ms-leak-").get()
     change_directory(scratch.path()).get()
 
     // Each program runs in its own process, so the sweep splits across one worker per CPU
     // (LEAK_JOBS overrides). Workers share the scratch directory, which is only the working
     // directory of the child processes.
     var jobs = system_info().cpu_count
-    if let n = env("LEAK_JOBS", "").parse_int(): jobs = n
+    if n := env("LEAK_JOBS", "").parse_int(): jobs = n
     if jobs < 1: jobs = 1
 
     // A promise reads its captures until it is dropped, so the chunks outlive the loop that starts them.

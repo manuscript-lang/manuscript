@@ -20,16 +20,16 @@ fn ordered_wait_all[T](promises: List[Promise[T]]) List[T]!:
     return ok(results)
 
 fn main() Int:
-    let args = arguments()
-    let count = args[0].parse_int().get()
-    let jitter = args[1] == "jitter"
-    let before = monotonic()
+    args := arguments()
+    count := args[0].parse_int().get()
+    jitter := args[1] == "jitter"
+    before := monotonic()
     var promises: List[Promise[Int]] = []
     for i in 0..count:
         promises.append(promise[Int](fn: work(i, jitter)))
 
-    let spawned = monotonic()
-    let results = if args.length() > 2 and args[2] == "ordered": ordered_wait_all(
+    spawned := monotonic()
+    results := if args.length() > 2 and args[2] == "ordered": ordered_wait_all(
         promises
     ).get() else: wait_all(promises).get()
     var total = 0

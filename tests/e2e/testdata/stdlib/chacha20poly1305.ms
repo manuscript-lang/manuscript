@@ -67,10 +67,10 @@ test "tampering and bad lengths are rejected":
     try expect_true(chacha20(Bytes([1]), bytes_of(nonce_hex), 1, Bytes([])).is_error())
 
 test "authentication failures use EAUTH":
-    let key = "01234567890123456789012345678901".to_bytes()
-    let nonce = "012345678901".to_bytes()
-    let sealed = try chacha20poly1305_seal(key, nonce, Bytes([]), Bytes([]))
-    let failure = try expect_error(
+    key := "01234567890123456789012345678901".to_bytes()
+    nonce := "012345678901".to_bytes()
+    sealed := try chacha20poly1305_seal(key, nonce, Bytes([]), Bytes([]))
+    failure := try expect_error(
         chacha20poly1305_open(key, nonce, sealed, "changed".to_bytes())
     )
     try expect_equal(failure.kind.get(""), "EAUTH")

@@ -185,7 +185,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL121",
         family: "Default overridden by a one-line if",
         severity: Severity::Warning,
-        repair: "write `let x = if c: b else: a`; `ms lint --fix` does it for a literal or name default",
+        repair: "write `x := if c: b else: a`; `ms lint --fix` does it for a literal or name default",
     },
     Rule {
         code: "MSL122",

@@ -8,7 +8,7 @@ fn emit(text: String) Int:
     return 0
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var rows = lines.length()
 
     // Trailing empty lines are not part of the grid.
@@ -23,11 +23,11 @@ export fn main() Int:
     // Bad characters are reported first, in reading order, before any shape checks.
     for r in 0..rows:
         for c in 0..grid[r].length():
-            let ch = grid[r][c]
+            ch := grid[r][c]
             if ch != "#" and ch != "." and ch != "S" and ch != "E":
                 return emit("error: bad character at {r + 1},{c + 1}")
 
-    let width = grid[0].length()
+    width := grid[0].length()
     for r in 0..rows:
         if grid[r].length() != width: return emit("error: ragged grid")
 
@@ -51,7 +51,7 @@ export fn main() Int:
     if ends > 1: return emit("error: multiple ends")
 
     // Breadth-first search over the grid; `dist` is -1 for unvisited cells.
-    let total = rows * width
+    total := rows * width
     var dist = List[Int]()
     for i in 0..total:
         dist.append(-1)
@@ -63,12 +63,12 @@ export fn main() Int:
     var head = 0
 
     while head < queue.length():
-        let cur = queue[head]
+        cur := queue[head]
         head += 1
         if cur == end: break
 
-        let r = cur / width
-        let c = cur % width
+        r := cur / width
+        c := cur % width
 
         for k in 0..4:
             var nr = r
@@ -85,7 +85,7 @@ export fn main() Int:
 
             if nr < 0 or nr >= rows or nc < 0 or nc >= width: continue
 
-            let next = nr * width + nc
+            next := nr * width + nc
             if grid[nr][nc] == "#" or dist[next] >= 0: continue
 
             dist[next] = dist[cur] + 1

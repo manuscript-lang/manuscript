@@ -21,11 +21,11 @@ fn items_of(b: Big) List[Int]:
     return b.items
 
 fn size(xs: List[Int]) Int:
-    let ys = xs
+    ys := xs
     return ys.length()
 
 fn both(b: Big) Int:
-    let n = size(b.items)
+    n := size(b.items)
     return n + b.name.length()
 
 fn branch(b: Big, flag: Bool) Int:
@@ -35,7 +35,7 @@ fn branch(b: Big, flag: Bool) Int:
 
 fn reinit(b: Big) Int:
     var c = b
-    let n = size(c.items)
+    n := size(c.items)
     c.items = [n, n]
     return c.items.length()
 
@@ -43,8 +43,8 @@ fn nested(w: Wrap) List[Int]:
     return w.inner.items
 
 fn main() Unit:
-    let name = "a name that is long enough to live on the heap"
-    let total = (
+    name := "a name that is long enough to live on the heap"
+    total := (
         items_of(Big(name: name.clone(), items: [1, 2, 3])).length()
         + both(Big(name: "xy", items: [1, 2]))
         - 2

@@ -11,118 +11,118 @@ import (
 )
 
 // Primitive ids, in the order they are registered in `setup`.
-let P_ADD = 0
-let P_SUB = 1
-let P_MUL = 2
-let P_QUOT = 3
-let P_REM = 4
-let P_MOD = 5
-let P_ABS = 6
-let P_MIN = 7
-let P_MAX = 8
-let P_NUMEQ = 9
-let P_LT = 10
-let P_GT = 11
-let P_LE = 12
-let P_GE = 13
-let P_ZEROP = 14
-let P_EVENP = 15
-let P_ODDP = 16
-let P_NOT = 17
-let P_NULLP = 18
-let P_PAIRP = 19
-let P_LISTP = 20
-let P_NUMBERP = 21
-let P_STRINGP = 22
-let P_SYMBOLP = 23
-let P_BOOLEANP = 24
-let P_PROCP = 25
-let P_EQP = 26
-let P_EQUALP = 27
-let P_CONS = 28
-let P_CAR = 29
-let P_CDR = 30
-let P_CADR = 31
-let P_CDDR = 32
-let P_CADDR = 33
-let P_SETCAR = 34
-let P_SETCDR = 35
-let P_LIST = 36
-let P_LENGTH = 37
-let P_APPEND = 38
-let P_REVERSE = 39
-let P_LISTREF = 40
-let P_LISTTAIL = 41
-let P_RANGE = 42
-let P_ASSOC = 43
-let P_MEMBER = 44
-let P_MAP = 45
-let P_FOREACH = 46
-let P_FILTER = 47
-let P_FOLD = 48
-let P_FOLDR = 49
-let P_APPLY = 50
-let P_SORT = 51
-let P_STRLEN = 52
-let P_STRAPPEND = 53
-let P_SUBSTR = 54
-let P_STRREF = 55
-let P_STREQ = 56
-let P_STRLT = 57
-let P_STRUP = 58
-let P_STRDOWN = 59
-let P_STR2NUM = 60
-let P_NUM2STR = 61
-let P_STR2SYM = 62
-let P_SYM2STR = 63
-let P_STR2LIST = 64
-let P_LIST2STR = 65
-let P_STRJOIN = 66
-let P_STRSPLIT = 67
-let P_STRCONTAINS = 68
-let P_DISPLAY = 69
-let P_WRITE = 70
-let P_NEWLINE = 71
-let P_VOID = 72
-let P_ERROR = 73
-let INT_MAX = 9223372036854775807
-let INT_MIN = -9223372036854775807 - 1
+P_ADD := 0
+P_SUB := 1
+P_MUL := 2
+P_QUOT := 3
+P_REM := 4
+P_MOD := 5
+P_ABS := 6
+P_MIN := 7
+P_MAX := 8
+P_NUMEQ := 9
+P_LT := 10
+P_GT := 11
+P_LE := 12
+P_GE := 13
+P_ZEROP := 14
+P_EVENP := 15
+P_ODDP := 16
+P_NOT := 17
+P_NULLP := 18
+P_PAIRP := 19
+P_LISTP := 20
+P_NUMBERP := 21
+P_STRINGP := 22
+P_SYMBOLP := 23
+P_BOOLEANP := 24
+P_PROCP := 25
+P_EQP := 26
+P_EQUALP := 27
+P_CONS := 28
+P_CAR := 29
+P_CDR := 30
+P_CADR := 31
+P_CDDR := 32
+P_CADDR := 33
+P_SETCAR := 34
+P_SETCDR := 35
+P_LIST := 36
+P_LENGTH := 37
+P_APPEND := 38
+P_REVERSE := 39
+P_LISTREF := 40
+P_LISTTAIL := 41
+P_RANGE := 42
+P_ASSOC := 43
+P_MEMBER := 44
+P_MAP := 45
+P_FOREACH := 46
+P_FILTER := 47
+P_FOLD := 48
+P_FOLDR := 49
+P_APPLY := 50
+P_SORT := 51
+P_STRLEN := 52
+P_STRAPPEND := 53
+P_SUBSTR := 54
+P_STRREF := 55
+P_STREQ := 56
+P_STRLT := 57
+P_STRUP := 58
+P_STRDOWN := 59
+P_STR2NUM := 60
+P_NUM2STR := 61
+P_STR2SYM := 62
+P_SYM2STR := 63
+P_STR2LIST := 64
+P_LIST2STR := 65
+P_STRJOIN := 66
+P_STRSPLIT := 67
+P_STRCONTAINS := 68
+P_DISPLAY := 69
+P_WRITE := 70
+P_NEWLINE := 71
+P_VOID := 72
+P_ERROR := 73
+INT_MAX := 9223372036854775807
+INT_MIN := -9223372036854775807 - 1
 // Handles of the fixed values.
-let NIL = 0
-let VOID = 1
-let FALSE = 2
-let TRUE = 3
+NIL := 0
+VOID := 1
+FALSE := 2
+TRUE := 3
 // Value kinds.
-let K_NIL = 0
-let K_VOID = 1
-let K_BOOL = 2
-let K_INT = 3
-let K_STR = 4
-let K_SYM = 5
-let K_PAIR = 6
-let K_PRIM = 7
-let K_CLOS = 8
-let MAX_DEPTH = 10000
+K_NIL := 0
+K_VOID := 1
+K_BOOL := 2
+K_INT := 3
+K_STR := 4
+K_SYM := 5
+K_PAIR := 6
+K_PRIM := 7
+K_CLOS := 8
+MAX_DEPTH := 10000
 // Limit for calls nested through builtins such as map; keeps the native stack from overflowing.
-let MAX_BDEPTH = 5000
+MAX_BDEPTH := 5000
 // Symbols with ids below NSPECIAL are special-form keywords (interned first, in this order).
-let S_QUOTE = 0
-let S_IF = 1
-let S_DEFINE = 2
-let S_SET = 3
-let S_LAMBDA = 4
-let S_BEGIN = 5
-let S_LET = 6
-let S_LETSTAR = 7
-let S_LETREC = 8
-let S_COND = 9
-let S_AND = 10
-let S_OR = 11
-let S_WHEN = 12
-let S_UNLESS = 13
-let S_TRY = 14
-let NSPECIAL = 15
-let S_ELSE = 15
+S_QUOTE := 0
+S_IF := 1
+S_DEFINE := 2
+S_SET := 3
+S_LAMBDA := 4
+S_BEGIN := 5
+S_LET := 6
+S_LETSTAR := 7
+S_LETREC := 8
+S_COND := 9
+S_AND := 10
+S_OR := 11
+S_WHEN := 12
+S_UNLESS := 13
+S_TRY := 14
+NSPECIAL := 15
+S_ELSE := 15
 
 // A failure. `syntax` failures are never caught by `try`.
 type Fail:
@@ -162,7 +162,7 @@ fn is_delim(c: String) Bool:
     )
 
 fn is_int_text(t: String) Bool:
-    let cs = t.chars()
+    cs := t.chars()
     if cs.length() == 0: return false
 
     var i = 0
@@ -289,7 +289,7 @@ impl Interp:
         return self.mk(K_SYM, id)
 
     var fn cons(a: Int, d: Int) Int:
-        let h = self.mk(K_PAIR, 0)
+        h := self.mk(K_PAIR, 0)
         self.hca[h] = a
         self.hcd[h] = d
         return h
@@ -338,9 +338,9 @@ impl Interp:
         return self.hk[h] == K_PRIM or self.hk[h] == K_CLOS
 
     var fn intern(name: String) Int:
-        if let id = self.symmap.get(name): return id
+        if id := self.symmap.get(name): return id
 
-        let id = self.symn.length()
+        id := self.symn.length()
         self.symn.append(name.clone())
         self.symmap[name.clone()] = id
         self.gval.append(-1)
@@ -351,7 +351,7 @@ impl Interp:
 
     // eq?: true only for same integer, boolean, symbol, or empty list.
     fn eqv(a: Int, b: Int) Bool:
-        let ka = self.hk[a]
+        ka := self.hk[a]
         if ka == K_STR or ka == K_PAIR or ka == K_PRIM or ka == K_CLOS or ka == K_VOID:
             return false
         if ka != self.hk[b]: return false
@@ -364,7 +364,7 @@ impl Interp:
         var b = b0
 
         while true:
-            let ka = self.hk[a]
+            ka := self.hk[a]
 
             if ka == K_PAIR and self.hk[b] == K_PAIR:
                 if not self.equal_v(self.hca[a], self.hca[b]): return false
@@ -388,7 +388,7 @@ impl Interp:
     // ---------- printing ----------
 
     var fn pr(h: Int, wr: Bool) Unit:
-        let k = self.hk[h]
+        k := self.hk[h]
 
         if k == K_NIL:
             self.pbuf.append("()")
@@ -403,7 +403,7 @@ impl Interp:
             self.pbuf.append(self.hp[h].to_string())
         else if k == K_STR:
             if wr:
-                let body = self.strs[self.hp[h]].replace("\\", "\\\\").replace(
+                body := self.strs[self.hp[h]].replace("\\", "\\\\").replace(
                     "\"", "\\\""
                 ).replace("\n", "\\n").replace("\t", "\\t")
                 self.pbuf.append("\"" + body + "\"")
@@ -430,7 +430,7 @@ impl Interp:
         else if k == K_PRIM:
             self.pbuf.append("#<builtin " + self.prim_name[self.hp[h]].clone() + ">")
         else:
-            let cid = self.hp[h]
+            cid := self.hp[h]
 
             if self.cl_name[cid] == -1:
                 self.pbuf.append("#<procedure>")
@@ -457,7 +457,7 @@ impl Interp:
 
     var fn skip_ws() Unit:
         while self.pos < self.src.length():
-            let c = self.src[self.pos].clone()
+            c := self.src[self.pos].clone()
 
             if c == ";":
                 while self.pos < self.src.length() and self.src[self.pos] != "\n":
@@ -472,7 +472,7 @@ impl Interp:
         if self.pos >= self.src.length():
             return error(synerr("syntax error: unexpected end of input"))
 
-        let c = self.src[self.pos].clone()
+        c := self.src[self.pos].clone()
 
         if c == "(":
             self.pos += 1
@@ -483,7 +483,7 @@ impl Interp:
         if c == "'":
             self.pos += 1
 
-            let d = try self.read_datum()
+            d := try self.read_datum()
             return ok(self.cons(self.mksym(S_QUOTE), self.cons(d, NIL)))
 
         if c == "\"":
@@ -521,7 +521,7 @@ impl Interp:
                 if self.src[self.pos] == ")":
                     return error(synerr("syntax error: bad dotted list"))
 
-                let tail = try self.read_datum()
+                tail := try self.read_datum()
                 self.skip_ws()
                 if self.pos >= self.src.length():
                     return error(synerr("syntax error: unexpected end of input"))
@@ -531,7 +531,7 @@ impl Interp:
                 self.pos += 1
                 return ok(self.build(items, tail))
 
-            let d = try self.read_datum()
+            d := try self.read_datum()
             items.append(d)
 
         return ok(NIL)
@@ -540,14 +540,14 @@ impl Interp:
         var s = ""
 
         while self.pos < self.src.length():
-            let c = self.src[self.pos].clone()
+            c := self.src[self.pos].clone()
             self.pos += 1
             if c == "\"": return ok(self.mkstr(s))
 
             if c == "\\":
                 if self.pos >= self.src.length(): break
 
-                let e = self.src[self.pos].clone()
+                e := self.src[self.pos].clone()
                 self.pos += 1
 
                 if e == "n":
@@ -572,7 +572,7 @@ impl Interp:
         if tok == ".": return error(synerr("syntax error: unexpected ."))
 
         if is_int_text(tok):
-            if let n = tok.parse_int(): return ok(self.mkint(n))
+            if n := tok.parse_int(): return ok(self.mkint(n))
 
             return error(synerr("syntax error: integer out of range"))
 
@@ -621,7 +621,7 @@ impl Interp:
 
             f = self.fr_parent[f]
 
-        let g = self.gval[sym]
+        g := self.gval[sym]
         if g == -1: return error(rt("unbound variable: " + self.sym_name(sym)))
 
         return ok(g)
@@ -660,7 +660,7 @@ impl Interp:
         var t = p
 
         while self.hk[t] == K_PAIR:
-            let a = self.hca[t]
+            a := self.hca[t]
             if self.hk[a] != K_SYM: return false
             if has(seen, self.hp[a]): return false
 
@@ -676,7 +676,7 @@ impl Interp:
         if self.proper_len(x) < 3:
             return error(synerr("syntax error: bad form: lambda"))
 
-        let params = self.hca[self.hcd[x]]
+        params := self.hca[self.hcd[x]]
         if not self.params_ok(params):
             return error(synerr("syntax error: bad form: lambda"))
 
@@ -696,8 +696,8 @@ impl Interp:
             fixed += 1
             t = self.hcd[t]
 
-        let has_rest = self.hk[t] == K_SYM
-        let n = args.length()
+        has_rest := self.hk[t] == K_SYM
+        n := args.length()
 
         if n < fixed or (n > fixed and not has_rest):
             var ex = fixed.to_string()
@@ -711,7 +711,7 @@ impl Interp:
                 )
             )
 
-        let env = self.new_frame(self.cl_env[cid])
+        env := self.new_frame(self.cl_env[cid])
         var p = self.cl_params[cid]
         var i = 0
 
@@ -737,7 +737,7 @@ impl Interp:
         var b = body
 
         while self.hcd[b] != NIL:
-            let _v = try self.ev(self.hca[b], env, false)
+            _v := try self.ev(self.hca[b], env, false)
             b = self.hcd[b]
 
         return ok(self.hca[b])
@@ -745,15 +745,15 @@ impl Interp:
     // Applies f to args as a call in the given position. Closures in tail position replace the
     // current evaluation (no depth change); others enter a new non-tail call.
     var fn apply_step(f: Int, args: List[Int], tail: Bool, added: Int) Step!Fail:
-        let k = self.hk[f]
+        k := self.hk[f]
 
         if k == K_PRIM:
-            let v = try self.call_prim(self.hp[f], args)
+            v := try self.call_prim(self.hp[f], args)
             return ok(Step(done: true, value: v, added: added))
 
         if k == K_CLOS:
-            let cid = self.hp[f]
-            let env2 = try self.bind_args(cid, args)
+            cid := self.hp[f]
+            env2 := try self.bind_args(cid, args)
             var t2 = tail
             var add2 = added
 
@@ -765,27 +765,27 @@ impl Interp:
                 add2 += 1
                 t2 = true
 
-            let last = try self.eval_prefix(self.cl_body[cid], env2)
+            last := try self.eval_prefix(self.cl_body[cid], env2)
             return ok(Step(done: false, expr: last, env: env2, tail: t2, added: add2))
 
         return error(rt("not a procedure: " + self.to_text(f, true)))
 
     // Applies f to args from builtin code (always a non-tail call).
     var fn apply_value(f: Int, args: List[Int]) Int!Fail:
-        let k = self.hk[f]
+        k := self.hk[f]
         if k == K_PRIM: return self.call_prim(self.hp[f], args)
 
         if k == K_CLOS:
-            let cid = self.hp[f]
+            cid := self.hp[f]
             if self.depth + 1 > MAX_DEPTH or self.bdepth >= MAX_BDEPTH:
                 return error(rt("recursion limit exceeded"))
 
             self.depth += 1
             self.bdepth += 1
 
-            let env2 = try self.bind_args(cid, args)
-            let last = try self.eval_prefix(self.cl_body[cid], env2)
-            let v = try self.ev(last, env2, true)
+            env2 := try self.bind_args(cid, args)
+            last := try self.eval_prefix(self.cl_body[cid], env2)
+            v := try self.ev(last, env2, true)
             self.depth -= 1
             self.bdepth -= 1
             return ok(v)
@@ -798,7 +798,7 @@ impl Interp:
         var b = bl
 
         while self.hk[b] == K_PAIR:
-            let bind = self.hca[b]
+            bind := self.hca[b]
             if self.proper_len(bind) != 2: return false
             if self.hk[self.hca[bind]] != K_SYM: return false
 
@@ -823,10 +823,10 @@ impl Interp:
         var added = 0
 
         while true:
-            let k = self.hk[x]
+            k := self.hk[x]
 
             if k == K_SYM:
-                let v = try self.lookup(env, self.hp[x])
+                v := try self.lookup(env, self.hp[x])
                 self.depth -= added
                 return ok(v)
 
@@ -858,23 +858,23 @@ impl Interp:
     var fn application(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
         if self.proper_len(x) < 0: return error(synerr("syntax error: bad application"))
 
-        let f = try self.ev(self.hca[x], env, false)
+        f := try self.ev(self.hca[x], env, false)
         var args: List[Int] = []
         var a = self.hcd[x]
 
         while self.hk[a] == K_PAIR:
-            let v = try self.ev(self.hca[a], env, false)
+            v := try self.ev(self.hca[a], env, false)
             args.append(v)
             a = self.hcd[a]
 
         if self.hk[f] == K_PRIM:
-            let pv = try self.call_prim(self.hp[f], args)
+            pv := try self.call_prim(self.hp[f], args)
             return ok(self.fin(pv, added))
 
         return self.apply_step(f, args, tail, added)
 
     var fn special(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        let sid = self.hp[self.hca[x]]
+        sid := self.hp[self.hca[x]]
         if self.proper_len(x) < 0:
             return error(synerr("syntax error: bad form: " + self.sym_name(sid)))
         if sid == S_QUOTE: return self.sf_quote(x, added)
@@ -902,11 +902,11 @@ impl Interp:
         return ok(self.fin(self.hca[self.hcd[x]], added))
 
     var fn sf_if(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        let n = self.proper_len(x)
+        n := self.proper_len(x)
         if n != 3 and n != 4: return error(synerr("syntax error: bad form: if"))
 
-        let tv = try self.ev(self.hca[self.hcd[x]], env, false)
-        let rest = self.hcd[self.hcd[x]]
+        tv := try self.ev(self.hca[self.hcd[x]], env, false)
+        rest := self.hcd[self.hcd[x]]
         if tv != FALSE: return ok(self.go(self.hca[rest], env, tail, added))
         if self.hcd[rest] != NIL:
             return ok(self.go(self.hca[self.hcd[rest]], env, tail, added))
@@ -914,17 +914,17 @@ impl Interp:
         return ok(self.fin(VOID, added))
 
     var fn sf_define(x: Int, env: Int, added: Int) Step!Fail:
-        let n = self.proper_len(x)
+        n := self.proper_len(x)
         if n < 3: return error(synerr("syntax error: bad form: define"))
 
-        let target = self.hca[self.hcd[x]]
+        target := self.hca[self.hcd[x]]
 
         if self.hk[target] == K_PAIR:
-            let nm = self.hca[target]
+            nm := self.hca[target]
             if self.hk[nm] != K_SYM or not self.params_ok(self.hcd[target]):
                 return error(synerr("syntax error: bad form: define"))
 
-            let clo = self.make_closure(
+            clo := self.make_closure(
                 self.hcd[target], self.hcd[self.hcd[x]], env, self.hp[nm]
             )
             self.define_in(env, self.hp[nm], clo)
@@ -933,7 +933,7 @@ impl Interp:
         if self.hk[target] != K_SYM or n != 3:
             return error(synerr("syntax error: bad form: define"))
 
-        let vexpr = self.hca[self.hcd[self.hcd[x]]]
+        vexpr := self.hca[self.hcd[self.hcd[x]]]
         var v = 0
 
         if (
@@ -952,50 +952,50 @@ impl Interp:
         if self.proper_len(x) != 3 or self.hk[self.hca[self.hcd[x]]] != K_SYM:
             return error(synerr("syntax error: bad form: set!"))
 
-        let sym = self.hp[self.hca[self.hcd[x]]]
-        let v = try self.ev(self.hca[self.hcd[self.hcd[x]]], env, false)
+        sym := self.hp[self.hca[self.hcd[x]]]
+        v := try self.ev(self.hca[self.hcd[self.hcd[x]]], env, false)
         if not self.set_var(env, sym, v):
             return error(rt("unbound variable: " + self.sym_name(sym)))
 
         return ok(self.fin(VOID, added))
 
     var fn sf_lambda(x: Int, env: Int, added: Int) Step!Fail:
-        let clo = try self.make_lambda(x, env, -1)
+        clo := try self.make_lambda(x, env, -1)
         return ok(self.fin(clo, added))
 
     var fn sf_begin(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
         if self.hcd[x] == NIL: return ok(self.fin(VOID, added))
 
-        let last = try self.eval_prefix(self.hcd[x], env)
+        last := try self.eval_prefix(self.hcd[x], env)
         return ok(self.go(last, env, tail, added))
 
     var fn sf_let(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        let n = self.proper_len(x)
+        n := self.proper_len(x)
         if n < 3: return error(synerr("syntax error: bad form: let"))
 
-        let second = self.hca[self.hcd[x]]
+        second := self.hca[self.hcd[x]]
 
         if self.hk[second] == K_SYM:
             // Named let: the loop procedure lives in a frame of its own.
             if n < 4 or not self.bindings_ok(self.hca[self.hcd[self.hcd[x]]]):
                 return error(synerr("syntax error: bad form: let"))
 
-            let bl = self.hca[self.hcd[self.hcd[x]]]
-            let body = self.hcd[self.hcd[self.hcd[x]]]
+            bl := self.hca[self.hcd[self.hcd[x]]]
+            body := self.hcd[self.hcd[self.hcd[x]]]
             var vars: List[Int] = []
             var vals: List[Int] = []
             var b = bl
 
             while self.hk[b] == K_PAIR:
-                let bind = self.hca[b]
+                bind := self.hca[b]
                 vars.append(self.hca[bind])
 
-                let iv = try self.ev(self.hca[self.hcd[bind]], env, false)
+                iv := try self.ev(self.hca[self.hcd[bind]], env, false)
                 vals.append(iv)
                 b = self.hcd[b]
 
-            let loopenv = self.new_frame(env)
-            let clo = self.make_closure(
+            loopenv := self.new_frame(env)
+            clo := self.make_closure(
                 self.list_from(vars), body, loopenv, self.hp[second]
             )
             self.define_in(loopenv, self.hp[second], clo)
@@ -1004,33 +1004,33 @@ impl Interp:
         if not self.bindings_ok(second):
             return error(synerr("syntax error: bad form: let"))
 
-        let newf = self.new_frame(env)
+        newf := self.new_frame(env)
         var b = second
 
         while self.hk[b] == K_PAIR:
-            let bind = self.hca[b]
-            let iv = try self.ev(self.hca[self.hcd[bind]], env, false)
+            bind := self.hca[b]
+            iv := try self.ev(self.hca[self.hcd[bind]], env, false)
             self.bind_new(newf, self.hp[self.hca[bind]], iv)
             b = self.hcd[b]
 
-        let last = try self.eval_prefix(self.hcd[self.hcd[x]], newf)
+        last := try self.eval_prefix(self.hcd[self.hcd[x]], newf)
         return ok(self.go(last, newf, tail, added))
 
     var fn sf_letstar(x: Int, env: Int, tail: Bool, added: Int, sid: Int) Step!Fail:
-        let n = self.proper_len(x)
+        n := self.proper_len(x)
         if n < 3 or not self.bindings_ok(self.hca[self.hcd[x]]):
             return error(synerr("syntax error: bad form: " + self.sym_name(sid)))
 
-        let newf = self.new_frame(env)
+        newf := self.new_frame(env)
         var b = self.hca[self.hcd[x]]
 
         while self.hk[b] == K_PAIR:
-            let bind = self.hca[b]
-            let iv = try self.ev(self.hca[self.hcd[bind]], newf, false)
+            bind := self.hca[b]
+            iv := try self.ev(self.hca[self.hcd[bind]], newf, false)
             self.define_in(newf, self.hp[self.hca[bind]], iv)
             b = self.hcd[b]
 
-        let last = try self.eval_prefix(self.hcd[self.hcd[x]], newf)
+        last := try self.eval_prefix(self.hcd[self.hcd[x]], newf)
         return ok(self.go(last, newf, tail, added))
 
     var fn sf_cond(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
@@ -1039,7 +1039,7 @@ impl Interp:
         var found = false
 
         while self.hk[cl] == K_PAIR:
-            let clause = self.hca[cl]
+            clause := self.hca[cl]
             if self.hk[clause] != K_PAIR:
                 return error(synerr("syntax error: bad form: cond"))
 
@@ -1054,7 +1054,7 @@ impl Interp:
                 found = true
                 break
 
-            let v = try self.ev(self.hca[clause], env, false)
+            v := try self.ev(self.hca[clause], env, false)
 
             if v != FALSE:
                 if self.hcd[clause] == NIL: return ok(self.fin(v, added))
@@ -1067,7 +1067,7 @@ impl Interp:
 
         if not found: return ok(self.fin(VOID, added))
 
-        let last = try self.eval_prefix(body, env)
+        last := try self.eval_prefix(body, env)
         return ok(self.go(last, env, tail, added))
 
     var fn sf_and(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
@@ -1076,7 +1076,7 @@ impl Interp:
         var a = self.hcd[x]
 
         while self.hk[self.hcd[a]] == K_PAIR:
-            let v = try self.ev(self.hca[a], env, false)
+            v := try self.ev(self.hca[a], env, false)
             if v == FALSE: return ok(self.fin(v, added))
 
             a = self.hcd[a]
@@ -1089,7 +1089,7 @@ impl Interp:
         var o = self.hcd[x]
 
         while self.hk[self.hcd[o]] == K_PAIR:
-            let v = try self.ev(self.hca[o], env, false)
+            v := try self.ev(self.hca[o], env, false)
             if v != FALSE: return ok(self.fin(v, added))
 
             o = self.hcd[o]
@@ -1100,34 +1100,34 @@ impl Interp:
         if self.proper_len(x) < 3:
             return error(synerr("syntax error: bad form: " + self.sym_name(sid)))
 
-        let c = try self.ev(self.hca[self.hcd[x]], env, false)
+        c := try self.ev(self.hca[self.hcd[x]], env, false)
         var fires = c != FALSE
         if sid == S_UNLESS:
             fires = c == FALSE
         if not fires: return ok(self.fin(VOID, added))
 
-        let last = try self.eval_prefix(self.hcd[self.hcd[x]], env)
+        last := try self.eval_prefix(self.hcd[self.hcd[x]], env)
         return ok(self.go(last, env, tail, added))
 
     var fn sf_try(x: Int, env: Int, added: Int) Step!Fail:
         if self.proper_len(x) != 3: return error(synerr("syntax error: bad form: try"))
 
-        let saved = self.depth
-        let saved_b = self.bdepth
-        let r = self.ev(self.hca[self.hcd[x]], env, false)
+        saved := self.depth
+        saved_b := self.bdepth
+        r := self.ev(self.hca[self.hcd[x]], env, false)
         if r.is_ok(): return ok(self.fin(r.get(0), added))
 
-        let e = r.err()
+        e := r.err()
         if e.syntax: return error(e)
 
         self.depth = saved
         self.bdepth = saved_b
 
-        let h = try self.ev(self.hca[self.hcd[self.hcd[x]]], env, false)
+        h := try self.ev(self.hca[self.hcd[self.hcd[x]]], env, false)
         var argv: List[Int] = []
         argv.append(self.mkstr(e.msg))
 
-        let v = try self.apply_value(h, argv)
+        v := try self.apply_value(h, argv)
         return ok(self.fin(v, added))
 
     // ---------- builtin helpers ----------
@@ -1187,19 +1187,19 @@ impl Interp:
         return true
 
     var fn msort(xs: List[Int], less: Int) List[Int]!Fail:
-        let n = xs.length()
+        n := xs.length()
         if n <= 1: return ok(xs)
 
         var left: List[Int] = []
         var right: List[Int] = []
-        let mid = n / 2
+        mid := n / 2
         for i in 0..mid:
             left.append(xs[i])
         for i in mid..n:
             right.append(xs[i])
 
-        let ls = try self.msort(left, less)
-        let rs = try self.msort(right, less)
+        ls := try self.msort(left, less)
+        rs := try self.msort(right, less)
         var out: List[Int] = []
         var i = 0
         var j = 0
@@ -1209,7 +1209,7 @@ impl Interp:
             pa.append(rs[j])
             pa.append(ls[i])
 
-            let t = try self.apply_value(less, pa)
+            t := try self.apply_value(less, pa)
 
             if t != FALSE:
                 out.append(rs[j])
@@ -1229,21 +1229,21 @@ impl Interp:
         return ok(out)
 
     var fn defprim(name: String, mn: Int, mx: Int) Unit:
-        let pid = self.prim_name.length()
+        pid := self.prim_name.length()
         self.prim_name.append(name.clone())
         self.prim_min.append(mn)
         self.prim_max.append(mx)
 
-        let sym = self.intern(name.clone())
-        let pv = self.mk(K_PRIM, pid)
+        sym := self.intern(name.clone())
+        pv := self.mk(K_PRIM, pid)
         self.gval[sym] = pv
 
     // ---------- builtins ----------
 
     var fn call_prim(pid: Int, args: List[Int]) Int!Fail:
-        let n = args.length()
-        let mn = self.prim_min[pid]
-        let mx = self.prim_max[pid]
+        n := args.length()
+        mn := self.prim_min[pid]
+        mx := self.prim_max[pid]
         if n < mn or (mx != -1 and n > mx): return error(self.arity_err(pid, n))
         if pid <= P_MAX: return self.prim_arith(pid, args)
         if pid <= P_ODDP: return self.prim_cmp(pid, args)
@@ -1255,8 +1255,8 @@ impl Interp:
         return self.prim_io(pid, args)
 
     var fn arity_err(pid: Int, n: Int) Fail:
-        let mn = self.prim_min[pid]
-        let mx = self.prim_max[pid]
+        mn := self.prim_min[pid]
+        mx := self.prim_max[pid]
         var ex = ""
 
         if mx == -1:
@@ -1275,7 +1275,7 @@ impl Interp:
     var fn prim_arith(pid: Int, args: List[Int]) Int!Fail:
         // Arithmetic.
         if pid == P_ADD:
-            let xs = try self.ints_of("+", args)
+            xs := try self.ints_of("+", args)
             var acc = 0
 
             for v in xs:
@@ -1286,7 +1286,7 @@ impl Interp:
             return ok(self.mkint(acc))
 
         if pid == P_SUB:
-            let xs = try self.ints_of("-", args)
+            xs := try self.ints_of("-", args)
 
             if xs.length() == 1:
                 if xs[0] == INT_MIN: return error(rt("integer overflow"))
@@ -1305,7 +1305,7 @@ impl Interp:
             return ok(self.mkint(acc))
 
         if pid == P_MUL:
-            let xs = try self.ints_of("*", args)
+            xs := try self.ints_of("*", args)
             var acc = 1
 
             for v in xs:
@@ -1316,9 +1316,9 @@ impl Interp:
             return ok(self.mkint(acc))
 
         if pid == P_QUOT or pid == P_REM or pid == P_MOD:
-            let xs = try self.ints_of(self.prim_name[pid].clone(), args)
-            let a = xs[0]
-            let b = xs[1]
+            xs := try self.ints_of(self.prim_name[pid].clone(), args)
+            a := xs[0]
+            b := xs[1]
             if b == 0: return error(rt("division by zero"))
 
             if pid == P_QUOT:
@@ -1334,14 +1334,14 @@ impl Interp:
             return ok(self.mkint(m))
 
         if pid == P_ABS:
-            let xs = try self.ints_of("abs", args)
+            xs := try self.ints_of("abs", args)
             if xs[0] == INT_MIN: return error(rt("integer overflow"))
             if xs[0] < 0: return ok(self.mkint(-xs[0]))
 
             return ok(self.mkint(xs[0]))
 
         if pid == P_MIN or pid == P_MAX:
-            let xs = try self.ints_of(self.prim_name[pid].clone(), args)
+            xs := try self.ints_of(self.prim_name[pid].clone(), args)
             var best = xs[0]
 
             for v in xs:
@@ -1356,7 +1356,7 @@ impl Interp:
 
     var fn prim_cmp(pid: Int, args: List[Int]) Int!Fail:
         if pid == P_NUMEQ or pid == P_LT or pid == P_GT or pid == P_LE or pid == P_GE:
-            let xs = try self.ints_of(self.prim_name[pid].clone(), args)
+            xs := try self.ints_of(self.prim_name[pid].clone(), args)
             var i = 0
             var holds = true
 
@@ -1368,8 +1368,8 @@ impl Interp:
             return ok(self.mkbool(holds))
 
         if pid == P_ZEROP or pid == P_EVENP or pid == P_ODDP:
-            let xs = try self.ints_of(self.prim_name[pid].clone(), args)
-            let v = xs[0]
+            xs := try self.ints_of(self.prim_name[pid].clone(), args)
+            v := xs[0]
             if pid == P_ZEROP: return ok(self.mkbool(v == 0))
             if pid == P_EVENP: return ok(self.mkbool(v % 2 == 0))
 
@@ -1394,7 +1394,7 @@ impl Interp:
         return error(rt("internal error: unknown builtin"))
 
     var fn prim_list(pid: Int, args: List[Int]) Int!Fail:
-        let n = args.length()
+        n := args.length()
 
         // Pairs and lists.
         if pid == P_CONS: return ok(self.cons(args[0], args[1]))
@@ -1421,7 +1421,7 @@ impl Interp:
         if pid == P_LIST: return ok(self.list_from(args))
 
         if pid == P_LENGTH:
-            let items = try self.list_of("length", args[0])
+            items := try self.list_of("length", args[0])
             return ok(self.mkint(items.length()))
 
         if pid == P_APPEND:
@@ -1431,22 +1431,22 @@ impl Interp:
             var i = n - 2
 
             while i >= 0:
-                let items = try self.list_of("append", args[i])
+                items := try self.list_of("append", args[i])
                 result = self.build(items, result)
                 i -= 1
 
             return ok(result)
 
         if pid == P_REVERSE:
-            let items = try self.list_of("reverse", args[0])
+            items := try self.list_of("reverse", args[0])
             var r = NIL
             for v in items:
                 r = self.cons(v, r)
             return ok(r)
 
         if pid == P_LISTREF:
-            let items = try self.list_of("list-ref", args[0])
-            let k = try self.int1("list-ref", args[1])
+            items := try self.list_of("list-ref", args[0])
+            k := try self.int1("list-ref", args[1])
             if k < 0 or k >= items.length():
                 return error(rt("list-ref: index out of range"))
 
@@ -1456,7 +1456,7 @@ impl Interp:
             if not self.is_proper(args[0]):
                 return error(self.kind_err("list-tail", "list", args[0]))
 
-            let k = try self.int1("list-tail", args[1])
+            k := try self.int1("list-tail", args[1])
             if k < 0: return error(rt("list-tail: index out of range"))
 
             var p = args[0]
@@ -1472,7 +1472,7 @@ impl Interp:
             return ok(p)
 
         if pid == P_RANGE:
-            let xs = try self.ints_of("range", args)
+            xs := try self.ints_of("range", args)
             var r = NIL
             var i = xs[1] - 1
 
@@ -1486,7 +1486,7 @@ impl Interp:
             var p = args[1]
 
             while self.hk[p] == K_PAIR:
-                let e = self.hca[p]
+                e := self.hca[p]
                 if self.hk[e] != K_PAIR: return error(self.kind_err("assoc", "pair", e))
                 if self.equal_v(args[0], self.hca[e]): return ok(e)
 
@@ -1513,9 +1513,9 @@ impl Interp:
         return error(rt("internal error: unknown builtin"))
 
     var fn prim_map(pid: Int, args: List[Int]) Int!Fail:
-        let n = args.length()
-        let nm = self.prim_name[pid].clone()
-        let f = try self.proc_of(nm, args[0])
+        n := args.length()
+        nm := self.prim_name[pid].clone()
+        f := try self.proc_of(nm, args[0])
         var cur: List[Int] = []
         var i = 1
 
@@ -1535,7 +1535,7 @@ impl Interp:
                 argv.append(self.hca[cur[j]])
                 cur[j] = self.hcd[cur[j]]
 
-            let v = try self.apply_value(f, argv)
+            v := try self.apply_value(f, argv)
             if pid == P_MAP:
                 results.append(v)
 
@@ -1544,27 +1544,27 @@ impl Interp:
         return ok(self.list_from(results))
 
     var fn prim_hof(pid: Int, args: List[Int]) Int!Fail:
-        let n = args.length()
+        n := args.length()
         if pid == P_MAP or pid == P_FOREACH: return self.prim_map(pid, args)
 
         if pid == P_FILTER:
-            let f = try self.proc_of("filter", args[0])
-            let items = try self.list_of("filter", args[1])
+            f := try self.proc_of("filter", args[0])
+            items := try self.list_of("filter", args[1])
             var keep: List[Int] = []
 
             for v in items:
                 var argv: List[Int] = []
                 argv.append(v)
 
-                let t = try self.apply_value(f, argv)
+                t := try self.apply_value(f, argv)
                 if t != FALSE:
                     keep.append(v)
 
             return ok(self.list_from(keep))
 
         if pid == P_FOLD:
-            let f = try self.proc_of("fold", args[0])
-            let items = try self.list_of("fold", args[2])
+            f := try self.proc_of("fold", args[0])
+            items := try self.list_of("fold", args[2])
             var acc = args[1]
 
             for v in items:
@@ -1576,8 +1576,8 @@ impl Interp:
             return ok(acc)
 
         if pid == P_FOLDR:
-            let f = try self.proc_of("foldr", args[0])
-            let items = try self.list_of("foldr", args[2])
+            f := try self.proc_of("foldr", args[0])
+            items := try self.list_of("foldr", args[2])
             var acc = args[1]
             var i = items.length() - 1
 
@@ -1591,8 +1591,8 @@ impl Interp:
             return ok(acc)
 
         if pid == P_APPLY:
-            let f = try self.proc_of("apply", args[0])
-            let tail_items = try self.list_of("apply", args[n - 1])
+            f := try self.proc_of("apply", args[0])
+            tail_items := try self.list_of("apply", args[n - 1])
             var argv: List[Int] = []
             var i = 1
 
@@ -1605,9 +1605,9 @@ impl Interp:
             return self.apply_value(f, argv)
 
         if pid == P_SORT:
-            let less = try self.proc_of("sort", args[1])
-            let items = try self.list_of("sort", args[0])
-            let sorted = try self.msort(items, less)
+            less := try self.proc_of("sort", args[1])
+            items := try self.list_of("sort", args[0])
+            sorted := try self.msort(items, less)
             return ok(self.list_from(sorted))
 
         return error(rt("internal error: unknown builtin"))
@@ -1615,65 +1615,65 @@ impl Interp:
     var fn prim_str(pid: Int, args: List[Int]) Int!Fail:
         // Strings and symbols.
         if pid == P_STRLEN:
-            let s = try self.str_of("string-length", args[0])
+            s := try self.str_of("string-length", args[0])
             return ok(self.mkint(s.length()))
 
         if pid == P_STRAPPEND:
             var acc = ""
 
             for a in args:
-                let s = try self.str_of("string-append", a)
+                s := try self.str_of("string-append", a)
                 acc += s
 
             return ok(self.mkstr(acc))
 
         if pid == P_SUBSTR:
-            let s = try self.str_of("substring", args[0])
-            let st = try self.int1("substring", args[1])
-            let en = try self.int1("substring", args[2])
+            s := try self.str_of("substring", args[0])
+            st := try self.int1("substring", args[1])
+            en := try self.int1("substring", args[2])
             if st < 0 or st > en or en > s.length():
                 return error(rt("substring: index out of range"))
 
             return ok(self.mkstr(s.drop(st).take(en - st)))
 
         if pid == P_STRREF:
-            let s = try self.str_of("string-ref", args[0])
-            let i = try self.int1("string-ref", args[1])
+            s := try self.str_of("string-ref", args[0])
+            i := try self.int1("string-ref", args[1])
             if i < 0 or i >= s.length():
                 return error(rt("string-ref: index out of range"))
 
             return ok(self.mkstr(s.drop(i).take(1)))
 
         if pid == P_STREQ:
-            let a = try self.str_of("string=?", args[0])
-            let b = try self.str_of("string=?", args[1])
+            a := try self.str_of("string=?", args[0])
+            b := try self.str_of("string=?", args[1])
             return ok(self.mkbool(a == b))
 
         if pid == P_STRLT:
-            let a = try self.str_of("string<?", args[0])
-            let b = try self.str_of("string<?", args[1])
+            a := try self.str_of("string<?", args[0])
+            b := try self.str_of("string<?", args[1])
             return ok(self.mkbool(a.compare(b) < 0))
 
         if pid == P_STRUP:
-            let s = try self.str_of("string-upcase", args[0])
+            s := try self.str_of("string-upcase", args[0])
             return ok(self.mkstr(s.upper()))
 
         if pid == P_STRDOWN:
-            let s = try self.str_of("string-downcase", args[0])
+            s := try self.str_of("string-downcase", args[0])
             return ok(self.mkstr(s.lower()))
 
         if pid == P_STR2NUM:
-            let s = try self.str_of("string->number", args[0])
+            s := try self.str_of("string->number", args[0])
             if is_int_text(s):
-                if let v = s.parse_int(): return ok(self.mkint(v))
+                if v := s.parse_int(): return ok(self.mkint(v))
             return ok(FALSE)
 
         if pid == P_NUM2STR:
-            let v = try self.int1("number->string", args[0])
+            v := try self.int1("number->string", args[0])
             return ok(self.mkstr(v.to_string()))
 
         if pid == P_STR2SYM:
-            let s = try self.str_of("string->symbol", args[0])
+            s := try self.str_of("string->symbol", args[0])
             return ok(self.mksym(self.intern(s)))
 
         if pid == P_SYM2STR:
@@ -1683,14 +1683,14 @@ impl Interp:
             return ok(self.mkstr(self.sym_name(self.hp[args[0]])))
 
         if pid == P_STR2LIST:
-            let s = try self.str_of("string->list", args[0])
+            s := try self.str_of("string->list", args[0])
             var items: List[Int] = []
             for ch in s.chars():
                 items.append(self.mkstr(ch.clone()))
             return ok(self.list_from(items))
 
         if pid == P_LIST2STR:
-            let items = try self.list_of("list->string", args[0])
+            items := try self.list_of("list->string", args[0])
             var acc = ""
 
             for v in items:
@@ -1702,8 +1702,8 @@ impl Interp:
             return ok(self.mkstr(acc))
 
         if pid == P_STRJOIN:
-            let items = try self.list_of("string-join", args[0])
-            let sep = try self.str_of("string-join", args[1])
+            items := try self.list_of("string-join", args[0])
+            sep := try self.str_of("string-join", args[1])
             var parts: List[String] = []
 
             for v in items:
@@ -1715,8 +1715,8 @@ impl Interp:
             return ok(self.mkstr(parts.join(sep)))
 
         if pid == P_STRSPLIT:
-            let s = try self.str_of("string-split", args[0])
-            let sep = try self.str_of("string-split", args[1])
+            s := try self.str_of("string-split", args[0])
+            sep := try self.str_of("string-split", args[1])
             if sep.length() != 1:
                 return error(rt("string-split: separator must be one character"))
 
@@ -1731,14 +1731,14 @@ impl Interp:
             return ok(self.list_from(items))
 
         if pid == P_STRCONTAINS:
-            let s = try self.str_of("string-contains?", args[0])
-            let sub = try self.str_of("string-contains?", args[1])
+            s := try self.str_of("string-contains?", args[0])
+            sub := try self.str_of("string-contains?", args[1])
             return ok(self.mkbool(s.contains(sub)))
 
         return error(rt("internal error: unknown builtin"))
 
     var fn prim_io(pid: Int, args: List[Int]) Int!Fail:
-        let n = args.length()
+        n := args.length()
 
         // Output and misc.
         if pid == P_DISPLAY:
@@ -1768,12 +1768,12 @@ impl Interp:
         return error(rt("internal error: unknown builtin"))
 
     var fn setup() Unit:
-        let specials = [
+        specials := [
             "quote", "if", "define", "set!", "lambda", "begin", "let", "let*", "letrec",
             "cond", "and", "or", "when", "unless", "try", "else"
         ]
         for nm in specials:
-            let _s = self.intern(nm)
+            _s := self.intern(nm)
         self.defprim("+", 0, -1)
         self.defprim("-", 1, -1)
         self.defprim("*", 0, -1)
@@ -1855,7 +1855,7 @@ impl Interp:
         self.depth = 0
         self.bdepth = 0
 
-        let r = self.ev(form, -1, false)
+        r := self.ev(form, -1, false)
 
         if r.is_error():
             self.report(r.err().msg)
@@ -1864,8 +1864,8 @@ impl Interp:
         return true
 
 export fn main() Int:
-    let data = read_all(stdin(), none).get()
-    let text = data.decode_utf8().get()
+    data := read_all(stdin(), none).get()
+    text := data.decode_utf8().get()
     var it = Interp(out: stdout(), src: text.chars())
     it.setup()
 
@@ -1873,7 +1873,7 @@ export fn main() Int:
         it.skip_ws()
         if it.pos >= it.src.length(): break
 
-        let r = it.read_datum()
+        r := it.read_datum()
 
         if r.is_error():
             it.report(r.err().msg)

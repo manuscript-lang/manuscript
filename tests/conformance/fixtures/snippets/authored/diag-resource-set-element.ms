@@ -9,4 +9,4 @@ impl Closeable for Door:
     var fn close() Unit!: return ok(unit)
 
 fn main() Unit:
-    let s = Set[Door]()
+    s := Set[Door]()

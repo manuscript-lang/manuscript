@@ -49,7 +49,7 @@ fn failure_cases() List[Failure]:
 
     for shape in ["plain", "escaped", "typed-plain", "typed-escaped"]:
         for size in [0, 16, 1024, 65536, 1048576]:
-            let rounds = if size <= 16: 300000 else: (
+            rounds := if size <= 16: 300000 else: (
                 if size == 1024: 20000 else: (
                     if size == 65536: 1000 else: 500
                 )
@@ -62,13 +62,13 @@ fn failure_cases() List[Failure]:
     return out
 
 fn stats_line(label: String, values: List[Float]) String:
-    let low = values.fold(values[0], fn(a: Float, v: Float) Float: if v < a: v else: a)
-    let high = values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
+    low := values.fold(values[0], fn(a: Float, v: Float) Float: if v < a: v else: a)
+    high := values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
     return "{label} [{low.to_fixed(3)},{high.to_fixed(3)}] {median(values).to_fixed(3)}"
 
 fn triple(values: List[Float]) String:
-    let low = values.fold(values[0], fn(a: Float, v: Float) Float: if v < a: v else: a)
-    let high = values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
+    low := values.fold(values[0], fn(a: Float, v: Float) Float: if v < a: v else: a)
+    high := values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
     return "{low} {median(values)} {high}"
 
 fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, Error]:
@@ -84,7 +84,7 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
     write_text("{out}/samples.jsonl", "")
 
     for c in decode_cases():
-        let key = "{c.size}/{c.count}/{c.rounds}"
+        key := "{c.size}/{c.count}/{c.rounds}"
         var samples = Map[String, List[Float]]()
         samples.add("before", List[Float]())
         samples.add("after", List[Float]())
@@ -95,13 +95,13 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
                     "after", "before"
                 ]
             ):
-                let text = try run_pinned(
+                text := try run_pinned(
                     paths.get(name).get(""), ["{c.size}", "{c.count}", "{c.rounds}"], ""
                 )
-                let parts = text.replace("\n", " ").split(" ").filter(fn p: p != "")
+                parts := text.replace("\n", " ").split(" ").filter(fn p: p != "")
                 if parts.length() != 5: return invalid("invalid output {name}: {text}")
 
-                let observed = try all_ints(parts)
+                observed := try all_ints(parts)
                 if (
                     observed[0] != c.size
                     or observed[1] != c.count
@@ -111,7 +111,7 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
                 ):
                     return invalid("wrong identity/checksum/timer: {observed}")
 
-                let elapsed = observed[4].to_float() / c.rounds.to_float()
+                elapsed := observed[4].to_float() / c.rounds.to_float()
                 var row = Map[String, JsonValue]()
                 row.add("case", jstr(key.clone()))
                 row.add("pair", jint(pair))
@@ -125,8 +125,8 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
                     list.append(elapsed)
                     samples.add(name.clone(), list)
 
-        let b = samples.get("before").get([])
-        let a = samples.get("after").get([])
+        b := samples.get("before").get([])
+        a := samples.get("after").get([])
         (
             stdout()
             .write(
@@ -147,7 +147,7 @@ fn json_failure(
     paths.add("before", before.clone())
     paths.add("after", after.clone())
 
-    let cases = failure_cases()
+    cases := failure_cases()
     var manifest = Map[String, JsonValue]()
     manifest.add("complete", jbool(false))
     manifest.add("pairs", jint(pairs))
@@ -173,11 +173,11 @@ fn json_failure(
                     "after", "before"
                 ]
             ):
-                let text = try run_pinned(
+                text := try run_pinned(
                     paths.get(name).get(""),
                     ["{c.size}", "{c.rounds}", c.shape.clone()], ""
                 )
-                let fields = text.replace("\n", " ").split(" ").filter(fn p: p != "")
+                fields := text.replace("\n", " ").split(" ").filter(fn p: p != "")
                 if (
                     fields.length() != 6
                     or fields[0] != "{c.size}"
@@ -187,13 +187,13 @@ fn json_failure(
                 ):
                     return invalid("invalid identity/checksum/timer: {name}: {text}")
 
-                let nums = try all_ints(fields.slice(3, 6).get([]))
+                nums := try all_ints(fields.slice(3, 6).get([]))
                 if nums[1] <= 0 or nums[2] <= 0: return invalid(
                     "invalid identity/checksum/timer: {name}: {text}"
                 )
 
-                let w = nums[1].to_float() / c.rounds.to_float()
-                let u = nums[2].to_float() / c.rounds.to_float()
+                w := nums[1].to_float() / c.rounds.to_float()
+                u := nums[2].to_float() / c.rounds.to_float()
                 var row = Map[String, JsonValue]()
                 row.add("size", jint(c.size))
                 row.add("rounds", jint(c.rounds))
@@ -228,23 +228,23 @@ fn json_failure(
     return ok(unit)
 
 fn main() Int:
-    let args = arguments()
+    args := arguments()
     if args.length() < 4 or not ["decode", "json-failure"].contains(args[0]):
         return fail(
             "usage: codecs_compare.ms -- <decode|json-failure> BEFORE AFTER OUTPUT_DIR [--pairs N]"
         )
 
-    let parsed = options(args.slice(4, args.length()).get([]), ["pairs"], [])
+    parsed := options(args.slice(4, args.length()).get([]), ["pairs"], [])
     if parsed.is_error(): return fail(parsed.err().message)
 
-    let pairs = parsed.get(
+    pairs := parsed.get(
         Map[String, String]()
     ).get("pairs").get("9").parse_int().get(0)
     if pairs < 2: return fail("at least two pairs required")
 
-    let before = absolute(args[1].clone())
-    let after = absolute(args[2].clone())
-    let result = if args[0] == "decode": decode(before, after, args[3].clone(), pairs) else: json_failure(
+    before := absolute(args[1].clone())
+    after := absolute(args[2].clone())
+    result := if args[0] == "decode": decode(before, after, args[3].clone(), pairs) else: json_failure(
         before, after, args[3].clone(), pairs
     )
     if result.is_error(): return fail(result.err().message)

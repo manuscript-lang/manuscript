@@ -4,5 +4,5 @@
 import shift_left from "@std/math/math.ms"
 
 fn main() Unit:
-    let count = 64
+    count := 64
     print(shift_left(1, count))

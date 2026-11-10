@@ -47,10 +47,10 @@ impl HttpHeaders:
     // A received value that is not valid UTF-8 is left out; read it with values_bytes.
     fn values(name: String) List[String]:
         var out: List[String] = []
-        let raw = msstd_http_headers_values(self, name)
-        if let found = raw:
+        raw := msstd_http_headers_values(self, name)
+        if found := raw:
             for item in found:
-                if let text = item.decode_utf8(): out.append(text)
+                if text := item.decode_utf8(): out.append(text)
         return out
 
     // Returns the raw bytes of every value as an owned list, or none for an absent name.
@@ -165,7 +165,7 @@ impl HttpClient:
         max_response_bytes: Int?,
         timeout: Duration?
     ) StreamingResponse!:
-        let raw = try self.request_raw(
+        raw := try self.request_raw(
             method, url, headers, body.as_bytes(), max_response_bytes, timeout
         )
         return ok(response(raw))
@@ -193,7 +193,7 @@ impl HttpClient:
         max_response_bytes: Int? = none,
         timeout: Duration? = none
     ) StreamingResponse!:
-        let data = try read_all(body, none)
+        data := try read_all(body, none)
         return self.request(method, url, headers, data, max_response_bytes, timeout)
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
@@ -310,7 +310,7 @@ impl HttpServer:
     fn wait(timeout: Duration? = none) Unit!:
         set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
 
-        let ended = self.accepting.wait()
+        ended := self.accepting.wait()
         if self.stopped: return ok(unit)
 
         return ended
@@ -383,7 +383,7 @@ impl Source[Bytes] for ResponseSource:
         return self.raw.close()
 
 fn response(raw: RawResponse) StreamingResponse:
-    let metadata = raw.metadata()
+    metadata := raw.metadata()
     return StreamingResponse(
         metadata: metadata, body: ReadStream[Bytes](ResponseSource(raw))
     )
@@ -391,8 +391,8 @@ fn response(raw: RawResponse) StreamingResponse:
 // Reads the rest of the request body into one value.
 // A body over `max_body_bytes` of the server's options returns EOVERFLOW; `limit` also bounds it when given.
 export fn read_body(var exchange: HttpExchange, limit: Int? = none) Bytes!:
-    let first = try exchange.read()
-    if let head = first: return read_rest(var exchange, head, limit)
+    first := try exchange.read()
+    if head := first: return read_rest(var exchange, head, limit)
 
     return ok("".to_bytes())
 
@@ -403,9 +403,9 @@ fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
         Error("HTTP: limit exceeded", kind: "EOVERFLOW")
     )
 
-    let second = try exchange.read()
+    second := try exchange.read()
 
-    if let next = second:
+    if next := second:
         total += next.length()
         if over_limit(total, limit): return error(
             Error("HTTP: limit exceeded", kind: "EOVERFLOW")
@@ -420,9 +420,9 @@ fn read_more(var exchange: HttpExchange, chunks: List[Bytes], total: Int, limit:
     var size = total
 
     while true:
-        let chunk = try exchange.read()
+        chunk := try exchange.read()
 
-        if let bytes = chunk:
+        if bytes := chunk:
             size += bytes.length()
             if over_limit(size, limit): return error(
                 Error("HTTP: limit exceeded", kind: "EOVERFLOW")
@@ -433,7 +433,7 @@ fn read_more(var exchange: HttpExchange, chunks: List[Bytes], total: Int, limit:
             return ok(join(parts))
 
 fn over_limit(total: Int, limit: Int?) Bool:
-    if let max = limit: return total > max
+    if max := limit: return total > max
 
     return false
 
@@ -448,7 +448,7 @@ export fn text(status: Int, body: String) HttpResponse:
 // Builds a response whose body is `value` encoded as JSON, with `Content-Type: application/json`.
 // A value `stringify` cannot encode returns EIO with its diagnostic.
 export fn json[T: Data](status: Int, value: T) HttpResponse!:
-    let body = stringify(value)
+    body := stringify(value)
     if body.is_error(): return error(Error(body.err().message.clone(), kind: "EIO"))
 
     var sent = headers()
@@ -471,8 +471,8 @@ fn serve_buffered(
     handler: fn(HttpRequest) HttpResponse,
     var exchange: HttpExchange
 ) Unit!:
-    let body = try read_body(var exchange)
-    let request = HttpRequest(
+    body := try read_body(var exchange)
+    request := HttpRequest(
         method: exchange.method(), path: exchange.path(), query: exchange.query(),
         headers: exchange.headers(), body: body, protocol: exchange.protocol()
     )
@@ -483,5 +483,5 @@ export fn upgrade(
     var exchange: HttpExchange, allowed_origins: List[String] = [],
     subprotocols: List[String] = [], max_message_bytes: Int? = none
 ) WebSocket!:
-    let raw = try exchange.upgrade(allowed_origins, subprotocols, max_message_bytes)
+    raw := try exchange.upgrade(allowed_origins, subprotocols, max_message_bytes)
     return ok(web_socket_from(raw))

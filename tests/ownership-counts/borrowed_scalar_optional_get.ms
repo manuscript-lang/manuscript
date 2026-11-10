@@ -17,7 +17,7 @@ fn inspect(value: Marker?) Unit:
     print("still present {value.is_some()}")
 
 fn main() Unit:
-    let value: Marker? = Marker(5)
+    value: Marker? = Marker(5)
     inspect(value)
     print("after inspect")
     print("original present {value.is_some()}")

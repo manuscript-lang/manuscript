@@ -22,7 +22,7 @@ fn main() Unit:
     var b = Box(n: 1, xs: [1])
     bump(var b)
 
-    let mixed = b.mixed()
+    mixed := b.mixed()
     var m = Map[String, Int]()
     m.add("a", 1)
     if var x = m["a"]?:
@@ -32,8 +32,8 @@ fn main() Unit:
     var _first = cs[0]
     _first += 10
 
-    let before = b.n
+    before := b.n
     var scratch = before
     scratch += 100
 
-    let _ = stdout().write("{b.n} {mixed} {m.get("a")} {cs} {scratch}\n")
+    _ := stdout().write("{b.n} {mixed} {m.get("a")} {cs} {scratch}\n")

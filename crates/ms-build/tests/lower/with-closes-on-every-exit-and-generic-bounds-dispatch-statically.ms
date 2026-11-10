@@ -9,7 +9,7 @@ type Res:
 
 impl Closeable for Res:
     fn close() Unit!:
-        let _x = self.n
+        _x := self.n
 
 fn run[T: Closeable](r: T, early: Bool) Int:
     var _it = r
@@ -23,7 +23,7 @@ export fn main() Int:
     var i = 0
 
     while i < 3:
-        let _c = Res(i)
+        _c := Res(i)
         i += 1
         if i == 1:
             continue

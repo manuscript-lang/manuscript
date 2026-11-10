@@ -4,4 +4,4 @@
 import stdout from "@std/io/io.ms"
 
 fn main() Unit:
-    let _ = stdout().write("{[1, 2, 3].windows(0).length()}\n")
+    _ := stdout().write("{[1, 2, 3].windows(0).length()}\n")

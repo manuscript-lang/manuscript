@@ -1,9 +1,9 @@
 fn total(xs: List[Int]) Int:
-    let sum = xs.sum()
+    sum := xs.sum()
     return sum
 
 fn kept(xs: List[Int]) Int:
-    let sum = xs.sum()
+    sum := xs.sum()
     print("{sum}")
     return sum
 

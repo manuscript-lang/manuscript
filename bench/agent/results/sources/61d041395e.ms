@@ -8,7 +8,7 @@ fn say(text: String) Result[Unit, Error]:
     return stdout().write("{text}\n")
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var last = lines.length()
     while last > 0 and lines[last - 1].length() == 0:
         last -= 1
@@ -19,7 +19,7 @@ export fn main() Int:
 
     for r in range(0, grid.length()):
         for c in range(0, grid[r].length()):
-            let ch = grid[r][c]
+            ch := grid[r][c]
 
             if ch != "#" and ch != "." and ch != "S" and ch != "E":
                 say("error: bad character at {r + 1},{c + 1}").get()
@@ -41,7 +41,7 @@ export fn main() Int:
 
     for r in range(0, grid.length()):
         for c in range(0, width):
-            let ch = grid[r][c]
+            ch := grid[r][c]
 
             if ch == "S":
                 starts += 1
@@ -67,7 +67,7 @@ export fn main() Int:
         say("error: multiple ends").get()
         return 0
 
-    let total = grid.length() * width
+    total := grid.length() * width
     var dist: List[Int] = []
     for i in range(0, total):
         dist.append(-1)
@@ -77,11 +77,11 @@ export fn main() Int:
     var head = 0
 
     while head < queue.length():
-        let cur = queue[head]
+        cur := queue[head]
         head += 1
 
-        let r = cur / width
-        let c = cur % width
+        r := cur / width
+        c := cur % width
 
         for step in range(0, 4):
             var nr = r
@@ -96,7 +96,7 @@ export fn main() Int:
                 nc = c + 1
             if nr < 0 or nr >= grid.length() or nc < 0 or nc >= width: continue
 
-            let next = nr * width + nc
+            next := nr * width + nc
             if grid[nr][nc] == "#" or dist[next] >= 0: continue
 
             dist[next] = dist[cur] + 1

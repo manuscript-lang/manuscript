@@ -277,12 +277,12 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL118 | warning | A `length()` of a string, list, map or set compared with zero, such as `xs.length() == 0`. Write `xs.is_empty()`, or `not xs.is_empty()` for `!= 0` and `> 0` in a condition. `ms lint --fix` rewrites it |
 | MSL119 | warning | A list in a name or field read with `xs.get(i)`. Write `xs[i]`. `ms lint --fix` rewrites it |
 | MSL120 | warning | `map.get(key).get(default)` on a map. Write `map.get_or(key, default)`. `ms lint --fix` rewrites it |
-| MSL121 | warning | `var x = a` followed by `if c: x = b`, where `a` is a literal or name and `c` does not read `x`. Write `let x = if c: b else: a`. `ms lint --fix` rewrites it |
+| MSL121 | warning | `var x = a` followed by `if c: x = b`, where `a` is a literal or name and `c` does not read `x`. Write `x := if c: b else: a`. `ms lint --fix` rewrites it |
 | MSL122 | warning | `var i = 0` and `while i < n:` whose last statement is `i += 1`, with `i` unused afterwards and no `continue`. Write `for i in 0..n:`. `ms lint --fix` rewrites it |
 | MSL123 | warning | `for i in 0..xs.length():` where the body only reads `xs[i]`. Write `for item in xs:` |
 | MSL124 | warning | A fresh list or total filled by a loop whose body is one `append` or `+=`. Write `map`, `filter` or `sum` |
 | MSL125 | warning | `for x in xs: out.append(x)` (or `x.clone()`). Write `out.extend(xs)` |
-| MSL126 | warning | `let x = e` directly followed by `return x`. Write `return e` |
+| MSL126 | warning | `x := e` directly followed by `return x`. Write `return e` |
 | MSL127 | warning | `m[k.clone()] = m.get(k).get() - v`. Write `m[k] -= v` |
 | MSL128 | warning | A final `return ok(unit)` in a `Unit!` function, or `return` in a `Unit` one, after other statements. The end of the body already returns it; delete the line |
 

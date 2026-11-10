@@ -535,7 +535,7 @@ fn fix_trusts_only_the_import_when_an_import_fails() {
     let source = "import thing from \"@std/missing/nothing.ms\"\n\
         \n\
         fn total() Int:\n\
-        \x20   let sum = thing()\n\
+        \x20   sum := thing()\n\
         \x20   return sumn\n";
     std::fs::write(dir.join("a.ms"), source).unwrap();
     let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);

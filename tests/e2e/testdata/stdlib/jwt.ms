@@ -309,8 +309,8 @@ test "sign returns InvalidKey for a key that does not fit":
 // Independent HS256 signatures use key "secret" and payload {}. The comments
 // show the exact protected headers, including malformed extension requirements.
 test "verify rejects unsupported and malformed critical headers":
-    let secret = "secret".to_bytes()
-    let tokens = [
+    secret := "secret".to_bytes()
+    tokens := [
         // {"alg":"HS256","crit":["example"],"example":true}
         "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhhbXBsZSJdLCJleGFtcGxlIjp0cnVlfQ.e30.a2vMv_4PubTvFXgyFiBLVpBZSgLLXqx2FsNpqa0WU7k",
         // {"alg":"HS256","crit":null}
@@ -340,8 +340,8 @@ test "verify rejects unsupported and malformed critical headers":
         )
 
 test "verify rejects unencoded and malformed payload encoding headers":
-    let secret = "secret".to_bytes()
-    let tokens = [
+    secret := "secret".to_bytes()
+    tokens := [
         // {"alg":"HS256","b64":false}
         "eyJhbGciOiJIUzI1NiIsImI2NCI6ZmFsc2V9.e30.MrPklHP0bSjz-ji2syy7IlytGKYSnllWokCMIPI-hzs",
         // {"alg":"HS256","b64":null}
@@ -361,8 +361,8 @@ test "verify rejects unencoded and malformed payload encoding headers":
         )
 
 test "verify keeps unknown noncritical and default encoding headers":
-    let secret = "secret".to_bytes()
-    let tokens = [
+    secret := "secret".to_bytes()
+    tokens := [
         // {"alg":"HS256"}
         "eyJhbGciOiJIUzI1NiJ9.e30.XmNK3GpH3Ys_7wsYBfq4C3M6goz71I7dTgUkuIa5lyQ",
         // {"alg":"HS256","example":true}
@@ -374,7 +374,7 @@ test "verify keeps unknown noncritical and default encoding headers":
     ]
 
     for token in tokens:
-        let claims = (verify_token(token, secret) | try expect_ok)
+        claims := (verify_token(token, secret) | try expect_ok)
         try expect_true(claims.as_map().is_some())
         claims.as_map().get().length() | try expect_equal(0)
         (try failure(verify_token(token, "other".to_bytes()))) | try expect_equal(
@@ -382,7 +382,7 @@ test "verify keeps unknown noncritical and default encoding headers":
         )
 
 test "configured algorithm validation precedes unsupported headers":
-    let token = "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhhbXBsZSJdLCJleGFtcGxlIjp0cnVlfQ.e30.a2vMv_4PubTvFXgyFiBLVpBZSgLLXqx2FsNpqa0WU7k"
+    token := "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhhbXBsZSJdLCJleGFtcGxlIjp0cnVlfQ.e30.a2vMv_4PubTvFXgyFiBLVpBZSgLLXqx2FsNpqa0WU7k"
     (
         try failure(
             verify_token(
@@ -392,7 +392,7 @@ test "configured algorithm validation precedes unsupported headers":
     ) | try expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))
 
 test "verify rejects missing and nonstring algorithm names":
-    let tokens = [
+    tokens := [
         // {}
         "e30.e30.FCSDuqmCuL_yoq1hx-E3IJO5tSEpcgFbqwcZf590zhA",
         // {"alg":null}

@@ -19,7 +19,7 @@ fn count_words(text: String) Int:
     return text.split(" ").length()
 
 fn main() Unit:
-    let repeats = arguments().get(0, default: "1000000").parse_int().get(1000000)
+    repeats := arguments().get(0, default: "1000000").parse_int().get(1000000)
     var total = 0
     for index in 0..repeats:
         total += count_words("small programs are easy to review")

@@ -4,12 +4,12 @@ import (
     bit_and, bit_xor, shift_right, wrapping_multiply from "@std/math.ms",
 )
 
-let FNV_OFFSET = -3750763034362895579
-let FNV_PRIME = 1099511628211
-let LOW32 = 4294967295
-let HEX = "0123456789abcdef"
-let NAME_START = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._/"
-let NAME_REST = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._/-"
+FNV_OFFSET := -3750763034362895579
+FNV_PRIME := 1099511628211
+LOW32 := 4294967295
+HEX := "0123456789abcdef"
+NAME_START := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._/"
+NAME_REST := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._/-"
 
 type Commit:
     id: String
@@ -53,12 +53,12 @@ fn found(id: String) Resolution:
     return Resolution(id: id, error: "")
 
 fn hex16(h: Int) String:
-    let hi = bit_and(shift_right(h, 32), LOW32).to_string_radix(16).pad_start(8, "0")
-    let lo = bit_and(h, LOW32).to_string_radix(16).pad_start(8, "0")
+    hi := bit_and(shift_right(h, 32), LOW32).to_string_radix(16).pad_start(8, "0")
+    lo := bit_and(h, LOW32).to_string_radix(16).pad_start(8, "0")
     return "{hi}{lo}"
 
 fn fnv(text: String) String:
-    let bytes = text.to_bytes()
+    bytes := text.to_bytes()
     var h = FNV_OFFSET
 
     for i in 0..bytes.length():
@@ -113,8 +113,8 @@ fn tail(args: List[String]) List[String]:
     return out
 
 fn message_after(line: String) String:
-    let t = line.trim()
-    let cs = t.chars()
+    t := line.trim()
+    cs := t.chars()
     var k = 0
     while k < cs.length() and cs[k] != " ":
         k += 1
@@ -123,7 +123,7 @@ fn message_after(line: String) String:
 fn valid_name(name: String) Bool:
     if name == "": return false
 
-    let cs = name.chars()
+    cs := name.chars()
 
     for k in 0..cs.length():
         if k == 0 and not NAME_START.contains(cs[k]): return false
@@ -132,7 +132,7 @@ fn valid_name(name: String) Bool:
     return true
 
 fn is_nat(s: String) Bool:
-    if let v = s.parse_int(): return v >= 0
+    if v := s.parse_int(): return v >= 0
 
     return false
 
@@ -164,9 +164,9 @@ fn sub_lines(lines: List[String], lo: Int, hi: Int) List[String]:
     return out
 
 fn lcs_table(a: List[String], b: List[String]) List[Int]:
-    let n = a.length()
-    let m = b.length()
-    let w = m + 1
+    n := a.length()
+    m := b.length()
+    w := m + 1
     var t = List[Int]()
     for k in 0..(n + 1) * w:
         t.append(0)
@@ -192,8 +192,8 @@ fn lcs_table(a: List[String], b: List[String]) List[Int]:
 
 // For each index of a, the index of its matching line in b, or -1.
 fn match_pairs(a: List[String], b: List[String]) List[Int]:
-    let t = lcs_table(a, b)
-    let w = b.length() + 1
+    t := lcs_table(a, b)
+    w := b.length() + 1
     var out = List[Int]()
     for k in 0..a.length():
         out.append(-1)
@@ -214,14 +214,14 @@ fn match_pairs(a: List[String], b: List[String]) List[Int]:
     return out
 
 fn diff_lines(a: List[String], b: List[String]) List[String]:
-    let m = match_pairs(a, b)
+    m := match_pairs(a, b)
     var out = List[String]()
     var px = 0
     var py = 0
 
     for x in 0..a.length():
         if m[x] >= 0:
-            let y = m[x]
+            y := m[x]
             for k in px..x:
                 out.append("- {a[k]}")
             for k in py..y:
@@ -270,8 +270,8 @@ fn three_way(
     theirs: List[String],
     branch: String
 ) Merged:
-    let mb = match_pairs(base, ours)
-    let mt = match_pairs(base, theirs)
+    mb := match_pairs(base, ours)
+    mt := match_pairs(base, theirs)
     var out = List[String]()
     var clean = true
     var pb = 0
@@ -280,9 +280,9 @@ fn three_way(
 
     for k in 0..base.length():
         if mb[k] >= 0 and mt[k] >= 0:
-            let ob = mb[k]
-            let tb = mt[k]
-            let ok = emit_chunk(
+            ob := mb[k]
+            tb := mt[k]
+            ok := emit_chunk(
                 var out, sub_lines(base, pb, k), sub_lines(ours, po, ob),
                 sub_lines(theirs, pt, tb), branch
             )
@@ -293,7 +293,7 @@ fn three_way(
             po = ob + 1
             pt = tb + 1
 
-    let ok = emit_chunk(
+    ok := emit_chunk(
         var out, sub_lines(base, pb, base.length()), sub_lines(ours, po, ours.length()),
         sub_lines(theirs, pt, theirs.length()), branch
     )
@@ -322,13 +322,13 @@ impl Repo:
 
     fn resolve_base(name: String, spec: String) Resolution:
         if name == "HEAD":
-            let c = self.current()
+            c := self.current()
             if c == "": return fail("unknown revision '{spec}'")
 
             return found(c)
 
         if self.branches.contains(name):
-            let c = self.branches.get(name).get()
+            c := self.branches.get(name).get()
             if c != "": return found(c)
 
         if self.tags.contains(name): return found(self.tags.get(name).get())
@@ -344,19 +344,19 @@ impl Repo:
         return fail("unknown revision '{spec}'")
 
     fn resolve(spec: String) Resolution:
-        let pieces = spec.split("~")
+        pieces := spec.split("~")
         if pieces.length() == 1: return self.resolve_base(spec, spec)
         if pieces.length() != 2 or not is_nat(pieces[1]):
             return fail("unknown revision '{spec}'")
 
-        let steps = pieces[1].parse_int().get()
-        let start = self.resolve_base(pieces[0], spec)
+        steps := pieces[1].parse_int().get()
+        start := self.resolve_base(pieces[0], spec)
         if start.error != "": return start
 
         var id = start.id.clone()
 
         for step in 0..steps:
-            let parents = self.commits.get(id).get().parents
+            parents := self.commits.get(id).get().parents
             if parents.length() == 0: return fail("unknown revision '{spec}'")
 
             id = parents[0].clone()
@@ -369,7 +369,7 @@ impl Repo:
         stack.append(start.clone())
 
         while stack.length() > 0:
-            let id = stack[stack.length() - 1].clone()
+            id := stack[stack.length() - 1].clone()
             stack.remove(-1)
             if seen.contains(id): continue
 
@@ -380,12 +380,12 @@ impl Repo:
         return seen
 
     fn merge_base(a: String, b: String) String:
-        let anc_a = self.ancestors(a)
-        let anc_b = self.ancestors(b)
+        anc_a := self.ancestors(a)
+        anc_b := self.ancestors(b)
         var k = self.order.length() - 1
 
         while k >= 0:
-            let id = self.order[k]
+            id := self.order[k]
             if anc_a.contains(id) and anc_b.contains(id): return id.clone()
 
             k -= 1
@@ -397,12 +397,12 @@ impl Repo:
         parents: List[String],
         message: String
     ) String:
-        let id = commit_id(tree_hash(tree), parents, message)
+        id := commit_id(tree_hash(tree), parents, message)
 
         if not self.commits.contains(id):
             self.order.append(id.clone())
 
-            let number = self.order.length()
+            number := self.order.length()
             self.commits[id.clone()] = Commit(
                 id: id.clone(), tree: tree, parents: parents, message: message,
                 number: number
@@ -417,7 +417,7 @@ impl Repo:
             self.detached_id = id.clone()
 
     fn banner(root: Bool, id: String, message: String) Unit:
-        let where = self.label()
+        where := self.label()
 
         if root:
             say("[{where} (root-commit) {short(id)}] {message}")
@@ -447,7 +447,7 @@ impl Repo:
         return ""
 
     fn switch_error(target: Map[String, String]) String:
-        let d = self.dirty_error()
+        d := self.dirty_error()
         if d != "": return d
 
         return self.untracked_error(target.keys())
@@ -467,7 +467,7 @@ impl Repo:
         for n in names:
             self.wt.remove(n)
 
-        let tree = self.tree_of(id)
+        tree := self.tree_of(id)
         self.move_head(id)
         self.index = tree.clone()
         for n in tree.keys():
@@ -508,7 +508,7 @@ impl Repo:
         if args.length() != 2: return "usage: mv OLD NEW"
         if not self.wt.contains(args[0]): return "no such file: {args[0]}"
 
-        let content = self.wt.get(args[0]).get()
+        content := self.wt.get(args[0]).get()
         self.wt.remove(args[0].clone())
         self.wt[args[1].clone()] = content
         return ""
@@ -544,7 +544,7 @@ impl Repo:
                 for n in all.values():
                     self.stage(n)
             else:
-                let known = (
+                known := (
                     self.wt.contains(p)
                     or self.index.contains(p)
                     or self.conflicts.contains(p)
@@ -564,7 +564,7 @@ impl Repo:
         if self.merging:
             say("merging: {self.merge_branch}")
 
-        let head = self.head_tree()
+        head := self.head_tree()
         var all = Set[String]()
         for n in head.keys():
             all.add(n)
@@ -579,8 +579,8 @@ impl Repo:
         for n in names:
             if self.conflicts.contains(n): continue
 
-            let in_head = head.contains(n)
-            let in_index = self.index.contains(n)
+            in_head := head.contains(n)
+            in_index := self.index.contains(n)
 
             if not in_head:
                 staged.append("new file: {n}")
@@ -651,18 +651,18 @@ impl Repo:
             var names = self.conflicts.values()
             names.sort()
 
-            let joined = names.join(" ")
+            joined := names.join(" ")
             return "unresolved conflicts: {joined}"
 
-        let cur = self.current()
+        cur := self.current()
 
         if self.merging:
             var parents = List[String]()
             parents.append(cur.clone())
             parents.append(self.merge_other.clone())
 
-            let tree = self.index.clone()
-            let id = self.store(tree, parents, message.clone())
+            tree := self.index.clone()
+            id := self.store(tree, parents, message.clone())
             self.move_head(id)
             self.merging = false
             self.merge_other = ""
@@ -676,8 +676,8 @@ impl Repo:
         if cur != "":
             parents.append(cur.clone())
 
-        let tree = self.index.clone()
-        let id = self.store(tree, parents, message.clone())
+        tree := self.index.clone()
+        id := self.store(tree, parents, message.clone())
         self.move_head(id)
         self.banner(cur == "", id, message)
         return ""
@@ -692,20 +692,20 @@ impl Repo:
         else:
             return "usage: log [-n N]"
 
-        let cur = self.current()
+        cur := self.current()
         if cur == "": return "no commits yet"
 
-        let reach = self.ancestors(cur)
+        reach := self.ancestors(cur)
         var shown = 0
         var k = self.order.length() - 1
 
         while k >= 0:
             if limit >= 0 and shown >= limit: break
 
-            let id = self.order[k]
+            id := self.order[k]
 
             if reach.contains(id):
-                let c = self.commits.get(id).get()
+                c := self.commits.get(id).get()
 
                 if c.parents.length() == 2:
                     say(
@@ -730,16 +730,16 @@ impl Repo:
             left = self.index.clone()
             right = self.wt.clone()
         else if args.length() == 1:
-            let r = self.resolve(args[0])
+            r := self.resolve(args[0])
             if r.error != "": return r.error.clone()
 
             left = self.tree_of(r.id)
             right = self.wt.clone()
         else:
-            let r1 = self.resolve(args[0])
+            r1 := self.resolve(args[0])
             if r1.error != "": return r1.error.clone()
 
-            let r2 = self.resolve(args[1])
+            r2 := self.resolve(args[1])
             if r2.error != "": return r2.error.clone()
 
             left = self.tree_of(r1.id)
@@ -757,10 +757,10 @@ impl Repo:
         var any = false
 
         for n in names:
-            let lp = left.contains(n)
-            let rp = right.contains(n)
-            let lc = body(left, n)
-            let rc = body(right, n)
+            lp := left.contains(n)
+            rp := right.contains(n)
+            lc := body(left, n)
+            rc := body(right, n)
             if lp == rp and lc == rc: continue
 
             any = true
@@ -795,20 +795,20 @@ impl Repo:
             return ""
 
         if args.length() == 1:
-            let err = self.branch_error(args[0])
+            err := self.branch_error(args[0])
             if err != "": return err
 
             self.branches[args[0].clone()] = self.current()
             return ""
 
         if args.length() == 2 and args[0] == "-d":
-            let name = args[1].clone()
+            name := args[1].clone()
             if not self.branches.contains(name): return "branch '{name}' not found"
             if name == self.head_name:
                 return "cannot delete the current branch '{name}'"
 
-            let c = self.branches.get(name).get()
-            let cur = self.current()
+            c := self.branches.get(name).get()
+            cur := self.current()
             if c == "" or cur == "" or not self.ancestors(cur).contains(c):
                 return "branch '{name}' is not fully merged"
 
@@ -828,15 +828,15 @@ impl Repo:
 
         if args.length() > 2: return "usage: tag [NAME [REF]]"
 
-        let name = args[0].clone()
+        name := args[0].clone()
         if not valid_name(name): return "invalid tag name '{name}'"
         if self.tags.contains(name): return "tag '{name}' already exists"
 
-        let ref_text = if args.length() == 2: args[1].clone() else: "HEAD"
+        ref_text := if args.length() == 2: args[1].clone() else: "HEAD"
         if (args.length() == 1 or args[1] == "HEAD") and self.current() == "":
             return "no commits yet"
 
-        let r = self.resolve(ref_text)
+        r := self.resolve(ref_text)
         if r.error != "": return r.error.clone()
 
         self.tags[name] = r.id.clone()
@@ -845,10 +845,10 @@ impl Repo:
     fn cmd_show(args: List[String]) String:
         if args.length() != 1: return "usage: show REF"
 
-        let r = self.resolve(args[0])
+        r := self.resolve(args[0])
         if r.error != "": return r.error.clone()
 
-        let c = self.commits.get(r.id).get()
+        c := self.commits.get(r.id).get()
         say("commit {c.id}")
         say("tree {tree_hash(c.tree)}")
         for p in c.parents:
@@ -864,12 +864,12 @@ impl Repo:
 
     var fn cmd_checkout(args: List[String]) String:
         if args.length() == 2 and args[0] == "-b":
-            let name = args[1].clone()
-            let err = self.branch_error(name)
+            name := args[1].clone()
+            err := self.branch_error(name)
             if err != "": return err
 
-            let target = self.head_tree()
-            let d = self.switch_error(target)
+            target := self.head_tree()
+            d := self.switch_error(target)
             if d != "": return d
 
             self.switch_to(target)
@@ -881,15 +881,15 @@ impl Repo:
         if args.length() != 1: return "usage: checkout REF | checkout -b NAME"
         if self.merging: return "merge in progress"
 
-        let name = args[0].clone()
+        name := args[0].clone()
 
         if self.branches.contains(name):
             if name == self.head_name:
                 say("Already on '{name}'")
                 return ""
 
-            let target = self.tree_of(self.branches.get(name).get())
-            let d = self.switch_error(target)
+            target := self.tree_of(self.branches.get(name).get())
+            d := self.switch_error(target)
             if d != "": return d
 
             self.switch_to(target)
@@ -897,18 +897,18 @@ impl Repo:
             say("Switched to branch '{name}'")
             return ""
 
-        let r = self.resolve(name)
+        r := self.resolve(name)
         if r.error != "": return r.error.clone()
 
-        let target = self.tree_of(r.id)
-        let d = self.switch_error(target)
+        target := self.tree_of(r.id)
+        d := self.switch_error(target)
         if d != "": return d
 
         self.switch_to(target)
         self.head_name = ""
         self.detached_id = r.id.clone()
 
-        let c = self.commits.get(r.id).get()
+        c := self.commits.get(r.id).get()
         say("HEAD is now at {short(r.id)} {c.message}")
         return ""
 
@@ -922,14 +922,14 @@ impl Repo:
             target = self.current()
             if target == "": return "no commits yet"
         else:
-            let r = self.resolve(args[1])
+            r := self.resolve(args[1])
             if r.error != "": return r.error.clone()
 
             target = r.id.clone()
 
         self.reset_to(target.clone())
 
-        let c = self.commits.get(target).get()
+        c := self.commits.get(target).get()
         say("HEAD is now at {short(target)} {c.message}")
         return ""
 
@@ -944,15 +944,15 @@ impl Repo:
         if args.length() != 1: return "usage: merge BRANCH"
         if self.merging: return "merge in progress"
 
-        let cur = self.current()
+        cur := self.current()
         if cur == "": return "no commits yet"
 
-        let branch = args[0].clone()
+        branch := args[0].clone()
         if not self.branches.contains(branch) or self.branches.get(branch).get() == "":
             return "unknown branch '{branch}'"
 
-        let other = self.branches.get(branch).get()
-        let d = self.dirty_error()
+        other := self.branches.get(branch).get()
+        d := self.dirty_error()
         if d != "": return d
 
         if self.ancestors(cur).contains(other):
@@ -960,8 +960,8 @@ impl Repo:
             return ""
 
         if self.ancestors(other).contains(cur):
-            let target = self.tree_of(other)
-            let e = self.untracked_error(target.keys())
+            target := self.tree_of(other)
+            e := self.untracked_error(target.keys())
             if e != "": return e
 
             self.switch_to(target)
@@ -969,9 +969,9 @@ impl Repo:
             say("Fast-forward")
             return ""
 
-        let base_tree = self.tree_of(self.merge_base(cur, other))
-        let ours_tree = self.tree_of(cur)
-        let theirs_tree = self.tree_of(other)
+        base_tree := self.tree_of(self.merge_base(cur, other))
+        ours_tree := self.tree_of(cur)
+        theirs_tree := self.tree_of(other)
         var all = Set[String]()
         for n in base_tree.keys():
             all.add(n)
@@ -988,12 +988,12 @@ impl Repo:
         var kinds = Map[String, String]()
 
         for n in names:
-            let bp = base_tree.contains(n)
-            let bc = body(base_tree, n)
-            let op = ours_tree.contains(n)
-            let oc = body(ours_tree, n)
-            let tp = theirs_tree.contains(n)
-            let tc = body(theirs_tree, n)
+            bp := base_tree.contains(n)
+            bc := body(base_tree, n)
+            op := ours_tree.contains(n)
+            oc := body(ours_tree, n)
+            tp := theirs_tree.contains(n)
+            tc := body(theirs_tree, n)
 
             if op == tp and oc == tc:
                 if op:
@@ -1013,7 +1013,7 @@ impl Repo:
 
                 kinds[n.clone()] = "modify/delete"
             else:
-                let merged = three_way(lines_of(bc), lines_of(oc), lines_of(tc), branch)
+                merged := three_way(lines_of(bc), lines_of(oc), lines_of(tc), branch)
 
                 if merged.clean:
                     result[n.clone()] = merged.text.clone()
@@ -1030,7 +1030,7 @@ impl Repo:
         for n in overrides.keys():
             touched.append(n)
 
-        let e = self.untracked_error(touched)
+        e := self.untracked_error(touched)
         if e != "": return e
 
         for n in self.index.keys():
@@ -1047,8 +1047,8 @@ impl Repo:
             parents.append(cur.clone())
             parents.append(other.clone())
 
-            let message = "Merge branch '{branch}'"
-            let id = self.store(result, parents, message.clone())
+            message := "Merge branch '{branch}'"
+            id := self.store(result, parents, message.clone())
             self.move_head(id)
             say("Merge made by the 'three-way' strategy.")
             self.banner(false, id, message)
@@ -1065,7 +1065,7 @@ impl Repo:
         conflicted.sort()
 
         for n in conflicted:
-            let kind = kinds.get(n).get()
+            kind := kinds.get(n).get()
 
             if kind == "modify/delete":
                 say("CONFLICT (modify/delete): {n}")
@@ -1086,20 +1086,20 @@ fn new_repo() Repo:
     )
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var repo = new_repo()
     var i = 0
 
     while i < lines.length():
-        let line = lines[i].trim_end()
+        line := lines[i].trim_end()
         i += 1
         if line.trim() == "" or line.trim_start().starts_with("#"): continue
 
         say("> {line}")
 
-        let args = tokens(line)
-        let cmd = args[0].clone()
-        let rest = tail(args)
+        args := tokens(line)
+        cmd := args[0].clone()
+        rest := tail(args)
         var err = ""
 
         if cmd == "write" or cmd == "append":
@@ -1118,7 +1118,7 @@ export fn main() Int:
                 if cmd == "write":
                     repo.wt[rest[0].clone()] = content
                 else:
-                    let prior = body(repo.wt, rest[0])
+                    prior := body(repo.wt, rest[0])
                     repo.wt[rest[0].clone()] = "{prior}{content}"
         else if cmd == "rm":
             err = repo.cmd_rm(rest)

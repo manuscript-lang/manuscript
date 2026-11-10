@@ -23,10 +23,10 @@ fn build_c(source: String, out: String, flags: List[String]) Result[Unit, Error]
     var args = ["-O2", "-std=c11", "-ffp-contract=off"].concat(flags)
     args = args.concat([source.clone(), "-o", out.clone()])
 
-    let _ = try must("cc {source}", capture(env("CC", "cc"), args))
+    _ := try must("cc {source}", capture(env("CC", "cc"), args))
 
 fn run(suite: String, n: Int, work: String) Result[String, Error]:
-    let here = "bench/perf/{suite}"
+    here := "bench/perf/{suite}"
     for dir in ["go", "ms", "rust"]:
         try copy(
             "{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
@@ -48,7 +48,7 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
         versions = versions.concat(c_versions())
 
         if env("ABLATE", "0") == "1":
-            let flags = [
+            flags := [
                 ["c-ms-no-poll", "-DMS_NO_POLL"],
                 ["c-ms-no-overflow", "-DMS_NO_OVERFLOW"],
                 ["c-ms-no-bounds", "-DMS_NO_BOUNDS"],
@@ -70,7 +70,7 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
     for i in 0..n:
         // Rotate the order each round so no version always runs first.
         for v in rotate(versions, i):
-            let out = try sample("{work}/{v}/bench", [])
+            out := try sample("{work}/{v}/bench", [])
             for line in out.split("\n"):
                 if line != "": raw.append("{v} {line}")
             raw.append("{v} # end")
@@ -78,17 +78,17 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
     return summarize(raw, suite, n, versions)
 
 fn main() Int:
-    let args = arguments()
+    args := arguments()
     if args.is_empty() or (args[0] != "kernels" and args[0] != "competence"):
         return fail("usage: kernels.ms -- <kernels|competence> [repeats]")
 
     var n = 5
 
     if args.length() > 1:
-        if let parsed = repeats(args[1]):
+        if parsed := repeats(args[1]):
             n = parsed
         else:
             return fail("repeats must be a positive integer")
 
-    let tmp = temporary("{args[0]}-").get()
+    tmp := temporary("{args[0]}-").get()
     return finish(run(args[0], n, tmp.path()))

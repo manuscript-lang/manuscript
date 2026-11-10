@@ -13,15 +13,15 @@ fn work(a: Int) Int!:
     return ok(a * 2 + 1)
 
 fn main() Unit:
-    let args = arguments()
-    let n = args[0].parse_int().get()
-    let rounds = args[1].parse_int().get()
+    args := arguments()
+    n := args[0].parse_int().get()
+    rounds := args[1].parse_int().get()
     var window = 64
     if args.length() > 2:
         window = args[2].parse_int().get()
 
     var total = 0
-    let t0 = monotonic()
+    t0 := monotonic()
 
     for r in 0..rounds:
         var done = 0
@@ -34,7 +34,7 @@ fn main() Unit:
                 total += p.wait().get()
             done += window
 
-    let t1 = monotonic()
+    t1 := monotonic()
     print("total " + total.to_string())
     print(
         "ns/promise " + (

@@ -5,9 +5,9 @@ import (
 )
 
 // Buckets below this value are exact; above it each power of two is split into 32 steps (about 3% error).
-let EXACT = 64
+EXACT := 64
 // Bucket count: 64 exact values plus 32 steps for each of the 57 higher powers of two.
-let BUCKETS = 1888
+BUCKETS := 1888
 
 fn zeros() List[Int]:
     var counts = List[Int](reserve: BUCKETS)
@@ -17,16 +17,16 @@ fn zeros() List[Int]:
 fn bucket_of(value: Int) Int:
     if value < EXACT: return value
 
-    let shift = 64 - leading_zeros(value) - 6
+    shift := 64 - leading_zeros(value) - 6
     return EXACT + (shift - 1) * 32 + (shift_right(value, shift) - 32)
 
 // The largest value that falls in bucket `index`.
 fn bucket_top(index: Int) Int:
     if index < EXACT: return index
 
-    let offset = index - EXACT
-    let shift = offset / 32 + 1
-    let low = shift_left(offset % 32 + 32, shift)
+    offset := index - EXACT
+    shift := offset / 32 + 1
+    low := shift_left(offset % 32 + 32, shift)
     return low + (shift_left(1, shift) - 1)
 
 /*
@@ -53,7 +53,7 @@ impl Histogram:
     var fn record(value: Int) Unit:
         if value < 0: panic("Histogram.record: value {value} must be at least 0")
 
-        let index = bucket_of(value)
+        index := bucket_of(value)
         self.counts[index] += 1
         if self.total == 0 or value < self.low: self.low = value
         if value > self.high: self.high = value
@@ -67,8 +67,8 @@ impl Histogram:
     // Runs `work`, records how long it took in nanoseconds on the monotonic clock, and returns its result.
     // A span that returns early or faults is not recorded.
     var fn time[T](work: fn() T) T:
-        let started = monotonic()
-        let result = work()
+        started := monotonic()
+        result := work()
         self.record_duration(monotonic().difference(started))
         return result
 

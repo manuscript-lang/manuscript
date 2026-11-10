@@ -4,11 +4,11 @@ import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
 
 fn read_pipe(path: String) Int:
-    let _data = read_file(path).wait()
+    _data := read_file(path).wait()
     return 1
 
 fn cancel_read(path: String) Int:
-    let task = promise(fn: ok(read_pipe(path.clone())))
+    task := promise(fn: ok(read_pipe(path.clone())))
     if task.with(options: PromiseOptions(timeout: milliseconds(10))).wait().is_error():
         return 1
 
@@ -24,7 +24,7 @@ fn open_on(path: String) Int:
     return count
 
 fn main() Unit:
-    let path = arguments()[0].clone()
+    path := arguments()[0].clone()
     var cancelled = 0
     for i in 0..10:
         cancelled += cancel_read(path.clone())
@@ -34,7 +34,7 @@ fn main() Unit:
     var waited = 0
 
     while open > 0 and waited < 200:
-        let _slept = sleep(milliseconds(10)).wait()
+        _slept := sleep(milliseconds(10)).wait()
         waited += 1
         open = open_on(path.clone())
 

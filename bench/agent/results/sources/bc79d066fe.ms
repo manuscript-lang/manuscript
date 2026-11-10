@@ -9,31 +9,31 @@ import (
     Bytes from "@std/bytes.ms",
 )
 
-let OP_CHR = 0
-let OP_CLS = 1
-let OP_SPLIT = 2
-let OP_JMP = 3
-let OP_OPEN = 4
-let OP_CLOSE = 5
-let OP_ASSERT = 6
-let OP_BREF = 7
-let OP_LOOK = 8
-let OP_MATCH = 9
-let OP_SETI = 10
-let OP_SETPOS = 11
-let OP_INC = 12
-let OP_JLT = 13
-let OP_JGE = 14
-let OP_LOOPCHK = 15
-let AS_BOL = 0
-let AS_BOLM = 1
-let AS_EOL = 2
-let AS_EOLM = 3
-let AS_WORDB = 4
-let AS_NWORDB = 5
-let INF = -1
-let ASCII = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
-let HEX = "0123456789abcdef"
+OP_CHR := 0
+OP_CLS := 1
+OP_SPLIT := 2
+OP_JMP := 3
+OP_OPEN := 4
+OP_CLOSE := 5
+OP_ASSERT := 6
+OP_BREF := 7
+OP_LOOK := 8
+OP_MATCH := 9
+OP_SETI := 10
+OP_SETPOS := 11
+OP_INC := 12
+OP_JLT := 13
+OP_JGE := 14
+OP_LOOPCHK := 15
+AS_BOL := 0
+AS_BOLM := 1
+AS_EOL := 2
+AS_EOLM := 3
+AS_WORDB := 4
+AS_NWORDB := 5
+INF := -1
+ASCII := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
+HEX := "0123456789abcdef"
 
 type Instr:
     op: Int
@@ -110,8 +110,8 @@ fn empty_set() List[Bool]:
 
 fn shorthand(letter: Int) List[Bool]:
     var s = empty_set()
-    let neg = letter >= 65 and letter <= 90
-    let low = lower(letter)
+    neg := letter >= 65 and letter <= 90
+    low := lower(letter)
 
     for c in 0..256:
         var m = is_space(c)
@@ -128,7 +128,7 @@ fn shorthand(letter: Int) List[Bool]:
     return s
 
 fn add_shorthand(var s: List[Bool], letter: Int) Unit:
-    let sh = shorthand(letter)
+    sh := shorthand(letter)
     for c in 0..256:
         if sh[c]:
             s[c] = true
@@ -159,13 +159,13 @@ fn cur(p: Parser) Int:
     return p.src[p.pos]
 
 fn ahead(p: Parser, k: Int) Int:
-    let i = p.pos + k
+    i := p.pos + k
     if i >= p.src.length(): return -1
 
     return p.src[i]
 
 fn alloc_reg(var p: Parser) Int:
-    let r = p.nregs
+    r := p.nregs
     p.nregs += 1
     return r
 
@@ -177,10 +177,10 @@ fn name_string(p: Parser, s: Int, e: Int) String:
 
 // Index just past an identifier starting at `start`, or `start` if there is none.
 fn ident_end(p: Parser, start: Int) Int:
-    let n = p.src.length()
+    n := p.src.length()
     if start >= n: return start
 
-    let f = p.src[start]
+    f := p.src[start]
     if not (is_alpha(f) or f == 95): return start
 
     var i = start + 1
@@ -190,8 +190,8 @@ fn ident_end(p: Parser, start: Int) Int:
 
 // Parses the two hex digits after \x (p.pos at the first digit); -1 on error.
 fn hex_escape(var p: Parser) Int:
-    let h = hexval(ahead(p, 0))
-    let l = hexval(ahead(p, 1))
+    h := hexval(ahead(p, 0))
+    l := hexval(ahead(p, 1))
 
     if h < 0 or l < 0:
         set_err(var p, "bad escape")
@@ -218,11 +218,11 @@ fn literal(p: Parser, c: Int) List[Instr]:
 
 // A byte value, or 1000 + letter for a shorthand class; -1 on error.
 fn class_atom(var p: Parser) Int:
-    let c = cur(p)
+    c := cur(p)
     p.pos += 1
     if c != 92: return c
 
-    let e = cur(p)
+    e := cur(p)
 
     if e == -1:
         set_err(var p, "bad escape")
@@ -251,7 +251,7 @@ fn parse_class(var p: Parser) List[Instr]:
     var first = true
 
     while true:
-        let c = cur(p)
+        c := cur(p)
 
         if c == -1:
             set_err(var p, "unterminated class")
@@ -263,13 +263,13 @@ fn parse_class(var p: Parser) List[Instr]:
 
         first = false
 
-        let a1 = class_atom(var p)
+        a1 := class_atom(var p)
         if p.err != "": return List[Instr]()
 
         if cur(p) == 45 and ahead(p, 1) != 93 and ahead(p, 1) != -1:
             p.pos += 1
 
-            let a2 = class_atom(var p)
+            a2 := class_atom(var p)
             if p.err != "": return List[Instr]()
 
             if a1 >= 1000 or a2 >= 1000 or a2 < a1:
@@ -288,7 +288,7 @@ fn parse_class(var p: Parser) List[Instr]:
         for c in 0..256:
             s[c] = not s[c]
 
-    let idx = add_set(var p, s)
+    idx := add_set(var p, s)
     return one(Instr(op: OP_CLS, a: idx))
 
 fn parse_dot(var p: Parser) List[Instr]:
@@ -296,13 +296,13 @@ fn parse_dot(var p: Parser) List[Instr]:
     for c in 0..256:
         s[c] = p.dotall or c != 10
 
-    let idx = add_set(var p, s)
+    idx := add_set(var p, s)
     return one(Instr(op: OP_CLS, a: idx))
 
 // ---------- escapes outside classes ----------
 
 fn parse_escape(var p: Parser) List[Instr]:
-    let e = cur(p)
+    e := cur(p)
 
     if e == -1:
         set_err(var p, "bad escape")
@@ -311,7 +311,7 @@ fn parse_escape(var p: Parser) List[Instr]:
     p.pos += 1
 
     if e == 100 or e == 68 or e == 119 or e == 87 or e == 115 or e == 83:
-        let idx = add_set(var p, shorthand(e))
+        idx := add_set(var p, shorthand(e))
         return one(Instr(op: OP_CLS, a: idx))
 
     if e == 98: return one(Instr(op: OP_ASSERT, a: AS_WORDB))
@@ -321,7 +321,7 @@ fn parse_escape(var p: Parser) List[Instr]:
     if e == 114: return literal(p, 13)
 
     if e == 120:
-        let v = hex_escape(var p)
+        v := hex_escape(var p)
         if p.err != "": return List[Instr]()
 
         return literal(p, v)
@@ -338,13 +338,13 @@ fn parse_escape(var p: Parser) List[Instr]:
 
         p.pos += 1
 
-        let stop = ident_end(p, p.pos)
+        stop := ident_end(p, p.pos)
 
         if stop == p.pos or stop >= p.src.length() or p.src[stop] != 62:
             set_err(var p, "bad escape")
             return List[Instr]()
 
-        let nm = name_string(p, p.pos, stop)
+        nm := name_string(p, p.pos, stop)
         p.pos = stop + 1
         p.refnames.append(nm)
 
@@ -374,15 +374,15 @@ fn expect_close(var p: Parser) Bool:
 fn capture(var p: Parser, name: String) List[Instr]:
     p.ngroups += 1
 
-    let g = p.ngroups
+    g := p.ngroups
     p.group_names.append(name.clone())
     if name != "":
         p.names.add(name, g)
 
-    let r = alloc_reg(var p)
+    r := alloc_reg(var p)
     p.group_regs.append(r)
 
-    let body = parse_alt(var p)
+    body := parse_alt(var p)
     if p.err != "": return List[Instr]()
     if not expect_close(var p): return List[Instr]()
 
@@ -396,12 +396,12 @@ fn parse_group(var p: Parser) List[Instr]:
     p.pos += 1
     if cur(p) != 63: return capture(var p, "")
 
-    let k = ahead(p, 1)
+    k := ahead(p, 1)
 
     if k == 58:
         p.pos += 2
 
-        let body = parse_alt(var p)
+        body := parse_alt(var p)
         if p.err != "": return List[Instr]()
         if not expect_close(var p): return List[Instr]()
 
@@ -410,7 +410,7 @@ fn parse_group(var p: Parser) List[Instr]:
     if k == 61 or k == 33:
         p.pos += 2
 
-        let body = parse_alt(var p)
+        body := parse_alt(var p)
         if p.err != "": return List[Instr]()
         if not expect_close(var p): return List[Instr]()
 
@@ -425,7 +425,7 @@ fn parse_group(var p: Parser) List[Instr]:
         return frag
 
     if k == 60:
-        let k2 = ahead(p, 2)
+        k2 := ahead(p, 2)
 
         if k2 == 61 or k2 == 33:
             set_err(var p, "bad group")
@@ -433,13 +433,13 @@ fn parse_group(var p: Parser) List[Instr]:
 
         p.pos += 2
 
-        let stop = ident_end(p, p.pos)
+        stop := ident_end(p, p.pos)
 
         if stop == p.pos or stop >= p.src.length() or p.src[stop] != 62:
             set_err(var p, "bad group")
             return List[Instr]()
 
-        let nm = name_string(p, p.pos, stop)
+        nm := name_string(p, p.pos, stop)
 
         if p.names.contains(nm):
             set_err(var p, "duplicate group name")
@@ -455,9 +455,9 @@ fn parse_group(var p: Parser) List[Instr]:
 
 // Index just past a valid {n}, {n,} or {n,m} starting at p.pos, or -1.
 fn scan_brace(p: Parser) Int:
-    let n = p.src.length()
+    n := p.src.length()
     var i = p.pos + 1
-    let s1 = i
+    s1 := i
     while i < n and is_digit(p.src[i]):
         i += 1
     if i == s1: return -1
@@ -503,7 +503,7 @@ fn read_brace(var p: Parser, stop: Int) Unit:
     p.pos = stop
 
 fn is_quant_start(p: Parser) Bool:
-    let c = cur(p)
+    c := cur(p)
     if c == 42 or c == 43 or c == 63: return true
     if c == 123 and scan_brace(p) != -1: return true
 
@@ -513,16 +513,16 @@ fn is_quant_start(p: Parser) Bool:
 fn loop_wrap(var p: Parser, body: List[Instr], mn: Int, mx: Int, greedy: Bool) List[
     Instr
 ]:
-    let cnt = alloc_reg(var p)
-    let mark = alloc_reg(var p)
-    let nb = body.length()
+    cnt := alloc_reg(var p)
+    mark := alloc_reg(var p)
+    nb := body.length()
     var hl = 1
     if mn > 0:
         hl += 1
     if mx != INF:
         hl += 1
 
-    let exit_idx = 4 + hl + nb
+    exit_idx := 4 + hl + nb
     var out = List[Instr]()
     out.append(Instr(op: OP_SETI, a: cnt, b: 0))
 
@@ -552,7 +552,7 @@ fn loop_wrap(var p: Parser, body: List[Instr], mn: Int, mx: Int, greedy: Bool) L
     return out
 
 fn parse_quant(var p: Parser, atom: List[Instr], nr: Bool) List[Instr]:
-    let c = cur(p)
+    c := cur(p)
     var mn = 0
     var mx = INF
 
@@ -565,7 +565,7 @@ fn parse_quant(var p: Parser, atom: List[Instr], nr: Bool) List[Instr]:
         mx = 1
         p.pos += 1
     else if c == 123 and scan_brace(p) != -1:
-        let stop = scan_brace(p)
+        stop := scan_brace(p)
         read_brace(var p, stop)
         mn = p.qmin
         mx = p.qmax
@@ -595,21 +595,21 @@ fn parse_quant(var p: Parser, atom: List[Instr], nr: Bool) List[Instr]:
 // ---------- atoms, sequences, alternation ----------
 
 fn is_norep_start(p: Parser) Bool:
-    let c = cur(p)
+    c := cur(p)
     if c == 94 or c == 36: return true
 
     if c == 92:
-        let e = ahead(p, 1)
+        e := ahead(p, 1)
         return e == 98 or e == 66
 
     if c == 40 and ahead(p, 1) == 63:
-        let k = ahead(p, 2)
+        k := ahead(p, 2)
         return k == 61 or k == 33
 
     return false
 
 fn parse_atom(var p: Parser) List[Instr]:
-    let c = cur(p)
+    c := cur(p)
     if c == 40: return parse_group(var p)
 
     if c == 91:
@@ -645,14 +645,14 @@ fn parse_seq(var p: Parser) List[Instr]:
     var out = List[Instr]()
 
     while true:
-        let c = cur(p)
+        c := cur(p)
         if c == -1 or c == 124 or c == 41: break
 
-        let nr = is_norep_start(p)
-        let atom = parse_atom(var p)
+        nr := is_norep_start(p)
+        atom := parse_atom(var p)
         if p.err != "": return List[Instr]()
 
-        let q = parse_quant(var p, atom, nr)
+        q := parse_quant(var p, atom, nr)
         if p.err != "": return List[Instr]()
 
         cat(var out, q)
@@ -662,8 +662,8 @@ fn parse_seq(var p: Parser) List[Instr]:
 fn alt_join(alts: List[List[Instr]], i: Int) List[Instr]:
     if i == alts.length() - 1: return alts[i].clone()
 
-    let a = alts[i]
-    let rest = alt_join(alts, i + 1)
+    a := alts[i]
+    rest := alt_join(alts, i + 1)
     var out = List[Instr]()
     out.append(Instr(op: OP_SPLIT, a: 1, b: a.length() + 2))
     cat(var out, a)
@@ -691,7 +691,7 @@ fn compile_pattern(src: List[Int]) Parser:
         group_regs: [0], group_names: [""], names: Map[String, Int](),
         refnames: List[String]()
     )
-    let n = src.length()
+    n := src.length()
 
     // Leading flags: (?ims...)
     if (
@@ -732,7 +732,7 @@ fn compile_pattern(src: List[Int]) Parser:
             var g = body[i].a
 
             if g < 0:
-                let nm = p.refnames[-g - 1]
+                nm := p.refnames[-g - 1]
                 g = p.names.get_or(nm, -1)
                 if g < 0:
                     set_err(var p, "bad backreference")
@@ -770,14 +770,14 @@ fn run(
     start_pos: Int,
     full: Bool
 ) Int:
-    let n = subj.length()
+    n := subj.length()
     var stk = List[Int]()
     var pc = start_pc
     var pos = start_pos
 
     while true:
-        let ins = prog[pc]
-        let op = ins.op
+        ins := prog[pc]
+        op := ins.op
         var fail = false
 
         if op == OP_CHR:
@@ -810,8 +810,8 @@ fn run(
             regs[ins.a] = pos
             pc += 1
         else if op == OP_CLOSE:
-            let g = ins.a
-            let r = ins.b
+            g := ins.a
+            r := ins.b
             push3(var stk, 1, 2 * g, caps[2 * g])
             push3(var stk, 1, 2 * g + 1, caps[2 * g + 1])
             push3(var stk, 2, r, regs[r])
@@ -820,7 +820,7 @@ fn run(
             regs[r] = -1
             pc += 1
         else if op == OP_ASSERT:
-            let k = ins.a
+            k := ins.a
             var ok = false
 
             if k == AS_BOL:
@@ -832,7 +832,7 @@ fn run(
             else if k == AS_EOLM:
                 ok = pos == n or byte_at(subj, pos) == 10
             else:
-                let wb = is_word(byte_at(subj, pos - 1)) != is_word(byte_at(subj, pos))
+                wb := is_word(byte_at(subj, pos - 1)) != is_word(byte_at(subj, pos))
 
                 if k == AS_WORDB:
                     ok = wb
@@ -844,15 +844,15 @@ fn run(
             else:
                 fail = true
         else if op == OP_BREF:
-            let g = ins.a
+            g := ins.a
             var ok = regs[ins.b] == -1
-            let s = caps[2 * g]
-            let e = caps[2 * g + 1]
+            s := caps[2 * g]
+            e := caps[2 * g + 1]
             if s < 0 or e < 0:
                 ok = false
 
             if ok:
-                let len = e - s
+                len := e - s
 
                 if pos + len > n:
                     ok = false
@@ -879,9 +879,9 @@ fn run(
             else:
                 fail = true
         else if op == OP_LOOK:
-            let snapC = caps.clone()
-            let snapR = regs.clone()
-            let r = run(prog, sets, subj, var caps, var regs, pc + 1, pos, false)
+            snapC := caps.clone()
+            snapR := regs.clone()
+            r := run(prog, sets, subj, var caps, var regs, pc + 1, pos, false)
 
             if ins.a == 1:
                 if r >= 0:
@@ -940,9 +940,9 @@ fn run(
             while not resumed:
                 if stk.length() == 0: return -1
 
-                let vb = stk.pop().get(0)
-                let va = stk.pop().get(0)
-                let vk = stk.pop().get(0)
+                vb := stk.pop().get(0)
+                va := stk.pop().get(0)
+                vk := stk.pop().get(0)
 
                 if vk == 0:
                     pc = va
@@ -964,11 +964,11 @@ fn search(p: Parser, subj: List[Int], from: Int, full: Bool) List[Int]:
     for i in 0..p.nregs:
         regs.append(-1)
 
-    let n = subj.length()
+    n := subj.length()
     var s = from
 
     while s <= n:
-        let e = run(p.prog, p.sets, subj, var caps, var regs, 0, s, full)
+        e := run(p.prog, p.sets, subj, var caps, var regs, 0, s, full)
 
         if e >= 0:
             caps[0] = s
@@ -984,14 +984,14 @@ fn search(p: Parser, subj: List[Int], from: Int, full: Bool) List[Int]:
 // All find-all matches as capture lists.
 fn all_matches(p: Parser, subj: List[Int]) List[List[Int]]:
     var out = List[List[Int]]()
-    let n = subj.length()
+    n := subj.length()
     var from = 0
 
     while from <= n:
-        let c = search(p, subj, from, false)
+        c := search(p, subj, from, false)
         if c.length() == 0: break
 
-        let e = c[1]
+        e := c[1]
 
         if e > c[0]:
             from = e
@@ -1028,8 +1028,8 @@ fn group_lines(p: Parser, subj: List[Int], c: List[Int]) List[String]:
         if g > 0 and p.group_names[g] != "":
             label = "{g} (" + p.group_names[g] + ")"
 
-        let s = c[2 * g]
-        let e = c[2 * g + 1]
+        s := c[2 * g]
+        e := c[2 * g + 1]
 
         if s >= 0 and e >= 0:
             out.append(label + ": {s}..{e} " + quote_range(subj, s, e))
@@ -1041,8 +1041,8 @@ fn group_lines(p: Parser, subj: List[Int], c: List[Int]) List[String]:
 // ---------- replacement ----------
 
 fn append_group(var out: List[Int], subj: List[Int], c: List[Int], g: Int) Unit:
-    let s = c[2 * g]
-    let e = c[2 * g + 1]
+    s := c[2 * g]
+    e := c[2 * g + 1]
     if s >= 0 and e >= 0:
         for k in s..e:
             out.append(subj[k])
@@ -1060,11 +1060,11 @@ fn name_of(repl: List[Int], s: Int, e: Int) String:
 // Expands one replacement for match `c`; none when the replacement is malformed.
 fn expand(repl: List[Int], p: Parser, subj: List[Int], c: List[Int]) List[Int]?:
     var out = List[Int]()
-    let m = repl.length()
+    m := repl.length()
     var i = 0
 
     while i < m:
-        let ch = repl[i]
+        ch := repl[i]
 
         if ch != 36:
             out.append(ch)
@@ -1073,10 +1073,10 @@ fn expand(repl: List[Int], p: Parser, subj: List[Int], c: List[Int]) List[Int]?:
             out.append(36)
             i += 1
         else:
-            let d = repl[i + 1]
+            d := repl[i + 1]
 
             if is_digit(d):
-                let g = d - 48
+                g := d - 48
                 if g > p.ngroups: return none
 
                 append_group(var out, subj, c, g)
@@ -1090,8 +1090,8 @@ fn expand(repl: List[Int], p: Parser, subj: List[Int], c: List[Int]) List[Int]?:
                     j += 1
                 if j >= m: return none
 
-                let nm = name_of(repl, i + 2, j)
-                let g = p.names.get_or(nm, -1)
+                nm := name_of(repl, i + 2, j)
+                g := p.names.get_or(nm, -1)
                 if g < 0: return none
 
                 append_group(var out, subj, c, g)
@@ -1125,7 +1125,7 @@ fn split_bytes(all: List[Int], sep: Int) List[List[Int]]:
     return parts
 
 fn eq_str(f: List[Int], s: String) Bool:
-    let b = s.as_bytes()
+    b := s.as_bytes()
     if b.length() != f.length(): return false
 
     for i in 0..f.length():
@@ -1135,11 +1135,11 @@ fn eq_str(f: List[Int], s: String) Bool:
 // Subject / replacement escapes; none on a bad escape.
 fn unescape(f: List[Int]) List[Int]?:
     var out = List[Int]()
-    let n = f.length()
+    n := f.length()
     var i = 0
 
     while i < n:
-        let c = f[i]
+        c := f[i]
 
         if c != 92:
             out.append(c)
@@ -1147,7 +1147,7 @@ fn unescape(f: List[Int]) List[Int]?:
         else if i + 1 >= n:
             return none
         else:
-            let d = f[i + 1]
+            d := f[i + 1]
 
             if d == 110:
                 out.append(10)
@@ -1161,8 +1161,8 @@ fn unescape(f: List[Int]) List[Int]?:
             else if d == 120:
                 if i + 3 >= n: return none
 
-                let h = hexval(f[i + 2])
-                let l = hexval(f[i + 3])
+                h := hexval(f[i + 2])
+                l := hexval(f[i + 3])
                 if h < 0 or l < 0: return none
 
                 out.append(h * 16 + l)
@@ -1174,8 +1174,8 @@ fn unescape(f: List[Int]) List[Int]?:
 
 fn handle(line: List[Int]) List[String]:
     var out = List[String]()
-    let fields = split_bytes(line, 9)
-    let name = fields[0]
+    fields := split_bytes(line, 9)
+    name := fields[0]
     var is_replace = eq_str(name, "replace")
     var known = (
         is_replace
@@ -1195,7 +1195,7 @@ fn handle(line: List[Int]) List[String]:
 
     var subj = List[Int]()
 
-    if let s = unescape(fields[2]):
+    if s := unescape(fields[2]):
         subj = s
     else:
         out.append("error: bad command")
@@ -1204,27 +1204,27 @@ fn handle(line: List[Int]) List[String]:
     var repl = List[Int]()
 
     if is_replace:
-        if let r = unescape(fields[3]):
+        if r := unescape(fields[3]):
             repl = r
         else:
             out.append("error: bad command")
             return out
 
-    let p = compile_pattern(fields[1].clone())
+    p := compile_pattern(fields[1].clone())
 
     if p.err != "":
         out.append("error: " + p.err)
         return out
 
     if eq_str(name, "test"):
-        let c = search(p, subj, 0, false)
+        c := search(p, subj, 0, false)
 
         if c.length() > 0:
             out.append("true")
         else:
             out.append("false")
     else if eq_str(name, "match") or eq_str(name, "full"):
-        let c = search(p, subj, 0, eq_str(name, "full"))
+        c := search(p, subj, 0, eq_str(name, "full"))
 
         if c.length() == 0:
             out.append("no match")
@@ -1232,12 +1232,12 @@ fn handle(line: List[Int]) List[String]:
             for l in group_lines(p, subj, c):
                 out.append(l)
     else if eq_str(name, "find-all"):
-        let ms = all_matches(p, subj)
+        ms := all_matches(p, subj)
         for c in ms:
             out.append("{c[0]}..{c[1]} " + quote_range(subj, c[0], c[1]))
         out.append("({ms.length()} matches)")
     else if eq_str(name, "split"):
-        let ms = all_matches(p, subj)
+        ms := all_matches(p, subj)
         var pieces = List[String]()
         var prev = 0
 
@@ -1251,12 +1251,12 @@ fn handle(line: List[Int]) List[String]:
             out.append(piece.clone())
         out.append("({pieces.length()} pieces)")
     else:
-        let ms = all_matches(p, subj)
+        ms := all_matches(p, subj)
         var res = List[Int]()
         var prev = 0
 
         for c in ms:
-            if let ex = expand(repl, p, subj, c):
+            if ex := expand(repl, p, subj, c):
                 for k in prev..c[0]:
                     res.append(subj[k])
                 cat_ints(var res, ex)
@@ -1277,8 +1277,8 @@ fn cat_ints(var out: List[Int], xs: List[Int]) Unit:
         out.append(x)
 
 export fn main() Int:
-    let data = read_all(stdin()).get()
-    let all = to_ints(data)
+    data := read_all(stdin()).get()
+    all := to_ints(data)
 
     for line in split_bytes(all, 10):
         if line.length() == 0: continue

@@ -28,21 +28,21 @@ export type Sample:
     medians: Map[String, Float]
 
 export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
-    let cases = try read_cases(output)
+    cases := try read_cases(output)
     var operations = Map[String, Int]()
     var medians = Map[String, Float]()
 
     for c in cases:
-        let stats = c.stats.get(Stats(0, none, none, 0.0, none, none, none, none))
+        stats := c.stats.get(Stats(0, none, none, 0.0, none, none, none, none))
         operations.add(c.name.clone(), stats.operations)
         medians.add(c.name.clone(), stats.median_ns)
 
-    if let want = expected:
+    if want := expected:
         if want != operations: return invalid("cases or operation counts changed")
     return ok(Sample(operations, medians))
 
 fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Error]:
-    let filter = opts.get_or("filter", "")
+    filter := opts.get_or("filter", "")
     var binaries = Map[String, String]()
     var raw = Map[String, List[String]]()
     var values = Map[String, Map[String, List[Float]]]()
@@ -57,8 +57,8 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 
     for i in 0..repeats:
         for version in (if i % 2 == 0: ["before", "after"] else: ["after", "before"]):
-            let output = try stdlib_bench(binaries.get_or(version, ""), samples, filter)
-            let parsed = try parse_sample(output, expected)
+            output := try stdlib_bench(binaries.get_or(version, ""), samples, filter)
+            parsed := try parse_sample(output, expected)
 
             if expected.is_none():
                 expected = parsed.operations.clone()
@@ -77,8 +77,8 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 
             values.add(version.clone(), per)
 
-    let want = expected.get(Map[String, Int]())
-    let labels = case_labels(names)
+    want := expected.get(Map[String, Int]())
+    labels := case_labels(names)
     var table = [
         "Median of {repeats} alternating runs of {samples} samples; all {want.length()} cases and operation counts verified.",
         "", "| operation | ops | before ns/op | after ns/op | after/before |",
@@ -87,12 +87,12 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
     var summary = Map[String, JsonValue]()
 
     for name in names:
-        let before = median(
+        before := median(
             values.get_or("before", Map[String, List[Float]]()).get_or(
                 name, []
             )
         )
-        let after = median(
+        after := median(
             values.get_or("after", Map[String, List[Float]]()).get_or(
                 name, []
             )
@@ -100,8 +100,8 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
         var ratio: Float? = none
         if before != 0.0: ratio = after / before
 
-        let label = labels.get_or(name, name)
-        let ops = want.get_or(name, 0)
+        label := labels.get_or(name, name)
+        ops := want.get_or(name, 0)
         var entry = Map[String, JsonValue]()
         entry.add("ops", jint(ops))
         entry.add("before", jfloat(before))
@@ -112,12 +112,12 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
         summary.add(label.clone(), jobject(entry))
 
         var shown = "—"
-        if let r = ratio: shown = r.to_fixed(3) + "x"
+        if r := ratio: shown = r.to_fixed(3) + "x"
         table.append(
             "| {label} | {ops} | {before.to_precision(4)} | {after.to_precision(4)} | {shown} |"
         )
 
-    let out = opts.get_or("output", "")
+    out := opts.get_or("output", "")
     ensure_directory(out)
     for version in ["before", "after"]:
         write_text("{out}/stdlib-{version}.jsonl", raw.get_or(version, []).join(""))
@@ -138,20 +138,20 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
     write_text("{out}/environment.json", dump(jobject(environment)))
     write_text("{out}/summary.json", dump(jobject(summary)))
 
-    let rendered = table.join("\n") + "\n"
+    rendered := table.join("\n") + "\n"
     write_text("{out}/results.md", rendered)
     return ok(rendered)
 
 fn main() Int:
-    let parsed = options(
+    parsed := options(
         arguments(), ["before", "after", "output", "repeats", "samples", "filter"],
         ["before", "after", "output"]
     )
     if parsed.is_error(): return fail(parsed.err().message)
 
-    let opts = parsed.get(Map[String, String]())
-    let repeats = opts.get_or("repeats", "5").parse_int().get(0)
-    let samples = opts.get_or("samples", "5").parse_int().get(0)
+    opts := parsed.get(Map[String, String]())
+    repeats := opts.get_or("repeats", "5").parse_int().get(0)
+    samples := opts.get_or("samples", "5").parse_int().get(0)
     if repeats < 1 or samples < 1: return fail("repeats and samples must be positive")
 
     return finish(run(opts, repeats, samples))

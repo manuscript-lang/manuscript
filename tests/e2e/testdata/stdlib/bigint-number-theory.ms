@@ -94,34 +94,34 @@ fn nonresidue_boundary_prime() BigInt:
     return product + from_int(1)
 
 test "large nonresidue modulus has a complete primality certificate":
-    let p = nonresidue_boundary_prime()
-    let one = from_int(1)
-    let minus_one = p - one
+    p := nonresidue_boundary_prime()
+    one := from_int(1)
+    minus_one := p - one
 
     for factor in nonresidue_boundary_factors():
         var base = 2
         if factor == 2: base = 1013
         if factor == 3 or factor == 13 or factor == 37: base = 3
 
-        let a = from_int(base)
+        a := from_int(base)
         try expect_equal(try a.pow_mod(minus_one, p), one)
 
-        let witness = (try a.pow_mod(minus_one / from_int(factor), p)) - one
+        witness := (try a.pow_mod(minus_one / from_int(factor), p)) - one
         try expect_equal(witness.gcd(p), one)
 
 test "modular square root searches beyond a thousand quadratic residues":
-    let p = nonresidue_boundary_prime()
+    p := nonresidue_boundary_prime()
 
     for value in [4, -4]:
-        let a = from_int(value)
-        let root = (try a.mod_sqrt(p)).get(from_int(-1))
+        a := from_int(value)
+        root := (try a.mod_sqrt(p)).get(from_int(-1))
         try expect_true(root.sign() >= 0 and root.compare(p) < 0)
         try expect_equal((root * root - a) % p, from_int(0))
 
 test "modular square root rejects a composite witnessed during search":
     // For 1729, candidates 2 through 6 give +1, then its factor 7 gives 742.
     // Moduli 9 and 25 give nonzero results outside +1 and -1 at candidate 2.
-    let invalid: BigInt?! = error(Error("big integer: invalid input", kind: "EINVAL"))
+    invalid: BigInt?! = error(Error("big integer: invalid input", kind: "EINVAL"))
     try expect_equal(from_int(1).mod_sqrt(from_int(1729)), invalid)
     try expect_equal(from_int(1).mod_sqrt(from_int(9)), invalid)
     try expect_equal(from_int(1).mod_sqrt(from_int(25)), invalid)

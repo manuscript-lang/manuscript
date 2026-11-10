@@ -44,7 +44,7 @@ fn counted(text: String) List[Counted]:
                 32, line.length()
             ).get("").split(" ")[0].parse_int().get(0)
         else if line.starts_with("ms-rt live blocks at exit: "):
-            let live = line.slice(27, line.length()).get("").trim().parse_int().get(0)
+            live := line.slice(27, line.length()).get("").trim().parse_int().get(0)
             found.append(
                 Counted(
                     name: name.clone(), parks: parks, heap: heap, live: live
@@ -63,7 +63,7 @@ fn test_run(ms: String, file: String, filter: String, cancel_at: Int) List[Count
 
     var arguments = ["test", file.clone()]
     if filter != "": arguments = arguments.concat(["--test", filter.clone()])
-    if let out = run(
+    if out := run(
         ms.clone(), arguments, RunOptions(timeout: seconds(120), env: settings)
     ).wait(): return counted(
         out.stdout.decode_utf8().get("") + out.stderr.decode_utf8().get("")
@@ -77,12 +77,12 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
     var lines = List[String]()
 
     for f in files:
-        let file = "{root}/{f}"
+        file := "{root}/{f}"
 
         for base in test_run(ms.clone(), file.clone(), "", 0):
             if base.parks == 0: continue
 
-            let last = if base.parks < most: base.parks else: most
+            last := if base.parks < most: base.parks else: most
 
             // The reference is a filtered run too: the filter argument itself stays allocated,
             // so an unfiltered baseline would differ by that block.
@@ -141,10 +141,10 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
     return lines
 
 fn main() Int:
-    let code = use_stats_runtime()
+    code := use_stats_runtime()
     if code != 0: return code
 
-    let root = working_directory().get()
+    root := working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
 
@@ -152,21 +152,21 @@ fn main() Int:
         for f in glob("tests/e2e/testdata/stdlib", GlobOptions(patterns: ["*.ms"])).get(
             []
         ):
-            let path = "tests/e2e/testdata/stdlib/{f.path}"
+            path := "tests/e2e/testdata/stdlib/{f.path}"
             if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(
                 path.clone()
             )
 
-    let ms = tool_ms(root.clone())
-    let scratch = temporary("ms-cancel-").get()
+    ms := tool_ms(root.clone())
+    scratch := temporary("ms-cancel-").get()
     change_directory(scratch.path()).get()
 
     var jobs = system_info().cpu_count
-    if let n = env("LEAK_JOBS", "").parse_int(): jobs = n
+    if n := env("LEAK_JOBS", "").parse_int(): jobs = n
     if jobs < 1: jobs = 1
 
     var most = 64
-    if let n = env("SWEEP_MAX_PARKS", "").parse_int(): most = n
+    if n := env("SWEEP_MAX_PARKS", "").parse_int(): most = n
 
     var chunks = List[List[String]]()
 

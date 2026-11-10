@@ -82,26 +82,24 @@ fn deferred_error() Promise[Unit]!:
 
 test "wait_first runs a local deferred input beside a foreign promise":
     for k in 0..8:
-        let outer = promise(fn: long_sleep())
+        outer := promise(fn: long_sleep())
 
         // Give idle threads work to take while this thread computes; the result is checked.
-        let busy = spin(2000000)
+        busy := spin(2000000)
         try expect_equal(busy >= 0, true)
 
-        let remote = (try outer.wait()).with(
-            options: PromiseOptions(timeout: 1.seconds())
-        )
-        let local = deferred[Unit](fn id: complete[Unit](id, ok(unit)))
+        remote := (try outer.wait()).with(options: PromiseOptions(timeout: 1.seconds()))
+        local := deferred[Unit](fn id: complete[Unit](id, ok(unit)))
         try wait_first([local, remote])
 
 test "wait_first returns a ready input before foreign deferred work":
     for k in 0..8:
-        let outer = promise(fn: deferred_error())
-        let busy = spin(2000000)
+        outer := promise(fn: deferred_error())
+        busy := spin(2000000)
         try expect_equal(busy >= 0, true)
 
-        let remote = try outer.wait()
-        let ready = promise[Unit](fn: ok(unit))
+        remote := try outer.wait()
+        ready := promise[Unit](fn: ok(unit))
         while not ready.done():
             continue
         try wait_first([remote, ready])

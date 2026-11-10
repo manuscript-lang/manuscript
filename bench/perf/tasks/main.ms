@@ -11,7 +11,7 @@ import (
 )
 
 fn status(label: String) Unit:
-    let text = read_file("/proc/self/status", none).wait().get().decode_utf8().get()
+    text := read_file("/proc/self/status", none).wait().get().decode_utf8().get()
     for line in text.lines():
         if line.contains("VmRSS") or line.contains("VmHWM") or line.contains("VmPTE"):
             print(label + " " + line)
@@ -23,27 +23,27 @@ fn park_sleep(a: Int) Int!:
 fn descend(depth: Int, acc: Int) Int:
     if depth == 0: return acc
 
-    let scratch: List[Int] = [acc, depth, acc + depth]
-    let below = descend(depth - 1, acc + scratch[1])
+    scratch: List[Int] = [acc, depth, acc + depth]
+    below := descend(depth - 1, acc + scratch[1])
     return below + scratch.length()
 
 fn park_deep(a: Int) Int!:
-    let sum = descend(256, a)
+    sum := descend(256, a)
     try sleep(seconds(1000)).wait()
     return ok(sum)
 
 fn park_read(a: Int) Int!:
-    let data = try read_file("/proc/self/stat", none).wait()
+    data := try read_file("/proc/self/stat", none).wait()
     try sleep(seconds(1000)).wait()
     return ok(data.length() + a)
 
 fn main() Unit:
-    let args = arguments()
-    let n = args[0].parse_int().get()
-    let mode = args[1].clone()
+    args := arguments()
+    n := args[0].parse_int().get()
+    mode := args[1].clone()
     status("before")
 
-    let t0 = monotonic()
+    t0 := monotonic()
     var promises: List[Promise[Int]] = []
 
     for i in 0..n:
@@ -54,7 +54,7 @@ fn main() Unit:
         else:
             promises.append(owned_task[Int](fn: park_read(i)))
 
-    let t1 = monotonic()
+    t1 := monotonic()
 
     // Let every task start and park, then let the idle scheduler hibernate them.
     sleep(seconds(3)).wait().get()
@@ -62,10 +62,10 @@ fn main() Unit:
     sleep(seconds(3)).wait().get()
     status("idle")
 
-    let t2 = monotonic()
+    t2 := monotonic()
     print("spawn ms " + (t1.difference(t0).to_nanoseconds() / 1000000).to_string())
     for p in promises:
         p.cancel()
 
-    let t3 = monotonic()
+    t3 := monotonic()
     print("cancel ms " + (t3.difference(t2).to_nanoseconds() / 1000000).to_string())

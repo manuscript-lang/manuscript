@@ -20,10 +20,10 @@ impl Parser:
         var v = self.term()
 
         while self.peek_is("+") or self.peek_is("-"):
-            let op = self.toks[self.pos]
+            op := self.toks[self.pos]
             self.pos += 1
 
-            let r = self.term()
+            r := self.term()
 
             if op == "+":
                 v += r
@@ -36,10 +36,10 @@ impl Parser:
         var v = self.unary()
 
         while self.peek_is("*") or self.peek_is("/"):
-            let op = self.toks[self.pos]
+            op := self.toks[self.pos]
             self.pos += 1
 
-            let r = self.unary()
+            r := self.unary()
 
             if op == "*":
                 v *= r
@@ -63,11 +63,11 @@ impl Parser:
             self.bad = true
             return 0
 
-        let t = self.toks[self.pos]
+        t := self.toks[self.pos]
         self.pos += 1
 
         if t == "(":
-            let v = self.expr()
+            v := self.expr()
 
             if self.peek_is(")"):
                 self.pos += 1
@@ -76,7 +76,7 @@ impl Parser:
 
             return v
 
-        if let n = t.parse_int(): return n
+        if n := t.parse_int(): return n
 
         self.bad = true
         return 0
@@ -90,7 +90,7 @@ fn tokenize(line: String) Parser:
             in_num = false
         else if "0123456789".chars().contains(c):
             if in_num:
-                let last = p.toks.length() - 1
+                last := p.toks.length() - 1
                 p.toks[last] = p.toks[last] + c
             else:
                 p.toks.append(c)
@@ -110,7 +110,7 @@ fn answer(line: String) String:
     if p.bad: return "error: syntax"
     if p.toks.is_empty(): return ""
 
-    let v = p.expr()
+    v := p.expr()
     if p.bad or p.pos != p.toks.length(): return "error: syntax"
     if p.div0: return "error: division by zero"
 
@@ -120,7 +120,7 @@ export fn main() Int:
     var out = stdout()
 
     for line in read_lines(stdin()).get():
-        let s = answer(line)
+        s := answer(line)
         if not s.is_empty():
             out.write("{s}\n").get()
 

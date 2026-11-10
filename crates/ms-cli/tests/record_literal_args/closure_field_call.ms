@@ -13,7 +13,7 @@ type Gen[T]:
 
 fn draw(source: Source) Drawn[Int]:
     var s = source
-    let value = s.choices[s.pos]
+    value := s.choices[s.pos]
     s.pos += 1
     return Drawn(value, s)
 
@@ -21,10 +21,10 @@ fn ints() Gen[Int]:
     return Gen[Int](fn s: ints_draw(s))
 
 fn ints_draw(s: Source) Drawn[Int]:
-    let {value: sign, source: middle} = draw(s)
-    let {value, source} = draw(middle)
+    {value: sign, source: middle} := draw(s)
+    {value, source} := draw(middle)
     return Drawn(value + sign, source)
 
 fn main() Unit:
-    let c = ints().make(Source([0, 3, 0, 7], 0))
-    let _ = stdout().write("{c.value} {c.source.choices}\n")
+    c := ints().make(Source([0, 3, 0, 7], 0))
+    _ := stdout().write("{c.value} {c.source.choices}\n")

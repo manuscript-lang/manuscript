@@ -8,30 +8,30 @@ import (
 
 // ---------- constants ----------
 
-let V_EMPTY = 0
-let V_NUM = 1
-let V_TEXT = 2
-let V_BOOL = 3
-let V_ERR = 4
-let K_NUM = 0
-let K_STR = 1
-let K_BOOL = 2
-let K_REF = 3
-let K_RANGE = 4
-let K_ERR = 5
-let K_NAME = 6
-let K_CALL = 7
-let K_BIN = 8
-let K_NEG = 9
-let K_POS = 10
-let K_IDENT = 11
-let K_OP = 12
-let K_LP = 13
-let K_RP = 14
-let K_COMMA = 15
-let K_BAD = 16
-let LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-let TWO53 = 9007199254740992.0
+V_EMPTY := 0
+V_NUM := 1
+V_TEXT := 2
+V_BOOL := 3
+V_ERR := 4
+K_NUM := 0
+K_STR := 1
+K_BOOL := 2
+K_REF := 3
+K_RANGE := 4
+K_ERR := 5
+K_NAME := 6
+K_CALL := 7
+K_BIN := 8
+K_NEG := 9
+K_POS := 10
+K_IDENT := 11
+K_OP := 12
+K_LP := 13
+K_RP := 14
+K_COMMA := 15
+K_BAD := 16
+LETTERS := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+TWO53 := 9007199254740992.0
 
 // ---------- records ----------
 
@@ -177,7 +177,7 @@ fn keyrow(k: Int) Int:
     return k / 100
 
 fn name_of(k: Int) String:
-    let c = keycol(k)
+    c := keycol(k)
     return LETTERS.slice_scalars(c, c + 1).get("") + keyrow(k).to_string()
 
 fn imin(a: Int, b: Int) Int:
@@ -194,8 +194,8 @@ fn norm_rect(ca: Int, ra: Int, cb: Int, rb: Int) SRect:
     return SRect(c1: imin(ca, cb), r1: imin(ra, rb), c2: imax(ca, cb), r2: imax(ra, rb))
 
 fn rect_has(r: SRect, k: Int) Bool:
-    let c = keycol(k)
-    let rw = keyrow(k)
+    c := keycol(k)
+    rw := keyrow(k)
     return c >= r.c1 and c <= r.c2 and rw >= r.r1 and rw <= r.r2
 
 fn node_rect(a: SNode) SRect:
@@ -204,8 +204,8 @@ fn node_rect(a: SNode) SRect:
 // ---------- number grammar and formatting ----------
 
 fn parse_number(s: String) Float?:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var i = 0
     var neg = false
 
@@ -213,17 +213,17 @@ fn parse_number(s: String) Float?:
         neg = cs[i] == "-"
         i += 1
 
-    let is0 = i
+    is0 := i
     while i < n and is_digit(cs[i]):
         i += 1
 
-    let ip = sub(cs, is0, i)
+    ip := sub(cs, is0, i)
     var fp = ""
 
     if i < n and cs[i] == ".":
         i += 1
 
-        let fs = i
+        fs := i
         while i < n and is_digit(cs[i]):
             i += 1
         fp = sub(cs, fs, i)
@@ -241,7 +241,7 @@ fn parse_number(s: String) Float?:
             exneg = cs[i] == "-"
             i += 1
 
-        let es = i
+        es := i
         while i < n and is_digit(cs[i]):
             i += 1
         if i == es: return none
@@ -261,9 +261,9 @@ fn parse_number(s: String) Float?:
     if fpart == "":
         fpart = "0"
 
-    let parsed = (ipart + "." + fpart + ex).parse_float()
+    parsed := (ipart + "." + fpart + ex).parse_float()
 
-    if let x = parsed:
+    if x := parsed:
         if not x.is_finite(): return none
         if neg: return -x
 
@@ -279,8 +279,8 @@ fn big_int_string(x: Float) String:
         y /= 2.0
         halvings += 1
 
-    let m = y.truncate_to_int().get(0)
-    let mchars = m.to_string().chars()
+    m := y.truncate_to_int().get(0)
+    mchars := m.to_string().chars()
     var digs = List[Int]()
     var di = mchars.length() - 1
 
@@ -293,7 +293,7 @@ fn big_int_string(x: Float) String:
         var k = 0
 
         while k < digs.length():
-            let v = digs[k] * 2 + carry
+            v := digs[k] * 2 + carry
             digs[k] = v % 10
             carry = v / 10
             k += 1
@@ -343,7 +343,7 @@ fn strform(v: SVal) String:
 // ---------- tokenizer ----------
 
 fn scan_ref(cs: List[String], i: Int) SNode:
-    let n = cs.length()
+    n := cs.length()
     var p = i
     var dc = false
     var dr = false
@@ -352,26 +352,26 @@ fn scan_ref(cs: List[String], i: Int) SNode:
         dc = true
         p += 1
 
-    let ls = p
+    ls := p
     while p < n and is_alpha(cs[p]):
         p += 1
 
-    let nl = p - ls
+    nl := p - ls
     if nl == 0: return SNode(kind: K_REF, endp: -1)
 
     if p < n and cs[p] == "$":
         dr = true
         p += 1
 
-    let ds = p
+    ds := p
     while p < n and is_digit(cs[p]):
         p += 1
 
-    let nd = p - ds
+    nd := p - ds
     if nd == 0: return SNode(kind: K_REF, endp: -1)
 
     if p < n:
-        let c = cs[p]
+        c := cs[p]
         if is_alnum(c) or c == "_" or c == "." or c == "(" or c == "$":
             return SNode(kind: K_REF, endp: -1)
 
@@ -391,11 +391,11 @@ fn scan_ref(cs: List[String], i: Int) SNode:
 fn tokenize(cs: List[String]) SLex:
     var toks = List[SNode]()
     var bad = false
-    let n = cs.length()
+    n := cs.length()
     var i = 0
 
     while i < n and not bad:
-        let c = cs[i]
+        c := cs[i]
 
         if is_space(c):
             i += 1
@@ -419,9 +419,9 @@ fn tokenize(cs: List[String]) SLex:
                         k += 1
                     j = k
 
-            let text = sub(cs, i, j)
+            text := sub(cs, i, j)
 
-            if let x = parse_number(text):
+            if x := parse_number(text):
                 toks.append(SNode(kind: K_NUM, num: x, pos: i, endp: j))
             else:
                 toks.append(SNode(kind: K_ERR, text: "#NUM!", pos: i, endp: j))
@@ -450,7 +450,7 @@ fn tokenize(cs: List[String]) SLex:
             else:
                 bad = true
         else if is_alpha(c) or c == "_" or c == "$":
-            let r = scan_ref(cs, i)
+            r := scan_ref(cs, i)
 
             if r.endp >= 0:
                 if r.endp < n and cs[r.endp] == ":":
@@ -572,10 +572,10 @@ fn parse_cmp(var p: SParser) SNode:
             or is_op(p, ">=")
         )
     ):
-        let op = cur_text(p)
+        op := cur_text(p)
         p.pos += 1
 
-        let r = parse_cat(var p)
+        r := parse_cat(var p)
         l = SNode(kind: K_BIN, text: op, kids: [l, r])
 
     return l
@@ -586,7 +586,7 @@ fn parse_cat(var p: SParser) SNode:
     while not p.bad and is_op(p, "&"):
         p.pos += 1
 
-        let r = parse_add(var p)
+        r := parse_add(var p)
         l = SNode(kind: K_BIN, text: "&", kids: [l, r])
 
     return l
@@ -595,10 +595,10 @@ fn parse_add(var p: SParser) SNode:
     var l = parse_mul(var p)
 
     while not p.bad and (is_op(p, "+") or is_op(p, "-")):
-        let op = cur_text(p)
+        op := cur_text(p)
         p.pos += 1
 
-        let r = parse_mul(var p)
+        r := parse_mul(var p)
         l = SNode(kind: K_BIN, text: op, kids: [l, r])
 
     return l
@@ -607,20 +607,20 @@ fn parse_mul(var p: SParser) SNode:
     var l = parse_unary(var p)
 
     while not p.bad and (is_op(p, "*") or is_op(p, "/")):
-        let op = cur_text(p)
+        op := cur_text(p)
         p.pos += 1
 
-        let r = parse_unary(var p)
+        r := parse_unary(var p)
         l = SNode(kind: K_BIN, text: op, kids: [l, r])
 
     return l
 
 fn parse_unary(var p: SParser) SNode:
     if not p.bad and (is_op(p, "+") or is_op(p, "-")):
-        let neg = is_op(p, "-")
+        neg := is_op(p, "-")
         p.pos += 1
 
-        let k = parse_unary(var p)
+        k := parse_unary(var p)
         if neg: return SNode(kind: K_NEG, kids: [k])
 
         return SNode(kind: K_POS, kids: [k])
@@ -628,22 +628,22 @@ fn parse_unary(var p: SParser) SNode:
     return parse_power(var p)
 
 fn parse_power(var p: SParser) SNode:
-    let b = parse_primary(var p)
+    b := parse_primary(var p)
 
     if not p.bad and is_op(p, "^"):
         p.pos += 1
 
-        let e = parse_pow_operand(var p)
+        e := parse_pow_operand(var p)
         return SNode(kind: K_BIN, text: "^", kids: [b, e])
 
     return b.clone()
 
 fn parse_pow_operand(var p: SParser) SNode:
     if not p.bad and (is_op(p, "+") or is_op(p, "-")):
-        let neg = is_op(p, "-")
+        neg := is_op(p, "-")
         p.pos += 1
 
-        let k = parse_pow_operand(var p)
+        k := parse_pow_operand(var p)
         if neg: return SNode(kind: K_NEG, kids: [k])
 
         return SNode(kind: K_POS, kids: [k])
@@ -653,17 +653,17 @@ fn parse_pow_operand(var p: SParser) SNode:
 fn parse_primary(var p: SParser) SNode:
     if p.bad: return SNode(kind: K_NUM)
 
-    let k = cur_kind(p)
+    k := cur_kind(p)
 
     if k == K_NUM or k == K_STR or k == K_REF or k == K_RANGE or k == K_ERR:
-        let t = p.toks[p.pos].clone()
+        t := p.toks[p.pos].clone()
         p.pos += 1
         return t
 
     if k == K_LP:
         p.pos += 1
 
-        let e = parse_cmp(var p)
+        e := parse_cmp(var p)
 
         if not p.bad and cur_kind(p) == K_RP:
             p.pos += 1
@@ -673,7 +673,7 @@ fn parse_primary(var p: SParser) SNode:
         return e.clone()
 
     if k == K_IDENT:
-        let name = cur_text(p)
+        name := cur_text(p)
         p.pos += 1
 
         if cur_kind(p) == K_LP:
@@ -687,7 +687,7 @@ fn parse_primary(var p: SParser) SNode:
                 var done = false
 
                 while not done and not p.bad:
-                    let a = parse_cmp(var p)
+                    a := parse_cmp(var p)
                     args.append(a)
 
                     if cur_kind(p) == K_COMMA:
@@ -700,7 +700,7 @@ fn parse_primary(var p: SParser) SNode:
 
             return SNode(kind: K_CALL, text: name.upper(), kids: args)
 
-        let u = name.upper()
+        u := name.upper()
         if u == "TRUE": return SNode(kind: K_BOOL, num: 1.0)
         if u == "FALSE": return SNode(kind: K_BOOL, num: 0.0)
 
@@ -710,11 +710,11 @@ fn parse_primary(var p: SParser) SNode:
     return SNode(kind: K_NUM)
 
 fn parse_src(src: String) SNode?:
-    let lx = tokenize(src.chars())
+    lx := tokenize(src.chars())
     if lx.bad: return none
 
     var p = SParser(toks: lx.toks, pos: 0, bad: false)
-    let e = parse_cmp(var p)
+    e := parse_cmp(var p)
     if p.bad or p.pos != p.toks.length(): return none
 
     return e.clone()
@@ -738,9 +738,9 @@ fn collect_precs(n: SNode, var out: List[SRect]) Unit:
 fn const_value(raw: String) SVal:
     if raw.starts_with("'"):
         return svtext(raw.slice_scalars(1, raw.scalar_length()).get(""))
-    if let x = parse_number(raw): return svnum(x)
+    if x := parse_number(raw): return svnum(x)
 
-    let u = raw.upper()
+    u := raw.upper()
     if u == "TRUE": return svbool(true)
     if u == "FALSE": return svbool(false)
 
@@ -748,9 +748,9 @@ fn const_value(raw: String) SVal:
 
 fn make_cell(raw: String) SCell:
     if raw.starts_with("="):
-        let src = raw.slice_scalars(1, raw.scalar_length()).get("")
+        src := raw.slice_scalars(1, raw.scalar_length()).get("")
 
-        if let e = parse_src(src):
+        if e := parse_src(src):
             var precs = List[SRect]()
             collect_precs(e, var precs)
             return SCell(raw: raw, mode: 1, ast: e, precs: precs)
@@ -762,7 +762,7 @@ fn make_cell(raw: String) SCell:
 // ---------- evaluation ----------
 
 fn value_at(sh: SSheet, k: Int) SVal:
-    if let v = sh.vals.get(k): return v.clone()
+    if v := sh.vals.get(k): return v.clone()
 
     return svempty()
 
@@ -772,7 +772,7 @@ fn to_num(v: SVal) SVal:
     if v.kind == V_EMPTY: return svnum(0.0)
 
     if v.kind == V_TEXT:
-        if let x = parse_number(v.text.trim()): return svnum(x)
+        if x := parse_number(v.text.trim()): return svnum(x)
 
         return sverr("#VALUE!")
 
@@ -783,7 +783,7 @@ fn to_bool(v: SVal) SVal:
     if v.kind == V_EMPTY: return svbool(false)
 
     if v.kind == V_TEXT:
-        let u = v.text.upper()
+        u := v.text.upper()
         if u == "TRUE": return svbool(true)
         if u == "FALSE": return svbool(false)
 
@@ -850,14 +850,14 @@ fn compare_op(a: SVal, b: SVal, op: String) SVal:
     return svbool(op_holds(op, c))
 
 fn arith(op: String, a: SVal, b: SVal) SVal:
-    let ca = to_num(a)
+    ca := to_num(a)
     if ca.kind == V_ERR: return ca
 
-    let cb = to_num(b)
+    cb := to_num(b)
     if cb.kind == V_ERR: return cb
 
-    let x = ca.num
-    let y = cb.num
+    x := ca.num
+    y := cb.num
     var r = 0.0
 
     if op == "+":
@@ -882,7 +882,7 @@ fn concat2(a: SVal, b: SVal) SVal:
     return svtext(strform(a) + strform(b))
 
 fn ev(sh: SSheet, n: SNode) SVal:
-    let k = n.kind
+    k := n.kind
     if k == K_NUM: return svnum(n.num)
     if k == K_STR: return svtext(n.text)
     if k == K_BOOL: return svbool(n.num != 0.0)
@@ -901,15 +901,15 @@ fn ev(sh: SSheet, n: SNode) SVal:
     if k == K_NAME: return sverr("#NAME?")
 
     if k == K_NEG or k == K_POS:
-        let v = to_num(ev(sh, n.kids[0].clone()))
+        v := to_num(ev(sh, n.kids[0].clone()))
         if v.kind == V_ERR: return v.clone()
         if k == K_NEG: return svnum(-v.num)
 
         return v.clone()
 
     if k == K_BIN:
-        let a = ev(sh, n.kids[0].clone())
-        let b = ev(sh, n.kids[1].clone())
+        a := ev(sh, n.kids[0].clone())
+        b := ev(sh, n.kids[1].clone())
         if n.text == "&": return concat2(a, b)
         if (
             n.text == "="
@@ -928,7 +928,7 @@ fn ev(sh: SSheet, n: SNode) SVal:
     return sverr("#PARSE!")
 
 fn ev_top(sh: SSheet, n: SNode) SVal:
-    let v = ev(sh, n)
+    v := ev(sh, n)
     if v.kind == V_EMPTY: return svnum(0.0)
 
     return v.clone()
@@ -941,9 +941,9 @@ fn items_of(sh: SSheet, args: List[SNode]) List[SItem]:
             if not a.ok:
                 out.append(SItem(v: sverr("#REF!"), rng: true))
             else:
-                let rc = node_rect(a)
-                let rend = rc.r2 + 1
-                let cend = rc.c2 + 1
+                rc := node_rect(a)
+                rend := rc.r2 + 1
+                cend := rc.c2 + 1
                 for r in rc.r1..rend:
                     for c in rc.c1..cend:
                         out.append(SItem(v: value_at(sh, mkkey(c, r)), rng: true))
@@ -953,7 +953,7 @@ fn items_of(sh: SSheet, args: List[SNode]) List[SItem]:
     return out
 
 fn nums_of(sh: SSheet, args: List[SNode]) SNums:
-    let items = items_of(sh, args)
+    items := items_of(sh, args)
     var vals = List[Float]()
 
     for it in items:
@@ -963,7 +963,7 @@ fn nums_of(sh: SSheet, args: List[SNode]) SNums:
             if it.v.kind == V_NUM:
                 vals.append(it.v.num)
         else:
-            let c = to_num(it.v)
+            c := to_num(it.v)
             if c.kind == V_ERR: return SNums(err: c, failed: true, vals: vals)
 
             vals.append(c.num)
@@ -973,7 +973,7 @@ fn nums_of(sh: SSheet, args: List[SNode]) SNums:
 fn agg_sum(sh: SSheet, args: List[SNode]) SVal:
     if args.length() == 0: return sverr("#VALUE!")
 
-    let r = nums_of(sh, args)
+    r := nums_of(sh, args)
     if r.failed: return r.err
 
     var s = 0.0
@@ -984,7 +984,7 @@ fn agg_sum(sh: SSheet, args: List[SNode]) SVal:
 fn agg_average(sh: SSheet, args: List[SNode]) SVal:
     if args.length() == 0: return sverr("#VALUE!")
 
-    let r = nums_of(sh, args)
+    r := nums_of(sh, args)
     if r.failed: return r.err
     if r.vals.length() == 0: return sverr("#DIV/0!")
 
@@ -996,7 +996,7 @@ fn agg_average(sh: SSheet, args: List[SNode]) SVal:
 fn agg_minmax(sh: SSheet, args: List[SNode], want_max: Bool) SVal:
     if args.length() == 0: return sverr("#VALUE!")
 
-    let r = nums_of(sh, args)
+    r := nums_of(sh, args)
     if r.failed: return r.err
     if r.vals.length() == 0: return svnum(0.0)
 
@@ -1013,7 +1013,7 @@ fn agg_minmax(sh: SSheet, args: List[SNode], want_max: Bool) SVal:
 fn agg_product(sh: SSheet, args: List[SNode]) SVal:
     if args.length() == 0: return sverr("#VALUE!")
 
-    let r = nums_of(sh, args)
+    r := nums_of(sh, args)
     if r.failed: return r.err
     if r.vals.length() == 0: return svnum(0.0)
 
@@ -1025,10 +1025,10 @@ fn agg_product(sh: SSheet, args: List[SNode]) SVal:
 fn agg_median(sh: SSheet, args: List[SNode]) SVal:
     if args.length() == 0: return sverr("#VALUE!")
 
-    let r = nums_of(sh, args)
+    r := nums_of(sh, args)
     if r.failed: return r.err
 
-    let cnt = r.vals.length()
+    cnt := r.vals.length()
     if cnt == 0: return sverr("#NUM!")
 
     var xs = List[Float]()
@@ -1036,7 +1036,7 @@ fn agg_median(sh: SSheet, args: List[SNode]) SVal:
         xs.append(x)
     xs.sort()
 
-    let h = cnt / 2
+    h := cnt / 2
     if cnt % 2 == 1: return svnum(xs[h])
 
     return finite_or_num((xs[h - 1] + xs[h]) / 2.0)
@@ -1044,7 +1044,7 @@ fn agg_median(sh: SSheet, args: List[SNode]) SVal:
 fn agg_count(sh: SSheet, args: List[SNode], nonempty: Bool) SVal:
     if args.length() == 0: return sverr("#VALUE!")
 
-    let items = items_of(sh, args)
+    items := items_of(sh, args)
     var cnt = 0
 
     for it in items:
@@ -1059,7 +1059,7 @@ fn agg_count(sh: SSheet, args: List[SNode], nonempty: Bool) SVal:
 fn fn_if(sh: SSheet, args: List[SNode]) SVal:
     if args.length() < 2 or args.length() > 3: return sverr("#VALUE!")
 
-    let c = to_bool(ev(sh, args[0].clone()))
+    c := to_bool(ev(sh, args[0].clone()))
     if c.kind == V_ERR: return c.clone()
     if c.num != 0.0: return ev(sh, args[1].clone())
     if args.length() == 3: return ev(sh, args[2].clone())
@@ -1069,7 +1069,7 @@ fn fn_if(sh: SSheet, args: List[SNode]) SVal:
 fn fn_iferror(sh: SSheet, args: List[SNode]) SVal:
     if args.length() != 2: return sverr("#VALUE!")
 
-    let a = ev(sh, args[0].clone())
+    a := ev(sh, args[0].clone())
     if a.kind == V_ERR: return ev(sh, args[1].clone())
 
     return a.clone()
@@ -1077,20 +1077,20 @@ fn fn_iferror(sh: SSheet, args: List[SNode]) SVal:
 fn fn_choose(sh: SSheet, args: List[SNode]) SVal:
     if args.length() < 2: return sverr("#VALUE!")
 
-    let iv = to_num(ev(sh, args[0].clone()))
+    iv := to_num(ev(sh, args[0].clone()))
     if iv.kind == V_ERR: return iv
 
-    let f = floor(iv.num)
-    let cnt = args.length() - 1
+    f := floor(iv.num)
+    cnt := args.length() - 1
     if f < 1.0 or f > cnt.to_float(): return sverr("#VALUE!")
 
-    let idx = f.truncate_to_int().get(0)
+    idx := f.truncate_to_int().get(0)
     return ev(sh, args[idx].clone())
 
 fn fn_andor(sh: SSheet, args: List[SNode], is_and: Bool) SVal:
     if args.length() == 0: return sverr("#VALUE!")
 
-    let items = items_of(sh, args)
+    items := items_of(sh, args)
     var result = is_and
     var took = false
 
@@ -1098,7 +1098,7 @@ fn fn_andor(sh: SSheet, args: List[SNode], is_and: Bool) SVal:
         if it.v.kind == V_ERR: return it.v.clone()
         if it.rng and (it.v.kind == V_TEXT or it.v.kind == V_EMPTY): continue
 
-        let b = to_bool(it.v)
+        b := to_bool(it.v)
         if b.kind == V_ERR: return b.clone()
 
         took = true
@@ -1115,14 +1115,14 @@ fn fn_andor(sh: SSheet, args: List[SNode], is_and: Bool) SVal:
 fn fn_not(sh: SSheet, args: List[SNode]) SVal:
     if args.length() != 1: return sverr("#VALUE!")
 
-    let b = to_bool(ev(sh, args[0].clone()))
+    b := to_bool(ev(sh, args[0].clone()))
     if b.kind == V_ERR: return b.clone()
 
     return svbool(b.num == 0.0)
 
 fn round_half(y: Float) Float:
-    let a = y.abs()
-    let f = floor(a)
+    a := y.abs()
+    f := floor(a)
     var r = f
     if a - f >= 0.5:
         r = f + 1.0
@@ -1133,10 +1133,10 @@ fn round_half(y: Float) Float:
 fn fn_num1(sh: SSheet, args: List[SNode], which: Int) SVal:
     if args.length() != 1: return sverr("#VALUE!")
 
-    let c = to_num(ev(sh, args[0].clone()))
+    c := to_num(ev(sh, args[0].clone()))
     if c.kind == V_ERR: return c.clone()
 
-    let x = c.num
+    x := c.num
     if which == 0: return svnum(x.abs())
     if which == 1: return finite_or_num(floor(x))
     if x < 0.0: return sverr("#NUM!")
@@ -1146,17 +1146,17 @@ fn fn_num1(sh: SSheet, args: List[SNode], which: Int) SVal:
 fn fn_pow(sh: SSheet, args: List[SNode]) SVal:
     if args.length() != 2: return sverr("#VALUE!")
 
-    let a = ev(sh, args[0].clone())
-    let b = ev(sh, args[1].clone())
+    a := ev(sh, args[0].clone())
+    b := ev(sh, args[1].clone())
     return arith("^", a, b)
 
 fn fn_mod(sh: SSheet, args: List[SNode]) SVal:
     if args.length() != 2: return sverr("#VALUE!")
 
-    let a = to_num(ev(sh, args[0].clone()))
+    a := to_num(ev(sh, args[0].clone()))
     if a.kind == V_ERR: return a.clone()
 
-    let b = to_num(ev(sh, args[1].clone()))
+    b := to_num(ev(sh, args[1].clone()))
     if b.kind == V_ERR: return b.clone()
     if b.num == 0.0: return sverr("#DIV/0!")
 
@@ -1165,30 +1165,30 @@ fn fn_mod(sh: SSheet, args: List[SNode]) SVal:
 fn fn_round(sh: SSheet, args: List[SNode]) SVal:
     if args.length() < 1 or args.length() > 2: return sverr("#VALUE!")
 
-    let x = to_num(ev(sh, args[0].clone()))
+    x := to_num(ev(sh, args[0].clone()))
     if x.kind == V_ERR: return x.clone()
 
     var d = 0.0
 
     if args.length() == 2:
-        let dv = to_num(ev(sh, args[1].clone()))
+        dv := to_num(ev(sh, args[1].clone()))
         if dv.kind == V_ERR: return dv
 
         d = dv.num
 
     if d.abs() > 1000000.0: return sverr("#NUM!")
 
-    let dt = d.truncate_to_int().get(0)
+    dt := d.truncate_to_int().get(0)
     if dt > 15 or dt < -15: return sverr("#NUM!")
 
-    let p = pow(10.0, dt.to_float())
-    let r = round_half(x.num * p) / p
+    p := pow(10.0, dt.to_float())
+    r := round_half(x.num * p) / p
     return finite_or_num(r)
 
 fn fn_len(sh: SSheet, args: List[SNode]) SVal:
     if args.length() != 1: return sverr("#VALUE!")
 
-    let v = ev(sh, args[0].clone())
+    v := ev(sh, args[0].clone())
     if v.kind == V_ERR: return v.clone()
 
     return svnum(strform(v).scalar_length().to_float())
@@ -1209,10 +1209,10 @@ fn ascii_case(s: String, to_upper: Bool) String:
 fn fn_text1(sh: SSheet, args: List[SNode], which: Int) SVal:
     if args.length() != 1: return sverr("#VALUE!")
 
-    let v = ev(sh, args[0].clone())
+    v := ev(sh, args[0].clone())
     if v.kind == V_ERR: return v.clone()
 
-    let s = strform(v)
+    s := strform(v)
     if which == 0: return svtext(ascii_case(s, true))
     if which == 1: return svtext(ascii_case(s, false))
 
@@ -1221,21 +1221,21 @@ fn fn_text1(sh: SSheet, args: List[SNode], which: Int) SVal:
 fn fn_leftright(sh: SSheet, args: List[SNode], left: Bool) SVal:
     if args.length() < 1 or args.length() > 2: return sverr("#VALUE!")
 
-    let sv = ev(sh, args[0].clone())
+    sv := ev(sh, args[0].clone())
     if sv.kind == V_ERR: return sv.clone()
 
     var k = 1.0
 
     if args.length() == 2:
-        let kv = to_num(ev(sh, args[1].clone()))
+        kv := to_num(ev(sh, args[1].clone()))
         if kv.kind == V_ERR: return kv
 
         k = floor(kv.num)
 
     if k < 0.0: return sverr("#VALUE!")
 
-    let s = strform(sv)
-    let len = s.scalar_length()
+    s := strform(sv)
+    len := s.scalar_length()
     var kk = len
     if k < len.to_float():
         kk = k.truncate_to_int().get(0)
@@ -1246,26 +1246,26 @@ fn fn_leftright(sh: SSheet, args: List[SNode], left: Bool) SVal:
 fn fn_mid(sh: SSheet, args: List[SNode]) SVal:
     if args.length() != 3: return sverr("#VALUE!")
 
-    let sv = ev(sh, args[0].clone())
+    sv := ev(sh, args[0].clone())
     if sv.kind == V_ERR: return sv.clone()
 
-    let stv = to_num(ev(sh, args[1].clone()))
+    stv := to_num(ev(sh, args[1].clone()))
     if stv.kind == V_ERR: return stv
 
-    let lv = to_num(ev(sh, args[2].clone()))
+    lv := to_num(ev(sh, args[2].clone()))
     if lv.kind == V_ERR: return lv
 
-    let st = floor(stv.num)
-    let ln = floor(lv.num)
+    st := floor(stv.num)
+    ln := floor(lv.num)
     if st < 1.0 or ln < 0.0: return sverr("#VALUE!")
 
-    let s = strform(sv)
-    let len = s.scalar_length()
-    let si = st - 1.0
+    s := strform(sv)
+    len := s.scalar_length()
+    si := st - 1.0
     if si >= len.to_float(): return svtext("")
 
-    let sidx = si.truncate_to_int().get(0)
-    let remain = len - sidx
+    sidx := si.truncate_to_int().get(0)
+    remain := len - sidx
     var cnt = remain
     if ln < remain.to_float():
         cnt = ln.truncate_to_int().get(0)
@@ -1274,7 +1274,7 @@ fn fn_mid(sh: SSheet, args: List[SNode]) SVal:
 fn fn_concat(sh: SSheet, args: List[SNode]) SVal:
     if args.length() == 0: return sverr("#VALUE!")
 
-    let items = items_of(sh, args)
+    items := items_of(sh, args)
     var out = ""
 
     for it in items:
@@ -1287,17 +1287,17 @@ fn fn_concat(sh: SSheet, args: List[SNode]) SVal:
 fn fn_substitute(sh: SSheet, args: List[SNode]) SVal:
     if args.length() != 3: return sverr("#VALUE!")
 
-    let sv = ev(sh, args[0].clone())
+    sv := ev(sh, args[0].clone())
     if sv.kind == V_ERR: return sv.clone()
 
-    let ov = ev(sh, args[1].clone())
+    ov := ev(sh, args[1].clone())
     if ov.kind == V_ERR: return ov
 
-    let nv = ev(sh, args[2].clone())
+    nv := ev(sh, args[2].clone())
     if nv.kind == V_ERR: return nv
 
-    let old = strform(ov)
-    let s = strform(sv)
+    old := strform(ov)
+    s := strform(sv)
     if old == "": return svtext(s)
 
     return svtext(s.replace(old, strform(nv)))
@@ -1310,7 +1310,7 @@ fn fn_value(sh: SSheet, args: List[SNode]) SVal:
 fn fn_is(sh: SSheet, args: List[SNode], which: Int) SVal:
     if args.length() != 1: return sverr("#VALUE!")
 
-    let v = ev(sh, args[0].clone())
+    v := ev(sh, args[0].clone())
     if which == 0: return svbool(v.kind == V_ERR)
     if which == 1: return svbool(v.kind == V_EMPTY)
     if which == 2: return svbool(v.kind == V_NUM)
@@ -1320,7 +1320,7 @@ fn fn_is(sh: SSheet, args: List[SNode], which: Int) SVal:
 fn fn_rowcol(args: List[SNode], is_row: Bool) SVal:
     if args.length() != 1: return sverr("#VALUE!")
 
-    let a = args[0]
+    a := args[0]
 
     if a.kind == K_REF:
         if not a.ok: return sverr("#REF!")
@@ -1331,7 +1331,7 @@ fn fn_rowcol(args: List[SNode], is_row: Bool) SVal:
     if a.kind == K_RANGE:
         if not a.ok: return sverr("#REF!")
 
-        let rc = node_rect(a)
+        rc := node_rect(a)
         if is_row: return svnum(rc.r1.to_float())
 
         return svnum((rc.c1 + 1).to_float())
@@ -1341,21 +1341,21 @@ fn fn_rowcol(args: List[SNode], is_row: Bool) SVal:
 fn fn_index(sh: SSheet, args: List[SNode]) SVal:
     if args.length() < 2 or args.length() > 3: return sverr("#VALUE!")
 
-    let a = args[0]
+    a := args[0]
     if a.kind != K_RANGE: return sverr("#VALUE!")
     if not a.ok: return sverr("#REF!")
 
-    let rc = node_rect(a)
-    let rows = rc.r2 - rc.r1 + 1
-    let cols = rc.c2 - rc.c1 + 1
-    let rv = to_num(ev(sh, args[1].clone()))
+    rc := node_rect(a)
+    rows := rc.r2 - rc.r1 + 1
+    cols := rc.c2 - rc.c1 + 1
+    rv := to_num(ev(sh, args[1].clone()))
     if rv.kind == V_ERR: return rv
 
     var row = 1.0
     var col = 1.0
 
     if args.length() == 3:
-        let cv = to_num(ev(sh, args[2].clone()))
+        cv := to_num(ev(sh, args[2].clone()))
         if cv.kind == V_ERR: return cv
 
         row = rv.num
@@ -1365,22 +1365,22 @@ fn fn_index(sh: SSheet, args: List[SNode]) SVal:
     else:
         row = rv.num
 
-    let ri = floor(row)
-    let ci = floor(col)
+    ri := floor(row)
+    ci := floor(col)
     if ri < 1.0 or ri > rows.to_float() or ci < 1.0 or ci > cols.to_float():
         return sverr("#REF!")
 
-    let rr = rc.r1 + ri.truncate_to_int().get(0) - 1
-    let cc = rc.c1 + ci.truncate_to_int().get(0) - 1
+    rr := rc.r1 + ri.truncate_to_int().get(0) - 1
+    cc := rc.c1 + ci.truncate_to_int().get(0) - 1
     return value_at(sh, mkkey(cc, rr))
 
 fn fn_countif(sh: SSheet, args: List[SNode]) SVal:
     if args.length() != 2: return sverr("#VALUE!")
 
-    let a = args[0]
+    a := args[0]
     if a.kind != K_RANGE: return sverr("#VALUE!")
 
-    let cv = ev(sh, args[1].clone())
+    cv := ev(sh, args[1].clone())
     if cv.kind == V_ERR: return cv
     if not a.ok: return sverr("#REF!")
 
@@ -1388,8 +1388,8 @@ fn fn_countif(sh: SSheet, args: List[SNode]) SVal:
     var opnd = cv.clone()
 
     if cv.kind == V_TEXT:
-        let s = cv.text
-        let len = s.scalar_length()
+        s := cv.text
+        len := s.scalar_length()
         var rest = s.clone()
 
         if s.starts_with(">="):
@@ -1411,19 +1411,19 @@ fn fn_countif(sh: SSheet, args: List[SNode]) SVal:
             op = "="
             rest = s.slice_scalars(1, len).get("")
 
-        if let x = parse_number(rest):
+        if x := parse_number(rest):
             opnd = svnum(x)
         else:
             opnd = svtext(rest)
 
-    let rc = node_rect(a)
-    let rend = rc.r2 + 1
-    let cend = rc.c2 + 1
+    rc := node_rect(a)
+    rend := rc.r2 + 1
+    cend := rc.c2 + 1
     var cnt = 0
 
     for r in rc.r1..rend:
         for c in rc.c1..cend:
-            let v = value_at(sh, mkkey(c, r))
+            v := value_at(sh, mkkey(c, r))
 
             if v.kind == opnd.kind:
                 if op_holds(op, cmp_vals(v, opnd)):
@@ -1434,8 +1434,8 @@ fn fn_countif(sh: SSheet, args: List[SNode]) SVal:
     return svnum(cnt.to_float())
 
 fn callf(sh: SSheet, n: SNode) SVal:
-    let nm = n.text
-    let args = n.kids
+    nm := n.text
+    args := n.kids
     if nm == "SUM": return agg_sum(sh, args.clone())
     if nm == "AVERAGE": return agg_average(sh, args.clone())
     if nm == "MIN": return agg_minmax(sh, args.clone(), false)
@@ -1480,12 +1480,12 @@ fn callf(sh: SSheet, n: SNode) SVal:
 // ---------- dependencies and recalculation ----------
 
 fn is_formula(sh: SSheet, k: Int) Bool:
-    if let c = sh.cells.get(k): return c.mode != 0
+    if c := sh.cells.get(k): return c.mode != 0
 
     return false
 
 fn depends_on(sh: SSheet, f: Int, x: Int) Bool:
-    if let c = sh.cells.get(f):
+    if c := sh.cells.get(f):
         for r in c.precs:
             if rect_has(r, x): return true
     return false
@@ -1496,12 +1496,12 @@ fn cell_depends(c: SCell, x: Int) Bool:
     return false
 
 fn ast_of(sh: SSheet, k: Int) SNode:
-    if let c = sh.cells.get(k): return c.ast.clone()
+    if c := sh.cells.get(k): return c.ast.clone()
 
     return SNode(kind: K_NUM)
 
 fn mode_of(sh: SSheet, k: Int) Int:
-    if let c = sh.cells.get(k): return c.mode
+    if c := sh.cells.get(k): return c.mode
 
     return 0
 
@@ -1515,7 +1515,7 @@ fn strong(var t: STarjan, v: Int) Unit:
     var e = 0
 
     while e < t.adj[v].length():
-        let w = t.adj[v][e]
+        w := t.adj[v][e]
         e += 1
 
         if t.index[w] < 0:
@@ -1531,7 +1531,7 @@ fn strong(var t: STarjan, v: Int) Unit:
         var going = true
 
         while going:
-            let x = t.stk.pop().get(0)
+            x := t.stk.pop().get(0)
             t.onst[x] = false
             comp.append(x)
             if x == v:
@@ -1559,18 +1559,18 @@ fn recalc(var sh: SSheet, changed: List[Int]) Int:
     var head = 0
 
     while head < queue.length():
-        let x = queue[head]
+        x := queue[head]
         head += 1
 
         for e in sh.cells.entries():
-            let f = e.key
+            f := e.key
 
             if not seen.contains(f) and cell_depends(e.value, x):
                 seen.add(f)
                 queue.append(f)
                 aff.append(f)
 
-    let m = aff.length()
+    m := aff.length()
     var adj = List[List[Int]]()
     var index = List[Int]()
     var low = List[Int]()
@@ -1596,13 +1596,13 @@ fn recalc(var sh: SSheet, changed: List[Int]) Int:
 
     for comp in t.comps:
         if comp.length() == 1 and not self_loop(t.adj[comp[0]], comp[0]):
-            let k = aff[comp[0]]
+            k := aff[comp[0]]
 
             if mode_of(sh, k) == 2:
                 sh.vals[k] = sverr("#PARSE!")
             else:
-                let ast = ast_of(sh, k)
-                let v = ev_top(sh, ast)
+                ast := ast_of(sh, k)
+                v := ev_top(sh, ast)
                 sh.vals[k] = v
         else:
             for x in comp:
@@ -1617,7 +1617,7 @@ fn assign(var sh: SSheet, k: Int, raw: String) Unit:
         sh.vals.remove(k)
         return
 
-    let c = make_cell(raw.clone())
+    c := make_cell(raw.clone())
 
     if c.mode == 0:
         sh.vals[k] = const_value(raw)
@@ -1635,11 +1635,11 @@ fn dependents_of(sh: SSheet, x0: Int) List[Int]:
     var head = 0
 
     while head < queue.length():
-        let x = queue[head]
+        x := queue[head]
         head += 1
 
         for e in sh.cells.entries():
-            let f = e.key
+            f := e.key
 
             if not seen.contains(f) and cell_depends(e.value, x):
                 seen.add(f)
@@ -1653,14 +1653,14 @@ fn precedents_of(sh: SSheet, k: Int) List[Int]:
     var seen = Set[Int]()
     var out = List[Int]()
 
-    if let c = sh.cells.get(k):
+    if c := sh.cells.get(k):
         for r in c.precs:
-            let rend = r.r2 + 1
-            let cend = r.c2 + 1
+            rend := r.r2 + 1
+            cend := r.c2 + 1
 
             for rr in r.r1..rend:
                 for cc in r.c1..cend:
-                    let key = mkkey(cc, rr)
+                    key := mkkey(cc, rr)
 
                     if not seen.contains(key):
                         seen.add(key)
@@ -1672,8 +1672,8 @@ fn precedents_of(sh: SSheet, k: Int) List[Int]:
 // ---------- cell references in commands ----------
 
 fn cell_key(s: String) Int:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     if n < 2 or n > 4: return -1
     if not is_alpha(cs[0]): return -1
 
@@ -1686,23 +1686,23 @@ fn cell_key(s: String) Int:
 
     if cs[1] == "0": return -1
 
-    let row = sub(cs, 1, n).parse_int().get(0)
+    row := sub(cs, 1, n).parse_int().get(0)
     if row < 1 or row > 999: return -1
 
     return mkkey(letter_idx(cs[0]), row)
 
 fn parse_range(s: String) SRect?:
-    let parts = s.split(":")
+    parts := s.split(":")
 
     if parts.length() == 1:
-        let k = cell_key(parts[0])
+        k := cell_key(parts[0])
         if k < 0: return none
 
         return SRect(c1: keycol(k), r1: keyrow(k), c2: keycol(k), r2: keyrow(k))
 
     if parts.length() == 2:
-        let a = cell_key(parts[0])
-        let b = cell_key(parts[1])
+        a := cell_key(parts[0])
+        b := cell_key(parts[1])
         if a < 0 or b < 0: return none
 
         return norm_rect(keycol(a), keyrow(a), keycol(b), keyrow(b))
@@ -1710,8 +1710,8 @@ fn parse_range(s: String) SRect?:
     return none
 
 fn rest_after(line: String, skip: Int) String:
-    let cs = line.chars()
-    let n = cs.length()
+    cs := line.chars()
+    n := cs.length()
     var i = 0
     var k = 0
 
@@ -1727,7 +1727,7 @@ fn rest_after(line: String, skip: Int) String:
 // ---------- formula copy (reference shifting) ----------
 
 fn shift_corner(cs: List[String], pos: Int, dr: Int, dc: Int) SShift:
-    let r = scan_ref(cs, pos)
+    r := scan_ref(cs, pos)
     if r.endp < 0: return SShift(text: "", off: false, endp: pos)
     if not r.ok: return SShift(text: sub(cs, pos, r.endp), off: false, endp: r.endp)
 
@@ -1750,8 +1750,8 @@ fn shift_corner(cs: List[String], pos: Int, dr: Int, dc: Int) SShift:
     return SShift(text: s, off: false, endp: r.endp)
 
 fn shift_formula(src: String, dr: Int, dc: Int) String:
-    let cs = src.chars()
-    let lx = tokenize(cs)
+    cs := src.chars()
+    lx := tokenize(cs)
     if lx.bad: return src.clone()
 
     var out = ""
@@ -1759,13 +1759,13 @@ fn shift_formula(src: String, dr: Int, dc: Int) String:
 
     for t in lx.toks:
         if t.kind == K_REF:
-            let a = shift_corner(cs, t.pos, dr, dc)
+            a := shift_corner(cs, t.pos, dr, dc)
             out += sub(cs, cur, t.pos)
             out += a.text
             cur = t.endp
         else if t.kind == K_RANGE:
-            let a = shift_corner(cs, t.pos, dr, dc)
-            let b = shift_corner(cs, a.endp + 1, dr, dc)
+            a := shift_corner(cs, t.pos, dr, dc)
+            b := shift_corner(cs, a.endp + 1, dr, dc)
             out += sub(cs, cur, t.pos)
 
             if a.off or b.off:
@@ -1788,8 +1788,8 @@ fn parse_block(block: List[String]) List[List[String]]:
             text += "\n"
         text += block[i]
 
-    let cs = text.chars()
-    let n = cs.length()
+    cs := text.chars()
+    n := cs.length()
     var recs = List[List[String]]()
     var fields = List[String]()
     var field = ""
@@ -1798,7 +1798,7 @@ fn parse_block(block: List[String]) List[List[String]]:
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if inq:
             if c == "\"":
@@ -1855,7 +1855,7 @@ fn csv_quote(s: String) String:
 
 fn cell_text(sh: SSheet, k: Int, fml: Bool) String:
     if fml:
-        if let c = sh.cells.get(k): return c.raw.clone()
+        if c := sh.cells.get(k): return c.raw.clone()
 
         return ""
 
@@ -1867,8 +1867,8 @@ fn default_rect(sh: SSheet) SRect?:
     var maxr = 0
 
     for e in sh.cells.entries():
-        let c = keycol(e.key)
-        let r = keyrow(e.key)
+        c := keycol(e.key)
+        r := keyrow(e.key)
 
         if not any:
             any = true
@@ -1890,7 +1890,7 @@ fn view_args(words: List[String], is_export: Bool) SView:
     var i = 1
 
     while i < words.length():
-        let a = words[i]
+        a := words[i]
 
         if a == "formulas" or a == "values":
             nwords += 1
@@ -1902,7 +1902,7 @@ fn view_args(words: List[String], is_export: Bool) SView:
 
         i += 1
 
-    let empty_rect = SRect(c1: 0, r1: 1, c2: 0, r2: 1)
+    empty_rect := SRect(c1: 0, r1: 1, c2: 0, r2: 1)
     if nwords > 1 or nrange > 1:
         return SView(
             usage: true, bad: "", fml: false, has_range: false, rect: empty_rect
@@ -1915,7 +1915,7 @@ fn view_args(words: List[String], is_export: Bool) SView:
         return SView(
             usage: false, bad: "", fml: fml, has_range: false, rect: empty_rect
         )
-    if let rc = parse_range(rtext):
+    if rc := parse_range(rtext):
         return SView(usage: false, bad: "", fml: fml, has_range: true, rect: rc)
 
     return SView(usage: false, bad: rtext, fml: fml, has_range: false, rect: empty_rect)
@@ -1938,20 +1938,20 @@ fn run_view(sh: SSheet, words: List[String], is_export: Bool) Unit:
     var rc = v.rect.clone()
 
     if not v.has_range:
-        if let d = default_rect(sh):
+        if d := default_rect(sh):
             rc = d
         else:
             print("(empty sheet)")
             return
 
-    let rend = rc.r2 + 1
-    let cend = rc.c2 + 1
+    rend := rc.r2 + 1
+    cend := rc.c2 + 1
 
     for r in rc.r1..rend:
         var parts = List[String]()
 
         for c in rc.c1..cend:
-            let txt = cell_text(sh, mkkey(c, r), v.fml)
+            txt := cell_text(sh, mkkey(c, r), v.fml)
 
             if is_export:
                 parts.append(csv_quote(txt))
@@ -1968,20 +1968,20 @@ fn run_import(var sh: SSheet, words: List[String], block: List[String]) Unit:
         print("error: usage: import CELL")
         return
 
-    let k0 = cell_key(words[1])
+    k0 := cell_key(words[1])
 
     if k0 < 0:
         print("error: bad cell reference '" + words[1] + "'")
         return
 
-    let recs = parse_block(block)
-    let nrec = recs.length()
+    recs := parse_block(block)
+    nrec := recs.length()
     var ncol = 0
     for rec in recs:
         ncol = imax(ncol, rec.length())
 
-    let r0 = keyrow(k0)
-    let c0 = keycol(k0)
+    r0 := keyrow(k0)
+    c0 := keycol(k0)
 
     if nrec > 0 and r0 + nrec - 1 > 999:
         print("error: import out of range")
@@ -1994,14 +1994,14 @@ fn run_import(var sh: SSheet, words: List[String], block: List[String]) Unit:
     var changed = List[Int]()
 
     for i in 0..nrec:
-        let rec = recs[i]
+        rec := recs[i]
 
         for j in 0..rec.length():
-            let k = mkkey(c0 + j, r0 + i)
+            k := mkkey(c0 + j, r0 + i)
             assign(var sh, k, rec[j].trim())
             changed.append(k)
 
-    let n = recalc(var sh, changed)
+    n := recalc(var sh, changed)
     print(
         "imported "
         + nrec.to_string()
@@ -2012,15 +2012,15 @@ fn run_import(var sh: SSheet, words: List[String], block: List[String]) Unit:
     )
 
 fn run_cmd(var sh: SSheet, words: List[String], t: String) Unit:
-    let cmd = words[0]
-    let na = words.length() - 1
+    cmd := words[0]
+    na := words.length() - 1
 
     if cmd == "set":
         if na < 1:
             print("error: usage: set CELL VALUE")
             return
 
-        let k = cell_key(words[1])
+        k := cell_key(words[1])
 
         if k < 0:
             print("error: bad cell reference '" + words[1] + "'")
@@ -2028,14 +2028,14 @@ fn run_cmd(var sh: SSheet, words: List[String], t: String) Unit:
 
         assign(var sh, k, rest_after(t, 2))
 
-        let n = recalc(var sh, [k])
+        n := recalc(var sh, [k])
         print("recalc " + n.to_string())
     else if cmd == "clear":
         if na != 1:
             print("error: usage: clear CELL")
             return
 
-        let k = cell_key(words[1])
+        k := cell_key(words[1])
 
         if k < 0:
             print("error: bad cell reference '" + words[1] + "'")
@@ -2043,20 +2043,20 @@ fn run_cmd(var sh: SSheet, words: List[String], t: String) Unit:
 
         assign(var sh, k, "")
 
-        let n = recalc(var sh, [k])
+        n := recalc(var sh, [k])
         print("recalc " + n.to_string())
     else if cmd == "get":
         if na != 1:
             print("error: usage: get CELL")
             return
 
-        let k = cell_key(words[1])
+        k := cell_key(words[1])
 
         if k < 0:
             print("error: bad cell reference '" + words[1] + "'")
             return
 
-        if let v = sh.vals.get(k):
+        if v := sh.vals.get(k):
             if v.kind != V_EMPTY:
                 print(strform(v))
                 return
@@ -2067,15 +2067,15 @@ fn run_cmd(var sh: SSheet, words: List[String], t: String) Unit:
             print("error: usage: show CELL")
             return
 
-        let k = cell_key(words[1])
+        k := cell_key(words[1])
 
         if k < 0:
             print("error: bad cell reference '" + words[1] + "'")
             return
 
-        let name = name_of(k)
+        name := name_of(k)
 
-        if let c = sh.cells.get(k):
+        if c := sh.cells.get(k):
             if c.mode == 0:
                 print(name + ": " + c.raw)
             else:
@@ -2087,42 +2087,42 @@ fn run_cmd(var sh: SSheet, words: List[String], t: String) Unit:
             print("error: usage: copy SRC DST")
             return
 
-        let sk = cell_key(words[1])
+        sk := cell_key(words[1])
 
         if sk < 0:
             print("error: bad cell reference '" + words[1] + "'")
             return
 
-        if let dst = parse_range(words[2]):
+        if dst := parse_range(words[2]):
             var raw_src = ""
             var fml = false
 
-            if let c = sh.cells.get(sk):
+            if c := sh.cells.get(sk):
                 raw_src = c.raw.clone()
                 fml = c.mode != 0
 
-            let srow = keyrow(sk)
-            let scol = keycol(sk)
+            srow := keyrow(sk)
+            scol := keycol(sk)
             var changed = List[Int]()
-            let rend = dst.r2 + 1
-            let cend = dst.c2 + 1
+            rend := dst.r2 + 1
+            cend := dst.c2 + 1
 
             for r in dst.r1..rend:
                 for c in dst.c1..cend:
-                    let k = mkkey(c, r)
+                    k := mkkey(c, r)
                     changed.append(k)
 
                     if raw_src == "":
                         assign(var sh, k, "")
                     else if fml:
-                        let body = raw_src.slice_scalars(
+                        body := raw_src.slice_scalars(
                             1, raw_src.scalar_length()
                         ).get("")
                         assign(var sh, k, "=" + shift_formula(body, r - srow, c - scol))
                     else:
                         assign(var sh, k, raw_src.clone())
 
-            let n = recalc(var sh, changed)
+            n := recalc(var sh, changed)
             print("recalc " + n.to_string())
         else:
             print("error: bad range '" + words[2] + "'")
@@ -2131,7 +2131,7 @@ fn run_cmd(var sh: SSheet, words: List[String], t: String) Unit:
             print("error: usage: " + cmd + " CELL")
             return
 
-        let k = cell_key(words[1])
+        k := cell_key(words[1])
 
         if k < 0:
             print("error: bad cell reference '" + words[1] + "'")
@@ -2180,21 +2180,21 @@ fn collect_lines() List[String]!:
     return ok(out)
 
 export fn main() Int:
-    let all = collect_lines().get([])
-    let n = all.length()
+    all := collect_lines().get([])
+    n := all.length()
     var sh = SSheet(cells: Map[Int, SCell](), vals: Map[Int, SVal](), evals: 0)
     var i = 0
 
     while i < n:
-        let raw_line = all[i]
+        raw_line := all[i]
         i += 1
 
-        let t = raw_line.trim()
+        t := raw_line.trim()
         if t == "" or t.starts_with("#"): continue
 
         print("> " + raw_line.trim_end())
 
-        let words = t.fields()
+        words := t.fields()
 
         if words[0] == "import":
             var block = List[String]()

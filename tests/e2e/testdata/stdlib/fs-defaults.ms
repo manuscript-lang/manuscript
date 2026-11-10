@@ -136,19 +136,19 @@ test "filesystem tree copies default to no replacement with distinct budgets":
     )
 
 test "filesystem tree copies reject empty and disjoint existing directories":
-    let directory = try temporary("manuscript-existing-tree-")
-    let source = "{directory.path()}/source"
-    let destination = "{directory.path()}/destination"
+    directory := try temporary("manuscript-existing-tree-")
+    source := "{directory.path()}/source"
+    destination := "{directory.path()}/destination"
     try create_directory(source)
     try create_directory(destination)
 
-    let tree = CopyOptions(recursive: true)
-    let empty = try expect_error(copy(source, destination, tree))
+    tree := CopyOptions(recursive: true)
+    empty := try expect_error(copy(source, destination, tree))
     try expect_equal(empty.kind, "EEXIST")
     try write_file("{source}/new", "new").wait()
     try write_file("{destination}/keep", "keep").wait()
 
-    let disjoint = try expect_error(generic_tree(source, destination))
+    disjoint := try expect_error(generic_tree(source, destination))
     try expect_equal(disjoint.kind, "EEXIST")
     try expect_equal((try list(destination)).length(), 1)
     try expect_equal(try text("{destination}/keep"), "keep")

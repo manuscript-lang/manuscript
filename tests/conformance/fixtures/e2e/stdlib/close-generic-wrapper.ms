@@ -15,15 +15,15 @@ type Wrap[T]:
     value: T
 
 fn keep[T](v: T) Int:
-    let _w = Wrap(v)
+    _w := Wrap(v)
     return 0
 
 fn keep_optional[T](v: T) Int:
-    let _o: T? = v
+    _o: T? = v
     return 1
 
 fn main() Unit:
-    let a = keep(Door("wrapped"))
-    let b = keep_optional(Door("optional"))
-    let c = keep(5)
+    a := keep(Door("wrapped"))
+    b := keep_optional(Door("optional"))
+    c := keep(5)
     print("end {a + b + c}")

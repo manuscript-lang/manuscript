@@ -34,15 +34,15 @@ fn tags(items: List[Item]) String:
     return out
 
 fn main() Unit:
-    let v = [5, 3, 9, 1, 3, 8, -2, 7, 7, 0, 100, -50, 4, 6, 2, 11, 13, 12, 10, 15, 14]
-    let _a = stdout().write("{v.sorted(ascending)}\n")
-    let _b = stdout().write("{v.sorted(descending)}\n")
-    let _c = stdout().write("{v.sorted(shifted)}\n")
-    let _d = stdout().write("{v}\n")
-    let none: List[Int] = []
-    let _e = stdout().write("{none.sorted(ascending)} {[4].sorted(descending)}\n")
-    let items = [
+    v := [5, 3, 9, 1, 3, 8, -2, 7, 7, 0, 100, -50, 4, 6, 2, 11, 13, 12, 10, 15, 14]
+    _a := stdout().write("{v.sorted(ascending)}\n")
+    _b := stdout().write("{v.sorted(descending)}\n")
+    _c := stdout().write("{v.sorted(shifted)}\n")
+    _d := stdout().write("{v}\n")
+    none: List[Int] = []
+    _e := stdout().write("{none.sorted(ascending)} {[4].sorted(descending)}\n")
+    items := [
         Item(key: 2, tag: "a"), Item(key: 1, tag: "b"), Item(key: 2, tag: "c"),
         Item(key: 1, tag: "d")
     ]
-    let _f = stdout().write("{tags(items.sorted(by_key))}\n")
+    _f := stdout().write("{tags(items.sorted(by_key))}\n")

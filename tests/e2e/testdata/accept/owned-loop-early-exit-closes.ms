@@ -10,22 +10,22 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        let _ = append_file(self.log, "{self.id},").wait()
+        _ := append_file(self.log, "{self.id},").wait()
 
 fn logged(path: String) String:
-    let read = read_file(path).wait()
-    if let bytes = read: return bytes.decode_utf8().get("")
+    read := read_file(path).wait()
+    if bytes := read: return bytes.decode_utf8().get("")
 
     return ""
 
 fn first_even(log: String) Int:
-    let doors = [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
+    doors := [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
     for d in doors:
         if d.id % 2 == 0: return d.id
     return -1
 
 fn until_two(log: String) Int:
-    let doors = [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
+    doors := [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
     var n = 0
 
     for d in doors:
@@ -35,13 +35,13 @@ fn until_two(log: String) Int:
     return n
 
 test "return out of an owned loop closes every element once":
-    let tmp = temporary("ms-log-") | try expect_ok
-    let log = "{tmp.path()}/log"
+    tmp := temporary("ms-log-") | try expect_ok
+    log := "{tmp.path()}/log"
     first_even(log.clone()) | try expect_equal(2)
     logged(log.clone()) | try expect_equal("1,2,3,")
 
 test "break closes the elements it never reached":
-    let tmp = temporary("ms-log-") | try expect_ok
-    let log = "{tmp.path()}/log"
+    tmp := temporary("ms-log-") | try expect_ok
+    log := "{tmp.path()}/log"
     until_two(log.clone()) | try expect_equal(3)
     logged(log.clone()) | try expect_equal("1,2,3,")

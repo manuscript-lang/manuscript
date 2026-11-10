@@ -43,7 +43,7 @@ fn identities() Map[String, Identity]:
             if kind == "first" or kind == "negative" or kind == "past": position = 0
 
             if kind.starts_with("near"):
-                let want = kind.slice(4, kind.length()).get("0").parse_int().get(0)
+                want := kind.slice(4, kind.length()).get("0").parse_int().get(0)
                 position = if want < size - 1: want else: size - 1
 
             if kind == "middle": position = size / 2
@@ -53,19 +53,19 @@ fn identities() Map[String, Identity]:
             if kind == "equal": start = size
             if kind == "offset": start = size / 2
 
-            let from = if start > 0: start else: 0
+            from := if start > 0: start else: 0
 
             // The first 0xFF at or after `from`, or -1.
-            let found = if position >= 0 and position < size and position >= from: position else: -1
-            let expected = if found == -1: size else: found
+            found := if position >= 0 and position < size and position >= from: position else: -1
+            expected := if found == -1: size else: found
             var work = size
             if expected < size: work = expected + 1 - start
             if start < 0: work = expected + 1
             if start >= size: work = 1
 
-            let divisor = if work > 32: work else: 32
-            let by_work = 67108864 / divisor
-            let iterations = if by_work < 256: 256 else: (
+            divisor := if work > 32: work else: 32
+            by_work := 67108864 / divisor
+            iterations := if by_work < 256: 256 else: (
                 if by_work > 1000000: 1000000 else: by_work
             )
             rows.add("{kind}_{size}", Identity(size, iterations, expected * iterations))
@@ -75,16 +75,16 @@ fn identities() Map[String, Identity]:
 fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]:
     try fresh_directory(out)
 
-    let expected = identities()
-    let names = ["before", "after", "rust"]
-    let orders = permutations(names)
+    expected := identities()
+    names := ["before", "after", "rust"]
+    orders := permutations(names)
     var csv = ["pair,variant,case,input_bytes,iterations,elapsed_ns,checksum"]
     var validated = List[JsonValue]()
     var complete = false
     var per = Map[String, List[Float]]()
 
     for name in names:
-        let _warm = try run_rows(paths.get_or(name, ""), expected, cpu)
+        _warm := try run_rows(paths.get_or(name, ""), expected, cpu)
         validated.append(jstr("warmup {name}"))
 
     for pair in 0..orders.length():
@@ -92,7 +92,7 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
             for row in try run_rows(paths.get_or(variant, ""), expected, cpu):
                 csv.append("{pair},{variant},{row.line}")
 
-                let key = "{row.name} {variant}"
+                key := "{row.name} {variant}"
                 var list = per.get_or(key, [])
                 list.append(row.elapsed_ns.to_float() / row.iterations.to_float())
                 per.add(key.clone(), list)
@@ -122,16 +122,16 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
         var cells = List[String]()
 
         for variant in names:
-            let s = per.get_or("{name} {variant}", [])
-            let sorted = s.sorted()
+            s := per.get_or("{name} {variant}", [])
+            sorted := s.sorted()
             cells = cells.concat(
                 [
                     "{median(s)}", "{sorted[0]}", "{sorted[sorted.length() - 1]}"
                 ]
             )
 
-        let b = per.get_or("{name} before", [])
-        let a = per.get_or("{name} after", [])
+        b := per.get_or("{name} before", [])
+        a := per.get_or("{name} after", [])
         var deltas = List[Float]()
         var slower = 0
 
@@ -149,12 +149,12 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
     )
 
 fn main() Int:
-    let args = arguments()
+    args := arguments()
     if args.length() < 4: return fail(
         "usage: bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]"
     )
 
-    let parsed = options(args.slice(4, args.length()).get([]), ["cpu"], [])
+    parsed := options(args.slice(4, args.length()).get([]), ["cpu"], [])
     if parsed.is_error(): return fail(parsed.err().message)
 
     var paths = Map[String, String]()
@@ -162,7 +162,7 @@ fn main() Int:
     paths.add("after", absolute(args[1].clone()))
     paths.add("rust", absolute(args[2].clone()))
 
-    let result = run(
+    result := run(
         paths, args[3].clone(), parsed.get(Map[String, String]()).get("cpu").get("")
     )
     if result.is_error(): return fail(result.err().message)

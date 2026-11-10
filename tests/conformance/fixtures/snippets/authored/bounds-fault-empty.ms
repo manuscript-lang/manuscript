@@ -10,4 +10,4 @@ fn last_after_loop(a: List[Int]) Int:
     return t + a[a.length() - 1]
 
 fn main() Unit:
-    let _ = stdout().write("{last_after_loop([])}\n")
+    _ := stdout().write("{last_after_loop([])}\n")

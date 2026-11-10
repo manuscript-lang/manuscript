@@ -35,14 +35,14 @@ fn show(l: Labeled) String:
     return l.label()
 
 fn main() Unit:
-    let present = maybe("optional").is_some()
+    present := maybe("optional").is_some()
     print("--list")
 
-    let second = doors()[1].label()
+    second := doors()[1].label()
     print("--field")
 
-    let first = pair().a.label()
+    first := pair().a.label()
     print("--interface")
 
-    let shown = show(Door("converted"))
+    shown := show(Door("converted"))
     print("end {present} {second} {first} {shown}")

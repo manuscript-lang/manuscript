@@ -41,11 +41,11 @@ impl Ledger:
         return self.frozen.get(id).get(false)
 
     var fn count_op(id: String) Unit:
-        let n = self.ops.get(id.clone()).get(0) + 1
+        n := self.ops.get(id.clone()).get(0) + 1
         self.ops[id] = n
 
     var fn blame(id: String, msg: String) String:
-        let n = self.rejected.get(id.clone()).get(0) + 1
+        n := self.rejected.get(id.clone()).get(0) + 1
         self.rejected[id] = n
         return msg
 
@@ -74,8 +74,8 @@ impl Ledger:
         if self.is_frozen(id.clone()):
             return self.blame(id.clone(), "error: account frozen {id}")
 
-        let amt = parse_num(text)
-        let nb = self.bal(id.clone()) + amt
+        amt := parse_num(text)
+        nb := self.bal(id.clone()) + amt
         self.balances[id.clone()] = nb
         self.count_op(id)
         return "ok {nb}"
@@ -87,10 +87,10 @@ impl Ledger:
         if self.is_frozen(id.clone()):
             return self.blame(id.clone(), "error: account frozen {id}")
 
-        let amt = parse_num(text)
-        let b = self.bal(id.clone())
+        amt := parse_num(text)
+        b := self.bal(id.clone())
         var nb = b - amt
-        let fee = charged(b, amt)
+        fee := charged(b, amt)
         if fee:
             nb -= 5
         if nb < -self.lim(id.clone()):
@@ -116,10 +116,10 @@ impl Ledger:
         if self.is_frozen(to.clone()):
             return self.blame(to.clone(), "error: account frozen {to}")
 
-        let amt = parse_num(text)
-        let b = self.bal(from.clone())
+        amt := parse_num(text)
+        b := self.bal(from.clone())
         var nb = b - amt
-        let fee = charged(b, amt)
+        fee := charged(b, amt)
         if fee:
             nb -= 5
         if nb < -self.lim(from.clone()):
@@ -127,7 +127,7 @@ impl Ledger:
 
         self.balances[from.clone()] = nb
 
-        let nt = self.bal(to.clone()) + amt
+        nt := self.bal(to.clone()) + amt
         self.balances[to.clone()] = nt
         if fee:
             self.total_fees += 5
@@ -143,10 +143,10 @@ impl Ledger:
         for id in self.ids:
             total += self.bal(id.clone())
 
-        let sorted_ids = self.ids.sorted()
+        sorted_ids := self.ids.sorted()
 
         for id in sorted_ids:
-            let fz = if self.is_frozen(id.clone()): "yes" else: "no"
+            fz := if self.is_frozen(id.clone()): "yes" else: "no"
             rows.append(
                 "{id} balance={self.bal(id.clone())} limit={self.lim(id.clone())} ops={self.ops.get(id.clone()).get(0)} rejected={self.rejected.get(id.clone()).get(0)} frozen={fz}"
             )
@@ -155,8 +155,8 @@ impl Ledger:
         return rows.join("\n")
 
     var fn run_cmd(t: List[String]) String:
-        let c = t[0].clone()
-        let n = t.length()
+        c := t[0].clone()
+        n := t.length()
         if c == "open" and n == 3: return self.open_acct(t[1].clone(), t[2].clone())
         if c == "deposit" and n == 3: return self.deposit(t[1].clone(), t[2].clone())
         if c == "withdraw" and n == 3: return self.withdraw(t[1].clone(), t[2].clone())
@@ -178,7 +178,7 @@ fn process() Unit!:
     )
 
     for raw in lines(stdin()):
-        let t = raw.replace("\t", " ").split(" ").filter(fn s: s.length() > 0)
+        t := raw.replace("\t", " ").split(" ").filter(fn s: s.length() > 0)
         if t.length() == 0: continue
 
         print(led.run_cmd(t))

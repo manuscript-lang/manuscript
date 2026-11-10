@@ -38,8 +38,8 @@ fn sum_by[T](items: List[T], price: fn(T) Int) Int:
     return total
 
 fn main() Unit:
-    let cart = [Item.Book(pages: 200), Item.Coffee(grams: 250)]
-    let total = sum_by(cart, fn item: item.cents())
+    cart := [Item.Book(pages: 200), Item.Coffee(grams: 250)]
+    total := sum_by(cart, fn item: item.cents())
     print("{total} cents")
 ```
 

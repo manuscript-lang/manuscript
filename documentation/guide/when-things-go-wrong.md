@@ -15,29 +15,29 @@ type Line:
     cents: Int
 
 fn parse_line(text: String) Line!:
-    let parts = text.split(",")
+    parts := text.split(",")
     if parts.length() != 3:
         return error(Error("expected name,quantity,cents: {text}", kind: "EBADMSG"))
-    let quantity = try parts[1].parse_int().ok_or(Error("quantity is not a number: {text}", kind: "EINVAL"))
+    quantity := try parts[1].parse_int().ok_or(Error("quantity is not a number: {text}", kind: "EINVAL"))
     if quantity <= 0:
         return error(Error("quantity must be positive: {text}", kind: "EINVAL"))
-    let cents = try parts[2].parse_int().ok_or(Error("price is not a number: {text}", kind: "EINVAL"))
+    cents := try parts[2].parse_int().ok_or(Error("price is not a number: {text}", kind: "EINVAL"))
     return ok(Line(parts[0].clone(), quantity, cents))
 
 fn total(lines: List[String]) Int!:
     var sum = 0
     for text in lines:
-        let line = try parse_line(text)
+        line := try parse_line(text)
         sum += line.quantity * line.cents
     return ok(sum)
 
 fn main() Unit:
-    let good = total(["pen,2,150", "ink,1,899"])
+    good := total(["pen,2,150", "ink,1,899"])
     print("good: {good.get(0)}")
-    let bad = total(["pen,2,150", "ink,0,899"])
+    bad := total(["pen,2,150", "ink,0,899"])
     if bad.is_error():
         print("bad: {bad.err().message}")
-    let broken = total(["pen,two,150"])
+    broken := total(["pen,two,150"])
     if broken.is_error():
         print("broken: {broken.err().message}")
 ```

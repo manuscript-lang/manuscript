@@ -4,25 +4,25 @@ import stdout from "@std/io/io.ms"
 import parse_int from "@std/math/math.ms"
 
 fn main() Int:
-    let args = arguments()
-    let operation = args[0]
-    let dataset = args[1]
-    let digits = args[2].parse_int().get()
-    let count = args[3].parse_int().get()
-    let expected_checksum = args[4].parse_int().get()
-    let expected_last = args[5]
-    let timer = clock()
+    args := arguments()
+    operation := args[0]
+    dataset := args[1]
+    digits := args[2].parse_int().get()
+    count := args[3].parse_int().get()
+    expected_checksum := args[4].parse_int().get()
+    expected_last := args[5]
+    timer := clock()
     if operation == "parse_zero":
-        let zeros = "0".repeat(4096).get()
-        let text = "{zeros}1"
+        zeros := "0".repeat(4096).get()
+        text := "{zeros}1"
         var checksum = 0
         var last = 0
-        let start = timer.now()
+        start := timer.now()
         for unused in 0..count:
             last = parse_int(text, digits).get()
             checksum += last
-        let elapsed = timer.now().difference(start).to_nanoseconds()
-        let final_text = last.to_string()
+        elapsed := timer.now().difference(start).to_nanoseconds()
+        final_text := last.to_string()
         stdout().write("ns={elapsed} checksum={checksum} last={final_text}\n").get()
         if checksum != expected_checksum or final_text != expected_last:
             return 1
@@ -38,11 +38,11 @@ fn main() Int:
             text = "!{text}"
         var checksum = 0
         var last = ""
-        let start = timer.now()
+        start := timer.now()
         for unused in 0..count:
             last = parse_int(text, digits).err().message()
             checksum += last.byte_length()
-        let elapsed = timer.now().difference(start).to_nanoseconds()
+        elapsed := timer.now().difference(start).to_nanoseconds()
         stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
         if checksum != expected_checksum or last != expected_last:
             return 1
@@ -60,19 +60,19 @@ fn main() Int:
                 return 1
         var checksum = 0
         var last = 0
-        let start = timer.now()
+        start := timer.now()
         for i in 0..count:
             last = parse_int(texts[i % 1000], digits).get()
             checksum += last % 997
-        let elapsed = timer.now().difference(start).to_nanoseconds()
-        let final_text = last.to_string()
+        elapsed := timer.now().difference(start).to_nanoseconds()
+        final_text := last.to_string()
         stdout().write("ns={elapsed} checksum={checksum} last={final_text}\n").get()
         if checksum != expected_checksum or final_text != expected_last:
             return 1
         return 0
     var last = ""
     var checksum = 0
-    let start = timer.now()
+    start := timer.now()
     for i in 0..count:
         var value = (i % 1000).to_float() / 8.0
         if dataset == "wide":
@@ -94,7 +94,7 @@ fn main() Int:
         else:
             return 2
         checksum += last.byte_length()
-    let elapsed = timer.now().difference(start).to_nanoseconds()
+    elapsed := timer.now().difference(start).to_nanoseconds()
     stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
     if checksum != expected_checksum or last != expected_last:
         return 1

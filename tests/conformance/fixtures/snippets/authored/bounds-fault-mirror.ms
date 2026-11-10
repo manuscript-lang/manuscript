@@ -10,4 +10,4 @@ fn mirror(a: List[Int]) Int:
     return t
 
 fn main() Unit:
-    let _ = stdout().write("{mirror([1, 2, 3, 4])}\n")
+    _ := stdout().write("{mirror([1, 2, 3, 4])}\n")

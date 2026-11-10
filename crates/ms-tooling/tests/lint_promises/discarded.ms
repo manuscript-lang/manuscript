@@ -4,4 +4,4 @@ fn work() Int!:
     return ok(1)
 
 fn main() Unit:
-    let _ = promise(fn: work())
+    _ := promise(fn: work())

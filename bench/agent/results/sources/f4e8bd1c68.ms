@@ -23,7 +23,7 @@ fn all_digits(s: String) Bool:
 
 // Returns the value of a run of ASCII digits whose length is within [minlen, maxlen], or -1.
 fn digits_value(s: String, minlen: Int, maxlen: Int) Int:
-    let n = s.length()
+    n := s.length()
     if n < minlen or n > maxlen: return -1
     if not all_digits(s): return -1
 
@@ -32,20 +32,20 @@ fn digits_value(s: String, minlen: Int, maxlen: Int) Int:
 // Returns [year, month, day, hour, minute] or an empty list when START is invalid.
 fn parse_start(s: String) List[Int]:
     var r = List[Int]()
-    let dt = s.split("T")
+    dt := s.split("T")
     if dt.length() != 2: return r
 
-    let dp = dt[0].split("-")
-    let tp = dt[1].split(":")
+    dp := dt[0].split("-")
+    tp := dt[1].split(":")
     if dp.length() != 3 or tp.length() != 2: return r
     if dp[0].length() != 4 or dp[1].length() != 2 or dp[2].length() != 2: return r
     if tp[0].length() != 2 or tp[1].length() != 2: return r
 
-    let y = digits_value(dp[0], 4, 4)
-    let mo = digits_value(dp[1], 2, 2)
-    let d = digits_value(dp[2], 2, 2)
-    let h = digits_value(tp[0], 2, 2)
-    let mi = digits_value(tp[1], 2, 2)
+    y := digits_value(dp[0], 4, 4)
+    mo := digits_value(dp[1], 2, 2)
+    d := digits_value(dp[2], 2, 2)
+    h := digits_value(tp[0], 2, 2)
+    mi := digits_value(tp[1], 2, 2)
     if y < 1970 or y > 2099: return r
     if mo < 1 or mo > 12: return r
     if d < 1 or d > dim(y, mo): return r
@@ -60,7 +60,7 @@ fn parse_start(s: String) List[Int]:
 
 // One cron item: *, */S, A, A-B, A-B/S. Marks matching values in set (index = value).
 fn parse_item(item: String, lo: Int, hi: Int, var set: List[Bool]) Bool:
-    let sl = item.split("/")
+    sl := item.split("/")
     if sl.length() < 1 or sl.length() > 2: return false
 
     var step = 1
@@ -69,7 +69,7 @@ fn parse_item(item: String, lo: Int, hi: Int, var set: List[Bool]) Bool:
         step = digits_value(sl[1], 1, 2)
         if step < 1: return false
 
-    let base = sl[0]
+    base := sl[0]
     var a = lo
     var b = hi
 
@@ -77,7 +77,7 @@ fn parse_item(item: String, lo: Int, hi: Int, var set: List[Bool]) Bool:
         a = lo
         b = hi
     else:
-        let r = base.split("-")
+        r := base.split("-")
 
         if r.length() == 1:
             if sl.length() == 2: return false
@@ -150,7 +150,7 @@ fn search(
     var y = start[0]
     var mo = start[1]
     var d = start[2]
-    let start_min = start[3] * 60 + start[4]
+    start_min := start[3] * 60 + start[4]
     var dow = day_of_week(y, mo, d)
     var day = 0
 
@@ -159,12 +159,12 @@ fn search(
             var t = 0
 
             while t < 1440 and res.length() < count:
-                let h = t / 60
-                let mi = t % 60
+                h := t / 60
+                mi := t % 60
 
                 if hours[h] and mins[mi] and (day > 0 or t > start_min):
-                    let ds = "{y}-{pad2(mo)}-{pad2(d)}"
-                    let ts = "{pad2(h)}:{pad2(mi)}"
+                    ds := "{y}-{pad2(mo)}-{pad2(d)}"
+                    ts := "{pad2(h)}:{pad2(mi)}"
                     res.append("{ds} {ts}")
 
                 t += 1
@@ -187,55 +187,55 @@ fn search(
 fn process(line: String, n: Int, var out: List[String]) Unit:
     if line.trim_chars(" ").is_empty(): return unit
 
-    let toks = line.split(" ")
+    toks := line.split(" ")
 
     if toks.length() != 7:
         out.append("line {n}: error: bad line")
         return unit
 
-    let start = parse_start(toks[0])
+    start := parse_start(toks[0])
 
     if start.length() == 0:
         out.append("line {n}: error: bad start")
         return unit
 
-    let count = digits_value(toks[1], 1, 2)
+    count := digits_value(toks[1], 1, 2)
 
     if count < 1 or count > 20:
         out.append("line {n}: error: bad count")
         return unit
 
-    let mins = parse_field(toks[2], 0, 59)
+    mins := parse_field(toks[2], 0, 59)
 
     if mins.length() == 0:
         out.append("line {n}: error: bad minute")
         return unit
 
-    let hours = parse_field(toks[3], 0, 23)
+    hours := parse_field(toks[3], 0, 23)
 
     if hours.length() == 0:
         out.append("line {n}: error: bad hour")
         return unit
 
-    let doms = parse_field(toks[4], 1, 31)
+    doms := parse_field(toks[4], 1, 31)
 
     if doms.length() == 0:
         out.append("line {n}: error: bad day-of-month")
         return unit
 
-    let months = parse_field(toks[5], 1, 12)
+    months := parse_field(toks[5], 1, 12)
 
     if months.length() == 0:
         out.append("line {n}: error: bad month")
         return unit
 
-    let dows = parse_field(toks[6], 0, 6)
+    dows := parse_field(toks[6], 0, 6)
 
     if dows.length() == 0:
         out.append("line {n}: error: bad day-of-week")
         return unit
 
-    let res = search(start, count, mins, hours, doms, months, dows)
+    res := search(start, count, mins, hours, doms, months, dows)
 
     if res.length() == 0:
         out.append("line {n}: never")
@@ -247,7 +247,7 @@ fn process(line: String, n: Int, var out: List[String]) Unit:
     return unit
 
 export fn main() Int:
-    let all = (stdin() | lines | collect(none)).get()
+    all := (stdin() | lines | collect(none)).get()
     var out = List[String]()
     var n = 0
 
@@ -256,7 +256,7 @@ export fn main() Int:
         process(line, n, var out)
 
     if out.length() > 0:
-        let text = out.join("\n")
+        text := out.join("\n")
         stdout().write("{text}\n").get()
 
     return 0

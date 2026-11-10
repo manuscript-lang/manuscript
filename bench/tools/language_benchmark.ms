@@ -26,27 +26,27 @@ import (
 
 fn execute(binary: String, cpu: String) Result[Unit, Error]:
     if cpu == "":
-        let _ = try must(binary, capture(binary, []))
+        _ := try must(binary, capture(binary, []))
         return ok(unit)
 
-    let _ = try must(binary, capture("taskset", ["-c", cpu.clone(), binary.clone()]))
+    _ := try must(binary, capture("taskset", ["-c", cpu.clone(), binary.clone()]))
 
 fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
-    let out = absolute(opts.get_or("output", ""))
+    out := absolute(opts.get_or("output", ""))
     ensure_directory(out)
 
-    let cpu = opts.get_or("cpu", "")
+    cpu := opts.get_or("cpu", "")
     var clis = Map[String, String]()
     clis.add("before", absolute(opts.get_or("before", "")))
     clis.add("after", absolute(opts.get_or("after", "")))
 
-    let workloads = ["numeric", "calls", "list", "life"]
+    workloads := ["numeric", "calls", "list", "life"]
 
     for name in workloads:
         for label in ["before", "after"]:
-            let cli = clis.get_or(label, "")
-            let source = "bench/language/{name}.ms"
-            let _bin = try must(
+            cli := clis.get_or(label, "")
+            source := "bench/language/{name}.ms"
+            _bin := try must(
                 "ms build {name}",
                 capture(
                     cli.clone(),
@@ -56,7 +56,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
                     ]
                 )
             )
-            let _emit = try must(
+            _emit := try must(
                 "ms emit {name}",
                 capture(
                     cli.clone(),
@@ -79,10 +79,10 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 
         for i in 0..runs:
             for label in (if i % 2 == 0: ["before", "after"] else: ["after", "before"]):
-                let start = now_ns()
+                start := now_ns()
                 try execute("{out}/{name}-{label}", cpu)
 
-                let elapsed = (now_ns() - start).to_float() / 1000000000.0
+                elapsed := (now_ns() - start).to_float() / 1000000000.0
                 var list = samples.get_or(label, [])
                 list.append(elapsed)
                 samples.add(label.clone(), list)
@@ -92,8 +92,8 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
                     ).get()
                 )
 
-        let before = median(samples.get_or("before", []))
-        let after = median(samples.get_or("after", []))
+        before := median(samples.get_or("before", []))
+        after := median(samples.get_or("after", []))
         var entry = Map[String, JsonValue]()
         var seconds = Map[String, JsonValue]()
         var medians = Map[String, JsonValue]()
@@ -122,19 +122,19 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
     report.add("clis", jobject(names))
     report.add("results", jobject(results))
 
-    let text = dump(jobject(report))
+    text := dump(jobject(report))
     write_text("{out}/results.json", text)
     return ok(text)
 
 fn main() Int:
-    let parsed = options(
+    parsed := options(
         arguments(), ["before", "after", "output", "runs", "cpu"],
         ["before", "after", "output"]
     )
     if parsed.is_error(): return fail(parsed.err().message)
 
-    let opts = parsed.get(Map[String, String]())
-    let runs = opts.get_or("runs", "3").parse_int().get(0)
+    opts := parsed.get(Map[String, String]())
+    runs := opts.get_or("runs", "3").parse_int().get(0)
     if runs < 1: return fail("--runs must be positive")
 
     return finish(run(opts, runs))

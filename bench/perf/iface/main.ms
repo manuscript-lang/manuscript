@@ -6,10 +6,10 @@ import (
 // ns per interface call. One line per case: `name ns checksum`.
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    _ignored := stdout().write(text)
 
 fn report(name: String, n: Int, start: Instant, sum: Int) Unit:
-    let ns = monotonic().difference(start).to_nanoseconds()
+    ns := monotonic().difference(start).to_nanoseconds()
     say("{name} {ns.to_float() / n.to_float()} {sum}\n")
 
 interface Step:
@@ -48,15 +48,15 @@ fn run_direct_add(n: Int) Int:
     return total
 
 fn main() Unit:
-    let n = 50000000
+    n := 50000000
     var start = monotonic()
-    let a = run_direct_add(n)
+    a := run_direct_add(n)
     report("direct", n, start, a)
 
     // The value is built where it is called.
     start = monotonic()
 
-    let s1: Step = AddOne(unused: 0)
+    s1: Step = AddOne(unused: 0)
     var t1 = 0
     for i in 0..n:
         t1 += s1.apply(i)
@@ -65,7 +65,7 @@ fn main() Unit:
     // Built by a callee that inlines into the caller.
     start = monotonic()
 
-    let s2 = make_add()
+    s2 := make_add()
     var t2 = 0
     for i in 0..n:
         t2 += s2.apply(i)
@@ -74,5 +74,5 @@ fn main() Unit:
     // Passed to a function that makes the calls.
     start = monotonic()
 
-    let t3 = run_through(make_scale(3), n)
+    t3 := run_through(make_scale(3), n)
     report("iface-param", n, start, t3)

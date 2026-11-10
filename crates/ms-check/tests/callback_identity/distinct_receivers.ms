@@ -16,8 +16,8 @@ fn increment(var value: Int) Int:
     return value
 
 fn exercise() Int:
-    let plain = Box[fn(Int) Int](identity)
-    let changing = Box[fn(var Int) Int](increment)
-    let first: Read = plain
-    let second: Read = changing
+    plain := Box[fn(Int) Int](identity)
+    changing := Box[fn(var Int) Int](increment)
+    first: Read = plain
+    second: Read = changing
     return plain.read() + changing.read() + first.read() + second.read()

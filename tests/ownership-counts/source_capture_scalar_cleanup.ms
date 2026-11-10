@@ -33,52 +33,52 @@ impl Marker:
 fn marker(id: Int) Marker: Marker(id)
 
 fn ordinary() Int:
-    let read = marker(1).status
-    let first = read()
+    read := marker(1).status
+    first := read()
     return first + read()
 
 fn defaulted() Int:
-    let read = marker(2).with_default
-    let first = read()
+    read := marker(2).with_default
+    first := read()
     return first + read(20)
 
 fn generic() Int:
-    let read = marker(3).generic[Int]
-    let first = read(10)
+    read := marker(3).generic[Int]
+    first := read(10)
     return first + read(20)
 
 fn borrow(value: Marker) Int:
-    let read = value.status
-    let first = read()
+    read := value.status
+    first := read()
     return first + read()
 
 fn borrowed_owner() Unit:
-    let value = marker(4)
-    let answer = borrow(value)
+    value := marker(4)
+    answer := borrow(value)
     print("borrowed {answer}")
 
-    let _still_present = value.id
+    _still_present := value.id
 
 fn shared(var value: Marker) Int:
-    let bump = value.bump
-    let first = bump()
+    bump := value.bump
+    first := bump()
     return first + bump(1)
 
 fn shared_owner() Unit:
     var value = marker(5)
-    let answer = shared(var value)
+    answer := shared(var value)
     print("shared {answer}")
 
-    let _still_present = value.id
+    _still_present := value.id
 
 fn main() Unit:
-    let a = ordinary()
+    a := ordinary()
     print("ordinary {a}")
 
-    let b = defaulted()
+    b := defaulted()
     print("default {b}")
 
-    let c = generic()
+    c := generic()
     print("generic {c}")
     borrowed_owner()
     print("after borrowed")

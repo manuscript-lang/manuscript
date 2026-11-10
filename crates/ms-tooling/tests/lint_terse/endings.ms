@@ -19,8 +19,8 @@ fn count() Int!:
     return ok(1)
 
 fn main() Unit:
-    let _ = show(1)
-    let _ = only()
+    _ := show(1)
+    _ := only()
     quiet(2)
-    let _ = early(3)
-    let _ = count()
+    _ := early(3)
+    _ := count()

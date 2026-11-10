@@ -41,17 +41,17 @@ test "stringify preserves compact and mixed content formatting":
         "<a><!--comment-->text<b/></a>", "<a><b/>text<!--comment--></a>",
         "<é:root attr=\"&amp;&quot;&#9;&#10;&#13;\">]]&gt;<日/></é:root>"
     ]:
-        let doc = try parse(source)
+        doc := try parse(source)
         try expect_equal(stringify(doc), source)
         try expect_equal(stringify(doc, "  "), "{source}\n")
 
 test "stringify leaves comments and descendant text on indented lines":
-    let doc = try parse("<a><!--comment--><b>text</b><c/></a>")
+    doc := try parse("<a><!--comment--><b>text</b><c/></a>")
     try expect_equal(
         stringify(doc, "  "), "<a>\n  <!--comment-->\n  <b>text</b>\n  <c/>\n</a>\n"
     )
 
-    let empty = XmlNode.XmlElement("a", [], [XmlNode.XmlText("")])
+    empty := XmlNode.XmlElement("a", [], [XmlNode.XmlText("")])
     try expect_equal(stringify(empty), "<a></a>")
     try expect_equal(stringify(empty, "  "), "<a>\n</a>\n")
 
@@ -302,20 +302,20 @@ test "DOCTYPE skipping honors quoted spans and prolog placement":
         try expect_true(parse(rejected).is_error())
 
 test "DOCTYPE public identifiers accept only XML PubidChar scalars":
-    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+    malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
 
     for quote in ["\"", "'"]:
         for invalid in ["[", "]", "<", ">", "&", "\t", "é", "😀", "\"", "\\", "\{", "\}"]:
             try expect_equal(invalid.length(), 1)
             if invalid == quote: continue
 
-            let source = "<!DOCTYPE a PUBLIC {quote}{invalid}{quote} 'unused'><a/>"
+            source := "<!DOCTYPE a PUBLIC {quote}{invalid}{quote} 'unused'><a/>"
             try expect_equal(parse(source), malformed)
 
         for valid in [
             "", "azAZ09", " \r\n-()+,./:=?;!*#@$_%", "-//W3C//DTD XHTML 1.0 Strict//EN"
         ]:
-            let source = "<!DOCTYPE a PUBLIC {quote}{valid}{quote} 'unused'><a/>"
+            source := "<!DOCTYPE a PUBLIC {quote}{valid}{quote} 'unused'><a/>"
             try expect_equal((try parse(source)).tag(), "a")
 
     try expect_true(parse("<!DOCTYPE a PUBLIC \"apostrophe's\" 'unused'><a/>").is_ok())

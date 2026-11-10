@@ -2,7 +2,7 @@
 
 # Immutable bindings are `:=`; `let` and `let (` are removed
 
-Decision (Chinmay, 2026-11-10): `x := e` is the immutable binding and `let` no longer exists; `var x = e` stays the mutable one, so `:=` only ever means immutable. Typed immutable is `x: T = e`; destructuring is `[a, b] := xs` and `{name} := rec`; `if v := opt:` replaces `if let`; module constants are `NAME := e` / `NAME: T = e`. `let (` groups were layout only and are gone; `var (` remains.
+Decision (Chinmay, 2026-11-10): `x := e` is the immutable binding and `let` no longer exists; `var x = e` stays the mutable one, so `:=` only ever means immutable. Typed immutable is `x: T = e`; destructuring is `[a, b] := xs` and `{name} := rec`; `if v := opt:` replaces `if v := x`; module constants are `NAME := e` / `NAME: T = e`. `let (` groups were layout only and are gone; `var (` remains.
 
 Why: one keyword fewer and about one token fewer per binding. Statement-start `[`/`{` is a binding only when its matching close is followed by `:=`, and a leading `Name :` is a typed binding, so neither collides with expression statements.
 

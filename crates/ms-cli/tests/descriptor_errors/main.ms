@@ -5,46 +5,46 @@ import stdin from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
 
 fn check_failed_writer(size: Int) Unit!:
-    let executable = (try process_info()).executable
-    let child = try spawn(executable, ["exit"])
+    executable := (try process_info()).executable
+    child := try spawn(executable, ["exit"])
     try expect_equal((try child.wait()), 0)
 
     var writer = child.stdin()
-    let written = writer.write("x".repeat(size).get().to_bytes())
+    written := writer.write("x".repeat(size).get().to_bytes())
 
     if size < 65536:
         written | try expect_ok
     else:
-        let failure = written | try expect_error
+        failure := written | try expect_error
         try expect_equal(failure.kind, "EIO")
 
     for unused in 0..2:
-        let failure = writer.flush() | try expect_error
+        failure := writer.flush() | try expect_error
         try expect_equal(failure.kind, "EIO")
         try expect_equal(failure.message.starts_with("write: os error "), true)
 
     // A failed descriptor never queues more bytes or reports a later empty flush as successful.
-    let repeated = writer.write("again".to_bytes()) | try expect_error
+    repeated := writer.write("again".to_bytes()) | try expect_error
     try expect_equal(repeated.kind, "EIO")
 
-    let closed = writer.close() | try expect_error
+    closed := writer.close() | try expect_error
     try expect_equal(closed.kind, "EIO")
     writer.close() | try expect_ok
 
-    let after_close = writer.write("closed".to_bytes()) | try expect_error
+    after_close := writer.write("closed".to_bytes()) | try expect_error
     try expect_equal(after_close.kind, "EBADF")
     return ok(unit)
 
 fn check_healthy_writer() Unit!:
-    let executable = (try process_info()).executable
-    let child = try spawn(executable, ["echo"])
+    executable := (try process_info()).executable
+    child := try spawn(executable, ["echo"])
     var writer = child.stdin()
     writer.write("healthy\n".to_bytes()) | try expect_ok
     writer.flush() | try expect_ok
     writer.close() | try expect_ok
     try expect_equal((try child.wait()), 0)
 
-    let draining_child = try spawn(executable, ["read-large"])
+    draining_child := try spawn(executable, ["read-large"])
     var draining_writer = draining_child.stdin()
     draining_writer.write("x".repeat(1048577).get().to_bytes()) | try expect_ok
     draining_writer.flush() | try expect_ok
@@ -53,14 +53,14 @@ fn check_healthy_writer() Unit!:
     return ok(unit)
 
 fn check_failed_close() Unit!:
-    let executable = (try process_info()).executable
-    let child = try spawn(executable, ["exit"])
+    executable := (try process_info()).executable
+    child := try spawn(executable, ["exit"])
     try expect_equal((try child.wait()), 0)
 
     var writer = child.stdin()
     writer.write("buffered".to_bytes()) | try expect_ok
 
-    let closed = writer.close() | try expect_error
+    closed := writer.close() | try expect_error
     try expect_equal(closed.kind, "EIO")
     writer.close() | try expect_ok
     return ok(unit)
@@ -73,7 +73,7 @@ fn check_writers() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    let args = arguments()
+    args := arguments()
 
     if not args.is_empty():
         if args[0] == "echo":
@@ -84,7 +84,7 @@ export fn main() Int:
             if read_all(stdin()).get() != "x".repeat(1048577).get().to_bytes(): return 3
         return 0
 
-    let result = check_writers()
+    result := check_writers()
 
     if result.is_error():
         print(result.err().message)

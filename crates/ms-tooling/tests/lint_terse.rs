@@ -57,7 +57,7 @@ fn statement_shapes_carry_fixes_or_findings() {
     assert_eq!(
         got,
         [
-            "let label = if flag: 5 else: 0",
+            "label := if flag: 5 else: 0",
             "    var total = 0\n    for i in 0..n:\n        total += xs[i]",
             ".get_or(\"a\", 0)",
         ]
@@ -75,7 +75,7 @@ fn a_binding_returned_next_is_inlined() {
     assert_eq!(
         got,
         [(
-            "let sum = xs.sum()\n    return sum".to_string(),
+            "sum := xs.sum()\n    return sum".to_string(),
             "return xs.sum()".to_string()
         )]
     );

@@ -17,17 +17,17 @@ fn cur(p: Ps) Int:
     return -2
 
 fn primary(var p: Ps) Int:
-    let c = cur(p)
+    c := cur(p)
 
     if c == 6:
-        let v = p.vals[p.pos]
+        v := p.vals[p.pos]
         p.pos += 1
         return v
 
     if c == 4:
         p.pos += 1
 
-        let v = expr(var p)
+        v := expr(var p)
 
         if cur(p) == 5:
             p.pos += 1
@@ -50,10 +50,10 @@ fn term(var p: Ps) Int:
     var v = unary(var p)
 
     while cur(p) == 2 or cur(p) == 3:
-        let op = cur(p)
+        op := cur(p)
         p.pos += 1
 
-        let r = unary(var p)
+        r := unary(var p)
 
         if op == 2:
             v *= r
@@ -69,10 +69,10 @@ fn expr(var p: Ps) Int:
     var v = term(var p)
 
     while cur(p) == 0 or cur(p) == 1:
-        let op = cur(p)
+        op := cur(p)
         p.pos += 1
 
-        let r = term(var p)
+        r := term(var p)
 
         if op == 0:
             v += r
@@ -99,7 +99,7 @@ fn eval_line(line: String) String:
     var in_num = false
 
     for ch in line.chars():
-        if let d = ch.parse_int():
+        if d := ch.parse_int():
             num = num * 10 + d
             in_num = true
         else:
@@ -109,7 +109,7 @@ fn eval_line(line: String) String:
                 num = 0
                 in_num = false
 
-            let code = op_code(ch)
+            code := op_code(ch)
 
             if code != -3:
                 codes.append(code)
@@ -120,7 +120,7 @@ fn eval_line(line: String) String:
         vals.append(num)
 
     var p = Ps(codes: codes, vals: vals, pos: 0, div0: false, bad: false)
-    let v = expr(var p)
+    v := expr(var p)
     if p.bad or p.pos != p.codes.length(): return "error: syntax"
     if p.div0: return "error: division by zero"
 

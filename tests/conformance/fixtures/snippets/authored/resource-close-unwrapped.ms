@@ -17,24 +17,24 @@ fn keep(r: Res) Res:
     return r
 
 fn via_try() Unit!Error:
-    let r = try make("try")
+    r := try make("try")
     print("body {r.name}")
 
 fn via_get() Unit:
-    let r = make("get").get()
+    r := make("get").get()
     print("body {r.name}")
 
 fn via_optional_get() Unit:
-    let o: Res? = Res("optional")
-    let r = o.get(Res("default"))
+    o: Res? = Res("optional")
+    r := o.get(Res("default"))
     print("body {r.name}")
 
 fn via_passthrough() Unit:
-    let r = keep(Res("keep"))
+    r := keep(Res("keep"))
     print("body {r.name}")
 
 fn main() Unit:
-    let _ = via_try()
+    _ := via_try()
     via_get()
     via_optional_get()
     via_passthrough()

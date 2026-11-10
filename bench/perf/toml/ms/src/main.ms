@@ -18,17 +18,17 @@ fn parse_ok(text: String) Int:
 
 // Parses the document 200 times and prints the best run in microseconds.
 fn main() Unit:
-    let text = document(2000)
+    text := document(2000)
     var best = 1000000000000
     var ok = 0
 
     for run in 0..200:
-        let started = monotonic()
+        started := monotonic()
         ok = parse_ok(text) + run * 0
 
-        let elapsed = monotonic().difference(started).to_nanoseconds()
+        elapsed := monotonic().difference(started).to_nanoseconds()
         if elapsed < best: best = elapsed
 
-    let _ignored = stdout().write(
+    _ignored := stdout().write(
         "ms toml bytes={text.byte_length()} ok={ok} best_us={best / 1000}\n"
     )
