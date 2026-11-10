@@ -122,3 +122,14 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
         method: HttpMethod.Get, url: "http://127.0.0.1:65536/", headers: headers,
         body: body
     ) | try expect_http_error
+
+test "buffered and reusable clients reject URLs with an empty host":
+    let fields = headers()
+    let client = http_client(HttpClientOptions()) | try expect_ok
+    for address in ["http://:80/", "https://:443/", "http://:/", "https://:/"]:
+        request(
+            HttpMethod.Get, address, options: RequestOptions(timeout: 1.seconds())
+        ) | try expect_http_error
+        client.request(
+            HttpMethod.Get, address, fields.clone(), timeout: 1.seconds()
+        ) | try expect_http_error
