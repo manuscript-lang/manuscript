@@ -19,8 +19,7 @@ fn count_tokens(paths: List[String]) List[Int]?:
 	ran := bash("python3 -c \"{program}\" {quoted}", ".", 600, "")
 	if ran.code != 0: return none
 
-	counts := ran.out.trim().split("\n").map(fn n: n.parse_int().get(0))
-	return counts
+	return ran.out.trim().split("\n").map(fn n: n.parse_int().get(0))
 
 fn ratio(top: Int, bottom: Int) String: (top.to_float() / bottom.to_float()).to_fixed(2)
 

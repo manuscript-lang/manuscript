@@ -1,8 +1,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	ReadStream, WriteStream, Source, Sink from "@std/io/io.ms",
-	Promise from "@std/concurrency/promise.ms",
-	read_all, from_bytes from "@std/io/streams.ms",
+	read_all from "@std/io/streams.ms",
 	fail from "@std/test/test.ms",
 )
 

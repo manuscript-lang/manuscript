@@ -138,7 +138,7 @@ fn parse_expr(toks: List[Tok], pos: Int) R:
 
 fn evaluate(line: String) String:
     toks := tokenize(line)
-    if toks.length() == 0: return ""
+    if toks.is_empty(): return ""
 
     r := parse_expr(toks, 0)
     if not r.ok or r.pos != toks.length(): return "error: syntax"

@@ -468,8 +468,7 @@ fn unit_scaled(values: List[Float]) List[Float]:
 	if scale == 0.0: return values.clone()
 
 	exponent := frexp(scale).exponent
-	var scaled = values.map(fn value: ldexp(value, -exponent))
-	return scaled
+	return values.map(fn value: ldexp(value, -exponent))
 
 /*
 Returns the least-squares line through paired values, or none when there are fewer than two pairs or the `xs` are all equal.

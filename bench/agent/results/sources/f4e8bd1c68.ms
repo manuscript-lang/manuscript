@@ -118,21 +118,16 @@ fn pad2(n: Int) String:
 // Day of week with 0 = Sunday; 1970-01-01 was a Thursday.
 fn day_of_week(y: Int, m: Int, d: Int) Int:
     var days = 0
-    var yy = 1970
 
-    while yy < y:
+    for yy in 1970..y:
         if is_leap(yy):
             days += 366
         else:
             days += 365
 
-        yy += 1
 
-    var mm = 1
-
-    while mm < m:
+    for mm in 1..m:
         days += dim(y, mm)
-        mm += 1
 
     days += d - 1
     return (days + 4) % 7
@@ -195,7 +190,7 @@ fn process(line: String, n: Int, var out: List[String]) Unit:
 
     start := parse_start(toks[0])
 
-    if start.length() == 0:
+    if start.is_empty():
         out.append("line {n}: error: bad start")
         return unit
 
@@ -207,44 +202,43 @@ fn process(line: String, n: Int, var out: List[String]) Unit:
 
     mins := parse_field(toks[2], 0, 59)
 
-    if mins.length() == 0:
+    if mins.is_empty():
         out.append("line {n}: error: bad minute")
         return unit
 
     hours := parse_field(toks[3], 0, 23)
 
-    if hours.length() == 0:
+    if hours.is_empty():
         out.append("line {n}: error: bad hour")
         return unit
 
     doms := parse_field(toks[4], 1, 31)
 
-    if doms.length() == 0:
+    if doms.is_empty():
         out.append("line {n}: error: bad day-of-month")
         return unit
 
     months := parse_field(toks[5], 1, 12)
 
-    if months.length() == 0:
+    if months.is_empty():
         out.append("line {n}: error: bad month")
         return unit
 
     dows := parse_field(toks[6], 0, 6)
 
-    if dows.length() == 0:
+    if dows.is_empty():
         out.append("line {n}: error: bad day-of-week")
         return unit
 
     res := search(start, count, mins, hours, doms, months, dows)
 
-    if res.length() == 0:
+    if res.is_empty():
         out.append("line {n}: never")
         return unit
 
     out.append("line {n}: {res.length()} runs")
     for r in res:
         out.append(r)
-    return unit
 
 export fn main() Int:
     all := (stdin() | lines | collect(none)).get()
@@ -255,7 +249,7 @@ export fn main() Int:
         n += 1
         process(line, n, var out)
 
-    if out.length() > 0:
+    if not out.is_empty():
         text := out.join("\n")
         stdout().write("{text}\n").get()
 

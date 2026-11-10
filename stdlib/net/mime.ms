@@ -1,7 +1,7 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	StringBuilder from "@std/string.ms",
-	ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+	ReadStream, Transform, through from "@std/io/io.ms",
 )
 
 /*

@@ -24,7 +24,7 @@ export fn main() Int:
 
     // Trailing empty lines are ignored.
     var h = all.length()
-    while h > 0 and all[h - 1].length() == 0:
+    while h > 0 and all[h - 1].is_empty():
         h -= 1
 
     // 1. Bad characters, in reading order.
@@ -41,9 +41,7 @@ export fn main() Int:
                 return 0
 
     // 2. Ragged rows.
-    var w = 0
-    if h > 0:
-        w = all[0].length()
+    w := if h > 0: all[0].length() else: 0
 
     for r in 0..h:
         if all[r].length() != w:

@@ -71,8 +71,7 @@ fn edit_dist(a: Bytes, b: Bytes) Int:
         cur[0] = i + 1
 
         for j in 0..m:
-            var cost = 1
-            if a.get(i) == b.get(j): cost = 0
+            cost := if a.get(i) == b.get(j): 0 else: 1
             cur[j + 1] = mn(mn(prev[j] + cost, prev[j + 1] + 1), cur[j] + 1)
 
         for j in 0..m + 1:
@@ -127,7 +126,7 @@ fn solve(line: String) String:
     cmd := toks[0]
 
     if cmd == "lcs" or cmd == "edit":
-        if n != 3 or toks[1].length() == 0 or toks[2].length() == 0: return BAD
+        if n != 3 or toks[1].is_empty() or toks[2].is_empty(): return BAD
         if cmd == "lcs": return "{lcs_len(toks[1].as_bytes(), toks[2].as_bytes())}"
 
         return "{edit_dist(toks[1].as_bytes(), toks[2].as_bytes())}"
@@ -181,7 +180,6 @@ fn run() Unit!:
 
         print(solve(line))
 
-    return ok(unit)
 
 export fn main() Int:
     run().get()

@@ -236,7 +236,7 @@ fn process_line(line: String, n: Int) String:
         dows: dows
     )
     runs := find_runs(sp, st, cnt)
-    if runs.length() == 0: return "line {n}: never\n"
+    if runs.is_empty(): return "line {n}: never\n"
 
     var out = "line {n}: {runs.length()} runs\n"
     for r in runs:

@@ -33,8 +33,7 @@ fn same(cs: List[Int], word: String) Bool:
 
 // Shifts a letter forward by amount (any Int), keeping its case.
 fn shift(c: Int, amount: Int) Int:
-    var base = 97
-    if c <= 90: base = 65
+    base := if c <= 90: 65 else: 97
 
     m := (amount % 26 + 26) % 26
     return base + (c - base + m) % 26
@@ -44,7 +43,7 @@ fn caesar_key(ks: List[Int]) Int?:
     var i = 0
     var neg = false
 
-    if ks.length() > 0 and ks[0] == 45:
+    if not ks.is_empty() and ks[0] == 45:
         neg = true
         i = 1
 
@@ -134,7 +133,6 @@ fn run() Unit!:
 
         stdout().write(process(cs) + "\n").get()
 
-    return ok(unit)
 
 export fn main() Int:
     run().get()

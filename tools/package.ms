@@ -34,8 +34,7 @@ fn main() Int:
 		note("Unsupported distribution target: {target_os}/{target_arch}")
 		return 1
 
-	var executable = "ms"
-	if target_os == "windows": executable = "ms.exe"
+	executable := if target_os == "windows": "ms.exe" else: "ms"
 
 	// ms-native is built in release mode first; `ms-cli`'s build script embeds the archive.
 	var code = run_program("cargo", ["xtask", "runtime"])

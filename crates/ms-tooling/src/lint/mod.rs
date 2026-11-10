@@ -166,31 +166,31 @@ pub const RULES: &[Rule] = &[
     Rule {
         code: "MSL118",
         family: "Length compared with zero",
-        severity: Severity::Warning,
+        severity: Severity::Error,
         repair: "write `xs.is_empty()` or `not xs.is_empty()`; `ms lint --fix` does it",
     },
     Rule {
         code: "MSL119",
         family: "List read with get(i)",
-        severity: Severity::Warning,
+        severity: Severity::Error,
         repair: "write `xs[i]`; `ms lint --fix` does it",
     },
     Rule {
         code: "MSL120",
         family: "Optional chained after a map get",
-        severity: Severity::Warning,
+        severity: Severity::Error,
         repair: "write `map.get_or(key, default)`; `ms lint --fix` does it",
     },
     Rule {
         code: "MSL121",
         family: "Default overridden by a one-line if",
-        severity: Severity::Warning,
+        severity: Severity::Error,
         repair: "write `x := if c: b else: a`; `ms lint --fix` does it for a literal or name default",
     },
     Rule {
         code: "MSL122",
         family: "Counter loop written as a while",
-        severity: Severity::Warning,
+        severity: Severity::Error,
         repair: "write `for i in start..end:` and drop `i += 1`; `ms lint --fix` does it",
     },
     Rule {
@@ -214,19 +214,19 @@ pub const RULES: &[Rule] = &[
     Rule {
         code: "MSL126",
         family: "Binding returned on the next line",
-        severity: Severity::Warning,
+        severity: Severity::Error,
         repair: "write `return <expression>`",
     },
     Rule {
         code: "MSL127",
         family: "Map entry rebuilt from its own lookup",
-        severity: Severity::Warning,
+        severity: Severity::Error,
         repair: "write `m[k] -= v` (or `+=`, `*=`, `/=`, `%=`)",
     },
     Rule {
         code: "MSL128",
         family: "Final return the end of the function already makes",
-        severity: Severity::Warning,
+        severity: Severity::Error,
         repair: "delete the final `return ok(unit)` (`Unit!`) or `return` (`Unit`)",
     },
 ];

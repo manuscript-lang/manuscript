@@ -84,8 +84,7 @@ fn main() Int:
 			if live.is_empty() or live[0] != "0":
 				failures += 1
 
-				var shown = "an unreported number of"
-				if not live.is_empty(): shown = live[0].clone()
+				shown := if not live.is_empty(): live[0].clone() else: "an unreported number of"
 				print("leak: {f} ({build}) left {shown} live blocks")
 
 			var have = List[String]()

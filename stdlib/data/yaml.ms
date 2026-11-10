@@ -366,9 +366,7 @@ fn numeric(text: String) Bool:
 	if clean.starts_with("0x") or clean.starts_with("0o"):
 		if clean != text: return false
 
-		var alphabet = "01234567"
-		if clean.starts_with("0x"): alphabet = "0123456789abcdefABCDEF"
-
+		alphabet := if clean.starts_with("0x"): "0123456789abcdefABCDEF" else: "01234567"
 		digits := clean.slice(2, clean.scalar_length()).get("")
 		if digits == "": return false
 
@@ -849,9 +847,7 @@ fn quoted_or_nested(text: String) Bool:
 
 // boundary for text with no quotes or brackets: the first marker that follows a blank (or ends the text) wins.
 fn plain_boundary(text: String, colon: Bool) Int:
-	var marker = "#"
-	if colon: marker = ":"
-
+	marker := if colon: ":" else: "#"
 	var offset = 0
 
 	while true:
