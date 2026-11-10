@@ -9,6 +9,9 @@ runs:
         node-version-file: .node-version
         cache: npm
         cache-dependency-path: extensions/vscode/package-lock.json
+    - name: Workflow scheduling regressions
+      shell: bash
+      run: make workflow-check
     - name: Repo rules and licenses
       shell: bash
       run: make repo-check licenses-check
