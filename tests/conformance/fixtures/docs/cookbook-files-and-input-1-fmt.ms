@@ -10,8 +10,6 @@ fn run() Result[Unit, Error]:
     )
     return write_file(path, "saved notes\n", replace: false).wait()
 
-export fn main() Int:
-    if run().is_error():
-        return 1
-
-    return 0
+fn main() Unit!:
+    try run()
+    return ok(unit)

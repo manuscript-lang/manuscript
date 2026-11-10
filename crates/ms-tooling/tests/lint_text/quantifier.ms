@@ -1,3 +1,2 @@
-export fn main() Int:
+fn main() Unit:
     print("\\d{4}-\\d{2}")
-    return 0

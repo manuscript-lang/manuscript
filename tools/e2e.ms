@@ -214,7 +214,7 @@ fn ms_files(dir: String) List[String]:
         )
     return names.sorted(fn(a: String, b: String) Int: a.compare(b))
 
-export fn main() Int:
+fn main() Int:
     let root = working_directory().get()
     let build_type = env("E2E_BUILD_TYPE", "Release")
     var expect_files = ["tests/e2e/expect-fail.txt"]

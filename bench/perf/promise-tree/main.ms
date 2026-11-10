@@ -20,7 +20,7 @@ fn pfib(n: Int, cutoff: Int) Int!:
 fn work(n: Int) Int!:
     return ok(fib(n))
 
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let mode = args[0].clone()
     let n = args[1].parse_int().get()
@@ -45,4 +45,3 @@ export fn main() Int:
             / 1000000
         ).to_string()
     )
-    return 0

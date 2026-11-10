@@ -6,7 +6,7 @@ import env, exe, host, run_program, use_stats_runtime from "./lib.ms"
 import access, create_directory, read_file, write_file from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
 
-export fn main() Int:
+fn main() Int:
     var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 

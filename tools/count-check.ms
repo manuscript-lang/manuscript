@@ -22,7 +22,7 @@ fn after(text: String, prefix: String) List[String]:
         )
     return found
 
-export fn main() Int:
+fn main() Int:
     let code = use_stats_runtime()
     if code != 0: return code
 

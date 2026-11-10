@@ -126,7 +126,7 @@ fn empty() Unit:
 
     print("empty {code}")
 
-export fn main() Int:
+fn main() Unit:
     scalar_omitted()
     heap_omitted()
     mixed()
@@ -134,4 +134,3 @@ export fn main() Int:
     wildcard()
     generic()
     empty()
-    return 0

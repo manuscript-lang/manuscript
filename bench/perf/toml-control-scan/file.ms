@@ -4,7 +4,7 @@ import read_file, write_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 import monotonic from "@std/time.ms"
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let path = args[0]
     let text = read_file(path).wait().get().decode_utf8().get()

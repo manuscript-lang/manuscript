@@ -5,7 +5,7 @@ import monotonic from "@std/time.ms"
 
 extern fn codec_bench_cpu_ns() Int
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let size = args[0].parse_int().get()
     let rounds = args[1].parse_int().get()

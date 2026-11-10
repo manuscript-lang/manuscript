@@ -4,7 +4,7 @@ import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 import monotonic from "@std/time.ms"
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let text = read_file(args[0]).wait().get().decode_utf8().get()
     let count = args[1].parse_int().get()

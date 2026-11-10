@@ -1,6 +1,5 @@
 import approve, Approved, Mode, safe from "./gate.ms"
 import parse, stringify from "@std/data/json.ms"
 
-export fn main() Int:
+fn main() Unit:
     let s = stringify(approve("u"))
-    return 0

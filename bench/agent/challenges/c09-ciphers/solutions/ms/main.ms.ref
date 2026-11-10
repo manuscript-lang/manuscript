@@ -39,7 +39,6 @@ fn solve_line(line: String) String:
     if keys.is_empty() or keys.any(fn k: k < 0): return "error: bad key"
     return transform(rest, keys, sign)
 
-export fn main() Int:
+fn main() Unit:
     if let ls = stdin() | lines | collect(none):
         for l in ls.filter(fn l: not l.replace(" ", "").is_empty()): print(solve_line(l))
-    return 0

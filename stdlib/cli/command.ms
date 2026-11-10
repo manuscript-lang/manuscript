@@ -19,7 +19,7 @@ type Greeting:
 fn greet(options: Greeting) Int!:
     return ok(0)
 
-export fn main() Int:
+fn main() Int:
     let greeting = command[Greeting](
         name: "greet",
         about: "Print a greeting",

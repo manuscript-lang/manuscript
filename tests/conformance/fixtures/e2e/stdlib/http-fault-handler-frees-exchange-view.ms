@@ -20,7 +20,7 @@ fn status() Int:
     ).wait()
     return reply.get().head.status
 
-export fn main() Int:
+fn main() Unit:
     print(status())
+
     let _ = sleep(milliseconds(300)).wait()
-    return 0

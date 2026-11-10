@@ -1,5 +1,4 @@
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit:
     stdout().write("a").get()
-    return 0

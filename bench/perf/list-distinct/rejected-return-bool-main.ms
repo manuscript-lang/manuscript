@@ -37,7 +37,7 @@ fn strings(size: Int, unique: Int, repeats: Int) Int:
     print("{elapsed} {checksum}")
     return 0
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let size = args[1].parse_int().get()
     let unique = args[2].parse_int().get()

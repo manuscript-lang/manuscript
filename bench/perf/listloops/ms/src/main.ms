@@ -48,7 +48,7 @@ fn k_dot(a: List[Float32], b: List[Float32], n: Int) Float32:
 fn report(name: String, flops: Int, reps: Int, t: Int) Unit:
     say("{name} {(flops * reps).to_float() / t.to_float()}\n")
 
-export fn main() Int:
+fn main() Unit:
     let n = 4096
     var f1 = List[Float32]()
     var f2 = List[Float32]()
@@ -105,4 +105,3 @@ export fn main() Int:
         s += k_dot(f1, f2, n)
     report("dot32", 2 * n, reps, monotonic().difference(t).to_nanoseconds())
     say("check {fo[5]} {d2[5]} {io[5]} {s}\n")
-    return 0

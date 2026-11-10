@@ -38,9 +38,8 @@ fn mk(id: Int) Marker:
 fn run() Unit:
 """
 let FOOTER = """
-export fn main() Int:
+fn main() Unit:
     run()
-    return 0
 """
 
 // One standard operation: the receiver it runs on, its method, its arguments (`@V@` is the resource
@@ -297,7 +296,7 @@ fn count(lines: List[String], prefix: String) Map[String, Int]:
 
     return counts
 
-export fn main() Int:
+fn main() Int:
     let root = working_directory().get()
     let ms = tool_ms(root)
     let scratch = temporary("ms-matrix-").get()

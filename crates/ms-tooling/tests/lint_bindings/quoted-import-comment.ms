@@ -3,10 +3,10 @@ import (
     // The words "square root" do not delimit this import.
     sqrt,
     sin
-) from "@std/math/math.ms" // a trailing "note"
+) from "@std/math/math.ms"  // a trailing "note"
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return
 
 export fn value() Float:
     return floor(1.5)

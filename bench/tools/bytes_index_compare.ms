@@ -149,7 +149,7 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
     )
     return ok(unit)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 4: return fail(
         "usage: bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]"

@@ -1,6 +1,5 @@
 // conform: tags=diagnostics,types,tier-core
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
-export fn main() Int:
+fn main() Unit:
     let a = [1].includes(1)
-    return 0

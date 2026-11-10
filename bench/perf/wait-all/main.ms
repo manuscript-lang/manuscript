@@ -17,7 +17,7 @@ fn ordered_wait_all[T](promises: List[Promise[T]]) List[T]!:
         results.append(try pending[index].wait())
     return ok(results)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let count = args[0].parse_int().get()
     let jitter = args[1] == "jitter"

@@ -1,6 +1,5 @@
-export fn main() Int:
+fn main() Unit:
     var names = List[String]()
     let first = "ada"
     names.append(first)
     print(first)
-    return 0

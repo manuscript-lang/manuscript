@@ -112,10 +112,8 @@ fn work() Unit!:
     print("work")
     return ok(unit)
 
-export fn main() Int:
-    if work().is_error():
-        return 1
-    return 0
+fn main() Unit!:
+    return work()
 ```
 
 ```text

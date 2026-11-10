@@ -38,7 +38,7 @@ fn recurse(value: String, count: Int) String:
 fn make_team() Team:
     return Team(members: [Person(name: "ann", tags: ["x", "y"])], label: "L")
 
-export fn main() Int:
+fn main() Unit:
     let p = Person(name: "bob", tags: ["t1", "t2"])
     let q = Person(name: "cat", tags: ["u1"])
     let t = first_tag(p)
@@ -69,4 +69,3 @@ export fn main() Int:
     var names: List[String] = []
     names.append(first_tag(team.members[0]).clone())
     print("{names.length()} {names[0]}")
-    return 0

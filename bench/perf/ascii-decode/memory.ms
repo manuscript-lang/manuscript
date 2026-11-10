@@ -10,6 +10,5 @@ fn work() Unit!:
     try expect_equal(checksum, 33554432)
     return ok(unit)
 
-export fn main() Int:
+fn main() Unit:
     work().get()
-    return 0

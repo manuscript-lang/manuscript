@@ -42,7 +42,7 @@ export fn stdlib_table(output: String) String!:
 
     return ok(rows.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if not args.is_empty() and args[0] == "--table": return finish(
         stdlib_table(read_stdin())

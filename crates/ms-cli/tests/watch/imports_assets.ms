@@ -1,5 +1,4 @@
 import files from "@assets"
 
-export fn main() Int:
+fn main() Unit:
     let _tree = files()
-    return 0

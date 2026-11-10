@@ -22,7 +22,7 @@ fn money(cents: Int) String:
     let pad = if rest < 10: "0" else: ""
     return "{cents / 100}.{pad}{rest}"
 
-export fn main() Int:
+fn main() Unit:
     let prices = [1250, 800, 2500]
     var subtotal = 0
     for price in prices:
@@ -34,7 +34,6 @@ export fn main() Int:
     print("Shipping: {money(shipping(subtotal))}")
     print("Total: {money(total)}")
     print("Items under 10.00 after discount: {cheap.length()}")
-    return 0
 ```
 
 ```text

@@ -186,7 +186,7 @@ fn bench_sorted_map(n: Int) Int:
     report("sorted_map_add_contains", n * 2, t)
     return hits
 
-export fn main() Int:
+fn main() Int:
     var total = 0
     total += bench_list_append(1000000)
     total += bench_list_get(1000000)

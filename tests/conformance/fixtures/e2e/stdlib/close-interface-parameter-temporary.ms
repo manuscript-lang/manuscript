@@ -27,7 +27,6 @@ fn attempt() Unit!:
     look_later(Door("later"), try fails())
     return ok(unit)
 
-export fn main() Int:
+fn main() Unit:
     let _ = attempt()
     print("end")
-    return 0

@@ -3,7 +3,7 @@ import monotonic from "@std/time.ms"
 import stdout from "@std/io/io.ms"
 import extension, normalize, parse from "@std/os/path.ms"
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let count = args[0].parse_int().get()
     let operation = args[1]

@@ -5,5 +5,5 @@ impl Approved:
     fn extra() Int:
         return 1
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

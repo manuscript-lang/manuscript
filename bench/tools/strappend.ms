@@ -29,7 +29,7 @@ fn run(work: String, n: Int) Result[String, Error]:
 
     return summarize(raw, n)
 
-export fn main() Int:
+fn main() Int:
     var n = 5
     let args = arguments()
 

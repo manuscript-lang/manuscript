@@ -10,7 +10,7 @@ import monotonic from "@std/time.ms"
 fn work(a: Int) Int!:
     return ok(a * 2 + 1)
 
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let n = args[0].parse_int().get()
     let rounds = args[1].parse_int().get()
@@ -40,4 +40,3 @@ export fn main() Int:
             / (n * rounds)
         ).to_string()
     )
-    return 0

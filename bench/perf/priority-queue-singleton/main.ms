@@ -4,7 +4,7 @@ import arguments from "@std/os/env.ms"
 import monotonic from "@std/time.ms"
 import keep from "@std/test/bench.ms"
 
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let operation = args[0]
     let size = args[1].parse_int().get()
@@ -54,4 +54,3 @@ export fn main() Int:
 
     let elapsed = monotonic().difference(started).to_nanoseconds()
     print("{elapsed} {checksum}")
-    return 0

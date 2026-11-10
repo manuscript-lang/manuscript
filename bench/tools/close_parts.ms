@@ -25,7 +25,7 @@ fn ok_status(program: String, args: List[String], dir: String) Bool:
     let ran = run_in(dir, program, args)
     return ran.ok and ran.code == 0
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() != 2: return usage("usage: close_parts.ms -- BASE_MS HEAD_MS")
 

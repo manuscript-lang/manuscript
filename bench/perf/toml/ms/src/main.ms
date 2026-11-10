@@ -15,7 +15,7 @@ fn parse_ok(text: String) Int:
     return 0
 
 // Parses the document 200 times and prints the best run in microseconds.
-export fn main() Int:
+fn main() Unit:
     let text = document(2000)
     var best = 1000000000000
     var ok = 0
@@ -30,4 +30,3 @@ export fn main() Int:
     let _ignored = stdout().write(
         "ms toml bytes={text.byte_length()} ok={ok} best_us={best / 1000}\n"
     )
-    return 0

@@ -2,7 +2,7 @@ import unified_diff, UnifiedDiffOptions from "@std/data/diff.ms"
 import arguments from "@std/os/env.ms"
 import monotonic from "@std/time.ms"
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let n = args[0].parse_int().get()
     let context = args[1].parse_int().get()

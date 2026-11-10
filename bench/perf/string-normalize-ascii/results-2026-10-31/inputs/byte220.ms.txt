@@ -23,7 +23,7 @@ fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int
     )
     return 0
 
-export fn main() Int:
+fn main() Int:
     let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
 
     for n in [0, 1, 7, 15, 31, 32, 64, 256, 4096, 1048576]:

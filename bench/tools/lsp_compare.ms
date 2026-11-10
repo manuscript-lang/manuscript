@@ -186,7 +186,7 @@ fn compare(
     write_text(out, rows.join("\n") + "\n")
     return ok(unit)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 3 or not ["hover", "outline", "semantic"].contains(args[0]):
         return fail(

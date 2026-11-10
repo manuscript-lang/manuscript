@@ -54,7 +54,7 @@ fn captured(c: Bool) fn() Int:
 
     return fn: 0
 
-export fn main() Int:
+fn main() Unit:
     var_unmoved()
     print("--var_moved true")
     var_moved(true)
@@ -73,4 +73,3 @@ export fn main() Int:
 
     let _g = captured(false)
     print("--end")
-    return 0

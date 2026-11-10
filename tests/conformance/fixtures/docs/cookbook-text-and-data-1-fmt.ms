@@ -10,8 +10,6 @@ fn run() Result[Unit, Error]:
     try stdout().write("{text}\n")
     return stdout().flush()
 
-export fn main() Int:
-    if run().is_error():
-        return 1
-
-    return 0
+fn main() Unit!:
+    try run()
+    return ok(unit)

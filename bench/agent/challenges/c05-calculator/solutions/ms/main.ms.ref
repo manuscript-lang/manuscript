@@ -60,7 +60,6 @@ fn evaluate(line: String) String:
         return if p.div_zero: "error: division by zero" else: "{v}"
     return "error: syntax"
 
-export fn main() Int:
+fn main() Unit:
     if let ls = stdin() | lines | collect(none):
         for l in ls.map(fn l: l.replace("\r", "")).filter(fn l: not l.trim().is_empty()): print(evaluate(l))
-    return 0

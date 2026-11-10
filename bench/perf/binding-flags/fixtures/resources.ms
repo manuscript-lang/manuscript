@@ -41,7 +41,7 @@ fn conditional_move(flag: Bool) Unit:
 
     let _last = Res(4)
 
-export fn main() Int:
+fn main() Unit:
     var values = [1, 2]
     let count = borrowed(values)
     var holder = Holder(values)
@@ -51,4 +51,3 @@ export fn main() Int:
     conditional(false)
     conditional_move(true)
     conditional_move(false)
-    return 0

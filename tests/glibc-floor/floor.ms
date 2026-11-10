@@ -13,7 +13,7 @@ import promise from "@std/concurrency/promise.ms"
 fn square(n: Int) Int:
     return n * n
 
-export fn main() Int:
+fn main() Unit:
     let squared = promise(fn: ok(square(12))).wait().get(-1)
     let file = stat("/etc/hosts", follow_links: true).is_ok()
     let child = run("true", []).wait().is_ok()
@@ -22,4 +22,3 @@ export fn main() Int:
     let _ = sleep(nanoseconds(1000000)).wait()
     let math = pow(2.0, 10.0) + exp(0.0) + log(1.0) + hypot(3.0, 4.0)
     stdout().write("{squared} {file} {child} {entropy} {hosts} {math}\n").get()
-    return 0

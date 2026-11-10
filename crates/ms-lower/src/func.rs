@@ -406,9 +406,14 @@ pub(crate) fn lower_program(
     let main_id = cx.function_for(&mut m, &main, &Subst::new())?;
     drain(syms, &mut cx, &mut m)?;
     cx.check_strict_copies()?;
-    let f = &mut m.funcs[main_id.index()];
-    f.linkage = Linkage::Export;
-    m.entry = Some(main_id);
+    let entry = if m.funcs[main_id.index()].ret == MTy::INT {
+        m.funcs[main_id.index()].linkage = Linkage::Export;
+        main_id
+    } else {
+        let wrapper = crate::runner::build_main_wrapper(&mut m, main_id)?;
+        m.add_func(wrapper)
+    };
+    m.entry = Some(entry);
     Ok(m)
 }
 

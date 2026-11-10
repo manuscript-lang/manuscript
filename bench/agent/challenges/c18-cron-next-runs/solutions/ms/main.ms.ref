@@ -75,8 +75,7 @@ fn solve(t: List[String]) String:
     let runs = schedule(count, start, sets.map(fn s: s.get([])))
     return if runs.is_empty(): "never" else: "{runs.length()} runs\n{runs.join("\n")}"
 
-export fn main() Int:
+fn main() Unit:
     if let ls = stdin() | lines | collect(none):
         for i in 0..ls.length():
             if not ls[i].replace(" ", "").is_empty(): print("line {i + 1}: {solve(ls[i].split(" "))}")
-    return 0

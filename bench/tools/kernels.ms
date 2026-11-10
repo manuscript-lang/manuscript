@@ -78,7 +78,7 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 
     return summarize(raw, suite, n, versions)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.is_empty() or (args[0] != "kernels" and args[0] != "competence"):
         return fail("usage: kernels.ms -- <kernels|competence> [repeats]")

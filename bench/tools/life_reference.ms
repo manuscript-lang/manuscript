@@ -1,6 +1,6 @@
 // Independent checksum oracle for bench/language/life.ms (not a performance comparator).
 
-export fn main() Int:
+fn main() Int:
     let size = 128
     var cells = List[Int](reserve: size * size)
     for i in 0..size * size:
