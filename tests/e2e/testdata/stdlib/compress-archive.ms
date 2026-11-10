@@ -1,13 +1,10 @@
-import expect_equal from "@std/test/test.ms"
-import (compress, decompress, CompressionFormat) from "@std/io/archive.ms"
 import (
-    pack,
-    unpack,
-    ArchiveEntry,
-    ArchiveFormat,
-    ArchiveOptions
-) from "@std/io/archive.ms"
-import Bytes from "@std/bytes.ms"
+    expect_equal, expect_error from "@std/test/test.ms",
+    compress, decompress, CompressionFormat from "@std/io/archive.ms",
+    pack, unpack, ArchiveEntry, ArchiveFormat, ArchiveOptions from "@std/io/archive.ms",
+    Bytes from "@std/bytes.ms",
+    hex_decode from "@std/data/encoding.ms",
+)
 
 test "compression formats roundtrip and enforce expanded byte budgets":
     let input = "hello hello hello".to_bytes()
@@ -53,3 +50,11 @@ test "archives reject traversal paths":
     for path in ["../escape", "/absolute"]:
         let entries = [ArchiveEntry(path, "".to_bytes(), directory: false)]
         try expect_equal(pack(entries, ArchiveFormat.Zip), invalid)
+
+test "ZIP unpack verifies a zero stored checksum":
+    let forged = hex_decode(
+        "504b03041400000000000000210000000000050000000500000005000000662e74787468656c6c6f504b0102140314000000000000002100000000000500000005000000050000000000000000000000800100000000662e747874504b0506000000000100010033000000280000000000",
+        none
+    ).get(Bytes([]))
+    let failure = try expect_error(unpack(forged, ArchiveFormat.Zip))
+    try expect_equal(failure.kind.get(""), "EBADMSG")

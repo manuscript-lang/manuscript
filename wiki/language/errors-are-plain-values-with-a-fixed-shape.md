@@ -6,7 +6,7 @@ Decision (2026-11-01): the owner replaced per-domain error types, narrowing and 
 
 Apply when: adding a fallible stdlib API, a native adapter, or an error example.
 Evidence: [Error](../../stdlib/core.ms), [results guide](../../documentation/core-language/errors/results.md), [library errors](../../tests/e2e/testdata/accept/library-errors.ms), [proposal](../../proposals/error-values.md).
-Verify: a missing file yields `kind == "ENOENT"` with no import; two equal `Error` values compare equal; native statuses become `Error` in lowering (`status_table`, `domain_of`), and a status with no row falls back to `EIO`.
+Verify: a missing file yields `kind == "ENOENT"` with no import; two equal `Error` values compare equal; native statuses become `Error` in lowering (`status_table`; the domain is the runtime file's `//! ms: domain`), and a status with no row falls back to `EIO`.
 Pitfalls: defaults on bundled prelude records must use forms `literal_default` accepts (`none`, `Map[String, String]()`); an unqualified case such as `Closed` is ambiguous when another alternative in scope has it, so write `"EBADF"`; stdlib is embedded at build time, so rebuild `ms` before rerunning fixtures.
 
 

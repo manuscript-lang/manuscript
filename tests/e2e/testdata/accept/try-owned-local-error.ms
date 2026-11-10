@@ -9,8 +9,7 @@ fn heap(label: String, n: Int) String:
     return "{label}-a-string-long-enough-to-live-on-the-heap-{n}-aaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 fn open(name: String, fail: Bool) Door!String:
-    if fail:
-        return error(heap("failed", 1))
+    if fail: return error(heap("failed", 1))
 
     return ok(Door(name))
 

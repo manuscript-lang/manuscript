@@ -1,5 +1,5 @@
-import expect_equal, expect_true, expect_false from "@std/test/test.ms"
 import (
+    expect_equal, expect_true, expect_false from "@std/test/test.ms",
     Approved,
     Counter,
     Mode,
@@ -9,8 +9,8 @@ import (
     counter,
     safe,
     wild,
-    level
-) from "./gate.ms"
+    level from "./gate.ms",
+)
 
 fn show[T](value: T) String:
     return "{value}"

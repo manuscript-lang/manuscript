@@ -1,6 +1,6 @@
-import Data from "@std/core.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
 import (
+    Data from "@std/core.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
     HashAlgorithm,
     constant_time_equal,
     ecdsa_sign,
@@ -8,11 +8,11 @@ import (
     rsa_sign,
     rsa_verify,
     sign,
-    verify
-) from "@std/crypto.ms"
-import base64_encode_unpadded, base64_decode_unpadded from "@std/data/encoding.ms"
-import JsonValue, parse, stringify from "@std/data/json.ms"
-import now from "@std/time.ms"
+    verify from "@std/crypto.ms",
+    base64_encode, base64_decode from "@std/data/encoding.ms",
+    JsonValue, parse, stringify from "@std/data/json.ms",
+    now from "@std/time.ms",
+)
 
 fn jwt_invalid_key() Error:
     return Error("jwt: invalid key", kind: "EINVAL")
@@ -76,15 +76,18 @@ export fn sign_token[T: Data](
     let payload = stringify(claims)
     if header.is_error() or payload.is_error(): return error(jwt_invalid_key())
 
-    let head = base64_encode_unpadded(header.get("").to_bytes(), url_safe: true)
-    let body = base64_encode_unpadded(payload.get("").to_bytes(), url_safe: true)
+    let head = base64_encode(header.get("").to_bytes(), url_safe: true, padded: false)
+    let body = base64_encode(payload.get("").to_bytes(), url_safe: true, padded: false)
     let signing_input = "{head}.{body}"
     let signature = try sign_bytes(algorithm, key, signing_input.to_bytes())
-    return ok("{signing_input}.{base64_encode_unpadded(signature, url_safe: true)}")
+    return ok(
+        "{signing_input}.{base64_encode(signature, url_safe: true, padded: false)}"
+    )
 
 /*
 Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
 The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
+The payload must be a JSON object; any other JSON value returns EBADMSG.
 `exp` and `nbf` (seconds since the Unix epoch) are enforced when present; `iss` and `aud` are enforced when `check` names them.
 `key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
 Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
@@ -107,8 +110,8 @@ export fn verify_token[T: Data = JsonValue](
         Error("jwt: wrong algorithm", kind: "EBADMSG")
     )
 
-    let signature = base64_decode_unpadded(
-        parts[2], url_safe: true, max_bytes: check.max_bytes
+    let signature = base64_decode(
+        parts[2], url_safe: true, max_bytes: check.max_bytes, padded: false
     )
     if signature.is_error(): return error(
         Error("jwt: malformed token", kind: "EBADMSG")
@@ -134,15 +137,14 @@ fn algorithm_name(algorithm: JwtAlgorithm) String:
         EdDsa: return "EdDSA"
 
 fn decode_json[T: Data](part: String, limit: Int) T!:
-    let raw = base64_decode_unpadded(part, url_safe: true, max_bytes: limit)
+    let raw = base64_decode(part, url_safe: true, max_bytes: limit, padded: false)
     if raw.is_error(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
     let text = raw.get("".to_bytes()).decode_utf8()
     if text.is_none(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
     let value = parse[T](text.get(""))
-    if let decoded = value:
-        return ok(decoded)
+    if let decoded = value: return ok(decoded)
 
     return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
@@ -201,6 +203,10 @@ fn verify_bytes(
     return ok(verify(key, data, signature))
 
 fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
+    match claims:
+        ObjectValue(_): unit
+        _: return error(Error("jwt: claims must be an object", kind: "EBADMSG"))
+
     var moment = 0
 
     if let given = check.at:
@@ -246,7 +252,6 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
         if not includes_audience(claims.get("aud").get(JsonValue.Null), audience): return error(
             Error("jwt: wrong audience", kind: "EBADMSG")
         )
-    return ok(unit)
 
 // A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is malformed.
 fn numeric_date(claim: JsonValue, name: String) Float!:
@@ -255,8 +260,7 @@ fn numeric_date(claim: JsonValue, name: String) Float!:
     return error(Error("jwt: {name} must be a number", kind: "EBADMSG"))
 
 fn includes_audience(claim: JsonValue, audience: String) Bool:
-    if let single = claim.as_string():
-        return single == audience
+    if let single = claim.as_string(): return single == audience
     if let many = claim.as_list():
         return many.any(fn item: item.as_string().get("") == audience)
 

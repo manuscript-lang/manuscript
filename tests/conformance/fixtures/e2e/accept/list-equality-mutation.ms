@@ -28,10 +28,7 @@ fn check_equality(side: String, mutation: String) Unit!:
         if calls.count != 1:
             return
 
-        var target = left
-        if side == "right":
-            target = right
-
+        let target = if side == "right": right else: left
         let next_action = target[1].on_equal
 
         if mutation == "shrink" or mutation == "shrink_mismatch":
@@ -67,16 +64,11 @@ fn check_equality(side: String, mutation: String) Unit!:
         and mutation != "append_write"
         and mutation != "overwrite"
     )
-    var expected_calls = 3
-    if mutation == "append_write" or mutation == "overwrite":
-        expected_calls = 2
-
+    let expected_calls = if mutation == "append_write" or mutation == "overwrite": 2 else: 3
     let same = left == right
     if same != expected or calls.count != expected_calls: return fail(
         "{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
     )
-
-    return ok(unit)
 
 test "element Equal mutating either List retains both captured headers":
     for side in ["left", "right"]:

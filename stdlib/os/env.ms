@@ -1,15 +1,15 @@
-import access, stat from "@std/os/fs.ms"
-import join from "@std/os/path.ms"
-import Os, os from "@std/os/system.ms"
 import (
+    access, stat from "@std/os/fs.ms",
+    join from "@std/os/path.ms",
+    Os, os from "@std/os/system.ms",
     msrt_args,
     msstd_process_change_directory,
     msstd_process_environment_map,
     msstd_process_load_environment,
     msstd_process_set_environment,
     msstd_process_working_directory,
-    msstd_system_home_directory
-) from "@std/internal/env.ms"
+    msstd_system_home_directory from "@std/internal/env.ms",
+)
 
 // Returns the host-supplied startup arguments, excluding the executable path.
 // Each call returns an owned list; mutations do not change later calls or native argv.

@@ -15,7 +15,7 @@ import bench_fs from "./fsbench.ms"
 
 // Standard-library micro-benchmarks. Each case prints `name<TAB>ops<TAB>ns_per_op`.
 // Run with bench/tools/stdlib_bench.ms. Add a case with one `bench(...)` call in the matching module file.
-export fn main() Int:
+fn main() Unit:
     bench_string()
     bench_list()
     bench_map_set()
@@ -30,4 +30,3 @@ export fn main() Int:
     bench_numbers()
     bench_host()
     bench_fs()
-    return 0

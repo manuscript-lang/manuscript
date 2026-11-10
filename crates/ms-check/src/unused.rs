@@ -108,6 +108,7 @@ impl Scan<'_> {
 
     fn report(&mut self, binding: &BindingRef, pos: ms_syntax::Pos) {
         self.found.push(Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: std::sync::Arc::from(self.syms.str(self.module.file)),
             pos,

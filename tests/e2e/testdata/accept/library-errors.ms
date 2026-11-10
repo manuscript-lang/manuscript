@@ -1,6 +1,8 @@
-import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
-import parse, JsonOptions from "@std/data/json.ms"
-import hex_decode from "@std/data/encoding.ms"
+import (
+    expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
+    parse, JsonOptions from "@std/data/json.ms",
+    hex_decode from "@std/data/encoding.ms",
+)
 
 // Library failures are plain Error values: callers branch on `kind`, not on a domain type.
 
@@ -13,11 +15,9 @@ fn describe_error(cause: Error) String:
 
 fn decode_generically() Unit!:
     let _bytes = try hex_decode(text: "zz", max_bytes: 10)
-    return ok(unit)
 
 fn propagate_generic() Unit!:
     let _completed = try decode_generically()
-    return ok(unit)
 
 test "library errors carry a kind callers can branch on":
     let limits = JsonOptions(max_bytes: 100, max_depth: 8, max_values: 32)
@@ -61,7 +61,6 @@ fn failed_read() Unit!ReadError:
 
 fn propagate_read() Unit!ReadError:
     let _completed = try failed_read()
-    return ok(unit)
 
 test "a domain record is still a legal error value":
     let cause = match propagate_read():
@@ -82,8 +81,6 @@ fn general_read(cause: ReadError) Unit!:
                 "read failed", kind: "EIO", details: {"path": failed.err().path.clone()}
             )
         )
-
-    return ok(unit)
 
 test "a domain record converts to Error by an ordinary function":
     let outcome = general_read(ReadError("a.txt", 1, false))

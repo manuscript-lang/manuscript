@@ -11,8 +11,8 @@ test "reading through get leaves the map entry intact":
     try expect_equal(m.get("a").get().tags.length(), 2)
     try expect_true(m.get("a").is_some())
     try expect_true(m.get("zz").is_none())
-    try expect_equal(m.get("zz").get(Item(name: "d", tags: [])).name, "d")
-    try expect_equal(m.get("a").get(Item(name: "d", tags: [])).name, "x")
+    try expect_equal(m.get_or("zz", Item(name: "d", tags: [])).name, "d")
+    try expect_equal(m.get_or("a", Item(name: "d", tags: [])).name, "x")
     try expect_equal(m.get("a").get().tags.length(), 2)
 
 test "a kept value is a copy that later changes do not reach":
@@ -28,6 +28,6 @@ test "a kept value is a copy that later changes do not reach":
 test "get with a default on integer values":
     var counts = Map[String, Int]()
     counts.add(key: "k", value: 5)
-    try expect_equal(counts.get("k").get(0), 5)
-    try expect_equal(counts.get("none").get(7), 7)
+    try expect_equal(counts.get_or("k", 0), 5)
+    try expect_equal(counts.get_or("none", 7), 7)
     try expect_false(counts.get("none").is_some())

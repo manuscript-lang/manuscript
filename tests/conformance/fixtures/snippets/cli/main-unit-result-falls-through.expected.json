@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "stdout": "step 1\nstep 2\n",
+    "stderr": "error: too big\n"
+  }
+}

@@ -1,5 +1,7 @@
-import lines from "@std/io/streams.ms"
-import stdin, stdout from "@std/io/io.ms"
+import (
+    lines from "@std/io/streams.ms",
+    stdin, stdout from "@std/io/io.ms",
+)
 
 type Entry:
     cat: String
@@ -7,8 +9,7 @@ type Entry:
 
 fn digit_value(c: String) Int:
     for d in 0..10:
-        if digit_char(d) == c:
-            return d
+        if digit_char(d) == c: return d
     return -1
 
 fn digit_char(d: Int) String:
@@ -35,14 +36,12 @@ fn amount_cents(s: String) String?:
         int_part += cs[i]
         i += 1
 
-    if int_part.length() == 0:
-        return none
+    if int_part.length() == 0: return none
 
     var frac = ""
 
     if i < n:
-        if cs[i] != ".":
-            return none
+        if cs[i] != ".": return none
 
         i += 1
 
@@ -50,8 +49,7 @@ fn amount_cents(s: String) String?:
             frac += cs[i]
             i += 1
 
-        if frac.length() < 1 or frac.length() > 2 or i != n:
-            return none
+        if frac.length() < 1 or frac.length() > 2 or i != n: return none
 
         if frac.length() == 1:
             frac += "0"
@@ -71,10 +69,8 @@ fn parse_line(line: String) Entry?:
         var j = 1
         while j < n and cs[j] != "\"":
             j += 1
-        if j >= n:
-            return none
-        if j + 1 >= n or cs[j + 1] != ",":
-            return none
+        if j >= n: return none
+        if j + 1 >= n or cs[j + 1] != ",": return none
 
         cat = join_range(cs, 1, j)
         amt_start = j + 2
@@ -82,18 +78,15 @@ fn parse_line(line: String) Entry?:
         var k = 0
         while k < n and cs[k] != ",":
             k += 1
-        if k >= n:
-            return none
+        if k >= n: return none
 
         cat = join_range(cs, 0, k)
         amt_start = k + 1
 
-    if cat.length() == 0:
-        return none
+    if cat.length() == 0: return none
 
     let amount = join_range(cs, amt_start, n)
-    if let cents = amount_cents(amount):
-        return Entry(cat: cat, cents: cents)
+    if let cents = amount_cents(amount): return Entry(cat: cat, cents: cents)
 
     return none
 
@@ -141,8 +134,7 @@ export fn main() Int:
         let item = input.next().get()
 
         if let line = item:
-            if line.trim().length() == 0:
-                continue
+            if line.trim().length() == 0: continue
 
             if let e = parse_line(line):
                 if let cur = totals.get(e.cat):

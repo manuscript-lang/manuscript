@@ -1,10 +1,12 @@
-import keep, measure from "@std/test/bench.ms"
-import Bytes from "@std/bytes.ms"
-import pack, unpack, ArchiveEntry, ArchiveFormat from "@std/io/archive.ms"
-import sse_events from "@std/net/sse.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import parse_timestamp from "@std/time.ms"
-import uuid_v4 from "@std/random.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    Bytes from "@std/bytes.ms",
+    pack, unpack, ArchiveEntry, ArchiveFormat from "@std/io/archive.ms",
+    sse_events from "@std/net/sse.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    parse_timestamp from "@std/time.ms",
+    uuid_v4 from "@std/data/uuid.ms",
+)
 
 fn entries(count: Int) List[ArchiveEntry]:
     var out: List[ArchiveEntry] = []
@@ -55,8 +57,7 @@ bench "archive.zip_pack":
     let list = entries(2000)
 
     fn work() Result[Unit, Error]:
-        if let b = pack(list, ArchiveFormat.Zip):
-            return keep(b.length())
+        if let b = pack(list, ArchiveFormat.Zip): return keep(b.length())
 
         return keep(0)
 
@@ -66,8 +67,7 @@ bench "archive.tar_pack":
     let list = entries(2000)
 
     fn work() Result[Unit, Error]:
-        if let b = pack(list, ArchiveFormat.Tar):
-            return keep(b.length())
+        if let b = pack(list, ArchiveFormat.Tar): return keep(b.length())
 
         return keep(0)
 
@@ -76,8 +76,7 @@ bench "archive.tar_pack":
 bench "archive.zip_unpack":
     if let packed = pack(entries(2000), ArchiveFormat.Zip):
         fn work() Result[Unit, Error]:
-            if let e = unpack(packed, ArchiveFormat.Zip):
-                return keep(e.length())
+            if let e = unpack(packed, ArchiveFormat.Zip): return keep(e.length())
 
             return keep(0)
 

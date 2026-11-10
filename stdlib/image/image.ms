@@ -1,14 +1,13 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import filled from "@std/collections/collections.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
     bit_and,
     bit_or,
     shift_left,
     shift_right,
-    shift_right_unsigned
-) from "@std/math/math.ms"
-import crc32 from "@std/data/checksum.ms"
-import (compress, decompress, CompressionFormat) from "@std/io/archive.ms"
+    shift_right_unsigned from "@std/math/math.ms",
+    crc32 from "@std/data/checksum.ms",
+    compress, decompress, CompressionFormat from "@std/io/archive.ms",
+)
 
 /*
 Raster images as one flat, interleaved byte buffer, decoded from and encoded to PNG, JPEG, BMP and PPM/PGM.
@@ -139,7 +138,7 @@ fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
     return ok(count)
 
 fn zeroed(count: Int) List[UInt8]:
-    return filled(0.to_uint8().get(0), count, none).get(List[UInt8]())
+    return [0.to_uint8().get(0)].repeated(count)
 
 // Creates an opaque black image (alpha modes are fully opaque); `EINVAL` for a non-positive size, `EOVERFLOW` past `max_pixels`.
 export fn new_image(
@@ -911,13 +910,13 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
         if pw < 1 or ph < 1: continue
 
         let row_bytes = (pw * bits_per_pixel + 7) / 8
-        var prev = filled(0, row_bytes, none).get(List[Int]())
+        var prev = [0].repeated(row_bytes)
 
         for row in 0..ph:
             let filter = raw.get(pos).to_int()
             if filter > 4: return error(bad("PNG filter type {filter}"))
 
-            var cur = filled(0, row_bytes, none).get(List[Int]())
+            var cur = [0].repeated(row_bytes)
 
             for i in 0..row_bytes:
                 let x = raw.get(pos + 1 + i).to_int()
@@ -1071,7 +1070,7 @@ fn encode_png(image: Image) Bytes!:
 
     var raw = BytesBuilder()
     let row_bytes = image.width * n
-    var prev = filled(0, row_bytes, none).get(List[Int]())
+    var prev = [0].repeated(row_bytes)
 
     for y in 0..image.height:
         var row = List[Int](reserve: row_bytes)
@@ -1205,9 +1204,9 @@ fn be16(data: Bytes, at: Int) Int:
     return data.get(at).to_int() * 256 + data.get(at + 1).to_int()
 
 fn build_huffman(counts: List[Int], values: List[Int]) JpegHuffman!:
-    var mincode = filled(0, 17, none).get(List[Int]())
-    var maxcode = filled(-1, 17, none).get(List[Int]())
-    var valptr = filled(0, 17, none).get(List[Int]())
+    var mincode = [0].repeated(17)
+    var maxcode = [-1].repeated(17)
+    var valptr = [0].repeated(17)
     var code = 0
     var zi = 0
 
@@ -1221,7 +1220,7 @@ fn build_huffman(counts: List[Int], values: List[Int]) JpegHuffman!:
             bad("oversubscribed Huffman table")
         )
 
-        code = code * 2
+        code *= 2
 
     return ok(JpegHuffman(true, mincode, maxcode, valptr, values))
 
@@ -1392,7 +1391,7 @@ fn jpeg_block(
 fn jpeg_plane(comp: JpegComponent) List[UInt8]:
     let stride = comp.blocks_wide * 8
     var plane = zeroed(stride * comp.blocks_high * 8)
-    var tmp = filled(0, 64, none).get(List[Int]())
+    var tmp = [0].repeated(64)
 
     for by in 0..comp.blocks_high:
         for bx in 0..comp.blocks_wide:
@@ -1494,7 +1493,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                         bad("truncated JPEG quantization table")
                     )
 
-                    var table = filled(0, 64, none).get(List[Int]())
+                    var table = [0].repeated(64)
 
                     for zi in 0..64:
                         var v = data.get(p + 1 + zi).to_int()
@@ -1971,7 +1970,7 @@ fn clamp_to(value: Int, high: Int) Int:
     return if value < 0: 0 else: (if value > high: high else: value)
 
 fn zeroed_ints(count: Int) List[Int]:
-    return filled(0, count, none).get(List[Int]())
+    return [0].repeated(count)
 
 fn ycc_to_rgb(y: Int, cb: Int, cr: Int) List[Int]:
     let u = cb - 128
@@ -2034,13 +2033,13 @@ fn jpeg_codes(counts: List[Int], values: List[Int]) JpegCodes:
     var index = 0
 
     for length in 1..17:
-        for _slot in 0..counts.get(length - 1):
-            code[values.get(index)] = next
-            size[values.get(index)] = length
+        for _slot in 0..counts[length - 1]:
+            code[values[index]] = next
+            size[values[index]] = length
             next += 1
             index += 1
 
-        next = next * 2
+        next *= 2
 
     return JpegCodes(code, size)
 
@@ -2072,7 +2071,7 @@ fn bit_length(value: Int) Int:
 
     while v > 0:
         n += 1
-        v = v / 2
+        v /= 2
 
     return n
 
@@ -2106,7 +2105,7 @@ fn jpeg_forward(
         for y in 0..8:
             sum += dct_matrix[y * 8 + v] * tmp[y * 8 + u]
 
-        let q = quant.get(zi)
+        let q = quant[zi]
         let half = q * 8388608
         let scale = q * 16777216
         levels[zi] = if sum >= 0: (sum + half) / scale else: 0 - ((half - sum) / scale)
@@ -2164,7 +2163,7 @@ fn jpeg_scaled(base: List[Int], quality: Int) List[Int]:
     let scale = if quality < 50: 5000 / quality else: 200 - quality * 2
     var table = List[Int]()
     for zi in 0..64:
-        table.append(clamp_to(max_of((base.get(zi) * scale + 50) / 100, 1), 255))
+        table.append(clamp_to(max_of((base[zi] * scale + 50) / 100, 1), 255))
     return table
 
 // Encodes baseline JPEG: gray stays gray, Rgb uses YCbCr with the chosen chroma resolution. Alpha images fail with

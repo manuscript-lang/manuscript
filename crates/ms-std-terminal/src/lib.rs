@@ -4,6 +4,7 @@
 //! `_status` call first). `raw_mode` returns a handle whose operations are the
 //! `msstd_terminal_raw_terminal_*` exports; the event delivered by `next_event` is read back
 //! through the `msstd_terminal_event_*` getters.
+//! ms: domain terminal
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.

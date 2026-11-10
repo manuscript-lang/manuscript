@@ -1,5 +1,7 @@
-import expect_equal from "@std/test/test.ms"
-import infinity, nan from "@std/math/math.ms"
+import (
+    expect_equal from "@std/test/test.ms",
+    infinity, nan from "@std/math/math.ms",
+)
 
 test "Float shortest strings keep notation boundaries and special values":
     try expect_equal((1.0 / 3.0).to_string(), "0.3333333333333333")

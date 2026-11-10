@@ -18,7 +18,6 @@ type Reporter:
 impl Closeable for Reporter:
     var fn close() Unit!:
         let _line = stdout().write("{self.name} cleanup ran\n")
-        return ok(unit)
 
 fn handle(request: HttpRequest) HttpResponse:
     var _reporter = Reporter("handler")

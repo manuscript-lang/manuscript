@@ -1,6 +1,8 @@
-import ReadStream, Source from "@std/io/io.ms"
-import from_bytes from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    ReadStream, Source from "@std/io/io.ms",
+    from_bytes from "@std/io/streams.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 // A reader over `text` in chunks of `chunk` bytes, so line and scalar boundaries fall inside reads.
 export fn memory(text: String, chunk: Int = 3) ReadStream[Bytes]:

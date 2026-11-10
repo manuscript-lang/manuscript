@@ -11,14 +11,11 @@ A function is pure unless a comment permits what it reaches. `ms lint` reports a
 ```manuscript
 fn total(prices: List[Int]) Int:
     print("summing {prices.length()} prices")
-    var sum = 0
-    for price in prices:
-        sum += price
+    let sum = prices.sum()
     return sum
 
-export fn main() Int:
+fn main() Unit:
     print(total([2, 3]))
-    return 0
 ```
 
 ```text
@@ -41,8 +38,8 @@ import Bytes from "@std/bytes.ms"
 fn load(path: String) Bytes!:
     return read_file(path).wait()
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return
 ```
 
 Each line names one effect or a pattern:
@@ -75,14 +72,11 @@ impl Logger for ConsoleLogger:
 
 fn total(log: Logger, prices: List[Int]) Int:
     log.info("summing {prices.length()} prices")
-    var sum = 0
-    for price in prices:
-        sum += price
+    let sum = prices.sum()
     return sum
 
-export fn main() Int:
+fn main() Unit:
     print(total(ConsoleLogger("> "), [2, 3]))
-    return 0
 ```
 
 `total` is pure here, so a test can pass a logger that records messages. Turning a `ConsoleLogger` into a `Logger` inside a pure function would be reported, because that is where the authority is obtained. The same holds when a function is written as a closure, named as a value, or passed for a generic parameter.
@@ -107,8 +101,8 @@ fn checkout(total: Int) Unit!:
 fn audit(total: Int) Unit!:
     return save("audit {total}")
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return
 ```
 
 `save` may write a file and declares `db.write`. `checkout` may use any `db` effect but not the file system directly. `audit` has no line, so it is reported for `db.write`. Names starting with `std.` belong to the standard library.

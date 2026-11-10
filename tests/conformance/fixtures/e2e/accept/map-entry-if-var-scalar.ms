@@ -9,7 +9,7 @@ fn bump(var counts: Map[String, Int], key: String) Unit:
     else:
         counts[key] = 1
 
-export fn main() Int:
+fn main() Unit:
     var m = Map[String, Int]()
     for w in ["a", "b", "a", "a"]:
         bump(var m, w)
@@ -18,11 +18,4 @@ export fn main() Int:
     f["x"] = 1.5
     if var x = f.get("x"):
         x += 1.0
-    (
-        stdout()
-        .write(
-            "{m.get("a").get(0)} {m.get("b").get(0)} {f.get("x").get(0.0)}\n"
-        )
-        .get()
-    )
-    return 0
+    stdout().write("{m.get_or("a", 0)} {m.get_or("b", 0)} {f.get_or("x", 0.0)}\n").get()

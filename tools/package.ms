@@ -2,15 +2,14 @@
 // dist/manuscript-rust-<os>-<arch>.{tar.gz,zip} with a .sha256 beside it. The release runner for
 // each target builds it natively.
 // Usage: ms run tools/package.ms [-- OS ARCH]
-import capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms"
-import chmod, copy, create_directory, remove, temporary, write_file from "@std/os/fs.ms"
 import (
+    capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms",
+    chmod, copy, create_directory, remove, temporary, write_file from "@std/os/fs.ms",
     arguments,
     change_directory,
     set_environment,
-    working_directory
-) from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+    working_directory from "@std/os/env.ms",
+)
 
 fn supported(target_os: String, target_arch: String) Bool:
     let key = "{target_os}/{target_arch}"
@@ -19,7 +18,7 @@ fn supported(target_os: String, target_arch: String) Bool:
         "windows/arm64"
     ].contains(key)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     var target_os = dist_os()
     var target_arch = dist_arch()
@@ -27,7 +26,7 @@ export fn main() Int:
     if args.length() == 2:
         target_os = args[0].clone()
         target_arch = args[1].clone()
-    else if args.length() != 0:
+    else if not args.is_empty():
         note("Usage: ms run tools/package.ms [-- OS ARCH]")
         return 2
 
@@ -106,5 +105,5 @@ export fn main() Int:
 
     let digest = file_sha256(archive)
     write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).wait().get()
-    stdout().write("{archive}\n").get()
+    print("{archive}")
     return 0

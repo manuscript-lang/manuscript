@@ -1,7 +1,6 @@
 // conform: tags=scope-cleanup,control-flow,records,tier-io
 // conform: phase=run
 // conform: origin=close-gap-probes
-import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 type Door:
@@ -9,8 +8,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        stdout().write("closed {self.name}\n").get()
-        return ok(unit)
+        print("closed {self.name}")
 
 impl Door:
     fn id() Int:
@@ -78,31 +76,30 @@ fn else_branch(c: Bool) Int:
     else:
         return consume(h)
 
-export fn main() Int:
+fn main() Unit:
     ret_or_fall(true)
-    stdout().write("--ret_or_fall false\n").get()
+    print("--ret_or_fall false")
     ret_or_fall(false)
-    stdout().write("--arg_in_branch true\n").get()
+    print("--arg_in_branch true")
     arg_in_branch(true)
-    stdout().write("--arg_in_branch false\n").get()
+    print("--arg_in_branch false")
     arg_in_branch(false)
-    stdout().write("--into_record true\n").get()
+    print("--into_record true")
     into_record(true)
-    stdout().write("--into_record false\n").get()
+    print("--into_record false")
     into_record(false)
-    stdout().write("--in_loop\n").get()
+    print("--in_loop")
     in_loop(4)
-    stdout().write("--moved_always\n").get()
+    print("--moved_always")
     moved_always()
-    stdout().write("--returned true\n").get()
+    print("--returned true")
 
     let _r = returned(true)
-    stdout().write("--returned false\n").get()
+    print("--returned false")
 
     let _r2 = returned(false)
-    stdout().write("--else true\n").get()
+    print("--else true")
     else_branch(true)
-    stdout().write("--else false\n").get()
+    print("--else false")
     else_branch(false)
-    stdout().write("--end\n").get()
-    return 0
+    print("--end")

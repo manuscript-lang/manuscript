@@ -1,19 +1,21 @@
 // Runs on the oldest glibc that Linux programs support (2.28). CI builds it on a current host and runs it
 // in an AlmaLinux 8 container: threads, the resolver pool, file metadata, child processes, entropy and libm
 // all reach glibc through the versions the link-time stubs bind.
-import stdout from "@std/io/io.ms"
-import stat from "@std/os/fs.ms"
-import run from "@std/os/process.ms"
-import secure_int from "@std/random.ms"
-import exp, hypot, log, pow from "@std/math/math.ms"
-import lookup from "@std/net/net.ms"
-import nanoseconds, sleep from "@std/time.ms"
-import promise from "@std/concurrency/promise.ms"
+import (
+    stdout from "@std/io/io.ms",
+    stat from "@std/os/fs.ms",
+    run from "@std/os/process.ms",
+    secure_int from "@std/random.ms",
+    exp, hypot, log, pow from "@std/math/math.ms",
+    lookup from "@std/net/net.ms",
+    nanoseconds, sleep from "@std/time.ms",
+    promise from "@std/concurrency/promise.ms",
+)
 
 fn square(n: Int) Int:
     return n * n
 
-export fn main() Int:
+fn main() Unit:
     let squared = promise(fn: ok(square(12))).wait().get(-1)
     let file = stat("/etc/hosts", follow_links: true).is_ok()
     let child = run("true", []).wait().is_ok()
@@ -22,4 +24,3 @@ export fn main() Int:
     let _ = sleep(nanoseconds(1000000)).wait()
     let math = pow(2.0, 10.0) + exp(0.0) + log(1.0) + hypot(3.0, 4.0)
     stdout().write("{squared} {file} {child} {entropy} {hosts} {math}\n").get()
-    return 0

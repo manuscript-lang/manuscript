@@ -7,4 +7,6 @@ Decision: `Clonable` is a prelude interface whose `value.clone()` returns an ind
 
 Apply when: writing generic stdlib code that stores or returns borrowed elements.
 Evidence: [generics](../../documentation/core-language/types/generics.md), [declarations](../../documentation/core-language/modules/declarations.md).
+Verified: generic native collection helpers need the same source bounds as copying methods. `distinct`, `filled`, and `flatten` previously accepted resources and duplicated their cleanup (#3291); constrain both public wrappers and internal declarations. [Copy-contract rejection tests](../../crates/ms-check/tests/ownership/reject/collection_copy_contracts.ms) cover direct and callable-value use.
+
 Verify: a `[T: Clonable]` function can return `xs[0].clone()`; a resource handle or a `Regex` fails the bound, and `re.clone()` is unresolved.

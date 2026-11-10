@@ -135,6 +135,69 @@ fn limits_and_bad_trailers_remain_terminal() {
     assert_eq!(d.end(), Err(Fail::InvalidData));
 }
 
+/// Adds all optional fields selected by `flags`, including a valid header CRC when requested.
+fn gzip_with_flags(flags: u8) -> Vec<u8> {
+    let packed = compress(b"gzip flags", "gzip", 6, None).unwrap();
+    let mut header = packed[..10].to_vec();
+    header[3] = flags;
+    if flags & 4 != 0 {
+        header.extend_from_slice(&[3, 0, 0, 0xff, 0x42]);
+    }
+    if flags & 8 != 0 {
+        header.extend_from_slice(b"name.txt\0");
+    }
+    if flags & 16 != 0 {
+        header.extend_from_slice(b"comment\0");
+    }
+    if flags & 2 != 0 {
+        header.extend_from_slice(&(crc32(0, &header) as u16).to_le_bytes());
+    }
+    header.extend_from_slice(&packed[10..]);
+    header
+}
+
+#[test]
+fn gzip_rejects_reserved_flags_in_every_member() {
+    let first = compress(b"first", "gzip", 6, None).unwrap();
+    for flags in [0x20, 0x40, 0x80, 0xe0, 0xff] {
+        let bad = gzip_with_flags(flags);
+        for input in [bad.clone(), [first.clone(), bad].concat()] {
+            assert_eq!(
+                decompress_bytes(&input, "gzip", None),
+                Err(Fail::InvalidData),
+                "flags {flags:#04x}"
+            );
+            for chunk in [1, 9, input.len()] {
+                assert_eq!(
+                    decode(Format::Gzip, None, &input, chunk).1,
+                    "err InvalidData",
+                    "flags {flags:#04x}, chunk {chunk}"
+                );
+            }
+            let mut decoder = Decoder::new(Format::Gzip, None);
+            assert_eq!(decoder.push(&input), Err(Fail::InvalidData));
+            assert_eq!(decoder.push(&[]), Err(Fail::InvalidData));
+            assert_eq!(decoder.end(), Err(Fail::InvalidData));
+        }
+    }
+}
+
+#[test]
+fn gzip_accepts_every_legal_flag_combination() {
+    for flags in 0..=0x1f {
+        let input = gzip_with_flags(flags);
+        assert_eq!(
+            decompress_bytes(&input, "gzip", None).unwrap(),
+            b"gzip flags"
+        );
+        for chunk in [1, 9, input.len()] {
+            let (output, status) = decode(Format::Gzip, None, &input, chunk);
+            assert_eq!(status, "ok", "flags {flags:#04x}, chunk {chunk}");
+            assert_eq!(output, b"gzip flags");
+        }
+    }
+}
+
 /// Deterministic xorshift for reproducible random chunk splits.
 fn next(state: &mut u64) -> u64 {
     *state ^= *state << 13;

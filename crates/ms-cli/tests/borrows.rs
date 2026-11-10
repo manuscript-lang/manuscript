@@ -42,7 +42,7 @@ fn if_var_borrows_map_and_list_entries() {
     assert_eq!(status, Some(0), "{text}");
     assert_eq!(
         text,
-        "2 2 [x] [[1, 5], [2], [9]] 15 Optional.some(Counter(count: 15, tags: [t])) [[1, 2], [3, 4]]\n"
+        "2 2 [x] [[1, 5], [2], [9]] 15 some(Counter(count: 15, tags: [t])) [[1, 2], [3, 4]]\n"
     );
 }
 
@@ -63,7 +63,7 @@ fn touching_the_origin_while_borrowed_is_rejected() {
 fn var_of_a_scalar_part_copies_and_if_var_writes_through() {
     let (status, text) = run_ms(&["run", &fixture("scalar_borrows.ms")]);
     assert_eq!(status, Some(0), "{text}");
-    assert_eq!(text, "2 20 Optional.some(2) [1, 2, 3] 102\n");
+    assert_eq!(text, "2 20 some(2) [1, 2, 3] 102\n");
 }
 
 #[test]
@@ -81,11 +81,11 @@ fn explicit_optional_defaults_preserve_owned_payloads() {
             "[99] [1]\n\
          [99] [2]\n\
          [99] [3] [3]\n\
-         [88] [88] [88] Optional.some([88])\n\
+         [88] [88] [88] some([88])\n\
          missing 7\n\
          [1] [2] [3]\n\
          [1] [99] [2] [99] [3] [99] 6\n\
-         fallback fallback fallback Optional.some(fallback)\n\
+         fallback fallback fallback some(fallback)\n\
          [4] [5]\n"
         );
     }
@@ -106,7 +106,7 @@ fn standard_library_source_copies_what_it_reads() {
 fn borrow_identities_are_unique_across_the_standard_library() {
     let (status, text) = run_ms(&["run", &fixture("stdlib_binding_ids.ms")]);
     assert_eq!(status, Some(0), "{text}");
-    assert_eq!(text, "Optional.some(3) 25 Optional.some(hello!)\n");
+    assert_eq!(text, "some(3) 25 some(hello!)\n");
 }
 
 #[test]

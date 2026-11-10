@@ -1,36 +1,33 @@
-import expect_false, expect_ok, expect_true from "@std/test/test.ms"
-import PromiseOptions from "@std/concurrency/promise.ms"
 import (
+    expect_false, expect_ok, expect_true from "@std/test/test.ms",
+    PromiseOptions from "@std/concurrency/promise.ms",
     cpu_usage,
     groups,
     process_info,
     replace,
     resource_usage,
     set_groups,
-    set_identity
-) from "@std/os/process.ms"
-import (memory_usage) from "@std/os/system.ms"
-import (
+    IdentityKind,
+    set_identity from "@std/os/process.ms",
+    memory_usage from "@std/os/system.ms",
     FileEvent,
     WatchOptions,
     create_directory,
     stat_filesystem,
     temporary,
     watch,
-    write_file
-) from "@std/os/fs.ms"
-import join from "@std/os/path.ms"
-import milliseconds from "@std/time.ms"
-import ReadStream from "@std/io/io.ms"
-import within from "./support/conn.ms"
+    write_file from "@std/os/fs.ms",
+    join from "@std/os/path.ms",
+    milliseconds from "@std/time.ms",
+    ReadStream from "@std/io/io.ms",
+    within from "./support/conn.ms",
+)
 
 fn expect_process_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
         ok(_): return error(Error("process misuse succeeded"))
         error(cause):
             if cause.kind != expected.kind: return error(Error("wrong process error"))
-
-    return ok(unit)
 
 fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
@@ -39,8 +36,6 @@ fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
             if cause.kind != expected.kind: return error(
                 Error("wrong filesystem error")
             )
-
-    return ok(unit)
 
 test "process usage records report this process":
     let cpu = try cpu_usage()
@@ -58,7 +53,7 @@ test "process usage records report this process":
 
 test "set_identity and set_groups validate input and apply or refuse":
     try expect_process_error(
-        set_identity(kind: "nope", id: 0),
+        set_identity(kind: IdentityKind.Uid, id: -1),
         Error("process: invalid input", kind: "EINVAL")
     )
     try expect_process_error(
@@ -70,7 +65,7 @@ test "set_identity and set_groups validate input and apply or refuse":
     if info.uid < 0:
         // Windows has no ids.
         try expect_process_error(
-            set_identity(kind: "uid", id: 0),
+            set_identity(kind: IdentityKind.Uid, id: 0),
             Error("process: operation not supported", kind: "ENOTSUP")
         )
         try expect_process_error(
@@ -79,10 +74,10 @@ test "set_identity and set_groups validate input and apply or refuse":
         )
     else:
         // Setting the identity it already has changes nothing and needs no privilege.
-        try set_identity(kind: "uid", id: info.uid)
-        try set_identity(kind: "gid", id: info.gid)
-        try set_identity(kind: "euid", id: info.effective_uid)
-        try set_identity(kind: "egid", id: info.effective_gid)
+        try set_identity(kind: IdentityKind.Uid, id: info.uid)
+        try set_identity(kind: IdentityKind.Gid, id: info.gid)
+        try set_identity(kind: IdentityKind.Euid, id: info.effective_uid)
+        try set_identity(kind: IdentityKind.Egid, id: info.effective_gid)
 
         let groups = try groups()
 

@@ -2,8 +2,8 @@
 // Usage: ms run bench/tools/kernels.ms -- <kernels|competence> [repeats]
 // kernels: c-ms is the C a no-GC Manuscript backend would emit; ABLATE=1 adds c-ms builds with one runtime check removed each.
 // MS, GO, RUSTC and CC pick the tools.
-import ablations, base_versions, c_versions, summarize from "./kernels_table.ms"
 import (
+    ablations, base_versions, c_versions, summarize from "./kernels_table.ms",
     build_go,
     build_ms,
     build_rust,
@@ -14,17 +14,16 @@ import (
     must,
     repeats,
     rotate,
-    sample
-) from "./lib.ms"
-import copy, CopyOptions, create_directory, temporary from "@std/os/fs.ms"
-import arguments from "@std/os/env.ms"
+    sample from "./lib.ms",
+    copy, CopyOptions, create_directory, temporary from "@std/os/fs.ms",
+    arguments from "@std/os/env.ms",
+)
 
 fn build_c(source: String, out: String, flags: List[String]) Result[Unit, Error]:
     var args = ["-O2", "-std=c11", "-ffp-contract=off"].concat(flags)
     args = args.concat([source.clone(), "-o", out.clone()])
 
     let _ = try must("cc {source}", capture(env("CC", "cc"), args))
-    return ok(unit)
 
 fn run(suite: String, n: Int, work: String) Result[String, Error]:
     let here = "bench/perf/{suite}"
@@ -78,9 +77,9 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 
     return summarize(raw, suite, n, versions)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
-    if args.length() == 0 or (args[0] != "kernels" and args[0] != "competence"):
+    if args.is_empty() or (args[0] != "kernels" and args[0] != "competence"):
         return fail("usage: kernels.ms -- <kernels|competence> [repeats]")
 
     var n = 5

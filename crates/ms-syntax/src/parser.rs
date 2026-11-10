@@ -190,6 +190,9 @@ fn describe_kind(kind: &str) -> String {
 /// Text interpolates by default, so Python's `f"..."` prefix is a stray name.
 const F_STRING_HINT: &str = "; there is no f-string prefix: text interpolates by default, so write \"...{value}...\" and escape literal braces as \\{ and \\}";
 
+/// The unspellable name a destructuring `for` or lambda binds before its pattern.
+const HIDDEN_ITEM: &str = "for item";
+
 fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
     match kind {
         ":" => "; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body".into(),
@@ -205,7 +208,7 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
         "(" => "; a call or parameter list starts with '('".into(),
         "from" => {
             if found == Tok::Comma {
-                "; to import several names, write import a, b from \"path.ms\"".into()
+                "; to import several names, write import a, b from \"path.ms\", or import (a from \"a.ms\", b from \"b.ms\") for several modules".into()
             } else {
                 "; imports read: import name from \"path.ms\"".into()
             }
@@ -480,6 +483,33 @@ impl<'a> Parser<'a> {
         }
         Err(Box::new(d))
     }
+
+    /// A symbolic operator can touch either operand; its word replacement
+    /// needs separation wherever it would otherwise join an identifier/number.
+    fn fail_word_operator<T>(
+        &self,
+        first: Token,
+        last: Token,
+        message: &str,
+        word: &str,
+    ) -> PResult<T> {
+        let joins_word = |byte: &u8| byte.is_ascii_alphanumeric() || *byte == b'_';
+        let bytes = self.src.as_bytes();
+        let before = first
+            .lo
+            .checked_sub(1)
+            .and_then(|at| bytes.get(at as usize));
+        let after = bytes.get(last.hi as usize);
+        let mut replacement = String::new();
+        if before.is_some_and(joins_word) {
+            replacement.push(' ');
+        }
+        replacement.push_str(word);
+        if after.is_some_and(joins_word) {
+            replacement.push(' ');
+        }
+        self.fail_fix_range(first, last, message, &replacement)
+    }
     /// The colon after a parameter or field name; a missing one is usually a
     /// type written directly after the name.
     fn need_name_colon(&mut self, name: Token) -> PResult<()> {
@@ -644,10 +674,11 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses the rest of `import a, b from "path"` after `import`.
+    /// Parses the rest of an import after `import`: `a, b from "path"`,
+    /// `(a, b) from "path"`, or a group of clauses
+    /// `(a, b from "path", c from "other")`.
     fn import(&mut self, module: &mut Module) -> PResult<()> {
         let pos = self.previous().pos;
-        let mut names: Vec<Token> = Vec::new();
         if self.kind() == Tok::Star {
             let t = self.peek();
             return self.fail(t, "namespace and wildcard imports are unsupported; import individual exports with 'import Name, OtherName from \"./module.ms\"'");
@@ -658,7 +689,34 @@ impl<'a> Parser<'a> {
         }
         // A bare list is comma-separated on one line; a parenthesized list
         // wraps across lines and permits a trailing comma. Both are nonempty.
+        // Inside parentheses, `from` after the names starts a clause, so one
+        // statement can import from several modules.
         let wrapped = self.take(Tok::LParen);
+        loop {
+            let names = self.import_names(wrapped)?;
+            if wrapped && self.kind() == Tok::RParen {
+                self.need(Tok::RParen)?;
+                self.need_from()?;
+                let path = self.import_path()?;
+                self.push_imports(module, pos, names, &path);
+                break;
+            }
+            self.need_from()?;
+            let path = self.import_path()?;
+            self.push_imports(module, pos, names, &path);
+            if !wrapped {
+                break;
+            }
+            if !self.take(Tok::Comma) || self.kind() == Tok::RParen {
+                self.need(Tok::RParen)?;
+                break;
+            }
+        }
+        self.end()
+    }
+
+    fn import_names(&mut self, wrapped: bool) -> PResult<Vec<Token>> {
+        let mut names = Vec::new();
         loop {
             names.push(self.need(Tok::Name)?);
             if self.kind() == Tok::Name && self.text(self.peek()) == "as" {
@@ -666,36 +724,37 @@ impl<'a> Parser<'a> {
                 return self.fail(t, "imports cannot be renamed with 'as'; import the name as the module declares it");
             }
             if !self.take(Tok::Comma) || (wrapped && self.kind() == Tok::RParen) {
-                break;
+                return Ok(names);
             }
         }
-        if wrapped {
-            self.need(Tok::RParen)?;
-        }
-        self.need_from()?;
+    }
+
+    fn import_path(&mut self) -> PResult<Box<str>> {
         let token = self.need(Tok::String)?;
         self.single_line(token, "import paths")?;
         let mut parts = self.text_parts_of(token)?;
-        let path = match (parts.len(), parts.pop()) {
-            (1, Some(TextPart::Lit(text))) => text,
-            _ => {
-                return self.fail(
-                    token,
-                    "import paths cannot interpolate; write the path as plain text without {…}",
-                );
-            }
-        };
+        match (parts.len(), parts.pop()) {
+            (1, Some(TextPart::Lit(text))) => Ok(text),
+            _ => self.fail(
+                token,
+                "import paths cannot interpolate; write the path as plain text without {…}",
+            ),
+        }
+    }
+
+    fn push_imports(&mut self, module: &mut Module, pos: Pos, names: Vec<Token>, path: &str) {
+        let clause = names[0].pos;
         for name in names {
             let id = self.id();
             module.imports.push(Import {
                 id,
                 pos,
+                clause,
                 name_pos: name.pos,
                 name: self.sym(name),
-                path: path.clone(),
+                path: path.into(),
             });
         }
-        self.end()
     }
 
     // ---- types ----
@@ -1641,6 +1700,26 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    /// `let pattern = hidden`: the first statement of a `for` body or lambda whose
+    /// parameter is a pattern. Checking, ownership, and lowering see an ordinary
+    /// binding of the hidden name, which borrows the element.
+    fn destructure(&mut self, pattern: Pattern, hidden: Symbol) -> Stmt {
+        let pos = pattern.pos;
+        let value = self.mk(pos, ExprKind::Name(hidden));
+        let id = self.id();
+        Stmt {
+            id,
+            pos,
+            kind: StmtKind::Bind {
+                mutable: false,
+                pattern,
+                ty: None,
+                value,
+                group: None,
+            },
+        }
+    }
+
     /// Parses `pattern [: Type] = value` after let or var.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
         self.no_ref()?;
@@ -1802,23 +1881,27 @@ impl<'a> Parser<'a> {
                     return self.fail(c, "for does not take parentheses or a counter clause; write 'for item in items:' to visit a List, or 'for i in 0..n:' to count");
                 }
                 self.no_ref()?;
-                let name = self.need(Tok::Name)?;
+                let (name, pattern) = if matches!(self.kind(), Tok::LBracket | Tok::LBrace) {
+                    (self.names.intern(HIDDEN_ITEM), Some(self.pattern()?))
+                } else {
+                    let name = self.need(Tok::Name)?;
+                    (self.sym(name), None)
+                };
                 if self.kind() == Tok::Name && self.text(self.peek()) == "of" {
                     let c = self.peek();
                     return self.fail(c, "for uses 'in', not 'of'; write 'for item in items:'");
                 }
                 if self.kind() == Tok::Comma {
                     let c = self.peek();
-                    return self.fail(c, "for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value)");
+                    return self.fail(c, "for binds one name or one pattern; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value), or destructure each element with 'for [a, b] in pairs:'");
                 }
                 self.need(Tok::In)?;
                 let iter = self.expression(0)?;
-                let body = self.suite()?;
-                StmtKind::For {
-                    name: self.sym(name),
-                    iter,
-                    body,
+                let mut body = self.suite()?;
+                if let Some(pattern) = pattern {
+                    body.insert(0, self.destructure(pattern, name));
                 }
+                StmtKind::For { name, iter, body }
             }
             _ => self.expression_statement(t, allow_value)?,
         };
@@ -1833,7 +1916,7 @@ impl<'a> Parser<'a> {
         } else if self.take(Tok::Assign) {
             if index_parts(&e).is_some() {
                 let value = self.expression(0)?;
-                let kind = self.index_set(e, value);
+                let kind = self.index_set(e, value, false);
                 self.end()?;
                 return Ok(kind);
             }
@@ -1890,7 +1973,9 @@ impl<'a> Parser<'a> {
 
     /// `xs[i] = value` as the call of the member `[]=`, which the checker resolves to `set` on a
     /// List and `add` on a Map.
-    fn index_set(&mut self, target: Expr, value: Expr) -> StmtKind {
+    /// With `reread`, the value reads the same element, so a name or field key is cloned for the store
+    /// and the original stays borrowable for the read (and for the caller afterwards).
+    fn index_set(&mut self, target: Expr, value: Expr, reread: bool) -> StmtKind {
         let (left, index) = match target.kind {
             ExprKind::Index { left, index } => (left, index),
             ExprKind::Apply {
@@ -1901,6 +1986,28 @@ impl<'a> Parser<'a> {
             _ => unreachable!("index target"),
         };
         let pos = target.pos;
+        let index = if reread && matches!(index.kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
+            let receiver = Box::new(self.clone_chain(&index));
+            let name = self.names.intern("clone");
+            let callee = self.mk(
+                index.pos,
+                ExprKind::Member {
+                    left: receiver,
+                    name,
+                },
+            );
+            Box::new(Expr {
+                id: self.id(),
+                pos: index.pos,
+                end: index.end,
+                kind: ExprKind::Call {
+                    callee: Box::new(callee),
+                    args: Vec::new(),
+                },
+            })
+        } else {
+            index
+        };
         let member = self.mk(
             pos,
             ExprKind::Member {
@@ -1967,7 +2074,7 @@ impl<'a> Parser<'a> {
                     right: Box::new(right),
                 },
             };
-            return Ok(self.index_set(e, value));
+            return Ok(self.index_set(e, value, true));
         }
         let target = self.assign_target(start, e)?;
         let Some(left) = copy else {
@@ -2295,7 +2402,7 @@ impl<'a> Parser<'a> {
         } else {
             first
         };
-        self.fail_fix_range(
+        self.fail_word_operator(
             first,
             last,
             "'&&' is not an operator; write 'and' for logical and",
@@ -2310,7 +2417,7 @@ impl<'a> Parser<'a> {
         if self.kind() == Tok::Pipe {
             let t = self.peek();
             let first = self.previous();
-            return self.fail_fix_range(first, t, "'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step", "or");
+            return self.fail_word_operator(first, t, "'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step", "or");
         }
         let try_tok = self.peek();
         let tried = self.take(Tok::Try);
@@ -2498,6 +2605,7 @@ impl<'a> Parser<'a> {
             }
             Tok::Fn => {
                 let mut result = None;
+                let mut destructured = Vec::new();
                 let params = if self.kind() == Tok::LParen {
                     let params = self.parameters(true, true)?;
                     if self.kind() == Tok::Arrow {
@@ -2510,9 +2618,30 @@ impl<'a> Parser<'a> {
                     params
                 } else {
                     let mut params = Vec::new();
-                    while self.kind() == Tok::Name
+                    while matches!(self.kind(), Tok::Name | Tok::LBracket | Tok::LBrace)
                         || (self.kind() == Tok::Var && self.ahead(1).kind == Tok::Name)
                     {
+                        if matches!(self.kind(), Tok::LBracket | Tok::LBrace) {
+                            // `fn [a, b]: ...` binds the pattern from a hidden parameter.
+                            let pattern = self.pattern()?;
+                            let hidden = self
+                                .names
+                                .intern(&format!("{HIDDEN_ITEM} {}", params.len()));
+                            let id = self.id();
+                            params.push(Param {
+                                id,
+                                pos: pattern.pos,
+                                name: hidden,
+                                ty: None,
+                                default: None,
+                                mutable: false,
+                            });
+                            destructured.push(self.destructure(pattern, hidden));
+                            if !self.take(Tok::Comma) {
+                                break;
+                            }
+                            continue;
+                        }
                         // `fn var exchange, next: ...`: a parameter the function changes in place.
                         let mutable = self.take(Tok::Var);
                         let name = self.next();
@@ -2531,7 +2660,8 @@ impl<'a> Parser<'a> {
                     }
                     params
                 };
-                let body = self.statement_suite(true, false)?;
+                let mut body = self.statement_suite(true, false)?;
+                body.splice(0..0, destructured);
                 self.mk(
                     t.pos,
                     ExprKind::Lambda(Lambda {
@@ -2774,8 +2904,8 @@ impl<'a> Parser<'a> {
                 line_start = false;
                 let mut skipped = 0;
                 while skipped < indent && i < end && matches!(rb[i], b' ' | b'\t') {
+                    skipped += if rb[i] == b'\t' { 4 } else { 1 };
                     i += 1;
-                    skipped += 1;
                 }
                 continue;
             }
@@ -3332,6 +3462,11 @@ fn plain_chain(e: &Expr) -> bool {
     }
 }
 
+/// Whether `left[index] op= value` is accepted: both parts can be evaluated twice without effect.
+pub(crate) fn plain_index_target(left: &Expr, index: &Expr) -> bool {
+    plain_chain(left) && plain_index(index)
+}
+
 /// The member name of an index assignment; no source name can spell it.
 pub const INDEX_SET: &str = "[]=";
 
@@ -3352,6 +3487,7 @@ fn index_parts(e: &Expr) -> Option<(&Expr, &Expr)> {
 fn plain_index(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Name(_) | ExprKind::Number(_) => true,
+        ExprKind::Member { left, .. } => plain_index(left),
         ExprKind::Text(parts) => parts.iter().all(|p| !matches!(p, TextPart::Interp(_))),
         _ => false,
     }

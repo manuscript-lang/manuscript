@@ -1,5 +1,7 @@
-import stdin from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 // ms: allow_effect std.console.read
 fn read_rows() List[String]:

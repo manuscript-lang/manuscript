@@ -27,18 +27,14 @@ fn initial(words: List[String]) String:
 fn failed_scan(words: List[String]) Unit!:
     for c in first(words).chars():
         try expect_equal(c, "not the first character")
-    return ok(unit)
 
 test "helper and receiver strings support character and scalar scans":
     let words = ["aé😀"]
     var chars = List[String]()
-    for c in first(words).chars():
-        chars.append(c)
+    chars.extend(first(words).chars())
     try expect_equal(chars, ["a", "é", "😀"])
 
-    var sum = 0
-    for c in first(words).scalar_values():
-        sum += c
+    var sum = first(words).scalar_values().sum()
     try expect_equal(sum, 128842)
     try expect_equal(words[0], "aé😀")
 
@@ -85,9 +81,7 @@ test "direct scans snapshot a changed source and retain unchanged fast paths":
 
     let words = ["aé😀"]
     let bound = first(words)
-    var sum = 0
-    for c in bound.scalar_values():
-        sum += c
+    var sum = bound.scalar_values().sum()
     try expect_equal(sum, 128842)
     sum = 0
     for c in words[0].scalar_values():
@@ -100,9 +94,7 @@ test "owned temporary and empty helper strings remain valid":
         output += c
     try expect_equal(output, "aé😀")
 
-    var sum = 0
-    for c in fresh().scalar_values():
-        sum += c
+    var sum = fresh().scalar_values().sum()
     try expect_equal(sum, 128842)
     for c in first([""]).scalar_values():
         sum += 1
@@ -113,10 +105,8 @@ test "borrowed string scans support break continue return and try":
     var output = ""
 
     for c in first(words).chars():
-        if c == "é":
-            continue
-        if c == "b":
-            break
+        if c == "é": continue
+        if c == "b": break
 
         output += c
 

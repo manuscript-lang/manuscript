@@ -5,8 +5,17 @@
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-/// A listed function: name, parameters (name and type) and return type.
-type Entry = (String, Vec<(String, String)>, String, u8, Vec<String>);
+/// A listed function: name, parameters (name and type), return type, flag bits, kept
+/// parameters, the MIR instruction it is and the domain its failures name (empty when none).
+type Entry = (
+    String,
+    Vec<(String, String)>,
+    String,
+    u8,
+    Vec<String>,
+    String,
+    String,
+);
 
 /// Splits `list` at its top-level commas (a function-pointer type holds commas).
 fn split_params(list: &str) -> Vec<&str> {
@@ -129,7 +138,29 @@ fn main() {
             .iter()
             .filter_map(|f| f.strip_prefix("keeps:"))
             .collect();
-        let flags = bit("leaf") | bit("pure") << 1 | bit("fresh") << 2 | bit("handle") << 3;
+        // `@op=<mnemonic>`: the function is exactly that MIR instruction on its arguments.
+        let op = flags
+            .iter()
+            .find_map(|f| f.strip_prefix("op="))
+            .unwrap_or("")
+            .to_string();
+        let domain = flags
+            .iter()
+            .find_map(|f| f.strip_prefix("domain="))
+            .unwrap_or("")
+            .to_string();
+        let named: Vec<&str> = flags
+            .iter()
+            .filter_map(|f| {
+                f.strip_prefix("keeps:")
+                    .or_else(|| f.strip_prefix("takes:"))
+            })
+            .collect();
+        let flags = bit("leaf")
+            | bit("pure") << 1
+            | bit("fresh") << 2
+            | bit("handle") << 3
+            | bit("spawns") << 4;
         let Some((name, rest)) = line.split_once('(') else {
             panic!("rt_symbols.txt:{}: not a function entry: {line}", n + 1);
         };
@@ -141,25 +172,43 @@ fn main() {
             Some(at) => at,
             None => close,
         };
-        let params = split_params(&rest[..close])
+        let params: Vec<(String, String)> = split_params(&rest[..close])
             .into_iter()
             .map(str::trim)
             .filter(|p| !p.is_empty())
             .filter_map(|p| p.split_once(':'))
             .map(|(name, ty)| (name.trim().to_string(), ty.trim().to_string()))
             .collect();
+        // A `keeps:`/`takes:` flag names one of the function's parameters.
+        let param_names: Vec<&str> = params
+            .iter()
+            .map(|(p, _)| p.trim_start_matches("handle ").trim())
+            .collect();
+        for named in &named {
+            if !param_names.contains(named) {
+                panic!("rt_symbols.txt:{}: no parameter `{named}`: {line}", n + 1);
+            }
+        }
         let kept = kept.into_iter().map(str::to_string).collect();
         let ret = rest[close + 1..]
             .trim()
             .strip_prefix("->")
             .map(|r| r.trim().to_string())
             .unwrap_or_default();
-        table.push((name.trim().to_string(), params, ret, flags, kept));
+        table.push((
+            name.trim().to_string(),
+            params,
+            ret,
+            flags,
+            kept,
+            op,
+            domain,
+        ));
     }
     table.sort_by(|a, b| a.0.cmp(&b.0));
     table.dedup_by(|later, first| later.0 == first.0);
     let mut out = String::from("&[\n");
-    for (name, params, ret, flags, kept) in &table {
+    for (name, params, ret, flags, kept, op, domain) in &table {
         let params: Vec<String> = params
             .iter()
             .map(|(n, t)| {
@@ -174,7 +223,7 @@ fn main() {
             .collect();
         writeln!(
             out,
-            "    ({name:?}, &[{}], {ret:?}, {flags}),",
+            "    ({name:?}, &[{}], {ret:?}, {flags}, {op:?}, {domain:?}),",
             params.join(", ")
         )
         .unwrap();

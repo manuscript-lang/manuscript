@@ -1,8 +1,10 @@
-import expect_equal, fail from "@std/test/test.ms"
-import stderr from "@std/io/io.ms"
-import stdout from "@std/io/io.ms"
-import WriteStream from "@std/io/io.ms"
-import Closeable from "@std/core.ms"
+import (
+    expect_equal, fail from "@std/test/test.ms",
+    stderr from "@std/io/io.ms",
+    stdout from "@std/io/io.ms",
+    WriteStream from "@std/io/io.ms",
+    Closeable from "@std/core.ms",
+)
 
 type Resource:
     label: String
@@ -18,7 +20,6 @@ impl Closeable for Resource:
         self.done = true
 
         let _ = self.output.write(value: "close {self.label}\n")
-        return ok(unit)
 
 type Pair:
     first: Int
@@ -81,7 +82,7 @@ fn exercise() Int!:
 
     while count < 2:
         let _resource = Resource(label: "iteration", output: stdout())
-        count = count + 1
+        count += 1
         continue
 
     var iterable_out = stdout()

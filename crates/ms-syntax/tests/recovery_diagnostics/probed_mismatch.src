@@ -1,0 +1,7 @@
+fn head() String: "é中🦀"
+
+fn broken(
+value: Int,
+] Int:
+    return 0
+fn tail() Int: 3

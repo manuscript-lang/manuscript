@@ -1,5 +1,6 @@
 //! C ABI shims for `@std/math/decimal.ms`. A `Decimal` crosses as a pointer to [`Dec`] and results come
 //! back through a trailing `out` pointer.
+//! ms: domain number
 
 use alloc::string::String;
 use ms_decimal::{Dec, Mode, Overflow, RoundFail, overflow_message};

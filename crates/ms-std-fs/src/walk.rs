@@ -447,6 +447,11 @@ pub fn glob_entries(
     let (Some(patterns), Some(excluded)) = (compile(o.patterns), compile(o.exclude)) else {
         return Err(Fail::invalid());
     };
+    if root.is_empty() {
+        return Err(Fail::invalid());
+    }
+    // Keep every traversal start in the same coordinates, including `.` and parent patterns.
+    let root = ops::absolute(root);
     let mut exclude = exclude;
     let mut state = GlobState {
         remaining: o.max_entries,
@@ -455,9 +460,9 @@ pub fn glob_entries(
     };
 
     // Relative parent and absolute patterns can start outside the root, as in Node.
-    let mut roots: Vec<Vec<u8>> = alloc::vec![root.to_vec()];
+    let mut roots: Vec<Vec<u8>> = alloc::vec![root.clone()];
     for pattern in o.patterns {
-        let mut base = root.to_vec();
+        let mut base = root.clone();
         let mut rest: &[u8] = pattern;
         if path::is_abs(rest) {
             base = alloc::vec![b'/'];
@@ -495,7 +500,7 @@ pub fn glob_entries(
         }
     }
     for start in selected {
-        match state.visit(&start, root, &patterns, &excluded, o, &mut exclude) {
+        match state.visit(&start, &root, &patterns, &excluded, o, &mut exclude) {
             Ok(()) => {}
             Err(f) if f.status == ms_rt_abi::STATUS_NOT_FOUND => continue,
             Err(f) => return Err(f),
@@ -604,33 +609,29 @@ fn portable_separators(path: Vec<u8>) -> Vec<u8> {
 fn relative(root: &[u8], p: &[u8]) -> Vec<u8> {
     let root = path::clean(root);
     let p = path::clean(p);
-    if p == root {
-        return alloc::vec![b'.'];
-    }
-    if within_path(&root, &p) {
-        let skip = if root == b"/" { 1 } else { root.len() + 1 };
-        return p[skip..].to_vec();
-    }
-    // Climb out of `root` for entries beyond it.
-    let mut ups: Vec<u8> = Vec::new();
-    let mut base = root.clone();
-    while !within_path(&base, &p) {
-        if !ups.is_empty() {
-            ups.push(b'/');
-        }
-        ups.extend_from_slice(b"..");
-        let parent = path::dir(&base);
-        if parent == base {
+    let root = sys::path_of(&root);
+    let p = sys::path_of(&p);
+    let meaningful = |c: &std::path::Component<'_>| *c != std::path::Component::CurDir;
+    let mut from = root.components().filter(meaningful);
+    let mut to = p.components().filter(meaningful);
+    while let (Some(a), Some(b)) = (from.clone().next(), to.clone().next()) {
+        if a != b {
             break;
         }
-        base = parent;
+        from.next();
+        to.next();
     }
-    let skip = if base == b"/" { 1 } else { base.len() + 1 };
-    if p.len() > skip {
-        ups.push(b'/');
-        ups.extend_from_slice(&p[skip..]);
+    let mut out = std::path::PathBuf::new();
+    for _ in from {
+        out.push("..");
     }
-    ups
+    for part in to {
+        out.push(part.as_os_str());
+    }
+    if out.as_os_str().is_empty() {
+        out.push(".");
+    }
+    sys::os_bytes(out.as_os_str())
 }
 
 /// Test helper: the sorted relative matches of one pattern, as `glob_entries` returns them.
@@ -678,6 +679,206 @@ mod tests {
     use super::*;
     use alloc::string::String;
     use ms_rt_abi::STATUS_INVALID_INPUT;
+
+    #[test]
+    fn relative_paths_keep_whole_components() {
+        let cases: &[(&[u8], &[u8], &[u8])] = &[
+            (b".", b"a.txt", b"a.txt"),
+            (b"./", b"./a.txt", b"a.txt"),
+            (b".", b"sub/a.txt", b"sub/a.txt"),
+            (b"sub", b"a.txt", b"../a.txt"),
+            (b"sub/deep", b"a.txt", b"../../a.txt"),
+            (b"sub", b"sub", b"."),
+            (b"sub/deep", b"sub", b".."),
+            (b"sub", b"sub/deep/a.txt", b"deep/a.txt"),
+            (b"sub", b"submarine/a.txt", b"../submarine/a.txt"),
+        ];
+        for &(root, target, expected) in cases {
+            assert_eq!(
+                portable_separators(relative(root, target)),
+                expected,
+                "relative({root:?}, {target:?})"
+            );
+        }
+
+        // On Windows the root includes its drive or UNC volume; it is not one separator byte.
+        let cwd = std::env::current_dir().unwrap();
+        let volume = cwd.ancestors().last().unwrap();
+        let root = sys::os_bytes(volume.as_os_str());
+        let child = sys::os_bytes(volume.join("alpha/beta").as_os_str());
+        assert_eq!(portable_separators(relative(&root, &child)), b"alpha/beta");
+        assert_eq!(portable_separators(relative(&child, &root)), b"../..");
+        assert_eq!(relative(&root, &root), b".");
+
+        // Rejoining a relative result must reach the exact target, even for sibling prefixes.
+        let suffixes = [
+            "",
+            "a",
+            "ab",
+            "a/b",
+            "a/b/c",
+            "ab/c",
+            "caf\u{e9}",
+            "a/../ab",
+        ];
+        for from in suffixes {
+            for to in suffixes {
+                let from = sys::os_bytes(volume.join(from).as_os_str());
+                let to = sys::os_bytes(volume.join(to).as_os_str());
+                assert_eq!(
+                    path::clean(&path::join(&from, &relative(&from, &to))),
+                    path::clean(&to),
+                    "round trip {from:?} -> {to:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn glob_relative_roots_match_the_same_files_as_absolute_roots() {
+        const CHILD: &str = "MANUSCRIPT_FS_GLOB_RELATIVE_ROOT_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let root = ops::temporary_directory(b"msfs-glob-relative-").unwrap();
+            ops::create_directory(&path::join(&root, b"src/deep"), true).unwrap();
+            for name in [
+                "a.txt",
+                "caf\u{e9}.txt",
+                "peer.txt",
+                "src/b.txt",
+                "src/deep/c.txt",
+            ] {
+                ops::write_file(&path::join(&root, name.as_bytes()), b"file", false).unwrap();
+            }
+            let child = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "walk::tests::glob_relative_roots_match_the_same_files_as_absolute_roots",
+                    "--nocapture",
+                ])
+                .env(CHILD, "1")
+                .current_dir(sys::path_of(&root))
+                .output()
+                .unwrap();
+            ops::remove(&root, true).unwrap();
+            assert!(
+                child.status.success(),
+                "glob child failed:\n{}\n{}",
+                String::from_utf8_lossy(&child.stdout),
+                String::from_utf8_lossy(&child.stderr)
+            );
+            return;
+        }
+
+        let all: [&[u8]; 1] = [b"**/*.txt"];
+        let o = GlobOptions {
+            patterns: &all,
+            exclude: &[],
+            follow_links: false,
+            max_entries: UNLIMITED,
+            max_results: UNLIMITED,
+        };
+        let cwd = sys::getcwd().unwrap();
+        let expected = [
+            "a.txt",
+            "caf\u{e9}.txt",
+            "peer.txt",
+            "src/b.txt",
+            "src/deep/c.txt",
+        ];
+        assert_eq!(texts(glob(b".", b"**/*.txt", UNLIMITED).unwrap()), expected);
+
+        let patterns: &[&[&[u8]]] = &[
+            &[b"*"],
+            &[b"*.txt"],
+            &[b"**/*.txt"],
+            &[b"src/**/*.txt"],
+            &[b"{a,peer}.txt"],
+            &[b"a.txt", b"src/**"],
+        ];
+        let excludes: &[&[&[u8]]] = &[&[], &[b"**/deep/**"], &[b"a.txt"]];
+        for root in [
+            b".".as_slice(),
+            b"./",
+            b"src/..",
+            b"src",
+            b"./src",
+            b"src/deep",
+        ] {
+            let absolute = ops::absolute(root);
+            for &patterns in patterns {
+                for &exclude in excludes {
+                    let options = GlobOptions {
+                        patterns,
+                        exclude,
+                        ..o
+                    };
+                    let paths = |entries: Vec<PathEntry>| {
+                        entries
+                            .into_iter()
+                            .map(|e| (e.path, e.name, e.directory))
+                            .collect::<Vec<_>>()
+                    };
+                    assert_eq!(
+                        paths(glob_entries(root, &options, None).unwrap()),
+                        paths(glob_entries(&absolute, &options, None).unwrap()),
+                        "root {root:?}, patterns {patterns:?}, excludes {exclude:?}"
+                    );
+                }
+            }
+        }
+
+        assert_eq!(
+            texts(glob(b"src", b"../*.txt", UNLIMITED).unwrap()),
+            ["../a.txt", "../caf\u{e9}.txt", "../peer.txt"]
+        );
+
+        let absolute_src = path::join(&cwd, b"src");
+        assert_eq!(
+            texts(glob(&absolute_src, b"../*.txt", UNLIMITED).unwrap()),
+            ["../a.txt", "../caf\u{e9}.txt", "../peer.txt"]
+        );
+        assert_eq!(
+            glob_entries(b"", &o, None).unwrap_err().status,
+            ms_rt_abi::STATUS_INVALID_INPUT
+        );
+        let bounded = GlobOptions {
+            max_results: 1,
+            ..o
+        };
+        assert_eq!(
+            glob_entries(b".", &bounded, None).unwrap_err().status,
+            STATUS_LIMIT_EXCEEDED
+        );
+        let bounded = GlobOptions {
+            max_entries: 1,
+            ..o
+        };
+        assert_eq!(
+            glob_entries(b".", &bounded, None).unwrap_err().status,
+            STATUS_LIMIT_EXCEEDED
+        );
+
+        let exclude: [&[u8]; 1] = [b"src/**"];
+        let filtered = GlobOptions {
+            exclude: &exclude,
+            ..o
+        };
+        let mut seen: Vec<Vec<u8>> = Vec::new();
+        let mut skip_a = |e: &PathEntry| {
+            seen.push(e.path.clone());
+            e.path == b"a.txt"
+        };
+        let found = glob_entries(b".", &filtered, Some(&mut skip_a)).unwrap();
+        assert_eq!(
+            found
+                .iter()
+                .map(|e| String::from_utf8_lossy(&e.path).into_owned())
+                .collect::<Vec<_>>(),
+            ["caf\u{e9}.txt", "peer.txt"]
+        );
+        assert!(seen.contains(&b"a.txt".to_vec()));
+        assert!(!seen.iter().any(|p| p.starts_with(b"src/")));
+    }
 
     fn tree() -> Vec<u8> {
         let root = ops::temporary_directory(b"msfs-walk-").unwrap();

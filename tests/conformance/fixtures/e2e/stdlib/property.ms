@@ -75,7 +75,7 @@ test "optionals shrink toward the failing payload":
             PropertyOptions(seed: 9)
         )
     )
-    try expect_contains(cause.message, "counterexample: Optional.some(7)")
+    try expect_contains(cause.message, "counterexample: some(7)")
 
 test "filtered generators only produce kept values":
     try check(
@@ -136,4 +136,3 @@ test "a fault inside a property shrinks like an error":
 fn faults_at(n: Int, limit: Int) Unit!:
     if n >= limit:
         panic("too big")
-    return ok(unit)

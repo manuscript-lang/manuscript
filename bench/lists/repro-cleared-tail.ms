@@ -1,6 +1,6 @@
 import panic from "@std/core.ms"
 
-export fn main() Int:
+fn main() Unit:
     var values = [1, 2, 3]
     var total = 0
     var count = 0
@@ -13,4 +13,3 @@ export fn main() Int:
 
     if total != 6:
         panic("unexpected sum")
-    return 0

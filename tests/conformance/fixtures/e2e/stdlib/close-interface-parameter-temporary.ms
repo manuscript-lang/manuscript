@@ -1,7 +1,6 @@
 // conform: tags=scope-cleanup,interfaces,tier-io
 // conform: phase=run
 // conform: origin=close-matrix
-import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 // A temporary passed to a `Closeable` interface parameter is a resource the interface value owns:
@@ -11,8 +10,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        stdout().write("closed {self.name}\n").get()
-        return ok(unit)
+        print("closed {self.name}")
 
 fn fails() Int!:
     return error(Error("later argument"))
@@ -26,9 +24,7 @@ fn look_later(c: Closeable, n: Int) Unit:
 fn attempt() Unit!:
     look(Door("direct"))
     look_later(Door("later"), try fails())
-    return ok(unit)
 
-export fn main() Int:
+fn main() Unit:
     let _ = attempt()
-    stdout().write("end\n").get()
-    return 0
+    print("end")

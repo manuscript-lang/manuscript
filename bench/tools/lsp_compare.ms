@@ -2,9 +2,11 @@
 // Usage: ms run bench/tools/lsp_compare.ms -- <hover|outline|semantic> BEFORE AFTER --out FILE.csv [--samples 9] [--cpu N]
 // Suites are the case lists of the three studies: `hover` (bench/perf/lsp), `outline` (lsp-outline), `semantic` (lsp-semantic).
 // Harness output is `mode,count,rounds,shape,elapsed_ns,checksum,size,rss`. The CSV has a cpu column (empty without --cpu).
-import (absolute, fail, invalid, median, options, sample, write_text) from "./lib.ms"
-import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
+import (
+    absolute, fail, invalid, median, options, sample, write_text from "./lib.ms",
+    arguments from "@std/os/env.ms",
+    stdout from "@std/io/io.ms",
+)
 
 type Case:
     mode: String
@@ -136,7 +138,7 @@ fn compare(
         var seen = false
 
         for name in ["before", "after"]:
-            let first = try run_harness(paths.get(name).get(""), c, 1, cpu)
+            let first = try run_harness(paths.get_or(name, ""), c, 1, cpu)
 
             if not seen:
                 expected = Run(0, first.checksum, first.size, 0)
@@ -161,20 +163,20 @@ fn compare(
 
         for s in 0..samples:
             for name in (if s % 2 == 0: ["before", "after"] else: ["after", "before"]):
-                let r = rounds.get(name).get(1)
-                let got = try run_harness(paths.get(name).get(""), c, r, cpu)
+                let r = rounds.get_or(name, 1)
+                let got = try run_harness(paths.get_or(name, ""), c, r, cpu)
                 if got.checksum != expected.checksum or got.size != expected.size:
                     return invalid("{c.mode} {c.count} {c.shape}: output changed")
 
-                var list = observed.get(name).get([])
+                var list = observed.get_or(name, [])
                 list.append(got.elapsed.to_float() / r.to_float())
                 observed.add(name.clone(), list)
                 rows.append(
                     "{c.mode},{c.count},{c.shape},{s},{name},{r},{got.elapsed},{got.checksum},{got.size},{got.rss},{cpu}"
                 )
 
-        let old = median(observed.get("before").get([]))
-        let new = median(observed.get("after").get([]))
+        let old = median(observed.get_or("before", []))
+        let new = median(observed.get_or("after", []))
         (
             stdout()
             .write(
@@ -186,7 +188,7 @@ fn compare(
     write_text(out, rows.join("\n") + "\n")
     return ok(unit)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 3 or not ["hover", "outline", "semantic"].contains(args[0]):
         return fail(
@@ -200,12 +202,12 @@ export fn main() Int:
 
     let opts = parsed.get(Map[String, String]())
     let default_samples = if args[0] == "hover": 9 else: 10
-    let samples = opts.get("samples").get("{default_samples}").parse_int().get(0)
+    let samples = opts.get_or("samples", "{default_samples}").parse_int().get(0)
     if samples < 5: return fail("--samples must be at least 5")
 
     let result = compare(
         args[0], absolute(args[1].clone()), absolute(args[2].clone()),
-        opts.get("out").get(""), samples, opts.get("cpu").get("")
+        opts.get_or("out", ""), samples, opts.get_or("cpu", "")
     )
     if result.is_error(): return fail(result.err().message)
 

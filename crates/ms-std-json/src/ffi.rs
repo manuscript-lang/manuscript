@@ -4,6 +4,7 @@
 //! ([`DocObj`]) plus `u32` node ids. A parse yields a document the generated decoders read with the
 //! accessors; an encoder starts a `builder_new` document, adds nodes bottom-up and serializes the
 //! root. Node ids are only valid for the document that issued them.
+//! ms: domain JSON
 use crate::{Doc, Limits, Node, Writer};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;

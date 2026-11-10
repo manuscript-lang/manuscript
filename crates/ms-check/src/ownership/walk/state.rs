@@ -122,6 +122,7 @@ impl Walker<'_> {
             return;
         }
         self.diags.push(Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: Arc::from(self.syms.str(self.cx.m.data.file)),
             pos,
@@ -130,19 +131,6 @@ impl Walker<'_> {
             end: None,
             fix: None,
         });
-    }
-
-    /// Reports like `error_fix`, when a fix could be built.
-    pub(super) fn error_fix_opt(
-        &mut self,
-        pos: Pos,
-        message: impl Into<String>,
-        fix: Option<DiagnosticFix>,
-    ) {
-        match fix {
-            Some(fix) => self.error_fix(pos, message, fix),
-            None => self.error(pos, message),
-        }
     }
 
     /// Reports like `error`, with a machine-applicable fix.

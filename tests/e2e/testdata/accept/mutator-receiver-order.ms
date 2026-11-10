@@ -17,7 +17,6 @@ fn checked(var events: List[Int], fail: Bool) Int!:
 fn set_with_try(var events: List[Int], fail: Bool) Unit!:
     receiver(var events).set(0, try checked(var events, fail))
     events.append(3)
-    return ok(unit)
 
 test "a changing method evaluates a temporary receiver before its arguments":
     var events: List[Int] = []

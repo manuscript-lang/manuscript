@@ -107,9 +107,17 @@ fn symbols(check: bool) -> Result<String, String> {
     }
     files.sort();
     let mut flags: std::collections::BTreeMap<String, Vec<String>> = Default::default();
+    // `//! ms: domain <words>`: how the failures of the file's functions name their domain.
+    let mut file_domains: Vec<(String, String)> = Vec::new();
     for file in files {
         let source =
             std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
+        if let Some(domain) = source
+            .lines()
+            .find_map(|l| l.trim().strip_prefix("//! ms: domain "))
+        {
+            file_domains.push((source.clone(), domain.trim().to_string()));
+        }
         for (name, found) in scan_flags(&source).map_err(|e| format!("{}: {e}", file.display()))? {
             flags.entry(name).or_default().extend(found);
         }
@@ -129,8 +137,25 @@ fn symbols(check: bool) -> Result<String, String> {
          # `name(param: type, ..) -> ret`, the C signature lowering marshals runtime calls from, then the\n\
          # flags the source declares with a `// ms: leaf pure fresh` comment above the function:\n\
          # `@leaf` never reaches a cancellation point, `@pure` only reads memory and cannot fault,\n\
-         # `@fresh` returns a value that borrows none of its arguments.\n",
+         # `@fresh` returns a value that borrows none of its arguments, `@keeps:<param>` stores that\n\
+         # function value, `@takes:<param>` takes ownership of that value, `@spawns` starts a task\n\
+         # running program code, `@op=<mnemonic>` is exactly that MIR instruction on its arguments,\n\
+         # and `@domain=<words>` names its failures' domain.\n",
     );
+    for name in table.keys() {
+        let declared = flags
+            .get(name)
+            .is_some_and(|f| f.iter().any(|f| f.starts_with("domain=")));
+        if declared {
+            continue;
+        }
+        if let Some((_, domain)) = file_domains.iter().find(|(s, _)| defines(s, name)) {
+            flags
+                .entry(name.clone())
+                .or_default()
+                .push(format!("domain={domain}"));
+        }
+    }
     for (name, found) in &flags {
         if !table.contains_key(name) {
             return Err(format!(
@@ -191,8 +216,12 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 
 /// The `// ms: flag ..` comments of `source`: each names the flags of the runtime function whose
 /// name is the first `msrt_*`/`msstd_*` identifier on the next code line. The flags are the
-/// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`, and `keeps:<param>`
-/// for a function value the runtime stores and drops itself); an unknown flag or a
+/// declared ABI facts lowering and the optimizer read (`leaf`, `pure`, `fresh`, `keeps:<param>`
+/// for a function value the runtime stores and drops itself, `takes:<param>` for a value
+/// argument the runtime takes ownership of, `domain=<word>` for how its failures
+/// name their domain when it differs from the file's `//! ms: domain`, `spawns` for a function that starts a
+/// task running code of the program, and `op=<mnemonic>` for a function
+/// that is exactly one MIR instruction on its arguments); an unknown flag or a
 /// marker with no function after it is an error.
 fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
     let mut found = Vec::new();
@@ -202,7 +231,11 @@ fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
         if let Some(list) = t.strip_prefix("// ms:") {
             let list: Vec<String> = list.split_whitespace().map(str::to_string).collect();
             if let Some(bad) = list.iter().find(|f| {
-                !["leaf", "pure", "fresh"].contains(&f.as_str()) && !f.starts_with("keeps:")
+                !["leaf", "pure", "fresh", "spawns"].contains(&f.as_str())
+                    && !f.starts_with("keeps:")
+                    && !f.starts_with("takes:")
+                    && !f.starts_with("op=")
+                    && !f.starts_with("domain=")
             }) {
                 return Err(format!("line {}: unknown flag `{bad}`", n + 1));
             }
@@ -228,6 +261,23 @@ fn scan_flags(source: &str) -> Result<Vec<(String, Vec<String>)>, String> {
         found.push((name.to_string(), flags));
     }
     Ok(found)
+}
+
+/// Whether `source` defines the runtime function `name`: by hand (`fn name(`) or through a
+/// shim macro row (`name => ..`, `macro!(name, ..)`).
+fn defines(source: &str, name: &str) -> bool {
+    source.lines().any(|l| {
+        let t = l.trim();
+        t.strip_prefix(name)
+            .is_some_and(|r| r.trim_start().starts_with("=>"))
+            || [
+                format!("fn {name}("),
+                format!("fn {name}<"),
+                format!("!({name},"),
+            ]
+            .iter()
+            .any(|p| t.contains(p.as_str()))
+    })
 }
 
 /// The `pub extern "C" fn msrt_*`/`msstd_*` functions written by hand in `source`, as

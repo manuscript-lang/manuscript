@@ -8,6 +8,7 @@ use ms_rt as _;
 extern crate alloc;
 
 pub mod ffi;
+mod template;
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -94,11 +95,21 @@ fn explain(text: &str, pattern: &str) -> String {
     };
     let column = text
         .lines()
-        .find(|line| {
+        .rfind(|line| {
             let notes = line.trim();
             notes.contains('^') && notes.bytes().all(|b| b == b'^' || b == b' ')
         })
-        .and_then(|line| line.find('^'))
+        .and_then(|line| {
+            // Duplicate errors annotate both the original and the later, invalid
+            // occurrence. The final caret run is the primary span. Flag spans are
+            // one character and can touch, as in (?ii), so use their final caret.
+            let end = line.rfind('^')?;
+            if matches!(reason, "duplicate flag" | "flag negation operator repeated") {
+                Some(end)
+            } else {
+                Some(line[..=end].rfind(' ').map_or(0, |at| at + 1))
+            }
+        })
         .and_then(|at| at.checked_sub(margin));
     match column {
         Some(c) => alloc::format!("{reason} at column {}", c + 1),
@@ -411,7 +422,11 @@ impl Regex {
                 let Some(c) = self.pattern.captures_at(text, a) else {
                     continue;
                 };
-                c.expand(template, &mut out);
+                if max == usize::MAX {
+                    c.expand(template, &mut out);
+                } else {
+                    template::expand(&c, template, &mut out, max)?;
+                }
             } else {
                 if template.len() > max - out.len() {
                     return Err(Fail::LimitExceeded);
@@ -481,6 +496,10 @@ mod tests {
                 "incomplete escape sequence, reached end of pattern prematurely at column 4",
             ),
             ("é🙂(", "unclosed group at column 3"),
+            (
+                "[z-a]",
+                "invalid character class range, the start must be <= the end at column 2",
+            ),
         ] {
             assert_eq!(
                 compile_explained(pattern).err().unwrap(),
@@ -528,6 +547,31 @@ mod tests {
             explain("Compiled regex exceeds size limit of 1 bytes.", "a"),
             "Compiled regex exceeds size limit of 1 bytes."
         );
+    }
+
+    #[test]
+    fn compile_error_columns_point_to_duplicate_occurrences() {
+        for (pattern, expected) in [
+            ("(?ii)", "duplicate flag at column 4"),
+            ("(?i-i)", "duplicate flag at column 5"),
+            ("(?-i-m)", "flag negation operator repeated at column 5"),
+            (
+                "(?P<word>a)(?P<word>b)",
+                "duplicate capture group name at column 16",
+            ),
+            (
+                "(?P<名字>a)\n  (?P<名字>b)",
+                "duplicate capture group name at column 7",
+            ),
+            ("a\n(?ii)", "duplicate flag at column 4"),
+            ("a\n(?-i-m)", "flag negation operator repeated at column 5"),
+        ] {
+            assert_eq!(
+                compile_explained(pattern).err().unwrap(),
+                expected,
+                "{pattern:?}"
+            );
+        }
     }
 
     #[test]

@@ -1,5 +1,5 @@
-import expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms"
 import (
+    expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms",
     GlobOptions,
     OpenMode,
     OpenOptions,
@@ -15,10 +15,10 @@ import (
     rename,
     stat,
     temporary,
-    write_file
-) from "@std/os/fs.ms"
-import read_all from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
+    write_file from "@std/os/fs.ms",
+    read_all from "@std/io/streams.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
     match outcome:
@@ -30,8 +30,6 @@ fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
                 cause.kind != expected.kind
                 or (cause.message != expected.message and not named)
             ): return error(Error("wrong filesystem error: {cause}"))
-
-    return ok(unit)
 
 test "glob queries reuse patterns without changing hidden paths limits or callbacks":
     let temporary = temporary("manuscript-glob-") | try expect_ok

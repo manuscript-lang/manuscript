@@ -1,5 +1,7 @@
-import expect_equal, expect_ok, expect_true from "@std/test/test.ms"
-import parse, encode_all, PemBlock from "@std/data/pem.ms"
+import (
+    expect_equal, expect_ok, expect_true from "@std/test/test.ms",
+    parse, encode_all, PemBlock from "@std/data/pem.ms",
+)
 
 let SAMPLE = "noise\n-----BEGIN NOTE-----\naGVsbG8gd29ybGQ=\n-----END NOTE-----\n-----BEGIN EMPTY-----\n-----END EMPTY-----\n"
 
@@ -27,7 +29,7 @@ test "headers round-trip":
         [PemBlock(label: "KEY", headers: headers, data: "k".to_bytes())]
     )
     let back = parse(text).get()
-    try expect_equal(back[0].headers.get("Proc-Type").get(""), "4,ENCRYPTED")
+    try expect_equal(back[0].headers.get_or("Proc-Type", ""), "4,ENCRYPTED")
     try expect_equal(back[0].data.decode_utf8().get(""), "k")
 
 test "malformed armor is an error":

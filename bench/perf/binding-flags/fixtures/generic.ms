@@ -1,5 +1,3 @@
-import stdout from "@std/io/io.ms"
-
 type Pair[A, B]:
     first: A
     second: B
@@ -20,7 +18,7 @@ fn defaulted(value: Int = 17) Int:
 fn required(amount: Int) Int:
     return amount + 2
 
-export fn main() Int:
+fn main() Unit:
     let a = Pair(7, "a string that lives on the heap")
     let b = Pair("another string that lives on the heap", 9)
     let c = Choice[Pair[Int, String]].Value(Pair(13, "payload"))
@@ -39,5 +37,4 @@ export fn main() Int:
     let held = optional(Pair(5, "retained"))
     if let x = held:
         total += first(x)
-    stdout().write("{total}\n").get()
-    return 0
+    print("{total}")

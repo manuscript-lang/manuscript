@@ -53,6 +53,7 @@ struct Loader {
 
 fn resolution(file: &Arc<str>, pos: Pos, message: String) -> Box<Diagnostic> {
     Box::new(Diagnostic {
+        cause: Default::default(),
         opener_line: 0,
         file: file.clone(),
         pos,

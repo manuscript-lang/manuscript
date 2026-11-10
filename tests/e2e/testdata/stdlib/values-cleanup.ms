@@ -3,11 +3,11 @@ import (
     expect_false,
     expect_not_equal,
     expect_ok,
-    fail
-) from "@std/test/test.ms"
-import Closeable from "@std/core.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+    fail from "@std/test/test.ms",
+    Closeable from "@std/core.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 type Key:
     id: Int
@@ -30,7 +30,6 @@ impl Closeable for Resource:
     var fn close() Unit!:
         let inner_closed = read_file("{self.dir}/2").wait().is_ok()
         let _ = write_file("{self.dir}/{self.id}", "{inner_closed}", true).wait()
-        return ok(unit)
 
 fn leave(dir: String) Int:
     let _outer = Resource(dir.clone(), 1)
@@ -49,7 +48,7 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
     try expect_equal(missing.or_else(create).get(), 42)
 
     let nested: Int?? = missing
-    try expect_false(not nested.is_some() or not nested.get().is_none())
+    try expect_false(nested.is_none() or nested.get().is_some())
 
 test "Result propagation and Error views preserve concrete causes":
     let failed: Int! = error(Error("JSON: invalid data", kind: "EBADMSG"))

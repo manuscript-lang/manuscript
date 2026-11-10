@@ -1,19 +1,19 @@
-import read_line, stdin, stdout from "@std/io.ms"
-import range from "@std/collections.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    read_line, stdin, stdout from "@std/io.ms",
+    range from "@std/collections.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 // Returns the value of a 1 to 6 digit decimal, or -1 when the text is not one.
 fn parse_num(text: String) Int:
     let digits = text.to_bytes()
-    if digits.length() == 0 or digits.length() > 6:
-        return -1
+    if digits.length() == 0 or digits.length() > 6: return -1
 
     var value = 0
 
     for i in range(0, digits.length()):
         let d = digits.get(i) - 48
-        if d < 0 or d > 9:
-            return -1
+        if d < 0 or d > 9: return -1
 
         value = value * 10 + d
 
@@ -25,8 +25,7 @@ fn non_empty(text: String) Bool:
 fn is_blank(line: String) Bool:
     let bytes = line.to_bytes()
     for i in range(0, bytes.length()):
-        if bytes.get(i) != 32:
-            return false
+        if bytes.get(i) != 32: return false
     return true
 
 fn zeros(count: Int) List[Int]:
@@ -36,8 +35,7 @@ fn zeros(count: Int) List[Int]:
     return row
 
 fn max2(a: Int, b: Int) Int:
-    if a > b:
-        return a
+    if a > b: return a
 
     return b
 
@@ -45,8 +43,7 @@ fn min3(a: Int, b: Int, c: Int) Int:
     return min2(min2(a, b), c)
 
 fn min2(a: Int, b: Int) Int:
-    if a < b:
-        return a
+    if a < b: return a
 
     return b
 
@@ -95,19 +92,16 @@ fn edit_distance(a: Bytes, b: Bytes) Int:
 // An item is a `w:v` token with a weight of at least 1 and a value of at least 0.
 fn item_valid(token: String) Bool:
     let parts = token.split(":")
-    if parts.length() != 2:
-        return false
+    if parts.length() != 2: return false
 
     return parse_num(parts.get(0)) >= 1 and parse_num(parts.get(1)) >= 0
 
 fn knapsack(tokens: List[String]) String:
     let cap = parse_num(tokens.get(1))
-    if cap < 0:
-        return "error: bad command"
+    if cap < 0: return "error: bad command"
 
     for i in range(2, tokens.length()):
-        if not item_valid(tokens.get(i)):
-            return "error: bad command"
+        if not item_valid(tokens.get(i)): return "error: bad command"
 
     var best = zeros(cap + 1)
 
@@ -125,15 +119,13 @@ fn knapsack(tokens: List[String]) String:
 
 fn coin_change(tokens: List[String]) String:
     let amount = parse_num(tokens.get(1))
-    if amount < 0:
-        return "error: bad command"
+    if amount < 0: return "error: bad command"
 
     var coins: List[Int] = []
 
     for i in range(2, tokens.length()):
         let c = parse_num(tokens.get(i))
-        if c < 1:
-            return "error: bad command"
+        if c < 1: return "error: bad command"
 
         coins.append(c)
 
@@ -147,8 +139,7 @@ fn coin_change(tokens: List[String]) String:
                 best = fewest.get(x - c) + 1
         fewest.set(x, best)
 
-    if fewest.get(amount) >= unreachable:
-        return "impossible"
+    if fewest.get(amount) >= unreachable: return "impossible"
 
     return "{fewest.get(amount)}"
 
@@ -169,10 +160,8 @@ fn answer(line: String) String:
         and non_empty(tokens.get(2))
     ):
         return "{edit_distance(tokens.get(1).to_bytes(), tokens.get(2).to_bytes())}"
-    if cmd == "knap" and tokens.length() >= 2:
-        return knapsack(tokens)
-    if cmd == "coins" and tokens.length() >= 3:
-        return coin_change(tokens)
+    if cmd == "knap" and tokens.length() >= 2: return knapsack(tokens)
+    if cmd == "coins" and tokens.length() >= 3: return coin_change(tokens)
 
     return "error: bad command"
 

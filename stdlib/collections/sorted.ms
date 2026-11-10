@@ -6,12 +6,9 @@ fn order[T: Comparable](left: T, right: T) Int:
 // Halving the range copies each element about log2(chunk count) times; folding left with `concat` would recopy every earlier chunk for each later one.
 fn joined[T: Clonable](chunks: List[List[T]], low: Int, high: Int) List[T]:
     let count = high - low
-    if count == 0:
-        return []
-    if count == 1:
-        return chunks[low].clone()
-    if count == 2:
-        return chunks[low].concat(chunks[low + 1])
+    if count == 0: return []
+    if count == 1: return chunks[low].clone()
+    if count == 2: return chunks[low].concat(chunks[low + 1])
 
     let middle = low + count / 2
     return joined(chunks, low, middle).concat(joined(chunks, middle, high))
@@ -87,8 +84,7 @@ impl SortedMap[K, V]:
 
     // Reports whether an equal key is present.
     fn contains(key: K) Bool:
-        if self.size == 0:
-            return false
+        if self.size == 0: return false
 
         let c = self.chunk_for(key)
         let at = self.lower_bound(c, key)
@@ -99,8 +95,7 @@ impl SortedMap[K, V]:
 
     // Returns the value stored for an equal key, or none when absent.
     fn get(key: K) V?:
-        if self.size == 0:
-            return none
+        if self.size == 0: return none
 
         let c = self.chunk_for(key)
         let at = self.lower_bound(c, key)
@@ -157,8 +152,7 @@ impl SortedMap[K, V]:
 
     // Removes an equal key; an absent key changes nothing.
     var fn remove(key: K) Unit:
-        if self.size == 0:
-            return
+        if self.size == 0: return
 
         let c = self.chunk_for(key)
         let at = self.lower_bound(c, key)
@@ -176,7 +170,7 @@ impl SortedMap[K, V]:
         self.value_chunks[c].remove(at)
         self.size -= 1
 
-        if self.key_chunks[c].length() == 0:
+        if self.key_chunks[c].is_empty():
             self.key_chunks.remove(c)
             self.value_chunks.remove(c)
             self.maxes.remove(c)
@@ -192,8 +186,7 @@ impl SortedMap[K, V]:
 
     // Returns the entry with the smallest key, or none when empty.
     fn first() SortedEntry[K, V]?:
-        if self.size == 0:
-            return none
+        if self.size == 0: return none
 
         return SortedEntry(
             self.key_chunks[0].get(0).clone(), self.value_chunks[0].get(0).clone()
@@ -201,8 +194,7 @@ impl SortedMap[K, V]:
 
     // Returns the entry with the largest key, or none when empty.
     fn last() SortedEntry[K, V]?:
-        if self.size == 0:
-            return none
+        if self.size == 0: return none
 
         let c = self.key_chunks.length() - 1
         let at = self.key_chunks[c].length() - 1
@@ -229,13 +221,11 @@ impl SortedMap[K, V]:
 
     // Returns the entry with the smallest key that is at least `key`, or none.
     fn ceiling(key: K) SortedEntry[K, V]?:
-        if self.size == 0:
-            return none
+        if self.size == 0: return none
 
         let c = self.chunk_for(key)
         let at = self.lower_bound(c, key)
-        if at >= self.key_chunks[c].length():
-            return none
+        if at >= self.key_chunks[c].length(): return none
 
         return SortedEntry(
             self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
@@ -243,8 +233,7 @@ impl SortedMap[K, V]:
 
     // Returns the entry with the largest key that is at most `key`, or none.
     fn floor(key: K) SortedEntry[K, V]?:
-        if self.size == 0:
-            return none
+        if self.size == 0: return none
 
         var c = self.chunk_for(key)
         var at = self.lower_bound(c, key)
@@ -257,8 +246,7 @@ impl SortedMap[K, V]:
             )
 
         if at == 0:
-            if c == 0:
-                return none
+            if c == 0: return none
 
             c -= 1
             at = self.key_chunks[c].length()
@@ -271,8 +259,7 @@ impl SortedMap[K, V]:
     // Returns a new list of the entries with `low` <= key < `high`, in ascending order.
     fn range(low: K, high: K) List[SortedEntry[K, V]]:
         var out: List[SortedEntry[K, V]] = []
-        if self.size == 0:
-            return out
+        if self.size == 0: return out
 
         var c = self.chunk_for(low)
         var at = self.lower_bound(c, low)
@@ -281,12 +268,11 @@ impl SortedMap[K, V]:
             let keys = self.key_chunks[c]
 
             while at < keys.length():
-                if order(keys.get(at), high) >= 0:
-                    return out
+                if order(keys[at], high) >= 0: return out
 
                 out.append(
                     SortedEntry(
-                        keys.get(at).clone(), self.value_chunks[c].get(at).clone()
+                        keys[at].clone(), self.value_chunks[c].get(at).clone()
                     )
                 )
                 at += 1
@@ -313,7 +299,7 @@ impl SortedMap[K, V]:
             for at in 0..keys.length():
                 out.append(
                     SortedEntry(
-                        keys.get(at).clone(), self.value_chunks[c].get(at).clone()
+                        keys[at].clone(), self.value_chunks[c].get(at).clone()
                     )
                 )
 
@@ -358,52 +344,43 @@ impl SortedSet[T]:
 
     // Returns the smallest member, or none when empty.
     fn first() T?:
-        if let entry = self.members.first():
-            return entry.key.clone()
+        if let entry = self.members.first(): return entry.key.clone()
 
         return none
 
     // Returns the largest member, or none when empty.
     fn last() T?:
-        if let entry = self.members.last():
-            return entry.key.clone()
+        if let entry = self.members.last(): return entry.key.clone()
 
         return none
 
     // Removes and returns the smallest member, or none when empty.
     var fn pop_first() T?:
-        if let entry = self.members.pop_first():
-            return entry.key.clone()
+        if let entry = self.members.pop_first(): return entry.key.clone()
 
         return none
 
     // Removes and returns the largest member, or none when empty.
     var fn pop_last() T?:
-        if let entry = self.members.pop_last():
-            return entry.key.clone()
+        if let entry = self.members.pop_last(): return entry.key.clone()
 
         return none
 
     // Returns the smallest member that is at least `value`, or none.
     fn ceiling(value: T) T?:
-        if let entry = self.members.ceiling(value):
-            return entry.key.clone()
+        if let entry = self.members.ceiling(value): return entry.key.clone()
 
         return none
 
     // Returns the largest member that is at most `value`, or none.
     fn floor(value: T) T?:
-        if let entry = self.members.floor(value):
-            return entry.key.clone()
+        if let entry = self.members.floor(value): return entry.key.clone()
 
         return none
 
     // Returns a new list of the members with `low` <= member < `high`, in ascending order.
     fn range(low: T, high: T) List[T]:
-        var out: List[T] = []
-        for entry in self.members.range(low, high):
-            out.append(entry.key.clone())
-        return out
+        return self.members.range(low, high).map(fn entry: entry.key.clone())
 
     // Returns a new list of the members in ascending order.
     fn values() List[T]:

@@ -1,4 +1,3 @@
-import stdout from "@std/io/io.ms"
 import Closeable from "@std/core.ms"
 
 type Res:
@@ -9,9 +8,7 @@ impl Closeable for Res:
     var fn close() Unit!:
         if self.open:
             self.open = false
-            stdout().write("close {self.id}\n").get()
-
-        return ok(unit)
+            print("close {self.id}")
 
 fn borrowed(values: List[Int]) Int:
     let a = values
@@ -42,14 +39,13 @@ fn conditional_move(flag: Bool) Unit:
 
     let _last = Res(4)
 
-export fn main() Int:
+fn main() Unit:
     var values = [1, 2]
     let count = borrowed(values)
     var holder = Holder(values)
     mutate(var holder)
-    stdout().write("{count} {holder.items.length()}\n").get()
+    print("{count} {holder.items.length()}")
     conditional(true)
     conditional(false)
     conditional_move(true)
     conditional_move(false)
-    return 0

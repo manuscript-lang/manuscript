@@ -31,7 +31,7 @@ fn branch(var box: Box, take: Bool) Unit:
 
     box.count += 1
 
-export fn main() Int:
+fn main() Unit:
     var calls = 0
     var rows = [[1], [2]]
     var first = rows[next(var calls)]
@@ -85,4 +85,3 @@ export fn main() Int:
     invoke(fn: add(var target))
 
     let _ = stdout().write("{rows}\n")
-    return 0

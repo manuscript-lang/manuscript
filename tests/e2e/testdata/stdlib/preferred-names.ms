@@ -1,6 +1,8 @@
-import expect_equal, expect_false from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
-import compile, Regex from "@std/string.ms"
+import (
+    expect_equal, expect_false from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
+    compile, Regex from "@std/string.ms",
+)
 
 interface ListMutation:
     var fn reverse() Unit
@@ -287,7 +289,7 @@ test "byte reversal names copy across direct bound and view calls":
     try expect_false(data != Bytes([0, 1, 255]) or reversed() != Bytes([255, 1, 0]))
     try expect_false(
         (
-            Bytes([]).reversed().length() != 0
+            not Bytes([]).reversed().is_empty()
             or Bytes([1]).reversed() != Bytes([1])
         )
     )

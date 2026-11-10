@@ -11,9 +11,9 @@ test "optional string keys hash and compare":
     m.add(none, 4)
     m.add("", 5)
     try expect_equal(m.length(), 3)
-    try expect_equal(m.get("x").get(0), 2)
-    try expect_equal(m.get(none).get(0), 4)
-    try expect_equal(m.get("").get(0), 5)
+    try expect_equal(m.get_or("x", 0), 2)
+    try expect_equal(m.get_or(none, 0), 4)
+    try expect_equal(m.get_or("", 0), 5)
 
 test "optional record keys in a set":
     var s = Set[Named?]()

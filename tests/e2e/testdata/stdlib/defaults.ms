@@ -1,15 +1,15 @@
-import expect_equal, expect_false from "@std/test/test.ms"
-import parse, stringify, CsvOptions from "@std/data/csv.ms"
-import base64_encode, base64_decode from "@std/data/encoding.ms"
 import (
+    expect_equal, expect_false from "@std/test/test.ms",
+    parse, stringify, CsvOptions from "@std/data/csv.ms",
+    base64_encode, base64_decode from "@std/data/encoding.ms",
     Commands,
     Subprocess,
     CommandOutput,
     RunOptions,
     SpawnOptions,
-    run
-) from "@std/os/process.ms"
-import Bytes from "@std/bytes.ms"
+    run from "@std/os/process.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn forward[T](item: T) T: item
 
@@ -114,8 +114,8 @@ test "Base64 defaults support stored functions and explicit alphabets":
     let copied = base64_encode
     try expect_equal(copied(bytes), "/w==")
 
-    let typed: fn(Bytes, Bool) String = encode
-    try expect_equal(typed(bytes, false), "/w==")
+    let typed: fn(Bytes, Bool, Bool) String = encode
+    try expect_equal(typed(bytes, false, true), "/w==")
     try expect_false(
         (
             (try base64_decode("/w==")) != bytes

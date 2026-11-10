@@ -1,7 +1,9 @@
-import ascii_decode from "@std/data/encoding.ms"
-import Bytes from "@std/bytes.ms"
-import keep, measure from "@std/test/bench.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    ascii_decode from "@std/data/encoding.ms",
+    Bytes from "@std/bytes.ms",
+    keep, measure from "@std/test/bench.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 bench "ascii.valid.0":
     let expected = try "Az09 \n\u{0}".repeat(0)

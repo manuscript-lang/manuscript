@@ -1,6 +1,8 @@
-import stdin from "@std/io/io.ms"
-import stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdin from "@std/io/io.ms",
+    stdout from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 fn codes(s: String) List[Int]:
     let b = s.as_bytes()
@@ -11,12 +13,10 @@ fn codes(s: String) List[Int]:
 
 fn is_num(s: String) Bool:
     let b = codes(s)
-    if b.length() < 1 or b.length() > 6:
-        return false
+    if b.length() < 1 or b.length() > 6: return false
 
     for i in 0..b.length():
-        if b[i] < 48 or b[i] > 57:
-            return false
+        if b[i] < 48 or b[i] > 57: return false
     return true
 
 fn num(s: String) Int:
@@ -28,8 +28,7 @@ fn num(s: String) Int:
 
 fn is_blank(s: String) Bool:
     for c in codes(s):
-        if c != 32:
-            return false
+        if c != 32: return false
     return true
 
 fn zeros(n: Int) List[Int]:
@@ -73,7 +72,7 @@ fn edit(a: List[Int], b: List[Int]) Int:
             let up = dp[j]
             var best = diag
             if a[i - 1] != b[j - 1]:
-                best = best + 1
+                best += 1
             if up + 1 < best:
                 best = up + 1
             if dp[j - 1] + 1 < best:
@@ -126,17 +125,14 @@ fn coins(amount: Int, ds: List[String]) String:
             if dp[i - c] + 1 < dp[i]:
                 dp[i] = dp[i - c] + 1
 
-    if dp[amount] >= inf:
-        return "impossible"
+    if dp[amount] >= inf: return "impossible"
 
     return "{dp[amount]}"
 
 fn item_ok(s: String) Bool:
     let p = s.split(":")
-    if p.length() != 2:
-        return false
-    if not is_num(p[0]) or not is_num(p[1]):
-        return false
+    if p.length() != 2: return false
+    if not is_num(p[0]) or not is_num(p[1]): return false
 
     return num(p[0]) >= 1
 
@@ -154,8 +150,7 @@ fn answer(line: String) String:
         for k in 2..n:
             if not item_ok(t[k]):
                 ok = false
-        if not ok:
-            return bad
+        if not ok: return bad
 
         var items = List[String]()
         for k in 2..n:
@@ -172,8 +167,7 @@ fn answer(line: String) String:
             else:
                 ds.append(t[k].clone())
 
-        if not ok:
-            return bad
+        if not ok: return bad
 
         return coins(num(t[1]), ds)
 
@@ -184,8 +178,7 @@ export fn main() Int:
     var out = List[String]()
 
     for line in text.split("\n"):
-        if is_blank(line):
-            continue
+        if is_blank(line): continue
 
         out.append(answer(line))
 

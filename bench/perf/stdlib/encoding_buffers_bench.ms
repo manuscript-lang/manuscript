@@ -1,15 +1,14 @@
 import (
     base64_encode,
-    base64_encode_unpadded,
     base32_encode,
     Base32Options,
     base32_decode,
     ascii85_encode,
-    ascii85_decode
-) from "@std/data/encoding.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import keep, measure from "@std/test/bench.ms"
-import expect_equal from "@std/test/test.ms"
+    ascii85_decode from "@std/data/encoding.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    keep, measure from "@std/test/bench.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
 fn sample(length: Int, zero: Bool = false) Bytes:
     var out = BytesBuilder()
@@ -25,12 +24,11 @@ fn unpadded(length: Int, url: Bool) Unit!:
     let expected = base64_encode(data, url).replace("=", "")
 
     fn work() Unit!:
-        let actual = base64_encode_unpadded(data, url)
+        let actual = base64_encode(data, url, false)
         try expect_equal(actual, expected)
         return keep(actual.byte_length())
 
     try measure(1, work)
-    return ok(unit)
 
 fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
     let data = sample(length)
@@ -50,7 +48,6 @@ fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
         return keep(actual.byte_length())
 
     try measure(1, work)
-    return ok(unit)
 
 fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
     let data = sample(length)
@@ -79,7 +76,6 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
         return keep(if mode == 0 or mode == 5 or mode == 6: data.length() else: 1)
 
     try measure(1, work)
-    return ok(unit)
 
 fn encode85(length: Int) Unit!:
     let data = sample(length)
@@ -92,7 +88,6 @@ fn encode85(length: Int) Unit!:
         return keep(actual.byte_length())
 
     try measure(1, work)
-    return ok(unit)
 
 fn decode85(
     length: Int,
@@ -104,7 +99,7 @@ fn decode85(
     let data = sample(length, zero)
     var text = ascii85_encode(data)
     if bad == 1: text = "v" + text
-    if bad == 2: text = text + "v"
+    if bad == 2: text += "v"
 
     var limit: Int? = none
     if bounded: limit = if under: length - 1 else: length
@@ -130,7 +125,6 @@ fn zero_budget85() Unit!:
         return keep(1)
 
     try measure(1, work)
-    return ok(unit)
 
 fn whitespace85(bounded: Bool) Unit!:
     let text = try " \t\r\n".repeat(16384)
@@ -142,7 +136,6 @@ fn whitespace85(bounded: Bool) Unit!:
         return keep(1)
 
     try measure(1, work)
-    return ok(unit)
 
 bench "buffers.unpadded.std.0":
     try unpadded(0, false)

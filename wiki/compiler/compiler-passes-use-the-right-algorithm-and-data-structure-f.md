@@ -4,6 +4,9 @@
 
 Decision: the user wants parsing, checking, and lowering to stay linear (or n log n) in source size, with no ad-hoc special cases. A pass that re-walks a shared graph per root, scans a list per lookup, or allocates per-byte tables is a defect even when small inputs hide it.
 
+Verified: module-loader input tracking must not scan all previously recorded paths for every module or embedded asset. Keep ordered output and membership separate within a load, seed membership from manifest lookups, and retain failed-input tracking as well as successful modules. Embedding the project root overlaps the manifest, entry and imported files; the loader regression checks their first-seen order without duplicates. Measure broad graphs and small controls, since the membership index stores another copy of each distinct path.
+Evidence: [input ordering regression](../../crates/ms-driver/tests/load.rs), [paired module-loader measurements](../../bench/perf/module-inputs/README.md).
+
 Verified: type-suffix sugar must move the accumulated syntax tree into each wrapper. Cloning it for every `?` or `!` copies all preceding wrappers and makes construction quadratic; preserve node IDs and positions while removing the discarded copies.
 Evidence: [suffix parser](../../crates/ms-syntax/src/parser.rs), [shape and position regressions](../../crates/ms-syntax/tests/type_suffix.rs), [interleaved parser measurements](../../bench/perf/parser-suffix/README.md).
 

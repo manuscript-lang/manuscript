@@ -1,8 +1,10 @@
 // Generator for c44-unified-diff. Deterministic; run: ms run bench/agent/gen.ms -- c44
-import GenCase, make_case, write_cases from "../../lib/gen.ms"
-import seeded from "../../lib/pyrandom.ms"
-import Random from "../../lib/pyrandom.ms"
-import words from "../../lib/text.ms"
+import (
+    GenCase, make_case, write_cases from "../../lib/gen.ms",
+    seeded from "../../lib/pyrandom.ms",
+    Random from "../../lib/pyrandom.ms",
+    words from "../../lib/text.ms",
+)
 
 // One line of an edit script: a mark (space, `-` or `+`) and the text.
 type Op:

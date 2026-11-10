@@ -233,7 +233,15 @@ mod tests {
             Some(WsErr::Failed("websocket: bad handshake".into()))
         );
         peer.join().unwrap();
-        for bad in ["http://h/", "ws:///x", "nonsense"] {
+        for bad in [
+            "http://h/",
+            "ws:///x",
+            "ws://:80/",
+            "wss://:443/",
+            "ws://:/",
+            "wss://:/",
+            "nonsense",
+        ] {
             assert_eq!(
                 connect(&net, &dial(bad, &tls, &[], &[])).err(),
                 Some(WsErr::InvalidInput),

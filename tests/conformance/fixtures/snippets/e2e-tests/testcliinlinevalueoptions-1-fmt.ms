@@ -7,7 +7,6 @@ import stderr from "@std/io/io.ms"
 
 fn write_line(text: String) Unit!:
     try stdout().write("{text}\n")
-    return ok(unit)
 
 fn exercise() Int!:
     let args = arguments()

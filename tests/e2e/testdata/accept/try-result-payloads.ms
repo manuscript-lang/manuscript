@@ -1,6 +1,8 @@
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
-import Closeable from "@std/core.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
+import (
+    expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
+    Closeable from "@std/core.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+)
 
 type Failure:
     detail: String
@@ -48,7 +50,6 @@ type TailCleanup:
 impl Closeable for TailCleanup:
     var fn close() Unit!:
         let _written = write_file(self.marker, "closed", true).wait()
-        return ok(unit)
 
 fn tail_cleanup(result: Int!Error, var visits: List[Int], marker: String) Int!Error:
     let _resource = TailCleanup(marker)

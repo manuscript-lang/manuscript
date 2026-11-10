@@ -6,14 +6,16 @@
 // expect-fail.windows.txt). E2E_BUILD_TYPE picks the build type (default Release, which the deep-nesting
 // fixtures need to finish quickly); E2E_JOBS the number of parallel workers.
 // Usage: ms run tools/e2e.ms [-- fixture paths to run instead]
-import env, exe, host, note, run_program from "./lib.ms"
-import DirectoryEntry, access, list, read_file, stat from "@std/os/fs.ms"
-import run from "@std/os/process.ms"
-import (arguments, change_directory, working_directory) from "@std/os/env.ms"
-import (system_info) from "@std/os/system.ms"
-import Promise, promise from "@std/concurrency/promise.ms"
-import Instant, monotonic from "@std/time.ms"
-import stdout from "@std/io/io.ms"
+import (
+    env, exe, host, note, run_program from "./lib.ms",
+    DirectoryEntry, access, list, read_file, stat from "@std/os/fs.ms",
+    run from "@std/os/process.ms",
+    arguments, change_directory, working_directory from "@std/os/env.ms",
+    system_info from "@std/os/system.ms",
+    Promise, promise from "@std/concurrency/promise.ms",
+    Instant, monotonic from "@std/time.ms",
+    stdout from "@std/io/io.ms",
+)
 
 // The exit status and combined output of one `ms` invocation.
 type Ran:
@@ -214,7 +216,7 @@ fn ms_files(dir: String) List[String]:
         )
     return names.sorted(fn(a: String, b: String) Int: a.compare(b))
 
-export fn main() Int:
+fn main() Int:
     let root = working_directory().get()
     let build_type = env("E2E_BUILD_TYPE", "Release")
     var expect_files = ["tests/e2e/expect-fail.txt"]
@@ -233,7 +235,7 @@ export fn main() Int:
     var projects = List[String]()
     let given = arguments()
 
-    if given.length() > 0:
+    if not given.is_empty():
         for f in given: fixtures.append(f.clone())
     else:
         for f in ms_files("tests/e2e/testdata/accept").concat(
@@ -348,7 +350,7 @@ fn print_slowest(times: List[String]) Unit:
     var shown = List[String]()
     for entry in slowest:
         if shown.length() < 15: shown.append("  {entry}")
-    stdout().write("slowest fixtures (ms):\n{shown.join("\n")}\n").get()
+    print("slowest fixtures (ms):\n{shown.join("\n")}")
 
 fn millis_of(entry: String) Int:
     return entry.split(" ")[0].parse_int().get(0)

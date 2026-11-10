@@ -23,15 +23,15 @@ import (
     run_in,
     sample,
     usage,
-    write_text
-) from "./lib.ms"
-import Measured, header, measure, row, versions from "./workloads_measure.ms"
-import hex_encode from "@std/data/encoding.ms"
-import sha256 from "@std/crypto.ms"
-import JsonValue from "@std/data/json.ms"
-import copy, create_directory, list, temporary from "@std/os/fs.ms"
-import arguments from "@std/os/env.ms"
-import parse from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    Measured, header, measure, row, versions from "./workloads_measure.ms",
+    hex_encode from "@std/data/encoding.ms",
+    sha256 from "@std/crypto.ms",
+    JsonValue from "@std/data/json.ms",
+    copy, create_directory, list, temporary from "@std/os/fs.ms",
+    arguments from "@std/os/env.ms",
+    parse from "@std/data/json.ms",
+)
 
 type Case:
     name: String
@@ -45,7 +45,7 @@ fn largest_input(path: String) String!:
     for c in cases.get([]):
         if c.stdin.length() > best.length(): best = c.stdin.clone()
 
-    let size = if best.length() > 0: best.length() else: 1
+    let size = if not best.is_empty(): best.length() else: 1
     let copies = if 3000000 / size > 1: 3000000 / size else: 1
     return ok(best.repeat(copies).get(""))
 
@@ -123,11 +123,11 @@ fn run(work: String, n: Int) Result[String, Error]:
     write_text("{work}/table.txt", rows.join("\n") + "\n")
     return ok(rows.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     var n = 3
     let args = arguments()
 
-    if args.length() > 0:
+    if not args.is_empty():
         if let parsed = repeats(args[0]):
             n = parsed
         else:

@@ -8,6 +8,105 @@ use ms_rt as _;
 use ms_syntax::{Phase, Pos};
 
 #[test]
+fn type_import_fixes_skip_functions_with_the_same_name() {
+    for export in [
+        include_str!("import_hints/function-export.ms"),
+        include_str!("import_hints/constant-export.ms"),
+    ] {
+        type_import_fix_skips_value(export);
+    }
+}
+
+fn type_import_fix_skips_value(export: &str) {
+    let syms = ms_syntax::Names::global();
+    let dir = TempDir::new();
+    let source = include_str!("import_hints/type-use.ms");
+    let path = write(dir.path(), "main.ms", source);
+    write(dir.path(), "values.ms", export);
+    let checked = check_graph(
+        syms,
+        load_file(syms, &path, LoadOptions::default()),
+        CheckRequest::default(),
+    );
+    assert_eq!(checked.diagnostics.len(), 1, "{:?}", checked.diagnostics);
+    let issue = &checked.diagnostics[0];
+    assert_eq!(
+        issue.message,
+        "unknown type Bytes; add: import Bytes from \"@std/bytes.ms\""
+    );
+    let fix = issue.fix.as_ref().expect("type import fix");
+    let mut repaired = source.to_string();
+    repaired.insert_str(fix.pos.offset as usize, &fix.replacement);
+    write(dir.path(), "main.ms", &repaired);
+    let checked = check_graph(
+        syms,
+        load_file(syms, &path, LoadOptions::default()),
+        CheckRequest::default(),
+    );
+    assert!(checked.success(), "{:?}", checked.diagnostics);
+}
+
+#[test]
+fn value_import_fixes_still_offer_functions_and_constants() {
+    let syms = ms_syntax::Names::global();
+    for (export, source) in [
+        (
+            include_str!("import_hints/function-export.ms"),
+            include_str!("import_hints/function-use.ms"),
+        ),
+        (
+            include_str!("import_hints/constant-export.ms"),
+            include_str!("import_hints/constant-use.ms"),
+        ),
+    ] {
+        let dir = TempDir::new();
+        let path = write(dir.path(), "main.ms", source);
+        write(dir.path(), "values.ms", export);
+        let checked = check_graph(
+            syms,
+            load_file(syms, &path, LoadOptions::default()),
+            CheckRequest::default(),
+        );
+        assert_eq!(checked.diagnostics.len(), 1, "{:?}", checked.diagnostics);
+        let fix = checked.diagnostics[0]
+            .fix
+            .as_ref()
+            .expect("value import fix");
+        assert_eq!(fix.replacement, "import Bytes from \"./values.ms\"\n");
+        let mut repaired = source.to_string();
+        repaired.insert_str(fix.pos.offset as usize, &fix.replacement);
+        write(dir.path(), "main.ms", &repaired);
+        let checked = check_graph(
+            syms,
+            load_file(syms, &path, LoadOptions::default()),
+            CheckRequest::default(),
+        );
+        assert!(checked.success(), "{:?}", checked.diagnostics);
+    }
+}
+
+#[test]
+fn standard_functions_are_not_offered_as_type_imports() {
+    let syms = ms_syntax::Names::global();
+    let dir = TempDir::new();
+    let path = write(
+        dir.path(),
+        "main.ms",
+        include_str!("import_hints/function-type-use.ms"),
+    );
+    let checked = check_graph(
+        syms,
+        load_file(syms, &path, LoadOptions::default()),
+        CheckRequest::default(),
+    );
+    assert_eq!(checked.diagnostics.len(), 1, "{:?}", checked.diagnostics);
+    let issue = &checked.diagnostics[0];
+    assert!(issue.message.starts_with("unknown type panic;"));
+    assert!(!issue.message.contains("add: import"), "{}", issue.message);
+    assert!(issue.fix.is_none(), "{:?}", issue.fix);
+}
+
+#[test]
 fn project_import_fix_resolves_from_the_diagnostic_module() {
     let syms = ms_syntax::Names::global();
     let dir = TempDir::new();

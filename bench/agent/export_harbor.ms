@@ -7,15 +7,17 @@
 // environment/{Dockerfile,workspace/,ms}, tests/{test.sh,grade.ms,cases.json,...}, solution/solve.sh. Hidden cases
 // live only in tests/, which Harbor uploads at verification time. The verifier runs `ms` inside the task, so every
 // image carries the binary given by --ms-binary. The output is generated; do not commit it.
-import Flag, FlagKind, command from "@std/cli/command.ms"
-import chmod, copy, CopyOptions, create_directory, remove, stat from "@std/os/fs.ms"
-import JsonValue from "@std/data/json.ms"
-import stderr, stdout from "@std/io/io.ms"
-import arguments from "@std/os/env.ms"
-import Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms"
-import make_workspace from "./core/workspace.ms"
-import dumps from "./lib/pyjson.ms"
-import read_text, write_text from "./lib/text.ms"
+import (
+    Flag, FlagKind, command from "@std/cli/command.ms",
+    chmod, copy, CopyOptions, create_directory, remove, stat from "@std/os/fs.ms",
+    JsonValue from "@std/data/json.ms",
+    stderr from "@std/io/io.ms",
+    arguments from "@std/os/env.ms",
+    Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms",
+    make_workspace from "./core/workspace.ms",
+    dumps from "./lib/pyjson.ms",
+    read_text, write_text from "./lib/text.ms",
+)
 
 type Options:
     out: String
@@ -121,10 +123,10 @@ fn run_export(o: Options) Int!:
             export_one(ch, lang, o.out, o.ms_binary, o.agent_timeout)
             n += 1
 
-    stdout().write("exported {n} tasks to {o.out}\n").get()
+    print("exported {n} tasks to {o.out}")
     return ok(0)
 
-export fn main() Int:
+fn main() Int:
     let root = command[Options](
         name: "export_harbor.ms",
         about: "Export agent-bench challenges as Harbor tasks (one per challenge x language)",

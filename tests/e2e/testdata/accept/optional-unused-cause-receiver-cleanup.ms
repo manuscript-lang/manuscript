@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary, write_file from "@std/os/fs.ms"
-import expect_equal, expect_fault, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary, write_file from "@std/os/fs.ms",
+    expect_equal, expect_fault, expect_ok from "@std/test/test.ms",
+)
 
 type Marker:
     id: Int
@@ -11,8 +13,6 @@ impl Closeable for Marker:
     var fn close() Unit!:
         try append_file(self.log, "{self.id},").wait()
         if self.fail: return error(Error("cause close failed"))
-
-        return ok(unit)
 
 fn source(log: String) Marker?: Marker(1, log, false)
 
@@ -31,7 +31,6 @@ fn normal_transfer(log: String) Unit!:
     let kept = source(log.clone()).ok_or(Marker(2, log.clone(), false))
     try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "2,")
     try expect_equal(kept.get().id, 1)
-    return ok(unit)
 
 test "successful cause cleanup transfers the protected receiver exactly once":
     let tmp = temporary("cause-transfer-") | try expect_ok

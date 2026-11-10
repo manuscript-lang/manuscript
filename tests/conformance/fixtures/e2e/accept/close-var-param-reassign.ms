@@ -2,15 +2,13 @@
 // conform: phase=run
 // A var parameter that is assigned closes the value it replaces; the caller closes the final one.
 import Closeable from "@std/core.ms"
-import stdout from "@std/io/io.ms"
 
 type R:
     name: String
 
 impl Closeable for R:
     var fn close() Unit!:
-        stdout().write("close {self.name}\n").get()
-        return ok(unit)
+        print("close {self.name}")
 
 fn replace(var r: R) Unit:
     r = R("new")
@@ -25,13 +23,12 @@ fn replace_field(var w: W) Unit:
 type W:
     r: R
 
-export fn main() Int:
+fn main() Unit:
     var v = R("old")
     replace(var v)
-    stdout().write("after replace\n").get()
+    print("after replace")
     replace_local()
 
     var w = W(R("field-old"))
     replace_field(var w)
-    stdout().write("end\n").get()
-    return 0
+    print("end")

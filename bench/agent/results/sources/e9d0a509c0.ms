@@ -1,6 +1,8 @@
-import stdin from "@std/io.ms"
-import stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdin from "@std/io.ms",
+    stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 type Ledger:
     balance: Map[String, Int]

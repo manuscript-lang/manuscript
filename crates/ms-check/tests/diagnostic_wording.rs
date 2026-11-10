@@ -55,3 +55,29 @@ fn loop_borrow_remedy_clones_the_iterable_not_its_root() {
         assert!(messages(&fixed).is_empty(), "{iterable}");
     }
 }
+
+// A clone repairs the error but hides a design choice and costs time and memory, so ownership
+// errors name it in prose and never offer it as a machine-applicable fix (`ms check --fix`).
+#[test]
+fn ownership_errors_never_carry_a_clone_fix() {
+    let sources = [
+        include_str!("diagnostic_wording/clone-fix-borrow-store.ms"),
+        include_str!("diagnostic_wording/clone-fix-moved-again.ms"),
+    ];
+    for source in sources {
+        let syms = ms_syntax::Names::global();
+        let file: Arc<str> = Arc::from("wording.ms");
+        let module = ms_syntax::parser::parse(&file, source).expect("parses");
+        let diagnostics = ms_check::check(
+            syms,
+            vec![ms_check::load_module(syms, &module)],
+            ImportMap::default(),
+            CheckOptions::default(),
+        )
+        .diagnostics;
+        assert!(!diagnostics.is_empty(), "{source}");
+        for d in diagnostics {
+            assert!(d.fix.is_none(), "{}: {:?}", d.message, d.fix);
+        }
+    }
+}

@@ -10,11 +10,11 @@ import (
     median,
     options,
     read_text,
-    write_text
-) from "./lib.ms"
-import all_ints, run_pinned from "./study.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue, parse from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    all_ints, run_pinned from "./study.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue, parse from "@std/data/json.ms",
+)
 
 export type Identity:
     input_bytes: Int
@@ -54,7 +54,7 @@ export fn run_rows(
     let text = try run_pinned(executable, [], cpu)
     let lines = text.split("\n").filter(fn l: l.trim() != "")
     if (
-        lines.length() == 0
+        lines.is_empty()
         or lines[0].trim() != "case,input_bytes,iterations,elapsed_ns,checksum"
     ):
         return invalid("invalid header from {executable}")
@@ -72,7 +72,7 @@ export fn run_rows(
         )
 
         let nums = try all_ints(f.slice(1, 5).get([]))
-        let want = expected.get(name).get(Identity(0, 0, 0))
+        let want = expected.get_or(name, Identity(0, 0, 0))
         if (
             nums[0] != want.input_bytes
             or nums[1] != want.iterations
@@ -93,7 +93,7 @@ fn read_identities(path: String) Map[String, Identity]!:
     if doc.is_error(): return invalid("identity file is not JSON")
 
     let members = doc.get(JsonValue.Null).as_map().get(Map[String, JsonValue]())
-    if members.length() == 0: return invalid(
+    if members.is_empty(): return invalid(
         "identity file must contain a nonempty object"
     )
 
@@ -134,18 +134,18 @@ fn compare(
     paths.add("before", before.clone())
     paths.add("after", after.clone())
     for name in ["before", "after"]:
-        let _warm = try run_rows(paths.get(name).get(""), expected, "")
+        let _warm = try run_rows(paths.get_or(name, ""), expected, "")
 
     var csv = ["pair,variant,case,input_bytes,iterations,elapsed_ns,checksum"]
     var per = Map[String, List[Float]]()
 
     for pair in 0..pairs:
         for variant in (if pair % 2 == 0: ["before", "after"] else: ["after", "before"]):
-            for row in try run_rows(paths.get(variant).get(""), expected, ""):
+            for row in try run_rows(paths.get_or(variant, ""), expected, ""):
                 csv.append("{pair},{variant},{row.line}")
 
                 let key = "{row.name} {variant}"
-                var list = per.get(key).get([])
+                var list = per.get_or(key, [])
                 list.append(row.elapsed_ns.to_float() / row.iterations.to_float())
                 per.add(key.clone(), list)
 
@@ -156,8 +156,8 @@ fn compare(
     ]
 
     for name in expected.keys():
-        let b = per.get("{name} before").get([])
-        let a = per.get("{name} after").get([])
+        let b = per.get_or("{name} before", [])
+        let a = per.get_or("{name} after", [])
         let bs = b.sorted()
         let as = a.sorted()
         out.append(
@@ -166,7 +166,7 @@ fn compare(
 
     return ok(out.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 3: return fail(
         "usage: string_lines_compare.ms -- BEFORE AFTER OUTPUT [--pairs N] [--identity-file FILE]"
@@ -178,7 +178,7 @@ export fn main() Int:
     if parsed.is_error(): return fail(parsed.err().message)
 
     let opts = parsed.get(Map[String, String]())
-    let pairs = opts.get("pairs").get("7").parse_int().get(0)
+    let pairs = opts.get_or("pairs", "7").parse_int().get(0)
     if pairs < 1: return fail("--pairs must be positive")
 
     var expected = builtin_identities()

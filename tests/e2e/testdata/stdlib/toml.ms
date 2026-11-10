@@ -1,6 +1,8 @@
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
-import parse, stringify, TomlValue, TomlOptions from "@std/data/toml.ms"
-import monotonic from "@std/time.ms"
+import (
+    expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
+    parse, stringify, TomlValue, TomlOptions from "@std/data/toml.ms",
+    monotonic from "@std/time.ms",
+)
 
 fn entries(value: TomlValue) Map[String, TomlValue]!:
     match value:
@@ -102,6 +104,29 @@ test "TOML parses a long array of tables in order":
 
     let last = try entries(rows.get(29999).clone())
     last["id"] | try expect_equal(TomlValue.IntValue(29999))
+
+test "TOML dotted extensions define existing implicit parents":
+    for text in [
+        "[a.b.c]\n[a]\nb.d=2\n[a.b]", "[a.b.c.d]\n[a]\nb.c.e=2\n[a.b]",
+        "[a.b.c.d]\n[a]\nb.c.e=2\n[a.b.c]",
+        "[a.'odd.key'.c]\n[a]\n'odd.key'.d=2\n[a.'odd.key']",
+        "[[items]]\n[items.a.b.c]\n[items.a]\nb.d=2\n[items.a.b]"
+    ]:
+        let result = parse(text)
+        result.is_error() | try expect_true
+        result.err().kind | try expect_equal("EBADMSG")
+
+test "TOML dotted extensions keep sibling assignments and child headers valid":
+    let source = "[a.b.c]\nx=1\n[a]\nb.d=2\nb.e=3\n[a.b.f]\ny=4"
+    let expected = "[a.b]\nd=2\ne=3\n[a.b.c]\nx=1\n[a.b.f]\ny=4"
+    let parsed = parse(source) | try expect_ok
+    parsed | try expect_equal(parse(expected) | try expect_ok)
+    parse(stringify(parsed) | try expect_ok) | try expect_ok | try expect_equal(parsed)
+
+test "TOML untouched implicit parents can still receive table headers":
+    let source = "[a.b.c]\nx=1\n[a.b]\ny=2\n[a]\nz=3"
+    let expected = "[a]\nz=3\n[a.b]\ny=2\n[a.b.c]\nx=1"
+    parse(source) | try expect_ok | try expect_equal(parse(expected) | try expect_ok)
 
 test "TOML rejects malformed data redefinitions and closed inline tables":
     for text in [

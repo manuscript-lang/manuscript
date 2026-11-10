@@ -97,15 +97,12 @@ impl Scan<'_> {
             return;
         }
         if let Some(s) = &info.symbol {
-            if self.syms.str(s.native).is_empty() {
+            if s.native == Native::Source {
                 self.edge(s.id, e.pos);
                 return;
             }
-            match self.syms.str(s.native) {
-                "core/panic" => {}
-                _ => {
-                    self.effects.insert("unknown");
-                }
+            if !s.native.is(self.syms, "core/panic") {
+                self.effects.insert("unknown");
             }
             return;
         }
@@ -220,7 +217,7 @@ impl Visitor for Scan<'_> {
                 let reference = self
                     .info(e)
                     .and_then(|i| i.symbol)
-                    .filter(|s| self.syms.str(s.native).is_empty() && self.ids.contains(&s.id));
+                    .filter(|s| s.native == Native::Source && self.ids.contains(&s.id));
                 if let Some(s) = reference {
                     self.edge(s.id, e.pos);
                 }

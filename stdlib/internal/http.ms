@@ -1,7 +1,6 @@
-import Bytes from "@std/bytes.ms"
 import (
+    Bytes from "@std/bytes.ms",
     HttpHeaders,
-    HttpMethod,
     HttpResponseMetadata,
     NativeHttpClient,
     HttpExchange,
@@ -9,27 +8,17 @@ import (
     NativeServing,
     NativeWorker,
     NativeResponseBody,
-    RawResponse
-) from "@std/net/http.ms"
-import Duration from "@std/time.ms"
+    RawResponse from "@std/net/http.ms",
+    Duration from "@std/time.ms",
+)
 
 export extern fn msstd_http_client_close(handle: NativeHttpClient) Unit
 
 export extern fn msstd_http_client_share(handle: NativeHttpClient) NativeHttpClient
 
-export extern fn msstd_http_client_request(
-    handle: NativeHttpClient,
-    method: HttpMethod,
-    url: String,
-    headers: HttpHeaders,
-    body: String,
-    max_response_bytes: Int?,
-    timeout: Duration?
-) RawResponse!
-
 export extern fn msstd_http_client_request_bytes(
     handle: NativeHttpClient,
-    method: HttpMethod,
+    method: String,
     url: String,
     headers: HttpHeaders,
     body: Bytes,

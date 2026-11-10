@@ -68,13 +68,18 @@ pub struct Module {
     pub node_count: u32,
 }
 
-/// One imported symbol binding: `import A, B from "path"` yields two.
+/// One imported symbol binding: `import A, B from "path"` yields two, and a
+/// group `import (A from "a", B from "b")` yields two from different paths.
 #[derive(Debug, Clone)]
 pub struct Import {
     /// Node id.
     pub id: NodeId,
-    /// Position of the `import` keyword (shared by the names of one list).
+    /// Position of the `import` keyword (shared by the whole statement).
     pub pos: Pos,
+    /// Position of the first name of this binding's `names from "path"`
+    /// clause (shared by the names of one clause; equals the first name's
+    /// position in a single-clause import).
+    pub clause: Pos,
     /// Position of the imported name.
     pub name_pos: Pos,
     /// Imported name.
@@ -467,6 +472,19 @@ pub struct Lambda {
     pub body: Vec<Stmt>,
 }
 
+impl Lambda {
+    /// The body as written: without the bindings the parser synthesised for destructured
+    /// parameters.
+    pub fn written_body(&self) -> &[Stmt] {
+        let heads = self
+            .body
+            .iter()
+            .take_while(|s| s.is_destructure_head())
+            .count();
+        &self.body[heads..]
+    }
+}
+
 /// A call argument.
 #[derive(Debug, Clone)]
 pub struct Argument {
@@ -663,6 +681,14 @@ pub struct Stmt {
     pub kind: StmtKind,
 }
 
+impl Stmt {
+    /// Whether the parser synthesised this binding for a destructuring `for` or lambda
+    /// parameter: it has no `let`, so the statement starts at its own pattern.
+    pub fn is_destructure_head(&self) -> bool {
+        matches!(&self.kind, StmtKind::Bind { pattern, group: None, .. } if pattern.pos == self.pos)
+    }
+}
+
 /// The target of an assignment.
 #[derive(Debug, Clone)]
 pub enum AssignTarget {
@@ -744,5 +770,71 @@ impl Module {
         let id = NodeId(self.node_count);
         self.node_count += 1;
         id
+    }
+}
+
+impl Import {
+    /// Whether `source` writes this binding inside a group of clauses
+    /// (`import (A from "a", B from "b")`), as opposed to a single clause.
+    pub fn in_group(&self, source: &str) -> bool {
+        let Some(rest) = source.get(self.pos.offset as usize + "import".len()..) else {
+            return false;
+        };
+        let Some(rest) = rest.trim_start().strip_prefix('(') else {
+            return false;
+        };
+        let word = rest.find(" from ").or_else(|| rest.find("\nfrom "));
+        match (word, rest.find(')')) {
+            (Some(from), Some(close)) => from < close,
+            _ => false,
+        }
+    }
+
+    /// The byte range that deletes this binding's whole clause from a grouped
+    /// import, or the whole statement when `statement` is set. The range
+    /// takes the clause's trailing comma and, when the clause is alone on its
+    /// line, the line itself.
+    pub fn group_removal(&self, source: &str, statement: bool) -> Option<(usize, usize)> {
+        let start = if statement { self.pos } else { self.clause }.offset as usize;
+        let tail = source.get(self.clause.offset as usize..)?;
+        let blank = |c: char| c == ' ' || c == '\t';
+        let mut end = if statement {
+            let open = source.get(self.pos.offset as usize..)?.find('(')?;
+            let (mut depth, mut text) = (0usize, false);
+            let mut close = None;
+            for (i, c) in source[self.pos.offset as usize + open..].char_indices() {
+                match c {
+                    '"' => text = !text,
+                    '(' if !text => depth += 1,
+                    ')' if !text => {
+                        depth -= 1;
+                        if depth == 0 {
+                            close = Some(self.pos.offset as usize + open + i + 1);
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            close?
+        } else {
+            let open = tail.find('"')?;
+            let close = open + 1 + tail[open + 1..].find('"')? + 1;
+            let mut at = self.clause.offset as usize + close;
+            let after = source[at..].trim_start_matches(blank);
+            at = source.len() - after.len();
+            if source[at..].starts_with(',') {
+                at += 1;
+            }
+            at
+        };
+        let line_start = source[..start].rfind('\n').map_or(0, |i| i + 1);
+        let rest = &source[end..];
+        let line_rest = rest.find('\n').map_or(rest, |n| &rest[..n]);
+        if source[line_start..start].trim().is_empty() && line_rest.trim().is_empty() {
+            end += line_rest.len() + usize::from(rest.len() > line_rest.len());
+            return Some((line_start, end));
+        }
+        Some((start, end))
     }
 }

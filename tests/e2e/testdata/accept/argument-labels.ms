@@ -1,5 +1,7 @@
-import expect_equal, expect_true from "@std/test/test.ms"
-import sqrt from "@std/math/math.ms"
+import (
+    expect_equal, expect_true from "@std/test/test.ms",
+    sqrt from "@std/math/math.ms",
+)
 
 fn increment(value: Int) Int:
     return value + 1
@@ -10,7 +12,7 @@ fn identity[T](value: T) T:
 fn sum(values: List[Int]) Int:
     var total = 0
     for value in values:
-        total = total + value
+        total += value
     return total
 
 fn apply(transform: fn(Int) Int) Int:

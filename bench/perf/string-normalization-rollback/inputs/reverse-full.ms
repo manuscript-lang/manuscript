@@ -1,5 +1,7 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 type Pattern:
     name: String
@@ -37,7 +39,7 @@ fn measure(name: String, text: String, expected: String) Int:
     )
     return 0
 
-export fn main() Int:
+fn main() Int:
     let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
 
     for pattern in [

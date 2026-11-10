@@ -1,5 +1,5 @@
-import expect_equal, expect_true from "@std/test/test.ms"
 import (
+    expect_equal, expect_true from "@std/test/test.ms",
     parse_media_type,
     format_media_type,
     media_type_for_extension,
@@ -9,8 +9,8 @@ import (
     encode_multipart,
     form_part,
     multipart_boundary,
-    MediaType
-) from "@std/net/mime.ms"
+    MediaType from "@std/net/mime.ms",
+)
 
 test "media types parse and format":
     let media = parse_media_type("Text/HTML; Charset=\"utf-8\"; q=\"a\\\"b\"").get()
@@ -40,7 +40,7 @@ test "an escaped closing quote does not end a quoted parameter":
 test "extension table maps both ways":
     try expect_equal(media_type_for_extension(".JSON").get(""), "application/json")
     try expect_equal(media_type_for_extension("png").get(""), "image/png")
-    try expect_true(not media_type_for_extension(".nope").is_some())
+    try expect_true(media_type_for_extension(".nope").is_none())
     try expect_equal(extension_for_media_type("image/svg+xml; x=y").get(""), ".svg")
 
 test "headers fold and look up ignoring case":
@@ -76,7 +76,7 @@ test "multipart rejects a missing closing delimiter":
     try expect_equal(
         multipart_boundary("multipart/form-data; boundary=abc").get(""), "abc"
     )
-    try expect_true(not multipart_boundary("text/plain").is_some())
+    try expect_true(multipart_boundary("text/plain").is_none())
 
 test "multipart accepts only transport padding before delimiter line endings":
     for padding in ["", " ", "\t", " \t \t"]:

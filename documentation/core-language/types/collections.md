@@ -74,14 +74,13 @@ Save as `pairs.ms` and run `ms run pairs.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"ann: 90\nbo: 72\n2\n2\n1\n"} -->
 ```manuscript
-export fn main() Int:
+fn main() Unit:
     let names = ["ann", "bo", "cy"]
     let scores = [90, 72]
     for pair in names.zip(scores):
         print("{pair.first}: {pair.second}")
     for part in [1, 2, 3, 4, 5].chunks(2):
         print(part.length())
-    return 0
 ```
 
 ```text
@@ -237,10 +236,7 @@ import panic from "@std/core.ms"
 
 
 fn positives(values: List[Int]) List[Int]:
-    var result: List[Int] = []
-    for value in values:
-        if value > 0:
-            result.append(value)
+    let result = values.filter(fn value: value > 0)
     return result
 
 test "dynamic mutable data and explicit copies":

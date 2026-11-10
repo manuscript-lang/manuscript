@@ -6,6 +6,7 @@
 //! `AlreadyExists`, `PermissionDenied`, `Unsupported`, `Closed`, `Failed`) and command errors to
 //! `InvalidInput`, `Unavailable`, `Timeout` (13), `OutputLimit` (14) and `Failed`. Optional values
 //! are a present flag plus the value. A `Map[String, String]` crosses as two parallel string lists.
+//! ms: domain process
 
 extern crate alloc;
 
@@ -226,10 +227,6 @@ fn command_status<T>(
 }
 
 native! {
-    safe fn msstd_process_monotonic_time() -> i64 {
-        uptime_ns()
-    }
-
     /// `uptime()` as a `Duration` in nanoseconds.
     safe fn msstd_process_uptime() -> i64 {
         uptime_ns()

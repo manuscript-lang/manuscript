@@ -1,5 +1,3 @@
-import stdout from "@std/io/io.ms"
-
 type Box:
     items: List[Int]
     name: String
@@ -48,7 +46,7 @@ fn moving_index(var rows: List[List[Int]]) Unit:
     x.append(55)
     rows.append([i])
 
-export fn main() Int:
+fn main() Unit:
     var a = [[0], [0]]
     early(var a, true)
     early(var a, false)
@@ -70,5 +68,4 @@ export fn main() Int:
 
     var f = [[0], [0]]
     moving_index(var f)
-    stdout().write("{a}\n{b}\n{c}\n{d}\n{e}\n{boxes}\n{f}\n").get()
-    return 0
+    print("{a}\n{b}\n{c}\n{d}\n{e}\n{boxes}\n{f}")

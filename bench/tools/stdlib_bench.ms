@@ -10,10 +10,10 @@ import (
     repeats,
     right,
     stdlib_bench,
-    usage
-) from "./lib.ms"
-import Stats, case_labels, read_cases from "./stdlib_results.ms"
-import arguments from "@std/os/env.ms"
+    usage from "./lib.ms",
+    Stats, case_labels, read_cases from "./stdlib_results.ms",
+    arguments from "@std/os/env.ms",
+)
 
 export fn stdlib_table(output: String) String!:
     let cases = try read_cases(output)
@@ -21,7 +21,7 @@ export fn stdlib_table(output: String) String!:
     var width = 4
 
     for c in cases:
-        let n = labels.get(c.name).get("").length()
+        let n = labels.get_or(c.name, "").length()
         if n > width: width = n
 
     var rows = [
@@ -33,7 +33,7 @@ export fn stdlib_table(output: String) String!:
     for c in cases:
         let s = c.stats.get(Stats(0, none, none, 0.0, none, none, none, none))
         rows.append(
-            left(labels.get(c.name).get(""), width) + "  " + right(
+            left(labels.get_or(c.name, ""), width) + "  " + right(
                 s.median_ns.to_fixed(2), 12
             ) + "  " + right(s.min_ns.get(0.0).to_fixed(2), 10) + "  " + right(
                 s.max_ns.get(0.0).to_fixed(2), 10
@@ -42,15 +42,15 @@ export fn stdlib_table(output: String) String!:
 
     return ok(rows.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
-    if args.length() > 0 and args[0] == "--table": return finish(
+    if not args.is_empty() and args[0] == "--table": return finish(
         stdlib_table(read_stdin())
     )
 
     var n = 5
 
-    if args.length() > 0:
+    if not args.is_empty():
         if let parsed = repeats(args[0]):
             n = parsed
         else:

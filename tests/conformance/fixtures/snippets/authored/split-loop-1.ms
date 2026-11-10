@@ -8,8 +8,7 @@ fn say(text: String) Unit:
 
 fn keep(text: String) List[String]:
     var out: List[String] = []
-    for p in text.split(","):
-        out.append(p)
+    out.extend(text.split(","))
     return out
 
 fn first_long(text: String) String:
@@ -31,7 +30,7 @@ fn count(text: String) Int:
 
     return n
 
-export fn main() Int:
+fn main() Unit:
     let a = keep("aa,bbbb,c,,dddddd,eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee,f")
     for x in a:
         say("[{x}]")
@@ -61,7 +60,6 @@ export fn main() Int:
             say("{q}{r} ")
 
     say("\n")
-    return 0
 
 fn let_form(text: String) Int:
     let parts = text.split(",")
@@ -85,10 +83,7 @@ fn nested(text: String) Int:
     return total
 
 fn closure_keeps(text: String) Int:
-    var fs: List[fn() Int] = []
-    for p in text.split(","):
-        fs.append(fn() Int: return p.length())
-
+    var fs = text.split(",").map(fn p: fn() Int: return p.length())
     var t = 0
     for f in fs:
         t += f()

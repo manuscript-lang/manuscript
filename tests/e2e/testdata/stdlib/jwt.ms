@@ -1,15 +1,15 @@
-import expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
 import (
+    expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
     ecdsa_generate,
     public_key_der,
     rsa_generate,
     public_key,
-    Curve
-) from "@std/crypto.ms"
-import JsonValue, parse from "@std/data/json.ms"
-import (sign_token, verify_token, JwtAlgorithm, JwtCheck) from "@std/data/jwt.ms"
-import random_bytes from "@std/random.ms"
+    Curve from "@std/crypto.ms",
+    JsonValue, parse from "@std/data/json.ms",
+    sign_token, verify_token, JwtAlgorithm, JwtCheck from "@std/data/jwt.ms",
+    random_bytes from "@std/random.ms",
+)
 
 type Profile:
     sub: String
@@ -193,6 +193,56 @@ test "verify rejects registered claims of the wrong type":
             fine, secret, JwtCheck(at: 100, audience: "wanted")
         ) | try expect_ok
     )
+
+// Independently generated HS256 JWS tokens with key "secret" and the exact JSON
+// payloads in order: null, false, true, 42, "claims", "{\"exp\":0}", [], [{"exp":0}].
+// Their signatures are genuine; it is the JWT claim-set shape that is invalid.
+test "verify rejects signed payloads that are not claim objects":
+    let secret = "secret".to_bytes()
+    let tokens = [
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.7DWrkJHEM03NP-M-9zlpZJ3Ud49InV9BpM_GlfnVpfM",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ZmFsc2U.v3xsRo_HK_XvkswA16frrfBQP810JGE38bD4NqsS_5E",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dHJ1ZQ.u6JbcRO2MvlKSxPEklUhzTqMgOhc0bdhamtvrpXOGUg",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.NDI.DpSBf8asYLjZ8f-FNmbOgcAqnUgtEhVlF7yfz6fkGEo",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ImNsYWltcyI.V5GvU8jhwxwzZ9nJ4aymJBVAnzeKPYcsd96uYSci4j4",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.IntcImV4cFwiOjB9Ig.6TGcWjV1CR-ExDygwsohJL4beyAkhp3ua8afG5OraNE",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.W10.ny0W7Pkele2S9JjQz1pcPuE-7_Jrt2VBqPEO1UnPyQg",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.W3siZXhwIjowfV0.9JxJ3QGSMH2Ey3kNrUVwlUusIl_VcEEMKXanDqU_piI"
+    ]
+    for token in tokens:
+        (try failure(verify_token(token, secret, JwtCheck(at: 100)))) | try expect_equal(
+            Error("jwt: claims must be an object", kind: "EBADMSG")
+        )
+
+test "claim object validation applies before typed payload decoding":
+    let secret = "secret".to_bytes()
+    let null_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.7DWrkJHEM03NP-M-9zlpZJ3Ud49InV9BpM_GlfnVpfM"
+    let number_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.NDI.DpSBf8asYLjZ8f-FNmbOgcAqnUgtEhVlF7yfz6fkGEo"
+    let array_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.W10.ny0W7Pkele2S9JjQz1pcPuE-7_Jrt2VBqPEO1UnPyQg"
+    let invalid = Error("jwt: claims must be an object", kind: "EBADMSG")
+    (try failure(verify_token[Int?](null_token, secret))) | try expect_equal(invalid)
+    (try failure(verify_token[Int](number_token, secret))) | try expect_equal(invalid)
+    (try failure(verify_token[List[Int]](array_token, secret))) | try expect_equal(
+        invalid
+    )
+
+test "claim object validation follows signature verification":
+    let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.7DWrkJHEM03NP-M-9zlpZJ3Ud49InV9BpM_GlfnVpfM"
+    (try failure(verify_token(token, "other".to_bytes()))) | try expect_equal(
+        Error("jwt: bad signature", kind: "EBADMSG")
+    )
+
+test "verify accepts empty claim objects and nested values":
+    let secret = "secret".to_bytes()
+    let empty = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.t-IDcSemACt8x4iTMCda8Yhe3iZaWbvV5XKSTbuAn0M"
+    let nested = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuZXN0ZWQiOltdLCJhY3RpdmUiOnRydWV9.mgN1ikVmpILfLmGzXL3xy4bWgwTvpDt52bslkrtkIjM"
+    let claims = (verify_token(empty, secret) | try expect_ok)
+    try expect_true(claims.as_map().is_some())
+    claims.as_map().get().length() | try expect_equal(0)
+
+    let rich = (verify_token(nested, secret) | try expect_ok)
+    rich.get("active").get().as_bool().get() | try expect_equal(true)
+    rich.get("nested").get().as_list().get().length() | try expect_equal(0)
 
 test "rs256 signs with a private key and verifies with the public key":
     let private = (rsa_generate(2048) | try expect_ok)

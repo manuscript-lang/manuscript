@@ -1,5 +1,5 @@
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 import (
+    expect_equal, expect_false, expect_true from "@std/test/test.ms",
     first_mapped,
     first_bound_map,
     first_generic_map,
@@ -10,9 +10,7 @@ import (
     first_folded,
     first_key_transform,
     first_bound_keys,
-    first_value_transform
-) from "./first.ms"
-import (
+    first_value_transform from "./first.ms",
     second_mapped,
     second_failure,
     second_queries,
@@ -20,9 +18,9 @@ import (
     second_folded,
     second_key_transform,
     second_bound_keys,
-    second_value_transform
-) from "./second.ms"
-import Key, Cause from "./domain.ms"
+    second_value_transform from "./second.ms",
+    Key, Cause from "./domain.ms",
+)
 
 test "mapped output keeps lexical Hashable and Equal evidence":
     let by_id = first_mapped()

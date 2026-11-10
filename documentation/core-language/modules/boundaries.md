@@ -27,9 +27,8 @@ Save the caller as `main.ms` in the same directory:
 ```manuscript
 import Item, total from "./pricing.ms"
 
-export fn main() Int:
+fn main() Unit:
     print(total([Item(12, 3), Item(5, 2)]))
-    return 0
 ```
 
 Run `ms run main.ms`:

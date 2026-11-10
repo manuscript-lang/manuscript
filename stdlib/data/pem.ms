@@ -1,6 +1,8 @@
-import Bytes from "@std/bytes.ms"
-import StringBuilder from "@std/string.ms"
-import base64_decode, base64_encode from "@std/data/encoding.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    StringBuilder from "@std/string.ms",
+    base64_decode, base64_encode from "@std/data/encoding.ms",
+)
 
 /*
 PEM (RFC 7468) text armor: `-----BEGIN LABEL-----`, base64 body, `-----END LABEL-----`.

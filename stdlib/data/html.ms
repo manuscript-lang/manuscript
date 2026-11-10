@@ -101,10 +101,8 @@ fn node(tree: HtmlTree, id: Int) HtmlNode:
             msstd_html_data(tree, id), msstd_html_namespace(tree, id),
             attributes(tree, id), children(tree, id)
         )
-    if kind == 2:
-        return HtmlNode.Text(msstd_html_data(tree, id))
-    if kind == 3:
-        return HtmlNode.Comment(msstd_html_data(tree, id))
+    if kind == 2: return HtmlNode.Text(msstd_html_data(tree, id))
+    if kind == 3: return HtmlNode.Comment(msstd_html_data(tree, id))
     if kind == 4:
         return HtmlNode.Doctype(
             msstd_html_data(tree, id), msstd_html_doctype_id(tree, id, 0),

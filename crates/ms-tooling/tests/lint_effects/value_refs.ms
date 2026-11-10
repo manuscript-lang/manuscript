@@ -10,5 +10,5 @@ fn closure(xs: List[String]) List[String]:
 fn closure_prints(xs: List[String]) Unit:
     xs.for_each(fn(s): print(s))
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

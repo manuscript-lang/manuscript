@@ -16,8 +16,7 @@ fn maybe(n: Int) Int?:
     return n
 
 fn first_or(m: Int?) Int:
-    if let v = m:
-        return v
+    if let v = m: return v
 
     return 0
 

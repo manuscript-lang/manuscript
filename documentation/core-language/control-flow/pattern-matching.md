@@ -25,9 +25,8 @@ fn describe(payment: Payment) String:
         Pending(reference):
             return "Pending: {reference}"
 
-export fn main() Int:
+fn main() Unit:
     print(describe(Payment.Paid("receipt-42")))
-    return 0
 ```
 
 ```text

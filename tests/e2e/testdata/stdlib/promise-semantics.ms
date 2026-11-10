@@ -1,18 +1,17 @@
-import panic from "@std/core.ms"
 import (
+    panic from "@std/core.ms",
     Promise,
     promise,
     wait_all,
     wait_first,
     PromiseOptions,
-    cancel_switch
-) from "@std/concurrency/promise.ms"
-import (expect_equal, expect_error, expect_ok, expect_true) from "@std/test/test.ms"
-import milliseconds, nanoseconds, sleep from "@std/time.ms"
+    cancel_switch from "@std/concurrency/promise.ms",
+    expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
+    milliseconds, nanoseconds, sleep from "@std/time.ms",
+)
 
 fn report(reason: Error) String:
-    if reason.kind == "EIO":
-        return reason.details["report"].split("\n").get(0).clone()
+    if reason.kind == "EIO": return reason.details["report"].split("\n").get(0).clone()
 
     return reason.message.clone()
 

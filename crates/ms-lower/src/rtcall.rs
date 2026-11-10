@@ -26,6 +26,8 @@ type RtEntry = (
     &'static [(&'static str, &'static str, bool, bool)],
     &'static str,
     u8,
+    &'static str,
+    &'static str,
 );
 
 /// The ABI facts a runtime function declares with a `// ms:` comment in its source
@@ -38,6 +40,12 @@ pub(crate) struct RtFlags {
     pub reads: bool,
     /// The result borrows none of the arguments.
     pub fresh: bool,
+    /// Starts a task that runs code of the program (`// ms: spawns`).
+    pub spawns: bool,
+    /// The MIR instruction (`// ms: op=<mnemonic>`) the function is on its arguments.
+    pub op: Option<&'static str>,
+    /// How its failures name their domain (`//! ms: domain` of its file, or `domain=`).
+    pub domain: Option<&'static str>,
 }
 
 /// The declared flags of the runtime function `sym` (none for an unknown symbol).
@@ -45,11 +53,14 @@ pub(crate) fn rt_flags(sym: &str) -> RtFlags {
     let Ok(at) = SYMBOLS.binary_search_by_key(&sym, |s| s.0) else {
         return RtFlags::default();
     };
-    let bits = SYMBOLS[at].3;
+    let (_, _, _, bits, op, domain) = SYMBOLS[at];
     RtFlags {
         leaf: bits & 1 != 0,
         reads: bits & 2 != 0,
         fresh: bits & 4 != 0,
+        spawns: bits & 16 != 0,
+        op: (!op.is_empty()).then_some(op),
+        domain: (!domain.is_empty()).then_some(domain),
     }
 }
 
@@ -101,7 +112,7 @@ pub(crate) fn function_symbol(native: &str) -> Option<String> {
 
 pub(crate) fn rt_sig(sym: &str) -> Option<RtSig> {
     let at = SYMBOLS.binary_search_by_key(&sym, |s| s.0).ok()?;
-    let (_, params, ret, bits) = SYMBOLS[at];
+    let (_, params, ret, bits, _, _) = SYMBOLS[at];
     Some(RtSig {
         params: params
             .iter()
@@ -142,11 +153,7 @@ pub(crate) fn extern_role(sym: &str) -> ms_mir::ir::ExternRole {
         "msrt_string_eq" => R::StringEq,
         "msrt_cleanup_discard" | "msrt_cleanup_remove" => R::CleanupDiscard,
         "msrt_bytes_append" => R::BytesAppend,
-        "msrt_scope_spawn"
-        | "msrt_worker_start"
-        | "msrt_promise_start"
-        | "msrt_promise_start_here" => R::SpawnsTask,
-        s if s.contains("_serve") => R::SpawnsTask,
+        s if rt_flags(s).spawns => R::SpawnsTask,
         _ => R::None,
     }
 }
@@ -162,25 +169,6 @@ pub(crate) struct Input {
 /// The runtime symbol implementing a native method of a receiver type.
 pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> Option<String> {
     let name = native.rsplit('/').next().unwrap_or(native);
-    let name = match (m.types.kind(recv), name) {
-        (TyKind::Str, "drop") => "drop_n",
-        (TyKind::Obj(Native::Map, _), "map") => "transform",
-        (TyKind::List(elem), "join") if matches!(m.types.kind(*elem), TyKind::Int) => "join_int",
-        _ => name,
-    };
-    let name = name
-        .strip_prefix("map_")
-        .or_else(|| name.strip_prefix("set_"))
-        .unwrap_or(name);
-    if matches!(m.types.kind(recv), TyKind::Obj(Native::BigInt, _)) {
-        let name = if name == "format" {
-            "to_string_radix"
-        } else {
-            name
-        };
-        let sym = format!("msstd_bigint_{name}");
-        return rt_sig(&sym).map(|_| sym);
-    }
     let prefix = match m.types.kind(recv) {
         TyKind::Str => "string",
         TyKind::List(_) => "list",
@@ -202,33 +190,29 @@ pub(crate) fn method_symbol(m: &ms_mir::ir::Module, recv: MTy, native: &str) -> 
         return Some(sym);
     }
     // A set is a map without values: it shares the map entry points.
-    let name = if name == "values" { "keys" } else { name };
     let shared = format!("msrt_map_{name}");
     (prefix == "set")
         .then(|| rt_sig(&shared).map(|_| shared))
         .flatten()
 }
 
-/// Native types whose methods are runtime symbols named after the type, and the module
-/// they live in: `msstd_time_timestamp_shift`, `msstd_regex_matches`.
-const TYPED_NATIVES: &[(&str, &str)] = &[("Regex", "regex")];
-
-/// The runtime symbol of `method` on a native type from [`TYPED_NATIVES`].
+/// The runtime symbol of `method` on an `extern type` of the standard library, named after the
+/// type: `Regex.matches` is `msstd_regex_matches`.
 pub(crate) fn typed_method_symbol(
     syms: ms_check::api::Names,
     recv: &ct::Ty,
     method: &str,
 ) -> Option<String> {
-    let (ty, module) = TYPED_NATIVES.iter().find(|(t, _)| recv.is_std(syms, t))?;
-    let ty = ty.to_lowercase();
-    ["msstd", "msrt"].iter().find_map(|prefix| {
-        [
-            format!("{prefix}_{module}_{ty}_{method}"),
-            format!("{prefix}_{module}_{method}"),
-        ]
-        .into_iter()
-        .find(|sym| rt_sig(sym).is_some())
-    })
+    let sym = recv.symbol()?;
+    let external = sym.decl.as_ref().is_some_and(
+        |d| matches!(&d.decl().kind, ms_check::api::ast::DeclKind::Record(r) if r.external),
+    );
+    if !external || recv.kind != ct::Kind::Native {
+        return None;
+    }
+    let ty = syms.str(sym.name).to_lowercase();
+    let symbol = format!("msstd_{ty}_{method}");
+    rt_sig(&symbol).map(|_| symbol)
 }
 
 /// `STATUS_NONE`: end of stream or an absent optional.
@@ -384,9 +368,16 @@ impl FnLower<'_> {
                     vals.push(self.type_desc(t));
                 }
                 _ if p.ty == "ElemDesc" => {
-                    // A function has no receiver: the descriptor is that of its list result.
+                    // A function has no receiver: the descriptor is that of its list result
+                    // (`flatten` takes lists of lists), or of its first list argument.
+                    let first_list = inputs
+                        .iter()
+                        .filter_map(|input| input.val)
+                        .map(|v| self.ty_of(v.v))
+                        .find(|t| matches!(self.b.m.types.kind(*t), TyKind::List(_)));
                     let recv_ty = recv_ty
                         .or_else(|| self.result_list(result))
+                        .or(first_list)
                         .ok_or_else(|| Error::new(format!("{sym}: descriptor without receiver")))?;
                     let e = match self.b.m.types.kind(recv_ty).clone() {
                         TyKind::List(e) => e,
@@ -465,14 +456,6 @@ impl FnLower<'_> {
                     cursor += 1;
                     let Some(x) = input.val else {
                         return Err(Error::new(format!("{sym}: missing argument {}", p.name)));
-                    };
-                    // An `HttpMethod` crosses as its token text.
-                    let x = if p.name == "method"
-                        && matches!(self.b.m.types.kind(self.ty_of(x.v)), TyKind::Alt(_))
-                    {
-                        self.method_text(x)?
-                    } else {
-                        x
                     };
                     // Payload-free alternatives (HashAlgorithm, Curve) cross the C ABI
                     // as their declaration-order case index, rather than their MIR value.
@@ -1114,6 +1097,11 @@ impl FnLower<'_> {
         code: Value,
         sym: &str,
     ) -> Result<Value, Error> {
+        if rt_sig(sym).is_none() {
+            return Err(Error::new(format!(
+                "{sym}: no runtime function names this status"
+            )));
+        }
         let table = status_table(sym);
         let domain = domain_of(sym);
         self.status_chain(er, code, &table, &domain)
@@ -1335,63 +1323,25 @@ pub(crate) fn status_table(sym: &str) -> Vec<(i64, &'static str, &'static str)> 
         .collect()
 }
 
-/// How messages of `sym`'s module name their domain.
+/// How the failures of `sym` name their domain, as its runtime source declares.
 fn domain_of(sym: &str) -> String {
-    const NAMES: [(&str, &str); 28] = [
-        ("msstd_fs_", "filesystem"),
-        ("msstd_path_", "path"),
-        ("msstd_io_", "I/O"),
-        ("msstd_terminal_", "terminal"),
-        ("msstd_json_", "JSON"),
-        ("msstd_html_", "HTML"),
-        ("msstd_random_", "random"),
-        ("msstd_crypto_", "cryptography"),
-        ("msstd_net_", "network"),
-        ("msstd_http_", "HTTP"),
-        ("msstd_websocket_", "WebSocket"),
-        ("msstd_tls_", "TLS"),
-        ("msstd_url_", "URL"),
-        ("msstd_archive_", "archive"),
-        ("msstd_compress_", "compression"),
-        ("msstd_regex_", "regular expression"),
-        ("msstd_bigint_", "big integer"),
-        ("msstd_process", "process"),
-        ("msstd_system_", "system"),
-        ("msstd_time_", "time"),
-        ("msrt_numbers_", "number"),
-        ("msrt_float", "number"),
-        ("msrt_bits_", "number"),
-        ("msstd_math_", "number"),
-        ("msstd_decimal_", "number"),
-        ("msrt_string_", "string"),
-        ("msrt_list_", "collection"),
-        ("msrt_bytes_", "binary"),
-    ];
-    NAMES
-        .iter()
-        .find(|(p, _)| sym.starts_with(p))
-        .map(|(_, n)| n.to_string())
-        .unwrap_or_else(|| {
-            sym.trim_start_matches("msstd_")
-                .trim_start_matches("msrt_")
-                .split('_')
-                .next()
-                .unwrap_or("error")
-                .to_string()
-        })
+    rt_flags(sym).domain.unwrap_or("runtime").to_string()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// The checker's list of callback-keeping externs and the runtime's `// ms: keeps:` markers agree.
+    /// Every `// ms: op=<mnemonic>` names a MIR instruction.
     #[test]
-    fn kept_callbacks_have_a_closure_parameter() {
-        for (sym, params, ..) in SYMBOLS {
-            let marked = params.iter().any(|p| p.3);
-            let listed = ms_check::api::stdlib::keeps_callbacks(&format!("extern:{sym}"));
-            assert_eq!(marked, listed, "{sym}");
+    fn declared_ops_are_instructions() {
+        for (sym, .., op, _) in SYMBOLS {
+            if !op.is_empty() {
+                assert!(
+                    Op::from_name(op).is_some(),
+                    "{sym}: unknown instruction {op}"
+                );
+            }
         }
     }
 }

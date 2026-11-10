@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
-import from_scalars from "@std/string.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+    from_scalars from "@std/string.ms",
+)
 
 fn is_letter(c: Int) Bool:
     return (c >= 65 and c <= 90) or (c >= 97 and c <= 122)

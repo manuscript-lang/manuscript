@@ -728,9 +728,9 @@ fn response_head(
     }
     if let Some(n) = content_length {
         out.push(hv("content-length", n.to_string()));
-        if !has_type && !sniff_from.is_empty() {
-            out.push(hv("content-type", sniff::detect(sniff_from)));
-        }
+    }
+    if !has_type && !sniff_from.is_empty() {
+        out.push(hv("content-type", sniff::detect(sniff_from)));
     }
     out
 }

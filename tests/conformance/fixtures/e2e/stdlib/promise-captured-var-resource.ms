@@ -1,7 +1,6 @@
 // conform: tags=scope-cleanup,stdlib-promise,tier-io
 // conform: phase=run
 import Closeable from "@std/core.ms"
-import stdout from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"
 
 type Door:
@@ -9,8 +8,7 @@ type Door:
 
 impl Closeable for Door:
     var fn close() Unit!:
-        stdout().write("closed\n").get()
-        return ok(unit)
+        print("closed")
 
 impl Door:
     var fn swing() Int:
@@ -22,8 +20,7 @@ fn use(var door: Door) Int!:
 
 // A promise that passes a captured `var` resource on owns it from the capture: it closes the door once
 // when its work ends and drops its names (`make leak-check` reports a block left behind).
-export fn main() Int:
+fn main() Unit:
     var door = Door(["front", "back"])
     let moved = promise(fn: use(var door))
-    stdout().write("{moved.wait().get(0)}\n").get()
-    return 0
+    print("{moved.wait().get(0)}")

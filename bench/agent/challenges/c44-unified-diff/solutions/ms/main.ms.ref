@@ -1,203 +1,50 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
-import StringBuilder from "@std/string.ms"
-
-fn fields(line: String) List[String]:
-    let spaced = line.replace(old: "\t", new: " ")
-    return (
-        spaced
-        .split(" ")
-        .filter(fn(part: String) Bool: return not part.is_empty())
-    )
+import stdin from "@std/io/io.ms"
+import lines, collect from "@std/io/streams.ms"
 
 fn range_text(start: Int, len: Int) String:
-    var s = start
-    if len > 0:
-        s = s + 1
-    if len == 1:
-        return "{s}"
+    let s = if len > 0: start + 1 else: start
+    return if len == 1: "{s}" else: "{s},{len}"
 
-    return "{s},{len}"
-
-fn marker(kind: Int) String:
-    if kind == 0:
-        return " "
-    if kind == 1:
-        return "-"
-
-    return "+"
-
-fn count_before(kinds: List[Int], end: Int, skip: Int) Int:
-    var total = 0
-    var k = 0
-
-    while k < end:
-        if kinds.get(k) != skip:
-            total = total + 1
-        k = k + 1
-
-    return total
-
-fn count_between(kinds: List[Int], start: Int, end: Int, skip: Int) Int:
-    var total = 0
-    var k = start
-
-    while k < end:
-        if kinds.get(k) != skip:
-            total = total + 1
-        k = k + 1
-
-    return total
-
-fn run() Result[Unit, Error]:
-    var input = lines(stdin(), 1048576)
-    let first = try input.next()
-    if first.is_none():
-        return ok(unit)
-
-    let h = fields(first.get())
-    let name_a = h.get(0)
-    let name_b = h.get(1)
-    let ctx = h.get(2).parse_int().get()
-    let n = h.get(3).parse_int().get()
-    let m = h.get(4).parse_int().get()
-    var a = List[String]()
-    var b = List[String]()
-    var count = 0
-
-    while count < n + m:
-        let next = try input.next()
-        if next.is_none():
-            break
-
-        if count < n:
-            a.append(next.get().clone())
-        else:
-            b.append(next.get().clone())
-
-        count = count + 1
-
-    let w = m + 1
-    var table = List[Int]()
-    var cells = (n + 1) * w
-
-    while cells > 0:
-        table.append(0)
-        cells = cells - 1
-
-    var i = n - 1
-
-    while i >= 0:
-        var j = m - 1
-
-        while j >= 0:
-            var v = 0
-
-            if a.get(i) == b.get(j):
-                v = table.get((i + 1) * w + j + 1) + 1
-            else:
-                let down = table.get((i + 1) * w + j)
-                let right = table.get(i * w + j + 1)
-
-                if down >= right:
-                    v = down
-                else:
-                    v = right
-
-            table.set(i * w + j, v)
-            j = j - 1
-
-        i = i - 1
-
-    var kinds = List[Int]()
-    var texts = List[String]()
-    i = 0
-
-    var j = 0
-
-    while i < n or j < m:
-        if i < n and j < m and a.get(i) == b.get(j):
-            kinds.append(0)
-            texts.append(a.get(i).clone())
-            i = i + 1
-            j = j + 1
-        else if (
-            j == m
-            or (
-                i < n
-                and table.get((i + 1) * w + j) >= table.get(
-                    (i * w + j + 1)
-                )
-            )
-        ):
-            kinds.append(1)
-            texts.append(a.get(i).clone())
-            i = i + 1
-        else:
-            kinds.append(2)
-            texts.append(b.get(j).clone())
-            j = j + 1
-
-    var changes = List[Int]()
-    var k = 0
-
-    while k < kinds.length():
-        if kinds.get(k) != 0:
-            changes.append(k)
-        k = k + 1
-
-    if changes.is_empty():
-        return ok(unit)
-
-    var out = StringBuilder()
-    out.append("--- {name_a}\n+++ {name_b}\n")
-
-    var lo_change = changes.get(0)
-    var prev = lo_change
-    var idx = 1
-
-    while idx <= changes.length():
-        var split = idx == changes.length()
-
-        if not split:
-            let cur = changes.get(idx)
-            split = cur - prev - 1 > 2 * ctx
-            if not split:
-                prev = cur
-
-        if split:
-            var lo = lo_change - ctx
-            if lo < 0:
-                lo = 0
-
-            var hi = prev + 1 + ctx
-            if hi > kinds.length():
-                hi = kinds.length()
-
-            let sa = count_before(kinds, lo, 2)
-            let sb = count_before(kinds, lo, 1)
-            let la = count_between(kinds, lo, hi, 2)
-            let lb = count_between(kinds, lo, hi, 1)
-            out.append("@@ -{range_text(sa, la)} +{range_text(sb, lb)} @@\n")
-
-            var q = lo
-
-            while q < hi:
-                out.append(marker(kinds.get(q)))
-                out.append(texts.get(q))
-                out.append("\n")
-                q = q + 1
-
-            if idx < changes.length():
-                lo_change = changes.get(idx)
-                prev = lo_change
-
-        idx = idx + 1
-
-    try stdout().write(out.build())
-    return stdout().flush()
+// Counts script lines in lo..hi that are not marked `skip`.
+fn count(script: List[String], lo: Int, hi: Int, skip: String) Int:
+    return script.slice(lo, hi).get().count(fn l: not l.starts_with(skip))
 
 export fn main() Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    let ls = (stdin() | lines | collect(none)).get([])
+    if ls.is_empty(): return 0
+    let [name_a, name_b, ctx_text, n_text, m_text] = ls[0].split(" ")
+    let ctx = ctx_text.parse_int().get()
+    let n = n_text.parse_int().get()
+    let m = m_text.parse_int().get()
+    let a = ls.slice(1, 1 + n).get()
+    let b = ls.slice(1 + n, 1 + n + m).get()
+    let w = m + 1
+    var table = [0].repeated((n + 1) * w)
+    for i in (0..n).reversed():
+        for j in (0..m).reversed(): table[i * w + j] = if a[i] == b[j]: table[(i + 1) * w + j + 1] + 1 else: table[(i + 1) * w + j].max(table[i * w + j + 1])
+    var script = List[String]()
+    var i = 0
+    var j = 0
+    while i < n or j < m:
+        if i < n and j < m and a[i] == b[j]:
+            script.append(" {a[i]}")
+            i += 1
+            j += 1
+        else if j == m or (i < n and table[(i + 1) * w + j] >= table[i * w + j + 1]):
+            script.append("-{a[i]}")
+            i += 1
+        else:
+            script.append("+{b[j]}")
+            j += 1
+    let changes = (0..script.length()).filter(fn k: not script[k].starts_with(" "))
+    if changes.is_empty(): return 0
+    print("--- {name_a}\n+++ {name_b}")
+    var first = changes[0]
+    for k in 1..changes.length() + 1:
+        if k < changes.length() and changes[k] - changes[k - 1] - 1 <= 2 * ctx: continue
+        let lo = (first - ctx).max(0)
+        let hi = (changes[k - 1] + 1 + ctx).min(script.length())
+        print("@@ -{range_text(count(script, 0, lo, "+"), count(script, lo, hi, "+"))} +{range_text(count(script, 0, lo, "-"), count(script, lo, hi, "-"))} @@")
+        for l in script.slice(lo, hi).get(): print(l)
+        if k < changes.length(): first = changes[k]
+    return 0

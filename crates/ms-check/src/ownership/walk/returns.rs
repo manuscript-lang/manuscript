@@ -107,7 +107,7 @@ impl Walker<'_> {
                 return;
             }
             // A bare `none` owns nothing, so a borrow-returning function can hand it back beside its references.
-            if !matches!(&e.kind, ExprKind::Name(n) if self.syms.str(n) == "none") {
+            if self.cx.m.data.default_form(self.syms, e) != crate::syntax::DefaultForm::None {
                 self.owned_return.get_or_insert(e.pos);
                 self.owned_cases |= self.owned_case(e);
                 if self.result_case(e).is_some() {
@@ -228,7 +228,7 @@ impl Walker<'_> {
         if !matches!(e.kind, ExprKind::Call { .. }) {
             return None;
         }
-        let ret_borrow = result_borrow(self.syms, self.cx.m, e, self.cx.summaries);
+        let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
         if !ret_borrow.returns_borrow || ret_borrow.view {
             return None;
         }
@@ -832,7 +832,7 @@ impl Walker<'_> {
             return Some(src);
         }
         if let ExprKind::Call { .. } = &e.kind {
-            let ret_borrow = result_borrow(self.syms, self.cx.m, e, self.cx.summaries);
+            let ret_borrow = result_borrow(self.cx.m, e, self.cx.summaries);
             if !ret_borrow.returns_borrow {
                 return None;
             }
@@ -920,7 +920,7 @@ impl Walker<'_> {
     pub(super) fn returns_borrow(&self, call: &Expr) -> bool {
         self.class_of(call) != Class::Copy
             && (self.native_borrow_receiver(call).is_some()
-                || result_borrow(self.syms, self.cx.m, call, self.cx.summaries).returns_borrow)
+                || result_borrow(self.cx.m, call, self.cx.summaries).returns_borrow)
     }
 
     /// The label of the parameter `operand` is written for in call `e`.
@@ -955,18 +955,22 @@ impl Walker<'_> {
         let Resolution::Method(method) = self.cx.m.resolution(e) else {
             return None;
         };
-        if self.syms.str(method.native).is_empty() {
+        if method.native == Native::Source {
             return None;
         }
         let recv = self.cx.m.ty(left);
         let returns_borrow = match (self.syms.str(name), args.len()) {
             ("get", 1) => recv.is(Builtin::Map) || recv.is(Builtin::List),
-            ("get", 0) => recv.is(Builtin::Optional),
+            ("get", 0) => recv.is(Builtin::Optional) || recv.is(Builtin::Result),
             ("first" | "last", 0) => recv.is(Builtin::List),
-            ("view", 2) => recv.is(Builtin::Bytes) || recv.is_string(self.syms),
+            ("view", 2) => recv.is(Builtin::Bytes) || recv.is_string(),
             _ => false,
         };
-        returns_borrow.then_some(&**left)
+        // `get()` on the last use of an owned local hands its payload over instead of borrowing it.
+        let takes_payload = matches!(self.syms.str(name), "get")
+            && args.is_empty()
+            && self.owned_local_at_last_use(left);
+        (returns_borrow && !takes_payload).then_some(&**left)
     }
 
     /// The variable whose `Bytes.view` the call `e` is, when it is returned: a function returns
@@ -980,7 +984,7 @@ impl Walker<'_> {
             return None;
         };
         let ty = self.cx.m.ty(e);
-        if self.syms.str(name) != "view" || !(ty.is(Builtin::Bytes) || ty.is_string(self.syms)) {
+        if self.syms.str(name) != "view" || !(ty.is(Builtin::Bytes) || ty.is_string()) {
             return None;
         }
         let root = self.root_name(recv)?;
@@ -1012,7 +1016,7 @@ impl Walker<'_> {
         self.syms.str(name) == "get"
             && args.len() == 1
             && self.cx.m.ty(left).is(Builtin::Map)
-            && matches!(self.cx.m.resolution(e), Resolution::Method(m) if !self.syms.str(m.native).is_empty())
+            && matches!(self.cx.m.resolution(e), Resolution::Method(m) if m.native != Native::Source)
     }
 
     /// `value` is `map.get(key).get()`: the `map.get(key)` call whose payload it reads.

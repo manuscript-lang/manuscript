@@ -1,8 +1,9 @@
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import stdout from "@std/io/io.ms"
+import (
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let mode = args[0]
     let size = args[1].parse_int().get()
@@ -41,5 +42,4 @@ export fn main() Int:
                 checksum += string_map.get_or(keys[i], 0)
 
     let elapsed = monotonic().difference(start).to_nanoseconds()
-    stdout().write("{elapsed} {checksum}\n").get()
-    return 0
+    print("{elapsed} {checksum}")

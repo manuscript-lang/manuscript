@@ -42,6 +42,8 @@ size_t abi_cstring_length(const ms_str *s) {
     return n;
 }
 
+int64_t abi_string_length(const ms_str *s) { return (int64_t)ms_str_len(s); }
+
 /* Doubles each Int32; returns the sum of a List[UInt8]. */
 void abi_double(const ms_list *in, ms_list *out) {
     for (size_t i = 0; i < ms_list_len(in); i++) {

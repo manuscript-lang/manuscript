@@ -1,5 +1,7 @@
-import expect_equal, expect_true, expect_false, expect_fault from "@std/test/test.ms"
-import Deque from "@std/collections/deque.ms"
+import (
+    expect_equal, expect_true, expect_false, expect_fault from "@std/test/test.ms",
+    Deque from "@std/collections/deque.ms",
+)
 
 type Person:
     name: String
@@ -66,6 +68,18 @@ test "repeated copies the list":
     try expect_equal([1, 2].repeated(3), [1, 2, 1, 2, 1, 2])
     try expect_equal([1, 2].repeated(0), List[Int]())
     try expect_equal(["x"].repeated(2), ["x", "x"])
+
+test "extend appends copies and leaves the argument":
+    var xs = [1]
+    let more = [2, 3]
+    xs.extend(more)
+    xs.extend(List[Int]())
+    try expect_equal(xs, [1, 2, 3])
+    try expect_equal(more, [2, 3])
+
+    var names = ["a"]
+    names.extend(["b"])
+    try expect_equal(names, ["a", "b"])
 
 test "retain on Map and Set":
     var counts = {"a": 0, "b": 2, "c": 0, "d": 5}

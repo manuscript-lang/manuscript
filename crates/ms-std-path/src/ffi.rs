@@ -1,5 +1,6 @@
 //! C ABI shim for `@std/os/path.ms` (`msstd_path_matches_glob`). The function takes `windows: u8`
 //! first, selecting POSIX (0) or Windows (1) separators.
+//! ms: domain path
 use crate::{InvalidInput, matches_glob};
 use ms_rt::ffi::{Status, native};
 

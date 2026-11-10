@@ -1,7 +1,9 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import Bytes from "@std/bytes.ms"
-import range from "@std/collections.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    Bytes from "@std/bytes.ms",
+    range from "@std/collections.ms",
+)
 
 let BAD = "error: bad command"
 

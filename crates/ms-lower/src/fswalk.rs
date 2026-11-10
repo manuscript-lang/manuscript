@@ -25,6 +25,7 @@ impl FnLower<'_> {
     pub(crate) fn fs_walk(
         &mut self,
         sym: &str,
+        copy: bool,
         decl: &[ct::Param],
         args: &[NArg],
         result: MTy,
@@ -39,7 +40,6 @@ impl FnLower<'_> {
                 .map(|(_, a)| a.val)
                 .ok_or_else(|| Error::new(format!("{sym}: missing argument {name}")))
         };
-        let copy = sym == "msstd_fs_copy";
         let options = arg("options")?;
         let options = self.borrow(options);
         let TyKind::Rec(rid) = self.b.m.types.kind(self.ty_of(options)).clone() else {

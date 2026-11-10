@@ -190,7 +190,7 @@ fn matmul(n: Int) Float:
             var k = 0
 
             while k < n:
-                s += a.get(i).get(k) * b.get(k).get(j)
+                s += a.get_or(i, k) * b.get_or(k, j)
                 k += 1
 
             total += s
@@ -251,7 +251,7 @@ fn wordfreq(n: Int) Int:
 
     while i < n:
         let k = (i * 7919) % 5003
-        m.add(k, m.get(k).get(0) + 1)
+        m.add(k, m.get_or(k, 0) + 1)
         i += 1
 
     return m.length()

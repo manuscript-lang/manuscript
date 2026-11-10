@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_contains, expect_equal, expect_fault, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_contains, expect_equal, expect_fault, expect_ok from "@std/test/test.ms",
+)
 
 type Door:
     id: Int
@@ -16,12 +18,9 @@ impl Closeable for Door:
             try append_file(self.log, "{self.id},").wait()
             if self.fail: return error(Error("close failed"))
 
-        return ok(unit)
-
 fn logged(path: String) String:
     let read = read_file(path).wait()
-    if let bytes = read:
-        return bytes.decode_utf8().get("")
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 
@@ -107,7 +106,6 @@ fn failed_argument(var events: List[Int]) Int!:
 fn propagate(log: String, var events: List[Int]) Unit!:
     var rows = [[Door(1, log)]]
     rows[select(var events)].remove(try failed_argument(var events))
-    return ok(unit)
 
 test "a propagated resource argument preserves receiver effects and cleanup":
     let tmp = temporary("resource-place-") | try expect_ok

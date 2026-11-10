@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import range from "@std/collections.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    range from "@std/collections.ms",
+)
 
 fn say(text: String) Result[Unit, Error]:
     return stdout().write("{text}\n")
@@ -92,12 +94,10 @@ export fn main() Int:
                 nc = c - 1
             if step == 3:
                 nc = c + 1
-            if nr < 0 or nr >= grid.length() or nc < 0 or nc >= width:
-                continue
+            if nr < 0 or nr >= grid.length() or nc < 0 or nc >= width: continue
 
             let next = nr * width + nc
-            if grid[nr][nc] == "#" or dist[next] >= 0:
-                continue
+            if grid[nr][nc] == "#" or dist[next] >= 0: continue
 
             dist[next] = dist[cur] + 1
             queue.append(next)

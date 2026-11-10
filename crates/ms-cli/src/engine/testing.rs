@@ -1012,6 +1012,19 @@ mod tests {
     }
 
     #[test]
+    fn duration_options_keep_exact_nanoseconds() {
+        let options = parse_options(&args(&[
+            "--timeout=1.5ns2.5ns",
+            "--fuzz=0.999999999999999999h",
+            "--time=1.999999999999999999ms",
+        ]))
+        .unwrap();
+        assert_eq!(options.timeout, Some(Duration::from_nanos(3)));
+        assert_eq!(options.fuzz, Some(Duration::from_nanos(3_599_999_999_999)));
+        assert_eq!(options.bench_time, Some(Duration::from_nanos(1_999_999)));
+    }
+
+    #[test]
     fn separator_preserves_program_options() {
         let options =
             parse_options(&args(&["--repeat=2", "--", "--list", "--repeat=3", "--"])).unwrap();
