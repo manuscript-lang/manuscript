@@ -14,17 +14,16 @@ use ms_rt as _;
 extern crate alloc;
 extern crate std;
 
-mod decoder;
+mod raw;
 #[cfg(unix)]
-mod raw;
-#[cfg(not(unix))]
-#[path = "raw_unsupported.rs"]
-mod raw;
+#[path = "sys_unix.rs"]
+mod sys;
+#[cfg(windows)]
+#[path = "sys_windows.rs"]
+mod sys;
 
-use core::cell::RefCell;
-use ms_rt::ffi::{
-    ErrOut, Failure, Global, Has, ObjRef, Object, Out, StatusCode, abi_handle, native,
-};
+use core::cell::Cell;
+use ms_rt::ffi::{ErrOut, Failure, Global, ObjRef, Object, Out, StatusCode, abi_handle, native};
 use ms_rt::glue::poll_cancel;
 
 /// The status of `f`, raising a pending cancel first: operations that parked return a failure
@@ -48,64 +47,21 @@ impl core::ops::Deref for RawH {
     }
 }
 
-#[cfg(unix)]
-mod imp {
-    use super::is_terminal;
-    use rustix::stdio::{stdin, stdout};
-    use rustix::termios::tcgetwinsize;
-    use std::ffi::OsString;
-    use std::os::unix::ffi::OsStrExt;
+const NS_PER_MS: i64 = 1_000_000;
 
-    fn env(name: &str) -> Option<OsString> {
-        std::env::var_os(name)
-    }
-
-    pub fn open_raw(alternate: bool) -> Result<crate::raw::Raw, ms_rt::ffi::Failure> {
-        crate::raw::Raw::open(stdin(), stdout(), alternate)
-    }
-
-    pub fn colors() -> i64 {
-        let term = env("TERM").unwrap_or_default();
-        let term = term.as_bytes();
-        if !is_terminal(1) || env("NO_COLOR").is_some() || term == b"dumb" {
-            return 0;
-        }
-        let truecolor = env("COLORTERM").unwrap_or_default();
-        let truecolor = truecolor.as_bytes();
-        if truecolor == b"truecolor" || truecolor == b"24bit" {
-            16_777_216
-        } else if term.windows(8).any(|w| w == b"256color") {
-            256
-        } else {
-            16
+/// Sleeps the task for `ns` so another task's read can finish; `Err` when a stop request ends it.
+#[allow(unsafe_code)]
+fn pause(ns: i64) -> Result<(), ms_rt::glue::pool::Cancelled> {
+    #[cfg(not(test))]
+    {
+        // SAFETY: provided by `ms-rt`; the wait bit 16 reports a stop request.
+        if unsafe { ms_rt::task::msrt_task_sleep(ns) } & 16 != 0 {
+            return Err(ms_rt::glue::pool::Cancelled);
         }
     }
-
-    /// `(columns, rows)` of standard output, or `None` when it is not a sized terminal.
-    pub fn size() -> Option<(i64, i64)> {
-        let w = tcgetwinsize(stdout()).ok()?;
-        Some((i64::from(w.ws_col), i64::from(w.ws_row)))
-    }
-}
-
-#[cfg(not(unix))]
-mod imp {
-    use super::is_terminal;
-
-    pub fn colors() -> i64 {
-        0
-    }
-
-    pub fn size() -> Option<(i64, i64)> {
-        None
-    }
-
-    pub fn open_raw(alternate: bool) -> Result<crate::raw::Raw, ms_rt::ffi::Failure> {
-        if !is_terminal(0) || !is_terminal(1) {
-            return Err(ms_rt_abi::STATUS_NOT_TERMINAL.into());
-        }
-        crate::raw::Raw::open(0, 1, alternate)
-    }
+    #[cfg(test)]
+    std::thread::sleep(core::time::Duration::from_nanos(ns.max(0) as u64));
+    Ok(())
 }
 
 /// Whether standard descriptor `fd` (0 and 1; anything else is standard error) is a terminal.
@@ -118,25 +74,12 @@ fn is_terminal(fd: i32) -> bool {
     }
 }
 
-/// The event `next_event` last delivered.
-static CURRENT: Global<RefCell<Option<decoder::Event>>> = Global::new(RefCell::new(None));
-
-fn current<T>(read: impl FnOnce(&decoder::Event) -> T) -> Option<T> {
-    CURRENT.get().borrow().as_ref().map(read)
-}
-
-fn key_flag(read: impl FnOnce(bool, bool, bool) -> bool) -> bool {
-    current(|e| match e {
-        decoder::Event::Key {
-            ctrl, alt, shift, ..
-        } => read(*ctrl, *alt, *shift),
-        _ => false,
-    })
-    .unwrap_or(false)
-}
+/// The text the last `read` delivered.
+static INPUT: Global<Cell<alloc::string::String>> =
+    Global::new(Cell::new(alloc::string::String::new()));
 
 fn raw_mode_capable() -> bool {
-    cfg!(unix) && is_terminal(0) && is_terminal(1)
+    is_terminal(0) && is_terminal(1)
 }
 
 native! {
@@ -161,13 +104,13 @@ native! {
     }
 
     safe fn msstd_terminal_capabilities_colors() -> i64 {
-        imp::colors()
+        sys::colors()
     }
 
     safe fn msstd_terminal_size_status() -> u8 {
         if !is_terminal(1) {
             STATUS_NOT_TERMINAL
-        } else if imp::size().is_some() {
+        } else if sys::stdout_size().is_some() {
             STATUS_OK
         } else {
             STATUS_UNSUPPORTED
@@ -175,20 +118,16 @@ native! {
     }
 
     safe fn msstd_terminal_size_columns() -> i64 {
-        imp::size().map_or(0, |s| s.0)
+        sys::stdout_size().map_or(0, |s| s.0)
     }
 
     safe fn msstd_terminal_size_rows() -> i64 {
-        imp::size().map_or(0, |s| s.1)
+        sys::stdout_size().map_or(0, |s| s.1)
     }
 
-    fn msstd_terminal_raw_mode(
-        alternate_screen: bool,
-        out: Out<Object<RawH>>;
-        err: ErrOut
-    ) -> Result<(), StatusCode> {
+    fn msstd_terminal_raw_mode(out: Out<Object<RawH>>; err: ErrOut) -> Result<(), StatusCode> {
         out.write(Object(RawH(alloc::rc::Rc::new(
-            imp::open_raw(alternate_screen).map_err(|f| fail(&err, f))?,
+            raw::Raw::open().map_err(|f| fail(&err, f))?,
         ))));
         Ok(())
     }
@@ -215,85 +154,37 @@ native! {
         h.size().map_or(0, |s| s.1)
     }
 
-    fn msstd_terminal_raw_terminal_move_cursor(h: ObjRef<RawH>, row: i64, column: i64; err: ErrOut) -> Result<(), StatusCode> {
+    /// Writes text or control sequences to the terminal, after flushing buffered output.
+    fn msstd_terminal_raw_terminal_write(h: ObjRef<RawH>, text: &str; err: ErrOut) -> Result<(), StatusCode> {
         poll_cancel();
-        h.move_cursor(row, column).map_err(|f| fail(&err, f))
+        h.command(text.as_bytes()).map_err(|f| fail(&err, f))
     }
 
-    fn msstd_terminal_raw_terminal_show_cursor(h: ObjRef<RawH>, visible: bool; err: ErrOut) -> Result<(), StatusCode> {
-        poll_cancel();
-        h.show_cursor(visible).map_err(|f| fail(&err, f))
+    /// Sets the text written when the terminal closes, before its settings are restored.
+    fn msstd_terminal_raw_terminal_set_restore(h: ObjRef<RawH>, text: &str) -> () {
+        h.set_restore(text.as_bytes());
     }
 
-    fn msstd_terminal_raw_terminal_erase(h: ObjRef<RawH>, region: i64; err: ErrOut) -> Result<(), StatusCode> {
+    /// Waits for input: `STATUS_OK` with the text in `msstd_terminal_input_text`,
+    /// `STATUS_NONE` when nothing came in 40 ms (`quick`) or 50 ms, `STATUS_CLOSED` once closed.
+    fn msstd_terminal_raw_terminal_read(h: ObjRef<RawH>, quick: bool) -> u8 {
         poll_cancel();
-        h.erase(region).map_err(|f| fail(&err, f))
-    }
-
-    fn msstd_terminal_raw_terminal_next_event(
-        h: ObjRef<RawH>,
-        has_timeout: Has,
-        timeout_ns: i64,
-    ) -> u8 {
-        poll_cancel();
-        let timeout = has_timeout.then_some(timeout_ns.max(0));
-        // The wait parks, so `CURRENT` is not borrowed until it returns.
-        let mut event = None;
-        let status = h.next_event(timeout, &mut event);
+        let mut text = alloc::string::String::new();
+        let status = h.read(quick, &mut text);
         // The wait returned instead of jumping, so its frames are gone; raise a cancel now.
         poll_cancel();
-        if event.is_some() {
-            *CURRENT.get().borrow_mut() = event;
+        if status == STATUS_OK {
+            INPUT.get().set(text);
         }
         status
     }
 
-    /// The kind of the delivered event, as its `TerminalEvent` case index: text, key, resize.
-    safe fn msstd_terminal_event_kind() -> i64 {
-        current(|e| match e {
-            decoder::Event::Text(_) => 0,
-            decoder::Event::Key { .. } => 1,
-            decoder::Event::Resize { .. } => 2,
-        })
-        .unwrap_or(0)
-    }
-
-    /// The text of a text event, or the key name of a key event.
-    fn msstd_terminal_event_text() -> out StrVal {
-        let text = current(|e| match e {
-            decoder::Event::Text(t) => t.clone(),
-            decoder::Event::Key { name, .. } => name.clone(),
-            decoder::Event::Resize { .. } => alloc::vec::Vec::new(),
-        });
-        ms_rt::glue::new_string(&text.unwrap_or_default())
-    }
-
-    safe fn msstd_terminal_event_ctrl() -> bool {
-        key_flag(|ctrl, _, _| ctrl)
-    }
-
-    safe fn msstd_terminal_event_alt() -> bool {
-        key_flag(|_, alt, _| alt)
-    }
-
-    safe fn msstd_terminal_event_shift() -> bool {
-        key_flag(|_, _, shift| shift)
-    }
-
-    safe fn msstd_terminal_event_columns() -> i64 {
-        current(|e| match e {
-            decoder::Event::Resize { columns, .. } => *columns,
-            _ => 0,
-        })
-        .unwrap_or(0)
-    }
-
-    safe fn msstd_terminal_event_rows() -> i64 {
-        current(|e| match e {
-            decoder::Event::Resize { rows, .. } => *rows,
-            _ => 0,
-        })
-        .unwrap_or(0)
+    /// The text of the last successful read.
+    fn msstd_terminal_input_text() -> out StrVal {
+        let text = INPUT.get().take();
+        let value = ms_rt::glue::new_string(text.as_bytes());
+        INPUT.get().set(text);
+        value
     }
 }
 
@@ -310,9 +201,8 @@ mod tests {
         }
         let mut out = core::ptr::null_mut();
         // SAFETY: the handle pointer is never written.
-        let status = unsafe {
-            msstd_terminal_raw_mode(0, &mut out, ms_rt_abi::ErrSlot(core::ptr::null_mut()))
-        };
+        let status =
+            unsafe { msstd_terminal_raw_mode(&mut out, ms_rt_abi::ErrSlot(core::ptr::null_mut())) };
         assert_eq!(status, STATUS_NOT_TERMINAL);
         assert_eq!(msstd_terminal_capabilities_raw_mode(), 0);
     }
