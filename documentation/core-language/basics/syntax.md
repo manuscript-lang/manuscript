@@ -43,6 +43,29 @@ Comments start with `//` and run to the end of the line (a trailing comment foll
 let count = 3
 ```
 
+## Terse style
+
+Write the shortest form that stays clear; every form below already exists:
+
+<!-- manuscript-example: {"mode":"check"} -->
+```manuscript
+fn check(rows: List[String], limit: Int) String:
+    if rows.is_empty(): return "empty"
+    if rows.any(fn r: r.length() > limit): return "too long"
+    let blanks = rows.count(fn r: r.is_empty())
+    let kind = if blanks == 0: "dense" else: "sparse"
+    for i in 0..rows.length():
+        if rows[i] == "stop": return "stopped at {i}"
+    print("{kind} {blanks}")
+    return kind
+```
+
+- `print(x)` writes a line, needs no import and never fails; reserve `stdout().write` for output whose failure you handle.
+- A one-line `if c: return x` or `continue` replaces a two-line block.
+- `xs[i]` reads in place; `for i in 0..n:` counts; `for x in xs:` when the index is unused.
+- Prefer `any`, `all`, `count`, `sum`, `map`, `filter`, `fold` and `[0].repeated(n)` to a loop that builds or tests a collection.
+- `is_empty()` over `length() == 0`; `let x = if c: a else: b` over a `var` assigned in a branch; `m.get_or(k, d)` over `m.get(k).get(d)`.
+
 ## Module boundaries
 
 A file's resolved path identifies its module. `export` makes a declaration visible to other modules:

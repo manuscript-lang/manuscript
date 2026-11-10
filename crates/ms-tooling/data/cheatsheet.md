@@ -5,7 +5,6 @@ Four-space indent, `//` comments. `print(x)` is for quick output.
 <!-- complete -->
 ```manuscript
 import open from "@std/os/fs.ms"
-import stdout from "@std/io/io.ms"
 
 type Doc:
     lines: List[String]
@@ -33,7 +32,7 @@ export fn main() Int:
 
 - Commands: `ms search_symbol <words>`; `ms verify` (check, fmt, lint, test); `ms review`.
 - Effects: pure unless `// ms: allow_effect std.fs.*`.
-- Be terse: infer closure types; `map`/`filter`/`fold`/`join`/`get(d)` over loops.
+- Be terse, one idea per line: `print(x)` (no import, never fails); `if c: return x`; `xs[i]`; `for i in 0..n:`; `xs.any(fn x: c)`, `all`, `count`, `sum`, `map`, `filter`, `fold`; `xs.is_empty()`; `[0].repeated(n)`; `let x = if c: a else: b`; `m.get_or(k, d)`; `a.max(b)`; `if let v = o:`; `stdin() | lines | collect(none)`; infer closure types.
 - `main() Int` is the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
 - Stdlib (`@std/<dir>/<m>.ms`): `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
 - Imports: `import a, b from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
