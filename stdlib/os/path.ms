@@ -406,7 +406,16 @@ fn extension_in(windows: Bool, text: String) String:
     return extension_of_base(base)
 
 fn equal_fold(left: String, right: String) Bool:
-    return left.lower() == right.lower()
+    if left == right: return true
+
+    return lowercase_path(left) == lowercase_path(right)
+
+// Path comparisons retain the original per-scalar lowercase mapping. Whole-string lowercasing
+// makes a capital sigma contextual (Σ -> ς at word end), unlike that mapping (Σ -> σ).
+fn lowercase_path(text: String) String:
+    if text.contains("Σ"): return text.replace("Σ", "σ").lower()
+
+    return text.lower()
 
 // Resolves `parts` against the absolute `base`; none when `base` is not absolute or any text holds NUL.
 fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
