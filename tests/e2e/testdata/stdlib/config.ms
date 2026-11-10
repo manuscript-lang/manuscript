@@ -157,3 +157,16 @@ test "INI comments follow quoted values":
     try expect_equal(top.get("d").get(""), "\"k\"#tight")
     try expect_equal(top.get("e").get(""), "q")
     try expect_equal(top.get("f").get(""), "w\" tail")
+
+test "INI comments after quotes may contain the quote and ignore tab-only markers":
+    let ini = (
+        parse_ini(
+            "a=\"x\" # note \"\nb='y' ; it's\nc=\"z\"  ;   \"q\"\nd=\"x\"\t#literal\ne='t'\t;literal"
+        ) | try expect_ok
+    )
+    let top = ini.get("").get(Map[String, String]())
+    try expect_equal(top.get("a").get(""), "x")
+    try expect_equal(top.get("b").get(""), "y")
+    try expect_equal(top.get("c").get(""), "z")
+    try expect_equal(top.get("d").get(""), "\"x\"\t#literal")
+    try expect_equal(top.get("e").get(""), "'t'\t;literal")

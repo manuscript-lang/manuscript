@@ -155,21 +155,23 @@ fn first_assignment(entry: String) Int?:
 fn ini_value(value: String) String:
     let trimmed = value.trim()
     let quote = trimmed.take(1)
-    if (
-        trimmed.length() >= 2
-        and (quote == "\"" or quote == "'")
-        and trimmed.ends_with(quote)
-    ):
-        return trimmed.drop(1).take(trimmed.length() - 2)
+    let quoted = quote == "\"" or quote == "'"
 
-    // A closing quote followed by a ` #` or ` ;` comment ends the value before the comment.
-    if quote == "\"" or quote == "'":
+    // A closing quote followed only by whitespace and a ` #` or ` ;` comment ends the value; the
+    // comment may itself contain or end with the quote, so this precedes the whole-suffix rule.
+    if quoted:
         if let closing = trimmed.drop(1).index_of(quote):
             let tail = trimmed.drop(closing + 2)
-            let spaced = tail.starts_with(" ") or tail.starts_with("\t")
-            let marker = tail.trim_start()
-            if spaced and (marker.starts_with("#") or marker.starts_with(";")):
-                return trimmed.drop(1).take(closing)
+            for marker in [" #", " ;"]:
+                if let at = tail.index_of(marker):
+                    if tail.take(at).trim().is_empty(): return (
+                        trimmed
+                        .drop(1)
+                        .take(closing)
+                    )
+
+    if trimmed.length() >= 2 and quoted and trimmed.ends_with(quote):
+        return trimmed.drop(1).take(trimmed.length() - 2)
 
     var cut = value.length()
     for marker in [" #", " ;"]:
