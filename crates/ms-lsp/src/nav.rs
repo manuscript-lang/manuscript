@@ -432,10 +432,10 @@ pub fn declaration_documentation_in(modules: &[ModRef], file: Name, pos: Pos) ->
 }
 
 fn documentation_of(syms: ms_syntax::Names, analysis: &Analysis, info: &OccInfo) -> String {
-    let files = DeclFiles::new(&analysis.source_modules(syms));
     let target = if let Some(method) = &info.method
         && let Some(decl) = &method.decl
     {
+        let files = DeclFiles::new(&analysis.source_modules(syms));
         Some((files.file(decl, method.module), decl.pos()))
     } else {
         info.symbol
