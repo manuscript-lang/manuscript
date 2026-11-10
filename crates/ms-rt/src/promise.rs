@@ -219,6 +219,11 @@ enum Answer {
     /// The promise finished with this outcome code.
     Outcome(i64),
     Flag(bool),
+    /// Whether a wait-any input is finished and whether it has deferred work to run.
+    Readiness {
+        done: bool,
+        deferred: bool,
+    },
     /// A result block taken out of the promise (null when there was none).
     Block(usize, usize),
     Bytes(Vec<u8>),
@@ -287,13 +292,9 @@ fn missing() -> ! {
 }
 
 /// Owner side of a foreign wait: the outcome if there is one, else registers `token` to be posted
-/// when the promise changes. The work that only a waiter runs (unstarted, deferred) runs here, in
-/// the job's task, the way the waiter would have run it.
-fn watch(id: i64, token: u64, deadline: Option<i64>) -> Answer {
-    if deadline.is_none() {
-        run_unstarted(id);
-    }
-    run_deferred(id, deadline);
+/// when the promise changes. Registration never runs work: a wait on several promises must
+/// check all of them for an existing result before running any deferred callback.
+fn watch(id: i64, token: u64) -> Answer {
     let t = table();
     let Some(i) = index(t, id) else {
         return Answer::Missing;
@@ -327,7 +328,13 @@ fn wait_foreign(id: i64, timeout_ns: i64) -> i64 {
     loop {
         // SAFETY: the token is ours until freed.
         let token = unsafe { task::msrt_token_new(task::TOKEN_REMOTE) };
-        let answer = ask(id, move || watch(id, token, deadline));
+        let answer = ask(id, move || {
+            if deadline.is_none() {
+                run_unstarted(id);
+            }
+            run_deferred(id, deadline);
+            watch(id, token)
+        });
         let code = match answer {
             Answer::Outcome(code) => Some(code),
             Answer::Pending => None,
@@ -1542,6 +1549,36 @@ pub unsafe extern "C-unwind" fn msrt_promise_wait_any(
 /// their owners, which post it when the promise changes.
 fn wait_any_mixed(list: &[i64], timeout_ns: i64) -> i64 {
     let deadline = (timeout_ns >= 0).then(|| crate::sys::monotonic_ns().saturating_add(timeout_ns));
+    let inherited = task::defer_deadline();
+    let deadline = match (deadline, inherited) {
+        (d, i64::MAX) => d,
+        (Some(d), inherited) => Some(d.min(inherited)),
+        (None, inherited) => Some(inherited),
+    };
+    let mut deferred = Vec::new();
+    if let Some(at) = first_done_mixed(list, Some(&mut deferred)) {
+        return at as i64;
+    }
+    // Match the same-thread path: run deferred inputs only after checking readiness, and
+    // rescan after a callback because it can complete a different input. Remember which inputs
+    // are deferred so eager foreign inputs do not pay for another request that does no work.
+    for id in deferred {
+        let foreign = is_foreign(id);
+        let ran = if foreign {
+            matches!(
+                ask(id, move || Answer::Flag(run_deferred(id, deadline))),
+                Answer::Flag(true)
+            )
+        } else {
+            run_deferred(id, deadline)
+        };
+        // Even a no-op foreign request parks and can advance this thread's inputs.
+        if (ran || foreign)
+            && let Some(at) = first_done_mixed(list, None)
+        {
+            return at as i64;
+        }
+    }
     let mut timed_out = false;
     loop {
         // SAFETY: the token is ours until freed.
@@ -1550,7 +1587,7 @@ fn wait_any_mixed(list: &[i64], timeout_ns: i64) -> i64 {
         let mut watched = Vec::new();
         for (at, &id) in list.iter().enumerate() {
             let done = if is_foreign(id) {
-                match ask(id, move || watch(id, token, deadline)) {
+                match ask(id, move || watch(id, token)) {
                     Answer::Pending => {
                         watched.push(id);
                         false
@@ -1565,6 +1602,14 @@ fn wait_any_mixed(list: &[i64], timeout_ns: i64) -> i64 {
                 finished = Some(at);
                 break;
             }
+        }
+        // A foreign registration parks this task. A local input checked earlier may finish
+        // during that park, before its token was installed, so inspect local inputs once more.
+        if finished.is_none() {
+            finished = list.iter().position(|&id| {
+                !is_foreign(id)
+                    && index(table(), id).is_none_or(|i| table().state[i] != State::Pending)
+            });
         }
         if finished.is_none() {
             let t = table();
@@ -1605,6 +1650,41 @@ fn wait_any_mixed(list: &[i64], timeout_ns: i64) -> i64 {
             None => {}
         }
     }
+}
+
+/// Inspects readiness without running callbacks. Optionally collects deferred inputs for the
+/// initial work phase, avoiding a second remote request for every eager input.
+fn first_done_mixed(list: &[i64], mut deferred: Option<&mut Vec<i64>>) -> Option<usize> {
+    for (at, &id) in list.iter().enumerate() {
+        let inspect = move || {
+            let t = table();
+            let i = index(t, id);
+            Answer::Readiness {
+                done: i.is_none_or(|i| t.state[i] != State::Pending),
+                deferred: i.is_some_and(|i| t.flags[i] & DEFERRED != 0),
+            }
+        };
+        let answer = if is_foreign(id) {
+            ask(id, inspect)
+        } else {
+            inspect()
+        };
+        match answer {
+            Answer::Readiness {
+                done: false,
+                deferred: work,
+            } => {
+                if work && let Some(ref mut deferred) = deferred {
+                    deferred.push(id);
+                }
+            }
+            _ => return Some(at),
+        }
+    }
+    // A query of a foreign input parks, so earlier local inputs may have finished meanwhile.
+    list.iter().position(|&id| {
+        !is_foreign(id) && index(table(), id).is_none_or(|i| table().state[i] != State::Pending)
+    })
 }
 
 /// The report of a fault that ended `id` (empty otherwise).
@@ -2531,12 +2611,20 @@ mod tests {
     /// thread has taken it; returns the work's answer, whose thread number is the answer divided
     /// by `scale`. The placement is up to the scheduler, so it tries again.
     fn run_away(work: unsafe extern "C-unwind" fn(*mut Closure), sleep_ns: i64, scale: i64) -> i64 {
+        run_away_with_target(work, || msrt_promise_sleep(sleep_ns), scale)
+    }
+
+    fn run_away_with_target(
+        work: unsafe extern "C-unwind" fn(*mut Closure),
+        target: impl Fn() -> i64,
+        scale: i64,
+    ) -> i64 {
         sched::msrt_runtime_set_threads(4);
         sched::warm(4);
         for _ in 0..40 {
             // SAFETY: a plain Int slot.
             let target = unsafe {
-                *TARGET.ptr() = msrt_promise_sleep(sleep_ns);
+                *TARGET.ptr() = target();
                 *TARGET.ptr()
             };
             // The work is the oldest start, so an idle thread takes it once it has waited a beat
@@ -2556,6 +2644,141 @@ mod tests {
             }
         }
         panic!("the work never ran off the main thread");
+    }
+
+    unsafe extern "C-unwind" fn wait_any_local_deferred(closure: *mut Closure) {
+        // SAFETY: the running task owns its local promise and output slot.
+        unsafe {
+            let own = deferred_probe();
+            let at = wait_any_probe(&mut [own, *TARGET.ptr()], 1_000_000_000);
+            msrt_promise_drop(own);
+            let other = deferred_probe();
+            let reversed = wait_any_probe(&mut [*TARGET.ptr(), other], 1_000_000_000);
+            msrt_promise_drop(other);
+            let mut value = sched::current() as i64 * 100 + (at + 1) * 10 + reversed + 1;
+            msrt_promise_put(id_of(closure), (&raw mut value).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn mixed_wait_any_runs_local_deferred_work() {
+        let _g = lock();
+        let got = run_away(wait_any_local_deferred, 3_600_000_000_000, 100);
+        sched::shutdown();
+        task::teardown();
+        assert_eq!(got % 100, 12, "result {got}");
+    }
+
+    unsafe extern "C-unwind" fn complete_local(arg: *mut u8) {
+        io_done(arg as i64);
+    }
+
+    unsafe extern "C-unwind" fn wait_any_completing_local(closure: *mut Closure) {
+        // SAFETY: the running task owns the promises, and the detached task only completes `own`.
+        unsafe {
+            let own = io_new();
+            task::msrt_task_spawn(complete_local, own as *mut u8, task::SPAWN_DETACHED, 0);
+            let at = wait_any_probe(&mut [own, *TARGET.ptr()], 1_000_000_000);
+            msrt_promise_drop(own);
+            let mut value = sched::current() as i64 * 100 + at + 1;
+            msrt_promise_put(id_of(closure), (&raw mut value).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn mixed_wait_any_observes_local_completion_during_foreign_registration() {
+        let _g = lock();
+        let got = run_away(wait_any_completing_local, 3_600_000_000_000, 100);
+        sched::shutdown();
+        task::teardown();
+        assert_eq!(got % 100, 1, "result {got}");
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn mixed_wait_any_runs_foreign_deferred_work() {
+        let _g = lock();
+        let got = run_away_with_target(wait_any_target, deferred_probe, 100);
+        sched::shutdown();
+        task::teardown();
+        assert_eq!(got % 100, 11, "result {got}");
+    }
+
+    unsafe extern "C-unwind" fn wait_any_local_becomes_ready(closure: *mut Closure) {
+        // SAFETY: the running task owns its local promises and output slot.
+        unsafe {
+            let own = io_new();
+            let later = deferred_probe();
+            let before = DEFERRED_CALLS.load(std::sync::atomic::Ordering::SeqCst);
+            task::msrt_task_spawn(complete_local, own as *mut u8, task::SPAWN_DETACHED, 0);
+            let at = wait_any_probe(&mut [own, *TARGET.ptr(), later], 1_000_000_000);
+            let calls = DEFERRED_CALLS.load(std::sync::atomic::Ordering::SeqCst) - before;
+            msrt_promise_drop(own);
+            msrt_promise_drop(later);
+            let mut value = sched::current() as i64 * 100 + (at + 1) * 10 + calls as i64;
+            msrt_promise_put(id_of(closure), (&raw mut value).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn mixed_wait_any_rechecks_local_readiness_before_deferred_work() {
+        let _g = lock();
+        let got = run_away(wait_any_local_becomes_ready, 3_600_000_000_000, 100);
+        sched::shutdown();
+        task::teardown();
+        assert_eq!(got % 100, 10, "result {got}");
+    }
+
+    unsafe extern "C-unwind" fn wait_any_inherited_deadline(closure: *mut Closure) {
+        // SAFETY: the running task owns its local promise and output slot.
+        unsafe {
+            let own = msrt_promise_sleep(3_600_000_000_000);
+            let inherited = crate::sys::monotonic_ns() + 500_000_000;
+            let previous = task::set_defer_deadline(inherited);
+            let at = wait_any_probe(&mut [own, *TARGET.ptr()], 1_000_000_000);
+            task::set_defer_deadline(previous);
+            let observed = DEFERRED_DEADLINE.load(std::sync::atomic::Ordering::SeqCst);
+            msrt_promise_drop(own);
+            let mut value =
+                sched::current() as i64 * 100 + at * 10 + i64::from(observed == inherited);
+            msrt_promise_put(id_of(closure), (&raw mut value).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn mixed_wait_any_passes_the_inherited_deadline_to_foreign_deferred_work() {
+        let _g = lock();
+        let got = run_away_with_target(wait_any_inherited_deadline, deferred_probe, 100);
+        sched::shutdown();
+        task::teardown();
+        assert_eq!(got % 100, 11, "result {got}");
+    }
+
+    unsafe extern "C-unwind" fn wait_any_ready_local(closure: *mut Closure) {
+        // SAFETY: the running task owns its local promise and output slot.
+        unsafe {
+            let own = msrt_promise_finished();
+            let at = wait_any_probe(&mut [*TARGET.ptr(), own], 50_000_000);
+            msrt_promise_drop(own);
+            let mut value = sched::current() as i64 * 100 + at;
+            msrt_promise_put(id_of(closure), (&raw mut value).cast(), &msrt_desc_int, 0);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "context switches use inline assembly")]
+    fn mixed_wait_any_prefers_ready_inputs_to_foreign_deferred_work() {
+        let _g = lock();
+        DEFERRED_CALLS.store(0, std::sync::atomic::Ordering::SeqCst);
+        let got = run_away_with_target(wait_any_ready_local, deferred_probe, 100);
+        sched::shutdown();
+        task::teardown();
+        assert_eq!(got % 100, 1, "result {got}");
+        assert_eq!(DEFERRED_CALLS.load(std::sync::atomic::Ordering::SeqCst), 0);
     }
 
     #[test]
