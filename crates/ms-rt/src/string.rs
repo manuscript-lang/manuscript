@@ -570,6 +570,20 @@ pub unsafe extern "C-unwind" fn msrt_string_ends_with(a: *const StrVal, v: *cons
     unsafe { bytes(a).ends_with(bytes(v)) as u8 }
 }
 
+/// The scalar index of byte offset `at` in `text`, the bytes of `s`: a string flagged ASCII needs no
+/// scan of the prefix.
+///
+/// # Safety
+/// `s` is live and `text` is its bytes.
+unsafe fn scalar_index(s: *const StrVal, text: &[u8], at: usize) -> usize {
+    // SAFETY: caller passes a live string.
+    if unsafe { (*s).flagged_ascii() } {
+        at
+    } else {
+        utf8::count(&text[..at])
+    }
+}
+
 /// Int? result: present flag, value through `out`.
 #[unsafe(no_mangle)]
 // ms: leaf
@@ -584,7 +598,7 @@ pub unsafe extern "C-unwind" fn msrt_string_index_of(
         match find(text, bytes(v)) {
             None => 0,
             Some(i) => {
-                *out = utf8::count(&text[..i]) as i64;
+                *out = scalar_index(a, text, i) as i64;
                 1
             }
         }
@@ -604,7 +618,7 @@ pub unsafe extern "C-unwind" fn msrt_string_last_index_of(
         match rfind(text, bytes(v)) {
             None => 0,
             Some(i) => {
-                *out = utf8::count(&text[..i]) as i64;
+                *out = scalar_index(a, text, i) as i64;
                 1
             }
         }
