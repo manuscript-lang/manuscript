@@ -391,7 +391,10 @@ impl Checker {
         if !else_body.is_empty() {
             (b, bb) = self.block(else_body, true);
         }
-        (!i.no_return && (a || b), i.breaks || ab || bb)
+        (
+            !i.no_return && (a || b),
+            i.breaks || (!i.no_return && (ab || bb)),
+        )
     }
 
     /// `if let name = optional` or `if let name = result` binds the present or
@@ -439,7 +442,10 @@ impl Checker {
         if !else_body.is_empty() {
             (b, bb) = self.block(else_body, true);
         }
-        (!i.no_return && (a || b), i.breaks || ab || bb)
+        (
+            !i.no_return && (a || b),
+            i.breaks || (!i.no_return && (ab || bb)),
+        )
     }
 
     fn check_while(&mut self, cond: &Expr, body: &[Stmt]) -> (bool, bool) {
