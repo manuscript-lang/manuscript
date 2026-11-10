@@ -8,7 +8,7 @@
 // output. Turns are agent steps in the Harbor trajectory. Ranking: pass rate, then mean cost of passing trials.
 import JsonValue, parse from "@std/data/json.ms"
 import access, glob, GlobOptions, stat from "@std/os/fs.ms"
-import stdout, stderr from "@std/io/io.ms"
+import stderr from "@std/io/io.ms"
 import arguments from "@std/os/env.ms"
 import parse_timestamp, now from "@std/time.ms"
 import round from "@std/math/math.ms"
@@ -242,7 +242,7 @@ fn collect(dirs: List[String]) Int:
 
     let kept = latest.sorted(fn a, b: a.trial.compare(b.trial))
     write_text(trials_file(), kept.map(fn t: dumps_data(t, 0) + "\n").join(""))
-    stdout().write("{kept.length()} trials in {trials_file()}\n").get()
+    print("{kept.length()} trials in {trials_file()}")
     return 0
 
 // Aggregates of one group of trials; passing trials only for the averages.
@@ -430,7 +430,7 @@ fn render(src_arg: String?) Int:
             )
         )
     write_text(board, out.join("\n"))
-    stdout().write("wrote {board}\n").get()
+    print("wrote {board}")
     return 0
 
 export fn main() Int:

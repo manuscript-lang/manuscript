@@ -28,7 +28,7 @@ impl BitSet:
         let word = index / 64
         while self.words.length() <= word:
             self.words.append(0)
-        self.words.set(word, bit_or(self.words.get(word), shift_left(1, index % 64)))
+        self.words.set(word, bit_or(self.words[word], shift_left(1, index % 64)))
 
     // Removes an index; absent and out-of-range indexes change nothing.
     var fn remove(index: Int) Unit:
@@ -36,17 +36,14 @@ impl BitSet:
 
         let word = index / 64
         self.words.set(
-            word,
-            bit_and(
-                self.words.get(word), bit_not(shift_left(1, index % 64))
-            )
+            word, bit_and(self.words[word], bit_not(shift_left(1, index % 64)))
         )
 
     // Reports whether the index is a member; out-of-range indexes are not members.
     fn contains(index: Int) Bool:
         if index < 0 or index / 64 >= self.words.length(): return false
 
-        return bit_and(self.words.get(index / 64), shift_left(1, index % 64)) != 0
+        return bit_and(self.words[index / 64], shift_left(1, index % 64)) != 0
 
     // Returns the number of members.
     fn length() Int:
@@ -69,7 +66,7 @@ impl BitSet:
         var word = start / 64
         if word >= self.words.length(): return none
 
-        var bits = bit_and(self.words.get(word), shift_left(-1, start % 64))
+        var bits = bit_and(self.words[word], shift_left(-1, start % 64))
 
         while true:
             if bits != 0: return word * 64 + trailing_zeros(bits)
@@ -77,7 +74,7 @@ impl BitSet:
             word += 1
             if word >= self.words.length(): return none
 
-            bits = self.words.get(word)
+            bits = self.words[word]
 
         return none
 
@@ -86,7 +83,7 @@ impl BitSet:
         var out: List[Int] = []
 
         for word in 0..self.words.length():
-            var bits = self.words.get(word)
+            var bits = self.words[word]
 
             while bits != 0:
                 let low = trailing_zeros(bits)
@@ -117,8 +114,8 @@ impl BitSet:
         let count = self.words.length().max(other.words.length())
 
         for word in 0..count:
-            let left = if word < self.words.length(): self.words.get(word) else: 0
-            let right = if word < other.words.length(): other.words.get(word) else: 0
+            let left = if word < self.words.length(): self.words[word] else: 0
+            let right = if word < other.words.length(): other.words[word] else: 0
             var merged = bit_or(left, right)
             if mode == 1:
                 merged = bit_and(left, right)

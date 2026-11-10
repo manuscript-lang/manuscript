@@ -86,7 +86,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
     var seen = List[String]()
     for v in VERSIONS:
-        if sinks.get_or(v, 0) > 0 or pending.get_or(v, Set[String]()).length() > 0: seen.append(
+        if sinks.get_or(v, 0) > 0 or not pending.get_or(v, Set[String]()).is_empty(): seen.append(
             v.clone()
         )
     if not seen.contains("ms") or not seen.contains("go"):
@@ -94,7 +94,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
     for v in seen:
         if (
-            pending.get_or(v, Set[String]()).length() > 0
+            not pending.get_or(v, Set[String]()).is_empty()
             or sinks.get_or(v, 0) != repeats
         ):
             return invalid("expected {repeats} complete {v} samples")

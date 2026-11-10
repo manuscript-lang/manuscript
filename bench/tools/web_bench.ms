@@ -25,7 +25,7 @@ import stdout from "@std/io/io.ms"
 import milliseconds, sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
-    stdout().write(text + "\n").get()
+    print(text)
 
 fn tail(text: String) String:
     return text.trim()

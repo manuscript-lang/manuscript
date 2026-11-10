@@ -375,7 +375,7 @@ export fn main() Int:
                     failures += 1
                     print("generated: {name} does not parse: {why}")
                 else if show or filter != "":
-                    stdout().write("rejected {name}: {why.split("\n")[0]}\n").get()
+                    print("rejected {name}: {why.split("\n")[0]}")
 
                 continue
 

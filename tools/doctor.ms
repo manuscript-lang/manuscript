@@ -5,8 +5,8 @@ import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
 fn say(ok: Bool, ok_text: String, missing_text: String) Bool:
-    if ok: stdout().write("OK      {ok_text}\n").get()
-    else: stdout().write("MISSING {missing_text}\n").get()
+    if ok: print("OK      {ok_text}")
+    else: print("MISSING {missing_text}")
 
     return ok
 
