@@ -13,6 +13,7 @@ Evidence: [integer conversion regression](../../tests/e2e/testdata/accept/int-fl
 Verify: both signed and unsigned integer conversions to `Float32` round directly to binary32. An intermediate binary64 conversion can erase which side of a midpoint a large integer is on; cover direct calls and bound conversion methods.
 Evidence: [backend settings and compile regression](../../crates/ms-clif/src/cg.rs), [profile options](../../crates/ms-clif/src/lib.rs).
 Verify: reset and conditional-reset loops still fault with the overflow message; run `make conform`.
+Source-verified: LLVM address metadata uses modular offsets, independently of source checked arithmetic. Negate a subtraction delta with `wrapping_neg`, matching the following `wrapping_add`; ordinary host negation of `i64::MIN` panics in overflow-checked compiler builds even without a known base because `Option::zip` evaluates its argument eagerly. The backend regression `subtraction_tracks_minimum_integer_offsets_without_overflow` covers ordinary and exclusive-pointer parameters, minimum and neighboring deltas, and cancellation back to the original address.
 Verify: run `cargo test -p ms-mir --test it -- opt_simplify::`; preserve zero-divisor faults and the checked division overflow.
 Verify: repeated checks across I/O and dominated blocks collapse; sibling checks, different operations, overflow and division faults keep their behavior.
 Verify: nested replacement loops eliminate redundant bounds checks; shrinking and conditional replacement still fault at an invalid index.
