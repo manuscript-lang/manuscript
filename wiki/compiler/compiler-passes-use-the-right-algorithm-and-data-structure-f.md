@@ -35,6 +35,15 @@ Evidence: [classification regressions](../../crates/ms-check/tests/type_classifi
 Verified: shared type DAGs need query-local deduplication in equality and negative searches; create the hash table only after bounded ordinary work, and keep allocation-free small controls. Equality may reuse completed successful pairs, never active pairs or an unrestricted pointer shortcut: incomplete callable results retain their existing comparison behavior. A negative omission-permission preflight can preserve the root directly; a positive preflight must use the original recursive mapper so changed variable occurrences retain independent snapshots. Predicates must stay stable within each query. Inference-resolution searches need the same bounded traversal across arguments, parameters and results; retain the root rejection fast path and the distinction between invalid markers and unresolved inference variables. Ownership searches for promises use argument edges only and the defining module identity; preserve those decisions while deduplicating shared arguments.
 Evidence: [shared graph and metadata regressions](../../crates/ms-check/src/type_graph_tests.rs).
 
+Argument matching commits trial bindings only after a successful match. Build the
+substituted pattern for widening and diagnostics only after matching fails; a
+successful match does not use it. Keep partial-prefix failure and Optional retry,
+widening and plain-value controls. Combining independently bounded inference
+searches also needs unshared-forest measurements: a shared-root win can introduce
+hashing for ordinary independent children.
+Evidence: [inference regressions](../../crates/ms-check/src/diagnostic_cascade_tests.rs),
+[inference benchmark harness](../../bench/perf/checker-inference-resolution/README.md).
+
 Verified: type interning deduplicates completed input nodes within each `intern` or `shape` query, preserving first representatives, flags and child order. Reuse empty memo storage, never answers across queries. Bypass recursive frames for leaves and leave short leaf-only rows uncached; cache wide rows too so shallow fanout cannot become quadratic.
 Evidence: [type identity regressions](../../crates/ms-check/src/tytable_tests.rs).
 
