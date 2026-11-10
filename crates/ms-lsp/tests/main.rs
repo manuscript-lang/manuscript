@@ -8,6 +8,7 @@ mod document_updates;
 mod editing_regressions;
 mod editor_sessions;
 mod enum_declarations;
+mod hover_documentation;
 mod hover_fallback;
 mod inlay_names;
 mod match_cases;

@@ -1,0 +1,6 @@
+   Compiling ms-check v0.0.0 (/workspace/manuscript/crates/ms-check)
+   Compiling ms-tooling v0.0.0 (/workspace/manuscript/crates/ms-tooling)
+   Compiling ms-driver v0.0.0 (/workspace/manuscript/crates/ms-driver)
+   Compiling ms-lsp v0.0.0 (/workspace/manuscript/crates/ms-lsp)
+   Compiling ms-lsp-query-perf v0.0.0 (/workspace/manuscript/bench/perf/lsp-query)
+    Finished `release` profile [optimized + debuginfo] target(s) in 41.07s

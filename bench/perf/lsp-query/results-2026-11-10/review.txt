@@ -1,0 +1,30 @@
+Independent read-only review: GPT-6 Astra, high reasoning.
+
+Production: no correctness blocker. Moving DeclFiles construction inside the
+existing method-with-declaration branch retains target precedence and method
+file ownership. Symbols keep their stored module; local bindings/literals have
+no documentation target. Receiver/contract documentation fallback still loads
+source modules when needed.
+
+Nuance: source_modules invokes standard_modules/load_deferred_all. A direct
+local hover without an occurrence index can leave unrelated standard modules
+unloaded after the change. No caller was found relying on that incidental
+initialization. Normal server/CLI hover builds an occurrence index first.
+Coverage added for unindexed local hover followed by indexed hover.
+
+Methodology: isolated document directories, paired AB/BA process ordering,
+complete JSON fingerprints, ordinary controls and exact supervised LSP payload
+comparison address identified concerns. Report warm latency; process counters
+include setup; wire timings include Python framing/parsing and IPC.
+
+Reviewer did not run benchmarks concurrently. Initial review requested an
+unreachable match-arm cleanup in the harness; it was removed before final
+validation. Benchmark outcomes and required CI still need separate review.
+
+Final raw-evidence review: all six paired matrices have complete unique
+before/after pairs and one fingerprint per case. Recomputed isolated medians
+match the report. Method/receiver controls have 6–8 slower pairs out of 15,
+paired medians approximately 0.994–1.004, with no repeated directional slowdown.
+Tiny method ratio-of-medians 1.0315 remains visible. No remaining measured
+performance blocker. Introductory rounded values were corrected to exact table
+values; query isolation is not claimed to prove the cause of earlier variation.

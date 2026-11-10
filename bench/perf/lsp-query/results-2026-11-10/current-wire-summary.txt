@@ -1,0 +1,5 @@
+completed 1 lf
+completed 100 lf
+completed 1000 lf
+completed 4000 lf
+completed 1000 crlf

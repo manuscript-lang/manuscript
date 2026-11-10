@@ -1,0 +1,23 @@
+All commands ran from /workspace/manuscript unless noted.
+CARGO_HOME=/workspace/lsp-query-tools/cargo
+RUSTUP_HOME=/workspace/lsp-query-tools/rustup
+Cargo executable: /workspace/lsp-query-tools/cargo/bin/cargo
+Rust toolchain: +1.99.1
+
+Initial baseline: git fetch origin main; git switch --create perf/lsp-query-scaling origin/main
+Source: d1ea6ce161ed9e5bd1af5c3b4edd8ca0b8f4b251
+cargo +1.99.1 test --locked -p ms-lsp --target-dir /workspace/lsp-query-tools/target
+cargo +1.99.1 build --release --locked --manifest-path bench/perf/lsp-query/Cargo.toml --target-dir /workspace/lsp-query-tools/bench-target
+python3 /workspace/lsp-query-tools/discover.py
+python3 bench/perf/lsp-query/compare.py /workspace/lsp-query-tools/before/ms-lsp-query-perf /workspace/lsp-query-tools/after/ms-lsp-query-perf bench/perf/lsp-query/results-2026-11-10/paired.csv 9
+python3 bench/perf/lsp-query/wire.py /workspace/lsp-query-tools/before/ms-lsp-server /workspace/lsp-query-tools/after/ms-lsp-server bench/perf/lsp-query/results-2026-11-10/wire.csv 7
+
+Matched source refresh: 754aa75a3c5fb66a54c19047cf9f2bb45d1a9db4
+python3 /workspace/lsp-query-tools/build_pair.py
+LSP_BENCH_NS=100000000 python3 bench/perf/lsp-query/compare.py /workspace/lsp-query-tools/before-current/ms-lsp-query-perf /workspace/lsp-query-tools/after-current/ms-lsp-query-perf bench/perf/lsp-query/results-2026-11-10/current-paired.csv 5
+LSP_WIRE_ROUNDS=100 python3 bench/perf/lsp-query/wire.py /workspace/lsp-query-tools/before-current/ms-lsp-server /workspace/lsp-query-tools/after-current/ms-lsp-server bench/perf/lsp-query/results-2026-11-10/current-wire.csv 9
+LSP_BENCH_NS=300000000 LSP_BENCH_CASES=hover-name:4000:ascii,completion:1000:ascii,symbols:1000:ascii,definition-symbol:100:ascii,definition-symbol:4000:ascii python3 bench/perf/lsp-query/compare.py /workspace/lsp-query-tools/before-current/ms-lsp-query-perf /workspace/lsp-query-tools/after-current/ms-lsp-query-perf bench/perf/lsp-query/results-2026-11-10/isolated-controls.csv 15
+LSP_WIRE_ROUNDS=300 LSP_WIRE_CASES=1:lf,1000:lf,4000:lf LSP_WIRE_QUERIES=method,receiver python3 bench/perf/lsp-query/wire.py /workspace/lsp-query-tools/before-current/ms-lsp-server /workspace/lsp-query-tools/after-current/ms-lsp-server bench/perf/lsp-query/results-2026-11-10/isolated-methods.csv 15
+
+Later local validation base: ae87acedab5641ffac4179b17e3e0dc442fcca0e
+See checks.txt. Later main timings were not substituted for the matched source world.

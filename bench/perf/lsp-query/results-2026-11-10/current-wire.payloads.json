@@ -1,0 +1,562 @@
+{
+  "(1, 'lf', 'local-first')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 14,
+        "character": 11
+      },
+      "end": {
+        "line": 14,
+        "character": 16
+      }
+    }
+  },
+  "(1, 'lf', 'local-last')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 24,
+        "character": 8
+      },
+      "end": {
+        "line": 24,
+        "character": 13
+      }
+    }
+  },
+  "(1, 'lf', 'literal')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\n123: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 24,
+        "character": 16
+      },
+      "end": {
+        "line": 24,
+        "character": 19
+      }
+    }
+  },
+  "(1, 'lf', 'function')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\ndocumented: fn(Int) Int\n```\n\neffects: pure (ambient authority only)\n\nFunction documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 11
+      },
+      "end": {
+        "line": 17,
+        "character": 21
+      }
+    }
+  },
+  "(1, 'lf', 'method')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nread: fn() Int\n```\n\neffects: pure (ambient authority only)\n\nMethod documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 28
+      },
+      "end": {
+        "line": 17,
+        "character": 32
+      }
+    }
+  },
+  "(1, 'lf', 'receiver')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nplain: fn() Int\n```\n\neffects: pure (ambient authority only)\n\nReceiver documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 43
+      },
+      "end": {
+        "line": 17,
+        "character": 48
+      }
+    }
+  },
+  "(1, 'lf', 'unicode')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 20,
+        "character": 15
+      },
+      "end": {
+        "line": 20,
+        "character": 20
+      }
+    }
+  },
+  "(100, 'lf', 'local-first')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 14,
+        "character": 11
+      },
+      "end": {
+        "line": 14,
+        "character": 16
+      }
+    }
+  },
+  "(100, 'lf', 'local-last')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 420,
+        "character": 8
+      },
+      "end": {
+        "line": 420,
+        "character": 13
+      }
+    }
+  },
+  "(100, 'lf', 'literal')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\n123: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 420,
+        "character": 16
+      },
+      "end": {
+        "line": 420,
+        "character": 19
+      }
+    }
+  },
+  "(100, 'lf', 'function')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\ndocumented: fn(Int) Int\n```\n\neffects: pure (ambient authority only)\n\nFunction documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 11
+      },
+      "end": {
+        "line": 17,
+        "character": 21
+      }
+    }
+  },
+  "(100, 'lf', 'method')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nread: fn() Int\n```\n\neffects: pure (ambient authority only)\n\nMethod documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 28
+      },
+      "end": {
+        "line": 17,
+        "character": 32
+      }
+    }
+  },
+  "(100, 'lf', 'receiver')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nplain: fn() Int\n```\n\neffects: pure (ambient authority only)\n\nReceiver documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 43
+      },
+      "end": {
+        "line": 17,
+        "character": 48
+      }
+    }
+  },
+  "(100, 'lf', 'unicode')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 20,
+        "character": 15
+      },
+      "end": {
+        "line": 20,
+        "character": 20
+      }
+    }
+  },
+  "(1000, 'lf', 'local-first')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 14,
+        "character": 11
+      },
+      "end": {
+        "line": 14,
+        "character": 16
+      }
+    }
+  },
+  "(1000, 'lf', 'local-last')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 4020,
+        "character": 8
+      },
+      "end": {
+        "line": 4020,
+        "character": 13
+      }
+    }
+  },
+  "(1000, 'lf', 'literal')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\n123: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 4020,
+        "character": 16
+      },
+      "end": {
+        "line": 4020,
+        "character": 19
+      }
+    }
+  },
+  "(1000, 'lf', 'function')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\ndocumented: fn(Int) Int\n```\n\neffects: pure (ambient authority only)\n\nFunction documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 11
+      },
+      "end": {
+        "line": 17,
+        "character": 21
+      }
+    }
+  },
+  "(1000, 'lf', 'method')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nread: fn() Int\n```\n\neffects: pure (ambient authority only)\n\nMethod documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 28
+      },
+      "end": {
+        "line": 17,
+        "character": 32
+      }
+    }
+  },
+  "(1000, 'lf', 'receiver')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nplain: fn() Int\n```\n\neffects: pure (ambient authority only)\n\nReceiver documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 43
+      },
+      "end": {
+        "line": 17,
+        "character": 48
+      }
+    }
+  },
+  "(1000, 'lf', 'unicode')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 20,
+        "character": 15
+      },
+      "end": {
+        "line": 20,
+        "character": 20
+      }
+    }
+  },
+  "(4000, 'lf', 'local-first')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 14,
+        "character": 11
+      },
+      "end": {
+        "line": 14,
+        "character": 16
+      }
+    }
+  },
+  "(4000, 'lf', 'local-last')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 16020,
+        "character": 8
+      },
+      "end": {
+        "line": 16020,
+        "character": 13
+      }
+    }
+  },
+  "(4000, 'lf', 'literal')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\n123: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 16020,
+        "character": 16
+      },
+      "end": {
+        "line": 16020,
+        "character": 19
+      }
+    }
+  },
+  "(4000, 'lf', 'function')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\ndocumented: fn(Int) Int\n```\n\neffects: pure (ambient authority only)\n\nFunction documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 11
+      },
+      "end": {
+        "line": 17,
+        "character": 21
+      }
+    }
+  },
+  "(4000, 'lf', 'method')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nread: fn() Int\n```\n\neffects: pure (ambient authority only)\n\nMethod documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 28
+      },
+      "end": {
+        "line": 17,
+        "character": 32
+      }
+    }
+  },
+  "(4000, 'lf', 'receiver')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nplain: fn() Int\n```\n\neffects: pure (ambient authority only)\n\nReceiver documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 43
+      },
+      "end": {
+        "line": 17,
+        "character": 48
+      }
+    }
+  },
+  "(4000, 'lf', 'unicode')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 20,
+        "character": 15
+      },
+      "end": {
+        "line": 20,
+        "character": 20
+      }
+    }
+  },
+  "(1000, 'crlf', 'local-first')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 14,
+        "character": 11
+      },
+      "end": {
+        "line": 14,
+        "character": 16
+      }
+    }
+  },
+  "(1000, 'crlf', 'local-last')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 4020,
+        "character": 8
+      },
+      "end": {
+        "line": 4020,
+        "character": 13
+      }
+    }
+  },
+  "(1000, 'crlf', 'literal')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\n123: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 4020,
+        "character": 16
+      },
+      "end": {
+        "line": 4020,
+        "character": 19
+      }
+    }
+  },
+  "(1000, 'crlf', 'function')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\ndocumented: fn(Int) Int\n```\n\neffects: pure (ambient authority only)\n\nFunction documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 11
+      },
+      "end": {
+        "line": 17,
+        "character": 21
+      }
+    }
+  },
+  "(1000, 'crlf', 'method')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nread: fn() Int\n```\n\neffects: pure (ambient authority only)\n\nMethod documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 28
+      },
+      "end": {
+        "line": 17,
+        "character": 32
+      }
+    }
+  },
+  "(1000, 'crlf', 'receiver')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nplain: fn() Int\n```\n\neffects: pure (ambient authority only)\n\nReceiver documentation."
+    },
+    "range": {
+      "start": {
+        "line": 17,
+        "character": 43
+      },
+      "end": {
+        "line": 17,
+        "character": 48
+      }
+    }
+  },
+  "(1000, 'crlf', 'unicode')": {
+    "contents": {
+      "kind": "markdown",
+      "value": "```manuscript\nvalue: Int\n```"
+    },
+    "range": {
+      "start": {
+        "line": 20,
+        "character": 15
+      },
+      "end": {
+        "line": 20,
+        "character": 20
+      }
+    }
+  }
+}

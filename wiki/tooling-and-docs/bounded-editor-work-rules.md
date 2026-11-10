@@ -55,6 +55,13 @@ The mismatched-snapshot fallback must also use one shared line index and cursor 
 
 The name-table limit counts growth past the size settled after the last start, not absolute size: with an absolute 1 MiB cap, one large document's own names made every request drop all caches and reload the standard library (0.9 s per hover, 13 ms cached; #3136).
 
+Select the documentation target before building declaration-file lookup tables.
+Local values have no documentation target and symbols already carry their module;
+only method declarations need the owner lookup. Full hover, not just occurrence
+lookup, exposed the discarded work (#3485). Preserve method/receiver fallback and
+compare unindexed/indexed hover, Unicode/CRLF ranges and ordinary query controls
+([measurements](../../bench/perf/lsp-query/results-2026-11-10.md)).
+
 ## Select boundaries before scanning default ranges
 
 Verified: computing an outline's EOF boundary for every declaration, then replacing it with the next declaration's boundary, rescans the same whitespace suffix for discarded results. Select the needed offset first, then trim once. Caching an expensive default before branching can preserve correct output while multiplying unnecessary work.

@@ -1,0 +1,5 @@
+symbols 1000 ascii 5905.857 5894.888 0.9981
+completion 1000 ascii 14222.519 13758.005 0.9673
+hover-name 4000 ascii 474.527 477.26 1.0058
+definition-symbol 100 ascii 68.449 69.091 1.0094
+definition-symbol 4000 ascii 1297.615 1294.201 0.9974

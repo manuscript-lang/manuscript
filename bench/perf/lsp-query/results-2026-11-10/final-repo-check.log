@@ -1,0 +1,4 @@
+   Compiling ms-repo-check v0.0.0 (/workspace/manuscript/crates/ms-repo-check)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.36s
+     Running `/workspace/lsp-query-tools/target/debug/repo-check`
+Nested matches, formatting, stdlib syntax, release pins, triggers, unsafe boundary, inline sources, portability, fixture twins, stream names, internal externs, optional defaults, crate layering, and thread affinity agree.

@@ -1,0 +1,15 @@
+   Compiling ms-lsp v0.0.0 (/workspace/manuscript/crates/ms-lsp)
+   Compiling ms-lsp-query-perf v0.0.0 (/workspace/manuscript/bench/perf/lsp-query)
+warning: unreachable pattern
+  --> main.rs:91:28
+   |
+83 | ...   "hover-full" | "hover-full-first" | "hover-full-name-first" | "hover-full-name" | "hover-full-symbol" => fingerprint(&nav::nav...
+   |                                           ----------------------- matches all the relevant values
+...
+91 | ...   "references" | "hover-full-name-first" | "references-first" => fingerprint(
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^ no value can reach this
+   |
+   = note: `#[warn(unreachable_patterns)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ms-lsp-query-perf` (bin "ms-lsp-query-perf") generated 1 warning
+    Finished `release` profile [optimized + debuginfo] target(s) in 10.37s

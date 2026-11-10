@@ -1,0 +1,15 @@
+   Compiling ms-syntax v0.0.0 (/workspace/manuscript/crates/ms-syntax)
+    Checking ms-json v0.1.0 (/workspace/manuscript/crates/ms-json)
+    Checking libc v0.2.191
+    Checking ms-rt-abi v0.1.0 (/workspace/manuscript/crates/ms-rt-abi)
+    Checking tinyvec v1.13.3
+    Checking unicode-normalization v0.1.26
+    Checking ms-rt-hot v0.1.0 (/workspace/manuscript/crates/ms-rt-hot)
+    Checking memchr v2.8.3
+    Checking mio v1.2.4
+    Checking ms-rt v0.1.0 (/workspace/manuscript/crates/ms-rt)
+   Compiling ms-check v0.0.0 (/workspace/manuscript/crates/ms-check)
+    Checking ms-tooling v0.0.0 (/workspace/manuscript/crates/ms-tooling)
+    Checking ms-driver v0.0.0 (/workspace/manuscript/crates/ms-driver)
+    Checking ms-lsp v0.0.0 (/workspace/manuscript/crates/ms-lsp)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 31.63s

@@ -1,0 +1,31 @@
+{
+  "revision": "754aa75a3c5fb66a54c19047cf9f2bb45d1a9db4",
+  "command": [
+    "/workspace/lsp-query-tools/cargo/bin/cargo",
+    "+1.99.1",
+    "build",
+    "--release",
+    "--locked",
+    "--manifest-path",
+    "bench/perf/lsp-query/Cargo.toml",
+    "--target-dir",
+    "/workspace/lsp-query-tools/bench-target"
+  ],
+  "variants": {
+    "before-current": {
+      "binary_sha256": {
+        "ms-lsp-query-perf": "225558d01b8c0bdc47156e455845b19b890f328f124f025ef21ce761c787db5b",
+        "ms-lsp-server": "96964a50b9b79ef14c7ab6e4e87a171f1d513cc0ee10becf6a70375a8ada16fe"
+      },
+      "nav_sha256": "615037f733a07bdc9fae3e0604da9dc8daae4b05e0bc0bf748af93825bc8f359"
+    },
+    "after-current": {
+      "binary_sha256": {
+        "ms-lsp-query-perf": "54f8ceaffbfe60dbb4a58a59c4be47e89d9b86a4e0ad97de043841dba7ea572e",
+        "ms-lsp-server": "8442d437812733e6c58514f03d8f12f65ba38fbb04a88446255584d10fe04aac"
+      },
+      "nav_sha256": "b0c512fe99f42b7e8e07e284d7403546b552464c73fd7e09c8cc1acdfe252eaf"
+    }
+  },
+  "harness_sha256": "7371e92d205d35c9f61478f4ef6e5fdded4fc7dcd9655352283229e0e3099710"
+}

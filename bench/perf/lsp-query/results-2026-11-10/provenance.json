@@ -1,0 +1,25 @@
+{
+  "revision": "d1ea6ce161ed9e5bd1af5c3b4edd8ca0b8f4b251",
+  "machine": {
+    "system": "Linux",
+    "node": "8c1a35582c98",
+    "release": "6.18.57",
+    "version": "#1 SMP Tue Oct 20 21:56:04 UTC 2026",
+    "machine": "x86_64",
+    "processor": ""
+  },
+  "cpus": 5,
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "build": "cargo +1.99.1 build --release --locked --manifest-path bench/perf/lsp-query/Cargo.toml --target-dir /workspace/lsp-query-tools/bench-target",
+  "toolchain": "1.99.1 (58cf8f9c3 2026-10-13)",
+  "profile": "opt-level=3, debug=1, panic=abort, force-frame-pointers=yes; no LTO/custom CPU flags",
+  "counters": "perf and valgrind unavailable; no instruction-count claim",
+  "tooling": "Rust installed independently from official rustup into /workspace/lsp-query-tools, no protected toolchain/cache access"
+}

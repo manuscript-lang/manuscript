@@ -1,0 +1,42 @@
+Completed validation for this lane, 2026-11-10, Linux x86_64 / Rust 1.99.1.
+
+Initial baseline d1ea6ce161ed9e5bd1af5c3b4edd8ca0b8f4b251:
+PASS cargo +1.99.1 test --locked -p ms-lsp --target-dir /workspace/lsp-query-tools/target
+32 unit +122 integration tests, zero failed/ignored; doc tests zero.
+
+Final candidate source = ae87acedab5641ffac4179b17e3e0dc442fcca0e plus hover.patch
+and the new hover_documentation test/fixture/registration. The production nav.rs
+hash is retained in final-candidate-nav.sha256. No merged-commit claim is made.
+PASS cargo +1.99.1 test --locked -p ms-lsp --target-dir /workspace/lsp-query-tools/target
+32 unit +123 integration tests, zero failed/ignored; doc tests zero.
+New hover_documentation_keeps_values_symbols_and_method_fallbacks passes,
+including fresh unindexed versus indexed local hover, literal/local text,
+function/method/receiver docs, LF/CRLF and same-line emoji ranges.
+PASS cargo +1.99.1 clippy --locked -p ms-lsp --all-targets --target-dir /workspace/lsp-query-tools/target -- -D warnings
+PASS cargo +1.99.1 fmt --all --check
+PASS cargo +1.99.1 fmt --manifest-path bench/perf/lsp-query/Cargo.toml --check
+PASS cargo +1.99.1 run --locked -p ms-repo-check --target-dir /workspace/lsp-query-tools/target
+PASS cargo +1.99.1 clippy --locked --manifest-path bench/perf/lsp-query/Cargo.toml --bins --target-dir /workspace/lsp-query-tools/bench-target -- -D warnings
+PASS git diff --check
+
+Evidence-only branch restores production nav.rs to ae87aceda; no duplicate fix.
+PASS cargo +1.99.1 test --locked -p ms-lsp --test it hover_documentation --target-dir /workspace/lsp-query-tools/target
+New compatibility test also passes without the performance patch.
+
+All benchmark producer commands completed successfully; paired fingerprints,
+source sizes and complete wire payload equality assertions passed. Raw initial
+slower controls and all isolated reruns are retained. Independent skeptical Astra
+review found no correctness or measured performance-regression blocker; report
+precision/causal-language nits were corrected.
+
+Not run locally: full-workspace clippy/nextest, make verify/verify-full, native
+backend/conformance/e2e corpus, macOS or Windows. No production platform-specific
+logic changed. No protected toolchain/cache, native-codegen workaround, CI-policy
+change, skipped check or required-CI substitution was used.
+
+External implementation PR #3493 at reconciliation:
+head 7a75e5b75b072327e08bbc7d5993cb2d5ba610b4, parent49a84e7886ac3b8aa47c2bd4b8a7ccc616ad6d14.
+Its hover hunk is identical; its full tree predates #3481/JWT/performance reverts.
+CI run https://github.com/manuscript-lang/manuscript/actions/runs/42826117820
+was still in progress. This lane does not claim validation of that entire head,
+its inspection change, or a completed merge. Other actor's branch untouched.

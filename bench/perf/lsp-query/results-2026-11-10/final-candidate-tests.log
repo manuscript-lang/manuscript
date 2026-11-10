@@ -1,0 +1,186 @@
+   Compiling ms-check v0.0.0 (/workspace/manuscript/crates/ms-check)
+   Compiling ms-driver v0.0.0 (/workspace/manuscript/crates/ms-driver)
+   Compiling ms-tooling v0.0.0 (/workspace/manuscript/crates/ms-tooling)
+   Compiling ms-lsp v0.0.0 (/workspace/manuscript/crates/ms-lsp)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 12.70s
+     Running unittests src/lib.rs (/workspace/lsp-query-tools/target/debug/deps/ms_lsp-955cc05d8a91717d)
+
+running 32 tests
+test editor::literal_context_tests::multiline_interpolation_is_code ... ok
+test editor::literal_context_tests::incomplete_multiline_closing_quotes_remain_literal ... ok
+test editor::literal_context_tests::raw_multiline_payload_is_not_code ... ok
+test features::tests::folding_headers_allow_comments_and_hashes_in_strings ... ok
+test features::tests::folding_follows_suites_not_payload_indentation ... ok
+test editor::literal_context_tests::multiline_literal_context_preserves_payload_and_code_boundaries ... ok
+test editor::literal_context_tests::incomplete_multiline_context_survives_unrelated_errors ... ok
+test features::tests::folding_ignores_colons_in_comments_and_strings ... ok
+test features::tests::folding_ignores_multiline_payload_structure ... ok
+test features::tests::folding_keeps_unfinished_source_fallback ... ok
+test server::name_limit_tests::a_large_working_set_is_not_over_the_limit ... ok
+test query::tests::ranks_names_loosely ... ok
+test server::name_limit_tests::an_unsettled_table_is_never_over_the_limit ... ok
+test supervise::tests::recovery_snapshots_apply_the_workers_utf16_and_replacement_rules ... ok
+test supervise::tests::recovery_snapshots_reject_malformed_and_partial_edit_transactions ... ok
+test text::tests::offsets_reject_surrogate_splits ... ok
+test text::tests::scanner_survives_unfinished_strings ... ok
+test text::tests::utf16_columns ... ok
+test text::tests::forward_positions_preserve_every_original_byte_position ... ok
+test text::tests::diagnostic_index_preserves_all_original_byte_ranges ... ok
+test transport::tests::reads_a_frame ... ok
+test uri::tests::drive_letters_lose_the_leading_slash ... ok
+test transport::tests::rejects_bad_frames ... ok
+test uri::tests::file_round_trip ... ok
+test uri::tests::native_separator_identity ... ok
+test uri::tests::invalid_utf8_escapes_are_malformed ... ok
+test uri::tests::other_schemes_are_their_own_name ... ok
+test uri::tests::standard_library_uris ... ok
+test workspace::tests::a_file_is_kept_only_for_a_name_it_declares_or_a_local_import ... ok
+test workspace::tests::an_import_of_a_scanned_file_adds_no_candidate ... ok
+test uri::tests::percent_escapes_require_two_hex_digits ... ok
+test text::tests::many_diagnostics_reuse_the_document_indexes ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/main.rs (/workspace/lsp-query-tools/target/debug/deps/ms_lsp-aad56173f2e858e1)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/main.rs (/workspace/lsp-query-tools/target/debug/deps/it-1359bd18cdb814a7)
+
+running 123 tests
+test analysis_invalidation::divergent_percent_encoded_overlays_match_uncached_analysis ... ok
+test analysis_invalidation::divergent_symlink_overlays_invalidate_even_unrelated_graphs ... ok
+test analysis_invalidation::opening_a_previously_missing_import_repairs_failed_graphs ... ok
+test analysis_invalidation::manifest_and_source_watch_events_clear_cached_graphs ... ok
+test analysis_invalidation::changed_import_edges_are_tracked_and_close_restores_disk_sources ... ok
+test completion::a_native_document_uri_checks_unsaved_text_instead_of_disk ... ok
+test analysis_invalidation::unsaved_dependency_under_a_symlinked_directory_refreshes_importers ... ok
+test completion::an_opaque_record_offers_no_fields_outside_its_file ... ok
+test completion::alternative_cases_complete_bare_unless_opaque_elsewhere ... ok
+test analysis_invalidation::transitive_importers_refresh_and_match_a_fresh_session ... ok
+test completion::argument_completion_and_signature_help_preserve_mutation ... ok
+test analysis_invalidation::editing_independent_documents_reuses_checked_analyses ... ok
+test completion::for_snippet_inserts_a_checked_loop ... ok
+test completion::checksum_imports_preserve_numeric_fuzzy_completions ... ok
+test completion::callable_snippets_preserve_mutable_arguments ... ok
+test completion_contexts::argument_label_edits_preserve_following_trivia_and_value ... ok
+test completion::numeric_imports_preserve_main_fuzzy_completions ... ok
+test completion::imported_callable_snippets_preserve_mutation_and_auto_imports ... ok
+test completion_contexts::completion_preserves_existing_call_and_type_arguments ... ok
+test completion_contexts::multiline_parameter_types_keep_type_snippets_and_variables ... ok
+test document_updates::equal_byte_replacements_can_change_subsequent_utf16_columns ... ok
+test document_updates::full_replacements_and_incremental_changes_share_one_transaction ... ok
+test completion_contexts::field_and_column_zero_parameter_annotations_keep_type_context ... ok
+test document_updates::incremental_changes_use_each_prior_utf16_snapshot_and_clamp_endpoints ... ok
+test document_updates::rejected_later_changes_preserve_the_entire_document_and_version ... ok
+test editing_regressions::checker_fixes_become_quick_fixes ... ok
+test editing_regressions::adding_imports_preserves_grouped_declarations_and_file_directives ... ok
+test editing_regressions::checkout_stdlib_sources_report_no_diagnostics ... ok
+test editing_regressions::completion_distinguishes_multiline_payload_and_interpolation ... ok
+test editing_regressions::completion_offers_members_inside_fstring_interpolation ... ok
+test completion::mutable_positional_arguments_complete_local_bindings ... ok
+test editing_regressions::completion_recovers_incomplete_multiline_interpolation ... ok
+test editing_regressions::completion_auto_import_preserves_file_effect_directives ... ok
+test editing_regressions::completion_works_inside_fstring_interpolation ... ok
+test editing_regressions::organize_imports_moves_whole_multiline_declarations ... ok
+test editing_regressions::completion_survives_an_earlier_unmatched_opener ... ok
+test editing_regressions::prepare_rename_uses_the_checked_declaration_without_scanning_workspace ... ok
+test editing_regressions::organize_imports_preserves_eof_separator ... ok
+test editing_regressions::project_exports_are_offered_before_standard_ones ... ok
+test editing_regressions::prepare_rename_accepts_imported_declarations_and_bindings_but_not_stdlib ... ok
+test editing_regressions::removing_the_last_unused_import_drops_the_separator ... ok
+test editing_regressions::rename_ignores_an_unrelated_unread_binding ... ok
+test editing_regressions::rename_keeps_the_open_percent_encoded_uri_and_version ... ok
+test editing_regressions::project_completions_quote_paths_and_prefix_dot_filenames ... ok
+test editing_regressions::rename_through_a_symlink_keeps_the_open_uri_and_version ... ok
+test editing_regressions::unresolved_standard_name_offers_an_add_import_fix ... ok
+test editing_regressions::type_import_actions_exclude_values_and_preserve_usable_repairs ... ok
+test editing_regressions::whitespace_actions_preserve_multiline_string_data ... ok
+test editor_sessions::repaired_queries_keep_the_supplied_library_and_fresh_document_analysis ... ok
+test enum_declarations::enum_keyword_snippet_inserts_a_checked_declaration ... ok
+test enum_declarations::enum_semantic_tokens_preserve_strict_and_forgiving_headers ... ok
+test enum_declarations::enum_outline_and_workspace_search_keep_enum_identity ... ok
+test hover_fallback::fallback_hover_keeps_clamped_and_invalid_snapshot_positions ... ok
+test editing_regressions::rename_preserves_unicode_and_original_ranges_when_name_length_changes ... ok
+test inlay_names::inlay_hints_keep_the_supplied_name_table ... ok
+test hover_documentation::hover_documentation_keeps_values_symbols_and_method_fallbacks ... ok
+test hover_fallback::fallback_hover_preserves_literal_operator_and_empty_ranges ... ok
+test match_cases::lowercase_variant_identity_is_distinct_from_optional_binding ... ok
+test match_cases::invalid_match_paths_do_not_acquire_a_case_identity ... ok
+test match_cases::case_references_and_rename_include_bare_and_qualified_match_arms ... ok
+test completion_contexts::positional_arguments_complete_values_and_keep_argument_labels ... ok
+test match_cases::synthesized_paths_and_type_suffixes_do_not_become_written_occurrences ... ok
+test navigation_identity::definitions_follow_unsaved_imported_sources_and_close_restores_disk ... ok
+test navigation_identity::incremental_unicode_edits_keep_navigation_and_rename_on_the_live_snapshot ... ok
+test navigation_identity::navigation_follows_unsaved_sources_under_directory_links ... ok
+test navigation_identity::one_source_keeps_its_identity_when_analysis_roots_differ ... ok
+test navigation_identity::methods_contract_operations_and_cases_stay_in_their_project ... ok
+test navigation_identity::references_do_not_cross_independent_project_identities ... ok
+test navigation_identity::unsaved_directory_links_preserve_conflict_and_confinement_checks ... ok
+test navigation_identity::rename_does_not_edit_an_identical_module_in_a_nested_project ... ok
+test opaque_completion::opaque_alternative_argument_labels_and_signatures_stay_private ... ok
+test navigation_identity::rename_unsaved_sources_under_directory_links_keeps_the_open_version ... ok
+test opaque_completion::opaque_public_methods_remain_discoverable ... ok
+test opaque_completion::opaque_constructor_snippets_respect_the_declaring_file ... ok
+test opaque_completion::opaque_constructor_argument_labels_and_signatures_stay_private ... ok
+test opaque_completion::ordinary_constructors_and_opaque_type_arguments_keep_their_snippets ... ok
+test name_recycling::a_server_over_its_limit_starts_over_and_answers_the_same ... ok
+test opaque_completion::opaque_rejected_receiver_chains_offer_no_members_or_calls ... ok
+test recovery_navigation::recovered_outline_selects_exact_declaration_names ... ok
+test opaque_completion::opaque_representation_hover_and_navigation_stay_private ... ok
+test reference_order::local_binding_references_keep_source_order ... ok
+test reference_order::scan_error_preserves_exported_reference_order_and_declaration_filter ... ok
+test retained_names::hover_fallback_keeps_supplied_names ... ok
+test recovery_navigation::a_statement_cut_off_mid_expression_keeps_hover_and_definition ... ok
+test retained_names::occurrence_index_keeps_supplied_names ... ok
+test reference_order::batched_reference_ranges_match_individual_locations ... ok
+test retained_names::retained_call_query_keeps_supplied_names ... ok
+test retained_names::semantic_tokens_keep_supplied_names ... ok
+test retained_names::retained_type_scope_uses_existing_symbols ... ok
+test semantic_positions::multiline_semantic_positions_match_crlf ... ok
+test semantic_positions::semantic_positions_preserve_strict_and_forgiving_output ... ok
+test search_symbol::workspace_search_keeps_declarations_from_imported_subdirectories ... ok
+test recovery_navigation::recovered_declaration_names_keep_hover_and_definition_ranges ... ok
+test search_symbol::fuzzy_search_keeps_private_function_uses_and_distinct_declarations ... ok
+test signature_help::multiline_interpolation_signature_help ... ok
+test signature_help::explicit_labels_mixed_slots_and_defaults ... ok
+test signature_help::signature_help_stays_suppressed_outside_calls_and_in_literals_or_comments ... ok
+test signature_help::incomplete_calls_keep_the_current_slot ... ok
+test signature_help::signature_labels_follow_the_servers_changed_snapshot ... ok
+test signature_help::positional_operand_comma_and_closing_boundaries ... ok
+test signature_help::unfinished_multiline_interpolation_signature_help ... ok
+test snapshots::batched_changes_publish_once ... ok
+test snapshots::broken_documents ... ok
+test signature_help::signature_labels_exclude_preceding_operators_and_keywords ... ok
+test snapshots::completion_and_signatures_with_snippets ... ok
+test snapshots::hover_omits_unresolved_types ... ok
+test signature_help::methods_constructors_generics_and_nested_delimiters has been running for over 60 seconds
+test snapshots::lifecycle_and_diagnostics ... ok
+test snapshots::completion_in_unfinished_code ... ok
+test signature_help::methods_constructors_generics_and_nested_delimiters ... ok
+test snapshots::opaque_is_a_keyword_only_before_type ... ok
+test snapshots::none_references_cover_written_case_tokens_beyond_snapshot_limit ... ok
+test snapshots::protocol_errors_and_standard_library ... ok
+test snapshots::rename_actions_and_formatting ... ok
+test source_coordinates::scanner_tokens_keep_unicode_scalar_boundaries ... ok
+test snapshots::completion_and_signatures_without_snippets ... ok
+test supervise::client_request_can_use_replay_id_without_a_restart ... ok
+test supervise::crashed_worker_is_replaced_and_state_replayed ... ok
+test supervise::rejected_edits_do_not_change_documents_replayed_after_a_crash ... ok
+test source_coordinates::unicode_lexer_errors_cover_a_complete_utf16_character ... ok
+test uri_identity::malformed_workspace_root_is_not_scanned ... ok
+test uri_identity::malformed_file_uri_documents_are_rejected_and_roots_ignored ... ok
+test snapshots::project_references_symbols_and_edits ... ok
+test snapshots::navigation_over_every_identifier has been running for over 60 seconds
+test snapshots::navigation_over_every_identifier ... ok
+
+test result: ok. 123 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 246.64s
+
+   Doc-tests ms_lsp
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
