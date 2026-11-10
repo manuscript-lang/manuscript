@@ -480,6 +480,33 @@ impl<'a> Parser<'a> {
         }
         Err(Box::new(d))
     }
+
+    /// A symbolic operator can touch either operand; its word replacement
+    /// needs separation wherever it would otherwise join an identifier/number.
+    fn fail_word_operator<T>(
+        &self,
+        first: Token,
+        last: Token,
+        message: &str,
+        word: &str,
+    ) -> PResult<T> {
+        let joins_word = |byte: &u8| byte.is_ascii_alphanumeric() || *byte == b'_';
+        let bytes = self.src.as_bytes();
+        let before = first
+            .lo
+            .checked_sub(1)
+            .and_then(|at| bytes.get(at as usize));
+        let after = bytes.get(last.hi as usize);
+        let mut replacement = String::new();
+        if before.is_some_and(joins_word) {
+            replacement.push(' ');
+        }
+        replacement.push_str(word);
+        if after.is_some_and(joins_word) {
+            replacement.push(' ');
+        }
+        self.fail_fix_range(first, last, message, &replacement)
+    }
     /// The colon after a parameter or field name; a missing one is usually a
     /// type written directly after the name.
     fn need_name_colon(&mut self, name: Token) -> PResult<()> {
@@ -2295,7 +2322,7 @@ impl<'a> Parser<'a> {
         } else {
             first
         };
-        self.fail_fix_range(
+        self.fail_word_operator(
             first,
             last,
             "'&&' is not an operator; write 'and' for logical and",
@@ -2310,7 +2337,7 @@ impl<'a> Parser<'a> {
         if self.kind() == Tok::Pipe {
             let t = self.peek();
             let first = self.previous();
-            return self.fail_fix_range(first, t, "'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step", "or");
+            return self.fail_word_operator(first, t, "'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step", "or");
         }
         let try_tok = self.peek();
         let tried = self.take(Tok::Try);

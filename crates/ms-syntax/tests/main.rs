@@ -13,6 +13,7 @@ mod format_edits;
 mod interpolation_positions;
 mod lambda_hints;
 mod lexer_spans;
+mod logical_fixes;
 mod multiline;
 mod mutation;
 mod nested_text;
