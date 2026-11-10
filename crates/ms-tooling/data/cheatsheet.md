@@ -1,6 +1,6 @@
 # Manuscript cheat sheet
 
-Four-space indent, `//` comments. `print(x)` is for quick output.
+Four-space indent, `//` comments.
 
 <!-- complete -->
 ```manuscript
@@ -32,7 +32,7 @@ export fn main() Int:
 
 - Commands: `ms search_symbol <words>`; `ms verify` (check, fmt, lint, test); `ms review`.
 - Effects: pure unless `// ms: allow_effect std.fs.*`.
-- Be terse, one idea per line. Output: `print(x)` (no import, never fails). Guards: `if c: return x`, no `else` after `return`. Loops: `for x in xs:`, `for i in 0..n:`, `for _i in 0..n:`; skip a loop for `any all count sum map filter fold`, `[v].repeated(n)`, `a.extend(b)`, `(0..n)` as a list. Tests: `is_empty()`, `x`/`not x` not `== true`, `a.max(b)`. Values: `let x = if c: a else: b`; `m.get_or(k, d)`, `o.get(d)`, `if let v = o:` not `is_some()` then `get()`; `xs[i]`; `try` not `match` to unwrap; `s | f | g` flows; infer closure types.
+- Be terse: `print(x)` (no import); `if c: return x`, no `else` after `return`; `any all count sum map filter fold`; `m.get_or(k, d)`; infer closure types.
 - `main() Int` is the exit status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
 - Stdlib (`@std/<dir>/<m>.ms`): `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
 - Imports: `import a, b from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
