@@ -106,7 +106,7 @@ fn promise_fixes_preserve_written_call_expressions() {
                     .iter()
                     .find(|f| f.code == "MSL115")
                     .expect("promise warning");
-                if binding.contains(":") {
+                if binding.starts_with("_:") {
                     assert!(
                         finding.fix.is_none(),
                         "typed discard must keep its annotation"

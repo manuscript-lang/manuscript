@@ -520,10 +520,20 @@ pub fn query_editor(
             .map_or(bytes.len(), |at| at + c.start);
         let line = modified.text[line_start..line_end].to_string();
         let trimmed = line.trim();
+        // `var x: T` or a typed immutable `x: T = v` inside a function body; a field or
+        // parameter line has the same shape but is not a local binding.
+        let in_body = line.starts_with([' ', '\t'])
+            && d.text[c.declaration..]
+                .trim_start()
+                .trim_start_matches("export ")
+                .starts_with("fn ")
+            && !text::previous_code_line(&d.text, line_start)
+                .is_some_and(|previous| previous.ends_with(['(', ',']));
         if trimmed.starts_with("var ")
-            || trimmed.split_once(':').is_some_and(|(name, _)| {
-                !name.is_empty() && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
-            })
+            || (in_body
+                && trimmed.split_once(':').is_some_and(|(name, _)| {
+                    !name.is_empty() && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+                }))
         {
             // Query the lexical environment before this local annotation. A type
             // marker alone cannot capture bindings that shadow a prelude type.
@@ -597,9 +607,9 @@ pub fn query_editor(
                 if let Some(at) = prefix.rfind(" = ") {
                     prefix = prefix[at + 3..].to_string();
                 }
-                lines[line] = format!("{spaces}let {marker}_value = {}{marker}", prefix.trim());
+                lines[line] = format!("{spaces}{marker}_value := {}{marker}", prefix.trim());
             } else {
-                lines[line] = format!("{spaces}let {marker}_value = {marker}");
+                lines[line] = format!("{spaces}{marker}_value := {marker}");
             }
             if lines[line] == current {
                 break;

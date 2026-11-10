@@ -11,7 +11,7 @@ fn many_joins_in_one_function() {
     );
     let value = |i: i64| i * 3 + i % 7;
     for i in 0..n {
-        writeln!(source, "    let v{i} = id({i}) * 3 + {}", i % 7).unwrap();
+        writeln!(source, "    v{i} := id({i}) * 3 + {}", i % 7).unwrap();
     }
     source.push_str("    var t = 0\n");
     let mut expected = 0;

@@ -35,7 +35,7 @@ fn fuzzy_search_keeps_private_function_uses_and_distinct_declarations() {
         assert!(symbol.hover.contains("fn() Int"), "{symbol:?}");
         assert_eq!(symbol.references.len(), 2, "{symbol:?}");
         assert!(
-            symbol.references.iter().any(|r| r.ends_with("a.ms:5:18")),
+            symbol.references.iter().any(|r| r.ends_with("a.ms:5:15")),
             "{symbol:?}"
         );
         assert!(

@@ -305,7 +305,7 @@ pub fn optional_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> 
         return String::new();
     }
     format!(
-        "{actual_t} may be absent; unwrap it first with 'if let', get(default), is_some() before get(), or match",
+        "{actual_t} may be absent; unwrap it first with 'if value := x', get(default), is_some() before get(), or match",
         actual_t = actual.display(syms)
     )
 }
@@ -315,7 +315,7 @@ pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
     if !actual.is(Builtin::Result) || actual.args.is_empty() || !same(&actual.args[0], expected) {
         return String::new();
     }
-    "unwrap it with 'try' inside a function that returns a compatible Result, with 'if let', or with '.get()'".to_string()
+    "unwrap it with 'try' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'".to_string()
 }
 
 /// A promise where its result is required: `wait()` gives it.
@@ -1008,7 +1008,7 @@ impl Checker {
         }
         if self.implements(actual, expected) {
             return format!(
-                "{message}; {actual_t} implements {expected_t}, but generic inference does not convert; bind it to an {expected_t}-typed let first or give the arguments one type",
+                "{message}; {actual_t} implements {expected_t}, but generic inference does not convert; bind it to an {expected_t}-typed binding first or give the arguments one type",
                 actual_t = actual.display(self.syms),
                 expected_t = expected.display(self.syms)
             );

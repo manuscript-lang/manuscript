@@ -32,7 +32,7 @@ fn pass_on(var xs: List[Reportable], cause: Cause) Unit:
 fn caller_change() String:
     var c = Cause(1, "x")
     e := first_error(c)
-    c.code = 3  // error: cannot change `c.code` while `e` borrows it (binding of a part of it, at 34:9)
+    c.code = 3  // error: cannot change `c.code` while `e` borrows it (binding of a part of it, at 34:5)
     return e.message()
 
 fn rebound_still_used(cause: Cause) Reportable:

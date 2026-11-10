@@ -1096,7 +1096,7 @@ impl Checker {
         if !enclosing.is(Builtin::Result) || enclosing.args.len() != 2 {
             self.type_error(
                 e.pos,
-                "try requires an enclosing Result; declare this function to return Result[T, E], or use 'if let', '.get(default)', or '.get()'",
+                "try requires an enclosing Result; declare this function to return Result[T, E], or use 'if value := x', '.get(default)', or '.get()'",
             );
             return;
         }

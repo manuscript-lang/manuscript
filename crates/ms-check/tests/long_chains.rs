@@ -54,7 +54,7 @@ fn many_live_borrows_check_quickly() {
     // N bindings borrow one owner and are all read afterwards. The ownership walk and the
     // liveness pass once visited every live borrow or place per access, so this took N^2 steps.
     let n = 8_000;
-    let lets: String = (0..n).map(|i| format!("    let b{i} = u.n\n")).collect();
+    let lets: String = (0..n).map(|i| format!("    b{i} := u.n\n")).collect();
     let reads: String = (0..n).map(|i| format!("    print(b{i})\n")).collect();
     let source = include_str!("long_chains/borrows.ms")
         .replace("// LETS\n", &lets)

@@ -377,7 +377,7 @@ impl Checker {
             self.type_error(
                 pos,
                 format!(
-                    "this statement discards {t_t}, so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or '_ := ...' to drop it on purpose"
+                    "this statement discards {t_t}, so a failure would be lost; write 'try ...' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose"
                 , t_t = t.display(self.syms)),
             );
         }
@@ -416,7 +416,7 @@ impl Checker {
             self.type_error(
                 cond.pos,
                 format!(
-                    "if let requires an Optional or Result, found {t_t}; use 'if' for a Bool condition or 'match' for other alternatives"
+                    "an if binding requires an Optional or Result, found {t_t}; use 'if' for a Bool condition or 'match' for other alternatives"
                 , t_t = t.display(self.syms)),
             );
         }

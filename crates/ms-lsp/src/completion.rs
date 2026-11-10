@@ -620,11 +620,11 @@ impl Completer<'_> {
             if line_start != c.start && self.snippets {
                 self.add(
                     syms,
-                    "if let",
+                    "if :=",
                     14,
                     None,
                     5,
-                    "if let ${1:value} = ${2:optional}:\n    $0",
+                    "if ${1:value} := ${2:optional}:\n    $0",
                     Json::Null,
                 );
             }

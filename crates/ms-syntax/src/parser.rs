@@ -1380,7 +1380,7 @@ impl<'a> Parser<'a> {
                     return self.fail(token, format!("misplaced 'opaque'; {advice}"));
                 }
                 let msg = format!(
-                    "expected a module declaration or import, found {}; top level holds only import, let constants, fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+                    "expected a module declaration or import, found {}; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
                     describe(self.src, token)
                 );
                 return self.fail(token, msg);
