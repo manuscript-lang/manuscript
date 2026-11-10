@@ -7,10 +7,11 @@ Terminal text styling and measuring: colors, attributes, and width-aware helpers
 ```manuscript
 import Color, Style, paint, visible_width from "@std/cli/style.ms"
 
-fn main() Int!:
+fn main() Unit!:
     warning := Style(foreground: Color.Ansi(3), bold: true)
     text := paint("careful", warning, 16)
-    return ok(try visible_width(text))
+    width := try visible_width(text)
+    print("{width}")
 ```
 */
 import (
