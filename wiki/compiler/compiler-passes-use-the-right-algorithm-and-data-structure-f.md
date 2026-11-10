@@ -41,6 +41,14 @@ Evidence: [type identity regressions](../../crates/ms-check/src/tytable_tests.rs
 Verified: last-use pending drops are grouped by instruction anchor when recorded, not rediscovered by scanning every pending drop in the block for each insertion. Preserve ordinal order within each anchor: an owner may follow a family member's already-pending drop. Group iteration order must not affect placement; emit anchors in original instruction order. Allocate block tables lazily and keep the first anchor group inline: most blocks have at most one group, so indexing every such group adds avoidable allocation and hashing. Measure multi-block controls alongside the long-block win.
 Evidence: [pending-drop ordering and single-block regressions](../../crates/ms-mir/tests/opt_lastuse.rs), #2940.
 
+Verified: effect propagation's worklist does not bound diagnostic path reconstruction.
+Many roots sharing one wide hub can repeat quadratic BFS work while producing only
+linear path-label output. Share shortest suffixes only after individual searches
+spend a graph-sized budget, so sparse direct violations avoid a full-graph pass.
+Preserve stable equal-label ties and exclude a declaring start as its own terminal.
+Evidence: [effect path regressions](../../crates/ms-check/src/effect_reach.rs),
+[paired release checks and controls](../../bench/perf/effect-reachability/README.md).
+
 Apply when: adding or changing a lexer, parser, checker, or lowering pass, or a cache or table they share.
 Evidence: [type recursion pass](../../crates/ms-check/src/recursion.rs), issues #490 and #491.
 Evidence: [method registration and lookup](../../crates/ms-check/src/contracts.rs), [candidate regressions](../../crates/ms-check/src/method_candidates_tests.rs), [editor queries](../../crates/ms-check/src/editor.rs).
