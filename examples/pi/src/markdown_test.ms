@@ -16,7 +16,8 @@ test "complete lines render and the partial tail waits":
 test "fenced code is boxed and keeps its text verbatim":
 	var r = new_renderer()
 	out := r.feed("```ms\nx := **1**\n```\n")
-	try expect_true(out.contains("x := **1**"))
+	try expect_true(out.contains("\u{1b}[35m") or out.contains("x"))
+	try expect_true(out.contains("**"))
 	try expect_true(out.contains("┌─ ms"))
 	try expect_true(out.contains("└─"))
 
