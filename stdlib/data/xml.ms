@@ -256,7 +256,7 @@ impl Reader:
                 return error(Error("XML: invalid data", kind: "EBADMSG"))
 
     // Skips a quoted literal; its contents never delimit markup.
-    var fn quoted() Unit!:
+    var fn quoted(public_id: Bool = false) Unit!:
         let quote = self.peek()
         if quote != "\"" and quote != "'": return error(
             Error("XML: invalid data", kind: "EBADMSG")
@@ -264,7 +264,17 @@ impl Reader:
 
         self.at += 1
 
-        let _text = try self.take_until(quote)
+        let text = try self.take_until(quote)
+        if public_id:
+            for c in text.chars():
+                let code = c.scalar_at(0)
+                let alphanumeric = (
+                    (code >= 0x41 and code <= 0x5a)
+                    or (code >= 0x61 and code <= 0x7a)
+                    or (code >= 0x30 and code <= 0x39)
+                )
+                if not alphanumeric and not " \r\n-'()+,./:=?;!*#@$_%".contains(c):
+                    return error(Error("XML: invalid data", kind: "EBADMSG"))
         return ok(unit)
 
     // Requires at least one whitespace scalar.
@@ -328,7 +338,7 @@ impl Reader:
         else if self.looking_at("PUBLIC"):
             self.at += 6
             try self.require_space()
-            try self.quoted()
+            try self.quoted(public_id: true)
             try self.require_space()
             try self.quoted()
             self.skip_space()

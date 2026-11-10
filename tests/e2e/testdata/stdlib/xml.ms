@@ -287,7 +287,7 @@ test "carriage returns survive a stringify and parse round trip":
 test "DOCTYPE skipping honors quoted spans and prolog placement":
     for accepted in [
         "<!DOCTYPE a SYSTEM \"a>b\"><a/>", "<!DOCTYPE a SYSTEM 'a>b'><a/>",
-        "<!DOCTYPE a PUBLIC \"-//x]//y\" \"u>v\"><a/>",
+        "<!DOCTYPE a PUBLIC \"-//x//y\" \"u]>v\"><a/>",
         "<!DOCTYPE a [<!ENTITY x \"]>\">]><a/>",
         "<!DOCTYPE a [<!-- ]> --><!ELEMENT a EMPTY>]><a/>",
         "<!DOCTYPE a [<?p ]> ?><!ELEMENT a EMPTY>]><a/>", "<!DOCTYPE a [%e;]><a/>",
@@ -300,3 +300,22 @@ test "DOCTYPE skipping honors quoted spans and prolog placement":
         "<!DOCTYPE a [<!ENTITY x \"]>]><a/>", "<!DOCTYPE a [<!ELEMENT a EMPTY><a/>"
     ]:
         try expect_true(parse(rejected).is_error())
+
+test "DOCTYPE public identifiers accept only XML PubidChar scalars":
+    let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+    for quote in ["\"", "'"]:
+        for invalid in ["[", "]", "<", ">", "&", "\t", "é", "😀", "\"", "\\", "{", "}"]:
+            if invalid == quote: continue
+            try expect_equal(
+                parse("<!DOCTYPE a PUBLIC {quote}left{invalid}right{quote} 'unused'><a/>"),
+                malformed
+            )
+        for valid in ["", "azAZ09", " \r\n-()+,./:=?;!*#@$_%", "-//W3C//DTD XHTML 1.0 Strict//EN"]:
+            try expect_equal(
+                (try parse("<!DOCTYPE a PUBLIC {quote}{valid}{quote} 'unused'><a/>")).tag(),
+                "a"
+            )
+    try expect_true(parse("<!DOCTYPE a PUBLIC \"apostrophe's\" 'unused'><a/>").is_ok())
+    // A system literal has a different grammar; brackets and Unicode stay legal there.
+    try expect_true(parse("<!DOCTYPE a SYSTEM 'é[<&>😀'><a/>").is_ok())
+    try expect_true(parse("<!DOCTYPE a PUBLIC 'valid' 'é[<&>😀'><a/>").is_ok())
