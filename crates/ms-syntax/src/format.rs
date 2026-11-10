@@ -324,9 +324,15 @@ fn wrap_import(parts: &[Token], flat: &str, source: &str) -> Option<String> {
     {
         return None;
     }
+    // `from` is also a valid imported name, so the clause boundary is the token
+    // just before the path, not the first token spelled `from`.
     let from = parts
         .iter()
-        .position(|t| t.kind != Tok::Import && text(t) == "from")?;
+        .position(|t| t.kind == Tok::String)?
+        .checked_sub(1)?;
+    if from == 0 || text(&parts[from]) != "from" {
+        return None;
+    }
     let indent = " ".repeat(parts[0].pos.column as usize - 1);
     let mut out = format!("{indent}import (\n");
     for t in parts[1..from].iter().filter(|t| t.kind == Tok::Name) {
