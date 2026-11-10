@@ -166,8 +166,7 @@ export type DescriptorSink:
 // An OS write failure is terminal: bytes may have been partly written, so later drains must not hide it.
 fn descriptor_write_result(id: Int) Unit!:
     let message = msrt_streams_error(id)
-    if message.length() > 0:
-        return error(Error(message, kind: "EIO"))
+    if message.length() > 0: return error(Error(message, kind: "EIO"))
 
     return ok(unit)
 
@@ -184,8 +183,7 @@ impl Sink[Bytes] for DescriptorSink:
             return error(Error("stream: closed", kind: "EBADF"))
 
         try descriptor_write_result(self.id)
-        if msrt_streams_buffered(self.id) > HIGH_WATER:
-            return flush_descriptor(self.id)
+        if msrt_streams_buffered(self.id) > HIGH_WATER: return flush_descriptor(self.id)
 
     // Waits until the queued bytes have been handed to the descriptor; an OS write failure returns `EIO`.
     var fn flush() Unit!:
