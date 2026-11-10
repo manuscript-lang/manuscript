@@ -1,0 +1,4 @@
+[project]
+name = "pi-mock-llm"
+source = "./src"
+entry = "./src/main.ms"
