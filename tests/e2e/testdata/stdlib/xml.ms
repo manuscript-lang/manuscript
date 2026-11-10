@@ -261,3 +261,20 @@ test "carriage returns survive a stringify and parse round trip":
     let back = parse(text).get()
     try expect_equal(back.text(), "t\r\nu")
     try expect_equal(back.attribute("k").get(""), "p\rq\nr\ts")
+
+test "DOCTYPE skipping honors quoted spans and prolog placement":
+    for accepted in [
+        "<!DOCTYPE a SYSTEM \"a>b\"><a/>", "<!DOCTYPE a SYSTEM 'a>b'><a/>",
+        "<!DOCTYPE a PUBLIC \"-//x]//y\" \"u>v\"><a/>",
+        "<!DOCTYPE a [<!ENTITY x \"]>\">]><a/>",
+        "<!DOCTYPE a [<!-- ]> --><!ELEMENT a EMPTY>]><a/>",
+        "<!DOCTYPE a [<?p ]> ?><!ELEMENT a EMPTY>]><a/>", "<!DOCTYPE a [%e;]><a/>",
+        "<?xml version=\"1.0\"?><!--c--><!DOCTYPE a><!--d--><a/>"
+    ]:
+        try expect_true(parse(accepted).is_ok())
+    for rejected in [
+        "<a/><!DOCTYPE a>", "<!DOCTYPE a><!DOCTYPE a><a/>", "<!DOCTYPEa><a/>",
+        "<!DOCTYPE><a/>", "<!DOCTYPE a SYSTEM><a/>",
+        "<!DOCTYPE a [<!ENTITY x \"]>]><a/>", "<!DOCTYPE a [<!ELEMENT a EMPTY><a/>"
+    ]:
+        try expect_true(parse(rejected).is_error())
