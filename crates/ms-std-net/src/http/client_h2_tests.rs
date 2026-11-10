@@ -291,6 +291,40 @@ fn wait_for(log: &Log, entry: &str) -> bool {
 }
 
 #[test]
+fn legacy_cookie_expiry_is_honored_on_the_next_request() {
+    let (address, _, _) = serve(|req, _| {
+        let cookie = match req.path() {
+            "/set" => Some("a=live; Path=/; Expires=Fri Jan  1 00:00:00 2100"),
+            "/delete-rfc850" => Some("a=gone; Path=/; Expires=Thursday, 01-Jan-70 00:00:01 GMT"),
+            "/delete-asctime" => Some("a=gone; Path=/; Expires=Thu Jan  1 00:00:01 1970"),
+            _ => None,
+        };
+        Reply::Respond {
+            status: 200,
+            headers: cookie
+                .into_iter()
+                .map(|c| ("set-cookie".into(), c.into()))
+                .collect(),
+            body: req.get("cookie").unwrap_or("").as_bytes().to_vec(),
+        }
+    });
+    let (_net, c) = client(ClientOptions {
+        cookies: true,
+        ..ClientOptions::default()
+    });
+    for path in ["/delete-rfc850", "/delete-asctime"] {
+        text(&c.send(request("GET", &address, "/set")).unwrap());
+        assert_eq!(
+            text(&c.send(request("GET", &address, path)).unwrap()),
+            "a=live"
+        );
+        let response = c.send(request("GET", &address, "/echo")).unwrap();
+        assert_eq!(response.protocol, "HTTP/2.0");
+        assert_eq!(text(&response), "");
+    }
+}
+
+#[test]
 fn custom_method_case_does_not_discard_response_bodies() {
     let (address, _, _) = serve(|req, _| ok(req.method().as_bytes().to_vec()));
     let (_net, c) = client(ClientOptions::default());
