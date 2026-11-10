@@ -206,3 +206,23 @@ fn exported_generic_defaults_cannot_expose_private_types() {
         "{got:?}"
     );
 }
+
+#[test]
+fn bounds_may_omit_defaulted_interface_arguments_in_either_order() {
+    for source in [
+        include_str!("../tests/type_argument_defaults/bound_before.ms"),
+        include_str!("../tests/type_argument_defaults/bound_after.ms"),
+    ] {
+        let got = diagnostics(source);
+        assert!(got.is_empty(), "{got:?}");
+    }
+}
+
+#[test]
+fn defaulted_bound_arguments_still_reject_mismatching_implementations() {
+    let got = diagnostics(include_str!(
+        "../tests/type_argument_defaults/bound_mismatch.ms"
+    ));
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert!(got[0].message.contains("Named"), "{got:?}");
+}

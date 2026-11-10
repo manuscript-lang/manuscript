@@ -168,8 +168,8 @@ pub struct CallbackReturns {
 pub struct DeferredTypeDefault {
     /// Default type.
     pub resolved: Ty,
-    /// Bounds it must satisfy, with its own variable replaced by the default.
-    pub bounds: Vec<Ty>,
+    /// The defaulted variable; its bounds, resolved after defaults, must hold for the default.
+    pub variable: Ty,
     /// Where to report.
     pub pos: Pos,
     /// File of the declaring module.
@@ -694,8 +694,8 @@ impl Checker {
         self.import_symbols(module);
         self.declare_symbols(module);
         self.declare_type_variables(module);
-        self.resolve_declaration_bounds(module);
         self.resolve_declaration_defaults(module);
+        self.resolve_declaration_bounds(module);
         self.resolve_signatures(module);
         self.check_constant_cycles(module);
         for d in &module.decls {
@@ -752,11 +752,11 @@ impl Checker {
         }
         for module in group {
             self.enter_module(module);
-            self.resolve_declaration_bounds(module);
+            self.resolve_declaration_defaults(module);
         }
         for module in group {
             self.enter_module(module);
-            self.resolve_declaration_defaults(module);
+            self.resolve_declaration_bounds(module);
         }
         for module in group {
             self.enter_module(module);
@@ -1132,14 +1132,9 @@ impl Checker {
             if invalid_ty(&resolved) {
                 continue;
             }
-            let bindings = Subst::from([(vars[index].id, resolved.clone())]);
             self.deferred_type_defaults.push(DeferredTypeDefault {
                 resolved: resolved.clone(),
-                bounds: vars[index]
-                    .bounds()
-                    .iter()
-                    .map(|bound| sub(bound, &bindings))
-                    .collect(),
+                variable: vars[index].clone(),
                 pos: default.pos,
                 module: self.m(),
             });
@@ -1154,7 +1149,9 @@ impl Checker {
         for check in std::mem::take(&mut self.deferred_type_defaults) {
             self.module = Some(check.module);
             self.well_formed(&check.resolved, check.pos, &mut HashSet::new());
-            for bound in check.bounds {
+            let bindings = Subst::from([(check.variable.id, check.resolved.clone())]);
+            for bound in check.variable.bounds() {
+                let bound = sub(&bound, &bindings);
                 if !self.satisfies(&check.resolved, &bound) {
                     let message = self.unsatisfied_message(
                         &check.resolved,
