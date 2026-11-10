@@ -392,13 +392,13 @@ pub fn expand_braces(pattern: &str) -> Option<Vec<String>> {
         if fields.len() > 3 {
             return None;
         }
-        let mut step: i64 = 1;
+        let mut step: i128 = 1;
         if fields.len() == 3 {
             let n = atoi(fields[2])?;
             if n == 0 {
                 return None;
             }
-            step = n.abs();
+            step = i128::from(n).abs();
         }
         let (mut lo, mut hi, mut alpha) = (atoi(fields[0]), atoi(fields[1]), false);
         if lo.is_none() || hi.is_none() {
@@ -413,7 +413,7 @@ pub fn expand_braces(pattern: &str) -> Option<Vec<String>> {
         let (lo, hi) = (lo?, hi?);
         if !(-100_000..=100_000).contains(&lo)
             || !(-100_000..=100_000).contains(&hi)
-            || (lo - hi).abs() / step > 1024
+            || i128::from(lo - hi).abs() / step > 1024
         {
             return None;
         }
@@ -428,7 +428,8 @@ pub fn expand_braces(pattern: &str) -> Option<Vec<String>> {
             step = -step;
         }
         parts.clear();
-        let mut n = lo;
+        let mut n = i128::from(lo);
+        let hi = i128::from(hi);
         while (step > 0 && n <= hi) || (step < 0 && n >= hi) {
             parts.push(if alpha {
                 char::from_u32(n as u32)
@@ -475,6 +476,19 @@ mod tests {
 
     fn m(pattern: &str, value: &str) -> bool {
         Glob::new(pattern).unwrap().matches(value)
+    }
+
+    #[test]
+    fn brace_range_extreme_steps() {
+        let one = |p: &str| expand_braces(p).unwrap();
+        assert_eq!(one("{1..2..9223372036854775807}"), ["1"]);
+        assert_eq!(one("{1..2..-9223372036854775808}"), ["1"]);
+        assert_eq!(one("{2..1..9223372036854775807}"), ["2"]);
+        assert_eq!(one("{2..1..-9223372036854775808}"), ["2"]);
+        assert_eq!(one("{1..5..2}"), ["1", "3", "5"]);
+        assert_eq!(one("{5..1..-2}"), ["5", "3", "1"]);
+        assert_eq!(one("{01..03}"), ["01", "02", "03"]);
+        assert_eq!(one("{a..c..2}"), ["a", "c"]);
     }
 
     #[test]
