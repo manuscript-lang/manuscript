@@ -1,5 +1,7 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 type Body:
     x: Float
@@ -47,7 +49,7 @@ fn sieve(n: Int) Int:
 
     return count
 
-fn advance(bodies: List[Body], steps: Int) Float:
+fn advance(var bodies: List[Body], steps: Int) Float:
     n := bodies.length()
     var s = 0
 
@@ -55,11 +57,11 @@ fn advance(bodies: List[Body], steps: Int) Float:
         var i = 0
 
         while i < n:
-            var a = bodies.get(i)
+            var a = bodies.get(i).clone()
             var j = i + 1
 
             while j < n:
-                var b = bodies.get(j)
+                var b = bodies.get(j).clone()
                 dx := a.x - b.x
                 dy := a.y - b.y
                 dz := a.z - b.z
@@ -71,17 +73,20 @@ fn advance(bodies: List[Body], steps: Int) Float:
                 b.vx += dx * a.mass * mag
                 b.vy += dy * a.mass * mag
                 b.vz += dz * a.mass * mag
+                bodies.set(j, b)
                 j += 1
 
+            bodies.set(i, a)
             i += 1
 
         i = 0
 
         while i < n:
-            var a = bodies.get(i)
+            var a = bodies.get(i).clone()
             a.x += 0.01 * a.vx
             a.y += 0.01 * a.vy
             a.z += 0.01 * a.vz
+            bodies.set(i, a)
             i += 1
 
         s += 1
@@ -190,7 +195,7 @@ fn matmul(n: Int) Float:
             var k = 0
 
             while k < n:
-                s += a.get_or(i, k) * b.get_or(k, j)
+                s += a.get(i).get(k) * b.get(k).get(j)
                 k += 1
 
             total += s
@@ -201,8 +206,7 @@ fn matmul(n: Int) Float:
     return total
 
 fn make(depth: Int) Tree:
-    if depth == 0:
-        return Leaf
+    if depth == 0: return Leaf
 
     return Node(make(depth - 1), make(depth - 1))
 
@@ -233,7 +237,7 @@ fn collatz(limit: Int) Int:
 
         while x != 1:
             if x % 2 == 0:
-                x = x / 2
+                x /= 2
             else:
                 x = 3 * x + 1
 
@@ -251,7 +255,7 @@ fn wordfreq(n: Int) Int:
 
     while i < n:
         k := (i * 7919) % 5003
-        m.add(k, m.get_or(k, 0) + 1)
+        m.update(k, 0, fn count: count + 1)
         i += 1
 
     return m.length()
@@ -261,20 +265,20 @@ fn timed(name: String, run: fn() Int) Unit:
     r := run()
     say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
-export fn main() Int:
+fn main() Int:
     timed("sieve_5M", fn() Int: return sieve(5000000))
 
     timed(
         "nbody_200k",
         fn() Int:
-            bodies := [
+            var bodies = [
                 Body(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0),
                 Body(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0),
                 Body(0.0, 2.0, 0.0, 1.0, 0.0, 0.0, 1.0),
                 Body(0.0, 0.0, 3.0, 0.0, 0.0, 1.0, 1.0),
                 Body(4.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.5)
             ]
-            return (advance(bodies, 200000) * 1000.0).truncate_to_int().get(0)
+            return (advance(var bodies, 200000) * 1000.0).truncate_to_int().get(0)
     )
 
     timed("life_128x128_50", fn() Int: return life(50))
