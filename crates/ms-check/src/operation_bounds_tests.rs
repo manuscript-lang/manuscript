@@ -163,3 +163,35 @@ fn grouped_modules_register_generic_arities_before_resolving_bounds() {
         assert!(got.is_empty(), "{got:?}");
     }
 }
+
+const RELATION: &str = "interface Relation[T]:
+    fn compare(other: T) Int
+
+interface Reader[A]:
+    fn read[T: Relation[A]](value: T) Int
+";
+
+#[test]
+fn implementations_compare_bounds_after_interface_substitution() {
+    for source in [
+        // A concrete argument, with the operation parameter renamed.
+        "type Source:\n    number: Int\n\nimpl Reader[Int] for Source:\n    fn read[T: Relation[Int]](value: T) Int:\n        return self.number\n",
+        "type Source:\n    number: Int\n\nimpl Reader[Int] for Source:\n    fn read[U: Relation[Int]](value: U) Int:\n        return self.number\n",
+        // A generic receiver passing its own parameter.
+        "type Source[B]:\n    number: Int\n\nimpl Reader[B] for Source[B]:\n    fn read[T: Relation[B]](value: T) Int:\n        return self.number\n",
+    ] {
+        let got = diagnostics(&format!("{RELATION}\n{source}"));
+        assert!(got.is_empty(), "{got:?} for {source}");
+    }
+}
+
+#[test]
+fn implementations_still_reject_mismatched_substituted_bounds() {
+    let source = "type Source:\n    number: Int\n\nimpl Reader[Int] for Source:\n    fn read[T: Relation[String]](value: T) Int:\n        return self.number\n";
+    let got = diagnostics(&format!("{RELATION}\n{source}"));
+    assert!(
+        got.iter()
+            .any(|d| d.contains("type parameters do not match contract")),
+        "{got:?}"
+    );
+}
