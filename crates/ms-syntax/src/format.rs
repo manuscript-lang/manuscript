@@ -346,12 +346,7 @@ fn expand_indent_tabs(file: &Arc<str>, text: &str) -> PResult<String> {
         .filter(|t| t.kind == Tok::String && text[t.lo as usize..t.hi as usize].contains('\n'))
         .map(|t| (t.lo as usize, t.hi as usize))
         .collect();
-    protected.extend(
-        lexed
-            .block_comments
-            .iter()
-            .map(|&(lo, hi)| (lo as usize, hi as usize)),
-    );
+    protected.extend(lexed.block_comments.iter().copied());
     let mut out = String::with_capacity(text.len() + 16);
     let mut at = 0;
     for line in text.split_inclusive('\n') {
