@@ -63,6 +63,30 @@ test "rows match parse under every chunk size":
 test "a final record without a line end is read at the end":
     try expect_equal(try read_rows("a,b\nc,d", 3), [["a", "b"], ["c", "d"]])
 
+test "large fragmented records preserve rows and exact record budgets":
+    let field = try "é\"日\n".repeat(1024)
+    let encoded = "\"{field.replace("\"", "\"\"")}\",tail\r"
+    let text = "first,row\n{encoded}\nlast,row"
+    let expected = [["first", "row"], [field, "tail"], ["last", "row"]]
+    let limit = encoded.byte_length()
+
+    for size in [1, 2, 7, 64, 4096, text.byte_length()]:
+        try expect_equal(try read_rows(text, size, max_record_bytes: limit), expected)
+        try expect_equal(
+            read_rows(text, size, max_record_bytes: limit - 1).err().kind, "EOVERFLOW"
+        )
+
+    var chunks: List[Bytes] = ["".to_bytes()]
+
+    for byte in "a,\"é\"\r\nb,c\nlast,row".to_bytes().values():
+        var chunk = BytesBuilder()
+        chunk.append(byte)
+        chunks.append(chunk.build())
+        chunks.append("".to_bytes())
+
+    from_list(chunks) | csv_rows | try collect(none)
+        | try expect_equal([["a", "é"], ["b", "c"], ["last", "row"]])
+
 test "options apply":
     let semicolons = CsvOptions(delimiter: ";")
     try expect_equal(
@@ -111,6 +135,28 @@ test "the record budget reports LimitExceeded":
         try read_rows("ab,cd\nef,gh\n", 3, CsvOptions(), 8),
         [["ab", "cd"], ["ef", "gh"]]
     )
+
+test "continued reads after a record limit error keep only the consumed tail":
+    for chunks in [
+        ["ab", "cd\n", "x\n"], ["ab", "cd\nx", "\n"], ["ab", "cd\n\"", "x\"\n"]
+    ]:
+        var data: List[Bytes] = []
+        for chunk in chunks:
+            data.append(chunk.to_bytes())
+
+        var rows = csv_rows(from_list(data), max_record_bytes: 3)
+        try expect_equal(rows.next().err().kind, "EOVERFLOW")
+        try expect_equal((try rows.next()).get(), ["x"])
+        try expect_equal((try rows.next()).is_none(), true)
+
+    let input = from_list(
+        ["ab".to_bytes(), "cd".to_bytes(), "\n".to_bytes(), "x\n".to_bytes()]
+    )
+    var rows = csv_rows(input, max_record_bytes: 3)
+    try expect_equal(rows.next().err().kind, "EOVERFLOW")
+    try expect_equal(rows.next().err().kind, "EOVERFLOW")
+    try expect_equal((try rows.next()).get(), ["x"])
+    try expect_equal((try rows.next()).is_none(), true)
 
 test "the record budget does not depend on where chunks end":
     for size in 1..12:

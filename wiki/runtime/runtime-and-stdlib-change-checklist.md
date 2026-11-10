@@ -94,5 +94,9 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
 - CSV stream EOF must validate options even when its buffered tail is empty. The
   empty return formerly accepted invalid delimiters and line endings on empty
   input; `csv-rows.ms` covers no chunks, empty chunks and nonempty controls.
+- CSV streams retain unfinished chunks and join only at completion/EOF (#3362).
+  Update buffered fragments and quote state together before returning a record
+  budget error: callers can continue reading, so stale fragments would corrupt
+  later rows. Keep the continued-read regression alongside exact-limit tests.
 
 - Weighted selection normalizes finite nonnegative weights by their largest entry when the raw total overflows or is subnormal. Reuse the validated normal total and preserve its direct selection loop. Raw sums can overflow, and raw subnormal draw points round equal weights into unequal bins. Keep secure and seeded selection on the same scale, exclude zero weights, and use fixed-seed comparisons across huge/subnormal and ordinary equivalent ratios (`random-weight-ranges.ms`, #3348). Do not multiply by a reciprocal: a minimum-subnormal scale has an infinite reciprocal.
