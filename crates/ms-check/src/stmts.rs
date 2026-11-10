@@ -1605,7 +1605,6 @@ impl Checker {
             };
         };
         let mut states: Vec<ArmState> = Vec::new();
-        let mut result_at = Pos::default();
         {
             let mut collect = |c: &mut Checker, arm: &'a Arm| {
                 let (normal, breaks) = c.block(&arm.body, false);
@@ -1664,7 +1663,6 @@ impl Checker {
                             } else {
                                 t
                             });
-                            result_at = value.pos;
                         }
                         // A chain's present value becomes optional by being checked
                         // again against the optional result.
@@ -1717,12 +1715,12 @@ impl Checker {
                 && !compatible(&Some(unit()), r)
             {
                 self.type_error(
-                            arm.pos,
-                            format!(
-                                "match arm requires a final value of type {r_t}, because the arm at line {} ends in an expression and makes this match a value; end every arm with a value, or bind the unused result with 'ignored := ...' so the match stays a statement",
-                                result_at.line
-                            , r_t = r.display(self.syms)),
-                        );
+                    arm.pos,
+                    format!(
+                        "match arm requires a final value of type {r_t}; this arm produces Unit; end the arm with a value of the required type",
+                        r_t = r.display(self.syms)
+                    ),
+                );
             }
             fall = fall || normal;
         }
