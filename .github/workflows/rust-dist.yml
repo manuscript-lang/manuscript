@@ -77,6 +77,7 @@ jobs:
             tar -xzf "dist/$name.tar.gz" -C "extracted distribution"
             ms="extracted distribution/$name/ms"
           fi
+          cmp LICENSE "extracted distribution/$name/LICENSE"
           "$ms" --version
           cd "extracted distribution/$name/examples/hello"
           bin="../../$(basename "$ms")"
