@@ -4,7 +4,6 @@ import (
 	cos,
 	cosh,
 	exp,
-	fma,
 	frexp,
 	hypot,
 	ldexp,
@@ -91,33 +90,6 @@ fn smith_divide(numerator: Complex, other: Complex) Complex:
 		re: (numerator.re * ratio + numerator.im) / denominator,
 		im: (numerator.im * ratio - numerator.re) / denominator
 	)
-
-// The sum of two values and its exact rounding error, as (sum, error).
-fn two_sum(left: Float, right: Float) List[Float]:
-	sum := left + right
-	virtual := sum - left
-	return [sum, (left - (sum - virtual)) + (right - virtual)]
-
-/*
-The real part of the principal logarithm, log(modulus). A subnormal modulus is rescaled first, since its rounded value has lost bits the logarithm
-needs. Near the unit circle the rounded modulus is one and its logarithm zero, so log1p(re^2 + im^2 - 1) / 2 is used instead, with the
-rounding errors of the squares and of the sum kept as a correction.
-*/
-fn log_magnitude(re: Float, im: Float, modulus: Float) Float:
-	if modulus > 0.0 and modulus < 2.2250738585072014e-308:
-		return log(hypot(ldexp(re, 600), ldexp(im, 600))) - 600.0 * 0.6931471805599453
-	if not (modulus >= 0.5 and modulus <= 2.0): return log(modulus)
-
-	first := re.abs().max(im.abs())
-	second := re.abs().min(im.abs())
-	first_square := first * first
-	second_square := second * second
-	first_error := fma(first, first, -first_square)
-	second_error := fma(second, second, -second_square)
-	shifted := two_sum(first_square, -1.0)
-	total := two_sum(shifted[0], second_square)
-	correction := shifted[1] + total[1] + first_error + second_error
-	return log1p(total[0] + correction) / 2.0
 
 impl Complex:
 	// Returns the sum, adding real and imaginary parts separately with Float rounding.
@@ -239,7 +211,7 @@ impl Complex:
 				im: self.phase()
 			)
 
-		return Complex(re: log_magnitude(self.re, self.im, modulus), im: self.phase())
+		return Complex(re: log(modulus), im: self.phase())
 
 	// Returns the principal square root, with a non-negative real part.
 	fn sqrt() Complex:

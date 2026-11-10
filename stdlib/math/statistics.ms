@@ -11,10 +11,6 @@ A violated precondition (a percentile outside 0 to 100, mismatched list lengths,
 `statistics.mean([1.0, 2.0, 6.0])` is `3.0`.
 */
 
-// The smallest mean square deviation, as a fraction of the squared mean, for which plain centering keeps the spread: regression 2^-20, correlation 2^-48 (its relative error stays below about 1e-8).
-REGRESSION_FLOOR := 9.5367431640625e-7
-CORRELATION_FLOOR := 3.552713678800501e-15
-
 // Equal-width counts over a range of values, from `bin_counts`. (`@std/data/histogram.ms` has the recording `Histogram`.)
 export type BinCounts:
 	// The least value counted, which is the lower edge of the first bin.
@@ -454,28 +450,6 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 
 	// Correlation is unchanged by scaling each list, so power-of-two scaling keeps every square and product in range.
 	if s := spread(unit_scaled(xs), unit_scaled(ys)):
-		// A constant list has exactly zero deviations around its rounded mean; any other finite list has some.
-		flat := s.xx == 0.0 or s.yy == 0.0
-		if flat and s.mean_x.is_finite() and s.mean_y.is_finite(): return none
-		if (
-			not flat
-			and well_conditioned(
-				s.mean_x, s.xx, xs.length(), false, CORRELATION_FLOOR
-			)
-			and well_conditioned(
-				s.mean_y, s.yy, ys.length(), false, CORRELATION_FLOOR
-			)
-		):
-			return s.xy / (sqrt(s.xx) * sqrt(s.yy))
-
-		if x_exponent := unit_exponent(xs):
-			if y_exponent := unit_exponent(ys):
-				sums := finite_sums(xs, ys, x_exponent, y_exponent)
-				if sums.xx == 0.0 or sums.yy == 0.0: return none
-
-				return sums.xy / (sqrt(sums.xx) * sqrt(sums.yy))
-
-		// Nonfinite input follows Float rules around the plain means.
 		if s.xx == 0.0 or s.yy == 0.0: return none
 
 		return s.xy / (sqrt(s.xx) * sqrt(s.yy))
@@ -504,12 +478,8 @@ Example: `linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0])` has slope `2.0` a
 export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:
 	if s := spread(xs, ys):
 		if (
-			well_conditioned(
-				s.mean_x, s.xx, xs.length(), false, REGRESSION_FLOOR
-			)
-			and well_conditioned(
-				s.mean_y, s.yy, ys.length(), true, REGRESSION_FLOOR
-			)
+			well_conditioned(s.mean_x, s.xx, xs.length(), false)
+			and well_conditioned(s.mean_y, s.yy, ys.length(), true)
 		):
 			slope := s.xy / s.xx
 			return Regression(slope: slope, intercept: s.mean_y - slope * s.mean_x)
@@ -528,20 +498,14 @@ export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:
 
 /*
 Whether the plain sum of squared deviations `squares` around `mean` is trustworthy: it neither overflowed nor lost precision to
-underflow, and the spread is not lost against a large common offset (mean square deviation above `floor` of the squared mean).
+underflow, and the spread is not lost against a large common offset (mean square deviation above 2^-20 of the squared mean).
 A flat list (`allow_flat`) has no spread to lose. Anything else, including nonfinite input, takes the scaled path or plain Float rules.
 */
-fn well_conditioned(
-	mean: Float,
-	squares: Float,
-	count: Int,
-	allow_flat: Bool,
-	floor: Float
-) Bool:
+fn well_conditioned(mean: Float, squares: Float, count: Int, allow_flat: Bool) Bool:
 	if squares == 0.0: return allow_flat and mean.is_finite()
 	if not (squares >= 1e-250 and squares <= 1e250): return false
 
-	return squares > mean * mean * count.to_float() * floor
+	return squares > mean * mean * count.to_float() * 9.5367431640625e-7
 
 // The exponent that brings the greatest magnitude into [0.5, 1), or none when a value is not finite; zeros give 0.
 fn unit_exponent(values: List[Float]) Int?:
@@ -574,65 +538,38 @@ fn centered(values: List[Float], exponent: Int) Centered:
 		deviations.append((ldexp(value, -exponent) - origin) - center)
 	return Centered(origin: origin, center: center, deviations: deviations)
 
-// Compensated sums of products of the unit-scaled deviations of two lists, with the units they were scaled by.
-type FiniteSums:
-	x: Centered
-	y: Centered
-	x_unit: Int
-	y_unit: Int
-	xx: Float
-	xy: Float
-	yy: Float
-
 /*
 Each list is scaled by its own power of two and measured from its first value, so squares and products stay in range and a large common
-offset keeps its variation; the deviations are then scaled again and summed with compensation.
+offset keeps its variation; the deviations are then scaled again, summed with compensation, and the units are restored at the end.
 */
-fn finite_sums(
-	xs: List[Float],
-	ys: List[Float],
-	x_exponent: Int,
-	y_exponent: Int
-) FiniteSums:
-	x := centered(xs, x_exponent)
-	y := centered(ys, y_exponent)
-	x_unit := unit_exponent(x.deviations).get(0)
-	y_unit := unit_exponent(y.deviations).get(0)
-	var xx = DeviationSum()
-	var xy = DeviationSum()
-	var yy = DeviationSum()
-
-	for i in 0..xs.length():
-		a := ldexp(x.deviations[i], -x_unit)
-		b := ldexp(y.deviations[i], -y_unit)
-		xx.add(a * a)
-		xy.add(a * b)
-		yy.add(b * b)
-
-	return FiniteSums(
-		x: x, y: y, x_unit: x_unit, y_unit: y_unit, xx: xx.value(), xy: xy.value(),
-		yy: yy.value()
-	)
-
-// The regression through the compensated sums; the units are restored at the end.
 fn finite_regression(
 	xs: List[Float],
 	ys: List[Float],
 	x_exponent: Int,
 	y_exponent: Int
 ) Regression?:
-	sums := finite_sums(xs, ys, x_exponent, y_exponent)
-	if sums.xx == 0.0: return none
+	x := centered(xs, x_exponent)
+	y := centered(ys, y_exponent)
+	x_unit := unit_exponent(x.deviations).get(0)
+	y_unit := unit_exponent(y.deviations).get(0)
+	var xx = DeviationSum()
+	var xy = DeviationSum()
 
-	ratio := sums.xy / sums.xx
-	scaled_slope := ldexp(ratio, sums.y_unit - sums.x_unit)
+	for i in 0..xs.length():
+		a := ldexp(x.deviations[i], -x_unit)
+		b := ldexp(y.deviations[i], -y_unit)
+		xx.add(a * a)
+		xy.add(a * b)
+
+	if xx.value() == 0.0: return none
+
+	ratio := xy.value() / xx.value()
+	scaled_slope := ldexp(ratio, y_unit - x_unit)
 	scaled_intercept := (
-		(sums.y.origin - scaled_slope * sums.x.origin)
-		+ (sums.y.center - scaled_slope * sums.x.center)
+		(y.origin - scaled_slope * x.origin)
+		+ (y.center - scaled_slope * x.center)
 	)
 	return Regression(
-		slope: ldexp(
-			ratio, sums.y_unit - sums.x_unit + y_exponent - x_exponent
-		),
+		slope: ldexp(ratio, y_unit - x_unit + y_exponent - x_exponent),
 		intercept: ldexp(scaled_intercept, y_exponent)
 	)
