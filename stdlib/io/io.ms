@@ -64,9 +64,7 @@ impl ReadStream[T]:
 	// With `timeout`, a read that waits that long in all (a stalled socket) fails with `ETIMEDOUT`; the source may be left mid-item, so close the stream afterwards.
 	var fn next(timeout: Duration? = none) T?!:
 		if self.closed: return ok(none)
-
-		if bound := timeout:
-			return self.next_within(bound)
+		if bound := timeout: return self.next_within(bound)
 
 		return self.source.next()
 
@@ -77,6 +75,7 @@ impl ReadStream[T]:
 
 		started := monotonic()
 		msrt_task_read_limit(nanos)
+
 		got := self.source.next()
 		msrt_task_read_limit(-1)
 		if got.is_error() and monotonic().difference(started).compare(bound) >= 0:
