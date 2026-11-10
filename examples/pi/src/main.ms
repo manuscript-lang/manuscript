@@ -1,4 +1,6 @@
 import (
+	skills, templates, from_command from "./extend.ms",
+	Provider, providers, find, api_key, save_key, split_model from "./models.ms",
 	Command, Flag, FlagKind, Arg, Matches from "@std/cli/command.ms",
 	arguments, environment from "@std/os/env.ms",
 	stdin from "@std/io/io.ms",
@@ -42,35 +44,48 @@ fn thinking_budget(level: String) Int!:
 		)
 	)
 
-fn provider_config(m: Matches) ProviderConfig!:
-	api := m.string("provider")
-	if api != "anthropic" and api != "openai": return error(
-		Error("Unknown provider {api}; use anthropic or openai")
-	)
+// Chooses the provider: --provider, a "provider/model" prefix, or the first provider that has a key.
+fn pick_provider(m: Matches) Provider!:
+	choice := split_model(m.string("model"), m.string("provider"))
+	var name = choice[0].clone()
 
-	anthropic := api == "anthropic"
-	key := if m.string("api-key").is_empty(): first_env(
-		if anthropic: ["ANTHROPIC_API_KEY"] else: ["OPENAI_API_KEY"]
-	) else: m.string("api-key")
-	if key.is_empty(): return error(
+	if name.is_empty():
+		with_key := providers().find(fn p: not api_key(p, "").is_empty())
+		if found := with_key: return ok(found)
+
+		name = "anthropic"
+
+	found := find(name)
+	if found.is_none(): return error(
 		Error(
-			"No API key: pass --api-key or set {if anthropic: "ANTHROPIC_API_KEY" else: "OPENAI_API_KEY"}"
+			"Unknown provider {name}; known: {providers().map(fn p: p.name.clone()).join(", ")}"
 		)
 	)
 
-	base := if not m.string("base-url").is_empty(): m.string("base-url") else: first_env(
-		if anthropic: ["ANTHROPIC_BASE_URL"] else: ["OPENAI_BASE_URL"]
+	return ok(found.get(none))
+
+fn provider_config(m: Matches) ProviderConfig!:
+	provider := try pick_provider(m)
+	choice := split_model(m.string("model"), provider.name)
+	key := api_key(provider, m.string("api-key"))
+	if key.is_empty(): return error(
+		Error(
+			"No API key for {provider.name}: pass --api-key, set {provider.key_env.join(" or ")}, or run /login {provider.name} <key>"
+		)
 	)
-	url := if base.is_empty(): (
-		if anthropic: "https://api.anthropic.com" else: "https://api.openai.com/v1"
-	) else: base
-	model := if m.string("model").is_empty(): (
-		if anthropic: "claude-sonnet-4-5" else: "gpt-4o"
-	) else: m.string("model")
+
+	base := if not m.string("base-url").is_empty(): m.string("base-url") else: provider.base_url.clone()
+	override := first_env(
+		[
+			"PI_{provider.name.upper()}_BASE_URL", "{provider.name.upper()}_BASE_URL"
+		]
+	)
+	url := if override.is_empty(): base else: override
+	model := if choice[1].is_empty(): provider.default_model.clone() else: choice[1].clone()
 	return ok(
 		ProviderConfig(
-			api: api, base_url: url.trim_end_chars("/"), api_key: key, model: model,
-			thinking: try thinking_budget(m.string("thinking"))
+			api: provider.api.clone(), base_url: url.trim_end_chars("/"), api_key: key,
+			model: model, thinking: try thinking_budget(m.string("thinking"))
 		)
 	)
 
@@ -151,7 +166,7 @@ fn session_label(agent: Agent) String:
 	return "(not saved)"
 
 fn help_text() String:
-	return "/help             this list\n/exit             leave pi\n/session          path of the session file\n/tools            enabled tools\n/usage            tokens used so far\n/model <id>       switch model\n/thinking <level> off, low, medium, high or a token count\n/compact [focus]  summarize the conversation to free context\n/tree             list session entries; * marks the active one\n/fork <id>        continue from an earlier entry as a new branch\n/new              start a fresh session\nEsc or Ctrl-C     abort the running turn\nAlt-Enter         insert a newline\nTab               complete a slash command\n"
+	return "/help             this list\n/exit             leave pi\n/session          path of the session file\n/tools            enabled tools\n/usage            tokens used so far\n/model <id>       switch model\n/thinking <level> off, low, medium, high or a token count\n/compact [focus]  summarize the conversation to free context\n/tree             list session entries; * marks the active one\n/fork <id>        continue from an earlier entry as a new branch\n/new              start a fresh session\n/models           list providers and models\n/login <p> <key>  save an API key\nEsc or Ctrl-C     abort the running turn\nAlt-Enter         insert a newline\nTab               complete a slash command\n"
 
 fn run_turn(var agent: Agent, text: String, images: List[JsonValue], var ui: Ui) Unit:
 	result := with_abort(fn stop: agent.prompt(text, images, var ui, stop))
@@ -193,9 +208,33 @@ fn slash(var agent: Agent, line: String) Bool:
 	else if command == "/tree": show_tree(agent)
 	else if command == "/fork": fork_to(var agent, arg)
 	else if command == "/new": new_session(var agent)
+	else if command == "/models": list_models()
+	else if command == "/skills": show_skills()
+	else if command == "/login": login(arg)
 	else: write_out("Unknown command {command}; try /help\n")
 
 	return false
+
+fn show_skills() Unit:
+	for s in skills(): write_out("skill  {s.name}: {s.description}\n")
+	for t in templates(): write_out("/{t.name}  {t.description}\n")
+
+fn login(arg: String) Unit:
+	parts := arg.split(" ", 2)
+
+	if parts.length() < 2 or find(parts[0]).is_none():
+		write_out(
+			"usage: /login <provider> <api key>; providers: {providers().map(fn p: p.name.clone()).join(", ")}\n"
+		)
+		return
+
+	saved := save_key(parts[0], parts[1].trim())
+
+	if saved.is_error():
+		write_err(red("{saved.err().message}\n"))
+		return
+
+	write_out("saved key for {parts[0]} in ~/.pi/agent/auth.json\n")
 
 fn switch_model(var agent: Agent, name: String) Unit:
 	if name.is_empty():
@@ -257,6 +296,9 @@ fn new_session(var agent: Agent) Unit:
 	agent.leaf = ""
 	write_out("new session\n")
 
+fn footer_text(agent: Agent) String:
+	return "{agent.config.model} · ↑{agent.input_tokens} ↓{agent.output_tokens} · {agent.history.length()} messages · {session_label(agent)}"
+
 fn interactive(var agent: Agent) Unit!:
 	write_out(
 		"{bold("pi")} {version} · {agent.config.model} · /help for commands, Ctrl-D to exit\n"
@@ -266,7 +308,7 @@ fn interactive(var agent: Agent) Unit!:
 	var ui: Ui = terminal_ui()
 
 	while true:
-		line := try read_line("{bold("> ")}", history)
+		line := try read_line("{bold("> ")}", history, footer_text(agent))
 		if line.is_none(): break
 
 		text := line.get("").trim()
@@ -275,6 +317,12 @@ fn interactive(var agent: Agent) Unit!:
 		history.append(text.clone())
 
 		if text.starts_with("/"):
+			expanded := from_command(text)
+
+			if prompt := expanded:
+				run_turn(var agent, prompt, List[JsonValue](), var ui)
+				continue
+
 			if slash(var agent, text): break
 
 			continue
@@ -344,7 +392,19 @@ fn rpc(var agent: Agent) Unit!:
 			f.add("error", str("Unknown command {kind}"))
 			emit_response(kind, false, f)
 
+fn list_models() Unit:
+	for p in providers():
+		marker := if api_key(p, "").is_empty(): " " else: "*"
+		write_out("{marker} {p.name} ({p.api}) {p.base_url}\n")
+		for model in p.models: write_out("    {p.name}/{model}\n")
+
+	write_out("* means a key is available\n")
+
 fn run(m: Matches) Int!:
+	if m.bool("list-models"):
+		list_models()
+		return ok(0)
+
 	config := try provider_config(m)
 	tools := try enabled_tools(m)
 	custom: String? = if m.string("system-prompt").is_empty(): none else: m.string(
@@ -457,7 +517,11 @@ fn main() Int:
 				"tools", FlagKind.String, default: "",
 				help: "Comma-separated tools to enable (read,bash,edit,write,grep,find,ls)"
 			),
-			Flag("no-tools", FlagKind.Bool, help: "Disable all tools")
+			Flag("no-tools", FlagKind.Bool, help: "Disable all tools"),
+			Flag(
+				"list-models", FlagKind.Bool,
+				help: "List providers and models, then exit"
+			)
 		],
 		args: [
 			Arg(

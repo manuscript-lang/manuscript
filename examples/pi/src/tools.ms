@@ -1,5 +1,6 @@
 // Built-in coding tools: read, write, edit, bash, ls, grep, find.
 import (
+	external_tools, run_external from "./extend.ms",
 	PromiseOptions, Signal from "@std/concurrency/promise.ms",
 	JsonValue, parse from "@std/data/json.ms",
 	read_file, write_file, create_directory, list from "@std/os/fs.ms",
@@ -195,6 +196,14 @@ export fn definitions(enabled: List[String]) List[JsonValue]:
 			)
 		)
 
+	if not enabled.is_empty():
+		for ext in external_tools():
+			var t = Map[String, JsonValue]()
+			t.add("name", str(ext.name))
+			t.add("description", str(ext.description))
+			t.add("input_schema", ext.schema.clone())
+			out.append(obj(t))
+
 	return out
 
 // Keeps the first `max_lines` lines and `max_bytes` bytes, noting what was cut.
@@ -377,6 +386,8 @@ fn dispatch(name: String, args: JsonValue, stop: Signal) String!:
 	if name == "find": return tool_find(args)
 	if name == "grep": return tool_grep(args)
 
+	for ext in external_tools():
+		if ext.name == name: return run_external(ext, args)
 	return error(Error("Unknown tool: {name}"))
 
 // Runs one tool call. Failures become error results the model can read.

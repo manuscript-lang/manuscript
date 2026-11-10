@@ -1,5 +1,6 @@
 // System prompt assembly: tool guidance, project context files, date and working directory.
 import (
+	skills_prompt from "./extend.ms",
 	read_file from "@std/os/fs.ms",
 	working_directory from "@std/os/env.ms",
 	dirname, join from "@std/os/path.ms",
@@ -56,6 +57,9 @@ export fn build(tools: List[String], custom: String?, append: String) String:
 		out = "You are an expert coding assistant operating inside pi, a coding agent harness. You help users by reading files, executing commands, editing code, and writing new files.\n\nAvailable tools:\n{listing}\n\nGuidelines:\n- Use bash for file operations like ls, rg, find\n- Use read to examine files before editing; use edit for precise changes and write only for new files or complete rewrites\n- When summarizing your actions, output plain text directly; do not use cat or bash to display what you did\n- Be concise in your responses\n- Show file paths clearly when working with files"
 
 	if not append.is_empty(): out = "{out}\n\n{append}"
+
+	skills := skills_prompt()
+	if not skills.is_empty(): out = "{out}\n\n{skills}"
 
 	files := context_files()
 	if not files.is_empty(): out = "{out}\n\n# Project Context\n\n{files}"
