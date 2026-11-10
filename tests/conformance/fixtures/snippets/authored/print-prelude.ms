@@ -11,5 +11,5 @@ fn main() Unit:
     print(Point(1, 2))
     print([1, 2, 3])
 
-    let name = "ms"
+    name := "ms"
     print("name: {name}")

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -29,22 +29,22 @@ export fn main() Int:
     else:
         say(("Tab\there" + "quote\"d"))
 
-    let s1 = "héllo"
+    s1 := "héllo"
     say("s1 = [{s1}]")
 
-    let l2 = [(-21), (-9), 10, 0, 17]
+    l2 := [(-21), (-9), 10, 0, 17]
     say("l2 = {l2} len {l2.length()}")
 
-    let s3 = "héllo".reverse()
+    s3 := "héllo".reverse()
     say("s3 = [{s3}]")
 
-    let i4 = ((-2) % l2.get(2))
+    i4 := ((-2) % l2.get(2))
     say("i4 = {i4}")
 
-    let s5 = (s1 + "x").trim().replace("quote\"d", s1)
+    s5 := (s1 + "x").trim().replace("quote\"d", s1)
     say("s5 = [{s5}]")
 
-    let f6 = (
+    f6 := (
         (1.0e25 - (238.574 * 614.272))
         - ((547.25 - 715.296) * (745.541 - 19.324))
     )
@@ -55,6 +55,6 @@ export fn main() Int:
     else:
         say(s1.lower())
 
-    let s7 = ("{i4}:" + s1)
+    s7 := ("{i4}:" + s1)
     say("s7 = [{s7}]")
     return 0

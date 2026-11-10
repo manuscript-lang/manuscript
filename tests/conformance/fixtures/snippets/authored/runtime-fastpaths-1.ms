@@ -12,7 +12,7 @@ fn compare(left: Int, right: Int) Int:
     return 0
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    _ignored := stdout().write(text)
 
 fn main() Unit:
     var b = StringBuilder()
@@ -25,13 +25,13 @@ fn main() Unit:
 
     b.append("{9223372036854775807}|{-9223372036854775807}|")
 
-    let joined = b.build()
+    joined := b.build()
     say("{joined}\n")
 
     var total = 0
 
     for part in "12,-7,+5,x,,99999999999999999999,999999999999999999".split(","):
-        if let v = part.parse_int():
+        if v := part.parse_int():
             total += v
         else:
             total += 1
@@ -51,7 +51,7 @@ fn main() Unit:
         xs.append(k * 7919 % 101)
         k += 1
 
-    let sorted = xs.sorted(compare)
+    sorted := xs.sorted(compare)
     say("{sorted.get(0)} {sorted.get(100)} {sorted.get(199)}\n")
 
     var ordered = true

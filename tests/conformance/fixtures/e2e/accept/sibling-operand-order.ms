@@ -7,7 +7,7 @@ import Decimal from "@std/math/decimal.ms"
 test "list elements read before a later match assigns them":
     var x = 1
     var y = "a"
-    let items = [
+    items := [
         x,
         match present(5):
             value:
@@ -19,7 +19,7 @@ test "list elements read before a later match assigns them":
     ]
     try expect_equal(items, [1, 5, 50])
 
-    let texts = [
+    texts := [
         y,
         match present("b"):
             value:
@@ -31,7 +31,7 @@ test "list elements read before a later match assigns them":
 
 test "map keys read before a later match assigns them":
     var key = 1
-    let entries = {
+    entries := {
         key: match present(5):
             value:
                 key = 50
@@ -45,7 +45,7 @@ test "map keys read before a later match assigns them":
 
 test "generic binary operands read before a later match assigns them":
     var amount = 1.5d
-    let sum = amount + match present(2.5d):
+    sum := amount + match present(2.5d):
         value:
             amount = 100d
             value

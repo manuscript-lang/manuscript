@@ -164,9 +164,11 @@ pub fn context_at(d: &Document, p: Position) -> Result<CursorContext, &'static s
         .map_or(0, |at| at + 1);
     let line: Vec<&EditorToken> = before.iter().filter(|t| t.start >= line_start).collect();
     let has = |c: u8| line.iter().any(|t| t.is(c));
-    let binding = line
-        .first()
-        .is_some_and(|t| t.is_name("let") || t.is_name("var"));
+    let binding = line.first().is_some_and(|t| t.is_name("var"))
+        || (line
+            .first()
+            .is_some_and(|t| t.kind == crate::text::EditorKind::Name)
+            && line.get(1).is_some_and(|t| t.is(b':')));
     c.declaration = declaration_start(&d.text, line_start);
     c.type_context = (binding && has(b':') && !has(b'='))
         || function_result_at(&before)
@@ -518,12 +520,26 @@ pub fn query_editor(
             .map_or(bytes.len(), |at| at + c.start);
         let line = modified.text[line_start..line_end].to_string();
         let trimmed = line.trim();
-        if trimmed.starts_with("let ") || trimmed.starts_with("var ") {
+        // `var x: T` or a typed immutable `x: T = v` inside a function body; a field or
+        // parameter line has the same shape but is not a local binding.
+        let in_body = line.starts_with([' ', '\t'])
+            && d.text[c.declaration..]
+                .trim_start()
+                .trim_start_matches("export ")
+                .starts_with("fn ")
+            && !text::previous_code_line(&d.text, line_start)
+                .is_some_and(|previous| previous.ends_with(['(', ',']));
+        if trimmed.starts_with("var ")
+            || (in_body
+                && trimmed.split_once(':').is_some_and(|(name, _)| {
+                    !name.is_empty() && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+                }))
+        {
             // Query the lexical environment before this local annotation. A type
             // marker alone cannot capture bindings that shadow a prelude type.
             let indent = &line[..line.len() - line.trim_start_matches([' ', '\t']).len()];
             modified.text = format!(
-                "{}{indent}let {marker}_value = {marker}{}",
+                "{}{indent}{marker}_value := {marker}{}",
                 &modified.text[..line_start],
                 &modified.text[line_end..]
             );
@@ -591,9 +607,9 @@ pub fn query_editor(
                 if let Some(at) = prefix.rfind(" = ") {
                     prefix = prefix[at + 3..].to_string();
                 }
-                lines[line] = format!("{spaces}let {marker}_value = {}{marker}", prefix.trim());
+                lines[line] = format!("{spaces}{marker}_value := {}{marker}", prefix.trim());
             } else {
-                lines[line] = format!("{spaces}let {marker}_value = {marker}");
+                lines[line] = format!("{spaces}{marker}_value := {marker}");
             }
             if lines[line] == current {
                 break;
@@ -848,7 +864,7 @@ mod literal_context_tests {
         for newline in ["\n", "\r\n"] {
             for prefix in ["", "r"] {
                 for quotes in ["", "\"", "\"\""] {
-                    let source = format!("let text = {prefix}\"\"\"\n    payload\n    {quotes}")
+                    let source = format!("text := {prefix}\"\"\"\n    payload\n    {quotes}")
                         .replace('\n', newline);
                     let d = Document::new("file:///closing.ms", &source);
                     assert!(
@@ -866,34 +882,30 @@ mod literal_context_tests {
     fn incomplete_multiline_context_survives_unrelated_errors() {
         for newline in ["\n", "\r\n"] {
             for (source, literal, member) in [
-                ("let text = \"\"\"\n    é😀 {value.member", false, true),
+                ("text := \"\"\"\n    é😀 {value.member", false, true),
                 (
-                    "let broken = \"bad\nlet text = \"\"\"\n    ok\n    \"\"\"\nlet other = value.member",
+                    "broken := \"bad\ntext := \"\"\"\n    ok\n    \"\"\"\nother := value.member",
                     false,
                     true,
                 ),
                 (
-                    "let broken = \"\nlet text = \"\"\"\n    {value.member}\n    \"\"\"\n",
+                    "broken := \"\ntext := \"\"\"\n    {value.member}\n    \"\"\"\n",
                     false,
                     true,
                 ),
                 (
-                    "let text = \"\"\"\n    {value.member}\n    \"\"\"\nlet broken = \"",
+                    "text := \"\"\"\n    {value.member}\n    \"\"\"\nbroken := \"",
                     false,
                     true,
                 ),
                 (
-                    "let broken = @\nlet text = \"\"\"\n    {value.member}\n    \"\"\"\n",
+                    "broken := @\ntext := \"\"\"\n    {value.member}\n    \"\"\"\n",
                     false,
                     true,
                 ),
-                (
-                    "let text = r\"\"\"\n    {\"key\": value.member",
-                    true,
-                    false,
-                ),
-                ("let text = \"\"\"\n    \\{value.member", true, false),
-                ("let text = \"\"\"\n    {join(\"value.member", true, false),
+                ("text := r\"\"\"\n    {\"key\": value.member", true, false),
+                ("text := \"\"\"\n    \\{value.member", true, false),
+                ("text := \"\"\"\n    {join(\"value.member", true, false),
             ] {
                 let source = source.replace('\n', newline);
                 let d = Document::new("file:///incomplete.ms", &source);
@@ -917,7 +929,7 @@ mod literal_context_tests {
                 ("nested {\"{name.length()}\"}", "name", false),
                 ("unicode \\u{1F600}", "1F600", true),
             ] {
-                let source = format!("let s = \"\"\"\n    {body}\n    \"\"\"\nlet after = 1\n")
+                let source = format!("s := \"\"\"\n    {body}\n    \"\"\"\nafter := 1\n")
                     .replace('\n', newline);
                 let d = Document::new("file:///contexts.ms", source.clone());
                 let offset = source.find(cursor).unwrap() + cursor.len();
@@ -940,7 +952,7 @@ mod literal_context_tests {
 
     #[test]
     fn raw_multiline_payload_is_not_code() {
-        let source = "let text = r\"\"\"\n    {\"key\": value.member}\n    \"\"\"\n";
+        let source = "text := r\"\"\"\n    {\"key\": value.member}\n    \"\"\"\n";
         ms_syntax::parser::parse(&std::sync::Arc::from("raw.ms"), source).unwrap();
         let d = Document::new("file:///raw.ms", source);
         let offset = source.find("key").unwrap() + "key".len();
@@ -953,7 +965,7 @@ mod literal_context_tests {
 
     #[test]
     fn multiline_interpolation_is_code() {
-        let source = "let text = \"\"\"\n    {value.member}\n    \"\"\"\n";
+        let source = "text := \"\"\"\n    {value.member}\n    \"\"\"\n";
         ms_syntax::parser::parse(&std::sync::Arc::from("text.ms"), source).unwrap();
         let d = Document::new("file:///text.ms", source);
         let offset = source.find("member").unwrap() + "member".len();

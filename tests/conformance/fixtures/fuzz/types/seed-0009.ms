@@ -6,15 +6,15 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [1, 2, 3].take(0)
+    l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
 
-    let b2 = "line\nbreak".reverse().is_empty()
+    b2 := "line\nbreak".reverse().is_empty()
     say("b2 = {b2}")
 
-    let fixed = 1
+    fixed := 1
     fixed = 2
     return 0

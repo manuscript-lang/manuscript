@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,20 +15,20 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let i1 = (((-16) / 48) + ((150106 / (-38)) % 2899))
+    i1 := (((-16) / 48) + ((150106 / (-38)) % 2899))
     say("i1 = {i1}")
 
-    let f2 = (((606.25 * 1.0e0) + (639.623 * 7.5)) + (293.351 * (8.5 * 7.0e5)))
+    f2 := (((606.25 * 1.0e0) + (639.623 * 7.5)) + (293.351 * (8.5 * 7.0e5)))
     say("f2 = {f2}")
     say("gcd(1646, 113) = {gcd(1646, 113)}")
 
-    let i3 = (i1 + (31 % ((-23) * 689088136830)))
+    i3 := (i1 + (31 % ((-23) * 689088136830)))
     say("i3 = {i3}")
 
-    let i4 = (((i1 * 38) + i3) + (i3 * (i1 - i3)))
+    i4 := (((i1 * 38) + i3) + (i3 * (i1 - i3)))
     say("i4 = {i4}")
 
-    let i5 = ((-387076) * (-(8 - i1)))
+    i5 := ((-387076) * (-(8 - i1)))
     say("i5 = {i5}")
 
     if ((i1 * (-550176)) == (i1 + i5)):
@@ -36,12 +36,12 @@ export fn main() Int:
     else:
         say(("emoji 😀" + "back\\slash"))
 
-    let f6 = ((f2 * f2) - ((48.925 * f2) - f2))
+    f6 := ((f2 * f2) - ((48.925 * f2) - f2))
     say("f6 = {f6}")
 
-    let i7 = ((i4 * (i1 % i4)) / (-(i3 + i5)))
+    i7 := ((i4 * (i1 % i4)) / (-(i3 + i5)))
     say("i7 = {i7}")
 
-    let big8 = 9223372036854775807
+    big8 := 9223372036854775807
     say("{big8 + 1}")
     return 0

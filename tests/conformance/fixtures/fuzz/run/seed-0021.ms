@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     if ((3.0e-7 != 274.210) and "naïve".is_empty()):
@@ -14,7 +14,7 @@ export fn main() Int:
     else:
         say("gamma".upper())
 
-    let b1 = ((-23) >= (-(36 + (-40))))
+    b1 := ((-23) >= (-(36 + (-40))))
     say("b1 = {b1}")
 
     var acc2 = 0
@@ -26,15 +26,15 @@ export fn main() Int:
 
     say("acc2 = {acc2}")
 
-    let b3 = (((not b1) and b1) and ("quote\"d" == "a".upper()))
+    b3 := (((not b1) and b1) and ("quote\"d" == "a".upper()))
     say("b3 = {b3}")
 
-    let i4 = (((-11) + ((-803686) * (-24))) - (524404 + ((-885812577757) - (-10))))
+    i4 := (((-11) + ((-803686) * (-24))) - (524404 + ((-885812577757) - (-10))))
     say("i4 = {i4}")
 
-    let b5 = "emoji 😀".replace("", "naïve").is_empty()
+    b5 := "emoji 😀".replace("", "naïve").is_empty()
     say("b5 = {b5}")
 
-    let l6 = [(-22), 5]
+    l6 := [(-22), 5]
     say("l6 = {l6} len {l6.length()}")
     return 0

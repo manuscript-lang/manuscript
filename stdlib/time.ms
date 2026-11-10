@@ -104,25 +104,25 @@ impl Duration:
 
     // Returns human text such as `1m30.5s`, `250ms`, `1.5µs`, `-2h`, or `0s`; string interpolation uses it too.
     fn to_string() String:
-        let total = self.to_nanoseconds()
+        total := self.to_nanoseconds()
         if total == 0: return "0s"
 
         // Work on magnitudes of the truncated parts so the minimum Duration, which has no positive counterpart, formats too.
-        let step = if total < 0: -1 else: 1
-        let sign = if total < 0: "-" else: ""
-        let whole = total / 1000000000 * step
-        let sub = total % 1000000000 * step
+        step := if total < 0: -1 else: 1
+        sign := if total < 0: "-" else: ""
+        whole := total / 1000000000 * step
+        sub := total % 1000000000 * step
         if whole == 0 and sub < 1000: return "{sign}{sub}ns"
         if whole == 0 and sub < 1000000:
             return "{sign}{duration_decimal(sub / 1000, sub % 1000, 3)}µs"
         if whole == 0:
             return "{sign}{duration_decimal(sub / 1000000, sub % 1000000, 6)}ms"
 
-        let hours = whole / 3600
-        let minutes = whole % 3600 / 60
-        let clock = if hours == 0: "" else: "{hours}h"
-        let minute_part = if hours == 0 and minutes == 0: "" else: "{minutes}m"
-        let seconds_part = duration_decimal(whole % 60, sub, 9)
+        hours := whole / 3600
+        minutes := whole % 3600 / 60
+        clock := if hours == 0: "" else: "{hours}h"
+        minute_part := if hours == 0 and minutes == 0: "" else: "{minutes}m"
+        seconds_part := duration_decimal(whole % 60, sub, 9)
         return "{sign}{clock}{minute_part}{seconds_part}s"
 
     // Converts this duration to floating-point seconds.
@@ -208,7 +208,7 @@ impl Timestamp:
 
     // Returns `self - right` as a duration.
     fn difference(other: Timestamp) Duration!:
-        let nanos = try msstd_time_timestamp_difference(self, other)
+        nanos := try msstd_time_timestamp_difference(self, other)
         return ok(Duration(nanos: nanos))
 
     // Returns -1, 0, or 1 across the full calendar range.
@@ -327,27 +327,27 @@ Whitespace, exponents, missing units, and other syntax return EBADMSG, even afte
 A syntactically valid result outside -9223372036854775808 through 9223372036854775807 nanoseconds returns ERANGE.
 */
 export fn parse_duration(text: String) Duration!:
-    let data = text.to_bytes()
-    let size = data.length()
+    data := text.to_bytes()
+    size := data.length()
     if size == 0: return error(Error("time: invalid data", kind: "EBADMSG"))
 
     var pos = 0
-    let negative = data.get(0).to_int() == 45
+    negative := data.get(0).to_int() == 45
     if negative or data.get(0).to_int() == 43: pos += 1
     if pos == size: return error(Error("time: invalid data", kind: "EBADMSG"))
     if size - pos == 1 and data.get(pos).to_int() == 48: return ok(nanoseconds(0))
 
     // Accumulate negatively: the minimum Duration has no positive counterpart.
-    let limit = if negative: -9223372036854775807 - 1 else: -9223372036854775807
+    limit := if negative: -9223372036854775807 - 1 else: -9223372036854775807
     var total = 0
     var overflow = false
 
     while pos < size:
-        let start = pos
+        start := pos
         var whole = 0
 
         while pos < size:
-            let digit = data.get(pos).to_int() - 48
+            digit := data.get(pos).to_int() - 48
             if digit < 0 or digit > 9: break
 
             if not overflow:
@@ -361,7 +361,7 @@ export fn parse_duration(text: String) Duration!:
 
             pos += 1
 
-        let has_whole = pos > start
+        has_whole := pos > start
         var fraction_start = pos
 
         if pos < size and data.get(pos).to_int() == 46:
@@ -369,18 +369,18 @@ export fn parse_duration(text: String) Duration!:
             fraction_start = pos
 
             while pos < size:
-                let digit = data.get(pos).to_int() - 48
+                digit := data.get(pos).to_int() - 48
                 if digit < 0 or digit > 9: break
 
                 pos += 1
 
-        let fraction_end = pos
+        fraction_end := pos
         if not has_whole and fraction_start == fraction_end:
             return error(Error("time: invalid data", kind: "EBADMSG"))
         if pos == size: return error(Error("time: invalid data", kind: "EBADMSG"))
 
         var scale = 0
-        let suffix = data.get(pos).to_int()
+        suffix := data.get(pos).to_int()
         pos += 1
 
         if suffix == 104:
@@ -400,7 +400,7 @@ export fn parse_duration(text: String) Duration!:
             scale = if suffix == 110: 1 else: 1000
             pos += 1
         else if suffix == 194 or suffix == 206:
-            let second = if suffix == 194: 181 else: 188
+            second := if suffix == 194: 181 else: 188
             if (
                 size - pos < 2
                 or data.get(pos).to_int() != second
@@ -420,7 +420,7 @@ export fn parse_duration(text: String) Duration!:
             overflow = true
             continue
 
-        let integral = whole * scale
+        integral := whole * scale
 
         if total < limit - integral:
             overflow = true
@@ -533,12 +533,12 @@ type TickSource:
 impl Source[Instant] for TickSource:
     // Waits for the next tick and returns the instant it was due; never ends.
     var fn next() Instant?!:
-        let tick = self.due.clone()
+        tick := self.due.clone()
         try sleep(tick.difference(monotonic()).max(nanoseconds(0))).wait()
 
-        let current = monotonic()
-        let period = self.period.to_nanoseconds()
-        let elapsed = current.difference(tick).to_nanoseconds()
+        current := monotonic()
+        period := self.period.to_nanoseconds()
+        elapsed := current.difference(tick).to_nanoseconds()
 
         // Drop missed ticks, retaining the original phase without multiplying a tick count.
         self.due = current.shift(nanoseconds(period - elapsed % period))
@@ -553,5 +553,5 @@ export fn ticker(period: Duration) ReadStream[Instant]:
     if period.compare(nanoseconds(0)) <= 0:
         panic("ticker: period must be positive")
 
-    let due = monotonic().shift(period.clone())
+    due := monotonic().shift(period.clone())
     return ReadStream[Instant](TickSource(period: period, due: due))

@@ -7,6 +7,6 @@ fn work() Int:
         transform: fn(value: Int) Int:
             if value == 0: return 0
 
-            let next = value + 1
+            next := value + 1
             return next
     )

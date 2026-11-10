@@ -242,7 +242,7 @@ fn need_hint(kind: &str, found: Tok, found_text: &str) -> String {
 /// spelling to replace the word with, when there is one.
 fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static str>)> {
     if t.kind == Tok::Var {
-        return Some(("module level holds only 'let' constants; keep mutable state in a 'var' inside a fn, or in a field of a type".into(), None));
+        return Some(("module level holds only constants (NAME := value); keep mutable state in a 'var' inside a fn, or in a field of a type".into(), None));
     }
     if t.kind != Tok::Name {
         return None;
@@ -264,9 +264,9 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
             Some("interface"),
             "declare a contract with 'interface Name:' and method signatures, then implement it with 'impl Name for Type:'",
         ),
-        "const" | "val" | "final" => (
-            Some("let"),
-            "write 'let NAME = value' for a module constant",
+        "const" | "val" | "final" | "let" => (
+            None,
+            "write 'NAME := value' (or 'NAME: Type = value') for a module constant",
         ),
         "pub" | "public" => (
             Some("export"),
@@ -622,7 +622,7 @@ impl<'a> Parser<'a> {
                 "; there is no inline conditional expression 'a if c else b': write 'if c: a else: b', or use an if statement"
             }
             Tok::Question => {
-                "; '?' is not a postfix unwrap, '??' or 'c ? a : b': unwrap an Optional with 'if let x = v:' or give it a default with 'v.get(default)', chain with 'a?.b', and write a conditional as 'if c: a else: b'"
+                "; '?' is not a postfix unwrap, '??' or 'c ? a : b': unwrap an Optional with 'if x := v:' or give it a default with 'v.get(default)', chain with 'a?.b', and write a conditional as 'if c: a else: b'"
             }
             Tok::Comma => {
                 "; commas separate items only inside (), [] or {}: put each field, case, or statement on its own line"
@@ -661,15 +661,13 @@ impl<'a> Parser<'a> {
                 return self.fail(t, "imports read: import name, other from \"path.ms\"");
             }
             let exported = self.take(Tok::Export);
-            let decls = self.declarations()?;
-            for mut d in decls {
-                if exported && matches!(d.kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
-                    let t = self.previous();
-                    return self.fail(t, "only types, interfaces, and named functions can be exported; remove 'export' before this impl, test, or bench");
-                }
-                d.export = exported;
-                module.decls.push(d);
+            let mut d = self.declaration()?;
+            if exported && matches!(d.kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
+                let t = self.previous();
+                return self.fail(t, "only types, interfaces, and named functions can be exported; remove 'export' before this impl, test, or bench");
             }
+            d.export = exported;
+            module.decls.push(d);
         }
         Ok(())
     }
@@ -1057,37 +1055,16 @@ impl<'a> Parser<'a> {
 
     // ---- declarations ----
 
-    /// Parses one top-level item, or every constant of a `let (...)` group.
-    fn declarations(&mut self) -> PResult<Vec<Decl>> {
-        if self.kind() != Tok::Let || self.ahead(1).kind != Tok::LParen {
-            return Ok(vec![self.declaration()?]);
-        }
-        let keyword = self.next();
-        let mut result = Vec::new();
-        self.binding_group(keyword, &mut |p: &mut Parser<'a>| {
-            let pos = p.peek().pos;
-            let c = p.constant(Some(keyword.pos))?;
-            let id = p.id();
-            result.push(Decl {
-                id,
-                pos,
-                export: false,
-                synthetic: false,
-                kind: DeclKind::Const(c),
-            });
-            Ok(())
-        })?;
-        Ok(result)
-    }
-
-    /// Parses `name [: Type] = value` after `let`.
-    fn constant(&mut self, group: Option<Pos>) -> PResult<ConstDecl> {
+    /// Parses a module constant: `name := value` or `name: Type = value`.
+    fn constant(&mut self) -> PResult<ConstDecl> {
         let name = self.need(Tok::Name)?;
         let mut ty = None;
         if self.take(Tok::Colon) {
             ty = Some(self.typ()?);
+            self.need(Tok::Assign)?;
+        } else {
+            self.need(Tok::ColonAssign)?;
         }
-        self.need(Tok::Assign)?;
         // A binary expression's position is its operator, so the statement
         // starts at the first token of the initializer for source tooling.
         let init_pos = self.peek().pos;
@@ -1097,7 +1074,6 @@ impl<'a> Parser<'a> {
             ty,
             value,
             init_pos,
-            group,
         })
     }
 
@@ -1304,9 +1280,8 @@ impl<'a> Parser<'a> {
                     external: true,
                 })
             }
-            Tok::Let => {
-                self.at += 1;
-                let c = self.constant(None)?;
+            Tok::Name if matches!(self.ahead(1).kind, Tok::ColonAssign | Tok::Colon) => {
+                let c = self.constant()?;
                 self.end()?;
                 DeclKind::Const(c)
             }
@@ -1405,7 +1380,7 @@ impl<'a> Parser<'a> {
                     return self.fail(token, format!("misplaced 'opaque'; {advice}"));
                 }
                 let msg = format!(
-                    "expected a module declaration or import, found {}; top level holds only import, let constants, fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+                    "expected a module declaration or import, found {}; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
                     describe(self.src, token)
                 );
                 return self.fail(token, msg);
@@ -1720,15 +1695,59 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses `pattern [: Type] = value` after let or var.
+    /// Whether the statement at the cursor starts an immutable binding:
+    /// `name := v`, `name: Type = v`, or `[a, b] := v` / `{a, b} := v`.
+    fn binding_ahead(&self) -> bool {
+        match self.kind() {
+            Tok::Name | Tok::Underscore => {
+                matches!(self.ahead(1).kind, Tok::ColonAssign | Tok::Colon)
+            }
+            Tok::LBracket | Tok::LBrace => {
+                let mut depth = 0usize;
+                for i in self.at..self.tokens.len() {
+                    match self.tokens[i].kind {
+                        Tok::LParen | Tok::LBracket | Tok::LBrace => depth += 1,
+                        Tok::RParen | Tok::RBracket | Tok::RBrace => {
+                            depth -= 1;
+                            if depth == 0 {
+                                return self
+                                    .tokens
+                                    .get(i + 1)
+                                    .is_some_and(|t| t.kind == Tok::ColonAssign);
+                            }
+                        }
+                        Tok::Newline | Tok::Eof => return false,
+                        _ => {}
+                    }
+                }
+                false
+            }
+            _ => false,
+        }
+    }
+
+    /// Parses a binding: `var pattern [: Type] = value` after `var`, or an
+    /// immutable `name := value`, `name: Type = value`, or `pattern := value`.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
         self.no_ref()?;
         let pattern = self.pattern()?;
         let mut ty = None;
-        if matches!(pattern.kind, PatternKind::Name(_)) && self.take(Tok::Colon) {
+        let named = matches!(pattern.kind, PatternKind::Name(_));
+        if mutable {
+            if named && self.take(Tok::Colon) {
+                ty = Some(self.typ()?);
+            }
+            if self.kind() == Tok::ColonAssign {
+                let t = self.peek();
+                return self.fail_fix(t, "'var' binds with '=': write 'var x = value'; ':=' declares an immutable binding", "=");
+            }
+            self.need(Tok::Assign)?;
+        } else if named && self.take(Tok::Colon) {
             ty = Some(self.typ()?);
+            self.need(Tok::Assign)?;
+        } else {
+            self.need(Tok::ColonAssign)?;
         }
-        self.need(Tok::Assign)?;
         let value = self.expression(0)?;
         let id = self.id();
         Ok(Stmt {
@@ -1756,9 +1775,23 @@ impl<'a> Parser<'a> {
         let t = self.peek();
         let pos = t.pos;
         let kind = match t.kind {
-            Tok::Let | Tok::Var => {
+            Tok::Name | Tok::Underscore | Tok::LBracket | Tok::LBrace if self.binding_ahead() => {
+                let s = self.binding(false, None, pos)?;
+                self.end()?;
+                return Ok(s);
+            }
+            Tok::Name
+                if self.text(t) == "let"
+                    && matches!(
+                        self.ahead(1).kind,
+                        Tok::Name | Tok::Underscore | Tok::LBracket | Tok::LBrace
+                    ) =>
+            {
+                return self.fail(t, "'let' was removed; bind with 'x := value' (or 'x: Type = value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding");
+            }
+            Tok::Var => {
                 self.at += 1;
-                let mutable = t.kind == Tok::Var;
+                let mutable = true;
                 if self.kind() == Tok::LParen {
                     let mut entries: Vec<Stmt> = Vec::new();
                     self.binding_group(t, &mut |p: &mut Parser<'a>| {
@@ -1836,18 +1869,34 @@ impl<'a> Parser<'a> {
                 self.at += 1;
                 let mut binding = None;
                 let mut mutable = false;
-                if self.kind() == Tok::Let || self.kind() == Tok::Var {
+                if self.kind() == Tok::Name
+                    && self.text(self.peek()) == "let"
+                    && self.ahead(1).kind == Tok::Name
+                {
+                    let l = self.peek();
+                    return self.fail(l, "'if let' was removed; write 'if value := optional:' (or 'if var value = optional:' for a mutable binding)");
+                }
+                if self.kind() == Tok::Var
+                    || (matches!(self.kind(), Tok::Name | Tok::Underscore)
+                        && self.ahead(1).kind == Tok::ColonAssign)
+                {
                     mutable = self.kind() == Tok::Var;
-                    self.at += 1;
+                    if mutable {
+                        self.at += 1;
+                    }
                     let pat = self.pattern()?;
                     if !matches!(pat.kind, PatternKind::Name(_)) {
-                        return self.fail(t, "if let binds one name; write 'if let value = optional:' and destructure the value inside the branch");
+                        return self.fail(t, "an if binding takes one name; write 'if value := optional:' and destructure the value inside the branch");
                     }
                     if self.kind() == Tok::LParen {
-                        return self.fail(t, "if let unwraps an Optional or Result into one name; it does not match alternative cases. Write 'match value:' with a 'Case(x):' arm, or 'if let value = optional:'");
+                        return self.fail(t, "an if binding unwraps an Optional or Result into one name; it does not match alternative cases. Write 'match value:' with a 'Case(x):' arm, or 'if value := optional:'");
                     }
                     binding = Some(pat);
-                    self.need(Tok::Assign)?;
+                    self.need(if mutable {
+                        Tok::Assign
+                    } else {
+                        Tok::ColonAssign
+                    })?;
                 }
                 let cond = self.expression(0)?;
                 let body = self.suite()?;
@@ -1938,7 +1987,7 @@ impl<'a> Parser<'a> {
                     match self.names.str(*n) {
                         "pass" => return self.fail(t, "'pass' is not a keyword; write 'unit' for an empty block or match arm"),
                         "const" | "val" | "final" => {
-                            return self.fail(t, format!("'{n_t}' is not a keyword; write 'let name = ...' for a binding that is not reassigned, or 'var name = ...' when it changes", n_t = self.names.str(n)));
+                            return self.fail(t, format!("'{n_t}' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", n_t = self.names.str(n)));
                         }
                         "throw" | "raise" | "catch" => {
                             return self.fail(t, format!("'{n_t}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'", n_t = self.names.str(n)));
@@ -1952,14 +2001,14 @@ impl<'a> Parser<'a> {
                         "foreach" => return self.fail(t, "'foreach' is not a keyword; write 'for item in items:'"),
                         "class" => return self.fail(t, "'class' is not a keyword inside a fn; declare a record with 'type Name:' at module level"),
                         "del" => return self.fail(t, "'del' is not a keyword; remove from a collection with its methods, such as xs.remove(i) or m.remove(key)"),
-                        "global" | "nonlocal" => return self.fail(t, format!("'{n_t}' is not a keyword; a fn sees module 'let' constants directly, and mutable state lives in a 'var' or a field passed explicitly", n_t = self.names.str(n))),
+                        "global" | "nonlocal" => return self.fail(t, format!("'{n_t}' is not a keyword; a fn sees module constants directly, and mutable state lives in a 'var' or a field passed explicitly", n_t = self.names.str(n))),
                         "yield" => return self.fail(t, "'yield' is not a keyword; there are no generators, so build a list and return it"),
                         "async" | "await" => return self.fail(t, format!("'{n_t}' is not a keyword; call the function directly, or start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\"", n_t = self.names.str(n))),
-                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\": let result = promise(fn: work()), then result.wait()"),
+                        "go" => return self.fail(t, "'go' is not a keyword; start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\": result := promise(fn: work()), then result.wait()"),
                         _ => {}
                     }
                 }
-                return self.fail(t, "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function");
+                return self.fail(t, "only a call, try call, or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function");
             }
             if self.inline_return {
                 StmtKind::Return(Some(e))
@@ -2467,7 +2516,7 @@ impl<'a> Parser<'a> {
             }
             if self.kind() == Tok::LBracket {
                 let t = self.peek();
-                return self.fail(t, format!("a pipe step cannot take type arguments; bind the instance to a name first, e.g. let step = {}[Int], then write x | step", self.text(name)));
+                return self.fail(t, format!("a pipe step cannot take type arguments; bind the instance to a name first, e.g. step := {}[Int], then write x | step", self.text(name)));
             }
             let mut args = vec![Argument {
                 pos: lhs.pos,

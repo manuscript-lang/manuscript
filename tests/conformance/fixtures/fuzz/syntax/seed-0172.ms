@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     if (18 != (-4)):
@@ -19,6 +19,6 @@ export fn main() Int:
         acc1 += i * 3
     say("acc1 = {acc1}")
 
-    let i2 = ((-9) + ((35 * (-796632)) + ((-31) - (-46))))
+    i2 := ((-9) + ((35 * (-796632)) + ((-31) - (-46))))
     say("i2 = {i2}")
     return 0

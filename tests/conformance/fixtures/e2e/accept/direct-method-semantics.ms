@@ -55,7 +55,7 @@ fn through(shape: Shape) Int:
     return shape.scaled(by: 2)
 
 fn tried(rect: Rect, limit: Int) Int!Error:
-    let first = try rect.checked(limit: limit)
+    first := try rect.checked(limit: limit)
     return ok(value: first + (try rect.checked(limit: limit + 100)))
 
 fn order(rect: Rect, var log: List[String]) Int:
@@ -67,7 +67,7 @@ fn id(var log: List[String]) Int:
     return 1
 
 test "direct methods":
-    let rect = Rect(w: 3, h: 4)
+    rect := Rect(w: 3, h: 4)
     (rect.area() == 12) | try expect_true
     (rect.scaled(by: 3) == 36) | try expect_true
     (through(shape: rect) == 24) | try expect_true

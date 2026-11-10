@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = ((-((-46) % (-5))) + 47)
+    i1 := ((-((-46) % (-5))) + 47)
     say("i1 = {i1}")
 
     if ((not false) and false):
@@ -17,10 +17,10 @@ export fn main() Int:
     else:
         say("  padded  ")
 
-    let f2 = ((805.192 + (161.901 / 304.045)) * (55.427 - (0.0 + 28.580)))
+    f2 := ((805.192 + (161.901 / 304.045)) * (55.427 - (0.0 + 28.580)))
     say("f2 = {f2}")
 
-    let bad = Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get(1, 2, 3)
     var acc3 = 0
     for i in 0..7:
         acc3 += i * 7

@@ -31,7 +31,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Read; declare it with 'let Read = ...' before use, define 'fn Read(...) T:', or import it from a module",
+        "message": "unknown binding Read; declare it with 'Read := ...' before use, define 'fn Read(...) T:', or import it from a module",
         "position": {
           "file": "testlocalextensionboundaries-2.ms",
           "line": 5,
@@ -43,7 +43,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testlocalextensionboundaries-2.ms:4:15: resolution: unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import it\n   |\n 4 | fn use(value: Box[Int]) Read[Int]:\n   |               ^\n<DIR>/testlocalextensionboundaries-2.ms:4:25: resolution: unknown type Read; declare it with 'type Read:' / 'enum Read:' / 'interface Read:', declare it as a type parameter, or import it\n   |\n 4 | fn use(value: Box[Int]) Read[Int]:\n   |                         ^\n<DIR>/testlocalextensionboundaries-2.ms:5:12: resolution: unknown binding Read; declare it with 'let Read = ...' before use, define 'fn Read(...) T:', or import it from a module\n   |\n 5 |     return Read[Int](value: value)\n   |            ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testlocalextensionboundaries-2.ms:4:15: resolution: unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import it\n   |\n 4 | fn use(value: Box[Int]) Read[Int]:\n   |               ^\n<DIR>/testlocalextensionboundaries-2.ms:4:25: resolution: unknown type Read; declare it with 'type Read:' / 'enum Read:' / 'interface Read:', declare it as a type parameter, or import it\n   |\n 4 | fn use(value: Box[Int]) Read[Int]:\n   |                         ^\n<DIR>/testlocalextensionboundaries-2.ms:5:12: resolution: unknown binding Read; declare it with 'Read := ...' before use, define 'fn Read(...) T:', or import it from a module\n   |\n 5 |     return Read[Int](value: value)\n   |            ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

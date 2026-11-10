@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = 830047
+    i1 := 830047
     say("i1 = {i1}")
 
-    let b2 = ((not (false and true)) or "Tab\there".is_empty())
+    b2 := ((not (false and true)) or "Tab\there".is_empty())
     say("b2 = {b2}")
 
-    let bad = Map[Int, Int]().get(1, 2, 3)
-    let l3 = [(-29), (-5), (-19), 15, 3]
+    bad := Map[Int, Int]().get(1, 2, 3)
+    l3 := [(-29), (-5), (-19), 15, 3]
     say("l3 = {l3} len {l3.length()}")
     return 0

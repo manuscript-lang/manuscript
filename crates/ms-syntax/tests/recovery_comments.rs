@@ -52,7 +52,7 @@ fn recovered_multiline_text_keeps_comment_markers_as_text() {
     let file = Arc::from("comments.ms");
     for raw in ["", "r"] {
         for ending in ["\n", "\r\n"] {
-            let source = format!("let TEXT = {raw}\"\"\"\n/*\nfn ghost() Int: 99\n*/\n\"\"\"\nfn real() Int: 2\nfn broken(\n")
+            let source = format!("TEXT := {raw}\"\"\"\n/*\nfn ghost() Int: 99\n*/\n\"\"\"\nfn real() Int: 2\nfn broken(\n")
                 .replace('\n', ending);
             let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
             assert_eq!(module.decls.len(), 2, "{diagnostics:?}");
@@ -129,7 +129,7 @@ fn malformed_multiline_text_does_not_hide_following_declarations() {
                 continue;
             }
             for ending in ["\n", "\r\n"] {
-                let source = format!("let BAD = {raw}\"\"\"\n{content}\nfn ghost() Int: 99\n\"\"\"\nfn real() Int: 2\nfn broken(\n")
+                let source = format!("BAD := {raw}\"\"\"\n{content}\nfn ghost() Int: 99\n\"\"\"\nfn real() Int: 2\nfn broken(\n")
                     .replace('\n', ending);
                 let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
                 assert_eq!(module.decls.len(), 1, "{diagnostics:?}");
@@ -155,7 +155,7 @@ fn malformed_multiline_text_does_not_hide_following_declarations() {
 fn invalid_text_headers_do_not_consume_a_later_valid_literal() {
     let file = Arc::from("comments.ms");
     for ending in ["\n", "\r\n"] {
-        let source = "let BAD = \"\"\"wrong\nfn real() Int: 2\nlet GOOD = \"\"\"\nhello\n\"\"\"\nfn tail() Int: 3\nfn broken(\n".replace('\n', ending);
+        let source = "BAD := \"\"\"wrong\nfn real() Int: 2\nGOOD := \"\"\"\nhello\n\"\"\"\nfn tail() Int: 3\nfn broken(\n".replace('\n', ending);
         let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
         assert_eq!(module.decls.len(), 3, "{diagnostics:?}");
         assert!(matches!(module.decls[1].kind, DeclKind::Const(_)));
@@ -175,7 +175,7 @@ fn invalid_text_headers_do_not_consume_a_later_valid_literal() {
 fn invalid_text_headers_do_not_consume_a_later_function_literal() {
     let file = Arc::from("comments.ms");
     for ending in ["\n", "\r\n"] {
-        let source = "let BAD = \"\"\"wrong\nfn real() String:\n    return (\n        \"\"\"\n        hello\n        \"\"\"\n    )\nfn tail() Int: 3\nfn broken(\n".replace('\n', ending);
+        let source = "BAD := \"\"\"wrong\nfn real() String:\n    return (\n        \"\"\"\n        hello\n        \"\"\"\n    )\nfn tail() Int: 3\nfn broken(\n".replace('\n', ending);
         let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
         assert_eq!(module.decls.len(), 2, "{diagnostics:?}");
         assert_eq!(
@@ -197,7 +197,7 @@ fn malformed_multiline_openers_preserve_later_declarations() {
         for middle in ["", "fn ghost() Int: 99\n\"\"\"\n"] {
             for ending in ["\n", "\r\n"] {
                 let source =
-                    format!("let BAD = {raw}\"\"\"wrong\n{middle}fn real() Int: 2\nfn broken(\n")
+                    format!("BAD := {raw}\"\"\"wrong\n{middle}fn real() Int: 2\nfn broken(\n")
                         .replace('\n', ending);
                 let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
                 assert_eq!(

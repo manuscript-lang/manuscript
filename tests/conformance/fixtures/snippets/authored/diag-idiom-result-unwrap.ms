@@ -5,4 +5,4 @@ fn f() Int!:
     return ok(1)
 
 fn main() Unit:
-    let x = f().unwrap()
+    x := f().unwrap()

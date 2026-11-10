@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -28,7 +28,7 @@ export fn main() Int:
         acc1 += i * 9
     say("acc1 = {acc1}")
 
-    let i2 = (-586695510165)
+    i2 := (-586695510165)
     say("i2 = {i2}")
 
     if ((false and false) and (true and false)):
@@ -36,11 +36,11 @@ export fn main() Int:
     else:
         say("gamma".upper())
 
-    let f3 = ((551.610 + (561.924 * 630.837)) / 381.345)
+    f3 := ((551.610 + (561.924 * 630.837)) / 381.345)
     say("f3 = {f3}")
     say("collatz(2944) = {collatz(2944)}")
 
-    let l4 = [(-28)]
+    l4 := [(-28)]
     say("l4 = {l4} len {l4.length()}")
 
     var acc5 = 0
@@ -58,10 +58,10 @@ export fn main() Int:
 
     say("acc6 = {acc6}")
 
-    let f7 = (((972.105 / 768.25) + (f3 * 8.5)) * f3)
+    f7 := (((972.105 / 768.25) + (f3 * 8.5)) * f3)
     say("f7 = {f7}")
 
-    let i8 = (-11)
+    i8 := (-11)
     say("i8 = {i8}")
 
     if ((false or false) or false):
@@ -69,13 +69,13 @@ export fn main() Int:
     else:
         say(("naïve" + "quote\"d"))
 
-    let f9 = 39.536
+    f9 := 39.536
     say("f9 = {f9}")
 
-    let s10 = "gamma"
+    s10 := "gamma"
     say("s10 = [{s10}]")
 
-    let i11 = l4.length()
+    i11 := l4.length()
     say("i11 = {i11}")
 
     var acc12 = 0

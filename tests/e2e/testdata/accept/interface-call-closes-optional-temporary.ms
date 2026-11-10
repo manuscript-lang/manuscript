@@ -22,14 +22,14 @@ impl Observer for Reader:
     fn observe(value: Resource?) Bool: value.is_some()
 
 fn log_text(path: String) String!:
-    let bytes = try read_file(path).wait()
+    bytes := try read_file(path).wait()
     return ok(try expect_some(bytes.decode_utf8()))
 
 test "interface reader closes intact temporary wrapper":
-    let directory = try temporary("iface-wrapper-")
-    let path = "{directory.path()}/log"
+    directory := try temporary("iface-wrapper-")
+    path := "{directory.path()}/log"
     try write_file(path, "").wait()
 
-    let reader: Observer = Reader(1)
+    reader: Observer = Reader(1)
     try expect_equal(reader.observe(Resource(1, path.clone())), true)
     try expect_equal(try log_text(path), "1,")

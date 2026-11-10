@@ -6,26 +6,26 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = "x"
+    s1 := "x"
     say("s1 = [{s1}]")
 
-    let i2 = (s1.length() % s1.length())
+    i2 := (s1.length() % s1.length())
     say("i2 = {i2}")
 
-    let bad = missing_function(3)
-    let l3 = [16]
+    bad := missing_function(3)
+    l3 := [16]
     say("l3 = {l3} len {l3.length()}")
     say(
         "{i2} {((i2 + i2) * 56437)} {(i2 < ((i2 + i2) * 56437))} sum {i2 + ((i2 + i2) * 56437)}"
     )
 
-    let i4 = (-213307076733)
+    i4 := (-213307076733)
     say("i4 = {i4}")
 
-    let i5 = l3.length()
+    i5 := l3.length()
     say("i5 = {i5}")
 
     if ((90.902 + 239.519) < 0.0):

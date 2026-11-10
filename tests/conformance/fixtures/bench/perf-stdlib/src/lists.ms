@@ -1,7 +1,7 @@
 import bench, ints, Point from "./harness.ms"
 
 export fn bench_list() Unit:
-    let data = ints(100000)
+    data := ints(100000)
 
     bench(
         "list.append",
@@ -76,6 +76,6 @@ export fn bench_list() Unit:
         "list.records_map",
         100000,
         fn() Int:
-            let points = data.map(fn(x: Int) Point: Point(x, x + 1))
+            points := data.map(fn(x: Int) Point: Point(x, x + 1))
             return points.fold(0, fn(acc: Int, p: Point) Int: acc + p.y)
     )

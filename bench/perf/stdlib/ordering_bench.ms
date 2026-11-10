@@ -15,7 +15,7 @@ bench "ordering.min_if":
         var total = 0
 
         for i in 0..1000000:
-            let value = (i * 7919) % 10007
+            value := (i * 7919) % 10007
 
             if value < 5000:
                 total += value
@@ -40,7 +40,7 @@ bench "ordering.clamp_if":
         var total = 0
 
         for i in 0..1000000:
-            let value = (i * 7919) % 10007
+            value := (i * 7919) % 10007
 
             if value < 2000:
                 total += 2000

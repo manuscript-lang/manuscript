@@ -3,7 +3,7 @@
 import Bytes from "@std/bytes.ms"
 
 fn result() Bytes:
-    let bytes = Bytes([10, 20, 30])
+    bytes := Bytes([10, 20, 30])
     return bytes.view(1, 3)
 
 export fn main() Int:

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -18,7 +18,7 @@ export fn main() Int:
 
     say("acc1 = {acc1}")
 
-    let b2 = ((41 > (30 + 489897)) and ((6 + (-397106)) == ((-32) + 383670)))
+    b2 := ((41 > (30 + 489897)) and ((6 + (-397106)) == ((-32) + 383670)))
     say("b2 = {b2}")
 
     var acc3 = 0
@@ -26,16 +26,16 @@ export fn main() Int:
         acc3 += i * 9
     say("acc3 = {acc3}")
 
-    let i4 = 13
+    i4 := 13
     say("i4 = {i4}")
 
-    let i5 = (-15)
+    i5 := (-15)
     say("i5 = {i5}")
 
-    let i6 = ((i4 + (i5 + i4)) % (-((-7) % i5)))
+    i6 := ((i4 + (i5 + i4)) % (-((-7) % i5)))
     say("i6 = {i6}")
 
-    let s7 = "  padded  "
+    s7 := "  padded  "
     say("s7 = [{s7}]")
 
     if (((-91783) - i4) == 125600275152):
@@ -43,10 +43,10 @@ export fn main() Int:
     else:
         say("brace\{s\}")
 
-    let b8 = ((s7.lower() != (s7 + "quote\"d")) or ((134.385 * 5.0e15) < 370.033))
+    b8 := ((s7.lower() != (s7 + "quote\"d")) or ((134.385 * 5.0e15) < 370.033))
     say("b8 = {b8}")
 
-    let b9 = (("x" + "a".replace("back\\slash", "Tab\there")) == "héllo")
+    b9 := (("x" + "a".replace("back\\slash", "Tab\there")) == "héllo")
     say("b9 = {b9}")
 
     var acc10 = 0
@@ -54,10 +54,10 @@ export fn main() Int:
         acc10 += i * 7
     say("acc10 = {acc10}")
 
-    let i11 = ((-729850) * (i4 + (22 - (-501379))))
+    i11 := ((-729850) * (i4 + (22 - (-501379))))
     say("i11 = {i11}")
 
-    let i12 = s7.length()
+    i12 := s7.length()
     say("i12 = {i12}")
     say(
         "{((i4 + 508476) % (-i11))} {17} {(((i4 + 508476) % (-i11)) < 17)} sum {((i4 + 508476) % (-i11)) + 17}"

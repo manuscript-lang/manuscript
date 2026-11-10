@@ -11,7 +11,7 @@ The following continues the `discount` and `DiscountError` declarations in [expe
 
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
-    let value = try discount(price, percent)
+    value := try discount(price, percent)
     return ok("Discounted price: {value}")
 ```
 
@@ -41,13 +41,13 @@ PASS ready_test.ms::prepare before returning a label
 1 tests, 0 failed
 ```
 
-Standalone `try call()` requires a `Unit` success. Otherwise bind it (`let name = try call()`) or `return try call()`.
+Standalone `try call()` requires a `Unit` success. Otherwise bind it (`name := try call()`) or `return try call()`.
 
-Omitting `try` discards the Result, which the checker rejects. To ignore it deliberately, use [`let _ =`](results.md#discarding-a-result).
+Omitting `try` discards the Result, which the checker rejects. To ignore it deliberately, use [`_ :=`](results.md#discarding-a-result).
 
 ## Try in a pipe flow
 
-`| try step` in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value: Decimal) String`, this equals `let value = try discount(...)` then `label(value)`:
+`| try step` in a [pipe flow](../basics/expressions.md#pipe-flows) applies these rules to that step. Given `fn label(value: Decimal) String`, this equals `value := try discount(...)` then `label(value)`:
 
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:

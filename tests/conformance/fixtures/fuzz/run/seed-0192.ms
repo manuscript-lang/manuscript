@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (((12 - (-25)) + ((-903641) + 3)) - (-41))
+    i1 := (((12 - (-25)) + ((-903641) + 3)) - (-41))
     say("i1 = {i1}")
 
-    let i2 = (i1 - 410358948939)
+    i2 := (i1 - 410358948939)
     say("i2 = {i2}")
 
     var acc3 = 0
@@ -20,21 +20,21 @@ export fn main() Int:
         acc3 += i * 7
     say("acc3 = {acc3}")
 
-    let i4 = (-358586)
+    i4 := (-358586)
     say("i4 = {i4}")
 
-    let i5 = (-19)
+    i5 := (-19)
     say("i5 = {i5}")
     say(
         "{((-36) % (i2 * (-12)))} {i5} {(((-36) % (i2 * (-12))) < i5)} sum {((-36) % (i2 * (-12))) + i5}"
     )
 
-    let l6 = [1, 2, 3].take(0)
+    l6 := [1, 2, 3].take(0)
     say("l6 = {l6} len {l6.length()}")
 
-    let l7 = l6.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l7 := l6.map(fn x: x + 3).filter(fn x: x % 2 == 0)
     say("l7 = {l7} len {l7.length()}")
 
-    let i8 = l6.length()
+    i8 := l6.length()
     say("i8 = {i8}")
     return 0

@@ -72,20 +72,20 @@ fn weekday_of(year: Int, month: Int, day: Int) Int:
     return (elapsed + 4) % 7
 
 fn parse_start(text: String) Optional[Moment]:
-    let halves = text.split("T")
+    halves := text.split("T")
     if halves.length() != 2:
         return none
 
-    let date = halves.get(0).split("-")
-    let clock = halves.get(1).split(":")
+    date := halves.get(0).split("-")
+    clock := halves.get(1).split(":")
     if date.length() != 3 or clock.length() != 2:
         return none
 
-    let year = fixed_digits(date.get(0), 4)
-    let month = fixed_digits(date.get(1), 2)
-    let day = fixed_digits(date.get(2), 2)
-    let hour = fixed_digits(clock.get(0), 2)
-    let minute = fixed_digits(clock.get(1), 2)
+    year := fixed_digits(date.get(0), 4)
+    month := fixed_digits(date.get(1), 2)
+    day := fixed_digits(date.get(2), 2)
+    hour := fixed_digits(clock.get(0), 2)
+    minute := fixed_digits(clock.get(1), 2)
     if (
         year.is_none()
         or month.is_none()
@@ -111,7 +111,7 @@ fn parse_start(text: String) Optional[Moment]:
     )
 
 fn parse_count(text: String) Optional[Int]:
-    let value = parse_number(text)
+    value := parse_number(text)
     if value.is_none():
         return none
     if value.get() < 1 or value.get() > 20:
@@ -124,31 +124,31 @@ fn parse_item(item: String, lo: Int, hi: Int) Optional[Span]:
     if item.is_empty():
         return none
 
-    let parts = item.split("/")
+    parts := item.split("/")
     if parts.length() > 2:
         return none
 
     var step = 1
 
     if parts.length() == 2:
-        let parsed = parse_number(parts.get(1))
+        parsed := parse_number(parts.get(1))
         if parsed.is_none() or parsed.get() < 1:
             return none
 
         step = parsed.get()
 
-    let range_text = parts.get(0)
+    range_text := parts.get(0)
     var first = lo
     var last = hi
 
     if range_text != "*":
-        let bounds = range_text.split("-")
+        bounds := range_text.split("-")
 
         if bounds.length() == 1:
             if parts.length() == 2:
                 return none
 
-            let single = parse_number(bounds.get(0))
+            single := parse_number(bounds.get(0))
             if single.is_none():
                 return none
 
@@ -158,8 +158,8 @@ fn parse_item(item: String, lo: Int, hi: Int) Optional[Span]:
             if bounds.length() != 2:
                 return none
 
-            let low = parse_number(bounds.get(0))
-            let high = parse_number(bounds.get(1))
+            low := parse_number(bounds.get(0))
+            high := parse_number(bounds.get(1))
             if low.is_none() or high.is_none() or low.get() > high.get():
                 return none
 
@@ -180,11 +180,11 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[List[Bool]]:
         allowed.append(false)
 
     for item in text.split(","):
-        let span = parse_item(item, lo, hi)
+        span := parse_item(item, lo, hi)
         if span.is_none():
             return none
 
-        let found = span.get()
+        found := span.get()
         for value in range(found.lo, found.hi + 1):
             if (value - found.lo) % found.step == 0:
                 allowed.set(value, true)
@@ -205,7 +205,7 @@ fn find_runs(
     var month = start.month
     var day = start.day
     var weekday = weekday_of(year, month, day)
-    let start_key = start.hour * 60 + start.minute
+    start_key := start.hour * 60 + start.minute
 
     for offset in range(0, 3001):
         if runs.length() == count:
@@ -255,39 +255,39 @@ fn format_moment(moment: Moment) String:
     return "{moment.year}-{pad2(moment.month)}-{pad2(moment.day)} {pad2(moment.hour)}:{pad2(moment.minute)}"
 
 fn report(number: Int, text: String) String:
-    let tokens = text.split(" ")
+    tokens := text.split(" ")
     if tokens.length() != 7:
         return "line {number}: error: bad line\n"
 
-    let start = parse_start(tokens.get(0))
+    start := parse_start(tokens.get(0))
     if start.is_none():
         return "line {number}: error: bad start\n"
 
-    let count = parse_count(tokens.get(1))
+    count := parse_count(tokens.get(1))
     if count.is_none():
         return "line {number}: error: bad count\n"
 
-    let minutes = parse_field(tokens.get(2), 0, 59)
+    minutes := parse_field(tokens.get(2), 0, 59)
     if minutes.is_none():
         return "line {number}: error: bad minute\n"
 
-    let hours = parse_field(tokens.get(3), 0, 23)
+    hours := parse_field(tokens.get(3), 0, 23)
     if hours.is_none():
         return "line {number}: error: bad hour\n"
 
-    let days = parse_field(tokens.get(4), 1, 31)
+    days := parse_field(tokens.get(4), 1, 31)
     if days.is_none():
         return "line {number}: error: bad day-of-month\n"
 
-    let months = parse_field(tokens.get(5), 1, 12)
+    months := parse_field(tokens.get(5), 1, 12)
     if months.is_none():
         return "line {number}: error: bad month\n"
 
-    let weekdays = parse_field(tokens.get(6), 0, 6)
+    weekdays := parse_field(tokens.get(6), 0, 6)
     if weekdays.is_none():
         return "line {number}: error: bad day-of-week\n"
 
-    let runs = find_runs(
+    runs := find_runs(
         start.get(), count.get(), minutes.get().clone(), hours.get().clone(),
         days.get().clone(), months.get().clone(), weekdays.get().clone()
     )
@@ -304,17 +304,17 @@ fn report(number: Int, text: String) String:
 
 fn read_lines() Result[List[String], IoError]:
     var lines = List[String]()
-    let input = stdin()
+    input := stdin()
 
     while true:
-        let line = try read_line(input)
+        line := try read_line(input)
         if line.is_none():
             return ok(lines)
 
         lines.append(line.get())
 
 export fn main() Int:
-    let lines = read_lines().get()
+    lines := read_lines().get()
     var out = ""
     var number = 0
 

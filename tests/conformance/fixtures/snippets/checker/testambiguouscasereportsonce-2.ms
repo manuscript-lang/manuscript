@@ -8,5 +8,5 @@ enum B:
     X(n: Int)
 
 fn f() Int:
-    let a = X(n: 1)
+    a := X(n: 1)
     return 1

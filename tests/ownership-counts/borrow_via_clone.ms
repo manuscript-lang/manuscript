@@ -20,10 +20,10 @@ fn first_kid(n: Node) Node?:
 
 fn descend(n: Node, d: Int) Int:
     if d == 0: return n.key
-    if let k = first_kid(n): return descend(k, d - 1)
+    if k := first_kid(n): return descend(k, d - 1)
 
     return 0
 
 export fn main() Int:
-    let t = build(4)
+    t := build(4)
     return descend(t, 3) - 1

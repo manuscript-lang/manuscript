@@ -989,7 +989,7 @@ impl<'a> FnLower<'a> {
             let bnd = self
                 .hir
                 .pattern_binding(p)
-                .ok_or_else(|| Error::new("if let without binding"))?;
+                .ok_or_else(|| Error::new("if binding missing"))?;
             if self.cx.exclusive(bnd.uid) {
                 // `if var`: the payload is the entry itself, not a copy.
                 if o.own {
@@ -1070,7 +1070,7 @@ impl<'a> FnLower<'a> {
                 let k = self.b.iconst(ok as i64);
                 Ok(self.b.icmp(Cc::Eq, tag, k))
             }
-            _ => Err(Error::new("if let needs an Optional or a Result")),
+            _ => Err(Error::new("an if binding needs an Optional or a Result")),
         }
     }
 
@@ -1101,7 +1101,7 @@ impl<'a> FnLower<'a> {
     fn ok_case(&self, a: ms_mir::types::AltId) -> Result<usize, Error> {
         self.b.m.alts[a.index()]
             .ok_case()
-            .ok_or_else(|| Error::new("if let on an alternative that is not a Result"))
+            .ok_or_else(|| Error::new("an if binding on an alternative that is not a Result"))
     }
 
     /// A Bool operand as an SSA value (dropping nothing: Bool is a scalar).

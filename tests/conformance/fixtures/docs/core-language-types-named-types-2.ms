@@ -1,5 +1,5 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
 // conform: origin=documentation/core-language/types/named-types.md:22
-let customer = Customer(name: "Ada", email: none)
-let name = customer.name
+customer := Customer(name: "Ada", email: none)
+name := customer.name

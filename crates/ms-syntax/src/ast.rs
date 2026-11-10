@@ -14,9 +14,9 @@
 //!   `compound = Some(op)` and `value` = `a.b + 1` (a fresh clone of the target
 //!   chain on the left, positioned at the target, binary positioned at the
 //!   operator).
-//! * `let (a = 1, ...)` groups are expanded into one node each with `group`
+//! * `var (a = 1, ...)` groups are expanded into one node each with `group`
 //!   set to the keyword position.
-//! * A module-level `let` is [`DeclKind::Const`]; it is held as a nullary
+//! * A module-level `name := value` is [`DeclKind::Const`]; it is held as a nullary
 //!   function whose body returns the initializer (see [`ConstDecl`]).
 //! * A statement-position expression in an inline function/arm body is parsed
 //!   as [`StmtKind::Return`].
@@ -93,8 +93,7 @@ pub struct Import {
 pub struct Decl {
     /// Node id.
     pub id: NodeId,
-    /// Keyword position (`fn`, `type`, `test`, ...); for a grouped constant,
-    /// the position of the entry's name. See [`ConstDecl::group`].
+    /// Keyword position (`fn`, `type`, `test`, ...); for a constant, its name.
     pub pos: Pos,
     /// Written with `export`.
     pub export: bool,
@@ -158,8 +157,6 @@ pub struct ConstDecl {
     pub value: Expr,
     /// Position of the initializer's first token.
     pub init_pos: Pos,
-    /// Position of the `let` keyword when written inside `let ( ... )`.
-    pub group: Option<Pos>,
 }
 
 /// `type Name[T]:` with fields.
@@ -683,9 +680,10 @@ pub struct Stmt {
 
 impl Stmt {
     /// Whether the parser synthesised this binding for a destructuring `for` or lambda
-    /// parameter: it has no `let`, so the statement starts at its own pattern.
+    /// parameter: its value is the hidden name, positioned at the pattern.
     pub fn is_destructure_head(&self) -> bool {
-        matches!(&self.kind, StmtKind::Bind { pattern, group: None, .. } if pattern.pos == self.pos)
+        matches!(&self.kind, StmtKind::Bind { pattern, value, group: None, .. }
+            if pattern.pos == self.pos && value.pos == self.pos)
     }
 }
 
@@ -701,9 +699,9 @@ pub enum AssignTarget {
 /// Statement variants.
 #[derive(Debug, Clone)]
 pub enum StmtKind {
-    /// `let`/`var` binding: `pattern [: Type] = value`.
+    /// `pattern := value`, `name: Type = value`, or `var` binding.
     Bind {
-        /// `var` rather than `let`.
+        /// `var` rather than an immutable `:=` binding.
         mutable: bool,
         /// Bound pattern.
         pattern: Pattern,
@@ -711,7 +709,7 @@ pub enum StmtKind {
         ty: Option<TypeRef>,
         /// Initializer.
         value: Expr,
-        /// Keyword position when written in a `let ( ... )` group.
+        /// Keyword position when written in a `var ( ... )` group.
         group: Option<Pos>,
     },
     /// `target = value` or `target op= value`.

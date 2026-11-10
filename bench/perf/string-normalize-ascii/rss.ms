@@ -1,9 +1,9 @@
 import stdout from "@std/io/io.ms"
 
 fn main() Int:
-    let text = "x".repeat(4194304).get()
-    let result = text.normalize("NFC").get()
+    text := "x".repeat(4194304).get()
+    result := text.normalize("NFC").get()
     if result != text: return 1
 
-    let _written = stdout().write("{result.byte_length()}\n")
+    _written := stdout().write("{result.byte_length()}\n")
     return 0

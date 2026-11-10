@@ -7,6 +7,34 @@
     "format": 1,
     "diagnostics": [
       {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export read_line; @std/io/io.ms exports: DescriptorSink, DescriptorSource, Pipe, ReadStream, Sink, Source, StdStream, Transform, WriteStream, pipe, redirect_to_null, stderr, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/io/io.ms\"'",
+        "position": {
+          "file": "src/main.ms",
+          "line": 1,
+          "column": 23,
+          "offset": 22
+        },
+        "end": {
+          "file": "src/main.ms",
+          "line": 1,
+          "column": 32,
+          "offset": 31
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "ReadStream requires 1 type arguments, found 0; write ReadStream[T1]",
+        "position": {
+          "file": "src/main.ms",
+          "line": 21,
+          "column": 20,
+          "offset": 416
+        }
+      },
+      {
         "code": "MS3000",
         "phase": "type",
         "message": "implementation of bump is declared var fn but Counter declares it fn; an operation that changes its receiver is declared `var fn` in the interface too",
@@ -14,14 +42,36 @@
           "file": "src/main.ms",
           "line": 12,
           "column": 12,
-          "offset": 262
+          "offset": 259
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding read_line; declare it with 'read_line := ...' before use, define 'fn read_line(...) T:', or import it from a module",
+        "position": {
+          "file": "src/main.ms",
+          "line": 22,
+          "column": 16,
+          "offset": 449
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected ReadStream, found ReadStream[Bytes] (in argument 'input' of got_line)",
+        "position": {
+          "file": "src/main.ms",
+          "line": 82,
+          "column": 21,
+          "offset": 1579
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/src/main.ms:12:12: type: implementation of bump is declared var fn but Counter declares it fn; an operation that changes its receiver is declared `var fn` in the interface too\n    |\n 12 |     var fn bump(by: Int) Int:\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/src/main.ms:1:23: resolution: module does not export read_line; @std/io/io.ms exports: DescriptorSink, DescriptorSource, Pipe, ReadStream, Sink, Source, StdStream, Transform, WriteStream, pipe, redirect_to_null, stderr, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/io/io.ms\"'\n   |\n 1 | import stdout, stdin, read_line, ReadStream from \"@std/io/io.ms\"\n   |                       ^^^^^^^^^\n<DIR>/src/main.ms:21:20: type: ReadStream requires 1 type arguments, found 0; write ReadStream[T1]\n    |\n 21 | fn got_line(input: ReadStream) Bool:\n    |                    ^\n<DIR>/src/main.ms:12:12: type: implementation of bump is declared var fn but Counter declares it fn; an operation that changes its receiver is declared `var fn` in the interface too\n    |\n 12 |     var fn bump(by: Int) Int:\n    |            ^\n<DIR>/src/main.ms:22:16: resolution: unknown binding read_line; declare it with 'read_line := ...' before use, define 'fn read_line(...) T:', or import it from a module\n    |\n 22 |     if line := read_line(input):\n    |                ^\n<DIR>/src/main.ms:82:21: type: expected ReadStream, found ReadStream[Bytes] (in argument 'input' of got_line)\n    |\n 82 |         if got_line(input):\n    |                     ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

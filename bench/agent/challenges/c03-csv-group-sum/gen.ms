@@ -7,10 +7,10 @@ import (
 
 // The amount in cents, or none when `amt` is not digits with an optional fraction of one or two digits.
 fn cents(amt: String) Int?:
-    let parts = amt.split(".")
+    parts := amt.split(".")
     if parts.length() > 2: return none
 
-    let whole = parts[0].clone()
+    whole := parts[0].clone()
     if whole.is_empty() or not whole.chars().all(fn c: "0123456789".contains(c)): return none
 
     var fraction = ""
@@ -34,23 +34,23 @@ fn parse_line(line: String) Row?:
     var amt = ""
 
     if line.starts_with("\""):
-        let end = line.slice(1, line.length()).get("").index_of("\"").get(-1)
+        end := line.slice(1, line.length()).get("").index_of("\"").get(-1)
         if end < 0: return none
 
-        let close = end + 1
+        close := end + 1
         if line.slice(close + 1, close + 2).get("") != ",": return none
 
         cat = line.slice(1, close).get("")
         amt = line.slice(close + 2, line.length()).get("")
     else:
-        let parts = line.split(",")
+        parts := line.split(",")
         if parts.length() != 2: return none
 
         cat = parts[0].clone()
         amt = parts[1].clone()
 
     if cat.contains("\"") or amt.contains(",") or cat.is_empty(): return none
-    if let value = cents(amt): return Row(cat, value)
+    if value := cents(amt): return Row(cat, value)
 
     return none
 
@@ -60,10 +60,10 @@ fn solve(s: String) String:
     var bad = 0
 
     for raw in s.split("\n"):
-        let line = if raw.ends_with("\r"): raw.slice(0, raw.length() - 1).get("") else: raw.clone()
+        line := if raw.ends_with("\r"): raw.slice(0, raw.length() - 1).get("") else: raw.clone()
         if line.trim().is_empty(): continue
 
-        if let row = parse_line(line):
+        if row := parse_line(line):
             if not totals.contains(row.category): order.append(row.category.clone())
             totals[row.category.clone()] = totals.get_or(row.category, 0) + row.cents
         else:
@@ -72,7 +72,7 @@ fn solve(s: String) String:
     var out = ""
 
     for k in order.sorted():
-        let v = totals.get(k).get(0)
+        v := totals.get(k).get(0)
         out += "{k}: {v / 100}.{"{v % 100}".pad_start(2, "0")}\n"
 
     if bad > 0: out += "skipped: {bad}\n"
@@ -82,24 +82,24 @@ fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
 export fn gen_c03() Unit:
     var rnd = seeded(3)
-    let cats = ["food", "Rent", "a,b", "z", "x y", "café"]
+    cats := ["food", "Rent", "a,b", "z", "x y", "café"]
     var lines = List[String]()
 
     for _n in 0..2000:
-        let c = rnd.choice(cats)
+        c := rnd.choice(cats)
         var a = ""
 
         if rnd.random() < 0.7:
-            let whole = rnd.randint(0, 999)
+            whole := rnd.randint(0, 999)
             a = "{whole}.{"{rnd.randint(0, 99)}".pad_start(2, "0")}"
         else:
             a = "{rnd.randint(0, 50)}"
 
         lines.append((if c.contains(","): "\"{c}\"" else: c.clone()) + "," + a)
 
-    let big = lines.join("\n") + "\n"
-    let examples = [mk("basic", "fruit,1.50\n\"a,b\",2\nfruit,0.5\noops\nveg,x\n")]
-    let hidden = examples.concat(
+    big := lines.join("\n") + "\n"
+    examples := [mk("basic", "fruit,1.50\n\"a,b\",2\nfruit,0.5\noops\nveg,x\n")]
+    hidden := examples.concat(
         [
             mk("empty", ""),
             mk("blank-lines", "\n\na,1\n\n"),

@@ -6,13 +6,13 @@ import stdout from "@std/io/io.ms"
 import monotonic from "@std/time.ms"
 
 export fn main() Int:
-    let before = now()
+    before := now()
     if monotonic() - before < 0.milliseconds():
         return 1
 
     close_output()
 
-    let cause = match stdout().write(""):
+    cause := match stdout().write(""):
         ok(_):
             return 3
         error(cause): cause

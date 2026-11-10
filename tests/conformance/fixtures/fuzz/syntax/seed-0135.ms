@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (4.615 == (253.535 + (861.463 + 2.0e21)))
+    b1 := (4.615 == (253.535 + (861.463 + 2.0e21)))
     say("b1 = {b1}")
 
-    let s2 = ("{(-18)}:" + ("{((-34) * (-34))}:" + "a"))
+    s2 := ("{(-18)}:" + ("{((-34) * (-34))}:" + "a"))
     say("s2 = [{s2}]")
 
-    let i3 = (((-40) * ((-40) + 43)) * (-(-7)))
+    i3 := (((-40) * ((-40) + 43)) * (-(-7)))
     say("i3 = {i3}")
 
     if s2.reverse().is_empty():
@@ -23,9 +23,9 @@ export fn main() Int:
     else:
         say("héllo".lower())
 
-    let i4 = (((i3 - 35) - ((-34) + 10)) - (((-1) + 102520) + (-41)))
+    i4 := (((i3 - 35) - ((-34) + 10)) - (((-1) + 102520) + (-41)))
     say("i4 = {i4}")
 
-    let s5 = ""
+    s5 := ""
     say("s5 = [{s5}]")
     return 0

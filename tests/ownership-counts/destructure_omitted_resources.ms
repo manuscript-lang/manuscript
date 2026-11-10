@@ -48,27 +48,27 @@ type NamedTriple:
     third: NamedToken
 
 fn local() Unit:
-    let tokens = Triple(Token(1), Token(2), Token(3))
-    let {first: kept} = tokens
-    let _ = kept.id
+    tokens := Triple(Token(1), Token(2), Token(3))
+    {first: kept} := tokens
+    _ := kept.id
 
 fn temporary() Unit:
-    let {first: kept} = Triple(Token(4), Token(5), Token(6))
-    let _ = kept.id
+    {first: kept} := Triple(Token(4), Token(5), Token(6))
+    _ := kept.id
 
 fn nested() Unit:
-    let tokens = Nested(Token(7), Triple(Token(8), Token(9), Token(10)))
-    let {kept: kept} = tokens
-    let _ = kept.id
+    tokens := Nested(Token(7), Triple(Token(8), Token(9), Token(10)))
+    {kept: kept} := tokens
+    _ := kept.id
 
 fn with_storage() Unit:
-    let tokens = NamedTriple(
+    tokens := NamedTriple(
         NamedToken(11, "first-heap-allocated-name"),
         NamedToken(12, "second-heap-allocated-name"),
         NamedToken(13, "third-heap-allocated-name")
     )
-    let {first: kept} = tokens
-    let _ = kept.name.length()
+    {first: kept} := tokens
+    _ := kept.name.length()
 
 fn main() Unit:
     local()

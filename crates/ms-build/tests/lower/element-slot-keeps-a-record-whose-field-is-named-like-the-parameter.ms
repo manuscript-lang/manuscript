@@ -6,6 +6,6 @@ type Child:
 
 export fn main() Int:
     var values = [Child(1), Child(1)]
-    let c = Child(9)
+    c := Child(9)
     values.fill(c, 0, 1)
     return values.length()

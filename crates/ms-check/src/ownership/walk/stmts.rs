@@ -234,8 +234,10 @@ impl Walker<'_> {
             return;
         };
         let role = if mutable { Role::Var } else { Role::Let };
-        if !mutable {
-            self.let_pos.insert(b.uid, s.pos);
+        if !mutable
+            && let Some(fix) = crate::suggestions::binding_to_var(&self.cx.m.data.source, s.pos)
+        {
+            self.var_fixes.insert(b.uid, fix);
         }
         let class = self.cx.classes.class(self.syms, &b.ty);
         // A scalar copies, `let` or `var`; any other binding of a place borrows it, shared for

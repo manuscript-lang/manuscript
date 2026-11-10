@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,25 +15,25 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let b1 = ((-(161877 - (-32))) <= 639566104417)
+    b1 := ((-(161877 - (-32))) <= 639566104417)
     say("b1 = {b1}")
 
-    let i2 = (900191350281 % (-10))
+    i2 := (900191350281 % (-10))
     say("i2 = {i2}")
 
-    let b3 = (not (not "gamma".contains("a")))
+    b3 := (not (not "gamma".contains("a")))
     say("b3 = {b3}")
 
-    let i4 = ((((-1) * (-15)) * (i2 + i2)) * ((-45) - (i2 / i2)))
+    i4 := ((((-1) * (-15)) * (i2 + i2)) * ((-45) - (i2 / i2)))
     say("i4 = {i4}")
 
-    let l5 = [27, 27, (-10)]
+    l5 := [27, 27, (-10)]
     say("l5 = {l5} len {l5.length()}")
 
-    let l6 = l5.sorted(fn a, b: a.compare(b))
+    l6 := l5.sorted(fn a, b: a.compare(b))
     say("l6 = {l6} len {l6.length()}")
 
-    let s7 = "hello world"
+    s7 := "hello world"
     say("s7 = [{s7}]")
     say("gcd(358, 3875) = {gcd(358, 3875)}")
 
@@ -42,13 +42,13 @@ export fn main() Int:
     else:
         say(("alpha" + "MiXeD CaSe"))
 
-    let s8 = (s7 + (("ms" + s7) + "42".lower()))
+    s8 := (s7 + (("ms" + s7) + "42".lower()))
     say("s8 = [{s8}]")
 
-    let l9 = l6.reversed()
+    l9 := l6.reversed()
     say("l9 = {l9} len {l9.length()}")
 
-    let f10 = 21.298
+    f10 := 21.298
     say("f10 = {f10}")
 
     var acc11 = 0
@@ -60,12 +60,12 @@ export fn main() Int:
 
     say("acc11 = {acc11}")
 
-    let i12 = ((s7.length() + s7.length()) / ((i2 + i2) - (i4 - i4)))
+    i12 := ((s7.length() + s7.length()) / ((i2 + i2) - (i4 - i4)))
     say("i12 = {i12}")
 
-    let b13 = (("{(i12 / i4)}:" + "back\\slash").is_empty() and b3)
+    b13 := (("{(i12 / i4)}:" + "back\\slash").is_empty() and b3)
     say("b13 = {b13}")
 
-    let s14 = ("ms" + s8)
+    s14 := ("ms" + s8)
     say("s14 = [{s14}]")
     return 0

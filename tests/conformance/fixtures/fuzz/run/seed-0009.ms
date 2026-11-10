@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [(-14), (-9), 1, (-13)]
+    l1 := [(-14), (-9), 1, (-13)]
     say("l1 = {l1} len {l1.length()}")
 
-    let f2 = (793.543 / ((841.152 + 8.5) - 0.0))
+    f2 := (793.543 / ((841.152 + 8.5) - 0.0))
     say("f2 = {f2}")
 
     if "hello world".contains("ms"):
@@ -20,7 +20,7 @@ export fn main() Int:
     else:
         say("Tab\there".replace("line\nbreak", "quote\"d"))
 
-    let i3 = 40
+    i3 := 40
     say("i3 = {i3}")
 
     if ((662.602 * f2) > (f2 - 845.801)):
@@ -28,7 +28,7 @@ export fn main() Int:
     else:
         say("a")
 
-    let f4 = (((f2 - 507.008) * (8.0e25 * 0.0)) / (f2 + (f2 * f2)))
+    f4 := (((f2 - 507.008) * (8.0e25 * 0.0)) / (f2 + (f2 * f2)))
     say("f4 = {f4}")
 
     if ("42" == ("ms" + "delta")):
@@ -36,7 +36,7 @@ export fn main() Int:
     else:
         say("delta")
 
-    let s5 = "a"
+    s5 := "a"
     say("s5 = [{s5}]")
 
     var acc6 = 0
@@ -48,21 +48,21 @@ export fn main() Int:
 
     say("acc6 = {acc6}")
 
-    let b7 = true
+    b7 := true
     say("b7 = {b7}")
 
-    let i8 = i3
+    i8 := i3
     say("i8 = {i8}")
 
-    let i9 = l1.length()
+    i9 := l1.length()
     say("i9 = {i9}")
 
-    let s10 = ("日本語" + "Tab\there").trim()
+    s10 := ("日本語" + "Tab\there").trim()
     say("s10 = [{s10}]")
 
-    let i11 = ((-357998) + i3)
+    i11 := ((-357998) + i3)
     say("i11 = {i11}")
 
-    let f12 = f2
+    f12 := f2
     say("f12 = {f12}")
     return 0

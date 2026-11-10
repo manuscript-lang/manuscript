@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -17,8 +17,8 @@ fn fact(n: Int) Int:
 export fn main() Int:
     say("fact(19) = {fact(19)}")
 
-    let s1 = "42".reverse().replace("  padded  ", "gamma").upper()
+    s1 := "42".reverse().replace("  padded  ", "gamma").upper()
     say("s1 = [{s1}]")
 
-    let bad: Int = "text"
+    bad: Int = "text"
     return 0

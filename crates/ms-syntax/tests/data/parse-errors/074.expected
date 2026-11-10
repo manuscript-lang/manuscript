@@ -1,1 +1,1 @@
-error parse 2:15:29 "a block comment must start its own line; write a trailing comment with '//'"
+error parse 2:12:26 "a block comment must start its own line; write a trailing comment with '//'"

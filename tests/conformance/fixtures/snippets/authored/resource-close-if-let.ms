@@ -24,7 +24,7 @@ fn keep(r: Res) Res:
     return r
 
 fn early_return() Int:
-    if let r = maybe("early", true):
+    if r := maybe("early", true):
         if r.name.length() > 1:
             return 1
 
@@ -33,25 +33,25 @@ fn early_return() Int:
     return 0
 
 fn local_optional() Unit:
-    let o = maybe("local", true)
-    if let r = o:
+    o := maybe("local", true)
+    if r := o:
         say("body {r.name}")
     say("after local")
 
 fn absent() Unit:
-    if let r = maybe("absent", false):
+    if r := maybe("absent", false):
         say("body {r.name}")
     else:
         say("else branch")
 
 fn moved_on() Res:
-    if let r = maybe("moved", true):
+    if r := maybe("moved", true):
         return keep(r)
 
     return Res("fallback")
 
 fn with_else_err() Unit:
-    if let r = make("ok-result"):
+    if r := make("ok-result"):
         say("body {r.name}")
 
 fn var_payload() Unit:
@@ -64,7 +64,7 @@ fn main() Unit:
     local_optional()
     absent()
 
-    let m = moved_on()
+    m := moved_on()
     say("moved_on got {m.name}")
     with_else_err()
     var_payload()

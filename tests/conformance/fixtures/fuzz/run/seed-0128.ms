@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -36,30 +36,30 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let i1 = (-902866)
+    i1 := (-902866)
     say("i1 = {i1}")
 
-    let s2 = "42"
+    s2 := "42"
     say("s2 = [{s2}]")
 
-    let s3 = s2
+    s3 := s2
     say("s3 = [{s3}]")
 
-    let l4 = [(-10)]
+    l4 := [(-10)]
     say("l4 = {l4} len {l4.length()}")
 
-    let b5 = ((s3 + "gamma") + ("line\nbreak" + "back\\slash")).contains("beta")
+    b5 := ((s3 + "gamma") + ("line\nbreak" + "back\\slash")).contains("beta")
     say("b5 = {b5}")
     say("fib(53) = {fib(53)}")
 
-    let l6 = l4.sorted(fn a, b: a.compare(b))
+    l6 := l4.sorted(fn a, b: a.compare(b))
     say("l6 = {l6} len {l6.length()}")
     say("{i1} {i1} {(i1 < i1)} sum {i1 + i1}")
 
-    let i7 = i1
+    i7 := i1
     say("i7 = {i7}")
     say("collatz(2469) = {collatz(2469)}")
 
-    let i8 = (-528791)
+    i8 := (-528791)
     say("i8 = {i8}")
     return 0

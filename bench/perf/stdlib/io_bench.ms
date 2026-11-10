@@ -17,7 +17,7 @@ impl Source[Bytes] for MemorySource:
         if end > self.data.length():
             end = self.data.length()
 
-        let chunk = self.data.slice(self.offset, end).get().clone()
+        chunk := self.data.slice(self.offset, end).get().clone()
         self.offset = end
         return ok(chunk)
 
@@ -31,14 +31,14 @@ fn source_text() String:
     return parts.join("")
 
 bench "io.lines":
-    let bytes = source_text().to_bytes()
+    bytes := source_text().to_bytes()
 
     fn work() Result[Unit, Error]:
         var reader = lines(ReadStream[Bytes](MemorySource(bytes.clone(), 0)))
         var count = 0
 
         while true:
-            let next = reader.next()
+            next := reader.next()
             if next.is_error(): return keep(-1)
             if next.get().is_none(): break
 
@@ -58,22 +58,22 @@ fn plus(x: Int) Int:
     return x + 1
 
 bench "io.stages.map3_fold":
-    let xs = counted(200000)
+    xs := counted(200000)
 
     fn work() Result[Unit, Error]:
-        let stream = map(map(map(from_list(xs.clone()), plus), plus), plus)
-        let total = try fold(stream, 0, fn(a: Int, b: Int) Int: return a + b)
+        stream := map(map(map(from_list(xs.clone()), plus), plus), plus)
+        total := try fold(stream, 0, fn(a: Int, b: Int) Int: return a + b)
         return keep(total)
 
     try measure(10, work)
 
 bench "io.lines long fragmented":
-    let text = try "x".repeat(262144)
-    let data = "{text}\n".to_bytes()
+    text := try "x".repeat(262144)
+    data := "{text}\n".to_bytes()
 
     fn work() Unit!:
         var input = lines(from_bytes(data.clone(), 64))
-        let result = try input.next()
+        result := try input.next()
         try input.close()
         return keep(result.get("").byte_length())
 

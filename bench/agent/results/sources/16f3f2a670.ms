@@ -14,7 +14,7 @@ fn is_digits(text: String) Bool:
 
 // Converts a valid amount such as `12.5` into whole cents, or none when it does not match the spec.
 fn amount_cents(text: String) Optional[BigInt]:
-    let parts = text.split(".")
+    parts := text.split(".")
     if parts.length() > 2 or not is_digits(parts[0]):
         return none
 
@@ -35,37 +35,37 @@ fn amount_cents(text: String) Optional[BigInt]:
 fn split_record(line: String) Optional[List[String]]:
     if line.starts_with("\""):
         // A quoted category: the only quotes allowed are the two wrapping it.
-        let quoted = line.split("\"")
+        quoted := line.split("\"")
         if quoted.length() != 3 or quoted[1].length() == 0:
             return none
 
-        let tail = quoted[2].split(",")
+        tail := quoted[2].split(",")
         if tail.length() != 2 or tail[0].length() != 0:
             return none
 
         return [quoted[1].clone(), tail[1].clone()]
 
-    let fields = line.split(",")
+    fields := line.split(",")
     if fields.length() != 2 or fields[0].length() == 0:
         return none
 
     return fields
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
-    let zero = parse("0", 10).get()
-    let hundred = parse("100", 10).get()
+    lines := read_lines(stdin()).get()
+    zero := parse("0", 10).get()
+    hundred := parse("100", 10).get()
     var totals = Map[String, BigInt]()
     var skipped = 0
 
     for raw in lines:
-        let line = if raw.ends_with("\r"): raw.slice(0, -1).get() else: raw
+        line := if raw.ends_with("\r"): raw.slice(0, -1).get() else: raw
 
         if line.length() == 0:
             continue
 
-        if let fields = split_record(line):
-            if let cents = amount_cents(fields[1]):
+        if fields := split_record(line):
+            if cents := amount_cents(fields[1]):
                 totals.update(fields[0].clone(), zero, fn sum: sum + cents)
                 continue
 
@@ -74,10 +74,10 @@ export fn main() Int:
     var out = List[String]()
 
     for category in totals.keys().sorted():
-        let total = totals.get_or(category, zero)
-        let frac = (total % hundred).to_string_radix(10)
+        total := totals.get_or(category, zero)
+        frac := (total % hundred).to_string_radix(10)
 
-        let padded = if frac.length() < 2: "0".concat(frac) else: frac
+        padded := if frac.length() < 2: "0".concat(frac) else: frac
 
         out.append("{category}: {(total / hundred).to_string_radix(10)}.{padded}")
 

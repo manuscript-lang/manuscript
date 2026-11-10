@@ -63,7 +63,7 @@ fn c5(text: String) Int:
 
 fn outer(text: String) fn() Int:
     var held = text.split(",").length()
-    let inner = fn() Int: return held + text.length()
+    inner := fn() Int: return held + text.length()
     return fn() Int: return inner()
 
 fn c6(text: String) Int:
@@ -73,7 +73,7 @@ fn c7(text: String) Int:
     var fs: List[fn() Int] = []
 
     for p in text.split(","):
-        let f = fn() Int: return p.length()
+        f := fn() Int: return p.length()
         fs.append(f)
 
     var t = 0
@@ -83,7 +83,7 @@ fn c7(text: String) Int:
 
 fn maker(text: String) fn() fn() Int:
     return fn() fn() Int:
-        let n = text.length()
+        n := text.length()
         return fn() Int: return n + n
 
 fn c8(text: String) Int:

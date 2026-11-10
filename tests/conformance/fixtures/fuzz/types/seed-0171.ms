@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = 945.518
+    f1 := 945.518
     say("f1 = {f1}")
     say(
         "{((10 - (-18)) * (6 % 6))} {((-(-706225)) * (-859293))} {(((10 - (-18)) * (6 % 6)) < ((-(-706225)) * (-859293)))} sum {((10 - (-18)) * (6 % 6)) + ((-(-706225)) * (-859293))}"
     )
 
-    let bad: Bool = 1
+    bad: Bool = 1
     return 0

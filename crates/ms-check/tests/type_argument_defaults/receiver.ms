@@ -16,29 +16,29 @@ impl Box[A]:
     fn copies[B = Self]() List[B]: return []
 
 fn exercise() Int:
-    let box = Box(7)
-    let read = box.read()
-    let nested = box.nested()
-    let own = box.own()
-    let copies = box.copies()
-    let ints: List[Int] = read
-    let lists: List[List[Int]] = nested
-    let more_ints: List[Int] = own
-    let boxes: List[Box[Int]] = copies
+    box := Box(7)
+    read := box.read()
+    nested := box.nested()
+    own := box.own()
+    copies := box.copies()
+    ints: List[Int] = read
+    lists: List[List[Int]] = nested
+    more_ints: List[Int] = own
+    boxes: List[Box[Int]] = copies
     return ints.length() + lists.length() + more_ints.length() + boxes.length()
 
 fn from_bound[S: Reader[Int]](source: S) Int:
-    let values = source.read()
-    let ints: List[Int] = values
+    values := source.read()
+    ints: List[Int] = values
     return ints.length()
 
 fn alternate_receivers() Int:
-    let int_box = Box(7)
-    let text_box = Box("value")
-    let first = int_box.own()
-    let second = text_box.own()
-    let again = int_box.own()
-    let ints: List[Int] = first
-    let strings: List[String] = second
-    let more_ints: List[Int] = again
+    int_box := Box(7)
+    text_box := Box("value")
+    first := int_box.own()
+    second := text_box.own()
+    again := int_box.own()
+    ints: List[Int] = first
+    strings: List[String] = second
+    more_ints: List[Int] = again
     return ints.length() + strings.length() + more_ints.length() + from_bound(int_box)

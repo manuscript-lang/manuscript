@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [(-15), (-8), 8, (-25), 9]
+    l1 := [(-15), (-8), 8, (-25), 9]
     say("l1 = {l1} len {l1.length()}")
 
-    let s2 = ("naïve".trim() + "MiXeD CaSe".trim()).upper()
+    s2 := ("naïve".trim() + "MiXeD CaSe".trim()).upper()
     say("s2 = [{s2}]")
 
-    let i3 = ((-1) - ((-289971984701) - (-987952907373)))
+    i3 := ((-1) - ((-289971984701) - (-987952907373)))
     say("i3 = {i3}")
 
     var acc4 = 0
@@ -29,7 +29,7 @@ export fn main() Int:
     say("acc4 = {acc4}")
     say("{676709} {i3} {(676709 < i3)} sum {676709 + i3}")
 
-    let _bad = say
-    let f5 = (518.816 * 4.5)
+    _bad := say
+    f5 := (518.816 * 4.5)
     say("f5 = {f5}")
     return 0

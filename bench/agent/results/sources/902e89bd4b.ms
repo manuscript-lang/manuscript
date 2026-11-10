@@ -21,10 +21,10 @@ export fn main() Int:
     var input = read_input().get()
     if input.length() == 0: return 0
 
-    let head = input[0].split(" ")
-    let ctx = head[2].parse_int().get(0)
-    let n = head[3].parse_int().get(0)
-    let m = head[4].parse_int().get(0)
+    head := input[0].split(" ")
+    ctx := head[2].parse_int().get(0)
+    n := head[3].parse_int().get(0)
+    m := head[4].parse_int().get(0)
 
     // A lines are input[1 + i], B lines are input[1 + n + j].
     // Missing trailing lines count as empty lines.
@@ -32,22 +32,22 @@ export fn main() Int:
         input.append("")
 
     // tab[i * w + j] = LCS length of a[i..] and b[j..]
-    let w = m + 1
+    w := m + 1
     var tab = List[Int]()
     for k in 0..(n + 1) * w:
         tab.append(0)
 
     for di in 0..n:
-        let i = n - 1 - di
+        i := n - 1 - di
 
         for dj in 0..m:
-            let j = m - 1 - dj
+            j := m - 1 - dj
 
             if input[1 + i] == input[1 + n + j]:
                 tab[i * w + j] = tab[(i + 1) * w + j + 1] + 1
             else:
-                let down = tab[(i + 1) * w + j]
-                let right = tab[i * w + j + 1]
+                down := tab[(i + 1) * w + j]
+                right := tab[i * w + j + 1]
 
                 if down >= right:
                     tab[i * w + j] = down
@@ -85,7 +85,7 @@ export fn main() Int:
                 refs.append(1 + n + j)
                 j += 1
 
-    let s = kinds.length()
+    s := kinds.length()
     var has_change = false
     for q in 0..s:
         if kinds[q] != 0:
@@ -108,7 +108,7 @@ export fn main() Int:
     var nxt = 1000000000
 
     for dd in 0..s:
-        let q = s - 1 - dd
+        q := s - 1 - dd
         if kinds[q] != 0:
             nxt = q
         if nxt - q < dist[q]:
@@ -145,12 +145,12 @@ export fn main() Int:
             if lb > 0:
                 sb = cb + 1
 
-            let ra = range_text(sa, la)
-            let rb = range_text(sb, lb)
+            ra := range_text(sa, la)
+            rb := range_text(sb, lb)
             out.append("@@ -{ra} +{rb} @@")
 
             for q in p..e:
-                let t = input[refs[q]]
+                t := input[refs[q]]
 
                 if kinds[q] == 0:
                     out.append(" {t}")

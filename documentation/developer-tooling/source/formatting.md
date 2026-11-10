@@ -14,7 +14,7 @@ Save this valid but unevenly spaced program as `format.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"5\n"} -->
 ```manuscript
 fn main() Unit:
-    let total=2+3
+    total:=2+3
     print(total)
 ```
 
@@ -33,7 +33,7 @@ ms fmt format.ms
 ms fmt format.ms --check
 ```
 
-Both commands now succeed silently. The assignment becomes `let total = 2 + 3`; running the program still prints `5`.
+Both commands now succeed silently. The assignment becomes `total := 2 + 3`; running the program still prints `5`.
 
 ## Format files or a project
 

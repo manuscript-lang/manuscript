@@ -15,14 +15,14 @@ test "Adler32 RFC vectors and zlib trailer agree":
         binary.append(byte.to_uint8().get(0))
     try expect_equal(adler32(binary.build()).to_int(), 2918612865)
 
-    let input = "a checksum without compressing the input".to_bytes()
-    let encoded = try compress(input, CompressionFormat.Zlib)
+    input := "a checksum without compressing the input".to_bytes()
+    encoded := try compress(input, CompressionFormat.Zlib)
     try expect_equal(adler32(input), try encoded.uint32_be(encoded.length() - 4))
 
 test "checksum values start empty and observations do not reset":
     var crc = Crc32()
     var adler = Adler32()
-    let empty = Bytes([])
+    empty := Bytes([])
     try expect_equal(crc.value().to_int(), 0)
     try expect_equal(adler.value().to_int(), 1)
     crc.update(empty)
@@ -36,8 +36,8 @@ test "checksum values start empty and observations do not reset":
     crc.update("1234".to_bytes())
     adler.update("Wiki".to_bytes())
 
-    let crc_prefix = crc.value()
-    let adler_prefix = adler.value()
+    crc_prefix := crc.value()
+    adler_prefix := adler.value()
     try expect_equal(crc.value(), crc_prefix)
     try expect_equal(adler.value(), adler_prefix)
     crc.update(empty)
@@ -52,7 +52,7 @@ test "checksum values start empty and observations do not reset":
     try expect_equal(adler_prefix, adler32("Wiki".to_bytes()))
 
 test "checksum clones advance independently from the same prefix":
-    let prefix = "abc".to_bytes()
+    prefix := "abc".to_bytes()
     var crc = Crc32()
     var adler = Adler32()
     crc.update(prefix)
@@ -74,10 +74,10 @@ test "whole and incremental checksums agree across binary chunk boundaries":
     for index in 0..4097:
         builder.append(((index * 73 + index / 7) % 256).to_uint8().get(0))
 
-    let data = builder.build()
+    data := builder.build()
 
     for length in [0, 1, 7, 16, 31, 32, 255, 256, 257, 4095, 4096, 4097]:
-        let input = try data.slice(0, length)
+        input := try data.slice(0, length)
 
         for chunk_size in [1, 2, 3, 7, 16, 64, 255, 1024, 4096]:
             var crc = Crc32()
@@ -85,8 +85,8 @@ test "whole and incremental checksums agree across binary chunk boundaries":
             var start = 0
 
             while start < length:
-                let end = if length - start < chunk_size: length else: start + chunk_size
-                let chunk = try input.slice(start, end)
+                end := if length - start < chunk_size: length else: start + chunk_size
+                chunk := try input.slice(start, end)
                 crc.update(chunk)
                 adler.update(chunk)
                 start = end

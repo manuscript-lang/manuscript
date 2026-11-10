@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,10 +22,10 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let i1 = ((((-48) * (-29)) + ((-3) * 242812849975)) % 46)
+    i1 := ((((-48) * (-29)) + ((-3) * 242812849975)) % 46)
     say("i1 = {i1}")
 
-    let b2 = (
+    b2 := (
         (("hello world" + "x") != "naïve".lower())
         or ((true or false) or "MiXeD CaSe".is_empty())
     )
@@ -36,15 +36,15 @@ export fn main() Int:
     else:
         say(("héllo" + "MiXeD CaSe"))
 
-    let i3 = 39
+    i3 := 39
     say("i3 = {i3}")
     say("{17} {(i3 * (45 + i3))} {(17 < (i3 * (45 + i3)))} sum {17 + (i3 * (45 + i3))}")
 
-    let i4 = 9
+    i4 := 9
     say("i4 = {i4}")
     say("fib(56) = {fib(56)}")
 
-    let i5 = (-11)
+    i5 := (-11)
     say("i5 = {i5}")
 
     var acc7 = 0
@@ -52,24 +52,24 @@ export fn main() Int:
         acc7 += i * 4
     say("acc7 = {acc7}")
 
-    let i8 = (((-6) * (i1 + i4)) * ((-7) * i5))
+    i8 := (((-6) * (i1 + i4)) * ((-7) * i5))
     say("i8 = {i8}")
 
-    let i9 = (-79436469542)
+    i9 := (-79436469542)
     say("i9 = {i9}")
 
-    let b10 = (("line\nbreak" + "alpha").is_empty() and true)
+    b10 := (("line\nbreak" + "alpha").is_empty() and true)
     say("b10 = {b10}")
 
-    let s11 = "héllo".trim()
+    s11 := "héllo".trim()
     say("s11 = [{s11}]")
 
-    let i12 = (i3 + (-((-314931) + i4)))
+    i12 := (i3 + (-((-314931) + i4)))
     say("i12 = {i12}")
 
-    let l13 = [(-7), 10, 21, 11]
+    l13 := [(-7), 10, 21, 11]
     say("l13 = {l13} len {l13.length()}")
 
-    let i14 = (((i3 - (-22)) * l13.get(0)) - ((34 % i3) * i12))
+    i14 := (((i3 - (-22)) * l13.get(0)) - ((34 % i3) * i12))
     say("i14 = {i14}")
     return 0

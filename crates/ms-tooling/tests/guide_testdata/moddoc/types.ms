@@ -26,6 +26,6 @@ impl Equal for Shape:
     fn equals(other: Shape) Bool:
         return true
 
-export let LIMIT = 10
+export LIMIT := 10
 // The default name.
-export let NAME: String = "x"
+export NAME: String = "x"

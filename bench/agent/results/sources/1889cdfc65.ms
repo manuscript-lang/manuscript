@@ -3,74 +3,74 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-let C_TAB = 9
-let C_NL = 10
-let C_CR = 13
-let C_DQUOTE = 34
-let C_DOLLAR = 36
-let C_LPAREN = 40
-let C_RPAREN = 41
-let C_STAR = 42
-let C_PLUS = 43
-let C_COMMA = 44
-let C_COLON = 58
-let C_DASH = 45
-let C_DOT = 46
-let C_ZERO = 48
-let C_BANG = 33
-let C_LT = 60
-let C_EQ = 61
-let C_GT = 62
-let C_QMARK = 63
-let C_LBRACK = 91
-let C_BS = 92
-let C_RBRACK = 93
-let C_CARET = 94
-let C_UNDER = 95
-let C_LBRACE = 123
-let C_PIPE = 124
-let C_RBRACE = 125
-let C_b = 98
-let C_B = 66
-let C_d = 100
-let C_D = 68
-let C_i = 105
-let C_k = 107
-let C_m = 109
-let C_n = 110
-let C_r = 114
-let C_s = 115
-let C_S = 83
-let C_t = 116
-let C_w = 119
-let C_W = 87
-let C_x = 120
-let PRINTABLE = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
-let HEX = "0123456789abcdef"
-let COMMANDS = ["test", "match", "full", "find-all", "split", "replace"]
+C_TAB := 9
+C_NL := 10
+C_CR := 13
+C_DQUOTE := 34
+C_DOLLAR := 36
+C_LPAREN := 40
+C_RPAREN := 41
+C_STAR := 42
+C_PLUS := 43
+C_COMMA := 44
+C_COLON := 58
+C_DASH := 45
+C_DOT := 46
+C_ZERO := 48
+C_BANG := 33
+C_LT := 60
+C_EQ := 61
+C_GT := 62
+C_QMARK := 63
+C_LBRACK := 91
+C_BS := 92
+C_RBRACK := 93
+C_CARET := 94
+C_UNDER := 95
+C_LBRACE := 123
+C_PIPE := 124
+C_RBRACE := 125
+C_b := 98
+C_B := 66
+C_d := 100
+C_D := 68
+C_i := 105
+C_k := 107
+C_m := 109
+C_n := 110
+C_r := 114
+C_s := 115
+C_S := 83
+C_t := 116
+C_w := 119
+C_W := 87
+C_x := 120
+PRINTABLE := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz\{|\}~"
+HEX := "0123456789abcdef"
+COMMANDS := ["test", "match", "full", "find-all", "split", "replace"]
 // Instruction opcodes for the matcher.
-let OP_CLASS = 0  // a: class index; consume one byte in the class
-let OP_SPLIT = 1  // a: first choice, b: second choice (backtrack point)
-let OP_JMP = 2  // a: target
-let OP_OPEN = 3  // a: register; store the current position
-let OP_CLOSE = 4  // a: group number, b: register holding the group start
-let OP_CHECK = 5  // a: register; if no progress since OP_OPEN, jump to b
-let OP_ASSERT = 6  // a: assertion kind, b: multiline flag
-let OP_BREF = 7  // a: group number, b: case-insensitive flag
-let OP_LOOK = 8  // a: 1 for negative, b: continuation after the body
-let OP_LOOKEND = 9  // end of a lookahead body
-let OP_MATCH = 10  // overall success
+OP_CLASS := 0  // a: class index; consume one byte in the class
+OP_SPLIT := 1  // a: first choice, b: second choice (backtrack point)
+OP_JMP := 2  // a: target
+OP_OPEN := 3  // a: register; store the current position
+OP_CLOSE := 4  // a: group number, b: register holding the group start
+OP_CHECK := 5  // a: register; if no progress since OP_OPEN, jump to b
+OP_ASSERT := 6  // a: assertion kind, b: multiline flag
+OP_BREF := 7  // a: group number, b: case-insensitive flag
+OP_LOOK := 8  // a: 1 for negative, b: continuation after the body
+OP_LOOKEND := 9  // end of a lookahead body
+OP_MATCH := 10  // overall success
 // AST node kinds.
-let K_EMPTY = 0
-let K_CLASS = 1  // a: class index
-let K_SEQ = 2  // kids
-let K_ALT = 3  // kids
-let K_GROUP = 4  // a: group number (0 = non-capturing); kids[0]
-let K_REPEAT = 5  // a: min, b: max (-1 = unbounded), c: lazy flag; kids[0]
-let K_ASSERT = 6  // a: 0 ^, 1 $, 2 \b, 3 \B; b: multiline flag
-let K_BREF = 7  // a: group number, b: case-insensitive flag
-let K_NBREF = 8  // name: group name, resolved after parsing
-let K_LOOK = 9  // a: 1 for negative; kids[0]
+K_EMPTY := 0
+K_CLASS := 1  // a: class index
+K_SEQ := 2  // kids
+K_ALT := 3  // kids
+K_GROUP := 4  // a: group number (0 = non-capturing); kids[0]
+K_REPEAT := 5  // a: min, b: max (-1 = unbounded), c: lazy flag; kids[0]
+K_ASSERT := 6  // a: 0 ^, 1 $, 2 \b, 3 \B; b: multiline flag
+K_BREF := 7  // a: group number, b: case-insensitive flag
+K_NBREF := 8  // name: group name, resolved after parsing
+K_LOOK := 9  // a: 1 for negative; kids[0]
 
 type PErr:
     msg: String
@@ -197,8 +197,8 @@ fn negate_set(var bits: List[Bool]) Unit:
         bits.set(b, not bits[b])
 
 fn shorthand_set(letter: Int) List[Bool]:
-    let kind = lower(letter)
-    let negate = kind != letter
+    kind := lower(letter)
+    negate := kind != letter
     var bits = empty_set()
 
     for b in 0..256:
@@ -281,7 +281,7 @@ impl Parser:
 
     var fn read_flags() Unit:
         // A leading `(?flags)` sets the global flags; anywhere else it is a bad group.
-        let src = self.src
+        src := self.src
         if at(src, 0) != C_LPAREN or at(src, 1) != C_QMARK:
             return
 
@@ -307,15 +307,15 @@ impl Parser:
             return ""
 
         while is_word_byte(self.peek()):
-            let ch = printable(self.peek())
+            ch := printable(self.peek())
             name = "{name}{ch}"
             self.pos += 1
 
         return name
 
     var fn hex_byte() Result[Int, PErr]:
-        let hi = hex_value(self.peek())
-        let lo = hex_value(self.peek_at(1))
+        hi := hex_value(self.peek())
+        lo := hex_value(self.peek_at(1))
         if hi < 0 or lo < 0:
             return error(PErr(msg: "bad escape"))
 
@@ -326,7 +326,7 @@ impl Parser:
         var alts = List[Int]()
 
         while true:
-            let seq = try self.parse_seq()
+            seq := try self.parse_seq()
             alts.append(seq)
             if self.peek() != C_PIPE:
                 break
@@ -342,12 +342,12 @@ impl Parser:
         var items = List[Int]()
 
         while true:
-            let c = self.peek()
+            c := self.peek()
             if c < 0 or c == C_PIPE or c == C_RPAREN:
                 break
 
-            let atom = try self.parse_atom()
-            let quantified = try self.parse_quant(atom)
+            atom := try self.parse_atom()
+            quantified := try self.parse_quant(atom)
             items.append(quantified)
 
         if items.length() == 1:
@@ -358,7 +358,7 @@ impl Parser:
         return ok(self.add(Node(kind: K_SEQ, kids: items)))
 
     var fn parse_atom() Result[Int, PErr]:
-        let c = self.peek()
+        c := self.peek()
         if c == C_LPAREN:
             return self.parse_group()
         if c == C_LBRACK:
@@ -384,20 +384,20 @@ impl Parser:
         return ok(self.literal(c))
 
     var fn is_quantifier_here() Bool:
-        let c = self.peek()
+        c := self.peek()
         if c == C_STAR or c == C_PLUS or c == C_QMARK:
             return true
 
         return c == C_LBRACE and scan_brace(self.src, self.pos).valid
 
     var fn parse_quant(atom: Int) Result[Int, PErr]:
-        let c = self.peek()
-        let brace = scan_brace(self.src, self.pos)
-        let braced = c == C_LBRACE and brace.valid
+        c := self.peek()
+        brace := scan_brace(self.src, self.pos)
+        braced := c == C_LBRACE and brace.valid
         if not (braced or c == C_STAR or c == C_PLUS or c == C_QMARK):
             return ok(atom)
 
-        let kind = self.nodes[atom].kind
+        kind := self.nodes[atom].kind
         if kind == K_ASSERT or kind == K_LOOK:
             return error(PErr(msg: "nothing to repeat"))
 
@@ -440,11 +440,11 @@ impl Parser:
         if self.pos + 1 >= self.src.length():
             return error(PErr(msg: "bad escape"))
 
-        let e = self.src[self.pos + 1]
+        e := self.src[self.pos + 1]
         self.pos += 2
 
         if is_shorthand(e):
-            let idx = self.class_node(shorthand_set(e))
+            idx := self.class_node(shorthand_set(e))
             return ok(idx)
 
         if e == C_b:
@@ -466,7 +466,7 @@ impl Parser:
 
             self.pos += 1
 
-            let nm = self.read_name()
+            nm := self.read_name()
             if nm == "" or self.peek() != C_GT:
                 return error(PErr(msg: "bad escape"))
 
@@ -481,7 +481,7 @@ impl Parser:
             return ok(self.literal(C_CR))
 
         if e == C_x:
-            let v = try self.hex_byte()
+            v := try self.hex_byte()
             return ok(self.literal(v))
 
         if is_alpha(e) or is_digit(e) or e >= 128:
@@ -491,13 +491,13 @@ impl Parser:
 
     // Reads one class member: a byte, or a shorthand set.
     var fn class_member() Result[Member, PErr]:
-        let c = self.peek()
+        c := self.peek()
 
         if c != C_BS:
             self.pos += 1
             return ok(Member(is_set: false, value: c, bits: List[Bool]()))
 
-        let e = self.peek_at(1)
+        e := self.peek_at(1)
         if e < 0:
             return error(PErr(msg: "bad escape"))
 
@@ -512,7 +512,7 @@ impl Parser:
             return ok(Member(is_set: false, value: C_CR, bits: List[Bool]()))
 
         if e == C_x:
-            let v = try self.hex_byte()
+            v := try self.hex_byte()
             return ok(Member(is_set: false, value: v, bits: List[Bool]()))
 
         if is_alpha(e) or is_digit(e) or e >= 128:
@@ -542,13 +542,13 @@ impl Parser:
 
             first = false
 
-            let m = try self.class_member()
-            let after = self.peek_at(1)
+            m := try self.class_member()
+            after := self.peek_at(1)
 
             if self.peek() == C_DASH and after >= 0 and after != C_RBRACK:
                 self.pos += 1
 
-                let hi = try self.class_member()
+                hi := try self.class_member()
                 if m.is_set or hi.is_set or hi.value < m.value:
                     return error(PErr(msg: "bad range"))
 
@@ -571,26 +571,26 @@ impl Parser:
         self.pos += 1
 
         if self.peek() != C_QMARK:
-            let g = self.names.length()
+            g := self.names.length()
             self.names.append("")
 
-            let body = try self.parse_alt()
+            body := try self.parse_alt()
             try self.close_paren()
             return ok(self.add(Node(kind: K_GROUP, a: g, kids: [body])))
 
-        let c2 = self.peek_at(1)
+        c2 := self.peek_at(1)
 
         if c2 == C_COLON:
             self.pos += 2
 
-            let body = try self.parse_alt()
+            body := try self.parse_alt()
             try self.close_paren()
             return ok(self.add(Node(kind: K_GROUP, a: 0, kids: [body])))
 
         if c2 == C_EQ or c2 == C_BANG:
             self.pos += 2
 
-            let body = try self.parse_alt()
+            body := try self.parse_alt()
             try self.close_paren()
             return ok(
                 self.add(
@@ -603,7 +603,7 @@ impl Parser:
         if c2 == C_LT:
             self.pos += 2
 
-            let nm = self.read_name()
+            nm := self.read_name()
             if nm == "" or self.peek() != C_GT:
                 return error(PErr(msg: "bad group"))
 
@@ -611,10 +611,10 @@ impl Parser:
             if self.names.contains(nm):
                 return error(PErr(msg: "duplicate group name"))
 
-            let g = self.names.length()
+            g := self.names.length()
             self.names.append(nm)
 
-            let body = try self.parse_alt()
+            body := try self.parse_alt()
             try self.close_paren()
             return ok(self.add(Node(kind: K_GROUP, a: g, kids: [body])))
 
@@ -629,15 +629,15 @@ impl Parser:
 
     // Replaces named back-references by numbers and checks every reference.
     var fn resolve_refs() Result[Unit, PErr]:
-        let ngroups = self.names.length() - 1
+        ngroups := self.names.length() - 1
 
         for i in 0..self.nodes.length():
-            let node = self.nodes[i].clone()
+            node := self.nodes[i].clone()
             if node.kind == K_BREF and node.a > ngroups:
                 return error(PErr(msg: "bad backreference"))
 
             if node.kind == K_NBREF:
-                if let g = self.names.index_of(node.name):
+                if g := self.names.index_of(node.name):
                     self.nodes.set(i, Node(kind: K_BREF, a: g, b: node.b))
                 else:
                     return error(PErr(msg: "bad backreference"))
@@ -654,11 +654,11 @@ impl Gen:
         return self.nregs - 1
 
     var fn set_targets(at: Int, a: Int, b: Int) Unit:
-        let old = self.code[at]
+        old := self.code[at]
         self.code.set(at, Ins(op: old.op, a: a, b: b))
 
     var fn gen(id: Int) Unit:
-        let node = self.nodes[id].clone()
+        node := self.nodes[id].clone()
 
         if node.kind == K_CLASS:
             self.emit(OP_CLASS, node.a, 0)
@@ -671,7 +671,7 @@ impl Gen:
             if node.a == 0:
                 self.gen(node.kids[0])
             else:
-                let tmp = self.new_reg()
+                tmp := self.new_reg()
                 self.emit(OP_OPEN, tmp, 0)
                 self.gen(node.kids[0])
                 self.emit(OP_CLOSE, node.a, tmp)
@@ -682,48 +682,48 @@ impl Gen:
         else if node.kind == K_BREF:
             self.emit(OP_BREF, node.a, node.b)
         else if node.kind == K_LOOK:
-            let look = self.emit(OP_LOOK, node.a, 0)
+            look := self.emit(OP_LOOK, node.a, 0)
             self.gen(node.kids[0])
             self.emit(OP_LOOKEND, 0, 0)
 
-            let here = self.code.length()
+            here := self.code.length()
             self.set_targets(look, node.a, here)
 
     var fn gen_alt(alts: List[Int]) Unit:
         var jumps = List[Int]()
 
         for i in 0..alts.length() - 1:
-            let split = self.emit(OP_SPLIT, 0, 0)
+            split := self.emit(OP_SPLIT, 0, 0)
             self.gen(alts[i])
             jumps.append(self.emit(OP_JMP, 0, 0))
 
-            let next = self.code.length()
+            next := self.code.length()
             self.set_targets(split, split + 1, next)
 
         self.gen(alts[alts.length() - 1])
 
-        let end = self.code.length()
+        end := self.code.length()
         for j in jumps:
             self.set_targets(j, end, 0)
 
     // Each optional iteration is a SPLIT, then OPEN/body/CHECK; an iteration that
     // consumed nothing ends the loop (CHECK jumps to the exit).
     var fn gen_repeat(node: Node) Unit:
-        let body = node.kids[0]
-        let lazy = node.c == 1
+        body := node.kids[0]
+        lazy := node.c == 1
         for _i in 0..node.a:
             self.gen(body)
 
         if node.b < 0:
-            let top = self.emit(OP_SPLIT, 0, 0)
-            let reg = self.new_reg()
+            top := self.emit(OP_SPLIT, 0, 0)
+            reg := self.new_reg()
             self.emit(OP_OPEN, reg, 0)
             self.gen(body)
 
-            let check = self.emit(OP_CHECK, reg, 0)
+            check := self.emit(OP_CHECK, reg, 0)
             self.emit(OP_JMP, top, 0)
 
-            let end = self.code.length()
+            end := self.code.length()
 
             if lazy:
                 self.set_targets(top, end, top + 1)
@@ -736,15 +736,15 @@ impl Gen:
             var checks = List[Int]()
 
             for _i in 0..node.b - node.a:
-                let split = self.emit(OP_SPLIT, 0, 0)
+                split := self.emit(OP_SPLIT, 0, 0)
                 splits.append(split)
 
-                let reg = self.new_reg()
+                reg := self.new_reg()
                 self.emit(OP_OPEN, reg, 0)
                 self.gen(body)
                 checks.append(self.emit(OP_CHECK, reg, 0))
 
-            let end = self.code.length()
+            end := self.code.length()
 
             for split in splits:
                 if lazy:
@@ -757,7 +757,7 @@ impl Gen:
 
 fn compile_prog(p: Parser) Prog:
     var g = Gen(code: List[Ins](), nregs: 2 * p.names.length(), nodes: p.nodes.clone())
-    let tmp = g.new_reg()
+    tmp := g.new_reg()
     g.emit(OP_OPEN, tmp, 0)
     g.gen(p.root)
     g.emit(OP_CLOSE, 0, tmp)
@@ -774,7 +774,7 @@ fn parse_pattern(src: List[Int]) Result[Prog, PErr]:
     )
     p.read_flags()
 
-    let root = try p.parse_alt()
+    root := try p.parse_alt()
     p.root = root
     if p.pos < src.length():
         return error(PErr(msg: "unmatched )"))
@@ -783,11 +783,11 @@ fn parse_pattern(src: List[Int]) Result[Prog, PErr]:
     return ok(compile_prog(p))
 
 fn word_at(subject: List[Int], i: Int) Bool:
-    let c = at(subject, i)
+    c := at(subject, i)
     return c >= 0 and is_word_byte(c)
 
 fn assertion_holds(kind: Int, multi: Bool, subject: List[Int], pos: Int) Bool:
-    let n = subject.length()
+    n := subject.length()
 
     if kind == 0:
         if pos == 0:
@@ -801,7 +801,7 @@ fn assertion_holds(kind: Int, multi: Bool, subject: List[Int], pos: Int) Bool:
 
         return multi and subject[pos] == C_NL
 
-    let boundary = word_at(subject, pos - 1) != word_at(subject, pos)
+    boundary := word_at(subject, pos - 1) != word_at(subject, pos)
     if kind == 2:
         return boundary
 
@@ -829,10 +829,10 @@ fn exec(
     var stack = List[Int]()
     var pc = start_pc
     var pos = start_pos
-    let n = subject.length()
+    n := subject.length()
 
     while true:
-        let ins = prog.code[pc]
+        ins := prog.code[pc]
         var ok = true
 
         if ins.op == OP_CLASS:
@@ -855,7 +855,7 @@ fn exec(
             regs[ins.a] = pos
             pc += 1
         else if ins.op == OP_CLOSE:
-            let s = 2 * ins.a
+            s := 2 * ins.a
             undo_push(var stack, s, regs[s])
             undo_push(var stack, s + 1, regs[s + 1])
             regs[s] = regs[ins.b]
@@ -872,8 +872,8 @@ fn exec(
             else:
                 ok = false
         else if ins.op == OP_BREF:
-            let s = regs[2 * ins.a]
-            let e = regs[2 * ins.a + 1]
+            s := regs[2 * ins.a]
+            e := regs[2 * ins.a + 1]
 
             if s < 0 or e < 0:
                 ok = false
@@ -883,8 +883,8 @@ fn exec(
             else:
                 ok = false
         else if ins.op == OP_LOOK:
-            let before = regs.clone()
-            let r = exec(prog, subject, pc + 1, pos, var regs, false)
+            before := regs.clone()
+            r := exec(prog, subject, pc + 1, pos, var regs, false)
 
             if ins.a == 0:
                 if r < 0:
@@ -915,9 +915,9 @@ fn exec(
                 if stack.length() == 0:
                     return -1
 
-                let arg2 = stack.pop().get(0)
-                let arg1 = stack.pop().get(0)
-                let kind = stack.pop().get(0)
+                arg2 := stack.pop().get(0)
+                arg1 := stack.pop().get(0)
+                kind := stack.pop().get(0)
 
                 if kind == 1:
                     regs[arg1] = arg2
@@ -952,9 +952,9 @@ fn find_all(prog: Prog, subject: List[Int]) List[List[Int]]:
     var start = 0
 
     while start <= subject.length():
-        if let m = search(prog, subject, start, false):
-            let s = m[0]
-            let e = m[1]
+        if m := search(prog, subject, start, false):
+            s := m[0]
+            e := m[1]
             found.append(m)
 
             if e > s:
@@ -991,7 +991,7 @@ fn quoted(bytes: List[Int], from: Int, to: Int) String:
     return parts.join("")
 
 fn match_line(subject: List[Int], m: List[Int]) String:
-    let q = quoted(subject, m[0], m[1])
+    q := quoted(subject, m[0], m[1])
     return "{m[0]}..{m[1]} {q}"
 
 fn group_label(names: List[String], g: Int) String:
@@ -1004,12 +1004,12 @@ fn group_lines(names: List[String], subject: List[Int], regs: List[Int]) List[St
     var lines = List[String]()
 
     for g in 0..names.length():
-        let label = group_label(names, g)
-        let s = regs[2 * g]
-        let e = regs[2 * g + 1]
+        label := group_label(names, g)
+        s := regs[2 * g]
+        e := regs[2 * g + 1]
 
         if e >= 0:
-            let q = quoted(subject, s, e)
+            q := quoted(subject, s, e)
             lines.append("{label}: {s}..{e} {q}")
         else:
             lines.append("{label}: unset")
@@ -1022,8 +1022,8 @@ fn append_range(var out: List[Int], subject: List[Int], from: Int, to: Int) Unit
 
 // Appends one group's text (empty when unset).
 fn append_group(var out: List[Int], subject: List[Int], regs: List[Int], g: Int) Unit:
-    let s = regs[2 * g]
-    let e = regs[2 * g + 1]
+    s := regs[2 * g]
+    e := regs[2 * g + 1]
     if s >= 0 and e >= 0:
         append_range(var out, subject, s, e)
 
@@ -1031,11 +1031,11 @@ fn name_of(repl: List[Int], from: Int, to: Int) String:
     var name = ""
 
     for i in from..to:
-        let c = repl[i]
+        c := repl[i]
         if not (is_word_byte(c)):
             return ""
 
-        let ch = printable(c)
+        ch := printable(c)
         name = "{name}{ch}"
 
     return name
@@ -1045,17 +1045,17 @@ fn expand_into(
     var out: List[Int], repl: List[Int], subject: List[Int], regs: List[Int],
     names: List[String]
 ) Bool:
-    let n = repl.length()
+    n := repl.length()
     var i = 0
 
     while i < n:
-        let c = repl[i]
+        c := repl[i]
 
         if c != C_DOLLAR or i + 1 >= n:
             out.append(c)
             i += 1
         else if is_digit(repl[i + 1]):
-            let g = repl[i + 1] - C_ZERO
+            g := repl[i + 1] - C_ZERO
             if g >= names.length():
                 return false
 
@@ -1071,11 +1071,11 @@ fn expand_into(
             if at(repl, close) != C_RBRACE:
                 return false
 
-            let nm = name_of(repl, i + 2, close)
+            nm := name_of(repl, i + 2, close)
             if nm == "":
                 return false
 
-            if let g = names.index_of(nm):
+            if g := names.index_of(nm):
                 append_group(var out, subject, regs, g)
             else:
                 return false
@@ -1095,13 +1095,13 @@ fn run_prog(cmd: String, prog: Prog, subject: List[Int], repl: List[Int]) List[S
         return ["false"]
 
     if cmd == "match" or cmd == "full":
-        if let m = search(prog, subject, 0, cmd == "full"):
+        if m := search(prog, subject, 0, cmd == "full"):
             return group_lines(prog.names, subject, m)
 
         return ["no match"]
 
     if cmd == "find-all":
-        let found = find_all(prog, subject)
+        found := find_all(prog, subject)
         var lines = List[String]()
         for m in found:
             lines.append(match_line(subject, m))
@@ -1148,8 +1148,8 @@ fn unescape(src: List[Int]) Optional[List[Int]]:
     var i = 0
 
     while i < src.length():
-        let c = src[i]
-        let e = at(src, i + 1)
+        c := src[i]
+        e := at(src, i + 1)
 
         if c != C_BS:
             out.append(c)
@@ -1183,17 +1183,17 @@ fn run_command(
     subject: List[Int],
     repl: List[Int]
 ) List[String]:
-    let compiled = parse_pattern(to_ints(pattern))
+    compiled := parse_pattern(to_ints(pattern))
 
     if compiled.is_error():
-        let msg = compiled.err().message()
+        msg := compiled.err().message()
         return ["error: {msg}"]
 
     return run_prog(cmd, compiled.get(), subject, repl)
 
 fn run_line(line: String) List[String]:
-    let fields = line.split("\t")
-    let cmd = fields[0]
+    fields := line.split("\t")
+    cmd := fields[0]
     if not COMMANDS.contains(cmd):
         return ["error: bad command"]
 
@@ -1203,17 +1203,17 @@ fn run_line(line: String) List[String]:
     if fields.length() != want:
         return ["error: bad command"]
 
-    if let subject = unescape(to_ints(fields[2])):
+    if subject := unescape(to_ints(fields[2])):
         if cmd != "replace":
             return run_command(cmd, fields[1], subject, List[Int]())
-        if let repl = unescape(to_ints(fields[3])):
+        if repl := unescape(to_ints(fields[3])):
             return run_command(cmd, fields[1], subject, repl)
 
     return ["error: bad command"]
 
 export fn main() Int:
     var out = List[String]()
-    if let lines = read_lines(stdin()):
+    if lines := read_lines(stdin()):
         for line in lines:
             if line != "":
                 for text in run_line(line):

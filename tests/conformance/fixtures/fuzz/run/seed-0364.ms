@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (((-135443) + 19) + ((15 % 463991) % ((-479929) / (-21))))
+    i1 := (((-135443) + 19) + ((15 % 463991) % ((-479929) / (-21))))
     say("i1 = {i1}")
 
-    let s2 = ("日本語" + ("{(14 % (-7))}:" + ("line\nbreak" + "emoji 😀")))
+    s2 := ("日本語" + ("{(14 % (-7))}:" + ("line\nbreak" + "emoji 😀")))
     say("s2 = [{s2}]")
 
-    let s3 = s2.clone()
+    s3 := s2.clone()
     say("s3 = [{s3}]")
 
     var acc4 = 0
@@ -32,22 +32,22 @@ export fn main() Int:
     else:
         say(("{(i1 + 1)}:" + "back\\slash"))
 
-    let i5 = ((-604236) % i1)
+    i5 := ((-604236) % i1)
     say("i5 = {i5}")
 
-    let s6 = s2.upper().replace(s2, "brace\{s\}").upper()
+    s6 := s2.upper().replace(s2, "brace\{s\}").upper()
     say("s6 = [{s6}]")
 
-    let s7 = ("{((-18) * (-50))}:" + (("{(28383 - (-34244))}:" + s2) + s2.upper()))
+    s7 := ("{((-18) * (-50))}:" + (("{(28383 - (-34244))}:" + s2) + s2.upper()))
     say("s7 = [{s7}]")
 
-    let b8 = (((728.209 * 369.939) / 60.25) != (447.434 - 97.191))
+    b8 := (((728.209 * 369.939) / 60.25) != (447.434 - 97.191))
     say("b8 = {b8}")
 
-    let i9 = ((14 % ((-25) - (-4))) + ((-49) + (i5 % i5)))
+    i9 := ((14 % ((-25) - (-4))) + ((-49) + (i5 % i5)))
     say("i9 = {i9}")
     say("{i5} {i5} {(i5 < i5)} sum {i5 + i5}")
 
-    let big10 = 9223372036854775807
+    big10 := 9223372036854775807
     say("{big10 * 6}")
     return 0

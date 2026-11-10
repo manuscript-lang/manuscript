@@ -1,17 +1,17 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-let DIGITS = "0123456789"
-let OPERATORS = "+-*/()"
+DIGITS := "0123456789"
+OPERATORS := "+-*/()"
 
 // Splits a line into number, operator and parenthesis tokens; none on an unknown character.
 fn tokenize(line: String) Optional[List[String]]:
-    let cs = line.chars()
+    cs := line.chars()
     var toks = List[String]()
     var i = 0
 
     while i < cs.length():
-        let c = cs[i]
+        c := cs[i]
 
         if c == " " or c == "\t":
             i += 1
@@ -45,13 +45,13 @@ impl Parser:
         var v = self.term()
 
         while not self.bad and not self.at_end():
-            let op = self.toks[self.pos].clone()
+            op := self.toks[self.pos].clone()
             if op != "+" and op != "-":
                 break
 
             self.pos += 1
 
-            let r = self.term()
+            r := self.term()
 
             if op == "+":
                 v = v + r
@@ -64,13 +64,13 @@ impl Parser:
         var v = self.unary()
 
         while not self.bad and not self.at_end():
-            let op = self.toks[self.pos].clone()
+            op := self.toks[self.pos].clone()
             if op != "*" and op != "/":
                 break
 
             self.pos += 1
 
-            let r = self.unary()
+            r := self.unary()
 
             if op == "*":
                 v = v * r
@@ -94,11 +94,11 @@ impl Parser:
             self.bad = true
             return 0
 
-        let t = self.toks[self.pos].clone()
+        t := self.toks[self.pos].clone()
         self.pos += 1
 
         if t == "(":
-            let v = self.expr()
+            v := self.expr()
 
             if self.bad or self.at_end() or self.toks[self.pos] != ")":
                 self.bad = true
@@ -108,14 +108,14 @@ impl Parser:
             return v
 
         if DIGITS.contains(t.get(0)):
-            if let v = t.parse_int():
+            if v := t.parse_int():
                 return v
         self.bad = true
         return 0
 
 fn evaluate(toks: List[String]) String:
     var p = Parser(toks: toks, pos: 0, bad: false, div_zero: false)
-    let v = p.expr()
+    v := p.expr()
     if p.bad or not p.at_end():
         return "error: syntax"
     if p.div_zero:
@@ -124,10 +124,10 @@ fn evaluate(toks: List[String]) String:
     return "{v}"
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
 
     for line in lines:
-        if let toks = tokenize(line):
+        if toks := tokenize(line):
             if toks.length() > 0:
                 stdout().write("{evaluate(toks)}\n").get()
         else:

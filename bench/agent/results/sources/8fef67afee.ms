@@ -110,7 +110,7 @@ fn lower(b: Int) Int:
 
 // Whether byte b is in the shorthand class named by letter (d D w W s S).
 fn shorthand_test(letter: Int, b: Int) Bool:
-    let base = lower(letter)
+    base := lower(letter)
     var hit = false
 
     if base == ch("d"):
@@ -175,7 +175,7 @@ fn at_close(ps: Parser) Bool:
     return peek(ps, 0) == ch(")")
 
 fn grow(v: Int, d: Int) Int:
-    let n = v * 10 + d
+    n := v * 10 + d
     if n > 100000:
         return 100000
 
@@ -186,7 +186,7 @@ fn read_quant(pat: Bytes, at: Int) Optional[Quant]:
     if at >= pat.length():
         return none
 
-    let c = pat.get(at)
+    c := pat.get(at)
     if c == ch("*"):
         return some(Quant(lo: 0, hi: -1, stop: at + 1))
     if c == ch("+"):
@@ -197,7 +197,7 @@ fn read_quant(pat: Bytes, at: Int) Optional[Quant]:
         return none
 
     var i = at + 1
-    let lo_start = i
+    lo_start := i
     var lo = 0
 
     while i < pat.length() and is_digit(pat.get(i)):
@@ -212,7 +212,7 @@ fn read_quant(pat: Bytes, at: Int) Optional[Quant]:
     if i < pat.length() and pat.get(i) == ch(","):
         i += 1
 
-        let hi_start = i
+        hi_start := i
         var h = 0
 
         while i < pat.length() and is_digit(pat.get(i)):
@@ -230,13 +230,13 @@ fn read_quant(pat: Bytes, at: Int) Optional[Quant]:
 
 fn parse_alt(var ps: Parser) Result[Int, PatError]:
     var options: List[Int] = []
-    let first = try parse_seq(var ps)
+    first := try parse_seq(var ps)
     options.append(first)
 
     while peek(ps, 0) == ch("|"):
         ps.pos += 1
 
-        let next = try parse_seq(var ps)
+        next := try parse_seq(var ps)
         options.append(next)
 
     if options.length() == 1:
@@ -253,13 +253,13 @@ fn parse_seq(var ps: Parser) Result[Int, PatError]:
         and peek(ps, 0) != ch("|")
         and peek(ps, 0) != ch(")")
     ):
-        let q = read_quant(ps.pat, ps.pos)
+        q := read_quant(ps.pat, ps.pos)
 
         if q.is_some() and not (peek(ps, 0) == ch("\{") and items.is_empty()):
             if not can_repeat:
                 return error(PatError(msg: "nothing to repeat"))
 
-            let quant = q.get()
+            quant := q.get()
             if (
                 quant.lo > 1000
                 or quant.hi > 1000
@@ -275,14 +275,14 @@ fn parse_seq(var ps: Parser) Result[Int, PatError]:
                 lazy = true
                 ps.pos += 1
 
-            let last = items.length() - 1
-            let rep = Repeat(
+            last := items.length() - 1
+            rep := Repeat(
                 body: items.get(last), lo: quant.lo, hi: quant.hi, lazy: lazy
             )
             items.set(last, add(var ps, rep))
             can_repeat = false
         else:
-            let atom = try parse_atom(var ps)
+            atom := try parse_atom(var ps)
             items.append(atom.id)
             can_repeat = atom.quant
 
@@ -292,7 +292,7 @@ fn parse_seq(var ps: Parser) Result[Int, PatError]:
     return ok(add(var ps, Concat(items: items)))
 
 fn parse_atom(var ps: Parser) Result[Atom, PatError]:
-    let c = ps.pat.get(ps.pos)
+    c := ps.pat.get(ps.pos)
     if c == ch("("):
         return parse_group(var ps)
     if c == ch("["):
@@ -303,18 +303,18 @@ fn parse_atom(var ps: Parser) Result[Atom, PatError]:
         return parse_escape(var ps)
 
     if c == ch("."):
-        let dot = ByteSet(members: dot_set(ps.dotall))
+        dot := ByteSet(members: dot_set(ps.dotall))
         return ok(Atom(id: add(var ps, dot), quant: true))
 
     if c == ch("^"):
-        let start = LineStart(multi: ps.multi)
+        start := LineStart(multi: ps.multi)
         return ok(Atom(id: add(var ps, start), quant: false))
 
     if c == ch("$"):
-        let end = LineEnd(multi: ps.multi)
+        end := LineEnd(multi: ps.multi)
         return ok(Atom(id: add(var ps, end), quant: false))
 
-    let lit = ByteSet(members: single_set(c, ps.icase))
+    lit := ByteSet(members: single_set(c, ps.icase))
     return ok(Atom(id: add(var ps, lit), quant: true))
 
 // Parses after '(' has been consumed.
@@ -323,12 +323,12 @@ fn parse_group(var ps: Parser) Result[Atom, PatError]:
     if peek(ps, 0) != ch("?"):
         return capture_group(var ps, "".to_bytes())
 
-    let kind = peek(ps, 1)
+    kind := peek(ps, 1)
 
     if kind == ch(":"):
         ps.pos += 2
 
-        let body = try parse_alt(var ps)
+        body := try parse_alt(var ps)
         if not at_close(ps):
             return error(PatError(msg: "unmatched ("))
 
@@ -338,17 +338,17 @@ fn parse_group(var ps: Parser) Result[Atom, PatError]:
     if kind == ch("=") or kind == ch("!"):
         ps.pos += 2
 
-        let body = try parse_alt(var ps)
+        body := try parse_alt(var ps)
         if not at_close(ps):
             return error(PatError(msg: "unmatched ("))
 
         ps.pos += 1
 
-        let look = Look(body: body, negate: kind == ch("!"))
+        look := Look(body: body, negate: kind == ch("!"))
         return ok(Atom(id: add(var ps, look), quant: false))
 
     if kind == ch("<"):
-        let start = ps.pos + 2
+        start := ps.pos + 2
         var e = start
         while e < ps.pat.length() and is_word(ps.pat.get(e)):
             e += 1
@@ -360,7 +360,7 @@ fn parse_group(var ps: Parser) Result[Atom, PatError]:
         ):
             return error(PatError(msg: "bad group"))
 
-        let name = ps.pat.slice(start, e).get()
+        name := ps.pat.slice(start, e).get()
         if find_name(ps.names, name) > 0:
             return error(PatError(msg: "duplicate group name"))
 
@@ -379,14 +379,14 @@ fn find_name(names: List[Bytes], name: Bytes) Int:
 fn capture_group(var ps: Parser, name: Bytes) Result[Atom, PatError]:
     ps.names.append(name)
 
-    let index = ps.names.length()
-    let body = try parse_alt(var ps)
+    index := ps.names.length()
+    body := try parse_alt(var ps)
     if not at_close(ps):
         return error(PatError(msg: "unmatched ("))
 
     ps.pos += 1
 
-    let cap = Capture(index: index, body: body)
+    cap := Capture(index: index, body: body)
     return ok(Atom(id: add(var ps, cap), quant: true))
 
 // Decodes the escape letter e (already consumed) as a single byte, or -1 when it is not one.
@@ -399,8 +399,8 @@ fn escape_byte(var ps: Parser, e: Int) Int:
         return 13
 
     if e == ch("x"):
-        let hi = hex_value(peek(ps, 0))
-        let lo = hex_value(peek(ps, 1))
+        hi := hex_value(peek(ps, 0))
+        lo := hex_value(peek(ps, 1))
         if hi < 0 or lo < 0:
             return -1
 
@@ -417,26 +417,26 @@ fn parse_escape(var ps: Parser) Result[Atom, PatError]:
     if ps.pos >= ps.pat.length():
         return error(PatError(msg: "bad escape"))
 
-    let e = ps.pat.get(ps.pos)
+    e := ps.pat.get(ps.pos)
     ps.pos += 1
 
     if is_shorthand(e):
-        let set = ByteSet(members: shorthand_set(e))
+        set := ByteSet(members: shorthand_set(e))
         return ok(Atom(id: add(var ps, set), quant: true))
 
     if e == ch("b") or e == ch("B"):
-        let edge = WordEdge(want: e == ch("b"))
+        edge := WordEdge(want: e == ch("b"))
         return ok(Atom(id: add(var ps, edge), quant: false))
 
     if e >= 49 and e <= 57:
-        let backref = BackRef(index: e - 48, name: "".to_bytes())
+        backref := BackRef(index: e - 48, name: "".to_bytes())
         return ok(Atom(id: add(var ps, backref), quant: true))
 
     if e == ch("k"):
         if peek(ps, 0) != ch("<"):
             return error(PatError(msg: "bad escape"))
 
-        let start = ps.pos + 1
+        start := ps.pos + 1
         var stop = start
         while stop < ps.pat.length() and is_word(ps.pat.get(stop)):
             stop += 1
@@ -448,17 +448,17 @@ fn parse_escape(var ps: Parser) Result[Atom, PatError]:
         ):
             return error(PatError(msg: "bad escape"))
 
-        let name = ps.pat.slice(start, stop).get()
+        name := ps.pat.slice(start, stop).get()
         ps.pos = stop + 1
 
-        let backref = BackRef(index: 0, name: name)
+        backref := BackRef(index: 0, name: name)
         return ok(Atom(id: add(var ps, backref), quant: true))
 
-    let b = escape_byte(var ps, e)
+    b := escape_byte(var ps, e)
     if b < 0:
         return error(PatError(msg: "bad escape"))
 
-    let lit = ByteSet(members: single_set(b, ps.icase))
+    lit := ByteSet(members: single_set(b, ps.icase))
     return ok(Atom(id: add(var ps, lit), quant: true))
 
 fn shorthand_set(letter: Int) List[Bool]:
@@ -469,7 +469,7 @@ fn shorthand_set(letter: Int) List[Bool]:
 
 // One class member: a single byte, or a shorthand class.
 fn class_member(var ps: Parser) Result[Member, PatError]:
-    let c = ps.pat.get(ps.pos)
+    c := ps.pat.get(ps.pos)
 
     if c != ch("\\"):
         ps.pos += 1
@@ -479,12 +479,12 @@ fn class_member(var ps: Parser) Result[Member, PatError]:
     if ps.pos >= ps.pat.length():
         return error(PatError(msg: "bad escape"))
 
-    let e = ps.pat.get(ps.pos)
+    e := ps.pat.get(ps.pos)
     ps.pos += 1
     if is_shorthand(e):
         return ok(Member(is_set: true, byte: 0, letter: e))
 
-    let b = escape_byte(var ps, e)
+    b := escape_byte(var ps, e)
     if b < 0:
         return error(PatError(msg: "bad escape"))
 
@@ -513,7 +513,7 @@ fn parse_class(var ps: Parser) Result[Atom, PatError]:
 
         first = false
 
-        let m1 = try class_member(var ps)
+        m1 := try class_member(var ps)
 
         if peek(ps, 0) == ch("-") and peek(ps, 1) != -1 and peek(ps, 1) != ch("]"):
             if m1.is_set:
@@ -521,7 +521,7 @@ fn parse_class(var ps: Parser) Result[Atom, PatError]:
 
             ps.pos += 1
 
-            let m2 = try class_member(var ps)
+            m2 := try class_member(var ps)
             if m2.is_set or m2.byte < m1.byte:
                 return error(PatError(msg: "bad range"))
 
@@ -538,13 +538,13 @@ fn parse_class(var ps: Parser) Result[Atom, PatError]:
         for b in range(0, 256):
             set.set(b, not set.get(b))
 
-    let cls = ByteSet(members: set)
+    cls := ByteSet(members: set)
     return ok(Atom(id: add(var ps, cls), quant: true))
 
 // Resolves named back references and checks numbered ones, once the whole pattern has parsed.
 fn resolve_refs(var ps: Parser) Result[Unit, PatError]:
     for i in range(0, ps.nodes.length()):
-        let node = ps.nodes.get(i).clone()
+        node := ps.nodes.get(i).clone()
 
         match node:
             BackRef(index, name):
@@ -552,7 +552,7 @@ fn resolve_refs(var ps: Parser) Result[Unit, PatError]:
                     if index > ps.names.length():
                         return error(PatError(msg: "bad backreference"))
                 else:
-                    let g = find_name(ps.names.clone(), name.clone())
+                    g := find_name(ps.names.clone(), name.clone())
                     if g == 0:
                         return error(PatError(msg: "bad backreference"))
 
@@ -600,7 +600,7 @@ fn compile(pat: Bytes) Result[Regex, PatError]:
 
         ps.pos += 1
 
-    let root = try parse_alt(var ps)
+    root := try parse_alt(var ps)
     if ps.pos < ps.pat.length():
         return error(PatError(msg: "unmatched )"))
 
@@ -620,7 +620,7 @@ fn run(
     var c: Ctx, id: Int, pos: Int, caps: List[Int],
     k: fn(Ctx, Int, List[Int]) Optional[List[Int]]
 ) Optional[List[Int]]:
-    let n = c.text.length()
+    n := c.text.length()
 
     match c.re.nodes[id]:
         ByteSet(members):
@@ -629,13 +629,13 @@ fn run(
 
             return none
         Concat(items):
-            let list = items.clone()
+            list := items.clone()
             return concat_from(var c, list, 0, pos, caps, k)
         Choice(options):
-            let list = options.clone()
+            list := options.clone()
             return choice_from(var c, list, 0, pos, caps, k)
         Capture(index, body):
-            let close = fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
+            close := fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
                 var set = after.clone()
                 set.set(2 * index, pos)
                 set.set(2 * index + 1, p)
@@ -655,16 +655,16 @@ fn run(
 
             return none
         WordEdge(want):
-            let before = pos > 0 and is_word(c.text.get(pos - 1))
-            let after = pos < n and is_word(c.text.get(pos))
+            before := pos > 0 and is_word(c.text.get(pos - 1))
+            after := pos < n and is_word(c.text.get(pos))
             if (before != after) == want:
                 return k(c, pos, caps)
 
             return none
         Look(body, negate):
-            let keep = fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
+            keep := fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
                 return some(after)
-            let found = run(var c, body, pos, caps, keep)
+            found := run(var c, body, pos, caps, keep)
 
             if negate:
                 if found.is_some():
@@ -677,17 +677,17 @@ fn run(
 
             return k(c, pos, found.get())
         BackRef(index, _):
-            let s = caps.get(2 * index)
+            s := caps.get(2 * index)
             if s < 0:
                 return none
 
-            let size = caps.get(2 * index + 1) - s
+            size := caps.get(2 * index + 1) - s
             if pos + size > n:
                 return none
 
             for j in range(0, size):
-                let a = c.text.get(s + j)
-                let b = c.text.get(pos + j)
+                a := c.text.get(s + j)
+                b := c.text.get(pos + j)
                 if a != b and not (c.re.icase and lower(a) == lower(b)):
                     return none
 
@@ -700,7 +700,7 @@ fn concat_from(
     if i == items.length():
         return k(c, pos, caps)
 
-    let next = fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
+    next := fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
         return concat_from(var c, items, i + 1, p, after, k)
     return run(var c, items.get(i), pos, caps, next)
 
@@ -711,7 +711,7 @@ fn choice_from(
     if i == options.length():
         return none
 
-    let found = run(var c, options.get(i), pos, caps, k)
+    found := run(var c, options.get(i), pos, caps, k)
     if found.is_some():
         return found
 
@@ -724,20 +724,20 @@ fn repeat_from(
     caps: List[Int], k: fn(Ctx, Int, List[Int]) Optional[List[Int]]
 ) Optional[List[Int]]:
     if count < lo:
-        let next = fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
+        next := fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
             return repeat_from(var c, body, lo, hi, lazy, count + 1, p, after, k)
         return run(var c, body, pos, caps, next)
 
-    let more = hi < 0 or count < hi
+    more := hi < 0 or count < hi
 
-    let iterate = fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
+    iterate := fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
         if p == pos:
             return k(c, p, after)
 
         return repeat_from(var c, body, lo, hi, lazy, count + 1, p, after, k)
 
     if lazy:
-        let stop = k(c, pos, caps)
+        stop := k(c, pos, caps)
         if stop.is_some():
             return stop
         if more:
@@ -746,7 +746,7 @@ fn repeat_from(
         return none
 
     if more:
-        let taken = run(var c, body, pos, caps, iterate)
+        taken := run(var c, body, pos, caps, iterate)
         if taken.is_some():
             return taken
 
@@ -754,19 +754,19 @@ fn repeat_from(
 
 // Leftmost match at or after start. With full, only a match from 0 to the end counts.
 fn exec(var c: Ctx, start: Int, full: Bool) Optional[List[Int]]:
-    let n = c.text.length()
+    n := c.text.length()
     var blank: List[Int] = []
     for i in range(0, 2 * (c.re.names.length() + 1)):
         blank.append(-1)
 
-    let root = c.re.root
+    root := c.re.root
     var s = start
 
     while s <= n:
         var begin = blank.clone()
         begin.set(0, s)
 
-        let finish = fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
+        finish := fn(var c: Ctx, p: Int, after: List[Int]) Optional[List[Int]]:
             if full and p != c.text.length():
                 return none
 
@@ -774,7 +774,7 @@ fn exec(var c: Ctx, start: Int, full: Bool) Optional[List[Int]]:
             done.set(1, p)
             return some(done)
 
-        let found = run(var c, root, s, begin, finish)
+        found := run(var c, root, s, begin, finish)
         if found.is_some() or full:
             return found
 
@@ -788,11 +788,11 @@ fn find_all(var c: Ctx) List[List[Int]]:
     var start = 0
 
     while start <= c.text.length():
-        let m = exec(var c, start, false)
+        m := exec(var c, start, false)
         if m.is_none():
             break
 
-        let caps = m.get()
+        caps := m.get()
         found.append(caps.clone())
 
         if caps.get(1) == caps.get(0):
@@ -817,7 +817,7 @@ fn put_quoted(var out: BytesBuilder, data: Bytes, s: Int, e: Int) Unit:
     out.append(34)
 
     for i in range(s, e):
-        let b = data.get(i)
+        b := data.get(i)
 
         if b == 92:
             put(var out, "\\\\")
@@ -852,7 +852,7 @@ fn put_captures(var out: BytesBuilder, re: Regex, text: Bytes, caps: List[Int]) 
             out.concat(re.names.get(g - 1))
             put(var out, ")")
 
-        let s = caps.get(2 * g)
+        s := caps.get(2 * g)
 
         if s < 0:
             put(var out, ": unset\n")
@@ -862,7 +862,7 @@ fn put_captures(var out: BytesBuilder, re: Regex, text: Bytes, caps: List[Int]) 
             put(var out, "\n")
 
 fn put_group(var out: BytesBuilder, text: Bytes, caps: List[Int], g: Int) Unit:
-    let s = caps.get(2 * g)
+    s := caps.get(2 * g)
     if s >= 0:
         for j in range(s, caps.get(2 * g + 1)):
             out.append(text.get(j))
@@ -878,16 +878,16 @@ fn expand(
     var i = 0
 
     while i < repl.length():
-        let here = repl.get(i)
+        here := repl.get(i)
 
         if here != ch("$") or i + 1 >= repl.length():
             out.append(here)
             i += 1
         else:
-            let d = repl.get(i + 1)
+            d := repl.get(i + 1)
 
             if is_digit(d):
-                let g = d - 48
+                g := d - 48
                 if g > re.names.length():
                     return error(PatError(msg: "bad replacement"))
 
@@ -903,7 +903,7 @@ fn expand(
                 if close >= repl.length():
                     return error(PatError(msg: "bad replacement"))
 
-                let g = find_name(re.names.clone(), repl.slice(i + 2, close).get())
+                g := find_name(re.names.clone(), repl.slice(i + 2, close).get())
                 if g == 0:
                     return error(PatError(msg: "bad replacement"))
 
@@ -936,7 +936,7 @@ fn unescape(raw: Bytes) Result[Bytes, PatError]:
     var i = 0
 
     while i < raw.length():
-        let c = raw.get(i)
+        c := raw.get(i)
 
         if c != 92:
             out.append(c)
@@ -945,7 +945,7 @@ fn unescape(raw: Bytes) Result[Bytes, PatError]:
             if i + 1 >= raw.length():
                 return error(PatError(msg: "bad command"))
 
-            let e = raw.get(i + 1)
+            e := raw.get(i + 1)
 
             if e == ch("n"):
                 out.append(10)
@@ -957,8 +957,8 @@ fn unescape(raw: Bytes) Result[Bytes, PatError]:
                 out.append(92)
                 i += 2
             else if e == ch("x"):
-                let hi = hex_value(byte_or(raw, i + 2))
-                let lo = hex_value(byte_or(raw, i + 3))
+                hi := hex_value(byte_or(raw, i + 2))
+                lo := hex_value(byte_or(raw, i + 3))
                 if hi < 0 or lo < 0:
                     return error(PatError(msg: "bad command"))
 
@@ -971,9 +971,9 @@ fn unescape(raw: Bytes) Result[Bytes, PatError]:
 
 // Runs one input line and returns its output, or the error to print.
 fn process(line: Bytes) Result[Bytes, PatError]:
-    let fields = line.split("\t".to_bytes())
-    let cmd = fields.get(0).clone()
-    let known = (
+    fields := line.split("\t".to_bytes())
+    cmd := fields.get(0).clone()
+    known := (
         cmd == "test".to_bytes()
         or cmd == "match".to_bytes()
         or cmd == "full".to_bytes()
@@ -987,15 +987,15 @@ fn process(line: Bytes) Result[Bytes, PatError]:
     if not known or fields.length() != want:
         return error(PatError(msg: "bad command"))
 
-    let text = try unescape(fields.get(2).clone())
+    text := try unescape(fields.get(2).clone())
     var repl = "".to_bytes()
     if want == 4:
         repl = try unescape(fields.get(3).clone())
 
-    let re = try compile(fields.get(1).clone())
+    re := try compile(fields.get(1).clone())
 
     if cmd == "replace".to_bytes():
-        let replaced = try replace_all(re, text, repl)
+        replaced := try replace_all(re, text, repl)
         var out = BytesBuilder()
         put_quoted(var out, replaced.clone(), 0, replaced.length())
         put(var out, "\n")
@@ -1010,14 +1010,14 @@ fn process(line: Bytes) Result[Bytes, PatError]:
         else:
             put(var out, "false\n")
     else if cmd == "match".to_bytes() or cmd == "full".to_bytes():
-        let m = exec(var c, 0, cmd == "full".to_bytes())
+        m := exec(var c, 0, cmd == "full".to_bytes())
 
         if m.is_none():
             put(var out, "no match\n")
         else:
             put_captures(var out, c.re.clone(), c.text.clone(), m.get())
     else if cmd == "find-all".to_bytes():
-        let all = find_all(var c)
+        all := find_all(var c)
 
         for caps in all:
             put_span(var out, c.text.clone(), caps.get(0), caps.get(1))
@@ -1041,12 +1041,12 @@ fn process(line: Bytes) Result[Bytes, PatError]:
     return ok(out.build())
 
 export fn main() Int:
-    let data = read_all(stdin()).get()
+    data := read_all(stdin()).get()
     var out = BytesBuilder()
 
     for line in data.split("\n".to_bytes()):
         if not line.is_empty():
-            let result = process(line)
+            result := process(line)
 
             if result.is_error():
                 put(var out, "error: {result.err().msg}\n")

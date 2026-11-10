@@ -6,7 +6,7 @@ fn probe() Int:
     var i = 0
 
     while i < 1000:
-        if let found = wrapped(i):
+        if found := wrapped(i):
             sum += found
         i += 1
 

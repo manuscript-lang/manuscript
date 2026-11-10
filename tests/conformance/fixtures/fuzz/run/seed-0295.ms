@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,16 +22,16 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let i1 = (-34)
+    i1 := (-34)
     say("i1 = {i1}")
 
-    let i2 = (i1 + 42)
+    i2 := (i1 + 42)
     say("i2 = {i2}")
 
-    let s3 = "quote\"d"
+    s3 := "quote\"d"
     say("s3 = [{s3}]")
 
-    let s4 = "  padded  "
+    s4 := "  padded  "
     say("s4 = [{s4}]")
 
     if true:
@@ -39,10 +39,10 @@ export fn main() Int:
     else:
         say(s4.upper())
 
-    let s5 = "beta"
+    s5 := "beta"
     say("s5 = [{s5}]")
 
-    let b6 = false
+    b6 := false
     say("b6 = {b6}")
 
     var acc7 = 0
@@ -50,10 +50,10 @@ export fn main() Int:
         acc7 += i * 7
     say("acc7 = {acc7}")
 
-    let b8 = (not b6)
+    b8 := (not b6)
     say("b8 = {b8}")
     say("fib(28) = {fib(28)}")
 
-    let i9 = ((((-50) - (-27)) + ((-40) * (-13))) - (s3.length() - i1))
+    i9 := ((((-50) - (-27)) + ((-40) * (-13))) - (s3.length() - i1))
     say("i9 = {i9}")
     return 0

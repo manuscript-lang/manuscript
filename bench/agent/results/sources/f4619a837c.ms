@@ -9,11 +9,11 @@ import (
 // Byte values of the grid characters. Validation works on bytes so that
 // columns are counted in characters: every byte before the first invalid
 // one is ASCII, so byte offsets and character offsets agree up to there.
-let NEWLINE = 10
-let WALL = 35
-let OPEN = 46
-let START = 83
-let GOAL = 69
+NEWLINE := 10
+WALL := 35
+OPEN := 46
+START := 83
+GOAL := 69
 
 fn is_cell(b: Int) Bool:
     return b == WALL or b == OPEN or b == START or b == GOAL
@@ -27,7 +27,7 @@ fn solve(data: Bytes) String:
     var col = 0
 
     for i in range(0, end):
-        let b = data.get(i)
+        b := data.get(i)
 
         if b == NEWLINE:
             row += 1
@@ -42,7 +42,7 @@ fn solve(data: Bytes) String:
     var length = 0
 
     for i in range(0, end):
-        let b = data.get(i)
+        b := data.get(i)
 
         if b == NEWLINE:
             lengths.append(length)
@@ -53,7 +53,7 @@ fn solve(data: Bytes) String:
 
     lengths.append(length)
 
-    let width = lengths.get(0)
+    width := lengths.get(0)
     for n in range(0, lengths.length()):
         if lengths.get(n) != width: return "error: ragged grid"
 
@@ -63,7 +63,7 @@ fn solve(data: Bytes) String:
     var goal = 0
 
     for k in range(0, cells.length()):
-        let b = cells.get(k)
+        b := cells.get(k)
 
         if b == START:
             starts += 1
@@ -78,7 +78,7 @@ fn solve(data: Bytes) String:
     if goals == 0: return "error: no end"
     if goals > 1: return "error: multiple ends"
 
-    let rows = lengths.length()
+    rows := lengths.length()
     var dist: List[Int] = []
     for k in range(0, cells.length()):
         dist.append(-1)
@@ -86,23 +86,23 @@ fn solve(data: Bytes) String:
 
     var queue: List[Int] = [start]
     var head = 0
-    let dr = [-1, 1, 0, 0]
-    let dc = [0, 0, -1, 1]
+    dr := [-1, 1, 0, 0]
+    dc := [0, 0, -1, 1]
 
     while head < queue.length():
-        let cur = queue.get(head)
+        cur := queue.get(head)
         head += 1
         if cur == goal: return "{dist.get(cur)}"
 
-        let r = cur / width
-        let c = cur % width
+        r := cur / width
+        c := cur % width
 
         for d in range(0, 4):
-            let nr = r + dr.get(d)
-            let nc = c + dc.get(d)
+            nr := r + dr.get(d)
+            nc := c + dc.get(d)
 
             if nr >= 0 and nr < rows and nc >= 0 and nc < width:
-                let next = nr * width + nc
+                next := nr * width + nc
 
                 if cells.get(next) != WALL and dist.get(next) < 0:
                     dist.set(next, dist.get(cur) + 1)
@@ -111,7 +111,7 @@ fn solve(data: Bytes) String:
     return "no path"
 
 export fn main() Int:
-    let data = read_all(stdin()).get()
+    data := read_all(stdin()).get()
     stdout().write("{solve(data)}\n").get()
     stdout().flush().get()
     return 0

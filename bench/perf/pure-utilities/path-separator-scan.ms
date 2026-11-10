@@ -15,8 +15,8 @@ fn work(mode: String, path: String) String:
     return win32().parse(path).root
 
 export fn main() Int:
-    let mode = arguments().get(0, "basename_plain")
-    let many = "/".repeat(32000).get("")
+    mode := arguments().get(0, "basename_plain")
+    many := "/".repeat(32000).get("")
     var inputs = ["folder/file.txt", "folder/other.txt"]
     if mode == "basename_slash": inputs = ["folder/file.txt/", "folder/other.txt/"]
     if mode == "basename_unicode": inputs = ["目录/文件.txt/", "目录/另一份.txt/"]
@@ -32,9 +32,9 @@ export fn main() Int:
     if mode == "unc_share_many": inputs = ["//server/{many}共享/a"]
     if mode == "join_many": inputs = [many.clone()]
 
-    let repeats = if mode.ends_with("_many"): 10 else: 200000
+    repeats := if mode.ends_with("_many"): 10 else: 200000
     var checksum = 0
-    let start = monotonic()
+    start := monotonic()
     for index in 0..repeats:
         checksum += work(mode, inputs[index % inputs.length()]).byte_length()
     print("{monotonic().difference(start).to_nanoseconds()} {checksum}")

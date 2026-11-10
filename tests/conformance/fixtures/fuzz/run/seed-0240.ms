@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -29,10 +29,10 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let b1 = ((67.907 - 549.718) > ((922.464 + 0.0) * 0.0))
+    b1 := ((67.907 - 549.718) > ((922.464 + 0.0) * 0.0))
     say("b1 = {b1}")
 
-    let s2 = (
+    s2 := (
         "{(36 + (-41))}:"
         + (("brace\{s\}" + "ms") + ("{(14 - 610622)}:" + "quote\"d"))
     )
@@ -42,10 +42,10 @@ export fn main() Int:
         "{((-30125) * (-31))} {(-27)} {(((-30125) * (-31)) < (-27))} sum {((-30125) * (-31)) + (-27)}"
     )
 
-    let l3 = [(-23), 5, (-1)]
+    l3 := [(-23), 5, (-1)]
     say("l3 = {l3} len {l3.length()}")
 
-    let f4 = (
+    f4 := (
         ((940.154 / 5.5) - (886.25 + 0.5))
         * ((0.0 * 811.532) / (650.002 / 822.314))
     )
@@ -60,10 +60,10 @@ export fn main() Int:
 
     say("acc5 = {acc5}")
 
-    let l6 = [5, (-16), (-4)]
+    l6 := [5, (-16), (-4)]
     say("l6 = {l6} len {l6.length()}")
 
-    let i7 = l3.length()
+    i7 := l3.length()
     say("i7 = {i7}")
 
     if ("back\\slash" + s2).is_empty():
@@ -71,13 +71,13 @@ export fn main() Int:
     else:
         say(("{(i7 + i7)}:" + "back\\slash"))
 
-    let s8 = "brace\{s\}"
+    s8 := "brace\{s\}"
     say("s8 = [{s8}]")
 
-    let f9 = (259.341 * (822.839 + (42.628 - f4)))
+    f9 := (259.341 * (822.839 + (42.628 - f4)))
     say("f9 = {f9}")
 
-    let f10 = (f4 - ((f9 + f9) * f4))
+    f10 := (f4 - ((f9 + f9) * f4))
     say("f10 = {f10}")
 
     if (not s2.is_empty()):
@@ -85,7 +85,7 @@ export fn main() Int:
     else:
         say("")
 
-    let i11 = (((i7 / (-36)) - (i7 * i7)) + i7)
+    i11 := (((i7 / (-36)) - (i7 * i7)) + i7)
     say("i11 = {i11}")
     say("fact(9) = {fact(9)}")
 
@@ -93,9 +93,9 @@ export fn main() Int:
     l12.append(46)
     say("l12 = {l12} len {l12.length()}")
 
-    let b13 = (((f10 - f9) + f9) < ((316.060 * 316.133) - f10))
+    b13 := (((f10 - f9) + f9) < ((316.060 * 316.133) - f10))
     say("b13 = {b13}")
 
-    let l14 = l6.map(fn x: x * 9)
+    l14 := l6.map(fn x: x * 9)
     say("l14 = {l14} len {l14.length()}")
     return 0

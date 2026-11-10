@@ -2,7 +2,7 @@
 // conform: phase=run
 // conform: origin=thread/type-checker-bug-bash
 fn f(x: Int) Int:
-    let y = if x > 1: x else: 0
+    y := if x > 1: x else: 0
     return y
 
 fn g(x: Int) Int:

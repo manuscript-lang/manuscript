@@ -163,8 +163,8 @@ mod tests {
     fn folding_ignores_multiline_payload_structure() {
         for source in [
             "/*\nheading:\n    fake body\n*/\n",
-            "let text = \"\"\"\nheading:\n    fake body\n\"\"\"\n",
-            "let text = r\"\"\"\nheading:\n    fake body 😀\n\"\"\"\n",
+            "text := \"\"\"\nheading:\n    fake body\n\"\"\"\n",
+            "text := r\"\"\"\nheading:\n    fake body 😀\n\"\"\"\n",
         ] {
             ms_syntax::parser::parse(&std::sync::Arc::from("folding.ms"), source).unwrap();
             let d = Document::new("file:///folding.ms", source);
@@ -176,7 +176,7 @@ mod tests {
     fn folding_follows_suites_not_payload_indentation() {
         let cases: &[(&str, &[(usize, usize)])] = &[
             (
-                "fn f() Int:\n    let x = 1\n// outside indentation is not a dedent\n    return x\n",
+                "fn f() Int:\n    x := 1\n// outside indentation is not a dedent\n    return x\n",
                 &[(0, 3)],
             ),
             (
@@ -194,7 +194,7 @@ mod tests {
             ("interface Empty:\nfn f() Int:\n    return 1\n", &[(1, 2)]),
             ("fn f(\n    x: Int,\n) Int:\n    return x\n", &[(2, 3)]),
             (
-                "fn f() Int:\n    let x = (\n        1 + 2\n    )\n    return x\n",
+                "fn f() Int:\n    x := (\n        1 + 2\n    )\n    return x\n",
                 &[(0, 4)],
             ),
         ];
@@ -257,7 +257,7 @@ mod tests {
     fn folding_ignores_colons_in_comments_and_strings() {
         let d = Document::new(
             "file:///folding.ms",
-            "// heading:\n    // indented comment\nlet text = \"fake: # comment\"\n    let other = 1\n",
+            "// heading:\n    // indented comment\ntext := \"fake: # comment\"\n    other := 1\n",
         );
         assert_eq!(folding_ranges(&d), Json::Arr(Vec::new()));
     }

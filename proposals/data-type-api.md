@@ -37,9 +37,9 @@ Verified with `ms check` on `bf26f78c`:
 var counts = Map[String, Int]()
 counts["a"] = 1
 counts["a"] += 1
-let n = counts["a"]           // 2; counts["zz"] faults
-let data = "hi".to_bytes()
-let first = data[0]           // 104
+n := counts["a"]           // 2; counts["zz"] faults
+data := "hi".to_bytes()
+first := data[0]           // 104
 ```
 
 ### List aggregates and natural order

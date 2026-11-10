@@ -25,10 +25,10 @@ fn main() Unit:
     doors.insert(0, Door("inserted"))
     say("--map")
 
-    let name = maybe("mapped").map(fn d: d.name.clone())
-    let size = open("result").map(fn d: d.name.length())
+    name := maybe("mapped").map(fn d: d.name.clone())
+    size := open("result").map(fn d: d.name.length())
     say("--fallback")
 
-    let failed: Door!Error = error(Error("no"))
-    let fallback = failed.get_or_else(fn cause: Door("fallback"))
+    failed: Door!Error = error(Error("no"))
+    fallback := failed.get_or_else(fn cause: Door("fallback"))
     say("end {doors.length()} {name.get()} {size.get()} {fallback.name}")

@@ -14,9 +14,9 @@ fn line_at(lines: List[String], k: Int) String:
     return ""
 
 fn edit_script(a: List[String], b: List[String]) List[Edit]:
-    let n = a.length()
-    let m = b.length()
-    let w = m + 1
+    n := a.length()
+    m := b.length()
+    w := m + 1
 
     // lcs[i * w + j] is the LCS length of a[i..] and b[j..]
     var lcs = List[Int]()
@@ -24,16 +24,16 @@ fn edit_script(a: List[String], b: List[String]) List[Edit]:
         lcs.append(0)
 
     for r in 0..n:
-        let i = n - 1 - r
+        i := n - 1 - r
 
         for s in 0..m:
-            let j = m - 1 - s
+            j := m - 1 - s
 
             if a[i] == b[j]:
                 lcs[i * w + j] = lcs[(i + 1) * w + j + 1] + 1
             else:
-                let down = lcs[(i + 1) * w + j]
-                let right = lcs[i * w + j + 1]
+                down := lcs[(i + 1) * w + j]
+                right := lcs[i * w + j + 1]
                 lcs[i * w + j] = if down >= right: down else: right
 
     var out = List[Edit]()
@@ -60,13 +60,13 @@ fn span(start: Int, length: Int) String:
     return "{start},{length}"
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
-    let header = lines[0].split(" ")
-    let name_a = header[0].clone()
-    let name_b = header[1].clone()
-    let context = header[2].parse_int().get(0)
-    let n = header[3].parse_int().get(0)
-    let m = header[4].parse_int().get(0)
+    lines := read_lines(stdin()).get()
+    header := lines[0].split(" ")
+    name_a := header[0].clone()
+    name_b := header[1].clone()
+    context := header[2].parse_int().get(0)
+    n := header[3].parse_int().get(0)
+    m := header[4].parse_int().get(0)
     var a = List[String]()
     var b = List[String]()
     for k in 0..n:
@@ -74,8 +74,8 @@ export fn main() Int:
     for k in 0..m:
         b.append(line_at(lines, 1 + n + k))
 
-    let edits = edit_script(a, b)
-    let total = edits.length()
+    edits := edit_script(a, b)
+    total := edits.length()
 
     // script positions of every deletion and insertion
     var changes = List[Int]()
@@ -129,8 +129,8 @@ export fn main() Int:
             if edits[e].kind != 1:
                 lb += 1
 
-        let sa = a_before[start] + (if la > 0: 1 else: 0)
-        let sb = b_before[start] + (if lb > 0: 1 else: 0)
+        sa := a_before[start] + (if la > 0: 1 else: 0)
+        sb := b_before[start] + (if lb > 0: 1 else: 0)
         out.append("@@ -" + span(sa, la) + " +" + span(sb, lb) + " @@")
 
         for e in start..stop + 1:

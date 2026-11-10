@@ -14,7 +14,7 @@ fn effect(var visits: List[Int], value: Int) Int:
     return value
 
 fn missing() Int:
-    let values = Map[Int, Int]()
+    values := Map[Int, Int]()
     return values.get(0).get()
 
 fn returned_alias() Map[Int, Int]:
@@ -46,7 +46,7 @@ test "closed map arguments retain written evaluation order":
     values.get(3).get() | try expect_equal(30)
 
 test "missing local lookups keep Optional faults":
-    (try expect_fault(fn: let _ignored = missing())) | try expect_contains(
+    (try expect_fault(fn: _ignored := missing())) | try expect_contains(
         "Optional.get"
     )
 
@@ -65,5 +65,5 @@ test "captured maps read the entries present at capture":
     var values = Map[Int, Int]()
     values.add(1, 10)
 
-    let callback = fn() Int: values.get(1).get()
+    callback := fn() Int: values.get(1).get()
     callback() | try expect_equal(10)

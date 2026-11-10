@@ -22,9 +22,9 @@ fn all_scalars(values: List[Int], check: fn(Int) Bool) Bool:
     return true
 
 fn caesar_key(key: String) Optional[Int]:
-    let scalars = key.scalar_values()
+    scalars := key.scalar_values()
 
-    let start = (if scalars.length() > 0 and scalars[0] == 45: 1 else: 0)
+    start := (if scalars.length() > 0 and scalars[0] == 45: 1 else: 0)
 
     if scalars.length() - start < 1 or scalars.length() - start > 7: return none
 
@@ -34,7 +34,7 @@ fn caesar_key(key: String) Optional[Int]:
 
 // Returns the alphabet index (0-25) of each letter of a Vigenere key, or none if the key is empty or has a non-letter.
 fn vigenere_shifts(key: String) Optional[List[Int]]:
-    let scalars = key.scalar_values()
+    scalars := key.scalar_values()
     if scalars.length() == 0 or not all_scalars(scalars.clone(), is_letter): return none
 
     var shifts: List[Int] = []
@@ -46,16 +46,16 @@ fn vigenere_shifts(key: String) Optional[List[Int]]:
     return some(shifts)
 
 fn run_line(line: String) String:
-    let parts = line.split(" ")
+    parts := line.split(" ")
     if parts.length() < 4: return "error: bad command"
 
-    let text = parts.slice(3, parts.length()).get().join(" ")
+    text := parts.slice(3, parts.length()).get().join(" ")
     if text.is_empty(): return "error: bad command"
 
-    let cipher = parts[0]
-    let mode = parts[1]
-    let key = parts[2]
-    let scalars = text.scalar_values()
+    cipher := parts[0]
+    mode := parts[1]
+    key := parts[2]
+    scalars := text.scalar_values()
     if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
     if mode != "enc" and mode != "dec": return "error: bad mode"
 
@@ -63,19 +63,19 @@ fn run_line(line: String) String:
     if mode == "enc": sign = 1
 
     if cipher == "caesar":
-        if let n = caesar_key(key):
-            let shift = ((sign * n) % 26 + 26) % 26
+        if n := caesar_key(key):
+            shift := ((sign * n) % 26 + 26) % 26
             return from_scalars(scalars.map(fn c: rotate(c, shift))).get()
 
         return "error: bad key"
 
-    if let shifts = vigenere_shifts(key):
+    if shifts := vigenere_shifts(key):
         var out: List[Int] = []
         var k = 0
 
         for c in scalars:
             if is_letter(c):
-                let s = shifts[k % shifts.length()]
+                s := shifts[k % shifts.length()]
                 out.append(rotate(c, ((sign * s) % 26 + 26) % 26))
                 k += 1
             else:

@@ -37,15 +37,15 @@ fn run() Unit!:
     try rows.write(["1", "needs;quote"])
     try rows.write(["2", "multi\nline"])
 
-    let page = try compile(
+    page := try compile(
         "\{\{ for p in points \}\}\{\{ p.x \}\}=\{\{ p.label \}\}\n\{\{ end \}\}"
     )
-    let data = try to_data({"points": [Point(1, "one"), Point(2, "two")]})
+    data := try to_data({"points": [Point(1, "one"), Point(2, "two")]})
     var out = stdout()
     try render_to(page, data, var out)
 
 export fn main() Int:
-    let result = run()
+    result := run()
     if result.is_error(): return 1
 
     return 0

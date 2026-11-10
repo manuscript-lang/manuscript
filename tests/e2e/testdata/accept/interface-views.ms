@@ -30,22 +30,22 @@ fn relay(e: Reportable) Reportable:
     return e
 
 fn held(cause: Cause) String:
-    let e: Reportable = cause
+    e: Reportable = cause
     return e.message()
 
 fn through(cause: Cause) Reportable:
-    let e = first_error(cause)
+    e := first_error(cause)
     return e
 
 fn cond(cause: Cause, other: Cause, c: Bool) Reportable:
-    let e = first_error(cause)
+    e := first_error(cause)
     if c: return e
 
     return other
 
 fn looped(cause: Cause) Reportable:
     for i in 0..3:
-        let e: Reportable = cause
+        e: Reportable = cause
         if i == 2: return e
 
     return Cause(7, "fell through the loop with heap text")
@@ -61,49 +61,49 @@ fn either(r: Holder, b: Bool) Reportable:
     return r.cause
 
 fn owned_copy(cause: Cause) List[Reportable]:
-    let e: Reportable = cause.clone()
+    e: Reportable = cause.clone()
     return [e]
 
 fn through_result(cause: Cause) Int!Reportable:
-    let r: Int!Reportable = error(cause)
+    r: Int!Reportable = error(cause)
     return r
 
 fn id[T](x: T) T:
     return x
 
 fn lend_then_relay(cause: Cause) Reportable:
-    let e = first_error(cause)
+    e := first_error(cause)
     return relay(e)
 
 fn lend_id(cause: Cause) Reportable:
     return id(first_error(cause))
 
 fn rebound(cause: Cause) Reportable:
-    let e: Reportable = cause
-    let e2 = e
+    e: Reportable = cause
+    e2 := e
     return e2
 
 fn rebound_result(cause: Cause) Int!Reportable:
-    let r: Int!Reportable = error(cause)
-    let r2 = r
+    r: Int!Reportable = error(cause)
+    r2 := r
     return r2
 
 fn rebound_alias_relay(cause: Cause) Reportable:
-    let e: Reportable = cause
-    let e2 = e
+    e: Reportable = cause
+    e2 := e
     return relay(e2)
 
 test "interface values converted from borrowed values are views":
     var c = Cause(1, "a heap allocated text that is long")
-    let other = Cause(2, "another heap allocated text that is long")
-    let h = Holder(
+    other := Cause(2, "another heap allocated text that is long")
+    h := Holder(
         Cause(3, "held heap text that is long enough"),
         Cause(4, "held cause heap text long")
     )
-    let kept = owned_copy(c)
-    let one = first_error(c)
-    let owned: Reportable = c.clone()
-    let message = one.message()
+    kept := owned_copy(c)
+    one := first_error(c)
+    owned: Reportable = c.clone()
+    message := one.message()
     (
         first_failure(c).err().message() | try expect_equal(
             "cause 1: a heap allocated text that is long"

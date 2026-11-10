@@ -21,7 +21,7 @@ test "int stays in range and is reproducible":
     var wide = seeded(9)
 
     for step in 0..200:
-        let value = wide.int(-3, 4)
+        value := wide.int(-3, 4)
         try expect_equal(value >= -3 and value < 4, true)
 
 test "float is below one and reproducible":
@@ -30,7 +30,7 @@ test "float is below one and reproducible":
 
 test "shuffle keeps the items and choice picks one":
     var rng = seeded(5)
-    let shuffled = rng.shuffle([1, 2, 3, 4, 5, 6])
+    shuffled := rng.shuffle([1, 2, 3, 4, 5, 6])
     try expect_equal(shuffled.sorted(fn(a: Int, b: Int) Int: a - b), [1, 2, 3, 4, 5, 6])
     try expect_equal(seeded(5).shuffle([1, 2, 3, 4, 5, 6]), shuffled)
     try expect_equal(rng.choice(List[Int]()), none)
@@ -41,5 +41,5 @@ fn draw_from_empty_range() Unit:
     rng.int(3, 3)
 
 test "an empty range faults":
-    let message = try expect_fault(draw_from_empty_range)
+    message := try expect_fault(draw_from_empty_range)
     try expect_equal(message.contains("min must be below"), true)

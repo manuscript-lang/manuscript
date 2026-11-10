@@ -10,7 +10,7 @@ Certificates, keys and CSRs travel as PEM blocks; `parse` finds every block in a
 `encode_all` writes blocks back with 64-column lines.
 
     import parse, encode_all, PemBlock from "@std/data/pem.ms"
-    let blocks = try parse(text)
+    blocks := try parse(text)
     print(blocks[0].label)         // "CERTIFICATE"
     print(blocks[0].data.length())  // decoded DER byte count
     print(encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())]))
@@ -25,9 +25,9 @@ export type PemBlock:
     // Decoded body bytes; empty for a block with no body lines.
     data: Bytes
 
-let BEGIN = "-----BEGIN "
-let END = "-----END "
-let DASHES = "-----"
+BEGIN := "-----BEGIN "
+END := "-----END "
+DASHES := "-----"
 
 // Parses every PEM block in `text`; text outside blocks is ignored, and a text without blocks gives an empty list.
 export fn parse(text: String) List[PemBlock]!:
@@ -39,7 +39,7 @@ export fn parse(text: String) List[PemBlock]!:
     var in_headers = false
 
     for raw in text.lines():
-        let line = raw.trim()
+        line := raw.trim()
 
         if not open:
             if (
@@ -58,12 +58,12 @@ export fn parse(text: String) List[PemBlock]!:
             continue
 
         if line.starts_with(END):
-            let closing = line.drop(END.length())
+            closing := line.drop(END.length())
             if closing != "{label}{DASHES}": return error(
                 Error("PEM: invalid armor", kind: "EBADMSG")
             )
 
-            let data = base64_decode(body)
+            data := base64_decode(body)
             if data.is_error(): return error(
                 Error("PEM: invalid data", kind: "EBADMSG")
             )
@@ -81,7 +81,7 @@ export fn parse(text: String) List[PemBlock]!:
         )
 
         if in_headers and line.contains(":"):
-            let at = line.index_of(":").get(0)
+            at := line.index_of(":").get(0)
             headers.add(line.take(at).trim(), line.drop(at + 1).trim())
             continue
 
@@ -102,12 +102,12 @@ export fn encode_block(block: PemBlock) String:
             out.append("{entry.key}: {entry.value}\n")
         out.append("\n")
 
-    let body = base64_encode(block.data)
+    body := base64_encode(block.data)
     var at = 0
-    let total = body.length()
+    total := body.length()
 
     while at < total:
-        let stop = if at + 64 < total: at + 64 else: total
+        stop := if at + 64 < total: at + 64 else: total
         out.append("{body.slice(at, stop).get("")}\n")
         at = stop
 

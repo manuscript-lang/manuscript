@@ -1,5 +1,5 @@
 fn grow(value: String!String) String!String:
-    let output = try value
+    output := try value
     return ok(output + "x")
 
 fn keep(value: String!String) Int:

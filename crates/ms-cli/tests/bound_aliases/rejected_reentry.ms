@@ -8,6 +8,6 @@ impl Counter:
 export fn main() Int:
     var counts = [Counter(count: 1)]
     var first = counts[0]
-    let around = first.around
+    around := first.around
     around(fn: first.count += 10)
     return 0

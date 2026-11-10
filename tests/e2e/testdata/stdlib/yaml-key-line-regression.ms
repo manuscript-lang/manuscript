@@ -4,7 +4,7 @@ import (
 )
 
 fn invalid(source: String) Unit!:
-    let cause = parse(source) | try expect_error
+    cause := parse(source) | try expect_error
     if cause.kind != "EBADMSG":
         return fail("expected malformed implicit key, got {cause}")
 

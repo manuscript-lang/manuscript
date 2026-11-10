@@ -12,18 +12,18 @@ impl Harness for Pi:
 
     fn command(prompt: String, model: String?, workspace: String) List[String]:
         var cmd = ["pi", "--mode", "json", "-p", prompt.clone()]
-        if let m = model: cmd = cmd.concat(["--model", m.clone()])
+        if m := model: cmd = cmd.concat(["--model", m.clone()])
         return cmd
 
     fn parse(transcript: String) Usage:
         var u = Usage()
 
         for ev in events(transcript):
-            let msg = ev.get("message").get(JsonValue.Null)
+            msg := ev.get("message").get(JsonValue.Null)
             if ev.get("type").get(JsonValue.Null).as_string().get("") != "message_end": continue
             if msg.get("role").get(JsonValue.Null).as_string().get("") != "assistant": continue
 
-            let us = msg.get("usage").get(JsonValue.Null)
+            us := msg.get("usage").get(JsonValue.Null)
             if us.is_null(): continue
 
             u.tokens_in += int_at(us, "input")
@@ -31,7 +31,7 @@ impl Harness for Pi:
             u.tokens_out += int_at(us, "output")
             u.turns += 1
 
-            if let total = us.get("cost").get(JsonValue.Null).get("total"):
+            if total := us.get("cost").get(JsonValue.Null).get("total"):
                 u.cost_usd += total.as_float().get(0.0)
                 u.cost_source = "harness"
 

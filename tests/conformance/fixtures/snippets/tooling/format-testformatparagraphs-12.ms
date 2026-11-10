@@ -12,7 +12,7 @@ impl Run for Runner:
 
     // Explain the second operation.
     fn second() Int:
-        let value = 2
+        value := 2
 
         // Handle both outcomes.
         // Keep these comments together.

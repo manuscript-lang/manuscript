@@ -18,19 +18,19 @@ impl Closeable for RestoreDirectory:
         return change_directory(self.path)
 
 fn matched_paths(root: String, options: GlobOptions) List[String]!:
-    let entries = try glob(root, options)
+    entries := try glob(root, options)
     return ok(entries.map(fn(entry: PathEntry) String: entry.path.clone()))
 
 test "glob keeps dot named and parent query results relative to their root":
-    let directory = try temporary("manuscript-glob-relative-")
-    let _restore = RestoreDirectory(try working_directory())
+    directory := try temporary("manuscript-glob-relative-")
+    _restore := RestoreDirectory(try working_directory())
     try create_directory("{directory.path()}/src/deep", recursive: true)
     for name in ["a.txt", "café.txt", "src/b.txt", "src/deep/c.txt"]:
         try write_file("{directory.path()}/{name}", "file").wait()
     try change_directory(directory.path())
 
-    let all = GlobOptions(patterns: ["**/*.txt"])
-    let expected = ["a.txt", "café.txt", "src/b.txt", "src/deep/c.txt"]
+    all := GlobOptions(patterns: ["**/*.txt"])
+    expected := ["a.txt", "café.txt", "src/b.txt", "src/deep/c.txt"]
     for root in [".", "./", "src/..", directory.path()]:
         try expect_equal(try matched_paths(root, all), expected)
     try expect_equal(
@@ -48,7 +48,7 @@ test "glob keeps dot named and parent query results relative to their root":
         ["a.txt", "café.txt"]
     )
 
-    let selected = try glob(".", all, fn(entry: PathEntry) Bool: entry.path == "src")
+    selected := try glob(".", all, fn(entry: PathEntry) Bool: entry.path == "src")
     try expect_equal(
         selected.map(fn(entry: PathEntry) String: entry.path.clone()),
         ["a.txt", "café.txt"]

@@ -4,7 +4,7 @@
 fn count[T](values: List[T]) Int: return values.length()
 
 fn probe() Int:
-    let values = [1, 2, 3]
+    values := [1, 2, 3]
     var sum = 0
     var i = 0
 

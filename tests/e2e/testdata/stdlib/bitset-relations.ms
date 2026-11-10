@@ -4,15 +4,15 @@ import (
 )
 
 test "bitset predicates agree with algebra for unequal and trailing zero words":
-    let cases: List[List[Int]] = [
+    cases: List[List[Int]] = [
         [], [0], [1], [-1], [-9223372036854775808], [1, 0], [0, 1],
         [0, -9223372036854775808], [1, -1, 0], [0, 0, 0]
     ]
 
     for a in cases:
         for b in cases:
-            let left = BitSet(words: a.clone())
-            let right = BitSet(words: b.clone())
+            left := BitSet(words: a.clone())
+            right := BitSet(words: b.clone())
             try expect_equal(
                 left.is_subset_of(right), left.difference(right).is_empty()
             )

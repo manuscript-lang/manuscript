@@ -20,7 +20,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding cause; declare it with 'let cause = ...' before use, define 'fn cause(...) T:', or import it from a module",
+        "message": "unknown binding cause; declare it with 'cause := ...' before use, define 'fn cause(...) T:', or import it from a module",
         "position": {
           "file": "format-testformatexpressionlayouts-52.ms",
           "line": 5,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatexpressionlayouts-52.ms:4:60: resolution: unknown type ApplicationError; declare it with 'type ApplicationError:' / 'enum ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it\n   |\n 4 | fn work(first: Int, second: String) (Map[String, String]?)!ApplicationError:\n   |                                                            ^\n<DIR>/format-testformatexpressionlayouts-52.ms:5:18: resolution: unknown binding cause; declare it with 'let cause = ...' before use, define 'fn cause(...) T:', or import it from a module\n   |\n 5 |     return error(cause)\n   |                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatexpressionlayouts-52.ms:4:60: resolution: unknown type ApplicationError; declare it with 'type ApplicationError:' / 'enum ApplicationError:' / 'interface ApplicationError:', declare it as a type parameter, or import it\n   |\n 4 | fn work(first: Int, second: String) (Map[String, String]?)!ApplicationError:\n   |                                                            ^\n<DIR>/format-testformatexpressionlayouts-52.ms:5:18: resolution: unknown binding cause; declare it with 'cause := ...' before use, define 'fn cause(...) T:', or import it from a module\n   |\n 5 |     return error(cause)\n   |                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

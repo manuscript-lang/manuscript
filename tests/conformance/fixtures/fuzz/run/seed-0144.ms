@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = "".upper().ends_with("ms")
+    b1 := "".upper().ends_with("ms")
     say("b1 = {b1}")
 
-    let b2 = b1
+    b2 := b1
     say("b2 = {b2}")
 
-    let i3 = 38
+    i3 := 38
     say("i3 = {i3}")
 
-    let b4 = (not ((b2 and b1) and (false or b1)))
+    b4 := (not ((b2 and b1) and (false or b1)))
     say("b4 = {b4}")
 
-    let i5 = (-i3)
+    i5 := (-i3)
     say("i5 = {i5}")
 
-    let i6 = ((-10) + (102785 + i5))
+    i6 := ((-10) + (102785 + i5))
     say("i6 = {i6}")
 
     if ("beta" + "héllo").contains("naïve"):
@@ -37,12 +37,12 @@ export fn main() Int:
         acc7 += i * (-3)
     say("acc7 = {acc7}")
 
-    let b8 = ((i5 + (i3 + i3)) <= ((i5 + 931355) + (i3 - i3)))
+    b8 := ((i5 + (i3 + i3)) <= ((i5 + 931355) + (i3 - i3)))
     say("b8 = {b8}")
 
-    let s9 = "naïve"
+    s9 := "naïve"
     say("s9 = [{s9}]")
 
-    let i10 = 21
+    i10 := 21
     say("i10 = {i10}")
     return 0

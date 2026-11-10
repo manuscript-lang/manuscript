@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,10 +15,10 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let l1 = [1, 2, 3].take(0)
+    l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
 
-    let i2 = 19
+    i2 := 19
     say("i2 = {i2}")
 
     var acc3 = 0
@@ -31,30 +31,30 @@ export fn main() Int:
     say("acc3 = {acc3}")
     say("gcd(4227, 4952) = {gcd(4227, 4952)}")
 
-    let f4 = (((592.219 - 9.5) * (300.25 + 258.499)) + ((5.0e-3 + 86.647) + 7.0e-3))
+    f4 := (((592.219 - 9.5) * (300.25 + 258.499)) + ((5.0e-3 + 86.647) + 7.0e-3))
     say("f4 = {f4}")
 
-    let l5 = l1.reversed()
+    l5 := l1.reversed()
     say("l5 = {l5} len {l5.length()}")
 
-    let b6 = false
+    b6 := false
     say("b6 = {b6}")
 
-    let f7 = (((f4 / 258.655) * f4) + ((f4 * 6.0e-6) * (f4 / f4)))
+    f7 := (((f4 / 258.655) * f4) + ((f4 * 6.0e-6) * (f4 / f4)))
     say("f7 = {f7}")
 
-    let l8 = l1.drop(4)
+    l8 := l1.drop(4)
     say("l8 = {l8} len {l8.length()}")
 
-    let i9 = i2
+    i9 := i2
     say("i9 = {i9}")
 
-    let i10 = ((-(i9 - (-996229910132))) + i2)
+    i10 := ((-(i9 - (-996229910132))) + i2)
     say("i10 = {i10}")
 
-    let l11 = [1, 2, 3].take(0)
+    l11 := [1, 2, 3].take(0)
     say("l11 = {l11} len {l11.length()}")
 
-    let f12 = (((0.5 * f4) * (f4 * f4)) * ((738.504 - 248.984) * 8.5))
+    f12 := (((0.5 * f4) * (f4 * f4)) * ((738.504 - 248.984) * 8.5))
     say("f12 = {f12}")
     return 0

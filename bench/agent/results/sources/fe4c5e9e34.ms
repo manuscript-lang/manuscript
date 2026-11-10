@@ -14,7 +14,7 @@ fn is_digits(text: String) Bool:
 
 // Converts an amount such as `12`, `12.5` or `0.07` to a string of hundredths.
 fn amount_cents(text: String) Optional[String]:
-    let parts = text.split(".")
+    parts := text.split(".")
 
     if parts.length() == 1:
         if is_digits(text): return some(text + "00")
@@ -23,8 +23,8 @@ fn amount_cents(text: String) Optional[String]:
 
     if parts.length() != 2: return none
 
-    let whole = parts[0]
-    let frac = parts[1]
+    whole := parts[0]
+    frac := parts[1]
     if not is_digits(whole) or not is_digits(frac) or frac.scalar_length() > 2: return none
     if frac.scalar_length() == 1: return some(whole + frac + "0")
 
@@ -33,22 +33,22 @@ fn amount_cents(text: String) Optional[String]:
 // Returns the record in `line` as its category and amount, or none when the line is invalid.
 fn parse_row(line: String) Optional[Row]:
     if line.starts_with("\""):
-        let rest = line.slice_scalars(1, line.scalar_length()).get()
+        rest := line.slice_scalars(1, line.scalar_length()).get()
 
-        if let close = rest.index_of("\""):
-            let category = rest.slice_scalars(0, close).get()
-            let tail = rest.slice_scalars(close + 1, rest.scalar_length()).get()
+        if close := rest.index_of("\""):
+            category := rest.slice_scalars(0, close).get()
+            tail := rest.slice_scalars(close + 1, rest.scalar_length()).get()
             if not tail.starts_with(",") or category.is_empty(): return none
-            if let cents = amount_cents(
+            if cents := amount_cents(
                 tail.slice_scalars(1, tail.scalar_length()).get()
             ):
                 return some(Row(category: category, cents: cents))
 
         return none
 
-    let parts = line.split(",")
+    parts := line.split(",")
     if parts.length() != 2 or parts[0].is_empty(): return none
-    if let cents = amount_cents(parts[1]):
+    if cents := amount_cents(parts[1]):
         return some(Row(category: parts[0], cents: cents))
 
     return none
@@ -67,7 +67,7 @@ fn add_digits(a: String, b: String) String:
     if b.scalar_length() > n: n = b.scalar_length()
 
     while i <= n or carry > 0:
-        let d = digit_at(a, i) + digit_at(b, i) + carry
+        d := digit_at(a, i) + digit_at(b, i) + carry
         result = "{d % 10}" + result
         carry = d / 10
         i += 1
@@ -82,9 +82,9 @@ fn strip_zeros(text: String) String:
 
 // Formats a hundredths string as a plain decimal with exactly two fractional digits.
 fn money(cents: String) String:
-    let padded = "000" + cents
-    let n = padded.scalar_length()
-    let whole = strip_zeros(padded.slice_scalars(0, n - 2).get())
+    padded := "000" + cents
+    n := padded.scalar_length()
+    whole := strip_zeros(padded.slice_scalars(0, n - 2).get())
     return whole + "." + padded.slice_scalars(n - 2, n).get()
 
 export fn main() Int:
@@ -94,7 +94,7 @@ export fn main() Int:
     for line in read_lines(stdin()).get():
         if line.trim().is_empty(): continue
 
-        if let row = parse_row(line):
+        if row := parse_row(line):
             totals.add(
                 row.category, add_digits(totals.get_or(row.category, "0"), row.cents)
             )

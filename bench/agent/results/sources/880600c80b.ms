@@ -19,13 +19,13 @@ fn is_digits(text: String) Bool:
     if text.length() == 0: return false
 
     for i in 0..text.length():
-        let c = text.get(i)
+        c := text.get(i)
         if c < "0" or c > "9": return false
 
     return true
 
 fn parse(line: String) Optional[Entry]:
-    let f = line.split(" ")
+    f := line.split(" ")
     if f.length() != 6: return none
     if f[0].length() == 0: return none
     if not ["DEBUG", "INFO", "WARN", "ERROR"].contains(f[1]): return none
@@ -53,7 +53,7 @@ export fn main() Int:
     for line in read_lines(stdin()).get():
         if line.trim().length() == 0: continue
 
-        if let e = parse(line):
+        if e := parse(line):
             valid.append(e)
         else:
             malformed += 1
@@ -66,10 +66,10 @@ export fn main() Int:
     out.write("WARN: {valid.filter(fn e: e.level == "WARN").length()}\n").get()
     out.write("ERROR: {valid.filter(fn e: e.level == "ERROR").length()}\n").get()
 
-    let class2 = valid.filter(fn e: e.status.get(0) == "2").length()
-    let class3 = valid.filter(fn e: e.status.get(0) == "3").length()
-    let class4 = valid.filter(fn e: e.status.get(0) == "4").length()
-    let class5 = valid.filter(fn e: e.status.get(0) == "5").length()
+    class2 := valid.filter(fn e: e.status.get(0) == "2").length()
+    class3 := valid.filter(fn e: e.status.get(0) == "3").length()
+    class4 := valid.filter(fn e: e.status.get(0) == "4").length()
+    class5 := valid.filter(fn e: e.status.get(0) == "5").length()
     (
         out
         .write(
@@ -78,20 +78,20 @@ export fn main() Int:
         .get()
     )
 
-    let n = valid.length()
+    n := valid.length()
 
     if n == 0:
         out.write("p95: 0\n").get()
     else:
-        let sorted_lat = valid.map(fn e: e.latency).sorted()
-        let rank = (95 * n + 99) / 100
+        sorted_lat := valid.map(fn e: e.latency).sorted()
+        rank := (95 * n + 99) / 100
         out.write("p95: {sorted_lat[rank - 1]}\n").get()
 
         var slow = 0
         for i in 0..n:
             if valid[i].latency > valid[slow].latency: slow = i
 
-        let s = valid[slow]
+        s := valid[slow]
         out.write("slowest: {s.latency} {s.method} {s.path} {s.timestamp}\n").get()
 
     out.write("top:\n").get()
@@ -103,17 +103,17 @@ export fn main() Int:
         counts.add(e.path.clone(), counts.get_or(e.path, 0) + 1)
         totals.add(e.path.clone(), totals.get_or(e.path, 0) + e.latency)
 
-    let stats = counts.keys().map(
+    stats := counts.keys().map(
         fn p: PathStat(
             path: p.clone(), count: counts.get_or(p, 0), total: totals.get_or(p, 0)
         )
     )
-    let ranked = stats.sorted(by_rank)
+    ranked := stats.sorted(by_rank)
 
     for i in 0..ranked.length():
         if i == 3: break
 
-        let s = ranked[i]
+        s := ranked[i]
         out.write("{s.path} {s.count} avg={s.total / s.count}\n").get()
 
     return 0

@@ -19,17 +19,17 @@ fn rows_of(shape: String) String:
 
 fn main() Unit:
     for shape in ["quoted", "plain"]:
-        let text = rows_of(shape)
+        text := rows_of(shape)
         var best = 9223372036854775807
         var count = 0
 
         for _round in 0..200:
-            let started = monotonic()
-            let result = parse(text)
-            let elapsed = monotonic().difference(started).to_nanoseconds()
+            started := monotonic()
+            result := parse(text)
+            elapsed := monotonic().difference(started).to_nanoseconds()
             count = result.get().length()
             if elapsed < best: best = elapsed
 
-        let _written = stdout().write(
+        _written := stdout().write(
             "manuscript {shape} rows={count} best_us={best / 1000}\n"
         )

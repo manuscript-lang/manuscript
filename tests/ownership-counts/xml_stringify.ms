@@ -4,11 +4,11 @@
 import XmlNode, stringify from "@std/data/xml.ms"
 
 export fn main() Int:
-    let text = "x".repeat(4096).get()
-    let root = XmlNode.XmlElement("root", [], [XmlNode.XmlText(text.clone())])
+    text := "x".repeat(4096).get()
+    root := XmlNode.XmlElement("root", [], [XmlNode.XmlText(text.clone())])
     if stringify(root) != "<root>{text}</root>": return 1
 
-    let mixed = XmlNode.XmlElement("root", [], [XmlNode.XmlText("text"), root])
+    mixed := XmlNode.XmlElement("root", [], [XmlNode.XmlText("text"), root])
     if stringify(mixed, "  ") != "<root>text<root>{text}</root></root>\n": return 2
 
     return 0

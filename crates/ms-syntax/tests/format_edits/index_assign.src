@@ -2,5 +2,5 @@ fn f(cb: List[Int], pw: Int, ph: Int, cw: Int) Unit:
     var small_cb = List[Int]()
     for y in 0..ph / 2:
         for x in 0..cw:
-            let i = 2 * y * pw + 2 * x
+            i := 2 * y * pw + 2 * x
             small_cb[y * cw + x] = (cb[i] + cb[i + 1] + cb[i + pw] + cb[i + pw + 1] + 2) / 4

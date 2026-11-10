@@ -12,7 +12,7 @@ impl Cell:
 
 // Faults with its own message, so a test tells which fault came first.
 fn later() Int:
-    let empty: List[Int] = []
+    empty: List[Int] = []
     return empty[3]
 
 fn bump_int(var x: Int) Unit:
@@ -39,21 +39,21 @@ fn field_place() Unit:
     grid[0][later()].value = 1
 
 test "the receiver of a nested var argument faults before a later index runs":
-    let message = try expect_fault(argument_place)
+    message := try expect_fault(argument_place)
     try expect_equal(message.contains("index 0 out of range"), true)
     try expect_equal(message.contains("index 3"), false)
 
 test "the receiver of a nested assignment faults before a later index runs":
-    let message = try expect_fault(assigned_place)
+    message := try expect_fault(assigned_place)
     try expect_equal(message.contains("index 0 out of range"), true)
     try expect_equal(message.contains("index 3"), false)
 
 test "a missing map key faults before a later index runs":
-    let message = try expect_fault(map_place)
+    message := try expect_fault(map_place)
     try expect_equal(message.contains("index 3"), false)
 
 test "the receiver of a nested field assignment faults before a later index runs":
-    let message = try expect_fault(field_place)
+    message := try expect_fault(field_place)
     try expect_equal(message.contains("index 0 out of range"), true)
     try expect_equal(message.contains("index 3"), false)
 

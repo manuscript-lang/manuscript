@@ -4,7 +4,7 @@ test "a closure that only assigns a captured variable changes it":
     var xs = ["a", "b"]
     var n = 0
 
-    let reset = fn:
+    reset := fn:
         xs = ["c"]
         n = 7
 

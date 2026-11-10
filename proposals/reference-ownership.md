@@ -2,7 +2,7 @@
 
 ## Summary
 
-- Problem: the ownership rules depart from the habits of Python, Go and TypeScript in ways that cost agents most of their first builds (#2147): `var y = xs[0]` writes through (#2168), `let b = a` of a list used later is a move error, a getter cannot return a field without `.clone()`, and `if var x = m.get(k)` changes a copy with no signal (#2164).
+- Problem: the ownership rules depart from the habits of Python, Go and TypeScript in ways that cost agents most of their first builds (#2147): `var y = xs[0]` writes through (#2168), `b := a` of a list used later is a move error, a getter cannot return a field without `.clone()`, and `if var x = m.get(k)` changes a copy with no signal (#2164).
 - Change: primitives copy; strings, records and collections are references to one owned value. A name bound to a place, to another name or to a result derived from an argument borrows it (`let` shared, `var` exclusive), arguments are borrowed, and lending results are inferred from bodies. `.clone()` is the only copy a program writes. No keyword, no refcount, no GC.
 - Decision requested: approve the rules and ship them as one PR. They reverse `proposals/remove-ref.md` (approved 2026-10-31) and the "records of scalars copy" clause of `crates/DESIGN.md` decision 1.
 
@@ -17,8 +17,8 @@ Implemented in the same PR (checker, lowering, MIR verifier, stdlib, docs); the 
 
 ```manuscript
 var a = [1, 2]
-let b = a                         // error: `a` is moved here but used again at 8:5
-a.append(3)                       // (OWNERSHIP.md "Borrows are lexical" says `let y = x` borrows)
+b := a                         // error: `a` is moved here but used again at 8:5
+a.append(3)                       // (OWNERSHIP.md "Borrows are lexical" says `y := x` borrows)
 
 impl Row:
     fn title() String:
@@ -48,7 +48,7 @@ Values:
 
 Bindings:
 
-- `let b = a`, `let x = a.b`, `let x = xs[i]`, `let n = f(a)` where `f` lends: shared borrows. Changing, reassigning or moving the origin while the binding is still used is an error (today's rule, `check_change`), with the fix "use `b` before this, or end its initializer with `.clone()`". Today a bare name on the right is consumed (`bind`, `Demand::Consume`); it borrows instead.
+- `b := a`, `x := a.b`, `x := xs[i]`, `n := f(a)` where `f` lends: shared borrows. Changing, reassigning or moving the origin while the binding is still used is an error (today's rule, `check_change`), with the fix "use `b` before this, or end its initializer with `.clone()`". Today a bare name on the right is consumed (`bind`, `Demand::Consume`); it borrows instead.
 - `var b = a`, `var x = a.b`, `var x = xs[i]`: exclusive borrows; `var c = a; c.append(4)` changes `a`, and `a` cannot be read, changed or moved until `c`'s last use. Reassigning a borrow stays rejected (`var s = r.name; s += "!"`: "cannot reassign `s`").
 - `var xs = f(b)` where `f` lends one field path of one argument or receiver (`return self.items`): an exclusive borrow of that place, lowered by path substitution (`getter_borrows`, `alias.rs`), so `xs.append(1)` changes `b.items`; `b` must be a `var` binding. A lender with two paths or two origins bound with `var` is rejected: "bind it with `let`, or borrow the field `var xs = b.items`". No lender returns an address: `var` parameters are take/put through a frame slot (`DESIGN.md` value representation), so an address would dangle.
 - A binding of a literal, constructor, `.clone()` or non-lending call owns, as today.
@@ -58,7 +58,7 @@ Results:
 - A bodied function lends when every `return` yields a part of a parameter or receiver: a field path, an element, a payload (`some(x.f)`, `x.f?`), or a lending call applied to one. Owned paths: a literal, constructor, `.clone()`, a non-lending call, a part of a temporary, of a default argument, of a closure capture or of a local. A function with both kinds of path is rejected at the owned `return`: "returns a part of `b` elsewhere; return `b.items.clone()` here, or build a new value on every path". Lambdas, function values and interface operations never lend; an implementation of an interface operation that returns a part writes `.clone()` (unchanged).
 - Inference is a program-wide fixpoint over the existing `Summary` (`modes.rs`): every bodied candidate starts as lending, a candidate with an owned path is withdrawn, repeat until stable; recursive and mutual lenders converge because withdrawal is monotone. Natives keep today's shape rule for lending container reads (`accessor` in `modes.rs`, lowered in place per `wiki/compiler/lowering-lends-what-the-checker-already-holds-as-a-borrow.md`); `Shared.get` lends only within its expression, as today.
 - A lending call is a borrow of its lent arguments' origins wherever the checker asks for origins: the binding it initializes, a loop or match scrutinee, overlap (`g(var b, f(b))` is rejected), and the statement's temporaries. `pure_origins` returns them for calls (today it returns `None`, `walk.rs:1634`).
-- Accepted risk: a body edit in one module that turns a fresh result into a part makes `var xs = f(b)` in another module write through where it copied before, and `let x = f(b); b.change()` an error. The first is the behavior the caller asked for by writing `var`; the second is a diagnostic, not a memory bug.
+- Accepted risk: a body edit in one module that turns a fresh result into a part makes `var xs = f(b)` in another module write through where it copied before, and `x := f(b); b.change()` an error. The first is the behavior the caller asked for by writing `var`; the second is a diagnostic, not a memory bug.
 
 Lost changes:
 
@@ -73,7 +73,7 @@ fn label(r: Row) String:
 fn grow(var b: Box) Int:
     var xs = b.items()            // exclusive borrow of b.items (one field path)
     xs.append(1)                  // b.items changes
-    let n = label(b.row)          // shared borrow; b.row cannot change until n's last use
+    n := label(b.row)          // shared borrow; b.row cannot change until n's last use
     return b.items.length() + n.length()
 ```
 
@@ -92,7 +92,7 @@ Soundness (hypothesis until the gates below pass):
 | `ms-check` `ownership/classify.rs` | records never `Copy` | corpus; conformance fixtures that copy records re-recorded |
 | `ms-check` `ownership/walk.rs`, `modes.rs`, `mod.rs` | `bind`: name borrows, scalar `var` copies; `Summary.result` lending fixpoint; `pure_origins` for lending calls; mixed-path, `var`-of-multi-path and lost-change errors; `getter_borrows` filled | fixtures: `let_name_borrows`, `var_name_exclusive`, `lender_field`, `lender_element`, `lender_payload`, `lender_recursive`, `lender_mutual`, `lender_mixed_paths`, `lender_default_owns`, `lender_temporary_owns`, `lender_overlaps_var_argument`, `lender_loop_mutates_origin`, `lender_through_borrow`, `lambda_never_lends`, `var_of_two_path_lender`, `if_var_lost_change`, `if_var_close_is_not_lost` |
 | `ms-mir` `ir.rs`, `verify.rs`, `lastuse` | `Func.ret_borrowed`; verifier rule above; no drop of lent results | `verify` tests, `opt_lastuse.rs` |
-| `ms-lower` `func.rs` (`bind_local`), `stmt.rs`, `call.rs`, `alias.rs` | bind from `Ownership.borrows`, not op shapes (a `let b = a` must not copy); lending instances return the words without ownership; `getter_borrows` substitution | `make count-check` pairs (`let_name_borrows` equals the no-binding program; `remove-ref.md` pairs return to their `ref` counts), `make leak-check` |
+| `ms-lower` `func.rs` (`bind_local`), `stmt.rs`, `call.rs`, `alias.rs` | bind from `Ownership.borrows`, not op shapes (a `b := a` must not copy); lending instances return the words without ownership; `getter_borrows` substitution | `make count-check` pairs (`let_name_borrows` equals the no-binding program; `remove-ref.md` pairs return to their `ref` counts), `make leak-check` |
 | `stdlib/*.ms` | delete `.clone()` on returned parts; `Set[P]`/`Map[P, V]` inserts of plain records move or clone | stdlib e2e, `make conform` |
 | docs and wiki | `bindings.md`, `references.md`, `collections.md`, `grammar.md:24`, `OWNERSHIP.md`, `DESIGN.md` decision 1, `ms guide`; rewrite `wiki/language/ref-is-removed-...md`, update `wiki/compiler/lowering-lends-...md` | `make docs-check`, `make repo-check` |
 

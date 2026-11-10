@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,7 +22,7 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let i1 = 35
+    i1 := 35
     say("i1 = {i1}")
 
     if true:
@@ -30,32 +30,32 @@ export fn main() Int:
     else:
         say("héllo".replace("ms", "delta"))
 
-    let s2 = "gamma".lower()
+    s2 := "gamma".lower()
     say("s2 = [{s2}]")
     say("fib(36) = {fib(36)}")
 
-    let f3 = (
+    f3 := (
         ((803.947 + 599.789) / (271.638 * 178.069))
         * (300.384 * (364.574 + 433.910))
     )
     say("f3 = {f3}")
 
-    let l4 = [(-6), 20, 23, (-18)]
+    l4 := [(-6), 20, 23, (-18)]
     say("l4 = {l4} len {l4.length()}")
 
-    let l5 = l4.map(fn x: x + 2).filter(fn x: x % 2 == 0)
+    l5 := l4.map(fn x: x + 2).filter(fn x: x % 2 == 0)
     say("l5 = {l5} len {l5.length()}")
 
-    let i6 = i1
+    i6 := i1
     say("i6 = {i6}")
 
-    let s7 = ((s2 + ("back\\slash" + s2)) + "alpha")
+    s7 := ((s2 + ("back\\slash" + s2)) + "alpha")
     say("s7 = [{s7}]")
 
-    let i8 = ((i1 % 8) % ((3 + i1) - ((-45) - i6)))
+    i8 := ((i1 % 8) % ((3 + i1) - ((-45) - i6)))
     say("i8 = {i8}")
 
-    let f9 = 1.5
+    f9 := 1.5
     say("f9 = {f9}")
 
     if true:
@@ -63,13 +63,13 @@ export fn main() Int:
     else:
         say("héllo".replace("", ""))
 
-    let s10 = ("{608200235669}:" + ("brace\{s\}" + s7).lower())
+    s10 := ("{608200235669}:" + ("brace\{s\}" + s7).lower())
     say("s10 = [{s10}]")
 
-    let i11 = (s2.length() + i1)
+    i11 := (s2.length() + i1)
     say("i11 = {i11}")
 
-    let f12 = (((515.655 + f3) + (537.25 * 294.242)) / (673.176 / (f3 * 522.557)))
+    f12 := (((515.655 + f3) + (537.25 * 294.242)) / (673.176 / (f3 * 522.557)))
     say("f12 = {f12}")
 
     var acc13 = 0

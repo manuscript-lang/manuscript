@@ -34,31 +34,22 @@ Other standard declarations (`Decimal`, `Bytes`, builders, `Closeable`, runtime 
 
 Unqualified case shorthand applies only when lexical lookup finds no binding of that name. Candidates are cases of visible enum types (prelude, declared, or imported by name); exactly one must match, and an expected type cannot choose. `Type.Case` selects explicitly. Match patterns use the scrutinee type ([pattern matching](../control-flow/pattern-matching.md)).
 
-Renaming, namespace imports, re-exports, and wildcards have no syntax. A dotted type path is not a namespace; import each type by name. Module-level statements and `var` are rejected. A module-level `let` declares a [constant](#constants).
+Renaming, namespace imports, re-exports, and wildcards have no syntax. A dotted type path is not a namespace; import each type by name. Module-level statements and `var` are rejected. A module-level `:=` declares a [constant](#constants).
 
 ## Constants
 
-A module-level `let` names a value usable throughout the module; add `export` to share it.
+A module-level `:=` names a value usable throughout the module; add `export` to share it.
 
 ```manuscript
-export let MAX_ITEMS = 100
-let NAMES: List[String] = ["Ada", "Grace"]
-let LIMIT = MAX_ITEMS * 2
+export MAX_ITEMS := 100
+NAMES: List[String] = ["Ada", "Grace"]
+LIMIT := MAX_ITEMS * 2
 
 fn is_full(count: Int) Bool:
     return count >= LIMIT
 ```
 
 The type comes from the annotation or initializer. The initializer is a constant expression: literals, constant interpolations, operators, list and map literals, payloadless cases (`none`, `State.Ready`), and other constants. Calls, constructors, functions, and `match` are not allowed. Self-dependent constants are rejected.
-
-Group related constants with `let (`, one `name = value` entry per line, indented four spaces; the closing `)` aligns with `let`. Each entry is an independent constant, and `export let (` exports all of them.
-
-```manuscript
-let (
-    LOW = 1
-    HIGH: Int = LOW + 9
-)
-```
 
 A constant has no storage or initialization order; each use evaluates the initializer in place, so a list constant is always fresh. Locals and parameters shadow it. Constants cannot be assigned, and `main` must be a function.
 

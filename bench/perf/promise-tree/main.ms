@@ -13,21 +13,21 @@ fn fib(n: Int) Int:
 fn pfib(n: Int, cutoff: Int) Int!:
     if n < cutoff: return ok(fib(n))
 
-    let m = n - 1
-    let p = promise[Int](fn: pfib(m, cutoff))
-    let b = try pfib(n - 2, cutoff)
-    let a = try p.wait()
+    m := n - 1
+    p := promise[Int](fn: pfib(m, cutoff))
+    b := try pfib(n - 2, cutoff)
+    a := try p.wait()
     return ok(a + b)
 
 fn work(n: Int) Int!:
     return ok(fib(n))
 
 fn main() Unit:
-    let args = arguments()
-    let mode = args[0].clone()
-    let n = args[1].parse_int().get()
-    let k = args[2].parse_int().get()
-    let t0 = monotonic()
+    args := arguments()
+    mode := args[0].clone()
+    n := args[1].parse_int().get()
+    k := args[2].parse_int().get()
+    t0 := monotonic()
     var r = 0
 
     if mode == "fan":
@@ -35,7 +35,7 @@ fn main() Unit:
         for i in 0..k:
             ps.append(promise[Int](fn: work(n)))
 
-        let rs = wait_all(ps).get()
+        rs := wait_all(ps).get()
         for x in rs:
             r += x
     else if mode == "tree":

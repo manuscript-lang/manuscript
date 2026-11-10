@@ -22,7 +22,7 @@ fn check(n: Int) Int!Error:
     return ok(n)
 
 fn flow(text: String) Int!Error:
-    let n = try parse(text)
+    n := try parse(text)
         | double
         | add(3)
         | try check
@@ -32,7 +32,7 @@ fn bare(text: String) Int!Error:
     return ok(try parse(text) | double | check | try)
 
 fn describe(text: String) String!Error:
-    let label = try parse(text)
+    label := try parse(text)
         | try check
         | add(1)
         .to_string_radix(10)
@@ -46,7 +46,7 @@ fn trace(var log: List[String], name: String) Int:
     return 1
 
 fn code(r: Int!Error) Int:
-    if let v = r:
+    if v := r:
         return v
 
     return 0 - r.err().message.length()
@@ -61,7 +61,7 @@ test "bare try unwraps the value so far":
     try expect_equal(code(bare("-")), -1)
 
 test "pipe passes a Result through a step without try":
-    let r = parse("abcd") | .map(fn(value: Int) Int: value * 2)
+    r := parse("abcd") | .map(fn(value: Int) Int: value * 2)
     try expect_equal(r.get(), 8)
 
 test "leading dot after a step applies to its result":
@@ -73,5 +73,5 @@ test "head is evaluated before step arguments":
     try expect_false(log.get(0) != "a" or log.get(1) != "b")
 
 test "dot steps call methods on the value":
-    let size = "abc" | .length() | double
+    size := "abc" | .length() | double
     try expect_equal(size, 6)

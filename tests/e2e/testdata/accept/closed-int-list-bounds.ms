@@ -45,12 +45,12 @@ fn peer_overflow() Int:
     return peer.get(-1)
 
 fn prefix_overflow() Int:
-    let values = [9223372036854775807, 1, -1]
+    values := [9223372036854775807, 1, -1]
     var sum = values.sum()
     return sum
 
 fn optional_overflow(default: Int?) Int:
-    let values = [9223372036854775807]
+    values := [9223372036854775807]
     var sum = 0
     for value in values:
         sum += values.get(0, default)
@@ -61,7 +61,7 @@ fn effect(var visits: List[Int], value: Int) Int:
     return value
 
 fn mutated_alias() Int:
-    let values = [0]
+    values := [0]
     var alias = values.clone()
     alias.set(0, 9223372036854775807)
 
@@ -73,13 +73,13 @@ test "closed list scalar summaries preserve sums and lengths":
     conditional_length(flag: true) | try expect_equal(100)
     conditional_length(flag: false) | try expect_equal(0)
 
-    let empty: List[Int] = []
+    empty: List[Int] = []
     var sum = empty.sum()
     sum | try expect_equal(0)
     empty.length() | try expect_equal(0)
 
 test "closed list reads preserve defaults and evaluation order":
-    let values = [10, 20]
+    values := [10, 20]
     var visits: List[Int] = []
     values.get(
         default: effect(var visits, 7), index: effect(var visits, 0)
@@ -89,21 +89,21 @@ test "closed list reads preserve defaults and evaluation order":
     visits | try expect_equal([7, 0, 8, 9])
 
 test "recursive appends keep overflow checks":
-    (try expect_fault(fn: let _ignored = self_overflow())) | try expect_contains(
+    (try expect_fault(fn: _ignored := self_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn: let _ignored = peer_overflow())) | try expect_contains(
+    (try expect_fault(fn: _ignored := peer_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
 test "list prefixes and Optional defaults keep overflow checks":
-    (try expect_fault(fn: let _ignored = prefix_overflow())) | try expect_contains(
+    (try expect_fault(fn: _ignored := prefix_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn: let _ignored = optional_overflow(none))) | try expect_contains(
+    (try expect_fault(fn: _ignored := optional_overflow(none))) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn: let _ignored = optional_overflow(0))) | try expect_contains(
+    (try expect_fault(fn: _ignored := optional_overflow(0))) | try expect_contains(
         "Int overflow;"
     )
 
@@ -122,7 +122,7 @@ test "append during traversal retains initial-length semantics":
     values.length() | try expect_equal(6)
 
 fn reordered_default_overflow() Int:
-    let values = [0]
+    values := [0]
     var sum = 0
     for value in values:
         sum += values.get(default: 9223372036854775807, index: 2)
@@ -144,7 +144,7 @@ fn scalar_append_overflow() Int:
 fn match_length() Int:
     var values: List[Int] = []
 
-    let _ignored = match present(1):
+    _ignored := match present(1):
         n:
             values.append(n)
             n
@@ -158,15 +158,15 @@ fn singleton(var values: List[Int]) List[Int]:
 
 fn default_length() Int:
     var values: List[Int] = []
-    let callback = fn(value: List[Int] = singleton(var values)) Int: value.length()
-    let _ignored = callback()
+    callback := fn(value: List[Int] = singleton(var values)) Int: value.length()
+    _ignored := callback()
     return values.length()
 
 test "reordered defaults and scalar append dependencies keep overflow checks":
-    (try expect_fault(fn: let _ignored = reordered_default_overflow())) | try expect_contains(
+    (try expect_fault(fn: _ignored := reordered_default_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn: let _ignored = scalar_append_overflow())) | try expect_contains(
+    (try expect_fault(fn: _ignored := scalar_append_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
@@ -175,7 +175,7 @@ test "hidden match and default mutations invalidate lengths":
     default_length() | try expect_equal(1)
 
 fn literal_length_sum() Int:
-    let values = [1, 2, 3]
+    values := [1, 2, 3]
     var sum = 0
     var i = 0
 

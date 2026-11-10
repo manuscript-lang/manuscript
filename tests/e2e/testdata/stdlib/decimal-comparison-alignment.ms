@@ -4,11 +4,11 @@ import (
 )
 
 test "decimal comparison aligns every significant digit without losing signs":
-    let base: Decimal = 1e33d
+    base: Decimal = 1e33d
     var step: Decimal = 1e33d
 
     for digits in 0..34:
-        let larger = base + step
+        larger := base + step
         try expect_equal(larger.compare(base), 1)
         try expect_equal(base.compare(larger), -1)
         try expect_equal((-larger).compare(-base), -1)

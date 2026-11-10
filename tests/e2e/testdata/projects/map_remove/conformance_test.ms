@@ -19,7 +19,7 @@ test "Map removal keeps direct bound generic and defining-module key scopes":
     (second.is_empty()) | try expect_true
 
     var returned_values = id_map()
-    let remove = returned_values.remove
+    remove := returned_values.remove
     remove(Key(1, "different"))
     try expect_false(
         (returned_values.length() != 2 or returned_values.keys()[0].id != 2)
@@ -30,7 +30,7 @@ test "Map lookup clone and clear keep the creator key identity":
     values.contains(Key(1, "different")) | try expect_true
     values.get(Key(2, "different")).get() | try expect_equal(20)
 
-    let get = values.get
+    get := values.get
     get(Key(3, "different")).get() | try expect_equal(30)
 
     var copied = values.clone()
@@ -53,8 +53,8 @@ test "An empty returned Map keeps creator evidence before its first insertion":
     values.get(Key(1, "third")).get() | try expect_equal(2)
 
 test "Returned Maps compare using their stored key evidence":
-    let first = id_map()
-    let second = id_map()
+    first := id_map()
+    second := id_map()
     try expect_true(first == second)
     try expect_true(second == first)
     try expect_true(first == second.clone())
@@ -62,7 +62,7 @@ test "Returned Maps compare using their stored key evidence":
     try expect_true([id_map()] == [id_map()])
 
 test "Returned Map equality keeps creator identity order independence and value checks":
-    let original = id_map()
+    original := id_map()
     var reordered = id_map()
     reordered.remove(Key(1, "different"))
     reordered.add(Key(1, "changed label"), 10)
@@ -85,7 +85,7 @@ test "Returned Map equality keeps creator identity order independence and value 
     try expect_true(label_map() == labels)
 
 test "Returned Sets compare using their stored element evidence":
-    let original = id_set()
+    original := id_set()
     var reordered = id_set()
     reordered.remove(Key(1, "ignored"))
     reordered.add(Key(1, "changed label"))

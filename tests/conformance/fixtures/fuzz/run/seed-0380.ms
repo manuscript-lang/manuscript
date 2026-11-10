@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     if (true and true):
@@ -14,24 +14,24 @@ export fn main() Int:
     else:
         say("a")
 
-    let b1 = false
+    b1 := false
     say("b1 = {b1}")
 
-    let i2 = (-40)
+    i2 := (-40)
     say("i2 = {i2}")
 
-    let l3 = [1, 2, 3].take(0)
+    l3 := [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
 
-    let b4 = (not (not "quote\"d".ends_with("beta")))
+    b4 := (not (not "quote\"d".ends_with("beta")))
     say("b4 = {b4}")
 
-    let i5 = ((-(i2 + i2)) * (i2 + i2))
+    i5 := ((-(i2 + i2)) * (i2 + i2))
     say("i5 = {i5}")
 
-    let i6 = (l3.length() + 3)
+    i6 := (l3.length() + 3)
     say("i6 = {i6}")
 
-    let big7 = -9223372036854775808
+    big7 := -9223372036854775808
     say("{big7 - 2}")
     return 0

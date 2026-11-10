@@ -9,16 +9,16 @@ type UnusedFixture:
 
 impl TestHooks for UnusedFixture:
     fn before_all() Unit:
-        let _written = stdout().write("UNUSED before_all").get()
+        _written := stdout().write("UNUSED before_all").get()
 
     fn before_each() Unit:
-        let _written = stdout().write("UNUSED before_each").get()
+        _written := stdout().write("UNUSED before_each").get()
 
     fn after_each() Unit:
-        let _written = stdout().write("UNUSED after_each").get()
+        _written := stdout().write("UNUSED after_each").get()
 
     fn after_all() Unit:
-        let _written = stdout().write("UNUSED after_all").get()
+        _written := stdout().write("UNUSED after_all").get()
 
 test "plain test":
     try expect_equal(1 + 1, 2)

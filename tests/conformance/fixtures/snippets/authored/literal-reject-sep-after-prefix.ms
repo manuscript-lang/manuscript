@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=number literal rejection
 export fn main() Int:
-    let x = 0x_1
+    x := 0x_1
     return x

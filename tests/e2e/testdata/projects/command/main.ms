@@ -18,12 +18,12 @@ fn exercise() Int!:
         ok(output):
             output.exit_code | try expect_equal(0)
 
-            let _ = stdout_bytes().write(value: output.stdout)
+            _ := stdout_bytes().write(value: output.stdout)
             return ok(0)
 
 export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):
-            let _written = stderr().write("{cause.message}\n")
+            _written := stderr().write("{cause.message}\n")
             return 1

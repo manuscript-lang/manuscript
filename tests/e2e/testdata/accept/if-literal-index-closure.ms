@@ -16,7 +16,7 @@ fn maybe(n: Int) Int?:
     return n
 
 fn first_or(m: Int?) Int:
-    if let v = m: return v
+    if v := m: return v
 
     return 0
 
@@ -36,7 +36,7 @@ test "indexed assignment":
     try expect_equal(xs, [1, 9, 4])
 
 test "optional wrap":
-    let m: Int? = 5
+    m: Int? = 5
     try expect_equal(first_or(m), 5)
     try expect_equal(first_or(maybe(3)), 3)
 
@@ -44,7 +44,7 @@ test "closure mutates capture":
     var total = 0
     var box = Box(n: 1)
 
-    let add = fn(x: Int) Unit:
+    add := fn(x: Int) Unit:
         total += x
         box.n += x
 

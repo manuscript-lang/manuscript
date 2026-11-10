@@ -40,7 +40,7 @@ fn inlay_hints_keep_the_supplied_name_table() {
         hint.get("position")
             .and_then(|p| p.get("character"))
             .and_then(Json::as_i64),
-        Some(14)
+        Some(10)
     );
     drop(entered);
 

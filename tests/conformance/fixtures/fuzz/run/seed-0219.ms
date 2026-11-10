@@ -6,34 +6,34 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = 34
+    i1 := 34
     say("i1 = {i1}")
 
-    let l2 = [15, 16, 12, 20]
+    l2 := [15, 16, 12, 20]
     say("l2 = {l2} len {l2.length()}")
 
-    let s3 = "ms"
+    s3 := "ms"
     say("s3 = [{s3}]")
 
-    let f4 = (0.0 * 645.364)
+    f4 := (0.0 * 645.364)
     say("f4 = {f4}")
     say(
         "{i1} {((-368247279510) / (i1 * 729192))} {(i1 < ((-368247279510) / (i1 * 729192)))} sum {i1 + ((-368247279510) / (i1 * 729192))}"
     )
 
-    let l5 = [4, (-24)]
+    l5 := [4, (-24)]
     say("l5 = {l5} len {l5.length()}")
 
-    let i6 = (l5.length() * ((i1 % (-31)) - (-i1)))
+    i6 := (l5.length() * ((i1 % (-31)) - (-i1)))
     say("i6 = {i6}")
 
-    let s7 = (s3.upper() + ((s3 + "quote\"d") + "x".reverse()))
+    s7 := (s3.upper() + ((s3 + "quote\"d") + "x".reverse()))
     say("s7 = [{s7}]")
 
-    let b8 = true
+    b8 := true
     say("b8 = {b8}")
 
     var acc9 = 0
@@ -51,7 +51,7 @@ export fn main() Int:
     else:
         say("日本語")
 
-    let i10 = (27 + s3.length())
+    i10 := (27 + s3.length())
     say("i10 = {i10}")
 
     if true:
@@ -59,12 +59,12 @@ export fn main() Int:
     else:
         say((s3 + s3))
 
-    let l11 = l5.take(0)
+    l11 := l5.take(0)
     say("l11 = {l11} len {l11.length()}")
     say(
         "{(-(i6 * (-105865780886)))} {((495705 - i6) * (i10 - i10))} {((-(i6 * (-105865780886))) < ((495705 - i6) * (i10 - i10)))} sum {(-(i6 * (-105865780886))) + ((495705 - i6) * (i10 - i10))}"
     )
 
-    let b12 = ((("beta" + "x") == s7.lower()) and (not (false or true)))
+    b12 := ((("beta" + "x") == s7.lower()) and (not (false or true)))
     say("b12 = {b12}")
     return 0

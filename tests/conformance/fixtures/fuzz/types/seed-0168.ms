@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = 33
+    i1 := 33
     say("i1 = {i1}")
 
-    let l2 = [1, 2, 3].take(0)
+    l2 := [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
 
-    let i3 = ((i1 / (-(-50))) - l2.length())
+    i3 := ((i1 / (-(-50))) - l2.length())
     say("i3 = {i3}")
 
-    let f4 = 451.765
+    f4 := 451.765
     say("f4 = {f4}")
 
-    let bad = undefined_name + 1
-    let l5 = l2.reversed()
+    bad := undefined_name + 1
+    l5 := l2.reversed()
     say("l5 = {l5} len {l5.length()}")
 
-    let i6 = i3
+    i6 := i3
     say("i6 = {i6}")
 
-    let s7 = (
+    s7 := (
         (("{i6}:" + "  padded  ") + "back\\slash".upper())
         + "quote\"d".upper().lower()
     )

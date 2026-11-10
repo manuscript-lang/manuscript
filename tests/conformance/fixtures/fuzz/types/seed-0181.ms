@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (((24 / (-956912)) + (-27)) + ((-44) + (45 % (-854129970545))))
+    i1 := (((24 / (-956912)) + (-27)) + ((-44) + (45 % (-854129970545))))
     say("i1 = {i1}")
 
     if false:
@@ -26,14 +26,14 @@ export fn main() Int:
         "{(((-507558) + (-30)) / 21)} {(((-285493) + 9) + 30)} {((((-507558) + (-30)) / 21) < (((-285493) + 9) + 30))} sum {(((-507558) + (-30)) / 21) + (((-285493) + 9) + 30)}"
     )
 
-    let l2 = [(-15), 27]
+    l2 := [(-15), 27]
     say("l2 = {l2} len {l2.length()}")
 
-    let f3 = 948.190
+    f3 := 948.190
     say("f3 = {f3}")
 
-    let s4 = "quote\"d"
+    s4 := "quote\"d"
     say("s4 = [{s4}]")
 
-    let bad = say(1, 2)
+    bad := say(1, 2)
     return 0

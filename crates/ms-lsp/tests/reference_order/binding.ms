@@ -1,6 +1,6 @@
 fn sample() Int:
-    let value = 1
-    let first = value
+    value := 1
+    first := value
 
 
 

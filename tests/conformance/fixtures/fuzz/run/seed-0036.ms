@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,10 +15,10 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let i1 = ((-((-36) * 29)) * 27)
+    i1 := ((-((-36) * 29)) * 27)
     say("i1 = {i1}")
 
-    let b2 = (
+    b2 := (
         not (
             ("Tab\there" == "line\nbreak")
             and "emoji 😀".ends_with("hello world")
@@ -26,10 +26,10 @@ export fn main() Int:
     )
     say("b2 = {b2}")
 
-    let l3 = [27, (-3), (-21)]
+    l3 := [27, (-3), (-21)]
     say("l3 = {l3} len {l3.length()}")
 
-    let s4 = (("x" + "ms") + ("{(i1 / i1)}:" + "delta")).upper()
+    s4 := (("x" + "ms") + ("{(i1 / i1)}:" + "delta")).upper()
     say("s4 = [{s4}]")
 
     var acc5 = 0
@@ -42,19 +42,19 @@ export fn main() Int:
     say("acc5 = {acc5}")
     say("{i1} {32} {(i1 < 32)} sum {i1 + 32}")
 
-    let l6 = [8, (-12), (-19)]
+    l6 := [8, (-12), (-19)]
     say("l6 = {l6} len {l6.length()}")
 
-    let b7 = ("{(i1 - i1)}:" + "x".reverse()).is_empty()
+    b7 := ("{(i1 - i1)}:" + "x".reverse()).is_empty()
     say("b7 = {b7}")
 
-    let s8 = s4
+    s8 := s4
     say("s8 = [{s8}]")
 
-    let i9 = (8 + ((-i1) - (-i1)))
+    i9 := (8 + ((-i1) - (-i1)))
     say("i9 = {i9}")
 
-    let i10 = 37
+    i10 := 37
     say("i10 = {i10}")
     say(
         "{i1} {((i1 + 685465) + l6.get(1))} {(i1 < ((i1 + 685465) + l6.get(1)))} sum {i1 + ((i1 + 685465) + l6.get(1))}"

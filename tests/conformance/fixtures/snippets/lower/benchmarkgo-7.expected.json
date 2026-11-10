@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding step; declare it with 'let step = ...' before use, define 'fn step(...) T:', or import it from a module",
+        "message": "unknown binding step; declare it with 'step := ...' before use, define 'fn step(...) T:', or import it from a module",
         "position": {
           "file": "benchmarkgo-7.ms",
           "line": 4,
@@ -20,7 +20,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding d; declare it with 'let d = ...' before use, define 'fn d(...) T:', or import it from a module",
+        "message": "unknown binding d; declare it with 'd := ...' before use, define 'fn d(...) T:', or import it from a module",
         "position": {
           "file": "benchmarkgo-7.ms",
           "line": 4,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/benchmarkgo-7.ms:4:23: resolution: unknown binding step; declare it with 'let step = ...' before use, define 'fn step(...) T:', or import it from a module\n   |\n 4 | fn work() Int: return step % d(1)\n   |                       ^\n<DIR>/benchmarkgo-7.ms:4:30: resolution: unknown binding d; declare it with 'let d = ...' before use, define 'fn d(...) T:', or import it from a module\n   |\n 4 | fn work() Int: return step % d(1)\n   |                              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/benchmarkgo-7.ms:4:23: resolution: unknown binding step; declare it with 'step := ...' before use, define 'fn step(...) T:', or import it from a module\n   |\n 4 | fn work() Int: return step % d(1)\n   |                       ^\n<DIR>/benchmarkgo-7.ms:4:30: resolution: unknown binding d; declare it with 'd := ...' before use, define 'fn d(...) T:', or import it from a module\n   |\n 4 | fn work() Int: return step % d(1)\n   |                              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

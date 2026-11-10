@@ -13,7 +13,7 @@ Proposal, 2026-10-27, against `origin/main` after #1737. Direction quoted: "yeah
 
 ## Problem
 
-- Verified: `Classifier` puts only types with `impl Closeable` in the resource set; interfaces are `Move`, while `with` accepts any interface with `close() -> Unit` (`contracts.rs` `closeable`). `FileHandle` is an interface implemented by a runtime handle, so `let f = try filesystem().open(..)` is unchecked (#1590).
+- Verified: `Classifier` puts only types with `impl Closeable` in the resource set; interfaces are `Move`, while `with` accepts any interface with `close() -> Unit` (`contracts.rs` `closeable`). `FileHandle` is an interface implemented by a runtime handle, so `f := try filesystem().open(..)` is unchecked (#1590).
 - Verified: `impl Closeable for <interface>` is rejected by design ("implementation receiver must be nominal source data"), and there is no interface-to-interface conversion, so a non-closing view of `WriteStream` cannot exist.
 - Verified: a nominal wrapper over an `extern type` with `extern def` methods works today (prototype: `NativeFile` plus `msstd_fs_open` and `msstd_fs_file_sync` as `extern def`, opened and synced a file with no compiler change). `processes.ms` already does this for `Process`.
 - Verified: the only thing that blocks it is the constructors. `FileSystem.open`, `open_flags` and `temporary` are interface methods whose forwarders (`natiface.rs`, `rtcall.rs` `status_result`) wrap the runtime handle into an interface value; they must build the nominal record instead.

@@ -34,20 +34,20 @@ fn guarded(c: Counter, by: Int) Int:
     return c.bump(by)
 
 test "method calls on concrete receivers":
-    let c = Counter(4)
+    c := Counter(4)
     try expect_equal(c.bump(3), 7)
     try expect_equal(Shape.Circle(2).bump(1), 3)
     try expect_equal(Shape.Square(3).bump(2), 6)
 
 test "one call site sees different receiver types":
-    let counters: List[Counter] = [Counter(1), Counter(2), Counter(3)]
+    counters: List[Counter] = [Counter(1), Counter(2), Counter(3)]
     var total = 0
     for counter in counters:
         total += guarded(counter, 10)
     try expect_equal(total, 36)
 
 test "views, defaults, and reordered labels keep dispatch":
-    let c = Counter(5)
+    c := Counter(5)
     try expect_equal(through_view(c, 2), 7)
     try expect_equal(c.scale(2), 10)
     try expect_equal(c.scale(offset: 1, factor: 2), 11)
@@ -85,11 +85,11 @@ fn run_view(chain: Chain, n: Int) Int:
     return chain.step(n) | code
 
 fn run_bound(chain: Chain, n: Int) Int:
-    let callback = chain.step
+    callback := chain.step
     return callback(n) | code
 
 test "nested try in a direct method becomes an error result":
-    let chain = Chain(Parser(10))
+    chain := Chain(Parser(10))
     try expect_equal(run_direct(chain, 5), 16)
     try expect_equal(run_direct(chain, -5), -1)
     try expect_equal(run_view(chain, -5), -1)

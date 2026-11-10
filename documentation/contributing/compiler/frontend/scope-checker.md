@@ -13,7 +13,7 @@ The compiler checks which names closures capture and which cleanup each scope ru
 | Scope exit | Identify exited cleanup scopes for return, loop exits, errors, faults, cancellation |
 | Closure creation | Identify captured bindings and infer borrowed non-escaping or owned escaping captures |
 | Assignment to captured outer local | Allow mutation only through an exclusive non-escaping capture; escaping captures cannot be mutated |
-| Reassignment and branch scope | Require initializers, enforce `let`/`var`, keep branch names in scope |
+| Reassignment and branch scope | Require initializers, enforce `:=`/`var`, keep branch names in scope |
 
 - An escaping closure must own its resource captures; the move transfers cleanup responsibility. A borrow cannot outlive its owner. Explicitly closing a resource still leaves later operations subject to runtime closed-state checks.
 - Storing or returning an owned resource transfers its cleanup duty; returning a borrowed part keeps responsibility with the original owner.

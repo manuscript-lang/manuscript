@@ -40,30 +40,30 @@ fn combine[T](var events: Events, first: T?, second: T?) T?:
     return first
 
 test "expected generic results preserve behavior and call order":
-    let result: List[Int]!Error = first()
+    result: List[Int]!Error = first()
     try expect_false(result.is_ok())
     try expect_equal(result.err().message, "empty")
 
-    let domain = failed()
+    domain := failed()
     try expect_false(domain.is_ok())
     try expect_equal(domain.err().message, "domain")
 
-    let empty: Int? = forward()
+    empty: Int? = forward()
     try expect_false(not empty.is_none())
 
-    let values: List[Int?] = [1, 2].map(fn item: absent())
+    values: List[Int?] = [1, 2].map(fn item: absent())
     try expect_equal(values.length(), 2)
     try expect_false(not values.get(0).is_none())
 
-    let callback: fn(Int) String = transform(fn item: item.to_string())
+    callback: fn(Int) String = transform(fn item: item.to_string())
     try expect_equal(callback(7), "7")
 
-    let defaulted: fn(Int) Int = from_callback(fn: fn(value: Int = 4): (value + 1))
+    defaulted: fn(Int) Int = from_callback(fn: fn(value: Int = 4): (value + 1))
     try expect_equal(defaulted(8), 9)
     try expect_equal(consume(identity(5)), 5)
 
     var events = Events([])
-    let combined: Int? = combine(
+    combined: Int? = combine(
         var events, second: record(var events, 2), first: record(var events, 1)
     )
     try expect_false(not combined.is_none())

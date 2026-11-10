@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (-421146026529)
+    i1 := (-421146026529)
     say("i1 = {i1}")
 
-    let l2 = [(-17), (-21), (-19)]
+    l2 := [(-17), (-21), (-19)]
     say("l2 = {l2} len {l2.length()}")
 
-    let bad = "abc".no_such_method()
+    bad := "abc".no_such_method()
     var acc3 = 0
     var stepacc3 = 0
 
@@ -25,6 +25,6 @@ export fn main() Int:
 
     say("acc3 = {acc3}")
 
-    let s4 = "MiXeD CaSe".lower().trim()
+    s4 := "MiXeD CaSe".lower().trim()
     say("s4 = [{s4}]")
     return 0

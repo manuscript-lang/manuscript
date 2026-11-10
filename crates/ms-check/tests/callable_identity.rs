@@ -24,16 +24,15 @@ fn diagnostics(body: &str) -> Vec<String> {
 
 #[test]
 fn generic_arguments_ignore_callable_parameter_names() {
-    let got =
-        diagnostics("    let selected = choose(first, second)\n    let _answer = selected(3)");
+    let got = diagnostics("    selected := choose(first, second)\n    _answer := selected(3)");
     assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
 fn inferred_collections_and_constructors_ignore_callable_parameter_names() {
     for body in [
-        "    let callbacks = [first, second]\n    let _answer = callbacks[1](3)",
-        "    let callbacks = Pair(first, second)\n    let _answer = callbacks.right(3)",
+        "    callbacks := [first, second]\n    _answer := callbacks[1](3)",
+        "    callbacks := Pair(first, second)\n    _answer := callbacks.right(3)",
     ] {
         let got = diagnostics(body);
         assert!(got.is_empty(), "{body}: {got:?}");
@@ -42,16 +41,15 @@ fn inferred_collections_and_constructors_ignore_callable_parameter_names() {
 
 #[test]
 fn callable_replacement_ignores_parameter_names() {
-    let got = diagnostics(
-        "    var callback = first\n    callback = second\n    let _answer = callback(3)",
-    );
+    let got =
+        diagnostics("    var callback = first\n    callback = second\n    _answer := callback(3)");
     assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
 fn callback_results_ignore_callable_parameter_names() {
     let got = diagnostics(
-        "    let factory = fn(flag: Bool):\n        if flag:\n            return first\n        return second\n    let _answer = factory(false)(3)",
+        "    factory := fn(flag: Bool):\n        if flag:\n            return first\n        return second\n    _answer := factory(false)(3)",
     );
     assert!(got.is_empty(), "{got:?}");
 }
@@ -59,9 +57,9 @@ fn callback_results_ignore_callable_parameter_names() {
 #[test]
 fn callable_parameter_and_result_types_remain_invariant() {
     for body in [
-        "    let bad = choose(first, fn(value: String) Int: 1)",
-        "    let bad = choose(first, fn(value: Int) String: \"x\")",
-        "    let bad = choose(first, fn(value: Int, other: Int) Int: value)",
+        "    bad := choose(first, fn(value: String) Int: 1)",
+        "    bad := choose(first, fn(value: Int) String: \"x\")",
+        "    bad := choose(first, fn(value: Int, other: Int) Int: value)",
     ] {
         let got = diagnostics(body);
         assert!(
@@ -74,8 +72,8 @@ fn callable_parameter_and_result_types_remain_invariant() {
 
 #[test]
 fn declared_call_labels_remain_checked() {
-    assert!(diagnostics("    let _answer = first(amount: 3)").is_empty());
-    let got = diagnostics("    let _answer = first(value: 3)");
+    assert!(diagnostics("    _answer := first(amount: 3)").is_empty());
+    let got = diagnostics("    _answer := first(value: 3)");
     assert!(
         got.iter().any(|d| d.contains("unknown argument value")),
         "{got:?}"

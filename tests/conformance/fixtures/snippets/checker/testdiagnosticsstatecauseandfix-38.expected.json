@@ -13,15 +13,15 @@
         "position": {
           "file": "testdiagnosticsstatecauseandfix-38.ms",
           "line": 5,
-          "column": 19,
-          "offset": 173
+          "column": 16,
+          "offset": 170
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-38.ms:5:19: resolution: unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?\n   |\n 5 |     let n = \"abc\".len()\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-38.ms:5:16: resolution: unknown or ambiguous member len on String; did you mean 'length' or 'byte_length' or 'scalar_length'?\n   |\n 5 |     n := \"abc\".len()\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

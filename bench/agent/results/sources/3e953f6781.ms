@@ -3,8 +3,8 @@ import (
     read_lines from "@std/streams.ms",
 )
 
-let FEE = 5
-let BAD = "error: bad command\n"
+FEE := 5
+BAD := "error: bad command\n"
 
 // Parses a non-empty run of ASCII digits; returns -1 when the text is not digits only.
 fn parse_digits(s: String) Int:
@@ -36,23 +36,23 @@ impl Ledger:
 
     // Fee charged by a debit of `amount` from `id` (independent of whether it succeeds).
     fn fee_for(id: String, amount: Int) Int:
-        let bal = self.balance.get(id).get(0)
+        bal := self.balance.get(id).get(0)
         if bal >= 0 and bal - amount < 0: return FEE
 
         return 0
 
     // Empty string when the debit is allowed, otherwise the error line (without newline).
     fn debit_error(id: String, amount: Int) String:
-        let bal = self.balance.get(id).get(0)
-        let fee = self.fee_for(id, amount)
-        let nw = bal - amount - fee
+        bal := self.balance.get(id).get(0)
+        fee := self.fee_for(id, amount)
+        nw := bal - amount - fee
         if nw < 0 - self.limit.get(id).get(0):
             return "error: overdraft limit exceeded {id}"
 
         return ""
 
     var fn do_open(id: String, lim: String) String:
-        let l = parse_digits(lim)
+        l := parse_digits(lim)
         if l < 0: return "error: invalid limit\n"
         if self.balance.contains(id): return "error: account exists {id}\n"
 
@@ -72,7 +72,7 @@ impl Ledger:
     var fn do_deposit(id: String, amt: String) String:
         if not self.balance.contains(id): return "error: unknown account {id}\n"
 
-        let a = parse_digits(amt)
+        a := parse_digits(amt)
 
         if a <= 0:
             self.blame(id)
@@ -82,7 +82,7 @@ impl Ledger:
             self.blame(id)
             return "error: account frozen {id}\n"
 
-        let nb = self.balance.get(id).get(0) + a
+        nb := self.balance.get(id).get(0) + a
         self.balance.add(id.clone(), nb)
         self.bump_ops(id)
         return "ok {nb}\n"
@@ -90,7 +90,7 @@ impl Ledger:
     var fn do_withdraw(id: String, amt: String) String:
         if not self.balance.contains(id): return "error: unknown account {id}\n"
 
-        let a = parse_digits(amt)
+        a := parse_digits(amt)
 
         if a <= 0:
             self.blame(id)
@@ -100,14 +100,14 @@ impl Ledger:
             self.blame(id)
             return "error: account frozen {id}\n"
 
-        let err = self.debit_error(id, a)
+        err := self.debit_error(id, a)
 
         if err.length() > 0:
             self.blame(id)
             return "{err}\n"
 
-        let fee = self.fee_for(id, a)
-        let nb = self.balance.get(id).get(0) - a - fee
+        fee := self.fee_for(id, a)
+        nb := self.balance.get(id).get(0) - a - fee
         self.balance.add(id.clone(), nb)
         self.fees += fee
         self.bump_ops(id)
@@ -123,7 +123,7 @@ impl Ledger:
             self.blame(from)
             return "error: same account\n"
 
-        let a = parse_digits(amt)
+        a := parse_digits(amt)
 
         if a <= 0:
             self.blame(from)
@@ -137,15 +137,15 @@ impl Ledger:
             self.blame(to)
             return "error: account frozen {to}\n"
 
-        let err = self.debit_error(from, a)
+        err := self.debit_error(from, a)
 
         if err.length() > 0:
             self.blame(from)
             return "{err}\n"
 
-        let fee = self.fee_for(from, a)
-        let nf = self.balance.get(from).get(0) - a - fee
-        let nt = self.balance.get(to).get(0) + a
+        fee := self.fee_for(from, a)
+        nf := self.balance.get(from).get(0) - a - fee
+        nt := self.balance.get(to).get(0) + a
         self.balance.add(from.clone(), nf)
         self.balance.add(to.clone(), nt)
         self.fees += fee
@@ -163,21 +163,21 @@ impl Ledger:
         var total = 0
 
         for id in ids:
-            let b = self.balance.get(id).get(0)
+            b := self.balance.get(id).get(0)
             total += b
 
-            let l = self.limit.get(id).get(0)
-            let o = self.ops.get(id).get(0)
-            let r = self.rejected.get(id).get(0)
-            let fz = if self.frozen.get(id).get(false): "yes" else: "no"
+            l := self.limit.get(id).get(0)
+            o := self.ops.get(id).get(0)
+            r := self.rejected.get(id).get(0)
+            fz := if self.frozen.get(id).get(false): "yes" else: "no"
             out += "{id} balance={b} limit={l} ops={o} rejected={r} frozen={fz}\n"
 
         out += "total balance={total} fees={self.fees}\n"
         return out
 
     var fn exec(t: List[String]) String:
-        let cmd = t[0]
-        let n = t.length()
+        cmd := t[0]
+        n := t.length()
 
         if cmd == "open":
             if n != 3: return BAD
@@ -217,14 +217,14 @@ impl Ledger:
         return BAD
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var ledger = Ledger(
         balance: Map[String, Int](), limit: Map[String, Int](), ops: Map[String, Int](),
         rejected: Map[String, Int](), frozen: Map[String, Bool](), fees: 0
     )
 
     for raw in lines:
-        let toks = raw.replace("\t", " ").split(" ").filter(fn t: t.length() > 0)
+        toks := raw.replace("\t", " ").split(" ").filter(fn t: t.length() > 0)
         if toks.length() == 0: continue
 
         stdout().write(ledger.exec(toks)).get()

@@ -13,26 +13,26 @@ fn build_packed() Bytes:
     return bb.build()
 
 bench "encoding.base64_encode":
-    let blob = words(20000).join(",").to_bytes()
+    blob := words(20000).join(",").to_bytes()
     try measure(blob.length(), fn: keep(base64_encode(blob).length()))
 
 bench "encoding.base64_decode":
-    let blob = words(20000).join(",").to_bytes()
-    let b64 = base64_encode(blob)
+    blob := words(20000).join(",").to_bytes()
+    b64 := base64_encode(blob)
 
     fn work() Result[Unit, Error]:
-        if let b = base64_decode(b64): return keep(b.length())
+        if b := base64_decode(b64): return keep(b.length())
 
         return keep(0)
 
     try measure(blob.length(), work)
 
 bench "encoding.hex_encode":
-    let blob = words(20000).join(",").to_bytes()
+    blob := words(20000).join(",").to_bytes()
     try measure(blob.length(), fn: keep(hex_encode(blob).length()))
 
 bench "crypto.sha256":
-    let blob = words(20000).join(",").to_bytes()
+    blob := words(20000).join(",").to_bytes()
     try measure(blob.length(), fn: keep(sha256(blob).length()))
 
 bench "bytes.builder":
@@ -45,7 +45,7 @@ bench "bytes.builder":
     try measure(100000, work)
 
 bench "bytes.read_int32_le":
-    let packed = build_packed()
+    packed := build_packed()
 
     fn work() Result[Unit, Error]:
         var sum = 0
@@ -56,7 +56,7 @@ bench "bytes.read_int32_le":
     try measure(25000, work)
 
 bench "bytes.read_uint32_le":
-    let packed = build_packed()
+    packed := build_packed()
 
     fn work() Result[Unit, Error]:
         var sum = 0

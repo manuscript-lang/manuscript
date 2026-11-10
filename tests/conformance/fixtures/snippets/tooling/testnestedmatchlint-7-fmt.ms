@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/nested_match_lint_test.go:27 TestNestedMatchLint
 fn use(value: Int?) Int:
-    let present = match value:
+    present := match value:
         n: n
         none: return 0
 

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -20,7 +20,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -28,44 +28,44 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let s1 = ("ms" + ("ms" + "naïve").lower())
+    s1 := ("ms" + ("ms" + "naïve").lower())
     say("s1 = [{s1}]")
 
-    let b2 = "gamma".is_empty()
+    b2 := "gamma".is_empty()
     say("b2 = {b2}")
 
-    let i3 = ((((-42) % 558033) - (702103 * (-13))) + (-((-752680199315) + (-16))))
+    i3 := ((((-42) % 558033) - (702103 * (-13))) + (-((-752680199315) + (-16))))
     say("i3 = {i3}")
 
-    let i5 = i3
+    i5 := i3
     say("i5 = {i5}")
 
-    let i6 = (-40)
+    i6 := (-40)
     say("i6 = {i6}")
 
-    let s7 = "  padded  ".reverse()
+    s7 := "  padded  ".reverse()
     say("s7 = [{s7}]")
 
-    let s8 = ("beta" + "Tab\there").lower().replace(s7, s7)
+    s8 := ("beta" + "Tab\there").lower().replace(s7, s7)
     say("s8 = [{s8}]")
 
-    let s9 = s1
+    s9 := s1
     say("s9 = [{s9}]")
     say(
         "{(i5 - (-(-571705)))} {((-i6) * 13)} {((i5 - (-(-571705))) < ((-i6) * 13))} sum {(i5 - (-(-571705))) + ((-i6) * 13)}"
     )
 
-    let b10 = ((s7 == s9) and "Tab\there".lower().starts_with(s8))
+    b10 := ((s7 == s9) and "Tab\there".lower().starts_with(s8))
     say("b10 = {b10}")
 
-    let i11 = (i6 - (((-45) + i6) + ((-29) * i5)))
+    i11 := (i6 - (((-45) + i6) + ((-29) * i5)))
     say("i11 = {i11}")
     say("gcd(880, 1930) = {gcd(880, 1930)}")
 
-    let f12 = 173.693
+    f12 := 173.693
     say("f12 = {f12}")
 
-    let l13 = [12, (-20), (-18)]
+    l13 := [12, (-20), (-18)]
     say("l13 = {l13} len {l13.length()}")
     say("gcd(2793, 2645) = {gcd(2793, 2645)}")
     say(

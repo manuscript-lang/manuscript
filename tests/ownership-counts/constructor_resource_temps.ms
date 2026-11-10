@@ -26,7 +26,7 @@ fn check(fail: Bool) Int!:
     return ok(42)
 
 fn build(fail: Bool) Unit!:
-    let value = Wrapped(Token(1), ok(Token(2)), try check(fail))
+    value := Wrapped(Token(1), ok(Token(2)), try check(fail))
     print("body {value.code}")
 
 fn main() Unit:

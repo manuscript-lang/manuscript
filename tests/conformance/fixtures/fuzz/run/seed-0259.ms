@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -28,13 +28,13 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let f1 = (207.402 / ((540.996 * 0.0) * 218.454))
+    f1 := (207.402 / ((540.996 * 0.0) * 218.454))
     say("f1 = {f1}")
 
-    let f2 = (355.875 - (4.5 - f1))
+    f2 := (355.875 - (4.5 - f1))
     say("f2 = {f2}")
 
-    let i3 = (37 % (((-36) + (-624982)) * ((-34) * 143856)))
+    i3 := (37 % (((-36) + (-624982)) * ((-34) * 143856)))
     say("i3 = {i3}")
 
     if ((not false) or (not false)):
@@ -45,16 +45,16 @@ export fn main() Int:
     say("fib(6) = {fib(6)}")
     say("fact(12) = {fact(12)}")
 
-    let f4 = (((7.0e18 / 1.25) * (239.274 * 3.5)) / ((f1 * 664.150) + (f1 / 288.458)))
+    f4 := (((7.0e18 / 1.25) * (239.274 * 3.5)) / ((f1 * 664.150) + (f1 / 288.458)))
     say("f4 = {f4}")
     say("{21} {((i3 + 8) + 20)} {(21 < ((i3 + 8) + 20))} sum {21 + ((i3 + 8) + 20)}")
 
-    let b5 = false
+    b5 := false
     say("b5 = {b5}")
 
-    let b7 = ((not (false or false)) or false)
+    b7 := ((not (false or false)) or false)
     say("b7 = {b7}")
 
-    let big8 = 9223372036854775807
+    big8 := 9223372036854775807
     say("{big8 + 2}")
     return 0

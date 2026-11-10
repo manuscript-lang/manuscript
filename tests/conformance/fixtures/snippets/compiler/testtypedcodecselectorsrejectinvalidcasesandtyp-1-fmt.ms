@@ -4,4 +4,4 @@
 import NormalizationForm from "@std/string.ms"
 
 fn wrong() Unit:
-    let form = NormalizationForm.NFC
+    form := NormalizationForm.NFC

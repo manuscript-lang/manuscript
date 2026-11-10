@@ -4,6 +4,6 @@ fn keep(r: fn(Int) Int) List[fn(Int) Int]:
     return out
 
 fn f() Int:
-    let a = [1, 2, 3]
-    let b = keep(fn x: x + a.length())
+    a := [1, 2, 3]
+    b := keep(fn x: x + a.length())
     return b.length()

@@ -4,5 +4,5 @@ import (
 )
 
 export fn main() Int:
-    let a = parse[Approved]("\{\}")
+    a := parse[Approved]("\{\}")
     return 0

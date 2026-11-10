@@ -33,12 +33,12 @@ xs.for_each(fn var p: p.n = p.n + 1)
 - Order and faults: index order (map: insertion order); a fault stops the traversal and leaves earlier elements changed, like a loop that faults partway.
 - Lowering reads the checker's per-call result, not the declaration. Today lowering treats a call as mutating from the declaration (`collection_mutation`, `effects.rs:13`; consumed at `call.rs:701`, `mutation.rs:292` and `:382`, `closure.rs:894` and `:1573`, `native.rs:1391`), so a `fn` receiver would take the plain-read path and could stay in registers. The walker therefore records `Fact::MutatesReceiver` on the call node when the rule fires, and one helper (`mutates_receiver(call)`) replaces the declaration test at those sites.
 - Natives with a `var` callback position pass the element address (`ListAddr`; map: the entry value pointer); the callee takes the value from the slot and puts the final value back, as for any `var` argument (`var_argument`, `restore_var_arguments`). A fault in the callback leaves what a faulting direct `var` call leaves (unwind closes the slot's owner). A reader argument is lowered without the #2725 adapter and called with values; the call site picks the variant from `function_source`, which the loop builder receives as a flag, so read-only `for_each` pays nothing (to be measured, stage 3).
-- Method values and dispatch: `let f = xs.for_each` has no argument, so the rule cannot fire; a method value of a method with a `fn(var T)` callback over the receiver's elements is rejected ("call it directly, or pass a reader"). Contract dispatch uses declared modes only, so the rule does not apply through an interface (stated, not hidden). `T` is matched by `same`, so a function-typed `T` behaves like any other.
+- Method values and dispatch: `f := xs.for_each` has no argument, so the rule cannot fire; a method value of a method with a `fn(var T)` callback over the receiver's elements is rejected ("call it directly, or pass a reader"). Contract dispatch uses declared modes only, so the rule does not apply through an interface (stated, not hidden). `T` is matched by `same`, so a function-typed `T` behaves like any other.
 - Source methods (SortedMap's `for_each` in `sorted.ms`) keep their body summary; they may declare `fn(var K, ...)` the same way once the rule is in.
 
 ```ms
 xs.for_each(fn var p: p.n = p.n + 1)      // xs must be var: accepted
-let ys = [P(1)]
+ys := [P(1)]
 ys.for_each(fn p: print("{p.n}"))         // reader: ys may be let
 ys.for_each(fn var p: p.n = 0)            // rejected: `ys` is not a `var`
 xs.for_each(fn var p: xs.append(p))       // rejected: overlaps the receiver borrow

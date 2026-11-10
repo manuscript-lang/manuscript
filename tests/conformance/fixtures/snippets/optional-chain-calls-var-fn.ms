@@ -21,7 +21,7 @@ type H:
     c: C?
 
 fn show(x: Int?) Unit:
-    if let v = x:
+    if v := x:
         stdout().write("some {v}\n").get()
     else:
         stdout().write("none\n").get()

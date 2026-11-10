@@ -4,5 +4,5 @@ import (
 )
 
 export fn main() Int:
-    let a = Approved(entity: "u2", nonce: "x")
+    a := Approved(entity: "u2", nonce: "x")
     return 0

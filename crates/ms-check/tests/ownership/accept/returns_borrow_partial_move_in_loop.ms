@@ -9,7 +9,7 @@ fn looped(b: Big) Int:
     var i = 0
 
     while i < 3:
-        let a = keep(b.items)
+        a := keep(b.items)
         i += a.length()
 
     return i

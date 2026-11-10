@@ -5,7 +5,7 @@ import stdout from "@std/io/io.ms"
 
 fn main() Unit:
     var out = stdout()
-    let s = "héllo"
+    s := "héllo"
     out.write(
         s.take(2) + "|" + s.drop(2) + "|" + s.take(99) + "|" + s.drop(
             99

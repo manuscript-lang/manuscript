@@ -31,7 +31,7 @@ fn serve(options: ServeOptions) Result[Int, Error]:
     ...
 
 fn main() Int:
-    let serve_command = command[ServeOptions](
+    serve_command := command[ServeOptions](
         name: "serve",
         about: "Run the server",
         flags: [
@@ -41,7 +41,7 @@ fn main() Int:
         args: [Arg("root", "Directory to serve")],
         run: fn options: serve(options)
     )
-    let flags = [Flag("verbose", FlagKind.Bool, "v", persistent: true)]
+    flags := [Flag("verbose", FlagKind.Bool, "v", persistent: true)]
     return Command(name: "tool", flags: flags, children: [serve_command]).execute(arguments())
 ```
 

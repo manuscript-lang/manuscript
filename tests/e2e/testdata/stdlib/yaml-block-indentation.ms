@@ -7,7 +7,7 @@ fn text(source: String, expected: String) Unit!:
     try expect_equal((try parse(source)), YamlValue.StringValue(expected))
 
 fn field(source: String, expected: String) Unit!:
-    let want = YamlValue.ObjectValue({"value": YamlValue.StringValue(expected)})
+    want := YamlValue.ObjectValue({"value": YamlValue.StringValue(expected)})
     try expect_equal((try parse(source)), want)
 
 test "YAML root indentation indicators start at column zero":
@@ -27,7 +27,7 @@ test "YAML standalone block headers retain their containing mapping base":
     try field("value: &anchor\n  |2\n    one\n", "  one\n")
     try field("value:\n  &anchor\n  |2\n  one\n", "one\n")
 
-    let nested = YamlValue.ObjectValue(
+    nested := YamlValue.ObjectValue(
         {
             "outer": YamlValue.ObjectValue(
                 {"value": YamlValue.StringValue("one two\n")}
@@ -39,11 +39,11 @@ test "YAML standalone block headers retain their containing mapping base":
     )
 
 test "YAML standalone block headers retain their containing sequence base":
-    let want = YamlValue.ArrayValue([YamlValue.StringValue("one two\n")])
+    want := YamlValue.ArrayValue([YamlValue.StringValue("one two\n")])
     for source in ["- >2\n  one\n  two\n", "-\n  >2\n  one\n  two\n"]:
         try expect_equal((try parse(source)), want)
 
-    let nested = YamlValue.ArrayValue(
+    nested := YamlValue.ArrayValue(
         [YamlValue.ArrayValue([YamlValue.StringValue("one\n")])]
     )
     try expect_equal((try parse("- -\n    |2\n    one\n")), nested)

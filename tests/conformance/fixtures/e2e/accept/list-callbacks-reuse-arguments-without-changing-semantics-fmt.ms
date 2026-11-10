@@ -27,10 +27,10 @@ test "list callbacks":
         items.append(value: i)
         i = i + 1
 
-    let doubled = items.map(fn(value: Int) Int: value * 2)
+    doubled := items.map(fn(value: Int) Int: value * 2)
     try expect_true((doubled.get(index: 4) == 8))
 
-    let even = items.filter(fn(value: Int) Bool: value % 2 == 0)
+    even := items.filter(fn(value: Int) Bool: value % 2 == 0)
     try expect_true((even.length() == 3))
     try expect_true(
         (
@@ -49,7 +49,7 @@ test "list callbacks":
     for value in items:
         keep(list: var retained, value: value)
 
-    let called = retained.map(fn(value: fn() Int) Int: value())
+    called := retained.map(fn(value: fn() Int) Int: value())
     try expect_true(
         (
             called.fold(

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -32,10 +32,10 @@ export fn main() Int:
         "{942572} {((-29) - ((-26) - 16))} {(942572 < ((-29) - ((-26) - 16)))} sum {942572 + ((-29) - ((-26) - 16))}"
     )
 
-    let i1 = (((29 % (-208730)) + 11) - ((24 % 33) + 440667))
+    i1 := (((29 % (-208730)) + 11) - ((24 % 33) + 440667))
     say("i1 = {i1}")
 
-    let i3 = 750717620551
+    i3 := 750717620551
     say("i3 = {i3}")
 
     if ("{(77725 + i1)}:" + "").starts_with("hello world"):
@@ -56,12 +56,12 @@ export fn main() Int:
     else:
         say("emoji 😀")
 
-    let s4 = "naïve"
+    s4 := "naïve"
     say("s4 = [{s4}]")
 
-    let s5 = "日本語".trim()
+    s5 := "日本語".trim()
     say("s5 = [{s5}]")
 
-    let l6 = [1, 2, 3].take(0)
+    l6 := [1, 2, 3].take(0)
     say("l6 = {l6} len {l6.length()}")
     return 0

@@ -10,11 +10,11 @@ fn outcome_value(outcome: Int!Error) Int:
     return outcome.get(-1)
 
 test "data constructor context":
-    let _input = Input([none, "Ada"])
-    let success: Int!Error = ok(3)
-    let failure: Int!Error = error(Error("unavailable"))
-    let _absent: Int? = none
-    let _nested: List[List[Int]] = [[], [1]]
+    _input := Input([none, "Ada"])
+    success: Int!Error = ok(3)
+    failure: Int!Error = error(Error("unavailable"))
+    _absent: Int? = none
+    _nested: List[List[Int]] = [[], [1]]
     try expect_equal(outcome_value(success), 3)
     try expect_equal(outcome_value(failure), -1)
 
@@ -28,8 +28,8 @@ fn select[T](first: T, second: T) T:
     return first
 
 test "nested constructor arguments receive inferred context":
-    let request = Request(Box(none))
-    let provided: Int? = 3
-    let selected = select(Box(none), Box(provided))
+    request := Request(Box(none))
+    provided: Int? = 3
+    selected := select(Box(none), Box(provided))
     try expect_false(not selected.value.is_none())
     try expect_false(not request.box.value.is_none())

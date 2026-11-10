@@ -7,8 +7,8 @@ fn compute() Int:
     return result
 
 fn compare() Int:
-    let left = compute()
-    let right = compute()
+    left := compute()
+    right := compute()
     if left != right:
         return 1
 

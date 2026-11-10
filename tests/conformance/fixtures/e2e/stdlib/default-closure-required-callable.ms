@@ -3,16 +3,16 @@
 import expect_true from "@std/test/test.ms"
 
 test "defaulted closure converts to a required callable":
-    let fallback = "abc"
-    let choose = fn(value: String = fallback) Bool: not value.is_empty()
-    let required: fn(String) Bool = choose
+    fallback := "abc"
+    choose := fn(value: String = fallback) Bool: not value.is_empty()
+    required: fn(String) Bool = choose
     try expect_true(choose() and required(fallback))
 
 test "escaping adapter keeps owning behavior":
     fn make(fallback: String) fn(String) Bool:
-        let choose = fn(value: String = fallback) Bool: not value.is_empty()
-        let required: fn(String) Bool = choose
+        choose := fn(value: String = fallback) Bool: not value.is_empty()
+        required: fn(String) Bool = choose
         return required
 
-    let f = make("xy")
+    f := make("xy")
     try expect_true(f("z"))

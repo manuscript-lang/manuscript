@@ -10,18 +10,14 @@ import (
 
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
-    let all = environment().get(Map[String, String]())
-    if let value = all.get(name): return value.clone()
+    all := environment().get(Map[String, String]())
+    if value := all.get(name): return value.clone()
 
     return fallback.clone()
 
 // The text of the file at `path`; empty when it cannot be read.
 export fn read_text(path: String) String:
-    if let data = read_file(path).wait().to_optional(): return (
-        data
-        .decode_utf8()
-        .get("")
-    )
+    if data := read_file(path).wait().to_optional(): return data.decode_utf8().get("")
 
     return ""
 
@@ -65,13 +61,13 @@ export fn run_in(
     timeout_s: Int,
     input: String
 ) Ran:
-    let start = monotonic()
-    let result = run(
+    start := monotonic()
+    result := run(
         program, arguments,
         RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s))
     ).wait()
-    let elapsed = monotonic().difference(start).nanos.to_float() / 1000000000.0
-    if let done = result.to_optional():
+    elapsed := monotonic().difference(start).nanos.to_float() / 1000000000.0
+    if done := result.to_optional():
         return Ran(
             done.exit_code, done.stdout.decode_utf8().get(""),
             done.stderr.decode_utf8().get(""), elapsed
@@ -86,7 +82,7 @@ export fn split_max(text: String, separator: String, splits: Int) List[String]:
     var rest = text.clone()
 
     while out.length() < splits:
-        let at = rest.index_of(separator)
+        at := rest.index_of(separator)
         if at.is_none(): break
 
         out.append(rest.slice(0, at.get(0)).get(""))
@@ -105,7 +101,7 @@ export fn strip_spaces(text: String) String:
 
 // Whether the regular expression `pattern` matches all of `text`, as Python's `re.fullmatch`.
 export fn full_match(pattern: String, text: String) Bool:
-    if let re = compile("^(?:{pattern})$").to_optional(): return re.matches(text)
+    if re := compile("^(?:{pattern})$").to_optional(): return re.matches(text)
 
     return false
 

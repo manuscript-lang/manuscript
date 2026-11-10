@@ -77,8 +77,8 @@ fn local_binding_references_keep_source_order() {
         character: 8,
     };
     for (include, expected) in [
-        (true, vec![(1, 8), (2, 16), (10, 19)]),
-        (false, vec![(2, 16), (10, 19)]),
+        (true, vec![(1, 4), (2, 13), (10, 19)]),
+        (false, vec![(2, 13), (10, 19)]),
     ] {
         let locations = workspace_references(
             syms,

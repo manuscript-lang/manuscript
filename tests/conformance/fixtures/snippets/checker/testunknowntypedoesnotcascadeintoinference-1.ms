@@ -5,7 +5,7 @@ fn collect[T, U](items: List[T], step: fn(T) List[U]!MissingError) List[U]!Missi
     return step(items.get(0))
 
 fn first() Unit:
-    let result = collect(
+    result := collect(
         items: [1, 2], step: fn(value: Int) List[Int]!MissingError: ok([value])
     )
-    let unrelated: Int = "wrong"
+    unrelated: Int = "wrong"

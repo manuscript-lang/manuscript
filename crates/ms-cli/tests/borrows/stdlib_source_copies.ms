@@ -10,9 +10,9 @@ fn main() Unit:
     var out = ""
 
     while not dq.is_empty():
-        if let r = dq.pop_back():
+        if r := dq.pop_back():
             out += "{r};"
-        if let r = dq.pop_front():
+        if r := dq.pop_front():
             out += "{r};"
 
     print("{out}")

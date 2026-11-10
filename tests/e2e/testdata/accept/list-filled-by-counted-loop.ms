@@ -44,6 +44,6 @@ test "lists filled by counted loops keep their items":
     table(-1) | try expect_equal(List[Int]())
 
 test "a list grows past the reserved size":
-    let wide = row(1100000, 0)
+    wide := row(1100000, 0)
     wide.length() | try expect_equal(1100001)
     wide.get(1099999) | try expect_equal(1099998)

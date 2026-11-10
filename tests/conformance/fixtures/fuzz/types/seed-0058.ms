@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = "quote\"d".upper().starts_with("MiXeD CaSe")
+    b1 := "quote\"d".upper().starts_with("MiXeD CaSe")
     say("b1 = {b1}")
 
-    let b2 = ("back\\slash".reverse().upper() == "日本語")
+    b2 := ("back\\slash".reverse().upper() == "日本語")
     say("b2 = {b2}")
 
-    let bad = not 5
+    bad := not 5
     return 0

@@ -13,8 +13,8 @@
         "position": {
           "file": "core-language-functions-declarations-and-calls-2.ms",
           "line": 7,
-          "column": 17,
-          "offset": 240
+          "column": 14,
+          "offset": 237
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "core-language-functions-declarations-and-calls-2.ms",
           "line": 8,
-          "column": 26,
-          "offset": 279
+          "column": 23,
+          "offset": 273
         }
       },
       {
@@ -35,8 +35,8 @@
         "position": {
           "file": "core-language-functions-declarations-and-calls-2.ms",
           "line": 9,
-          "column": 13,
-          "offset": 324
+          "column": 10,
+          "offset": 315
         }
       },
       {
@@ -46,15 +46,15 @@
         "position": {
           "file": "core-language-functions-declarations-and-calls-2.ms",
           "line": 12,
-          "column": 15,
-          "offset": 397
+          "column": 12,
+          "offset": 379
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-functions-declarations-and-calls-2.ms:7:17: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 7 | let remaining = reduce(10, 3)\n   |                 ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:8:26: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | let explicit_remaining = reduce(amount: 10, deduction: 3)\n   |                          ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:9:13: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | let mixed = reduce(deduction: 3, 10)\n   |             ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:12:15: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 12 | let swapped = reduce(deduction: deduction, amount: amount)\n    |               ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-functions-declarations-and-calls-2.ms:7:14: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 7 | remaining := reduce(10, 3)\n   |              ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:8:23: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | explicit_remaining := reduce(amount: 10, deduction: 3)\n   |                       ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:9:10: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | mixed := reduce(deduction: 3, 10)\n   |          ^\n<DIR>/core-language-functions-declarations-and-calls-2.ms:12:12: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n    |\n 12 | swapped := reduce(deduction: deduction, amount: amount)\n    |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

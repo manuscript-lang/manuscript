@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 fn main() Unit:
-    let a = [1].first().unwrap_or(0)
+    a := [1].first().unwrap_or(0)

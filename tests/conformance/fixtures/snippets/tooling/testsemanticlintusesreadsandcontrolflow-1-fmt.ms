@@ -4,7 +4,7 @@
 import ListEntry from "@std/collections/collections.ms"
 
 fn answer() Int:
-    let _unused = 1
+    _unused := 1
     var _written = 2
     _written = 3
     return 0

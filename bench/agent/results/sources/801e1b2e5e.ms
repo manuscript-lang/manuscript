@@ -65,12 +65,12 @@ fn symbol_at(tokens: List[Token], pos: Int) String:
             return ""
 
 fn parse_primary(tokens: List[Token], pos: Int) Optional[Parsed]:
-    if let value = number_at(tokens, pos):
+    if value := number_at(tokens, pos):
         return some(Parsed(value: value, next: pos + 1, zero_division: false))
     if symbol_at(tokens, pos) != "(":
         return none
 
-    if let inner = parse_sum(tokens, pos + 1):
+    if inner := parse_sum(tokens, pos + 1):
         if symbol_at(tokens, inner.next) == ")":
             return some(
                 Parsed(
@@ -82,7 +82,7 @@ fn parse_primary(tokens: List[Token], pos: Int) Optional[Parsed]:
 
 fn parse_unary(tokens: List[Token], pos: Int) Optional[Parsed]:
     if symbol_at(tokens, pos) == "-":
-        if let operand = parse_unary(tokens, pos + 1):
+        if operand := parse_unary(tokens, pos + 1):
             return some(
                 Parsed(
                     value: 0 - operand.value, next: operand.next,
@@ -95,12 +95,12 @@ fn parse_unary(tokens: List[Token], pos: Int) Optional[Parsed]:
     return parse_primary(tokens, pos)
 
 fn product_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
-    let symbol = symbol_at(tokens, left.next)
+    symbol := symbol_at(tokens, left.next)
     if symbol != "*" and symbol != "/":
         return some(left)
 
-    if let right = parse_unary(tokens, left.next + 1):
-        let zero = left.zero_division or right.zero_division
+    if right := parse_unary(tokens, left.next + 1):
+        zero := left.zero_division or right.zero_division
         if symbol == "*":
             return product_rest(
                 tokens,
@@ -124,18 +124,18 @@ fn product_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
     return none
 
 fn parse_product(tokens: List[Token], pos: Int) Optional[Parsed]:
-    if let first = parse_unary(tokens, pos):
+    if first := parse_unary(tokens, pos):
         return product_rest(tokens, first)
 
     return none
 
 fn sum_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
-    let symbol = symbol_at(tokens, left.next)
+    symbol := symbol_at(tokens, left.next)
     if symbol != "+" and symbol != "-":
         return some(left)
 
-    if let right = parse_product(tokens, left.next + 1):
-        let zero = left.zero_division or right.zero_division
+    if right := parse_product(tokens, left.next + 1):
+        zero := left.zero_division or right.zero_division
         if symbol == "+":
             return sum_rest(
                 tokens,
@@ -155,15 +155,15 @@ fn sum_rest(tokens: List[Token], left: Parsed) Optional[Parsed]:
     return none
 
 fn parse_sum(tokens: List[Token], pos: Int) Optional[Parsed]:
-    if let first = parse_product(tokens, pos):
+    if first := parse_product(tokens, pos):
         return sum_rest(tokens, first)
 
     return none
 
 // Returns the output line for one non-blank input line.
 fn evaluate(line: String) String:
-    if let tokens = tokenize(line):
-        if let parsed = parse_sum(tokens, 0):
+    if tokens := tokenize(line):
+        if parsed := parse_sum(tokens, 0):
             if parsed.next == tokens.length():
                 if parsed.zero_division:
                     return "error: division by zero"
@@ -173,8 +173,8 @@ fn evaluate(line: String) String:
     return "error: syntax"
 
 export fn main() Int:
-    let bytes = read_all(stdin()).get()
-    let text = bytes.decode_utf8().get("")
+    bytes := read_all(stdin()).get()
+    text := bytes.decode_utf8().get("")
     var output = List[String]()
 
     for line in text.lines():

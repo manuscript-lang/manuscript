@@ -19,5 +19,5 @@ fn open_counter(id: Int) Counter:
     return Counter(id)
 
 fn main() Unit:
-    let a = open_counter(7).value()
+    a := open_counter(7).value()
     print("read {a}")

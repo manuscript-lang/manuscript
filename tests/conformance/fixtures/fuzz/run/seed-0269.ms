@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = 930.437
+    f1 := 930.437
     say("f1 = {f1}")
 
-    let s2 = "42"
+    s2 := "42"
     say("s2 = [{s2}]")
 
     if ((14 * (-47)) < (7 - 4)):
@@ -20,16 +20,16 @@ export fn main() Int:
     else:
         say(s2)
 
-    let i3 = (((11 + 4) * 49) + (37 % (0 - (-36))))
+    i3 := (((11 + 4) * 49) + (37 % (0 - (-36))))
     say("i3 = {i3}")
 
-    let i4 = (i3 - (-17))
+    i4 := (i3 - (-17))
     say("i4 = {i4}")
 
-    let i5 = (-9)
+    i5 := (-9)
     say("i5 = {i5}")
 
-    let b6 = s2.lower().ends_with("héllo")
+    b6 := s2.lower().ends_with("héllo")
     say("b6 = {b6}")
 
     var acc7 = 0
@@ -41,22 +41,22 @@ export fn main() Int:
 
     say("acc7 = {acc7}")
 
-    let s8 = (s2 + s2)
+    s8 := (s2 + s2)
     say("s8 = [{s8}]")
 
-    let i9 = (-17)
+    i9 := (-17)
     say("i9 = {i9}")
 
-    let i10 = ((i9 * 44) + i5)
+    i10 := ((i9 * 44) + i5)
     say("i10 = {i10}")
 
-    let l11 = [(-19), (-10), (-28), 3]
+    l11 := [(-19), (-10), (-28), 3]
     say("l11 = {l11} len {l11.length()}")
 
-    let l12 = l11.sorted(fn a, b: a.compare(b))
+    l12 := l11.sorted(fn a, b: a.compare(b))
     say("l12 = {l12} len {l12.length()}")
 
-    let f13 = (((988.700 / f1) + (f1 - f1)) + (f1 + f1))
+    f13 := (((988.700 / f1) + (f1 - f1)) + (f1 + f1))
     say("f13 = {f13}")
 
     if b6:
@@ -64,6 +64,6 @@ export fn main() Int:
     else:
         say(s8)
 
-    let i14 = (-37)
+    i14 := (-37)
     say("i14 = {i14}")
     return 0

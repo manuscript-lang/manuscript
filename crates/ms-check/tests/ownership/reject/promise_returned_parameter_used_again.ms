@@ -7,6 +7,6 @@ fn start(address: String) Promise[Int]:
     return promise(fn: length_of(address))
 
 fn demo() Int:
-    let address = "localhost"
-    let p = start(address)  // error: `address` is moved here but used again
+    address := "localhost"
+    p := start(address)  // error: `address` is moved here but used again
     return address.length() + p.wait().get(0)

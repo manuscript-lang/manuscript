@@ -5,8 +5,8 @@
 import stdout from "@std/io/io.ms"
 
 fn main() Unit:
-    let top: UInt64 = 18446744073709551615
-    let one: UInt64 = 1
-    let _ = stdout().write("before\n")
-    let c = top * top
-    let _ = stdout().write("{c}\n")
+    top: UInt64 = 18446744073709551615
+    one: UInt64 = 1
+    _ := stdout().write("before\n")
+    c := top * top
+    _ := stdout().write("{c}\n")

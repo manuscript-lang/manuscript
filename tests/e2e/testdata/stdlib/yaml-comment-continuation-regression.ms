@@ -4,7 +4,7 @@ import (
 )
 
 fn rejects_continuation(text: String) Unit!Error:
-    let cause = parse(text) | try expect_error
+    cause := parse(text) | try expect_error
     if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
     return expect_equal(
@@ -83,7 +83,7 @@ test "YAML quoted and flow hashes retain their scalar behavior":
     )
 
 fn rejects_flow_continuation(text: String, reason: String) Unit!Error:
-    let cause = parse(text) | try expect_error
+    cause := parse(text) | try expect_error
     if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
     return expect_equal(cause.details["reason"], reason)
@@ -101,7 +101,7 @@ test "YAML flow mapping comments terminate plain scalar values":
         try rejects_flow_continuation(source, "expected mapping comma")
 
 test "YAML flow comments preserve comma and closing boundaries":
-    let expected = YamlValue.ArrayValue(
+    expected := YamlValue.ArrayValue(
         [YamlValue.StringValue("first"), YamlValue.StringValue("next")]
     )
     parse("[first, # comment\n next]") | try expect_ok | try expect_equal(expected)
@@ -142,7 +142,7 @@ test "YAML comments before flow values preserve empty starts":
     )
 
 test "YAML flow comment stops follow quoted and alias nodes":
-    let expected = YamlValue.ArrayValue(
+    expected := YamlValue.ArrayValue(
         [
             YamlValue.StringValue("café"), YamlValue.StringValue("quoted # hash"),
             YamlValue.StringValue("café"), YamlValue.StringValue("last")

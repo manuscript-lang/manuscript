@@ -33,11 +33,11 @@ test('Manuscript examples receive keyword, type, function, string, and number to
 });
 
 test('comments and strings do not highlight their contents as executable code', () => {
-  const source = 'let message = "// return true"\n// fn ignored() Int: return 123\n';
+  const source = 'message := "// return true"\n// fn ignored() Int: return 123\n';
   const tokens = tokenize(source);
   assert.ok(tokens.some(token => token.kind === 's' && token.text === '"// return true"'));
   assert.ok(tokens.some(token => token.kind === 'c1' && token.text === '// fn ignored() Int: return 123'));
-  assert.equal(tokens.filter(token => token.kind === 'k').map(token => token.text).join(''), 'let');
+  assert.equal(tokens.filter(token => token.kind === 'k').length, 0);
 });
 
 test('shared grammar keyword rules do not match inside longer or Unicode identifiers', () => {
@@ -53,7 +53,7 @@ test('strings end before the following code, including interpolations, nested st
     String.raw`"Nested {format(value: "Hello {names.get(0, default: "Ada")}")}"`,
   ];
   for (const literal of literals) {
-    const source = `let message = ${literal}\nreturn 0\n`;
+    const source = `message := ${literal}\nreturn 0\n`;
     const tokens = tokenize(source);
     assert.ok(tokens.some(token => token.kind === 's' && token.text.startsWith('"')));
     assert.ok(!tokens.some(token => token.kind === 's' && token.text.includes('return')));
@@ -71,7 +71,7 @@ test('current boolean spellings are constants; capitalized forms are ordinary na
 });
 
 test('highlighting preserves Unicode, HTML-like strings, decimals, and scientific notation for copying', () => {
-  const source = 'let café = "<script>& 🐈</script>"\nlet price = 12.50d\nlet ratio = 1e-3\n';
+  const source = 'café := "<script>& 🐈</script>"\nprice := 12.50d\nratio := 1e-3\n';
   const tokens = tokenize(source);
   assert.equal(tokens.map(token => token.text).join(''), source);
   assert.ok(tokens.some(token => token.kind === 'mi' && token.text === '12.50d'));
@@ -81,14 +81,14 @@ test('highlighting preserves Unicode, HTML-like strings, decimals, and scientifi
 test('from is a keyword only on import lines', () => {
   const keywords = source => tokenize(source).filter(token => token.kind === 'k').map(token => token.text);
   assert.deepEqual(keywords('import a, b from "x.ms"\n'), ['import', 'from']);
-  assert.deepEqual(keywords('let from = 2\n'), ['let']);
+  assert.deepEqual(keywords('from := 2\n'), []);
 });
 
 test('all compiler keywords have scopes; contextual and retired words stay identifiers', () => {
   const rust = fs.readFileSync(path.join(root, 'crates/ms-syntax/src/token.rs'), 'utf8');
   const keywords = [...rust.match(/pub const KEYWORDS:[\s\S]*?= &\[([\s\S]*?)\];/)[1].matchAll(/"([^"]+)"/g)]
     .map(match => match[1]);
-  assert.ok(keywords.length >= 30, 'Read the current compiler keyword inventory');
+  assert.ok(keywords.length >= 25, 'Read the current compiler keyword inventory');
   for (const word of keywords) {
     assertScopes(word, [[word, ['true', 'false', 'unit'].includes(word) ? 'kc' : 'k']]);
   }
@@ -96,8 +96,8 @@ test('all compiler keywords have scopes; contextual and retired words stay ident
     ['from', ''], ['as', ''], ['async', ''], ['await', ''], ['null', ''],
     ['def', ''], ['lambda', ''], ['elif', ''], ['case', ''],
   ]);
-  assertScopes('let from = 1\nlet as = 2\nimport Name, value from "x.ms"\n', [
-    ['let', 'k'], ['"x.ms"', 's'], ['import', 'k'], ['Name', 'nc'],
+  assertScopes('from := 1\nas := 2\nimport Name, value from "x.ms"\n', [
+    ['"x.ms"', 's'], ['import', 'k'], ['Name', 'nc'],
   ]);
 });
 
@@ -125,9 +125,9 @@ test('all current numeric bases, separators, fractions, exponents and Decimal fo
 });
 
 test('shared nested rules scope escapes, interpolation expressions and nested strings', () => {
-  const source = String.raw`let text = "Hello \{world\} \u{1F600} {format(value: {"key": "{1 + 2}"})}!"` + '\r\nreturn 0 // Ω 🐈\r\n';
+  const source = String.raw`text := "Hello \{world\} \u{1F600} {format(value: {"key": "{1 + 2}"})}!"` + '\r\nreturn 0 // Ω 🐈\r\n';
   assertScopes(source, [
-    ['let', 'k'], ['"Hello ', 's'], [String.raw`\{`, 'se'], [String.raw`\}`, 'se'],
+    ['"Hello ', 's'], [String.raw`\{`, 'se'], [String.raw`\}`, 'se'],
     [String.raw`\u{1F600}`, 'se'], ['format', 'nf'], ['"key"', 's'], ['2', 'mi'], ['+', 'o'],
     ['return', 'k'], ['// Ω 🐈', 'c1'],
   ]);
@@ -144,7 +144,7 @@ test('parser fixture covers declarations, implicit borrows, lambdas and patterns
   assertScopes(source, [
     ['extern', 'k'], ['type', 'k'], ['Box', 'nc'], ['interface', 'k'], ['Reader', 'nc'],
     ['impl', 'k'], ['identity', 'nf'], ['self', 'k'], ['replace', 'nf'],
-    ['var', 'k'], ['let', 'k'], ['fn', 'k'],
+    ['var', 'k'], ['fn', 'k'],
     ['match', 'k'], ['Ready', 'nc'],
     ['borrowed', ''], ['exclusive', ''], ['specialized', ''], ['...', 'o'],
   ]);
@@ -178,7 +178,7 @@ test('bare enum variants have declaration scopes and case stays an identifier', 
   assertScopes('enum response[T]:\n    pending\n    found(value: T)\n\nfn case(value: Int) Int: value\n', [
     ['enum', 'k'], ['response', 'nc'], ['pending', 'nc'], ['found', 'nc'], ['case', 'nf'],
   ]);
-  const tokens = tokenize('enum E:\n    case(value: Int)\nfn check() Unit:\n    let case = 1\n');
+  const tokens = tokenize('enum E:\n    case(value: Int)\nfn check() Unit:\n    case := 1\n');
   assert.ok(!tokens.some(token => token.kind === 'k' && token.text.includes('case')));
 });
 

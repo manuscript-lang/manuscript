@@ -1,1 +1,1 @@
-error parse 2:15:29 "a hexadecimal or binary literal requires digits after the prefix; write e.g. 0xFF or 0b1010"
+error parse 2:12:26 "a hexadecimal or binary literal requires digits after the prefix; write e.g. 0xFF or 0b1010"

@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/match_bounds_test.go:164 TestBoundedMatchSignedAndEndpointNative
 export fn main() Int:
-    let shapes = [
+    shapes := [
         Shape.Square(3037000499), Shape.Square(-3037000499), Shape.Circle(-3037000499)
     ]
     if area(shapes.get(0)) != 9223372030926249001: return 1

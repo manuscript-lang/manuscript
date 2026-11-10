@@ -27,16 +27,16 @@ fn is_digits(text: String, min_len: Int, max_len: Int) Bool:
     return true
 
 fn parse_entry(line: String) Optional[Entry]:
-    let fields = line.split(" ")
+    fields := line.split(" ")
     if fields.length() != 6:
         return none
 
-    let timestamp = fields.get(0)
-    let level = fields.get(1)
-    let method = fields.get(2)
-    let path = fields.get(3)
-    let status = fields.get(4)
-    let latency_text = fields.get(5)
+    timestamp := fields.get(0)
+    level := fields.get(1)
+    method := fields.get(2)
+    path := fields.get(3)
+    status := fields.get(4)
+    latency_text := fields.get(5)
     if timestamp.is_empty():
         return none
     if not ["DEBUG", "INFO", "WARN", "ERROR"].contains(level):
@@ -70,7 +70,7 @@ fn p95(latencies: List[Int]) Int:
     if latencies.is_empty():
         return 0
 
-    let rank = (95 * latencies.length() + 99) / 100
+    rank := (95 * latencies.length() + 99) / 100
     return latencies.get(rank - 1)
 
 fn report(entries: List[Entry], malformed: Int) Unit:
@@ -98,7 +98,7 @@ fn report(entries: List[Entry], malformed: Int) Unit:
         else:
             error += 1
 
-        let digit = entry.status.get(0)
+        digit := entry.status.get(0)
 
         if digit == "2":
             status_2xx += 1
@@ -129,7 +129,7 @@ fn report(entries: List[Entry], malformed: Int) Unit:
     out("p95: {p95(latencies.sorted(compare_int))}\n")
 
     if slowest.is_some():
-        let slow = slowest.get()
+        slow := slowest.get()
         out("slowest: {slow.latency} {slow.method} {slow.path} {slow.timestamp}\n")
 
     var stats: List[PathStat] = []
@@ -140,14 +140,14 @@ fn report(entries: List[Entry], malformed: Int) Unit:
             )
         )
 
-    let ranked = stats.sorted(compare_paths)
+    ranked := stats.sorted(compare_paths)
     out("top:\n")
 
     for i in range(0, ranked.length()):
         if i == 3:
             break
 
-        let stat = ranked.get(i)
+        stat := ranked.get(i)
         out("{stat.path} {stat.count} avg={stat.total / stat.count}\n")
 
 export fn main() Int:
@@ -156,16 +156,16 @@ export fn main() Int:
     var reading = true
 
     while reading:
-        let read = read_line(stdin()).get()
+        read := read_line(stdin()).get()
 
         if read.is_none():
             reading = false
         else:
-            let line = read.get()
+            line := read.get()
             if line.trim().is_empty():
                 continue
 
-            let entry = parse_entry(line)
+            entry := parse_entry(line)
 
             if entry.is_none():
                 malformed += 1

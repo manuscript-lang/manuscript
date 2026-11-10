@@ -12,8 +12,8 @@ fn size(door: Door) Int!:
     return ok(door.count)
 
 fn f() Int!:
-    let door = Door(count: 1)
-    let p = promise(fn: size(door))
+    door := Door(count: 1)
+    p := promise(fn: size(door))
     return p.wait()
 
 type Holder:
@@ -23,6 +23,6 @@ fn work_n(n: Int) Int!:
     return ok(n + 1)
 
 fn start_copy(k: Int) Holder:
-    let n = k * 2
-    let p = promise(fn: work_n(n))
+    n := k * 2
+    p := promise(fn: work_n(n))
     return Holder(p: p)

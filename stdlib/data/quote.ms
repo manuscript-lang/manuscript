@@ -26,7 +26,7 @@ export fn quote_text(text: String, escape_c1: Bool) String:
     result.append("\"")
 
     for c in text.chars():
-        let code = c.scalar_at(0)
+        code := c.scalar_at(0)
 
         if c == "\"": result.append("\\\"")
         else if c == "\\": result.append("\\\\")

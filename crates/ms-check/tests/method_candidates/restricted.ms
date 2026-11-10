@@ -9,5 +9,5 @@ impl Value[T] for Box[T]:
         return self.value
 
 fn exercise(x: Box[fn(Int) Int]) Int:
-    let f = x.read()
+    f := x.read()
     return f(1)

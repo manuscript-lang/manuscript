@@ -10,18 +10,18 @@ type Script:
 
 // LCS lengths of every suffix pair, flattened: table[i * (m + 1) + j] is L(i, j).
 fn suffix_lcs(a: List[String], b: List[String]) List[Int]:
-    let n = a.length()
-    let m = b.length()
-    let w = m + 1
+    n := a.length()
+    m := b.length()
+    w := m + 1
     var table = List[Int]()
     for k in 0..(n + 1) * w:
         table.append(0)
 
     for k in 0..n:
-        let i = n - 1 - k
+        i := n - 1 - k
 
         for l in 0..m:
-            let j = m - 1 - l
+            j := m - 1 - l
 
             if a[i] == b[j]:
                 table[i * w + j] = table[(i + 1) * w + j + 1] + 1
@@ -34,10 +34,10 @@ fn suffix_lcs(a: List[String], b: List[String]) List[Int]:
 
 // Walks the edit script exactly as the spec's rules describe. Kind 0 is unchanged, 1 deletion, 2 insertion.
 fn edit_script(a: List[String], b: List[String]) Script:
-    let n = a.length()
-    let m = b.length()
-    let w = m + 1
-    let table = suffix_lcs(a, b)
+    n := a.length()
+    m := b.length()
+    w := m + 1
+    table := suffix_lcs(a, b)
     var kinds = List[Int]()
     var texts = List[String]()
     var i = 0
@@ -66,13 +66,13 @@ fn range_text(start: Int, length: Int) String:
     return "{start},{length}"
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
-    let header = lines[0].split(" ")
-    let name_a = header[0]
-    let name_b = header[1]
-    let context = header[2].parse_int().get(0)
-    let n = header[3].parse_int().get(0)
-    let m = header[4].parse_int().get(0)
+    lines := read_lines(stdin()).get()
+    header := lines[0].split(" ")
+    name_a := header[0]
+    name_b := header[1]
+    context := header[2].parse_int().get(0)
+    n := header[3].parse_int().get(0)
+    m := header[4].parse_int().get(0)
     var a = List[String]()
     var b = List[String]()
     for k in 0..n:
@@ -80,10 +80,10 @@ export fn main() Int:
     for k in 0..m:
         b.append(lines[1 + n + k].clone())
 
-    let script = edit_script(a, b)
-    let kinds = script.kinds
-    let texts = script.texts
-    let total = kinds.length()
+    script := edit_script(a, b)
+    kinds := script.kinds
+    texts := script.texts
+    total := kinds.length()
     var changes = List[Int]()
     for p in 0..total:
         if kinds[p] != 0:
@@ -97,7 +97,7 @@ export fn main() Int:
     var g = 0
 
     while g < changes.length():
-        let first = changes[g]
+        first := changes[g]
         var last = first
         var h = g + 1
 
@@ -105,8 +105,8 @@ export fn main() Int:
             last = changes[h]
             h += 1
 
-        let s = max(0, first - context)
-        let e = min(total - 1, last + context)
+        s := max(0, first - context)
+        e := min(total - 1, last + context)
         var a_before = 0
         var b_before = 0
 
@@ -125,8 +125,8 @@ export fn main() Int:
             if kinds[p] != 1:
                 len_b += 1
 
-        let start_a = if len_a > 0: a_before + 1 else: a_before
-        let start_b = if len_b > 0: b_before + 1 else: b_before
+        start_a := if len_a > 0: a_before + 1 else: a_before
+        start_b := if len_b > 0: b_before + 1 else: b_before
         out.append("@@ -{range_text(start_a, len_a)} +{range_text(start_b, len_b)} @@")
 
         for p in s..e + 1:

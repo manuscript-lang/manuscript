@@ -32,7 +32,7 @@ export fn ablations() List[String]:
     return ["c-ms-no-poll", "c-ms-no-overflow", "c-ms-no-bounds", "c-ms-unchecked"]
 
 fn ratio(num: Float, den: Float) String:
-    let low = if num < den: num else: den
+    low := if num < den: num else: den
     if low < 2.0: return "folded"
 
     return (num / den).to_fixed(2) + "x"
@@ -57,7 +57,7 @@ export fn summarize(
     if not allowed.any(fn a: same(a, versions)):
         return invalid("unexpected versions for {suite}: {versions.join(" ")}")
 
-    let names = suite_names(suite)
+    names := suite_names(suite)
     var samples = Map[String, List[Float]]()
     var checks = Map[String, Set[Int]]()
     var trials = Map[String, Int]()
@@ -68,12 +68,12 @@ export fn summarize(
     var active = ""
 
     for line in lines:
-        let parts = line.trim().split(" ").filter(fn p: p != "")
+        parts := line.trim().split(" ").filter(fn p: p != "")
         if parts.length() < 2 or not versions.contains(parts[0]):
             return invalid("invalid sample: {line.trim()}")
 
-        let version = parts[0].clone()
-        let name = parts[1].clone()
+        version := parts[0].clone()
+        name := parts[1].clone()
         if active != "" and version != active: return invalid(
             "unterminated {active} trial"
         )
@@ -81,7 +81,7 @@ export fn summarize(
         active = version.clone()
 
         if parts.length() == 3 and parts[1] == "#" and parts[2] == "end":
-            let expected = names.filter(fn n: not omitted(active).contains(n))
+            expected := names.filter(fn n: not omitted(active).contains(n))
             if (
                 pending.length() != expected.length()
                 or not expected.all(fn n: pending.contains(n))
@@ -101,14 +101,14 @@ export fn summarize(
         ):
             return invalid("invalid kernel: {line.trim()}")
 
-        let micros = parts[2].parse_int()
-        let check = parts[3].parse_int()
+        micros := parts[2].parse_int()
+        check := parts[3].parse_int()
         if micros.is_none() or check.is_none(): return invalid(
             "invalid sample: {line.trim()}"
         )
         if micros.get(0) < 0: return invalid("negative timing: {line.trim()}")
 
-        let key = "{name} {version}"
+        key := "{name} {version}"
         var list = samples.get_or(key, List[Float]())
         list.append(micros.get(0).to_float())
         samples.add(key.clone(), list)
@@ -125,8 +125,8 @@ export fn summarize(
         if checks.get_or(name, Set[Int]()).length() != 1:
             return invalid("{name}: checksums differ between runs or versions")
 
-    let others = versions.filter(fn v: v != "go")
-    let extra = others.filter(fn v: v.starts_with("rust")).map(fn v: "ms / " + v)
+    others := versions.filter(fn v: v != "go")
+    extra := others.filter(fn v: v.starts_with("rust")).map(fn v: "ms / " + v)
     var head = others.map(fn v: "{v} us | {v} / go").join(" | ")
     var rule = others.map(fn _v: "---:|---:|").join("")
     var rows = [
@@ -141,13 +141,13 @@ export fn summarize(
             if not omitted(v).contains(name):
                 times.add(v.clone(), minimum(samples.get_or("{name} {v}", [])))
 
-        let go = times.get_or("go", 0.0)
+        go := times.get_or("go", 0.0)
         var cells = others.map(
             fn v: if omitted(v).contains(
                 name
             ): "n/a | n/a" else: "{times.get_or(v, 0.0).to_fixed(0)} | {ratio(times.get_or(v, 0.0), go)}"
         )
-        let ms = times.get_or("ms", 0.0)
+        ms := times.get_or("ms", 0.0)
         for v in others:
             if v.starts_with("rust"): cells.append(ratio(ms, times.get_or(v, 0.0)))
         rows.append("| {name} | {go.to_fixed(0)} | " + cells.join(" | ") + " |")

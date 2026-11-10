@@ -12,7 +12,7 @@ export fn case_names() List[String]:
 
 export fn checksum(name: String) Int:
     if name.starts_with("append"):
-        let size = name.slice(6, name.length()).get("0").parse_int().get(1)
+        size := name.slice(6, name.length()).get("0").parse_int().get(1)
         return 40 * size * (1000000 / size)
 
     return 40 * name.slice(4, name.length()).get("0").parse_int().get(0)
@@ -20,24 +20,24 @@ export fn checksum(name: String) Int:
 export fn summarize(lines: List[String], repeats: Int) String!:
     if repeats < 1: return invalid("repeats must be positive")
 
-    let names = case_names()
+    names := case_names()
     var seen = Map[String, Set[String]]()
     var best = Map[String, Int]()
 
     for line in lines:
-        let f = line.replace("\t", " ").trim().split(" ").filter(fn p: p != "")
+        f := line.replace("\t", " ").trim().split(" ").filter(fn p: p != "")
         if f.length() != 6 or f[4] != "#": return invalid(
             "invalid sample: {line.trim()}"
         )
 
-        let trial = f[0].parse_int()
-        let elapsed = f[3].parse_int()
-        let check = f[5].parse_int()
+        trial := f[0].parse_int()
+        elapsed := f[3].parse_int()
+        check := f[5].parse_int()
         if trial.is_none() or elapsed.is_none() or check.is_none():
             return invalid("invalid sample: {line.trim()}")
 
-        let version = f[1].clone()
-        let name = f[2].clone()
+        version := f[1].clone()
+        name := f[2].clone()
         if (
             trial.get(-1) < 0
             or trial.get(-1) >= repeats
@@ -46,7 +46,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
         ):
             return invalid("unknown sample: {line.trim()}")
 
-        let key = "{trial.get(0)} {version}"
+        key := "{trial.get(0)} {version}"
         var cases = seen.get_or(key, Set[String]())
         if (
             cases.contains(name)
@@ -58,9 +58,9 @@ export fn summarize(lines: List[String], repeats: Int) String!:
         cases.add(name.clone())
         seen.add(key.clone(), cases)
 
-        let id = "{name} {version}"
+        id := "{name} {version}"
 
-        if let prior = best.get(id):
+        if prior := best.get(id):
             best.add(id.clone(), if elapsed.get(0) < prior: elapsed.get(0) else: prior)
         else:
             best.add(id.clone(), elapsed.get(0))
@@ -78,8 +78,8 @@ export fn summarize(lines: List[String], repeats: Int) String!:
     ]
 
     for name in names.sorted():
-        let ms = best.get_or("{name} ms", 0)
-        let rust = best.get_or("{name} rust", 1)
+        ms := best.get_or("{name} ms", 0)
+        rust := best.get_or("{name} rust", 1)
         rows.append(
             left(name, 12) + " " + right("{ms}", 10) + " " + right(
                 "{rust}", 10

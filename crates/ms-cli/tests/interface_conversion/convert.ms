@@ -21,7 +21,7 @@ fn through[T: Shape](x: T) String:
     return describe(x)
 
 export fn main() Int:
-    let q = Sq(name: "sq")
+    q := Sq(name: "sq")
 
     // A read-only argument borrows, so `q` stays usable.
     if describe(q) + q.name != "sqsq":
@@ -30,8 +30,8 @@ export fn main() Int:
         return 3
 
     // Stored positions move at the last use or take a clone.
-    let s: Shape = q.clone()
-    let h = Holder(s: q.clone())
+    s: Shape = q.clone()
+    h := Holder(s: q.clone())
     if s.label() + h.s.label() != "sqsq":
         return 4
     if count([Sq(name: "b"), q]) != 2:

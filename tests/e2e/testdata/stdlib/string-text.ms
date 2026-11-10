@@ -29,14 +29,14 @@ test "string text helpers":
     "x".replace_each(Map[String, String]()) | try expect_equal("x")
 
 test "replace_each without replacements preserves exact text":
-    let pairs = Map[String, String]()
+    pairs := Map[String, String]()
 
     for text in ["", "a", "héllo 🦀", "a\u{0}b", "e\u{301}"]:
         text.replace_each(pairs) | try expect_equal(text)
         text.replace_each({"": "ignored"}) | try expect_equal(text)
 
     var source = "héllo 🦀"
-    let copied = source.replace_each(pairs)
+    copied := source.replace_each(pairs)
     source = "changed"
     copied | try expect_equal("héllo 🦀")
     source | try expect_equal("changed")
@@ -57,7 +57,7 @@ fn reference_start(text: String, set: String) Int:
     return count
 
 fn reference_end(text: String, set: String) Int:
-    let cs = text.chars()
+    cs := text.chars()
     var n = cs.length()
     while n > 0 and set.contains(cs[n - 1]):
         n -= 1
@@ -67,13 +67,13 @@ test "char-set trims and find_char agree with a scalar walk across scan windows"
     for lead in [0, 1, 31, 32, 33, 95, 96, 97, 300]:
         for trail in [0, 1, 31, 32, 33, 95, 96, 97, 300]:
             for core in ["", "é", "x", "xé😀y"]:
-                let text = (
+                text := (
                     "é".repeat(lead, none).get("")
                     + core
                     + "é".repeat(trail, none).get("")
                 )
-                let expected_start = reference_start(text, "é")
-                let expected_end = reference_end(text, "é")
+                expected_start := reference_start(text, "é")
+                expected_end := reference_end(text, "é")
                 try expect_equal(text.trim_start_chars("é"), text.drop(expected_start))
                 try expect_equal(text.trim_end_chars("é"), text.take(expected_end))
                 try expect_equal(
@@ -93,18 +93,18 @@ test "char-set trims and find_char agree with a scalar walk across scan windows"
 
 test "take and drop clamp on ASCII and non-ASCII text":
     for text in ["", "abc", "é", "aé😀b"]:
-        let n = text.length()
+        n := text.length()
 
         for count in [0, 1, 2, 3, 4, 5, 100]:
-            let kept = if count < n: count else: n
+            kept := if count < n: count else: n
             try expect_equal(text.take(count), text.slice(0, kept).get(""))
             try expect_equal(text.drop(count), text.slice(kept, n).get(""))
 
 test "negative get and scalar_at index from the end on non-ASCII text":
-    let text = "aé😀b日"
+    text := "aé😀b日"
 
     for back in [1, 2, 3, 4, 5]:
-        let at = text.length() - back
+        at := text.length() - back
         try expect_equal(text.get(-back), text.get(at))
         try expect_equal(text.scalar_at(-back), text.scalar_at(at))
 
@@ -113,13 +113,13 @@ test "negative get and scalar_at index from the end on non-ASCII text":
     try expect_equal(text.get(-9223372036854775807 - 1, "none"), "none")
 
 test "slice bounds from the end agree with the same bounds from the start on non-ASCII text":
-    let text = "aé😀b日"
-    let n = text.length()
+    text := "aé😀b日"
+    n := text.length()
 
     for start in [-7, -6, -5, -3, -1, 0, 2, 5, 6]:
         for end in [-7, -5, -2, -1, 0, 1, 4, 5, 6]:
-            let a = if start < 0: n + start else: start
-            let b = if end < 0: n + end else: end
+            a := if start < 0: n + start else: start
+            b := if end < 0: n + end else: end
 
             if a < 0 or b < a or b > n:
                 try expect_true(text.slice(start, end).is_error())

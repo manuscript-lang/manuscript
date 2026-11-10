@@ -2,6 +2,6 @@
 // conform: phase=check
 // conform: origin=Map and Bytes indexing
 export fn main() Int:
-    let word = "abc"
-    let first = word[0]
+    word := "abc"
+    first := word[0]
     return 0

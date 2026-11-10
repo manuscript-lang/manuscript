@@ -2,5 +2,5 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/invalid_operand_test.go:16 TestInvalidOperandsReportOnce
 fn f() Int:
-    let x = nope
+    x := nope
     return x + x

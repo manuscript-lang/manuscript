@@ -12,6 +12,6 @@ impl Marker:
 fn marker() Marker!Error: ok(Marker(1))
 
 fn bad() Int:
-    let values = [Marker(1)]
-    let kept = values.first().or_else(fn: none)
+    values := [Marker(1)]
+    kept := values.first().or_else(fn: none)
     return kept.get().id

@@ -9,11 +9,11 @@ fn upper(chunk: Bytes) Bytes:
     return chunk.decode_utf8().get("").upper().to_bytes()
 
 test "flows compose stream transforms":
-    let temporary = temporary("manuscript-streams-") | try expect_ok
-    let path = "{temporary.path()}/pipeline.bin"
+    temporary := temporary("manuscript-streams-") | try expect_ok
+    path := "{temporary.path()}/pipeline.bin"
     var output = open(path, OpenMode.Write, OpenOptions(permissions: 420)) | try expect_ok
-    let source = from_bytes("hello world".to_bytes(), 4)
-    let copied = try copy(map(source, upper), try output.writer())
+    source := from_bytes("hello world".to_bytes(), 4)
+    copied := try copy(map(source, upper), try output.writer())
     try output.close()
     try expect_equal(copied, 3)
     try expect_equal(
@@ -21,10 +21,10 @@ test "flows compose stream transforms":
     )
 
 test "from_list and collect bridge lists and streams":
-    let doubled = map(from_list([1, 2, 3]), fn(n: Int) Int: n * 2)
+    doubled := map(from_list([1, 2, 3]), fn(n: Int) Int: n * 2)
     try expect_equal((try collect(doubled, none)), [2, 4, 6])
 
-    let limited = collect(from_list([1, 2, 3]), 2)
+    limited := collect(from_list([1, 2, 3]), 2)
     try expect_equal(limited.is_error(), true)
 
 test "read_all joins chunks and enforces its limit":
@@ -36,5 +36,5 @@ test "read_all joins chunks and enforces its limit":
 test "from_bytes rejects a chunk size below one instead of never ending":
     for size in [0, -1]:
         var source = from_bytes("abc".to_bytes(), size)
-        let first = try expect_error(source.next())
+        first := try expect_error(source.next())
         try expect_equal(first.kind, "EINVAL")

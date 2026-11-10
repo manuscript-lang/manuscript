@@ -6,52 +6,52 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (((-10) * ((-14) % (-853361))) + ((677165 * (-50)) - ((-47) - (-664052))))
+    i1 := (((-10) * ((-14) % (-853361))) + ((677165 * (-50)) - ((-47) - (-664052))))
     say("i1 = {i1}")
 
-    let l2 = [(-17), (-3), (-24)]
+    l2 := [(-17), (-3), (-24)]
     say("l2 = {l2} len {l2.length()}")
 
-    let l3 = l2.reversed()
+    l3 := l2.reversed()
     say("l3 = {l3} len {l3.length()}")
 
-    let s4 = "  padded  ".trim().replace("brace\{s\}", "Tab\there").upper()
+    s4 := "  padded  ".trim().replace("brace\{s\}", "Tab\there").upper()
     say("s4 = [{s4}]")
 
-    let b5 = (not (not "alpha".is_empty()))
+    b5 := (not (not "alpha".is_empty()))
     say("b5 = {b5}")
 
-    let f6 = 736.967
+    f6 := 736.967
     say("f6 = {f6}")
 
-    let i7 = ((((-9) / (-8)) + (-31)) + l2.get(2))
+    i7 := ((((-9) / (-8)) + (-31)) + l2.get(2))
     say("i7 = {i7}")
 
-    let f8 = f6
+    f8 := f6
     say("f8 = {f8}")
 
-    let b9 = (((s4 == s4) and (600.930 != 222.340)) and ((11 + 12) != 10))
+    b9 := (((s4 == s4) and (600.930 != 222.340)) and ((11 + 12) != 10))
     say("b9 = {b9}")
 
-    let i10 = ((-i7) + (-19))
+    i10 := ((-i7) + (-19))
     say("i10 = {i10}")
 
-    let l11 = l2.take(0)
+    l11 := l2.take(0)
     say("l11 = {l11} len {l11.length()}")
 
-    let f12 = (((f8 * 988.423) / 0.0) * ((f6 * f6) - (f6 + f8)))
+    f12 := (((f8 * 988.423) / 0.0) * ((f6 * f6) - (f6 + f8)))
     say("f12 = {f12}")
 
-    let i13 = i1
+    i13 := i1
     say("i13 = {i13}")
 
-    let i14 = i10
+    i14 := i10
     say("i14 = {i14}")
 
-    let i15 = (i14 * ((i1 / (-1)) + ((-87679757737) * (-4))))
+    i15 := (i14 * ((i1 / (-1)) + ((-87679757737) * (-4))))
     say("i15 = {i15}")
 
     var acc16 = 0
@@ -64,16 +64,16 @@ export fn main() Int:
 
     say("acc16 = {acc16}")
 
-    let i17 = (i7 * l3.get(1))
+    i17 := (i7 * l3.get(1))
     say("i17 = {i17}")
 
-    let s18 = "x"
+    s18 := "x"
     say("s18 = [{s18}]")
 
     var l19 = l2.clone()
     l19.append(95)
     say("l19 = {l19} len {l19.length()}")
 
-    let big20 = 9223372036854775807
+    big20 := 9223372036854775807
     say("{big20 + 5}")
     return 0

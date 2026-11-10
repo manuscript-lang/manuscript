@@ -13,8 +13,8 @@
         "position": {
           "file": "seed-0079.ms",
           "line": 26,
-          "column": 38,
-          "offset": 686
+          "column": 35,
+          "offset": 677
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "seed-0079.ms",
           "line": 26,
-          "column": 41,
-          "offset": 689
+          "column": 38,
+          "offset": 680
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0079.ms:26:38: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 26 |     let bad = Map[Int, Int]().get(1, 2, 3)\n    |                                      ^\n<DIR>/seed-0079.ms:26:41: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 26 |     let bad = Map[Int, Int]().get(1, 2, 3)\n    |                                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0079.ms:26:35: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 26 |     bad := Map[Int, Int]().get(1, 2, 3)\n    |                                   ^\n<DIR>/seed-0079.ms:26:38: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 26 |     bad := Map[Int, Int]().get(1, 2, 3)\n    |                                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

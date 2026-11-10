@@ -38,39 +38,39 @@ type Payload:
 
 // The text a test's file sink received so far.
 fn written(path: String) String?!:
-    let data = try read_file(path).wait()
+    data := try read_file(path).wait()
     return ok(data.decode_utf8())
 
 test "logger writes typed escaped records and protects metadata":
-    let directory = try temporary("manuscript-log-")
-    let path = "{directory.path()}/out.ndjson"
+    directory := try temporary("manuscript-log-")
+    path := "{directory.path()}/out.ndjson"
     var logger = try create(
         try file_transport(path.clone()), LoggerOptions(timestamp: false)
     )
-    let fields = Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
+    fields := Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
     try logger.info("say \"hi\"\nnext", fields)
 
-    let expected = "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"data\":\{\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\},\"level\":0,\"msg\":\"fake\",\"time\":0\}\}\n"
+    expected := "\{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"data\":\{\"count\":9007199254740993,\"ok\":true,\"nested\":\{\"items\":[null,1]\},\"level\":0,\"msg\":\"fake\",\"time\":0\}\}\n"
     try expect_equal((try written(path)), expected)
     try logger.flush()
     try logger.close()
     try expect_true(logger.info("late").is_error())
 
 test "non-object values are written under data":
-    let directory = try temporary("manuscript-log-")
-    let path = "{directory.path()}/out.ndjson"
-    let file = try open(path, OpenMode.Write, OpenOptions(permissions: 420))
-    let logger = try create(handle_transport(file), LoggerOptions(timestamp: false))
+    directory := try temporary("manuscript-log-")
+    path := "{directory.path()}/out.ndjson"
+    file := try open(path, OpenMode.Write, OpenOptions(permissions: 420))
+    logger := try create(handle_transport(file), LoggerOptions(timestamp: false))
     try logger.info("n", 7)
     try logger.warn("l", ["a", "b"])
 
-    let expected = "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
+    expected := "\{\"level\":30,\"msg\":\"n\",\"data\":7\}\n\{\"level\":40,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n"
     try expect_equal((try written(path)), expected)
 
 test "levels filter methods and function values":
-    let directory = try temporary("manuscript-log-")
-    let path = "{directory.path()}/out.ndjson"
-    let file = try open(path, OpenMode.Write, OpenOptions(permissions: 420))
+    directory := try temporary("manuscript-log-")
+    path := "{directory.path()}/out.ndjson"
+    file := try open(path, OpenMode.Write, OpenOptions(permissions: 420))
     var logger = try create(
         handle_transport(file), LoggerOptions(level: LogLevel.Warn, timestamp: false)
     )
@@ -83,7 +83,7 @@ test "levels filter methods and function values":
     try expect_equal((try written(path)), "")
     try logger.warn("warn")
 
-    let error_log = logger.error[Unit]
+    error_log := logger.error[Unit]
     try error_log("error")
     try logger.fatal("fatal")
     logger.set_level(LogLevel.Trace)
@@ -92,18 +92,18 @@ test "levels filter methods and function values":
     try logger.debug("debug")
     try logger.info("info")
 
-    let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
+    expected := "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"error\"\}\n\{\"level\":60,\"msg\":\"fatal\"\}\n\{\"level\":10,\"msg\":\"trace\"\}\n\{\"level\":20,\"msg\":\"debug\"\}\n\{\"level\":30,\"msg\":\"info\"\}\n"
     try expect_equal((try written(path)), expected)
     logger.set_level(LogLevel.Silent)
     try expect_false(
         (logger.enabled(LogLevel.Fatal) or logger.enabled(LogLevel.Silent))
     )
 
-    let before = try written(path)
+    before := try written(path)
     try logger.fatal("filtered")
     try expect_equal((try written(path)), before)
 
-    let invalid: Unit! = error(Error("logging: invalid input", kind: "EINVAL"))
+    invalid: Unit! = error(Error("logging: invalid input", kind: "EINVAL"))
     try expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)
 
 type Service:
@@ -113,36 +113,36 @@ type Request:
     request: Int
 
 test "child bindings snapshot values and merge without mutating inputs":
-    let directory = try temporary("manuscript-log-")
-    let path = "{directory.path()}/out.ndjson"
-    let file = try open(path, OpenMode.Write, OpenOptions(permissions: 420))
-    let root = try create(handle_transport(file), LoggerOptions(timestamp: false))
+    directory := try temporary("manuscript-log-")
+    path := "{directory.path()}/out.ndjson"
+    file := try open(path, OpenMode.Write, OpenOptions(permissions: 420))
+    root := try create(handle_transport(file), LoggerOptions(timestamp: false))
     var logger = try root.child(Service("api"))
-    let child = try logger.child(Request(7))
+    child := try logger.child(Request(7))
     logger.set_level(LogLevel.Fatal)
     try expect_equal(child.level(), LogLevel.Info)
     try child.info("child", Service("worker"))
     try logger.fatal("parent")
 
-    let expected = "\{\"level\":30,\"msg\":\"child\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"service\":\"worker\"\}\}\n\{\"level\":60,\"msg\":\"parent\",\"context\":\{\"service\":\"api\"\}\}\n"
+    expected := "\{\"level\":30,\"msg\":\"child\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"service\":\"worker\"\}\}\n\{\"level\":60,\"msg\":\"parent\",\"context\":\{\"service\":\"api\"\}\}\n"
     try expect_equal((try written(path)), expected)
 
 test "limits and unencodable values reject before writing":
-    let directory = try temporary("manuscript-log-")
-    let path = "{directory.path()}/out.ndjson"
-    let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
-    let logger = try create(
+    directory := try temporary("manuscript-log-")
+    path := "{directory.path()}/out.ndjson"
+    line := "\{\"level\":30,\"msg\":\"x\"\}\n"
+    logger := try create(
         try file_transport(path.clone()),
         LoggerOptions(timestamp: false, max_bytes: line.to_bytes().length())
     )
     try logger.info("x")
     try expect_equal((try written(path)), line)
 
-    let before = try written(path)
-    let limited: Unit! = error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+    before := try written(path)
+    limited: Unit! = error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(logger.info("xx"), limited)
 
-    let zero = try create(
+    zero := try create(
         try file_transport(path.clone()), LoggerOptions(timestamp: false, max_bytes: 0)
     )
     try expect_equal(zero.info(""), limited)
@@ -158,27 +158,27 @@ test "limits and unencodable values reject before writing":
         )
     )
 
-    let unlimited = try create(
+    unlimited := try create(
         try file_transport(path.clone()), LoggerOptions(timestamp: false)
     )
-    let bad = JsonValue.NumberValue("NaN")
-    let invalid_data: Unit! = error(Error("logging: invalid data", kind: "EBADMSG"))
+    bad := JsonValue.NumberValue("NaN")
+    invalid_data: Unit! = error(Error("logging: invalid data", kind: "EBADMSG"))
     try expect_equal(unlimited.info("bad", bad), invalid_data)
     try expect_equal((try written(path)), before)
 
 test "closing a logger twice keeps reporting Closed":
-    let directory = try temporary("manuscript-log-")
+    directory := try temporary("manuscript-log-")
     var logger = try create(try file_transport("{directory.path()}/out.ndjson"))
     try logger.close()
     try logger.close()
 
-    let closed: Unit! = error(Error("logging: resource is closed", kind: "EBADF"))
+    closed: Unit! = error(Error("logging: resource is closed", kind: "EBADF"))
     try expect_equal(logger.info("closed"), closed)
     try expect_equal(logger.flush(), closed)
 
 test "file transport appends and flushes with scoped cleanup":
-    let directory = try temporary("manuscript-log-")
-    let path = "{directory.path()}/events.ndjson"
+    directory := try temporary("manuscript-log-")
+    path := "{directory.path()}/events.ndjson"
     var logger = try create(try file_transport(path), LoggerOptions(timestamp: false))
     try logger.info("first")
     try logger.flush()
@@ -188,22 +188,22 @@ test "file transport appends and flushes with scoped cleanup":
     try logger2.warn("second")
     try logger2.close()
 
-    let data = try read_file(path).wait()
+    data := try read_file(path).wait()
     try expect_false(
         (
             data.decode_utf8() != "\{\"level\":30,\"msg\":\"first\"\}\n\{\"level\":40,\"msg\":\"second\"\}\n"
         )
     )
 
-    let missing = "{directory.path()}/missing/events.ndjson"
-    let refused = try expect_error(file_transport(missing))
+    missing := "{directory.path()}/missing/events.ndjson"
+    refused := try expect_error(file_transport(missing))
     try expect_equal(refused.kind, "ENOENT")
     try expect_equal(
         refused.message, "filesystem: file or directory not found: {missing}"
     )
 
 test "stdout transport accepts records and leaves stdout open":
-    let logger = try create(stdout_transport(), LoggerOptions(timestamp: false))
+    logger := try create(stdout_transport(), LoggerOptions(timestamp: false))
     try logger.info("stdout log")
     try logger.flush()
 
@@ -233,11 +233,11 @@ impl Transport for CaptureTransport:
         return ok(CaptureTransport(self.path.clone(), "{self.suffix}.child"))
 
     fn close() Unit:
-        let _marked = write_file("{self.path}{self.suffix}", "closed", true).wait()
+        _marked := write_file("{self.path}{self.suffix}", "closed", true).wait()
 
 test "source transports receive complete records and close through their contract":
-    let temporary = temporary("manuscript-log-transport-") | try expect_ok
-    let path = "{temporary.path()}/records.ndjson"
+    temporary := temporary("manuscript-log-transport-") | try expect_ok
+    path := "{temporary.path()}/records.ndjson"
     var logger = try create(
         CaptureTransport(path.clone(), ".closed"), LoggerOptions(timestamp: false)
     )
@@ -251,37 +251,37 @@ test "source transports receive complete records and close through their contrac
     try expect_true(read_file("{path}.closed").wait().is_ok())
 
 fn log_from_child(logger: Logger) Unit!:
-    let child = try logger.child("worker")
+    child := try logger.child("worker")
     return child.info("from child")
 
 fn log_in_scope(path: String) Unit!:
-    let logger = try create(
+    logger := try create(
         CaptureTransport(path.clone(), ".closed"), LoggerOptions(timestamp: false)
     )
     try log_from_child(logger)
     return logger.info("parent after child")
 
 test "a logger scope closes its transport and a dropped child closes only its own":
-    let temporary = temporary("manuscript-log-scope-") | try expect_ok
-    let path = "{temporary.path()}/records.ndjson"
+    temporary := temporary("manuscript-log-scope-") | try expect_ok
+    path := "{temporary.path()}/records.ndjson"
     try expect_ok(log_in_scope(path.clone()))
     try expect_true(read_file("{path}.closed").wait().is_ok())
     try expect_true(read_file("{path}.closed.child").wait().is_ok())
 
 test "unencodable fields are rejected and fields keep their shape under data":
-    let directory = try temporary("manuscript-log-")
-    let path = "{directory.path()}/out.ndjson"
-    let file = try open(path, OpenMode.Write, OpenOptions(permissions: 420))
-    let logger = try create(handle_transport(file), LoggerOptions(timestamp: false))
-    let invalid: Unit! = error(Error("logging: invalid data", kind: "EBADMSG"))
-    let nan = JsonValue.NumberValue("NaN")
+    directory := try temporary("manuscript-log-")
+    path := "{directory.path()}/out.ndjson"
+    file := try open(path, OpenMode.Write, OpenOptions(permissions: 420))
+    logger := try create(handle_transport(file), LoggerOptions(timestamp: false))
+    invalid: Unit! = error(Error("logging: invalid data", kind: "EBADMSG"))
+    nan := JsonValue.NumberValue("NaN")
     try expect_equal(logger.info("m", nan), invalid)
     try expect_false(logger.child(nan).is_ok())
     try expect_equal((try written(path)), "")
     try logger.log(LogLevel.Info, "m", Service("a"))
     try logger.info("m", [1])
 
-    let expected = "\{\"level\":30,\"msg\":\"m\",\"data\":\{\"service\":\"a\"\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
+    expected := "\{\"level\":30,\"msg\":\"m\",\"data\":\{\"service\":\"a\"\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":[1]\}\n"
     try expect_equal((try written(path)), expected)
 
 fn chatter(logger: Logger, name: String) Unit!:
@@ -289,20 +289,20 @@ fn chatter(logger: Logger, name: String) Unit!:
         try logger.info("m", name)
 
 test "loggers on several threads never interleave a record":
-    let directory = try temporary("manuscript-log-threads-")
-    let path = "{directory.path()}/out.ndjson"
-    let logger = try create(
+    directory := try temporary("manuscript-log-threads-")
+    path := "{directory.path()}/out.ndjson"
+    logger := try create(
         try file_transport(path.clone()), LoggerOptions(timestamp: false)
     )
-    let first = try logger.child("a")
-    let second = try logger.child("b")
-    let a = promise(fn: chatter(first, "a"))
-    let b = promise(fn: chatter(second, "b"))
+    first := try logger.child("a")
+    second := try logger.child("b")
+    a := promise(fn: chatter(first, "a"))
+    b := promise(fn: chatter(second, "b"))
     a.wait() | try expect_ok
     b.wait() | try expect_ok
     try logger.flush()
 
-    let text = (try written(path)).get("")
+    text := (try written(path)).get("")
     try expect_equal(text.split("\n").length(), 7)
 
     for line in text.split("\n"):
@@ -338,67 +338,67 @@ fn recorded(path: String) String:
     return written(path).get(none).get("")
 
 test "messages are escaped and fields keep their shape under data":
-    let out_dir = try temporary("manuscript-log-memory-")
-    let out = "{out_dir.path()}/records"
-    let logger = try create(Memory(out.clone()), LoggerOptions(timestamp: false))
+    out_dir := try temporary("manuscript-log-memory-")
+    out := "{out_dir.path()}/records"
+    logger := try create(Memory(out.clone()), LoggerOptions(timestamp: false))
     try logger.info("a<b>&\"\n\t\u{1}é")
     try logger.info("m", Items([none, 1]))
     try logger.info("m", "text")
     try logger.info("m", JsonValue.Null)
     try logger.info("m", JsonValue.ObjectValue(Map[String, JsonValue]()))
 
-    let expected = "\{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001é\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\"items\":[null,1]\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\"text\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":null\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\}\}\n"
+    expected := "\{\"level\":30,\"msg\":\"a<b>&\\\"\\n\\t\\u0001é\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\"items\":[null,1]\}\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\"text\"\}\n\{\"level\":30,\"msg\":\"m\",\"data\":null\}\n\{\"level\":30,\"msg\":\"m\",\"data\":\{\}\}\n"
     try expect_equal(recorded(out.clone()), expected)
 
 test "child context merges per child and the newer value wins":
-    let out_dir = try temporary("manuscript-log-memory-")
-    let out = "{out_dir.path()}/records"
-    let root = try create(Memory(out.clone()), LoggerOptions(timestamp: false))
-    let api = try root.child(Service("api"))
-    let both = try api.child(Request(7))
-    let renamed = try both.child(Service("worker"))
-    let replaced = try both.child(3)
+    out_dir := try temporary("manuscript-log-memory-")
+    out := "{out_dir.path()}/records"
+    root := try create(Memory(out.clone()), LoggerOptions(timestamp: false))
+    api := try root.child(Service("api"))
+    both := try api.child(Request(7))
+    renamed := try both.child(Service("worker"))
+    replaced := try both.child(3)
     try root.info("root")
     try api.info("api")
     try both.info("both", Request(9))
     try renamed.info("renamed")
     try replaced.info("replaced")
 
-    let expected = "\{\"level\":30,\"msg\":\"root\"\}\n\{\"level\":30,\"msg\":\"api\",\"context\":\{\"service\":\"api\"\}\}\n\{\"level\":30,\"msg\":\"both\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"request\":9\}\}\n\{\"level\":30,\"msg\":\"renamed\",\"context\":\{\"service\":\"worker\",\"request\":7\}\}\n\{\"level\":30,\"msg\":\"replaced\",\"context\":3\}\n"
+    expected := "\{\"level\":30,\"msg\":\"root\"\}\n\{\"level\":30,\"msg\":\"api\",\"context\":\{\"service\":\"api\"\}\}\n\{\"level\":30,\"msg\":\"both\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"request\":9\}\}\n\{\"level\":30,\"msg\":\"renamed\",\"context\":\{\"service\":\"worker\",\"request\":7\}\}\n\{\"level\":30,\"msg\":\"replaced\",\"context\":3\}\n"
     try expect_equal(recorded(out.clone()), expected)
 
 test "the time field is a millisecond count and the size limit counts the newline":
-    let out_dir = try temporary("manuscript-log-memory-")
-    let out = "{out_dir.path()}/records"
-    let stamped = try create(Memory(out.clone()))
+    out_dir := try temporary("manuscript-log-memory-")
+    out := "{out_dir.path()}/records"
+    stamped := try create(Memory(out.clone()))
     try stamped.info("t")
 
-    let line = recorded(out.clone())
+    line := recorded(out.clone())
     try expect_true(line.starts_with("\{\"level\":30,\"msg\":\"t\",\"time\":1"))
 
-    let quiet_dir = try temporary("manuscript-log-memory-")
-    let quiet = "{quiet_dir.path()}/records"
-    let plain = "\{\"level\":30,\"msg\":\"ab\"\}\n"
-    let exact = try create(
+    quiet_dir := try temporary("manuscript-log-memory-")
+    quiet := "{quiet_dir.path()}/records"
+    plain := "\{\"level\":30,\"msg\":\"ab\"\}\n"
+    exact := try create(
         Memory(quiet.clone()),
         LoggerOptions(timestamp: false, max_bytes: plain.to_bytes().length())
     )
     try exact.info("ab")
     try expect_equal(recorded(quiet.clone()), plain)
 
-    let tight = try create(
+    tight := try create(
         Memory(quiet.clone()),
         LoggerOptions(
             timestamp: false, max_bytes: plain.to_bytes().length() - 1
         )
     )
-    let limited: Unit! = error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+    limited: Unit! = error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(tight.info("ab"), limited)
     try expect_equal(recorded(quiet.clone()), plain)
 
 test "rotating transport moves a full file aside and keeps a bounded number of generations":
-    let directory = try temporary("manuscript-rotate-")
-    let path = "{directory.path()}/app.log"
+    directory := try temporary("manuscript-rotate-")
+    path := "{directory.path()}/app.log"
     var logger = try create(
         try rotating_file_transport(path.clone(), 80, 2),
         LoggerOptions(timestamp: false)
@@ -406,9 +406,9 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
     for index in 0..12: try logger.info("record number {index}")
     try logger.flush()
 
-    let current = (try written(path)).get("")
-    let first = (try written("{path}.1")).get("")
-    let second = (try written("{path}.2")).get("")
+    current := (try written(path)).get("")
+    first := (try written("{path}.1")).get("")
+    second := (try written("{path}.2")).get("")
     try expect_true(current != "" and first != "" and second != "")
     try expect_true(current.to_bytes().length() <= 80)
     try expect_true(read_file("{path}.3").wait().is_error())
@@ -417,7 +417,7 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
     try expect_true(logger.info("late").is_error())
 
 test "rotating transport rejects invalid sizes":
-    let directory = try temporary("manuscript-rotate-")
-    let path = "{directory.path()}/app.log"
+    directory := try temporary("manuscript-rotate-")
+    path := "{directory.path()}/app.log"
     try expect_true(rotating_file_transport(path.clone(), 0, 1).is_error())
     try expect_true(rotating_file_transport(path.clone(), 10, -1).is_error())

@@ -28,8 +28,8 @@ fn sample() MemoryTree:
     return tree
 
 test "memory tree lists and reads":
-    let tree = sample()
-    let top = tree.children("", none) | try expect_ok
+    tree := sample()
+    top := tree.children("", none) | try expect_ok
     if top.map(fn e: e.name.clone()) != ["docs", "empty", "main.ms"]: return panic(
         "top"
     )
@@ -89,8 +89,8 @@ test "memory tree reports precise errors":
     if paths(walk(tree) | try expect_ok) != ["main.ms"]: return panic("after removals")
 
 test "walk is depth first and sorted":
-    let tree = sample()
-    let found = walk(tree) | try expect_ok
+    tree := sample()
+    found := walk(tree) | try expect_ok
     if (
         paths(found) != [
             "docs/", "docs/api/", "docs/api/index.md", "docs/guide.md", "empty/",
@@ -98,7 +98,7 @@ test "walk is depth first and sorted":
         ]
     ): return panic("order")
 
-    let docs = walk(tree, "docs") | try expect_ok
+    docs := walk(tree, "docs") | try expect_ok
     if paths(docs) != ["api/", "api/index.md", "guide.md"]: return panic("sub root")
     if (
         walk(tree, max_entries: 2).err() != Error(
@@ -107,12 +107,12 @@ test "walk is depth first and sorted":
     ): return panic("limit")
 
 test "host tree walks the same way":
-    let dir = temporary("manuscript-tree-") | try expect_ok
+    dir := temporary("manuscript-tree-") | try expect_ok
     create_directory("{dir.path()}/b", true) | try expect_ok
     write_file(path: "{dir.path()}/b/two.txt", data: "22").wait() | try expect_ok
     write_file(path: "{dir.path()}/one.txt", data: "1").wait() | try expect_ok
 
-    let tree = host_tree(dir.path())
+    tree := host_tree(dir.path())
     if paths(walk(tree) | try expect_ok) != ["b/", "b/two.txt", "one.txt"]: return panic(
         "host walk"
     )
@@ -131,6 +131,6 @@ test "memory tree listing follows writes and removals":
     try tree.write_file("a/two.txt", "2".to_bytes())
     try tree.remove("a/b", true)
 
-    let names = (try tree.children("a", none)).map(fn e: e.name.clone())
+    names := (try tree.children("a", none)).map(fn e: e.name.clone())
     if names != ["two.txt"]: return panic("children {names}")
     if (try tree.children("", none)).length() != 1: return panic("root")

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "let name = \"Ada\"\nlet count = 3\nlet greeting = \"Welcome, {name}!\"\nlet calculated = \"Next: {count + 1}\"\n"
+    "fmt": "name := \"Ada\"\ncount := 3\ngreeting := \"Welcome, {name}!\"\ncalculated := \"Next: {count + 1}\"\n"
   }
 }

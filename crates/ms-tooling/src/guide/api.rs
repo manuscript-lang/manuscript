@@ -492,7 +492,7 @@ fn document_symbol(
         if decl.is_constant() {
             d.kind = "constant".into();
             d.ty = ty.result_ty().display(syms).to_string();
-            d.declaration = format!("let {}: {}\n", syms.str(symbol.name), d.ty);
+            d.declaration = format!("{}: {}\n", syms.str(symbol.name), d.ty);
         }
         d.doc = leading_comment(source.map_or("", Source::text), decl.pos().offset as usize);
         d.effects =

@@ -18,7 +18,7 @@ fn sum(accumulator: Int, value: Int) Int: accumulator + value
 fn parity(value: Int) Int: value % 2
 
 test "list search callbacks empty identities and folding":
-    let list = [-1, 2, 0, 3]
+    list := [-1, 2, 0, 3]
     try expect_false((list.find(positive) != 2 or list.find_last(positive) != 3))
     try expect_false(
         (list.find_index(positive) != 1 or list.find_last_index(positive) != 3)
@@ -27,22 +27,22 @@ test "list search callbacks empty identities and folding":
     try expect_equal(([1, 2]).flat_map(duplicate), [1, 1, 2, 2])
     try expect_false((list.fold(0, sum) != 4 or list.fold_right(0, sum) != 4))
 
-    let empty: List[Int] = []
+    empty: List[Int] = []
     try expect_false(empty.any(positive) or not empty.all(positive))
     try expect_false(empty.first().is_some() or empty.last().is_some())
 
-    let groups = ([1, 2, 3]).group_by(parity)
+    groups := ([1, 2, 3]).group_by(parity)
     try expect_false(groups.get(1) != [1, 3] or groups.get(0) != [2])
 
 test "group_by keeps first-seen key order and element order across few and many buckets":
-    let values = 0..600
-    let few = values.group_by(fn(x: Int) Int: x % 3)
+    values := 0..600
+    few := values.group_by(fn(x: Int) Int: x % 3)
     try expect_equal(few.keys(), [0, 1, 2])
 
     var total = 0
 
     for k in 0..3:
-        let group = few.get(k).get()
+        group := few.get(k).get()
         try expect_equal(group.length(), 200)
 
         for j in 0..200:
@@ -51,17 +51,17 @@ test "group_by keeps first-seen key order and element order across few and many 
 
     try expect_equal(total, 599 * 600 / 2)
 
-    let words = ["b", "a", "b", "c", "a", "b"].group_by(fn(w: String) String: w.clone())
+    words := ["b", "a", "b", "c", "a", "b"].group_by(fn(w: String) String: w.clone())
     try expect_equal(words.keys(), ["b", "a", "c"])
     try expect_equal(words.get("b"), ["b", "b", "b"])
     try expect_equal(words.get("c"), ["c"])
 
-    let unique = values.group_by(fn(x: Int) Int: x)
+    unique := values.group_by(fn(x: Int) Int: x)
     try expect_equal(unique.length(), 600)
     try expect_equal(unique.get(599), [599])
 
 test "list mutation and clone keep separate storage":
-    let original = [1, 2, 3]
+    original := [1, 2, 3]
     var copy = original.clone()
     copy.splice(1, 1, [8, 9])
     try expect_false(copy != [1, 8, 9, 3] or original != [1, 2, 3])
@@ -73,7 +73,7 @@ test "list mutation and clone keep separate storage":
     try expect_equal(overlapping, [1, 1, 2, 3])
 
 test "maps preserve insertion order and overwrite duplicate keys":
-    let entries = [MapEntry("a", 1), MapEntry("b", 2), MapEntry("a", 3)]
+    entries := [MapEntry("a", 1), MapEntry("b", 2), MapEntry("a", 3)]
     var map = map_from_entries(entries)
     try expect_false(map.keys() != ["a", "b"] or map.values() != [3, 2])
     map.add_default("a", 99)
@@ -85,8 +85,8 @@ test "maps preserve insertion order and overwrite duplicate keys":
     try expect_false(map.get("missing").is_some())
 
 test "set algebra removes duplicates and preserves values":
-    let left = ([1, 2, 2]).to_set()
-    let right = ([2, 3]).to_set()
+    left := ([1, 2, 2]).to_set()
+    right := ([2, 3]).to_set()
     try expect_equal(left.values(), [1, 2])
     try expect_equal(left.union(right).values(), [1, 2, 3])
     try expect_equal(left.intersection(right).values(), [2])
@@ -101,17 +101,15 @@ test "collection constructors validate bounds and exact limits":
     )
     try expect_equal((try filled("x", 2)), ["x", "x"])
 
-    let invalid: List[Int]! = error(Error("collection: invalid input", kind: "EINVAL"))
+    invalid: List[Int]! = error(Error("collection: invalid input", kind: "EINVAL"))
     try expect_equal(range_by(0, 1, 0), invalid)
 
-    let limited: List[Int]! = error(
-        Error("collection: limit exceeded", kind: "EOVERFLOW")
-    )
+    limited: List[Int]! = error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(range_by(0, 3, 1, RangeOptions(max_items: 2)), limited)
 
 test "stepped ranges handle full-width spans and minimum negative steps":
-    let minimum = -9223372036854775808
-    let maximum = 9223372036854775807
+    minimum := -9223372036854775808
+    maximum := 9223372036854775807
     try expect_equal(
         (try range_by(minimum, maximum, maximum, RangeOptions(max_items: 3))),
         [minimum, -1, (maximum - 1)]
@@ -124,9 +122,7 @@ test "stepped ranges handle full-width spans and minimum negative steps":
         (try range_by(0, minimum, minimum, RangeOptions(max_items: 1))), [0]
     )
 
-    let limited: List[Int]! = error(
-        Error("collection: limit exceeded", kind: "EOVERFLOW")
-    )
+    limited: List[Int]! = error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(
         range_by(minimum, maximum, maximum, RangeOptions(max_items: 2)), limited
     )
@@ -134,7 +130,7 @@ test "stepped ranges handle full-width spans and minimum negative steps":
 test "range counts up by one":
     try expect_equal((0..4), [0, 1, 2, 3])
 
-    let none_between: List[Int] = []
+    none_between: List[Int] = []
     try expect_false((2..2) != none_between or (5..1) != none_between)
     try expect_equal((-2..1), [-2, -1, 0])
 
@@ -180,9 +176,7 @@ test "for over range counts without a list":
     try expect_equal(callbacks.map(fn call: call()), [0, 1, 2])
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
-    let limited: List[Int]! = error(
-        Error("collection: limit exceeded", kind: "EOVERFLOW")
-    )
+    limited: List[Int]! = error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(filled(1, 9223372036854775807), limited)
     try expect_equal(filled(1, 4611686018427387904, 9223372036854775807), limited)
     try expect_equal(range_by(0, 9223372036854775807, 1), limited)
@@ -193,7 +187,7 @@ test "imported map add interoperates with with_entry":
     values.add("b", 2)
     values.add(value: 3, "a")
 
-    let add = values.add
+    add := values.add
     add("c", 4)
     try expect_false(values.keys() != ["a", "b", "c"] or values.values() != [3, 2, 4])
 
@@ -219,26 +213,26 @@ fn flatten_copy[T: Clonable](values: List[List[T]]) List[T]:
     return flatten(values)
 
 test "filled copies nested values independently through generic and function calls":
-    let source = [1]
+    source := [1]
     var copies = try repeat_copy(source)
     copies[0].append(2)
     try expect_equal(copies, [[1, 2], [1]])
     try expect_equal(source, [1])
 
-    let repeat = filled[List[Int]]
+    repeat := filled[List[Int]]
     var via_function = try repeat(source, 2, none)
     via_function[1].append(3)
     try expect_equal(via_function, [[1], [1, 3]])
     try expect_equal(source, [1])
 
 test "flatten copies nested elements through generic and function calls":
-    let source = [[[1]], [[2]]]
+    source := [[[1]], [[2]]]
     var copies = flatten_copy(source)
     copies[0].append(3)
     try expect_equal(copies, [[1, 3], [2]])
     try expect_equal(source, [[[1]], [[2]]])
 
-    let concatenate = flatten[List[Int]]
+    concatenate := flatten[List[Int]]
     var via_function = concatenate(source)
     via_function[1].append(4)
     try expect_equal(via_function, [[1], [2, 4]])

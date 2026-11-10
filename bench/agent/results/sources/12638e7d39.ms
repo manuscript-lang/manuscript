@@ -57,7 +57,7 @@ impl Parser:
             else if self.at() == 47:
                 self.pos += 1
 
-                let d = self.unary()
+                d := self.unary()
 
                 if d == 0:
                     self.divz = true
@@ -88,7 +88,7 @@ impl Parser:
     var fn primary() Int:
         self.skip_ws()
 
-        let c = self.at()
+        c := self.at()
 
         if c >= 48 and c <= 57:
             var v = 0
@@ -102,7 +102,7 @@ impl Parser:
         if c == 40:
             self.pos += 1
 
-            let v = self.expr()
+            v := self.expr()
             self.skip_ws()
 
             if self.at() != 41:
@@ -116,7 +116,7 @@ impl Parser:
         return 0
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var out = ""
 
     for line in lines:
@@ -127,7 +127,7 @@ export fn main() Int:
         var p = Parser(src: src, pos: 0, syntax: false, divz: false)
         if p.blank(): continue
 
-        let v = p.expr()
+        v := p.expr()
         p.skip_ws()
         if p.pos != p.src.length():
             p.fail()

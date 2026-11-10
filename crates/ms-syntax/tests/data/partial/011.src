@@ -2,7 +2,7 @@ import expect_equal from "@std/test/test.ms"
 
 export fn main() Int:
     var number = 1
-    let total = number + (
+    total := number + (
         m$atch 1:
             value:
                 number += 1

@@ -25,19 +25,19 @@ fn send(var conn: Connection, text: String) Unit!:
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
-        let _ = sleep(nanoseconds(3000000000)).wait()
+        _ := sleep(nanoseconds(3000000000)).wait()
     return HttpResponse(200, headers(), "ok {request.path}\n".to_bytes())
 
 fn fetch(address: String, path: String) String:
     if var conn = connect(address).wait():
-        let _sent = send(
+        _sent := send(
             var conn, "GET {path} HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )
         var text = ""
 
         while true:
-            if let chunk = within(var conn.input, nanoseconds(5000000000)):
-                if let data = chunk:
+            if chunk := within(var conn.input, nanoseconds(5000000000)):
+                if data := chunk:
                     text = "{text}{data.decode_utf8().get("?")}"
                     continue
 
@@ -49,22 +49,22 @@ fn fetch(address: String, path: String) String:
     return "connect failed"
 
 fn run(label: String, grace_ms: Int) Bool:
-    let options = HttpServerOptions(
+    options := HttpServerOptions(
         timeout: nanoseconds(200000000), grace: nanoseconds(grace_ms * 1000000)
     )
 
-    if let acquired = serve(
+    if acquired := serve(
         address: "127.0.0.1:0", handler: buffered(handle), options: options
     ):
         var server = acquired
-        let start = monotonic()
-        let slow = fetch(server.address(), "/slow")
-        let elapsed_ms = monotonic().difference(start).to_milliseconds()
-        let fast = fetch(server.address(), "/fast")
-        let _slow = stdout().write(
+        start := monotonic()
+        slow := fetch(server.address(), "/slow")
+        elapsed_ms := monotonic().difference(start).to_milliseconds()
+        fast := fetch(server.address(), "/fast")
+        _slow := stdout().write(
             "{label} slow: {slow.starts_with("HTTP/1.1 504")} prompt: {elapsed_ms < 2000}\n"
         )
-        let _fast = stdout().write(
+        _fast := stdout().write(
             "{label} fast: {fast.starts_with("HTTP/1.1 200 OK")}\n"
         )
         server.close().get(none)

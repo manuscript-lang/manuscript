@@ -292,7 +292,7 @@ impl Checker {
                 if alt.is(Builtin::Optional) {
                     self.res_error(
                         e.pos,
-                        "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. let x: Int? = none",
+                        "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? = none",
                     );
                     return i;
                 }
@@ -336,7 +336,7 @@ impl Checker {
             if alt.is(Builtin::Optional) && self.syms.str(cs.name) == "some" {
                 self.type_error(
                     e.pos,
-                    "there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. let x: Int? = 5",
+                    "there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. x: Int? = 5",
                 );
                 i.ty = Some(invalid());
                 return i;
@@ -843,7 +843,7 @@ impl Checker {
                     });
                     if !elsewhere && !self.argument_failed_inference(args) {
                         let message = if t.is(Builtin::Optional) {
-                            "cannot infer the type of none; give it a target, e.g. `let x: Int? = none`, or pass a value".to_string()
+                            "cannot infer the type of none; give it a target, e.g. `x: Int? = none`, or pass a value".to_string()
                         } else {
                             format!(
                                 "cannot infer constructor type argument {}; write the type arguments, e.g. Box[Int](...), or annotate the binding",
@@ -1049,7 +1049,7 @@ mod argument_tests {
     #[test]
     fn generic_source_method_value_needs_type_arguments() {
         let syms = ms_syntax::Names::global();
-        let source = "type Out:\n    n: Int\nimpl Out:\n    fn put[F](value: F) Int:\n        return 1\nfn bare(o: Out) Unit:\n    let g = o.put\nfn fixed(o: Out) Unit:\n    let g = o.put[Int]\n    let n = o.put(1)\n";
+        let source = "type Out:\n    n: Int\nimpl Out:\n    fn put[F](value: F) Int:\n        return 1\nfn bare(o: Out) Unit:\n    g := o.put\nfn fixed(o: Out) Unit:\n    g := o.put[Int]\n    n := o.put(1)\n";
         let p = check(syms, source);
         let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
         assert_eq!(messages.len(), 1, "{messages:?}");

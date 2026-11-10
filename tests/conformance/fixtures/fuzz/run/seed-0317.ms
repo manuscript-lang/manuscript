@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,16 +22,16 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let b1 = ((("emoji 😀" + "alpha") == "a") and (false and false))
+    b1 := ((("emoji 😀" + "alpha") == "a") and (false and false))
     say("b1 = {b1}")
 
-    let i2 = 36
+    i2 := 36
     say("i2 = {i2}")
 
-    let i3 = ((((-308407168774) + (-9)) - (i2 / i2)) + (i2 % (i2 + i2)))
+    i3 := ((((-308407168774) + (-9)) - (i2 / i2)) + (i2 % (i2 + i2)))
     say("i3 = {i3}")
 
-    let l4 = [3, 2, (-29), 11]
+    l4 := [3, 2, (-29), 11]
     say("l4 = {l4} len {l4.length()}")
 
     if "a".is_empty():
@@ -49,21 +49,21 @@ export fn main() Int:
 
     say("acc5 = {acc5}")
 
-    let i6 = 8
+    i6 := 8
     say("i6 = {i6}")
 
-    let s7 = "naïve"
+    s7 := "naïve"
     say("s7 = [{s7}]")
 
-    let i8 = ((((-81656) % (-15)) % (i6 - (-344296))) * (-((-23) % 21)))
+    i8 := ((((-81656) % (-15)) % (i6 - (-344296))) * (-((-23) % 21)))
     say("i8 = {i8}")
     say("fib(11) = {fib(11)}")
     say("{i3} {i3} {(i3 < i3)} sum {i3 + i3}")
 
-    let l9 = [(-6), 18, 13]
+    l9 := [(-6), 18, 13]
     say("l9 = {l9} len {l9.length()}")
 
-    let i10 = (-l9.length())
+    i10 := (-l9.length())
     say("i10 = {i10}")
     say("{l4.get(0)} {5} {(l4.get(0) < 5)} sum {l4.get(0) + 5}")
     return 0

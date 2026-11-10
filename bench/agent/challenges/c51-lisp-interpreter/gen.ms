@@ -229,7 +229,7 @@ export fn gen_c51() Unit:
         "(define (build i acc) (if (= i 0) acc (build (- i 1) (cons i acc))))\n(define l (build 50000 '()))\n(display (length l)) (newline)\n(display (fold + 0 l)) (newline)\n(display (length (map (lambda (x) (* x 2)) l))) (newline)\n(display (car (reverse l))) (newline)\n(display (list-ref l 49999)) (newline)\n(display (length (filter even? l))) (newline)\n"
     )
 
-    let examples = [
+    examples := [
         cs.make(
             "basic",
             "(define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))\n(display (fact 10)) (newline)\n(display (map fact (list 1 2 3 4 5)))\n(newline)\n"

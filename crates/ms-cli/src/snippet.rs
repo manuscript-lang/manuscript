@@ -157,8 +157,8 @@ mod tests {
 
     #[test]
     fn underlines_the_span() {
-        let out = render("let x = foo(1)\n", 1, 9, Some((1, 12)));
-        assert_eq!(out, "\n   |\n 1 | let x = foo(1)\n   |         ^^^");
+        let out = render("x := foo(1)\n", 1, 9, Some((1, 12)));
+        assert_eq!(out, "\n   |\n 1 | x := foo(1)\n   |         ^^^");
     }
 
     #[test]

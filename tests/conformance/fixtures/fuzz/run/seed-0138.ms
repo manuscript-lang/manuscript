@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -20,7 +20,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -37,22 +37,22 @@ export fn main() Int:
 
     say("acc1 = {acc1}")
 
-    let l2 = [13, (-8), (-14), 14]
+    l2 := [13, (-8), (-14), 14]
     say("l2 = {l2} len {l2.length()}")
 
-    let b3 = ("{(962533 - (-35))}:" + "MiXeD CaSe").is_empty()
+    b3 := ("{(962533 - (-35))}:" + "MiXeD CaSe").is_empty()
     say("b3 = {b3}")
 
-    let b4 = (201.25 > ((702.956 - 5.5) + 316.033))
+    b4 := (201.25 > ((702.956 - 5.5) + 316.033))
     say("b4 = {b4}")
 
-    let i5 = ((((-454271690340) - 843989) + (6 * (-8))) * 570086)
+    i5 := ((((-454271690340) - 843989) + (6 * (-8))) * 570086)
     say("i5 = {i5}")
 
-    let f6 = (7.5 + ((5.5 * 5.5) / (882.758 - 875.360)))
+    f6 := (7.5 + ((5.5 * 5.5) / (882.758 - 875.360)))
     say("f6 = {f6}")
 
-    let f7 = (f6 / ((290.924 + 4.0e-1) + (794.25 * 608.680)))
+    f7 := (f6 / ((290.924 + 4.0e-1) + (794.25 * 608.680)))
     say("f7 = {f7}")
     say("fact(10) = {fact(10)}")
 
@@ -66,16 +66,16 @@ export fn main() Int:
 
     say("acc8 = {acc8}")
 
-    let s9 = ("日本語".upper() + ("brace\{s\}" + "gamma")).lower()
+    s9 := ("日本語".upper() + ("brace\{s\}" + "gamma")).lower()
     say("s9 = [{s9}]")
 
-    let i10 = ((24 * ((-5) + i5)) + (l2.length() + 70269))
+    i10 := ((24 * ((-5) + i5)) + (l2.length() + 70269))
     say("i10 = {i10}")
 
-    let l11 = l2.drop(0)
+    l11 := l2.drop(0)
     say("l11 = {l11} len {l11.length()}")
 
-    let i12 = (-i5)
+    i12 := (-i5)
     say("i12 = {i12}")
 
     if (("héllo" == s9) and (f6 > f6)):
@@ -85,12 +85,12 @@ export fn main() Int:
 
     say("fib(21) = {fib(21)}")
 
-    let i13 = (-35)
+    i13 := (-35)
     say("i13 = {i13}")
 
-    let i14 = i10
+    i14 := i10
     say("i14 = {i14}")
 
-    let f15 = (2.0e-4 + ((f6 / 459.229) + (0.0 - 654.751)))
+    f15 := (2.0e-4 + ((f6 / 459.229) + (0.0 - 654.751)))
     say("f15 = {f15}")
     return 0

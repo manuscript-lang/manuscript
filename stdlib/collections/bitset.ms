@@ -25,7 +25,7 @@ impl BitSet:
         if index < 0 or index > 1073741823:
             panic("BitSet: index must be between 0 and 1073741823, found {index}")
 
-        let word = index / 64
+        word := index / 64
         while self.words.length() <= word:
             self.words.append(0)
         self.words.set(word, bit_or(self.words[word], shift_left(1, index % 64)))
@@ -34,7 +34,7 @@ impl BitSet:
     var fn remove(index: Int) Unit:
         if index < 0 or index / 64 >= self.words.length(): return
 
-        let word = index / 64
+        word := index / 64
         self.words.set(
             word, bit_and(self.words[word], bit_not(shift_left(1, index % 64)))
         )
@@ -62,7 +62,7 @@ impl BitSet:
 
     // Returns the smallest member that is at least `from`, or `none` when there is none.
     fn next(from: Int = 0) Int?:
-        let start = from.max(0)
+        start := from.max(0)
         var word = start / 64
         if word >= self.words.length(): return none
 
@@ -86,7 +86,7 @@ impl BitSet:
             var bits = self.words[word]
 
             while bits != 0:
-                let low = trailing_zeros(bits)
+                low := trailing_zeros(bits)
                 out.append(word * 64 + low)
                 bits = bit_and(bits, bit_not(shift_left(1, low)))
 
@@ -111,11 +111,11 @@ impl BitSet:
     // Merges words pairwise; `mode` 0 is union, 1 intersection, 2 difference, 3 symmetric difference.
     fn combine(other: BitSet, mode: Int) BitSet:
         var out: List[Int] = []
-        let count = self.words.length().max(other.words.length())
+        count := self.words.length().max(other.words.length())
 
         for word in 0..count:
-            let left = if word < self.words.length(): self.words[word] else: 0
-            let right = if word < other.words.length(): other.words[word] else: 0
+            left := if word < self.words.length(): self.words[word] else: 0
+            right := if word < other.words.length(): other.words[word] else: 0
             var merged = bit_or(left, right)
             if mode == 1:
                 merged = bit_and(left, right)
@@ -130,7 +130,7 @@ impl BitSet:
     // Reports whether every member of this set is in `other`.
     fn is_subset_of(other: BitSet) Bool:
         for word in 0..self.words.length():
-            let right = other.words.get(word, 0)
+            right := other.words.get(word, 0)
             if bit_and(self.words[word], bit_not(right)) != 0: return false
 
         return true
@@ -141,7 +141,7 @@ impl BitSet:
 
     // Reports whether the sets share no member.
     fn is_disjoint_from(other: BitSet) Bool:
-        let count = self.words.length().min(other.words.length())
+        count := self.words.length().min(other.words.length())
         for word in 0..count:
             if bit_and(self.words[word], other.words[word]) != 0: return false
         return true

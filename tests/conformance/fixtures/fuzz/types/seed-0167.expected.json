@@ -13,21 +13,21 @@
         "position": {
           "file": "seed-0167.ms",
           "line": 31,
-          "column": 19,
-          "offset": 822
+          "column": 16,
+          "offset": 807
         },
         "fix": {
           "position": {
             "file": "seed-0167.ms",
             "line": 31,
-            "column": 21,
-            "offset": 824
+            "column": 18,
+            "offset": 809
           },
           "end": {
             "file": "seed-0167.ms",
             "line": 31,
-            "column": 22,
-            "offset": 825
+            "column": 19,
+            "offset": 810
           },
           "replacement": "2.0"
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0167.ms:31:19: type: operator operands require the same independently known type, found Float + Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)\n    |\n 31 |     let bad = 1.5 + 2\n    |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0167.ms:31:16: type: operator operands require the same independently known type, found Float + Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)\n    |\n 31 |     bad := 1.5 + 2\n    |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

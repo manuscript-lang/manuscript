@@ -4,7 +4,7 @@ fn successful_value(value: Int) Int!:
     return ok(value)
 
 fn consume(key: String, value: Int) Int:
-    let keys = [key]
+    keys := [key]
     return keys.length() + value
 
 type Box:
@@ -12,13 +12,13 @@ type Box:
 
 impl Box:
     fn consume(value: Int) Int:
-        let boxes = [self]
+        boxes := [self]
         return boxes.length() + value
 
 test "source consuming argument remains owned after later try":
-    let key = "long-dynamic-map-key-{1}"
+    key := "long-dynamic-map-key-{1}"
     try expect_equal(consume(key, try successful_value(7)), 8)
 
 test "source consuming receiver remains owned after later try":
-    let box = Box("long-dynamic-map-key-{1}")
+    box := Box("long-dynamic-map-key-{1}")
     try expect_equal(box.consume(try successful_value(7)), 8)

@@ -25,7 +25,7 @@ Status: implemented, 2026-10-31 (syntax, checker, lowering and fixtures removed 
 - `get` already matches; `field` matches in release; `view` and `lend` carry extra callee-side allocations.
 - Measured wall time (Release, best of 2, `borrow_via_clone.ms` shape written with `.clone()` vs a move through `pop()`, so no copy): deep descent 200k iterations clone 7.74-7.87 s vs move 7.97-8.17 s; shallow descent 3000 iterations on a depth-9 tree, where the clone copies about 40% of the tree, 1.25-1.42 s vs 1.33-1.38 s. The difference is inside noise. The string-view case was not timed; it has the same shape (one small allocation against hundreds of ns of other work).
 - So `ref` buys allocation counts, not speed, in the measured cases.
-- Non-goals: changing `var`, `.clone()`, moves, `Shared[T]`, or the lexical borrow rules for bindings of places (`let x = a.b`), which stay.
+- Non-goals: changing `var`, `.clone()`, moves, `Shared[T]`, or the lexical borrow rules for bindings of places (`x := a.b`), which stay.
 
 ## Design
 
@@ -48,7 +48,7 @@ fn size(l: Line) Int:
 - Semantics:
   - Write-through is removed. `var ys = b.list()` binds a copy; mutate `b.items` directly.
   - Borrowing iterators (`Iterator[T].next` returning `ref T?`, `Deque`/`Queue` carriers with `source: ref ...`) return owned items. Large items cost a clone per step; if `bench/perf` shows a regression, that iterator uses a cursor rather than reintroducing `ref`.
-  - Bindings of places (`let x = a.b`) keep their lexical borrow rule.
+  - Bindings of places (`x := a.b`) keep their lexical borrow rule.
 - Errors: none new. The `ref` diagnostics (whole-parameter return, `let ref`, `for ref`, `match ref`) are deleted.
 
 ## Components touched

@@ -1,5 +1,5 @@
 fn main() Unit:
-    let s = "x"
+    s := "x"
     var xs = ["b"]
     xs.append(s)
     xs.append(s)

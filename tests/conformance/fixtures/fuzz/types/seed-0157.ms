@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,7 +15,7 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let i1 = (((-4) - (-5)) % ((32 / 20) - (1 - 50)))
+    i1 := (((-4) - (-5)) % ((32 / 20) - (1 - 50)))
     say("i1 = {i1}")
     return "not an int"
     say("fact(10) = {fact(10)}")

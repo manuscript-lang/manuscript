@@ -6,7 +6,7 @@ fn replace(var values: Map[Int, Int]) Int:
 
 test "a default that changes the map runs after the lookup":
     var values = {1: 7}
-    let selected = values.get(1).get(replace(var values))
+    selected := values.get(1).get(replace(var values))
     try expect_equal(selected, 7)
     try expect_equal(values.get(1).get(), 9)
 

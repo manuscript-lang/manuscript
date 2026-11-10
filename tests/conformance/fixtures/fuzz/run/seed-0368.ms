@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -28,7 +28,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -36,34 +36,34 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let s1 = "日本語"
+    s1 := "日本語"
     say("s1 = [{s1}]")
 
-    let i2 = (-(33 - ((-593873) * 205739)))
+    i2 := (-(33 - ((-593873) * 205739)))
     say("i2 = {i2}")
 
-    let s3 = s1.clone()
+    s3 := s1.clone()
     say("s3 = [{s3}]")
 
-    let f4 = (((205.355 + 445.506) + 253.862) + 760.449)
+    f4 := (((205.355 + 445.506) + 253.862) + 760.449)
     say("f4 = {f4}")
 
-    let l5 = [1, 2, 3].take(0)
+    l5 := [1, 2, 3].take(0)
     say("l5 = {l5} len {l5.length()}")
 
-    let l6 = [(-26), 29, (-12), (-19), (-1)]
+    l6 := [(-26), 29, (-12), (-19), (-1)]
     say("l6 = {l6} len {l6.length()}")
 
-    let b7 = (((i2 + 658472) + i2) != i2)
+    b7 := (((i2 + 658472) + i2) != i2)
     say("b7 = {b7}")
 
-    let f8 = f4
+    f8 := f4
     say("f8 = {f8}")
 
-    let b9 = b7
+    b9 := b7
     say("b9 = {b9}")
 
-    let f10 = 261.034
+    f10 := 261.034
     say("f10 = {f10}")
 
     var l11 = l6.clone()
@@ -71,14 +71,14 @@ export fn main() Int:
     say("l11 = {l11} len {l11.length()}")
     say("collatz(2321) = {collatz(2321)}")
 
-    let i12 = i2
+    i12 := i2
     say("i12 = {i12}")
     say("fib(37) = {fib(37)}")
 
-    let f13 = (f10 * ((597.709 - 269.388) * (f10 + f4)))
+    f13 := (f10 * ((597.709 - 269.388) * (f10 + f4)))
     say("f13 = {f13}")
 
-    let l14 = l11.reversed()
+    l14 := l11.reversed()
     say("l14 = {l14} len {l14.length()}")
 
     if b9:
@@ -86,9 +86,9 @@ export fn main() Int:
     else:
         say(s1)
 
-    let f15 = ((887.907 * (f4 * f13)) + (139.875 + (f13 * f13)))
+    f15 := ((887.907 * (f4 * f13)) + (139.875 + (f13 * f13)))
     say("f15 = {f15}")
 
-    let i16 = (-(-22))
+    i16 := (-(-22))
     say("i16 = {i16}")
     return 0

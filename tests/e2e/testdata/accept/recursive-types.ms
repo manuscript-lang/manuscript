@@ -43,15 +43,15 @@ impl Hashable for Link:
     fn hash() Int: return self.value
 
 test "recursive alternatives construct match compare and clone":
-    let expr = Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
+    expr := Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
     (evaluate(expr.clone()) != 5 or expr != expr.clone()) | try expect_false
 
-    let tree = Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
+    tree := Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
     tree | try expect_equal(
         Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
     )
 
-    let forest = Forest.More(MutualTree(value: 3, rest: Forest.Empty))
+    forest := Forest.More(MutualTree(value: 3, rest: Forest.Empty))
 
     match forest:
         More(first):
@@ -59,8 +59,8 @@ test "recursive alternatives construct match compare and clone":
         Empty: return fail("lost mutual tree")
 
 test "recursive records clone into independent storage":
-    let child = Node(value: 2, next: none)
-    let root = Node(value: 1, next: child.clone())
+    child := Node(value: 2, next: none)
+    root := Node(value: 1, next: child.clone())
     var alias = root.clone()
     var copy = root.clone()
     alias.value = 3
@@ -91,7 +91,7 @@ test "recursive structural equality checks nested and unequal fields":
     (left.value != 1 or copy.value != 1 or left == copy or left != right) | try expect_false
 
     var a = Node(value: 1, next: none)
-    let b = Node(value: 1, next: a.clone())
+    b := Node(value: 1, next: a.clone())
     a.next = b
     (right == a) | try expect_false
 
@@ -117,7 +117,7 @@ test "recursive domain hashing uses explicit implementations":
 
 test "recursive defaults construct independent complete objects":
     var first = DefaultNode(value: 1)
-    let second = DefaultNode(value: 2)
+    second := DefaultNode(value: 2)
     first.next = first.clone()
     (second.next.is_some() or first.next.get().value != 1) | try expect_false
 
@@ -142,20 +142,20 @@ type Pair[T, U]:
     second: U
 
 test "finite nested generic composition constructs and extracts values":
-    let person = Person(Entry(name: "Ada", nickname: "A"))
+    person := Person(Entry(name: "Ada", nickname: "A"))
     person.primary.get().nickname.get() | try expect_equal("A")
 
-    let four: Int? = 4
-    let nested_four: Int?? = four
-    let optional = NestedOptional.Value(nested_four)
+    four: Int? = 4
+    nested_four: Int?? = four
+    optional := NestedOptional.Value(nested_four)
 
     match optional:
         Value(value):
             try expect_equal(value.get().get(), 4)
 
-    let result = NestedResult(ok(ok(5)))
+    result := NestedResult(ok(ok(5)))
 
-    let inner = match result.value:
+    inner := match result.value:
         ok(inner): inner.clone()
         error(_): return fail("unexpected outer result error")
 
@@ -164,9 +164,9 @@ test "finite nested generic composition constructs and extracts values":
             try expect_equal(value, 5)
         error(_): return fail("unexpected inner result error")
 
-    let box = Box(Box(6))
+    box := Box(Box(6))
     box.value.value | try expect_equal(6)
 
-    let inner_text: String? = "nested"
-    let pair: Pair[Int?, String??] = Pair(first: 7, second: inner_text)
+    inner_text: String? = "nested"
+    pair: Pair[Int?, String??] = Pair(first: 7, second: inner_text)
     (pair.first.get() != 7 or pair.second.get().get() != "nested") | try expect_false

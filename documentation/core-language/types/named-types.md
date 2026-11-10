@@ -21,15 +21,15 @@ Field types are explicit and names unique. An empty type is `type Marker:`. A fi
 Supply each required field exactly once, by position or label; fields with defaults may be omitted. Missing, duplicate, and unknown fields are compile errors. Supplied expressions evaluate in written order, then omitted defaults in declaration order. Each is checked against its field type, so `none` and `[]` get their expected type.
 
 ```manuscript
-let customer = Customer(name: "Ada", email: none)
-let name = customer.name
+customer := Customer(name: "Ada", email: none)
+name := customer.name
 ```
 
 Positional arguments follow declaration order and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Box(3)` equals `Box(value: 3)`. Handle an optional field as described in [optional values](optionals.md).
 
 ```manuscript
 // An omitted optional field is none.
-let without_email = Customer(name: "Ada")
+without_email := Customer(name: "Ada")
 // Rejected: changing a field requires a var binding.
 customer.name = "Grace"
 ```
@@ -41,7 +41,7 @@ type Options:
     count: Int = 3
     total: Int = count + 1
 
-let options = Options(count: 5)  // total defaults to 6
+options := Options(count: 5)  // total defaults to 6
 ```
 
 An optional field with no explicit default is `none` when omitted. A default may use earlier fields and module declarations, but not itself or later fields. It is evaluated on each construction, so collection defaults are fresh. Any supplied value, even `unit`, `none`, or zero, skips the default. Generic arguments never come from defaults.
@@ -59,7 +59,7 @@ type Customer:
     email: String?
 
 fn main() Unit:
-    let original = Customer("Ada")
+    original := Customer("Ada")
     var updated = original.clone()
     updated.name = "Grace"
     print(original.name)
@@ -104,8 +104,8 @@ type Report:
     rows: List[Int]
 
 fn main() Unit:
-    let report = Report("scores", [3, 4])
-    let batches = [report.rows]
+    report := Report("scores", [3, 4])
+    batches := [report.rows]
     print(report.title)
     print(batches[0])
 ```
@@ -116,10 +116,10 @@ scores
 ```
 
 - The outer list owns `report.rows` after construction. The sibling field `report.title` remains readable because fields are tracked separately. Reading `report.rows` or using the whole `report` afterwards is rejected; use `report.rows.clone()` at construction if both owners need the rows.
-- Field moves apply to owned fields (strings, lists, types, resources) of a `let` binding or consuming parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, and types that declare `close` need another ownership strategy, such as cloning a clonable value or moving the whole owner.
+- Field moves apply to owned fields (strings, lists, types, resources) of a `:=` binding or consuming parameter. Elements (`xs[i]`), borrowed values, `var` bindings and parameters, loop variables, closure captures, and types that declare `close` need another ownership strategy, such as cloning a clonable value or moving the whole owner.
 - A parameter whose field is moved into another owner is consumed: its caller gives up the type. Passing `.clone()` keeps an independent caller-owned type.
 
-Reading a field is different from moving it. `let rows = report.rows` borrows it. A getter that returns the field also returns an inferred borrow:
+Reading a field is different from moving it. `rows := report.rows` borrows it. A getter that returns the field also returns an inferred borrow:
 
 ```manuscript
 fn rows_of(report: Report) List[Int]:
@@ -165,9 +165,9 @@ type OrderId:
 ```
 
 ```manuscript
-let customer_id = CustomerId("42")
+customer_id := CustomerId("42")
 // Rejected: equal field shapes do not make nominal types interchangeable.
-let order_id: OrderId = customer_id
+order_id: OrderId = customer_id
 ```
 
 Identity is module, declaration, and type arguments; alternate import paths to one module do not create new types. Applications are [invariant](compatibility.md).
@@ -194,7 +194,7 @@ fn evaluate(expr: Expr) Int:
         Add(left, right): return evaluate(left) + evaluate(right)
 
 test "recursive expression":
-    let expr = Expr.Add(Expr.Num(1), Expr.Num(2))
+    expr := Expr.Add(Expr.Num(1), Expr.Num(2))
     if evaluate(expr) != 3:
         panic("unexpected expression value")
 ```
@@ -218,7 +218,7 @@ test "recursive links":
         panic("clones must be independent")
 ```
 
-Constructors still need every required field, and a binding is unavailable in its own initializer, so `let node = Node(value: 1, next: node)` is rejected. `.clone()` copies the whole chain. Recursive shapes derive no `Hashable`; keys need explicit implementations ([equality and hashing](equality-and-hashing.md)).
+Constructors still need every required field, and a binding is unavailable in its own initializer, so `node := Node(value: 1, next: node)` is rejected. `.clone()` copies the whole chain. Recursive shapes derive no `Hashable`; keys need explicit implementations ([equality and hashing](equality-and-hashing.md)).
 
 Generic recursion must preserve type parameters along every cycle; see [finite recursive applications](generics.md#finite-recursive-applications).
 
@@ -235,9 +235,9 @@ export opaque type Approved:
 export fn approve(entity: String) Approved: Approved(entity: entity, nonce: "n1")
 
 # agent.ms
-let a = Approved(entity: "u2", nonce: "x")   # error: Approved is opaque outside gate.ms
-let n = approve("u2").nonce                  # error: field nonce is hidden
-let {entity} = approve("u2")                 # error: its fields cannot be destructured here
+a := Approved(entity: "u2", nonce: "x")   # error: Approved is opaque outside gate.ms
+n := approve("u2").nonce                  # error: field nonce is hidden
+{entity} := approve("u2")                 # error: its fields cannot be destructured here
 ```
 
 Outside the declaring file an opaque type allows no construction, field read or write, field pattern, `match` on its cases, and no `impl` (so no new methods or interface implementations). Its text form, in interpolation, `to_string()`, and test output, is only the type name: `"{a}"` is `Approved`. It is never `Data`, so `json.parse`, `json.stringify`, and typed JSON stream codecs reject it at compile time. Promises and pipes do not require `Data`.

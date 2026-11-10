@@ -4,4 +4,4 @@
 import parse, TomlValue from "@std/data/toml.ms"
 
 fn read() Unit:
-    let _result = parse(text: "a=1")
+    _result := parse(text: "a=1")

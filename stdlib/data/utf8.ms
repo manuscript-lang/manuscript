@@ -7,7 +7,7 @@ import (
 
 /*
 Decodes one UTF-8 scalar at a byte position without decoding or copying the entire input.
-Walk forward by adding the returned width: `let part = try decode_first(data, position)`.
+Walk forward by adding the returned width: `part := try decode_first(data, position)`.
 The scalar decoders examine at most four input bytes; is_valid checks the whole buffer.
 No normalization or replacement is applied.
 */
@@ -34,8 +34,8 @@ export enum Utf8Error:
     Incomplete
 
 // Internal result codes: a scalar is nonnegative, so these cannot collide with one.
-let INCOMPLETE = -1
-let INVALID = -2
+INCOMPLETE := -1
+INVALID := -2
 
 // Lowest and highest allowed second byte for a lead byte; the other continuation bytes span 128 through 191.
 fn second_low(lead: Int) Int:
@@ -55,11 +55,11 @@ fn second_high(lead: Int) Int:
 fn decode_at(data: Bytes, start: Int, stop: Int) Int:
     if start >= stop: return INCOMPLETE
 
-    let lead = data.get(start).to_int()
+    lead := data.get(start).to_int()
     if lead < 128: return lead
     if lead < 194 or lead > 244: return INVALID
 
-    let size = if lead < 224: 2 else: (if lead < 240: 3 else: 4)
+    size := if lead < 224: 2 else: (if lead < 240: 3 else: 4)
     var value = if size == 2: lead - 192 else: (
         if size == 3: lead - 224 else: lead - 240
     )
@@ -67,9 +67,9 @@ fn decode_at(data: Bytes, start: Int, stop: Int) Int:
     for step in 1..size:
         if start + step >= stop: return INCOMPLETE
 
-        let byte = data.get(start + step).to_int()
-        let low = if step == 1: second_low(lead) else: 128
-        let high = if step == 1: second_high(lead) else: 191
+        byte := data.get(start + step).to_int()
+        low := if step == 1: second_low(lead) else: 128
+        high := if step == 1: second_high(lead) else: 191
         if byte < low or byte > high: return INVALID
 
         value = value * 64 + byte - 128
@@ -88,7 +88,7 @@ fn decode_ending(data: Bytes, stop: Int) Int:
     var incomplete = stop == 0
 
     for width in 1..(min(stop, 4) + 1):
-        let value = decode_at(data, stop - width, stop)
+        value := decode_at(data, stop - width, stop)
         if value == INCOMPLETE:
             incomplete = true
         if value >= 0 and scalar_width(value) == width: return value
@@ -117,7 +117,7 @@ Earlier malformed bytes do not invalidate a valid final scalar. An empty prefix 
 Requires 0 <= end <= data.length(); invalid offsets fault. A trailing proper scalar prefix returns Incomplete.
 */
 export fn decode_last(data: Bytes, end: Int?) Utf8Scalar!Utf8Error:
-    let stop = end.get(data.length())
+    stop := end.get(data.length())
     if stop < 0 or stop > data.length():
         panic("utf8.decode_last: end must be between zero and the byte length")
     return decoded(decode_ending(data, stop))

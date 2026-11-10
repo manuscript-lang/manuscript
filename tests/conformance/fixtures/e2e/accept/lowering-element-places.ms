@@ -39,7 +39,7 @@ test "field assignment and mutators through a variable element index":
     try expect_equal(rows[1].cells, [11])
     try expect_equal(rows[1].pt.y, 11)
 
-    let k = 1
+    k := 1
     var pts = [Pt(1, 1), Pt(2, 2)]
     pts[k].x = 9
     pts[k - 1].y = 4
@@ -57,17 +57,17 @@ test "an eager get_or fallback is released when the key is present":
     try expect_equal(m.get_or(key: "absent", fallback: [7]), [7])
 
 test "an eager list get default is released on every path":
-    let xs = [[1, 2], [3]]
+    xs := [[1, 2], [3]]
     try expect_equal(xs.get(0, default: [9, 9]), [1, 2])
     try expect_equal(xs.get(5, default: [9, 9]), [9, 9])
     try expect_equal(xs.get(-1, default: [9, 9]), [3])
 
-    let words = "a,b".split(",")
+    words := "a,b".split(",")
     try expect_equal(words.get(1, default: "z" + "z"), "b")
     try expect_equal(words.get(8, default: "z" + "z"), "zz")
 
 test "find over owned elements keeps the hit":
-    let rows = [[1], [2], [3, 3]]
+    rows := [[1], [2], [3, 3]]
     try expect_equal(rows.find(fn(value: List[Int]): value[0] == 2), [2])
     try expect_equal(rows.find(fn(value: List[Int]): value[0] == 9), none)
     try expect_equal(rows.find_last(fn(value: List[Int]): value[0] > 1), [3, 3])

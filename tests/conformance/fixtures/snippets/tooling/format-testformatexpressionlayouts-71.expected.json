@@ -13,8 +13,8 @@
         "position": {
           "file": "format-testformatexpressionlayouts-71.ms",
           "line": 6,
-          "column": 53,
-          "offset": 301
+          "column": 50,
+          "offset": 295
         },
         "fix": {
           "position": {
@@ -35,19 +35,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...) T:', or import it from a module",
+        "message": "unknown binding enabled; declare it with 'enabled := ...' before use, define 'fn enabled(...) T:', or import it from a module",
         "position": {
           "file": "format-testformatexpressionlayouts-71.ms",
           "line": 7,
           "column": 8,
-          "offset": 385
+          "offset": 379
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatexpressionlayouts-71.ms:6:53: resolution: unknown binding format; add: import format from \"@std/net/url.ms\"\n   |\n 6 |     let text = \"# A deliberately long literal with {format(value: \"nested text\")} that must retain its exact original spelling.\"\n   |                                                     ^\n<DIR>/format-testformatexpressionlayouts-71.ms:7:8: resolution: unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...) T:', or import it from a module\n   |\n 7 |     if enabled: return text\n   |        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatexpressionlayouts-71.ms:6:50: resolution: unknown binding format; add: import format from \"@std/net/url.ms\"\n   |\n 6 |     text := \"# A deliberately long literal with {format(value: \"nested text\")} that must retain its exact original spelling.\"\n   |                                                  ^\n<DIR>/format-testformatexpressionlayouts-71.ms:7:8: resolution: unknown binding enabled; declare it with 'enabled := ...' before use, define 'fn enabled(...) T:', or import it from a module\n   |\n 7 |     if enabled: return text\n   |        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

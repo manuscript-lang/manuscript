@@ -113,19 +113,19 @@ pub const RULES: &[Rule] = &[
         code: "MSL108",
         family: "Optional matched with only some and none",
         severity: Severity::Warning,
-        repair: "use `if let value = ...:` with `else:`, or an Optional method such as `get(default)` or `map`",
+        repair: "use `if value := ...:` with `else:`, or an Optional method such as `get(default)` or `map`",
     },
     Rule {
         code: "MSL109",
         family: "Result matched with only ok and error",
         severity: Severity::Warning,
-        repair: "use `try`, `if let value = ...:` with `else:`, or a Result method such as `get(default)`, `is_error` or `err`",
+        repair: "use `try`, `if value := ...:` with `else:`, or a Result method such as `get(default)`, `is_error` or `err`",
     },
     Rule {
         code: "MSL110",
         family: "Optional.get() without a default",
         severity: Severity::Warning,
-        repair: "use `if let value = ...:`, or pass a default to `get(default)`",
+        repair: "use `if value := ...:`, or pass a default to `get(default)`",
     },
     Rule {
         code: "MSL111",
@@ -185,7 +185,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL121",
         family: "Default overridden by a one-line if",
         severity: Severity::Warning,
-        repair: "write `let x = if c: b else: a`; `ms lint --fix` does it for a literal or name default",
+        repair: "write `x := if c: b else: a`; `ms lint --fix` does it for a literal or name default",
     },
     Rule {
         code: "MSL122",

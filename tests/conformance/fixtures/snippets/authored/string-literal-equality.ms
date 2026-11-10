@@ -20,6 +20,6 @@ fn score(s: String) Int:
     return n
 
 fn main() Unit:
-    let all = ["a", "", "héllo", "abcdefgh", "abcde", "abcdef", "b", "é", "abcdefghi"]
+    all := ["a", "", "héllo", "abcdefgh", "abcde", "abcdef", "b", "é", "abcdefghi"]
     for s in all:
-        let _i = stdout().write("{score(s)} ")
+        _i := stdout().write("{score(s)} ")

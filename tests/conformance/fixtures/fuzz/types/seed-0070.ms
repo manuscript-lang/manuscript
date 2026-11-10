@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = ((-2) + (-4))
+    i1 := ((-2) + (-4))
     say("i1 = {i1}")
 
-    let bad: Int = "text"
+    bad: Int = "text"
 
     if false:
         say("Tab\there")

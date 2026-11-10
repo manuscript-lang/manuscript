@@ -136,7 +136,7 @@ export fn dev_null() String:
 
 // Returns the operating system family this program runs on.
 export fn os() Os:
-    let code = msstd_system_os()
+    code := msstd_system_os()
     if code == 0: return Os.Linux
     if code == 1: return Os.Macos
     if code == 2: return Os.Windows
@@ -200,7 +200,7 @@ export fn cpus() List[CpuInfo]!:
 // A host query failure returns an `Error` describing it.
 // ms: effect std.system.read
 export fn metrics() SystemMetrics!:
-    let snapshot = try msstd_system_metrics()
+    snapshot := try msstd_system_metrics()
     return ok(
         SystemMetrics(
             total_memory: snapshot.total_memory,

@@ -4,4 +4,4 @@
 fn source(_0: Int) String: "text"
 
 fn exercise() Unit:
-    let callback: fn(Int) Int = source
+    callback: fn(Int) Int = source

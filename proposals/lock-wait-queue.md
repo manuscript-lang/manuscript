@@ -44,7 +44,7 @@ Status: **proposal** (2026-10-26, checked against `origin/main` at `91882327`). 
 
   export def lock[T](box: Shared[T]) -> SharedGuard[T]:
       while box.locked():
-          let token = msrt_channel_token()
+          token := msrt_channel_token()
           msrt_waitq_push(box.id(), token)
           with var ticket = Ticket(key: box.id(), token: token, parked: True):
               msrt_channel_park(token)

@@ -39,14 +39,14 @@ type Resolved:
     recipe: List[RecLine]
     stem: String
 
-let FUNCS = [
+FUNCS := [
     "subst", "patsubst", "strip", "findstring", "filter-out", "filter", "sort",
     "wordlist", "word", "words", "firstword", "lastword", "dir", "notdir", "suffix",
     "basename", "addprefix", "addsuffix", "wildcard", "foreach", "if", "info", "error"
 ]
-let AUTO = ["@", "<", "^", "?", "|", "*"]
-let LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-let DIGITS = "0123456789"
+AUTO := ["@", "<", "^", "?", "|", "*"]
+LETTERS := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+DIGITS := "0123456789"
 
 fn emit(s: String) Unit:
     stdout().write(s + "\n").get()
@@ -106,15 +106,15 @@ fn match_close(cs: List[String], start: Int, opener: String, closer: String) Int
     return -1
 
 fn strip_cr(s: String) String:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     if n > 0 and cs[n - 1] == "\r":
         return join_chars(cs, 0, n - 1)
 
     return s
 
 fn strip_tabs(s: String) String:
-    let cs = s.chars()
+    cs := s.chars()
     var k = 0
     while k < cs.length() and cs[k] == "\t":
         k += 1
@@ -154,7 +154,7 @@ fn dedup(xs: List[String]) List[String]:
     return out
 
 fn is_digits(s: String) Bool:
-    let cs = s.chars()
+    cs := s.chars()
     if cs.length() == 0:
         return false
 
@@ -164,8 +164,8 @@ fn is_digits(s: String) Bool:
     return true
 
 fn strip_comment(s: String) String:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var out = ""
     var k = 0
 
@@ -184,10 +184,10 @@ fn strip_comment(s: String) String:
 fn find_col(cs: List[String]) Int:
     var depth = 0
     var k = 0
-    let n = cs.length()
+    n := cs.length()
 
     while k < n:
-        let c = cs[k].clone()
+        c := cs[k].clone()
         if depth == 0 and c == ";":
             return -1
 
@@ -218,13 +218,13 @@ fn logical_lines(lines: List[String]) List[RecLine]:
     for raw in lines:
         idx += 1
 
-        let piece = if joining: raw.trim_start().clone() else: raw.clone()
+        piece := if joining: raw.trim_start().clone() else: raw.clone()
 
         if not joining:
             start = idx
 
-        let pc = piece.chars()
-        let pn = pc.length()
+        pc := piece.chars()
+        pn := pc.length()
 
         if pn > 0 and pc[pn - 1] == "\\":
             acc = acc + join_chars(pc, 0, pn - 1).trim_end() + " "
@@ -240,9 +240,9 @@ fn logical_lines(lines: List[String]) List[RecLine]:
     return out
 
 fn pat_match(pat: String, w: String) Optional[String]:
-    let pc = pat.chars()
-    let wc = w.chars()
-    let k = find_char(pc.clone(), "%", 0)
+    pc := pat.chars()
+    wc := w.chars()
+    k := find_char(pc.clone(), "%", 0)
 
     if k < 0:
         if pat == w:
@@ -250,9 +250,9 @@ fn pat_match(pat: String, w: String) Optional[String]:
 
         return none
 
-    let suf_start = k + 1
-    let suf_n = pc.length() - suf_start
-    let n = wc.length()
+    suf_start := k + 1
+    suf_n := pc.length() - suf_start
+    n := wc.length()
     if n < k + suf_n:
         return none
     if join_chars(wc.clone(), 0, k) != join_chars(pc.clone(), 0, k):
@@ -267,14 +267,14 @@ fn pat_match(pat: String, w: String) Optional[String]:
     return join_chars(wc, k, n - suf_n)
 
 fn pat_hit(pat: String, w: String) Bool:
-    if let _s = pat_match(pat, w):
+    if _s := pat_match(pat, w):
         return true
 
     return false
 
 fn subst_pct(rep: String, stem: String) String:
-    let cs = rep.chars()
-    let k = find_char(cs.clone(), "%", 0)
+    cs := rep.chars()
+    k := find_char(cs.clone(), "%", 0)
     if k < 0:
         return rep
 
@@ -297,7 +297,7 @@ fn pat_subst(pat: String, rep: String, w: String) String:
 
         return w
 
-    if let s = pat_match(pat, w.clone()):
+    if s := pat_match(pat, w.clone()):
         return subst_pct(rep, s)
 
     return w
@@ -306,7 +306,7 @@ fn glob_at(p: List[String], pi: Int, s: List[String], si: Int) Bool:
     if pi == p.length():
         return si == s.length()
 
-    let c = p[pi].clone()
+    c := p[pi].clone()
 
     if c == "*":
         var k = si
@@ -357,35 +357,35 @@ fn raw_arg(args: List[String], k: Int) String:
     return ""
 
 fn dir_of(w: String) String:
-    let cs = w.chars()
-    let k = last_char(cs.clone(), "/")
+    cs := w.chars()
+    k := last_char(cs.clone(), "/")
     if k < 0:
         return "./"
 
     return join_chars(cs, 0, k + 1)
 
 fn notdir_of(w: String) String:
-    let cs = w.chars()
-    let k = last_char(cs.clone(), "/")
+    cs := w.chars()
+    k := last_char(cs.clone(), "/")
     if k < 0:
         return w
 
     return join_chars(cs, k + 1, cs.length())
 
 fn suffix_of(w: String) String:
-    let cs = w.chars()
-    let n = cs.length()
-    let start = last_char(cs.clone(), "/") + 1
-    let d = last_char(cs.clone(), ".")
+    cs := w.chars()
+    n := cs.length()
+    start := last_char(cs.clone(), "/") + 1
+    d := last_char(cs.clone(), ".")
     if d >= start:
         return join_chars(cs, d, n)
 
     return ""
 
 fn basename_of(w: String) String:
-    let cs = w.chars()
-    let start = last_char(cs.clone(), "/") + 1
-    let d = last_char(cs.clone(), ".")
+    cs := w.chars()
+    start := last_char(cs.clone(), "/") + 1
+    d := last_char(cs.clone(), ".")
     if d >= start:
         return join_chars(cs, 0, d)
 
@@ -454,35 +454,35 @@ impl Make:
         return self.phony.contains(name)
 
     fn is_defined(name: String) Bool:
-        if let c = self.cmdvars.get(name.clone()).clone():
+        if c := self.cmdvars.get(name.clone()).clone():
             return c != ""
-        if let v = self.vars.get(name).clone():
+        if v := self.vars.get(name).clone():
             return v.value != ""
 
         return false
 
     fn active() Bool:
-        let k = self.frames.length() - 1
+        k := self.frames.length() - 1
         if k < 0:
             return true
 
-        let f = self.frames[k].clone()
+        f := self.frames[k].clone()
         return f.parent_on and f.cond != f.in_else
 
     fn pre_of(name: String) List[String]:
-        if let p = self.prereqs.get(name).clone():
+        if p := self.prereqs.get(name).clone():
             return p.clone()
 
         return List[String]()
 
     fn op_of(name: String) List[String]:
-        if let p = self.oprereqs.get(name).clone():
+        if p := self.oprereqs.get(name).clone():
             return p.clone()
 
         return List[String]()
 
     fn recipe_of(name: String) List[RecLine]:
-        if let p = self.recipes.get(name).clone():
+        if p := self.recipes.get(name).clone():
             return p
 
         return List[RecLine]()
@@ -505,7 +505,7 @@ impl Make:
 
         parts.append(name.clone())
 
-        let chain = parts.join(" -> ")
+        chain := parts.join(" -> ")
         return Fail(text: "make: *** Circular dependency detected: {chain}.  Stop.")
 
     var fn reset_parse() Unit:
@@ -537,8 +537,8 @@ impl Make:
 
         self.stack.append(name.clone())
 
-        let r = try self.expand(raw)
-        let _ = self.stack.pop()
+        r := try self.expand(raw)
+        _ := self.stack.pop()
         return ok(r)
 
     var fn var_value(name: String) Result[String, Fail]:
@@ -552,10 +552,10 @@ impl Make:
 
         if AUTO.contains(name.clone()):
             return ok(self.auto.get(name.clone()).get(""))
-        if let c = self.cmdvars.get(name.clone()).clone():
+        if c := self.cmdvars.get(name.clone()).clone():
             return self.expand_recursive(name.clone(), c)
 
-        if let v = self.vars.get(name.clone()).clone():
+        if v := self.vars.get(name.clone()).clone():
             if v.recursive:
                 return self.expand_recursive(name.clone(), v.value.clone())
 
@@ -564,8 +564,8 @@ impl Make:
         return ok("")
 
     var fn expand(text: String) Result[String, Fail]:
-        let cs = text.chars()
-        let n = cs.length()
+        cs := text.chars()
+        n := cs.length()
         var out = ""
         var i = 0
 
@@ -579,20 +579,20 @@ impl Make:
                 out = out + "$"
                 i += 2
             else if cs[i + 1] == "(" or cs[i + 1] == "\{":
-                let opener = cs[i + 1].clone()
+                opener := cs[i + 1].clone()
 
-                let closer = if opener == "(": ")" else: "\}"
+                closer := if opener == "(": ")" else: "\}"
 
-                let j = match_close(cs.clone(), i + 2, opener, closer)
+                j := match_close(cs.clone(), i + 2, opener, closer)
                 if j < 0:
                     return error(self.fail("unterminated variable reference"))
 
-                let inner = join_chars(cs.clone(), i + 2, j)
-                let v = try self.expand_ref(inner)
+                inner := join_chars(cs.clone(), i + 2, j)
+                v := try self.expand_ref(inner)
                 out = out + v
                 i = j + 1
             else:
-                let v = try self.var_value(cs[i + 1].clone())
+                v := try self.var_value(cs[i + 1].clone())
                 out = out + v
                 i += 2
 
@@ -604,7 +604,7 @@ impl Make:
                 inner.starts_with(f.clone() + " ")
                 or inner.starts_with(f.clone() + "\t")
             ):
-                let cs = inner.chars()
+                cs := inner.chars()
                 return self.call(
                     f.clone(),
                     join_chars(
@@ -612,26 +612,26 @@ impl Make:
                     )
                 )
 
-        let full = try self.expand(inner)
-        let name = full.trim().clone()
-        let cs = name.chars()
-        let n = cs.length()
-        let ci = find_char(cs.clone(), ":", 1)
+        full := try self.expand(inner)
+        name := full.trim().clone()
+        cs := name.chars()
+        n := cs.length()
+        ci := find_char(cs.clone(), ":", 1)
 
         if ci >= 1:
-            let ei = find_char(cs.clone(), "=", ci + 1)
+            ei := find_char(cs.clone(), "=", ci + 1)
 
             if ei >= 0:
-                let vname = join_chars(cs.clone(), 0, ci).trim().clone()
-                let from = join_chars(cs.clone(), ci + 1, ei)
-                let to = join_chars(cs.clone(), ei + 1, n)
-                let has_pct = from.contains("%")
+                vname := join_chars(cs.clone(), 0, ci).trim().clone()
+                from := join_chars(cs.clone(), ci + 1, ei)
+                to := join_chars(cs.clone(), ei + 1, n)
+                has_pct := from.contains("%")
 
-                let pf = if has_pct: from.clone() else: "%" + from
+                pf := if has_pct: from.clone() else: "%" + from
 
-                let pt = if has_pct: to.clone() else: "%" + to
+                pt := if has_pct: to.clone() else: "%" + to
 
-                let value = try self.var_value(vname)
+                value := try self.var_value(vname)
                 var out = List[String]()
                 for w in words(value):
                     out.append(pat_subst(pf.clone(), pt.clone(), w))
@@ -641,54 +641,54 @@ impl Make:
 
     var fn call(fname: String, rest: String) Result[String, Fail]:
         if fname == "info":
-            let t = try self.expand(rest.trim())
+            t := try self.expand(rest.trim())
             emit(t)
             return ok("")
 
         if fname == "error":
-            let t = try self.expand(rest.trim())
+            t := try self.expand(rest.trim())
             return error(self.fail(t))
 
-        let args = split_args(rest)
+        args := split_args(rest)
 
         if fname == "if":
-            let c = try self.expand(raw_arg(args.clone(), 0))
+            c := try self.expand(raw_arg(args.clone(), 0))
             if c.trim() != "":
                 return self.expand(raw_arg(args.clone(), 1))
 
             return self.expand(raw_arg(args.clone(), 2))
 
         if fname == "foreach":
-            let v = try self.expand(raw_arg(args.clone(), 0))
-            let lst = try self.expand(raw_arg(args.clone(), 1))
-            let body = raw_arg(args.clone(), 2)
+            v := try self.expand(raw_arg(args.clone(), 0))
+            lst := try self.expand(raw_arg(args.clone(), 1))
+            body := raw_arg(args.clone(), 2)
             var out = List[String]()
 
             for w in words(lst):
                 self.binds.append(Binding(name: v.trim().clone(), value: w))
 
-                let r = try self.expand(body.clone())
-                let _ = self.binds.pop()
+                r := try self.expand(body.clone())
+                _ := self.binds.pop()
                 out.append(r)
 
             return ok(out.join(" "))
 
         if fname == "wildcard":
-            let pats = try self.expand(raw_arg(args.clone(), 0))
+            pats := try self.expand(raw_arg(args.clone(), 0))
             var out = List[String]()
-            let names = self.table.keys().sorted()
+            names := self.table.keys().sorted()
 
             for p in words(pats):
-                let pc = p.chars()
+                pc := p.chars()
                 for f in names:
                     if glob_at(pc.clone(), 0, f.chars(), 0):
                         out.append(f.clone())
 
             return ok(out.join(" "))
 
-        let a0 = try self.expand(raw_arg(args.clone(), 0))
-        let a1 = try self.expand(raw_arg(args.clone(), 1))
-        let a2 = try self.expand(raw_arg(args.clone(), 2))
+        a0 := try self.expand(raw_arg(args.clone(), 0))
+        a1 := try self.expand(raw_arg(args.clone(), 1))
+        a2 := try self.expand(raw_arg(args.clone(), 2))
 
         if fname == "subst":
             if a0 == "":
@@ -712,7 +712,7 @@ impl Make:
             return ok("")
 
         if fname == "filter" or fname == "filter-out":
-            let pats = words(a0)
+            pats := words(a0)
             var out = List[String]()
 
             for w in words(a1):
@@ -721,7 +721,7 @@ impl Make:
                     if pat_hit(p, w.clone()):
                         hit = true
 
-                let keep = if fname == "filter": hit else: not hit
+                keep := if fname == "filter": hit else: not hit
 
                 if keep:
                     out.append(w)
@@ -736,19 +736,19 @@ impl Make:
             return ok(out.join(" "))
 
         if fname == "word":
-            if let k = a0.parse_int():
-                let ws = words(a1)
+            if k := a0.parse_int():
+                ws := words(a1)
                 if k >= 1 and k <= ws.length():
                     return ok(ws[k - 1].clone())
 
             return ok("")
 
         if fname == "wordlist":
-            if let sv = a0.parse_int():
-                if let ev = a1.parse_int():
-                    let ws = words(a2)
+            if sv := a0.parse_int():
+                if ev := a1.parse_int():
+                    ws := words(a2)
 
-                    let ne = if ev > ws.length(): ws.length() else: ev
+                    ne := if ev > ws.length(): ws.length() else: ev
 
                     if sv >= 1 and ev >= sv and sv <= ws.length():
                         return ok(join_from(ws, sv - 1, ne))
@@ -759,14 +759,14 @@ impl Make:
             return ok("{words(a0).length()}")
 
         if fname == "firstword":
-            let ws = words(a0)
+            ws := words(a0)
             if ws.length() > 0:
                 return ok(ws[0].clone())
 
             return ok("")
 
         if fname == "lastword":
-            let ws = words(a0)
+            ws := words(a0)
             if ws.length() > 0:
                 return ok(ws[ws.length() - 1].clone())
 
@@ -786,7 +786,7 @@ impl Make:
                 else if fname == "notdir":
                     out.append(notdir_of(w))
                 else if fname == "suffix":
-                    let s = suffix_of(w)
+                    s := suffix_of(w)
                     if s != "":
                         out.append(s)
                 else:
@@ -808,25 +808,25 @@ impl Make:
         return ok("")
 
     var fn simulate(command: String) Int:
-        let ws = words(command)
+        ws := words(command)
         if ws.length() == 0:
             return 0
 
-        let cmd = ws[0].clone()
+        cmd := ws[0].clone()
         if cmd == "false":
             return 1
 
         if cmd == "exit":
             if ws.length() < 2:
                 return 0
-            if let st = ws[1].parse_int():
+            if st := ws[1].parse_int():
                 return st
 
             return 2
 
         if cmd == "touch":
             for k in 1..ws.length():
-                let f = ws[k].clone()
+                f := ws[k].clone()
 
                 if not f.starts_with("-"):
                     self.clock += 1
@@ -836,7 +836,7 @@ impl Make:
 
         if cmd == "rm":
             for k in 1..ws.length():
-                let f = ws[k].clone()
+                f := ws[k].clone()
                 if not f.starts_with("-"):
                     self.table.remove(f)
 
@@ -844,8 +844,8 @@ impl Make:
 
         if cmd == "cp":
             if ws.length() == 3:
-                let src = ws[1].clone()
-                let dst = ws[2].clone()
+                src := ws[1].clone()
+                dst := ws[2].clone()
 
                 if not self.table.contains(src.clone()):
                     emit("cp: cannot stat '{src}': No such file or directory")
@@ -866,7 +866,7 @@ impl Make:
         return 0
 
     fn resolve(name: String) Resolved:
-        let rec = self.recipe_of(name.clone())
+        rec := self.recipe_of(name.clone())
         if rec.length() > 0:
             return Resolved(
                 found: true, prereqs: self.pre_of(name.clone()),
@@ -875,10 +875,10 @@ impl Make:
 
         for p in self.prules:
             if p.recipe.length() > 0:
-                if let s = pat_match(p.pattern.clone(), name.clone()):
+                if s := pat_match(p.pattern.clone(), name.clone()):
                     if s != "":
-                        let pre = subst_all(p.prereqs.clone(), s.clone())
-                        let op = subst_all(p.oprereqs.clone(), s.clone())
+                        pre := subst_all(p.prereqs.clone(), s.clone())
+                        op := subst_all(p.oprereqs.clone(), s.clone())
 
                         if self.all_can_make(pre.clone(), op.clone(), 0):
                             var full = pre
@@ -925,7 +925,7 @@ impl Make:
 
         for p in self.prules:
             if p.recipe.length() > 0:
-                if let s = pat_match(p.pattern.clone(), name.clone()):
+                if s := pat_match(p.pattern.clone(), name.clone()):
                     if s != "":
                         if self.all_can_make(
                             subst_all(
@@ -947,19 +947,19 @@ impl Make:
     ) Result[Unit, Fail]:
         self.recipes_run += 1
 
-        let all = dedup(res.prereqs.clone())
+        all := dedup(res.prereqs.clone())
         var newer = List[String]()
 
         for p in all.clone():
-            let changed = self.memo.get(p.clone()).get(false)
-            let later = (
+            changed := self.memo.get(p.clone()).get(false)
+            later := (
                 self.table.contains(p.clone())
                 and self.table.get(p.clone()).get(0) > old
             )
             if not was_in or changed or later:
                 newer.append(p)
 
-        let first = if res.prereqs.length() > 0: res.prereqs[0].clone() else: ""
+        first := if res.prereqs.length() > 0: res.prereqs[0].clone() else: ""
 
         self.auto = Map[String, String]()
         self.auto.add("@", name.clone())
@@ -972,9 +972,9 @@ impl Make:
         for line in res.recipe.clone():
             self.line = line.no
 
-            let raw = try self.expand(line.text.clone())
-            let cs = raw.trim().chars()
-            let n = cs.length()
+            raw := try self.expand(line.text.clone())
+            cs := raw.trim().chars()
+            n := cs.length()
             var k = 0
             var silent = false
             var ignore = false
@@ -995,7 +995,7 @@ impl Make:
                     ignore = true
                 k += 1
 
-            let command = join_chars(cs, k, n).trim()
+            command := join_chars(cs, k, n).trim()
 
             if self.dry:
                 if command != "":
@@ -1005,7 +1005,7 @@ impl Make:
             if not silent and command != "":
                 emit(command.clone())
 
-            let status = self.simulate(command)
+            status := self.simulate(command)
 
             if status != 0:
                 if ignore:
@@ -1029,7 +1029,7 @@ impl Make:
         if self.path.contains(name.clone()):
             return error(self.cycle_error(name.clone()))
 
-        let res = self.resolve(name.clone())
+        res := self.resolve(name.clone())
 
         if not res.found:
             if self.table.contains(name.clone()):
@@ -1055,7 +1055,7 @@ impl Make:
 
         self.path.append(name.clone())
 
-        let was_in = self.table.contains(name.clone())
+        was_in := self.table.contains(name.clone())
         var old = 0
         if was_in:
             old = self.table.get(name.clone()).get(0)
@@ -1064,7 +1064,7 @@ impl Make:
         var newer = false
 
         for p in dedup(res.prereqs.clone()):
-            let c = try self.update(p.clone(), name.clone())
+            c := try self.update(p.clone(), name.clone())
             if c:
                 changed = true
             if (
@@ -1075,10 +1075,10 @@ impl Make:
                 newer = true
 
         for o in dedup(res.oprereqs.clone()):
-            let _o = try self.update(o, name.clone())
+            _o := try self.update(o, name.clone())
 
-        let _ = self.path.pop()
-        let must = (
+        _ := self.path.pop()
+        must := (
             self.is_phony(name.clone())
             or not self.table.contains(name.clone())
             or changed
@@ -1103,13 +1103,13 @@ impl Make:
         self.path.append(p.clone())
         try self.collect(p.clone())
 
-        let _ = self.path.pop()
+        _ := self.path.pop()
         self.done.append(p.clone())
         self.outl.append(p)
         return ok(unit)
 
     var fn collect(name: String) Result[Unit, Fail]:
-        let res = self.resolve(name.clone())
+        res := self.resolve(name.clone())
         for p in dedup(res.prereqs.clone()):
             try self.visit(p)
         for p in dedup(res.oprereqs.clone()):
@@ -1155,11 +1155,11 @@ impl Make:
 
     var fn cond_line(kw: String, rest: String, no: Int) Result[Unit, Fail]:
         if kw == "else":
-            let k = self.frames.length() - 1
+            k := self.frames.length() - 1
             if k < 0:
                 return error(self.fail("extraneous 'else'"))
 
-            let f = self.frames[k].clone()
+            f := self.frames[k].clone()
             if f.in_else:
                 return error(self.fail("extraneous 'else'"))
 
@@ -1172,31 +1172,31 @@ impl Make:
             if self.frames.length() == 0:
                 return error(self.fail("extraneous 'endif'"))
 
-            let _ = self.frames.pop()
+            _ := self.frames.pop()
             return ok(unit)
 
-        let parent = self.active()
+        parent := self.active()
         var on = false
 
         if parent:
             if kw == "ifdef" or kw == "ifndef":
-                let raw = try self.expand(rest.clone())
-                let defined = self.is_defined(raw.trim().clone())
+                raw := try self.expand(rest.clone())
+                defined := self.is_defined(raw.trim().clone())
 
                 on = if kw == "ifdef": defined else: not defined
             else:
-                let cs = rest.trim().chars()
-                let n = cs.length()
+                cs := rest.trim().chars()
+                n := cs.length()
                 if n < 2 or cs[0] != "(" or cs[n - 1] != ")":
                     return error(self.fail("invalid syntax in conditional"))
 
-                let parts = split_args(join_chars(cs, 1, n - 1))
+                parts := split_args(join_chars(cs, 1, n - 1))
                 if parts.length() != 2:
                     return error(self.fail("invalid syntax in conditional"))
 
-                let av = try self.expand(parts[0].trim())
-                let bv = try self.expand(parts[1].trim())
-                let same = av.trim() == bv.trim()
+                av := try self.expand(parts[0].trim())
+                bv := try self.expand(parts[1].trim())
+                same := av.trim() == bv.trim()
 
                 on = if kw == "ifeq": same else: not same
 
@@ -1206,7 +1206,7 @@ impl Make:
         return ok(unit)
 
     var fn assign(cs: List[String], eqi: Int) Result[Unit, Fail]:
-        let n = cs.length()
+        n := cs.length()
         var op = ""
         var name_end = eqi
 
@@ -1214,26 +1214,26 @@ impl Make:
             op = cs[eqi - 1].clone()
             name_end = eqi - 1
 
-        let nv = try self.expand(join_chars(cs.clone(), 0, name_end))
-        let name = nv.trim().clone()
+        nv := try self.expand(join_chars(cs.clone(), 0, name_end))
+        name := nv.trim().clone()
         if name == "":
             return error(self.fail("empty variable name"))
 
-        let value = join_chars(cs, eqi + 1, n).trim().clone()
+        value := join_chars(cs, eqi + 1, n).trim().clone()
         if self.cmdvars.contains(name.clone()):
             return ok(unit)
 
         if op == "":
             self.vars.add(name.clone(), VarDef(value: value, recursive: true))
         else if op == ":":
-            let v = try self.expand(value)
+            v := try self.expand(value)
             self.vars.add(name.clone(), VarDef(value: v, recursive: false))
         else if op == "?":
             if not self.vars.contains(name.clone()):
                 self.vars.add(name.clone(), VarDef(value: value, recursive: true))
         else:
-            if let old = self.vars.get(name.clone()).clone():
-                let sep = if old.value != "" and value != "": " " else: ""
+            if old := self.vars.get(name.clone()).clone():
+                sep := if old.value != "" and value != "": " " else: ""
 
                 if old.recursive:
                     self.vars.add(
@@ -1243,9 +1243,9 @@ impl Make:
                         )
                     )
                 else:
-                    let v = try self.expand(value)
+                    v := try self.expand(value)
 
-                    let sep2 = if old.value != "" and v != "": " " else: ""
+                    sep2 := if old.value != "" and v != "": " " else: ""
 
                     self.vars.add(
                         name.clone(),
@@ -1259,21 +1259,21 @@ impl Make:
         return ok(unit)
 
     var fn rule(cs: List[String], col: Int, no: Int) Result[Unit, Fail]:
-        let n = cs.length()
-        let semi = find_char(cs.clone(), ";", col + 1)
+        n := cs.length()
+        semi := find_char(cs.clone(), ";", col + 1)
 
-        let pre_end = if semi >= 0: semi else: n
+        pre_end := if semi >= 0: semi else: n
 
-        let tv = try self.expand(join_chars(cs.clone(), 0, col))
-        let targets = words(tv)
-        let pv = try self.expand(join_chars(cs.clone(), col + 1, pre_end))
-        let pcs = pv.chars()
-        let pl = pcs.length()
-        let bar = find_char(pcs.clone(), "|", 0)
+        tv := try self.expand(join_chars(cs.clone(), 0, col))
+        targets := words(tv)
+        pv := try self.expand(join_chars(cs.clone(), col + 1, pre_end))
+        pcs := pv.chars()
+        pl := pcs.length()
+        bar := find_char(pcs.clone(), "|", 0)
 
-        let be = if bar >= 0: bar else: pl
+        be := if bar >= 0: bar else: pl
 
-        let normal = words(join_chars(pcs.clone(), 0, be))
+        normal := words(join_chars(pcs.clone(), 0, be))
         var order = List[String]()
         if bar >= 0:
             order = words(join_chars(pcs.clone(), bar + 1, pl))
@@ -1312,7 +1312,7 @@ impl Make:
 
             if lg.text.starts_with("\t"):
                 if self.active():
-                    let body = strip_tabs(lg.text.clone())
+                    body := strip_tabs(lg.text.clone())
 
                     if body.trim() != "":
                         if not self.rule_open:
@@ -1326,17 +1326,17 @@ impl Make:
 
                 continue
 
-            let t = strip_comment(lg.text.clone()).trim().clone()
+            t := strip_comment(lg.text.clone()).trim().clone()
             if t == "":
                 continue
 
-            let cs = t.chars()
-            let n = cs.length()
-            let k = count_letters(cs.clone())
-            let kw = join_chars(cs.clone(), 0, k)
-            let rest = join_chars(cs.clone(), k, n)
+            cs := t.chars()
+            n := cs.length()
+            k := count_letters(cs.clone())
+            kw := join_chars(cs.clone(), 0, k)
+            rest := join_chars(cs.clone(), k, n)
 
-            let nxt = if k < n: cs[k].clone() else: ""
+            nxt := if k < n: cs[k].clone() else: ""
 
             if cond_plain_keyword(kw.clone()) and rest.trim() == "":
                 self.close_rule()
@@ -1361,8 +1361,8 @@ impl Make:
 
             self.close_rule()
 
-            let eqi = find_char(cs.clone(), "=", 0)
-            let col = find_col(cs.clone())
+            eqi := find_char(cs.clone(), "=", 0)
+            col := find_col(cs.clone())
 
             if eqi >= 0 and (col < 0 or col > eqi or col == eqi - 1):
                 try self.assign(cs, eqi)
@@ -1372,23 +1372,23 @@ impl Make:
                 try self.rule(cs, col, lg.no)
                 continue
 
-            let v = try self.expand(t)
+            v := try self.expand(t)
             if v.trim() != "":
                 return error(self.fail("missing separator"))
 
         self.close_rule()
 
-        let top = self.frames.length() - 1
+        top := self.frames.length() - 1
 
         if top >= 0:
-            let f = self.frames[top].clone()
+            f := self.frames[top].clone()
             return error(Fail(text: "Makefile:{f.line}: *** missing 'endif'.  Stop."))
 
         self.line = 0
         return ok(unit)
 
     var fn request(ws: List[String], line: String) Result[Unit, Fail]:
-        let cmd = ws[0].clone()
+        cmd := ws[0].clone()
         self.cmdvars = Map[String, String]()
 
         if (
@@ -1401,18 +1401,18 @@ impl Make:
             var goals = List[String]()
 
             if cmd == "expand":
-                let tc = line.trim().chars()
-                let text = join_chars(tc.clone(), 6, tc.length()).trim()
+                tc := line.trim().chars()
+                text := join_chars(tc.clone(), 6, tc.length()).trim()
                 try self.parse(self.mk_lines.clone())
 
-                let v = try self.expand(text)
+                v := try self.expand(text)
                 emit("[{v}]")
                 return ok(unit)
 
             for k in 1..ws.length():
-                let wc = ws[k].chars()
-                let wn = wc.length()
-                let eq = find_char(wc.clone(), "=", 1)
+                wc := ws[k].chars()
+                wn := wc.length()
+                eq := find_char(wc.clone(), "=", 1)
 
                 if eq >= 1:
                     self.cmdvars.add(
@@ -1424,7 +1424,7 @@ impl Make:
             if cmd == "targets":
                 try self.parse(self.mk_lines.clone())
 
-                let d = self.default_goal()
+                d := self.default_goal()
                 if d != "":
                     emit("default: " + d)
                 for t in self.order.clone():
@@ -1450,7 +1450,7 @@ impl Make:
 
                 try self.parse(self.mk_lines.clone())
 
-                let target = goals[0].clone()
+                target := goals[0].clone()
                 self.path.append(target.clone())
                 try self.collect(target)
                 if self.outl.length() == 0:
@@ -1465,7 +1465,7 @@ impl Make:
             var gl = goals
 
             if gl.length() == 0:
-                let d = self.default_goal()
+                d := self.default_goal()
 
                 if d == "":
                     emit("make: *** No targets.  Stop.")
@@ -1474,12 +1474,12 @@ impl Make:
                 gl.append(d)
 
             for g in gl:
-                let before = self.recipes_run
-                let _g = try self.update(g.clone(), "")
+                before := self.recipes_run
+                _g := try self.update(g.clone(), "")
 
                 if self.recipes_run == before:
-                    let res = self.resolve(g.clone())
-                    let is_file = (
+                    res := self.resolve(g.clone())
+                    is_file := (
                         not self.is_phony(g.clone())
                         and self.table.contains(g.clone())
                     )
@@ -1492,7 +1492,7 @@ impl Make:
             return ok(unit)
 
         if cmd == "files":
-            let names = self.table.keys().sorted()
+            names := self.table.keys().sorted()
             if names.length() == 0:
                 emit("(no files)")
             for n in names:
@@ -1506,7 +1506,7 @@ impl Make:
                 return ok(unit)
 
             if ws.length() == 3 and is_digits(ws[2].clone()):
-                if let m = ws[2].parse_int():
+                if m := ws[2].parse_int():
                     self.table.add(ws[1].clone(), m)
                     if m > self.clock:
                         self.clock = m
@@ -1540,14 +1540,14 @@ fn new_make(lines: List[String]) Make:
     )
 
 export fn main() Int:
-    let all = read_lines(stdin()).get()
+    all := read_lines(stdin()).get()
     var seps = 0
     var mk_lines = List[String]()
     var tb = List[String]()
     var rq = List[String]()
 
     for raw in all:
-        let l = strip_cr(raw.clone())
+        l := strip_cr(raw.clone())
 
         if l == "====" and seps < 2:
             seps += 1
@@ -1561,26 +1561,26 @@ export fn main() Int:
     var mk = new_make(mk_lines)
 
     for l in tb:
-        let ws = words(l)
+        ws := words(l)
 
         if ws.length() == 2:
-            if let m = ws[1].parse_int():
+            if m := ws[1].parse_int():
                 mk.table.add(ws[0].clone(), m)
                 if m > mk.clock:
                     mk.clock = m
 
     for raw in rq:
-        let line = strip_cr(raw.clone()).trim_end()
-        let ws = words(line.clone())
+        line := strip_cr(raw.clone()).trim_end()
+        ws := words(line.clone())
         if ws.length() == 0 or ws[0].starts_with("#"):
             continue
 
         emit("> " + line)
 
-        let r = mk.request(ws, line)
+        r := mk.request(ws, line)
 
         if r.is_error():
-            let e = r.err()
+            e := r.err()
             if e.text != "":
                 emit(e.text)
 

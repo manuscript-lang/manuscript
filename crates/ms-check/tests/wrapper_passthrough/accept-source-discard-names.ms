@@ -28,14 +28,14 @@ impl Counter[T]:
 
 fn demo() Int:
     var counter = Counter(Marker(1), 0)
-    let remove_action = counter.remove
+    remove_action := counter.remove
     remove_action()
-    let clear_action = counter.clear
+    clear_action := counter.clear
     clear_action()
-    let set_action = counter.set
+    set_action := counter.set
     set_action()
-    let add_action = counter.add
+    add_action := counter.add
     add_action()
-    let splice_action = counter.splice
+    splice_action := counter.splice
     splice_action()
     return counter.count

@@ -46,10 +46,10 @@ impl Source[WebSocketMessage] for WebSocketSource:
     // Waits for the next complete message; none once the peer closes normally.
     // A larger message is `EOVERFLOW` and a malformed text message `EBADMSG`; after any failure the connection is closed.
     var fn next() WebSocketMessage?!:
-        let raw = try msstd_websocket_receive(self.native)
+        raw := try msstd_websocket_receive(self.native)
 
-        if let message = raw:
-            let kind = if message.text: WebSocketKind.Text else: WebSocketKind.Binary
+        if message := raw:
+            kind := if message.text: WebSocketKind.Text else: WebSocketKind.Binary
             return ok(WebSocketMessage(message.data, kind))
 
         return ok(none)
@@ -95,8 +95,8 @@ impl Closeable for WebSocket:
 
 // Wraps a native WebSocket into a `WebSocket`.
 export fn web_socket_from(native: NativeWebSocket) WebSocket:
-    let subprotocol = msstd_websocket_subprotocol(native)
-    let other = msstd_websocket_share(native)
+    subprotocol := msstd_websocket_subprotocol(native)
+    other := msstd_websocket_share(native)
     return WebSocket(
         input: ReadStream[WebSocketMessage](WebSocketSource(native)),
         output: WriteStream[WebSocketMessage](WebSocketSink(other)),

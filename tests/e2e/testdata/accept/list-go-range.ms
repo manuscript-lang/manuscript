@@ -5,7 +5,7 @@ fn replace[T](var values: List[T], value: T) Unit:
 
 test "range iterates a snapshot while the live list changes":
     var values = [1, 2, 3]
-    let clone = values.clone()
+    clone := values.clone()
     var seen: List[Int] = []
     var index = 0
 
@@ -43,8 +43,8 @@ test "append growth does not change the iterated snapshot":
 
 test "callbacks run over snapshots and stored methods keep their receiver copy":
     var values = [1, 2, 3]
-    let clone = values.clone()
-    let each = values.clone().for_each
+    clone := values.clone()
+    each := values.clone().for_each
     var seen: List[Int] = []
 
     each(
@@ -59,7 +59,7 @@ test "callbacks run over snapshots and stored methods keep their receiver copy":
 
     var mapped = [1, 2, 3]
 
-    let output = mapped.clone().map(
+    output := mapped.clone().map(
         fn value:
             mapped.fill(9, 0, 3)
             return value + 1
@@ -151,10 +151,10 @@ type Node:
     children: List[Node]
 
 test "clone slice and nested values keep their own contracts":
-    let child = Child(1)
+    child := Child(1)
     var values = [child.clone(), child.clone()]
-    let clone = values.clone()
-    let slice = values.slice(0, 2).get().clone()
+    clone := values.clone()
+    slice := values.slice(0, 2).get().clone()
     var seen: List[Int] = []
 
     (

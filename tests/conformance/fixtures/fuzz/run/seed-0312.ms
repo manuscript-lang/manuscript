@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (
+    i1 := (
         ((33 + 41) - (1 + (-127738)))
         + (((-804482) - (-754211789283)) + (581713 - 835975))
     )
     say("i1 = {i1}")
 
-    let l2 = [(-1), (-22)]
+    l2 := [(-1), (-22)]
     say("l2 = {l2} len {l2.length()}")
 
-    let i3 = 48
+    i3 := 48
     say("i3 = {i3}")
 
-    let b4 = ((false or false) and ("gamma".upper() != ("{i3}:" + "a")))
+    b4 := ((false or false) and ("gamma".upper() != ("{i3}:" + "a")))
     say("b4 = {b4}")
 
-    let l5 = [16]
+    l5 := [16]
     say("l5 = {l5} len {l5.length()}")
 
     if "a".ends_with("alpha"):
@@ -32,6 +32,6 @@ export fn main() Int:
     else:
         say(("beta" + "emoji 😀"))
 
-    let f6 = (71.052 + ((569.273 / 255.25) * (621.171 - 544.25)))
+    f6 := (71.052 + ((569.273 / 255.25) * (621.171 - 544.25)))
     say("f6 = {f6}")
     return 0

@@ -20,7 +20,7 @@ test "unary signs preserve sized literal context":
     try expect_equal(add(1).to_int(), 2)
     try expect_equal(rounded().to_float64(), 1.0000001192092896)
 
-    let values: List[Int8] = [+ 1, + 2]
+    values: List[Int8] = [+ 1, + 2]
     try expect_true(values == [+ 1, + 2])
 
 fn negative_minimum() Int8: -(-128)
@@ -28,9 +28,9 @@ fn negative_minimum() Int8: -(-128)
 fn negative_signed_minimum() Int8: -(+ (-128))
 
 test "nested sign overflow still faults":
-    (try expect_fault(fn: let _ignored = negative_minimum())) | try expect_contains(
+    (try expect_fault(fn: _ignored := negative_minimum())) | try expect_contains(
         "overflow"
     )
-    (try expect_fault(fn: let _ignored = negative_signed_minimum())) | try expect_contains(
+    (try expect_fault(fn: _ignored := negative_signed_minimum())) | try expect_contains(
         "overflow"
     )

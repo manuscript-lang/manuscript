@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = ("" + "emoji 😀").upper().replace("line\nbreak", "delta")
+    s1 := ("" + "emoji 😀").upper().replace("line\nbreak", "delta")
     say("s1 = [{s1}]")
 
     var acc2 = 0
@@ -17,27 +17,27 @@ export fn main() Int:
         acc2 += i * 0
     say("acc2 = {acc2}")
 
-    let i3 = (-1)
+    i3 := (-1)
     say("i3 = {i3}")
 
-    let i4 = ((-47) + ((i3 * (-210438)) + (42 * 28)))
+    i4 := ((-47) + ((i3 * (-210438)) + (42 * 28)))
     say("i4 = {i4}")
 
-    let b5 = (false or ((true and false) or true))
+    b5 := (false or ((true and false) or true))
     say("b5 = {b5}")
 
-    let b6 = (b5 or ((false and b5) and (39 >= (-14))))
+    b6 := (b5 or ((false and b5) and (39 >= (-14))))
     say("b6 = {b6}")
 
-    let f7 = (((7.0e13 + 54.610) - 0.0) + 1.5)
+    f7 := (((7.0e13 + 54.610) - 0.0) + 1.5)
     say("f7 = {f7}")
 
-    let s8 = s1.replace(s1, "quote\"d")
+    s8 := s1.replace(s1, "quote\"d")
     say("s8 = [{s8}]")
 
-    let f9 = f7
+    f9 := f7
     say("f9 = {f9}")
 
-    let f10 = 6.0e4
+    f10 := 6.0e4
     say("f10 = {f10}")
     return 0

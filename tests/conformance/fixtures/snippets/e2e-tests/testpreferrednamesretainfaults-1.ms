@@ -6,7 +6,7 @@ test "new set":
 
 test "bound set":
     var items = [1]
-    let set = items.set
+    set := items.set
     set(-2, 2)
 
 test "new remove":
@@ -14,7 +14,7 @@ test "new remove":
 
 test "bound remove":
     var items = [1]
-    let remove = items.remove
+    remove := items.remove
     remove(-2)
 
 test "empty set":

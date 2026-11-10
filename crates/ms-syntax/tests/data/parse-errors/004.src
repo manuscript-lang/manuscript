@@ -34,11 +34,11 @@ fn deliberate(result: Result[Int, Failure[String]]) String:
         ok(_): return "ok"
 
 test "a payload identifier binds every alternative without changing semantics":
-    let denied: Result[Int, Failure[String]] = error(
+    denied: Result[Int, Failure[String]] = error(
         Failure[String].Denied("permission denied")
     )
-    let missing: Result[Int, Failure[String]] = error(Failure[String].NotFound)
-    let success: Result[Int, Failure[String]] = ok(7)
+    missing: Result[Int, Failure[String]] = error(Failure[String].NotFound)
+    success: Result[Int, Failure[String]] = ok(7)
     try expect_false(
         (
             captured(denied) != 1

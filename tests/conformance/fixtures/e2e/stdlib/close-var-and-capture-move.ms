@@ -18,7 +18,7 @@ fn open_handle(name: String) Door:
     return Door(name)
 
 fn consume(d: Door) Int:
-    let owned = d
+    owned := d
     return owned.id()
 
 fn var_unmoved() Int:
@@ -47,7 +47,7 @@ fn var_move_reassign(c: Bool) Int:
     return h.id()
 
 fn captured(c: Bool) fn() Int:
-    let h = open_handle("captured")
+    h := open_handle("captured")
     if c:
         return fn: h.id()
 
@@ -67,8 +67,8 @@ fn main() Unit:
     var_move_reassign(false)
     print("--captured true")
 
-    let _f = captured(true)
+    _f := captured(true)
     print("--captured false")
 
-    let _g = captured(false)
+    _g := captured(false)
     print("--end")

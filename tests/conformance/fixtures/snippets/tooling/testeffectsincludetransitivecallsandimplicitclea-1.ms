@@ -15,15 +15,15 @@ fn pure() Int:
     return 1
 
 fn direct(resource: Resource) Unit:
-    let _item = resource
+    _item := resource
     return
 
 fn transitive(resource: Resource) Unit:
     direct(resource: resource)
 
 fn nested(resource: Resource) Unit:
-    let callback = fn(item: Resource) Unit:
-        let _held = item
+    callback := fn(item: Resource) Unit:
+        _held := item
         return
 
     callback(resource)

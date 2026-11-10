@@ -1,23 +1,23 @@
 import stdin, stdout, read_line from "@std/io.ms"
 
-let LOWER = "abcdefghijklmnopqrstuvwxyz"
-let UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-let DIGITS = "0123456789"
+LOWER := "abcdefghijklmnopqrstuvwxyz"
+UPPER := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+DIGITS := "0123456789"
 
 // Index of an ASCII letter in the alphabet (case-insensitive), or -1.
 fn letter_index(c: String) Int:
-    if let i = LOWER.index_of(c):
+    if i := LOWER.index_of(c):
         return i
-    if let i = UPPER.index_of(c):
+    if i := UPPER.index_of(c):
         return i
 
     return -1
 
 // Moves a letter forward by `by` positions (0 to 25); other characters are copied.
 fn rotate(c: String, by: Int) String:
-    if let i = LOWER.index_of(c):
+    if i := LOWER.index_of(c):
         return LOWER.get((i + by) % 26)
-    if let i = UPPER.index_of(c):
+    if i := UPPER.index_of(c):
         return UPPER.get((i + by) % 26)
 
     return c
@@ -27,9 +27,9 @@ fn mod26(n: Int) Int:
 
 // Parses an optional leading `-` and 1 to 7 decimal digits.
 fn caesar_key(key: String) Optional[Int]:
-    let neg = key.starts_with("-")
+    neg := key.starts_with("-")
 
-    let body = if neg: key.drop(1) else: key
+    body := if neg: key.drop(1) else: key
 
     if body.is_empty() or body.scalar_length() > 7:
         return none
@@ -37,7 +37,7 @@ fn caesar_key(key: String) Optional[Int]:
     var n = 0
 
     for c in body.chars():
-        if let d = DIGITS.index_of(c):
+        if d := DIGITS.index_of(c):
             n = n * 10 + d
         else:
             return none
@@ -52,14 +52,14 @@ fn is_blank(line: String) Bool:
 
 // Returns the output line for one non-blank command line.
 fn run(line: String) String:
-    let parts = line.split(" ")
+    parts := line.split(" ")
     if parts.length() < 4:
         return "error: bad command"
 
-    let cipher = parts[0]
-    let mode = parts[1]
-    let key = parts[2]
-    let text = parts.slice(3, parts.length()).get().join(" ")
+    cipher := parts[0]
+    mode := parts[1]
+    key := parts[2]
+    text := parts.slice(3, parts.length()).get().join(" ")
     if text.is_empty():
         return "error: bad command"
     if cipher != "caesar" and cipher != "vigenere":
@@ -67,12 +67,12 @@ fn run(line: String) String:
     if mode != "enc" and mode != "dec":
         return "error: bad mode"
 
-    let decrypt = mode == "dec"
+    decrypt := mode == "dec"
     var out = ""
 
     if cipher == "caesar":
-        if let k = caesar_key(key.clone()):
-            let shift = mod26(if decrypt: -k else: k)
+        if k := caesar_key(key.clone()):
+            shift := mod26(if decrypt: -k else: k)
             for c in text.chars():
                 out += rotate(c, shift)
             return out
@@ -85,7 +85,7 @@ fn run(line: String) String:
     var shifts = List[Int]()
 
     for k in key.chars():
-        let i = letter_index(k)
+        i := letter_index(k)
         if i < 0:
             return "error: bad key"
 
@@ -104,12 +104,12 @@ fn run(line: String) String:
 
 export fn main() Int:
     var out = stdout()
-    let input = stdin()
+    input := stdin()
 
     while true:
-        let got = read_line(input).get()
+        got := read_line(input).get()
 
-        if let line = got:
+        if line := got:
             if is_blank(line):
                 continue
 

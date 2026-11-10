@@ -1,4 +1,4 @@
-diag parse 3:1:95 end=3:6:100 fix=- "expected a module declaration or import, found name 'mport'; top level holds only import, let constants, fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn"
+diag parse 3:1:95 end=3:6:100 fix=- "expected a module declaration or import, found name 'mport'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn"
 import 1:1:0 1:8:7 "first" "./first.ms"
 import 1:1:0 1:15:14 "first_generic" "./first.ms"
 import 2:1:46 2:8:53 "second" "./second.ms"

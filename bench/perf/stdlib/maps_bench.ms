@@ -35,7 +35,7 @@ bench "map.record_key_get":
 
 bench "map.string_put_get":
     fn work() Result[Unit, Error]:
-        let keys = words(50000)
+        keys := words(50000)
         var m = Map[String, Int]()
         for k in keys:
             m.add(k.clone(), 1)
@@ -49,7 +49,7 @@ bench "map.string_put_get":
 
 bench "map.get_let":
     fn work() Result[Unit, Error]:
-        let keys = words(50000)
+        keys := words(50000)
         var m = Map[String, String]()
         for k in keys:
             m.add(k.clone(), k.clone())
@@ -57,7 +57,7 @@ bench "map.get_let":
         var n = 0
 
         for k in keys:
-            let found = m.get(k)
+            found := m.get(k)
             if found.is_some():
                 n += found.get().length()
 
@@ -67,14 +67,14 @@ bench "map.get_let":
 
 bench "map.get_if_let":
     fn work() Result[Unit, Error]:
-        let keys = words(50000)
+        keys := words(50000)
         var m = Map[String, String]()
         for k in keys:
             m.add(k.clone(), k.clone())
 
         var n = 0
         for k in keys:
-            if let v = m.get(k):
+            if v := m.get(k):
                 n += v.length()
         return keep(n)
 
@@ -82,7 +82,7 @@ bench "map.get_if_let":
 
 bench "map.get_chain":
     fn work() Result[Unit, Error]:
-        let keys = words(50000)
+        keys := words(50000)
         var m = Map[String, String]()
         for k in keys:
             m.add(k.clone(), k.clone())
@@ -96,7 +96,7 @@ bench "map.get_chain":
 
 bench "map.get_or":
     fn work() Result[Unit, Error]:
-        let keys = words(50000)
+        keys := words(50000)
         var m = Map[String, String]()
         for k in keys:
             m.add(k.clone(), k.clone())

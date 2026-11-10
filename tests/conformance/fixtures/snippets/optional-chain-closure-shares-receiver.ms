@@ -18,7 +18,7 @@ fn show(x: Int?) Unit:
 
 fn clos() Unit:
     var c: C? = C(1)
-    let f = fn: c?.bump()
+    f := fn: c?.bump()
     show(f())
     show(f())
     show(c?.get())
@@ -28,7 +28,7 @@ fn twice() Unit:
     show(c?.bump())
     show(c?.bump())
 
-    let a = c?.bump()
+    a := c?.bump()
     show(a)
 
     var xs: List[C?] = [C(1), none]

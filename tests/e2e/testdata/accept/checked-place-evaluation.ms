@@ -15,7 +15,7 @@ impl Cell:
         other += 10
 
 fn next(var calls: Int) Int:
-    let selected = calls % 2
+    selected := calls % 2
     calls += 1
     return selected
 
@@ -39,18 +39,18 @@ fn nested_try(var rows: List[List[Int]], var events: List[Int]) Unit!:
 
 test "an earlier list fault prevents a later index":
     var rows = [[0]]
-    let message = try expect_fault(fn: rows[9][later_fault()] = 7)
+    message := try expect_fault(fn: rows[9][later_fault()] = 7)
     try expect_contains(message, "out of range")
 
 test "an earlier map fault prevents a later index":
     var rows: Map[String, List[Int]] = {"present": [0]}
-    let message = try expect_fault(fn: rows["missing"][later_fault()] = 7)
+    message := try expect_fault(fn: rows["missing"][later_fault()] = 7)
     try expect_contains(message, "map key not found")
 
 test "an earlier receiver fault precedes a later try exit":
     var rows = [[0]]
     var events: List[Int] = []
-    let _ = try expect_fault(fn: let _ = nested_try(var rows, var events))
+    _ := try expect_fault(fn: _ := nested_try(var rows, var events))
     try expect_equal(events, [])
 
 test "a changing source receiver selects its cell once":
@@ -82,12 +82,12 @@ test "implicit and explicit changing arguments retain their own selections":
 
 test "a native receiver fault precedes its argument":
     var rows = [[0]]
-    let message = try expect_fault(fn: rows[9].append(later_fault()))
+    message := try expect_fault(fn: rows[9].append(later_fault()))
     try expect_contains(message, "out of range")
 
 test "a source receiver fault precedes its argument":
     var cells = [Cell(1)]
-    let message = try expect_fault(fn: cells[9].add(later_fault()))
+    message := try expect_fault(fn: cells[9].add(later_fault()))
     try expect_contains(message, "out of range")
 
 interface Change:
@@ -101,7 +101,7 @@ impl Change for Adder:
         value += amount
 
 test "a contract var argument retains its changing index":
-    let change: Change = Adder()
+    change: Change = Adder()
     var values = [1, 20]
     var calls = 0
     change.apply(var values[next(var calls)], 5)
@@ -109,7 +109,7 @@ test "a contract var argument retains its changing index":
     try expect_equal(values, [6, 20])
 
 test "a function value var argument retains its changing index":
-    let change: fn(var Int, Int) Unit = bump
+    change: fn(var Int, Int) Unit = bump
     var values = [1, 20]
     var calls = 0
     change(var values[next(var calls)], 5)
@@ -130,7 +130,7 @@ test "an indexed map fast path evaluates its receiver before its key":
 test "an indexed map fast path faults before evaluating its key":
     var maps: List[Map[String, Int]] = [{}]
     var events: List[Int] = []
-    let _ = try expect_fault(fn: maps[9].add(key(var events), 9))
+    _ := try expect_fault(fn: maps[9].add(key(var events), 9))
     try expect_equal(events, [])
 
 fn owned_key(var calls: Int) String:
@@ -160,22 +160,22 @@ test "a nested mutable call inside an index keeps both selections":
 
 test "a nested field assignment stops at its first invalid receiver":
     var cells = [[Cell(1)]]
-    let message = try expect_fault(fn: cells[9][later_fault()].value = 7)
+    message := try expect_fault(fn: cells[9][later_fault()].value = 7)
     try expect_contains(message, "out of range")
 
 test "an explicit var argument stops at the first invalid receiver":
     var rows = [[0]]
-    let message = try expect_fault(fn: bump(var rows[9][later_fault()], 7))
+    message := try expect_fault(fn: bump(var rows[9][later_fault()], 7))
     try expect_contains(message, "out of range")
 
 test "an implicit nested source receiver stops before its later index":
     var cells = [[Cell(1)]]
-    let message = try expect_fault(fn: cells[9][later_fault()].add(7))
+    message := try expect_fault(fn: cells[9][later_fault()].add(7))
     try expect_contains(message, "out of range")
 
 test "a borrowed key fast path selects its indexed receiver first":
     var maps: List[Map[String, Int]] = [{}]
-    let key = "key"
+    key := "key"
     var events: List[Int] = []
     maps[mark(var events, 1)].add(key.clone(), argument(var events))
     try expect_equal(events, [1, 2])
@@ -183,8 +183,8 @@ test "a borrowed key fast path selects its indexed receiver first":
 
 test "a borrowed key fast path faults before its value argument":
     var maps: List[Map[String, Int]] = [{}]
-    let key = "key"
-    let message = try expect_fault(fn: maps[9].add(key.clone(), later_fault()))
+    key := "key"
+    message := try expect_fault(fn: maps[9].add(key.clone(), later_fault()))
     try expect_contains(message, "out of range")
 
 fn later_fault() Int:

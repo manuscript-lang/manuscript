@@ -16,25 +16,23 @@ type Failure[T]:
     detail: T
 
 test "callback inference retains captures and contextual metadata":
-    let offset = 7
-    let values = [1, 2].map(
-        fn outer: [3, 4].map(fn inner: return outer + inner + offset)
-    )
+    offset := 7
+    values := [1, 2].map(fn outer: [3, 4].map(fn inner: return outer + inner + offset))
     try expect_equal(values, [[11, 12], [12, 13]])
 
-    let callable: fn(Int) fn(Int) Int = apply(
+    callable: fn(Int) fn(Int) Int = apply(
         value: 1, transform: fn base: fn item: fn extra: item + extra + base
     )
     try expect_equal(callable(3)(4), 8)
 
-    let callback = Callback(fn(item: Int = 4): item + offset)
+    callback := Callback(fn(item: Int = 4): item + offset)
     try expect_equal(callback.transform(3), 10)
     try expect_equal(optional(value: 5, transform: fn item: item + offset), 12)
 
-    let missing = choose(first: fn: none, second: fn() Int?: 3)
+    missing := choose(first: fn: none, second: fn() Int?: 3)
     try expect_false(missing.is_some())
 
-    let failure = with_result(
+    failure := with_result(
         fn:
             if true: return error(Error("expected"))
 
@@ -43,9 +41,7 @@ test "callback inference retains captures and contextual metadata":
 
     try expect_equal(failure, Result[Int, Error].error(Error("expected")))
 
-    let failed: Int!Failure[Int] = apply(
-        value: 9, transform: fn item: error(Failure(item))
-    )
+    failed: Int!Failure[Int] = apply(value: 9, transform: fn item: error(Failure(item)))
     try expect_false(failed.is_ok())
     try expect_equal(failed.err().detail, 9)
 
@@ -54,17 +50,17 @@ fn absent[T]() T?: none
 fn from_callback[T](factory: fn() T) T: factory()
 
 test "later returns repair incomplete and convertible evidence":
-    let value = from_callback(
+    value := from_callback(
         fn:
             if true: return absent()
 
-            let one: Int? = 1
+            one: Int? = 1
             return one
     )
 
     try expect_false(value.is_some())
 
-    let cause = from_callback(
+    cause := from_callback(
         fn:
             if false: return Failure(1)
 
@@ -76,9 +72,9 @@ test "later returns repair incomplete and convertible evidence":
 fn operation() Int!Error: ok(4)
 
 test "try rechecks the inferred enclosing result":
-    let value = from_callback(
+    value := from_callback(
         fn:
-            let number = try operation()
+            number := try operation()
             return Result[Int, Error].ok(number)
     )
 

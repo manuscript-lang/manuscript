@@ -24,10 +24,10 @@ A literal is delimited by `"` and fits on one source line, interpolations includ
 Hex digits may be either case. Scalars above U+10FFFF, surrogates U+D800 to U+DFFF, unknown escapes, an unescaped closing brace, and unterminated literals are compile errors. `\u{0}` is a valid null character.
 
 ```manuscript
-let quote = "She said \"hello\"."
-let template = "Literal braces: \{name\}"
-let lines = "first\nsecond"
-let symbol = "\u{1F642}"
+quote := "She said \"hello\"."
+template := "Literal braces: \{name\}"
+lines := "first\nsecond"
+symbol := "\u{1F642}"
 ```
 
 ## Multi-line and raw literals
@@ -37,12 +37,12 @@ let symbol = "\u{1F642}"
 `r"""` opens raw text with the same layout where every character is literal: no escapes, no interpolation, braces and backslashes included. Use it for JSON, regular expressions, and fixtures.
 
 ```manuscript
-let name = "Ada"
-let greeting = """
+name := "Ada"
+greeting := """
     Hello, {name}!
       Indented line, "quoted".
     """
-let config = r"""
+config := r"""
     {"name": "ada", "tags": ["a", "b"], "pattern": "\d+"}
     """
 ```
@@ -56,10 +56,10 @@ Strings are never normalized: `"é"` and `"e\u{301}"` are distinct values. [Equa
 Every `"..."` literal interpolates: an unescaped `{` opens an embedded [expression](expressions.md) closed by its matching `}`, and there is no `f` prefix. Calls and nested literals are allowed. Empty expressions, format suffixes, comments, and newlines are rejected. Escape both braces for JSON-like text: `"\{\"a\": 1\}"`.
 
 ```manuscript
-let name = "Ada"
-let count = 3
-let greeting = "Welcome, {name}!"
-let calculated = "Next: {count + 1}"
+name := "Ada"
+count := 3
+greeting := "Welcome, {name}!"
+calculated := "Next: {count + 1}"
 ```
 
 Embedded expressions evaluate once, left to right, each formatted before the next. Propagation or a fault stops the rest. Every value is formattable using the same conversion as `to_string()`; interpolation adds no implicit conversions elsewhere.
@@ -73,11 +73,11 @@ fn text[T](value: T) String:
     return value.to_string()
 
 test "string conversion":
-    let count = 3
-    let convert: fn() String = count.to_string
-    let _direct = count.to_string()
-    let _bound = convert()
-    let _embedded = "{count}"
+    count := 3
+    convert: fn() String = count.to_string
+    _direct := count.to_string()
+    _bound := convert()
+    _embedded := "{count}"
 ```
 
 Each conversion produces `"3"`. Passing an Int to a String parameter still needs `.to_string()`.
@@ -148,7 +148,7 @@ test "explicit byte conversion":
         return panic("check failed")
     if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")
-    let invalid: String? = none
+    invalid: String? = none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
     if not ("-007".parse_int() == -7):
@@ -183,7 +183,7 @@ test "binary codecs":
     var out = BytesBuilder()
     out.append_uint16_be(258)
     out.append_float64_le(1.5)
-    let data = out.build()
+    data := out.build()
     try expect_equal(try data.uint16_be(0), 258)
     try expect_equal(try data.float64_le(2), 1.5)
 ```

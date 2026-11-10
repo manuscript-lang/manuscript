@@ -28,12 +28,12 @@ test "peek does not move and the end reads none":
 
 test "marks slice and rewind on scalar boundaries":
     var at = cursor("héllo wörld")
-    let start = at.offset()
+    start := at.offset()
     while not at.is_done():
         if at.read().get() == " ": break
     expect_equal(at.since(start), "héllo ") | try
 
-    let word = at.offset()
+    word := at.offset()
     at.read()
     at.read()
     expect_equal(at.since(word), "wö") | try
@@ -42,16 +42,16 @@ test "marks slice and rewind on scalar boundaries":
     expect_equal(at.since(start), "h") | try
 
 fn check_since(at: TextCursor) Unit:
-    let _text = at.since(1)
+    _text := at.since(1)
 
 test "a mark inside a scalar or past the end faults":
     var at = cursor("é")
-    let _a = expect_fault(fn: at.seek(1)) | try
-    let _b = expect_fault(fn: at.seek(3)) | try
-    let _c = expect_fault(fn: check_since(at)) | try
+    _a := expect_fault(fn: at.seek(1)) | try
+    _b := expect_fault(fn: at.seek(3)) | try
+    _c := expect_fault(fn: check_since(at)) | try
 
 test "a long non-ASCII scan is linear":
-    let text = "héllo wörld ünï ".repeat(6250).get("")
+    text := "héllo wörld ünï ".repeat(6250).get("")
     var at = cursor(text)
     var found = 0
     while not at.is_done():

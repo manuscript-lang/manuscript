@@ -3,120 +3,120 @@ import Bytes from "@std/bytes.ms"
 
 // Value kinds. A value is a copyable (kind, n) pair; heap objects live in
 // the Heap arenas and `n` is an index into the matching arena.
-let K_VOID = 0
-let K_BOOL = 1
-let K_INT = 2
-let K_NIL = 3
-let K_PAIR = 4
-let K_STR = 5
-let K_SYM = 6
-let K_PRIM = 7
-let K_CLO = 8
+K_VOID := 0
+K_BOOL := 1
+K_INT := 2
+K_NIL := 3
+K_PAIR := 4
+K_STR := 5
+K_SYM := 6
+K_PRIM := 7
+K_CLO := 8
 // Special forms are interned first, so their symbol ids are these constants.
 // Ids below NSPECIAL are special form keywords.
-let S_QUOTE = 0
-let S_IF = 1
-let S_DEFINE = 2
-let S_SET = 3
-let S_LAMBDA = 4
-let S_BEGIN = 5
-let S_LET = 6
-let S_LETSTAR = 7
-let S_LETREC = 8
-let S_COND = 9
-let S_AND = 10
-let S_OR = 11
-let S_WHEN = 12
-let S_UNLESS = 13
-let S_TRY = 14
-let S_ELSE = 15
-let NSPECIAL = 15
+S_QUOTE := 0
+S_IF := 1
+S_DEFINE := 2
+S_SET := 3
+S_LAMBDA := 4
+S_BEGIN := 5
+S_LET := 6
+S_LETSTAR := 7
+S_LETREC := 8
+S_COND := 9
+S_AND := 10
+S_OR := 11
+S_WHEN := 12
+S_UNLESS := 13
+S_TRY := 14
+S_ELSE := 15
+NSPECIAL := 15
 // Primitive codes, in registration order (see reg_prims).
-let P_ADD = 0
-let P_SUB = 1
-let P_MUL = 2
-let P_QUOT = 3
-let P_REM = 4
-let P_MOD = 5
-let P_ABS = 6
-let P_MIN = 7
-let P_MAX = 8
-let P_NUMEQ = 9
-let P_LT = 10
-let P_GT = 11
-let P_LE = 12
-let P_GE = 13
-let P_ZERO = 14
-let P_EVEN = 15
-let P_ODD = 16
-let P_NOT = 17
-let P_NULL = 18
-let P_PAIRP = 19
-let P_LISTP = 20
-let P_NUMBERP = 21
-let P_STRINGP = 22
-let P_SYMBOLP = 23
-let P_BOOLP = 24
-let P_PROCP = 25
-let P_EQ = 26
-let P_EQUAL = 27
-let P_CONS = 28
-let P_CAR = 29
-let P_CDR = 30
-let P_CADR = 31
-let P_CDDR = 32
-let P_CADDR = 33
-let P_SETCAR = 34
-let P_SETCDR = 35
-let P_LIST = 36
-let P_LENGTH = 37
-let P_APPEND = 38
-let P_REVERSE = 39
-let P_LISTREF = 40
-let P_LISTTAIL = 41
-let P_RANGE = 42
-let P_ASSOC = 43
-let P_MEMBER = 44
-let P_MAP = 45
-let P_FOREACH = 46
-let P_FILTER = 47
-let P_FOLD = 48
-let P_FOLDR = 49
-let P_APPLY = 50
-let P_SORT = 51
-let P_STRLEN = 52
-let P_STRAPPEND = 53
-let P_SUBSTRING = 54
-let P_STRREF = 55
-let P_STREQ = 56
-let P_STRLT = 57
-let P_UPCASE = 58
-let P_DOWNCASE = 59
-let P_STR2NUM = 60
-let P_NUM2STR = 61
-let P_STR2SYM = 62
-let P_SYM2STR = 63
-let P_STR2LIST = 64
-let P_LIST2STR = 65
-let P_STRJOIN = 66
-let P_STRSPLIT = 67
-let P_STRCONTAINS = 68
-let P_DISPLAY = 69
-let P_WRITE = 70
-let P_NEWLINE = 71
-let P_VOID = 72
-let P_ERROR = 73
+P_ADD := 0
+P_SUB := 1
+P_MUL := 2
+P_QUOT := 3
+P_REM := 4
+P_MOD := 5
+P_ABS := 6
+P_MIN := 7
+P_MAX := 8
+P_NUMEQ := 9
+P_LT := 10
+P_GT := 11
+P_LE := 12
+P_GE := 13
+P_ZERO := 14
+P_EVEN := 15
+P_ODD := 16
+P_NOT := 17
+P_NULL := 18
+P_PAIRP := 19
+P_LISTP := 20
+P_NUMBERP := 21
+P_STRINGP := 22
+P_SYMBOLP := 23
+P_BOOLP := 24
+P_PROCP := 25
+P_EQ := 26
+P_EQUAL := 27
+P_CONS := 28
+P_CAR := 29
+P_CDR := 30
+P_CADR := 31
+P_CDDR := 32
+P_CADDR := 33
+P_SETCAR := 34
+P_SETCDR := 35
+P_LIST := 36
+P_LENGTH := 37
+P_APPEND := 38
+P_REVERSE := 39
+P_LISTREF := 40
+P_LISTTAIL := 41
+P_RANGE := 42
+P_ASSOC := 43
+P_MEMBER := 44
+P_MAP := 45
+P_FOREACH := 46
+P_FILTER := 47
+P_FOLD := 48
+P_FOLDR := 49
+P_APPLY := 50
+P_SORT := 51
+P_STRLEN := 52
+P_STRAPPEND := 53
+P_SUBSTRING := 54
+P_STRREF := 55
+P_STREQ := 56
+P_STRLT := 57
+P_UPCASE := 58
+P_DOWNCASE := 59
+P_STR2NUM := 60
+P_NUM2STR := 61
+P_STR2SYM := 62
+P_SYM2STR := 63
+P_STR2LIST := 64
+P_LIST2STR := 65
+P_STRJOIN := 66
+P_STRSPLIT := 67
+P_STRCONTAINS := 68
+P_DISPLAY := 69
+P_WRITE := 70
+P_NEWLINE := 71
+P_VOID := 72
+P_ERROR := 73
 // Groups of primitive codes, used to dispatch in prim_apply.
-let P_PRED = 17
-let P_PAIR = 28
-let P_HO = 45
-let P_STR = 52
-let P_MISC = 69
-let MAX_INT = 9223372036854775807
-let MIN_INT = -9223372036854775807 - 1
-let MAX_DEPTH = 10000
-let FRAME_SHIFT = 4294967296
-let SPECIAL_NAMES = [
+P_PRED := 17
+P_PAIR := 28
+P_HO := 45
+P_STR := 52
+P_MISC := 69
+MAX_INT := 9223372036854775807
+MIN_INT := -9223372036854775807 - 1
+MAX_DEPTH := 10000
+FRAME_SHIFT := 4294967296
+SPECIAL_NAMES := [
     "quote", "if", "define", "set!", "lambda", "begin", "let", "let*", "letrec", "cond",
     "and", "or", "when", "unless", "try", "else"
 ]
@@ -209,10 +209,10 @@ fn key(frame: Int, sym: Int) Int:
     return frame * FRAME_SHIFT + sym
 
 fn intern(var h: Heap, name: String) Int:
-    if let id = h.symids.get(name):
+    if id := h.symids.get(name):
         return id
 
-    let id = h.syms.length()
+    id := h.syms.length()
     h.syms.append(name.clone())
     h.symids.add(name.clone(), id)
     return id
@@ -290,10 +290,10 @@ fn prepend_list(var h: Heap, items: List[V], tail: V) V:
     return acc
 
 fn quote_str(s: String) String:
-    let a = s.split("\\").join("\\\\")
-    let b = a.split("\"").join("\\\"")
-    let c = b.split("\n").join("\\n")
-    let d = c.split("\t").join("\\t")
+    a := s.split("\\").join("\\\\")
+    b := a.split("\"").join("\\\"")
+    c := b.split("\n").join("\\n")
+    d := c.split("\t").join("\\t")
     return "\"{d}\""
 
 fn atom_text(h: Heap, v: V, readable: Bool) String:
@@ -321,7 +321,7 @@ fn atom_text(h: Heap, v: V, readable: Bool) String:
     if v.kind == K_PRIM:
         return "#<builtin {h.pnames[v.n]}>"
 
-    let name = h.clos[v.n].name
+    name := h.clos[v.n].name
     if name < 0:
         return "#<procedure>"
 
@@ -372,8 +372,8 @@ fn tyerr(h: Heap, code: Int, kind: String, v: V) Fail:
     return Fail("{h.pnames[code]}: expected {kind}, got {show(h, v, true)}", false)
 
 fn arity_err(h: Heap, code: Int, n: Int) Fail:
-    let lo = h.pmin[code]
-    let hi = h.pmax[code]
+    lo := h.pmin[code]
+    hi := h.pmax[code]
     var expected = "{lo}"
 
     if hi < 0:
@@ -492,7 +492,7 @@ fn lookup(h: Heap, env: Int, sym: Int) Optional[V]:
     var f = env
 
     while f >= 0:
-        if let v = h.binds.get(key(f, sym)):
+        if v := h.binds.get(key(f, sym)):
             return some(v)
 
         f = h.parents[f]
@@ -526,8 +526,8 @@ fn call_depth(depth: Int, tail: Bool) Result[Int, Fail]:
 
 // Creates the frame for calling closure ci with args and returns its id.
 fn bind_call(var h: Heap, ci: Int, args: List[V]) Result[Int, Fail]:
-    let formals = h.clos[ci].formals
-    let env = h.clos[ci].env
+    formals := h.clos[ci].formals
+    env := h.clos[ci].env
     var nreq = 0
     var cur = formals
 
@@ -535,11 +535,11 @@ fn bind_call(var h: Heap, ci: Int, args: List[V]) Result[Int, Fail]:
         nreq += 1
         cur = cdr_of(h, cur)
 
-    let rest = cur.kind == K_SYM
-    let nargs = args.length()
+    rest := cur.kind == K_SYM
+    nargs := args.length()
 
     if nargs < nreq or (not rest and nargs > nreq):
-        let name = h.clos[ci].name
+        name := h.clos[ci].name
         var who = "lambda"
         if name >= 0:
             who = h.syms[name].clone()
@@ -553,7 +553,7 @@ fn bind_call(var h: Heap, ci: Int, args: List[V]) Result[Int, Fail]:
             )
         )
 
-    let frame = new_frame(var h, env)
+    frame := new_frame(var h, env)
     var fcur = formals
     var i = 0
 
@@ -582,7 +582,7 @@ fn make_closure(var h: Heap, sid: Int, formals: V, body: V, env: Int, name: Int)
     var cur = formals
 
     while cur.kind == K_PAIR:
-        let p = car_of(h, cur)
+        p := car_of(h, cur)
         if p.kind != K_SYM or seen.contains(p.n):
             return error(bad_form(h, sid))
 
@@ -599,8 +599,8 @@ fn make_closure(var h: Heap, sid: Int, formals: V, body: V, env: Int, name: Int)
     return ok(V(K_CLO, h.clos.length() - 1))
 
 fn lambda_form(var h: Heap, x: V, env: Int, name: Int) Result[V, Fail]:
-    let params = nth(h, x, 1)
-    let body = drop(h, x, 2)
+    params := nth(h, x, 1)
+    body := drop(h, x, 2)
     return make_closure(var h, S_LAMBDA, params, body, env, name)
 
 // Last expression of a non-empty body.
@@ -615,15 +615,15 @@ fn run_init(var h: Heap, body: V, env: Int, depth: Int) Result[Unit, Fail]:
     var cur = body
 
     while cur.kind == K_PAIR and cdr_of(h, cur).kind == K_PAIR:
-        let e = car_of(h, cur)
-        let _v = try eval_expr(var h, e, env, depth, false)
+        e := car_of(h, cur)
+        _v := try eval_expr(var h, e, env, depth, false)
         cur = cdr_of(h, cur)
 
     return ok(unit)
 
 // Checks a let-style binding list and returns its (name init) entries.
 fn binding_list(h: Heap, sid: Int, bindings: V) Result[List[V], Fail]:
-    let items = to_vec(h, bindings)
+    items := to_vec(h, bindings)
     if list_len(h, bindings) < 0:
         return error(bad_form(h, sid))
 
@@ -636,7 +636,7 @@ fn binding_list(h: Heap, sid: Int, bindings: V) Result[List[V], Fail]:
 fn special(var h: Heap, sid: Int, x: V, env: Int, depth: Int, tail: Bool) Result[
     Step, Fail
 ]:
-    let len = list_len(h, x)
+    len := list_len(h, x)
 
     if sid == S_QUOTE:
         if len != 2:
@@ -655,7 +655,7 @@ fn special(var h: Heap, sid: Int, x: V, env: Int, depth: Int, tail: Bool) Result
         if len < 3:
             return error(bad_form(h, sid))
 
-        let clo = try lambda_form(var h, x, env, -1)
+        clo := try lambda_form(var h, x, env, -1)
         return ok(finish(clo))
 
     if sid == S_BEGIN:
@@ -686,8 +686,8 @@ fn sf_if(var h: Heap, x: V, len: Int, env: Int, depth: Int, tail: Bool) Result[
     if len != 3 and len != 4:
         return error(bad_form(h, S_IF))
 
-    let condition = nth(h, x, 1)
-    let t = try eval_expr(var h, condition, env, depth, false)
+    condition := nth(h, x, 1)
+    t := try eval_expr(var h, condition, env, depth, false)
     if is_true(t):
         return ok(jump(nth(h, x, 2), env, depth, tail))
     if len == 4:
@@ -699,13 +699,13 @@ fn sf_define(var h: Heap, x: V, len: Int, env: Int, depth: Int) Result[Step, Fai
     if len < 3:
         return error(bad_form(h, S_DEFINE))
 
-    let target = nth(h, x, 1)
+    target := nth(h, x, 1)
 
     if target.kind == K_SYM:
         if len != 3:
             return error(bad_form(h, S_DEFINE))
 
-        let expr = nth(h, x, 2)
+        expr := nth(h, x, 2)
         var value = void_v()
 
         if (
@@ -723,10 +723,10 @@ fn sf_define(var h: Heap, x: V, len: Int, env: Int, depth: Int) Result[Step, Fai
     if target.kind != K_PAIR or car_of(h, target).kind != K_SYM:
         return error(bad_form(h, S_DEFINE))
 
-    let fname = car_of(h, target).n
-    let formals = cdr_of(h, target)
-    let body = drop(h, x, 2)
-    let clo = try make_closure(var h, S_DEFINE, formals, body, env, fname)
+    fname := car_of(h, target).n
+    formals := cdr_of(h, target)
+    body := drop(h, x, 2)
+    clo := try make_closure(var h, S_DEFINE, formals, body, env, fname)
     h.binds.add(key(env, fname), clo)
     return ok(finish(void_v()))
 
@@ -734,13 +734,13 @@ fn sf_set(var h: Heap, x: V, len: Int, env: Int, depth: Int) Result[Step, Fail]:
     if len != 3:
         return error(bad_form(h, S_SET))
 
-    let target = nth(h, x, 1)
+    target := nth(h, x, 1)
     if target.kind != K_SYM:
         return error(bad_form(h, S_SET))
 
-    let expr = nth(h, x, 2)
-    let v = try eval_expr(var h, expr, env, depth, false)
-    let frame = find_frame(h, env, target.n)
+    expr := nth(h, x, 2)
+    v := try eval_expr(var h, expr, env, depth, false)
+    frame := find_frame(h, env, target.n)
     if frame < 0:
         return error(rt_err("unbound variable: {h.syms[target.n]}"))
 
@@ -753,7 +753,7 @@ fn sf_begin(var h: Heap, x: V, len: Int, env: Int, depth: Int, tail: Bool) Resul
     if len == 1:
         return ok(finish(void_v()))
 
-    let body = cdr_of(h, x)
+    body := cdr_of(h, x)
     try run_init(var h, body, env, depth)
     return ok(jump(body_last(h, body), env, depth, tail))
 
@@ -763,16 +763,16 @@ fn sf_letstar(var h: Heap, x: V, len: Int, env: Int, depth: Int, tail: Bool) Res
     if len < 3:
         return error(bad_form(h, S_LETSTAR))
 
-    let items = try binding_list(h, S_LETSTAR, nth(h, x, 1))
-    let frame = new_frame(var h, env)
+    items := try binding_list(h, S_LETSTAR, nth(h, x, 1))
+    frame := new_frame(var h, env)
 
     for b in items:
-        let sym = car_of(h, b).n
-        let init = nth(h, b, 1)
-        let v = try eval_expr(var h, init, frame, depth, false)
+        sym := car_of(h, b).n
+        init := nth(h, b, 1)
+        v := try eval_expr(var h, init, frame, depth, false)
         h.binds.add(key(frame, sym), v)
 
-    let body = drop(h, x, 2)
+    body := drop(h, x, 2)
     try run_init(var h, body, frame, depth)
     return ok(jump(body_last(h, body), frame, depth, tail))
 
@@ -780,27 +780,27 @@ fn sf_cond(var h: Heap, x: V, env: Int, depth: Int, tail: Bool) Result[Step, Fai
     var cl = cdr_of(h, x)
 
     while cl.kind == K_PAIR:
-        let clause = car_of(h, cl)
+        clause := car_of(h, cl)
         if clause.kind != K_PAIR:
             return error(bad_form(h, S_COND))
 
-        let head = car_of(h, clause)
+        head := car_of(h, clause)
 
         if head.kind == K_SYM and head.n == S_ELSE:
             if cdr_of(h, cl).kind != K_NIL:
                 return error(bad_form(h, S_COND))
 
-            let body = cdr_of(h, clause)
+            body := cdr_of(h, clause)
             if body.kind != K_PAIR:
                 return error(bad_form(h, S_COND))
 
             try run_init(var h, body, env, depth)
             return ok(jump(body_last(h, body), env, depth, tail))
 
-        let t = try eval_expr(var h, head, env, depth, false)
+        t := try eval_expr(var h, head, env, depth, false)
 
         if is_true(t):
-            let body = cdr_of(h, clause)
+            body := cdr_of(h, clause)
             if body.kind != K_PAIR:
                 return ok(finish(t))
 
@@ -814,15 +814,15 @@ fn sf_cond(var h: Heap, x: V, env: Int, depth: Int, tail: Bool) Result[Step, Fai
 fn sf_and_or(var h: Heap, x: V, len: Int, env: Int, depth: Int, tail: Bool) Result[
     Step, Fail
 ]:
-    let is_and = h.cars[x.n].n == S_AND
+    is_and := h.cars[x.n].n == S_AND
     if len == 1:
         return ok(finish(vbool(is_and)))
 
     var cur = cdr_of(h, x)
 
     while cdr_of(h, cur).kind == K_PAIR:
-        let e = car_of(h, cur)
-        let v = try eval_expr(var h, e, env, depth, false)
+        e := car_of(h, cur)
+        v := try eval_expr(var h, e, env, depth, false)
         if is_and and not is_true(v):
             return ok(finish(v))
         if not is_and and is_true(v):
@@ -835,16 +835,16 @@ fn sf_and_or(var h: Heap, x: V, len: Int, env: Int, depth: Int, tail: Bool) Resu
 fn sf_when(var h: Heap, x: V, len: Int, env: Int, depth: Int, tail: Bool) Result[
     Step, Fail
 ]:
-    let is_when = h.cars[x.n].n == S_WHEN
+    is_when := h.cars[x.n].n == S_WHEN
     if len < 3:
         return error(bad_form(h, h.cars[x.n].n))
 
-    let condition = nth(h, x, 1)
-    let t = try eval_expr(var h, condition, env, depth, false)
+    condition := nth(h, x, 1)
+    t := try eval_expr(var h, condition, env, depth, false)
     if is_true(t) != is_when:
         return ok(finish(void_v()))
 
-    let body = drop(h, x, 2)
+    body := drop(h, x, 2)
     try run_init(var h, body, env, depth)
     return ok(jump(body_last(h, body), env, depth, tail))
 
@@ -852,43 +852,43 @@ fn sf_try(var h: Heap, x: V, len: Int, env: Int, depth: Int) Result[Step, Fail]:
     if len != 3:
         return error(bad_form(h, S_TRY))
 
-    let body_expr = nth(h, x, 1)
-    let r = eval_expr(var h, body_expr, env, depth, false)
+    body_expr := nth(h, x, 1)
+    r := eval_expr(var h, body_expr, env, depth, false)
 
     if r.is_error():
-        let msg = r.err().msg.clone()
+        msg := r.err().msg.clone()
         if r.err().syntax:
             return error(Fail(msg, true))
 
-        let handler = nth(h, x, 2)
-        let hv = try eval_expr(var h, handler, env, depth, false)
+        handler := nth(h, x, 2)
+        hv := try eval_expr(var h, handler, env, depth, false)
         var args = List[V]()
         args.append(str_val(var h, msg))
 
-        let res = try apply_proc(var h, hv, args, depth)
+        res := try apply_proc(var h, hv, args, depth)
         return ok(finish(res))
 
-    let v = try r
+    v := try r
     return ok(finish(v))
 
 // (let ((name init) ...) body ...)
 fn plain_let(var h: Heap, x: V, env: Int, depth: Int, tail: Bool) Result[Step, Fail]:
-    let items = try binding_list(h, S_LET, nth(h, x, 1))
+    items := try binding_list(h, S_LET, nth(h, x, 1))
     var vals = List[V]()
 
     for b in items:
-        let init = nth(h, b, 1)
-        let v = try eval_expr(var h, init, env, depth, false)
+        init := nth(h, b, 1)
+        v := try eval_expr(var h, init, env, depth, false)
         vals.append(v)
 
-    let frame = new_frame(var h, env)
+    frame := new_frame(var h, env)
     var i = 0
 
     for b in items:
         h.binds.add(key(frame, car_of(h, b).n), vals[i])
         i += 1
 
-    let body = drop(h, x, 2)
+    body := drop(h, x, 2)
     try run_init(var h, body, frame, depth)
     return ok(jump(body_last(h, body), frame, depth, tail))
 
@@ -899,26 +899,26 @@ fn named_let(var h: Heap, x: V, len: Int, env: Int, depth: Int, tail: Bool) Resu
     if len < 4:
         return error(bad_form(h, S_LET))
 
-    let name = nth(h, x, 1).n
-    let items = try binding_list(h, S_LET, nth(h, x, 2))
+    name := nth(h, x, 1).n
+    items := try binding_list(h, S_LET, nth(h, x, 2))
     var formal_list = List[V]()
     var vals = List[V]()
 
     for b in items:
         formal_list.append(V(K_SYM, car_of(h, b).n))
 
-        let init = nth(h, b, 1)
-        let v = try eval_expr(var h, init, env, depth, false)
+        init := nth(h, b, 1)
+        v := try eval_expr(var h, init, env, depth, false)
         vals.append(v)
 
-    let formals = prepend_list(var h, formal_list, nil_v())
-    let loop_frame = new_frame(var h, env)
-    let body = drop(h, x, 3)
-    let clo = try make_closure(var h, S_LET, formals, body, loop_frame, name)
+    formals := prepend_list(var h, formal_list, nil_v())
+    loop_frame := new_frame(var h, env)
+    body := drop(h, x, 3)
+    clo := try make_closure(var h, S_LET, formals, body, loop_frame, name)
     h.binds.add(key(loop_frame, name), clo)
 
-    let nd = try call_depth(depth, tail)
-    let frame = try bind_call(var h, clo.n, vals)
+    nd := try call_depth(depth, tail)
+    frame := try bind_call(var h, clo.n, vals)
     try run_init(var h, body, frame, nd)
     return ok(jump(body_last(h, body), frame, nd, true))
 
@@ -930,12 +930,12 @@ fn apply_proc(var h: Heap, f: V, args: List[V], depth: Int) Result[V, Fail]:
     if f.kind != K_CLO:
         return error(rt_err("not a procedure: {show(h, f, true)}"))
 
-    let frame = try bind_call(var h, f.n, args)
-    let nd = try call_depth(depth, false)
-    let body = h.clos[f.n].body
+    frame := try bind_call(var h, f.n, args)
+    nd := try call_depth(depth, false)
+    body := h.clos[f.n].body
     try run_init(var h, body, frame, nd)
 
-    let last = body_last(h, body)
+    last := body_last(h, body)
     return eval_expr(var h, last, frame, nd, true)
 
 // Evaluates expr in env. `depth` counts procedure bodies entered from
@@ -949,7 +949,7 @@ fn eval_expr(var h: Heap, expr: V, env0: Int, depth0: Int, tail0: Bool) Result[V
 
     while true:
         if x.kind == K_SYM:
-            if let v = lookup(h, env, x.n):
+            if v := lookup(h, env, x.n):
                 return ok(v)
 
             return error(rt_err("unbound variable: {h.syms[x.n]}"))
@@ -961,10 +961,10 @@ fn eval_expr(var h: Heap, expr: V, env0: Int, depth0: Int, tail0: Bool) Result[V
         if list_len(h, x) < 0:
             return error(syn_err("bad application"))
 
-        let head = car_of(h, x)
+        head := car_of(h, x)
 
         if head.kind == K_SYM and head.n < NSPECIAL:
-            let st = try special(var h, head.n, x, env, depth, tail)
+            st := try special(var h, head.n, x, env, depth, tail)
             if st.done:
                 return ok(st.value)
 
@@ -973,13 +973,13 @@ fn eval_expr(var h: Heap, expr: V, env0: Int, depth0: Int, tail0: Bool) Result[V
             depth = st.depth
             tail = st.tail
         else:
-            let f = try eval_expr(var h, head, env, depth, false)
+            f := try eval_expr(var h, head, env, depth, false)
             var args = List[V]()
             var cur = cdr_of(h, x)
 
             while cur.kind == K_PAIR:
-                let operand = car_of(h, cur)
-                let v = try eval_expr(var h, operand, env, depth, false)
+                operand := car_of(h, cur)
+                v := try eval_expr(var h, operand, env, depth, false)
                 args.append(v)
                 cur = cdr_of(h, cur)
 
@@ -988,9 +988,9 @@ fn eval_expr(var h: Heap, expr: V, env0: Int, depth0: Int, tail0: Bool) Result[V
             if f.kind != K_CLO:
                 return error(rt_err("not a procedure: {show(h, f, true)}"))
 
-            let frame = try bind_call(var h, f.n, args)
-            let nd = try call_depth(depth, tail)
-            let body = h.clos[f.n].body
+            frame := try bind_call(var h, f.n, args)
+            nd := try call_depth(depth, tail)
+            body := h.clos[f.n].body
             try run_init(var h, body, frame, nd)
             x = body_last(h, body)
             env = frame
@@ -998,7 +998,7 @@ fn eval_expr(var h: Heap, expr: V, env0: Int, depth0: Int, tail0: Bool) Result[V
             tail = true
 
 fn prim_apply(var h: Heap, code: Int, args: List[V], depth: Int) Result[V, Fail]:
-    let n = args.length()
+    n := args.length()
     if n < h.pmin[code] or (h.pmax[code] >= 0 and n > h.pmax[code]):
         return error(arity_err(h, code, n))
     if code < P_PRED:
@@ -1023,7 +1023,7 @@ fn num_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
             acc = 1
 
         for a in args:
-            let v = try want_int(h, code, a)
+            v := try want_int(h, code, a)
 
             if code == P_ADD:
                 acc = try add_checked(acc, v)
@@ -1033,21 +1033,21 @@ fn num_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
         return ok(int_val(acc))
 
     if code == P_SUB:
-        let first = try want_int(h, code, args[0])
+        first := try want_int(h, code, args[0])
         if args.length() == 1:
             return ok(int_val(try sub_checked(0, first)))
 
         var acc = first
 
         for i in 1..args.length():
-            let v = try want_int(h, code, args[i])
+            v := try want_int(h, code, args[i])
             acc = try sub_checked(acc, v)
 
         return ok(int_val(acc))
 
     if code == P_QUOT or code == P_REM or code == P_MOD:
-        let a = try want_int(h, code, args[0])
-        let b = try want_int(h, code, args[1])
+        a := try want_int(h, code, args[0])
+        b := try want_int(h, code, args[1])
         if b == 0:
             return error(rt_err("division by zero"))
 
@@ -1069,7 +1069,7 @@ fn num_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
         return ok(int_val(r))
 
     if code == P_ABS:
-        let a = try want_int(h, code, args[0])
+        a := try want_int(h, code, args[0])
         if a == MIN_INT:
             return error(rt_err("integer overflow"))
         if a < 0:
@@ -1081,7 +1081,7 @@ fn num_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
         var best = try want_int(h, code, args[0])
 
         for i in 1..args.length():
-            let v = try want_int(h, code, args[i])
+            v := try want_int(h, code, args[i])
             if code == P_MIN and v < best:
                 best = v
             if code == P_MAX and v > best:
@@ -1097,8 +1097,8 @@ fn num_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
         var all = true
 
         for i in 0..vals.length() - 1:
-            let a = vals[i]
-            let b = vals[i + 1]
+            a := vals[i]
+            b := vals[i + 1]
             var good = false
 
             if code == P_NUMEQ:
@@ -1117,7 +1117,7 @@ fn num_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
 
         return ok(vbool(all))
 
-    let a = try want_int(h, code, args[0])
+    a := try want_int(h, code, args[0])
     if code == P_ZERO:
         return ok(vbool(a == 0))
     if code == P_EVEN:
@@ -1128,7 +1128,7 @@ fn num_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
 // ---- Predicates and equality ----
 
 fn pred_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
-    let v = args[0]
+    v := args[0]
     if code == P_NOT:
         return ok(vbool(not is_true(v)))
     if code == P_NULL:
@@ -1175,16 +1175,16 @@ fn pair_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
         return cdr_checked(h, code, args[0])
 
     if code == P_CADR:
-        let d = try cdr_checked(h, code, args[0])
+        d := try cdr_checked(h, code, args[0])
         return car_checked(h, code, d)
 
     if code == P_CDDR:
-        let d = try cdr_checked(h, code, args[0])
+        d := try cdr_checked(h, code, args[0])
         return cdr_checked(h, code, d)
 
     if code == P_CADDR:
-        let d = try cdr_checked(h, code, args[0])
-        let dd = try cdr_checked(h, code, d)
+        d := try cdr_checked(h, code, args[0])
+        dd := try cdr_checked(h, code, d)
         return car_checked(h, code, dd)
 
     if code == P_SETCAR or code == P_SETCDR:
@@ -1202,26 +1202,26 @@ fn pair_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
         return ok(prepend_list(var h, args, nil_v()))
 
     if code == P_LENGTH:
-        let _l = try check_list(h, code, args[0])
+        _l := try check_list(h, code, args[0])
         return ok(int_val(list_len(h, args[0])))
 
     if code == P_APPEND:
         return append_prim(var h, code, args)
 
     if code == P_REVERSE:
-        let _l = try check_list(h, code, args[0])
+        _l := try check_list(h, code, args[0])
         var acc = nil_v()
         for x in to_vec(h, args[0]):
             acc = cons(var h, x, acc)
         return ok(acc)
 
     if code == P_LISTREF:
-        let _l = try check_list(h, code, args[0])
-        let k = try want_int(h, code, args[1])
+        _l := try check_list(h, code, args[0])
+        k := try want_int(h, code, args[1])
         if k < 0:
             return error(rt_err("list-ref: index out of range"))
 
-        let first = args[0]
+        first := args[0]
         var cur = first
         var i = 0
 
@@ -1235,16 +1235,16 @@ fn pair_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
         return ok(car_of(h, cur))
 
     if code == P_LISTTAIL:
-        let _l = try check_list(h, code, args[0])
-        let k = try want_int(h, code, args[1])
+        _l := try check_list(h, code, args[0])
+        k := try want_int(h, code, args[1])
         if k < 0 or k > list_len(h, args[0]):
             return error(rt_err("list-tail: index out of range"))
 
         return ok(drop(h, args[0], k))
 
     if code == P_RANGE:
-        let a = try want_int(h, code, args[0])
-        let b = try want_int(h, code, args[1])
+        a := try want_int(h, code, args[0])
+        b := try want_int(h, code, args[1])
         if a >= b:
             return ok(nil_v())
 
@@ -1261,12 +1261,12 @@ fn pair_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
         return ok(acc)
 
     if code == P_ASSOC:
-        let _l = try check_list(h, code, args[1])
-        let second = args[1]
+        _l := try check_list(h, code, args[1])
+        second := args[1]
         var cur = second
 
         while cur.kind == K_PAIR:
-            let e = car_of(h, cur)
+            e := car_of(h, cur)
             if e.kind != K_PAIR:
                 return error(tyerr(h, code, "pair", e))
             if equal_v(h, args[0], car_of(h, e)):
@@ -1277,8 +1277,8 @@ fn pair_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
         return ok(vbool(false))
 
     // member
-    let _m = try check_list(h, code, args[1])
-    let second = args[1]
+    _m := try check_list(h, code, args[1])
+    second := args[1]
     var cur = second
 
     while cur.kind == K_PAIR:
@@ -1290,14 +1290,14 @@ fn pair_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
     return ok(vbool(false))
 
 fn append_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
-    let n = args.length()
+    n := args.length()
     if n == 0:
         return ok(nil_v())
 
     for i in 0..n - 1:
-        let _l = try check_list(h, code, args[i])
+        _l := try check_list(h, code, args[i])
 
-    let last = args[n - 1]
+    last := args[n - 1]
     var acc = last
     var i = n - 2
 
@@ -1311,14 +1311,14 @@ fn append_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
 
 // Calls f on the i-th elements of the lists in args[1..], stopping at the shortest.
 fn map_lists(var h: Heap, code: Int, args: List[V], depth: Int) Result[List[V], Fail]:
-    let f = args[0]
-    let _p = try check_proc(h, code, f)
+    f := args[0]
+    _p := try check_proc(h, code, f)
     var columns = List[List[V]]()
     var shortest = -1
 
     for i in 1..args.length():
-        let _l = try check_list(h, code, args[i])
-        let col = to_vec(h, args[i])
+        _l := try check_list(h, code, args[i])
+        col := to_vec(h, args[i])
         if shortest < 0 or col.length() < shortest:
             shortest = col.length()
         columns.append(col)
@@ -1331,7 +1331,7 @@ fn map_lists(var h: Heap, code: Int, args: List[V], depth: Int) Result[List[V], 
         for col in columns:
             cargs.append(col[k])
 
-        let r = try apply_proc(var h, f, cargs, depth)
+        r := try apply_proc(var h, f, cargs, depth)
         results.append(r)
         k += 1
 
@@ -1339,7 +1339,7 @@ fn map_lists(var h: Heap, code: Int, args: List[V], depth: Int) Result[List[V], 
 
 // Stable merge sort; less? is called as (less? later earlier).
 fn sort_list(var h: Heap, items: List[V], less: V, depth: Int) Result[List[V], Fail]:
-    let n = items.length()
+    n := items.length()
     var out = List[V]()
 
     if n <= 1:
@@ -1347,7 +1347,7 @@ fn sort_list(var h: Heap, items: List[V], less: V, depth: Int) Result[List[V], F
             out.append(x)
         return ok(out)
 
-    let mid = n / 2
+    mid := n / 2
     var left = List[V]()
     var right = List[V]()
 
@@ -1357,8 +1357,8 @@ fn sort_list(var h: Heap, items: List[V], less: V, depth: Int) Result[List[V], F
         else:
             right.append(items[i])
 
-    let ls = try sort_list(var h, left, less, depth)
-    let rs = try sort_list(var h, right, less, depth)
+    ls := try sort_list(var h, left, less, depth)
+    rs := try sort_list(var h, right, less, depth)
     var i = 0
     var j = 0
 
@@ -1367,7 +1367,7 @@ fn sort_list(var h: Heap, items: List[V], less: V, depth: Int) Result[List[V], F
         cargs.append(rs[j])
         cargs.append(ls[i])
 
-        let r = try apply_proc(var h, less, cargs, depth)
+        r := try apply_proc(var h, less, cargs, depth)
 
         if is_true(r):
             out.append(rs[j])
@@ -1388,11 +1388,11 @@ fn sort_list(var h: Heap, items: List[V], less: V, depth: Int) Result[List[V], F
 
 fn ho_prim(var h: Heap, code: Int, args: List[V], depth: Int) Result[V, Fail]:
     if code == P_MAP:
-        let results = try map_lists(var h, code, args, depth)
+        results := try map_lists(var h, code, args, depth)
         return ok(prepend_list(var h, results, nil_v()))
 
     if code == P_FOREACH:
-        let _r = try map_lists(var h, code, args, depth)
+        _r := try map_lists(var h, code, args, depth)
         return ok(void_v())
 
     if code == P_FILTER:
@@ -1407,24 +1407,24 @@ fn ho_prim(var h: Heap, code: Int, args: List[V], depth: Int) Result[V, Fail]:
     return ho_sort(var h, args, depth)
 
 fn ho_filter(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
-    let _p = try check_proc(h, P_FILTER, args[0])
-    let _l = try check_list(h, P_FILTER, args[1])
+    _p := try check_proc(h, P_FILTER, args[0])
+    _l := try check_list(h, P_FILTER, args[1])
     var keep = List[V]()
 
     for x in to_vec(h, args[1]):
         var one = List[V]()
         one.append(x)
 
-        let r = try apply_proc(var h, args[0], one, depth)
+        r := try apply_proc(var h, args[0], one, depth)
         if is_true(r):
             keep.append(x)
 
     return ok(prepend_list(var h, keep, nil_v()))
 
 fn ho_fold(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
-    let _p = try check_proc(h, P_FOLD, args[0])
-    let _l = try check_list(h, P_FOLD, args[2])
-    let init = args[1]
+    _p := try check_proc(h, P_FOLD, args[0])
+    _l := try check_list(h, P_FOLD, args[2])
+    init := args[1]
     var acc = init
 
     for x in to_vec(h, args[2]):
@@ -1436,10 +1436,10 @@ fn ho_fold(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
     return ok(acc)
 
 fn ho_foldr(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
-    let _p = try check_proc(h, P_FOLDR, args[0])
-    let _l = try check_list(h, P_FOLDR, args[2])
-    let items = to_vec(h, args[2])
-    let init = args[1]
+    _p := try check_proc(h, P_FOLDR, args[0])
+    _l := try check_list(h, P_FOLDR, args[2])
+    items := to_vec(h, args[2])
+    init := args[1]
     var acc = init
     var i = items.length() - 1
 
@@ -1453,9 +1453,9 @@ fn ho_foldr(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
     return ok(acc)
 
 fn ho_apply(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
-    let _p = try check_proc(h, P_APPLY, args[0])
-    let n = args.length()
-    let _l = try check_list(h, P_APPLY, args[n - 1])
+    _p := try check_proc(h, P_APPLY, args[0])
+    n := args.length()
+    _l := try check_list(h, P_APPLY, args[n - 1])
     var cargs = List[V]()
     for i in 1..n - 1:
         cargs.append(args[i])
@@ -1465,147 +1465,147 @@ fn ho_apply(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
 
 // The procedure is checked before the list.
 fn ho_sort(var h: Heap, args: List[V], depth: Int) Result[V, Fail]:
-    let _p = try check_proc(h, P_SORT, args[1])
-    let _l = try check_list(h, P_SORT, args[0])
-    let items = to_vec(h, args[0])
-    let sorted = try sort_list(var h, items, args[1], depth)
+    _p := try check_proc(h, P_SORT, args[1])
+    _l := try check_list(h, P_SORT, args[0])
+    items := to_vec(h, args[0])
+    sorted := try sort_list(var h, items, args[1], depth)
     return ok(prepend_list(var h, sorted, nil_v()))
 
 // ---- Strings ----
 
 fn str_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
     if code == P_STRLEN:
-        let si = try want_str(h, code, args[0])
+        si := try want_str(h, code, args[0])
         return ok(int_val(h.strs[si].length()))
 
     if code == P_STRAPPEND:
         var parts = List[String]()
 
         for a in args:
-            let si = try want_str(h, code, a)
+            si := try want_str(h, code, a)
             parts.append(h.strs[si].clone())
 
         return ok(str_val(var h, parts.join("")))
 
     if code == P_SUBSTRING:
-        let si = try want_str(h, code, args[0])
-        let a = try want_int(h, code, args[1])
-        let b = try want_int(h, code, args[2])
-        let s = h.strs[si].clone()
-        if let t = s.slice_scalars(a, b):
+        si := try want_str(h, code, args[0])
+        a := try want_int(h, code, args[1])
+        b := try want_int(h, code, args[2])
+        s := h.strs[si].clone()
+        if t := s.slice_scalars(a, b):
             return ok(str_val(var h, t))
 
         return error(rt_err("substring: index out of range"))
 
     if code == P_STRREF:
-        let si = try want_str(h, code, args[0])
-        let i = try want_int(h, code, args[1])
-        let s = h.strs[si].clone()
+        si := try want_str(h, code, args[0])
+        i := try want_int(h, code, args[1])
+        s := h.strs[si].clone()
         if i < 0 or i >= s.length():
             return error(rt_err("string-ref: index out of range"))
-        if let c = s.slice_scalars(i, i + 1):
+        if c := s.slice_scalars(i, i + 1):
             return ok(str_val(var h, c))
 
         return error(rt_err("string-ref: index out of range"))
 
     if code == P_STREQ or code == P_STRLT:
-        let a = try want_str(h, code, args[0])
-        let b = try want_str(h, code, args[1])
-        let x = h.strs[a].clone()
-        let y = h.strs[b].clone()
+        a := try want_str(h, code, args[0])
+        b := try want_str(h, code, args[1])
+        x := h.strs[a].clone()
+        y := h.strs[b].clone()
         if code == P_STREQ:
             return ok(vbool(x == y))
 
         return ok(vbool(x.compare(y) < 0))
 
     if code == P_UPCASE or code == P_DOWNCASE:
-        let si = try want_str(h, code, args[0])
+        si := try want_str(h, code, args[0])
         var t = h.strs[si].upper()
         if code == P_DOWNCASE:
             t = h.strs[si].lower()
         return ok(str_val(var h, t))
 
     if code == P_STR2NUM:
-        let si = try want_str(h, code, args[0])
-        let text = h.strs[si].clone()
+        si := try want_str(h, code, args[0])
+        text := h.strs[si].clone()
         if is_int_text(text):
-            if let n = parse_int_text(text):
+            if n := parse_int_text(text):
                 return ok(int_val(n))
         return ok(vbool(false))
 
     if code == P_NUM2STR:
-        let n = try want_int(h, code, args[0])
-        let t = n.to_string_radix(10)
+        n := try want_int(h, code, args[0])
+        t := n.to_string_radix(10)
         return ok(str_val(var h, t))
 
     if code == P_STR2SYM:
-        let si = try want_str(h, code, args[0])
-        let name = h.strs[si].clone()
+        si := try want_str(h, code, args[0])
+        name := h.strs[si].clone()
         return ok(V(K_SYM, intern(var h, name)))
 
     if code == P_SYM2STR:
         if args[0].kind != K_SYM:
             return error(tyerr(h, code, "symbol", args[0]))
 
-        let t = h.syms[args[0].n].clone()
+        t := h.syms[args[0].n].clone()
         return ok(str_val(var h, t))
 
     if code == P_STR2LIST:
-        let si = try want_str(h, code, args[0])
-        let s = h.strs[si].clone()
+        si := try want_str(h, code, args[0])
+        s := h.strs[si].clone()
         var items = List[V]()
         for i in 0..s.length():
-            if let c = s.slice_scalars(i, i + 1):
+            if c := s.slice_scalars(i, i + 1):
                 items.append(str_val(var h, c))
         return ok(prepend_list(var h, items, nil_v()))
 
     if code == P_LIST2STR:
-        let _l = try check_list(h, code, args[0])
+        _l := try check_list(h, code, args[0])
         var parts = List[String]()
 
         for e in to_vec(h, args[0]):
-            let si = try want_str(h, code, e)
+            si := try want_str(h, code, e)
             parts.append(h.strs[si].clone())
 
         return ok(str_val(var h, parts.join("")))
 
     if code == P_STRJOIN:
-        let _l = try check_list(h, code, args[0])
-        let sep = try want_str(h, code, args[1])
-        let sep_text = h.strs[sep].clone()
+        _l := try check_list(h, code, args[0])
+        sep := try want_str(h, code, args[1])
+        sep_text := h.strs[sep].clone()
         var parts = List[String]()
 
         for e in to_vec(h, args[0]):
-            let si = try want_str(h, code, e)
+            si := try want_str(h, code, e)
             parts.append(h.strs[si].clone())
 
         return ok(str_val(var h, parts.join(sep_text)))
 
     if code == P_STRSPLIT:
-        let si = try want_str(h, code, args[0])
-        let sp = try want_str(h, code, args[1])
-        let sep = h.strs[sp].clone()
+        si := try want_str(h, code, args[0])
+        sp := try want_str(h, code, args[1])
+        sep := h.strs[sp].clone()
         if sep.length() != 1:
             return error(rt_err("string-split: separator must be one character"))
 
-        let s = h.strs[si].clone()
+        s := h.strs[si].clone()
         var items = List[V]()
         for piece in s.split(sep):
             items.append(str_val(var h, piece.clone()))
         return ok(prepend_list(var h, items, nil_v()))
 
     // string-contains?
-    let si = try want_str(h, code, args[0])
-    let sb = try want_str(h, code, args[1])
-    let s = h.strs[si].clone()
-    let t = h.strs[sb].clone()
+    si := try want_str(h, code, args[0])
+    sb := try want_str(h, code, args[1])
+    s := h.strs[si].clone()
+    t := h.strs[sb].clone()
     return ok(vbool(s.contains(t)))
 
 // ---- Output and miscellaneous ----
 
 fn misc_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
     if code == P_DISPLAY or code == P_WRITE:
-        let text = show(h, args[0], code == P_WRITE)
+        text := show(h, args[0], code == P_WRITE)
         emit(var h, text)
         return ok(void_v())
 
@@ -1617,7 +1617,7 @@ fn misc_prim(var h: Heap, code: Int, args: List[V]) Result[V, Fail]:
         return ok(void_v())
 
     // error
-    let si = try want_str(h, code, args[0])
+    si := try want_str(h, code, args[0])
     var parts = List[String]()
     parts.append(h.strs[si].clone())
 
@@ -1658,7 +1658,7 @@ fn skip_ws(var h: Heap) Unit:
     var more = true
 
     while more:
-        let c = peek(h)
+        c := peek(h)
 
         if c == 32 or c == 9 or c == 10 or c == 13:
             h.pos += 1
@@ -1671,7 +1671,7 @@ fn skip_ws(var h: Heap) Unit:
 fn read_datum(var h: Heap) Result[V, Fail]:
     skip_ws(var h)
 
-    let c = peek(h)
+    c := peek(h)
     if c == -1:
         return error(syn_err("unexpected end of input"))
 
@@ -1685,8 +1685,8 @@ fn read_datum(var h: Heap) Result[V, Fail]:
     if c == 39:
         h.pos += 1
 
-        let d = try read_datum(var h)
-        let rest = cons(var h, d, nil_v())
+        d := try read_datum(var h)
+        rest := cons(var h, d, nil_v())
         return ok(cons(var h, V(K_SYM, S_QUOTE), rest))
 
     if c == 34:
@@ -1702,7 +1702,7 @@ fn read_list(var h: Heap) Result[V, Fail]:
     while true:
         skip_ws(var h)
 
-        let c = peek(h)
+        c := peek(h)
         if c == -1:
             return error(syn_err("unexpected end of input"))
 
@@ -1722,7 +1722,7 @@ fn read_list(var h: Heap) Result[V, Fail]:
             tail = try read_datum(var h)
             skip_ws(var h)
 
-            let after = peek(h)
+            after := peek(h)
 
             if after == 41:
                 h.pos += 1
@@ -1733,24 +1733,24 @@ fn read_list(var h: Heap) Result[V, Fail]:
 
             return error(syn_err("bad dotted list"))
 
-        let item = try read_datum(var h)
+        item := try read_datum(var h)
         items.append(item)
 
     return ok(prepend_list(var h, items, tail))
 
 fn text_range(h: Heap, start: Int, end: Int) String:
-    if let t = h.src.decode_utf8_range(start, end):
+    if t := h.src.decode_utf8_range(start, end):
         return t
 
     return ""
 
 fn read_string(var h: Heap) Result[V, Fail]:
     var parts = List[String]()
-    let begin = h.pos
+    begin := h.pos
     var run = begin
 
     while true:
-        let c = peek(h)
+        c := peek(h)
         if c == -1:
             return error(syn_err("unterminated string"))
 
@@ -1762,7 +1762,7 @@ fn read_string(var h: Heap) Result[V, Fail]:
         if c == 92:
             parts.append(text_range(h, run, h.pos))
 
-            let e = byte_at(h, h.pos + 1)
+            e := byte_at(h, h.pos + 1)
             if e == -1:
                 return error(syn_err("unterminated string"))
 
@@ -1785,10 +1785,10 @@ fn read_string(var h: Heap) Result[V, Fail]:
     return ok(str_val(var h, parts.join("")))
 
 fn read_atom(var h: Heap) Result[V, Fail]:
-    let start = h.pos
+    start := h.pos
     while not is_delim(peek(h)):
         h.pos += 1
-    if let t = h.src.decode_utf8_range(start, h.pos):
+    if t := h.src.decode_utf8_range(start, h.pos):
         return atom_value(var h, t)
 
     return error(syn_err("bad token"))
@@ -1804,7 +1804,7 @@ fn atom_value(var h: Heap, t: String) Result[V, Fail]:
         return error(syn_err("unexpected ."))
 
     if is_int_text(t):
-        if let n = parse_int_text(t):
+        if n := parse_int_text(t):
             return ok(int_val(n))
 
         return error(syn_err("integer out of range"))
@@ -1813,8 +1813,8 @@ fn atom_value(var h: Heap, t: String) Result[V, Fail]:
 
 // True for an optional '-' followed by one or more digits.
 fn is_int_text(text: String) Bool:
-    let b = text.to_bytes()
-    let n = b.length()
+    b := text.to_bytes()
+    n := b.length()
     var i = 0
     if n > 0 and b.get(0).to_int() == 45:
         i = 1
@@ -1822,7 +1822,7 @@ fn is_int_text(text: String) Bool:
         return false
 
     while i < n:
-        let c = b.get(i).to_int()
+        c := b.get(i).to_int()
         if c < 48 or c > 57:
             return false
 
@@ -1833,8 +1833,8 @@ fn is_int_text(text: String) Bool:
 // Parses text that passed is_int_text. Accumulates as a negative number so
 // that MIN_INT is representable; none when the value is out of range.
 fn parse_int_text(text: String) Optional[Int]:
-    let b = text.to_bytes()
-    let n = b.length()
+    b := text.to_bytes()
+    n := b.length()
     var neg = false
     var i = 0
 
@@ -1845,7 +1845,7 @@ fn parse_int_text(text: String) Optional[Int]:
     var acc = 0
 
     while i < n:
-        let d = b.get(i).to_int() - 48
+        d := b.get(i).to_int() - 48
         if acc < (MIN_INT + d) / 10:
             return none
 
@@ -1867,18 +1867,18 @@ fn run_top(var h: Heap) Result[Unit, Fail]:
         if h.pos >= h.n:
             break
 
-        let form = try read_datum(var h)
-        let _v = try eval_expr(var h, form, 0, 0, false)
+        form := try read_datum(var h)
+        _v := try eval_expr(var h, form, 0, 0, false)
 
     return ok(unit)
 
 fn reg(var h: Heap, name: String, lo: Int, hi: Int) Unit:
-    let code = h.pnames.length()
+    code := h.pnames.length()
     h.pnames.append(name.clone())
     h.pmin.append(lo)
     h.pmax.append(hi)
 
-    let id = intern(var h, name)
+    id := intern(var h, name)
     h.binds.add(key(0, id), V(K_PRIM, code))
 
 // Registration order must match the P_* constants.
@@ -1959,7 +1959,7 @@ fn reg_prims(var h: Heap) Unit:
     reg(var h, "error", 1, -1)
 
 fn new_heap(src: Bytes) Heap:
-    let n = src.length()
+    n := src.length()
     var h = Heap(
         cars: List[V](), cdrs: List[V](), strs: List[String](), syms: List[String](),
         symids: Map[String, Int](), parents: List[Int](), binds: Map[Int, V](),
@@ -1967,15 +1967,15 @@ fn new_heap(src: Bytes) Heap:
         src: src, n: n, pos: 0, out_any: false, out_nl: false
     )
     for name in SPECIAL_NAMES:
-        let _id = intern(var h, name)
+        _id := intern(var h, name)
     h.parents.append(-1)
     reg_prims(var h)
     return h
 
 export fn main() Int:
-    let data = read_all(stdin()).get()
+    data := read_all(stdin()).get()
     var h = new_heap(data)
-    let r = run_top(var h)
+    r := run_top(var h)
     if r.is_error():
         report_error(var h, r.err().msg)
     return 0

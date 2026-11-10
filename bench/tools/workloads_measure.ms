@@ -26,19 +26,19 @@ export fn measure(repeats: Int, name: String, run: fn(String) String!) Measured!
 
     // One untimed run of each version warms executable and input pages. The Go reference establishes the expected output;
     // every other output must match.
-    let expected = try run("go")
+    expected := try run("go")
 
     for v in ["ms", "rs"]:
-        let got = try run(v)
+        got := try run(v)
         if got != expected: return invalid("{name}: {v} warm-up output differs from Go")
 
     var samples = List[Sample]()
 
     for trial in 0..repeats:
         for v in rotate(versions(), trial % versions().length()):
-            let start = now_ns()
-            let got = try run(v)
-            let elapsed = now_ns() - start
+            start := now_ns()
+            got := try run(v)
+            elapsed := now_ns() - start
             if elapsed <= 0: return invalid("{name}: nonpositive elapsed time")
             if got != expected: return invalid(
                 "{name}: {v} trial {trial + 1} output differs from Go"
@@ -49,9 +49,9 @@ export fn measure(repeats: Int, name: String, run: fn(String) String!) Measured!
     return ok(Measured(samples, expected))
 
 export fn row(name: String, samples: List[Sample]) String:
-    let m = best(samples, "ms")
-    let g = best(samples, "go")
-    let r = best(samples, "rs")
+    m := best(samples, "ms")
+    g := best(samples, "go")
+    r := best(samples, "rs")
     return (
         left(name, 24)
         + " "

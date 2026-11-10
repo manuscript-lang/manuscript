@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -31,16 +31,16 @@ fn gcd(a: Int, b: Int) Int:
 export fn main() Int:
     say("collatz(1528) = {collatz(1528)}")
 
-    let f1 = ((735.008 + (729.607 - 0.0)) * (76.946 * 850.25))
+    f1 := ((735.008 + (729.607 - 0.0)) * (76.946 * 850.25))
     say("f1 = {f1}")
     say("gcd(4116, 2069) = {gcd(4116, 2069)}")
 
-    let b2 = "brace\{s\}".contains("delta")
+    b2 := "brace\{s\}".contains("delta")
     say("b2 = {b2}")
     say("gcd(3212, 2317) = {gcd(3212, 2317)}")
     say("gcd(4823, 4386) = {gcd(4823, 4386)}")
 
-    let f3 = (421.944 + ((f1 * 5.5) / (f1 / 414.010)))
+    f3 := (421.944 + ((f1 * 5.5) / (f1 / 414.010)))
     say("f3 = {f3}")
 
     if "quote\"d".starts_with("brace\{s\}"):
@@ -48,10 +48,10 @@ export fn main() Int:
     else:
         say("ms".lower())
 
-    let i4 = (((-38) - (-31)) - (-21))
+    i4 := (((-38) - (-31)) - (-21))
     say("i4 = {i4}")
 
-    let f5 = ((3.0e7 * f1) - f3)
+    f5 := ((3.0e7 * f1) - f3)
     say("f5 = {f5}")
 
     if ((false and true) and (b2 or true)):
@@ -59,6 +59,6 @@ export fn main() Int:
     else:
         say("MiXeD CaSe")
 
-    let i6 = (31 * (((-35) + i4) + (i4 - i4)))
+    i6 := (31 * (((-35) + i4) + (i4 - i4)))
     say("i6 = {i6}")
     return 0

@@ -14,7 +14,7 @@ fn add(x: Int, y: Int) Int:
     return x + y
 
 fn sum(var log: List[String], a: Int, b: Int) Int!Error:
-    let v = (
+    v := (
         (try step(log: var log, name: "a", n: a))
         + (try step(log: var log, name: "b", n: b))
     )
@@ -32,7 +32,7 @@ fn arguments(var log: List[String], a: Int, b: Int) Int!Error:
 fn effect_first(var log: List[String], a: Int) Int!Error:
     log.append(value: "before")
 
-    let v = add(x: 1, y: try step(log: var log, name: "s", n: a))
+    v := add(x: 1, y: try step(log: var log, name: "s", n: a))
     return ok(value: v)
 
 fn loop(var log: List[String], n: Int) Int!Error:

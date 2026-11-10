@@ -8,9 +8,9 @@ fn run() Result[Unit, Error]:
     var input = lines(stdin())
 
     while true:
-        let line = try input.next()
+        line := try input.next()
 
-        if let text = line:
+        if text := line:
             try stdout().write("{text}\n")
         else:
             break

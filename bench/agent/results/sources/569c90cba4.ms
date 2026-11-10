@@ -25,18 +25,18 @@ fn rotate(c: Int, shift: Int) Int:
 
 // Parses an optional '-' followed by 1 through 7 ASCII digits.
 fn caesar_key(key: String) Optional[Int]:
-    let codes = key.scalar_values()
-    let negative = codes.length() > 0 and codes[0] == 45
+    codes := key.scalar_values()
+    negative := codes.length() > 0 and codes[0] == 45
 
-    let start = if negative: 1 else: 0
+    start := if negative: 1 else: 0
 
-    let digits = codes.length() - start
+    digits := codes.length() - start
     if digits < 1 or digits > 7: return none
 
     var value = 0
 
     for i in start..codes.length():
-        let c = codes[i]
+        c := codes[i]
         if c < 48 or c > 57: return none
 
         value = value * 10 + c - 48
@@ -51,7 +51,7 @@ fn is_key_word(codes: List[Int]) Bool:
     return true
 
 fn caesar(text: String, key: Int, decrypt: Bool) String:
-    let shift = if decrypt: -key else: key
+    shift := if decrypt: -key else: key
 
     var out = List[Int]()
     for c in text.scalar_values():
@@ -59,13 +59,13 @@ fn caesar(text: String, key: Int, decrypt: Bool) String:
     return from_scalars(out).get()
 
 fn vigenere(text: String, key: String, decrypt: Bool) String:
-    let key_codes = key.scalar_values()
+    key_codes := key.scalar_values()
     var out = List[Int]()
     var k = 0
 
     for c in text.scalar_values():
         if is_letter(c):
-            let s = letter_index(key_codes[k % key_codes.length()])
+            s := letter_index(key_codes[k % key_codes.length()])
             out.append(rotate(c, if decrypt: -s else: s))
             k += 1
         else:
@@ -74,22 +74,22 @@ fn vigenere(text: String, key: String, decrypt: Bool) String:
     return from_scalars(out).get()
 
 fn run(line: String) String:
-    let parts = line.split(" ")
+    parts := line.split(" ")
     if parts.length() < 4: return "error: bad command"
 
-    let text = line.drop(parts[0].length() + parts[1].length() + parts[2].length() + 3)
+    text := line.drop(parts[0].length() + parts[1].length() + parts[2].length() + 3)
     if text.is_empty(): return "error: bad command"
 
-    let cipher = parts[0]
-    let mode = parts[1]
-    let key = parts[2]
+    cipher := parts[0]
+    mode := parts[1]
+    key := parts[2]
     if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
     if mode != "enc" and mode != "dec": return "error: bad mode"
 
-    let decrypt = mode == "dec"
+    decrypt := mode == "dec"
 
     if cipher == "caesar":
-        if let shift = caesar_key(key):
+        if shift := caesar_key(key):
             return caesar(text, shift, decrypt)
         else:
             return "error: bad key"

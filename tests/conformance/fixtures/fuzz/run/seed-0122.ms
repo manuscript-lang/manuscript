@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,31 +23,31 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let l1 = [(-2)]
+    l1 := [(-2)]
     say("l1 = {l1} len {l1.length()}")
 
-    let s2 = "line\nbreak"
+    s2 := "line\nbreak"
     say("s2 = [{s2}]")
 
-    let s3 = s2.clone()
+    s3 := s2.clone()
     say("s3 = [{s3}]")
     say("collatz(955) = {collatz(955)}")
 
-    let l4 = l1.drop(1)
+    l4 := l1.drop(1)
     say("l4 = {l4} len {l4.length()}")
 
-    let b5 = (
+    b5 := (
         ("delta".lower() != ("back\\slash" + s3))
         or ("héllo".contains(s3) or (7 > (-4)))
     )
     say("b5 = {b5}")
 
-    let i6 = (l4.length() + s3.length())
+    i6 := (l4.length() + s3.length())
     say("i6 = {i6}")
 
-    let s7 = s2.reverse().lower()
+    s7 := s2.reverse().lower()
     say("s7 = [{s7}]")
 
-    let b8 = (s3 + ("{(485928 + 22)}:" + "Tab\there")).is_empty()
+    b8 := (s3 + ("{(485928 + 22)}:" + "Tab\there")).is_empty()
     say("b8 = {b8}")
     return 0

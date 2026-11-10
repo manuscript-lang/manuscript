@@ -12,7 +12,7 @@ Implemented 2026-11-09 on `f6304403`. Direction (Chinmay): "let's do real borrow
 
 ## Problem
 
-Measured (micro, 4000-byte text, 3900 iterations, `let tail = text.slice(i, n).get()` against `let tail = text.view(i, n)`, then `tail.starts_with("ab")`): 400 to 530 us against 79 to 190 us. Programs in `bench/agent/challenges` (c03, c09) copy a remainder per field.
+Measured (micro, 4000-byte text, 3900 iterations, `tail := text.slice(i, n).get()` against `tail := text.view(i, n)`, then `tail.starts_with("ab")`): 400 to 530 us against 79 to 190 us. Programs in `bench/agent/challenges` (c03, c09) copy a remainder per field.
 
 Making `slice` itself return a borrow would reject every program that stores its result (`parts.append(rest.slice(..).get())`, `rest = rest.slice(..)`), about 400 call sites in stdlib, tests and bench, and would turn `ERANGE` handling into faults. A separate method keeps both, as `Bytes` does.
 
@@ -20,7 +20,7 @@ Making `slice` itself return a borrow would reject every program that stores its
 
 ```manuscript
 fn count_a(text: String) Int:
-    let head = text.view(0, 4)      // borrows `text`, nothing allocated
+    head := text.view(0, 4)      // borrows `text`, nothing allocated
     var n = 0
     for c in head.scalar_values():
         if c == 97:

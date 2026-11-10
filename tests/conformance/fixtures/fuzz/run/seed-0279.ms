@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -29,14 +29,14 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let l1 = [1, 2, 3].take(0)
+    l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
 
-    let l2 = l1.map(fn x: x * 7)
+    l2 := l1.map(fn x: x * 7)
     say("l2 = {l2} len {l2.length()}")
     say("gcd(2865, 4945) = {gcd(2865, 4945)}")
 
-    let i3 = 47
+    i3 := 47
     say("i3 = {i3}")
 
     if ("Tab\there" != "alpha"):
@@ -44,23 +44,23 @@ export fn main() Int:
     else:
         say("a".reverse())
 
-    let i4 = i3
+    i4 := i3
     say("i4 = {i4}")
     say("collatz(1579) = {collatz(1579)}")
 
-    let i5 = i3
+    i5 := i3
     say("i5 = {i5}")
 
-    let i6 = l1.length()
+    i6 := l1.length()
     say("i6 = {i6}")
 
-    let i7 = 807145
+    i7 := 807145
     say("i7 = {i7}")
 
-    let i8 = l1.length()
+    i8 := l1.length()
     say("i8 = {i8}")
 
-    let b9 = (false and false)
+    b9 := (false and false)
     say("b9 = {b9}")
 
     if ("héllo".lower() == ("beta" + "hello world")):

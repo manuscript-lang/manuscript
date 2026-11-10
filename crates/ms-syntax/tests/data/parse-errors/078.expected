@@ -1,1 +1,1 @@
-error parse 2:9:23 "`ref` was removed: drop it; a function that returns part of a parameter returns a borrow of it, with no marker, and a field owns its value"
+error parse 2:5:19 "only a call, try call, or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function"

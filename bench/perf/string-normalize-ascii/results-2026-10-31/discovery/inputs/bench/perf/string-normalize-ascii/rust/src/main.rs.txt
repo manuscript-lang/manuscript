@@ -25,14 +25,14 @@ fn normalize(text: &str, form: &str, max: Option<i64>) -> Result<String, Normali
     if max.is_some_and(|n| n < 0) {
         return Err(NormalizeError::InvalidInput);
     }
-    let kind = match form {
+    kind := match form {
         "NFC" => 0,
         "NFD" => 1,
         "NFKC" => 2,
         "NFKD" => 3,
         _ => return Err(NormalizeError::InvalidInput),
     };
-    let limit = max.map_or(usize::MAX, |n| n as usize);
+    limit := max.map_or(usize::MAX, |n| n as usize);
     #[cfg(feature = "ascii-identity")]
     if text.is_ascii() {
         return if text.len() > limit {
@@ -51,13 +51,13 @@ fn normalize(text: &str, form: &str, max: Option<i64>) -> Result<String, Normali
 
 #[inline(never)]
 fn consume(text: &str, form: &str, max: Option<i64>, expected: &str, status: usize) -> usize {
-    let result = normalize(text, form, max);
+    result := normalize(text, form, max);
     if status == 0 {
-        let out = result.expect("normalization success");
+        out := result.expect("normalization success");
         assert_eq!(out, expected);
         return out.len() + 17;
     }
-    let error = if status == 1 {
+    error := if status == 1 {
         NormalizeError::LimitExceeded
     } else {
         NormalizeError::InvalidInput
@@ -93,9 +93,9 @@ fn measure(
     status: usize,
     count: usize,
 ) {
-    let expected_sum = if status == 0 { expected.len() + 17 } else { 17 };
+    expected_sum := if status == 0 { expected.len() + 17 } else { 17 };
     assert_eq!(consume(text, form, max, expected, status), expected_sum);
-    let started = Instant::now();
+    started := Instant::now();
     let mut checksum = 0usize;
     for _ in 0..count {
         checksum += black_box(consume(
@@ -106,7 +106,7 @@ fn measure(
             black_box(status),
         ));
     }
-    let elapsed = started.elapsed().as_nanos();
+    elapsed := started.elapsed().as_nanos();
     assert_eq!(checksum, expected_sum * count);
     println!("{name},{},{count},{elapsed},{checksum}", text.len());
 }
@@ -189,9 +189,9 @@ fn main() {
         },
     ] {
         for copies in [4096, 65536] {
-            let text = p.text.repeat(copies);
+            text := p.text.repeat(copies);
             for (form, expected) in FORMS.into_iter().zip(p.expected) {
-                let expected = expected.repeat(copies);
+                expected := expected.repeat(copies);
                 measure(
                     &format!("{}_{copies}_{form}_full", p.name),
                     &text,
@@ -204,11 +204,11 @@ fn main() {
             }
         }
     }
-    let cluster = "a".to_owned() + &"\u{315}\u{300}".repeat(256);
-    let decomposed = "a".to_owned() + &"\u{300}".repeat(256) + &"\u{315}".repeat(256);
-    let composed = "à".to_owned() + &"\u{300}".repeat(255) + &"\u{315}".repeat(256);
+    cluster := "a".to_owned() + &"\u{315}\u{300}".repeat(256);
+    decomposed := "a".to_owned() + &"\u{300}".repeat(256) + &"\u{315}".repeat(256);
+    composed := "à".to_owned() + &"\u{300}".repeat(255) + &"\u{315}".repeat(256);
     for form in FORMS {
-        let expected = if ["NFC", "NFKC"].contains(&form) {
+        expected := if ["NFC", "NFKC"].contains(&form) {
             &composed
         } else {
             &decomposed
@@ -223,16 +223,16 @@ fn main() {
             64,
         );
     }
-    let budget_text = "e\u{301}".repeat(4096);
+    budget_text := "e\u{301}".repeat(4096);
     for form in FORMS {
-        let expected = if ["NFC", "NFKC"].contains(&form) {
+        expected := if ["NFC", "NFKC"].contains(&form) {
             "é"
         } else {
             "e\u{301}"
         }
         .repeat(4096);
-        let exact = expected.len() as i64;
-        let count = iterations(budget_text.len());
+        exact := expected.len() as i64;
+        count := iterations(budget_text.len());
         measure(
             &format!("budget_{form}_zero"),
             &budget_text,
@@ -278,15 +278,15 @@ fn main() {
     ] {
         measure(name, "é", form, max, "", 2, 200000);
     }
-    let boundary = Pattern {
+    boundary := Pattern {
         name: "unicode_boundary",
         text: "éﬁ",
         expected: ["éﬁ", "e\u{301}ﬁ", "éfi", "e\u{301}fi"],
     };
     for length in [4096, 1048576] {
-        let prefix = "x".repeat(length);
+        prefix := "x".repeat(length);
         for (form, block) in FORMS.into_iter().zip(boundary.expected) {
-            let count = iterations(length + boundary.text.len());
+            count := iterations(length + boundary.text.len());
             measure(
                 &format!("early_unicode_{length}_{form}"),
                 &(boundary.text.to_owned() + &prefix),

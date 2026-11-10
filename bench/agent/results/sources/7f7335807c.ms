@@ -21,7 +21,7 @@ fn add_digits(a: List[Int], b: List[Int]) List[Int]:
     var k = 0
 
     while k < a.length() or k < b.length() or carry > 0:
-        let s = carry + digit_at(a, k) + digit_at(b, k)
+        s := carry + digit_at(a, k) + digit_at(b, k)
         out.append(s % 10)
         carry = s / 10
         k += 1
@@ -49,7 +49,7 @@ fn format_cents(d: List[Int]) String:
 
 // True when every scalar is an ASCII digit and there is at least one.
 fn all_digits(s: String) Bool:
-    let codes = s.scalar_values()
+    codes := s.scalar_values()
     if codes.length() == 0: return false
 
     for c in codes:
@@ -58,19 +58,19 @@ fn all_digits(s: String) Bool:
 
 // Amount grammar: digits, optionally "." followed by one or two digits.
 fn is_amount(s: String) Bool:
-    let parts = s.split(".")
+    parts := s.split(".")
     if parts.length() == 1: return all_digits(parts[0])
 
     if parts.length() == 2:
-        let frac = parts[1]
-        let fl = frac.length()
+        frac := parts[1]
+        fl := frac.length()
         return all_digits(parts[0]) and fl >= 1 and fl <= 2 and all_digits(frac)
 
     return false
 
 // Converts a valid amount such as "12.5" to little-endian cents digits.
 fn cents_of(amt: String) List[Int]:
-    let parts = amt.split(".")
+    parts := amt.split(".")
     var text = parts[0].clone()
 
     if parts.length() == 2:
@@ -78,7 +78,7 @@ fn cents_of(amt: String) List[Int]:
     else:
         text += "00"
 
-    let codes = text.scalar_values()
+    codes := text.scalar_values()
     var out = List[Int]()
     var k = codes.length() - 1
 
@@ -96,28 +96,28 @@ fn make_rec(cat: String, amt: String) Rec?:
 // Parses one non-blank line; none when it is invalid.
 fn parse_line(line: String) Rec?:
     if line.starts_with("\""):
-        let parts = line.drop(1).split("\"", 2)
+        parts := line.drop(1).split("\"", 2)
         if parts.length() != 2: return none
 
-        let tail = parts[1]
+        tail := parts[1]
         if not tail.starts_with(","): return none
 
         return make_rec(parts[0], tail.drop(1))
 
-    let parts = line.split(",")
+    parts := line.split(",")
     if parts.length() != 2: return none
 
     return make_rec(parts[0], parts[1])
 
 export fn main() Int:
-    let all = collect(lines(stdin())).get()
+    all := collect(lines(stdin())).get()
     var recs = List[Rec]()
     var skipped = 0
 
     for line in all:
         if line.trim() == "": continue
 
-        if let r = parse_line(line):
+        if r := parse_line(line):
             recs.append(r)
         else:
             skipped += 1

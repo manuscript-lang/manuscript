@@ -63,8 +63,8 @@ type Session:
     sub: String
     exp: Int
 
-let token = try sign_token(Session(sub: "42", exp: 1900000000), secret)
-let session = try verify_token[Session](token, secret)
+token := try sign_token(Session(sub: "42", exp: 1900000000), secret)
+session := try verify_token[Session](token, secret)
 ```
 */
 export fn sign_token[T: Data](
@@ -72,14 +72,14 @@ export fn sign_token[T: Data](
     key: Bytes,
     algorithm: JwtAlgorithm = JwtAlgorithm.Hs256
 ) String!:
-    let header = stringify(JwtHeader(alg: algorithm_name(algorithm), typ: "JWT"))
-    let payload = stringify(claims)
+    header := stringify(JwtHeader(alg: algorithm_name(algorithm), typ: "JWT"))
+    payload := stringify(claims)
     if header.is_error() or payload.is_error(): return error(jwt_invalid_key())
 
-    let head = base64_encode(header.get("").to_bytes(), url_safe: true, padded: false)
-    let body = base64_encode(payload.get("").to_bytes(), url_safe: true, padded: false)
-    let signing_input = "{head}.{body}"
-    let signature = try sign_bytes(algorithm, key, signing_input.to_bytes())
+    head := base64_encode(header.get("").to_bytes(), url_safe: true, padded: false)
+    body := base64_encode(payload.get("").to_bytes(), url_safe: true, padded: false)
+    signing_input := "{head}.{body}"
+    signature := try sign_bytes(algorithm, key, signing_input.to_bytes())
     return ok(
         "{signing_input}.{base64_encode(signature, url_safe: true, padded: false)}"
     )
@@ -102,10 +102,10 @@ export fn verify_token[T: Data = JsonValue](
         Error("jwt: malformed token", kind: "EBADMSG")
     )
 
-    let parts = token.split(".")
+    parts := token.split(".")
     if parts.length() != 3: return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-    let header = try decode_json[JsonValue](parts[0], check.max_bytes)
+    header := try decode_json[JsonValue](parts[0], check.max_bytes)
     if not header_algorithm_matches(
         header.get("alg").get(JsonValue.Null), check.algorithm
     ): return error(Error("jwt: wrong algorithm", kind: "EBADMSG"))
@@ -115,25 +115,25 @@ export fn verify_token[T: Data = JsonValue](
         Error("jwt: unsupported critical header", kind: "EBADMSG")
     )
 
-    if let encoded = header.get("b64"):
+    if encoded := header.get("b64"):
         if not encoded.as_bool().get(false): return error(
             Error("jwt: unsupported payload encoding", kind: "EBADMSG")
         )
 
-    let signature = base64_decode(
+    signature := base64_decode(
         parts[2], url_safe: true, max_bytes: check.max_bytes, padded: false
     )
     if signature.is_error(): return error(
         Error("jwt: malformed token", kind: "EBADMSG")
     )
 
-    let signing_input = "{parts[0]}.{parts[1]}"
-    let genuine = try verify_bytes(
+    signing_input := "{parts[0]}.{parts[1]}"
+    genuine := try verify_bytes(
         check.algorithm, key, signing_input.to_bytes(), signature.get("".to_bytes())
     )
     if not genuine: return error(Error("jwt: bad signature", kind: "EBADMSG"))
 
-    let claims = try decode_json[JsonValue](parts[1], check.max_bytes)
+    claims := try decode_json[JsonValue](parts[1], check.max_bytes)
     try check_claims(claims, check)
     return decode_json[T](parts[1], check.max_bytes)
 
@@ -152,14 +152,14 @@ fn algorithm_name(algorithm: JwtAlgorithm) String:
         EdDsa: return "EdDSA"
 
 fn decode_json[T: Data](part: String, limit: Int) T!:
-    let raw = base64_decode(part, url_safe: true, max_bytes: limit, padded: false)
+    raw := base64_decode(part, url_safe: true, max_bytes: limit, padded: false)
     if raw.is_error(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-    let text = raw.get("".to_bytes()).decode_utf8()
+    text := raw.get("".to_bytes()).decode_utf8()
     if text.is_none(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-    let value = parse[T](text.get(""))
-    if let decoded = value: return ok(decoded)
+    value := parse[T](text.get(""))
+    if decoded := value: return ok(decoded)
 
     return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
@@ -171,26 +171,26 @@ fn hmac_hash(algorithm: JwtAlgorithm) HashAlgorithm?:
         _: return none
 
 fn sign_bytes(algorithm: JwtAlgorithm, key: Bytes, data: Bytes) Bytes!:
-    if let hash = hmac_hash(algorithm):
-        let mac = hash.hmac(key, data)
-        if let bytes = mac: return ok(bytes)
+    if hash := hmac_hash(algorithm):
+        mac := hash.hmac(key, data)
+        if bytes := mac: return ok(bytes)
 
         return error(jwt_invalid_key())
 
     if algorithm == JwtAlgorithm.Rs256:
-        let signed = rsa_sign(key, HashAlgorithm.Sha256, data)
-        if let bytes = signed: return ok(bytes)
+        signed := rsa_sign(key, HashAlgorithm.Sha256, data)
+        if bytes := signed: return ok(bytes)
 
         return error(jwt_invalid_key())
 
     if algorithm == JwtAlgorithm.Es256:
-        let signed = ecdsa_sign(key, HashAlgorithm.Sha256, data)
-        if let der = signed: return der_to_raw(der, 32)
+        signed := ecdsa_sign(key, HashAlgorithm.Sha256, data)
+        if der := signed: return der_to_raw(der, 32)
 
         return error(jwt_invalid_key())
 
-    let signed = sign(key, data)
-    if let bytes = signed: return ok(bytes)
+    signed := sign(key, data)
+    if bytes := signed: return ok(bytes)
 
     return error(jwt_invalid_key())
 
@@ -200,9 +200,9 @@ fn verify_bytes(
     data: Bytes,
     signature: Bytes
 ) Bool!:
-    if let hash = hmac_hash(algorithm):
-        let mac = hash.hmac(key, data)
-        if let bytes = mac: return ok(constant_time_equal(bytes, signature))
+    if hash := hmac_hash(algorithm):
+        mac := hash.hmac(key, data)
+        if bytes := mac: return ok(constant_time_equal(bytes, signature))
 
         return error(jwt_invalid_key())
 
@@ -212,7 +212,7 @@ fn verify_bytes(
     if algorithm == JwtAlgorithm.Es256:
         if signature.length() != 64: return ok(false)
 
-        let der = raw_to_der(signature)
+        der := raw_to_der(signature)
         return ok(ecdsa_verify(key, HashAlgorithm.Sha256, data, der))
 
     return ok(verify(key, data, signature))
@@ -224,32 +224,32 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
 
     var moment = 0
 
-    if let given = check.at:
+    if given := check.at:
         moment = given
     else:
         moment = now().seconds
 
-    if let exp = claims.get("exp"):
-        let limit = try numeric_date(exp, "exp")
+    if exp := claims.get("exp"):
+        limit := try numeric_date(exp, "exp")
         if limit + check.leeway.to_float() <= moment.to_float(): return error(
             Error("jwt: token expired", kind: "EBADMSG")
         )
 
-    if let nbf = claims.get("nbf"):
-        let start = try numeric_date(nbf, "nbf")
+    if nbf := claims.get("nbf"):
+        start := try numeric_date(nbf, "nbf")
         if start - check.leeway.to_float() > moment.to_float(): return error(
             Error("jwt: token not yet valid", kind: "EBADMSG")
         )
 
-    if let issuer = check.issuer:
-        let actual = claims.get("iss").get(JsonValue.Null).as_string()
+    if issuer := check.issuer:
+        actual := claims.get("iss").get(JsonValue.Null).as_string()
         if actual.is_none() or actual.get("") != issuer: return error(
             Error("jwt: wrong issuer", kind: "EBADMSG")
         )
 
-    if let aud = claims.get("aud"):
+    if aud := claims.get("aud"):
         if aud.as_string().is_none():
-            if let many = aud.as_list():
+            if many := aud.as_list():
                 if many.any(fn item: item.as_string().is_none()): return error(
                     Error(
                         "jwt: aud must hold only strings", kind: "EBADMSG"
@@ -263,20 +263,20 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
                     )
                 )
 
-    if let audience = check.audience:
+    if audience := check.audience:
         if not includes_audience(claims.get("aud").get(JsonValue.Null), audience): return error(
             Error("jwt: wrong audience", kind: "EBADMSG")
         )
 
 // A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is malformed.
 fn numeric_date(claim: JsonValue, name: String) Float!:
-    if let value = claim.as_float(): return ok(value)
+    if value := claim.as_float(): return ok(value)
 
     return error(Error("jwt: {name} must be a number", kind: "EBADMSG"))
 
 fn includes_audience(claim: JsonValue, audience: String) Bool:
-    if let single = claim.as_string(): return single == audience
-    if let many = claim.as_list():
+    if single := claim.as_string(): return single == audience
+    if many := claim.as_list():
         return many.any(fn item: item.as_string().get("") == audience)
 
     return false
@@ -315,7 +315,7 @@ fn der_to_raw(der: Bytes, width: Int) Bytes!:
 
 // Converts a fixed-width `r || s` signature to ASN.1 DER.
 fn raw_to_der(raw: Bytes) Bytes:
-    let half = raw.length() / 2
+    half := raw.length() / 2
     var body = BytesBuilder()
 
     for piece in 0..2:
@@ -324,7 +324,7 @@ fn raw_to_der(raw: Bytes) Bytes:
             start += 1
 
         var size = (piece + 1) * half - start
-        let pad = raw.get(start).to_int() >= 128
+        pad := raw.get(start).to_int() >= 128
         if pad: size += 1
         body.append(2)
         body.append(size.to_uint8().get(0))
@@ -332,7 +332,7 @@ fn raw_to_der(raw: Bytes) Bytes:
         for place in start..((piece + 1) * half):
             body.append(raw.get(place))
 
-    let inner = body.build()
+    inner := body.build()
     var out = BytesBuilder()
     out.append(48)
     if inner.length() >= 128: out.append(129)

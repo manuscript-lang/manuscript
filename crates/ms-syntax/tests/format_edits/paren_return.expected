@@ -8,6 +8,6 @@ fn work(first: Int, second: String) (Map[String, String]?)!ApplicationError:
     return error(cause)
 
 fn main() Unit:
-    let a = g()(1)
-    let b = g(1)(2)
-    let c: fn(Int) (fn() Int) = x
+    a := g()(1)
+    b := g(1)(2)
+    c: fn(Int) (fn() Int) = x

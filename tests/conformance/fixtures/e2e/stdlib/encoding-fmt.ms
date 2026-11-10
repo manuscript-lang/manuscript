@@ -17,7 +17,7 @@ import (
 import Bytes from "@std/bytes.ms"
 
 test "encoding known vectors and exact output limits":
-    let data = Bytes([0, 255, 66])
+    data := Bytes([0, 255, 66])
     try expect_equal(hex_encode(data), "00ff42")
     try expect_equal((try hex_decode("00FF42", 3)), data)
     try expect_equal(base64_encode(data, url_safe: false), "AP9C")
@@ -26,18 +26,18 @@ test "encoding known vectors and exact output limits":
 
 test "encoding rejects malformed data and invalid budgets":
     for text in ["Zh==", "Zg=", "Zg==\n", "_w=="]:
-        let actual = base64_decode(text, url_safe: false)
-        let expected: Bytes! = error(
+        actual := base64_decode(text, url_safe: false)
+        expected: Bytes! = error(
             Error("encoding: invalid data", kind: "EBADMSG")
         )
         try expect_equal(actual, expected)
 
-    let limited: Bytes! = error(
+    limited: Bytes! = error(
         Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(hex_decode("00ff", 1), limited)
 
-    let invalid: Bytes! = error(
+    invalid: Bytes! = error(
         Error("encoding: invalid input", kind: "EINVAL")
     )
     try expect_equal(hex_decode("", -1), invalid)
@@ -48,14 +48,14 @@ test "UTF-16 encodes surrogate pairs in either byte order":
     try expect_equal(try utf16_decode(Bytes([97, 0, 172, 32, 61, 216, 0, 222])), "a€😀")
     try expect_equal(try utf16_decode(Bytes([0, 97]), little_endian: false), "a")
 
-    let invalid: String! = error(
+    invalid: String! = error(
         Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(utf16_decode(Bytes([97])), invalid)
     try expect_equal(utf16_decode(Bytes([61, 216])), invalid)
     try expect_equal(utf16_decode(Bytes([0, 222])), invalid)
 
-    let limited: String! = error(
+    limited: String! = error(
         Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(utf16_decode(Bytes([172, 32]), max_bytes: 2), limited)
@@ -64,7 +64,7 @@ test "Latin-1 and ASCII are strict single-byte encodings":
     try expect_equal(try latin1_encode("é"), Bytes([233]))
     try expect_equal(latin1_decode(Bytes([233, 65])), "éA")
 
-    let invalid_encode: Bytes! = error(
+    invalid_encode: Bytes! = error(
         Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(latin1_encode("€"), invalid_encode)
@@ -72,7 +72,7 @@ test "Latin-1 and ASCII are strict single-byte encodings":
     try expect_equal(ascii_encode("é"), invalid_encode)
     try expect_equal(try ascii_decode(Bytes([72, 105])), "Hi")
 
-    let invalid_decode: String! = error(
+    invalid_decode: String! = error(
         Error("encoding: invalid data", kind: "EBADMSG")
     )
     try expect_equal(ascii_decode(Bytes([200])), invalid_decode)

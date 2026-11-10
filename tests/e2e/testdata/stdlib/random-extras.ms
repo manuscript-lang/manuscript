@@ -11,7 +11,7 @@ import (
 
 test "seeded sample picks distinct items":
     var rng = seeded(7)
-    let picked = rng.sample([10, 20, 30, 40, 50], 3)
+    picked := rng.sample([10, 20, 30, 40, 50], 3)
     try expect_equal(picked.length(), 3)
     try expect_equal(picked.sorted().length(), 3)
     for item in picked:
@@ -50,38 +50,36 @@ fn discard[T](value: T) Unit:
 
 test "seeded invalid arguments fault":
     var rng = seeded(1)
-    let _first = try expect_fault(fn: discard(rng.sample([1], 2)))
-    let _second = try expect_fault(fn: discard(rng.weighted_choice([1, 2], [1.0])))
-    let _third = try expect_fault(fn: discard(rng.weighted_choice([1, 2], [0.0, 0.0])))
-    let _fourth = try expect_fault(
-        fn: discard(rng.weighted_choice([1, 2], [-1.0, 2.0]))
-    )
+    _first := try expect_fault(fn: discard(rng.sample([1], 2)))
+    _second := try expect_fault(fn: discard(rng.weighted_choice([1, 2], [1.0])))
+    _third := try expect_fault(fn: discard(rng.weighted_choice([1, 2], [0.0, 0.0])))
+    _fourth := try expect_fault(fn: discard(rng.weighted_choice([1, 2], [-1.0, 2.0])))
 
 test "secure sample and weighted_choice":
-    let picked = try expect_ok(sample([1, 2, 3, 4], 4))
+    picked := try expect_ok(sample([1, 2, 3, 4], 4))
     try expect_equal(picked.sorted(), [1, 2, 3, 4])
     try expect_equal(try expect_ok(sample([1, 2, 3], 0)), List[Int]())
 
-    let _error = try expect_error(sample([1], 2))
+    _error := try expect_error(sample([1], 2))
     try expect_equal(
         try expect_some(try expect_ok(weighted_choice(["a", "b"], [0.0, 2.0]))), "b"
     )
 
-    let _other = try expect_error(weighted_choice(["a"], [0.0]))
+    _other := try expect_error(weighted_choice(["a"], [0.0]))
     try expect_none(try expect_ok(weighted_choice(List[String](), List[Float]())))
 
 test "secure_int covers wide and empty ranges":
-    let _same = try expect_error(secure_int(3, 3))
-    let _reversed = try expect_error(secure_int(5, 2))
+    _same := try expect_error(secure_int(3, 3))
+    _reversed := try expect_error(secure_int(5, 2))
     try expect_equal(try secure_int(7, 8), 7)
 
-    let wide = try secure_int(-9223372036854775807 - 1, none)
+    wide := try secure_int(-9223372036854775807 - 1, none)
     try expect_true(wide <= 9223372036854775806)
 
-    let low = try secure_int(-9223372036854775807 - 1, -9223372036854775807)
+    low := try secure_int(-9223372036854775807 - 1, -9223372036854775807)
     try expect_equal(low, -9223372036854775807 - 1)
 
-    let empty: List[Int] = []
+    empty: List[Int] = []
     try expect_equal(try choice(empty), none)
     try expect_equal(try shuffle([5]), [5])
 
@@ -90,14 +88,14 @@ fn draw_wide(min: Int, max_exclusive: Int) Unit:
     discard(rng.int(min, max_exclusive))
 
 test "seeded int names a range wider than the largest Int":
-    let message = try expect_fault(
+    message := try expect_fault(
         fn: draw_wide(-9223372036854775807, 9223372036854775807)
     )
     try expect_true(message.contains("wider than the largest Int"))
 
-    let edge = try expect_fault(fn: draw_wide(-1, 9223372036854775807))
+    edge := try expect_fault(fn: draw_wide(-1, 9223372036854775807))
     try expect_true(edge.contains("wider than the largest Int"))
 
     var rng = seeded(1)
-    let widest = rng.int(-1, 9223372036854775806)
+    widest := rng.int(-1, 9223372036854775806)
     try expect_true(widest >= -1 and widest < 9223372036854775806)

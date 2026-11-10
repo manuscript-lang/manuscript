@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     say(
         "{(((-3) + (-7)) + ((-30) - 36))} {(-19)} {((((-3) + (-7)) + ((-30) - 36)) < (-19))} sum {(((-3) + (-7)) + ((-30) - 36)) + (-19)}"
     )
 
-    let s1 = ("back\\slash" + "x".lower()).upper()
+    s1 := ("back\\slash" + "x".lower()).upper()
     say("s1 = [{s1}]")
 
-    let s2 = (s1 + "".replace(s1, "42"))
+    s2 := (s1 + "".replace(s1, "42"))
     say("s2 = [{s2}]")
 
-    let b3 = ((true or (not false)) and s1.replace(s1, "delta").is_empty())
+    b3 := ((true or (not false)) and s1.replace(s1, "delta").is_empty())
     say("b3 = {b3}")
 
     if ("hello world".ends_with("back\\slash") or (false and false)):
@@ -27,12 +27,12 @@ export fn main() Int:
     else:
         say(s2.replace("日本語", "  padded  "))
 
-    let l4 = [1, 2, 3].take(0)
+    l4 := [1, 2, 3].take(0)
     say("l4 = {l4} len {l4.length()}")
     say(
         "{(((-775590) - (-1)) + ((-31) * (-543775)))} {((32 + 40) - (1 + (-44)))} {((((-775590) - (-1)) + ((-31) * (-543775))) < ((32 + 40) - (1 + (-44))))} sum {(((-775590) - (-1)) + ((-31) * (-543775))) + ((32 + 40) - (1 + (-44)))}"
     )
 
-    let f5 = 8.0e17
+    f5 := 8.0e17
     say("f5 = {f5}")
     return 0

@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding cell; declare it with 'let cell = ...' before use, define 'fn cell(...) T:', or import it from a module",
+        "message": "unknown binding cell; declare it with 'cell := ...' before use, define 'fn cell(...) T:', or import it from a module",
         "position": {
           "file": "testcounteraggregateprivatecellselection-1.ms",
           "line": 4,
-          "column": 13,
-          "offset": 177
+          "column": 10,
+          "offset": 174
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcounteraggregateprivatecellselection-1.ms:4:13: resolution: unknown binding cell; declare it with 'let cell = ...' before use, define 'fn cell(...) T:', or import it from a module\n   |\n 4 | let alias = cell\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcounteraggregateprivatecellselection-1.ms:4:10: resolution: unknown binding cell; declare it with 'cell := ...' before use, define 'fn cell(...) T:', or import it from a module\n   |\n 4 | alias := cell\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

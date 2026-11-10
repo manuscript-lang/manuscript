@@ -1,13 +1,13 @@
 import stdout, stdin from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-let K_TERM = 0
-let K_AND = 1
-let K_OR = 2
-let K_NOT = 3
-let K_OPEN = 4
-let K_CLOSE = 5
-let K_BAD = 6
+K_TERM := 0
+K_AND := 1
+K_OR := 2
+K_NOT := 3
+K_OPEN := 4
+K_CLOSE := 5
+K_BAD := 6
 
 type Failure:
     msg: String
@@ -140,14 +140,14 @@ fn chars_to_str(cs: List[String], from: Int, to: Int) String:
     return out
 
 fn sub_from(s: String, k: Int) String:
-    let cs = s.chars()
+    cs := s.chars()
     return chars_to_str(cs, k, cs.length())
 
 fn words(text: String) List[String]:
     return text.replace("\t", " ").split(" ").filter(fn(w: String) Bool: w.length() > 0)
 
 fn drop_words(text: String, n: Int) String:
-    let cs = text.chars()
+    cs := text.chars()
     var i = 0
     var k = 0
 
@@ -164,8 +164,8 @@ fn drop_words(text: String, n: Int) String:
 
 // Char index of the first whitespace-delimited word equal to word, or -1.
 fn word_pos(text: String, word: String) Int:
-    let cs = text.chars()
-    let n = word.length()
+    cs := text.chars()
+    n := word.length()
     var i = 0
 
     while i < cs.length():
@@ -210,7 +210,7 @@ fn int_value(s: String) Optional[Int]:
     if not all_in(s, "0123456789"):
         return none
 
-    let v = s.parse_int().get(0)
+    v := s.parse_int().get(0)
     if v > 1000000:
         return none
 
@@ -229,7 +229,7 @@ fn days_in(y: Int, m: Int) Int:
     return 31
 
 fn valid_date(s: String) Bool:
-    let parts = s.split("-")
+    parts := s.split("-")
     if parts.length() != 3:
         return false
     if parts[0].length() != 4 or parts[1].length() != 2 or parts[2].length() != 2:
@@ -241,9 +241,9 @@ fn valid_date(s: String) Bool:
     ):
         return false
 
-    let y = parts[0].parse_int().get(0)
-    let m = parts[1].parse_int().get(0)
-    let d = parts[2].parse_int().get(0)
+    y := parts[0].parse_int().get(0)
+    m := parts[1].parse_int().get(0)
+    d := parts[2].parse_int().get(0)
     if y < 1 or m < 1 or m > 12:
         return false
 
@@ -278,7 +278,7 @@ fn valid_state(s: String) Bool:
     if s.length() == 0:
         return false
 
-    let cs = s.chars()
+    cs := s.chars()
     if not "abcdefghijklmnopqrstuvwxyz".contains(cs[0]):
         return false
 
@@ -288,7 +288,7 @@ fn valid_view_name(s: String) Bool:
     if s.length() == 0:
         return false
 
-    let cs = s.chars()
+    cs := s.chars()
     if not "abcdefghijklmnopqrstuvwxyz".contains(cs[0]):
         return false
 
@@ -328,7 +328,7 @@ fn normalize_labels(items: List[String]) Result[List[String], Failure]:
     var out = List[String]()
 
     for raw in items:
-        let l = raw.lower()
+        l := raw.lower()
         if not valid_label(l):
             return fail("bad label '{l}'")
 
@@ -350,7 +350,7 @@ fn parse_id(arg: String) Result[Int, Failure]:
     while digits.length() > 1 and digits.starts_with("0"):
         digits = sub_from(digits, 1)
 
-    let v = digits.parse_int()
+    v := digits.parse_int()
     if v.is_none():
         return fail("no such issue #{digits}")
     if v.get(0) == 0:
@@ -385,15 +385,15 @@ fn parse_patch(toks: List[String], start: Int) Result[Patch, Failure]:
     var k = start
 
     while k < toks.length():
-        let tok = toks[k].clone()
+        tok := toks[k].clone()
         k += 1
 
-        let parts = tok.split("=")
+        parts := tok.split("=")
         if parts.length() < 2 or parts[0].length() == 0:
             return fail("expected field=value, got '{tok}'")
 
-        let field = parts[0].clone()
-        let value = tail_list(parts, 1).join("=")
+        field := parts[0].clone()
+        value := tail_list(parts, 1).join("=")
         if field == "state":
             return fail("use move to change state")
 
@@ -403,7 +403,7 @@ fn parse_patch(toks: List[String], start: Int) Result[Patch, Failure]:
 
             p.title = some(value)
         else if field == "priority":
-            let r = prio_rank(value)
+            r := prio_rank(value)
             if r < 0:
                 return fail("bad priority '{value}'")
 
@@ -419,7 +419,7 @@ fn parse_patch(toks: List[String], start: Int) Result[Patch, Failure]:
             if value == "none":
                 p.points = some(-1)
             else:
-                let v = int_value(value)
+                v := int_value(value)
                 if v.is_none():
                     return fail("bad points '{value}'")
 
@@ -435,7 +435,7 @@ fn parse_patch(toks: List[String], start: Int) Result[Patch, Failure]:
             if value.length() == 0 or value == "none":
                 p.labels = some(List[String]())
             else:
-                let ls = normalize_labels(value.split(","))
+                ls := normalize_labels(value.split(","))
                 if ls.is_error():
                     return fail(ls.err().message())
 
@@ -454,19 +454,19 @@ fn parse_patch(toks: List[String], start: Int) Result[Patch, Failure]:
 
 fn apply_patch(old: Issue, p: Patch) Issue:
     var it = old.clone()
-    if let v = p.title:
+    if v := p.title:
         it.title = v.clone()
-    if let v = p.priority:
+    if v := p.priority:
         it.priority = v
-    if let v = p.assignee:
+    if v := p.assignee:
         it.assignee = v.clone()
-    if let v = p.points:
+    if v := p.points:
         it.points = v
-    if let v = p.due:
+    if v := p.due:
         it.due = v.clone()
-    if let v = p.labels:
+    if v := p.labels:
         it.labels = v.clone()
-    if let v = p.reporter:
+    if v := p.reporter:
         it.reporter = v.clone()
     return it
 
@@ -483,8 +483,8 @@ fn diff_lines(a: Issue, b: Issue) List[String]:
     if a.due != b.due:
         out.append("due: {dash(a.due)} -> {dash(b.due)}")
 
-    let la = labels_text(a.labels, ",")
-    let lb = labels_text(b.labels, ",")
+    la := labels_text(a.labels, ",")
+    lb := labels_text(b.labels, ",")
     if la != lb:
         out.append("labels: {la} -> {lb}")
     if a.reporter != b.reporter:
@@ -492,9 +492,9 @@ fn diff_lines(a: Issue, b: Issue) List[String]:
     return out
 
 fn apply_edit(var st: Store, idx: Int, p: Patch) Result[String, Failure]:
-    let after = apply_patch(st.issues[idx], p)
-    let details = diff_lines(st.issues[idx], after)
-    let id = st.issues[idx].id
+    after := apply_patch(st.issues[idx], p)
+    details := diff_lines(st.issues[idx], after)
+    id := st.issues[idx].id
     if details.length() == 0:
         return ok("#{id} unchanged")
 
@@ -510,24 +510,24 @@ fn apply_edit(var st: Store, idx: Int, p: Patch) Result[String, Failure]:
 fn op_edit(var st: Store, id: Int, toks: List[String], start: Int) Result[
     String, Failure
 ]:
-    let idx = try index_of_id(st, id)
-    let state = st.issues[idx].state.clone()
+    idx := try index_of_id(st, id)
+    state := st.issues[idx].state.clone()
     if is_final_state(st, state):
         return fail("#{id} is in final state '{state}'")
 
-    let p = try parse_patch(toks, start)
+    p := try parse_patch(toks, start)
     if toks.length() <= start:
         return fail("usage: edit ID field=value...")
 
     return apply_edit(var st, idx, p)
 
 fn op_assign(var st: Store, id: Int, name: String) Result[String, Failure]:
-    let toks = ["assignee=" + name]
+    toks := ["assignee=" + name]
     return op_edit(var st, id, toks, 0)
 
 fn op_label(var st: Store, id: Int, ops: List[String]) Result[String, Failure]:
-    let idx = try index_of_id(st, id)
-    let state = st.issues[idx].state.clone()
+    idx := try index_of_id(st, id)
+    state := st.issues[idx].state.clone()
     if is_final_state(st, state):
         return fail("#{id} is in final state '{state}'")
 
@@ -543,7 +543,7 @@ fn op_label(var st: Store, id: Int, ops: List[String]) Result[String, Failure]:
         else if tok.starts_with("+"):
             name = sub_from(tok, 1)
 
-        let l = name.lower()
+        l := name.lower()
         if not valid_label(l):
             return fail("bad label '{l}'")
 
@@ -551,15 +551,15 @@ fn op_label(var st: Store, id: Int, ops: List[String]) Result[String, Failure]:
             if not labels.contains(l):
                 labels.append(l)
         else:
-            if let g = labels.index_of(l):
+            if g := labels.index_of(l):
                 labels.remove(g)
 
     labels.sort()
     return apply_edit(var st, idx, Patch(labels: some(labels)))
 
 fn op_move(var st: Store, id: Int, to: String, comment: String) Result[String, Failure]:
-    let idx = try index_of_id(st, id)
-    let from = st.issues[idx].state.clone()
+    idx := try index_of_id(st, id)
+    from := st.issues[idx].state.clone()
     if is_final_state(st, from):
         return fail("#{id} is in final state '{from}'")
     if not has_state(st, to):
@@ -582,7 +582,7 @@ fn op_move(var st: Store, id: Int, to: String, comment: String) Result[String, F
     var missing = List[String]()
 
     for g in guards:
-        let it = st.issues[idx]
+        it := st.issues[idx]
         var unmet = false
 
         if g == "assignee":
@@ -600,12 +600,12 @@ fn op_move(var st: Store, id: Int, to: String, comment: String) Result[String, F
             missing.append(g.clone())
 
     if missing.length() > 0:
-        let names = missing.join(", ")
+        names := missing.join(", ")
         return fail("cannot move #{id} to {to}: missing {names}")
 
     st.clock += 1
 
-    let t = st.clock
+    t := st.clock
     st.issues[idx].state = to.clone()
     st.issues[idx].updated = t
     log_add(var st, id, "state: {from} -> {to}")
@@ -640,12 +640,12 @@ fn cmd_workflow(var st: Store, block: List[String]) Result[String, Failure]:
     var have_initial = false
 
     for raw in block:
-        let line = raw.trim()
+        line := raw.trim()
         if line.length() == 0 or line.starts_with("#"):
             continue
 
         if line.starts_with("initial:"):
-            let name = sub_from(line, 8).trim()
+            name := sub_from(line, 8).trim()
             if not valid_state(name):
                 return fail("workflow: bad state name '{name}'")
             if have_initial:
@@ -656,29 +656,29 @@ fn cmd_workflow(var st: Store, block: List[String]) Result[String, Failure]:
             add_state(var states, name)
         else if line.starts_with("final:"):
             for part in sub_from(line, 6).split(","):
-                let name = part.trim()
+                name := part.trim()
                 if not valid_state(name):
                     return fail("workflow: bad state name '{name}'")
 
                 add_state(var states, name)
                 finals.append(name.clone())
         else if line.contains("->"):
-            let parts = line.split("->")
+            parts := line.split("->")
             if parts.length() != 2:
                 return fail("workflow: bad line '{line}'")
 
-            let src = parts[0].trim()
+            src := parts[0].trim()
             if not valid_state(src):
                 return fail("workflow: bad state name '{src}'")
 
             add_state(var states, src)
 
             for entry in parts[1].split(","):
-                let ws = words(entry)
+                ws := words(entry)
                 if ws.length() == 0:
                     return fail("workflow: bad line '{line}'")
 
-                let dst = ws[0].clone()
+                dst := ws[0].clone()
                 if not valid_state(dst):
                     return fail("workflow: bad state name '{dst}'")
 
@@ -705,8 +705,8 @@ fn cmd_workflow(var st: Store, block: List[String]) Result[String, Failure]:
         if finals.contains(tr.src):
             return fail("workflow: '{tr.src}' is final and cannot have transitions")
 
-    let n_states = states.length()
-    let n_trans = trans.length()
+    n_states := states.length()
+    n_trans := trans.length()
     st.wf = Workflow(
         defined: true, states: states, initial: initial, finals: finals, trans: trans
     )
@@ -727,25 +727,25 @@ fn tok_bad(msg: String) Tok:
 
 fn op_at(cs: List[String], j: Int) String:
     if j + 1 < cs.length():
-        let two = cs[j] + cs[j + 1]
+        two := cs[j] + cs[j + 1]
         if two == "!=" or two == "<=" or two == ">=":
             return two
 
     if j < cs.length():
-        let one = cs[j]
+        one := cs[j]
         if one == ":" or one == "<" or one == ">" or one == "~":
             return one.clone()
 
     return ""
 
 fn lex(text: String) List[Tok]:
-    let cs = text.chars()
-    let n = cs.length()
+    cs := text.chars()
+    n := cs.length()
     var out = List[Tok]()
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if is_ws(c):
             i += 1
@@ -765,11 +765,11 @@ fn lex(text: String) List[Tok]:
         while j < n and "abcdefghijklmnopqrstuvwxyz_".contains(cs[j]):
             j += 1
 
-        let field = chars_to_str(cs, i, j)
-        let op = op_at(cs, j)
+        field := chars_to_str(cs, i, j)
+        op := op_at(cs, j)
 
         if field.length() > 0 and op.length() > 0:
-            let k = j + op.length()
+            k := j + op.length()
 
             if k < n and cs[k] == "\"":
                 var val = ""
@@ -815,7 +815,7 @@ fn lex(text: String) List[Tok]:
         while end < n and not is_ws(cs[end]) and cs[end] != "(" and cs[end] != ")":
             end += 1
 
-        let word = chars_to_str(cs, i, end)
+        word := chars_to_str(cs, i, end)
 
         if word == "AND":
             out.append(tok_punct(K_AND, word))
@@ -894,13 +894,13 @@ fn check_term(
     value: String,
     quoted: Bool
 ) Result[Unit, Failure]:
-    let ops = field_ops(field)
+    ops := field_ops(field)
     if ops.length() == 0:
         return fail("query: unknown field '{field}'")
     if not ops.contains(op):
         return fail("query: bad operator '{op}' for field '{field}'")
 
-    let ordering = op == "<" or op == "<=" or op == ">" or op == ">="
+    ordering := op == "<" or op == "<=" or op == ">" or op == ">="
     var alts = List[String]()
 
     if not quoted and not ordering and value.contains("|"):
@@ -920,11 +920,11 @@ fn build_term(st: Store, t: Tok) Result[Node, Failure]:
         if not st.views.contains(t.value):
             return fail("query: unknown view '{t.value}'")
 
-        let cl = try split_query(st.views.get_or(t.value, ""))
-        let inner = try parse_filter(st, cl.filter)
+        cl := try split_query(st.views.get_or(t.value, ""))
+        inner := try parse_filter(st, cl.filter)
         return ok(Inline(inner))
 
-    let _checked = try check_term(st, t.field, t.op, t.value, t.quoted)
+    _checked := try check_term(st, t.field, t.op, t.value, t.quoted)
     return ok(
         Term(
             field: t.field.clone(), op: t.op.clone(), value: t.value.clone(),
@@ -944,7 +944,7 @@ fn parse_or(var p: Parser, st: Store) Result[Node, Failure]:
     while peek_kind(p) == K_OR:
         p.pos += 1
 
-        let right = try parse_and(var p, st)
+        right := try parse_and(var p, st)
         left = Either(left, right)
 
     return ok(left)
@@ -953,14 +953,14 @@ fn parse_and(var p: Parser, st: Store) Result[Node, Failure]:
     var left = try parse_not(var p, st)
 
     while true:
-        let k = peek_kind(p)
+        k := peek_kind(p)
 
         if k == K_AND:
             p.pos += 1
         else if k != K_TERM and k != K_NOT and k != K_OPEN and k != K_BAD:
             break
 
-        let right = try parse_not(var p, st)
+        right := try parse_not(var p, st)
         left = Both(left, right)
 
     return ok(left)
@@ -969,7 +969,7 @@ fn parse_not(var p: Parser, st: Store) Result[Node, Failure]:
     if peek_kind(p) == K_NOT:
         p.pos += 1
 
-        let inner = try parse_not(var p, st)
+        inner := try parse_not(var p, st)
         return ok(Negate(inner))
 
     return parse_primary(var p, st)
@@ -978,13 +978,13 @@ fn parse_primary(var p: Parser, st: Store) Result[Node, Failure]:
     if p.pos >= p.toks.length():
         return fail("query: unexpected end of query")
 
-    let t = p.toks[p.pos].clone()
+    t := p.toks[p.pos].clone()
     p.pos += 1
     if t.kind == K_TERM:
         return build_term(st, t)
 
     if t.kind == K_OPEN:
-        let inner = try parse_or(var p, st)
+        inner := try parse_or(var p, st)
         if p.pos >= p.toks.length():
             return fail("query: unexpected end of query")
 
@@ -1001,7 +1001,7 @@ fn parse_filter(st: Store, text: String) Result[Node, Failure]:
         return ok(Everything)
 
     var p = Parser(toks: lex(text), pos: 0)
-    let node = try parse_or(var p, st)
+    node := try parse_or(var p, st)
     if p.pos < p.toks.length():
         return fail("query: unexpected token ')'")
 
@@ -1096,7 +1096,7 @@ fn one_match(field: String, op: String, v: String, it: Issue, st: Store) Bool:
         return it.labels.contains(v.lower())
 
     if field == "is":
-        let fin = is_final_state(st, it.state)
+        fin := is_final_state(st, it.state)
         if v == "open":
             return not fin
         if v == "final":
@@ -1134,7 +1134,7 @@ fn term_any(
     it: Issue,
     st: Store
 ) Bool:
-    let ordering = op == "<" or op == "<=" or op == ">" or op == ">="
+    ordering := op == "<" or op == "<=" or op == ">" or op == ">="
     if quoted or ordering or not value.contains("|"):
         return one_match(field, op, value, it, st)
 
@@ -1163,9 +1163,9 @@ fn matches(n: Node, it: Issue, st: Store) Bool:
 
 // Splits "FILTER sort FIELDS limit N" textually; limit is recognised first.
 fn split_query(text: String) Result[Clauses, Failure]:
-    let t = text.trim()
-    let cs = t.chars()
-    let n = cs.length()
+    t := text.trim()
+    cs := t.chars()
+    n := cs.length()
     var body = t.clone()
     var limit = -1
     var j = n
@@ -1182,8 +1182,8 @@ fn split_query(text: String) Result[Clauses, Failure]:
             m -= 1
 
         if k < j and chars_to_str(cs, m, k) == "limit":
-            let lim = chars_to_str(cs, j, n)
-            let v = int_value(lim)
+            lim := chars_to_str(cs, j, n)
+            v := int_value(lim)
             if v.is_none():
                 return fail("bad limit '{lim}'")
 
@@ -1191,8 +1191,8 @@ fn split_query(text: String) Result[Clauses, Failure]:
             body = chars_to_str(cs, 0, m).trim()
 
     var sort = ""
-    let bcs = body.chars()
-    let pos = word_pos(body, "sort")
+    bcs := body.chars()
+    pos := word_pos(body, "sort")
 
     if pos >= 0 and pos + 4 < bcs.length() and is_ws(bcs[pos + 4]):
         sort = chars_to_str(bcs, pos + 4, bcs.length()).trim()
@@ -1273,7 +1273,7 @@ fn compare_field(a: Issue, b: Issue, field: String, states: List[String]) Int:
 
 fn compare_issues(a: Issue, b: Issue, keys: List[SortKey], states: List[String]) Int:
     for k in keys:
-        let c = compare_field(a, b, k.field, states)
+        c := compare_field(a, b, k.field, states)
 
         if c != 0:
             if k.desc:
@@ -1284,7 +1284,7 @@ fn compare_issues(a: Issue, b: Issue, keys: List[SortKey], states: List[String])
     return cmp_int(a.id, b.id)
 
 fn issue_line(it: Issue) String:
-    let labels = labels_text(it.labels, ",")
+    labels := labels_text(it.labels, ",")
     return "#{it.id} | {it.state} | {prio_name(it.priority)} | {dash(it.assignee)} | {pts_text(it.points)} | {dash(it.due)} | {labels} | {it.title}"
 
 fn run_list(
@@ -1298,7 +1298,7 @@ fn run_list(
         if matches(node, it, st):
             rows.append(it.clone())
 
-    let states = st.wf.states.clone()
+    states := st.wf.states.clone()
     rows.sort(fn(a: Issue, b: Issue) Int: compare_issues(a, b, keys, states))
 
     var lines = List[String]()
@@ -1309,14 +1309,14 @@ fn run_list(
 
         lines.append(issue_line(it))
 
-    let shown = lines.length()
+    shown := lines.length()
     lines.append(count_text(shown))
     return ok(lines.join("\n"))
 
 fn cmd_list(st: Store, rest: String) Result[String, Failure]:
-    let cl = try split_query(rest)
-    let node = try parse_filter(st, cl.filter)
-    let keys = try sort_keys(cl.sort)
+    cl := try split_query(rest)
+    node := try parse_filter(st, cl.filter)
+    keys := try sort_keys(cl.sort)
     return run_list(st, node, keys, cl.limit)
 
 // ---------- views ----------
@@ -1346,10 +1346,10 @@ fn view_save(var st: Store, name: String, query: String) Result[String, Failure]
     if not valid_view_name(name):
         return fail("bad view name '{name}'")
 
-    let cl = try split_query(query)
-    let _node = try parse_filter(st, cl.filter)
-    let _keys = try sort_keys(cl.sort)
-    let text = query.trim()
+    cl := try split_query(query)
+    _node := try parse_filter(st, cl.filter)
+    _keys := try sort_keys(cl.sort)
+    text := query.trim()
     if reaches(st, text, name, 0):
         return fail("view '{name}' would reference itself")
 
@@ -1360,13 +1360,13 @@ fn view_run(st: Store, name: String, extra: String) Result[String, Failure]:
     if not st.views.contains(name):
         return fail("unknown view '{name}'")
 
-    let stored = st.views.get_or(name, "")
-    let base = try split_query(stored)
-    let more = try split_query(extra)
+    stored := st.views.get_or(name, "")
+    base := try split_query(stored)
+    more := try split_query(extra)
     if more.filter.length() > 0:
         return fail("unexpected '{more.filter}'")
 
-    let base_limit = base.limit
+    base_limit := base.limit
     var limit = base_limit
     if more.limit >= 0:
         limit = more.limit
@@ -1375,12 +1375,12 @@ fn view_run(st: Store, name: String, extra: String) Result[String, Failure]:
     if more.sort.length() > 0:
         sort = more.sort.clone()
 
-    let node = try parse_filter(st, base.filter)
-    let keys = try sort_keys(sort)
+    node := try parse_filter(st, base.filter)
+    keys := try sort_keys(sort)
     return run_list(st, node, keys, limit)
 
 fn view_list(st: Store) String:
-    let names = st.views.keys().sorted()
+    names := st.views.keys().sorted()
     if names.length() == 0:
         return "(no views)"
 
@@ -1406,12 +1406,12 @@ fn view_delete(var st: Store, name: String) Result[String, Failure]:
     return ok("deleted view {name}")
 
 fn cmd_view(var st: Store, rest: String) Result[String, Failure]:
-    let w = words(rest)
-    let general = "usage: view save|run|list|show|delete"
+    w := words(rest)
+    general := "usage: view save|run|list|show|delete"
     if w.length() == 0:
         return fail(general)
 
-    let sub = w[0].clone()
+    sub := w[0].clone()
 
     if sub == "save":
         if w.length() < 2:
@@ -1448,7 +1448,7 @@ fn cmd_view(var st: Store, rest: String) Result[String, Failure]:
 // ---------- issue commands ----------
 
 fn cmd_actor(var st: Store, rest: String) Result[String, Failure]:
-    let w = words(rest)
+    w := words(rest)
     if w.length() != 1:
         return fail("usage: actor NAME")
 
@@ -1456,7 +1456,7 @@ fn cmd_actor(var st: Store, rest: String) Result[String, Failure]:
     return ok("actor is {st.actor}")
 
 fn cmd_today(var st: Store, rest: String) Result[String, Failure]:
-    let w = words(rest)
+    w := words(rest)
     if w.length() != 1:
         return fail("usage: today DATE")
     if not valid_date(w[0]):
@@ -1469,22 +1469,22 @@ fn cmd_create(var st: Store, rest: String) Result[String, Failure]:
     if not st.wf.defined:
         return fail("no workflow defined")
 
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() == 0:
         return fail("usage: create TITLE [field=value...]")
     if is_blank(toks[0]):
         return fail("empty title")
 
-    let id = st.next_id
-    let base = Issue(
+    id := st.next_id
+    base := Issue(
         id: id, title: toks[0].clone(), state: st.wf.initial.clone(), priority: 1,
         assignee: "", reporter: st.actor.clone(), points: -1, due: "",
         labels: List[String](), comments: List[IssueComment](), created: st.clock + 1,
         updated: st.clock + 1
     )
-    let p = try parse_patch(toks, 1)
-    let made = apply_patch(base, p)
-    let details = diff_lines(base, made)
+    p := try parse_patch(toks, 1)
+    made := apply_patch(base, p)
+    details := diff_lines(base, made)
     st.clock += 1
     st.next_id += 1
     log_add(var st, id, "created \"" + toks[0] + "\"")
@@ -1494,7 +1494,7 @@ fn cmd_create(var st: Store, rest: String) Result[String, Failure]:
     return ok("created #{id}")
 
 fn tokenize(text: String) Result[List[String], Failure]:
-    let cs = text.chars()
+    cs := text.chars()
     var out = List[String]()
     var cur = ""
     var has = false
@@ -1502,7 +1502,7 @@ fn tokenize(text: String) Result[List[String], Failure]:
     var i = 0
 
     while i < cs.length():
-        let c = cs[i]
+        c := cs[i]
 
         if inq:
             if (
@@ -1540,45 +1540,45 @@ fn tokenize(text: String) Result[List[String], Failure]:
     return ok(out)
 
 fn cmd_edit(var st: Store, rest: String) Result[String, Failure]:
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() == 0:
         return fail("usage: edit ID field=value...")
 
-    let id = try parse_id(toks[0])
+    id := try parse_id(toks[0])
     return op_edit(var st, id, toks, 1)
 
 fn cmd_assign(var st: Store, rest: String) Result[String, Failure]:
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() != 2:
         return fail("usage: assign ID NAME")
 
-    let id = try parse_id(toks[0])
+    id := try parse_id(toks[0])
     return op_assign(var st, id, toks[1])
 
 fn cmd_label(var st: Store, rest: String) Result[String, Failure]:
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() < 2:
         return fail("usage: label ID +label -label...")
 
-    let id = try parse_id(toks[0])
+    id := try parse_id(toks[0])
     return op_label(var st, id, tail_list(toks, 1))
 
 fn cmd_move(var st: Store, rest: String) Result[String, Failure]:
-    let w = words(rest)
+    w := words(rest)
     if w.length() < 2:
         return fail("usage: move ID STATE [comment...]")
 
-    let id = try parse_id(w[0])
+    id := try parse_id(w[0])
     return op_move(var st, id, w[1].clone(), drop_words(rest, 2))
 
 fn cmd_comment(var st: Store, rest: String) Result[String, Failure]:
-    let w = words(rest)
+    w := words(rest)
     if w.length() < 2:
         return fail("usage: comment ID TEXT")
 
-    let id = try parse_id(w[0])
-    let idx = try index_of_id(st, id)
-    let text = drop_words(rest, 1)
+    id := try parse_id(w[0])
+    idx := try index_of_id(st, id)
+    text := drop_words(rest, 1)
     st.clock += 1
     st.issues[idx].comments.append(
         IssueComment(t: st.clock, actor: st.actor.clone(), text: text.clone())
@@ -1588,26 +1588,26 @@ fn cmd_comment(var st: Store, rest: String) Result[String, Failure]:
     return ok("commented #{id}")
 
 fn cmd_delete(var st: Store, rest: String) Result[String, Failure]:
-    let w = words(rest)
+    w := words(rest)
     if w.length() != 1:
         return fail("usage: delete ID")
 
-    let id = try parse_id(w[0])
-    let idx = try index_of_id(st, id)
+    id := try parse_id(w[0])
+    idx := try index_of_id(st, id)
     st.issues.remove(idx)
     st.clock += 1
     log_add(var st, id, "deleted")
     return ok("deleted #{id}")
 
 fn cmd_show(st: Store, rest: String) Result[String, Failure]:
-    let w = words(rest)
+    w := words(rest)
     if w.length() != 1:
         return fail("usage: show ID")
 
-    let id = try parse_id(w[0])
-    let idx = try index_of_id(st, id)
-    let it = st.issues[idx]
-    let lt = labels_text(it.labels, ", ")
+    id := try parse_id(w[0])
+    idx := try index_of_id(st, id)
+    it := st.issues[idx]
+    lt := labels_text(it.labels, ", ")
     var lines = List[String]()
     lines.append("#{it.id} {it.title}")
     lines.append("  state: {it.state}")
@@ -1624,8 +1624,8 @@ fn cmd_show(st: Store, rest: String) Result[String, Failure]:
     return ok(lines.join("\n"))
 
 fn cmd_log(st: Store, rest: String) Result[String, Failure]:
-    let w = words(rest)
-    let usage = "usage: log [ID] [tail N]"
+    w := words(rest)
+    usage := "usage: log [ID] [tail N]"
     var id = -1
     var tail = -1
 
@@ -1635,7 +1635,7 @@ fn cmd_log(st: Store, rest: String) Result[String, Failure]:
         if w.length() != 2:
             return fail(usage)
 
-        let v = int_value(w[1])
+        v := int_value(w[1])
         if v.is_none():
             return fail("bad tail '{w[1]}'")
 
@@ -1646,7 +1646,7 @@ fn cmd_log(st: Store, rest: String) Result[String, Failure]:
             return fail("no such issue #{id}")
 
         if w.length() == 3 and w[1] == "tail":
-            let v = int_value(w[2])
+            v := int_value(w[2])
             if v.is_none():
                 return fail("bad tail '{w[2]}'")
 
@@ -1686,20 +1686,20 @@ fn bulk_one(var st: Store, verb: String, args: List[String], id: Int) Result[
     return op_edit(var st, id, args, 0)
 
 fn cmd_bulk(var st: Store, rest: String) Result[String, Failure]:
-    let usage = "usage: bulk ACTION... where QUERY"
-    let pos = word_pos(rest, "where")
+    usage := "usage: bulk ACTION... where QUERY"
+    pos := word_pos(rest, "where")
     if pos < 0:
         return fail(usage)
 
-    let cs = rest.chars()
-    let head = chars_to_str(cs, 0, pos)
-    let query = chars_to_str(cs, pos + 5, cs.length())
+    cs := rest.chars()
+    head := chars_to_str(cs, 0, pos)
+    query := chars_to_str(cs, pos + 5, cs.length())
     if is_blank(head):
         return fail(usage)
 
-    let toks = try tokenize(head)
-    let verb = toks[0].clone()
-    let args = tail_list(toks, 1)
+    toks := try tokenize(head)
+    verb := toks[0].clone()
+    args := tail_list(toks, 1)
 
     if verb == "move":
         if args.length() != 1:
@@ -1716,7 +1716,7 @@ fn cmd_bulk(var st: Store, rest: String) Result[String, Failure]:
     else:
         return fail("unknown bulk action '{verb}'")
 
-    let node = try parse_filter(st, query)
+    node := try parse_filter(st, query)
     var ids = List[Int]()
     for it in st.issues:
         if matches(node, it, st):
@@ -1727,7 +1727,7 @@ fn cmd_bulk(var st: Store, rest: String) Result[String, Failure]:
     var bad_n = 0
 
     for id in ids:
-        let r = bulk_one(var st, verb, args, id)
+        r := bulk_one(var st, verb, args, id)
 
         if r.is_ok():
             out.append(r.get().clone())
@@ -1772,21 +1772,21 @@ fn report_summary(st: Store) String:
             if it.points >= 0:
                 open_pts += it.points
 
-    let total = st.issues.length()
-    let open_n = total - fin
+    total := st.issues.length()
+    open_n := total - fin
     var lines = List[String]()
     lines.append("issues: {total} (open {open_n}, final {fin})")
     lines.append("by state:")
 
     for s in st.wf.states:
-        let n = count_state(st, s)
+        n := count_state(st, s)
         lines.append("  {s}: {n}")
 
     lines.append("by priority:")
 
     for r in [3, 2, 1, 0]:
-        let n = count_priority(st, r)
-        let name = prio_name(r)
+        n := count_priority(st, r)
+        name := prio_name(r)
         lines.append("  {name}: {n}")
 
     lines.append("unassigned: {unassigned}")
@@ -1821,9 +1821,9 @@ fn report_workload(st: Store) String:
             un_p += pts
             continue
 
-        let key = it.assignee.lower()
+        key := it.assignee.lower()
 
-        if let g = keys.index_of(key):
+        if g := keys.index_of(key):
             groups[g].count += 1
             groups[g].points += pts
         else:
@@ -1849,14 +1849,14 @@ fn cmp_label(a: LabelCount, b: LabelCount) Int:
     return a.name.compare(b.name)
 
 fn report_labels(st: Store, filter: String) Result[String, Failure]:
-    let node = try parse_filter(st, filter)
+    node := try parse_filter(st, filter)
     var names = List[String]()
     var counts = List[Int]()
 
     for it in st.issues:
         if matches(node, it, st):
             for l in it.labels:
-                if let g = names.index_of(l):
+                if g := names.index_of(l):
                     counts[g] += 1
                 else:
                     names.append(l.clone())
@@ -1876,31 +1876,31 @@ fn report_labels(st: Store, filter: String) Result[String, Failure]:
     return ok(lines.join("\n"))
 
 fn report_timeline(st: Store, idx: Int) String:
-    let it = st.issues[idx].clone()
+    it := st.issues[idx].clone()
     var lines = List[String]()
     var cur = st.wf.initial.clone()
-    let created = it.created
+    created := it.created
     var since = created
 
     for e in st.log:
         if e.id == it.id and e.detail.starts_with("state: "):
-            let parts = e.detail.split(" -> ")
-            let dur = e.t - since
+            parts := e.detail.split(" -> ")
+            dur := e.t - since
             lines.append("{cur}: t={since}..{e.t} ({dur})")
             cur = parts[1].clone()
             since = e.t
 
-    let dur = st.clock - since
+    dur := st.clock - since
     lines.append("{cur}: t={since}..{st.clock} ({dur})")
     return lines.join("\n")
 
 fn cmd_report(st: Store, rest: String) Result[String, Failure]:
-    let w = words(rest)
-    let general = "usage: report summary|workload|labels|timeline"
+    w := words(rest)
+    general := "usage: report summary|workload|labels|timeline"
     if w.length() == 0:
         return fail(general)
 
-    let sub = w[0].clone()
+    sub := w[0].clone()
 
     if sub == "summary":
         if w.length() != 1:
@@ -1921,8 +1921,8 @@ fn cmd_report(st: Store, rest: String) Result[String, Failure]:
         if w.length() != 2:
             return fail("usage: report timeline ID")
 
-        let id = try parse_id(w[1])
-        let idx = try index_of_id(st, id)
+        id := try parse_id(w[1])
+        idx := try index_of_id(st, id)
         return ok(report_timeline(st, idx))
 
     return fail(general)
@@ -1964,7 +1964,7 @@ fn dispatch(var st: Store, word: String, rest: String) Result[String, Failure]:
     return fail("unknown command '{word}'")
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var st = Store(
         clock: 0,
         actor: "system",
@@ -1981,18 +1981,18 @@ export fn main() Int:
     var i = 0
 
     while i < lines.length():
-        let line = lines[i].trim_end()
+        line := lines[i].trim_end()
         i += 1
 
-        let body = line.trim_start()
+        body := line.trim_start()
         if body.length() == 0 or body.starts_with("#"):
             continue
 
         emit("> " + line)
 
-        let ws = words(body)
-        let word = ws[0].clone()
-        let rest = drop_words(body, 1)
+        ws := words(body)
+        word := ws[0].clone()
+        rest := drop_words(body, 1)
 
         if word == "workflow":
             var block = List[String]()

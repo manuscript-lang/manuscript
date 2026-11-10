@@ -35,15 +35,15 @@ fn say(label: String) fn(var HttpExchange, RouteParams) Unit!:
     return fn var exchange, params: reply(var exchange, text(200, label.clone()))
 
 fn show(var exchange: HttpExchange, params: RouteParams) Unit!:
-    let id = params.get_or("id", "-")
-    let rest = params.get_or("rest", "-")
+    id := params.get_or("id", "-")
+    rest := params.get_or("rest", "-")
     return reply(var exchange, text(200, "{id}|{rest}"))
 
 fn body_of(response: HttpResponse) String:
     return response.body.decode_utf8().get("")
 
 fn allow_of(response: HttpResponse) String:
-    let values = response.headers.values("Allow")
+    values := response.headers.values("Allow")
     return values.join(",")
 
 fn router() Router:
@@ -56,7 +56,7 @@ fn router() Router:
     return r
 
 test "literal, parameter and wildcard routes":
-    let r = router()
+    r := router()
     try expect_equal(body_of(try r.call(get("/"))), "root")
     try expect_equal(body_of(try r.call(get("/users"))), "list")
     try expect_equal(body_of(try r.call(get("/users/42"))), "42|-")
@@ -64,33 +64,33 @@ test "literal, parameter and wildcard routes":
     try expect_equal(body_of(try r.call(get("/files/"))), "-|")
 
 test "unknown paths answer 404":
-    let r = router()
-    let response = try r.call(get("/nope"))
+    r := router()
+    response := try r.call(get("/nope"))
     try expect_equal(response.status, 404)
     try expect_equal(body_of(try r.call(get("/users/1/extra"))), "not found\n")
     try expect_equal((try r.call(get("/users/"))).status, 404)
 
 test "a known path under another method answers 405 with Allow":
-    let r = router()
-    let response = try r.call(request(HttpMethod.Delete, "/users"))
+    r := router()
+    response := try r.call(request(HttpMethod.Delete, "/users"))
     try expect_equal(response.status, 405)
     try expect_equal(allow_of(response), "GET, HEAD, OPTIONS, POST")
 
 test "OPTIONS lists the methods without calling a handler":
-    let r = router()
-    let response = try r.call(request(HttpMethod.Options, "/users/7"))
+    r := router()
+    response := try r.call(request(HttpMethod.Options, "/users/7"))
     try expect_equal(response.status, 204)
     try expect_equal(allow_of(response), "GET, HEAD, OPTIONS")
 
 test "OPTIONS * lists the methods of every route":
-    let r = router()
-    let response = try r.call(request(HttpMethod.Options, "*"))
+    r := router()
+    response := try r.call(request(HttpMethod.Options, "*"))
     try expect_equal(response.status, 204)
     try expect_equal(allow_of(response), "GET, HEAD, OPTIONS, POST")
 
 test "HEAD is answered from the GET route without a body":
-    let r = router()
-    let response = try r.call(request(HttpMethod.Head, "/users"))
+    r := router()
+    response := try r.call(request(HttpMethod.Head, "/users"))
     try expect_equal(response.status, 200)
     try expect_equal(response.body.length(), 0)
 
@@ -103,19 +103,19 @@ test "a streaming GET route answers HEAD, dropping the body writes":
     var r = Router()
     r.get("/s", stream_parts).get()
 
-    let head = try r.call(request(HttpMethod.Head, "/s"))
+    head := try r.call(request(HttpMethod.Head, "/s"))
     try expect_equal(head.status, 200)
     try expect_equal(head.body.length(), 0)
     try expect_equal(body_of(try r.call(get("/s"))), "onetwo")
 
-    let server = try serve("127.0.0.1:0", r.handler(), HttpServerOptions())
-    let client = try http_client(HttpClientOptions())
+    server := try serve("127.0.0.1:0", r.handler(), HttpServerOptions())
+    client := try http_client(HttpClientOptions())
     var over_socket = try client.request(
         HttpMethod.Head, "http://{server.address()}/s", headers()
     )
     try expect_equal(over_socket.metadata.status, 200)
 
-    let rest = try read_to_end(var over_socket.body)
+    rest := try read_to_end(var over_socket.body)
     try expect_equal(rest.length(), 0)
 
 test "the first matching route wins":
@@ -133,7 +133,7 @@ test "explicit HEAD routes take precedence over GET fallback":
     try r.head("/a/:id", head_reply)
     try r.head("/a/fixed", say("later"))
 
-    let response = try r.call(request(HttpMethod.Head, "/a/fixed"))
+    response := try r.call(request(HttpMethod.Head, "/a/fixed"))
     try expect_equal(response.status, 202)
     try expect_equal(response.body.length(), 0)
     try expect_equal(body_of(try r.call(get("/a/fixed"))), "get")
@@ -163,7 +163,7 @@ fn tagged(
     return next(var exchange)
 
 fn trail(var exchange: HttpExchange, params: RouteParams) Unit!:
-    let values = exchange.headers().values("X-Trail")
+    values := exchange.headers().values("X-Trail")
     return reply(var exchange, text(200, values.join(">")))
 
 test "middleware wraps routes outermost first":
@@ -186,7 +186,7 @@ test "middleware may answer without calling the rest":
     r.use(refuse)
     r.get("/t", say("never")).get()
 
-    let response = try r.call(get("/t"))
+    response := try r.call(get("/t"))
     try expect_equal(response.status, 401)
 
 fn fail(var exchange: HttpExchange, params: RouteParams) Unit!:
@@ -203,12 +203,12 @@ test "a handler that sends nothing answers 204":
     try expect_equal((try r.call(get("/n"))).status, 204)
 
 fn whole_response(var exchange: HttpExchange, params: RouteParams) Unit!:
-    let body = if exchange.path() == "/empty": "" else: "done"
-    let whole = text(200, body)
+    body := if exchange.path() == "/empty": "" else: "done"
+    whole := text(200, body)
     try exchange.send(whole.status, whole.headers, whole.body)
 
     for extra in ["extra", ""]:
-        let written = exchange.write(extra)
+        written := exchange.write(extra)
         if written.is_ok(): return error(
             Error("write after send succeeded", kind: "EIO")
         )
@@ -224,18 +224,18 @@ test "a whole in-process response rejects subsequent writes":
     try expect_equal(body_of(try r.call(get("/empty"))), "")
 
 fn small_reads(var exchange: HttpExchange, params: RouteParams) Unit!:
-    let first = try exchange.read(1)
-    let second = try exchange.read(2)
-    let end = try exchange.read(1)
-    let a = first.get(Bytes([])).decode_utf8().get("")
-    let b = second.get(Bytes([])).decode_utf8().get("")
+    first := try exchange.read(1)
+    second := try exchange.read(2)
+    end := try exchange.read(1)
+    a := first.get(Bytes([])).decode_utf8().get("")
+    b := second.get(Bytes([])).decode_utf8().get("")
     return reply(var exchange, text(200, "{a}|{b}|{end.is_none()}"))
 
 test "in-process reads retain the unread body after a bounded chunk":
     var r = Router()
     try r.post("/", small_reads)
 
-    let response = try r.call(
+    response := try r.call(
         HttpRequest(
             method: HttpMethod.Post, path: "/", query: "", headers: headers(),
             body: "abc".to_bytes()
@@ -244,12 +244,12 @@ test "in-process reads retain the unread body after a bounded chunk":
     try expect_equal(body_of(response), "a|bc|true")
 
 fn read_sizes(var exchange: HttpExchange, params: RouteParams) Unit!:
-    let limit: Int? = if params.get_or("mode", "") == "default": none else: 100000
-    let first = try exchange.read(limit)
-    let second = try exchange.read(limit)
-    let end = try exchange.read(limit)
-    let a = first.get(Bytes([])).length()
-    let b = second.get(Bytes([])).length()
+    limit: Int? = if params.get_or("mode", "") == "default": none else: 100000
+    first := try exchange.read(limit)
+    second := try exchange.read(limit)
+    end := try exchange.read(limit)
+    a := first.get(Bytes([])).length()
+    b := second.get(Bytes([])).length()
     return reply(var exchange, text(200, "{a}|{b}|{end.is_none()}"))
 
 test "in-process reads cap default and explicit chunks at 65536 bytes":
@@ -257,7 +257,7 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
     try r.post("/:mode", read_sizes)
 
     for mode in ["default", "explicit"]:
-        let response = try r.call(
+        response := try r.call(
             HttpRequest(
                 method: HttpMethod.Post, path: "/{mode}", query: "", headers: headers(),
                 body: "x".repeat(65537).get("").to_bytes()
@@ -266,8 +266,8 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
         try expect_equal(body_of(response), "65536|1|true")
 
 fn read_empty(var exchange: HttpExchange, params: RouteParams) Unit!:
-    let first = try exchange.read()
-    let second = try exchange.read()
+    first := try exchange.read()
+    second := try exchange.read()
     return reply(var exchange, text(200, "{first.is_none()}|{second.is_none()}"))
 
 test "in-process reads report EOF immediately for an empty body":
@@ -277,7 +277,7 @@ test "in-process reads report EOF immediately for an empty body":
 
 fn invalid_reads(var exchange: HttpExchange, params: RouteParams) Unit!:
     for limit in [0, -1]:
-        let read = exchange.read(limit)
+        read := exchange.read(limit)
         if read.is_ok(): return error(Error("invalid read size accepted", kind: "EIO"))
         if read.err().kind != "EINVAL": return error(
             Error("wrong read error", kind: "EIO")
@@ -289,7 +289,7 @@ test "in-process reads reject nonpositive sizes without consuming input":
     var r = Router()
     try r.post("/", invalid_reads)
 
-    let response = try r.call(
+    response := try r.call(
         HttpRequest(
             method: HttpMethod.Post, path: "/", query: "", headers: headers(),
             body: "abc".to_bytes()
@@ -298,18 +298,18 @@ test "in-process reads reject nonpositive sizes without consuming input":
     try expect_equal(body_of(response), "a|bc|true")
 
 test "the router serves over a socket":
-    let handler = router().handler()
-    let server = try serve("127.0.0.1:0", handler, HttpServerOptions())
-    let client = try http_client(HttpClientOptions())
+    handler := router().handler()
+    server := try serve("127.0.0.1:0", handler, HttpServerOptions())
+    client := try http_client(HttpClientOptions())
     var response = try client.request(
         HttpMethod.Get, "http://{server.address()}/users/9", headers()
     )
     try expect_equal(response.metadata.status, 200)
 
-    let body = try read_to_end(var response.body)
+    body := try read_to_end(var response.body)
     try expect_equal(body.decode_utf8().get(""), "9|-")
 
-    let missing = try client.request(
+    missing := try client.request(
         HttpMethod.Delete, "http://{server.address()}/users", headers()
     )
     try expect_equal(missing.metadata.status, 405)
@@ -375,17 +375,17 @@ test "json and redirect build responses":
     r.get("/j", answer).get()
     r.get("/m", moved).get()
 
-    let sent = try r.call(get("/j"))
+    sent := try r.call(get("/j"))
     try expect_equal(sent.status, 201)
     try expect_equal(body_of(sent), "\{\"name\":\"ok\",\"count\":2\}")
     try expect_equal(sent.headers.values("Content-Type").join(","), "application/json")
 
-    let moved_to = try r.call(get("/m"))
+    moved_to := try r.call(get("/m"))
     try expect_equal(moved_to.status, 303)
     try expect_equal(moved_to.headers.values("Location").join(","), "/elsewhere")
 
 fn echo_id(var exchange: HttpExchange, params: RouteParams) Unit!:
-    let seen = exchange.headers().values("X-Request-Id")
+    seen := exchange.headers().values("X-Request-Id")
     return reply(var exchange, text(200, seen.join(",")))
 
 fn id_of(response: HttpResponse) String:
@@ -396,14 +396,14 @@ test "request_id keeps a usable id and makes one otherwise":
     r.use(request_id())
     r.get("/i", echo_id).get()
 
-    let fresh = try r.call(get("/i"))
+    fresh := try r.call(get("/i"))
     try expect_equal(id_of(fresh).length(), 36)
     try expect_equal(body_of(fresh), id_of(fresh))
 
     var incoming = get("/i")
     incoming.headers.append("X-Request-Id", "abc-123").get()
 
-    let kept = try r.call(incoming)
+    kept := try r.call(incoming)
     try expect_equal(id_of(kept), "abc-123")
     try expect_equal(body_of(kept), "abc-123")
 
@@ -432,22 +432,22 @@ impl Transport for Sink:
         return unit
 
 fn logged(path: String) String:
-    let read = read_file(path).wait()
-    if let bytes = read: return bytes.decode_utf8().get("")
+    read := read_file(path).wait()
+    if bytes := read: return bytes.decode_utf8().get("")
 
     return ""
 
 test "access_log writes one record per request":
-    let dir = temporary("ms-router-log-") | try expect_ok
-    let lines = "{dir.path()}/lines"
-    let logger = (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
+    dir := temporary("ms-router-log-") | try expect_ok
+    lines := "{dir.path()}/lines"
+    logger := (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
     var r = Router()
     r.use(access_log(logger))
     r.get("/a", say("hello")).get()
     try expect_equal((try r.call(get("/a"))).status, 200)
     try expect_equal((try r.call(get("/nope"))).status, 404)
 
-    let text_out = logged(lines.clone())
+    text_out := logged(lines.clone())
     try expect_true(text_out.contains("\"path\":\"/a\""))
     try expect_true(text_out.contains("\"status\":200"))
     try expect_true(text_out.contains("\"bytes\":5"))
@@ -458,27 +458,27 @@ fn no_content(var exchange: HttpExchange, params: RouteParams) Unit!:
     return exchange.send(204, headers(), "ignored".to_bytes())
 
 test "access_log counts only the body bytes that are sent":
-    let dir = temporary("ms-router-log-head-") | try expect_ok
-    let lines = "{dir.path()}/lines"
-    let logger = (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
+    dir := temporary("ms-router-log-head-") | try expect_ok
+    lines := "{dir.path()}/lines"
+    logger := (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
     var r = Router()
     r.use(access_log(logger))
     r.get("/a", say("hello")).get()
     r.get("/s", stream_parts).get()
     r.get("/n", no_content).get()
 
-    let head = try r.call(request(HttpMethod.Head, "/a"))
+    head := try r.call(request(HttpMethod.Head, "/a"))
     try expect_equal(head.body.length(), 0)
 
-    let streamed = try r.call(request(HttpMethod.Head, "/s"))
+    streamed := try r.call(request(HttpMethod.Head, "/s"))
     try expect_equal(streamed.body.length(), 0)
 
-    let empty = try r.call(get("/n"))
+    empty := try r.call(get("/n"))
     try expect_equal(empty.status, 204)
     try expect_equal((try r.call(get("/a"))).status, 200)
     try expect_equal(body_of(try r.call(get("/s"))), "onetwo")
 
-    let records = logged(lines.clone()).lines()
+    records := logged(lines.clone()).lines()
     try expect_equal(records.length(), 5)
     try expect_true(records[0].contains("\"method\":\"HEAD\""))
     try expect_true(records[0].contains("\"bytes\":0"))

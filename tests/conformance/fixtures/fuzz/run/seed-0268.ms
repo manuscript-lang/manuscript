@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     if ("ms".starts_with("gamma") and (not true)):
@@ -14,13 +14,13 @@ export fn main() Int:
     else:
         say("back\\slash".upper())
 
-    let i1 = (-43)
+    i1 := (-43)
     say("i1 = {i1}")
 
-    let s2 = (("emoji 😀" + ("" + "alpha")) + "alpha".trim().lower())
+    s2 := (("emoji 😀" + ("" + "alpha")) + "alpha".trim().lower())
     say("s2 = [{s2}]")
 
-    let s3 = ("Tab\there" + s2)
+    s3 := ("Tab\there" + s2)
     say("s3 = [{s3}]")
 
     if false:
@@ -32,9 +32,9 @@ export fn main() Int:
         "{(-(732761 * i1))} {((i1 + (-12)) + (i1 - i1))} {((-(732761 * i1)) < ((i1 + (-12)) + (i1 - i1)))} sum {(-(732761 * i1)) + ((i1 + (-12)) + (i1 - i1))}"
     )
 
-    let b4 = (((false and false) and false) and (not (977.885 < 6.5)))
+    b4 := (((false and false) and false) and (not (977.885 < 6.5)))
     say("b4 = {b4}")
 
-    let i5 = (((35 * i1) / 17) - 30)
+    i5 := (((35 * i1) / 17) - 30)
     say("i5 = {i5}")
     return 0

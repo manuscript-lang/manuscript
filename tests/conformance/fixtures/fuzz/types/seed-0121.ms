@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -24,14 +24,14 @@ export fn main() Int:
 
     say("acc1 = {acc1}")
 
-    let _bad = say
-    let i2 = ((31 / (-36)) - ((501219160189 - 834825) + (-(-987398))))
+    _bad := say
+    i2 := ((31 / (-36)) - ((501219160189 - 834825) + (-(-987398))))
     say("i2 = {i2}")
 
-    let i3 = i2
+    i3 := i2
     say("i3 = {i3}")
 
-    let f4 = 430.546
+    f4 := 430.546
     say("f4 = {f4}")
     say("gcd(4773, 402) = {gcd(4773, 402)}")
     return 0

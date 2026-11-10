@@ -69,13 +69,13 @@ fn cheatsheet_claims_match_the_compiler() {
         )
     };
     for body in [
-        "    let a = [1, 2]\n",
-        "    let m = Map[String, Int]()\n    let s = Set[Int]()\n",
+        "    a := [1, 2]\n",
+        "    m := Map[String, Int]()\n    s := Set[Int]()\n",
         "    var n = 1\n    n = 2\n",
         "    var n = 1\n    n += 2\n    n %= 2\n",
-        "    let o: Int? = none\n    let v = o.get(3)\n",
-        "    let name = \"x\"\n    let text = \"hi {name}\"\n",
-        "    var m = Map[String, Int]()\n    for e in m.entries():\n        let k = e.key\n    if var n = m[\"k\"]?:\n        n += 1\n",
+        "    o: Int? = none\n    v := o.get(3)\n",
+        "    name := \"x\"\n    text := \"hi {name}\"\n",
+        "    var m = Map[String, Int]()\n    for e in m.entries():\n        k := e.key\n    if var n = m[\"k\"]?:\n        n += 1\n",
     ] {
         let found = check(body);
         assert!(
@@ -84,10 +84,10 @@ fn cheatsheet_claims_match_the_compiler() {
         );
     }
     for body in [
-        "    let n = 1\n    n = 2\n",
-        "    let a = [1, \"x\"]\n",
-        "    let x = none\n",
-        "    let a = 1\n  let b = 2\n",
+        "    n := 1\n    n = 2\n",
+        "    a := [1, \"x\"]\n",
+        "    x := none\n",
+        "    a := 1\n  b := 2\n",
     ] {
         assert!(!check(body).is_empty(), "claim should be rejected:\n{body}");
     }

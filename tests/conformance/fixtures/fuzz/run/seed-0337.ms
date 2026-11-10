@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,16 +23,16 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let i1 = ((21 - (-6)) - ((39 * 31) - (38 + (-962380))))
+    i1 := ((21 - (-6)) - ((39 * 31) - (38 + (-962380))))
     say("i1 = {i1}")
 
-    let i2 = (i1 % i1)
+    i2 := (i1 % i1)
     say("i2 = {i2}")
 
-    let f3 = (957.220 + 0.0)
+    f3 := (957.220 + 0.0)
     say("f3 = {f3}")
 
-    let i4 = i1
+    i4 := i1
     say("i4 = {i4}")
     say(
         "{(-(i2 * i4))} {(i2 % (-37))} {((-(i2 * i4)) < (i2 % (-37)))} sum {(-(i2 * i4)) + (i2 % (-37))}"
@@ -41,13 +41,13 @@ export fn main() Int:
         "{((-15) + (i2 + i2))} {i1} {(((-15) + (i2 + i2)) < i1)} sum {((-15) + (i2 + i2)) + i1}"
     )
 
-    let b5 = ("ms" == "".lower().trim())
+    b5 := ("ms" == "".lower().trim())
     say("b5 = {b5}")
 
-    let l6 = [26, 12, 28, (-1)]
+    l6 := [26, 12, 28, (-1)]
     say("l6 = {l6} len {l6.length()}")
 
-    let s7 = "delta"
+    s7 := "delta"
     say("s7 = [{s7}]")
     say("collatz(6) = {collatz(6)}")
 
@@ -56,9 +56,9 @@ export fn main() Int:
         acc8 += i * 0
     say("acc8 = {acc8}")
 
-    let i9 = (((-11) - (i4 / i4)) * i4)
+    i9 := (((-11) - (i4 / i4)) * i4)
     say("i9 = {i9}")
 
-    let s10 = ("42" + "MiXeD CaSe")
+    s10 := ("42" + "MiXeD CaSe")
     say("s10 = [{s10}]")
     return 0

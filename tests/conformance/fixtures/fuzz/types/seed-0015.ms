@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [1, 2, 3].take(0)
+    l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
 
-    let s2 = "alpha"
+    s2 := "alpha"
     say("s2 = [{s2}]")
 
-    let s3 = ("héllo".upper() + (("{(-431673)}:" + "beta") + s2.lower()))
+    s3 := ("héllo".upper() + (("{(-431673)}:" + "beta") + s2.lower()))
     say("s3 = [{s3}]")
 
-    let f4 = 380.435
+    f4 := 380.435
     say("f4 = {f4}")
 
-    let f5 = ((f4 - 838.994) / f4)
+    f5 := ((f4 - 838.994) / f4)
     say("f5 = {f5}")
 
-    let bad = 1 + "one"
-    let i6 = (((-15) % ((-21) + 48)) / (4 * (164794366952 % 19)))
+    bad := 1 + "one"
+    i6 := (((-15) % ((-21) + 48)) / (4 * (164794366952 % 19)))
     say("i6 = {i6}")
     return 0

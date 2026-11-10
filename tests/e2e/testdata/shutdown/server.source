@@ -10,10 +10,10 @@ fn flush_within(var out: WriteStream[Bytes], limit: Duration) Unit!:
     return promise(fn: out.flush()).with(options: PromiseOptions(timeout: limit)).wait()
 
 fn say(text: String) Unit:
-    let _written = stdout().write(text)
+    _written := stdout().write(text)
 
     // Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.
-    let _flushed = stdout().flush()
+    _flushed := stdout().flush()
 
 type WorkerCleanup:
     label: String
@@ -35,11 +35,11 @@ impl Closeable for Server:
 
         self.closed = true
         try self.listener.close()
-        let _ = sleep(10.milliseconds()).wait()
+        _ := sleep(10.milliseconds()).wait()
 
         var farewell = self.client.output.write("farewell\n".to_bytes())
         if farewell.is_ok():
-            let drained = flush_within(var self.client.output, 1.seconds())
+            drained := flush_within(var self.client.output, 1.seconds())
             farewell = drained
 
         if farewell.is_error():
@@ -52,19 +52,19 @@ impl Closeable for Server:
 
 fn serve() Result[Unit, Error]:
     var signals = try watch_signals([2, 15])
-    let listener = try listen("127.0.0.1:0")
+    listener := try listen("127.0.0.1:0")
     say("{listener.address()}\n")
 
-    let client = try listener.accept().wait()
-    let _server = Server(listener: listener, client: client)
-    let _cleanup = WorkerCleanup(label: "worker")
+    client := try listener.accept().wait()
+    _server := Server(listener: listener, client: client)
+    _cleanup := WorkerCleanup(label: "worker")
     say("ready\n")
 
-    let _observed = signals.next()
+    _observed := signals.next()
     return ok(unit)
 
 export fn main() Int:
-    let served = serve()
+    served := serve()
 
     if served.is_error():
         say("{served.err().message}\n")

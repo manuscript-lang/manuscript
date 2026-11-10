@@ -665,6 +665,7 @@ impl Scanner<'_> {
                 let two = match (b, self.at(self.offset + 1)) {
                     (b'.', Some(b'.')) => Some(Tok::DotDot),
                     (b'-', Some(b'>')) => Some(Tok::Arrow),
+                    (b':', Some(b'=')) => Some(Tok::ColonAssign),
                     (b'=', Some(b'=')) => Some(Tok::EqEq),
                     (b'!', Some(b'=')) => Some(Tok::NotEq),
                     (b'<', Some(b'=')) => Some(Tok::Le),
@@ -739,7 +740,7 @@ impl Scanner<'_> {
                     self.opened.push(p);
                     if b == b'('
                         && let Some(last) = self.tokens.last()
-                        && (last.kind == Tok::Let || last.kind == Tok::Var)
+                        && last.kind == Tok::Var
                     {
                         self.groups.push(self.delimiters.len());
                     }

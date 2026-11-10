@@ -1,7 +1,7 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-let DIGITS = "0123456789"
+DIGITS := "0123456789"
 
 // Splits one line into number tokens and operator tokens; `none` means an unknown character.
 fn tokenize(line: String) Optional[List[String]]:
@@ -47,10 +47,10 @@ impl Parser:
         var value = self.term()
 
         while self.peek() == "+" or self.peek() == "-":
-            let op = self.peek()
+            op := self.peek()
             self.pos += 1
 
-            let rhs = self.term()
+            rhs := self.term()
 
             value = if op == "+": value + rhs else: value - rhs
 
@@ -60,10 +60,10 @@ impl Parser:
         var value = self.unary()
 
         while self.peek() == "*" or self.peek() == "/":
-            let op = self.peek()
+            op := self.peek()
             self.pos += 1
 
-            let rhs = self.unary()
+            rhs := self.unary()
 
             if op == "*":
                 value = value * rhs
@@ -83,12 +83,12 @@ impl Parser:
         return self.primary()
 
     var fn primary() Int:
-        let tok = self.peek()
+        tok := self.peek()
 
         if tok == "(":
             self.pos += 1
 
-            let value = self.expr()
+            value := self.expr()
 
             if self.peek() == ")":
                 self.pos += 1
@@ -106,9 +106,9 @@ impl Parser:
 
 // Returns the output line for one tokenized input line.
 fn evaluate(tokens: List[String]) String:
-    let count = tokens.length()
+    count := tokens.length()
     var parser = Parser(tokens: tokens, pos: 0, failed: false, div_zero: false)
-    let value = parser.expr()
+    value := parser.expr()
     if parser.failed or parser.pos != count:
         return "error: syntax"
     if parser.div_zero:
@@ -118,7 +118,7 @@ fn evaluate(tokens: List[String]) String:
 
 export fn main() Int:
     for line in read_lines(stdin()).get():
-        if let tokens = tokenize(line):
+        if tokens := tokenize(line):
             if tokens.length() > 0:
                 stdout().write("{evaluate(tokens)}\n").get()
         else:

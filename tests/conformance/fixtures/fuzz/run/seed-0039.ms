@@ -6,37 +6,37 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (((false and true) and ("hello world" == "emoji 😀")) or (not true))
+    b1 := (((false and true) and ("hello world" == "emoji 😀")) or (not true))
     say("b1 = {b1}")
 
-    let b2 = ((((-44) * 39) + 18) <= ((46 * (-34)) - ((-42) * (-19))))
+    b2 := ((((-44) * 39) + 18) <= ((46 * (-34)) - ((-42) * (-19))))
     say("b2 = {b2}")
 
-    let l3 = [20, (-25), 28, 28]
+    l3 := [20, (-25), 28, 28]
     say("l3 = {l3} len {l3.length()}")
 
-    let i4 = (147168 * ((22 / (-37)) + 28))
+    i4 := (147168 * ((22 / (-37)) + 28))
     say("i4 = {i4}")
 
-    let f5 = 3.5
+    f5 := 3.5
     say("f5 = {f5}")
 
-    let s6 = ("emoji 😀" + "gamma").trim().replace("delta", "42")
+    s6 := ("emoji 😀" + "gamma").trim().replace("delta", "42")
     say("s6 = [{s6}]")
 
-    let i7 = ((((-37) * (-27)) + ((-38) - (-42))) + l3.length())
+    i7 := ((((-37) * (-27)) + ((-38) - (-42))) + l3.length())
     say("i7 = {i7}")
 
-    let f8 = ((f5 + (3.5 / 849.052)) - f5)
+    f8 := ((f5 + (3.5 / 849.052)) - f5)
     say("f8 = {f8}")
 
-    let i9 = i7
+    i9 := i7
     say("i9 = {i9}")
 
-    let l10 = l3.filter(fn x: x > 3)
+    l10 := l3.filter(fn x: x > 3)
     say("l10 = {l10} len {l10.length()}")
 
     if ((-i4) >= (-i7)):
@@ -44,18 +44,18 @@ export fn main() Int:
     else:
         say(s6.trim())
 
-    let b11 = (("a" + s6) == "emoji 😀".upper())
+    b11 := (("a" + s6) == "emoji 😀".upper())
     say("b11 = {b11}")
 
-    let l12 = [(-10), 5, (-13)]
+    l12 := [(-10), 5, (-13)]
     say("l12 = {l12} len {l12.length()}")
 
-    let s13 = (("{(23 / i9)}:" + "line\nbreak") + s6.lower()).trim()
+    s13 := (("{(23 / i9)}:" + "line\nbreak") + s6.lower()).trim()
     say("s13 = [{s13}]")
 
-    let s14 = ("{(i9 / i7)}:" + ("{((-800235) + i4)}:" + s13)).reverse()
+    s14 := ("{(i9 / i7)}:" + ("{((-800235) + i4)}:" + s13)).reverse()
     say("s14 = [{s14}]")
 
-    let i15 = ((i9 / i4) * ((i9 + i4) % (-(-22))))
+    i15 := ((i9 / i4) * ((i9 + i4) % (-(-22))))
     say("i15 = {i15}")
     return 0

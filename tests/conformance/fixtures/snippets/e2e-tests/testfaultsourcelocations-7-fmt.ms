@@ -6,6 +6,6 @@ fn crash() Int:
 
 export fn main() Int:
     var values = Map[Int, Int]()
-    let add = values.add
+    add := values.add
     add(value: crash(), key: 1)
     return values.length()

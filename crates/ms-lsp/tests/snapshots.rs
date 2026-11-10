@@ -43,7 +43,7 @@ fn lifecycle_and_diagnostics() {
     let broken = ws.uri("broken.ms");
     s.open(
         &broken,
-        "fn broken() Int:\n    let x: String = 1\n    return missing\n",
+        "fn broken() Int:\n    x: String = 1\n    return missing\n",
         1,
     );
     let syntax = ws.uri("syntax.ms");
@@ -151,23 +151,23 @@ fn completion_in_unfinished_code() {
     let cases: &[(&str, &str)] = &[
         (
             "member",
-            "fn main() Int:\n    let p = Point(x: 1)\n    let q = p.",
+            "fn main() Int:\n    p := Point(x: 1)\n    q := p.",
         ),
         (
             "std-member",
-            "import stdout from \"@std/io/io.ms\"\nfn main() Int:\n    let w = stdout().",
+            "import stdout from \"@std/io/io.ms\"\nfn main() Int:\n    w := stdout().",
         ),
-        ("list-member", "fn main() Int:\n    let w = [1]."),
-        ("string-member", "fn main() Int:\n    let w = \"a\"."),
+        ("list-member", "fn main() Int:\n    w := [1]."),
+        ("string-member", "fn main() Int:\n    w := \"a\"."),
         (
             "member-prefix",
-            "fn main() Int:\n    let p = Point(x: 1)\n    return p.no",
+            "fn main() Int:\n    p := Point(x: 1)\n    return p.no",
         ),
         ("call", "fn main() Int:\n    return add("),
         ("call-second", "fn main() Int:\n    return add(1, "),
         ("call-label", "fn main() Int:\n    return add(a: 1, b"),
-        ("constructor", "fn main() Int:\n    let p = Point("),
-        ("case", "fn main() Int:\n    let s = Shape.C"),
+        ("constructor", "fn main() Int:\n    p := Point("),
+        ("case", "fn main() Int:\n    s := Shape.C"),
         ("type", "fn main() Int:\n    let z: In"),
         ("param-type", "fn run(shape: Sh"),
         ("import-name", "import st"),
@@ -536,7 +536,7 @@ fn broken_documents() {
     let ws = Workspace::new("broken");
     let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
     let sources = [
-        "fn broken() Int:\n    let x: String = 1\n    return missing\n",
+        "fn broken() Int:\n    x: String = 1\n    return missing\n",
         "fn (:\nfn ok() Int:\n    return 1\n",
         "type T:\n    a: Int\nfn f() T:\n    return T(a: \n",
         "fn f(a: Int) Int:\n  return a\n",

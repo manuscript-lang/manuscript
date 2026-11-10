@@ -59,7 +59,7 @@ fn save(path: String, text: String) Result[Unit, Error]:
 import FileHandle from "@std/os/fs.ms"
 
 fn twice(file: FileHandle) Result[List[FileHandle], Error]:
-    let copy = try file.clone()
+    copy := try file.clone()
     return ok([copy, file])
 ```
 

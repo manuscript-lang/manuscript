@@ -12,7 +12,7 @@ Functions take at most three parameters; more settings travel in an `*Options` r
 import read_file, write_file from "@std/os/fs.ms"
 
 try write_file("notes.txt", "hello").wait()
-let data = try read_file("notes.txt").wait()
+data := try read_file("notes.txt").wait()
 ```
 */
 import (
@@ -259,12 +259,12 @@ impl FileHandle:
 
     // Duplicates this handle for chunk reads; the stream closes its own descriptor independently and shares the file position.
     fn reader() ReadStream[Bytes]!:
-        let own = try self.clone()
+        own := try self.clone()
         return ok(ReadStream[Bytes](FileSource(own)))
 
     // Adapts complete writes to `Error`/Unit; flush synchronizes the file.
     fn writer() WriteStream[Bytes]!:
-        let own = try self.clone()
+        own := try self.clone()
         return ok(WriteStream[Bytes](FileSink(own)))
 
     // Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
@@ -325,18 +325,18 @@ impl FileHandle:
     Handles made by `clone` share one lock, and locking a handle that already holds one converts it. A closed handle returns EBADF.
     */
     fn try_lock(exclusive: Bool) Bool!:
-        let taken = try msstd_fs_file_try_lock(self.native, exclusive)
+        taken := try msstd_fs_file_try_lock(self.native, exclusive)
         return ok(taken == 1)
 
     // Takes an advisory lock like `try_lock`, retrying every few milliseconds for up to `timeout`; none waits until it is granted.
     // Returns False when the timeout passes first. The wait is a cancellable sleep, so task cancellation ends it.
     fn lock(exclusive: Bool, timeout: Duration?) Bool!:
-        let started = monotonic()
+        started := monotonic()
 
         while true:
             if try self.try_lock(exclusive): return ok(true)
 
-            if let limit = timeout:
+            if limit := timeout:
                 if monotonic().difference(started).compare(limit) >= 0: return ok(false)
             try sleep(milliseconds(5)).wait()
 
@@ -422,7 +422,7 @@ impl Source[FileEvent] for WatchSource:
     // Waits for the next change. A closed watcher is `EBADF`; a native watcher that overflowed with policy `error` is `EOVERFLOW`.
     var fn next() FileEvent?!:
         while true:
-            if let event = self.pending.pop(): return ok(event)
+            if event := self.pending.pop(): return ok(event)
 
             var batch = try msstd_fs_watch_next(self.watcher.native)
             batch.reverse()
@@ -449,7 +449,7 @@ impl Closeable for TemporaryDirectory:
     // Removes the directory and everything inside it.
     // Safe to call repeatedly.
     var fn close() Unit!:
-        let _ = msstd_fs_temporary_close(self.native)
+        _ := msstd_fs_temporary_close(self.native)
 
 impl TemporaryDirectory:
     // Returns the absolute path of the directory, created under the host's temporary root.
@@ -569,7 +569,7 @@ returns True. A malformed pattern, one over 4096 bytes, or a negative limit retu
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
-let sources = try glob(".", GlobOptions(patterns: ["*.ms"]))
+sources := try glob(".", GlobOptions(patterns: ["*.ms"]))
 ```
 */
 // ms: effect std.fs.read
@@ -604,7 +604,7 @@ export fn copy(
     destination: String,
     options: CopyOptions = CopyOptions()
 ) Unit!:
-    let native = NativeCopyOptions(
+    native := NativeCopyOptions(
         recursive: options.recursive, replace: options.replace, error_on_exists: true,
         dereference: options.dereference,
         preserve_timestamps: options.preserve_timestamps,
@@ -699,15 +699,15 @@ export fn temporary_directory(prefix: String) String!:
 // `data` is text (written as UTF-8) or `Bytes`.
 // ms: effect std.fs.write
 export fn write_file(path: String, data: Writable, replace: Bool = false) Promise[Unit]:
-    let payload = data.as_bytes()
-    let held = msstd_fs_admit(payload.length())
+    payload := data.as_bytes()
+    held := msstd_fs_admit(payload.length())
     return owned_task[Unit](write_job(path.clone(), payload, replace, held))
 
 // The work of `write_file`. The task runs at once, so the slot frees the moment the write ends, not when the
 // promise is dropped: `permit` is a local that closes at the end of the closure.
 fn write_job(path: String, data: Bytes, replace: Bool, held: Bool) fn() Unit!:
     return fn:
-        let permit = WritePermit(held: held)
+        permit := WritePermit(held: held)
         return msstd_fs_write_file(path, data, replace)
 
 // Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.
@@ -720,13 +720,13 @@ export fn access(path: String, mode: Int) Unit!:
 // Writes every byte or fails, possibly leaving a partial append.
 // ms: effect std.fs.write
 export fn append_file(path: String, data: Writable) Promise[Unit]:
-    let payload = data.as_bytes()
-    let held = msstd_fs_admit(payload.length())
+    payload := data.as_bytes()
+    held := msstd_fs_admit(payload.length())
     return owned_task[Unit](append_job(path.clone(), payload, held))
 
 fn append_job(path: String, data: Bytes, held: Bool) fn() Unit!:
     return fn:
-        let permit = WritePermit(held: held)
+        permit := WritePermit(held: held)
         return msstd_fs_append_file(path, data)
 
 // Changes target permissions with mode 0..4095. `follow_links` True (the default) follows a final symbolic link; False changes the link itself, which returns ENOTSUP on hosts lacking this operation.
@@ -779,7 +779,7 @@ Opens `path` in `mode` (default `Read`). `options.exclusive` makes creation fail
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
-let file = try open("out.log", OpenMode.Append)
+file := try open("out.log", OpenMode.Append)
 ```
 */
 // ms: effect std.fs.read
@@ -805,7 +805,7 @@ Example: `write_atomic("config.json", text).wait()`.
 */
 // ms: effect std.fs.write
 export fn write_atomic(path: String, data: Writable) Promise[Unit]:
-    let payload = data.as_bytes()
+    payload := data.as_bytes()
     return owned_task[Unit](atomic_job(path.clone(), payload))
 
 fn atomic_job(path: String, data: Bytes) fn() Unit!:
@@ -814,7 +814,7 @@ fn atomic_job(path: String, data: Bytes) fn() Unit!:
 // The file a write to `path` replaces: the target of a symbolic link, so the link stays, else `path`.
 // A link that cannot be resolved (a dangling one) is replaced itself.
 fn through_links(path: String) String:
-    let link = stat(path, follow_links: false)
+    link := stat(path, follow_links: false)
     if link.is_error() or not link.get().is_symlink(): return path.clone()
 
     return canonicalize(path).get(path.clone())
@@ -822,25 +822,25 @@ fn through_links(path: String) String:
 // A sibling name for `path` that stays within the 255-byte file name limit: the file name is cut to 32 characters.
 fn temporary_name(path: String, stamp: String) String:
     var split = 0
-    if let slash = path.last_index_of("/"): split = slash + 1
-    if let slash = path.last_index_of("\\"):
+    if slash := path.last_index_of("/"): split = slash + 1
+    if slash := path.last_index_of("\\"):
         if slash + 1 > split: split = slash + 1
 
-    let directory = path.slice(0, split).get("")
-    let name = path.slice(split, path.byte_length()).get("")
+    directory := path.slice(0, split).get("")
+    name := path.slice(split, path.byte_length()).get("")
     return "{directory}.{name.take(32)}.{stamp}.tmp"
 
 fn replace_atomically(link: String, data: Bytes) Unit!:
-    let path = through_links(link)
-    let existing = stat(path)
+    path := through_links(link)
+    existing := stat(path)
     var mode = 420
-    if let info = existing: mode = info.permissions
+    if info := existing: mode = info.permissions
 
-    let stamp = now()
+    stamp := now()
     var attempt = 0
 
     while attempt < 16:
-        let temporary = temporary_name(
+        temporary := temporary_name(
             path, "{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}"
         )
         attempt += 1
@@ -868,18 +868,18 @@ fn finish_atomic(
     var out = file
     var prepared = out.write(data)
     if prepared.is_ok():
-        if let permissions = mode: prepared = out.chmod(permissions)
+        if permissions := mode: prepared = out.chmod(permissions)
 
-    let synced = if prepared.is_error(): prepared else: out.sync()
-    let _closed = out.close()
+    synced := if prepared.is_error(): prepared else: out.sync()
+    _closed := out.close()
 
     if synced.is_error():
-        let _removed = remove(temporary)
+        _removed := remove(temporary)
         return synced
 
-    let moved = rename(temporary, path)
+    moved := rename(temporary, path)
     if moved.is_error():
-        let _cleaned = remove(temporary)
+        _cleaned := remove(temporary)
     return moved
 
 // Moves a file or tree from `source` to `destination`, across filesystems too.
@@ -887,25 +887,25 @@ fn finish_atomic(
 // ms: effect std.fs.write
 // ms: effect std.fs.delete
 export fn move(source: String, destination: String) Unit!:
-    let renamed = rename(source, destination)
+    renamed := rename(source, destination)
     if renamed.is_ok(): return renamed
 
-    let cause = renamed.err()
+    cause := renamed.err()
     if cause.kind == "EIO": return move_by_copy(source, destination, cause)
 
     return error(cause)
 
 fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
-    let info = stat(source, follow_links: false)
+    info := stat(source, follow_links: false)
     if info.is_error(): return error(cause)
     if stat(destination, follow_links: false).is_ok(): return error(already_exists())
 
-    let copied = copy(
+    copied := copy(
         source, destination, CopyOptions(recursive: info.get().is_directory())
     )
 
     if copied.is_error():
-        let _partial = remove(destination, recursive: true)
+        _partial := remove(destination, recursive: true)
         return copied
 
     return remove(source, recursive: true)
@@ -929,7 +929,7 @@ export fn watch(
     recursive: Bool = false,
     options: WatchOptions = WatchOptions()
 ) ReadStream[FileEvent]!:
-    if let interval = options.interval:
+    if interval := options.interval:
         if options.max_events.is_some() or options.overflow.is_some(): return error(
             invalid_input()
         )

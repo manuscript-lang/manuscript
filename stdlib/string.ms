@@ -140,7 +140,7 @@ interface StringTextOperations:
     fn replace_each(pairs: Map[String, String]) String
 
 // Scalars read per step by the prefix scans below; each step doubles, so a scan costs its distance.
-let SCAN_WINDOW = 32
+SCAN_WINDOW := 32
 
 impl StringTextOperations for String:
     // Splits around runs of characters (one-scalar strings) the predicate accepts; no empty items.
@@ -179,7 +179,7 @@ impl StringTextOperations for String:
 
         while true:
             // Scalars are read in doubling windows, so the cost follows the trimmed run, not the text length.
-            let cs = self.take(skipped + window).drop(skipped).chars()
+            cs := self.take(skipped + window).drop(skipped).chars()
             var i = 0
             while i < cs.length() and set.contains(cs[i]):
                 i += 1
@@ -200,7 +200,7 @@ impl StringTextOperations for String:
             if low < 0:
                 low = 0
 
-            let cs = self.slice(low, kept).get("").chars()
+            cs := self.slice(low, kept).get("").chars()
             var i = cs.length()
             while i > 0 and set.contains(cs[i - 1]):
                 i -= 1
@@ -224,7 +224,7 @@ impl StringTextOperations for String:
         if separator.is_empty(): return self.chars()
 
         var out = List[String]()
-        let parts = self.split(separator)
+        parts := self.split(separator)
 
         for i in 0..parts.length():
             if i + 1 < parts.length():
@@ -244,7 +244,7 @@ impl StringTextOperations for String:
         var in_word = false
 
         for c in self.chars():
-            let word = is_word_scalar(c)
+            word := is_word_scalar(c)
 
             if word and in_word:
                 out.append(c.lower())
@@ -270,7 +270,7 @@ impl StringTextOperations for String:
         var window = SCAN_WINDOW
 
         while true:
-            let cs = self.take(from + window).drop(from).chars()
+            cs := self.take(from + window).drop(from).chars()
             for i in 0..cs.length():
                 if predicate(cs[i]): return from + i
             if cs.length() < window: return none
@@ -286,13 +286,13 @@ impl StringTextOperations for String:
         if pairs.is_empty(): return self.clone()
 
         var out = StringBuilder()
-        let news = pairs.values()
+        news := pairs.values()
         var needles = List[List[String]]()
         for key in pairs.keys():
             needles.append(key.chars())
 
-        let cs = self.chars()
-        let n = cs.length()
+        cs := self.chars()
+        n := cs.length()
         var i = 0
 
         while i < n:
@@ -328,7 +328,7 @@ fn capture_slots(raw: List[Int], start: Int, count: Int) List[RegexSpan?]:
     var out = List[RegexSpan?](reserve: count)
 
     for index in 0..count:
-        let at = start + index * 2
+        at := start + index * 2
 
         if raw[at] < 0:
             out.append(none)
@@ -350,7 +350,7 @@ impl RegexSpanQueries for Regex:
     // Returns all full-match byte ranges in find_all order, without copying matched text.
     // max_matches is a strict output budget: negatives return EINVAL, excess returns EOVERFLOW.
     fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!:
-        let raw = try msstd_regex_find_all_spans(self, text, max_matches)
+        raw := try msstd_regex_find_all_spans(self, text, max_matches)
         var out = List[RegexSpan](reserve: raw.length() / 2)
         for index in 0..(raw.length() / 2):
             out.append(RegexSpan(raw[index * 2], raw[index * 2 + 1]))
@@ -363,7 +363,7 @@ impl RegexSpanQueries for Regex:
     excess returns EOVERFLOW. The budget bounds output, not input scanning or engine scratch space.
     */
     fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!:
-        let raw = try msstd_regex_capture_spans(self, text, max_captures)
+        raw := try msstd_regex_capture_spans(self, text, max_captures)
         if raw.is_empty(): return ok(none)
 
         return ok(capture_slots(raw, 1, raw[0]))
@@ -378,12 +378,10 @@ impl RegexSpanQueries for Regex:
         max_matches: Int?,
         max_captures: Int?
     ) List[List[RegexSpan?]]!:
-        let raw = try msstd_regex_capture_all_spans(
-            self, text, max_matches, max_captures
-        )
+        raw := try msstd_regex_capture_all_spans(self, text, max_matches, max_captures)
         if raw.is_empty(): return ok(List[List[RegexSpan?]]())
 
-        let count = raw[0]
+        count := raw[0]
         var out = List[List[RegexSpan?]](reserve: (raw.length() - 1) / (count * 2))
         var at = 1
 

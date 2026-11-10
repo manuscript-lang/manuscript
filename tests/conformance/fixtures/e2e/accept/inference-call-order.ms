@@ -32,25 +32,25 @@ fn record(var events: Events, value: Int) Int:
 
 test "reused inference preserves evaluation and argument conversions":
     var events = Events([])
-    let selected = first(
+    selected := first(
         right: identity(identity(record(var events, value: 2))),
         left: identity(identity(record(var events, value: 1)))
     )
     try expect_equal(selected, 1)
     try expect_equal(events.values, [2, 1])
 
-    let wrapped = optional(value: identity(record(var events, value: 3)), fallback: 0)
+    wrapped := optional(value: identity(record(var events, value: 3)), fallback: 0)
     try expect_equal(wrapped, 3)
     try expect_equal(events.values, [2, 1, 3])
 
-    let message = describe(value: 1, cause: identity(failure_error(Failure("cached"))))
+    message := describe(value: 1, cause: identity(failure_error(Failure("cached"))))
     try expect_equal(message, "cached")
 
-    let generic_message = describe(
+    generic_message := describe(
         value: 1, cause: identity(generic_failure_error(GenericFailure(4)))
     )
     try expect_equal(generic_message, "4")
 
-    let offset = 7
-    let callback = identity(identity(fn(value: Int): offset + value))
+    offset := 7
+    callback := identity(identity(fn(value: Int): offset + value))
     try expect_equal(callback(3), 10)

@@ -7,7 +7,7 @@ import (
 
 // A line read answers `String?`: an empty line is present, and only the end of the stream is none.
 fn present(var input: ReadStream[String]) Bool!:
-    let line = try input.next()
+    line := try input.next()
     return ok(line.is_some())
 
 test "presence keeps empty CRLF lines and following text":
@@ -23,10 +23,10 @@ test "presence retains limits":
     present(var input).is_error() | try expect_true
 
 test "presence and text reads share buffered consumption":
-    let temporary = temporary("manuscript-presence-") | try expect_ok
-    let path = "{temporary.path()}/lines"
-    let _written = write_file(path, "\nλ\r\nlast").wait() | try expect_ok
-    let handle = open(path, OpenMode.Read, OpenOptions(permissions: 384)) | try expect_ok
+    temporary := temporary("manuscript-presence-") | try expect_ok
+    path := "{temporary.path()}/lines"
+    _written := write_file(path, "\nλ\r\nlast").wait() | try expect_ok
+    handle := open(path, OpenMode.Read, OpenOptions(permissions: 384)) | try expect_ok
     var input = lines(try handle.reader())
     present(var input) | try expect_ok | try expect_true
     (try input.next()) | try expect_equal("λ")

@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     say(
         "{47} {((1 + (-34)) + (725262575028 * 500917))} {(47 < ((1 + (-34)) + (725262575028 * 500917)))} sum {47 + ((1 + (-34)) + (725262575028 * 500917))}"
     )
 
-    let i1 = (-257538)
+    i1 := (-257538)
     say("i1 = {i1}")
 
     var acc2 = 0
@@ -25,16 +25,16 @@ export fn main() Int:
 
     say("acc2 = {acc2}")
 
-    let b3 = (((7.0e16 + 5.5) * 3.755) == (159.294 * 11.386))
+    b3 := (((7.0e16 + 5.5) * 3.755) == (159.294 * 11.386))
     say("b3 = {b3}")
 
-    let b4 = (not ((b3 and b3) and b3))
+    b4 := (not ((b3 and b3) and b3))
     say("b4 = {b4}")
 
-    let i5 = (i1 / (-606975382680))
+    i5 := (i1 / (-606975382680))
     say("i5 = {i5}")
 
-    let l6 = [(-8), 13, (-5), 16]
+    l6 := [(-8), 13, (-5), 16]
     say("l6 = {l6} len {l6.length()}")
 
     var acc7 = 0
@@ -51,7 +51,7 @@ export fn main() Int:
     else:
         say("MiXeD CaSe".trim())
 
-    let l8 = [16, (-3), (-13)]
+    l8 := [16, (-3), (-13)]
     say("l8 = {l8} len {l8.length()}")
 
     if ((not b3) and (true or false)):
@@ -59,9 +59,9 @@ export fn main() Int:
     else:
         say("delta")
 
-    let b9 = not ("gamma" + "Tab\there").starts_with("ms")
+    b9 := not ("gamma" + "Tab\there").starts_with("ms")
     say("b9 = {b9}")
 
-    let i10 = (l6.length() + (i1 + l8.get(0)))
+    i10 := (l6.length() + (i1 + l8.get(0)))
     say("i10 = {i10}")
     return 0

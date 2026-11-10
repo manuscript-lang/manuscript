@@ -69,11 +69,11 @@ The branches are one-line expressions on the same line. For statements in a bran
 
 ## Unwrapping an Optional or Result
 
-`if let name = expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `none` or an error, where `name` is not visible. A Result's error is not captured; use `try` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
+`if name := expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `none` or an error, where `name` is not visible. A Result's error is not captured; use `try` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
 
 ```manuscript
 fn greeting(name: String?) String:
-    if let value = name:
+    if value := name:
         return "Hello, " + value
     else:
         return "Hello!"
@@ -81,12 +81,12 @@ fn greeting(name: String?) String:
 
 ```manuscript
 fn port(lookup: Result[Int, Error]) Int:
-    if let value = lookup:
+    if value := lookup:
         return value
     return 8080
 ```
 
-`if var name = place[key]?:` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it: `if var entry = entries[key]?:` then `entry.count = entry.count + 1` changes the value in `entries`, and `if var n = counts[key]?: n += 1` updates `counts` without copying a scalar. A missing key or out-of-range index takes the `else` branch. The origin must be `var`, and nothing else may use it until the last use of `name`. `place[key]?` is written only here. `if var name = map.get(key):` also borrows the map entry in place. For other expressions, `if var` can take an owned payload (including from a local at its last use), but cannot mutably borrow an arbitrary Optional. To change an independent copy, use `if let` and explicitly clone the payload into a `var`.
+`if var name = place[key]?:` borrows a map or list entry in place. `place[key]?` is the entry when it exists, and `name` is a mutable borrow of it: `if var entry = entries[key]?:` then `entry.count = entry.count + 1` changes the value in `entries`, and `if var n = counts[key]?: n += 1` updates `counts` without copying a scalar. A missing key or out-of-range index takes the `else` branch. The origin must be `var`, and nothing else may use it until the last use of `name`. `place[key]?` is written only here. `if var name = map.get(key):` also borrows the map entry in place. For other expressions, `if var` can take an owned payload (including from a local at its last use), but cannot mutably borrow an arbitrary Optional. To change an independent copy, use `if v := x` and explicitly clone the payload into a `var`.
 
 This complete test updates an existing map entry:
 
@@ -101,7 +101,7 @@ test "increment a visit count":
     try expect_equal(counts.get_or("visits", 0), 3)
 ```
 
-A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if let` to a two-arm `match` on a payload name and `none` (**MSL108**).
+A present `0`, `false`, or empty string still takes the first branch. The binding is one name; destructure inside the block. Prefer `if v := x` to a two-arm `match` on a payload name and `none` (**MSL108**).
 
 ## Validating inputs
 

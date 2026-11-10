@@ -3,12 +3,12 @@ import stdout from "@std/io/io.ms"
 // The test replaces each placeholder list with 100 constants.
 fn main() Unit:
     var o = stdout()
-    let a: List[Int] = [100]
-    let b: List[Int8] = [101]
-    let c: List[UInt8] = [102]
-    let d: List[Float] = [3.5]
-    let e: List[Float32] = [4.5]
-    let f: List[Bool] = [true]
+    a: List[Int] = [100]
+    b: List[Int8] = [101]
+    c: List[UInt8] = [102]
+    d: List[Float] = [3.5]
+    e: List[Float32] = [4.5]
+    f: List[Bool] = [true]
     var ti = 0
     for x in a: ti += x
 

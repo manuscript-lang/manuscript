@@ -6,7 +6,7 @@ fn original(value: Int = 7) Int: value + 1
 fn replacement(value: Int) Int: value + 2
 
 export fn main() Int:
-    let factory = fn(flag: Bool):
+    factory := fn(flag: Bool):
         if flag:
             return original
 

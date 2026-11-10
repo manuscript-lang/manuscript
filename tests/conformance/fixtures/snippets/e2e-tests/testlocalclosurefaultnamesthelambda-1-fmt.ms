@@ -4,7 +4,7 @@
 import panic from "@std/core.ms"
 
 fn run() Int:
-    let boom = fn(value: Int) Int: panic(message: "closure failed")
+    boom := fn(value: Int) Int: panic(message: "closure failed")
     return boom(value: 1)
 
 test "fault":

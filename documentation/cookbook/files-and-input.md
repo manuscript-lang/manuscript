@@ -18,8 +18,8 @@ import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
-    let path = try arguments().first().ok_or(Error("missing path", kind: "EINVAL"))
-    let text = try read_file(path, max_bytes: 1048576).wait()
+    path := try arguments().first().ok_or(Error("missing path", kind: "EINVAL"))
+    text := try read_file(path, max_bytes: 1048576).wait()
         | .decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
         | try
     try stdout().write(text)
@@ -50,7 +50,7 @@ import arguments from "@std/os/env.ms"
 import write_file from "@std/os/fs.ms"
 
 fn run() Result[Unit, Error]:
-    let path = try arguments().first().ok_or(Error("missing path", kind: "EINVAL"))
+    path := try arguments().first().ok_or(Error("missing path", kind: "EINVAL"))
     return write_file(path, "saved notes\n", replace: false).wait()
 
 fn main() Unit!:
@@ -80,8 +80,8 @@ import lines from "@std/io/streams.ms"
 fn run() Result[Unit, Error]:
     var input = lines(stdin())
     while true:
-        let line = try input.next()
-        if let text = line:
+        line := try input.next()
+        if text := line:
             try stdout().write("{text}\n")
         else:
             break

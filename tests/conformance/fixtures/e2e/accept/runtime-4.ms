@@ -19,9 +19,9 @@ impl File for ClosedFile:
         return
 
 test "contract-valued cleanup":
-    let opened: File = ClosedFile(unit)
-    let file = opened
-    let read = file.read(1)
+    opened: File = ClosedFile(unit)
+    file := opened
+    read := file.read(1)
     try expect_false(read.is_ok())
     try expect_equal(
         read.err(), Error("I/O: resource is closed", kind: "EBADF")

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,16 +22,16 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let i1 = (23 + ((-20) - (-11)))
+    i1 := (23 + ((-20) - (-11)))
     say("i1 = {i1}")
 
-    let f2 = 138.306
+    f2 := 138.306
     say("f2 = {f2}")
 
-    let f3 = (765.224 / ((f2 * 0.0) + f2))
+    f3 := (765.224 / ((f2 * 0.0) + f2))
     say("f3 = {f3}")
 
-    let i4 = (-(-(i1 + i1)))
+    i4 := (-(-(i1 + i1)))
     say("i4 = {i4}")
 
     var acc5 = 0
@@ -43,40 +43,40 @@ export fn main() Int:
 
     say("acc5 = {acc5}")
 
-    let f6 = (39.620 * (f2 + (f2 / f3)))
+    f6 := (39.620 * (f2 + (f2 / f3)))
     say("f6 = {f6}")
 
-    let i7 = (((i1 / i4) - (i4 + i1)) / i1)
+    i7 := (((i1 / i4) - (i4 + i1)) / i1)
     say("i7 = {i7}")
 
-    let i8 = 22
+    i8 := 22
     say("i8 = {i8}")
 
-    let i9 = i1
+    i9 := i1
     say("i9 = {i9}")
 
-    let i10 = i4
+    i10 := i4
     say("i10 = {i10}")
 
-    let i11 = ((-22) - i8)
+    i11 := ((-22) - i8)
     say("i11 = {i11}")
 
-    let b12 = (not ("brace\{s\}".is_empty() and "42".is_empty()))
+    b12 := (not ("brace\{s\}".is_empty() and "42".is_empty()))
     say("b12 = {b12}")
     say("fib(2) = {fib(2)}")
 
-    let l14 = [1, 25, (-20), (-26)]
+    l14 := [1, 25, (-20), (-26)]
     say("l14 = {l14} len {l14.length()}")
 
-    let l15 = [(-2), 21, (-12), 24, 23]
+    l15 := [(-2), 21, (-12), 24, 23]
     say("l15 = {l15} len {l15.length()}")
 
-    let l16 = l14.concat(l15)
+    l16 := l14.concat(l15)
     say("l16 = {l16} len {l16.length()}")
 
-    let i17 = (((-9) * 27) * ((i1 - i10) - (i4 + i9)))
+    i17 := (((-9) * 27) * ((i1 - i10) - (i4 + i9)))
     say("i17 = {i17}")
 
-    let f18 = (((921.603 * 639.577) / (f2 + 858.131)) - 1.0e-5)
+    f18 := (((921.603 * 639.577) / (f2 + 858.131)) - 1.0e-5)
     say("f18 = {f18}")
     return 0

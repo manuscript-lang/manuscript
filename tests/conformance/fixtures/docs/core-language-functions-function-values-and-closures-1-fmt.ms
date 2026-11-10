@@ -4,7 +4,7 @@
 fn apply(value: Int, transform: fn(Int) Int) Int:
     return transform(value: value)
 
-let offset = 1
-let decrement = fn(value: Int) Int:
+offset := 1
+decrement := fn(value: Int) Int:
     return value - offset
-let result = apply(value: 3, transform: decrement)
+result := apply(value: 3, transform: decrement)

@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (0.0 != 915.464)
+    b1 := (0.0 != 915.464)
     say("b1 = {b1}")
 
-    let i2 = (-1)
+    i2 := (-1)
     say("i2 = {i2}")
 
-    let i3 = ((((-25) + i2) - (48 * 49)) + ((i2 + i2) - i2))
+    i3 := ((((-25) + i2) - (48 * 49)) + ((i2 + i2) - i2))
     say("i3 = {i3}")
 
-    let bad = 1 + "one"
+    bad := 1 + "one"
     return 0

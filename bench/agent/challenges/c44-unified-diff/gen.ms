@@ -12,8 +12,8 @@ type Op:
     text: String
 
 fn script(a: List[String], b: List[String]) List[Op]:
-    let n = a.length()
-    let m = b.length()
+    n := a.length()
+    m := b.length()
     var table = List[List[Int]]()
 
     for _i in 0..n + 2:
@@ -59,20 +59,20 @@ fn script(a: List[String], b: List[String]) List[Op]:
     return ops
 
 fn rng(start: Int, ln: Int) String:
-    let s = start + (if ln > 0: 1 else: 0)
+    s := start + (if ln > 0: 1 else: 0)
     return if ln == 1: "{s}" else: "{s},{ln}"
 
 fn solve(s: String) String:
     var lines = s.split("\n")
     if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 
-    let head = words(lines[0])
-    let c = head[2].parse_int().get(0)
-    let n = head[3].parse_int().get(0)
-    let m = head[4].parse_int().get(0)
-    let a = lines.slice(1, 1 + n).get([])
-    let b = lines.slice(1 + n, 1 + n + m).get([])
-    let ops = script(a, b)
+    head := words(lines[0])
+    c := head[2].parse_int().get(0)
+    n := head[3].parse_int().get(0)
+    m := head[4].parse_int().get(0)
+    a := lines.slice(1, 1 + n).get([])
+    b := lines.slice(1 + n, 1 + n + m).get([])
+    ops := script(a, b)
     var changed = List[Int]()
     for k in 0..ops.length():
         if ops[k].mark != " ": changed.append(k)
@@ -93,14 +93,14 @@ fn solve(s: String) String:
     var out = ["--- {head[0]}", "+++ {head[1]}"]
 
     for g in groups:
-        let lo = if g[0] - c > 0: g[0] - c else: 0
-        let hi = if g[g.length() - 1] + 1 + c < ops.length(): g[g.length() - 1] + 1 + c else: ops.length()
-        let before = ops.slice(0, lo).get([])
-        let sa = before.count(fn o: o.mark != "+")
-        let sb = before.count(fn o: o.mark != "-")
-        let body = ops.slice(lo, hi).get([])
-        let la = body.count(fn o: o.mark != "+")
-        let lb = body.count(fn o: o.mark != "-")
+        lo := if g[0] - c > 0: g[0] - c else: 0
+        hi := if g[g.length() - 1] + 1 + c < ops.length(): g[g.length() - 1] + 1 + c else: ops.length()
+        before := ops.slice(0, lo).get([])
+        sa := before.count(fn o: o.mark != "+")
+        sb := before.count(fn o: o.mark != "-")
+        body := ops.slice(lo, hi).get([])
+        la := body.count(fn o: o.mark != "+")
+        lb := body.count(fn o: o.mark != "-")
         out.append("@@ -{rng(sa, la)} +{rng(sb, lb)} @@")
         for o in body: out.append(o.mark + o.text)
 
@@ -113,7 +113,7 @@ fn mk(a: List[String], b: List[String], c: Int, na: String, nb: String) String:
     )
 
 fn case3(name: String, a: List[String], b: List[String], c: Int) GenCase:
-    let s = mk(a, b, c, "a.txt", "b.txt")
+    s := mk(a, b, c, "a.txt", "b.txt")
     return make_case(name, s, solve(s))
 
 fn words_pool() List[String]:
@@ -125,18 +125,18 @@ fn words_pool() List[String]:
 
 fn doc(var rnd: Random, n: Int) List[String]:
     var out = List[String]()
-    let pool = words_pool()
+    pool := words_pool()
     for _i in 0..n: out.append(rnd.choice(pool))
     return out
 
 fn edit(var rnd: Random, a: List[String], k: Int) List[String]:
     var b = a.clone()
-    let pool = words_pool()
+    pool := words_pool()
 
     for _i in 0..k:
-        let r = rnd.random()
-        let p = rnd.randrange(0, b.length() + 1)
-        let at = if p < b.length() - 1: p else: b.length() - 1
+        r := rnd.random()
+        p := rnd.randrange(0, b.length() + 1)
+        at := if p < b.length() - 1: p else: b.length() - 1
 
         if r < 0.35 and not b.is_empty():
             b.remove(at)
@@ -155,28 +155,28 @@ fn at(base: List[String], places: List[Int], values: List[String]) List[String]:
 
 export fn gen_c44() Unit:
     var rnd = seeded(44)
-    let nums = (1..41).map(fn i: "line {i}")
-    let base20 = (1..21).map(fn i: "l{i}")
-    let ex_a = ["one", "two", "three", "four", "five", "six"]
-    let ex_b = ["one", "two", "3", "four", "five", "seven"]
-    let examples = [
+    nums := (1..41).map(fn i: "line {i}")
+    base20 := (1..21).map(fn i: "l{i}")
+    ex_a := ["one", "two", "three", "four", "five", "six"]
+    ex_b := ["one", "two", "3", "four", "five", "seven"]
+    examples := [
         make_case(
             "basic", mk(ex_a, ex_b, 1, "old.txt", "new.txt"),
             solve(mk(ex_a, ex_b, 1, "old.txt", "new.txt"))
         )
     ]
-    let big_a = doc(var rnd, 280)
-    let big_b = edit(var rnd, big_a, 45)
-    let small_a = doc(var rnd, 25)
-    let small_b = edit(var rnd, small_a, 6)
-    let odd_a = [
+    big_a := doc(var rnd, 280)
+    big_b := edit(var rnd, big_a, 45)
+    small_a := doc(var rnd, 25)
+    small_b := edit(var rnd, small_a, 6)
+    odd_a := [
         "", " ", "- dash", "+ plus", "@@ -1 +1 @@", "--- hdr", "  two  ", "tab\there"
     ]
-    let odd_b = [
+    odd_b := [
         "", "- dash", "+ plus!", "@@ -1 +1 @@", "+++ hdr", "  two  ", "tab\there", ""
     ]
-    let odd = mk(odd_a, odd_b, 2, "x", "z")
-    let hidden = examples.concat(
+    odd := mk(odd_a, odd_b, 2, "x", "z")
+    hidden := examples.concat(
         [
             case3("identical", base20, base20, 3),
             case3("both-empty", [], [], 3),

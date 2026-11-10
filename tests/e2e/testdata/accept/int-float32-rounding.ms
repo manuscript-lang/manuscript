@@ -8,7 +8,7 @@ fn convert(value: Int) Float32:
     return value.to_float32()
 
 test "integer to Float32 rounds once at binary32 midpoints":
-    let cases = [
+    cases := [
         RoundingCase(18014399583223807, 1.8014398509481984e+16),
         RoundingCase(-18014399583223807, -1.8014398509481984e+16),
         RoundingCase(18014399583223808, 1.8014398509481984e+16),
@@ -41,7 +41,7 @@ test "integer to Float32 rounds once at binary32 midpoints":
     for item in cases:
         try expect_equal(convert(item.input).to_float(), item.expected)
 
-        let bound = item.input.to_float32
+        bound := item.input.to_float32
         try expect_equal(bound().to_float(), item.expected)
 
 test "constant integer to Float32 rounds directly":
@@ -51,9 +51,9 @@ test "constant integer to Float32 rounds directly":
     )
 
 test "smaller integer conversions preserve their value":
-    let small: Int8 = -128
-    let medium: Int16 = 32767
-    let large: Int32 = 2147483647
+    small: Int8 = -128
+    medium: Int16 = 32767
+    large: Int32 = 2147483647
     try expect_equal(small.to_float32().to_float(), -128.0)
     try expect_equal(medium.to_float32().to_float(), 32767.0)
     try expect_equal(large.to_float32().to_float(), 2147483648.0)
@@ -66,7 +66,7 @@ fn convert_unsigned(value: UInt64) Float32:
     return value.to_float32()
 
 test "unsigned integer to Float32 rounds once at binary32 midpoints":
-    let cases = [
+    cases := [
         UnsignedRoundingCase(4611686293305294849, 4611686568183201792.0),
         UnsignedRoundingCase(9223372586610589695, 9223372036854775808.0),
         UnsignedRoundingCase(9223372586610589696, 9223372036854775808.0),
@@ -81,9 +81,9 @@ test "unsigned integer to Float32 rounds once at binary32 midpoints":
     for item in cases:
         try expect_equal(convert_unsigned(item.input).to_float(), item.expected)
 
-        let bound = item.input.to_float32
+        bound := item.input.to_float32
         try expect_equal(bound().to_float(), item.expected)
 
 test "constant unsigned integer to Float32 rounds directly":
-    let input: UInt64 = 9223372586610589697
+    input: UInt64 = 9223372586610589697
     try expect_equal(input.to_float32().to_float(), 9223373136366403584.0)

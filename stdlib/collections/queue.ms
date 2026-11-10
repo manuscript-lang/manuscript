@@ -16,14 +16,14 @@ export type Queue[T]:
 impl Queue[T]:
     // Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
     var fn enqueue(value: T) Bool:
-        if let limit = self.capacity:
+        if limit := self.capacity:
             if limit <= 0:
                 panic(
                     "Queue: capacity must be between 1 and 9223372036854775807, found {limit}"
                 )
             if self.length() >= limit: return false
 
-        let count = self.items.length()
+        count := self.items.length()
 
         if self.head > 0 and self.head * 2 >= count:
             var live: List[T?] = []
@@ -39,7 +39,7 @@ impl Queue[T]:
     var fn dequeue() T?:
         if self.head >= self.items.length(): return none
 
-        let value = self.items.replace(self.head, none)
+        value := self.items.replace(self.head, none)
         self.head += 1
 
         if self.head == self.items.length():
@@ -88,7 +88,7 @@ export type PriorityQueue[T: Comparable]:
 impl PriorityQueue[T]:
     // Reports whether the entry at `a` dequeues before the entry at `b`.
     fn before(a: Int, b: Int) Bool:
-        let order = order(self.heap.get(a), self.heap.get(b))
+        order := order(self.heap.get(a), self.heap.get(b))
         return order < 0 or (order == 0 and self.orders.get(a) < self.orders.get(b))
 
     // Exchanges the heap entries at `a` and `b`.
@@ -101,7 +101,7 @@ impl PriorityQueue[T]:
         var at = start
 
         while at > floor:
-            let parent = (at - 1) / 2
+            parent := (at - 1) / 2
             if not self.before(at, parent): break
 
             self.swap_entries(at, parent)
@@ -113,13 +113,13 @@ impl PriorityQueue[T]:
     The loop runs while the entry has a left child, and the guards on `at` let the compiler prove every index in range.
     */
     var fn sift_down(start: Int) Unit:
-        let size = self.heap.length()
-        let parents = size / 2
+        size := self.heap.length()
+        parents := size / 2
         var at = start
 
         while at >= 0 and at < parents:
-            let left = at * 2 + 1
-            let right = left + 1
+            left := at * 2 + 1
+            right := left + 1
 
             if right < size and self.before(right, left):
                 self.swap_entries(right, at)
@@ -132,7 +132,7 @@ impl PriorityQueue[T]:
 
     // Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
     var fn enqueue(value: T) Bool:
-        if let limit = self.capacity:
+        if limit := self.capacity:
             if limit <= 0:
                 panic(
                     "PriorityQueue: capacity must be between 1 and 9223372036854775807, found {limit}"
@@ -147,13 +147,13 @@ impl PriorityQueue[T]:
 
     // Removes and returns the next value by priority, or `none` when empty.
     var fn dequeue() T?:
-        let count = self.heap.length()
+        count := self.heap.length()
         if count == 0: return none
 
         self.swap_entries(0, count - 1)
         self.orders.pop()
 
-        let top = self.heap.pop()
+        top := self.heap.pop()
         self.sift_down(0)
         return top
 

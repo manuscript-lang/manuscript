@@ -11,7 +11,7 @@ fn call[T](operation: fn(String, Int?) T, text: String) T:
     return operation(text, none)
 
 test "typed Unicode forms retain normalization and bound dispatch":
-    let decomposed = "é"
+    decomposed := "é"
     try expect_equal(normalize(NormalizationForm.Nfc, decomposed).get(), "é")
     try expect_equal(NormalizationForm.Nfd.normalize("é").get(), decomposed)
     try expect_equal(NormalizationForm.Nfkc.normalize("ﬁ").get(), "fi")
@@ -21,7 +21,7 @@ test "typed Unicode forms retain normalization and bound dispatch":
         NormalizationForm.Nfc, NormalizationForm.Nfd, NormalizationForm.Nfkc,
         NormalizationForm.Nfkd
     ]:
-        let spelling = match form:
+        spelling := match form:
             Nfc: "NFC"
             Nfd: "NFD"
             Nfkc: "NFKC"
@@ -29,11 +29,11 @@ test "typed Unicode forms retain normalization and bound dispatch":
 
         try expect_equal(form.normalize("ﬁé").get(), "ﬁé".normalize(spelling).get())
 
-    let stored = NormalizationForm.Nfc.normalize
+    stored := NormalizationForm.Nfc.normalize
     try expect_equal(call(stored, decomposed).get(), "é")
 
 test "typed normalization keeps UTF-8 byte budgets and domain errors":
-    let form = NormalizationForm.Nfc
+    form := NormalizationForm.Nfc
     try expect_equal(form.normalize("é", 2).get(), "é")
     try expect_equal(form.normalize("", 0).get(), "")
     try expect_equal(

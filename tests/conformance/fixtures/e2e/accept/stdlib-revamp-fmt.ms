@@ -21,8 +21,8 @@ impl Comparable for Key:
         return self.id - other.id
 
 test "domain equality and hashing select interfaces":
-    let a = Key(1, "first")
-    let b = Key(1, "second")
+    a := Key(1, "first")
+    b := Key(1, "second")
     try expect_equal(a, b)
     try expect_equal(a.hash(), b.hash())
 
@@ -33,7 +33,7 @@ test "domain equality and hashing select interfaces":
     try expect_equal(values.get(a), "b")
     try expect_false(not ([a.clone()].contains(b)))
 
-    let view: Equal = a
+    view: Equal = a
     try expect_false(not (view.equals(b)))
 
 test "stable priority queue and optional capacity":
@@ -42,12 +42,12 @@ test "stable priority queue and optional capacity":
     queue.enqueue(Key(1, "first"))
     queue.enqueue(Key(1, "second"))
 
-    if let value = queue.dequeue():
+    if value := queue.dequeue():
         try expect_equal(value.label, "first")
     else:
         return fail("missing item")
 
-    if let value = queue.dequeue():
+    if value := queue.dequeue():
         try expect_equal(value.label, "second")
     else:
         return fail("missing item")
@@ -57,6 +57,6 @@ test "stable priority queue and optional capacity":
     try expect_false(bounded.enqueue(Key(0, "full")))
 
 test "limits can be omitted or supplied":
-    let repeated = try "ab".repeat(3)
+    repeated := try "ab".repeat(3)
     try expect_equal(repeated, "ababab")
     try expect_false("ab".repeat(3, 5).is_ok())

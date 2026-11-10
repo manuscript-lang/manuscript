@@ -6,40 +6,40 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [1, 2, 3].take(0)
+    l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
 
-    let l2 = [20, 4, 22, (-19)]
+    l2 := [20, 4, 22, (-19)]
     say("l2 = {l2} len {l2.length()}")
 
-    let s3 = ("{(-(-37))}:" + "brace\{s\}".lower().reverse())
+    s3 := ("{(-(-37))}:" + "brace\{s\}".lower().reverse())
     say("s3 = [{s3}]")
 
-    let i4 = (-13)
+    i4 := (-13)
     say("i4 = {i4}")
 
-    let i5 = i4
+    i5 := i4
     say("i5 = {i5}")
 
-    let i6 = 964047
+    i6 := 964047
     say("i6 = {i6}")
 
-    let s7 = s3.trim()
+    s7 := s3.trim()
     say("s7 = [{s7}]")
 
-    let b8 = (("{(i6 * i6)}:" + s3).is_empty() and (not ("42" == "delta")))
+    b8 := (("{(i6 * i6)}:" + s3).is_empty() and (not ("42" == "delta")))
     say("b8 = {b8}")
 
-    let l9 = l2.reversed()
+    l9 := l2.reversed()
     say("l9 = {l9} len {l9.length()}")
 
-    let i10 = ((-542918682071) + ((-37) + (i4 + 12)))
+    i10 := ((-542918682071) + ((-37) + (i4 + 12)))
     say("i10 = {i10}")
 
-    let b11 = (
+    b11 := (
         ((627.048 / 792.971) * 534.622) == (
             (401.25 * 360.518)
             * (533.004 / 607.962)
@@ -47,6 +47,6 @@ export fn main() Int:
     )
     say("b11 = {b11}")
 
-    let b12 = "a".is_empty()
+    b12 := "a".is_empty()
     say("b12 = {b12}")
     return 0

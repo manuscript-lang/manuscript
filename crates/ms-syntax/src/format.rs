@@ -551,6 +551,7 @@ fn token_space(tokens: &[Token], at: usize) -> bool {
             || matches!(
                 tokens[at - 2].kind,
                 Tok::Assign
+                    | Tok::ColonAssign
                     | Tok::LParen
                     | Tok::LBracket
                     | Tok::Comma
@@ -640,10 +641,7 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
     let mut groups: HashMap<usize, &str> = HashMap::new();
     let mut top_level: Vec<usize> = Vec::new();
     for d in &module.decls {
-        let line = match &d.kind {
-            DeclKind::Const(c) => c.group.unwrap_or(d.pos).line as usize,
-            _ => d.pos.line as usize,
-        };
+        let line = d.pos.line as usize;
         top_level.push(line);
         if matches!(d.kind, DeclKind::Const(_)) {
             groups.insert(line, "constant");
@@ -676,7 +674,7 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
     p.breaks
 }
 
-/// The line a binding starts on; a binding in a `let (...)` group starts on
+/// The line a binding starts on; a binding in a `var (...)` group starts on
 /// the group's keyword line so the group moves as one unit.
 fn statement_line(s: &Stmt) -> usize {
     match &s.kind {
@@ -1717,7 +1715,14 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             let before = start.checked_sub(1).map(|i| tokens[i].kind);
             if !matches!(
                 before,
-                None | Some(Tok::Assign | Tok::Return | Tok::Newline | Tok::Indent | Tok::Dedent)
+                None | Some(
+                    Tok::Assign
+                        | Tok::ColonAssign
+                        | Tok::Return
+                        | Tok::Newline
+                        | Tok::Indent
+                        | Tok::Dedent
+                )
             ) {
                 return;
             }
@@ -1864,7 +1869,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     start += 1;
                     if binding.is_some() {
                         // `if let name = value:` wraps only the value.
-                        while tokens[start].kind != Tok::Assign {
+                        while !matches!(tokens[start].kind, Tok::Assign | Tok::ColonAssign) {
                             start += 1;
                         }
                         start += 1;
@@ -1877,12 +1882,12 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     }
                 }
                 StmtKind::Bind { .. } | StmtKind::Assign { .. } | StmtKind::For { .. } => {
-                    let target = if matches!(s.kind, StmtKind::For { .. }) {
-                        Tok::In
+                    let is_for = matches!(s.kind, StmtKind::For { .. });
+                    while !(if is_for {
+                        tokens[start].kind == Tok::In
                     } else {
-                        Tok::Assign
-                    };
-                    while tokens[start].kind != target {
+                        matches!(tokens[start].kind, Tok::Assign | Tok::ColonAssign)
+                    }) {
                         if let Some(&end) = self.pairs.get(&start) {
                             start = end;
                         }

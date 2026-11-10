@@ -6,43 +6,43 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = "x"
+    s1 := "x"
     say("s1 = [{s1}]")
 
-    let i2 = (-16)
+    i2 := (-16)
     say("i2 = {i2}")
 
-    let s3 = "a"
+    s3 := "a"
     say("s3 = [{s3}]")
 
-    let s4 = "alpha".lower()
+    s4 := "alpha".lower()
     say("s4 = [{s4}]")
 
-    let i5 = i2
+    i5 := i2
     say("i5 = {i5}")
 
-    let f6 = (
+    f6 := (
         (731.409 * (693.605 - 601.098))
         + ((75.25 + 107.656) * (355.491 * 89.868))
     )
     say("f6 = {f6}")
 
-    let i7 = (-((536968 + i2) * i5))
+    i7 := (-((536968 + i2) * i5))
     say("i7 = {i7}")
     say(
         "{s4.length()} {((29 + i7) - i5)} {(s4.length() < ((29 + i7) - i5))} sum {s4.length() + ((29 + i7) - i5)}"
     )
 
-    let i8 = ((((-2) + i2) % (i5 - i7)) + ((i5 * 38) * (8 / 617721)))
+    i8 := ((((-2) + i2) % (i5 - i7)) + ((i5 * 38) * (8 / 617721)))
     say("i8 = {i8}")
 
-    let i9 = ((s3.length() * i7) + i8)
+    i9 := ((s3.length() * i7) + i8)
     say("i9 = {i9}")
 
-    let b10 = ((i5 < (i5 + i9)) or (not (false or true)))
+    b10 := ((i5 < (i5 + i9)) or (not (false or true)))
     say("b10 = {b10}")
 
     var acc11 = 0
@@ -53,7 +53,7 @@ export fn main() Int:
         "{(-(i9 * i5))} {((i7 - i7) * (i2 + 31))} {((-(i9 * i5)) < ((i7 - i7) * (i2 + 31)))} sum {(-(i9 * i5)) + ((i7 - i7) * (i2 + 31))}"
     )
 
-    let i12 = ((i8 / (i8 - (-857227351663))) - ((i7 + 119867) + ((-24) * i9)))
+    i12 := ((i8 / (i8 - (-857227351663))) - ((i7 + 119867) + ((-24) * i9)))
     say("i12 = {i12}")
     say(
         "{(i2 - 749560)} {418181} {((i2 - 749560) < 418181)} sum {(i2 - 749560) + 418181}"

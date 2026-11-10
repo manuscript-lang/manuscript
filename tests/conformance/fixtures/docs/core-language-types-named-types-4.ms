@@ -5,4 +5,4 @@ type Options:
     count: Int = 3
     total: Int = count + 1
 
-let options = Options(count: 5)  // total defaults to 6
+options := Options(count: 5)  // total defaults to 6

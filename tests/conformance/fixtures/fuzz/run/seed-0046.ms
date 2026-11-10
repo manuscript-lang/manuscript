@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,22 +23,22 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let i1 = 470836
+    i1 := 470836
     say("i1 = {i1}")
 
-    let b2 = "x".is_empty()
+    b2 := "x".is_empty()
     say("b2 = {b2}")
 
-    let i3 = i1
+    i3 := i1
     say("i3 = {i3}")
 
-    let b4 = ((-16) <= ((i3 / i3) / (i3 / i1)))
+    b4 := ((-16) <= ((i3 / i3) / (i3 / i1)))
     say("b4 = {b4}")
 
-    let i5 = ((((-10) + 50) * (-43)) * 6)
+    i5 := ((((-10) + 50) * (-43)) * 6)
     say("i5 = {i5}")
 
-    let l6 = [25, (-19), (-21), 27]
+    l6 := [25, (-19), (-21), 27]
     say("l6 = {l6} len {l6.length()}")
     say("collatz(2401) = {collatz(2401)}")
 
@@ -47,18 +47,18 @@ export fn main() Int:
     else:
         say("beta")
 
-    let f7 = (411.902 * (278.254 / 317.904))
+    f7 := (411.902 * (278.254 / 317.904))
     say("f7 = {f7}")
 
-    let s8 = "日本語".reverse().lower()
+    s8 := "日本語".reverse().lower()
     say("s8 = [{s8}]")
 
-    let i9 = ((48 / (i5 + (-2))) % (-(i5 + i5)))
+    i9 := ((48 / (i5 + (-2))) % (-(i5 + i5)))
     say("i9 = {i9}")
 
-    let f10 = (((f7 + f7) / (605.335 + 458.123)) * 365.25)
+    f10 := (((f7 + f7) / (605.335 + 458.123)) * 365.25)
     say("f10 = {f10}")
 
-    let big11 = ((i5 % i3) + (i3 - i5)) - ((i5 % i3) + (i3 - i5))
+    big11 := ((i5 % i3) + (i3 - i5)) - ((i5 % i3) + (i3 - i5))
     say("{((i5 % i3) + (i3 - i5)) % big11}")
     return 0

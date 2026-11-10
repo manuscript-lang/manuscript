@@ -19,7 +19,7 @@ export fn bench_map_set() Unit:
         "map.string_put_get",
         100000,
         fn() Int:
-            let keys = words(50000)
+            keys := words(50000)
             var m = Map[String, Int]()
             for k in keys:
                 m.add(k, 1)

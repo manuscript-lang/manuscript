@@ -11,12 +11,12 @@ fn yaml_doc(count: Int) String:
     return sb.build()
 
 fn yaml_length(value: YamlValue) Int:
-    if let text = stringify(value): return text.length()
+    if text := stringify(value): return text.length()
 
     return 0
 
 bench "yaml.parse":
-    let yaml = yaml_doc(2000)
+    yaml := yaml_doc(2000)
 
     fn work() Result[Unit, Error]:
         if parse(yaml).is_ok(): return keep(1)
@@ -26,16 +26,16 @@ bench "yaml.parse":
     try measure(2000, work)
 
 bench "yaml.roundtrip":
-    let yaml = yaml_doc(2000)
+    yaml := yaml_doc(2000)
 
     fn work() Result[Unit, Error]:
-        if let v = parse(yaml): return keep(yaml_length(v))
+        if v := parse(yaml): return keep(yaml_length(v))
 
         return keep(0)
 
     try measure(2000, work)
 
 bench "yaml.stringify":
-    let yaml = yaml_doc(2000)
-    if let v = parse(yaml):
+    yaml := yaml_doc(2000)
+    if v := parse(yaml):
         try measure(2000, fn: keep(yaml_length(v)))

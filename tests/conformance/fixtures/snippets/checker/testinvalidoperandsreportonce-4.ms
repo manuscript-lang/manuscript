@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=pkg/checker/invalid_operand_test.go:19 TestInvalidOperandsReportOnce
 fn f() String:
-    let x = nope
+    x := nope
     return "a" + x.foo + x.bar()

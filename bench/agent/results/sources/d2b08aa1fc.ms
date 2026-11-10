@@ -7,30 +7,30 @@ import (
 
 // ---------------------------------------------------------------- constants
 
-let COLS = 26
-let GRID = 25974
-let NCHARS_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-let N_NUM = 1
-let N_STR = 2
-let N_BOOL = 3
-let N_ERR = 4
-let N_REF = 5
-let N_RANGE = 6
-let N_NAME = 7
-let N_CALL = 8
-let N_UNARY = 9
-let N_BIN = 10
-let T_NUM = 1
-let T_STR = 2
-let T_REF = 3
-let T_RANGE = 4
-let T_ERR = 5
-let T_IDENT = 6
-let T_OP = 7
-let T_LP = 8
-let T_RP = 9
-let T_COMMA = 10
-let T_END = 11
+COLS := 26
+GRID := 25974
+NCHARS_LETTERS := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+N_NUM := 1
+N_STR := 2
+N_BOOL := 3
+N_ERR := 4
+N_REF := 5
+N_RANGE := 6
+N_NAME := 7
+N_CALL := 8
+N_UNARY := 9
+N_BIN := 10
+T_NUM := 1
+T_STR := 2
+T_REF := 3
+T_RANGE := 4
+T_ERR := 5
+T_IDENT := 6
+T_OP := 7
+T_LP := 8
+T_RP := 9
+T_COMMA := 10
+T_END := 11
 
 // ---------------------------------------------------------------- values
 
@@ -126,7 +126,7 @@ fn display(v: Value) String:
 
 // Exactly 10 fractional digits, correctly rounded, trailing zeros removed.
 fn fmt_num(n: Float) String:
-    if let r = rat_of_float(n):
+    if r := rat_of_float(n):
         var t = r.to_fixed(10).get("0")
         if t.contains("."):
             t = t.trim_end_chars("0").trim_end_chars(".")
@@ -138,8 +138,8 @@ fn fmt_num(n: Float) String:
 
 // Strict number grammar: [+-]?(digits[.digits?]|.digits)([eE][+-]?digits)?, finite.
 fn parse_number_text(t: String) Float?:
-    let cs = t.chars()
-    let n = cs.length()
+    cs := t.chars()
+    n := cs.length()
     var i = 0
     var neg = false
 
@@ -147,17 +147,17 @@ fn parse_number_text(t: String) Float?:
         neg = ch(cs, i) == 45
         i += 1
 
-    let d0 = i
+    d0 := i
     while isdig(ch(cs, i)):
         i += 1
 
-    let ip = slice_chars(cs, d0, i)
+    ip := slice_chars(cs, d0, i)
     var fp = ""
 
     if ch(cs, i) == 46:
         i += 1
 
-        let f0 = i
+        f0 := i
         while isdig(ch(cs, i)):
             i += 1
         fp = slice_chars(cs, f0, i)
@@ -174,7 +174,7 @@ fn parse_number_text(t: String) Float?:
             eneg = ch(cs, i) == 45
             i += 1
 
-        let e0 = i
+        e0 := i
         while isdig(ch(cs, i)):
             i += 1
         if i == e0: return none
@@ -207,9 +207,9 @@ fn parse_number_text(t: String) Float?:
 // Value of constant text (already trimmed, non-empty, not starting with "=").
 fn classify(raw: String) Value:
     if raw.starts_with("'"): return Value.Txt(raw.drop(1))
-    if let f = parse_number_text(raw): return Value.Num(f)
+    if f := parse_number_text(raw): return Value.Num(f)
 
-    let up = raw.upper()
+    up := raw.upper()
     if up == "TRUE": return Value.Flag(true)
     if up == "FALSE": return Value.Flag(false)
 
@@ -227,7 +227,7 @@ fn as_num(v: Value) Value:
         Empty:
             return Value.Num(0.0)
         Txt(s):
-            if let f = parse_number_text(s.trim()): return Value.Num(f)
+            if f := parse_number_text(s.trim()): return Value.Num(f)
 
             return Value.Errv("#VALUE!")
         Errv(c):
@@ -243,7 +243,7 @@ fn as_flag(v: Value) Value:
         Empty:
             return Value.Flag(false)
         Txt(s):
-            let up = s.upper()
+            up := s.upper()
             if up == "TRUE": return Value.Flag(true)
             if up == "FALSE": return Value.Flag(false)
 
@@ -264,8 +264,8 @@ fn zero_like(v: Value) Value:
 
 // Three-way comparison of two non-empty values of any type.
 fn cmp_vals(a: Value, b: Value) Int:
-    let ra = rank(a)
-    let rb = rank(b)
+    ra := rank(a)
+    rb := rank(b)
 
     if ra != rb:
         if ra < rb: return -1
@@ -278,7 +278,7 @@ fn cmp_vals(a: Value, b: Value) Int:
         Txt(s):
             return s.compare(txt_val(b))
         Flag(p):
-            let q = flag_val(b)
+            q := flag_val(b)
             if p == q: return 0
             if q: return -1
 
@@ -317,14 +317,14 @@ fn compare_op(op: String, va: Value, vb: Value) Value:
     return Value.Flag(op_holds(op, c))
 
 fn arith(op: String, va: Value, vb: Value) Value:
-    let a = as_num(va)
+    a := as_num(va)
     if is_err(a): return a
 
-    let b = as_num(vb)
+    b := as_num(vb)
     if is_err(b): return b
 
-    let x = num_val(a)
-    let y = num_val(b)
+    x := num_val(a)
+    y := num_val(b)
     var r = 0.0
 
     if op == "+":
@@ -405,11 +405,11 @@ fn ref_of(cs: List[String], a: Int, b: Int) Ref?:
         abs_c = true
         i += 1
 
-    let l0 = i
+    l0 := i
     while i < b and isalpha(ch(cs, i)):
         i += 1
 
-    let nl = i - l0
+    nl := i - l0
     if nl == 0: return none
 
     var abs_r = false
@@ -418,17 +418,17 @@ fn ref_of(cs: List[String], a: Int, b: Int) Ref?:
         abs_r = true
         i += 1
 
-    let d0 = i
+    d0 := i
     var row = 0
 
     while i < b and isdig(ch(cs, i)):
         row = row * 10 + (ch(cs, i) - 48)
         i += 1
 
-    let nd = i - d0
+    nd := i - d0
     if nd == 0 or i != b: return none
 
-    let valid = nl == 1 and nd <= 3 and ch(cs, d0) != 48
+    valid := nl == 1 and nd <= 3 and ch(cs, d0) != 48
     var col = 0
 
     if valid:
@@ -452,13 +452,13 @@ fn name_of(k: Int) String:
 
 // Command-line cell argument: one letter, one to three digits, no $.
 fn cell_arg(t: String) Int?:
-    let cs = t.chars()
-    if let r = ref_of(cs, 0, cs.length()):
+    cs := t.chars()
+    if r := ref_of(cs, 0, cs.length()):
         if r.valid and not r.abs_col and not r.abs_row: return key_of(r.col, r.row)
     return none
 
 fn cell_or_neg(t: String) Int:
-    if let k = cell_arg(t): return k
+    if k := cell_arg(t): return k
 
     return -1
 
@@ -475,17 +475,17 @@ fn rect_of_refs(a: Ref, b: Ref) Rect:
     )
 
 fn range_arg(t: String) Rect?:
-    let parts = t.split(":")
+    parts := t.split(":")
 
     if parts.length() == 1:
-        if let k = cell_arg(t):
+        if k := cell_arg(t):
             return Rect(c1: key_col(k), r1: key_row(k), c2: key_col(k), r2: key_row(k))
 
         return none
 
     if parts.length() == 2:
-        if let a = cell_arg(parts[0]):
-            if let b = cell_arg(parts[1]):
+        if a := cell_arg(parts[0]):
+            if b := cell_arg(parts[1]):
                 return Rect(
                     c1: key_col(a).min(key_col(b)), r1: key_row(a).min(key_row(b)),
                     c2: key_col(a).max(key_col(b)), r2: key_row(a).max(key_row(b))
@@ -509,8 +509,8 @@ fn range_keys(rc: Rect) List[Int]:
     return out
 
 fn rect_has(rc: Rect, k: Int) Bool:
-    let c = key_col(k)
-    let r = key_row(k)
+    c := key_col(k)
+    r := key_row(k)
     return c >= rc.c1 and c <= rc.c2 and r >= rc.r1 and r <= rc.r2
 
 fn any_rect_has(rs: List[Rect], k: Int) Bool:
@@ -546,7 +546,7 @@ fn scan_number(cs: List[String], i: Int) Int:
         while isdig(ch(cs, j)):
             j += 1
 
-    let e = ch(cs, j)
+    e := ch(cs, j)
 
     if e == 101 or e == 69:
         var k = j + 1
@@ -564,7 +564,7 @@ fn scan_number(cs: List[String], i: Int) Int:
 fn ident_shape(cs: List[String], a: Int, b: Int) Bool:
     if b <= a: return false
 
-    let first = ch(cs, a)
+    first := ch(cs, a)
     if not (isalpha(first) or first == 95): return false
 
     var i = a
@@ -578,21 +578,21 @@ fn ident_shape(cs: List[String], a: Int, b: Int) Bool:
 
 fn lex(cs: List[String]) Result[List[Tok], String]:
     var toks = List[Tok]()
-    let n = cs.length()
+    n := cs.length()
     var i = 0
 
     while i < n:
-        let c = ch(cs, i)
+        c := ch(cs, i)
 
         if is_ws(c):
             i += 1
         else if isdig(c) or (c == 46 and isdig(ch(cs, i + 1))):
-            let j = scan_number(cs, i)
-            let text = slice_chars(cs, i, j)
+            j := scan_number(cs, i)
+            text := slice_chars(cs, i, j)
             var val = 0.0
             var good = false
 
-            if let f = parse_number_text(text):
+            if f := parse_number_text(text):
                 val = f
                 good = true
 
@@ -614,9 +614,9 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
                 toks.append(tok(T_IDENT, slice_chars(cs, i, j), i, j))
                 i = j
             else:
-                let ro = ref_of(cs, i, j)
+                ro := ref_of(cs, i, j)
 
-                if let r1 = ro:
+                if r1 := ro:
                     var handled = false
 
                     if ch(cs, j) == 58:
@@ -625,7 +625,7 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
                             k += 1
 
                         if ch(cs, k) != 40:
-                            if let r2 = ref_of(cs, j + 1, k):
+                            if r2 := ref_of(cs, j + 1, k):
                                 toks.append(
                                     Tok(
                                         kind: T_RANGE, text: "", num: 0.0, good: true,
@@ -654,7 +654,7 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
             var closed = false
 
             while j < n:
-                let d = ch(cs, j)
+                d := ch(cs, j)
 
                 if d == 34:
                     if ch(cs, j + 1) == 34:
@@ -775,10 +775,10 @@ impl Parser:
         var left = self.parse_concat()
 
         while not self.bad and self.kind_now() == T_OP and is_cmp_op(self.text_now()):
-            let op = self.text_now()
+            op := self.text_now()
             self.step()
 
-            let right = self.parse_concat()
+            right := self.parse_concat()
             left = bin_node(op, left, right)
 
         return left
@@ -789,7 +789,7 @@ impl Parser:
         while not self.bad and self.kind_now() == T_OP and self.text_now() == "&":
             self.step()
 
-            let right = self.parse_additive()
+            right := self.parse_additive()
             left = bin_node("&", left, right)
 
         return left
@@ -802,10 +802,10 @@ impl Parser:
             and self.kind_now() == T_OP
             and (self.text_now() == "+" or self.text_now() == "-")
         ):
-            let op = self.text_now()
+            op := self.text_now()
             self.step()
 
-            let right = self.parse_mult()
+            right := self.parse_mult()
             left = bin_node(op, left, right)
 
         return left
@@ -818,10 +818,10 @@ impl Parser:
             and self.kind_now() == T_OP
             and (self.text_now() == "*" or self.text_now() == "/")
         ):
-            let op = self.text_now()
+            op := self.text_now()
             self.step()
 
-            let right = self.parse_unary()
+            right := self.parse_unary()
             left = bin_node(op, left, right)
 
         return left
@@ -832,21 +832,21 @@ impl Parser:
             and self.kind_now() == T_OP
             and (self.text_now() == "+" or self.text_now() == "-")
         ):
-            let op = self.text_now()
+            op := self.text_now()
             self.step()
 
-            let child = self.parse_unary()
+            child := self.parse_unary()
             return un_node(op, child)
 
         return self.parse_power()
 
     var fn parse_power() Node:
-        let base = self.parse_primary()
+        base := self.parse_primary()
 
         if not self.bad and self.kind_now() == T_OP and self.text_now() == "^":
             self.step()
 
-            let e = self.parse_power_operand()
+            e := self.parse_power_operand()
             return bin_node("^", base, e)
 
         return base
@@ -857,10 +857,10 @@ impl Parser:
             and self.kind_now() == T_OP
             and (self.text_now() == "+" or self.text_now() == "-")
         ):
-            let op = self.text_now()
+            op := self.text_now()
             self.step()
 
-            let child = self.parse_power_operand()
+            child := self.parse_power_operand()
             return un_node(op, child)
 
         return self.parse_power()
@@ -868,11 +868,11 @@ impl Parser:
     var fn parse_primary() Node:
         if self.bad: return leaf(N_ERR, "#PARSE!")
 
-        let k = self.kind_now()
+        k := self.kind_now()
 
         if k == T_NUM:
-            let v = self.toks[self.pos].num
-            let g = self.toks[self.pos].good
+            v := self.toks[self.pos].num
+            g := self.toks[self.pos].good
             self.step()
             return Node(
                 kind: N_NUM, text: "", num: v, flag: g, r1: no_ref(), r2: no_ref(),
@@ -880,7 +880,7 @@ impl Parser:
             )
 
         if k == T_STR:
-            let s = self.text_now()
+            s := self.text_now()
             self.step()
             return Node(
                 kind: N_STR, text: s, num: 0.0, flag: false, r1: no_ref(), r2: no_ref(),
@@ -892,7 +892,7 @@ impl Parser:
             return leaf(N_ERR, "#REF!")
 
         if k == T_REF:
-            let r = self.toks[self.pos].r1.clone()
+            r := self.toks[self.pos].r1.clone()
             self.step()
             return Node(
                 kind: N_REF, text: "", num: 0.0, flag: false, r1: r, r2: no_ref(),
@@ -900,8 +900,8 @@ impl Parser:
             )
 
         if k == T_RANGE:
-            let a = self.toks[self.pos].r1.clone()
-            let b = self.toks[self.pos].r2.clone()
+            a := self.toks[self.pos].r1.clone()
+            b := self.toks[self.pos].r2.clone()
             self.step()
             return Node(
                 kind: N_RANGE, text: "", num: 0.0, flag: false, r1: a, r2: b,
@@ -909,7 +909,7 @@ impl Parser:
             )
 
         if k == T_IDENT:
-            let name = self.text_now().upper()
+            name := self.text_now().upper()
             self.step()
 
             if self.kind_now() == T_LP:
@@ -960,7 +960,7 @@ impl Parser:
         if k == T_LP:
             self.step()
 
-            let e = self.parse_expr()
+            e := self.parse_expr()
 
             if self.kind_now() == T_RP:
                 self.step()
@@ -996,11 +996,11 @@ fn collect_refs(n: Node, var cells: List[Int], var rects: List[Rect]) Unit:
         collect_refs(a, var cells, var rects)
 
 fn make_formula(src: String) Formula:
-    let cs = src.chars()
+    cs := src.chars()
 
-    if let toks = lex(cs):
+    if toks := lex(cs):
         var p = Parser(toks: toks, pos: 0, bad: false)
-        let root = p.parse_expr()
+        root := p.parse_expr()
 
         if not p.bad and p.kind_now() == T_END:
             var cells = List[Int]()
@@ -1016,7 +1016,7 @@ fn make_formula(src: String) Formula:
 // ---------------------------------------------------------------- evaluation
 
 fn eval(s: Sheet, n: Node) Value:
-    let k = n.kind
+    k := n.kind
 
     if k == N_NUM:
         if n.flag: return Value.Num(n.num)
@@ -1036,7 +1036,7 @@ fn eval(s: Sheet, n: Node) Value:
     if k == N_NAME: return Value.Errv("#NAME?")
 
     if k == N_UNARY:
-        let v = as_num(eval(s, n.args[0]))
+        v := as_num(eval(s, n.args[0]))
         if is_err(v): return v
         if n.text == "-": return Value.Num(-num_val(v))
 
@@ -1048,9 +1048,9 @@ fn eval(s: Sheet, n: Node) Value:
     return Value.Errv("#PARSE!")
 
 fn eval_bin(s: Sheet, n: Node) Value:
-    let va = eval(s, n.args[0])
-    let vb = eval(s, n.args[1])
-    let op = n.text.clone()
+    va := eval(s, n.args[0])
+    vb := eval(s, n.args[1])
+    op := n.text.clone()
 
     if op == "&":
         if is_err(va): return va
@@ -1069,13 +1069,13 @@ fn gather_nums(s: Sheet, args: List[Node], var out: List[Float]) Value:
             if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
             for k in range_keys(rect_of_refs(a.r1, a.r2)):
-                let v = s.vals[k].clone()
+                v := s.vals[k].clone()
                 if is_err(v): return v
 
                 if is_num(v):
                     out.append(num_val(v))
         else:
-            let c = as_num(eval(s, a))
+            c := as_num(eval(s, a))
             if is_err(c): return c
 
             out.append(num_val(c))
@@ -1087,10 +1087,10 @@ fn agg(s: Sheet, args: List[Node], which: Int) Value:
     if args.length() == 0: return Value.Errv("#VALUE!")
 
     var xs = List[Float]()
-    let g = gather_nums(s, args, var xs)
+    g := gather_nums(s, args, var xs)
     if is_err(g): return g
 
-    let n = xs.length()
+    n := xs.length()
 
     if which == 0:
         var t = 0.0
@@ -1145,7 +1145,7 @@ fn count_fn(s: Sheet, args: List[Node], nonempty_mode: Bool) Value:
             if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
             for k in range_keys(rect_of_refs(a.r1, a.r2)):
-                let v = s.vals[k].clone()
+                v := s.vals[k].clone()
 
                 if nonempty_mode:
                     if not is_empty(v):
@@ -1153,7 +1153,7 @@ fn count_fn(s: Sheet, args: List[Node], nonempty_mode: Bool) Value:
                 else if is_num(v):
                     c += 1
         else:
-            let v = eval(s, a)
+            v := eval(s, a)
 
             if nonempty_mode:
                 if not is_empty(v):
@@ -1164,10 +1164,10 @@ fn count_fn(s: Sheet, args: List[Node], nonempty_mode: Bool) Value:
     return Value.Num(c.to_float())
 
 fn f_if(s: Sheet, args: List[Node]) Value:
-    let na = args.length()
+    na := args.length()
     if na < 2 or na > 3: return Value.Errv("#VALUE!")
 
-    let c = as_flag(eval(s, args[0]))
+    c := as_flag(eval(s, args[0]))
     if is_err(c): return c
     if flag_val(c): return eval(s, args[1])
     if na == 3: return eval(s, args[2])
@@ -1177,7 +1177,7 @@ fn f_if(s: Sheet, args: List[Node]) Value:
 fn f_iferror(s: Sheet, args: List[Node]) Value:
     if args.length() != 2: return Value.Errv("#VALUE!")
 
-    let a = eval(s, args[0])
+    a := eval(s, args[0])
     if is_err(a): return eval(s, args[1])
 
     return a
@@ -1189,13 +1189,13 @@ fn to_int(f: Float) Int:
     return f.truncate_to_int().get(0)
 
 fn f_choose(s: Sheet, args: List[Node]) Value:
-    let na = args.length()
+    na := args.length()
     if na < 2: return Value.Errv("#VALUE!")
 
-    let iv = as_num(eval(s, args[0]))
+    iv := as_num(eval(s, args[0]))
     if is_err(iv): return iv
 
-    let idx = to_int(floor(num_val(iv)))
+    idx := to_int(floor(num_val(iv)))
     if idx < 1 or idx > na - 1: return Value.Errv("#VALUE!")
 
     return eval(s, args[idx])
@@ -1212,11 +1212,11 @@ fn f_andor(s: Sheet, args: List[Node], is_and: Bool) Value:
             if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
             for k in range_keys(rect_of_refs(a.r1, a.r2)):
-                let v = s.vals[k].clone()
+                v := s.vals[k].clone()
                 if is_err(v): return v
                 if is_empty(v) or is_txt(v): continue
 
-                let t = flag_val(as_flag(v))
+                t := flag_val(as_flag(v))
                 any_part = true
 
                 if not t:
@@ -1224,10 +1224,10 @@ fn f_andor(s: Sheet, args: List[Node], is_and: Bool) Value:
                 else:
                     any_true = true
         else:
-            let v = as_flag(eval(s, a))
+            v := as_flag(eval(s, a))
             if is_err(v): return v
 
-            let t = flag_val(v)
+            t := flag_val(v)
             any_part = true
 
             if not t:
@@ -1241,8 +1241,8 @@ fn f_andor(s: Sheet, args: List[Node], is_and: Bool) Value:
     return Value.Flag(any_true)
 
 fn round_half_away(y: Float) Float:
-    let a = y.abs()
-    let t = truncate(a)
+    a := y.abs()
+    t := truncate(a)
     var r = t
     if a - t >= 0.5:
         r = t + 1.0
@@ -1265,34 +1265,34 @@ fn ascii_case(t: String, upper: Bool) String:
 
 // Returns the string form of a scalar argument, or the error it produced.
 fn text_arg(s: Sheet, n: Node) Value:
-    let v = eval(s, n)
+    v := eval(s, n)
     if is_err(v): return v
 
     return Value.Txt(display(v))
 
 fn f_mid_like(s: Sheet, args: List[Node], which: Int) Value:
     // which: 0 LEFT, 1 RIGHT
-    let na = args.length()
+    na := args.length()
     if na < 1 or na > 2: return Value.Errv("#VALUE!")
 
-    let tv = text_arg(s, args[0])
+    tv := text_arg(s, args[0])
     if is_err(tv): return tv
 
-    let t = txt_val(tv)
+    t := txt_val(tv)
     var cnt = 1
 
     if na == 2:
-        let nv = as_num(eval(s, args[1]))
+        nv := as_num(eval(s, args[1]))
         if is_err(nv): return nv
 
-        let x = floor(num_val(nv))
+        x := floor(num_val(nv))
         if x < 0.0: return Value.Errv("#VALUE!")
 
         cnt = to_int(x)
 
     if which == 0: return Value.Txt(t.take(cnt))
 
-    let len = t.scalar_length()
+    len := t.scalar_length()
     var k = cnt
     if k > len:
         k = len
@@ -1301,7 +1301,7 @@ fn f_mid_like(s: Sheet, args: List[Node], which: Int) Value:
 fn f_rowcol(s: Sheet, args: List[Node], want_row: Bool) Value:
     if args.length() != 1: return Value.Errv("#VALUE!")
 
-    let a = args[0]
+    a := args[0]
 
     if a.kind == N_REF:
         if not a.r1.valid: return Value.Errv("#REF!")
@@ -1318,31 +1318,31 @@ fn f_rowcol(s: Sheet, args: List[Node], want_row: Bool) Value:
     return Value.Errv("#VALUE!")
 
 fn f_index(s: Sheet, args: List[Node]) Value:
-    let na = args.length()
+    na := args.length()
     if na < 2 or na > 3: return Value.Errv("#VALUE!")
 
-    let a = args[0]
+    a := args[0]
     if a.kind != N_RANGE: return Value.Errv("#VALUE!")
     if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
-    let rc = rect_of_refs(a.r1, a.r2)
-    let h = rc.r2 - rc.r1 + 1
-    let w = rc.c2 - rc.c1 + 1
-    let rv = as_num(eval(s, args[1]))
+    rc := rect_of_refs(a.r1, a.r2)
+    h := rc.r2 - rc.r1 + 1
+    w := rc.c2 - rc.c1 + 1
+    rv := as_num(eval(s, args[1]))
     if is_err(rv): return rv
 
     var row = 1
     var col = 1
 
     if na == 2:
-        let idx = to_int(floor(num_val(rv)))
+        idx := to_int(floor(num_val(rv)))
 
         if h == 1:
             col = idx
         else:
             row = idx
     else:
-        let cv = as_num(eval(s, args[2]))
+        cv := as_num(eval(s, args[2]))
         if is_err(cv): return cv
 
         row = to_int(floor(num_val(rv)))
@@ -1355,18 +1355,18 @@ fn f_index(s: Sheet, args: List[Node]) Value:
 fn f_countif(s: Sheet, args: List[Node]) Value:
     if args.length() != 2: return Value.Errv("#VALUE!")
 
-    let a = args[0]
+    a := args[0]
     if a.kind != N_RANGE: return Value.Errv("#VALUE!")
     if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
-    let cv = eval(s, args[1])
+    cv := eval(s, args[1])
     if is_err(cv): return cv
 
     var op = "="
     var operand = cv.clone()
 
     if is_txt(cv):
-        let t = txt_val(cv)
+        t := txt_val(cv)
         var oplen = 0
 
         if t.starts_with(">="):
@@ -1388,9 +1388,9 @@ fn f_countif(s: Sheet, args: List[Node]) Value:
             op = "="
             oplen = 1
 
-        let rest = t.drop(oplen)
+        rest := t.drop(oplen)
 
-        if let f = parse_number_text(rest):
+        if f := parse_number_text(rest):
             operand = Value.Num(f)
         else:
             operand = Value.Txt(rest)
@@ -1398,7 +1398,7 @@ fn f_countif(s: Sheet, args: List[Node]) Value:
     var count = 0
 
     for k in range_keys(rect_of_refs(a.r1, a.r2)):
-        let v = s.vals[k].clone()
+        v := s.vals[k].clone()
 
         if rank(v) == rank(operand):
             if op_holds(op, cmp_vals(v, operand)):
@@ -1409,8 +1409,8 @@ fn f_countif(s: Sheet, args: List[Node]) Value:
     return Value.Num(count.to_float())
 
 fn call_fn(s: Sheet, n: Node) Value:
-    let name = n.text.clone()
-    let args = n.args
+    name := n.text.clone()
+    args := n.args
     if name == "SUM": return agg(s, args, 0)
     if name == "AVERAGE": return agg(s, args, 1)
     if name == "MIN": return agg(s, args, 2)
@@ -1428,7 +1428,7 @@ fn call_fn(s: Sheet, n: Node) Value:
     if name == "NOT":
         if args.length() != 1: return Value.Errv("#VALUE!")
 
-        let t = as_flag(eval(s, args[0]))
+        t := as_flag(eval(s, args[0]))
         if is_err(t): return t
 
         return Value.Flag(not flag_val(t))
@@ -1436,10 +1436,10 @@ fn call_fn(s: Sheet, n: Node) Value:
     if name == "ABS" or name == "INT" or name == "SQRT":
         if args.length() != 1: return Value.Errv("#VALUE!")
 
-        let a = as_num(eval(s, args[0]))
+        a := as_num(eval(s, args[0]))
         if is_err(a): return a
 
-        let x = num_val(a)
+        x := num_val(a)
         if name == "ABS": return Value.Num(x.abs())
         if name == "INT": return finite(floor(x))
         if x < 0.0: return Value.Errv("#NUM!")
@@ -1449,44 +1449,44 @@ fn call_fn(s: Sheet, n: Node) Value:
     if name == "POW" or name == "MOD":
         if args.length() != 2: return Value.Errv("#VALUE!")
 
-        let a = as_num(eval(s, args[0]))
+        a := as_num(eval(s, args[0]))
         if is_err(a): return a
 
-        let b = as_num(eval(s, args[1]))
+        b := as_num(eval(s, args[1]))
         if is_err(b): return b
 
-        let x = num_val(a)
-        let y = num_val(b)
+        x := num_val(a)
+        y := num_val(b)
         if name == "POW": return finite(pow(x, y))
         if y == 0.0: return Value.Errv("#DIV/0!")
 
         return finite(x - y * floor(x / y))
 
     if name == "ROUND":
-        let na = args.length()
+        na := args.length()
         if na < 1 or na > 2: return Value.Errv("#VALUE!")
 
-        let x = as_num(eval(s, args[0]))
+        x := as_num(eval(s, args[0]))
         if is_err(x): return x
 
         var d = 0.0
 
         if na == 2:
-            let dv = as_num(eval(s, args[1]))
+            dv := as_num(eval(s, args[1]))
             if is_err(dv): return dv
 
             d = truncate(num_val(dv))
 
         if d.abs() > 15.0: return Value.Errv("#NUM!")
 
-        let p = pow(10.0, d)
-        let y = num_val(x) * p
+        p := pow(10.0, d)
+        y := num_val(x) * p
         return finite(round_half_away(y) / p)
 
     if name == "LEN":
         if args.length() != 1: return Value.Errv("#VALUE!")
 
-        let tv = text_arg(s, args[0])
+        tv := text_arg(s, args[0])
         if is_err(tv): return tv
 
         return Value.Num(txt_val(tv).scalar_length().to_float())
@@ -1494,7 +1494,7 @@ fn call_fn(s: Sheet, n: Node) Value:
     if name == "UPPER" or name == "LOWER":
         if args.length() != 1: return Value.Errv("#VALUE!")
 
-        let tv = text_arg(s, args[0])
+        tv := text_arg(s, args[0])
         if is_err(tv): return tv
 
         return Value.Txt(ascii_case(txt_val(tv), name == "UPPER"))
@@ -1502,7 +1502,7 @@ fn call_fn(s: Sheet, n: Node) Value:
     if name == "TRIM":
         if args.length() != 1: return Value.Errv("#VALUE!")
 
-        let tv = text_arg(s, args[0])
+        tv := text_arg(s, args[0])
         if is_err(tv): return tv
 
         return Value.Txt(txt_val(tv).fields().join(" "))
@@ -1513,17 +1513,17 @@ fn call_fn(s: Sheet, n: Node) Value:
     if name == "MID":
         if args.length() != 3: return Value.Errv("#VALUE!")
 
-        let tv = text_arg(s, args[0])
+        tv := text_arg(s, args[0])
         if is_err(tv): return tv
 
-        let sv = as_num(eval(s, args[1]))
+        sv := as_num(eval(s, args[1]))
         if is_err(sv): return sv
 
-        let lv = as_num(eval(s, args[2]))
+        lv := as_num(eval(s, args[2]))
         if is_err(lv): return lv
 
-        let st = floor(num_val(sv))
-        let ln = floor(num_val(lv))
+        st := floor(num_val(sv))
+        ln := floor(num_val(lv))
         if st < 1.0 or ln < 0.0: return Value.Errv("#VALUE!")
 
         return Value.Txt(txt_val(tv).drop(to_int(st) - 1).take(to_int(ln)))
@@ -1538,12 +1538,12 @@ fn call_fn(s: Sheet, n: Node) Value:
                 if not (a.r1.valid and a.r2.valid): return Value.Errv("#REF!")
 
                 for k in range_keys(rect_of_refs(a.r1, a.r2)):
-                    let v = s.vals[k].clone()
+                    v := s.vals[k].clone()
                     if is_err(v): return v
 
                     buf = buf.concat(display(v))
             else:
-                let v = eval(s, a)
+                v := eval(s, a)
                 if is_err(v): return v
 
                 buf = buf.concat(display(v))
@@ -1553,16 +1553,16 @@ fn call_fn(s: Sheet, n: Node) Value:
     if name == "SUBSTITUTE":
         if args.length() != 3: return Value.Errv("#VALUE!")
 
-        let sv = text_arg(s, args[0])
+        sv := text_arg(s, args[0])
         if is_err(sv): return sv
 
-        let ov = text_arg(s, args[1])
+        ov := text_arg(s, args[1])
         if is_err(ov): return ov
 
-        let nv = text_arg(s, args[2])
+        nv := text_arg(s, args[2])
         if is_err(nv): return nv
 
-        let old = txt_val(ov)
+        old := txt_val(ov)
         if old == "": return sv
 
         return Value.Txt(txt_val(sv).replace(old, txt_val(nv)))
@@ -1575,7 +1575,7 @@ fn call_fn(s: Sheet, n: Node) Value:
     if name == "ISERROR" or name == "ISBLANK" or name == "ISNUMBER" or name == "ISTEXT":
         if args.length() != 1: return Value.Errv("#VALUE!")
 
-        let v = eval(s, args[0])
+        v := eval(s, args[0])
         if name == "ISERROR": return Value.Flag(is_err(v))
         if name == "ISBLANK": return Value.Flag(is_empty(v))
         if name == "ISNUMBER": return Value.Flag(is_num(v))
@@ -1591,10 +1591,10 @@ fn call_fn(s: Sheet, n: Node) Value:
 
 // Value a formula cell settles to: a formula result that is empty becomes 0.
 fn compute(s: Sheet, k: Int) Value:
-    if let f = s.forms.get(k):
+    if f := s.forms.get(k):
         if not f.good: return Value.Errv("#PARSE!")
 
-        let v = eval(s, f.root)
+        v := eval(s, f.root)
         if is_empty(v): return Value.Num(0.0)
 
         return v
@@ -1655,7 +1655,7 @@ impl Scc:
         var e = self.head[v]
 
         while e >= 0:
-            let w = self.to[e]
+            w := self.to[e]
             e = self.nxt[e]
             if w == v:
                 self.cyc.replace(v, true)
@@ -1673,8 +1673,8 @@ impl Scc:
             var go = true
 
             while go:
-                let top = self.stack.length() - 1
-                let x = self.stack[top]
+                top := self.stack.length() - 1
+                x := self.stack[top]
                 self.stack.remove(top)
                 self.on.replace(x, false)
                 members.append(x)
@@ -1702,9 +1702,9 @@ impl Sheet:
 
     // Recalculates the formulas affected by the changed cells; returns how many.
     var fn recalc(changed: List[Int]) Int:
-        let idx = build_index(self)
-        let aff = closure(idx, changed, true)
-        let m = aff.length()
+        idx := build_index(self)
+        aff := closure(idx, changed, true)
+        m := aff.length()
         if m == 0: return 0
 
         var pos = filled_int(GRID, -1)
@@ -1717,9 +1717,9 @@ impl Sheet:
         var sto = List[Int]()
 
         for i in 0..m:
-            if let f = self.forms.get(aff[i]):
+            if f := self.forms.get(aff[i]):
                 for c in f.cells:
-                    let p = pos[c]
+                    p := pos[c]
 
                     if p >= 0:
                         sto.append(i)
@@ -1751,7 +1751,7 @@ impl Sheet:
                 var e = scc.head[i]
 
                 while e >= 0:
-                    let d = scc.to[e]
+                    d := scc.to[e]
                     if not scc.cyc[d]:
                         indeg.replace(d, indeg[d] + 1)
                     e = scc.nxt[e]
@@ -1764,16 +1764,16 @@ impl Sheet:
         var rq = 0
 
         while rq < ready.length():
-            let i = ready[rq]
+            i := ready[rq]
             rq += 1
 
-            let v = compute(self, aff[i])
+            v := compute(self, aff[i])
             self.vals.replace(aff[i], v)
 
             var e = scc.head[i]
 
             while e >= 0:
-                let d = scc.to[e]
+                d := scc.to[e]
 
                 if not scc.cyc[d]:
                     indeg.replace(d, indeg[d] - 1)
@@ -1807,8 +1807,8 @@ fn build_index(sh: Sheet) DepIndex:
     var rrect = List[Rect]()
 
     for k in sh.forms.keys():
-        if let f = sh.forms.get(k):
-            let fi = fkeys.length()
+        if f := sh.forms.get(k):
+            fi := fkeys.length()
             fkeys.append(k)
             fidx.replace(k, fi)
 
@@ -1836,7 +1836,7 @@ fn closure(idx: DepIndex, start: List[Int], seed: Bool) List[Int]:
     for k in start:
         q.append(k)
 
-        let fi = idx.fidx[k]
+        fi := idx.fidx[k]
 
         if seed and fi >= 0 and not seen[fi]:
             seen.replace(fi, true)
@@ -1845,13 +1845,13 @@ fn closure(idx: DepIndex, start: List[Int], seed: Bool) List[Int]:
     var qi = 0
 
     while qi < q.length():
-        let node = q[qi]
+        node := q[qi]
         qi += 1
 
         var e = idx.ehead[node]
 
         while e >= 0:
-            let fi = idx.efor[e]
+            fi := idx.efor[e]
             e = idx.enext[e]
 
             if not seen[fi]:
@@ -1861,7 +1861,7 @@ fn closure(idx: DepIndex, start: List[Int], seed: Bool) List[Int]:
 
         for r in 0..idx.rrect.length():
             if rect_has(idx.rrect[r], node):
-                let fi = idx.rfor[r]
+                fi := idx.rfor[r]
 
                 if not seen[fi]:
                     seen.replace(fi, true)
@@ -1874,7 +1874,7 @@ fn closure(idx: DepIndex, start: List[Int], seed: Bool) List[Int]:
 fn precedents_of(sh: Sheet, k: Int) List[Int]:
     var mark = filled_bool(GRID, false)
 
-    if let f = sh.forms.get(k):
+    if f := sh.forms.get(k):
         for c in f.cells:
             mark.replace(c, true)
         for rc in f.rects:
@@ -1889,7 +1889,7 @@ fn precedents_of(sh: Sheet, k: Int) List[Int]:
 
 // Formulas that depend on k, directly or transitively, ascending by key.
 fn dependents_of(sh: Sheet, k: Int) List[Int]:
-    let idx = build_index(sh)
+    idx := build_index(sh)
     var mark = filled_bool(GRID, false)
     for f in closure(idx, [k], false):
         mark.replace(f, true)
@@ -1937,21 +1937,21 @@ fn ref_text(r: Ref) String:
 fn shift_token(t: Tok, cs: List[String], dc: Int, dr: Int) String:
     if t.kind == T_REF:
         if not t.r1.valid: return slice_chars(cs, t.start, t.stop)
-        if let nr = shifted_ref(t.r1, dc, dr): return ref_text(nr)
+        if nr := shifted_ref(t.r1, dc, dr): return ref_text(nr)
 
         return "#REF!"
 
     if not (t.r1.valid and t.r2.valid): return slice_chars(cs, t.start, t.stop)
 
-    if let a = shifted_ref(t.r1, dc, dr):
-        if let b = shifted_ref(t.r2, dc, dr): return "{ref_text(a)}:{ref_text(b)}"
+    if a := shifted_ref(t.r1, dc, dr):
+        if b := shifted_ref(t.r2, dc, dr): return "{ref_text(a)}:{ref_text(b)}"
     return "#REF!"
 
 // Shifts the references of a formula source by (dc, dr); unchanged if it cannot be tokenized.
 fn shift_source(src: String, dc: Int, dr: Int) String:
-    let cs = src.chars()
+    cs := src.chars()
 
-    if let toks = lex(cs):
+    if toks := lex(cs):
         var out = ""
         var pos = 0
 
@@ -1970,8 +1970,8 @@ fn shift_source(src: String, dc: Int, dr: Int) String:
 
 // Records of the block: quoted sections, doubled quotes, blank records skipped.
 fn csv_records(block: List[String]) List[List[String]]:
-    let cs = block.join("\n").chars()
-    let n = cs.length()
+    cs := block.join("\n").chars()
+    n := cs.length()
     var recs = List[List[String]]()
     var fields = List[String]()
     var field = ""
@@ -1980,7 +1980,7 @@ fn csv_records(block: List[String]) List[List[String]]:
     var i = 0
 
     while i < n:
-        let c = ch(cs, i)
+        c := ch(cs, i)
 
         if inq:
             if c == 34:
@@ -2062,7 +2062,7 @@ fn export_rect(sh: Sheet, rc: Rect, formulas: Bool) Unit:
             if c > rc.c1:
                 line = line.concat(",")
 
-            let k = key_of(c, r)
+            k := key_of(c, r)
 
             if formulas:
                 line = line.concat(csv_field(sh.raws[k]))
@@ -2102,7 +2102,7 @@ fn bad_range(t: String) Unit:
 
 // Splits a line into whitespace-separated words.
 fn words(line: String) List[String]:
-    let cs = line.chars()
+    cs := line.chars()
     var out = List[String]()
     var i = 0
 
@@ -2121,7 +2121,7 @@ fn words(line: String) List[String]:
 
 // Text after the first `count` words, with the ends trimmed.
 fn rest_after(line: String, count: Int) String:
-    let cs = line.chars()
+    cs := line.chars()
     var i = 0
     var w = 0
 
@@ -2139,21 +2139,21 @@ fn do_import(var sh: Sheet, ws: List[String], block: List[String]) Unit:
         print("error: usage: import CELL")
         return
 
-    let k0 = cell_or_neg(ws[1])
+    k0 := cell_or_neg(ws[1])
 
     if k0 < 0:
         bad_cell(ws[1])
         return
 
-    let recs = csv_records(block)
-    let rows = recs.length()
+    recs := csv_records(block)
+    rows := recs.length()
     var cols = 0
     for rec in recs:
         if rec.length() > cols:
             cols = rec.length()
 
-    let c0 = key_col(k0)
-    let r0 = key_row(k0)
+    c0 := key_col(k0)
+    r0 := key_row(k0)
 
     if c0 + cols > COLS or r0 - 1 + rows > 999:
         print("error: import out of range")
@@ -2166,14 +2166,14 @@ fn do_import(var sh: Sheet, ws: List[String], block: List[String]) Unit:
         var ci = 0
 
         for f in rec:
-            let k = key_of(c0 + ci, r0 + ri)
+            k := key_of(c0 + ci, r0 + ri)
             sh.put(k, f.trim())
             changed.append(k)
             ci += 1
 
         ri += 1
 
-    let m = sh.recalc(changed)
+    m := sh.recalc(changed)
     print("imported {rows} rows, {cols} columns; recalc {m}")
 
 fn do_copy(var sh: Sheet, ws: List[String]) Unit:
@@ -2181,21 +2181,21 @@ fn do_copy(var sh: Sheet, ws: List[String]) Unit:
         print("error: usage: copy SRC DST")
         return
 
-    let sk = cell_or_neg(ws[1])
+    sk := cell_or_neg(ws[1])
 
     if sk < 0:
         bad_cell(ws[1])
         return
 
-    if let rc = range_arg(ws[2]):
-        let src_raw = sh.raws[sk].clone()
-        let sc = key_col(sk)
-        let sr = key_row(sk)
+    if rc := range_arg(ws[2]):
+        src_raw := sh.raws[sk].clone()
+        sc := key_col(sk)
+        sr := key_row(sk)
         var changed = List[Int]()
 
         for dk in range_keys(rc):
-            let dc = key_col(dk) - sc
-            let dr = key_row(dk) - sr
+            dc := key_col(dk) - sc
+            dr := key_row(dk) - sr
             var newraw = ""
 
             if src_raw == "":
@@ -2208,14 +2208,14 @@ fn do_copy(var sh: Sheet, ws: List[String]) Unit:
             sh.put(dk, newraw)
             changed.append(dk)
 
-        let m = sh.recalc(changed)
+        m := sh.recalc(changed)
         print("recalc {m}")
         return
 
     bad_range(ws[2])
 
 fn do_print(sh: Sheet, ws: List[String]) Unit:
-    let n = ws.length()
+    n := ws.length()
 
     if n > 2:
         print("error: usage: print [RANGE]")
@@ -2231,21 +2231,21 @@ fn do_print(sh: Sheet, ws: List[String]) Unit:
         rng = ws[1].clone()
 
     if rng == "":
-        if let u = used_rect(sh):
+        if u := used_rect(sh):
             print_rect(sh, u)
         else:
             print("(empty sheet)")
 
         return
 
-    if let rc = range_arg(rng):
+    if rc := range_arg(rng):
         print_rect(sh, rc)
         return
 
     bad_range(rng)
 
 fn do_export(sh: Sheet, ws: List[String]) Unit:
-    let n = ws.length()
+    n := ws.length()
 
     if n > 3:
         print("error: usage: export [formulas] [RANGE]")
@@ -2269,30 +2269,30 @@ fn do_export(sh: Sheet, ws: List[String]) Unit:
         rng = ws[2].clone()
 
     if rng == "":
-        if let u = used_rect(sh):
+        if u := used_rect(sh):
             export_rect(sh, u, formulas)
         else:
             print("(empty sheet)")
 
         return
 
-    if let rc = range_arg(rng):
+    if rc := range_arg(rng):
         export_rect(sh, rc, formulas)
         return
 
     bad_range(rng)
 
 fn exec(var sh: Sheet, line: String) Unit:
-    let ws = words(line)
-    let cmd = ws[0]
-    let n = ws.length()
+    ws := words(line)
+    cmd := ws[0]
+    n := ws.length()
 
     if cmd == "set":
         if n < 2:
             print("error: usage: set CELL VALUE")
             return
 
-        let k = cell_or_neg(ws[1])
+        k := cell_or_neg(ws[1])
 
         if k < 0:
             bad_cell(ws[1])
@@ -2300,7 +2300,7 @@ fn exec(var sh: Sheet, line: String) Unit:
 
         sh.put(k, rest_after(line, 2))
 
-        let m = sh.recalc([k])
+        m := sh.recalc([k])
         print("recalc {m}")
         return
 
@@ -2309,7 +2309,7 @@ fn exec(var sh: Sheet, line: String) Unit:
             print("error: usage: clear CELL")
             return
 
-        let k = cell_or_neg(ws[1])
+        k := cell_or_neg(ws[1])
 
         if k < 0:
             bad_cell(ws[1])
@@ -2317,7 +2317,7 @@ fn exec(var sh: Sheet, line: String) Unit:
 
         sh.put(k, "")
 
-        let m = sh.recalc([k])
+        m := sh.recalc([k])
         print("recalc {m}")
         return
 
@@ -2326,7 +2326,7 @@ fn exec(var sh: Sheet, line: String) Unit:
             print("error: usage: get CELL")
             return
 
-        let k = cell_or_neg(ws[1])
+        k := cell_or_neg(ws[1])
 
         if k < 0:
             bad_cell(ws[1])
@@ -2344,13 +2344,13 @@ fn exec(var sh: Sheet, line: String) Unit:
             print("error: usage: show CELL")
             return
 
-        let k = cell_or_neg(ws[1])
+        k := cell_or_neg(ws[1])
 
         if k < 0:
             bad_cell(ws[1])
             return
 
-        let name = name_of(k)
+        name := name_of(k)
 
         if sh.raws[k] == "":
             print("{name}: (empty)")
@@ -2366,7 +2366,7 @@ fn exec(var sh: Sheet, line: String) Unit:
             print("error: usage: {cmd} CELL")
             return
 
-        let k = cell_or_neg(ws[1])
+        k := cell_or_neg(ws[1])
 
         if k < 0:
             bad_cell(ws[1])
@@ -2408,20 +2408,20 @@ fn gather() Result[List[String], Error]:
     return ok(all)
 
 export fn main() Int:
-    let all = gather().get(List[String]())
+    all := gather().get(List[String]())
     var sh = new_sheet()
     var i = 0
 
     while i < all.length():
-        let line = all[i].clone()
+        line := all[i].clone()
         i += 1
 
-        let t = line.trim()
+        t := line.trim()
         if t == "" or t.starts_with("#"): continue
 
         print("> {line.trim_end()}")
 
-        let ws = words(line)
+        ws := words(line)
 
         if ws[0] == "import":
             var block = List[String]()

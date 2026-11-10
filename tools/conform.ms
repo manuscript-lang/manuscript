@@ -30,7 +30,7 @@ fn main() Int:
 
     create_directory(".artifacts", recursive: true).get()
 
-    let allow = ".artifacts/conform-expect-fail.txt"
+    allow := ".artifacts/conform-expect-fail.txt"
     var text = (
         read_file("tests/conformance/expect-fail.txt")
         .wait()
@@ -38,24 +38,24 @@ fn main() Int:
         .decode_utf8()
         .get("")
     )
-    let host_list = "tests/conformance/expect-fail.{host()}.txt"
+    host_list := "tests/conformance/expect-fail.{host()}.txt"
     if access(host_list, 0).is_ok():
         text += read_file(host_list).wait().get().decode_utf8().get("")
     write_file(allow, text, replace: true).wait().get()
 
-    let conform = "target/debug/ms-conform{exe()}"
-    let ms = "target/debug/ms{exe()}"
-    let shard = env("CONFORM_SHARD", "0/1")
+    conform := "target/debug/ms-conform{exe()}"
+    ms := "target/debug/ms{exe()}"
+    shard := env("CONFORM_SHARD", "0/1")
     code = run_program(conform, ["lint"])
     if code != 0: return code
 
-    let extra = arguments()
+    extra := arguments()
 
     // Only `run` and `test` reach a code generator, so a second pass with `MS_BACKEND=cranelift` skips the
     // check and parse phases: the LLVM pass already ran them, and their results do not depend on the backend.
-    let backend_only = env("MS_BACKEND", "") == "cranelift"
-    let phases = if backend_only: "run,test" else: "run,check,test"
-    let main_run = [
+    backend_only := env("MS_BACKEND", "") == "cranelift"
+    phases := if backend_only: "run,test" else: "run,check,test"
+    main_run := [
         "run", "--ms", ms.clone(), "--phase", phases, "--exclude-tag", "aliasing",
         "--expect-fail", allow.clone(), "--strict", "--shard", shard.clone(), "--quiet",
         "--markdown", ".artifacts/conform.md"
@@ -64,7 +64,7 @@ fn main() Int:
     if code != 0 or backend_only: return code
 
     // Parsing and formatting do not depend on aliasing, so the parse phase replays every fixture.
-    let parse_run = [
+    parse_run := [
         "run", "--ms", ms.clone(), "--phase", "parse", "--expect-fail", allow.clone(),
         "--strict", "--shard", shard.clone(), "--quiet", "--markdown",
         ".artifacts/conform-parse.md"

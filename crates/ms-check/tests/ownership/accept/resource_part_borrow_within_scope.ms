@@ -13,12 +13,12 @@ impl Closeable for Res:
 
 // Parts are closed at scope end; borrows of them used before then are fine.
 fn held() Int:
-    let r = Res("c")
-    let n = r.name
+    r := Res("c")
+    n := r.name
     return n.length()
 
 fn composite() Int:
-    let h = Holder(Res("a"), [Res("b")])
-    let n = h.inner.name
-    let m = h.all[0].name
+    h := Holder(Res("a"), [Res("b")])
+    n := h.inner.name
+    m := h.all[0].name
     return n.length() + m.length()

@@ -26,8 +26,8 @@ Migration: replace `type Choice:` with `enum Choice:` when its body declares cas
 ## Construction and identity
 
 ```manuscript
-let payment = Payment.Paid("receipt-42")
-let declined: Payment = Declined("Card rejected")
+payment := Payment.Paid("receipt-42")
+declined: Payment = Declined("Card rejected")
 ```
 
 - `Type.Case` names a case of that nominal type. It is not a module path: import the type, then qualify its case.
@@ -44,16 +44,16 @@ enum LeftState:
 enum RightState:
     Ready
 
-let left: LeftState = LeftState.Ready
+left: LeftState = LeftState.Ready
 // Rejected: two visible Ready cases, even with an annotation.
-let annotated: LeftState = Ready
+annotated: LeftState = Ready
 // Rejected: two visible Ready cases.
-let ambiguous = Ready
+ambiguous := Ready
 // Rejected: a different nominal enum.
-let wrong: LeftState = RightState.Ready
+wrong: LeftState = RightState.Ready
 ```
 
-After `let Ready = LeftState.Ready`, `Ready` refers to that binding, not case lookup.
+After `Ready := LeftState.Ready`, `Ready` refers to that binding, not case lookup.
 
 Type arguments attach to the enum, never the case: write `Choice[Int].Found(value: 1)`. `Found[Int](value: 1)` and `Choice.Found[Int](value: 1)` are rejected; unqualified `Found(value: 1)` may infer arguments or use a complete expected `Choice[Int]`. This also holds for standard Optional/Result cases.
 

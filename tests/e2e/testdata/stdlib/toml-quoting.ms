@@ -13,8 +13,8 @@ test "TOML quoting preserves empty plain and Unicode text":
     for text in [
         "", "Ada", "space punctuation : ; # ' []", "é🙂日本語", "é🙂日本語".repeat(1024).get()
     ]:
-        let root = table(text.clone())
-        let out = try stringify(root)
+        root := table(text.clone())
+        out := try stringify(root)
         out | try expect_equal("value = \"".concat(text).concat("\"\n"))
         (try parse(out)) | try expect_equal(root)
 
@@ -23,7 +23,7 @@ test "TOML quoting preserves escaped control and Unicode text":
         "\"", "\\", "\n", "\t", "\r", "\u{8}", "\u{c}", "\u{0}", "\u{1f}", "\u{7f}",
         "é🙂\n日本語\\", "abcdefgh".repeat(2048).get().concat("\n")
     ]:
-        let root = table(text)
+        root := table(text)
         (try parse(try stringify(root))) | try expect_equal(root)
 
     stringify(table("\"\\\n\t\r\u{8}\u{c}\u{0}\u{1f}\u{7f}")) | try expect_equal(
@@ -31,8 +31,8 @@ test "TOML quoting preserves escaped control and Unicode text":
     )
 
 test "TOML quoting retains exact and invalid output budgets":
-    let root = table("é🙂")
-    let text = try stringify(root)
+    root := table("é🙂")
+    text := try stringify(root)
     stringify(root, max_bytes: text.byte_length()) | try expect_equal(ok(text.clone()))
     stringify(root, max_bytes: text.byte_length() - 1) | try expect_equal(
         error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
@@ -46,7 +46,7 @@ test "TOML quoting preserves quoted keys and all ASCII control escapes":
         var fields = Map[String, TomlValue]()
         fields.add(key, TomlValue.IntValue(7))
 
-        let root = TomlValue.TableValue(fields)
+        root := TomlValue.TableValue(fields)
         (try parse(try stringify(root))) | try expect_equal(root)
 
     var fields = Map[String, TomlValue]()
@@ -59,5 +59,5 @@ test "TOML quoting preserves quoted keys and all ASCII control escapes":
     for code in 0..32:
         controls = controls.concat(from_scalars([code]).get())
 
-    let root = table(controls)
+    root := table(controls)
     (try parse(try stringify(root))) | try expect_equal(root)

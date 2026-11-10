@@ -22,9 +22,9 @@ type Holder:
 impl Closeable for Holder:
     var fn close() Unit!:
         if self.pause:
-            let _ = sleep(nanoseconds(5000000)).wait()
+            _ := sleep(nanoseconds(5000000)).wait()
 
-        let _ = write_file("{self.dir}/{self.id}", "closed", true).wait()
+        _ := write_file("{self.dir}/{self.id}", "closed", true).wait()
         if self.breaks:
             panic("close fault")
 
@@ -32,29 +32,29 @@ fn closed(dir: String, id: Int) Bool:
     return read_file("{dir}/{id}").wait().is_ok()
 
 fn hold_and_wait(dir: String, id: Int, pause: Bool) Int:
-    let holder = Holder(dir, id, pause, false)
-    let _ = sleep(nanoseconds(5000000000)).wait()
+    holder := Holder(dir, id, pause, false)
+    _ := sleep(nanoseconds(5000000000)).wait()
     return holder.id
 
 fn hold_and_fault(dir: String, id: Int) Unit:
-    let holder = Holder(dir, id, false, false)
+    holder := Holder(dir, id, false, false)
     panic("body fault")
 
-    let _ = holder.id
+    _ := holder.id
 
 fn hold_then_break(dir: String, id: Int) Unit:
-    let holder = Holder(dir, id, false, true)
-    let _ = holder.id
+    holder := Holder(dir, id, false, true)
+    _ := holder.id
 
 fn hold_fault_and_break(dir: String, id: Int) Unit:
-    let holder = Holder(dir, id, false, true)
+    holder := Holder(dir, id, false, true)
     panic("body fault")
 
-    let _ = holder.id
+    _ := holder.id
 
 fn cancel_a_holder(dir: String, id: Int, pause: Bool) Unit:
-    let work = promise(fn: ok(hold_and_wait(dir.clone(), id, pause)))
-    let _ignored = work.with(
+    work := promise(fn: ok(hold_and_wait(dir.clone(), id, pause)))
+    _ignored := work.with(
         options: PromiseOptions(timeout: nanoseconds(20000000))
     ).wait()
 
@@ -62,41 +62,41 @@ fn faulting_holder(dir: String, id: Int) Unit!:
     hold_and_fault(dir, id)
 
 test "cancellation closes the binding":
-    let temporary = temporary("manuscript-shield-") | try expect_ok
-    let dir = temporary.path()
+    temporary := temporary("manuscript-shield-") | try expect_ok
+    dir := temporary.path()
     cancel_a_holder(dir.clone(), 1, false)
     try expect_true(closed(dir, 1))
 
 test "cancellation does not interrupt a close that suspends":
-    let temporary = temporary("manuscript-shield-") | try expect_ok
-    let dir = temporary.path()
+    temporary := temporary("manuscript-shield-") | try expect_ok
+    dir := temporary.path()
     cancel_a_holder(dir.clone(), 2, true)
     try expect_true(closed(dir, 2))
 
 test "a fault unwinding the scope closes the binding":
-    let temporary = temporary("manuscript-shield-") | try expect_ok
-    let dir = temporary.path()
-    let message = try expect_fault(fn: hold_and_fault(dir.clone(), 3))
+    temporary := temporary("manuscript-shield-") | try expect_ok
+    dir := temporary.path()
+    message := try expect_fault(fn: hold_and_fault(dir.clone(), 3))
     try expect_equal(message, "body fault")
     try expect_true(closed(dir, 3))
 
 test "a faulted promise closes its binding before wait reports":
-    let temporary = temporary("manuscript-shield-") | try expect_ok
-    let dir = temporary.path()
-    let work = promise(fn: faulting_holder(dir.clone(), 4))
-    let _reason = work.wait() | try expect_error
+    temporary := temporary("manuscript-shield-") | try expect_ok
+    dir := temporary.path()
+    work := promise(fn: faulting_holder(dir.clone(), 4))
+    _reason := work.wait() | try expect_error
     try expect_true(closed(dir, 4))
 
 test "a fault in close on a normal return is the fault":
-    let temporary = temporary("manuscript-shield-") | try expect_ok
-    let dir = temporary.path()
-    let message = try expect_fault(fn: hold_then_break(dir.clone(), 5))
+    temporary := temporary("manuscript-shield-") | try expect_ok
+    dir := temporary.path()
+    message := try expect_fault(fn: hold_then_break(dir.clone(), 5))
     try expect_equal(message, "close fault")
     try expect_true(closed(dir, 5))
 
 test "a fault in close does not replace a pending fault":
-    let temporary = temporary("manuscript-shield-") | try expect_ok
-    let dir = temporary.path()
-    let message = try expect_fault(fn: hold_fault_and_break(dir.clone(), 6))
+    temporary := temporary("manuscript-shield-") | try expect_ok
+    dir := temporary.path()
+    message := try expect_fault(fn: hold_fault_and_break(dir.clone(), 6))
     try expect_equal(message, "body fault")
     try expect_true(closed(dir, 6))

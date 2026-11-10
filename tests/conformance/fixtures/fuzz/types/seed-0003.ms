@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (-29)
+    i1 := (-29)
     say("i1 = {i1}")
 
     if ((i1 / (-522019)) >= i1):
@@ -17,5 +17,5 @@ export fn main() Int:
     else:
         say("alpha".trim())
 
-    let bad = (1 < 2) < 3
+    bad := (1 < 2) < 3
     return 0

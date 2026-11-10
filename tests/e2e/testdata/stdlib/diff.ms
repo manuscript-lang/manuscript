@@ -49,9 +49,9 @@ test "unified_diff formats hunks":
     )
 
 test "unified_diff splits distant changes and names headers":
-    let old = ["1", "2", "3", "4", "5", "6", "7", "8"]
-    let new = ["1", "X", "3", "4", "5", "6", "7", "Y"]
-    let expected = "--- old.txt\n+++ new.txt\n@@ -1,3 +1,3 @@\n 1\n-2\n+X\n 3\n@@ -7,2 +7,2 @@\n 7\n-8\n+Y\n"
+    old := ["1", "2", "3", "4", "5", "6", "7", "8"]
+    new := ["1", "X", "3", "4", "5", "6", "7", "Y"]
+    expected := "--- old.txt\n+++ new.txt\n@@ -1,3 +1,3 @@\n 1\n-2\n+X\n 3\n@@ -7,2 +7,2 @@\n 7\n-8\n+Y\n"
     try expect_equal(
         unified_diff(
             old,
@@ -78,7 +78,7 @@ test "unified_diff keeps offsets across shared leading and trailing lines":
     )
 
 test "unified_diff clamps a context larger than the input":
-    let expected = "--- a\n+++ b\n@@ -1 +1 @@\n-before\n+after\n"
+    expected := "--- a\n+++ b\n@@ -1 +1 @@\n-before\n+after\n"
     try expect_equal(
         unified_diff(["before"], ["after"], UnifiedDiffOptions(context: 3)), expected
     )
@@ -97,7 +97,7 @@ test "unified_diff clamps a context larger than the input":
 
 test "identical text comparisons preserve scalar semantics":
     for text in ["", "same", "café🙂", "a\n\tb", "é", "\u{0}"]:
-        let copy = text.clone()
+        copy := text.clone()
         try expect_equal(edit_distance(text, copy), 0)
         try expect_equal(similarity_ratio(text, copy), 1.0)
 
@@ -107,9 +107,9 @@ test "identical text comparisons preserve scalar semantics":
     try expect_close(similarity_ratio("abc", "abd"), 2.0 / 3.0, 0.000001)
 
 test "unified_diff joins overlapping context without losing earlier changes":
-    let old = ["0", "a", "2", "b", "4", "c", "6"]
-    let new = ["0", "A", "2", "B", "4", "C", "6"]
-    let merged = "--- a\n+++ b\n@@ -1,7 +1,7 @@\n 0\n-a\n+A\n 2\n-b\n+B\n 4\n-c\n+C\n 6\n"
+    old := ["0", "a", "2", "b", "4", "c", "6"]
+    new := ["0", "A", "2", "B", "4", "C", "6"]
+    merged := "--- a\n+++ b\n@@ -1,7 +1,7 @@\n 0\n-a\n+A\n 2\n-b\n+B\n 4\n-c\n+C\n 6\n"
     try expect_equal(unified_diff(old, new, UnifiedDiffOptions(context: 1)), merged)
     try expect_equal(unified_diff(old, new, UnifiedDiffOptions(context: 2)), merged)
     try expect_equal(
@@ -122,9 +122,9 @@ test "unified_diff handles dense changes with full-file context":
     for i in 0..4000:
         lines.append("line {i}")
 
-    let inserted = lines.map(fn line: "+{line}").join("\n")
-    let removed = lines.map(fn line: "-{line}").join("\n")
-    let full = UnifiedDiffOptions(context: 9223372036854775807)
+    inserted := lines.map(fn line: "+{line}").join("\n")
+    removed := lines.map(fn line: "-{line}").join("\n")
+    full := UnifiedDiffOptions(context: 9223372036854775807)
     try expect_equal(
         unified_diff([], lines, full), "--- a\n+++ b\n@@ -0,0 +1,4000 @@\n{inserted}\n"
     )

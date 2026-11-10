@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -17,28 +17,28 @@ fn gcd(a: Int, b: Int) Int:
 export fn main() Int:
     say("gcd(440, 4081) = {gcd(440, 4081)}")
 
-    let l1 = [1, 2, 3].take(0)
+    l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
     say("{(-21)} {((-4) * 40)} {((-21) < ((-4) * 40))} sum {(-21) + ((-4) * 40)}")
 
-    let f2 = (3.0e9 * ((0.0 - 404.283) + (960.620 * 455.994)))
+    f2 := (3.0e9 * ((0.0 - 404.283) + (960.620 * 455.994)))
     say("f2 = {f2}")
     say(
         "{((-8) / ((-20) % 15))} {47} {(((-8) / ((-20) % 15)) < 47)} sum {((-8) / ((-20) % 15)) + 47}"
     )
 
-    let f3 = (((f2 * f2) * (f2 * f2)) + ((f2 * 248.904) + (0.0 + f2)))
+    f3 := (((f2 * f2) * (f2 * f2)) + ((f2 * 248.904) + (0.0 + f2)))
     say("f3 = {f3}")
 
-    let i4 = (((38 % (-36)) + (-47)) * (-47))
+    i4 := (((38 % (-36)) + (-47)) * (-47))
     say("i4 = {i4}")
 
-    let l5 = l1.map(fn x: x * 9)
+    l5 := l1.map(fn x: x * 9)
     say("l5 = {l5} len {l5.length()}")
 
-    let s6 = ("héllo" + "emoji 😀".trim())
+    s6 := ("héllo" + "emoji 😀".trim())
     say("s6 = [{s6}]")
 
-    let big7 = (833471 * (i4 * i4)) - (833471 * (i4 * i4))
+    big7 := (833471 * (i4 * i4)) - (833471 * (i4 * i4))
     say("{(833471 * (i4 * i4)) % big7}")
     return 0

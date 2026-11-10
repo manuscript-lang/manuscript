@@ -86,16 +86,16 @@ export extern type HtmlTree
 
 // Parses HTML into a normalized tree and applies the resource limits in `options`.
 export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
-    let limits = HtmlLimits(
+    limits := HtmlLimits(
         max_bytes: options.max_bytes, max_depth: options.max_depth,
         max_nodes: options.max_nodes
     )
-    let tree = try msstd_html_parse(text, limits)
+    tree := try msstd_html_parse(text, limits)
     return ok(node(tree, msstd_html_root(tree)))
 
 // Copies the node `id` of `tree`, and everything under it, into an `HtmlNode`.
 fn node(tree: HtmlTree, id: Int) HtmlNode:
-    let kind = msstd_html_kind(tree, id)
+    kind := msstd_html_kind(tree, id)
     if kind == 1:
         return HtmlNode.Element(
             msstd_html_data(tree, id), msstd_html_namespace(tree, id),

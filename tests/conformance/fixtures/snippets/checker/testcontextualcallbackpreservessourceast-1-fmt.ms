@@ -5,4 +5,4 @@ type Callback:
     value: fn(Int) Int
 
 fn example() Unit:
-    let _callback = Callback(fn value: value + 1)
+    _callback := Callback(fn value: value + 1)

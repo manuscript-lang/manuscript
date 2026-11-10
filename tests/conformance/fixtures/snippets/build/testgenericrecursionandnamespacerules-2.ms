@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/build/compiler_test.go:257 TestGenericRecursionAndNamespaceRules
 fn recurse[T](value: T) Unit:
-    let next = recurse[List[T]]
+    next := recurse[List[T]]

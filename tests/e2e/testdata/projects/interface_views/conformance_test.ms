@@ -6,9 +6,9 @@ import (
 )
 
 test "each module keeps its own view implementation":
-    let first = left()
-    let second = right()
-    let bound = first.read
+    first := left()
+    second := right()
+    bound := first.read
     bound() | try expect_equal(11)
     second.read() | try expect_equal(22)
     invoke(first) | try expect_equal(11)

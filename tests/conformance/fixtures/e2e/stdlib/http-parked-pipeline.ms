@@ -19,23 +19,23 @@ fn send(var conn: Connection, text: String) Unit!:
 
 fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
-        let _ = sleep(nanoseconds(200000000)).wait()
+        _ := sleep(nanoseconds(200000000)).wait()
     return HttpResponse(200, headers(), "ok {request.path}\n".to_bytes())
 
 fn exchange(address: String) String:
     if var conn = connect(address).wait():
-        let _first = send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
+        _first := send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
         // The slow handler is parked by now; the second request arrives while it waits.
-        let _ = sleep(nanoseconds(50000000)).wait()
-        let _second = send(
+        _ := sleep(nanoseconds(50000000)).wait()
+        _second := send(
             var conn, "GET /fast HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n"
         )
         var text = ""
 
         while true:
-            if let chunk = within(var conn.input, nanoseconds(5000000000)):
-                if let data = chunk:
+            if chunk := within(var conn.input, nanoseconds(5000000000)):
+                if data := chunk:
                     text = "{text}{data.decode_utf8().get("?")}"
                     continue
 
@@ -47,18 +47,18 @@ fn exchange(address: String) String:
     return "connect failed"
 
 export fn main() Int:
-    if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
+    if acquired := serve(address: "127.0.0.1:0", handler: buffered(handle)):
         var server = acquired
-        let start = monotonic()
-        let text = exchange(server.address())
-        let elapsed_ms = monotonic().difference(start).to_milliseconds()
-        let _count = stdout().write(
+        start := monotonic()
+        text := exchange(server.address())
+        elapsed_ms := monotonic().difference(start).to_milliseconds()
+        _count := stdout().write(
             "responses: {text.split("HTTP/1.1 200 OK").length() - 1}\n"
         )
-        let _order = stdout().write(
+        _order := stdout().write(
             "slow first: {text.index_of("ok /slow").get(-1) < text.index_of("ok /fast").get(-1)}\n"
         )
-        let _prompt = stdout().write("prompt: {elapsed_ms < 2000}\n")
+        _prompt := stdout().write("prompt: {elapsed_ms < 2000}\n")
         server.close().get(none)
         return 0
 

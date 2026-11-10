@@ -26,14 +26,14 @@ test "elements of a captured list of lists":
 
 test "the closure and its owner share the list":
     var out: List[Int] = [0, 0]
-    let write: fn(Int) Unit = fn r: out[r] = 4
+    write: fn(Int) Unit = fn r: out[r] = 4
     write(1)
     out[0] = 3
     out | try expect_equal([3, 4])
 
 test "an index past the end faults":
     var out: List[Int] = [0, 0]
-    let message = try expect_fault(
+    message := try expect_fault(
         fn:
             each(3, fn r: out[r] = 1)
     )

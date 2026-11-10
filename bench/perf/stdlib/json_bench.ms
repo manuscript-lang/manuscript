@@ -18,26 +18,26 @@ fn json_doc(count: Int) String:
     return sb.build()
 
 fn encoded_length(value: JsonValue) Int:
-    if let text = stringify(value): return text.length()
+    if text := stringify(value): return text.length()
 
     return 0
 
 // Reads three nested fields of one row in place, without copying any subtree.
 fn row_weight(tree: JsonValue, index: Int) Int:
-    if let row = tree.at(index):
+    if row := tree.at(index):
         var weight = 0
-        if let id = row.get("id"):
+        if id := row.get("id"):
             weight += id.as_int().get(0)
-        if let tags = row.get("tags"):
-            if let last = tags.at(-1):
-                if let tag = last.as_string():
+        if tags := row.get("tags"):
+            if last := tags.at(-1):
+                if tag := last.as_string():
                     weight += tag.length()
         return weight
 
     return 0
 
 bench "json.parse":
-    let doc = json_doc(5000)
+    doc := json_doc(5000)
 
     fn work() Result[Unit, Error]:
         if parse(doc).is_ok(): return keep(1)
@@ -47,19 +47,19 @@ bench "json.parse":
     try measure(5000, work)
 
 bench "json.roundtrip":
-    let doc = json_doc(5000)
+    doc := json_doc(5000)
 
     fn work() Result[Unit, Error]:
-        if let v = parse(doc): return keep(encoded_length(v))
+        if v := parse(doc): return keep(encoded_length(v))
 
         return keep(0)
 
     try measure(5000, work)
 
 bench "json.navigate":
-    let doc = json_doc(5000)
+    doc := json_doc(5000)
 
-    if let tree = parse(doc):
+    if tree := parse(doc):
         fn work() Result[Unit, Error]:
             var total = 0
             for i in 0..100000:

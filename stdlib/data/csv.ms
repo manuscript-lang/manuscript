@@ -26,8 +26,8 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
             line += 1
             start = i + 1
 
-    let before = bytes.decode_utf8_range(start, at).get("")
-    let column = before.length() + 1
+    before := bytes.decode_utf8_range(start, at).get("")
+    column := before.length() + 1
     return Error(
         "CSV {line}:{column}: {reason}",
         kind: "EBADMSG",
@@ -40,17 +40,17 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 // Parses CSV into rows of cells, using fresh default options when omitted.
 // `options.max_rows` and `options.max_cells` bound large inputs.
 export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[String]]!:
-    let rows_budget = budget(options.max_rows)
-    let cells_budget = budget(options.max_cells)
+    rows_budget := budget(options.max_rows)
+    cells_budget := budget(options.max_cells)
     if rows_budget < 0 or cells_budget < 0: return error(
         Error("CSV: invalid input", kind: "EINVAL")
     )
 
-    let valid = check_options(options)
+    valid := check_options(options)
     if valid.is_error(): return error(valid.err())
 
-    let bytes = text.to_bytes()
-    let total = bytes.length()
+    bytes := text.to_bytes()
+    total := bytes.length()
     var reader = Reader(
         bytes: bytes, total: total,
         delimiter: options.delimiter.scalar_values()[0].to_uint8().get(0),
@@ -61,13 +61,13 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
     var cells = 0
 
     while true:
-        let record = reader.read_record()
+        record := reader.read_record()
         if record.is_error(): return error(record.err())
 
-        let found = record.get()
+        found := record.get()
         if found.is_none(): break
 
-        let row = found.get()
+        row := found.get()
         if rows.length() >= rows_budget or row.length() > cells_budget - cells: return error(
             Error("CSV: limit exceeded", kind: "EOVERFLOW")
         )
@@ -79,16 +79,16 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 
 // The budget as a count, with no budget as a very large one and a negative budget as -1.
 fn budget(limit: Int?) Int:
-    if let value = limit: return value
+    if value := limit: return value
 
     return 9223372036854775807
 
 // Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
 fn check_options(options: CsvOptions) Unit!:
-    let scalars = options.delimiter.scalar_values()
+    scalars := options.delimiter.scalar_values()
     if scalars.length() != 1: return error(Error("CSV: invalid input", kind: "EINVAL"))
 
-    let delimiter = scalars[0]
+    delimiter := scalars[0]
     if (
         delimiter == 0
         or delimiter >= 128
@@ -132,7 +132,7 @@ impl Reader:
         return self.line_at
 
     fn text_between(start: Int, end: Int) String:
-        if let text = self.bytes.decode_utf8_range(start, end): return text
+        if text := self.bytes.decode_utf8_range(start, end): return text
 
         return ""
 
@@ -140,7 +140,7 @@ impl Reader:
     fn line_end_after(at: Int) Int:
         if at >= self.total: return at
 
-        let byte = self.bytes[at]
+        byte := self.bytes[at]
         if byte == 10: return at + 1
         if byte == 13 and at + 1 >= self.total: return at + 1
         if byte == 13 and self.bytes[at + 1] == 10: return at + 2
@@ -150,7 +150,7 @@ impl Reader:
     // Reads the next record, skipping empty lines; none at end of input.
     var fn read_record() List[String]?!:
         while true:
-            let skipped = self.line_end_after(self.at)
+            skipped := self.line_end_after(self.at)
             if skipped == self.at: break
 
             self.at = skipped
@@ -158,13 +158,13 @@ impl Reader:
         if self.at >= self.total: return ok(none)
 
         // A line without quotes is one record whose cells are the delimiter-separated pieces.
-        let line = self.next_line(self.at)
+        line := self.next_line(self.at)
 
         if self.next_quote(self.at) > line:
             var last = line
             if last > self.at and self.bytes[last - 1] == 13: last -= 1
 
-            let text = self.text_between(self.at, last)
+            text := self.text_between(self.at, last)
             self.at = line
             if line < self.total: self.at = line + 1
             return ok(text.split(self.delimiter_text))
@@ -178,12 +178,12 @@ impl Reader:
             if at < self.total and self.bytes[at] == 34:
                 at += 1
 
-                let start = at
+                start := at
                 var first_escape = -1
                 var multiple_escapes = false
 
                 while true:
-                    let close = self.next_quote(at)
+                    close := self.next_quote(at)
                     if close >= self.total: return error(
                         invalid_at(
                             self.bytes, self.at.to_int(), "unterminated quoted cell"
@@ -202,8 +202,8 @@ impl Reader:
                     break
 
                 if first_escape >= 0 and not multiple_escapes:
-                    let prefix = self.text_between(start, first_escape)
-                    let suffix = self.text_between(first_escape + 2, at - 1)
+                    prefix := self.text_between(start, first_escape)
+                    suffix := self.text_between(first_escape + 2, at - 1)
                     cell = "{prefix}\"{suffix}"
                 else:
                     cell = self.text_between(start, at - 1)
@@ -211,7 +211,7 @@ impl Reader:
 
                 if cell.contains("\r\n"): cell = cell.replace("\r\n", "\n")
 
-                let ended = self.line_end_after(at)
+                ended := self.line_end_after(at)
 
                 if at >= self.total or ended > at:
                     row.append(cell)
@@ -229,12 +229,12 @@ impl Reader:
                 self.at = at + 1
                 continue
 
-            let stop = self.next_delimiter(at)
-            let newline = self.next_line(at)
+            stop := self.next_delimiter(at)
+            newline := self.next_line(at)
             var end = stop
             if newline < stop: end = newline
 
-            let quote = self.next_quote(at)
+            quote := self.next_quote(at)
             if quote < end: return error(
                 invalid_at(
                     self.bytes, quote, "quote inside an unquoted cell"
@@ -268,7 +268,7 @@ type CsvRows:
 impl CsvRows:
     // Offset just past the last line end outside quotes in `data`, or 0 when the block holds none.
     var fn boundary(data: Bytes) Int:
-        let total = data.length()
+        total := data.length()
         var pos = 0
         var cut = 0
         var previous = self.pending_size
@@ -290,7 +290,7 @@ impl CsvRows:
             if quote < pos: quote = data.index_of_byte(34, pos).get(total)
 
             if line < quote:
-                let size = previous + line - cut
+                size := previous + line - cut
                 if size > self.longest: self.longest = size
                 previous = 0
                 cut = line + 1
@@ -306,16 +306,16 @@ impl CsvRows:
         return cut
 
     fn check_size(size: Int) Unit!:
-        if let limit = self.max_record_bytes:
+        if limit := self.max_record_bytes:
             if size > limit: return error(
                 Error("CSV: limit exceeded", kind: "EOVERFLOW")
             )
 
 impl Transform[Bytes, List[String]] for CsvRows:
     var fn step(value: Bytes, var out: List[List[String]]) Unit!:
-        let cut = self.boundary(value)
-        let rest = value.length() - cut
-        let size = if cut == 0: self.pending_size + rest else: rest
+        cut := self.boundary(value)
+        rest := value.length() - cut
+        size := if cut == 0: self.pending_size + rest else: rest
 
         if cut == 0:
             if not value.is_empty(): self.pending.append(value)
@@ -337,24 +337,24 @@ impl Transform[Bytes, List[String]] for CsvRows:
         try self.check_size(self.longest)
         try self.check_size(size)
 
-        let decoded = data.decode_utf8_range(0, end)
+        decoded := data.decode_utf8_range(0, end)
         if decoded.is_none(): return invalid_text()
 
-        let text = decoded.get("")
+        text := decoded.get("")
         return write_rows(try parse(text, self.options), var out)
 
     var fn finish(var out: List[List[String]]) Unit!:
-        let data = join(self.pending)
+        data := join(self.pending)
         self.pending = []
         self.pending_size = 0
         if data.is_empty(): return check_options(self.options)
 
         try self.check_size(data.length())
 
-        let decoded = data.decode_utf8()
+        decoded := data.decode_utf8()
         if decoded.is_none(): return invalid_text()
 
-        let text = decoded.get("")
+        text := decoded.get("")
         return write_rows(try parse(text, self.options), var out)
 
 fn invalid_text() Unit!:
@@ -398,16 +398,16 @@ export fn stringify(
     options: CsvOptions = CsvOptions(),
     max_bytes: Int? = none
 ) String!:
-    let limit = budget(max_bytes)
+    limit := budget(max_bytes)
     if limit < 0: return error(Error("CSV: invalid input", kind: "EINVAL"))
 
-    let valid = check_options(options)
+    valid := check_options(options)
     if valid.is_error(): return error(valid.err())
 
     var out = StringBuilder()
     var used = 0
-    let crlf = options.line_ending == "\r\n"
-    let delimiter = options.delimiter.scalar_values()[0]
+    crlf := options.line_ending == "\r\n"
+    delimiter := options.delimiter.scalar_values()[0]
 
     for row in rows:
         var line = ""
@@ -422,7 +422,7 @@ export fn stringify(
 
         line = "{line}{options.line_ending}"
 
-        let size = line.byte_length()
+        size := line.byte_length()
         if size > limit - used: return error(
             Error("CSV: limit exceeded", kind: "EOVERFLOW")
         )
@@ -433,13 +433,13 @@ export fn stringify(
     return ok(out.build())
 
 fn needs_quotes(field: String, delimiter: Int) Bool:
-    let scalars = field.scalar_values()
+    scalars := field.scalar_values()
     if scalars.is_empty(): return false
 
     for scalar in scalars:
         if scalar == 34 or scalar == 13 or scalar == 10 or scalar == delimiter: return true
 
-    let first = scalars[0]
+    first := scalars[0]
     if first <= 32 or first >= 127: return field.get(0).trim() == ""
 
     return scalars.length() == 2 and first == 92 and scalars[1] == 46
@@ -461,7 +461,7 @@ type CsvRowsSink:
 
 impl Sink[List[String]] for CsvRowsSink:
     var fn write(value: List[String]) Unit!:
-        let text = try stringify([value], self.options)
+        text := try stringify([value], self.options)
         return self.output.write(text.to_bytes())
 
     var fn flush() Unit!:

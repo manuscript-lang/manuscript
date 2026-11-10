@@ -185,7 +185,7 @@ export fn gen_c53() Unit:
         ">".repeat(20).get("") + " deep\n" + "> ".repeat(5).get("") + "x\n"
     )
 
-    let examples = [
+    examples := [
         cs.make(
             "basic",
             "# Title\n\nSome *emphasis*, **strong text** and `code`.\n\n- one\n- two\n  - nested\n\n> a quote\n"

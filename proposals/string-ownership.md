@@ -28,7 +28,7 @@ Measured (callgrind and `bench/perf/copy-report.sh` on #994 at 24afe08):
 - Memory arithmetic, not measured: a 28-byte string block (32-byte size class) becomes 4 bytes (16-byte class) without the header, about 16 MB for the 1M names in `records_1M_x20`.
 
 Measured dynamically (`bench/perf/str-counts.sh`, which compiles with `MS_COUNT_STR=1` against the counting runtime; on #994 at its head):
-- `competence`: 21.0M owned string copies (plus 1.0M static), 23.9M owned drops. Nearly all of it is `strmap_10M`, which executes two owned copies per iteration: the `let w = words.get(...)` binding and the `.clone()` the map keeps as its key. The map's copy is required (Rust clones there too); the `let` copy is a borrow the lowering still materializes, so about 10M of the 21M allocations are avoidable without any ownership change.
+- `competence`: 21.0M owned string copies (plus 1.0M static), 23.9M owned drops. Nearly all of it is `strmap_10M`, which executes two owned copies per iteration: the `w := words.get(...)` binding and the `.clone()` the map keeps as its key. The map's copy is required (Rust clones there too); the `let` copy is a borrow the lowering still materializes, so about 10M of the 21M allocations are avoidable without any ownership change.
 - stdlib bench (json, yaml, toml, csv, html, strings): 0.36M owned copies against 2.6M owned drops, so copies are rare next to temporaries.
 - `programs` and `kernels`: no string copies.
 

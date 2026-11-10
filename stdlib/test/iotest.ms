@@ -19,10 +19,10 @@ impl Source[Bytes] for OneByte:
     var fn next() Bytes?!:
         var data = "".to_bytes()
 
-        if let held = self.held:
+        if held := self.held:
             data = held.clone()
         else:
-            let fresh = try self.input.next()
+            fresh := try self.input.next()
             if fresh.is_none(): return ok(none)
 
             data = fresh.get().clone()
@@ -50,11 +50,11 @@ impl Source[Bytes] for FailAfter:
     var fn next() Bytes?!:
         if self.remaining <= 0: return error(self.cause.clone())
 
-        let chunk = try self.input.next()
+        chunk := try self.input.next()
 
-        if let data = chunk:
+        if data := chunk:
             if data.length() > self.remaining:
-                let head = try data.slice(0, self.remaining)
+                head := try data.slice(0, self.remaining)
                 self.remaining = 0
                 return ok(head)
 
@@ -81,14 +81,14 @@ type FailingSink:
 
 impl Sink[Bytes] for FailingSink:
     var fn write(value: Bytes) Unit!:
-        let size = value.length()
+        size := value.length()
 
         if size <= self.remaining:
             self.remaining -= size
             return self.output.write(value)
 
         // Like a full disk: the prefix that fits is written, then the write fails.
-        let prefix = self.remaining
+        prefix := self.remaining
         self.remaining = 0
         if prefix > 0:
             try self.output.write(try value.slice(0, prefix))
@@ -112,14 +112,14 @@ export fn fail_writer_after(
 // Checks that `make` builds a well-behaved `ReadStream[Bytes]` over exactly `expected`: whole reads, one-byte reads, and
 // an end of input that stays ended. `make` is called once per check so each starts from the beginning.
 export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
-    let all = read_all(make())
+    all := read_all(make())
     if all.is_error(): return fail("check_reader: reading everything failed")
     if all.get() != expected:
         return fail(
             "check_reader: read {all.get().length()} bytes, expected {expected.length()}; content differs"
         )
 
-    let slow = read_all(one_byte(make()))
+    slow := read_all(one_byte(make()))
     if slow.is_error(): return fail("check_reader: one-byte reads failed")
     if slow.get() != expected:
         return fail("check_reader: one-byte reads returned different content")
@@ -128,15 +128,15 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
     var total = 0
 
     while true:
-        let chunk = again.next()
+        chunk := again.next()
         if chunk.is_error(): return fail("check_reader: a read failed")
 
-        let piece = chunk.get()
+        piece := chunk.get()
         if piece.is_none(): break
 
         total += piece.get().length()
 
-    let after_end = again.next()
+    after_end := again.next()
     if after_end.is_error() or after_end.get().is_some():
         return fail("check_reader: a read after end of input must return none again")
     if total != expected.length():

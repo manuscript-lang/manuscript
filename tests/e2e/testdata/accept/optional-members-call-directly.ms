@@ -3,8 +3,8 @@ import expect_equal, expect_true from "@std/test/test.ms"
 fn fallback() Int: 9
 
 test "optional members":
-    let present: Int? = 3
-    let absent: Int? = none
+    present: Int? = 3
+    absent: Int? = none
     try expect_true((present.is_some() and present.is_some()))
     try expect_true((absent.is_none() and absent.is_none()))
     try expect_true((present.get(default: 7) == 3))

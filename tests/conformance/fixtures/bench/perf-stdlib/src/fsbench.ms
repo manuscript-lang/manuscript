@@ -3,7 +3,7 @@ import FileSystem, list, read_file, stat, temporary from "@std/os/fs.ms"
 import create, file_transport, Transport, Logger from "@std/log.ms"
 
 fn run(fs: FileSystem, root: String) Unit:
-    let data = "0123456789abcdef".repeat(4096).get("").to_bytes()
+    data := "0123456789abcdef".repeat(4096).get("").to_bytes()
 
     bench(
         "fs.write_file_64k",
@@ -28,7 +28,7 @@ fn run(fs: FileSystem, root: String) Unit:
         fn() Int:
             var n = 0
             for i in 0..200:
-                if let b = read_file("{root}/f{i}.bin").wait():
+                if b := read_file("{root}/f{i}.bin").wait():
                     n += b.length()
             return n
     )
@@ -48,18 +48,18 @@ fn run(fs: FileSystem, root: String) Unit:
         "fs.list_200",
         1,
         fn() Int:
-            if let entries = list(root):
+            if entries := list(root):
                 return entries.length()
 
             return 0
     )
 
 fn log_run(path: String) Unit:
-    if let transport = file_transport(path):
+    if transport := file_transport(path):
         log_with(transport)
 
 fn log_with(transport: Transport) Unit:
-    if let logger = create(transport, timestamp: false):
+    if logger := create(transport, timestamp: false):
         log_many(logger)
 
 fn log_many(logger: Logger) Unit:

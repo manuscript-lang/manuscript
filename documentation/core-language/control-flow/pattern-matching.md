@@ -5,7 +5,7 @@ weight = 3
 
 # Pattern matching
 
-`match` handles each case of an enum type and names the case's data. Use it for your own enums and contract views. For an Optional payload or Result success, use `if let` or `try` as described [below](#optional-and-result-values).
+`match` handles each case of an enum type and names the case's data. Use it for your own enums and contract views. For an Optional payload or Result success, use `if v := x` or `try` as described [below](#optional-and-result-values).
 
 `match` is an expression: it can initialize a binding, be an argument, or stand alone with its result discarded. The scrutinee evaluates once and only the selected arm runs. Save this complete example as `payment.ms` and run `ms run payment.ms`:
 
@@ -40,9 +40,9 @@ Each arm handles one case and gives its payload a local name. A newly added case
 Nested `match` is an anti-pattern. Bind the outer payload with an early exit, propagate with `try`, use Optional methods, or call a small helper (the contract handler below shows a helper).
 
 - `ms lint` reports **MSL107** at each inner match, including inside inline callbacks. Helpers and sequential matches are fine. The checker still accepts nesting; this is style only.
-- An `Optional` has no `some` pattern: the present arm is a bare lowercase name beside `none:` (`v:` binds the payload). A two-arm payload/`none` match is **MSL108**. Use [`if let`](conditionals.md#unwrapping-an-optional-or-result), `get(default)`, or `map`.
+- An `Optional` has no `some` pattern: the present arm is a bare lowercase name beside `none:` (`v:` binds the payload). A two-arm payload/`none` match is **MSL108**. Use [`if v := x`](conditionals.md#unwrapping-an-optional-or-result), `get(default)`, or `map`.
 
-Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `try`, `if let value = result:` with `else:`, or a Result method such as `get(default)`, `is_error`, or `err`.
+Matching a `Result` with only `ok` and `error` arms is flagged the same way as advisory **MSL109**. Use `try`, `if value := result:` with `else:`, or a Result method such as `get(default)`, `is_error`, or `err`.
 
 ## Matching literals
 
@@ -68,7 +68,7 @@ enum Cents:
     Invalid
 
 fn total(cents: Cents) Result[Int, Error]:
-    let amount = match cents:
+    amount := match cents:
         Valid(value):
             value
         Invalid:
@@ -123,7 +123,7 @@ Adding a case breaks matches without a wildcard; a wildcard absorbs it. Return c
 
 ## Optional and result values
 
-[Optional](../types/optionals.md) and [Result](../errors/results.md) are alternatives, but do not match them. Use `if let value = expression:` for a value or success, `get(default)` for a default, `try` to propagate an error, and `is_error()` with `err()` to read a cause.
+[Optional](../types/optionals.md) and [Result](../errors/results.md) are alternatives, but do not match them. Use `if value := expression:` for a value or success, `get(default)` for a default, `try` to propagate an error, and `is_error()` with `err()` to read a cause.
 
 ## Contract type patterns
 

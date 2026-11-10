@@ -14,8 +14,8 @@ fn open(name: String, fail: Bool) Door!String:
     return ok(Door(name))
 
 fn length_of(name: String, fail: Bool) Int!String:
-    let door = open(name, fail)
-    let length = (try door).name.length()
+    door := open(name, fail)
+    length := (try door).name.length()
     return ok(length)
 
 test "an error moves out of an owned local and an ok payload is read in place":

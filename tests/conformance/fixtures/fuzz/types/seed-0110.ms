@@ -6,18 +6,18 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (47 * ((-27) + (293475305059 + (-49))))
+    i1 := (47 * ((-27) + (293475305059 + (-49))))
     say("i1 = {i1}")
 
-    let fixed = 1
+    fixed := 1
     fixed = 2
 
-    let l2 = [14, (-1), (-24), (-23)]
+    l2 := [14, (-1), (-24), (-23)]
     say("l2 = {l2} len {l2.length()}")
 
-    let s3 = ("back\\slash" + "beta".upper().reverse())
+    s3 := ("back\\slash" + "beta".upper().reverse())
     say("s3 = [{s3}]")
     return 0

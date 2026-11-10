@@ -23,7 +23,7 @@ test "string keys order lexicographically":
     var map = SortedMap[String, Int]()
 
     for word in ["pear", "apple", "fig"]:
-        let size = word.length()
+        size := word.length()
         map.add(word, size)
 
     try expect_equal(map.keys(), ["apple", "fig", "pear"])
@@ -51,7 +51,7 @@ test "range is half open and spans chunks":
     for key in 0..3000:
         map.add(key * 2, key)
 
-    let hits = map.range(1000, 1010)
+    hits := map.range(1000, 1010)
     try expect_equal(hits.length(), 5)
     try expect_equal(hits.get(0).key, 1000)
     try expect_equal(hits.get(4).key, 1008)
@@ -67,7 +67,7 @@ test "many random operations agree with Map":
     for step in 0..20000:
         seed = (seed * 1103515245 + 12345) % 2147483648
 
-        let key = seed % 2000
+        key := seed % 2000
 
         if seed % 4 == 0:
             sorted.remove(key)
@@ -93,7 +93,7 @@ test "many random operations agree with Map":
             if candidate <= key:
                 expected = candidate
 
-        if let found = sorted.floor(key):
+        if found := sorted.floor(key):
             try expect_equal(found.key, expected)
         else:
             try expect_equal(expected, none)

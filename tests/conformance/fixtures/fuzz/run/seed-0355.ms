@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = (((853.080 + 128.431) * 315.014) * ((7.5 / 6.0e22) * 752.079))
+    f1 := (((853.080 + 128.431) * 315.014) * ((7.5 / 6.0e22) * 752.079))
     say("f1 = {f1}")
 
     if true:
@@ -17,13 +17,13 @@ export fn main() Int:
     else:
         say("brace\{s\}")
 
-    let i2 = ((27 * (-(-37))) * ((610474 + 12) - (0 + (-46))))
+    i2 := ((27 * (-(-37))) * ((610474 + 12) - (0 + (-46))))
     say("i2 = {i2}")
 
-    let i3 = (i2 - i2)
+    i3 := (i2 - i2)
     say("i3 = {i3}")
 
-    let l4 = [(-18), 8, 18]
+    l4 := [(-18), 8, 18]
     say("l4 = {l4} len {l4.length()}")
 
     if ("naïve" + "a").is_empty():

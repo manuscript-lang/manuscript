@@ -6,4 +6,4 @@ fn fail[T](message: String) Result[T, Error]: error(Error(message))
 
 fn first() Result[Int, Error]: fail("empty")  // T = Int
 
-let failed: Result[Int, Error] = fail("empty")
+failed: Result[Int, Error] = fail("empty")

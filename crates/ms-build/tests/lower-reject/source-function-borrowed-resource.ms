@@ -11,7 +11,7 @@ fn identity(r: Resource) Resource:
     return r
 
 export fn main() Int:
-    let f = identity
-    let r = Resource(7)
-    let out = f(r)
+    f := identity
+    r := Resource(7)
+    out := f(r)
     return out.id - 7

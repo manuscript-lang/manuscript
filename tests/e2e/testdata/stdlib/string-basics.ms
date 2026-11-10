@@ -5,7 +5,7 @@ test "Unicode lowercase sigma ignores combining marks and format characters":
         try expect_equal("A{mark}Σ".lower(), "a{mark}ς")
         try expect_equal("AΣ{mark}A".lower(), "aσ{mark}a")
 
-        let lower = "AΣ{mark}A".lower
+        lower := "AΣ{mark}A".lower
         try expect_equal(lower(), "aσ{mark}a")
 
 test "String basic counterparts are callable":
@@ -23,7 +23,7 @@ test "String basic counterparts are callable":
     try expect_equal("a\r\nb\n".lines(), ["a", "b"])
 
 test "length and chars use scalars and preserve text boundaries":
-    let text = "é🙂e\u{301}"
+    text := "é🙂e\u{301}"
     try expect_false(text.length() != 4 or text.length() != text.scalar_length())
     try expect_equal(text.chars(), ["é", "🙂", "e", "\u{301}"])
     try expect_equal("👩\u{200d}🚀".length(), 3)
@@ -31,7 +31,7 @@ test "length and chars use scalars and preserve text boundaries":
     try expect_false(not ("".chars().is_empty()) or "".length() != 0)
 
     var characters = text.chars()
-    let second = text.chars()
+    second := text.chars()
     characters.set(0, "changed")
     characters.append("new")
     try expect_false(second != ["é", "🙂", "e", "\u{301}"] or text != "é🙂e\u{301}")
@@ -43,7 +43,7 @@ test "reverse operates on scalars without normalization":
     try expect_equal("a\u{0}b".reverse(), "b\u{0}a")
     try expect_false("".reverse() != "" or "🙂".reverse() != "🙂")
 
-    let original = "é🙂e\u{301}"
+    original := "é🙂e\u{301}"
     try expect_equal(original.reverse().reverse(), original)
 
 test "compare is normalized sign and scalar lexical order":
@@ -54,7 +54,7 @@ test "compare is normalized sign and scalar lexical order":
     try expect_equal("\u{e000}".compare("\u{10000}"), -1)
     try expect_equal("a\u{0}".compare("a\u{1}"), -1)
 
-    let equal = "é🙂"
+    equal := "é🙂"
     try expect_equal(equal.compare(equal), 0)
 
 type LineCase:
@@ -62,7 +62,7 @@ type LineCase:
     expected: List[String]
 
 test "lines preserve interior empties and recognize LF and CRLF only":
-    let cases = [
+    cases := [
         LineCase("", []), LineCase("\n", [""]), LineCase("\r\n", [""]),
         LineCase("\n\n", ["", ""]), LineCase("\r\n\r\n", ["", ""]),
         LineCase("a\n", ["a"]), LineCase("a\r\n", ["a"]), LineCase("a\n\n", ["a", ""]),
@@ -80,20 +80,20 @@ test "String basic bound methods capture immutable receiver values":
     var text = "é\n🙂\n"
 
     // A method value borrows its receiver, so a snapshot that outlives a change is a clone.
-    let snapshot = text.clone()
-    let chars = snapshot.chars
-    let lines = snapshot.lines
-    let reverse = snapshot.reverse
-    let length = snapshot.length
-    let empty = snapshot.is_empty
-    let compare = snapshot.compare
+    snapshot := text.clone()
+    chars := snapshot.chars
+    lines := snapshot.lines
+    reverse := snapshot.reverse
+    length := snapshot.length
+    empty := snapshot.is_empty
+    compare := snapshot.compare
     text = "changed"
     try expect_false(chars() != ["é", "\n", "🙂", "\n"] or lines() != ["é", "🙂"])
     try expect_false((reverse() != "\n🙂\né" or length() != 4 or empty()))
     try expect_equal(compare("é\n🙂\n"), 0)
 
     var first = lines()
-    let second = lines()
+    second := lines()
     first.set(0, "changed")
     first.append("new")
     try expect_equal(second, ["é", "🙂"])

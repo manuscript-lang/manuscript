@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -29,30 +29,30 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let i1 = ((-43) - 318711)
+    i1 := ((-43) - 318711)
     say("i1 = {i1}")
     say("collatz(813) = {collatz(813)}")
 
-    let i2 = 39
+    i2 := 39
     say("i2 = {i2}")
 
-    let l3 = [21, 17, 7, (-21), 22]
+    l3 := [21, 17, 7, (-21), 22]
     say("l3 = {l3} len {l3.length()}")
 
     var l4 = l3.clone()
     l4.append(31)
     say("l4 = {l4} len {l4.length()}")
 
-    let s5 = (("日本語" + "line\nbreak").reverse() + "日本語")
+    s5 := (("日本語" + "line\nbreak").reverse() + "日本語")
     say("s5 = [{s5}]")
 
-    let i6 = i1
+    i6 := i1
     say("i6 = {i6}")
 
-    let i7 = (-i1)
+    i7 := (-i1)
     say("i7 = {i7}")
 
-    let s8 = s5.reverse().reverse().lower()
+    s8 := s5.reverse().reverse().lower()
     say("s8 = [{s8}]")
 
     if (not (408.436 == 359.458)):
@@ -60,16 +60,16 @@ export fn main() Int:
     else:
         say("x")
 
-    let b9 = true
+    b9 := true
     say("b9 = {b9}")
 
-    let i10 = (((-39) + (14 + i7)) - ((i7 + i7) + i1))
+    i10 := (((-39) + (14 + i7)) - ((i7 + i7) + i1))
     say("i10 = {i10}")
     say(
         "{i7} {((i10 + i6) * (i1 / i1))} {(i7 < ((i10 + i6) * (i1 / i1)))} sum {i7 + ((i10 + i6) * (i1 / i1))}"
     )
 
-    let i11 = (((14 / 49) * (i10 * 7)) * ((i10 - (-20)) - (i2 % (-2))))
+    i11 := (((14 / 49) * (i10 * 7)) * ((i10 - (-20)) - (i2 % (-2))))
     say("i11 = {i11}")
 
     var acc12 = 0
@@ -77,10 +77,10 @@ export fn main() Int:
         acc12 += i * (-1)
     say("acc12 = {acc12}")
 
-    let s13 = s8
+    s13 := s8
     say("s13 = [{s13}]")
     say("gcd(1036, 1576) = {gcd(1036, 1576)}")
 
-    let f14 = 866.604
+    f14 := 866.604
     say("f14 = {f14}")
     return 0

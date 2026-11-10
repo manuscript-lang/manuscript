@@ -4,7 +4,7 @@ import (
 )
 
 test "calendar format keeps token boundaries and literal text":
-    let moment = timestamp(1710073815, 250999999).get()
+    moment := timestamp(1710073815, 250999999).get()
     try expect_equal(moment.format("", "UTC").get(), "")
     try expect_equal(moment.format("literal", "UTC").get(), "literal")
     try expect_equal(
@@ -21,13 +21,13 @@ test "calendar format keeps token boundaries and literal text":
         "日付 2024 年 03 月 10 日 🕰 12:30:15"
     )
 
-    let bad_zone: String! = error(Error("time: invalid input", kind: "EINVAL"))
+    bad_zone: String! = error(Error("time: invalid input", kind: "EINVAL"))
     try expect_equal(moment.format("", "Nowhere/City"), bad_zone)
     try expect_equal(moment.format("literal", "Nowhere/City"), bad_zone)
 
 test "calendar format retains minimum widths outside UTC year limits":
-    let first = timestamp(-62135596800, 0).get()
-    let last = timestamp(253402300799, 999999999).get()
+    first := timestamp(-62135596800, 0).get()
+    last := timestamp(253402300799, 999999999).get()
     try expect_equal(
         first.format("YYYY-MM-DD HH:mm:ss.SSS ZZ [zone]", "-23:59").get(),
         "0000-12-31 00:01:00.000 -23:59 [-23:59]"

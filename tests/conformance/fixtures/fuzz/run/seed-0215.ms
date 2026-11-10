@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,22 +15,22 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let b1 = ("brace\{s\}" + "x".upper()).starts_with("MiXeD CaSe")
+    b1 := ("brace\{s\}" + "x".upper()).starts_with("MiXeD CaSe")
     say("b1 = {b1}")
 
-    let l2 = [21, (-23)]
+    l2 := [21, (-23)]
     say("l2 = {l2} len {l2.length()}")
 
-    let s3 = "alpha".reverse().reverse().trim()
+    s3 := "alpha".reverse().reverse().trim()
     say("s3 = [{s3}]")
 
-    let l4 = l2.sorted(fn a, b: a.compare(b))
+    l4 := l2.sorted(fn a, b: a.compare(b))
     say("l4 = {l4} len {l4.length()}")
 
-    let i5 = ((-((-8) - (-14))) + (22 / (47 + 15)))
+    i5 := ((-((-8) - (-14))) + (22 / (47 + 15)))
     say("i5 = {i5}")
 
-    let f6 = ((332.238 * 0.0) / (712.866 * 287.565))
+    f6 := ((332.238 * 0.0) / (712.866 * 287.565))
     say("f6 = {f6}")
     say(
         "{(((-37) + i5) * (i5 * 22))} {(26 + (i5 + 50))} {((((-37) + i5) * (i5 * 22)) < (26 + (i5 + 50)))} sum {(((-37) + i5) * (i5 * 22)) + (26 + (i5 + 50))}"
@@ -42,18 +42,18 @@ export fn main() Int:
     say("acc7 = {acc7}")
     say("fact(19) = {fact(19)}")
 
-    let l8 = l4.sorted(fn a, b: a.compare(b))
+    l8 := l4.sorted(fn a, b: a.compare(b))
     say("l8 = {l8} len {l8.length()}")
 
-    let b9 = (
+    b9 := (
         ("{(i5 + i5)}:" + "hello world").ends_with("42")
         or ((s3 != s3) and (b1 or b1))
     )
     say("b9 = {b9}")
 
-    let i10 = (((i5 * 29) * (-i5)) - ((i5 % 14) % (-19)))
+    i10 := (((i5 * 29) * (-i5)) - ((i5 % 14) % (-19)))
     say("i10 = {i10}")
 
-    let l11 = l4.sorted(fn a, b: a.compare(b))
+    l11 := l4.sorted(fn a, b: a.compare(b))
     say("l11 = {l11} len {l11.length()}")
     return 0

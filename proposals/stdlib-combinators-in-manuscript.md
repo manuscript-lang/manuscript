@@ -33,7 +33,7 @@ interface OptionalMap[T]:
 
 impl OptionalMap[T] for Optional[T]:
     def map[U](transform: Callable[[T], U]) -> Optional[U]:
-        if let value = self:
+        if value := self:
             return some(transform(value))
         return none
 ```

@@ -4,8 +4,8 @@ import (
 )
 
 fn work() Unit!:
-    let expected = try "A".repeat(1048576)
-    let data = expected.to_bytes()
+    expected := try "A".repeat(1048576)
+    data := expected.to_bytes()
     var checksum = 0
     for unused in 0..32:
         checksum += (try ascii_decode(data)).byte_length()

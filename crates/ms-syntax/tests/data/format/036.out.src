@@ -9,14 +9,14 @@ fn generated(rng: Rng, depth: Int) TomlValue:
     var choices = 7
     if depth > 2: choices = 4
 
-    let kind = next(rng, choices)
+    kind := next(rng, choices)
     if kind == 0: return TomlValue.BoolValue(next(rng, 2) == 0)
     if kind == 1: return TomlValue.IntValue(next(rng, 200000) - 100000)
     if kind == 2: return TomlValue.FloatValue((next(rng, 2000) - 1000).to_float() / 8.0)
     if kind == 3: return TomlValue.StringValue(text(rng))
 
     if kind == 4:
-        let items: List[TomlValue] = []
+        items: List[TomlValue] = []
         for item in range(0, next(rng, 4)):
             items.append(generated(rng, depth + 1))
         return TomlValue.ArrayValue(items)
@@ -24,16 +24,16 @@ fn generated(rng: Rng, depth: Int) TomlValue:
     return table(rng, depth + 1)
 
 fn table(rng: Rng, depth: Int) TomlValue:
-    let entries: Map[String, TomlValue] = {}
+    entries: Map[String, TomlValue] = {}
     for item in range(0, next(rng, 4)):
         entries.add(text(rng), generated(rng, depth))
     return TomlValue.TableValue(entries)
 
 fn check_round_trip(seed: Int, original: TomlValue) Result[Unit, Error]:
-    let rendered = try stringify(original)
+    rendered := try stringify(original)
     if (try parse(rendered)) != original: return fail(
         "seed {seed}: changed\n{rendered}"
     )
 
 fn check_stable(seed: Int, mutated: String, first: TomlValue) Result[Unit, Error]:
-    let again = try str
+    again := try str

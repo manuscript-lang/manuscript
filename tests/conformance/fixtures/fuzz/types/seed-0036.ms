@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (-1)
+    i1 := (-1)
     say("i1 = {i1}")
 
-    let s2 = "naïve"
+    s2 := "naïve"
     say("s2 = [{s2}]")
 
-    let fixed = 1
+    fixed := 1
     fixed = 2
     say(
         "{((i1 * i1) / (6 + 36))} {((i1 - (-6)) + (i1 % i1))} {(((i1 * i1) / (6 + 36)) < ((i1 - (-6)) + (i1 % i1)))} sum {((i1 * i1) / (6 + 36)) + ((i1 - (-6)) + (i1 % i1))}"

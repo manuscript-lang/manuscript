@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = "beta".lower().replace("  padded  ", "line\nbreak").lower()
+    s1 := "beta".lower().replace("  padded  ", "line\nbreak").lower()
     say("s1 = [{s1}]")
 
-    let b2 = (((0.5 * 443.823) < (667.432 + 409.25)) or ("日本語" != s1.trim()))
+    b2 := (((0.5 * 443.823) < (667.432 + 409.25)) or ("日本語" != s1.trim()))
     say("b2 = {b2}")
 
     var acc3 = 0
@@ -24,9 +24,9 @@ export fn main() Int:
 
     say("acc3 = {acc3}")
 
-    let i4 = (-25)
+    i4 := (-25)
     say("i4 = {i4}")
 
-    let i6 = (-((219135 * i4) / (i4 + 18)))
+    i6 := (-((219135 * i4) / (i4 + 18)))
     say("i6 = {i6}")
     return 0

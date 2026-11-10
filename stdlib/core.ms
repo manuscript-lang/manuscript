@@ -113,7 +113,7 @@ impl T?:
     // Reports whether this value is absent.
     fn is_none() Bool: ...
 
-    // Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if let value = optional:` unless absence is a bug.
+    // Returns the payload, or `default` when this is `none`; pass a default or unwrap with `if value := optional:` unless absence is a bug.
     // Without a default, `none` raises a fault.
     fn get(default: T?) T: ...
 

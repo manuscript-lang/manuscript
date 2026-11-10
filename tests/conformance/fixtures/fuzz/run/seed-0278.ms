@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -31,11 +31,11 @@ fn collatz(start: Int) Int:
 export fn main() Int:
     say("fact(8) = {fact(8)}")
 
-    let i1 = ((-8) + 994705843623)
+    i1 := ((-8) + 994705843623)
     say("i1 = {i1}")
     say("collatz(652) = {collatz(652)}")
 
-    let l2 = [20, 6, (-17), 9]
+    l2 := [20, 6, (-17), 9]
     say("l2 = {l2} len {l2.length()}")
 
     if true:
@@ -43,32 +43,32 @@ export fn main() Int:
     else:
         say("hello world")
 
-    let s3 = (("x" + "") + "  padded  ")
+    s3 := (("x" + "") + "  padded  ")
     say("s3 = [{s3}]")
 
-    let i4 = (l2.length() + ((-11) * (36 + (-50))))
+    i4 := (l2.length() + ((-11) * (36 + (-50))))
     say("i4 = {i4}")
 
-    let b5 = (("{i4}:" + "ms") + ("{((-985442) * i4)}:" + "héllo")).starts_with(s3)
+    b5 := (("{i4}:" + "ms") + ("{((-985442) * i4)}:" + "héllo")).starts_with(s3)
     say("b5 = {b5}")
 
-    let f6 = (((964.25 - 5.5) * (139.348 - 0.0)) + (843.221 - (452.771 + 251.531)))
+    f6 := (((964.25 - 5.5) * (139.348 - 0.0)) + (843.221 - (452.771 + 251.531)))
     say("f6 = {f6}")
     say("fact(10) = {fact(10)}")
 
-    let s7 = (("{s3.length()}:" + "alpha") + s3.lower()).lower()
+    s7 := (("{s3.length()}:" + "alpha") + s3.lower()).lower()
     say("s7 = [{s7}]")
 
-    let s8 = ("{(i4 + i4)}:" + "Tab\there").upper().trim()
+    s8 := ("{(i4 + i4)}:" + "Tab\there").upper().trim()
     say("s8 = [{s8}]")
 
-    let l9 = l2.filter(fn x: x > 3)
+    l9 := l2.filter(fn x: x > 3)
     say("l9 = {l9} len {l9.length()}")
 
-    let i10 = ((-(i4 % (-14))) - (-(i4 + 49)))
+    i10 := ((-(i4 % (-14))) - (-(i4 + 49)))
     say("i10 = {i10}")
 
-    let b11 = true
+    b11 := true
     say("b11 = {b11}")
 
     if ("ms" + "gamma").is_empty():
@@ -76,15 +76,15 @@ export fn main() Int:
     else:
         say(("{(-30)}:" + ""))
 
-    let i12 = i10
+    i12 := i10
     say("i12 = {i12}")
 
-    let s13 = (s7 + "hello world").lower().replace("x", "delta")
+    s13 := (s7 + "hello world").lower().replace("x", "delta")
     say("s13 = [{s13}]")
 
-    let b14 = true
+    b14 := true
     say("b14 = {b14}")
 
-    let big15 = ((-40) + i10) - ((-40) + i10)
+    big15 := ((-40) + i10) - ((-40) + i10)
     say("{((-40) + i10) / big15}")
     return 0

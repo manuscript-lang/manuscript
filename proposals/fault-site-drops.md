@@ -14,7 +14,7 @@ Proposal, 2026-10-25, checked against `16291da3`. Coordinator direction: own #13
 
 ## Problem
 
-- Repro: a buffered handler holds `let big = "x".repeat(1000000).get("")`, indexes an empty list with `big.length()`, then uses `big`. Measured on `6003f16b`, 300 faulting requests: RSS 1.5 MB before, 297 MB after. Freed on a non-faulting path.
+- Repro: a buffered handler holds `big := "x".repeat(1000000).get("")`, indexes an empty list with `big.length()`, then uses `big`. Measured on `6003f16b`, 300 faulting requests: RSS 1.5 MB before, 297 MB after. Freed on a non-faulting path.
 - Cause 1: `msrt_unwind_drops` is true only when `msrt_cancelled` unwinds a guarded task (`ms-rt/src/fault.rs`); a fault leaves it false, so generated drop cleanups do nothing.
 - Cause 2: `ms-mir/src/unwind.rs` registers cleanups only around calls that can reach a cancellation point (`parks_at`). Faults arise at checked arithmetic, list and optional ops and `Term::Fault`, none of which register anything, and inlining moves callee fault sites into the caller.
 - Non-goals: closing OS resources (`with` closers already run on fault), changing which faults are recoverable, and the TaskGroup child-fault catch itself.

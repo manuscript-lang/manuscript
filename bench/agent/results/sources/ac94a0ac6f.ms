@@ -10,9 +10,9 @@ fn read_rows() List[String]:
     var more = true
 
     while more:
-        let item = it.next().get()
+        item := it.next().get()
 
-        if let line = item:
+        if line := item:
             rows.append(line)
         else:
             more = false
@@ -20,7 +20,7 @@ fn read_rows() List[String]:
     return rows
 
 export fn main() Int:
-    let all = read_rows()
+    all := read_rows()
 
     // Trailing empty lines are ignored.
     var h = all.length()
@@ -29,14 +29,14 @@ export fn main() Int:
 
     // 1. Bad characters, in reading order.
     for r in 0..h:
-        let cells = all[r].chars()
+        cells := all[r].chars()
 
         for c in 0..cells.length():
-            let ch = cells[c]
+            ch := cells[c]
 
             if ch != "#" and ch != "." and ch != "S" and ch != "E":
-                let row_no = r + 1
-                let col_no = c + 1
+                row_no := r + 1
+                col_no := c + 1
                 print("error: bad character at {row_no},{col_no}")
                 return 0
 
@@ -60,10 +60,10 @@ export fn main() Int:
     var ec = 0
 
     for r in 0..h:
-        let cells = all[r].chars()
+        cells := all[r].chars()
 
         for c in 0..w:
-            let ch = cells[c]
+            ch := cells[c]
             grid.append(ch.clone())
 
             if ch == "S":
@@ -94,40 +94,40 @@ export fn main() Int:
         return 0
 
     // Breadth-first search from S to E.
-    let total = h * w
+    total := h * w
     var dist = List[Int]()
     for i in 0..total:
         dist.append(-1)
 
-    let start = sr * w + sc
-    let goal = er * w + ec
+    start := sr * w + sc
+    goal := er * w + ec
     dist[start] = 0
 
     var queue = List[Int]()
     queue.append(start)
 
-    let dr = [-1, 1, 0, 0]
-    let dc = [0, 0, -1, 1]
+    dr := [-1, 1, 0, 0]
+    dc := [0, 0, -1, 1]
     var head = 0
     var answer = -1
 
     while head < queue.length():
-        let cur = queue[head]
+        cur := queue[head]
         head += 1
 
         if cur == goal:
             answer = dist[cur]
             break
 
-        let r = cur / w
-        let c = cur % w
+        r := cur / w
+        c := cur % w
 
         for k in 0..4:
-            let nr = r + dr[k]
-            let nc = c + dc[k]
+            nr := r + dr[k]
+            nc := c + dc[k]
 
             if nr >= 0 and nr < h and nc >= 0 and nc < w:
-                let ni = nr * w + nc
+                ni := nr * w + nc
 
                 if grid[ni] != "#" and dist[ni] == -1:
                     dist[ni] = dist[cur] + 1

@@ -16,7 +16,7 @@ fn parse(n: Int) Int!Error:
     return ok(value: n)
 
 fn matched(n: Int) Int:
-    let found = halve(n: n)
+    found := halve(n: n)
 
     match found:
         v:
@@ -25,7 +25,7 @@ fn matched(n: Int) Int:
             return 0 - 1
 
 fn twice(n: Int) Int:
-    let found = halve(n: n)
+    found := halve(n: n)
     var total = 0
 
     match found:
@@ -43,7 +43,7 @@ fn twice(n: Int) Int:
     return total
 
 fn results(n: Int) String:
-    let parsed = parse(n: n)
+    parsed := parse(n: n)
 
     match parsed:
         ok(v):
@@ -52,12 +52,12 @@ fn results(n: Int) String:
             return cause.message
 
 fn formatted(n: Int) String:
-    let found = halve(n: n)
+    found := halve(n: n)
     return "{found}"
 
 fn captured(n: Int) Int:
-    let found = halve(n: n)
-    let read = fn() Int:
+    found := halve(n: n)
+    read := fn() Int:
         match found:
             v:
                 return v

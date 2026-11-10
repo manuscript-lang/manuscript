@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -20,43 +20,43 @@ export fn main() Int:
         acc1 += i * 6
     say("acc1 = {acc1}")
 
-    let i2 = 195125
+    i2 := 195125
     say("i2 = {i2}")
 
-    let l3 = [1, 2, 3].take(0)
+    l3 := [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
     say("fact(10) = {fact(10)}")
 
-    let s4 = "  padded  ".reverse()
+    s4 := "  padded  ".reverse()
     say("s4 = [{s4}]")
 
-    let b5 = (
+    b5 := (
         (not "emoji 😀".ends_with(s4))
         and ("line\nbreak".trim() == s4.replace("héllo", "x"))
     )
     say("b5 = {b5}")
 
-    let s6 = "  padded  ".replace(s4, "日本語").replace(s4, "MiXeD CaSe").replace(
+    s6 := "  padded  ".replace(s4, "日本語").replace(s4, "MiXeD CaSe").replace(
         "back\\slash", "naïve"
     )
     say("s6 = [{s6}]")
 
-    let b7 = (s4.length() >= i2)
+    b7 := (s4.length() >= i2)
     say("b7 = {b7}")
 
-    let l8 = l3.filter(fn x: x > (-4))
+    l8 := l3.filter(fn x: x > (-4))
     say("l8 = {l8} len {l8.length()}")
 
-    let i9 = ((i2 * (-i2)) % ((i2 - i2) - i2))
+    i9 := ((i2 * (-i2)) % ((i2 - i2) - i2))
     say("i9 = {i9}")
 
-    let i10 = 26
+    i10 := 26
     say("i10 = {i10}")
 
-    let i11 = l8.length()
+    i11 := l8.length()
     say("i11 = {i11}")
 
-    let i12 = (i2 + 50)
+    i12 := (i2 + 50)
     say("i12 = {i12}")
 
     if ((914.132 - 81.111) == (595.25 + 786.106)):
@@ -64,7 +64,7 @@ export fn main() Int:
     else:
         say(s4.trim())
 
-    let i13 = (-86388573707)
+    i13 := (-86388573707)
     say("i13 = {i13}")
 
     var acc14 = 0

@@ -10,8 +10,8 @@ type Config:
     enabled: Bool = true
 
 fn run() Result[Unit, Error]:
-    let text = arguments().get(0, default: "\{\"name\":\"Sam\"\}")
-    let encoded = try parse[Config](text)
+    text := arguments().get(0, default: "\{\"name\":\"Sam\"\}")
+    encoded := try parse[Config](text)
         | try stringify
     try stdout().write("{encoded}\n")
     return stdout().flush()

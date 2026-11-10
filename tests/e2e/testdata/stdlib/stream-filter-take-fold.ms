@@ -19,16 +19,14 @@ impl Source[Int] for Counting:
         return ok(unit)
 
 test "filter keeps matching items in order":
-    let kept = try collect(
-        from_list([1, 2, 3, 4, 5, 6]) | filter(fn x: x % 2 == 0), none
-    )
+    kept := try collect(from_list([1, 2, 3, 4, 5, 6]) | filter(fn x: x % 2 == 0), none)
     try expect_equal(kept, [2, 4, 6])
     try expect_equal(
         try collect(from_list([1, 3]) | filter(fn x: x % 2 == 0), none), List[Int]()
     )
 
 test "take stops after count items and never reads past them":
-    let first = try collect(ReadStream[Int](Counting(0, 0)) | take(3), none)
+    first := try collect(ReadStream[Int](Counting(0, 0)) | take(3), none)
     try expect_equal(first, [1, 2, 3])
     try expect_equal(try collect(from_list([1, 2]) | take(5), none), [1, 2])
     try expect_equal(try collect(from_list([1, 2]) | take(0), none), List[Int]())
@@ -39,7 +37,7 @@ test "fold combines items from a start value":
     try expect_equal(try fold(from_list(List[Int]()), 7, fn s, x: s + x), 7)
 
 test "stages compose over an endless stream":
-    let out = try collect(
+    out := try collect(
         ReadStream[Int](Counting(0, 0)) | filter(fn x: x > 2) | map(
             fn x: x * 10
         ) | take(3),
@@ -63,7 +61,7 @@ impl Source[Int] for Intermittent:
 
 test "take does not spend its last item on a failed read":
     var source = ReadStream[Int](Intermittent()) | take(1)
-    let reason = source.next() | try expect_error
+    reason := source.next() | try expect_error
     try expect_equal(reason, Error("retry this read", kind: "EAGAIN"))
     try expect_equal(try source.next(), 2)
     try expect_equal(try source.next(), none)
@@ -76,7 +74,7 @@ test "take preserves its remaining items across errors in composed stages":
 
     for expected in [40, 80]:
         for failed in 0..2:
-            let reason = source.next() | try expect_error
+            reason := source.next() | try expect_error
             try expect_equal(reason, Error("retry this read", kind: "EAGAIN"))
 
         try expect_equal(try source.next(), expected)

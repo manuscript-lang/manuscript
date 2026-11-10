@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     if ("brace\{s\}".trim() != ("{(8 % 47)}:" + "brace\{s\}")):
@@ -19,6 +19,6 @@ export fn main() Int:
     else:
         say("quote\"d".lower())
 
-    let f1 = (8.0e20 * 7.5)
+    f1 := (8.0e20 * 7.5)
     say("f1 = {f1}")
     return 0

@@ -21,15 +21,15 @@ fn noop() Unit:
 fn check_equality(side: String, mutation: String) Unit!:
     var left: List[Element] = []
     var right: List[Element] = []
-    let calls = Visits(0)
+    calls := Visits(0)
 
-    let visit = fn:
+    visit := fn:
         calls.count = calls.count + 1
         if calls.count != 1:
             return
 
-        let target = if side == "right": right else: left
-        let next_action = target[1].on_equal
+        target := if side == "right": right else: left
+        next_action := target[1].on_equal
 
         if mutation == "shrink" or mutation == "shrink_mismatch":
             target.splice(0, target.length(), [])
@@ -59,13 +59,13 @@ fn check_equality(side: String, mutation: String) Unit!:
     if mutation == "shrink_mismatch":
         right.set(2, Element(99, visit))
 
-    let expected = (
+    expected := (
         mutation != "shrink_mismatch"
         and mutation != "append_write"
         and mutation != "overwrite"
     )
-    let expected_calls = if mutation == "append_write" or mutation == "overwrite": 2 else: 3
-    let same = left == right
+    expected_calls := if mutation == "append_write" or mutation == "overwrite": 2 else: 3
+    same := left == right
     if same != expected or calls.count != expected_calls: return fail(
         "{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
     )

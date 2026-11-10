@@ -4,5 +4,5 @@
 fn subtract(amount: Int, deduction: Int) Int: amount - deduction
 
 fn run() Int:
-    let number = 10
+    number := 10
     return subtract(number, 3)

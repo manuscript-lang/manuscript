@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -31,14 +31,14 @@ fn collatz(start: Int) Int:
 export fn main() Int:
     say("fact(7) = {fact(7)}")
 
-    let i1 = (((-(-4)) + ((-23) / 35)) + (((-580576040681) - (-6)) + (776008 * 48)))
+    i1 := (((-(-4)) + ((-23) / 35)) + (((-580576040681) - (-6)) + (776008 * 48)))
     say("i1 = {i1}")
 
-    let s2 = "back\\slash"
+    s2 := "back\\slash"
     say("s2 = [{s2}]")
     say("collatz(402) = {collatz(402)}")
 
-    let s3 = ("a".reverse() + (s2 + s2).trim())
+    s3 := ("a".reverse() + (s2 + s2).trim())
     say("s3 = [{s3}]")
     say("collatz(2715) = {collatz(2715)}")
     say(
@@ -50,24 +50,24 @@ export fn main() Int:
     else:
         say(("line\nbreak" + "beta"))
 
-    let s4 = "quote\"d"
+    s4 := "quote\"d"
     say("s4 = [{s4}]")
 
-    let i5 = (-32)
+    i5 := (-32)
     say("i5 = {i5}")
 
-    let b6 = true
+    b6 := true
     say("b6 = {b6}")
 
-    let i7 = (4 - (i1 - (i5 + i5)))
+    i7 := (4 - (i1 - (i5 + i5)))
     say("i7 = {i7}")
 
-    let s8 = s4.trim().reverse()
+    s8 := s4.trim().reverse()
     say("s8 = [{s8}]")
 
-    let i9 = ((((-36) * i5) * (i1 + (-47))) + s4.length())
+    i9 := ((((-36) * i5) * (i1 + (-47))) + s4.length())
     say("i9 = {i9}")
 
-    let f10 = (931.008 + ((627.133 * 984.269) * (492.149 / 872.883)))
+    f10 := (931.008 + ((627.133 * 984.269) * (492.149 / 872.883)))
     say("f10 = {f10}")
     return 0

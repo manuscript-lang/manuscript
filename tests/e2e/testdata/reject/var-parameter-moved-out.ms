@@ -1,6 +1,6 @@
 fn rewrap(var xs: List[Int]) Unit:
     // Binding the caller's value elsewhere moves it out of the parameter.
-    let old = xs
+    old := xs
     xs = [old.length()]
 
 export fn main() Int:

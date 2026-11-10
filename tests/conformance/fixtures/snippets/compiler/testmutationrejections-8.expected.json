@@ -9,12 +9,12 @@
       {
         "code": "MS3060",
         "phase": "type",
-        "message": "cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'",
+        "message": "cannot assign immutable binding value; declare it with 'var value = ...' instead of 'value := ...'",
         "position": {
           "file": "testmutationrejections-8.ms",
           "line": 6,
           "column": 5,
-          "offset": 173
+          "offset": 170
         },
         "fix": {
           "position": {
@@ -26,17 +26,17 @@
           "end": {
             "file": "testmutationrejections-8.ms",
             "line": 5,
-            "column": 8,
-            "offset": 158
+            "column": 13,
+            "offset": 163
           },
-          "replacement": "var"
+          "replacement": "var value ="
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testmutationrejections-8.ms:6:5: type: cannot assign immutable binding value; declare it with 'var value = ...' instead of 'let'\n   |\n 6 |     value += 1\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testmutationrejections-8.ms:6:5: type: cannot assign immutable binding value; declare it with 'var value = ...' instead of 'value := ...'\n   |\n 6 |     value += 1\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

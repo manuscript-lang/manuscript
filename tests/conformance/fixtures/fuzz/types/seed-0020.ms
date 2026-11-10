@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (not ((7 <= 914516) and ("alpha" == "héllo")))
+    b1 := (not ((7 <= 914516) and ("alpha" == "héllo")))
     say("b1 = {b1}")
 
     var acc2 = 0
@@ -17,7 +17,7 @@ export fn main() Int:
         acc2 += i * 8
     say("acc2 = {acc2}")
 
-    let bad = [1, "two"]
-    let l3 = [(-23), 28]
+    bad := [1, "two"]
+    l3 := [(-23), 28]
     say("l3 = {l3} len {l3.length()}")
     return 0

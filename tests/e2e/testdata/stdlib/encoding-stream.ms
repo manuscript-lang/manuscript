@@ -23,7 +23,7 @@ impl Source[Bytes] for Chunks:
         var end = self.at + self.size
         if end > self.data.length(): end = self.data.length()
 
-        let piece = try self.data.slice(self.at, end)
+        piece := try self.data.slice(self.at, end)
         self.at = end
         return ok(piece)
 
@@ -41,7 +41,7 @@ impl Source[String] for Texts:
     var fn next() String?!:
         if self.at >= self.parts.length(): return ok(none)
 
-        let part = self.parts[self.at].clone()
+        part := self.parts[self.at].clone()
         self.at += 1
         return ok(part)
 
@@ -66,9 +66,9 @@ fn join_text(input: ReadStream[String]) String!:
     var out = ""
 
     while true:
-        let next = try source.next()
+        next := try source.next()
 
-        if let text = next:
+        if text := next:
             out = out.concat(text)
         else:
             break
@@ -80,9 +80,9 @@ fn join_bytes(input: ReadStream[Bytes]) Bytes!:
     var out: List[Bytes] = []
 
     while true:
-        let next = try source.next()
+        next := try source.next()
 
-        if let data = next:
+        if data := next:
             out.append(data)
         else:
             break
@@ -90,32 +90,30 @@ fn join_bytes(input: ReadStream[Bytes]) Bytes!:
     return ok(join(out))
 
 test "base64 encoding matches the whole-value function under every chunk size":
-    let data = "hello, streams! \u{0}\u{ff}~~??".to_bytes()
+    data := "hello, streams! \u{0}\u{ff}~~??".to_bytes()
 
     for size in 1..data.length() + 1:
         for url_safe in [false, true]:
-            let got = try join_text(
-                base64_encoded(chunked(data.clone(), size), url_safe)
-            )
+            got := try join_text(base64_encoded(chunked(data.clone(), size), url_safe))
             if got != base64_encode(data.clone(), url_safe): return fail(
                 "size {size} url_safe {url_safe}"
             )
 
 test "base64 decoding matches under every text piece size":
-    let data = "hello, streams! \u{0}\u{ff}~~??".to_bytes()
-    let text = base64_encode(data.clone())
+    data := "hello, streams! \u{0}\u{ff}~~??".to_bytes()
+    text := base64_encode(data.clone())
 
     for size in 1..text.length() + 1:
-        let got = try join_bytes(
+        got := try join_bytes(
             base64_decoded(ReadStream[String](Texts(pieces(text, size), 0)))
         )
         if got != data: return fail("size {size}")
 
 test "base64 decoding rejects malformed text and truncated groups":
-    let bad = join_bytes(base64_decoded(ReadStream[String](Texts(["aGVs", "bG8*"], 0))))
+    bad := join_bytes(base64_decoded(ReadStream[String](Texts(["aGVs", "bG8*"], 0))))
     try expect_equal(bad.err().kind, "EBADMSG")
 
-    let cut = join_bytes(base64_decoded(ReadStream[String](Texts(["aGVsb"], 0))))
+    cut := join_bytes(base64_decoded(ReadStream[String](Texts(["aGVsb"], 0))))
     try expect_equal(cut.err().kind, "EBADMSG")
 
 test "base64 decoding rejects data after padding at every chunk boundary":
@@ -124,9 +122,9 @@ test "base64 decoding rejects data after padding at every chunk boundary":
             try expect_equal(base64_decode(text, url_safe).err().kind, "EBADMSG")
 
             for cut in 0..text.length() + 1:
-                let left = text.slice(0, cut).get("")
-                let right = text.slice(cut, text.length()).get("")
-                let got = join_bytes(
+                left := text.slice(0, cut).get("")
+                right := text.slice(cut, text.length()).get("")
+                got := join_bytes(
                     base64_decoded(
                         ReadStream[String](
                             Texts([left, "", right], 0)
@@ -140,9 +138,9 @@ test "base64 decoding permits empty chunks after terminal padding":
     for text in ["Zg==", "Zm8=", "Zm9v", ""]:
         for url_safe in [false, true]:
             for cut in 0..text.length() + 1:
-                let left = text.slice(0, cut).get("")
-                let right = text.slice(cut, text.length()).get("")
-                let got = try join_bytes(
+                left := text.slice(0, cut).get("")
+                right := text.slice(cut, text.length()).get("")
+                got := try join_bytes(
                     base64_decoded(
                         ReadStream[String](
                             Texts(
@@ -174,17 +172,17 @@ test "base64 terminal padding survives a rejected read":
     try expect_equal(try later_chunk.next(), none)
 
 test "hex steps round trip under every chunk size":
-    let data = "hex \u{0}\u{ff} data".to_bytes()
+    data := "hex \u{0}\u{ff} data".to_bytes()
 
     for size in 1..data.length() + 1:
-        let text = try join_text(hex_encoded(chunked(data.clone(), size)))
+        text := try join_text(hex_encoded(chunked(data.clone(), size)))
         if text != hex_encode(data.clone()): return fail("encode size {size}")
 
-        let back = try join_bytes(
+        back := try join_bytes(
             hex_decoded(ReadStream[String](Texts(pieces(text, size), 0)))
         )
         if back != data: return fail("decode size {size}")
 
 test "hex decoding rejects an odd tail":
-    let outcome = join_bytes(hex_decoded(ReadStream[String](Texts(["abc"], 0))))
+    outcome := join_bytes(hex_decoded(ReadStream[String](Texts(["abc"], 0))))
     try expect_equal(outcome.err().kind, "EBADMSG")

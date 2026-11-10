@@ -6,12 +6,12 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [23, 14, (-15), (-19), 18]
+    l1 := [23, 14, (-15), (-19), 18]
     say("l1 = {l1} len {l1.length()}")
 
-    let s2 = (("a" + "brace\{s\}") + "alpha").replace("naïve", "a")
+    s2 := (("a" + "brace\{s\}") + "alpha").replace("naïve", "a")
     say("s2 = [{s2}]")
     return 0

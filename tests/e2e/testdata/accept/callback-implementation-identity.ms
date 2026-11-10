@@ -32,8 +32,8 @@ fn forward[T: Forward](value: T) Int: value.forward()
 fn reverse[T: Reverse](value: T) Int: value.reverse()
 
 test "callback modes select their exact implementation in either declaration order":
-    let plain = Box[fn(Int) Int](identity)
-    let changing = Box[fn(var Int) Int](increment)
+    plain := Box[fn(Int) Int](identity)
+    changing := Box[fn(var Int) Int](increment)
     try expect_equal(plain.forward(), 1)
     try expect_equal(changing.forward(), 2)
     try expect_equal(plain.reverse(), 3)
@@ -44,18 +44,18 @@ test "callback modes select their exact implementation in either declaration ord
     try expect_equal(reverse(changing), 4)
 
 test "interface views and method values retain exact callback identity":
-    let plain = Box[fn(Int) Int](identity)
-    let changing = Box[fn(var Int) Int](increment)
-    let first: Forward = plain
-    let second: Forward = changing
-    let third: Reverse = plain
-    let fourth: Reverse = changing
+    plain := Box[fn(Int) Int](identity)
+    changing := Box[fn(var Int) Int](increment)
+    first: Forward = plain
+    second: Forward = changing
+    third: Reverse = plain
+    fourth: Reverse = changing
     try expect_equal(first.forward(), 1)
     try expect_equal(second.forward(), 2)
     try expect_equal(third.reverse(), 3)
     try expect_equal(fourth.reverse(), 4)
 
-    let read_plain = plain.forward
-    let read_changing = changing.forward
+    read_plain := plain.forward
+    read_changing := changing.forward
     try expect_equal(read_plain(), 1)
     try expect_equal(read_changing(), 2)

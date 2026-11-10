@@ -2,7 +2,7 @@
 // local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c52
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-let SETUP = "CREATE TABLE dept (id INT PRIMARY KEY, name TEXT NOT NULL, city TEXT);\nCREATE TABLE emp (id INT PRIMARY KEY, name TEXT NOT NULL, dept_id INT, salary INT, title TEXT);\nINSERT INTO dept VALUES (1, 'Engineering', 'Berlin'), (2, 'Sales', 'Paris'), (3, 'Support', NULL), (4, 'Legal', 'Rome');\nINSERT INTO emp VALUES\n  (1, 'Alice', 1, 120, 'lead'),\n  (2, 'Bob', 1, 100, 'dev'),\n  (3, 'Carol', 2, 90, 'rep'),\n  (4, 'Dan', 2, 95, 'rep'),\n  (5, 'Eve', NULL, 70, NULL),\n  (6, 'Frank', 3, 60, 'agent'),\n  (7, 'Grace', 1, 100, 'dev'),\n  (8, 'Heidi', 3, NULL, 'agent');\n"
+SETUP := "CREATE TABLE dept (id INT PRIMARY KEY, name TEXT NOT NULL, city TEXT);\nCREATE TABLE emp (id INT PRIMARY KEY, name TEXT NOT NULL, dept_id INT, salary INT, title TEXT);\nINSERT INTO dept VALUES (1, 'Engineering', 'Berlin'), (2, 'Sales', 'Paris'), (3, 'Support', NULL), (4, 'Legal', 'Rome');\nINSERT INTO emp VALUES\n  (1, 'Alice', 1, 120, 'lead'),\n  (2, 'Bob', 1, 100, 'dev'),\n  (3, 'Carol', 2, 90, 'rep'),\n  (4, 'Dan', 2, 95, 'rep'),\n  (5, 'Eve', NULL, 70, NULL),\n  (6, 'Frank', 3, 60, 'agent'),\n  (7, 'Grace', 1, 100, 'dev'),\n  (8, 'Heidi', 3, NULL, 'agent');\n"
 
 fn add(var cs: Cases, name: String, script: String, setup: Bool = true) Unit:
     cs.push(name, (if setup: SETUP else: "") + script)
@@ -12,19 +12,19 @@ fn gen_big() String:
     var lines = [
         "CREATE TABLE sales (id INT PRIMARY KEY, region TEXT, item TEXT, qty INT, price INT, note TEXT);"
     ]
-    let regions = ["north", "south", "east", "west"]
-    let items = ["bolt", "nut", "gear", "cog", "pin", "cam"]
+    regions := ["north", "south", "east", "west"]
+    items := ["bolt", "nut", "gear", "cog", "pin", "cam"]
     var vals = List[String]()
     var x = 7
 
     for i in 1..121:
         x = (x * 31 + 17) % 1009
 
-        let r = regions[x % 4]
-        let it = items[x / 4 % 6]
-        let qty = x % 13 + 1
-        let price = x / 7 % 50 + 5
-        let note = if x % 9 == 0: "NULL" else: "'n{x % 5}'"
+        r := regions[x % 4]
+        it := items[x / 4 % 6]
+        qty := x % 13 + 1
+        price := x / 7 % 50 + 5
+        note := if x % 9 == 0: "NULL" else: "'n{x % 5}'"
         vals.append("({i}, '{r}', '{it}', {qty}, {price}, {note})")
 
     var i = 0
@@ -41,7 +41,7 @@ fn gen_big() String:
 
 export fn gen_c52() Unit:
     var cs = Cases(build_oracle("c52-sql-engine"))
-    let big = gen_big()
+    big := gen_big()
     add(
         var cs, "basic-ddl-dml",
         "SELECT * FROM dept;\nSELECT name, salary FROM emp WHERE salary > 95 ORDER BY name;\nUPDATE emp SET salary = salary + 5 WHERE dept_id = 2;\nSELECT name, salary FROM emp WHERE dept_id = 2;\nDELETE FROM emp WHERE salary IS NULL;\nSELECT COUNT(*) FROM emp;\n"
@@ -211,7 +211,7 @@ export fn gen_c52() Unit:
         setup: false
     )
 
-    let examples = [
+    examples := [
         cs.make(
             "basic",
             SETUP

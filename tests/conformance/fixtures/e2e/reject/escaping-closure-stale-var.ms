@@ -2,9 +2,9 @@
 // conform: phase=check
 fn make() fn(Int) Int:
     var offset = 1
-    let factory = fn() fn(Int) Int:
+    factory := fn() fn(Int) Int:
         return fn inner:
             return inner + offset
-    let nested = factory()
+    nested := factory()
     offset = 100
     return nested

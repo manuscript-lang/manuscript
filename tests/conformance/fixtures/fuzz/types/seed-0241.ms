@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [8, (-26), (-27)]
+    l1 := [8, (-26), (-27)]
     say("l1 = {l1} len {l1.length()}")
 
-    let bad = undefined_name + 1
-    let f2 = 802.975
+    bad := undefined_name + 1
+    f2 := 802.975
     say("f2 = {f2}")
 
     if ((f2 < 993.124) and false):
@@ -21,9 +21,9 @@ export fn main() Int:
     else:
         say("日本語")
 
-    let i3 = l1.get(1)
+    i3 := l1.get(1)
     say("i3 = {i3}")
 
-    let b4 = (((i3 % 696172565637) / ((-16) * i3)) != (i3 * i3))
+    b4 := (((i3 % 696172565637) / ((-16) * i3)) != (i3 * i3))
     say("b4 = {b4}")
     return 0

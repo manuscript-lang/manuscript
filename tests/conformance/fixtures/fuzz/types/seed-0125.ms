@@ -6,26 +6,26 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = (835.339 - ((767.825 - 72.369) + (729.914 * 8.5)))
+    f1 := (835.339 - ((767.825 - 72.369) + (729.914 * 8.5)))
     say("f1 = {f1}")
 
-    let b2 = (14 > (381190 + (-30)))
+    b2 := (14 > (381190 + (-30)))
     say("b2 = {b2}")
 
-    let i3 = ((((-25) - 16) * (10 - 22)) * (((-520858064075) % 450058) * (23 - 40)))
+    i3 := ((((-25) - 16) * (10 - 22)) * (((-520858064075) % 450058) * (23 - 40)))
     say("i3 = {i3}")
 
-    let l4 = [13]
+    l4 := [13]
     say("l4 = {l4} len {l4.length()}")
 
-    let l5 = l4.map(fn x: x * 3)
+    l5 := l4.map(fn x: x * 3)
     say("l5 = {l5} len {l5.length()}")
 
-    let b6 = (((-(-262003)) + 572648243236) == ((-22) + (-i3)))
+    b6 := (((-(-262003)) + 572648243236) == ((-22) + (-i3)))
     say("b6 = {b6}")
 
-    let bad = Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get(1, 2, 3)
     return 0

@@ -26,10 +26,10 @@ fn count() Int:
     )
 
 test "compact formatting preserves behavior":
-    let values = [1, 2, 2, 4, 3, 6]  // Keep this list compact.
-    let nested = [[1, 2], [3, 4]]
-    let invalid = ["", "[1,", "\{\"a\" 1\}", "tru", "[1] x", "\"abc"]
-    let mapped = [1, 2, 3, 4, 5, 6].map(
+    values := [1, 2, 2, 4, 3, 6]  // Keep this list compact.
+    nested := [[1, 2], [3, 4]]
+    invalid := ["", "[1,", "\{\"a\" 1\}", "tru", "[1] x", "\"abc"]
+    mapped := [1, 2, 3, 4, 5, 6].map(
         transform: fn(value: Int) Int: return (value + 1)
     )
     values | try expect_equal(expected: [1, 2, 2, 4, 3, 6])

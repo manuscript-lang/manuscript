@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=pkg/lexer/lexer_test.go:131 TestDelimiterContinuationMayDedentBelowSuite
 fn f() Int:
-    let _x = (1 + 2)
+    _x := (1 + 2)
     return 0

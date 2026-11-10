@@ -41,7 +41,7 @@ impl Challenge:
 
     // `which` is `examples` (visible to the agent) or `hidden`.
     fn cases(which: String) List[Case]:
-        let text = (
+        text := (
             read_file("{self.dir}/{which}/cases.json")
             .wait()
             .get()
@@ -66,10 +66,8 @@ export type Lang:
 // The extension of the solution file, such as `.ms`.
 impl Lang:
     fn suffix() String:
-        let base = self.solution.split("/").last().get("")
-        if let at = base.last_index_of("."): return base.slice(
-            at, base.length()
-        ).get("")
+        base := self.solution.split("/").last().get("")
+        if at := base.last_index_of("."): return base.slice(at, base.length()).get("")
 
         return ""
 
@@ -80,7 +78,7 @@ fn text_of(file: String) String:
     return read_file(file).wait().get().decode_utf8().get("")
 
 fn field(doc: JsonValue, key: String) String:
-    if let value = doc.get(key): return value.as_string().get("")
+    if value := doc.get(key): return value.as_string().get("")
 
     return ""
 
@@ -92,14 +90,12 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
         names.append(entry.name.clone())
 
     for name in names.sorted():
-        let dir = "{root()}/challenges/{name}"
-        let meta_text = read_file("{dir}/challenge.json").wait()
+        dir := "{root()}/challenges/{name}"
+        meta_text := read_file("{dir}/challenge.json").wait()
         if not meta_text.is_ok(): continue
 
-        let m = parse[Meta](meta_text.get().decode_utf8().get("")).get(
-            Meta("", "", 0, 5)
-        )
-        let wanted = (
+        m := parse[Meta](meta_text.get().decode_utf8().get("")).get(Meta("", "", 0, 5))
+        wanted := (
             ids.is_empty()
             or ids.any(fn i: (name == i or name.starts_with("{i}-")))
         )
@@ -114,7 +110,7 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 
 // Languages named in `ids` (all when empty), in file order; an unknown id stops the program.
 export fn load_languages(ids: List[String]) List[Lang]:
-    let doc = parse(text_of("{root()}/languages.json")).get(JsonValue.Null)
+    doc := parse(text_of("{root()}/languages.json")).get(JsonValue.Null)
     var out = List[Lang]()
     var known = List[String]()
 
@@ -122,14 +118,14 @@ export fn load_languages(ids: List[String]) List[Lang]:
         known.append(entry.key.clone())
         if not ids.is_empty() and not ids.contains(entry.key): continue
 
-        let d = entry.value
+        d := entry.value
         var context = List[String]()
-        if let items = d.get("context"):
+        if items := d.get("context"):
             for item in items.as_list().get([]):
                 context.append(item.as_string().get(""))
 
         var template = entry.key.clone()
-        if let t = d.get("template"): template = t.as_string().get(entry.key)
+        if t := d.get("template"): template = t.as_string().get(entry.key)
         out.append(
             Lang(
                 entry.key.clone(), field(d, "name"), field(d, "solution"),
@@ -137,7 +133,7 @@ export fn load_languages(ids: List[String]) List[Lang]:
             )
         )
 
-    let unknown = ids.filter(fn i: not known.contains(i))
+    unknown := ids.filter(fn i: not known.contains(i))
     if not unknown.is_empty(): panic("unknown languages: {unknown.join(", ")}")
     return out
 
@@ -148,13 +144,13 @@ export fn cost_from_tokens(
     tokens_out: Int,
     model: String
 ) Float:
-    let table = parse(text_of("{root()}/pricing.json")).get(JsonValue.Null)
+    table := parse(text_of("{root()}/pricing.json")).get(JsonValue.Null)
     var p = table.get("default").get(JsonValue.Null)
-    if let own = table.get(model): p = own.clone()
+    if own := table.get(model): p = own.clone()
 
-    let input = p.get("input").get(JsonValue.Null).as_float().get(0.0)
-    let cached_input = p.get("cached_input").get(JsonValue.Null).as_float().get(0.0)
-    let output = p.get("output").get(JsonValue.Null).as_float().get(0.0)
+    input := p.get("input").get(JsonValue.Null).as_float().get(0.0)
+    cached_input := p.get("cached_input").get(JsonValue.Null).as_float().get(0.0)
+    output := p.get("output").get(JsonValue.Null).as_float().get(0.0)
     return (
         (
             tokens_in.to_float() * input

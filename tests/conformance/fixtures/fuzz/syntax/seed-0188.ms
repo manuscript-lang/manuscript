@@ -6,11 +6,11 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     say("s1 = [{s1}]")
 
-    let i2 = ((-29) + ((9223372036854775806 / 27) - (-27)))
+    i2 := ((-29) + ((9223372036854775806 / 27) - (-27)))
     say("i2 = {i2}")
     return 0

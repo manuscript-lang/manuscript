@@ -12,13 +12,13 @@
           "file": "testclonedrecordretainsfilehandlelifetime-1-fmt.ms",
           "line": 45,
           "column": 15,
-          "offset": 1053
+          "offset": 1032
         },
         "end": {
           "file": "testclonedrecordretainsfilehandlelifetime-1-fmt.ms",
           "line": 45,
           "column": 40,
-          "offset": 1078
+          "offset": 1057
         }
       }
     ],

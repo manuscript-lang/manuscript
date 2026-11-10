@@ -4,7 +4,7 @@ import (
 )
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    _ignored := stdout().write(text)
 
 fn k_fma(a: List[Float32], b: List[Float32], var out: List[Float32], n: Int) Unit:
     for i in 0..n:
@@ -34,7 +34,7 @@ fn k_base(
 
 fn k_clamp(a: List[Float32], var out: List[Float32], n: Int) Unit:
     for i in 0..n:
-        let v = a[i]
+        v := a[i]
         out[i] = if v < 0.0: 0.0 else: (if v > 1.0: 1.0 else: v)
 
 fn k_conv(a: List[Int], var out: List[Float], n: Int) Unit:
@@ -51,7 +51,7 @@ fn report(name: String, flops: Int, reps: Int, t: Int) Unit:
     say("{name} {(flops * reps).to_float() / t.to_float()}\n")
 
 fn main() Unit:
-    let n = 4096
+    n := 4096
     var f1 = List[Float32]()
     var f2 = List[Float32]()
     var fo = List[Float32]()
@@ -71,7 +71,7 @@ fn main() Unit:
         i2.append(k % 13)
         io.append(0)
 
-    let reps = 100000
+    reps := 100000
     var t = monotonic()
     for _r in 0..reps:
         k_fma(f1, f2, var fo, n)

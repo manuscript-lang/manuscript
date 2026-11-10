@@ -25,15 +25,15 @@ fn all_digits(s: String) Bool:
     return true
 
 fn parse_entry(line: String) Entry?:
-    let parts = line.split(" ")
+    parts := line.split(" ")
     if parts.length() != 6: return none
 
-    let ts = parts[0]
-    let level = parts[1]
-    let method = parts[2]
-    let path = parts[3]
-    let status = parts[4]
-    let latency = parts[5]
+    ts := parts[0]
+    level := parts[1]
+    method := parts[2]
+    path := parts[3]
+    status := parts[4]
+    latency := parts[5]
     if ts.length() == 0: return none
     if not (level == "DEBUG" or level == "INFO" or level == "WARN" or level == "ERROR"): return none
     if not (
@@ -64,9 +64,9 @@ fn stat_cmp(a: PathStat, b: PathStat) Int:
     return a.path.compare(b.path)
 
 export fn main() Int:
-    let data = read_all(stdin()).get()
-    let text = data.decode_utf8().get("")
-    let lines = text.split("\n")
+    data := read_all(stdin()).get()
+    text := data.decode_utf8().get("")
+    lines := text.split("\n")
     var malformed = 0
     var debug_n = 0
     var info_n = 0
@@ -82,7 +82,7 @@ export fn main() Int:
     for line in lines:
         if is_blank(line): continue
 
-        if let e = parse_entry(line):
+        if e := parse_entry(line):
             entries.append(e)
         else:
             malformed += 1
@@ -93,14 +93,14 @@ export fn main() Int:
     var slowest = -1
 
     for i in 0..entries.length():
-        let e = entries[i]
+        e := entries[i]
 
         if e.level == "DEBUG": debug_n += 1
         else if e.level == "INFO": info_n += 1
         else if e.level == "WARN": warn_n += 1
         else: error_n += 1
 
-        let d = e.status / 100
+        d := e.status / 100
 
         if d == 2: s2 += 1
         else if d == 3: s3 += 1
@@ -119,7 +119,7 @@ export fn main() Int:
             totals[e.path.clone()] = e.latency
 
     var out = StringBuilder()
-    let n = entries.length()
+    n := entries.length()
     out.append("valid: {n}\n")
     out.append("malformed: {malformed}\n")
     out.append("DEBUG: {debug_n}\n")
@@ -133,10 +133,10 @@ export fn main() Int:
     else:
         lats.sort()
 
-        let rank = (95 * n + 99) / 100
+        rank := (95 * n + 99) / 100
         out.append("p95: {lats[rank - 1]}\n")
 
-        let s = entries[slowest]
+        s := entries[slowest]
         out.append("slowest: {s.latency} {s.method} {s.path} {s.ts}\n")
 
     out.append("top:\n")
@@ -149,7 +149,7 @@ export fn main() Int:
     for i in 0..3:
         if i >= stats.length(): break
 
-        let st = stats[i]
+        st := stats[i]
         out.append("{st.path} {st.count} avg={st.total / st.count}\n")
 
     stdout().write(out.build()).get()

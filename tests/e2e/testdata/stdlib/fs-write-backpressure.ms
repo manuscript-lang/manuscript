@@ -9,15 +9,15 @@ fn write_one(path: String, data: Bytes) fn() Unit!:
     return fn: write_file(path.clone(), data, replace: true).wait()
 
 test "more large writes than pool slots all complete":
-    let dir = temporary("manuscript-backpressure-") | try expect_ok
-    let data = ("x".repeat(256 * 1024) | try expect_ok).to_bytes()
+    dir := temporary("manuscript-backpressure-") | try expect_ok
+    data := ("x".repeat(256 * 1024) | try expect_ok).to_bytes()
     var writers: List[Promise[Unit]] = []
     for index in 0..24:
         writers.append(promise(write_one("{dir.path()}/f{index}", data.clone())))
 
-    let done = wait_all(writers) | try expect_ok
+    done := wait_all(writers) | try expect_ok
     done.length() | try expect_equal(24)
 
     for index in 0..24:
-        let back = read_file("{dir.path()}/f{index}").wait() | try expect_ok
+        back := read_file("{dir.path()}/f{index}").wait() | try expect_ok
         back.length() | try expect_equal(256 * 1024)

@@ -2,10 +2,10 @@ import expect_equal, expect_true from "@std/test/test.ms"
 
 test "snapshot captures":
     var offset = 3
-    let first = fn():
+    first := fn():
         return offset
     offset = 99
-    let second = fn():
+    second := fn():
 ?        return true
     first() | try expect_equal(expected: 3)
     second() | try expect_true

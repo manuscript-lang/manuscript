@@ -6,21 +6,21 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = (
+    f1 := (
         ((35.673 - 154.004) - (900.861 + 0.0))
         - ((309.491 + 711.365) * (6.5 * 7.0e-3))
     )
     say("f1 = {f1}")
 
-    let bad = (1 < 2) < 3
+    bad := (1 < 2) < 3
     say(
         "{((32 % 50) + (-9))} {(-782998)} {(((32 % 50) + (-9)) < (-782998))} sum {((32 % 50) + (-9)) + (-782998)}"
     )
 
-    let s2 = "a"
+    s2 := "a"
     say("s2 = [{s2}]")
 
     if (not (false and false)):
@@ -28,9 +28,9 @@ export fn main() Int:
     else:
         say(s2)
 
-    let i3 = 9223372036854775806
+    i3 := 9223372036854775806
     say("i3 = {i3}")
 
-    let i4 = (((547515 + 8) - i3) + s2.length())
+    i4 := (((547515 + 8) - i3) + s2.length())
     say("i4 = {i4}")
     return 0

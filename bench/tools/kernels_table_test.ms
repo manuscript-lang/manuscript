@@ -10,7 +10,7 @@ import (
 )
 
 fn trial(version: String, suite: String, micros: Int) List[String]:
-    let names = suite_names(suite).filter(fn n: not omitted(version).contains(n))
+    names := suite_names(suite).filter(fn n: not omitted(version).contains(n))
     var lines = names.map(fn name: "{version} {name} {micros} 1")
     lines.append("{version} # end")
     return lines
@@ -26,27 +26,27 @@ fn kernel_versions() List[String]:
 
 test "complete rotating trials preserve minimum and columns":
     for suite in ["kernels", "competence"]:
-        let versions = if suite == "kernels": kernel_versions() else: base_versions()
+        versions := if suite == "kernels": kernel_versions() else: base_versions()
         var rotated = versions.slice(1, versions.length()).get([])
         rotated.append(versions[0].clone())
 
-        let lines = trials(versions, suite, 100).concat(trials(rotated, suite, 50))
-        let report = try expect_ok(summarize(lines, suite, 2, versions))
+        lines := trials(versions, suite, 100).concat(trials(rotated, suite, 50))
+        report := try expect_ok(summarize(lines, suite, 2, versions))
         try expect_contains(report, "Minimum of 2 rotating runs")
         try expect_contains(report, "| ms / rust | ms / rust-checked |")
         try expect_contains(report, "| {suite_names(suite)[0]} | 50 | 50 | 1.00x")
 
 test "ablation versions and folded times":
-    let versions = kernel_versions().concat(ablations())
-    let report = try expect_ok(
+    versions := kernel_versions().concat(ablations())
+    report := try expect_ok(
         summarize(trials(versions, "kernels", 0), "kernels", 1, versions)
     )
     try expect_contains(report, "c-ms-unchecked us")
     try expect_contains(report, "folded")
 
 test "plain C omits map_count and reports n/a":
-    let versions = kernel_versions()
-    let report = try expect_ok(
+    versions := kernel_versions()
+    report := try expect_ok(
         summarize(trials(versions, "kernels", 100), "kernels", 1, versions)
     )
     try expect_contains(
@@ -54,14 +54,14 @@ test "plain C omits map_count and reports n/a":
         "| map_count_2M | 100 | 100 | 1.00x | 100 | 1.00x | 100 | 1.00x | n/a | n/a |"
     )
 
-    let with_map = trials(versions, "kernels", 100).concat(["c map_count_2M 100 1"])
-    let _extra = try expect_error(summarize(with_map, "kernels", 1, versions))
+    with_map := trials(versions, "kernels", 100).concat(["c map_count_2M 100 1"])
+    _extra := try expect_error(summarize(with_map, "kernels", 1, versions))
 
 test "rejects invalid evidence":
-    let versions = kernel_versions()
-    let good = trials(versions, "kernels", 100)
-    let omitted = suite_names("kernels")[0]
-    let last = good.length() - 1
+    versions := kernel_versions()
+    good := trials(versions, "kernels", 100)
+    omitted := suite_names("kernels")[0]
+    last := good.length() - 1
     var truncated = good.clone()
     truncated.remove(last)
 
@@ -94,26 +94,26 @@ test "rejects invalid evidence":
         good.concat(["unrecognized output"])
     ]
     for lines in cases:
-        let _cause = try expect_error(summarize(lines, "kernels", 1, versions))
+        _cause := try expect_error(summarize(lines, "kernels", 1, versions))
 
-    let _zero = try expect_error(summarize(good, "kernels", 0, versions))
-    let _short = try expect_error(summarize(good, "kernels", 1, base_versions()))
+    _zero := try expect_error(summarize(good, "kernels", 0, versions))
+    _short := try expect_error(summarize(good, "kernels", 1, base_versions()))
 
 test "a late checksum mismatch produces no report":
     var lines = trials(kernel_versions(), "kernels", 100)
     lines[lines.length() - 2] = lines[lines.length() - 2].replace(" 1", " 2")
 
-    let cause = try expect_error(summarize(lines, "kernels", 1, kernel_versions()))
+    cause := try expect_error(summarize(lines, "kernels", 1, kernel_versions()))
     try expect_contains(cause.message, "checksums differ")
 
 test "a producer that fails or prints nothing is rejected":
-    let failed = Ran(true, 42, "", "boom")
-    let _failure = try expect_error(must("producer", failed))
-    let missing = Ran(false, 125, "", "cannot start")
-    let _start = try expect_error(must("producer", missing))
-    let fine = Ran(true, 0, "ok", "")
+    failed := Ran(true, 42, "", "boom")
+    _failure := try expect_error(must("producer", failed))
+    missing := Ran(false, 125, "", "cannot start")
+    _start := try expect_error(must("producer", missing))
+    fine := Ran(true, 0, "ok", "")
     try expect_equal(try expect_ok(must("producer", fine)), "ok")
 
-    let versions = kernel_versions()
-    let empty = trials(versions.slice(0, 5).get([]), "kernels", 100)
-    let _empty = try expect_error(summarize(empty, "kernels", 1, versions))
+    versions := kernel_versions()
+    empty := trials(versions.slice(0, 5).get([]), "kernels", 100)
+    _empty := try expect_error(summarize(empty, "kernels", 1, versions))

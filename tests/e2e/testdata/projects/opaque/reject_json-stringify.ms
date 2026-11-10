@@ -4,5 +4,5 @@ import (
 )
 
 export fn main() Int:
-    let s = stringify(approve("u"))
+    s := stringify(approve("u"))
     return 0

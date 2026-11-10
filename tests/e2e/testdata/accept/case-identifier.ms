@@ -19,16 +19,16 @@ fn present(value: Int?) Int:
 test "case is an ordinary identifier in declarations and patterns":
     try expect_equal(case(7), 8)
 
-    let case = 3
-    let item = Item(case: case)
+    case := 3
+    item := Item(case: case)
     try expect_equal(item.case, 3)
 
-    let value = PayloadKeyword.case(9)
+    value := PayloadKeyword.case(9)
 
     match value:
         case(number): try expect_equal(number, 9)
 
-    let flag = NullaryKeyword.case
+    flag := NullaryKeyword.case
 
     match flag:
         case: try expect_equal(case, 3)

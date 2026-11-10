@@ -4,10 +4,10 @@ fn apply(value: Int, transform: fn(value: Int) Int) Int:
     return transform(value: value)
 
 test "function suite boundaries":
-    let calls: List[Int] = []
-    let dormant = fn() Unit:
+    calls: List[Int] = []
+    dormant := fn() Unit:
         calls.append(1)
-    let grouped = apply(
+    grouped := apply(
         transform: (
             fn(value):
                 if value > 0:
@@ -17,7 +17,7 @@ test "function suite boundaries":
         ),
         value: 3
     )
-    let final_argument = apply(
+    final_argument := apply(
         value: 3,
         transform: fn(value):
             return value - 1

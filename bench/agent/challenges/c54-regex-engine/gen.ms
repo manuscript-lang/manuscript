@@ -7,7 +7,7 @@ fn rep(text: String, count: Int) String:
 
 fn line(cmd: String, pat: String, subj: String = "", repl: String? = none) String:
     var fields = [cmd, pat, subj]
-    if let r = repl:
+    if r := repl:
         fields.append(r)
     return fields.join("\t") + "\n"
 
@@ -443,7 +443,7 @@ export fn gen_c54() Unit:
         )
     )
 
-    let batch = [
+    batch := [
         "a", "a", "a", "b", "^a$", "a", "^a$", "ab", "a|b", "c", "\\d\{3\}", "12",
         "\\d\{3\}", "123", "[aeiou]\{2\}", "xaex", "(ab)+$", "abab", "(ab)+$", "aba",
         "\\bcat\\b", "a cat!", "\\bcat\\b", "concat", "^\\s*$", "   ", "^\\s*$", " x ",
@@ -458,7 +458,7 @@ export fn gen_c54() Unit:
 
     cs.push("test-batch", tests)
 
-    let examples = [
+    examples := [
         cs.make(
             "basic",
             M("(\\d+)-(\\d+)", "tel 12-345") + A("a*", "baac") + R(

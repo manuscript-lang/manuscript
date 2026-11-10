@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = ("beta".trim() + "日本語").replace("héllo", "ms")
+    s1 := ("beta".trim() + "日本語").replace("héllo", "ms")
     say("s1 = [{s1}]")
 
-    let f2 = 694.25
+    f2 := 694.25
     say("f2 = {f2}")
 
-    let i3 = (((-(-45)) - ((-25) % (-528309))) % (47 % 946057754598))
+    i3 := (((-(-45)) - ((-25) % (-528309))) % (47 % 946057754598))
     say("i3 = {i3}")
 
-    let l4 = [(-8), (-15), (-24), (-19)]
+    l4 := [(-8), (-15), (-24), (-19)]
     say("l4 = {l4} len {l4.length()}")
 
     var acc5 = 0
@@ -30,9 +30,9 @@ export fn main() Int:
 
     say("acc5 = {acc5}")
 
-    let l6 = [(-8), (-30)]
+    l6 := [(-8), (-30)]
     say("l6 = {l6} len {l6.length()}")
 
-    let f7 = f2
+    f7 := f2
     say("f7 = {f7}")
     return 0

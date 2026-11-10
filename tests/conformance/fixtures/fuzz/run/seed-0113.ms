@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [(-1), (-28), (-24), (-17), (-13)]
+    l1 := [(-1), (-28), (-24), (-17), (-13)]
     say("l1 = {l1} len {l1.length()}")
 
-    let i2 = (20 / (((-50) * 954660) / 527109))
+    i2 := (20 / (((-50) * 954660) / 527109))
     say("i2 = {i2}")
 
-    let f3 = 488.25
+    f3 := 488.25
     say("f3 = {f3}")
 
     if false:
@@ -27,21 +27,21 @@ export fn main() Int:
     l4.append(50)
     say("l4 = {l4} len {l4.length()}")
 
-    let i5 = (-9223372036854775808)
+    i5 := (-9223372036854775808)
     say("i5 = {i5}")
 
-    let i6 = l1.length()
+    i6 := l1.length()
     say("i6 = {i6}")
 
-    let s7 = "gamma"
+    s7 := "gamma"
     say("s7 = [{s7}]")
 
-    let l8 = l4.take(2)
+    l8 := l4.take(2)
     say("l8 = {l8} len {l8.length()}")
 
-    let l9 = l4.concat(l4)
+    l9 := l4.concat(l4)
     say("l9 = {l9} len {l9.length()}")
 
-    let s10 = "MiXeD CaSe"
+    s10 := "MiXeD CaSe"
     say("s10 = [{s10}]")
     return 0

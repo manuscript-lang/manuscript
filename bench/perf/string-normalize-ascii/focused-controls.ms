@@ -29,14 +29,14 @@ fn consume(result: Result[String, Error], expected: String, status: Int) Int:
     if status == 0:
         if result.is_error(): return -1
 
-        let output = result.get()
+        output := result.get()
         if output != expected: return -1
 
         return output.byte_length() + 17
 
     if not result.is_error(): return -1
 
-    let actual_error = result.err()
+    actual_error := result.err()
     if (
         status == 1
         and actual_error != Error("string: limit exceeded", kind: "EOVERFLOW")
@@ -74,20 +74,20 @@ fn measure(
     if normalize_sum(text, form, has_max, max, expected, status) != expected_sum: return 1
 
     var checksum = 0
-    let started = monotonic()
+    started := monotonic()
     for iteration in 0..iterations:
         checksum += normalize_sum(text, form, has_max, max, expected, status)
 
-    let elapsed = monotonic().difference(started).to_nanoseconds()
+    elapsed := monotonic().difference(started).to_nanoseconds()
     if checksum != expected_sum * iterations: return 1
 
-    let _written = stdout().write(
+    _written := stdout().write(
         "{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n"
     )
     return 0
 
 fn main() Int:
-    let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
+    _header := stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
     if measure("negative_NFC", "é", "NFC", true, -1, "", 2, 5000000) != 0: return 1
     if measure("negative_NFD", "é", "NFD", true, -1, "", 2, 5000000) != 0: return 1
     if measure("negative_NFKC", "é", "NFKC", true, -1, "", 2, 5000000) != 0: return 1

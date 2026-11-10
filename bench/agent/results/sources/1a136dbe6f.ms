@@ -4,66 +4,66 @@ import bit_and, bit_not, bit_or, bit_xor, shift_left, shift_right from "@std/mat
 import Bytes, BytesBuilder from "@std/bytes.ms"
 
 // Values are signed 32-bit words held in Int; every result is wrapped back into range.
-let WORD = 4294967296
-let HALF_WORD = 2147483648
-let MAX_LITERAL = 4294967295
-let MEMORY_SIZE = 4096
-let REG_COUNT = 10
-let REG_SP = 8
-let REG_BP = 9
-let MAX_BUDGET = 10000000
-let DEFAULT_BUDGET = 100000
-let NOT_A_NUMBER = -1
-let TOO_BIG = -2
-let MALFORMED = ""
-let DIGITS = "0123456789"
-let HEX_DIGITS = "0123456789abcdef"
-let IDENT_START = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-let IDENT_REST = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789."
-let REGISTER_NAMES = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"]
-let ARG_REG = 0
-let ARG_IMM = 1
-let ARG_MEM = 2
+WORD := 4294967296
+HALF_WORD := 2147483648
+MAX_LITERAL := 4294967295
+MEMORY_SIZE := 4096
+REG_COUNT := 10
+REG_SP := 8
+REG_BP := 9
+MAX_BUDGET := 10000000
+DEFAULT_BUDGET := 100000
+NOT_A_NUMBER := -1
+TOO_BIG := -2
+MALFORMED := ""
+DIGITS := "0123456789"
+HEX_DIGITS := "0123456789abcdef"
+IDENT_START := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+IDENT_REST := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789."
+REGISTER_NAMES := ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"]
+ARG_REG := 0
+ARG_IMM := 1
+ARG_MEM := 2
 // Opcodes; the index of each name in MNEMONICS is its opcode.
-let MNEMONICS = [
+MNEMONICS := [
     "mov", "add", "sub", "mul", "div", "mod", "and", "or", "xor", "shl", "shr", "sar",
     "cmp", "neg", "not", "inc", "dec", "lea", "push", "pop", "jmp", "je", "jne", "jl",
     "jle", "jg", "jge", "call", "ret", "in", "out", "outc", "halt", "nop"
 ]
-let MOV = 0
-let ADD = 1
-let SUB = 2
-let MUL = 3
-let DIV = 4
-let MOD = 5
-let AND = 6
-let OR = 7
-let XOR = 8
-let SHL = 9
-let SHR = 10
-let SAR = 11
-let CMP = 12
-let NEG = 13
-let NOT = 14
-let INC = 15
-let DEC = 16
-let LEA = 17
-let PUSH = 18
-let POP = 19
-let JMP = 20
-let JE = 21
-let JNE = 22
-let JL = 23
-let JLE = 24
-let JG = 25
-let JGE = 26
-let CALL = 27
-let RET = 28
-let IN = 29
-let OUT = 30
-let OUTC = 31
-let HALT = 32
-let NOP = 33
+MOV := 0
+ADD := 1
+SUB := 2
+MUL := 3
+DIV := 4
+MOD := 5
+AND := 6
+OR := 7
+XOR := 8
+SHL := 9
+SHR := 10
+SAR := 11
+CMP := 12
+NEG := 13
+NOT := 14
+INC := 15
+DEC := 16
+LEA := 17
+PUSH := 18
+POP := 19
+JMP := 20
+JE := 21
+JNE := 22
+JL := 23
+JLE := 24
+JG := 25
+JGE := 26
+CALL := 27
+RET := 28
+IN := 29
+OUT := 30
+OUTC := 31
+HALT := 32
+NOP := 33
 
 type Fault:
     text: String
@@ -180,7 +180,7 @@ fn digit_value(c: String) Int:
 
 // Index just past the quoted literal starting at `i`, or -1 when there is none.
 fn literal_end(cs: List[String], i: Int) Int:
-    let n = cs.length()
+    n := cs.length()
 
     if cs[i] == "'":
         if i + 3 < n and cs[i + 1] == "\\" and cs[i + 3] == "'":
@@ -210,7 +210,7 @@ fn comment_start(cs: List[String]) Int:
             return i
 
         if cs[i] == "'" or cs[i] == "\"":
-            let end = literal_end(cs, i)
+            end := literal_end(cs, i)
 
             if end > 0:
                 i = end
@@ -221,18 +221,18 @@ fn comment_start(cs: List[String]) Int:
     return cs.length()
 
 fn split_line(number: Int, raw: String) Line:
-    let all = raw.chars()
-    let code = span(all, 0, comment_start(all)).chars()
-    let n = code.length()
+    all := raw.chars()
+    code := span(all, 0, comment_start(all)).chars()
+    n := code.length()
     var labels = List[String]()
     var i = skip_spaces(code, 0)
 
     while true:
-        let end = ident_end(code, i)
+        end := ident_end(code, i)
         if end == i:
             break
 
-        let colon = skip_spaces(code, end)
+        colon := skip_spaces(code, end)
         if colon >= n or code[colon] != ":":
             break
 
@@ -253,16 +253,16 @@ fn split_operands(text: String) List[String]:
     if text == "":
         return parts
 
-    let cs = text.chars()
+    cs := text.chars()
     var inside = false
     var start = 0
     var i = 0
 
     while i < cs.length():
-        let c = cs[i]
+        c := cs[i]
 
         if c == "'":
-            let end = literal_end(cs, i)
+            end := literal_end(cs, i)
 
             if end > 0:
                 i = end
@@ -283,8 +283,8 @@ fn split_operands(text: String) List[String]:
 
 // Splits an expression into signed terms. None when an operator has no term after it.
 fn split_terms(text: String) Optional[List[Term]]:
-    let cs = text.chars()
-    let n = cs.length()
+    cs := text.chars()
+    n := cs.length()
     var terms = List[Term]()
     var negative = false
     var pending = false
@@ -292,17 +292,17 @@ fn split_terms(text: String) Optional[List[Term]]:
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if c == "'":
-            let end = literal_end(cs, i)
+            end := literal_end(cs, i)
 
             if end > 0:
                 i = end
                 continue
 
         if c == "+" or c == "-":
-            let piece = span(cs, start, i).trim()
+            piece := span(cs, start, i).trim()
 
             if piece != "":
                 terms.append(Term(negative: negative, text: piece))
@@ -316,7 +316,7 @@ fn split_terms(text: String) Optional[List[Term]]:
 
         i += 1
 
-    let last = span(cs, start, n).trim()
+    last := span(cs, start, n).trim()
 
     if last != "":
         terms.append(Term(negative: negative, text: last))
@@ -339,7 +339,7 @@ fn parse_number(cs: List[String]) Int:
     var value = 0
 
     for i in start..cs.length():
-        let d = digit_value(cs[i])
+        d := digit_value(cs[i])
         if d < 0 or d >= base:
             return NOT_A_NUMBER
 
@@ -369,10 +369,10 @@ fn escape_value(c: String) Int:
 
 // Value of a character literal such as 'a' or '\n'; -1 when malformed.
 fn char_value(cs: List[String]) Int:
-    let n = cs.length()
+    n := cs.length()
 
     if n == 3 and cs[1] != "\\" and cs[1] != "'" and cs[2] == "'":
-        let bs = cs[1].to_bytes()
+        bs := cs[1].to_bytes()
         if bs.length() == 1:
             return bs.get(0).to_int()
 
@@ -384,10 +384,10 @@ fn char_value(cs: List[String]) Int:
     return -1
 
 fn resolve(name: String, syms: Symbols, path: List[String]) Result[Int, Fault]:
-    if let value = syms.labels.get(name):
+    if value := syms.labels.get(name):
         return ok(value)
 
-    if let text = syms.equs.get(name):
+    if text := syms.equs.get(name):
         if path.contains(name):
             return fail("circular definition of '" + name + "'")
 
@@ -398,10 +398,10 @@ fn resolve(name: String, syms: Symbols, path: List[String]) Result[Int, Fault]:
     return fail("undefined symbol '" + name + "'")
 
 fn term_value(text: String, syms: Symbols, path: List[String]) Result[Int, Fault]:
-    let cs = text.chars()
+    cs := text.chars()
 
     if DIGITS.contains(cs[0]):
-        let value = parse_number(cs)
+        value := parse_number(cs)
         if value == NOT_A_NUMBER:
             return fail(MALFORMED)
         if value == TOO_BIG:
@@ -410,7 +410,7 @@ fn term_value(text: String, syms: Symbols, path: List[String]) Result[Int, Fault
         return ok(value)
 
     if cs[0] == "'":
-        let value = char_value(cs)
+        value := char_value(cs)
         if value < 0:
             return fail(MALFORMED)
 
@@ -430,7 +430,7 @@ fn sum_terms(
     var total = 0
 
     for t in terms:
-        let v = term_value(t.text.clone(), syms, path)
+        v := term_value(t.text.clone(), syms, path)
 
         if v.is_error():
             if v.err().text == MALFORMED:
@@ -446,13 +446,13 @@ fn sum_terms(
     return ok(total)
 
 fn eval_expr(text: String, syms: Symbols, path: List[String]) Result[Int, Fault]:
-    if let terms = split_terms(text):
+    if terms := split_terms(text):
         if terms.length() > 0:
             return sum_terms(text, terms, syms, path)
     return fail("invalid expression '" + text + "'")
 
 fn parse_budget(text: String) Int:
-    let cs = text.chars()
+    cs := text.chars()
     if cs.length() == 0:
         return -1
 
@@ -471,8 +471,8 @@ fn parse_budget(text: String) Int:
     return value
 
 fn escape_bytes(text: String) Result[List[Int], Fault]:
-    let cs = text.chars()
-    let n = cs.length()
+    cs := text.chars()
+    n := cs.length()
     var bytes = List[Int]()
     if n < 2 or cs[0] != "\"" or cs[n - 1] != "\"":
         return fail("invalid string")
@@ -480,7 +480,7 @@ fn escape_bytes(text: String) Result[List[Int], Fault]:
     var i = 1
 
     while i < n - 1:
-        let c = cs[i]
+        c := cs[i]
         if c == "\"":
             return fail("invalid string")
 
@@ -488,14 +488,14 @@ fn escape_bytes(text: String) Result[List[Int], Fault]:
             if i + 1 >= n - 1:
                 return fail("invalid string")
 
-            let e = escape_value(cs[i + 1])
+            e := escape_value(cs[i + 1])
             if e < 0:
                 return fail("invalid string")
 
             bytes.append(e)
             i += 2
         else:
-            let bs = c.to_bytes()
+            bs := c.to_bytes()
             for k in 0..bs.length():
                 bytes.append(bs.get(k).to_int())
             i += 1
@@ -503,27 +503,27 @@ fn escape_bytes(text: String) Result[List[Int], Fault]:
     return ok(bytes)
 
 fn memory_source(operand: String) Result[Source, Fault]:
-    let bad = "invalid operand '" + operand + "'"
-    let cs = operand.chars()
-    let n = cs.length()
+    bad := "invalid operand '" + operand + "'"
+    cs := operand.chars()
+    n := cs.length()
     if n < 2 or cs[n - 1] != "]":
         return fail(bad)
 
-    let inner = span(cs, 1, n - 1)
+    inner := span(cs, 1, n - 1)
     if inner.trim() == "" or inner.contains("[") or inner.contains("]"):
         return fail(bad)
-    if let parts = split_terms(inner):
+    if parts := split_terms(inner):
         return memory_terms(operand, parts)
 
     return fail(bad)
 
 fn memory_terms(operand: String, parts: List[Term]) Result[Source, Fault]:
-    let bad = "invalid operand '" + operand + "'"
+    bad := "invalid operand '" + operand + "'"
     var base = -1
     var constant = ""
 
     for t in parts:
-        let r = reg_index(t.text)
+        r := reg_index(t.text)
 
         if r >= 0:
             if t.negative or base >= 0:
@@ -531,7 +531,7 @@ fn memory_terms(operand: String, parts: List[Term]) Result[Source, Fault]:
 
             base = r
         else:
-            let sign = if t.negative: "-" else: "+"
+            sign := if t.negative: "-" else: "+"
 
             constant += sign + t.text
 
@@ -541,7 +541,7 @@ fn operand_source(text: String) Result[Source, Fault]:
     if text == "":
         return fail("invalid operand ''")
 
-    let reg = reg_index(text)
+    reg := reg_index(text)
     if reg >= 0:
         return ok(Source(kind: ARG_REG, reg: reg, text: text))
     if text.starts_with("["):
@@ -569,7 +569,7 @@ fn kinds_allowed(code: Int, args: List[Source]) Bool:
     if args.length() == 0:
         return true
 
-    let dst = args[0].kind
+    dst := args[0].kind
     if code == MOV:
         return dst == ARG_REG or (dst == ARG_MEM and args[1].kind != ARG_MEM)
     if code >= ADD and code <= CMP:
@@ -599,11 +599,11 @@ fn define_label(var asm: Assembly, name: String) Result[Unit, Fault]:
     return ok(unit)
 
 fn define_equ(var asm: Assembly, rest: String) Result[Unit, Fault]:
-    let ops = split_operands(rest)
+    ops := split_operands(rest)
     if ops.length() != 2:
         return fail("wrong number of operands for '.equ'")
 
-    let name = ops[0]
+    name := ops[0]
     if not is_identifier(name):
         return fail("invalid operand '" + name + "'")
     if reg_index(name) >= 0:
@@ -617,14 +617,14 @@ fn define_equ(var asm: Assembly, rest: String) Result[Unit, Fault]:
 fn preload_equs(var asm: Assembly, lines: List[Line]) Unit:
     for line in lines:
         if line.head == ".equ":
-            let ops = split_operands(line.rest)
+            ops := split_operands(line.rest)
             if ops.length() == 2 and is_identifier(ops[0]) and reg_index(ops[0]) < 0:
                 asm.syms.equs[ops[0].clone()] = ops[1].clone()
 
 fn reserve(var asm: Assembly, number: Int, texts: List[String], times: Int) Result[
     Unit, Fault
 ]:
-    let words = texts.length() * times
+    words := texts.length() * times
     if asm.data_ptr + words > MEMORY_SIZE:
         return fail("data section too large")
 
@@ -640,17 +640,17 @@ fn reserve(var asm: Assembly, number: Int, texts: List[String], times: Int) Resu
     return ok(unit)
 
 fn data_directive(var asm: Assembly, line: Line) Result[Unit, Fault]:
-    let head = line.head
+    head := line.head
 
     if head == ".word":
-        let ops = split_operands(line.rest)
+        ops := split_operands(line.rest)
         if ops.length() == 0:
             return fail("wrong number of operands for '.word'")
 
         return reserve(var asm, line.number, ops, 1)
 
     if head == ".ascii" or head == ".asciz":
-        let bytes = try escape_bytes(line.rest)
+        bytes := try escape_bytes(line.rest)
         var texts = List[String]()
         for b in bytes:
             texts.append(b.to_string())
@@ -658,23 +658,23 @@ fn data_directive(var asm: Assembly, line: Line) Result[Unit, Fault]:
             texts.append("0")
         return reserve(var asm, line.number, texts, 1)
 
-    let ops = split_operands(line.rest)
+    ops := split_operands(line.rest)
     if ops.length() != 1 and ops.length() != 2:
         return fail("wrong number of operands for '.space'")
 
-    let count = try eval_expr(ops[0], asm.syms, List[String]())
+    count := try eval_expr(ops[0], asm.syms, List[String]())
     if count < 0:
         return fail("invalid operand '" + ops[0] + "'")
 
-    let fill = if ops.length() == 2: ops[1].clone() else: "0"
+    fill := if ops.length() == 2: ops[1].clone() else: "0"
 
     var texts = List[String]()
     texts.append(fill)
     return reserve(var asm, line.number, texts, count)
 
 fn directive(var asm: Assembly, line: Line) Result[Unit, Fault]:
-    let head = line.head
-    let rest = line.rest
+    head := line.head
+    rest := line.rest
 
     if head == ".text" or head == ".data":
         if rest != "":
@@ -687,7 +687,7 @@ fn directive(var asm: Assembly, line: Line) Result[Unit, Fault]:
         return define_equ(var asm, rest)
 
     if head == ".budget":
-        let budget = parse_budget(rest)
+        budget := parse_budget(rest)
         if budget < 0:
             return fail("invalid operand '" + rest + "'")
 
@@ -706,14 +706,14 @@ fn instruction(var asm: Assembly, line: Line) Result[Unit, Fault]:
     if asm.in_data:
         return fail("instruction in data section")
 
-    let code = opcode_of(line.head)
+    code := opcode_of(line.head)
     if code < 0:
         return fail("unknown mnemonic '" + line.head + "'")
 
     var args = List[Source]()
 
     for text in split_operands(line.rest):
-        let s = try operand_source(text)
+        s := try operand_source(text)
         args.append(s)
 
     if args.length() != arity(code):
@@ -729,7 +729,7 @@ fn instruction(var asm: Assembly, line: Line) Result[Unit, Fault]:
 
 fn pass1_line(var asm: Assembly, line: Line) Result[Unit, Fault]:
     for name in line.labels:
-        let _ = try define_label(var asm, name.clone())
+        _ := try define_label(var asm, name.clone())
     if line.head == "":
         return ok(unit)
     if line.head.starts_with("."):
@@ -743,14 +743,14 @@ fn build_arg(s: Source, syms: Symbols) Result[Arg, Fault]:
     if s.kind == ARG_MEM and s.text == "":
         return ok(Arg(kind: ARG_MEM, reg: s.reg, value: 0))
 
-    let value = try eval_expr(s.text, syms, List[String]())
+    value := try eval_expr(s.text, syms, List[String]())
     return ok(Arg(kind: s.kind, reg: s.reg, value: value))
 
 fn write_data(item: Item, syms: Symbols, var image: List[Int]) Result[Unit, Fault]:
     var values = List[Int]()
 
     for s in item.args:
-        let v = try eval_expr(s.text, syms, List[String]())
+        v := try eval_expr(s.text, syms, List[String]())
         values.append(v)
 
     var k = 0
@@ -778,11 +778,11 @@ fn build_item(
     var args = List[Arg]()
 
     for s in item.args:
-        let a = try build_arg(s, syms)
+        a := try build_arg(s, syms)
         args.append(a)
 
     if is_jump(item.code):
-        let target = args[0].value
+        target := args[0].value
         if target < 0 or target >= instr_total:
             return fail("invalid jump target")
 
@@ -805,7 +805,7 @@ fn check_address(addr: Int) Result[Int, Fault]:
     return ok(addr)
 
 fn address_of(m: Machine, a: Arg) Int:
-    let base = if a.reg >= 0: m.regs[a.reg] else: 0
+    base := if a.reg >= 0: m.regs[a.reg] else: 0
 
     return wrap(base + a.value)
 
@@ -815,7 +815,7 @@ fn read_arg(m: Machine, a: Arg) Result[Int, Fault]:
     if a.kind == ARG_IMM:
         return ok(a.value)
 
-    let addr = try check_address(address_of(m, a))
+    addr := try check_address(address_of(m, a))
     return ok(m.mem[addr])
 
 fn write_arg(var m: Machine, a: Arg, v: Int) Result[Unit, Fault]:
@@ -823,7 +823,7 @@ fn write_arg(var m: Machine, a: Arg, v: Int) Result[Unit, Fault]:
         m.regs[a.reg] = v
         return ok(unit)
 
-    let addr = try check_address(address_of(m, a))
+    addr := try check_address(address_of(m, a))
     m.mem[addr] = v
     return ok(unit)
 
@@ -833,7 +833,7 @@ fn push_value(var m: Machine, v: Int) Result[Unit, Fault]:
 
     m.regs[REG_SP] = m.regs[REG_SP] - 1
 
-    let addr = try check_address(m.regs[REG_SP])
+    addr := try check_address(m.regs[REG_SP])
     m.mem[addr] = v
     return ok(unit)
 
@@ -841,8 +841,8 @@ fn pop_value(var m: Machine) Result[Int, Fault]:
     if m.regs[REG_SP] >= MEMORY_SIZE:
         return fail("stack underflow")
 
-    let addr = try check_address(m.regs[REG_SP])
-    let v = m.mem[addr]
+    addr := try check_address(m.regs[REG_SP])
+    v := m.mem[addr]
     m.regs[REG_SP] = m.regs[REG_SP] + 1
     return ok(v)
 
@@ -873,7 +873,7 @@ fn arith(code: Int, x: Int, y: Int) Result[Int, Fault]:
     if code == XOR:
         return ok(bit_xor(x, y))
 
-    let count = bit_and(y, 31)
+    count := bit_and(y, 31)
     if code == SHL:
         return ok(wrap(shift_left(x, count)))
     if code == SHR:
@@ -912,39 +912,39 @@ fn emit_text(var m: Machine, v: Int) Unit:
     m.last_char = 10
 
 fn emit_byte(var m: Machine, v: Int) Unit:
-    if let b = v.to_uint8():
+    if b := v.to_uint8():
         m.out.append(b)
     m.last_char = v
 
 // Runs one instruction and returns the next pc. Faults leave the machine at the same pc.
 fn execute(var m: Machine, ins: Instr) Result[Int, Fault]:
-    let code = ins.code
-    let args = ins.args
-    let next = m.pc + 1
+    code := ins.code
+    args := ins.args
+    next := m.pc + 1
     if code == NOP:
         return ok(next)
 
     if code == MOV:
-        let v = try read_arg(m, args[1])
-        let _ = try write_arg(var m, args[0], v)
+        v := try read_arg(m, args[1])
+        _ := try write_arg(var m, args[0], v)
         return ok(next)
 
     if code >= ADD and code <= SAR:
-        let src = try read_arg(m, args[1])
-        let dst = args[0].reg
-        let r = try arith(code, m.regs[dst], src)
+        src := try read_arg(m, args[1])
+        dst := args[0].reg
+        r := try arith(code, m.regs[dst], src)
         m.regs[dst] = r
         return ok(next)
 
     if code == CMP:
-        let src = try read_arg(m, args[1])
-        let x = m.regs[args[0].reg]
+        src := try read_arg(m, args[1])
+        x := m.regs[args[0].reg]
         m.z = x == src
         m.l = x < src
         return ok(next)
 
     if code >= NEG and code <= DEC:
-        let dst = args[0].reg
+        dst := args[0].reg
         m.regs[dst] = unary(code, m.regs[dst])
         return ok(next)
 
@@ -953,13 +953,13 @@ fn execute(var m: Machine, ins: Instr) Result[Int, Fault]:
         return ok(next)
 
     if code == PUSH:
-        let v = try read_arg(m, args[0])
-        let _ = try push_value(var m, v)
+        v := try read_arg(m, args[0])
+        _ := try push_value(var m, v)
         return ok(next)
 
     if code == POP:
-        let v = try pop_value(var m)
-        let _ = try write_arg(var m, args[0], v)
+        v := try pop_value(var m)
+        _ := try write_arg(var m, args[0], v)
         return ok(next)
 
     if code == IN:
@@ -971,12 +971,12 @@ fn execute(var m: Machine, ins: Instr) Result[Int, Fault]:
         return ok(next)
 
     if code == OUT:
-        let v = try read_arg(m, args[0])
+        v := try read_arg(m, args[0])
         emit_text(var m, v)
         return ok(next)
 
     if code == OUTC:
-        let v = try read_arg(m, args[0])
+        v := try read_arg(m, args[0])
         if v < 0 or v > 127:
             return fail("invalid character")
 
@@ -984,12 +984,12 @@ fn execute(var m: Machine, ins: Instr) Result[Int, Fault]:
         return ok(next)
 
     if code == RET:
-        let v = try pop_value(var m)
+        v := try pop_value(var m)
         return ok(v)
 
     if code >= JMP and code <= CALL:
         if code == CALL:
-            let _ = try push_value(var m, next)
+            _ := try push_value(var m, next)
         if jump_taken(code, m.z, m.l):
             return ok(args[0].value)
 
@@ -998,14 +998,14 @@ fn execute(var m: Machine, ins: Instr) Result[Int, Fault]:
     return ok(next)
 
 fn register_summary(m: Machine) String:
-    let names = REGISTER_NAMES.clone()
+    names := REGISTER_NAMES.clone()
     var text = "regs:"
     for r in 0..REG_COUNT:
         text += " " + names[r] + "=" + m.regs[r].to_string()
 
-    let z = if m.z: 1 else: 0
+    z := if m.z: 1 else: 0
 
-    let l = if m.l: 1 else: 0
+    l := if m.l: 1 else: 0
 
     return text + "\nflags: Z=" + z.to_string() + " L=" + l.to_string() + "\n"
 
@@ -1033,14 +1033,14 @@ fn run(
             message = "pc out of range"
             break
 
-        let ins = program[m.pc]
+        ins := program[m.pc]
 
         if ins.code == HALT:
             steps += 1
             halted = true
             break
 
-        let next = execute(var m, ins)
+        next := execute(var m, ins)
 
         if next.is_error():
             message = next.err().text.clone()
@@ -1057,9 +1057,9 @@ fn run(
     if halted:
         summary = "-- halted after " + steps.to_string() + " steps\n"
     else:
-        let line = if m.pc >= 0 and m.pc < program.length(): program[m.pc].line else: -1
+        line := if m.pc >= 0 and m.pc < program.length(): program[m.pc].line else: -1
 
-        let line_text = if line < 0: "-" else: line.to_string()
+        line_text := if line < 0: "-" else: line.to_string()
 
         summary = (
             "-- trap: "
@@ -1097,7 +1097,7 @@ fn split_words(line: String) List[String]:
 
 // Wrapped value of a whitespace-free token, or none if it is not a decimal integer.
 fn input_value(token: String) Optional[Int]:
-    let cs = token.chars()
+    cs := token.chars()
     var start = 0
     var negative = false
 
@@ -1123,12 +1123,12 @@ fn input_value(token: String) Optional[Int]:
 
 fn report(line: Int, message: String) Unit:
     var out = stdout()
-    let _ = out.write(
+    _ := out.write(
         "asm error line " + line.to_string() + ": " + message + "\n"
     ).get()
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var source = List[String]()
     var input = List[Int]()
     var in_input = false
@@ -1136,7 +1136,7 @@ export fn main() Int:
     for raw in lines:
         if in_input:
             for token in split_words(raw):
-                if let v = input_value(token):
+                if v := input_value(token):
                     input.append(v)
         else if raw == "====":
             in_input = true
@@ -1162,7 +1162,7 @@ export fn main() Int:
     preload_equs(var asm, parsed)
 
     for line in parsed:
-        let r = pass1_line(var asm, line)
+        r := pass1_line(var asm, line)
 
         if r.is_error():
             report(line.number, r.err().text)
@@ -1175,14 +1175,14 @@ export fn main() Int:
     var program = List[Instr]()
 
     for item in asm.items:
-        let r = build_item(item, asm.syms, asm.instr_count, var program, var image)
+        r := build_item(item, asm.syms, asm.instr_count, var program, var image)
 
         if r.is_error():
             report(item.line, r.err().text)
             return 0
 
-    let output = run(program, image, asm.entry, asm.budget, input)
+    output := run(program, image, asm.entry, asm.budget, input)
     var out = stdout()
-    let _ = out.write_bytes(output).get()
-    let _ = out.flush().get()
+    _ := out.write_bytes(output).get()
+    _ := out.flush().get()
     return 0

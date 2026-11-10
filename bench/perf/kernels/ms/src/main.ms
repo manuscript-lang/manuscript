@@ -22,7 +22,7 @@ enum Tree:
     Node(left: Tree, right: Tree)
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    _ignored := stdout().write(text)
 
 fn sieve(n: Int) Int:
     var flags: List[Bool] = List[Bool]()
@@ -50,7 +50,7 @@ fn sieve(n: Int) Int:
     return count
 
 fn advance(var bodies: List[Body], steps: Int) Float:
-    let n = bodies.length()
+    n := bodies.length()
     var s = 0
 
     while s < steps:
@@ -62,11 +62,11 @@ fn advance(var bodies: List[Body], steps: Int) Float:
 
             while j < n:
                 var b = bodies.get(j).clone()
-                let dx = a.x - b.x
-                let dy = a.y - b.y
-                let dz = a.z - b.z
-                let d2 = dx * dx + dy * dy + dz * dz + 0.01
-                let mag = 0.01 / (d2 * d2)
+                dx := a.x - b.x
+                dy := a.y - b.y
+                dz := a.z - b.z
+                d2 := dx * dx + dy * dy + dz * dz + 0.01
+                mag := 0.01 / (d2 * d2)
                 a.vx -= dx * b.mass * mag
                 a.vy -= dy * b.mass * mag
                 a.vz -= dz * b.mass * mag
@@ -95,15 +95,15 @@ fn advance(var bodies: List[Body], steps: Int) Float:
     var k = 0
 
     while k < n:
-        let a = bodies.get(k)
+        a := bodies.get(k)
         e += a.mass * (a.vx * a.vx + a.vy * a.vy + a.vz * a.vz)
         k += 1
 
     return e
 
 fn cell(g: Grid, x: Int, y: Int) Int:
-    let wx = (x + g.width) % g.width
-    let wy = (y + g.height) % g.height
+    wx := (x + g.width) % g.width
+    wy := (y + g.height) % g.height
     return g.cells.get(wy * g.width + wx)
 
 fn neighbors(g: Grid, x: Int, y: Int) Int:
@@ -130,8 +130,8 @@ fn step(g: Grid) Grid:
         var x = 0
 
         while x < g.width:
-            let n = neighbors(g, x, y)
-            let alive = cell(g, x, y) == 1
+            n := neighbors(g, x, y)
+            alive := cell(g, x, y) == 1
 
             if n == 3 or (alive and n == 2):
                 next.append(1)
@@ -254,15 +254,15 @@ fn wordfreq(n: Int) Int:
     var i = 0
 
     while i < n:
-        let k = (i * 7919) % 5003
+        k := (i * 7919) % 5003
         m.update(k, 0, fn count: count + 1)
         i += 1
 
     return m.length()
 
 fn timed(name: String, run: fn() Int) Unit:
-    let t = monotonic()
-    let r = run()
+    t := monotonic()
+    r := run()
     say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 fn main() Int:

@@ -21,9 +21,9 @@ Measured on `d3bf43dd` with the fixture below (`tests/e2e/testdata/stdlib/http-f
 
 ```ms
 fn faulting(exchange: HttpExchange) Result[Unit, HttpError]:
-    let big = "x".repeat(1000000).get("")
-    let xs: List[Int] = []
-    let n = xs[big.length()]
+    big := "x".repeat(1000000).get("")
+    xs: List[Int] = []
+    n := xs[big.length()]
     if big.length() + n > 5: return ok(unit)
     return ok(unit)
 ```

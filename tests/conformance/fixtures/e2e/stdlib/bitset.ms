@@ -26,7 +26,7 @@ test "add remove contains across word boundaries":
     try expect_equal(set.length(), 5)
 
 test "next finds the following member":
-    let set = of([5, 64, 130])
+    set := of([5, 64, 130])
     try expect_equal(set.next(), 5)
     try expect_equal(set.next(5), 5)
     try expect_equal(set.next(6), 64)
@@ -36,8 +36,8 @@ test "next finds the following member":
     try expect_equal(BitSet().next(), none)
 
 test "set algebra matches Set":
-    let a = of([1, 5, 63, 64, 130])
-    let b = of([5, 63, 200])
+    a := of([1, 5, 63, 64, 130])
+    b := of([5, 63, 200])
     try expect_equal(a.union(b).values(), [1, 5, 63, 64, 130, 200])
     try expect_equal(a.intersection(b).values(), [5, 63])
     try expect_equal(a.difference(b).values(), [1, 64, 130])

@@ -6,7 +6,7 @@ fn choose(value: Choice) Int:
         first: return 1
         second: return 2
         third:
-            let result = calculate()
+            result := calculate()
             return result
         _: return 0
 

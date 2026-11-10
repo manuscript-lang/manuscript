@@ -41,7 +41,7 @@ fn index(tree: FileTree) Index!:          // pure: takes the capability
     return build(try walk(tree))
 
 fn main() Unit!:
-    let idx = try index(host_tree("/data"))   // std.fs.read charged here
+    idx := try index(host_tree("/data"))   // std.fs.read charged here
 
 test "indexes":
     try expect_equal(try index(memory_tree()).size(), 3)

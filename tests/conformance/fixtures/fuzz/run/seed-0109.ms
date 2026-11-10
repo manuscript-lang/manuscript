@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,17 +22,17 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let f1 = (0.0 + ((234.25 * 297.250) + 137.373))
+    f1 := (0.0 + ((234.25 * 297.250) + 137.373))
     say("f1 = {f1}")
 
-    let s2 = ("{((-17) - (-654055170819))}:" + "delta")
+    s2 := ("{((-17) - (-654055170819))}:" + "delta")
     say("s2 = [{s2}]")
     say("{(-50)} {66343} {((-50) < 66343)} sum {(-50) + 66343}")
 
-    let i3 = 35
+    i3 := 35
     say("i3 = {i3}")
 
-    let f4 = f1
+    f4 := f1
     say("f4 = {f4}")
 
     if (("beta" != "gamma") and (f1 == 959.651)):
@@ -40,22 +40,22 @@ export fn main() Int:
     else:
         say("brace\{s\}".reverse())
 
-    let f5 = (((2.0e-6 * 5.0e18) + (628.25 + f1)) + ((f4 + 914.385) + f1))
+    f5 := (((2.0e-6 * 5.0e18) + (628.25 + f1)) + ((f4 + 914.385) + f1))
     say("f5 = {f5}")
 
-    let i6 = ((((-37) + i3) * ((-33) + 34)) / ((i3 + i3) - ((-481945) + 6)))
+    i6 := ((((-37) + i3) * ((-33) + 34)) / ((i3 + i3) - ((-481945) + 6)))
     say("i6 = {i6}")
 
-    let f7 = (659.446 + ((f1 + f5) * f4))
+    f7 := (659.446 + ((f1 + f5) * f4))
     say("f7 = {f7}")
     say("fib(27) = {fib(27)}")
 
-    let l8 = [1, 2, 3].take(0)
+    l8 := [1, 2, 3].take(0)
     say("l8 = {l8} len {l8.length()}")
 
-    let l9 = l8.take(3)
+    l9 := l8.take(3)
     say("l9 = {l9} len {l9.length()}")
 
-    let i10 = (-36)
+    i10 := (-36)
     say("i10 = {i10}")
     return 0

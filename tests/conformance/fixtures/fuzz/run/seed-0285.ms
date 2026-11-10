@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,49 +22,49 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let f1 = 346.997
+    f1 := 346.997
     say("f1 = {f1}")
     say(
         "{(((-43) - (-9223372036854775807)) % (56135366223 % 39))} {(((-48) - 782867) + ((-21) % (-479326)))} {((((-43) - (-9223372036854775807)) % (56135366223 % 39)) < (((-48) - 782867) + ((-21) % (-479326))))} sum {(((-43) - (-9223372036854775807)) % (56135366223 % 39)) + (((-48) - 782867) + ((-21) % (-479326)))}"
     )
 
-    let l2 = [1, 2, 3].take(0)
+    l2 := [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
 
-    let i3 = ((-40) * 11)
+    i3 := ((-40) * 11)
     say("i3 = {i3}")
 
-    let l4 = l2.concat(l2)
+    l4 := l2.concat(l2)
     say("l4 = {l4} len {l4.length()}")
 
-    let l5 = l2.reversed()
+    l5 := l2.reversed()
     say("l5 = {l5} len {l5.length()}")
 
-    let f6 = 635.874
+    f6 := 635.874
     say("f6 = {f6}")
 
-    let l7 = l2.reversed()
+    l7 := l2.reversed()
     say("l7 = {l7} len {l7.length()}")
 
-    let i8 = i3
+    i8 := i3
     say("i8 = {i8}")
     say(
         "{23380080472} {(i8 * (i3 - i3))} {(23380080472 < (i8 * (i3 - i3)))} sum {23380080472 + (i8 * (i3 - i3))}"
     )
 
-    let f9 = f6
+    f9 := f6
     say("f9 = {f9}")
     say("fib(27) = {fib(27)}")
 
-    let i10 = (-((i8 + 617123) * (i8 + i8)))
+    i10 := (-((i8 + 617123) * (i8 + i8)))
     say("i10 = {i10}")
 
-    let l11 = l2.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l11 := l2.map(fn x: x + 1).filter(fn x: x % 2 == 0)
     say("l11 = {l11} len {l11.length()}")
 
-    let i12 = (-((i8 + 45) / i10))
+    i12 := (-((i8 + 45) / i10))
     say("i12 = {i12}")
 
-    let b13 = ("MiXeD CaSe".upper() + "  padded  ".trim()).starts_with("alpha")
+    b13 := ("MiXeD CaSe".upper() + "  padded  ".trim()).starts_with("alpha")
     say("b13 = {b13}")
     return 0

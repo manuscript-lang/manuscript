@@ -9,6 +9,6 @@ impl Counter:
 fn counter() Counter: Counter(0)
 
 export fn main() Int:
-    let pop = [1, 2].pop  // error: must come from a variable
-    let bump = counter().bump  // error: must come from a variable
+    pop := [1, 2].pop  // error: must come from a variable
+    bump := counter().bump  // error: must come from a variable
     return bump()

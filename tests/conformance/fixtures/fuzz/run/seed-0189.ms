@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (135853 % ((-45) / 29))
+    i1 := (135853 % ((-45) / 29))
     say("i1 = {i1}")
 
-    let f2 = (
+    f2 := (
         (1.0e10 - (956.370 + 421.332))
         + ((522.699 + 651.311) - (854.992 + 205.849))
     )
@@ -21,19 +21,19 @@ export fn main() Int:
         "{(36 - (-i1))} {(((-34) * i1) * (22 - 676199161604))} {((36 - (-i1)) < (((-34) * i1) * (22 - 676199161604)))} sum {(36 - (-i1)) + (((-34) * i1) * (22 - 676199161604))}"
     )
 
-    let s3 = ("{(-8)}:" + ("back\\slash" + "ms".trim()))
+    s3 := ("{(-8)}:" + ("back\\slash" + "ms".trim()))
     say("s3 = [{s3}]")
 
-    let l4 = [8, (-6), (-7)]
+    l4 := [8, (-6), (-7)]
     say("l4 = {l4} len {l4.length()}")
 
-    let s5 = ("ms" + ("{l4.get(1)}:" + "delta".upper()))
+    s5 := ("ms" + ("{l4.get(1)}:" + "delta".upper()))
     say("s5 = [{s5}]")
 
-    let b6 = (("gamma" + s5).is_empty() and s5.replace("brace\{s\}", s3).is_empty())
+    b6 := (("gamma" + s5).is_empty() and s5.replace("brace\{s\}", s3).is_empty())
     say("b6 = {b6}")
 
-    let f7 = (((554.715 / 745.377) / (f2 + f2)) - ((3.5 + 17.846) / 466.25))
+    f7 := (((554.715 / 745.377) / (f2 + f2)) - ((3.5 + 17.846) / 466.25))
     say("f7 = {f7}")
 
     var acc8 = 0
@@ -46,18 +46,18 @@ export fn main() Int:
 
     say("acc8 = {acc8}")
 
-    let f9 = (((f7 + f7) / f7) * 107.385)
+    f9 := (((f7 + f7) / f7) * 107.385)
     say("f9 = {f9}")
 
-    let f10 = (((f7 + f9) + 284.642) * ((491.342 + f7) + (180.474 - 536.165)))
+    f10 := (((f7 + f9) + 284.642) * ((491.342 + f7) + (180.474 - 536.165)))
     say("f10 = {f10}")
 
-    let f11 = (250.323 - (f2 * f2))
+    f11 := (250.323 - (f2 * f2))
     say("f11 = {f11}")
 
-    let s12 = s3.upper().upper().reverse()
+    s12 := s3.upper().upper().reverse()
     say("s12 = [{s12}]")
 
-    let i13 = (-i1)
+    i13 := (-i1)
     say("i13 = {i13}")
     return 0

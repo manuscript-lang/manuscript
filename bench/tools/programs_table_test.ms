@@ -12,13 +12,13 @@ fn both() List[String]:
     return sample("ms").concat(sample("go"))
 
 test "complete equivalent work":
-    let result = try summarize(both(), 1)
+    result := try summarize(both(), 1)
     try expect_contains(result, "1.00x")
     try expect_contains(result, "Checksums and operation counts verified")
 
 test "extra versions add columns":
-    let lines = both().concat(sample("rust")).concat(sample("rust-checked"))
-    let result = try summarize(lines, 1)
+    lines := both().concat(sample("rust")).concat(sample("rust-checked"))
+    result := try summarize(lines, 1)
     try expect_contains(
         result,
         "| operation | ops | Manuscript | Go | Rust | Rust, overflow checks | ms / Go | ms / Rust | ms / Rust, overflow checks |"
@@ -26,8 +26,8 @@ test "extra versions add columns":
     try expect_equal(result.split("1.00x").length() - 1, 3 * ops().length())
 
 test "rejects invalid evidence":
-    let valid = both()
-    let last = valid.length() - 1
+    valid := both()
+    last := valid.length() - 1
     var cut = valid.clone()
     cut.remove(last)
 
@@ -43,7 +43,7 @@ test "rejects invalid evidence":
     var bad_sink = valid.clone()
     bad_sink[last] = bad_sink[last].replace("50000", "49999")
 
-    let extra_first = [valid[0].clone()].concat(valid)
-    let junk = ["unrecognized output"].concat(valid)
+    extra_first := [valid[0].clone()].concat(valid)
+    junk := ["unrecognized output"].concat(valid)
     for lines in [cut, doubled, short_count, zero_time, bad_sink, extra_first, junk]:
-        let _cause = try expect_error(summarize(lines, 1))
+        _cause := try expect_error(summarize(lines, 1))

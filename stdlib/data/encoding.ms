@@ -65,11 +65,11 @@ export fn base64_decode(
         text, url_safe, max_bytes
     )
 
-    let limit = budget(max_bytes)
+    limit := budget(max_bytes)
     if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
 
-    let bytes = text.to_bytes().values()
-    let length = bytes.length()
+    bytes := text.to_bytes().values()
+    length := bytes.length()
     var padding = 0
     var tail = length
 
@@ -87,7 +87,7 @@ export fn base64_decode(
     )
 
     var out = BytesBuilder()
-    let quads = length / 4
+    quads := length / 4
 
     for quad in 0..quads:
         var pad = 0
@@ -96,7 +96,7 @@ export fn base64_decode(
         var value = 0
 
         for offset in 0..4:
-            let byte = bytes[quad * 4 + offset]
+            byte := bytes[quad * 4 + offset]
             var digit = 0
 
             if offset >= 4 - pad:
@@ -149,7 +149,7 @@ fn base64_table(url_safe: Bool) List[UInt8]:
 
 // The budget as a count, with no budget as a very large one and a negative budget as -1.
 fn budget(max_bytes: Int?) Int:
-    if let limit = max_bytes: return limit
+    if limit := max_bytes: return limit
 
     return 9223372036854775807
 
@@ -160,23 +160,23 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false, padded: Bool = true
 
     var out = StringBuilder()
     var batch = BytesBuilder()
-    let table = base64_table(url_safe)
-    let bytes = data.values()
-    let length = bytes.length()
+    table := base64_table(url_safe)
+    bytes := data.values()
+    length := bytes.length()
     var index = 0
 
     // Batch at most 16 KiB of ASCII before converting it to text.
     while index < length:
-        let end = if length - index > 12288: index + 12288 else: length
+        end := if length - index > 12288: index + 12288 else: length
 
         while index < end:
-            let remaining = length - index
+            remaining := length - index
             var second = 0
             var third = 0
             if remaining > 1: second = bytes[index + 1].to_int()
             if remaining > 2: third = bytes[index + 2].to_int()
 
-            let value = bytes[index].to_int() * 65536 + second * 256 + third
+            value := bytes[index].to_int() * 65536 + second * 256 + third
             batch.append(table[value / 262144 % 64])
             batch.append(table[value / 4096 % 64])
 
@@ -194,21 +194,21 @@ export fn base64_encode(data: Bytes, url_safe: Bool = false, padded: Bool = true
 
 // Decodes hexadecimal text. `max_bytes` bounds decoded output when supplied.
 export fn hex_decode(text: String, max_bytes: Int?) Bytes!:
-    let limit = budget(max_bytes)
+    limit := budget(max_bytes)
     if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
 
-    let length = text.byte_length()
+    length := text.byte_length()
     if length / 2 > limit: return error(
         Error("encoding: limit exceeded", kind: "EOVERFLOW")
     )
     if length % 2 != 0: return error(encoding_invalid_data())
 
-    let digits = text.to_bytes().values()
+    digits := text.to_bytes().values()
     var out = BytesBuilder()
 
     for pair in 0..(length / 2):
-        let high = hex_digit(digits[pair * 2].to_int())
-        let low = hex_digit(digits[pair * 2 + 1].to_int())
+        high := hex_digit(digits[pair * 2].to_int())
+        low := hex_digit(digits[pair * 2 + 1].to_int())
         if high < 0 or low < 0: return error(encoding_invalid_data())
 
         out.append(byte_of(high * 16 + low))
@@ -226,10 +226,10 @@ fn hex_digit(byte: Int) Int:
 // Encodes each byte as two lowercase hexadecimal digits.
 export fn hex_encode(data: Bytes) String:
     var out = StringBuilder()
-    let digits = "0123456789abcdef".chars()
+    digits := "0123456789abcdef".chars()
 
     for byte in data.values():
-        let n = byte.to_int()
+        n := byte.to_int()
         out.append(digits[n / 16])
         out.append(digits[n % 16])
 
@@ -244,7 +244,7 @@ export fn utf16_encode(text: String, little_endian: Bool = true) Bytes:
         if scalar < 65536:
             append_unit(var out, scalar, little_endian)
         else:
-            let offset = scalar - 65536
+            offset := scalar - 65536
             append_unit(var out, 55296 + offset / 1024, little_endian)
             append_unit(var out, 56320 + offset % 1024, little_endian)
 
@@ -271,24 +271,24 @@ fn byte_of(n: Int) UInt8:
     return n.to_uint8().get(0)
 
 fn text_of(scalars: List[Int]) String:
-    if let text = from_scalars(scalars): return text
+    if text := from_scalars(scalars): return text
 
     return ""
 
 // Decodes UTF-16 bytes, little-endian unless `little_endian` is false.
 // An odd length or an unpaired surrogate returns EBADMSG; a negative `max_bytes` returns EINVAL, and decoded text longer than `max_bytes` UTF-8 bytes returns EOVERFLOW.
 export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?) String!:
-    let limit = budget(max_bytes)
+    limit := budget(max_bytes)
     if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
 
-    let bytes = data.values()
+    bytes := data.values()
     if bytes.length() % 2 != 0: return error(encoding_invalid_data())
 
     var units = List[Int]()
 
     for pair in 0..(bytes.length() / 2):
-        let low = bytes[pair * 2].to_int()
-        let high = bytes[pair * 2 + 1].to_int()
+        low := bytes[pair * 2].to_int()
+        high := bytes[pair * 2 + 1].to_int()
 
         if little_endian: units.append(low + high * 256)
         else: units.append(low * 256 + high)
@@ -298,7 +298,7 @@ export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?)
     var index = 0
 
     while index < units.length():
-        let code = units[index]
+        code := units[index]
         var scalar = code
         index += 1
         if code >= 56320 and code < 57344: return error(encoding_invalid_data())
@@ -306,7 +306,7 @@ export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?)
         if code >= 55296 and code < 56320:
             if index >= units.length(): return error(encoding_invalid_data())
 
-            let next = units[index]
+            next := units[index]
             if next < 56320 or next >= 57344: return error(encoding_invalid_data())
 
             scalar = 65536 + (code - 55296) * 1024 + (next - 56320)
@@ -345,7 +345,7 @@ export fn ascii_encode(text: String) Bytes!:
 
 // Decodes 7-bit ASCII bytes. A byte above 0x7F returns EBADMSG.
 export fn ascii_decode(data: Bytes) String!:
-    let bytes = data.values()
+    bytes := data.values()
     for byte in bytes:
         if byte > 127: return error(encoding_invalid_data())
     return ok(data.decode_utf8().get(""))

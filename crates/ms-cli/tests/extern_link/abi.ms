@@ -96,68 +96,68 @@ extern fn abi_arm_stop() Unit
 extern fn abi_wait_for_stop() Int
 
 fn describe(result: Counter!ParseError) String:
-    if let counter = result:
+    if counter := result:
         return "ok {abi_counter_bump(counter)}"
 
     return "error {text(result.err())}"
 
 fn callbacks() Unit:
     var out = stdout()
-    let step = 5
-    let _ = out.write("{abi_twice(fn(x: Int) Int: x * 2 + step, 1)}\n")
-    let _ = out.write(
+    step := 5
+    _ := out.write("{abi_twice(fn(x: Int) Int: x * 2 + step, 1)}\n")
+    _ := out.write(
         abi_describe(
             fn(s: String, i: Int8, b: Bool, f: Float32, data: Bytes) String: "{s} {i} {b} {f} {data.length()}"
         )
         + "\n"
     )
-    let label = "fired"
+    label := "fired"
     abi_keep(
         fn(c: Counter) Unit:
-            let _ = stdout().write("{label} {abi_counter_bump(c)}\n")
+            _ := stdout().write("{label} {abi_counter_bump(c)}\n")
     )
 
-    let c = abi_counter(40)
+    c := abi_counter(40)
     abi_fire(c)
     abi_fire(c)
     abi_forget()
 
 fn counters() Unit:
-    let a = abi_counter(1)
-    let b = a
-    let _ = abi_counter_bump(b)
-    let list = [a, abi_counter(10)]
-    let _ = stdout().write("total {abi_total(list)}\n")
+    a := abi_counter(1)
+    b := a
+    _ := abi_counter_bump(b)
+    list := [a, abi_counter(10)]
+    _ := stdout().write("total {abi_total(list)}\n")
 
 export fn main() Int:
     var out = stdout()
-    let mode = arguments().get(index: 0, default: "")
+    mode := arguments().get(index: 0, default: "")
 
     if mode == "string-length":
         for text in ["", "x", "123456789012345", "1234567890123456", "é🙂\u{0}é"]:
             if abi_string_length(text) != text.byte_length(): return 1
 
-        let owned = "ab".repeat(20).get()
+        owned := "ab".repeat(20).get()
         if abi_string_length(owned) != 40: return 2
         if abi_string_length(owned.clone()) != 40: return 3
         if abi_string_length(owned.view(1, 39)) != 38: return 4
         if abi_string_length(owned + "\u{0}") != 41: return 5
 
-        let unicode = "é🙂".repeat(20).get()
+        unicode := "é🙂".repeat(20).get()
         if abi_string_length(unicode) != 120: return 6
 
         return 0
 
     if mode == "overflow":
-        let _ = abi_overflow()
+        _ := abi_overflow()
         return 0
 
     if mode == "null":
-        let _ = abi_null()
+        _ := abi_null()
         return 0
 
     if mode == "status":
-        let _ = abi_bad_status()
+        _ := abi_bad_status()
         return 0
 
     if mode == "fault":
@@ -175,31 +175,31 @@ export fn main() Int:
     if mode == "stop":
         abi_arm_stop()
 
-        let _ = out.write("hooks {abi_wait_for_stop()}\n")
+        _ := out.write("hooks {abi_wait_for_stop()}\n")
         return 0
 
-    let _ = out.write(
+    _ := out.write(
         "{abi_i8(-128)} {abi_i16(-32768)} {abi_i32(-2147483648)} {abi_u8(255)} {abi_u16(65535)} {abi_u32(4294967295)} {abi_u64(18446744073709551615)}\n"
     )
-    let _ = out.write(
+    _ := out.write(
         "{abi_f32(3.0)} {abi_not(true)} {abi_mixed(-1, 255, -1, 65535, -1, 4294967295, 2.5)}\n"
     )
-    let reversed = abi_reverse("abc".to_bytes())
-    let _ = out.write(
+    reversed := abi_reverse("abc".to_bytes())
+    _ := out.write(
         "{reversed.decode_utf8().get("")} {abi_cstring_length("hello")} {abi_cstring_length("a\u{0}b")}\n"
     )
-    let _ = out.write(
+    _ := out.write(
         "{abi_double([1, -2, 1000000000])} {abi_sum([200, 100, 255])} {abi_shout(["hi", "there"])}\n"
     )
     counters()
 
-    let _ = out.write("drops {abi_drops()}\n")
-    let _ = out.write(
+    _ := out.write("drops {abi_drops()}\n")
+    _ := out.write(
         "{describe(abi_parse("42"))} {describe(abi_parse("4x"))} {describe(abi_parse(""))} {describe(abi_parse("?"))}\n"
     )
-    let _ = out.write("drops {abi_drops()}\n")
-    let _ = out.write("{abi_noisy().get("")} [{abi_lazy().get("x")}]\n")
+    _ := out.write("drops {abi_drops()}\n")
+    _ := out.write("{abi_noisy().get("")} [{abi_lazy().get("x")}]\n")
     callbacks()
 
-    let _ = out.write("drops {abi_drops()}\n")
+    _ := out.write("drops {abi_drops()}\n")
     return 0

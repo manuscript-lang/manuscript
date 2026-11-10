@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,7 +15,7 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let b1 = (("" + "").upper() != "emoji 😀")
+    b1 := (("" + "").upper() != "emoji 😀")
     say("b1 = {b1}")
 
     if (not (b1 and b1)):
@@ -25,15 +25,15 @@ export fn main() Int:
 
     say("gcd(2, 668) = {gcd(2, 668)}")
 
-    let s2 = ("{(40 * 1)}:" + ("beta" + "Tab\there".lower()))
+    s2 := ("{(40 * 1)}:" + ("beta" + "Tab\there".lower()))
     say("s2 = [{s2}]")
 
-    let f3 = 402.25
+    f3 := 402.25
     say("f3 = {f3}")
 
-    let i4 = 47
+    i4 := 47
     say("i4 = {i4}")
 
-    let fixed = 1
+    fixed := 1
     fixed = 2
     return 0

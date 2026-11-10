@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     if true:
@@ -14,19 +14,19 @@ export fn main() Int:
     else:
         say("delta".replace("", "naïve"))
 
-    let s1 = "MiXeD CaSe".reverse().replace("", "gamma")
+    s1 := "MiXeD CaSe".reverse().replace("", "gamma")
     say("s1 = [{s1}]")
 
-    let s2 = ("42".lower() + ("42" + "quote\"d")).replace("x", "日本語")
+    s2 := ("42".lower() + ("42" + "quote\"d")).replace("x", "日本語")
     say("s2 = [{s2}]")
 
-    let bad = undefined_name + 1
-    let i3 = (10 / ((3 + (-9)) + ((-539407) * (-29))))
+    bad := undefined_name + 1
+    i3 := (10 / ((3 + (-9)) + ((-539407) * (-29))))
     say("i3 = {i3}")
 
-    let f4 = (647.860 + ((476.25 / 9.0e1) + (394.353 * 0.0)))
+    f4 := (647.860 + ((476.25 / 9.0e1) + (394.353 * 0.0)))
     say("f4 = {f4}")
 
-    let s5 = ("日本語" + s2)
+    s5 := ("日本語" + s2)
     say("s5 = [{s5}]")
     return 0

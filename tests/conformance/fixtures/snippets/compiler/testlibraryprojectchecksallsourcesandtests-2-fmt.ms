@@ -4,4 +4,4 @@
 import value from "@lib/value.ms"
 
 test "value":
-    let n = value()
+    n := value()

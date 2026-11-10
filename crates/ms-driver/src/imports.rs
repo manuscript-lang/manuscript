@@ -38,7 +38,6 @@ pub struct Export {
 /// Export headers with their declaration kind, including recovered neighbors.
 pub fn exported_declarations(syms: ms_syntax::Names, source: &str) -> Vec<Export> {
     let mut names = Vec::new();
-    let mut groups = None;
     let mut headers = None;
     for (line, text) in source.lines().enumerate() {
         let Some(rest) = text.strip_prefix("export ") else {
@@ -59,33 +58,20 @@ pub fn exported_declarations(syms: ms_syntax::Names, source: &str) -> Vec<Export
             .or_else(|| rest.strip_prefix("opaque "))
             .unwrap_or(rest)
             .trim_start();
-        if rest
-            .strip_prefix("let")
-            .is_some_and(|tail| tail.trim_start().starts_with('('))
-        {
-            let Some(groups) = groups.get_or_insert_with(|| grouped_exports(source)) else {
-                // Keep valid neighboring exports when lexing an incomplete file fails.
-                return parsed_exported_names(syms, source);
-            };
-            if let Some(group) = groups.get(&((line + 1) as u32)) {
-                names.extend(group.iter().map(|name| Export {
-                    name: name.clone(),
-                    is_type: false,
-                }));
+        // A declaration keyword, or a constant `NAME := value` / `NAME: Type = value`.
+        let (keyword, rest) = match rest.split_once(char::is_whitespace) {
+            Some((keyword, tail)) if matches!(keyword, "fn" | "type" | "enum" | "interface") => {
+                (keyword, tail.trim_start())
             }
-            continue;
-        }
-        let Some((keyword, rest)) = rest.split_once(char::is_whitespace) else {
-            continue;
+            _ => ("", rest),
         };
-        let rest = rest.trim_start();
-        if !matches!(keyword, "fn" | "type" | "enum" | "interface" | "let") {
-            continue;
-        }
         let name: String = rest
             .chars()
             .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
             .collect();
+        if keyword.is_empty() && !rest[name.len()..].trim_start().starts_with(':') {
+            continue;
+        }
         if !name.is_empty() {
             names.push(Export {
                 name,
@@ -133,47 +119,6 @@ fn export_headers(source: &str) -> Option<BTreeSet<u32>> {
             .map(|token| token.pos.line)
             .collect(),
     )
-}
-
-/// Group entries start four columns past their export and outside any nested
-/// initializer delimiter. Lex once per file, even when it has several groups.
-fn grouped_exports(source: &str) -> Option<BTreeMap<u32, Vec<String>>> {
-    let file = Arc::from("<import-hints>");
-    let lexed = lexer::lex(&file, source).ok()?;
-    let tokens = &lexed.tokens;
-    let mut groups = BTreeMap::new();
-    for (index, export) in tokens.iter().enumerate() {
-        if export.kind != Tok::Export
-            || export.pos.column != 1
-            || tokens.get(index + 1)?.kind != Tok::Let
-            || tokens.get(index + 2)?.kind != Tok::LParen
-        {
-            continue;
-        }
-        let mut names = Vec::new();
-        let mut depth = 1;
-        for (index, token) in tokens.iter().enumerate().skip(index + 3) {
-            if token.kind == Tok::Name
-                && depth == 1
-                && token.pos.column == export.pos.column + 4
-                && tokens
-                    .get(index + 1)
-                    .is_some_and(|next| matches!(next.kind, Tok::Assign | Tok::Colon))
-            {
-                names.push(lexed.source[token.lo as usize..token.hi as usize].to_string());
-            }
-            if matches!(token.kind, Tok::LParen | Tok::LBracket | Tok::LBrace) {
-                depth += 1;
-            } else if matches!(token.kind, Tok::RParen | Tok::RBracket | Tok::RBrace) {
-                depth -= 1;
-                if depth == 0 {
-                    break;
-                }
-            }
-        }
-        groups.insert(export.pos.line, names);
-    }
-    Some(groups)
 }
 
 fn parsed_exported_names(syms: ms_syntax::Names, source: &str) -> Vec<Export> {
@@ -423,7 +368,7 @@ mod tests {
     #[test]
     fn exports_are_read_from_top_level_declarations() {
         let syms = ms_syntax::Names::global();
-        let source = "export type A:\n    x: Int\nexport extern fn b() Int\nexport let C = 1\nfn d() Int:\n    return 0\n";
+        let source = "export type A:\n    x: Int\nexport extern fn b() Int\nexport C := 1\nfn d() Int:\n    return 0\n";
         assert_eq!(exported_names(syms, source), ["A", "b", "C"]);
     }
 }

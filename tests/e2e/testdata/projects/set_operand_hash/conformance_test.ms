@@ -8,8 +8,8 @@ fn intersection[T: Hashable](left: Set[T], right: Set[T]) Set[T]:
     return left.intersection(right)
 
 test "Set algebra probes each operand with its creator hash":
-    let left = first_items()
-    let right = second_items()
+    left := first_items()
+    right := second_items()
     left.union(right).values().map(fn key: key.id) | try expect_equal([1, 2, 3])
     left.intersection(right).values().map(fn key: key.id) | try expect_equal([1])
     left.difference(right).values().map(fn key: key.id) | try expect_equal([2])
@@ -25,9 +25,9 @@ test "Set algebra probes each operand with its creator hash":
     right.values().map(fn key: key.id) | try expect_equal([11, 3])
 
 test "Set relations use the hash of the index being probed":
-    let left = first_items()
-    let right = second_items()
-    let shared = second_shared()
+    left := first_items()
+    right := second_items()
+    shared := second_shared()
     shared.is_subset_of(left) | try expect_true
     left.is_superset_of(shared) | try expect_true
     left.is_disjoint_from(shared) | try expect_false
@@ -35,16 +35,16 @@ test "Set relations use the hash of the index being probed":
     left.is_subset_of(right) | try expect_false
     left.is_superset_of(right) | try expect_false
 
-    let empty = second_empty()
+    empty := second_empty()
     empty.is_subset_of(left) | try expect_true
     left.is_superset_of(empty) | try expect_true
     left.is_disjoint_from(empty) | try expect_true
     empty.is_disjoint_from(left) | try expect_true
 
 test "Bound and generic Set algebra retains left identity and owned copies":
-    let left = first_items()
-    let right = second_items()
-    let common = left.intersection
+    left := first_items()
+    right := second_items()
+    common := left.intersection
     var output = common(right)
     output.add(first_items().values().get(0).clone())
     output.length() | try expect_equal(1)

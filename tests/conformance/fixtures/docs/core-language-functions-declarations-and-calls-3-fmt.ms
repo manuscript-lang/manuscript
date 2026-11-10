@@ -5,6 +5,6 @@ fn subtract(amount: Int, deduction: Int = 1) Int:
     return amount - deduction
 
 fn example() Int:
-    let usual = subtract(5)
-    let explicit = subtract(5, 2)
+    usual := subtract(5)
+    explicit := subtract(5, 2)
     return usual + explicit

@@ -24,24 +24,24 @@ type Box:
     spare: ReadStream[Int]
 
 test "a record pattern moves a stream field out of its record":
-    let b = Box(
+    b := Box(
         label: 1, body: ReadStream[Int](Count(0)), spare: ReadStream[Int](Count(10))
     )
     var {label: _l, body: p} = b
-    let a = try p.next()
+    a := try p.next()
     try expect_equal(a, 1)
 
 test "a record pattern over a temporary moves its fields":
     var {body: p} = Box(
         label: 2, body: ReadStream[Int](Count(0)), spare: ReadStream[Int](Count(10))
     )
-    let a = try p.next()
+    a := try p.next()
     try expect_equal(a, 1)
 
 test "a list pattern moves its elements":
-    let streams = [ReadStream[Int](Count(0)), ReadStream[Int](Count(1))]
+    streams := [ReadStream[Int](Count(0)), ReadStream[Int](Count(1))]
     var [first, second] = streams
-    let a = try first.next()
-    let b = try second.next()
+    a := try first.next()
+    b := try second.next()
     try expect_equal(a, 1)
     try expect_equal(b, 2)

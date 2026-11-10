@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     if ((9.5 - 6.5) > (9.5 - 3.5)):
@@ -14,8 +14,8 @@ export fn main() Int:
     else:
         say("")
 
-    let s1 = "日本語".trim().reverse()
+    s1 := "日本語".trim().reverse()
     say("s1 = [{s1}]")
 
-    let bad: Int = "text"
+    bad: Int = "text"
     return 0

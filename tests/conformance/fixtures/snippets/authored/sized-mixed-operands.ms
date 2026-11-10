@@ -2,10 +2,10 @@
 // conform: phase=check
 // conform: origin=sized numeric types stage 1
 fn main() Unit:
-    let a: Int32 = 1
-    let b: Int64 = 2
-    let mixed = a + b
-    let plain: Int = 3
-    let both: Int8 = plain
-    let rem: Float32 = 1.5
-    let bad = rem % rem
+    a: Int32 = 1
+    b: Int64 = 2
+    mixed := a + b
+    plain: Int = 3
+    both: Int8 = plain
+    rem: Float32 = 1.5
+    bad := rem % rem

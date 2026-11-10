@@ -54,7 +54,7 @@ fn norm(k: Int) Int:
 
 // Shifts a letter forward by k (k may be negative); other scalars are unchanged.
 fn shift(c: Int, k: Int) Int:
-    let a = norm(k)
+    a := norm(k)
     if is_upper(c): return 65 + (c - 65 + a) % 26
     if is_lower(c): return 97 + (c - 97 + a) % 26
 
@@ -69,13 +69,13 @@ fn parse_caesar(key: List[Int]) Int?:
         neg = true
         i = 1
 
-    let digits = key.length() - i
+    digits := key.length() - i
     if digits < 1 or digits > 7: return none
 
     var v = 0
 
     while i < key.length():
-        let c = key[i]
+        c := key[i]
         if c < 48 or c > 57: return none
 
         v = v * 10 + (c - 48)
@@ -99,26 +99,26 @@ fn vig_key(key: List[Int]) List[Int]?:
     return out
 
 fn process(cs: List[Int]) String:
-    let s1 = next_space(cs, 0)
+    s1 := next_space(cs, 0)
     if s1 < 0: return "error: bad command"
 
-    let s2 = next_space(cs, s1 + 1)
+    s2 := next_space(cs, s1 + 1)
     if s2 < 0: return "error: bad command"
 
-    let s3 = next_space(cs, s2 + 1)
+    s3 := next_space(cs, s2 + 1)
     if s3 < 0 or s3 + 1 >= cs.length(): return "error: bad command"
 
-    let cipher = text_of(sub(cs, 0, s1))
-    let mode = text_of(sub(cs, s1 + 1, s2))
-    let keyv = sub(cs, s2 + 1, s3)
-    let text = sub(cs, s3 + 1, cs.length())
+    cipher := text_of(sub(cs, 0, s1))
+    mode := text_of(sub(cs, s1 + 1, s2))
+    keyv := sub(cs, s2 + 1, s3)
+    text := sub(cs, s3 + 1, cs.length())
     if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
     if mode != "enc" and mode != "dec": return "error: bad mode"
 
-    let enc = mode == "enc"
+    enc := mode == "enc"
 
     if cipher == "caesar":
-        if let k = parse_caesar(keyv):
+        if k := parse_caesar(keyv):
             var amt = k
             if not enc:
                 amt = -k
@@ -130,13 +130,13 @@ fn process(cs: List[Int]) String:
 
         return "error: bad key"
 
-    if let kv = vig_key(keyv):
+    if kv := vig_key(keyv):
         var res = List[Int]()
         var p = 0
 
         for c in text:
             if is_letter(c):
-                let s = kv[p % kv.length()]
+                s := kv[p % kv.length()]
 
                 if enc:
                     res.append(shift(c, s))
@@ -155,7 +155,7 @@ export fn main() Int:
     var out = ""
 
     for line in collect(lines(stdin())).get():
-        let cs = line.scalar_values()
+        cs := line.scalar_values()
         if blank(cs): continue
 
         out += process(cs) + "\n"

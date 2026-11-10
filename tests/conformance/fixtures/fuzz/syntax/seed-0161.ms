@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = (716.25 + 0.0)
+    f1 := (716.25 + 0.0)
     say("f1 = {f1}")
 
-    let _l2 = [(-23), (-18), (-24), 19, 6]
-    let f3 = ((372.732 / (993.25 + f1)) - (f1 * (f1 * f1)))
+    _l2 := [(-23), (-18), (-24), 19, 6]
+    f3 := ((372.732 / (993.25 + f1)) - (f1 * (f1 * f1)))
     say("f3 = {f3}")
 
-    let f4 = ((f1 / f1) + (f3 + (201.374 * 5.5)))
+    f4 := ((f1 / f1) + (f3 + (201.374 * 5.5)))
     say("f4 = {f4}")
     return 0

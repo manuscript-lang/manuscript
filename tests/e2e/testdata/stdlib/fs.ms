@@ -25,21 +25,21 @@ fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
         ok(_): return error(Error("filesystem misuse succeeded"))
         error(cause):
             // A failure names the path after the status words: "filesystem: <failure>: <path>".
-            let named = cause.message.starts_with("{expected.message}: ")
+            named := cause.message.starts_with("{expected.message}: ")
             if (
                 cause.kind != expected.kind
                 or (cause.message != expected.message and not named)
             ): return error(Error("wrong filesystem error: {cause}"))
 
 test "glob queries reuse patterns without changing hidden paths limits or callbacks":
-    let temporary = temporary("manuscript-glob-") | try expect_ok
-    let root = temporary.path()
+    temporary := temporary("manuscript-glob-") | try expect_ok
+    root := temporary.path()
     create_directory(path: "{root}/sub", recursive: false) | try expect_ok
     for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
         write_file(path: "{root}/{name}", data: "", replace: false).wait() | try expect_ok
 
-    let all = GlobOptions(patterns: ["**/*.\{txt,md\}"])
-    let matches = glob(path: root, options: all.clone()) | try expect_ok
+    all := GlobOptions(patterns: ["**/*.\{txt,md\}"])
+    matches := glob(path: root, options: all.clone()) | try expect_ok
     matches.map(fn e: e.path.clone()) | try expect_equal(["a.txt", "b.md", "sub/c.txt"])
     glob(
         path: root, options: GlobOptions(patterns: ["**/*.\{txt,md\}"], max_results: 2)
@@ -48,8 +48,8 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
         Error("filesystem: invalid input", kind: "EINVAL")
     )
 
-    let options = GlobOptions(patterns: ["*.txt"], exclude: ["sub/**"])
-    let entries = (
+    options := GlobOptions(patterns: ["*.txt"], exclude: ["sub/**"])
+    entries := (
         try expect_ok(
             glob(
                 path: root, options: options.clone(),
@@ -62,12 +62,12 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
     options.patterns | try expect_equal(["*.txt"])
 
 test "ordinary filesystem misuse retains typed cases":
-    let temporary = temporary("manuscript-errors-") | try expect_ok
-    let directory = "{temporary.path()}/directory"
-    let file = "{temporary.path()}/file"
-    let _created = create_directory(path: directory, recursive: false) | try expect_ok
-    let _child = write_file(path: "{directory}/child", data: "x", replace: false).wait() | try expect_ok
-    let _written = write_file(path: file, data: "abc", replace: false).wait() | try expect_ok
+    temporary := temporary("manuscript-errors-") | try expect_ok
+    directory := "{temporary.path()}/directory"
+    file := "{temporary.path()}/file"
+    _created := create_directory(path: directory, recursive: false) | try expect_ok
+    _child := write_file(path: "{directory}/child", data: "x", replace: false).wait() | try expect_ok
+    _written := write_file(path: file, data: "abc", replace: false).wait() | try expect_ok
     remove(path: directory, recursive: false) | try expect_fs_error(
         Error("filesystem: directory not empty", kind: "ENOTEMPTY")
     )
@@ -88,7 +88,7 @@ test "ordinary filesystem misuse retains typed cases":
     ) | try expect_fs_error(Error("filesystem: invalid input", kind: "EINVAL"))
     try reader.close()
 
-    let writer = open(file, OpenMode.Append, OpenOptions(permissions: 384)) | try expect_ok
+    writer := open(file, OpenMode.Append, OpenOptions(permissions: 384)) | try expect_ok
     writer.read(1) | try expect_fs_error(Error("I/O: invalid input", kind: "EINVAL"))
     writer.read_file() | try expect_fs_error(
         Error("filesystem: invalid input", kind: "EINVAL")
@@ -99,8 +99,8 @@ test "filesystem scoped temporary directories and bounded file reads":
     var temporary = temporary("manuscript-stdlib-") | try expect_ok
     directory = temporary.path()
 
-    let path = "{directory}/data.txt"
-    let _written = write_file(path: path, data: "hello", replace: false).wait() | try expect_ok
+    path := "{directory}/data.txt"
+    _written := write_file(path: path, data: "hello", replace: false).wait() | try expect_ok
     read_file(path: path, max_bytes: 5).wait() | try expect_ok | try expect_equal(
         "hello".to_bytes()
     )
@@ -113,7 +113,7 @@ test "filesystem scoped temporary directories and bounded file reads":
     (stat(path: path) | try expect_ok).size | try expect_equal(5)
     (list(path: directory) | try expect_ok).length() | try expect_equal(1)
 
-    let opened = open(path, OpenMode.Read) | try expect_ok
+    opened := open(path, OpenMode.Read) | try expect_ok
     var input = opened.reader() | try expect_ok
     (input.next() | try expect_ok).get() | try expect_equal("hello".to_bytes())
     try temporary.close()
@@ -122,31 +122,29 @@ test "filesystem scoped temporary directories and bounded file reads":
     )
 
 test "file handles positional I/O stream adapters and closed errors":
-    let temporary = temporary("manuscript-handles-") | try expect_ok
-    let path = "{temporary.path()}/data.txt"
-    let _written = write_file(path: path, data: "abcdef", replace: false).wait() | try expect_ok
+    temporary := temporary("manuscript-handles-") | try expect_ok
+    path := "{temporary.path()}/data.txt"
+    _written := write_file(path: path, data: "abcdef", replace: false).wait() | try expect_ok
     var handle = open(path, OpenMode.ReadWrite, OpenOptions(permissions: 384)) | try expect_ok
     handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
         "cd".to_bytes()
     )
     handle.write_at(offset: 1, data: "XY") | try expect_ok
 
-    let _resized = handle.truncate(4) | try expect_ok
+    _resized := handle.truncate(4) | try expect_ok
     (handle.stat() | try expect_ok).size | try expect_equal(4)
 
-    let _sought = handle.seek(offset: 0, origin: Seek.Start) | try expect_ok
-    let contents = read_all(input: try handle.reader(), max_bytes: none) | try expect_ok
+    _sought := handle.seek(offset: 0, origin: Seek.Start) | try expect_ok
+    contents := read_all(input: try handle.reader(), max_bytes: none) | try expect_ok
     contents | try expect_equal("aXYd".to_bytes())
     try handle.close()
 
-    let closed: Bytes! = error(Error("filesystem: resource is closed", kind: "EBADF"))
+    closed: Bytes! = error(Error("filesystem: resource is closed", kind: "EBADF"))
     handle.read_at(offset: 0, max_bytes: 1) | try expect_equal(closed)
     try handle.close()
 
 test "empty paths are rejected instead of resolving to the working directory":
-    let invalid: Unit! = error(
-        cause: Error("filesystem: invalid input", kind: "EINVAL")
-    )
+    invalid: Unit! = error(cause: Error("filesystem: invalid input", kind: "EINVAL"))
     remove(path: "", recursive: true) | try expect_equal(invalid)
     create_directory(path: "", recursive: true) | try expect_equal(invalid)
     write_file(path: "", data: "x", replace: true).wait() | try expect_equal(invalid)
@@ -157,11 +155,11 @@ test "empty paths are rejected instead of resolving to the working directory":
             try expect_equal(cause, Error("filesystem: invalid input", kind: "EINVAL"))
 
 test "rename and copy failures name source and destination":
-    let temporary = temporary("manuscript-pair-") | try expect_ok
-    let root = temporary.path()
-    let from = "{root}/missing"
-    let to = "{root}/target"
-    let expected = "filesystem: file or directory not found: {from} -> {to}"
+    temporary := temporary("manuscript-pair-") | try expect_ok
+    root := temporary.path()
+    from := "{root}/missing"
+    to := "{root}/target"
+    expected := "filesystem: file or directory not found: {from} -> {to}"
 
     match rename(from, to):
         ok(_): return fail("rename of a missing file succeeded")

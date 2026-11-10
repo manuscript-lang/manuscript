@@ -9,7 +9,7 @@ fn write_line(text: String) Unit!:
     try stdout().write("{text}\n")
 
 fn exercise() Int!:
-    let args = arguments()
+    args := arguments()
     var index = 0
 
     while index < args.length():
@@ -22,7 +22,7 @@ export fn main() Int:
     match exercise():
         ok(status): return status
         error(cause):
-            let _written = stderr().write("{cause.message}\n")
+            _written := stderr().write("{cause.message}\n")
             return 1
 
 test "selected=a=b":

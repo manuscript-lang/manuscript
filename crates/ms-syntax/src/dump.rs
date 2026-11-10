@@ -855,7 +855,7 @@ impl D {
                     names.str(c.name),
                     e,
                     true,
-                    c.group,
+                    None,
                     sy,
                     &[],
                     &[],

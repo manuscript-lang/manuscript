@@ -58,9 +58,9 @@ fn identity[T](value: T) T:
 fn same[T: Equal](left: T, right: T) Bool:
     return left == right
 
-let box = Box[Int](1)
-let exact = identity[Int](1)
-let inferred = identity(1)
+box := Box[Int](1)
+exact := identity[Int](1)
+inferred := identity(1)
 ```
 
 - Parameter names are unique; an application supplies one argument each, except trailing [defaults](#default-type-arguments).
@@ -81,8 +81,8 @@ type Pair[A, B = A]:
 fn parse[T = String](text: String) T?:
     return none
 
-let same: Pair[Int] = Pair[Int](1, 2)    // Pair[Int, Int]
-let mixed = Pair[Int, String](1, "x")
+same: Pair[Int] = Pair[Int](1, 2)    // Pair[Int, Int]
+mixed := Pair[Int, String](1, "x")
 ```
 
 Inference runs first; a parameter it leaves undetermined takes its default, for calls and constructors alike. An undetermined parameter without a default is an error.
@@ -95,9 +95,9 @@ A call may omit type arguments when its arguments and expected result uniquely d
 fn choose[T](first: T, second: T) T:
     return first
 
-let value = choose(1, 2)  // T = Int
+value := choose(1, 2)  // T = Int
 // Rejected: conflicting evidence for T.
-let mixed = choose(1, 2.0)
+mixed := choose(1, 2.0)
 ```
 
 The expected result (return type, annotation, field, argument, or callback) fills missing parameters but never overrides argument evidence or explicit specialization. A parameter in neither arguments nor result needs an explicit type argument.
@@ -106,7 +106,7 @@ The expected result (return type, annotation, field, argument, or callback) fill
 fn fail[T](message: String) Result[T, Error]: error(Error(message))
 
 fn first() Result[Int, Error]: fail("empty")  // T = Int
-let failed: Result[Int, Error] = fail("empty")
+failed: Result[Int, Error] = fail("empty")
 ```
 
 Matching adds no numeric conversions, interface conversions, or `Optional` wrapping. Error types, success types, and Optional or collection applications must match exactly. Inferred function types lose default-argument omission.
@@ -117,12 +117,12 @@ Empty lists, `none`, and similar expressions give no evidence of their own; once
 fn count[T](values: List[T]) Int:
     return 0
 
-let known = count[Int]([])
+known := count[Int]([])
 // Rejected: the empty list does not determine T.
-let unknown = count([])
+unknown := count([])
 ```
 
-Generic constructors infer from fields or payloads, or from an expected application: `let box: Box[Int] = Box(value: 1)`. The result must be one complete application.
+Generic constructors infer from fields or payloads, or from an expected application: `box: Box[Int] = Box(value: 1)`. The result must be one complete application.
 
 ## Body checking and well-formedness
 

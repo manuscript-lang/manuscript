@@ -8,11 +8,11 @@ import (
 
 fn worker(url: String, nanos: Int) Int:
     var f = fetcher().get()
-    let started = monotonic()
+    started := monotonic()
     var n = 0
 
     while monotonic().difference(started).compare(nanoseconds(nanos)) < 0:
-        if let r = f.fetch(url).wait():
+        if r := f.fetch(url).wait():
             n += r.body.length()
             n -= r.body.length() - 1
         else:
@@ -23,10 +23,10 @@ fn worker(url: String, nanos: Int) Int:
 
 // Runs `conns` fetching promises; the runtime spreads them over its threads.
 fn main() Unit:
-    let args = arguments()
-    let url = args.get(0)
-    let conns = args.get(1).parse_int().get()
-    let secs = args.get(2).parse_int().get()
+    args := arguments()
+    url := args.get(0)
+    conns := args.get(1).parse_int().get()
+    secs := args.get(2).parse_int().get()
     var total = 0
     var running: List[Promise[Int]] = []
     for i in 0..conns:
@@ -34,4 +34,4 @@ fn main() Unit:
     for r in wait_all(running).get():
         total += r
 
-    let _ = stdout().write("req/s {total / secs}\n")
+    _ := stdout().write("req/s {total / secs}\n")

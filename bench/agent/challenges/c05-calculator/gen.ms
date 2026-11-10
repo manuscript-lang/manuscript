@@ -13,11 +13,11 @@ type Tok:
 
 fn tokens(line: String) List[Tok]:
     var out = List[Tok]()
-    let chars = line.chars()
+    chars := line.chars()
     var i = 0
 
     while i < chars.length():
-        let c = chars[i].clone()
+        c := chars[i].clone()
 
         if c.trim().is_empty():
             i += 1
@@ -53,10 +53,10 @@ impl Parser:
         var v = self.term()
 
         while self.at_op("+") or self.at_op("-"):
-            let plus = self.at_op("+")
+            plus := self.at_op("+")
             self.pos += 1
 
-            let r = self.term()
+            r := self.term()
             v = if plus: v + r else: v - r
 
         return v
@@ -65,10 +65,10 @@ impl Parser:
         var v = self.unary()
 
         while self.at_op("*") or self.at_op("/"):
-            let times = self.at_op("*")
+            times := self.at_op("*")
             self.pos += 1
 
-            let r = self.unary()
+            r := self.unary()
 
             if times:
                 v *= r
@@ -92,12 +92,12 @@ impl Parser:
             self.bad = true
             return 0
 
-        let t = self.toks[self.pos].clone()
+        t := self.toks[self.pos].clone()
         self.pos += 1
         if t.kind == "n": return t.value
 
         if t.text == "(":
-            let v = self.expr()
+            v := self.expr()
 
             if not self.at_op(")"):
                 self.bad = true
@@ -111,7 +111,7 @@ impl Parser:
 
 fn evaluate(line: String) String:
     var p = Parser(tokens(line))
-    let v = p.expr()
+    v := p.expr()
     if p.pos < p.toks.length(): p.bad = true
     if p.bad: return "error: syntax"
     if p.div: return "error: division by zero"
@@ -128,25 +128,25 @@ fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 fn rexpr(var rnd: Random, d: Int) String:
     if d == 0 or rnd.random() < 0.25: return "{rnd.randint(0, 99)}"
 
-    let r = rnd.random()
+    r := rnd.random()
     if r < 0.15: return "-" + rexpr(var rnd, d - 1)
     if r < 0.3: return "(" + rexpr(var rnd, d - 1) + ")"
 
-    let left = rexpr(var rnd, d - 1)
-    let op = rnd.choice([" + ", "-", " * ", "/", " - "])
+    left := rexpr(var rnd, d - 1)
+    op := rnd.choice([" + ", "-", " * ", "/", " - "])
     return left + op + rexpr(var rnd, d - 1)
 
 export fn gen_c05() Unit:
     var rnd = seeded(5)
-    let examples = [mk("basic", "1 + 2 * 3\n(1+2)*3\n10 / (5 - 5)\n2 +\n-7 / 2\n")]
+    examples := [mk("basic", "1 + 2 * 3\n(1+2)*3\n10 / (5 - 5)\n2 +\n-7 / 2\n")]
     var good = List[String]()
     for _n in 0..400: good.append(rexpr(var rnd, 5))
 
-    let syntax = [
+    syntax := [
         "()", "1+", "+1", "(1", "1)", "1 2", "a", "1+*2", "2**3", "(", ")", "1 + (2",
         "3 $ 4", "1/0 +"
     ]
-    let hidden = examples.concat(
+    hidden := examples.concat(
         [
             mk("precedence", "2+3*4\n2*3+4\n10-2-3\n100/10/5\n2*(3+4)*5\n"),
             mk("unary", "-2*3\n--4\n-(3+4)\n3--2\n- 5\n"),

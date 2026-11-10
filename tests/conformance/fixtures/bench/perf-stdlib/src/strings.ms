@@ -2,7 +2,7 @@ import bench, words from "./harness.ms"
 import StringBuilder from "@std/string.ms"
 
 export fn bench_string() Unit:
-    let text = words(2000).join(" ")
+    text := words(2000).join(" ")
 
     bench(
         "string.append_builder",

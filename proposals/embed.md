@@ -23,7 +23,7 @@ Go's `embed` ships files in the binary. `ms build` output must today read `./ass
 import files from "@assets"
 
 export fn main() Int:
-    let page = files().read("index.html", none).get()
+    page := files().read("index.html", none).get()
     return page.length()
 ```
 

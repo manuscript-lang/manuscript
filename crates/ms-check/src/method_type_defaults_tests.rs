@@ -33,29 +33,29 @@ impl Convert for Source:
 impl Source:
     fn ok_or(cause: Error? = none) Result[Int, Error]: ok(if cause.is_none(): self.value else: 8)
 fn generic[T](value: T?) Unit:
-    let _generic_native = value.ok_or[Error]
+    _generic_native := value.ok_or[Error]
 fn sample(value: Int?, flag: Bool) Unit:
-    let _native = value.ok_or[Error]
-    let _alias = _native
-    let _nested = fn: _alias()
-    let _source = Source(7)
-    let _source_method = _source.ok_or
-    let _inherited = _source.convert
-    let _source_fn = ordinary
-    let _source_copy = _source_fn
-    let _annotated: fn(Error?) Result[Int, Error] = value.ok_or[Error]
+    _native := value.ok_or[Error]
+    _alias := _native
+    _nested := fn: _alias()
+    _source := Source(7)
+    _source_method := _source.ok_or
+    _inherited := _source.convert
+    _source_fn := ordinary
+    _source_copy := _source_fn
+    _annotated: fn(Error?) Result[Int, Error] = value.ok_or[Error]
     var _mutable = value.ok_or[Error]
     _mutable = ordinary
-    let _forwarded = relay(value.ok_or[Error])
-    let _values = [value.ok_or[Error]]
-    let _mapping = {"_native": value.ok_or[Error]}
-    let _joined = match flag:
+    _forwarded := relay(value.ok_or[Error])
+    _values := [value.ok_or[Error]]
+    _mapping := {"_native": value.ok_or[Error]}
+    _joined := match flag:
         true: value.ok_or[Error]
         false: ordinary
-    let _native_join = match flag:
+    _native_join := match flag:
         true: value.ok_or[Error]
         false: value.ok_or[Error]
-    let _conditional = if flag: value.ok_or[Error] else: ordinary
+    _conditional := if flag: value.ok_or[Error] else: ordinary
 "#,
     );
     assert!(program.diagnostics.is_empty(), "{:?}", program.diagnostics);
@@ -186,19 +186,19 @@ fn invocation_defaults_do_not_survive_callable_erasure_or_joins() {
 fn ordinary(cause: Error? = none) Result[Int, Error]: ok(if cause.is_none(): 7 else: 8)
 fn relay[T](value: T) T: value
 fn sample(flag: Bool) Unit:
-    let absent: Int? = none
+    absent: Int? = none
 "#;
     for body in [
-        "    var value = absent.ok_or[Error]\n    value = ordinary\n    let result = value()\n",
-        "    let value: fn(Error?) Result[Int, Error] = absent.ok_or[Error]\n    let result = value()\n",
-        "    let value = relay(absent.ok_or[Error])\n    let result = value()\n",
-        "    let factory = fn: absent.ok_or[Error]\n    let value = factory()\n    let result = value()\n",
-        "    let values = [absent.ok_or[Error]]\n    let result = values[0]()\n",
-        "    let values = {\"native\": absent.ok_or[Error]}\n    let result = values[\"native\"]()\n",
-        "    let value = match flag:\n        true: absent.ok_or[Error]\n        false: ordinary\n    let result = value()\n",
-        "    let value = match flag:\n        true: ordinary\n        false: absent.ok_or[Error]\n    let result = value()\n",
-        "    let value = match flag:\n        true: absent.ok_or[Error]\n        false: absent.ok_or[Error]\n    let result = value()\n",
-        "    let value = if flag: absent.ok_or[Error] else: ordinary\n    let result = value()\n",
+        "    var value = absent.ok_or[Error]\n    value = ordinary\n    result := value()\n",
+        "    value: fn(Error?) Result[Int, Error] = absent.ok_or[Error]\n    result := value()\n",
+        "    value := relay(absent.ok_or[Error])\n    result := value()\n",
+        "    factory := fn: absent.ok_or[Error]\n    value := factory()\n    result := value()\n",
+        "    values := [absent.ok_or[Error]]\n    result := values[0]()\n",
+        "    values := {\"native\": absent.ok_or[Error]}\n    result := values[\"native\"]()\n",
+        "    value := match flag:\n        true: absent.ok_or[Error]\n        false: ordinary\n    result := value()\n",
+        "    value := match flag:\n        true: ordinary\n        false: absent.ok_or[Error]\n    result := value()\n",
+        "    value := match flag:\n        true: absent.ok_or[Error]\n        false: absent.ok_or[Error]\n    result := value()\n",
+        "    value := if flag: absent.ok_or[Error] else: ordinary\n    result := value()\n",
     ] {
         let (_, program) = check_defaults_source(&format!("{prefix}{body}"));
         assert!(

@@ -4,7 +4,7 @@ import (
     max, min from "@std/math.ms",
 )
 
-let BAD = "error: bad command"
+BAD := "error: bad command"
 
 // Value of a 1-to-6 digit unsigned decimal token, or -1 when the token is malformed.
 fn num(t: String) Int:
@@ -19,8 +19,8 @@ fn zeros(n: Int) List[Int]:
     return xs
 
 fn lcs(a: String, b: String) Int:
-    let x = a.to_bytes()
-    let y = b.to_bytes()
+    x := a.to_bytes()
+    y := b.to_bytes()
     var prev = zeros(y.length() + 1)
 
     for i in 0..x.length():
@@ -37,8 +37,8 @@ fn lcs(a: String, b: String) Int:
     return prev[y.length()]
 
 fn edit(a: String, b: String) Int:
-    let x = a.to_bytes()
-    let y = b.to_bytes()
+    x := a.to_bytes()
+    y := b.to_bytes()
     var prev = List[Int]()
     for j in 0..y.length() + 1: prev.append(j)
 
@@ -47,7 +47,7 @@ fn edit(a: String, b: String) Int:
         cur.append(i + 1)
 
         for j in 0..y.length():
-            let cost = if x.get(i) == y.get(j): 0 else: 1
+            cost := if x.get(i) == y.get(j): 0 else: 1
             cur.append(min(prev[j] + cost, min(prev[j + 1] + 1, cur[j] + 1)))
 
         prev = cur
@@ -58,15 +58,15 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
     var total = 0
     for w in ws: total += w
 
-    let top = min(cap, total)
+    top := min(cap, total)
     var dp = zeros(top + 1)
 
     for i in 0..ws.length():
-        let w = ws[i]
+        w := ws[i]
         if w > top: continue
 
         for k in 0..top - w + 1:
-            let c = top - k
+            c := top - k
             dp[c] = max(dp[c], dp[c - w] + vs[i])
 
     return dp[top]
@@ -80,7 +80,7 @@ fn coins(amount: Int, cs: List[Int]) String:
 
         for c in cs:
             if c <= a and dp[a - c] >= 0:
-                let cand = dp[a - c] + 1
+                cand := dp[a - c] + 1
                 if best < 0 or cand < best: best = cand
 
         dp.append(best)
@@ -90,8 +90,8 @@ fn coins(amount: Int, cs: List[Int]) String:
     return "{dp[amount]}"
 
 fn run(line: String) String:
-    let t = line.split(" ")
-    let cmd = t[0]
+    t := line.split(" ")
+    cmd := t[0]
 
     if cmd == "lcs" or cmd == "edit":
         if t.length() != 3 or t[1].length() == 0 or t[2].length() == 0: return BAD
@@ -102,18 +102,18 @@ fn run(line: String) String:
     if cmd == "knap":
         if t.length() < 2: return BAD
 
-        let cap = num(t[1])
+        cap := num(t[1])
         if cap < 0: return BAD
 
         var ws = List[Int]()
         var vs = List[Int]()
 
         for k in 2..t.length():
-            let parts = t[k].split(":")
+            parts := t[k].split(":")
             if parts.length() != 2: return BAD
 
-            let w = num(parts[0])
-            let v = num(parts[1])
+            w := num(parts[0])
+            v := num(parts[1])
             if w < 1 or v < 0: return BAD
 
             ws.append(w)
@@ -124,13 +124,13 @@ fn run(line: String) String:
     if cmd == "coins":
         if t.length() < 3: return BAD
 
-        let amount = num(t[1])
+        amount := num(t[1])
         if amount < 0: return BAD
 
         var cs = List[Int]()
 
         for k in 2..t.length():
-            let c = num(t[k])
+            c := num(t[k])
             if c < 1: return BAD
 
             cs.append(c)
@@ -147,7 +147,7 @@ fn is_blank(line: String) Bool:
 export fn main() Int:
     var out = stdout()
 
-    if let lines = read_lines(stdin()):
+    if lines := read_lines(stdin()):
         for line in lines:
             if is_blank(line): continue
 

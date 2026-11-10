@@ -9,17 +9,17 @@ fn rejected(text: String, limits: TomlLimits? = none) String:
 
 test "TOML control admission covers every ASCII byte and C1 scalar":
     for code in 0..128:
-        let text = "#é🙂 ".concat(from_scalars([code]).get()).concat("# next\nvalue = 1")
+        text := "#é🙂 ".concat(from_scalars([code]).get()).concat("# next\nvalue = 1")
 
         if code == 9 or code == 10 or (code >= 32 and code != 127):
             try expect_true(parse(text).is_ok())
         else:
-            let reason = if code == 13: "bare carriage return" else: "invalid control character"
+            reason := if code == 13: "bare carriage return" else: "invalid control character"
 
             try expect_equal(rejected(text), "TOML 1:5: {reason}")
 
     for code in 128..160:
-        let text = "#é🙂 ".concat(from_scalars([code]).get()).concat("# next\nvalue = 1")
+        text := "#é🙂 ".concat(from_scalars([code]).get()).concat("# next\nvalue = 1")
         try expect_true(parse(text).is_ok())
 
 test "TOML control errors keep first Unicode scalar location after normalization":
@@ -31,7 +31,7 @@ test "TOML control errors keep first Unicode scalar location after normalization
     try expect_equal(rejected("#é🙂\r\nx = 1\ry = 2"), "TOML 2:6: bare carriage return")
 
 test "TOML control errors retain admission and syntax precedence":
-    let text = "???\n#\u{0}"
+    text := "???\n#\u{0}"
     try expect_equal(rejected(text), "TOML 2:2: invalid control character")
     try expect_equal(rejected(text, TomlLimits(max_bytes: 0)), "TOML limit exceeded")
     try expect_equal(rejected(text, TomlLimits(max_bytes: -1)), "invalid TOML input")

@@ -13,8 +13,8 @@
         "position": {
           "file": "unsigned-uint64-reject.ms",
           "line": 5,
-          "column": 27,
-          "offset": 163
+          "column": 23,
+          "offset": 159
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "unsigned-uint64-reject.ms",
           "line": 6,
-          "column": 29,
-          "offset": 212
+          "column": 25,
+          "offset": 204
         }
       },
       {
@@ -35,8 +35,8 @@
         "position": {
           "file": "unsigned-uint64-reject.ms",
           "line": 9,
-          "column": 21,
-          "offset": 279
+          "column": 18,
+          "offset": 260
         }
       },
       {
@@ -46,15 +46,15 @@
         "position": {
           "file": "unsigned-uint64-reject.ms",
           "line": 10,
-          "column": 19,
-          "offset": 301
+          "column": 16,
+          "offset": 279
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/unsigned-uint64-reject.ms:5:27: type: literal 18446744073709551616 is out of range for UInt64; use a value between 0 and 18446744073709551615\n   |\n 5 |     let too_big: UInt64 = 18446744073709551616\n   |                           ^\n<DIR>/unsigned-uint64-reject.ms:6:29: type: literal -1 is out of range for UInt64; use a value between 0 and 18446744073709551615\n   |\n 6 |     let negative: UInt64 = -1\n   |                             ^\n<DIR>/unsigned-uint64-reject.ms:9:21: type: operator operands require the same independently known type, found UInt64 + Int; convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)\n   |\n 9 |     let sum = mixed + n\n   |                     ^\n<DIR>/unsigned-uint64-reject.ms:10:19: type: unary - is not defined for UInt64; subtract from zero with a wider signed type, e.g. 0 - x.to_int()\n    |\n 10 |     let flipped = -mixed\n    |                   ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/unsigned-uint64-reject.ms:5:23: type: literal 18446744073709551616 is out of range for UInt64; use a value between 0 and 18446744073709551615\n   |\n 5 |     too_big: UInt64 = 18446744073709551616\n   |                       ^\n<DIR>/unsigned-uint64-reject.ms:6:25: type: literal -1 is out of range for UInt64; use a value between 0 and 18446744073709551615\n   |\n 6 |     negative: UInt64 = -1\n   |                         ^\n<DIR>/unsigned-uint64-reject.ms:9:18: type: operator operands require the same independently known type, found UInt64 + Int; convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)\n   |\n 9 |     sum := mixed + n\n   |                  ^\n<DIR>/unsigned-uint64-reject.ms:10:16: type: unary - is not defined for UInt64; subtract from zero with a wider signed type, e.g. 0 - x.to_int()\n    |\n 10 |     flipped := -mixed\n    |                ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

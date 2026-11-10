@@ -53,7 +53,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding x; declare it with 'let x = ...' before use, define 'fn x(...) T:', or import it from a module",
+        "message": "unknown binding x; declare it with 'x := ...' before use, define 'fn x(...) T:', or import it from a module",
         "position": {
           "file": "testnestedmatchlint-5.ms",
           "line": 10,
@@ -65,7 +65,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testnestedmatchlint-5.ms:10:9: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else\n    |\n 10 |         x: x\n    |         ^\n<DIR>/testnestedmatchlint-5.ms:10:9: type: a literal arm has no payload to bind\n    |\n 10 |         x: x\n    |         ^\n<DIR>/testnestedmatchlint-5.ms:11:9: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else\n    |\n 11 |         none: 0\n    |         ^\n<DIR>/testnestedmatchlint-5.ms:5:12: type: non-exhaustive match on Int; add a final '_:' arm\n   |\n 5 |     return match (\n   |            ^\n<DIR>/testnestedmatchlint-5.ms:10:12: resolution: unknown binding x; declare it with 'let x = ...' before use, define 'fn x(...) T:', or import it from a module\n    |\n 10 |         x: x\n    |            ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testnestedmatchlint-5.ms:10:9: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else\n    |\n 10 |         x: x\n    |         ^\n<DIR>/testnestedmatchlint-5.ms:10:9: type: a literal arm has no payload to bind\n    |\n 10 |         x: x\n    |         ^\n<DIR>/testnestedmatchlint-5.ms:11:9: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else\n    |\n 11 |         none: 0\n    |         ^\n<DIR>/testnestedmatchlint-5.ms:5:12: type: non-exhaustive match on Int; add a final '_:' arm\n   |\n 5 |     return match (\n   |            ^\n<DIR>/testnestedmatchlint-5.ms:10:12: resolution: unknown binding x; declare it with 'x := ...' before use, define 'fn x(...) T:', or import it from a module\n    |\n 10 |         x: x\n    |            ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

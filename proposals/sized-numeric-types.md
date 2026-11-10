@@ -52,7 +52,7 @@
 
 - **Arithmetic.** Operands must have the same type (existing rule). `+ - *` and unary `-` fault when the result leaves the type's range; `/` truncates toward zero; the zero divisor and `MIN / -1` fault; `MIN % -1` is zero. These are the current `Int` rules with the range parameterized.
 - **Float.** `Float32` rounds each operation to binary32, ties to even, no fused multiply-add. Overflow, NaN and comparison rules are the current `Float` rules.
-- **Literals.** A literal has the type `Int` (or `Float`) unless the expected type is a sized numeric type, in which case it has that type and is range-checked there. This is the same expected-type mechanism `none` and `[]` use (`optionals.md`, `records.md`), applied to numeric literals, and it relaxes "expected types never change a literal's type"; it flows through `Optional[Int8]`, `List[Int8]` and record fields, not through generic inference. It is needed so `let x: Int64 = 5` and `Int8` field initializers work without suffixes. A literal that does not fit is a compile error, naming the type and range.
+- **Literals.** A literal has the type `Int` (or `Float`) unless the expected type is a sized numeric type, in which case it has that type and is range-checked there. This is the same expected-type mechanism `none` and `[]` use (`optionals.md`, `records.md`), applied to numeric literals, and it relaxes "expected types never change a literal's type"; it flows through `Optional[Int8]`, `List[Int8]` and record fields, not through generic inference. It is needed so `x: Int64 = 5` and `Int8` field initializers work without suffixes. A literal that does not fit is a compile error, naming the type and range.
 - **Conversions.** Widening is infallible and narrowing is checked:
   - `to_int8() ... to_int64()`, `to_float32()`, `to_float64()` on every numeric receiver. A conversion that cannot lose information returns the target type; one that can returns `Optional[Target]` (`none` when out of range, matching `truncate_to_int`).
   - Float to integer keeps `truncate_to_int()`, generalized to `truncate_to_int8()` ... `truncate_to_int64()`.
@@ -66,10 +66,10 @@
 Before and after for an unannotated program:
 
 ```manuscript
-let big = 3_000_000_000      // accepted before; compile error after: Int is Int32
-let ok: Int64 = 3_000_000_000
-let samples: List[Int8] = [1, 2, 3]
-let total: Int32 = 0
+big := 3_000_000_000      // accepted before; compile error after: Int is Int32
+ok: Int64 = 3_000_000_000
+samples: List[Int8] = [1, 2, 3]
+total: Int32 = 0
 for s in samples:
     total = total + s.to_int32()   // no implicit widening
 ```
@@ -77,11 +77,11 @@ for s in samples:
 Rejected, with the intended diagnostic:
 
 ```manuscript
-let a: Int8 = 200
+a: Int8 = 200
 // error: literal 200 is out of range for Int8 (-128 to 127)
-let b: Int32 = 1
-let c: Int64 = 2
-let d = b + c
+b: Int32 = 1
+c: Int64 = 2
+d := b + c
 // error: operands must have the same type: Int32 and Int64; convert with to_int64()
 ```
 

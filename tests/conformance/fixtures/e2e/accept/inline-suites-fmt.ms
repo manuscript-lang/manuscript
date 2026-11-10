@@ -23,10 +23,10 @@ test "inline functions and branches":
     try expect_equal(alternate(0), 0)
     try expect_equal(alternate(3), 1)
 
-    let increment = fn(value: Int): value + 1
+    increment := fn(value: Int): value + 1
     try expect_equal(increment(2), 3)
 
-    let result = apply(4, fn value: value * 3)
+    result := apply(4, fn value: value * 3)
     try expect_equal(result, 12)
 
     var count = 0

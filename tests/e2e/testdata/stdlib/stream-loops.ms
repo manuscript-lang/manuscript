@@ -34,7 +34,7 @@ test "a loop that breaks hands the source back to its stream":
         seen.append(x)
         if seen.length() == 2: break
 
-    let next = try s.next()
+    next := try s.next()
     try expect_equal(next.get(-1), 3)
     for x in s:
         seen.append(x)
@@ -48,7 +48,7 @@ test "an error ends the loop and the stream reads on":
     var failures = 0
 
     while true:
-        let item = s.next()
+        item := s.next()
 
         if item.is_error():
             failures += 1
@@ -58,7 +58,7 @@ test "an error ends the loop and the stream reads on":
 
     try expect_equal(failures, 1)
 
-    let next = try s.next()
+    next := try s.next()
     try expect_equal(next.get(-1), 3)
 
 test "closing the stream inside its loop still closes the source once":
@@ -70,14 +70,14 @@ test "closing the stream inside its loop still closes the source once":
     try expect_equal(try closes.receive(), 2)
 
 test "stages pull directly and keep their results":
-    let doubled = try collect(from_list([1, 2, 3]) | map(fn v: v * 2), none)
+    doubled := try collect(from_list([1, 2, 3]) | map(fn v: v * 2), none)
     try expect_equal(doubled, [2, 4, 6])
 
-    let limited = collect(from_list([1, 2, 3]), 2)
+    limited := collect(from_list([1, 2, 3]), 2)
     try expect_equal(limited.err().kind, "EOVERFLOW")
 
 test "copy moves every item":
     var out = pipe[Int](capacity: 8)
     var writer = out.writer()
-    let count = try copy(from_list([7, 8, 9]), writer)
+    count := try copy(from_list([7, 8, 9]), writer)
     try expect_equal(count, 3)

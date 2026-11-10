@@ -59,8 +59,8 @@ test "is_sorted and is_sorted_by":
     try expect_true([3, 2, 1].is_sorted_by(fn a, b: b - a))
 
 test "sorted_by_key is stable":
-    let people = [Person("a", 30), Person("b", 20), Person("c", 30), Person("d", 10)]
-    let ordered = people.sorted_by_key(fn p: p.age)
+    people := [Person("a", 30), Person("b", 20), Person("c", 30), Person("d", 10)]
+    ordered := people.sorted_by_key(fn p: p.age)
     try expect_equal(ordered.map(fn p: p.name.clone()), ["d", "b", "a", "c"])
     try expect_equal(people[0].name, "a")
 
@@ -71,7 +71,7 @@ test "repeated copies the list":
 
 test "extend appends copies and leaves the argument":
     var xs = [1]
-    let more = [2, 3]
+    more := [2, 3]
     xs.extend(more)
     xs.extend(List[Int]())
     try expect_equal(xs, [1, 2, 3])
@@ -102,18 +102,18 @@ test "Deque rotate turns the ring":
     try expect_equal(ring.to_list(), [3, 4, 1, 2])
 
 fn repeat_negative_empty() Unit:
-    let _result = List[Int]().repeated(-1)
+    _result := List[Int]().repeated(-1)
 
 test "repeated empty lists return without traversing the count":
     for count in [0, 1, 1000000, 9223372036854775807]:
         try expect_equal(List[Int]().repeated(count), List[Int]())
         try expect_equal(List[String]().repeated(count), List[String]())
 
-    let fault = try expect_fault(repeat_negative_empty)
+    fault := try expect_fault(repeat_negative_empty)
     try expect_equal(fault, "List.repeated: count -1 must not be negative")
 
 test "repeated nested lists remain independent copies":
-    let values = [[1, 2]]
+    values := [[1, 2]]
     var repeated = values.repeated(2)
     repeated[0].append(3)
     try expect_equal(values, [[1, 2]])

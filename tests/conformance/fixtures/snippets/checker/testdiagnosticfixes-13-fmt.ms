@@ -5,5 +5,5 @@ type Int:
     x: Int
 
 fn f() Int:
-    let t = Int(x: 2)
+    t := Int(x: 2)
     return 0

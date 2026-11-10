@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -20,11 +20,11 @@ export fn main() Int:
     else:
         say("naïve".upper())
 
-    let f1 = 523.713
+    f1 := 523.713
     say("f1 = {f1}")
     say("gcd(2218, 1953) = {gcd(2218, 1953)}")
 
-    let _bad = say
-    let i2 = (-19)
+    _bad := say
+    i2 := (-19)
     say("i2 = {i2}")
     return 0

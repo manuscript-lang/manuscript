@@ -24,7 +24,7 @@ test "sorting a large list is ordered and leaves the source unchanged":
     for i in 0..20000:
         values.append((i * 7919) % 20011)
 
-    let sorted = values.sorted(ascending)
+    sorted := values.sorted(ascending)
     try expect_equal(sorted.length(), 20000)
     for i in 1..20000:
         try expect_equal(sorted.get(i - 1) <= sorted.get(i), true)
@@ -35,11 +35,11 @@ test "sorting is stable for equal keys":
     for i in 0..1000:
         entries.append(Entry(i % 7, "e{i}"))
 
-    let sorted = entries.sorted(by_key)
+    sorted := entries.sorted(by_key)
     var previous = sorted.get(0).clone()
 
     for i in 1..1000:
-        let current = sorted.get(i)
+        current := sorted.get(i)
         if current.key == previous.key:
             try expect_equal(previous.label.length() <= current.label.length(), true)
         previous = current.clone()
@@ -48,11 +48,11 @@ test "sorting is stable for equal keys":
     try expect_equal(sorted.get(1).label, "e7")
 
 test "strings, empty and single element lists sort":
-    let words = ["pear", "apple", "fig", "banana", "apple"]
+    words := ["pear", "apple", "fig", "banana", "apple"]
     try expect_equal(
         words.sorted(alphabetical), ["apple", "apple", "banana", "fig", "pear"]
     )
 
-    let none: List[Int] = []
+    none: List[Int] = []
     try expect_equal(none.sorted(ascending), none)
     try expect_equal([5].sorted(ascending), [5])

@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = "gamma".upper().starts_with("日本語")
+    b1 := "gamma".upper().starts_with("日本語")
     say("b1 = {b1}")
     say("{24} {(165985 - 38)} {(24 < (165985 - 38))} sum {24 + (165985 - 38)}")
 
-    let i2 = (((-14) * (21 + 10)) - 22)
+    i2 := (((-14) * (21 + 10)) - 22)
     say("i2 = {i2}")
 
-    let i3 = i2
+    i3 := i2
     say("i3 = {i3}")
 
     if true:
@@ -28,9 +28,9 @@ export fn main() Int:
         "{((11 * i3) - ((-26) * i2))} {i3} {(((11 * i3) - ((-26) * i2)) < i3)} sum {((11 * i3) - ((-26) * i2)) + i3}"
     )
 
-    let i4 = (((636296 % i3) + i2) - i2)
+    i4 := (((636296 % i3) + i2) - i2)
     say("i4 = {i4}")
 
-    let big5 = [1, 2, 3]
+    big5 := [1, 2, 3]
     say("{big5.get(4)}")
     return 0

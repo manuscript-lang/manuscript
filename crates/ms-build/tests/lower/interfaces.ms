@@ -24,7 +24,7 @@ fn pick(n: Int) Result[Int, Error]:
     return ok(n)
 
 fn twice(n: Int) Result[Int, Error]:
-    let v = try pick(n)
+    v := try pick(n)
     return ok(v * 2)
 
 fn show(n: Int) Result[Unit, Error]:
@@ -35,9 +35,9 @@ fn main() Unit:
     show(total(Sq(s: 4))).get()
     show(twice(3).get()).get()
 
-    let r = twice(0 - 1)
+    r := twice(0 - 1)
 
-    if let v = r:
+    if v := r:
         show(v).get()
     else:
         show(99).get()

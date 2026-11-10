@@ -5,7 +5,7 @@ fn total(names: List[String]) Int:
     var n = 0
 
     for i in 0..names.length():
-        let s = names.get(i)
+        s := names.get(i)
         n += s.length()
 
     return n

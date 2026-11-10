@@ -41,7 +41,7 @@ fn main() Unit:
     var customers = Set[String]()
     for order in orders:
         customers.add(order.customer.clone())
-        let total = spent.get_or(order.customer, 0) + order.cents
+        total := spent.get_or(order.customer, 0) + order.cents
         spent.add(order.customer.clone(), total)
         print("#{order.id} {order.customer}: {label(order.status)}")
     print("{customers.length()} customers")

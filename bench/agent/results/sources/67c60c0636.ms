@@ -19,15 +19,15 @@ fn is_digits(text: String) Bool:
     return text.length() > 0 and text.chars().all(fn c: "0123456789".contains(c))
 
 fn parse(line: String) Optional[Record]:
-    let fields = line.split(" ")
+    fields := line.split(" ")
     if fields.length() != 6: return none
 
-    let timestamp = fields[0]
-    let level = fields[1]
-    let method = fields[2]
-    let path = fields[3]
-    let status = fields[4]
-    let latency = fields[5]
+    timestamp := fields[0]
+    level := fields[1]
+    method := fields[2]
+    path := fields[3]
+    status := fields[4]
+    latency := fields[5]
     if timestamp.is_empty(): return none
     if not ["DEBUG", "INFO", "WARN", "ERROR"].contains(level): return none
     if not ["GET", "POST", "PUT", "DELETE"].contains(method): return none
@@ -56,7 +56,7 @@ export fn main() Int:
     for line in read_lines(stdin()).get():
         if line.trim().is_empty(): continue
 
-        if let record = parse(line):
+        if record := parse(line):
             levels.update(record.level.clone(), 0, fn n: n + 1)
             records.append(record)
         else:
@@ -69,7 +69,7 @@ export fn main() Int:
     var s_other = 0
 
     for r in records:
-        let bucket = r.status / 100
+        bucket := r.status / 100
 
         if bucket == 2: s2 += 1
         else if bucket == 3: s3 += 1
@@ -89,16 +89,16 @@ export fn main() Int:
     if records.length() == 0:
         lines.append("p95: 0")
     else:
-        let sorted_records = records.sorted(fn a, b: a.latency - b.latency)
-        let n = sorted_records.length()
-        let rank_index = (95 * n + 99) / 100 - 1
+        sorted_records := records.sorted(fn a, b: a.latency - b.latency)
+        n := sorted_records.length()
+        rank_index := (95 * n + 99) / 100 - 1
         lines.append("p95: {sorted_records[rank_index].latency_text}")
 
         var slowest = 0
         for i in 0..records.length():
             if records[i].latency > records[slowest].latency: slowest = i
 
-        let s = records[slowest]
+        s := records[slowest]
         lines.append("slowest: {s.latency_text} {s.method} {s.path} {s.timestamp}")
 
     lines.append("top:")
@@ -121,10 +121,10 @@ export fn main() Int:
             )
         stats.sort(rank)
 
-        let shown = if stats.length() < 3: stats.length() else: 3
+        shown := if stats.length() < 3: stats.length() else: 3
 
         for i in 0..shown:
-            let s = stats[i]
+            s := stats[i]
             lines.append("{s.path} {s.count} avg={s.total / s.count}")
 
     stdout().write(lines.join("\n") + "\n").get()

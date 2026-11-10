@@ -23,15 +23,15 @@ test "norm ignores trailing whitespace only":
     try expect_equal(norm(""), norm("\n"))
 
 test "every challenge is complete":
-    let langs = load_languages([])
-    let chs = load_challenges([])
+    langs := load_languages([])
+    chs := load_challenges([])
     try expect_true(not chs.is_empty())
 
     for ch in chs:
         try expect_true(not ch.cases("examples").is_empty())
         try expect_true(ch.cases("hidden").length() > ch.cases("examples").length() - 1)
 
-        let visible = ch.cases("examples").map(fn c: c.stdin.clone())
+        visible := ch.cases("examples").map(fn c: c.stdin.clone())
         if not ch.cases("hidden").any(fn c: not visible.contains(c.stdin)): try fail(
             "{ch.id}: hidden cases add nothing"
         )
@@ -49,11 +49,11 @@ test "every challenge is complete":
             )
 
 test "claude code parse":
-    let lines = [
+    lines := [
         "\{\"type\": \"assistant\"\}",
         "\{\"type\": \"result\", \"num_turns\": 7, \"total_cost_usd\": 0.5, \"usage\": \{\"input_tokens\": 10, \"output_tokens\": 20, \"cache_read_input_tokens\": 100, \"cache_creation_input_tokens\": 5\}\}"
     ]
-    let u = ClaudeCode().parse(lines.join("\n"))
+    u := ClaudeCode().parse(lines.join("\n"))
     try expect_equal(u.tokens_in, 10)
     try expect_equal(u.tokens_cached, 105)
     try expect_equal(u.tokens_out, 20)
@@ -62,8 +62,8 @@ test "claude code parse":
     try expect_equal(u.cost_source, "harness")
 
 test "codex parse sums turns and splits cache":
-    let event = "\{\"type\": \"turn.completed\", \"usage\": \{\"input_tokens\": 100, \"cached_input_tokens\": 60, \"output_tokens\": 5\}\}"
-    let u = Codex().parse([event.clone(), event.clone()].join("\n"))
+    event := "\{\"type\": \"turn.completed\", \"usage\": \{\"input_tokens\": 100, \"cached_input_tokens\": 60, \"output_tokens\": 5\}\}"
+    u := Codex().parse([event.clone(), event.clone()].join("\n"))
     try expect_equal(u.tokens_in, 80)
     try expect_equal(u.tokens_cached, 120)
     try expect_equal(u.tokens_out, 10)
@@ -86,9 +86,7 @@ test "random matches CPython's Mersenne Twister":
     try expect_equal(s.randrange(5, 50), 20)
 
 test "json layout matches json.dumps":
-    let doc = parse("[\{\"a\": \"é\\n\", \"b\": [], \"c\": \{\}\}, 1]").get(
-        JsonValue.Null
-    )
+    doc := parse("[\{\"a\": \"é\\n\", \"b\": [], \"c\": \{\}\}, 1]").get(JsonValue.Null)
     try expect_equal(
         dumps(doc, 1),
         "[\n \{\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": \{\}\n \},\n 1\n]"

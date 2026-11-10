@@ -10,15 +10,15 @@ fn block() Bytes:
 
 // Writes the 200 files that the read, stat, and list cases use.
 fn populate(root: String) Unit:
-    let data = block()
+    data := block()
     for i in 0..200:
-        let _written = write_file("{root}/f{i}.bin", data, replace: true).wait()
+        _written := write_file("{root}/f{i}.bin", data, replace: true).wait()
 
 bench "fs.write_file_64k":
-    let data = block()
+    data := block()
 
     if var dir = temporary("ms-bench-"):
-        let root = dir.path()
+        root := dir.path()
 
         fn work() Result[Unit, Error]:
             var n = 0
@@ -32,13 +32,13 @@ bench "fs.write_file_64k":
 
 bench "fs.read_file_64k":
     if var dir = temporary("ms-bench-"):
-        let root = dir.path()
+        root := dir.path()
         populate(root)
 
         fn work() Result[Unit, Error]:
             var n = 0
             for i in 0..200:
-                if let b = read_file("{root}/f{i}.bin").wait():
+                if b := read_file("{root}/f{i}.bin").wait():
                     n += b.length()
             return keep(n)
 
@@ -47,7 +47,7 @@ bench "fs.read_file_64k":
 
 bench "fs.stat":
     if var dir = temporary("ms-bench-"):
-        let root = dir.path()
+        root := dir.path()
         populate(root)
 
         fn work() Result[Unit, Error]:
@@ -62,11 +62,11 @@ bench "fs.stat":
 
 bench "fs.list_200":
     if var dir = temporary("ms-bench-"):
-        let root = dir.path()
+        root := dir.path()
         populate(root)
 
         fn work() Result[Unit, Error]:
-            if let entries = list(root): return keep(entries.length())
+            if entries := list(root): return keep(entries.length())
 
             return keep(0)
 
@@ -75,8 +75,8 @@ bench "fs.list_200":
 
 bench "log.info":
     if var dir = temporary("ms-bench-"):
-        if let transport = file_transport("{dir.path()}/log.txt"):
-            if let logger = create(transport, LoggerOptions(timestamp: false)):
+        if transport := file_transport("{dir.path()}/log.txt"):
+            if logger := create(transport, LoggerOptions(timestamp: false)):
                 fn work() Result[Unit, Error]:
                     var n = 0
                     for i in 0..20000:

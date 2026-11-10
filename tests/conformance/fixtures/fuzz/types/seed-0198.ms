@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = true
+    b1 := true
     say("b1 = {b1}")
 
-    let _bad = say
-    let l2 = [(-7)]
+    _bad := say
+    l2 := [(-7)]
     say("l2 = {l2} len {l2.length()}")
 
-    let s3 = "line\nbreak"
+    s3 := "line\nbreak"
     say("s3 = [{s3}]")
     return 0

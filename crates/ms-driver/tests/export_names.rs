@@ -56,23 +56,6 @@ fn incomplete_neighbors_do_not_hide_valid_exports() {
 }
 
 #[test]
-fn grouped_export_hints_skip_nested_initializer_names() {
-    let syms = ms_syntax::Names::global();
-    let source = include_str!("export_names/nested_groups.ms");
-    for header in ["export let(", "export let (", "export   let    ("] {
-        let varied = source.replace("export let (", header);
-        for source in [varied.clone(), varied.replace('\n', "\r\n")] {
-            let file = "nested_groups.ms".into();
-            ms_syntax::parser::parse(&file, &source).expect("valid grouped constants");
-            assert_eq!(
-                exported_names(syms, &source),
-                ["LOW", "HIGH", "FLAGS", "ITEMS", "LAST"]
-            );
-        }
-    }
-}
-
-#[test]
 fn missing_enums_opaque_types_and_grouped_constants_get_import_fixes() {
     let syms = ms_syntax::Names::global();
     let dir = TempDir::new();
@@ -152,7 +135,7 @@ fn export_lookalikes_in_comments_and_text_declare_nothing() {
         "    Hidden\n",
         "*/\n",
         "\n",
-        "let note = \"\"\"\n",
+        "note := \"\"\"\n",
         "export fn quoted() Int: 1\n",
         "export enum Quoted:\n",
         "    Hidden\n",

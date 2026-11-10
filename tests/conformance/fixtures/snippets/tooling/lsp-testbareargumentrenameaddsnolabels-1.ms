@@ -4,6 +4,6 @@
 fn subtract(amount: Int, deduction: Int) Int: return amount - deduction
 
 fn call() Int:
-    let amount = 10
-    let deduction = 3
+    amount := 10
+    deduction := 3
     return subtract(deduction, amount)

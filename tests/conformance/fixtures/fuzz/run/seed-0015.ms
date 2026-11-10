@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -29,7 +29,7 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let i1 = ((((-12) + 769634) * (7 * 47)) % (((-45) + 16) * ((-5) + 26)))
+    i1 := ((((-12) + 769634) * (7 * 47)) % (((-45) + 16) * ((-5) + 26)))
     say("i1 = {i1}")
 
     if ("gamma".reverse() == ("hello world" + "hello world")):
@@ -39,26 +39,26 @@ export fn main() Int:
 
     say("fact(4) = {fact(4)}")
 
-    let b2 = true
+    b2 := true
     say("b2 = {b2}")
 
-    let f3 = 629.25
+    f3 := 629.25
     say("f3 = {f3}")
 
-    let i4 = i1
+    i4 := i1
     say("i4 = {i4}")
 
-    let i5 = (-534406)
+    i5 := (-534406)
     say("i5 = {i5}")
 
-    let s6 = ("{(i1 * 937528459882)}:" + "gamma")
+    s6 := ("{(i1 * 937528459882)}:" + "gamma")
     say("s6 = [{s6}]")
     say("collatz(1420) = {collatz(1420)}")
 
-    let b7 = b2
+    b7 := b2
     say("b7 = {b7}")
 
-    let l8 = [(-24)]
+    l8 := [(-24)]
     say("l8 = {l8} len {l8.length()}")
     say(
         "{((i4 / i4) + (-7))} {((i4 % 22) - (11 % i1))} {(((i4 / i4) + (-7)) < ((i4 % 22) - (11 % i1)))} sum {((i4 / i4) + (-7)) + ((i4 % 22) - (11 % i1))}"

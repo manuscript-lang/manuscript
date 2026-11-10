@@ -4,11 +4,11 @@ import (
 )
 
 fn main() Unit:
-    let args = arguments()
-    let mode = args[0]
-    let size = args[1].parse_int().get()
-    let repeats = args[2].parse_int().get()
-    let pattern = args[3]
+    args := arguments()
+    mode := args[0]
+    size := args[1].parse_int().get()
+    repeats := args[2].parse_int().get()
+    pattern := args[3]
     var left = Set[Int]()
     var right = Set[Int]()
 
@@ -29,11 +29,11 @@ fn main() Unit:
             else:
                 right.add(i)
 
-    let start = monotonic()
+    start := monotonic()
     var checksum = 0
 
     for iteration in 0..repeats:
-        let answer = if mode == "subset": left.is_subset_of(right) else: (
+        answer := if mode == "subset": left.is_subset_of(right) else: (
             if mode == "superset": left.is_superset_of(
                 right
             ) else: left.is_disjoint_from(right)
@@ -41,5 +41,5 @@ fn main() Unit:
         if answer:
             checksum += 1
 
-    let elapsed = monotonic().difference(start).to_nanoseconds()
+    elapsed := monotonic().difference(start).to_nanoseconds()
     print("{elapsed} {checksum}")

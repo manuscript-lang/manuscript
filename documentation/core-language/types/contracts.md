@@ -148,35 +148,35 @@ A call infers the operation's parameters from its arguments, or takes them expli
 
 ## Interface conversion
 
-A value whose type has a declared implementation of an interface converts implicitly wherever that interface is expected: arguments, `let` with a type annotation, fields, collection entries, and returns. The relationship is still declared (`impl Contract for Type`); matching method names never convert. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
+A value whose type has a declared implementation of an interface converts implicitly wherever that interface is expected: arguments, `:=` with a type annotation, fields, collection entries, and returns. The relationship is still declared (`impl Contract for Type`); matching method names never convert. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
 
-The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (field, collection entry, `let`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
+The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (field, collection entry, `:=`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 
 ```manuscript
 fn use_increment(operation: Increment) Int:
     return operation.apply(1)
 
-let offset = Offset(2)
-let result = use_increment(offset)
-let again = offset.delta
-let kept: Increment = offset.clone()
+offset := Offset(2)
+result := use_increment(offset)
+again := offset.delta
+kept: Increment = offset.clone()
 ```
 
-An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`let view: Increment = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
+An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`view: Increment = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
 
 ### Selecting an operation
 
-A receiver or generic parameter may call an operation directly when exactly one implemented or bounded contract supplies that name. Otherwise bind the value to one interface and call through it: `let view: Increment = offset` then `view.apply(value: 1)`; arguments and result types never disambiguate. A bound method keeps its receiver and has the operation's ordinary function type.
+A receiver or generic parameter may call an operation directly when exactly one implemented or bounded contract supplies that name. Otherwise bind the value to one interface and call through it: `view: Increment = offset` then `view.apply(value: 1)`; arguments and result types never disambiguate. A bound method keeps its receiver and has the operation's ordinary function type.
 
 A contract type satisfies its own exact generic bound without an `impl`: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
 ```manuscript
 fn invoke[T: Increment](operation: T) Int:
-    let view: Increment = operation
+    view: Increment = operation
     return view.apply(1)
 
-let from_concrete = invoke(offset)
-let from_view = invoke(view)
+from_concrete := invoke(offset)
+from_view := invoke(view)
 ```
 
 Both calls satisfy the bound without implicit conversion.

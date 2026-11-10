@@ -4,6 +4,6 @@
 import stdout from "@std/io/io.ms"
 
 fn main() Unit:
-    let data = "abc".to_bytes()
-    let _ = stdout().write("{data[-1]}\n")
-    let _ = stdout().write("{data[3]}\n")
+    data := "abc".to_bytes()
+    _ := stdout().write("{data[-1]}\n")
+    _ := stdout().write("{data[3]}\n")

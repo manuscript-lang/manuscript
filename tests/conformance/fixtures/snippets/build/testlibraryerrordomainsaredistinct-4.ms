@@ -4,5 +4,5 @@
 import hex_decode from "@std/data/encoding.ms"
 
 fn wrong() Unit!:
-    let bytes = try hex_decode(text: "ff", max_bytes: 1)
+    bytes := try hex_decode(text: "ff", max_bytes: 1)
     return ok(value: unit)

@@ -22,5 +22,5 @@ fn wrap[T]() Sink[T]:
     return Bin[T](0)  // error: so it clones values of `T`, which may be a resource; declare `T: Clonable`
 
 fn f() Int:
-    let s = wrap[Door]()
+    s := wrap[Door]()
     return s.put(Door(1))

@@ -16,22 +16,22 @@ diag: this statement discards
 
 wrong: f"n={n}"
 right: "n={n}"
-body: let n = 1;;print({})
+body: n := 1;;print({})
 diag: no f-string prefix
 
 wrong: elif c:
 right: else if c:
-body: let c = true;;if c:;;    return 1;;{};;    return 2
+body: c := true;;if c:;;    return 1;;{};;    return 2
 diag: there is no 'elif'
 
-wrong: let n = 1;;n = 2
+wrong: n := 1;;n = 2
 right: var n = 1;;n = 2
 body: {}
 diag: cannot assign immutable binding
 
 wrong: []
 right: List[Int]()
-body: let xs = {}
+body: xs := {}
 diag: cannot infer list element type
 
 wrong: xs.push(1)
@@ -41,16 +41,16 @@ diag: did you mean 'append'
 
 wrong: len(xs)
 right: xs.length()
-body: let xs = [0];;let n = {}
+body: xs := [0];;n := {}
 diag: no len() function
 
 wrong: s[0]
 right: s.get(0)
-body: let s = "abc";;let c = {}
+body: s := "abc";;c := {}
 diag: indexing a String
 
-wrong: let x: Float = 1
-right: let x: Float = 1.0
+wrong: x: Float = 1
+right: x: Float = 1.0
 body: {}
 diag: does not convert to Float implicitly
 
@@ -61,26 +61,26 @@ diag: no '++' operator
 
 wrong: a && b
 right: a and b
-body: let a = true;;let b = true;;let c = {}
+body: a := true;;b := true;;c := {}
 diag: not an operator
 
 wrong: True
 right: true
-body: let b = {}
+body: b := {}
 diag: booleans are lowercase
 
 wrong: lambda x: x
 right: fn(x: Int) Int: x
-body: let f = {}
+body: f := {}
 diag: there is no 'lambda'
 
 wrong: null
 right: none
-body: let x: Int? = {}
+body: x: Int? = {}
 diag: no null
 
-wrong: let v = try f()
-right: let v = f().get(0)
+wrong: v := try f()
+right: v := f().get(0)
 setup: fn f() Result[Int, Error]: ok(1)
 body: {}
 diag: try requires an enclosing Result
@@ -88,26 +88,26 @@ diag: try requires an enclosing Result
 wrong: names.append(u.name);;names.append(u.name)
 right: names.append(u.name.clone());;names.append(u.name)
 setup: type User:;;    name: String
-body: let u = User(name: "a");;var names = ["b"];;{}
+body: u := User(name: "a");;var names = ["b"];;{}
 diag: is moved here but used again
 
 wrong: xs.append(s);;xs.append(s)
 right: xs.append(s.clone());;xs.append(s)
-body: let s = "a";;var xs = ["b"];;{}
+body: s := "a";;var xs = ["b"];;{}
 diag: is moved here but used again
 
 wrong: out.append(first)
 right: out.append(first.clone())
-body: let xs = ["a"];;var out = ["b"];;let first = xs[0];;{}
+body: xs := ["a"];;var out = ["b"];;first := xs[0];;{}
 diag: cannot move
 
 wrong: names.append(name_of(u))
 right: names.append(name_of(u).clone())
 setup: type User:;;    name: String;;;;fn name_of(u: User) String:;;    return u.name
-body: let u = User(name: "a");;var names = ["b"];;{}
+body: u := User(name: "a");;var names = ["b"];;{}
 diag: returns a reference into
 
-wrong: let xs = [1]
+wrong: xs := [1]
 right: var xs = [1]
 body: {};;xs.append(2)
 diag: immutable including its contents

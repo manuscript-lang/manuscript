@@ -5,7 +5,7 @@ import filled from "@std/collections/collections.ms"
 import panic from "@std/core.ms"
 
 fn make_cells() List[Int]:
-    if let values = filled(0, 16384): return values
+    if values := filled(0, 16384): return values
 
     return panic("fill failure")
 
@@ -26,7 +26,7 @@ export fn main() Int:
                 for dy in - 1..2:
                     for dx in - 1..2:
                         if dx != 0 or dy != 0:
-                            let index = (
+                            index := (
                                 (
                                     y
                                     + dy
@@ -36,8 +36,8 @@ export fn main() Int:
                             )
                             neighbors += cells.get(index)
 
-                let index = y * 128 + x
-                let alive = (
+                index := y * 128 + x
+                alive := (
                     neighbors == 3
                     or (neighbors == 2 and cells.get(index) == 1)
                 )
@@ -45,7 +45,7 @@ export fn main() Int:
                 if alive: value = 1
                 next.set(index, value)
 
-        let old = cells
+        old := cells
         cells = next
         next = old
 

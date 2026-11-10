@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = ((-38) > ((-23) - (-(-23))))
+    b1 := ((-38) > ((-23) - (-(-23))))
     say("b1 = {b1}")
 
-    let s2 = ("".trim().reverse() + "  padded  ")
+    s2 := ("".trim().reverse() + "  padded  ")
     say("s2 = [{s2}]")
 
-    let i3 = ((((-8) * (-587527)) - (41 / 706983)) * (664246 - (67992 / 5)))
+    i3 := ((((-8) * (-587527)) - (41 / 706983)) * (664246 - (67992 / 5)))
     say("i3 = {i3}")
 
-    let f4 = (
+    f4 := (
         ((849.564 - 948.401) / (0.0 + 8.5))
         - ((762.315 + 372.373) * (190.483 * 481.046))
     )
     say("f4 = {f4}")
 
-    let fixed = 1
+    fixed := 1
     fixed = 2
 
     var acc5 = 0

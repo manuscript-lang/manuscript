@@ -5,9 +5,9 @@ import cpus, metrics, network_interfaces from "@std/os/system.ms"
 import IpFamily from "@std/net/ip.ms"
 
 test "network interfaces describe each address and include a loopback":
-    let found = network_interfaces()
+    found := network_interfaces()
 
-    if let items = found:
+    if items := found:
         var loopback = false
 
         for item in items:
@@ -24,9 +24,9 @@ test "network interfaces describe each address and include a loopback":
         try expect_true(loopback)
 
 test "cpus report non-negative cumulative times":
-    let found = cpus()
+    found := cpus()
 
-    if let cpus = found:
+    if cpus := found:
         try expect_false(cpus.is_empty())
 
         for cpu in cpus:
@@ -35,9 +35,9 @@ test "cpus report non-negative cumulative times":
             try expect_true(cpu.system >= 0 and cpu.idle >= 0 and cpu.irq >= 0)
 
 test "metrics report memory, uptime, load averages and parallelism":
-    let found = metrics()
+    found := metrics()
 
-    if let m = found:
+    if m := found:
         try expect_true(m.total_memory > 0)
         try expect_true(m.free_memory <= m.total_memory)
         try expect_true(m.available_memory <= m.total_memory)

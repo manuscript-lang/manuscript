@@ -22,7 +22,7 @@ fn long_operator_chain_checks_and_runs() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let terms = vec!["1"; 9000].join(" + ");
-    let source = format!("export fn main() Int:\n    let x = {terms}\n    return x - 9000\n");
+    let source = format!("export fn main() Int:\n    x := {terms}\n    return x - 9000\n");
     std::fs::write(dir.join("chain.ms"), source).unwrap();
     for command in ["check", "fmt", "lint"] {
         let (status, text) = run_ms(&[command, "chain.ms"], &dir);
@@ -51,11 +51,11 @@ fn text_of_deep_and_large_values_is_capped_and_linear() {
         \x20   var l: L = Nil\n\
         \x20   for i in 0..100000:\n\
         \x20       l = Cons(i, l)\n\
-        \x20   let text = \"{l}\"\n\
+        \x20   text := \"{l}\"\n\
         \x20   var xs: List[Int] = []\n\
         \x20   for i in 0..300000:\n\
         \x20       xs.append(i)\n\
-        \x20   let list_text = \"{xs}\"\n\
+        \x20   list_text := \"{xs}\"\n\
         \x20   stdout().write(\"{text.length()} {list_text.length()}\\n\").get()\n\
         \x20   return 0\n\
         ";
@@ -76,7 +76,7 @@ fn lower_applies_final_sigma_after_titlecase_letters() {
     std::fs::create_dir_all(&dir).unwrap();
     let source = "import stdout from \"@std/io/io.ms\"\n\
         export fn main() Int:\n\
-        \x20   let lowered = \"\\u{1C5}\\u{3A3}\".lower()\n\
+        \x20   lowered := \"\\u{1C5}\\u{3A3}\".lower()\n\
         \x20   stdout().write(\"{lowered.scalar_values()}\\n\").get()\n\
         \x20   return 0\n\
         ";

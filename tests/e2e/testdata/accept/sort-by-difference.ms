@@ -13,10 +13,10 @@ test "a difference comparator sorts by value":
     ascending([4]) | try expect_equal([4])
 
 test "a difference comparator still faults when a subtraction overflows":
-    let wide = [9223372036854775807, -9223372036854775807, 0]
-    (try expect_fault(fn: let _ignored = ascending(wide))) | try expect_contains(
+    wide := [9223372036854775807, -9223372036854775807, 0]
+    (try expect_fault(fn: _ignored := ascending(wide))) | try expect_contains(
         "Int overflow"
     )
 
-    let near = [9223372036854775807, 1, 0]
+    near := [9223372036854775807, 1, 0]
     ascending(near) | try expect_equal([0, 1, 9223372036854775807])

@@ -22,7 +22,7 @@ fn orders() List[List[String]]:
     ]
 
 fn run(work: String, n: Int) Result[String, Error]:
-    let here = "bench/perf/programs"
+    here := "bench/perf/programs"
     for dir in ["go", "ms", "rust"]:
         try copy(
             "{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
@@ -33,7 +33,7 @@ fn run(work: String, n: Int) Result[String, Error]:
     for i in 0..200000:
         input.append("2026-03-01T00:00:00Z 10.1.2.3 GET /api/users/{i} 200\n")
 
-    let lines = input.join("")
+    lines := input.join("")
     try write_file("{work}/lines.txt", lines, replace: true).wait()
     try build_go("{work}/go", "{work}/go/bench")
     try build_rust("{work}/rust/main.rs", "{work}/rust/bench", [])
@@ -43,11 +43,11 @@ fn run(work: String, n: Int) Result[String, Error]:
     try build_ms("{work}/ms", "{work}/ms/bench")
 
     var raw = List[String]()
-    let rotations = orders()
+    rotations := orders()
 
     for i in 0..n:
         for v in rotations[i % 4]:
-            let out = try sample("{work}/{v}/bench", [], lines)
+            out := try sample("{work}/{v}/bench", [], lines)
             for line in out.split("\n"):
                 if line != "": raw.append("{v} {line}")
 
@@ -55,19 +55,19 @@ fn run(work: String, n: Int) Result[String, Error]:
 
 fn main() Int:
     var n = 7
-    let args = arguments()
+    args := arguments()
 
     if not args.is_empty():
-        if let parsed = repeats(args[0]):
+        if parsed := repeats(args[0]):
             n = parsed
         else:
             return fail("repeats must be a positive integer")
 
-    let keep = env("BENCH_OUTPUT", "")
+    keep := env("BENCH_OUTPUT", "")
 
     if keep != "":
         create_directory(keep, recursive: true).get()
         return finish(run(absolute(keep), n))
 
-    let tmp = temporary("programs-").get()
+    tmp := temporary("programs-").get()
     return finish(run(tmp.path(), n))

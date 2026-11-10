@@ -54,71 +54,71 @@ enum GenericChoice[T]:
     GenericEmpty
 
 fn scalar_omitted() Unit:
-    let value = Full(Token(1), Token(2), Token(3), 7)
+    value := Full(Token(1), Token(2), Token(3), 7)
 
-    let code = match value:
+    code := match value:
         Full(_, _, _, code): code
         Empty: 0
 
     print("code {code}")
 
 fn heap_omitted() Unit:
-    let value = NamedFull(
+    value := NamedFull(
         NamedToken(4, "first"), NamedToken(5, "second"), NamedToken(6, "third"), 8
     )
 
-    let code = match value:
+    code := match value:
         NamedFull(_, _, _, code): code
         NamedEmpty: 0
 
     print("code {code}")
 
 fn mixed() Unit:
-    let value = Full(Token(7), Token(8), Token(9), 0)
+    value := Full(Token(7), Token(8), Token(9), 0)
 
-    let _ = match value:
+    _ := match value:
         Full(first, _, third, _):
             print("kept {first.id} {third.id}")
         Empty: unit
 
 fn borrowed() Unit:
-    let value = Full(Token(10), Token(11), Token(12), 9)
+    value := Full(Token(10), Token(11), Token(12), 9)
 
-    let code = match value:
+    code := match value:
         Full(first, _, _, code): code + first.id
         Empty: 0
 
-    let original = match value:
+    original := match value:
         Full(_, _, _, saved): saved
         Empty: 0
 
     print("borrowed {code - original} {original}")
 
-    let _ = match value:
+    _ := match value:
         Full(first, _, _, _): first.id
         Empty: 0
 
 fn wildcard() Unit:
-    let value = Full(Token(13), Token(14), Token(15), 0)
+    value := Full(Token(13), Token(14), Token(15), 0)
 
-    let code = match value:
+    code := match value:
         _: 0
 
     print("wildcard {code}")
 
 fn generic() Unit:
-    let value = GenericFull(Token(16), Token(17), 11)
+    value := GenericFull(Token(16), Token(17), 11)
 
-    let code = match value:
+    code := match value:
         GenericFull(_, _, code): code
         GenericEmpty: 0
 
     print("generic {code}")
 
 fn empty() Unit:
-    let value: Choice = Empty
+    value: Choice = Empty
 
-    let code = match value:
+    code := match value:
         Full(_, _, _, code): code
         Empty: 0
 

@@ -79,29 +79,29 @@ test "default evaluation order and repeated calls":
     ordered(0) | try expect_equal(345)
 
 test "function values and captures":
-    let copy = increment
-    let copied = copy
+    copy := increment
+    copied := copy
     copied() | try expect_equal(4)
 
-    let typed: fn(Int) Int = increment
+    typed: fn(Int) Int = increment
     typed(2) | try expect_equal(3)
 
-    let offset = 5
-    let callback = fn(value: Int = offset):
+    offset := 5
+    callback := fn(value: Int = offset):
         return value
     (callback() != 5 or callback(0) != 0) | try expect_false
 
-    let nested = fn(first: Int = 6, second: Int = first + 1):
+    nested := fn(first: Int = 6, second: Int = first + 1):
         return second
     nested() | try expect_equal(7)
 
 test "implementation and bound method defaults":
-    let offset = Offset(4)
-    let bound = offset.add
+    offset := Offset(4)
+    bound := offset.add
     (offset.add() != 8 or bound() != 8 or bound(0) != 4) | try expect_false
 
-    let view: Add = offset
+    view: Add = offset
     view.add(2) | try expect_equal(6)
 
-    let box = Box[String]("boxed")
+    box := Box[String]("boxed")
     box.read() | try expect_equal("boxed")

@@ -12,9 +12,9 @@ export type Memo[K: Hashable & Clonable, V: Clonable]:
 impl Memo[K, V]:
     // Returns a copy of the result for `key`, calling `compute` only when it has not been computed before.
     var fn get(key: K) V:
-        if let known = self.results.get(key): return known.clone()
+        if known := self.results.get(key): return known.clone()
 
-        let value = self.compute(key.clone())
+        value := self.compute(key.clone())
         self.results.add(key, value.clone())
         return value
 

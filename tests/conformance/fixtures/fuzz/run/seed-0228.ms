@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -17,35 +17,35 @@ fn gcd(a: Int, b: Int) Int:
 export fn main() Int:
     say("gcd(3507, 875) = {gcd(3507, 875)}")
 
-    let i1 = (-423232)
+    i1 := (-423232)
     say("i1 = {i1}")
     say("{(-114794)} {(-43)} {((-114794) < (-43))} sum {(-114794) + (-43)}")
 
-    let l2 = [1, 2, 3].take(0)
+    l2 := [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
 
-    let i3 = (-32)
+    i3 := (-32)
     say("i3 = {i3}")
 
-    let b4 = ((("a" + "Tab\there") + "beta") == "alpha".reverse())
+    b4 := ((("a" + "Tab\there") + "beta") == "alpha".reverse())
     say("b4 = {b4}")
 
-    let i5 = ((i3 - (i1 + (-4))) + (-21))
+    i5 := ((i3 - (i1 + (-4))) + (-21))
     say("i5 = {i5}")
 
-    let s6 = "line\nbreak"
+    s6 := "line\nbreak"
     say("s6 = [{s6}]")
 
-    let f7 = (((446.713 + 799.818) - (792.360 * 152.600)) / ((4.5 * 305.274) - 979.790))
+    f7 := (((446.713 + 799.818) - (792.360 * 152.600)) / ((4.5 * 305.274) - 979.790))
     say("f7 = {f7}")
 
-    let i8 = (-((23 + 32) + ((-41) + 47)))
+    i8 := (-((23 + 32) + ((-41) + 47)))
     say("i8 = {i8}")
 
-    let l9 = l2.map(fn x: x * 7)
+    l9 := l2.map(fn x: x * 7)
     say("l9 = {l9} len {l9.length()}")
 
-    let f10 = (((31.25 + 7.0e12) * f7) * ((f7 + 5.0e11) * (4.0e21 * 465.187)))
+    f10 := (((31.25 + 7.0e12) * f7) * ((f7 + 5.0e11) * (4.0e21 * 465.187)))
     say("f10 = {f10}")
 
     if false:
@@ -57,21 +57,21 @@ export fn main() Int:
         "{((-i1) - i1)} {(l2.length() - s6.length())} {(((-i1) - i1) < (l2.length() - s6.length()))} sum {((-i1) - i1) + (l2.length() - s6.length())}"
     )
 
-    let b11 = ((not (not b4)) or (not (b4 and b4)))
+    b11 := ((not (not b4)) or (not (b4 and b4)))
     say("b11 = {b11}")
 
-    let s12 = ("日本語".trim() + s6.upper()).replace(s6, "héllo")
+    s12 := ("日本語".trim() + s6.upper()).replace(s6, "héllo")
     say("s12 = [{s12}]")
 
-    let f13 = (733.051 * f10)
+    f13 := (733.051 * f10)
     say("f13 = {f13}")
     say(
         "{(((-39) + i1) + ((-7) + 32))} {((306847 + (-906854)) + ((-45) - 37))} {((((-39) + i1) + ((-7) + 32)) < ((306847 + (-906854)) + ((-45) - 37)))} sum {(((-39) + i1) + ((-7) + 32)) + ((306847 + (-906854)) + ((-45) - 37))}"
     )
 
-    let i14 = i1
+    i14 := i1
     say("i14 = {i14}")
 
-    let big15 = ((0 + i14) - ((-26) * 12)) - ((0 + i14) - ((-26) * 12))
+    big15 := ((0 + i14) - ((-26) * 12)) - ((0 + i14) - ((-26) * 12))
     say("{((0 + i14) - ((-26) * 12)) / big15}")
     return 0

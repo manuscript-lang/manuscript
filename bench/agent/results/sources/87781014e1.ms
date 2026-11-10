@@ -27,8 +27,8 @@ fn join_range(cs: List[String], from: Int, to: Int) String:
 
 // Validates `digits[.d[d]]` and returns the amount in cents as a digit string.
 fn amount_cents(s: String) String?:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var i = 0
     var int_part = ""
 
@@ -60,8 +60,8 @@ fn amount_cents(s: String) String?:
 
 // Parses one non-blank line into a category and an amount in cents, or none if invalid.
 fn parse_line(line: String) Entry?:
-    let cs = line.chars()
-    let n = cs.length()
+    cs := line.chars()
+    n := cs.length()
     var cat = ""
     var amt_start = 0
 
@@ -85,15 +85,15 @@ fn parse_line(line: String) Entry?:
 
     if cat.length() == 0: return none
 
-    let amount = join_range(cs, amt_start, n)
-    if let cents = amount_cents(amount): return Entry(cat: cat, cents: cents)
+    amount := join_range(cs, amt_start, n)
+    if cents := amount_cents(amount): return Entry(cat: cat, cents: cents)
 
     return none
 
 // Exact sum of two non-negative digit strings.
 fn add_cents(a: String, b: String) String:
-    let x = a.chars()
-    let y = b.chars()
+    x := a.chars()
+    y := b.chars()
     var i = x.length() - 1
     var j = y.length() - 1
     var carry = 0
@@ -117,8 +117,8 @@ fn add_cents(a: String, b: String) String:
 
 // Renders cents as "<int>.<two digits>".
 fn format_cents(s: String) String:
-    let cs = ("000" + s).chars()
-    let n = cs.length()
+    cs := ("000" + s).chars()
+    n := cs.length()
     var k = 0
     while k < n - 3 and cs[k] == "0":
         k += 1
@@ -131,14 +131,14 @@ export fn main() Int:
     var input = lines(stdin())
 
     while true:
-        let item = input.next().get()
+        item := input.next().get()
 
-        if let line = item:
+        if line := item:
             if line.trim().length() == 0: continue
 
-            if let e = parse_line(line):
-                if let cur = totals.get(e.cat):
-                    let sum = add_cents(cur, e.cents)
+            if e := parse_line(line):
+                if cur := totals.get(e.cat):
+                    sum := add_cents(cur, e.cents)
                     totals[e.cat] = sum
                 else:
                     cats.append(e.cat.clone())
@@ -151,7 +151,7 @@ export fn main() Int:
     var out = ""
 
     for cat in cats.sorted():
-        let total = format_cents(totals.get(cat).get("0"))
+        total := format_cents(totals.get(cat).get("0"))
         out += "{cat}: {total}\n"
 
     if skipped > 0:

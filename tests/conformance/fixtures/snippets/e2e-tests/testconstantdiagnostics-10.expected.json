@@ -14,14 +14,14 @@
           "file": "testconstantdiagnostics-10.ms",
           "line": 5,
           "column": 1,
-          "offset": 147
+          "offset": 144
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testconstantdiagnostics-10.ms:5:1: resolution: duplicate or intrinsic name A; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | let A = 2\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testconstantdiagnostics-10.ms:5:1: resolution: duplicate or intrinsic name A; this name is already declared, imported, or built in, so rename one of them\n   |\n 5 | A := 2\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

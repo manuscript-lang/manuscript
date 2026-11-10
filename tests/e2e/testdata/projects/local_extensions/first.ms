@@ -43,11 +43,11 @@ export fn first_generic() fn(Item) Int:
     return relay[Item]
 
 test "first local extensions":
-    let item = Item(2)
+    item := Item(2)
     (item.get() != 12 or invoke(item) != 12 or relay(item.clone()) != 12) | try expect_false
     as_view(item).get() | try expect_equal(12)
 
-    let holder = Holder(item)
+    holder := Holder(item)
     (holder.get() != 12 or invoke(holder) != 12 or holder.extract() != 12) | try expect_false
     Box("hello").get() | try expect_equal("hello")
     Choice.Some(2).get() | try expect_equal(12)
@@ -56,18 +56,18 @@ import Resource from "./domain.ms"
 
 impl Closeable for Resource:
     var fn close() Unit!:
-        let _ = append_file(self.events, "10,").wait()
+        _ := append_file(self.events, "10,").wait()
 
 fn leave(resource: Resource) Unit:
-    let _local = resource
+    _local := resource
     return
 
 export fn first_resource(resource: Resource) Closeable:
     return resource
 
 test "first local cleanup":
-    let dir = temporary("ms-ext-") | try expect_ok
-    let events = "{dir.path()}/events"
+    dir := temporary("ms-ext-") | try expect_ok
+    events := "{dir.path()}/events"
     leave(Resource(events.clone()))
     (try expect_ok(read_file(events).wait())).decode_utf8() | try expect_equal("10,")
 

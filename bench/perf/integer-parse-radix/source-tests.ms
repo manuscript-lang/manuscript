@@ -15,8 +15,8 @@ test "integer radix parsing preserves signed boundaries in every base":
         try expect_equal((try parse_int("-0000", radix)), 0)
 
 test "integer radix syntax errors take precedence after overflow":
-    let overflow: Int! = error(Error("number: value out of range", kind: "ERANGE"))
-    let invalid: Int! = error(Error("number: invalid data", kind: "EBADMSG"))
+    overflow: Int! = error(Error("number: value out of range", kind: "ERANGE"))
+    invalid: Int! = error(Error("number: invalid data", kind: "EBADMSG"))
 
     for text in [
         "9223372036854775808", "-9223372036854775809", "18446744073709551616",
@@ -25,9 +25,9 @@ test "integer radix syntax errors take precedence after overflow":
         try expect_equal(parse_int(text, 10), overflow)
         try expect_equal(parse_int("{text}!", 10), invalid)
 
-    let huge = "9".repeat(4096).get()
+    huge := "9".repeat(4096).get()
     try expect_equal(parse_int(huge, 10), overflow)
     try expect_equal(parse_int("{huge}!", 10), invalid)
 
-    let zeros = "0".repeat(4096).get()
+    zeros := "0".repeat(4096).get()
     try expect_equal((try parse_int("{zeros}1", 10)), 1)

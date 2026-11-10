@@ -9,8 +9,8 @@ fn show(number: Int) Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() Int:
-    let number = arguments().get(0, default: "42").parse_int()
-    if let value = number:
+    number := arguments().get(0, default: "42").parse_int()
+    if value := number:
         if show(value).is_ok():
             return 0
     return 1

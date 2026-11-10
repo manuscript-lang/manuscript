@@ -5,4 +5,4 @@ type Map[K, V]:
     value: V
 
 fn f() Unit:
-    let xs = {1: 2}
+    xs := {1: 2}

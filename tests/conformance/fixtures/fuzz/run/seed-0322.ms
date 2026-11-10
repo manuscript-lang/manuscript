@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     say(
         "{((477474 - (-32)) * (472512 - 42))} {(435608 * (-(-969392960443)))} {(((477474 - (-32)) * (472512 - 42)) < (435608 * (-(-969392960443))))} sum {((477474 - (-32)) * (472512 - 42)) + (435608 * (-(-969392960443)))}"
     )
 
-    let s1 = ("Tab\there" + ("{((-155827490210) - (-16))}:" + "naïve")).trim()
+    s1 := ("Tab\there" + ("{((-155827490210) - (-16))}:" + "naïve")).trim()
     say("s1 = [{s1}]")
 
-    let i2 = (-114560470025)
+    i2 := (-114560470025)
     say("i2 = {i2}")
 
-    let s3 = "héllo".trim()
+    s3 := "héllo".trim()
     say("s3 = [{s3}]")
 
     var acc4 = 0
@@ -31,7 +31,7 @@ export fn main() Int:
 
     say("acc4 = {acc4}")
 
-    let i5 = (-((i2 + 49) + (i2 - (-50))))
+    i5 := (-((i2 + 49) + (i2 - (-50))))
     say("i5 = {i5}")
 
     if true:

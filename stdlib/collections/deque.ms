@@ -23,7 +23,7 @@ impl Deque[T]:
 
     // Doubles the ring buffer, unwrapping values so the front lands at index 0.
     var fn grow() Unit:
-        let capacity = self.slots.length()
+        capacity := self.slots.length()
         var next = capacity * 2
         if next == 0:
             next = 4
@@ -38,8 +38,8 @@ impl Deque[T]:
 
     // Returns the ring-buffer index of the value `offset` places after the front; `offset` is at most the capacity.
     fn slot_of(offset: Int) Int:
-        let at = self.start + offset
-        let capacity = self.slots.length()
+        at := self.start + offset
+        capacity := self.slots.length()
         if at >= capacity: return at - capacity
 
         return at
@@ -65,7 +65,7 @@ impl Deque[T]:
     var fn pop_front() T?:
         if self.size == 0: return none
 
-        let value = self.slots.replace(self.start, none)
+        value := self.slots.replace(self.start, none)
         self.start += 1
         if self.start == self.slots.length():
             self.start = 0
@@ -76,8 +76,8 @@ impl Deque[T]:
     var fn pop_back() T?:
         if self.size == 0: return none
 
-        let index = self.slot_of(self.size - 1)
-        let value = self.slots.replace(index, none)
+        index := self.slot_of(self.size - 1)
+        value := self.slots.replace(index, none)
         self.size -= 1
         return value
 
@@ -119,12 +119,12 @@ impl Deque[T]:
             steps += self.size
 
         while steps > 0:
-            if let value = self.pop_front():
+            if value := self.pop_front():
                 self.push_back(value)
             steps -= 1
 
         while steps < 0:
-            if let value = self.pop_back():
+            if value := self.pop_back():
                 self.push_front(value)
             steps += 1
 
@@ -136,7 +136,7 @@ impl DequeCopy[T] for Deque[T]:
     fn to_list() List[T]:
         var out: List[T] = []
         for index in 0..self.size:
-            if let value = self.slots.get(self.slot_of(index)):
+            if value := self.slots.get(self.slot_of(index)):
                 out.append(value.clone())
         return out
 

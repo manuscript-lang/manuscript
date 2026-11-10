@@ -14,7 +14,7 @@ export fn main() Int:
     var total = 0
 
     for i in 0..20:
-        let l = Line("  a line of text that is long enough to live on the heap {i}  ")
+        l := Line("  a line of text that is long enough to live on the heap {i}  ")
         total += size(l)
 
     return total - total

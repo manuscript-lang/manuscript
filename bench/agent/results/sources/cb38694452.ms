@@ -4,12 +4,12 @@ import (
     wrapping_multiply, bit_xor, bit_and, shift_right_unsigned from "@std/math/math.ms",
 )
 
-let FNV_OFFSET = -3750763034362895579
-let FNV_PRIME = 1099511628211
-let HEX = "0123456789abcdef"
-let DIGITS = "0123456789"
-let NAME_FIRST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._/"
-let NAME_REST = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._/-"
+FNV_OFFSET := -3750763034362895579
+FNV_PRIME := 1099511628211
+HEX := "0123456789abcdef"
+DIGITS := "0123456789"
+NAME_FIRST := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._/"
+NAME_REST := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._/-"
 
 type Resolved:
     id: String
@@ -40,7 +40,7 @@ type Repo:
 
 fn fnv(s: String) Int:
     var h = FNV_OFFSET
-    let bs = s.as_bytes()
+    bs := s.as_bytes()
 
     for i in 0..bs.length():
         h = bit_xor(h, bs.get(i).to_int())
@@ -100,7 +100,7 @@ fn split_lines(content: String) List[String]:
     if content == "": return List[String]()
 
     var parts = content.split("\n")
-    let _last = parts.pop()
+    _last := parts.pop()
     return parts
 
 fn join_lines(lines: List[String]) String:
@@ -134,8 +134,8 @@ fn list_eq(a: List[String], b: List[String]) Bool:
 
 // Whether `key` has the same presence and content in both maps.
 fn entry_eq(a: Map[String, String], b: Map[String, String], key: String) Bool:
-    if let av = a.get(key):
-        if let bv = b.get(key): return av == bv
+    if av := a.get(key):
+        if bv := b.get(key): return av == bv
 
         return false
 
@@ -165,7 +165,7 @@ fn sorted_union(
 fn tree_text(tree: Map[String, String]) String:
     var text = ""
     for name in tree.keys().sorted():
-        if let c = tree.get(name):
+        if c := tree.get(name):
             text = text + name + " " + hex16(fnv(c)) + "\n"
     return text
 
@@ -203,13 +203,13 @@ fn move_head(var r: Repo, id: String) Unit:
         r.head_name = id.clone()
 
 fn parents_of(r: Repo, c: String) List[String]:
-    if let ps = r.commit_parents.get(c): return ps.clone()
+    if ps := r.commit_parents.get(c): return ps.clone()
 
     return List[String]()
 
 fn tree_of(r: Repo, id: String) Map[String, String]:
     if id == "": return Map[String, String]()
-    if let t = r.commit_tree.get(id): return t.clone()
+    if t := r.commit_tree.get(id): return t.clone()
 
     return Map[String, String]()
 
@@ -226,7 +226,7 @@ fn ancestors(r: Repo, start: String) Set[String]:
     var stack = [start]
 
     while not stack.is_empty():
-        let c = stack.pop().get()
+        c := stack.pop().get()
 
         if not seen.contains(c):
             seen.add(c.clone())
@@ -236,14 +236,14 @@ fn ancestors(r: Repo, start: String) Set[String]:
     return seen
 
 fn merge_base(r: Repo, a: String, b: String) String:
-    let anc_a = ancestors(r, a)
-    let anc_b = ancestors(r, b)
+    anc_a := ancestors(r, a)
+    anc_b := ancestors(r, b)
     var best = ""
     var best_num = -1
 
     for c in anc_a.values():
         if anc_b.contains(c):
-            let n = num_of(r, c)
+            n := num_of(r, c)
 
             if n > best_num:
                 best = c
@@ -259,7 +259,7 @@ fn store_commit(
         text = text + "parent " + p + "\n"
     text = text + "\n" + msg + "\n"
 
-    let id = hex16(fnv(text))
+    id := hex16(fnv(text))
 
     if not r.commit_num.contains(id):
         r.created += 1
@@ -271,18 +271,18 @@ fn store_commit(
     return id
 
 fn resolve(r: Repo, spec: String) Resolved:
-    let parts = spec.split("~")
+    parts := spec.split("~")
     var base = spec.clone()
     var steps = 0
 
     if parts.length() == 2:
         base = parts[0].clone()
 
-        let s = parts[1].clone()
+        s := parts[1].clone()
         if not all_digits(s):
             return Resolved(id: "", error: "unknown revision '" + spec + "'")
 
-        if let v = s.parse_int():
+        if v := s.parse_int():
             steps = v
         else:
             return Resolved(id: "", error: "unknown revision '" + spec + "'")
@@ -316,7 +316,7 @@ fn resolve(r: Repo, spec: String) Resolved:
     var k = 0
 
     while k < steps:
-        let ps = parents_of(r, id)
+        ps := parents_of(r, id)
         if ps.is_empty():
             return Resolved(id: "", error: "unknown revision '" + spec + "'")
 
@@ -329,9 +329,9 @@ fn resolve(r: Repo, spec: String) Resolved:
 
 // For each line of a, the index of its matching line in b, or -1.
 fn match_map(a: List[String], b: List[String]) List[Int]:
-    let n = a.length()
-    let m = b.length()
-    let w = m + 1
+    n := a.length()
+    m := b.length()
+    w := m + 1
     var tbl = List[Int]()
     for k in 0..(n + 1) * w:
         tbl.append(0)
@@ -373,14 +373,14 @@ fn match_map(a: List[String], b: List[String]) List[Int]:
     return ma
 
 fn line_diff(a: List[String], b: List[String]) List[String]:
-    let ma = match_map(a, b)
+    ma := match_map(a, b)
     var out = List[String]()
     var pa = 0
     var pb = 0
 
     for x in 0..a.length():
         if ma[x] >= 0:
-            let y = ma[x]
+            y := ma[x]
 
             while pa < x:
                 out.append("- " + a[pa])
@@ -434,8 +434,8 @@ fn merge3(
     theirs: List[String],
     branch: String
 ) Merged:
-    let bo = match_map(base, ours)
-    let bt = match_map(base, theirs)
+    bo := match_map(base, ours)
+    bt := match_map(base, theirs)
     var out = List[String]()
     var clean = true
     var pb = 0
@@ -491,8 +491,8 @@ fn switch_tree(var r: Repo, target: Map[String, String]) Unit:
 
 // `reset --hard` to `target`.
 fn reset_hard(var r: Repo, target: String) Unit:
-    let target_tree = tree_of(r, target)
-    let old_head = tree_of(r, head_commit(r))
+    target_tree := tree_of(r, target)
+    old_head := tree_of(r, head_commit(r))
     for name in r.index.keys():
         r.work.remove(name)
     for name in old_head.keys():
@@ -513,7 +513,7 @@ fn reset_hard(var r: Repo, target: String) Unit:
 fn cmd_write(var r: Repo, file: String, block: List[String], append: Bool) Unit:
     var content = join_lines(block)
     if append:
-        if let old = r.work.get(file):
+        if old := r.work.get(file):
             content = old + content
     r.work.add(file, content)
 
@@ -534,8 +534,8 @@ fn cmd_mv(var r: Repo, args: List[String]) Unit:
         print("error: usage: mv OLD NEW")
         return
 
-    if let content = r.work.get(args[0]):
-        let saved = content.clone()
+    if content := r.work.get(args[0]):
+        saved := content.clone()
         r.work.remove(args[0].clone())
         r.work.add(args[1].clone(), saved)
     else:
@@ -546,14 +546,14 @@ fn cmd_cat(r: Repo, args: List[String]) Unit:
         print("error: usage: cat FILE")
         return
 
-    if let content = r.work.get(args[0]):
+    if content := r.work.get(args[0]):
         for l in split_lines(content):
             print(l)
     else:
         print("error: no such file: " + args[0])
 
 fn cmd_ls(r: Repo) Unit:
-    let names = r.work.keys().sorted()
+    names := r.work.keys().sorted()
     if names.is_empty():
         print("(empty)")
     for n in names:
@@ -595,7 +595,7 @@ fn cmd_status(r: Repo) Unit:
     if r.merging:
         print("merging: " + r.merge_branch)
 
-    let head = tree_of(r, head_commit(r))
+    head := tree_of(r, head_commit(r))
     var any = false
     var staged = List[String]()
 
@@ -661,7 +661,7 @@ fn cmd_commit(var r: Repo, msg: String) Unit:
         print("error: unresolved conflicts: " + r.conflicts.values().sorted().join(" "))
         return
 
-    let hc = head_commit(r)
+    hc := head_commit(r)
     var parents = List[String]()
     if hc != "":
         parents.append(hc.clone())
@@ -672,11 +672,11 @@ fn cmd_commit(var r: Repo, msg: String) Unit:
         print("nothing to commit")
         return
 
-    let id = store_commit(var r, r.index.clone(), parents.clone(), msg.clone())
-    let root = parents.is_empty()
+    id := store_commit(var r, r.index.clone(), parents.clone(), msg.clone())
+    root := parents.is_empty()
     move_head(var r, id.clone())
 
-    let label = head_label(r)
+    label := head_label(r)
     r.merging = false
     r.merge_other = ""
     r.merge_branch = ""
@@ -688,7 +688,7 @@ fn cmd_commit(var r: Repo, msg: String) Unit:
         print("[" + label + " " + short(id) + "] " + msg)
 
 fn cmd_log(r: Repo, limit: Int) Unit:
-    let hc = head_commit(r)
+    hc := head_commit(r)
 
     if hc == "":
         print("no commits yet")
@@ -698,7 +698,7 @@ fn cmd_log(r: Repo, limit: Int) Unit:
     var by_num = Map[Int, String]()
 
     for c in ancestors(r, hc).values():
-        let n = num_of(r, c)
+        n := num_of(r, c)
         nums.append(n)
         by_num.add(n, c)
 
@@ -710,8 +710,8 @@ fn cmd_log(r: Repo, limit: Int) Unit:
     for n in nums:
         if limit >= 0 and shown >= limit: break
 
-        if let c = by_num.get(n):
-            let ps = parents_of(r, c)
+        if c := by_num.get(n):
+            ps := parents_of(r, c)
             var line = short(c) + " " + msg_of(r, c)
             if ps.length() == 2:
                 line = line + " (merge " + short(ps[0]) + " " + short(ps[1]) + ")"
@@ -727,7 +727,7 @@ fn cmd_diff(r: Repo, args: List[String]) Unit:
     var right = r.work.clone()
 
     if args.length() == 1:
-        let res = resolve(r, args[0].clone())
+        res := resolve(r, args[0].clone())
 
         if res.error != "":
             print("error: " + res.error)
@@ -735,13 +735,13 @@ fn cmd_diff(r: Repo, args: List[String]) Unit:
 
         left = tree_of(r, res.id)
     else if args.length() == 2:
-        let ra = resolve(r, args[0].clone())
+        ra := resolve(r, args[0].clone())
 
         if ra.error != "":
             print("error: " + ra.error)
             return
 
-        let rb = resolve(r, args[1].clone())
+        rb := resolve(r, args[1].clone())
 
         if rb.error != "":
             print("error: " + rb.error)
@@ -763,8 +763,8 @@ fn cmd_diff(r: Repo, args: List[String]) Unit:
         else if not right.contains(name):
             print("deleted file")
 
-        let a = split_lines(left.get_or(name, ""))
-        let b = split_lines(right.get_or(name, ""))
+        a := split_lines(left.get_or(name, ""))
+        b := split_lines(right.get_or(name, ""))
         for l in line_diff(a, b):
             print(l)
 
@@ -776,14 +776,14 @@ fn cmd_show(r: Repo, args: List[String]) Unit:
         print("error: usage: show REF")
         return
 
-    let res = resolve(r, args[0].clone())
+    res := resolve(r, args[0].clone())
 
     if res.error != "":
         print("error: " + res.error)
         return
 
-    let id = res.id
-    let tree = tree_of(r, id)
+    id := res.id
+    tree := tree_of(r, id)
     print("commit " + id)
     print("tree " + tree_hash(tree))
     for p in parents_of(r, id):
@@ -807,7 +807,7 @@ fn cmd_branch(var r: Repo, args: List[String]) Unit:
         return
 
     if args.length() == 1:
-        let name = args[0]
+        name := args[0]
 
         if not valid_name(name):
             print("error: invalid branch name '" + name + "'")
@@ -817,7 +817,7 @@ fn cmd_branch(var r: Repo, args: List[String]) Unit:
             print("error: branch '" + name + "' already exists")
             return
 
-        let hc = head_commit(r)
+        hc := head_commit(r)
 
         if hc == "":
             print("error: no commits yet")
@@ -827,7 +827,7 @@ fn cmd_branch(var r: Repo, args: List[String]) Unit:
         return
 
     if args.length() == 2 and args[0] == "-d":
-        let name = args[1]
+        name := args[1]
 
         if not r.branches.contains(name):
             print("error: branch '" + name + "' not found")
@@ -837,7 +837,7 @@ fn cmd_branch(var r: Repo, args: List[String]) Unit:
             print("error: cannot delete the current branch '" + name + "'")
             return
 
-        let bc = r.branches.get_or(name, "")
+        bc := r.branches.get_or(name, "")
 
         if bc == "" or not ancestors(r, head_commit(r)).contains(bc):
             print("error: branch '" + name + "' is not fully merged")
@@ -859,7 +859,7 @@ fn cmd_tag(var r: Repo, args: List[String]) Unit:
         print("error: usage: tag [NAME [REF]]")
         return
 
-    let name = args[0]
+    name := args[0]
 
     if not valid_name(name):
         print("error: invalid tag name '" + name + "'")
@@ -877,7 +877,7 @@ fn cmd_tag(var r: Repo, args: List[String]) Unit:
         print("error: no commits yet")
         return
 
-    let res = resolve(r, spec)
+    res := resolve(r, spec)
 
     if res.error != "":
         print("error: " + res.error)
@@ -887,7 +887,7 @@ fn cmd_tag(var r: Repo, args: List[String]) Unit:
 
 fn cmd_checkout(var r: Repo, args: List[String]) Unit:
     if args.length() == 2 and args[0] == "-b":
-        let name = args[1]
+        name := args[1]
 
         if not valid_name(name):
             print("error: invalid branch name '" + name + "'")
@@ -897,19 +897,19 @@ fn cmd_checkout(var r: Repo, args: List[String]) Unit:
             print("error: branch '" + name + "' already exists")
             return
 
-        let hc = head_commit(r)
+        hc := head_commit(r)
 
         if hc == "":
             print("error: no commits yet")
             return
 
-        let d = dirty_check(r)
+        d := dirty_check(r)
 
         if d != "":
             print("error: " + d)
             return
 
-        let u = untracked_check(r, tree_of(r, hc))
+        u := untracked_check(r, tree_of(r, hc))
 
         if u != "":
             print("error: " + u)
@@ -929,22 +929,22 @@ fn cmd_checkout(var r: Repo, args: List[String]) Unit:
         print("error: merge in progress")
         return
 
-    let target = args[0]
+    target := args[0]
 
     if r.branches.contains(target):
         if r.attached and r.head_name == target:
             print("Already on '" + target + "'")
             return
 
-        let bc = r.branches.get_or(target, "")
-        let target_tree = tree_of(r, bc)
-        let d = dirty_check(r)
+        bc := r.branches.get_or(target, "")
+        target_tree := tree_of(r, bc)
+        d := dirty_check(r)
 
         if d != "":
             print("error: " + d)
             return
 
-        let u = untracked_check(r, target_tree)
+        u := untracked_check(r, target_tree)
 
         if u != "":
             print("error: " + u)
@@ -956,20 +956,20 @@ fn cmd_checkout(var r: Repo, args: List[String]) Unit:
         print("Switched to branch '" + target + "'")
         return
 
-    let res = resolve(r, target.clone())
+    res := resolve(r, target.clone())
 
     if res.error != "":
         print("error: " + res.error)
         return
 
-    let target_tree = tree_of(r, res.id)
-    let d = dirty_check(r)
+    target_tree := tree_of(r, res.id)
+    d := dirty_check(r)
 
     if d != "":
         print("error: " + d)
         return
 
-    let u = untracked_check(r, target_tree)
+    u := untracked_check(r, target_tree)
 
     if u != "":
         print("error: " + u)
@@ -992,7 +992,7 @@ fn cmd_reset(var r: Repo, args: List[String]) Unit:
             print("error: no commits yet")
             return
     else:
-        let res = resolve(r, args[1].clone())
+        res := resolve(r, args[1].clone())
 
         if res.error != "":
             print("error: " + res.error)
@@ -1024,20 +1024,20 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
         print("error: merge in progress")
         return
 
-    let hc = head_commit(r)
+    hc := head_commit(r)
 
     if hc == "":
         print("error: no commits yet")
         return
 
-    let bname = args[0]
+    bname := args[0]
 
     if not r.branches.contains(bname) or r.branches.get_or(bname, "") == "":
         print("error: unknown branch '" + bname + "'")
         return
 
-    let oc = r.branches.get_or(bname, "")
-    let d = dirty_check(r)
+    oc := r.branches.get_or(bname, "")
+    d := dirty_check(r)
 
     if d != "":
         print("error: " + d)
@@ -1048,8 +1048,8 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
         return
 
     if ancestors(r, oc.clone()).contains(hc):
-        let target_tree = tree_of(r, oc)
-        let u = untracked_check(r, target_tree)
+        target_tree := tree_of(r, oc)
+        u := untracked_check(r, target_tree)
 
         if u != "":
             print("error: " + u)
@@ -1061,36 +1061,36 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
         return
 
     // Three-way merge.
-    let base_id = merge_base(r, hc.clone(), oc.clone())
-    let base_tree = tree_of(r, base_id)
-    let ours = tree_of(r, hc)
-    let theirs = tree_of(r, oc)
+    base_id := merge_base(r, hc.clone(), oc.clone())
+    base_tree := tree_of(r, base_id)
+    ours := tree_of(r, hc)
+    theirs := tree_of(r, oc)
     var result = Map[String, String]()
     var overrides = Map[String, String]()
     var kinds = Map[String, String]()
-    let names = sorted_union(base_tree, ours, theirs)
+    names := sorted_union(base_tree, ours, theirs)
 
     for nm in names:
         if entry_eq(ours, theirs, nm):
-            if let v = ours.get(nm):
+            if v := ours.get(nm):
                 result.add(nm.clone(), v.clone())
         else if entry_eq(ours, base_tree, nm):
-            if let v = theirs.get(nm):
+            if v := theirs.get(nm):
                 result.add(nm.clone(), v.clone())
         else if entry_eq(theirs, base_tree, nm):
-            if let v = ours.get(nm):
+            if v := ours.get(nm):
                 result.add(nm.clone(), v.clone())
         else if not ours.contains(nm) or not theirs.contains(nm):
             kinds.add(nm.clone(), "modify/delete")
 
-            if let v = ours.get(nm):
+            if v := ours.get(nm):
                 result.add(nm.clone(), v.clone())
                 overrides.add(nm.clone(), v.clone())
             else:
                 overrides.add(nm.clone(), theirs.get_or(nm, "").clone())
         else:
-            let bl = split_lines(base_tree.get_or(nm, ""))
-            let merged = merge3(
+            bl := split_lines(base_tree.get_or(nm, ""))
+            merged := merge3(
                 bl, split_lines(ours.get_or(nm, "")),
                 split_lines(theirs.get_or(nm, "")), bname
             )
@@ -1133,8 +1133,8 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
         parents.append(hc.clone())
         parents.append(oc.clone())
 
-        let msg = "Merge branch '" + bname + "'"
-        let id = store_commit(var r, r.index.clone(), parents, msg.clone())
+        msg := "Merge branch '" + bname + "'"
+        id := store_commit(var r, r.index.clone(), parents, msg.clone())
         move_head(var r, id.clone())
         print("Merge made by the 'three-way' strategy.")
         print("[" + head_label(r) + " " + short(id) + "] " + msg)
@@ -1147,7 +1147,7 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
     for nm in kinds.keys().sorted():
         r.conflicts.add(nm.clone())
 
-        let kind = kinds.get_or(nm, "")
+        kind := kinds.get_or(nm, "")
 
         if kind == "modify/delete":
             print("CONFLICT (modify/delete): " + nm)
@@ -1159,27 +1159,27 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
 // ---------- driver ----------
 
 export fn main() Int:
-    let text = read_all(stdin()).get().decode_utf8().get()
+    text := read_all(stdin()).get().decode_utf8().get()
     var lines = text.split("\n")
     if lines.length() > 0 and text != "":
-        let _last = lines.pop()
+        _last := lines.pop()
 
-    let n = lines.length()
+    n := lines.length()
     var r = new_repo()
     var i = 0
 
     while i < n:
-        let raw = lines[i].clone()
+        raw := lines[i].clone()
         i += 1
 
-        let t = raw.trim()
+        t := raw.trim()
         if t == "" or t.starts_with("#"): continue
 
         print("> " + raw.trim_end())
 
-        let w = words(raw)
-        let cmd = w[0].clone()
-        let args = tail(w)
+        w := words(raw)
+        cmd := w[0].clone()
+        args := tail(w)
 
         if cmd == "write" or cmd == "append":
             if args.length() != 1:
@@ -1207,9 +1207,9 @@ export fn main() Int:
         else if cmd == "status":
             cmd_status(r)
         else if cmd == "commit":
-            let norm = raw.trim().split("\t").join(" ")
+            norm := raw.trim().split("\t").join(" ")
             var msg = ""
-            if let k = norm.index_of(" "):
+            if k := norm.index_of(" "):
                 msg = norm.slice_scalars(k, norm.length()).get().trim()
             cmd_commit(var r, msg)
         else if cmd == "log":
@@ -1217,7 +1217,7 @@ export fn main() Int:
                 cmd_log(r, -1)
             else if args.length() == 2 and args[0] == "-n" and all_digits(args[1]):
                 var limit = 1000000000
-                if let v = args[1].parse_int():
+                if v := args[1].parse_int():
                     limit = v
                 cmd_log(r, limit)
             else:

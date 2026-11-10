@@ -4,7 +4,7 @@ type Cell:
 
 export fn main() Int:
     var cells = [Cell(n: 1, tag: "a"), Cell(n: 2, tag: "b")]
-    let before = cells.clone()
+    before := cells.clone()
     cells[1].n = 9
     cells[0].tag = "z"
 

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,7 +22,7 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let s1 = "42"
+    s1 := "42"
     say("s1 = [{s1}]")
 
     if ((-18) != (-34)):
@@ -30,26 +30,26 @@ export fn main() Int:
     else:
         say("beta")
 
-    let f2 = (((0.0 - 511.25) - (3.0e1 + 1.5)) + (989.348 / (0.0 + 337.405)))
+    f2 := (((0.0 - 511.25) - (3.0e1 + 1.5)) + (989.348 / (0.0 + 337.405)))
     say("f2 = {f2}")
     say("fib(59) = {fib(59)}")
 
-    let b3 = (not ((s1 + s1) != (s1 + "ms")))
+    b3 := (not ((s1 + s1) != (s1 + "ms")))
     say("b3 = {b3}")
 
-    let f4 = (((f2 * f2) / f2) + ((f2 - f2) - (88.541 * f2)))
+    f4 := (((f2 * f2) / f2) + ((f2 - f2) - (88.541 * f2)))
     say("f4 = {f4}")
 
-    let i5 = (-(46 % (45 / (-32))))
+    i5 := (-(46 % (45 / (-32))))
     say("i5 = {i5}")
 
-    let l6 = [(-24)]
+    l6 := [(-24)]
     say("l6 = {l6} len {l6.length()}")
     say(
         "{((i5 - i5) + (i5 * i5))} {s1.length()} {(((i5 - i5) + (i5 * i5)) < s1.length())} sum {((i5 - i5) + (i5 * i5)) + s1.length()}"
     )
 
-    let f7 = ((f4 / f2) * ((7.5 + 0.0) + (239.558 / f2)))
+    f7 := ((f4 / f2) * ((7.5 + 0.0) + (239.558 / f2)))
     say("f7 = {f7}")
 
     var acc8 = 0
@@ -62,9 +62,9 @@ export fn main() Int:
 
     say("acc8 = {acc8}")
 
-    let b9 = b3
+    b9 := b3
     say("b9 = {b9}")
 
-    let f10 = (((f7 * f7) - (632.960 * 642.442)) - f4)
+    f10 := (((f7 * f7) - (632.960 * 642.442)) - f4)
     say("f10 = {f10}")
     return 0

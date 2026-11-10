@@ -99,6 +99,6 @@ test "if var changes a map entry in place":
     try expect_true(ship(var orders, "o1"))
     try expect_equal(ship(var orders, "o9"), false)
 
-    let o = orders["o1"]
+    o := orders["o1"]
     try expect_equal(o.status, "shipped")
     try expect_equal(o.items, ["a", "label"])

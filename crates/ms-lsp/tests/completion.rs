@@ -407,7 +407,7 @@ fn an_opaque_record_offers_no_fields_outside_its_file() {
         "main.ms",
         include_str!("completion/opaque-outside.ms"),
         4,
-        14,
+        11,
     );
     assert!(outside.contains(&"show".to_string()), "{outside:?}");
     assert!(!outside.contains(&"id".to_string()), "{outside:?}");
@@ -449,15 +449,17 @@ fn alternative_cases_complete_bare_unless_opaque_elsewhere() {
         })
         .collect::<Vec<_>>()
     };
-    let source = "import Shape, Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    let _a = Cir\n    return 0\n";
-    let found = labels(source, 3, 16);
+    let source =
+        "import Shape, Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    _a := Cir\n    return 0\n";
+    let found = labels(source, 3, 13);
     assert!(found.contains(&"Circle".to_string()), "{found:?}");
-    let source = "import Shape, Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    let _a = Sec\n    return 0\n";
-    let found = labels(source, 3, 16);
+    let source =
+        "import Shape, Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    _a := Sec\n    return 0\n";
+    let found = labels(source, 3, 13);
     assert!(!found.contains(&"Secret".to_string()), "{found:?}");
     let source =
-        "import Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    let _a = Hidden.\n    return 0\n";
-    let found = labels(source, 3, 19);
+        "import Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    _a := Hidden.\n    return 0\n";
+    let found = labels(source, 3, 16);
     assert!(!found.contains(&"Secret".to_string()), "{found:?}");
 }
 

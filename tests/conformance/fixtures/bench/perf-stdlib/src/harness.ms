@@ -7,13 +7,13 @@ export type Point:
     y: Int
 
 export fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    _ignored := stdout().write(text)
 
 // Runs `body` once and prints `name<TAB>ops<TAB>ns_per_op`; `body` returns a checksum that keeps its work observable.
 export fn bench(name: String, ops: Int, body: fn() Int) Unit:
-    let started = monotonic()
-    let checksum = body()
-    let elapsed = monotonic().difference(started).to_nanoseconds()
+    started := monotonic()
+    checksum := body()
+    elapsed := monotonic().difference(started).to_nanoseconds()
     say("{name}\t{ops}\t{elapsed / ops}\n")
     say("# checksum {name} {checksum}\n")
     say("# elapsed {name} {elapsed}\n")

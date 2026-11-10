@@ -1,31 +1,31 @@
 import stdin, stdout, read_all from "@std/io.ms"
 import wrapping_add, wrapping_multiply from "@std/math.ms"
 
-let MAXI = 9223372036854775807
-let MINI = -9223372036854775807 - 1
-let DEPTH_LIMIT = 10000
-let SPECIAL_COUNT = 15
-let K_QUOTE = 0
-let K_IF = 1
-let K_DEFINE = 2
-let K_SET = 3
-let K_LAMBDA = 4
-let K_BEGIN = 5
-let K_LET = 6
-let K_LETSTAR = 7
-let K_LETREC = 8
-let K_COND = 9
-let K_AND = 10
-let K_OR = 11
-let K_WHEN = 12
-let K_UNLESS = 13
-let K_TRY = 14
-let K_ELSE = 15
-let SPECIAL_NAMES = [
+MAXI := 9223372036854775807
+MINI := -9223372036854775807 - 1
+DEPTH_LIMIT := 10000
+SPECIAL_COUNT := 15
+K_QUOTE := 0
+K_IF := 1
+K_DEFINE := 2
+K_SET := 3
+K_LAMBDA := 4
+K_BEGIN := 5
+K_LET := 6
+K_LETSTAR := 7
+K_LETREC := 8
+K_COND := 9
+K_AND := 10
+K_OR := 11
+K_WHEN := 12
+K_UNLESS := 13
+K_TRY := 14
+K_ELSE := 15
+SPECIAL_NAMES := [
     "quote", "if", "define", "set!", "lambda", "begin", "let", "let*", "letrec", "cond",
     "and", "or", "when", "unless", "try", "else"
 ]
-let BUILTIN_NAMES = [
+BUILTIN_NAMES := [
     "+", "-", "*", "quotient", "remainder", "modulo", "abs", "min", "max", "=", "<",
     ">", "<=", ">=", "zero?", "even?", "odd?", "not", "null?", "pair?", "list?",
     "number?", "string?", "symbol?", "boolean?", "procedure?", "eq?", "equal?", "cons",
@@ -131,7 +131,7 @@ fn is_delim(c: String) Bool:
     )
 
 fn is_int_text(text: String) Bool:
-    let cs = text.chars()
+    cs := text.chars()
     var i = 0
     if cs.length() > 0 and cs[0] == "-":
         i = 1
@@ -147,7 +147,7 @@ fn is_int_text(text: String) Bool:
     return true
 
 fn add_int(a: Int, b: Int) Result[Int, Fail]:
-    let r = wrapping_add(a, b)
+    r := wrapping_add(a, b)
     if (b > 0 and r < a) or (b < 0 and r > a):
         return error(runtime_error("integer overflow"))
 
@@ -175,7 +175,7 @@ fn mul_int(a: Int, b: Int) Result[Int, Fail]:
 
         return ok(-a)
 
-    let r = wrapping_multiply(a, b)
+    r := wrapping_multiply(a, b)
     if r / a != b:
         return error(runtime_error("integer overflow"))
 
@@ -195,21 +195,21 @@ fn compare_holds(name: String, a: Int, b: Int) Bool:
 
 impl Machine:
     var fn install() Result[Unit, Fail]:
-        let _root = self.new_frame(-1)
+        _root := self.new_frame(-1)
         for name in SPECIAL_NAMES:
-            let _s = self.intern(name.clone())
+            _s := self.intern(name.clone())
 
         for name in BUILTIN_NAMES:
-            let id = self.intern(name.clone())
+            id := self.intern(name.clone())
             self.define_in(0, id, Value.Prim(name.clone()))
 
         return ok(unit)
 
     var fn intern(name: String) Int:
-        if let known = self.sym_ids.get(name.clone()):
+        if known := self.sym_ids.get(name.clone()):
             return known
 
-        let id = self.sym_names.length()
+        id := self.sym_names.length()
         self.sym_names.append(name.clone())
         self.global_slot.append(-1)
         self.sym_ids[name.clone()] = id
@@ -270,14 +270,14 @@ impl Machine:
                 return false
 
     var fn car(v: Value) Value:
-        let id = self.cons_id(v)
+        id := self.cons_id(v)
         if id < 0:
             return Value.Empty
 
         return self.cars[id].clone()
 
     var fn cdr(v: Value) Value:
-        let id = self.cons_id(v)
+        id := self.cons_id(v)
         if id < 0:
             return Value.Empty
 
@@ -290,7 +290,7 @@ impl Machine:
         var cur = v.clone()
 
         while true:
-            let id = self.cons_id(cur.clone())
+            id := self.cons_id(cur.clone())
             if id < 0:
                 return self.is_empty(cur)
 
@@ -301,7 +301,7 @@ impl Machine:
         var cur = v.clone()
 
         while true:
-            let id = self.cons_id(cur.clone())
+            id := self.cons_id(cur.clone())
             if id < 0:
                 return out
 
@@ -330,7 +330,7 @@ impl Machine:
         if frame == 0:
             return self.global_slot[sym]
 
-        let start = self.frame_first[frame]
+        start := self.frame_first[frame]
         var b = start
 
         while b >= 0:
@@ -342,13 +342,13 @@ impl Machine:
         return -1
 
     var fn define_in(frame: Int, sym: Int, val: Value) Unit:
-        let slot = self.find_in_frame(frame, sym)
+        slot := self.find_in_frame(frame, sym)
 
         if slot >= 0:
             self.bind_val[slot] = val
             return
 
-        let idx = self.bind_sym.length()
+        idx := self.bind_sym.length()
         self.bind_sym.append(sym)
         self.bind_val.append(val)
 
@@ -363,7 +363,7 @@ impl Machine:
         var f = env
 
         while f >= 0:
-            let slot = self.find_in_frame(f, sym)
+            slot := self.find_in_frame(f, sym)
             if slot >= 0:
                 return slot
 
@@ -383,11 +383,11 @@ impl Machine:
         var cur = params.clone()
 
         while true:
-            let id = self.cons_id(cur.clone())
+            id := self.cons_id(cur.clone())
             if id < 0:
                 break
 
-            let s = self.sym_id(self.car(cur.clone()))
+            s := self.sym_id(self.car(cur.clone()))
             if s < 0 or ids.contains(s):
                 return error(bad_form(kw))
 
@@ -407,8 +407,8 @@ impl Machine:
         return ok(Value.Proc(self.closures.length() - 1))
 
     var fn bind_args(id: Int, args: List[Value]) Result[Int, Fail]:
-        let n = self.closures[id].params.length()
-        let count = args.length()
+        n := self.closures[id].params.length()
+        count := args.length()
 
         if count < n or (self.closures[id].rest < 0 and count > n):
             var who = self.closures[id].name.clone()
@@ -424,7 +424,7 @@ impl Machine:
                 )
             )
 
-        let frame = self.new_frame(self.closures[id].env)
+        frame := self.new_frame(self.closures[id].env)
         for i in 0..n:
             self.define_in(frame, self.closures[id].params[i], args[i].clone())
 
@@ -433,7 +433,7 @@ impl Machine:
             for i in n..count:
                 extra.append(args[i].clone())
 
-            let rest_list = self.from_list(extra)
+            rest_list := self.from_list(extra)
             self.define_in(frame, self.closures[id].rest, rest_list)
 
         return ok(frame)
@@ -482,7 +482,7 @@ impl Machine:
             Prim(name):
                 return "#<builtin {name}>"
             Proc(id):
-                let name = self.closures[id].name.clone()
+                name := self.closures[id].name.clone()
                 if name == "":
                     return "#<procedure>"
 
@@ -495,8 +495,8 @@ impl Machine:
         while true:
             out += self.render(self.cars[id].clone(), write)
 
-            let rest = self.cdrs[id].clone()
-            let next_id = self.cons_id(rest.clone())
+            rest := self.cdrs[id].clone()
+            next_id := self.cons_id(rest.clone())
 
             if next_id >= 0:
                 out += " "
@@ -523,7 +523,7 @@ impl Machine:
 
     var fn skip_space() Unit:
         while self.pos < self.chars.length():
-            let c = self.peek()
+            c := self.peek()
 
             if c == ";":
                 while self.peek() != "\n" and self.peek() != "":
@@ -536,7 +536,7 @@ impl Machine:
     var fn read_datum() Result[Value, Fail]:
         self.skip_space()
 
-        let c = self.peek()
+        c := self.peek()
         if c == "":
             return error(syntax_error("unexpected end of input"))
 
@@ -550,8 +550,8 @@ impl Machine:
         if c == "'":
             self.pos += 1
 
-            let quoted = try self.read_datum()
-            let tail = self.cons(quoted, Value.Empty)
+            quoted := try self.read_datum()
+            tail := self.cons(quoted, Value.Empty)
             return ok(self.cons(Value.Sym(K_QUOTE), tail))
 
         if c == "\"":
@@ -566,7 +566,7 @@ impl Machine:
         while true:
             self.skip_space()
 
-            let c = self.peek()
+            c := self.peek()
             if c == "":
                 return error(syntax_error("unexpected end of input"))
 
@@ -586,7 +586,7 @@ impl Machine:
                 tail = try self.read_datum()
                 self.skip_space()
 
-                let e = self.peek()
+                e := self.peek()
                 if e == "":
                     return error(syntax_error("unexpected end of input"))
                 if e != ")":
@@ -595,7 +595,7 @@ impl Machine:
                 self.pos += 1
                 break
 
-            let item = try self.read_datum()
+            item := try self.read_datum()
             items.append(item)
 
         return ok(self.build(items, tail))
@@ -606,7 +606,7 @@ impl Machine:
         var out = ""
 
         while true:
-            let c = self.peek()
+            c := self.peek()
             if c == "":
                 return error(syntax_error("unterminated string"))
 
@@ -615,7 +615,7 @@ impl Machine:
                 break
 
             if c == "\\":
-                let e = self.peek()
+                e := self.peek()
                 if e == "":
                     return error(syntax_error("unterminated string"))
 
@@ -653,7 +653,7 @@ impl Machine:
             return error(syntax_error("unexpected ."))
 
         if is_int_text(text):
-            if let n = text.parse_int():
+            if n := text.parse_int():
                 return ok(Value.Num(n))
 
             return error(syntax_error("integer out of range"))
@@ -666,8 +666,8 @@ impl Machine:
             if self.pos >= self.chars.length():
                 return ok(unit)
 
-            let form = try self.read_datum()
-            let _v = try self.run(form, 0, 0, false)
+            form := try self.read_datum()
+            _v := try self.run(form, 0, 0, false)
 
     // ---- evaluator ---------------------------------------------------------------------
 
@@ -680,7 +680,7 @@ impl Machine:
         var in_tail = tail
 
         while true:
-            let step = try self.step(form.clone(), frame, level, in_tail)
+            step := try self.step(form.clone(), frame, level, in_tail)
             if step.done:
                 return ok(step.value.clone())
 
@@ -690,10 +690,10 @@ impl Machine:
             in_tail = step.tail
 
     var fn step(form: Value, env: Int, depth: Int, tail: Bool) Result[Step, Fail]:
-        let sym = self.sym_id(form.clone())
+        sym := self.sym_id(form.clone())
 
         if sym >= 0:
-            let slot = self.lookup(env, sym)
+            slot := self.lookup(env, sym)
             if slot < 0:
                 return error(
                     runtime_error(
@@ -705,7 +705,7 @@ impl Machine:
 
             return ok(finish(self.bind_val[slot].clone()))
 
-        let cid = self.cons_id(form.clone())
+        cid := self.cons_id(form.clone())
 
         if cid < 0:
             if self.is_empty(form.clone()):
@@ -713,7 +713,7 @@ impl Machine:
 
             return ok(finish(form))
 
-        let head = self.sym_id(self.cars[cid].clone())
+        head := self.sym_id(self.cars[cid].clone())
         if head >= 0 and head < SPECIAL_COUNT:
             return self.special(head, form, env, depth, tail)
 
@@ -723,12 +723,12 @@ impl Machine:
         if not self.is_proper(form.clone()):
             return error(syntax_error("bad application"))
 
-        let items = self.list_of(form)
-        let callee = try self.run(items[0].clone(), env, depth, false)
+        items := self.list_of(form)
+        callee := try self.run(items[0].clone(), env, depth, false)
         var args = List[Value]()
 
         for i in 1..items.length():
-            let arg = try self.run(items[i].clone(), env, depth, false)
+            arg := try self.run(items[i].clone(), env, depth, false)
             args.append(arg)
 
         return self.apply_value(callee, args, depth, tail)
@@ -739,7 +739,7 @@ impl Machine:
         depth: Int,
         tail: Bool
     ) Result[Step, Fail]:
-        let pid = self.proc_id(callee.clone())
+        pid := self.proc_id(callee.clone())
 
         if pid >= 0:
             var level = depth
@@ -748,25 +748,25 @@ impl Machine:
             if level > DEPTH_LIMIT:
                 return error(runtime_error("recursion limit exceeded"))
 
-            let frame = try self.bind_args(pid, args)
-            let body = self.closures[pid].body.clone()
-            let last = try self.run_init(body, frame, level)
+            frame := try self.bind_args(pid, args)
+            body := self.closures[pid].body.clone()
+            last := try self.run_init(body, frame, level)
             return ok(resume(last, frame, level, true))
 
-        let pname = self.prim_name(callee.clone())
+        pname := self.prim_name(callee.clone())
 
         if pname != "":
-            let result = try self.call_prim(pname, args, depth + 1)
+            result := try self.call_prim(pname, args, depth + 1)
             return ok(finish(result))
 
         return error(runtime_error("not a procedure: " + self.render(callee, true)))
 
     // Calls a procedure from inside a builtin; `d` is the depth of the callee's body.
     var fn call_proc(callee: Value, args: List[Value], d: Int) Result[Value, Fail]:
-        let pid = self.proc_id(callee.clone())
+        pid := self.proc_id(callee.clone())
 
         if pid < 0:
-            let pname = self.prim_name(callee.clone())
+            pname := self.prim_name(callee.clone())
             if pname != "":
                 return self.call_prim(pname, args, d)
 
@@ -775,9 +775,9 @@ impl Machine:
         if d > DEPTH_LIMIT:
             return error(runtime_error("recursion limit exceeded"))
 
-        let frame = try self.bind_args(pid, args)
-        let body = self.closures[pid].body.clone()
-        let last = try self.run_init(body, frame, d)
+        frame := try self.bind_args(pid, args)
+        body := self.closures[pid].body.clone()
+        last := try self.run_init(body, frame, d)
         return self.run(last, frame, d, true)
 
     // Evaluates all forms of a body but the last, and returns the last one unevaluated.
@@ -785,16 +785,16 @@ impl Machine:
         var cur = forms.clone()
 
         while true:
-            let id = self.cons_id(cur.clone())
+            id := self.cons_id(cur.clone())
             if id < 0:
                 return ok(Value.Unspecified)
 
-            let head = self.cars[id].clone()
-            let rest = self.cdrs[id].clone()
+            head := self.cars[id].clone()
+            rest := self.cdrs[id].clone()
             if self.is_empty(rest.clone()):
                 return ok(head)
 
-            let _v = try self.run(head, env, depth, false)
+            _v := try self.run(head, env, depth, false)
             cur = rest
 
     var fn parse_binds(bindings: Value, kw: String) Result[Binds, Fail]:
@@ -808,7 +808,7 @@ impl Machine:
             if not self.is_proper(b.clone()):
                 return error(bad_form(kw))
 
-            let parts = self.list_of(b.clone())
+            parts := self.list_of(b.clone())
             if parts.length() != 2 or self.sym_id(parts[0].clone()) < 0:
                 return error(bad_form(kw))
 
@@ -824,11 +824,11 @@ impl Machine:
         depth: Int,
         tail: Bool
     ) Result[Step, Fail]:
-        let name = self.sym_names[kind].clone()
+        name := self.sym_names[kind].clone()
         if not self.is_proper(form.clone()):
             return error(bad_form(name))
 
-        let items = self.list_of(form.clone())
+        items := self.list_of(form.clone())
         if kind <= K_BEGIN:
             return self.special_core(kind, items, form, env, depth, tail)
         if kind <= K_LETREC:
@@ -844,8 +844,8 @@ impl Machine:
         depth: Int,
         tail: Bool
     ) Result[Step, Fail]:
-        let name = self.sym_names[kind].clone()
-        let n = items.length()
+        name := self.sym_names[kind].clone()
+        n := items.length()
 
         if kind == K_QUOTE:
             if n != 2:
@@ -857,7 +857,7 @@ impl Machine:
             if n != 3 and n != 4:
                 return error(bad_form(name))
 
-            let verdict = try self.run(items[1].clone(), env, depth, false)
+            verdict := try self.run(items[1].clone(), env, depth, false)
             if truthy(verdict):
                 return ok(resume(items[2].clone(), env, depth, tail))
             if n == 4:
@@ -869,7 +869,7 @@ impl Machine:
             if n < 3:
                 return error(bad_form(name))
 
-            let target = self.sym_id(items[1].clone())
+            target := self.sym_id(items[1].clone())
 
             if target >= 0:
                 if n != 3:
@@ -887,25 +887,25 @@ impl Machine:
                 self.define_in(env, target, value)
                 return ok(finish(Value.Unspecified))
 
-            let fname = self.sym_id(self.car(items[1].clone()))
+            fname := self.sym_id(self.car(items[1].clone()))
             if fname < 0:
                 return error(bad_form(name))
 
-            let params = self.cdr(items[1].clone())
-            let body = self.cdr(self.cdr(form.clone()))
-            let proc = try self.make_closure(
+            params := self.cdr(items[1].clone())
+            body := self.cdr(self.cdr(form.clone()))
+            proc := try self.make_closure(
                 params, body, env, self.sym_names[fname].clone(), name
             )
             self.define_in(env, fname, proc)
             return ok(finish(Value.Unspecified))
 
         if kind == K_SET:
-            let target = self.sym_id(items[1].clone())
+            target := self.sym_id(items[1].clone())
             if n != 3 or target < 0:
                 return error(bad_form(name))
 
-            let value = try self.run(items[2].clone(), env, depth, false)
-            let slot = self.lookup(env, target)
+            value := try self.run(items[2].clone(), env, depth, false)
+            slot := self.lookup(env, target)
             if slot < 0:
                 return error(
                     runtime_error(
@@ -922,7 +922,7 @@ impl Machine:
             if n < 3:
                 return error(bad_form(name))
 
-            let proc = try self.make_closure(
+            proc := try self.make_closure(
                 items[1].clone(), self.cdr(self.cdr(form.clone())), env, "", name
             )
             return ok(finish(proc))
@@ -931,7 +931,7 @@ impl Machine:
             if n == 1:
                 return ok(finish(Value.Unspecified))
 
-            let last = try self.run_init(self.cdr(form), env, depth)
+            last := try self.run_init(self.cdr(form), env, depth)
             return ok(resume(last, env, depth, tail))
 
         return error(bad_form(name))
@@ -944,8 +944,8 @@ impl Machine:
         depth: Int,
         tail: Bool
     ) Result[Step, Fail]:
-        let name = self.sym_names[kind].clone()
-        let n = items.length()
+        name := self.sym_names[kind].clone()
+        n := items.length()
 
         if kind == K_LET:
             if n < 3:
@@ -953,32 +953,32 @@ impl Machine:
             if self.sym_id(items[1].clone()) >= 0:
                 return self.named_let(form, items, env, depth, tail)
 
-            let binds = try self.parse_binds(items[1].clone(), name)
+            binds := try self.parse_binds(items[1].clone(), name)
             var vals = List[Value]()
 
             for init in binds.inits:
-                let v = try self.run(init.clone(), env, depth, false)
+                v := try self.run(init.clone(), env, depth, false)
                 vals.append(v)
 
-            let frame = self.new_frame(env)
+            frame := self.new_frame(env)
             for i in 0..vals.length():
                 self.define_in(frame, binds.names[i], vals[i].clone())
 
-            let last = try self.run_init(self.cdr(self.cdr(form)), frame, depth)
+            last := try self.run_init(self.cdr(self.cdr(form)), frame, depth)
             return ok(resume(last, frame, depth, tail))
 
         if kind == K_LETSTAR or kind == K_LETREC:
             if n < 3:
                 return error(bad_form(name))
 
-            let binds = try self.parse_binds(items[1].clone(), name)
-            let frame = self.new_frame(env)
+            binds := try self.parse_binds(items[1].clone(), name)
+            frame := self.new_frame(env)
 
             for i in 0..binds.names.length():
-                let v = try self.run(binds.inits[i].clone(), frame, depth, false)
+                v := try self.run(binds.inits[i].clone(), frame, depth, false)
                 self.define_in(frame, binds.names[i], v)
 
-            let last = try self.run_init(self.cdr(self.cdr(form)), frame, depth)
+            last := try self.run_init(self.cdr(self.cdr(form)), frame, depth)
             return ok(resume(last, frame, depth, tail))
 
         return error(bad_form(name))
@@ -991,33 +991,33 @@ impl Machine:
         depth: Int,
         tail: Bool
     ) Result[Step, Fail]:
-        let name = self.sym_names[kind].clone()
-        let n = items.length()
+        name := self.sym_names[kind].clone()
+        n := items.length()
 
         if kind == K_COND:
             var i = 1
 
             while i < n:
-                let clause = items[i].clone()
+                clause := items[i].clone()
                 if not self.is_proper(clause.clone()) or self.is_empty(clause.clone()):
                     return error(bad_form(name))
 
-                let parts = self.list_of(clause.clone())
+                parts := self.list_of(clause.clone())
 
                 if self.sym_id(parts[0].clone()) == K_ELSE:
                     if i != n - 1 or parts.length() < 2:
                         return error(bad_form(name))
 
-                    let last = try self.run_init(self.cdr(clause), env, depth)
+                    last := try self.run_init(self.cdr(clause), env, depth)
                     return ok(resume(last, env, depth, tail))
 
-                let verdict = try self.run(parts[0].clone(), env, depth, false)
+                verdict := try self.run(parts[0].clone(), env, depth, false)
 
                 if truthy(verdict):
                     if parts.length() == 1:
                         return ok(finish(verdict))
 
-                    let last = try self.run_init(self.cdr(clause), env, depth)
+                    last := try self.run_init(self.cdr(clause), env, depth)
                     return ok(resume(last, env, depth, tail))
 
                 i += 1
@@ -1029,7 +1029,7 @@ impl Machine:
                 return ok(finish(Value.Flag(kind == K_AND)))
 
             for i in 1..n - 1:
-                let v = try self.run(items[i].clone(), env, depth, false)
+                v := try self.run(items[i].clone(), env, depth, false)
                 if kind == K_AND and not truthy(v.clone()):
                     return ok(finish(v))
                 if kind == K_OR and truthy(v.clone()):
@@ -1041,41 +1041,41 @@ impl Machine:
             if n < 3:
                 return error(bad_form(name))
 
-            let verdict = try self.run(items[1].clone(), env, depth, false)
+            verdict := try self.run(items[1].clone(), env, depth, false)
             var fire = truthy(verdict)
             if kind == K_UNLESS:
                 fire = not fire
             if not fire:
                 return ok(finish(Value.Unspecified))
 
-            let last = try self.run_init(self.cdr(self.cdr(form)), env, depth)
+            last := try self.run_init(self.cdr(self.cdr(form)), env, depth)
             return ok(resume(last, env, depth, tail))
 
         if kind == K_TRY:
             if n != 3:
                 return error(bad_form(name))
 
-            let outcome = self.run(items[1].clone(), env, depth, false)
+            outcome := self.run(items[1].clone(), env, depth, false)
 
             if outcome.is_error():
-                let failure = outcome.err()
+                failure := outcome.err()
                 if failure.syntax:
                     return error(failure.clone())
 
-                let handler = try self.run(items[2].clone(), env, depth, false)
+                handler := try self.run(items[2].clone(), env, depth, false)
                 var msg_args = List[Value]()
                 msg_args.append(Value.Text(failure.msg.clone()))
 
-                let handled = try self.call_proc(handler, msg_args, depth + 1)
+                handled := try self.call_proc(handler, msg_args, depth + 1)
                 return ok(finish(handled))
 
-            let value = try outcome
+            value := try outcome
             return ok(finish(value))
 
         return error(bad_form(name))
 
     var fn lambda_value(form: Value, env: Int, name: String) Result[Value, Fail]:
-        let items = self.list_of(form.clone())
+        items := self.list_of(form.clone())
         if items.length() < 3:
             return error(bad_form("lambda"))
 
@@ -1093,17 +1093,17 @@ impl Machine:
         if items.length() < 4:
             return error(bad_form("let"))
 
-        let loop_sym = self.sym_id(items[1].clone())
-        let binds = try self.parse_binds(items[2].clone(), "let")
+        loop_sym := self.sym_id(items[1].clone())
+        binds := try self.parse_binds(items[2].clone(), "let")
         var args = List[Value]()
 
         for init in binds.inits:
-            let v = try self.run(init.clone(), env, depth, false)
+            v := try self.run(init.clone(), env, depth, false)
             args.append(v)
 
-        let frame = self.new_frame(env)
-        let params = self.sym_values(binds.names)
-        let proc = try self.make_closure(
+        frame := self.new_frame(env)
+        params := self.sym_values(binds.names)
+        proc := try self.make_closure(
             params, self.cdr(self.cdr(self.cdr(form))), frame,
             self.sym_names[loop_sym].clone(), "let"
         )
@@ -1153,14 +1153,14 @@ impl Machine:
                 return error(self.type_error(name, "string", v))
 
     var fn need_sym(name: String, v: Value) Result[Int, Fail]:
-        let id = self.sym_id(v.clone())
+        id := self.sym_id(v.clone())
         if id < 0:
             return error(self.type_error(name, "symbol", v))
 
         return ok(id)
 
     var fn need_pair(name: String, v: Value) Result[Int, Fail]:
-        let id = self.cons_id(v.clone())
+        id := self.cons_id(v.clone())
         if id < 0:
             return error(self.type_error(name, "pair", v))
 
@@ -1182,7 +1182,7 @@ impl Machine:
         var out = List[Int]()
 
         for a in args:
-            let x = try self.need_int(name, a.clone())
+            x := try self.need_int(name, a.clone())
             out.append(x)
 
         return ok(out)
@@ -1221,11 +1221,11 @@ impl Machine:
         var b = b0
 
         while true:
-            let ia = self.cons_id(a.clone())
-            let ib = self.cons_id(b.clone())
+            ia := self.cons_id(a.clone())
+            ib := self.cons_id(b.clone())
 
             if ia < 0 and ib < 0:
-                let ka = self.leaf_key(a)
+                ka := self.leaf_key(a)
                 return ka != "" and ka == self.leaf_key(b)
 
             if ia < 0 or ib < 0:
@@ -1238,13 +1238,13 @@ impl Machine:
 
     var fn cxr(name: String, v: Value, ops: String) Result[Value, Fail]:
         var cur = v
-        let letters = ops.chars()
+        letters := ops.chars()
         var k = letters.length()
 
         while k > 0:
             k -= 1
 
-            let id = try self.need_pair(name, cur.clone())
+            id := try self.need_pair(name, cur.clone())
 
             if letters[k] == "a":
                 cur = self.cars[id].clone()
@@ -1257,7 +1257,7 @@ impl Machine:
         if items.length() <= 1:
             return ok(items)
 
-        let mid = items.length() / 2
+        mid := items.length() / 2
         var left = List[Value]()
         var right = List[Value]()
 
@@ -1267,14 +1267,14 @@ impl Machine:
             else:
                 right.append(items[i].clone())
 
-        let ls = try self.sort_list(left, less.clone(), d)
-        let rs = try self.sort_list(right, less.clone(), d)
+        ls := try self.sort_list(left, less.clone(), d)
+        rs := try self.sort_list(right, less.clone(), d)
         var out = List[Value]()
         var i = 0
         var j = 0
 
         while i < ls.length() and j < rs.length():
-            let takes_right = try self.call_proc(
+            takes_right := try self.call_proc(
                 less.clone(), [rs[j].clone(), ls[i].clone()], d
             )
 
@@ -1298,28 +1298,28 @@ impl Machine:
     // ---- builtins ----------------------------------------------------------------------
 
     var fn call_prim(name: String, args: List[Value], d: Int) Result[Value, Fail]:
-        let numbers_result = try self.prim_numbers(name, args, d)
-        if let found = numbers_result:
+        numbers_result := try self.prim_numbers(name, args, d)
+        if found := numbers_result:
             return ok(found)
 
-        let predicates_result = try self.prim_predicates(name, args, d)
-        if let found = predicates_result:
+        predicates_result := try self.prim_predicates(name, args, d)
+        if found := predicates_result:
             return ok(found)
 
-        let lists_result = try self.prim_lists(name, args, d)
-        if let found = lists_result:
+        lists_result := try self.prim_lists(name, args, d)
+        if found := lists_result:
             return ok(found)
 
-        let hof_result = try self.prim_hof(name, args, d)
-        if let found = hof_result:
+        hof_result := try self.prim_hof(name, args, d)
+        if found := hof_result:
             return ok(found)
 
-        let strings_result = try self.prim_strings(name, args, d)
-        if let found = strings_result:
+        strings_result := try self.prim_strings(name, args, d)
+        if found := strings_result:
             return ok(found)
 
-        let misc_result = try self.prim_misc(name, args, d)
-        if let found = misc_result:
+        misc_result := try self.prim_misc(name, args, d)
+        if found := misc_result:
             return ok(found)
 
         return error(runtime_error("unknown builtin: " + name))
@@ -1329,7 +1329,7 @@ impl Machine:
         args: List[Value],
         d: Int
     ) Result[Optional[Value], Fail]:
-        let n = args.length()
+        n := args.length()
 
         if name == "+":
             var xs = try self.int_args(name, args)
@@ -1346,7 +1346,7 @@ impl Machine:
             return ok(Value.Num(product))
 
         if name == "-":
-            let _c = try self.want(name, n, 1, -1)
+            _c := try self.want(name, n, 1, -1)
             var xs = try self.int_args(name, args)
             if xs.length() == 1:
                 return ok(Value.Num(try sub_int(0, xs[0])))
@@ -1362,9 +1362,9 @@ impl Machine:
             return ok(Value.Num(diff))
 
         if name == "quotient" or name == "remainder" or name == "modulo":
-            let _c = try self.want(name, n, 2, 2)
-            let a = try self.need_int(name, args[0].clone())
-            let b = try self.need_int(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            a := try self.need_int(name, args[0].clone())
+            b := try self.need_int(name, args[1].clone())
             if b == 0:
                 return error(runtime_error("division by zero"))
 
@@ -1385,15 +1385,15 @@ impl Machine:
             return ok(Value.Num(r))
 
         if name == "abs":
-            let _c = try self.want(name, n, 1, 1)
-            let a = try self.need_int(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            a := try self.need_int(name, args[0].clone())
             if a < 0:
                 return ok(Value.Num(try sub_int(0, a)))
 
             return ok(Value.Num(a))
 
         if name == "min" or name == "max":
-            let _c = try self.want(name, n, 1, -1)
+            _c := try self.want(name, n, 1, -1)
             var xs = try self.int_args(name, args)
             var best = MAXI
             if name == "max":
@@ -1408,7 +1408,7 @@ impl Machine:
             return ok(Value.Num(best))
 
         if name == "=" or name == "<" or name == ">" or name == "<=" or name == ">=":
-            let _c = try self.want(name, n, 2, -1)
+            _c := try self.want(name, n, 2, -1)
             var xs = try self.int_args(name, args)
             var holds = true
             for i in 0..xs.length() - 1:
@@ -1417,12 +1417,12 @@ impl Machine:
             return ok(Value.Flag(holds))
 
         if name == "zero?" or name == "even?" or name == "odd?":
-            let _c = try self.want(name, n, 1, 1)
-            let a = try self.need_int(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            a := try self.need_int(name, args[0].clone())
             if name == "zero?":
                 return ok(Value.Flag(a == 0))
 
-            let even = a % 2 == 0
+            even := a % 2 == 0
             if name == "even?":
                 return ok(Value.Flag(even))
 
@@ -1435,22 +1435,22 @@ impl Machine:
         args: List[Value],
         d: Int
     ) Result[Optional[Value], Fail]:
-        let n = args.length()
+        n := args.length()
 
         if name == "not":
-            let _c = try self.want(name, n, 1, 1)
+            _c := try self.want(name, n, 1, 1)
             return ok(Value.Flag(not truthy(args[0].clone())))
 
         if name == "null?":
-            let _c = try self.want(name, n, 1, 1)
+            _c := try self.want(name, n, 1, 1)
             return ok(Value.Flag(self.is_empty(args[0].clone())))
 
         if name == "pair?":
-            let _c = try self.want(name, n, 1, 1)
+            _c := try self.want(name, n, 1, 1)
             return ok(Value.Flag(self.cons_id(args[0].clone()) >= 0))
 
         if name == "list?":
-            let _c = try self.want(name, n, 1, 1)
+            _c := try self.want(name, n, 1, 1)
             return ok(Value.Flag(self.is_proper(args[0].clone())))
 
         if (
@@ -1460,8 +1460,8 @@ impl Machine:
             or name == "boolean?"
             or name == "procedure?"
         ):
-            let _c = try self.want(name, n, 1, 1)
-            let v = args[0].clone()
+            _c := try self.want(name, n, 1, 1)
+            v := args[0].clone()
             if name == "number?":
                 return ok(
                     Value.Flag(
@@ -1488,12 +1488,12 @@ impl Machine:
             )
 
         if name == "eq?":
-            let _c = try self.want(name, n, 2, 2)
-            let ka = self.atom_key(args[0].clone())
+            _c := try self.want(name, n, 2, 2)
+            ka := self.atom_key(args[0].clone())
             return ok(Value.Flag(ka != "" and ka == self.atom_key(args[1].clone())))
 
         if name == "equal?":
-            let _c = try self.want(name, n, 2, 2)
+            _c := try self.want(name, n, 2, 2)
             return ok(Value.Flag(self.equal_values(args[0].clone(), args[1].clone())))
 
         return ok(none)
@@ -1503,37 +1503,37 @@ impl Machine:
         args: List[Value],
         d: Int
     ) Result[Optional[Value], Fail]:
-        let n = args.length()
+        n := args.length()
 
         if name == "cons":
-            let _c = try self.want(name, n, 2, 2)
+            _c := try self.want(name, n, 2, 2)
             return ok(self.cons(args[0].clone(), args[1].clone()))
 
         if name == "car" or name == "cdr":
-            let _c = try self.want(name, n, 1, 1)
-            let id = try self.need_pair(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            id := try self.need_pair(name, args[0].clone())
             if name == "car":
                 return ok(self.cars[id].clone())
 
             return ok(self.cdrs[id].clone())
 
         if name == "cadr" or name == "cddr" or name == "caddr":
-            let _c = try self.want(name, n, 1, 1)
+            _c := try self.want(name, n, 1, 1)
 
             if name == "cadr":
-                let r = try self.cxr(name, args[0].clone(), "ad")
+                r := try self.cxr(name, args[0].clone(), "ad")
                 return ok(r)
 
             if name == "cddr":
-                let r = try self.cxr(name, args[0].clone(), "dd")
+                r := try self.cxr(name, args[0].clone(), "dd")
                 return ok(r)
 
-            let r = try self.cxr(name, args[0].clone(), "add")
+            r := try self.cxr(name, args[0].clone(), "add")
             return ok(r)
 
         if name == "set-car!" or name == "set-cdr!":
-            let _c = try self.want(name, n, 2, 2)
-            let id = try self.need_pair(name, args[0].clone())
+            _c := try self.want(name, n, 2, 2)
+            id := try self.need_pair(name, args[0].clone())
 
             if name == "set-car!":
                 self.cars[id] = args[1].clone()
@@ -1546,8 +1546,8 @@ impl Machine:
             return ok(self.from_list(args))
 
         if name == "length":
-            let _c = try self.want(name, n, 1, 1)
-            let items = try self.need_list(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            items := try self.need_list(name, args[0].clone())
             return ok(Value.Num(items.length()))
 
         if name == "append":
@@ -1557,30 +1557,30 @@ impl Machine:
             var all = List[Value]()
 
             for i in 0..n - 1:
-                let items = try self.need_list(name, args[i].clone())
+                items := try self.need_list(name, args[i].clone())
                 for x in items:
                     all.append(x)
 
             return ok(self.build(all, args[n - 1].clone()))
 
         if name == "reverse":
-            let _c = try self.want(name, n, 1, 1)
-            let items = try self.need_list(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            items := try self.need_list(name, args[0].clone())
             return ok(self.from_list(items.reversed()))
 
         if name == "list-ref":
-            let _c = try self.want(name, n, 2, 2)
-            let items = try self.need_list(name, args[0].clone())
-            let k = try self.need_int(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            items := try self.need_list(name, args[0].clone())
+            k := try self.need_int(name, args[1].clone())
             if k < 0 or k >= items.length():
                 return error(runtime_error("list-ref: index out of range"))
 
             return ok(items[k].clone())
 
         if name == "list-tail":
-            let _c = try self.want(name, n, 2, 2)
-            let items = try self.need_list(name, args[0].clone())
-            let k = try self.need_int(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            items := try self.need_list(name, args[0].clone())
+            k := try self.need_int(name, args[1].clone())
             if k < 0 or k > items.length():
                 return error(runtime_error("list-tail: index out of range"))
 
@@ -1590,17 +1590,17 @@ impl Machine:
             return ok(cur)
 
         if name == "range":
-            let _c = try self.want(name, n, 2, 2)
-            let a = try self.need_int(name, args[0].clone())
-            let b = try self.need_int(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            a := try self.need_int(name, args[0].clone())
+            b := try self.need_int(name, args[1].clone())
             var out = List[Value]()
             for i in a..b:
                 out.append(Value.Num(i))
             return ok(self.from_list(out))
 
         if name == "assoc":
-            let _c = try self.want(name, n, 2, 2)
-            let items = try self.need_list(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            items := try self.need_list(name, args[1].clone())
 
             for entry in items:
                 if self.cons_id(entry.clone()) < 0:
@@ -1611,8 +1611,8 @@ impl Machine:
             return ok(Value.Flag(false))
 
         if name == "member":
-            let _c = try self.want(name, n, 2, 2)
-            let _items = try self.need_list(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            _items := try self.need_list(name, args[1].clone())
             var cur = args[1].clone()
 
             while self.cons_id(cur.clone()) >= 0:
@@ -1630,15 +1630,15 @@ impl Machine:
         args: List[Value],
         d: Int
     ) Result[Optional[Value], Fail]:
-        let n = args.length()
+        n := args.length()
 
         if name == "map" or name == "for-each":
-            let _c = try self.want(name, n, 2, -1)
-            let f = try self.need_proc(name, args[0].clone())
+            _c := try self.want(name, n, 2, -1)
+            f := try self.need_proc(name, args[0].clone())
             var lists = List[List[Value]]()
 
             for i in 1..n:
-                let items = try self.need_list(name, args[i].clone())
+                items := try self.need_list(name, args[i].clone())
                 lists.append(items)
 
             var shortest = lists[0].length()
@@ -1653,7 +1653,7 @@ impl Machine:
                 for j in 0..lists.length():
                     call_args.append(lists[j][i].clone())
 
-                let r = try self.call_proc(f.clone(), call_args, d)
+                r := try self.call_proc(f.clone(), call_args, d)
                 out.append(r)
 
             if name == "map":
@@ -1662,25 +1662,25 @@ impl Machine:
             return ok(Value.Unspecified)
 
         if name == "filter":
-            let _c = try self.want(name, n, 2, 2)
-            let f = try self.need_proc(name, args[0].clone())
-            let items = try self.need_list(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            f := try self.need_proc(name, args[0].clone())
+            items := try self.need_list(name, args[1].clone())
             var out = List[Value]()
 
             for x in items:
                 var one = List[Value]()
                 one.append(x.clone())
 
-                let keep = try self.call_proc(f.clone(), one, d)
+                keep := try self.call_proc(f.clone(), one, d)
                 if truthy(keep):
                     out.append(x)
 
             return ok(self.from_list(out))
 
         if name == "fold" or name == "foldr":
-            let _c = try self.want(name, n, 3, 3)
-            let f = try self.need_proc(name, args[0].clone())
-            let items = try self.need_list(name, args[2].clone())
+            _c := try self.want(name, n, 3, 3)
+            f := try self.need_proc(name, args[0].clone())
+            items := try self.need_list(name, args[2].clone())
             var acc = args[1].clone()
 
             if name == "fold":
@@ -1698,23 +1698,23 @@ impl Machine:
             return ok(acc)
 
         if name == "apply":
-            let _c = try self.want(name, n, 2, -1)
-            let f = try self.need_proc(name, args[0].clone())
-            let last = try self.need_list(name, args[n - 1].clone())
+            _c := try self.want(name, n, 2, -1)
+            f := try self.need_proc(name, args[0].clone())
+            last := try self.need_list(name, args[n - 1].clone())
             var call_args = List[Value]()
             for i in 1..n - 1:
                 call_args.append(args[i].clone())
             for x in last:
                 call_args.append(x)
 
-            let r = try self.call_proc(f, call_args, d)
+            r := try self.call_proc(f, call_args, d)
             return ok(r)
 
         if name == "sort":
-            let _c = try self.want(name, n, 2, 2)
-            let less = try self.need_proc(name, args[1].clone())
-            let items = try self.need_list(name, args[0].clone())
-            let sorted = try self.sort_list(items, less, d)
+            _c := try self.want(name, n, 2, 2)
+            less := try self.need_proc(name, args[1].clone())
+            items := try self.need_list(name, args[0].clone())
+            sorted := try self.sort_list(items, less, d)
             return ok(self.from_list(sorted))
 
         return ok(none)
@@ -1724,28 +1724,28 @@ impl Machine:
         args: List[Value],
         d: Int
     ) Result[Optional[Value], Fail]:
-        let n = args.length()
+        n := args.length()
 
         if name == "string-length":
-            let _c = try self.want(name, n, 1, 1)
-            let s = try self.need_str(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            s := try self.need_str(name, args[0].clone())
             return ok(Value.Num(s.length()))
 
         if name == "string-append":
             var out = ""
 
             for a in args:
-                let s = try self.need_str(name, a.clone())
+                s := try self.need_str(name, a.clone())
                 out += s
 
             return ok(Value.Text(out))
 
         if name == "substring":
-            let _c = try self.want(name, n, 3, 3)
-            let s = try self.need_str(name, args[0].clone())
-            let start = try self.need_int(name, args[1].clone())
-            let end = try self.need_int(name, args[2].clone())
-            let cs = s.chars()
+            _c := try self.want(name, n, 3, 3)
+            s := try self.need_str(name, args[0].clone())
+            start := try self.need_int(name, args[1].clone())
+            end := try self.need_int(name, args[2].clone())
+            cs := s.chars()
             if start < 0 or start > end or end > cs.length():
                 return error(runtime_error("substring: index out of range"))
 
@@ -1755,90 +1755,90 @@ impl Machine:
             return ok(Value.Text(out))
 
         if name == "string-ref":
-            let _c = try self.want(name, n, 2, 2)
-            let s = try self.need_str(name, args[0].clone())
-            let k = try self.need_int(name, args[1].clone())
-            let cs = s.chars()
+            _c := try self.want(name, n, 2, 2)
+            s := try self.need_str(name, args[0].clone())
+            k := try self.need_int(name, args[1].clone())
+            cs := s.chars()
             if k < 0 or k >= cs.length():
                 return error(runtime_error("string-ref: index out of range"))
 
             return ok(Value.Text(cs[k].clone()))
 
         if name == "string=?" or name == "string<?":
-            let _c = try self.want(name, n, 2, 2)
-            let a = try self.need_str(name, args[0].clone())
-            let b = try self.need_str(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            a := try self.need_str(name, args[0].clone())
+            b := try self.need_str(name, args[1].clone())
             if name == "string=?":
                 return ok(Value.Flag(a == b))
 
             return ok(Value.Flag(a < b))
 
         if name == "string-upcase" or name == "string-downcase":
-            let _c = try self.want(name, n, 1, 1)
-            let s = try self.need_str(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            s := try self.need_str(name, args[0].clone())
             if name == "string-upcase":
                 return ok(Value.Text(s.upper()))
 
             return ok(Value.Text(s.lower()))
 
         if name == "string->number":
-            let _c = try self.want(name, n, 1, 1)
-            let s = try self.need_str(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            s := try self.need_str(name, args[0].clone())
             if is_int_text(s.clone()):
-                if let v = s.parse_int():
+                if v := s.parse_int():
                     return ok(Value.Num(v))
             return ok(Value.Flag(false))
 
         if name == "number->string":
-            let _c = try self.want(name, n, 1, 1)
-            let x = try self.need_int(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            x := try self.need_int(name, args[0].clone())
             return ok(Value.Text("{x}"))
 
         if name == "string->symbol":
-            let _c = try self.want(name, n, 1, 1)
-            let s = try self.need_str(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            s := try self.need_str(name, args[0].clone())
             return ok(Value.Sym(self.intern(s)))
 
         if name == "symbol->string":
-            let _c = try self.want(name, n, 1, 1)
-            let id = try self.need_sym(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            id := try self.need_sym(name, args[0].clone())
             return ok(Value.Text(self.sym_names[id].clone()))
 
         if name == "string->list":
-            let _c = try self.want(name, n, 1, 1)
-            let s = try self.need_str(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            s := try self.need_str(name, args[0].clone())
             var out = List[Value]()
             for c in s.chars():
                 out.append(Value.Text(c))
             return ok(self.from_list(out))
 
         if name == "list->string":
-            let _c = try self.want(name, n, 1, 1)
-            let items = try self.need_list(name, args[0].clone())
+            _c := try self.want(name, n, 1, 1)
+            items := try self.need_list(name, args[0].clone())
             var out = ""
 
             for x in items:
-                let s = try self.need_str(name, x)
+                s := try self.need_str(name, x)
                 out += s
 
             return ok(Value.Text(out))
 
         if name == "string-join":
-            let _c = try self.want(name, n, 2, 2)
-            let items = try self.need_list(name, args[0].clone())
-            let sep = try self.need_str(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            items := try self.need_list(name, args[0].clone())
+            sep := try self.need_str(name, args[1].clone())
             var parts = List[String]()
 
             for x in items:
-                let s = try self.need_str(name, x)
+                s := try self.need_str(name, x)
                 parts.append(s)
 
             return ok(Value.Text(parts.join(sep)))
 
         if name == "string-split":
-            let _c = try self.want(name, n, 2, 2)
-            let s = try self.need_str(name, args[0].clone())
-            let sep = try self.need_str(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            s := try self.need_str(name, args[0].clone())
+            sep := try self.need_str(name, args[1].clone())
             if sep.length() != 1:
                 return error(
                     runtime_error(
@@ -1852,9 +1852,9 @@ impl Machine:
             return ok(self.from_list(out))
 
         if name == "string-contains?":
-            let _c = try self.want(name, n, 2, 2)
-            let s = try self.need_str(name, args[0].clone())
-            let sub = try self.need_str(name, args[1].clone())
+            _c := try self.want(name, n, 2, 2)
+            s := try self.need_str(name, args[0].clone())
+            sub := try self.need_str(name, args[1].clone())
             return ok(Value.Flag(s.contains(sub)))
 
         return ok(none)
@@ -1864,29 +1864,29 @@ impl Machine:
         args: List[Value],
         d: Int
     ) Result[Optional[Value], Fail]:
-        let n = args.length()
+        n := args.length()
 
         if name == "display":
-            let _c = try self.want(name, n, 1, 1)
+            _c := try self.want(name, n, 1, 1)
             self.emit(self.render(args[0].clone(), false))
             return ok(Value.Unspecified)
 
         if name == "write":
-            let _c = try self.want(name, n, 1, 1)
+            _c := try self.want(name, n, 1, 1)
             self.emit(self.render(args[0].clone(), true))
             return ok(Value.Unspecified)
 
         if name == "newline":
-            let _c = try self.want(name, n, 0, 0)
+            _c := try self.want(name, n, 0, 0)
             self.emit("\n")
             return ok(Value.Unspecified)
 
         if name == "void":
-            let _c = try self.want(name, n, 0, 0)
+            _c := try self.want(name, n, 0, 0)
             return ok(Value.Unspecified)
 
         if name == "error":
-            let _c = try self.want(name, n, 1, -1)
+            _c := try self.want(name, n, 1, -1)
             var msg = try self.need_str(name, args[0].clone())
             for i in 1..n:
                 msg += " " + self.render(args[i].clone(), true)
@@ -1895,8 +1895,8 @@ impl Machine:
         return ok(none)
 
 export fn main() Int:
-    let data = read_all(stdin()).get()
-    let text = data.decode_utf8().get("")
+    data := read_all(stdin()).get()
+    text := data.decode_utf8().get("")
     var m = Machine(
         chars: text.chars(), pos: 0, cars: List[Value](), cdrs: List[Value](),
         closures: List[Closure](), frame_parent: List[Int](), frame_first: List[Int](),
@@ -1904,8 +1904,8 @@ export fn main() Int:
         global_slot: List[Int](), sym_names: List[String](),
         sym_ids: Map[String, Int](), fresh: true
     )
-    let _i = m.install()
-    let outcome = m.program()
+    _i := m.install()
+    outcome := m.program()
     if outcome.is_error():
         m.report(outcome.err().message())
     stdout().flush().get()

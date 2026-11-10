@@ -8,15 +8,15 @@ import (
 )
 
 fn main() Int:
-    let args = arguments()
-    let length = args[0].parse_int().get()
-    let count = args[1].parse_int().get()
-    let rounds = args[2].parse_int().get()
+    args := arguments()
+    length := args[0].parse_int().get()
+    count := args[1].parse_int().get()
+    rounds := args[2].parse_int().get()
     var bytes = BytesBuilder()
     for i in 0..length: bytes.append((i % 256).to_uint8().get())
 
-    let expected = bytes.build()
-    let encoded = base64_encode(expected)
+    expected := bytes.build()
+    encoded := base64_encode(expected)
     var json = StringBuilder()
     json.append("[")
 
@@ -26,15 +26,15 @@ fn main() Int:
 
     json.append("]")
 
-    let text = json.build()
+    text := json.build()
     var checksum = 0
-    let start = monotonic()
+    start := monotonic()
 
     for i in 0..rounds:
-        let result = parse[List[Bytes]](text)
+        result := parse[List[Bytes]](text)
         if result.is_error(): return 2
 
-        let values = result.get()
+        values := result.get()
         if values.length() != count: return 3
 
         for value in values:
@@ -42,6 +42,6 @@ fn main() Int:
 
             checksum += value.length()
 
-    let elapsed = monotonic().difference(start).to_nanoseconds()
+    elapsed := monotonic().difference(start).to_nanoseconds()
     print("{length} {count} {rounds} {checksum} {elapsed}")
     return 0

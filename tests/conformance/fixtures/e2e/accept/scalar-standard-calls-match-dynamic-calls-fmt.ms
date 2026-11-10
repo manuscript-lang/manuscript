@@ -56,7 +56,7 @@ test "typed math":
     try expect_true((total == 12.0))
 
 test "typed string members":
-    let text = "  Hello World  "
+    text := "  Hello World  "
     try expect_true((text.trim() == "Hello World"))
     try expect_true(
         (

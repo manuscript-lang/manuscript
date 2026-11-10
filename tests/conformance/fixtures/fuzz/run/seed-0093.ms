@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -36,14 +36,14 @@ fn fact(n: Int) Int:
 export fn main() Int:
     say("fib(35) = {fib(35)}")
 
-    let i1 = ((-584624) * ((-30) * (4 + (-38))))
+    i1 := ((-584624) * ((-30) * (4 + (-38))))
     say("i1 = {i1}")
 
-    let l2 = [(-13)]
+    l2 := [(-13)]
     say("l2 = {l2} len {l2.length()}")
     say("gcd(3599, 4160) = {gcd(3599, 4160)}")
 
-    let i3 = (((i1 + (-8)) - i1) + 36)
+    i3 := (((i1 + (-8)) - i1) + 36)
     say("i3 = {i3}")
 
     var acc4 = 0
@@ -56,30 +56,30 @@ export fn main() Int:
 
     say("acc4 = {acc4}")
 
-    let i5 = (((i3 + i1) + l2.get(0)) * (((-407524050310) / i3) % (i1 * i3)))
+    i5 := (((i3 + i1) + l2.get(0)) * (((-407524050310) / i3) % (i1 * i3)))
     say("i5 = {i5}")
     say("gcd(4724, 5000) = {gcd(4724, 5000)}")
 
-    let b6 = ((l2.length() <= ((-48) + (-1012183069))) or ("日本語" + "42").is_empty())
+    b6 := ((l2.length() <= ((-48) + (-1012183069))) or ("日本語" + "42").is_empty())
     say("b6 = {b6}")
     say("fact(20) = {fact(20)}")
 
-    let s7 = ("{i3}:" + "line\nbreak").replace("  padded  ", "42")
+    s7 := ("{i3}:" + "line\nbreak").replace("  padded  ", "42")
     say("s7 = [{s7}]")
 
-    let l8 = [6]
+    l8 := [6]
     say("l8 = {l8} len {l8.length()}")
 
-    let f9 = ((7.5 + (245.839 * 0.0)) * 985.200)
+    f9 := ((7.5 + (245.839 * 0.0)) * 985.200)
     say("f9 = {f9}")
 
-    let s10 = (("{(i3 + i1)}:" + s7) + ("" + "")).reverse()
+    s10 := (("{(i3 + i1)}:" + s7) + ("" + "")).reverse()
     say("s10 = [{s10}]")
 
-    let i11 = ((i3 + (707018 + i3)) + (-13))
+    i11 := ((i3 + (707018 + i3)) + (-13))
     say("i11 = {i11}")
 
-    let b12 = (
+    b12 := (
         ((b6 and b6) and (285.267 < f9))
         and ((252.723 > 7.0e12) or s7.is_empty())
     )

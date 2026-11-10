@@ -1,3 +1,3 @@
 export fn main() Int:
-    let a = 1; let value = 3
+    a := 1; value := 3
     return value

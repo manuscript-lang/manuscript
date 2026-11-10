@@ -350,15 +350,6 @@ fn project_text(dir: &Path) -> String {
     text
 }
 
-fn has_word(text: &str, word: &str) -> bool {
-    text.match_indices(word).any(|(i, _)| {
-        let before = text[..i].chars().next_back();
-        let after = text[i + word.len()..].chars().next();
-        !before.is_some_and(|c| c.is_alphanumeric() || c == '_')
-            && !after.is_some_and(|c| c.is_alphanumeric() || c == '_')
-    })
-}
-
 /// The milestone tier of a program: stdout and the test harness are part of the core language
 /// experience, so `io` and `testing` do not raise it.
 pub fn tier_of(imports: &BTreeSet<String>) -> &'static str {
@@ -472,7 +463,7 @@ pub fn tags_for(text: &str, phase: Phase) -> Vec<String> {
     if text.contains("fn ") && text.contains("[T") {
         tags.insert("generics".into());
     }
-    if has_word(text, "let") && text.contains(", ") && text.contains("let (") {
+    if text.contains("] :=") || text.contains("} :=") {
         tags.insert("destructuring".into());
     }
     if text
@@ -527,7 +518,7 @@ pub fn aliasing_dependent(text: &str) -> bool {
             let Some((lhs, _)) = t.split_once(" = ") else {
                 return false;
             };
-            lhs.contains('.') && !lhs.contains(' ') && !t.starts_with("let ")
+            lhs.contains('.') && !lhs.contains(' ')
         })
         || text.contains("[0] = ")
         || text.contains("] = ");
@@ -536,10 +527,11 @@ pub fn aliasing_dependent(text: &str) -> bool {
     }
     text.lines().any(|l| {
         let t = l.trim();
-        let Some(rest) = t.strip_prefix("let ").or_else(|| t.strip_prefix("var ")) else {
-            return false;
+        let rhs = match t.strip_prefix("var ") {
+            Some(rest) => rest.split_once(" = "),
+            None => t.split_once(" := "),
         };
-        let Some((_, rhs)) = rest.split_once(" = ") else {
+        let Some((_, rhs)) = rhs else {
             return false;
         };
         let rhs = rhs.trim();
@@ -789,10 +781,10 @@ mod tests {
 
     #[test]
     fn aliasing_heuristic() {
-        assert!(aliasing_dependent("let b = a.clone()\n"));
-        assert!(aliasing_dependent("let b = a\nb.add(1)\n"));
-        assert!(!aliasing_dependent("let b = a + 1\n"));
-        assert!(!aliasing_dependent("let xs = [1]\nxs.add(1)\n"));
+        assert!(aliasing_dependent("b := a.clone()\n"));
+        assert!(aliasing_dependent("b := a\nb.add(1)\n"));
+        assert!(!aliasing_dependent("b := a + 1\n"));
+        assert!(!aliasing_dependent("xs := [1]\nxs.add(1)\n"));
     }
 
     #[test]

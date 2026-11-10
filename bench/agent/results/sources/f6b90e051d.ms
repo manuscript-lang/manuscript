@@ -43,8 +43,8 @@ fn valid_id(s: String) Bool:
     return true
 
 fn money(c: Int) String:
-    let whole = c / 100
-    let frac = "{c % 100}".pad_start(2, "0")
+    whole := c / 100
+    frac := "{c % 100}".pad_start(2, "0")
     return "{whole}.{frac}"
 
 fn process(var st: State, line: String) Unit:
@@ -53,22 +53,22 @@ fn process(var st: State, line: String) Unit:
         if c != 32: only_spaces = false
     if only_spaces: return
 
-    let toks = line.split(" ")
-    let n = toks.length()
-    let cmd = toks[0]
+    toks := line.split(" ")
+    n := toks.length()
+    cmd := toks[0]
 
     if cmd == "stock":
         if n != 3:
             print("error: usage")
             return
 
-        let sku = toks[1]
+        sku := toks[1]
 
         if not valid_sku(sku):
             print("error: bad sku")
             return
 
-        let q = num(toks[2])
+        q := num(toks[2])
 
         if q < 1 or q > 100000:
             print("error: bad quantity")
@@ -79,7 +79,7 @@ fn process(var st: State, line: String) Unit:
             st.price[sku.clone()] = 0
             st.stock[sku.clone()] = 0
 
-        let now = st.stock.get_or(sku, 0) + q
+        now := st.stock.get_or(sku, 0) + q
         st.stock[sku.clone()] = now
         print("ok {sku} stock={now}")
         return
@@ -89,8 +89,8 @@ fn process(var st: State, line: String) Unit:
             print("error: usage")
             return
 
-        let sku = toks[1]
-        let p = num(toks[2])
+        sku := toks[1]
+        p := num(toks[2])
 
         if p < 0 or p > 10000000:
             print("error: bad price")
@@ -109,15 +109,15 @@ fn process(var st: State, line: String) Unit:
             print("error: usage")
             return
 
-        let id = toks[1]
+        id := toks[1]
 
         if not valid_id(id):
             print("error: bad order id")
             return
 
         for i in 2..n:
-            let t = toks[i]
-            let kv = t.split(":")
+            t := toks[i]
+            kv := t.split(":")
 
             if (
                 kv.length() != 2
@@ -137,9 +137,9 @@ fn process(var st: State, line: String) Unit:
         var total = 0
 
         for i in 2..n:
-            let kv = toks[i].split(":")
-            let sku = kv[0]
-            let qty = num(kv[1])
+            kv := toks[i].split(":")
+            sku := kv[0]
+            qty := num(kv[1])
 
             if seen.contains(sku):
                 print("error: duplicate sku {sku}")
@@ -149,7 +149,7 @@ fn process(var st: State, line: String) Unit:
                 print("error: unknown sku {sku}")
                 return
 
-            let have = st.stock.get_or(sku, 0)
+            have := st.stock.get_or(sku, 0)
 
             if qty > have:
                 print("error: insufficient stock for {sku} (have {have}, need {qty})")
@@ -157,7 +157,7 @@ fn process(var st: State, line: String) Unit:
 
             seen.append(sku.clone())
 
-            let raw = qty * st.price.get_or(sku, 0)
+            raw := qty * st.price.get_or(sku, 0)
             var cost = raw
             if qty >= 10: cost = (raw * 90 + 50) / 100
             total += cost
@@ -176,13 +176,13 @@ fn process(var st: State, line: String) Unit:
             print("error: usage")
             return
 
-        let id = toks[1]
+        id := toks[1]
 
         if not st.status.contains(id):
             print("error: unknown order {id}")
             return
 
-        let s = st.status.get_or(id, "")
+        s := st.status.get_or(id, "")
 
         if s == "shipped":
             print("error: order {id} already shipped")
@@ -192,7 +192,7 @@ fn process(var st: State, line: String) Unit:
             print("error: order {id} already cancelled")
             return
 
-        if let ps = st.items.get(id):
+        if ps := st.items.get(id):
             for p in ps:
                 st.stock[p.sku.clone()] = st.stock.get_or(p.sku, 0) + p.qty
         st.status[id.clone()] = "cancelled"
@@ -204,13 +204,13 @@ fn process(var st: State, line: String) Unit:
             print("error: usage")
             return
 
-        let id = toks[1]
+        id := toks[1]
 
         if not st.status.contains(id):
             print("error: unknown order {id}")
             return
 
-        let s = st.status.get_or(id, "")
+        s := st.status.get_or(id, "")
 
         if s == "shipped":
             print("error: order {id} already shipped")
@@ -238,7 +238,7 @@ fn process(var st: State, line: String) Unit:
         for e in st.status.entries():
             if e.value == "placed":
                 placed += 1
-                if let ps = st.items.get(e.key):
+                if ps := st.items.get(e.key):
                     for p in ps:
                         reserved[p.sku.clone()] = reserved.get_or(p.sku, 0) + p.qty
             else if e.value == "shipped":
@@ -248,9 +248,9 @@ fn process(var st: State, line: String) Unit:
                 cancelled += 1
 
         for sku in st.skus.sorted():
-            let s = st.stock.get_or(sku, 0)
-            let p = st.price.get_or(sku, 0)
-            let r = reserved.get_or(sku, 0)
+            s := st.stock.get_or(sku, 0)
+            p := st.price.get_or(sku, 0)
+            r := reserved.get_or(sku, 0)
             print("{sku} stock={s} price={money(p)} reserved={r}")
 
         print("orders placed={placed} shipped={shipped} cancelled={cancelled}")

@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding node; declare it with 'let node = ...' before use, define 'fn node(...) T:', or import it from a module",
+        "message": "unknown binding node; declare it with 'node := ...' before use, define 'fn node(...) T:', or import it from a module",
         "position": {
           "file": "testrecursivetypesrejectunsafeconstructionandhashi-1.ms",
           "line": 8,
-          "column": 21,
-          "offset": 259
+          "column": 18,
+          "offset": 256
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testrecursivetypesrejectunsafeconstructionandhashi-1.ms:8:21: resolution: unknown binding node; declare it with 'let node = ...' before use, define 'fn node(...) T:', or import it from a module\n   |\n 8 |     let node = Node(node)\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testrecursivetypesrejectunsafeconstructionandhashi-1.ms:8:18: resolution: unknown binding node; declare it with 'node := ...' before use, define 'fn node(...) T:', or import it from a module\n   |\n 8 |     node := Node(node)\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

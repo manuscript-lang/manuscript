@@ -6,12 +6,12 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     say(
         "{((18 * (-76194)) * (529642 - (-433443858615)))} {9} {(((18 * (-76194)) * (529642 - (-433443858615))) < 9)} sum {((18 * (-76194)) * (529642 - (-433443858615))) + 9}"
     )
 
-    let bad = [1, 2].get("x")
+    bad := [1, 2].get("x")
     return 0

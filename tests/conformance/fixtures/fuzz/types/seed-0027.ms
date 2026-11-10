@@ -6,27 +6,27 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (-8)
+    i1 := (-8)
     say("i1 = {i1}")
 
-    let fixed = 1
+    fixed := 1
     fixed = 2
 
-    let s2 = "brace\{s\}"
+    s2 := "brace\{s\}"
     say("s2 = [{s2}]")
 
-    let i3 = (50 * (((-12) / 690122) * i1))
+    i3 := (50 * (((-12) / 690122) * i1))
     say("i3 = {i3}")
 
-    let s4 = "".trim()
+    s4 := "".trim()
     say("s4 = [{s4}]")
 
-    let f5 = (804.374 * ((342.052 - 923.397) + (163.920 + 706.265)))
+    f5 := (804.374 * ((342.052 - 923.397) + (163.920 + 706.265)))
     say("f5 = {f5}")
 
-    let l6 = [8]
+    l6 := [8]
     say("l6 = {l6} len {l6.length()}")
     return 0

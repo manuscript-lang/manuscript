@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,7 +15,7 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let i1 = ((((-33) % (-11)) + ((-224942) * (-41))) - 9)
+    i1 := ((((-33) % (-11)) + ((-224942) * (-41))) - 9)
     say("i1 = {i1}")
 
     if "brace\{s\}".contains("beta"):
@@ -23,9 +23,9 @@ export fn main() Int:
     else:
         say(("beta" + "delta"))
 
-    let bad = Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get(1, 2, 3)
     say("gcd(4638, 395) = {gcd(4638, 395)}")
 
-    let i2 = (((i1 * i1) * (i1 % i1)) - ((i1 + i1) / i1))
+    i2 := (((i1 * i1) * (i1 % i1)) - ((i1 + i1) / i1))
     say("i2 = {i2}")
     return 0

@@ -67,18 +67,18 @@ Every other waiting call returns a promise: `read(path)`, `write(path, ...)`, `f
 
 ```manuscript
 fn summarize(urls: List[String], log: ReadStream[Bytes]) Summary!:
-    let config = read("config.json")                 // Promise[Bytes], already running
-    let pages = urls.map(fn u: fetch(u))             // all in flight together
-    let stats = promise(fn: count_words(urls))       // may run on another core
+    config := read("config.json")                 // Promise[Bytes], already running
+    pages := urls.map(fn u: fetch(u))             // all in flight together
+    stats := promise(fn: count_words(urls))       // may run on another core
 
     var errors = 0
     for chunk in log.wait():                         // each step waits
         errors += count_errors(try chunk)
 
-    let settings = try config.wait()
-    let bodies = try wait_all(pages)
-    let words = try stats.wait(timeout: seconds(5))
-    let mirror = try wait_first([fetch(a), fetch(b)])
+    settings := try config.wait()
+    bodies := try wait_all(pages)
+    words := try stats.wait(timeout: seconds(5))
+    mirror := try wait_first([fetch(a), fetch(b)])
     return ok(Summary(settings, bodies, words, errors, mirror))
 ```
 
@@ -105,7 +105,7 @@ impl HttpServer:
     fn wait(timeout: Duration? = none) Unit!   // until the server has stopped
     var fn close() Unit                        // stop accepting; drain within `grace`, then cancel (close itself never waits)
 
-let router = build_router(config)
+router := build_router(config)
 var server = try serve(":8080", router.handler())
 try server.wait()
 ```
@@ -202,7 +202,7 @@ Tests in one process: `serve(":0", ...)` followed by `fetch(server.address()).wa
 3. `serve` defaults to every core.
 4. Stream implementations written in Manuscript are out of scope; they are redesigned next.
 5. Promises borrow their captures; I/O operations copy small arguments.
-6. Stream writes follow Node: `write` puts the value in the stream's buffer and returns at once, so it is not a promise and the 743 `let _written = stdout().write(...)` sites stay as they are. Backpressure is explicit: `flush()` returns a promise that waits for the buffer to drain, and `buffered()` reports how much is pending. Buffers left at exit are drained by the runtime before the process ends (unlike Node, where pending pipe writes can be lost). Every other dropped promise is cancelled.
+6. Stream writes follow Node: `write` puts the value in the stream's buffer and returns at once, so it is not a promise and the 743 `_written := stdout().write(...)` sites stay as they are. Backpressure is explicit: `flush()` returns a promise that waits for the buffer to drain, and `buffered()` reports how much is pending. Buffers left at exit are drained by the runtime before the process ends (unlike Node, where pending pipe writes can be lost). Every other dropped promise is cancelled.
 7. `wait(timeout:)` on a CPU-bound promise takes effect at its next wait; documented, no back-edge polling.
 8. One heap for the whole process; values move between threads by pointer, never copied.
 9. Runtime objects lose their refcount; closures are owned. Internals built for the earlier concurrency are reworked in this PR.

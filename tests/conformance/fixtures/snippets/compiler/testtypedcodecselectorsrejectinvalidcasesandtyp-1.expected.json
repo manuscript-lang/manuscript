@@ -13,15 +13,15 @@
         "position": {
           "file": "testtypedcodecselectorsrejectinvalidcasesandtyp-1.ms",
           "line": 7,
-          "column": 34,
-          "offset": 294
+          "column": 31,
+          "offset": 291
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testtypedcodecselectorsrejectinvalidcasesandtyp-1.ms:7:34: resolution: unknown or non-nullary alternative case NFC of NormalizationForm; cases: Nfc, Nfd, Nfkc, Nfkd (cases with payloads need call syntax)\n   |\n 7 |     let form = NormalizationForm.NFC\n   |                                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testtypedcodecselectorsrejectinvalidcasesandtyp-1.ms:7:31: resolution: unknown or non-nullary alternative case NFC of NormalizationForm; cases: Nfc, Nfd, Nfkc, Nfkd (cases with payloads need call syntax)\n   |\n 7 |     form := NormalizationForm.NFC\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

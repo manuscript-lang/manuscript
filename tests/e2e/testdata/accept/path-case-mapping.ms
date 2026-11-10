@@ -4,7 +4,7 @@ import (
 )
 
 test "Windows relative paths retain scalar lowercase comparisons":
-    let paths = win32()
+    paths := win32()
     try expect_equal(try paths.relative("C:/ΟΣ", "C:/οσ"), "")
     try expect_equal(try paths.relative("C:/ΟΣ/a", "C:/οσ/b"), "..\\b")
     try expect_equal(try paths.relative("C:/AΣ.TXT/a", "C:/aσ.txt/b"), "..\\b")
@@ -14,7 +14,7 @@ test "Windows relative paths retain scalar lowercase comparisons":
     try expect_equal(try paths.relative("C:/Alpha/a", "c:/alpha/b"), "..\\b")
 
 test "Windows UNC roots retain scalar lowercase comparisons":
-    let paths = win32()
+    paths := win32()
     try expect_equal(try paths.relative("//ΟΣ/share/a", "//οσ/share/b"), "..\\b")
     try expect_equal(try paths.relative("//host/ΟΣ/a", "//host/οσ/b"), "..\\b")
     try expect_equal(

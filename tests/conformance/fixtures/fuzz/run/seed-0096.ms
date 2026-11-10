@@ -6,36 +6,36 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [17]
+    l1 := [17]
     say("l1 = {l1} len {l1.length()}")
 
-    let f2 = (
+    f2 := (
         ((355.715 / 0.0) - (0.0 * 558.789))
         / ((558.25 * 2.5) * (235.552 * 801.347))
     )
     say("f2 = {f2}")
 
-    let b3 = (
+    b3 := (
         "  padded  ".upper().starts_with("brace\{s\}")
         and "héllo".trim().starts_with("quote\"d")
     )
     say("b3 = {b3}")
 
-    let f4 = f2
+    f4 := f2
     say("f4 = {f4}")
 
-    let i5 = (31 * (75780 * l1.length()))
+    i5 := (31 * (75780 * l1.length()))
     say("i5 = {i5}")
 
-    let i6 = l1.get(0)
+    i6 := l1.get(0)
     say("i6 = {i6}")
 
-    let s7 = ("{(50 * i5)}:" + "日本語".reverse().upper())
+    s7 := ("{(50 * i5)}:" + "日本語".reverse().upper())
     say("s7 = [{s7}]")
 
-    let s8 = (("Tab\there" + s7).upper() + ("quote\"d" + s7).lower())
+    s8 := (("Tab\there" + s7).upper() + ("quote\"d" + s7).lower())
     say("s8 = [{s8}]")
     return 0

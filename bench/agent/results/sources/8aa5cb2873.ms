@@ -3,9 +3,9 @@ import (
     read_lines from "@std/streams.ms",
 )
 
-let SKU_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
-let ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789-"
-let DIGITS = "0123456789"
+SKU_CHARS := "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
+ID_CHARS := "abcdefghijklmnopqrstuvwxyz0123456789-"
+DIGITS := "0123456789"
 
 fn valid_sku(s: String) Bool:
     if s.length() < 1: return false
@@ -51,9 +51,9 @@ type Store:
 
 impl Store:
     var fn run(line: String) String:
-        let tokens = line.split(" ")
-        let cmd = tokens[0]
-        let n = tokens.length()
+        tokens := line.split(" ")
+        cmd := tokens[0]
+        n := tokens.length()
 
         if cmd == "order":
             if n < 3: return "error: usage"
@@ -90,18 +90,18 @@ impl Store:
     var fn do_stock(sku: String, qty: String) String:
         if not valid_sku(sku): return "error: bad sku"
 
-        let q = parse_num(qty)
+        q := parse_num(qty)
         if q < 1 or q > 100000: return "error: bad quantity"
 
         if not self.stk.contains(sku):
             self.prc[sku.clone()] = 0
 
-        let now = self.stk.get_or(sku, 0) + q
+        now := self.stk.get_or(sku, 0) + q
         self.stk[sku.clone()] = now
         return "ok {sku} stock={now}"
 
     var fn do_price(sku: String, cents: String) String:
-        let c = parse_num(cents)
+        c := parse_num(cents)
         if c < 0 or c > 10000000: return "error: bad price"
         if not self.stk.contains(sku): return "error: unknown sku {sku}"
 
@@ -109,12 +109,12 @@ impl Store:
         return "ok"
 
     var fn do_order(tokens: List[String]) String:
-        let id = tokens[1]
+        id := tokens[1]
         if not valid_id(id): return "error: bad order id"
 
         // Syntax of every item first.
         for i in 2..tokens.length():
-            let parts = tokens[i].split(":")
+            parts := tokens[i].split(":")
             if (
                 parts.length() != 2
                 or not valid_sku(parts[0])
@@ -129,13 +129,13 @@ impl Store:
         var seen = List[String]()
 
         for i in 2..tokens.length():
-            let parts = tokens[i].split(":")
-            let sku = parts[0]
-            let q = parse_num(parts[1])
+            parts := tokens[i].split(":")
+            sku := parts[0]
+            q := parse_num(parts[1])
             if seen.contains(sku): return "error: duplicate sku {sku}"
             if not self.stk.contains(sku): return "error: unknown sku {sku}"
 
-            let have = self.stk.get_or(sku, 0)
+            have := self.stk.get_or(sku, 0)
             if q > have: return "error: insufficient stock for {sku} (have {have}, need {q})"
 
             seen.append(sku.clone())
@@ -145,11 +145,11 @@ impl Store:
         var spec = List[String]()
 
         for i in 2..tokens.length():
-            let parts = tokens[i].split(":")
-            let sku = parts[0]
-            let q = parse_num(parts[1])
-            let p = self.prc.get_or(sku, 0)
-            let raw = q * p
+            parts := tokens[i].split(":")
+            sku := parts[0]
+            q := parse_num(parts[1])
+            p := self.prc.get_or(sku, 0)
+            raw := q * p
 
             if q >= 10:
                 total += (raw * 90 + 50) / 100
@@ -169,14 +169,14 @@ impl Store:
     var fn do_cancel(id: String) String:
         if not self.state.contains(id): return "error: unknown order {id}"
 
-        let st = self.state.get_or(id, 0)
+        st := self.state.get_or(id, 0)
         if st == 1: return "error: order {id} already shipped"
         if st == 2: return "error: order {id} already cancelled"
 
         for t in self.items.get_or(id, "").split(" "):
-            let parts = t.split(":")
-            let sku = parts[0]
-            let q = parse_num(parts[1])
+            parts := t.split(":")
+            sku := parts[0]
+            q := parse_num(parts[1])
             self.stk[sku.clone()] = self.stk.get_or(sku, 0) + q
             self.resv[sku.clone()] = self.resv.get_or(sku, 0) - q
 
@@ -188,14 +188,14 @@ impl Store:
     var fn do_ship(id: String) String:
         if not self.state.contains(id): return "error: unknown order {id}"
 
-        let st = self.state.get_or(id, 0)
+        st := self.state.get_or(id, 0)
         if st == 1: return "error: order {id} already shipped"
         if st == 2: return "error: order {id} is cancelled"
 
         for t in self.items.get_or(id, "").split(" "):
-            let parts = t.split(":")
-            let sku = parts[0]
-            let q = parse_num(parts[1])
+            parts := t.split(":")
+            sku := parts[0]
+            q := parse_num(parts[1])
             self.resv[sku.clone()] = self.resv.get_or(sku, 0) - q
 
         self.state[id.clone()] = 1
@@ -208,9 +208,9 @@ impl Store:
         var out = List[String]()
 
         for sku in self.stk.keys().sorted():
-            let s = self.stk.get_or(sku, 0)
-            let p = self.prc.get_or(sku, 0)
-            let r = self.resv.get_or(sku, 0)
+            s := self.stk.get_or(sku, 0)
+            p := self.prc.get_or(sku, 0)
+            r := self.resv.get_or(sku, 0)
             out.append("{sku} stock={s} price={money(p)} reserved={r}")
 
         out.append(

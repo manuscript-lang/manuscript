@@ -30,14 +30,14 @@ Hello, guest!
 
 A parameter or field of type `T?` with no default is `none` when omitted, so `= none` is never written; a plain `T` passed for it wraps without `some`.
 
-`T?` is an invariant enum. `none` takes its type from the expected type, so the type is written on the binding; a bare `let x = 1` is an `Int`, not an `Int?`.
+`T?` is an invariant enum. `none` takes its type from the expected type, so the type is written on the binding; a bare `x := 1` is an `Int`, not an `Int?`.
 
 ```manuscript
-let explicit: String? = none
+explicit: String? = none
 // Rejected: no type determines the absent payload.
-let unknown = none
+unknown := none
 // Wrapped: an annotated binding expects an Optional.
-let wrapped: String? = "Ada"
+wrapped: String? = "Ada"
 ```
 
 There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Result[T, E]` likewise needs both arguments determined, possibly from the expected type. See [compatibility and expected types](compatibility.md).
@@ -59,7 +59,7 @@ fn main() Unit:
 - The expression evaluates once, in argument order. Zero, `false`, and empty values stay present.
 - Generic inference matches either the whole optional or its payload: `fn present[T](value: T?) T?` infers `T = Int` from `present(4)`. The payload type also gives context to an empty list or incomplete constructor.
 - A `T?` parameter or field with no default is `none` when omitted.
-- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`let id: Int? = 3`). A user-defined `Optional` gets no wrapping.
+- The same wrapping applies wherever a `T?` is expected: an annotated binding, an assignment, a return, a field or payload, a default, or a collection element (`id: Int? = 3`). A user-defined `Optional` gets no wrapping.
 
 See [declarations and calls](../functions/declarations-and-calls.md#argument-names).
 
@@ -91,11 +91,11 @@ fn display_name(name: String?, create: fn() String) String:
     return name.get_or_else(create)
 ```
 
-Prefer `if let` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; pass a default or unwrap with `if let`. For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when absent) instead of `m.get(key).get(fallback)` or `m.get(key).get()`:
+Prefer `if v := x` to test and unwrap in one step over `is_some()` then `get()`; `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; pass a default or unwrap with `if v := x`. For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when absent) instead of `m.get(key).get(fallback)` or `m.get(key).get()`:
 
 ```manuscript
 fn greet(name: String?) String:
-    if let value = name:
+    if value := name:
         return "Hello, " + value
     return "Hello!"
 ```
@@ -109,11 +109,11 @@ fn first_number(text: String?) Int?:
 
 `map` keeps nesting if its callback returns an Optional; `and_then` does not. Callbacks run in the caller's context; faults and cancellation propagate.
 
-[`if let`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
+[`if v := x`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
 
 ```manuscript
 fn display_name(name: String?) String:
-    if let value = name:
+    if value := name:
         return value.clone()
     return "Anonymous"
 ```
@@ -152,7 +152,7 @@ fn tick(var counter: Counter?) Int?:
     return counter?.bump()
 ```
 
-Through a `let` or an undeclared-`var` parameter, `counter?.bump()` is rejected like any other change to that binding.
+Through a `:=` or an undeclared-`var` parameter, `counter?.bump()` is rejected like any other change to that binding.
 
 ## Converting absence to a Result
 
@@ -163,7 +163,7 @@ Omitting the cause yields an `Error` of kind `"ENOENT"` (the [default type argum
 
 ```manuscript
 fn port_number(text: String) Int!:
-    let port = try text.parse_int().ok_or()
+    port := try text.parse_int().ok_or()
     return ok(port)
 ```
 

@@ -18,7 +18,7 @@ fn success(value: Int!Error?) Int:
     return value.get().get(-1)
 
 fn context[T](value: T?, fallback: T) T:
-    if let inner = value:
+    if inner := value:
         return inner
 
     return fallback
@@ -64,23 +64,23 @@ test "plain values and explicit optionals share the call contract":
     try expect_equal(number(4), 4)
     try expect_equal(number(value: 0), 0)
 
-    let supplied: Int? = 4
+    supplied: Int? = 4
     try expect_equal(number(supplied), 4)
     try expect_equal(number(), -1)
     try expect_equal(number(), -1)
 
-    let stored: fn(Int?) Int = number
+    stored: fn(Int?) Int = number
     try expect_equal(stored(5), 5)
     try expect_equal(present(6).get(), 6)
     try expect_equal(present[Int](7).get(), 7)
 
-    let generic_supplied: Int? = 8
+    generic_supplied: Int? = 8
     try expect_equal(present(generic_supplied).get(), 8)
 
-    let missing: Int? = none
+    missing: Int? = none
     try expect_false(not (nested(missing)))
 
-    let outer: Int?? = missing
+    outer: Int?? = missing
     try expect_false(not (nested(outer)))
     try expect_equal(list_size([]), 0)
     try expect_equal(list_size([1, 2]), 2)
@@ -93,35 +93,35 @@ test "plain values and explicit optionals share the call contract":
     try expect_equal(invoke(fn value: value + 2), 6)
 
 test "constructor fields and methods use optional arguments":
-    let defaulted = DefaultBox()
+    defaulted := DefaultBox()
     try expect_false(not (defaulted.value.is_none()))
 
-    let supplied = DefaultBox(3)
+    supplied := DefaultBox(3)
     try expect_equal(supplied.value.get(), 3)
 
-    let box = Box(4)
+    box := Box(4)
     try expect_equal(box.value.get(), 4)
 
-    let choice = Choice.chosen(5)
+    choice := Choice.chosen(5)
 
     match choice:
         chosen(value):
             try expect_equal(value.get(), 5)
 
-    let reader = Reader(2)
+    reader := Reader(2)
     try expect_equal(reader.read(3), 5)
 
-    let read = reader.read
+    read := reader.read
     try expect_equal(read(4), 6)
 
-    let view: Read = reader
+    view: Read = reader
     try expect_equal(view.read(5), 7)
 
-    let counter = Counter(9)
+    counter := Counter(9)
     try expect_equal(calls_of(counter.clone()), 9)
     try expect_equal(counter.calls, 9)
 
-    let notice = Notice(Error("detail"))
+    notice := Notice(Error("detail"))
     try expect_equal(notice.failure.get().message, "detail")
 
 test "wrapping evaluates arguments once in written order":
@@ -138,7 +138,7 @@ test "queue capacity accepts a plain value or omission":
 
     var unbounded = Queue[Int]()
     var absent = Queue[Int]()
-    let capacity: Int? = 4
+    capacity: Int? = 4
     var explicit = Queue[Int](capacity)
 
     for value in [1, 2, 3, 4, 5]:

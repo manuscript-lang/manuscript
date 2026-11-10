@@ -5,5 +5,5 @@ fn g(v: Int) Int:
     return v
 
 fn f() Int:
-    let x = 1
+    x := 1
     return g(v: x.foo())

@@ -11,7 +11,7 @@ fn toml_doc(count: Int) String:
     return sb.build()
 
 bench "toml.parse":
-    let toml = toml_doc(2000)
+    toml := toml_doc(2000)
 
     fn work() Result[Unit, Error]:
         if parse(toml).is_ok(): return keep(1)

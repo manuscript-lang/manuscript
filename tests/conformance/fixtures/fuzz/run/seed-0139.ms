@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = 2.0e8
+    f1 := 2.0e8
     say("f1 = {f1}")
 
-    let i2 = 0
+    i2 := 0
     say("i2 = {i2}")
 
-    let i3 = (527843 + 37)
+    i3 := (527843 + 37)
     say("i3 = {i3}")
 
-    let b4 = "x".upper().is_empty()
+    b4 := "x".upper().is_empty()
     say("b4 = {b4}")
 
-    let f5 = (f1 * (f1 / f1))
+    f5 := (f1 * (f1 / f1))
     say("f5 = {f5}")
 
-    let s6 = ""
+    s6 := ""
     say("s6 = [{s6}]")
 
     if ((s6 == s6) and b4):

@@ -15,7 +15,7 @@ fn consumed_options(options: Options, oracle: Bool) Int:
     return measure(if oracle: "oracle" else: options.harness).get()
 
 test "a conditional with a literal arm and a field arm can be a call argument":
-    let options = Options("abc", "t")
+    options := Options("abc", "t")
     try expect_equal(owned_options(options.clone(), false), 3)
     try expect_equal(owned_options(options.clone(), true), 6)
     try expect_equal(consumed_options(options.clone(), false), 3)

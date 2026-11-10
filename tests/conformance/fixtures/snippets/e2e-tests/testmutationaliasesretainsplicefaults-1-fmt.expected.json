@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "test \"new start\":\n    [1].splice(-1, 0, [])\n\ntest \"new count\":\n    [1].splice(0, 2, [])\n\ntest \"bound start\":\n    var items = [1]\n    let splice = items.splice\n    splice(2, 0, [])\n\ntest \"bound count\":\n    var items = [1]\n    let splice = items.splice\n    splice(0, -1, [])\n\ntest \"continues\":\n    var values = [1]\n    values.splice(0, 1, [])\n    values.append(2)\n"
+    "fmt": "test \"new start\":\n    [1].splice(-1, 0, [])\n\ntest \"new count\":\n    [1].splice(0, 2, [])\n\ntest \"bound start\":\n    var items = [1]\n    splice := items.splice\n    splice(2, 0, [])\n\ntest \"bound count\":\n    var items = [1]\n    splice := items.splice\n    splice(0, -1, [])\n\ntest \"continues\":\n    var values = [1]\n    values.splice(0, 1, [])\n    values.append(2)\n"
   }
 }

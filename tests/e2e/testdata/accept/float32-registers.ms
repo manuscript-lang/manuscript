@@ -18,31 +18,31 @@ fn dot(a: List[Float32], b: List[Float32]) Float32:
     return acc
 
 test "arithmetic rounds to binary32 at every step":
-    let a: Float32 = 16777216.0
-    let b: Float32 = 1.0
+    a: Float32 = 16777216.0
+    b: Float32 = 1.0
     try expect_equal((a + b).to_float(), 16777216.0)
 
-    let tenth: Float32 = 0.1
+    tenth: Float32 = 0.1
     try expect_equal((tenth + tenth + tenth).to_float(), 0.30000001192092896)
     try expect_equal((tenth * tenth).to_float(), 0.010000000707805157)
 
 test "Float32 crosses calls, fields, closures and lists":
     try expect_equal(sum_pair(Pair(0.25, 0.5)).to_float(), 0.75)
 
-    let scale: Float32 = 1.5
-    let apply: fn(Float32) Float32 = fn x: x * scale
+    scale: Float32 = 1.5
+    apply: fn(Float32) Float32 = fn x: x * scale
     try expect_equal(apply(4.0).to_float(), 6.0)
 
-    let xs: List[Float32] = [1.0, 2.0, 3.0]
-    let ys: List[Float32] = [0.5, 0.25, 0.125]
+    xs: List[Float32] = [1.0, 2.0, 3.0]
+    ys: List[Float32] = [0.5, 0.25, 0.125]
     try expect_equal(dot(xs, ys).to_float(), 1.375)
 
 test "Float32 compares and formats":
-    let a: Float32 = 0.1
-    let b: Float32 = 0.2
+    a: Float32 = 0.1
+    b: Float32 = 0.2
     try expect_equal(a < b, true)
     try expect_equal(a == b, false)
     try expect_equal("{a}", "0.1")
 
-    let widened = a.to_float()
+    widened := a.to_float()
     try expect_equal(widened > 0.1, true)

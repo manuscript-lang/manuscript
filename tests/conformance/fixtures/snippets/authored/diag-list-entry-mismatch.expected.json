@@ -13,15 +13,15 @@
         "position": {
           "file": "diag-list-entry-mismatch.ms",
           "line": 5,
-          "column": 17,
-          "offset": 147
+          "column": 14,
+          "offset": 144
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-list-entry-mismatch.ms:5:17: type: expected Int, found String (in entry 2 of the literal, whose entries share one type)\n   |\n 5 |     let l = [1, \"a\"]\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-list-entry-mismatch.ms:5:14: type: expected Int, found String (in entry 2 of the literal, whose entries share one type)\n   |\n 5 |     l := [1, \"a\"]\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

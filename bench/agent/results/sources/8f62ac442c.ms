@@ -12,7 +12,7 @@ fn parse_num(text: String, floor: Int) Optional[Int]:
 
     for c in text.chars():
         if not "0123456789".contains(c): return none
-    if let num = text.parse_int():
+    if num := text.parse_int():
         if num >= floor: return some(num)
     return none
 
@@ -20,7 +20,7 @@ fn parse_nums(tokens: List[String], first: Int, floor: Int) Optional[List[Int]]:
     var nums = List[Int]()
 
     for i in first..tokens.length():
-        if let num = parse_num(tokens.get(i), floor):
+        if num := parse_num(tokens.get(i), floor):
             nums.append(num)
         else:
             return none
@@ -28,11 +28,11 @@ fn parse_nums(tokens: List[String], first: Int, floor: Int) Optional[List[Int]]:
     return some(nums)
 
 fn parse_item(token: String) Optional[Item]:
-    let parts = token.split(":")
+    parts := token.split(":")
     if parts.length() != 2: return none
 
-    if let weight = parse_num(parts.get(0), 1):
-        if let value = parse_num(parts.get(1), 0):
+    if weight := parse_num(parts.get(0), 1):
+        if value := parse_num(parts.get(1), 0):
             return some(Item(weight: weight, value: value))
     return none
 
@@ -40,7 +40,7 @@ fn parse_items(tokens: List[String]) Optional[List[Item]]:
     var items = List[Item]()
 
     for i in 2..tokens.length():
-        if let item = parse_item(tokens.get(i)):
+        if item := parse_item(tokens.get(i)):
             items.append(item)
         else:
             return none
@@ -48,8 +48,8 @@ fn parse_items(tokens: List[String]) Optional[List[Item]]:
     return some(items)
 
 fn lcs(a: String, b: String) Int:
-    let x = a.to_bytes()
-    let y = b.to_bytes()
+    x := a.to_bytes()
+    y := b.to_bytes()
     var prev = List[Int]()
     for j in 0..(y.length() + 1):
         prev.append(0)
@@ -69,8 +69,8 @@ fn lcs(a: String, b: String) Int:
     return prev.get(y.length())
 
 fn edit(a: String, b: String) Int:
-    let x = a.to_bytes()
-    let y = b.to_bytes()
+    x := a.to_bytes()
+    y := b.to_bytes()
     var prev = List[Int]()
     for j in 0..(y.length() + 1):
         prev.append(j)
@@ -80,7 +80,7 @@ fn edit(a: String, b: String) Int:
         cur.append(i + 1)
 
         for j in 0..y.length():
-            let cost = if x.get(i) == y.get(j): 0 else: 1
+            cost := if x.get(i) == y.get(j): 0 else: 1
 
             cur.append(
                 min(
@@ -115,7 +115,7 @@ fn fewest_coins(amount: Int, denoms: List[Int]) Int:
 
         for c in denoms:
             if c <= a and best.get(a - c) >= 0:
-                let k = best.get(a - c) + 1
+                k := best.get(a - c) + 1
                 if fewest < 0 or k < fewest: fewest = k
 
         best.append(fewest)
@@ -123,8 +123,8 @@ fn fewest_coins(amount: Int, denoms: List[Int]) Int:
     return best.get(amount)
 
 fn run(line: String) String:
-    let tokens = line.split(" ")
-    let cmd = tokens.get(0)
+    tokens := line.split(" ")
+    cmd := tokens.get(0)
     if cmd == "lcs" and tokens.length() == 3:
         if not tokens.get(1).is_empty() and not tokens.get(2).is_empty():
             return "{lcs(tokens.get(1), tokens.get(2))}"
@@ -132,14 +132,14 @@ fn run(line: String) String:
         if not tokens.get(1).is_empty() and not tokens.get(2).is_empty():
             return "{edit(tokens.get(1), tokens.get(2))}"
     if cmd == "knap" and tokens.length() >= 2:
-        if let cap = parse_num(tokens.get(1), 0):
-            if let items = parse_items(tokens):
+        if cap := parse_num(tokens.get(1), 0):
+            if items := parse_items(tokens):
                 return "{knap(cap, items)}"
 
     if cmd == "coins" and tokens.length() >= 3:
-        if let amount = parse_num(tokens.get(1), 0):
-            if let denoms = parse_nums(tokens, 2, 1):
-                let fewest = fewest_coins(amount, denoms)
+        if amount := parse_num(tokens.get(1), 0):
+            if denoms := parse_nums(tokens, 2, 1):
+                fewest := fewest_coins(amount, denoms)
 
                 return if fewest < 0: "impossible" else: "{fewest}"
 

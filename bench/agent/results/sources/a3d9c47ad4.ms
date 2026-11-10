@@ -17,14 +17,14 @@ fn digits_value(text: String) BigInt:
 
 // Converts an amount such as `12`, `12.5` or `0.07` to exact cents.
 fn amount_cents(amount: String) Optional[BigInt]:
-    let parts = amount.split(".")
+    parts := amount.split(".")
     if parts.length() == 1:
         if is_digits(amount):
             return some(digits_value(amount) * from_int(100))
         return none
     if parts.length() != 2 or not is_digits(parts[0]):
         return none
-    let fraction = parts[1]
+    fraction := parts[1]
     if fraction.length() < 1 or fraction.length() > 2 or not is_digits(fraction):
         return none
     var padded = fraction.clone()
@@ -34,7 +34,7 @@ fn amount_cents(amount: String) Optional[BigInt]:
 
 // A quoted category may contain commas; an unquoted one ends at the first comma.
 fn parse_line(line: String) Optional[Entry]:
-    let chars = line.chars()
+    chars := line.chars()
     var category = ""
     var start = 0
     if chars.length() > 0 and chars[0] == "\"":
@@ -60,14 +60,14 @@ fn parse_line(line: String) Optional[Entry]:
     var amount = ""
     for i in start..chars.length():
         amount += chars[i]
-    if let cents = amount_cents(amount):
+    if cents := amount_cents(amount):
         return some(Entry(category: category, cents: cents))
     return none
 
 fn format_cents(cents: BigInt) String:
-    let hundred = from_int(100)
-    let whole = (cents / hundred).to_string_radix(10)
-    let fraction = (cents % hundred).to_int().get(0)
+    hundred := from_int(100)
+    whole := (cents / hundred).to_string_radix(10)
+    fraction := (cents % hundred).to_int().get(0)
     if fraction < 10:
         return "{whole}.0{fraction}"
     return "{whole}.{fraction}"
@@ -78,8 +78,8 @@ export fn main() Int:
     for line in read_lines(stdin()).get():
         if line == "":
             continue
-        if let entry = parse_line(line):
-            let category = entry.category.clone()
+        if entry := parse_line(line):
+            category := entry.category.clone()
             totals[category.clone()] = totals.get(category).get(from_int(0)) + entry.cents
         else:
             skipped += 1

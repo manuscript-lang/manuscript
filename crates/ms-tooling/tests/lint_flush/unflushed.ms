@@ -5,7 +5,7 @@ type Journal:
 
 impl Closeable for Journal:
     var fn close() Unit!:
-        let _ = self.lines
+        _ := self.lines
         return ok(unit)
 
 impl Journal:
@@ -13,7 +13,7 @@ impl Journal:
         return ok(unit)
 
 export fn forgets() Int:
-    let journal = Journal(1)
+    journal := Journal(1)
     return journal.lines
 
 export fn flushes() Result[Int, Error]:
@@ -25,11 +25,11 @@ type Holder:
     journal: Journal
 
 fn returns() Journal:
-    let journal = Journal(3)
+    journal := Journal(3)
     return journal
 
 fn stores() Holder:
-    let journal = Journal(4)
+    journal := Journal(4)
     return Holder(journal)
 
 export fn uses_moves() Int:

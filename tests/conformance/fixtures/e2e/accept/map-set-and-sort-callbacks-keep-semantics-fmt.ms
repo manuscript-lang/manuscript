@@ -10,8 +10,8 @@ fn record(var into: List[Int], value: Int) Unit:
     return unit
 
 test "map callbacks":
-    let m = {"a": 1, "bb": 2, "ccc": 3}
-    let sums = m.map(fn(key: String, value: Int) Int: key.length() + value)
+    m := {"a": 1, "bb": 2, "ccc": 3}
+    sums := m.map(fn(key: String, value: Int) Int: key.length() + value)
     try expect_true((sums.get("bb") == 4))
     try expect_true(
         (m.filter(fn(key: String, value: Int) Bool: value > 1).length() == 2)
@@ -47,7 +47,7 @@ test "map callbacks":
     )
 
 test "set callbacks":
-    let s = [1, 2, 3].to_set()
+    s := [1, 2, 3].to_set()
     try expect_true((s.map(fn(value: Int) Int: value % 2).length() == 2))
     try expect_true((s.filter(fn(value: Int) Bool: value > 1).length() == 2))
     try expect_true(
@@ -74,11 +74,11 @@ test "set callbacks":
     )
 
 test "sort with a comparator":
-    let words = ["ccc", "a", "bb"]
-    let sorted = words.sorted(compare: byLength)
+    words := ["ccc", "a", "bb"]
+    sorted := words.sorted(compare: byLength)
     try expect_true((sorted.get(index: 0) == "a" and sorted.get(index: 2) == "ccc"))
 
-    let closure = words.sorted(
+    closure := words.sorted(
         compare: fn(left: String, right: String) Int: (
             right.length()
             - left.length()

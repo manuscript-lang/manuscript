@@ -17,7 +17,7 @@ test "indexed loops over a list read and write through the shared storage":
     try expect_equal(flags, [true, true, false, true, false, true])
 
 test "negative indexes inside a cached loop count from the end":
-    let values = [10, 20, 30]
+    values := [10, 20, 30]
     var total = 0
     var i = 1
 
@@ -55,7 +55,7 @@ test "appending directly inside the loop is visible to later reads":
 
 test "rebinding the list inside the loop selects the new storage":
     var values = [1, 2, 3]
-    let other = [10, 20, 30]
+    other := [10, 20, 30]
     var total = 0
     var i = 0
 
@@ -67,7 +67,7 @@ test "rebinding the list inside the loop selects the new storage":
     try expect_equal(total, 1 + 20 + 30)
 
 test "nested loops share one cached list":
-    let grid = [[1, 2], [3, 4]]
+    grid := [[1, 2], [3, 4]]
     var total = 0
     var row = 0
 
@@ -85,7 +85,7 @@ test "nested loops share one cached list":
 test "an out of range read or write inside a cached loop faults":
     var values = [1, 2, 3]
 
-    let read = try expect_fault(
+    read := try expect_fault(
         fn:
             var i = 0
             var _total = 0
@@ -97,7 +97,7 @@ test "an out of range read or write inside a cached loop faults":
 
     try expect_contains(read, "out of range")
 
-    let write = try expect_fault(
+    write := try expect_fault(
         fn:
             var i = 0
 

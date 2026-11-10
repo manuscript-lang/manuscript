@@ -7,4 +7,4 @@ export interface Sized:
 export fn answer() Int:
     return 42
 
-export let LIMIT = 10
+export LIMIT := 10

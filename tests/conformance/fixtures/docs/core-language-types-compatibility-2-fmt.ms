@@ -5,9 +5,9 @@
 type Input:
     names: List[String?]
 
-let input = Input([none, "Ada"])
-let nested: List[List[Int]] = [[], [1]]
-let success: Result[Int, Error] = ok(1)
-let failure: Result[Int, Error] = error(Error("unavailable"))
+input := Input([none, "Ada"])
+nested: List[List[Int]] = [[], [1]]
+success: Result[Int, Error] = ok(1)
+failure: Result[Int, Error] = error(Error("unavailable"))
 // Rejected: the result error type cannot be inferred from ok's payload.
-let incomplete = ok(1)
+incomplete := ok(1)

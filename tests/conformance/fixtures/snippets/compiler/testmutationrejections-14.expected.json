@@ -9,34 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown type File; add: import File from \"@std/io/io.ms\"",
+        "message": "unknown type File; declare it with 'type File:' / 'enum File:' / 'interface File:', declare it as a type parameter, or import it",
         "position": {
           "file": "testmutationrejections-14.ms",
           "line": 4,
           "column": 12,
           "offset": 158
-        },
-        "fix": {
-          "position": {
-            "file": "testmutationrejections-14.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "end": {
-            "file": "testmutationrejections-14.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "replacement": "import File from \"@std/io/io.ms\"\n"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testmutationrejections-14.ms:4:12: resolution: unknown type File; add: import File from \"@std/io/io.ms\"\n   |\n 4 | fn f(file: File) Unit:\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testmutationrejections-14.ms:4:12: resolution: unknown type File; declare it with 'type File:' / 'enum File:' / 'interface File:', declare it as a type parameter, or import it\n   |\n 4 | fn f(file: File) Unit:\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

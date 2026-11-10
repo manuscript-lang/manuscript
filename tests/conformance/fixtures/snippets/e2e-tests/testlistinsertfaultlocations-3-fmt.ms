@@ -3,5 +3,5 @@
 // conform: origin=tests/e2e/list_parity_test.go:22 TestListInsertFaultLocations
 fn main() Unit:
     var values = [1]
-    let insert = values.insert
+    insert := values.insert
     insert(index: 5, value: 9)

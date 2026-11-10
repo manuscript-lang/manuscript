@@ -55,8 +55,8 @@ fn main() Unit:
     in_loop(var b)
 
     var c = [[0], [0]]
-    let _r1 = failing(var c, true)
-    let _r2 = failing(var c, false)
+    _r1 := failing(var c, true)
+    _r2 := failing(var c, false)
     var d = [["a"], ["b"]]
     generic(var d, "z")
 

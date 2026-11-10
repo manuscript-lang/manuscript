@@ -32,20 +32,20 @@ fn bound_cleanup[T: Disposable](resource: T) Unit:
     item.close()
 
 fn canonical_cleanup[T: Closeable](resource: T) Unit:
-    let _item = resource
-    let _completed = unit
+    _item := resource
+    _completed := unit
 
 test "cleanup uses the selected contract":
-    let direct = try expect_fault(
+    direct := try expect_fault(
         fn:
-            let _resource = Resource(0)
-            let _completed = unit
+            _resource := Resource(0)
+            _completed := unit
     )
 
     try expect_equal(direct, "closeable")
 
-    let bound = try expect_fault(fn: bound_cleanup(resource: Resource(0)))
+    bound := try expect_fault(fn: bound_cleanup(resource: Resource(0)))
     try expect_equal(bound, "disposable")
 
-    let canonical = try expect_fault(fn: canonical_cleanup(resource: Resource(0)))
+    canonical := try expect_fault(fn: canonical_cleanup(resource: Resource(0)))
     try expect_equal(canonical, "closeable")

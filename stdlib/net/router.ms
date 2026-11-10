@@ -29,19 +29,19 @@ import (
 // middleware replaces the exchange with a wrapper of its own type, so the value that comes back from a handler is not
 // the one that was handed in; the slot is what both sides can reach.
 fn new_slot[T](value: T) Int:
-    let pipe = msrt_pipe_new(1)
-    let _first = msrt_pipe_write(pipe, value)
+    pipe := msrt_pipe_new(1)
+    _first := msrt_pipe_write(pipe, value)
     return pipe
 
 fn take_slot[T](slot: Int) T:
-    let read = msrt_pipe_read(slot)
-    let _code = msrt_promise_wait(read, -1)
-    let value = msrt_promise_take[T](read).get()
+    read := msrt_pipe_read(slot)
+    _code := msrt_promise_wait(read, -1)
+    value := msrt_promise_take[T](read).get()
     msrt_promise_drop(read)
     return value
 
 fn put_slot[T](slot: Int, value: T) Unit:
-    let _written = msrt_pipe_write(slot, value)
+    _written := msrt_pipe_write(slot, value)
 
 // Ends the pipe of `slot`; call it once, when the last holder is done.
 fn release_slot(slot: Int) Unit:
@@ -62,7 +62,7 @@ impl Closeable for Held[T]:
     var fn close() Unit!:
         if self.held:
             self.held = false
-            if let value = self.items.pop():
+            if value := self.items.pop():
                 put_slot(self.slot, value)
 
 // The values a matched pattern captured, by name.
@@ -75,7 +75,7 @@ export type RouteParams:
 impl RouteParams:
     // Returns the text captured for `name`, or none when the pattern has no such parameter.
     fn get(name: String) String?:
-        if let index = self.names.index_of(name): return self.values[index].clone()
+        if index := self.names.index_of(name): return self.values[index].clone()
 
         return none
 
@@ -137,7 +137,7 @@ impl Router:
         pattern: String,
         handler: fn(var HttpExchange, RouteParams) Unit!
     ) Unit!:
-        let segments = try parse_pattern(pattern.clone())
+        segments := try parse_pattern(pattern.clone())
         return insert(
             var self.routes,
             Route(
@@ -192,13 +192,13 @@ impl Router:
             return error(invalid_pattern(prefix))
 
         var mounted = routes
-        let base = if prefix == "/": "" else: prefix.clone()
-        let offset = self.groups.length()
+        base := if prefix == "/": "" else: prefix.clone()
+        offset := self.groups.length()
         var groups = drain(var mounted.groups)
         while not groups.is_empty():
             self.groups.append(groups.pop().get())
 
-        let own = self.groups.length()
+        own := self.groups.length()
         self.groups.append(in_order(var mounted.middleware))
 
         var sources = drain(var mounted.routes)
@@ -225,7 +225,7 @@ impl Router:
 
 // Adds a route unless one with the same method and shape exists.
 fn insert(var routes: List[Route], route: Route) Unit!:
-    let shape = shape_of(route.segments)
+    shape := shape_of(route.segments)
     for existing in routes:
         if existing.method == route.method and shape_of(existing.segments) == shape:
             return error(
@@ -242,8 +242,8 @@ fn insert(var routes: List[Route], route: Route) Unit!:
 // Rewrites a route moved out of a mounted router: its pattern under `base`, the mounted
 // router's middleware group `own` outermost, and its own groups moved up by `offset`.
 fn remount(var route: Route, base: String, own: Int, offset: Int) Unit!:
-    let tail = if route.pattern == "/": "" else: route.pattern.clone()
-    let pattern = if not (base + tail).is_empty(): base + tail else: "/"
+    tail := if route.pattern == "/": "" else: route.pattern.clone()
+    pattern := if not (base + tail).is_empty(): base + tail else: "/"
     route.segments = try parse_pattern(pattern.clone())
     route.pattern = pattern
 
@@ -276,15 +276,15 @@ fn parse_pattern(pattern: String) List[Segment]!:
 
     var segments: List[Segment] = []
     var names: List[String] = []
-    let parts = split_path(pattern)
+    parts := split_path(pattern)
 
     for entry in parts.entries():
-        let segment = segment_of(entry.value)
-        let last = entry.index == parts.length() - 1
+        segment := segment_of(entry.value)
+        last := entry.index == parts.length() - 1
         if not valid_segment(segment, names, last):
             return error(invalid_pattern(pattern))
 
-        if let name = segment_name(segment): names.append(name)
+        if name := segment_name(segment): names.append(name)
         segments.append(segment)
 
     return ok(segments)
@@ -340,9 +340,9 @@ fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
     var index = 0
 
     while index < routes.length():
-        let route = routes[index]
+        route := routes[index]
 
-        if let captured = capture(route.segments, parts):
+        if captured := capture(route.segments, parts):
             allow.append(route.method.clone())
 
             if (
@@ -368,7 +368,7 @@ fn names_of(segments: List[Segment]) List[String]:
     return segments.flat_map(fn segment: name_list(segment))
 
 fn name_list(segment: Segment) List[String]:
-    if let name = segment_name(segment): return [name]
+    if name := segment_name(segment): return [name]
 
     return []
 
@@ -420,13 +420,13 @@ fn dispatch(
     groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]],
     var exchange: HttpExchange
 ) Unit!:
-    let method = exchange.method().text()
-    let found = lookup(routes, method, split_path(exchange.path()))
+    method := exchange.method().text()
+    found := lookup(routes, method, split_path(exchange.path()))
     var every: List[String] = []
     if method == "OPTIONS" and exchange.path() == "*":
         every = routes.map(fn route: route.method.clone())
 
-    let target = Target(method: method, found: found, every: every)
+    target := Target(method: method, found: found, every: every)
     return chain(
         middleware, 0, var exchange,
         fn(var last: HttpExchange): finish(routes, groups, target, var last)
@@ -472,11 +472,11 @@ fn finish(
     target: Target,
     var exchange: HttpExchange
 ) Unit!:
-    let method = target.method
-    let found = target.found
+    method := target.method
+    found := target.found
 
-    if let index = found.found:
-        let route = routes[index]
+    if index := found.found:
+        route := routes[index]
         return chain_groups(
             groups,
             route.around,
@@ -510,7 +510,7 @@ impl Router:
     // A handler error is returned as is; the server would answer it with a 500. A handler that
     // sends nothing answers 204.
     fn call(request: HttpRequest) HttpResponse!:
-        let state = new_slot(
+        state := new_slot(
             TestState(
                 status: 0, sent: false, complete: false, closed: false, head: headers(),
                 body: BytesBuilder(), unread: request.body.clone()
@@ -519,8 +519,8 @@ impl Router:
         var exchange: HttpExchange = TestExchange(
             request: request.clone(), state: state
         )
-        let ran = dispatch(self.routes, self.middleware, self.groups, var exchange)
-        let outcome = finished(state)
+        ran := dispatch(self.routes, self.middleware, self.groups, var exchange)
+        outcome := finished(state)
         release_slot(state)
         if ran.is_error(): return error(ran.err().clone())
 
@@ -573,22 +573,22 @@ impl HttpExchange for TestExchange:
         return self.request.query.clone()
 
     var fn read(max_bytes: Int?) Bytes?!:
-        let requested = max_bytes.get(65536)
+        requested := max_bytes.get(65536)
         if requested <= 0: return error(Error("I/O: invalid input", kind: "EINVAL"))
 
-        let max = if requested > 65536: 65536 else: requested
+        max := if requested > 65536: 65536 else: requested
         var guard = hold[TestState](self.state)
         if guard.items[0].closed: return error(
             Error("I/O: resource is closed", kind: "EBADF")
         )
 
-        let chunk = guard.items[0].unread.clone()
+        chunk := guard.items[0].unread.clone()
         guard.items[0].unread = none
 
-        if let bytes = chunk:
+        if bytes := chunk:
             if bytes.length() == 0: return ok(none)
 
-            let n = if max < bytes.length(): max else: bytes.length()
+            n := if max < bytes.length(): max else: bytes.length()
             if n < bytes.length():
                 guard.items[0].unread = bytes.slice(n, bytes.length()).get()
             return ok(bytes.slice(0, n).get())
@@ -686,7 +686,7 @@ export fn with_request_headers(var exchange: HttpExchange, request: HttpHeaders)
     exchange = new_tap(exchange, headers(), request)
 
 fn counted(slot: Int?, status: Int, bytes: Int) Unit:
-    if let state = slot:
+    if state := slot:
         var guard = hold[TapState](state)
         if status != 0: guard.items[0].status = status
         guard.items[0].bytes += bytes
@@ -713,8 +713,8 @@ impl Tap:
 
     // The status the response headers went out with, or 200 before any are sent.
     fn status_so_far() Int:
-        if let state = self.state:
-            let seen = snapshot(state).status
+        if state := self.state:
+            seen := snapshot(state).status
             if seen != 0: return seen
 
         return 200
@@ -796,7 +796,7 @@ fn usable_id(id: String) Bool:
     )
 
 fn new_id() String!:
-    let made = uuid_v4()
+    made := uuid_v4()
     if made.is_error(): return error(Error(made.err().message.clone(), kind: "EIO"))
 
     return ok(made.get().clone())
@@ -826,25 +826,25 @@ fn with_access_log(
     var exchange: HttpExchange,
     next: fn(var HttpExchange) Unit!
 ) Unit!:
-    let started = monotonic()
-    let method = exchange.method().text()
-    let path = exchange.path()
-    let protocol = exchange.protocol()
-    let request = exchange.headers()
-    let state = new_slot(TapState(status: 0, bytes: 0))
+    started := monotonic()
+    method := exchange.method().text()
+    path := exchange.path()
+    protocol := exchange.protocol()
+    request := exchange.headers()
+    state := new_slot(TapState(status: 0, bytes: 0))
     exchange = new_tap(exchange, headers(), request, state)
 
-    let result = next(var exchange)
-    let sent = snapshot(state)
+    result := next(var exchange)
+    sent := snapshot(state)
     release_slot(state)
 
-    let status = answered(sent.status, result.is_ok())
-    let entry = AccessEntry(
+    status := answered(sent.status, result.is_ok())
+    entry := AccessEntry(
         method: method, path: path, protocol: protocol, status: status,
         bytes: sent.bytes,
         duration_ms: monotonic().difference(started).to_milliseconds()
     )
-    let logged = logger.info("request", entry)
+    logged := logger.info("request", entry)
     return result
 
 fn answered(status: Int, succeeded: Bool) Int:

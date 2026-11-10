@@ -6,11 +6,11 @@ import parse_float from "@std/numbers.ms"
 import abs, ceil, floor, infinity, pow, sqrt from "@std/math.ms"
 import from_int from "@std/bigint.ms"
 
-let UPPER_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-let LOWER_LETTERS = "abcdefghijklmnopqrstuvwxyz"
-let ASCII_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-let DIGITS = "0123456789"
-let OPERATOR_CHARS = "+-*/^&=<>(),"
+UPPER_LETTERS := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+LOWER_LETTERS := "abcdefghijklmnopqrstuvwxyz"
+ASCII_LETTERS := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+DIGITS := "0123456789"
+OPERATOR_CHARS := "+-*/^&=<>(),"
 
 type Value:
     case Empty
@@ -104,7 +104,7 @@ fn char_at(chars: List[String], index: Int) String:
 
 fn join_range(chars: List[String], start: Int, end: Int) String:
     var text = ""
-    let stop = higher_of(0, lower_of(end, chars.length()))
+    stop := higher_of(0, lower_of(end, chars.length()))
     for i in range(start, stop):
         text = text.concat(chars.get(i))
     return text
@@ -247,27 +247,27 @@ fn finite_result(r: Float) Value:
 // Parses the number grammar [+-]?(digits[.digits]|.digits)([eE][+-]?digits)?
 // and returns the value only when it is finite.
 fn number_text(text: String) Optional[Float]:
-    let chars = text.chars()
+    chars := text.chars()
     var i = 0
     var sign = ""
-    let first = char_at(chars, 0)
+    first := char_at(chars, 0)
 
     if first == "+" or first == "-":
         if first == "-":
             sign = "-"
         i = 1
 
-    let int_start = i
+    int_start := i
     while is_digit(char_at(chars, i)):
         i += 1
 
-    let int_part = join_range(chars, int_start, i)
+    int_part := join_range(chars, int_start, i)
     var frac_part = ""
 
     if char_at(chars, i) == ".":
         i += 1
 
-        let frac_start = i
+        frac_start := i
         while is_digit(char_at(chars, i)):
             i += 1
         frac_part = join_range(chars, frac_start, i)
@@ -276,20 +276,20 @@ fn number_text(text: String) Optional[Float]:
         return none
 
     var exponent = ""
-    let marker = char_at(chars, i)
+    marker := char_at(chars, i)
 
     if marker == "e" or marker == "E":
         i += 1
 
         var exp_sign = ""
-        let exp_char = char_at(chars, i)
+        exp_char := char_at(chars, i)
 
         if exp_char == "+" or exp_char == "-":
             if exp_char == "-":
                 exp_sign = "-"
             i += 1
 
-        let exp_start = i
+        exp_start := i
         while is_digit(char_at(chars, i)):
             i += 1
         if i == exp_start:
@@ -300,15 +300,15 @@ fn number_text(text: String) Optional[Float]:
     if i != chars.length():
         return none
 
-    let int_text = if_empty(int_part, "0")
-    let frac_text = if_empty(frac_part, "0")
-    let parsed = parse_float(
+    int_text := if_empty(int_part, "0")
+    frac_text := if_empty(frac_part, "0")
+    parsed := parse_float(
         sign.concat(int_text).concat(".").concat(frac_text).concat(exponent)
     )
     if parsed.is_error():
         return none
 
-    let value = parsed.get(0.0)
+    value := parsed.get(0.0)
     if not value.is_finite():
         return none
 
@@ -332,7 +332,7 @@ fn to_number(v: Value) Value:
 
             return Number(value: 0.0)
         Text(s):
-            let parsed = number_text(s.trim())
+            parsed := number_text(s.trim())
             if parsed.is_some():
                 return Number(value: parsed.get(0.0))
 
@@ -381,15 +381,15 @@ fn format_number(x: Float) String:
     if abs(x) >= 1e21:
         return integer_text(x)
 
-    let fixed = x.to_fixed(10).get("0")
-    let chars = fixed.chars()
+    fixed := x.to_fixed(10).get("0")
+    chars := fixed.chars()
     var last = chars.length() - 1
     while last >= 0 and char_at(chars, last) == "0":
         last -= 1
     if char_at(chars, last) == ".":
         last -= 1
 
-    let text = join_range(chars, 0, last + 1)
+    text := join_range(chars, 0, last + 1)
     if text == "-0":
         return "0"
 
@@ -405,9 +405,9 @@ fn integer_text(x: Float) String:
             y = y / 2.0
             shift += 1
 
-    let mantissa = y.truncate_to_int().get(0)
-    let power = from_int(2).pow(shift).get()
-    let digits = from_int(mantissa).multiply(power).to_string_radix(10)
+    mantissa := y.truncate_to_int().get(0)
+    power := from_int(2).pow(shift).get()
+    digits := from_int(mantissa).multiply(power).to_string_radix(10)
     if x < 0.0:
         return "-".concat(digits)
 
@@ -425,8 +425,8 @@ fn zero_like(v: Value) Value:
             return Empty
 
 fn order_of(a: Value, b: Value) Int:
-    let ra = rank_of(a)
-    let rb = rank_of(b)
+    ra := rank_of(a)
+    rb := rank_of(b)
     if ra < rb:
         return -1
     if ra > rb:
@@ -438,7 +438,7 @@ fn order_of(a: Value, b: Value) Int:
         Text(s):
             return sign_of(s.compare(text_of(b)))
         Boolean(f):
-            let other = is_true(b)
+            other := is_true(b)
             if f == other:
                 return 0
             if f:
@@ -485,8 +485,8 @@ fn compare_values(op: String, a: Value, b: Value) Value:
     if is_failure(b):
         return b
 
-    let left = normalize_against(a, b)
-    let right = normalize_against(b, a)
+    left := normalize_against(a, b)
+    right := normalize_against(b, a)
     return Boolean(flag: holds(op, order_of(left, right)))
 
 fn arithmetic(op: String, x: Float, y: Float) Value:
@@ -506,7 +506,7 @@ fn arithmetic(op: String, x: Float, y: Float) Value:
     return finite_result(pow(x, y))
 
 fn round_half_away(v: Float) Float:
-    let magnitude = abs(v)
+    magnitude := abs(v)
     var whole = floor(magnitude)
     if magnitude - whole >= 0.5:
         whole = whole + 1.0
@@ -581,7 +581,7 @@ fn criterion_of(v: Value) Criterion:
             else if s.starts_with("="):
                 operand_text = text_after(s, 1)
 
-            let parsed = number_text(operand_text)
+            parsed := number_text(operand_text)
             if parsed.is_some():
                 return Criterion(op: op, operand: Number(value: parsed.get(0.0)))
 
@@ -591,7 +591,7 @@ fn criterion_of(v: Value) Criterion:
 
 // ---------- addresses and references ----------
 fn parse_address(text: String) Address:
-    let chars = text.chars()
+    chars := text.chars()
     var i = 0
     var col_absolute = false
     var row_absolute = false
@@ -600,22 +600,22 @@ fn parse_address(text: String) Address:
         col_absolute = true
         i = 1
 
-    let letter_start = i
+    letter_start := i
     while is_letter(char_at(chars, i)):
         i += 1
 
-    let letter_count = i - letter_start
+    letter_count := i - letter_start
 
     if char_at(chars, i) == "$":
         row_absolute = true
         i += 1
 
-    let digit_start = i
+    digit_start := i
     while is_digit(char_at(chars, i)):
         i += 1
 
-    let digit_count = i - digit_start
-    let valid = (
+    digit_count := i - digit_start
+    valid := (
         letter_count == 1
         and digit_count >= 1
         and digit_count <= 3
@@ -640,7 +640,7 @@ fn cell_key(text: String) Int:
     if text.contains("$"):
         return 0
 
-    let address = parse_address(text)
+    address := parse_address(text)
     if not address.valid:
         return 0
 
@@ -654,18 +654,18 @@ fn rect_of(a: Int, b: Int) Rect:
 
 // Range argument: one cell or two cells joined by a colon.
 fn range_arg(text: String) Optional[Rect]:
-    let parts = text.split(":")
+    parts := text.split(":")
 
     if parts.length() == 1:
-        let key = cell_key(text)
+        key := cell_key(text)
         if key == 0:
             return none
 
         return some(rect_of(key, key))
 
     if parts.length() == 2:
-        let a = cell_key(parts.get(0))
-        let b = cell_key(parts.get(1))
+        a := cell_key(parts.get(0))
+        b := cell_key(parts.get(1))
         if a == 0 or b == 0:
             return none
 
@@ -679,7 +679,7 @@ fn reference_end(chars: List[String], start: Int) Int:
     if char_at(chars, i) == "$":
         i += 1
 
-    let letters_start = i
+    letters_start := i
     while is_letter(char_at(chars, i)):
         i += 1
     if i == letters_start:
@@ -688,13 +688,13 @@ fn reference_end(chars: List[String], start: Int) Int:
     if char_at(chars, i) == "$":
         i += 1
 
-    let digits_start = i
+    digits_start := i
     while is_digit(char_at(chars, i)):
         i += 1
     if i == digits_start:
         return -1
 
-    let after = char_at(chars, i)
+    after := char_at(chars, i)
     if is_identifier_char(after) or after == "(" or after == "$":
         return -1
 
@@ -710,11 +710,11 @@ fn number_end(chars: List[String], start: Int) Int:
         while is_digit(char_at(chars, i)):
             i += 1
 
-    let marker = char_at(chars, i)
+    marker := char_at(chars, i)
 
     if marker == "e" or marker == "E":
         var j = i + 1
-        let sign = char_at(chars, j)
+        sign := char_at(chars, j)
         if sign == "+" or sign == "-":
             j += 1
 
@@ -728,16 +728,16 @@ fn number_end(chars: List[String], start: Int) Int:
 // Returns None when the source contains a character that cannot be tokenized.
 fn tokenize(chars: List[String]) Optional[List[Token]]:
     var tokens: List[Token] = []
-    let n = chars.length()
+    n := chars.length()
     var i = 0
 
     while i < n:
-        let c = chars.get(i)
+        c := chars.get(i)
 
         if is_space(c):
             i += 1
         else if is_digit(c) or (c == "." and is_digit(char_at(chars, i + 1))):
-            let end = number_end(chars, i)
+            end := number_end(chars, i)
             tokens.append(
                 Token(
                     kind: "number", text: join_range(chars, i, end), start: i, end: end
@@ -750,7 +750,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
             var closed = false
 
             while end < n and not closed:
-                let d = chars.get(end)
+                d := chars.get(end)
 
                 if d == "\"":
                     if char_at(chars, end + 1) == "\"":
@@ -769,14 +769,14 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
             tokens.append(Token(kind: "string", text: content, start: i, end: end))
             i = end
         else if is_letter(c) or c == "_" or c == "$":
-            let first_end = reference_end(chars, i)
+            first_end := reference_end(chars, i)
 
             if first_end > 0:
                 var end = first_end
                 var kind = "reference"
 
                 if char_at(chars, end) == ":":
-                    let second_end = reference_end(chars, end + 1)
+                    second_end := reference_end(chars, end + 1)
 
                     if second_end > 0:
                         end = second_end
@@ -805,7 +805,7 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
             tokens.append(Token(kind: "error", text: "#REF!", start: i, end: i + 5))
             i += 5
         else:
-            let two = join_range(chars, i, i + 2)
+            two := join_range(chars, i, i + 2)
 
             if two == "<>" or two == "<=" or two == ">=":
                 tokens.append(Token(kind: "op", text: two, start: i, end: i + 2))
@@ -820,9 +820,9 @@ fn tokenize(chars: List[String]) Optional[List[Token]]:
 
 // ---------- parser ----------
 fn span_node(text: String) Node:
-    let parts = text.split(":")
-    let a = parse_address(parts.get(0))
-    let b = parse_address(parts.get(1))
+    parts := text.split(":")
+    a := parse_address(parts.get(0))
+    b := parse_address(parts.get(1))
     if not (a.valid and b.valid):
         return SpanNode(left: 0, top: 0, right: 0, bottom: 0, valid: false)
 
@@ -836,7 +836,7 @@ impl Parser:
         if self.pos >= self.tokens.length():
             return ""
 
-        let token = self.tokens.get(self.pos)
+        token := self.tokens.get(self.pos)
         if token.kind == "op":
             return token.text
 
@@ -852,10 +852,10 @@ impl Parser:
         var left = self.parse_concat()
 
         while is_comparison(self.current_op()):
-            let op = self.current_op()
+            op := self.current_op()
             self.advance()
 
-            let right = self.parse_concat()
+            right := self.parse_concat()
             left = BinaryNode(op: op, left: left, right: right)
 
         return left
@@ -866,7 +866,7 @@ impl Parser:
         while self.current_op() == "&":
             self.advance()
 
-            let right = self.parse_additive()
+            right := self.parse_additive()
             left = BinaryNode(op: "&", left: left, right: right)
 
         return left
@@ -875,10 +875,10 @@ impl Parser:
         var left = self.parse_multiplicative()
 
         while self.current_op() == "+" or self.current_op() == "-":
-            let op = self.current_op()
+            op := self.current_op()
             self.advance()
 
-            let right = self.parse_multiplicative()
+            right := self.parse_multiplicative()
             left = BinaryNode(op: op, left: left, right: right)
 
         return left
@@ -887,43 +887,43 @@ impl Parser:
         var left = self.parse_unary()
 
         while self.current_op() == "*" or self.current_op() == "/":
-            let op = self.current_op()
+            op := self.current_op()
             self.advance()
 
-            let right = self.parse_unary()
+            right := self.parse_unary()
             left = BinaryNode(op: op, left: left, right: right)
 
         return left
 
     var fn parse_unary() Node:
-        let op = self.current_op()
+        op := self.current_op()
 
         if op == "+" or op == "-":
             self.advance()
 
-            let operand = self.parse_unary()
+            operand := self.parse_unary()
             return UnaryNode(op: op, operand: operand)
 
         return self.parse_power()
 
     var fn parse_power() Node:
-        let base = self.parse_primary()
+        base := self.parse_primary()
 
         if self.current_op() == "^":
             self.advance()
 
-            let exponent = self.parse_exponent()
+            exponent := self.parse_exponent()
             return BinaryNode(op: "^", left: base, right: exponent)
 
         return base
 
     var fn parse_exponent() Node:
-        let op = self.current_op()
+        op := self.current_op()
 
         if op == "+" or op == "-":
             self.advance()
 
-            let operand = self.parse_exponent()
+            operand := self.parse_exponent()
             return UnaryNode(op: op, operand: operand)
 
         return self.parse_power()
@@ -933,11 +933,11 @@ impl Parser:
             self.failed = true
             return NumberLit(value: 0.0)
 
-        let token = self.tokens.get(self.pos)
+        token := self.tokens.get(self.pos)
         self.advance()
 
         if token.kind == "number":
-            let parsed = number_text(token.text)
+            parsed := number_text(token.text)
             if parsed.is_some():
                 return NumberLit(value: parsed.get(0.0))
 
@@ -949,7 +949,7 @@ impl Parser:
             return ErrorLit(code: token.text)
 
         if token.kind == "reference":
-            let address = parse_address(token.text)
+            address := parse_address(token.text)
             return RefNode(col: address.col, row: address.row, valid: address.valid)
 
         if token.kind == "span":
@@ -960,7 +960,7 @@ impl Parser:
                 self.advance()
                 return self.parse_call(token.text)
 
-            let upper = token.text.upper()
+            upper := token.text.upper()
             if upper == "TRUE":
                 return BoolLit(flag: true)
             if upper == "FALSE":
@@ -969,7 +969,7 @@ impl Parser:
             return UnknownName
 
         if token.kind == "op" and token.text == "(":
-            let inner = self.parse_comparison()
+            inner := self.parse_comparison()
 
             if self.current_op() == ")":
                 self.advance()
@@ -1006,9 +1006,9 @@ impl Parser:
 
 // Parses formula source (the text after '='); None means #PARSE!.
 fn parse_formula(source: List[String]) Optional[Node]:
-    if let tokens = tokenize(source):
+    if tokens := tokenize(source):
         var parser = Parser(tokens: tokens, pos: 0, failed: false)
-        let node = parser.parse_comparison()
+        node := parser.parse_comparison()
         if parser.failed or parser.pos != parser.tokens.length():
             return none
 
@@ -1034,7 +1034,7 @@ impl Collector:
                 self.visit(left)
                 self.visit(right)
             CallNode(name, args):
-                let upper = name.upper()
+                upper := name.upper()
                 if upper != "ROW" and upper != "COLUMN":
                     for arg in args:
                         self.visit(arg)
@@ -1048,9 +1048,9 @@ fn precedents_of(node: Node) List[Int]:
 
 // Shifts a formula (raw text starting with '=') for copy; tokens keep their text.
 fn shift_formula(raw: String, column_shift: Int, row_shift: Int) String:
-    let source = raw.chars().drop(1)
+    source := raw.chars().drop(1)
 
-    if let tokens = tokenize(source):
+    if tokens := tokenize(source):
         var out = "="
         var position = 0
 
@@ -1091,33 +1091,33 @@ fn shift_address(address: Address, column_shift: Int, row_shift: Int) Optional[S
     return some(text.concat("{row}"))
 
 fn shift_reference(text: String, column_shift: Int, row_shift: Int) String:
-    let address = parse_address(text)
+    address := parse_address(text)
     if not address.valid:
         return text
 
-    let moved = shift_address(address, column_shift, row_shift)
+    moved := shift_address(address, column_shift, row_shift)
     if moved.is_none():
         return "#REF!"
 
     return moved.get("")
 
 fn shift_span(text: String, column_shift: Int, row_shift: Int) String:
-    let parts = text.split(":")
+    parts := text.split(":")
     var first = parts.get(0)
     var second = parts.get(1)
-    let a = parse_address(first)
+    a := parse_address(first)
 
     if a.valid:
-        let moved = shift_address(a, column_shift, row_shift)
+        moved := shift_address(a, column_shift, row_shift)
         if moved.is_none():
             return "#REF!"
 
         first = moved.get("")
 
-    let b = parse_address(second)
+    b := parse_address(second)
 
     if b.valid:
-        let moved = shift_address(b, column_shift, row_shift)
+        moved := shift_address(b, column_shift, row_shift)
         if moved.is_none():
             return "#REF!"
 
@@ -1133,11 +1133,11 @@ fn parse_csv(block: List[String]) List[List[String]]:
     var quoted = false
     var has_chars = false
     var skip_next = false
-    let chars = block.join("\n").chars()
-    let n = chars.length()
+    chars := block.join("\n").chars()
+    n := chars.length()
 
     for i in range(0, n):
-        let c = chars.get(i)
+        c := chars.get(i)
 
         if skip_next:
             skip_next = false
@@ -1179,8 +1179,8 @@ fn blank_cell() Cell:
     return Cell(raw: "", value: Empty, ast: none, is_formula: false, precedents: [])
 
 fn with_value(cell: Cell, value: Value) Cell:
-    let ast = cell.ast.clone().clone()
-    let precedents = cell.precedents.clone()
+    ast := cell.ast.clone().clone()
+    precedents := cell.precedents.clone()
     return Cell(
         raw: cell.raw, value: value, ast: ast, is_formula: cell.is_formula,
         precedents: precedents
@@ -1191,7 +1191,7 @@ fn constant_value(text: String) Value:
     if text.starts_with("'"):
         return Text(value: text_after(text, 1))
 
-    let parsed = number_text(text)
+    parsed := number_text(text)
     if parsed.is_some():
         return Number(value: parsed.get(0.0))
     if text.upper() == "TRUE":
@@ -1217,13 +1217,13 @@ fn csv_field(text: String) String:
 // ---------- sheet ----------
 impl Sheet:
     fn value_at(key: Int) Value:
-        if let cell = self.cells.get(key):
+        if cell := self.cells.get(key):
             return cell.value
 
         return Empty
 
     fn raw_at(key: Int) String:
-        if let cell = self.cells.get(key):
+        if cell := self.cells.get(key):
             return cell.raw
 
         return ""
@@ -1232,7 +1232,7 @@ impl Sheet:
         return text_of(self.value_at(key))
 
     fn is_formula_at(key: Int) Bool:
-        if let cell = self.cells.get(key):
+        if cell := self.cells.get(key):
             return cell.is_formula
 
         return false
@@ -1246,7 +1246,7 @@ impl Sheet:
         self.dependents.add(from, deps)
 
     var fn unlink(key: Int) Unit:
-        if let old = self.cells.get(key):
+        if old := self.cells.get(key):
             if old.is_formula:
                 for p in old.precedents:
                     var deps = self.dependents_of(p)
@@ -1257,16 +1257,16 @@ impl Sheet:
     var fn assign(key: Int, raw: String) Unit:
         self.unlink(key)
 
-        let text = raw.trim()
+        text := raw.trim()
 
         if text.is_empty():
             self.cells.remove(key)
             return
 
         if text.starts_with("="):
-            let parsed = parse_formula(text.chars().drop(1))
+            parsed := parse_formula(text.chars().drop(1))
             var precedents: List[Int] = []
-            if let node = parsed.clone():
+            if node := parsed.clone():
                 precedents = precedents_of(node.clone())
             for p in precedents:
                 self.link(p, key)
@@ -1316,7 +1316,7 @@ impl Sheet:
                 return self.call(name, args)
 
     fn unary(op: String, operand: Node) Value:
-        let x = to_number(self.eval(operand))
+        x := to_number(self.eval(operand))
         if is_failure(x):
             return x
         if op == "-":
@@ -1325,8 +1325,8 @@ impl Sheet:
         return x
 
     fn binary(op: String, left: Node, right: Node) Value:
-        let a = self.eval(left)
-        let b = self.eval(right)
+        a := self.eval(left)
+        b := self.eval(right)
 
         if op == "&":
             if is_failure(a):
@@ -1339,11 +1339,11 @@ impl Sheet:
         if is_comparison(op):
             return compare_values(op, a, b)
 
-        let x = to_number(a)
+        x := to_number(a)
         if is_failure(x):
             return x
 
-        let y = to_number(b)
+        y := to_number(b)
         if is_failure(y):
             return y
 
@@ -1354,7 +1354,7 @@ impl Sheet:
         var items: List[Item] = []
 
         for arg in args:
-            let info = span_info(arg.clone())
+            info := span_info(arg.clone())
 
             if info.state == 0:
                 items.append(Item(value: self.eval(arg), ranged: false))
@@ -1388,7 +1388,7 @@ impl Sheet:
                 if is_number(item.value):
                     numbers.append(number_of(item.value))
             else:
-                let coerced = to_number(item.value)
+                coerced := to_number(item.value)
                 if is_failure(coerced):
                     return coerced
 
@@ -1434,8 +1434,8 @@ impl Sheet:
 
             return Number(value: best)
 
-        let sorted = numbers.sorted(fn(a: Float, b: Float) Int: return a.compare(b))
-        let count = sorted.length()
+        sorted := numbers.sorted(fn(a: Float, b: Float) Int: return a.compare(b))
+        count := sorted.length()
         if count % 2 == 1:
             return Number(value: sorted.get(count / 2))
 
@@ -1472,7 +1472,7 @@ impl Sheet:
                 skip = is_text(item.value) or is_blank(item.value)
 
             if not skip:
-                let t = truth_value(item.value)
+                t := truth_value(item.value)
                 if is_failure(t):
                     return t
 
@@ -1511,16 +1511,16 @@ impl Sheet:
         if args.length() < 2 or args.length() > 3:
             return Failure(code: "#VALUE!")
 
-        let info = span_info(args.get(0).clone())
+        info := span_info(args.get(0).clone())
         if info.state == 0:
             return Failure(code: "#VALUE!")
         if info.state == 1:
             return Failure(code: "#REF!")
 
-        let rect = info.rect
-        let height = rect.bottom - rect.top + 1
-        let width = rect.right - rect.left + 1
-        let first = to_number(self.eval(args.get(1).clone()))
+        rect := info.rect
+        height := rect.bottom - rect.top + 1
+        width := rect.right - rect.left + 1
+        first := to_number(self.eval(args.get(1).clone()))
         if is_failure(first):
             return first
 
@@ -1528,7 +1528,7 @@ impl Sheet:
         var col_index = 1.0
 
         if args.length() == 3:
-            let second = to_number(self.eval(args.get(2).clone()))
+            second := to_number(self.eval(args.get(2).clone()))
             if is_failure(second):
                 return second
 
@@ -1545,30 +1545,30 @@ impl Sheet:
         ):
             return Failure(code: "#REF!")
 
-        let row = rect.top + row_index.truncate_to_int().get(0) - 1
-        let col = rect.left + col_index.truncate_to_int().get(0) - 1
+        row := rect.top + row_index.truncate_to_int().get(0) - 1
+        col := rect.left + col_index.truncate_to_int().get(0) - 1
         return self.value_at(key_of(col, row))
 
     fn countif_call(args: List[Node]) Value:
         if args.length() != 2:
             return Failure(code: "#VALUE!")
 
-        let info = span_info(args.get(0).clone())
+        info := span_info(args.get(0).clone())
         if info.state == 0:
             return Failure(code: "#VALUE!")
         if info.state == 1:
             return Failure(code: "#REF!")
 
-        let criterion_value = self.eval(args.get(1).clone())
+        criterion_value := self.eval(args.get(1).clone())
         if is_failure(criterion_value):
             return criterion_value
 
-        let criterion = criterion_of(criterion_value)
+        criterion := criterion_of(criterion_value)
         var count = 0
 
         for r in range(info.rect.top, info.rect.bottom + 1):
             for c in range(info.rect.left, info.rect.right + 1):
-                let v = self.value_at(key_of(c, r))
+                v := self.value_at(key_of(c, r))
 
                 if rank_of(v) == rank_of(criterion.operand):
                     if holds(criterion.op, order_of(v, criterion.operand)):
@@ -1579,7 +1579,7 @@ impl Sheet:
         return Number(value: count.to_float())
 
     fn call(name: String, args: List[Node]) Value:
-        let fname = name.upper()
+        fname := name.upper()
         if (
             fname == "SUM"
             or fname == "AVERAGE"
@@ -1608,7 +1608,7 @@ impl Sheet:
             if args.length() < 2 or args.length() > 3:
                 return Failure(code: "#VALUE!")
 
-            let condition = truth_value(self.eval(args.get(0).clone()))
+            condition := truth_value(self.eval(args.get(0).clone()))
             if is_failure(condition):
                 return condition
             if is_true(condition):
@@ -1622,7 +1622,7 @@ impl Sheet:
             if args.length() != 2:
                 return Failure(code: "#VALUE!")
 
-            let attempt = self.eval(args.get(0).clone())
+            attempt := self.eval(args.get(0).clone())
             if is_failure(attempt):
                 return self.eval(args.get(1).clone())
 
@@ -1632,22 +1632,22 @@ impl Sheet:
             if args.length() < 2:
                 return Failure(code: "#VALUE!")
 
-            let index = to_number(self.eval(args.get(0).clone()))
+            index := to_number(self.eval(args.get(0).clone()))
             if is_failure(index):
                 return index
 
-            let position = floor(number_of(index))
+            position := floor(number_of(index))
             if position < 1.0 or position > (args.length() - 1).to_float():
                 return Failure(code: "#VALUE!")
 
-            let chosen = position.truncate_to_int().get(0)
+            chosen := position.truncate_to_int().get(0)
             return self.eval(args.get(chosen).clone())
 
         if fname == "NOT":
             if args.length() != 1:
                 return Failure(code: "#VALUE!")
 
-            let t = truth_value(self.eval(args.get(0).clone()))
+            t := truth_value(self.eval(args.get(0).clone()))
             if is_failure(t):
                 return t
 
@@ -1657,11 +1657,11 @@ impl Sheet:
             if args.length() != 1:
                 return Failure(code: "#VALUE!")
 
-            let x = to_number(self.eval(args.get(0).clone()))
+            x := to_number(self.eval(args.get(0).clone()))
             if is_failure(x):
                 return x
 
-            let n = number_of(x)
+            n := number_of(x)
             if fname == "ABS":
                 return Number(value: abs(n))
             if fname == "INT":
@@ -1675,56 +1675,56 @@ impl Sheet:
             if args.length() != 2:
                 return Failure(code: "#VALUE!")
 
-            let a = to_number(self.eval(args.get(0).clone()))
+            a := to_number(self.eval(args.get(0).clone()))
             if is_failure(a):
                 return a
 
-            let b = to_number(self.eval(args.get(1).clone()))
+            b := to_number(self.eval(args.get(1).clone()))
             if is_failure(b):
                 return b
             if fname == "POW":
                 return arithmetic("^", number_of(a), number_of(b))
 
-            let divisor = number_of(b)
+            divisor := number_of(b)
             if divisor == 0.0:
                 return Failure(code: "#DIV/0!")
 
-            let dividend = number_of(a)
+            dividend := number_of(a)
             return finite_result(dividend - divisor * floor(dividend / divisor))
 
         if fname == "ROUND":
             if args.length() < 1 or args.length() > 2:
                 return Failure(code: "#VALUE!")
 
-            let x = to_number(self.eval(args.get(0).clone()))
+            x := to_number(self.eval(args.get(0).clone()))
             if is_failure(x):
                 return x
 
             var digits = 0.0
 
             if args.length() == 2:
-                let d = to_number(self.eval(args.get(1).clone()))
+                d := to_number(self.eval(args.get(1).clone()))
                 if is_failure(d):
                     return d
 
                 digits = number_of(d)
 
-            let places = truncate_toward_zero(digits)
+            places := truncate_toward_zero(digits)
             if abs(places) > 15.0:
                 return Failure(code: "#NUM!")
 
-            let scale = pow(10.0, places)
+            scale := pow(10.0, places)
             return finite_result(round_half_away(number_of(x) * scale) / scale)
 
         if fname == "LEN" or fname == "UPPER" or fname == "LOWER" or fname == "TRIM":
             if args.length() != 1:
                 return Failure(code: "#VALUE!")
 
-            let v = self.eval(args.get(0).clone())
+            v := self.eval(args.get(0).clone())
             if is_failure(v):
                 return v
 
-            let text = text_of(v)
+            text := text_of(v)
             if fname == "LEN":
                 return Number(value: text.scalar_length().to_float())
             if fname == "UPPER":
@@ -1738,14 +1738,14 @@ impl Sheet:
             if args.length() < 1 or args.length() > 2:
                 return Failure(code: "#VALUE!")
 
-            let s = self.eval(args.get(0).clone())
+            s := self.eval(args.get(0).clone())
             if is_failure(s):
                 return s
 
             var count = 1.0
 
             if args.length() == 2:
-                let n = to_number(self.eval(args.get(1).clone()))
+                n := to_number(self.eval(args.get(1).clone()))
                 if is_failure(n):
                     return n
 
@@ -1754,8 +1754,8 @@ impl Sheet:
             if count < 0.0:
                 return Failure(code: "#VALUE!")
 
-            let chars = text_of(s).chars()
-            let taken = clamp_count(count, chars.length())
+            chars := text_of(s).chars()
+            taken := clamp_count(count, chars.length())
             if fname == "LEFT":
                 return Text(value: chars.take(taken).join(""))
 
@@ -1765,30 +1765,30 @@ impl Sheet:
             if args.length() != 3:
                 return Failure(code: "#VALUE!")
 
-            let s = self.eval(args.get(0).clone())
+            s := self.eval(args.get(0).clone())
             if is_failure(s):
                 return s
 
-            let start_value = to_number(self.eval(args.get(1).clone()))
+            start_value := to_number(self.eval(args.get(1).clone()))
             if is_failure(start_value):
                 return start_value
 
-            let size_value = to_number(self.eval(args.get(2).clone()))
+            size_value := to_number(self.eval(args.get(2).clone()))
             if is_failure(size_value):
                 return size_value
 
-            let start = floor(number_of(start_value))
-            let size = floor(number_of(size_value))
+            start := floor(number_of(start_value))
+            size := floor(number_of(size_value))
             if start < 1.0 or size < 0.0:
                 return Failure(code: "#VALUE!")
 
-            let chars = text_of(s).chars()
-            let total = chars.length()
+            chars := text_of(s).chars()
+            total := chars.length()
             if start > total.to_float():
                 return Text(value: "")
 
-            let from = start.truncate_to_int().get(0) - 1
-            let count = clamp_count(size, total - from)
+            from := start.truncate_to_int().get(0) - 1
+            count := clamp_count(size, total - from)
             return Text(value: chars.drop(from).take(count).join(""))
 
         if fname == "CONCAT":
@@ -1809,19 +1809,19 @@ impl Sheet:
             if args.length() != 3:
                 return Failure(code: "#VALUE!")
 
-            let s = self.eval(args.get(0).clone())
+            s := self.eval(args.get(0).clone())
             if is_failure(s):
                 return s
 
-            let old = self.eval(args.get(1).clone())
+            old := self.eval(args.get(1).clone())
             if is_failure(old):
                 return old
 
-            let replacement = self.eval(args.get(2).clone())
+            replacement := self.eval(args.get(2).clone())
             if is_failure(replacement):
                 return replacement
 
-            let old_text = text_of(old)
+            old_text := text_of(old)
             if old_text.is_empty():
                 return Text(value: text_of(s))
 
@@ -1846,7 +1846,7 @@ impl Sheet:
             if args.length() != 1:
                 return Failure(code: "#VALUE!")
 
-            let v = self.eval(args.get(0).clone())
+            v := self.eval(args.get(0).clone())
             if fname == "ISERROR":
                 return Boolean(flag: is_failure(v))
             if fname == "ISBLANK":
@@ -1859,9 +1859,9 @@ impl Sheet:
         return Failure(code: "#NAME?")
 
     fn compute(key: Int) Value:
-        if let cell = self.cells.get(key):
-            if let ast = cell.ast.clone():
-                let v = self.eval(ast.clone())
+        if cell := self.cells.get(key):
+            if ast := cell.ast.clone():
+                v := self.eval(ast.clone())
                 if is_blank(v):
                     return Number(value: 0.0)
 
@@ -1873,19 +1873,19 @@ impl Sheet:
 
     var fn store_value(key: Int, value: Value) Unit:
         if self.cells.contains(key):
-            let cell = self.cells.get(key).get(blank_cell()).clone()
+            cell := self.cells.get(key).get(blank_cell()).clone()
             self.cells.add(key, with_value(cell, value))
 
     fn successors(key: Int) List[Int]:
         var result: List[Int] = []
-        if let cell = self.cells.get(key):
+        if cell := self.cells.get(key):
             for p in cell.precedents:
                 if self.affected.contains(p):
                     result.append(p)
         return result
 
     fn has_self_loop(key: Int) Bool:
-        if let cell = self.cells.get(key):
+        if cell := self.cells.get(key):
             return cell.precedents.contains(key)
 
         return false
@@ -1920,8 +1920,8 @@ impl Sheet:
 
     // Tarjan emits components after their precedents, so evaluation order is correct.
     var fn emit_component(key: Int) Unit:
-        let position = self.tarjan_stack.index_of(key).get(0)
-        let members = self.tarjan_stack.drop(position)
+        position := self.tarjan_stack.index_of(key).get(0)
+        members := self.tarjan_stack.drop(position)
         self.tarjan_stack = self.tarjan_stack.take(position)
         for m in members:
             self.tarjan_on.remove(m)
@@ -1945,7 +1945,7 @@ impl Sheet:
         var head = 0
 
         while head < queue.length():
-            let k = queue.get(head)
+            k := queue.get(head)
             head += 1
 
             for d in self.dependents_of(k).values():
@@ -1967,7 +1967,7 @@ impl Sheet:
             if not self.tarjan_index.contains(k):
                 self.strong_connect(k)
 
-        let count = affected.length()
+        count := affected.length()
         self.evals += count
         return count
 
@@ -2002,8 +2002,8 @@ impl Sheet:
             emit("error: usage: set CELL VALUE")
             return
 
-        let split = split_head(rest)
-        let key = cell_key(split.head)
+        split := split_head(rest)
+        key := cell_key(split.head)
 
         if key == 0:
             emit("error: bad cell reference '{split.head}'")
@@ -2013,13 +2013,13 @@ impl Sheet:
         emit("recalc {self.recalc([key])}")
 
     var fn clear_command(rest: String) Unit:
-        let words = split_words(rest)
+        words := split_words(rest)
 
         if words.length() != 1:
             emit("error: usage: clear CELL")
             return
 
-        let key = cell_key(words.get(0))
+        key := cell_key(words.get(0))
 
         if key == 0:
             emit("error: bad cell reference '{words.get(0)}'")
@@ -2029,13 +2029,13 @@ impl Sheet:
         emit("recalc {self.recalc([key])}")
 
     fn get_command(rest: String) Unit:
-        let words = split_words(rest)
+        words := split_words(rest)
 
         if words.length() != 1:
             emit("error: usage: get CELL")
             return
 
-        let key = cell_key(words.get(0))
+        key := cell_key(words.get(0))
 
         if key == 0:
             emit("error: bad cell reference '{words.get(0)}'")
@@ -2047,21 +2047,21 @@ impl Sheet:
             emit("(empty)")
 
     fn show_command(rest: String) Unit:
-        let words = split_words(rest)
+        words := split_words(rest)
 
         if words.length() != 1:
             emit("error: usage: show CELL")
             return
 
-        let key = cell_key(words.get(0))
+        key := cell_key(words.get(0))
 
         if key == 0:
             emit("error: bad cell reference '{words.get(0)}'")
             return
 
-        let name = cell_name(key)
+        name := cell_name(key)
 
-        if let cell = self.cells.get(key):
+        if cell := self.cells.get(key):
             if cell.is_formula:
                 emit("{name}: {cell.raw} => {self.display_at(key)}")
             else:
@@ -2084,7 +2084,7 @@ impl Sheet:
         return some(Rect(left: 1, top: 1, right: max_col, bottom: max_row))
 
     fn print_command(rest: String) Unit:
-        let words = split_words(rest)
+        words := split_words(rest)
 
         if words.length() > 1 or (words.length() == 1 and words.get(0) == "formulas"):
             emit("error: usage: print [RANGE]")
@@ -2103,7 +2103,7 @@ impl Sheet:
             emit("(empty sheet)")
             return
 
-        let area = rect.get(Rect(left: 1, top: 1, right: 1, bottom: 1))
+        area := rect.get(Rect(left: 1, top: 1, right: 1, bottom: 1))
 
         for r in range(area.top, area.bottom + 1):
             var fields: List[String] = []
@@ -2112,7 +2112,7 @@ impl Sheet:
             emit(fields.join(" | "))
 
     fn export_command(rest: String) Unit:
-        let words = split_words(rest)
+        words := split_words(rest)
         var formulas = false
         var mode_seen = false
         var range_text = ""
@@ -2151,13 +2151,13 @@ impl Sheet:
             emit("(empty sheet)")
             return
 
-        let area = rect.get(Rect(left: 1, top: 1, right: 1, bottom: 1))
+        area := rect.get(Rect(left: 1, top: 1, right: 1, bottom: 1))
 
         for r in range(area.top, area.bottom + 1):
             var fields: List[String] = []
 
             for c in range(area.left, area.right + 1):
-                let key = key_of(c, r)
+                key := key_of(c, r)
 
                 if formulas:
                     fields.append(csv_field(self.raw_at(key)))
@@ -2167,34 +2167,34 @@ impl Sheet:
             emit(fields.join(","))
 
     var fn copy_command(rest: String) Unit:
-        let words = split_words(rest)
+        words := split_words(rest)
 
         if words.length() != 2:
             emit("error: usage: copy SRC DST")
             return
 
-        let source = cell_key(words.get(0))
+        source := cell_key(words.get(0))
 
         if source == 0:
             emit("error: bad cell reference '{words.get(0)}'")
             return
 
-        let target = range_arg(words.get(1))
+        target := range_arg(words.get(1))
 
         if target.is_none():
             emit("error: bad range '{words.get(1)}'")
             return
 
-        let area = target.get(Rect(left: 1, top: 1, right: 1, bottom: 1))
-        let raw = self.raw_at(source)
-        let formula = self.is_formula_at(source)
-        let source_col = source / 1000
-        let source_row = source % 1000
+        area := target.get(Rect(left: 1, top: 1, right: 1, bottom: 1))
+        raw := self.raw_at(source)
+        formula := self.is_formula_at(source)
+        source_col := source / 1000
+        source_row := source % 1000
         var keys: List[Int] = []
 
         for r in range(area.top, area.bottom + 1):
             for c in range(area.left, area.right + 1):
-                let destination = key_of(c, r)
+                destination := key_of(c, r)
                 var text = raw
                 if formula:
                     text = shift_formula(raw, c - source_col, r - source_row)
@@ -2204,26 +2204,26 @@ impl Sheet:
         emit("recalc {self.recalc(keys)}")
 
     var fn import_command(rest: String, block: List[String]) Unit:
-        let words = split_words(rest)
+        words := split_words(rest)
 
         if words.length() != 1:
             emit("error: usage: import CELL")
             return
 
-        let origin = cell_key(words.get(0))
+        origin := cell_key(words.get(0))
 
         if origin == 0:
             emit("error: bad cell reference '{words.get(0)}'")
             return
 
-        let records = parse_csv(block)
+        records := parse_csv(block)
         var columns = 0
         for record in records:
             columns = higher_of(columns, record.length())
 
-        let rows = records.length()
-        let first_col = origin / 1000
-        let first_row = origin % 1000
+        rows := records.length()
+        first_col := origin / 1000
+        first_row := origin % 1000
 
         if first_col + columns - 1 > 26 or first_row + rows - 1 > 999:
             emit("error: import out of range")
@@ -2232,43 +2232,43 @@ impl Sheet:
         var keys: List[Int] = []
 
         for i in range(0, rows):
-            let record = records.get(i)
+            record := records.get(i)
 
             for j in range(0, record.length()):
-                let destination = key_of(first_col + j, first_row + i)
+                destination := key_of(first_col + j, first_row + i)
                 self.assign(destination, record.get(j).trim())
                 keys.append(destination)
 
-        let count = self.recalc(keys)
+        count := self.recalc(keys)
         emit("imported {rows} rows, {columns} columns; recalc {count}")
 
     fn precedents_command(rest: String) Unit:
-        let words = split_words(rest)
+        words := split_words(rest)
 
         if words.length() != 1:
             emit("error: usage: precedents CELL")
             return
 
-        let key = cell_key(words.get(0))
+        key := cell_key(words.get(0))
 
         if key == 0:
             emit("error: bad cell reference '{words.get(0)}'")
             return
 
         var found: List[Int] = []
-        if let cell = self.cells.get(key):
+        if cell := self.cells.get(key):
             if cell.is_formula:
                 found = cell.precedents.clone()
         emit(self.names_or_none(found))
 
     fn dependents_command(rest: String) Unit:
-        let words = split_words(rest)
+        words := split_words(rest)
 
         if words.length() != 1:
             emit("error: usage: dependents CELL")
             return
 
-        let key = cell_key(words.get(0))
+        key := cell_key(words.get(0))
 
         if key == 0:
             emit("error: bad cell reference '{words.get(0)}'")
@@ -2279,7 +2279,7 @@ impl Sheet:
         var head = 0
 
         while head < queue.length():
-            let k = queue.get(head)
+            k := queue.get(head)
             head += 1
 
             if not seen.contains(k):
@@ -2293,7 +2293,7 @@ impl Sheet:
         if keys.is_empty():
             return "(none)"
 
-        let sorted = keys.sorted(
+        sorted := keys.sorted(
             fn(a: Int, b: Int) Int: return order_key(a).compare(
                 order_key(b)
             )
@@ -2327,8 +2327,8 @@ fn span_info(node: Node) SpanInfo:
             return SpanInfo(state: 0, rect: Rect(left: 0, top: 0, right: 0, bottom: 0))
 
 export fn main() Int:
-    let data = read_all(stdin(), none).get()
-    let lines = data.decode_utf8().get("").lines()
+    data := read_all(stdin(), none).get()
+    lines := data.decode_utf8().get("").lines()
     var sheet = Sheet(
         cells: Map[Int, Cell](), dependents: Map[Int, Set[Int]](), evals: 0,
         affected: Set[Int](), tarjan_index: Map[Int, Int](),
@@ -2338,19 +2338,19 @@ export fn main() Int:
     var index = 0
 
     while index < lines.length():
-        let line = lines.get(index)
+        line := lines.get(index)
         index += 1
 
-        let trimmed = line.trim()
+        trimmed := line.trim()
 
         if not trimmed.is_empty() and not trimmed.starts_with("#"):
             emit("> {line.trim_end()}")
 
-            let split = split_head(trimmed)
+            split := split_head(trimmed)
             var block: List[String] = []
 
             if split.head == "import":
-                let start = index
+                start := index
                 while index < lines.length() and lines.get(index) != ".":
                     index += 1
                 block = lines.drop(start).take(index - start)

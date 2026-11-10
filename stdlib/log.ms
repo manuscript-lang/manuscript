@@ -65,12 +65,12 @@ fn level_at(value: Int) LogLevel:
 
 // Milliseconds since the Unix epoch, the unit of the `time` field.
 fn now_ms() Int:
-    let now = now()
+    now := now()
     return now.unix_seconds() * 1000 + now.nanoseconds() / 1000000
 
 // Encodes `fields` as JSON text. Anything `stringify` rejects is `EBADMSG`.
 fn encode_fields[F: Data](fields: F) String!:
-    let text = stringify(fields)
+    text := stringify(fields)
     if text.is_error(): return error(Error("logging: invalid data", kind: "EBADMSG"))
 
     return ok(text.get())
@@ -78,24 +78,24 @@ fn encode_fields[F: Data](fields: F) String!:
 // The context of a child: the parent's object members with the child's added, or the child's text
 // alone when either side is not an object. This runs once per child, never per record.
 fn merge_context(parent: String?, child: String) String!:
-    let base = parent.get("")
+    base := parent.get("")
     if base == "": return ok(child)
 
-    let left = parse(base)
-    let right = parse(child)
+    left := parse(base)
+    right := parse(child)
     if left.is_error() or right.is_error(): return error(
         Error("logging: invalid data", kind: "EBADMSG")
     )
 
-    let members = left.get().as_map()
-    let added = right.get().as_map()
+    members := left.get().as_map()
+    added := right.get().as_map()
     if members.is_none() or added.is_none(): return ok(child)
 
     var merged = members.get(Map[String, JsonValue]()).clone()
     for entry in added.get(Map[String, JsonValue]()).entries():
         merged.add(entry.key, entry.value.clone())
 
-    let text = stringify(JsonValue.ObjectValue(merged))
+    text := stringify(JsonValue.ObjectValue(merged))
     if text.is_error(): return error(Error("logging: invalid data", kind: "EBADMSG"))
 
     return ok(text.get())
@@ -187,15 +187,15 @@ export type Logger:
 impl Logger:
     // Internal: writes one record at a level number. `data` is JSON text attached as is.
     fn emit(level: Int, message: String, data: String?) Unit!:
-        let msg = stringify(JsonValue.StringValue(message))
+        msg := stringify(JsonValue.StringValue(message))
         if msg.is_error(): return error(encode_error(msg.err()))
 
         var line = "\{\"level\":{level},\"msg\":{msg.get()}"
         if self.timestamp: line = "{line},\"time\":{now_ms()}"
-        if let context = self.context: line = "{line},\"context\":{context}"
-        if let text = data: line = "{line},\"data\":{text}"
+        if context := self.context: line = "{line},\"context\":{context}"
+        if text := data: line = "{line},\"data\":{text}"
         line = "{line}\}\n"
-        if let max = self.max_bytes:
+        if max := self.max_bytes:
             if line.byte_length() > max: return error(
                 Error("logging: limit exceeded", kind: "EOVERFLOW")
             )
@@ -216,8 +216,8 @@ impl Logger:
         )
         if not self.enabled(level): return ok(unit)
 
-        if let value = fields:
-            let text = try encode_fields(value)
+        if value := fields:
+            text := try encode_fields(value)
             return self.emit(level_value(level), message, text)
 
         return self.emit(level_value(level), message, none)
@@ -252,14 +252,14 @@ impl Logger:
     that cannot be encoded returns `EBADMSG`.
     */
     fn child[F: Data](fields: F) Logger!:
-        let text = try encode_fields(fields)
-        let context = try merge_context(self.context, text)
-        let own = try self.transport.duplicate()
+        text := try encode_fields(fields)
+        context := try merge_context(self.context, text)
+        own := try self.transport.duplicate()
         return ok(Logger(self.threshold, self.timestamp, self.max_bytes, context, own))
 
     // Tests the current filtering threshold; Silent is never enabled as a record level.
     fn enabled(level: LogLevel) Bool:
-        let value = level_value(level)
+        value := level_value(level)
         return value >= self.threshold and value < 70
 
     // Returns this logger's current threshold, independent of its parent or children.
@@ -290,7 +290,7 @@ export type LoggerOptions:
 
 // Creates a logger that owns `transport`, with the level, timestamp and record-size settings in `options`.
 export fn create(transport: Transport, options: LoggerOptions = LoggerOptions()) Logger!:
-    if let max = options.max_bytes:
+    if max := options.max_bytes:
         if max < 0: return error(Error("logging: invalid input", kind: "EINVAL"))
     return ok(
         Logger(
@@ -324,17 +324,17 @@ type RotatingTransport:
 
 // Shifts `path.1` to `path.2` and so on (dropping the oldest), then moves `path` to `path.1`.
 fn rotate(path: String, keep: Int) Unit:
-    let _oldest = remove("{path}.{keep}", recursive: false)
+    _oldest := remove("{path}.{keep}", recursive: false)
     var index = keep - 1
 
     while index >= 1:
-        let _shifted = rename("{path}.{index}", "{path}.{index + 1}")
+        _shifted := rename("{path}.{index}", "{path}.{index + 1}")
         index -= 1
 
     if keep >= 1:
-        let _aside = rename(path, "{path}.1")
+        _aside := rename(path, "{path}.1")
     else:
-        let _discarded = remove(path, recursive: false)
+        _discarded := remove(path, recursive: false)
 
 impl Transport for RotatingTransport:
     fn write(data: String) Unit!:
@@ -344,12 +344,12 @@ impl Transport for RotatingTransport:
         if self.closed: return error(log_closed())
 
         var size = 0
-        if let existing = stat(self.path): size = existing.size
+        if existing := stat(self.path): size = existing.size
         if size > 0 and size + data.length() > self.max_bytes:
             rotate(self.path, self.keep)
 
         var file = try open(self.path, OpenMode.Append, OpenOptions(permissions: 420))
-        let written = file.write(data)
+        written := file.write(data)
         file.close().get(none)
         return written
 

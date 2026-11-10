@@ -95,7 +95,7 @@ impl Sink[Bytes] for ConnectionSink:
 
     // Half-closes the connection so the peer sees the end of the stream; the socket closes once the input is closed too.
     var fn close() Unit!:
-        let _ = msstd_net_connection_shutdown_write(self.native)
+        _ := msstd_net_connection_shutdown_write(self.native)
         msstd_net_connection_close_if_last(self.native)
 
 // What is known about a connection, available after its streams are moved elsewhere.
@@ -111,7 +111,7 @@ impl ConnectionInfo:
     // Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
     // A connection that is not TLS returns EINVAL.
     fn tls_info() TlsInfo!:
-        if let info = self.tls: return ok(info.clone())
+        if info := self.tls: return ok(info.clone())
 
         return error(Error("network: invalid input", kind: "EINVAL"))
 
@@ -136,15 +136,15 @@ impl Closeable for Connection:
 
 // Wraps a native socket into a `Connection`.
 fn connection(native: NativeConnection) Connection:
-    let local = msstd_net_connection_local_address(native)
-    let peer = msstd_net_connection_peer_address(native)
+    local := msstd_net_connection_local_address(native)
+    peer := msstd_net_connection_peer_address(native)
     var tls: TlsInfo? = none
 
     match msstd_net_connection_tls_info(native):
         ok(found): tls = found
         error(_): tls = none
 
-    let other = msstd_net_connection_share(native)
+    other := msstd_net_connection_share(native)
     return Connection(
         input: ReadStream[Bytes](ConnectionSource(native)),
         output: WriteStream[Bytes](ConnectionSink(other)),
@@ -204,8 +204,8 @@ impl Closeable for DatagramSocket:
         return self.output.close()
 
 fn datagram_socket(native: NativeDatagramSocket) DatagramSocket:
-    let address = msstd_net_datagram_address(native)
-    let other = msstd_net_datagram_share(native)
+    address := msstd_net_datagram_address(native)
+    other := msstd_net_datagram_share(native)
     return DatagramSocket(
         input: ReadStream[Datagram](DatagramSource(native)),
         output: WriteStream[Datagram](DatagramSink(other)), address: address
@@ -294,7 +294,7 @@ impl Network:
         tls: TlsOptions? = none,
         timeout: Duration? = none
     ) Connection!:
-        if let options = tls:
+        if options := tls:
             if options.server_name.is_empty():
                 return error(Error("network: invalid input", kind: "EINVAL"))
 
@@ -397,8 +397,8 @@ impl Network:
         url: String,
         options: WebSocketOptions = WebSocketOptions()
     ) WebSocket!:
-        let subprotocols = options.subprotocols.clone()
-        let wire = WebSocketWire(
+        subprotocols := options.subprotocols.clone()
+        wire := WebSocketWire(
             max_message_bytes: options.max_message_bytes, timeout: options.timeout,
             tls: options.tls.clone(), compression: options.compression
         )
@@ -527,18 +527,18 @@ export fn serve(
     handler: fn(var HttpExchange) Unit!,
     options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
-    if let cores = options.cores:
+    if cores := options.cores:
         if cores < 1: return error(Error("network: invalid input", kind: "EINVAL"))
 
-    let serving = try msstd_http_serving_new(address, options, handler)
-    let bound = msstd_http_serving_address(serving)
-    let listening = ServingHandle(serving: serving, listener: true)
-    if let cores = options.cores:
+    serving := try msstd_http_serving_new(address, options, handler)
+    bound := msstd_http_serving_address(serving)
+    listening := ServingHandle(serving: serving, listener: true)
+    if cores := options.cores:
         msrt_runtime_set_threads(cores)
 
     // The accept loop owns the listener; each worker owns a share of the serving and a pipe of accepted connections.
-    let workers = workers_for(options)
-    let accepting = promise(fn: accept_loop(listening, workers))
+    workers := workers_for(options)
+    accepting := promise(fn: accept_loop(listening, workers))
     return ok(HttpServer(accepting: accepting, bound: bound, stopped: false))
 
 // The number of worker promises: `options.cores`, else one per core.
@@ -571,9 +571,9 @@ type Accepting:
 impl Closeable for Accepting:
     var fn close() Unit!:
         while not self.deals.is_empty():
-            if let deal = self.deals.pop():
+            if deal := self.deals.pop():
                 var closing = deal
-                let _ = closing.close()
+                _ := closing.close()
 
         for worker in self.workers:
             worker.cancel()
@@ -585,10 +585,10 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
     var i = 0
 
     while i < count:
-        let queue = pipe[Int](1024)
+        queue := pipe[Int](1024)
         accepting.deals.append(queue.writer())
 
-        let mine = ServingHandle(
+        mine := ServingHandle(
             serving: msstd_http_serving_share(listening.serving), listener: false
         )
         accepting.workers.append(promise(fn: serve_worker(mine, queue)))
@@ -597,7 +597,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
     var next = 0
 
     while true:
-        let accepted = msstd_http_serving_accept(listening.serving)
+        accepted := msstd_http_serving_accept(listening.serving)
 
         if accepted.is_error():
             if accepted.err().kind == "EBADF": return ok(unit)
@@ -605,18 +605,18 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
             sleep(50.milliseconds()).wait().get(unit)
             continue
 
-        let _ = accepting.deals[next].write(accepted.get())
+        _ := accepting.deals[next].write(accepted.get())
         next = (next + 1) % count
 
 // Runs one worker on the thread the runtime placed this promise on: it adopts each connection it is dealt, and the poller drives them from there.
 fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
-    let engine = WorkerHandle(worker: try msstd_http_serving_worker(handle.serving))
+    engine := WorkerHandle(worker: try msstd_http_serving_worker(handle.serving))
 
     while true:
-        let item = input.receive()
+        item := input.receive()
         if item.is_error(): break
 
-        if let raw = item.get():
+        if raw := item.get():
             msstd_http_worker_adopt(engine.worker, raw)
         else:
             break

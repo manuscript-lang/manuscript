@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -16,9 +16,9 @@ export fn main() Int:
     if 1:
         say("truthy")
 
-    let l2 = [8, 21, 19, (-17), 23]
+    l2 := [8, 21, 19, (-17), 23]
     say("l2 = {l2} len {l2.length()}")
 
-    let b3 = ((false and (not true)) and ((749833 + (-225012)) == ((-41) + (-229776))))
+    b3 := ((false and (not true)) and ((749833 + (-225012)) == ((-41) + (-229776))))
     say("b3 = {b3}")
     return 0

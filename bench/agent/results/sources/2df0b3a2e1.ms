@@ -1,28 +1,28 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-let PRIORITIES = ["low", "medium", "high", "critical"]
-let SORT_FIELDS = [
+PRIORITIES := ["low", "medium", "high", "critical"]
+SORT_FIELDS := [
     "id", "created", "updated", "priority", "points", "state", "title", "assignee",
     "reporter", "due"
 ]
-let FILTER_FIELDS = [
+FILTER_FIELDS := [
     "id", "created", "updated", "points", "title", "assignee", "reporter", "text",
     "state", "priority", "due", "label", "labels", "is", "has", "view"
 ]
-let GUARD_FIELDS = ["assignee", "points", "due", "labels", "reporter"]
-let IS_VALUES = ["open", "final", "overdue", "unassigned"]
-let HAS_VALUES = ["assignee", "due", "points", "labels", "comments", "reporter"]
-let CL_TERM = 0
-let CL_AND = 1
-let CL_OR = 2
-let CL_NOT = 3
-let TK_WORD = 0
-let TK_LPAREN = 1
-let TK_RPAREN = 2
-let TK_AND = 3
-let TK_OR = 4
-let TK_NOT = 5
+GUARD_FIELDS := ["assignee", "points", "due", "labels", "reporter"]
+IS_VALUES := ["open", "final", "overdue", "unassigned"]
+HAS_VALUES := ["assignee", "due", "points", "labels", "comments", "reporter"]
+CL_TERM := 0
+CL_AND := 1
+CL_OR := 2
+CL_NOT := 3
+TK_WORD := 0
+TK_LPAREN := 1
+TK_RPAREN := 2
+TK_AND := 3
+TK_OR := 4
+TK_NOT := 5
 
 type Fail:
     msg: String
@@ -183,7 +183,7 @@ fn words(text: String) List[String]:
     return text.split("\t").join(" ").split(" ").filter(fn(w: String) Bool: w != "")
 
 fn first_word(text: String) String:
-    let ws = words(text)
+    ws := words(text)
     if ws.length() == 0:
         return ""
 
@@ -191,7 +191,7 @@ fn first_word(text: String) String:
 
 // Text after the first n whitespace-separated words, leading blanks removed.
 fn rest_after(text: String, n: Int) String:
-    let cs = text.chars()
+    cs := text.chars()
     var i = 0
     var k = 0
 
@@ -207,14 +207,14 @@ fn rest_after(text: String, n: Int) String:
     return sub(text, i, cs.length())
 
 fn last_word(text: String) String:
-    let n = text.scalar_length()
+    n := text.scalar_length()
     var i = n
     while i > 0 and not is_ws(sub(text, i - 1, i)):
         i -= 1
     return sub(text, i, n)
 
 fn drop_last_word(text: String) String:
-    let n = text.scalar_length()
+    n := text.scalar_length()
     var i = n
     while i > 0 and not is_ws(sub(text, i - 1, i)):
         i -= 1
@@ -222,13 +222,13 @@ fn drop_last_word(text: String) String:
 
 // Index of the first occurrence of `w` as a whole word, or -1.
 fn find_word(text: String, w: String, end_ok: Bool) Int:
-    let n = text.scalar_length()
-    let m = w.scalar_length()
+    n := text.scalar_length()
+    m := w.scalar_length()
     var i = 0
 
     while i + m <= n:
         if sub(text, i, i + m) == w and (i == 0 or is_ws(sub(text, i - 1, i))):
-            let after_ok = (
+            after_ok := (
                 (i + m == n and end_ok)
                 or (i + m < n and is_ws(sub(text, i + m, i + m + 1)))
             )
@@ -241,14 +241,14 @@ fn find_word(text: String, w: String, end_ok: Bool) Int:
 
 // Splits on whitespace; quoted sections join the token. Used by token-style commands.
 fn tokenize(text: String) Result[List[String], Fail]:
-    let cs = text.chars()
+    cs := text.chars()
     var out = List[String]()
     var cur = ""
     var has = false
     var i = 0
 
     while i < cs.length():
-        let c = cs[i]
+        c := cs[i]
 
         if is_ws(c):
             if has:
@@ -267,7 +267,7 @@ fn tokenize(text: String) Result[List[String], Fail]:
                 if i >= cs.length():
                     return error(Fail(msg: "unterminated quote"))
 
-                let d = cs[i]
+                d := cs[i]
 
                 if d == "\"":
                     closed = true
@@ -306,7 +306,7 @@ fn parse_labels(value: String) Result[List[String], Fail]:
     var out = List[String]()
 
     for raw in value.split(","):
-        let l = raw.lower()
+        l := raw.lower()
         if not valid_label(l):
             return error(Fail(msg: "bad label '{l}'"))
 
@@ -333,7 +333,7 @@ fn valid_date(s: String) Bool:
         return false
 
     for i in 0..10:
-        let c = sub(s, i, i + 1)
+        c := sub(s, i, i + 1)
 
         if i == 4 or i == 7:
             if c != "-":
@@ -341,9 +341,9 @@ fn valid_date(s: String) Bool:
         else if not is_digit(c):
             return false
 
-    let y = int_of(sub(s, 0, 4))
-    let m = int_of(sub(s, 5, 7))
-    let d = int_of(sub(s, 8, 10))
+    y := int_of(sub(s, 0, 4))
+    m := int_of(sub(s, 5, 7))
+    d := int_of(sub(s, 8, 10))
     if y < 1 or m < 1 or m > 12:
         return false
 
@@ -417,7 +417,7 @@ fn parse_id(arg: String) Result[Int, Fail]:
         digits = arg.drop(1)
 
     if is_digits(digits):
-        let v = int_of(digits)
+        v := int_of(digits)
         if v >= 1:
             return ok(v)
 
@@ -430,8 +430,8 @@ fn find_id(st: Tracker, id: Int) Optional[Int]:
     return none
 
 fn live_index(st: Tracker, arg: String) Result[Int, Fail]:
-    let id = try parse_id(arg)
-    if let i = find_id(st, id):
+    id := try parse_id(arg)
+    if i := find_id(st, id):
         return ok(i)
 
     return error(Fail(msg: "no such issue #{id}"))
@@ -457,7 +457,7 @@ fn set_field(var iss: Issue, field: String, value: String) Result[Unit, Fail]:
 
         iss.title = value.clone()
     else if field == "priority":
-        let rank = PRIORITIES.index_of(value).get(-1)
+        rank := PRIORITIES.index_of(value).get(-1)
         if rank < 0:
             return error(Fail(msg: "bad priority '{value}'"))
 
@@ -487,7 +487,7 @@ fn set_field(var iss: Issue, field: String, value: String) Result[Unit, Fail]:
         if value == "none":
             iss.labels = List[String]()
         else:
-            let ls = try parse_labels(value)
+            ls := try parse_labels(value)
             iss.labels = ls
     else if field == "reporter":
         if value == "none":
@@ -505,13 +505,13 @@ fn apply_fields(var iss: Issue, toks: List[String], from: Int) Result[Unit, Fail
     var k = from
 
     while k < toks.length():
-        let tok = toks[k].clone()
-        let at = tok.index_of("=").get(-1)
+        tok := toks[k].clone()
+        at := tok.index_of("=").get(-1)
         if at <= 0:
             return error(Fail(msg: "expected field=value, got '{tok}'"))
 
-        let field = sub(tok, 0, at)
-        let value = sub(tok, at + 1, tok.scalar_length())
+        field := sub(tok, 0, at)
+        value := sub(tok, at + 1, tok.scalar_length())
         try set_field(var iss, field, value)
         k += 1
 
@@ -545,7 +545,7 @@ fn record(var st: Tracker, id: Int, detail: String) Unit:
 
 // Applies the changes of an edit: reports "unchanged" or bumps the clock and logs them.
 fn commit(var st: Tracker, idx: Int, old: Issue, next: Issue) Unit:
-    let ch = changes(old, next)
+    ch := changes(old, next)
 
     if ch.length() == 0:
         say("#{old.id} unchanged")
@@ -555,7 +555,7 @@ fn commit(var st: Tracker, idx: Int, old: Issue, next: Issue) Unit:
     st.clock += 1
     fresh.updated = st.clock
 
-    let id = fresh.id
+    id := fresh.id
     st.issues[idx] = fresh
     for c in ch:
         record(var st, id, c)
@@ -564,7 +564,7 @@ fn commit(var st: Tracker, idx: Int, old: Issue, next: Issue) Unit:
 fn edit_issue(var st: Tracker, idx: Int, toks: List[String], from: Int) Result[
     Unit, Fail
 ]:
-    let old = st.issues[idx].clone()
+    old := st.issues[idx].clone()
     if is_final(st, old.state):
         return error(Fail(msg: "#{old.id} is in final state '{old.state}'"))
     if from >= toks.length():
@@ -578,7 +578,7 @@ fn edit_issue(var st: Tracker, idx: Int, toks: List[String], from: Int) Result[
 fn label_issue(var st: Tracker, idx: Int, ops: List[String], from: Int) Result[
     Unit, Fail
 ]:
-    let old = st.issues[idx].clone()
+    old := st.issues[idx].clone()
     if is_final(st, old.state):
         return error(Fail(msg: "#{old.id} is in final state '{old.state}'"))
 
@@ -586,7 +586,7 @@ fn label_issue(var st: Tracker, idx: Int, ops: List[String], from: Int) Result[
     var k = from
 
     while k < ops.length():
-        let op = ops[k].clone()
+        op := ops[k].clone()
         var name = op.clone()
         var remove = false
 
@@ -596,7 +596,7 @@ fn label_issue(var st: Tracker, idx: Int, ops: List[String], from: Int) Result[
         else if op.starts_with("+"):
             name = op.drop(1)
 
-        let l = name.lower()
+        l := name.lower()
         if not valid_label(l):
             return error(Fail(msg: "bad label '{l}'"))
 
@@ -639,8 +639,8 @@ fn find_transition(wf: Workflow, src: String, dst: String) Int:
 fn move_issue(var st: Tracker, idx: Int, target: String, comment: String) Result[
     Unit, Fail
 ]:
-    let id = st.issues[idx].id
-    let cur = st.issues[idx].state.clone()
+    id := st.issues[idx].id
+    cur := st.issues[idx].state.clone()
     if is_final(st, cur):
         return error(Fail(msg: "#{id} is in final state '{cur}'"))
     if not st.wf.states.contains(target):
@@ -648,7 +648,7 @@ fn move_issue(var st: Tracker, idx: Int, target: String, comment: String) Result
     if cur == target:
         return error(Fail(msg: "already in state '{target}'"))
 
-    let ti = find_transition(st.wf, cur, target)
+    ti := find_transition(st.wf, cur, target)
     if ti < 0:
         return error(Fail(msg: "transition '{cur} -> {target}' not allowed"))
 
@@ -658,7 +658,7 @@ fn move_issue(var st: Tracker, idx: Int, target: String, comment: String) Result
             missing.append(g.clone())
 
     if missing.length() > 0:
-        let miss = missing.join(", ")
+        miss := missing.join(", ")
         return error(Fail(msg: "cannot move #{id} to {target}: missing {miss}"))
 
     var next = st.issues[idx].clone()
@@ -687,7 +687,7 @@ fn add_comment(var st: Tracker, idx: Int, text: String) Unit:
         Comment(t: st.clock, who: st.actor.clone(), text: text.clone())
     )
 
-    let id = next.id
+    id := next.id
     st.issues[idx] = next
     record(var st, id, "comment: {text}")
     say("commented #{id}")
@@ -710,13 +710,13 @@ fn parse_workflow(lines: List[String], start: Int, stop: Int) Result[Workflow, F
     var k = start
 
     while k < stop:
-        let line = lines[k].trim()
+        line := lines[k].trim()
         k += 1
         if line == "" or line.starts_with("#"):
             continue
 
         if line.starts_with("initial:"):
-            let name = line.drop(8).trim()
+            name := line.drop(8).trim()
             if not valid_state_name(name):
                 return error(Fail(msg: "workflow: bad state name '{name}'"))
             if has_initial:
@@ -727,7 +727,7 @@ fn parse_workflow(lines: List[String], start: Int, stop: Int) Result[Workflow, F
             add_state(var states, name)
         else if line.starts_with("final:"):
             for part in line.drop(6).split(","):
-                let name = part.trim()
+                name := part.trim()
                 if not valid_state_name(name):
                     return error(Fail(msg: "workflow: bad state name '{name}'"))
 
@@ -735,19 +735,19 @@ fn parse_workflow(lines: List[String], start: Int, stop: Int) Result[Workflow, F
                 if not finals.contains(name):
                     finals.append(name.clone())
         else if line.contains("->"):
-            let arrow = line.index_of("->").get(0)
-            let src = sub(line, 0, arrow).trim()
+            arrow := line.index_of("->").get(0)
+            src := sub(line, 0, arrow).trim()
             if not valid_state_name(src):
                 return error(Fail(msg: "workflow: bad state name '{src}'"))
 
             add_state(var states, src)
 
             for entry in sub(line, arrow + 2, line.scalar_length()).split(","):
-                let ws = words(entry)
+                ws := words(entry)
                 if ws.length() != 1 and not (ws.length() == 3 and ws[1] == "requires"):
                     return error(Fail(msg: "workflow: bad line '{line}'"))
 
-                let dst = ws[0].clone()
+                dst := ws[0].clone()
                 if not valid_state_name(dst):
                     return error(Fail(msg: "workflow: bad state name '{dst}'"))
 
@@ -795,13 +795,13 @@ fn define_workflow(var st: Tracker, lines: List[String], start: Int) Int:
         say("error: workflow: cannot redefine after issues were created")
         return stop + 1
 
-    let r = parse_workflow(lines, start, stop)
+    r := parse_workflow(lines, start, stop)
 
     if r.is_error():
         say("error: " + r.err().message())
         return stop + 1
 
-    if let w = r:
+    if w := r:
         say(
             "workflow ok: {w.states.length()} states, {w.transitions.length()} transitions"
         )
@@ -822,12 +822,12 @@ fn word_kind(w: String) Int:
     return TK_WORD
 
 fn lex_query(text: String) Result[List[Token], Fail]:
-    let cs = text.chars()
+    cs := text.chars()
     var toks = List[Token]()
     var i = 0
 
     while i < cs.length():
-        let c = cs[i]
+        c := cs[i]
 
         if is_ws(c):
             i += 1
@@ -856,7 +856,7 @@ fn lex_query(text: String) Result[List[Token], Fail]:
                         if i >= cs.length():
                             return error(Fail(msg: "query: unterminated quote"))
 
-                        let d = cs[i]
+                        d := cs[i]
 
                         if d == "\"":
                             closed = true
@@ -886,14 +886,14 @@ fn lex_query(text: String) Result[List[Token], Fail]:
 
 // Splits a raw value into alternatives on unquoted `|`; quotes are removed.
 fn split_alts(raw: String) List[String]:
-    let cs = raw.chars()
+    cs := raw.chars()
     var alts = List[String]()
     var cur = ""
     var inq = false
     var i = 0
 
     while i < cs.length():
-        let c = cs[i]
+        c := cs[i]
 
         if inq:
             if (
@@ -985,7 +985,7 @@ fn blank_term() Term:
     return Term(field: "", op: "", text: "", alts: List[String]())
 
 fn make_term(st: Tracker, raw: String) Result[Term, Fail]:
-    let n = raw.scalar_length()
+    n := raw.scalar_length()
     var j = 0
     var field = ""
 
@@ -1024,8 +1024,8 @@ fn make_term(st: Tracker, raw: String) Result[Term, Fail]:
     if not op_allowed(field, op):
         return error(Fail(msg: "query: bad operator '{op}' for field '{field}'"))
 
-    let alts = split_alts(sub(raw, j, n))
-    let text = alts.join("|")
+    alts := split_alts(sub(raw, j, n))
+    text := alts.join("|")
 
     if field == "view":
         if not st.views.contains(text):
@@ -1063,7 +1063,7 @@ fn parse_and(var p: Parser, st: Tracker) Result[Unit, Fail]:
     try parse_not(var p, st)
 
     while true:
-        let k = peek_kind(p)
+        k := peek_kind(p)
 
         if k == TK_AND:
             p.pos += 1
@@ -1088,17 +1088,17 @@ fn parse_not(var p: Parser, st: Tracker) Result[Unit, Fail]:
     return ok(unit)
 
 fn parse_primary(var p: Parser, st: Tracker) Result[Unit, Fail]:
-    let k = peek_kind(p)
+    k := peek_kind(p)
     if k == -1:
         return error(Fail(msg: "query: unexpected end of query"))
 
-    let text = p.toks[p.pos].text.clone()
+    text := p.toks[p.pos].text.clone()
 
     if k == TK_LPAREN:
         p.pos += 1
         try parse_or(var p, st)
 
-        let after = peek_kind(p)
+        after := peek_kind(p)
         if after == -1:
             return error(Fail(msg: "query: unexpected end of query"))
         if after != TK_RPAREN:
@@ -1110,7 +1110,7 @@ fn parse_primary(var p: Parser, st: Tracker) Result[Unit, Fail]:
     if k == TK_WORD:
         p.pos += 1
 
-        let term = try make_term(st, text)
+        term := try make_term(st, text)
         if term.field == "view":
             p.refs.append(term.text.clone())
         p.clauses.append(Clause(kind: CL_TERM, term: term))
@@ -1119,7 +1119,7 @@ fn parse_primary(var p: Parser, st: Tracker) Result[Unit, Fail]:
     return error(Fail(msg: "query: unexpected token '{text}'"))
 
 fn compile_filter(st: Tracker, text: String) Result[Filter, Fail]:
-    let toks = try lex_query(text)
+    toks := try lex_query(text)
     if toks.length() == 0:
         return ok(Filter(clauses: List[Clause](), refs: List[String]()))
 
@@ -1134,10 +1134,10 @@ fn compile_filter(st: Tracker, text: String) Result[Filter, Fail]:
 fn split_query(raw: String) Result[Parts, Fail]:
     var text = raw.trim().clone()
     var limit = -1
-    let before = drop_last_word(text)
+    before := drop_last_word(text)
 
     if last_word(before) == "limit":
-        let v = last_word(text)
+        v := last_word(text)
         if not int_text(v):
             return error(Fail(msg: "bad limit '{v}'"))
 
@@ -1145,13 +1145,13 @@ fn split_query(raw: String) Result[Parts, Fail]:
         text = drop_last_word(before)
 
     var sort_words = List[String]()
-    let sp = find_word(text, "sort", false)
+    sp := find_word(text, "sort", false)
     var filter = text.clone()
 
     if sp >= 0:
         filter = sub(text, 0, sp).trim_end()
 
-        let tail = sub(text, sp + 4, text.scalar_length())
+        tail := sub(text, sp + 4, text.scalar_length())
         sort_words = words(tail.split(",").join(" "))
 
     return ok(Parts(filter: filter, sort_words: sort_words, limit: limit))
@@ -1236,7 +1236,7 @@ fn eq_match(st: Tracker, iss: Issue, field: String, a: String) Bool:
         return iss.due != "" and iss.due == a
 
     if field == "label" or field == "labels":
-        let l = a.lower()
+        l := a.lower()
         if l == "none":
             return iss.labels.length() == 0
 
@@ -1253,7 +1253,7 @@ fn contains_ci(s: String, needle: String) Bool:
     return s.lower().contains(needle)
 
 fn sub_match(iss: Issue, field: String, a: String) Bool:
-    let needle = a.lower()
+    needle := a.lower()
     if field == "title":
         return contains_ci(iss.title, needle)
     if field == "assignee":
@@ -1307,9 +1307,9 @@ fn view_matches(st: Tracker, iss: Issue, name: String) Bool:
     if not st.views.contains(name):
         return false
 
-    let q = st.views.get(name).get("")
-    if let parts = split_query(q):
-        if let f = compile_filter(st, parts.filter.clone()):
+    q := st.views.get(name).get("")
+    if parts := split_query(q):
+        if f := compile_filter(st, parts.filter.clone()):
             return eval_filter(st, f, iss)
     return false
 
@@ -1340,11 +1340,11 @@ fn eval_filter(st: Tracker, f: Filter, iss: Issue) Bool:
         if c.kind == CL_TERM:
             stack.append(term_matches(st, iss, c.term))
         else if c.kind == CL_NOT:
-            let a = stack.pop().get(false)
+            a := stack.pop().get(false)
             stack.append(not a)
         else:
-            let b = stack.pop().get(false)
-            let a = stack.pop().get(false)
+            b := stack.pop().get(false)
+            a := stack.pop().get(false)
 
             if c.kind == CL_AND:
                 stack.append(a and b)
@@ -1366,9 +1366,9 @@ fn refs_reach(st: Tracker, refs: List[String], target: String) Bool:
     return false
 
 fn view_uses(st: Tracker, view_name: String, target: String) Bool:
-    let q = st.views.get(view_name).get("")
-    if let p = split_query(q):
-        if let g = compile_filter(st, p.filter.clone()):
+    q := st.views.get(view_name).get("")
+    if p := split_query(q):
+        if g := compile_filter(st, p.filter.clone()):
             return refs_reach(st, g.refs, target)
     return false
 
@@ -1443,7 +1443,7 @@ fn sort_indices(st: Tracker, keys: List[SortKey], idxs: List[Int]) List[Int]:
     return out
 
 fn issue_line(iss: Issue) String:
-    let pr = prio_name(iss.priority)
+    pr := prio_name(iss.priority)
     return "#{iss.id} | {iss.state} | {pr} | {show_text(iss.assignee)} | {show_points(iss.points)} | {show_text(iss.due)} | {labels_csv(iss.labels)} | {iss.title}"
 
 fn print_matches(st: Tracker, f: Filter, keys: List[SortKey], limit: Int) Unit:
@@ -1452,7 +1452,7 @@ fn print_matches(st: Tracker, f: Filter, keys: List[SortKey], limit: Int) Unit:
         if eval_filter(st, f, st.issues[i]):
             matched.append(i)
 
-    let ordered = sort_indices(st, keys, matched)
+    ordered := sort_indices(st, keys, matched)
     var shown = 0
 
     for i in ordered:
@@ -1470,7 +1470,7 @@ fn print_matches(st: Tracker, f: Filter, keys: List[SortKey], limit: Int) Unit:
 // ---------- commands ----------
 
 fn cmd_actor(var st: Tracker, rest: String) Result[Unit, Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: actor NAME"))
 
@@ -1479,7 +1479,7 @@ fn cmd_actor(var st: Tracker, rest: String) Result[Unit, Fail]:
     return ok(unit)
 
 fn cmd_today(var st: Tracker, rest: String) Result[Unit, Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: today DATE"))
     if not valid_date(ws[0]):
@@ -1493,13 +1493,13 @@ fn cmd_create(var st: Tracker, rest: String) Result[Unit, Fail]:
     if st.wf.states.length() == 0:
         return error(Fail(msg: "no workflow defined"))
 
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() == 0:
         return error(Fail(msg: "usage: create TITLE [field=value...]"))
     if toks[0].trim() == "":
         return error(Fail(msg: "empty title"))
 
-    let base = Issue(
+    base := Issue(
         id: st.next_id, title: toks[0].clone(), state: st.wf.initial.clone(),
         priority: 1, assignee: "", reporter: st.actor.clone(), points: -1, due: "",
         labels: List[String](), comments: List[Comment](), created: 0, updated: 0
@@ -1507,13 +1507,13 @@ fn cmd_create(var st: Tracker, rest: String) Result[Unit, Fail]:
     var iss = base.clone()
     try apply_fields(var iss, toks, 1)
 
-    let ch = changes(base, iss)
+    ch := changes(base, iss)
     st.clock += 1
     st.next_id += 1
     iss.created = st.clock
     iss.updated = st.clock
 
-    let id = iss.id
+    id := iss.id
     st.issues.append(iss)
     record(var st, id, "created \"" + toks[0] + "\"")
     for c in ch:
@@ -1522,69 +1522,69 @@ fn cmd_create(var st: Tracker, rest: String) Result[Unit, Fail]:
     return ok(unit)
 
 fn cmd_edit(var st: Tracker, rest: String) Result[Unit, Fail]:
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() == 0:
         return error(Fail(msg: "usage: edit ID field=value..."))
 
-    let idx = try live_index(st, toks[0])
+    idx := try live_index(st, toks[0])
     return edit_issue(var st, idx, toks, 1)
 
 fn cmd_assign(var st: Tracker, rest: String) Result[Unit, Fail]:
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() != 2:
         return error(Fail(msg: "usage: assign ID NAME"))
 
-    let idx = try live_index(st, toks[0])
+    idx := try live_index(st, toks[0])
     return edit_issue(var st, idx, ["assignee=" + toks[1]], 0)
 
 fn cmd_label(var st: Tracker, rest: String) Result[Unit, Fail]:
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() < 2:
         return error(Fail(msg: "usage: label ID +label -label..."))
 
-    let idx = try live_index(st, toks[0])
+    idx := try live_index(st, toks[0])
     return label_issue(var st, idx, toks, 1)
 
 fn cmd_move(var st: Tracker, rest: String) Result[Unit, Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() < 2:
         return error(Fail(msg: "usage: move ID STATE [comment...]"))
 
-    let idx = try live_index(st, ws[0])
-    let comment = rest_after(rest, 2)
+    idx := try live_index(st, ws[0])
+    comment := rest_after(rest, 2)
     return move_issue(var st, idx, ws[1].clone(), comment)
 
 fn cmd_comment(var st: Tracker, rest: String) Result[Unit, Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() < 2:
         return error(Fail(msg: "usage: comment ID TEXT"))
 
-    let idx = try live_index(st, ws[0])
+    idx := try live_index(st, ws[0])
     add_comment(var st, idx, rest_after(rest, 1))
     return ok(unit)
 
 fn cmd_delete(var st: Tracker, rest: String) Result[Unit, Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: delete ID"))
 
-    let idx = try live_index(st, ws[0])
+    idx := try live_index(st, ws[0])
     st.clock += 1
 
-    let id = st.issues[idx].id
+    id := st.issues[idx].id
     st.issues.remove(idx)
     record(var st, id, "deleted")
     say("deleted #{id}")
     return ok(unit)
 
 fn cmd_show(st: Tracker, rest: String) Result[Unit, Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: show ID"))
 
-    let idx = try live_index(st, ws[0])
-    let iss = st.issues[idx].clone()
-    let pr = prio_name(iss.priority)
+    idx := try live_index(st, ws[0])
+    iss := st.issues[idx].clone()
+    pr := prio_name(iss.priority)
     say("#{iss.id} {iss.title}")
     say("  state: {iss.state}")
     say("  priority: {pr}")
@@ -1600,25 +1600,25 @@ fn cmd_show(st: Tracker, rest: String) Result[Unit, Fail]:
     return ok(unit)
 
 fn cmd_list(st: Tracker, rest: String) Result[Unit, Fail]:
-    let parts = try split_query(rest)
-    let f = try compile_filter(st, parts.filter.clone())
-    let keys = try sort_keys(parts.sort_words)
+    parts := try split_query(rest)
+    f := try compile_filter(st, parts.filter.clone())
+    keys := try sort_keys(parts.sort_words)
     print_matches(st, f, keys, parts.limit)
     return ok(unit)
 
 fn view_save(var st: Tracker, r2: String) Result[Unit, Fail]:
-    let ws = words(r2)
+    ws := words(r2)
     if ws.length() == 0:
         return error(Fail(msg: "usage: view save NAME QUERY"))
 
-    let name = ws[0].clone()
+    name := ws[0].clone()
     if not valid_view_name(name):
         return error(Fail(msg: "bad view name '{name}'"))
 
-    let query = rest_after(r2, 1)
-    let parts = try split_query(query)
-    let f = try compile_filter(st, parts.filter.clone())
-    let _keys = try sort_keys(parts.sort_words)
+    query := rest_after(r2, 1)
+    parts := try split_query(query)
+    f := try compile_filter(st, parts.filter.clone())
+    _keys := try sort_keys(parts.sort_words)
     if refs_reach(st, f.refs, name):
         return error(Fail(msg: "view '{name}' would reference itself"))
 
@@ -1627,11 +1627,11 @@ fn view_save(var st: Tracker, r2: String) Result[Unit, Fail]:
     return ok(unit)
 
 fn view_run(st: Tracker, r2: String) Result[Unit, Fail]:
-    let ws = words(r2)
+    ws := words(r2)
     if ws.length() == 0:
         return error(Fail(msg: "usage: view run NAME [sort FIELDS] [limit N]"))
 
-    let name = ws[0].clone()
+    name := ws[0].clone()
     if not st.views.contains(name):
         return error(Fail(msg: "unknown view '{name}'"))
 
@@ -1664,8 +1664,8 @@ fn view_run(st: Tracker, r2: String) Result[Unit, Fail]:
         else:
             return error(Fail(msg: "unexpected '{ws[i]}'"))
 
-    let f = try compile_filter(st, parts.filter.clone())
-    let keys = try sort_keys(sort_names)
+    f := try compile_filter(st, parts.filter.clone())
+    keys := try sort_keys(sort_names)
     print_matches(st, f, keys, limit)
     return ok(unit)
 
@@ -1681,11 +1681,11 @@ fn view_list(st: Tracker) Unit:
         say("{n}: {st.views.get(n).get("")}")
 
 fn view_show(st: Tracker, r2: String) Result[Unit, Fail]:
-    let ws = words(r2)
+    ws := words(r2)
     if ws.length() != 1:
         return error(Fail(msg: "usage: view show NAME"))
 
-    let name = ws[0].clone()
+    name := ws[0].clone()
     if not st.views.contains(name):
         return error(Fail(msg: "unknown view '{name}'"))
 
@@ -1693,11 +1693,11 @@ fn view_show(st: Tracker, r2: String) Result[Unit, Fail]:
     return ok(unit)
 
 fn view_delete(var st: Tracker, r2: String) Result[Unit, Fail]:
-    let ws = words(r2)
+    ws := words(r2)
     if ws.length() != 1:
         return error(Fail(msg: "usage: view delete NAME"))
 
-    let name = ws[0].clone()
+    name := ws[0].clone()
     if not st.views.contains(name):
         return error(Fail(msg: "unknown view '{name}'"))
 
@@ -1711,13 +1711,13 @@ fn view_delete(var st: Tracker, r2: String) Result[Unit, Fail]:
     return ok(unit)
 
 fn cmd_view(var st: Tracker, rest: String) Result[Unit, Fail]:
-    let ws = words(rest)
-    let usage = "usage: view save|run|list|show|delete"
+    ws := words(rest)
+    usage := "usage: view save|run|list|show|delete"
     if ws.length() == 0:
         return error(Fail(msg: usage))
 
-    let sub_cmd = ws[0].clone()
-    let r2 = rest_after(rest, 1)
+    sub_cmd := ws[0].clone()
+    r2 := rest_after(rest, 1)
     if sub_cmd == "save":
         return view_save(var st, r2)
     if sub_cmd == "run":
@@ -1735,8 +1735,8 @@ fn cmd_view(var st: Tracker, rest: String) Result[Unit, Fail]:
     return error(Fail(msg: usage))
 
 fn cmd_bulk_check(toks: List[String]) Result[Unit, Fail]:
-    let act = toks[0].clone()
-    let n = toks.length()
+    act := toks[0].clone()
+    n := toks.length()
 
     if act == "move":
         if n != 2:
@@ -1756,7 +1756,7 @@ fn cmd_bulk_check(toks: List[String]) Result[Unit, Fail]:
     return ok(unit)
 
 fn bulk_apply(var st: Tracker, idx: Int, toks: List[String]) Result[Unit, Fail]:
-    let act = toks[0].clone()
+    act := toks[0].clone()
     if act == "move":
         return move_issue(var st, idx, toks[1].clone(), "")
     if act == "assign":
@@ -1767,19 +1767,19 @@ fn bulk_apply(var st: Tracker, idx: Int, toks: List[String]) Result[Unit, Fail]:
     return edit_issue(var st, idx, toks, 1)
 
 fn cmd_bulk(var st: Tracker, rest: String) Result[Unit, Fail]:
-    let w = find_word(rest, "where", true)
+    w := find_word(rest, "where", true)
     if w < 0:
         return error(Fail(msg: "usage: bulk ACTION... where QUERY"))
 
-    let action_text = sub(rest, 0, w).trim()
-    let query_text = sub(rest, w + 5, rest.scalar_length()).trim()
-    let toks = try tokenize(action_text)
+    action_text := sub(rest, 0, w).trim()
+    query_text := sub(rest, w + 5, rest.scalar_length()).trim()
+    toks := try tokenize(action_text)
     if toks.length() == 0:
         return error(Fail(msg: "usage: bulk ACTION... where QUERY"))
 
     try cmd_bulk_check(toks)
 
-    let f = try compile_filter(st, query_text)
+    f := try compile_filter(st, query_text)
     var matched = List[Int]()
     for i in 0..st.issues.length():
         if eval_filter(st, f, st.issues[i]):
@@ -1789,8 +1789,8 @@ fn cmd_bulk(var st: Tracker, rest: String) Result[Unit, Fail]:
     var bad_count = 0
 
     for idx in matched:
-        let id = st.issues[idx].id
-        let r = bulk_apply(var st, idx, toks)
+        id := st.issues[idx].id
+        r := bulk_apply(var st, idx, toks)
 
         if r.is_error():
             say("#{id} error: {r.err().message()}")
@@ -1802,7 +1802,7 @@ fn cmd_bulk(var st: Tracker, rest: String) Result[Unit, Fail]:
     return ok(unit)
 
 fn cmd_log(st: Tracker, rest: String) Result[Unit, Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     var i = 0
     var fid = 0
 
@@ -1837,7 +1837,7 @@ fn cmd_log(st: Tracker, rest: String) Result[Unit, Fail]:
         return ok(unit)
 
     for k in start..sel.length():
-        let e = st.journal[sel[k]]
+        e := st.journal[sel[k]]
         say("t={e.t} {e.who} #{e.id} {e.detail}")
 
     return ok(unit)
@@ -1868,7 +1868,7 @@ fn sort_groups(groups: List[Group]) List[Group]:
     return out
 
 fn report_summary(st: Tracker) Unit:
-    let total = st.issues.length()
+    total := st.issues.length()
     var open_count = 0
     var unassigned = 0
     var overdue = 0
@@ -1884,7 +1884,7 @@ fn report_summary(st: Tracker) Unit:
             if iss.points > 0:
                 open_points += iss.points
 
-    let final_count = total - open_count
+    final_count := total - open_count
     say("issues: {total} (open {open_count}, final {final_count})")
     say("by state:")
 
@@ -1931,8 +1931,8 @@ fn report_workload(st: Tracker) Unit:
             unassigned += 1
             unassigned_points += pts
         else:
-            let key = iss.assignee.lower()
-            let gi = group_index(groups, key)
+            key := iss.assignee.lower()
+            gi := group_index(groups, key)
 
             if gi < 0:
                 groups.append(
@@ -1951,12 +1951,12 @@ fn report_workload(st: Tracker) Unit:
         return
 
     for g in sort_groups(groups):
-        let noun = if g.count == 1: "issue" else: "issues"
+        noun := if g.count == 1: "issue" else: "issues"
 
         say("{g.name}: {g.count} {noun}, {g.points} points")
 
     if unassigned > 0:
-        let noun = if unassigned == 1: "issue" else: "issues"
+        noun := if unassigned == 1: "issue" else: "issues"
 
         say("unassigned: {unassigned} {noun}, {unassigned_points} points")
 
@@ -1968,7 +1968,7 @@ fn report_labels(st: Tracker, f: Filter) Unit:
             continue
 
         for l in iss.labels:
-            let gi = group_index(groups, l)
+            gi := group_index(groups, l)
 
             if gi < 0:
                 groups.append(
@@ -1996,22 +1996,22 @@ fn report_timeline(st: Tracker, idx: Int) Unit:
 
     for e in st.journal:
         if e.id == iss.id and e.detail.starts_with("state: "):
-            let parts = e.detail.split(" -> ")
-            let dur = e.t - since
+            parts := e.detail.split(" -> ")
+            dur := e.t - since
             say("{cur}: t={since}..{e.t} ({dur})")
             cur = parts[parts.length() - 1].clone()
             since = e.t
 
-    let last = st.clock - since
+    last := st.clock - since
     say("{cur}: t={since}..{st.clock} ({last})")
 
 fn cmd_report(st: Tracker, rest: String) Result[Unit, Fail]:
-    let ws = words(rest)
-    let usage = "usage: report summary|workload|labels|timeline"
+    ws := words(rest)
+    usage := "usage: report summary|workload|labels|timeline"
     if ws.length() == 0:
         return error(Fail(msg: usage))
 
-    let kind = ws[0].clone()
+    kind := ws[0].clone()
 
     if kind == "summary":
         if ws.length() != 1:
@@ -2028,7 +2028,7 @@ fn cmd_report(st: Tracker, rest: String) Result[Unit, Fail]:
         return ok(unit)
 
     if kind == "labels":
-        let f = try compile_filter(st, rest_after(rest, 1))
+        f := try compile_filter(st, rest_after(rest, 1))
         report_labels(st, f)
         return ok(unit)
 
@@ -2036,7 +2036,7 @@ fn cmd_report(st: Tracker, rest: String) Result[Unit, Fail]:
         if ws.length() != 2:
             return error(Fail(msg: "usage: report timeline ID"))
 
-        let idx = try live_index(st, ws[1])
+        idx := try live_index(st, ws[1])
         report_timeline(st, idx)
         return ok(unit)
 
@@ -2078,7 +2078,7 @@ fn run_command(var st: Tracker, cmd: String, rest: String) Result[Unit, Fail]:
 
 export fn main() Int:
     var lines = List[String]()
-    if let got = read_lines(stdin()):
+    if got := read_lines(stdin()):
         lines = got
 
     var st = Tracker(
@@ -2097,21 +2097,21 @@ export fn main() Int:
     var i = 0
 
     while i < lines.length():
-        let line = lines[i].trim_end()
+        line := lines[i].trim_end()
         i += 1
 
-        let t = line.trim()
+        t := line.trim()
         if t == "" or t.starts_with("#"):
             continue
 
         say("> " + line)
 
-        let cmd = first_word(t)
+        cmd := first_word(t)
 
         if cmd == "workflow":
             i = define_workflow(var st, lines, i)
         else:
-            let r = run_command(var st, cmd, rest_after(t, 1))
+            r := run_command(var st, cmd, rest_after(t, 1))
             if r.is_error():
                 say("error: " + r.err().message())
 

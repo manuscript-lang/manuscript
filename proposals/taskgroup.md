@@ -40,11 +40,11 @@ User code cannot run two things at once. The runtime already has stackful corout
 import TaskGroup from "@std/concurrency/tasks.ms"
 
 fn fetch_all(urls: List[String]) Result[List[Int], TaskError]:
-    with let group = TaskGroup[Int](timeout: some(duration(5000000000))):
-        let tasks = urls.map(fn url: group.spawn(fn: fetch_size(url.clone())))
+    with group := TaskGroup[Int](timeout: some(duration(5000000000))):
+        tasks := urls.map(fn url: group.spawn(fn: fetch_size(url.clone())))
         var sizes = List[Int]()
         for task in tasks:
-            if let size = task.result():
+            if size := task.result():
                 sizes.append(size)
         return ok(sizes)
 ```

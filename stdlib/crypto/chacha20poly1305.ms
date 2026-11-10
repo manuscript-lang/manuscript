@@ -71,7 +71,7 @@ fn keystream(initial: List[Int]) List[Int]:
     return state
 
 fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
-    let words = keystream(initial_state(key, counter, nonce))
+    words := keystream(initial_state(key, counter, nonce))
     var out = BytesBuilder()
     for word in words:
         for offset in 0..4:
@@ -97,7 +97,7 @@ fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
         for word in keystream(state):
             for offset in 0..4:
                 if position < data.length():
-                    let pad = bit_and(shift_right_unsigned(word, 8 * offset), 255)
+                    pad := bit_and(shift_right_unsigned(word, 8 * offset), 255)
                     out.append(
                         bit_xor(
                             data.get(position).to_int(), pad
@@ -128,16 +128,16 @@ fn limbs_load(data: Bytes, at: Int, shift: Int) Int:
 export fn poly1305(key: Bytes, data: Bytes) Bytes!:
     if key.length() != 32: return error(Error("crypto: invalid input", kind: "EINVAL"))
 
-    let mask = 67108863
-    let r0 = bit_and(le32(key, 0), 67108863)
-    let r1 = bit_and(limbs_load(key, 3, 2), 67108611)
-    let r2 = bit_and(limbs_load(key, 6, 4), 67092735)
-    let r3 = bit_and(limbs_load(key, 9, 6), 66076671)
-    let r4 = bit_and(limbs_load(key, 12, 8), 1048575)
-    let s1 = r1 * 5
-    let s2 = r2 * 5
-    let s3 = r3 * 5
-    let s4 = r4 * 5
+    mask := 67108863
+    r0 := bit_and(le32(key, 0), 67108863)
+    r1 := bit_and(limbs_load(key, 3, 2), 67108611)
+    r2 := bit_and(limbs_load(key, 6, 4), 67092735)
+    r3 := bit_and(limbs_load(key, 9, 6), 66076671)
+    r4 := bit_and(limbs_load(key, 12, 8), 1048575)
+    s1 := r1 * 5
+    s2 := r2 * 5
+    s3 := r3 * 5
+    s4 := r4 * 5
     var h0 = 0
     var h1 = 0
     var h2 = 0
@@ -148,7 +148,7 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
     while position < data.length():
         var chunk = BytesBuilder()
         var hibit = 16777216
-        let remaining = data.length() - position
+        remaining := data.length() - position
 
         if remaining >= 16:
             for offset in 0..16:
@@ -161,7 +161,7 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
             for offset in remaining + 1..16:
                 chunk.append(0)
 
-        let m = chunk.build()
+        m := chunk.build()
         h0 += bit_and(le32(m, 0), mask)
         h1 += bit_and(limbs_load(m, 3, 2), mask)
         h2 += bit_and(limbs_load(m, 6, 4), mask)
@@ -225,19 +225,19 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
     carry = shift_right_unsigned(g3, 26)
     g3 = bit_and(g3, mask)
 
-    let g4 = h4 + carry - 67108864
+    g4 := h4 + carry - 67108864
 
     // g4 is negative exactly when h < 2^130 - 5, so keep h in that case. The choice is a mask, not a
     // branch, so the time taken does not depend on the secret accumulator.
-    let keep = shift_right(g4, 63)
-    let take = bit_not(keep)
+    keep := shift_right(g4, 63)
+    take := bit_not(keep)
     h0 = bit_or(bit_and(h0, keep), bit_and(g0, take))
     h1 = bit_or(bit_and(h1, keep), bit_and(g1, take))
     h2 = bit_or(bit_and(h2, keep), bit_and(g2, take))
     h3 = bit_or(bit_and(h3, keep), bit_and(g3, take))
     h4 = bit_or(bit_and(h4, keep), bit_and(bit_and(g4, mask), take))
 
-    let word_mask = 4294967295
+    word_mask := 4294967295
     var f0 = bit_and(bit_or(h0, shift_left(h1, 26)), word_mask) + le32(key, 16)
     var f1 = (
         bit_and(
@@ -285,7 +285,7 @@ fn put_le64(var out: BytesBuilder, value: Int) Unit:
         )
 
 fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) Bytes!:
-    let one_time = block(key, 0, nonce)
+    one_time := block(key, 0, nonce)
     var mac = BytesBuilder()
     mac.append_bytes(associated_data)
     pad16(var mac, associated_data.length())
@@ -306,8 +306,8 @@ export fn chacha20poly1305_seal(
     if not check_key_nonce(key, nonce):
         return error(Error("crypto: invalid input", kind: "EINVAL"))
 
-    let ciphertext = xor_stream(key, 1, nonce, plaintext)
-    let tag = try tag_for(key, nonce, associated_data, ciphertext)
+    ciphertext := xor_stream(key, 1, nonce, plaintext)
+    tag := try tag_for(key, nonce, associated_data, ciphertext)
     var out = BytesBuilder()
     out.append_bytes(ciphertext)
     out.append_bytes(tag)
@@ -324,10 +324,10 @@ export fn chacha20poly1305_open(
     if not check_key_nonce(key, nonce) or sealed.length() < 16:
         return error(Error("crypto: invalid input", kind: "EINVAL"))
 
-    let split = sealed.length() - 16
-    let ciphertext = sealed.slice(0, split).get(Bytes([]))
-    let tag = sealed.slice(split, sealed.length()).get(Bytes([]))
-    let expected = try tag_for(key, nonce, associated_data, ciphertext)
+    split := sealed.length() - 16
+    ciphertext := sealed.slice(0, split).get(Bytes([]))
+    tag := sealed.slice(split, sealed.length()).get(Bytes([]))
+    expected := try tag_for(key, nonce, associated_data, ciphertext)
     if not constant_time_equal(expected, tag):
         return error(Error("crypto: authentication failed", kind: "EAUTH"))
 

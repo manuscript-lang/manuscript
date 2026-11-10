@@ -12,8 +12,8 @@ fn same[T: Equal](left: T, right: T) Bool:
     return left.equals(right)
 
 export fn main() Int:
-    let key = Key(1)
-    let other = Other(1)
+    key := Key(1)
+    other := Other(1)
     if key.equals(other): return 1
 
     return 0

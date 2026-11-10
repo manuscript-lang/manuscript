@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = false
+    b1 := false
     say("b1 = {b1}")
 
-    let s2 = "beta".upper().upper().replace("quote\"d", "Tab\there")
+    s2 := "beta".upper().upper().replace("quote\"d", "Tab\there")
     say("s2 = [{s2}]")
 
-    let f3 = (((208.25 - 700.588) * (0.5 - 407.714)) + (278.416 + (8.0e16 * 7.5)))
+    f3 := (((208.25 - 700.588) * (0.5 - 407.714)) + (278.416 + (8.0e16 * 7.5)))
     say("f3 = {f3}")
 
-    let bad = say(1, 2)
+    bad := say(1, 2)
     return 0

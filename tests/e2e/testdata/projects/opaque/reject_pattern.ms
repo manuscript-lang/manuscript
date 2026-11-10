@@ -4,5 +4,5 @@ import (
 )
 
 export fn main() Int:
-    let {entity} = approve("u")
+    {entity} := approve("u")
     return entity.length()

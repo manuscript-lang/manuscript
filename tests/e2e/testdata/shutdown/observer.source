@@ -3,19 +3,19 @@ import watch_signals from "@std/os/process.ms"
 import sleep from "@std/time.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write(text)
+    _written := stdout().write(text)
 
     // Piped stdout is buffered until exit; flush so a parent sees each line when it is printed.
-    let _flushed = stdout().flush()
+    _flushed := stdout().flush()
 
 export fn main() Int:
-    if let watched = watch_signals([2, 15]):
+    if watched := watch_signals([2, 15]):
         var signals = watched
         say("waiting\n")
 
-        let _observed = signals.next()
+        _observed := signals.next()
         say("got signal\n")
-        let _ = sleep(100.milliseconds()).wait()
+        _ := sleep(100.milliseconds()).wait()
         say("after sleep\n")
         return 0
     else:

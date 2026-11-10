@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -28,10 +28,10 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let i1 = (((48 + (-249932)) % (-16)) - (-(39 / 14)))
+    i1 := (((48 + (-249932)) % (-16)) - (-(39 / 14)))
     say("i1 = {i1}")
 
-    let b2 = (
+    b2 := (
         ((290.989 / 447.417) + (561.188 - 0.0)) != (
             (182.316 * 9.0e8)
             + (8.5 * 788.970)
@@ -50,10 +50,10 @@ export fn main() Int:
     else:
         say(("Tab\there" + "ms"))
 
-    let s4 = ("Tab\there" + "alpha")
+    s4 := ("Tab\there" + "alpha")
     say("s4 = [{s4}]")
 
-    let s5 = (
+    s5 := (
         (
             s4.replace("beta", "Tab\there")
             + "quote\"d".replace("日本語", "MiXeD CaSe")
@@ -62,22 +62,22 @@ export fn main() Int:
     )
     say("s5 = [{s5}]")
 
-    let l6 = [1, 2, 3].take(0)
+    l6 := [1, 2, 3].take(0)
     say("l6 = {l6} len {l6.length()}")
 
-    let b7 = (false and ((not b2) or (false and false)))
+    b7 := (false and ((not b2) or (false and false)))
     say("b7 = {b7}")
 
-    let s8 = s5.upper()
+    s8 := s5.upper()
     say("s8 = [{s8}]")
 
-    let i9 = 17
+    i9 := 17
     say("i9 = {i9}")
     say("gcd(4050, 1856) = {gcd(4050, 1856)}")
 
-    let b10 = ((s8 + s5).ends_with("ms") and (s5 + s5).starts_with(s8))
+    b10 := ((s8 + s5).ends_with("ms") and (s5 + s5).starts_with(s8))
     say("b10 = {b10}")
 
-    let b11 = b7
+    b11 := b7
     say("b11 = {b11}")
     return 0

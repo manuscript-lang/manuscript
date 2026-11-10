@@ -50,7 +50,7 @@ test "a write waits while the pipe holds more than its capacity, so the reader s
     var p = pipe[Int](1)
     var input = p.reader()
     var gate = p.writer()
-    let producer = promise(fn: fill(p, 20))
+    producer := promise(fn: fill(p, 20))
 
     // The producer cannot finish 20 writes into a pipe of capacity 1 until the reader takes values.
     try sleep(milliseconds(50)).wait()
@@ -71,7 +71,7 @@ test "a write fails with Closed once the reader is gone":
     var input = p.reader()
     try input.close()
 
-    let refused = try expect_error(out.write(1))
+    refused := try expect_error(out.write(1))
     try expect_equal(refused.kind, "EBADF")
 
 test "a pipe has one reader; asking again gives a stream that has already ended":
@@ -89,7 +89,7 @@ test "a promise that owns a pipe writes to it through a writer of its own":
 
     // Holds the pipe open until the producer is done, since the reader ends when the last writer closes.
     var gate = p.writer()
-    let producer = promise(fn: produce(p, 5))
+    producer := promise(fn: produce(p, 5))
     try producer.wait()
     try gate.close()
     try expect_equal(try drain(var input), [0, 1, 2, 3, 4])
@@ -111,9 +111,9 @@ test "several promises each move a writer of their own into a fan-in":
     var second = p.writer()
     var third = p.writer()
     var input = p.reader()
-    let a = promise(fn: ok(try send_range(var first, 0)))
-    let b = promise(fn: ok(try send_range(var second, 100)))
-    let c = promise(fn: ok(try send_range(var third, 200)))
+    a := promise(fn: ok(try send_range(var first, 0)))
+    b := promise(fn: ok(try send_range(var second, 100)))
+    c := promise(fn: ok(try send_range(var third, 200)))
     var seen = try drain(var input)
     seen.sort()
     try a.wait()
@@ -132,7 +132,7 @@ test "a promise keeps the writer it captured after its maker returns":
     var p = pipe[Int](2)
     var input = p.reader()
     var gate = p.writer()
-    let sender = start_sender(p)
+    sender := start_sender(p)
     try gate.close()
     try expect_equal(try drain(var input), [0, 1, 2, 3, 4])
     try sender.wait()
@@ -150,8 +150,8 @@ test "a reader takes queued values directly and still waits and ends in order":
     var input = p.reader()
     try p.close()
 
-    let a = promise(fn: send_many(var first, 0, 5000))
-    let b = promise(fn: send_many(var second, 5000, 5000))
+    a := promise(fn: send_many(var first, 0, 5000))
+    b := promise(fn: send_many(var second, 5000, 5000))
     var total = 0
     var count = 0
 
@@ -183,8 +183,8 @@ test "a consumer that always finds a value queued still meets its timeout":
     var r = p.reader()
     try p.close()
 
-    let _prod = promise(fn: endless(var w))
-    let cons = promise(fn: sum_mod(var r)).with(
+    _prod := promise(fn: endless(var w))
+    cons := promise(fn: sum_mod(var r)).with(
         options: PromiseOptions(timeout: milliseconds(200))
     )
     try expect_true(cons.wait().is_error())

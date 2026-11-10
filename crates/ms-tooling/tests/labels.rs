@@ -68,8 +68,8 @@ fn drops_only_labels_that_bind_the_same_parameter() {
         ),
         (
             "method arguments by name",
-            "let amount = key\n    let extra = y\n    return counter.add(amount: amount, extra: extra)",
-            "let amount = key\n    let extra = y\n    return counter.add(amount, extra)",
+            "amount := key\n    extra := y\n    return counter.add(amount: amount, extra: extra)",
+            "amount := key\n    extra := y\n    return counter.add(amount, extra)",
         ),
     ];
     for (name, body, want) in cases {

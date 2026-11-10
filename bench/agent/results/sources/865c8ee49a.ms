@@ -1,15 +1,15 @@
 import stdin, stdout, read_all from "@std/io.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 
-let KEYWORDS = [
+KEYWORDS := [
     "SELECT", "FROM", "WHERE", "GROUP", "BY", "HAVING", "ORDER", "LIMIT", "OFFSET",
     "JOIN", "LEFT", "INNER", "ON", "AS", "AND", "OR", "NOT", "NULL", "IS", "LIKE", "IN",
     "BETWEEN", "INSERT", "INTO", "VALUES", "UPDATE", "SET", "DELETE", "CREATE", "TABLE",
     "DROP", "PRIMARY", "KEY", "DISTINCT", "ASC", "DESC"
 ]
-let SYMBOL_CODES = [61, 60, 62, 43, 45, 42, 47, 37, 40, 41, 44, 46]
-let HEX_DIGITS = "0123456789abcdef"
-let MAX_INT = 9223372036854775807
+SYMBOL_CODES := [61, 60, 62, 43, 45, 42, 47, 37, 40, 41, 44, 46]
+HEX_DIGITS := "0123456789abcdef"
+MAX_INT := 9223372036854775807
 
 // ---------------------------------------------------------------- errors and values
 
@@ -82,7 +82,7 @@ fn value_string(v: Value) String:
         VInt(i):
             return "{i}"
         VText(t):
-            if let s = t.decode_utf8():
+            if s := t.decode_utf8():
                 return s
 
             return "?"
@@ -93,7 +93,7 @@ fn hex_of(t: Bytes) String:
     var out = ""
 
     for k in 0..t.length():
-        let c = byte_at(t, k)
+        c := byte_at(t, k)
         out = out + HEX_DIGITS.get(c / 16) + HEX_DIGITS.get(c % 16)
 
     return out
@@ -140,13 +140,13 @@ fn byte_value(c: Int) UInt8:
     return c.to_uint8().get()
 
 fn bytes_cmp(a: Bytes, b: Bytes) Int:
-    let na = a.length()
-    let nb = b.length()
+    na := a.length()
+    nb := b.length()
     var k = 0
 
     while k < na and k < nb:
-        let x = byte_at(a, k)
-        let y = byte_at(b, k)
+        x := byte_at(a, k)
+        y := byte_at(b, k)
 
         if x != y:
             if x < y:
@@ -177,7 +177,7 @@ fn ascii_case(t: Bytes, upper: Bool) Bytes:
     return sb.build()
 
 fn substr(t: Bytes, start: Int, len: Int) Bytes:
-    let n = t.length()
+    n := t.length()
     if len <= 0:
         return empty_bytes()
 
@@ -201,7 +201,7 @@ fn like_match(s: Bytes, p: Bytes) Bool:
     var pi = 0
     var star_p = -1
     var star_s = 0
-    let np = p.length()
+    np := p.length()
 
     while si < s.length():
         if pi < np and byte_at(p, pi) == 37:
@@ -226,11 +226,11 @@ fn like_match(s: Bytes, p: Bytes) Bool:
 
 // Comparison of two non-NULL values of the same type.
 fn typed_cmp(a: Value, b: Value) Result[Int, SqlErr]:
-    if let x = as_int(a):
-        if let y = as_int(b):
+    if x := as_int(a):
+        if y := as_int(b):
             return ok(x.compare(y))
-    if let x = as_text(a):
-        if let y = as_text(b):
+    if x := as_text(a):
+        if y := as_text(b):
             return ok(bytes_cmp(x, y))
     return error(type_error())
 
@@ -247,20 +247,20 @@ fn rank(v: Value) Int:
 
 // Total order used by ORDER BY: NULL < BOOL < INT < TEXT.
 fn order_cmp(a: Value, b: Value) Int:
-    let ra = rank(a)
-    let rb = rank(b)
+    ra := rank(a)
+    rb := rank(b)
     if ra != rb:
         return ra.compare(rb)
 
-    if let x = as_int(a):
-        if let y = as_int(b):
+    if x := as_int(a):
+        if y := as_int(b):
             return x.compare(y)
-    if let x = as_text(a):
-        if let y = as_text(b):
+    if x := as_text(a):
+        if y := as_text(b):
             return bytes_cmp(x, y)
 
-    if let x = as_bool(a):
-        if let y = as_bool(b):
+    if x := as_bool(a):
+        if y := as_bool(b):
             if x == y:
                 return 0
             if y:
@@ -395,11 +395,11 @@ fn is_digit(c: Int) Bool:
 
 fn lex(src: Bytes) Result[List[Token], SqlErr]:
     var toks = List[Token]()
-    let n = src.length()
+    n := src.length()
     var i = 0
 
     while i < n:
-        let c = byte_at(src, i)
+        c := byte_at(src, i)
 
         if c == 32 or c == 9 or c == 10 or c == 13:
             i += 1
@@ -407,12 +407,12 @@ fn lex(src: Bytes) Result[List[Token], SqlErr]:
             while i < n and byte_at(src, i) != 10:
                 i += 1
         else if is_letter(c):
-            let start = i
+            start := i
             while is_letter(byte_at(src, i)) or is_digit(byte_at(src, i)):
                 i += 1
 
-            let word = src.decode_utf8_range(start, i).get()
-            let upper = word.upper()
+            word := src.decode_utf8_range(start, i).get()
+            upper := word.upper()
 
             if KEYWORDS.contains(upper):
                 toks.append(Token(kind: "kw", text: upper, num: 0, str: empty_bytes()))
@@ -422,7 +422,7 @@ fn lex(src: Bytes) Result[List[Token], SqlErr]:
             var v = 0
 
             while is_digit(byte_at(src, i)):
-                let d = byte_at(src, i) - 48
+                d := byte_at(src, i) - 48
                 if v > (MAX_INT - d) / 10:
                     return error(syntax_error())
 
@@ -481,12 +481,12 @@ fn lex(src: Bytes) Result[List[Token], SqlErr]:
 // Splits the script at `;` outside string literals and comments.
 fn split_statements(src: Bytes) List[Bytes]:
     var parts = List[Bytes]()
-    let n = src.length()
+    n := src.length()
     var start = 0
     var i = 0
 
     while i < n:
-        let c = byte_at(src, i)
+        c := byte_at(src, i)
 
         if c == 39:
             i += 1
@@ -526,18 +526,18 @@ impl Parser:
         return self.toks[self.pos].kind == kind
 
     fn at_kw(word: String) Bool:
-        let t = self.toks[self.pos]
+        t := self.toks[self.pos]
         return t.kind == "kw" and t.text == word
 
     fn at_sym(sym: String) Bool:
-        let t = self.toks[self.pos]
+        t := self.toks[self.pos]
         return t.kind == "sym" and t.text == sym
 
     fn sym_at(k: Int, sym: String) Bool:
         if self.pos + k >= self.toks.length():
             return false
 
-        let t = self.toks[self.pos + k]
+        t := self.toks[self.pos + k]
         return t.kind == "sym" and t.text == sym
 
     var fn accept_kw(word: String) Bool:
@@ -568,7 +568,7 @@ impl Parser:
 
     var fn expect_id() Result[String, SqlErr]:
         if self.at_kind("id"):
-            let name = self.toks[self.pos].text.clone()
+            name := self.toks[self.pos].text.clone()
             self.pos += 1
             return ok(name)
 
@@ -576,7 +576,7 @@ impl Parser:
 
     var fn expect_int() Result[Int, SqlErr]:
         if self.at_kind("int"):
-            let v = self.toks[self.pos].num
+            v := self.toks[self.pos].num
             self.pos += 1
             return ok(v)
 
@@ -586,15 +586,15 @@ impl Parser:
         if self.accept_kw("CREATE"):
             try self.expect_kw("TABLE")
 
-            let name = try self.expect_id()
+            name := try self.expect_id()
             try self.expect_sym("(")
 
             var cols = List[ColDef]()
-            let first = try self.parse_coldef()
+            first := try self.parse_coldef()
             cols.append(first)
 
             while self.accept_sym(","):
-                let c = try self.parse_coldef()
+                c := try self.parse_coldef()
                 cols.append(c)
 
             try self.expect_sym(")")
@@ -603,21 +603,21 @@ impl Parser:
         if self.accept_kw("DROP"):
             try self.expect_kw("TABLE")
 
-            let name = try self.expect_id()
+            name := try self.expect_id()
             return ok(DropStmt(name: name))
 
         if self.accept_kw("INSERT"):
             try self.expect_kw("INTO")
 
-            let name = try self.expect_id()
+            name := try self.expect_id()
             var names = List[String]()
 
             if self.accept_sym("("):
-                let first = try self.expect_id()
+                first := try self.expect_id()
                 names.append(first)
 
                 while self.accept_sym(","):
-                    let more = try self.expect_id()
+                    more := try self.expect_id()
                     names.append(more)
 
                 try self.expect_sym(")")
@@ -625,37 +625,37 @@ impl Parser:
             try self.expect_kw("VALUES")
 
             var rows = List[List[Expr]]()
-            let row1 = try self.parse_row()
+            row1 := try self.parse_row()
             rows.append(row1)
 
             while self.accept_sym(","):
-                let rown = try self.parse_row()
+                rown := try self.parse_row()
                 rows.append(rown)
 
             return ok(InsertStmt(name: name, cols: names, rows: rows))
 
         if self.accept_kw("UPDATE"):
-            let name = try self.expect_id()
+            name := try self.expect_id()
             try self.expect_kw("SET")
 
             var names = List[String]()
             var vals = List[Expr]()
-            let cn1 = try self.expect_id()
+            cn1 := try self.expect_id()
             try self.expect_sym("=")
 
-            let v1 = try self.parse_expr()
+            v1 := try self.parse_expr()
             names.append(cn1)
             vals.append(v1)
 
             while self.accept_sym(","):
-                let cn = try self.expect_id()
+                cn := try self.expect_id()
                 try self.expect_sym("=")
 
-                let v = try self.parse_expr()
+                v := try self.parse_expr()
                 names.append(cn)
                 vals.append(v)
 
-            let where_expr = try self.parse_optional_where()
+            where_expr := try self.parse_optional_where()
             return ok(
                 UpdateStmt(
                     name: name, names: names, vals: vals, where_expr: where_expr
@@ -665,27 +665,27 @@ impl Parser:
         if self.accept_kw("DELETE"):
             try self.expect_kw("FROM")
 
-            let name = try self.expect_id()
-            let where_expr = try self.parse_optional_where()
+            name := try self.expect_id()
+            where_expr := try self.parse_optional_where()
             return ok(DeleteStmt(name: name, where_expr: where_expr))
 
         if self.accept_kw("SELECT"):
-            let sel = try self.parse_select()
+            sel := try self.parse_select()
             return ok(SelectStmt(sel: sel))
 
         return error(syntax_error())
 
     var fn parse_optional_where() Result[Optional[Expr], SqlErr]:
         if self.accept_kw("WHERE"):
-            let cond = try self.parse_expr()
+            cond := try self.parse_expr()
             return ok(some(cond))
 
         return ok(none)
 
     var fn parse_coldef() Result[ColDef, SqlErr]:
-        let name = try self.expect_id()
-        let type_name = try self.expect_id()
-        let upper = type_name.upper()
+        name := try self.expect_id()
+        type_name := try self.expect_id()
+        upper := type_name.upper()
         if upper != "INT" and upper != "TEXT":
             return error(syntax_error())
 
@@ -711,7 +711,7 @@ impl Parser:
     var fn parse_row() Result[List[Expr], SqlErr]:
         try self.expect_sym("(")
 
-        let vals = try self.parse_expr_list()
+        vals := try self.parse_expr_list()
         try self.expect_sym(")")
         return ok(vals)
 
@@ -723,15 +723,15 @@ impl Parser:
         )
         sel.distinct_rows = self.accept_kw("DISTINCT")
 
-        let first = try self.parse_item()
+        first := try self.parse_item()
         sel.items.append(first)
 
         while self.accept_sym(","):
-            let item = try self.parse_item()
+            item := try self.parse_item()
             sel.items.append(item)
 
         if self.accept_kw("FROM"):
-            let base = try self.parse_tref()
+            base := try self.parse_tref()
             sel.from_ref = some(base)
 
             while self.at_kw("JOIN") or self.at_kw("INNER") or self.at_kw("LEFT"):
@@ -744,38 +744,38 @@ impl Parser:
 
                 try self.expect_kw("JOIN")
 
-                let jt = try self.parse_tref()
+                jt := try self.parse_tref()
                 try self.expect_kw("ON")
 
-                let on = try self.parse_expr()
+                on := try self.parse_expr()
                 sel.joins.append(Join(is_left: is_left, table: jt, on: on))
 
         if self.accept_kw("WHERE"):
-            let cond = try self.parse_expr()
+            cond := try self.parse_expr()
             sel.where_expr = some(cond)
 
         if self.accept_kw("GROUP"):
             try self.expect_kw("BY")
 
-            let g1 = try self.parse_colref()
+            g1 := try self.parse_colref()
             sel.group_by.append(g1)
 
             while self.accept_sym(","):
-                let g = try self.parse_colref()
+                g := try self.parse_colref()
                 sel.group_by.append(g)
 
         if self.accept_kw("HAVING"):
-            let cond = try self.parse_expr()
+            cond := try self.parse_expr()
             sel.having_expr = some(cond)
 
         if self.accept_kw("ORDER"):
             try self.expect_kw("BY")
 
-            let o1 = try self.parse_order_item()
+            o1 := try self.parse_order_item()
             sel.order_by.append(o1)
 
             while self.accept_sym(","):
-                let o = try self.parse_order_item()
+                o := try self.parse_order_item()
                 sel.order_by.append(o)
 
         if self.accept_kw("LIMIT"):
@@ -790,18 +790,18 @@ impl Parser:
             return ok(StarItem)
 
         if self.at_kind("id") and self.sym_at(1, ".") and self.sym_at(2, "*"):
-            let t = self.toks[self.pos].text.clone()
+            t := self.toks[self.pos].text.clone()
             self.pos += 3
             return ok(TStarItem(t: t))
 
-        let e = try self.parse_expr()
+        e := try self.parse_expr()
         var alias = ""
         if self.accept_kw("AS"):
             alias = try self.expect_id()
         return ok(ExprItem(e: e, alias: alias))
 
     var fn parse_tref() Result[TableRef, SqlErr]:
-        let name = try self.expect_id()
+        name := try self.expect_id()
         var alias = name.clone()
 
         if self.accept_kw("AS"):
@@ -812,16 +812,16 @@ impl Parser:
         return ok(TableRef(name: name, alias: alias))
 
     var fn parse_colref() Result[Expr, SqlErr]:
-        let first = try self.expect_id()
+        first := try self.expect_id()
 
         if self.accept_sym("."):
-            let second = try self.expect_id()
+            second := try self.expect_id()
             return ok(Col(table: first, name: second, idx: -1))
 
         return ok(Col(table: "", name: first, idx: -1))
 
     var fn parse_order_item() Result[OrderItem, SqlErr]:
-        let e = try self.parse_expr()
+        e := try self.parse_expr()
         var desc = false
 
         if self.accept_kw("DESC"):
@@ -835,7 +835,7 @@ impl Parser:
         var left = try self.parse_and()
 
         while self.accept_kw("OR"):
-            let right = try self.parse_and()
+            right := try self.parse_and()
             left = Bin(op: "OR", l: left, r: right)
 
         return ok(left)
@@ -844,14 +844,14 @@ impl Parser:
         var left = try self.parse_not()
 
         while self.accept_kw("AND"):
-            let right = try self.parse_not()
+            right := try self.parse_not()
             left = Bin(op: "AND", l: left, r: right)
 
         return ok(left)
 
     var fn parse_not() Result[Expr, SqlErr]:
         if self.accept_kw("NOT"):
-            let inner = try self.parse_not()
+            inner := try self.parse_not()
             return ok(Not(e: inner))
 
         return self.parse_cmp()
@@ -866,36 +866,36 @@ impl Parser:
         return ""
 
     var fn parse_cmp() Result[Expr, SqlErr]:
-        let left = try self.parse_add()
-        let op = self.accept_cmp_op()
+        left := try self.parse_add()
+        op := self.accept_cmp_op()
 
         if op != "":
-            let right = try self.parse_add()
+            right := try self.parse_add()
             return ok(Bin(op: op, l: left, r: right))
 
         if self.accept_kw("IS"):
-            let neg = self.accept_kw("NOT")
+            neg := self.accept_kw("NOT")
             try self.expect_kw("NULL")
             return ok(IsNull(e: left, neg: neg))
 
-        let neg = self.accept_kw("NOT")
+        neg := self.accept_kw("NOT")
 
         if self.accept_kw("LIKE"):
-            let pat = try self.parse_add()
+            pat := try self.parse_add()
             return ok(Like(e: left, pat: pat, neg: neg))
 
         if self.accept_kw("IN"):
             try self.expect_sym("(")
 
-            let items = try self.parse_expr_list()
+            items := try self.parse_expr_list()
             try self.expect_sym(")")
             return ok(InList(e: left, items: items, neg: neg))
 
         if self.accept_kw("BETWEEN"):
-            let lo = try self.parse_add()
+            lo := try self.parse_add()
             try self.expect_kw("AND")
 
-            let hi = try self.parse_add()
+            hi := try self.parse_add()
             return ok(Between(e: left, lo: lo, hi: hi, neg: neg))
 
         if neg:
@@ -907,10 +907,10 @@ impl Parser:
         var left = try self.parse_mul()
 
         while self.at_sym("+") or self.at_sym("-") or self.at_sym("||"):
-            let op = self.toks[self.pos].text.clone()
+            op := self.toks[self.pos].text.clone()
             self.pos += 1
 
-            let right = try self.parse_mul()
+            right := try self.parse_mul()
             left = Bin(op: op, l: left, r: right)
 
         return ok(left)
@@ -919,34 +919,34 @@ impl Parser:
         var left = try self.parse_unary()
 
         while self.at_sym("*") or self.at_sym("/") or self.at_sym("%"):
-            let op = self.toks[self.pos].text.clone()
+            op := self.toks[self.pos].text.clone()
             self.pos += 1
 
-            let right = try self.parse_unary()
+            right := try self.parse_unary()
             left = Bin(op: op, l: left, r: right)
 
         return ok(left)
 
     var fn parse_unary() Result[Expr, SqlErr]:
         if self.accept_sym("-"):
-            let inner = try self.parse_unary()
+            inner := try self.parse_unary()
             return ok(Neg(e: inner))
 
         return self.parse_primary()
 
     var fn parse_expr_list() Result[List[Expr], SqlErr]:
         var items = List[Expr]()
-        let first = try self.parse_expr()
+        first := try self.parse_expr()
         items.append(first)
 
         while self.accept_sym(","):
-            let e = try self.parse_expr()
+            e := try self.parse_expr()
             items.append(e)
 
         return ok(items)
 
     var fn parse_primary() Result[Expr, SqlErr]:
-        let t = self.toks[self.pos].clone()
+        t := self.toks[self.pos].clone()
 
         if t.kind == "int":
             self.pos += 1
@@ -961,7 +961,7 @@ impl Parser:
             return ok(Lit(v: VNull))
 
         if self.accept_sym("("):
-            let inner = try self.parse_expr()
+            inner := try self.parse_expr()
             try self.expect_sym(")")
             return ok(inner)
 
@@ -971,7 +971,7 @@ impl Parser:
                 return self.parse_call(t.text.upper())
 
             if self.accept_sym("."):
-                let col = try self.expect_id()
+                col := try self.expect_id()
                 return ok(Col(table: t.text.clone(), name: col, idx: -1))
 
             return ok(Col(table: "", name: t.text.clone(), idx: -1))
@@ -979,7 +979,7 @@ impl Parser:
         return error(syntax_error())
 
     var fn parse_call(name: String) Result[Expr, SqlErr]:
-        let distinct = self.accept_kw("DISTINCT")
+        distinct := self.accept_kw("DISTINCT")
 
         if self.accept_sym("*"):
             try self.expect_sym(")")
@@ -996,14 +996,14 @@ impl Parser:
                 )
             )
 
-        let args = try self.parse_expr_list()
+        args := try self.parse_expr_list()
         try self.expect_sym(")")
         return ok(Call(name: name, args: args, distinct: distinct, star: false))
 
 fn parse_statement_text(text: Bytes) Result[Stmt, SqlErr]:
-    let toks = try lex(text)
+    toks := try lex(text)
     var p = Parser(toks: toks, pos: 0)
-    let stmt = try p.parse_statement()
+    stmt := try p.parse_statement()
     if not p.at_kind("eof"):
         return error(syntax_error())
 
@@ -1028,7 +1028,7 @@ fn find_table(tables: List[Table], name: String) Optional[Int]:
     return none
 
 fn table_index(tables: List[Table], name: String) Result[Int, SqlErr]:
-    if let k = find_table(tables, name):
+    if k := find_table(tables, name):
         return ok(k)
 
     return error(sql_error("no such table: {name}"))
@@ -1072,8 +1072,8 @@ fn is_text_value(v: Value) Bool:
 // Checks NOT NULL and type constraints of one full row, in column order.
 fn check_row(t: Table, row: List[Value]) Result[Unit, SqlErr]:
     for c in 0..t.cols.length():
-        let col = t.cols[c]
-        let v = row[c]
+        col := t.cols[c]
+        v := row[c]
 
         if is_null(v):
             if col.not_null:
@@ -1092,14 +1092,14 @@ fn check_row(t: Table, row: List[Value]) Result[Unit, SqlErr]:
     return ok(unit)
 
 fn check_pk(t: Table, rows: List[List[Value]]) Result[Unit, SqlErr]:
-    let pk = pk_index(t)
+    pk := pk_index(t)
     if pk < 0:
         return ok(unit)
 
     var seen = Map[String, Bool]()
 
     for row in rows:
-        let k = value_key(row[pk])
+        k := value_key(row[pk])
         if seen.contains(k):
             return error(sql_error("duplicate primary key: {value_string(row[pk])}"))
 
@@ -1172,35 +1172,35 @@ fn resolve(
 
             return ok(Col(table: t.clone(), name: n.clone(), idx: at))
         Neg(x):
-            let a = try resolve(x, scope, mode, group)
+            a := try resolve(x, scope, mode, group)
             return ok(Neg(e: a))
         Not(x):
-            let a = try resolve(x, scope, mode, group)
+            a := try resolve(x, scope, mode, group)
             return ok(Not(e: a))
         Bin(op, l, r):
-            let a = try resolve(l, scope, mode, group)
-            let b = try resolve(r, scope, mode, group)
+            a := try resolve(l, scope, mode, group)
+            b := try resolve(r, scope, mode, group)
             return ok(Bin(op: op.clone(), l: a, r: b))
         IsNull(x, neg):
-            let a = try resolve(x, scope, mode, group)
+            a := try resolve(x, scope, mode, group)
             return ok(IsNull(e: a, neg: neg))
         Like(x, p, neg):
-            let a = try resolve(x, scope, mode, group)
-            let b = try resolve(p, scope, mode, group)
+            a := try resolve(x, scope, mode, group)
+            b := try resolve(p, scope, mode, group)
             return ok(Like(e: a, pat: b, neg: neg))
         InList(x, items, neg):
-            let a = try resolve(x, scope, mode, group)
+            a := try resolve(x, scope, mode, group)
             var rs = List[Expr]()
 
             for it in items:
-                let b = try resolve(it, scope, mode, group)
+                b := try resolve(it, scope, mode, group)
                 rs.append(b)
 
             return ok(InList(e: a, items: rs, neg: neg))
         Between(x, lo, hi, neg):
-            let a = try resolve(x, scope, mode, group)
-            let b = try resolve(lo, scope, mode, group)
-            let c = try resolve(hi, scope, mode, group)
+            a := try resolve(x, scope, mode, group)
+            b := try resolve(lo, scope, mode, group)
+            c := try resolve(hi, scope, mode, group)
             return ok(Between(e: a, lo: b, hi: c, neg: neg))
         Call(name, args, distinct, star):
             return resolve_call(name, args, distinct, star, scope, mode, group)
@@ -1227,12 +1227,12 @@ fn resolve_call(
         if args.length() != 1:
             return error(wrong_args(name))
 
-        let a = try resolve(args[0].clone(), scope, 2, group)
+        a := try resolve(args[0].clone(), scope, 2, group)
         var single = List[Expr]()
         single.append(a)
         return ok(Call(name: name, args: single, distinct: distinct, star: false))
 
-    let arity = scalar_arity(name)
+    arity := scalar_arity(name)
     if arity == -1:
         return error(sql_error("no such function: {name}"))
     if star or (distinct and args.length() != 1):
@@ -1247,7 +1247,7 @@ fn resolve_call(
     var rs = List[Expr]()
 
     for a in args:
-        let r = try resolve(a, scope, mode, group)
+        r := try resolve(a, scope, mode, group)
         rs.append(r)
 
     return ok(Call(name: name, args: rs, distinct: distinct, star: false))
@@ -1331,46 +1331,46 @@ fn eval(e: Expr, row: List[Value], group: List[List[Value]]) Result[Value, SqlEr
         Col(_, _, idx):
             return ok(row[idx].clone())
         Neg(x):
-            let v = try eval(x, row, group)
+            v := try eval(x, row, group)
             if is_null(v):
                 return ok(VNull)
-            if let i = as_int(v):
+            if i := as_int(v):
                 return ok(VInt(0 - i))
 
             return error(type_error())
         Not(x):
-            let v = try eval(x, row, group)
-            let t = try tri_of(v)
+            v := try eval(x, row, group)
+            t := try tri_of(v)
             return ok(tri_value(not3(t)))
         Bin(op, l, r):
             return eval_bin(op, l, r, row, group)
         IsNull(x, neg):
-            let v = try eval(x, row, group)
+            v := try eval(x, row, group)
             return ok(VBool(is_null(v) != neg))
         Like(x, p, neg):
-            let a = try eval(x, row, group)
-            let b = try eval(p, row, group)
+            a := try eval(x, row, group)
+            b := try eval(p, row, group)
             if is_null(a) or is_null(b):
                 return ok(VNull)
 
-            if let s = as_text(a):
-                if let pat = as_text(b):
+            if s := as_text(a):
+                if pat := as_text(b):
                     return ok(VBool(like_match(s, pat) != neg))
             return error(type_error())
         InList(x, items, neg):
-            let v = try eval(x, row, group)
+            v := try eval(x, row, group)
             var found = false
             var saw_null = false
 
             for it in items:
-                let w = try eval(it, row, group)
+                w := try eval(it, row, group)
                 if is_null(v):
                     continue
 
                 if is_null(w):
                     saw_null = true
                 else:
-                    let c = try typed_cmp(v, w)
+                    c := try typed_cmp(v, w)
                     if c == 0:
                         found = true
 
@@ -1389,14 +1389,14 @@ fn eval(e: Expr, row: List[Value], group: List[List[Value]]) Result[Value, SqlEr
                 res = not3(res)
             return ok(tri_value(res))
         Between(x, lo, hi, neg):
-            let v = try eval(x, row, group)
-            let a = try eval(lo, row, group)
-            let b = try eval(hi, row, group)
-            let c1 = try compare_values(">=", v, a)
+            v := try eval(x, row, group)
+            a := try eval(lo, row, group)
+            b := try eval(hi, row, group)
+            c1 := try compare_values(">=", v, a)
             var res = tri_raw(c1)
 
             if res != 0:
-                let c2 = try compare_values("<=", v, b)
+                c2 := try compare_values("<=", v, b)
                 res = and3(res, tri_raw(c2))
 
             if neg:
@@ -1426,30 +1426,30 @@ fn eval_bin(
     group: List[List[Value]]
 ) Result[Value, SqlErr]:
     if op == "AND":
-        let lt = try tri_of(try eval(l, row, group))
+        lt := try tri_of(try eval(l, row, group))
         if lt == 0:
             return ok(VBool(false))
 
-        let rt = try tri_of(try eval(r, row, group))
+        rt := try tri_of(try eval(r, row, group))
         return ok(tri_value(and3(lt, rt)))
 
     if op == "OR":
-        let lt = try tri_of(try eval(l, row, group))
+        lt := try tri_of(try eval(l, row, group))
         if lt == 1:
             return ok(VBool(true))
 
-        let rt = try tri_of(try eval(r, row, group))
+        rt := try tri_of(try eval(r, row, group))
         return ok(tri_value(or3(lt, rt)))
 
-    let a = try eval(l, row, group)
-    let b = try eval(r, row, group)
+    a := try eval(l, row, group)
+    b := try eval(r, row, group)
 
     if op == "||":
         if is_null(a) or is_null(b):
             return ok(VNull)
 
-        if let x = as_text(a):
-            if let y = as_text(b):
+        if x := as_text(a):
+            if y := as_text(b):
                 return ok(VText(x.concat(y)))
         return error(type_error())
 
@@ -1462,8 +1462,8 @@ fn arith(op: String, a: Value, b: Value) Result[Value, SqlErr]:
     if is_null(a) or is_null(b):
         return ok(VNull)
 
-    if let x = as_int(a):
-        if let y = as_int(b):
+    if x := as_int(a):
+        if y := as_int(b):
             if op == "+":
                 return ok(VInt(x + y))
             if op == "-":
@@ -1483,7 +1483,7 @@ fn compare_values(op: String, a: Value, b: Value) Result[Value, SqlErr]:
     if is_null(a) or is_null(b):
         return ok(VNull)
 
-    let c = try typed_cmp(a, b)
+    c := try typed_cmp(a, b)
     if op == "=":
         return ok(VBool(c == 0))
     if op == "<>":
@@ -1506,7 +1506,7 @@ fn eval_scalar(
     var vals = List[Value]()
 
     for a in args:
-        let v = try eval(a, row, group)
+        v := try eval(a, row, group)
         vals.append(v)
 
     if name == "COALESCE":
@@ -1520,27 +1520,27 @@ fn eval_scalar(
             return ok(VNull)
 
     if name == "UPPER" or name == "LOWER":
-        if let t = as_text(vals[0]):
+        if t := as_text(vals[0]):
             return ok(VText(ascii_case(t, name == "UPPER")))
 
         return error(type_error())
 
     if name == "LENGTH":
-        if let t = as_text(vals[0]):
+        if t := as_text(vals[0]):
             return ok(VInt(t.length()))
 
         return error(type_error())
 
     if name == "ABS":
-        if let i = as_int(vals[0]):
+        if i := as_int(vals[0]):
             return ok(VInt(i.abs()))
 
         return error(type_error())
 
     // SUBSTR(text, start, len)
-    if let t = as_text(vals[0]):
-        if let start = as_int(vals[1]):
-            if let len = as_int(vals[2]):
+    if t := as_text(vals[0]):
+        if start := as_int(vals[1]):
+            if len := as_int(vals[2]):
                 return ok(VText(substr(t, start, len)))
     return error(type_error())
 
@@ -1559,12 +1559,12 @@ fn eval_aggregate(
             var seen = Map[String, Bool]()
 
             for r in group:
-                let v = try eval(args[0], r, no_group())
+                v := try eval(args[0], r, no_group())
                 if is_null(v):
                     continue
 
                 if distinct:
-                    let k = value_key(v)
+                    k := value_key(v)
                     if seen.contains(k):
                         continue
 
@@ -1581,7 +1581,7 @@ fn eval_aggregate(
                 var total = 0
 
                 for v in vals:
-                    if let i = as_int(v):
+                    if i := as_int(v):
                         total += i
                     else:
                         return error(type_error())
@@ -1594,7 +1594,7 @@ fn eval_aggregate(
                 if not is_int_value(v) and not is_text_value(v):
                     return error(type_error())
 
-                let c = try typed_cmp(v, best)
+                c := try typed_cmp(v, best)
                 if name == "MIN" and c < 0:
                     best = v.clone()
                 if name == "MAX" and c > 0:
@@ -1628,7 +1628,7 @@ fn project(
     var vals = List[Value]()
 
     for e in exprs:
-        let v = try eval(e, row, group)
+        v := try eval(e, row, group)
         vals.append(v)
 
     return ok(vals)
@@ -1645,7 +1645,7 @@ fn order_values(
         if k.pos >= 0:
             vals.append(out[k.pos].clone())
         else:
-            let v = try eval(k.e, row, group)
+            v := try eval(k.e, row, group)
             vals.append(v)
 
     return ok(vals)
@@ -1668,9 +1668,9 @@ fn compare_rows(a: OutRow, b: OutRow) Int:
 
 // True when the optional condition is absent or evaluates to TRUE.
 fn passes(cond: Optional[Expr], row: List[Value]) Result[Bool, SqlErr]:
-    if let c = cond:
-        let v = try eval(c, row, no_group())
-        let t = try tri_of(v)
+    if c := cond:
+        v := try eval(c, row, no_group())
+        t := try tri_of(v)
         return ok(t == 1)
 
     return ok(true)
@@ -1692,16 +1692,16 @@ fn build_rows(
         rows.append(r.clone())
 
     for k in 0..joins.length():
-        let t = tables[tids[k + 1]]
+        t := tables[tids[k + 1]]
         var next = List[List[Value]]()
 
         for o in rows:
             var matched = false
 
             for inner in t.rows:
-                let combined = o.concat(inner)
-                let c = try eval(ons[k], combined, no_group())
-                let ct = try tri_of(c)
+                combined := o.concat(inner)
+                c := try eval(ons[k], combined, no_group())
+                ct := try tri_of(c)
 
                 if ct == 1:
                     matched = true
@@ -1720,7 +1720,7 @@ fn build_rows(
 fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
     // Tables of FROM and JOINs: existence and aliases, left to right.
     var all = List[TableRef]()
-    if let base = sel.from_ref:
+    if base := sel.from_ref:
         all.append(base.clone())
     for j in sel.joins:
         all.append(j.table.clone())
@@ -1729,7 +1729,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
     var aliases = List[String]()
 
     for tr in all:
-        let ti = try table_index(tables, tr.name)
+        ti := try table_index(tables, tr.name)
         if aliases.contains(tr.alias):
             return error(sql_error("duplicate alias: {tr.alias}"))
 
@@ -1742,13 +1742,13 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
     var offset = 0
 
     for k in 0..tids.length():
-        let t = tables[tids[k]]
+        t := tables[tids[k]]
         for sc in table_scope(t, all[k].alias, offset):
             scope.append(sc.clone())
         offset += t.cols.length()
 
         if k > 0:
-            let on = try resolve(sel.joins[k - 1].on.clone(), scope, 0, List[Int]())
+            on := try resolve(sel.joins[k - 1].on.clone(), scope, 0, List[Int]())
             ons.append(on)
 
     // Stars, expanded in FROM order.
@@ -1793,14 +1793,14 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
     var group_idx = List[Int]()
 
     for g in sel.group_by:
-        let r = try resolve(g.clone(), scope, 0, List[Int]())
+        r := try resolve(g.clone(), scope, 0, List[Int]())
         group_idx.append(col_idx(r))
 
     // WHERE.
     var where_r: Optional[Expr] = none
 
-    if let w = sel.where_expr:
-        let r = try resolve(w.clone(), scope, 0, List[Int]())
+    if w := sel.where_expr:
+        r := try resolve(w.clone(), scope, 0, List[Int]())
         where_r = some(r)
 
     var aggregated = sel.group_by.length() > 0 or not sel.having_expr.is_none()
@@ -1820,40 +1820,40 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
     var onames = List[String]()
 
     for it in items:
-        let r = try resolve(it.e.clone(), scope, mode, group_idx)
+        r := try resolve(it.e.clone(), scope, mode, group_idx)
         rexprs.append(r)
         onames.append(it.name.clone())
 
     // HAVING.
     var having_r: Optional[Expr] = none
 
-    if let h = sel.having_expr:
-        let r = try resolve(h.clone(), scope, 1, group_idx)
+    if h := sel.having_expr:
+        r := try resolve(h.clone(), scope, 1, group_idx)
         having_r = some(r)
 
     // ORDER BY.
     var okeys = List[OrderKey]()
 
     for o in sel.order_by:
-        if let n = literal_int(o.e):
+        if n := literal_int(o.e):
             if n < 1 or n > onames.length():
                 return error(sql_error("bad ORDER BY position"))
 
             okeys.append(OrderKey(pos: n - 1, e: Lit(v: VNull), desc: o.desc))
-        else if let p = name_position(o.e, onames):
+        else if p := name_position(o.e, onames):
             okeys.append(OrderKey(pos: p, e: Lit(v: VNull), desc: o.desc))
         else:
-            let r = try resolve(o.e.clone(), scope, mode, group_idx)
+            r := try resolve(o.e.clone(), scope, mode, group_idx)
             okeys.append(OrderKey(pos: -1, e: r, desc: o.desc))
 
-    let descs = order_descs(okeys)
+    descs := order_descs(okeys)
 
     // Rows and filtering.
-    let source = try build_rows(tables, tids, sel.joins, ons)
+    source := try build_rows(tables, tids, sel.joins, ons)
     var kept = List[List[Value]]()
 
     for row in source:
-        let keep = try passes(where_r, row)
+        keep := try passes(where_r, row)
         if keep:
             kept.append(row.clone())
 
@@ -1861,8 +1861,8 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
 
     if not aggregated:
         for row in kept:
-            let out = try project(rexprs, row, no_group())
-            let keys = try order_values(okeys, out, row, no_group())
+            out := try project(rexprs, row, no_group())
+            keys := try order_values(okeys, out, row, no_group())
             units.append(OutRow(out: out, keys: keys, descs: descs.clone()))
     else:
         var groups = List[List[List[Value]]]()
@@ -1873,9 +1873,9 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
             var index = Map[String, Int]()
 
             for row in kept:
-                let key = group_key(row, group_idx)
+                key := group_key(row, group_idx)
 
-                if let gi = index.get(key):
+                if gi := index.get(key):
                     groups[gi].append(row.clone())
                 else:
                     index.add(key, groups.length())
@@ -1889,14 +1889,14 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
             if g.length() > 0:
                 rep = g[0].clone()
 
-            if let hv = having_r:
-                let hval = try eval(hv, rep, g)
-                let ht = try tri_of(hval)
+            if hv := having_r:
+                hval := try eval(hv, rep, g)
+                ht := try tri_of(hval)
                 if ht != 1:
                     continue
 
-            let out = try project(rexprs, rep, g)
-            let keys = try order_values(okeys, out, rep, g)
+            out := try project(rexprs, rep, g)
+            keys := try order_values(okeys, out, rep, g)
             units.append(OutRow(out: out, keys: keys, descs: descs.clone()))
 
     if sel.distinct_rows:
@@ -1904,7 +1904,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
         var uniq = List[OutRow]()
 
         for u in units:
-            let k = row_key(u.out)
+            k := row_key(u.out)
 
             if not seen.contains(k):
                 seen.add(k, true)
@@ -1916,8 +1916,8 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
         units.sort(fn(a: OutRow, b: OutRow) Int: compare_rows(a, b))
 
     // OFFSET and LIMIT.
-    let total = units.length()
-    let offset_start = sel.offset
+    total := units.length()
+    offset_start := sel.offset
     var first = offset_start
     if first > total:
         first = total
@@ -1938,7 +1938,7 @@ fn exec_select(tables: List[Table], sel: Select) Result[Bytes, SqlErr]:
     var i = first
 
     while i < last:
-        let u = units[i].clone()
+        u := units[i].clone()
 
         for c in 0..u.out.length():
             if c > 0:
@@ -1983,16 +1983,16 @@ fn exec_create(var tables: List[Table], name: String, cols: List[ColDef]) Result
     return ok("ok\n".to_bytes())
 
 fn exec_drop(var tables: List[Table], name: String) Result[Bytes, SqlErr]:
-    let ti = try table_index(tables, name)
+    ti := try table_index(tables, name)
     tables.remove(ti)
     return ok("ok\n".to_bytes())
 
 fn exec_insert(
     var tables: List[Table], name: String, cols: List[String], rows: List[List[Expr]]
 ) Result[Bytes, SqlErr]:
-    let ti = try table_index(tables, name)
-    let t = tables[ti].clone()
-    let ncols = t.cols.length()
+    ti := try table_index(tables, name)
+    t := tables[ti].clone()
+    ncols := t.cols.length()
     var targets = List[Int]()
 
     if cols.length() == 0:
@@ -2000,7 +2000,7 @@ fn exec_insert(
             targets.append(c)
     else:
         for cn in cols:
-            if let k = column_index(t, cn):
+            if k := column_index(t, cn):
                 if targets.contains(k):
                     return error(sql_error("duplicate column: {cn}"))
 
@@ -2019,8 +2019,8 @@ fn exec_insert(
             full.append(VNull)
 
         for k in 0..vals.length():
-            let r = try resolve(vals[k].clone(), List[ScopeCol](), 0, List[Int]())
-            let v = try eval(r, no_row(), no_group())
+            r := try resolve(vals[k].clone(), List[ScopeCol](), 0, List[Int]())
+            v := try eval(r, no_row(), no_group())
             full[targets[k]] = v
 
         try check_row(t, full)
@@ -2037,13 +2037,13 @@ fn exec_update(
     var tables: List[Table], name: String, names: List[String], vals: List[Expr],
     where_expr: Optional[Expr]
 ) Result[Bytes, SqlErr]:
-    let ti = try table_index(tables, name)
-    let t = tables[ti].clone()
-    let scope = table_scope(t, name, 0)
+    ti := try table_index(tables, name)
+    t := tables[ti].clone()
+    scope := table_scope(t, name, 0)
     var setidx = List[Int]()
 
     for cn in names:
-        if let k = column_index(t, cn):
+        if k := column_index(t, cn):
             setidx.append(k)
         else:
             return error(sql_error("no such column: {cn}"))
@@ -2051,20 +2051,20 @@ fn exec_update(
     var setexprs = List[Expr]()
 
     for e in vals:
-        let r = try resolve(e, scope, 0, List[Int]())
+        r := try resolve(e, scope, 0, List[Int]())
         setexprs.append(r)
 
     var where_r: Optional[Expr] = none
 
-    if let w = where_expr:
-        let r = try resolve(w, scope, 0, List[Int]())
+    if w := where_expr:
+        r := try resolve(w, scope, 0, List[Int]())
         where_r = some(r)
 
     var updated = 0
     var newrows = List[List[Value]]()
 
     for row in t.rows:
-        let hit = try passes(where_r, row)
+        hit := try passes(where_r, row)
 
         if hit:
             updated += 1
@@ -2072,7 +2072,7 @@ fn exec_update(
             var newvals = List[Value]()
 
             for se in setexprs:
-                let v = try eval(se, row, no_group())
+                v := try eval(se, row, no_group())
                 newvals.append(v)
 
             var nr = row.clone()
@@ -2090,20 +2090,20 @@ fn exec_update(
 fn exec_delete(var tables: List[Table], name: String, where_expr: Optional[Expr]) Result[
     Bytes, SqlErr
 ]:
-    let ti = try table_index(tables, name)
-    let t = tables[ti].clone()
-    let scope = table_scope(t, name, 0)
+    ti := try table_index(tables, name)
+    t := tables[ti].clone()
+    scope := table_scope(t, name, 0)
     var where_r: Optional[Expr] = none
 
-    if let w = where_expr:
-        let r = try resolve(w, scope, 0, List[Int]())
+    if w := where_expr:
+        r := try resolve(w, scope, 0, List[Int]())
         where_r = some(r)
 
     var deleted = 0
     var kept = List[List[Value]]()
 
     for row in t.rows:
-        let hit = try passes(where_r, row)
+        hit := try passes(where_r, row)
 
         if hit:
             deleted += 1
@@ -2114,11 +2114,11 @@ fn exec_delete(var tables: List[Table], name: String, where_expr: Optional[Expr]
     return ok("deleted {deleted}\n".to_bytes())
 
 fn run_statement(var tables: List[Table], text: Bytes) Result[Bytes, SqlErr]:
-    let toks = try lex(text)
+    toks := try lex(text)
     if toks.length() == 1:
         return ok(empty_bytes())
 
-    let stmt = try parse_statement_text(text)
+    stmt := try parse_statement_text(text)
 
     match stmt:
         CreateStmt(name, cols):
@@ -2138,15 +2138,15 @@ fn run_statement(var tables: List[Table], text: Bytes) Result[Bytes, SqlErr]:
             return exec_select(tables, sel.clone())
 
 export fn main() Int:
-    let data = read_all(stdin()).get()
+    data := read_all(stdin()).get()
     var tables = List[Table]()
     var out = BytesBuilder()
 
     for seg in split_statements(data):
-        let r = run_statement(var tables, seg)
+        r := run_statement(var tables, seg)
 
         if r.is_error():
-            let e = r.err()
+            e := r.err()
             out.append_bytes("error: {e.msg}\n".to_bytes())
         else:
             out.append_bytes(r.get())

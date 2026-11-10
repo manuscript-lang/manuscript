@@ -13,21 +13,21 @@
         "position": {
           "file": "diag-spelling-capital-true.ms",
           "line": 5,
-          "column": 13,
-          "offset": 143
+          "column": 10,
+          "offset": 140
         },
         "fix": {
           "position": {
             "file": "diag-spelling-capital-true.ms",
             "line": 5,
-            "column": 13,
-            "offset": 143
+            "column": 10,
+            "offset": 140
           },
           "end": {
             "file": "diag-spelling-capital-true.ms",
             "line": 5,
-            "column": 17,
-            "offset": 147
+            "column": 14,
+            "offset": 144
           },
           "replacement": "true"
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-spelling-capital-true.ms:5:13: resolution: unknown binding True; booleans are lowercase: write true and false\n   |\n 5 |     let a = True\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-spelling-capital-true.ms:5:10: resolution: unknown binding True; booleans are lowercase: write true and false\n   |\n 5 |     a := True\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

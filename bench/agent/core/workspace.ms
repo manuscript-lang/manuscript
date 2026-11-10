@@ -42,13 +42,13 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
     for c in ch.cases("examples"):
         n += 1
 
-        let name = "{n}".pad_start(2, "0")
+        name := "{n}".pad_start(2, "0")
         write_text("{dest}/examples/{name}.in", c.stdin)
         write_text("{dest}/examples/{name}.out", c.stdout)
 
     write_text("{dest}/TASK.md", ch.spec())
 
-    let check = read_text("{root()}/check.sh.tmpl").replace(
+    check := read_text("{root()}/check.sh.tmpl").replace(
         "\{build\}", lang.build
     ).replace("\{run\}", lang.run)
     write_text("{dest}/check.sh", check)
@@ -76,23 +76,23 @@ export fn read_log(ws: String) BuildLog:
 
         rows.append(parse[LogRow](line).get(LogRow("", false)))
 
-    let builds = rows.filter(fn r: r.phase == "build")
-    let checks = rows.filter(fn r: r.phase == "check")
+    builds := rows.filter(fn r: r.phase == "build")
+    checks := rows.filter(fn r: r.phase == "check")
     var first_ok = false
-    if let first = builds.first(): first_ok = first.ok
+    if first := builds.first(): first_ok = first.ok
 
     var last_ok = false
-    if let last = checks.last(): last_ok = last.ok
+    if last := checks.last(): last_ok = last.ok
     return BuildLog(builds.length(), first_ok, checks.length(), last_ok)
 
 // Builds the workspace's solution and runs the hidden cases.
 export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
-    let cases = ch.cases("hidden")
-    let tokens = count_workspace(ws, lang.suffix())
-    let built = bash(lang.build, ws, 600, "")
+    cases := ch.cases("hidden")
+    tokens := count_workspace(ws, lang.suffix())
+    built := bash(lang.build, ws, 600, "")
 
     if built.code != 0:
-        let tail = built.err.slice(
+        tail := built.err.slice(
             if built.err.length() > 500: built.err.length() - 500 else: 0,
             built.err.length()
         ).get("")
@@ -102,7 +102,7 @@ export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
     var failed = List[String]()
 
     for c in cases:
-        let ran = bash(lang.run, ws, ch.timeout_s, c.stdin)
+        ran := bash(lang.run, ws, ch.timeout_s, c.stdin)
 
         if ran.code == 0 and norm(ran.out) == norm(c.stdout):
             passed += 1

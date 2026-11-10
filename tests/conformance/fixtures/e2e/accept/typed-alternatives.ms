@@ -10,23 +10,23 @@ fn checked(n: Int) Int!Error:
     return ok(n + 1)
 
 fn chain(n: Int) Int!Error:
-    let v = try checked(n)
+    v := try checked(n)
     return ok(v * 2)
 
 fn deeper(n: Int) Int!Error:
-    let a = try chain(n)
-    let b = try chain(a)
+    a := try chain(n)
+    b := try chain(a)
     return ok(a + b)
 
 fn expression_try(n: Int) Int!Error:
-    let x = (try checked(n)) + 100
+    x := (try checked(n)) + 100
     return ok(x)
 
 fn passthrough(n: Int) Int!Error:
     return checked(n)
 
 fn through_local(n: Int) Int!Error:
-    let r = checked(n)
+    r := checked(n)
     return r
 
 fn halve(n: Int) Int?:
@@ -60,7 +60,7 @@ fn matched_value(n: Int) Int:
     return checked(n).get(-1)
 
 fn closure_return(n: Int) Int!Error:
-    if let y = halve(n):
+    if y := halve(n):
         return ok(y)
 
     return error(Error("odd"))
@@ -69,32 +69,32 @@ fn sum_all(count: Int) Int!Error:
     var total = 0
 
     for i in 0..count:
-        let v = try checked(i)
+        v := try checked(i)
         total += v
 
     return ok(total)
 
 test "result matching":
-    let v = chain(3).get()
+    v := chain(3).get()
     try expect_equal(v, 8)
 
-    let failure = chain(-1)
+    failure := chain(-1)
     try expect_false(not failure.is_error())
     try expect_equal(failure.err().message, "negative")
 
 test "try chains":
-    let v = deeper(1).get()
+    v := deeper(1).get()
     if not (v == 4 + 10): return fail("deeper {v}")
 
-    let deeper_failure = deeper(-5)
+    deeper_failure := deeper(-5)
     try expect_false(not deeper_failure.is_error())
     try expect_equal(deeper_failure.err().message, "negative")
 
-    let x = expression_try(4).get()
+    x := expression_try(4).get()
     try expect_equal(x, 105)
     try expect_false(not expression_try(-4).is_error())
 
-    let total = sum_all(5).get()
+    total := sum_all(5).get()
     if not (total == 15): return fail("sum {total}")
 
 test "boxed consumers":
@@ -102,41 +102,41 @@ test "boxed consumers":
     try expect_equal(checked(2), through_local(2))
     try expect_equal(checked(-2), passthrough(-2))
 
-    let f = checked
-    let v = f(6).get()
+    f := checked
+    v := f(6).get()
     try expect_equal(v, 7)
     try expect_equal(matched_value(3), 4)
     try expect_equal(matched_value(-3), -1)
 
 test "optional and payload kinds":
-    if let h = halve(8):
+    if h := halve(8):
         try expect_equal(h, 4)
     else:
         return fail("halve none")
 
     try expect_false(halve(7).is_some())
 
-    let w = word(3).get()
+    w := word(3).get()
     try expect_equal(w, "w3")
 
-    let r = ratio(1).get()
+    r := ratio(1).get()
     try expect_equal(r, 1.5)
     nothing(true).get()
 
-    if let inner = nested(4):
+    if inner := nested(4):
         try expect_equal(inner, 2)
     else:
         return fail("nested none")
 
-    let odd = closure_return(5)
+    odd := closure_return(5)
     try expect_false(not odd.is_error())
     try expect_equal(odd.err().message, "odd")
 
-    let even = closure_return(6).get()
+    even := closure_return(6).get()
     try expect_equal(even, 3)
 
 test "list at unwrap":
-    let items = [10, 20, 30]
+    items := [10, 20, 30]
     try expect_equal(items.get(0), 10)
     try expect_equal(items.get(-1), 30)
     try expect_equal(items.get(1) + items.get(2), 50)

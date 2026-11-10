@@ -16,12 +16,12 @@ fn echo(request: HttpRequest) HttpResponse:
     return text(201, "{request.path}:{request.body.decode_utf8().get("")}")
 
 fn exchange_echo(var exchange: HttpExchange) Unit!:
-    let body = try read_body(var exchange, 8)
+    body := try read_body(var exchange, 8)
     return reply(var exchange, text(200, "{body.length()}"))
 
 test "buffered adapts a request-to-response handler":
-    let server = try serve("127.0.0.1:0", buffered(echo))
-    let client = try http_client()
+    server := try serve("127.0.0.1:0", buffered(echo))
+    client := try http_client()
     var response = try client.request(
         HttpMethod.Post, "http://{server.address()}/x", headers(), "abc"
     )
@@ -33,14 +33,14 @@ test "buffered adapts a request-to-response handler":
     try expect_equal(text, "/x:abc")
 
 test "read_body bounds the body by its limit":
-    let server = try serve("127.0.0.1:0", exchange_echo)
-    let client = try http_client()
-    let small = try client.request(
+    server := try serve("127.0.0.1:0", exchange_echo)
+    client := try http_client()
+    small := try client.request(
         HttpMethod.Post, "http://{server.address()}/", headers(), "12345"
     )
     try expect_equal(small.metadata.status, 200)
 
-    let large = try client.request(
+    large := try client.request(
         HttpMethod.Post, "http://{server.address()}/", headers(), "123456789"
     )
     try expect_equal(large.metadata.status, 500)
@@ -49,8 +49,8 @@ fn bare(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, body: "bare".to_bytes())
 
 test "serve, the client and a response take their defaults":
-    let server = try serve("127.0.0.1:0", buffered(bare))
-    let client = try http_client()
+    server := try serve("127.0.0.1:0", buffered(bare))
+    client := try http_client()
     var response = try client.request(HttpMethod.Get, "http://{server.address()}/")
     try expect_equal(response.metadata.status, 200)
 

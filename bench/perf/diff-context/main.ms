@@ -5,11 +5,11 @@ import (
 )
 
 fn main() Int:
-    let args = arguments()
-    let n = args[0].parse_int().get()
-    let context = args[1].parse_int().get()
-    let repeats = args[2].parse_int().get()
-    let mode = args[3]
+    args := arguments()
+    n := args[0].parse_int().get()
+    context := args[1].parse_int().get()
+    repeats := args[2].parse_int().get()
+    mode := args[3]
     var old: List[String] = []
     var new: List[String] = []
 
@@ -19,13 +19,13 @@ fn main() Int:
 
     if mode == "sparse": new[n / 2] = "changed"
 
-    let options = UnifiedDiffOptions(context: context)
-    let expected = unified_diff(old, new, options)
-    let start = monotonic()
+    options := UnifiedDiffOptions(context: context)
+    expected := unified_diff(old, new, options)
+    start := monotonic()
     var sum = 0
 
     for unused in 0..repeats:
-        let output = unified_diff(old, new, options)
+        output := unified_diff(old, new, options)
         if output != expected: return 1
 
         sum += output.length()

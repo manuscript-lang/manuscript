@@ -19,11 +19,11 @@ import (
 )
 
 fn shift_too_far() Unit:
-    let _value = shift_left(1, 64)
+    _value := shift_left(1, 64)
     return unit
 
 fn shift_negative() Unit:
-    let _value = shift_right(1, -1)
+    _value := shift_right(1, -1)
     return unit
 
 test "bitwise operators follow two's complement":
@@ -44,8 +44,8 @@ test "shifts distinguish arithmetic from logical":
     try expect_equal(shift_right_unsigned(-16, 4), 1152921504606846975)
 
 test "shift counts outside 0 through 63 fault":
-    let _first = try expect_fault(shift_too_far)
-    let _second = try expect_fault(shift_negative)
+    _first := try expect_fault(shift_too_far)
+    _second := try expect_fault(shift_negative)
 
 test "rotation and bit counts":
     try expect_equal(rotate_left(1, 64), 1)
@@ -62,7 +62,7 @@ test "rotation counts reduce modulo 64 for runtime counts":
     var count = 0
 
     while count < 200:
-        let reduced = (count + 64) % 64
+        reduced := (count + 64) % 64
         try expect_equal(
             rotate_left(min_int + 5, count), rotate_left(min_int + 5, reduced)
         )

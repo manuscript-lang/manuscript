@@ -4,4 +4,4 @@
 import ArchiveFormat from "@std/io/archive.ms"
 
 fn wrong() Unit:
-    let format = ArchiveFormat.TAR
+    format := ArchiveFormat.TAR

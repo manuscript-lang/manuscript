@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = ((-(63382 + 684073)) - (-667913))
+    i1 := ((-(63382 + 684073)) - (-667913))
     say("i1 = {i1}")
 
-    let b3 = ("delta".trim() + ("a" + "back\\slash")).is_empty()
+    b3 := ("delta".trim() + ("a" + "back\\slash")).is_empty()
     say("b3 = {b3}")
 
-    let f4 = 9.5
+    f4 := 9.5
     say("f4 = {f4}")
 
-    let f5 = (
+    f5 := (
         ((403.132 * 2.5) - (857.691 - f4))
         + ((305.516 + f4) * (766.855 / 714.007))
     )

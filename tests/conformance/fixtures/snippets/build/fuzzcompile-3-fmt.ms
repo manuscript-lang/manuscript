@@ -4,6 +4,6 @@
 import panic from "@std/core.ms"
 
 test "list":
-    let values = [1, 2]
+    values := [1, 2]
     if not (values.length() == 2):
         return panic(message: "check failed")

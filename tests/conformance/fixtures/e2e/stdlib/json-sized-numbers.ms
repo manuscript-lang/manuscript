@@ -12,10 +12,10 @@ type Sized:
     items: List[Int32]
 
 fn sample() Sized:
-    let maybe: UInt16 = 7
-    let single: Float32 = 0.1
-    let low: Int32 = -1
-    let high: Int32 = 2
+    maybe: UInt16 = 7
+    single: Float32 = 0.1
+    low: Int32 = -1
+    high: Int32 = 2
     return Sized(255, -128, 18446744073709551615, single, maybe, [low, high])
 
 test "JSON writes sized numbers like Int and Float":
@@ -27,15 +27,15 @@ test "JSON writes sized numbers like Int and Float":
     )
 
 test "JSON reads sized numbers back":
-    let text = stringify(sample()).get()
-    let back = parse[Sized](text).get()
+    text := stringify(sample()).get()
+    back := parse[Sized](text).get()
     try expect_equal(back.small.to_int(), 255)
     try expect_equal(back.signed.to_int(), -128)
     try expect_equal(back.wide.to_string_radix(16), "ffffffffffffffff")
     try expect_equal(stringify(back).get(), text)
 
 test "JSON rejects sized numbers outside their range":
-    let head = "\{\"signed\":0,\"wide\":0,\"single\":0,\"items\":[]"
+    head := "\{\"signed\":0,\"wide\":0,\"single\":0,\"items\":[]"
     try expect_equal(
         (try expect_error(parse[Sized](head + ",\"small\":256\}"))).kind,
         "EBADMSG"

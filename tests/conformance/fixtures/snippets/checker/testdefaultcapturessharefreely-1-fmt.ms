@@ -8,8 +8,8 @@ interface Read:
     fn get() Int
 
 fn call(view: Read) Unit:
-    let callback = fn(value: Int = view.get()) Int:
+    callback := fn(value: Int = view.get()) Int:
         return value
-    let task = fn() Int:
+    task := fn() Int:
         return callback()
-    let _result = run(task)
+    _result := run(task)

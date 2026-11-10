@@ -7,7 +7,7 @@ fn middle(bytes: Bytes) Bytes:
     return bytes.view(1, 3).clone()
 
 fn local_middle() Bytes:
-    let bytes = Bytes([10, 20, 30])
+    bytes := Bytes([10, 20, 30])
     return bytes.view(1, 3).clone()
 
 test "a cloned view of a parameter or a local can be returned":

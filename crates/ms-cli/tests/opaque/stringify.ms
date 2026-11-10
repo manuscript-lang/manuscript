@@ -2,4 +2,4 @@ import approve, Approved, Mode, safe from "./gate.ms"
 import parse, stringify from "@std/data/json.ms"
 
 fn main() Unit:
-    let s = stringify(approve("u"))
+    s := stringify(approve("u"))

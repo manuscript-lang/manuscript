@@ -4,5 +4,5 @@ import (
 )
 
 export fn main() Int:
-    let m = Mode.Safe
+    m := Mode.Safe
     return 0

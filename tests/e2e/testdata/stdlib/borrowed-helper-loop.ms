@@ -21,7 +21,7 @@ fn fresh_row() List[Int]:
     return [4, 5, 6]
 
 test "borrowed helper iterables keep scalar and string elements in place":
-    let rows = [[1, 2], [3, 4]]
+    rows := [[1, 2], [3, 4]]
     var sum = first_row(rows).sum()
     try expect_equal(sum, 3)
     try expect_equal(total(rows), 3)
@@ -30,14 +30,14 @@ test "borrowed helper iterables keep scalar and string elements in place":
         sum += value
     try expect_equal(sum, 3)
 
-    let first = row(rows, 0)
+    first := row(rows, 0)
     sum = 0
     for value in first:
         sum += value
     try expect_equal(sum, 3)
     try expect_equal(rows[0], [1, 2])
 
-    let words = [["a", "bb"]]
+    words := [["a", "bb"]]
     var length = 0
     for word in row(words, 0):
         length += word.length()
@@ -45,7 +45,7 @@ test "borrowed helper iterables keep scalar and string elements in place":
     try expect_equal(words[0], ["a", "bb"])
 
 test "borrowed receiver iterable handles break and continue":
-    let grid = Grid([[1, 2, 3, 4]])
+    grid := Grid([[1, 2, 3, 4]])
     var sum = 0
 
     for value in grid.first():

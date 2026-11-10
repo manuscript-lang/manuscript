@@ -10,4 +10,4 @@ fn next_sum(a: List[Int]) Int:
     return t
 
 fn main() Unit:
-    let _ = stdout().write("{next_sum([1, 2, 3])}\n")
+    _ := stdout().write("{next_sum([1, 2, 3])}\n")

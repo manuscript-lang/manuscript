@@ -3,10 +3,10 @@ use std::sync::Arc;
 fn unfinished_functions_do_not_swallow_constants_or_externs() {
     let file = Arc::from("recover.ms");
     for declaration in [
-        "let VALUE = 3\n",
+        "VALUE := 3\n",
         "enum State:\n    Ready\n",
         "export opaque enum Hidden:\n    Secret(value: Int)\n",
-        "let(\n    VALUE = 3\n)\n",
+        "VALUE := 3\n",
         "extern fn native(value: Int) Int\n",
         "extern type Handle\n",
     ] {
@@ -51,7 +51,7 @@ fn long_unfinished_lists_preserve_following_declarations() {
     let file = Arc::from("recover.ms");
     for ending in ["\n", "\r\n"] {
         for entry in ["1,\n", "(1),\n", "\"x ] #\",\n"] {
-            let prefix = ("let data = [\n".to_string() + &entry.repeat(128)).replace('\n', ending);
+            let prefix = ("data := [\n".to_string() + &entry.repeat(128)).replace('\n', ending);
             let tail = "fn sentinel() Int: return 7\n".replace('\n', ending);
             let source = prefix.clone() + &tail;
             let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
@@ -136,7 +136,7 @@ fn anonymous_functions_at_column_zero_remain_continuations() {
     let file = Arc::from("recover.ms");
     for callback in ["fn(value: Int) Int: value", "fn (value: Int) Int: value"] {
         for ending in ["\n", "\r\n"] {
-            let valid = format!("let callbacks = [\n{callback},\n]\n").replace('\n', ending);
+            let valid = format!("callbacks := [\n{callback},\n]\n").replace('\n', ending);
             ms_syntax::parser::parse(&file, &valid).unwrap();
             let source = valid + "fn broken(\n";
             let (module, diagnostics) = ms_syntax::parse_partial(&file, &source);
@@ -161,9 +161,9 @@ fn inferred_callbacks_at_column_zero_remain_continuations() {
     ] {
         for ending in ["\n", "\r\n"] {
             for surround in [
-                format!("let callbacks = [\n{callback},\n]\n"),
-                format!("let callback = (\n{callback}\n)\n"),
-                format!("let value = apply(\n{callback},\n)\n"),
+                format!("callbacks := [\n{callback},\n]\n"),
+                format!("callback := (\n{callback}\n)\n"),
+                format!("value := apply(\n{callback},\n)\n"),
             ] {
                 let valid = surround.replace('\n', ending);
                 let original = ms_syntax::parser::parse(&file, &valid).unwrap();

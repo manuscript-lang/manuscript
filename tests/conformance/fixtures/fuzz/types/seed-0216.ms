@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (10 / (-531145698658))
+    i1 := (10 / (-531145698658))
     say("i1 = {i1}")
 
-    let i2 = (-15)
+    i2 := (-15)
     say("i2 = {i2}")
     say(
         "{((5 + 41) + (-i2))} {(717218 + (i1 + 47))} {(((5 + 41) + (-i2)) < (717218 + (i1 + 47)))} sum {((5 + 41) + (-i2)) + (717218 + (i1 + 47))}"
     )
 
-    let bad = Map[Int, Int]().get(1, 2, 3)
-    let i3 = (10 - (-58900))
+    bad := Map[Int, Int]().get(1, 2, 3)
+    i3 := (10 - (-58900))
     say("i3 = {i3}")
     return 0

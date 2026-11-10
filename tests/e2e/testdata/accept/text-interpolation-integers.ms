@@ -32,10 +32,10 @@ test "integer interpolation in loops and chains":
         parts.append("{i}-{i * i}-{i + 1}")
     try expect_equal(parts.join(","), "0-0-1,1-1-2,2-4-3,3-9-4,4-16-5")
 
-    let n = 42
-    let s = "x"
+    n := 42
+    s := "x"
     try expect_equal("{n}{s}{n}{s}{n}{s}", "42x42x42x")
     try expect_equal("{n}{n}{n}{n}{n}{n}{n}", "42424242424242")
 
-    let t = "{n}"
+    t := "{n}"
     try expect_equal("{t}{n}", "4242")

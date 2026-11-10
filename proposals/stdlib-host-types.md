@@ -17,9 +17,9 @@ Approved, 2026-10-31, checked at `be04a207`. Chinmay: "having one filesystem(), 
 ```
 import filesystem from "@std/os/fs.ms"
 import network from "@std/net/net.ms"
-let fs = filesystem()
-let text = try fs.read_file("a.txt")
-let client = try network().http_client(HttpClientOptions())
+fs := filesystem()
+text := try fs.read_file("a.txt")
+client := try network().http_client(HttpClientOptions())
 ```
 
 - The getter adds a line and a name that carry no meaning. Only `FileSystem` (conformance snippet `testfilesystemimplementationdefaultsoverrideonlyco-3.ms`, `tests/e2e/testdata/stdlib/fs-defaults.ms`, which exercises interface default methods) and `Commands`/`Entropy` are implemented by user code; no user code implements `Network`, `Clock`, `WallClock`, `System`, `ProcessControl`, `Terminal` or `Files`. The `FileSystem` fixtures move to a source type in the test that exercises interface defaults.
@@ -34,10 +34,10 @@ Rule: an operation on the host is a function in its module; a value that carries
 ```
 import read_file from "@std/os/fs.ms"
 import restrict, http_client from "@std/net/net.ms"
-let text = try read_file("a.txt")
-let client = try http_client(HttpClientOptions())
-let narrow = try restrict(["example.com"], [], false)   # a Network value
-let limited = try narrow.http_client(HttpClientOptions())
+text := try read_file("a.txt")
+client := try http_client(HttpClientOptions())
+narrow := try restrict(["example.com"], [], false)   # a Network value
+limited := try narrow.http_client(HttpClientOptions())
 ```
 
 | Module | Before | After |

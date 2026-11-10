@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -25,8 +25,8 @@ fn collatz(start: Int) Int:
 export fn main() Int:
     say("collatz(1662) = {collatz(1662)}")
 
-    let bad: Bool = 1
-    let l1 = [1, 2, 3].take(0)
+    bad: Bool = 1
+    l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
 
     var acc2 = 0
@@ -40,7 +40,7 @@ export fn main() Int:
     say("acc2 = {acc2}")
     say("collatz(1083) = {collatz(1083)}")
 
-    let l3 = [1, 2, 3].take(0)
+    l3 := [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
 
     var acc4 = 0

@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [(-27), (-26), (-2), 15]
+    l1 := [(-27), (-26), (-2), 15]
     say("l1 = {l1} len {l1.length()}")
 
-    let l2 = l1.concat(l1)
+    l2 := l1.concat(l1)
     say("l2 = {l2} len {l2.length()}")
 
     var acc3 = 0
@@ -20,8 +20,8 @@ export fn main() Int:
         acc3 += i * (-2)
     say("acc3 = {acc3}")
 
-    let b4 = false
+    b4 := false
     say("b4 = {b4}")
 
-    let bad: Bool = 1
+    bad: Bool = 1
     return 0

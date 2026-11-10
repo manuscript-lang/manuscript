@@ -2,8 +2,8 @@ use std::hint::black_box;
 use unicode_normalization::UnicodeNormalization;
 
 fn main() {
-    let text = "x".repeat(4194304);
-    let input = black_box(text.as_str());
+    text := "x".repeat(4194304);
+    input := black_box(text.as_str());
     let output: String;
     if cfg!(feature = "ascii-identity") && input.is_ascii() {
         output = input.to_owned();

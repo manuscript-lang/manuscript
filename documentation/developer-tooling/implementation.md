@@ -265,9 +265,9 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL103 | warning | Unreachable statement |
 | MSL106 | error | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |
 | MSL107 | error | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, `try`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
-| MSL108 | warning | `match` on an Optional with only `some` and `none` arms; use `if let` or an Optional method |
-| MSL109 | warning | `match` on a Result with only `ok` and `error` arms; use `try`, `if let` or a Result method |
-| MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if let`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
+| MSL108 | warning | `match` on an Optional with only `some` and `none` arms; use `if v := x` or an Optional method |
+| MSL109 | warning | `match` on a Result with only `ok` and `error` arms; use `try`, `if v := x` or a Result method |
+| MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if v := x`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
 | MSL111 | error | `while true` loop in a module that imports `@std/concurrency/promise.ms` whose body neither waits nor exits; other promises cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
 | MSL112 | error | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
 | MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush`, `sync` or `commit` returning a `Result` that nothing calls. Call the separate fallible operation, such as `try x.flush()`, before the scope ends so its result is handled. See [scopes](../core-language/cleanup/scopes.md) |
@@ -277,12 +277,12 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL118 | warning | A `length()` of a string, list, map or set compared with zero, such as `xs.length() == 0`. Write `xs.is_empty()`, or `not xs.is_empty()` for `!= 0` and `> 0` in a condition. `ms lint --fix` rewrites it |
 | MSL119 | warning | A list in a name or field read with `xs.get(i)`. Write `xs[i]`. `ms lint --fix` rewrites it |
 | MSL120 | warning | `map.get(key).get(default)` on a map. Write `map.get_or(key, default)`. `ms lint --fix` rewrites it |
-| MSL121 | warning | `var x = a` followed by `if c: x = b`, where `a` is a literal or name and `c` does not read `x`. Write `let x = if c: b else: a`. `ms lint --fix` rewrites it |
+| MSL121 | warning | `var x = a` followed by `if c: x = b`, where `a` is a literal or name and `c` does not read `x`. Write `x := if c: b else: a`. `ms lint --fix` rewrites it |
 | MSL122 | warning | `var i = 0` and `while i < n:` whose last statement is `i += 1`, with `i` unused afterwards and no `continue`. Write `for i in 0..n:`. `ms lint --fix` rewrites it |
 | MSL123 | warning | `for i in 0..xs.length():` where the body only reads `xs[i]`. Write `for item in xs:` |
 | MSL124 | warning | A fresh list or total filled by a loop whose body is one `append` or `+=`. Write `map`, `filter` or `sum` |
 | MSL125 | warning | `for x in xs: out.append(x)` (or `x.clone()`). Write `out.extend(xs)` |
-| MSL126 | warning | `let x = e` directly followed by `return x`. Write `return e` |
+| MSL126 | warning | `x := e` directly followed by `return x`. Write `return e` |
 | MSL127 | warning | `m[k.clone()] = m.get(k).get() - v`. Write `m[k] -= v` |
 | MSL128 | warning | A final `return ok(unit)` in a `Unit!` function, or `return` in a `Unit` one, after other statements. The end of the body already returns it; delete the line |
 

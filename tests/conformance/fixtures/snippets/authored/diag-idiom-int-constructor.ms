@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 fn main() Unit:
-    let a = Int("1")
+    a := Int("1")

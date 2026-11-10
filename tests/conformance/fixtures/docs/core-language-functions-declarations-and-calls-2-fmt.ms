@@ -4,9 +4,9 @@
 fn reduce(amount: Int, deduction: Int) Int:
     return amount - deduction
 
-let remaining = reduce(10, 3)
-let explicit_remaining = reduce(amount: 10, deduction: 3)
-let mixed = reduce(deduction: 3, 10)
-let amount = 10
-let deduction = 3
-let swapped = reduce(deduction: deduction, amount: amount)
+remaining := reduce(10, 3)
+explicit_remaining := reduce(amount: 10, deduction: 3)
+mixed := reduce(deduction: 3, 10)
+amount := 10
+deduction := 3
+swapped := reduce(deduction: deduction, amount: amount)

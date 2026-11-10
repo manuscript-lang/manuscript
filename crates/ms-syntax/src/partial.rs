@@ -233,31 +233,43 @@ fn partial_root_start(source: &str) -> bool {
         "interface",
         "impl",
         "test",
-        "let",
     ] {
         if after_keyword(source, keyword).is_some() {
             return true;
         }
     }
-    after_keyword(source, "fn").is_some_and(|rest| {
-        let rest = rest.trim_start();
-        let name_start = rest
-            .as_bytes()
-            .first()
-            .is_some_and(|b| b.is_ascii_alphabetic() || *b == b'_');
-        let name_end = rest
-            .bytes()
-            .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
-            .count();
-        // A named function needs a parameter or type-parameter list after
-        // its name. Inferred callbacks can continue their header on later lines.
-        name_start && rest[name_end..].trim_start().starts_with(['(', '['])
-    }) || after_keyword(source, "bench").is_some_and(|rest| rest.trim_start().starts_with('"'))
+    constant_start(source)
+        || after_keyword(source, "fn").is_some_and(|rest| {
+            let rest = rest.trim_start();
+            let name_start = rest
+                .as_bytes()
+                .first()
+                .is_some_and(|b| b.is_ascii_alphabetic() || *b == b'_');
+            let name_end = rest
+                .bytes()
+                .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+                .count();
+            // A named function needs a parameter or type-parameter list after
+            // its name. Inferred callbacks can continue their header on later lines.
+            name_start && rest[name_end..].trim_start().starts_with(['(', '['])
+        })
+        || after_keyword(source, "bench").is_some_and(|rest| rest.trim_start().starts_with('"'))
         || after_keyword(source, "opaque").is_some_and(|rest| {
             ["type", "enum"]
                 .iter()
                 .any(|keyword| after_keyword(rest.trim_start(), keyword).is_some())
         })
+}
+
+/// A module constant starts `name :=` or `name: Type =`.
+fn constant_start(source: &str) -> bool {
+    let name = source
+        .bytes()
+        .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+        .count();
+    name > 0
+        && !source.as_bytes()[0].is_ascii_digit()
+        && source[name..].trim_start().starts_with(":=")
 }
 
 fn after_keyword<'a>(source: &'a str, keyword: &str) -> Option<&'a str> {
@@ -279,10 +291,7 @@ fn single_partial_root(module: &Module) -> bool {
         root = Some(imp.pos.offset);
     }
     for decl in &module.decls {
-        let pos = match &decl.kind {
-            DeclKind::Const(c) => c.group.unwrap_or(decl.pos),
-            _ => decl.pos,
-        };
+        let pos = decl.pos;
         if root.is_some_and(|r| r != pos.offset) {
             return false;
         }
@@ -458,7 +467,7 @@ mod continuation_tests {
         ];
         for ending in ["\n", "\r\n"] {
             for body in bodies {
-                let source = ("let data = [\n".to_string() + body).replace('\n', ending);
+                let source = ("data := [\n".to_string() + body).replace('\n', ending);
                 let lines: Vec<&str> = source.split_inclusive('\n').collect();
                 let stop_at: Vec<bool> = lines
                     .iter()

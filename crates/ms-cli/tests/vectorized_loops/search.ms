@@ -16,5 +16,5 @@ fn total(xs: List[Int]) Int:
     return s
 
 export fn main() Int:
-    let xs = [1, 2, 3]
+    xs := [1, 2, 3]
     return find(xs, 2) + total(xs)

@@ -7,7 +7,7 @@ fn emit(text: String) Unit:
     stdout().write("{text}\n").get()
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var rows = lines.length()
     while rows > 0 and lines[rows - 1].length() == 0:
         rows -= 1
@@ -19,10 +19,10 @@ export fn main() Int:
     var grid = List[List[String]](reserve: rows)
 
     for r in 0..rows:
-        let cells = lines[r].chars()
+        cells := lines[r].chars()
 
         for c in 0..cells.length():
-            let ch = cells[c]
+            ch := cells[c]
 
             if ch != "#" and ch != "." and ch != "S" and ch != "E":
                 emit("error: bad character at {r + 1},{c + 1}")
@@ -30,7 +30,7 @@ export fn main() Int:
 
         grid.append(cells)
 
-    let width = grid[0].length()
+    width := grid[0].length()
 
     for r in 0..rows:
         if grid[r].length() != width:
@@ -44,7 +44,7 @@ export fn main() Int:
 
     for r in 0..rows:
         for c in 0..width:
-            let ch = grid[r][c]
+            ch := grid[r][c]
 
             if ch == "S":
                 starts += 1
@@ -69,13 +69,13 @@ export fn main() Int:
         emit("error: multiple ends")
         return 0
 
-    let total = rows * width
+    total := rows * width
     var dist = List[Int](reserve: total)
     for i in 0..total:
         dist.append(-1)
 
-    let dr = [-1, 1, 0, 0]
-    let dc = [0, 0, -1, 1]
+    dr := [-1, 1, 0, 0]
+    dc := [0, 0, -1, 1]
     var queue = List[Int](reserve: total)
     dist[start] = 0
     queue.append(start)
@@ -83,18 +83,18 @@ export fn main() Int:
     var head = 0
 
     while head < queue.length():
-        let cur = queue[head]
+        cur := queue[head]
         head += 1
 
-        let r = cur / width
-        let c = cur % width
+        r := cur / width
+        c := cur % width
 
         for d in 0..4:
-            let nr = r + dr[d]
-            let nc = c + dc[d]
+            nr := r + dr[d]
+            nc := c + dc[d]
 
             if nr >= 0 and nr < rows and nc >= 0 and nc < width:
-                let ni = nr * width + nc
+                ni := nr * width + nc
 
                 if grid[nr][nc] != "#" and dist[ni] < 0:
                     dist[ni] = dist[cur] + 1

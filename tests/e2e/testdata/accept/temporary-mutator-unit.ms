@@ -13,7 +13,7 @@ test "a Unit mutation of a temporary list returns Unit":
     set_temporary()
     append_temporary()
 
-    let unit_value: Unit = [0].set(0, 9)
+    unit_value: Unit = [0].set(0, 9)
     try expect_equal(unit_value, unit)
 
 test "a mutation of a temporary list keeps its extra result":

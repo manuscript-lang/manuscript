@@ -15,8 +15,8 @@ type Base64Encoding:
 
 impl Transform[Bytes, String] for Base64Encoding:
     var fn step(value: Bytes, var out: List[String]) Unit!:
-        let data = self.tail.concat(value)
-        let whole = data.length() - data.length() % 3
+        data := self.tail.concat(value)
+        whole := data.length() - data.length() % 3
         self.tail = try data.slice(whole, data.length())
         if whole == 0: return ok(unit)
 
@@ -25,7 +25,7 @@ impl Transform[Bytes, String] for Base64Encoding:
     var fn finish(var out: List[String]) Unit!:
         if self.tail.is_empty(): return ok(unit)
 
-        let last = self.tail.clone()
+        last := self.tail.clone()
         self.tail = join([])
         out.append(base64_encode(last, self.url_safe))
 
@@ -51,13 +51,13 @@ impl Transform[String, Bytes] for Base64Decoding:
             Error("encoding: invalid data", kind: "EBADMSG")
         )
 
-        let text = self.tail.concat(value)
-        let whole = text.length() - text.length() % 4
+        text := self.tail.concat(value)
+        whole := text.length() - text.length() % 4
         self.tail = text.slice(whole, text.length()).get("")
         if whole == 0: return ok(unit)
 
-        let part = text.slice(0, whole).get("")
-        let decoded = try base64_decode(part, self.url_safe)
+        part := text.slice(0, whole).get("")
+        decoded := try base64_decode(part, self.url_safe)
 
         // Every complete group decodes to three bytes unless the last group has padding.
         if decoded.length() != whole / 4 * 3:
@@ -70,7 +70,7 @@ impl Transform[String, Bytes] for Base64Decoding:
         out.append(decoded)
 
     var fn finish(var out: List[Bytes]) Unit!:
-        let last = self.tail.clone()
+        last := self.tail.clone()
         self.tail = ""
         if last == "": return ok(unit)
 
@@ -104,15 +104,15 @@ type HexDecoding:
 
 impl Transform[String, Bytes] for HexDecoding:
     var fn step(value: String, var out: List[Bytes]) Unit!:
-        let text = self.tail.concat(value)
-        let whole = text.length() - text.length() % 2
+        text := self.tail.concat(value)
+        whole := text.length() - text.length() % 2
         self.tail = text.slice(whole, text.length()).get("")
         if whole == 0: return ok(unit)
 
         out.append(try hex_decode(text.slice(0, whole).get("")))
 
     var fn finish(var out: List[Bytes]) Unit!:
-        let last = self.tail.clone()
+        last := self.tail.clone()
         self.tail = ""
         if last == "": return ok(unit)
 

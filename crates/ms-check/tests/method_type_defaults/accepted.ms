@@ -22,11 +22,11 @@ fn from_bound[S: Reader](source: S) Int:
     return source.read()
 
 fn exercise() Int:
-    let source = Source(7)
-    let first = source.read()
-    let explicit = source.read[String]()
-    let partial = source.choose[Int](1, 2)
-    let inferred = source.choose(1, "x")
-    let fallback = source.fallback()
-    let output: String? = source.output()
+    source := Source(7)
+    first := source.read()
+    explicit := source.read[String]()
+    partial := source.choose[Int](1, 2)
+    inferred := source.choose(1, "x")
+    fallback := source.fallback()
+    output: String? = source.output()
     return first + explicit + partial + inferred + fallback + output.get("").length() + from_bound(source)

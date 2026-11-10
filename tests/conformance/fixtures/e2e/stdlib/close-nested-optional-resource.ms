@@ -12,10 +12,10 @@ impl Closeable for Door:
         print("closed {self.name}")
 
 fn nested(n: String) Door??:
-    let inner: Door? = Door(n)
+    inner: Door? = Door(n)
     return inner
 
 fn main() Unit:
-    let bound = nested("bound")
-    let present = nested("temporary").is_some()
+    bound := nested("bound")
+    present := nested("temporary").is_some()
     print("end {bound.is_some()} {present}")

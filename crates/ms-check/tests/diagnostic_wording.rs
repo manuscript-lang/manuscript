@@ -30,7 +30,7 @@ fn a_member_of_a_non_enum_type_name_does_not_list_empty_cases() {
 #[test]
 fn a_move_repeated_by_a_loop_says_so_instead_of_naming_its_own_position() {
     let got = messages(
-        "fn f(root: String) Int:\n    var n = 0\n    for _i in 0..2:\n        let s = [root, \"x\"]\n        n += s.length()\n    return n\n",
+        "fn f(root: String) Int:\n    var n = 0\n    for _i in 0..2:\n        s := [root, \"x\"]\n        n += s.length()\n    return n\n",
     );
     assert_eq!(got.len(), 1, "{got:?}");
     assert!(

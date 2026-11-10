@@ -7,4 +7,4 @@ fn b(x: Int)  Int!MyErr:
 fn c() Int?!:
     return ok(none)
 
-let f: fn() Int! = fn: ok(1)
+f: fn() Int! = fn: ok(1)

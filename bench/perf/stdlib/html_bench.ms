@@ -14,7 +14,7 @@ fn html_doc(count: Int) String:
     return sb.build()
 
 bench "html.parse":
-    let html = html_doc(2000)
+    html := html_doc(2000)
 
     fn work() Result[Unit, Error]:
         if parse(html).is_ok(): return keep(1)
@@ -24,5 +24,5 @@ bench "html.parse":
     try measure(2000, work)
 
 bench "html.escape_unescape":
-    let text = words(2000).join(" <&> ")
+    text := words(2000).join(" <&> ")
     try measure(2000, fn: keep(text | escape | unescape | .length()))

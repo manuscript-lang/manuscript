@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (((6 / (-931285)) + (345760 + (-39))) + (-2))
+    i1 := (((6 / (-931285)) + (345760 + (-39))) + (-2))
     say("i1 = {i1}")
 
-    let f2 = (((832.127 + 43.070) * 0.0) / 479.015)
+    f2 := (((832.127 + 43.070) * 0.0) / 479.015)
     say("f2 = {f2}")
 
-    let i3 = ((-23) - i1)
+    i3 := ((-23) - i1)
     say("i3 = {i3}")
 
-    let f4 = (747.540 + f2)
+    f4 := (747.540 + f2)
     say("f4 = {f4}")
 
-    let bad = Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get(1, 2, 3)
     return 0

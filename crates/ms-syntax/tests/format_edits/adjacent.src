@@ -1,7 +1,7 @@
 fn edited() Int:
-    let first = (value.one().two())
-    let second = (value.three().four())
-    let text = "λ"
+    first := (value.one().two())
+    second := (value.three().four())
+    text := "λ"
     consume(
         fn:
             return first

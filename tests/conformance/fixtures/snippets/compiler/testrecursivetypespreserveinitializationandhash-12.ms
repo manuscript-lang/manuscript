@@ -12,5 +12,5 @@ impl I[T] for Box[T]:
         return 1
 
 fn main() Unit:
-    let b = Box[Int](v: 1)
-    let i = I[Int](value: b)
+    b := Box[Int](v: 1)
+    i := I[Int](value: b)

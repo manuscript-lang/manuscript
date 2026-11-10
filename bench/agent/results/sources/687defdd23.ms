@@ -43,10 +43,10 @@ impl Calc:
         var v = self.term()
 
         while self.at("+") or self.at("-"):
-            let op = self.toks[self.pos].clone()
+            op := self.toks[self.pos].clone()
             self.pos += 1
 
-            let r = self.term()
+            r := self.term()
 
             if op == "+":
                 v = v + r
@@ -59,10 +59,10 @@ impl Calc:
         var v = self.unary()
 
         while self.at("*") or self.at("/"):
-            let op = self.toks[self.pos].clone()
+            op := self.toks[self.pos].clone()
             self.pos += 1
 
-            let r = self.unary()
+            r := self.unary()
 
             if op == "*":
                 v = v * r
@@ -86,11 +86,11 @@ impl Calc:
             self.bad = true
             return 0
 
-        let t = self.toks[self.pos].clone()
+        t := self.toks[self.pos].clone()
         self.pos += 1
 
         if t == "(":
-            let v = self.expr()
+            v := self.expr()
 
             if self.at(")"):
                 self.pos += 1
@@ -112,7 +112,7 @@ fn evaluate(line: String) Optional[String]:
     if calc.bad:
         return some("error: syntax")
 
-    let v = calc.expr()
+    v := calc.expr()
     if calc.bad or calc.pos != calc.toks.length():
         return some("error: syntax")
     if calc.div_zero:
@@ -123,7 +123,7 @@ fn evaluate(line: String) Optional[String]:
 export fn main() Int:
     var out = stdout()
     for line in read_lines(stdin()).get():
-        if let text = evaluate(line):
+        if text := evaluate(line):
             out.write("{text}\n").get()
     out.flush().get()
     return 0

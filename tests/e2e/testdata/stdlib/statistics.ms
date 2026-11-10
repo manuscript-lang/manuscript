@@ -32,7 +32,7 @@ test "mean median and mode":
     try expect_none(mode(List[Float]()))
 
 test "variance and standard deviation":
-    let data = [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0]
+    data := [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0]
     try expect_close(try expect_some(population_variance(data)), 4.0, 0.000001)
     try expect_close(try expect_some(population_stdev(data)), 2.0, 0.000001)
     try expect_close(
@@ -44,7 +44,7 @@ test "variance and standard deviation":
     try expect_close(try expect_some(population_variance([3.0])), 0.0, 0.000001)
 
 test "percentile and quantiles interpolate":
-    let data = [5.0, 1.0, 3.0, 2.0, 4.0]
+    data := [5.0, 1.0, 3.0, 2.0, 4.0]
     try expect_close(try expect_some(percentile(data, 0.0)), 1.0, 0.000001)
     try expect_close(try expect_some(percentile(data, 25.0)), 2.0, 0.000001)
     try expect_close(try expect_some(percentile(data, 50.0)), 3.0, 0.000001)
@@ -63,12 +63,12 @@ test "percentile and quantiles return the element at an exact rank":
             try expect_some(percentile(data, percent.to_float())), percent.to_float()
         )
 
-    let cuts = quantiles(data, 100)
+    cuts := quantiles(data, 100)
     for i in 0..99:
         try expect_equal(cuts[i], (i + 1).to_float())
 
 test "percentile keeps infinite neighbors from becoming NaN":
-    let inf = 1.0 / 0.0
+    inf := 1.0 / 0.0
     try expect_equal(try expect_some(percentile([1.0, inf], 0.0)), 1.0)
     try expect_equal(try expect_some(percentile([inf, inf], 50.0)), inf)
     try expect_equal(try expect_some(percentile([1.0, inf, inf], 50.0)), inf)
@@ -76,21 +76,21 @@ test "percentile keeps infinite neighbors from becoming NaN":
     try expect_equal(quantiles([1.0, inf], 2), [inf])
 
 test "bin_counts bins values":
-    let h = try expect_some(bin_counts([1.0, 2.0, 2.0, 3.0], 2))
+    h := try expect_some(bin_counts([1.0, 2.0, 2.0, 3.0], 2))
     try expect_equal(h.counts, [1, 3])
     try expect_close(h.low, 1.0, 0.000001)
     try expect_close(h.high, 3.0, 0.000001)
 
-    let same = try expect_some(bin_counts([2.0, 2.0], 3))
+    same := try expect_some(bin_counts([2.0, 2.0], 3))
     try expect_equal(same.counts, [2, 0, 0])
     try expect_none(bin_counts(List[Float](), 2))
 
 test "bin_counts places the greatest value in the last bin when the range overflows":
-    let inf = 1.0 / 0.0
-    let wide = try expect_some(bin_counts([-1.7e308, 0.0, 1.7e308, 1.7e308], 2))
+    inf := 1.0 / 0.0
+    wide := try expect_some(bin_counts([-1.7e308, 0.0, 1.7e308, 1.7e308], 2))
     try expect_equal(wide.counts, [1, 3])
 
-    let unbounded = try expect_some(bin_counts([0.0, 1.0, inf], 2))
+    unbounded := try expect_some(bin_counts([0.0, 1.0, inf], 2))
     try expect_equal(unbounded.counts, [2, 1])
 
 test "correlation and regression":
@@ -103,26 +103,26 @@ test "correlation and regression":
     try expect_none(correlation([1.0, 1.0, 1.0], [1.0, 2.0, 3.0]))
     try expect_none(correlation([1.0], [2.0]))
 
-    let line = try expect_some(linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0]))
+    line := try expect_some(linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0]))
     try expect_close(line.slope, 2.0, 0.000001)
     try expect_close(line.intercept, 1.0, 0.000001)
     try expect_none(linear_regression([2.0, 2.0], [1.0, 3.0]))
 
 test "regression stays finite and exact at large and tiny scales and with a large common offset":
-    let large = try expect_some(linear_regression([1e200, 2e200], [1e200, 2e200]))
+    large := try expect_some(linear_regression([1e200, 2e200], [1e200, 2e200]))
     try expect_equal(large.slope, 1.0)
     try expect_equal(large.intercept, 0.0)
 
-    let tiny = try expect_some(linear_regression([1e-200, 2e-200], [1e-200, 2e-200]))
+    tiny := try expect_some(linear_regression([1e-200, 2e-200], [1e-200, 2e-200]))
     try expect_equal(tiny.slope, 1.0)
     try expect_equal(tiny.intercept, 0.0)
 
-    let offset = try expect_some(linear_regression([1e16, 1e16 + 2.0], [0.0, 2.0]))
+    offset := try expect_some(linear_regression([1e16, 1e16 + 2.0], [0.0, 2.0]))
     try expect_equal(offset.slope, 1.0)
     try expect_equal(offset.intercept, -1e16)
 
     // Different scales per axis: y = 3e-5 * x + 7 over x in 1e10 .. 4e10.
-    let mixed = try expect_some(
+    mixed := try expect_some(
         linear_regression(
             [1e10, 2e10, 3e10, 4e10], [300007.0, 600007.0, 900007.0, 1200007.0]
         )
@@ -134,7 +134,7 @@ test "regression stays finite and exact at large and tiny scales and with a larg
     try expect_none(linear_regression([1e200, 1e200, 1e200], [1.0, 2.0, 3.0]))
     try expect_none(linear_regression([1e-200, 1e-200], [1.0, 3.0]))
 
-    let flat = try expect_some(linear_regression([1.0, 2.0, 3.0], [5.0, 5.0, 5.0]))
+    flat := try expect_some(linear_regression([1.0, 2.0, 3.0], [5.0, 5.0, 5.0]))
     try expect_equal(flat.slope, 0.0)
     try expect_equal(flat.intercept, 5.0)
 
@@ -142,18 +142,18 @@ fn discard[T](value: T) Unit:
     return unit
 
 test "invalid arguments fault":
-    let _first = try expect_fault(fn: discard(percentile([1.0], 101.0)))
-    let _second = try expect_fault(fn: discard(quantiles([1.0], 1)))
-    let _third = try expect_fault(fn: discard(bin_counts([1.0], 0)))
-    let _fourth = try expect_fault(fn: discard(correlation([1.0, 2.0], [1.0])))
+    _first := try expect_fault(fn: discard(percentile([1.0], 101.0)))
+    _second := try expect_fault(fn: discard(quantiles([1.0], 1)))
+    _third := try expect_fault(fn: discard(bin_counts([1.0], 0)))
+    _fourth := try expect_fault(fn: discard(correlation([1.0, 2.0], [1.0])))
 
 test "percentile finite spans do not overflow during interpolation":
-    let values = [-1e308, 1e308]
+    values := [-1e308, 1e308]
     try expect_equal(try expect_some(percentile(values, 0.0)), -1e308)
     try expect_equal(try expect_some(percentile(values, 50.0)), 0.0)
     try expect_equal(try expect_some(percentile(values, 100.0)), 1e308)
 
-    let cuts = quantiles(values, 4)
+    cuts := quantiles(values, 4)
     try expect_close(cuts[0] / 1e308, -0.5, 1e-15)
     try expect_equal(cuts[1], 0.0)
     try expect_close(cuts[2] / 1e308, 0.5, 1e-15)
@@ -162,11 +162,11 @@ test "percentile finite spans do not overflow during interpolation":
     )
 
 test "percentile stays finite ordered and bounded across the widest finite span":
-    let edge = 1.7976931348623157e308
+    edge := 1.7976931348623157e308
     var previous = -edge
 
     for percent in 0..101:
-        let result = try expect_some(percentile([-edge, edge], percent.to_float()))
+        result := try expect_some(percentile([-edge, edge], percent.to_float()))
         try expect_equal(result.is_finite(), true)
         try expect_equal(result >= previous and result <= edge, true)
         previous = result
@@ -183,19 +183,19 @@ test "percentile preserves finite small spans and special-value behavior":
     try expect_equal(try expect_some(percentile([-1e-300, 1e-300], 50.0)), 0.0)
     try expect_equal(try expect_some(percentile([-1e-323, 5e-324], 50.0)), 0.0)
 
-    let inf = 1.0 / 0.0
-    let nan = 0.0 / 0.0
+    inf := 1.0 / 0.0
+    nan := 0.0 / 0.0
     try expect_equal(try expect_some(percentile([1.0, inf], 50.0)), inf)
     try expect_equal(try expect_some(percentile([-inf, 1.0], 50.0)), -inf)
 
-    let opposite = try expect_some(percentile([-inf, inf], 50.0))
+    opposite := try expect_some(percentile([-inf, inf], 50.0))
     try expect_equal(opposite.is_nan(), true)
 
-    let unordered = try expect_some(percentile([nan, nan], 50.0))
+    unordered := try expect_some(percentile([nan, nan], 50.0))
     try expect_equal(unordered.is_nan(), true)
 
 test "median finite middle values do not overflow their sum":
-    let edge = 1.7976931348623157e308
+    edge := 1.7976931348623157e308
     try expect_equal(try expect_some(median([edge, edge])), edge)
     try expect_equal(try expect_some(median([-edge, -edge])), -edge)
     try expect_close((try expect_some(median([1e308, 1.5e308]))) / 1e308, 1.25, 1e-15)
@@ -212,8 +212,8 @@ test "median keeps ordinary tiny and nonfinite behavior":
     try expect_equal(try expect_some(median([1e-300, 3e-300])), 2e-300)
     try expect_equal(try expect_some(median([-0.0, 0.0])), 0.0)
 
-    let inf = 1.0 / 0.0
-    let nan = 0.0 / 0.0
+    inf := 1.0 / 0.0
+    nan := 0.0 / 0.0
     try expect_equal(try expect_some(median([inf, inf])), inf)
     try expect_equal(try expect_some(median([-inf, -inf])), -inf)
     try expect_equal(try expect_some(median([1.0, inf])), inf)
@@ -287,13 +287,13 @@ test "mean keeps the existing finite sum rounding and nonfinite behavior":
         [1.0, 2.0, 6.0], [1e16, 1.0, -1e16], [5e-324, 5e-324], [-5e-324, -5e-324],
         [-0.0, -0.0], [-0.0, 0.0]
     ]:
-        let original = values.sum() / values.length().to_float()
-        let result = try expect_some(mean(values))
+        original := values.sum() / values.length().to_float()
+        result := try expect_some(mean(values))
         try expect_equal(result, original)
         try expect_equal(1.0 / result, 1.0 / original)
 
-    let inf = 1.0 / 0.0
-    let nan = 0.0 / 0.0
+    inf := 1.0 / 0.0
+    nan := 0.0 / 0.0
     try expect_equal(try expect_some(mean([1.0, inf])), inf)
     try expect_equal(try expect_some(mean([-inf, 1.0])), -inf)
     try expect_equal(try expect_some(mean([1e308, 1e308, inf])), inf)
@@ -302,27 +302,27 @@ test "mean keeps the existing finite sum rounding and nonfinite behavior":
     try expect_none(mean(List[Float]()))
 
 test "mean overflow recovery rounds tiny cancellation residuals to signed zero":
-    let edge = 1.7976931348623157e308
+    edge := 1.7976931348623157e308
 
     for residual in [5e-324, -5e-324]:
-        let result = try expect_some(mean([edge, edge, -edge, -edge, residual]))
+        result := try expect_some(mean([edge, edge, -edge, -edge, residual]))
         try expect_equal(result, 0.0)
         try expect_equal(1.0 / result, 1.0 / residual)
 
 test "subnormal equal width bins preserve mathematical placement":
-    let step = 5e-324
-    let result = try expect_some(bin_counts([0.0, step, 2.0 * step], 4))
+    step := 5e-324
+    result := try expect_some(bin_counts([0.0, step, 2.0 * step], 4))
     try expect_equal(result.counts, [1, 0, 1, 1])
 
 test "rounded subnormal width does not move interior values":
-    let step = 5e-324
-    let result = try expect_some(
+    step := 5e-324
+    result := try expect_some(
         bin_counts([0.0, step, 2.0 * step, 3.0 * step, 4.0 * step], 3)
     )
     try expect_equal(result.counts, [2, 1, 2])
 
 test "subnormal bins match an exact integer grid across signs and shifted ranges":
-    let step = 5e-324
+    step := 5e-324
 
     for base in [0.0, 2.2250738585072014e-308, -2.2250738585072014e-308]:
         for offset in [-20, 0, 20]:
@@ -334,34 +334,34 @@ test "subnormal bins match an exact integer grid across signs and shifted ranges
 
                     for position in 0..span + 1:
                         // Reverse ordering and duplicate values must not change placement.
-                        let coordinate = span - position
-                        let value = base + (offset + coordinate).to_float() * step
+                        coordinate := span - position
+                        value := base + (offset + coordinate).to_float() * step
                         values.append(value)
                         values.append(value)
 
-                        let index = if coordinate == span: bins - 1 else: coordinate * bins / span
+                        index := if coordinate == span: bins - 1 else: coordinate * bins / span
                         expected.set(index, expected[index] + 2)
 
-                    let result = try expect_some(bin_counts(values, bins))
+                    result := try expect_some(bin_counts(values, bins))
                     try expect_equal(result.counts, expected)
 
 test "subnormal bin repair preserves nonfinite and degenerate controls":
-    let nan = 0.0 / 0.0
-    let inf = 1.0 / 0.0
+    nan := 0.0 / 0.0
+    inf := 1.0 / 0.0
 
     for values in [
         [0.0, nan, 5e-324, 1e-323], [nan, 0.0, 5e-324, 1e-323],
         [0.0, 5e-324, 1e-323, nan]
     ]:
-        let result = try expect_some(bin_counts(values, 4))
+        result := try expect_some(bin_counts(values, 4))
         try expect_equal(result.counts, [4, 0, 0, 0])
 
     for values in [[0.0, inf], [-inf, 0.0]]:
-        let result = try expect_some(bin_counts(values, 4))
+        result := try expect_some(bin_counts(values, 4))
         try expect_equal(result.counts, [1, 0, 0, 1])
 
     for values in [[nan, nan], [5e-324, 5e-324], [-5e-324, -5e-324]]:
-        let result = try expect_some(bin_counts(values, 4))
+        result := try expect_some(bin_counts(values, 4))
         try expect_equal(result.counts, [2, 0, 0, 0])
 
 test "standard deviation survives finite range beyond representable variance":
@@ -374,16 +374,16 @@ test "standard deviation covers finite axis scales and sample normalization":
     for scale in [
         5e-324, 1e-300, 1e-200, 1e-160, 1.0, 1e100, 1e200, 1e300, 1.7976931348623157e308
     ]:
-        let population = try expect_some(population_stdev([-scale, scale]))
+        population := try expect_some(population_stdev([-scale, scale]))
         try expect_equal(population, scale)
         try expect_equal(try expect_some(population_stdev([scale, scale])), 0.0)
         try expect_equal(try expect_some(stdev([scale, scale])), 0.0)
 
     for scale in [1e-300, 1e-200, 1e-160, 1.0, 1e100, 1e200, 1e300]:
-        let sample = try expect_some(stdev([-scale, scale]))
+        sample := try expect_some(stdev([-scale, scale]))
         try expect_close(sample / scale, 1.4142135623730951, 0.00000000000001)
 
-    let edge = 1.7976931348623157e308
+    edge := 1.7976931348623157e308
     try expect_equal((try expect_some(stdev([-edge, edge]))).is_finite(), false)
     try expect_equal(try expect_some(stdev([-5e-324, 5e-324])), 5e-324)
 
@@ -394,8 +394,8 @@ test "standard deviation preserves ordinary and nonfinite paths":
             sqrt(try expect_some(population_variance(values)))
         )
 
-    let inf = 1.0 / 0.0
-    let nan = 0.0 / 0.0
+    inf := 1.0 / 0.0
+    nan := 0.0 / 0.0
 
     for values in [[inf, inf], [-inf, inf], [nan, 1.0], [1.0, inf]]:
         try expect_equal((try expect_some(population_stdev(values))).is_nan(), true)
@@ -405,75 +405,75 @@ test "standard deviation preserves ordinary and nonfinite paths":
     try expect_none(stdev([1.0]))
 
 test "standard deviation large adjacent":
-    let values = [1e+300, 1.0000000000000002e+300]
-    let p = try expect_some(population_stdev(values))
+    values := [1e+300, 1.0000000000000002e+300]
+    p := try expect_some(population_stdev(values))
     try expect_close(p / 7.435084542388915e+283, 1.0, 0.000000000000005)
 
-    let s = try expect_some(stdev(values))
+    s := try expect_some(stdev(values))
     try expect_close(s / 1.0514797397236962e+284, 1.0, 0.000000000000005)
 
 test "standard deviation maximum adjacent":
-    let values = [1.7976931348623157e+308, 1.7976931348623155e+308]
-    let p = try expect_some(population_stdev(values))
+    values := [1.7976931348623157e+308, 1.7976931348623155e+308]
+    p := try expect_some(population_stdev(values))
     try expect_close(p / 9.9792015476736e+291, 1.0, 0.000000000000005)
 
-    let s = try expect_some(stdev(values))
+    s := try expect_some(stdev(values))
     try expect_close(s / 1.4112722170374585e+292, 1.0, 0.000000000000005)
 
 test "standard deviation small adjacent":
-    let values = [1e-300, 1.0000000000000002e-300]
-    let p = try expect_some(population_stdev(values))
+    values := [1e-300, 1.0000000000000002e-300]
+    p := try expect_some(population_stdev(values))
     try expect_equal(p, 8.289046e-317)
 
-    let s = try expect_some(stdev(values))
+    s := try expect_some(stdev(values))
     try expect_equal(s, 1.1722481e-316)
 
 test "standard deviation half minimum subnormal":
-    let values = [0.0, 5e-324]
-    let p = try expect_some(population_stdev(values))
+    values := [0.0, 5e-324]
+    p := try expect_some(population_stdev(values))
     try expect_equal(p, 0.0)
 
-    let s = try expect_some(stdev(values))
+    s := try expect_some(stdev(values))
     try expect_equal(s, 5e-324)
 
 test "standard deviation unbalanced minimum subnormal":
-    let values = [0.0, 5e-324, 5e-324]
-    let p = try expect_some(population_stdev(values))
+    values := [0.0, 5e-324, 5e-324]
+    p := try expect_some(population_stdev(values))
     try expect_equal(p, 0.0)
 
-    let s = try expect_some(stdev(values))
+    s := try expect_some(stdev(values))
     try expect_equal(s, 5e-324)
 
 test "standard deviation balanced minimum subnormal":
-    let values = [0.0, 0.0, 5e-324, 5e-324]
-    let p = try expect_some(population_stdev(values))
+    values := [0.0, 0.0, 5e-324, 5e-324]
+    p := try expect_some(population_stdev(values))
     try expect_equal(p, 0.0)
 
-    let s = try expect_some(stdev(values))
+    s := try expect_some(stdev(values))
     try expect_equal(s, 5e-324)
 
 // Exact binary64 rational variance lies below the squared overflow midpoint.
 test "standard deviation finite sample threshold":
-    let values = [
+    values := [
         1.5568479229996504e+308, -1.5568479229996504e+308, -1.5568479229996504e+308
     ]
-    let p = try expect_some(population_stdev(values))
+    p := try expect_some(population_stdev(values))
     try expect_close(p / 1.4678102981723264e+308, 1.0, 0.000000000000005)
 
-    let s = try expect_some(stdev(values))
+    s := try expect_some(stdev(values))
     try expect_equal(s, 1.7976931348623157e+308)
 
 // The rounded normalized estimate alone lands below MAX, but exact variance overflows.
 test "standard deviation infinite sample threshold":
-    let values = [
+    values := [
         1.7054414520639489e+308, 1.7054414520639489e+308, 1.7054414520639489e+308,
         1.7054414520639489e+308, -1.7054414520639489e+308, -1.7054414520639489e+308,
         -1.7054414520639489e+308, -1.7054414520639489e+308, -1.7054414520639489e+308
     ]
-    let p = try expect_some(population_stdev(values))
+    p := try expect_some(population_stdev(values))
     try expect_close(p / 1.694881341538195e+308, 1.0, 0.000000000000005)
 
-    let s = try expect_some(stdev(values))
+    s := try expect_some(stdev(values))
     try expect_equal(s, 1.0 / 0.0)
 
 test "variance survives an intermediate sum overflow":
@@ -490,7 +490,7 @@ test "variance keeps tiny scales":
     )
 
 test "variance of nonfinite input follows Float rules":
-    let result = try expect_some(population_variance([1.0, 1.0 / 0.0]))
+    result := try expect_some(population_variance([1.0, 1.0 / 0.0]))
     try expect_true(result.is_nan())
 
 test "correlation of large and tiny perfectly correlated values":

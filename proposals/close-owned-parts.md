@@ -2,7 +2,7 @@
 
 ## Summary
 
-- A resource held in a record field, an alternative payload, a `List`, `Map` or `Set` is dropped without running its `close()`; only a never-moved binding whose own type has `impl Closeable` is closed at scope end (#1630). Verified on `origin/main` at `8f2c47fe9`: `Holder(R(1))`, `[R(2), R(3)]` and a `Map[String, R]` bound with `let` print nothing at scope end, while `let r = R(1)` prints `closed 1`.
+- A resource held in a record field, an alternative payload, a `List`, `Map` or `Set` is dropped without running its `close()`; only a never-moved binding whose own type has `impl Closeable` is closed at scope end (#1630). Verified on `origin/main` at `8f2c47fe9`: `Holder(R(1))`, `[R(2), R(3)]` and a `Map[String, R]` bound with `let` print nothing at scope end, while `r := R(1)` prints `closed 1`.
 - Now that every owned std handle is a nominal `impl Closeable` type (#1590), ownership is a type-system fact, so a part is owned exactly when its type is `Resource` class.
 - Proposed: a binding whose type is `Resource` class through its parts is closed at scope end by a closer generated per type: the type's own `close` first (if it has one), then its owned parts in reverse order. When no part is `Resource` class, the class stays `Copy` or `Move`, no binding is registered, and no code is emitted.
 - Not proposed: closing from runtime drop glue (close can suspend), `Shared[T]` last-holder close (next stage), resource temporaries, or overwrite/removal sites (listed under Risks).
@@ -29,7 +29,7 @@ Proposal, 2026-10-28, checked against `origin/main` at `8f2c47fe9`. Direction (C
   5. a part that is not `Resource` class is skipped at generation time.
 - **Registration.** The checker records that a `Resource`-class binding with no `close` method is closed by composition: `cleanup` stays `None` and a new fact marks the statement. `unclosed_resources` treats it as closable, so the existing cleanup stack (`bind_closing`, `CleanupPush`) covers faults and cancellation exactly like `with`.
 - **Compile-time no-op.** `Resource` class is computed from the concrete element types; `List[Int]` or a record of scalars is `Move`/`Copy`, never registered, and the lowering emits nothing. Verified by comparing the emitted object code of a `bench/perf/` kernel before and after (identical), plus the existing timings.
-- **Derived values.** `let name = h.path()` borrows from `h`; a `ref` result cannot outlive the resource it borrows from. A conformance test pins that returning such a borrow from the owning scope is rejected.
+- **Derived values.** `name := h.path()` borrows from `h`; a `ref` result cannot outlive the resource it borrows from. A conformance test pins that returning such a borrow from the owning scope is rejected.
 
 ## Components touched
 
@@ -63,7 +63,7 @@ Proposal, 2026-10-28, checked against `origin/main` at `8f2c47fe9`. Direction (C
 
 ## Review changes (skeptical review, 2026-10-28)
 
-A reviewer ran the class change over about 4.6k corpus files (one file changes: `shared.ms:92`, `let _held = [guard]`) and found these, all accepted:
+A reviewer ran the class change over about 4.6k corpus files (one file changes: `shared.ms:92`, `_held := [guard]`) and found these, all accepted:
 
 - **`derived_from_resource` exempts constructors.** Any call with a resource argument counts as "derived from" it, so `Holder(R(1))` is never registered. Constructors and list/map/set literals take ownership of their arguments, so they are no longer derivation; `group.spawn(..)` and reader wrappers stay.
 - **Order with `var def close`.** The own `close` runs first and may write back; the parts are then closed from the post-close value (the slot), like `close_replaced`. Whole-binding reassignment of a composite `var` closes the old composite (same path as `reassigns` in `implicit-close.ms`), and is tested. Field and element overwrite stay out of scope.

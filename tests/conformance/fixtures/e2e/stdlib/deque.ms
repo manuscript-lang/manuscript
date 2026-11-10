@@ -64,6 +64,6 @@ test "optional elements keep none distinct from absent":
     d.push_back(none)
     try expect_equal(d.length(), 1)
 
-    let present_none: Int? = none
+    present_none: Int? = none
     try expect_equal(d.pop_front(), present_none)
     try expect_equal(d.pop_front(), none)

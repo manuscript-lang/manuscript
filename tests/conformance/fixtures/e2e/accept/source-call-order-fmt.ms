@@ -7,8 +7,8 @@ fn pair(a: Int, b: Int) Int: a * 10 + b
 
 test "arguments":
     var value = 1
-    let option: Int? = 2
-    let result = pair(
+    option: Int? = 2
+    result := pair(
         a: value,
         b: match option:
             i:
@@ -30,6 +30,6 @@ test "source call dispatch contracts":
     try expect_equal(defaulted(), 3)
     try expect_equal(pair(b: 2, a: 1), 12)
 
-    let callback = pair
+    callback := pair
     try expect_equal(callback(a: 3, b: 4), 34)
     try expect_equal(identity(6), 6)

@@ -20,7 +20,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module",
+        "message": "unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module",
         "position": {
           "file": "testresultargumentinferencerejects-2.ms",
           "line": 6,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testresultargumentinferencerejects-2.ms:4:19: resolution: unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import it\n   |\n 4 | fn domain[T](r: T!E2) Unit: return\n   |                   ^\n<DIR>/testresultargumentinferencerejects-2.ms:6:25: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 6 | fn first() Unit: domain(f())\n   |                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testresultargumentinferencerejects-2.ms:4:19: resolution: unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import it\n   |\n 4 | fn domain[T](r: T!E2) Unit: return\n   |                   ^\n<DIR>/testresultargumentinferencerejects-2.ms:6:25: resolution: unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 6 | fn first() Unit: domain(f())\n   |                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

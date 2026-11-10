@@ -7,4 +7,4 @@ fn main() Unit:
     var callback = original
     callback = floor
 
-    let _result = callback(3.5)
+    _result := callback(3.5)

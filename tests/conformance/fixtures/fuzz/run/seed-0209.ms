@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -21,40 +21,40 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let f1 = (((9.5 * 538.144) + (996.25 * 950.431)) - 30.197)
+    f1 := (((9.5 * 538.144) + (996.25 * 950.431)) - 30.197)
     say("f1 = {f1}")
 
-    let b2 = true
+    b2 := true
     say("b2 = {b2}")
 
-    let l3 = [(-16), (-24)]
+    l3 := [(-16), (-24)]
     say("l3 = {l3} len {l3.length()}")
     say("gcd(3568, 322) = {gcd(3568, 322)}")
 
-    let f4 = ((47.576 * 804.318) + 298.136)
+    f4 := ((47.576 * 804.318) + 298.136)
     say("f4 = {f4}")
 
-    let l5 = l3.concat(l3)
+    l5 := l3.concat(l3)
     say("l5 = {l5} len {l5.length()}")
     say("{33} {(-232734280815)} {(33 < (-232734280815))} sum {33 + (-232734280815)}")
 
-    let i6 = (-(348011 * ((-37) * 10)))
+    i6 := (-(348011 * ((-37) * 10)))
     say("i6 = {i6}")
     say("{i6} {i6} {(i6 < i6)} sum {i6 + i6}")
 
-    let i7 = ((-20) + i6)
+    i7 := ((-20) + i6)
     say("i7 = {i7}")
 
-    let s8 = ""
+    s8 := ""
     say("s8 = [{s8}]")
 
-    let s9 = ("hello world".trim() + s8.trim())
+    s9 := ("hello world".trim() + s8.trim())
     say("s9 = [{s9}]")
 
-    let b10 = false
+    b10 := false
     say("b10 = {b10}")
 
-    let l11 = l3.concat(l3)
+    l11 := l3.concat(l3)
     say("l11 = {l11} len {l11.length()}")
     say("fact(7) = {fact(7)}")
     return 0

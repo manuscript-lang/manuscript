@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,16 +23,16 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let i1 = 241521
+    i1 := 241521
     say("i1 = {i1}")
     say(
         "{(((-50) + i1) - (-i1))} {((i1 - i1) * (-i1))} {((((-50) + i1) - (-i1)) < ((i1 - i1) * (-i1)))} sum {(((-50) + i1) - (-i1)) + ((i1 - i1) * (-i1))}"
     )
 
-    let l2 = [30, 28, 15]
+    l2 := [30, 28, 15]
     say("l2 = {l2} len {l2.length()}")
 
-    let i3 = (l2.get(1) + (((-41) + i1) - (i1 + (-42))))
+    i3 := (l2.get(1) + (((-41) + i1) - (i1 + (-42))))
     say("i3 = {i3}")
     say("collatz(1871) = {collatz(1871)}")
 
@@ -41,7 +41,7 @@ export fn main() Int:
     else:
         say("42")
 
-    let f4 = (((109.25 * 343.486) * (4.5 / 890.372)) * ((117.194 / 232.041) * 825.251))
+    f4 := (((109.25 * 343.486) * (4.5 / 890.372)) * ((117.194 / 232.041) * 825.251))
     say("f4 = {f4}")
 
     if false:
@@ -53,10 +53,10 @@ export fn main() Int:
         "{((i3 / i1) * (i1 + 392835))} {i1} {(((i3 / i1) * (i1 + 392835)) < i1)} sum {((i3 / i1) * (i1 + 392835)) + i1}"
     )
 
-    let s5 = ("{i1}:" + "x".replace("hello world", "hello world").reverse())
+    s5 := ("{i1}:" + "x".replace("hello world", "hello world").reverse())
     say("s5 = [{s5}]")
 
-    let f6 = 216.875
+    f6 := 216.875
     say("f6 = {f6}")
 
     if true:
@@ -71,6 +71,6 @@ export fn main() Int:
     else:
         say(s5.trim())
 
-    let f7 = ((170.569 * (533.216 * f4)) / ((f6 - f6) - (218.275 * 327.558)))
+    f7 := ((170.569 * (533.216 * f4)) / ((f6 - f6) - (218.275 * 327.558)))
     say("f7 = {f7}")
     return 0

@@ -13,15 +13,15 @@
         "position": {
           "file": "core-language-types-named-types-4.ms",
           "line": 8,
-          "column": 15,
-          "offset": 217
+          "column": 12,
+          "offset": 214
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-named-types-4.ms:8:15: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | let options = Options(count: 5)  // total defaults to 6\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-named-types-4.ms:8:12: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 8 | options := Options(count: 5)  // total defaults to 6\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

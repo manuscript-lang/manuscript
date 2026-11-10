@@ -25,7 +25,7 @@ fn cap(b: Big) fn() Int:
     return fn: b.items.length()
 
 export fn main() Int:
-    let w = wrap(id(mk(8)))
-    let p = pass(mk(8))
-    let f = cap(p)
+    w := wrap(id(mk(8)))
+    p := pass(mk(8))
+    f := cap(p)
     return f() + w.inner.items.length() - 16

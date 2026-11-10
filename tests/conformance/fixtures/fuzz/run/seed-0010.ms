@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,7 +15,7 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let b1 = (
+    b1 := (
         (
             "{((-10) * 46)}:"
             + ("{(5 / (-16))}:" + "héllo")
@@ -24,10 +24,10 @@ export fn main() Int:
     say("b1 = {b1}")
     say("fact(19) = {fact(19)}")
 
-    let s2 = "alpha".upper()
+    s2 := "alpha".upper()
     say("s2 = [{s2}]")
 
-    let i3 = (-241601)
+    i3 := (-241601)
     say("i3 = {i3}")
 
     if "".contains("delta"):

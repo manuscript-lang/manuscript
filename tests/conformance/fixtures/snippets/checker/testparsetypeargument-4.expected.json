@@ -13,8 +13,8 @@
         "position": {
           "file": "testparsetypeargument-4.ms",
           "line": 8,
-          "column": 23,
-          "offset": 249
+          "column": 20,
+          "offset": 246
         },
         "fix": {
           "position": {
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testparsetypeargument-4.ms:8:23: resolution: unknown binding parse; add: import parse from \"@std/data/csv.ms\"\n   |\n 8 |     let request = try parse[Request](text)\n   |                       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testparsetypeargument-4.ms:8:20: resolution: unknown binding parse; add: import parse from \"@std/data/csv.ms\"\n   |\n 8 |     request := try parse[Request](text)\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

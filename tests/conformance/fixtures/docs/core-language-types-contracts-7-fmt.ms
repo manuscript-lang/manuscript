@@ -4,8 +4,8 @@
 fn use_increment(operation: Increment) Int:
     return operation.apply(1)
 
-let offset = Offset(2)
-let view = Increment(offset)
-let result = use_increment(view)
+offset := Offset(2)
+view := Increment(offset)
+result := use_increment(view)
 // Rejected: conversion is not implicit at a call boundary.
-let wrong = use_increment(offset)
+wrong := use_increment(offset)

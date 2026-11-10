@@ -3,6 +3,6 @@ type P:
     y: Int
 
 fn f() Int:
-    let p = P(x: 1, y: 2)
-    let q = p
+    p := P(x: 1, y: 2)
+    q := p
     return p.x + q.y

@@ -27,7 +27,7 @@ fn iterations_for(size: usize) -> i64 {
 // The function boundary and opaque arguments keep the operation observable.
 #[inline(never)]
 fn reverse_sum(text: &str, expected: &str) -> i64 {
-    let output: String = text.chars().rev().collect();
+    output: String = text.chars().rev().collect();
     if black_box(output.as_str()) != expected {
         return -1;
     }
@@ -41,11 +41,11 @@ fn cases() -> Vec<Case> {
         ("ascii_controls", "a\u{0}b\tc\nd!", "!d\nc\tb\u{0}a"),
     ] {
         for length in [0, 1, 2, 7, 8, 15, 16, 17, 31, 32, 63, 64, 128, 4096, 1048576] {
-            let copies = length / 8;
-            let tail = length % 8;
+            copies := length / 8;
+            tail := length % 8;
             // The two patterns are ASCII, so these byte and scalar slices agree.
-            let text = forward.repeat(copies) + &forward[..tail];
-            let expected = backward[8 - tail..8].to_owned() + &backward.repeat(copies);
+            text := forward.repeat(copies) + &forward[..tail];
+            expected := backward[8 - tail..8].to_owned() + &backward.repeat(copies);
             cases.push(Case { name: format!("{name}_n{length}"), text, expected });
         }
     }
@@ -67,7 +67,7 @@ fn cases() -> Vec<Case> {
         }
     }
     for length in [4096, 1048576] {
-        let ascii = "x".repeat(length);
+        ascii := "x".repeat(length);
         cases.push(Case {
             name: format!("late_unicode_{length}"),
             text: ascii.clone() + "é日😀",
@@ -84,24 +84,24 @@ fn cases() -> Vec<Case> {
 }
 
 fn measure(case: &Case, output: &mut impl Write) -> io::Result<()> {
-    let expected_sum = case.expected.len() as i64 + 17;
+    expected_sum := case.expected.len() as i64 + 17;
     assert_eq!(reverse_sum(black_box(&case.text), black_box(&case.expected)), expected_sum,
         "initial output mismatch for {}", case.name);
-    let iterations = iterations_for(case.text.len());
+    iterations := iterations_for(case.text.len());
     let mut checksum = 0_i64;
-    let started = Instant::now();
+    started := Instant::now();
     for _ in 0..iterations {
         checksum += black_box(reverse_sum(black_box(&case.text), black_box(&case.expected)));
     }
-    let elapsed = started.elapsed().as_nanos();
+    elapsed := started.elapsed().as_nanos();
     assert_eq!(checksum, expected_sum * iterations, "checksum mismatch for {}", case.name);
     writeln!(output, "{},{},{},{},{}", case.name, case.text.len(), iterations, elapsed, checksum)
 }
 
 fn main() -> io::Result<()> {
-    let mode = std::env::args().nth(1);
+    mode := std::env::args().nth(1);
     assert!(std::env::args().len() <= 2, "expected zero or one argument");
-    let corpus = cases(); // All input/expected construction precedes ALL clocks.
+    corpus := cases(); // All input/expected construction precedes ALL clocks.
     let mut output = io::BufWriter::new(io::stdout().lock());
     match mode.as_deref() {
         Some("--verify") => {
@@ -114,7 +114,7 @@ fn main() -> io::Result<()> {
         Some("--inventory") => {
             writeln!(output, "case,input_bytes,iterations,checksum")?;
             for case in &corpus {
-                let iterations = iterations_for(case.text.len());
+                iterations := iterations_for(case.text.len());
                 writeln!(output, "{},{},{},{}", case.name, case.text.len(), iterations,
                     (case.expected.len() as i64 + 17) * iterations)?;
             }

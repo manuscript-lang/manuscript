@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,25 +15,25 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let i1 = ((50 + ((-10) + (-18))) % (((-585130) - (-38)) + ((-6) % 942519)))
+    i1 := ((50 + ((-10) + (-18))) % (((-585130) - (-38)) + ((-6) % 942519)))
     say("i1 = {i1}")
 
-    let b2 = (
+    b2 := (
         ((i1 * (-45)) > 917564)
         and ((false and false) and "Tab\there".is_empty())
     )
     say("b2 = {b2}")
 
-    let l3 = [2, (-19), 11, (-6), (-11)]
+    l3 := [2, (-19), 11, (-6), (-11)]
     say("l3 = {l3} len {l3.length()}")
 
-    let f4 = 1.0e16
+    f4 := 1.0e16
     say("f4 = {f4}")
 
-    let i5 = ((-(-i1)) + (-1))
+    i5 := ((-(-i1)) + (-1))
     say("i5 = {i5}")
 
-    let s6 = ("{(49 % i1)}:" + ("back\\slash" + "gamma")).lower()
+    s6 := ("{(49 % i1)}:" + ("back\\slash" + "gamma")).lower()
     say("s6 = [{s6}]")
 
     var acc7 = 0
@@ -46,35 +46,35 @@ export fn main() Int:
 
     say("acc7 = {acc7}")
 
-    let s8 = s6.clone()
+    s8 := s6.clone()
     say("s8 = [{s8}]")
 
-    let s9 = ("{(i5 + (-791878))}:" + s8.replace(s6, "line\nbreak").reverse())
+    s9 := ("{(i5 + (-791878))}:" + s8.replace(s6, "line\nbreak").reverse())
     say("s9 = [{s9}]")
     say("{45} {l3.get(2)} {(45 < l3.get(2))} sum {45 + l3.get(2)}")
 
-    let i10 = (l3.length() * (-(-(-633232))))
+    i10 := (l3.length() * (-(-(-633232))))
     say("i10 = {i10}")
 
-    let l11 = l3.reversed()
+    l11 := l3.reversed()
     say("l11 = {l11} len {l11.length()}")
 
-    let s12 = "MiXeD CaSe".lower()
+    s12 := "MiXeD CaSe".lower()
     say("s12 = [{s12}]")
 
-    let i13 = ((-43) * (i5 - s12.length()))
+    i13 := ((-43) * (i5 - s12.length()))
     say("i13 = {i13}")
 
-    let i14 = i10
+    i14 := i10
     say("i14 = {i14}")
     say("fact(9) = {fact(9)}")
 
-    let b15 = (((not true) and (b2 and false)) or ((not true) or (true or b2)))
+    b15 := (((not true) and (b2 and false)) or ((not true) or (true or b2)))
     say("b15 = {b15}")
 
-    let f16 = f4
+    f16 := f4
     say("f16 = {f16}")
 
-    let big17 = s12.length() - s12.length()
+    big17 := s12.length() - s12.length()
     say("{s12.length() % big17}")
     return 0

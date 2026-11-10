@@ -1,7 +1,7 @@
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-let OVERDRAFT_FEE = 5
+OVERDRAFT_FEE := 5
 
 type Account:
     balance: Int
@@ -45,7 +45,7 @@ fn parse_digits(text: String) Optional[Int]:
     return text.parse_int()
 
 fn parse_amount(text: String) Optional[Int]:
-    if let value = parse_digits(text):
+    if value := parse_digits(text):
         if value > 0:
             return some(value)
     return none
@@ -64,7 +64,7 @@ fn fee_suffix(charged: Bool) String:
 
 // Counts a failed command against `id` when that account exists, then returns the error text.
 fn reject(var ledger: Ledger, id: String, message: String) String:
-    if let account = ledger.accounts.get(id):
+    if account := ledger.accounts.get(id):
         var updated = account
         updated.rejected += 1
         ledger.accounts.add(id, updated)
@@ -83,7 +83,7 @@ fn debit(account: Account, amount: Int) Debit:
     return Debit(ok: balance >= -account.limit, balance: balance, charged: charged)
 
 fn open_account(var ledger: Ledger, id: String, limit_text: String) String:
-    if let limit = parse_digits(limit_text):
+    if limit := parse_digits(limit_text):
         if ledger.accounts.contains(id):
             return "error: account exists {id}"
 
@@ -98,7 +98,7 @@ fn open_account(var ledger: Ledger, id: String, limit_text: String) String:
     return "error: invalid limit"
 
 fn set_frozen(var ledger: Ledger, id: String, frozen: Bool) String:
-    if let account = ledger.accounts.get(id):
+    if account := ledger.accounts.get(id):
         var updated = account
         updated.frozen = frozen
         ledger.accounts.add(id, updated)
@@ -107,8 +107,8 @@ fn set_frozen(var ledger: Ledger, id: String, frozen: Bool) String:
     return "error: unknown account {id}"
 
 fn deposit(var ledger: Ledger, id: String, amount_text: String) String:
-    if let account = ledger.accounts.get(id):
-        if let amount = parse_amount(amount_text):
+    if account := ledger.accounts.get(id):
+        if amount := parse_amount(amount_text):
             if account.frozen:
                 return reject(var ledger, id, "error: account frozen {id}")
 
@@ -123,12 +123,12 @@ fn deposit(var ledger: Ledger, id: String, amount_text: String) String:
     return "error: unknown account {id}"
 
 fn withdraw(var ledger: Ledger, id: String, amount_text: String) String:
-    if let account = ledger.accounts.get(id):
-        if let amount = parse_amount(amount_text):
+    if account := ledger.accounts.get(id):
+        if amount := parse_amount(amount_text):
             if account.frozen:
                 return reject(var ledger, id, "error: account frozen {id}")
 
-            let result = debit(account, amount)
+            result := debit(account, amount)
             if not result.ok:
                 return reject(var ledger, id, "error: overdraft limit exceeded {id}")
 
@@ -152,11 +152,11 @@ fn transfer(var ledger: Ledger, from_id: String, to_id: String, amount_text: Str
     if from_id == to_id:
         return reject(var ledger, from_id, "error: same account")
 
-    if let amount = parse_amount(amount_text):
-        let source = ledger.accounts.get(
+    if amount := parse_amount(amount_text):
+        source := ledger.accounts.get(
             from_id
         ).get(Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: false))
-        let target = ledger.accounts.get(
+        target := ledger.accounts.get(
             to_id
         ).get(Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: false))
         if source.frozen:
@@ -164,7 +164,7 @@ fn transfer(var ledger: Ledger, from_id: String, to_id: String, amount_text: Str
         if target.frozen:
             return reject(var ledger, to_id, "error: account frozen {to_id}")
 
-        let result = debit(source, amount)
+        result := debit(source, amount)
         if not result.ok:
             return reject(
                 var ledger, from_id, "error: overdraft limit exceeded {from_id}"
@@ -188,7 +188,7 @@ fn transfer(var ledger: Ledger, from_id: String, to_id: String, amount_text: Str
 fn report(var ledger: Ledger) List[String]:
     var lines: List[String] = []
     var total = 0
-    let ids = (
+    ids := (
         ledger
         .accounts
         .keys()
@@ -196,7 +196,7 @@ fn report(var ledger: Ledger) List[String]:
     )
 
     for id in ids:
-        let account = ledger.accounts.get(
+        account := ledger.accounts.get(
             id
         ).get(Account(balance: 0, limit: 0, ops: 0, rejected: 0, frozen: false))
         total += account.balance
@@ -208,8 +208,8 @@ fn report(var ledger: Ledger) List[String]:
     return lines
 
 fn handle(var ledger: Ledger, tokens: List[String]) List[String]:
-    let command = tokens[0]
-    let args = tokens.length() - 1
+    command := tokens[0]
+    args := tokens.length() - 1
     if command == "open" and args == 2:
         return [open_account(var ledger, tokens[1], tokens[2])]
     if command == "deposit" and args == 2:
@@ -232,7 +232,7 @@ export fn main() Int:
     var out = stdout()
 
     for line in read_lines(stdin()).get():
-        let tokens = tokenize(line)
+        tokens := tokenize(line)
         if tokens.length() > 0:
             for text in handle(var ledger, tokens):
                 out.write("{text}\n").get()

@@ -21,13 +21,13 @@ type Lines:
 impl Lines:
     // Fails with `EOVERFLOW` when a line of `size` bytes is longer than the limit.
     fn check(size: Int) Unit!:
-        if let limit = self.max_bytes:
+        if limit := self.max_bytes:
             if size > limit:
                 return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 
     // Decodes the held bytes in `[start, stop)` as one line, or fails with `EBADMSG` rather than turning bytes that are not UTF-8 into an empty line. The range is decoded in place, with no `Bytes` copy of the line first.
     fn decode(start: Int, stop: Int) String!:
-        if let text = self.data.decode_utf8_range(start, stop): return ok(text)
+        if text := self.data.decode_utf8_range(start, stop): return ok(text)
 
         return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 
@@ -40,29 +40,29 @@ impl Lines:
                 end -= 1
             try self.check(end - self.start)
 
-            let from = self.start
+            from := self.start
             self.start = if terminated: stop + 1 else: stop
             return self.decode(from, end)
 
-        let size = self.pending_size + stop - self.start
-        let cr = if stop > self.start: self.data.get(stop - 1, 0) == 13 else: self.pending_cr
-        let trimmed = if terminated and cr: size - 1 else: size
+        size := self.pending_size + stop - self.start
+        cr := if stop > self.start: self.data.get(stop - 1, 0) == 13 else: self.pending_cr
+        trimmed := if terminated and cr: size - 1 else: size
         try self.check(trimmed)
         self.pending.append(try self.data.slice(self.start, stop))
 
-        let all = join(self.pending)
+        all := join(self.pending)
         self.pending = []
         self.pending_size = 0
         self.pending_cr = false
         self.start = if terminated: stop + 1 else: stop
-        if let text = all.decode_utf8_range(0, trimmed): return ok(text)
+        if text := all.decode_utf8_range(0, trimmed): return ok(text)
 
         return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 
 impl Source[String] for Lines:
     var fn next() String?!:
         while true:
-            if let end = self.data.index_of_byte(10, self.start):
+            if end := self.data.index_of_byte(10, self.start):
                 if self.pending_size > 0: return ok(try self.take(end, true))
 
                 var stop = end
@@ -70,7 +70,7 @@ impl Source[String] for Lines:
                     stop -= 1
                 try self.check(stop - self.start)
 
-                let from = self.start
+                from := self.start
                 self.start = end + 1
                 return ok(try self.decode(from, stop))
 
@@ -81,13 +81,13 @@ impl Source[String] for Lines:
                 return ok(none)
 
             // A trailing CR may belong to a split CRLF, so defer counting it until the next chunk or EOF.
-            let rest = self.data.length() - self.start
-            let cr = if rest > 0: self.data.get(self.data.length() - 1, 0) == 13 else: self.pending_cr
+            rest := self.data.length() - self.start
+            cr := if rest > 0: self.data.get(self.data.length() - 1, 0) == 13 else: self.pending_cr
             try self.check(self.pending_size + rest - if cr: 1 else: 0)
 
-            let chunk = try self.input.next()
+            chunk := try self.input.next()
 
-            if let more = chunk:
+            if more := chunk:
                 if rest > 0:
                     self.pending.append(
                         try self.data.slice(
@@ -142,8 +142,8 @@ impl Source[Bytes] for BytesSource:
             return error(Error("I/O: chunk size must be positive", kind: "EINVAL"))
         if self.at >= self.data.length(): return ok(none)
 
-        let stop = (self.at + self.chunk).min(self.data.length())
-        let piece = try self.data.slice(self.at, stop)
+        stop := (self.at + self.chunk).min(self.data.length())
+        piece := try self.data.slice(self.at, stop)
         self.at = stop
         return ok(piece)
 
@@ -160,8 +160,8 @@ type Mapped[T, U]:
 
 impl Source[U] for Mapped[T, U]:
     var fn next() U?!:
-        let item = try self.input.next()
-        if let value = item: return ok(self.f(value))
+        item := try self.input.next()
+        if value := item: return ok(self.f(value))
 
         return ok(none)
 
@@ -179,9 +179,9 @@ type Filtered[T]:
 impl Source[T] for Filtered[T]:
     var fn next() T?!:
         while true:
-            let item = try self.input.next()
+            item := try self.input.next()
 
-            if let value = item:
+            if value := item:
                 if self.keep(value): return ok(value)
             else:
                 return ok(none)
@@ -204,7 +204,7 @@ impl Source[T] for Taker[T]:
     var fn next() T?!:
         if self.left <= 0: return ok(none)
 
-        let item = try self.input.next()
+        item := try self.input.next()
         self.left -= 1
         return ok(item)
 
@@ -231,7 +231,7 @@ export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
 
     for item in source:
         items.append(item)
-        if let limit = max_items:
+        if limit := max_items:
             if items.length() > limit:
                 return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 
@@ -246,7 +246,7 @@ export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
     for chunk in source:
         all.append_bytes(chunk)
         total += chunk.length()
-        if let limit = max_bytes:
+        if limit := max_bytes:
             if total > limit:
                 return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 

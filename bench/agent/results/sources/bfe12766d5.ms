@@ -115,9 +115,9 @@ impl Ledger:
             self.blame(id)
             return "error: account frozen {id}"
 
-        let amount = amount_text.parse_int().get(0)
-        let fee = fee_for(acct.balance, amount)
-        let new_balance = acct.balance - amount - fee
+        amount := amount_text.parse_int().get(0)
+        fee := fee_for(acct.balance, amount)
+        new_balance := acct.balance - amount - fee
 
         if new_balance < -acct.limit:
             self.blame(id)
@@ -154,9 +154,9 @@ impl Ledger:
             self.blame(to)
             return "error: account frozen {to}"
 
-        let amount = amount_text.parse_int().get(0)
-        let fee = fee_for(src.balance, amount)
-        let new_balance = src.balance - amount - fee
+        amount := amount_text.parse_int().get(0)
+        fee := fee_for(src.balance, amount)
+        new_balance := src.balance - amount - fee
 
         if new_balance < -src.limit:
             self.blame(from)
@@ -178,7 +178,7 @@ impl Ledger:
         var total = 0
 
         for id in self.accounts.keys().sorted(by_compare):
-            let acct = self.accounts.get(id).get()
+            acct := self.accounts.get(id).get()
             total += acct.balance
             lines.append(
                 "{id} balance={acct.balance} limit={acct.limit} ops={acct.ops} rejected={acct.rejected} frozen={yes_no(acct.frozen)}"
@@ -192,8 +192,8 @@ fn by_compare(left: String, right: String) Int:
 
 // Runs one tokenized command and returns the text of its output.
 fn execute(var ledger: Ledger, tokens: List[String]) String:
-    let command = tokens.get(0)
-    let count = tokens.length()
+    command := tokens.get(0)
+    count := tokens.length()
     if command == "open" and count == 3:
         return ledger.open_account(tokens.get(1), tokens.get(2))
     if command == "deposit" and count == 3:
@@ -210,11 +210,11 @@ fn execute(var ledger: Ledger, tokens: List[String]) String:
     return "error: bad command"
 
 export fn main() Int:
-    let text = read_all(stdin()).get().decode_utf8().get("")
+    text := read_all(stdin()).get().decode_utf8().get("")
     var ledger = Ledger(accounts: Map[String, Account](), fees: 0)
 
     for line in text.split("\n"):
-        let tokens = split_tokens(line)
+        tokens := split_tokens(line)
         if not tokens.is_empty():
             stdout().write("{execute(var ledger, tokens)}\n").get()
 

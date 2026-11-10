@@ -217,7 +217,7 @@ pub fn analyze(cx: &Context) -> Outcome {
         mutated: Vec::new(),
         captured: Vec::new(),
         hidden: 0,
-        let_pos: HashMap::new(),
+        var_fixes: HashMap::new(),
         used: cx.live.uses.keys().map(|(_, uid)| *uid).collect(),
         nested_cache: HashMap::new(),
         resources: Vec::new(),
@@ -334,13 +334,13 @@ struct Walker<'a> {
     /// Variables each enclosing lambda captures, innermost last.
     captured: Vec<HashSet<usize>>,
     hidden: usize,
-    /// Where the `let` keyword of each `let` binding is, for the fix that makes it a `var`.
-    let_pos: HashMap<usize, Pos>,
+    /// The fix that makes each immutable `name := value` binding a `var`.
+    var_fixes: HashMap<usize, DiagnosticFix>,
     /// Bindings that are read, changed or moved somewhere after their declaration.
     used: HashSet<usize>,
     /// `nested_writes` by expression, so a long chain is walked once.
     nested_cache: HashMap<NodeId, Vec<Place>>,
-    /// Owned `let` and `var` resources: binding, name and declaration position.
+    /// Owned immutable and `var` resources: binding, name and declaration position.
     resources: Vec<(usize, Name, Pos, bool)>,
     /// Payload bindings of match arms over a consumed scrutinee.
     arm_payloads: Vec<usize>,

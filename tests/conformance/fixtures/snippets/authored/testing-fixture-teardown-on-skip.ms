@@ -31,5 +31,5 @@ test "a failed assertion still tears down":
     try fail("expected failure")
 
 test "a fault still tears down":
-    let numbers: List[Int] = []
-    let _ = numbers[1]
+    numbers: List[Int] = []
+    _ := numbers[1]

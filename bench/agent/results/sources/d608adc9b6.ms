@@ -18,7 +18,7 @@ fn parse_digits(text: String) Optional[Int]:
     return text.parse_int()
 
 fn parse_amount(text: String) Optional[Int]:
-    let value = parse_digits(text)
+    value := parse_digits(text)
     if value.is_some() and value.get() > 0: return value
 
     return none
@@ -46,7 +46,7 @@ fn suffix(fee: Int) String:
 
 impl Ledger:
     var fn blame(id: String) Unit:
-        let acct = self.accounts.get(id).get()
+        acct := self.accounts.get(id).get()
         self.accounts.add(
             id,
             Account(
@@ -56,16 +56,16 @@ impl Ledger:
         )
 
     var fn exec(words: List[String]) String:
-        let cmd = words[0]
-        let n = words.length()
+        cmd := words[0]
+        n := words.length()
 
         if cmd == "open":
             if n != 3: return "error: bad command"
 
-            let limit = parse_digits(words[2])
+            limit := parse_digits(words[2])
             if limit.is_some() == false: return "error: invalid limit"
 
-            let id = words[1]
+            id := words[1]
             if self.accounts.contains(id): return "error: account exists {id}"
 
             self.accounts.add(id, Account(limit: limit.get()))
@@ -74,10 +74,10 @@ impl Ledger:
         if cmd == "freeze" or cmd == "unfreeze":
             if n != 2: return "error: bad command"
 
-            let id = words[1]
+            id := words[1]
             if self.accounts.contains(id) == false: return "error: unknown account {id}"
 
-            let acct = self.accounts.get(id).get()
+            acct := self.accounts.get(id).get()
             self.accounts.add(
                 id,
                 Account(
@@ -107,19 +107,19 @@ impl Ledger:
     var fn deposit(id: String, text: String) String:
         if self.accounts.contains(id) == false: return "error: unknown account {id}"
 
-        let amount = parse_amount(text)
+        amount := parse_amount(text)
 
         if amount.is_some() == false:
             self.blame(id)
             return "error: invalid amount"
 
-        let acct = self.accounts.get(id).get()
+        acct := self.accounts.get(id).get()
 
         if acct.frozen:
             self.blame(id)
             return "error: account frozen {id}"
 
-        let new_balance = acct.balance + amount.get()
+        new_balance := acct.balance + amount.get()
         self.accounts.add(
             id,
             Account(
@@ -132,20 +132,20 @@ impl Ledger:
     var fn withdraw(id: String, text: String) String:
         if self.accounts.contains(id) == false: return "error: unknown account {id}"
 
-        let amount = parse_amount(text)
+        amount := parse_amount(text)
 
         if amount.is_some() == false:
             self.blame(id)
             return "error: invalid amount"
 
-        let acct = self.accounts.get(id).get()
+        acct := self.accounts.get(id).get()
 
         if acct.frozen:
             self.blame(id)
             return "error: account frozen {id}"
 
-        let fee = fee_for(acct.balance, acct.balance - amount.get())
-        let new_balance = acct.balance - amount.get() - fee
+        fee := fee_for(acct.balance, acct.balance - amount.get())
+        new_balance := acct.balance - amount.get() - fee
 
         if new_balance < 0 - acct.limit:
             self.blame(id)
@@ -169,32 +169,32 @@ impl Ledger:
             self.blame(from)
             return "error: same account"
 
-        let amount = parse_amount(text)
+        amount := parse_amount(text)
 
         if amount.is_some() == false:
             self.blame(from)
             return "error: invalid amount"
 
-        let src = self.accounts.get(from).get()
+        src := self.accounts.get(from).get()
 
         if src.frozen:
             self.blame(from)
             return "error: account frozen {from}"
 
-        let dst = self.accounts.get(to).get()
+        dst := self.accounts.get(to).get()
 
         if dst.frozen:
             self.blame(to)
             return "error: account frozen {to}"
 
-        let fee = fee_for(src.balance, src.balance - amount.get())
-        let new_src = src.balance - amount.get() - fee
+        fee := fee_for(src.balance, src.balance - amount.get())
+        new_src := src.balance - amount.get() - fee
 
         if new_src < 0 - src.limit:
             self.blame(from)
             return "error: overdraft limit exceeded {from}"
 
-        let new_dst = dst.balance + amount.get()
+        new_dst := dst.balance + amount.get()
         self.accounts.add(
             from,
             Account(
@@ -213,15 +213,15 @@ impl Ledger:
         return "ok {new_src} {new_dst}{suffix(fee)}"
 
     fn report() List[String]:
-        let ids = self.accounts.keys().sorted(compare_ids)
+        ids := self.accounts.keys().sorted(compare_ids)
         var lines: List[String] = []
         var total = 0
 
         for id in ids:
-            let acct = self.accounts.get(id).get()
+            acct := self.accounts.get(id).get()
             total += acct.balance
 
-            let frozen = yes_no(acct.frozen)
+            frozen := yes_no(acct.frozen)
             lines.append(
                 "{id} balance={acct.balance} limit={acct.limit} ops={acct.ops} rejected={acct.rejected} frozen={frozen}"
             )
@@ -233,7 +233,7 @@ export fn main() Int:
     var ledger = Ledger()
 
     for line in read_lines(stdin()).get():
-        let words = line.split("\t").join(" ").split(" ").filter(fn w: w != "")
+        words := line.split("\t").join(" ").split(" ").filter(fn w: w != "")
         if words.length() == 0: continue
 
         if words[0] == "report":

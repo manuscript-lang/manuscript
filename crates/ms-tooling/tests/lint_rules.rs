@@ -64,10 +64,10 @@ fn trailing_space_hygiene_preserves_multiline_text_payloads() {
 #[test]
 fn unknown_text_boundaries_do_not_offer_whitespace_deletions() {
     for source in [
-        "let value = 1\t\n",
-        "let text = \"unfinished  ",
-        "let text = \"\"\"\n    payload  \n",
-        "let text = \"\"\"\n    bad \\q  \n    \"\"\"\n",
+        "value := 1\t\n",
+        "text := \"unfinished  ",
+        "text := \"\"\"\n    payload  \n",
+        "text := \"\"\"\n    bad \\q  \n    \"\"\"\n",
     ] {
         let findings = ms_tooling::lint::lint_source(&"text.ms".into(), source);
         assert!(findings.iter().all(|f| f.code != "MSL001"), "{findings:?}");

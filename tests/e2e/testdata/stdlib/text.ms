@@ -28,7 +28,7 @@ test "text conversions and quoting":
     )
 
 test "parse_int radix 0 reads a prefix and others reject it":
-    let text = "-0x1f"
+    text := "-0x1f"
     try expect_equal(try parse_int(text, 0), -31)
     try expect_equal(try parse_int("0b101", 0), 5)
     try expect_equal(try parse_int("-ff", 16), -255)
@@ -52,8 +52,8 @@ test "text quoting escapes interpolation braces and literal controls":
     unquote("\"\\\\u\\\{41\\\}\"") | try expect_ok | try expect_equal("\\u\{41\}")
 
     for scalar in [0, 31, 127, 128, 133, 159, 8232, 8233, 8234, 8238, 8294, 8297]:
-        let text = try from_scalars([scalar])
-        let expected = "\"\\u\{" + scalar.to_string_radix(16) + "\}\""
+        text := try from_scalars([scalar])
+        expected := "\"\\u\{" + scalar.to_string_radix(16) + "\}\""
         quote(text) | try expect_equal(expected)
         unquote(quote(text)) | try expect_ok | try expect_equal(text)
 
@@ -90,10 +90,10 @@ test "text quoting round trips scalar and escape neighbors":
         0, 9, 10, 13, 31, 32, 34, 92, 123, 125, 127, 128, 159, 233, 2047, 2048, 8234,
         8297, 55295, 57344, 65535, 65536, 1114111
     ]:
-        let text = "prefix " + (try from_scalars([scalar])) + " suffix"
+        text := "prefix " + (try from_scalars([scalar])) + " suffix"
         unquote(quote(text)) | try expect_ok | try expect_equal(text)
 
-        let ascii = quote_ascii(text)
+        ascii := quote_ascii(text)
         for value in ascii.scalar_values():
             (value < 128) | try expect_equal(true)
         unquote(ascii) | try expect_ok | try expect_equal(text)

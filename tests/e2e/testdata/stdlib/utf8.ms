@@ -19,21 +19,21 @@ test "UTF8 validity checks the complete buffer without replacement":
         is_valid(data) | try expect_equal(false)
 
 fn expect_scalar(actual: Utf8Scalar!Utf8Error, value: Int, width: Int) Unit!:
-    let decoded = actual | try expect_ok
+    decoded := actual | try expect_ok
     decoded.scalar | try expect_equal(value)
     return decoded.width | expect_equal(width)
 
 test "UTF8 decodes exact scalar boundaries and widths":
-    let values = [0, 127, 128, 2047, 2048, 55295, 57344, 65533, 65535, 65536, 1114111]
-    let widths = [1, 1, 2, 2, 3, 3, 3, 3, 3, 4, 4]
+    values := [0, 127, 128, 2047, 2048, 55295, 57344, 65533, 65535, 65536, 1114111]
+    widths := [1, 1, 2, 2, 3, 3, 3, 3, 3, 4, 4]
 
     for index in 0..values.length():
-        let bytes = from_scalars([values[index]]) | try expect_ok
+        bytes := from_scalars([values[index]]) | try expect_ok
         decode_first(bytes.to_bytes()) | try expect_scalar(values[index], widths[index])
         decode_last(bytes.to_bytes()) | try expect_scalar(values[index], widths[index])
 
 test "UTF8 offsets count bytes and leave adjacent malformed bytes alone":
-    let data = "aé🙂e\u{301}".to_bytes()
+    data := "aé🙂e\u{301}".to_bytes()
     decode_first(data, 1) | try expect_scalar(233, 2)
     decode_first(data, 3) | try expect_scalar(128578, 4)
     decode_last(data, 3) | try expect_scalar(233, 2)
@@ -76,13 +76,13 @@ test "UTF8 distinguishes incomplete prefixes from malformed encodings":
     )
 
 test "UTF8 rejects invalid offsets without negative index wrapping":
-    let data = "é".to_bytes()
+    data := "é".to_bytes()
 
     for offset in [-1, 3, 9223372036854775807]:
-        let first_fault = fn:
-            let _ignored = decode_first(data, offset)
-        let last_fault = fn:
-            let _ignored = decode_last(data, offset)
+        first_fault := fn:
+            _ignored := decode_first(data, offset)
+        last_fault := fn:
+            _ignored := decode_last(data, offset)
         expect_fault(first_fault) | try expect_ok | try expect_contains(
             "utf8.decode_first: at"
         )
@@ -96,12 +96,12 @@ test "UTF8 rejects invalid offsets without negative index wrapping":
     decode_last(data, 0) | try expect_error | try expect_equal(Utf8Error.Incomplete)
 
 test "UTF8 supports forward and reverse walks without normalization":
-    let data = "é🙂e\u{301}\u{0}".to_bytes()
+    data := "é🙂e\u{301}\u{0}".to_bytes()
     var forward = List[Int]()
     var position = 0
 
     while position < data.length():
-        let decoded = decode_first(data, position) | try expect_ok
+        decoded := decode_first(data, position) | try expect_ok
         forward.append(decoded.scalar)
         position += decoded.width
 
@@ -110,19 +110,19 @@ test "UTF8 supports forward and reverse walks without normalization":
     var backward = List[Int]()
 
     while position > 0:
-        let decoded = decode_last(data, position) | try expect_ok
+        decoded := decode_last(data, position) | try expect_ok
         backward.append(decoded.scalar)
         position -= decoded.width
 
     backward | try expect_equal([0, 769, 101, 128578, 233])
 
-    let first = decode_first
-    let last = decode_last
+    first := decode_first
+    last := decode_last
     first(data, 0) | try expect_scalar(233, 2)
     last(data, none) | try expect_scalar(0, 1)
 
 test "UTF8 selects a bounded prefix or suffix in large inputs":
-    let fill = "x".repeat(262144) | try expect_ok
-    let data = "🙂".concat(fill).concat("é").to_bytes()
+    fill := "x".repeat(262144) | try expect_ok
+    data := "🙂".concat(fill).concat("é").to_bytes()
     decode_first(data) | try expect_scalar(128578, 4)
     decode_last(data) | try expect_scalar(233, 2)

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,16 +15,16 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let f1 = 118.790
+    f1 := 118.790
     say("f1 = {f1}")
 
-    let b2 = ((-29) >= (((-46) + 20) * (-567069)))
+    b2 := ((-29) >= (((-46) + 20) * (-567069)))
     say("b2 = {b2}")
 
-    let f3 = (f1 + ((11.022 + f1) * (731.380 - f1)))
+    f3 := (f1 + ((11.022 + f1) * (731.380 - f1)))
     say("f3 = {f3}")
 
-    let b4 = ("back\\slash" + "  padded  ".lower()).contains("emoji 😀")
+    b4 := ("back\\slash" + "  padded  ".lower()).contains("emoji 😀")
     say("b4 = {b4}")
 
     if ("beta".is_empty() or (b2 or true)):
@@ -32,23 +32,23 @@ export fn main() Int:
     else:
         say("brace\{s\}")
 
-    let s5 = "back\\slash"
+    s5 := "back\\slash"
     say("s5 = [{s5}]")
 
-    let i6 = ((-46) * (((-41) + 622583) - ((-36) - (-8))))
+    i6 := ((-46) * (((-41) + 622583) - ((-36) - (-8))))
     say("i6 = {i6}")
 
-    let i7 = s5.length()
+    i7 := s5.length()
     say("i7 = {i7}")
 
-    let s8 = ("{((-831649) % (-28))}:" + ("{(i7 - (-14))}:" + ("{48}:" + s5)))
+    s8 := ("{((-831649) % (-28))}:" + ("{(i7 - (-14))}:" + ("{48}:" + s5)))
     say("s8 = [{s8}]")
     say("{(i6 * 36)} {15} {((i6 * 36) < 15)} sum {(i6 * 36) + 15}")
 
-    let i9 = (-i6)
+    i9 := (-i6)
     say("i9 = {i9}")
 
-    let i10 = (((-i7) + (i6 * i6)) % ((i6 % i9) + (i6 * i7)))
+    i10 := (((-i7) + (i6 * i6)) % ((i6 % i9) + (i6 * i7)))
     say("i10 = {i10}")
 
     if s5.is_empty():

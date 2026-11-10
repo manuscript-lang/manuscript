@@ -18,14 +18,14 @@ impl Closeable for Door:
 
 fn faulting() Unit:
     var xs: List[Door] = []
-    let a = Door("a")
-    let b = Door("b")
+    a := Door("a")
+    b := Door("b")
     xs.append(a)
 
-    let _n = b.name.length()
+    _n := b.name.length()
     panic("fault after the move")
 
 fn main() Unit:
-    let work = promise(fn: ok(faulting()))
-    let waited = work.wait()
+    work := promise(fn: ok(faulting()))
+    waited := work.wait()
     stdout().write("waited: {waited.is_error()}\n").get()

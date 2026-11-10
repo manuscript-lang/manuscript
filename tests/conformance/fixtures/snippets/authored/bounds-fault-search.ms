@@ -8,7 +8,7 @@ fn search(a: List[Int], want: Int) Int:
     var hi = a.length()
 
     while lo <= hi:
-        let mid = lo + (hi - lo) / 2
+        mid := lo + (hi - lo) / 2
         if a[mid] == want:
             return mid
 
@@ -20,4 +20,4 @@ fn search(a: List[Int], want: Int) Int:
     return -1
 
 fn main() Unit:
-    let _ = stdout().write("{search([1, 3, 5], 9)}\n")
+    _ := stdout().write("{search([1, 3, 5], 9)}\n")

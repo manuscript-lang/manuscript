@@ -8,7 +8,7 @@ test "YAML flow mappings reject empty comma entries":
         "\{,\}", "\{, key: value\}", "\{key: value,, next: value\}", "[\{,\}]",
         "\{key,,\}"
     ]:
-        let cause = parse(source) | try expect_error
+        cause := parse(source) | try expect_error
         if cause.kind != "EBADMSG":
             return fail("expected malformed flow entry, got {cause}")
 

@@ -13,15 +13,15 @@ test "Duration orders with min, max and clamp":
     try expect_equal(seconds(3).clamp(seconds(1), seconds(5)), seconds(3))
 
 test "Timestamp orders with min, max and clamp":
-    let early = parse_timestamp("2024-01-01T00:00:00Z").get()
-    let late = parse_timestamp("2025-01-01T00:00:00Z").get()
+    early := parse_timestamp("2024-01-01T00:00:00Z").get()
+    late := parse_timestamp("2025-01-01T00:00:00Z").get()
     try expect_equal(early.min(late).to_string(), "2024-01-01T00:00:00Z")
     try expect_equal(early.max(late).to_string(), "2025-01-01T00:00:00Z")
     try expect_equal(early.clamp(late, late).to_string(), "2025-01-01T00:00:00Z")
 
 test "Decimal orders with min, max and clamp":
-    let a = (150).to_decimal()
-    let b = (7).to_decimal()
+    a := (150).to_decimal()
+    b := (7).to_decimal()
     try expect_equal(a.min(b).to_fixed(0, none).get(), "7")
     try expect_equal(a.max(b).to_fixed(0, none).get(), "150")
     try expect_equal(a.clamp(b, b).to_fixed(0, none).get(), "7")

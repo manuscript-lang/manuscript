@@ -4,4 +4,4 @@
 import value from "../src/value.ms"
 
 test "checks source":
-    let invalid: Int = "wrong"
+    invalid: Int = "wrong"

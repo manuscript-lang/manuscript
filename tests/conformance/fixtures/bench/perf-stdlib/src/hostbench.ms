@@ -23,13 +23,13 @@ fn sse_stream(count: Int) Bytes:
     return parts.join("").to_bytes()
 
 fn bench_archive() Unit:
-    let list = entries(2000)
+    list := entries(2000)
 
     bench(
         "archive.zip_pack",
         2000,
         fn() Int:
-            if let b = pack(list, "zip"):
+            if b := pack(list, "zip"):
                 return b.length()
 
             return 0
@@ -39,13 +39,13 @@ fn bench_archive() Unit:
         "archive.tar_pack",
         2000,
         fn() Int:
-            if let b = pack(list, "tar"):
+            if b := pack(list, "tar"):
                 return b.length()
 
             return 0
     )
 
-    if let packed = pack(list, "zip"):
+    if packed := pack(list, "zip"):
         bench_unpack(packed)
 
 fn bench_unpack(packed: Bytes) Unit:
@@ -53,14 +53,14 @@ fn bench_unpack(packed: Bytes) Unit:
         "archive.zip_unpack",
         2000,
         fn() Int:
-            if let e = unpack(packed, "zip"):
+            if e := unpack(packed, "zip"):
                 return e.length()
 
             return 0
     )
 
 fn bench_sse() Unit:
-    let stream = sse_stream(2000)
+    stream := sse_stream(2000)
 
     bench(
         "sse.feed",
@@ -87,7 +87,7 @@ fn count_events(data: Bytes) Int:
     var events = sse_events(ReadStream[Bytes](Whole(data, false)))
     var count = 0
     while true:
-        if let next = events.next():
+        if next := events.next():
             if next.is_none(): break
             count += 1
         else:
@@ -104,7 +104,7 @@ export fn bench_host() Unit:
         20000,
         fn() Int:
             var n = 0
-            if let t = parse_timestamp("2026-03-01T12:30:45.123Z"):
+            if t := parse_timestamp("2026-03-01T12:30:45.123Z"):
                 for i in 0..20000:
                     n += t.to_string().length()
             return n
@@ -116,7 +116,7 @@ export fn bench_host() Unit:
         fn() Int:
             var n = 0
             for i in 0..20000:
-                if let u = uuid_v4():
+                if u := uuid_v4():
                     n += u.length()
             return n
     )

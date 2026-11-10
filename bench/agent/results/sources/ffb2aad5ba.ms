@@ -20,7 +20,7 @@ fn digits(text: String) Optional[Int]:
     return text.parse_int()
 
 fn amount_of(text: String) Optional[Int]:
-    if let n = digits(text):
+    if n := digits(text):
         if n > 0:
             return some(n)
     return none
@@ -51,7 +51,7 @@ impl Ledger:
         self.accounts.add(id, acc)
 
     var fn open_account(id: String, limit: String) String:
-        let cap = digits(limit)
+        cap := digits(limit)
         if cap.is_none():
             return "error: invalid limit"
         if self.accounts.contains(id):
@@ -78,7 +78,7 @@ impl Ledger:
         if not self.accounts.contains(id):
             return "error: unknown account {id}"
 
-        let amount = amount_of(text)
+        amount := amount_of(text)
 
         if amount.is_none():
             self.blame(id.clone())
@@ -99,7 +99,7 @@ impl Ledger:
         if not self.accounts.contains(id):
             return "error: unknown account {id}"
 
-        let amount = amount_of(text)
+        amount := amount_of(text)
 
         if amount.is_none():
             self.blame(id.clone())
@@ -111,8 +111,8 @@ impl Ledger:
             self.blame(id.clone())
             return "error: account frozen {id}"
 
-        let fee = overdraft_fee(acc.balance, amount.get(0))
-        let next = acc.balance - amount.get(0) - fee
+        fee := overdraft_fee(acc.balance, amount.get(0))
+        next := acc.balance - amount.get(0) - fee
 
         if next < -acc.limit:
             self.blame(id.clone())
@@ -134,7 +134,7 @@ impl Ledger:
             self.blame(from.clone())
             return "error: same account"
 
-        let amount = amount_of(text)
+        amount := amount_of(text)
 
         if amount.is_none():
             self.blame(from.clone())
@@ -152,8 +152,8 @@ impl Ledger:
             self.blame(to.clone())
             return "error: account frozen {to}"
 
-        let fee = overdraft_fee(src.balance, amount.get(0))
-        let next = src.balance - amount.get(0) - fee
+        fee := overdraft_fee(src.balance, amount.get(0))
+        next := src.balance - amount.get(0) - fee
 
         if next < -src.limit:
             self.blame(from.clone())
@@ -173,10 +173,10 @@ impl Ledger:
         var total = 0
 
         for id in self.accounts.keys().sorted():
-            let acc = self.account(id)
+            acc := self.account(id)
             total += acc.balance
 
-            let frozen = if acc.frozen: "yes" else: "no"
+            frozen := if acc.frozen: "yes" else: "no"
 
             lines.append(
                 "{id} balance={acc.balance} limit={acc.limit} ops={acc.ops} rejected={acc.rejected} frozen={frozen}"
@@ -186,8 +186,8 @@ impl Ledger:
         return lines.join("\n")
 
     var fn run(tokens: List[String]) String:
-        let cmd = tokens[0]
-        let n = tokens.length()
+        cmd := tokens[0]
+        n := tokens.length()
         if cmd == "open" and n == 3:
             return self.open_account(tokens[1].clone(), tokens[2].clone())
         if cmd == "freeze" and n == 2:
@@ -210,7 +210,7 @@ export fn main() Int:
     var ledger = Ledger(accounts: Map[String, Account](), fees: 0)
 
     for line in read_lines(stdin()).get():
-        let tokens = line.replace("\t", " ").replace("\r", " ").split(" ").filter(
+        tokens := line.replace("\t", " ").replace("\r", " ").split(" ").filter(
             fn t: not t.is_empty()
         )
         if tokens.is_empty():

@@ -123,7 +123,7 @@ export fn cosh(value: Float) Float:
     return msstd_math_cosh(value)
 
 // Euler's number, the base of natural logarithms.
-export let e: Float = 2.718281828459045
+export e: Float = 2.718281828459045
 
 // Returns e raised to `value`.
 export fn exp(value: Float) Float:
@@ -224,7 +224,7 @@ export fn min[T: Comparable](left: T, right: T) T:
     return left
 
 // Π, the ratio of a circle's circumference to its diameter.
-export let pi: Float = 3.141592653589793
+export pi: Float = 3.141592653589793
 
 // Returns `base` raised to `exponent`.
 export fn pow(base: Float, exponent: Float) Float:
@@ -295,35 +295,35 @@ export fn is_safe_integer(value: Float) Bool:
     return msstd_math_is_safe_integer(value)
 
 // Positive infinity, the Float that exceeds every finite value; negate it for negative infinity.
-export let infinity: Float = 1.0 / 0.0
+export infinity: Float = 1.0 / 0.0
 // NaN, the Float that is not equal to itself under IEEE rules; use `is_nan()` to detect it.
-export let nan: Float = 0.0 / 0.0
+export nan: Float = 0.0 / 0.0
 // The difference between 1.0 and the next larger Float.
-export let epsilon: Float = 2.220446049250313e-16
+export epsilon: Float = 2.220446049250313e-16
 // The largest finite Float.
-export let max_float: Float = 1.7976931348623157e+308
+export max_float: Float = 1.7976931348623157e+308
 // The smallest positive Float, a subnormal value.
-export let min_float: Float = 5e-324
+export min_float: Float = 5e-324
 // The largest Int, 2^63 - 1.
-export let max_int: Int = 9223372036854775807
+export max_int: Int = 9223372036854775807
 // The smallest Int, -2^63.
-export let min_int: Int = -9223372036854775807 - 1
+export min_int: Int = -9223372036854775807 - 1
 // 2^53 - 1, the largest integer every smaller integer of which a Float represents exactly.
-export let max_safe_integer: Int = 9007199254740991
+export max_safe_integer: Int = 9007199254740991
 // The smallest integer every larger integer of which a Float represents exactly, -(2^53 - 1).
-export let min_safe_integer: Int = -9007199254740991
+export min_safe_integer: Int = -9007199254740991
 // The natural logarithm of 2.
-export let ln2: Float = 0.6931471805599453
+export ln2: Float = 0.6931471805599453
 // The natural logarithm of 10.
-export let ln10: Float = 2.302585092994046
+export ln10: Float = 2.302585092994046
 // The base-2 logarithm of e.
-export let log2e: Float = 1.4426950408889634
+export log2e: Float = 1.4426950408889634
 // The base-10 logarithm of e.
-export let log10e: Float = 0.43429448190325176
+export log10e: Float = 0.43429448190325176
 // The square root of 2.
-export let sqrt2: Float = 1.4142135623730951
+export sqrt2: Float = 1.4142135623730951
 // The square root of 1/2.
-export let sqrt_half: Float = 0.7071067811865476
+export sqrt_half: Float = 0.7071067811865476
 
 // Parses a decimal floating-point number using Manuscript's numeric syntax, plus `NaN`, `Infinity`, `+Infinity` and `-Infinity`.
 export fn parse_float(text: String) Float!:
@@ -596,7 +596,7 @@ impl BigInt:
 
     // Converts to the nearest Float, or returns none when the magnitude exceeds the Float range.
     fn to_float() Float?:
-        let value = msstd_bigint_to_float(self)
+        value := msstd_bigint_to_float(self)
         if value.is_finite(): return value
 
         return none
@@ -653,7 +653,7 @@ fn range_product(low: Int, high: Int) BigInt:
             product *= msstd_bigint_from_int(factor)
         return product
 
-    let middle = low + (high - low) / 2
+    middle := low + (high - low) / 2
     return range_product(low, middle) * range_product(middle + 1, high)
 
 // Returns the binomial coefficient "n choose k", which is 0 when k exceeds n; a negative n or k returns EINVAL.
@@ -661,7 +661,7 @@ export fn binomial(n: Int, k: Int) BigInt!:
     if n < 0 or k < 0: return error(Error("big integer: invalid input", kind: "EINVAL"))
     if k > n: return ok(msstd_bigint_from_int(0))
 
-    let choose = if n - k < k: n - k else: k
+    choose := if n - k < k: n - k else: k
     var result = msstd_bigint_from_int(1)
     for step in 0..choose:
         result = (
@@ -680,17 +680,17 @@ fn bigint_is_even(value: BigInt) Bool:
 fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
     if n.compare(msstd_bigint_from_int(2)) < 0: return false
 
-    let primes = [
+    primes := [
         2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73,
         79, 83, 89, 97
     ]
 
     for p in primes:
-        let divisor = msstd_bigint_from_int(p)
+        divisor := msstd_bigint_from_int(p)
         if n.compare(divisor) == 0: return true
         if (n % divisor).sign() == 0: return false
 
-    let minus_one = n - msstd_bigint_from_int(1)
+    minus_one := n - msstd_bigint_from_int(1)
     var odd_part = minus_one.clone()
     var twos = 0
 
@@ -698,7 +698,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
         odd_part = odd_part.shift_right(1).get(bigint_zero())
         twos += 1
 
-    let fixed = min(rounds, primes.length())
+    fixed := min(rounds, primes.length())
     for index in 0..fixed:
         if not bigint_strong_probable(
             n, msstd_bigint_from_int(primes[index]), odd_part, twos
@@ -707,7 +707,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
 
     // The first 13 prime bases decide every value below this bound exactly. Above it, fixed bases can be
     // fooled by a composite built for them, so the requested rounds are repeated with secret random bases.
-    let bound = msstd_bigint_parse("3317044064679887385961981", 10, none).get(
+    bound := msstd_bigint_parse("3317044064679887385961981", 10, none).get(
         bigint_zero()
     )
     if n.compare(bound) < 0: return true
@@ -719,8 +719,8 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
 
 // One Miller-Rabin round: whether `n` (odd, with n - 1 = odd_part * 2^twos) is a strong probable prime to `base`.
 fn bigint_strong_probable(n: BigInt, base: BigInt, odd_part: BigInt, twos: Int) Bool:
-    let one = msstd_bigint_from_int(1)
-    let minus_one = n - one
+    one := msstd_bigint_from_int(1)
+    minus_one := n - one
     var x = base.pow_mod(odd_part, n).get(bigint_zero())
     if x.compare(one) == 0 or x.compare(minus_one) == 0: return true
 
@@ -732,17 +732,17 @@ fn bigint_strong_probable(n: BigInt, base: BigInt, odd_part: BigInt, twos: Int) 
 
 // A base drawn from operating-system entropy in 2 through n - 2, for n above the deterministic bound.
 fn bigint_random_base(n: BigInt) BigInt:
-    let size = n.to_string_radix(16).length() / 2 + 8
-    let data = random_bytes(size)
+    size := n.to_string_radix(16).length() / 2 + 8
+    data := random_bytes(size)
     if data.is_error():
         panic("is_probable_prime: the operating system entropy source failed")
 
     var value = bigint_zero()
-    let base = msstd_bigint_from_int(256)
+    base := msstd_bigint_from_int(256)
     for byte in data.get().values():
         value = value * base + msstd_bigint_from_int(byte.to_int())
 
-    let span = n - msstd_bigint_from_int(3)
+    span := n - msstd_bigint_from_int(3)
     return value % span + msstd_bigint_from_int(2)
 
 fn bigint_square_times(value: BigInt, times: Int, modulus: BigInt) BigInt:
@@ -752,8 +752,8 @@ fn bigint_square_times(value: BigInt, times: Int, modulus: BigInt) BigInt:
     return result
 
 fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
-    let one = msstd_bigint_from_int(1)
-    let two = msstd_bigint_from_int(2)
+    one := msstd_bigint_from_int(1)
+    two := msstd_bigint_from_int(2)
     if modulus.compare(msstd_bigint_from_int(3)) < 0 or bigint_is_even(modulus):
         return error(Error("big integer: invalid input", kind: "EINVAL"))
 
@@ -761,11 +761,11 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
     if target.sign() < 0:
         target += modulus
 
-    let absent: BigInt? = none
+    absent: BigInt? = none
     if target.sign() == 0: return ok(bigint_zero())
 
-    let minus_one = modulus - one
-    let half = minus_one / two
+    minus_one := modulus - one
+    half := minus_one / two
     if target.pow_mod(half, modulus).get(bigint_zero()).compare(one) != 0:
         return ok(absent)
 
@@ -786,7 +786,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
         var non_residue = two.clone()
 
         while true:
-            let criterion = try non_residue.pow_mod(half, modulus)
+            criterion := try non_residue.pow_mod(half, modulus)
             if criterion.compare(minus_one) == 0: break
 
             // A prime gives only +1 or -1 here; any other value proves compositeness.
@@ -811,7 +811,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
             if i == 0 or i >= m:
                 return error(Error("big integer: invalid input", kind: "EINVAL"))
 
-            let b = bigint_square_times(c, m - i - 1, modulus)
+            b := bigint_square_times(c, m - i - 1, modulus)
             m = i
             c = b * b % modulus
             t = t * c % modulus

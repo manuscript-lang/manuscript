@@ -19,14 +19,14 @@ fn score(value: Outcome[Int]) Int:
         Failure: -1
 
 test "enum cases retain payload construction and exhaustive matching":
-    let success: Outcome = Success(7)
-    let failure = Outcome[Int].Failure
+    success: Outcome = Success(7)
+    failure := Outcome[Int].Failure
     try expect_equal(score(success), 7)
     try expect_equal(score(failure), -1)
     try expect_equal(success.succeeded(), true)
     try expect_equal(failure.succeeded(), false)
 
-    let named = Outcome[Label].Success(Label("ready"))
+    named := Outcome[Label].Success(Label("ready"))
 
     match named:
         Success(label): try expect_equal(label.text, "ready")

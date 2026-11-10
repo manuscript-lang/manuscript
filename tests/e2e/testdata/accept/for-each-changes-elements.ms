@@ -25,7 +25,7 @@ test "for_each on an empty list does nothing":
     try expect_equal(xs.length(), 0)
 
 test "a reading callback works on a let list":
-    let xs = [1, 2, 3]
+    xs := [1, 2, 3]
     var total = 0
     xs.for_each(fn n: total += n)
     try expect_equal(total, 6)
@@ -51,7 +51,7 @@ test "Map.for_each changes record values":
     try expect_equal(m["a"].n, 6)
 
 test "Map.for_each reads on a let map":
-    let m: Map[String, Int] = {"a": 1, "b": 2}
+    m: Map[String, Int] = {"a": 1, "b": 2}
     var total = 0
     m.for_each(fn k, v: total += v)
     try expect_equal(total, 3)

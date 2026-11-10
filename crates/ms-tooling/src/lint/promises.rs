@@ -56,7 +56,7 @@ impl Scan<'_> {
                     .map(|text| DiagnosticFix {
                         pos: start,
                         end: e.end,
-                        replacement: format!("let _ = {text} | .wait()"),
+                        replacement: format!("_ := {text} | .wait()"),
                     })
             } else {
                 Some(DiagnosticFix {

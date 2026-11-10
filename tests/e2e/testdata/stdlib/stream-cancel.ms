@@ -15,24 +15,24 @@ fn sum(input: ReadStream[Int]) Int!:
 
 test "a time limit on the loop cancels a source that waits forever":
     var p = pipe[Int](4)
-    let gate = p.writer()
-    let work = promise(fn: sum(p.reader())).with(
+    gate := p.writer()
+    work := promise(fn: sum(p.reader())).with(
         options: PromiseOptions(timeout: milliseconds(100))
     )
-    let result = work.wait()
+    result := work.wait()
     try expect_true(result.is_error())
 
-    let _gate = gate
+    _gate := gate
 
 test "a cancel switch ends a loop that waits for an item":
     var p = pipe[Int](4)
-    let gate = p.writer()
-    let switch = cancel_switch()
-    let work = promise(fn: sum(p.reader())).with(
+    gate := p.writer()
+    switch := cancel_switch()
+    work := promise(fn: sum(p.reader())).with(
         options: PromiseOptions(cancel: switch.signal())
     )
     try sleep(milliseconds(50)).wait()
     switch.cancel()
     try expect_true(work.wait().is_error())
 
-    let _gate = gate
+    _gate := gate

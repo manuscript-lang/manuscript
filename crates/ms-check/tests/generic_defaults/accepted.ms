@@ -16,8 +16,8 @@ fn from_bound[S: Reader[String]](source: S) Int:
     return source.read[Int]()
 
 fn exercise() Int:
-    let source = Source(7)
-    let omitted = source.read[Int]()
-    let inferred = source.read(3)
-    let implicit = source.implicit[String]()
+    source := Source(7)
+    omitted := source.read[Int]()
+    inferred := source.read(3)
+    implicit := source.implicit[String]()
     return omitted + inferred + implicit + from_bound(source)

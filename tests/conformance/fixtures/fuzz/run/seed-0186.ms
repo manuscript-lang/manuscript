@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (995046 - (((-441650) * (-48)) - (46 - 0)))
+    i1 := (995046 - (((-441650) * (-48)) - (46 - 0)))
     say("i1 = {i1}")
 
-    let b2 = ((("ms" + "日本語") + "héllo") == ("héllo" + "").upper())
+    b2 := ((("ms" + "日本語") + "héllo") == ("héllo" + "").upper())
     say("b2 = {b2}")
 
     var acc3 = 0
@@ -24,22 +24,22 @@ export fn main() Int:
 
     say("acc3 = {acc3}")
 
-    let i5 = ((i1 % 282906) + (-16))
+    i5 := ((i1 % 282906) + (-16))
     say("i5 = {i5}")
 
-    let i6 = ((-(i5 - (-23))) - 5)
+    i6 := ((-(i5 - (-23))) - 5)
     say("i6 = {i6}")
 
-    let b7 = (false or ((i6 + i1) > (i6 + i6)))
+    b7 := (false or ((i6 + i1) > (i6 + i6)))
     say("b7 = {b7}")
 
-    let s8 = "ms".upper().trim()
+    s8 := "ms".upper().trim()
     say("s8 = [{s8}]")
     say(
         "{((-674997) - (-39))} {(i1 + i1)} {(((-674997) - (-39)) < (i1 + i1))} sum {((-674997) - (-39)) + (i1 + i1)}"
     )
 
-    let s9 = s8
+    s9 := s8
     say("s9 = [{s9}]")
 
     var acc10 = 0
@@ -47,6 +47,6 @@ export fn main() Int:
         acc10 += i * 1
     say("acc10 = {acc10}")
 
-    let b11 = ("{((-589415) / i1)}:" + "line\nbreak").trim().contains("  padded  ")
+    b11 := ("{((-589415) / i1)}:" + "line\nbreak").trim().contains("  padded  ")
     say("b11 = {b11}")
     return 0

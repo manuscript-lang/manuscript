@@ -31,12 +31,12 @@ import (
 //
 // <!-- manuscript-example: {"mode":"fragment"} -->
 // ```manuscript
-// let config = read_file("config.json")  // Promise[Bytes], already running
-// let words = promise(
+// config := read_file("config.json")  // Promise[Bytes], already running
+// words := promise(
 //     fn: count_words(text), options: PromiseOptions(timeout: 5.seconds())
 // )  // may run on another thread, ends with ETIMEDOUT after 5 s
-// let bytes = try config.wait()
-// let total = try words.wait()
+// bytes := try config.wait()
+// total := try words.wait()
 // ```
 
 // An operation with one result. `wait` takes it once; a stream read may defer work until the wait.
@@ -90,8 +90,8 @@ impl Signal:
 
 // A limit in nanoseconds, or -1 for none. A negative duration is no time at all, not "none".
 fn nanos(limit: Duration?) Int:
-    if let own = limit:
-        let total = own.to_nanoseconds()
+    if own := limit:
+        total := own.to_nanoseconds()
         if total < 0: return 0
 
         return total
@@ -104,7 +104,7 @@ fn outcome(id: Int, code: Int) Error:
     if code == 3: return Error("promise: cancelled", kind: "ECANCELED")
     if code == 4: return Error("promise: the result was already taken", kind: "EBADF")
 
-    let report = msrt_promise_fault_report(id)
+    report := msrt_promise_fault_report(id)
     return Error(
         "promise: fault: " + report, kind: "EIO", details: {"report": report.clone()}
     )
@@ -113,7 +113,7 @@ fn outcome(id: Int, code: Int) Error:
 fn limit(id: Int, options: PromiseOptions) Unit:
     if options.timeout.is_some():
         msrt_promise_limit(id, nanos(options.timeout))
-    if let signal = options.cancel:
+    if signal := options.cancel:
         msrt_promise_on_cancel(id, signal.id)
 
 // Applies `options` to a promise in place, for an owner that keeps the promise (a server's accept loop). The timeout counts
@@ -126,13 +126,13 @@ export fn set_options[T](
 
 // The result in the slot of `id`, moved out; `EBADF` when it is gone.
 fn taken_result[V](id: Int) V!:
-    if let value = msrt_promise_take[V](id): return ok(value)
+    if value := msrt_promise_take[V](id): return ok(value)
 
     return error(outcome(id, 4))
 
 // The error in the slot of `id`, moved out.
 fn taken_error(id: Int) Error:
-    if let cause = msrt_promise_take[Error](id): return cause
+    if cause := msrt_promise_take[Error](id): return cause
 
     return outcome(id, 4)
 
@@ -149,7 +149,7 @@ impl Promise[T]:
     // report in `details["report"]`); `ECANCELED`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's
     // `timeout` option has passed, which also cancelled the work.
     fn wait() T!:
-        let code = msrt_promise_wait(self.id, -1)
+        code := msrt_promise_wait(self.id, -1)
         if code == 0: return taken_result[T](self.id)
 
         return error(failure(self.id, code))
@@ -190,7 +190,7 @@ export fn promise[U](
     entry: fn() U!,
     options: PromiseOptions = PromiseOptions()
 ) Promise[U]:
-    let id = msrt_promise_new()
+    id := msrt_promise_new()
     msrt_promise_start(id, fn: complete(id, entry()))
     limit(id, options)
     return Promise[U](id: id)
@@ -203,16 +203,16 @@ export fn local_promise[U](
     entry: fn() U!,
     options: PromiseOptions = PromiseOptions()
 ) Promise[U]:
-    let id = msrt_promise_new()
+    id := msrt_promise_new()
     msrt_promise_start_here(id, fn: complete(id, entry()))
     limit(id, options)
     return Promise[U](id: id)
 
 // Runs `work` as a promise that owns everything it captured, so it borrows nothing from the caller and may outlive
-// the caller's values. Bind owned copies first (`let owned = path.clone()`) and capture those. It is for operations that only wait
+// the caller's values. Bind owned copies first (`owned := path.clone()`) and capture those. It is for operations that only wait
 // (on a file, a socket, a child process), so its task stays on the calling thread.
 export fn owned_task[U](work: fn() U!) Promise[U]:
-    let id = msrt_promise_new()
+    id := msrt_promise_new()
     msrt_promise_start_here(id, owned_task_job[U](id, work))
     return Promise[U](id: id)
 
@@ -224,7 +224,7 @@ fn owned_task_job[U](id: Int, work: fn() U!) fn() Unit:
 // ends the wait: the promises still running are cancelled and waited for before `wait_all` returns its error.
 export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
     var pending = promises
-    let count = pending.length()
+    count := pending.length()
     var slots: List[T!] = []
     var taken: List[Bool] = []
 
@@ -240,7 +240,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
         if taken[head]:
             head += 1
         else if pending[head].done():
-            let value = try pending[head].wait()
+            value := try pending[head].wait()
             slots[head] = ok(value)
             taken[head] = true
             head += 1
@@ -253,18 +253,18 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 
             for at in head..count:
                 if not taken[at] and pending[at].done():
-                    let value = try pending[at].wait()
+                    value := try pending[at].wait()
                     slots[at] = ok(value)
                     taken[at] = true
 
     var reversed: List[T] = []
     for at in 0..count:
-        if let slot = slots.pop():
+        if slot := slots.pop():
             reversed.append(try slot)
 
     var results: List[T] = []
     for at in 0..count:
-        if let value = reversed.pop():
+        if value := reversed.pop():
             results.append(value)
     return ok(results)
 
@@ -275,14 +275,14 @@ export fn wait_first[T](promises: List[Promise[T]]) T!:
     if pending.is_empty(): return error(Error("promise: nothing to wait for"))
 
     var ids = pending.map(fn p: p.id)
-    let which = msrt_promise_wait_any(ids, -1)
+    which := msrt_promise_wait_any(ids, -1)
     return pending[which].wait()
 
 // A promise whose work runs in the task that first waits on it, on that task's stack, with no task of its own.
 // The work may wait itself. `make` receives the new promise's id and returns the work; it ends with `complete(id, ...)`.
 // For stream implementations: dropping the promise first discards the work unrun.
 export fn deferred[U](work: fn(Int) Unit) Promise[U]:
-    let id = msrt_promise_new()
+    id := msrt_promise_new()
     msrt_promise_defer(id, fn: work(id))
     return Promise[U](id: id)
 

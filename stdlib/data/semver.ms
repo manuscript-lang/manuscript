@@ -15,29 +15,27 @@ impl Version:
     // Compares two versions by SemVer precedence, returning -1, 0 or 1.
     // Build metadata is ignored, and a pre-release sorts before its release.
     fn compare(other: Version) Int:
-        let core = compare_ints(self.major, other.major)
+        core := compare_ints(self.major, other.major)
         if core != 0: return core
 
-        let minor = compare_ints(self.minor, other.minor)
+        minor := compare_ints(self.minor, other.minor)
         if minor != 0: return minor
 
-        let patch = compare_ints(self.patch, other.patch)
+        patch := compare_ints(self.patch, other.patch)
         if patch != 0: return patch
         if self.prerelease.is_empty() and other.prerelease.is_empty(): return 0
         if self.prerelease.is_empty(): return 1
         if other.prerelease.is_empty(): return -1
 
         var index = 0
-        let shared = compare_ints(self.prerelease.length(), other.prerelease.length())
-        let limit = self.prerelease.length()
-        let other_length = other.prerelease.length()
+        shared := compare_ints(self.prerelease.length(), other.prerelease.length())
+        limit := self.prerelease.length()
+        other_length := other.prerelease.length()
         var count = limit
         if other_length < limit: count = other_length
 
         while index < count:
-            let order = compare_identifier(
-                self.prerelease[index], other.prerelease[index]
-            )
+            order := compare_identifier(self.prerelease[index], other.prerelease[index])
             if order != 0: return order
 
             index += 1
@@ -53,9 +51,9 @@ impl Version:
 
 // Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
 export fn parse(text: String) Version!:
-    let build_parts = split_first(text, "+")
-    let core_and_pre = split_first(build_parts[0].clone(), "-")
-    let numbers = core_and_pre[0].split(".")
+    build_parts := split_first(text, "+")
+    core_and_pre := split_first(build_parts[0].clone(), "-")
+    numbers := core_and_pre[0].split(".")
     if numbers.length() != 3: return error(
         Error("semver: invalid data", kind: "EBADMSG")
     )
@@ -64,12 +62,12 @@ export fn parse(text: String) Version!:
     var out_of_range = false
 
     for part in numbers:
-        let scalars = part.scalar_values()
+        scalars := part.scalar_values()
         if not all_digits(scalars.clone()) or has_leading_zero(scalars): return error(
             Error("semver: invalid data", kind: "EBADMSG")
         )
 
-        if let value = part.parse_int(): values.append(value)
+        if value := part.parse_int(): values.append(value)
         else:
             out_of_range = true
             values.append(0)
@@ -78,7 +76,7 @@ export fn parse(text: String) Version!:
 
     if core_and_pre.length() == 2:
         for identifier in core_and_pre[1].split("."):
-            let scalars = identifier.scalar_values()
+            scalars := identifier.scalar_values()
             if not valid_identifier(scalars.clone()): return error(
                 Error("semver: invalid data", kind: "EBADMSG")
             )
@@ -109,7 +107,7 @@ export fn parse(text: String) Version!:
 
 // Splits at the first separator only; `String.split` with a part cap drops the rest instead of keeping it.
 fn split_first(text: String, separator: String) List[String]:
-    if let at = text.index_of(separator): return [text.take(at), text.drop(at + 1)]
+    if at := text.index_of(separator): return [text.take(at), text.drop(at + 1)]
 
     return [text.clone()]
 
@@ -135,20 +133,20 @@ fn valid_identifier(scalars: List[Int]) Bool:
     if scalars.is_empty(): return false
 
     for scalar in scalars:
-        let digit = scalar >= 48 and scalar <= 57
-        let upper = scalar >= 65 and scalar <= 90
-        let lower = scalar >= 97 and scalar <= 122
+        digit := scalar >= 48 and scalar <= 57
+        upper := scalar >= 65 and scalar <= 90
+        lower := scalar >= 97 and scalar <= 122
         if not (digit or upper or lower or scalar == 45): return false
 
     return true
 
 // Numeric identifiers sort numerically and before alphanumeric ones; others sort bytewise.
 fn compare_identifier(left: String, right: String) Int:
-    let left_numeric = all_digits(left.scalar_values())
-    let right_numeric = all_digits(right.scalar_values())
+    left_numeric := all_digits(left.scalar_values())
+    right_numeric := all_digits(right.scalar_values())
 
     if left_numeric and right_numeric:
-        let by_length = compare_ints(left.length(), right.length())
+        by_length := compare_ints(left.length(), right.length())
         if by_length != 0: return by_length
 
         return left.compare(right)

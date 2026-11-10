@@ -1,2 +1,2 @@
 fn main() Unit:
-    let y: Option[Int] = none
+    y: Option[Int] = none

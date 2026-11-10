@@ -31,9 +31,9 @@ export fn read_to_end(var input: ReadStream[Bytes]) Bytes!:
     var chunks: List[Bytes] = []
 
     while true:
-        let chunk = try input.next()
+        chunk := try input.next()
 
-        if let bytes = chunk:
+        if bytes := chunk:
             chunks.append(bytes)
         else:
             break

@@ -20,21 +20,21 @@ fn apply(change: fn(var List[Int]) Unit, var values: List[Int]) Unit:
 
 test "a named function with a var parameter is a function value":
     var values: List[Int] = []
-    let change: fn(var List[Int]) Unit = push_one
+    change: fn(var List[Int]) Unit = push_one
     change(var values)
     change(var values)
     values | try expect_equal([1, 1])
 
 test "a lambda declares a var parameter":
     var values = [7]
-    let drop_all = fn(var xs: List[Int]):
+    drop_all := fn(var xs: List[Int]):
         xs = []
     drop_all(var values)
     values.length() | try expect_equal(0)
 
 test "a var parameter of a scalar type changes the caller's variable":
     var count = 1
-    let add = fn(var n: Int, by: Int):
+    add := fn(var n: Int, by: Int):
         n += by
     add(var count, 2)
     bump(var count, 3)
@@ -48,13 +48,13 @@ test "a var parameter passes through a function parameter":
 
 test "a var parameter changes a field in place":
     var bag = Bag(items: [])
-    let change: fn(var List[Int]) Unit = push_one
+    change: fn(var List[Int]) Unit = push_one
     change(var bag.items)
     bag.items | try expect_equal([1])
 
 test "a function value in a field takes a var argument":
     var values: List[Int] = []
-    let hooks = Hooks(change: push_one)
+    hooks := Hooks(change: push_one)
     hooks.change(var values)
     values | try expect_equal([1])
 
@@ -70,7 +70,7 @@ test "a var parameter is passed on through another function value":
 
 test "a var parameter of a one-owner value is not copied":
     var words = ["a"]
-    let extend = fn(var xs: List[String], more: List[String]):
+    extend := fn(var xs: List[String], more: List[String]):
         xs.extend(more)
     extend(var words, ["b", "c"])
     words | try expect_equal(["a", "b", "c"])

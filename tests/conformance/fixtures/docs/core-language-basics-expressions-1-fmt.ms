@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/basics/expressions.md:73
 fn load(path: String) Config!:
-    let config = try read(path)
+    config := try read(path)
         | try parse
         | normalize
         | try validate

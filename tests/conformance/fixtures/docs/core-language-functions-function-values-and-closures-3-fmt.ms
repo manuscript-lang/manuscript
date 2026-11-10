@@ -3,7 +3,7 @@
 // conform: origin=documentation/core-language/functions/function-values-and-closures.md:52
 fn make_headline() fn() String:
     var subject = "Weekly update"
-    let headline = fn:
+    headline := fn:
         return subject.clone()
     subject = "Launch announcement"
     return headline

@@ -5,15 +5,15 @@ import (
 )
 
 fn size(path: String) Int!:
-    let data = try read_file(path).wait()
+    data := try read_file(path).wait()
     return ok(data.length())
 
 test "blocking file reads work from promises on any thread":
-    let dir = temporary("manuscript-promise-") | try expect_ok
-    let path = "{dir.path()}/data"
+    dir := temporary("manuscript-promise-") | try expect_ok
+    path := "{dir.path()}/data"
     try write_file(path, "0123456789").wait()
 
-    let all = wait_all(
+    all := wait_all(
         [
             promise(fn: size(path)), promise(fn: size(path)), promise(fn: size(path))
         ]

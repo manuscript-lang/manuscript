@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -36,23 +36,23 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let i1 = ((28 % 42) - ((16 / 22939) * (498108 + 862282)))
+    i1 := ((28 % 42) - ((16 / 22939) * (498108 + 862282)))
     say("i1 = {i1}")
 
-    let i2 = (i1 + (-(i1 - i1)))
+    i2 := (i1 + (-(i1 - i1)))
     say("i2 = {i2}")
 
-    let s3 = ("{(-i1)}:" + "日本語".replace("hello world", "quote\"d")).lower()
+    s3 := ("{(-i1)}:" + "日本語".replace("hello world", "quote\"d")).lower()
     say("s3 = [{s3}]")
 
-    let l4 = [(-20)]
+    l4 := [(-20)]
     say("l4 = {l4} len {l4.length()}")
     say("fib(26) = {fib(26)}")
 
-    let i5 = ((i1 * (i1 - i1)) - ((i1 + i2) / l4.get(0)))
+    i5 := ((i1 * (i1 - i1)) - ((i1 + i2) / l4.get(0)))
     say("i5 = {i5}")
 
-    let s6 = s3
+    s6 := s3
     say("s6 = [{s6}]")
 
     var acc7 = 0
@@ -64,22 +64,22 @@ export fn main() Int:
 
     say("acc7 = {acc7}")
 
-    let l8 = l4.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l8 := l4.map(fn x: x + 3).filter(fn x: x % 2 == 0)
     say("l8 = {l8} len {l8.length()}")
 
-    let f9 = 252.799
+    f9 := 252.799
     say("f9 = {f9}")
     say("collatz(1415) = {collatz(1415)}")
 
-    let f10 = (((f9 - 521.337) * (f9 * 92.644)) * 987.845)
+    f10 := (((f9 - 521.337) * (f9 * 92.644)) * 987.845)
     say("f10 = {f10}")
 
-    let b11 = ((s6.lower() == "MiXeD CaSe".lower()) and ((f10 > 210.25) and true))
+    b11 := ((s6.lower() == "MiXeD CaSe".lower()) and ((f10 > 210.25) and true))
     say("b11 = {b11}")
 
-    let s12 = s6
+    s12 := s6
     say("s12 = [{s12}]")
 
-    let i13 = (-24)
+    i13 := (-24)
     say("i13 = {i13}")
     return 0

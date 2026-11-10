@@ -15,7 +15,7 @@ impl Harness for Codex:
             "codex", "exec", "--json", "--dangerously-bypass-approvals-and-sandbox",
             "--skip-git-repo-check", "-C", workspace.clone()
         ]
-        if let m = model: cmd = cmd.concat(["-m", m.clone()])
+        if m := model: cmd = cmd.concat(["-m", m.clone()])
         return cmd.concat([prompt.clone()])
 
     // Codex reports no cost; the runner estimates it from pricing.json.
@@ -29,8 +29,8 @@ impl Harness for Codex:
                 ) != "turn.completed"
             ): continue
 
-            let us = ev.get("usage").get(JsonValue.Null)
-            let cached = int_at(us, "cached_input_tokens")
+            us := ev.get("usage").get(JsonValue.Null)
+            cached := int_at(us, "cached_input_tokens")
             u.tokens_in += int_at(us, "input_tokens") - cached
             u.tokens_cached += cached
             u.tokens_out += int_at(us, "output_tokens")

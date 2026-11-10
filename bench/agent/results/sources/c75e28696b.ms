@@ -140,8 +140,8 @@ fn after(s: String, n: Int) String:
 
 // Text after the first `n` whitespace-separated words of `line`, leading blanks removed.
 fn rest_after(line: String, n: Int) String:
-    let cs = line.chars()
-    let len = cs.length()
+    cs := line.chars()
+    len := cs.length()
     var i = 0
     var k = 0
 
@@ -229,14 +229,14 @@ fn cmp_str(a: String, b: String) Int:
 
 // Integer rule: digits only, no leading zeros unless "0", at most 1000000. -1 when invalid.
 fn rule_int(s: String) Int:
-    let n = s.length()
+    n := s.length()
     if n == 0 or n > 7: return -1
     if n > 1 and s.starts_with("0"): return -1
 
     for c in s.chars():
         if c < "0" or c > "9": return -1
 
-    let v = s.parse_int().get(-1)
+    v := s.parse_int().get(-1)
     if v > 1000000: return -1
 
     return v
@@ -251,7 +251,7 @@ fn parse_id(arg: String) Int:
     var v = 0
 
     for c in body.chars():
-        let d = "0123456789".index_of(c)
+        d := "0123456789".index_of(c)
         if d.is_none(): return 0
 
         if v < 1000000000000:
@@ -274,7 +274,7 @@ fn days_in(y: Int, m: Int) Int:
 fn valid_date(s: String) Bool:
     if s.length() != 10: return false
 
-    let cs = s.chars()
+    cs := s.chars()
     var i = 0
 
     while i < 10:
@@ -285,9 +285,9 @@ fn valid_date(s: String) Bool:
 
         i += 1
 
-    let y = s.slice_scalars(0, 4).get().parse_int().get(0)
-    let mo = s.slice_scalars(5, 7).get().parse_int().get(0)
-    let d = s.slice_scalars(8, 10).get().parse_int().get(0)
+    y := s.slice_scalars(0, 4).get().parse_int().get(0)
+    mo := s.slice_scalars(5, 7).get().parse_int().get(0)
+    d := s.slice_scalars(8, 10).get().parse_int().get(0)
     if y < 1 or mo < 1 or mo > 12: return false
 
     return d >= 1 and d <= days_in(y, mo)
@@ -298,10 +298,10 @@ fn valid_name(s: String, dash_ok: Bool) Bool:
     var i = 0
 
     for c in s.chars():
-        let lower_c = c >= "a" and c <= "z"
-        let digit_c = c >= "0" and c <= "9"
-        let under = c == "_"
-        let dsh = dash_ok and c == "-"
+        lower_c := c >= "a" and c <= "z"
+        digit_c := c >= "0" and c <= "9"
+        under := c == "_"
+        dsh := dash_ok and c == "-"
 
         if i == 0:
             if not lower_c: return false
@@ -319,8 +319,8 @@ fn valid_label(s: String) Bool:
     if s.length() == 0: return false
 
     for c in s.chars():
-        let lower_c = c >= "a" and c <= "z"
-        let digit_c = c >= "0" and c <= "9"
+        lower_c := c >= "a" and c <= "z"
+        digit_c := c >= "0" and c <= "9"
         if not (lower_c or digit_c or c == "_" or c == "-"): return false
 
     return true
@@ -363,7 +363,7 @@ fn parse_labels(val: String) Result[List[String], String]:
     var out = List[String]()
 
     for part in val.split(","):
-        let l = part.lower()
+        l := part.lower()
         if not valid_label(l): return error("bad label '{l}'")
 
         add_label(var out, l)
@@ -394,15 +394,15 @@ fn report(bulk: Bool, id: Int, msg: String) Unit:
 
 // Quote-aware split on spaces/tabs; a quote starts a section inside a token.
 fn tokenize(s: String) Result[List[String], String]:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var out = List[String]()
     var cur = ""
     var in_tok = false
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if is_sp(c):
             if in_tok:
@@ -418,7 +418,7 @@ fn tokenize(s: String) Result[List[String], String]:
             var closed = false
 
             while i < n and not closed:
-                let d = cs[i]
+                d := cs[i]
 
                 if d == "\"":
                     closed = true
@@ -446,14 +446,14 @@ fn tokenize(s: String) Result[List[String], String]:
 
 // Applies one field=value token to an update. Returns the error text, or "".
 fn token_upd(var up: Upd, tok: String) String:
-    let eq = tok.index_of("=")
+    eq := tok.index_of("=")
     if eq.is_none(): return "expected field=value, got '{tok}'"
 
-    let k = eq.get(0)
+    k := eq.get(0)
     if k == 0: return "expected field=value, got '{tok}'"
 
-    let field = prefix(tok, k)
-    let val = after(tok, k + 1)
+    field := prefix(tok, k)
+    val := after(tok, k + 1)
     if field == "state": return "use move to change state"
 
     if field == "title":
@@ -464,7 +464,7 @@ fn token_upd(var up: Upd, tok: String) String:
         return ""
 
     if field == "priority":
-        let r = prio_rank(val)
+        r := prio_rank(val)
         if r < 0: return "bad priority '{val}'"
 
         up.has_priority = true
@@ -501,7 +501,7 @@ fn token_upd(var up: Upd, tok: String) String:
             up.points = -1
             return ""
 
-        let p = rule_int(val)
+        p := rule_int(val)
         if p < 0: return "bad points '{val}'"
 
         up.has_points = true
@@ -526,7 +526,7 @@ fn token_upd(var up: Upd, tok: String) String:
             up.labels = List[String]()
             return ""
 
-        let pr = parse_labels(val)
+        pr := parse_labels(val)
         if pr.is_error(): return pr.err()
 
         up.has_labels = true
@@ -537,14 +537,14 @@ fn token_upd(var up: Upd, tok: String) String:
 
 // Splits a filter/query value on unquoted '|'; quoted text is kept whole.
 fn parse_alts(raw: String) List[String]:
-    let cs = raw.chars()
-    let n = cs.length()
+    cs := raw.chars()
+    n := cs.length()
     var out = List[String]()
     var cur = ""
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if c == "\"":
             i += 1
@@ -579,13 +579,13 @@ fn parse_alts(raw: String) List[String]:
 // ---------------------------------------------------------------- query parsing
 
 fn tokenize_filter(s: String) Result[List[FTok], String]:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var out = List[FTok]()
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if is_sp(c):
             i += 1
@@ -641,8 +641,8 @@ fn known_field(f: String) Bool:
     ].contains(f)
 
 fn op_ok(field: String, op: String) Bool:
-    let eqop = op == ":" or op == "!="
-    let ordered = op == "<" or op == "<=" or op == ">" or op == ">="
+    eqop := op == ":" or op == "!="
+    ordered := op == "<" or op == "<=" or op == ">" or op == ">="
     if (
         field == "id"
         or field == "created"
@@ -666,11 +666,11 @@ fn op_ok(field: String, op: String) Bool:
     return op == ":"
 
 fn check_values(app: App, field: String, op: String, alts: List[String]) String:
-    let eqop = op == ":" or op == "!="
-    let ordered = op == "<" or op == "<=" or op == ">" or op == ">="
+    eqop := op == ":" or op == "!="
+    ordered := op == "<" or op == "<=" or op == ">" or op == ">="
 
     if ordered and alts.length() > 1:
-        let joined = alts.join("|")
+        joined := alts.join("|")
         return "query: bad value '{joined}' for field '{field}'"
 
     for v in alts:
@@ -714,28 +714,28 @@ fn make_term(
         return error("query: bad operator '{op}' for field '{field}'")
 
     if field == "view":
-        let name = alts.join("|")
+        name := alts.join("|")
         if app.find_view(name) < 0: return error("query: unknown view '{name}'")
 
         var one = List[String]()
         one.append(name.clone())
         return ok(Node(kind: 0, kids: List[Node](), field: field, op: op, alts: one))
 
-    let msg = check_values(app, field, op, alts)
+    msg := check_values(app, field, op, alts)
     if msg.length() > 0: return error(msg)
 
     return ok(Node(kind: 0, kids: List[Node](), field: field, op: op, alts: alts))
 
 fn parse_term(app: App, w: String) Result[Node, String]:
-    let cs = w.chars()
-    let n = cs.length()
+    cs := w.chars()
+    n := cs.length()
     var i = 0
     while i < n and ((cs[i] >= "a" and cs[i] <= "z") or cs[i] == "_"):
         i += 1
     if i == 0: return error("query: unexpected token '{w}'")
 
-    let field = prefix(w, i)
-    let r = after(w, i)
+    field := prefix(w, i)
+    r := after(w, i)
     var op = ""
 
     if r.starts_with("!="):
@@ -755,7 +755,7 @@ fn parse_term(app: App, w: String) Result[Node, String]:
 
     if op.length() == 0: return error("query: unexpected token '{w}'")
 
-    let alts = parse_alts(after(r, op.length()))
+    alts := parse_alts(after(r, op.length()))
     return make_term(app, field, op, alts)
 
 fn is_word(ps: FParser, w: String) Bool:
@@ -766,7 +766,7 @@ fn is_word(ps: FParser, w: String) Bool:
 fn starts_operand(ps: FParser) Bool:
     if ps.pos >= ps.toks.length(): return false
 
-    let t = ps.toks[ps.pos]
+    t := ps.toks[ps.pos]
     if t.kind == 1: return true
 
     return t.kind == 0 and t.text != "AND" and t.text != "OR"
@@ -774,18 +774,18 @@ fn starts_operand(ps: FParser) Bool:
 fn p_primary(app: App, var ps: FParser) Result[Node, String]:
     if ps.pos >= ps.toks.length(): return error("query: unexpected end of query")
 
-    let kind = ps.toks[ps.pos].kind
-    let text = ps.toks[ps.pos].text.clone()
+    kind := ps.toks[ps.pos].kind
+    text := ps.toks[ps.pos].text.clone()
     if kind == 2: return error("query: unexpected token ')'")
 
     if kind == 1:
         ps.pos += 1
 
-        let inner = try p_or(app, var ps)
+        inner := try p_or(app, var ps)
         if ps.pos >= ps.toks.length(): return error("query: unexpected end of query")
 
         if ps.toks[ps.pos].kind != 2:
-            let bad = ps.toks[ps.pos].text.clone()
+            bad := ps.toks[ps.pos].text.clone()
             return error("query: unexpected token '{bad}'")
 
         ps.pos += 1
@@ -803,7 +803,7 @@ fn p_unary(app: App, var ps: FParser) Result[Node, String]:
     if is_word(ps, "NOT"):
         ps.pos += 1
 
-        let inner = try p_unary(app, var ps)
+        inner := try p_unary(app, var ps)
         var kids = List[Node]()
         kids.append(inner)
         return ok(Node(kind: 3, kids: kids, field: "", op: "", alts: List[String]()))
@@ -811,7 +811,7 @@ fn p_unary(app: App, var ps: FParser) Result[Node, String]:
     return p_primary(app, var ps)
 
 fn p_and(app: App, var ps: FParser) Result[Node, String]:
-    let first = try p_unary(app, var ps)
+    first := try p_unary(app, var ps)
     var kids = List[Node]()
     kids.append(first)
 
@@ -821,30 +821,30 @@ fn p_and(app: App, var ps: FParser) Result[Node, String]:
         else if not starts_operand(ps):
             break
 
-        let nxt = try p_unary(app, var ps)
+        nxt := try p_unary(app, var ps)
         kids.append(nxt)
 
     return ok(Node(kind: 1, kids: kids, field: "", op: "", alts: List[String]()))
 
 fn p_or(app: App, var ps: FParser) Result[Node, String]:
-    let first = try p_and(app, var ps)
+    first := try p_and(app, var ps)
     var kids = List[Node]()
     kids.append(first)
 
     while is_word(ps, "OR"):
         ps.pos += 1
 
-        let nxt = try p_and(app, var ps)
+        nxt := try p_and(app, var ps)
         kids.append(nxt)
 
     return ok(Node(kind: 2, kids: kids, field: "", op: "", alts: List[String]()))
 
 // Parses a plain filter (no sort/limit). Empty text matches everything.
 fn parse_filter(app: App, text: String) Result[Node, String]:
-    let tr = tokenize_filter(text)
+    tr := tokenize_filter(text)
     if tr.is_error(): return error(tr.err())
 
-    let toks = tr.get()
+    toks := tr.get()
     if toks.length() == 0:
         return ok(
             Node(
@@ -853,19 +853,19 @@ fn parse_filter(app: App, text: String) Result[Node, String]:
         )
 
     var ps = FParser(toks: toks, pos: 0)
-    let node = try p_or(app, var ps)
+    node := try p_or(app, var ps)
 
     if ps.pos < ps.toks.length():
-        let bad = ps.toks[ps.pos].text.clone()
+        bad := ps.toks[ps.pos].text.clone()
         return error("query: unexpected token '{bad}'")
 
     return ok(node)
 
 // Splits a query into filter, sort clause and limit, textually (limit first, then sort).
 fn split_query(raw: String) Result[QParts, String]:
-    let s = raw.trim()
-    let cs = s.chars()
-    let n = cs.length()
+    s := raw.trim()
+    cs := s.chars()
+    n := cs.length()
     var filt = s.clone()
     var has_limit = false
     var lim = ""
@@ -874,9 +874,9 @@ fn split_query(raw: String) Result[QParts, String]:
         k -= 1
 
     if k >= 0:
-        let arg = after(s, k + 1)
-        let rest = prefix(s, k).trim_end()
-        let rc = rest.chars()
+        arg := after(s, k + 1)
+        rest := prefix(s, k).trim_end()
+        rc := rest.chars()
         var m = rc.length() - 1
         while m >= 0 and not is_sp(rc[m]):
             m -= 1
@@ -888,8 +888,8 @@ fn split_query(raw: String) Result[QParts, String]:
 
     if has_limit and rule_int(lim) < 0: return error("bad limit '{lim}'")
 
-    let fc = filt.chars()
-    let fnn = fc.length()
+    fc := filt.chars()
+    fnn := fc.length()
     var i = 0
     var found = -1
 
@@ -947,9 +947,9 @@ fn parse_sort(text: String) Result[List[SortKey], String]:
 
 // Full query compile: limit, then filter, then sort.
 fn compile_query(app: App, raw: String) Result[Compiled, String]:
-    let parts = try split_query(raw)
-    let node = try parse_filter(app, parts.filter)
-    let keys = try parse_sort(parts.sort)
+    parts := try split_query(raw)
+    node := try parse_filter(app, parts.filter)
+    keys := try parse_sort(parts.sort)
     var lim = -1
     if parts.has_limit:
         lim = rule_int(parts.limit)
@@ -967,12 +967,12 @@ fn collect_views(n: Node, var out: List[String]) Unit:
         collect_views(k, var out)
 
 fn view_filter(app: App, name: String) Node:
-    let vi = app.find_view(name)
-    let parts = split_query(app.views[vi].query.clone()).get()
+    vi := app.find_view(name)
+    parts := split_query(app.views[vi].query.clone()).get()
     return parse_filter(app, parts.filter).get()
 
 fn eq_match(app: App, idx: Int, f: String, v: String) Bool:
-    let it = app.issues[idx]
+    it := app.issues[idx]
     if f == "id": return it.id == rule_int(v)
     if f == "created": return it.created == rule_int(v)
     if f == "updated": return it.updated == rule_int(v)
@@ -1008,7 +1008,7 @@ fn eq_match(app: App, idx: Int, f: String, v: String) Bool:
         return it.labels.contains(v.lower())
 
     if f == "is":
-        let fin = app.is_final(it.state)
+        fin := app.is_final(it.state)
         if v == "open": return not fin
         if v == "final": return fin
         if v == "overdue": return not fin and it.due.length() > 0 and it.due < app.today
@@ -1029,8 +1029,8 @@ fn eq_match(app: App, idx: Int, f: String, v: String) Bool:
     return false
 
 fn sub_match(app: App, idx: Int, f: String, v: String) Bool:
-    let it = app.issues[idx]
-    let lv = v.lower()
+    it := app.issues[idx]
+    lv := v.lower()
     if f == "title": return it.title.lower().contains(lv)
     if f == "assignee":
         return it.assignee.length() > 0 and it.assignee.lower().contains(lv)
@@ -1052,7 +1052,7 @@ fn sub_match(app: App, idx: Int, f: String, v: String) Bool:
     return false
 
 fn ord_match(app: App, idx: Int, f: String, op: String, v: String) Bool:
-    let it = app.issues[idx]
+    it := app.issues[idx]
     var c = 0
 
     if f == "id":
@@ -1081,10 +1081,10 @@ fn ord_match(app: App, idx: Int, f: String, op: String, v: String) Bool:
     return c >= 0
 
 fn eval_term(app: App, n: Node, idx: Int) Bool:
-    let f = n.field.clone()
+    f := n.field.clone()
     if f == "view": return eval(app, view_filter(app, n.alts[0]), idx)
 
-    let op = n.op.clone()
+    op := n.op.clone()
     if op == "<" or op == "<=" or op == ">" or op == ">=":
         return ord_match(app, idx, f, op, n.alts[0])
 
@@ -1158,7 +1158,7 @@ fn cmp_field(app: App, a: Issue, b: Issue, f: String) Int:
 
 fn cmp_issue(app: App, a: Issue, b: Issue, keys: List[SortKey]) Int:
     for k in keys:
-        let c = cmp_field(app, a, b, k.field)
+        c := cmp_field(app, a, b, k.field)
 
         if c != 0:
             if k.desc: return -c
@@ -1190,10 +1190,10 @@ fn issue_line(it: Issue) String:
 fn reaches(app: App, from: String, target: String, depth: Int) Bool:
     if depth > 64: return false
 
-    let vi = app.find_view(from)
+    vi := app.find_view(from)
     if vi < 0: return false
 
-    let node = view_filter(app, from)
+    node := view_filter(app, from)
     var refs = List[String]()
     collect_views(node, var refs)
 
@@ -1211,7 +1211,7 @@ fn add_state(var wf: WF, name: String) Unit:
 
 fn wf_line(var wf: WF, l: String) String:
     if l.starts_with("initial:"):
-        let rest = after(l, 8).trim()
+        rest := after(l, 8).trim()
         if split_ws(rest).length() > 1: return "workflow: bad line '{l}'"
         if not valid_state(rest): return "workflow: bad state name '{rest}'"
         if wf.has_initial: return "workflow: initial state defined twice"
@@ -1222,10 +1222,10 @@ fn wf_line(var wf: WF, l: String) String:
         return ""
 
     if l.starts_with("final:"):
-        let rest = after(l, 6)
+        rest := after(l, 6)
 
         for part in rest.split(","):
-            let nm = part.trim()
+            nm := part.trim()
             if not valid_state(nm): return "workflow: bad state name '{nm}'"
 
             add_state(var wf, nm)
@@ -1234,21 +1234,21 @@ fn wf_line(var wf: WF, l: String) String:
 
         return ""
 
-    let arrow = l.index_of("->")
+    arrow := l.index_of("->")
     if arrow.is_none(): return "workflow: bad line '{l}'"
 
-    let k = arrow.get(0)
-    let left = prefix(l, k).trim()
-    let right = after(l, k + 2)
-    let lw = split_ws(left)
+    k := arrow.get(0)
+    left := prefix(l, k).trim()
+    right := after(l, k + 2)
+    lw := split_ws(left)
     if lw.length() != 1: return "workflow: bad line '{l}'"
     if not valid_state(lw[0]): return "workflow: bad state name '{lw[0]}'"
 
-    let src = lw[0].clone()
+    src := lw[0].clone()
     add_state(var wf, src)
 
     for ent in right.split(","):
-        let words = split_ws(ent)
+        words := split_ws(ent)
         var dst = ""
         var guards = List[String]()
 
@@ -1276,11 +1276,11 @@ fn build_workflow(lines: List[String], start: Int, stop: Int) Result[WF, String]
     var j = start
 
     while j < stop:
-        let l = lines[j].trim()
+        l := lines[j].trim()
         j += 1
         if l.length() == 0 or l.starts_with("#"): continue
 
-        let e = wf_line(var wf, l)
+        e := wf_line(var wf, l)
         if err.length() == 0 and e.length() > 0:
             err = e
 
@@ -1306,13 +1306,13 @@ impl App:
         return -1
 
     fn resolve(arg: String) Int:
-        let id = parse_id(arg)
+        id := parse_id(arg)
 
         if id == 0:
             print("error: bad issue id '{arg}'")
             return -1
 
-        let idx = self.find(id)
+        idx := self.find(id)
         if idx < 0:
             print("error: no such issue #{id}")
         return idx
@@ -1341,7 +1341,7 @@ impl App:
         return -1
 
     fn unmet(idx: Int, g: String) Bool:
-        let it = self.issues[idx]
+        it := self.issues[idx]
         if g == "assignee": return it.assignee.length() == 0
         if g == "points": return it.points < 0
         if g == "due": return it.due.length() == 0
@@ -1359,7 +1359,7 @@ impl App:
 
     // Applies an update; logs and bumps the clock only when something changes.
     var fn apply_upd(idx: Int, up: Upd) Bool:
-        let cur = self.issues[idx].clone()
+        cur := self.issues[idx].clone()
         var details = List[String]()
         var nt = cur.title.clone()
         var np = cur.priority
@@ -1405,8 +1405,8 @@ impl App:
 
         self.clock += 1
 
-        let t = self.clock
-        let id = self.issues[idx].id
+        t := self.clock
+        id := self.issues[idx].id
         self.issues[idx].title = nt
         self.issues[idx].priority = np
         self.issues[idx].assignee = na
@@ -1420,7 +1420,7 @@ impl App:
         return true
 
     var fn do_edit(idx: Int, toks: List[String], bulk: Bool) Bool:
-        let id = self.issues[idx].id
+        id := self.issues[idx].id
 
         if self.is_final(self.issues[idx].state):
             report(bulk, id, "#{id} is in final state '{self.issues[idx].state}'")
@@ -1433,7 +1433,7 @@ impl App:
         var up = empty_upd()
 
         for tok in toks:
-            let e = token_upd(var up, tok)
+            e := token_upd(var up, tok)
 
             if e.length() > 0:
                 report(bulk, id, e)
@@ -1447,15 +1447,15 @@ impl App:
         return true
 
     var fn do_label(idx: Int, ops: List[String], bulk: Bool) Bool:
-        let id = self.issues[idx].id
+        id := self.issues[idx].id
 
         for op in ops:
-            let neg = op.starts_with("-")
+            neg := op.starts_with("-")
             var name = op.clone()
             if op.starts_with("+") or neg:
                 name = after(op, 1)
 
-            let l = name.lower()
+            l := name.lower()
 
             if not valid_label(l):
                 report(bulk, id, "bad label '{l}'")
@@ -1469,12 +1469,12 @@ impl App:
         var nl = self.issues[idx].labels.clone()
 
         for op in ops:
-            let neg = op.starts_with("-")
+            neg := op.starts_with("-")
             var name = op.clone()
             if op.starts_with("+") or neg:
                 name = after(op, 1)
 
-            let l = name.lower()
+            l := name.lower()
 
             if neg:
                 remove_label(var nl, l)
@@ -1493,8 +1493,8 @@ impl App:
         return true
 
     var fn do_move(idx: Int, target: String, comment: String, bulk: Bool) Bool:
-        let id = self.issues[idx].id
-        let cur = self.issues[idx].state.clone()
+        id := self.issues[idx].id
+        cur := self.issues[idx].state.clone()
 
         if self.is_final(cur):
             report(bulk, id, "#{id} is in final state '{cur}'")
@@ -1530,13 +1530,13 @@ impl App:
                 missing.append(g.clone())
 
         if missing.length() > 0:
-            let mtxt = missing.join(", ")
+            mtxt := missing.join(", ")
             report(bulk, id, "cannot move #{id} to {target}: missing {mtxt}")
             return false
 
         self.clock += 1
 
-        let t = self.clock
+        t := self.clock
         self.issues[idx].state = target.clone()
         self.issues[idx].updated = t
         self.log_add(id, "state: {cur} -> {target}")
@@ -1559,7 +1559,7 @@ impl App:
         while j < lines.length() and lines[j].trim() != "end":
             j += 1
 
-        let stop = j
+        stop := j
         var next = j
         if j < lines.length():
             next = j + 1
@@ -1568,15 +1568,15 @@ impl App:
             print("error: workflow: cannot redefine after issues were created")
             return next
 
-        let res = build_workflow(lines, start, stop)
+        res := build_workflow(lines, start, stop)
 
         if res.is_error():
             print("error: {res.err()}")
             return next
 
-        let wf = res.get()
-        let ns = wf.states.length()
-        let nt = wf.ntrans
+        wf := res.get()
+        ns := wf.states.length()
+        nt := wf.ntrans
         self.wf = wf
         print("workflow ok: {ns} states, {nt} transitions")
         return next
@@ -1606,19 +1606,19 @@ impl App:
             print("error: no workflow defined")
             return
 
-        let tr = tokenize(rest_after(line, 1))
+        tr := tokenize(rest_after(line, 1))
 
         if tr.is_error():
             print("error: {tr.err()}")
             return
 
-        let toks = tr.get()
+        toks := tr.get()
 
         if toks.length() == 0:
             print("error: usage: create TITLE [field=value...]")
             return
 
-        let title = toks[0].clone()
+        title := toks[0].clone()
 
         if title.trim().length() == 0:
             print("error: empty title")
@@ -1628,7 +1628,7 @@ impl App:
         var k = 1
 
         while k < toks.length():
-            let e = token_upd(var up, toks[k])
+            e := token_upd(var up, toks[k])
 
             if e.length() > 0:
                 print("error: {e}")
@@ -1638,8 +1638,8 @@ impl App:
 
         self.clock += 1
 
-        let t = self.clock
-        let id = self.next_id
+        t := self.clock
+        id := self.next_id
         self.next_id += 1
 
         var it = Issue(
@@ -1691,87 +1691,87 @@ impl App:
         print("created #{id}")
 
     var fn cmd_edit(line: String) Unit:
-        let tr = tokenize(rest_after(line, 1))
+        tr := tokenize(rest_after(line, 1))
 
         if tr.is_error():
             print("error: {tr.err()}")
             return
 
-        let toks = tr.get()
+        toks := tr.get()
 
         if toks.length() == 0:
             print("error: usage: edit ID field=value...")
             return
 
-        let idx = self.resolve(toks[0])
+        idx := self.resolve(toks[0])
         if idx < 0: return
 
-        let _ok = self.do_edit(idx, tail(toks, 1), false)
+        _ok := self.do_edit(idx, tail(toks, 1), false)
 
     var fn cmd_assign(line: String) Unit:
-        let tr = tokenize(rest_after(line, 1))
+        tr := tokenize(rest_after(line, 1))
 
         if tr.is_error():
             print("error: {tr.err()}")
             return
 
-        let toks = tr.get()
+        toks := tr.get()
 
         if toks.length() != 2:
             print("error: usage: assign ID NAME")
             return
 
-        let idx = self.resolve(toks[0])
+        idx := self.resolve(toks[0])
         if idx < 0: return
 
-        let tok = "assignee={toks[1]}"
+        tok := "assignee={toks[1]}"
         var one = List[String]()
         one.append(tok)
 
-        let _ok = self.do_edit(idx, one, false)
+        _ok := self.do_edit(idx, one, false)
 
     var fn cmd_label(line: String) Unit:
-        let tr = tokenize(rest_after(line, 1))
+        tr := tokenize(rest_after(line, 1))
 
         if tr.is_error():
             print("error: {tr.err()}")
             return
 
-        let toks = tr.get()
+        toks := tr.get()
 
         if toks.length() < 2:
             print("error: usage: label ID +label -label...")
             return
 
-        let idx = self.resolve(toks[0])
+        idx := self.resolve(toks[0])
         if idx < 0: return
 
-        let _ok = self.do_label(idx, tail(toks, 1), false)
+        _ok := self.do_label(idx, tail(toks, 1), false)
 
     var fn cmd_move(line: String, args: List[String]) Unit:
         if args.length() < 3:
             print("error: usage: move ID STATE [comment...]")
             return
 
-        let idx = self.resolve(args[1])
+        idx := self.resolve(args[1])
         if idx < 0: return
 
-        let comment = rest_after(line, 3)
-        let _ok = self.do_move(idx, args[2].clone(), comment, false)
+        comment := rest_after(line, 3)
+        _ok := self.do_move(idx, args[2].clone(), comment, false)
 
     var fn cmd_comment(line: String, args: List[String]) Unit:
         if args.length() < 3:
             print("error: usage: comment ID TEXT")
             return
 
-        let idx = self.resolve(args[1])
+        idx := self.resolve(args[1])
         if idx < 0: return
 
-        let text = rest_after(line, 2)
+        text := rest_after(line, 2)
         self.clock += 1
 
-        let t = self.clock
-        let id = self.issues[idx].id
+        t := self.clock
+        id := self.issues[idx].id
         self.issues[idx].comments.append(
             Comment(t: t, actor: self.actor.clone(), text: text.clone())
         )
@@ -1784,10 +1784,10 @@ impl App:
             print("error: usage: delete ID")
             return
 
-        let idx = self.resolve(args[1])
+        idx := self.resolve(args[1])
         if idx < 0: return
 
-        let id = self.issues[idx].id
+        id := self.issues[idx].id
         self.clock += 1
         self.log_add(id, "deleted")
         self.issues.remove(idx)
@@ -1798,10 +1798,10 @@ impl App:
             print("error: usage: show ID")
             return
 
-        let idx = self.resolve(args[1])
+        idx := self.resolve(args[1])
         if idx < 0: return
 
-        let it = self.issues[idx]
+        it := self.issues[idx]
         print("#{it.id} {it.title}")
         print("  state: {it.state}")
         print("  priority: {prio_name(it.priority)}")
@@ -1816,8 +1816,8 @@ impl App:
             print("    [t={c.t} {c.actor}] {c.text}")
 
     fn run_compiled(c: Compiled) Unit:
-        let m = matching(self, c.node)
-        let order = sort_indices(self, m, c.keys)
+        m := matching(self, c.node)
+        order := sort_indices(self, m, c.keys)
         var n = order.length()
         if c.limit >= 0 and c.limit < n:
             n = c.limit
@@ -1834,7 +1834,7 @@ impl App:
             print("({n} issues)")
 
     fn cmd_list(line: String) Unit:
-        let cr = compile_query(self, rest_after(line, 1))
+        cr := compile_query(self, rest_after(line, 1))
 
         if cr.is_error():
             print("error: {cr.err()}")
@@ -1854,27 +1854,27 @@ impl App:
             print("error: usage: view save|run|list|show|delete")
             return
 
-        let sub = args[1].clone()
+        sub := args[1].clone()
 
         if sub == "save":
             if args.length() < 3:
                 print("error: usage: view save NAME QUERY")
                 return
 
-            let name = args[2].clone()
+            name := args[2].clone()
 
             if not valid_name(name, true):
                 print("error: bad view name '{name}'")
                 return
 
-            let q = rest_after(line, 3).trim()
-            let cr = compile_query(self, q)
+            q := rest_after(line, 3).trim()
+            cr := compile_query(self, q)
 
             if cr.is_error():
                 print("error: {cr.err()}")
                 return
 
-            let node = cr.get().node
+            node := cr.get().node
             var refs = List[String]()
             collect_views(node, var refs)
 
@@ -1883,7 +1883,7 @@ impl App:
                     print("error: view '{name}' would reference itself")
                     return
 
-            let vi = self.find_view(name)
+            vi := self.find_view(name)
 
             if vi >= 0:
                 self.views[vi].query = q.clone()
@@ -1898,26 +1898,26 @@ impl App:
                 print("error: usage: view run NAME [sort FIELDS] [limit N]")
                 return
 
-            let name = args[2].clone()
-            let vi = self.find_view(name)
+            name := args[2].clone()
+            vi := self.find_view(name)
 
             if vi < 0:
                 print("error: unknown view '{name}'")
                 return
 
-            let pr = split_query(rest_after(line, 3))
+            pr := split_query(rest_after(line, 3))
 
             if pr.is_error():
                 print("error: {pr.err()}")
                 return
 
-            let parts = pr.get()
+            parts := pr.get()
 
             if parts.filter.length() > 0:
                 print("error: unexpected '{parts.filter}'")
                 return
 
-            let cr = compile_query(self, self.views[vi].query.clone())
+            cr := compile_query(self, self.views[vi].query.clone())
 
             if cr.is_error():
                 print("error: {cr.err()}")
@@ -1926,7 +1926,7 @@ impl App:
             var comp = cr.get()
 
             if parts.has_sort:
-                let kr = parse_sort(parts.sort)
+                kr := parse_sort(parts.sort)
 
                 if kr.is_error():
                     print("error: {kr.err()}")
@@ -1940,12 +1940,12 @@ impl App:
             return
 
         if sub == "list":
-            let names = self.sorted_view_names()
+            names := self.sorted_view_names()
             if names.length() == 0:
                 print("(no views)")
 
             for nm in names:
-                let vi = self.find_view(nm)
+                vi := self.find_view(nm)
                 print("{nm}: {self.views[vi].query}")
 
             return
@@ -1955,7 +1955,7 @@ impl App:
                 print("error: usage: view show NAME")
                 return
 
-            let vi = self.find_view(args[2])
+            vi := self.find_view(args[2])
 
             if vi < 0:
                 print("error: unknown view '{args[2]}'")
@@ -1969,8 +1969,8 @@ impl App:
                 print("error: usage: view delete NAME")
                 return
 
-            let name = args[2].clone()
-            let vi = self.find_view(name)
+            name := args[2].clone()
+            vi := self.find_view(name)
 
             if vi < 0:
                 print("error: unknown view '{name}'")
@@ -1988,25 +1988,25 @@ impl App:
         print("error: usage: view save|run|list|show|delete")
 
     var fn cmd_bulk(line: String) Unit:
-        let sp = split_where(rest_after(line, 1))
+        sp := split_where(rest_after(line, 1))
 
         if not sp.found or sp.before.length() == 0:
             print("error: usage: bulk ACTION... where QUERY")
             return
 
-        let tr = tokenize(sp.before)
+        tr := tokenize(sp.before)
 
         if tr.is_error():
             print("error: {tr.err()}")
             return
 
-        let toks = tr.get()
+        toks := tr.get()
 
         if toks.length() == 0:
             print("error: usage: bulk ACTION... where QUERY")
             return
 
-        let act = toks[0].clone()
+        act := toks[0].clone()
         var kind = 0
 
         if act == "move":
@@ -2037,13 +2037,13 @@ impl App:
             print("error: unknown bulk action '{act}'")
             return
 
-        let nr = parse_filter(self, sp.query)
+        nr := parse_filter(self, sp.query)
 
         if nr.is_error():
             print("error: {nr.err()}")
             return
 
-        let m = matching(self, nr.get())
+        m := matching(self, nr.get())
         var good_n = 0
         var bad_n = 0
 
@@ -2053,7 +2053,7 @@ impl App:
             if kind == 1:
                 good = self.do_move(idx, toks[1].clone(), "", true)
             else if kind == 2:
-                let tok = "assignee={toks[1]}"
+                tok := "assignee={toks[1]}"
                 var one = List[String]()
                 one.append(tok)
                 good = self.do_edit(idx, one, true)
@@ -2070,14 +2070,14 @@ impl App:
         print("bulk: {good_n} ok, {bad_n} failed")
 
     var fn cmd_log(args: List[String]) Unit:
-        let n = args.length()
+        n := args.length()
         var k = 1
         var idf = 0
         var has_tail = false
         var tailn = 0
 
         if n > 1 and args[1] != "tail":
-            let id = parse_id(args[1])
+            id := parse_id(args[1])
 
             if id == 0:
                 print("error: bad issue id '{args[1]}'")
@@ -2119,7 +2119,7 @@ impl App:
         var j = start
 
         while j < sel.length():
-            let e = self.logs[sel[j]]
+            e := self.logs[sel[j]]
             print("t={e.t} {e.actor} #{e.id} {e.detail}")
             printed += 1
             j += 1
@@ -2128,20 +2128,20 @@ impl App:
             print("(no log entries)")
 
     var fn cmd_report(line: String, args: List[String]) Unit:
-        let usage = "error: usage: report summary|workload|labels|timeline"
+        usage := "error: usage: report summary|workload|labels|timeline"
 
         if args.length() < 2:
             print(usage)
             return
 
-        let sub = args[1].clone()
+        sub := args[1].clone()
 
         if sub == "summary":
             self.report_summary()
         else if sub == "workload":
             self.report_workload()
         else if sub == "labels":
-            let nr = parse_filter(self, rest_after(line, 2))
+            nr := parse_filter(self, rest_after(line, 2))
 
             if nr.is_error():
                 print("error: {nr.err()}")
@@ -2153,7 +2153,7 @@ impl App:
                 print("error: usage: report timeline ID")
                 return
 
-            let idx = self.resolve(args[2])
+            idx := self.resolve(args[2])
             if idx < 0: return
 
             self.report_timeline(idx)
@@ -2222,7 +2222,7 @@ impl App:
                 un_n += 1
                 un_pts += p
             else:
-                let key = it.assignee.lower()
+                key := it.assignee.lower()
                 var g = -1
                 var gi = 0
 
@@ -2258,16 +2258,16 @@ impl App:
             gi += 1
 
         for oi in order:
-            let g = groups[oi]
-            let word = if g.count == 1: "issue" else: "issues"
+            g := groups[oi]
+            word := if g.count == 1: "issue" else: "issues"
             print("{g.name}: {g.count} {word}, {g.points} points")
 
         if un_n > 0:
-            let uw = if un_n == 1: "issue" else: "issues"
+            uw := if un_n == 1: "issue" else: "issues"
             print("unassigned: {un_n} {uw}, {un_pts} points")
 
     fn report_labels(node: Node) Unit:
-        let m = matching(self, node)
+        m := matching(self, node)
         var lcs = List[LC]()
 
         for idx in m:
@@ -2303,13 +2303,13 @@ impl App:
             print("{lcs[oi].name}: {lcs[oi].count}")
 
     fn report_timeline(idx: Int) Unit:
-        let it = self.issues[idx]
+        it := self.issues[idx]
         var cur = self.wf.initial.clone()
         var from = it.created
 
         for e in self.logs:
             if e.id == it.id and e.detail.starts_with("state: "):
-                let ws = split_ws(after(e.detail, 7))
+                ws := split_ws(after(e.detail, 7))
                 print("{cur}: t={from}..{e.t} ({e.t - from})")
                 cur = ws[2].clone()
                 from = e.t
@@ -2317,8 +2317,8 @@ impl App:
         print("{cur}: t={from}..{self.clock} ({self.clock - from})")
 
     var fn exec(line: String, lines: List[String], next: Int) Int:
-        let args = split_ws(line)
-        let cmd = args[0].clone()
+        args := split_ws(line)
+        cmd := args[0].clone()
         if cmd == "workflow": return self.cmd_workflow(lines, next)
 
         if cmd == "actor":
@@ -2372,12 +2372,12 @@ fn lc_cmp(a: LC, b: LC) Int:
 // ---------------------------------------------------------------- bulk helpers
 
 fn split_where(text: String) WS:
-    let cs = text.chars()
-    let n = cs.length()
+    cs := text.chars()
+    n := cs.length()
     var i = 0
 
     while i + 5 <= n:
-        let atstart = i == 0 or is_sp(cs[i - 1])
+        atstart := i == 0 or is_sp(cs[i - 1])
         if (
             atstart
             and cs[i] == "w"
@@ -2399,9 +2399,9 @@ fn split_where(text: String) WS:
 // ---------------------------------------------------------------- entry point
 
 export fn main() Int:
-    let data = read_all(stdin()).get()
-    let text = data.decode_utf8().get("")
-    let lines = text.split("\n")
+    data := read_all(stdin()).get()
+    text := data.decode_utf8().get("")
+    lines := text.split("\n")
     var app = App(
         actor: "system", today: "1970-01-01", clock: 0, next_id: 1, wf: empty_wf(),
         issues: List[Issue](), logs: List[LogEntry](), views: List[View]()
@@ -2409,10 +2409,10 @@ export fn main() Int:
     var i = 0
 
     while i < lines.length():
-        let line = lines[i].trim_end()
+        line := lines[i].trim_end()
         i += 1
 
-        let st = line.trim_start()
+        st := line.trim_start()
         if st.length() == 0 or st.starts_with("#"): continue
 
         print("> {line}")

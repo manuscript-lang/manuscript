@@ -3,6 +3,6 @@
 // conform: origin=tests/e2e/fault_locations_test.go:98 TestFaultSourceLocations
 
 export fn main() Int:
-    let value: Int!Error = ok(0)
-    let extract = value.err
+    value: Int!Error = ok(0)
+    extract := value.err
     return extract().text.scalar_length()

@@ -22,7 +22,7 @@ import (
 test "CLI test roots have empty arguments and host metadata agrees":
     try expect_false(not arguments().is_empty())
 
-    let info = system_info()
+    info := system_info()
     try expect_false(
         (
             info.cpu_count <= 0
@@ -31,7 +31,7 @@ test "CLI test roots have empty arguments and host metadata agrees":
         )
     )
 
-    let process = try process_info()
+    process := try process_info()
     try expect_false(
         (
             process.pid <= 0
@@ -45,17 +45,17 @@ test "CLI test roots have empty arguments and host metadata agrees":
     try expect_not_equal(dev_null().byte_length(), 0)
 
 test "process environment reflects live changes":
-    let name = "MANUSCRIPT_STDLIB_CONFORMANCE"
-    let before = (try environment()).get(name)
+    name := "MANUSCRIPT_STDLIB_CONFORMANCE"
+    before := (try environment()).get(name)
     try set_environment(name, "stdlib")
     try expect_equal((try environment()).get(name), "stdlib")
     try set_environment(name, before)
 
 test "subprocess validation returns expected domain errors":
-    let invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
+    invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
     try expect_equal(run("", [], RunOptions(input: "".to_bytes())).wait(), invalid)
 
-    let missing = run(
+    missing := run(
         "manuscript-nonexistent-command-stdlib", [], RunOptions(input: "".to_bytes())
     ).wait()
     try expect_equal(missing.err().kind, "EAGAIN")
@@ -65,14 +65,14 @@ test "subprocess validation returns expected domain errors":
     )
 
 test "subprocess streams that are not piped are closed":
-    let child = try spawn(
+    child := try spawn(
         "sh", ["-c", "cat; echo done >&2"],
         SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null)
     )
     try expect_equal((try child.wait()), 0)
 
     var errors = lines(child.stderr())
-    let line = try errors.next()
+    line := try errors.next()
     try expect_equal(line.get(""), "done")
 
     var silent = child.stdout()
@@ -82,13 +82,13 @@ test "subprocess streams that are not piped are closed":
     try expect_false(input.write("x".to_bytes()).is_ok())
 
 test "managed subprocess streams incrementally and cleans up on scope exit":
-    let child = try spawn("cat", [])
+    child := try spawn("cat", [])
     var input = child.stdin()
     try input.write("ping\n".to_bytes())
     try input.flush()
 
     var output = lines(child.stdout())
-    let line = try output.next()
+    line := try output.next()
     try expect_equal(line.get(""), "ping")
     try input.close()
     try expect_equal((try child.wait()), 0)
@@ -98,18 +98,18 @@ test "run and spawn pass the environment to the child":
     var env: Map[String, String] = Map[String, String]()
     env.add("MS_CHILD_VALUE", "from-parent")
 
-    let output = try run(
+    output := try run(
         "sh", ["-c", "printf %s \"$MS_CHILD_VALUE\""],
         RunOptions(input: "".to_bytes(), env: env.clone())
     ).wait()
     try expect_equal(output.stdout, "from-parent".to_bytes())
 
-    let child = try spawn(
+    child := try spawn(
         "sh", ["-c", "printf %s \"$MS_CHILD_VALUE\" >&2"],
         SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null, env: env)
     )
     try expect_equal((try child.wait()), 0)
 
     var errors = child.stderr()
-    let text = try errors.next()
+    text := try errors.next()
     try expect_equal(text.get("".to_bytes()), "from-parent".to_bytes())

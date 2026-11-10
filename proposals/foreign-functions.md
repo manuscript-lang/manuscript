@@ -333,9 +333,9 @@ fn tick(count: Shared[Int], limit: Int) Bool:
 
 // Fires every `every_ms` until `limit` ticks, then returns the count.
 export fn count_ticks(limit: Int, every_ms: UInt64) Int!UvError:
-    let loop = try msuv_loop_new()
-    let timer = try msuv_timer_new(loop)
-    let count = share(0)
+    loop := try msuv_loop_new()
+    timer := try msuv_timer_new(loop)
+    count := share(0)
     try msuv_timer_start(timer, every_ms, fn: tick(count, limit))
     try msuv_loop_run(loop)
     return ok(count.get())

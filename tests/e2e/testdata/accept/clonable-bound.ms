@@ -14,7 +14,7 @@ test "a Clonable bound allows clone on a type parameter":
     try expect_equal(twice(Pair(left: "x", right: [1]))[0].right, [1])
 
 fn keep[T: Clonable](value: T) T:
-    let copy: T = value.clone()
+    copy: T = value.clone()
     return copy
 
 interface Duplicator:

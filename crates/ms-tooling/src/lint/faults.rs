@@ -47,7 +47,7 @@ impl Visitor for Scan<'_> {
         if absent_faults {
             self.findings.push(finding(
                 "MSL110",
-                "Optional.get() without a default faults when the value is absent; use 'if let value = ...:', pass a default to get(default), or get_or_else",
+                "Optional.get() without a default faults when the value is absent; use 'if value := ...:', pass a default to get(default), or get_or_else",
                 self.file,
                 e.pos,
             ));

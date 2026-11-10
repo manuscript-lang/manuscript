@@ -11,14 +11,14 @@
         "position": {
           "file": "foreign-is.ms",
           "line": 5,
-          "column": 15,
-          "offset": 149
+          "column": 12,
+          "offset": 146
         },
         "end": {
           "file": "foreign-is.ms",
           "line": 5,
-          "column": 17,
-          "offset": 151
+          "column": 14,
+          "offset": 148
         }
       }
     ],

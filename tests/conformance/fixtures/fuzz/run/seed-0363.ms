@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,13 +22,13 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let i1 = (14 * 691615)
+    i1 := (14 * 691615)
     say("i1 = {i1}")
 
-    let b2 = ((not (not false)) or ((34 * (-24)) >= (-i1)))
+    b2 := ((not (not false)) or ((34 * (-24)) >= (-i1)))
     say("b2 = {b2}")
 
-    let b3 = ("beta" + "delta".upper()).is_empty()
+    b3 := ("beta" + "delta".upper()).is_empty()
     say("b3 = {b3}")
 
     if "brace\{s\}".starts_with("back\\slash"):
@@ -38,7 +38,7 @@ export fn main() Int:
 
     say("fib(37) = {fib(37)}")
 
-    let s4 = ("{i1}:" + ("{i1}:" + "x")).replace("line\nbreak", "ms")
+    s4 := ("{i1}:" + ("{i1}:" + "x")).replace("line\nbreak", "ms")
     say("s4 = [{s4}]")
 
     var acc5 = 0
@@ -46,7 +46,7 @@ export fn main() Int:
         acc5 += i * 3
     say("acc5 = {acc5}")
 
-    let f7 = (
+    f7 := (
         ((230.000 * 825.25) * (643.463 + 6.0e9))
         * ((16.712 + 8.5) * (621.944 * 0.0))
     )

@@ -120,7 +120,7 @@ fn llvm_native_calls_keep_distinct_fault_sites() {
 fn deeply_nested_literal_builds_quickly() {
     let depth = 400;
     let source = format!(
-        "export fn main() Int:\n    let x = {}1{}\n    return x.length()\n",
+        "export fn main() Int:\n    x := {}1{}\n    return x.length()\n",
         "[".repeat(depth),
         "]".repeat(depth)
     );
@@ -292,7 +292,7 @@ fn constant_literals_of_any_length_build_in_bounded_time() {
     let items: Vec<String> = (0..40_000).map(|i| (i * 7 % 1000).to_string()).collect();
     let source = include_str!("llvm/long_literal.ms")
         .replace("[n + 0]", &format!("[{}]", items.join(", ")))
-        .replace("    let n = arguments().length()\n", "")
+        .replace("    n := arguments().length()\n", "")
         .replace("import arguments from \"@std/os/env.ms\"\n", "");
     std::fs::write(dir.join("k.ms"), source).unwrap();
     for backend in ["cranelift", "llvm"] {

@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     say(
         "{(-28)} {(554698659748 + (-278960))} {((-28) < (554698659748 + (-278960)))} sum {(-28) + (554698659748 + (-278960))}"
     )
 
-    let i1 = 9223372036854775806
+    i1 := 9223372036854775806
     say("i1 = {i1}")
     return 0

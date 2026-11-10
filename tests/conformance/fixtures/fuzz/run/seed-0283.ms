@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,22 +15,22 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let b1 = false
+    b1 := false
     say("b1 = {b1}")
 
-    let f2 = 878.264
+    f2 := 878.264
     say("f2 = {f2}")
 
-    let s3 = "quote\"d"
+    s3 := "quote\"d"
     say("s3 = [{s3}]")
 
-    let b4 = ((312.427 * (105.854 - f2)) < f2)
+    b4 := ((312.427 * (105.854 - f2)) < f2)
     say("b4 = {b4}")
 
-    let s5 = ("日本語".trim() + "x").replace(s3, "")
+    s5 := ("日本語".trim() + "x").replace(s3, "")
     say("s5 = [{s5}]")
 
-    let i6 = ((-50) + ((-33) * 27))
+    i6 := ((-50) + ((-33) * 27))
     say("i6 = {i6}")
 
     if (6 > (i6 * i6)):
@@ -38,17 +38,17 @@ export fn main() Int:
     else:
         say("back\\slash")
 
-    let s7 = "beta"
+    s7 := "beta"
     say("s7 = [{s7}]")
 
-    let f8 = 441.462
+    f8 := 441.462
     say("f8 = {f8}")
 
-    let i9 = i6
+    i9 := i6
     say("i9 = {i9}")
     say("gcd(4287, 140) = {gcd(4287, 140)}")
 
-    let s10 = "gamma"
+    s10 := "gamma"
     say("s10 = [{s10}]")
 
     var acc11 = 0
@@ -60,16 +60,16 @@ export fn main() Int:
 
     say("acc11 = {acc11}")
 
-    let s12 = (s3 + "naïve")
+    s12 := (s3 + "naïve")
     say("s12 = [{s12}]")
 
-    let i13 = (i6 + (s12.length() - ((-22) * i9)))
+    i13 := (i6 + (s12.length() - ((-22) * i9)))
     say("i13 = {i13}")
 
-    let f14 = 746.927
+    f14 := 746.927
     say("f14 = {f14}")
 
-    let b15 = (((-i6) + (i13 - i13)) >= (i6 - 940638))
+    b15 := (((-i6) + (i13 - i13)) >= (i6 - 940638))
     say("b15 = {b15}")
     say(
         "{i6} {((i9 + i13) + i6)} {(i6 < ((i9 + i13) + i6))} sum {i6 + ((i9 + i13) + i6)}"

@@ -274,12 +274,12 @@ impl Checker {
                     captured.insert(b.uid, b.clone());
                 }
                 if !b.mutable {
-                    let fix = suggestions::let_to_var(&self.m().source, b.decl);
+                    let fix = suggestions::binding_to_var(&self.m().source, b.decl);
                     self.type_error_with_fix(
                         s.pos,
                         Cause::Other,
                         format!(
-                            "cannot assign immutable binding {name_t}; declare it with 'var {name_t} = ...' instead of 'let'"
+                            "cannot assign immutable binding {name_t}; declare it with 'var {name_t} = ...' instead of '{name_t} := ...'"
                         , name_t = self.syms.str(name)),
                         fix,
                     );
@@ -359,7 +359,7 @@ impl Checker {
                 self.type_error(
                     value.pos,
                     format!(
-                        "standalone try requires a Unit success value, found {t_t}; use 'let name = try ...' to keep the value or 'return try ...' to return it"
+                        "standalone try requires a Unit success value, found {t_t}; use 'name := try ...' to keep the value or 'return try ...' to return it"
                     , t_t = t.display(self.syms)),
                 );
             }
@@ -377,7 +377,7 @@ impl Checker {
             self.type_error(
                 pos,
                 format!(
-                    "this statement discards {t_t}, so a failure would be lost; write 'try ...' to propagate it, 'if let' or 'match' to handle it, or 'let _ = ...' to drop it on purpose"
+                    "this statement discards {t_t}, so a failure would be lost; write 'try ...' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose"
                 , t_t = t.display(self.syms)),
             );
         }
@@ -416,7 +416,7 @@ impl Checker {
             self.type_error(
                 cond.pos,
                 format!(
-                    "if let requires an Optional or Result, found {t_t}; use 'if' for a Bool condition or 'match' for other alternatives"
+                    "an if binding requires an Optional or Result, found {t_t}; use 'if' for a Bool condition or 'match' for other alternatives"
                 , t_t = t.display(self.syms)),
             );
         }
@@ -1719,7 +1719,7 @@ impl Checker {
                 self.type_error(
                             arm.pos,
                             format!(
-                                "match arm requires a final value of type {r_t}, because the arm at line {} ends in an expression and makes this match a value; end every arm with a value, or bind the unused result with 'let ignored = ...' so the match stays a statement",
+                                "match arm requires a final value of type {r_t}, because the arm at line {} ends in an expression and makes this match a value; end every arm with a value, or bind the unused result with 'ignored := ...' so the match stays a statement",
                                 result_at.line
                             , r_t = r.display(self.syms)),
                         );

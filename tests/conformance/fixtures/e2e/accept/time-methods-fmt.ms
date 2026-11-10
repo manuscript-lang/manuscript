@@ -5,7 +5,7 @@ import expect_equal, expect_false from "@std/test/test.ms"
 import nanoseconds, timestamp, parse_timestamp, monotonic, now from "@std/time.ms"
 
 test "duration arithmetic and conversion":
-    let interval = nanoseconds(1500000000)
+    interval := nanoseconds(1500000000)
     try expect_false(
         (
             interval.to_nanoseconds() != 1500000000
@@ -21,7 +21,7 @@ test "duration arithmetic and conversion":
         )
     )
 
-    let negative = nanoseconds(-1500001)
+    negative := nanoseconds(-1500001)
     try expect_false(
         (
             negative.to_microseconds() != -1500
@@ -49,12 +49,12 @@ test "duration arithmetic and conversion":
         )
     )
 
-    let convert = interval.to_seconds
+    convert := interval.to_seconds
     try expect_equal(convert(), 1.5)
 
 test "monotonic instant methods":
-    let start = monotonic()
-    let later = start.shift(2.seconds())
+    start := monotonic()
+    later := start.shift(2.seconds())
     try expect_false(
         (
             later.difference(start) != 2.seconds()
@@ -71,7 +71,7 @@ test "monotonic instant methods":
     try expect_equal(later.shift(nanoseconds(-2000000000)), start)
 
 test "timestamp methods and expected range failures":
-    let value = try timestamp(-1, 500000000)
+    value := try timestamp(-1, 500000000)
     try expect_false(
         (
             value.unix_seconds() != -1
@@ -80,7 +80,7 @@ test "timestamp methods and expected range failures":
         )
     )
 
-    let later = try value.shift(1500.milliseconds())
+    later := try value.shift(1500.milliseconds())
     try expect_false(
         (
             later.unix_seconds() != 1
@@ -90,10 +90,10 @@ test "timestamp methods and expected range failures":
         )
     )
 
-    let delta = try later.difference(value)
+    delta := try later.difference(value)
     try expect_equal(delta, 1500.milliseconds())
 
-    let parsed = try parse_timestamp("2026-10-12T01:00:00+01:00")
+    parsed := try parse_timestamp("2026-10-12T01:00:00+01:00")
     try expect_false(
         (
             parsed.to_string() != "2026-10-12T00:00:00Z"
@@ -101,15 +101,15 @@ test "timestamp methods and expected range failures":
         )
     )
 
-    let maximum = try timestamp(253402300799, 999999999)
-    let shifted = maximum.shift(nanoseconds(1))
+    maximum := try timestamp(253402300799, 999999999)
+    shifted := maximum.shift(nanoseconds(1))
     try expect_false(shifted.is_ok())
     try expect_equal(
         shifted.err(), Error("time: value out of range", kind: "ERANGE")
     )
 
-    let minimum = try timestamp(-62135596800, 0)
-    let difference = maximum.difference(minimum)
+    minimum := try timestamp(-62135596800, 0)
+    difference := maximum.difference(minimum)
     try expect_false(difference.is_ok())
     try expect_equal(
         difference.err(),
@@ -117,6 +117,6 @@ test "timestamp methods and expected range failures":
     )
     try expect_equal(maximum.compare(minimum), 1)
 
-    let now = now()
-    let roundtrip = try parse_timestamp(now.to_string())
+    now := now()
+    roundtrip := try parse_timestamp(now.to_string())
     try expect_equal(roundtrip, now)

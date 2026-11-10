@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (((44 * 40) / (-10)) + (((-34) - (-839719184403)) - ((-27) + 46)))
+    i1 := (((44 * 40) / (-10)) + (((-34) - (-839719184403)) - ((-27) + 46)))
     say("i1 = {i1}")
     return "not an int"
 
-    let b2 = (not ("Tab\there".is_empty() or (not true)))
+    b2 := (not ("Tab\there".is_empty() or (not true)))
     say("b2 = {b2}")
     say(
         "{14} {((721307 + (-43)) / (i1 * (-27)))} {(14 < ((721307 + (-43)) / (i1 * (-27))))} sum {14 + ((721307 + (-43)) / (i1 * (-27)))}"
     )
 
-    let f3 = ((187.25 - (285.898 + 0.5)) - 668.458)
+    f3 := ((187.25 - (285.898 + 0.5)) - 668.458)
     say("f3 = {f3}")
 
-    let i4 = i1
+    i4 := i1
     say("i4 = {i4}")
     return 0

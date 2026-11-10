@@ -17,7 +17,7 @@ export enum Shape:
     Empty
 
 export fn calls() String:
-    let sample = Sample(number: 1)
-    let shape = Shape.Number(sample.amount())
-    let _shape = shape
+    sample := Sample(number: 1)
+    shape := Shape.Number(sample.amount())
+    _shape := shape
     return sample.label()

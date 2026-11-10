@@ -44,7 +44,7 @@ fn count_events(data: Bytes) Int:
     var count = 0
 
     while true:
-        if let next = events.next():
+        if next := events.next():
             if next.is_none(): break
 
             count += 1
@@ -54,36 +54,36 @@ fn count_events(data: Bytes) Int:
     return count
 
 bench "archive.zip_pack":
-    let list = entries(2000)
+    list := entries(2000)
 
     fn work() Result[Unit, Error]:
-        if let b = pack(list, ArchiveFormat.Zip): return keep(b.length())
+        if b := pack(list, ArchiveFormat.Zip): return keep(b.length())
 
         return keep(0)
 
     try measure(2000, work)
 
 bench "archive.tar_pack":
-    let list = entries(2000)
+    list := entries(2000)
 
     fn work() Result[Unit, Error]:
-        if let b = pack(list, ArchiveFormat.Tar): return keep(b.length())
+        if b := pack(list, ArchiveFormat.Tar): return keep(b.length())
 
         return keep(0)
 
     try measure(2000, work)
 
 bench "archive.zip_unpack":
-    if let packed = pack(entries(2000), ArchiveFormat.Zip):
+    if packed := pack(entries(2000), ArchiveFormat.Zip):
         fn work() Result[Unit, Error]:
-            if let e = unpack(packed, ArchiveFormat.Zip): return keep(e.length())
+            if e := unpack(packed, ArchiveFormat.Zip): return keep(e.length())
 
             return keep(0)
 
         try measure(2000, work)
 
 bench "sse.feed":
-    let data = sse_stream(2000)
+    data := sse_stream(2000)
     fn work() Result[Unit, Error]:
         return keep(count_events(data.clone()))
     try measure(2000, work)
@@ -91,7 +91,7 @@ bench "sse.feed":
 bench "time.timestamp_to_string":
     fn work() Result[Unit, Error]:
         var n = 0
-        if let t = parse_timestamp("2026-03-01T12:30:45.123Z"):
+        if t := parse_timestamp("2026-03-01T12:30:45.123Z"):
             for i in 0..20000:
                 n += t.to_string().length()
         return keep(n)
@@ -102,7 +102,7 @@ bench "random.uuid_v4":
     fn work() Result[Unit, Error]:
         var n = 0
         for i in 0..20000:
-            if let u = uuid_v4():
+            if u := uuid_v4():
                 n += u.length()
         return keep(n)
 

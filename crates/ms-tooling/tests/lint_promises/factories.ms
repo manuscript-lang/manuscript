@@ -7,5 +7,5 @@ type Factory:
     make: fn(Int) Promise[Int]
 
 fn main() Unit:
-    let _factory = Factory(make: make)
+    _factory := Factory(make: make)
     EXPRESSION

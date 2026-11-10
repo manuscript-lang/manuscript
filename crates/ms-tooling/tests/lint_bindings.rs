@@ -23,7 +23,7 @@ fn codes(source: &str) -> Vec<String> {
 
 #[test]
 fn optional_get_without_default_is_reported() {
-    let source = "export fn main() Int:\n    let m = Map[String, Int]()\n    let a = m.get(\"a\").get(0)\n    return m.get(\"a\").get() + a\n";
+    let source = "export fn main() Int:\n    m := Map[String, Int]()\n    a := m.get(\"a\").get(0)\n    return m.get(\"a\").get() + a\n";
     let found = codes(source);
     assert_eq!(
         found.iter().filter(|c| *c == "MSL110").count(),

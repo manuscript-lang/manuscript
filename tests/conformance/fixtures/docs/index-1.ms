@@ -5,6 +5,6 @@ import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn main() Unit!:
-    let name = arguments().get(0, default: "world")
-    let message = "Hello, {name}!\n"
+    name := arguments().get(0, default: "world")
+    message := "Hello, {name}!\n"
     try stdout().write(message)

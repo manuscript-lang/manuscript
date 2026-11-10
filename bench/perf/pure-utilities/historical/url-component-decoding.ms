@@ -12,7 +12,7 @@ test "component decoding preserves plus Unicode and escaped percent":
     try expect_equal((try decode_component("%252F")), "%2F")
 
 test "component decoding rejects malformed escapes and UTF8":
-    let invalid: String! = error(Error("URL: invalid data", kind: "EBADMSG"))
+    invalid: String! = error(Error("URL: invalid data", kind: "EBADMSG"))
     for input in [
         "%", "%A", "%zz", "prefix%zz", "%FF", "%C0%AF", "%ED%A0%80", "%F4%90%80%80",
         "%E2%82", "prefix%FF", "%é", "%1é", "%41%zz", "%41%", "%C3%A9%zz"

@@ -9,5 +9,5 @@ fn make_fixture() State:
     return State(value: 1)
 
 test "closure captures fixture":
-    let read = fn() Int: fixture.value
-    let value: Int = read()
+    read := fn() Int: fixture.value
+    value: Int = read()

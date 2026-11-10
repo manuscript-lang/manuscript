@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -28,7 +28,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -42,10 +42,10 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let l1 = [1, 14, (-12)]
+    l1 := [1, 14, (-12)]
     say("l1 = {l1} len {l1.length()}")
 
-    let i2 = (-(40 - (33 - 22)))
+    i2 := (-(40 - (33 - 22)))
     say("i2 = {i2}")
     say("collatz(929) = {collatz(929)}")
 
@@ -64,35 +64,35 @@ export fn main() Int:
     else:
         say(("{(-27)}:" + "日本語"))
 
-    let i4 = (-3)
+    i4 := (-3)
     say("i4 = {i4}")
     say("fib(47) = {fib(47)}")
 
-    let i5 = (-(-31))
+    i5 := (-(-31))
     say("i5 = {i5}")
 
-    let s6 = ("42" + "  padded  ".replace("back\\slash", "gamma")).lower()
+    s6 := ("42" + "  padded  ".replace("back\\slash", "gamma")).lower()
     say("s6 = [{s6}]")
 
-    let b7 = ("naïve" == "naïve")
+    b7 := ("naïve" == "naïve")
     say("b7 = {b7}")
 
-    let i8 = l1.length()
+    i8 := l1.length()
     say("i8 = {i8}")
 
-    let f9 = (((2.5 + 180.25) * 674.25) - ((800.996 + 861.569) + (152.957 - 882.665)))
+    f9 := (((2.5 + 180.25) * 674.25) - ((800.996 + 861.569) + (152.957 - 882.665)))
     say("f9 = {f9}")
     say("gcd(2493, 1480) = {gcd(2493, 1480)}")
 
-    let l10 = l1.concat(l1)
+    l10 := l1.concat(l1)
     say("l10 = {l10} len {l10.length()}")
 
-    let i11 = i4
+    i11 := i4
     say("i11 = {i11}")
 
-    let s12 = (("delta" + s6) + "x".replace(s6, "gamma")).lower()
+    s12 := (("delta" + s6) + "x".replace(s6, "gamma")).lower()
     say("s12 = [{s12}]")
 
-    let s13 = ("brace\{s\}" + ("{((-39) + 0)}:" + ("日本語" + s6)))
+    s13 := ("brace\{s\}" + ("{((-39) + 0)}:" + ("日本語" + s6)))
     say("s13 = [{s13}]")
     return 0

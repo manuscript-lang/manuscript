@@ -10,5 +10,5 @@ impl Read for Box[fn(var Int) Int]:
 fn identity(value: Int) Int: value
 
 fn exercise() Int:
-    let wrapped = Box[fn(Int) Int](identity)
+    wrapped := Box[fn(Int) Int](identity)
     return wrapped.read()

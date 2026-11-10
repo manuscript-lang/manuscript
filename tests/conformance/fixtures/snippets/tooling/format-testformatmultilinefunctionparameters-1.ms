@@ -5,7 +5,7 @@ export fn render(
     arguments: List[String],  // arguments
     output: WriteStream,
 ) Int:
-    let message = "Arguments: {arguments.join(",")}\n"
+    message := "Arguments: {arguments.join(",")}\n"
 
     match output.write(data: message):
         ok(_):

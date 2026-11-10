@@ -32,7 +32,7 @@ test "map index with Int keys and String values":
     counts[2] | try expect_equal(40)
 
 test "bytes index":
-    let data = "abc".to_bytes()
+    data := "abc".to_bytes()
     data[0] | try expect_equal(97)
     data[2] | try expect_equal(99)
     data[-1] | try expect_equal(99)

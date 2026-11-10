@@ -15,5 +15,5 @@ impl Counter for C:
 
 export fn main() Int:
     var c: Counter = C(0)
-    let a = c.next()
+    a := c.next()
     return a + c.next()

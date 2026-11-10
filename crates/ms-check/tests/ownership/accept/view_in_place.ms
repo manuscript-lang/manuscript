@@ -1,6 +1,6 @@
 fn count(line: String) Int:
-    let t = line.trim()
-    let u = t.trim_end()
+    t := line.trim()
+    u := t.trim_end()
     if t == u:
         return u.length()
 
@@ -10,6 +10,6 @@ fn keep(line: String) List[String]:
     var saved: List[String] = []
     saved.append(line.trim().clone())
 
-    let t = line.trim_end()
+    t := line.trim_end()
     saved.append(t.clone())
     return saved

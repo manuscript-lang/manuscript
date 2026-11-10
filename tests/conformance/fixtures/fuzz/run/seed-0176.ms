@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (((-533158) * (14 / 5)) == (-36961))
+    b1 := (((-533158) * (14 / 5)) == (-36961))
     say("b1 = {b1}")
 
-    let l2 = [(-22), 17]
+    l2 := [(-22), 17]
     say("l2 = {l2} len {l2.length()}")
 
-    let f3 = (((129.25 * 0.0) + (523.467 * 274.444)) + 613.25)
+    f3 := (((129.25 * 0.0) + (523.467 * 274.444)) + 613.25)
     say("f3 = {f3}")
 
-    let i4 = (((-706463510652) / (43 + 4)) + (3 * ((-33) % 569052)))
+    i4 := (((-706463510652) / (43 + 4)) + (3 * ((-33) % 569052)))
     say("i4 = {i4}")
 
-    let f5 = 3.0e-2
+    f5 := 3.0e-2
     say("f5 = {f5}")
 
     var acc6 = 0
@@ -33,7 +33,7 @@ export fn main() Int:
 
     say("acc6 = {acc6}")
 
-    let s7 = "日本語".lower().trim().trim()
+    s7 := "日本語".lower().trim().trim()
     say("s7 = [{s7}]")
     say("{i4} {i4} {(i4 < i4)} sum {i4 + i4}")
     return 0

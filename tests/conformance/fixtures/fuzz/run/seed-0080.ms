@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -21,26 +21,26 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let s1 = "x"
+    s1 := "x"
     say("s1 = [{s1}]")
 
-    let l2 = [1, 2, 3].take(0)
+    l2 := [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
 
-    let s3 = "emoji 😀"
+    s3 := "emoji 😀"
     say("s3 = [{s3}]")
 
-    let s4 = "ms"
+    s4 := "ms"
     say("s4 = [{s4}]")
     say("gcd(1471, 4071) = {gcd(1471, 4071)}")
 
-    let f5 = (((801.414 * 0.0) * (9.0e10 + 785.436)) / (0.0 * (228.954 + 0.0)))
+    f5 := (((801.414 * 0.0) * (9.0e10 + 785.436)) / (0.0 * (228.954 + 0.0)))
     say("f5 = {f5}")
 
-    let b6 = ("日本語" + "line\nbreak").trim().ends_with(s1)
+    b6 := ("日本語" + "line\nbreak").trim().ends_with(s1)
     say("b6 = {b6}")
 
-    let i7 = (
+    i7 := (
         ((14 % 13) * ((-45) + (-517656)))
         + ((467875333186 - 0) + ((-201688884328) + (-41)))
     )
@@ -51,16 +51,16 @@ export fn main() Int:
     else:
         say(s1.lower())
 
-    let i8 = ((-18) % i7)
+    i8 := ((-18) % i7)
     say("i8 = {i8}")
 
-    let b9 = "alpha".upper().ends_with("brace\{s\}")
+    b9 := "alpha".upper().ends_with("brace\{s\}")
     say("b9 = {b9}")
 
-    let i10 = (-i7)
+    i10 := (-i7)
     say("i10 = {i10}")
 
-    let l11 = l2.map(fn x: x * 2)
+    l11 := l2.map(fn x: x * 2)
     say("l11 = {l11} len {l11.length()}")
     say(
         "{((-39) / ((-10) + i7))} {((48 * i8) + (-i7))} {(((-39) / ((-10) + i7)) < ((48 * i8) + (-i7)))} sum {((-39) / ((-10) + i7)) + ((48 * i8) + (-i7))}"

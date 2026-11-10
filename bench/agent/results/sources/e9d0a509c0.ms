@@ -15,7 +15,7 @@ type Ledger:
 // Value of a plain digit token, or -1 when it is not one (signs, decimals, letters, overflow).
 fn number(s: String) Int:
     if s.contains("+") or s.contains("-"): return -1
-    if let v = s.parse_int(): return v
+    if v := s.parse_int(): return v
 
     return -1
 
@@ -39,7 +39,7 @@ impl Ledger:
         self.ops.update(id, 0, fn(n: Int) Int: n + 1)
 
     var fn do_open(id: String, text: String) String:
-        let lim = number(text)
+        lim := number(text)
         if lim < 0: return "error: invalid limit"
         if self.balance.contains(id): return "error: account exists {id}"
 
@@ -53,7 +53,7 @@ impl Ledger:
     var fn do_deposit(id: String, text: String) String:
         if not self.balance.contains(id): return "error: unknown account {id}"
 
-        let amt = number(text)
+        amt := number(text)
 
         if amt <= 0:
             self.blame(id)
@@ -63,7 +63,7 @@ impl Ledger:
             self.blame(id)
             return "error: account frozen {id}"
 
-        let after = self.balance.get_or(id, 0) + amt
+        after := self.balance.get_or(id, 0) + amt
         self.balance[id.clone()] = after
         self.bump(id)
         return "ok {after}"
@@ -71,7 +71,7 @@ impl Ledger:
     var fn do_withdraw(id: String, text: String) String:
         if not self.balance.contains(id): return "error: unknown account {id}"
 
-        let amt = number(text)
+        amt := number(text)
 
         if amt <= 0:
             self.blame(id)
@@ -81,9 +81,9 @@ impl Ledger:
             self.blame(id)
             return "error: account frozen {id}"
 
-        let before = self.balance.get_or(id, 0)
-        let fee = fee_for(before, amt)
-        let after = before - amt - fee
+        before := self.balance.get_or(id, 0)
+        fee := fee_for(before, amt)
+        after := before - amt - fee
 
         if after < -self.limit.get_or(id, 0):
             self.blame(id)
@@ -104,7 +104,7 @@ impl Ledger:
             self.blame(from)
             return "error: same account"
 
-        let amt = number(text)
+        amt := number(text)
 
         if amt <= 0:
             self.blame(from)
@@ -118,9 +118,9 @@ impl Ledger:
             self.blame(to)
             return "error: account frozen {to}"
 
-        let before = self.balance.get_or(from, 0)
-        let fee = fee_for(before, amt)
-        let after = before - amt - fee
+        before := self.balance.get_or(from, 0)
+        fee := fee_for(before, amt)
+        after := before - amt - fee
 
         if after < -self.limit.get_or(from, 0):
             self.blame(from)
@@ -128,7 +128,7 @@ impl Ledger:
 
         self.balance[from.clone()] = after
 
-        let received = self.balance.get_or(to, 0) + amt
+        received := self.balance.get_or(to, 0) + amt
         self.balance[to.clone()] = received
         self.bump(from)
         self.bump(to)
@@ -148,8 +148,8 @@ impl Ledger:
         var total = 0
 
         for id in self.balance.keys().sorted():
-            let balance = self.balance.get_or(id, 0)
-            let state = if self.frozen.get_or(id, false): "yes" else: "no"
+            balance := self.balance.get_or(id, 0)
+            state := if self.frozen.get_or(id, false): "yes" else: "no"
             total += balance
             lines.append(
                 "{id} balance={balance} limit={self.limit.get_or(id, 0)} ops={self.ops.get_or(id, 0)} rejected={self.rejected.get_or(id, 0)} frozen={state}"
@@ -159,8 +159,8 @@ impl Ledger:
         return lines.join("\n")
 
     var fn exec(words: List[String]) String:
-        let cmd = words[0]
-        let n = words.length()
+        cmd := words[0]
+        n := words.length()
         if cmd == "open" and n == 3: return self.do_open(
             words[1].clone(), words[2].clone()
         )
@@ -187,7 +187,7 @@ export fn main() Int:
     var out = ""
 
     for line in read_lines(stdin()).get():
-        let words = tokens(line)
+        words := tokens(line)
         if words.length() == 0: continue
 
         out += ledger.exec(words) + "\n"

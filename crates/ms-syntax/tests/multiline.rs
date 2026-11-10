@@ -157,7 +157,7 @@ fn names_and_paths_stay_one_line() {
 #[test]
 fn recovery_keeps_declarations_around_column_zero_text() {
     let file: Arc<str> = Arc::from("m.ms");
-    let source = "let banner = \"\"\"\nfirst\nlast\n\"\"\"\n\nfn good() Int:\n    return 1\n\nfn bad() Int:\n    return (\n";
+    let source = "banner := \"\"\"\nfirst\nlast\n\"\"\"\n\nfn good() Int:\n    return 1\n\nfn bad() Int:\n    return (\n";
     let (module, diagnostics) = ms_syntax::parse_partial(&file, source);
     assert!(!diagnostics.is_empty());
     let names = dump_module(ms_syntax::Names::global(), &module);

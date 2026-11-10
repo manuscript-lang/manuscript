@@ -24,7 +24,7 @@ test "FNV known vectors for both variants and widths":
     try expect_equal(fnv1a64(Bytes([])).to_string_radix(10), "14695981039346656037")
 
 test "CRC64 matches the standard check values":
-    let input = "123456789".to_bytes()
+    input := "123456789".to_bytes()
     try expect_equal(
         crc64(Crc64Polynomial.Ecma, input).to_string_radix(10), "11051210869376104954"
     )
@@ -40,8 +40,8 @@ test "CRC64 chunks equal one pass":
     try expect_equal(sum.value().to_string_radix(10), "11051210869376104954")
 
 test "seeded hash is deterministic per seed and differs between seeds":
-    let left = MapHash(seed: 1)
-    let right = MapHash(seed: 2)
+    left := MapHash(seed: 1)
+    right := MapHash(seed: 2)
     try expect_equal(
         left.hash("key".to_bytes()).to_string_radix(10),
         left.hash_string("key").to_string_radix(10)

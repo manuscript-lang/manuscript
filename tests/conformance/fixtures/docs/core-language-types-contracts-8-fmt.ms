@@ -4,5 +4,5 @@
 fn invoke[T: Increment](operation: T) Int:
     return Increment(operation).apply(1)
 
-let from_concrete = invoke(offset)
-let from_view = invoke(view)
+from_concrete := invoke(offset)
+from_view := invoke(view)

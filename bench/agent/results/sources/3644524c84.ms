@@ -24,7 +24,7 @@ fn sub(cs: List[Int], start: Int, end: Int) List[Int]:
     return out
 
 fn same(cs: List[Int], word: String) Bool:
-    let ws = word.scalar_values()
+    ws := word.scalar_values()
     if cs.length() != ws.length(): return false
 
     for i in 0..cs.length():
@@ -36,7 +36,7 @@ fn shift(c: Int, amount: Int) Int:
     var base = 97
     if c <= 90: base = 65
 
-    let m = (amount % 26 + 26) % 26
+    m := (amount % 26 + 26) % 26
     return base + (c - base + m) % 26
 
 // Caesar key: optional '-', then 1 to 7 ASCII digits.
@@ -48,13 +48,13 @@ fn caesar_key(ks: List[Int]) Int?:
         neg = true
         i = 1
 
-    let digits = ks.length() - i
+    digits := ks.length() - i
     if digits < 1 or digits > 7: return none
 
     var v = 0
 
     while i < ks.length():
-        let c = ks[i]
+        c := ks[i]
         if c < 48 or c > 57: return none
 
         v = v * 10 + (c - 48)
@@ -76,30 +76,30 @@ fn process(cs: List[Int]) String:
         if cs[i] == 32 and spaces.length() < 3: spaces.append(i)
     if spaces.length() < 3: return "error: bad command"
 
-    let s1 = spaces[0]
-    let s2 = spaces[1]
-    let s3 = spaces[2]
+    s1 := spaces[0]
+    s2 := spaces[1]
+    s3 := spaces[2]
     if s3 + 1 >= cs.length(): return "error: bad command"
 
-    let cipher = sub(cs, 0, s1)
-    let mode = sub(cs, s1 + 1, s2)
-    let key = sub(cs, s2 + 1, s3)
-    let text = sub(cs, s3 + 1, cs.length())
-    let is_caesar = same(cipher, "caesar")
-    let is_vigenere = same(cipher, "vigenere")
+    cipher := sub(cs, 0, s1)
+    mode := sub(cs, s1 + 1, s2)
+    key := sub(cs, s2 + 1, s3)
+    text := sub(cs, s3 + 1, cs.length())
+    is_caesar := same(cipher, "caesar")
+    is_vigenere := same(cipher, "vigenere")
     if not is_caesar and not is_vigenere: return "error: bad cipher"
 
-    let is_enc = same(mode, "enc")
-    let is_dec = same(mode, "dec")
+    is_enc := same(mode, "enc")
+    is_dec := same(mode, "dec")
     if not is_enc and not is_dec: return "error: bad mode"
 
-    let sign = if is_enc: 1 else: -1
+    sign := if is_enc: 1 else: -1
     var out = List[Int]()
 
     if is_caesar:
-        let kopt = caesar_key(key)
+        kopt := caesar_key(key)
 
-        if let k = kopt:
+        if k := kopt:
             for c in text:
                 if is_letter(c):
                     out.append(shift(c, sign * k))
@@ -117,7 +117,7 @@ fn process(cs: List[Int]) String:
 
         for c in text:
             if is_letter(c):
-                let amount = sign * key_shift(key[ki])
+                amount := sign * key_shift(key[ki])
                 out.append(shift(c, amount))
                 ki = (ki + 1) % key.length()
             else:
@@ -129,7 +129,7 @@ fn process(cs: List[Int]) String:
 // ms: allow_effect std.console.write
 fn run() Unit!:
     for line in lines(stdin()):
-        let cs = line.scalar_values()
+        cs := line.scalar_values()
         if is_blank(cs): continue
 
         stdout().write(process(cs) + "\n").get()

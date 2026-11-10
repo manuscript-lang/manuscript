@@ -14,14 +14,14 @@ impl Harness for ClaudeCode:
             "claude", "-p", prompt.clone(), "--output-format", "stream-json",
             "--verbose", "--dangerously-skip-permissions", "--no-session-persistence"
         ]
-        if let m = model: cmd = cmd.concat(["--model", m.clone()])
+        if m := model: cmd = cmd.concat(["--model", m.clone()])
         return cmd
 
     fn parse(transcript: String) Usage:
         for ev in events(transcript).reversed():
             if ev.get("type").get(JsonValue.Null).as_string().get("") != "result": continue
 
-            let u = ev.get("usage").get(JsonValue.Null)
+            u := ev.get("usage").get(JsonValue.Null)
             return Usage(
                 int_at(u, "input_tokens"),
                 int_at(u, "cache_read_input_tokens") + int_at(

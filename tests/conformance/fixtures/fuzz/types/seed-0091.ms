@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [1, 2, 3].take(0)
+    l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
 
     if (("日本語" + "emoji 😀") != "  padded  ".replace("日本語", "naïve")):
@@ -17,10 +17,10 @@ export fn main() Int:
     else:
         say("brace\{s\}".reverse())
 
-    let bad: String = 5
-    let i2 = 36
+    bad: String = 5
+    i2 := 36
     say("i2 = {i2}")
 
-    let s3 = ("42" + "a".trim().lower())
+    s3 := ("42" + "a".trim().lower())
     say("s3 = [{s3}]")
     return 0

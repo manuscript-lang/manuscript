@@ -22,7 +22,7 @@ test "histogram buckets large values within three percent and caps at the maximu
     var h = histogram()
     for value in 0..1000: h.record(1000000 + value * 1000)
 
-    let p99 = h.percentile(99.0).get(0)
+    p99 := h.percentile(99.0).get(0)
     try expect_true(p99 >= 1989000 and p99 <= 1999000 * 103 / 100)
     try expect_equal(h.percentile(100.0).get(0), 1999000)
     h.reset()
@@ -30,7 +30,7 @@ test "histogram buckets large values within three percent and caps at the maximu
 
 test "histogram times a span and returns its result":
     var h = histogram()
-    let answer = h.time(fn: 42)
+    answer := h.time(fn: 42)
     try expect_equal(answer, 42)
     try expect_equal(h.count(), 1)
     h.record_duration(milliseconds(2))
@@ -56,7 +56,7 @@ test "histogram rejects invalid percentiles whether empty or populated":
         if populated: h.record(10)
 
         for p in [nan, -nan, infinity, -infinity, -0.1, 100.1]:
-            let message = try expect_fault(fn: discard_percentile(h.percentile(p)))
+            message := try expect_fault(fn: discard_percentile(h.percentile(p)))
             try expect_true(message.contains("must be within 0.0 and 100.0"))
 
         for p in [-0.0, 0.0, 0.1, 50.0, 99.9, 100.0]:

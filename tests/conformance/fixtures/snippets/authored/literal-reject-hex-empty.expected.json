@@ -13,15 +13,15 @@
         "position": {
           "file": "literal-reject-hex-empty.ms",
           "line": 5,
-          "column": 15,
-          "offset": 157
+          "column": 12,
+          "offset": 154
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/literal-reject-hex-empty.ms:5:15: parse: a hexadecimal or binary literal requires digits after the prefix; write e.g. 0xFF or 0b1010\n   |\n 5 |     let x = 0x\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/literal-reject-hex-empty.ms:5:12: parse: a hexadecimal or binary literal requires digits after the prefix; write e.g. 0xFF or 0b1010\n   |\n 5 |     x := 0x\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

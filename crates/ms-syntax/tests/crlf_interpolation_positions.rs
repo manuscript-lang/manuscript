@@ -92,9 +92,9 @@ fn multiline_interpolation_diagnostics_use_original_crlf_offsets() {
 }
 
 #[test]
-fn first_crlf_interpolation_starts_at_original_byte_21() {
+fn first_crlf_interpolation_starts_at_original_byte_18() {
     let file = Arc::from("positions.ms");
     let source = include_str!("data/crlf-interpolation-minimal.src").replace('\n', "\r\n");
     let module = ms_syntax::parser::parse(&file, &source).unwrap();
-    assert_eq!(positions(&module), vec![Pos::new(21, 2, 6)]);
+    assert_eq!(positions(&module), vec![Pos::new(18, 2, 6)]);
 }

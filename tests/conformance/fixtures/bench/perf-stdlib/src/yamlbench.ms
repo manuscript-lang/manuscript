@@ -9,13 +9,13 @@ fn yaml_doc(count: Int) String:
     return sb.build()
 
 fn yaml_length(value: YamlValue) Int:
-    if let text = stringify(value):
+    if text := stringify(value):
         return text.length()
 
     return 0
 
 export fn bench_yaml() Unit:
-    let yaml = yaml_doc(2000)
+    yaml := yaml_doc(2000)
 
     bench(
         "yaml.parse",
@@ -31,7 +31,7 @@ export fn bench_yaml() Unit:
         "yaml.roundtrip",
         2000,
         fn() Int:
-            if let v = parse(yaml):
+            if v := parse(yaml):
                 return yaml_length(v)
 
             return 0

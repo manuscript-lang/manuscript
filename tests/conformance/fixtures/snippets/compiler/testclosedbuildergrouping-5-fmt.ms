@@ -6,4 +6,4 @@ import StringBuilder from "@std/string.ms"
 fn fragment() String: return "x"
 
 fn probe(flag: Bool) String:
-    let b = StringBuilder()
+    b := StringBuilder()

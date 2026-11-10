@@ -4,7 +4,7 @@ import (
 )
 
 fn make_cells() List[Int]:
-    if let values = filled(0, 16384): return values
+    if values := filled(0, 16384): return values
 
     return panic("fill failure")
 
@@ -25,26 +25,16 @@ export fn main() Int:
                 for dy in range(-1, 2):
                     for dx in range(-1, 2):
                         if dx != 0 or dy != 0:
-                            let index = (
-                                (
-                                    y
-                                    + dy
-                                    + 128
-                                ) % 128 * 128
-                                + (x + dx + 128) % 128
-                            )
+                            index := ((y + dy + 128) % 128 * 128 + (x + dx + 128) % 128)
                             neighbors += cells.get(index)
 
-                let index = y * 128 + x
-                let alive = (
-                    neighbors == 3
-                    or (neighbors == 2 and cells.get(index) == 1)
-                )
+                index := y * 128 + x
+                alive := (neighbors == 3 or (neighbors == 2 and cells.get(index) == 1))
                 var value = 0
                 if alive: value = 1
                 next.set(index, value)
 
-        let old = cells
+        old := cells
         cells = next
         next = old
 

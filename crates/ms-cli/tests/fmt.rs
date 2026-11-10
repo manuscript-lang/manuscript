@@ -20,7 +20,7 @@ fn fmt_rewrites_checks_and_rejects_invalid_source() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fmt-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    std::fs::write(dir.join("a.ms"), "fn main() Unit:\n    let x = 1   \n").unwrap();
+    std::fs::write(dir.join("a.ms"), "fn main() Unit:\n    x := 1   \n").unwrap();
     std::fs::write(dir.join("bad.ms"), "fn main(:\n").unwrap();
 
     let (status, _, stderr) = ms(&dir, &["fmt", "--check", "a.ms"]);
@@ -29,7 +29,7 @@ fn fmt_rewrites_checks_and_rejects_invalid_source() {
     assert_eq!(status, 0, "{stderr}");
     assert_eq!(
         std::fs::read_to_string(dir.join("a.ms")).unwrap(),
-        "fn main() Unit:\n    let x = 1\n"
+        "fn main() Unit:\n    x := 1\n"
     );
     assert_eq!(ms(&dir, &["fmt", "--check", "a.ms"]).0, 0);
 
@@ -48,7 +48,7 @@ fn fmt_rejects_invalid_utf8_without_rewriting() {
     let dir = std::env::temp_dir().join(format!("ms-cli-fmt-utf8-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let source = b"// caf\xe9   \nfn main() Unit:\n    let x = 1   \n";
+    let source = b"// caf\xe9   \nfn main() Unit:\n    x := 1   \n";
     std::fs::write(dir.join("a.ms"), source).unwrap();
     for args in [&["fmt", "--check", "a.ms"][..], &["fmt", "a.ms"][..]] {
         let (status, _, stderr) = ms(&dir, args);

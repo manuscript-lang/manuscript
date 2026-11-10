@@ -47,15 +47,15 @@ test "counts reach the extreme without a fault":
     count_down(limit: -9223372036854775807) | try expect_equal(3)
 
 test "reassigned counter still faults":
-    let message = try expect_fault(
+    message := try expect_fault(
         fn:
-            let _ignored = reset_then_step()
+            _ignored := reset_then_step()
     )
     message | try expect_contains("Int overflow;")
 
 test "conditionally reassigned counter still faults":
-    let message = try expect_fault(
+    message := try expect_fault(
         fn:
-            let _ignored = nested_reset(flag: true)
+            _ignored := nested_reset(flag: true)
     )
     message | try expect_contains("Int overflow;")

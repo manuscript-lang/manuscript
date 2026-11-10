@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,19 +15,19 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let i1 = 48
+    i1 := 48
     say("i1 = {i1}")
 
-    let s2 = "brace\{s\}"
+    s2 := "brace\{s\}"
     say("s2 = [{s2}]")
 
-    let s3 = ("Tab\there" + s2).trim().lower()
+    s3 := ("Tab\there" + s2).trim().lower()
     say("s3 = [{s3}]")
 
-    let l4 = [(-22), (-28)]
+    l4 := [(-22), (-28)]
     say("l4 = {l4} len {l4.length()}")
 
-    let f5 = ((917.221 - (890.307 / 296.097)) * (674.762 * (328.834 * 856.143)))
+    f5 := ((917.221 - (890.307 / 296.097)) * (674.762 * (328.834 * 856.143)))
     say("f5 = {f5}")
     say(
         "{((37 - i1) / l4.length())} {i1} {(((37 - i1) / l4.length()) < i1)} sum {((37 - i1) / l4.length()) + i1}"
@@ -43,7 +43,7 @@ export fn main() Int:
 
     say("acc6 = {acc6}")
 
-    let i7 = i1
+    i7 := i1
     say("i7 = {i7}")
 
     if ((f5 + f5) > (598.389 + f5)):
@@ -51,28 +51,28 @@ export fn main() Int:
     else:
         say(s3)
 
-    let b8 = ("42" + s2).is_empty()
+    b8 := ("42" + s2).is_empty()
     say("b8 = {b8}")
 
-    let i9 = (-242798)
+    i9 := (-242798)
     say("i9 = {i9}")
     say("fact(14) = {fact(14)}")
 
-    let i10 = l4.get(0)
+    i10 := l4.get(0)
     say("i10 = {i10}")
 
-    let s11 = (s2 + s3.replace(s3, s2)).upper()
+    s11 := (s2 + s3.replace(s3, s2)).upper()
     say("s11 = [{s11}]")
 
-    let b12 = (30 >= ((-(-745176578490)) / i7))
+    b12 := (30 >= ((-(-745176578490)) / i7))
     say("b12 = {b12}")
 
-    let f13 = f5
+    f13 := f5
     say("f13 = {f13}")
 
-    let i14 = (s2.length() % ((653680 / 13) + (34 + 47)))
+    i14 := (s2.length() % ((653680 / 13) + (34 + 47)))
     say("i14 = {i14}")
 
-    let i15 = i14
+    i15 := i14
     say("i15 = {i15}")
     return 0

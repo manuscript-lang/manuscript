@@ -17,7 +17,7 @@ fn first_positive(values: List[Int?]) Int:
     var index = 0
 
     while index < values.length():
-        let item = values.get(index)
+        item := values.get(index)
         index += 1
 
         match item:
@@ -57,11 +57,11 @@ test "statement match returns from the enclosing function":
     try expect_equal(area(Shape.Dot), 0)
 
 test "statement match controls the nearest loop":
-    let values: List[Int?] = [none, 0, 5, 9]
+    values: List[Int?] = [none, 0, 5, 9]
     try expect_equal(first_positive(values), 5)
     try expect_equal(first_positive([none, -1]), -1)
 
-    let rows: List[List[Int?]] = [[1, none, 100], [2, 3]]
+    rows: List[List[Int?]] = [[1, none, 100], [2, 3]]
     try expect_equal(nested(rows), 2006)
 
 test "statement match arms assign enclosing locals":

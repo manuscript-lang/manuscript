@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,19 +22,19 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let s1 = "brace\{s\}".replace("gamma", "a").reverse().lower()
+    s1 := "brace\{s\}".replace("gamma", "a").reverse().lower()
     say("s1 = [{s1}]")
 
-    let l2 = [28, 14, (-4), 9]
+    l2 := [28, 14, (-4), 9]
     say("l2 = {l2} len {l2.length()}")
 
-    let s3 = ("" + s1).lower().replace(s1, "x")
+    s3 := ("" + s1).lower().replace(s1, "x")
     say("s3 = [{s3}]")
 
-    let i4 = (((99587 / 909334710051) / 592453) * (((-21) / 38) + (757980046587 % 43)))
+    i4 := (((99587 / 909334710051) / 592453) * (((-21) / 38) + (757980046587 % 43)))
     say("i4 = {i4}")
 
-    let s5 = ("ms" + s1.lower().replace(s1, s1))
+    s5 := ("ms" + s1.lower().replace(s1, s1))
     say("s5 = [{s5}]")
     say("fib(48) = {fib(48)}")
 

@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = ("{((-493970770709) % (-413051))}:" + ("naïve".reverse() + "héllo"))
+    s1 := ("{((-493970770709) % (-413051))}:" + ("naïve".reverse() + "héllo"))
     say("s1 = [{s1}]")
 
-    let f2 = 221.379
+    f2 := 221.379
     say("f2 = {f2}")
 
-    let i3 = (((11 * (-49)) + (-4)) + (((-624328) / (-1)) + ((-1) + 386484)))
+    i3 := (((11 * (-49)) + (-4)) + (((-624328) / (-1)) + ((-1) + 386484)))
     say("i3 = {i3}")
 
-    let bad: String = 5
+    bad: String = 5
     return 0

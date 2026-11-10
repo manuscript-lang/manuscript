@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/terse_data_test.go:39 TestTerseDataRejections
 fn f() Unit:
-    let _value = {1: 2}
+    _value := {1: 2}

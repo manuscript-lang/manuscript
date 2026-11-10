@@ -13,21 +13,21 @@
         "position": {
           "file": "seed-0162.ms",
           "line": 18,
-          "column": 19,
-          "offset": 468
+          "column": 16,
+          "offset": 456
         },
         "fix": {
           "position": {
             "file": "seed-0162.ms",
             "line": 18,
-            "column": 19,
-            "offset": 468
+            "column": 16,
+            "offset": 456
           },
           "end": {
             "file": "seed-0162.ms",
             "line": 18,
-            "column": 20,
-            "offset": 469
+            "column": 17,
+            "offset": 457
           },
           "replacement": "\"1\""
         }
@@ -39,15 +39,15 @@
         "position": {
           "file": "seed-0162.ms",
           "line": 18,
-          "column": 22,
-          "offset": 471
+          "column": 19,
+          "offset": 459
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0162.ms:18:19: type: expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n    |\n 18 |     let bad = say(1, 2)\n    |                   ^\n<DIR>/seed-0162.ms:18:22: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 18 |     let bad = say(1, 2)\n    |                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0162.ms:18:16: type: expected String, found Int (in argument 'text' of say); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n    |\n 18 |     bad := say(1, 2)\n    |                ^\n<DIR>/seed-0162.ms:18:19: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 18 |     bad := say(1, 2)\n    |                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

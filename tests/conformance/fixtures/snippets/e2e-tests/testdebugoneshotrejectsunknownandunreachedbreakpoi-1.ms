@@ -7,5 +7,5 @@ fn never() Int:
     return 1
 
 export fn main() Int:
-    let _written = stdout().write("TARGET_RAN\n")
+    _written := stdout().write("TARGET_RAN\n")
     return 0

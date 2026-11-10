@@ -336,7 +336,7 @@ pub const CODES: &[CodeInfo] = &[
     CodeInfo {
         code: "MS3060",
         family: "Mutation",
-        repair: "declare the binding with `var`; the `fix` edit rewrites `let`",
+        repair: "declare the binding with `var`; the `fix` edit rewrites the binding",
     },
     CodeInfo {
         code: "MS3070",
@@ -581,8 +581,8 @@ pub const KINDS: &[Kind] = &[
     kind!(
         "MS3060",
         "MS3060.2",
-        "declared with let",
-        "Binding declared with let",
+        "is an immutable binding",
+        "Immutable binding changed",
         "declare the binding with `var`"
     ),
     kind!(

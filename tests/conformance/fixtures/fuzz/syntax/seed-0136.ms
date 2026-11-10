@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -18,6 +18,6 @@ export fn main() Int:
 
     say("acc1 = {acc1}")
 
-    let f2 = 147.25
+    f2 := 147.25
     say("f2 = {f2}")
     return 0

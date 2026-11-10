@@ -261,6 +261,15 @@ impl EditorToken<'_> {
     }
 }
 
+/// The trimmed text of the last nonblank line before `line_start`.
+pub fn previous_code_line(text: &str, line_start: usize) -> Option<&str> {
+    text[..line_start]
+        .lines()
+        .rev()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+}
+
 /// Finds a checked declaration's name on the line after `offset` (skipping a
 /// newline exactly at `offset`); the position of a header's declared name,
 /// whatever precedes it.
@@ -652,8 +661,8 @@ mod tests {
             "a",
             "\n\r\n",
             "\t日本😀e\u{301} + wrong\r\n# note\r\n",
-            "let x = \"unfinished\n",
-            "let x = [\n1,\n",
+            "x := \"unfinished\n",
+            "x := [\n1,\n",
             "a # comment\nnext",
         ] {
             let index = DiagnosticRanges::new(source);
@@ -669,21 +678,18 @@ mod tests {
 
     #[test]
     fn many_diagnostics_reuse_the_document_indexes() {
-        let source = "let value = )\r\n".repeat(8000);
+        let source = "value := )\r\n".repeat(8000);
         let index = DiagnosticRanges::new(&source);
         let tokens = index.tokens.as_ptr();
         for line in (0..8000).rev() {
-            let offset = line * 15 + 12;
+            let offset = line * 12 + 9;
             assert_eq!(
                 index.range(offset),
                 Range {
-                    start: Position {
-                        line,
-                        character: 12
-                    },
+                    start: Position { line, character: 9 },
                     end: Position {
                         line,
-                        character: 13
+                        character: 10
                     },
                 }
             );
@@ -734,10 +740,10 @@ mod tests {
 
     #[test]
     fn scanner_survives_unfinished_strings() {
-        let tokens = editor_tokens("let x = \"abc\n// note");
+        let tokens = editor_tokens("x := \"abc\n// note");
         // An unterminated string runs to the end of the source, as in the Go scanner.
         assert_eq!(tokens.len(), 4);
         assert_eq!(tokens[3].kind, EditorKind::Str);
-        assert_eq!(tokens[3].end, "let x = \"abc\n// note".len());
+        assert_eq!(tokens[3].end, "x := \"abc\n// note".len());
     }
 }

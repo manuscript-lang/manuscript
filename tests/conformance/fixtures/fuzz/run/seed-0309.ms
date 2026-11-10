@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,7 +23,7 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let i1 = ((-(0 + (-35))) - (-46742))
+    i1 := ((-(0 + (-35))) - (-46742))
     say("i1 = {i1}")
 
     if ("".replace("brace\{s\}", "back\\slash") != ("brace\{s\}" + "日本語")):
@@ -31,20 +31,20 @@ export fn main() Int:
     else:
         say("hello world".reverse())
 
-    let i2 = i1
+    i2 := i1
     say("i2 = {i2}")
 
-    let i3 = ((i2 + (-31)) - ((316008139205 - (-29)) - i1))
+    i3 := ((i2 + (-31)) - ((316008139205 - (-29)) - i1))
     say("i3 = {i3}")
 
-    let b4 = (not ((false and true) or true))
+    b4 := (not ((false and true) or true))
     say("b4 = {b4}")
     say("collatz(675) = {collatz(675)}")
 
-    let i5 = 559999
+    i5 := 559999
     say("i5 = {i5}")
 
-    let f6 = 651.379
+    f6 := 651.379
     say("f6 = {f6}")
 
     var acc7 = 0
@@ -56,18 +56,18 @@ export fn main() Int:
 
     say("acc7 = {acc7}")
 
-    let s8 = ("line\nbreak" + "line\nbreak".reverse())
+    s8 := ("line\nbreak" + "line\nbreak".reverse())
     say("s8 = [{s8}]")
 
-    let f9 = ((f6 + 2.0e11) * ((275.978 + 33.794) / f6))
+    f9 := ((f6 + 2.0e11) * ((275.978 + 33.794) / f6))
     say("f9 = {f9}")
 
-    let i10 = (43 * ((-44) - (i1 + i3)))
+    i10 := (43 * ((-44) - (i1 + i3)))
     say("i10 = {i10}")
 
-    let l11 = [(-4), 17]
+    l11 := [(-4), 17]
     say("l11 = {l11} len {l11.length()}")
 
-    let i12 = (-(-(39 - i2)))
+    i12 := (-(-(39 - i2)))
     say("i12 = {i12}")
     return 0

@@ -13,8 +13,8 @@
         "position": {
           "file": "testbytessplitlimitfaultlocations-3.ms",
           "line": 6,
-          "column": 17,
-          "offset": 219
+          "column": 14,
+          "offset": 212
         },
         "fix": {
           "position": {
@@ -39,8 +39,8 @@
         "position": {
           "file": "testbytessplitlimitfaultlocations-3.ms",
           "line": 6,
-          "column": 34,
-          "offset": 236
+          "column": 31,
+          "offset": 229
         },
         "fix": {
           "position": {
@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testbytessplitlimitfaultlocations-3.ms:6:17: resolution: unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 6 |     let parts = Bytes([1]).split(Bytes([]), cap)\n   |                 ^\n<DIR>/testbytessplitlimitfaultlocations-3.ms:6:34: resolution: unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 6 |     let parts = Bytes([1]).split(Bytes([]), cap)\n   |                                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testbytessplitlimitfaultlocations-3.ms:6:14: resolution: unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 6 |     parts := Bytes([1]).split(Bytes([]), cap)\n   |              ^\n<DIR>/testbytessplitlimitfaultlocations-3.ms:6:31: resolution: unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 6 |     parts := Bytes([1]).split(Bytes([]), cap)\n   |                               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

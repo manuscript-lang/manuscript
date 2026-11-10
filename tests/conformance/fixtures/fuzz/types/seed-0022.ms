@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     if (not (true and false)):
@@ -14,17 +14,17 @@ export fn main() Int:
     else:
         say("  padded  ".reverse())
 
-    let b1 = (not ("42".upper() != "ms"))
+    b1 := (not ("42".upper() != "ms"))
     say("b1 = {b1}")
 
-    let bad = missing_function(3)
-    let f2 = 280.25
+    bad := missing_function(3)
+    f2 := 280.25
     say("f2 = {f2}")
 
-    let s3 = "alpha"
+    s3 := "alpha"
     say("s3 = [{s3}]")
 
-    let b4 = ("emoji 😀".contains(s3) and "héllo".trim().is_empty())
+    b4 := ("emoji 😀".contains(s3) and "héllo".trim().is_empty())
     say("b4 = {b4}")
 
     if (s3.is_empty() and (false and false)):

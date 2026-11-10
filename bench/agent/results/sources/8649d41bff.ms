@@ -22,14 +22,14 @@ fn all_digits(text: String) Bool:
     return text.scalar_values().fold(true, fn ok, v: ok and v >= 48 and v <= 57)
 
 fn parse_entry(line: String) Optional[Entry]:
-    let fields = line.split(" ")
+    fields := line.split(" ")
     if fields.length() != 6: return none
 
-    let level = fields[1]
-    let method = fields[2]
-    let path = fields[3]
-    let status = fields[4]
-    let latency_text = fields[5]
+    level := fields[1]
+    method := fields[2]
+    path := fields[3]
+    status := fields[4]
+    latency_text := fields[5]
     if fields[0].is_empty(): return none
     if not ["DEBUG", "INFO", "WARN", "ERROR"].contains(level): return none
     if not ["GET", "POST", "PUT", "DELETE"].contains(method): return none
@@ -54,7 +54,7 @@ fn report(text: String) Unit:
     stdout().write("{text}\n").get()
 
 export fn main() Int:
-    let text = read_all(stdin()).get().decode_utf8().get()
+    text := read_all(stdin()).get().decode_utf8().get()
     var levels = Map[String, Int]()
     var status_counts = [0, 0, 0, 0, 0]
     var counts = Map[String, Int]()
@@ -67,11 +67,11 @@ export fn main() Int:
     for line in text.split("\n"):
         if line.trim().is_empty(): continue
 
-        if let entry = parse_entry(line):
+        if entry := parse_entry(line):
             valid += 1
             levels.add(entry.level, levels.get_or(entry.level, 0) + 1)
 
-            let digit = entry.status.scalar_at(0) - 48
+            digit := entry.status.scalar_at(0) - 48
 
             if digit == 2: status_counts[0] += 1
             else if digit == 3: status_counts[1] += 1
@@ -83,7 +83,7 @@ export fn main() Int:
             totals.add(entry.path, totals.get_or(entry.path, 0) + entry.latency)
             latencies.append(entry.latency)
 
-            if let best = slowest:
+            if best := slowest:
                 if entry.latency > best.latency: slowest = some(entry)
             else:
                 slowest = some(entry)
@@ -98,12 +98,12 @@ export fn main() Int:
         "status: 2xx={status_counts[0]} 3xx={status_counts[1]} 4xx={status_counts[2]} 5xx={status_counts[3]} other={status_counts[4]}"
     )
 
-    let sorted_latencies = latencies.sorted(fn a, b: a - b)
-    let n = sorted_latencies.length()
+    sorted_latencies := latencies.sorted(fn a, b: a - b)
+    n := sorted_latencies.length()
     var p95 = 0
     if n > 0: p95 = sorted_latencies[(95 * n + 99) / 100 - 1]
     report("p95: {p95}")
-    if let best = slowest:
+    if best := slowest:
         report(
             "slowest: {best.latency_text} {best.method} {best.path} {best.timestamp}"
         )
@@ -112,13 +112,13 @@ export fn main() Int:
     var stats: List[PathStat] = []
 
     for path in counts.keys():
-        let count = counts.get_or(path, 0)
+        count := counts.get_or(path, 0)
         stats.append(PathStat(path: path, count: count, total: totals.get_or(path, 0)))
 
-    let paths = stats.sorted(fn a, b: compare_paths(a, b))
+    paths := stats.sorted(fn a, b: compare_paths(a, b))
 
     for i in range(0, min(3, paths.length())):
-        let stat = paths[i]
+        stat := paths[i]
         report("{stat.path} {stat.count} avg={stat.total / stat.count}")
 
     return 0

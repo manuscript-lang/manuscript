@@ -4,7 +4,7 @@
 import sleep, nanoseconds from "@std/time.ms"
 
 test "timeout":
-    let _ = sleep(nanoseconds(1000000000)).wait()
+    _ := sleep(nanoseconds(1000000000)).wait()
 
 test "after":
     return unit

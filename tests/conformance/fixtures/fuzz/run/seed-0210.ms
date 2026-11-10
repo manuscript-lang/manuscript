@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,31 +23,31 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let s1 = ("{20}:" + "  padded  ".trim())
+    s1 := ("{20}:" + "  padded  ".trim())
     say("s1 = [{s1}]")
 
-    let i2 = 45
+    i2 := 45
     say("i2 = {i2}")
 
-    let b3 = (((i2 - i2) + 434072) >= i2)
+    b3 := (((i2 - i2) + 434072) >= i2)
     say("b3 = {b3}")
     say("collatz(1092) = {collatz(1092)}")
 
-    let i4 = i2
+    i4 := i2
     say("i4 = {i4}")
 
-    let l5 = [(-13), 7, 22]
+    l5 := [(-13), 7, 22]
     say("l5 = {l5} len {l5.length()}")
 
-    let f6 = (745.589 * ((234.160 + 0.0) / 791.592))
+    f6 := (745.589 * ((234.160 + 0.0) / 791.592))
     say("f6 = {f6}")
 
-    let f7 = 0.0
+    f7 := 0.0
     say("f7 = {f7}")
 
-    let i8 = (-566148)
+    i8 := (-566148)
     say("i8 = {i8}")
 
-    let big9 = ((i2 - i4) / (i4 * i4)) - ((i2 - i4) / (i4 * i4))
+    big9 := ((i2 - i4) / (i4 * i4)) - ((i2 - i4) / (i4 * i4))
     say("{((i2 - i4) / (i4 * i4)) % big9}")
     return 0

@@ -13,21 +13,21 @@
         "position": {
           "file": "diag-init-mismatch-site.ms",
           "line": 5,
-          "column": 21,
-          "offset": 151
+          "column": 17,
+          "offset": 147
         },
         "fix": {
           "position": {
             "file": "diag-init-mismatch-site.ms",
             "line": 5,
-            "column": 21,
-            "offset": 151
+            "column": 17,
+            "offset": 147
           },
           "end": {
             "file": "diag-init-mismatch-site.ms",
             "line": 5,
-            "column": 22,
-            "offset": 152
+            "column": 18,
+            "offset": 148
           },
           "replacement": "\"1\""
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-init-mismatch-site.ms:5:21: type: expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n   |\n 5 |     let x: String = 1\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-init-mismatch-site.ms:5:17: type: expected String, found Int (in the initializer of 'x'); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n   |\n 5 |     x: String = 1\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

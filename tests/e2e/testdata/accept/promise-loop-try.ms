@@ -4,12 +4,12 @@ import (
 )
 
 test "try inside a loop over a list of promises":
-    let a = promise(fn: ok(1))
-    let b = promise(fn: ok(2))
+    a := promise(fn: ok(1))
+    b := promise(fn: ok(2))
     var total = 0
 
     for p in [a, b]:
-        let value = try p.wait()
+        value := try p.wait()
         total += value
 
     try expect_equal(total, 3)

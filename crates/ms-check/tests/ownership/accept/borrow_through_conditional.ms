@@ -35,10 +35,10 @@ fn pick(a: Row, b: Row, flag: Bool) String:
 
 // A binding of a conditional whose arms all return a borrow, so it borrows every source.
 fn pick_bound(a: Row, b: Row, flag: Bool) String:
-    let x = if flag: label(a) else: label(b)
+    x := if flag: label(a) else: label(b)
     return x
 
 fn use(t: Table, a: Row, b: Row, s: Shape) Int:
-    let w = if a.name == "a": label(a) else: label(b)
-    let n = t.first_tag().length() + t.head_name().length() + pick(a, b, true).length()
+    w := if a.name == "a": label(a) else: label(b)
+    n := t.first_tag().length() + t.head_name().length() + pick(a, b, true).length()
     return n + pick_bound(a, b, false).length() + s.label().length() + w.length()

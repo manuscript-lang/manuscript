@@ -30,7 +30,7 @@ test "normalization keeps exact exceeded zero negative and invalid form budgets"
         BudgetCase("NFC", "e\u{301}", "é"), BudgetCase("NFD", "é", "e\u{301}"),
         BudgetCase("NFKC", "ﬁ①", "fi1"), BudgetCase("NFKD", "ﬁ①", "fi1")
     ]:
-        let size = normalization.expected.byte_length()
+        size := normalization.expected.byte_length()
         try expect_equal(
             normalization.text.normalize(normalization.form, size).get(),
             normalization.expected.clone()
@@ -60,9 +60,9 @@ test "normalization keeps exact exceeded zero negative and invalid form budgets"
         )
 
 test "normalization retains lookahead across a complete combining segment":
-    let text = "a" + "\u{315}\u{300}".repeat(32).get()
-    let decomposed = "a" + "\u{300}".repeat(32).get() + "\u{315}".repeat(32).get()
-    let composed = "à" + "\u{300}".repeat(31).get() + "\u{315}".repeat(32).get()
+    text := "a" + "\u{315}\u{300}".repeat(32).get()
+    decomposed := "a" + "\u{300}".repeat(32).get() + "\u{315}".repeat(32).get()
+    composed := "à" + "\u{300}".repeat(31).get() + "\u{315}".repeat(32).get()
     try expect_equal(text.normalize("NFC").get(), composed.clone())
     try expect_equal(text.normalize("NFD").get(), decomposed.clone())
     try expect_equal(text.normalize("NFKC").get(), composed)

@@ -17,22 +17,22 @@ type Holder:
     items: List[Unit]
 
 test "JSON stringify omits values without a JSON form unless strict":
-    let handler = Handler("h", unit, none)
+    handler := Handler("h", unit, none)
     try expect_equal(stringify(handler), ok("\{\"name\":\"h\"\}"))
 
-    let invalid: String! = error(Error("JSON: invalid data", kind: "EBADMSG"))
+    invalid: String! = error(Error("JSON: invalid data", kind: "EBADMSG"))
     try expect_equal(stringify(handler, StringifyOptions(strict: true)), invalid)
 
 test "JSON strict stringify rejects no-form list elements":
-    let holder = Holder([unit])
+    holder := Holder([unit])
     try expect_equal(stringify(holder), ok("\{\"items\":[null]\}"))
 
-    let invalid: String! = error(Error("JSON: invalid data", kind: "EBADMSG"))
+    invalid: String! = error(Error("JSON: invalid data", kind: "EBADMSG"))
     try expect_equal(stringify(holder, StringifyOptions(strict: true)), invalid)
 
 test "JSON strict stringify accepts none and nulls that are values":
-    let plain = Plain("p", none, [1, none])
-    let expected = "\{\"name\":\"p\",\"tags\":[1,null]\}"
+    plain := Plain("p", none, [1, none])
+    expected := "\{\"name\":\"p\",\"tags\":[1,null]\}"
     try expect_equal(
         stringify(plain, StringifyOptions(strict: true)), ok(expected.clone())
     )

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -18,20 +18,20 @@ export fn main() Int:
 
     say("acc1 = {acc1}")
 
-    let b2 = ("42".replace("hello world", "quote\"d") + ("{(-26)}:" + "alpha")).is_empty()
+    b2 := ("42".replace("hello world", "quote\"d") + ("{(-26)}:" + "alpha")).is_empty()
     say("b2 = {b2}")
 
-    let bad = 1.5 + 2
+    bad := 1.5 + 2
     say(
         "{(((-24) * 4) * (699710 + (-13)))} {(((-14) + (-13)) + (7 % 15))} {((((-24) * 4) * (699710 + (-13))) < (((-14) + (-13)) + (7 % 15)))} sum {(((-24) * 4) * (699710 + (-13))) + (((-14) + (-13)) + (7 % 15))}"
     )
 
-    let s3 = "hello world"
+    s3 := "hello world"
     say("s3 = [{s3}]")
 
-    let s4 = s3
+    s4 := s3
     say("s4 = [{s4}]")
 
-    let i5 = (((-(-730982156955)) * (786423 + (-19))) + (-421659))
+    i5 := (((-(-730982156955)) * (786423 + (-19))) + (-421659))
     say("i5 = {i5}")
     return 0

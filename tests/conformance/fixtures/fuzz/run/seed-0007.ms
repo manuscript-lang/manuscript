@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -35,30 +35,30 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let i1 = 38
+    i1 := 38
     say("i1 = {i1}")
     say("fact(5) = {fact(5)}")
 
-    let i2 = (((-12) * ((-267334) / i1)) + (i1 / (i1 - (-47))))
+    i2 := (((-12) * ((-267334) / i1)) + (i1 / (i1 - (-47))))
     say("i2 = {i2}")
 
-    let i3 = (-25)
+    i3 := (-25)
     say("i3 = {i3}")
 
-    let f4 = 0.0
+    f4 := 0.0
     say("f4 = {f4}")
 
-    let l5 = [(-14), (-26), 17, (-19)]
+    l5 := [(-14), (-26), 17, (-19)]
     say("l5 = {l5} len {l5.length()}")
 
-    let i6 = ((-(47 + i2)) - i1)
+    i6 := ((-(47 + i2)) - i1)
     say("i6 = {i6}")
     say("gcd(4993, 3262) = {gcd(4993, 3262)}")
 
-    let b7 = ("{((-19) % (-811483988226))}:" + "alpha").starts_with("emoji 😀")
+    b7 := ("{((-19) % (-811483988226))}:" + "alpha").starts_with("emoji 😀")
     say("b7 = {b7}")
     say("collatz(2309) = {collatz(2309)}")
 
-    let f8 = (523.206 * (630.635 / (f4 * 934.25)))
+    f8 := (523.206 * (630.635 / (f4 * 934.25)))
     say("f8 = {f8}")
     return 0

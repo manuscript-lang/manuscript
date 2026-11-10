@@ -111,7 +111,7 @@ fn pairs() Map[Int, List[Int]]:
     }
 
 fn tried() Map[Int, Int]!:
-    let m = {
+    m := {
         0: try pick(0), 1: try pick(1), 2: try pick(2), 3: try pick(3), 4: try pick(4),
         5: try pick(5), 6: try pick(6), 7: try pick(7), 8: try pick(8), 9: try pick(9),
         10: try pick(10), 11: try pick(11), 12: try pick(12), 13: try pick(13),
@@ -191,7 +191,7 @@ fn tried() Map[Int, Int]!:
     return ok(m)
 
 test "a long map literal keeps the last of repeated keys and every other entry":
-    let m = {
+    m := {
         "k0": 0, "k1": 1, "k2": 2, "k3": 3, "k4": 4, "k5": 5, "k6": 6, "k7": 7, "k8": 8,
         "k9": 9, "k10": 10, "k11": 11, "k12": 12, "k13": 13, "k14": 14, "k15": 15,
         "k16": 16, "k17": 17, "k18": 18, "k19": 19, "k20": 20, "k21": 21, "k22": 22,
@@ -248,18 +248,18 @@ test "a long map literal keeps the last of repeated keys and every other entry":
     try expect_equal(m["k229"], 229)
 
 test "a long map literal of list values calls its entries in order":
-    let m = pairs()
+    m := pairs()
     try expect_equal(m.length(), 300)
     try expect_equal(m[0], [0, 1000])
     try expect_equal(m[299], [299, 1299])
 
 test "a long map literal holding try entries is built one entry at a time":
-    let m = try tried()
+    m := try tried()
     try expect_equal(m.length(), 300)
     try expect_equal(m[150], 150)
 
 test "a literal of constants covers every key and value kind":
-    let ints = {
+    ints := {
         - 10: "v0", -9: "v1", -8: "v2", -7: "v3", -6: "v4", -5: "v5", -4: "v6",
         -3: "v7", -2: "v8", -1: "v9", 0: "v10", 1: "v11", 2: "v12", 3: "v13", 4: "v14",
         5: "v15", 6: "v16", 7: "v17", 8: "v18", 9: "v19", -3: "", 0: "ü\n\"q\""
@@ -270,7 +270,7 @@ test "a literal of constants covers every key and value kind":
     try expect_equal(ints[0], "ü\n\"q\"")
     try expect_equal(ints[9], "v19")
 
-    let floats = {
+    floats := {
         "f0": 0.5, "f1": 1.5, "f2": 2.5, "f3": 3.5, "f4": 4.5, "f5": 5.5, "f6": 6.5,
         "f7": 7.5, "f8": 8.5, "f9": 9.5, "f10": 10.5, "f11": 11.5, "f12": 12.5,
         "f13": 13.5, "f14": 14.5, "f15": 15.5, "f16": 16.5, "f17": 17.5, "f18": 18.5,
@@ -280,7 +280,7 @@ test "a literal of constants covers every key and value kind":
     try expect_equal(floats["f0"], -0.25)
     try expect_equal(floats["f19"], 19.5)
 
-    let flags = {
+    flags := {
         "b0": true, "b1": false, "b2": false, "b3": true, "b4": false, "b5": false,
         "b6": true, "b7": false, "b8": false, "b9": true, "b10": false, "b11": false,
         "b12": true, "b13": false, "b14": false, "b15": true, "b16": false,

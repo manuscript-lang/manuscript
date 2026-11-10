@@ -46,8 +46,8 @@ fn compare(left: Int, right: Int) Int:
     return 0
 
 fn verify_json() Unit!:
-    let limits = JsonOptions(max_bytes: 1024, max_depth: 8, max_values: 32)
-    let value = try parse(
+    limits := JsonOptions(max_bytes: 1024, max_depth: 8, max_values: 32)
+    value := try parse(
         text: "\{\"large\":9007199254740993,\"ok\":true\}", options: limits
     )
     (
@@ -59,7 +59,7 @@ fn verify_json() Unit!:
     ) | try expect_false
 
 fn verify_encoding() Unit!:
-    let bytes = try hex_decode(text: "00ff42", max_bytes: 3)
+    bytes := try hex_decode(text: "00ff42", max_bytes: 3)
     hex_encode(data: bytes) | try expect_equal("00ff42")
     (
         not (
@@ -70,7 +70,7 @@ fn verify_encoding() Unit!:
     ) | try expect_false
 
 fn verify_url() Unit!:
-    let query = try parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)
+    query := try parse_query(text: "a=1&a=2&space=hello+world", max_entries: 3)
     query.length() | try expect_equal(3)
     format_query(entries: query) | try expect_equal("a=1&a=2&space=hello+world")
 
@@ -80,7 +80,7 @@ fn verify_binary() Unit!:
     (try out.build().int16_be(0)).to_int() | try expect_equal(-32768)
 
 fn verify_compression() Unit!:
-    let compressed = try compress(
+    compressed := try compress(
         data: "hello hello hello".to_bytes(), format: CompressionFormat.Gzip,
         options: CompressOptions(level: 6, max_bytes: 256)
     )
@@ -93,12 +93,12 @@ fn verify_compression() Unit!:
     ) | try expect_false
 
 fn verify_archive() Unit!:
-    let entries = [
+    entries := [
         ArchiveEntry(
             path: "hello.txt", data: "hello".to_bytes(), directory: false
         )
     ]
-    let archive = try pack(entries: entries, format: ArchiveFormat.Zip, max_bytes: 1024)
+    archive := try pack(entries: entries, format: ArchiveFormat.Zip, max_bytes: 1024)
     (
         not (
             try unpack(
@@ -114,37 +114,37 @@ fn verify_archive() Unit!:
 test "expanded packages run through compiler":
     match verify_json():
         ok(_):
-            let _verified = unit
+            _verified := unit
         error(_):
             return fail(message: "json failed")
 
     match verify_encoding():
         ok(_):
-            let _verified = unit
+            _verified := unit
         error(_):
             return fail(message: "encoding failed")
 
     match verify_url():
         ok(_):
-            let _verified = unit
+            _verified := unit
         error(_):
             return fail(message: "url failed")
 
     match verify_binary():
         ok(_):
-            let _verified = unit
+            _verified := unit
         error(_):
             return fail(message: "binary failed")
 
     match verify_compression():
         ok(_):
-            let _verified = unit
+            _verified := unit
         error(_):
             return fail(message: "compression failed")
 
     match verify_archive():
         ok(_):
-            let _verified = unit
+            _verified := unit
         error(_):
             return fail(message: "archive failed")
 
@@ -152,7 +152,7 @@ test "expanded packages run through compiler":
     ("é🙂").scalar_length() | try expect_equal(2)
     ("é").scalar_values() | try expect_equal([233])
 
-    let text_success: String! = ok("é")
+    text_success: String! = ok("é")
     from_scalars(values: [233]) | try expect_equal(text_success)
     sqrt(value: 9.0) | try expect_equal(3.0)
     round(value: 2.5) | try expect_equal(3.0)
@@ -166,21 +166,21 @@ test "expanded packages run through compiler":
     flipped | try expect_equal([2, 1])
 
 test "malformed and bounded inputs return errors":
-    let failure1: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+    failure1: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
     base64_decode(text: "Zh==", url_safe: false, max_bytes: 10) | try expect_equal(
         failure1
     )
 
-    let failure2: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+    failure2: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
     hex_decode(text: "abcd", max_bytes: 1) | try expect_equal(failure2)
 
-    let limits = JsonOptions(max_bytes: 100, max_depth: 2, max_values: 10)
-    let failure3 = parse(text: "\{\"a\":1,\"a\":2\}", options: limits)
+    limits := JsonOptions(max_bytes: 100, max_depth: 2, max_values: 10)
+    failure3 := parse(text: "\{\"a\":1,\"a\":2\}", options: limits)
     (
         failure3.err().message | try expect_equal(
             "JSON: invalid data: line 1, column 14: duplicate object key"
         )
     )
 
-    let failure4: JsonValue! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
+    failure4: JsonValue! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
     parse(text: "[[[]]]", options: limits) | try expect_equal(failure4)

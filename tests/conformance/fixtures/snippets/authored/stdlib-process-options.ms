@@ -30,21 +30,21 @@ fn root() String:
     return "/"
 
 test "run starts the child in cwd with extra environment":
-    let output = try run(shell(), print_cwd(), RunOptions(cwd: root())).wait()
+    output := try run(shell(), print_cwd(), RunOptions(cwd: root())).wait()
     try expect_equal(output.exit_code, 0)
     try expect_contains(output.stdout.decode_utf8().get(""), root())
 
-    let probed = try run(
+    probed := try run(
         shell(), print_probe(), RunOptions(env: {"MS_PROBE": "from-env"})
     ).wait()
     try expect_contains(probed.stdout.decode_utf8().get(""), "from-env")
 
 test "run reports the child's peak resident set":
-    let output = try run(shell(), print_cwd()).wait()
+    output := try run(shell(), print_cwd()).wait()
     try expect_true(output.max_resident_bytes > 0)
 
 test "spawn accepts cwd and env and reports the peak resident set after wait":
-    let child = try spawn(
+    child := try spawn(
         shell(), print_probe(), SpawnOptions(env: {"MS_PROBE": "spawned"}, cwd: root())
     )
     try expect_equal(child.max_resident_bytes(), 0)
@@ -52,12 +52,12 @@ test "spawn accepts cwd and env and reports the peak resident set after wait":
     try expect_true(child.max_resident_bytes() > 0)
 
 test "bad cwd and variable names are rejected":
-    let invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
+    invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
     try expect_equal(
         run(shell(), print_cwd(), RunOptions(env: {"A=B": "x"})).wait(), invalid
     )
 
-    let missing = run(shell(), print_cwd(), RunOptions(cwd: "/definitely/not/here")).wait().err()
+    missing := run(shell(), print_cwd(), RunOptions(cwd: "/definitely/not/here")).wait().err()
     try expect_equal(missing.kind, "EAGAIN")
     try expect_equal(
         missing.message,

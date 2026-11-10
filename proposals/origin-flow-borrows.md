@@ -17,12 +17,12 @@ Proposal, 2026-10-29, against `main` at `1d2e53a1` plus #1922. Direction (Chinma
 ## Problem
 
 - Today a borrowing value is handled by rules keyed on its type, not on where it came from. Verified with `grep` on `crates/ms-check/src`: 48 references to `borrows(`, `with_held`, `carrier_move`, `carrier_clone`, `movable_carrier`, `cloned_carrier_origins`, `through_ref`, `HeldReceiver` and `HeldParam`.
-- Each new flow needed its own flag. #1922 added `carrier_move` and `carrier_clone` so `let b = it` and `let c = it.clone()` pass one expression kind at a time; `return it`, closure capture and projection each have their own code.
+- Each new flow needed its own flag. #1922 added `carrier_move` and `carrier_clone` so `b := it` and `c := it.clone()` pass one expression kind at a time; `return it`, closure capture and projection each have their own code.
 - The same omission produced every confirmed hole (measured by the independent review, programs in the #1922 thread):
   - `nx(var it)` over a carrier: the result held `it`, not what `it` holds.
   - `dup(it)` cloning a carrier parameter.
   - A closure capturing a carrier, and a closure capturing that closure.
-  - `Cursor(source: c.source, ..)`, `let s = c.source`, `for x in c.source`.
+  - `Cursor(source: c.source, ..)`, `s := c.source`, `for x in c.source`.
 - Observable cost: `Optional[Cursor]`, a local `List[Cursor]` and a wrapper record holding an iterator are rejected even though the sources are all locals with a known lifetime.
 - Non-goals: lifetime syntax, `ref` in function types, storing borrows in caller-owned storage, lazy adapters (`map`, `filter`).
 
@@ -40,7 +40,7 @@ One rule: a value that holds a borrow keeps its sources unchanged until its last
 | constructor | union of `o(arg)` for `ref` arguments and for arguments that are holders |
 | call | for each summary slot: `o(arg)`, plus the argument holder's set (`Held` slots keep meaning "only what it holds") |
 | `some(e)`, `ok(e)`, record or alternative field | `o(e)` |
-| `e.clone()`, move, `let b = e` | `o(e)` |
+| `e.clone()`, move, `b := e` | `o(e)` |
 | closure | union of the sets of what it captures |
 | temporary of a non-place | `{}` (an error where a set is required) |
 
@@ -61,7 +61,7 @@ Before and after:
 ```
 # rejected today (`many` would hold values that hold a borrow, which a collection cannot do), accepted after
 fn f(var d: Deque[String]) Int:
-    let it = d.iter()
+    it := d.iter()
     var many: List[DequeIter[String]] = []
     many.append(it)
     d.clear()          # still an error after: `many` holds d

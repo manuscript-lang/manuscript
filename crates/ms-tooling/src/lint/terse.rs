@@ -534,12 +534,12 @@ impl Scan<'_> {
         if whole.contains("//") {
             return;
         }
-        let text = format!("let {} = if {c}: {b} else: {a}", self.syms.str(name));
+        let text = format!("{} := if {c}: {b} else: {a}", self.syms.str(name));
         let (a, c, b) = (a.to_string(), c.to_string(), b.to_string());
         let _ = (a, c, b);
         self.report(
             "MSL121",
-            "Write the default and the override as one `let x = if c: b else: a`".to_string(),
+            "Write the default and the override as one `x := if c: b else: a`".to_string(),
             first.pos,
             from,
             to,

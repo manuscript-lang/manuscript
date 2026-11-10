@@ -81,7 +81,7 @@ fn expression_overflow() Int:
     var i = 0
 
     while i < 1:
-        let value = match present(1):
+        value := match present(1):
             n:
                 sum = 9223372036854775807
                 n
@@ -109,26 +109,26 @@ test "bounded scalar sums preserve values":
     optional_overflow(flag: false) | try expect_equal(9223372036854775807)
 
 test "intermediate carry updates still fault":
-    (try expect_fault(fn: let _ignored = prefix_overflow())) | try expect_contains(
+    (try expect_fault(fn: _ignored := prefix_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn: let _ignored = peer_overflow())) | try expect_contains(
+    (try expect_fault(fn: _ignored := peer_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
 test "counter phases and optional updates still fault":
-    (try expect_fault(fn: let _ignored = after_step_overflow())) | try expect_contains(
+    (try expect_fault(fn: _ignored := after_step_overflow())) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn: let _ignored = optional_overflow(flag: true))) | try expect_contains(
+    (try expect_fault(fn: _ignored := optional_overflow(flag: true))) | try expect_contains(
         "Int overflow;"
     )
-    (try expect_fault(fn: let _ignored = descending_overflow())) | try expect_contains(
+    (try expect_fault(fn: _ignored := descending_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
 test "statement expression writes discard scalar bounds":
-    (try expect_fault(fn: let _ignored = expression_overflow())) | try expect_contains(
+    (try expect_fault(fn: _ignored := expression_overflow())) | try expect_contains(
         "Int overflow;"
     )
 
@@ -147,7 +147,7 @@ fn zero_effect(var visits: List[Int]) Int:
     return 9223372036854775807
 
 test "bounded multiplication keeps its operator and operand effects":
-    let left = -12
+    left := -12
     (left * -7) | try expect_equal(84)
     product_sum() | try expect_equal(0)
 

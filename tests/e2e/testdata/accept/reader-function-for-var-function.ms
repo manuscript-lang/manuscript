@@ -4,7 +4,7 @@ type P:
     n: Int
 
 fn reads(p: P) Unit:
-    let _ = p.n
+    _ := p.n
 
 fn apply(f: fn(var P) Unit) Int:
     var p = P(1)
@@ -15,10 +15,10 @@ fn bump(var p: P) Unit:
     p.n += 1
 
 test "readers stand in for var functions":
-    try expect_equal(apply(fn p: let _ = p.n), 1)
+    try expect_equal(apply(fn p: _ := p.n), 1)
     try expect_equal(apply(reads), 1)
 
-    let r = fn(p: P) Unit: let _ = p.n
+    r := fn(p: P) Unit: _ := p.n
     try expect_equal(apply(r), 1)
     try expect_equal(apply(fn var p: p.n += 5), 6)
     try expect_equal(apply(bump), 2)
@@ -37,21 +37,21 @@ fn run_str(f: fn(var String) Unit) String:
     return s
 
 fn make() fn(var Int) Unit:
-    return fn(n: Int) Unit: let _ = n
+    return fn(n: Int) Unit: _ := n
 
 test "scalars, strings, fields and returns":
-    try expect_equal(run_int(fn n: let _ = n), 3)
-    try expect_equal(run_str(fn s: let _ = s.length()), "ab")
+    try expect_equal(run_int(fn n: _ := n), 3)
+    try expect_equal(run_str(fn s: _ := s.length()), "ab")
 
-    let h = Holder(fn(n: Int) Unit: let _ = n)
+    h := Holder(fn(n: Int) Unit: _ := n)
     try expect_equal(run_int(h.f), 3)
     try expect_equal(run_int(make()), 3)
 
-    let g: fn(var Int) Unit = fn(n: Int) Unit: let _ = n
+    g: fn(var Int) Unit = fn(n: Int) Unit: _ := n
     try expect_equal(run_int(g), 3)
 
 fn each_len[T](xs: List[T], f: fn(var T) Unit) Int:
     return xs.length()
 
 test "generic callee":
-    try expect_equal(each_len([1, 2], fn n: let _ = n), 2)
+    try expect_equal(each_len([1, 2], fn n: _ := n), 2)

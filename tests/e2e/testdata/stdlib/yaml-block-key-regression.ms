@@ -4,7 +4,7 @@ import (
 )
 
 fn invalid(source: String) Unit!:
-    let cause = parse(source) | try expect_error
+    cause := parse(source) | try expect_error
     if cause.kind == "EBADMSG": return ok(unit)
 
     return fail("expected malformed YAML, got {cause}")
@@ -33,6 +33,6 @@ test "YAML a question mark followed by a letter is a plain block key":
 
 test "YAML explicit and complex mapping keys remain unsupported":
     for source in ["? key\n: value", "[key]: value"]:
-        let cause = parse(source) | try expect_error
+        cause := parse(source) | try expect_error
         if cause.kind != "ENOTSUP":
             return fail("expected unsupported mapping key, got {cause}")

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -25,7 +25,7 @@ fn collatz(start: Int) Int:
 export fn main() Int:
     say("collatz(1787) = {collatz(1787)}")
 
-    let l1 = [0, 5, 25, (-20), 2]
+    l1 := [0, 5, 25, (-20), 2]
     say("l1 = {l1} len {l1.length()}")
     return "not an int"
     say("{((-43) % 860307)} {7} {(((-43) % 860307) < 7)} sum {((-43) % 860307) + 7}")

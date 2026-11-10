@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -14,19 +14,19 @@ export fn main() Int:
         acc1 += i * 2
     say("acc1 = {acc1}")
 
-    let i2 = (-39)
+    i2 := (-39)
     say("i2 = {i2}")
 
-    let bad = undefined_name + 1
-    let s3 = "日本語"
+    bad := undefined_name + 1
+    s3 := "日本語"
     say("s3 = [{s3}]")
 
-    let i4 = (((-i2) % (i2 * i2)) * i2)
+    i4 := (((-i2) % (i2 * i2)) * i2)
     say("i4 = {i4}")
 
-    let i5 = 49
+    i5 := 49
     say("i5 = {i5}")
 
-    let s6 = s3
+    s6 := s3
     say("s6 = [{s6}]")
     return 0

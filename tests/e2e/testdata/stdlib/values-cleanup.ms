@@ -28,43 +28,43 @@ type Resource:
 // resource 1 notes whether resource 2 had already closed.
 impl Closeable for Resource:
     var fn close() Unit!:
-        let inner_closed = read_file("{self.dir}/2").wait().is_ok()
-        let _ = write_file("{self.dir}/{self.id}", "{inner_closed}", true).wait()
+        inner_closed := read_file("{self.dir}/2").wait().is_ok()
+        _ := write_file("{self.dir}/{self.id}", "{inner_closed}", true).wait()
 
 fn leave(dir: String) Int:
-    let _outer = Resource(dir.clone(), 1)
-    let _inner = Resource(dir, 2)
+    _outer := Resource(dir.clone(), 1)
+    _inner := Resource(dir, 2)
     return 42
 
 fn propagate(result: Int!) Int!:
-    let found = try result
+    found := try result
     return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
-    let create = fn() Int?: 42
-    let present: Int? = 0
-    let missing: Int? = none
+    create := fn() Int?: 42
+    present: Int? = 0
+    missing: Int? = none
     try expect_equal(present.or_else(create).get(), 0)
     try expect_equal(missing.or_else(create).get(), 42)
 
-    let nested: Int?? = missing
+    nested: Int?? = missing
     try expect_false(nested.is_none() or nested.get().is_some())
 
 test "Result propagation and Error views preserve concrete causes":
-    let failed: Int! = error(Error("JSON: invalid data", kind: "EBADMSG"))
+    failed: Int! = error(Error("JSON: invalid data", kind: "EBADMSG"))
     try expect_equal(propagate(failed), failed)
 
-    let success: Int! = ok(3)
-    let expected: Int! = ok(4)
+    success: Int! = ok(3)
+    expected: Int! = ok(4)
     try expect_equal(propagate(success), expected)
 
-    let view: Error = Error("JSON: invalid data", kind: "EBADMSG")
+    view: Error = Error("JSON: invalid data", kind: "EBADMSG")
     try expect_not_equal(view.message.byte_length(), 0)
     try expect_equal(view.kind, "EBADMSG")
 
 test "custom equality and hashing define map key identity":
-    let first = Key(1, "first")
-    let second = Key(1, "second")
+    first := Key(1, "first")
+    second := Key(1, "second")
     try expect_false(first != second or first.hash() != second.hash())
 
     var map = Map[Key, String]()
@@ -73,8 +73,8 @@ test "custom equality and hashing define map key identity":
     try expect_false(map.length() != 1 or map.get(first) != "b")
 
 test "Closeable cleanup runs in reverse order before return delivery":
-    let temporary = temporary("manuscript-cleanup-") | try expect_ok
-    let dir = temporary.path()
+    temporary := temporary("manuscript-cleanup-") | try expect_ok
+    dir := temporary.path()
     try expect_equal(leave(dir.clone()), 42)
     try expect_equal((try read_file("{dir}/1").wait()), Bytes([116, 114, 117, 101]))
     try expect_equal((try read_file("{dir}/2").wait()), Bytes([102, 97, 108, 115, 101]))

@@ -17,28 +17,28 @@ fn send(var conn: Connection, text: String) Unit!:
     return conn.output.flush()
 
 fn handle(request: HttpRequest) HttpResponse:
-    let _ = sleep(nanoseconds(300000000)).wait()
+    _ := sleep(nanoseconds(300000000)).wait()
     return HttpResponse(200, headers(), "done\n".to_bytes())
 
 export fn main() Int:
-    if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
+    if acquired := serve(address: "127.0.0.1:0", handler: buffered(handle)):
         var server = acquired
 
         if var conn = connect(server.address()).wait():
-            let _sent = send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
+            _sent := send(var conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
             // Let the handler start.
-            let _ = sleep(nanoseconds(50000000)).wait()
-            let start = monotonic()
+            _ := sleep(nanoseconds(50000000)).wait()
+            start := monotonic()
             server.close().get(none)
             server.wait().get(none)
 
-            let close_ms = monotonic().difference(start).to_milliseconds()
+            close_ms := monotonic().difference(start).to_milliseconds()
             var text = ""
 
             while true:
-                if let chunk = within(var conn.input, nanoseconds(5000000000)):
-                    if let data = chunk:
+                if chunk := within(var conn.input, nanoseconds(5000000000)):
+                    if data := chunk:
                         text = "{text}{data.decode_utf8().get("?")}"
                         continue
 
@@ -46,13 +46,13 @@ export fn main() Int:
 
             conn.close().get(none)
 
-            let _status = stdout().write(
+            _status := stdout().write(
                 "answered: {text.starts_with("HTTP/1.1 200 OK")}\n"
             )
-            let _waited = stdout().write(
+            _waited := stdout().write(
                 "close waited for the handler: {close_ms >= 200}\n"
             )
-            let _prompt = stdout().write("close returned promptly: {close_ms < 2000}\n")
+            _prompt := stdout().write("close returned promptly: {close_ms < 2000}\n")
             return 0
 
     return 1

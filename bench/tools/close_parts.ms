@@ -15,44 +15,44 @@ import (
 )
 
 fn same_bytes(a: String, b: String) Bool:
-    let left = read_file(a).wait()
-    let right = read_file(b).wait()
+    left := read_file(a).wait()
+    right := read_file(b).wait()
     if left.is_error() or right.is_error(): return false
 
     return left.get("".to_bytes()) == right.get("".to_bytes())
 
 fn ok_status(program: String, args: List[String], dir: String) Bool:
-    let ran = run_in(dir, program, args)
+    ran := run_in(dir, program, args)
     return ran.ok and ran.code == 0
 
 fn main() Int:
-    let args = arguments()
+    args := arguments()
     if args.length() != 2: return usage("usage: close_parts.ms -- BASE_MS HEAD_MS")
 
-    let base = absolute(args[0].clone())
-    let head = absolute(args[1].clone())
-    let tmp = temporary("close-parts-").get()
-    let w = tmp.path()
+    base := absolute(args[0].clone())
+    head := absolute(args[1].clone())
+    tmp := temporary("close-parts-").get()
+    w := tmp.path()
     var same = 0
     var differ = 0
     var skipped = 0
-    let projects = glob("bench/perf", GlobOptions(patterns: ["**/ms.toml"])).get(
-        []
-    ).map(fn e: e.path.clone())
+    projects := glob("bench/perf", GlobOptions(patterns: ["**/ms.toml"])).get([]).map(
+        fn e: e.path.clone()
+    )
 
     for toml in projects.sorted():
-        let dir = (
+        dir := (
             "bench/perf/"
             + toml.slice(0, toml.length() - "ms.toml".length()).get("")
         )
-        let name = dir.slice("bench/perf/".length(), dir.length() - 1).get("")
+        name := dir.slice("bench/perf/".length(), dir.length() - 1).get("")
 
         // Both compilers build the same directory, so no path differs between the outputs.
         remove("{w}/p", recursive: true).get(unit)
         copy(dir, "{w}/p", CopyOptions(recursive: true, replace: true)).get()
         remove("{w}/p/ms.lock").get(unit)
 
-        let lowers = (
+        lowers := (
             ok_status(base, ["emit", "ms.toml", "-o", "{w}/a.mir"], "{w}/p")
             and ok_status(
                 head, ["emit", "ms.toml", "-o", "{w}/b.mir"], "{w}/p"
@@ -66,10 +66,10 @@ fn main() Int:
 
         remove("{w}/p/ms.lock").get(unit)
 
-        let _a = ok_status(base, ["build", "ms.toml", "-o", "{w}/a.bin"], "{w}/p")
+        _a := ok_status(base, ["build", "ms.toml", "-o", "{w}/a.bin"], "{w}/p")
         remove("{w}/p/ms.lock").get(unit)
 
-        let _b = ok_status(head, ["build", "ms.toml", "-o", "{w}/b.bin"], "{w}/p")
+        _b := ok_status(head, ["build", "ms.toml", "-o", "{w}/b.bin"], "{w}/p")
 
         if (
             same_bytes("{w}/a.mir", "{w}/b.mir")

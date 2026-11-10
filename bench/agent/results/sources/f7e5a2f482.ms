@@ -37,7 +37,7 @@ fn tokenize(line: String) List[Tok]:
     var cur = 0
 
     for c in line.chars():
-        let d = digit_value(c)
+        d := digit_value(c)
 
         if d >= 0:
             if in_num:
@@ -63,11 +63,11 @@ fn tokenize(line: String) List[Tok]:
 fn parse_primary(toks: List[Tok], pos: Int) R:
     if pos >= toks.length(): return bad()
 
-    let t = toks[pos]
+    t := toks[pos]
     if t.kind == "n": return R(v: t.val, pos: pos + 1, ok: true, dz: false)
 
     if t.kind == "(":
-        let r = parse_expr(toks, pos + 1)
+        r := parse_expr(toks, pos + 1)
         if not r.ok: return r
         if r.pos < toks.length() and toks[r.pos].kind == ")":
             return R(v: r.v, pos: r.pos + 1, ok: true, dz: r.dz)
@@ -78,7 +78,7 @@ fn parse_primary(toks: List[Tok], pos: Int) R:
 
 fn parse_unary(toks: List[Tok], pos: Int) R:
     if pos < toks.length() and toks[pos].kind == "-":
-        let r = parse_unary(toks, pos + 1)
+        r := parse_unary(toks, pos + 1)
         if not r.ok: return r
 
         return R(v: 0 - r.v, pos: r.pos, ok: true, dz: r.dz)
@@ -86,7 +86,7 @@ fn parse_unary(toks: List[Tok], pos: Int) R:
     return parse_primary(toks, pos)
 
 fn parse_term(toks: List[Tok], pos: Int) R:
-    let first = parse_unary(toks, pos)
+    first := parse_unary(toks, pos)
     if not first.ok: return first
 
     var v = first.v
@@ -94,8 +94,8 @@ fn parse_term(toks: List[Tok], pos: Int) R:
     var dz = first.dz
 
     while p < toks.length() and (toks[p].kind == "*" or toks[p].kind == "/"):
-        let is_mul = toks[p].kind == "*"
-        let r = parse_unary(toks, p + 1)
+        is_mul := toks[p].kind == "*"
+        r := parse_unary(toks, p + 1)
         if not r.ok: return r
 
         dz = dz or r.dz
@@ -113,7 +113,7 @@ fn parse_term(toks: List[Tok], pos: Int) R:
     return R(v: v, pos: p, ok: true, dz: dz)
 
 fn parse_expr(toks: List[Tok], pos: Int) R:
-    let first = parse_term(toks, pos)
+    first := parse_term(toks, pos)
     if not first.ok: return first
 
     var v = first.v
@@ -121,8 +121,8 @@ fn parse_expr(toks: List[Tok], pos: Int) R:
     var dz = first.dz
 
     while p < toks.length() and (toks[p].kind == "+" or toks[p].kind == "-"):
-        let is_add = toks[p].kind == "+"
-        let r = parse_term(toks, p + 1)
+        is_add := toks[p].kind == "+"
+        r := parse_term(toks, p + 1)
         if not r.ok: return r
 
         dz = dz or r.dz
@@ -137,10 +137,10 @@ fn parse_expr(toks: List[Tok], pos: Int) R:
     return R(v: v, pos: p, ok: true, dz: dz)
 
 fn evaluate(line: String) String:
-    let toks = tokenize(line)
+    toks := tokenize(line)
     if toks.length() == 0: return ""
 
-    let r = parse_expr(toks, 0)
+    r := parse_expr(toks, 0)
     if not r.ok or r.pos != toks.length(): return "error: syntax"
     if r.dz: return "error: division by zero"
 
@@ -152,7 +152,7 @@ fn process() Int!:
     var out = stdout()
 
     for line in lines(stdin()):
-        let s = evaluate(line)
+        s := evaluate(line)
         if s != "":
             try out.write("{s}\n")
 

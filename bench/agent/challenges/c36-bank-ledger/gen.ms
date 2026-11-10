@@ -6,7 +6,7 @@ import (
     words from "../../lib/text.ms",
 )
 
-let FEE = 5
+FEE := 5
 
 fn digits(t: String) Bool: (
     not t.is_empty()
@@ -32,10 +32,10 @@ fn solve(s: String) String:
     var names = List[String]()
 
     for line in s.split("\n"):
-        let t = words(line)
+        t := words(line)
         if t.is_empty(): continue
 
-        let c = t[0].clone()
+        c := t[0].clone()
 
         if arity(c) == 0 or t.length() != arity(c):
             out.append("error: bad command")
@@ -45,7 +45,7 @@ fn solve(s: String) String:
             var tb = 0
 
             for k in names.sorted():
-                let b = bal.get_or(k, 0)
+                b := bal.get_or(k, 0)
                 tb += b
                 out.append(
                     "{k} balance={b} limit={lim.get_or(k, 0)} ops={ops.get_or(k, 0)} rejected={rej.get_or(k, 0)} frozen={if frozen.contains(k): "yes" else: "no"}"
@@ -84,8 +84,8 @@ fn solve(s: String) String:
             out.append("ok")
             continue
 
-        let ids = if c == "transfer": t.slice(1, 3).get([]) else: t.slice(1, 2).get([])
-        let amount = t[t.length() - 1].clone()
+        ids := if c == "transfer": t.slice(1, 3).get([]) else: t.slice(1, 2).get([])
+        amount := t[t.length() - 1].clone()
         var unknown = ""
         for i in ids:
             if unknown == "" and not bal.contains(i): unknown = i.clone()
@@ -113,9 +113,9 @@ fn solve(s: String) String:
             out.append("error: account frozen {fz}")
             continue
 
-        let n = amount.parse_int().get(0)
+        n := amount.parse_int().get(0)
         var fee = 0
-        let from = ids[0].clone()
+        from := ids[0].clone()
 
         if c == "deposit":
             bal[from.clone()] = bal.get_or(from, 0) + n
@@ -138,12 +138,12 @@ fn solve(s: String) String:
         ops[from.clone()] = ops.get_or(from, 0) + 1
         fees += fee
 
-        let sfx = if fee > 0: " fee={fee}" else: ""
+        sfx := if fee > 0: " fee={fee}" else: ""
 
         if c == "withdraw":
             out.append("ok {new}{sfx}")
         else:
-            let to = ids[1].clone()
+            to := ids[1].clone()
             bal[to.clone()] = bal.get_or(to, 0) + n
             ops[to.clone()] = ops.get_or(to, 0) + 1
             out.append("ok {new} {bal.get_or(to, 0)}{sfx}")
@@ -156,13 +156,13 @@ fn rand_script(var rnd: Random, n: Int, ids: List[String]) String:
     var lines = List[String]()
 
     for i in ids:
-        let limit = ["0", "0", "10", "50", "200"][rnd.below(5)]
+        limit := ["0", "0", "10", "50", "200"][rnd.below(5)]
         lines.append("open {i} {limit}")
 
     for _k in 0..n:
-        let r = rnd.random()
-        let a = rnd.choice(ids)
-        let b = rnd.choice(ids)
+        r := rnd.random()
+        a := rnd.choice(ids)
+        b := rnd.choice(ids)
         var amt = ""
 
         if rnd.random() < 0.15:
@@ -173,7 +173,7 @@ fn rand_script(var rnd: Random, n: Int, ids: List[String]) String:
                 ]
             )
         else:
-            let v = rnd.randint(1, 120)
+            v := rnd.randint(1, 120)
             amt = "{["{v}"][rnd.below(1)]}"
 
         if r < 0.25:
@@ -198,18 +198,18 @@ fn rand_script(var rnd: Random, n: Int, ids: List[String]) String:
 
 export fn gen_c36() Unit:
     var rnd = seeded(36)
-    let examples = [
+    examples := [
         mk(
             "basic",
             "open a 20\nopen b 0\ndeposit a 10\nwithdraw a 25\nwithdraw a 10\ntransfer a b 3\nfreeze b\ndeposit b 1\nreport\n"
         )
     ]
-    let small = rand_script(var rnd, 60, ["a", "b", "c"])
+    small := rand_script(var rnd, 60, ["a", "b", "c"])
     var accounts = List[String]()
     for i in 0..12: accounts.append("acct{i}")
 
-    let large = rand_script(var rnd, 1500, accounts)
-    let hidden = examples.concat(
+    large := rand_script(var rnd, 1500, accounts)
+    hidden := examples.concat(
         [
             mk("empty-report", "report\n"),
             mk(

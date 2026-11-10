@@ -22,5 +22,5 @@ fn attempt() Unit!:
     take(Door("temp"), try fails())
 
 fn main() Unit:
-    let _ = attempt()
+    _ := attempt()
     print("end")

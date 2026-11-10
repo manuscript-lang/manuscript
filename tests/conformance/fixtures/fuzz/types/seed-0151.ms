@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (true and true)
+    b1 := (true and true)
     say("b1 = {b1}")
 
-    let _bad = say
-    let b2 = (((2.0e13 - 744.899) > (181.330 + 763.881)) and "".is_empty())
+    _bad := say
+    b2 := (((2.0e13 - 744.899) > (181.330 + 763.881)) and "".is_empty())
     say("b2 = {b2}")
     return 0

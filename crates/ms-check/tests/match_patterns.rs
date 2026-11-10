@@ -68,7 +68,7 @@ fn explicit_qualifier_must_be_the_matched_application() {
 #[test]
 fn failed_chain_link_does_not_add_an_inference_error() {
     let got = diagnostics(
-        "type R:\n    name: String\n\nfn use(o: R?) Int:\n    let n = o?.name.length().get(0)\n    return n.get(0)\n",
+        "type R:\n    name: String\n\nfn use(o: R?) Int:\n    n := o?.name.length().get(0)\n    return n.get(0)\n",
     );
     assert_eq!(got.len(), 1, "{got:?}");
     assert!(

@@ -5,5 +5,5 @@ fn id[T](x: T) T:
     return x
 
 fn f() Int:
-    let g = id
+    g := id
     return g(1)
