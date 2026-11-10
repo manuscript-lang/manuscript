@@ -34,3 +34,4 @@ Formatter, LSP, CLI, diagnostics, documentation, site.
 - [User tooling must work in the shipped binary](user-tooling-must-work-in-the-shipped-binary.md): documentation generation was requested as an `ms` subcommand for users, rather than only a repository generator.
 - [Tooling change checklist](tooling-change-checklist.md): formatter, LSP, CLI, diagnostics, and debugging rules to check before editing tooling.
 - [Stdout errors include the final flush](stdout-errors-include-final-flush.md): small buffered writes and large direct writes fail at different points; neither failure may silently become a successful command.
+- [CLI durations truncate each component exactly](cli-durations-truncate-each-component-exactly.md): float rounding and summing fractions before truncation can admit budgets below the command's minimum.
