@@ -80,8 +80,9 @@ fn run(syms: ms_syntax::Names, o: &Options) -> Result<(), String> {
         report.qualified_members,
         report.members
     );
-    if let Some(path) = &o.coverage {
-        write(path, report.to_json().as_bytes())?;
+    let coverage = o.coverage.as_ref().map(|path| (path, report.to_json()));
+    if let Some((path, data)) = &coverage {
+        write(path, data.as_bytes())?;
     }
     let policy = standard_description_policy()?;
     let problems = check_descriptions(&report, &policy);
@@ -99,6 +100,13 @@ fn run(syms: ms_syntax::Names, o: &Options) -> Result<(), String> {
     if !o.downloads && o.artifacts.exists() {
         std::fs::remove_dir_all(&o.artifacts)
             .map_err(|e| format!("{}: {e}", o.artifacts.display()))?;
+    }
+    // Validate the report destination before retiring pages, then restore it if
+    // cleanup removed it along with the previous artifact tree.
+    if let Some((path, data)) = &coverage
+        && !path.exists()
+    {
+        write(path, data.as_bytes())?;
     }
     for (path, data) in files {
         let download = path == "website/static/stdlib.md" || path == "website/static/stdlib.json";
