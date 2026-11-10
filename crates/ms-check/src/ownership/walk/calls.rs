@@ -883,7 +883,11 @@ impl Walker<'_> {
                     }
                 }
             }
-            ParamMode::Move => self.expr(&a.value, Demand::Move),
+            ParamMode::Move => {
+                self.move_note = modes.consumed_by.get(index).copied().flatten();
+                self.expr(&a.value, Demand::Move);
+                self.move_note = None;
+            }
             ParamMode::Mutate => {
                 if self.is_place(&a.value) {
                     if let Some((info, _)) = self.place(&a.value) {

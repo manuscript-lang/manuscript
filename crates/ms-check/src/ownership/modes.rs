@@ -4,6 +4,7 @@ use crate::effects::collection_mutation;
 use crate::hir::*;
 use crate::syntax::*;
 use crate::types::*;
+use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use std::collections::HashMap;
 
@@ -69,6 +70,8 @@ pub struct Summary {
     pub receiver: ParamMode,
     /// Parameters by label.
     pub params: Vec<(Name, ParamMode)>,
+    /// Where the body consumes each parameter (aligned with `params`).
+    pub consumed_at: Vec<Option<Pos>>,
     /// Where the result comes from.
     pub result: ResultBorrow,
 }
@@ -100,6 +103,7 @@ impl Summary {
                     )
                 })
                 .collect(),
+            consumed_at: Vec::new(),
             result: ResultBorrow::optimistic(params),
         }
     }
@@ -128,6 +132,17 @@ impl std::ops::Deref for Summaries {
     }
 }
 
+/// Where a source callee consumes one of its parameters.
+#[derive(Clone, Copy, Debug)]
+pub struct Consumed {
+    /// The parameter's label.
+    pub param: Name,
+    /// The callee's module file.
+    pub file: Name,
+    /// The consuming expression in the callee's body.
+    pub at: Pos,
+}
+
 /// The modes of one call.
 #[derive(Clone, Debug)]
 pub struct CallModes {
@@ -144,6 +159,9 @@ pub struct CallModes {
     /// parameter as a borrow (`o.get(default)`, `xs.fold(initial, ..)`, a stored element): a
     /// function written there escapes.
     pub retained: Vec<bool>,
+    /// Each written argument a source callee consumes: the callee, its parameter and where its
+    /// body consumes it, for the diagnostic of a call that moves a variable it uses again.
+    pub consumed_by: Vec<Option<Consumed>>,
 }
 
 /// Whether the method takes a callback that may change a parameter holding one of the
@@ -226,6 +244,7 @@ fn call_modes_declared(
         returns_receiver: false,
         callbacks_borrowed: true,
         retained: Vec::new(),
+        consumed_by: Vec::new(),
     };
     // `x.get()(7)`: the callee is itself a call, so this one calls its function value.
     let value_call = match &call.kind {
@@ -285,6 +304,7 @@ fn call_modes_declared(
                             .collect(),
                         callbacks_borrowed: runs_now,
                         retained: Vec::new(),
+                        consumed_by: Vec::new(),
                         ..borrow_all(None)
                     }
                 }
@@ -312,6 +332,7 @@ fn function_value_modes(
         returns_receiver: false,
         callbacks_borrowed: true,
         retained: Vec::new(),
+        consumed_by: Vec::new(),
     };
     let ExprKind::Call { callee, .. } = &call.kind else {
         return borrow_all;
@@ -379,7 +400,25 @@ fn from_summary(
 ) -> CallModes {
     let known = summaries.get(&(module, func.id())).cloned();
     let summary = known.unwrap_or_else(|| Summary::declared(func));
+    // Most callees consume no parameter, so the per-argument table is built only for those that do.
+    let consumed_by = if summary.consumed_at.iter().any(Option::is_some) {
+        (0..count)
+            .map(|i| {
+                let param = label(i)?;
+                let index = summary.params.iter().position(|(n, _)| *n == param)?;
+                let at = summary.consumed_at.get(index).copied().flatten()?;
+                Some(Consumed {
+                    param,
+                    file: module,
+                    at,
+                })
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
     CallModes {
+        consumed_by,
         receiver: receiver.map(|()| summary.receiver),
         arguments: (0..count)
             .map(|i| {
@@ -424,6 +463,7 @@ fn method_modes(
                     returns_receiver: false,
                     callbacks_borrowed: false,
                     retained: Vec::new(),
+                    consumed_by: Vec::new(),
                 }
             }
             None => native_unknown(count),
@@ -522,6 +562,7 @@ fn native_unknown(count: usize) -> CallModes {
         returns_receiver: false,
         callbacks_borrowed: false,
         retained: Vec::new(),
+        consumed_by: Vec::new(),
     }
 }
 
@@ -590,5 +631,6 @@ fn native_method_modes(
         returns_receiver: mutator && same(&result, receiver),
         callbacks_borrowed,
         retained,
+        consumed_by: Vec::new(),
     }
 }

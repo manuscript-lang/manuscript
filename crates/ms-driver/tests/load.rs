@@ -36,7 +36,14 @@ fn imports_are_loaded_before_their_importers() {
     assert!(graph.diagnostics.is_empty());
     assert_eq!(graph.entry, "main.ms");
     assert_eq!(graph.modules.len(), 2);
-    let checked = check_graph(syms, graph, CheckRequest { entry: true });
+    let checked = check_graph(
+        syms,
+        graph,
+        CheckRequest {
+            entry: true,
+            ..CheckRequest::default()
+        },
+    );
     assert!(checked.success(), "{:?}", checked.diagnostics);
 }
 
@@ -86,7 +93,14 @@ fn embedded_and_imported_inputs_keep_first_seen_order_without_duplicates() {
         assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
         assert_eq!(graph.modules.len(), 3);
         assert_eq!(graph.inputs, expected);
-        let checked = check_graph(syms, graph, CheckRequest { entry: true });
+        let checked = check_graph(
+            syms,
+            graph,
+            CheckRequest {
+                entry: true,
+                ..CheckRequest::default()
+            },
+        );
         assert!(checked.success(), "{:?}", checked.diagnostics);
         assert_eq!(checked.inputs, expected);
     }
@@ -194,7 +208,10 @@ fn entry_diagnostics_name_the_required_signature() {
     let checked = check_graph(
         syms,
         load_file(syms, &entry, LoadOptions::default()),
-        CheckRequest { entry: true },
+        CheckRequest {
+            entry: true,
+            ..CheckRequest::default()
+        },
     );
     let issue = &checked.diagnostics[0];
     assert_eq!(
@@ -224,7 +241,14 @@ fn file_entries_share_a_library_under_the_enclosing_manifest() {
     let graph = load_file(syms, &entry, LoadOptions::default());
     assert!(graph.diagnostics.is_empty(), "{:?}", graph.diagnostics);
     assert_eq!(graph.entry, "suite/driver.ms");
-    let checked = check_graph(syms, graph, CheckRequest { entry: true });
+    let checked = check_graph(
+        syms,
+        graph,
+        CheckRequest {
+            entry: true,
+            ..CheckRequest::default()
+        },
+    );
     assert!(checked.success(), "{:?}", checked.diagnostics);
 }
 

@@ -375,6 +375,7 @@ pub(crate) fn compile_target<L: Lower>(
         graph,
         CheckRequest {
             entry: entry_required,
+            ..CheckRequest::default()
         },
     );
     let failure = |diagnostics: Vec<Diagnostic>, source_root: &str| Failure {

@@ -407,6 +407,25 @@ impl Scanner<'_> {
         d.end = Some(self.pos());
         Err(d)
     }
+    /// Whether the word ending at `hi` is a member or field name, where a contextual keyword
+    /// is an ordinary name: after `.`, or a `name:` label that opens a line or follows `(` or `,`
+    /// (record fields, parameters, argument labels).
+    fn names_a_member(&self, hi: usize) -> bool {
+        let prev = self.tokens.last().map(|t| t.kind);
+        if prev == Some(Tok::Dot) {
+            return true;
+        }
+        let label_start = matches!(
+            prev,
+            Some(Tok::LParen | Tok::Comma | Tok::Newline | Tok::Indent | Tok::Dedent) | None
+        );
+        let mut j = hi;
+        while self.src.get(j) == Some(&b' ') {
+            j += 1;
+        }
+        label_start && self.src.get(j) == Some(&b':') && self.src.get(j + 1) != Some(&b'=')
+    }
+
     fn emit(&mut self, kind: Tok, lo: usize, hi: usize, pos: Pos) {
         let end = self.pos();
         self.tokens.push(Token {
@@ -634,7 +653,10 @@ impl Scanner<'_> {
                     }
                     self.column += (i - start) as u32;
                     self.offset = i;
-                    let kind = Tok::from_word(&self.text[start..i]);
+                    let mut kind = Tok::from_word(&self.text[start..i]);
+                    if kind.is_contextual() && self.names_a_member(i) {
+                        kind = Tok::Name;
+                    }
                     if kind == Tok::Fn || kind == Tok::Match {
                         self.function_depths.push(self.delimiters.len());
                     }

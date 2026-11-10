@@ -22,7 +22,14 @@ fn main() {
         ms_driver::load_file(syms, &args[1], Default::default())
     });
     let checked = stage("check", || {
-        ms_driver::check_graph(syms, graph, ms_driver::CheckRequest { entry: true })
+        ms_driver::check_graph(
+            syms,
+            graph,
+            ms_driver::CheckRequest {
+                entry: true,
+                ..ms_driver::CheckRequest::default()
+            },
+        )
     });
     assert!(checked.success(), "{:?}", checked.diagnostics);
     let mut module = stage("lower", || {
