@@ -51,10 +51,12 @@ test "bitset intersection and difference ignore words past the operand that boun
 	var large = BitSet()
 	large.add(1)
 	large.add(10000000)
+
 	inter := small.intersection(large)
 	try expect_equal(inter.contains(1), true)
 	try expect_equal(inter.contains(10000000), false)
 	try expect_equal(inter.words.length(), 1)
+
 	diff := large.difference(small)
 	try expect_equal(diff.contains(1), false)
 	try expect_equal(diff.contains(10000000), true)
