@@ -13,6 +13,8 @@ import (
 )
 
 export type ProviderConfig:
+	// The provider name, as in models.json.
+	name: String = ""
 	// "anthropic" or "openai".
 	api: String
 	base_url: String
@@ -54,6 +56,10 @@ type Acc:
 	output_tokens: Int
 	// Thinking text received since the caller last took it.
 	pending_thinking: String
+	// Set when a tool call block opened since the caller last looked: "id|name".
+	pending_tool_start: String
+	// Argument JSON received since the caller last took it.
+	pending_tool_json: String
 
 impl Acc:
 	var fn ensure(index: Int, _kind: String) Unit:
@@ -80,6 +86,7 @@ impl Acc:
 				self.blocks[index].kind = str_or(block, "type", "text")
 				self.blocks[index].id = str_or(block, "id", "")
 				self.blocks[index].name = str_or(block, "name", "")
+				if str_or(block, "type", "") == "tool_use": self.pending_tool_start = "{str_or(block, "id", "")}|{str_or(block, "name", "")}"
 
 			return ""
 
@@ -102,8 +109,11 @@ impl Acc:
 
 				if dkind == "signature_delta":
 					self.blocks[index].signature = "{self.blocks[index].signature}{str_or(delta, "signature", "")}"
+
 				if dkind == "input_json_delta":
-					self.blocks[index].json = "{self.blocks[index].json}{str_or(delta, "partial_json", "")}"
+					fragment := str_or(delta, "partial_json", "")
+					self.blocks[index].json = "{self.blocks[index].json}{fragment}"
+					self.pending_tool_json = "{self.pending_tool_json}{fragment}"
 
 			return ""
 
@@ -381,7 +391,7 @@ export fn stream_turn(
 
 	var acc = Acc(
 		blocks: List[Block](), stop_reason: "", input_tokens: 0, output_tokens: 0,
-		pending_thinking: ""
+		pending_thinking: "", pending_tool_start: "", pending_tool_json: ""
 	)
 	var events = sse_events(payload)
 
@@ -400,6 +410,18 @@ export fn stream_turn(
 
 		shown := acc.anthropic(ev.event, data)
 		if not shown.is_empty(): ui.text(shown)
+
+		if not acc.pending_tool_start.is_empty():
+			var started = Map[String, JsonValue]()
+			started.add("info", str(acc.pending_tool_start))
+			ui.event("toolcall_start", obj(started))
+			acc.pending_tool_start = ""
+
+		if not acc.pending_tool_json.is_empty():
+			var piece = Map[String, JsonValue]()
+			piece.add("delta", str(acc.pending_tool_json))
+			ui.event("toolcall_delta", obj(piece))
+			acc.pending_tool_json = ""
 
 		if not acc.pending_thinking.is_empty():
 			ui.thinking(acc.pending_thinking)

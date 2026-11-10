@@ -14,6 +14,8 @@ import (
 export type Session:
 	id: String
 	path: String
+	// Id of the last header entry (model and thinking level); the first message hangs off it.
+	head: String = ""
 
 export type Entry:
 	id: String
@@ -38,8 +40,8 @@ fn line(kind: String, fields: Map[String, JsonValue]) String!:
 	for entry in fields.entries(): record.add(entry.key.clone(), entry.value.clone())
 	return render(obj(record))
 
-// Creates a new session file with its header line.
-export fn create() Session!:
+// Creates a new session file with its header line, then pi's model_change and thinking_level_change entries.
+export fn create(provider: String, model: String, thinking: String) Session!:
 	dir := try session_dir()
 	try create_directory(dir, recursive: true)
 
@@ -52,7 +54,18 @@ export fn create() Session!:
 
 	text := try line("session", header)
 	try append_file(path, "{text}\n").wait()
-	return ok(Session(id: id, path: path))
+
+	made := Session(id: id.clone(), path: path.clone())
+	var change = Map[String, JsonValue]()
+	change.add("provider", str(provider))
+	change.add("modelId", str(model))
+
+	model_id := try write_entry(made, "model_change", "", change)
+	var level = Map[String, JsonValue]()
+	level.add("thinkingLevel", str(thinking))
+
+	level_id := try write_entry(made, "thinking_level_change", model_id, level)
+	return ok(Session(id: id, path: path, head: level_id))
 
 fn short_id() String!:
 	id := try uuid_v7()
@@ -136,6 +149,46 @@ fn summary_message(summary: String) JsonValue:
 	m.add("content", JsonValue.ArrayValue([obj(block)]))
 	return obj(m)
 
+// Turns stored messages (pi's shapes: toolResult messages, extra metadata) into API history: user and
+// assistant messages keep role and content only, and consecutive toolResult messages merge into one user
+// message of tool_result blocks.
+export fn api_messages(stored: List[JsonValue]) List[JsonValue]:
+	var out = List[JsonValue]()
+	var pending = List[JsonValue]()
+
+	for m in stored:
+		role := str_or(m, "role", "")
+
+		if role == "toolResult":
+			var block = Map[String, JsonValue]()
+			block.add("type", str("tool_result"))
+			block.add("tool_use_id", str(str_or(m, "toolCallId", "")))
+
+			text := m.get("content").get(JsonValue.Null).at(0).get(JsonValue.Null)
+			block.add("content", str(str_or(text, "text", "")))
+			if m.get("isError").get(JsonValue.Null).as_bool().get(false): block.add(
+				"is_error", JsonValue.BoolValue(true)
+			)
+			pending.append(obj(block))
+			continue
+
+		if not pending.is_empty():
+			out.append(wrap_message("user", JsonValue.ArrayValue(pending.clone())))
+			pending = List[JsonValue]()
+
+		out.append(wrap_message(role, m.get("content").get(JsonValue.Null).clone()))
+
+	if not pending.is_empty(): out.append(
+		wrap_message("user", JsonValue.ArrayValue(pending.clone()))
+	)
+	return out
+
+fn wrap_message(role: String, content: JsonValue) JsonValue:
+	var m = Map[String, JsonValue]()
+	m.add("role", str(role))
+	m.add("content", content.clone())
+	return obj(m)
+
 // The messages on the path from the root (or the latest compaction) to `leaf`.
 export fn branch(all: List[Entry], leaf: String) List[JsonValue]:
 	var reversed = List[JsonValue]()
@@ -161,7 +214,7 @@ export fn branch(all: List[Entry], leaf: String) List[JsonValue]:
 		out.append(reversed[i].clone())
 		i -= 1
 
-	return out
+	return api_messages(out)
 
 fn preview(message: JsonValue) String:
 	role := str_or(message, "role", "")
@@ -172,6 +225,7 @@ fn preview(message: JsonValue) String:
 		if kind == "text": return "{role}: {str_or(block, "text", "").replace("\n", " ").take(60)}"
 		if kind == "tool_use": return "{role}: [{str_or(block, "name", "")}]"
 		if kind == "tool_result": return "tool result"
+		if role == "toolResult": return "tool result"
 
 	return role
 

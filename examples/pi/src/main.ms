@@ -16,7 +16,7 @@ import (
 	build from "./prompt.ms",
 	create, latest, entries, branch, last_id, tree, open_existing, Session from "./session.ms",
 	write_out, write_err, bold, dim, red, read_line, is_interactive, with_abort from "./tui.ms",
-	terminal_ui, TerminalUi, PlainUi, JsonUi, emit_response from "./frontends.ms",
+	terminal_ui, TerminalUi, PlainUi, JsonUi, json_ui, emit_response from "./frontends.ms",
 	str, num, flag, obj, arr, str_or from "./jsonx.ms",
 )
 
@@ -84,8 +84,9 @@ fn provider_config(m: Matches) ProviderConfig!:
 	model := if choice[1].is_empty(): provider.default_model.clone() else: choice[1].clone()
 	return ok(
 		ProviderConfig(
-			api: provider.api.clone(), base_url: url.trim_end_chars("/"), api_key: key,
-			model: model, thinking: try thinking_budget(m.string("thinking"))
+			name: provider.name.clone(), api: provider.api.clone(),
+			base_url: url.trim_end_chars("/"), api_key: key, model: model,
+			thinking: try thinking_budget(m.string("thinking"))
 		)
 	)
 
@@ -152,13 +153,13 @@ fn expand_message(words: List[String]) Prompt!:
 
 	return ok(Prompt(text: parts.join(" "), images: images))
 
-fn open_session(m: Matches) Session?!:
+fn open_session(m: Matches, config: ProviderConfig) Session?!:
 	if m.bool("no-session"): return ok(none)
 	if path := m.string_or_none("session"): return ok(try open_existing(path))
 
 	if m.bool("continue"):
 		if path := latest(): return ok(try open_existing(path))
-	return ok(try create())
+	return ok(try create(config.name, config.model, m.string("thinking")))
 
 fn session_label(agent: Agent) String:
 	if saved := agent.session: return saved.path.clone()
@@ -284,7 +285,7 @@ fn fork_to(var agent: Agent, id: String) Unit:
 
 fn new_session(var agent: Agent) Unit:
 	if agent.session.is_some():
-		fresh := create()
+		fresh := create(agent.config.name, agent.config.model, "off")
 
 		if fresh.is_error():
 			write_err(red("{fresh.err().message}\n"))
@@ -294,6 +295,7 @@ fn new_session(var agent: Agent) Unit:
 
 	agent.history = List[JsonValue]()
 	agent.leaf = ""
+	if made := agent.session: agent.leaf = made.head.clone()
 	write_out("new session\n")
 
 fn footer_text(agent: Agent) String:
@@ -308,7 +310,7 @@ fn interactive(var agent: Agent) Unit!:
 	var ui: Ui = terminal_ui()
 
 	while true:
-		line := try read_line("{bold("> ")}", history, footer_text(agent))
+		line := try ui.prompt_line("{bold("> ")}", history, footer_text(agent))
 		if line.is_none(): break
 
 		text := line.get("").trim()
@@ -323,7 +325,11 @@ fn interactive(var agent: Agent) Unit!:
 				run_turn(var agent, prompt, List[JsonValue](), var ui)
 				continue
 
-			if slash(var agent, text): break
+			write_out("\n")
+
+			exit := slash(var agent, text)
+			ui.event("resync", JsonValue.Null)
+			if exit: break
 
 			continue
 
@@ -332,7 +338,7 @@ fn interactive(var agent: Agent) Unit!:
 // JSON-lines RPC: one command object per stdin line, events and responses on stdout.
 fn rpc(var agent: Agent) Unit!:
 	var input = lines(stdin())
-	var ui: Ui = JsonUi(unused: true)
+	var ui: Ui = json_ui()
 
 	for raw in input:
 		if raw.trim().is_empty(): continue
@@ -411,9 +417,11 @@ fn run(m: Matches) Int!:
 		"system-prompt"
 	)
 	system := build(tools, custom, m.string("append-system-prompt"))
-	session := try open_session(m)
+	session := try open_session(m, config)
 	var history = List[JsonValue]()
 	var leaf = ""
+	if fresh := session:
+		leaf = fresh.head.clone()
 
 	if saved := session:
 		if m.bool("continue") or m.string_or_none("session").is_some():
@@ -443,7 +451,7 @@ fn run(m: Matches) Int!:
 	if mode == "json":
 		if text.trim().is_empty(): return error(Error("No prompt given"))
 
-		var ui: Ui = JsonUi(unused: true)
+		var ui: Ui = json_ui()
 		stop := cancel_switch()
 		_reply := try agent.prompt(text, prompt.images, var ui, stop.signal())
 		ui.end()

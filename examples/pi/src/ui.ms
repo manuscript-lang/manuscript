@@ -1,3 +1,5 @@
+import JsonValue from "@std/data/json.ms"
+
 // What the agent reports while it works. Front ends implement it: styled terminal, plain text, JSON lines.
 export interface Ui:
 	// A piece of the assistant's reply.
@@ -8,6 +10,10 @@ export interface Ui:
 	var fn tool(name: String, summary: String) Unit
 	// A tool call finished.
 	var fn result(name: String, failed: Bool, output: String) Unit
+	// A lifecycle event (agent_start, turn_start, message_start, message_end, tool_execution_*, turn_end, agent_end) with its payload fields.
+	var fn event(kind: String, payload: JsonValue) Unit
+	// Reads the next prompt; none ends the session. Front ends without an editor return none.
+	var fn prompt_line(prompt: String, history: List[String], footer: String) String?!
 	// The turn ended; flush anything buffered.
 	var fn end() Unit
 
@@ -27,6 +33,12 @@ impl Ui for NullUi:
 
 	var fn result(name: String, failed: Bool, output: String) Unit:
 		return unit
+
+	var fn event(kind: String, payload: JsonValue) Unit:
+		return unit
+
+	var fn prompt_line(prompt: String, history: List[String], footer: String) String?!:
+		return ok(none)
 
 	var fn end() Unit:
 		return unit
