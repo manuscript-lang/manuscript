@@ -20,10 +20,10 @@ Choose a `List` for an ordered sequence, a `Map` for lookup by key, and a `Set` 
 Brackets construct mutable lists of values:
 
 ```manuscript
-let values = [1, 2, 3]
-let empty: List[Int] = []
-let also_empty = List[Int]()
-let sized = List[Int](reserve: 1000)
+values := [1, 2, 3]
+empty: List[Int] = []
+also_empty := List[Int]()
+sized := List[Int](reserve: 1000)
 ```
 
 `reserve: n` preallocates room for `n` items so appending up to that count does not regrow the list. The list stays empty; a negative or `none` reserve preallocates nothing.
@@ -35,8 +35,8 @@ The first literal infers `List[Int]`; an empty literal needs an annotation or ex
 Braces construct mutable maps:
 
 ```manuscript
-let scores = {"Ada": 3, "Lin": 5}
-let empty: Map[String, Int] = {}
+scores := {"Ada": 3, "Lin": 5}
+empty: Map[String, Int] = {}
 ```
 
 Entries are `key: value`, trailing commas allowed. Keys are expressions: `{name: score}` uses the value of `name`; `{"name": score}` uses a String. Map literals never construct types.
@@ -53,14 +53,14 @@ Lists and map values accept functions, interface values, builders and resources.
 Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit unions or numeric conversions apply.
 
 ```manuscript
-let nested: List[List[Int]] = [[], [1, 2]]
+nested: List[List[Int]] = [[], [1, 2]]
 // Rejected: incompatible Int and Float elements.
-let mixed = [1, 2.0]
+mixed := [1, 2.0]
 // Rejected: no element type can be inferred.
-let unknown = []
+unknown := []
 ```
 
-An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so write `let values: List[Int?] = [none, 1]`. Neither `[none, 1]` nor `[none]` supplies the required optional context on its own. Collections can hold [recursive data](named-types.md#recursive-data) but derive no hashing.
+An expected type propagates into inner literals. Without one, elements must agree on one type; `none` needs another element or context to fix its payload, so write `values: List[Int?] = [none, 1]`. Neither `[none, 1]` nor `[none]` supplies the required optional context on its own. Collections can hold [recursive data](named-types.md#recursive-data) but derive no hashing.
 
 ## Iteration
 
@@ -75,8 +75,8 @@ Save as `pairs.ms` and run `ms run pairs.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"ann: 90\nbo: 72\n2\n2\n1\n"} -->
 ```manuscript
 export fn main() Int:
-    let names = ["ann", "bo", "cy"]
-    let scores = [90, 72]
+    names := ["ann", "bo", "cy"]
+    scores := [90, 72]
     for pair in names.zip(scores):
         print("{pair.first}: {pair.second}")
     for part in [1, 2, 3, 4, 5].chunks(2):
@@ -111,7 +111,7 @@ List details:
 
 ```manuscript
 var values = [1, 2]
-let copy = values.clone()
+copy := values.clone()
 values.append(3)
 // values now contains [1, 2, 3]; copy still contains [1, 2].
 ```
@@ -237,7 +237,7 @@ import panic from "@std/core.ms"
 
 
 fn positives(values: List[Int]) List[Int]:
-    let result = values.filter(fn value: value > 0)
+    result := values.filter(fn value: value > 0)
     return result
 
 test "dynamic mutable data and explicit copies":

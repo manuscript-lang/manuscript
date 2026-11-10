@@ -2,15 +2,15 @@
 // local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c55
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-let PEOPLE = "[\{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"],\"addr\":\{\"city\":\"Paris\",\"zip\":\"75001\"\}\},\{\"name\":\"Bob\",\"age\":25,\"tags\":[],\"addr\":\{\"city\":\"Rome\",\"zip\":null\}\},\{\"name\":\"Carol\",\"age\":35,\"tags\":[\"c\"],\"addr\":null\}]"
-let ORDERS = "\{\"orders\":[\{\"id\":1,\"items\":[\{\"sku\":\"a\",\"qty\":2,\"price\":3.5\},\{\"sku\":\"b\",\"qty\":1,\"price\":10\}],\"status\":\"paid\"\},\{\"id\":2,\"items\":[\{\"sku\":\"a\",\"qty\":5,\"price\":3.5\}],\"status\":\"open\"\},\{\"id\":3,\"items\":[],\"status\":\"paid\"\}]\}"
+PEOPLE := "[\{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"],\"addr\":\{\"city\":\"Paris\",\"zip\":\"75001\"\}\},\{\"name\":\"Bob\",\"age\":25,\"tags\":[],\"addr\":\{\"city\":\"Rome\",\"zip\":null\}\},\{\"name\":\"Carol\",\"age\":35,\"tags\":[\"c\"],\"addr\":null\}]"
+ORDERS := "\{\"orders\":[\{\"id\":1,\"items\":[\{\"sku\":\"a\",\"qty\":2,\"price\":3.5\},\{\"sku\":\"b\",\"qty\":1,\"price\":10\}],\"status\":\"paid\"\},\{\"id\":2,\"items\":[\{\"sku\":\"a\",\"qty\":5,\"price\":3.5\}],\"status\":\"open\"\},\{\"id\":3,\"items\":[],\"status\":\"paid\"\}]\}"
 
 fn add(
     var cs: Cases, name: String, prog: String, inputs: String = "null",
     opts: String = ""
 ) Unit:
-    let head = if opts.is_empty(): "" else: opts + " "
-    let tail = if inputs.ends_with("\n"): "" else: "\n"
+    head := if opts.is_empty(): "" else: opts + " "
+    tail := if inputs.ends_with("\n"): "" else: "\n"
     cs.push(name, head + prog + "\n" + inputs + tail)
 
 export fn gen_c55() Unit:
@@ -311,7 +311,7 @@ export fn gen_c55() Unit:
         "[".repeat(150).get("") + "1" + "]".repeat(150).get("")
     )
 
-    let examples = [
+    examples := [
         cs.make(
             "basic",
             ".users | map(select(.age >= 18) | \{name, adult: true\})\n\{\"users\":[\{\"name\":\"A\",\"age\":20\},\{\"name\":\"B\",\"age\":10\},\{\"name\":\"C\",\"age\":33\}]\}\n"

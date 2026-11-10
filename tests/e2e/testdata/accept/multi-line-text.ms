@@ -18,7 +18,7 @@ test "indentation of the closing line is removed":
     )
 
 test "blank lines and a trailing newline survive":
-    let text = """
+    text := """
         first
 
         last
@@ -37,7 +37,7 @@ type Person:
     n: Int
 
 test "raw text needs no escapes for JSON":
-    let person = try parse[Person](text: r"""
+    person := try parse[Person](text: r"""
     {"name": "ada", "n": 1}
     """)
     try expect_equal(person.name, "ada")

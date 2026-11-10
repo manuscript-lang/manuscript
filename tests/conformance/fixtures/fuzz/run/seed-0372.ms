@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [(-11), (-3), 11, (-12)]
+    l1 := [(-11), (-3), 11, (-12)]
     say("l1 = {l1} len {l1.length()}")
 
-    let s2 = ("emoji 😀" + "  padded  ").trim().replace("  padded  ", "MiXeD CaSe")
+    s2 := ("emoji 😀" + "  padded  ").trim().replace("  padded  ", "MiXeD CaSe")
     say("s2 = [{s2}]")
 
-    let b3 = (
+    b3 := (
         ((false and false) or (963203193781 == (-36)))
         and s2.replace("hello world", "naïve").contains(s2)
     )
     say("b3 = {b3}")
 
-    let i4 = (((39 + (-780123)) * ((-36) % 7)) * (-(32 * (-38))))
+    i4 := (((39 + (-780123)) * ((-36) % 7)) * (-(32 * (-38))))
     say("i4 = {i4}")
 
     var acc5 = 0
@@ -39,7 +39,7 @@ export fn main() Int:
 
     say("acc6 = {acc6}")
 
-    let l7 = [0, (-12), (-21), 7, 2]
+    l7 := [0, (-12), (-21), 7, 2]
     say("l7 = {l7} len {l7.length()}")
     say(
         "{(l1.get(2) + (39 + i4))} {i4} {((l1.get(2) + (39 + i4)) < i4)} sum {(l1.get(2) + (39 + i4)) + i4}"
@@ -49,25 +49,25 @@ export fn main() Int:
     l8.append(83)
     say("l8 = {l8} len {l8.length()}")
 
-    let l9 = l8.concat(l8)
+    l9 := l8.concat(l8)
     say("l9 = {l9} len {l9.length()}")
 
-    let b10 = b3
+    b10 := b3
     say("b10 = {b10}")
 
-    let f11 = (
+    f11 := (
         ((4.0e-4 + 0.0) / (195.617 - 507.790))
         * ((163.020 * 36.185) / (653.25 * 481.504))
     )
     say("f11 = {f11}")
 
-    let i12 = 3
+    i12 := 3
     say("i12 = {i12}")
 
-    let s13 = ("hello world" + (s2 + ("{(i12 * i4)}:" + "ms")))
+    s13 := ("hello world" + (s2 + ("{(i12 * i4)}:" + "ms")))
     say("s13 = [{s13}]")
 
-    let f14 = ((f11 * (f11 / f11)) / ((f11 / 635.578) * f11))
+    f14 := ((f11 * (f11 / f11)) / ((f11 / 635.578) * f11))
     say("f14 = {f14}")
 
     var acc15 = 0
@@ -80,12 +80,12 @@ export fn main() Int:
 
     say("acc15 = {acc15}")
 
-    let i16 = (((i4 / i12) + 914532) + i12)
+    i16 := (((i4 / i12) + 914532) + i12)
     say("i16 = {i16}")
 
-    let f17 = f11
+    f17 := f11
     say("f17 = {f17}")
 
-    let l18 = l7.map(fn x: x + 2).filter(fn x: x % 2 == 0)
+    l18 := l7.map(fn x: x + 2).filter(fn x: x % 2 == 0)
     say("l18 = {l18} len {l18.length()}")
     return 0

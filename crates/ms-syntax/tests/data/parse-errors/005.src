@@ -28,15 +28,15 @@ impl Disposable for Resource:
 
 fn bound_cleanup[T: Disposable](resource: T) Unit:
     with item = resource:
-        let completed = unit
+        completed := unit
 
 fn canonical_cleanup[T: Closeable](resource: T) Unit:
     with item = resource:
-        let completed = unit
+        completed := unit
 
 test "cleanup uses the selected contract":
-    let closed = Flag(value: false)
-    let unexpected: List[Int] = []
+    closed := Flag(value: false)
+    unexpected: List[Int] = []
     with resource = Resource(closed, unexpected):
         (not closed.value) | try expect_true
     closed.value | try expect_true

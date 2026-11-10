@@ -1,11 +1,11 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
-let LIMIT = 10
-let DOUBLE = LIMIT * 2
-let NAMES: List[String] = ["a", "b"]
-let GREETING = "limit \{LIMIT\}"
-let NOTHING: Int? = none
-let from = 4
+LIMIT := 10
+DOUBLE := LIMIT * 2
+NAMES: List[String] = ["a", "b"]
+GREETING := "limit \{LIMIT\}"
+NOTHING: Int? = none
+from := 4
 
 fn limit_plus(extra: Int) Int:
     return LIMIT + extra
@@ -23,15 +23,15 @@ test "each use starts from a fresh collection":
     try expect_false(not (names.length() == 3 and NAMES.length() == 2))
 
 test "a local binding shadows a constant":
-    let LIMIT = 3
+    LIMIT := 3
     try expect_equal(LIMIT, 3)
 
 enum Phase:
     Idle
     Active(count: Int)
 
-let START = Phase.Idle
-let NEXT: Phase = Idle
+START := Phase.Idle
+NEXT: Phase = Idle
 
 fn phase_name(phase: Phase) String:
     match phase:

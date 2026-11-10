@@ -100,11 +100,11 @@ fn log_entries(input: ReadStream[Bytes]) ReadStream[LogEntry!]:
         | map(parse_entry)
 
 fn tail_errors(path: String, out: WriteStream[String]) Int!:
-    let file = try open(path).wait()
-    let entries = file.reader() | log_entries
+    file := try open(path).wait()
+    entries := file.reader() | log_entries
     var count = 0
     for entry in entries.wait():
-        let e = try entry
+        e := try entry
         try out.write("{e.time} {e.message}\n")
         count += 1
     try out.flush().wait()
@@ -121,12 +121,12 @@ impl Transform[Int, Int] for Running:
     var fn finish(var out: List[Int]) Unit!:
         return ok(unit)
 
-let sums = from_list([1, 2, 3]) | through(Running(0)) | collect(max_items: none)   # [1, 3, 6]
+sums := from_list([1, 2, 3]) | through(Running(0)) | collect(max_items: none)   # [1, 3, 6]
 
 fn proxy(var client: Connection, var upstream: Connection) Unit!:
-    let {input: from_client, output: to_client} = client
-    let {input: from_upstream, output: to_upstream} = upstream
-    let _counts = try wait_all([
+    {input: from_client, output: to_client} := client
+    {input: from_upstream, output: to_upstream} := upstream
+    _counts := try wait_all([
         promise(fn: copy(from_client, to_upstream)),
         promise(fn: copy(from_upstream, to_client))
     ])

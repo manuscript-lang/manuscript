@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-spelling-capital-true.ms:5:13: resolution: unknown binding True; booleans are lowercase: write true and false\n   |\n 5 |     let a = True\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-spelling-capital-true.ms:5:13: resolution: unknown binding True; booleans are lowercase: write true and false\n   |\n 5 |     a := True\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

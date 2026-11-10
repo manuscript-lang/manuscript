@@ -64,7 +64,7 @@ fn the_fix_waits_for_a_dropped_call() {
         &fix.replacement,
     );
     assert!(
-        fixed.contains("let _ = promise(fn: work()) | .wait()\n"),
+        fixed.contains("_ := promise(fn: work()) | .wait()\n"),
         "{fixed}"
     );
 }
@@ -84,7 +84,7 @@ fn promise_fixes_preserve_written_call_expressions() {
         "1\n        | make",
         "promise(fn() Int!:\n        return ok(1)\n    )",
     ] {
-        for binding in ["", "let _ = ", "let _: Promise[Int] = "] {
+        for binding in ["", "_ := ", "_: Promise[Int] = "] {
             for newline in ["\n", "\r\n"] {
                 let source = source("factories.ms")
                     .replace("EXPRESSION", &format!("{binding}{expression}"))

@@ -68,7 +68,7 @@ impl Transform[String, String] for Words:
         return ok(unit)
 
 test "a transform writes zero or more items per input and more at the end":
-    let words = through[String, String](from_list(["a b", "", "c"]), Words(0))
+    words := through[String, String](from_list(["a b", "", "c"]), Words(0))
     try expect_equal(try collect(words), ["a", "b", "", "c", "4"])
 
 // Writes an item, then fails on a negative input.
@@ -91,7 +91,7 @@ test "a failed step's partial output is dropped and the failure is the next item
     var failed = false
 
     while true:
-        let item = s.next()
+        item := s.next()
 
         if item.is_error():
             failed = true

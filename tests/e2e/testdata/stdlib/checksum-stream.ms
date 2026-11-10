@@ -18,7 +18,7 @@ impl Source[Bytes] for Chunks:
         var end = self.at + self.size
         if end > self.data.length(): end = self.data.length()
 
-        let piece = try self.data.slice(self.at, end)
+        piece := try self.data.slice(self.at, end)
         self.at = end
         return ok(piece)
 
@@ -29,7 +29,7 @@ fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
     return ReadStream[Bytes](Chunks(data, size, 0))
 
 test "stream checksums match the whole-value functions under every chunk size":
-    let data = "123456789 and some more bytes to cross chunk boundaries".to_bytes()
+    data := "123456789 and some more bytes to cross chunk boundaries".to_bytes()
 
     for size in [1, 3, 8, 100]:
         try expect_equal(try crc32_of(chunked(data.clone(), size)), crc32(data.clone()))
@@ -42,7 +42,7 @@ test "stream checksums match the whole-value functions under every chunk size":
         )
 
 test "digest of a stream matches the hasher":
-    let data = "digest me in pieces".to_bytes()
+    data := "digest me in pieces".to_bytes()
     for algorithm in [
         HashAlgorithm.Md5, HashAlgorithm.Sha1, HashAlgorithm.Sha256,
         HashAlgorithm.Sha512

@@ -16,7 +16,7 @@ For example, save this as `decrement.ms`. Tests use `test "name":` blocks and as
 import expect_equal from "@std/test/test.ms"
 
 test "checked decrement":
-    let value = 3
+    value := 3
     try expect_equal(value - 1, 2)
 ```
 

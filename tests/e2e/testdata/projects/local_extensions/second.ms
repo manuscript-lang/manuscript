@@ -41,11 +41,11 @@ export fn second_generic() fn(Item) Int:
     return relay[Item]
 
 test "second local extensions":
-    let item = Item(2)
+    item := Item(2)
     (item.get() != 22 or invoke(item) != 22 or relay(item.clone()) != 22) | try expect_false
     as_view(item).get() | try expect_equal(22)
 
-    let holder = Holder(item)
+    holder := Holder(item)
     (holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22) | try expect_false
     Box("hello").get() | try expect_equal("hello")
     Choice.Some(2).get() | try expect_equal(22)
@@ -54,24 +54,24 @@ import Resource from "./domain.ms"
 
 impl Closeable for Resource:
     var fn close() Unit!:
-        let _ = append_file(self.events, "20,").wait()
+        _ := append_file(self.events, "20,").wait()
         return ok(unit)
 
 fn leave(resource: Resource) Unit:
-    let _local = resource
+    _local := resource
     return
 
 export fn second_resource(resource: Resource) Closeable:
     return resource
 
 test "second local cleanup":
-    let dir = temporary("ms-ext-") | try expect_ok
-    let events = "{dir.path()}/events"
+    dir := temporary("ms-ext-") | try expect_ok
+    events := "{dir.path()}/events"
     leave(Resource(events.clone()))
     (try expect_ok(read_file(events).wait())).decode_utf8() | try expect_equal("20,")
 
 import mixed from "./first.ms"
 
 test "generic evidence does not change concrete lexical dispatch":
-    let item = Item(2)
+    item := Item(2)
     mixed(value: item, concrete: item) | try expect_equal(34)

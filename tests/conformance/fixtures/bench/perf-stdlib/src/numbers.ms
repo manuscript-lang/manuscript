@@ -7,7 +7,7 @@ import parse_timestamp from "@std/time.ms"
 import PriorityQueue, Queue from "@std/collections/queue.ms"
 
 export fn bench_numbers() Unit:
-    let rate: Decimal = 1.12345d
+    rate: Decimal = 1.12345d
 
     bench(
         "bigint.factorial_1000",
@@ -25,12 +25,12 @@ export fn bench_numbers() Unit:
         fn() Int:
             var n = 0
             for i in 0..20000:
-                if let d = (i.to_decimal() + rate).round(2):
+                if d := (i.to_decimal() + rate).round(2):
                     n += d.truncate_to_int().get(0)
             return n
     )
 
-    let blob = (
+    blob := (
         "the quick brown fox jumps over the lazy dog "
         .repeat(20000)
         .get("")
@@ -41,7 +41,7 @@ export fn bench_numbers() Unit:
         "compress.gzip",
         blob.length(),
         fn() Int:
-            if let b = compress(blob, "gzip", 6):
+            if b := compress(blob, "gzip", 6):
                 return b.length()
 
             return 0
@@ -51,7 +51,7 @@ export fn bench_numbers() Unit:
         "compress.roundtrip",
         blob.length(),
         fn() Int:
-            if let b = compress(blob, "gzip", 6):
+            if b := compress(blob, "gzip", 6):
                 return unpacked_length(b)
 
             return 0
@@ -63,7 +63,7 @@ export fn bench_numbers() Unit:
         fn() Int:
             var n = 0
             for i in 0..20000:
-                if let t = parse_timestamp("2026-03-01T12:30:45.123Z"):
+                if t := parse_timestamp("2026-03-01T12:30:45.123Z"):
                     n += t.unix_seconds() % 7
             return n
     )
@@ -97,7 +97,7 @@ export fn bench_numbers() Unit:
     )
 
 fn unpacked_length(data: Bytes) Int:
-    if let b = decompress(data, "gzip"):
+    if b := decompress(data, "gzip"):
         return b.length()
 
     return 0

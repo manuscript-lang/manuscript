@@ -7,13 +7,13 @@ import now from "@std/time.ms"
 import draw_uuid from "@std/internal/random.ms"
 
 // The namespace for fully qualified domain names, for `uuid_v5`.
-export let namespace_dns = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+export namespace_dns := "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 // The namespace for URLs, for `uuid_v5`.
-export let namespace_url = "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
+export namespace_url := "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
 // The namespace for ISO object identifiers, for `uuid_v5`.
-export let namespace_oid = "6ba7b812-9dad-11d1-80b4-00c04fd430c8"
+export namespace_oid := "6ba7b812-9dad-11d1-80b4-00c04fd430c8"
 // The namespace for X.500 distinguished names, for `uuid_v5`.
-export let namespace_x500 = "6ba7b814-9dad-11d1-80b4-00c04fd430c8"
+export namespace_x500 := "6ba7b814-9dad-11d1-80b4-00c04fd430c8"
 
 // Creates a version-4 UUID from the operating system's entropy.
 // ms: effect std.random.read
@@ -27,12 +27,12 @@ The same namespace and name always give the same lowercase UUID, so it makes a s
 Example: `uuid_v5(namespace_dns, "python.org")` is `"886313e1-3b8a-5372-9b90-0c9aee199e5d"`.
 */
 export fn uuid_v5(namespace: String, name: String) String!:
-    let space = try uuid_to_bytes(namespace)
+    space := try uuid_to_bytes(namespace)
     var input = BytesBuilder()
     input.append_bytes(space)
     input.append_bytes(name.to_bytes())
 
-    let digest = HashAlgorithm.Sha1.digest(input.build())
+    digest := HashAlgorithm.Sha1.digest(input.build())
     return ok(format_uuid(digest, 5))
 
 /*
@@ -41,9 +41,9 @@ Ids made later sort after ids made earlier as strings, which keeps database inde
 Two ids made in the same millisecond are ordered randomly. Entropy failures return an `Error`.
 */
 export fn uuid_v7() String!:
-    let moment = now()
-    let millis = moment.seconds * 1000 + moment.nanos / 1000000
-    let noise = try random_bytes(10)
+    moment := now()
+    millis := moment.seconds * 1000 + moment.nanos / 1000000
+    noise := try random_bytes(10)
     var raw = BytesBuilder()
     for place in 0..6:
         raw.append(
@@ -57,11 +57,11 @@ export fn uuid_v7() String!:
 // Returns the version digit (1 through 8) of an RFC 9562 UUID text, or none when `text` is not a UUID of that variant.
 // Case does not matter. Example: `uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d")` is `5`.
 export fn uuid_version(text: String) Int?:
-    let raw = uuid_to_bytes(text)
+    raw := uuid_to_bytes(text)
 
-    if let bytes = raw:
-        let version = shift_right_unsigned(bytes.get(6).to_int(), 4)
-        let variant = shift_right_unsigned(bytes.get(8).to_int(), 6)
+    if bytes := raw:
+        version := shift_right_unsigned(bytes.get(6).to_int(), 4)
+        variant := shift_right_unsigned(bytes.get(8).to_int(), 6)
         if variant == 2 and version >= 1 and version <= 8: return version
 
     return none
@@ -70,15 +70,15 @@ export fn uuid_version(text: String) Int?:
 fn uuid_to_bytes(text: String) Bytes!:
     if text.length() != 36: return error(Error("uuid: invalid data", kind: "EBADMSG"))
 
-    let groups = text.split("-")
+    groups := text.split("-")
     if groups.length() != 5: return error(Error("uuid: invalid data", kind: "EBADMSG"))
     if groups[0].length() != 8 or groups[1].length() != 4 or groups[2].length() != 4:
         return error(Error("uuid: invalid data", kind: "EBADMSG"))
     if groups[3].length() != 4 or groups[4].length() != 12:
         return error(Error("uuid: invalid data", kind: "EBADMSG"))
 
-    let decoded = hex_decode(text.replace("-", ""), 16)
-    if let bytes = decoded: return ok(bytes)
+    decoded := hex_decode(text.replace("-", ""), 16)
+    if bytes := decoded: return ok(bytes)
 
     return error(Error("uuid: invalid data", kind: "EBADMSG"))
 
@@ -92,5 +92,5 @@ fn format_uuid(source: Bytes, version: Int) String:
         if place == 8: byte = bit_or(bit_and(byte, 63), 128)
         raw.append(byte.to_uint8().get(0))
 
-    let hex = hex_encode(raw.build())
+    hex := hex_encode(raw.build())
     return "{hex.take(8)}-{hex.drop(8).take(4)}-{hex.drop(12).take(4)}-{hex.drop(16).take(4)}-{hex.drop(20)}"

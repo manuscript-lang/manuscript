@@ -27,16 +27,16 @@ fn echo(var exchange: HttpExchange) Unit!:
         return ok(unit)
 
     var fields = headers()
-    let _appended = try fields.append("X-Test", "stream")
+    _appended := try fields.append("X-Test", "stream")
     try exchange.send_headers(200, fields)
     return exchange.write_bytes("hello from streaming Manuscript".to_bytes())
 
 fn exercise() Unit!:
-    let tls = TlsOptions(
+    tls := TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
         alpn: [], require_client_certificate: false
     )
-    let server_options = HttpServerOptions(
+    server_options := HttpServerOptions(
         max_requests: 8, max_body_bytes: 1024, max_response_bytes: 1024,
         max_header_bytes: 65536, timeout: 3.seconds(), grace: 0.milliseconds(),
         tls: none
@@ -44,7 +44,7 @@ fn exercise() Unit!:
     var server = try serve(
         address: "127.0.0.1:0", handler: echo, options: server_options
     )
-    let client_options = HttpClientOptions(
+    client_options := HttpClientOptions(
         max_redirects: 2, max_idle_connections: 4, max_header_bytes: 65536,
         idle_timeout: 10.seconds(), decompress: true, cookies: true, tls: tls.clone()
     )
@@ -55,7 +55,7 @@ fn exercise() Unit!:
     )
     response.metadata.status | try expect_equal(200)
 
-    let part = try response.body.next()
+    part := try response.body.next()
 
     match part:
         data:
@@ -70,7 +70,7 @@ fn exercise() Unit!:
     try response.close()
     try client.close()
 
-    let websocket_options = WebSocketOptions(
+    websocket_options := WebSocketOptions(
         headers: headers(), subprotocols: ["echo"], max_message_bytes: 1024, timeout: 2.seconds(), tls: tls, compression: false
     )
     var socket = try web_socket(

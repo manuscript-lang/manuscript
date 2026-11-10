@@ -4,7 +4,7 @@
 fn use(value: Int?) Int:
     return match value:
         _value:
-            let callback = fn(
+            callback := fn(
                 n: Int = match value:
                     x: x
                     none: 0

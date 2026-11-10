@@ -5,6 +5,6 @@ import Box from "./data.ms"
 import expect_true, fail from "@std/test/test.ms"
 
 test "imported constructor retains default module and generic scope":
-    let box = Box(value: "text")
+    box := Box(value: "text")
     if box.copied != "text" or box.items.get(0) != "text":
         return fail("imported generic defaults")

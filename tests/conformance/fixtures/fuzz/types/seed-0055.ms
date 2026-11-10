@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f2 = (
+    f2 := (
         ((1.0e8 + 2.0e22) - (421.639 + 610.166))
         * ((8.5 + 556.896) - (5.5 - 537.979))
     )
@@ -17,6 +17,6 @@ export fn main() Int:
     if 1:
         say("truthy")
 
-    let i3 = (25 + 146259)
+    i3 := (25 + 146259)
     say("i3 = {i3}")
     return 0

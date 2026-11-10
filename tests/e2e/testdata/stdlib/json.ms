@@ -22,7 +22,7 @@ import Data from "@std/core.ms"
 import BigInt from "@std/math/math.ms"
 
 test "JSON exact numbers Unicode and nested roundtrip":
-    let text = "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"
+    text := "\{\"n\":9007199254740993,\"s\":\"é🙂\",\"a\":[null,true,false]\}"
     try expect_equal((try parse(text) | try stringify), text)
     try expect_equal((try parse("\"\\uD83D\\uDE00\"")), JsonValue.StringValue("😀"))
     try expect_equal(
@@ -30,25 +30,25 @@ test "JSON exact numbers Unicode and nested roundtrip":
     )
 
 fn expect_syntax_error[T](actual: T!) Unit!:
-    let cause = try expect_error(actual)
+    cause := try expect_error(actual)
     try expect_equal(cause.kind, "EBADMSG")
     try expect_contains(cause.message, "JSON: invalid data: line ")
     return ok(unit)
 
 fn expect_invalid_data[T](actual: T!) Unit!:
-    let cause = try expect_error(actual)
+    cause := try expect_error(actual)
     try expect_equal(cause.kind, "EBADMSG")
     try expect_contains(cause.message, "JSON: invalid data")
     return ok(unit)
 
 test "JSON decode errors name the failing path":
-    let wrong = parse[Profile]("\{\"name\":1\}")
+    wrong := parse[Profile]("\{\"name\":1\}")
     try expect_equal(
         (try expect_error(wrong)).message,
         "JSON: invalid data: at $.name: expected string, found number"
     )
 
-    let nested = parse[List[Profile]]("[\{\"name\":\"a\",\"scores\":[]\}, 3]")
+    nested := parse[List[Profile]]("[\{\"name\":\"a\",\"scores\":[]\}, 3]")
     try expect_contains(
         (try expect_error(nested)).message, "at $[1]: expected object, found number"
     )
@@ -60,24 +60,24 @@ test "JSON rejects duplicate keys malformed Unicode and trailing values":
         try expect_syntax_error(parse(text))
 
 test "JSON independently enforces byte depth and value budgets":
-    let limited: JsonValue! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
+    limited: JsonValue! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(parse("null", JsonOptions(max_bytes: 3)), limited)
     try expect_equal(parse("[[[]]]", JsonOptions(max_depth: 2)), limited)
     try expect_equal(parse("[1,2]", JsonOptions(max_values: 2)), limited)
 
-    let invalid: JsonValue! = error(Error("JSON: invalid input", kind: "EINVAL"))
+    invalid: JsonValue! = error(Error("JSON: invalid input", kind: "EINVAL"))
     try expect_equal(parse("null", JsonOptions(max_bytes: -1)), invalid)
 
 test "JSON untyped parse keeps document shape and releases partial trees on failure":
-    let long = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    let text = (
+    long := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    text := (
         "[\{\""
         + long
         + "\":[1,\""
         + long
         + "\",\{\}],\"k\\n\":null\},[],true,-1.5e3,\"\\u00e9\"]"
     )
-    let parsed = try parse(text)
+    parsed := try parse(text)
     try expect_equal(try stringify(parsed), text.replace("\\u00e9", "é"))
 
     var wide = "\{"
@@ -95,11 +95,11 @@ test "JSON untyped parse keeps document shape and releases partial trees on fail
     try expect_syntax_error(parse(wide + "\"k7\":0\}"))
     try expect_syntax_error(parse(wide + "\"k40\":["))
 
-    let fine = try parse(wide + "\"k40\":0\}")
+    fine := try parse(wide + "\"k40\":0\}")
     try expect_equal(try stringify(fine), wide + "\"k40\":0\}")
 
 test "JSON stringify rejects number text with trailing whitespace":
-    let padded: String! = error(Error("JSON: invalid data", kind: "EBADMSG"))
+    padded: String! = error(Error("JSON: invalid data", kind: "EBADMSG"))
     try expect_equal(stringify(JsonValue.NumberValue("1\n")), padded)
     try expect_equal(stringify(JsonValue.NumberValue("1 ")), padded)
 
@@ -111,7 +111,7 @@ test "JSON parse bounds nesting even without a depth limit":
         text += "["
         closing += "]"
 
-    let limited: JsonValue! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
+    limited: JsonValue! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(parse(text + closing), limited)
 
 type Request:
@@ -144,24 +144,24 @@ fn encoded[T: Data](item: T) String!:
 
 test "JSON stringify encodes records in declaration order and omits none fields":
     var request = Request("m", stream: true, none, 0.5, ["a", "b"])
-    let expected = "\{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"]\}"
+    expected := "\{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"]\}"
     try expect_equal((try encoded(request)), expected)
     request.user = "u"
 
-    let named = "\{\"model\":\"m\",\"stream\":true,\"user\":\"u\",\"temperature\":0.5,\"tags\":[\"a\",\"b\"]\}"
+    named := "\{\"model\":\"m\",\"stream\":true,\"user\":\"u\",\"temperature\":0.5,\"tags\":[\"a\",\"b\"]\}"
     try expect_equal((try encoded(request)), named)
     try expect_equal((try encoded(Box[Int](1, none))), "\{\"first\":1\}")
     try expect_equal((try encoded(Box[Int](1, 2))), "\{\"first\":1,\"second\":2\}")
 
 test "JSON stringify encodes alternatives and nested optionals":
-    let scene = Scene(Shape.Circle(2), [Shape.Dot, Shape.Rect(1, 2)], none)
-    let expected = "\{\"shape\":\{\"Circle\":\{\"radius\":2\}\},\"shapes\":[\"Dot\",\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
+    scene := Scene(Shape.Circle(2), [Shape.Dot, Shape.Rect(1, 2)], none)
+    expected := "\{\"shape\":\{\"Circle\":\{\"radius\":2\}\},\"shapes\":[\"Dot\",\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
     try expect_equal((try encoded(scene)), expected)
 
-    let sparse: List[Int?] = [1, none]
+    sparse: List[Int?] = [1, none]
     try expect_equal((try encoded(sparse)), "[1,null]")
 
-    let missing: Int? = none
+    missing: Int? = none
     try expect_equal((try encoded(missing)), "null")
 
 test "JSON stringify encodes scalars exactly":
@@ -171,24 +171,24 @@ test "JSON stringify encodes scalars exactly":
     try expect_equal((try encoded(1e300)), "1e+300")
     try expect_equal((try encoded("<é\n")), "\"<é\\n\"")
 
-    let parsed = try parse("\{\"n\":1.50\}")
-    let mixed = Box[JsonValue](parsed, none)
+    parsed := try parse("\{\"n\":1.50\}")
+    mixed := Box[JsonValue](parsed, none)
     try expect_equal((try encoded(mixed)), "\{\"first\":\{\"n\":1.50\}\}")
 
 test "JSON stringify reports non-finite numbers and budgets as errors":
     try expect_equal((try encoded(1e308 * 10.0)), "null")
     try expect_equal((try encoded(1e308 * 10.0 - 1e308 * 10.0)), "null")
 
-    let limited: String! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
+    limited: String! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(stringify("abcdef", StringifyOptions(max_bytes: 4)), limited)
 
-    let negative: String! = error(Error("JSON: invalid input", kind: "EINVAL"))
+    negative: String! = error(Error("JSON: invalid input", kind: "EINVAL"))
     try expect_equal(stringify(1, StringifyOptions(max_bytes: -1)), negative)
 
 test "JSON stringify repeats shared acyclic values and reads current field values":
-    let shared = Node("s", none)
+    shared := Node("s", none)
     var pair = [shared.clone(), shared.clone()]
-    let before = try encoded(pair)
+    before := try encoded(pair)
     pair.set(0, Node("changed", none))
     try expect_equal(before, "[\{\"label\":\"s\"\},\{\"label\":\"s\"\}]")
     try expect_not_equal((try encoded(pair)), before)
@@ -223,25 +223,25 @@ test "JSON stringify omits none fields and keeps nested optionals":
     var handler = Handler("h", none, none)
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\"\}")
 
-    let inner_none: Int? = none
+    inner_none: Int? = none
     handler.retries = inner_none
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\",\"retries\":null\}")
 
-    let inner_three: Int? = 3
+    inner_three: Int? = 3
     handler.retries = inner_three
     try expect_equal((try encoded(handler)), "\{\"name\":\"h\",\"retries\":3\}")
 
 test "JSON stringify encodes standard-library values":
-    let at = try timestamp(1700000000, 500000000)
-    let link = Url("https", "example.com", 8080, "/a", "x=1", "")
-    let item = Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
-    let expected = "\{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"\}"
+    at := try timestamp(1700000000, 500000000)
+    link := Url("https", "example.com", 8080, "/a", "x=1", "")
+    item := Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
+    expected := "\{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"\}"
     try expect_equal((try encoded(item)), expected)
     try expect_equal(
         (try encoded(Error("boom"))), "\{\"message\":\"boom\",\"details\":\{\}\}"
     )
 
-    let ok: Int! = ok(5)
+    ok: Int! = ok(5)
     try expect_equal((try encoded(ok)), "\{\"ok\":\{\"value\":5\}\}")
     try expect_equal((try encoded("EBADMSG")), "\"EBADMSG\"")
     try expect_equal(
@@ -250,38 +250,38 @@ test "JSON stringify encodes standard-library values":
     try expect_equal((try encoded(Tagged.Plain)), "\"Plain\"")
 
 test "JSON stringify honors JsonEncode wherever the value appears":
-    let invoice = Invoice(Money(500), [Money(200), Money(300)])
-    let expected = "\{\"total\":\"usd:500\",\"lines\":[\"usd:200\",\"usd:300\"]\}"
+    invoice := Invoice(Money(500), [Money(200), Money(300)])
+    expected := "\{\"total\":\"usd:500\",\"lines\":[\"usd:200\",\"usd:300\"]\}"
     try expect_equal((try encoded(invoice)), expected)
     try expect_equal((try encoded(Money(7))), "\"usd:7\"")
 
 test "JSON stringify indents like JSON.stringify and clamps at ten":
-    let request = Request("m", stream: true, none, 0.5, ["a"])
-    let pretty = try stringify(request, StringifyOptions(indent: 2))
-    let expected = "\{\n  \"model\": \"m\",\n  \"stream\": true,\n  \"temperature\": 0.5,\n  \"tags\": [\n    \"a\"\n  ]\n\}"
+    request := Request("m", stream: true, none, 0.5, ["a"])
+    pretty := try stringify(request, StringifyOptions(indent: 2))
+    expected := "\{\n  \"model\": \"m\",\n  \"stream\": true,\n  \"temperature\": 0.5,\n  \"tags\": [\n    \"a\"\n  ]\n\}"
     try expect_equal(pretty, expected)
 
-    let empty: List[Int] = []
+    empty: List[Int] = []
     try expect_equal((try stringify(empty, StringifyOptions(indent: 4))), "[]")
     try expect_equal((try stringify([1], StringifyOptions(indent: 0))), "[1]")
 
-    let wide = try stringify([1], StringifyOptions(indent: 99))
+    wide := try stringify([1], StringifyOptions(indent: 99))
     try expect_equal(wide, "[\n          1\n]")
 
-    let negative: String! = error(Error("JSON: invalid input", kind: "EINVAL"))
+    negative: String! = error(Error("JSON: invalid input", kind: "EINVAL"))
     try expect_equal(stringify(1, StringifyOptions(indent: -1)), negative)
 
 type Holder:
     done: Unit
 
 test "JSON stringify omits a Unit field and rejects a Unit root":
-    let holder = Holder(unit)
+    holder := Holder(unit)
     try expect_equal((try encoded(holder)), "\{\}")
 
-    let invalid: String! = error(Error("JSON: invalid data", kind: "EBADMSG"))
+    invalid: String! = error(Error("JSON: invalid data", kind: "EBADMSG"))
     try expect_equal(stringify(unit), invalid)
 
-    let failed: Int! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
+    failed: Int! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(
         (try encoded(failed)),
         "\{\"error\":\{\"cause\":\{\"message\":\"JSON: limit exceeded\",\"kind\":\"EOVERFLOW\",\"details\":\{\}\}\}\}"
@@ -302,7 +302,7 @@ fn tagged(kind: String, id: Int) JsonValue:
     fields.add("type", JsonValue.StringValue(kind))
     fields.add("id", JsonValue.NumberValue("{id}"))
 
-    let all = fields
+    all := fields
     return JsonValue.ObjectValue(all)
 
 type Feed:
@@ -313,8 +313,8 @@ test "JSON stringify lets JsonEncode override the structural encoding of an alte
         (try encoded(Event.Created(1))), "\{\"type\":\"created\",\"id\":1\}"
     )
 
-    let feed = Feed([Event.Created(1), Event.Deleted(2)])
-    let expected = "\{\"events\":[\{\"type\":\"created\",\"id\":1\},\{\"type\":\"deleted\",\"id\":2\}]\}"
+    feed := Feed([Event.Created(1), Event.Deleted(2)])
+    expected := "\{\"events\":[\{\"type\":\"created\",\"id\":1\},\{\"type\":\"deleted\",\"id\":2\}]\}"
     try expect_equal((try encoded(feed)), expected)
 
 enum Change:
@@ -348,48 +348,48 @@ fn decoded[T: Data](text: String) T!:
     return parse[T](text)
 
 test "JSON parse decodes records by field name with defaults and optional fields":
-    let text = "\{\"scores\":[1,2.5],\"name\":\"Ada\",\"extra\":1\}"
-    let profile: Profile = try parse[Profile](text)
+    text := "\{\"scores\":[1,2.5],\"name\":\"Ada\",\"extra\":1\}"
+    profile: Profile = try parse[Profile](text)
     try expect_equal(profile.name, "Ada")
     try expect_equal(profile.age, 18)
     try expect_false(profile.nickname.is_some())
     try expect_false(profile.scores.length() != 2 or profile.scores.get(1) != 2.5)
 
-    let full = "\{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[]\}"
-    let other: Profile = try parse[Profile](full)
+    full := "\{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[]\}"
+    other: Profile = try parse[Profile](full)
     try expect_false(other.age != 30 or other.nickname.get() != "bee")
 
 test "JSON parse rejects shape mismatches as InvalidData":
-    let missing = "\{\"scores\":[]\}"
+    missing := "\{\"scores\":[]\}"
     try expect_invalid_data(parse[Profile](missing))
 
-    let unknown = "\{\"name\":\"A\",\"scores\":[],\"extra\":1\}"
+    unknown := "\{\"name\":\"A\",\"scores\":[],\"extra\":1\}"
     try expect_invalid_data(
         parse[Profile](unknown, JsonOptions(ignore_unknown_fields: false))
     )
 
-    let lenient: Profile = try parse[Profile](unknown)
+    lenient: Profile = try parse[Profile](unknown)
     try expect_equal(lenient.name, "A")
 
-    let wrong = "\{\"name\":1,\"scores\":[]\}"
+    wrong := "\{\"name\":1,\"scores\":[]\}"
     try expect_invalid_data(parse[Profile](wrong))
 
-    let fractional = "\{\"name\":\"A\",\"age\":1.5,\"scores\":[]\}"
+    fractional := "\{\"name\":\"A\",\"age\":1.5,\"scores\":[]\}"
     try expect_invalid_data(parse[Profile](fractional))
 
-    let overflow = "\{\"name\":\"A\",\"age\":9223372036854775808,\"scores\":[]\}"
+    overflow := "\{\"name\":\"A\",\"age\":9223372036854775808,\"scores\":[]\}"
     try expect_invalid_data(parse[Profile](overflow))
     try expect_invalid_data(parse[Profile]("[]"))
     try expect_syntax_error(parse[Profile]("\{"))
 
-    let limited: Profile! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
+    limited: Profile! = error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(parse[Profile](missing, JsonOptions(max_bytes: 2)), limited)
 
 test "JSON parse decodes alternatives and generic records":
-    let shape: Shape = try parse[Shape]("\"Dot\"")
+    shape: Shape = try parse[Shape]("\"Dot\"")
     try expect_equal(shape, Shape.Dot)
 
-    let circle: Shape = try parse[Shape]("\{\"Circle\":\{\"radius\":2\}\}")
+    circle: Shape = try parse[Shape]("\{\"Circle\":\{\"radius\":2\}\}")
     try expect_equal(circle, Shape.Circle(2))
     try expect_invalid_data(parse[Shape]("\"Circle\""))
     try expect_invalid_data(parse[Shape]("\{\"Dot\":\{\}\}"))
@@ -398,17 +398,17 @@ test "JSON parse decodes alternatives and generic records":
         parse[Shape]("\{\"Circle\":\{\"radius\":1\},\"Dot\":\{\}\}")
     )
 
-    let scene: Scene = try parse[Scene](
+    scene: Scene = try parse[Scene](
         "\{\"shape\":\"Dot\",\"shapes\":[\{\"Rect\":\{\"width\":1,\"height\":2\}\}]\}"
     )
     try expect_equal(scene.shapes.get(0), Shape.Rect(1, 2))
 
-    let wrapper: Wrapper[Int] = try parse[Wrapper[Int]]("\{\"first\":1\}")
+    wrapper: Wrapper[Int] = try parse[Wrapper[Int]]("\{\"first\":1\}")
     try expect_false(
         (wrapper.first != 1 or wrapper.second.is_some() or wrapper.extra != 7)
     )
 
-    let nested: Wrapper[Wrapper[String]] = try parse[Wrapper[Wrapper[String]]](
+    nested: Wrapper[Wrapper[String]] = try parse[Wrapper[Wrapper[String]]](
         "\{\"first\":\{\"first\":\"x\",\"extra\":1\},\"second\":null\}"
     )
     try expect_false(
@@ -420,76 +420,76 @@ test "JSON parse decodes alternatives and generic records":
     )
 
 test "JSON parse decodes recursive types exact numbers and passthrough values":
-    let tree: Tree = try parse[Tree](
+    tree: Tree = try parse[Tree](
         "\{\"label\":\"r\",\"children\":[\{\"label\":\"c\",\"children\":[]\}]\}"
     )
     try expect_equal(tree.children.get(0).label, "c")
 
-    let price: Price = try parse[Price](
+    price: Price = try parse[Price](
         "\{\"amount\":1.5,\"cents\":123456789012345678901234567890\}"
     )
-    let price_text: String! = ok(
+    price_text: String! = ok(
         "\{\"amount\":1.5,\"cents\":123456789012345678901234567890\}"
     )
     try expect_equal(stringify(price), price_text)
 
-    let raw = try parse("\{\"n\":1.50\}")
-    let boxed: Wrapper[JsonValue] = try parse[Wrapper[JsonValue]](
+    raw := try parse("\{\"n\":1.50\}")
+    boxed: Wrapper[JsonValue] = try parse[Wrapper[JsonValue]](
         "\{\"first\":\{\"n\":1.50\}\}"
     )
     try expect_equal(boxed.first, raw)
 
-    let list: List[Int?] = try parse[List[Int?]]("[1,null]")
+    list: List[Int?] = try parse[List[Int?]]("[1,null]")
     try expect_false(list.get(1).is_some())
 
 test "JSON parse inverts stringify and works in generic code":
-    let profile = Profile("Ada", 20, "a", [0.5])
-    let text = try stringify(profile)
-    let again: Profile = try decoded[Profile](text)
+    profile := Profile("Ada", 20, "a", [0.5])
+    text := try stringify(profile)
+    again: Profile = try decoded[Profile](text)
     try expect_equal((try stringify(again)), text)
     try expect_equal(again.nickname.get(), "a")
 
-    let shapes: List[Shape] = [Shape.Dot, Shape.Rect(3, 4)]
-    let shapesBack: List[Shape] = try decoded[List[Shape]](try stringify(shapes))
+    shapes: List[Shape] = [Shape.Dot, Shape.Rect(3, 4)]
+    shapesBack: List[Shape] = try decoded[List[Shape]](try stringify(shapes))
     try expect_equal(shapesBack.get(1), Shape.Rect(3, 4))
 
 fn load_profile(text: String) Profile!:
-    let profile = try parse[Profile](text)
+    profile := try parse[Profile](text)
     return ok(profile)
 
 fn load_default(text: String) JsonValue!:
     return parse(text)
 
 test "JSON parse takes its type from an explicit argument, the expected result or the JsonValue default":
-    let profile = try load_profile("\{\"name\":\"Ada\",\"scores\":[]\}")
+    profile := try load_profile("\{\"name\":\"Ada\",\"scores\":[]\}")
     try expect_equal(profile.name, "Ada")
     try expect_invalid_data(load_profile("\{\"name\":1\}"))
 
-    let raw = try load_default("\{\"a\":[1]\}")
-    let again = try parse("\{\"a\":[1]\}")
+    raw := try load_default("\{\"a\":[1]\}")
+    again := try parse("\{\"a\":[1]\}")
     try expect_equal(raw, again)
 
 test "JSON parse reads what stringify writes for standard values and scalar map keys":
-    let at = try timestamp(1700000000, 500000000)
-    let link = Url("https", "example.com", 8080, "/a", "x=1", "")
-    let item = Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
-    let text = try stringify(item)
-    let back: Stamped = try parse[Stamped](text)
+    at := try timestamp(1700000000, 500000000)
+    link := Url("https", "example.com", 8080, "/a", "x=1", "")
+    item := Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
+    text := try stringify(item)
+    back: Stamped = try parse[Stamped](text)
     try expect_equal((try stringify(back)), text)
     try expect_equal(back.took, nanoseconds(1500))
 
 test "JSON parse reads standard alternatives and rejects keys that collide":
-    let good: Int! = try parse[Int!]("\{\"ok\":\{\"value\":5\}\}")
-    let want_ok: Int! = ok(5)
+    good: Int! = try parse[Int!]("\{\"ok\":\{\"value\":5\}\}")
+    want_ok: Int! = ok(5)
     try expect_equal(good, want_ok)
 
-    let failed: Int! = try parse[Int!](
+    failed: Int! = try parse[Int!](
         "\{\"error\":\{\"cause\":\{\"message\":\"bad\",\"kind\":\"EBADMSG\",\"details\":\{\}\}\}\}"
     )
-    let want_error: Int! = error(Error("bad", kind: "EBADMSG"))
+    want_error: Int! = error(Error("bad", kind: "EBADMSG"))
     try expect_equal(failed, want_error)
 
-    let kind: String = try parse[String]("\"EOVERFLOW\"")
+    kind: String = try parse[String]("\"EOVERFLOW\"")
     try expect_equal(kind, "EOVERFLOW")
 
 type Link:
@@ -524,23 +524,23 @@ test "JSON stringify fails on nesting deeper than parse accepts":
     for i in 1..300000:
         head = Link(head, i)
 
-    let r = stringify(head)
+    r := stringify(head)
     try expect_false(r.is_ok())
 
 test "JSON parse runs field defaults that read earlier fields":
-    let d = try parse[Defaults]("\{\"a\":5\}")
+    d := try parse[Defaults]("\{\"a\":5\}")
     if d.b != 6 or d.c != "x6": return fail("default chain {d.b} {d.c}")
 
 test "JSON round trips fields named like Go keywords":
-    let k = Kw(1, 2, 3)
-    let t = try stringify(k)
-    let back = try parse[Kw](t)
+    k := Kw(1, 2, 3)
+    t := try stringify(k)
+    back := try parse[Kw](t)
     try expect_equal(back.range, 3)
 
 test "JSON round trips generic records and alternatives":
-    let w = Wrap([Op.Add(1, 2), Op.Neg(none), Op.Neg(3), Op.Nop], [Pair(1, Op.Nop)])
-    let t = try stringify(w)
-    let back = try parse[Wrap](t)
+    w := Wrap([Op.Add(1, 2), Op.Neg(none), Op.Neg(3), Op.Nop], [Pair(1, Op.Nop)])
+    t := try stringify(w)
+    back := try parse[Wrap](t)
     try expect_equal((try stringify(back)), t)
 
 test "JSON parse returns InvalidData for targets that cannot be read":
@@ -554,18 +554,18 @@ type BoundReading:
     id: Int
 
 test "JSON parse and stringify bound to a type argument pipe like the call":
-    let read = parse[List[BoundReading]]
-    let write = stringify[BoundReading]
-    let items = "[\{\"id\":1\},\{\"id\":2\}]" | read
+    read := parse[List[BoundReading]]
+    write := stringify[BoundReading]
+    items := "[\{\"id\":1\},\{\"id\":2\}]" | read
     try expect_equal(items, ok([BoundReading(1), BoundReading(2)]))
     try expect_equal(BoundReading(1) | write, ok("\{\"id\":1\}"))
 
 test "JSON Decimal fields out of range or inexact are InvalidData":
-    let tiny = "\{\"amount\":1e-9990,\"cents\":1\}"
+    tiny := "\{\"amount\":1e-9990,\"cents\":1\}"
     try expect_invalid_data(parse[Price](tiny))
 
-    let huge = "\{\"amount\":1e9990,\"cents\":1\}"
+    huge := "\{\"amount\":1e9990,\"cents\":1\}"
     try expect_invalid_data(parse[Price](huge))
 
-    let wide = "\{\"amount\":0.1234567890123456789012345678901234567890,\"cents\":1\}"
+    wide := "\{\"amount\":0.1234567890123456789012345678901234567890,\"cents\":1\}"
     try expect_invalid_data(parse[Price](wide))

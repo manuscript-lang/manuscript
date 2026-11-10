@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,22 +15,22 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let i1 = (448293377376 * (((-687045) + 43) + 96095))
+    i1 := (448293377376 * (((-687045) + 43) + 96095))
     say("i1 = {i1}")
 
-    let b2 = ((not (true and true)) and false)
+    b2 := ((not (true and true)) and false)
     say("b2 = {b2}")
 
-    let b3 = "Tab\there".lower().is_empty()
+    b3 := "Tab\there".lower().is_empty()
     say("b3 = {b3}")
 
-    let f4 = 6.0e23
+    f4 := 6.0e23
     say("f4 = {f4}")
 
-    let b5 = b3
+    b5 := b3
     say("b5 = {b5}")
 
-    let i6 = 18
+    i6 := 18
     say("i6 = {i6}")
 
     if ((not b2) or (b5 or true)):
@@ -38,19 +38,19 @@ export fn main() Int:
     else:
         say("line\nbreak")
 
-    let l7 = [1, 2, 3].take(0)
+    l7 := [1, 2, 3].take(0)
     say("l7 = {l7} len {l7.length()}")
 
-    let b8 = b3
+    b8 := b3
     say("b8 = {b8}")
 
-    let s9 = ("naïve".trim() + ("emoji 😀".upper() + "42".reverse()))
+    s9 := ("naïve".trim() + ("emoji 😀".upper() + "42".reverse()))
     say("s9 = [{s9}]")
 
-    let i10 = (631593751202 % (i6 * (i6 + i6)))
+    i10 := (631593751202 % (i6 * (i6 + i6)))
     say("i10 = {i10}")
 
-    let b11 = (((1.0e4 * f4) + (f4 + 482.515)) < ((520.207 / f4) * (f4 + 417.719)))
+    b11 := (((1.0e4 * f4) + (f4 + 482.515)) < ((520.207 / f4) * (f4 + 417.719)))
     say("b11 = {b11}")
 
     if (not (0 > 24)):
@@ -64,15 +64,15 @@ export fn main() Int:
     say("acc12 = {acc12}")
     say("fact(0) = {fact(0)}")
 
-    let b13 = true
+    b13 := true
     say("b13 = {b13}")
 
-    let f14 = f4
+    f14 := f4
     say("f14 = {f14}")
 
-    let b15 = ("MiXeD CaSe" == "beta".upper())
+    b15 := ("MiXeD CaSe" == "beta".upper())
     say("b15 = {b15}")
 
-    let s16 = ("42".lower() + s9.lower()).reverse()
+    s16 := ("42".lower() + s9.lower()).reverse()
     say("s16 = [{s16}]")
     return 0

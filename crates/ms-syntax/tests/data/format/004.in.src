@@ -6,9 +6,9 @@ fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello \{request.path\}".to_bytes())
 
 export fn main() Int:
-    let serve = network().serve
+    serve := network().serve
 
-    if let acquired = serve(
+    if acquired := serve(
         address: "127.0.0.1:0",
         handler: handle,
         max_requests: 2,
@@ -17,10 +17,10 @@ export fn main() Int:
         timeout: 2.seconds,
         grace: 0.seconds
     ):
-        let server = acquired
+        server := acquired
         if stdout().write("{server.address()}\n").is_error():
             return 1
-        let _ignored = server.wait()
+        _ignored := server.wait()
         return 0
 
     return 1

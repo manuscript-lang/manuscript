@@ -6,10 +6,10 @@ import HttpResponse, buffered from "@std/net/http.ms"
 import panic from "@std/core.ms"
 
 fn use() Unit:
-    let shared = Map[Int, Int]()
+    shared := Map[Int, Int]()
 
-    let handle = fn(request) HttpResponse:
-        let seen = shared.length()
+    handle := fn(request) HttpResponse:
+        seen := shared.length()
         return panic("unreached")
 
-    let _server = serve(address: "127.0.0.1:0", handler: buffered(handle))
+    _server := serve(address: "127.0.0.1:0", handler: buffered(handle))

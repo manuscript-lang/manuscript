@@ -12,6 +12,6 @@ impl Crash for Item:
         return 1 / self.value
 
 export fn main() Int:
-    let item = Item(0)
-    let run = item.run
+    item := Item(0)
+    run := item.run
     return run()

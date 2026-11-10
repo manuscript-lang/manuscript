@@ -37,14 +37,14 @@ test "replace_first handles early and late matches across output sizes":
 fn forward[T](value: T) T: value
 
 test "bound typed and generic calls keep the all-versus-first split":
-    let text = "aaaa"
-    let replace = text.replace
+    text := "aaaa"
+    replace := text.replace
     try expect_equal(replace("a", "b"), "bbbb")
 
-    let typed: fn(String, String) String = text.replace_first
+    typed: fn(String, String) String = text.replace_first
     try expect_equal(typed("a", "b"), "baaa")
 
-    let generic = forward(text.replace)
+    generic := forward(text.replace)
     try expect_equal(generic("aa", "x"), "xx")
 
 interface Replacement:
@@ -59,17 +59,17 @@ impl Replacement for TextAdapter:
         return self.text.replace(old, new)
 
 test "explicit and bound views retain method contracts and callable field shadowing":
-    let adapter = TextAdapter("aaaa", fn(old: String, new: String) String: "field")
+    adapter := TextAdapter("aaaa", fn(old: String, new: String) String: "field")
     try expect_equal(adapter.replace("a", "b"), "field")
 
-    let view: Replacement = adapter
+    view: Replacement = adapter
     try expect_equal(view.replace("a", "b"), "bbbb")
 
-    let bound = view.replace
+    bound := view.replace
     try expect_equal(bound("aa", "b"), "bb")
 
 test "replacing long text with a shorter or equal string trims, shares or inlines the result":
-    let long = "word word word word word word word word word word"
+    long := "word word word word word word word word word word"
     try expect_equal(long.replace("word", "w"), "w w w w w w w w w w")
     try expect_equal(
         long.replace("word", "WORD"),
@@ -80,12 +80,12 @@ test "replacing long text with a shorter or equal string trims, shares or inline
     try expect_equal(long.replace("missing", "x"), long)
     try expect_equal(long.replace("word word", "ww"), "ww ww ww ww ww")
 
-    let wide = "é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é"
+    wide := "é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é-é"
     try expect_equal(wide.replace("é", "e"), "e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e-e")
     try expect_equal(wide.replace("-", "").byte_length(), 40)
 
 test "join sizes its result exactly across the inline and heap boundary":
-    let empty: List[String] = []
+    empty: List[String] = []
     try expect_equal(empty.join(","), "")
     try expect_equal(["a"].join(","), "a")
     try expect_equal(["", ""].join(""), "")

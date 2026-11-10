@@ -123,7 +123,7 @@ fn export_lookalikes_in_comments_and_text_declare_nothing() {
         "    Hidden\n",
         "*/\n",
         "\n",
-        "let note = \"\"\"\n",
+        "note := \"\"\"\n",
         "export fn quoted() Int: 1\n",
         "export enum Quoted:\n",
         "    Hidden\n",

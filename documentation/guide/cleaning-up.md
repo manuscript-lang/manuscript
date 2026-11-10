@@ -13,14 +13,14 @@ import open from "@std/os/fs.ms"
 import lines, collect from "@std/io/streams.ms"
 
 fn count_orders(path: String) Int!:
-    let file = try open(path)
-    let rows = try collect(try file.reader() | lines)
+    file := try open(path)
+    rows := try collect(try file.reader() | lines)
     if rows.is_empty():
         return error(Error("{path} is empty", kind: "EBADMSG"))
     return ok(rows.length() - 1)
 
 export fn main() Int:
-    let count = count_orders("orders.csv")
+    count := count_orders("orders.csv")
     if count.is_error():
         print(count.err().message)
         return 1
@@ -47,8 +47,8 @@ Declare the binding with `var` and call `close()` when you are done reading but 
 
 ```manuscript
 var file = try open(path)
-let head = try file.read_lines(max_lines: 1)
-let _ = file.close()
+head := try file.read_lines(max_lines: 1)
+_ := file.close()
 slow_work(head)
 ```
 

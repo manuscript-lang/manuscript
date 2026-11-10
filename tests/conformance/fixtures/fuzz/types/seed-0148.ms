@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (-17)
+    i1 := (-17)
     say("i1 = {i1}")
 
-    let i2 = i1
+    i2 := i1
     say("i2 = {i2}")
 
     if false:
@@ -20,5 +20,5 @@ export fn main() Int:
     else:
         say("hello world".trim())
 
-    let bad = missing_function(3)
+    bad := missing_function(3)
     return 0

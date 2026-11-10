@@ -13,9 +13,9 @@ fn run(work: String, n: Int) Result[String, Error]:
     )
     try build_ms("{work}/ms", "{work}/ms/bench")
 
-    let cc = env("CC", "cc")
-    let source = "bench/perf/listloops/c/kernels.c"
-    let _sse2 = try must(
+    cc := env("CC", "cc")
+    source := "bench/perf/listloops/c/kernels.c"
+    _sse2 := try must(
         "cc",
         capture(
             cc,
@@ -24,7 +24,7 @@ fn run(work: String, n: Int) Result[String, Error]:
             ]
         )
     )
-    let _avx2 = try must(
+    _avx2 := try must(
         "cc",
         capture(
             cc,
@@ -37,14 +37,14 @@ fn run(work: String, n: Int) Result[String, Error]:
 
     for _i in 0..n:
         for v in ["ms", "c-sse2", "c-avx2"]:
-            let exe = if v == "ms": "{work}/ms/bench" else: "{work}/{v}"
+            exe := if v == "ms": "{work}/ms/bench" else: "{work}/{v}"
 
             for line in (try sample(exe, [])).split("\n"):
-                let f = line.split(" ").filter(fn p: p != "")
+                f := line.split(" ").filter(fn p: p != "")
                 if f.length() < 2 or f[0] == "check": continue
 
-                let key = "{f[0]} {v}"
-                let value = f[1].parse_float().get(0.0)
+                key := "{f[0]} {v}"
+                value := f[1].parse_float().get(0.0)
                 if value > best.get_or(key, 0.0) or not best.contains(key): best.add(
                     key.clone(), value
                 )
@@ -54,13 +54,13 @@ fn run(work: String, n: Int) Result[String, Error]:
 
 export fn main() Int:
     var n = 5
-    let args = arguments()
+    args := arguments()
 
     if not args.is_empty():
-        if let parsed = repeats(args[0]):
+        if parsed := repeats(args[0]):
             n = parsed
         else:
             return usage("repeats must be a positive integer")
 
-    let tmp = temporary("listloops-").get()
+    tmp := temporary("listloops-").get()
     return finish(run(tmp.path(), n))

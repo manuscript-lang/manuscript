@@ -13,8 +13,8 @@ impl Closeable for Res:
         return ok(unit)
 
 fn borrowed(values: List[Int]) Int:
-    let a = values
-    let b = a
+    a := values
+    b := a
     return a.length() + b.length() + values.length()
 
 type Holder:
@@ -29,21 +29,21 @@ fn conditional(flag: Bool) Unit:
     if flag:
         value.close().get()
 
-    let _after = Res(2)
+    _after := Res(2)
 
 fn move_through(value: Res) Res:
     return value
 
 fn conditional_move(flag: Bool) Unit:
-    let value = Res(3)
+    value := Res(3)
     if flag:
-        let _moved = move_through(value)
+        _moved := move_through(value)
 
-    let _last = Res(4)
+    _last := Res(4)
 
 export fn main() Int:
     var values = [1, 2]
-    let count = borrowed(values)
+    count := borrowed(values)
     var holder = Holder(values)
     mutate(var holder)
     print("{count} {holder.items.length()}")

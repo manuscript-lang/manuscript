@@ -34,48 +34,48 @@ test "custom equality is kept for bound members":
     a.add(value: Folded(name: "y"))
     (a.length() == 1) | try expect_true
 
-    let mapped = a.map(transform: fn(value: Folded) Folded: return Folded(name: "z"))
+    mapped := a.map(transform: fn(value: Folded) Folded: return Folded(name: "z"))
     (mapped.length() == 1) | try expect_true
 
 test "builder":
     var sb = StringBuilder()
-    let append = sb.append
+    append := sb.append
     append("a")
     append("é")
     (sb.build() == "aé") | try expect_true
 
 test "abs of the minimum overflows":
-    let smallest = 0 - 9223372036854775807 - 1
-    let message = try expect_fault(
+    smallest := 0 - 9223372036854775807 - 1
+    message := try expect_fault(
         fn:
-            let _ignored = smallest.abs()
+            _ignored := smallest.abs()
     )
     message | try expect_contains("Int overflow")
 
 test "negative split cap faults":
-    let message = try expect_fault(
+    message := try expect_fault(
         fn:
-            let _ignored = "a,b".split(separator: ",", max_parts: (0 - 1))
+            _ignored := "a,b".split(separator: ",", max_parts: (0 - 1))
     )
     message | try expect_contains("max_parts must be nonnegative")
 
 test "size and shape methods as values":
-    let xs = [10, 20, 30]
+    xs := [10, 20, 30]
     var m = Map[String, Int]()
     m["a"] = 1
 
-    let s = Set([1, 2])
-    let length = xs.length
-    let is_empty = xs.is_empty
-    let keys = xs.keys
-    let entries = xs.entries
-    let windows = xs.windows
-    let chunks = xs.chunks
-    let map_length = m.length
-    let map_is_empty = m.is_empty
-    let map_entries = m.entries
-    let set_length = s.length
-    let set_is_empty = s.is_empty
+    s := Set([1, 2])
+    length := xs.length
+    is_empty := xs.is_empty
+    keys := xs.keys
+    entries := xs.entries
+    windows := xs.windows
+    chunks := xs.chunks
+    map_length := m.length
+    map_is_empty := m.is_empty
+    map_entries := m.entries
+    set_length := s.length
+    set_is_empty := s.is_empty
     (length() == 3) | try expect_true
     (is_empty() == false) | try expect_true
     (keys().length() == 3) | try expect_true
@@ -89,15 +89,15 @@ test "size and shape methods as values":
     (set_is_empty() == false) | try expect_true
 
 test "sorted as a value":
-    let view: ListCopies[Int] = [3, 1, 2]
-    let sort = view.sorted
-    let ordered = sort(compare: fn a, b: a - b)
+    view: ListCopies[Int] = [3, 1, 2]
+    sort := view.sorted
+    ordered := sort(compare: fn a, b: a - b)
     (ordered.get(index: 0) == 1) | try expect_true
     (ordered.get(index: 2) == 3) | try expect_true
 
 test "take as a value":
-    let take = [3, 1, 2].take
-    let first = take(2)
+    take := [3, 1, 2].take
+    first := take(2)
     (first.length() == 2) | try expect_true
     (first.get(index: 0) == 3) | try expect_true
 
@@ -108,21 +108,21 @@ fn same(a: Equal, b: Equal) Bool:
     return a.equals(b)
 
 test "equals on built-in data":
-    let xs = [1, 2]
-    let ys = [1, 2]
-    let other = [9]
-    let probe = EqualProbe(n: 1)
+    xs := [1, 2]
+    ys := [1, 2]
+    other := [9]
+    probe := EqualProbe(n: 1)
     (xs.equals(ys)) | try expect_true
     (xs.equals(other) == false) | try expect_true
     ("x".equals("x")) | try expect_true
     (1.equals(2) == false) | try expect_true
     (probe.equals(EqualProbe(n: 1))) | try expect_true
 
-    let bound = probe.equals
+    bound := probe.equals
     (bound(EqualProbe(n: 1))) | try expect_true
     (bound(EqualProbe(n: 2)) == false) | try expect_true
 
-    let text = "x".equals
+    text := "x".equals
     (text("x")) | try expect_true
 
 test "built-in data passes as Equal":
@@ -138,17 +138,17 @@ test "list and map literals pass as Equal":
     (same({"a": [1]}, {"a": [2]}) == false) | try expect_true
 
 test "numeric and optional members as values":
-    let n = -7
-    let x = 2.5
-    let abs = n.abs
-    let sign = n.sign
-    let to_float = n.to_float
-    let to_decimal = n.to_decimal
-    let narrow = n.to_int8
-    let float_abs = (-x).abs
-    let is_nan = x.is_nan
-    let is_finite = x.is_finite
-    let hash = n.hash
+    n := -7
+    x := 2.5
+    abs := n.abs
+    sign := n.sign
+    to_float := n.to_float
+    to_decimal := n.to_decimal
+    narrow := n.to_int8
+    float_abs := (-x).abs
+    is_nan := x.is_nan
+    is_finite := x.is_finite
+    hash := n.hash
     (abs() == 7) | try expect_true
     (sign() == -1) | try expect_true
     (to_float() == -7.0) | try expect_true
@@ -165,7 +165,7 @@ test "native calls pass as Equal":
     ("a".to_bytes().equals("a".to_bytes())) | try expect_true
 
 test "native contract methods through an interface value":
-    let view: ListCopies[Int] = [3, 1, 2]
+    view: ListCopies[Int] = [3, 1, 2]
     (view.take(2).length() == 2) | try expect_true
     (view.reversed().get(index: 0) == 2) | try expect_true
     (view.clone().length() == 3) | try expect_true

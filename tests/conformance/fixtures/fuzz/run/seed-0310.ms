@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -35,19 +35,19 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let f1 = 656.722
+    f1 := 656.722
     say("f1 = {f1}")
 
-    let i2 = (-644929)
+    i2 := (-644929)
     say("i2 = {i2}")
     say("collatz(1577) = {collatz(1577)}")
 
-    let l3 = [17]
+    l3 := [17]
     say("l3 = {l3} len {l3.length()}")
     say("gcd(965, 2836) = {gcd(965, 2836)}")
     say("fact(17) = {fact(17)}")
 
-    let l4 = l3.concat(l3)
+    l4 := l3.concat(l3)
     say("l4 = {l4} len {l4.length()}")
 
     var acc5 = 0
@@ -70,7 +70,7 @@ export fn main() Int:
 
     say("acc6 = {acc6}")
 
-    let s7 = ("Tab\there" + (("{(-34)}:" + "naïve") + ("{(30 - i2)}:" + "Tab\there")))
+    s7 := ("Tab\there" + (("{(-34)}:" + "naïve") + ("{(30 - i2)}:" + "Tab\there")))
     say("s7 = [{s7}]")
 
     if ((false or true) and (631.501 != 36.463)):
@@ -78,24 +78,24 @@ export fn main() Int:
     else:
         say(("  padded  " + "日本語"))
 
-    let i8 = ((((-22) * (-32)) % 46390) - ((256779 + i2) - (-39)))
+    i8 := ((((-22) * (-32)) % 46390) - ((256779 + i2) - (-39)))
     say("i8 = {i8}")
 
-    let i9 = l4.length()
+    i9 := l4.length()
     say("i9 = {i9}")
 
-    let l10 = [15, (-10)]
+    l10 := [15, (-10)]
     say("l10 = {l10} len {l10.length()}")
 
-    let s11 = ("{l4.length()}:" + s7.replace(s7, s7).replace("", "Tab\there"))
+    s11 := ("{l4.length()}:" + s7.replace(s7, s7).replace("", "Tab\there"))
     say("s11 = [{s11}]")
 
-    let i12 = (i2 + i2)
+    i12 := (i2 + i2)
     say("i12 = {i12}")
 
-    let f13 = (((f1 + f1) / 123.408) * ((4.707 - f1) / 263.975))
+    f13 := (((f1 + f1) / 123.408) * ((4.707 - f1) / 263.975))
     say("f13 = {f13}")
 
-    let i14 = ((i2 + (-i9)) * (i2 / (11 + i2)))
+    i14 := ((i2 + (-i9)) * (i2 / (11 + i2)))
     say("i14 = {i14}")
     return 0

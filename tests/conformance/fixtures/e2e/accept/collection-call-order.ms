@@ -4,10 +4,10 @@
 import expect_equal from "@std/test/test.ms"
 
 test "receiver before index":
-    let values = [7]
+    values := [7]
     var calls = 0
-    let index: Int? = 0
-    let result = values.get(
+    index: Int? = 0
+    result := values.get(
         match index:
             i:
                 calls += 1

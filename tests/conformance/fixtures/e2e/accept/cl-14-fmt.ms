@@ -16,7 +16,7 @@ fn checked(value: Int) Int!Problem:
     return ok(value)
 
 fn doubled(value: Int) Int!Problem:
-    let accepted = try checked(value)
+    accepted := try checked(value)
     return ok(accepted * 2)
 
 fn summarize(outcome: Int!Problem) Int:

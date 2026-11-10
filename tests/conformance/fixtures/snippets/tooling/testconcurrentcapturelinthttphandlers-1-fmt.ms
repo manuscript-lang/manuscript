@@ -5,4 +5,4 @@ import HttpResponse, HttpServerOptions from "@std/net/http.ms"
 import panic from "@std/core.ms"
 
 fn run() Unit:
-    let _values = [0]
+    _values := [0]

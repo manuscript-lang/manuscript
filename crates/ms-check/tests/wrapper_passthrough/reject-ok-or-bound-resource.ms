@@ -7,5 +7,5 @@ impl Closeable for Marker:
     var fn close() Unit!: ok(unit)
 
 fn bad() Unit:
-    let value: Marker? = Marker(1)
-    let operation = value.ok_or[String]
+    value: Marker? = Marker(1)
+    operation := value.ok_or[String]

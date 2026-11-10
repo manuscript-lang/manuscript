@@ -12,7 +12,7 @@ fn area(s: Shape) Int:
         _: 0
 
 fn first(xs: List[Int]) Result[Int, Error]:
-    let n = try parse(xs.length())
+    n := try parse(xs.length())
     return ok(n)
 
 fn parse(n: Int) Result[Int, Error]:
@@ -22,5 +22,5 @@ fn parse(n: Int) Result[Int, Error]:
     return error(Error(message: "empty"))
 
 export fn main() Int:
-    let doubled = [1, 2, 3].map(fn(x) Int: x * 2)
+    doubled := [1, 2, 3].map(fn(x) Int: x * 2)
     return area(Shape.Circle(doubled.length()))

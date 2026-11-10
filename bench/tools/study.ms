@@ -35,7 +35,7 @@ export fn fresh_directory(path: String) Unit!:
 
 // Trial order: rotated by the trial number and reversed on odd trials.
 export fn trial_order(labels: List[String], trial: Int) List[String]:
-    let n = labels.length()
+    n := labels.length()
     var order = List[String]()
     for i in 0..n:
         order.append(labels[(trial % n + i) % n].clone())
@@ -45,14 +45,14 @@ export fn trial_order(labels: List[String], trial: Int) List[String]:
 
 // Runs a producer and returns its integers.
 export fn run_ints(path: String, args: List[String]) List[Int]!:
-    let text = try sample(path, args)
-    let parts = text.replace("\n", " ").replace("\t", " ").split(" ").filter(
+    text := try sample(path, args)
+    parts := text.replace("\n", " ").replace("\t", " ").split(" ").filter(
         fn p: (p != "")
     )
     var out = List[Int]()
 
     for part in parts:
-        let n = part.parse_int()
+        n := part.parse_int()
         if n.is_none(): return invalid("not an integer: {part}")
 
         out.append(n.get(0))
@@ -60,7 +60,7 @@ export fn run_ints(path: String, args: List[String]) List[Int]!:
     return ok(out)
 
 export fn distribution(values: List[Float]) JsonValue:
-    let m = median(values)
+    m := median(values)
     var d = Map[String, JsonValue]()
     d.add("median_ns", jfloat(m))
     d.add("mad_ns", jfloat(median(values.map(fn v: if v > m: v - m else: m - v))))
@@ -103,7 +103,7 @@ export fn binaries_json(items: List[Labeled]) JsonValue:
 
 // The parsed JSON file at `path`.
 export fn read_json(path: String) JsonValue!:
-    let doc = parse[JsonValue](read_text(path))
+    doc := parse[JsonValue](read_text(path))
     if doc.is_error(): return invalid("{path} is not valid JSON")
 
     return ok(doc.get(JsonValue.Null))
@@ -111,15 +111,15 @@ export fn read_json(path: String) JsonValue!:
 // The `median_ns` of `before` in the summary row for `case` (summary lists `{case, distributions: {before: {median_ns}}}`).
 export fn before_median(summary: JsonValue, name: String, operation: String) Float!:
     for row in summary.as_list().get([]):
-        let c = row.get("case").get(JsonValue.Null).as_string().get("")
-        let op = row.get("operation")
-        let same_op = (
+        c := row.get("case").get(JsonValue.Null).as_string().get("")
+        op := row.get("operation")
+        same_op := (
             operation == ""
             or op.is_none()
             or op.get(JsonValue.Null).as_string().get("") == operation
         )
         if c == name and same_op:
-            if let v = row.get_in(["distributions", "before", "median_ns"]):
+            if v := row.get_in(["distributions", "before", "median_ns"]):
                 return ok(v.as_float().get(0.0))
 
     return invalid("no summary row for {name}")
@@ -138,7 +138,7 @@ export fn all_ints(values: List[String]) List[Int]!:
     var out = List[Int]()
 
     for v in values:
-        let n = v.trim().parse_int()
+        n := v.trim().parse_int()
         if n.is_none(): return invalid("not an integer: {v}")
 
         out.append(n.get(0))
@@ -147,7 +147,7 @@ export fn all_ints(values: List[String]) List[Int]!:
 
 // How many rounds fill about 30 ms given one round took `elapsed` ns, within 1..100000.
 export fn rounds_for(elapsed: Int) Int:
-    let want = (30000000 + elapsed - 1) / elapsed
+    want := (30000000 + elapsed - 1) / elapsed
     if want < 1: return 1
     if want > 100000: return 100000
 

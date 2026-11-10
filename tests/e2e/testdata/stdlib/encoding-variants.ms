@@ -9,8 +9,8 @@ import (
 import expect_equal from "@std/test/test.ms"
 
 test "unpadded Base64 covers both alphabets and every tail":
-    let texts = ["", "f", "fo", "foo", "foob", "fooba", "foobar"]
-    let encoded = ["", "Zg", "Zm8", "Zm9v", "Zm9vYg", "Zm9vYmE", "Zm9vYmFy"]
+    texts := ["", "f", "fo", "foo", "foob", "fooba", "foobar"]
+    encoded := ["", "Zg", "Zm8", "Zm9v", "Zm9vYg", "Zm9vYmE", "Zm9vYmFy"]
 
     for index in 0..texts.length():
         for url_safe in [false, true]:
@@ -27,13 +27,13 @@ test "unpadded Base64 covers both alphabets and every tail":
                 texts[index].to_bytes()
             )
 
-    let bytes = Bytes([251, 255])
+    bytes := Bytes([251, 255])
     try expect_equal(base64_encode(bytes, padded: false), "+/8")
     try expect_equal(base64_encode(bytes, true, padded: false), "-_8")
     try expect_equal(try base64_decode("-_8", true, padded: false), bytes)
 
 test "unpadded Base64 rejects padding alphabet mixing whitespace and unused bits":
-    let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+    invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
     for text in [
         "A", "AAAAA", "Zg=", "Zg==", "=Zg", "Zh", "Zm9", "Z g", "Zg\n", "Zg\r", "Zg\t",
         "é", "!!!!"
@@ -43,20 +43,20 @@ test "unpadded Base64 rejects padding alphabet mixing whitespace and unused bits
     try expect_equal(base64_decode("+/8", true, padded: false), invalid)
 
 test "Base32 matches RFC 4648 padded and unpadded vectors":
-    let texts = ["", "f", "fo", "foo", "foob", "fooba", "foobar"]
-    let encoded = [
+    texts := ["", "f", "fo", "foo", "foob", "fooba", "foobar"]
+    encoded := [
         "", "MY======", "MZXQ====", "MZXW6===", "MZXW6YQ=", "MZXW6YTB",
         "MZXW6YTBOI======"
     ]
-    let raw = ["", "MY", "MZXQ", "MZXW6", "MZXW6YQ", "MZXW6YTB", "MZXW6YTBOI"]
-    let hex = [
+    raw := ["", "MY", "MZXQ", "MZXW6", "MZXW6YQ", "MZXW6YTB", "MZXW6YTBOI"]
+    hex := [
         "", "CO======", "CPNG====", "CPNMU===", "CPNMUOG=", "CPNMUOJ1",
         "CPNMUOJ1E8======"
     ]
-    let hex_raw = ["", "CO", "CPNG", "CPNMU", "CPNMUOG", "CPNMUOJ1", "CPNMUOJ1E8"]
+    hex_raw := ["", "CO", "CPNG", "CPNMU", "CPNMUOG", "CPNMUOJ1", "CPNMUOJ1E8"]
 
     for index in 0..texts.length():
-        let bytes = texts[index].to_bytes()
+        bytes := texts[index].to_bytes()
         try expect_equal(base32_encode(bytes), encoded[index])
         try expect_equal(base32_encode(bytes, Base32Options(padded: false)), raw[index])
         try expect_equal(
@@ -86,7 +86,7 @@ test "Base32 matches RFC 4648 padded and unpadded vectors":
         )
 
 test "Base32 enforces exact terminal padding and uppercase alphabets":
-    let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+    invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
     for text in [
         "M", "MY", "MY=", "MY=====", "MY=======", "M======", "MZX=====", "MZXW6Y==",
         "========", "MY======MY======", "M=AAAAAA", "my======", "M0======", "M1======",
@@ -103,7 +103,7 @@ test "Base32 enforces exact terminal padding and uppercase alphabets":
     try expect_equal(base32_decode("CO======"), invalid)
 
 test "Base32 rejects nonzero unused bits in each tail shape":
-    let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+    invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
     for text in ["MZ======", "MZX R===", "MZXR====", "MZXW7===", "MZXW6YR="]:
         try expect_equal(base32_decode(text), invalid)
     for text in ["MZ", "MZXR", "MZXW7", "MZXW6YR"]:
@@ -114,9 +114,9 @@ test "Base32 rejects nonzero unused bits in each tail shape":
         )
 
 test "encoding variants honor zero exact exceeded absent and negative limits":
-    let empty = Bytes([])
-    let invalid: Bytes! = error(Error("encoding: invalid input", kind: "EINVAL"))
-    let limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+    empty := Bytes([])
+    invalid: Bytes! = error(Error("encoding: invalid input", kind: "EINVAL"))
+    limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(try base32_decode("", max_bytes: 0), empty)
     try expect_equal(try base64_decode("", max_bytes: 0, padded: false), empty)
     try expect_equal(try base32_decode("MY======", max_bytes: 1), "f".to_bytes())
@@ -142,10 +142,10 @@ test "encoding variants honor Bytes views and cross block boundaries":
     var out = BytesBuilder()
     for value in 0..256: out.append(value.to_uint8().get(0))
 
-    let all = out.build()
+    all := out.build()
 
     for length in 0..256:
-        let bytes = try all.slice(0, length)
+        bytes := try all.slice(0, length)
         for hex in [false, true]:
             for padded in [false, true]:
                 try expect_equal(
@@ -171,28 +171,28 @@ test "encoding variants honor Bytes views and cross block boundaries":
                 bytes
             )
 
-    let view = try all.slice(17, 219)
+    view := try all.slice(17, 219)
     try expect_equal(try base32_decode(base32_encode(view)), view)
     try expect_equal(
         try base64_decode(base64_encode(view, padded: false), padded: false), view
     )
 
 test "encoding variant function values retain defaults":
-    let encode = base32_encode
-    let decode = base32_decode
+    encode := base32_encode
+    decode := base32_decode
     try expect_equal(encode("f".to_bytes()), "MY======")
     try expect_equal(try decode("MY======"), "f".to_bytes())
 
-    let raw_encode = base64_encode
-    let raw_decode = base64_decode
+    raw_encode := base64_encode
+    raw_decode := base64_decode
     try expect_equal(raw_encode("f".to_bytes()), "Zg==")
     try expect_equal(try raw_decode("Zg=="), "f".to_bytes())
     try expect_equal(raw_encode("f".to_bytes(), padded: false), "Zg")
 
 test "Base32 rejects interior padding before output budgets":
-    let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
-    let negative: Bytes! = error(Error("encoding: invalid input", kind: "EINVAL"))
-    let limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+    invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+    negative: Bytes! = error(Error("encoding: invalid input", kind: "EINVAL"))
+    limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 
     for hex in [false, true]:
         for text in ["A=AAAAAA", "AA======AA======"]:
@@ -249,9 +249,9 @@ test "Base32 rejects interior padding before output budgets":
     try expect_equal(base64_decode("A=AA", max_bytes: 0, padded: false), limited)
 
 test "unpadded Base64 preserves byte budget precedence for invalid padding":
-    let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
-    let negative: Bytes! = error(Error("encoding: invalid input", kind: "EINVAL"))
-    let limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+    invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+    negative: Bytes! = error(Error("encoding: invalid input", kind: "EINVAL"))
+    limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 
     for url in [false, true]:
         for text in ["AA==", "AAA=", "===="]:

@@ -12,12 +12,12 @@ type Request:
     request: Int
 
 fn lines(path: String) String!:
-    let data = try read_file(path).wait()
+    data := try read_file(path).wait()
     return ok(data.decode_utf8().get(""))
 
 test "levels filter, fields nest under data, and bound fields merge":
-    let directory = try temporary("manuscript-log-")
-    let path = "{directory.path()}/events.ndjson"
+    directory := try temporary("manuscript-log-")
+    path := "{directory.path()}/events.ndjson"
     var logger = try create(
         try file_transport(path), LoggerOptions(level: LogLevel.Warn, timestamp: false)
     )
@@ -27,8 +27,8 @@ test "levels filter, fields nest under data, and bound fields merge":
     try logger.error("n", 7)
     try logger.fatal("l", ["a", "b"])
 
-    let root = try logger.child(Service("api"))
-    let child = try root.child(Request(7))
+    root := try logger.child(Service("api"))
+    child := try root.child(Request(7))
     try child.warn("child", Service("worker"))
     logger.set_level(LogLevel.Trace)
     try expect_equal(logger.level(), LogLevel.Trace)
@@ -36,23 +36,23 @@ test "levels filter, fields nest under data, and bound fields merge":
     try logger.flush()
     try logger.close()
 
-    let expected = "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"n\",\"data\":7\}\n\{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n\{\"level\":40,\"msg\":\"child\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"service\":\"worker\"\}\}\n\{\"level\":10,\"msg\":\"trace\"\}\n"
+    expected := "\{\"level\":40,\"msg\":\"warn\"\}\n\{\"level\":50,\"msg\":\"n\",\"data\":7\}\n\{\"level\":60,\"msg\":\"l\",\"data\":[\"a\",\"b\"]\}\n\{\"level\":40,\"msg\":\"child\",\"context\":\{\"service\":\"api\",\"request\":7\},\"data\":\{\"service\":\"worker\"\}\}\n\{\"level\":10,\"msg\":\"trace\"\}\n"
     try expect_equal(try lines(path), expected)
 
 test "limits, invalid levels, and closed transports are errors":
-    let directory = try temporary("manuscript-log-")
-    let path = "{directory.path()}/events.ndjson"
-    let line = "\{\"level\":30,\"msg\":\"x\"\}\n"
+    directory := try temporary("manuscript-log-")
+    path := "{directory.path()}/events.ndjson"
+    line := "\{\"level\":30,\"msg\":\"x\"\}\n"
     var logger = try create(
         try file_transport(path),
         LoggerOptions(timestamp: false, max_bytes: line.to_bytes().length())
     )
     try logger.info("x")
 
-    let limited: Unit! = error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+    limited: Unit! = error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(logger.info("xx"), limited)
 
-    let invalid: Unit! = error(Error("logging: invalid input", kind: "EINVAL"))
+    invalid: Unit! = error(Error("logging: invalid input", kind: "EINVAL"))
     try expect_equal(logger.log(LogLevel.Silent, "bad"), invalid)
     try expect_equal(
         try expect_error(
@@ -63,14 +63,14 @@ test "limits, invalid levels, and closed transports are errors":
     try logger.close()
     try logger.close()
 
-    let closed: Unit! = error(Error("logging: resource is closed", kind: "EBADF"))
+    closed: Unit! = error(Error("logging: resource is closed", kind: "EBADF"))
     try expect_equal(logger.info("x"), closed)
     try expect_equal(logger.flush(), closed)
     try expect_equal(try lines(path), line)
 
 test "a missing directory is a filesystem error":
-    let directory = try temporary("manuscript-log-")
-    let missing = try expect_error(
+    directory := try temporary("manuscript-log-")
+    missing := try expect_error(
         file_transport("{directory.path()}/missing/events.ndjson")
     )
     try expect_equal(missing.kind, "ENOENT")

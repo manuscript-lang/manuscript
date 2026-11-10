@@ -10,31 +10,31 @@ fn span(start: Int, length: Int) String:
     return "{start},{length}"
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
-    let header = lines[0].split(" ")
-    let name_a = header[0]
-    let name_b = header[1]
-    let context = header[2].parse_int().get(0)
-    let n = header[3].parse_int().get(0)
-    let m = header[4].parse_int().get(0)
+    lines := read_lines(stdin()).get()
+    header := lines[0].split(" ")
+    name_a := header[0]
+    name_b := header[1]
+    context := header[2].parse_int().get(0)
+    n := header[3].parse_int().get(0)
+    m := header[4].parse_int().get(0)
 
     // Line i of A is lines[1 + i]; line j of B is lines[1 + n + j].
-    let cols = m + 1
+    cols := m + 1
     var table = List[Int]()
     for k in range(0, (n + 1) * cols):
         table.append(0)
 
     for k in range(0, n):
-        let i = n - 1 - k
+        i := n - 1 - k
 
         for l in range(0, m):
-            let j = m - 1 - l
+            j := m - 1 - l
 
             if lines[1 + i] == lines[1 + n + j]:
                 table[i * cols + j] = table[(i + 1) * cols + j + 1] + 1
             else:
-                let down = table[(i + 1) * cols + j]
-                let right = table[i * cols + j + 1]
+                down := table[(i + 1) * cols + j]
+                right := table[i * cols + j + 1]
 
                 if down >= right:
                     table[i * cols + j] = down
@@ -71,7 +71,7 @@ export fn main() Int:
                 texts.append(lines[1 + n + y])
                 y += 1
 
-    let total = kinds.length()
+    total := kinds.length()
     var changes = List[Int]()
     for k in range(0, total):
         if kinds[k] != 0:
@@ -102,7 +102,7 @@ export fn main() Int:
     var g = 0
 
     while g < changes.length():
-        let first = changes[g]
+        first := changes[g]
         var last = first
         var h = g + 1
 
@@ -110,8 +110,8 @@ export fn main() Int:
             last = changes[h]
             h += 1
 
-        let start = max_of_two(0, first - context)
-        let end = min_of_two(total - 1, last + context)
+        start := max_of_two(0, first - context)
+        end := min_of_two(total - 1, last + context)
         var la = 0
         var lb = 0
 
@@ -130,7 +130,7 @@ export fn main() Int:
         out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
         for k in range(start, end + 1):
-            let text = texts[k]
+            text := texts[k]
 
             if kinds[k] == 0:
                 out.append(" {text}")
@@ -142,7 +142,7 @@ export fn main() Int:
 
         g = h
 
-    let body = out.join("\n")
+    body := out.join("\n")
     stdout().write("{body}\n").get()
     return 0
 

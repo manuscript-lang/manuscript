@@ -6,6 +6,6 @@ fn replacement(value: Int) Int: value + 2
 fn choose[T](left: T, right: T) T: right
 
 export fn main() Int:
-    let first = choose(original, replacement)(3)
-    let second = choose(replacement, original)(3)
+    first := choose(original, replacement)(3)
+    second := choose(replacement, original)(3)
     return first + second

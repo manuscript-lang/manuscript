@@ -2,6 +2,6 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 export fn main() Int:
-    let m = Map[String, Int]()
+    m := Map[String, Int]()
     m.set(1, 2)
     return 0

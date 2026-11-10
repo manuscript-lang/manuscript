@@ -13,8 +13,8 @@ impl Hashable for Key:
 
 export fn second_run() Set[Key]:
     var items = Set[Key]([Key(1, "original")])
-    let add = items.add
-    let remove = items.remove
+    add := items.add
+    remove := items.remove
     add(Key(1, "duplicate"))
     add_generic(var items, Key(2, "original"))
     remove(Key(99, "duplicate"))

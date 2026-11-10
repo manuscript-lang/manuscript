@@ -36,9 +36,9 @@ Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
 // ms: effect std.random.read
 // ms: effect std.clock.read
 export fn ulid() String!:
-    let moment = now()
-    let millis = moment.seconds * 1000 + moment.nanos / 1000000
-    let noise = try random_bytes(10)
+    moment := now()
+    millis := moment.seconds * 1000 + moment.nanos / 1000000
+    noise := try random_bytes(10)
     var raw = BytesBuilder()
     for place in 0..6:
         raw.append(
@@ -49,7 +49,7 @@ export fn ulid() String!:
     raw.append_bytes(noise)
 
     // 128 bits behind two zero bits make exactly 26 five-bit digits.
-    let alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ".chars()
+    alphabet := "0123456789ABCDEFGHJKMNPQRSTVWXYZ".chars()
     var out = ""
     var pending = 0
     var held = 2
@@ -59,7 +59,7 @@ export fn ulid() String!:
         held += 8
 
         while held >= 5:
-            let digit = bit_and(shift_right_unsigned(pending, held - 5), 31)
+            digit := bit_and(shift_right_unsigned(pending, held - 5), 31)
             out = "{out}{alphabet[digit]}"
             held -= 5
             pending = bit_and(pending, shift_left(1, held) - 1)
@@ -73,7 +73,7 @@ The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API ke
 */
 // ms: effect std.random.read
 export fn token(size: Int = 32) String!:
-    let data = try random_bytes(size)
+    data := try random_bytes(size)
     return ok(base64_encode(data, url_safe: true, padded: false))
 
 // Returns a secure Float at least 0.0 and below 1.0 with 53 random bits from the operating system's entropy.
@@ -102,7 +102,7 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
     var out: List[T] = []
 
     for i in 0..count:
-        let at = try secure_int(i, values.length())
+        at := try secure_int(i, values.length())
         order.swap(i, at)
         out.append(values[order[i]].clone())
 
@@ -114,10 +114,10 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
     if values.is_empty() and weights.is_empty(): return ok(none)
 
-    let total = weight_total(values.length(), weights)
+    total := weight_total(values.length(), weights)
     if total == 0.0: return error(Error("random: invalid input", kind: "EINVAL"))
 
-    let point = try float()
+    point := try float()
     return ok(values[weighted_position(weights, point, total)].clone())
 
 fn positions(count: Int) List[Int]:
@@ -148,7 +148,7 @@ fn weighted_position(weights: List[Float], unit_draw: Float, total: Float) Int:
     if not total.is_finite() or total < 2.2250738585072014e-308:
         return scaled_weighted_position(weights, unit_draw)
 
-    let point = unit_draw * total
+    point := unit_draw * total
     var running = 0.0
     var last = 0
 
@@ -171,7 +171,7 @@ fn scaled_weighted_position(weights: List[Float], unit_draw: Float) Int:
     for weight in weights:
         total += weight / scale
 
-    let point = unit_draw * total
+    point := unit_draw * total
     var running = 0.0
     var last = 0
 
@@ -225,11 +225,11 @@ impl SeededRandom:
         if min < 0 and max_exclusive > max_int + min:
             panic("random int: the range is wider than the largest Int")
 
-        let span = max_exclusive - min
+        span := max_exclusive - min
 
         while true:
-            let bits = shift_right_unsigned(self.next_bits(), 1)
-            let rest = bits % span
+            bits := shift_right_unsigned(self.next_bits(), 1)
+            rest := bits % span
 
             // Redraw the few values past the last whole multiple of `span`, so none is likelier.
             if bits - rest <= max_int - (span - 1): return min + rest
@@ -238,7 +238,7 @@ impl SeededRandom:
 
     // Returns a Float at least 0.0 and below 1.0 with 53 random bits.
     var fn float() Float:
-        let bits = shift_right_unsigned(self.next_bits(), 11)
+        bits := shift_right_unsigned(self.next_bits(), 11)
         return bits.to_float() / 9007199254740992.0
 
     // Shuffles `values` with an unbiased Fisher-Yates shuffle and returns it.
@@ -278,18 +278,18 @@ impl SeededRandom:
     var fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?:
         if values.is_empty() and weights.is_empty(): return none
 
-        let total = weight_total(values.length(), weights)
+        total := weight_total(values.length(), weights)
         if total == 0.0:
             panic(
                 "random weighted_choice: weights must match the values, be finite and non-negative, and not all be zero"
             )
 
-        let point = self.float()
+        point := self.float()
         return values[weighted_position(weights, point, total)].clone()
 
     // Returns a standard normal Float (mean 0, standard deviation 1) using the Box-Muller transform.
     var fn normal() Float:
-        let radius = sqrt(-2.0 * log(1.0 - self.float()))
+        radius := sqrt(-2.0 * log(1.0 - self.float()))
         return radius * cos(6.283185307179586 * self.float())
 
     // Returns an exponentially distributed Float with rate 1 (mean 1), always positive or zero.

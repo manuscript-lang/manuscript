@@ -9,9 +9,9 @@ fn answer(
             return current
     )()
 ) Int:
-    let callbacks = [
+    callbacks := [
         fn() Int:
-            let nested = 1
+            nested := 1
             return nested
     ]
     return value + callbacks.length()

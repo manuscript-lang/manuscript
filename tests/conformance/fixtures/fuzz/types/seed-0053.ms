@@ -6,23 +6,23 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = 22.25
+    f1 := 22.25
     say("f1 = {f1}")
 
-    let i2 = (-7)
+    i2 := (-7)
     say("i2 = {i2}")
 
-    let _bad = say
-    let b3 = ("gamma".replace("héllo", "日本語") + "ms".upper()).contains("日本語")
+    _bad := say
+    b3 := ("gamma".replace("héllo", "日本語") + "ms".upper()).contains("日本語")
     say("b3 = {b3}")
 
-    let b4 = ((834768 + i2) > (48 * (i2 + i2)))
+    b4 := ((834768 + i2) > (48 * (i2 + i2)))
     say("b4 = {b4}")
 
-    let s5 = "Tab\there"
+    s5 := "Tab\there"
     say("s5 = [{s5}]")
 
     var acc6 = 0
@@ -34,6 +34,6 @@ export fn main() Int:
 
     say("acc6 = {acc6}")
 
-    let b7 = (not (s5.starts_with("日本語") or (not false)))
+    b7 := (not (s5.starts_with("日本語") or (not false)))
     say("b7 = {b7}")
     return 0

@@ -7,5 +7,5 @@ impl Closeable for Marker:
     var fn close() Unit!: ok(unit)
 
 fn bad() Unit:
-    let values = [Marker(1)]
-    let kept = values.first().ok_or()
+    values := [Marker(1)]
+    kept := values.first().ok_or()

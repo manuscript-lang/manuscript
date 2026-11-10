@@ -24,13 +24,13 @@ fn span(start: Int, length: Int) String:
     return "{start},{length}"
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
-    let head = lines[0].split(" ")
-    let name_a = head[0]
-    let name_b = head[1]
-    let context = head[2].parse_int().get(0)
-    let n = head[3].parse_int().get(0)
-    let m = head[4].parse_int().get(0)
+    lines := read_lines(stdin()).get()
+    head := lines[0].split(" ")
+    name_a := head[0]
+    name_b := head[1]
+    context := head[2].parse_int().get(0)
+    n := head[3].parse_int().get(0)
+    m := head[4].parse_int().get(0)
     var a = List[String]()
     for i in 0..n:
         a.append(line_at(lines, 1 + i))
@@ -40,22 +40,22 @@ export fn main() Int:
         b.append(line_at(lines, 1 + n + j))
 
     // table[i * width + j] is L(i, j), the LCS length of a[i..] and b[j..].
-    let width = m + 1
+    width := m + 1
     var table = List[Int](reserve: (n + 1) * width)
     for k in 0..(n + 1) * width:
         table.append(0)
 
     for ii in 0..n:
-        let i = n - 1 - ii
+        i := n - 1 - ii
 
         for jj in 0..m:
-            let j = m - 1 - jj
+            j := m - 1 - jj
 
             if a[i] == b[j]:
                 table[i * width + j] = table[(i + 1) * width + j + 1] + 1
             else:
-                let down = table[(i + 1) * width + j]
-                let right = table[i * width + j + 1]
+                down := table[(i + 1) * width + j]
+                right := table[i * width + j + 1]
                 table[i * width + j] = if down >= right: down else: right
 
     // Edit script: kind 0 is unchanged, 1 is a deletion from a, 2 is an insertion from b.
@@ -87,7 +87,7 @@ export fn main() Int:
             texts.append(b[j].clone())
             j += 1
 
-    let total = kinds.length()
+    total := kinds.length()
 
     // pre_a[k] and pre_b[k] count the lines of a and b consumed before script position k.
     var pre_a = List[Int]()
@@ -138,12 +138,12 @@ export fn main() Int:
     out.append("+++ {name_b}")
 
     for h in 0..hunk_lo.length():
-        let lo = hunk_lo[h]
-        let hi = hunk_hi[h]
-        let la = pre_a[hi + 1] - pre_a[lo]
-        let lb = pre_b[hi + 1] - pre_b[lo]
-        let sa = if la > 0: pre_a[lo] + 1 else: pre_a[lo]
-        let sb = if lb > 0: pre_b[lo] + 1 else: pre_b[lo]
+        lo := hunk_lo[h]
+        hi := hunk_hi[h]
+        la := pre_a[hi + 1] - pre_a[lo]
+        lb := pre_b[hi + 1] - pre_b[lo]
+        sa := if la > 0: pre_a[lo] + 1 else: pre_a[lo]
+        sb := if lb > 0: pre_b[lo] + 1 else: pre_b[lo]
         out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
         for q in lo..hi + 1:
@@ -154,6 +154,6 @@ export fn main() Int:
             else:
                 out.append("+{texts[q]}")
 
-    let text = out.join("\n")
+    text := out.join("\n")
     stdout().write("{text}\n").get()
     return 0

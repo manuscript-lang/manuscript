@@ -297,7 +297,7 @@ Use scope-owned `Closeable` resources for shutdown cleanup, since cancellation m
 */
 // ms: effect std.process.signal
 export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
-    let native = try msstd_process_watch_signals(signals, capacity)
+    native := try msstd_process_watch_signals(signals, capacity)
     return ok(ReadStream[Int](SignalSource(native)))
 
 // Returns the current process title.

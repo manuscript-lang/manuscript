@@ -6,13 +6,13 @@ export fn bench_csv() Unit:
     for i in 0..5000:
         rows.append(["{i}", "name {i}", "a,b", "quote\"d"])
 
-    let csv_text = stringify(rows).get("")
+    csv_text := stringify(rows).get("")
 
     bench(
         "csv.stringify",
         5000,
         fn() Int:
-            if let s = stringify(rows):
+            if s := stringify(rows):
                 return s.length()
 
             return 0
@@ -22,7 +22,7 @@ export fn bench_csv() Unit:
         "csv.parse",
         5000,
         fn() Int:
-            if let r = parse(csv_text):
+            if r := parse(csv_text):
                 return r.length()
 
             return 0

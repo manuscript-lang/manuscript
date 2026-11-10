@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -20,7 +20,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -33,10 +33,10 @@ export fn main() Int:
         "{(((-1) + (-261108)) / ((-43) - (-382136)))} {((40 * (-45)) * ((-48) + (-451624912338)))} {((((-1) + (-261108)) / ((-43) - (-382136))) < ((40 * (-45)) * ((-48) + (-451624912338))))} sum {(((-1) + (-261108)) / ((-43) - (-382136))) + ((40 * (-45)) * ((-48) + (-451624912338)))}"
     )
 
-    let b1 = (35 > (-18))
+    b1 := (35 > (-18))
     say("b1 = {b1}")
 
-    let l2 = [27, (-8), 8, 21, 20]
+    l2 := [27, (-8), 8, 21, 20]
     say("l2 = {l2} len {l2.length()}")
 
     if (not (b1 and true)):
@@ -44,16 +44,16 @@ export fn main() Int:
     else:
         say("brace\{s\}".trim())
 
-    let i3 = (((26 * 11) + (-34)) / (-((-25) + (-775047))))
+    i3 := (((26 * 11) + (-34)) / (-((-25) + (-775047))))
     say("i3 = {i3}")
 
-    let f4 = (
+    f4 := (
         ((391.766 * 8.0e2) - (864.742 * 0.0))
         + ((699.25 / 5.0e-7) + (815.005 * 200.361))
     )
     say("f4 = {f4}")
 
-    let f5 = f4
+    f5 := f4
     say("f5 = {f5}")
 
     var acc6 = 0

@@ -149,7 +149,7 @@ fn deeply_nested_type_keeps_structural_properties() {
         ty = format!("List[{ty}]");
     }
     let source = format!(
-        "fn f() Int:\n    let x: {ty} = []\n    let y = x.clone()\n    return y.length()\n"
+        "fn f() Int:\n    x: {ty} = []\n    y := x.clone()\n    return y.length()\n"
     );
     assert_eq!(diagnostics(&[("deep.ms", &source)]), vec![]);
 }

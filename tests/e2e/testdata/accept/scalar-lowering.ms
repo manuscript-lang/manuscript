@@ -17,7 +17,7 @@ type Resource:
 // Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
 impl Closeable for Resource:
     var fn close() Unit!:
-        let _written = write_file(self.marker, "closed", true).wait()
+        _written := write_file(self.marker, "closed", true).wait()
         return ok(unit)
 
 fn closed(marker: String) Bool: read_file(marker).wait().is_ok()
@@ -39,15 +39,15 @@ test "primitive equality captures operands once in order":
     try expect_equal(counter.value, 12)
 
     var original = 1
-    let captured = original == match present(1):
+    captured := original == match present(1):
         value:
             original = 2
             value
         none: 0
     try expect_false(not captured or original != 2)
 
-    let skipped = false and mark(var counter, 3) == 3
-    let skipped_again = true or mark(var counter, 4) == 4
+    skipped := false and mark(var counter, 3) == 3
+    skipped_again := true or mark(var counter, 4) == 4
     try expect_false((skipped or not skipped_again or counter.value != 12))
     try expect_false("é" == "e\u{0301}" or "λ🙂" != "λ🙂")
     try expect_false(not generic(left: true, right: true))
@@ -55,7 +55,7 @@ test "primitive equality captures operands once in order":
 
 fn conditional(marker: String, take: Bool) Int:
     if take:
-        let _resource = Resource(marker.clone())
+        _resource := Resource(marker.clone())
         return 7
 
     return 8
@@ -73,15 +73,15 @@ fn defaulted(
     value: Int = match present(2):
         number:
             var _resource = Resource(marker.clone())
-            let _used = unit
+            _used := unit
             _resource.close().get(none)
             number
         none: 0
 ) Int: value
 
 fn nested(marker: String) Unit:
-    let callback = fn() Unit:
-        let _resource = Resource(marker.clone())
+    callback := fn() Unit:
+        _resource := Resource(marker.clone())
         return
 
     callback()
@@ -90,36 +90,36 @@ fn failed() Int!Error: error(Error("expected"))
 
 fn propagate(marker: String) Int!Error:
     var _resource = Resource(marker.clone())
-    let value = try failed()
+    value := try failed()
     return ok(value)
     return ok(0)
 
 fn bare_propagate() Int!Error:
-    let value = try failed()
+    value := try failed()
     return ok(value)
 
 fn equality_propagate() Bool!Error:
-    let matches = (try failed()) == 0
+    matches := (try failed()) == 0
     return ok(matches)
 
 fn bool_failed() Bool!Error: error(Error("expected"))
 
 fn nested_results(marker: String) Int!Error:
-    let child = fn() Bool!Error:
+    child := fn() Bool!Error:
         var _resource = Resource(marker.clone())
-        let value = try bool_failed()
+        value := try bool_failed()
         return ok(value)
         return ok(false)
 
-    let _ignored = child()
-    let value = try failed()
+    _ignored := child()
+    value := try failed()
     return ok(value)
 
 fn statement_match_try(marker: String) Int!Error:
     match present(1):
         _value:
-            let _resource = Resource(marker.clone())
-            let value = try failed()
+            _resource := Resource(marker.clone())
+            value := try failed()
             return ok(value)
         none: return ok(0)
 
@@ -129,10 +129,10 @@ fn value_match_loop_try(marker: String) Int!Error:
     var index = 0
 
     while index < 2:
-        let _selected = match present(index):
+        _selected := match present(index):
             number:
                 var _resource = Resource(marker.clone())
-                let _value = try failed()
+                _value := try failed()
                 _resource.close().get(none)
                 number
             none: 0
@@ -142,9 +142,9 @@ fn value_match_loop_try(marker: String) Int!Error:
     return ok(index)
 
 test "combined lowering retains callable state and try boundaries":
-    let temporary = temporary("manuscript-scalar-") | try expect_ok
-    let dir = temporary.path()
-    let expected = Result[Int, Error].error(Error("expected"))
+    temporary := temporary("manuscript-scalar-") | try expect_ok
+    dir := temporary.path()
+    expected := Result[Int, Error].error(Error("expected"))
     try expect_equal(nested_results("{dir}/nested"), expected)
     try expect_true(closed("{dir}/nested"))
     try expect_equal(statement_match_try("{dir}/statement"), expected)
@@ -153,8 +153,8 @@ test "combined lowering retains callable state and try boundaries":
     try expect_true(closed("{dir}/loop"))
 
 test "cleanup remains owned by its source callable":
-    let temporary = temporary("manuscript-scalar-") | try expect_ok
-    let dir = temporary.path()
+    temporary := temporary("manuscript-scalar-") | try expect_ok
+    dir := temporary.path()
     try expect_equal(conditional("{dir}/skipped", take: false), 8)
     try expect_false(closed("{dir}/skipped"))
     try expect_equal(conditional("{dir}/taken", take: true), 7)
@@ -179,7 +179,7 @@ test "cleanup remains owned by its source callable":
     while index < 3:
         index += 1
 
-        let _resource = Resource("{dir}/loop{index}")
+        _resource := Resource("{dir}/loop{index}")
         if index == 1: continue
         if index == 2: break
 

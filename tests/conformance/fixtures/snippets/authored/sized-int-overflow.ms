@@ -4,8 +4,8 @@
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:
-    let a: Int8 = 100
-    let _ = stdout().write("before\n")
-    let b = a + a
-    let _ = stdout().write("{b}\n")
+    a: Int8 = 100
+    _ := stdout().write("before\n")
+    b := a + a
+    _ := stdout().write("{b}\n")
     return 0

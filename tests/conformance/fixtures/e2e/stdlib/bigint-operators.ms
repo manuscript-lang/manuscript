@@ -4,8 +4,8 @@ import expect_equal, expect_true from "@std/test/test.ms"
 import from_int, BigInt from "@std/math/math.ms"
 
 test "big integer operators agree with the named methods":
-    let a = from_int(-7)
-    let b = from_int(3)
+    a := from_int(-7)
+    b := from_int(3)
     try expect_equal((a + b).to_int(), -4)
     try expect_equal((a - b).to_int(), -10)
     try expect_equal((a * b).to_int(), -21)
@@ -15,8 +15,8 @@ test "big integer operators agree with the named methods":
     try expect_true(a * b == a.multiply(b))
 
 test "big integer operators compare exactly":
-    let a = from_int(2)
-    let b = from_int(5)
+    a := from_int(2)
+    b := from_int(5)
     try expect_true(a < b)
     try expect_true(a <= a)
     try expect_true(b > a)

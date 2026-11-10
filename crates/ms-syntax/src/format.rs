@@ -506,10 +506,7 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
     let mut groups: HashMap<usize, &str> = HashMap::new();
     let mut top_level: Vec<usize> = Vec::new();
     for d in &module.decls {
-        let line = match &d.kind {
-            DeclKind::Const(c) => c.group.unwrap_or(d.pos).line as usize,
-            _ => d.pos.line as usize,
-        };
+        let line = d.pos.line as usize;
         top_level.push(line);
         if matches!(d.kind, DeclKind::Const(_)) {
             groups.insert(line, "constant");
@@ -542,7 +539,7 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
     p.breaks
 }
 
-/// The line a binding starts on; a binding in a `let (...)` group starts on
+/// The line a binding starts on; a binding in a `var (...)` group starts on
 /// the group's keyword line so the group moves as one unit.
 fn statement_line(s: &Stmt) -> usize {
     match &s.kind {

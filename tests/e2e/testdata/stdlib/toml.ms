@@ -16,8 +16,8 @@ fn limits(bytes: Int?, depth: Int?, values: Int?) TomlOptions:
     return TomlOptions(max_bytes: bytes, max_depth: depth, max_values: values)
 
 test "TOML scalars quoted keys comments exact integers and dates":
-    let source = "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
-    let root = parse(text: source) | try expect_ok | try entries
+    source := "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
+    root := parse(text: source) | try expect_ok | try entries
     (root["title"] | try expect_equal(TomlValue.StringValue("é🙂 # text")))
     root[""] | try expect_equal(TomlValue.StringValue("literal\\n"))
     root["large"] | try expect_equal(TomlValue.IntValue(9007199254740993))
@@ -32,7 +32,7 @@ test "TOML scalars quoted keys comments exact integers and dates":
     root["time"] | try expect_equal(TomlValue.DateTimeValue("07:32:00.123"))
 
 test "TOML multiline strings Unicode escapes arrays and inline tables":
-    let root = (
+    root := (
         try entries(
             (
                 parse(
@@ -44,10 +44,10 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
     root["basic"] | try expect_equal(TomlValue.StringValue("hello world!"))
     root["literal"] | try expect_equal(TomlValue.StringValue("raw\\text\nnext"))
 
-    let array = (try items(root.get("array").get()))
+    array := (try items(root.get("array").get()))
     array.length() | try expect_equal(3)
 
-    let person = (try entries(array.get(2).clone()))
+    person := (try entries(array.get(2).clone()))
     person["name"] | try expect_equal(TomlValue.StringValue("Ada"))
     try expect_false(
         (
@@ -58,9 +58,9 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
     )
 
 test "TOML implicit parents dotted keys and arrays of tables":
-    let text = "[owner.details]\nname = 'Ada'\n[owner]\nactive = true\n[[products]]\nname = 'Hammer'\n[products.meta]\nstock = 3\n[[products]]\nname = 'Nail'\n[[products.variants]]\nsize = 1\n[[products.variants]]\nsize = 2\n"
-    let root = parse(text: text) | try expect_ok | try entries
-    let owner = (try entries(root.get("owner").get()))
+    text := "[owner.details]\nname = 'Ada'\n[owner]\nactive = true\n[[products]]\nname = 'Hammer'\n[products.meta]\nstock = 3\n[[products]]\nname = 'Nail'\n[[products.variants]]\nsize = 1\n[[products.variants]]\nsize = 2\n"
+    root := parse(text: text) | try expect_ok | try entries
+    owner := (try entries(root.get("owner").get()))
     try expect_false(
         (
             (try entries(owner.get("details").get())).get(
@@ -69,7 +69,7 @@ test "TOML implicit parents dotted keys and arrays of tables":
         )
     )
 
-    let products = (try items(root.get("products").get()))
+    products := (try items(root.get("products").get()))
     products.length() | try expect_equal(2)
     try expect_false(
         (
@@ -86,7 +86,7 @@ test "TOML implicit parents dotted keys and arrays of tables":
         2
     )
 
-    let dotted = parse(text: "a.b.c = 1\na.b.d = 2\n") | try expect_ok | try entries
+    dotted := parse(text: "a.b.c = 1\na.b.d = 2\n") | try expect_ok | try entries
     (try entries((try entries(dotted.get("a").get())).get("b").get())).length() | try expect_equal(
         2
     )
@@ -96,11 +96,11 @@ test "TOML parses a long array of tables in order":
     for i in 0..30000:
         source += "[[items]]\nid = {i}\n"
 
-    let root = parse(text: source) | try expect_ok | try entries
-    let rows = try items(root.get("items").get())
+    root := parse(text: source) | try expect_ok | try entries
+    rows := try items(root.get("items").get())
     rows.length() | try expect_equal(30000)
 
-    let last = try entries(rows.get(29999).clone())
+    last := try entries(rows.get(29999).clone())
     last["id"] | try expect_equal(TomlValue.IntValue(29999))
 
 test "TOML dotted extensions define existing implicit parents":
@@ -110,20 +110,20 @@ test "TOML dotted extensions define existing implicit parents":
         "[a.'odd.key'.c]\n[a]\n'odd.key'.d=2\n[a.'odd.key']",
         "[[items]]\n[items.a.b.c]\n[items.a]\nb.d=2\n[items.a.b]"
     ]:
-        let result = parse(text)
+        result := parse(text)
         result.is_error() | try expect_true
         result.err().kind | try expect_equal("EBADMSG")
 
 test "TOML dotted extensions keep sibling assignments and child headers valid":
-    let source = "[a.b.c]\nx=1\n[a]\nb.d=2\nb.e=3\n[a.b.f]\ny=4"
-    let expected = "[a.b]\nd=2\ne=3\n[a.b.c]\nx=1\n[a.b.f]\ny=4"
-    let parsed = parse(source) | try expect_ok
+    source := "[a.b.c]\nx=1\n[a]\nb.d=2\nb.e=3\n[a.b.f]\ny=4"
+    expected := "[a.b]\nd=2\ne=3\n[a.b.c]\nx=1\n[a.b.f]\ny=4"
+    parsed := parse(source) | try expect_ok
     parsed | try expect_equal(parse(expected) | try expect_ok)
     parse(stringify(parsed) | try expect_ok) | try expect_ok | try expect_equal(parsed)
 
 test "TOML untouched implicit parents can still receive table headers":
-    let source = "[a.b.c]\nx=1\n[a.b]\ny=2\n[a]\nz=3"
-    let expected = "[a]\nz=3\n[a.b]\ny=2\n[a.b.c]\nx=1"
+    source := "[a.b.c]\nx=1\n[a.b]\ny=2\n[a]\nz=3"
+    expected := "[a]\nz=3\n[a.b]\ny=2\n[a.b.c]\nx=1"
     parse(source) | try expect_ok | try expect_equal(parse(expected) | try expect_ok)
 
 test "TOML rejects malformed data redefinitions and closed inline tables":
@@ -134,7 +134,7 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
         "a=24:00:00", "a='unterminated", "a=\"\\uD800\"", "a=\"\\q\"", "a=true false",
         "a=1\rb=2", "[a.b.c]\nz=9\n[a]\nb.c.t=1", "[[a.b]]\n[a]\nb.y=2"
     ]:
-        let cause = match parse(text: text):
+        cause := match parse(text: text):
             ok(_): return fail("invalid TOML accepted: {text}")
             error(cause): cause
 
@@ -144,8 +144,8 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
         ((cause.message.starts_with("TOML ")) | try expect_true)
 
 test "TOML optional limits include implicit tables and zero":
-    let limited: TomlValue! = error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
-    let invalid: TomlValue! = error(Error("invalid TOML input", kind: "EINVAL"))
+    limited: TomlValue! = error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
+    invalid: TomlValue! = error(Error("invalid TOML input", kind: "EINVAL"))
     try expect_false(
         (
             parse(
@@ -193,7 +193,7 @@ test "TOML optional limits include implicit tables and zero":
     )
 
 test "TOML nonfinite floats CRLF and repeated separators":
-    let root = (
+    root := (
         try entries(
             (
                 parse(
@@ -238,28 +238,28 @@ test "TOML errors report the offending line and column":
     failure("x = 1\ny = 1e") | try expect_equal("TOML 2:5: invalid exponent")
 
 test "TOML option fields default to none or the depth and value guards":
-    let limited: TomlValue! = error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
+    limited: TomlValue! = error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
     parse(text: "a=1", options: TomlOptions(max_bytes: 2)) | try expect_equal(limited)
     parse(text: "a=1", options: TomlOptions()) | try expect_equal(parse(text: "a=1"))
 
 test "TOML stringify round trips scalars tables and arrays of tables":
-    let source = "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
-    let parsed = (parse(text: source) | try expect_ok)
-    let text = (stringify(value: parsed) | try expect_ok)
+    source := "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
+    parsed := (parse(text: source) | try expect_ok)
+    text := (stringify(value: parsed) | try expect_ok)
     parse(text: text) | try expect_ok | try expect_equal(parsed)
     stringify(value: (parse(text: text) | try expect_ok)) | try expect_ok | try expect_equal(
         text
     )
 
 test "TOML stringify requires a table root and honors max_bytes":
-    let wrong: String! = error(Error("invalid TOML input", kind: "EINVAL"))
-    let limited: String! = error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
+    wrong: String! = error(Error("invalid TOML input", kind: "EINVAL"))
+    limited: String! = error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
     stringify(value: TomlValue.IntValue(1)) | try expect_equal(wrong)
 
-    let root = (parse(text: "a = 1") | try expect_ok)
+    root := (parse(text: "a = 1") | try expect_ok)
     stringify(value: root, max_bytes: 3) | try expect_equal(limited)
 
-    let exact: String! = ok("a = 1\n")
+    exact: String! = ok("a = 1\n")
     stringify(value: root, max_bytes: 6) | try expect_equal(exact)
     stringify(value: root, max_bytes: -1) | try expect_equal(wrong)
 
@@ -267,24 +267,24 @@ fn repeated(text: String, count: Int) String:
     if count <= 0: return ""
     if count == 1: return text.clone()
 
-    let half = repeated(text: text.clone(), count: count / 2)
+    half := repeated(text: text.clone(), count: count / 2)
     if count % 2 == 1: return half.concat(half).concat(text)
 
     return half.concat(half)
 
 test "TOML long strings parse and stringify in linear time":
-    let long = repeated(text: "x\\n", count: 150000)
-    let expected = repeated(text: "x\n", count: 150000)
-    let root = (parse(text: "a = \"{long}\"\nb = '''{expected}'''") | try expect_ok)
-    let table = (try entries(root.clone()))
+    long := repeated(text: "x\\n", count: 150000)
+    expected := repeated(text: "x\n", count: 150000)
+    root := (parse(text: "a = \"{long}\"\nb = '''{expected}'''") | try expect_ok)
+    table := (try entries(root.clone()))
     table["a"] | try expect_equal(TomlValue.StringValue(expected.clone()))
     table["b"] | try expect_equal(TomlValue.StringValue(expected))
 
-    let text = (stringify(value: root) | try expect_ok)
+    text := (stringify(value: root) | try expect_ok)
     parse(text: text) | try expect_ok | try expect_equal(root)
 
 test "TOML stringify rejects invalid date-time text":
-    let invalid: String! = error(Error("invalid TOML input", kind: "EINVAL"))
+    invalid: String! = error(Error("invalid TOML input", kind: "EINVAL"))
 
     for text in ["bogus", "", "2024-13-01", "1979-05-27T07:32:00 junk"]:
         var table = Map[String, TomlValue]()
@@ -302,18 +302,18 @@ test "TOML stringify rejects invalid date-time text":
     )
 
 test "TOML deeply nested inline tables parse in linear time":
-    let n = 6000
-    let text = "a = " + "\{ b = ".repeat(n).get() + "1" + " \}".repeat(n).get()
-    let started = monotonic()
-    let parsed = parse(text, TomlOptions())
-    let elapsed = monotonic().difference(started).to_milliseconds()
-    let value = try parsed
+    n := 6000
+    text := "a = " + "\{ b = ".repeat(n).get() + "1" + " \}".repeat(n).get()
+    started := monotonic()
+    parsed := parse(text, TomlOptions())
+    elapsed := monotonic().difference(started).to_milliseconds()
+    value := try parsed
     try expect_true(entries(value).is_ok())
     if elapsed > 3000: return fail("nested inline tables took {elapsed} ms")
 
 test "TOML parse without options stops deep nesting and none lifts it":
-    let deep = "a = " + "[".repeat(20000).get() + "]".repeat(20000).get()
+    deep := "a = " + "[".repeat(20000).get() + "]".repeat(20000).get()
     if parse(deep).is_ok(): return fail("nesting over the default depth was accepted")
 
-    let lifted = parse(deep, TomlOptions(max_depth: none, max_values: none))
+    lifted := parse(deep, TomlOptions(max_depth: none, max_values: none))
     try expect_true(lifted.is_ok())

@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [29, (-14)]
+    l1 := [29, (-14)]
     say("l1 = {l1} len {l1.length()}")
     say(
         "{(20 - (-(-32)))} {((-17) * ((-62873911119) * 38))} {((20 - (-(-32))) < ((-17) * ((-62873911119) * 38)))} sum {(20 - (-(-32))) + ((-17) * ((-62873911119) * 38))}"
     )
 
-    let bad = 1 and 2
+    bad := 1 and 2
 
     if "42".ends_with("x"):
         say(("MiXeD CaSe" + "gamma"))
     else:
         say("Tab\there")
 
-    let i2 = (19 % (-5))
+    i2 := (19 % (-5))
     say("i2 = {i2}")
     return 0

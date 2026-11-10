@@ -71,12 +71,12 @@ type Env:
     dseen: List[String]
     dres: List[String]
 
-let FUNCS = [
+FUNCS := [
     "subst", "patsubst", "strip", "findstring", "filter", "filter-out", "sort", "word",
     "wordlist", "words", "firstword", "lastword", "dir", "notdir", "suffix", "basename",
     "addprefix", "addsuffix", "wildcard", "foreach", "if", "info", "error"
 ]
-let LETTERS = "abcdefghijklmnopqrstuvwxyz"
+LETTERS := "abcdefghijklmnopqrstuvwxyz"
 
 // ---------- small helpers ----------
 
@@ -138,8 +138,8 @@ fn has_pct(s: String) Bool:
     return s.contains("%")
 
 fn repl_pct(s: String, st: String) String:
-    let cs = s.chars()
-    let k = cfind(cs, "%", 0)
+    cs := s.chars()
+    k := cfind(cs, "%", 0)
     if k < 0:
         return s.clone()
 
@@ -153,8 +153,8 @@ fn joinsp(a: String, b: String) String:
 
 // Pattern match. Returns the stem, or none. nonempty requires a non-empty stem.
 fn pmatch(pat: String, name: String, nonempty: Bool) String?:
-    let pc = pat.chars()
-    let k = cfind(pc, "%", 0)
+    pc := pat.chars()
+    k := cfind(pc, "%", 0)
 
     if k < 0:
         if name == pat:
@@ -162,9 +162,9 @@ fn pmatch(pat: String, name: String, nonempty: Bool) String?:
 
         return none
 
-    let pre = cjoin(pc, 0, k)
-    let suf = cjoin(pc, k + 1, pc.length())
-    let nl = name.length()
+    pre := cjoin(pc, 0, k)
+    suf := cjoin(pc, k + 1, pc.length())
+    nl := name.length()
     var minl = pre.length() + suf.length()
     if nonempty:
         minl += 1
@@ -179,7 +179,7 @@ fn glob_m(p: List[String], pi: Int, s: List[String], si: Int) Bool:
     if pi >= p.length():
         return si >= s.length()
 
-    let c = p[pi]
+    c := p[pi]
 
     if c == "*":
         var k = si
@@ -198,15 +198,15 @@ fn glob_m(p: List[String], pi: Int, s: List[String], si: Int) Bool:
     return si < s.length() and s[si] == c and glob_m(p, pi + 1, s, si + 1)
 
 fn strip_tabs(s: String) String:
-    let cs = s.chars()
+    cs := s.chars()
     var k = 0
     while k < cs.length() and cs[k] == "\t":
         k += 1
     return cjoin(cs, k, cs.length())
 
 fn strip_comment(s: String) String:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var out = ""
     var i = 0
 
@@ -225,15 +225,15 @@ fn strip_comment(s: String) String:
 // Joins physical lines into logical lines (backslash continuation).
 fn logical(phys: List[String]) List[LLine]:
     var out = List[LLine]()
-    let n = phys.length()
+    n := phys.length()
     var i = 0
 
     while i < n:
-        let start = i + 1
+        start := i + 1
         var cur = phys[i].clone()
 
         while cur.ends_with("\\") and i + 1 < n:
-            let base = sub(cur, 0, cur.length() - 1).trim_end()
+            base := sub(cur, 0, cur.length() - 1).trim_end()
             i += 1
             cur = base + " " + phys[i].trim_start()
 
@@ -246,10 +246,10 @@ fn logical(phys: List[String]) List[LLine]:
 fn find_colon(cs: List[String]) Int:
     var depth = 0
     var i = 0
-    let n = cs.length()
+    n := cs.length()
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if c == "$" and i + 1 < n and (cs[i + 1] == "(" or cs[i + 1] == "\{"):
             depth += 1
@@ -276,13 +276,13 @@ fn directive_kw(t: String) String:
     if t == "else" or t == "endif":
         return t.clone()
 
-    let cs = t.chars()
-    let n = cs.length()
+    cs := t.chars()
+    n := cs.length()
     var k = 0
     while k < n and LETTERS.contains(cs[k]):
         k += 1
 
-    let kw = cjoin(cs, 0, k)
+    kw := cjoin(cs, 0, k)
     if kw == "ifdef" or kw == "ifndef" or kw == "ifeq" or kw == "ifneq":
         if k == n or cs[k] == " " or cs[k] == "\t" or cs[k] == "(":
             return kw.clone()
@@ -290,9 +290,9 @@ fn directive_kw(t: String) String:
 
 // For "(A,B)": returns [A, B] or [] when the syntax is invalid.
 fn parse_ifeq(rest: String) List[String]:
-    let rc = rest.chars()
-    let n = rc.length()
-    let bad = List[String]()
+    rc := rest.chars()
+    n := rc.length()
+    bad := List[String]()
     if n < 2 or rc[0] != "(" or rc[n - 1] != ")":
         return bad
 
@@ -301,7 +301,7 @@ fn parse_ifeq(rest: String) List[String]:
     var j = 1
 
     while j < n - 1:
-        let ch = rc[j]
+        ch := rc[j]
 
         if ch == "(" or ch == "\{":
             depth += 1
@@ -318,7 +318,7 @@ fn parse_ifeq(rest: String) List[String]:
     if commas.length() != 1:
         return bad
 
-    let c = commas[0]
+    c := commas[0]
     var res = List[String]()
     res.append(cjoin(rc, 1, c))
     res.append(cjoin(rc, c + 1, n - 1))
@@ -343,15 +343,15 @@ fn close_index(cs: List[String], start: Int, open: String, close: String) Int:
     return -1
 
 fn split_args(s: String) List[String]:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var out = List[String]()
     var depth = 0
     var start = 0
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if c == "(" or c == "\{":
             depth += 1
@@ -393,13 +393,13 @@ fn circ(stack: List[String], p: String) Fatal:
     return make_fatal("Circular dependency detected: " + parts.join(" -> "))
 
 fn expand(var e: Env, text: String) String!Fatal:
-    let cs = text.chars()
-    let n = cs.length()
+    cs := text.chars()
+    n := cs.length()
     var res = ""
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if c != "$":
             res += c
@@ -414,16 +414,16 @@ fn expand(var e: Env, text: String) String!Fatal:
             if cs[i + 1] == "\{":
                 closer = "\}"
 
-            let j = close_index(cs, i + 2, cs[i + 1], closer)
+            j := close_index(cs, i + 2, cs[i + 1], closer)
             if j < 0:
                 return error(fatal_at(e, "unterminated variable reference"))
 
-            let inner = cjoin(cs, i + 2, j)
-            let v = try ref_value(var e, inner)
+            inner := cjoin(cs, i + 2, j)
+            v := try ref_value(var e, inner)
             res += v
             i = j + 1
         else:
-            let v = try lookup_name(var e, cs[i + 1])
+            v := try lookup_name(var e, cs[i + 1])
             res += v
             i += 2
 
@@ -433,8 +433,8 @@ fn lookup_name(var e: Env, name: String) String!Fatal:
     if not e.vars.contains(name):
         return ok("")
 
-    let simple = e.vars[name].simple
-    let raw = e.vars[name].value.clone()
+    simple := e.vars[name].simple
+    raw := e.vars[name].value.clone()
     if simple:
         return ok(raw)
     if e.rstack.contains(name):
@@ -446,7 +446,7 @@ fn lookup_name(var e: Env, name: String) String!Fatal:
 
     e.rstack.append(name.clone())
 
-    let r = try expand(var e, raw)
+    r := try expand(var e, raw)
     e.rstack.remove(e.rstack.length() - 1)
     return ok(r)
 
@@ -455,7 +455,7 @@ fn patsubst_words(pat: String, rep: String, words: List[String]) String:
 
     for w in words:
         if has_pct(pat):
-            if let st = pmatch(pat, w, false):
+            if st := pmatch(pat, w, false):
                 out.append(repl_pct(rep, st))
             else:
                 out.append(w.clone())
@@ -478,8 +478,8 @@ fn subst_refs(val: String, from: String, to: String) String:
     return patsubst_words(pat, rep, val.fields())
 
 fn ref_value(var e: Env, inner: String) String!Fatal:
-    let ic = inner.chars()
-    let n = ic.length()
+    ic := inner.chars()
+    n := ic.length()
     var sp = -1
     var k = 0
 
@@ -491,25 +491,25 @@ fn ref_value(var e: Env, inner: String) String!Fatal:
         k += 1
 
     if sp > 0:
-        let fname = cjoin(ic, 0, sp)
+        fname := cjoin(ic, 0, sp)
 
         if FUNCS.contains(fname):
-            let args = split_args(cjoin(ic, sp + 1, n))
+            args := split_args(cjoin(ic, sp + 1, n))
             return call_fn(var e, fname, args)
 
-    let ex = try expand(var e, inner)
-    let nm = ex.trim()
-    let nc = nm.chars()
-    let colon = cfind(nc, ":", 1)
+    ex := try expand(var e, inner)
+    nm := ex.trim()
+    nc := nm.chars()
+    colon := cfind(nc, ":", 1)
 
     if colon > 0:
-        let eqi = cfind(nc, "=", colon + 1)
+        eqi := cfind(nc, "=", colon + 1)
 
         if eqi > 0:
-            let vname = cjoin(nc, 0, colon).trim()
-            let from = cjoin(nc, colon + 1, eqi)
-            let to = cjoin(nc, eqi + 1, nc.length())
-            let val = try lookup_name(var e, vname)
+            vname := cjoin(nc, 0, colon).trim()
+            from := cjoin(nc, colon + 1, eqi)
+            to := cjoin(nc, eqi + 1, nc.length())
+            val := try lookup_name(var e, vname)
             return ok(subst_refs(val, from, to))
 
     return lookup_name(var e, nm)
@@ -518,7 +518,7 @@ fn argv(var e: Env, args: List[String], k: Int) String!Fatal:
     if k >= args.length():
         return ok("")
 
-    let raw = args[k].trim()
+    raw := args[k].trim()
     return expand(var e, raw)
 
 fn words_of(ws: List[String]) List[Int]:
@@ -528,11 +528,11 @@ fn path_map(f: String, ws: List[String]) String:
     var out = List[String]()
 
     for w in ws:
-        let cs = w.chars()
-        let n = cs.length()
-        let sl = clast(cs, "/")
-        let dot = clast(cs, ".")
-        let has_suffix = dot > sl
+        cs := w.chars()
+        n := cs.length()
+        sl := clast(cs, "/")
+        dot := clast(cs, ".")
+        has_suffix := dot > sl
         var r = ""
 
         if f == "dir":
@@ -558,30 +558,30 @@ fn path_map(f: String, ws: List[String]) String:
 
 fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
     if f == "if":
-        let c = try argv(var e, args, 0)
+        c := try argv(var e, args, 0)
         if c.trim() != "":
             return argv(var e, args, 1)
 
         return argv(var e, args, 2)
 
     if f == "info":
-        let t = try argv(var e, args, 0)
+        t := try argv(var e, args, 0)
         emit(var e, t)
         return ok("")
 
     if f == "error":
-        let t = try argv(var e, args, 0)
+        t := try argv(var e, args, 0)
         return error(fatal_at(e, t))
 
     if f == "foreach":
-        let vn = try argv(var e, args, 0)
-        let lst = try argv(var e, args, 1)
+        vn := try argv(var e, args, 0)
+        lst := try argv(var e, args, 1)
         var body = ""
         if args.length() > 2:
             body = args[2].trim()
 
-        let words = lst.fields()
-        let had = e.vars.contains(vn)
+        words := lst.fields()
+        had := e.vars.contains(vn)
         var ov = ""
         var os = false
 
@@ -594,7 +594,7 @@ fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
         for w in words:
             e.vars[vn.clone()] = Var(value: w.clone(), simple: true)
 
-            let r = try expand(var e, body)
+            r := try expand(var e, body)
             items.append(r)
 
         if had:
@@ -605,41 +605,41 @@ fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
         return ok(items.join(" "))
 
     if f == "subst":
-        let a = try argv(var e, args, 0)
-        let b = try argv(var e, args, 1)
-        let c = try argv(var e, args, 2)
+        a := try argv(var e, args, 0)
+        b := try argv(var e, args, 1)
+        c := try argv(var e, args, 2)
         if a == "":
             return ok(c)
 
         return ok(c.replace(a, b))
 
     if f == "patsubst":
-        let p = try argv(var e, args, 0)
-        let r = try argv(var e, args, 1)
-        let t = try argv(var e, args, 2)
+        p := try argv(var e, args, 0)
+        r := try argv(var e, args, 1)
+        t := try argv(var e, args, 2)
         return ok(patsubst_words(p, r, t.fields()))
 
     if f == "strip":
-        let t = try argv(var e, args, 0)
+        t := try argv(var e, args, 0)
         return ok(t.fields().join(" "))
 
     if f == "findstring":
-        let a = try argv(var e, args, 0)
-        let t = try argv(var e, args, 1)
+        a := try argv(var e, args, 0)
+        t := try argv(var e, args, 1)
         if t.contains(a):
             return ok(a)
 
         return ok("")
 
     if f == "filter" or f == "filter-out":
-        let pats = (try argv(var e, args, 0)).fields()
-        let ws = (try argv(var e, args, 1)).fields()
+        pats := (try argv(var e, args, 0)).fields()
+        ws := (try argv(var e, args, 1)).fields()
         var out = List[String]()
 
         for w in ws:
             var m = false
             for p in pats:
-                if let _st = pmatch(p, w, false):
+                if _st := pmatch(p, w, false):
                     m = true
             if m == (f == "filter"):
                 out.append(w.clone())
@@ -657,26 +657,26 @@ fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
         return ok(out.join(" "))
 
     if f == "word":
-        let nt = try argv(var e, args, 0)
-        let ws = (try argv(var e, args, 1)).fields()
-        if let k = nt.parse_int():
+        nt := try argv(var e, args, 0)
+        ws := (try argv(var e, args, 1)).fields()
+        if k := nt.parse_int():
             if k >= 1 and k <= ws.length():
                 return ok(ws[k - 1].clone())
         return ok("")
 
     if f == "wordlist":
-        let st = try argv(var e, args, 0)
-        let en = try argv(var e, args, 1)
-        let ws = (try argv(var e, args, 2)).fields()
+        st := try argv(var e, args, 0)
+        en := try argv(var e, args, 1)
+        ws := (try argv(var e, args, 2)).fields()
 
-        if let s = st.parse_int():
-            if let t = en.parse_int():
+        if s := st.parse_int():
+            if t := en.parse_int():
                 if s >= 1 and t >= s and s <= ws.length():
                     var last = t
                     if last > ws.length():
                         last = ws.length()
 
-                    let lo = s - 1
+                    lo := s - 1
                     var out = List[String]()
                     var i = lo
 
@@ -689,31 +689,31 @@ fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
         return ok("")
 
     if f == "words":
-        let ws = (try argv(var e, args, 0)).fields()
-        let cnt = ws.length()
+        ws := (try argv(var e, args, 0)).fields()
+        cnt := ws.length()
         return ok("{cnt}")
 
     if f == "firstword":
-        let ws = (try argv(var e, args, 0)).fields()
+        ws := (try argv(var e, args, 0)).fields()
         if ws.length() == 0:
             return ok("")
 
         return ok(ws[0].clone())
 
     if f == "lastword":
-        let ws = (try argv(var e, args, 0)).fields()
+        ws := (try argv(var e, args, 0)).fields()
         if ws.length() == 0:
             return ok("")
 
         return ok(ws[ws.length() - 1].clone())
 
     if f == "dir" or f == "notdir" or f == "suffix" or f == "basename":
-        let ws = (try argv(var e, args, 0)).fields()
+        ws := (try argv(var e, args, 0)).fields()
         return ok(path_map(f, ws))
 
     if f == "addprefix" or f == "addsuffix":
-        let a = try argv(var e, args, 0)
-        let ws = (try argv(var e, args, 1)).fields()
+        a := try argv(var e, args, 0)
+        ws := (try argv(var e, args, 1)).fields()
         var out = List[String]()
 
         for w in ws:
@@ -725,13 +725,13 @@ fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
         return ok(out.join(" "))
 
     if f == "wildcard":
-        let pats = (try argv(var e, args, 0)).fields()
+        pats := (try argv(var e, args, 0)).fields()
         var out = List[String]()
-        let names = e.files.keys()
+        names := e.files.keys()
 
         for p in pats:
             var ms = List[String]()
-            let pc = p.chars()
+            pc := p.chars()
             for nm in names:
                 if glob_m(pc, 0, nm.chars(), 0):
                     ms.append(nm.clone())
@@ -746,11 +746,11 @@ fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
 // ---------- Makefile parsing ----------
 
 fn active(e: Env) Bool:
-    let n = e.frames.length()
+    n := e.frames.length()
     if n == 0:
         return true
 
-    let f = e.frames[n - 1]
+    f := e.frames[n - 1]
     if not f.parent:
         return false
     if f.in_else:
@@ -766,11 +766,11 @@ fn close_rule(var e: Env) Unit:
     if e.pend_phony:
         return
 
-    let tl = e.pend_targets.clone()
-    let nl = e.pend_normal.clone()
-    let ol = e.pend_oo.clone()
-    let rl = e.pend_recipe.clone()
-    let ln = e.pend_line
+    tl := e.pend_targets.clone()
+    nl := e.pend_normal.clone()
+    ol := e.pend_oo.clone()
+    rl := e.pend_recipe.clone()
+    ln := e.pend_line
 
     for t in tl:
         if has_pct(t):
@@ -824,25 +824,25 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
     e.rstack = List[String]()
 
     for tok in cli:
-        let cs = tok.chars()
-        let k = cfind(cs, "=", 0)
-        let name = cjoin(cs, 0, k)
-        let value = cjoin(cs, k + 1, cs.length())
+        cs := tok.chars()
+        k := cfind(cs, "=", 0)
+        name := cjoin(cs, 0, k)
+        value := cjoin(cs, k + 1, cs.length())
         e.vars[name.clone()] = Var(value: value, simple: false)
         e.cli.append(name)
 
-    let lls = logical(e.mk)
+    lls := logical(e.mk)
 
     for ll in lls:
         e.line = ll.num
 
-        let raw = ll.text.clone()
+        raw := ll.text.clone()
 
         if raw.starts_with("\t"):
             if not active(e):
                 continue
 
-            let body = strip_tabs(raw)
+            body := strip_tabs(raw)
             if body.trim() == "":
                 continue
             if not e.has_pend:
@@ -851,35 +851,35 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
             e.pend_recipe.append(RLine(line: ll.num, text: body))
             continue
 
-        let t = strip_comment(raw).trim()
+        t := strip_comment(raw).trim()
         if t == "":
             continue
 
-        let kw = directive_kw(t)
+        kw := directive_kw(t)
 
         if kw != "":
             close_rule(var e)
 
-            let tcs = t.chars()
-            let rest = cjoin(tcs, kw.length(), tcs.length()).trim()
-            let act = active(e)
+            tcs := t.chars()
+            rest := cjoin(tcs, kw.length(), tcs.length()).trim()
+            act := active(e)
 
             if kw == "endif":
-                let k = e.frames.length()
+                k := e.frames.length()
                 if k == 0:
                     return error(fatal_at(e, "extraneous 'endif'"))
 
                 e.frames.remove(k - 1)
             else if kw == "else":
-                let k = e.frames.length()
+                k := e.frames.length()
                 if k == 0:
                     return error(fatal_at(e, "extraneous 'else'"))
                 if e.frames[k - 1].seen_else:
                     return error(fatal_at(e, "extraneous 'else'"))
 
-                let fl = e.frames[k - 1].line
-                let fp = e.frames[k - 1].parent
-                let fc = e.frames[k - 1].cond
+                fl := e.frames[k - 1].line
+                fp := e.frames[k - 1].parent
+                fc := e.frames[k - 1].cond
                 e.frames.remove(k - 1)
                 e.frames.append(
                     Frame(
@@ -890,8 +890,8 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
                 var cond = false
 
                 if act:
-                    let nm = (try expand(var e, rest)).trim()
-                    let d = lookup_defined(e, nm)
+                    nm := (try expand(var e, rest)).trim()
+                    d := lookup_defined(e, nm)
 
                     if kw == "ifdef":
                         cond = d
@@ -908,12 +908,12 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
                 var cond = false
 
                 if act:
-                    let parts = parse_ifeq(rest)
+                    parts := parse_ifeq(rest)
                     if parts.length() != 2:
                         return error(fatal_at(e, "invalid syntax in conditional"))
 
-                    let a = (try expand(var e, parts[0].trim())).trim()
-                    let b = (try expand(var e, parts[1].trim())).trim()
+                    a := (try expand(var e, parts[0].trim())).trim()
+                    b := (try expand(var e, parts[1].trim())).trim()
 
                     if kw == "ifeq":
                         cond = a == b
@@ -934,10 +934,10 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
 
         close_rule(var e)
 
-        let cs = t.chars()
-        let n = cs.length()
-        let eq = cfind(cs, "=", 0)
-        let col = find_colon(cs)
+        cs := t.chars()
+        n := cs.length()
+        eq := cfind(cs, "=", 0)
+        col := find_colon(cs)
 
         if eq >= 0 and (col < 0 or col > eq or col == eq - 1):
             var nend = eq
@@ -954,19 +954,19 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
                 nend = eq - 1
                 op = cs[eq - 1].clone()
 
-            let nraw = cjoin(cs, 0, nend)
-            let name = (try expand(var e, nraw)).trim()
+            nraw := cjoin(cs, 0, nend)
+            name := (try expand(var e, nraw)).trim()
             if name == "":
                 return error(fatal_at(e, "empty variable name"))
 
-            let value = cjoin(cs, eq + 1, n).trim()
+            value := cjoin(cs, eq + 1, n).trim()
             if e.cli.contains(name):
                 continue
 
             if op == "=":
                 e.vars[name.clone()] = Var(value: value, simple: false)
             else if op == ":":
-                let v = try expand(var e, value)
+                v := try expand(var e, value)
                 e.vars[name.clone()] = Var(value: v, simple: true)
             else if op == "?":
                 if not e.vars.contains(name):
@@ -975,11 +975,11 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
                 if not e.vars.contains(name):
                     e.vars[name.clone()] = Var(value: value, simple: false)
                 else:
-                    let osimple = e.vars[name].simple
-                    let oval = e.vars[name].value.clone()
+                    osimple := e.vars[name].simple
+                    oval := e.vars[name].value.clone()
 
                     if osimple:
-                        let add = try expand(var e, value)
+                        add := try expand(var e, value)
                         e.vars[name.clone()] = Var(
                             value: joinsp(oval, add), simple: true
                         )
@@ -988,8 +988,8 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
                             value: joinsp(oval, value), simple: false
                         )
         else if col >= 0:
-            let pre = cjoin(cs, 0, col)
-            let semi = cfind(cs, ";", col + 1)
+            pre := cjoin(cs, 0, col)
+            semi := cfind(cs, ";", col + 1)
             var has_cmd = false
             var cmd = ""
             var pq = ""
@@ -1001,11 +1001,11 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
             else:
                 pq = cjoin(cs, col + 1, n)
 
-            let pre_x = try expand(var e, pre)
-            let tg = pre_x.fields()
-            let pe = try expand(var e, pq)
-            let pcs = pe.chars()
-            let bar = cfind(pcs, "|", 0)
+            pre_x := try expand(var e, pre)
+            tg := pre_x.fields()
+            pe := try expand(var e, pq)
+            pcs := pe.chars()
+            bar := cfind(pcs, "|", 0)
             var normal = List[String]()
             var oo = List[String]()
 
@@ -1037,14 +1037,14 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
                 if has_cmd:
                     e.pend_recipe.append(RLine(line: ll.num, text: cmd))
         else:
-            let v = try expand(var e, t)
+            v := try expand(var e, t)
             if v.trim() != "":
                 return error(fatal_at(e, "missing separator"))
 
     close_rule(var e)
 
     if e.frames.length() > 0:
-        let k = e.frames.length() - 1
+        k := e.frames.length() - 1
         e.line = e.frames[k].line
         return error(fatal_at(e, "missing 'endif'"))
 
@@ -1060,7 +1060,7 @@ fn canmake(e: Env, name: String, levels: Int) Bool:
 
     for pr in e.prules:
         if pr.recipe.length() > 0:
-            if let st = pmatch(pr.pat, name, true):
+            if st := pmatch(pr.pat, name, true):
                 var good = true
                 for p in pr.normal:
                     if good and not canmake(e, repl_pct(p, st), levels - 1):
@@ -1074,7 +1074,7 @@ fn canmake(e: Env, name: String, levels: Int) Bool:
     return false
 
 fn resolve(e: Env, t: String) Res:
-    if let r = e.explicit.get(t):
+    if r := e.explicit.get(t):
         if r.recipe.length() > 0:
             return Res(
                 has: true, normal: r.normal.clone(), oo: r.oo.clone(),
@@ -1083,7 +1083,7 @@ fn resolve(e: Env, t: String) Res:
 
     for pr in e.prules:
         if pr.recipe.length() > 0:
-            if let st = pmatch(pr.pat, t, true):
+            if st := pmatch(pr.pat, t, true):
                 var good = true
                 for p in pr.normal:
                     if good and not canmake(e, repl_pct(p, st), 7):
@@ -1101,7 +1101,7 @@ fn resolve(e: Env, t: String) Res:
                     for p in pr.oo:
                         oo.append(repl_pct(p, st))
 
-                    if let r = e.explicit.get(t):
+                    if r := e.explicit.get(t):
                         for p in r.normal:
                             nm.append(p.clone())
                         for p in r.oo:
@@ -1112,7 +1112,7 @@ fn resolve(e: Env, t: String) Res:
                         stem: st
                     )
 
-    if let r = e.explicit.get(t):
+    if r := e.explicit.get(t):
         return Res(
             has: true, normal: r.normal.clone(), oo: r.oo.clone(),
             recipe: List[RLine](), stem: ""
@@ -1132,11 +1132,11 @@ fn default_goal(e: Env) String?:
 // ---------- build ----------
 
 fn simulate(var e: Env, cmd: String) Int:
-    let ws = cmd.fields()
+    ws := cmd.fields()
     if ws.length() == 0:
         return 0
 
-    let w0 = ws[0].clone()
+    w0 := ws[0].clone()
     var args = List[String]()
     var k = 1
 
@@ -1150,7 +1150,7 @@ fn simulate(var e: Env, cmd: String) Int:
     if w0 == "exit":
         if args.length() == 0:
             return 0
-        if let v = args[0].parse_int():
+        if v := args[0].parse_int():
             return v
 
         return 2
@@ -1204,10 +1204,10 @@ fn run_recipe(
     for rl in recipe:
         e.line = rl.line
 
-        let ex = try expand(var e, rl.text)
-        let cmd0 = ex.trim()
-        let cs = cmd0.chars()
-        let n = cs.length()
+        ex := try expand(var e, rl.text)
+        cmd0 := ex.trim()
+        cs := cmd0.chars()
+        n := cs.length()
         var k = 0
         var silent = false
         var ign = false
@@ -1228,7 +1228,7 @@ fn run_recipe(
                 ign = true
             k += 1
 
-        let cmd = cjoin(cs, k, n)
+        cmd := cjoin(cs, k, n)
 
         if e.dry:
             if cmd != "":
@@ -1238,7 +1238,7 @@ fn run_recipe(
         if not silent and cmd != "":
             emit(var e, cmd.clone())
 
-        let st = simulate(var e, cmd)
+        st := simulate(var e, cmd)
 
         if st != 0:
             if ign:
@@ -1257,7 +1257,7 @@ fn run_recipe(
     return ok(unit)
 
 fn update_one(var e: Env, t: String, needed: String) Bool!Fatal:
-    let r = resolve(e, t.clone())
+    r := resolve(e, t.clone())
 
     if not r.has:
         if e.files.contains(t):
@@ -1269,18 +1269,18 @@ fn update_one(var e: Env, t: String, needed: String) Bool!Fatal:
 
         return error(make_fatal("No rule to make target '{t}', needed by '{needed}'"))
 
-    let in0 = e.files.contains(t)
+    in0 := e.files.contains(t)
     var m0 = 0
     if in0:
         m0 = e.files[t]
 
-    let dn = dedupe(r.normal)
+    dn := dedupe(r.normal)
     var anyc = false
     var newer = false
     var qs = List[String]()
 
     for p in dn:
-        let c = try update(var e, p.clone(), t.clone())
+        c := try update(var e, p.clone(), t.clone())
         var nw = false
         if in0 and e.files.contains(p):
             if e.files[p] > m0:
@@ -1292,11 +1292,11 @@ fn update_one(var e: Env, t: String, needed: String) Bool!Fatal:
         if not in0 or c or nw:
             qs.append(p.clone())
 
-    let doo = dedupe(r.oo)
+    doo := dedupe(r.oo)
     for p in doo:
-        let _o = try update(var e, p.clone(), t.clone())
+        _o := try update(var e, p.clone(), t.clone())
 
-    let need = e.phony.contains(t) or not e.files.contains(t) or anyc or newer
+    need := e.phony.contains(t) or not e.files.contains(t) or anyc or newer
     if not need:
         return ok(false)
 
@@ -1309,14 +1309,14 @@ fn update_one(var e: Env, t: String, needed: String) Bool!Fatal:
     return ok(true)
 
 fn update(var e: Env, t: String, needed: String) Bool!Fatal:
-    if let m = e.memo.get(t):
+    if m := e.memo.get(t):
         return ok(m)
     if e.dstack.contains(t):
         return error(circ(e.dstack, t))
 
     e.dstack.append(t.clone())
 
-    let c = try update_one(var e, t.clone(), needed)
+    c := try update_one(var e, t.clone(), needed)
     e.dstack.remove(e.dstack.length() - 1)
     e.memo[t.clone()] = c
     return ok(c)
@@ -1327,17 +1327,17 @@ fn run_goals(var e: Env, tgs: List[String]) Unit!Fatal:
         goals.append(g.clone())
 
     if goals.length() == 0:
-        if let g = default_goal(e):
+        if g := default_goal(e):
             goals.append(g)
         else:
             return error(make_fatal("No targets"))
 
     for g in goals:
-        let before = e.ran
-        let _c = try update(var e, g.clone(), "")
+        before := e.ran
+        _c := try update(var e, g.clone(), "")
 
         if e.ran == before:
-            let r = resolve(e, g.clone())
+            r := resolve(e, g.clone())
 
             if (
                 (r.has and r.recipe.length() > 0)
@@ -1350,7 +1350,7 @@ fn run_goals(var e: Env, tgs: List[String]) Unit!Fatal:
     return ok(unit)
 
 fn deps_visit(var e: Env, name: String) Unit!Fatal:
-    let r = resolve(e, name.clone())
+    r := resolve(e, name.clone())
     var pre = dedupe(r.normal)
     for p in dedupe(r.oo):
         pre.append(p.clone())
@@ -1380,8 +1380,8 @@ fn fmt_rule(name: String, normal: List[String], oo: List[String]) String:
 // ---------- requests ----------
 
 fn handle(var e: Env, raw: String) Unit!Fatal:
-    let ws = raw.fields()
-    let cmd = ws[0].clone()
+    ws := raw.fields()
+    cmd := ws[0].clone()
 
     if cmd == "build" or cmd == "dry" or cmd == "deps" or cmd == "targets":
         var clis = List[String]()
@@ -1389,7 +1389,7 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
         var k = 1
 
         while k < ws.length():
-            let w = ws[k].clone()
+            w := ws[k].clone()
 
             if cfind(w.chars(), "=", 0) > 0:
                 clis.append(w)
@@ -1423,11 +1423,11 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
                 for x in e.dres.clone():
                     emit(var e, x.clone())
         else:
-            if let g = default_goal(e):
+            if g := default_goal(e):
                 emit(var e, "default: {g}")
 
             for t in e.order.clone():
-                let r = e.explicit[t].clone()
+                r := e.explicit[t].clone()
                 emit(var e, fmt_rule(t.clone(), r.normal, r.oo))
 
             for pr in e.prules.clone():
@@ -1438,7 +1438,7 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
         return ok(unit)
 
     if cmd == "expand":
-        let rest = raw.trim().drop(6).trim()
+        rest := raw.trim().drop(6).trim()
         e.dry = false
         e.memo = Map[String, Bool]()
         e.dstack = List[String]()
@@ -1447,7 +1447,7 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
         e.mute = false
         e.line = 0
 
-        let v = try expand(var e, rest)
+        v := try expand(var e, rest)
         emit(var e, "[" + v + "]")
         return ok(unit)
 
@@ -1458,7 +1458,7 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
             emit(var e, "(no files)")
 
         for k in ks:
-            let mt = e.files[k]
+            mt := e.files[k]
             emit(var e, "{k} {mt}")
 
         return ok(unit)
@@ -1468,7 +1468,7 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
             e.clock += 1
             e.files[ws[1].clone()] = e.clock
         else if ws.length() == 3:
-            if let n = ws[2].parse_int():
+            if n := ws[2].parse_int():
                 e.files[ws[1].clone()] = n
                 if n > e.clock:
                     e.clock = n
@@ -1492,10 +1492,10 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
     return ok(unit)
 
 export fn main() Int:
-    let b = read_all(stdin()).get()
-    let text = b.decode_utf8().get("")
-    let all = text.lines()
-    let n = all.length()
+    b := read_all(stdin()).get()
+    text := b.decode_utf8().get("")
+    all := text.lines()
+    n := all.length()
     var s1 = -1
     var s2 = -1
     var i = 0
@@ -1537,10 +1537,10 @@ export fn main() Int:
     )
 
     for line in ftab:
-        let f = line.fields()
+        f := line.fields()
 
         if f.length() == 2:
-            if let m = f[1].parse_int():
+            if m := f[1].parse_int():
                 e.files[f[0].clone()] = m
                 if m > e.clock:
                     e.clock = m
@@ -1552,7 +1552,7 @@ export fn main() Int:
         e.out.append("> " + req.trim_end())
         e.mute = false
 
-        let r = handle(var e, req.clone())
+        r := handle(var e, req.clone())
         if r.is_error():
             e.out.append(r.err().text.clone())
 

@@ -23,7 +23,7 @@ export fn versions() List[String]:
 
 // Go has no sorted-map producer; all other rows are required in every version.
 fn required(version: String) List[String]:
-    let names = operations().map(fn o: o.name.clone())
+    names := operations().map(fn o: o.name.clone())
     if version == "go": return names.filter(fn n: n != "sorted_map_add_contains")
 
     return names
@@ -40,7 +40,7 @@ fn ratio(num: Float?, den: Float?) String:
     return (num.get(0.0) / den.get(0.0)).to_fixed(2)
 
 fn cell(value: Float?) String:
-    if let v = value: return right(v.to_fixed(1), 9)
+    if v := value: return right(v.to_fixed(1), 9)
 
     return right("-", 9)
 
@@ -56,12 +56,12 @@ export fn summarize(lines: List[String], repeats: Int) String!:
     var pending = Set[String]()
 
     for line in lines:
-        let parts = line.trim().split(" ").filter(fn p: p != "")
+        parts := line.trim().split(" ").filter(fn p: p != "")
         if parts.length() < 2 or not versions().contains(parts[0]):
             return invalid("invalid sample: {line.trim()}")
 
-        let version = parts[0].clone()
-        let name = parts[1].clone()
+        version := parts[0].clone()
+        name := parts[1].clone()
         if active != "" and version != active: return invalid(
             "unterminated {active} trial"
         )
@@ -69,7 +69,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
         active = version.clone()
 
         if parts.length() == 3 and parts[1] == "#" and parts[2] == "end":
-            let need = required(version)
+            need := required(version)
             if (
                 pending.length() != need.length()
                 or not need.all(fn n: pending.contains(n))
@@ -88,8 +88,8 @@ export fn summarize(lines: List[String], repeats: Int) String!:
         ):
             return invalid("invalid operation: {line.trim()}")
 
-        let ops = parts[2].parse_int()
-        let ns = parts[3].parse_int()
+        ops := parts[2].parse_int()
+        ns := parts[3].parse_int()
         if (
             ops.is_none()
             or ns.is_none()
@@ -98,10 +98,10 @@ export fn summarize(lines: List[String], repeats: Int) String!:
         ):
             return invalid("invalid count or timing: {line.trim()}")
 
-        let key = "{name} {version}"
-        let now = ns.get(0).to_float()
+        key := "{name} {version}"
+        now := ns.get(0).to_float()
 
-        if let prior = best.get(key):
+        if prior := best.get(key):
             best.add(key.clone(), if now < prior: now else: prior)
         else:
             best.add(key.clone(), now)
@@ -120,12 +120,12 @@ export fn summarize(lines: List[String], repeats: Int) String!:
     ]
 
     for op in operations():
-        let n = op.count.to_float()
-        let m = best.get_or("{op.name} ms", 0.0) / n
+        n := op.count.to_float()
+        m := best.get_or("{op.name} ms", 0.0) / n
         var g: Float? = none
-        if let t = best.get("{op.name} go"): g = t / n
+        if t := best.get("{op.name} go"): g = t / n
 
-        let r = best.get_or("{op.name} rs", 0.0) / n
+        r := best.get_or("{op.name} rs", 0.0) / n
         rows.append(
             left(op.name, 34) + cell(m) + cell(g) + cell(r) + right(
                 ratio(m, g), 8

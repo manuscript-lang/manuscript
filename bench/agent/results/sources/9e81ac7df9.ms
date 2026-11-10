@@ -7,41 +7,41 @@ import StringBuilder from "@std/string.ms"
 // Heap tables: tags/nums/cars/cdrs describe values; the rest are side tables.
 // ---------------------------------------------------------------------------
 
-let T_VOID = 0
-let T_BOOL = 1
-let T_INT = 2
-let T_SYM = 3
-let T_STR = 4
-let T_PAIR = 5
-let T_PRIM = 6
-let T_CLOS = 7
-let T_NIL = 8
-let V_VOID = 0
-let V_FALSE = 1
-let V_TRUE = 2
-let V_NIL = 3
-let NO_ID = -1
-let DEPTH_LIMIT = 10000
-let MAXI = 9223372036854775807
-let MINI = -9223372036854775807 - 1
+T_VOID := 0
+T_BOOL := 1
+T_INT := 2
+T_SYM := 3
+T_STR := 4
+T_PAIR := 5
+T_PRIM := 6
+T_CLOS := 7
+T_NIL := 8
+V_VOID := 0
+V_FALSE := 1
+V_TRUE := 2
+V_NIL := 3
+NO_ID := -1
+DEPTH_LIMIT := 10000
+MAXI := 9223372036854775807
+MINI := -9223372036854775807 - 1
 // Special-form symbols are interned first, in this order, so their ids are fixed.
-let S_QUOTE = 0
-let S_IF = 1
-let S_DEFINE = 2
-let S_SET = 3
-let S_LAMBDA = 4
-let S_BEGIN = 5
-let S_LET = 6
-let S_LETSTAR = 7
-let S_LETREC = 8
-let S_COND = 9
-let S_AND = 10
-let S_OR = 11
-let S_WHEN = 12
-let S_UNLESS = 13
-let S_TRY = 14
-let S_ELSE = 15
-let NSPECIAL = 15
+S_QUOTE := 0
+S_IF := 1
+S_DEFINE := 2
+S_SET := 3
+S_LAMBDA := 4
+S_BEGIN := 5
+S_LET := 6
+S_LETSTAR := 7
+S_LETREC := 8
+S_COND := 9
+S_AND := 10
+S_OR := 11
+S_WHEN := 12
+S_UNLESS := 13
+S_TRY := 14
+S_ELSE := 15
+NSPECIAL := 15
 
 type Heap:
     tags: List[Int]
@@ -123,7 +123,7 @@ fn mk_int(var h: Heap, n: Int) Int:
 fn mk_str(var h: Heap, s: String) Int:
     h.strs.append(s)
 
-    let idx = h.strs.length() - 1
+    idx := h.strs.length() - 1
     return alloc(var h, T_STR, idx, 0, 0)
 
 fn mk_sym(var h: Heap, sid: Int) Int:
@@ -136,11 +136,11 @@ fn bool_val(b: Bool) Int:
     return V_FALSE
 
 fn intern(var h: Heap, name: String) Int:
-    let found = h.syms.get(name)
-    if let known = found:
+    found := h.syms.get(name)
+    if known := found:
         return known
 
-    let sid = h.symnames.length()
+    sid := h.symnames.length()
     h.symnames.append(name.clone())
     h.gval.append(NO_ID)
     h.syms[name] = sid
@@ -151,7 +151,7 @@ fn build_onto(var h: Heap, items: List[Int], tail: Int) Int:
     var i = items.length() - 1
 
     while i >= 0:
-        let it = items[i]
+        it := items[i]
         res = cons(var h, it, res)
         i -= 1
 
@@ -161,7 +161,7 @@ fn build_list(var h: Heap, items: List[Int]) Int:
     return build_onto(var h, items, V_NIL)
 
 fn seq_of(var h: Heap, body: Int) Int:
-    let bv = h.v_begin
+    bv := h.v_begin
     return cons(var h, bv, body)
 
 // ---------------------------------------------------------------------------
@@ -182,7 +182,7 @@ fn list_len(h: Heap, lst: Int) Int:
     return -1
 
 fn nth(h: Heap, lst: Int, i: Int) Int:
-    let p = cdr_n(h, lst, i)
+    p := cdr_n(h, lst, i)
     return h.cars[p]
 
 fn cdr_n(h: Heap, lst: Int, k: Int) Int:
@@ -249,7 +249,7 @@ fn quote_str(s: String) String:
     return sb.build()
 
 fn show(h: Heap, v: Int, w: Bool) String:
-    let t = h.tags[v]
+    t := h.tags[v]
     if t == T_VOID:
         return "#<void>"
 
@@ -267,7 +267,7 @@ fn show(h: Heap, v: Int, w: Bool) String:
         return h.symnames[h.nums[v]].clone()
 
     if t == T_STR:
-        let s = h.strs[h.nums[v]].clone()
+        s := h.strs[h.nums[v]].clone()
         if not w:
             return s
 
@@ -277,7 +277,7 @@ fn show(h: Heap, v: Int, w: Bool) String:
         return "#<builtin " + h.pname[h.nums[v]] + ">"
 
     if t == T_CLOS:
-        let nm = h.cl_name[h.nums[v]]
+        nm := h.cl_name[h.nums[v]]
         if nm == NO_ID:
             return "#<procedure>"
 
@@ -291,7 +291,7 @@ fn show(h: Heap, v: Int, w: Bool) String:
     while true:
         sb.append(show(h, h.cars[cur], w))
 
-        let d = h.cdrs[cur]
+        d := h.cdrs[cur]
 
         if h.tags[d] == T_PAIR:
             sb.append(" ")
@@ -315,7 +315,7 @@ fn emit(var h: Heap, s: String) Unit:
     h.lastnl = s.ends_with("\n")
 
 fn flush(var h: Heap) Unit:
-    let s = h.out.drain()
+    s := h.out.drain()
     if s != "":
         stdout().write(s).get()
 
@@ -324,7 +324,7 @@ fn flush(var h: Heap) Unit:
 // ---------------------------------------------------------------------------
 
 fn is_eqv(h: Heap, a: Int, b: Int) Bool:
-    let ta = h.tags[a]
+    ta := h.tags[a]
     if ta != h.tags[b]:
         return false
     if ta == T_INT or ta == T_SYM:
@@ -341,7 +341,7 @@ fn is_equal(h: Heap, a0: Int, b0: Int) Bool:
     var b = b0
 
     while true:
-        let ta = h.tags[a]
+        ta := h.tags[a]
         if ta != h.tags[b]:
             return false
 
@@ -402,7 +402,7 @@ fn mul_int(a: Int, b: Int) Int!Fail:
     return ok(a * b)
 
 fn digit_val(c: String) Int:
-    let ds = "0123456789".chars()
+    ds := "0123456789".chars()
     var k = 0
 
     while k < 10:
@@ -415,8 +415,8 @@ fn digit_val(c: String) Int:
 
 // Parses -?[0-9]+ . Error 1 = not an integer literal, error 2 = out of int64 range.
 fn text_int(s: String) Int!Int:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     if n == 0:
         return error(1)
 
@@ -442,7 +442,7 @@ fn text_int(s: String) Int!Int:
     k = i
 
     while k < n:
-        let d = digit_val(cs[k])
+        d := digit_val(cs[k])
 
         if neg:
             if acc < -922337203685477580:
@@ -479,7 +479,7 @@ fn ints_of(h: Heap, name: String, args: List[Int]) List[Int]!Fail:
     var res = List[Int]()
 
     for i in 0..args.length():
-        let v = args[i]
+        v := args[i]
         if h.tags[v] != T_INT:
             return error(type_err(h, name, "integer", v))
 
@@ -520,13 +520,13 @@ fn is_delim(c: String) Bool:
 
 fn skip_ws(var h: Heap) Unit:
     while not at_end(h):
-        let c = h.chars[h.pos].clone()
+        c := h.chars[h.pos].clone()
 
         if c == " " or c == "\n" or c == "\t" or c == "\r":
             h.pos += 1
         else if c == ";":
             while not at_end(h):
-                let d = h.chars[h.pos].clone()
+                d := h.chars[h.pos].clone()
                 if d == "\n":
                     break
 
@@ -538,7 +538,7 @@ fn read_token(var h: Heap) String:
     var sb = StringBuilder()
 
     while not at_end(h):
-        let c = h.chars[h.pos].clone()
+        c := h.chars[h.pos].clone()
         if is_delim(c):
             break
 
@@ -556,7 +556,7 @@ fn read_string(var h: Heap) Int!Fail:
         if at_end(h):
             return error(syn("unterminated string"))
 
-        let c = h.chars[h.pos].clone()
+        c := h.chars[h.pos].clone()
 
         if c == "\"":
             h.pos += 1
@@ -566,7 +566,7 @@ fn read_string(var h: Heap) Int!Fail:
             if h.pos + 1 >= h.chars.length():
                 return error(syn("unterminated string"))
 
-            let e = h.chars[h.pos + 1].clone()
+            e := h.chars[h.pos + 1].clone()
 
             if e == "n":
                 sb.append("\n")
@@ -584,11 +584,11 @@ fn read_string(var h: Heap) Int!Fail:
             sb.append(c)
             h.pos += 1
 
-    let s = sb.build()
+    s := sb.build()
     return ok(mk_str(var h, s))
 
 fn dot_is_token(h: Heap) Bool:
-    let nxt = h.pos + 1
+    nxt := h.pos + 1
     if nxt >= h.chars.length():
         return true
 
@@ -603,7 +603,7 @@ fn read_list(var h: Heap) Int!Fail:
         if at_end(h):
             return error(syn("unexpected end of input"))
 
-        let c = h.chars[h.pos].clone()
+        c := h.chars[h.pos].clone()
 
         if c == ")":
             h.pos += 1
@@ -630,7 +630,7 @@ fn read_list(var h: Heap) Int!Fail:
             h.pos += 1
             break
 
-        let d = try read_datum(var h)
+        d := try read_datum(var h)
         items.append(d)
 
     return ok(build_onto(var h, items, tail))
@@ -640,7 +640,7 @@ fn read_datum(var h: Heap) Int!Fail:
     if at_end(h):
         return error(syn("unexpected end of input"))
 
-    let c = h.chars[h.pos].clone()
+    c := h.chars[h.pos].clone()
 
     if c == "(":
         h.pos += 1
@@ -652,15 +652,15 @@ fn read_datum(var h: Heap) Int!Fail:
     if c == "'":
         h.pos += 1
 
-        let d = try read_datum(var h)
-        let qs = mk_sym(var h, S_QUOTE)
-        let tl = cons(var h, d, V_NIL)
+        d := try read_datum(var h)
+        qs := mk_sym(var h, S_QUOTE)
+        tl := cons(var h, d, V_NIL)
         return ok(cons(var h, qs, tl))
 
     if c == "\"":
         return read_string(var h)
 
-    let tok = read_token(var h)
+    tok := read_token(var h)
     if tok == "#t":
         return ok(V_TRUE)
     if tok == "#f":
@@ -670,16 +670,16 @@ fn read_datum(var h: Heap) Int!Fail:
     if tok.starts_with("#"):
         return error(syn("bad token: " + tok))
 
-    let r = text_int(tok)
+    r := text_int(tok)
 
     if r.is_error():
         if r.err() == 2:
             return error(syn("integer out of range"))
 
-        let sid = intern(var h, tok)
+        sid := intern(var h, tok)
         return ok(mk_sym(var h, sid))
 
-    let n = r.get(0)
+    n := r.get(0)
     return ok(mk_int(var h, n))
 
 // ---------------------------------------------------------------------------
@@ -704,7 +704,7 @@ fn frame_bind(var h: Heap, f: Int, sid: Int, v: Int) Unit:
     h.bsym.append(sid)
     h.bval.append(v)
 
-    let head = h.fhead[f]
+    head := h.fhead[f]
     h.bnext.append(head)
     h.fhead[f] = h.bsym.length() - 1
 
@@ -728,7 +728,7 @@ fn lookup(h: Heap, sid: Int, env: Int) Int!Fail:
 
         e = h.fparent[e]
 
-    let g = h.gval[sid]
+    g := h.gval[sid]
     if g == NO_ID:
         return error(rt("unbound variable: " + h.symnames[sid]))
 
@@ -765,11 +765,11 @@ fn params_ok(h: Heap, params: Int) Bool:
     var p = params
 
     while h.tags[p] == T_PAIR:
-        let s = h.cars[p]
+        s := h.cars[p]
         if h.tags[s] != T_SYM:
             return false
 
-        let sid = h.nums[s]
+        sid := h.nums[s]
         if in_list(seen, sid):
             return false
 
@@ -796,13 +796,13 @@ fn make_closure(var h: Heap, params: Int, body: Int, env: Int, name: Int) Int:
     h.cl_env.append(env)
     h.cl_name.append(name)
 
-    let idx = h.cl_params.length() - 1
+    idx := h.cl_params.length() - 1
     return alloc(var h, T_CLOS, idx, 0, 0)
 
 // Creates the frame for a call of closure idx, checking the arity.
 fn bind_args(var h: Heap, idx: Int, args: List[Int]) Int!Fail:
-    let params = h.cl_params[idx]
-    let cenv = h.cl_env[idx]
+    params := h.cl_params[idx]
+    cenv := h.cl_env[idx]
     var n = 0
     var p = params
 
@@ -810,8 +810,8 @@ fn bind_args(var h: Heap, idx: Int, args: List[Int]) Int!Fail:
         n += 1
         p = h.cdrs[p]
 
-    let rest = (h.tags[p] == T_SYM)
-    let m = args.length()
+    rest := (h.tags[p] == T_SYM)
+    m := args.length()
 
     if (rest and m < n) or ((not rest) and m != n):
         var nm = "lambda"
@@ -827,13 +827,13 @@ fn bind_args(var h: Heap, idx: Int, args: List[Int]) Int!Fail:
             )
         )
 
-    let f = new_frame(var h, cenv)
+    f := new_frame(var h, cenv)
     p = params
 
     var i = 0
 
     while h.tags[p] == T_PAIR:
-        let sid = h.nums[h.cars[p]]
+        sid := h.nums[h.cars[p]]
         frame_bind(var h, f, sid, args[i])
         i += 1
         p = h.cdrs[p]
@@ -846,7 +846,7 @@ fn bind_args(var h: Heap, idx: Int, args: List[Int]) Int!Fail:
             lst = cons(var h, args[j], lst)
             j -= 1
 
-        let rsid = h.nums[p]
+        rsid := h.nums[p]
         frame_bind(var h, f, rsid, lst)
 
     return ok(f)
@@ -862,21 +862,21 @@ fn apply_proc(var h: Heap, f: Int, args: List[Int]) Int!Fail:
     if h.tags[f] != T_CLOS:
         return error(rt("not a procedure: " + show(h, f, true)))
 
-    let idx = h.nums[f]
-    let nenv = try bind_args(var h, idx, args)
+    idx := h.nums[f]
+    nenv := try bind_args(var h, idx, args)
     if h.depth >= DEPTH_LIMIT:
         return error(rt("recursion limit exceeded"))
 
     h.depth += 1
 
-    let body = h.cl_body[idx]
-    let r = eval(var h, body, nenv, true)
+    body := h.cl_body[idx]
+    r := eval(var h, body, nenv, true)
     h.depth -= 1
     return r
 
 // Sentinel results of `special`: a tail position (h.tx in h.tenv) or a pending call (h.tproc applied to h.targs).
-let TAILX = -2
-let TAILAPP = -3
+TAILX := -2
+TAILAPP := -3
 
 // in_body: this evaluation is the tail chain of a procedure body that was
 // entered already, so tail calls reuse this loop instead of nesting.
@@ -901,7 +901,7 @@ fn eval(var h: Heap, x0: Int, env0: Int, in_body: Bool) Int!Fail:
             x = h.cl_body[h.nums[proc]]
             continue
 
-        let t = h.tags[x]
+        t := h.tags[x]
         if t == T_SYM:
             return lookup(h, h.nums[x], env)
         if x == V_NIL:
@@ -909,10 +909,10 @@ fn eval(var h: Heap, x0: Int, env0: Int, in_body: Bool) Int!Fail:
         if t != T_PAIR:
             return ok(x)
 
-        let head = h.cars[x]
+        head := h.cars[x]
 
         if h.tags[head] == T_SYM and h.nums[head] < NSPECIAL:
-            let r = try special(var h, x, env, h.nums[head])
+            r := try special(var h, x, env, h.nums[head])
 
             if r == TAILX:
                 x = h.tx
@@ -937,8 +937,8 @@ fn eval(var h: Heap, x0: Int, env0: Int, in_body: Bool) Int!Fail:
         var c = h.cdrs[x]
 
         while c != V_NIL:
-            let a = h.cars[c]
-            let v = try eval(var h, a, env, false)
+            a := h.cars[c]
+            v := try eval(var h, a, env, false)
             vals.append(v)
             c = h.cdrs[c]
 
@@ -986,45 +986,45 @@ fn sp_quote(h: Heap, x: Int) Int!Fail:
     return ok(nth(h, x, 1))
 
 fn sp_if(var h: Heap, x: Int, env: Int) Int!Fail:
-    let n = list_len(h, x)
+    n := list_len(h, x)
     if n != 3 and n != 4:
         return error(bad(h, S_IF))
 
-    let tst = nth(h, x, 1)
-    let tv = try eval(var h, tst, env, false)
+    tst := nth(h, x, 1)
+    tv := try eval(var h, tst, env, false)
 
     if tv != V_FALSE:
-        let br = nth(h, x, 2)
+        br := nth(h, x, 2)
         return tail_to(var h, br, env)
 
     if n == 4:
-        let alt = nth(h, x, 3)
+        alt := nth(h, x, 3)
         return tail_to(var h, alt, env)
 
     return ok(V_VOID)
 
 fn sp_define(var h: Heap, x: Int, env: Int) Int!Fail:
-    let n = list_len(h, x)
+    n := list_len(h, x)
     if n < 2:
         return error(bad(h, S_DEFINE))
 
-    let target = nth(h, x, 1)
+    target := nth(h, x, 1)
 
     if h.tags[target] == T_PAIR:
         if n < 3:
             return error(bad(h, S_DEFINE))
 
-        let nm = h.cars[target]
+        nm := h.cars[target]
         if h.tags[nm] != T_SYM:
             return error(bad(h, S_DEFINE))
 
-        let sid = h.nums[nm]
-        let params = h.cdrs[target]
+        sid := h.nums[nm]
+        params := h.cdrs[target]
         if not params_ok(h, params):
             return error(bad(h, S_DEFINE))
 
-        let body = cdr_n(h, x, 2)
-        let clo = make_closure(var h, params, body, env, sid)
+        body := cdr_n(h, x, 2)
+        clo := make_closure(var h, params, body, env, sid)
         define_in(var h, env, sid, clo)
         return ok(V_VOID)
 
@@ -1032,9 +1032,9 @@ fn sp_define(var h: Heap, x: Int, env: Int) Int!Fail:
         if n != 3:
             return error(bad(h, S_DEFINE))
 
-        let sid = h.nums[target]
-        let vexpr = nth(h, x, 2)
-        let v = try eval(var h, vexpr, env, false)
+        sid := h.nums[target]
+        vexpr := nth(h, x, 2)
+        v := try eval(var h, vexpr, env, false)
         if (
             h.tags[vexpr] == T_PAIR
             and h.tags[h.cars[vexpr]] == T_SYM
@@ -1051,13 +1051,13 @@ fn sp_set(var h: Heap, x: Int, env: Int) Int!Fail:
     if list_len(h, x) != 3:
         return error(bad(h, S_SET))
 
-    let target = nth(h, x, 1)
+    target := nth(h, x, 1)
     if h.tags[target] != T_SYM:
         return error(bad(h, S_SET))
 
-    let sid = h.nums[target]
-    let vexpr = nth(h, x, 2)
-    let v = try eval(var h, vexpr, env, false)
+    sid := h.nums[target]
+    vexpr := nth(h, x, 2)
+    v := try eval(var h, vexpr, env, false)
     if not assign(var h, env, sid, v):
         return error(rt("unbound variable: " + h.symnames[sid]))
 
@@ -1067,11 +1067,11 @@ fn sp_lambda(var h: Heap, x: Int, env: Int) Int!Fail:
     if list_len(h, x) < 3:
         return error(bad(h, S_LAMBDA))
 
-    let params = nth(h, x, 1)
+    params := nth(h, x, 1)
     if not params_ok(h, params):
         return error(bad(h, S_LAMBDA))
 
-    let body = cdr_n(h, x, 2)
+    body := cdr_n(h, x, 2)
     return ok(make_closure(var h, params, body, env, NO_ID))
 
 fn sp_begin(var h: Heap, x: Int, env: Int) Int!Fail:
@@ -1080,19 +1080,19 @@ fn sp_begin(var h: Heap, x: Int, env: Int) Int!Fail:
         return ok(V_VOID)
 
     while true:
-        let nxt = h.cdrs[b]
+        nxt := h.cdrs[b]
         if nxt == V_NIL:
             break
 
-        let e = h.cars[b]
-        let _r = try eval(var h, e, env, false)
+        e := h.cars[b]
+        _r := try eval(var h, e, env, false)
         b = nxt
 
-    let last = h.cars[b]
+    last := h.cars[b]
     return tail_to(var h, last, env)
 
 fn sp_let(var h: Heap, x: Int, env: Int) Int!Fail:
-    let n = list_len(h, x)
+    n := list_len(h, x)
     if n < 3:
         return error(bad(h, S_LET))
     if h.tags[nth(h, x, 1)] == T_SYM:
@@ -1105,18 +1105,18 @@ fn sp_namedlet(var h: Heap, x: Int, env: Int) Int!Fail:
     if list_len(h, x) < 4:
         return error(bad(h, S_LET))
 
-    let loop_sid = h.nums[nth(h, x, 1)]
+    loop_sid := h.nums[nth(h, x, 1)]
     var names = List[Int]()
     var exprs = List[Int]()
-    let bindings = nth(h, x, 2)
+    bindings := nth(h, x, 2)
     if not parse_bindings(h, bindings, var names, var exprs):
         return error(bad(h, S_LET))
 
-    let body = cdr_n(h, x, 3)
-    let vals = try eval_all(var h, exprs, env)
-    let f1 = new_frame(var h, env)
-    let names_list = build_list(var h, names)
-    let clo = make_closure(var h, names_list, body, f1, loop_sid)
+    body := cdr_n(h, x, 3)
+    vals := try eval_all(var h, exprs, env)
+    f1 := new_frame(var h, env)
+    names_list := build_list(var h, names)
+    clo := make_closure(var h, names_list, body, f1, loop_sid)
     frame_bind(var h, f1, loop_sid, clo)
     h.tproc = clo
     h.targs = vals
@@ -1125,16 +1125,16 @@ fn sp_namedlet(var h: Heap, x: Int, env: Int) Int!Fail:
 fn sp_plainlet(var h: Heap, x: Int, env: Int) Int!Fail:
     var names2 = List[Int]()
     var exprs2 = List[Int]()
-    let bindings = nth(h, x, 1)
+    bindings := nth(h, x, 1)
     if not parse_bindings(h, bindings, var names2, var exprs2):
         return error(bad(h, S_LET))
 
-    let vals2 = try eval_all(var h, exprs2, env)
-    let f2 = new_frame(var h, env)
+    vals2 := try eval_all(var h, exprs2, env)
+    f2 := new_frame(var h, env)
     bind_names(var h, f2, names2, vals2)
 
-    let body2 = cdr_n(h, x, 2)
-    let seq2 = seq_of(var h, body2)
+    body2 := cdr_n(h, x, 2)
+    seq2 := seq_of(var h, body2)
     return tail_to(var h, seq2, f2)
 
 // Evaluates each expression in env, left to right.
@@ -1142,7 +1142,7 @@ fn eval_all(var h: Heap, exprs: List[Int], env: Int) List[Int]!Fail:
     var vals = List[Int]()
 
     for k in 0..exprs.length():
-        let ev = try eval(var h, exprs[k], env, false)
+        ev := try eval(var h, exprs[k], env, false)
         vals.append(ev)
 
     return ok(vals)
@@ -1150,7 +1150,7 @@ fn eval_all(var h: Heap, exprs: List[Int], env: Int) List[Int]!Fail:
 // Binds names[k] to vals[k] in frame f.
 fn bind_names(var h: Heap, f: Int, names: List[Int], vals: List[Int]) Unit:
     for k in 0..names.length():
-        let bsid = h.nums[names[k]]
+        bsid := h.nums[names[k]]
         frame_bind(var h, f, bsid, vals[k])
 
 fn sp_letstar(var h: Heap, x: Int, env: Int, sf: Int) Int!Fail:
@@ -1159,51 +1159,51 @@ fn sp_letstar(var h: Heap, x: Int, env: Int, sf: Int) Int!Fail:
 
     var names3 = List[Int]()
     var exprs3 = List[Int]()
-    let bindings = nth(h, x, 1)
+    bindings := nth(h, x, 1)
     if not parse_bindings(h, bindings, var names3, var exprs3):
         return error(bad(h, sf))
 
-    let f3 = new_frame(var h, env)
+    f3 := new_frame(var h, env)
 
     for k in 0..names3.length():
-        let ev = try eval(var h, exprs3[k], f3, false)
-        let bsid = h.nums[names3[k]]
+        ev := try eval(var h, exprs3[k], f3, false)
+        bsid := h.nums[names3[k]]
         frame_bind(var h, f3, bsid, ev)
 
-    let body3 = cdr_n(h, x, 2)
-    let seq3 = seq_of(var h, body3)
+    body3 := cdr_n(h, x, 2)
+    seq3 := seq_of(var h, body3)
     return tail_to(var h, seq3, f3)
 
 fn sp_cond(var h: Heap, x: Int, env: Int) Int!Fail:
     var c = h.cdrs[x]
 
     while c != V_NIL:
-        let clause = h.cars[c]
+        clause := h.cars[c]
         if h.tags[clause] != T_PAIR:
             return error(bad(h, S_COND))
 
-        let cl_n = list_len(h, clause)
+        cl_n := list_len(h, clause)
         if cl_n < 1:
             return error(bad(h, S_COND))
 
-        let rest_c = h.cdrs[c]
-        let hd = h.cars[clause]
-        let cbody = h.cdrs[clause]
+        rest_c := h.cdrs[c]
+        hd := h.cars[clause]
+        cbody := h.cdrs[clause]
 
         if h.tags[hd] == T_SYM and h.nums[hd] == S_ELSE:
             if rest_c != V_NIL or cl_n < 2:
                 return error(bad(h, S_COND))
 
-            let seq_e = seq_of(var h, cbody)
+            seq_e := seq_of(var h, cbody)
             return tail_to(var h, seq_e, env)
 
-        let tv = try eval(var h, hd, env, false)
+        tv := try eval(var h, hd, env, false)
 
         if tv != V_FALSE:
             if cl_n == 1:
                 return ok(tv)
 
-            let seq_t = seq_of(var h, cbody)
+            seq_t := seq_of(var h, cbody)
             return tail_to(var h, seq_t, env)
 
         c = rest_c
@@ -1211,7 +1211,7 @@ fn sp_cond(var h: Heap, x: Int, env: Int) Int!Fail:
     return ok(V_VOID)
 
 fn sp_andor(var h: Heap, x: Int, env: Int, sf: Int) Int!Fail:
-    let n = list_len(h, x)
+    n := list_len(h, x)
     if n < 1:
         return error(bad(h, sf))
 
@@ -1224,12 +1224,12 @@ fn sp_andor(var h: Heap, x: Int, env: Int, sf: Int) Int!Fail:
     var c = h.cdrs[x]
 
     while true:
-        let nxt = h.cdrs[c]
+        nxt := h.cdrs[c]
         if nxt == V_NIL:
             break
 
-        let e = h.cars[c]
-        let v = try eval(var h, e, env, false)
+        e := h.cars[c]
+        v := try eval(var h, e, env, false)
         if sf == S_AND and v == V_FALSE:
             return ok(v)
         if sf == S_OR and v != V_FALSE:
@@ -1237,22 +1237,22 @@ fn sp_andor(var h: Heap, x: Int, env: Int, sf: Int) Int!Fail:
 
         c = nxt
 
-    let last = h.cars[c]
+    last := h.cars[c]
     return tail_to(var h, last, env)
 
 fn sp_when(var h: Heap, x: Int, env: Int, sf: Int) Int!Fail:
     if list_len(h, x) < 3:
         return error(bad(h, sf))
 
-    let tst = nth(h, x, 1)
-    let tv = try eval(var h, tst, env, false)
+    tst := nth(h, x, 1)
+    tv := try eval(var h, tst, env, false)
     var fire = (tv != V_FALSE)
     if sf == S_UNLESS:
         fire = not fire
 
     if fire:
-        let body = cdr_n(h, x, 2)
-        let seq = seq_of(var h, body)
+        body := cdr_n(h, x, 2)
+        seq := seq_of(var h, body)
         return tail_to(var h, seq, env)
 
     return ok(V_VOID)
@@ -1261,18 +1261,18 @@ fn sp_try(var h: Heap, x: Int, env: Int) Int!Fail:
     if list_len(h, x) != 3:
         return error(bad(h, S_TRY))
 
-    let body = nth(h, x, 1)
-    let handler = nth(h, x, 2)
-    let r = eval(var h, body, env, false)
+    body := nth(h, x, 1)
+    handler := nth(h, x, 2)
+    r := eval(var h, body, env, false)
     if not r.is_error():
         return r
 
-    let fl = r.err()
+    fl := r.err()
     if fl.syntax:
         return error(fl)
 
-    let hv = try eval(var h, handler, env, false)
-    let msg = mk_str(var h, fl.msg)
+    hv := try eval(var h, handler, env, false)
+    msg := mk_str(var h, fl.msg)
     return apply_proc(var h, hv, [msg])
 
 // Collects (name init) pairs into parallel lists of symbol values and expressions.
@@ -1288,11 +1288,11 @@ fn parse_bindings(
     var c = bindings
 
     while h.tags[c] == T_PAIR:
-        let b = h.cars[c]
+        b := h.cars[c]
         if list_len(h, b) != 2:
             return false
 
-        let nm = h.cars[b]
+        nm := h.cars[b]
         if h.tags[nm] != T_SYM:
             return false
 
@@ -1307,12 +1307,12 @@ fn parse_bindings(
 // ---------------------------------------------------------------------------
 
 fn call_prim(var h: Heap, f: Int, args: List[Int]) Int!Fail:
-    let pi = h.nums[f]
-    let m = args.length()
+    pi := h.nums[f]
+    m := args.length()
     if m < h.plo[pi] or (h.phi[pi] >= 0 and m > h.phi[pi]):
         return prim_arity_error(var h, pi, m)
 
-    let g = h.pgroup[pi]
+    g := h.pgroup[pi]
     if g == 1:
         return prim_num(var h, h.pname[pi].clone(), args)
     if g == 2:
@@ -1329,17 +1329,17 @@ fn prim_arity_error(var h: Heap, pi: Int, m: Int) Int!Fail:
 
 fn prim_num(var h: Heap, name: String, args: List[Int]) Int!Fail:
     if name == "+":
-        let ns = try ints_of(h, name, args)
+        ns := try ints_of(h, name, args)
         var acc = 0
 
         for i in 0..ns.length():
-            let s = try add_int(acc, ns[i])
+            s := try add_int(acc, ns[i])
             acc = s
 
         return ok(mk_int(var h, acc))
 
     if name == "-":
-        let ns = try ints_of(h, name, args)
+        ns := try ints_of(h, name, args)
 
         if ns.length() == 1:
             if ns[0] == MINI:
@@ -1350,25 +1350,25 @@ fn prim_num(var h: Heap, name: String, args: List[Int]) Int!Fail:
         var acc = ns[0]
 
         for i in 1..ns.length():
-            let s = try sub_int(acc, ns[i])
+            s := try sub_int(acc, ns[i])
             acc = s
 
         return ok(mk_int(var h, acc))
 
     if name == "*":
-        let ns = try ints_of(h, name, args)
+        ns := try ints_of(h, name, args)
         var acc = 1
 
         for i in 0..ns.length():
-            let s = try mul_int(acc, ns[i])
+            s := try mul_int(acc, ns[i])
             acc = s
 
         return ok(mk_int(var h, acc))
 
     if name == "quotient" or name == "remainder" or name == "modulo":
-        let ns = try ints_of(h, name, args)
-        let a = ns[0]
-        let b = ns[1]
+        ns := try ints_of(h, name, args)
+        a := ns[0]
+        b := ns[1]
         if b == 0:
             return error(rt("division by zero"))
 
@@ -1390,8 +1390,8 @@ fn prim_num(var h: Heap, name: String, args: List[Int]) Int!Fail:
         return ok(mk_int(var h, r))
 
     if name == "abs":
-        let ns = try ints_of(h, name, args)
-        let a = ns[0]
+        ns := try ints_of(h, name, args)
+        a := ns[0]
         if a == MINI:
             return error(rt("integer overflow"))
         if a < 0:
@@ -1400,11 +1400,11 @@ fn prim_num(var h: Heap, name: String, args: List[Int]) Int!Fail:
         return ok(mk_int(var h, a))
 
     if name == "min" or name == "max":
-        let ns = try ints_of(h, name, args)
+        ns := try ints_of(h, name, args)
         var best = ns[0]
 
         for i in 1..ns.length():
-            let v = ns[i]
+            v := ns[i]
             if name == "min" and v < best:
                 best = v
             if name == "max" and v > best:
@@ -1413,7 +1413,7 @@ fn prim_num(var h: Heap, name: String, args: List[Int]) Int!Fail:
         return ok(mk_int(var h, best))
 
     if name == "=" or name == "<" or name == ">" or name == "<=" or name == ">=":
-        let ns = try ints_of(h, name, args)
+        ns := try ints_of(h, name, args)
         var all_ok = true
         for i in 0..ns.length() - 1:
             if not cmp_ok(name, ns[i], ns[i + 1]):
@@ -1421,22 +1421,22 @@ fn prim_num(var h: Heap, name: String, args: List[Int]) Int!Fail:
         return ok(bool_val(all_ok))
 
     if name == "zero?":
-        let ns = try ints_of(h, name, args)
+        ns := try ints_of(h, name, args)
         return ok(bool_val(ns[0] == 0))
 
     if name == "even?":
-        let ns = try ints_of(h, name, args)
+        ns := try ints_of(h, name, args)
         return ok(bool_val(ns[0] % 2 == 0))
 
     if name == "odd?":
-        let ns = try ints_of(h, name, args)
+        ns := try ints_of(h, name, args)
         return ok(bool_val(ns[0] % 2 != 0))
 
     return error(rt("internal: unknown builtin " + name))
 
 fn prim_list(var h: Heap, name: String, args: List[Int]) Int!Fail:
-    let a0 = arg(args, 0)
-    let a1 = arg(args, 1)
+    a0 := arg(args, 0)
+    a1 := arg(args, 1)
     if name == "not":
         return ok(bool_val(a0 == V_FALSE))
     if name == "null?":
@@ -1492,14 +1492,14 @@ fn prim_list(var h: Heap, name: String, args: List[Int]) Int!Fail:
         return ok(build_list(var h, args))
 
     if name == "length":
-        let n = list_len(h, a0)
+        n := list_len(h, a0)
         if n < 0:
             return error(type_err(h, name, "list", a0))
 
         return ok(mk_int(var h, n))
 
     if name == "append":
-        let m = args.length()
+        m := args.length()
         if m == 0:
             return ok(V_NIL)
 
@@ -1515,7 +1515,7 @@ fn prim_list(var h: Heap, name: String, args: List[Int]) Int!Fail:
         var j = m - 2
 
         while j >= 0:
-            let elts = elements(h, args[j])
+            elts := elements(h, args[j])
             res = build_onto(var h, elts, res)
             j -= 1
 
@@ -1525,11 +1525,11 @@ fn prim_list(var h: Heap, name: String, args: List[Int]) Int!Fail:
         if list_len(h, a0) < 0:
             return error(type_err(h, name, "list", a0))
 
-        let elts = elements(h, a0)
+        elts := elements(h, a0)
         var res = V_NIL
 
         for i in 0..elts.length():
-            let e = elts[i]
+            e := elts[i]
             res = cons(var h, e, res)
 
         return ok(res)
@@ -1538,7 +1538,7 @@ fn prim_list(var h: Heap, name: String, args: List[Int]) Int!Fail:
         if h.tags[a0] != T_PAIR and a0 != V_NIL:
             return error(type_err(h, name, "list", a0))
 
-        let k = try int_val(h, name, a1)
+        k := try int_val(h, name, a1)
         if k < 0:
             return error(rt(name + ": index out of range"))
 
@@ -1560,8 +1560,8 @@ fn prim_list(var h: Heap, name: String, args: List[Int]) Int!Fail:
         return ok(h.cars[p])
 
     if name == "range":
-        let a = try int_val(h, name, a0)
-        let b = try int_val(h, name, a1)
+        a := try int_val(h, name, a0)
+        b := try int_val(h, name, a1)
         if a >= b:
             return ok(V_NIL)
 
@@ -1569,7 +1569,7 @@ fn prim_list(var h: Heap, name: String, args: List[Int]) Int!Fail:
         var i = b - 1
 
         while i >= a:
-            let iv = mk_int(var h, i)
+            iv := mk_int(var h, i)
             res = cons(var h, iv, res)
             i -= 1
 
@@ -1582,7 +1582,7 @@ fn prim_list(var h: Heap, name: String, args: List[Int]) Int!Fail:
         var p = a1
 
         while h.tags[p] == T_PAIR:
-            let e = h.cars[p]
+            e := h.cars[p]
 
             if name == "member":
                 if is_equal(h, a0, e):
@@ -1610,7 +1610,7 @@ fn cxr(h: Heap, name: String, v: Int, path: String) Int!Fail:
         if h.tags[cur] != T_PAIR:
             return error(type_err(h, name, "pair", cur))
 
-        let step = path.get(i)
+        step := path.get(i)
 
         if step == "a":
             cur = h.cars[cur]
@@ -1639,11 +1639,11 @@ fn prim_hof(var h: Heap, name: String, args: List[Int]) Int!Fail:
 
 // map / for-each over one list: a small frame, since recursion through it is common.
 fn hof_map1(var h: Heap, name: String, args: List[Int]) Int!Fail:
-    let f = arg(args, 0)
+    f := arg(args, 0)
     if not is_proc(h, f):
         return error(type_err(h, name, "procedure", f))
 
-    let lst = arg(args, 1)
+    lst := arg(args, 1)
     if list_len(h, lst) < 0:
         return error(type_err(h, name, "list", lst))
 
@@ -1651,8 +1651,8 @@ fn hof_map1(var h: Heap, name: String, args: List[Int]) Int!Fail:
     var p = lst
 
     while h.tags[p] == T_PAIR:
-        let ca = h.cars[p]
-        let r = try apply_proc(var h, f, [ca])
+        ca := h.cars[p]
+        r := try apply_proc(var h, f, [ca])
         res.append(r)
         p = h.cdrs[p]
 
@@ -1662,7 +1662,7 @@ fn hof_map1(var h: Heap, name: String, args: List[Int]) Int!Fail:
     return ok(build_list(var h, res))
 
 fn hof_map(var h: Heap, name: String, args: List[Int]) Int!Fail:
-    let f = arg(args, 0)
+    f := arg(args, 0)
     if not is_proc(h, f):
         return error(type_err(h, name, "procedure", f))
 
@@ -1684,7 +1684,7 @@ fn hof_map(var h: Heap, name: String, args: List[Int]) Int!Fail:
         var k = 0
 
         while k < curs.length():
-            let p = curs[k]
+            p := curs[k]
 
             if h.tags[p] != T_PAIR:
                 stop = true
@@ -1697,7 +1697,7 @@ fn hof_map(var h: Heap, name: String, args: List[Int]) Int!Fail:
         if stop:
             break
 
-        let r = try apply_proc(var h, f, cargs)
+        r := try apply_proc(var h, f, cargs)
         res.append(r)
 
     if name == "for-each":
@@ -1706,57 +1706,57 @@ fn hof_map(var h: Heap, name: String, args: List[Int]) Int!Fail:
     return ok(build_list(var h, res))
 
 fn hof_filter(var h: Heap, args: List[Int]) Int!Fail:
-    let f = arg(args, 0)
+    f := arg(args, 0)
     if not is_proc(h, f):
         return error(type_err(h, "filter", "procedure", f))
 
-    let lst = arg(args, 1)
+    lst := arg(args, 1)
     if list_len(h, lst) < 0:
         return error(type_err(h, "filter", "list", lst))
 
-    let elts = elements(h, lst)
+    elts := elements(h, lst)
     var res = List[Int]()
 
     for i in 0..elts.length():
-        let keep = try apply_proc(var h, f, [elts[i]])
+        keep := try apply_proc(var h, f, [elts[i]])
         if keep != V_FALSE:
             res.append(elts[i])
 
     return ok(build_list(var h, res))
 
 fn hof_fold(var h: Heap, name: String, args: List[Int]) Int!Fail:
-    let f = arg(args, 0)
+    f := arg(args, 0)
     if not is_proc(h, f):
         return error(type_err(h, name, "procedure", f))
 
-    let lst = arg(args, 2)
+    lst := arg(args, 2)
     if list_len(h, lst) < 0:
         return error(type_err(h, name, "list", lst))
 
-    let elts = elements(h, lst)
+    elts := elements(h, lst)
     var acc = arg(args, 1)
 
     if name == "fold":
         for i in 0..elts.length():
-            let na = try apply_proc(var h, f, [acc, elts[i]])
+            na := try apply_proc(var h, f, [acc, elts[i]])
             acc = na
     else:
         var i = elts.length() - 1
 
         while i >= 0:
-            let na = try apply_proc(var h, f, [elts[i], acc])
+            na := try apply_proc(var h, f, [elts[i], acc])
             acc = na
             i -= 1
 
     return ok(acc)
 
 fn hof_apply(var h: Heap, args: List[Int]) Int!Fail:
-    let f = arg(args, 0)
+    f := arg(args, 0)
     if not is_proc(h, f):
         return error(type_err(h, "apply", "procedure", f))
 
-    let m = args.length()
-    let last = args[m - 1]
+    m := args.length()
+    last := args[m - 1]
     if list_len(h, last) < 0:
         return error(type_err(h, "apply", "list", last))
 
@@ -1767,22 +1767,22 @@ fn hof_apply(var h: Heap, args: List[Int]) Int!Fail:
         cargs.append(args[i])
         i += 1
 
-    let tl = elements(h, last)
+    tl := elements(h, last)
     for j in 0..tl.length():
         cargs.append(tl[j])
     return apply_proc(var h, f, cargs)
 
 fn hof_sort(var h: Heap, args: List[Int]) Int!Fail:
-    let less = arg(args, 1)
+    less := arg(args, 1)
     if not is_proc(h, less):
         return error(type_err(h, "sort", "procedure", less))
 
-    let src = arg(args, 0)
+    src := arg(args, 0)
     if list_len(h, src) < 0:
         return error(type_err(h, "sort", "list", src))
 
     var a = elements(h, src)
-    let n = a.length()
+    n := a.length()
     var width = 1
 
     while width < n:
@@ -1790,13 +1790,13 @@ fn hof_sort(var h: Heap, args: List[Int]) Int!Fail:
         var lo = 0
 
         while lo < n:
-            let mid = if lo + width < n: lo + width else: n
-            let hi = if lo + 2 * width < n: lo + 2 * width else: n
+            mid := if lo + width < n: lo + width else: n
+            hi := if lo + 2 * width < n: lo + 2 * width else: n
             var p = lo
             var q = mid
 
             while p < mid and q < hi:
-                let r = try apply_proc(var h, less, [a[q], a[p]])
+                r := try apply_proc(var h, less, [a[q], a[p]])
 
                 if r != V_FALSE:
                     b.append(a[q])
@@ -1821,90 +1821,90 @@ fn hof_sort(var h: Heap, args: List[Int]) Int!Fail:
     return ok(build_list(var h, a))
 
 fn prim_str(var h: Heap, name: String, args: List[Int]) Int!Fail:
-    let a0 = arg(args, 0)
-    let a1 = arg(args, 1)
+    a0 := arg(args, 0)
+    a1 := arg(args, 1)
 
     if name == "string-length":
-        let s = try str_of(h, name, a0)
+        s := try str_of(h, name, a0)
         return ok(mk_int(var h, s.length()))
 
     if name == "string-append":
         var sb = StringBuilder()
 
         for i in 0..args.length():
-            let s = try str_of(h, name, args[i])
+            s := try str_of(h, name, args[i])
             sb.append(s)
 
         return ok(mk_str(var h, sb.build()))
 
     if name == "substring":
-        let s = try str_of(h, name, a0)
-        let st = try int_val(h, name, a1)
-        let en = try int_val(h, name, arg(args, 2))
-        let n = s.length()
+        s := try str_of(h, name, a0)
+        st := try int_val(h, name, a1)
+        en := try int_val(h, name, arg(args, 2))
+        n := s.length()
         if st < 0 or en < st or en > n:
             return error(rt("substring: index out of range"))
 
-        let sub = s.slice(st, en).get("")
+        sub := s.slice(st, en).get("")
         return ok(mk_str(var h, sub))
 
     if name == "string-ref":
-        let s = try str_of(h, name, a0)
-        let k = try int_val(h, name, a1)
+        s := try str_of(h, name, a0)
+        k := try int_val(h, name, a1)
         if k < 0 or k >= s.length():
             return error(rt("string-ref: index out of range"))
 
-        let ch = s.get(k)
+        ch := s.get(k)
         return ok(mk_str(var h, ch))
 
     if name == "string=?" or name == "string<?":
-        let a = try str_of(h, name, a0)
-        let b = try str_of(h, name, a1)
+        a := try str_of(h, name, a0)
+        b := try str_of(h, name, a1)
         if name == "string=?":
             return ok(bool_val(a == b))
 
         return ok(bool_val(a < b))
 
     if name == "string-upcase" or name == "string-downcase":
-        let s = try str_of(h, name, a0)
+        s := try str_of(h, name, a0)
         if name == "string-upcase":
             return ok(mk_str(var h, s.upper()))
 
         return ok(mk_str(var h, s.lower()))
 
     if name == "string->number":
-        let s = try str_of(h, name, a0)
-        let r = text_int(s)
+        s := try str_of(h, name, a0)
+        r := text_int(s)
         if r.is_error():
             return ok(V_FALSE)
 
-        let n = r.get(0)
+        n := r.get(0)
         return ok(mk_int(var h, n))
 
     if name == "number->string":
-        let n = try int_val(h, name, a0)
-        let txt = "{n}"
+        n := try int_val(h, name, a0)
+        txt := "{n}"
         return ok(mk_str(var h, txt))
 
     if name == "string->symbol":
-        let s = try str_of(h, name, a0)
-        let sid = intern(var h, s)
+        s := try str_of(h, name, a0)
+        sid := intern(var h, s)
         return ok(mk_sym(var h, sid))
 
     if name == "symbol->string":
         if h.tags[a0] != T_SYM:
             return error(type_err(h, name, "symbol", a0))
 
-        let nm = h.symnames[h.nums[a0]].clone()
+        nm := h.symnames[h.nums[a0]].clone()
         return ok(mk_str(var h, nm))
 
     if name == "string->list":
-        let s = try str_of(h, name, a0)
-        let cs = s.chars()
+        s := try str_of(h, name, a0)
+        cs := s.chars()
         var items = List[Int]()
 
         for i in 0..cs.length():
-            let sv = mk_str(var h, cs[i].clone())
+            sv := mk_str(var h, cs[i].clone())
             items.append(sv)
 
         return ok(build_list(var h, items))
@@ -1913,11 +1913,11 @@ fn prim_str(var h: Heap, name: String, args: List[Int]) Int!Fail:
         if list_len(h, a0) < 0:
             return error(type_err(h, name, "list", a0))
 
-        let elts = elements(h, a0)
+        elts := elements(h, a0)
         var sb = StringBuilder()
 
         for i in 0..elts.length():
-            let s = try str_of(h, name, elts[i])
+            s := try str_of(h, name, elts[i])
             sb.append(s)
 
         return ok(mk_str(var h, sb.build()))
@@ -1926,51 +1926,51 @@ fn prim_str(var h: Heap, name: String, args: List[Int]) Int!Fail:
         if list_len(h, a0) < 0:
             return error(type_err(h, name, "list", a0))
 
-        let sep = try str_of(h, name, a1)
-        let elts = elements(h, a0)
+        sep := try str_of(h, name, a1)
+        elts := elements(h, a0)
         var sb = StringBuilder()
 
         for i in 0..elts.length():
             if i > 0:
                 sb.append(sep)
 
-            let s = try str_of(h, name, elts[i])
+            s := try str_of(h, name, elts[i])
             sb.append(s)
 
         return ok(mk_str(var h, sb.build()))
 
     if name == "string-split":
-        let s = try str_of(h, name, a0)
-        let sep = try str_of(h, name, a1)
+        s := try str_of(h, name, a0)
+        sep := try str_of(h, name, a1)
         if sep.length() != 1:
             return error(rt("string-split: separator must be one character"))
 
-        let parts = s.split(sep)
+        parts := s.split(sep)
         var items = List[Int]()
 
         for i in 0..parts.length():
-            let pv = mk_str(var h, parts[i].clone())
+            pv := mk_str(var h, parts[i].clone())
             items.append(pv)
 
         return ok(build_list(var h, items))
 
     if name == "string-contains?":
-        let s = try str_of(h, name, a0)
-        let sub = try str_of(h, name, a1)
+        s := try str_of(h, name, a0)
+        sub := try str_of(h, name, a1)
         return ok(bool_val(s.contains(sub)))
 
     return error(rt("internal: unknown builtin " + name))
 
 fn prim_misc(var h: Heap, name: String, args: List[Int]) Int!Fail:
-    let a0 = arg(args, 0)
+    a0 := arg(args, 0)
 
     if name == "display":
-        let txt = show(h, a0, false)
+        txt := show(h, a0, false)
         emit(var h, txt)
         return ok(V_VOID)
 
     if name == "write":
-        let txt = show(h, a0, true)
+        txt := show(h, a0, true)
         emit(var h, txt)
         return ok(V_VOID)
 
@@ -1997,14 +1997,14 @@ fn prim_misc(var h: Heap, name: String, args: List[Int]) Int!Fail:
     return error(rt("internal: unknown builtin " + name))
 
 fn reg(var h: Heap, name: String, lo: Int, hi: Int, group: Int) Unit:
-    let sid = intern(var h, name.clone())
-    let pi = h.pname.length()
+    sid := intern(var h, name.clone())
+    pi := h.pname.length()
     h.pname.append(name)
     h.plo.append(lo)
     h.phi.append(hi)
     h.pgroup.append(group)
 
-    let pv = alloc(var h, T_PRIM, pi, 0, 0)
+    pv := alloc(var h, T_PRIM, pi, 0, 0)
     h.gval[sid] = pv
 
 fn new_heap() Heap:
@@ -2016,21 +2016,21 @@ fn new_heap() Heap:
         lastnl: false, chars: [], pos: 0, v_begin: 0, tx: 0, tenv: 0, tproc: 0,
         targs: []
     )
-    let _v0 = alloc(var h, T_VOID, 0, 0, 0)
-    let _v1 = alloc(var h, T_BOOL, 0, 0, 0)
-    let _v2 = alloc(var h, T_BOOL, 1, 0, 0)
-    let _v3 = alloc(var h, T_NIL, 0, 0, 0)
+    _v0 := alloc(var h, T_VOID, 0, 0, 0)
+    _v1 := alloc(var h, T_BOOL, 0, 0, 0)
+    _v2 := alloc(var h, T_BOOL, 1, 0, 0)
+    _v3 := alloc(var h, T_NIL, 0, 0, 0)
     h.fparent.append(-1)
     h.fhead.append(NO_ID)
 
-    let specials = [
+    specials := [
         "quote", "if", "define", "set!", "lambda", "begin", "let", "let*", "letrec",
         "cond", "and", "or", "when", "unless", "try", "else"
     ]
     for i in 0..specials.length():
-        let _s = intern(var h, specials[i].clone())
+        _s := intern(var h, specials[i].clone())
 
-    let bv = mk_sym(var h, S_BEGIN)
+    bv := mk_sym(var h, S_BEGIN)
     h.v_begin = bv
     reg(var h, "+", 0, -1, 1)
     reg(var h, "-", 1, -1, 1)
@@ -2119,14 +2119,14 @@ fn main_loop(var h: Heap) Unit:
         if at_end(h):
             return
 
-        let rd = read_datum(var h)
+        rd := read_datum(var h)
 
         if rd.is_error():
             report(var h, rd.err())
             return
 
-        let d = rd.get(V_VOID)
-        let ev = eval(var h, d, 0, false)
+        d := rd.get(V_VOID)
+        ev := eval(var h, d, 0, false)
 
         if ev.is_error():
             report(var h, ev.err())
@@ -2136,8 +2136,8 @@ fn main_loop(var h: Heap) Unit:
 
 export fn main() Int:
     var h = new_heap()
-    let raw = read_all(stdin()).get()
-    let text = raw.decode_utf8().get("")
+    raw := read_all(stdin()).get()
+    text := raw.decode_utf8().get("")
     h.chars = text.chars()
     h.pos = 0
     main_loop(var h)

@@ -8,7 +8,7 @@ Direction (Chinmay, 2026-10-25): "yeah let's make it similar to rust" (`Arc<Mute
 
 - `Shared.take`/`put` is a manual lock. A task cancelled between them leaves the box marked in use for every holder (probe p13); `Worker.join` hits it today.
 - Replace them with `box.lock()`, a guard used with `with`. The guard's `close` returns the payload, and `with` already runs `close` on cancellation.
-- One language change: `with let name = expr:` / `with var name = expr:` replaces `with expr as name:`, so the block can change the guarded value. Everything else is `stdlib/shared.ms` plus lowering.
+- One language change: `with name := expr:` / `with var name = expr:` replaces `with expr as name:`, so the block can change the guarded value. Everything else is `stdlib/shared.ms` plus lowering.
 - Poisoning is not needed: a fault in a task ends the program (task-groups guide), and a worker has its own heap.
 - Decisions taken by the owner: waiting lock, `with let/var` spelling.
 
@@ -30,14 +30,14 @@ def hold(box: Shared[List[Int]]) -> Int:
 ## Design
 
 ```
-let box: Shared[List[Int]] = share([1])
+box: Shared[List[Int]] = share([1])
 with var guard = lock(box):
     guard.value.append(2)
 # guard closed: the payload is back, the box is unlocked
 ```
 
 - `lock(box) -> SharedGuard[T]` takes the payload (today's `take`). `SharedGuard[T]` has `value: T` and implements `Closeable`; `close` puts `value` back and clears the mark. Written in `shared.ms`; `take`/`put` become unexported natives used only there.
-- `with let name = expr:` binds immutably (today's behavior); `with var name = expr:` lets the block change the binding, and `close` runs on its final value. The compiler already closes "the current value" of the binding (`with.rs`). The `as` form is removed: `ms format` rewrites the 414 existing uses (stdlib, docs, fixtures) in the same PR stage.
+- `with name := expr:` binds immutably (today's behavior); `with var name = expr:` lets the block change the binding, and `close` runs on its final value. The compiler already closes "the current value" of the binding (`with.rs`). The `as` form is removed: `ms format` rewrites the 414 existing uses (stdlib, docs, fixtures) in the same PR stage.
 - Cancellation: the guard is a registered `with` cleanup, so a cancelled task runs `close` and the box is restored with whatever the block had done. This is the p13 fix.
 - Fault: the program ends (tasks) or the worker ends with its heap, so no holder can observe a half-changed value. No poison flag. If faults become catchable inside a task, poisoning is added then.
 - `get()` stays as a read (`ref T`), faulting while locked, as now.

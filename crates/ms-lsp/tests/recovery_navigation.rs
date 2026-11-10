@@ -17,8 +17,8 @@ fn recovered_declaration_names_keep_hover_and_definition_ranges() {
     let syms = ms_syntax::Names::global();
     for broken in [
         "fn broken(\n\n",
-        "let broken = 😀\n\n",
-        "fn broken():\n    let text = \"\n\n",
+        "broken := 😀\n\n",
+        "fn broken():\n    text := \"\n\n",
     ] {
         for newline in ["\n", "\r\n"] {
             let ws = Workspace::new("recovered-navigation");
@@ -121,7 +121,7 @@ fn a_statement_cut_off_mid_expression_keeps_hover_and_definition() {
         for newline in ["\n", "\r\n"] {
             let ws = Workspace::new("cut-off-statement");
             let source = format!(
-                "fn f(s: String) String:\n    let g = s\n    return {tail}\n\nfn other() Int: 1\n"
+                "fn f(s: String) String:\n    g := s\n    return {tail}\n\nfn other() Int: 1\n"
             )
             .replace('\n', newline);
             let document = Document::new(ws.uri("cut.ms"), source.clone());

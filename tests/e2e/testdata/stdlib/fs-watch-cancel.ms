@@ -10,9 +10,9 @@ fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
     try out.write(0)
 
     while true:
-        let event = try events.next()
+        event := try events.next()
 
-        if let found = event:
+        if found := event:
             if found.path == last:
                 try out.write(1)
         else:
@@ -24,22 +24,22 @@ fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
 // frame of `WatchSource.next` held the source it took out of the stream, refilled after `pending.pop()`,
 // and unwinding dropped that copy too, so the watcher (and its map of watch descriptors) was freed twice.
 test "cancelling a recursive watch after a burst of events releases the watcher once":
-    let temp = temporary("ms-watch-cancel-") | try expect_ok
-    let path = temp.path()
+    temp := temporary("ms-watch-cancel-") | try expect_ok
+    path := temp.path()
     var ready = pipe[Int](4)
     var reader = ready.reader()
-    let switch = cancel_switch()
-    let last = "{path}/d19"
-    let work = promise(fn: follow(path.clone(), last.clone(), ready.writer())).with(
+    switch := cancel_switch()
+    last := "{path}/d19"
+    work := promise(fn: follow(path.clone(), last.clone(), ready.writer())).with(
         options: PromiseOptions(cancel: switch.signal())
     )
-    let _registered = try reader.next()
+    _registered := try reader.next()
     var i = 0
 
     while i < 20:
         try create_directory("{path}/d{i}/e/f", recursive: true)
         i += 1
 
-    let _arrived = try reader.next()
+    _arrived := try reader.next()
     switch.cancel()
     try expect_true(work.wait().is_error())

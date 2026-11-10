@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -20,7 +20,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -33,29 +33,29 @@ export fn main() Int:
         acc1 += i * 6
     say("acc1 = {acc1}")
 
-    let i2 = ((-28) * (-36))
+    i2 := ((-28) * (-36))
     say("i2 = {i2}")
 
-    let b3 = ((741.844 * 944.379) != ((791.811 + 6.0e14) + 622.795))
+    b3 := ((741.844 * 944.379) != ((791.811 + 6.0e14) + 622.795))
     say("b3 = {b3}")
 
-    let l4 = [(-26)]
+    l4 := [(-26)]
     say("l4 = {l4} len {l4.length()}")
 
-    let b5 = b3
+    b5 := b3
     say("b5 = {b5}")
 
-    let b6 = (((938.517 > 2.5) or true) and b3)
+    b6 := (((938.517 > 2.5) or true) and b3)
     say("b6 = {b6}")
     say("fact(20) = {fact(20)}")
     say(
         "{i2} {(((-37) + (-46)) + i2)} {(i2 < (((-37) + (-46)) + i2))} sum {i2 + (((-37) + (-46)) + i2)}"
     )
 
-    let i7 = (-15)
+    i7 := (-15)
     say("i7 = {i7}")
 
-    let b8 = (
+    b8 := (
         "gamma".replace("x", "  padded  ") == (
             "{(i2 + 168631)}:"
             + ("delta" + "naïve")
@@ -63,10 +63,10 @@ export fn main() Int:
     )
     say("b8 = {b8}")
 
-    let i9 = ((i2 / i2) % ((i2 * i7) - (i2 % i2)))
+    i9 := ((i2 / i2) % ((i2 * i7) - (i2 % i2)))
     say("i9 = {i9}")
 
-    let s10 = "hello world"
+    s10 := "hello world"
     say("s10 = [{s10}]")
 
     if b5:
@@ -76,19 +76,19 @@ export fn main() Int:
 
     say("fib(30) = {fib(30)}")
 
-    let l11 = l4.sorted(fn a, b: a.compare(b))
+    l11 := l4.sorted(fn a, b: a.compare(b))
     say("l11 = {l11} len {l11.length()}")
 
-    let s12 = s10
+    s12 := s10
     say("s12 = [{s12}]")
     say("fib(32) = {fib(32)}")
 
-    let s13 = "delta"
+    s13 := "delta"
     say("s13 = [{s13}]")
 
-    let l14 = [(-15), 6, 19, 24]
+    l14 := [(-15), 6, 19, 24]
     say("l14 = {l14} len {l14.length()}")
 
-    let big15 = -9223372036854775808
+    big15 := -9223372036854775808
     say("{-big15}")
     return 0

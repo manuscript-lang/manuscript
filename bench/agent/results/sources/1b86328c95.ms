@@ -119,7 +119,7 @@ fn sub(cs: List[String], a: Int, b: Int) String:
     return cs.slice(a, b).get(List[String]()).join("")
 
 fn trimsp(s: String) String:
-    let cs = s.chars()
+    cs := s.chars()
     var a = 0
     var b = cs.length()
     while a < b and isSp(cs[a]):
@@ -129,14 +129,14 @@ fn trimsp(s: String) String:
     return sub(cs, a, b)
 
 fn ltrimsp(s: String) String:
-    let cs = s.chars()
+    cs := s.chars()
     var a = 0
     while a < cs.length() and isSp(cs[a]):
         a += 1
     return sub(cs, a, cs.length())
 
 fn rtrimsp(s: String) String:
-    let cs = s.chars()
+    cs := s.chars()
     var b = cs.length()
     while b > 0 and isSp(cs[b - 1]):
         b -= 1
@@ -149,7 +149,7 @@ fn chomp(s: String) String:
     return s.clone()
 
 fn rtrimws(s: String) String:
-    let cs = s.chars()
+    cs := s.chars()
     var b = cs.length()
     while b > 0 and isWs(cs[b - 1]):
         b -= 1
@@ -220,7 +220,7 @@ fn join2(a: String, b: String) String:
     return a + " " + b
 
 fn to_int(s: String) Optional[Int]:
-    let cs = s.chars()
+    cs := s.chars()
     if cs.length() == 0:
         return none
 
@@ -238,7 +238,7 @@ fn to_int(s: String) Optional[Int]:
 
         i += 1
 
-    if let v = parse_int(s, 10):
+    if v := parse_int(s, 10):
         return some(v)
 
     return none
@@ -263,9 +263,9 @@ fn fail(var st: Sim, msg: String) Unit:
 
 // The stem if `word` matches `pat` (one % stands for any text), else none.
 fn match_stem(pat: String, word: String) Optional[String]:
-    let pcs = pat.chars()
-    let wcs = word.chars()
-    let p = find_char(pcs, "%", 0)
+    pcs := pat.chars()
+    wcs := word.chars()
+    p := find_char(pcs, "%", 0)
 
     if p < 0:
         if pat == word:
@@ -273,10 +273,10 @@ fn match_stem(pat: String, word: String) Optional[String]:
 
         return none
 
-    let pre = sub(pcs, 0, p)
-    let suf = sub(pcs, p + 1, pcs.length())
-    let pl = pre.length()
-    let sl = suf.length()
+    pre := sub(pcs, 0, p)
+    suf := sub(pcs, p + 1, pcs.length())
+    pl := pre.length()
+    sl := suf.length()
     if wcs.length() < pl + sl:
         return none
     if not word.starts_with(pre) or not word.ends_with(suf):
@@ -285,15 +285,15 @@ fn match_stem(pat: String, word: String) Optional[String]:
     return some(sub(wcs, pl, wcs.length() - sl))
 
 fn matches(pat: String, word: String) Bool:
-    if let _s = match_stem(pat, word):
+    if _s := match_stem(pat, word):
         return true
 
     return false
 
 // Replaces the first % of x by stem; x without % is returned unchanged.
 fn pct_sub(x: String, stem: String) String:
-    let cs = x.chars()
-    let p = find_char(cs, "%", 0)
+    cs := x.chars()
+    p := find_char(cs, "%", 0)
     if p < 0:
         return x
 
@@ -303,7 +303,7 @@ fn patsubst_words(pat: String, rep: String, text: String) String:
     var out = List[String]()
 
     for w in split_ws(text):
-        if let stem = match_stem(pat, w):
+        if stem := match_stem(pat, w):
             out.append(pct_sub(rep.clone(), stem))
         else:
             out.append(w)
@@ -360,7 +360,7 @@ fn expand(var st: Sim, s: String) String:
     if st.stop:
         return ""
 
-    let cs = s.chars()
+    cs := s.chars()
     return expand_range(var st, cs, 0, cs.length())
 
 fn expand_range(var st: Sim, cs: List[String], a: Int, b: Int) String:
@@ -368,7 +368,7 @@ fn expand_range(var st: Sim, cs: List[String], a: Int, b: Int) String:
     var i = a
 
     while i < b and not st.stop:
-        let c = cs[i]
+        c := cs[i]
 
         if c != "$":
             out = out + c
@@ -379,7 +379,7 @@ fn expand_range(var st: Sim, cs: List[String], a: Int, b: Int) String:
             i += 1
             continue
 
-        let nx = cs[i + 1]
+        nx := cs[i + 1]
 
         if nx == "$":
             out = out + "$"
@@ -387,15 +387,15 @@ fn expand_range(var st: Sim, cs: List[String], a: Int, b: Int) String:
             continue
 
         if nx == "(" or nx == "\{":
-            let close = if nx == "(": ")" else: "\}"
+            close := if nx == "(": ")" else: "\}"
 
-            let k = match_close(cs, i + 2, b, nx, close)
+            k := match_close(cs, i + 2, b, nx, close)
 
             if k < 0:
                 fail(var st, "unterminated variable reference")
                 return ""
 
-            let inner = sub(cs, i + 2, k)
+            inner := sub(cs, i + 2, k)
             out = out + reference(var st, inner)
             i = k + 1
             continue
@@ -407,26 +407,26 @@ fn expand_range(var st: Sim, cs: List[String], a: Int, b: Int) String:
 
 // The value of a $(...) reference whose raw text is `inner`.
 fn reference(var st: Sim, inner: String) String:
-    let cs = inner.chars()
-    let n = cs.length()
+    cs := inner.chars()
+    n := cs.length()
     var j = 0
     while j < n and not isSp(cs[j]):
         j += 1
     if j > 0 and j < n and is_func(sub(cs, 0, j)):
         return call_fn(var st, sub(cs, 0, j), split_args(sub(cs, j + 1, n)))
 
-    let t = trimsp(expand(var st, inner))
-    let tc = t.chars()
-    let c = find_char(tc, ":", 1)
+    t := trimsp(expand(var st, inner))
+    tc := t.chars()
+    c := find_char(tc, ":", 1)
 
     if c > 0:
-        let e = find_char(tc, "=", c + 1)
+        e := find_char(tc, "=", c + 1)
 
         if e > 0:
-            let vname = trimsp(sub(tc, 0, c))
-            let from = sub(tc, c + 1, e)
-            let to = sub(tc, e + 1, tc.length())
-            let v = var_value(var st, vname)
+            vname := trimsp(sub(tc, 0, c))
+            from := sub(tc, c + 1, e)
+            to := sub(tc, e + 1, tc.length())
+            v := var_value(var st, vname)
             if from.contains("%"):
                 return patsubst_words(from, to, v)
 
@@ -464,11 +464,11 @@ fn recursive_value(var st: Sim, name: String, from_cmd: Bool) String:
         fail(var st, "Recursive variable '{name}' references itself (eventually)")
         return ""
 
-    let raw = if from_cmd: st.cmd.get(name).get("") else: st.vals.get(name).get("")
+    raw := if from_cmd: st.cmd.get(name).get("") else: st.vals.get(name).get("")
 
     st.expanding.append(name.clone())
 
-    let r = expand(var st, raw)
+    r := expand(var st, raw)
     st.expanding.remove(-1)
     return r
 
@@ -512,45 +512,45 @@ fn call_fn(var st: Sim, name: String, raw: List[String]) String:
         return arg(var st, raw, 2)
 
     if name == "info":
-        let msg = arg(var st, raw, 0)
+        msg := arg(var st, raw, 0)
         if not st.stop:
             say(var st, msg)
         return ""
 
     if name == "error":
-        let msg = arg(var st, raw, 0)
+        msg := arg(var st, raw, 0)
         fail(var st, msg)
         return ""
 
     if name == "subst":
-        let from = arg(var st, raw, 0)
-        let to = arg(var st, raw, 1)
-        let text = arg(var st, raw, 2)
+        from := arg(var st, raw, 0)
+        to := arg(var st, raw, 1)
+        text := arg(var st, raw, 2)
         if from == "":
             return text
 
         return text.replace(from, to)
 
     if name == "patsubst":
-        let pat = arg(var st, raw, 0)
-        let rep = arg(var st, raw, 1)
-        let text = arg(var st, raw, 2)
+        pat := arg(var st, raw, 0)
+        rep := arg(var st, raw, 1)
+        text := arg(var st, raw, 2)
         return patsubst_words(pat, rep, text)
 
     if name == "strip":
         return split_ws(arg(var st, raw, 0)).join(" ")
 
     if name == "findstring":
-        let find = arg(var st, raw, 0)
-        let text = arg(var st, raw, 1)
+        find := arg(var st, raw, 0)
+        text := arg(var st, raw, 1)
         if text.contains(find):
             return find
 
         return ""
 
     if name == "filter" or name == "filter-out":
-        let pats = split_ws(arg(var st, raw, 0))
-        let words = split_ws(arg(var st, raw, 1))
+        pats := split_ws(arg(var st, raw, 0))
+        words := split_ws(arg(var st, raw, 1))
         var out = List[String]()
 
         for w in words:
@@ -569,44 +569,44 @@ fn call_fn(var st: Sim, name: String, raw: List[String]) String:
         return dedupe(words).join(" ")
 
     if name == "word":
-        let text = arg(var st, raw, 1)
+        text := arg(var st, raw, 1)
 
-        if let n = to_int(trimsp(arg(var st, raw, 0))):
-            let ws = split_ws(text)
+        if n := to_int(trimsp(arg(var st, raw, 0))):
+            ws := split_ws(text)
             if n >= 1 and n <= ws.length():
                 return ws[n - 1].clone()
 
         return ""
 
     if name == "wordlist":
-        let s = to_int(trimsp(arg(var st, raw, 0)))
-        let e = to_int(trimsp(arg(var st, raw, 1)))
-        let ws = split_ws(arg(var st, raw, 2))
+        s := to_int(trimsp(arg(var st, raw, 0)))
+        e := to_int(trimsp(arg(var st, raw, 1)))
+        ws := split_ws(arg(var st, raw, 2))
 
-        if let a = s:
-            if let b = e:
+        if a := s:
+            if b := e:
                 if a < 1 or b < a or a > ws.length():
                     return ""
 
-                let hi = if b > ws.length(): ws.length() else: b
+                hi := if b > ws.length(): ws.length() else: b
 
                 return ws.slice(a - 1, hi).get(List[String]()).join(" ")
 
         return ""
 
     if name == "words":
-        let count = split_ws(arg(var st, raw, 0)).length()
+        count := split_ws(arg(var st, raw, 0)).length()
         return "{count}"
 
     if name == "firstword":
-        let ws = split_ws(arg(var st, raw, 0))
+        ws := split_ws(arg(var st, raw, 0))
         if ws.length() > 0:
             return ws[0].clone()
 
         return ""
 
     if name == "lastword":
-        let ws = split_ws(arg(var st, raw, 0))
+        ws := split_ws(arg(var st, raw, 0))
         if ws.length() > 0:
             return ws[ws.length() - 1].clone()
 
@@ -619,7 +619,7 @@ fn call_fn(var st: Sim, name: String, raw: List[String]) String:
         return out.join(" ")
 
     if name == "addprefix" or name == "addsuffix":
-        let x = arg(var st, raw, 0)
+        x := arg(var st, raw, 0)
         var out = List[String]()
 
         for w in split_ws(arg(var st, raw, 1)):
@@ -637,7 +637,7 @@ fn call_fn(var st: Sim, name: String, raw: List[String]) String:
         var out = List[String]()
 
         for p in split_ws(arg(var st, raw, 0)):
-            let pc = p.chars()
+            pc := p.chars()
             for k in keys:
                 if glob_at(pc, 0, k.chars(), 0):
                     out.append(k.clone())
@@ -648,10 +648,10 @@ fn call_fn(var st: Sim, name: String, raw: List[String]) String:
 
 // dir, notdir, suffix and basename of one word.
 fn file_part(name: String, w: String) String:
-    let cs = w.chars()
-    let slash = last_char(cs, "/")
-    let comp = sub(cs, slash + 1, cs.length())
-    let dot = last_char(comp.chars(), ".")
+    cs := w.chars()
+    slash := last_char(cs, "/")
+    comp := sub(cs, slash + 1, cs.length())
+    dot := last_char(comp.chars(), ".")
 
     if name == "dir":
         if slash < 0:
@@ -681,7 +681,7 @@ fn glob_at(p: List[String], pi: Int, s: List[String], si: Int) Bool:
     if pi == p.length():
         return si == s.length()
 
-    let c = p[pi]
+    c := p[pi]
 
     if c == "*":
         var k = si
@@ -706,10 +706,10 @@ fn glob_at(p: List[String], pi: Int, s: List[String], si: Int) Bool:
     return glob_at(p, pi + 1, s, si + 1)
 
 fn fn_foreach(var st: Sim, raw: List[String]) String:
-    let v = trimsp(arg(var st, raw, 0))
-    let items = split_ws(arg(var st, raw, 1))
+    v := trimsp(arg(var st, raw, 0))
+    items := split_ws(arg(var st, raw, 1))
 
-    let body = if raw.length() > 2: trimsp(raw[2]) else: ""
+    body := if raw.length() > 2: trimsp(raw[2]) else: ""
 
     var parts = List[String]()
 
@@ -731,8 +731,8 @@ fn logical(phys: List[String], i: Int) Logical:
     var j = i
 
     while text.ends_with("\\") and j + 1 < phys.length():
-        let cs = text.chars()
-        let body = rtrimsp(sub(cs, 0, cs.length() - 1))
+        cs := text.chars()
+        body := rtrimsp(sub(cs, 0, cs.length() - 1))
         j += 1
         text = body + " " + ltrimsp(phys[j])
 
@@ -740,12 +740,12 @@ fn logical(phys: List[String], i: Int) Logical:
 
 // Removes a comment, where \# stands for a literal #.
 fn strip_comment(s: String) String:
-    let cs = s.chars()
+    cs := s.chars()
     var out = ""
     var i = 0
 
     while i < cs.length():
-        let c = cs[i]
+        c := cs[i]
 
         if c == "\\" and i + 1 < cs.length() and cs[i + 1] == "#":
             out = out + "#"
@@ -761,7 +761,7 @@ fn strip_comment(s: String) String:
     return out
 
 fn word_of(text: String) String:
-    let cs = text.chars()
+    cs := text.chars()
     var k = 0
     while k < cs.length() and not isSp(cs[k]) and cs[k] != "(":
         k += 1
@@ -771,7 +771,7 @@ fn active(st: Sim) Bool:
     if st.blocks.length() == 0:
         return true
 
-    let k = st.blocks.length() - 1
+    k := st.blocks.length() - 1
     return st.blocks[k].parent and st.blocks[k].branch
 
 fn defined(st: Sim, name: String) Bool:
@@ -783,21 +783,21 @@ fn defined(st: Sim, name: String) Bool:
     return false
 
 fn ifeq_args(var st: Sim, rest: String) Pair:
-    let cs = rest.chars()
-    let n = cs.length()
+    cs := rest.chars()
+    n := cs.length()
 
     if n < 2 or cs[0] != "(" or cs[n - 1] != ")":
         fail(var st, "invalid syntax in conditional")
         return Pair(a: "", b: "", ok: false)
 
-    let ic = sub(cs, 1, n - 1).chars()
+    ic := sub(cs, 1, n - 1).chars()
     var depth = 0
     var commas = 0
     var at = -1
     var k = 0
 
     while k < ic.length():
-        let c = ic[k]
+        c := ic[k]
 
         if c == "(" or c == "\{":
             depth += 1
@@ -813,13 +813,13 @@ fn ifeq_args(var st: Sim, rest: String) Pair:
         fail(var st, "invalid syntax in conditional")
         return Pair(a: "", b: "", ok: false)
 
-    let left = trimsp(expand(var st, trimsp(sub(ic, 0, at))))
-    let right = trimsp(expand(var st, trimsp(sub(ic, at + 1, ic.length()))))
+    left := trimsp(expand(var st, trimsp(sub(ic, 0, at))))
+    right := trimsp(expand(var st, trimsp(sub(ic, at + 1, ic.length()))))
     return Pair(a: left, b: right, ok: true)
 
 // Handles a conditional line. Returns false when the line is not a directive.
 fn directive(var st: Sim, text: String) Bool:
-    let w = word_of(text)
+    w := word_of(text)
 
     if w == "ifdef" or w == "ifndef" or w == "ifeq" or w == "ifneq":
         if not active(st):
@@ -832,16 +832,16 @@ fn directive(var st: Sim, text: String) Bool:
 
         close_rule(var st)
 
-        let rest = trimsp(text.drop(w.length()))
+        rest := trimsp(text.drop(w.length()))
         var cond = false
 
         if w == "ifdef" or w == "ifndef":
-            let name = trimsp(expand(var st, rest))
-            let d = defined(st, name)
+            name := trimsp(expand(var st, rest))
+            d := defined(st, name)
 
             cond = if w == "ifdef": d else: not d
         else:
-            let pr = ifeq_args(var st, rest)
+            pr := ifeq_args(var st, rest)
             if st.stop:
                 return true
 
@@ -858,8 +858,8 @@ fn directive(var st: Sim, text: String) Bool:
             fail(var st, "extraneous 'else'")
             return true
 
-        let k = st.blocks.length() - 1
-        let b = st.blocks[k].clone()
+        k := st.blocks.length() - 1
+        b := st.blocks[k].clone()
 
         if b.parent:
             close_rule(var st)
@@ -884,7 +884,7 @@ fn directive(var st: Sim, text: String) Bool:
             fail(var st, "extraneous 'endif'")
             return true
 
-        let k = st.blocks.length() - 1
+        k := st.blocks.length() - 1
         if st.blocks[k].parent:
             close_rule(var st)
         st.blocks.remove(k)
@@ -894,19 +894,19 @@ fn directive(var st: Sim, text: String) Bool:
 
 // Index of the first `:` outside $(...) and ${...} references and before any `;`, or -1.
 fn top_colon(cs: List[String]) Int:
-    let n = cs.length()
+    n := cs.length()
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
         if c == ";":
             return -1
 
         if c == "$":
             if i + 1 < n and (cs[i + 1] == "(" or cs[i + 1] == "\{"):
-                let close = if cs[i + 1] == "(": ")" else: "\}"
+                close := if cs[i + 1] == "(": ")" else: "\}"
 
-                let k = match_close(cs, i + 2, n, cs[i + 1], close)
+                k := match_close(cs, i + 2, n, cs[i + 1], close)
                 if k < 0:
                     return -1
 
@@ -930,7 +930,7 @@ fn close_rule(var st: Sim) Unit:
 
     st.is_open = false
 
-    let r = st.rule.clone()
+    r := st.rule.clone()
 
     for name in r.names:
         if name.contains("%"):
@@ -941,8 +941,8 @@ fn close_rule(var st: Sim) Unit:
                 )
             )
         else if st.tidx.contains(name.clone()):
-            let i = st.tidx.get(name.clone()).get(0)
-            let old = st.ts[i].clone()
+            i := st.tidx.get(name.clone()).get(0)
+            old := st.ts[i].clone()
             var recipe = old.recipe.clone()
 
             if r.recipe.length() > 0:
@@ -979,7 +979,7 @@ fn assign(var st: Sim, cs: List[String], eq: Int) Unit:
         op = cs[eq - 1].clone()
         nend = eq - 1
 
-    let name = trimsp(expand(var st, sub(cs, 0, nend)))
+    name := trimsp(expand(var st, sub(cs, 0, nend)))
     if st.stop:
         return
 
@@ -990,13 +990,13 @@ fn assign(var st: Sim, cs: List[String], eq: Int) Unit:
     if st.cmd.contains(name.clone()):
         return
 
-    let value = trimsp(sub(cs, eq + 1, cs.length()))
+    value := trimsp(sub(cs, eq + 1, cs.length()))
 
     if op == "=":
         st.vals[name.clone()] = value.clone()
         st.simp[name.clone()] = false
     else if op == ":":
-        let v = expand(var st, value)
+        v := expand(var st, value)
         if st.stop:
             return
 
@@ -1011,14 +1011,14 @@ fn assign(var st: Sim, cs: List[String], eq: Int) Unit:
             st.vals[name.clone()] = value.clone()
             st.simp[name.clone()] = false
         else if st.simp.get(name.clone()).get(false):
-            let add = expand(var st, value)
+            add := expand(var st, value)
             st.vals[name.clone()] = join2(st.vals.get(name.clone()).get(""), add)
         else:
             st.vals[name.clone()] = join2(st.vals.get(name.clone()).get(""), value)
 
 // Handles `TARGETS : PREREQS [; COMMAND]`; col is the index of the top-level colon.
 fn rule_line(var st: Sim, cs: List[String], col: Int) Unit:
-    let n = cs.length()
+    n := cs.length()
     var semi = -1
     var k = col + 1
 
@@ -1029,17 +1029,17 @@ fn rule_line(var st: Sim, cs: List[String], col: Int) Unit:
 
         k += 1
 
-    let pre_end = if semi >= 0: semi else: n
+    pre_end := if semi >= 0: semi else: n
 
-    let inline = if semi >= 0: sub(cs, semi + 1, n) else: ""
+    inline := if semi >= 0: sub(cs, semi + 1, n) else: ""
 
-    let names = split_ws(expand(var st, sub(cs, 0, col)))
-    let pe = expand(var st, sub(cs, col + 1, pre_end))
+    names := split_ws(expand(var st, sub(cs, 0, col)))
+    pe := expand(var st, sub(cs, col + 1, pre_end))
     if st.stop:
         return
 
-    let pcs = pe.chars()
-    let bar = find_char(pcs, "|", 0)
+    pcs := pe.chars()
+    bar := find_char(pcs, "|", 0)
     var pre_s = pe.clone()
     var oo_s = ""
 
@@ -1047,8 +1047,8 @@ fn rule_line(var st: Sim, cs: List[String], col: Int) Unit:
         pre_s = sub(pcs, 0, bar)
         oo_s = sub(pcs, bar + 1, pcs.length())
 
-    let pre = split_ws(pre_s)
-    let oo = split_ws(oo_s)
+    pre := split_ws(pre_s)
+    oo := split_ws(oo_s)
     var rec = List[Rl]()
     if trimsp(inline) != "":
         rec.append(Rl(line: st.line, text: inline))
@@ -1070,9 +1070,9 @@ fn rule_line(var st: Sim, cs: List[String], col: Int) Unit:
 
 // A line that is neither a directive nor a recipe line.
 fn plain_line(var st: Sim, text: String) Unit:
-    let cs = text.chars()
-    let eq = find_char(cs, "=", 0)
-    let col = top_colon(cs)
+    cs := text.chars()
+    eq := find_char(cs, "=", 0)
+    col := top_colon(cs)
 
     if eq >= 0 and (col < 0 or col > eq or col == eq - 1):
         assign(var st, cs, eq)
@@ -1082,7 +1082,7 @@ fn plain_line(var st: Sim, text: String) Unit:
         rule_line(var st, cs, col)
         return
 
-    let e = expand(var st, text)
+    e := expand(var st, text)
     if not st.stop and trimsp(e) != "":
         fail(var st, "missing separator")
 
@@ -1090,11 +1090,11 @@ fn parse_all(var st: Sim, phys: List[String]) Unit:
     var i = 0
 
     while i < phys.length() and not st.stop:
-        let lg = logical(phys, i)
+        lg := logical(phys, i)
         i = lg.next
 
         if lg.text.starts_with("\t"):
-            let body = lg.text.drop(1)
+            body := lg.text.drop(1)
             if trimsp(body) == "":
                 continue
             if not active(st):
@@ -1108,7 +1108,7 @@ fn parse_all(var st: Sim, phys: List[String]) Unit:
             st.rule.recipe.append(Rl(line: lg.line, text: body.clone()))
             continue
 
-        let text = trimsp(strip_comment(lg.text))
+        text := trimsp(strip_comment(lg.text))
         if text == "":
             continue
 
@@ -1153,7 +1153,7 @@ fn load(var st: Sim, cmd: Map[String, String]) Unit:
     st.dout = List[String]()
     st.dseen = Map[String, Bool]()
 
-    let phys = st.mk.clone()
+    phys := st.mk.clone()
     parse_all(var st, phys)
 
 // ---------- rule resolution ----------
@@ -1185,7 +1185,7 @@ fn find_pat(st: Sim, name: String, depth: Int) Int:
 
     while k < st.pats.length():
         if st.pats[k].recipe.length() > 0:
-            if let stem = match_stem(st.pats[k].name, name.clone()):
+            if stem := match_stem(st.pats[k].name, name.clone()):
                 if stem != "" and pats_ok(st, k, stem, depth):
                     return k
         k += 1
@@ -1194,17 +1194,17 @@ fn find_pat(st: Sim, name: String, depth: Int) Int:
 
 fn resolve(st: Sim, name: String) Res:
     if st.tidx.contains(name.clone()):
-        let i = st.tidx.get(name.clone()).get(0)
+        i := st.tidx.get(name.clone()).get(0)
         if st.ts[i].recipe.length() > 0:
             return Res(
                 found: true, pre: st.ts[i].pre.clone(), oo: st.ts[i].oo.clone(),
                 recipe: st.ts[i].recipe.clone(), stem: ""
             )
 
-    let k = find_pat(st, name.clone(), 0)
+    k := find_pat(st, name.clone(), 0)
 
     if k >= 0:
-        let stem = match_stem(st.pats[k].name, name.clone()).get("")
+        stem := match_stem(st.pats[k].name, name.clone()).get("")
         var pre = List[String]()
         for x in st.pats[k].pre:
             pre.append(pct_sub(x.clone(), stem.clone()))
@@ -1214,7 +1214,7 @@ fn resolve(st: Sim, name: String) Res:
             oo.append(pct_sub(x.clone(), stem.clone()))
 
         if st.tidx.contains(name.clone()):
-            let i = st.tidx.get(name.clone()).get(0)
+            i := st.tidx.get(name.clone()).get(0)
             for x in st.ts[i].pre:
                 pre.append(x.clone())
             for x in st.ts[i].oo:
@@ -1225,7 +1225,7 @@ fn resolve(st: Sim, name: String) Res:
         )
 
     if st.tidx.contains(name.clone()):
-        let i = st.tidx.get(name.clone()).get(0)
+        i := st.tidx.get(name.clone()).get(0)
         return Res(
             found: true, pre: st.ts[i].pre.clone(), oo: st.ts[i].oo.clone(),
             recipe: List[Rl](), stem: ""
@@ -1245,11 +1245,11 @@ fn default_goal(st: Sim) Optional[String]:
 // ---------- building ----------
 
 fn cycle_error(var st: Sim, name: String) Unit:
-    let pos = index_in(st.stk, name)
+    pos := index_in(st.stk, name)
     var parts = st.stk.slice(pos, st.stk.length()).get(List[String]())
     parts.append(name.clone())
 
-    let path = parts.join(" -> ")
+    path := parts.join(" -> ")
     halt(var st, "make: *** Circular dependency detected: {path}.  Stop.")
 
 // Removes the quote characters from a word.
@@ -1262,17 +1262,17 @@ fn strip_quotes(w: String) String:
 
 // Simulates one recipe command and returns its exit status.
 fn simulate(var st: Sim, command: String) Int:
-    let ws = split_ws(command)
+    ws := split_ws(command)
     if ws.length() == 0:
         return 0
 
-    let w0 = ws[0].clone()
+    w0 := ws[0].clone()
     if w0 == "false":
         return 1
 
     if w0 == "exit":
         if ws.length() > 1:
-            if let v = to_int(ws[1]):
+            if v := to_int(ws[1]):
                 return v
 
             return 2
@@ -1317,19 +1317,19 @@ fn simulate(var st: Sim, command: String) Int:
 fn run_recipe(var st: Sim, name: String, r: Res, existed: Bool, old: Int) Unit:
     st.ran += 1
 
-    let d = dedupe(r.pre)
-    let oo = dedupe(r.oo)
+    d := dedupe(r.pre)
+    oo := dedupe(r.oo)
     var q = List[String]()
 
     for p in d:
-        let newer = (
+        newer := (
             st.files.contains(p.clone())
             and st.files.get(p.clone()).get(0) > old
         )
         if not existed or st.memo.get(p.clone()).get(false) or newer:
             q.append(p.clone())
 
-    let first = if r.pre.length() > 0: r.pre[0].clone() else: ""
+    first := if r.pre.length() > 0: r.pre[0].clone() else: ""
 
     st.autos = Map[String, String]()
     st.autos["@"] = name.clone()
@@ -1345,11 +1345,11 @@ fn run_recipe(var st: Sim, name: String, r: Res, existed: Bool, old: Int) Unit:
 
         st.line = rl.line
 
-        let e = trimsp(expand(var st, rl.text))
+        e := trimsp(expand(var st, rl.text))
         if st.stop:
             break
 
-        let cs = e.chars()
+        cs := e.chars()
         var silent = false
         var ign = false
         var k = 0
@@ -1370,7 +1370,7 @@ fn run_recipe(var st: Sim, name: String, r: Res, existed: Bool, old: Int) Unit:
                 ign = true
             k += 1
 
-        let command = trimsp(sub(cs, k, cs.length()))
+        command := trimsp(sub(cs, k, cs.length()))
         if command == "":
             continue
 
@@ -1379,7 +1379,7 @@ fn run_recipe(var st: Sim, name: String, r: Res, existed: Bool, old: Int) Unit:
         if st.dry:
             continue
 
-        let status = simulate(var st, command)
+        status := simulate(var st, command)
 
         if status != 0:
             if ign:
@@ -1411,7 +1411,7 @@ fn update(var st: Sim, name: String, needed_by: String) Bool:
         cycle_error(var st, name)
         return false
 
-    let r = resolve(st, name.clone())
+    r := resolve(st, name.clone())
 
     if not r.found:
         if st.files.contains(name.clone()):
@@ -1434,8 +1434,8 @@ fn update(var st: Sim, name: String, needed_by: String) Bool:
 
     st.stk.append(name.clone())
 
-    let existed = st.files.contains(name.clone())
-    let old = st.files.get(name.clone()).get(0)
+    existed := st.files.contains(name.clone())
+    old := st.files.get(name.clone()).get(0)
     var changed = false
     var newer = false
 
@@ -1457,7 +1457,7 @@ fn update(var st: Sim, name: String, needed_by: String) Bool:
         if st.stop:
             return false
 
-    let need = (
+    need := (
         st.phony.contains(name.clone())
         or not st.files.contains(name.clone())
         or changed
@@ -1475,7 +1475,7 @@ fn update(var st: Sim, name: String, needed_by: String) Bool:
 
 // Prints the transitive prerequisites of `name` into st.dout, depth first.
 fn dfs(var st: Sim, name: String) Unit:
-    let r = resolve(st, name.clone())
+    r := resolve(st, name.clone())
     var kids = dedupe(r.pre)
     for x in dedupe(r.oo):
         kids.append(x)
@@ -1483,7 +1483,7 @@ fn dfs(var st: Sim, name: String) Unit:
     var i = 0
 
     while i < kids.length() and not st.stop:
-        let c = kids[i].clone()
+        c := kids[i].clone()
         i += 1
         if st.dseen.contains(c.clone()):
             continue
@@ -1510,8 +1510,8 @@ fn parse_args(ws: List[String]) Args:
     var k = 1
 
     while k < ws.length():
-        let cs = ws[k].chars()
-        let e = find_char(cs, "=", 0)
+        cs := ws[k].chars()
+        e := find_char(cs, "=", 0)
 
         if e > 0:
             cmd[sub(cs, 0, e)] = sub(cs, e + 1, cs.length())
@@ -1523,7 +1523,7 @@ fn parse_args(ws: List[String]) Args:
     return Args(cmd: cmd, goals: goals)
 
 fn do_build(var st: Sim, ws: List[String], dry: Bool) Unit:
-    let args = parse_args(ws)
+    args := parse_args(ws)
     load(var st, args.cmd.clone())
     if st.stop:
         return
@@ -1533,21 +1533,21 @@ fn do_build(var st: Sim, ws: List[String], dry: Bool) Unit:
     var gs = args.goals.clone()
 
     if gs.length() == 0:
-        if let dg = default_goal(st):
+        if dg := default_goal(st):
             gs.append(dg)
         else:
             halt(var st, "make: *** No targets.  Stop.")
             return
 
     for g in gs:
-        let before = st.ran
+        before := st.ran
         update(var st, g.clone(), "")
         if st.stop:
             return
 
         if st.ran == before:
-            let r = resolve(st, g.clone())
-            let file = not st.phony.contains(g.clone()) and st.files.contains(g.clone())
+            r := resolve(st, g.clone())
+            file := not st.phony.contains(g.clone()) and st.files.contains(g.clone())
 
             if r.recipe.length() > 0 or file:
                 say(var st, "make: '{g}' is up to date.")
@@ -1555,7 +1555,7 @@ fn do_build(var st: Sim, ws: List[String], dry: Bool) Unit:
                 say(var st, "make: Nothing to be done for '{g}'.")
 
 fn do_deps(var st: Sim, ws: List[String]) Unit:
-    let args = parse_args(ws)
+    args := parse_args(ws)
     load(var st, args.cmd.clone())
     if st.stop:
         return
@@ -1564,7 +1564,7 @@ fn do_deps(var st: Sim, ws: List[String]) Unit:
         say(var st, "usage: deps TARGET")
         return
 
-    let t = args.goals[0].clone()
+    t := args.goals[0].clone()
     st.stk = List[String]()
     st.stk.append(t.clone())
     dfs(var st, t)
@@ -1588,12 +1588,12 @@ fn fmt_rule(name: String, pre: List[String], oo: List[String]) String:
     return s
 
 fn do_targets(var st: Sim, ws: List[String]) Unit:
-    let args = parse_args(ws)
+    args := parse_args(ws)
     load(var st, args.cmd.clone())
     if st.stop:
         return
 
-    if let dg = default_goal(st):
+    if dg := default_goal(st):
         say(var st, "default: {dg}")
     for t in st.ts.clone():
         say(var st, fmt_rule(t.name, t.pre, t.oo))
@@ -1607,7 +1607,7 @@ fn do_expand(var st: Sim, text: String) Unit:
     if st.stop:
         return
 
-    let r = expand(var st, text)
+    r := expand(var st, text)
     if st.stop:
         return
 
@@ -1618,7 +1618,7 @@ fn do_touch(var st: Sim, ws: List[String]) Unit:
         st.clock += 1
         st.files[ws[1].clone()] = st.clock
     else if ws.length() == 3:
-        if let v = to_int(ws[2]):
+        if v := to_int(ws[2]):
             st.files[ws[1].clone()] = v
             if v > st.clock:
                 st.clock = v
@@ -1636,12 +1636,12 @@ fn do_files(var st: Sim) Unit:
     keys.sort()
 
     for k in keys:
-        let m = st.files.get(k.clone()).get(0)
+        m := st.files.get(k.clone()).get(0)
         say(var st, "{k} {m}")
 
 fn handle_request(var st: Sim, line: String) Unit:
-    let shown = rtrimws(line)
-    let t = ltrimsp(shown)
+    shown := rtrimws(line)
+    t := ltrimsp(shown)
     if t == "" or t.starts_with("#"):
         return
 
@@ -1649,8 +1649,8 @@ fn handle_request(var st: Sim, line: String) Unit:
     st.stop = false
     st.line = 0
 
-    let ws = split_ws(t)
-    let w = ws[0].clone()
+    ws := split_ws(t)
+    w := ws[0].clone()
 
     if w == "build":
         do_build(var st, ws, false)
@@ -1673,14 +1673,14 @@ fn handle_request(var st: Sim, line: String) Unit:
         say(var st, "unknown request: {w}")
 
 export fn main() Int:
-    let raw = read_lines(stdin()).get(List[String]())
+    raw := read_lines(stdin()).get(List[String]())
     var st = new_sim()
     var sep = 0
     var tb = List[String]()
     var rq = List[String]()
 
     for line in raw:
-        let l = chomp(line)
+        l := chomp(line)
 
         if sep < 2 and l == "====":
             sep += 1
@@ -1692,10 +1692,10 @@ export fn main() Int:
             rq.append(l)
 
     for l in tb:
-        let ws = split_ws(l)
+        ws := split_ws(l)
 
         if ws.length() == 2:
-            if let m = to_int(ws[1]):
+            if m := to_int(ws[1]):
                 if m >= 0:
                     st.files[ws[0].clone()] = m
                     if m > st.clock:

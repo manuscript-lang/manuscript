@@ -15,7 +15,7 @@ import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 fn read_head(path: String) Bytes?!:
-    let file = try open(path)
+    file := try open(path)
     return file.read(max_bytes: 4096)
 ```
 
@@ -43,8 +43,8 @@ To close earlier than the end of the scope, declare the binding with `var` and c
 
 ```manuscript
 var file = try open(path)
-let head = try file.read_lines(max_lines: 1)
-let _ = file.close()
+head := try file.read_lines(max_lines: 1)
+_ := file.close()
 slow_work(head)
 ```
 
@@ -107,8 +107,8 @@ impl Closeable for Tracked:
         return ok(unit)
 
 fn work() Unit!:
-    let _first = Tracked("first")
-    let _second = Tracked("second")
+    _first := Tracked("first")
+    _second := Tracked("second")
     print("work")
     return ok(unit)
 

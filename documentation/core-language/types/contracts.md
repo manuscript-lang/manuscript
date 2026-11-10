@@ -157,27 +157,27 @@ The conversion follows the [ownership rules](https://github.com/manuscript-lang/
 fn use_increment(operation: Increment) Int:
     return operation.apply(1)
 
-let offset = Offset(2)
-let result = use_increment(offset)
-let again = offset.delta
-let kept: Increment = offset.clone()
+offset := Offset(2)
+result := use_increment(offset)
+again := offset.delta
+kept: Increment = offset.clone()
 ```
 
-An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`let view: Increment = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
+An interface is never constructed: `Increment(value: offset)` is rejected, so annotate the binding (`view: Increment = offset`) when no interface is otherwise expected. Generic inference does not convert: a type variable bound to `Offset` does not match `Increment` ([matching](generics.md#inference-from-arguments)).
 
 ### Selecting an operation
 
-A receiver or generic parameter may call an operation directly when exactly one implemented or bounded contract supplies that name. Otherwise bind the value to one interface and call through it: `let view: Increment = offset` then `view.apply(value: 1)`; arguments and result types never disambiguate. A bound method keeps its receiver and has the operation's ordinary function type.
+A receiver or generic parameter may call an operation directly when exactly one implemented or bounded contract supplies that name. Otherwise bind the value to one interface and call through it: `view: Increment = offset` then `view.apply(value: 1)`; arguments and result types never disambiguate. A bound method keeps its receiver and has the operation's ordinary function type.
 
 A contract type satisfies its own exact generic bound without an `impl`: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
 ```manuscript
 fn invoke[T: Increment](operation: T) Int:
-    let view: Increment = operation
+    view: Increment = operation
     return view.apply(1)
 
-let from_concrete = invoke(offset)
-let from_view = invoke(view)
+from_concrete := invoke(offset)
+from_view := invoke(view)
 ```
 
 Both calls satisfy the bound without implicit conversion.

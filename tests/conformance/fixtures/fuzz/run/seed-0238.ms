@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -28,50 +28,50 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let i1 = 41
+    i1 := 41
     say("i1 = {i1}")
 
-    let f2 = 619.657
+    f2 := 619.657
     say("f2 = {f2}")
 
-    let b3 = "naïve".reverse().trim().is_empty()
+    b3 := "naïve".reverse().trim().is_empty()
     say("b3 = {b3}")
 
-    let b4 = (
+    b4 := (
         ("gamma".replace("quote\"d", "hello world") != ("{(i1 * (-16))}:" + ""))
         and "alpha".is_empty()
     )
     say("b4 = {b4}")
 
-    let b5 = (
+    b5 := (
         (((-187611486816) != i1) and "MiXeD CaSe".contains("42"))
         and ((384.598 != 299.369) and (false and b4))
     )
     say("b5 = {b5}")
 
-    let f6 = (((f2 - 0.0) / (801.266 / f2)) * (94.184 * 429.25))
+    f6 := (((f2 - 0.0) / (801.266 / f2)) * (94.184 * 429.25))
     say("f6 = {f6}")
 
-    let i8 = (((-27) - 67428) + ((i1 % i1) * (i1 + 26)))
+    i8 := (((-27) - 67428) + ((i1 % i1) * (i1 + 26)))
     say("i8 = {i8}")
 
-    let s9 = ("" + "42").replace("Tab\there", "  padded  ").trim()
+    s9 := ("" + "42").replace("Tab\there", "  padded  ").trim()
     say("s9 = [{s9}]")
 
-    let i10 = i1
+    i10 := i1
     say("i10 = {i10}")
     say("fib(38) = {fib(38)}")
 
-    let i11 = i8
+    i11 := i8
     say("i11 = {i11}")
 
-    let i12 = ((-(i11 + i11)) * (((-4) - 13) / (i11 + (-1))))
+    i12 := ((-(i11 + i11)) * (((-4) - 13) / (i11 + (-1))))
     say("i12 = {i12}")
     say("gcd(4156, 450) = {gcd(4156, 450)}")
 
-    let i13 = ((i12 + (27 + 31)) / ((i11 % 64242) + (i11 * (-7))))
+    i13 := ((i12 + (27 + 31)) / ((i11 % 64242) + (i11 * (-7))))
     say("i13 = {i13}")
 
-    let big14 = (((-40) - 17) + (i1 + 17)) - (((-40) - 17) + (i1 + 17))
+    big14 := (((-40) - 17) + (i1 + 17)) - (((-40) - 17) + (i1 + 17))
     say("{(((-40) - 17) + (i1 + 17)) % big14}")
     return 0

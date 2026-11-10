@@ -6,13 +6,13 @@ impl Logger:
     fn quiet() Int: self.n
 
 fn stored_method() Unit:
-    let log = Logger(1)
-    let f = log.info
+    log := Logger(1)
+    f := log.info
     f()
 
 fn pure_method() Int:
-    let log = Logger(1)
-    let f = log.quiet
+    log := Logger(1)
+    f := log.quiet
     return f()
 
 export fn main() Int:

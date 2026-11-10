@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -28,7 +28,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -36,27 +36,27 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let b1 = (829.865 < ((541.717 - 732.202) + 777.840))
+    b1 := (829.865 < ((541.717 - 732.202) + 777.840))
     say("b1 = {b1}")
 
-    let s2 = "42"
+    s2 := "42"
     say("s2 = [{s2}]")
 
-    let s3 = (("42" + s2) + "MiXeD CaSe").replace("héllo", "ms")
+    s3 := (("42" + s2) + "MiXeD CaSe").replace("héllo", "ms")
     say("s3 = [{s3}]")
 
-    let f4 = (
+    f4 := (
         ((194.949 - 564.425) * (643.511 / 37.440))
         - ((395.462 * 9.0e20) + (526.25 + 413.769))
     )
     say("f4 = {f4}")
 
-    let l5 = [1, 2, 3].take(0)
+    l5 := [1, 2, 3].take(0)
     say("l5 = {l5} len {l5.length()}")
     say("collatz(2371) = {collatz(2371)}")
     say("fib(37) = {fib(37)}")
 
-    let big6 = (
+    big6 := (
         ((763003567524 - (-11)) - ((-38) + (-38)))
         - ((763003567524 - (-11)) - ((-38) + (-38)))
     )

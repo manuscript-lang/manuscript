@@ -2,6 +2,6 @@
 // conform: phase=run
 // conform: origin=sized numeric types stage 1
 export fn main() Int:
-    let low: Int8 = -128
-    let _flipped = -low
+    low: Int8 = -128
+    _flipped := -low
     return 0

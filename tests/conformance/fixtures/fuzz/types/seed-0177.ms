@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [(-4), (-6)]
+    l1 := [(-4), (-6)]
     say("l1 = {l1} len {l1.length()}")
 
     if ((-158249) > (900242 * 10)):
@@ -17,5 +17,5 @@ export fn main() Int:
     else:
         say("line\nbreak".reverse())
 
-    let bad = not 5
+    bad := not 5
     return 0

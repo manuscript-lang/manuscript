@@ -23,8 +23,8 @@ fn run() Unit!:
     try p.close()
     try q.close()
 
-    let a = promise(fn: fill(var w1, 0, 1000000))
-    let st = promise(fn: stage(var pr, var qw))
+    a := promise(fn: fill(var w1, 0, 1000000))
+    st := promise(fn: stage(var pr, var qw))
     var sum = 0
     var n = 0
 

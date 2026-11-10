@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -20,7 +20,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -33,41 +33,41 @@ export fn main() Int:
     else:
         say("".replace("42", "gamma"))
 
-    let f1 = (((0.0 - 728.440) + 607.987) / ((16.25 / 108.270) * (150.918 / 2.0e-4)))
+    f1 := (((0.0 - 728.440) + 607.987) / ((16.25 / 108.270) * (150.918 / 2.0e-4)))
     say("f1 = {f1}")
 
-    let f2 = (((f1 + 625.878) + 283.25) - ((f1 + f1) + f1))
+    f2 := (((f1 + 625.878) + 283.25) - ((f1 + f1) + f1))
     say("f2 = {f2}")
 
-    let s3 = ("emoji 😀".trim().upper() + "brace\{s\}".lower())
+    s3 := ("emoji 😀".trim().upper() + "brace\{s\}".lower())
     say("s3 = [{s3}]")
 
-    let i4 = (-44)
+    i4 := (-44)
     say("i4 = {i4}")
 
-    let i5 = i4
+    i5 := i4
     say("i5 = {i5}")
 
-    let f6 = (0.0 * (7.5 * (290.323 + 1.0e19)))
+    f6 := (0.0 * (7.5 * (290.323 + 1.0e19)))
     say("f6 = {f6}")
     say("gcd(595, 3686) = {gcd(595, 3686)}")
 
-    let l7 = [(-29), 1, 13, 10]
+    l7 := [(-29), 1, 13, 10]
     say("l7 = {l7} len {l7.length()}")
 
-    let i8 = (i5 - (-549833113229))
+    i8 := (i5 - (-549833113229))
     say("i8 = {i8}")
 
-    let s9 = ("back\\slash".lower().upper() + s3)
+    s9 := ("back\\slash".lower().upper() + s3)
     say("s9 = [{s9}]")
 
-    let s10 = "42"
+    s10 := "42"
     say("s10 = [{s10}]")
 
-    let s11 = ("{i5}:" + "delta").trim().reverse()
+    s11 := ("{i5}:" + "delta").trim().reverse()
     say("s11 = [{s11}]")
 
-    let l12 = l7.map(fn x: x * 8)
+    l12 := l7.map(fn x: x * 8)
     say("l12 = {l12} len {l12.length()}")
     say("fib(33) = {fib(33)}")
 

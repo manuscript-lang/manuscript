@@ -2,7 +2,7 @@ import expect_equal, expect_false, fail from "@std/test/test.ms"
 import parse, from_int, BigInt from "@std/math/math.ms"
 
 test "big integers exceed machine range without losing precision":
-    let big = try parse("9223372036854775808", 10)
+    big := try parse("9223372036854775808", 10)
     try expect_false(big.to_int().is_some())
     try expect_equal(big.subtract(from_int(1)).to_int(), 9223372036854775807)
     try expect_equal(from_int(7).multiply(from_int(6)).to_string_radix(10), "42")
@@ -11,22 +11,22 @@ test "big integers exceed machine range without losing precision":
     try expect_equal(from_int(5).bit_xor(from_int(3)).to_int(), 6)
 
 test "big integers validate digits budgets and zero divisors":
-    let invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
+    invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
     try expect_equal(from_int(1).divide(from_int(0)), invalid)
 
-    let limited: BigInt! = error(
+    limited: BigInt! = error(
         Error("big integer: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(parse("123", 10, 2), limited)
 
-    let malformed: BigInt! = error(Error("big integer: invalid data", kind: "EBADMSG"))
+    malformed: BigInt! = error(Error("big integer: invalid data", kind: "EBADMSG"))
     try expect_equal(parse("1_0", 10), malformed)
 
 test "big integer budgets exclude at most one leading sign before validation":
-    let limited: BigInt! = error(
+    limited: BigInt! = error(
         Error("big integer: limit exceeded", kind: "EOVERFLOW")
     )
-    let malformed: BigInt! = error(Error("big integer: invalid data", kind: "EBADMSG"))
+    malformed: BigInt! = error(Error("big integer: invalid data", kind: "EBADMSG"))
 
     for text in ["+-1", "-+1", "++1", "--1"]:
         if parse(text, 10, 1) != limited: return fail(
@@ -41,7 +41,7 @@ test "big integer budgets exclude at most one leading sign before validation":
         try expect_equal(parse(text, 10, 0), limited)
 
 test "big integers support sign pow shifts and conversion":
-    let five = from_int(5)
+    five := from_int(5)
     try expect_equal(five.negate().to_int(), -5)
     try expect_equal(five.negate().abs().to_int(), 5)
     try expect_equal(five.negate().sign(), -1)
@@ -57,11 +57,11 @@ test "big integers support sign pow shifts and conversion":
         (try from_int(1).shift_left(70)).to_float(), 1180591620717411303424.0
     )
 
-    let invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
+    invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
     try expect_equal(five.pow(-1), invalid)
     try expect_equal(five.shift_left(-1), invalid)
 
-    let limited: BigInt! = error(
+    limited: BigInt! = error(
         Error("big integer: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_equal(from_int(2).pow(100000000), limited)
@@ -75,10 +75,10 @@ test "power radix parsing keeps digit order leading zeros and strict budgets":
     try expect_equal((try parse("-000Vv", 32)).to_int(), -1023)
     try expect_equal((try parse("-000", 32)).sign(), 0)
 
-    let limited: BigInt! = error(
+    limited: BigInt! = error(
         Error("big integer: limit exceeded", kind: "EOVERFLOW")
     )
-    let malformed: BigInt! = error(Error("big integer: invalid data", kind: "EBADMSG"))
+    malformed: BigInt! = error(Error("big integer: invalid data", kind: "EBADMSG"))
     try expect_equal(parse("+000Ff", 16, 4), limited)
     try expect_equal(parse("+0_1", 16, 2), limited)
     try expect_equal(parse("+0_1", 16, 3), malformed)

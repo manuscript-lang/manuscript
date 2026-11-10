@@ -32,8 +32,8 @@ export fn int_boundaries() List[Int]:
 // the halves and ties around integers, 2^53 and its neighbors, the Int range edges, the largest and smallest
 // finite values, the subnormal range from its smallest to its largest value, both infinities, and NaN.
 export fn float_boundaries() List[Float]:
-    let smallest_normal = 2.2250738585072014e-308
-    let largest_subnormal = next_after(smallest_normal, 0.0)
+    smallest_normal := 2.2250738585072014e-308
+    largest_subnormal := next_after(smallest_normal, 0.0)
     return [
         0.0, -0.0, 1.0, -1.0, 0.5, -0.5, 1.5, -1.5, 2.5, -2.5, 0.1, -0.1,
         0.9999999999999999, 1.0000000000000002, 4503599627370495.5, 4503599627370496.0,
@@ -46,5 +46,5 @@ export fn float_boundaries() List[Float]:
 
 // Returns `float_boundaries` without NaN and the two infinities, for references that need an exact rational.
 export fn finite_float_boundaries() List[Float]:
-    let values = float_boundaries().filter(fn value: value.is_finite())
+    values := float_boundaries().filter(fn value: value.is_finite())
     return values

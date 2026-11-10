@@ -14,7 +14,7 @@ import run from "@std/os/process.ms"
 import arguments, working_directory from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
-let HEADER = """
+HEADER := """
 import Closeable, print from "@std/core.ms"
 import promise from "@std/concurrency/promise.ms"
 import sleep, milliseconds from "@std/time.ms"
@@ -39,7 +39,7 @@ enum Slot:
     Empty
 
 fn mk_nested(id: Int) List[Marker?]:
-    let one: Marker? = mk(id)
+    one: Marker? = mk(id)
     return [one]
 
 fn mk_map(id: Int) Map[Int, Marker]:
@@ -90,42 +90,42 @@ fn only(name: String, shape: String, defs: String, body: String) Construct:
 
 fn constructs() List[Construct]:
     return [
-        c("scope_end", "", "let x: @TY@ = @M1@\n    see(x)"),
+        c("scope_end", "", "x: @TY@ = @M1@\n    see(x)"),
         c(
             "early_return", "",
-            "let x: @TY@ = @M1@\n    if flag():\n        return ok(unit)\n    see(x)"
+            "x: @TY@ = @M1@\n    if flag():\n        return ok(unit)\n    see(x)"
         ),
-        c("try_error", "", "let x: @TY@ = @M1@\n    try fail()\n    see(x)"),
+        c("try_error", "", "x: @TY@ = @M1@\n    try fail()\n    see(x)"),
         c(
             "loop_break", "",
-            "for i in 0..3:\n        let x: @TY@ = @M1@\n        if i == 1:\n            break\n        see(x)"
+            "for i in 0..3:\n        x: @TY@ = @M1@\n        if i == 1:\n            break\n        see(x)"
         ),
         c(
             "loop_continue", "",
-            "for i in 0..3:\n        let x: @TY@ = @M1@\n        if i == 1:\n            continue\n        see(x)"
+            "for i in 0..3:\n        x: @TY@ = @M1@\n        if i == 1:\n            continue\n        see(x)"
         ),
         c(
             "while_loop", "",
-            "var i = 0\n    while i < 2:\n        let x: @TY@ = @M1@\n        see(x)\n        i += 1"
+            "var i = 0\n    while i < 2:\n        x: @TY@ = @M1@\n        see(x)\n        i += 1"
         ),
         c(
             "loop_try_error", "",
-            "for i in 0..3:\n        let x: @TY@ = @M1@\n        try fail()\n        see(x)"
+            "for i in 0..3:\n        x: @TY@ = @M1@\n        try fail()\n        see(x)"
         ),
         c(
-            "nested_scope", "", "if flag():\n        let x: @TY@ = @M1@\n        see(x)"
+            "nested_scope", "", "if flag():\n        x: @TY@ = @M1@\n        see(x)"
         ),
         c(
             "loop_return", "",
-            "for i in 0..2:\n        let x: @TY@ = @M1@\n        if flag():\n            return ok(unit)\n        see(x)"
+            "for i in 0..2:\n        x: @TY@ = @M1@\n        if flag():\n            return ok(unit)\n        see(x)"
         ),
         c(
             "two_locals_try", "",
-            "let x: @TY@ = @M1@\n    let y: @TY@ = @M2@\n    try fail()\n    see(x)\n    see(y)"
+            "x: @TY@ = @M1@\n    y: @TY@ = @M2@\n    try fail()\n    see(x)\n    see(y)"
         ),
         c(
             "boxed", "type Box:\n    v: @TY@",
-            "let b = Box(@M1@)\n    try fail()\n    see(b.v)"
+            "b := Box(@M1@)\n    try fail()\n    see(b.v)"
         ),
         c(
             "boxed_overwrite", "type Box:\n    v: @TY@",
@@ -133,32 +133,32 @@ fn constructs() List[Construct]:
         ),
         c(
             "in_list", "",
-            "let xs: List[@TY@] = [@M1@, @M2@]\n    try fail()\n    see_all(xs)"
+            "xs: List[@TY@] = [@M1@, @M2@]\n    try fail()\n    see_all(xs)"
         ),
         c(
             "cancel_borrowed",
             "fn hold(x: @TY@) Unit!:\n    try sleep(milliseconds(60000)).wait()\n    return ok(unit)",
-            "let x: @TY@ = @M1@\n    let p = promise(fn: hold(x))\n    p.cancel()\n    let _ = p.wait()"
+            "x: @TY@ = @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    _ := p.wait()"
         ),
         c(
             "cancel_owned",
             "fn hold(x: @TY@) Unit!:\n    try sleep(milliseconds(60000)).wait()\n    return ok(unit)",
-            "let p = promise(fn: hold(@M1@))\n    p.cancel()\n    let _ = p.wait()"
+            "p := promise(fn: hold(@M1@))\n    p.cancel()\n    _ := p.wait()"
         ),
         c(
             "cancel_local",
-            "fn hold() Unit!:\n    let x: @TY@ = @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
-            "let p = promise(fn: hold())\n    p.cancel()\n    let _ = p.wait()"
+            "fn hold() Unit!:\n    x: @TY@ = @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
+            "p := promise(fn: hold())\n    p.cancel()\n    _ := p.wait()"
         ),
         c(
             "cancel_dropped",
-            "fn hold() Unit!:\n    let x: @TY@ = @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
-            "let _ = promise(fn: hold())"
+            "fn hold() Unit!:\n    x: @TY@ = @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
+            "_ := promise(fn: hold())"
         ),
-        c("fn_value_temporary", "", "let f = see\n    f(@M1@)"),
-        c("fn_value_lambda", "", "let f = fn (v: @TY@): see(v)\n    f(@M1@)"),
+        c("fn_value_temporary", "", "f := see\n    f(@M1@)"),
+        c("fn_value_lambda", "", "f := fn (v: @TY@): see(v)\n    f(@M1@)"),
         c(
-            "fn_value_named", "", "let f = see\n    let x: @TY@ = @M1@\n    f(x)"
+            "fn_value_named", "", "f := see\n    x: @TY@ = @M1@\n    f(x)"
         ),
         c(
             "method_temporary",
@@ -173,7 +173,7 @@ fn constructs() List[Construct]:
         c(
             "method_bound_later_try",
             "type Sink:\n    n: Int\n\nimpl Sink:\n    fn take_later(v: @TY@, n: Int) Unit: return",
-            "let s = Sink(0)\n    let f = s.take_later\n    f(@M1@, try fail_int())"
+            "s := Sink(0)\n    f := s.take_later\n    f(@M1@, try fail_int())"
         ),
         c(
             "two_resources_try", "fn both(a: @TY@, b: @TY@, n: Int) Unit: return",
@@ -185,19 +185,19 @@ fn constructs() List[Construct]:
         ),
         c(
             "generic_to_optional", "fn opt_of[X](x: X) X?: return x",
-            "let r = opt_of[@TY@](@M1@)\n    if r.is_some():\n        return ok(unit)"
+            "r := opt_of[@TY@](@M1@)\n    if r.is_some():\n        return ok(unit)"
         ),
         c(
             "generic_to_optional_named", "fn opt_of[X](x: X) X?: return x",
-            "let x: @TY@ = @M1@\n    let r = opt_of[@TY@](x)\n    if r.is_some():\n        return ok(unit)"
+            "x: @TY@ = @M1@\n    r := opt_of[@TY@](x)\n    if r.is_some():\n        return ok(unit)"
         ),
         c(
             "generic_to_list", "fn list_of[X](x: X) List[X]: return [x]",
-            "let r = list_of[@TY@](@M1@)\n    try fail()\n    see_all(r)"
+            "r := list_of[@TY@](@M1@)\n    try fail()\n    see_all(r)"
         ),
         c(
             "generic_to_result", "fn res_of[X](x: X) X!Error: return ok(x)",
-            "let r = res_of[@TY@](@M1@)\n    try fail()\n    if r.is_ok():\n        return ok(unit)"
+            "r := res_of[@TY@](@M1@)\n    try fail()\n    if r.is_ok():\n        return ok(unit)"
         ),
         only(
             "interface_param", "bare", "fn via(c: Closeable) Unit: return", "via(@M1@)"
@@ -216,7 +216,7 @@ fn constructs() List[Construct]:
         ),
         only(
             "match_enum_return", "enum", "",
-            "let x: @TY@ = @M1@\n    match x:\n        Full(m): return ok(unit)\n        Empty: return ok(unit)"
+            "x: @TY@ = @M1@\n    match x:\n        Full(m): return ok(unit)\n        Empty: return ok(unit)"
         ),
         only(
             "match_enum_temporary", "enum", "",
@@ -228,58 +228,58 @@ fn constructs() List[Construct]:
             "var x: @TY@ = @M1@\n    if flag():\n        x = @M2@\n    see(x)"
         ),
         c("argument_temporary", "", "see(@M1@)"),
-        c("argument_named", "", "let x: @TY@ = @M1@\n    see(x)\n    see(x)"),
+        c("argument_named", "", "x: @TY@ = @M1@\n    see(x)\n    see(x)"),
         c(
             "two_arguments_try", "fn two(a: @TY@, n: Int) Unit: return",
             "two(@M1@, try fail_int())"
         ),
         c(
-            "returned_whole", "fn give() @TY@:\n    let x: @TY@ = @M1@\n    return x",
-            "let y = give()\n    see(y)"
+            "returned_whole", "fn give() @TY@:\n    x: @TY@ = @M1@\n    return x",
+            "y := give()\n    see(y)"
         ),
         c(
             "returned_conditional",
-            "fn give(f: Bool) @TY@:\n    let x: @TY@ = @M1@\n    let z: @TY@ = @M2@\n    if f:\n        return x\n    return z",
-            "let y = give(flag())\n    see(y)"
+            "fn give(f: Bool) @TY@:\n    x: @TY@ = @M1@\n    z: @TY@ = @M2@\n    if f:\n        return x\n    return z",
+            "y := give(flag())\n    see(y)"
         ),
         c(
             "returned_temporary", "fn give() @TY@:\n    return @M1@",
-            "let y = give()\n    see(y)"
+            "y := give()\n    see(y)"
         ),
         c("generic_pass_temporary", "", "pass[@TY@](@M1@)"),
-        c("generic_pass_named", "", "let x: @TY@ = @M1@\n    pass(x)"),
+        c("generic_pass_named", "", "x: @TY@ = @M1@\n    pass(x)"),
         c(
-            "generic_ident_temporary", "", "let y: @TY@ = ident(@M1@)\n    see(y)"
+            "generic_ident_temporary", "", "y: @TY@ = ident(@M1@)\n    see(y)"
         ),
         c(
             "generic_ident_named", "",
-            "let x: @TY@ = @M1@\n    let y = ident(x)\n    see(y)"
+            "x: @TY@ = @M1@\n    y := ident(x)\n    see(y)"
         ),
-        c("discard_underscore", "", "let _: @TY@ = @M1@"),
+        c("discard_underscore", "", "_: @TY@ = @M1@"),
         c(
-            "closure_borrow", "", "let x: @TY@ = @M1@\n    let f = fn: see(x)\n    f()"
+            "closure_borrow", "", "x: @TY@ = @M1@\n    f := fn: see(x)\n    f()"
         ),
         c(
             "closure_escape",
-            "fn make() fn() Unit:\n    let x: @TY@ = @M1@\n    return fn: see(x)",
-            "let f = make()\n    f()"
+            "fn make() fn() Unit:\n    x: @TY@ = @M1@\n    return fn: see(x)",
+            "f := make()\n    f()"
         ),
         c(
             "closure_escape_unused",
-            "fn make() fn() Unit:\n    let x: @TY@ = @M1@\n    return fn: see(x)",
-            "let f = make()\n    f()"
+            "fn make() fn() Unit:\n    x: @TY@ = @M1@\n    return fn: see(x)",
+            "f := make()\n    f()"
         ),
         c(
             "promise_capture", "",
-            "let x: @TY@ = @M1@\n    let p = promise(fn: seeok(x))\n    try p.wait()"
+            "x: @TY@ = @M1@\n    p := promise(fn: seeok(x))\n    try p.wait()"
         ),
         c(
             "promise_result", "fn produce() @TY@!: return ok(@M1@)",
-            "let p = promise(fn: produce())\n    let y = try p.wait()\n    see(y)"
+            "p := promise(fn: produce())\n    y := try p.wait()\n    see(y)"
         ),
         c(
             "promise_result_dropped", "fn produce() @TY@!: return ok(@M1@)",
-            "let p = promise(fn: produce())\n    let _ = p.wait()"
+            "p := promise(fn: produce())\n    _ := p.wait()"
         ),
         only(
             "explicit_close", "bare", "",
@@ -294,36 +294,36 @@ fn constructs() List[Construct]:
         ),
         only(
             "if_let", "optional", "",
-            "let x: @TY@ = @M1@\n    if let m = x:\n        see_marker(m)"
+            "x: @TY@ = @M1@\n    if m := x:\n        see_marker(m)"
         ),
         only(
             "match_optional", "optional", "",
-            "let x: @TY@ = @M1@\n    match x:\n        m: see_marker(m)\n        none: return ok(unit)"
+            "x: @TY@ = @M1@\n    match x:\n        m: see_marker(m)\n        none: return ok(unit)"
         ),
-        only("field_move", "record", "", "let h = @M1@\n    see_marker(h.m)"),
+        only("field_move", "record", "", "h := @M1@\n    see_marker(h.m)"),
         only(
             "field_overwrite", "record", "", "var h = @M1@\n    h.m = mk(2)\n    see(h)"
         ),
         only(
             "list_for", "list", "",
-            "let xs = @M1@\n    for m in xs:\n        see_marker(m)"
+            "xs := @M1@\n    for m in xs:\n        see_marker(m)"
         ),
         only(
             "list_for_break", "list", "",
-            "let xs = @M1@\n    for m in xs:\n        break"
+            "xs := @M1@\n    for m in xs:\n        break"
         ),
         only(
             "result_match", "result", "",
-            "let r: @TY@ = @M1@\n    match r:\n        ok(m): see_marker(m)\n        error(e): return ok(unit)"
+            "r: @TY@ = @M1@\n    match r:\n        ok(m): see_marker(m)\n        error(e): return ok(unit)"
         )
     ]
 
 // The program for `construct` applied to `shape`.
 fn program(shape: Shape, construct: Construct) String:
-    let see = "fn see(x: @TY@) Unit: return\n\nfn see_all(xs: List[@TY@]) Unit: return\n\nfn seeok(x: @TY@) Unit!: return ok(unit)\n\nfn see_marker(m: Marker) Unit: return\n\nfn fail_int() Int!: return error(Error(\"x\"))\n"
-    let m1 = shape.make.replace("@ID@", "1")
-    let m2 = shape.make.replace("@ID@", "2")
-    var text = "{HEADER}\n{see}\n{construct.defs}\n\nfn body() Unit!:\n    {construct.body}\n    return ok(unit)\n\nfn run() Unit:\n    let _ = body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
+    see := "fn see(x: @TY@) Unit: return\n\nfn see_all(xs: List[@TY@]) Unit: return\n\nfn seeok(x: @TY@) Unit!: return ok(unit)\n\nfn see_marker(m: Marker) Unit: return\n\nfn fail_int() Int!: return error(Error(\"x\"))\n"
+    m1 := shape.make.replace("@ID@", "1")
+    m2 := shape.make.replace("@ID@", "2")
+    var text = "{HEADER}\n{see}\n{construct.defs}\n\nfn body() Unit!:\n    {construct.body}\n    return ok(unit)\n\nfn run() Unit:\n    _ := body()\n\nexport fn main() Int:\n    run()\n    return 0\n"
     text = text.replace("@TY@", shape.ty).replace("@M1@", m1).replace("@M2@", m2)
     return text
 
@@ -334,15 +334,15 @@ fn count(lines: List[String], prefix: String) Map[String, Int]:
     for line in lines:
         if not line.starts_with(prefix): continue
 
-        let key = line.trim()
+        key := line.trim()
         counts.add(key.clone(), counts.get(key.clone()).get(0) + 1)
 
     return counts
 
 export fn main() Int:
-    let root = working_directory().get()
-    let ms = tool_ms(root)
-    let scratch = temporary("ms-close-matrix-").get()
+    root := working_directory().get()
+    ms := tool_ms(root)
+    scratch := temporary("ms-close-matrix-").get()
     var filter = ""
     var show = false
 
@@ -358,18 +358,18 @@ export fn main() Int:
         for construct in constructs():
             if construct.only != "" and construct.only != shape.name: continue
 
-            let name = "{construct.name}_{shape.name}"
+            name := "{construct.name}_{shape.name}"
             if filter != "" and not name.contains(filter): continue
 
-            let file = "{scratch.path()}/{name}.ms"
+            file := "{scratch.path()}/{name}.ms"
             write_file(file, program(shape.clone(), construct.clone())).wait().get()
 
-            let verdict = run(ms.clone(), ["check", file.clone()]).wait()
+            verdict := run(ms.clone(), ["check", file.clone()]).wait()
 
             if verdict.is_error() or verdict.get().exit_code != 0:
                 rejected += 1
 
-                let why = verdict.get().stderr.decode_utf8().get("")
+                why := verdict.get().stderr.decode_utf8().get("")
 
                 if why.contains(": parse:"):
                     failures += 1
@@ -382,7 +382,7 @@ export fn main() Int:
             for build in ["debug", "release"]:
                 checked += 1
 
-                let ran = run(
+                ran := run(
                     ms.clone(),
                     [
                         "run", file.clone(), "--build-type", build.clone()
@@ -394,13 +394,13 @@ export fn main() Int:
                     print("run: {name} ({build}) could not run {ms}")
                     continue
 
-                let child = ran.get()
-                let lines = child.stdout.decode_utf8().get("").split("\n")
+                child := ran.get()
+                lines := child.stdout.decode_utf8().get("").split("\n")
 
                 if child.exit_code != 0:
                     failures += 1
 
-                    let why = child.stderr.decode_utf8().get("")
+                    why := child.stderr.decode_utf8().get("")
                     (
                         stdout()
                         .write(
@@ -410,12 +410,12 @@ export fn main() Int:
                     )
                     continue
 
-                let made = count(lines, "made-")
-                let closed = count(lines, "closed-")
+                made := count(lines, "made-")
+                closed := count(lines, "closed-")
                 var wrong = false
 
                 for key in made.keys():
-                    let id = key.slice(5, key.length()).get("")
+                    id := key.slice(5, key.length()).get("")
                     if made.get(key.clone()).get(0) != closed.get("closed-{id}").get(0): wrong = true
 
                 if closed.length() != made.length(): wrong = true

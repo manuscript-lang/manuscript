@@ -4,6 +4,6 @@
 import panic from "@std/core.ms"
 
 test "checked decrement":
-    let value = 3
+    value := 3
     if not (value - 1 > 0):
         return panic(message: "check failed")

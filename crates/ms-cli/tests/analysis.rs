@@ -258,7 +258,7 @@ fn directories_without_sources_report_none() {
 fn check_json_with_text_carries_the_terminal_output() {
     let dir = scratch("check-with-text");
     std::fs::write(dir.join("bad.ms"), "fn invalid() Int:\n    return false\n").unwrap();
-    std::fs::write(dir.join("ok.ms"), "fn main() Unit:\n    let _x = 1\n").unwrap();
+    std::fs::write(dir.join("ok.ms"), "fn main() Unit:\n    _x := 1\n").unwrap();
     for file in ["bad.ms", "ok.ms"] {
         let text = ms(&dir, &["check", file]);
         let json = ms(&dir, &["check", file, "--json", "--with-text"]);

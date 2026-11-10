@@ -16,7 +16,7 @@ impl Source[Bytes] for Chunks:
         var end = self.at + self.size
         if end > self.data.length(): end = self.data.length()
 
-        let piece = try self.data.slice(self.at, end)
+        piece := try self.data.slice(self.at, end)
         self.at = end
         return ok(piece)
 
@@ -32,9 +32,9 @@ fn decode(input: Bytes, size: Int, limits: JsonOptions = JsonOptions()) List[Str
     var out: List[String] = []
 
     while true:
-        let next = try values.next()
+        next := try values.next()
 
-        if let item = next:
+        if item := next:
             out.append(try stringify(item))
         else:
             break
@@ -42,12 +42,12 @@ fn decode(input: Bytes, size: Int, limits: JsonOptions = JsonOptions()) List[Str
     return ok(out)
 
 test "values split at every chunk size are preserved":
-    let source = "\{\"a\":\"é🙂\\u00e9\\\"x\}\{\",\"n\":9007199254740993,\"l\":[1,[true,null]]\}\n\"s\"[1]\{\"b\":2\}  42"
-    let expected = [
+    source := "\{\"a\":\"é🙂\\u00e9\\\"x\}\{\",\"n\":9007199254740993,\"l\":[1,[true,null]]\}\n\"s\"[1]\{\"b\":2\}  42"
+    expected := [
         "\{\"a\":\"é🙂é\\\"x\}\{\",\"n\":9007199254740993,\"l\":[1,[true,null]]\}",
         "\"s\"", "[1]", "\{\"b\":2\}", "42"
     ]
-    let input = source.to_bytes()
+    input := source.to_bytes()
     for size in 1..input.length() + 1:
         if (try decode(input.clone(), size)) != expected: return fail(
             "chunk size {size}"
@@ -58,9 +58,9 @@ test "typed values decode as parse does":
     var sum = 0
 
     while true:
-        let next = try numbers.next()
+        next := try numbers.next()
 
-        if let n = next:
+        if n := next:
             sum += n
         else:
             break
@@ -69,17 +69,17 @@ test "typed values decode as parse does":
 
 test "truncated and malformed input fails the read":
     for text in ["\{\"a\":[1", "\"open", "x", "[1]]", "truex y"]:
-        let outcome = decode("{text} ".to_bytes(), 3)
+        outcome := decode("{text} ".to_bytes(), 3)
 
         if text == "\{\"a\":[1" or text == "\"open":
-            let cut = decode(text.to_bytes(), 3)
+            cut := decode(text.to_bytes(), 3)
             try expect_equal(cut.err().kind, "EBADMSG")
         else:
             try expect_equal(outcome.err().kind, "EBADMSG")
 
 test "invalid UTF-8 inside a value is InvalidData":
-    let bad = "\"a\"".to_bytes()
-    let outcome = decode(bad.with_value(1, 255), 2)
+    bad := "\"a\"".to_bytes()
+    outcome := decode(bad.with_value(1, 255), 2)
     try expect_equal(outcome.err().kind, "EBADMSG")
 
 test "per-value budgets report LimitExceeded":
@@ -87,10 +87,10 @@ test "per-value budgets report LimitExceeded":
         (try decode("[1,2]".to_bytes(), 2, JsonOptions(max_bytes: 5))), ["[1,2]"]
     )
 
-    let wide = decode("[1,2,3]".to_bytes(), 2, JsonOptions(max_bytes: 5))
+    wide := decode("[1,2,3]".to_bytes(), 2, JsonOptions(max_bytes: 5))
     try expect_equal(wide.err().kind, "EOVERFLOW")
 
-    let deep = decode("[[[".to_bytes(), 2, JsonOptions(max_depth: 2))
+    deep := decode("[[[".to_bytes(), 2, JsonOptions(max_depth: 2))
     try expect_equal(deep.err().kind, "EOVERFLOW")
 
 test "negative limits fail the first read with EINVAL for every input":
@@ -99,5 +99,5 @@ test "negative limits fail the first read with EINVAL for every input":
         JsonOptions(max_values: -1)
     ]:
         for input in ["", "  ", "1", "\{\}", "\{\"a\":[1"]:
-            let outcome = decode(input.to_bytes(), 2, limits.clone())
+            outcome := decode(input.to_bytes(), 2, limits.clone())
             try expect_equal(outcome.err().kind, "EINVAL")

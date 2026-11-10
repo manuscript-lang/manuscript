@@ -2,13 +2,13 @@
 
 ## Summary
 
-- Problem: a function that relays the error of a borrowed `Result` but builds its own `ok` payload copied the error. `fn g(value: String!String) String!String: let o = try value; return ok(o + "x")` lowered the error arm to `clone` + `alt.new` (verified with `ms emit` on `a494979b`). The error is a part of a parameter and the ok payload is a new value, so `mixed_returns` withdrew the borrow and the whole result was owned. `expect_ok(actual)` (`ok(value)` beside `error(failure(..))`) copied its payload the same way.
+- Problem: a function that relays the error of a borrowed `Result` but builds its own `ok` payload copied the error. `fn g(value: String!String) String!String: o := try value; return ok(o + "x")` lowered the error arm to `clone` + `alt.new` (verified with `ms emit` on `a494979b`). The error is a part of a parameter and the ok payload is a new value, so `mixed_returns` withdrew the borrow and the whole result was owned. `expect_ok(actual)` (`ok(value)` beside `error(failure(..))`) copied its payload the same way.
 - Change: ownership of a `Result` result is per case. A case that is a part of an argument borrows it; the cases the function builds are owned. The caller holds the sources while the result lives and drops only the owned cases. No runtime tag and no per-value flag: which case owns is a static fact about the function.
 - Not changed: lambdas and interface implementations own their results; a borrow beside a path that builds the same case, a resource closed at scope end (its close error is an owned error), or a part with one owner and no `clone` keeps the old withdrawal; `Optional` is not covered yet.
 
 ## Status
 
-Implemented 2026-11-04, checked against `a494979b`. Direction (Chinmay): "allow try, we can't litter the codebase with clone, it's fine to have special handling for result optional etc since they're first class language primitives"; "i didn't mean for copy, for lending, as long as it doesn't result in leaks"; "it can return a borrow without own for result and optional"; "this needs to work for result and optional and try, we need to make the language machinery work without copy"; "use the consistent terminology from ownership" (so: borrow and borrowing result). Skeptical review (subagent, 2026-11-04): the first design, a per-value ownership bit, would touch `Val.own`, `result_mode`, `lastuse`, `copyelim` and `inline`; replaced by the type-level mask below. Its counterexamples (`match g(v)`, `try g(v)`, `let r = g(v)`, passing the result on, `get(default)` and `err()`, inlining, `copyelim`) each hit a verifier rule or a fixture while building; `tests/e2e/testdata/accept/borrowing-result-cases.ms` covers them with heap strings. Stdlib measurement before building: 0 of 86 error constructions in `@std/data/toml.ms` copied, so the benefit is `expect_ok`/`expect_some` payloads and user code more than that module.
+Implemented 2026-11-04, checked against `a494979b`. Direction (Chinmay): "allow try, we can't litter the codebase with clone, it's fine to have special handling for result optional etc since they're first class language primitives"; "i didn't mean for copy, for lending, as long as it doesn't result in leaks"; "it can return a borrow without own for result and optional"; "this needs to work for result and optional and try, we need to make the language machinery work without copy"; "use the consistent terminology from ownership" (so: borrow and borrowing result). Skeptical review (subagent, 2026-11-04): the first design, a per-value ownership bit, would touch `Val.own`, `result_mode`, `lastuse`, `copyelim` and `inline`; replaced by the type-level mask below. Its counterexamples (`match g(v)`, `try g(v)`, `r := g(v)`, passing the result on, `get(default)` and `err()`, inlining, `copyelim`) each hit a verifier rule or a fixture while building; `tests/e2e/testdata/accept/borrowing-result-cases.ms` covers them with heap strings. Stdlib measurement before building: 0 of 86 error constructions in `@std/data/toml.ms` copied, so the benefit is `expect_ok`/`expect_some` payloads and user code more than that module.
 
 ## Design
 
@@ -20,7 +20,7 @@ Implemented 2026-11-04, checked against `a494979b`. Direction (Chinmay): "allow 
 
 | Check | Result |
 | --- | --- |
-| `g`, `try g(v)`, `match g(v)`, `let r = g(v)`, `print(g(v))` with heap strings under valgrind | no invalid access, no leak; no `clone` in `g`, `relay`, `pass_on` (`ms emit`) |
+| `g`, `try g(v)`, `match g(v)`, `r := g(v)`, `print(g(v))` with heap strings under valgrind | no invalid access, no leak; no `clone` in `g`, `relay`, `pass_on` (`ms emit`) |
 | `make conform`, `make e2e`, `make leak-check`, `make count-check`, `make copy-check`, crate tests | pass |
 | `xs.append(g(v))` | rejected with the existing borrow diagnostic (`tests/ownership/reject/borrowing_result_stored.ms`) |
 

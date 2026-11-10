@@ -13,7 +13,7 @@ import (
 import Bytes from "@std/bytes.ms"
 
 fn expect_limit(outcome: Unit!) Unit!:
-    let cause = try expect_error(outcome)
+    cause := try expect_error(outcome)
     try expect_equal(cause.kind, "EOVERFLOW")
     if not cause.message.starts_with("filesystem: limit exceeded"):
         return error(Error("wrong limit message: {cause.message}"))
@@ -54,12 +54,12 @@ fn data_argument(var log: List[String]) Bytes:
     return "new".to_bytes()
 
 test "filesystem writes default to exclusive creation through aliases and bounds":
-    let temporary = temporary("manuscript-default-write-") | try expect_ok
-    let path = "{temporary.path()}/file"
+    temporary := temporary("manuscript-default-write-") | try expect_ok
+    path := "{temporary.path()}/file"
     write_file(path, "first").wait() | try expect_ok
 
-    let write = write_file
-    let alias = write_file
+    write := write_file
+    alias := write_file
     (try rejected(alias(path, "second").wait()))
     (try rejected(write(path, "second", replace: false).wait()))
     (try rejected(generic_write(path, "second")))
@@ -70,12 +70,12 @@ test "filesystem writes default to exclusive creation through aliases and bounds
     (try rejected(write_file("", "invalid").wait()))
 
 test "filesystem file copies default to no replacement and retain byte limits":
-    let temporary = temporary("manuscript-default-copy-") | try expect_ok
-    let source = "{temporary.path()}/source"
-    let destination = "{temporary.path()}/destination"
+    temporary := temporary("manuscript-default-copy-") | try expect_ok
+    source := "{temporary.path()}/source"
+    destination := "{temporary.path()}/destination"
     write_file(source, "source").wait() | try expect_ok
 
-    let alias = copy
+    alias := copy
     (alias(source, destination) | try expect_ok)
     write_file(source, "changed", true).wait() | try expect_ok
     (try rejected(copy(source, destination)))
@@ -94,14 +94,14 @@ test "filesystem file copies default to no replacement and retain byte limits":
     )
 
 test "filesystem tree copies default to no replacement with distinct budgets":
-    let temporary = temporary("manuscript-default-tree-") | try expect_ok
-    let source = "{temporary.path()}/source"
-    let destination = "{temporary.path()}/destination"
-    let tree = CopyOptions(recursive: true)
+    temporary := temporary("manuscript-default-tree-") | try expect_ok
+    source := "{temporary.path()}/source"
+    destination := "{temporary.path()}/destination"
+    tree := CopyOptions(recursive: true)
     create_directory(source) | try expect_ok
     write_file("{source}/data", "abc").wait() | try expect_ok
 
-    let alias = copy
+    alias := copy
     (alias(source, destination, tree) | try expect_ok)
     write_file("{source}/data", "xyz", true).wait() | try expect_ok
     (try rejected(copy(source, destination, tree)))
@@ -127,7 +127,7 @@ test "filesystem tree copies default to no replacement with distinct budgets":
     ) | try expect_limit
     copy(source, "{temporary.path()}/bytes", CopyOptions(recursive: true, max_bytes: 2)) | try expect_limit
 
-    let invalid: Unit! = error(Error("filesystem: invalid input", kind: "EINVAL"))
+    invalid: Unit! = error(Error("filesystem: invalid input", kind: "EINVAL"))
     copy(
         source, "{temporary.path()}/negative-byte",
         CopyOptions(recursive: true, max_bytes: -1)
@@ -140,10 +140,10 @@ test "filesystem tree copies default to no replacement with distinct budgets":
     )
 
 test "filesystem directory creation defaults to requiring an existing parent":
-    let temporary = temporary("manuscript-default-directory-") | try expect_ok
-    let create = create_directory
-    let alias = create_directory
-    let child = "{temporary.path()}/missing/child"
+    temporary := temporary("manuscript-default-directory-") | try expect_ok
+    create := create_directory
+    alias := create_directory
+    child := "{temporary.path()}/missing/child"
     (try rejected(alias(child)))
     (try rejected(create(child, false)))
     (try rejected(generic_directory(child)))
@@ -154,21 +154,21 @@ test "filesystem directory creation defaults to requiring an existing parent":
     (try rejected(create("")))
 
 test "filesystem removal defaults to retaining nonempty trees":
-    let temporary = temporary("manuscript-default-remove-") | try expect_ok
-    let directory = "{temporary.path()}/nonempty"
-    let path = "{directory}/keep"
+    temporary := temporary("manuscript-default-remove-") | try expect_ok
+    directory := "{temporary.path()}/nonempty"
+    path := "{directory}/keep"
     create_directory(directory) | try expect_ok
     write_file(path, "keep").wait() | try expect_ok
 
-    let eraser = remove
-    let alias = remove
+    eraser := remove
+    alias := remove
     (try rejected(alias(directory)))
     (try rejected(eraser(directory, false)))
     (try rejected(generic_remove(directory)))
     (try text(path)) | try expect_equal("keep")
     (remove(directory, recursive: true) | try expect_ok)
 
-    let empty = "{temporary.path()}/empty"
+    empty := "{temporary.path()}/empty"
     create_directory(empty) | try expect_ok
     (alias(empty) | try expect_ok)
     write_file("{temporary.path()}/file", "file").wait() | try expect_ok
@@ -176,7 +176,7 @@ test "filesystem removal defaults to retaining nonempty trees":
     (try rejected(eraser("")))
 
 test "filesystem default preparation retains written argument order":
-    let temporary = temporary("manuscript-default-order-") | try expect_ok
+    temporary := temporary("manuscript-default-order-") | try expect_ok
     var log: List[String] = []
     write_file(
         data: data_argument(var log),
@@ -184,7 +184,7 @@ test "filesystem default preparation retains written argument order":
     ).wait() | try expect_ok
     log | try expect_equal(["data", "path"])
 
-    let copy = copy
+    copy := copy
     (
         copy(
             destination: argument(

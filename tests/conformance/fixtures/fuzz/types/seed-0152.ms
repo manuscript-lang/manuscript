@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (-35)
+    i1 := (-35)
     say("i1 = {i1}")
     say(
         "{(237817325094 + (i1 + (-34)))} {((i1 + 37) + (i1 + i1))} {((237817325094 + (i1 + (-34))) < ((i1 + 37) + (i1 + i1)))} sum {(237817325094 + (i1 + (-34))) + ((i1 + 37) + (i1 + i1))}"
     )
 
-    let bad = missing_function(3)
+    bad := missing_function(3)
 
     if true:
         say("delta".replace("hello world", "alpha"))
@@ -31,12 +31,12 @@ export fn main() Int:
 
     say("acc2 = {acc2}")
 
-    let l3 = [1, 2, 3].take(0)
+    l3 := [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
 
-    let s4 = (("ms" + "日本語") + "a".upper()).lower()
+    s4 := (("ms" + "日本語") + "a".upper()).lower()
     say("s4 = [{s4}]")
 
-    let f5 = 0.0
+    f5 := 0.0
     say("f5 = {f5}")
     return 0

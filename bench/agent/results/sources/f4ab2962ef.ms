@@ -14,9 +14,9 @@ fn read_all() List[String]:
     var more = true
 
     while more:
-        let item = s.next().get()
+        item := s.next().get()
 
-        if let line = item:
+        if line := item:
             out.append(line.clone())
         else:
             more = false
@@ -24,7 +24,7 @@ fn read_all() List[String]:
     return out
 
 fn next_change(ops: List[Op], begin: Int) Int:
-    let total = ops.length()
+    total := ops.length()
     var p = begin
     while p < total and ops[p].kind == 0:
         p += 1
@@ -37,19 +37,19 @@ fn span(start: Int, len: Int) String:
     return "{start},{len}"
 
 export fn main() Int:
-    let all = read_all()
+    all := read_all()
     if all.length() == 0:
         return 0
 
-    let header = all[0].split(" ")
-    let name_a = header[0]
-    let name_b = header[1]
-    let ctx = header[2].parse_int().get(0)
-    let n = header[3].parse_int().get(0)
-    let m = header[4].parse_int().get(0)
+    header := all[0].split(" ")
+    name_a := header[0]
+    name_b := header[1]
+    ctx := header[2].parse_int().get(0)
+    n := header[3].parse_int().get(0)
+    m := header[4].parse_int().get(0)
 
     // Full LCS table: tbl[i * w + j] = LCS length of a[i..] and b[j..].
-    let w = m + 1
+    w := m + 1
     var tbl = List[Int]()
     for k in 0..(n + 1) * w:
         tbl.append(0)
@@ -64,8 +64,8 @@ export fn main() Int:
                 if all[1 + i] == all[1 + n + j]:
                     tbl[i * w + j] = tbl[(i + 1) * w + j + 1] + 1
                 else:
-                    let down = tbl[(i + 1) * w + j]
-                    let right = tbl[i * w + j + 1]
+                    down := tbl[(i + 1) * w + j]
+                    right := tbl[i * w + j + 1]
                     tbl[i * w + j] = if down >= right: down else: right
 
             j -= 1
@@ -90,8 +90,8 @@ export fn main() Int:
             cj += 1
 
     // Group changes into hunks and print them.
-    let total = ops.length()
-    let ctx2 = 2 * ctx
+    total := ops.length()
+    ctx2 := 2 * ctx
     var sink = stdout()
     var printed = false
     var k = 0
@@ -100,7 +100,7 @@ export fn main() Int:
         if ops[k].kind == 0:
             k += 1
         else:
-            let start = k
+            start := k
             var last = k
             var nxt = next_change(ops, last + 1)
 
@@ -140,7 +140,7 @@ export fn main() Int:
             sink.write("@@ -{span(sa, la)} +{span(sb, lb)} @@\n").get()
 
             for q in s..e + 1:
-                let op = ops[q]
+                op := ops[q]
                 var prefix = " "
                 if op.kind == 1:
                     prefix = "-"

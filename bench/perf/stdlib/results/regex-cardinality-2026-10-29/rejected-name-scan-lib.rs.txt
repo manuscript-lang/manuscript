@@ -37,7 +37,7 @@ impl Iterator for Spans<'_> {
         while self.pos <= self.text.len() {
             #[cfg(test)]
             self.regex.scans.set(self.regex.scans.get() + 1);
-            let m = self.regex.pattern.find_at(self.text, self.pos)?;
+            m := self.regex.pattern.find_at(self.text, self.pos)?;
             let mut accept = true;
             if m.end() == self.pos {
                 if m.start() == self.prev_end {
@@ -60,8 +60,8 @@ impl Iterator for Spans<'_> {
 }
 
 pub fn compile(pattern: &str) -> Result<Regex, Fail> {
-    let translated = translate::translate(pattern).map_err(|()| Fail::InvalidData)?;
-    let pattern = regex::RegexBuilder::new(&translated)
+    translated := translate::translate(pattern).map_err(|()| Fail::InvalidData)?;
+    pattern := regex::RegexBuilder::new(&translated)
         .size_limit(64 << 20)
         .build()
         .map_err(|_| Fail::InvalidData)?;
@@ -113,9 +113,9 @@ impl Regex {
     }
 
     pub fn find_all(&self, text: &str, max: Option<i64>) -> Result<Vec<String>, Fail> {
-        let max = limit(max)?;
-        let n = max.min(text.len() + 1);
-        let spans = self.spans(text, n + 1);
+        max := limit(max)?;
+        n := max.min(text.len() + 1);
+        spans := self.spans(text, n + 1);
         if spans.len() > n {
             return Err(Fail::LimitExceeded);
         }
@@ -144,9 +144,9 @@ impl Regex {
 
     /// [`captures`](Self::captures) for every match, under the `find_all` match budget.
     pub fn captures_all(&self, text: &str, max: Option<i64>) -> Result<Vec<Vec<String>>, Fail> {
-        let max = limit(max)?;
-        let n = max.min(text.len() + 1);
-        let spans = self.spans(text, n + 1);
+        max := limit(max)?;
+        n := max.min(text.len() + 1);
+        spans := self.spans(text, n + 1);
         if spans.len() > n {
             return Err(Fail::LimitExceeded);
         }
@@ -174,7 +174,7 @@ impl Regex {
         a: usize,
         b: usize,
     ) -> Option<Vec<String>> {
-        let whole = self.pattern.captures_read_at(locations, text, a)?;
+        whole := self.pattern.captures_read_at(locations, text, a)?;
         debug_assert_eq!((whole.start(), whole.end()), (a, b));
         Some(
             (0..locations.len())
@@ -217,9 +217,9 @@ impl Regex {
 
     /// Pieces between matches; a supplied cap bounds the piece count like `find_all`.
     pub fn split(&self, text: &str, max: Option<i64>) -> Result<Vec<String>, Fail> {
-        let max = limit(max)?;
+        max := limit(max)?;
         if max == usize::MAX {
-            let spans = self.spans(text, usize::MAX);
+            spans := self.spans(text, usize::MAX);
             let mut out = Vec::with_capacity(spans.len() + 1);
             let mut at = 0;
             for (a, b) in spans {
@@ -252,7 +252,7 @@ impl Regex {
         template: &str,
         max: Option<i64>,
     ) -> Result<String, Fail> {
-        let max = limit(max)?;
+        max := limit(max)?;
         let mut out = String::new();
         let mut needs_expansion = None;
         let mut at = 0;
@@ -290,7 +290,7 @@ impl Regex {
         replacement: &str,
         max: Option<i64>,
     ) -> Result<String, Fail> {
-        let max = limit(max)?;
+        max := limit(max)?;
         let mut out = String::new();
         let mut at = 0;
         for (a, b) in self.spans_iter(text) {
@@ -325,8 +325,8 @@ mod tests {
 
     #[test]
     fn strict_limits_stop_scanning_when_failure_is_known() {
-        let re = compile("x").unwrap();
-        let text = "x".repeat(10_000);
+        re := compile("x").unwrap();
+        text := "x".repeat(10_000);
 
         assert_eq!(re.split(&text, Some(0)), Err(Fail::LimitExceeded));
         assert_eq!(re.scans.get(), 0);
@@ -346,8 +346,8 @@ mod tests {
 
     #[test]
     fn split_preserves_pieces_and_limits() {
-        let re = compile(",").unwrap();
-        let pieces = alloc::vec!["a".into(), "b".into(), "c".into()];
+        re := compile(",").unwrap();
+        pieces := alloc::vec!["a".into(), "b".into(), "c".into()];
         assert_eq!(re.split("a,b,c", None), Ok(pieces.clone()));
         assert_eq!(re.split("a,b,c", Some(3)), Ok(pieces));
         assert_eq!(re.split("a,b,c", Some(2)), Err(Fail::LimitExceeded));
@@ -355,7 +355,7 @@ mod tests {
         assert_eq!(re.split("abc", Some(1)), Ok(alloc::vec!["abc".into()]));
         assert_eq!(re.split("abc", Some(0)), Err(Fail::LimitExceeded));
 
-        let empty = compile("").unwrap();
+        empty := compile("").unwrap();
         assert_eq!(
             empty.split("é🙂", None),
             Ok(alloc::vec!["".into(), "é".into(), "🙂".into(), "".into()])
@@ -365,7 +365,7 @@ mod tests {
             Ok(alloc::vec!["".into(), "é".into(), "🙂".into(), "".into()])
         );
         assert_eq!(empty.split("é🙂", Some(3)), Err(Fail::LimitExceeded));
-        let adjacent = compile("a*").unwrap();
+        adjacent := compile("a*").unwrap();
         assert_eq!(
             adjacent.split("a🙂a", None),
             Ok(alloc::vec!["".into(), "🙂".into(), "".into()])
@@ -375,7 +375,7 @@ mod tests {
     #[test]
     fn incremental_spans_match_the_bounded_collector() {
         for pattern in ["", "a*", "a", "é|🙂"] {
-            let re = compile(pattern).unwrap();
+            re := compile(pattern).unwrap();
             for text in ["", "a🙂a", "é🙂é", "\na\n"] {
                 assert_eq!(
                     re.spans_iter(text).collect::<Vec<_>>(),
@@ -388,8 +388,8 @@ mod tests {
 
     #[test]
     fn captures_all_preserves_absent_groups_and_match_budgets() {
-        let re = compile("(a)|(b+)").unwrap();
-        let expected = alloc::vec![
+        re := compile("(a)|(b+)").unwrap();
+        expected := alloc::vec![
             alloc::vec!["a".into(), "a".into(), "".into()],
             alloc::vec!["bbb".into(), "".into(), "bbb".into()],
             alloc::vec!["a".into(), "a".into(), "".into()],
@@ -405,9 +405,9 @@ mod tests {
         assert_eq!(re.captures_all("a", Some(-1)), Err(Fail::InvalidInput));
 
         for pattern in ["", "a*", "(a)?", "(é)|(🙂)", "\\b(a)\\b"] {
-            let re = compile(pattern).unwrap();
+            re := compile(pattern).unwrap();
             for text in ["", "a🙂a", "é🙂é", "ba a"] {
-                let expected: Vec<Vec<String>> = re
+                expected: Vec<Vec<String>> = re
                     .spans_iter(text)
                     .map(|(a, _)| {
                         re.pattern
@@ -430,20 +430,20 @@ mod tests {
     #[test]
     fn captures_without_explicit_groups_preserve_rows_context_and_limits() {
         for pattern in ["", "a*", "a+", "(?:a|b)+", "\\bword\\b", "^a", "a$"] {
-            let re = compile(pattern).unwrap();
+            re := compile(pattern).unwrap();
             for text in ["", "xyz", "a🙂🙂a", "baba", "sword word", "a\na"] {
-                let first: Vec<String> = re
+                first: Vec<String> = re
                     .pattern
                     .captures(text)
                     .map(|c| c.iter().map(|g| g.unwrap().as_str().into()).collect())
                     .unwrap_or_default();
                 assert_eq!(re.captures(text), first, "{pattern:?} {text:?}");
                 assert!(re.named_captures(text).is_empty());
-                let rows: Vec<Vec<String>> = re
+                rows: Vec<Vec<String>> = re
                     .spans_iter(text)
                     .map(|(a, b)| alloc::vec![text[a..b].into()])
                     .collect();
-                let count = rows.len() as i64;
+                count := rows.len() as i64;
                 assert_eq!(re.captures_all(text, None), Ok(rows.clone()));
                 assert_eq!(re.captures_all(text, Some(count)), Ok(rows));
                 if count > 0 {
@@ -457,8 +457,8 @@ mod tests {
         }
 
         // A nonparticipating optional group still owns a column.
-        let re = compile("(a)?b").unwrap();
-        let first: Vec<String> = alloc::vec!["b".into(), "".into()];
+        re := compile("(a)?b").unwrap();
+        first: Vec<String> = alloc::vec!["b".into(), "".into()];
         assert_eq!(re.captures("b"), first);
         assert_eq!(
             re.captures_all("b b", None),
@@ -471,7 +471,7 @@ mod tests {
 
     #[test]
     fn template_expands_repeated_matches_with_strict_byte_limits() {
-        let re = compile("(?P<a>a+)|(b+)").unwrap();
+        re := compile("(?P<a>a+)|(b+)").unwrap();
         assert_eq!(
             re.replace_template("aaaaaaaa b a", "${a}:${2}$$", None),
             Ok("aaaaaaaa:$ :b$ a:$".into())
@@ -498,7 +498,7 @@ mod tests {
 
     #[test]
     fn named_captures_preserve_indices_absence_and_empty_groups() {
-        let re = compile("(a)?(?P<first>b)?(c)(?P<empty>d*)(?P<last>e)").unwrap();
+        re := compile("(a)?(?P<first>b)?(c)(?P<empty>d*)(?P<last>e)").unwrap();
         assert_eq!(
             re.named_captures("ce"),
             alloc::vec![
@@ -519,7 +519,7 @@ mod tests {
 
     #[test]
     fn replacements_preserve_literal_template_and_byte_limits() {
-        let re = compile("(?P<name>é)").unwrap();
+        re := compile("(?P<name>é)").unwrap();
         assert_eq!(re.replace_all("aéb", "$1", None), Ok("a$1b".into()));
         assert_eq!(re.replace_all("aéb", "🙂", Some(6)), Ok("a🙂b".into()));
         assert_eq!(
@@ -546,7 +546,7 @@ mod tests {
         assert_eq!(re.replace_template("", "🙂", Some(0)), Ok("".into()));
         assert_eq!(re.replace_all("é", "🙂", Some(1)), Err(Fail::LimitExceeded));
 
-        let empty = compile("").unwrap();
+        empty := compile("").unwrap();
         assert_eq!(empty.replace_all("é🙂", "x", Some(9)), Ok("xéx🙂x".into()));
         assert_eq!(
             empty.replace_template("é🙂", "x", Some(9)),

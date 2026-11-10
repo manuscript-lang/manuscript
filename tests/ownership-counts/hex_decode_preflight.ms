@@ -4,8 +4,8 @@
 import hex_decode from "@std/data/encoding.ms"
 
 export fn main() Int:
-    let text = "00".repeat(4096).get()
-    let decoded = hex_decode(text, 0)
+    text := "00".repeat(4096).get()
+    decoded := hex_decode(text, 0)
     if decoded.is_ok(): return 1
     if decoded.err().kind != "EOVERFLOW": return 2
 

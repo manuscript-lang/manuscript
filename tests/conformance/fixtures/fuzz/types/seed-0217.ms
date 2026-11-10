@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     say(
@@ -18,5 +18,5 @@ export fn main() Int:
     else:
         say("  padded  ".replace("gamma", "delta"))
 
-    let bad = true + 1
+    bad := true + 1
     return 0

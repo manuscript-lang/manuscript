@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -14,10 +14,10 @@ export fn main() Int:
         acc1 += i * 0
     say("acc1 = {acc1}")
 
-    let l2 = [1, 2, 3].take(0)
+    l2 := [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
 
-    let bad = not 5
-    let f3 = (890.667 + (9.0e11 * 489.066))
+    bad := not 5
+    f3 := (890.667 + (9.0e11 * 489.066))
     say("f3 = {f3}")
     return 0

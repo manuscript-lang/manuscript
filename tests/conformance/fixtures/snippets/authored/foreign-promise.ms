@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=foreign-syntax diagnostics
 fn f() Unit:
-    let p = Promise()
+    p := Promise()

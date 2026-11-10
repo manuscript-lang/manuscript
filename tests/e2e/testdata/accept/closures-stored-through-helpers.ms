@@ -45,9 +45,9 @@ fn d4(text: String) Int:
     var i = 0
 
     for p in text.split(","):
-        let n = p.length()
-        let at = i
-        let g = fn() Int: return n + at
+        n := p.length()
+        at := i
+        g := fn() Int: return n + at
         relay(var fs, g)
         i += 1
 
@@ -57,8 +57,8 @@ fn d5(text: String) Int:
     var fs: List[fn() Int] = []
 
     for p in text.split(","):
-        let g = fn() Int: return p.length()
-        let h = fn() Int: return g() + 1
+        g := fn() Int: return p.length()
+        h := fn() Int: return g() + 1
         relay(var fs, h)
 
     return sum(fs)

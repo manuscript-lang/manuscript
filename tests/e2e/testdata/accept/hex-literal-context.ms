@@ -11,5 +11,5 @@ test "hex digits retain integer kind in sized contexts":
     try expect_equal(add_small(1).to_int(), 30)
     try expect_equal(add_expression(1).to_int(), 2)
 
-    let values: List[Int8] = [0x1d, 0x1e]
+    values: List[Int8] = [0x1d, 0x1e]
     try expect_true(values == [0x1d, 0x1e])

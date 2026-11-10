@@ -55,8 +55,8 @@ entry = "./src/main.ms"
 Create `assets/message.txt` containing `hello from assets` followed by a newline. Add `import files from "@assets"` above the generated `main`, then replace its body with this fragment:
 
 ```manuscript
-    let tree = files()
-    let text = tree.read("message.txt", none).get().decode_utf8().get()
+    tree := files()
+    text := tree.read("message.txt", none).get().decode_utf8().get()
     print(text.trim())
     return 0
 ```

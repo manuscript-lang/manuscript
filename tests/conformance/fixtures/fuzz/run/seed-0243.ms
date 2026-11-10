@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,16 +15,16 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let s1 = "beta"
+    s1 := "beta"
     say("s1 = [{s1}]")
 
-    let b2 = (("MiXeD CaSe" + "42").replace("delta", "back\\slash") == s1)
+    b2 := (("MiXeD CaSe" + "42").replace("delta", "back\\slash") == s1)
     say("b2 = {b2}")
 
-    let l3 = [(-7)]
+    l3 := [(-7)]
     say("l3 = {l3} len {l3.length()}")
 
-    let f4 = (
+    f4 := (
         ((0.0 * 87.369) + (357.028 - 891.25))
         * ((6.078 / 884.320) + (838.993 + 508.25))
     )
@@ -37,17 +37,17 @@ export fn main() Int:
     l5.append(53)
     say("l5 = {l5} len {l5.length()}")
 
-    let l6 = l3.take(3)
+    l6 := l3.take(3)
     say("l6 = {l6} len {l6.length()}")
     say("fact(10) = {fact(10)}")
 
-    let f7 = (((f4 + f4) + (1.5 * 0.0)) + ((f4 + f4) + 639.420))
+    f7 := (((f4 + f4) + (1.5 * 0.0)) + ((f4 + f4) + 639.420))
     say("f7 = {f7}")
 
-    let b8 = (not ((32 % 57088824011) < 1))
+    b8 := (not ((32 % 57088824011) < 1))
     say("b8 = {b8}")
 
-    let l9 = l3.map(fn x: x * 6)
+    l9 := l3.map(fn x: x * 6)
     say("l9 = {l9} len {l9.length()}")
     say(
         "{s1.length()} {((902445856851 + (-31)) % l3.get(0))} {(s1.length() < ((902445856851 + (-31)) % l3.get(0)))} sum {s1.length() + ((902445856851 + (-31)) % l3.get(0))}"
@@ -58,15 +58,15 @@ export fn main() Int:
         acc10 += i * 2
     say("acc10 = {acc10}")
 
-    let i11 = s1.length()
+    i11 := s1.length()
     say("i11 = {i11}")
 
-    let f12 = f7
+    f12 := f7
     say("f12 = {f12}")
     say(
         "{(i11 * (i11 * i11))} {(-1)} {((i11 * (i11 * i11)) < (-1))} sum {(i11 * (i11 * i11)) + (-1)}"
     )
 
-    let i13 = (-9223372036854775808)
+    i13 := (-9223372036854775808)
     say("i13 = {i13}")
     return 0

@@ -12,8 +12,8 @@ import secure_int from "@std/random.ms"
 
 // 64-bit state is held in an Int; this reads its bit pattern as an unsigned word.
 fn unsigned(raw: Int) UInt64:
-    let high = shift_right_unsigned(raw, 32).to_uint64().get(0)
-    let low = bit_and(raw, 4294967295).to_uint64().get(0)
+    high := shift_right_unsigned(raw, 32).to_uint64().get(0)
+    low := bit_and(raw, 4294967295).to_uint64().get(0)
     return high * 4294967296 + low
 
 /*
@@ -87,14 +87,14 @@ export type Crc64:
 impl Crc64:
     // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
     var fn update(data: Bytes) Unit:
-        let poly = self.polynomial.reflected()
+        poly := self.polynomial.reflected()
         var crc = bit_xor(self.state, -1)
 
         for index in 0..data.length():
             crc = bit_xor(crc, data.get(index).to_int())
 
             for bit in 0..8:
-                let low = bit_and(crc, 1)
+                low := bit_and(crc, 1)
                 crc = shift_right_unsigned(crc, 1)
                 if low == 1:
                     crc = bit_xor(crc, poly)
@@ -116,7 +116,7 @@ export fn crc64(polynomial: Crc64Polynomial, data: Bytes) UInt64:
 A seeded, non-cryptographic 64-bit hash for hash tables and sharding.
 Equal seeds hash equal bytes to equal values on every platform; `random_seed()` draws a fresh seed per call,
 so hash values are not stable across runs. Do not use it to authenticate data or defend against chosen input.
-`let seed = MapHash(seed: random_seed())` then `seed.hash("key".to_bytes())` buckets keys unpredictably.
+`seed := MapHash(seed: random_seed())` then `seed.hash("key".to_bytes())` buckets keys unpredictably.
 */
 export type MapHash:
     // The seed mixed into every hash.

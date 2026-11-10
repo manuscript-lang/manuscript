@@ -16,9 +16,9 @@ fn square(n: Int) Int:
     return n * n
 
 test "run work at once and collect it":
-    let first = promise(fn: ok(square(3)))
-    let second = promise(fn: ok(square(4)))
-    let results = try wait_all([first, second])
+    first := promise(fn: ok(square(3)))
+    second := promise(fn: ok(square(4)))
+    results := try wait_all([first, second])
     try expect_equal(results, [9, 16])
 ```
 

@@ -81,23 +81,31 @@ pub(crate) fn fix_for(message: &str, pos: Pos, len: usize) -> Option<DiagnosticF
     })
 }
 
-/// `let` to `var` for an assignment to a `let` binding declared at `decl`.
-/// `None` unless the source reads `let <name>` there, so patterns and loop
-/// variables get no edit.
-pub(crate) fn let_to_var(source: &str, decl: Pos) -> Option<DiagnosticFix> {
+/// Turns the immutable binding `name := v` or `name: T = v` declared at `decl` into the
+/// `var` form. `None` unless the source reads a plain name there, so patterns and
+/// loop variables get no edit.
+pub(crate) fn binding_to_var(source: &str, decl: Pos) -> Option<DiagnosticFix> {
     let at = decl.offset as usize;
-    let keyword = at.checked_sub(4)?;
-    (source.get(keyword..at)? == "let ").then_some(())?;
-    let start = Pos::new(
-        keyword as u32,
-        decl.line,
-        decl.column.checked_sub(4)?.max(1),
-    );
-    let end = Pos::new(keyword as u32 + 3, decl.line, start.column + 3);
+    let rest = source.get(at..)?;
+    let name_len = rest
+        .bytes()
+        .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+        .count();
+    (name_len > 0).then_some(())?;
+    let name = &rest[..name_len];
+    let after = &rest[name_len..];
+    let spaces = after.len() - after.trim_start_matches(' ').len();
+    let (len, replacement) = if after[spaces..].starts_with(":=") {
+        (name_len + spaces + 2, format!("var {name} ="))
+    } else if after[spaces..].starts_with(':') {
+        (name_len, format!("var {name}"))
+    } else {
+        return None;
+    };
     Some(DiagnosticFix {
-        pos: start,
-        end,
-        replacement: "var".to_string(),
+        pos: decl,
+        end: Pos::new((at + len) as u32, decl.line, decl.column + len as u32),
+        replacement,
     })
 }
 
@@ -303,14 +311,15 @@ mod tests {
     }
 
     #[test]
-    fn let_becomes_var_only_after_let() {
-        let source = "let x = 1";
-        let fix = let_to_var(source, Pos::new(4, 1, 5)).unwrap();
+    fn immutable_binding_becomes_var() {
+        let fix = binding_to_var("x := 1", Pos::new(0, 1, 1)).unwrap();
         assert_eq!(
             (fix.pos.offset, fix.end.offset, fix.replacement.as_str()),
-            (0, 3, "var")
+            (0, 4, "var x =")
         );
-        assert!(let_to_var("for x in xs", Pos::new(4, 1, 5)).is_none());
+        let typed = binding_to_var("x: Int = 1", Pos::new(0, 1, 1)).unwrap();
+        assert_eq!((typed.end.offset, typed.replacement.as_str()), (1, "var x"));
+        assert!(binding_to_var("for x in xs", Pos::new(4, 1, 5)).is_none());
     }
 
     #[test]

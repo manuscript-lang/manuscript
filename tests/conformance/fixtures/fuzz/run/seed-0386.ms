@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [12, (-3), (-22), 1, 13]
+    l1 := [12, (-3), (-22), 1, 13]
     say("l1 = {l1} len {l1.length()}")
 
-    let i2 = (-40)
+    i2 := (-40)
     say("i2 = {i2}")
 
-    let i3 = (i2 - (i2 * (-i2)))
+    i3 := (i2 - (i2 * (-i2)))
     say("i3 = {i3}")
 
-    let s4 = "delta".reverse().lower().reverse()
+    s4 := "delta".reverse().lower().reverse()
     say("s4 = [{s4}]")
 
     var l5 = l1.clone()
@@ -28,18 +28,18 @@ export fn main() Int:
         "{i3} {(899306 + l5.get(2))} {(i3 < (899306 + l5.get(2)))} sum {i3 + (899306 + l5.get(2))}"
     )
 
-    let s6 = "42"
+    s6 := "42"
     say("s6 = [{s6}]")
 
-    let l7 = l1.filter(fn x: x > 4)
+    l7 := l1.filter(fn x: x > 4)
     say("l7 = {l7} len {l7.length()}")
     say(
         "{((i3 - 49) + (i2 / i2))} {i3} {(((i3 - 49) + (i2 / i2)) < i3)} sum {((i3 - 49) + (i2 / i2)) + i3}"
     )
 
-    let l8 = l1.reversed()
+    l8 := l1.reversed()
     say("l8 = {l8} len {l8.length()}")
 
-    let f9 = (((9.5 / 24.062) - (371.25 * 942.821)) * (563.511 - (3.0e-9 - 957.915)))
+    f9 := (((9.5 / 24.062) - (371.25 * 942.821)) * (563.511 - (3.0e-9 - 957.915)))
     say("f9 = {f9}")
     return 0

@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [26, (-7)]
+    l1 := [26, (-7)]
     say("l1 = {l1} len {l1.length()}")
 
-    let l2 = l1.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l2 := l1.map(fn x: x + 1).filter(fn x: x % 2 == 0)
     say("l2 = {l2} len {l2.length()}")
     say(
         "{(((-24) * (-49)) - l1.get(0))} {(18 * ((-886243) * 22))} {((((-24) * (-49)) - l1.get(0)) < (18 * ((-886243) * 22)))} sum {(((-24) * (-49)) - l1.get(0)) + (18 * ((-886243) * 22))}"
     )
 
-    let b3 = false
+    b3 := false
     say("b3 = {b3}")
     if 1:
         say("truthy")

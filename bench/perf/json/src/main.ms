@@ -6,22 +6,22 @@ import monotonic from "@std/time.ms"
 
 // Median-of-runs timing; mirrors node.js: warm-up, then at least `runs` runs and `budget` ns.
 fn median_ns(body: fn() Int, budget: Int, runs: Int) Int:
-    let _warm = body()
+    _warm := body()
     var samples: List[Int] = []
     var total = 0
 
     while total < budget or samples.length() < runs:
-        let started = monotonic()
-        let _n = body()
-        let elapsed = monotonic().difference(started).to_nanoseconds()
+        started := monotonic()
+        _n := body()
+        elapsed := monotonic().difference(started).to_nanoseconds()
         samples.append(elapsed)
         total += elapsed
 
-    let sorted = samples.sorted(fn(a: Int, b: Int) Int: a.compare(b))
+    sorted := samples.sorted(fn(a: Int, b: Int) Int: a.compare(b))
     return sorted.get(sorted.length() / 2)
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    _ignored := stdout().write(text)
 
 // The typed case: a list of records, written without building a `JsonValue` first. The size is
 // the text produced, the same 10,000 rows in `node.js` and `rust/`.
@@ -45,14 +45,14 @@ fn row_list() List[Row]:
 
 fn records_body(rows: List[Row]) fn() Int:
     return fn() Int:
-        if let out = stringify(rows): return out.byte_length()
+        if out := stringify(rows): return out.byte_length()
 
         return 0
 
 fn bench_records(budget: Int, runs: Int) Unit:
-    let rows = row_list()
-    let size = records_body(rows.clone())()
-    let s = median_ns(records_body(rows), budget, runs)
+    rows := row_list()
+    size := records_body(rows.clone())()
+    s := median_ns(records_body(rows), budget, runs)
     say("records\tstringify\t{s}\t{size}\n")
 
 fn bench_one(name: String, op: String, budget: Int, runs: Int) Unit:
@@ -60,10 +60,10 @@ fn bench_one(name: String, op: String, budget: Int, runs: Int) Unit:
         bench_records(budget, runs)
         return
 
-    let read = read_file("bench/perf/json/data/{name}.json").wait()
+    read := read_file("bench/perf/json/data/{name}.json").wait()
 
-    if let bytes = read:
-        if let text = bytes.decode_utf8():
+    if bytes := read:
+        if text := bytes.decode_utf8():
             bench_text(name, op, text, bytes.length(), budget, runs)
         else:
             say("{name}\tnot utf-8\n")
@@ -78,17 +78,17 @@ fn bench_text(
     budget: Int,
     runs: Int
 ) Unit:
-    if let tree = parse(text):
+    if tree := parse(text):
         if op == "doc":
-            let d = median_ns(doc_body(text.clone()), budget, runs)
+            d := median_ns(doc_body(text.clone()), budget, runs)
             say("{name}\tdoc\t{d}\t{size}\n")
 
         if op != "stringify" and op != "doc":
-            let p = median_ns(parse_body(text.clone()), budget, runs)
+            p := median_ns(parse_body(text.clone()), budget, runs)
             say("{name}\tparse\t{p}\t{size}\n")
 
         if op != "parse" and op != "doc":
-            let s = median_ns(stringify_body(tree), budget, runs)
+            s := median_ns(stringify_body(tree), budget, runs)
             say("{name}\tstringify\t{s}\t{size}\n")
     else:
         say("{name}\tinvalid json\n")
@@ -99,19 +99,19 @@ type Nothing:
 
 fn doc_body(text: String) fn() Int:
     return fn() Int:
-        if let _v = parse[Nothing](text): return 1
+        if _v := parse[Nothing](text): return 1
 
         return 0
 
 fn parse_body(text: String) fn() Int:
     return fn() Int:
-        if let _v = parse(text): return 1
+        if _v := parse(text): return 1
 
         return 0
 
 fn stringify_body(tree: JsonValue) fn() Int:
     return fn() Int:
-        if let out = stringify(tree): return out.byte_length()
+        if out := stringify(tree): return out.byte_length()
 
         return 0
 
@@ -124,7 +124,7 @@ export fn main() Int:
         if arg == "quick":
             budget = 0
         else:
-            let parts = arg.split(":")
+            parts := arg.split(":")
             var op = "both"
             if parts.length() > 1: op = parts.get(1).clone()
             bench_one(parts.get(0), op, budget, runs)

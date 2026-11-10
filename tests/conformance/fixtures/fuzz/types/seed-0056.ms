@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     if (("{((-988709) + 15)}:" + "  padded  ") != "ms".upper()):
@@ -14,7 +14,7 @@ export fn main() Int:
     else:
         say(("  padded  " + "hello world"))
 
-    let bad: Bool = 1
-    let b1 = (((-(-46)) >= 20654) and ("ms".trim() != ("brace\{s\}" + "ms")))
+    bad: Bool = 1
+    b1 := (((-(-46)) >= 20654) and ("ms".trim() != ("brace\{s\}" + "ms")))
     say("b1 = {b1}")
     return 0

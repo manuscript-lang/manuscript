@@ -15,15 +15,15 @@ impl Closeable for Watch:
         return ok(unit)
 
 fn next(count: Count) Int:
-    let _watch = Watch(count)
+    _watch := Watch(count)
     count.total += 1
     return 0
 
 fn unknown(s: Shape) Int: return area(s)
 
 export fn main() Int:
-    let shapes = [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
-    let count = Count(0)
+    shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
+    count := Count(0)
     if area(shapes.get(next(count) * 0)) != 6: return 1
     if count.total != 11: return 2
     if area(shapes.get(next(count))) != 6: return 5

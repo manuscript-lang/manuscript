@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = "a".lower().replace("gamma", "  padded  ")
+    s1 := "a".lower().replace("gamma", "  padded  ")
     say("s1 = [{s1}]")
 
-    let l2 = [(-19)]
+    l2 := [(-19)]
     say("l2 = {l2} len {l2.length()}")
 
-    let i3 = ((41 + 903562) / (((-22) % (-40)) - (-703417)))
+    i3 := ((41 + 903562) / (((-22) % (-40)) - (-703417)))
     say("i3 = {i3}")
 
     if ("Tab\there" + "a").starts_with(s1):
@@ -23,10 +23,10 @@ export fn main() Int:
     else:
         say("back\\slash".reverse())
 
-    let i4 = (((1 + (-42)) - ((-916429) + i3)) + (-43))
+    i4 := (((1 + (-42)) - ((-916429) + i3)) + (-43))
     say("i4 = {i4}")
 
-    let i5 = (-130923822418)
+    i5 := (-130923822418)
     say("i5 = {i5}")
 
     if ((0.0 + 739.916) == (5.5 + 417.584)):
@@ -34,13 +34,13 @@ export fn main() Int:
     else:
         say(("{(-464805)}:" + s1))
 
-    let s6 = ("{(791653 * 29)}:" + ("Tab\there" + (s1 + s1)))
+    s6 := ("{(791653 * 29)}:" + ("Tab\there" + (s1 + s1)))
     say("s6 = [{s6}]")
 
-    let i7 = l2.length()
+    i7 := l2.length()
     say("i7 = {i7}")
 
-    let big8 = (
+    big8 := (
         (((-314550) + i7) / ((-752991) / i7))
         - (((-314550) + i7) / ((-752991) / i7))
     )

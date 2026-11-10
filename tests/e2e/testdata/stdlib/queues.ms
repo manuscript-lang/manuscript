@@ -32,7 +32,7 @@ test "priority queue sorts many values and copies are independent":
     var previous = -1
 
     while not queue.is_empty():
-        let next = queue.dequeue().get()
+        next := queue.dequeue().get()
         try expect_false(next < previous)
         previous = next
 

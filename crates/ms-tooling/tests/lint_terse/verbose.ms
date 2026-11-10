@@ -2,7 +2,7 @@ fn first(xs: List[Int], name: String) Int:
     if xs.length() == 0 or name.length() > 0:
         return 0
 
-    let empty = xs.length() == 0
+    empty := xs.length() == 0
     if empty:
         return 1
 

@@ -50,20 +50,20 @@ impl Read[Int] for DefaultReader:
 
 test "nested view receiver prepares once and calls later":
     var log = Log("")
-    let view: Read[Int] = Reader(prepare(var log, 7))
+    view: Read[Int] = Reader(prepare(var log, 7))
     try expect_equal(log.events, "prepare;")
     try expect_equal(view.read(), 7)
 
 test "constructor arguments retain written order and capture snapshots":
     var log = Log("")
     var value = 4
-    let snapshot = value
+    snapshot := value
 
-    let view: Read[Int] = OrderedReader(
+    view: Read[Int] = OrderedReader(
         last: mark(var log, "last;", 3),
         operation: (
             fn() Int:
-                let nested = fn() Int: snapshot
+                nested := fn() Int: snapshot
                 return nested()
         ),
         match present(2):
@@ -79,17 +79,17 @@ test "constructor arguments retain written order and capture snapshots":
 
 test "explicit nested views and bound methods retain generic dispatch":
     var value = 5
-    let snapshot = value
+    snapshot := value
 
-    let view = wrap(
+    view := wrap(
         fn() Int:
-            let nested = fn() Int: snapshot
+            nested := fn() Int: snapshot
             return nested()
     )
 
     value = 80
 
-    let bound = view.read
+    bound := view.read
     try expect_equal(bound(), 5)
     try expect_equal(invoke(view), 5)
     try expect_equal(Reader(fn() Int: 6).read(), 6)
@@ -98,14 +98,14 @@ test "explicit nested views and bound methods retain generic dispatch":
 
 test "source constructors with callable defaults prepare once":
     var log = Log("")
-    let view: Read[Int] = DefaultReader(mark(var log, "base;", 12))
+    view: Read[Int] = DefaultReader(mark(var log, "base;", 12))
     try expect_equal(log.events, "base;")
     try expect_equal(view.read(), 12)
 
 test "match receiver side effects and callable body remain ordered":
     var log = Log("")
 
-    let view: Read[Int] = match present(mark(var log, "select;", 1)):
+    view: Read[Int] = match present(mark(var log, "select;", 1)):
         _value:
             mark(var log, "chosen;", 0)
             Reader(fn() Int: 9)

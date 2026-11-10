@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,13 +23,13 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let b1 = ((-6) < ((-23) * (17 + (-9))))
+    b1 := ((-6) < ((-23) * (17 + (-9))))
     say("b1 = {b1}")
 
-    let i2 = ((((-41) + (-694498176889)) - (938306 + 32)) * 22)
+    i2 := ((((-41) + (-694498176889)) - (938306 + 32)) * 22)
     say("i2 = {i2}")
 
-    let l4 = [(-23), 21]
+    l4 := [(-23), 21]
     say("l4 = {l4} len {l4.length()}")
 
     if (not ((-8) <= i2)):
@@ -37,26 +37,26 @@ export fn main() Int:
     else:
         say("x")
 
-    let i5 = i2
+    i5 := i2
     say("i5 = {i5}")
 
-    let b6 = (not (not (b1 or b1)))
+    b6 := (not (not (b1 or b1)))
     say("b6 = {b6}")
 
-    let l7 = l4.drop(0)
+    l7 := l4.drop(0)
     say("l7 = {l7} len {l7.length()}")
 
-    let l8 = l4.take(4)
+    l8 := l4.take(4)
     say("l8 = {l8} len {l8.length()}")
     say("{(-(15 * i5))} {i5} {((-(15 * i5)) < i5)} sum {(-(15 * i5)) + i5}")
 
-    let b9 = (
+    b9 := (
         "ms".replace("  padded  ", "emoji 😀").starts_with("line\nbreak")
         and false
     )
     say("b9 = {b9}")
 
-    let f10 = (((966.356 + 0.0) * (194.499 - 232.834)) + 0.0)
+    f10 := (((966.356 + 0.0) * (194.499 - 232.834)) + 0.0)
     say("f10 = {f10}")
     say("collatz(105) = {collatz(105)}")
 
@@ -70,9 +70,9 @@ export fn main() Int:
 
     say("acc11 = {acc11}")
 
-    let f12 = (f10 * ((577.005 * 708.012) * (2.0e-3 / 0.5)))
+    f12 := (f10 * ((577.005 * 708.012) * (2.0e-3 / 0.5)))
     say("f12 = {f12}")
 
-    let i13 = l7.get(1)
+    i13 := l7.get(1)
     say("i13 = {i13}")
     return 0

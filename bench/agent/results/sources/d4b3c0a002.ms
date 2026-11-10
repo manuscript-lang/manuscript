@@ -28,7 +28,7 @@ fn number(text: String, min_width: Int, max_width: Int) Int:
         return -1
 
     for ch in text.chars():
-        let code = ch.scalar_at(0)
+        code := ch.scalar_at(0)
         if code < 48 or code > 57:
             return -1
 
@@ -65,20 +65,20 @@ fn weekday_of(year: Int, month: Int, day: Int) Int:
     return (days + 4) % 7
 
 fn parse_start(text: String) Optional[Moment]:
-    let halves = text.split("T")
+    halves := text.split("T")
     if halves.length() != 2:
         return none
 
-    let date = halves[0].split("-")
-    let clock = halves[1].split(":")
+    date := halves[0].split("-")
+    clock := halves[1].split(":")
     if date.length() != 3 or clock.length() != 2:
         return none
 
-    let year = number(date[0], 4, 4)
-    let month = number(date[1], 2, 2)
-    let day = number(date[2], 2, 2)
-    let hour = number(clock[0], 2, 2)
-    let minute = number(clock[1], 2, 2)
+    year := number(date[0], 4, 4)
+    month := number(date[1], 2, 2)
+    day := number(date[2], 2, 2)
+    hour := number(clock[0], 2, 2)
+    minute := number(clock[1], 2, 2)
     if year < 1970 or year > 2099 or month < 1 or month > 12:
         return none
     if day < 1 or day > days_in_month(year, month):
@@ -93,18 +93,18 @@ fn bounds(base: String, low: Int, high: Int, stepped: Bool) List[Int]:
     if base == "*":
         return [low, high]
 
-    let ends = base.split("-")
+    ends := base.split("-")
 
     if ends.length() == 1 and not stepped:
-        let value = number(base, 1, 2)
+        value := number(base, 1, 2)
         if value < low or value > high:
             return []
 
         return [value, value]
 
     if ends.length() == 2:
-        let first = number(ends[0], 1, 2)
-        let last = number(ends[1], 1, 2)
+        first := number(ends[0], 1, 2)
+        last := number(ends[1], 1, 2)
         if first < low or last > high or first > last:
             return []
 
@@ -113,11 +113,11 @@ fn bounds(base: String, low: Int, high: Int, stepped: Bool) List[Int]:
     return []
 
 fn item_values(item: String, low: Int, high: Int) List[Int]:
-    let parts = item.split("/")
+    parts := item.split("/")
     if parts.length() == 0 or parts.length() > 2:
         return []
 
-    let stepped = parts.length() == 2
+    stepped := parts.length() == 2
     var step = 1
 
     if stepped:
@@ -125,7 +125,7 @@ fn item_values(item: String, low: Int, high: Int) List[Int]:
         if step < 1:
             return []
 
-    let span = bounds(parts[0], low, high, stepped)
+    span := bounds(parts[0], low, high, stepped)
     if span.length() == 0:
         return []
 
@@ -142,7 +142,7 @@ fn parse_field(text: String, low: Int, high: Int) List[Bool]:
         allowed.append(false)
 
     for item in text.split(","):
-        let values = item_values(item, low, high)
+        values := item_values(item, low, high)
         if values.length() == 0:
             return []
 
@@ -162,10 +162,10 @@ fn stamp(year: Int, month: Int, day: Int, hour: Int, minute: Int) String:
 
 fn runs(schedule: Schedule, start: Moment, count: Int) List[String]:
     var found: List[String] = []
-    let start_year = start.year
-    let start_month = start.month
-    let start_day = start.day
-    let start_minute = start.hour * 60 + start.minute
+    start_year := start.year
+    start_month := start.month
+    start_day := start.day
+    start_minute := start.hour * 60 + start.minute
     var year = start_year
     var month = start_month
     var day = start_day
@@ -199,47 +199,47 @@ fn runs(schedule: Schedule, start: Moment, count: Int) List[String]:
     return found
 
 fn describe(line_no: Int, text: String) List[String]:
-    let head = "line {line_no}"
-    let fields = text.split(" ")
+    head := "line {line_no}"
+    fields := text.split(" ")
     if fields.length() != 7:
         return ["{head}: error: bad line"]
 
-    let start = parse_start(fields[0])
+    start := parse_start(fields[0])
     if not start.is_some():
         return ["{head}: error: bad start"]
 
-    let count = number(fields[1], 1, 2)
+    count := number(fields[1], 1, 2)
     if count < 1 or count > 20:
         return ["{head}: error: bad count"]
 
-    let minutes = parse_field(fields[2], 0, 59)
+    minutes := parse_field(fields[2], 0, 59)
     if minutes.length() == 0:
         return ["{head}: error: bad minute"]
 
-    let hours = parse_field(fields[3], 0, 23)
+    hours := parse_field(fields[3], 0, 23)
     if hours.length() == 0:
         return ["{head}: error: bad hour"]
 
-    let days = parse_field(fields[4], 1, 31)
+    days := parse_field(fields[4], 1, 31)
     if days.length() == 0:
         return ["{head}: error: bad day-of-month"]
 
-    let months = parse_field(fields[5], 1, 12)
+    months := parse_field(fields[5], 1, 12)
     if months.length() == 0:
         return ["{head}: error: bad month"]
 
-    let weekdays = parse_field(fields[6], 0, 6)
+    weekdays := parse_field(fields[6], 0, 6)
     if weekdays.length() == 0:
         return ["{head}: error: bad day-of-week"]
 
-    let schedule = Schedule(
+    schedule := Schedule(
         minutes: minutes, hours: hours, days: days, months: months, weekdays: weekdays
     )
-    let found = runs(schedule, start.get(), count)
+    found := runs(schedule, start.get(), count)
     if found.length() == 0:
         return ["{head}: never"]
 
-    let total = found.length()
+    total := found.length()
     var out = ["{head}: {total} runs"]
     for run in found:
         out.append(run)

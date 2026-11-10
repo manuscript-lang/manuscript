@@ -60,12 +60,12 @@ fn after_move(r: Room, fail: Bool) List[Door]!Oops:
     var xs: List[Door] = []
     xs.append(r.first)
 
-    let _n = try check(fail)
+    _n := try check(fail)
     say("after_move: ok")
     return ok(xs)
 
 fn before_move(r: Room, fail: Bool) List[Door]!Oops:
-    let _n = try check(fail)
+    _n := try check(fail)
     var xs: List[Door] = []
     xs.append(r.second)
     return ok(xs)
@@ -85,32 +85,32 @@ fn whole_or_part(r: Room, flag: Bool) List[Door]:
     if flag:
         xs.append(r.second)
     else:
-        let moved = r
+        moved := r
         xs.append(moved.first)
 
     return xs
 
 export fn main() Int:
-    let _a = after_move(Room(Door("a1"), Door("a2")), true)
+    _a := after_move(Room(Door("a1"), Door("a2")), true)
     say("main: a")
 
-    let _b = after_move(Room(Door("b1"), Door("b2")), false)
+    _b := after_move(Room(Door("b1"), Door("b2")), false)
     say("main: b")
 
-    let _c = before_move(Room(Door("c1"), Door("c2")), true)
+    _c := before_move(Room(Door("c1"), Door("c2")), true)
     say("main: c")
 
-    let _d = before_move(Room(Door("d1"), Door("d2")), false)
+    _d := before_move(Room(Door("d1"), Door("d2")), false)
     say("main: d")
 
-    let e = both_cond(Room(Door("e1"), Door("e2")), true, false)
-    let f = both_cond(Room(Door("f1"), Door("f2")), false, true)
-    let g = both_cond(Room(Door("g1"), Door("g2")), true, true)
-    let h = both_cond(Room(Door("h1"), Door("h2")), false, false)
+    e := both_cond(Room(Door("e1"), Door("e2")), true, false)
+    f := both_cond(Room(Door("f1"), Door("f2")), false, true)
+    g := both_cond(Room(Door("g1"), Door("g2")), true, true)
+    h := both_cond(Room(Door("h1"), Door("h2")), false, false)
     say("main: h")
 
-    let i = whole_or_part(Room(Door("i1"), Door("i2")), true)
-    let j = whole_or_part(Room(Door("j1"), Door("j2")), false)
+    i := whole_or_part(Room(Door("i1"), Door("i2")), true)
+    j := whole_or_part(Room(Door("j1"), Door("j2")), false)
     say("main: end")
     if e.length() + f.length() + g.length() + h.length() + i.length() + j.length() != 6:
         return 1

@@ -49,7 +49,7 @@ export type Table:
 impl Table:
     // Appends a row of exactly one cell per column. A wrong cell count or a cell with controls returns EBADMSG.
     var fn add(row: List[String]) Unit!:
-        let count = self.columns.length()
+        count := self.columns.length()
         if row.length() != count:
             return error(
                 table_invalid(
@@ -72,14 +72,14 @@ impl Table:
     // Lays out the rows added so far; the table is unchanged and can keep growing.
     fn render() String:
         var out = StringBuilder()
-        let lead = "".pad_start(self.indent, " ")
-        let gap = "".pad_start(self.padding, " ")
+        lead := "".pad_start(self.indent, " ")
+        gap := "".pad_start(self.padding, " ")
 
         for index in 0..self.rows.length():
             if index > 0:
                 out.append("\n")
 
-            let row = self.rows[index]
+            row := self.rows[index]
             var last = row.length() - 1
             while last >= 0 and row[last].is_empty():
                 last -= 1
@@ -91,8 +91,8 @@ impl Table:
                 if col > 0:
                     out.append(gap)
 
-                let spare = self.widths[col] - self.cell_widths[index][col]
-                let before = self.before(col, spare)
+                spare := self.widths[col] - self.cell_widths[index][col]
+                before := self.before(col, spare)
                 out.append("".pad_start(before, " "))
                 out.append(row[col])
                 if col < last:

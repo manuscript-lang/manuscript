@@ -5,10 +5,10 @@ type Val:
     val: Int
 
 fn work(var value: Val) Unit:
-    let callback = fn() Unit:
+    callback := fn() Unit:
         value.val = value.val + 1
     callback()
 
-    let copy = value.clone()
-    let list = [copy]
+    copy := value.clone()
+    list := [copy]
     list.clone().append(value.clone())

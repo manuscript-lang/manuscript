@@ -10,11 +10,11 @@ fn ident[T](x: T) T:
     return x
 
 fn pick[T](first: Bool, left: T, right: T) T:
-    let chosen = if not first: right else: left
+    chosen := if not first: right else: left
     return chosen
 
 fn keep[T](value: T) T:
-    let copy = value
+    copy := value
     return copy
 
 fn count(value: Int) Int:
@@ -30,7 +30,7 @@ test "parametric generics keep each instantiation's values":
     try expect_equal(keep(count(1)), 2)
 
 test "instances copy non-scalar arguments":
-    let point = Point(3)
+    point := Point(3)
     var same = ident(point).clone()
     same.x = 4
     try expect_equal(same.x, 4)

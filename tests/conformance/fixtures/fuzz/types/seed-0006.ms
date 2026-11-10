@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -30,7 +30,7 @@ export fn main() Int:
     else:
         say(("日本語" + "ms"))
 
-    let l1 = [21, 2, (-30)]
+    l1 := [21, 2, (-30)]
     say("l1 = {l1} len {l1.length()}")
 
     var acc2 = 0
@@ -52,7 +52,7 @@ export fn main() Int:
 
     say("acc3 = {acc3}")
 
-    let i4 = (-871890)
+    i4 := (-871890)
     say("i4 = {i4}")
 
     if "  padded  ".reverse().is_empty():
@@ -60,5 +60,5 @@ export fn main() Int:
     else:
         say("  padded  ")
 
-    let bad = (1 < 2) < 3
+    bad := (1 < 2) < 3
     return 0

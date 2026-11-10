@@ -36,7 +36,7 @@ fn days_in_month(year: Int, month: Int) Int:
     return 31
 
 fn all_digits(text: String) Bool:
-    let codes = text.scalar_values()
+    codes := text.scalar_values()
     if codes.length() == 0: return false
 
     for c in codes:
@@ -47,17 +47,17 @@ fn all_digits(text: String) Bool:
 fn small_number(text: String, low: Int, high: Int) Optional[Int]:
     if not all_digits(text) or text.length() > 2: return none
 
-    let value = text.parse_int().get(0)
+    value := text.parse_int().get(0)
     if value < low or value > high: return none
 
     return value
 
 fn valid_start_shape(text: String) Bool:
-    let cs = text.chars()
+    cs := text.chars()
     if cs.length() != 16: return false
 
     for i in 0..16:
-        let c = cs[i]
+        c := cs[i]
 
         if i == 4 or i == 7:
             if c != "-": return false
@@ -73,11 +73,11 @@ fn valid_start_shape(text: String) Bool:
 fn parse_start(text: String) Result[Stamp, Bad]:
     if not valid_start_shape(text): return error(Bad(text: "bad start"))
 
-    let year = text.take(4).parse_int().get(0)
-    let month = text.drop(5).take(2).parse_int().get(0)
-    let day = text.drop(8).take(2).parse_int().get(0)
-    let hour = text.drop(11).take(2).parse_int().get(0)
-    let minute = text.drop(14).take(2).parse_int().get(0)
+    year := text.take(4).parse_int().get(0)
+    month := text.drop(5).take(2).parse_int().get(0)
+    day := text.drop(8).take(2).parse_int().get(0)
+    hour := text.drop(11).take(2).parse_int().get(0)
+    minute := text.drop(14).take(2).parse_int().get(0)
     if year < 1970 or year > 2099 or month < 1 or month > 12: return error(
         Bad(text: "bad start")
     )
@@ -88,21 +88,21 @@ fn parse_start(text: String) Result[Stamp, Bad]:
     return ok(Stamp(year: year, month: month, day: day, hour: hour, minute: minute))
 
 fn parse_count(text: String) Result[Int, Bad]:
-    if let count = small_number(text, 1, 20):
+    if count := small_number(text, 1, 20):
         return ok(count)
 
     return error(Bad(text: "bad count"))
 
 // The values one cron item selects, or none when the item is malformed.
 fn item_values(item: String, low: Int, high: Int) Optional[List[Int]]:
-    let parts = item.split("/")
+    parts := item.split("/")
     if parts.length() == 0 or parts.length() > 2: return none
 
-    let stepped = parts.length() == 2
+    stepped := parts.length() == 2
     var step = 1
 
     if stepped:
-        if let s = small_number(parts[1], 1, 99):
+        if s := small_number(parts[1], 1, 99):
             step = s
         else:
             return none
@@ -111,16 +111,16 @@ fn item_values(item: String, low: Int, high: Int) Optional[List[Int]]:
     var last = high
 
     if parts[0] != "*":
-        let bounds = parts[0].split("-")
+        bounds := parts[0].split("-")
         if bounds.length() == 0 or bounds.length() > 2: return none
 
-        if let a = small_number(bounds[0], low, high):
+        if a := small_number(bounds[0], low, high):
             first = a
         else:
             return none
 
         if bounds.length() == 2:
-            if let b = small_number(bounds[1], low, high):
+            if b := small_number(bounds[1], low, high):
                 last = b
             else:
                 return none
@@ -146,7 +146,7 @@ fn parse_field(text: String, low: Int, high: Int, label: String) Result[List[Boo
         allowed.append(false)
 
     for item in text.split(","):
-        if let values = item_values(item, low, high):
+        if values := item_values(item, low, high):
             for v in values:
                 allowed[v] = true
         else:
@@ -155,11 +155,11 @@ fn parse_field(text: String, low: Int, high: Int, label: String) Result[List[Boo
     return ok(allowed)
 
 fn parse_cron(tokens: List[String]) Result[Cron, Bad]:
-    let minutes = try parse_field(tokens[2], 0, 59, "bad minute")
-    let hours = try parse_field(tokens[3], 0, 23, "bad hour")
-    let days = try parse_field(tokens[4], 1, 31, "bad day-of-month")
-    let months = try parse_field(tokens[5], 1, 12, "bad month")
-    let weekdays = try parse_field(tokens[6], 0, 6, "bad day-of-week")
+    minutes := try parse_field(tokens[2], 0, 59, "bad minute")
+    hours := try parse_field(tokens[3], 0, 23, "bad hour")
+    days := try parse_field(tokens[4], 1, 31, "bad day-of-month")
+    months := try parse_field(tokens[5], 1, 12, "bad month")
+    weekdays := try parse_field(tokens[6], 0, 6, "bad day-of-week")
     return ok(
         Cron(
             minutes: minutes, hours: hours, days: days, months: months,
@@ -170,9 +170,9 @@ fn parse_cron(tokens: List[String]) Result[Cron, Bad]:
 fn parse_job(tokens: List[String]) Result[Job, Bad]:
     if tokens.length() != 7: return error(Bad(text: "bad line"))
 
-    let start = try parse_start(tokens[0])
-    let count = try parse_count(tokens[1])
-    let cron = try parse_cron(tokens)
+    start := try parse_start(tokens[0])
+    count := try parse_count(tokens[1])
+    cron := try parse_cron(tokens)
     return ok(Job(start: start, count: count, cron: cron))
 
 // Day of week of a date, with 0 meaning Sunday; 1970-01-01 was a Thursday.
@@ -190,7 +190,7 @@ fn two(n: Int) String:
 
 fn find_runs(job: Job) List[String]:
     var runs = List[String]()
-    let start = job.start
+    start := job.start
     var year = 0
     var month = 0
     var day = 0
@@ -199,15 +199,15 @@ fn find_runs(job: Job) List[String]:
     day = start.day
 
     var dow = weekday(start)
-    let after_start = start.hour * 60 + start.minute
+    after_start := start.hour * 60 + start.minute
     var offset = 0
 
     while offset <= 3000 and runs.length() < job.count:
         if job.cron.months[month] and job.cron.days[day] and job.cron.weekdays[dow]:
             for hour in 0..24:
                 for minute in 0..60:
-                    let minute_of_day = hour * 60 + minute
-                    let later = offset > 0 or minute_of_day > after_start
+                    minute_of_day := hour * 60 + minute
+                    later := offset > 0 or minute_of_day > after_start
                     if (
                         later
                         and runs.length() < job.count
@@ -234,11 +234,11 @@ fn find_runs(job: Job) List[String]:
     return runs
 
 fn solve(line_no: Int, line: String) List[String]:
-    let head = "line {line_no}"
-    let job = parse_job(line.split(" "))
+    head := "line {line_no}"
+    job := parse_job(line.split(" "))
     if job.is_error(): return ["{head}: error: {job.err().message()}"]
 
-    let runs = find_runs(job.get())
+    runs := find_runs(job.get())
     if runs.length() == 0: return ["{head}: never"]
 
     var out = ["{head}: {runs.length()} runs"]

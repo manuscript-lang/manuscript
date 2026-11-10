@@ -7,18 +7,18 @@ fn handle(request: HttpRequest) HttpResponse:
     if request.path == "/slow":
         print("started")
 
-        let _flushed = stdout().flush()
-        let _out = run("sleep", ["0.5"]).wait()
+        _flushed := stdout().flush()
+        _out := run("sleep", ["0.5"]).wait()
 
     return HttpResponse(200, headers(), request.path.to_bytes())
 
 export fn main() Int:
-    if let acquired = serve(address: "127.0.0.1:0", handler: buffered(handle)):
-        let server = acquired
+    if acquired := serve(address: "127.0.0.1:0", handler: buffered(handle)):
+        server := acquired
         print("{server.address()}")
 
-        let _flushed = stdout().flush()
-        let _ignored = server.wait()
+        _flushed := stdout().flush()
+        _ignored := server.wait()
         return 0
 
     return 1

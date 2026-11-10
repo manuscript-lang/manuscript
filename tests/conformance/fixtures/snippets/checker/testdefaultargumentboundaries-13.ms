@@ -8,5 +8,5 @@ fn forward[T](value: T) T:
     return value
 
 fn call() Int:
-    let copy = forward(f)
+    copy := forward(f)
     return copy()

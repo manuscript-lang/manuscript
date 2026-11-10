@@ -44,7 +44,7 @@ export enum FetchBody:
 
 // Encodes `value` as a JSON request body, sent as `application/json` unless a `Content-Type` is given.
 export fn json_body[T: Data](value: T) FetchBody!:
-    let text = try stringify(value)
+    text := try stringify(value)
     return ok(FetchBody.JsonText(text))
 
 // Per-request settings. Every field has a default, so `FetchOptions()` (the default) is a plain GET with a 30 second deadline and a 16 MiB response cap; set only the fields that differ, as in `FetchOptions(method: HttpMethod.Post)`.
@@ -88,13 +88,13 @@ impl FetchResponse:
 
     // Decodes the body as UTF-8.
     fn text() String!:
-        if let text = self.body.decode_utf8(): return ok(text)
+        if text := self.body.decode_utf8(): return ok(text)
 
         return error(Error("fetch: body is not valid UTF-8", kind: "EBADMSG"))
 
     // Decodes the body as JSON into `T`, as in `try response.json[User]()`; use `JsonValue` for untyped data.
     fn json[T: Data](ignore_unknown_fields: Bool = true) T!:
-        let text = try self.text()
+        text := try self.text()
         return parse[T](text, JsonOptions(ignore_unknown_fields: ignore_unknown_fields))
 
     // Succeeds when the status is 200 through 299 and otherwise returns `Status`, so `try response.check_status()` rejects error responses.
@@ -127,7 +127,7 @@ impl Fetcher:
 
     // Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
     fn stream(url: String, options: FetchOptions = FetchOptions()) StreamingResponse!:
-        let sent = outgoing(options)
+        sent := outgoing(options)
         return self.client.request(
             options.method.clone(), url, sent.headers, sent.body,
             options.max_response_bytes, options.timeout
@@ -140,9 +140,9 @@ impl Closeable for Fetcher:
 
 // Reads the body to its end within the options' size limit, then closes it.
 fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchResponse!:
-    let open = body
-    let metadata = open.metadata()
-    let whole = (
+    open := body
+    metadata := open.metadata()
+    whole := (
         try open
         .read_all()
         .map_error(fn cause: read_failure(cause, options, started))
@@ -164,19 +164,19 @@ type Outgoing:
     body: Bytes
 
 fn limit_exceeded(limit: Int?, total: Int) Bool:
-    if let max = limit: return total > max
+    if max := limit: return total > max
 
     return false
 
 fn expired(timeout: Duration?, started: Instant) Bool:
-    if let limit = timeout: return monotonic().difference(started).compare(limit) >= 0
+    if limit := timeout: return monotonic().difference(started).compare(limit) >= 0
 
     return false
 
 // Copies the caller's headers and adds a default `Content-Type` for the body.
 fn outgoing(options: FetchOptions) Outgoing:
     var fields = headers()
-    if let given = options.headers:
+    if given := options.headers:
         fields = given.clone()
 
     var kind = ""
@@ -195,7 +195,7 @@ fn outgoing(options: FetchOptions) Outgoing:
             data = value.to_bytes()
 
     if kind != "" and not fields.contains("Content-Type"):
-        let _ignored = fields.append("Content-Type", kind)
+        _ignored := fields.append("Content-Type", kind)
     return Outgoing(headers: fields, body: data)
 
 // Creates a reusable fetcher on `net`, whose restrictions apply to every request and redirect; none uses the host network.
@@ -204,16 +204,16 @@ export fn fetcher(
     options: FetcherOptions = FetcherOptions(),
     net: Network? = none
 ) Fetcher!:
-    let settings = HttpClientOptions(
+    settings := HttpClientOptions(
         max_redirects: options.max_redirects, decompress: options.decompress,
         cookies: options.cookies, tls: options.tls.clone()
     )
 
-    if let restricted = net:
-        let client = try restricted.http_client(settings)
+    if restricted := net:
+        client := try restricted.http_client(settings)
         return ok(Fetcher(client: client))
 
-    let client = try http_client(settings)
+    client := try http_client(settings)
     return ok(Fetcher(client: client))
 
 // Starts one buffered request on a one-shot client and returns its promise; requests started together are in flight together.
@@ -230,7 +230,7 @@ fn fetch_job(url: String, options: FetchOptions) fn() FetchResponse!:
     return fn: fetched(url, options)
 
 fn fetched(url: String, options: FetchOptions) FetchResponse!:
-    let client = try fetcher()
+    client := try fetcher()
     return sent(client.client.native, url, options)
 
 // The work of `Fetcher.fetch`: a returned closure owns its handle on the pooled client, the URL and options.
@@ -243,9 +243,9 @@ fn send_job(
 
 // Sends the request on the pooled client behind `native` and buffers the response body.
 fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchResponse!:
-    let started = monotonic()
-    let outbound = outgoing(options.clone())
-    let body = try msstd_http_client_request_bytes(
+    started := monotonic()
+    outbound := outgoing(options.clone())
+    body := try msstd_http_client_request_bytes(
         native, options.method.text(), url, outbound.headers, outbound.body,
         options.max_response_bytes, options.timeout
     )

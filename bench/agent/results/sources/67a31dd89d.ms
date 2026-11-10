@@ -18,7 +18,7 @@ fn digit_value(c: String) Int:
 
 // Returns the amount as a string of cents digits ("12.5" -> "1250"), or "" when invalid.
 fn amount_cents(s: String) String:
-    let n = s.length()
+    n := s.length()
     if n == 0:
         return ""
 
@@ -40,8 +40,8 @@ fn amount_cents(s: String) String:
         return "{s}00"
 
     // there is a dot at int_len
-    let frac = s.slice(int_len + 1, n).get()
-    let fl = frac.length()
+    frac := s.slice(int_len + 1, n).get()
+    fl := frac.length()
     if fl == 0 or fl > 2:
         return ""
 
@@ -60,7 +60,7 @@ fn amount_cents(s: String) String:
 
 // Parses one non-blank line into a record.
 fn parse_line(line: String) Record:
-    let n = line.length()
+    n := line.length()
     if n == 0:
         return bad()
 
@@ -93,7 +93,7 @@ fn parse_line(line: String) Record:
     if category.length() == 0:
         return bad()
 
-    let cents = amount_cents(amount)
+    cents := amount_cents(amount)
     if cents.length() == 0:
         return bad()
 
@@ -130,25 +130,25 @@ fn format_total(cents: String) String:
     while s.length() < 3:
         s = "0{s}"
 
-    let cut = s.length() - 2
+    cut := s.length() - 2
     return "{s.slice(0, cut).get()}.{s.slice(cut, s.length()).get()}"
 
 export fn main() Int:
     var totals = Map[String, String]()
     var skipped = 0
-    let text = read_all(stdin()).get().decode_utf8().get()
+    text := read_all(stdin()).get().decode_utf8().get()
 
     for line in text.lines():
         if line.trim_chars(" \t") == "":
             continue
 
-        let rec = parse_line(line)
+        rec := parse_line(line)
 
         if not rec.ok:
             skipped += 1
             continue
 
-        let prev = totals.get(rec.category).get("0")
+        prev := totals.get(rec.category).get("0")
         totals[rec.category] = add_digits(prev, rec.amount)
 
     for key in totals.keys().sorted():

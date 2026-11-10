@@ -7,6 +7,6 @@ type Factory:
     make: fn(Int) Promise[Int]
 
 export fn main() Int:
-    let _factory = Factory(make: make)
+    _factory := Factory(make: make)
     EXPRESSION
     return 0

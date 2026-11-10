@@ -2,7 +2,7 @@
 
 # Lowering borrows what the checker already holds as a borrow
 
-Decision: a container read the ownership checker holds as a lexical borrow (`let x = m.get(k)`, `if let x = xs.first()`, `m.get(k).get()`, `m.get_or(k, d)`) must not copy the entry. Lowering reads the entry in place (`msrt_map_get_ptr`, `list.get.u`) and builds `opt.view`, an optional that borrows its payload and is never dropped (`crates/ms-lower/src/borrow_shape.rs`).
+Decision: a container read the ownership checker holds as a lexical borrow (`x := m.get(k)`, `if x := xs.first()`, `m.get(k).get()`, `m.get_or(k, d)`) must not copy the entry. Lowering reads the entry in place (`msrt_map_get_ptr`, `list.get.u`) and builds `opt.view`, an optional that borrows its payload and is never dropped (`crates/ms-lower/src/borrow_shape.rs`).
 
 The same holds for source borrow-returning functions: a callable in `Program.returns_borrow` lowers with `Func.ret_borrowed`, so `Module::result_mode` classifies its call results as borrows (the verifier, `lastuse`, `copyelim` and `inline` all read that one function), `emit_return` returns the reference without `owned()`, a `let` of the call is bound borrowed, and a lend from a temporary (`Program.owned_borrows`) is copied at the call before the temporary is dropped. The verifier rejects an owned value returned from a borrow-returning function, so a lowering path that still copies shows up as `ret: %v is owned, but this function lends its result`.
 

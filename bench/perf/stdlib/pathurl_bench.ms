@@ -23,7 +23,7 @@ bench "path.basename":
 
 bench "url.parse":
     fn work() Result[Unit, Error]:
-        let address = "https://example.com:8080/a/b?x=1&y=2#frag"
+        address := "https://example.com:8080/a/b?x=1&y=2#frag"
         var n = 0
         for i in 0..20000:
             if parse(address).is_ok(): n += 1

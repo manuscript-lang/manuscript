@@ -12,6 +12,6 @@ impl Marker:
 fn marker() Marker!Error: ok(Marker(1))
 
 fn bad() Int:
-    let value = marker()
-    let kept = value.or_else(fn cause: error(cause))
+    value := marker()
+    kept := value.or_else(fn cause: error(cause))
     return value.get().id + kept.get().id

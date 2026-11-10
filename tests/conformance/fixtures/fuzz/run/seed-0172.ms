@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,19 +22,19 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let f1 = (((72.762 + 753.500) + (5.5 + 503.997)) * 509.604)
+    f1 := (((72.762 + 753.500) + (5.5 + 503.997)) * 509.604)
     say("f1 = {f1}")
 
-    let f2 = (((f1 / f1) + (f1 - f1)) - ((7.5 * 0.0) + (f1 - 315.874)))
+    f2 := (((f1 / f1) + (f1 - f1)) - ((7.5 * 0.0) + (f1 - 315.874)))
     say("f2 = {f2}")
 
-    let s3 = (
+    s3 := (
         ("héllo" + "beta").replace("alpha", "alpha")
         + (("{(3255 * (-24))}:" + "MiXeD CaSe") + ("back\\slash" + "quote\"d"))
     )
     say("s3 = [{s3}]")
 
-    let f4 = 894.618
+    f4 := 894.618
     say("f4 = {f4}")
 
     var acc5 = 0
@@ -46,7 +46,7 @@ export fn main() Int:
 
     say("acc5 = {acc5}")
 
-    let l6 = [1, 2, 3].take(0)
+    l6 := [1, 2, 3].take(0)
     say("l6 = {l6} len {l6.length()}")
 
     var acc7 = 0
@@ -58,11 +58,11 @@ export fn main() Int:
 
     say("acc7 = {acc7}")
 
-    let i8 = ((-175257091772) + (l6.length() * (41 % (-8))))
+    i8 := ((-175257091772) + (l6.length() * (41 % (-8))))
     say("i8 = {i8}")
     say("fib(5) = {fib(5)}")
 
-    let s9 = ("gamma".reverse().lower() + s3)
+    s9 := ("gamma".reverse().lower() + s3)
     say("s9 = [{s9}]")
     say(
         "{(l6.length() * (487549 * 783386))} {i8} {((l6.length() * (487549 * 783386)) < i8)} sum {(l6.length() * (487549 * 783386)) + i8}"
@@ -75,9 +75,9 @@ export fn main() Int:
 
     say("fib(10) = {fib(10)}")
 
-    let l10 = [17, (-12), 6, (-5), (-20)]
+    l10 := [17, (-12), 6, (-5), (-20)]
     say("l10 = {l10} len {l10.length()}")
 
-    let b11 = (f2 > (940.008 * (f2 * 228.084)))
+    b11 := (f2 > (940.008 * (f2 * 228.084)))
     say("b11 = {b11}")
     return 0

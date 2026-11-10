@@ -26,38 +26,38 @@ type Detail:
     error: String?
 
 export fn main() Int:
-    let args = arguments()
-    let cases = parse[List[Case]](must_read(args[0])).get([])
-    let build = args[1].clone()
-    let run = args[2].clone()
-    let timeout = args[3].parse_int().get(5)
-    let suffix = if args.length() > 4: args[4].clone() else: ""
-    let app = env("MSBENCH_APP", "/app")
-    let out_dir = env("MSBENCH_VERIFIER", "/logs/verifier")
+    args := arguments()
+    cases := parse[List[Case]](must_read(args[0])).get([])
+    build := args[1].clone()
+    run := args[2].clone()
+    timeout := args[3].parse_int().get(5)
+    suffix := if args.length() > 4: args[4].clone() else: ""
+    app := env("MSBENCH_APP", "/app")
+    out_dir := env("MSBENCH_VERIFIER", "/logs/verifier")
     create_directory(out_dir, recursive: true).get()
 
     var rows = List[LogRow]()
     for line in nonblank_lines(read_text("{app}/.bench/log.jsonl")):
         rows.append(parse[LogRow](line).get(LogRow("", false)))
 
-    let builds = rows.filter(fn r: r.phase == "build")
+    builds := rows.filter(fn r: r.phase == "build")
     var tokens: Int? = none
     if suffix != "": tokens = count_workspace(app, suffix)
 
     var first_ok = false
-    if let first = builds.first(): first_ok = first.ok
+    if first := builds.first(): first_ok = first.ok
 
     var detail = Detail(
         false, 0, cases.length(), [], tokens, builds.length(), first_ok,
         rows.count(fn r: (r.phase == "check")), none
     )
-    let built = bash(build, app, 600, "")
+    built := bash(build, app, 600, "")
 
     if built.code == 0:
         detail.built = true
 
         for c in cases:
-            let ran = bash(run, app, timeout, c.stdin)
+            ran := bash(run, app, timeout, c.stdin)
 
             if ran.code == 0 and norm(ran.out) == norm(c.stdout):
                 detail.passed += 1
@@ -71,6 +71,6 @@ export fn main() Int:
 
     write_file("{out_dir}/detail.json", stringify(detail).get(""), replace: true).wait().get()
 
-    let reward = if detail.built and detail.passed == detail.total: "1" else: "0"
+    reward := if detail.built and detail.passed == detail.total: "1" else: "0"
     write_file("{out_dir}/reward.txt", reward, replace: true).wait().get()
     return 0

@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = ((934289 + 922929) + ((-36) - (-645087)))
+    i1 := ((934289 + 922929) + ((-36) - (-645087)))
     say("i1 = {i1}")
 
-    let i2 = (((i1 * i1) / (-21)) - ((3 + i1) - i1))
+    i2 := (((i1 * i1) / (-21)) - ((3 + i1) - i1))
     say("i2 = {i2}")
 
-    let i3 = (((-18) * (33 * 753149)) - i2)
+    i3 := (((-18) * (33 * 753149)) - i2)
     say("i3 = {i3}")
 
-    let f4 = ((934.582 - 785.293) * 3.0e7)
+    f4 := ((934.582 - 785.293) * 3.0e7)
     say("f4 = {f4}")
     say(
         "{i3} {(i1 + (i2 + (-350093829493)))} {(i3 < (i1 + (i2 + (-350093829493))))} sum {i3 + (i1 + (i2 + (-350093829493)))}"
@@ -29,6 +29,6 @@ export fn main() Int:
     else:
         say("beta")
 
-    let big5 = i1 - i1
+    big5 := i1 - i1
     say("{i1 / big5}")
     return 0

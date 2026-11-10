@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -38,12 +38,12 @@ export fn main() Int:
     say("acc1 = {acc1}")
     say("fib(34) = {fib(34)}")
 
-    let f2 = (((1.0e-1 * 0.0) / 690.887) / 634.617)
+    f2 := (((1.0e-1 * 0.0) / 690.887) / 634.617)
     say("f2 = {f2}")
 
-    let s3 = "brace\{s\}"
+    s3 := "brace\{s\}"
     say("s3 = [{s3}]")
     say("gcd(2465, 787) = {gcd(2465, 787)}")
 
-    let bad: Bool = 1
+    bad: Bool = 1
     return 0

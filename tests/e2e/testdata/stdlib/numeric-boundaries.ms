@@ -4,7 +4,7 @@ import nanoseconds from "@std/time.ms"
 import BigInt, from_int from "@std/math/math.ms"
 
 test "integer division retains signed boundary and remainder rules":
-    let minimum = -9223372036854775808
+    minimum := -9223372036854775808
     try expect_false(minimum / 1 != minimum or minimum % -1 != 0)
     try expect_false(-7 / 2 != -3 or - 7 % 3 != -1)
     try expect_false(7 / -2 != -3 or 7 % -3 != 1)
@@ -12,13 +12,13 @@ test "integer division retains signed boundary and remainder rules":
     try expect_equal(1d / -1d, -1d)
     try expect_false((1.0 / 0.0).is_finite() or not (0.0 / 0.0).is_nan())
 
-    let invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
+    invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
     try expect_equal(from_int(1).divide(from_int(0)), invalid)
     try expect_equal(from_int(1).remainder(from_int(0)), invalid)
 
 test "duration arithmetic retains full signed nanosecond range":
-    let minimum = nanoseconds(-9223372036854775808)
-    let maximum = nanoseconds(9223372036854775807)
+    minimum := nanoseconds(-9223372036854775808)
+    maximum := nanoseconds(9223372036854775807)
     try expect_false(
         (
             minimum.divide(1) != minimum
@@ -52,8 +52,8 @@ test "duration arithmetic retains full signed nanosecond range":
     )
 
 test "duration safe addition subtraction negation and unit edges":
-    let minimum = nanoseconds(-9223372036854775808)
-    let maximum = nanoseconds(9223372036854775807)
+    minimum := nanoseconds(-9223372036854775808)
+    maximum := nanoseconds(9223372036854775807)
     try expect_false(
         (
             minimum.add(nanoseconds(0)) != minimum
@@ -104,11 +104,11 @@ test "duration safe addition subtraction negation and unit edges":
     )
 
 test "sized numbers widen to Int and Float with to_int and to_float":
-    let a: Int8 = -100
-    let b: Int16 = -7
-    let c: Int32 = 70000
-    let d: Int64 = 9
-    let f: Float32 = 0.5
-    let total: Int = a.to_int() + b.to_int() + c.to_int() + d.to_int()
+    a: Int8 = -100
+    b: Int16 = -7
+    c: Int32 = 70000
+    d: Int64 = 9
+    f: Float32 = 0.5
+    total: Int = a.to_int() + b.to_int() + c.to_int() + d.to_int()
     try expect_equal(total, 69902)
     try expect_equal(f.to_float(), 0.5)

@@ -21,8 +21,8 @@ fn sum(l: Link, acc: Int) Int:
             return sum(r, acc + n)
 
 export fn main() Int:
-    let a = build(100000)
-    let b = a.clone()
+    a := build(100000)
+    b := a.clone()
     if sum(a, 0) != 2500000000:
         return 1
     if sum(b, 0) != 2500000000:

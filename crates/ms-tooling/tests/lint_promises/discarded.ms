@@ -4,5 +4,5 @@ fn work() Int!:
     return ok(1)
 
 export fn main() Int:
-    let _ = promise(fn: work())
+    _ := promise(fn: work())
     return 0

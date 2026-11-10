@@ -8,6 +8,6 @@ type Tree[T]:
     children: List[Tree[T]]
 
 test "recursive immutable collection":
-    let leaf = Tree[Int](1, [])
-    let root = Tree[Int](2, [leaf])
+    leaf := Tree[Int](1, [])
+    root := Tree[Int](2, [leaf])
     try expect_equal(root.value, 2)

@@ -16,7 +16,7 @@ Verdict: error. Sound.
 ```manuscript
 // src/main.ms
 fn main() Unit!:                          // permitted everything
-    let cfg = try load("app.toml")
+    cfg := try load("app.toml")
     try sync(cfg, host_tree(cfg.root))
 
 // src/config.ms
@@ -40,7 +40,7 @@ fn serve(r: Router, req: Request) Response!:   // no directive
     return r.handle(req)                        // charges nothing
 
 fn main() Unit!:
-    let r = Router(handle: fn(req): save(req))  // closure body charged here: db.write ok in main
+    r := Router(handle: fn(req): save(req))  // closure body charged here: db.write ok in main
     ...
 ```
 Verdict: ok; `serve` is pure in the ambient sense. Runtime I/O happens inside `serve`, so hover must say `effects: none (ambient)`; a reviewer looks at parameter types for capabilities. Sound as a capability model; the reading rule has to be taught.
@@ -89,7 +89,7 @@ fn finish(p: Promise[Bytes]) Int!:        // pure
     return (try p.wait()).length()
 
 fn main() Unit!:
-    let p = read_file("a.bin")           // fs.read charged here
+    p := read_file("a.bin")           // fs.read charged here
     print(try finish(p))
 ```
 Verdict: ok. `wait` charges nothing. Sound (authority was obtained in `main`).
@@ -97,7 +97,7 @@ Verdict: ok. `wait` charges nothing. Sound (authority was obtained in `main`).
 ## P8 Constant and default argument
 
 ```manuscript
-let HOME = home_directory()              // evaluated per use
+HOME := home_directory()              // evaluated per use
 
 fn report(when: Timestamp = now()) String:   // default evaluated at the call site
     return HOME + when.to_string()       // error: HOME use reaches env.read

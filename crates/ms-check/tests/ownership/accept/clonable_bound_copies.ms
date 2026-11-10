@@ -12,7 +12,7 @@ fn twice[T: Clonable](xs: List[T]) List[T]:
     return xs.concat(xs.reversed())
 
 fn copies() Int:
-    let names = twice(["a", "b"])
-    let shapes: List[Shape] = [Square(2)]
-    let more = twice(shapes)
+    names := twice(["a", "b"])
+    shapes: List[Shape] = [Square(2)]
+    more := twice(shapes)
     return names.length() + more.length()

@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [(-27), 8, 30, 30, 19]
+    l1 := [(-27), 8, 30, 30, 19]
     say("l1 = {l1} len {l1.length()}")
     if 1:
         say("truthy")
 
-    let b2 = false
+    b2 := false
     say("b2 = {b2}")
     return 0

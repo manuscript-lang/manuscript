@@ -21,7 +21,7 @@ fn quantity(value: Int) Result[Int, Error]:
     return ok(value)
 
 fn show(value: Int) Unit:
-    let outcome = quantity(value)
+    outcome := quantity(value)
     if outcome.is_error():
         print(outcome.err().message)
         return
@@ -46,7 +46,7 @@ Both calls return normally. The second returns an error value, and `show` choose
 
 ```manuscript
 fn parse_port(text: String) Int!:
-    let port = try text.parse_int().ok_or()
+    port := try text.parse_int().ok_or()
     return ok(port)
 ```
 
@@ -76,7 +76,7 @@ fn find_user(id: Int) String!:
     return error(Error("no such user", kind: "ENOENT", details: {"id": id.to_string()}))
 
 fn describe(id: Int) String:
-    let outcome = find_user(id)
+    outcome := find_user(id)
     if outcome.is_ok(): return outcome.get()
     if outcome.err().kind == "ENOENT": return "missing {outcome.err().details["id"]}"
     return outcome.err().message.clone()
@@ -112,7 +112,7 @@ This continues the declarations above:
 
 ```manuscript
 fn discount_message(price: Decimal, percent: Decimal) String:
-    if let value = discount(price, percent):
+    if value := discount(price, percent):
         return "Discounted price: {value}"
     return "Discount could not be calculated."
 ```
@@ -137,8 +137,8 @@ This caller discards the cause. To use it, call `err()` after `is_error()`, or [
 This fragment uses `discount` above:
 
 ```manuscript
-let price = discount(price: 20d, percent: 10d).get(0d)
-let text = discount(price: 20d, percent: 10d).map(fn value: value.to_string())
+price := discount(price: 20d, percent: 10d).get(0d)
+text := discount(price: 20d, percent: 10d).map(fn value: value.to_string())
 ```
 
 Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` faults with `called Result.get() on error` followed by the error's message; use it only when success is established. Routine failures use a fallback, `if let`, or `try`.
@@ -159,7 +159,7 @@ To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optio
 A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Unit, E]`. Handle it with `if let`, `try`, or return it. To ignore it deliberately, bind it to `_`:
 
 ```manuscript
-let _ = discount(price: 20d, percent: 10d)
+_ := discount(price: 20d, percent: 10d)
 ```
 
 The initializer still runs and the outcome is dropped unread. Several `let _` may share a scope. This does not handle an error or stop a fault.

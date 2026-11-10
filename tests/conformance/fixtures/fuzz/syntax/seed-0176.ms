@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [(-15), (-7)]
+    l1 := [(-15), (-7)]
     say("l1 = {l1} len {l1.length()}")
 
-    let f2 = (
+    f2 := (
         ((1.0e11 * 974.069) * (564.989 / 1.5))
         * ((307.124 * 93.059) / (407.810 * 444.890))
     )
     say("f2 = {f2}")
 
-    let s3 = "  padded  "
+    s3 := "  padded  "
     say("s3 = [{s3}]")
 
     if ((0.0 / 852.996) != (5.0e8 + f2)):

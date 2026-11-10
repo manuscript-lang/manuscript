@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,31 +22,31 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let i1 = ((732622 * 31) + (((-27) - (-18)) + (-326409)))
+    i1 := ((732622 * 31) + (((-27) - (-18)) + (-326409)))
     say("i1 = {i1}")
 
-    let s2 = "ms"
+    s2 := "ms"
     say("s2 = [{s2}]")
 
-    let i3 = (i1 % (i1 + (i1 % i1)))
+    i3 := (i1 % (i1 + (i1 % i1)))
     say("i3 = {i3}")
 
-    let f4 = 168.25
+    f4 := 168.25
     say("f4 = {f4}")
 
-    let i5 = (i1 - i1)
+    i5 := (i1 - i1)
     say("i5 = {i5}")
 
-    let s6 = "emoji 😀"
+    s6 := "emoji 😀"
     say("s6 = [{s6}]")
 
-    let i7 = i1
+    i7 := i1
     say("i7 = {i7}")
 
-    let f8 = ((836.531 - (f4 + f4)) + f4)
+    f8 := ((836.531 - (f4 + f4)) + f4)
     say("f8 = {f8}")
 
-    let i9 = (((-35) - 6) - ((i7 + (-22)) % (419460323299 * 35)))
+    i9 := (((-35) - 6) - ((i7 + (-22)) % (419460323299 * 35)))
     say("i9 = {i9}")
     say("fib(28) = {fib(28)}")
 
@@ -55,15 +55,15 @@ export fn main() Int:
     else:
         say(s6)
 
-    let l10 = [(-13)]
+    l10 := [(-13)]
     say("l10 = {l10} len {l10.length()}")
 
-    let s11 = s2.clone()
+    s11 := s2.clone()
     say("s11 = [{s11}]")
 
-    let f12 = (543.245 - ((598.022 * f4) - 442.882))
+    f12 := (543.245 - ((598.022 * f4) - 442.882))
     say("f12 = {f12}")
 
-    let b13 = ("gamma".upper().starts_with("x") and (s2 == "Tab\there"))
+    b13 := ("gamma".upper().starts_with("x") and (s2 == "Tab\there"))
     say("b13 = {b13}")
     return 0

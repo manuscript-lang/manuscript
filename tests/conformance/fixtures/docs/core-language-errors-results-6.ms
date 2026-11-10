@@ -5,5 +5,5 @@ import Bytes from "@std/bytes.ms"
 import hex_decode from "@std/data/encoding.ms"
 
 fn decode(text: String) Result[Bytes, Error]:
-    let bytes = try hex_decode(text)
+    bytes := try hex_decode(text)
     return ok(bytes)

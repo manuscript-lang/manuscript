@@ -14,7 +14,7 @@ test "normal samples centre on zero with unit spread":
     var squares = 0.0
 
     for ignored in 0..20000:
-        let value = rng.normal()
+        value := rng.normal()
         sum += value
         squares += value * value
 
@@ -26,7 +26,7 @@ test "exponential samples are non-negative with mean one":
     var sum = 0.0
 
     for ignored in 0..20000:
-        let value = rng.exponential()
+        value := rng.exponential()
         try expect_true(value >= 0.0)
         sum += value
 
@@ -34,7 +34,7 @@ test "exponential samples are non-negative with mean one":
 
 test "permutation contains each index once":
     var rng = seeded(3)
-    let order = rng.permutation(50)
+    order := rng.permutation(50)
     var expected: List[Int] = []
     for index in 0..50:
         expected.append(index)

@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = 528.694
+    f1 := 528.694
     say("f1 = {f1}")
 
-    let f2 = (f1 + f1)
+    f2 := (f1 + f1)
     say("f2 = {f2}")
 
     if ("beta" + "brace\{s\}").ends_with("42"):
@@ -20,7 +20,7 @@ export fn main() Int:
     else:
         say("Tab\there")
 
-    let f3 = (((668.335 / f2) / 847.245) * (f2 - (239.039 - f1)))
+    f3 := (((668.335 / f2) / 847.245) * (f2 - (239.039 - f1)))
     say("f3 = {f3}")
 
     var acc4 = 0
@@ -28,13 +28,13 @@ export fn main() Int:
         acc4 += i * (-1)
     say("acc4 = {acc4}")
 
-    let i5 = (-26)
+    i5 := (-26)
     say("i5 = {i5}")
 
-    let s6 = "héllo"
+    s6 := "héllo"
     say("s6 = [{s6}]")
 
-    let b7 = true
+    b7 := true
     say("b7 = {b7}")
 
     if ((b7 and true) and s6.contains("back\\slash")):
@@ -42,9 +42,9 @@ export fn main() Int:
     else:
         say(("{(-11)}:" + "quote\"d"))
 
-    let f8 = 63.285
+    f8 := 63.285
     say("f8 = {f8}")
 
-    let s9 = s6
+    s9 := s6
     say("s9 = [{s9}]")
     return 0

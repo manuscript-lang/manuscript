@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/html_unescape_test.go:12 TestHTMLUnescapeRejectsInvalidContracts
 fn wrong() String:
-    let convert = unescape
+    convert := unescape
     return convert(value: "&amp;")

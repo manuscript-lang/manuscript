@@ -11,7 +11,7 @@ test "int keys with string values find every key":
     try expect_equal(names[2], "two")
     try expect_equal(names.get_or(key: 2, fallback: ""), "two")
     try expect_equal(names.get_or(key: 3, fallback: "none"), "none")
-    if let found = names.get(1):
+    if found := names.get(1):
         try expect_equal(found, "one")
 
 test "string keys with string values find every key":

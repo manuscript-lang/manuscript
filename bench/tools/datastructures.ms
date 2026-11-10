@@ -15,7 +15,7 @@ import copy, CopyOptions, temporary from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
 
 fn run(work: String, n: Int) Result[String, Error]:
-    let here = "bench/perf/datastructures"
+    here := "bench/perf/datastructures"
     for dir in ["go", "ms"]:
         try copy(
             "{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
@@ -28,7 +28,7 @@ fn run(work: String, n: Int) Result[String, Error]:
 
     for i in 0..n:
         for v in rotate(["ms", "go", "rs"], i):
-            let exe = if v == "rs": "{work}/rs" else: "{work}/{v}/bench"
+            exe := if v == "rs": "{work}/rs" else: "{work}/{v}/bench"
             for line in (try sample(exe, [])).split("\n"):
                 if line != "": raw.append("{v} {line}")
             raw.append("{v} # end")
@@ -37,13 +37,13 @@ fn run(work: String, n: Int) Result[String, Error]:
 
 export fn main() Int:
     var n = 5
-    let args = arguments()
+    args := arguments()
 
     if not args.is_empty():
-        if let parsed = repeats(args[0]):
+        if parsed := repeats(args[0]):
             n = parsed
         else:
             return usage("repeats must be a positive integer")
 
-    let tmp = temporary("datastructures-").get()
+    tmp := temporary("datastructures-").get()
     return finish(run(tmp.path(), n))

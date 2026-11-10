@@ -4,7 +4,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    _ignored := stdout().write(text)
 
 fn keep(text: String) List[String]:
     var out: List[String] = []
@@ -31,7 +31,7 @@ fn count(text: String) Int:
     return n
 
 export fn main() Int:
-    let a = keep("aa,bbbb,c,,dddddd,eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee,f")
+    a := keep("aa,bbbb,c,,dddddd,eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee,f")
     for x in a:
         say("[{x}]")
     say(
@@ -63,14 +63,14 @@ export fn main() Int:
     return 0
 
 fn let_form(text: String) Int:
-    let parts = text.split(",")
+    parts := text.split(",")
     var total = 0
     for p in parts:
         total += p.length()
     return total
 
 fn let_kept(text: String) Int:
-    let parts = text.split(",")
+    parts := text.split(",")
     var total = 0
     for p in parts:
         total += p.length()

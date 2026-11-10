@@ -9,8 +9,8 @@ fn take(b: Big) List[Int]:
     return b.items.clone()
 
 export fn main() Int:
-    let b = Big(
+    b := Big(
         name: "a name that is long enough to live on the heap", items: [1, 2, 3]
     )
-    let xs = take(b)
+    xs := take(b)
     return xs.length() - 3

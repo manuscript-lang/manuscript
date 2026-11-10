@@ -62,7 +62,7 @@ fn check_deeply_nested_fstrings() {
     let file: Arc<str> = Arc::from("nested.ms");
     for depth in [64, 128, 256] {
         let source = format!(
-            "let text = {}1{}\n",
+            "text := {}1{}\n",
             "\"{".repeat(depth),
             "}\"".repeat(depth)
         );
@@ -80,7 +80,7 @@ fn check_deeply_nested_fstrings() {
 #[test]
 fn nested_interpolation_errors_keep_their_original_positions_and_hints() {
     let file: Arc<str> = Arc::from("nested.ms");
-    for source in ["let x = \"{\"{1 + }\"}\"\n", "let x = \"{\"{1 + }\"}\"\r\n"] {
+    for source in ["x := \"{\"{1 + }\"}\"\n", "x := \"{\"{1 + }\"}\"\r\n"] {
         let error = ms_syntax::parser::parse(&file, source).unwrap_err();
         assert_eq!(
             (error.pos.offset, error.pos.line, error.pos.column),
@@ -92,10 +92,10 @@ fn nested_interpolation_errors_keep_their_original_positions_and_hints() {
             "expected an expression, found end of line; write a value, name, call, or literal here ('{' at column 12 starts an interpolation; write \\{ and \\} for literal braces) ('{' at column 10 starts an interpolation; write \\{ and \\} for literal braces)"
         );
     }
-    let error = ms_syntax::parser::parse(&file, "let x = \"{1)}\"\n").unwrap_err();
+    let error = ms_syntax::parser::parse(&file, "x := \"{1)}\"\n").unwrap_err();
     assert_eq!(error.pos.offset, 12);
     assert!(error.message.starts_with("unmatched closing delimiter ')'"));
-    let error = ms_syntax::parser::parse(&file, "let x = \"{)(}\"\n").unwrap_err();
+    let error = ms_syntax::parser::parse(&file, "x := \"{)(}\"\n").unwrap_err();
     assert_eq!(error.pos.offset, 10);
     assert!(
         error
@@ -109,7 +109,7 @@ fn nested_interpolations_inside_multiline_functions_keep_expression_forms() {
     let file: Arc<str> = Arc::from("nested.ms");
     for ending in ["\n", "\r\n"] {
         let source =
-            format!("fn get() String:\n    let x = \"{{\"{{fn x: x}}\"}} {{1..2}}\"{ending}");
+            format!("fn get() String:\n    x := \"{{\"{{fn x: x}}\"}} {{1..2}}\"{ending}");
         let module = ms_syntax::parser::parse(&file, &source).unwrap();
         assert_eq!(module.decls.len(), 1);
         let formatted = ms_syntax::format(&file, &source).unwrap();

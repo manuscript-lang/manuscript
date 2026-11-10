@@ -20,6 +20,6 @@ fn open_counter(id: Int) Counter:
     return Counter(id)
 
 export fn main() Int:
-    let a = open_counter(7).value()
+    a := open_counter(7).value()
     print("read {a}")
     return 0

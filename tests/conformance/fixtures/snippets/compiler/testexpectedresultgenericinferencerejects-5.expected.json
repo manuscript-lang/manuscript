@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testexpectedresultgenericinferencerejects-5.ms:5:39: resolution: unknown binding fail; add: import fail from \"@std/test/test.ms\"\n   |\n 5 |     let value: fn(String) Int!Error = fail\n   |                                       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testexpectedresultgenericinferencerejects-5.ms:5:39: resolution: unknown binding fail; add: import fail from \"@std/test/test.ms\"\n   |\n 5 |     value: fn(String) Int!Error = fail\n   |                                       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

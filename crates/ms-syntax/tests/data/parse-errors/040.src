@@ -17,7 +17,7 @@ import TlsOptions from "@std/net/net.ms"
 import Bytes from "@std/bytes.ms"
 
 fn route(request: HttpRequest) HttpResponse:
-    let fields = match text_headers(
+    fields := match text_headers(
         (
             Map[String, String]()
             .add("Set-Cookie", "a=1")

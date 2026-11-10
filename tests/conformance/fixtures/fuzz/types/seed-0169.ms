@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     if ((314.153 > 8.5) and "emoji 😀".starts_with("quote\"d")):
@@ -14,11 +14,11 @@ export fn main() Int:
     else:
         say("delta".lower())
 
-    let i1 = ((-5) + 3)
+    i1 := ((-5) + 3)
     say("i1 = {i1}")
 
-    let bad: String = 5
-    let s2 = "quote\"d"
+    bad: String = 5
+    s2 := "quote\"d"
     say("s2 = [{s2}]")
 
     var acc3 = 0
@@ -26,9 +26,9 @@ export fn main() Int:
         acc3 += i * 1
     say("acc3 = {acc3}")
 
-    let b4 = ((623838 != i1) or ((402.088 / 216.797) != (126.436 * 289.567)))
+    b4 := ((623838 != i1) or ((402.088 / 216.797) != (126.436 * 289.567)))
     say("b4 = {b4}")
 
-    let s5 = s2
+    s5 := s2
     say("s5 = [{s5}]")
     return 0

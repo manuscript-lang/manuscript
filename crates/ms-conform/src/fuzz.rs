@@ -442,7 +442,7 @@ impl Gen {
             0..=3 => {
                 let (code, v) = self.safe_int(3);
                 let name = self.id("i");
-                self.out.push(format!("    let {name} = {code}"));
+                self.out.push(format!("    {name} := {code}"));
                 self.out.push(format!("    say(\"{name} = {{{name}}}\")"));
                 self.ints.push(IntVar { name, value: v });
                 self.tags.push("numbers");
@@ -450,7 +450,7 @@ impl Gen {
             4 | 5 => {
                 let code = self.float_expr(3);
                 let name = self.id("f");
-                self.out.push(format!("    let {name} = {code}"));
+                self.out.push(format!("    {name} := {code}"));
                 self.out.push(format!("    say(\"{name} = {{{name}}}\")"));
                 self.floats.push(name);
                 self.tags.push("numbers");
@@ -458,7 +458,7 @@ impl Gen {
             6 | 7 => {
                 let (code, len) = self.str_expr(3);
                 let name = self.id("s");
-                self.out.push(format!("    let {name} = {code}"));
+                self.out.push(format!("    {name} := {code}"));
                 self.out.push(format!("    say(\"{name} = [{{{name}}}]\")"));
                 self.strs.push(StrVar { name, chars: len });
                 self.tags.push("strings");
@@ -467,14 +467,14 @@ impl Gen {
             8 | 9 => {
                 let code = self.bool_expr(3);
                 let name = self.id("b");
-                self.out.push(format!("    let {name} = {code}"));
+                self.out.push(format!("    {name} := {code}"));
                 self.out.push(format!("    say(\"{name} = {{{name}}}\")"));
                 self.bools.push(name);
             }
             10 | 11 => {
                 let (code, items) = self.list_expr(2);
                 let name = self.id("l");
-                self.out.push(format!("    let {name} = {code}"));
+                self.out.push(format!("    {name} := {code}"));
                 self.out.push(format!(
                     "    say(\"{name} = {{{name}}} len {{{name}.length()}}\")"
                 ));
@@ -587,39 +587,39 @@ impl Gen {
         let k = self.rng.range(1, 5);
         let lines: Vec<String> = match kind {
             0 => vec![
-                format!("    let {big} = 9223372036854775807"),
+                format!("    {big} := 9223372036854775807"),
                 format!("    say(\"{{{big} + {k}}}\")"),
             ],
             1 => vec![
-                format!("    let {big} = 9223372036854775807"),
+                format!("    {big} := 9223372036854775807"),
                 format!("    say(\"{{{big} * {}}}\")", k + 1),
             ],
             2 => vec![
-                format!("    let {big} = -9223372036854775808"),
+                format!("    {big} := -9223372036854775808"),
                 format!("    say(\"{{{big} - {k}}}\")"),
             ],
             3 => vec![
-                format!("    let {big} = -9223372036854775808"),
+                format!("    {big} := -9223372036854775808"),
                 format!("    say(\"{{-{big}}}\")"),
             ],
             4 => {
                 let (a, _) = self.safe_int(2);
                 vec![
-                    format!("    let {big} = {a} - {a}"),
+                    format!("    {big} := {a} - {a}"),
                     format!("    say(\"{{{a} / {big}}}\")"),
                 ]
             }
             5 => {
                 let (a, _) = self.safe_int(2);
                 vec![
-                    format!("    let {big} = {a} - {a}"),
+                    format!("    {big} := {a} - {a}"),
                     format!("    say(\"{{{a} % {big}}}\")"),
                 ]
             }
             _ => {
                 if self.lists.is_empty() {
                     vec![
-                        format!("    let {big} = [1, 2, 3]"),
+                        format!("    {big} := [1, 2, 3]"),
                         format!("    say(\"{{{big}.get({})}}\")", 3 + k),
                     ]
                 } else {
@@ -651,7 +651,7 @@ fn escaped_len(w: &str) -> usize {
 
 const HELPER_FACT: &str =
     "fn fact(n: Int) Int:\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)\n";
-const HELPER_FIB: &str = "fn fib(n: Int) Int:\n    var a = 0\n    var b = 1\n    var i = 0\n    while i < n:\n        let next = a + b\n        a = b\n        b = next\n        i += 1\n    return a\n";
+const HELPER_FIB: &str = "fn fib(n: Int) Int:\n    var a = 0\n    var b = 1\n    var i = 0\n    while i < n:\n        next := a + b\n        a = b\n        b = next\n        i += 1\n    return a\n";
 const HELPER_GCD: &str =
     "fn gcd(a: Int, b: Int) Int:\n    if b == 0:\n        return a\n    return gcd(b, a % b)\n";
 const HELPER_COLLATZ: &str = "fn collatz(start: Int) Int:\n    var n = start\n    var steps = 0\n    while n != 1:\n        if n % 2 == 0:\n            n = n / 2\n        else:\n            n = 3 * n + 1\n        steps += 1\n    return steps\n";
@@ -661,7 +661,7 @@ fn assemble(g: Gen, seed: u64) -> Generated {
     source.push_str(&format!("// Generated by ms-conform fuzz, seed {seed}.\n"));
     source.push_str("import stdout from \"@std/io/io.ms\"\n");
     source.push_str(
-        "\nfn say(text: String) Unit:\n    let _written = stdout().write(\"{text}\\n\")\n\n",
+        "\nfn say(text: String) Unit:\n    _written := stdout().write(\"{text}\\n\")\n\n",
     );
     let mut seen = Vec::new();
     for h in &g.helpers {
@@ -714,26 +714,26 @@ pub fn program(seed: u64) -> Generated {
 
 /// Statements that are each rejected by the checker, to splice into a valid program.
 const TYPE_ERRORS: &[&str] = &[
-    "    let bad: Int = \"text\"",
-    "    let bad = 1 + \"one\"",
-    "    let bad = undefined_name + 1",
-    "    let bad = missing_function(3)",
-    "    let bad: String = 5",
-    "    let bad = [1, \"two\"]",
-    "    let bad = 1.5 + 2",
-    "    let bad = true + 1",
-    "    let bad = say(1, 2)",
-    "    let bad = \"abc\".no_such_method()",
-    "    let fixed = 1\n    fixed = 2",
-    "    let bad = (1 < 2) < 3",
-    "    let bad: Bool = 1",
-    "    let bad = not 5",
-    "    let bad = [1, 2].get(\"x\")",
-    "    let bad = 1 and 2",
+    "    bad: Int = \"text\"",
+    "    bad := 1 + \"one\"",
+    "    bad := undefined_name + 1",
+    "    bad := missing_function(3)",
+    "    bad: String = 5",
+    "    bad := [1, \"two\"]",
+    "    bad := 1.5 + 2",
+    "    bad := true + 1",
+    "    bad := say(1, 2)",
+    "    bad := \"abc\".no_such_method()",
+    "    fixed := 1\n    fixed = 2",
+    "    bad := (1 < 2) < 3",
+    "    bad: Bool = 1",
+    "    bad := not 5",
+    "    bad := [1, 2].get(\"x\")",
+    "    bad := 1 and 2",
     "    if 1:\n        say(\"truthy\")",
-    "    let bad = say",
+    "    bad := say",
     "    return \"not an int\"",
-    "    let bad = Map[Int, Int]().get(1, 2, 3)",
+    "    bad := Map[Int, Int]().get(1, 2, 3)",
 ];
 
 /// A program with one injected type error; checking it must fail the same way every time.

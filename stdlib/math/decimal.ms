@@ -56,7 +56,7 @@ impl Decimal:
     // Converts to the nearest Float, which can lose precision because binary floats cannot represent most decimal fractions exactly.
     // Returns none when the value is beyond the Float range.
     fn to_float() Float?:
-        let value = msstd_decimal_to_float(self)
+        value := msstd_decimal_to_float(self)
         if value.is_finite(): return value
 
         return none

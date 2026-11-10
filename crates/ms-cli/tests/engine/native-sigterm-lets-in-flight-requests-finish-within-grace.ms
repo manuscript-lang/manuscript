@@ -12,20 +12,20 @@ import sleep, nanoseconds from "@std/time.ms"
 fn handle(request: HttpRequest) HttpResponse:
     print("started")
 
-    let _flushed = stdout().flush()
-    let _ = sleep(nanoseconds(600000000)).wait()
+    _flushed := stdout().flush()
+    _ := sleep(nanoseconds(600000000)).wait()
     return HttpResponse(200, headers(), "done".to_bytes())
 
 export fn main() Int:
-    if let acquired = serve(
+    if acquired := serve(
         address: "127.0.0.1:0", handler: buffered(handle),
         options: HttpServerOptions(grace: nanoseconds(10000000000))
     ):
-        let server = acquired
+        server := acquired
         print("{server.address()}")
 
-        let _flushed = stdout().flush()
-        let _ignored = server.wait()
+        _flushed := stdout().flush()
+        _ignored := server.wait()
         return 0
 
     return 1

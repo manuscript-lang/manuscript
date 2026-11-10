@@ -34,14 +34,14 @@ fn main2() Unit:
     var n: Node? = Node(1, Node(5, none))
     n?.inc()
     n?.next?.inc()
-    if let l = xs:
+    if l := xs:
         stdout().write("{l.length()}\n").get()
-    if let bb = b:
+    if bb := b:
         stdout().write("{bb.a} {bb.s}\n").get()
 
-    if let nn = n:
+    if nn := n:
         stdout().write("{nn.v}\n").get()
-        if let m = nn.next:
+        if m := nn.next:
             stdout().write("{m.v}\n").get()
 
 export fn main() Int:

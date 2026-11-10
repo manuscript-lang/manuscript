@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (-35)
+    i1 := (-35)
     say("i1 = {i1}")
 
-    let f2 = (
+    f2 := (
         ((862.264 - 73.308) / (588.283 * 745.25))
         * ((915.694 + 201.519) + 896.25)
     )
     say("f2 = {f2}")
 
-    let s3 = "quote\"d"
+    s3 := "quote\"d"
     say("s3 = [{s3}]")
 
     if (s3 != s3.replace("brace\{s\}", "hello world")):
@@ -31,5 +31,5 @@ export fn main() Int:
     else:
         say(s3)
 
-    let bad = [1, 2].get("x")
+    bad := [1, 2].get("x")
     return 0

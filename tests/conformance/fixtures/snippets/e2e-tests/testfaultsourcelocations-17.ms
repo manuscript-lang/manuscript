@@ -4,6 +4,6 @@
 import panic from "@std/core.ms"
 
 test "several checks":
-    let good = 2 + 3
+    good := 2 + 3
     if good == 5:
         panic("last check failed")

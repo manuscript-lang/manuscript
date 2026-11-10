@@ -3,9 +3,9 @@ import GenCase, make_case, write_cases from "../../lib/gen.ms"
 import seeded from "../../lib/pyrandom.ms"
 import full_match from "../../lib/text.ms"
 
-let SKU = "[A-Z0-9-]+"
-let OID = "[a-z0-9-]+"
-let NUM = "[0-9]\{1,7\}"
+SKU := "[A-Z0-9-]+"
+OID := "[a-z0-9-]+"
+NUM := "[0-9]\{1,7\}"
 
 fn money(c: Int) String: "{c / 100}.{"{c % 100}".pad_start(2, "0")}"
 
@@ -42,8 +42,8 @@ fn solve(s: String) String:
     for l in lines:
         if l.replace(" ", "") == "": continue
 
-        let t = l.split(" ")
-        let c = t[0].clone()
+        t := l.split(" ")
+        c := t[0].clone()
 
         if c != "order" and arity(c) == 0:
             out.append("error: unknown command")
@@ -83,7 +83,7 @@ fn solve(s: String) String:
             price[t[1].clone()] = t[2].parse_int().get(0)
             out.append("ok")
         else if c == "order":
-            let oid = t[1].clone()
+            oid := t[1].clone()
 
             if not full_match(OID, oid):
                 out.append("error: bad order id")
@@ -97,7 +97,7 @@ fn solve(s: String) String:
             var bad = ""
 
             for tok in t.slice(2, t.length()).get([]):
-                let p = tok.split(":")
+                p := tok.split(":")
 
                 if p.length() != 2 or not full_match(SKU, p[0]) or not qty_ok(p[1]):
                     bad = tok.clone()
@@ -133,7 +133,7 @@ fn solve(s: String) String:
             for item in items:
                 stock[item.sku.clone()] = stock.get_or(item.sku, 0) - item.qty
 
-                let p = price.get_or(item.sku, 0)
+                p := price.get_or(item.sku, 0)
                 total += (
                     if item.qty >= 10: (
                         item.qty * p * 90
@@ -151,7 +151,7 @@ fn solve(s: String) String:
                 out.append("error: unknown order {t[1]}")
                 continue
 
-            let st = order_status.get_or(t[1], "")
+            st := order_status.get_or(t[1], "")
 
             if c == "cancel":
                 if st == "placed":
@@ -182,14 +182,14 @@ fn solve(s: String) String:
                     "{sku} stock={stock.get_or(sku, 0)} price={money(price.get_or(sku, 0))} reserved={reserved.get_or(sku, 0)}"
                 )
 
-            let placed = order_ids.count(fn o: order_status.get_or(o, "") == "placed")
-            let shipped = order_ids.count(fn o: order_status.get_or(o, "") == "shipped")
-            let cancelled = order_ids.count(
+            placed := order_ids.count(fn o: order_status.get_or(o, "") == "placed")
+            shipped := order_ids.count(fn o: order_status.get_or(o, "") == "shipped")
+            cancelled := order_ids.count(
                 fn o: (order_status.get_or(o, "") == "cancelled")
             )
             out.append("orders placed={placed} shipped={shipped} cancelled={cancelled}")
 
-            let revenue = order_ids.filter(
+            revenue := order_ids.filter(
                 fn o: order_status.get_or(o, "") == "shipped"
             ).map(fn o: order_total.get_or(o, 0)).sum()
             out.append("revenue={money(revenue)}")
@@ -200,7 +200,7 @@ fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
 export fn gen_c13() Unit:
     var rnd = seeded(13)
-    let skus = ["A1", "B-2", "WIDGET", "GADGET-2", "Z9", "KNOB", "BOLT-10", "NUT"]
+    skus := ["A1", "B-2", "WIDGET", "GADGET-2", "Z9", "KNOB", "BOLT-10", "NUT"]
     var big = List[String]()
     for k in skus: big.append("stock {k} {rnd.randint(50, 400)}")
     for k in skus: big.append("price {k} {rnd.randint(1, 5000)}")
@@ -208,12 +208,12 @@ export fn gen_c13() Unit:
     var n = 0
 
     for _i in 0..900:
-        let r = rnd.random()
+        r := rnd.random()
 
         if r < 0.45:
             n += 1
 
-            let count = rnd.randint(1, 3)
+            count := rnd.randint(1, 3)
             var parts = List[String]()
             for k in rnd.sample(skus, count): parts.append(
                 "{k}:{["1", "2", "3", "5", "9", "10", "12", "25"].get(rnd.below(8))}"
@@ -224,17 +224,17 @@ export fn gen_c13() Unit:
         else if r < 0.8:
             big.append("ship o{rnd.randint(1, if n > 1: n else: 1)}")
         else if r < 0.9:
-            let k = rnd.choice(skus)
+            k := rnd.choice(skus)
             big.append("stock {k} {rnd.randint(1, 100)}")
         else if r < 0.95:
-            let k = rnd.choice(skus)
+            k := rnd.choice(skus)
             big.append("price {k} {rnd.randint(1, 5000)}")
         else:
             big.append("report")
 
     big.append("report")
 
-    let examples = [
+    examples := [
         mk(
             "basic",
             "stock WIDGET 100\nstock GADGET-2 5\nprice WIDGET 250\nprice GADGET-2 1999\norder o1 WIDGET:10 GADGET-2:2\norder o2 GADGET-2:4\nship o1\ncancel o1\nreport\n"
@@ -244,7 +244,7 @@ export fn gen_c13() Unit:
             "stock A 5\nprice A 100\norder x A:5\norder y A:1\ncancel x\norder y A:1\nreport\n"
         )
     ]
-    let hidden = examples.concat(
+    hidden := examples.concat(
         [
             mk(
                 "stock-errors",

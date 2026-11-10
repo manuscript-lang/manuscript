@@ -16,12 +16,12 @@ import Stats, case_labels, read_cases from "./stdlib_results.ms"
 import arguments from "@std/os/env.ms"
 
 export fn stdlib_table(output: String) String!:
-    let cases = try read_cases(output)
-    let labels = case_labels(cases.map(fn c: c.name.clone()))
+    cases := try read_cases(output)
+    labels := case_labels(cases.map(fn c: c.name.clone()))
     var width = 4
 
     for c in cases:
-        let n = labels.get_or(c.name, "").length()
+        n := labels.get_or(c.name, "").length()
         if n > width: width = n
 
     var rows = [
@@ -31,7 +31,7 @@ export fn stdlib_table(output: String) String!:
     ]
 
     for c in cases:
-        let s = c.stats.get(Stats(0, none, none, 0.0, none, none, none, none))
+        s := c.stats.get(Stats(0, none, none, 0.0, none, none, none, none))
         rows.append(
             left(labels.get_or(c.name, ""), width) + "  " + right(
                 s.median_ns.to_fixed(2), 12
@@ -43,7 +43,7 @@ export fn stdlib_table(output: String) String!:
     return ok(rows.join("\n"))
 
 export fn main() Int:
-    let args = arguments()
+    args := arguments()
     if not args.is_empty() and args[0] == "--table": return finish(
         stdlib_table(read_stdin())
     )
@@ -51,13 +51,13 @@ export fn main() Int:
     var n = 5
 
     if not args.is_empty():
-        if let parsed = repeats(args[0]):
+        if parsed := repeats(args[0]):
             n = parsed
         else:
             return usage("samples must be a positive integer")
 
-    let filter = if args.length() > 1: args[1].clone() else: ""
-    let output = stdlib_bench(ms_binary(), n, filter)
+    filter := if args.length() > 1: args[1].clone() else: ""
+    output := stdlib_bench(ms_binary(), n, filter)
     if output.is_error(): return finish(output)
 
     return finish(stdlib_table(output.get("")))

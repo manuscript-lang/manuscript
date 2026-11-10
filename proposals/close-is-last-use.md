@@ -24,13 +24,13 @@
 - The binding is not otherwise treated as moved: no `Access::Move` is recorded, so `unclosed_resources` and the implicit scope-end close behave as today, and a conditional `close()` leaves the other path to the implicit close.
 - Rejected:
   ```
-  let file = try filesystem().open(path, flags: "r", mode: 0)
+  file := try filesystem().open(path, flags: "r", mode: 0)
   file.close()
-  let data = file.read()    # error: `file` is closed here but used again at 4:16
+  data := file.read()    # error: `file` is closed here but used again at 4:16
   ```
 - Rejected: a second `close()` (it is a later use), and `if c: x.close()` followed by any use of `x`.
 - Accepted: `x.close()` as the last use; `x.close(); return`; closing in each branch of an `if`; `x.close(); x = reopen()` (the assignment ends the old value's life).
-- `with let x = ...:` bindings follow the same rule: an explicit `x.close()` inside the block must be the last use of `x`.
+- `with x := ...:` bindings follow the same rule: an explicit `x.close()` inside the block must be the last use of `x`.
 - Messages: `` `x` is closed here but used again at L:C; a closed resource cannot be used, so close it last, or use `x.clone()` for a second handle ``, with its own sub-code.
 - Out of scope, still a runtime error: closing a field (`task.channel.close()`), an element, a clone, or a binding captured by a closure.
 - Tests that rely on the runtime error obtain a second handle with `.clone()` where the type supports it (verify per type during implementation), or call through a helper function.

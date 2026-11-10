@@ -37,11 +37,11 @@ export interface Harness:
 export fn events(transcript: String) List[JsonValue]:
     var out = List[JsonValue]()
     for line in transcript.split("\n"):
-        if let event = parse(line).to_optional(): out.append(event)
+        if event := parse(line).to_optional(): out.append(event)
     return out
 
 export fn int_at(doc: JsonValue, key: String) Int:
-    if let value = doc.get(key): return value.as_int().get(0)
+    if value := doc.get(key): return value.as_int().get(0)
 
     return 0
 
@@ -54,9 +54,9 @@ export fn run_agent(
     timeout_s: Int,
     transcript: String
 ) AgentRun:
-    let argv = h.command(prompt, model, workspace)
-    let wrapper = ["-c", "cd \"$0\" && exec \"$@\"", workspace.clone()].concat(argv)
-    let ran = run_in("bash", wrapper, timeout_s, "")
+    argv := h.command(prompt, model, workspace)
+    wrapper := ["-c", "cd \"$0\" && exec \"$@\"", workspace.clone()].concat(argv)
+    ran := run_in("bash", wrapper, timeout_s, "")
     write_file(transcript, ran.out, replace: true).wait().get()
 
     var usage = h.parse(ran.out)

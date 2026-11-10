@@ -24,6 +24,6 @@ fn attempt() Unit!:
     return ok(unit)
 
 export fn main() Int:
-    let _ = attempt()
+    _ := attempt()
     print("end")
     return 0

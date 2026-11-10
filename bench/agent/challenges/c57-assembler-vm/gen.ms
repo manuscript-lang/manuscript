@@ -2,7 +2,7 @@
 // local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c57
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-let JT = "\n.data\ntable:  .word case0, case1, case2\n.text\nmain:   in r5\n        mov r1, [table+r5]\n        push r1\n        ret\ncase0:  out 100\n        halt\ncase1:  out 101\n        halt\ncase2:  out 102\n        halt\n"
+JT := "\n.data\ntable:  .word case0, case1, case2\n.text\nmain:   in r5\n        mov r1, [table+r5]\n        push r1\n        ret\ncase0:  out 100\n        halt\ncase1:  out 101\n        halt\ncase2:  out 102\n        halt\n"
 
 fn strip_nl(text: String) String:
     var chars = text.chars()
@@ -16,7 +16,7 @@ fn strip_nl(text: String) String:
 
 fn add(var cs: Cases, name: String, prog: String, inp: String? = none) Unit:
     var s = strip_nl(prog) + "\n"
-    if let text = inp:
+    if text := inp:
         s += "====\n" + text + "\n"
     cs.push(name, s)
 
@@ -167,7 +167,7 @@ export fn gen_c57() Unit:
         ".budget 400000\nmain: mov r0, 0\nl: inc r0\n cmp r0, 100000\n jl l\n out r0\n halt"
     )
 
-    let asm_errors = [
+    asm_errors := [
         "unknown-mnemonic", "main: out 1\n frob r0\n halt", "uppercase-mnemonic",
         "main: MOV r0, 1\n halt", "wrong-count-few", "main: add r0\n halt",
         "invalid-dst-imm", "main: add 5, r0\n", "invalid-mov-mem-mem",
@@ -198,7 +198,7 @@ export fn gen_c57() Unit:
     add(var cs, "dotted-label", "main: jmp loop.1\nloop.1: out 5\n halt")
     add(var cs, "label-after-last-instruction", "main: jmp tail\n halt\ntail:\n")
 
-    let examples = [
+    examples := [
         cs.make(
             "ex-sum",
             "main: in r0\n mov r1, 0\nl: add r1, r0\n dec r0\n cmp r0, 0\n jg l\n out r1\n halt\n====\n10\n"

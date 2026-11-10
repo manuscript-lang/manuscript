@@ -28,7 +28,7 @@ impl TestHooks for ApiFixture:
         self.server.close().get(none)
 
 test "first request":
-    let response = try expect_ok(
+    response := try expect_ok(
         request(
             method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
             options: RequestOptions(headers: headers())
@@ -37,7 +37,7 @@ test "first request":
     try expect_equal(response.metadata().status, 200)
 
 test "second request uses same server":
-    let response = try expect_ok(
+    response := try expect_ok(
         request(
             method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
             options: RequestOptions(headers: headers())

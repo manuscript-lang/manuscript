@@ -4,10 +4,10 @@ import seeded from "../../lib/pyrandom.ms"
 import Random from "../../lib/pyrandom.ms"
 import full_match from "../../lib/text.ms"
 
-let NUM = "[0-9]\{1,6\}"
+NUM := "[0-9]\{1,6\}"
 
 fn lcs(a: String, b: String) Int:
-    let ys = b.chars()
+    ys := b.chars()
     var prev = List[Int]()
     for _j in 0..ys.length() + 1: prev.append(0)
 
@@ -24,7 +24,7 @@ fn lcs(a: String, b: String) Int:
     return prev[prev.length() - 1]
 
 fn edit(a: String, b: String) Int:
-    let ys = b.chars()
+    ys := b.chars()
     var prev = List[Int]()
     for j in 0..ys.length() + 1: prev.append(j)
 
@@ -36,8 +36,8 @@ fn edit(a: String, b: String) Int:
         var cur = [i]
 
         for j in 1..ys.length() + 1:
-            let sub = prev[j - 1] + (if x != ys[j - 1]: 1 else: 0)
-            let best = if prev[j] + 1 < cur[j - 1] + 1: prev[j] + 1 else: cur[j - 1] + 1
+            sub := prev[j - 1] + (if x != ys[j - 1]: 1 else: 0)
+            best := if prev[j] + 1 < cur[j - 1] + 1: prev[j] + 1 else: cur[j - 1] + 1
             cur.append(if sub < best: sub else: best)
 
         prev = cur
@@ -56,14 +56,14 @@ fn knap(cap: Int, items: List[Thing]) Int:
         var c = cap
 
         while c >= item.weight:
-            let take = best[c - item.weight] + item.value
+            take := best[c - item.weight] + item.value
             if take > best[c]: best[c] = take
             c -= 1
 
     return best[cap]
 
 fn coins(amount: Int, cs: List[Int]) String:
-    let inf = 1000000000
+    inf := 1000000000
     var best = [0]
     for _a in 0..amount: best.append(inf)
     for a in 1..amount + 1:
@@ -72,9 +72,9 @@ fn coins(amount: Int, cs: List[Int]) String:
     return if best[amount] >= inf: "impossible" else: "{best[amount]}"
 
 fn solve_line(line: String) String:
-    let t = line.split(" ")
-    let bad = "error: bad command"
-    let cmd = t[0].clone()
+    t := line.split(" ")
+    bad := "error: bad command"
+    cmd := t[0].clone()
 
     if cmd == "lcs" or cmd == "edit":
         if t.length() != 3 or t[1] == "" or t[2] == "": return bad
@@ -87,7 +87,7 @@ fn solve_line(line: String) String:
         var items = List[Thing]()
 
         for tok in t.slice(2, t.length()).get([]):
-            let p = tok.split(":")
+            p := tok.split(":")
             if (
                 p.length() != 2
                 or not full_match(NUM, p[0])
@@ -102,10 +102,10 @@ fn solve_line(line: String) String:
     if cmd == "coins":
         if t.length() < 3: return bad
 
-        let rest = t.slice(1, t.length()).get([])
+        rest := t.slice(1, t.length()).get([])
         if not rest.all(fn x: full_match(NUM, x)): return bad
 
-        let cs = t.slice(2, t.length()).get([]).map(fn x: x.parse_int().get(0))
+        cs := t.slice(2, t.length()).get([]).map(fn x: x.parse_int().get(0))
         if cs.min().get(0) < 1: return bad
 
         return coins(t[1].parse_int().get(0), cs)
@@ -128,24 +128,24 @@ fn word(var rnd: Random, n: Int, alpha: List[String]) String:
 
 export fn gen_c14() Unit:
     var rnd = seeded(14)
-    let acgt = ["a", "c", "g", "t"]
-    let ab = ["a", "b"]
+    acgt := ["a", "c", "g", "t"]
+    ab := ["a", "b"]
     var parts = List[String]()
 
     for _i in 0..50:
-        let w = rnd.randint(1, 60)
+        w := rnd.randint(1, 60)
         parts.append("{w}:{rnd.randint(0, 500)}")
 
-    let items = parts.join(" ")
-    let examples = [
+    items := parts.join(" ")
+    examples := [
         mk(
             "basic",
             "lcs AGGTAB GXTXAYB\nedit kitten sitting\nknap 10 5:10 4:40 6:30 3:50\ncoins 11 1 2 5\ncoins 3 2\nedit a\nknap 5 0:3\n"
         ),
         mk("small", "lcs abc abc\nedit abc xyz\ncoins 0 7\nknap 0 1:1\n")
     ]
-    let big_strings = "lcs {word(var rnd, 300, acgt)} {word(var rnd, 300, acgt)}\nedit {word(var rnd, 250, acgt)} {word(var rnd, 250, acgt)}\nedit {word(var rnd, 300, ab)} {word(var rnd, 10, ab)}\n"
-    let hidden = examples.concat(
+    big_strings := "lcs {word(var rnd, 300, acgt)} {word(var rnd, 300, acgt)}\nedit {word(var rnd, 250, acgt)} {word(var rnd, 250, acgt)}\nedit {word(var rnd, 300, ab)} {word(var rnd, 10, ab)}\n"
+    hidden := examples.concat(
         [
             mk(
                 "lcs-edge",

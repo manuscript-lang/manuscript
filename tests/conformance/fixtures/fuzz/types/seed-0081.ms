@@ -6,17 +6,17 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (
+    b1 := (
         "emoji 😀".reverse().is_empty()
         or ("42".is_empty() and ((-351756) <= 833384062475))
     )
     say("b1 = {b1}")
 
-    let s2 = ("{16}:" + "beta".trim().replace("x", "x"))
+    s2 := ("{16}:" + "beta".trim().replace("x", "x"))
     say("s2 = [{s2}]")
 
-    let bad = 1 + "one"
+    bad := 1 + "one"
     return 0

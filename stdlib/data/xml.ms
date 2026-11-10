@@ -8,8 +8,8 @@ the five predefined and numeric references are rejected). Names keep their prefi
 (`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
 
     import parse from "@std/data/xml.ms"
-    let doc = try parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")
-    let item = doc.find("item").get()
+    doc := try parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")
+    item := doc.find("item").get()
     print(item.attribute("id").get("")) // "1"
     print(item.text())                  // "Hi & bye"
 */
@@ -111,7 +111,7 @@ impl Reader:
         return self.chars.get(self.at + offset, "")
 
     fn looking_at(literal: String) Bool:
-        let wanted = literal.chars()
+        wanted := literal.chars()
         for k in 0..wanted.length():
             if self.peek(k) != wanted[k]: return false
         return true
@@ -150,7 +150,7 @@ impl Reader:
     var fn comment() String!:
         try self.expect("<!--")
 
-        let text = try self.take_until("-->")
+        text := try self.take_until("-->")
         if text.contains("--") or text.ends_with("-"): return error(
             Error("XML: invalid data", kind: "EBADMSG")
         )
@@ -162,7 +162,7 @@ impl Reader:
         var first = true
 
         while not self.done():
-            let c = self.peek()
+            c := self.peek()
             if not is_name_char(c, first): break
 
             out.append(c)
@@ -177,7 +177,7 @@ impl Reader:
     var fn instruction() Unit!:
         try self.expect("<?")
 
-        let target = try self.name()
+        target := try self.name()
         if target.length() == 3 and target.lower() == "xml": return error(
             Error("XML: invalid data", kind: "EBADMSG")
         )
@@ -185,17 +185,17 @@ impl Reader:
             Error("XML: invalid data", kind: "EBADMSG")
         )
 
-        let _data = try self.take_until("?>")
+        _data := try self.take_until("?>")
         return ok(unit)
 
     // Declaration values are literals, not entity-decoded XML attribute values.
     var fn declaration_attribute() XmlAttribute!:
-        let name = try self.name()
+        name := try self.name()
         self.skip_space()
         try self.expect("=")
         self.skip_space()
 
-        let quote = self.peek()
+        quote := self.peek()
         if quote != "\"" and quote != "'": return error(
             Error("XML: invalid data", kind: "EBADMSG")
         )
@@ -212,7 +212,7 @@ impl Reader:
 
         self.skip_space()
 
-        let version = try self.declaration_attribute()
+        version := try self.declaration_attribute()
         if version.name != "version" or not is_version(version.value): return error(
             Error("XML: invalid data", kind: "EBADMSG")
         )
@@ -221,7 +221,7 @@ impl Reader:
         var standalone_seen = false
 
         while true:
-            let before = self.at
+            before := self.at
             self.skip_space()
 
             if self.looking_at("?>"):
@@ -232,7 +232,7 @@ impl Reader:
                 Error("XML: invalid data", kind: "EBADMSG")
             )
 
-            let attribute = try self.declaration_attribute()
+            attribute := try self.declaration_attribute()
 
             if (
                 attribute.name == "encoding"
@@ -255,7 +255,7 @@ impl Reader:
 
     // Only the prolog may have a declaration, before any whitespace or other markup.
     var fn skip_misc(declaration_allowed: Bool = false) Unit!:
-        let start = self.at
+        start := self.at
 
         while true:
             self.skip_space()
@@ -271,12 +271,12 @@ impl Reader:
                 else:
                     try self.instruction()
             else if self.looking_at("<!--"):
-                let _comment = try self.comment()
+                _comment := try self.comment()
             else if self.looking_at("<!DOCTYPE"):
                 var depth = 0
 
                 while not self.done():
-                    let c = self.peek()
+                    c := self.peek()
                     self.at += 1
                     if c == "[": depth += 1
                     if c == "]": depth -= 1
@@ -293,14 +293,14 @@ impl Reader:
 
         try self.expect("<")
 
-        let name = try self.name()
+        name := try self.name()
         var attributes = List[XmlAttribute]()
 
         while true:
-            let before = self.at
+            before := self.at
             self.skip_space()
 
-            let separated = self.at > before
+            separated := self.at > before
 
             if self.looking_at("/>"):
                 self.at += 2
@@ -313,25 +313,25 @@ impl Reader:
             // Attributes are separated by whitespace, so `a="1"b="2"` is malformed.
             if not separated: return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-            let attribute_name = try self.name()
+            attribute_name := try self.name()
             self.skip_space()
             try self.expect("=")
             self.skip_space()
 
-            let quote = self.peek()
+            quote := self.peek()
             if quote != "\"" and quote != "'": return error(
                 Error("XML: invalid data", kind: "EBADMSG")
             )
 
             self.at += 1
 
-            let source = try self.take_until(quote)
+            source := try self.take_until(quote)
             if source.contains("<"): return error(
                 Error("XML: invalid data", kind: "EBADMSG")
             )
 
             // XML 1.0 section 3.3.3: literal tabs and line ends in a value become spaces; references are decoded afterwards.
-            let raw = source.replace("\n", " ").replace("\t", " ")
+            raw := source.replace("\n", " ").replace("\t", " ")
             for existing in attributes:
                 if existing.name == attribute_name: return error(
                     Error("XML: invalid data", kind: "EBADMSG")
@@ -350,7 +350,7 @@ impl Reader:
             if self.looking_at("</"):
                 self.at += 2
 
-                let closing = try self.name()
+                closing := try self.name()
                 if closing != name: return error(
                     Error("XML: invalid data", kind: "EBADMSG")
                 )
@@ -375,7 +375,7 @@ impl Reader:
                     text.append(self.peek())
                     self.at += 1
 
-                let raw = text.build()
+                raw := text.build()
                 if raw.contains("]]>"): return error(
                     Error("XML: invalid data", kind: "EBADMSG")
                 )
@@ -397,8 +397,8 @@ fn is_encoding_name(text: String) Bool:
     var first = true
 
     for code in text.scalar_values():
-        let letter = (code >= 0x41 and code <= 0x5a) or (code >= 0x61 and code <= 0x7a)
-        let extra = (
+        letter := (code >= 0x41 and code <= 0x5a) or (code >= 0x61 and code <= 0x7a)
+        extra := (
             (code >= 0x30 and code <= 0x39)
             or code == 0x2e
             or code == 0x5f
@@ -414,7 +414,7 @@ fn is_encoding_name(text: String) Bool:
 fn is_name_char(c: String, first: Bool) Bool:
     if c.is_empty(): return false
 
-    let code = c.scalar_at(0)
+    code := c.scalar_at(0)
     if is_name_start(code): return true
     if first: return false
 
@@ -454,19 +454,19 @@ fn decode(text: String) String!:
     var out = StringBuilder()
 
     // Every piece after the first starts right after an `&`, so each is scanned once.
-    let pieces = text.split("&")
+    pieces := text.split("&")
     out.append(pieces[0])
 
     var index = 1
 
     while index < pieces.length():
-        let tail = pieces[index]
+        tail := pieces[index]
         index += 1
 
-        let end = tail.index_of(";")
+        end := tail.index_of(";")
         if end.is_none(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-        let entity = tail.take(end.get(0))
+        entity := tail.take(end.get(0))
 
         if entity == "lt": out.append("<")
         else if entity == "gt": out.append(">")
@@ -488,7 +488,7 @@ fn decode(text: String) String!:
 fn digits(text: String, radix: Int) Int?:
     if text.is_empty() or text.starts_with("+") or text.starts_with("-"): return none
 
-    let value = parse_int(text, radix)
+    value := parse_int(text, radix)
     if value.is_error(): return none
 
     return value.get(0)
@@ -508,7 +508,7 @@ fn scalar(value: Int?) String!:
         Error("XML: invalid data", kind: "EBADMSG")
     )
 
-    let text = from_scalars([value.get(0)])
+    text := from_scalars([value.get(0)])
     if text.is_error(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
     return ok(text.get())
@@ -530,14 +530,14 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
         )
 
     // XML 1.0 section 2.11: `\r\n` and a lone `\r` reach the parser as `\n`; `&#13;` is unaffected.
-    let normalized = if text.contains("\r"): text.replace("\r\n", "\n").replace(
+    normalized := if text.contains("\r"): text.replace("\r\n", "\n").replace(
         "\r", "\n"
     ) else: text.clone()
     var reader = Reader(chars: normalized.chars(), at: 0, max_depth: max_depth)
     if reader.peek() == "\u{feff}": reader.at += 1
     try reader.skip_misc(declaration_allowed: true)
 
-    let root = try reader.element(1)
+    root := try reader.element(1)
     try reader.skip_misc()
     if not reader.done(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
@@ -563,8 +563,8 @@ export fn stringify(node: XmlNode, indent: String = "") String:
     return out.build()
 
 fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Unit:
-    let pad = if indent.is_empty(): "" else: indent.repeat(level).get("")
-    let newline = if indent.is_empty(): "" else: "\n"
+    pad := if indent.is_empty(): "" else: indent.repeat(level).get("")
+    newline := if indent.is_empty(): "" else: "\n"
 
     match node:
         XmlText(text): out.append(escape_text(text))

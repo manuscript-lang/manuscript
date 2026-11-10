@@ -28,7 +28,7 @@ test "map entries nest with list elements":
 
 test "changing a missing map entry faults like reading it":
     var m = Map[String, List[String]]()
-    let message = try expect_fault(
+    message := try expect_fault(
         fn:
             m["nope"].append("q")
     )

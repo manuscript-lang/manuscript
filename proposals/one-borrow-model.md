@@ -17,7 +17,7 @@ Approved, 2026-10-25, checked against `7f0a4c39`. Stage 1 (binding markers) and 
 - "reference is basically a handle for an object someone else owns, following the same multiple immutable one mutable pattern"
 - "where moving is easier we should follow that, reference is looking into memory someone else holds without copying" (so `Error.message` becomes owning)
 - "i think we've built three things with similar meaning aliasing borrows and ref, can we combine them"
-- "yes doing that implicit is fine": an unmarked `let x = a.b` keeps borrowing.
+- "yes doing that implicit is fine": an unmarked `x := a.b` keeps borrowing.
 - "var ref on return is unnecessary, we should just do ref, and let mutability at the caller with let and var binding"
 - "returning a ref from arguments or things that go out of scope/cleaned up after the function ends should be an error"
 
@@ -25,7 +25,7 @@ Approved, 2026-10-25, checked against `7f0a4c39`. Stage 1 (binding markers) and 
 
 | | Shared borrows | Exclusive aliasing | `ref` |
 | --- | --- | --- | --- |
-| Source | `let x = a.b`, `xs[i]`, payloads, loop variables, `with`; no marker | `var x = a.b`, `if var x = m.get(k)`, `var y = f(b)` | `-> ref T` on results (required on lenders); binding markers |
+| Source | `x := a.b`, `xs[i]`, payloads, loop variables, `with`; no marker | `var x = a.b`, `if var x = m.get(k)`, `var y = f(b)` | `-> ref T` on results (required on lenders); binding markers |
 | Checker | origin frozen until last use (`ownership/walk.rs`) | origin exclusive until last use; `Ownership.exclusive`; `Ownership.getters` for the call form, from a read-only slot whose every return is one field path (`walk.rs:357-361`) | `ref_results` (`ownership/mod.rs:244-268`); `Summary.result`; `Ownership.lenders` |
 | Lowering | `Mode::Borrow` values; `bind_local` (`func.rs:549-560`) and `bind` (`stmt.rs:229-251`) lend only some shapes by their own tests; `read_borrows` covers pattern and arm bindings only (`mod.rs:364-375`) | path substitution in `ms-lower/src/alias.rs`; a getter call is replaced by its field path and never called (`alias.rs:70-82`) | `$lent` instances, `Func.ret_borrowed`, `opt.view`, `Map.get` view; direct calls only, and only for `@std/` or `lenders` (`call.rs:352-364`) |
 | Exceptions | lowering copies some checker borrows (above) | getter form needs one field path of the only argument | interface and closure calls copy; a `ref` operation may be implemented by an owner (`mod.rs:297`) |
@@ -42,7 +42,7 @@ Binding markers do nothing today:
 
 Bindings:
 
-- `let x = place` is a shared borrow. `var x = place` is an exclusive borrow. A binding of a call or literal owns, as today.
+- `x := place` is a shared borrow. `var x = place` is an exclusive borrow. A binding of a call or literal owns, as today.
 - `var y = f(b)` where `f` returns `ref` is an exclusive borrow of the call's borrowable arguments. This is today's behaviour, stated as one rule, not a getter special case.
 - Lowering limit (not a language rule): an exclusive borrow lowers as a place path, so `f` must return one field path of its argument. Other `ref` calls bound with `var` keep today's diagnostic (`reject/ref_result_two_paths_var.ms`).
 

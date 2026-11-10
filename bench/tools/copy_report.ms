@@ -11,12 +11,12 @@ import stdout from "@std/io/io.ms"
 // The type text of every `%N: type` block parameter on a `b<N>(...)` header line, keyed by `%N`.
 fn block_params(line: String, defs: Map[String, String]) Map[String, String]:
     var out = defs.clone()
-    let open = line.index_of("(").get(-1)
-    let close = line.last_index_of(")").get(-1)
+    open := line.index_of("(").get(-1)
+    close := line.last_index_of(")").get(-1)
     if open < 0 or close < open: return out
 
     for part in line.slice(open + 1, close).get("").split(", "):
-        let colon = part.index_of(":").get(-1)
+        colon := part.index_of(":").get(-1)
         if colon > 0 and part.starts_with("%"): out.add(
             part.slice(0, colon).get(""), "param"
         )
@@ -33,18 +33,18 @@ fn report(mir: String) List[String]:
         else if line.starts_with("b") and line.contains("("):
             defs = block_params(line, defs)
         else if line.starts_with("  %") and line.contains(" = "):
-            let colon = line.index_of(":").get(-1)
-            let id = line.slice(2, colon).get("")
-            let eq = line.index_of(" = ").get(-1)
-            let words = line.slice(eq + 3, line.length()).get("").split(" ")
-            let op = words[0].clone()
+            colon := line.index_of(":").get(-1)
+            id := line.slice(2, colon).get("")
+            eq := line.index_of(" = ").get(-1)
+            words := line.slice(eq + 3, line.length()).get("").split(" ")
+            op := words[0].clone()
             defs.add(id.clone(), op.clone())
 
             if op == "copy":
-                let ty = line.slice(colon + 2, line.length()).get("")
-                let shown = ty.slice(0, ty.index_of(" = copy").get(ty.length())).get("")
-                let src = if words.length() > 1: words[1].clone() else: ""
-                let key = "{shown} <- {defs.get_or(src, "?")}"
+                ty := line.slice(colon + 2, line.length()).get("")
+                shown := ty.slice(0, ty.index_of(" = copy").get(ty.length())).get("")
+                src := if words.length() > 1: words[1].clone() else: ""
+                key := "{shown} <- {defs.get_or(src, "?")}"
                 counts.add(key.clone(), counts.get_or(key, 0) + 1)
 
     // uniq -c | sort -rn: count descending, ties in descending text order.
@@ -61,15 +61,15 @@ type Row:
     text: String
 
 export fn main() Int:
-    let targets = arguments()
+    targets := arguments()
     if targets.is_empty(): return usage("usage: copy_report.ms -- <ms.toml|file.ms>...")
 
-    let tmp = temporary("copy-report-").get()
-    let out = "{tmp.path()}/out.mir"
+    tmp := temporary("copy-report-").get()
+    out := "{tmp.path()}/out.mir"
     if env("RAW", "0") != "1": set_environment("MS_EMIT_OPT", "1").get()
 
     for target in targets:
-        let ran = capture(ms_binary(), ["emit", target.clone(), "-o", out.clone()])
+        ran := capture(ms_binary(), ["emit", target.clone(), "-o", out.clone()])
         if not ran.ok or ran.code != 0: return finish(must("ms emit {target}", ran))
 
         print("== {target}")

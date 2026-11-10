@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     say(
         "{((-30) * (-18))} {(-28)} {(((-30) * (-18)) < (-28))} sum {((-30) * (-18)) + (-28)}"
     )
 
-    let bad = [1, "two"]
+    bad := [1, "two"]
     var acc1 = 0
     var stepacc1 = 0
 
@@ -23,7 +23,7 @@ export fn main() Int:
 
     say("acc1 = {acc1}")
 
-    let l2 = [1, 2, 3].take(0)
+    l2 := [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
     say(
         "{((33 % 2) + (-799157))} {(((-39) + 31) * ((-276748291134) / 34))} {(((33 % 2) + (-799157)) < (((-39) + 31) * ((-276748291134) / 34)))} sum {((33 % 2) + (-799157)) + (((-39) + 31) * ((-276748291134) / 34))}"

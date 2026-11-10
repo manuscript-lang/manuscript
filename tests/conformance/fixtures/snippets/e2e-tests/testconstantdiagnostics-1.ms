@@ -4,4 +4,4 @@
 fn f() Int:
     return 1
 
-let X = f()
+X := f()

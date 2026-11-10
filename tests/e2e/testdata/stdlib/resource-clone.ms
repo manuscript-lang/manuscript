@@ -5,8 +5,8 @@ import OpenMode, OpenOptions, open, read_file, temporary from "@std/os/fs.ms"
 // `input` and `output` streams are the two owners (see net.ms).
 
 test "a cloned file handle writes through its own descriptor after the original closes":
-    let temporary = temporary("manuscript-dup-") | try expect_ok
-    let path = "{temporary.path()}/a.txt"
+    temporary := temporary("manuscript-dup-") | try expect_ok
+    path := "{temporary.path()}/a.txt"
     var file = open(path, OpenMode.Write, OpenOptions(permissions: 420)) | try expect_ok
     var copy = file.clone() | try expect_ok
     try file.write("one ")

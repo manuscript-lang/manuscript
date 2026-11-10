@@ -8,5 +8,5 @@ impl Closeable for Marker:
 
 fn bad() Unit:
     var items = [Marker(1)]
-    let drop = items.remove
+    drop := items.remove
     drop(0)

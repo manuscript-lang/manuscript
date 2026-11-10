@@ -6,10 +6,10 @@ export fn main() Int:
     for i in [3, 4]:
         total += i
 
-    let _x = 1
+    _x := 1
 
     if total > 0:
-        let _x = 2
+        _x := 2
         total += _x
 
     return total

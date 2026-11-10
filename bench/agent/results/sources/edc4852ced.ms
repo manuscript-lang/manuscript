@@ -7,12 +7,12 @@ type Record:
 
 // Returns the amount as big-endian hundredths digits, or none unless it is `digits[.digits{0,2}]`.
 fn parse_amount(amount: String) Optional[List[Int]]:
-    let parts = amount.split(".")
+    parts := amount.split(".")
     if parts.length() > 2: return none
 
-    let whole = parts[0]
+    whole := parts[0]
 
-    let frac = if parts.length() == 2: parts[1].clone() else: ""
+    frac := if parts.length() == 2: parts[1].clone() else: ""
 
     if whole == "" or (parts.length() == 2 and frac == "") or frac.length() > 2: return none
 
@@ -23,7 +23,7 @@ fn parse_amount(amount: String) Optional[List[Int]]:
     var cents = List[Int]()
 
     for ch in (whole + frac_text).split(""):
-        if let d = ch.parse_int():
+        if d := ch.parse_int():
             cents.append(d)
         else:
             return none
@@ -32,27 +32,27 @@ fn parse_amount(amount: String) Optional[List[Int]]:
 
 // Splits one line into `category,amount`; a quoted category may contain commas.
 fn parse_record(line: String) Optional[Record]:
-    let parts = line.split("\"")
+    parts := line.split("\"")
     var category = ""
     var amount = ""
 
     if parts.length() > 1 and parts[0] == "":
         if parts.length() != 3: return none
 
-        let tail = parts[2].split(",")
+        tail := parts[2].split(",")
         if tail.length() != 2 or tail[0] != "": return none
 
         category = parts[1].clone()
         amount = tail[1].clone()
     else:
-        let fields = line.split(",")
+        fields := line.split(",")
         if fields.length() != 2: return none
 
         category = fields[0].clone()
         amount = fields[1].clone()
 
     if category == "": return none
-    if let cents = parse_amount(amount):
+    if cents := parse_amount(amount):
         return some(Record(category: category, cents: cents))
 
     return none
@@ -83,9 +83,9 @@ fn add(a: List[Int], b: List[Int]) List[Int]:
 
 // Formats hundredths digits as `whole.frac` with exactly two fractional digits.
 fn format_cents(cents: List[Int]) String:
-    let n = if cents.length() < 3: 3 else: cents.length()
+    n := if cents.length() < 3: 3 else: cents.length()
 
-    let lead = n - cents.length()
+    lead := n - cents.length()
     var text = ""
 
     for i in 0..n:
@@ -99,15 +99,15 @@ fn format_cents(cents: List[Int]) String:
     return text
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var totals = Map[String, List[Int]]()
     var skipped = 0
 
     for line in lines:
         if line.trim() == "": continue
 
-        if let record = parse_record(line):
-            let total = add(totals.get(record.category).get(List[Int]()), record.cents)
+        if record := parse_record(line):
+            total := add(totals.get(record.category).get(List[Int]()), record.cents)
             totals[record.category.clone()] = total
         else:
             skipped += 1

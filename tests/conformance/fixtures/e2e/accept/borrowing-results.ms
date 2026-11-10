@@ -21,7 +21,7 @@ fn pick(a: Person, b: Person, left: Bool) String:
     return b.name
 
 fn head(rows: List[List[Int]]) List[Int]:
-    let h = rows[0]
+    h := rows[0]
     return h
 
 fn deep(t: Team) String:
@@ -39,21 +39,21 @@ fn make_team() Team:
     return Team(members: [Person(name: "ann", tags: ["x", "y"])], label: "L")
 
 export fn main() Int:
-    let p = Person(name: "bob", tags: ["t1", "t2"])
-    let q = Person(name: "cat", tags: ["u1"])
-    let t = first_tag(p)
+    p := Person(name: "bob", tags: ["t1", "t2"])
+    q := Person(name: "cat", tags: ["u1"])
+    t := first_tag(p)
     print("{t} {pick(p, q, false)} {pick(p, q, true)}")
 
-    let rows = [[1, 2], [3]]
-    let h = head(rows)
+    rows := [[1, 2], [3]]
+    h := head(rows)
     print("{h.length()} {h[1]}")
 
     var team = Team(members: [p, q], label: "team")
     print("{deep(team)} {members(team).length()}")
 
     // A lend from a temporary is owned by the caller.
-    let fresh = first_tag(Person(name: "tmp", tags: ["owned"]))
-    let also = deep(make_team())
+    fresh := first_tag(Person(name: "tmp", tags: ["owned"]))
+    also := deep(make_team())
     print("{fresh} {also}")
 
     // `var` of a lent part changes the origin.

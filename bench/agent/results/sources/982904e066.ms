@@ -23,7 +23,7 @@ fn number(text: String) Int:
     return text.parse_int().get(-1)
 
 fn valid_qty(text: String) Bool:
-    let q = number(text)
+    q := number(text)
     return q >= 1 and q <= 100000
 
 fn is_sku(text: String) Bool:
@@ -51,18 +51,18 @@ fn is_id(text: String) Bool:
     )
 
 fn money(cents: Int) String:
-    let frac = "{cents % 100}"
+    frac := "{cents % 100}"
     return "{cents / 100}.{frac.pad_start(2, "0")}"
 
 // Line cost in cents; quantities of 10 or more get a 10% discount, rounded half up.
 fn line_cost(qty: Int, base: Int) Int:
-    let raw = qty * base
+    raw := qty * base
     if qty >= 10: return (raw * 90 + 50) / 100
 
     return raw
 
 fn valid_item(token: String) Bool:
-    let pair = token.split(":")
+    pair := token.split(":")
     return pair.length() == 2 and is_sku(pair[0]) and valid_qty(pair[1])
 
 fn arity_ok(name: String, count: Int) Bool:
@@ -75,16 +75,16 @@ fn arity_ok(name: String, count: Int) Bool:
 fn stock_cmd(var shop: Shop, sku: String, text: String) List[String]:
     if not is_sku(sku): return ["error: bad sku"]
 
-    let qty = number(text)
+    qty := number(text)
     if qty < 1 or qty > 100000: return ["error: bad quantity"]
 
-    let now = shop.stock.get(sku).get(0) + qty
+    now := shop.stock.get(sku).get(0) + qty
     shop.stock.add(sku.clone(), now)
     if not shop.price.contains(sku): shop.price.add(sku.clone(), 0)
     return ["ok {sku} stock={now}"]
 
 fn price_cmd(var shop: Shop, sku: String, text: String) List[String]:
-    let cents = number(text)
+    cents := number(text)
     if cents < 0 or cents > 10000000: return ["error: bad price"]
     if not shop.price.contains(sku): return ["error: unknown sku {sku}"]
 
@@ -102,13 +102,13 @@ fn order_cmd(var shop: Shop, id: String, tokens: List[String]) List[String]:
     var items = List[Item]()
 
     for token in tokens:
-        let pair = token.split(":")
-        let sku = pair[0]
-        let qty = number(pair[1])
+        pair := token.split(":")
+        sku := pair[0]
+        qty := number(pair[1])
         if seen.contains(sku): return ["error: duplicate sku {sku}"]
         if not shop.price.contains(sku): return ["error: unknown sku {sku}"]
 
-        let have = shop.stock.get(sku).get(0)
+        have := shop.stock.get(sku).get(0)
         if qty > have: return [
             "error: insufficient stock for {sku} (have {have}, need {qty})"
         ]
@@ -126,12 +126,12 @@ fn order_cmd(var shop: Shop, id: String, tokens: List[String]) List[String]:
     return ["ok {id} total={money(total)}"]
 
 fn cancel_cmd(var shop: Shop, id: String) List[String]:
-    if let order = shop.orders.get(id):
+    if order := shop.orders.get(id):
         if order.state == "shipped": return ["error: order {id} already shipped"]
         if order.state == "cancelled": return ["error: order {id} already cancelled"]
 
-        let items = order.items.clone()
-        let total = order.total
+        items := order.items.clone()
+        total := order.total
         for item in items:
             shop.stock.add(item.sku.clone(), shop.stock.get(item.sku).get(0) + item.qty)
         shop.orders.add(
@@ -142,12 +142,12 @@ fn cancel_cmd(var shop: Shop, id: String) List[String]:
     return ["error: unknown order {id}"]
 
 fn ship_cmd(var shop: Shop, id: String) List[String]:
-    if let order = shop.orders.get(id):
+    if order := shop.orders.get(id):
         if order.state == "shipped": return ["error: order {id} already shipped"]
         if order.state == "cancelled": return ["error: order {id} is cancelled"]
 
-        let items = order.items.clone()
-        let total = order.total
+        items := order.items.clone()
+        total := order.total
         shop.orders.add(id.clone(), Order(state: "shipped", total: total, items: items))
         return ["ok"]
 
@@ -163,8 +163,8 @@ fn report(shop: Shop) List[String]:
                 for item in entry.value.items:
                     if item.sku == sku: reserved += item.qty
 
-        let stock = shop.stock.get(sku).get(0)
-        let price = shop.price.get(sku).get(0)
+        stock := shop.stock.get(sku).get(0)
+        price := shop.price.get(sku).get(0)
         lines.append("{sku} stock={stock} price={money(price)} reserved={reserved}")
 
     var placed = 0
@@ -173,7 +173,7 @@ fn report(shop: Shop) List[String]:
     var revenue = 0
 
     for entry in shop.orders.entries():
-        let state = entry.value.state
+        state := entry.value.state
         if state == "placed": placed += 1
 
         if state == "shipped":
@@ -187,7 +187,7 @@ fn report(shop: Shop) List[String]:
     return lines
 
 fn run(var shop: Shop, parts: List[String]) List[String]:
-    let name = parts[0]
+    name := parts[0]
     if not ["stock", "price", "order", "cancel", "ship", "report"].contains(name): return [
         "error: unknown command"
     ]
@@ -217,7 +217,7 @@ export fn main() Int:
     var out = stdout()
 
     for line in read_lines(stdin()).get():
-        let parts = line.split(" ")
+        parts := line.split(" ")
         if not blank(parts):
             for text in run(var shop, parts):
                 out.write("{text}\n").get()

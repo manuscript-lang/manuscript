@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -33,7 +33,7 @@ export fn main() Int:
         "{5} {(11 + (490837 + (-27)))} {(5 < (11 + (490837 + (-27))))} sum {5 + (11 + (490837 + (-27)))}"
     )
 
-    let s1 = "alpha".reverse()
+    s1 := "alpha".reverse()
     say("s1 = [{s1}]")
     say("collatz(829) = {collatz(829)}")
 
@@ -42,7 +42,7 @@ export fn main() Int:
         acc2 += i * (-2)
     say("acc2 = {acc2}")
 
-    let s3 = "héllo"
+    s3 := "héllo"
     say("s3 = [{s3}]")
 
     if (not (true and false)):
@@ -50,7 +50,7 @@ export fn main() Int:
     else:
         say("日本語")
 
-    let l4 = [(-3), (-28), 29]
+    l4 := [(-3), (-28), 29]
     say("l4 = {l4} len {l4.length()}")
     say(
         "{(s3.length() * 23)} {(((-19) + (-4)) + (3 + 14))} {((s3.length() * 23) < (((-19) + (-4)) + (3 + 14)))} sum {(s3.length() * 23) + (((-19) + (-4)) + (3 + 14))}"
@@ -59,10 +59,10 @@ export fn main() Int:
         "{(l4.get(0) + ((-35) * (-620285)))} {(-287934158770)} {((l4.get(0) + ((-35) * (-620285))) < (-287934158770))} sum {(l4.get(0) + ((-35) * (-620285))) + (-287934158770)}"
     )
 
-    let i5 = (((30 * (-4)) - (44 + (-8))) % ((7 * 42) + (-33)))
+    i5 := (((30 * (-4)) - (44 + (-8))) % ((7 * 42) + (-33)))
     say("i5 = {i5}")
 
-    let b6 = (
+    b6 := (
         ((457.593 / 712.148) + (6.117 * 400.994)) < (
             (0.0 - 0.0)
             - (963.25 / 82.030)
@@ -70,25 +70,25 @@ export fn main() Int:
     )
     say("b6 = {b6}")
 
-    let i7 = (((i5 + 7) * i5) * s3.length())
+    i7 := (((i5 + 7) * i5) * s3.length())
     say("i7 = {i7}")
 
-    let i8 = ((((-31) * 622531) - 37) * (((-33) - (-3)) + (i5 + 17)))
+    i8 := ((((-31) * 622531) - 37) * (((-33) - (-3)) + (i5 + 17)))
     say("i8 = {i8}")
     say("gcd(4136, 2314) = {gcd(4136, 2314)}")
 
-    let b9 = (((7.0e-7 * 188.025) == (73.060 - 7.5)) or false)
+    b9 := (((7.0e-7 * 188.025) == (73.060 - 7.5)) or false)
     say("b9 = {b9}")
 
-    let s10 = (s1 + s3).trim().lower()
+    s10 := (s1 + s3).trim().lower()
     say("s10 = [{s10}]")
 
-    let s11 = ("{((-12) % i8)}:" + (s1 + s1).reverse())
+    s11 := ("{((-12) % i8)}:" + (s1 + s1).reverse())
     say("s11 = [{s11}]")
 
-    let b12 = true
+    b12 := true
     say("b12 = {b12}")
 
-    let f13 = 815.999
+    f13 := 815.999
     say("f13 = {f13}")
     return 0

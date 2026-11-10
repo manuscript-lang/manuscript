@@ -23,29 +23,29 @@ fn after(text: String, prefix: String) List[String]:
     return found
 
 export fn main() Int:
-    let code = use_stats_runtime()
+    code := use_stats_runtime()
     if code != 0: return code
 
-    let root = working_directory().get()
+    root := working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
     if files.length() == 0:
         for f in glob("tests/ownership-counts", GlobOptions(patterns: ["*.ms"])).get([]):
             files.append("tests/ownership-counts/{f.path}")
 
-    let ms = tool_ms(root.clone())
-    let scratch = temporary("ms-counts-").get()
+    ms := tool_ms(root.clone())
+    scratch := temporary("ms-counts-").get()
     change_directory(scratch.path()).get()
 
     var failures = 0
     var checked = 0
 
     for f in files:
-        let source = read_file("{root}/{f}").wait().get().decode_utf8().get("")
-        let expected_out = after(source, "// expect-stdout: ")
+        source := read_file("{root}/{f}").wait().get().decode_utf8().get("")
+        expected_out := after(source, "// expect-stdout: ")
 
         for build in ["debug", "release"]:
-            let ran = run(
+            ran := run(
                 ms.clone(), ["run", "{root}/{f}", "--build-type", build.clone()]
             ).wait()
             checked += 1
@@ -53,7 +53,7 @@ export fn main() Int:
             if ran.is_error():
                 failures += 1
 
-                let cause = ran.err().message.clone()
+                cause := ran.err().message.clone()
                 (
                     stdout()
                     .write(
@@ -63,9 +63,9 @@ export fn main() Int:
                 )
                 continue
 
-            let child = ran.get()
-            let out = child.stdout.decode_utf8().get("")
-            let err = child.stderr.decode_utf8().get("")
+            child := ran.get()
+            out := child.stdout.decode_utf8().get("")
+            err := child.stderr.decode_utf8().get("")
 
             if child.exit_code != 0:
                 failures += 1
@@ -78,8 +78,8 @@ export fn main() Int:
                 )
                 continue
 
-            let counts = after(err, "ms-rt counts: ")
-            let live = after(err, "ms-rt live blocks at exit: ")
+            counts := after(err, "ms-rt counts: ")
+            live := after(err, "ms-rt live blocks at exit: ")
 
             if live.length() == 0 or live[0] != "0":
                 failures += 1
@@ -97,7 +97,7 @@ export fn main() Int:
 
                     checked += 1
 
-                    let want = pair.clone()
+                    want := pair.clone()
 
                     if not have.contains(want):
                         failures += 1

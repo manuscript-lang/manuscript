@@ -17,7 +17,7 @@ fn unique() Int:
     return 1
 
 test "main.ms#record#Box":
-    let _value = 1
+    _value := 1
 
 test "other.ms::Named":
-    let _value = 1
+    _value := 1

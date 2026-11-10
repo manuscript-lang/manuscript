@@ -1,5 +1,5 @@
 fn head() Int: 1
-let text = """
+text := """
     é {value} and {value + value}
     plain text
     {"inner {value}"}

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -17,31 +17,31 @@ fn gcd(a: Int, b: Int) Int:
 export fn main() Int:
     say("gcd(300, 2662) = {gcd(300, 2662)}")
 
-    let f1 = 280.25
+    f1 := 280.25
     say("f1 = {f1}")
 
-    let b2 = ((((-32761) + 671260) + (-321328478303)) > ((-41) + 22))
+    b2 := ((((-32761) + 671260) + (-321328478303)) > ((-41) + 22))
     say("b2 = {b2}")
 
-    let l3 = [(-15), 24]
+    l3 := [(-15), 24]
     say("l3 = {l3} len {l3.length()}")
 
-    let s4 = "héllo".trim().reverse()
+    s4 := "héllo".trim().reverse()
     say("s4 = [{s4}]")
 
-    let b5 = "".reverse().contains(s4)
+    b5 := "".reverse().contains(s4)
     say("b5 = {b5}")
 
-    let f6 = 6.5
+    f6 := 6.5
     say("f6 = {f6}")
 
-    let i7 = l3.length()
+    i7 := l3.length()
     say("i7 = {i7}")
 
-    let i8 = i7
+    i8 := i7
     say("i8 = {i8}")
 
-    let l9 = [5, (-15)]
+    l9 := [5, (-15)]
     say("l9 = {l9} len {l9.length()}")
 
     if "42".is_empty():
@@ -49,15 +49,15 @@ export fn main() Int:
     else:
         say(s4.replace("emoji 😀", s4))
 
-    let i10 = (((i7 + i7) % l3.length()) - ((-25) - (i8 * (-34))))
+    i10 := (((i7 + i7) % l3.length()) - ((-25) - (i8 * (-34))))
     say("i10 = {i10}")
 
-    let l11 = l9.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l11 := l9.map(fn x: x + 1).filter(fn x: x % 2 == 0)
     say("l11 = {l11} len {l11.length()}")
 
-    let i12 = ((34 - i8) % ((-12) * l9.length()))
+    i12 := ((34 - i8) % ((-12) * l9.length()))
     say("i12 = {i12}")
 
-    let big13 = -9223372036854775808
+    big13 := -9223372036854775808
     say("{-big13}")
     return 0

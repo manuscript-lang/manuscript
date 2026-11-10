@@ -14,17 +14,17 @@ fn sample(length: Int, zero: Bool = false) Bytes:
     var out = BytesBuilder()
 
     for index in 0..length:
-        let value = if zero: 0 else: (index * 73 + 11) % 256
+        value := if zero: 0 else: (index * 73 + 11) % 256
         out.append(value.to_uint8().get())
 
     return out.build()
 
 fn unpadded(length: Int, url: Bool) Unit!:
-    let data = sample(length)
-    let expected = base64_encode(data, url).replace("=", "")
+    data := sample(length)
+    expected := base64_encode(data, url).replace("=", "")
 
     fn work() Unit!:
-        let actual = base64_encode(data, url, false)
+        actual := base64_encode(data, url, false)
         try expect_equal(actual, expected)
         return keep(actual.byte_length())
 
@@ -32,8 +32,8 @@ fn unpadded(length: Int, url: Bool) Unit!:
     return ok(unit)
 
 fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
-    let data = sample(length)
-    let expected = base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
+    data := sample(length)
+    expected := base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
     try expect_equal(
         try base32_decode(
             expected, Base32Options(hex_alphabet: hex, padded: padded)
@@ -42,7 +42,7 @@ fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
     )
 
     fn work() Unit!:
-        let actual = base32_encode(
+        actual := base32_encode(
             data, Base32Options(hex_alphabet: hex, padded: padded)
         )
         try expect_equal(actual, expected)
@@ -52,7 +52,7 @@ fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
     return ok(unit)
 
 fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
-    let data = sample(length)
+    data := sample(length)
     var text = base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
     if mode == 1 or mode == 7: text = "!" + (try "A".repeat(text.byte_length() - 1))
     if mode == 2: text = (try "A".repeat(text.byte_length() - 1)) + "!"
@@ -71,7 +71,7 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
     if mode == 4: expected = error(Error("encoding: invalid input", kind: "EINVAL"))
 
     fn work() Unit!:
-        let actual = base32_decode(
+        actual := base32_decode(
             text, Base32Options(hex_alphabet: hex, padded: padded), limit
         )
         try expect_equal(actual, expected)
@@ -81,12 +81,12 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
     return ok(unit)
 
 fn encode85(length: Int) Unit!:
-    let data = sample(length)
-    let expected = ascii85_encode(data)
+    data := sample(length)
+    expected := ascii85_encode(data)
     try expect_equal(try ascii85_decode(expected), data)
 
     fn work() Unit!:
-        let actual = ascii85_encode(data)
+        actual := ascii85_encode(data)
         try expect_equal(actual, expected)
         return keep(actual.byte_length())
 
@@ -100,7 +100,7 @@ fn decode85(
     zero: Bool = false,
     bad: Int = 0
 ) Unit!:
-    let data = sample(length, zero)
+    data := sample(length, zero)
     var text = ascii85_encode(data)
     if bad == 1: text = "v" + text
     if bad == 2: text += "v"
@@ -113,7 +113,7 @@ fn decode85(
     if bad != 0: expected = error(Error("encoding: invalid data", kind: "EBADMSG"))
 
     fn work() Unit!:
-        let actual = ascii85_decode(text, limit)
+        actual := ascii85_decode(text, limit)
         try expect_equal(actual, expected)
         return keep(if actual.is_ok(): data.length() else: 1)
 
@@ -121,8 +121,8 @@ fn decode85(
     return ok(unit)
 
 fn zero_budget85() Unit!:
-    let text = ascii85_encode(sample(4096))
-    let expected: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+    text := ascii85_encode(sample(4096))
+    expected: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 
     fn work() Unit!:
         try expect_equal(ascii85_decode(text, 0), expected)
@@ -132,9 +132,9 @@ fn zero_budget85() Unit!:
     return ok(unit)
 
 fn whitespace85(bounded: Bool) Unit!:
-    let text = try " \t\r\n".repeat(16384)
-    let limit: Int? = if bounded: 0 else: none
-    let expected: Bytes! = ok(Bytes([]))
+    text := try " \t\r\n".repeat(16384)
+    limit: Int? = if bounded: 0 else: none
+    expected: Bytes! = ok(Bytes([]))
 
     fn work() Unit!:
         try expect_equal(ascii85_decode(text, limit), expected)

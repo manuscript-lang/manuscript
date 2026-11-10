@@ -472,7 +472,7 @@ pub fn tags_for(text: &str, phase: Phase) -> Vec<String> {
     if text.contains("fn ") && text.contains("[T") {
         tags.insert("generics".into());
     }
-    if has_word(text, "let") && text.contains(", ") && text.contains("let (") {
+    if text.contains("] :=") || text.contains("} :=") {
         tags.insert("destructuring".into());
     }
     if text
@@ -789,10 +789,10 @@ mod tests {
 
     #[test]
     fn aliasing_heuristic() {
-        assert!(aliasing_dependent("let b = a.clone()\n"));
-        assert!(aliasing_dependent("let b = a\nb.add(1)\n"));
-        assert!(!aliasing_dependent("let b = a + 1\n"));
-        assert!(!aliasing_dependent("let xs = [1]\nxs.add(1)\n"));
+        assert!(aliasing_dependent("b := a.clone()\n"));
+        assert!(aliasing_dependent("b := a\nb.add(1)\n"));
+        assert!(!aliasing_dependent("b := a + 1\n"));
+        assert!(!aliasing_dependent("xs := [1]\nxs.add(1)\n"));
     }
 
     #[test]

@@ -20,9 +20,9 @@ fn rebuild(var xs: List[Int]) List[Int]:
     return xs.clone()
 
 export fn main() Int:
-    let a = fill(1000)
-    let b = doubled(a)
-    let c = sorted_copy(b)
+    a := fill(1000)
+    b := doubled(a)
+    c := sorted_copy(b)
     var d = c.clone()
-    let e = rebuild(var d)
+    e := rebuild(var d)
     return e.length() - 1001

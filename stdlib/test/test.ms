@@ -108,13 +108,13 @@ export fn expect_contains(
 
 // Requires some and returns its original payload; fails on none.
 export fn expect_some[T](actual: T?, site: String = caller_site()) T!:
-    if let value = actual: return ok(value)
+    if value := actual: return ok(value)
 
     return error(failure("expected some, got none", site))
 
 // Requires none; fails when a payload is present.
 export fn expect_none[T](actual: T?, site: String = caller_site()) Unit!:
-    if let value = actual:
+    if value := actual:
         return error(failure("expected none, got {repr(value)}", site))
 
     return ok(unit)
@@ -122,7 +122,7 @@ export fn expect_none[T](actual: T?, site: String = caller_site()) Unit!:
 // Requires ok and returns its original payload; reports an unexpected error.
 export fn expect_ok[T, E](actual: T!E, site: String = caller_site()) T!:
     if actual.is_error(): return error(failure("expected ok, got {repr(actual)}", site))
-    if let value = actual: return ok(value)
+    if value := actual: return ok(value)
 
     return error(failure("expected ok, got an error", site))
 
@@ -134,7 +134,7 @@ export fn expect_error[T, E: Clonable](actual: T!E, site: String = caller_site()
 
 // Calls operation once, requires a programming fault, and returns its message. Cancellation and skip propagate.
 export fn expect_fault(operation: fn() Unit, site: String = caller_site()) String!:
-    if let message = catch_fault(operation): return ok(message)
+    if message := catch_fault(operation): return ok(message)
 
     return error(
         failure(

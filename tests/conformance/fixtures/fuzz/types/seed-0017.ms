@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,21 +23,21 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let l1 = [7, (-16), 23, 1, (-18)]
+    l1 := [7, (-16), 23, 1, (-18)]
     say("l1 = {l1} len {l1.length()}")
 
-    let s2 = "beta".upper()
+    s2 := "beta".upper()
     say("s2 = [{s2}]")
     say(
         "{(((-36) * 954458) * 301954)} {s2.length()} {((((-36) * 954458) * 301954) < s2.length())} sum {(((-36) * 954458) * 301954) + s2.length()}"
     )
 
-    let bad = not 5
+    bad := not 5
     say("collatz(1206) = {collatz(1206)}")
 
-    let s3 = (("{(-(-305133130927))}:" + s2) + s2)
+    s3 := (("{(-(-305133130927))}:" + s2) + s2)
     say("s3 = [{s3}]")
 
-    let l4 = l1.drop(0)
+    l4 := l1.drop(0)
     say("l4 = {l4} len {l4.length()}")
     return 0

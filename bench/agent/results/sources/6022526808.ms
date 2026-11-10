@@ -2,9 +2,9 @@ import stdin from "@std/io/io.ms"
 import lines from "@std/io/streams.ms"
 
 // Order status codes.
-let PLACED = 0
-let SHIPPED = 1
-let CANCELLED = 2
+PLACED := 0
+SHIPPED := 1
+CANCELLED := 2
 
 // True when every scalar is an uppercase letter, digit or '-'.
 fn is_sku(s: String) Bool:
@@ -24,7 +24,7 @@ fn is_order_id(s: String) Bool:
 
 // Parses a 1..7 digit number within [lo, hi]; returns -1 when invalid.
 fn parse_num(s: String, lo: Int, hi: Int) Int:
-    let v = s.scalar_values()
+    v := s.scalar_values()
     if v.length() < 1 or v.length() > 7: return -1
 
     var n = 0
@@ -40,8 +40,8 @@ fn parse_num(s: String, lo: Int, hi: Int) Int:
 
 // Formats cents as dollars with two decimals.
 fn money(c: Int) String:
-    let r = c % 100
-    let frac = if r < 10: "0{r}" else: "{r}"
+    r := c % 100
+    frac := if r < 10: "0{r}" else: "{r}"
     return "{c / 100}.{frac}"
 
 type Shop:
@@ -61,10 +61,10 @@ impl Shop:
         return qty * cents
 
     var fn add_stock(args: List[String]) String:
-        let sku = args[1]
+        sku := args[1]
         if not is_sku(sku): return "error: bad sku"
 
-        let qty = parse_num(args[2], 1, 100000)
+        qty := parse_num(args[2], 1, 100000)
         if qty < 0: return "error: bad quantity"
 
         if not self.stock.contains(sku):
@@ -76,17 +76,17 @@ impl Shop:
         return "ok {sku} stock={self.stock[sku]}"
 
     var fn set_price(args: List[String]) String:
-        let cents = parse_num(args[2], 0, 10000000)
+        cents := parse_num(args[2], 0, 10000000)
         if cents < 0: return "error: bad price"
 
-        let sku = args[1]
+        sku := args[1]
         if not self.stock.contains(sku): return "error: unknown sku {sku}"
 
         self.price[sku.clone()] = cents
         return "ok"
 
     var fn place_order(args: List[String]) String:
-        let id = args[1]
+        id := args[1]
         if not is_order_id(id): return "error: bad order id"
 
         // Parse every item first; the first malformed token wins.
@@ -94,11 +94,11 @@ impl Shop:
         var qtys = List[Int]()
 
         for i in 2..args.length():
-            let parts = args[i].split(":")
+            parts := args[i].split(":")
             if parts.length() != 2 or not is_sku(parts[0]):
                 return "error: bad item {args[i]}"
 
-            let qty = parse_num(parts[1], 1, 100000)
+            qty := parse_num(parts[1], 1, 100000)
             if qty < 0: return "error: bad item {args[i]}"
 
             skus.append(parts[0].clone())
@@ -108,7 +108,7 @@ impl Shop:
 
         // Examine items in the order given; the first problem wins.
         for i in 0..skus.length():
-            let sku = skus[i]
+            sku := skus[i]
             for j in 0..i:
                 if skus[j] == sku: return "error: duplicate sku {sku}"
             if not self.stock.contains(sku): return "error: unknown sku {sku}"
@@ -118,7 +118,7 @@ impl Shop:
         var total = 0
 
         for i in 0..skus.length():
-            let sku = skus[i]
+            sku := skus[i]
             total += self.line_cost(qtys[i], self.price[sku])
             self.stock[sku.clone()] = self.stock[sku] - qtys[i]
 
@@ -130,26 +130,26 @@ impl Shop:
         return "ok {id} total={money(total)}"
 
     var fn cancel(args: List[String]) String:
-        let id = args[1]
+        id := args[1]
         if not self.status.contains(id): return "error: unknown order {id}"
 
-        let st = self.status[id]
+        st := self.status[id]
         if st == SHIPPED: return "error: order {id} already shipped"
         if st == CANCELLED: return "error: order {id} already cancelled"
 
         self.status[id.clone()] = CANCELLED
 
-        let skus = self.order_skus[id]
-        let qtys = self.order_qtys[id]
+        skus := self.order_skus[id]
+        qtys := self.order_qtys[id]
         for i in 0..skus.length():
             self.stock[skus[i].clone()] = self.stock[skus[i]] + qtys[i]
         return "ok"
 
     var fn ship(args: List[String]) String:
-        let id = args[1]
+        id := args[1]
         if not self.status.contains(id): return "error: unknown order {id}"
 
-        let st = self.status[id]
+        st := self.status[id]
         if st == SHIPPED: return "error: order {id} already shipped"
         if st == CANCELLED: return "error: order {id} is cancelled"
 
@@ -164,8 +164,8 @@ impl Shop:
 
             for id in self.order_ids:
                 if self.status[id] == PLACED:
-                    let skus = self.order_skus[id]
-                    let qtys = self.order_qtys[id]
+                    skus := self.order_skus[id]
+                    qtys := self.order_qtys[id]
                     for i in 0..skus.length():
                         if skus[i] == sku: reserved += qtys[i]
 
@@ -179,7 +179,7 @@ impl Shop:
         var revenue = 0
 
         for id in self.order_ids:
-            let st = self.status[id]
+            st := self.status[id]
 
             if st == PLACED: placed += 1
             else if st == SHIPPED:
@@ -192,9 +192,9 @@ impl Shop:
         return out.join("\n")
 
     var fn handle(line: String) String:
-        let args = line.split(" ")
-        let cmd = args[0]
-        let n = args.length()
+        args := line.split(" ")
+        cmd := args[0]
+        n := args.length()
 
         if cmd == "stock":
             if n != 3: return "error: usage"
@@ -233,9 +233,9 @@ export fn main() Int:
     var input = lines(stdin())
 
     while true:
-        let next = input.next().get()
+        next := input.next().get()
 
-        if let line = next:
+        if line := next:
             if line.scalar_values().all(fn c: c == 32): continue
 
             print(shop.handle(line))

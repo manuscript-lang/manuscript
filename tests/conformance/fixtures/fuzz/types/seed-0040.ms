@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = ("{((-1) * 45)}:" + "gamma".trim()).is_empty()
+    b1 := ("{((-1) * 45)}:" + "gamma".trim()).is_empty()
     say("b1 = {b1}")
 
-    let bad = missing_function(3)
+    bad := missing_function(3)
     say(
         "{(-49)} {(612624676886 - 868129)} {((-49) < (612624676886 - 868129))} sum {(-49) + (612624676886 - 868129)}"
     )

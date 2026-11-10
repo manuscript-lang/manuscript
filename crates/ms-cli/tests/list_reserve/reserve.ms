@@ -6,10 +6,10 @@ export fn main() Int:
         reserved.append(index)
     if reserved.length() != 2000 or reserved[1999] != 1999: return 2
 
-    let negative = List[String](reserve: -5)
+    negative := List[String](reserve: -5)
     if not negative.is_empty(): return 3
 
-    let absent: Int? = none
+    absent: Int? = none
     if List[Int](reserve: absent).length() != 0: return 4
 
     return 0

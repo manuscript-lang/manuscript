@@ -12,14 +12,14 @@ test "replace returns the old element and stores the new one":
 
 test "replace moves owned records":
     var entries = [Entry(name: "a", weight: 1), Entry(name: "b", weight: 2)]
-    let old = entries.replace(0, Entry(name: "c", weight: 3))
+    old := entries.replace(0, Entry(name: "c", weight: 3))
     try expect_equal(old.name, "a")
     try expect_equal(entries.get(0).name, "c")
     try expect_equal(entries.length(), 2)
 
 test "replace takes an optional slot":
     var slots: List[String?] = ["a", "b"]
-    let taken = slots.replace(0, none)
+    taken := slots.replace(0, none)
     try expect_equal(taken, "a")
     try expect_equal(slots, [none, "b"])
 

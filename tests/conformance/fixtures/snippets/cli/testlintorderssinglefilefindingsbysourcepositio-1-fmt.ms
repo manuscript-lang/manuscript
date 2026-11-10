@@ -5,5 +5,5 @@ fn f() Int:
     return 0
 
 fn g() Int:
-    let _x = 1
+    _x := 1
     return 2

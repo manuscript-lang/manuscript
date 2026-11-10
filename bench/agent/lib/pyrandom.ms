@@ -3,8 +3,8 @@
 import panic from "@std/core.ms"
 import bit_and, bit_xor, shift_left, shift_right from "@std/math/math.ms"
 
-let N = 624
-let MASK = 0xFFFFFFFF
+N := 624
+MASK := 0xFFFFFFFF
 
 export type Random:
     state: List[Int]
@@ -17,7 +17,7 @@ fn init_genrand(seed: Int) List[Int]:
     mt.append(u32(seed))
 
     for i in 1..N:
-        let prev = mt[i - 1]
+        prev := mt[i - 1]
         mt.append(u32(1812433253 * bit_xor(prev, shift_right(prev, 30)) + i))
 
     return mt
@@ -30,7 +30,7 @@ export fn seeded(seed: Int) Random:
     var k = N
 
     while k > 0:
-        let prev = mt[i - 1]
+        prev := mt[i - 1]
         mt[i] = u32(
             bit_xor(
                 mt[i], bit_xor(prev, shift_right(prev, 30)) * 1664525
@@ -49,7 +49,7 @@ export fn seeded(seed: Int) Random:
     k = N - 1
 
     while k > 0:
-        let prev = mt[i - 1]
+        prev := mt[i - 1]
         mt[i] = u32(
             bit_xor(
                 mt[i], bit_xor(prev, shift_right(prev, 30)) * 1566083941
@@ -68,7 +68,7 @@ export fn seeded(seed: Int) Random:
 
 fn twist(var mt: List[Int]) Unit:
     for kk in 0..N:
-        let y = bit_and(mt[kk], 0x80000000) + bit_and(mt[(kk + 1) % N], 0x7FFFFFFF)
+        y := bit_and(mt[kk], 0x80000000) + bit_and(mt[(kk + 1) % N], 0x7FFFFFFF)
         var next = bit_xor(mt[(kk + 397) % N], shift_right(y, 1))
         if bit_and(y, 1) == 1: next = bit_xor(next, 0x9908B0DF)
         mt[kk] = next
@@ -79,12 +79,12 @@ impl Random:
             twist(var self.state)
             self.index = 0
 
-        let word = self.state[self.index]
+        word := self.state[self.index]
         self.index += 1
 
-        let y1 = bit_xor(word, shift_right(word, 11))
-        let y2 = bit_xor(y1, bit_and(shift_left(y1, 7), 0x9D2C5680))
-        let y3 = bit_xor(y2, bit_and(shift_left(y2, 15), 0xEFC60000))
+        y1 := bit_xor(word, shift_right(word, 11))
+        y2 := bit_xor(y1, bit_and(shift_left(y1, 7), 0x9D2C5680))
+        y3 := bit_xor(y2, bit_and(shift_left(y2, 15), 0xEFC60000))
         return bit_xor(y3, shift_right(y3, 18))
 
     // A uniform integer in `0..n` by rejection, as CPython's `_randbelow`.
@@ -110,27 +110,27 @@ impl Random:
 
     // A uniform float in `0.0..1.0` from 53 random bits.
     var fn random() Float:
-        let a = shift_right(self.next_u32(), 5)
-        let b = shift_right(self.next_u32(), 6)
+        a := shift_right(self.next_u32(), 5)
+        b := shift_right(self.next_u32(), 6)
         return (a.to_float() * 67108864.0 + b.to_float()) / 9007199254740992.0
 
     // A uniformly chosen item, as `random.choice`. The index is bound before the element is cloned because
     // `items[f()].clone()` evaluates `f()` twice (https://github.com/manuscript-lang/manuscript/issues/2161).
     var fn choice(items: List[String]) String:
-        let at = self.below(items.length())
+        at := self.below(items.length())
         return items[at].clone()
 
     // `k` distinct items in random order, as `random.sample` picks them from a population of at most 21 items
     // (CPython's pool method; larger populations use a different algorithm that is not implemented here).
     var fn sample(items: List[String], k: Int) List[String]:
-        let n = items.length()
+        n := items.length()
         if n > 21: panic("sample: only the pool method is implemented")
 
         var pool = items.clone()
         var out = List[String]()
 
         for i in 0..k:
-            let j = self.below(n - i)
+            j := self.below(n - i)
             out.append(pool[j].clone())
             pool[j] = pool[n - i - 1].clone()
 

@@ -24,5 +24,5 @@ fn direct(x: Dup) Int:
     return x.dup()
 
 fn g() Int:
-    let a = via(Bag([Door(1)]))
+    a := via(Bag([Door(1)]))
     return a + direct(Bag([Door(2)]))

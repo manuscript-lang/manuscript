@@ -15,7 +15,7 @@ fn checked(value: Int) Int!ValidationError:
     return ok(value)
 
 fn relay[T, E](outcome: T!E) T!E:
-    let value = try outcome
+    value := try outcome
     return ok(value)
 
 fn actual(cause: ValidationError) Int:
@@ -30,44 +30,44 @@ test "optional Result arguments supply constructor type context":
     optional_result(error("missing")) | try expect_equal(-1)
 
 test "optional failure payloads and nested absence retain their layers":
-    let absent: Int?? = none
+    absent: Int?? = none
     absent.is_none() | try expect_true
 
-    let inner: Int? = none
-    let present: Int?? = inner
+    inner: Int? = none
+    present: Int?? = inner
     present.is_some() | try expect_true
     present.get().is_none() | try expect_true
 
-    let failure: Result[Int, String?] = error(none)
+    failure: Result[Int, String?] = error(none)
     failure.is_error() | try expect_true
     failure.err().is_none() | try expect_true
 
 test "named failures propagate without a reporting implementation":
-    let cause = try expect_error(relay(checked(3)))
+    cause := try expect_error(relay(checked(3)))
     actual(cause) | try expect_equal(3)
 
-    let value = try expect_ok(relay(checked(12)))
+    value := try expect_ok(relay(checked(12)))
     value | try expect_equal(12)
 
 test "primitive failures work with contextual constructors and assertion aliases":
-    let text: Int!String = error("missing")
-    let message = try expect_error(relay(text))
+    text: Int!String = error("missing")
+    message := try expect_error(relay(text))
     message | try expect_equal("missing")
 
-    let number: String!Int = error(7)
-    let code = try expect_error(relay(number))
+    number: String!Int = error(7)
+    code := try expect_error(relay(number))
     code | try expect_equal(7)
 
-    let success = try expect_ok(Result[Int, String].ok(4))
+    success := try expect_ok(Result[Int, String].ok(4))
     success | try expect_equal(4)
 
 test "Result transforms preserve primitive errors and map to named cases":
-    let failure: Int!String = error("missing")
+    failure: Int!String = error("missing")
     failure.map(fn value: value + 1).err() | try expect_equal("missing")
 
     var calls = 0
 
-    let mapped = failure.map_error(
+    mapped := failure.map_error(
         fn message:
             calls += 1
             return BelowMinimum(message.length(), 10)
@@ -76,7 +76,7 @@ test "Result transforms preserve primitive errors and map to named cases":
     actual(mapped.err()) | try expect_equal(7)
     calls | try expect_equal(1)
 
-    let success: Int!String = ok(4)
+    success: Int!String = ok(4)
     success.map_error(
         fn message:
             calls += 1
@@ -84,12 +84,12 @@ test "Result transforms preserve primitive errors and map to named cases":
     ).get() | try expect_equal(4)
     calls | try expect_equal(1)
 
-    let chained = success.and_then(
+    chained := success.and_then(
         fn value: Result[String, String].ok(value.to_string())
     )
     chained.get() | try expect_equal("4")
 
-    let recovered = failure.or_else(
+    recovered := failure.or_else(
         fn message: Result[Int, String].ok(message.length())
     )
     recovered.get() | try expect_equal(7)
@@ -108,8 +108,8 @@ test "assertion failures can describe values without a reporting implementation"
     )
 
 test "Optional adapters accept primitive errors and remain lazy":
-    let present: Int? = 4
-    let missing: Int? = none
+    present: Int? = 4
+    missing: Int? = none
     missing.ok_or("absent").err() | try expect_equal("absent")
     present.ok_or(9).get() | try expect_equal(4)
 

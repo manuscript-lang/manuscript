@@ -92,8 +92,8 @@ fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
         args = ["--cpu-list", cpu.clone(), binary.clone()].concat(args)
         program = "taskset"
 
-    let out = try sample(program, args)
-    let fields = out.trim().split(",")
+    out := try sample(program, args)
+    fields := out.trim().split(",")
     if fields.length() != 8: return invalid("malformed harness row: {out.trim()}")
     if (
         fields[0] != c.mode
@@ -106,7 +106,7 @@ fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
     var n = List[Int]()
 
     for i in 4..8:
-        let v = fields[i].parse_int()
+        v := fields[i].parse_int()
         if v.is_none(): return invalid("not an integer: {fields[i]}")
 
         n.append(v.get(0))
@@ -121,7 +121,7 @@ fn compare(
     samples: Int,
     cpu: String
 ) Result[Unit, Error]:
-    let cases = if suite == "hover": hover_cases() else: if suite == "outline": outline_cases() else: semantic_cases()
+    cases := if suite == "hover": hover_cases() else: if suite == "outline": outline_cases() else: semantic_cases()
     var paths = Map[String, String]()
     paths.add("before", before.clone())
     paths.add("after", after.clone())
@@ -136,7 +136,7 @@ fn compare(
         var seen = false
 
         for name in ["before", "after"]:
-            let first = try run_harness(paths.get_or(name, ""), c, 1, cpu)
+            first := try run_harness(paths.get_or(name, ""), c, 1, cpu)
 
             if not seen:
                 expected = Run(0, first.checksum, first.size, 0)
@@ -147,7 +147,7 @@ fn compare(
                     "{c.mode} {c.count} {c.shape}: before and after disagree"
                 )
 
-            let want = (30000000 + first.elapsed - 1) / first.elapsed
+            want := (30000000 + first.elapsed - 1) / first.elapsed
             rounds.add(
                 name.clone(),
                 if want < 1: 1 else: (
@@ -161,8 +161,8 @@ fn compare(
 
         for s in 0..samples:
             for name in (if s % 2 == 0: ["before", "after"] else: ["after", "before"]):
-                let r = rounds.get_or(name, 1)
-                let got = try run_harness(paths.get_or(name, ""), c, r, cpu)
+                r := rounds.get_or(name, 1)
+                got := try run_harness(paths.get_or(name, ""), c, r, cpu)
                 if got.checksum != expected.checksum or got.size != expected.size:
                     return invalid("{c.mode} {c.count} {c.shape}: output changed")
 
@@ -173,8 +173,8 @@ fn compare(
                     "{c.mode},{c.count},{c.shape},{s},{name},{r},{got.elapsed},{got.checksum},{got.size},{got.rss},{cpu}"
                 )
 
-        let old = median(observed.get_or("before", []))
-        let new = median(observed.get_or("after", []))
+        old := median(observed.get_or("before", []))
+        new := median(observed.get_or("after", []))
         (
             stdout()
             .write(
@@ -187,23 +187,23 @@ fn compare(
     return ok(unit)
 
 export fn main() Int:
-    let args = arguments()
+    args := arguments()
     if args.length() < 3 or not ["hover", "outline", "semantic"].contains(args[0]):
         return fail(
             "usage: lsp_compare.ms -- <hover|outline|semantic> BEFORE AFTER --out FILE [--samples N] [--cpu N]"
         )
 
-    let parsed = options(
+    parsed := options(
         args.slice(3, args.length()).get([]), ["out", "samples", "cpu"], ["out"]
     )
     if parsed.is_error(): return fail(parsed.err().message)
 
-    let opts = parsed.get(Map[String, String]())
-    let default_samples = if args[0] == "hover": 9 else: 10
-    let samples = opts.get_or("samples", "{default_samples}").parse_int().get(0)
+    opts := parsed.get(Map[String, String]())
+    default_samples := if args[0] == "hover": 9 else: 10
+    samples := opts.get_or("samples", "{default_samples}").parse_int().get(0)
     if samples < 5: return fail("--samples must be at least 5")
 
-    let result = compare(
+    result := compare(
         args[0], absolute(args[1].clone()), absolute(args[2].clone()),
         opts.get_or("out", ""), samples, opts.get_or("cpu", "")
     )

@@ -8,8 +8,8 @@ fn build(columns: List[Align], rows: List[List[String]]) Table!:
     return ok(table)
 
 test "table aligns columns with no added trailing spaces or final LF":
-    let rows = [["name", "count"], ["tea", "2"], ["coffee", "30"]]
-    let table = try build([Align.Left, Align.Right], rows)
+    rows := [["name", "count"], ["tea", "2"], ["coffee", "30"]]
+    table := try build([Align.Left, Align.Right], rows)
     try expect_equal(table.render(), "name    count\ntea         2\ncoffee     30")
 
     var tight = Table(columns: [Align.Left, Align.Left], padding: 1)
@@ -17,13 +17,13 @@ test "table aligns columns with no added trailing spaces or final LF":
         try tight.add(row.clone())
     try expect_equal(tight.render(), "name   count\ntea    2\ncoffee 30")
 
-    let centered = try build(
+    centered := try build(
         [Align.Center, Align.Center], [["abc", "abcd"], ["x", "y"]]
     )
     try expect_equal(centered.render(), "abc  abcd\n x    y")
 
 test "table keeps combining wide and emoji sequences intact":
-    let rows = [["é", "a"], ["界", "b"], ["👩‍💻", "c"], ["·", "d"]]
+    rows := [["é", "a"], ["界", "b"], ["👩‍💻", "c"], ["·", "d"]]
     var table = Table(columns: [Align.Left, Align.Left], padding: 1)
     for row in rows:
         try table.add(row.clone())
@@ -37,7 +37,7 @@ test "table indents lines and omits trailing empty cells":
     try expect_equal(table.render(), "  a     text\n  long\n")
 
 test "table renders empty tables and zero column rows":
-    let empty = Table(columns: [Align.Left])
+    empty := Table(columns: [Align.Left])
     try expect_equal(empty.render(), "")
 
     var none = Table(columns: [])
@@ -46,7 +46,7 @@ test "table renders empty tables and zero column rows":
     try expect_equal(none.render(), "\n")
 
 test "table add rejects wrong cell counts and controls":
-    let malformed: Unit! = error(
+    malformed: Unit! = error(
         Error("table: row has 1 cells, expected 2", kind: "EBADMSG")
     )
     var table = Table(columns: [Align.Left, Align.Right])

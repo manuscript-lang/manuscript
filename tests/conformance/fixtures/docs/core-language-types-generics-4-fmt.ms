@@ -8,5 +8,5 @@ type Pair[A, B = A]:
 fn parse[T = String](text: String) T?:
     return none
 
-let same: Pair[Int] = Pair[Int](1, 2)  // Pair[Int, Int]
-let mixed = Pair[Int, String](1, "x")
+same: Pair[Int] = Pair[Int](1, 2)  // Pair[Int, Int]
+mixed := Pair[Int, String](1, "x")

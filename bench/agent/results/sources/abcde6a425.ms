@@ -16,7 +16,7 @@ fn zeros(n: Int) List[Int]:
     return xs
 
 fn lcs(a: Bytes, b: Bytes) Int:
-    let m = b.length()
+    m := b.length()
     var prev = zeros(m + 1)
 
     for i in 0..a.length():
@@ -33,7 +33,7 @@ fn lcs(a: Bytes, b: Bytes) Int:
     return prev[m]
 
 fn edit(a: Bytes, b: Bytes) Int:
-    let m = b.length()
+    m := b.length()
     var prev = zeros(m + 1)
     for j in 0..m + 1:
         prev[j] = j
@@ -43,7 +43,7 @@ fn edit(a: Bytes, b: Bytes) Int:
         cur[0] = i + 1
 
         for j in 0..m:
-            let cost = if a.get(i) == b.get(j): 0 else: 1
+            cost := if a.get(i) == b.get(j): 0 else: 1
 
             cur[j + 1] = (prev[j] + cost).min(prev[j + 1] + 1).min(cur[j] + 1)
 
@@ -57,22 +57,22 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
     for w in ws:
         total += w
 
-    let c = cap.min(total)
+    c := cap.min(total)
     var dp = zeros(c + 1)
 
     for k in 0..ws.length():
-        let w = ws[k]
+        w := ws[k]
 
         if w <= c:
             for t in 0..c - w + 1:
-                let j = c - t
+                j := c - t
                 dp[j] = dp[j].max(dp[j - w] + vs[k])
 
     return dp[c]
 
 // Returns the fewest coins, or -1 when the amount cannot be made.
 fn coins(amount: Int, cs: List[Int]) Int:
-    let inf = amount + 1
+    inf := amount + 1
     var dp = zeros(amount + 1)
 
     for a in 1..amount + 1:
@@ -88,18 +88,18 @@ fn coins(amount: Int, cs: List[Int]) Int:
 
 // Returns the answer, or -1 for a malformed command.
 fn knap_cmd(parts: List[String]) Int:
-    let cap = parse_num(parts[1]).get(-1)
+    cap := parse_num(parts[1]).get(-1)
     if cap < 0: return -1
 
     var ws = List[Int]()
     var vs = List[Int]()
 
     for i in 2..parts.length():
-        let pair = parts[i].split(":")
+        pair := parts[i].split(":")
         if pair.length() != 2: return -1
 
-        let w = parse_num(pair[0]).get(-1)
-        let v = parse_num(pair[1]).get(-1)
+        w := parse_num(pair[0]).get(-1)
+        v := parse_num(pair[1]).get(-1)
         if w < 1 or v < 0: return -1
 
         ws.append(w)
@@ -109,13 +109,13 @@ fn knap_cmd(parts: List[String]) Int:
 
 // Returns the fewest coins (or -1 when impossible), or -2 for a malformed command.
 fn coins_cmd(parts: List[String]) Int:
-    let amount = parse_num(parts[1]).get(-1)
+    amount := parse_num(parts[1]).get(-1)
     if amount < 0: return -2
 
     var cs = List[Int]()
 
     for i in 2..parts.length():
-        let c = parse_num(parts[i]).get(-1)
+        c := parse_num(parts[i]).get(-1)
         if c < 1: return -2
 
         cs.append(c)
@@ -123,19 +123,19 @@ fn coins_cmd(parts: List[String]) Int:
     return coins(amount, cs)
 
 fn solve(parts: List[String]) String:
-    let cmd = parts[0]
-    let n = parts.length()
+    cmd := parts[0]
+    n := parts.length()
     if cmd == "lcs" and n == 3 and parts[1].length() > 0 and parts[2].length() > 0:
         return "{lcs(parts[1].to_bytes(), parts[2].to_bytes())}"
     if cmd == "edit" and n == 3 and parts[1].length() > 0 and parts[2].length() > 0:
         return "{edit(parts[1].to_bytes(), parts[2].to_bytes())}"
 
     if cmd == "knap" and n >= 2:
-        let best = knap_cmd(parts)
+        best := knap_cmd(parts)
         if best >= 0: return "{best}"
 
     if cmd == "coins" and n >= 3:
-        let fewest = coins_cmd(parts)
+        fewest := coins_cmd(parts)
         if fewest == -1: return "impossible"
         if fewest >= 0: return "{fewest}"
 
@@ -151,7 +151,7 @@ export fn main() Int:
     var out = stdout()
 
     for line in read_lines(stdin()).get():
-        let parts = line.split(" ")
+        parts := line.split(" ")
         if not is_blank(parts):
             out.write("{solve(parts)}\n").get()
 

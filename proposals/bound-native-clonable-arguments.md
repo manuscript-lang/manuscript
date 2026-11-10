@@ -14,7 +14,7 @@ The user forbids arbitrary language changes; #3049 policy changes are explicitly
 
 ## Problem
 
-- `let set = values.set; set(0, text)` reaches a strict implicit-copy lowering error.
+- `set := values.set; set(0, text)` reaches a strict implicit-copy lowering error.
 - `text` is String, remains with its caller, and must be copied into the list.
 - Scalar bound mutators work because scalars need no owned storage copy.
 - Source function-value adapters already permit Clonable parameter copies where needed.

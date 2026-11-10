@@ -11,7 +11,7 @@ A function is pure unless a comment permits what it reaches. `ms lint` reports a
 ```manuscript
 fn total(prices: List[Int]) Int:
     print("summing {prices.length()} prices")
-    let sum = prices.sum()
+    sum := prices.sum()
     return sum
 
 export fn main() Int:
@@ -73,7 +73,7 @@ impl Logger for ConsoleLogger:
 
 fn total(log: Logger, prices: List[Int]) Int:
     log.info("summing {prices.length()} prices")
-    let sum = prices.sum()
+    sum := prices.sum()
     return sum
 
 export fn main() Int:

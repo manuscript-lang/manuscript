@@ -5,7 +5,7 @@ type Point:
     y: Int
 
 test "for destructures list and record elements":
-    let pairs = [[1, 2], [3, 4]]
+    pairs := [[1, 2], [3, 4]]
     var total = 0
 
     for [a, b] in pairs:
@@ -13,7 +13,7 @@ test "for destructures list and record elements":
 
     try expect_equal(total, 14)
 
-    let points = [Point(x: 1, y: 2), Point(x: 5, y: 6)]
+    points := [Point(x: 1, y: 2), Point(x: 5, y: 6)]
     var sum = 0
 
     for {x, y: height} in points:
@@ -29,6 +29,6 @@ test "for destructures list and record elements":
     try expect_equal(firsts, "ac")
 
 test "a lambda parameter destructures":
-    let rows = [[1, 2], [3, 4]]
+    rows := [[1, 2], [3, 4]]
     try expect_equal(rows.map(fn [a, b]: a - b), [-1, -1])
     try expect_equal(rows.fold(0, fn total, [a, b]: total + a * b), 14)

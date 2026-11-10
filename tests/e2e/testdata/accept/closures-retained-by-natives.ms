@@ -7,7 +7,7 @@ fn churn(n: Int) Int:
     var t = 0
 
     for i in 0..n:
-        let z = "junk{i}" + "padding padding padding"
+        z := "junk{i}" + "padding padding padding"
         t += z.length()
 
     return t
@@ -16,7 +16,7 @@ fn dflt(o: (fn() String)?, s: String) fn() String:
     return o.get(fn: s + "d")
 
 fn mk(o: (fn() String)?, s: String) Box:
-    let h = o.get(fn: s + "x")
+    h := o.get(fn: s + "x")
     return Box(f: h)
 
 fn mk2(m: Map[Int, fn() String], s: String) List[fn() String]:
@@ -38,15 +38,15 @@ fn build(r: fn(Int) Int) List[fn(Int) Int]:
 test "closures kept by natives own their captures":
     try expect_equal(dflt(none, "a")(), "ad")
 
-    let b = mk(none, "hello" + "world")
-    let c = churn(100)
-    let m = Map[Int, fn() String]()
-    let l = mk2(m, "abc" + "def")
-    let c2 = churn(100)
+    b := mk(none, "hello" + "world")
+    c := churn(100)
+    m := Map[Int, fn() String]()
+    l := mk2(m, "abc" + "def")
+    c2 := churn(100)
     try expect_equal(b.f() + l[0](), "helloworldxabcdefy")
     try expect_equal(c + c2 > 0, true)
 
-    let fs = build(inc)
+    fs := build(inc)
     try expect_equal(fs.length(), 3)
     try expect_equal(fs[2](1), 2)
 
@@ -57,8 +57,8 @@ fn keep(r: fn(Int) Int) List[fn(Int) Int]:
 
 test "an escaping closure takes an explicit clone of a value that is used again":
     var a = [1, 2, 3]
-    let snapshot = a.clone()
-    let b = keep(fn x: x + snapshot.length())
+    snapshot := a.clone()
+    b := keep(fn x: x + snapshot.length())
     a.append(4)
     try expect_equal(b[0](1), 4)
     try expect_equal(a.length(), 4)

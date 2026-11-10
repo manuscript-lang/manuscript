@@ -10,7 +10,7 @@ header block (folded lines joined, names kept as written, lookup case-insensitiv
 
     import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
     print(media_type_for_extension(".json").get("")) // "application/json"
-    let charset = (try parse_media_type("text/html; charset=utf-8")).params.get("charset")
+    charset := (try parse_media_type("text/html; charset=utf-8")).params.get("charset")
 */
 
 // A parsed media type with lower-cased `essence` and parameters keyed by lower-cased name.
@@ -46,14 +46,14 @@ export type Part:
 impl Headers:
     // Returns the first value for `name`, ignoring case, or none.
     fn get(name: String) String?:
-        let wanted = name.lower()
+        wanted := name.lower()
         for field in self.fields:
             if field.name.lower() == wanted: return field.value.clone()
         return none
 
     // Returns every value for `name`, ignoring case, in order.
     fn get_all(name: String) List[String]:
-        let wanted = name.lower()
+        wanted := name.lower()
         var values = List[String]()
         for field in self.fields:
             if field.name.lower() == wanted: values.append(field.value.clone())
@@ -67,7 +67,7 @@ impl Headers:
         return out.build()
 
 // Extension table behind `media_type_for_extension`.
-let TYPES = {
+TYPES := {
     "html": "text/html; charset=utf-8", "htm": "text/html; charset=utf-8",
     "css": "text/css; charset=utf-8", "js": "text/javascript; charset=utf-8",
     "mjs": "text/javascript; charset=utf-8", "txt": "text/plain; charset=utf-8",
@@ -84,12 +84,12 @@ let TYPES = {
 
 // Returns the media type for a file extension with or without the leading dot (case-insensitive), or none when unknown.
 export fn media_type_for_extension(extension: String) String?:
-    let key = extension.lower().cut_prefix(".").get(extension.lower())
+    key := extension.lower().cut_prefix(".").get(extension.lower())
     return TYPES.get(key)
 
 // Returns the first extension, with its dot, registered for a media type (parameters ignored), or none.
 export fn extension_for_media_type(media_type: String) String?:
-    let wanted = media_type.split(";")[0].trim().lower()
+    wanted := media_type.split(";")[0].trim().lower()
     for entry in TYPES.entries():
         if entry.value.split(";")[0] == wanted: return ".{entry.key}"
     return none
@@ -97,9 +97,9 @@ export fn extension_for_media_type(media_type: String) String?:
 // Parses `type/subtype; name=value; name="quoted value"`. Names and the essence are lower-cased;
 // a missing slash, empty part, or unterminated quote returns `EBADMSG`.
 export fn parse_media_type(text: String) MediaType!:
-    let pieces = split_params(text)
-    let essence = pieces[0].trim().lower()
-    let parts = essence.split("/")
+    pieces := split_params(text)
+    essence := pieces[0].trim().lower()
+    parts := essence.split("/")
     if (
         parts.length() != 2
         or parts[0].is_empty()
@@ -111,21 +111,21 @@ export fn parse_media_type(text: String) MediaType!:
     var params = Map[String, String]()
 
     for i in 1..pieces.length():
-        let piece = pieces[i].trim()
+        piece := pieces[i].trim()
         if piece.is_empty(): continue
 
-        let at = piece.index_of("=")
+        at := piece.index_of("=")
         if at.is_none(): return error(
             Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
-        let name = piece.take(at.get(0)).trim().lower()
-        let raw = piece.drop(at.get(0) + 1).trim()
+        name := piece.take(at.get(0)).trim().lower()
+        raw := piece.drop(at.get(0) + 1).trim()
         if name.is_empty(): return error(
             Error("MIME: invalid media type", kind: "EBADMSG")
         )
 
-        let value = unquote(raw)
+        value := unquote(raw)
         if value.is_none(): return error(
             Error("MIME: invalid media type", kind: "EBADMSG")
         )
@@ -199,7 +199,7 @@ fn is_token(value: String) Bool:
 fn quote_value(value: String) String:
     if is_token(value): return value.clone()
 
-    let escaped = value.replace("\\", "\\\\").replace("\"", "\\\"")
+    escaped := value.replace("\\", "\\\\").replace("\"", "\\\"")
     return "\"{escaped}\""
 
 // Parses a header block (up to the first blank line). Continuation lines starting with space or tab
@@ -208,7 +208,7 @@ export fn parse_headers(text: String) Headers!:
     var fields = List[HeaderField]()
 
     for raw in text.lines():
-        let line = raw.trim_end_chars("\r")
+        line := raw.trim_end_chars("\r")
         if line.is_empty(): break
 
         if line.starts_with(" ") or line.starts_with("\t"):
@@ -216,14 +216,14 @@ export fn parse_headers(text: String) Headers!:
                 Error("MIME: invalid header", kind: "EBADMSG")
             )
 
-            let last = fields.length() - 1
+            last := fields.length() - 1
             fields[last] = HeaderField(
                 name: fields[last].name.clone(),
                 value: "{fields[last].value} {line.trim()}"
             )
             continue
 
-        let at = line.index_of(":")
+        at := line.index_of(":")
         if at.is_none() or at.get(0) == 0: return error(
             Error("MIME: invalid header", kind: "EBADMSG")
         )
@@ -239,54 +239,54 @@ export fn parse_headers(text: String) Headers!:
 
 // Returns the boundary parameter of a `multipart/*` Content-Type value, or none.
 export fn multipart_boundary(content_type: String) String?:
-    let parsed = parse_media_type(content_type)
+    parsed := parse_media_type(content_type)
     if not parsed.is_ok(): return none
 
-    let media = parsed.get()
+    media := parsed.get()
     if not media.essence.starts_with("multipart/"): return none
 
     return media.params.get("boundary")
 
 // Builds one part from the bytes after a delimiter line's boundary: optional SP/HT, a CRLF, headers, a blank line and the body.
 fn make_part(section: Bytes) Part!:
-    let crlf = "\r\n".to_bytes()
+    crlf := "\r\n".to_bytes()
 
     // RFC 2046 permits transport-added SP/HT before this delimiter line's CRLF.
     var padding = 0
 
     while padding < section.length():
-        let byte = section.get(padding)
+        byte := section.get(padding)
         if byte != 32 and byte != 9: break
 
         padding += 1
 
-    let framed = try section.slice(padding, section.length())
+    framed := try section.slice(padding, section.length())
     if not framed.starts_with(crlf): return error(
         Error("MIME: invalid multipart body", kind: "EBADMSG")
     )
 
-    let inner = try framed.slice(2, framed.length())
-    let blank = if inner.starts_with(crlf): 0 else: inner.index_of(
+    inner := try framed.slice(2, framed.length())
+    blank := if inner.starts_with(crlf): 0 else: inner.index_of(
         "\r\n\r\n".to_bytes()
     ).get(-1)
     if blank < 0 and not inner.starts_with(crlf): return error(
         Error("MIME: invalid multipart body", kind: "EBADMSG")
     )
 
-    let skip = if blank == 0: 2 else: 4
-    let header_text = inner.decode_utf8_range(0, blank)
+    skip := if blank == 0: 2 else: 4
+    header_text := inner.decode_utf8_range(0, blank)
     if header_text.is_none(): return error(
         Error("MIME: invalid multipart body", kind: "EBADMSG")
     )
 
-    let headers = try parse_headers(header_text.get(""))
+    headers := try parse_headers(header_text.get(""))
     var part = Part(
         headers: headers,
         data: inner.slice(blank + skip, inner.length()).get("".to_bytes())
     )
 
-    if let disposition = part.headers.get("Content-Disposition"):
-        let media = parse_media_type(
+    if disposition := part.headers.get("Content-Disposition"):
+        media := parse_media_type(
             "x/x{disposition.drop(disposition.index_of(";").get(disposition.length()))}"
         )
 
@@ -306,15 +306,15 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
         Error("MIME: invalid multipart body", kind: "EBADMSG")
     )
 
-    let crlf = "\r\n".to_bytes()
-    let sections = crlf.concat(body).split("\r\n--{boundary}".to_bytes(), none)
+    crlf := "\r\n".to_bytes()
+    sections := crlf.concat(body).split("\r\n--{boundary}".to_bytes(), none)
     var parts = List[Part]()
 
     for i in 1..sections.length():
-        let section = sections[i]
+        section := sections[i]
         if section.starts_with("--".to_bytes()): return ok(parts)
 
-        let part = try make_part(section)
+        part := try make_part(section)
         parts.append(part)
 
     return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
@@ -350,26 +350,26 @@ impl Transform[Bytes, Part] for MultipartParts:
 
             if self.in_part and self.buffer.length() < 2: break
 
-            let at = self.buffer.index_of(self.delimiter)
+            at := self.buffer.index_of(self.delimiter)
 
             if at.is_none():
                 if not self.in_part:
                     // Preamble text is ignored; keep only a tail that could start the delimiter.
-                    let keep = self.delimiter.length() - 1
-                    let size = self.buffer.length()
+                    keep := self.delimiter.length() - 1
+                    size := self.buffer.length()
                     if size > keep: self.buffer = try self.buffer.slice(
                         size - keep, size
                     )
                     break
 
-                if let limit = self.max_part_bytes:
+                if limit := self.max_part_bytes:
                     if (
                         self.pending_size + self.buffer.length() - self.delimiter.length() > limit
                     ):
                         return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
 
                 // Only the trailing delimiter-length minus one bytes can match a future chunk.
-                let stop = self.buffer.length() - self.delimiter.length() + 1
+                stop := self.buffer.length() - self.delimiter.length() + 1
 
                 if stop > 0:
                     self.pending.append_bytes(self.buffer.view(0, stop))
@@ -378,10 +378,10 @@ impl Transform[Bytes, Part] for MultipartParts:
 
                 break
 
-            let end = at.get()
+            end := at.get()
 
             if self.in_part:
-                if let limit = self.max_part_bytes:
+                if limit := self.max_part_bytes:
                     if self.pending_size + end > limit: return error(
                         Error(
                             "MIME: limit exceeded", kind: "EOVERFLOW"
@@ -393,8 +393,8 @@ impl Transform[Bytes, Part] for MultipartParts:
                 else:
                     self.pending.append_bytes(self.buffer.view(0, end))
 
-                    let section = self.pending.drain()
-                    let part = make_part(section)
+                    section := self.pending.drain()
+                    part := make_part(section)
 
                     if part.is_error():
                         // A caller may read again after a failed step; preserve its held bytes.

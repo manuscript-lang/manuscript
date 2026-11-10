@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = "héllo".replace("héllo", "  padded  ").upper()
+    s1 := "héllo".replace("héllo", "  padded  ").upper()
     say("s1 = [{s1}]")
 
-    let b2 = "Tab\there".is_empty()
+    b2 := "Tab\there".is_empty()
     say("b2 = {b2}")
     say("s3 = [{s3}]")
 
-    let l4 = [(-30), (-7), (-6), 5, (-22)]
+    l4 := [(-30), (-7), (-6), 5, (-22)]
     say("l4 = {l4} len {l4.length()}")
 
-    let s5 = ("beta" + ("{(37 % 40)}:" + "emoji 😀").lower())
+    s5 := ("beta" + ("{(37 % 40)}:" + "emoji 😀").lower())
     say("s5 = [{s5}]")
 
     var acc6 = 0

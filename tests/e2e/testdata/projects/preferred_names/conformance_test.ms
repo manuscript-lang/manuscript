@@ -4,8 +4,8 @@ import first_run, first_add, first_remove, first_empty from "./first.ms"
 import second_run from "./second.ms"
 
 test "bound and forwarded calls keep the equality of the collection creator":
-    let first = first_run().values()
-    let second = second_run().values()
+    first := first_run().values()
+    second := second_run().values()
     (first.length() != 1 or first.get(0).id != 2) | try expect_false
     try expect_false(
         (
@@ -53,7 +53,7 @@ test "An empty returned Set keeps the constructor descriptor":
     items.contains(Key(1, "third")) | try expect_true
 
 test "Set algebra retains the left creator evidence in another module":
-    let items = first_run()
+    items := first_run()
     var united = items.union(items)
     united.add(Key(2, "different"))
     united.length() | try expect_equal(1)

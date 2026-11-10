@@ -7,7 +7,7 @@ fn maybe(name: String, present: Bool) List[String]?:
 
 fn stop_in_body() Unit:
     for i in 0..3:
-        if let r = maybe("body{i}", true):
+        if r := maybe("body{i}", true):
             if i == 1:
                 break
 
@@ -15,7 +15,7 @@ fn stop_in_body() Unit:
 
 fn skip_in_body() Unit:
     for i in 0..3:
-        if let r = maybe("skip{i}", true):
+        if r := maybe("skip{i}", true):
             if i == 1:
                 continue
 
@@ -23,14 +23,14 @@ fn skip_in_body() Unit:
 
 fn stop_in_else() Unit:
     for i in 0..3:
-        if let r = maybe("else{i}", i == 0):
+        if r := maybe("else{i}", i == 0):
             print("{r[0]}")
         else:
             break
 
 fn skip_in_else() Unit:
     for i in 0..3:
-        if let r = maybe("else{i}", i != 1):
+        if r := maybe("else{i}", i != 1):
             print("{r[0]}")
         else:
             continue

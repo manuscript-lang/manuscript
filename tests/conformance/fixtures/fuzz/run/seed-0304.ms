@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     say(
         "{((48 * 621989) * ((-14) % 48))} {((-14) + (0 + (-501581)))} {(((48 * 621989) * ((-14) % 48)) < ((-14) + (0 + (-501581))))} sum {((48 * 621989) * ((-14) % 48)) + ((-14) + (0 + (-501581)))}"
     )
 
-    let l1 = [30, (-28), (-17)]
+    l1 := [30, (-28), (-17)]
     say("l1 = {l1} len {l1.length()}")
     say(
         "{((-50) * (730954 * 1))} {(4 / (-561741))} {(((-50) * (730954 * 1)) < (4 / (-561741)))} sum {((-50) * (730954 * 1)) + (4 / (-561741))}"
     )
 
-    let b2 = (("{(27 + (-41))}:" + "  padded  ") + "日本語".lower()).is_empty()
+    b2 := (("{(27 + (-41))}:" + "  padded  ") + "日本語".lower()).is_empty()
     say("b2 = {b2}")
 
-    let b3 = b2
+    b3 := b2
     say("b3 = {b3}")
 
-    let i4 = (((32 - (-647678)) / (43 * (-715237275172))) * l1.get(1))
+    i4 := (((32 - (-647678)) / (43 * (-715237275172))) * l1.get(1))
     say("i4 = {i4}")
 
-    let s5 = "gamma".trim().replace("  padded  ", "quote\"d").upper()
+    s5 := "gamma".trim().replace("  padded  ", "quote\"d").upper()
     say("s5 = [{s5}]")
 
     if "".ends_with(s5):
@@ -36,10 +36,10 @@ export fn main() Int:
     else:
         say("héllo")
 
-    let s6 = ("a" + "  padded  ").lower().reverse()
+    s6 := ("a" + "  padded  ").lower().reverse()
     say("s6 = [{s6}]")
 
-    let s7 = ("quote\"d" + "").reverse().upper()
+    s7 := ("quote\"d" + "").reverse().upper()
     say("s7 = [{s7}]")
 
     var acc8 = 0
@@ -47,15 +47,15 @@ export fn main() Int:
         acc8 += i * (-2)
     say("acc8 = {acc8}")
 
-    let b9 = false
+    b9 := false
     say("b9 = {b9}")
 
-    let l10 = l1.filter(fn x: x > 5)
+    l10 := l1.filter(fn x: x > 5)
     say("l10 = {l10} len {l10.length()}")
 
-    let f11 = (((177.946 + 645.599) - 0.0) - ((9.5 / 0.0) * (3.5 + 661.610)))
+    f11 := (((177.946 + 645.599) - 0.0) - ((9.5 / 0.0) * (3.5 + 661.610)))
     say("f11 = {f11}")
 
-    let i12 = 45
+    i12 := 45
     say("i12 = {i12}")
     return 0

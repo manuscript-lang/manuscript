@@ -12,5 +12,5 @@ impl Marker:
 fn marker() Marker!Error: ok(Marker(1))
 
 fn bad() Unit:
-    let value = marker()
-    let recover = value.or_else
+    value := marker()
+    recover := value.or_else

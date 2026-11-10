@@ -3,18 +3,18 @@ import lines from "@std/io/streams.ms"
 import Bytes from "@std/bytes.ms"
 import max from "@std/math/math.ms"
 
-let INF = 1000000000
-let BAD = "error: bad command"
+INF := 1000000000
+BAD := "error: bad command"
 
 // Parses 1..6 ASCII digits; returns -1 when the text is not such a number.
 fn num(t: String) Int:
-    let n = t.length()
+    n := t.length()
     if n < 1 or n > 6: return -1
 
     var v = 0
 
     for i in 0..n:
-        let c = t.scalar_at(i)
+        c := t.scalar_at(i)
         if c < 48 or c > 57: return -1
 
         v = v * 10 + (c - 48)
@@ -32,8 +32,8 @@ fn is_blank(s: String) Bool:
     return true
 
 fn lcs_len(a: Bytes, b: Bytes) Int:
-    let n = a.length()
-    let m = b.length()
+    n := a.length()
+    m := b.length()
     var prev = List[Int]()
     var cur = List[Int]()
 
@@ -56,8 +56,8 @@ fn lcs_len(a: Bytes, b: Bytes) Int:
     return prev[m]
 
 fn edit_dist(a: Bytes, b: Bytes) Int:
-    let n = a.length()
-    let m = b.length()
+    n := a.length()
+    m := b.length()
     var prev = List[Int]()
     var cur = List[Int]()
 
@@ -92,14 +92,14 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
         dp.append(0)
 
     for k in 0..ws.length():
-        let w = ws[k]
-        let v = vs[k]
+        w := ws[k]
+        v := vs[k]
 
         if w <= c:
             var j = c
 
             while j >= w:
-                let cand = dp[j - w] + v
+                cand := dp[j - w] + v
                 if cand > dp[j]: dp[j] = cand
                 j -= 1
 
@@ -120,9 +120,9 @@ fn coin_count(amount: Int, cs: List[Int]) Int:
     return dp[amount]
 
 fn solve(line: String) String:
-    let toks = line.split(" ")
-    let n = toks.length()
-    let cmd = toks[0]
+    toks := line.split(" ")
+    n := toks.length()
+    cmd := toks[0]
 
     if cmd == "lcs" or cmd == "edit":
         if n != 3 or toks[1].length() == 0 or toks[2].length() == 0: return BAD
@@ -134,18 +134,18 @@ fn solve(line: String) String:
     if cmd == "knap":
         if n < 2: return BAD
 
-        let cap = num(toks[1])
+        cap := num(toks[1])
         if cap < 0: return BAD
 
         var ws = List[Int]()
         var vs = List[Int]()
 
         for k in 2..n:
-            let parts = toks[k].split(":")
+            parts := toks[k].split(":")
             if parts.length() != 2: return BAD
 
-            let w = num(parts[0])
-            let v = num(parts[1])
+            w := num(parts[0])
+            v := num(parts[1])
             if w < 1 or v < 0: return BAD
 
             ws.append(w)
@@ -156,18 +156,18 @@ fn solve(line: String) String:
     if cmd == "coins":
         if n < 3: return BAD
 
-        let amount = num(toks[1])
+        amount := num(toks[1])
         if amount < 0: return BAD
 
         var cs = List[Int]()
 
         for k in 2..n:
-            let c = num(toks[k])
+            c := num(toks[k])
             if c < 1: return BAD
 
             cs.append(c)
 
-        let r = coin_count(amount, cs)
+        r := coin_count(amount, cs)
         if r < 0: return "impossible"
 
         return "{r}"

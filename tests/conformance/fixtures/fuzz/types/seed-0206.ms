@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     var acc2 = 0
@@ -23,13 +23,13 @@ export fn main() Int:
         acc3 += i * 1
     say("acc3 = {acc3}")
 
-    let s4 = "Tab\there"
+    s4 := "Tab\there"
     say("s4 = [{s4}]")
 
-    let i5 = 23
+    i5 := 23
     say("i5 = {i5}")
 
-    let s6 = "x".reverse()
+    s6 := "x".reverse()
     say("s6 = [{s6}]")
     return "not an int"
     return 0

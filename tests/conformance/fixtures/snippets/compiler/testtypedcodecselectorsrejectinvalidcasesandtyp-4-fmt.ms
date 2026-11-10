@@ -4,4 +4,4 @@
 import CompressionFormat from "@std/io/archive.ms"
 
 fn wrong() Unit:
-    let format = CompressionFormat.GZip
+    format := CompressionFormat.GZip

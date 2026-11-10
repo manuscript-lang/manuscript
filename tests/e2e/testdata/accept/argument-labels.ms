@@ -36,7 +36,7 @@ type Counter:
     value: Int
 
 fn next(var state: Counter) Int:
-    let value = state.value
+    value := state.value
     state.value = value + 1
     return value
 
@@ -49,13 +49,13 @@ fn prepare_function(var state: Counter) (fn(Int) Int)!:
     return ok(increment)
 
 fn absent(value: Int?) Bool:
-    let missing: Int? = none
+    missing: Int? = none
     return value == missing
 
 test "optional labels on single-parameter functions":
     increment(3) | try expect_equal(increment(value: 3))
 
-    let multiline = increment(3)
+    multiline := increment(3)
     multiline | try expect_equal(4)
     identity(7) | try expect_equal(7)
     identity[Int](7) | try expect_equal(7)
@@ -65,30 +65,30 @@ test "optional labels on single-parameter functions":
     "{increment(3)}" | try expect_equal("4")
     select()(5) | try expect_equal(6)
 
-    let specialized = identity[Int]
+    specialized := identity[Int]
     specialized(8) | try expect_equal(8)
 
-    let closure = fn(value: Int):
+    closure := fn(value: Int):
         return value * 2
     closure(3) | try expect_equal(6)
     apply(closure) | try expect_equal(8)
 
-    let result = apply(fn value: return value + 2)
+    result := apply(fn value: return value + 2)
     result | try expect_equal(6)
     subtract(deduction: increment(1), amount: increment(8)) | try expect_equal(7)
 
 test "optional labels on methods and native functions":
-    let offset = Offset(3)
+    offset := Offset(3)
     offset.apply(4) | try expect_equal(7)
 
-    let view: Increment = offset
+    view: Increment = offset
     view.apply(4) | try expect_equal(7)
 
-    let method = view.apply
+    method := view.apply
     method(5) | try expect_equal(8)
     sqrt(9.0) | try expect_equal(3.0)
 
-    let native = sqrt
+    native := sqrt
     native(16.0) | try expect_equal(4.0)
     sum([]) | try expect_equal(0)
     sum([1, 2, 3]) | try expect_equal(6)
@@ -101,7 +101,7 @@ test "optional labels on methods and native functions":
     chain_2.append(3)
     chain_2 | try expect_equal([1, 2, 3])
 
-    let lookup = [4, 5].get
+    lookup := [4, 5].get
     lookup(1) | try expect_equal(5)
     [4, 5].get(0) | try expect_equal(4)
 

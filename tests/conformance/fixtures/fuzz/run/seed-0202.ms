@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = "42".trim()
+    s1 := "42".trim()
     say("s1 = [{s1}]")
 
     if (("MiXeD CaSe" + s1) != s1.upper()):
@@ -17,7 +17,7 @@ export fn main() Int:
     else:
         say("42")
 
-    let f2 = (((774.25 + 15.936) + (833.25 / 747.876)) + 193.453)
+    f2 := (((774.25 + 15.936) + (833.25 / 747.876)) + 193.453)
     say("f2 = {f2}")
 
     if ("" + "日本語").is_empty():
@@ -29,10 +29,10 @@ export fn main() Int:
         "{(((-13) % (-288336)) % (-2))} {(-21)} {((((-13) % (-288336)) % (-2)) < (-21))} sum {(((-13) % (-288336)) % (-2)) + (-21)}"
     )
 
-    let l3 = [1, 2, 3].take(0)
+    l3 := [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
 
-    let b4 = (((s1 + s1) != "42".reverse()) or "Tab\there".is_empty())
+    b4 := (((s1 + s1) != "42".reverse()) or "Tab\there".is_empty())
     say("b4 = {b4}")
     say(
         "{(((-256213) - 597129107438) - (47 / (-25)))} {l3.length()} {((((-256213) - 597129107438) - (47 / (-25))) < l3.length())} sum {(((-256213) - 597129107438) - (47 / (-25))) + l3.length()}"

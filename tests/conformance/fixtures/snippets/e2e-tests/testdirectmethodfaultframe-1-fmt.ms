@@ -13,5 +13,5 @@ impl Shape for Rect:
         return self.w * self.h
 
 test "method fault frame":
-    let rect = Rect(w: 9223372036854775807, h: 2)
+    rect := Rect(w: 9223372036854775807, h: 2)
     rect.area()

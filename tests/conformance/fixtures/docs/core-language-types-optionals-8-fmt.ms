@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/optionals.md:95
 fn display_name(name: String?) String:
-    if let value = name:
+    if value := name:
         return value
 
     return "Anonymous"

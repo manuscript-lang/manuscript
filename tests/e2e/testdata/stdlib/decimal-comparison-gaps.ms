@@ -2,7 +2,7 @@ import Decimal from "@std/math/decimal.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "decimal comparison orders signs exponent gaps and overlapping digits":
-    let ascending = [
+    ascending := [
         -1e6144d, -1e34d, -9999999999999999999999999999999999d, -1e33d, -1d, -1e-6176d,
         0d, 1e-6176d, 1d, 9999999999999999999999999999999999d, 1e34d, 1e6144d
     ]

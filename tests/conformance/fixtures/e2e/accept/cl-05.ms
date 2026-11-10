@@ -10,5 +10,5 @@ fn apply(value: Int, transform: fn(Int) Int) Int:
     return transform(value)
 
 test "function label compatibility":
-    let transform: fn(Int) Int = increase
+    transform: fn(Int) Int = increase
     try expect_equal(apply(4, transform), 5)

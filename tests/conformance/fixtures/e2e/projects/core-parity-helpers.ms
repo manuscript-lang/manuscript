@@ -8,18 +8,18 @@ export fn transform_set[T: Hashable, U: Hashable](
     return values.map[U](transform)
 
 export fn lookup[K: Hashable, V: Clonable](values: Map[K, V], key: K, fallback: V) V:
-    let get = values.get_or
+    get := values.get_or
     return get(key, fallback)
 
 export fn locate_map[K: Hashable, V: Clonable](
     values: Map[K, V],
     needle: K
 ) MapEntry[K, V]?:
-    let find = values.find
+    find := values.find
     return find(fn key, value: key == needle)
 
 export fn locate_set[T: Hashable](values: Set[T], needle: T) T?:
-    let find = values.find
+    find := values.find
     return find(fn value: value == needle)
 
 export fn convert[T, E](value: T?, create: fn() E) T!E:

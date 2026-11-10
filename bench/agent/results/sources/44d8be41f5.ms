@@ -6,7 +6,7 @@ fn say(msg: String) Int:
     return 0
 
 export fn main() Int:
-    let rows = read_lines(stdin()).get()
+    rows := read_lines(stdin()).get()
     var n = rows.length()
 
     // Trailing empty lines are not part of the grid.
@@ -21,11 +21,11 @@ export fn main() Int:
 
     for r in 0..n:
         for c in 0..grid[r].length():
-            let ch = grid[r][c]
+            ch := grid[r][c]
             if ch != "#" and ch != "." and ch != "S" and ch != "E":
                 return say("error: bad character at {r + 1},{c + 1}")
 
-    let width = grid[0].length()
+    width := grid[0].length()
     for r in 0..n:
         if grid[r].length() != width:
             return say("error: ragged grid")
@@ -37,7 +37,7 @@ export fn main() Int:
 
     for r in 0..n:
         for c in 0..width:
-            let ch = grid[r][c]
+            ch := grid[r][c]
 
             if ch == "S":
                 starts += 1
@@ -64,24 +64,24 @@ export fn main() Int:
     var queue = List[Int]()
     queue.append(s)
 
-    let dr = [-1, 1, 0, 0]
-    let dc = [0, 0, -1, 1]
+    dr := [-1, 1, 0, 0]
+    dc := [0, 0, -1, 1]
     var head = 0
 
     while head < queue.length():
-        let cur = queue[head]
+        cur := queue[head]
         head += 1
 
-        let r = cur / width
-        let c = cur % width
+        r := cur / width
+        c := cur % width
 
         for k in 0..4:
-            let nr = r + dr[k]
-            let nc = c + dc[k]
+            nr := r + dr[k]
+            nc := c + dc[k]
             if nr < 0 or nr >= n or nc < 0 or nc >= width:
                 continue
 
-            let next = nr * width + nc
+            next := nr * width + nc
             if grid[nr][nc] == "#" or dist[next] != -1:
                 continue
 

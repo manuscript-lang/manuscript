@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,10 +22,10 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let f1 = ((228.023 * (154.682 * 184.169)) + (517.609 * 696.722))
+    f1 := ((228.023 * (154.682 * 184.169)) + (517.609 * 696.722))
     say("f1 = {f1}")
 
-    let l2 = [7, (-26), (-27), 5]
+    l2 := [7, (-26), (-27), 5]
     say("l2 = {l2} len {l2.length()}")
 
     var acc3 = 0
@@ -38,21 +38,21 @@ export fn main() Int:
 
     say("acc3 = {acc3}")
 
-    let s4 = "gamma"
+    s4 := "gamma"
     say("s4 = [{s4}]")
 
-    let i5 = (-4)
+    i5 := (-4)
     say("i5 = {i5}")
 
-    let b6 = (s4 == "line\nbreak")
+    b6 := (s4 == "line\nbreak")
     say("b6 = {b6}")
     say("fib(47) = {fib(47)}")
 
-    let b7 = ("hello world".replace(s4, "back\\slash") + (s4 + "MiXeD CaSe")).starts_with(
+    b7 := ("hello world".replace(s4, "back\\slash") + (s4 + "MiXeD CaSe")).starts_with(
         "brace\{s\}"
     )
     say("b7 = {b7}")
 
-    let f8 = (f1 + ((552.993 * 92.811) + (76.026 * 964.25)))
+    f8 := (f1 + ((552.993 * 92.811) + (76.026 * 964.25)))
     say("f8 = {f8}")
     return 0

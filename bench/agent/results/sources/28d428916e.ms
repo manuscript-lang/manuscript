@@ -56,14 +56,14 @@ fn parse_primary(toks: List[Tok], pos: Int) Res:
     if pos >= toks.length():
         return bad()
 
-    let t = toks[pos]
+    t := toks[pos]
     if t.kind == "num":
         return Res(
             ok: true, value: t.text.parse_int().get(0), pos: pos + 1, div0: false
         )
 
     if t.kind == "lp":
-        let inner = parse_expr(toks, pos + 1)
+        inner := parse_expr(toks, pos + 1)
         if not inner.ok or inner.pos >= toks.length() or toks[inner.pos].kind != "rp":
             return bad()
 
@@ -73,7 +73,7 @@ fn parse_primary(toks: List[Tok], pos: Int) Res:
 
 fn parse_unary(toks: List[Tok], pos: Int) Res:
     if has_op(toks, pos, "-"):
-        let r = parse_unary(toks, pos + 1)
+        r := parse_unary(toks, pos + 1)
         if not r.ok:
             return r
 
@@ -85,8 +85,8 @@ fn parse_term(toks: List[Tok], pos: Int) Res:
     var cur = parse_unary(toks, pos)
 
     while cur.ok and has_op(toks, cur.pos, "*/"):
-        let op = toks[cur.pos].text
-        let r = parse_unary(toks, cur.pos + 1)
+        op := toks[cur.pos].text
+        r := parse_unary(toks, cur.pos + 1)
         if not r.ok:
             return r
 
@@ -108,8 +108,8 @@ fn parse_expr(toks: List[Tok], pos: Int) Res:
     var cur = parse_term(toks, pos)
 
     while cur.ok and has_op(toks, cur.pos, "+-"):
-        let op = toks[cur.pos].text
-        let r = parse_term(toks, cur.pos + 1)
+        op := toks[cur.pos].text
+        r := parse_term(toks, cur.pos + 1)
         if not r.ok:
             return r
 
@@ -121,8 +121,8 @@ fn parse_expr(toks: List[Tok], pos: Int) Res:
     return cur
 
 fn evaluate(line: String) String:
-    let toks = tokenize(line)
-    let r = parse_expr(toks, 0)
+    toks := tokenize(line)
+    r := parse_expr(toks, 0)
     if not r.ok or r.pos != toks.length():
         return "error: syntax"
     if r.div0:
@@ -134,7 +134,7 @@ export fn main() Int:
     var out = stdout()
 
     for line in read_lines(stdin()).get():
-        let text = line.trim()
+        text := line.trim()
         if text.length() == 0:
             continue
 

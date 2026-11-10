@@ -1,3 +1,3 @@
 fn identity(value: Int) Int:
-    let result = value
+    result := value
     return result

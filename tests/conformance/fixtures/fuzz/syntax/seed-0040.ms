@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     say(
         "{(-8)} {(((-22) + 7) - ((-29) - 903587334847))} {((-8) < (((-22) + 7) - ((-29) - 903587334847)))} sum {(-8) + (((-22) + 7) - ((-29) - 903587334847))}"
     )
 
-    let f1 = 421.536
+    f1 := 421.536
     say("f1 = {f1}")
 
     if ((233.462 + 542.097) < f1):
@@ -21,9 +21,9 @@ export fn main() Int:
     else:
         say(("naïve" + ""))
 
-    let s2 = (("{(33 * 33)}:" + "Tab\there".trim()) + "x")
+    s2 := (("{(33 * 33)}:" + "Tab\there".trim()) + "x")
     say("s2 = [{s2}]")
 
-    let i3 = (-(-49591))
+    i3 := (-(-49591))
     say("i3 = {i3}")
     return 0

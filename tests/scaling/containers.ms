@@ -8,7 +8,7 @@ import StringBuilder from "@std/string.ms"
 import SortedMap from "@std/collections/sorted.ms"
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    _ignored := stdout().write(text)
 
 fn report(name: String, started: Instant) Unit:
     say("{name} {monotonic().difference(started).to_nanoseconds()}\n")
@@ -17,7 +17,7 @@ fn next(x: Int) Int:
     return (x * 1103515245 + 12345) % 2147483648
 
 fn list_append(n: Int) Int:
-    let t = monotonic()
+    t := monotonic()
     var xs = List[Int]()
     for i in 0..n:
         xs.append(i)
@@ -29,7 +29,7 @@ fn list_append(n: Int) Int:
     return sum
 
 fn list_sort(n: Int) Int:
-    let t = monotonic()
+    t := monotonic()
     var xs = List[Int]()
     var x = 1
 
@@ -42,7 +42,7 @@ fn list_sort(n: Int) Int:
     return xs[0]
 
 fn map_int(n: Int) Int:
-    let t = monotonic()
+    t := monotonic()
     var m = Map[Int, Int]()
     for i in 0..n:
         m[i] = i
@@ -55,7 +55,7 @@ fn map_int(n: Int) Int:
     return hits
 
 fn map_string(n: Int) Int:
-    let t = monotonic()
+    t := monotonic()
     var m = Map[String, Int]()
     for i in 0..n:
         m["key{i}"] = i
@@ -68,7 +68,7 @@ fn map_string(n: Int) Int:
     return hits
 
 fn set_int(n: Int) Int:
-    let t = monotonic()
+    t := monotonic()
     var s = Set[Int]()
     for i in 0..n:
         s.add(i)
@@ -76,7 +76,7 @@ fn set_int(n: Int) Int:
     return s.length()
 
 fn sorted_map(n: Int) Int:
-    let t = monotonic()
+    t := monotonic()
     var m = SortedMap[Int, Int]()
     var x = 1
 
@@ -96,7 +96,7 @@ fn sorted_map(n: Int) Int:
     return hits
 
 fn string_build(n: Int) Int:
-    let t = monotonic()
+    t := monotonic()
     var s = ""
     for i in 0..n:
         s += "ab"
@@ -108,7 +108,7 @@ fn string_build(n: Int) Int:
     return s.length() + b.build().length()
 
 fn string_scan(n: Int) Int:
-    let t = monotonic()
+    t := monotonic()
     var s = ""
     for i in 0..n:
         s += "ab "
@@ -124,17 +124,17 @@ fn string_scan(n: Int) Int:
     return words + sum
 
 fn string_replace(n: Int) Int:
-    let t = monotonic()
+    t := monotonic()
     var s = ""
     for i in 0..n:
         s += "ab "
 
-    let out = s.replace_each({"ab": "x", " ": "_"})
+    out := s.replace_each({"ab": "x", " ": "_"})
     report("string_replace", t)
     return out.length()
 
 export fn main() Int:
-    let args = arguments()
+    args := arguments()
     var n = 10000
     if args.length() > 0:
         n = args[0].parse_int().get(10000)

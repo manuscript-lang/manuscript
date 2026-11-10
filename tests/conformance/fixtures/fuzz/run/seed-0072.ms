@@ -6,29 +6,29 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     say(
         "{(45 + ((-12) - 871629575250))} {(-((-35) * (-155366)))} {((45 + ((-12) - 871629575250)) < (-((-35) * (-155366))))} sum {(45 + ((-12) - 871629575250)) + (-((-35) * (-155366)))}"
     )
 
-    let b1 = (not ((813.075 * 7.0e24) != (875.489 / 745.509)))
+    b1 := (not ((813.075 * 7.0e24) != (875.489 / 745.509)))
     say("b1 = {b1}")
 
-    let b2 = "".reverse().upper().starts_with("naïve")
+    b2 := "".reverse().upper().starts_with("naïve")
     say("b2 = {b2}")
 
-    let b3 = (((b1 and true) and false) and (b2 and b2))
+    b3 := (((b1 and true) and false) and (b2 and b2))
     say("b3 = {b3}")
 
-    let i4 = (-15)
+    i4 := (-15)
     say("i4 = {i4}")
 
-    let s5 = "MiXeD CaSe".trim()
+    s5 := "MiXeD CaSe".trim()
     say("s5 = [{s5}]")
 
-    let b6 = ("{(i4 * i4)}:" + s5).trim().starts_with(s5)
+    b6 := ("{(i4 * i4)}:" + s5).trim().starts_with(s5)
     say("b6 = {b6}")
 
     if (true and (false and b1)):
@@ -36,9 +36,9 @@ export fn main() Int:
     else:
         say((s5 + s5))
 
-    let i7 = 42
+    i7 := 42
     say("i7 = {i7}")
 
-    let i8 = (42 + (725427 + (20 + 19)))
+    i8 := (42 + (725427 + (20 + 19)))
     say("i8 = {i8}")
     return 0

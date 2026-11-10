@@ -13,13 +13,13 @@ test "rotation preserves order across ring positions and signed boundaries":
                 for i in 0..size:
                     q.push_back(i)
                 for i in 0..advance:
-                    if let value = q.pop_front():
+                    if value := q.pop_front():
                         q.push_back(value)
                 q.rotate(count)
                 try expect_equal(q.length(), size)
 
                 if size > 0:
-                    let shift = (count % size + size + advance % size) % size
+                    shift := (count % size + size + advance % size) % size
                     for i in 0..size:
                         try expect_equal(q.at(i).get(-1), (i + shift) % size)
                     try expect_equal(q.front(), q.at(0))
@@ -32,9 +32,9 @@ test "negative rotation keeps optional values and nested contents":
     q.push_back([3])
     q.rotate(-1)
 
-    let last: List[Int]? = [3]
-    let first: List[Int]? = [1, 2]
-    let absent: List[Int]? = none
+    last: List[Int]? = [3]
+    first: List[Int]? = [1, 2]
+    absent: List[Int]? = none
     try expect_equal(q.pop_front(), last)
     try expect_equal(q.pop_front(), first)
     try expect_equal(q.pop_front(), absent)
@@ -64,9 +64,9 @@ test "positive near-whole rotation preserves optional nested payloads":
     q.push_back([3])
     q.rotate(2)
 
-    let last: List[Int]? = [3]
-    let first: List[Int]? = [1, 2]
-    let absent: List[Int]? = none
+    last: List[Int]? = [3]
+    first: List[Int]? = [1, 2]
+    absent: List[Int]? = none
     try expect_equal(q.pop_front(), last)
     try expect_equal(q.pop_front(), first)
     try expect_equal(q.pop_front(), absent)

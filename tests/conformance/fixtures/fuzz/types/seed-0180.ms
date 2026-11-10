@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [7, (-1), (-19), (-5), (-20)]
+    l1 := [7, (-1), (-19), (-5), (-20)]
     say("l1 = {l1} len {l1.length()}")
 
-    let i2 = (-23)
+    i2 := (-23)
     say("i2 = {i2}")
 
-    let l3 = [18, (-11), (-24), 14, 6]
+    l3 := [18, (-11), (-24), 14, 6]
     say("l3 = {l3} len {l3.length()}")
 
-    let l4 = [1, 2, 3].take(0)
+    l4 := [1, 2, 3].take(0)
     say("l4 = {l4} len {l4.length()}")
 
-    let l5 = l3.reversed()
+    l5 := l3.reversed()
     say("l5 = {l5} len {l5.length()}")
 
     var acc6 = 0
@@ -33,5 +33,5 @@ export fn main() Int:
 
     say("acc6 = {acc6}")
 
-    let bad = 1.5 + 2
+    bad := 1.5 + 2
     return 0

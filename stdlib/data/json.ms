@@ -36,8 +36,8 @@ bind each level with `if let`:
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
-if let user = doc.get("user"):
-    if let name = user.get("name"):
+if user := doc.get("user"):
+    if name := user.get("name"):
         return name.as_string().get("")
 ```
 
@@ -147,7 +147,7 @@ impl JsonValue:
 Parses one JSON value and applies the supplied input, depth, and value limits.
 
 With the default `T = JsonValue` the result is the parsed tree. Any other `T` is read from the
-document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `let result: Request! = parse(text)`
+document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `result: Request! = parse(text)`
 return a decoded `Request` in a `Result` (`try` passes no expected type, so write `try parse[Request](text)`). A value whose shape does not match `T` returns
 `EBADMSG`; a type that is not `Data` is rejected at compile time. Input, depth and value limits
 apply to the document before decoding.
@@ -175,7 +175,7 @@ export fn parse[T: Data = JsonValue](
     text: String,
     options: JsonOptions = JsonOptions()
 ) T!:
-    let limits = JsonLimits(
+    limits := JsonLimits(
         max_bytes: options.max_bytes, max_depth: options.max_depth,
         max_values: options.max_values
     )
@@ -260,7 +260,7 @@ type Request:
     stream: Bool
     user: String?
 
-let text = try stringify(Request(model: "example", stream: true, user: none))
+text := try stringify(Request(model: "example", stream: true, user: none))
 ```
 */
 export fn stringify[T: Data](
@@ -275,7 +275,7 @@ export fn stringify[T: Data](
 fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
     if from >= keys.length(): return none
     if from == keys.length() - 1: return value.get(keys[from])
-    if let next = value.get(keys[from]): return member_path(next, keys, from + 1)
+    if next := value.get(keys[from]): return member_path(next, keys, from + 1)
 
     return none
 
@@ -325,9 +325,9 @@ impl JsonReading[T]:
 
     // Parses the buffered value and clears the scanner for the next one.
     var fn complete() T!:
-        let bytes = self.pending.drain()
+        bytes := self.pending.drain()
         self.reset()
-        if let text = bytes.decode_utf8(): return parse[T](text, self.options)
+        if text := bytes.decode_utf8(): return parse[T](text, self.options)
 
         return error(Error("JSON: invalid data", kind: "EBADMSG"))
 
@@ -346,7 +346,7 @@ impl JsonReading[T]:
             else if byte == 34:
                 self.mode = 2
 
-        let limit = self.options.max_bytes.get(-1)
+        limit := self.options.max_bytes.get(-1)
         if self.mode == 3 and is_space(byte): return ok(true)
 
         self.size += 1
@@ -387,28 +387,28 @@ impl JsonReading[T]:
 
     // Consumes one byte and returns the value it completes, if any.
     var fn advance(byte: UInt8) T?!:
-        let done = try self.scan(byte)
+        done := try self.scan(byte)
         if not done: return ok(none)
 
-        let value = try self.complete()
+        value := try self.complete()
         return ok(value)
 
 impl Transform[Bytes, T] for JsonReading[T]:
     var fn step(value: Bytes, var out: List[T]) Unit!:
         if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
-        if let failure = self.failure: return error(failure.clone())
+        if failure := self.failure: return error(failure.clone())
 
         for byte in value.values():
-            let stepped = self.advance(byte)
+            stepped := self.advance(byte)
             if stepped.is_error(): return self.fail(stepped.err())
 
-            if let found = stepped.get(none): out.append(found)
+            if found := stepped.get(none): out.append(found)
 
         return ok(unit)
 
     var fn finish(var out: List[T]) Unit!:
         if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
-        if let failure = self.failure: return error(failure.clone())
+        if failure := self.failure: return error(failure.clone())
 
         self.finished = true
         if self.mode == 0: return ok(unit)
@@ -416,7 +416,7 @@ impl Transform[Bytes, T] for JsonReading[T]:
             Error("JSON: invalid data", kind: "EBADMSG")
         )
 
-        let completed = self.complete()
+        completed := self.complete()
         if completed.is_error(): return self.fail(completed.err())
 
         out.append(try completed)
@@ -450,7 +450,7 @@ export fn json_reader[T: Data = JsonValue](
     input: ReadStream[Bytes],
     options: JsonOptions = JsonOptions()
 ) ReadStream[T]:
-    let failure = invalid_limits(options)
+    failure := invalid_limits(options)
     return through[Bytes, T](
         input,
         JsonReading[T](
@@ -466,7 +466,7 @@ type JsonLines[T: Data]:
 
 impl Sink[T] for JsonLines[T]:
     var fn write(value: T) Unit!:
-        let text = try stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))
+        text := try stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))
         return self.output.write("{text}\n".to_bytes())
 
     var fn flush() Unit!:

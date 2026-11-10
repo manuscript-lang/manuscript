@@ -10,7 +10,7 @@ fn parse(n: Int) Int!Error:
     return ok(n)
 
 fn bound(n: Int) Int!Error:
-    let v = try parse(n)
+    v := try parse(n)
     return ok(v + 1)
 
 fn reassigned(n: Int) Int!Error:
@@ -35,8 +35,8 @@ fn nested(n: Int) Int!Error:
     return ok((try parse(n)) + (try parse(n - 5)))
 
 fn chained(n: Int) Int!Error:
-    let a = try bound(n)
-    let b = try reassigned(a - 10)
+    a := try bound(n)
+    b := try reassigned(a - 10)
     return ok(b)
 
 fn in_loop(values: List[Int]) Int!Error:
@@ -46,11 +46,11 @@ fn in_loop(values: List[Int]) Int!Error:
     return ok(sum)
 
 fn in_lambda(n: Int) Int!Error:
-    let inner = fn() Int!Error:
-        let v = try parse(n)
+    inner := fn() Int!Error:
+        v := try parse(n)
         return ok(v * 10)
 
-    let r = try inner()
+    r := try inner()
     return ok(r + 1)
 
 test "statement try returns the error and binds the value":

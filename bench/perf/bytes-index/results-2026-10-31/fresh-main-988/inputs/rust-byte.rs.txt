@@ -2,7 +2,7 @@ use std::{hint::black_box, time::Instant};
 
 #[inline(never)]
 fn search(data: &[u8], byte: u8, start: i64) -> Option<usize> {
-    let start = start.max(0) as usize;
+    start := start.max(0) as usize;
     if start > data.len() {
         return None;
     }
@@ -47,7 +47,7 @@ fn main() {
             if (0..n as i64).contains(&pos) {
                 data[pos as usize] = 255;
             }
-            let expected = if (0..n as i64).contains(&pos) && start <= pos {
+            expected := if (0..n as i64).contains(&pos) && start <= pos {
                 pos as usize
             } else {
                 n
@@ -62,16 +62,16 @@ fn main() {
             if start >= n as i64 {
                 work = 1;
             }
-            let iterations = (67108864 / work.max(32) as usize).clamp(256, 1000000);
-            let expected_option = if expected < n { Some(expected) } else { None };
+            iterations := (67108864 / work.max(32) as usize).clamp(256, 1000000);
+            expected_option := if expected < n { Some(expected) } else { None };
             assert_eq!(search(&data, 255, start), expected_option);
-            let now = Instant::now();
+            now := Instant::now();
             let mut checksum = 0usize;
             for _ in 0..iterations {
                 checksum += black_box(search(black_box(&data), black_box(255), black_box(start)))
                     .unwrap_or(n);
             }
-            let elapsed = now.elapsed().as_nanos();
+            elapsed := now.elapsed().as_nanos();
             assert_eq!(checksum, expected * iterations);
             println!("{kind}_{n},{n},{iterations},{elapsed},{checksum}");
         }

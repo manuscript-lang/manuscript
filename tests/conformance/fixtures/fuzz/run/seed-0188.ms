@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -28,11 +28,11 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let b1 = "hello world".is_empty()
+    b1 := "hello world".is_empty()
     say("b1 = {b1}")
     say("fib(15) = {fib(15)}")
 
-    let b2 = "delta".lower().is_empty()
+    b2 := "delta".lower().is_empty()
     say("b2 = {b2}")
 
     var acc3 = 0
@@ -40,26 +40,26 @@ export fn main() Int:
         acc3 += i * 9
     say("acc3 = {acc3}")
 
-    let b4 = ("ms".replace("emoji 😀", "gamma").trim() == ("{47}:" + "x".trim()))
+    b4 := ("ms".replace("emoji 😀", "gamma").trim() == ("{47}:" + "x".trim()))
     say("b4 = {b4}")
     say("gcd(4254, 223) = {gcd(4254, 223)}")
 
-    let i5 = (
+    i5 := (
         ((-(-30962378499)) / (830591 % (-904185)))
         * (((-450656) + (-946849)) + ((-42) * (-214396)))
     )
     say("i5 = {i5}")
 
-    let i6 = (i5 - ((i5 * (-18)) + (-23)))
+    i6 := (i5 - ((i5 * (-18)) + (-23)))
     say("i6 = {i6}")
 
-    let s7 = ("42".reverse() + "a")
+    s7 := ("42".reverse() + "a")
     say("s7 = [{s7}]")
 
-    let l8 = [1, 2, 3].take(0)
+    l8 := [1, 2, 3].take(0)
     say("l8 = {l8} len {l8.length()}")
 
-    let b9 = (i6 >= ((i6 - i5) * ((-280635) - 9)))
+    b9 := (i6 >= ((i6 - i5) * ((-280635) - 9)))
     say("b9 = {b9}")
     say("{11} {l8.length()} {(11 < l8.length())} sum {11 + l8.length()}")
     return 0

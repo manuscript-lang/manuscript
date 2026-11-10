@@ -599,7 +599,7 @@ impl Checker {
             return format!("{message}{hint}");
         }
         format!(
-            "{message}; declare it with 'let {name_t} = ...' before use, define 'fn {name_t}(...) T:', or import it from a module",
+            "{message}; declare it with '{name_t} := ...' before use, define 'fn {name_t}(...) T:', or import it from a module",
             name_t = self.syms.str(name)
         )
     }
@@ -687,7 +687,7 @@ impl Checker {
             return format!("{message}; more than one implementation provides it");
         }
         format!(
-            "{message}; it is provided by {}, so bind it to the interface first, e.g. let view: {} = value; view.{name_t}()",
+            "{message}; it is provided by {}, so bind it to the interface first, e.g. view: {} = value; view.{name_t}()",
             contracts.join(", "),
             contracts[0],
             name_t = self.syms.str(name)
@@ -767,10 +767,10 @@ impl Checker {
             let fix = match self.syms.str(name) {
                 "unwrap" | "expect" | "value" | "unwrap_or" | "unwrap_or_else" | "or_default"
                 | "unwrap_or_default" => {
-                    "read an Optional with x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:` to test and unwrap; x.get() with no default faults on none"
+                    "read an Optional with x.get(default), x.get_or_else(create) for a lazy fallback, or `if value := x:` to test and unwrap; x.get() with no default faults on none"
                 }
                 "map_or" | "is_some_and" | "flatten" | "filter" => {
-                    "use map, and_then, is_some, or `if let value = x:`"
+                    "use map, and_then, is_some, or `if value := x:`"
                 }
                 _ => "",
             };
@@ -781,10 +781,10 @@ impl Checker {
         if receiver.is(Builtin::Result) {
             let fix = match self.syms.str(name) {
                 "unwrap" | "expect" | "unwrap_or" | "unwrap_or_else" | "unwrap_or_default" => {
-                    "read a Result with `try x` inside a fn that returns Result, x.get(default), x.get_or_else(create) for a lazy fallback, or `if let value = x:`"
+                    "read a Result with `try x` inside a fn that returns Result, x.get(default), x.get_or_else(create) for a lazy fallback, or `if value := x:`"
                 }
                 "unwrap_err" | "err" | "ok" => {
-                    "inspect a Result with `if let value = x:` or is_error()"
+                    "inspect a Result with `if value := x:` or is_error()"
                 }
                 _ => "",
             };
@@ -799,11 +799,11 @@ impl Checker {
                 .contains(&self.syms.str(name).to_string())
         {
             let (wrapper, unwrap) = if receiver.is(Builtin::Optional) {
-                ("an Optional", "`if let value = x:` or x.get(default)")
+                ("an Optional", "`if value := x:` or x.get(default)")
             } else {
                 (
                     "a Result",
-                    "`try x` inside a fn that returns Result, `if let value = x:` or x.get(default)",
+                    "`try x` inside a fn that returns Result, `if value := x:` or x.get(default)",
                 )
             };
             return format!(

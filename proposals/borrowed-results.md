@@ -17,15 +17,15 @@ Stage 2 for the standard library landed independently in #1292 (same day): `Func
 
 Verified (`ms emit` on the probe below at `0d405aac`):
 
-- `let found = orders.get(id)` lowers to `call.rt @msrt_map_get`, which copies the whole `Order` (two strings, a list, each item's string) into an `Optional` slot, then drops it at scope exit. `orders.get(id).get()` in one expression lowers to `msrt_map_get_ptr` plus a `load` and copies nothing (`crates/ms-lower/src/mapset.rs`, `map_get_chain`).
-- `if let o = orders.get(id):` copies the `Optional`, binds `o` as a borrow of it, and drops the copy at the end of the branch.
-- `if let s = opt:` with a record payload copies the payload: `bind_local` lends only strings (`crates/ms-lower/src/func.rs`), while `let` lends any `opt.get`/`list.get`/`rec.get` result (`crates/ms-lower/src/stmt.rs`, `bind`).
-- `let o = m.get(k).get()` lends only when `m` is a read-only parameter (`stable_place`); on a local `var m` it copies, although the checker rejects changing `m` while `o` lives.
+- `found := orders.get(id)` lowers to `call.rt @msrt_map_get`, which copies the whole `Order` (two strings, a list, each item's string) into an `Optional` slot, then drops it at scope exit. `orders.get(id).get()` in one expression lowers to `msrt_map_get_ptr` plus a `load` and copies nothing (`crates/ms-lower/src/mapset.rs`, `map_get_chain`).
+- `if o := orders.get(id):` copies the `Optional`, binds `o` as a borrow of it, and drops the copy at the end of the branch.
+- `if s := opt:` with a record payload copies the payload: `bind_local` lends only strings (`crates/ms-lower/src/func.rs`), while `let` lends any `opt.get`/`list.get`/`rec.get` result (`crates/ms-lower/src/stmt.rs`, `bind`).
+- `o := m.get(k).get()` lends only when `m` is a read-only parameter (`stable_place`); on a local `var m` it copies, although the checker rejects changing `m` while `o` lives.
 - `m.get_or(k, d)` copies the entry into an `Optional`, copies the payload out of it, then drops the `Optional`: two copies for one read.
 - `xs.first()` and `xs.last()` call `msrt_list_first`/`last`, which copy the element into an `Optional` slot.
 - `def name() -> ref String: return self.name` copies at `return` (`emit_return` always owns); the caller receives and later drops an allocation per call. MIR `Func.ret` has no result mode ("results are always owned", `crates/ms-mir/src/ir.rs`).
 
-Measured (callgrind, `scratchpad/probes/mapget`, 300K lookups per shape of an `Order` with two items): the `let found` and `if let` shapes spend 2 allocations and 2 frees per hit on the copy and run about 3x the instructions of the chain shape. Agent-written programs use the copying shapes (`bench/agent/challenges/c13-inventory-orders/solutions/ms/main.ms.ref`: `let have = w.stock.get(it.sku)`).
+Measured (callgrind, `scratchpad/probes/mapget`, 300K lookups per shape of an `Order` with two items): the `let found` and `if let` shapes spend 2 allocations and 2 frees per hit on the copy and run about 3x the instructions of the chain shape. Agent-written programs use the copying shapes (`bench/agent/challenges/c13-inventory-orders/solutions/ms/main.ms.ref`: `have := w.stock.get(it.sku)`).
 
 - Found while checking the example: `return o.items.get(0).sku` from a `ref` function is rejected (`get` borrows its result from `o.items`; use it in place), while `return o.items[0].sku` is accepted. The checker's lending-call chain stops at a field read of a borrowed call result; tracked as a round-3 finding, outside this proposal.
 
@@ -39,7 +39,7 @@ Programs do not change. Before and after is the same source with fewer runtime c
 
 ```manuscript
 fn stock_of(w: Warehouse, sku: String) Int:
-    let have = w.stock.get(sku)     // a pointer into the map, not a copy of the entry
+    have := w.stock.get(sku)     // a pointer into the map, not a copy of the entry
     if have.is_none():
         return 0
     return have.get()
@@ -50,10 +50,10 @@ fn first_sku(o: Order) ref String:
 
 - **Borrowed optional (MIR).** New op `opt.view %payload -> opt<T>`: wraps a borrowed payload into an `Optional` that is itself a borrow. Operand mode `Borrow`, result mode `Borrow` (`arg_modes`, `Module::result_mode` in `crates/ms-mir`). Codegen is identical to `opt.some`. The verifier's linear ownership is unchanged: a borrowed optional is never dropped and never passed to a consuming position. `simplify` folds `opt.is_some` and `opt.get` over it as over `opt.some`.
 - **Boxed optionals.** `Optional[T]` where `T` contains `Optional[T]` by value is a heap box (`ms-clif/src/layout.rs`, `opt_is_boxed`); `opt.view` on such a type would allocate without an owner. Lowering keeps the copying path for those. The boxing test moves to `ms_mir::Module` so lowering and layout share one definition.
-- **`let x = accessor` (immutable name, function vetted by the ownership checker, binding not captured by a closure slot).** Lowering recognizes `Map.get(k)` (exact key type), `List.first()`, `List.last()` and emits the entry pointer or index, a presence test, and `opt.view` of the loaded payload joined with `opt.none` through a borrow-mode block parameter. The binding is `bind_lent`; temporaries the pointer depends on live as long as the binding (existing `bind_hidden` rule).
-- **`if let x = accessor` (same conditions).** No `Optional` at all: the test is the presence test and `x` is the loaded payload, lent. This is the `let` path of `alias_accessor` (`crates/ms-lower/src/alias.rs`) without the write-through alias.
-- **`if let x = opt` payloads.** Lend the payload under the same rule `let` uses (`opt.get`/`alt.get` of a scrutinee that is itself not owned); an owned scrutinee (`if let x = parse(s)`) still copies, because the scrutinee is dropped at the end of the branch.
-- **Chain reads.** `let o = m.get(k).get()` lends whenever the function is vetted, not only for read-only parameters: the checker rejects changing or reassigning `m` while `o` lives.
+- **`x := accessor` (immutable name, function vetted by the ownership checker, binding not captured by a closure slot).** Lowering recognizes `Map.get(k)` (exact key type), `List.first()`, `List.last()` and emits the entry pointer or index, a presence test, and `opt.view` of the loaded payload joined with `opt.none` through a borrow-mode block parameter. The binding is `bind_lent`; temporaries the pointer depends on live as long as the binding (existing `bind_hidden` rule).
+- **`if x := accessor` (same conditions).** No `Optional` at all: the test is the presence test and `x` is the loaded payload, lent. This is the `let` path of `alias_accessor` (`crates/ms-lower/src/alias.rs`) without the write-through alias.
+- **`if x := opt` payloads.** Lend the payload under the same rule `let` uses (`opt.get`/`alt.get` of a scrutinee that is itself not owned); an owned scrutinee (`if x := parse(s)`) still copies, because the scrutinee is dropped at the end of the branch.
+- **Chain reads.** `o := m.get(k).get()` lends whenever the function is vetted, not only for read-only parameters: the checker rejects changing or reassigning `m` while `o` lives.
 - **`m.get_or(k, d)`.** Lower through `msrt_map_get_ptr`: one copy of the payload on a hit, the fallback otherwise. Bound by `let`, both arms are borrows and the binding is lent when `d` is a place.
 - **Stage 2: `ref` function results.** `Func.ret` gains a `Mode`; a `ref` function with `Summary.result` non-empty returns a borrow (`ret` accepts a borrowed value when the function's result mode is `Borrow`), and `Call` results take the callee's mode. `emit_return` stops copying in such functions; a borrowed result that a caller stores or consumes is already rejected by the checker, so callers copy only where the lowering must own (`owned()` on a `Val { own: false }`, as today). Interface calls and closures stay owned.
 - **Ownership and safety.** Every lent value corresponds to a borrow the checker already enforces (OWNERSHIP.md "Borrows are lexical", "Borrowed results"). Standard-library source that the checker has not vetted (`ownership::is_vetted`) keeps copying.

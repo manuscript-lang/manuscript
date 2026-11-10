@@ -7,5 +7,5 @@ fn sum(values: List[Int]) Int:
         total += value
     return total
 
-let total = sum([1, 2, 3])
-let empty = sum([])
+total := sum([1, 2, 3])
+empty := sum([])

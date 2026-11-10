@@ -12,8 +12,8 @@ fn describe(s: Shape) String:
     return s.label()
 
 fn use_twice(q: Sq) String:
-    let a = describe(q)
-    let b = describe(q)
+    a := describe(q)
+    b := describe(q)
     return a + b + q.name
 
 type Holder:

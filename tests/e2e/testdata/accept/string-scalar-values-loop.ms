@@ -10,7 +10,7 @@ fn digits_only(s: String) Bool:
 
 test "a scalar walk yields what the list holds":
     for s in ["", "abc", "héllo wörld ✓ 😀!", "añb"]:
-        let listed = s.scalar_values()
+        listed := s.scalar_values()
         try expect_equal(walked(s), listed)
 
 test "a scalar walk stops at return, break, and continue":

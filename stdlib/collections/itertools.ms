@@ -45,7 +45,7 @@ export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
     if times < 0:
         panic("cycle: times must not be negative")
 
-    let count = if values.is_empty(): 0 else: times
+    count := if values.is_empty(): 0 else: times
     return values.repeated(count)
 
 // Pairs items by position and pads the shorter list with none, so the result is as long as the longer list.
@@ -55,7 +55,7 @@ export fn zip_longest[A: Clonable, B: Clonable](
     right: List[B]
 ) List[Pair[A?, B?]]:
     var out: List[Pair[A?, B?]] = []
-    let longest = left.length().max(right.length())
+    longest := left.length().max(right.length())
 
     for i in 0..longest:
         var first: A? = none
@@ -80,8 +80,8 @@ export fn group_runs[T: Clonable, K: Equal & Clonable](
     var out: List[Run[K, T]] = []
 
     for value in values:
-        let k = key(value)
-        let count = out.length()
+        k := key(value)
+        count := out.length()
 
         if count > 0 and out[count - 1].key == k:
             out[count - 1].items.append(value.clone())
@@ -96,8 +96,8 @@ Omit `size` for full-length orderings. A `size` outside 0 through the list lengt
 Example: `permutations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]`.
 */
 export fn permutations[T: Clonable](values: List[T], size: Int? = none) List[List[T]]:
-    let n = values.length()
-    let k = size.get(n)
+    n := values.length()
+    k := size.get(n)
 
     if k <= 0 or k > n:
         if k == 0: return [[]]

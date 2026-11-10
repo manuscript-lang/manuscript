@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     if (((-6) * (-23)) <= (38 - 140655650668)):
@@ -14,8 +14,8 @@ export fn main() Int:
     else:
         say("Tab\there".upper())
 
-    let bad = 1 + "one"
-    let b1 = (((9223372036854775806 + (-48)) + (750609 % 33)) != 621648)
+    bad := 1 + "one"
+    b1 := (((9223372036854775806 + (-48)) + (750609 % 33)) != 621648)
     say("b1 = {b1}")
 
     if ((379.541 > 985.25) and (not false)):
@@ -23,7 +23,7 @@ export fn main() Int:
     else:
         say("gamma".trim())
 
-    let l2 = [25]
+    l2 := [25]
     say("l2 = {l2} len {l2.length()}")
 
     var acc3 = 0

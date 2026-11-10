@@ -1,4 +1,4 @@
 fn head() String: "é中🦀"
 
 fn broken() Int:
-    let value = (
+    value := (

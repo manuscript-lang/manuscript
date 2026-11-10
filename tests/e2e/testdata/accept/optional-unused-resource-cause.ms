@@ -18,44 +18,44 @@ fn marker(id: Int, log: String) Marker: Marker(id, log)
 fn optional_marker(id: Int, log: String) Marker?: Marker(id, log)
 
 fn owned(log: String) Unit!:
-    let kept = present().ok_or(marker(1, log.clone()))
+    kept := present().ok_or(marker(1, log.clone()))
     try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,")
     try expect_equal(kept.get(), 7)
     return ok(unit)
 
 fn borrowed_scalar(cause: Int) Unit!:
-    let kept = present().ok_or(cause)
+    kept := present().ok_or(cause)
     try expect_equal(kept.get(), 7)
     try expect_equal(cause, 8)
     return ok(unit)
 
 fn transferred(log: String) Unit!:
-    let kept = absent().ok_or(marker(3, log.clone()))
+    kept := absent().ok_or(marker(3, log.clone()))
     try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,")
     try expect_equal(kept.is_error(), true)
     return ok(unit)
 
 fn lazy(log: String) Unit!:
-    let kept = present().ok_or_else(fn: marker(4, log.clone()))
+    kept := present().ok_or_else(fn: marker(4, log.clone()))
     try expect_equal(kept.get(), 7)
     try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,3,")
     return ok(unit)
 
 fn explicit_wrapped(log: String) Unit!:
-    let kept = present().ok_or[Marker](optional_marker(5, log.clone()))
+    kept := present().ok_or[Marker](optional_marker(5, log.clone()))
     try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,3,5,")
     try expect_equal(kept.get(), 7)
     return ok(unit)
 
 fn explicit_wrapped_transfer(log: String) Unit!:
-    let kept = absent().ok_or[Marker](optional_marker(6, log.clone()))
+    kept := absent().ok_or[Marker](optional_marker(6, log.clone()))
     try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,3,5,")
     try expect_equal(kept.is_error(), true)
     return ok(unit)
 
 test "unused eager resource causes close immediately only when owned":
-    let tmp = temporary("unused-cause-") | try expect_ok
-    let log = "{tmp.path()}/log"
+    tmp := temporary("unused-cause-") | try expect_ok
+    log := "{tmp.path()}/log"
     try write_file(log, "").wait()
     try owned(log.clone())
     try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,")

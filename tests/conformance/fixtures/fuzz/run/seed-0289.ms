@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -36,13 +36,13 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let f1 = 774.888
+    f1 := 774.888
     say("f1 = {f1}")
 
-    let l2 = [1, 2, 3].take(0)
+    l2 := [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
 
-    let f3 = f1
+    f3 := f1
     say("f3 = {f3}")
 
     if ((-(-628601)) != (-17)):
@@ -50,20 +50,20 @@ export fn main() Int:
     else:
         say(("  padded  " + "ms"))
 
-    let f4 = (((f3 * f1) - (9.0e-1 - f1)) / ((180.151 + f1) + (421.396 + 300.903)))
+    f4 := (((f3 * f1) - (9.0e-1 - f1)) / ((180.151 + f1) + (421.396 + 300.903)))
     say("f4 = {f4}")
 
-    let f5 = (271.695 - ((f3 + 84.723) - (f1 + 876.154)))
+    f5 := (271.695 - ((f3 + 84.723) - (f1 + 876.154)))
     say("f5 = {f5}")
 
-    let l6 = l2.reversed()
+    l6 := l2.reversed()
     say("l6 = {l6} len {l6.length()}")
 
-    let l7 = [13, (-2), (-18), 29, (-20)]
+    l7 := [13, (-2), (-18), 29, (-20)]
     say("l7 = {l7} len {l7.length()}")
     say("fib(40) = {fib(40)}")
 
-    let i8 = 22
+    i8 := 22
     say("i8 = {i8}")
 
     if "héllo".upper().is_empty():
@@ -71,7 +71,7 @@ export fn main() Int:
     else:
         say("quote\"d".reverse())
 
-    let i9 = (-i8)
+    i9 := (-i8)
     say("i9 = {i9}")
     say("collatz(2162) = {collatz(2162)}")
 

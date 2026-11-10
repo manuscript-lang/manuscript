@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module",
+        "message": "unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module",
         "position": {
           "file": "testresultargumentinference-1.ms",
           "line": 5,
@@ -20,7 +20,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding h; declare it with 'let h = ...' before use, define 'fn h(...) T:', or import it from a module",
+        "message": "unknown binding h; declare it with 'h := ...' before use, define 'fn h(...) T:', or import it from a module",
         "position": {
           "file": "testresultargumentinference-1.ms",
           "line": 6,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testresultargumentinference-1.ms:5:19: resolution: unknown binding f; declare it with 'let f = ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 5 |     let r: Int! = f()\n   |                   ^\n<DIR>/testresultargumentinference-1.ms:6:12: resolution: unknown binding h; declare it with 'let h = ...' before use, define 'fn h(...) T:', or import it from a module\n   |\n 6 |     return h(r)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testresultargumentinference-1.ms:5:19: resolution: unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 5 |     r: Int! = f()\n   |                   ^\n<DIR>/testresultargumentinference-1.ms:6:12: resolution: unknown binding h; declare it with 'h := ...' before use, define 'fn h(...) T:', or import it from a module\n   |\n 6 |     return h(r)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

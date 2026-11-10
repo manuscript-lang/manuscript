@@ -1,4 +1,4 @@
 export fn main() Int:
-    let items = [1, 2, 3]
+    items := [1, 2, 3]
     println("count: {len(items)}")
     return 0

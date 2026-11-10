@@ -19,9 +19,9 @@ fn read_to_end(var input: ReadStream[Bytes]) Bytes!:
     var chunks: List[Bytes] = []
 
     while true:
-        let chunk = try input.next()
+        chunk := try input.next()
 
-        if let bytes = chunk:
+        if bytes := chunk:
             chunks.append(bytes)
         else:
             break
@@ -48,7 +48,7 @@ impl Source[Bytes] for Chunks:
                 )
                 none: return ok(none)
 
-        let chunk = self.parts[self.next]
+        chunk := self.parts[self.next]
         self.next += 1
         return ok(chunk.to_bytes())
 
@@ -56,22 +56,22 @@ fn echo(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: request.body.clone())
 
 test "request_stream uploads each chunk of a ReadStream":
-    let server = try serve("127.0.0.1:0", buffered(echo))
-    let client = try http_client(HttpClientOptions())
-    let upload = ReadStream[Bytes](Chunks(parts: ["alpha ", "beta ", "gamma"]))
+    server := try serve("127.0.0.1:0", buffered(echo))
+    client := try http_client(HttpClientOptions())
+    upload := ReadStream[Bytes](Chunks(parts: ["alpha ", "beta ", "gamma"]))
     var response = try client.request_stream(
         HttpMethod.Post, "http://{server.address()}/", headers(), upload
     )
     try expect_equal(response.metadata.status, 200)
 
-    let body = try read_to_end(var response.body)
+    body := try read_to_end(var response.body)
     try expect_equal(body, "alpha beta gamma".to_bytes())
 
 test "request_stream reports a failing ReadStream":
-    let server = try serve("127.0.0.1:0", buffered(echo))
-    let client = try http_client(HttpClientOptions())
-    let upload = ReadStream[Bytes](Chunks(parts: ["partial"], failure: "disk gone"))
-    let sent = client.request_stream(
+    server := try serve("127.0.0.1:0", buffered(echo))
+    client := try http_client(HttpClientOptions())
+    upload := ReadStream[Bytes](Chunks(parts: ["partial"], failure: "disk gone"))
+    sent := client.request_stream(
         HttpMethod.Post, "http://{server.address()}/", headers(), upload
     )
     try expect_equal(sent.is_error(), true)

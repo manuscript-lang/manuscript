@@ -24,17 +24,17 @@ fn name_of(shape: Shape) String:
         _: return ""
 
 export fn main() Int:
-    let numbers = [1, 2, 3]
-    let words = ["a", "b"]
-    let shape = Name("abc")
+    numbers := [1, 2, 3]
+    words := ["a", "b"]
+    shape := Name("abc")
 
     // Reading a parameter in a loop or a match borrows it, so the arguments stay usable.
-    let sum = total(numbers) + total(numbers)
-    let size = area(shape) + area(shape)
-    let copy = copy_all(words)
+    sum := total(numbers) + total(numbers)
+    size := area(shape) + area(shape)
+    copy := copy_all(words)
 
     // A path that builds a new value makes every path own its result, so the part is copied.
-    let name = name_of(shape)
+    name := name_of(shape)
     if sum + size + copy.length() + name.length() == 12 + 6 + 2 + 3:
         return 0
 

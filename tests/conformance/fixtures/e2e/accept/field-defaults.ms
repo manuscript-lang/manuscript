@@ -37,26 +37,26 @@ type Explicit:
     option: Int? = 9
 
 test "record defaults and explicit overrides":
-    let data = Data()
+    data := Data()
     (data.number != 5 or data.values.get(0) != 5 or data.callback() != 5) | try expect_false
 
-    let changed = Data(number: 0)
+    changed := Data(number: 0)
     ((changed.number != 0 or changed.values.get(0) != 0 or changed.callback() != 0)) | try expect_false
 
-    let calls: List[Int] = []
-    let explicit = Explicit(calls: calls.clone(), nothing: unit, option: none)
+    calls: List[Int] = []
+    explicit := Explicit(calls: calls.clone(), nothing: unit, option: none)
     calls.is_empty() | try expect_true
     (explicit.option.is_none()) | try expect_true
 
-    let box = Box(value: "text")
+    box := Box(value: "text")
     box.copy | try expect_equal("text")
 
-    let specified = Box[Int](value: 7, copy: 0)
+    specified := Box[Int](value: 7, copy: 0)
     specified.copy | try expect_equal(0)
 
 test "supplied fields precede defaults in field order":
     var log = Counter()
-    let ordered = Ordered(
+    ordered := Ordered(
         counter: Counter(), third: mark(counter: var log, value: 1),
         second: mark(counter: var log, value: 2)
     )
@@ -69,12 +69,12 @@ test "supplied fields precede defaults in field order":
         )
     ) | try expect_false
 
-    let again = Ordered(counter: Counter())
+    again := Ordered(counter: Counter())
     (again.third != 7) | try expect_false
 
 test "mutable defaults have fresh storage":
     var first = Data()
-    let second = Data()
+    second := Data()
     first.values.append(8)
     (first.values.length() != 2 or second.values.length() != 1) | try expect_false
 
@@ -95,6 +95,6 @@ fn no_op() Unit: ...
 test "ordinary empty declarations and interface omission":
     no_op()
 
-    let _marker = Marker()
-    let view: ReadWithDefault = Reader()
+    _marker := Marker()
+    view: ReadWithDefault = Reader()
     (view.get() != 5 or view.get(fallback: 7) != 7) | try expect_false

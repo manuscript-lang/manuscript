@@ -22,7 +22,7 @@ fn text[T: Data](value: T) String:
     return stringify(value).get("")
 
 test "Data accepts plain records, lists, codecs, and JSON documents":
-    let plain = Plain("a", ["x"], none)
+    plain := Plain("a", ["x"], none)
     try expect_equal(text(plain), "\{\"name\":\"a\",\"tags\":[\"x\"]\}")
     try expect_equal(text(Money(5)), "\"usd:5\"")
     try expect_equal(text(Mode.Fast), "\"Fast\"")

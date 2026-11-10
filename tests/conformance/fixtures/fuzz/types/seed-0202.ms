@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -17,15 +17,15 @@ fn gcd(a: Int, b: Int) Int:
 export fn main() Int:
     say("gcd(2023, 2734) = {gcd(2023, 2734)}")
 
-    let i1 = (((-(-13)) + (-(-42))) + (((-32) + (-380169)) + (-989697)))
+    i1 := (((-(-13)) + (-(-42))) + (((-32) + (-380169)) + (-989697)))
     say("i1 = {i1}")
     return "not an int"
     say("{i1} {398061294682} {(i1 < 398061294682)} sum {i1 + 398061294682}")
 
-    let f2 = 147.091
+    f2 := 147.091
     say("f2 = {f2}")
 
-    let l3 = [14, 25, (-16), 27]
+    l3 := [14, 25, (-16), 27]
     say("l3 = {l3} len {l3.length()}")
     say(
         "{(i1 * (4 + (-35)))} {(-(-i1))} {((i1 * (4 + (-35))) < (-(-i1)))} sum {(i1 * (4 + (-35))) + (-(-i1))}"

@@ -27,11 +27,11 @@ fn draw_below(min: Int, width: Int) Int!:
         rest = shift_right_unsigned(rest, 1)
         bits += 1
 
-    let count = (bits + 7) / 8
-    let mask = shift_right_unsigned(255, count * 8 - bits)
+    count := (bits + 7) / 8
+    mask := shift_right_unsigned(255, count * 8 - bits)
 
     while true:
-        let data = try msstd_random_os_bytes(count)
+        data := try msstd_random_os_bytes(count)
         var n = 0
 
         for i in 0..count:
@@ -48,15 +48,15 @@ fn draw_below(min: Int, width: Int) Int!:
 
 // An integer at least `min` and below `max_exclusive` (below the largest Int when none).
 export fn draw_int(min: Int, max_exclusive: Int?) Int!:
-    let max = max_exclusive.get(max_int)
+    max := max_exclusive.get(max_int)
     if min >= max: return error(invalid_input())
 
     return draw_below(min, wrapping_subtract(max, min))
 
 // A version-4 UUID.
 export fn draw_uuid() String!:
-    let data = try msstd_random_os_bytes(16)
-    let digits = "0123456789abcdef".chars()
+    data := try msstd_random_os_bytes(16)
+    digits := "0123456789abcdef".chars()
     var out = ""
 
     for i in 0..16:
@@ -73,7 +73,7 @@ export fn draw_uuid() String!:
 
 // A Float at least 0.0 and below 1.0 with 53 random bits.
 export fn draw_float() Float!:
-    let bits = try draw_below(0, shift_left(1, 53))
+    bits := try draw_below(0, shift_left(1, 53))
     return ok(bits.to_float() / 9007199254740992.0)
 
 // `values` shuffled in place by a Fisher-Yates pass.
@@ -91,5 +91,5 @@ export fn draw_shuffle[T](values: List[T]) List[T]!:
 export fn draw_choice[T](values: List[T]) T?!:
     if values.is_empty(): return ok(none)
 
-    let at = try draw_below(0, values.length())
+    at := try draw_below(0, values.length())
     return ok(values.get(at))

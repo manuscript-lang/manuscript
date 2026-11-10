@@ -16,7 +16,7 @@ fn document(cases: List[String]) String:
     return j("<'benches':[{cases.join(",")}],'diagnostics':[]>")
 
 test "invalid numeric fields are rejected":
-    let texts = [
+    texts := [
         j(
             "<'benches':[<'name':'a','status':'passed','stats':<'operations':10,'iterations':1,'samples':3,'median_ns':'2'>>]>"
         ),
@@ -46,16 +46,16 @@ test "invalid numeric fields are rejected":
         )
     ]
     for text in texts:
-        let _cause = try expect_error(read_cases(text))
+        _cause := try expect_error(read_cases(text))
 
 test "huge exponents and non-finite constants are rejected, finite zero is not":
     for token in ["1e999", "NaN", "Infinity", "-Infinity"]:
-        let text = j(
+        text := j(
             "<'benches':[<'name':'a','status':'passed','stats':<'operations':1,'median_ns':{token}>>]>"
         )
-        let _cause = try expect_error(read_cases(text))
+        _cause := try expect_error(read_cases(text))
 
-    let cases = try expect_ok(
+    cases := try expect_ok(
         read_cases(
             j(
                 "<'benches':[<'name':'a','status':'passed','stats':<'operations':1,'median_ns':0>>]>"
@@ -70,19 +70,19 @@ test "huge exponents and non-finite constants are rejected, finite zero is not":
     )
 
 test "labels disambiguate only collisions":
-    let labels = case_labels(["a.ms::x", "b.ms::x", "b.ms::y"])
+    labels := case_labels(["a.ms::x", "b.ms::x", "b.ms::y"])
     try expect_equal(labels.get_or("a.ms::x", ""), "a.ms::x")
     try expect_equal(labels.get_or("b.ms::x", ""), "b.ms::x")
     try expect_equal(labels.get_or("b.ms::y", ""), "y")
 
 test "a user label cannot collide with a qualified display name":
-    let names = ["a.ms::x", "b.ms::x", "c.ms::a.ms::x"]
-    let labels = case_labels(names)
+    names := ["a.ms::x", "b.ms::x", "c.ms::a.ms::x"]
+    labels := case_labels(names)
     for name in names:
         try expect_equal(labels.get_or(name, ""), name)
 
 test "reads operations and median per case":
-    let sample = try expect_ok(
+    sample := try expect_ok(
         parse_sample(
             document(
                 [
@@ -97,11 +97,11 @@ test "reads operations and median per case":
     try expect_equal(sample.medians.get_or("m.ms::b", 1.0), 0.0)
 
 test "qualified case identity":
-    let before = document([bench("a", "passed", "10", "2")])
-    let first = try expect_ok(parse_sample(before, none))
-    let other = before.replace("m.ms::a", "other.ms::a")
-    let _changed = try expect_error(parse_sample(other, first.operations.clone()))
-    let both = try expect_ok(
+    before := document([bench("a", "passed", "10", "2")])
+    first := try expect_ok(parse_sample(before, none))
+    other := before.replace("m.ms::a", "other.ms::a")
+    _changed := try expect_error(parse_sample(other, first.operations.clone()))
+    both := try expect_ok(
         parse_sample(
             document(
                 [
@@ -117,10 +117,10 @@ test "qualified case identity":
     try expect_equal(both.operations.length(), 2)
 
 test "changed cases or operation counts are rejected":
-    let first = try expect_ok(
+    first := try expect_ok(
         parse_sample(document([bench("a", "passed", "10", "2")]), none)
     )
-    let changes = [
+    changes := [
         document([bench("a", "passed", "11", "2")]),
         document([bench("b", "passed", "10", "2")]),
         document(
@@ -130,10 +130,10 @@ test "changed cases or operation counts are rejected":
         )
     ]
     for text in changes:
-        let _cause = try expect_error(parse_sample(text, first.operations.clone()))
+        _cause := try expect_error(parse_sample(text, first.operations.clone()))
 
 test "failed, duplicate, empty or uncompiled runs are rejected":
-    let texts = [
+    texts := [
         document([bench("a", "failed", "10", "2")]),
         document(
             [
@@ -144,19 +144,19 @@ test "failed, duplicate, empty or uncompiled runs are rejected":
         j("<'benches':[],'diagnostics':[<'message':'does not compile'>]>")
     ]
     for text in texts:
-        let _cause = try expect_error(parse_sample(text, none))
+        _cause := try expect_error(parse_sample(text, none))
 
 test "impossible measurements are rejected":
     for text in [
         document([bench("a", "passed", "0", "2")]),
         document([bench("a", "passed", "10", "-1")])
     ]:
-        let _cause = try expect_error(parse_sample(text, none))
+        _cause := try expect_error(parse_sample(text, none))
 
 test "a failed producer yields no report":
-    let failed = Ran(
+    failed := Ran(
         true, 42, "{document([bench("a", "passed", "10", "2")])}", "producer detail"
     )
-    let _cause = try expect_error(must("producer", failed))
-    let empty = try expect_error(stdlib_table(document([])))
+    _cause := try expect_error(must("producer", failed))
+    empty := try expect_error(stdlib_table(document([])))
     try expect_contains(empty.message, "no cases")

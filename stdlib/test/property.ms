@@ -73,9 +73,9 @@ export fn draw(source: Source, max: Int) Drawn[Int]:
             value = max
         s.choices[s.pos] = value
     else if s.fresh:
-        let bits = s.next_bits()
-        let positive = shift_right_unsigned(bits, 1)
-        let edge = shift_right_unsigned(bits, 59) % 16
+        bits := s.next_bits()
+        positive := shift_right_unsigned(bits, 1)
+        edge := shift_right_unsigned(bits, 59) % 16
 
         if edge == 0:
             value = 0
@@ -105,20 +105,20 @@ export fn ints(low: Int, high: Int) Gen[Int]:
 
 fn ints_draw(s: Source, low: Int, high: Int) Drawn[Int]:
     if low >= 0:
-        let {value, source} = draw(s, high - low)
+        {value, source} := draw(s, high - low)
         return Drawn(low + value, source)
 
     if high <= 0:
-        let {value, source} = draw(s, high - low)
+        {value, source} := draw(s, high - low)
         return Drawn(high - value, source)
 
-    let {value: sign, source: middle} = draw(s, 1)
+    {value: sign, source: middle} := draw(s, 1)
 
     if sign == 0:
-        let {value, source} = draw(middle, high)
+        {value, source} := draw(middle, high)
         return Drawn(value, source)
 
-    let {value, source} = draw(middle, 0 - low)
+    {value, source} := draw(middle, 0 - low)
     return Drawn(0 - value, source)
 
 // Generates `true` and `false`, shrinking toward `false`.
@@ -126,7 +126,7 @@ export fn bools() Gen[Bool]:
     return Gen[Bool](fn s: bool_draw(s.clone()))
 
 fn bool_draw(s: Source) Drawn[Bool]:
-    let {value, source} = draw(s, 1)
+    {value, source} := draw(s, 1)
     return Drawn(value == 1, source)
 
 // Generates floats from `low` through `high` at 2^-53 resolution, shrinking toward `low`.
@@ -134,7 +134,7 @@ export fn floats(low: Float, high: Float) Gen[Float]:
     return Gen[Float](fn s: float_draw(s.clone(), low, high))
 
 fn float_draw(s: Source, low: Float, high: Float) Drawn[Float]:
-    let {value, source} = draw(s, 9007199254740992)
+    {value, source} := draw(s, 9007199254740992)
     return Drawn(low + (high - low) * (value.to_float() / 9007199254740992.0), source)
 
 // Always generates a copy of `value`, consuming no draws, so it never shrinks.
@@ -146,7 +146,7 @@ export fn element_of[T: Clonable](values: List[T]) Gen[T]:
     return Gen[T](fn s: element_draw(values, s.clone()))
 
 fn element_draw[T: Clonable](values: List[T], s: Source) Drawn[T]:
-    let {value, source} = draw(s, values.length() - 1)
+    {value, source} := draw(s, values.length() - 1)
     return Drawn(values[value].clone(), source)
 
 // Generates by picking one of `gens`, shrinking toward the first. `gens` must not be empty.
@@ -154,7 +154,7 @@ export fn one_of[T](gens: List[Gen[T]]) Gen[T]:
     return Gen[T](fn s: one_draw(gens, s.clone()))
 
 fn one_draw[T](gens: List[Gen[T]], s: Source) Drawn[T]:
-    let {value, source} = draw(s, gens.length() - 1)
+    {value, source} := draw(s, gens.length() - 1)
     return gens[value].make(source)
 
 impl Gen[T]:
@@ -175,11 +175,11 @@ impl Gen[T]:
         return Gen[C](fn s: zip_draw(self, other, combine, s))
 
 fn map_draw[A, B](gen: Gen[A], transform: fn(A) B, s: Source) Drawn[B]:
-    let {value, source} = gen.make(s)
+    {value, source} := gen.make(s)
     return Drawn(transform(value), source)
 
 fn flat_map_draw[A, B](gen: Gen[A], next: fn(A) Gen[B], s: Source) Drawn[B]:
-    let {value, source} = gen.make(s)
+    {value, source} := gen.make(s)
     return next(value).make(source)
 
 fn filter_draw[T](gen: Gen[T], keep: fn(T) Bool, s: Source) Drawn[T]:
@@ -187,7 +187,7 @@ fn filter_draw[T](gen: Gen[T], keep: fn(T) Bool, s: Source) Drawn[T]:
     var tries = 0
 
     while true:
-        let {value, source} = gen.make(cursor)
+        {value, source} := gen.make(cursor)
         tries += 1
         if keep(value): return Drawn(value, source)
 
@@ -204,8 +204,8 @@ fn zip_draw[A, B, C](
     combine: fn(A, B) C,
     s: Source
 ) Drawn[C]:
-    let {value: a, source: middle} = first.make(s)
-    let {value: b, source} = second.make(middle)
+    {value: a, source: middle} := first.make(s)
+    {value: b, source} := second.make(middle)
     return Drawn(combine(a, b), source)
 
 // Generates a value or `none`, shrinking toward `none`.
@@ -213,10 +213,10 @@ export fn optionals[T](gen: Gen[T]) Gen[T?]:
     return Gen[T?](fn s: optional_draw(gen, s.clone()))
 
 fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
-    let {value: flag, source: middle} = draw(s, 3)
+    {value: flag, source: middle} := draw(s, 3)
     if flag == 0: return Drawn(none, middle)
 
-    let {value, source} = gen.make(middle)
+    {value, source} := gen.make(middle)
     return Drawn(value, source)
 
 // Generates lists of `min_length` through `max_length` elements, shrinking toward fewer and simpler elements.
@@ -228,19 +228,19 @@ fn list_draw[T](gen: Gen[T], min_length: Int, max_length: Int, s: Source) Drawn[
     var cursor = s
 
     while items.length() < min_length:
-        let {value, source} = gen.make(cursor)
+        {value, source} := gen.make(cursor)
         items.append(value)
         cursor = source
 
     // Each further element is preceded by a continue flag so that deleting an element's draws removes the element.
     while items.length() < max_length:
-        let {value: flag, source: middle} = draw(cursor, 3)
+        {value: flag, source: middle} := draw(cursor, 3)
 
         if flag == 0:
             cursor = middle
             break
 
-        let {value, source} = gen.make(middle)
+        {value, source} := gen.make(middle)
         items.append(value)
         cursor = source
 
@@ -272,12 +272,12 @@ export type Settings:
 // Returns defaults with `ms test` flag overrides (`MS_TEST_RUNS`, `MS_TEST_SEED`, `MS_TEST_FUZZ_MS`) applied.
 export fn settings(runs: Int = 100) Settings:
     var found = Settings(runs, none, 0)
-    let environment = environment().get(Map[String, String]())
-    if let text = environment.get("MS_TEST_RUNS"):
+    environment := environment().get(Map[String, String]())
+    if text := environment.get("MS_TEST_RUNS"):
         found.runs = text.parse_int().get(runs)
-    if let text = environment.get("MS_TEST_SEED"):
+    if text := environment.get("MS_TEST_SEED"):
         found.seed = text.parse_int()
-    if let text = environment.get("MS_TEST_FUZZ_MS"):
+    if text := environment.get("MS_TEST_FUZZ_MS"):
         found.fuzz_milliseconds = text.parse_int().get(0)
     return found
 
@@ -287,7 +287,7 @@ type Outcome:
     failure: Error?
 
 fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
-    let {value, source} = gen.make(s)
+    {value, source} := gen.make(s)
     if source.invalid: return Outcome(source, none)
 
     /*
@@ -295,18 +295,18 @@ fn run_case[T](gen: Gen[T], property: fn(T) Unit!, s: Source) Outcome:
     It faults with `property_failed` when the property returns an error; that message is then read in full by rerunning
     on a regenerated value, because the faulted run may have consumed `value` (Windows runs it in this process).
     */
-    let faulted = expect_fault(fn: run_property(property, value))
+    faulted := expect_fault(fn: run_property(property, value))
     if faulted.is_error(): return Outcome(source, none)
 
-    let message = faulted.get("")
+    message := faulted.get("")
     if message != property_failed: return Outcome(source, Error("fault: {message}"))
 
-    let replayed = Source(source.choices.take(source.pos), 0, 0, false, false)
-    let {value: again} = gen.make(replayed)
-    let outcome = property(again)
+    replayed := Source(source.choices.take(source.pos), 0, 0, false, false)
+    {value: again} := gen.make(replayed)
+    outcome := property(again)
     return Outcome(source, outcome.err())
 
-let property_failed = "property returned an error"
+property_failed := "property returned an error"
 
 fn run_property[T](property: fn(T) Unit!, value: T) Unit:
     if property(value).is_error():
@@ -331,10 +331,10 @@ fn attempt[T](
     candidate: List[Int],
     current: List[Int]
 ) List[Int]?:
-    let outcome = replay(gen, property, candidate)
+    outcome := replay(gen, property, candidate)
     if outcome.failure.is_none(): return none
 
-    let used = outcome.source.choices.take(outcome.source.pos)
+    used := outcome.source.choices.take(outcome.source.pos)
     if not simpler(used, current): return none
 
     return used
@@ -357,10 +357,10 @@ fn shrink[T](
             var start = best.length() - size
 
             while start >= 0 and spent < budget:
-                let candidate = best.take(start).concat(best.drop(start + size))
+                candidate := best.take(start).concat(best.drop(start + size))
                 spent += 1
 
-                if let used = attempt(gen, property, candidate, best):
+                if used := attempt(gen, property, candidate, best):
                     best = used
                     progress = true
 
@@ -369,7 +369,7 @@ fn shrink[T](
         var index = 0
 
         while index < best.length() and spent < budget:
-            let current = best[index]
+            current := best[index]
 
             for target in [0, current / 2, current - 1]:
                 if target >= 0 and target < best[index] and spent < budget:
@@ -377,7 +377,7 @@ fn shrink[T](
                     candidate[index] = target
                     spent += 1
 
-                    if let used = attempt(gen, property, candidate, best):
+                    if used := attempt(gen, property, candidate, best):
                         best = used
                         progress = true
 
@@ -403,19 +403,19 @@ export fn check[T](
     property: fn(T) Unit!,
     options: PropertyOptions = PropertyOptions()
 ) Unit!:
-    let config = settings(options.runs)
+    config := settings(options.runs)
     var chosen = options.seed
     if chosen.is_none():
         chosen = config.seed
 
     var base = 0
 
-    if let given = chosen:
+    if given := chosen:
         base = given
     else:
         base = try secure_int(0, max_int)
 
-    let fuzzing = config.fuzz_milliseconds > 0
+    fuzzing := config.fuzz_milliseconds > 0
     if fuzzing:
         // Printed first so an interrupted run can still be replayed.
         (
@@ -426,7 +426,7 @@ export fn check[T](
             .get()
         )
 
-    let deadline = monotonic().shift(milliseconds(config.fuzz_milliseconds))
+    deadline := monotonic().shift(milliseconds(config.fuzz_milliseconds))
     var case_index = 0
     var executed = 0
     var discarded = 0
@@ -435,10 +435,10 @@ export fn check[T](
         (fuzzing and monotonic().compare(deadline) < 0)
         or (not fuzzing and executed < config.runs)
     ):
-        let case_seed = wrapping_add(base, case_index)
+        case_seed := wrapping_add(base, case_index)
         case_index += 1
 
-        let outcome = run_case(gen, property, source(case_seed))
+        outcome := run_case(gen, property, source(case_seed))
 
         if outcome.source.invalid:
             discarded += 1
@@ -450,7 +450,7 @@ export fn check[T](
             continue
 
         executed += 1
-        if let message = outcome.failure:
+        if message := outcome.failure:
             return report(
                 name, gen, property, outcome.source, message, case_seed, executed
             )
@@ -466,11 +466,11 @@ fn report[T](
     seed: Int,
     executed: Int
 ) Unit!:
-    let used = failing.choices.take(failing.pos)
-    let small = shrink(gen, property, used, 2000)
-    let final = replay(gen, property, small)
-    let {value: shown} = gen.make(Source(small.clone(), 0, 0, false, false))
-    let reason = final.failure.get(message)
+    used := failing.choices.take(failing.pos)
+    small := shrink(gen, property, used, 2000)
+    final := replay(gen, property, small)
+    {value: shown} := gen.make(Source(small.clone(), 0, 0, false, false))
+    reason := final.failure.get(message)
 
     // The failure keeps the details of the assertion that failed, which name its source position.
     return error(Error("""

@@ -20,7 +20,7 @@ impl Bounded[T]:
         return self.value
 
 fn exercise(x: Box[Int], y: Box[String], z: Bounded[Int]) Int:
-    let a = x.read()
-    let b = y.read()
-    let c = x.pick[String](b)
+    a := x.read()
+    b := y.read()
+    c := x.pick[String](b)
     return a + z.read() + c.length()

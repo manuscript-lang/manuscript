@@ -5,7 +5,7 @@ fn tag_count() Int:
     var tags = ["docs"]
     tags.append("release")
 
-    let count = fn:
+    count := fn:
         return tags.length()
     return count()
 // tag_count() returns 2.

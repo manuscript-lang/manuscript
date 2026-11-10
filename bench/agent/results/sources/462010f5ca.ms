@@ -57,7 +57,7 @@ fn part(text: String, start: Int, end: Int) String:
 
 // Parses YYYY-MM-DDTHH:MM; the result has year 0 when the time is not valid.
 fn parse_start(text: String) Stamp:
-    let bad = Stamp(year: 0, month: 0, day: 0, hour: 0, minute: 0)
+    bad := Stamp(year: 0, month: 0, day: 0, hour: 0, minute: 0)
     if text.length() != 16: return bad
     if (
         text.get(4) != "-"
@@ -67,11 +67,11 @@ fn parse_start(text: String) Stamp:
     ):
         return bad
 
-    let year = digits_value(part(text, 0, 4))
-    let month = digits_value(part(text, 5, 7))
-    let day = digits_value(part(text, 8, 10))
-    let hour = digits_value(part(text, 11, 13))
-    let minute = digits_value(part(text, 14, 16))
+    year := digits_value(part(text, 0, 4))
+    month := digits_value(part(text, 5, 7))
+    day := digits_value(part(text, 8, 10))
+    hour := digits_value(part(text, 11, 13))
+    minute := digits_value(part(text, 14, 16))
     if year < 1970 or year > 2099 or month < 1 or month > 12: return bad
     if day < 1 or day > days_in_month(year, month): return bad
     if hour < 0 or hour > 23 or minute < 0 or minute > 59: return bad
@@ -80,14 +80,14 @@ fn parse_start(text: String) Stamp:
 
 // Returns the COUNT value, or 0 when it is not in 1 through 20.
 fn parse_count(text: String) Int:
-    let n = parse_num(text)
+    n := parse_num(text)
     if n < 1 or n > 20: return 0
 
     return n
 
 // Returns the values one cron item selects, or an empty list when the item is invalid.
 fn parse_item(item: String, lo: Int, hi: Int) List[Int]:
-    let parts = item.split("/")
+    parts := item.split("/")
     if parts.length() > 2: return List[Int]()
 
     var step = 1
@@ -100,7 +100,7 @@ fn parse_item(item: String, lo: Int, hi: Int) List[Int]:
     var last = hi
 
     if parts[0] != "*":
-        let ends = parts[0].split("-")
+        ends := parts[0].split("-")
 
         if ends.length() == 2:
             first = parse_num(ends[0])
@@ -125,7 +125,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Bool]:
         chosen.append(false)
 
     for item in text.split(","):
-        let values = parse_item(item, lo, hi)
+        values := parse_item(item, lo, hi)
         if values.length() == 0: return List[Bool]()
 
         for v in values:
@@ -196,35 +196,35 @@ fn is_blank(line: String) Bool:
 
 // The output for one non-blank input line, without its final newline.
 fn solve(n: Int, raw: String) String:
-    let head = "line {n}: "
-    let tok = raw.split(" ")
+    head := "line {n}: "
+    tok := raw.split(" ")
     if tok.length() != 7: return head + "error: bad line"
 
-    let start = parse_start(tok[0])
+    start := parse_start(tok[0])
     if start.year == 0: return head + "error: bad start"
 
-    let count = parse_count(tok[1])
+    count := parse_count(tok[1])
     if count == 0: return head + "error: bad count"
 
-    let minutes = parse_field(tok[2], 0, 59)
+    minutes := parse_field(tok[2], 0, 59)
     if minutes.length() == 0: return head + "error: bad minute"
 
-    let hours = parse_field(tok[3], 0, 23)
+    hours := parse_field(tok[3], 0, 23)
     if hours.length() == 0: return head + "error: bad hour"
 
-    let days = parse_field(tok[4], 1, 31)
+    days := parse_field(tok[4], 1, 31)
     if days.length() == 0: return head + "error: bad day-of-month"
 
-    let months = parse_field(tok[5], 1, 12)
+    months := parse_field(tok[5], 1, 12)
     if months.length() == 0: return head + "error: bad month"
 
-    let weekdays = parse_field(tok[6], 0, 6)
+    weekdays := parse_field(tok[6], 0, 6)
     if weekdays.length() == 0: return head + "error: bad day-of-week"
 
-    let cron = Cron(
+    cron := Cron(
         minutes: minutes, hours: hours, days: days, months: months, weekdays: weekdays
     )
-    let runs = cron.runs(start, count)
+    runs := cron.runs(start, count)
     if runs.length() == 0: return head + "never"
 
     var text = head + "{runs.length()} runs"
@@ -233,7 +233,7 @@ fn solve(n: Int, raw: String) String:
     return text
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var n = 0
 
     for raw in lines:

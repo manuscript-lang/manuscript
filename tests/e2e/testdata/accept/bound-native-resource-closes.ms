@@ -19,27 +19,27 @@ fn events(log: String) String:
     return read_file(log).wait().get().decode_utf8().get("")
 
 fn call_twice(log: String) Unit!:
-    let status = failed(1, log.clone()).is_error
+    status := failed(1, log.clone()).is_error
     try expect_equal(status(), true)
     try expect_equal(status(), true)
     try expect_equal(read_file(log).wait().is_error(), true)
     return ok(unit)
 
 test "a bound native method owns its temporary receiver and closes it once":
-    let tmp = temporary("bound-native-close-") | try expect_ok
-    let log = "{tmp.path()}/log"
+    tmp := temporary("bound-native-close-") | try expect_ok
+    log := "{tmp.path()}/log"
     try call_twice(log.clone())
     try expect_equal(events(log), "1,")
 
 fn named(log: String) Unit!:
-    let held = failed(2, log.clone())
-    let status = held.is_error
+    held := failed(2, log.clone())
+    status := held.is_error
     try expect_equal(status(), true)
     return ok(unit)
 
 test "a bound native method over a named receiver closes it once, not twice":
-    let tmp = temporary("bound-native-named-") | try expect_ok
-    let log = "{tmp.path()}/log"
+    tmp := temporary("bound-native-named-") | try expect_ok
+    log := "{tmp.path()}/log"
     try named(log.clone())
     try expect_equal(events(log), "2,")
 
@@ -58,18 +58,18 @@ impl Closeable for Tag:
         return ok(unit)
 
 fn borrowed_status(result: Int!Tag) Bool:
-    let check = result.is_error
+    check := result.is_error
     return check()
 
 test "a method value over a borrowed scalar resource leaves the close to its owner":
-    let id = try secure_int(1, 1000000000)
-    let log = try tag_log(id)
+    id := try secure_int(1, 1000000000)
+    log := try tag_log(id)
     try borrow_then_check(id, log.clone())
     try expect_equal(events(log.clone()), "closed,")
     try remove(log)
 
 fn borrow_then_check(id: Int, log: String) Unit!:
-    let result: Int!Tag = error(Tag(id))
+    result: Int!Tag = error(Tag(id))
     try expect_equal(borrowed_status(result), true)
     try expect_equal(read_file(log.clone()).wait().is_error(), true)
     return ok(unit)

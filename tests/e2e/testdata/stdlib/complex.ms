@@ -11,8 +11,8 @@ fn component_close(actual: Float, expected: Float) Unit!:
     return expect_equal(actual, expected)
 
 test "complex arithmetic":
-    let a = complex(1.0, 2.0)
-    let b = complex(3.0, -1.0)
+    a := complex(1.0, 2.0)
+    b := complex(3.0, -1.0)
     try expect_equal(a.add(b), complex(4.0, 1.0))
     try expect_equal(a.subtract(b), complex(-2.0, 3.0))
     try expect_equal(a.multiply(b), complex(5.0, 5.0))
@@ -24,7 +24,7 @@ test "complex arithmetic":
     try expect_equal(b.format(), "3-1i")
 
 test "complex polar form and elementary functions":
-    let z = complex_polar(2.0, 0.5)
+    z := complex_polar(2.0, 0.5)
     try expect_true((z.abs() - 2.0).abs() < 1e-12)
     try expect_true((z.phase() - 0.5).abs() < 1e-12)
     try expect_true(near(complex(0.0, 3.141592653589793).exp(), complex(-1.0, 0.0)))
@@ -57,33 +57,33 @@ test "complex exp keeps a zero imaginary part when the radius overflows":
 // Relative checks reject infinity and preserve components much smaller than 1e-12.
 test "complex exp keeps finite components when the radius overflows":
     for phase in [0.75, -0.75]:
-        let result = complex(710.0, phase).exp()
-        let expected_im = if phase > 0.0: 1.522777422305087e308 else: -1.522777422305087e308
+        result := complex(710.0, phase).exp()
+        expected_im := if phase > 0.0: 1.522777422305087e308 else: -1.522777422305087e308
         try expect_true((result.re / 1.6345891035228982e308 - 1.0).abs() < 1e-12)
         try expect_true((result.im / expected_im - 1.0).abs() < 1e-12)
 
-    let negative_real = complex(710.0, 2.4).exp()
+    negative_real := complex(710.0, 2.4).exp()
     try expect_true((negative_real.re / -1.6473337011196798e308 - 1.0).abs() < 1e-12)
     try expect_true((negative_real.im / 1.5089812100862142e308 - 1.0).abs() < 1e-12)
 
-    let near_axis = complex(710.0, 1.5707963267948966).exp()
+    near_axis := complex(710.0, 1.5707963267948966).exp()
     try expect_true((near_axis.re / 1.3679272698459396e292 - 1.0).abs() < 1e-12)
     try expect_equal(near_axis.im, infinity)
 
 test "complex exp preserves tiny phase components after radius overflow":
-    let inputs = [
+    inputs := [
         complex(710.0, 5e-324), complex(1000.0, 1e-300), complex(1420.0, 5e-324),
         complex(1450.0, 5e-324)
     ]
-    let expected = [
+    expected := [
         1.1037400669496503e-15, 1.970071114017047e134, 2.4657495327684952e293,
         2.6350169706336343e306
     ]
 
     for index in 0..inputs.length():
-        let value = inputs[index]
-        let positive = value.exp()
-        let negative = value.conjugate().exp()
+        value := inputs[index]
+        positive := value.exp()
+        negative := value.conjugate().exp()
         try expect_equal(positive.re, infinity)
         try expect_equal(negative.re, infinity)
         try expect_true((positive.im / expected[index] - 1.0).abs() < 1e-12)
@@ -93,7 +93,7 @@ test "complex exp retains overflow and nonfinite controls":
     for real in [3000.0, 1.7976931348623157e308]:
         try expect_equal(complex(real, 0.75).exp(), complex(infinity, infinity))
 
-        let axis = complex(real, -0.0).exp()
+        axis := complex(real, -0.0).exp()
         try expect_equal(axis.re, infinity)
         try expect_equal(axis.im, 0.0)
         try expect_true(sign_bit(axis.im))
@@ -105,60 +105,60 @@ test "complex exp retains overflow and nonfinite controls":
 // Exact binary64 inputs evaluated with 750 decimal digits. Check each
 // component separately: one legitimately overflows while the other fits.
 test "complex trig keeps finite components after hyperbolic overflow":
-    let phases = [0.5, 1.0, -0.5, -1.0]
-    let sine_parts = [
+    phases := [0.5, 1.0, -0.5, -1.0]
+    sine_parts := [
         1.4556863256554153e308, infinity, -1.4556863256554153e308, -infinity
     ]
-    let cosine_parts = [
+    cosine_parts := [
         infinity, 1.640527287432755e308, infinity, 1.640527287432755e308
     ]
 
     for index in 0..phases.length():
         for argument in [711.0, -711.0]:
-            let direction = if argument > 0.0: 1.0 else: -1.0
-            let sine = complex(phases[index], argument).sin()
+            direction := if argument > 0.0: 1.0 else: -1.0
+            sine := complex(phases[index], argument).sin()
             try component_close(sine.re, sine_parts[index])
             try component_close(sine.im, direction * cosine_parts[index])
 
-            let cosine = complex(phases[index], argument).cos()
+            cosine := complex(phases[index], argument).cos()
             try component_close(cosine.re, cosine_parts[index])
             try component_close(cosine.im, -direction * sine_parts[index])
 
-            let hyperbolic_sine = complex(argument, phases[index]).sinh()
+            hyperbolic_sine := complex(argument, phases[index]).sinh()
             try component_close(hyperbolic_sine.re, direction * cosine_parts[index])
             try component_close(hyperbolic_sine.im, sine_parts[index])
 
-            let hyperbolic_cosine = complex(argument, phases[index]).cosh()
+            hyperbolic_cosine := complex(argument, phases[index]).cosh()
             try component_close(hyperbolic_cosine.re, cosine_parts[index])
             try component_close(hyperbolic_cosine.im, direction * sine_parts[index])
 
 test "complex trig keeps subnormal phases beyond a half exponential":
-    let phases = [5e-324, 1e-300, 5e-324, 5e-324]
-    let arguments = [711.0, 1000.0, 1420.0, 1450.0]
-    let expected = [
+    phases := [5e-324, 1e-300, 5e-324, 5e-324]
+    arguments := [711.0, 1000.0, 1420.0, 1450.0]
+    expected := [
         1.5001382836657022e-15, 9.850355570085236e133, 1.2328747663842476e293,
         1.3175084853168172e306
     ]
 
     for index in 0..phases.length():
         for sign in [1.0, -1.0]:
-            let phase = sign * phases[index]
+            phase := sign * phases[index]
 
             for direction in [1.0, -1.0]:
-                let argument = direction * arguments[index]
-                let sine = complex(phase, argument).sin()
+                argument := direction * arguments[index]
+                sine := complex(phase, argument).sin()
                 try component_close(sine.re, sign * expected[index])
                 try expect_equal(sine.im, direction * infinity)
 
-                let cosine = complex(phase, argument).cos()
+                cosine := complex(phase, argument).cos()
                 try expect_equal(cosine.re, infinity)
                 try component_close(cosine.im, -direction * sign * expected[index])
 
-                let hyperbolic_sine = complex(argument, phase).sinh()
+                hyperbolic_sine := complex(argument, phase).sinh()
                 try expect_equal(hyperbolic_sine.re, direction * infinity)
                 try component_close(hyperbolic_sine.im, sign * expected[index])
 
-                let hyperbolic_cosine = complex(argument, phase).cosh()
+                hyperbolic_cosine := complex(argument, phase).cosh()
                 try expect_equal(hyperbolic_cosine.re, infinity)
                 try component_close(
                     hyperbolic_cosine.im, direction * sign * expected[index]
@@ -179,10 +179,10 @@ test "complex trig range fallback retains signed zeros and nonfinite controls":
     try expect_true(complex(711.0, 0.0 / 0.0).sinh().is_nan())
 
 test "complex sqrt stays finite when the magnitude overflows":
-    let root = complex(1.7e308, 1.7e308).sqrt()
+    root := complex(1.7e308, 1.7e308).sqrt()
     try expect_true(root.re.is_finite() and root.im.is_finite())
 
-    let square = root.scale(1e-100).multiply(root.scale(1e-100))
+    square := root.scale(1e-100).multiply(root.scale(1e-100))
     try expect_true(near(square.scale(1e-108), complex(1.7, 1.7)))
 
 test "complex trig keeps exact zeros and finite limits when parts overflow":
@@ -194,10 +194,10 @@ test "complex trig keeps exact zeros and finite limits when parts overflow":
     try expect_equal(complex(-1000.0, 0.0).sinh(), complex(-infinity, 0.0))
 
 test "complex divide keeps a finite quotient when the operands are near the Float limits":
-    let big = complex(1.0e308, 1.0e308)
+    big := complex(1.0e308, 1.0e308)
     try expect_equal(big.divide(big), complex(1.0, 0.0))
 
-    let tiny = complex(5.0e-324, 5.0e-324)
+    tiny := complex(5.0e-324, 5.0e-324)
     try expect_equal(tiny.divide(tiny), complex(1.0, 0.0))
     try expect_equal(
         complex(1.0e308, 0.0).divide(complex(0.0, 1.0e308)), complex(0.0, -1.0)
@@ -210,66 +210,66 @@ test "complex divide keeps a finite quotient when the operands are near the Floa
     )
 
 test "complex log is finite when the magnitude overflows":
-    let result = complex(1.7e308, 1.7e308).log()
+    result := complex(1.7e308, 1.7e308).log()
     try expect_true(result.re.is_finite())
     try expect_true(near(result, complex(710.0734104835082, 0.7853981633974483)))
 
-    let axis = complex(-1.7e308, 0.0).log()
+    axis := complex(-1.7e308, 0.0).log()
     try expect_true(near(axis, complex(709.7268368932282, 3.141592653589793)))
     try expect_true(near(complex(1.0, 0.0).log(), complex(0.0, 0.0)))
 
 test "complex sqrt keeps a finite root for a subnormal input":
-    let root = complex(0.0, 5.0e-324).sqrt()
+    root := complex(0.0, 5.0e-324).sqrt()
     try expect_true(root.re > 0.0 and root.re.is_finite())
     try expect_true(root.im > 0.0 and root.im.is_finite())
     try expect_true(root.re / 1.5717277847026288e-162 > 0.999999999)
     try expect_true(root.re / 1.5717277847026288e-162 < 1.000000001)
 
-    let below = complex(0.0, -5.0e-324).sqrt()
+    below := complex(0.0, -5.0e-324).sqrt()
     try expect_true(below.re > 0.0 and below.im < 0.0)
 
 // The small component needs relative checks: the ordinary near helper would
 // accept zero here and conceal lost phase information.
 test "complex tangent preserves huge finite phases":
     for phase in [1.0e308, -1.0e308]:
-        let expected = if phase > 0.0: -3.948379522881268e-36 else: 3.948379522881268e-36
+        expected := if phase > 0.0: -3.948379522881268e-36 else: 3.948379522881268e-36
 
         for magnitude in [41.0, -41.0]:
-            let tangent = complex(phase, magnitude).tan()
+            tangent := complex(phase, magnitude).tan()
             try expect_true(tangent.re.is_finite())
             try expect_true((tangent.re / expected - 1.0).abs() < 1e-12)
             try expect_equal(tangent.im, if magnitude > 0.0: 1.0 else: -1.0)
 
-            let hyperbolic = complex(magnitude, phase).tanh()
+            hyperbolic := complex(magnitude, phase).tanh()
             try expect_true(hyperbolic.im.is_finite())
             try expect_true((hyperbolic.im / expected - 1.0).abs() < 1e-12)
             try expect_equal(hyperbolic.re, if magnitude > 0.0: 1.0 else: -1.0)
 
 test "complex tangent handles the largest finite phase":
-    let phase = 1.7976931348623157e308
-    let expected = -4.847970089451913e-38
-    let tangent = complex(phase, 41.0).tan()
+    phase := 1.7976931348623157e308
+    expected := -4.847970089451913e-38
+    tangent := complex(phase, 41.0).tan()
     try expect_true((tangent.re / expected - 1.0).abs() < 1e-12)
     try expect_equal(tangent.im, 1.0)
 
-    let hyperbolic = complex(41.0, phase).tanh()
+    hyperbolic := complex(41.0, phase).tanh()
     try expect_true((hyperbolic.im / expected - 1.0).abs() < 1e-12)
     try expect_equal(hyperbolic.re, 1.0)
 
 // Exact binary64 inputs evaluated with 750 decimal digits. An absolute
 // complex-distance check would accept zero for every small component here.
 test "complex inverse tangent preserves small imaginary components":
-    let inputs = [
+    inputs := [
         complex(1.0, 1e-30), complex(0.0, 1e-30), complex(2.0, 1e-300),
         complex(1e200, 1e200), complex(1e308, 1e308), complex(1e200, 1e100),
         complex(0.0, 1e200)
     ]
-    let expected = [5e-31, 1e-30, 2e-301, 5e-201, 5e-309, 1e-300, 1e-200]
+    expected := [5e-31, 1e-30, 2e-301, 5e-201, 5e-309, 1e-300, 1e-200]
 
     for index in 0..inputs.length():
-        let value = inputs[index]
-        let positive = value.atan()
-        let negative = value.conjugate().atan()
+        value := inputs[index]
+        positive := value.atan()
+        negative := value.conjugate().atan()
         try expect_true((positive.im / expected[index] - 1.0).abs() < 1e-12)
         try expect_true((negative.im / -expected[index] - 1.0).abs() < 1e-12)
         if value.re != 0.0:
@@ -280,16 +280,16 @@ test "complex inverse tangent retains subnormal components":
         try expect_equal(complex(real, 5e-324).atan().im, 5e-324)
         try expect_equal(complex(real, -5e-324).atan().im, -5e-324)
 
-    let largest = complex(1.7976931348623157e308, 1.7976931348623157e308).atan()
+    largest := complex(1.7976931348623157e308, 1.7976931348623157e308).atan()
     try expect_equal(largest.im, 2.781342323134e-309)
 
 test "complex inverse tangent preserves poles and ordinary controls":
-    let upper_pole = complex(0.0, 1.0).atan()
-    let lower_pole = complex(0.0, -1.0).atan()
+    upper_pole := complex(0.0, 1.0).atan()
+    lower_pole := complex(0.0, -1.0).atan()
     try expect_equal(upper_pole.im, infinity)
     try expect_equal(lower_pole.im, -infinity)
 
-    let near_pole = complex(1e-300, 1.0).atan()
+    near_pole := complex(1e-300, 1.0).atan()
     try expect_true((near_pole.re / 0.7853981633974483 - 1.0).abs() < 1e-12)
     try expect_true((near_pole.im / 345.7343375393868 - 1.0).abs() < 1e-12)
     try expect_true(
@@ -301,6 +301,6 @@ test "complex inverse tangent preserves poles and ordinary controls":
     try expect_true(complex(infinity, 1.0).atan().is_nan())
     try expect_true(complex(1.0, 0.0 / 0.0).atan().is_nan())
 
-    let negative_zero = complex(1.0, -0.0).atan()
+    negative_zero := complex(1.0, -0.0).atan()
     try expect_equal(negative_zero.im, 0.0)
     try expect_true(sign_bit(negative_zero.im))

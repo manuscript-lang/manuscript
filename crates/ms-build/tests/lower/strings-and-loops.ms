@@ -9,5 +9,5 @@ export fn main() Int:
     for x in [1, 2, 3]:
         total += x
 
-    let _r = stdout().write("total {total}\n")
+    _r := stdout().write("total {total}\n")
     return 0

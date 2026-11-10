@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -28,7 +28,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -38,20 +38,20 @@ fn fib(n: Int) Int:
 export fn main() Int:
     say("collatz(1937) = {collatz(1937)}")
 
-    let l1 = [25, (-26), (-19), 17, (-25)]
+    l1 := [25, (-26), (-19), 17, (-25)]
     say("l1 = {l1} len {l1.length()}")
 
-    let l2 = [(-7), (-7), 12, 13, 5]
+    l2 := [(-7), (-7), 12, 13, 5]
     say("l2 = {l2} len {l2.length()}")
 
-    let f3 = (((936.390 / 2.5) / (192.25 * 7.612)) / ((267.214 + 610.242) - 4.5))
+    f3 := (((936.390 / 2.5) / (192.25 * 7.612)) / ((267.214 + 610.242) - 4.5))
     say("f3 = {f3}")
     say("fib(14) = {fib(14)}")
 
-    let l4 = l2.map(fn x: x + 2).filter(fn x: x % 2 == 0)
+    l4 := l2.map(fn x: x + 2).filter(fn x: x % 2 == 0)
     say("l4 = {l4} len {l4.length()}")
 
-    let i5 = (43728392264 % ((-9) * 25))
+    i5 := (43728392264 % ((-9) * 25))
     say("i5 = {i5}")
 
     var acc6 = 0
@@ -64,19 +64,19 @@ export fn main() Int:
 
     say("acc6 = {acc6}")
 
-    let i7 = 4
+    i7 := 4
     say("i7 = {i7}")
 
-    let l8 = [(-25)]
+    l8 := [(-25)]
     say("l8 = {l8} len {l8.length()}")
     say(
         "{(((-717747) + i7) * l1.length())} {(((-995988) + (-389416)) % (i5 + i7))} {((((-717747) + i7) * l1.length()) < (((-995988) + (-389416)) % (i5 + i7)))} sum {(((-717747) + i7) * l1.length()) + (((-995988) + (-389416)) % (i5 + i7))}"
     )
 
-    let i9 = (i5 * ((i5 / 46) - (32 / i5)))
+    i9 := (i5 * ((i5 / 46) - (32 / i5)))
     say("i9 = {i9}")
 
-    let f10 = f3
+    f10 := f3
     say("f10 = {f10}")
     say("fib(54) = {fib(54)}")
 
@@ -84,9 +84,9 @@ export fn main() Int:
     l11.append(55)
     say("l11 = {l11} len {l11.length()}")
 
-    let l12 = l11.drop(4)
+    l12 := l11.drop(4)
     say("l12 = {l12} len {l12.length()}")
 
-    let f13 = (((f3 * 0.5) + (f3 + f3)) / ((f10 / 358.336) * 3.0e18))
+    f13 := (((f3 * 0.5) + (f3 + f3)) / ((f10 / 358.336) * 3.0e18))
     say("f13 = {f13}")
     return 0

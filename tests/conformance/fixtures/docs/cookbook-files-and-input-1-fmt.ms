@@ -5,7 +5,7 @@ import arguments from "@std/os/env.ms"
 import write_file from "@std/os/fs.ms"
 
 fn run() Result[Unit, Error]:
-    let path = try arguments().first().ok_or(
+    path := try arguments().first().ok_or(
         Error("filesystem: invalid input", kind: "EINVAL")
     )
     return write_file(path, "saved notes\n", replace: false).wait()

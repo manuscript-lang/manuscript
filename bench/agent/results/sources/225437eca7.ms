@@ -3,7 +3,7 @@ import read_lines from "@std/streams.ms"
 import Bytes from "@std/bytes.ms"
 import range from "@std/collections.ms"
 
-let BAD = "error: bad command"
+BAD := "error: bad command"
 
 // Returns the value of a 1 to 6 digit decimal token, or -1 when it is malformed.
 fn number(text: String) Int:
@@ -71,17 +71,17 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
     var best = zeros(limit + 1)
 
     for k in range(0, ws.length()):
-        let w = ws[k]
+        w := ws[k]
         if w > limit: continue
 
         for step in range(0, limit - w + 1):
-            let c = limit - step
+            c := limit - step
             if best[c - w] + vs[k] > best[c]: best[c] = best[c - w] + vs[k]
 
     return best[limit]
 
 fn coins(amount: Int, denoms: List[Int]) Int:
-    let inf = amount + 1
+    inf := amount + 1
     var dp = [0]
 
     for a in range(1, amount + 1):
@@ -93,14 +93,14 @@ fn coins(amount: Int, denoms: List[Int]) Int:
     return dp[amount]
 
 fn answer(line: String) String:
-    let tokens = line.split(" ")
-    let command = tokens[0]
+    tokens := line.split(" ")
+    command := tokens[0]
 
     if command == "lcs" or command == "edit":
         if tokens.length() != 3 or tokens[1].is_empty() or tokens[2].is_empty(): return BAD
 
-        let a = tokens[1].to_bytes()
-        let b = tokens[2].to_bytes()
+        a := tokens[1].to_bytes()
+        b := tokens[2].to_bytes()
         if command == "lcs": return "{lcs(a, b)}"
 
         return "{edit(a, b)}"
@@ -108,18 +108,18 @@ fn answer(line: String) String:
     if command == "knap":
         if tokens.length() < 2: return BAD
 
-        let cap = number(tokens[1])
+        cap := number(tokens[1])
         if cap < 0: return BAD
 
         var ws: List[Int] = []
         var vs: List[Int] = []
 
         for k in range(2, tokens.length()):
-            let item = tokens[k].split(":")
+            item := tokens[k].split(":")
             if item.length() != 2: return BAD
 
-            let w = number(item[0])
-            let v = number(item[1])
+            w := number(item[0])
+            v := number(item[1])
             if w < 1 or v < 0: return BAD
 
             ws.append(w)
@@ -130,18 +130,18 @@ fn answer(line: String) String:
     if command == "coins":
         if tokens.length() < 3: return BAD
 
-        let amount = number(tokens[1])
+        amount := number(tokens[1])
         if amount < 0: return BAD
 
         var denoms: List[Int] = []
 
         for k in range(2, tokens.length()):
-            let c = number(tokens[k])
+            c := number(tokens[k])
             if c < 1: return BAD
 
             denoms.append(c)
 
-        let fewest = coins(amount, denoms)
+        fewest := coins(amount, denoms)
         if fewest > amount: return "impossible"
 
         return "{fewest}"

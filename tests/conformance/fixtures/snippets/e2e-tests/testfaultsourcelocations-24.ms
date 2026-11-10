@@ -5,5 +5,5 @@ fn empty() List[Int]:
     return []
 
 export fn main() Int:
-    let [value] = empty()
+    [value] := empty()
     return value

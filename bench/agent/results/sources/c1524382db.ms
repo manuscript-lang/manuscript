@@ -27,13 +27,13 @@ fn digits_value(s: String) Int:
     return v
 
 fn parse_line(line: String) Rec?:
-    let parts = line.split(" ")
+    parts := line.split(" ")
     if parts.length() != 6: return none
 
-    let level = parts[1]
+    level := parts[1]
     if not (level == "DEBUG" or level == "INFO" or level == "WARN" or level == "ERROR"): return none
 
-    let method = parts[2]
+    method := parts[2]
     if not (
         method == "GET"
         or method == "POST"
@@ -44,7 +44,7 @@ fn parse_line(line: String) Rec?:
     if not parts[3].starts_with("/"): return none
     if parts[4].length() != 3 or not all_digits(parts[4]): return none
 
-    let lat = parts[5]
+    lat := parts[5]
     if lat.length() < 1 or lat.length() > 9 or not all_digits(lat): return none
 
     return Rec(
@@ -60,7 +60,7 @@ fn path_order(a: PathStat, b: PathStat) Int:
     return a.path.compare(b.path)
 
 export fn main() Int:
-    let text = read_all(stdin()).get().decode_utf8().get("")
+    text := read_all(stdin()).get().decode_utf8().get("")
     var valid = List[Rec]()
     var malformed = 0
 
@@ -69,7 +69,7 @@ export fn main() Int:
 
         var ok = false
 
-        if let r = parse_line(line):
+        if r := parse_line(line):
             valid.append(r)
             ok = true
 
@@ -94,7 +94,7 @@ export fn main() Int:
         if r.level == "WARN": warn += 1
         if r.level == "ERROR": error += 1
 
-        let c = r.status.get(0)
+        c := r.status.get(0)
 
         if c == "2": s2 += 1
         else if c == "3": s3 += 1
@@ -106,7 +106,7 @@ export fn main() Int:
         totals[r.path.clone()] = totals.get_or(r.path, 0) + r.latency
         lats.append(r.latency)
 
-    let n = valid.length()
+    n := valid.length()
     print("valid: {n}")
     print("malformed: {malformed}")
     print("DEBUG: {debug}")
@@ -120,7 +120,7 @@ export fn main() Int:
     if n > 0:
         lats.sort()
 
-        let rank = (95 * n + 99) / 100
+        rank := (95 * n + 99) / 100
         p95 = lats[rank - 1]
 
     print("p95: {p95}")
@@ -130,7 +130,7 @@ export fn main() Int:
         for i in 0..n:
             if valid[i].latency > valid[best].latency: best = i
 
-        let b = valid[best]
+        b := valid[best]
         print("slowest: {b.latency_text} {b.method} {b.path} {b.timestamp}")
 
     print("top:")

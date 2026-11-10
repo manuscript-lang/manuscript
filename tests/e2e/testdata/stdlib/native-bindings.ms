@@ -44,16 +44,16 @@ fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
     return ok(unit)
 
 test "process usage records report this process":
-    let cpu = try cpu_usage()
+    cpu := try cpu_usage()
     try expect_false(cpu.user_microseconds < 0 or cpu.system_microseconds < 0)
 
-    let resources = try resource_usage()
+    resources := try resource_usage()
     try expect_false(resources.max_resident_bytes <= 0)
     try expect_false(
         resources.user_microseconds < 0 or resources.involuntary_switches < 0
     )
 
-    let memory = try memory_usage()
+    memory := try memory_usage()
     try expect_false(memory.heap_used <= 0 or memory.resident <= 0)
     try expect_false(memory.heap_total < memory.heap_used)
 
@@ -66,7 +66,7 @@ test "set_identity and set_groups validate input and apply or refuse":
         set_groups(groups: [-1]), Error("process: invalid input", kind: "EINVAL")
     )
 
-    let info = try process_info()
+    info := try process_info()
 
     if info.uid < 0:
         // Windows has no ids.
@@ -85,7 +85,7 @@ test "set_identity and set_groups validate input and apply or refuse":
         try set_identity(kind: IdentityKind.Euid, id: info.effective_uid)
         try set_identity(kind: IdentityKind.Egid, id: info.effective_gid)
 
-        let groups = try groups()
+        groups := try groups()
 
         if info.effective_uid == 0:
             try set_groups(groups: groups)
@@ -96,9 +96,9 @@ test "set_identity and set_groups validate input and apply or refuse":
             )
 
 test "replace rejects invalid programs before leaving this process":
-    let info = try process_info()
-    let empty = replace(program: "", arguments: ["x"], environment: {})
-    let missing = replace(
+    info := try process_info()
+    empty := replace(program: "", arguments: ["x"], environment: {})
+    missing := replace(
         program: "/definitely/not/a/program", arguments: ["x"], environment: {}
     )
 
@@ -115,7 +115,7 @@ test "replace rejects invalid programs before leaving this process":
         try expect_process_error(missing, Error("process: not found", kind: "ENOENT"))
 
 test "stat_filesystem describes the filesystem under a path":
-    let info = try stat_filesystem(path: ".")
+    info := try stat_filesystem(path: ".")
     try expect_false(info.block_size <= 0 or info.blocks <= 0)
     try expect_false(info.blocks_available > info.blocks_free)
     try expect_fs_error(
@@ -126,9 +126,9 @@ test "stat_filesystem describes the filesystem under a path":
 // Reads events until one has `path` and `kind`, or `tries` events passed.
 fn saw(var events: ReadStream[FileEvent], path: String, kind: String, tries: Int) Bool!:
     for attempt in 0..tries:
-        let next = try within(var events, 2.seconds())
+        next := try within(var events, 2.seconds())
 
-        if let event = next:
+        if event := next:
             if event.path == path and event.kind == kind: return ok(true)
         else:
             return ok(false)
@@ -136,8 +136,8 @@ fn saw(var events: ReadStream[FileEvent], path: String, kind: String, tries: Int
     return ok(false)
 
 test "polling and native watchers report a created file and close":
-    let temporary = temporary("manuscript-watch-") | try expect_ok
-    let root = temporary.path()
+    temporary := temporary("manuscript-watch-") | try expect_ok
+    root := temporary.path()
     var polling = try watch(
         path: root, recursive: false, options: WatchOptions(interval: milliseconds(20))
     )
@@ -150,7 +150,7 @@ test "polling and native watchers report a created file and close":
     try expect_true(try saw(var native, join([root.clone(), "b.txt"]), "rename", 8))
 
 test "native watcher max_entries counts the paths under the root":
-    let t = temporary("ms-me-") | try expect_ok
+    t := temporary("ms-me-") | try expect_ok
     try write_file(path: "{t.path()}/a", data: "x", replace: false).wait()
     try expect_fs_error(
         watch(
@@ -165,8 +165,8 @@ test "native watcher max_entries counts the paths under the root":
     try w.close()
 
 test "polling options reject native-only settings":
-    let t = temporary("ms-wo-") | try expect_ok
-    let polled = WatchOptions(interval: milliseconds(20))
+    t := temporary("ms-wo-") | try expect_ok
+    polled := WatchOptions(interval: milliseconds(20))
     try expect_fs_error(
         watch(
             path: t.path(),
@@ -192,8 +192,8 @@ test "polling options reject native-only settings":
     try w.close()
 
 test "recursive native watch sees a file in a new subdirectory":
-    let t = temporary("ms-r2-") | try expect_ok
-    let r = t.path()
+    t := temporary("ms-r2-") | try expect_ok
+    r := t.path()
     var w = try watch(path: r, recursive: true)
     try create_directory(path: "{r}/d", recursive: false)
     try write_file(path: "{r}/d/f", data: "1", replace: false).wait()
@@ -201,6 +201,6 @@ test "recursive native watch sees a file in a new subdirectory":
     var seen = false
     for i in 0..8:
         if not seen:
-            if let e = try within(var w, 2.seconds()):
+            if e := try within(var w, 2.seconds()):
                 if e.path == join([r.clone(), "d", "f"]): seen = true
     try expect_true(seen)

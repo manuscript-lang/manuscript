@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding n; declare it with 'let n = ...' before use, define 'fn n(...) T:', or import it from a module",
+        "message": "unknown binding n; declare it with 'n := ...' before use, define 'fn n(...) T:', or import it from a module",
         "position": {
           "file": "testexpressionconveniencerejections-12.ms",
           "line": 9,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testexpressionconveniencerejections-12.ms:9:12: resolution: unknown binding n; declare it with 'let n = ...' before use, define 'fn n(...) T:', or import it from a module\n   |\n 9 |     return n\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testexpressionconveniencerejections-12.ms:9:12: resolution: unknown binding n; declare it with 'n := ...' before use, define 'fn n(...) T:', or import it from a module\n   |\n 9 |     return n\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

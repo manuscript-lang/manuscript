@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,7 +23,7 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let l1 = [21, (-10), 21, 14, (-28)]
+    l1 := [21, (-10), 21, 14, (-28)]
     say("l1 = {l1} len {l1.length()}")
 
     if "naïve".reverse().is_empty():
@@ -31,23 +31,23 @@ export fn main() Int:
     else:
         say(("a" + "MiXeD CaSe"))
 
-    let b2 = (
+    b2 := (
         "quote\"d".contains("hello world")
         and ("{((-20) - (-791243))}:" + "hello world").is_empty()
     )
     say("b2 = {b2}")
 
-    let f3 = (
+    f3 := (
         ((634.122 - 18.199) + (989.817 - 0.0))
         / ((854.935 + 736.807) + (258.460 * 0.0))
     )
     say("f3 = {f3}")
 
-    let i4 = (-11)
+    i4 := (-11)
     say("i4 = {i4}")
     say("collatz(183) = {collatz(183)}")
 
-    let s5 = "quote\"d"
+    s5 := "quote\"d"
     say("s5 = [{s5}]")
     say(
         "{((11 - i4) - (i4 % i4))} {(s5.length() * (i4 - i4))} {(((11 - i4) - (i4 % i4)) < (s5.length() * (i4 - i4)))} sum {((11 - i4) - (i4 % i4)) + (s5.length() * (i4 - i4))}"
@@ -56,9 +56,9 @@ export fn main() Int:
         "{(((-20) + i4) * (21 * i4))} {(-757397)} {((((-20) + i4) * (21 * i4)) < (-757397))} sum {(((-20) + i4) * (21 * i4)) + (-757397)}"
     )
 
-    let s6 = s5
+    s6 := s5
     say("s6 = [{s6}]")
 
-    let l7 = l1.map(fn x: x + 4).filter(fn x: x % 2 == 0)
+    l7 := l1.map(fn x: x + 4).filter(fn x: x % 2 == 0)
     say("l7 = {l7} len {l7.length()}")
     return 0

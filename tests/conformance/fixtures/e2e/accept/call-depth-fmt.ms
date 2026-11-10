@@ -27,17 +27,17 @@ fn bounded(n: Int, limit: Int) Int:
     return 1 + bounded(n: n + 1, limit: limit)
 
 test "runaway recursion is a fault":
-    let message = try expect_fault(
+    message := try expect_fault(
         fn:
-            let _ignored = runaway(0)
+            _ignored := runaway(0)
     )
     message | try expect_contains("call depth limit exceeded")
 
 test "runaway method recursion faults like function recursion":
-    let walker = Walker(step: 1, limit: -1)
-    let message = try expect_fault(
+    walker := Walker(step: 1, limit: -1)
+    message := try expect_fault(
         fn:
-            let _ignored = walker.walk(n: 0)
+            _ignored := walker.walk(n: 0)
     )
     message | try expect_contains("call depth limit exceeded")
 

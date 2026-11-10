@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (16 - (-44))
+    i1 := (16 - (-44))
     say("i1 = {i1}")
 
     if ((163.843 - 548.061) > 992.155):

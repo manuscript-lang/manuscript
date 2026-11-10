@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -20,7 +20,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -42,46 +42,46 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let f1 = (((852.140 + 827.399) / (0.0 * 7.0e3)) / 403.279)
+    f1 := (((852.140 + 827.399) / (0.0 * 7.0e3)) / 403.279)
     say("f1 = {f1}")
 
-    let b2 = true
+    b2 := true
     say("b2 = {b2}")
 
-    let i3 = (-32)
+    i3 := (-32)
     say("i3 = {i3}")
 
-    let f4 = (385.974 * ((805.299 * 641.085) * (3.0e-1 * f1)))
+    f4 := (385.974 * ((805.299 * 641.085) * (3.0e-1 * f1)))
     say("f4 = {f4}")
 
-    let s5 = (("{(i3 / i3)}:" + "ms").trim() + "alpha")
+    s5 := (("{(i3 / i3)}:" + "ms").trim() + "alpha")
     say("s5 = [{s5}]")
 
-    let b6 = ("alpha" + "brace\{s\}").replace("emoji 😀", "a").is_empty()
+    b6 := ("alpha" + "brace\{s\}").replace("emoji 😀", "a").is_empty()
     say("b6 = {b6}")
     say("{(-(i3 / i3))} {(-9)} {((-(i3 / i3)) < (-9))} sum {(-(i3 / i3)) + (-9)}")
     say("gcd(1801, 3687) = {gcd(1801, 3687)}")
 
-    let b7 = (s5 + s5.replace("delta", s5)).starts_with(s5)
+    b7 := (s5 + s5.replace("delta", s5)).starts_with(s5)
     say("b7 = {b7}")
     say("fib(7) = {fib(7)}")
 
-    let l8 = [1, 2, 3].take(0)
+    l8 := [1, 2, 3].take(0)
     say("l8 = {l8} len {l8.length()}")
 
-    let i9 = (327863 - (i3 - (i3 / 172308)))
+    i9 := (327863 - (i3 - (i3 / 172308)))
     say("i9 = {i9}")
     say("collatz(906) = {collatz(906)}")
 
-    let f10 = (f4 - ((f4 - f1) * (f4 + f1)))
+    f10 := (f4 - ((f4 - f1) * (f4 + f1)))
     say("f10 = {f10}")
 
-    let i11 = (-17)
+    i11 := (-17)
     say("i11 = {i11}")
 
-    let i12 = ((i9 - l8.length()) - (i11 + (-i9)))
+    i12 := ((i9 - l8.length()) - (i11 + (-i9)))
     say("i12 = {i12}")
 
-    let big13 = (i11 / (11 + (-10))) - (i11 / (11 + (-10)))
+    big13 := (i11 / (11 + (-10))) - (i11 / (11 + (-10)))
     say("{(i11 / (11 + (-10))) / big13}")
     return 0

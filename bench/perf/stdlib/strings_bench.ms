@@ -21,7 +21,7 @@ bench "string.concat":
     try measure(20000, work)
 
 bench "string.split":
-    let text = words(2000).join(" ")
+    text := words(2000).join(" ")
 
     fn work() Result[Unit, Error]:
         var n = 0
@@ -32,7 +32,7 @@ bench "string.split":
     try measure(200, work)
 
 bench "string.replace":
-    let text = words(2000).join(" ")
+    text := words(2000).join(" ")
 
     fn work() Result[Unit, Error]:
         var n = 0
@@ -43,7 +43,7 @@ bench "string.replace":
     try measure(200, work)
 
 bench "string.contains":
-    let text = words(2000).join(" ")
+    text := words(2000).join(" ")
 
     fn work() Result[Unit, Error]:
         var n = 0
@@ -54,7 +54,7 @@ bench "string.contains":
     try measure(2000, work)
 
 bench "string.upper":
-    let text = words(2000).join(" ")
+    text := words(2000).join(" ")
 
     fn work() Result[Unit, Error]:
         var n = 0
@@ -74,7 +74,7 @@ bench "string.trim":
     try measure(100000, work)
 
 bench "string.index_char_at":
-    let text = words(2000).join(" ")
+    text := words(2000).join(" ")
 
     fn work() Result[Unit, Error]:
         var n = 0
@@ -85,7 +85,7 @@ bench "string.index_char_at":
     try measure(100000, work)
 
 bench "string.chars":
-    let text = words(2000).join(" ")
+    text := words(2000).join(" ")
 
     fn work() Result[Unit, Error]:
         var n = 0

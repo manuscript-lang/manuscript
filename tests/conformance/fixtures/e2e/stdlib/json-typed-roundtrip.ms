@@ -18,11 +18,11 @@ type Endpoint:
     fallback: IpAddress?
 
 test "JSON payloadless cases are their names and round-trip":
-    let swatch = Swatch(Color.Green, Color.Red)
-    let text = try stringify(swatch)
+    swatch := Swatch(Color.Green, Color.Red)
+    text := try stringify(swatch)
     try expect_equal(text, "\{\"color\":\"Green\",\"shade\":\"Red\"\}")
 
-    let back = try parse[Swatch](text)
+    back := try parse[Swatch](text)
     try expect_equal(try stringify(back), text)
 
 test "JSON rejects an unknown case name":
@@ -35,19 +35,19 @@ test "JSON rejects an unknown case name":
     )
 
 test "JSON writes and reads IpAddress and Cidr as strings":
-    let endpoint = Endpoint(
+    endpoint := Endpoint(
         try parse_ip("::1"), try parse_cidr("10.1.2.3/8"), try parse_ip("192.0.2.7")
     )
-    let text = try stringify(endpoint)
+    text := try stringify(endpoint)
     try expect_equal(
         text,
         "\{\"host\":\"::1\",\"network\":\"10.0.0.0/8\",\"fallback\":\"192.0.2.7\"\}"
     )
 
-    let back = try parse[Endpoint](text)
+    back := try parse[Endpoint](text)
     try expect_equal(try stringify(back), text)
 
-    let bare = try parse[Endpoint]("\{\"host\":\"127.0.0.1\",\"network\":\"::/0\"\}")
+    bare := try parse[Endpoint]("\{\"host\":\"127.0.0.1\",\"network\":\"::/0\"\}")
     try expect_equal(
         try stringify(bare), "\{\"host\":\"127.0.0.1\",\"network\":\"::/0\"\}"
     )

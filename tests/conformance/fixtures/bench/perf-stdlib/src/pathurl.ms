@@ -28,7 +28,7 @@ export fn bench_path_url_math() Unit:
         "url.parse",
         20000,
         fn() Int:
-            let address = "https://example.com:8080/a/b?x=1&y=2#frag"
+            address := "https://example.com:8080/a/b?x=1&y=2#frag"
             var n = 0
             for i in 0..20000:
                 if parse(address).is_ok(): n += 1

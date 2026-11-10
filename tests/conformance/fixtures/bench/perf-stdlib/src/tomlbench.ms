@@ -9,7 +9,7 @@ fn toml_doc(count: Int) String:
     return sb.build()
 
 export fn bench_toml() Unit:
-    let toml = toml_doc(2000)
+    toml := toml_doc(2000)
 
     bench(
         "toml.parse",

@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = (
+    s1 := (
         "{(-9223372036854775808)}:"
         + ("gamma".replace("Tab\there", "héllo") + "  padded  ".lower())
     )
     say("s1 = [{s1}]")
 
-    let i2 = (((3 - (-227493)) * ((-104102) / (-134668976553))) - (-404755481940))
+    i2 := (((3 - (-227493)) * ((-104102) / (-134668976553))) - (-404755481940))
     say("i2 = {i2}")
 
-    let s3 = "x".replace("alpha", s1)
+    s3 := "x".replace("alpha", s1)
     say("s3 = [{s3}]")
 
-    let bad = "abc".no_such_method()
+    bad := "abc".no_such_method()
 
     if (297.619 < (2.5 / 172.25)):
         say(s1)

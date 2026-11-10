@@ -5,4 +5,4 @@ type List[T]:
     value: T
 
 fn f() Unit:
-    let xs = [1]
+    xs := [1]

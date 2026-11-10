@@ -2,7 +2,7 @@ type P:
     n: Int
 
 fn run(f: fn(P) Unit) Unit:
-    let _ = f
+    _ := f
 
 fn changes(var p: P) Unit:
     p.n = 1

@@ -18,7 +18,7 @@ test "integers round-trip in both byte orders":
     out.append_int64_le(-9223372036854775808)
     out.append_int64_be(9223372036854775807)
 
-    let data = out.build()
+    data := out.build()
     try expect_equal((try data.int8(0)).to_int(), -2)
     try expect_equal((try data.int16_le(1)).to_int(), -32768)
     try expect_equal((try data.int16_be(3)).to_int(), 258)
@@ -33,7 +33,7 @@ test "integers round-trip in both byte orders":
     try expect_equal(data.length(), 41)
 
 test "byte order and unsigned reads follow the bytes":
-    let data = Bytes([1, 2, 255, 254])
+    data := Bytes([1, 2, 255, 254])
     try expect_equal(try data.uint8(2), 255)
     try expect_equal((try data.int8(2)).to_int(), -1)
     try expect_equal((try data.int16_le(0)).to_int(), 513)
@@ -49,7 +49,7 @@ test "floats round-trip in both byte orders":
     out.append_float64_le(-1.25)
     out.append_float64_be(3.5)
 
-    let data = out.build()
+    data := out.build()
     try expect_equal((try data.float32_le(0)).to_float(), 1.5)
     try expect_equal((try data.float32_be(4)).to_float(), -2.25)
     try expect_equal(try data.float64_le(8), -1.25)
@@ -63,10 +63,10 @@ test "append_bytes appends many and append one":
     try expect_equal(out.build(), Bytes([7, 1, 2, 3, 4]))
 
 test "reads past the end or before the start are out of range":
-    let range_error8: UInt8! = error(
+    range_error8: UInt8! = error(
         Error("binary: value out of range", kind: "ERANGE")
     )
-    let range_error32: UInt32! = error(
+    range_error32: UInt32! = error(
         Error("binary: value out of range", kind: "ERANGE")
     )
     try expect_equal(Bytes([0]).uint8(-1), range_error8)

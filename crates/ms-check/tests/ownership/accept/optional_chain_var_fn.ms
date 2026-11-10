@@ -18,5 +18,5 @@ fn bump_field(var h: Holder) Int?:
 
 fn bump_local() Int?:
     var c: Counter? = Counter(1)
-    let _first = c?.bump()
+    _first := c?.bump()
     return c?.get()

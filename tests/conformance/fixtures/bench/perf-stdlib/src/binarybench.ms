@@ -4,19 +4,19 @@ import sha256 from "@std/crypto.ms"
 import BytesBuilder from "@std/bytes.ms"
 
 export fn bench_binary() Unit:
-    let blob = words(20000).join(",").to_bytes()
+    blob := words(20000).join(",").to_bytes()
     bench(
         "encoding.base64_encode", blob.length(),
         fn() Int: return base64_encode(blob).length()
     )
 
-    let b64 = base64_encode(blob)
+    b64 := base64_encode(blob)
 
     bench(
         "encoding.base64_decode",
         blob.length(),
         fn() Int:
-            if let b = base64_decode(b64):
+            if b := base64_decode(b64):
                 return b.length()
 
             return 0

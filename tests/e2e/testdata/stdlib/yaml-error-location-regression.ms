@@ -2,7 +2,7 @@ import expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms"
 import parse, YamlValue from "@std/data/yaml.ms"
 
 fn error_at(text: String, line: Int, column: Int) Unit!Error:
-    let cause = parse(text) | try expect_error
+    cause := parse(text) | try expect_error
     if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
     try expect_equal(cause.details["line"], line.to_string())
@@ -46,7 +46,7 @@ test "YAML compact tab rewrites retain original scalar columns":
     try error_at("-\t\tkey: ok\n- key: [one", 2, 12)
 
 fn unsupported_at(text: String, line: Int) Unit!Error:
-    let cause = parse(text) | try expect_error
+    cause := parse(text) | try expect_error
     if cause.kind != "ENOTSUP": return fail("expected UnsupportedFeature, got {cause}")
 
     try expect_equal(cause.details["line"], line.to_string())
@@ -75,7 +75,7 @@ test "YAML source projection preserves compact document values":
     var values = Map[String, YamlValue]()
     values.add("key", YamlValue.StringValue("value"))
 
-    let expected = YamlValue.ArrayValue([YamlValue.ObjectValue(values)])
+    expected := YamlValue.ArrayValue([YamlValue.ObjectValue(values)])
     parse("-\t\tkey: value") | try expect_ok | try expect_equal(expected)
     parse("---\n-\t\tkey: value") | try expect_ok | try expect_equal(expected)
     parse("-\t\t-\t\tkey: value") | try expect_ok | try expect_equal(

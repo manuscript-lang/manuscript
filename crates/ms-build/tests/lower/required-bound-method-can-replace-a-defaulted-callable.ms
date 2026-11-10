@@ -8,7 +8,7 @@ impl Offset:
     fn replacement(value: Int) Int: self.base + value + 1
 
 export fn main() Int:
-    let offset = Offset(2)
+    offset := Offset(2)
     var callback = offset.original
 
     // Assigning a method value takes its receiver, as assigning a closure takes its captures.

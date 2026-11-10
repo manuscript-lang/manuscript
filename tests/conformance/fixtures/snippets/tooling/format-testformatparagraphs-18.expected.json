@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding choose; declare it with 'let choose = ...' before use, define 'fn choose(...) T:', or import it from a module",
+        "message": "unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T:', or import it from a module",
         "position": {
           "file": "format-testformatparagraphs-18.ms",
           "line": 4,
@@ -20,7 +20,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding choose; declare it with 'let choose = ...' before use, define 'fn choose(...) T:', or import it from a module",
+        "message": "unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T:', or import it from a module",
         "position": {
           "file": "format-testformatparagraphs-18.ms",
           "line": 6,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatparagraphs-18.ms:4:25: resolution: unknown binding choose; declare it with 'let choose = ...' before use, define 'fn choose(...) T:', or import it from a module\n   |\n 4 | fn example(value: Int = choose(first: 1, second: 2)) Int:\n   |                         ^\n<DIR>/format-testformatparagraphs-18.ms:6:16: resolution: unknown binding choose; declare it with 'let choose = ...' before use, define 'fn choose(...) T:', or import it from a module\n   |\n 6 |     let next = choose(\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatparagraphs-18.ms:4:25: resolution: unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T:', or import it from a module\n   |\n 4 | fn example(value: Int = choose(first: 1, second: 2)) Int:\n   |                         ^\n<DIR>/format-testformatparagraphs-18.ms:6:16: resolution: unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T:', or import it from a module\n   |\n 6 |     next := choose(\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -78,7 +78,7 @@ fn greet(options: Greeting) Result[Int, Error]:
     return ok(0)
 
 export fn main() Int:
-    let hello = command[Greeting](
+    hello := command[Greeting](
         name: "hello",
         about: "Print a greeting",
         flags: [Flag("times", FlagKind.Int, "n", "1", "Repeat count")],

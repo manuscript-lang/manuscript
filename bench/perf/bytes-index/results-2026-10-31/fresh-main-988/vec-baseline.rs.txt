@@ -26,19 +26,19 @@ unsafe fn elem(v: &VecVal, d: &TypeDesc, i: usize) -> *mut u8 {
 
 /// Ensures room for `extra` more elements.
 unsafe fn reserve(v: &mut VecVal, d: &TypeDesc, extra: usize) {
-    let need = v
+    need := v
         .len
         .checked_add(extra)
         .unwrap_or_else(|| fault::fault(b"list size overflow"));
     if need <= v.cap {
         return;
     }
-    let size = d.size as usize;
+    size := d.size as usize;
     let mut cap = if v.cap == 0 { 4 } else { v.cap * 2 };
     if cap < need {
         cap = need;
     }
-    let bytes = cap
+    bytes := cap
         .checked_mul(size.max(1))
         .unwrap_or_else(|| fault::fault(b"list size overflow"));
     // SAFETY: standard growth of an owned buffer.
@@ -59,7 +59,7 @@ unsafe fn reserve(v: &mut VecVal, d: &TypeDesc, extra: usize) {
 pub unsafe fn drop_list(v: *mut VecVal, d: &TypeDesc) {
     // SAFETY: caller contract.
     unsafe {
-        let v = &mut *v;
+        v := &mut *v;
         if v.ptr.is_null() {
             return;
         }
@@ -79,7 +79,7 @@ unsafe fn copy_range(d: &TypeDesc, src: *const u8, dst: *mut u8, count: usize) {
     if count == 0 {
         return;
     }
-    let size = d.size as usize;
+    size := d.size as usize;
     // SAFETY: both ranges hold `count` slots and do not overlap. Empty ranges may be null;
     // zero-sized plain slots require no memory access, but custom copy hooks still run.
     unsafe {
@@ -102,13 +102,13 @@ unsafe fn copy_range(d: &TypeDesc, src: *const u8, dst: *mut u8, count: usize) {
 pub unsafe fn copy_list(src: *const VecVal, d: &TypeDesc, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
-        let s = &*src;
+        s := &*src;
         if s.len == 0 {
             *out = EMPTY;
             return;
         }
-        let size = d.size as usize;
-        let p = alloc::alloc(s.len * size.max(1));
+        size := d.size as usize;
+        p := alloc::alloc(s.len * size.max(1));
         #[cfg(feature = "stats")]
         crate::string::count_copy(0, s.len * size);
         copy_range(d, s.ptr, p, s.len);
@@ -127,12 +127,12 @@ pub unsafe fn copy_list(src: *const VecVal, d: &TypeDesc, out: *mut VecVal) {
 pub unsafe fn copy_bytes(src: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
-        let s = &*src;
+        s := &*src;
         if s.len == 0 {
             *out = EMPTY;
             return;
         }
-        let p = alloc::alloc(s.len);
+        p := alloc::alloc(s.len);
         core::ptr::copy_nonoverlapping(s.ptr, p, s.len);
         *out = VecVal {
             ptr: p,
@@ -244,8 +244,8 @@ pub unsafe extern "C-unwind" fn msrt_list_at(
 ) -> *const u8 {
     // SAFETY: caller contract.
     unsafe {
-        let v = &*v;
-        let i = relative(v.len, index);
+        v := &*v;
+        i := relative(v.len, index);
         if i >= 0 && (i as usize) < v.len {
             return elem(v, &*d, i as usize);
         }
@@ -267,7 +267,7 @@ pub unsafe extern "C-unwind" fn msrt_list_get(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let p = msrt_list_at(v, d, index, default);
+        p := msrt_list_at(v, d, index, default);
         slot_copy(&*d, p, out);
     }
 }
@@ -296,7 +296,7 @@ pub unsafe extern "C-unwind" fn msrt_list_last(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let v = &*v;
+        v := &*v;
         if v.len == 0 {
             return 0;
         }
@@ -317,7 +317,7 @@ pub unsafe extern "C-unwind" fn msrt_list_index_of(
     unsafe {
         let (v, d) = (&*v, &*d);
         if d.kind == KIND_INT && v.len > 0 {
-            let items = core::slice::from_raw_parts(v.ptr as *const i64, v.len);
+            items := core::slice::from_raw_parts(v.ptr as *const i64, v.len);
             return match find_int(items, *(probe as *const i64)) {
                 Some(i) => {
                     *out = i as i64;
@@ -403,8 +403,8 @@ pub unsafe extern "C-unwind" fn msrt_list_insert(
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
-        let n = v.len;
-        let i = relative(n, index);
+        n := v.len;
+        i := relative(n, index);
         if i < 0 || i > n as i64 {
             fault::fault_fmt(format_args!(
                 "List.insert: index must be between {} and {} (negative indexes count from the end), found {}",
@@ -413,9 +413,9 @@ pub unsafe extern "C-unwind" fn msrt_list_insert(
                 index
             ));
         }
-        let i = i as usize;
+        i := i as usize;
         reserve(v, d, 1);
-        let size = d.size as usize;
+        size := d.size as usize;
         core::ptr::copy(elem(v, d, i), elem(v, d, i).add(size), (n - i) * size);
         core::ptr::copy_nonoverlapping(e, elem(v, d, i), size);
         v.len += 1;
@@ -433,8 +433,8 @@ pub unsafe extern "C-unwind" fn msrt_list_insert_copy(
     // SAFETY: caller contract; the copy is a fresh slot that the insert takes over.
     unsafe {
         let mut copy = core::mem::MaybeUninit::<[u64; 8]>::uninit();
-        let size = (*d).size as usize;
-        let dst = if size <= 64 {
+        size := (*d).size as usize;
+        dst := if size <= 64 {
             copy.as_mut_ptr() as *mut u8
         } else {
             alloc::alloc(size)
@@ -490,11 +490,11 @@ pub unsafe extern "C-unwind" fn msrt_list_set(
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
-        let i = relative(v.len, index);
+        i := relative(v.len, index);
         if i < 0 || i as usize >= v.len {
             index_fault("List.set", v.len, index);
         }
-        let p = elem(v, d, i as usize);
+        p := elem(v, d, i as usize);
         slot_drop(d, p);
         core::ptr::copy_nonoverlapping(e, p, d.size as usize);
     }
@@ -512,11 +512,11 @@ pub unsafe extern "C-unwind" fn msrt_list_replace(
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
-        let i = relative(v.len, index);
+        i := relative(v.len, index);
         if i < 0 || i as usize >= v.len {
             index_fault("List.replace", v.len, index);
         }
-        let p = elem(v, d, i as usize);
+        p := elem(v, d, i as usize);
         core::ptr::copy_nonoverlapping(p, out, d.size as usize);
         core::ptr::copy_nonoverlapping(e, p, d.size as usize);
     }
@@ -556,7 +556,7 @@ unsafe fn swap_slots(a: *mut u8, b: *mut u8, size: usize) {
         }
         let (a, b) = (a as *mut u64, b as *mut u64);
         for k in 0..size / 8 {
-            let t = a.add(k).read_unaligned();
+            t := a.add(k).read_unaligned();
             a.add(k).write_unaligned(b.add(k).read_unaligned());
             b.add(k).write_unaligned(t);
         }
@@ -568,12 +568,12 @@ pub unsafe extern "C-unwind" fn msrt_list_remove(v: *mut VecVal, d: *const TypeD
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
-        let i = relative(v.len, index);
+        i := relative(v.len, index);
         if i < 0 || i as usize >= v.len {
             index_fault("List.remove", v.len, index);
         }
-        let i = i as usize;
-        let size = d.size as usize;
+        i := i as usize;
+        size := d.size as usize;
         slot_drop(d, elem(v, d, i));
         core::ptr::copy(
             elem(v, d, i).add(size),
@@ -589,7 +589,7 @@ pub unsafe extern "C-unwind" fn msrt_list_reverse(v: *mut VecVal, d: *const Type
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
-        let size = d.size as usize;
+        size := d.size as usize;
         let (mut i, mut j) = (0usize, v.len);
         while i + 1 < j {
             j -= 1;
@@ -624,8 +624,8 @@ pub unsafe extern "C-unwind" fn msrt_list_splice(
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
-        let n = v.len;
-        let range_fault = |p: &str, val: i64, lo: i64, hi: i64| -> ! {
+        n := v.len;
+        range_fault := |p: &str, val: i64, lo: i64, hi: i64| -> ! {
             fault::fault_fmt(format_args!(
                 "List.splice: {p} must be between {lo} and {hi}, found {val}"
             ))
@@ -633,17 +633,17 @@ pub unsafe extern "C-unwind" fn msrt_list_splice(
         if start < 0 || start as usize > n {
             range_fault("start", start, 0, n as i64);
         }
-        let s = start as usize;
+        s := start as usize;
         if count < 0 || count as usize > n - s {
             range_fault("delete_count", count, 0, (n - s) as i64);
         }
-        let c = count as usize;
-        let r = &mut *replacement;
-        let size = d.size as usize;
+        c := count as usize;
+        r := &mut *replacement;
+        size := d.size as usize;
         for i in s..s + c {
             slot_drop(d, elem(v, d, i));
         }
-        let new_len = n - c + r.len;
+        new_len := n - c + r.len;
         if new_len > v.cap {
             reserve(v, d, new_len - n.min(new_len));
         }
@@ -681,7 +681,7 @@ pub unsafe extern "C-unwind" fn msrt_list_fill(
         let (v, d) = (&mut *v, &*d);
         check_slice("List.fill", v.len, start, end);
         for i in start as usize..end as usize {
-            let p = elem(v, d, i);
+            p := elem(v, d, i);
             slot_drop(d, p);
             slot_copy(d, value, p);
         }
@@ -699,7 +699,7 @@ pub unsafe extern "C-unwind" fn msrt_list_copy_within(
     // SAFETY: caller contract.
     unsafe {
         let (v, d) = (&mut *v, &*d);
-        let n = v.len;
+        n := v.len;
         check_slice("List.copy_within", n, start, end);
         if target < 0 || target as usize > n {
             fault::fault_fmt(format_args!(
@@ -709,7 +709,7 @@ pub unsafe extern "C-unwind" fn msrt_list_copy_within(
         if start == end || target as usize == n {
             return;
         }
-        let count = ((end - start) as usize).min(n - target as usize);
+        count := ((end - start) as usize).min(n - target as usize);
         if is_plain(d) {
             if d.size != 0 {
                 core::ptr::copy(
@@ -722,7 +722,7 @@ pub unsafe extern "C-unwind" fn msrt_list_copy_within(
         }
         // Overwritten slots are dropped, the sources copied (overlap safe via a temporary).
         let mut tmp = EMPTY;
-        let src = VecVal {
+        src := VecVal {
             ptr: elem(v, d, start as usize),
             len: count,
             cap: count,
@@ -755,12 +755,12 @@ pub unsafe extern "C-unwind" fn msrt_list_slice(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let n = (*v).len;
+        n := (*v).len;
         let (s, e) = (relative(n, start), relative(n, end));
         if s < 0 || e < s || e > n as i64 {
             return STATUS_OUT_OF_RANGE;
         }
-        let view = VecVal {
+        view := VecVal {
             ptr: elem(&*v, &*d, s as usize),
             len: (e - s) as usize,
             cap: (e - s) as usize,
@@ -788,8 +788,8 @@ pub unsafe extern "C-unwind" fn msrt_list_take(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let n = take_count("take", count, (*v).len);
-        let view = VecVal {
+        n := take_count("take", count, (*v).len);
+        view := VecVal {
             ptr: (*v).ptr,
             len: n,
             cap: n,
@@ -824,8 +824,8 @@ pub unsafe extern "C-unwind" fn msrt_list_pieces(
         let mut res = EMPTY;
         let mut start = 0usize;
         while start < src.len && (short_last != 0 || src.len - start >= size) {
-            let n = size.min(src.len - start);
-            let view = VecVal {
+            n := size.min(src.len - start);
+            view := VecVal {
                 ptr: elem(src, d, start),
                 len: n,
                 cap: n,
@@ -849,8 +849,8 @@ pub unsafe extern "C-unwind" fn msrt_list_drop_n(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let n = take_count("drop", count, (*v).len);
-        let view = VecVal {
+        n := take_count("drop", count, (*v).len);
+        view := VecVal {
             ptr: if (*v).len == n {
                 core::ptr::null_mut()
             } else {
@@ -873,7 +873,7 @@ pub unsafe extern "C-unwind" fn msrt_list_concat(
     // SAFETY: caller contract.
     unsafe {
         let (a, b, d) = (&*a, &*b, &*d);
-        let len = a
+        len := a
             .len
             .checked_add(b.len)
             .unwrap_or_else(|| fault::fault(b"list size overflow"));
@@ -883,7 +883,7 @@ pub unsafe extern "C-unwind" fn msrt_list_concat(
         }
         // Keep the spare capacity the previous copy-then-extend path provided, without
         // allocating A's exact buffer first and relocating it when B is appended.
-        let cap = if b.len == 0 {
+        cap := if b.len == 0 {
             a.len
         } else if a.len == 0 {
             len.max(4)
@@ -893,11 +893,11 @@ pub unsafe extern "C-unwind" fn msrt_list_concat(
                 .unwrap_or_else(|| fault::fault(b"list size overflow"))
                 .max(len)
         };
-        let size = d.size as usize;
-        let bytes = cap
+        size := d.size as usize;
+        bytes := cap
             .checked_mul(size.max(1))
             .unwrap_or_else(|| fault::fault(b"list size overflow"));
-        let ptr = alloc::alloc(bytes);
+        ptr := alloc::alloc(bytes);
         copy_range(d, a.ptr, ptr, a.len);
         copy_range(d, b.ptr, ptr.add(a.len * size), b.len);
         *out = VecVal { ptr, len, cap };
@@ -911,7 +911,7 @@ unsafe fn extend_copy(v: &mut VecVal, d: &TypeDesc, other: &VecVal) {
             return;
         }
         reserve(v, d, other.len);
-        let size = d.size as usize;
+        size := d.size as usize;
         copy_range(d, other.ptr, v.ptr.add(v.len * size), other.len);
         v.len += other.len;
     }
@@ -948,9 +948,9 @@ pub unsafe extern "C-unwind" fn msrt_list_flatten(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let ls = &*lists;
+        ls := &*lists;
         let mut res = EMPTY;
-        let total: usize = (0..ls.len)
+        total: usize = (0..ls.len)
             .map(|i| (*(ls.ptr as *const VecVal).add(i)).len)
             .sum();
         reserve(&mut res, &*d, total);
@@ -975,7 +975,7 @@ pub unsafe extern "C-unwind" fn msrt_list_distinct(
         if desc::hashable(d) && src.len > 16 {
             let mut seen = crate::map::empty();
             for i in 0..src.len {
-                let p = elem(src, d, i);
+                p := elem(src, d, i);
                 if crate::map::contains_key(&seen, d, None, p) {
                     continue;
                 }
@@ -987,8 +987,8 @@ pub unsafe extern "C-unwind" fn msrt_list_distinct(
             crate::map::drop_map(&mut seen, d, None);
         } else {
             for i in 0..src.len {
-                let p = elem(src, d, i);
-                let dup = (0..res.len).any(|j| slot_eq(d, elem(&res, d, j), p));
+                p := elem(src, d, i);
+                dup := (0..res.len).any(|j| slot_eq(d, elem(&res, d, j), p));
                 if !dup {
                     reserve(&mut res, d, 1);
                     slot_copy(d, p, elem(&res, d, res.len));
@@ -1005,8 +1005,8 @@ pub unsafe extern "C-unwind" fn msrt_list_distinct(
 pub unsafe extern "C-unwind" fn msrt_list_keys(v: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
-        let n = (*v).len;
-        let p = if n == 0 {
+        n := (*v).len;
+        p := if n == 0 {
             core::ptr::null_mut()
         } else {
             alloc::alloc(n * 8)
@@ -1031,7 +1031,7 @@ pub unsafe extern "C-unwind" fn msrt_list_join(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let v = &*v;
+        v := &*v;
         *out = string::join_strings(v.ptr as *const StrVal, v.len, string::bytes(sep));
     }
 }
@@ -1045,8 +1045,8 @@ pub unsafe extern "C-unwind" fn msrt_list_join_int(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let v = &*v;
-        let sepb = string::bytes(sep);
+        v := &*v;
+        sepb := string::bytes(sep);
         let mut b = Vec::new();
         for i in 0..v.len {
             if i > 0 {
@@ -1068,10 +1068,10 @@ pub type CmpFn = unsafe extern "C-unwind" fn(env: *mut u8, a: *const u8, b: *con
 unsafe fn merge_sort_word<T: Copy>(items: *mut T, buf: *mut T, n: usize, cmp: CmpFn, env: *mut u8) {
     // SAFETY: `items` and `buf` hold `n` slots each.
     unsafe {
-        let less = |a: *const T, b: *const T| cmp(env, a as *const u8, b as *const u8) < 0;
+        less := |a: *const T, b: *const T| cmp(env, a as *const u8, b as *const u8) < 0;
         if n <= 12 {
             for i in 1..n {
-                let x = *items.add(i);
+                x := *items.add(i);
                 let mut j = i;
                 while j > 0 && less(&x, items.add(j - 1)) {
                     *items.add(j) = *items.add(j - 1);
@@ -1081,7 +1081,7 @@ unsafe fn merge_sort_word<T: Copy>(items: *mut T, buf: *mut T, n: usize, cmp: Cm
             }
             return;
         }
-        let mid = n / 2;
+        mid := n / 2;
         merge_sort_word(items, buf, mid, cmp, env);
         merge_sort_word(items.add(mid), buf.add(mid), n - mid, cmp, env);
         if !less(items.add(mid), items.add(mid - 1)) {
@@ -1094,11 +1094,11 @@ unsafe fn merge_sort_word<T: Copy>(items: *mut T, buf: *mut T, n: usize, cmp: Cm
         core::ptr::copy_nonoverlapping(items, buf, n);
         let (mut l, mut le, mut r, mut re) = (0usize, mid, mid, n);
         for k in 0..n / 2 {
-            let take_r = l == le || (r < re && less(buf.add(r), buf.add(l)));
+            take_r := l == le || (r < re && less(buf.add(r), buf.add(l)));
             *items.add(k) = *buf.add(if take_r { r } else { l });
             r += take_r as usize;
             l += !take_r as usize;
-            let take_l = re == r || (l < le && less(buf.add(re - 1), buf.add(le - 1)));
+            take_l := re == r || (l < le && less(buf.add(re - 1), buf.add(le - 1)));
             *items.add(n - 1 - k) = *buf.add(if take_l { le - 1 } else { re - 1 });
             le -= take_l as usize;
             re -= !take_l as usize;
@@ -1119,7 +1119,7 @@ unsafe fn merge_sort(
 ) {
     // SAFETY: `items` and `buf` hold `n` slots each.
     unsafe {
-        let at = |base: *mut u8, i: usize| base.add(i * size);
+        at := |base: *mut u8, i: usize| base.add(i * size);
         if n <= 12 {
             // Stable insertion sort of slots.
             for i in 1..n {
@@ -1131,7 +1131,7 @@ unsafe fn merge_sort(
             }
             return;
         }
-        let mid = n / 2;
+        mid := n / 2;
         merge_sort(items, buf, mid, size, cmp, env);
         merge_sort(at(items, mid), at(buf, mid), n - mid, size, cmp, env);
         if cmp(env, at(items, mid), at(items, mid - 1)) >= 0 {
@@ -1169,8 +1169,8 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
         if v.len < 2 {
             return;
         }
-        let size = d.size as usize;
-        let buf = alloc::alloc(v.len * size.max(1));
+        size := d.size as usize;
+        buf := alloc::alloc(v.len * size.max(1));
         // Slots of a few words move as typed copies instead of `memcpy` calls of a run-time size.
         macro_rules! words {
             ($n:literal) => {
@@ -1202,8 +1202,8 @@ pub unsafe extern "C-unwind" fn msrt_list_sort_in_place(
 pub unsafe extern "C" fn msrt_list_sort_ints(v: *mut VecVal, desc: i64) {
     // SAFETY: caller contract: `v` holds `len` words.
     unsafe {
-        let v = &mut *v;
-        let s = core::slice::from_raw_parts_mut(v.ptr as *mut i64, v.len);
+        v := &mut *v;
+        s := core::slice::from_raw_parts_mut(v.ptr as *mut i64, v.len);
         if desc != 0 {
             s.sort_unstable_by(|a, b| b.cmp(a));
         } else {
@@ -1228,11 +1228,11 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted_by_difference(
     // SAFETY: caller contract: `v` holds `len` words.
     unsafe {
         copy_list(v, &*d, out);
-        let o = &mut *out;
+        o := &mut *out;
         if o.len < 2 {
             return;
         }
-        let s = core::slice::from_raw_parts_mut(o.ptr as *mut i64, o.len);
+        s := core::slice::from_raw_parts_mut(o.ptr as *mut i64, o.len);
         let (lo, hi) = s
             .iter()
             .fold((i64::MAX, i64::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
@@ -1274,14 +1274,14 @@ pub unsafe extern "C-unwind" fn msrt_list_filled(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let limit = if has_max != 0 { max } else { i64::MAX };
+        limit := if has_max != 0 { max } else { i64::MAX };
         if count < 0 || limit < 0 {
             return STATUS_INVALID_INPUT;
         }
         if count as u64 > (limit as u64).min(MAX_ITEMS as u64) {
             return STATUS_LIMIT_EXCEEDED;
         }
-        let d = &*d;
+        d := &*d;
         let mut v = EMPTY;
         reserve(&mut v, d, count as usize);
         for i in 0..count as usize {
@@ -1301,12 +1301,12 @@ pub unsafe extern "C-unwind" fn msrt_list_range(start: i64, end: i64, out: *mut 
             *out = EMPTY;
             return;
         }
-        let n = (end as i128 - start as i128) as u128;
+        n := (end as i128 - start as i128) as u128;
         if n > MAX_ITEMS as u128 {
             fault::fault(b"range: more than 268435456 items; iterate with 'for index in start..end' directly or bound the list with range_by(max_items:)");
         }
-        let n = n as usize;
-        let p = alloc::alloc(n * 8) as *mut i64;
+        n := n as usize;
+        p := alloc::alloc(n * 8) as *mut i64;
         for i in 0..n {
             *p.add(i) = start + i as i64;
         }
@@ -1329,11 +1329,11 @@ pub unsafe extern "C-unwind" fn msrt_list_range_by(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let limit = if has_max != 0 { max } else { i64::MAX };
+        limit := if has_max != 0 { max } else { i64::MAX };
         if step == 0 || limit < 0 {
             return STATUS_INVALID_INPUT;
         }
-        let limit = (limit as u64).min(MAX_ITEMS as u64);
+        limit := (limit as u64).min(MAX_ITEMS as u64);
         let (span, size) = if step > 0 && start < end {
             ((end as i128 - start as i128) as u128, step as u128)
         } else if step < 0 && start > end {
@@ -1348,12 +1348,12 @@ pub unsafe extern "C-unwind" fn msrt_list_range_by(
             *out = EMPTY;
             return STATUS_OK;
         }
-        let count = (span - 1) / size + 1;
+        count := (span - 1) / size + 1;
         if count > limit as u128 {
             return STATUS_LIMIT_EXCEEDED;
         }
-        let count = count as usize;
-        let p = alloc::alloc(count * 8) as *mut i64;
+        count := count as usize;
+        p := alloc::alloc(count * 8) as *mut i64;
         let mut n = start;
         for i in 0..count {
             *p.add(i) = n;
@@ -1401,7 +1401,7 @@ pub extern "C-unwind" fn msrt_fault_destructure(names: i64, elements: i64) -> ! 
 unsafe fn bslice<'a>(b: *const VecVal) -> &'a [u8] {
     // SAFETY: caller contract.
     unsafe {
-        let b = &*b;
+        b := &*b;
         if b.len == 0 {
             &[]
         } else {
@@ -1417,7 +1417,7 @@ unsafe fn bytes_from(data: &[u8], out: *mut VecVal) {
             *out = EMPTY;
             return;
         }
-        let p = alloc::alloc(data.len());
+        p := alloc::alloc(data.len());
         core::ptr::copy_nonoverlapping(data.as_ptr(), p, data.len());
         *out = VecVal {
             ptr: p,
@@ -1478,11 +1478,11 @@ pub unsafe extern "C-unwind" fn msrt_bytes_index_of_byte(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let s = bslice(b);
+        s := bslice(b);
         if !(0..=255).contains(&value) || start > s.len() as i64 {
             return 0;
         }
-        let from = start.max(0) as usize;
+        from := start.max(0) as usize;
         match s[from..].iter().position(|&x| x as i64 == value) {
             Some(i) => {
                 *out = (from + i) as i64;
@@ -1532,8 +1532,8 @@ pub unsafe extern "C-unwind" fn msrt_bytes_get(
 ) -> i64 {
     // SAFETY: caller contract.
     unsafe {
-        let s = bslice(b);
-        let i = relative(s.len(), index);
+        s := bslice(b);
+        i := relative(s.len(), index);
         if i >= 0 && (i as usize) < s.len() {
             return s[i as usize] as i64;
         }
@@ -1553,7 +1553,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_slice(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let s = bslice(b);
+        s := bslice(b);
         let (a, e) = (relative(s.len(), start), relative(s.len(), end));
         if a < 0 || e < a || e > s.len() as i64 {
             return STATUS_OUT_OF_RANGE;
@@ -1583,8 +1583,8 @@ pub unsafe extern "C-unwind" fn msrt_bytes_with_value(
 ) {
     // SAFETY: caller contract.
     unsafe {
-        let n = (*b).len;
-        let i = relative(n, index);
+        n := (*b).len;
+        i := relative(n, index);
         if i < 0 || i as usize >= n {
             index_fault("Bytes.with_value", n, index);
         }
@@ -1625,7 +1625,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_split(
     // SAFETY: caller contract; result is a List[Bytes] (24-byte slots).
     unsafe {
         let (data, sepb) = (bslice(b), bslice(sep));
-        let limit = if has_max != 0 {
+        limit := if has_max != 0 {
             if max < 0 {
                 fault::fault_fmt(format_args!(
                     "split: max_parts must be nonnegative, found {max}"
@@ -1635,9 +1635,9 @@ pub unsafe extern "C-unwind" fn msrt_bytes_split(
         } else {
             usize::MAX
         };
-        let d = &desc::msrt_desc_bytes;
+        d := &desc::msrt_desc_bytes;
         let mut res = EMPTY;
-        let add = |part: &[u8], res: &mut VecVal| {
+        add := |part: &[u8], res: &mut VecVal| {
             let mut item = EMPTY;
             bytes_from(part, &mut item);
             push(res, d, &item as *const VecVal as *const u8);
@@ -1671,9 +1671,9 @@ pub unsafe extern "C-unwind" fn msrt_bytes_split(
 pub unsafe extern "C-unwind" fn msrt_bytes_values(b: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
-        let s = bslice(b);
+        s := bslice(b);
         // A `List[UInt8]` stores one byte per element, the layout of the bytes themselves.
-        let p = if s.is_empty() {
+        p := if s.is_empty() {
             core::ptr::null_mut()
         } else {
             alloc::alloc(s.len())
@@ -1694,13 +1694,13 @@ pub unsafe extern "C-unwind" fn msrt_bytes_values(b: *const VecVal, out: *mut Ve
 pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract; the list holds `Bytes` values inline.
     unsafe {
-        let list = &*parts;
-        let items: &[VecVal] = if list.len == 0 {
+        list := &*parts;
+        items: &[VecVal] = if list.len == 0 {
             &[]
         } else {
             core::slice::from_raw_parts(list.ptr.cast::<VecVal>(), list.len)
         };
-        let total = items.iter().fold(0usize, |sum, part| {
+        total := items.iter().fold(0usize, |sum, part| {
             sum.checked_add(part.len)
                 .unwrap_or_else(|| fault::fault(b"bytes size overflow"))
         });
@@ -1708,7 +1708,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut 
             *out = EMPTY;
             return;
         }
-        let p = alloc::alloc(total);
+        p := alloc::alloc(total);
         let mut at = 0;
         for part in items {
             if part.len > 0 {
@@ -1729,7 +1729,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_join(parts: *const VecVal, out: *mut 
 pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {
-        let v = &*values;
+        v := &*values;
         if v.len == 0 {
             bytes_from(&[], out);
         } else {
@@ -1743,7 +1743,7 @@ pub unsafe extern "C-unwind" fn msrt_bytes_from_values(values: *const VecVal, ou
 pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8(b: *const VecVal, out: *mut StrVal) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let s = bslice(b);
+        s := bslice(b);
         if core::str::from_utf8(s).is_err() {
             return 0;
         }
@@ -1763,14 +1763,14 @@ pub unsafe extern "C-unwind" fn msrt_bytes_decode_utf8_range(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let s = bslice(b);
+        s := bslice(b);
         if start < 0 || end < start || end > s.len() as i64 {
             fault::fault_fmt(format_args!(
                 "Bytes.decode_utf8_range: bounds {start}..{end} are outside 0..{}",
                 s.len()
             ));
         }
-        let part = &s[start as usize..end as usize];
+        part := &s[start as usize..end as usize];
         if core::str::from_utf8(part).is_err() {
             return 0;
         }
@@ -1789,8 +1789,8 @@ pub unsafe extern "C-unwind" fn msrt_bytes_append(b: *mut VecVal, value: i64) {
                 "BytesBuilder.append: value must be between 0 and 255, found {value}"
             ));
         }
-        let byte_desc = &desc::msrt_desc_bool;
-        let x = value as u8;
+        byte_desc := &desc::msrt_desc_bool;
+        x := value as u8;
         push(&mut *b, byte_desc, &x);
     }
 }
@@ -1800,8 +1800,8 @@ pub unsafe extern "C-unwind" fn msrt_bytes_append(b: *mut VecVal, value: i64) {
 pub unsafe extern "C-unwind" fn msrt_bytes_extend(b: *mut VecVal, values: *const VecVal) {
     // SAFETY: caller contract.
     unsafe {
-        let data = bslice(values);
-        let v = &mut *b;
+        data := bslice(values);
+        v := &mut *b;
         reserve(v, &desc::msrt_desc_bool, data.len());
         if !data.is_empty() {
             core::ptr::copy_nonoverlapping(data.as_ptr(), v.ptr.add(v.len), data.len());
@@ -1825,8 +1825,8 @@ pub unsafe extern "C-unwind" fn msrt_bytes_read_word(
 ) -> u8 {
     // SAFETY: caller contract.
     unsafe {
-        let s = bslice(b);
-        let n = width as usize;
+        s := bslice(b);
+        n := width as usize;
         let Some(raw) = usize::try_from(at)
             .ok()
             .and_then(|start| s.get(start..start.checked_add(n)?))
@@ -1851,8 +1851,8 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
     unsafe {
         // One byte (a character or punctuation) is the common append and needs no call:
         // this path keeps no registers live across a call, so it has no frame.
-        let v = &mut *b;
-        let n = (*s).len();
+        v := &mut *b;
+        n := (*s).len();
         if n == 1 && v.len < v.cap {
             *v.ptr.add(v.len) = *string::bytes(s).as_ptr();
             v.len += 1;
@@ -1861,8 +1861,8 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append(b: *mut VecVal, s: *const
         // Text that fits is copied in place: a short word as overlapping word moves, longer
         // text with a single `memcpy`. Only a full buffer reaches the growth path.
         if v.cap - v.len >= n {
-            let src = string::bytes(s).as_ptr();
-            let dst = v.ptr.add(v.len);
+            src := string::bytes(s).as_ptr();
+            dst := v.ptr.add(v.len);
             // The length moves first so that the copy is the last thing the function does: a
             // long copy is then a tail call to `memcpy`, and the function needs no frame.
             v.len += n;
@@ -1884,19 +1884,19 @@ pub(crate) unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
     // SAFETY: caller guarantees `n` readable and writable bytes; each access stays within them.
     unsafe {
         if n >= 8 {
-            let head = src.cast::<u64>().read_unaligned();
-            let tail = src.add(n - 8).cast::<u64>().read_unaligned();
+            head := src.cast::<u64>().read_unaligned();
+            tail := src.add(n - 8).cast::<u64>().read_unaligned();
             dst.cast::<u64>().write_unaligned(head);
             dst.add(n - 8).cast::<u64>().write_unaligned(tail);
         } else if n >= 4 {
-            let head = src.cast::<u32>().read_unaligned();
-            let tail = src.add(n - 4).cast::<u32>().read_unaligned();
+            head := src.cast::<u32>().read_unaligned();
+            tail := src.add(n - 4).cast::<u32>().read_unaligned();
             dst.cast::<u32>().write_unaligned(head);
             dst.add(n - 4).cast::<u32>().write_unaligned(tail);
         } else if n > 0 {
-            let first = *src;
-            let mid = *src.add(n / 2);
-            let last = *src.add(n - 1);
+            first := *src;
+            mid := *src.add(n / 2);
+            last := *src.add(n - 1);
             *dst = first;
             *dst.add(n / 2) = mid;
             *dst.add(n - 1) = last;
@@ -1908,8 +1908,8 @@ pub(crate) unsafe fn copy_short(src: *const u8, dst: *mut u8, n: usize) {
 unsafe fn append_slow(b: *mut VecVal, s: *const StrVal) {
     // SAFETY: caller contract.
     unsafe {
-        let data = string::bytes(s);
-        let v = &mut *b;
+        data := string::bytes(s);
+        v := &mut *b;
         if v.len + data.len() > v.cap {
             reserve(v, &desc::msrt_desc_bool, data.len());
         }
@@ -1927,8 +1927,8 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append_int(b: *mut VecVal, n: i6
     // SAFETY: caller contract.
     unsafe {
         let mut tmp = [0u8; 20];
-        let digits = crate::num::format_i64(n, &mut tmp);
-        let v = &mut *b;
+        digits := crate::num::format_i64(n, &mut tmp);
+        v := &mut *b;
         if v.len + digits.len() > v.cap {
             reserve(v, &desc::msrt_desc_bool, digits.len());
         }
@@ -1942,7 +1942,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_append_int(b: *mut VecVal, n: i6
 pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) {
     // SAFETY: caller contract.
     unsafe {
-        let v = &mut *b;
+        v := &mut *b;
         // A long text takes over the builder's buffer (NUL terminated, trimmed when much of it
         // is spare) instead of copying it.
         if v.len > STR_INLINE_MAX && v.len <= string::MAX_BYTES {
@@ -1955,7 +1955,7 @@ pub unsafe extern "C-unwind" fn msrt_strbuilder_freeze(b: *mut VecVal, out: *mut
             *v = EMPTY;
             return;
         }
-        let s = from_bytes(bslice(b));
+        s := from_bytes(bslice(b));
         msrt_bytes_drop(b);
         out.write(s);
     }
@@ -1986,7 +1986,7 @@ mod tests {
 
     #[test]
     fn copy_short_matches_slice_copy() {
-        let src: Vec<u8> = (1..=16).collect();
+        src: Vec<u8> = (1..=16).collect();
         for n in 0..=16usize {
             let mut dst = [0u8; 20];
             // SAFETY: `src` and `dst` hold at least `n` bytes and do not overlap.
@@ -2006,13 +2006,13 @@ mod tests {
                 // SAFETY: the builder is a fresh owned buffer that freeze consumes.
                 unsafe {
                     let mut b = EMPTY;
-                    let want: Vec<u8> = (0..len).map(|i| b'a' + (i % 26) as u8).collect();
+                    want: Vec<u8> = (0..len).map(|i| b'a' + (i % 26) as u8).collect();
                     reserve(&mut b, &desc::msrt_desc_bool, len + cap_extra);
                     core::ptr::copy_nonoverlapping(want.as_ptr(), b.ptr, len);
                     b.len = len;
                     let mut out = core::mem::MaybeUninit::<StrVal>::uninit();
                     msrt_strbuilder_freeze(&mut b, out.as_mut_ptr());
-                    let s = out.assume_init();
+                    s := out.assume_init();
                     assert_eq!(string::bytes(&s), &want[..]);
                     if len > STR_INLINE_MAX {
                         assert_eq!(*string::bytes(&s).as_ptr().add(len), 0);
@@ -2032,7 +2032,7 @@ mod tests {
     unsafe extern "C-unwind" fn cmp_noise(env: *mut u8, _a: *const u8, _b: *const u8) -> i64 {
         // SAFETY: `env` is the test's xorshift state.
         unsafe {
-            let s = &mut *(env as *mut u64);
+            s := &mut *(env as *mut u64);
             *s ^= *s << 13;
             *s ^= *s >> 7;
             *s ^= *s << 17;
@@ -2097,7 +2097,7 @@ mod tests {
     #[test]
     fn find_int_matches_a_plain_scan() {
         for len in 0..40usize {
-            let items: Vec<i64> = (0..len as i64).map(|i| i * 3 % 7).collect();
+            items: Vec<i64> = (0..len as i64).map(|i| i * 3 % 7).collect();
             for target in -1..8 {
                 assert_eq!(
                     find_int(&items, target),
@@ -2145,12 +2145,12 @@ mod tests {
 
     #[test]
     fn plain_ranges_match_snapshot_model() {
-        let _g = testutil::lock();
-        let before = alloc::live_blocks();
+        _g := testutil::lock();
+        before := alloc::live_blocks();
         for (size, kind) in [(1, KIND_BOOL), (8, KIND_INT), (24, KIND_POD)] {
-            let d = plain_desc(size as u32, kind);
+            d := plain_desc(size as u32, kind);
             for n in [0, 1, 7, 257] {
-                let data: Vec<u8> = (0..n * size)
+                data: Vec<u8> = (0..n * size)
                     .map(|i| {
                         if size == 1 {
                             (i % 2) as u8
@@ -2169,10 +2169,10 @@ mod tests {
                     input.len = n;
                     let mut cat = EMPTY;
                     msrt_list_concat(&input, &input, &d, &mut cat);
-                    let expected = [data.as_slice(), data.as_slice()].concat();
+                    expected := [data.as_slice(), data.as_slice()].concat();
                     assert_eq!(list_data(&cat, size), expected);
                     let mut parts = [EMPTY, input, EMPTY, input, EMPTY];
-                    let lists = VecVal {
+                    lists := VecVal {
                         ptr: parts.as_mut_ptr().cast(),
                         len: parts.len(),
                         cap: parts.len(),
@@ -2197,7 +2197,7 @@ mod tests {
                                         end as i64,
                                     );
                                     let mut expected = data.clone();
-                                    let count = (end - start).min(n - target);
+                                    count := (end - start).min(n - target);
                                     expected[target * size..(target + count) * size]
                                         .copy_from_slice(
                                             &data[start * size..(start + count) * size],
@@ -2227,8 +2227,8 @@ mod tests {
 
     #[test]
     fn zero_sized_ranges_preserve_custom_copy_hooks() {
-        let _g = testutil::lock();
-        let before = alloc::live_blocks();
+        _g := testutil::lock();
+        before := alloc::live_blocks();
         for custom in [false, true] {
             let mut d = plain_desc(0, KIND_CUSTOM);
             d.align = 1;
@@ -2246,7 +2246,7 @@ mod tests {
                 let mut cat = EMPTY;
                 msrt_list_concat(&input, &input, &d, &mut cat);
                 let mut parts = [EMPTY, input, EMPTY, input];
-                let lists = VecVal {
+                lists := VecVal {
                     ptr: parts.as_mut_ptr().cast(),
                     len: parts.len(),
                     cap: parts.len(),
@@ -2271,13 +2271,13 @@ mod tests {
 
     #[test]
     fn replace_and_swap_move_without_copying() {
-        let _g = testutil::lock();
+        _g := testutil::lock();
         unsafe {
-            let before = alloc::live_blocks();
-            let d = &msrt_desc_string;
+            before := alloc::live_blocks();
+            d := &msrt_desc_string;
             let mut v = EMPTY;
             for text in [&b"a"[..], b"b", b"c"] {
-                let s = string::from_bytes(text);
+                s := string::from_bytes(text);
                 msrt_list_push(&mut v, d, &s as *const _ as *const u8);
             }
             let mut incoming = string::from_bytes(b"x");
@@ -2293,7 +2293,7 @@ mod tests {
             assert_eq!(string::bytes((v.ptr as *const StrVal).add(1)), b"x");
             msrt_list_swap(&mut v, d, 0, -1);
             msrt_list_swap(&mut v, d, 1, 1);
-            let got: Vec<&[u8]> = (0..3)
+            got: Vec<&[u8]> = (0..3)
                 .map(|i| string::bytes((v.ptr as *const StrVal).add(i)))
                 .collect();
             assert_eq!(got, [&b"c"[..], b"x", b"a"]);
@@ -2309,14 +2309,14 @@ mod tests {
 
     #[test]
     fn mutators_and_reads() {
-        let _g = testutil::lock();
+        _g := testutil::lock();
         unsafe {
-            let d = &msrt_desc_int;
+            d := &msrt_desc_int;
             let mut v = EMPTY;
             for x in [5, 3, 9, 1] {
                 push_int(&mut v, x);
             }
-            let ten = 10i64;
+            ten := 10i64;
             msrt_list_insert(&mut v, d, -1, &ten as *const i64 as *const u8);
             assert_eq!(ints(&v), [5, 3, 9, 10, 1]);
             msrt_list_remove(&mut v, d, 0);
@@ -2353,9 +2353,9 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore = "too slow to interpret")]
     fn stable_sort_large_and_distinct() {
-        let _g = testutil::lock();
+        _g := testutil::lock();
         unsafe {
-            let d = &msrt_desc_int;
+            d := &msrt_desc_int;
             let mut v = EMPTY;
             for i in 0..1000i64 {
                 push_int(&mut v, (i * 7919) % 101);
@@ -2364,7 +2364,7 @@ mod tests {
             msrt_list_distinct(&v, d, &mut dv);
             assert_eq!(dv.len, 101);
             msrt_list_sort_in_place(&mut v, d, by_value, core::ptr::null_mut());
-            let got = ints(&v);
+            got := ints(&v);
             assert!(got.windows(2).all(|w| w[0] <= w[1]));
             drop_list(&mut v, d);
             drop_list(&mut dv, d);
@@ -2373,16 +2373,16 @@ mod tests {
 
     #[test]
     fn int_sort_orders_both_ways() {
-        let _g = testutil::lock();
+        _g := testutil::lock();
         unsafe {
-            let d = &msrt_desc_int;
+            d := &msrt_desc_int;
             for desc in [0i64, 1] {
                 let mut v = EMPTY;
                 for i in 0..300i64 {
                     push_int(&mut v, (i * 7919) % 101 - 50);
                 }
                 msrt_list_sort_ints(&mut v, desc);
-                let got = ints(&v);
+                got := ints(&v);
                 assert!(
                     got.windows(2)
                         .all(|w| (w[0] <= w[1]) == (desc == 0) || w[0] == w[1])
@@ -2394,10 +2394,10 @@ mod tests {
 
     #[test]
     fn nested_lists_copy_and_equality() {
-        let _g = testutil::lock();
-        let before = alloc::live_blocks();
+        _g := testutil::lock();
+        before := alloc::live_blocks();
         unsafe {
-            let inner = TypeDesc {
+            inner := TypeDesc {
                 size: 24,
                 align: 8,
                 kind: KIND_LIST,
@@ -2411,7 +2411,7 @@ mod tests {
             };
             let mut outer = EMPTY;
             let mut a = EMPTY;
-            let s = string::from_bytes(b"hello world");
+            s := string::from_bytes(b"hello world");
             msrt_list_push(&mut a, &msrt_desc_string, &s as *const _ as *const u8);
             msrt_list_push(&mut outer, &inner, &a as *const _ as *const u8);
             let mut c = EMPTY;
@@ -2419,8 +2419,8 @@ mod tests {
             assert!(eq_list(&outer, &c, &inner));
             let mut cat = EMPTY;
             msrt_list_concat(&outer, &outer, &inner, &mut cat);
-            let first = cat.ptr as *mut VecVal;
-            let changed = string::from_bytes(b"changed");
+            first := cat.ptr as *mut VecVal;
+            changed := string::from_bytes(b"changed");
             msrt_list_set(first, &msrt_desc_string, 0, &changed as *const _ as _);
             assert!(eq_list(&outer, &c, &inner));
             msrt_list_copy_within(&mut cat, &inner, 1, 0, 1);

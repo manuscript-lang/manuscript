@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,17 +23,17 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let s1 = "gamma"
+    s1 := "gamma"
     say("s1 = [{s1}]")
     say("collatz(2449) = {collatz(2449)}")
 
-    let l2 = [26, (-17), (-26), 11, 4]
+    l2 := [26, (-17), (-26), 11, 4]
     say("l2 = {l2} len {l2.length()}")
 
-    let i3 = (l2.length() + (-29))
+    i3 := (l2.length() + (-29))
     say("i3 = {i3}")
 
-    let b4 = ("héllo" == (s1 + "delta").upper())
+    b4 := ("héllo" == (s1 + "delta").upper())
     say("b4 = {b4}")
 
     if (s1 + s1).is_empty():
@@ -41,19 +41,19 @@ export fn main() Int:
     else:
         say(s1)
 
-    let i5 = (i3 + ((i3 + i3) % (i3 + 12)))
+    i5 := (i3 + ((i3 + i3) % (i3 + 12)))
     say("i5 = {i5}")
 
-    let f6 = (297.25 + (3.0e14 + 493.893))
+    f6 := (297.25 + (3.0e14 + 493.893))
     say("f6 = {f6}")
 
-    let s7 = ("beta".trim() + "").upper()
+    s7 := ("beta".trim() + "").upper()
     say("s7 = [{s7}]")
 
-    let i8 = 39
+    i8 := 39
     say("i8 = {i8}")
 
-    let s9 = "line\nbreak".reverse().replace("brace\{s\}", s1).reverse()
+    s9 := "line\nbreak".reverse().replace("brace\{s\}", s1).reverse()
     say("s9 = [{s9}]")
 
     if ("x".reverse() == "Tab\there"):
@@ -61,21 +61,21 @@ export fn main() Int:
     else:
         say(("gamma" + s9))
 
-    let i10 = ((l2.length() - (i5 / i5)) + (((-45) + i5) + (i5 + 41)))
+    i10 := ((l2.length() - (i5 / i5)) + (((-45) + i5) + (i5 + 41)))
     say("i10 = {i10}")
 
-    let f11 = (((560.117 + f6) + f6) - ((3.5 + 0.0) / f6))
+    f11 := (((560.117 + f6) + f6) - ((3.5 + 0.0) / f6))
     say("f11 = {f11}")
 
-    let b12 = ("{(i10 + i10)}:" + s1).reverse().is_empty()
+    b12 := ("{(i10 + i10)}:" + s1).reverse().is_empty()
     say("b12 = {b12}")
 
-    let i13 = i10
+    i13 := i10
     say("i13 = {i13}")
 
-    let s14 = s9
+    s14 := s9
     say("s14 = [{s14}]")
 
-    let f15 = f11
+    f15 := f11
     say("f15 = {f15}")
     return 0

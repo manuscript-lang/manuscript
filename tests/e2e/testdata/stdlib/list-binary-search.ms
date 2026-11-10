@@ -4,14 +4,14 @@ import append_file, read_file, temporary, write_file from "@std/os/fs.ms"
 
 fn linear_search[T: Comparable](values: List[T], target: T) SearchResult:
     for i in 0..values.length():
-        let order = values[i].compare(target)
+        order := values[i].compare(target)
         if order >= 0: return SearchResult(i, order == 0)
 
     return SearchResult(values.length(), false)
 
 fn check_search[T: Comparable](values: List[T], target: T) Unit!:
-    let expected = linear_search(values, target)
-    let actual = values.binary_search(target)
+    expected := linear_search(values, target)
+    actual := values.binary_search(target)
     try expect_equal(actual.index, expected.index)
     try expect_equal(actual.found, expected.found)
     return ok(unit)
@@ -31,11 +31,11 @@ type Counted:
 
 impl Comparable for Counted:
     fn compare(other: Counted) Int:
-        let _ = append_file(self.comparisons, "x").wait()
+        _ := append_file(self.comparisons, "x").wait()
         return self.value.compare(other.value)
 
 test "binary search reports the first duplicate or insertion position":
-    let values = [1, 3, 3, 3, 5]
+    values := [1, 3, 3, 3, 5]
     for target in - 1..8:
         try check_search(values, target)
     try expect_equal(values.binary_search(3).index, 1)
@@ -48,31 +48,31 @@ test "binary search reports the first duplicate or insertion position":
         try check_search([1, 1, 1, 1], target)
 
     var inserted = values.clone()
-    let missing = inserted.binary_search(4)
+    missing := inserted.binary_search(4)
     inserted.insert(missing.index, 4)
     try expect_equal(inserted, [1, 3, 3, 3, 4, 5])
 
 test "binary search handles full-width extrema and sized numbers":
-    let minimum = -9223372036854775808
-    let maximum = 9223372036854775807
-    let values = [minimum, minimum, -1, 0, maximum]
+    minimum := -9223372036854775808
+    maximum := 9223372036854775807
+    values := [minimum, minimum, -1, 0, maximum]
     for target in [minimum, minimum + 1, -1, 0, 1, maximum - 1, maximum]:
         try check_search(values, target)
 
-    let narrow: List[Int8] = [-128, -1, 0, 127]
-    let target: Int8 = -1
+    narrow: List[Int8] = [-128, -1, 0, 127]
+    target: Int8 = -1
     try check_search(narrow, target)
 
-    let unsigned: List[UInt64] = [0, 9223372036854775808, 18446744073709551615]
-    let large: UInt64 = 18446744073709551615
+    unsigned: List[UInt64] = [0, 9223372036854775808, 18446744073709551615]
+    large: UInt64 = 18446744073709551615
     try check_search(unsigned, large)
     try check_search(["", "apple", "apple", "pear"], "apple")
     try check_search(["", "apple", "pear"], "fig")
     try check_search(["", "apple", "pear"], "z")
 
 test "binary search uses Comparable equality and works through a generic bound":
-    let values = [Key(3, "last"), Key(1, "first"), Key(1, "second")].sorted()
-    let result = values.binary_search(Key(1, "different payload"))
+    values := [Key(3, "last"), Key(1, "first"), Key(1, "second")].sorted()
+    result := values.binary_search(Key(1, "different payload"))
     try expect_true(result.found)
     try expect_equal(result.index, 0)
     try expect_equal(values[result.index].label, "first")
@@ -82,14 +82,14 @@ test "binary search uses Comparable equality and works through a generic bound":
 test "binary search agrees with a linear oracle over sorted duplicate-heavy lists":
     for length in 0..65:
         for seed in 0..13:
-            let values = (0..length).map(fn i: (i * 17 + seed * 7) % 23 - 11).sorted()
+            values := (0..length).map(fn i: (i * 17 + seed * 7) % 23 - 11).sorted()
             for target in - 12..13:
                 try check_search(values, target)
 
 test "binary search matches sorted Float ordering including NaN and signed zero":
-    let nan = 0.0 / 0.0
-    let infinity = 1.0 / 0.0
-    let values = [nan, 2.0, -0.0, -infinity, nan, 0.0, infinity, -1.0].sorted()
+    nan := 0.0 / 0.0
+    infinity := 1.0 / 0.0
+    values := [nan, 2.0, -0.0, -infinity, nan, 0.0, infinity, -1.0].sorted()
     for target in [-infinity, -2.0, -1.0, -0.0, 0.0, 1.0, infinity, nan]:
         try check_search(values, target)
     try expect_equal(values.binary_search(nan).index, 6)
@@ -99,22 +99,22 @@ test "binary search matches sorted Float ordering including NaN and signed zero"
     try expect_equal([0.0, infinity].binary_search(nan).index, 2)
     try expect_true(not [0.0, infinity].binary_search(nan).found)
 
-    let narrow: List[Float32] = [0.0, 1.0, nan.to_float32().get()]
-    let narrow_nan: Float32 = nan.to_float32().get()
+    narrow: List[Float32] = [0.0, 1.0, nan.to_float32().get()]
+    narrow_nan: Float32 = nan.to_float32().get()
     try check_search(narrow, narrow_nan)
 
 fn count(path: String) Int:
-    let read = read_file(path).wait()
-    if let bytes = read: return bytes.length()
+    read := read_file(path).wait()
+    if bytes := read: return bytes.length()
 
     return 0
 
 test "binary search uses logarithmically many comparisons":
-    let tmp = temporary("ms-bs-") | try expect_ok
-    let comparisons = "{tmp.path()}/count"
+    tmp := temporary("ms-bs-") | try expect_ok
+    comparisons := "{tmp.path()}/count"
 
     for length in [0, 1, 2, 3, 4, 7, 8, 31, 32, 255, 1024, 65536]:
-        let values = (0..length).map(fn i: Counted(i / 3 * 2, comparisons.clone()))
+        values := (0..length).map(fn i: Counted(i / 3 * 2, comparisons.clone()))
         var budget = 1
         var remaining = length
 
@@ -125,8 +125,8 @@ test "binary search uses logarithmically many comparisons":
         for target in [-1, 0, length / 3, length / 2, length]:
             try write_file(comparisons.clone(), "", true).wait()
 
-            let result = values.binary_search(Counted(target, comparisons.clone()))
-            let used = count(comparisons.clone())
+            result := values.binary_search(Counted(target, comparisons.clone()))
+            used := count(comparisons.clone())
             try expect_true(used <= budget)
             if length == 0:
                 try expect_equal(used, 0)

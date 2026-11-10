@@ -20,15 +20,15 @@ export fn arguments() List[String]:
 /*
 Finds the executable that running `name` would start, or none.
 A name containing a path separator is checked without searching PATH. Otherwise each directory of `PATH` is searched in order, skipping empty entries. Candidates are tried as given, then on Windows with each `PATHEXT` extension (`.COM;.EXE;.BAT;.CMD` when unset); environment variable names are case-insensitive there. The result is a regular file the process may execute (any regular file on Windows) and is not made absolute or canonical.
-Example: `if let path = which("git"): print(path)` prints the executable found on this host.
+Example: `if path := which("git"): print(path)` prints the executable found on this host.
 */
 // ms: effect std.env.read
 // ms: effect std.fs.read
 export fn which(name: String) String?:
     if name == "": return none
 
-    let windows = os() == Os.Windows
-    let has_path = name.contains("/") or (windows and name.contains("\\"))
+    windows := os() == Os.Windows
+    has_path := name.contains("/") or (windows and name.contains("\\"))
     var extensions = List[String]()
     var separator = ":"
     var directories = List[String]()
@@ -37,11 +37,11 @@ export fn which(name: String) String?:
         separator = ";"
         extensions = [".COM", ".EXE", ".BAT", ".CMD"]
 
-    let env = environment()
+    env := environment()
 
     if env.is_ok():
         for entry in env.get(Map[String, String]()).entries():
-            let key = if windows: entry.key.upper() else: entry.key
+            key := if windows: entry.key.upper() else: entry.key
             if key == "PATH": directories = entry.value.split(separator)
             if key == "PATHEXT" and windows: extensions = entry.value.split(";")
 
@@ -51,7 +51,7 @@ export fn which(name: String) String?:
     for directory in directories:
         if directory == "" and not has_path: continue
 
-        let candidate = if directory == "": name.clone() else: join(
+        candidate := if directory == "": name.clone() else: join(
             [directory.clone(), name.clone()]
         )
         if runnable(candidate, windows): return candidate
@@ -63,7 +63,7 @@ export fn which(name: String) String?:
     return none
 
 fn runnable(path: String, windows: Bool) Bool:
-    let info = stat(path)
+    info := stat(path)
     if info.is_error() or not info.get().is_file(): return false
     if windows: return true
 

@@ -4,9 +4,9 @@
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:
-    let a: UInt8 = 5
-    let b: UInt8 = 6
-    let _ = stdout().write("before\n")
-    let c = a - b
-    let _ = stdout().write("{c}\n")
+    a: UInt8 = 5
+    b: UInt8 = 6
+    _ := stdout().write("before\n")
+    c := a - b
+    _ := stdout().write("{c}\n")
     return 0

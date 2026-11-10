@@ -449,14 +449,14 @@ fn alternative_cases_complete_bare_unless_opaque_elsewhere() {
         })
         .collect::<Vec<_>>()
     };
-    let source = "import Shape, Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    let _a = Cir\n    return 0\n";
+    let source = "import Shape, Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    _a := Cir\n    return 0\n";
     let found = labels(source, 3, 16);
     assert!(found.contains(&"Circle".to_string()), "{found:?}");
-    let source = "import Shape, Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    let _a = Sec\n    return 0\n";
+    let source = "import Shape, Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    _a := Sec\n    return 0\n";
     let found = labels(source, 3, 16);
     assert!(!found.contains(&"Secret".to_string()), "{found:?}");
     let source =
-        "import Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    let _a = Hidden.\n    return 0\n";
+        "import Hidden from \"./shapes.ms\"\n\nfn f() Int:\n    _a := Hidden.\n    return 0\n";
     let found = labels(source, 3, 19);
     assert!(!found.contains(&"Secret".to_string()), "{found:?}");
 }

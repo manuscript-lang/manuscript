@@ -4,6 +4,6 @@
 fn identity(value: Int) Int:
     return value
 
-let exact: fn(Int) Int = identity
+exact: fn(Int) Int = identity
 // Rejected: amount differs from value.
-let relabeled: fn(Int) Int = identity
+relabeled: fn(Int) Int = identity

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -28,10 +28,10 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let b1 = false
+    b1 := false
     say("b1 = {b1}")
 
-    let l2 = [(-20), (-19), 30, (-24), (-25)]
+    l2 := [(-20), (-19), 30, (-24), (-25)]
     say("l2 = {l2} len {l2.length()}")
 
     if (((-867652114233) % (-39)) < (47 + (-6))):
@@ -48,10 +48,10 @@ export fn main() Int:
 
     say("acc3 = {acc3}")
 
-    let f4 = 1.0e-2
+    f4 := 1.0e-2
     say("f4 = {f4}")
 
-    let f5 = (839.454 / ((815.055 - f4) * (43.146 + 987.262)))
+    f5 := (839.454 / ((815.055 - f4) * (43.146 + 987.262)))
     say("f5 = {f5}")
 
     var acc6 = 0
@@ -59,20 +59,20 @@ export fn main() Int:
         acc6 += i * 6
     say("acc6 = {acc6}")
 
-    let b7 = b1
+    b7 := b1
     say("b7 = {b7}")
 
-    let l8 = [9, (-1), 4, 6]
+    l8 := [9, (-1), 4, 6]
     say("l8 = {l8} len {l8.length()}")
 
-    let b9 = true
+    b9 := true
     say("b9 = {b9}")
 
-    let l10 = l8.concat(l8)
+    l10 := l8.concat(l8)
     say("l10 = {l10} len {l10.length()}")
     say("fib(38) = {fib(38)}")
 
-    let i11 = (-39)
+    i11 := (-39)
     say("i11 = {i11}")
     say("gcd(4473, 4179) = {gcd(4473, 4179)}")
     return 0

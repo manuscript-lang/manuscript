@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "let arbitrary = 1\n"
+    "fmt": "arbitrary := 1\n"
   }
 }

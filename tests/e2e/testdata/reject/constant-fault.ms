@@ -1,3 +1,3 @@
 export fn main() Int:
-    let items = [1, 2, 3]
+    items := [1, 2, 3]
     return items[1] / 0

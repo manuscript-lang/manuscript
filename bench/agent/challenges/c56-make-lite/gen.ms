@@ -2,13 +2,13 @@
 // local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c56
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-let CPROJ = "\nCC = gcc\nCFLAGS := -O2 -Wall\nOBJS = main.o util.o\nSRCS = $(patsubst %.o,%.c,$(OBJS))\n\n.PHONY: all clean\nall: app\n\napp: $(OBJS)\n<T>$(CC) $(CFLAGS) -o $@ $^\n<T>@echo built $@\n\n%.o: %.c util.h\n<T>$(CC) $(CFLAGS) -c $< -o $@\n\nclean:\n<T>-rm -f app $(OBJS)\n<T>@echo cleaned\n"
-let CFILES = ["main.c", "10", "util.c", "12", "util.h", "5"]
+CPROJ := "\nCC = gcc\nCFLAGS := -O2 -Wall\nOBJS = main.o util.o\nSRCS = $(patsubst %.o,%.c,$(OBJS))\n\n.PHONY: all clean\nall: app\n\napp: $(OBJS)\n<T>$(CC) $(CFLAGS) -o $@ $^\n<T>@echo built $@\n\n%.o: %.c util.h\n<T>$(CC) $(CFLAGS) -c $< -o $@\n\nclean:\n<T>-rm -f app $(OBJS)\n<T>@echo cleaned\n"
+CFILES := ["main.c", "10", "util.c", "12", "util.h", "5"]
 
 // The oracle input: the makefile (with `<T>` standing for a tab), the file times as a flat list of
 // name and mtime, and the requests.
 fn mk(makefile: String, files: List[String], reqs: List[String]) String:
-    let mf = strip_nl(makefile.replace("<T>", "\t"))
+    mf := strip_nl(makefile.replace("<T>", "\t"))
     var file_lines = ""
     var k = 0
 
@@ -397,7 +397,7 @@ export fn gen_c56() Unit:
         ]
     )
 
-    let examples = [
+    examples := [
         cs.make(
             "ex-basic",
             mk(

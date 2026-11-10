@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -17,8 +17,8 @@ fn fact(n: Int) Int:
 export fn main() Int:
     say("fact(10) = {fact(10)}")
 
-    let bad = "abc".no_such_method()
-    let i1 = (31 % ((934670 / (-12)) * (-26)))
+    bad := "abc".no_such_method()
+    i1 := (31 % ((934670 / (-12)) * (-26)))
     say("i1 = {i1}")
 
     if "delta".lower().is_empty():

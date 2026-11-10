@@ -5,11 +5,11 @@ import read_all from "@std/io/streams.ms"
 // later handle sees the rest, so the two reads together are the whole input in order.
 export fn main() Int:
     var first = stdin()
-    let chunk = first.next().get(none)
+    chunk := first.next().get(none)
     if chunk.is_none():
         return 1
 
-    let rest = read_all(input: stdin()).get()
-    let text = chunk.get().decode_utf8().get("") + rest.decode_utf8().get("")
+    rest := read_all(input: stdin()).get()
+    text := chunk.get().decode_utf8().get("") + rest.decode_utf8().get("")
     stdout().write(text).get()
     return 0

@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = 427026424055
+    i1 := 427026424055
     say("i1 = {i1}")
 
-    let b2 = true
+    b2 := true
     say("b2 = {b2}")
     say(
         "{((i1 - (-26)) + (i1 + (-2)))} {((i1 - i1) / i1)} {(((i1 - (-26)) + (i1 + (-2))) < ((i1 - i1) / i1))} sum {((i1 - (-26)) + (i1 + (-2))) + ((i1 - i1) / i1)}"
     )
 
-    let f3 = ((805.595 * (970.598 / 9.0e20)) * (947.003 + 0.0))
+    f3 := ((805.595 * (970.598 / 9.0e20)) * (947.003 + 0.0))
     say("f3 = {f3}")
 
     if true:
@@ -31,9 +31,9 @@ export fn main() Int:
         acc4 += i * 5
     say("acc4 = {acc4}")
 
-    let b5 = (not false)
+    b5 := (not false)
     say("b5 = {b5}")
 
-    let l6 = [26, 10, 15, 3]
+    l6 := [26, 10, 15, 3]
     say("l6 = {l6} len {l6.length()}")
     return 0

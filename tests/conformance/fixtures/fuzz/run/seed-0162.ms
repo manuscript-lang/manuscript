@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,35 +15,35 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let l1 = [(-17), 2, (-29)]
+    l1 := [(-17), 2, (-29)]
     say("l1 = {l1} len {l1.length()}")
 
-    let b2 = false
+    b2 := false
     say("b2 = {b2}")
 
-    let i3 = 44
+    i3 := 44
     say("i3 = {i3}")
 
-    let l4 = l1.drop(1)
+    l4 := l1.drop(1)
     say("l4 = {l4} len {l4.length()}")
 
     var l5 = l4.clone()
     l5.append(83)
     say("l5 = {l5} len {l5.length()}")
 
-    let i6 = ((-(i3 + 34)) * i3)
+    i6 := ((-(i3 + 34)) * i3)
     say("i6 = {i6}")
 
-    let s7 = "x".reverse().replace("a", "brace\{s\}").lower()
+    s7 := "x".reverse().replace("a", "brace\{s\}").lower()
     say("s7 = [{s7}]")
 
-    let s8 = s7.upper().trim().lower()
+    s8 := s7.upper().trim().lower()
     say("s8 = [{s8}]")
 
-    let f9 = ((985.092 / (0.0 + 163.524)) + (258.25 * 996.698))
+    f9 := ((985.092 / (0.0 + 163.524)) + (258.25 * 996.698))
     say("f9 = {f9}")
 
-    let i10 = (((-22) - 9) - ((36 / i6) % (21 % i6)))
+    i10 := (((-22) - 9) - ((36 / i6) % (21 % i6)))
     say("i10 = {i10}")
 
     if s7.reverse().ends_with(s8):
@@ -51,10 +51,10 @@ export fn main() Int:
     else:
         say(s7)
 
-    let s11 = (("delta" + s8) + "naïve".trim()).trim()
+    s11 := (("delta" + s8) + "naïve".trim()).trim()
     say("s11 = [{s11}]")
 
-    let b12 = true
+    b12 := true
     say("b12 = {b12}")
     say("fact(6) = {fact(6)}")
 

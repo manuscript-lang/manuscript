@@ -7,10 +7,10 @@ import compile from "@std/string.ms"
 fn resolve_hashes(oracle: String, script: String) String:
     if not script.contains("\{c"): return script.clone()
 
-    let marker = compile("\\\{c[0-9]+\\\}").to_optional()
-    let probe = marker.get().replace_all(script, "0000000").get("")
-    let out = solve_with(oracle, probe)
-    let found = compile("(?m)^\\[[^\\]]* ([0-9a-f]\{7\})\\] ").to_optional()
+    marker := compile("\\\{c[0-9]+\\\}").to_optional()
+    probe := marker.get().replace_all(script, "0000000").get("")
+    out := solve_with(oracle, probe)
+    found := compile("(?m)^\\[[^\\]]* ([0-9a-f]\{7\})\\] ").to_optional()
     var shorts = List[String]()
     for groups in found.get().captures_all(out, 1000).get([]):
         shorts.append(groups[1].clone())
@@ -44,7 +44,7 @@ fn W(name: String, lines: List[String] = []) String:
 
 export fn gen_c58() Unit:
     var cs = Cases(build_oracle("c58-mini-vcs"))
-    let BASE = (
+    BASE := (
         W("a.txt", ["one", "two", "three", "four", "five"])
         + "add a.txt\ncommit initial\n"
     )
@@ -398,7 +398,7 @@ export fn gen_c58() Unit:
     )
 
     // TODO(port) write_cases(examples, hidden)
-    let examples = [
+    examples := [
         cs.make(
             "ex-linear",
             W("a.txt", ["hello"])

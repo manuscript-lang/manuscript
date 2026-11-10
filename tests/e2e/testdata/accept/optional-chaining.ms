@@ -23,36 +23,36 @@ fn bump(var counter: Counter) Int:
     return 2
 
 test "a chain is none at the first absent link":
-    let full: Outer? = Outer(inner: Inner(count: 4, tag: "x"), name: "n")
-    let hollow: Outer? = Outer(inner: none, name: "n")
-    let nothing: Outer? = none
-    let four: Int? = 4
+    full: Outer? = Outer(inner: Inner(count: 4, tag: "x"), name: "n")
+    hollow: Outer? = Outer(inner: none, name: "n")
+    nothing: Outer? = none
+    four: Int? = 4
     try expect_equal(count_of(full), four)
     try expect_equal(count_of(hollow), none)
     try expect_equal(count_of(nothing), none)
 
 test "an optional field flattens instead of nesting":
-    let full: Outer? = Outer(inner: Inner(count: 4, tag: "x"), name: "n")
-    let untagged: Outer? = Outer(inner: Inner(count: 4, tag: none), name: "n")
-    let tag = full?.inner?.tag.clone()
-    let x: String? = "x"
+    full: Outer? = Outer(inner: Inner(count: 4, tag: "x"), name: "n")
+    untagged: Outer? = Outer(inner: Inner(count: 4, tag: none), name: "n")
+    tag := full?.inner?.tag.clone()
+    x: String? = "x"
     try expect_equal(tag, x)
     try expect_equal(untagged?.inner?.tag, none)
 
 test "a plain field makes the chain optional":
-    let present: Outer? = Outer(inner: none, name: "abc")
-    let absent: Outer? = none
-    let three: Int? = 3
+    present: Outer? = Outer(inner: none, name: "abc")
+    absent: Outer? = none
+    three: Int? = 3
     try expect_equal(present?.name.length(), three)
     try expect_equal(absent?.name.length(), none)
 
 test "a call's arguments run only when the receiver is present":
     var counter = Counter(calls: 0)
-    let absent: Counter? = none
+    absent: Counter? = none
     try expect_equal(absent?.scaled(bump(var counter)), none)
     try expect_equal(counter.calls, 0)
 
-    let present: Counter? = Counter(calls: 3)
-    let six: Int? = 6
+    present: Counter? = Counter(calls: 3)
+    six: Int? = 6
     try expect_equal(present?.scaled(bump(var counter)), six)
     try expect_equal(counter.calls, 100)

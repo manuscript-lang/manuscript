@@ -4,7 +4,7 @@ fn first(words: List[String]) String:
     return words[0]
 
 export fn main() Int:
-    let words = ["aé😀"]
+    words := ["aé😀"]
     var sum = 0
     for c in first(words).scalar_values():
         sum += c

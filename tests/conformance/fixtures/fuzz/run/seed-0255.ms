@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,49 +15,49 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let i1 = ((-852995482478) * (((-12) + (-11)) + ((-9) - 46)))
+    i1 := ((-852995482478) * (((-12) + (-11)) + ((-9) - 46)))
     say("i1 = {i1}")
     say("gcd(3431, 2601) = {gcd(3431, 2601)}")
 
-    let f2 = 3.0e2
+    f2 := 3.0e2
     say("f2 = {f2}")
 
-    let i3 = (i1 + (-(i1 % i1)))
+    i3 := (i1 + (-(i1 % i1)))
     say("i3 = {i3}")
 
-    let s4 = "a".reverse().lower().lower()
+    s4 := "a".reverse().lower().lower()
     say("s4 = [{s4}]")
 
-    let i5 = (-47)
+    i5 := (-47)
     say("i5 = {i5}")
 
-    let f6 = (f2 * ((2.734 + f2) + (50.270 * f2)))
+    f6 := (f2 * ((2.734 + f2) + (50.270 * f2)))
     say("f6 = {f6}")
 
-    let l7 = [1, 2, 3].take(0)
+    l7 := [1, 2, 3].take(0)
     say("l7 = {l7} len {l7.length()}")
 
-    let b8 = ((-(i1 * i5)) == ((i3 / i5) - ((-9) + (-8))))
+    b8 := ((-(i1 * i5)) == ((i3 / i5) - ((-9) + (-8))))
     say("b8 = {b8}")
 
-    let i9 = (((i3 - 32) - ((-48) * i1)) % i1)
+    i9 := (((i3 - 32) - ((-48) * i1)) % i1)
     say("i9 = {i9}")
 
-    let l10 = [21, 5]
+    l10 := [21, 5]
     say("l10 = {l10} len {l10.length()}")
 
-    let i11 = (i5 / (((-39) * i5) - (-211509)))
+    i11 := (i5 / (((-39) * i5) - (-211509)))
     say("i11 = {i11}")
 
-    let i12 = s4.length()
+    i12 := s4.length()
     say("i12 = {i12}")
     say(
         "{(s4.length() + (i1 * i5))} {(-5)} {((s4.length() + (i1 * i5)) < (-5))} sum {(s4.length() + (i1 * i5)) + (-5)}"
     )
 
-    let i13 = (-26)
+    i13 := (-26)
     say("i13 = {i13}")
 
-    let f14 = ((f6 + (f2 + f2)) + ((133.398 / f2) + f2))
+    f14 := ((f6 + (f2 + f2)) + ((133.398 / f2) + f2))
     say("f14 = {f14}")
     return 0

@@ -14,17 +14,17 @@ import second_error, relay from "./second.ms"
 
 test "Error boundaries convert a domain value into each module's own Error":
     var original = DomainFailure(7)
-    let first = first_error(original)
-    let second = second_error(original)
+    first := first_error(original)
+    second := second_error(original)
     (first.message != "first 7" or second.message != "second 7") | try expect_false
     first_generic(original).message | try expect_equal("first 7")
     first_box(original.clone()).message | try expect_equal("box: first 7")
     original.code = 8
 
-    let results = [
+    results := [
         first_result(original), first_propagated(original), relay(first.clone())
     ]
-    let expected = ["first 8", "first 8", "first 7"]
+    expected := ["first 8", "first 8", "first 7"]
 
     for index in 0..3:
         match results.get(index):

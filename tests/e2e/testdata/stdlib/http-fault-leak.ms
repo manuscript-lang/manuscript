@@ -9,27 +9,27 @@ import fetch from "@std/net/fetch.ms"
 import sleep from "@std/time.ms"
 
 fn faulting(var exchange: HttpExchange) Unit!:
-    let big = "x".repeat(1000000).get("")
-    let xs: List[Int] = []
-    let n = xs[big.length()]
+    big := "x".repeat(1000000).get("")
+    xs: List[Int] = []
+    n := xs[big.length()]
     if big.length() + n > 5: return ok(unit)
 
     return ok(unit)
 
 test "a faulting handler releases the values its frames own":
-    let server = serve(address: "127.0.0.1:0", handler: faulting) | try expect_ok
-    let before = (memory_usage() | try expect_ok).resident
+    server := serve(address: "127.0.0.1:0", handler: faulting) | try expect_ok
+    before := (memory_usage() | try expect_ok).resident
 
     for i in 0..60:
         var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
         try send(var client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
 
-        let reply_bytes = try recv(var client, 3.seconds())
-        let head = reply_bytes.get(Bytes([])).decode_utf8().get("")
+        reply_bytes := try recv(var client, 3.seconds())
+        head := reply_bytes.get(Bytes([])).decode_utf8().get("")
         if not head.starts_with("HTTP/1.1 500"): return error(Error(head))
 
     // Each leaked fault kept 1 MB, so 60 faults would grow the process by 60 MB.
-    let grown = (memory_usage() | try expect_ok).resident - before
+    grown := (memory_usage() | try expect_ok).resident - before
     if grown > 20000000: return error(Error("resident memory grew {grown} bytes"))
 
 fn hanging(var exchange: HttpExchange) Unit!:
@@ -37,45 +37,45 @@ fn hanging(var exchange: HttpExchange) Unit!:
     return ok(unit)
 
 test "a fetch cancelled by its timeout releases its read buffer":
-    let server = serve(address: "127.0.0.1:0", handler: hanging) | try expect_ok
-    let url = "http://{server.address()}/"
+    server := serve(address: "127.0.0.1:0", handler: hanging) | try expect_ok
+    url := "http://{server.address()}/"
 
     // Warm up the thread's buffers and the connection pool before measuring.
     for i in 0..20:
-        let _ = fetch(url).with(
+        _ := fetch(url).with(
             options: PromiseOptions(timeout: 5.milliseconds())
         ).wait()
 
-    let before = (memory_usage() | try expect_ok).resident
+    before := (memory_usage() | try expect_ok).resident
 
     for i in 0..300:
-        let timed_out = fetch(url).with(
+        timed_out := fetch(url).with(
             options: PromiseOptions(timeout: 5.milliseconds())
         ).wait()
         if timed_out.is_ok(): return error(Error("a hanging handler answered"))
 
     // Each cancelled read leaked a 64 KiB buffer, so 300 fetches grew the process by about 19 MB.
-    let grown = (memory_usage() | try expect_ok).resident - before
+    grown := (memory_usage() | try expect_ok).resident - before
     if grown > 8000000: return error(Error("resident memory grew {grown} bytes"))
 
 test "a fetch cancelled by its timeout frees the request state its frames own":
-    let server = serve(address: "127.0.0.1:0", handler: hanging) | try expect_ok
-    let url = "http://{server.address()}/"
+    server := serve(address: "127.0.0.1:0", handler: hanging) | try expect_ok
+    url := "http://{server.address()}/"
     for i in 0..200:
-        let _ = fetch(url).with(
+        _ := fetch(url).with(
             options: PromiseOptions(timeout: 5.milliseconds())
         ).wait()
 
-    let before = (memory_usage() | try expect_ok).heap_used
+    before := (memory_usage() | try expect_ok).heap_used
 
     for i in 0..2000:
-        let timed_out = fetch(url).with(
+        timed_out := fetch(url).with(
             options: PromiseOptions(timeout: 5.milliseconds())
         ).wait()
         if timed_out.is_ok(): return error(Error("a hanging handler answered"))
 
     // The method, URLs, header vectors and pool key leaked about 340 bytes per cancelled fetch.
-    let grown = (memory_usage() | try expect_ok).heap_used - before
+    grown := (memory_usage() | try expect_ok).heap_used - before
     if grown > 2000 * 64: return error(
         Error("heap grew {grown} bytes over 2000 cancelled fetches")
     )

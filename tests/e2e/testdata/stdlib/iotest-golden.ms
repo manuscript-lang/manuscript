@@ -27,25 +27,25 @@ test "a plain stream passes the reader check":
     try check_reader(source, "hello, world".to_bytes())
 
 test "a wrong expectation fails the reader check":
-    let cause = try expect_error(check_reader(source, "hello".to_bytes()))
+    cause := try expect_error(check_reader(source, "hello".to_bytes()))
     try expect_contains(cause.message, "check_reader")
 
 test "one_byte returns single bytes":
     var input = one_byte(source())
-    let chunk = try input.next()
+    chunk := try input.next()
     try expect_equal(chunk.get().length(), 1)
 
 test "fail_after delivers a prefix and then fails":
     var input = fail_after(
         source(), 4, Error("I/O: service unavailable", kind: "EAGAIN")
     )
-    let all = read_all(input, none)
+    all := read_all(input, none)
     try expect_true(all.is_error())
 
 test "fail_writer_after writes the prefix that fits and then fails":
-    let dir = try expect_ok(temporary("iotest-"))
-    let path = join([dir.path(), "out.bin"])
-    let file = try expect_ok(open(path, OpenMode.Write, OpenOptions(permissions: 420)))
+    dir := try expect_ok(temporary("iotest-"))
+    path := join([dir.path(), "out.bin"])
+    file := try expect_ok(open(path, OpenMode.Write, OpenOptions(permissions: 420)))
     var out = fail_writer_after(
         try expect_ok(file.writer()), 3,
         Error("I/O: service unavailable", kind: "EAGAIN")
@@ -57,17 +57,17 @@ test "fail_writer_after writes the prefix that fits and then fails":
     try expect_equal(try expect_ok(read_file(path, none).wait()), "abc".to_bytes())
 
 test "golden comparison passes and names the first differing line":
-    let dir = try expect_ok(temporary("golden-"))
-    let path = join([dir.path(), "out.txt"])
+    dir := try expect_ok(temporary("golden-"))
+    path := join([dir.path(), "out.txt"])
     try expect_ok(write_file(path, "a\nb\nc", true).wait())
     try expect_golden(path, "a\nb\nc")
 
-    let cause = try expect_error(expect_golden(path, "a\nx\nc"))
+    cause := try expect_error(expect_golden(path, "a\nx\nc"))
     try expect_contains(cause.message, "line 2")
     try expect_contains(cause.message, "MS_UPDATE_GOLDEN=1")
 
-    let missing = try expect_error(expect_golden(join([dir.path(), "none.txt"]), "a"))
+    missing := try expect_error(expect_golden(join([dir.path(), "none.txt"]), "a"))
     try expect_contains(missing.message, "missing")
 
-    let bytes = try expect_error(expect_golden_bytes(path, "a\nb\nd".to_bytes()))
+    bytes := try expect_error(expect_golden_bytes(path, "a\nb\nd".to_bytes()))
     try expect_contains(bytes.message, "byte 4")

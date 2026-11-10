@@ -5,7 +5,7 @@ import parse from "@std/data/json.ms"
 import expect_equal, expect_ok, expect_error, expect_some from "@std/test/test.ms"
 
 test "typed JSON and Optional payloads":
-    let number = try expect_ok(parse[Int]("3"))
+    number := try expect_ok(parse[Int]("3"))
     try expect_equal(number, 3)
     try expect_equal((try expect_error(parse[Int]("true"))).kind, "EBADMSG")
     try expect_some([number].first()) | try expect_equal(3)

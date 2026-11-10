@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -24,19 +24,19 @@ fn fib(n: Int) Int:
 export fn main() Int:
     say("fib(23) = {fib(23)}")
 
-    let i1 = ((((-935825) - (-20)) - 45) + (-24))
+    i1 := ((((-935825) - (-20)) - 45) + (-24))
     say("i1 = {i1}")
 
-    let f2 = 0.0
+    f2 := 0.0
     say("f2 = {f2}")
 
-    let l3 = [(-16), (-2), 22, 15]
+    l3 := [(-16), (-2), 22, 15]
     say("l3 = {l3} len {l3.length()}")
 
-    let i4 = i1
+    i4 := i1
     say("i4 = {i4}")
 
-    let i5 = i1
+    i5 := i1
     say("i5 = {i5}")
 
     var acc6 = 0
@@ -60,19 +60,19 @@ export fn main() Int:
 
     say("acc7 = {acc7}")
 
-    let b8 = "emoji 😀".trim().replace("Tab\there", "日本語").contains("line\nbreak")
+    b8 := "emoji 😀".trim().replace("Tab\there", "日本語").contains("line\nbreak")
     say("b8 = {b8}")
 
-    let f9 = ((206.25 / 669.345) + f2)
+    f9 := ((206.25 / 669.345) + f2)
     say("f9 = {f9}")
 
-    let i10 = (((i5 - i5) + (i1 * i5)) - (i1 * (-24)))
+    i10 := (((i5 - i5) + (i1 * i5)) - (i1 * (-24)))
     say("i10 = {i10}")
 
-    let l11 = l3.concat(l3)
+    l11 := l3.concat(l3)
     say("l11 = {l11} len {l11.length()}")
 
-    let i12 = ((l3.get(1) / i5) + ((-i5) + i5))
+    i12 := ((l3.get(1) / i5) + ((-i5) + i5))
     say("i12 = {i12}")
 
     var acc13 = 0
@@ -84,9 +84,9 @@ export fn main() Int:
 
     say("acc13 = {acc13}")
 
-    let s14 = "a".trim()
+    s14 := "a".trim()
     say("s14 = [{s14}]")
 
-    let l15 = [3, 27, (-7), 6, (-20)]
+    l15 := [3, 27, (-7), 6, (-20)]
     say("l15 = {l15} len {l15.length()}")
     return 0

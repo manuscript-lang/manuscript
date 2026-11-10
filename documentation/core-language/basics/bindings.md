@@ -12,7 +12,7 @@ Save as `stock.ms` and run `ms run stock.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"2 of 3 left\n"} -->
 ```manuscript
 export fn main() Int:
-    let count = 3
+    count := 3
     var remaining = count
     remaining -= 1
     print("{remaining} of {count} left")
@@ -38,16 +38,16 @@ var (
 )
 ```
 
-A group is only a layout: entries are separate bindings with their own scope rules, and the formatter keeps the group together. Separate entries by lines, not commas, and use `let [a, b] = pair` to destructure. A group cannot sit in an inline body such as `if ready: let (`.
+A group is only a layout: entries are separate bindings with their own scope rules, and the formatter keeps the group together. Separate entries by lines, not commas, and use `[a, b] := pair` to destructure. A group cannot sit in an inline body such as `if ready: let (`.
 
 ## Local type inference
 
-Parameters and return types are explicit; local annotations are optional. `let count = 3` and `let count: Int = 3` are the same. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
+Parameters and return types are explicit; local annotations are optional. `count := 3` and `count: Int = 3` are the same. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
 
 ```manuscript
-let customer = Customer(name: "Ada", active: true)
-let greeting = welcome(customer)
-let count: Int = 3
+customer := Customer(name: "Ada", active: true)
+greeting := welcome(customer)
+count: Int = 3
 var remaining = count
 remaining -= 1
 ```
@@ -57,8 +57,8 @@ remaining -= 1
 Unpack positions or named fields:
 
 ```manuscript
-let [first_name, second_name] = names
-let {name, email: customer_email} = customer
+[first_name, second_name] := names
+{name, email: customer_email} := customer
 ```
 
 `[...]` binds positions; `{field: local}` renames a field. Field shorthand and nesting work; parenthesized positional bindings do not. See [destructuring bindings](../types/destructuring.md).
@@ -85,7 +85,7 @@ Only a simple name accepts a type annotation. Destructuring infers each local; e
 
 ## Reassignment and references
 
-A `let` value cannot be mutated. Primitives copy implicitly. A string, a value of a named type or a collection has one owner: `let y = x` and `let y = x.part` borrow it (`x` stays readable and cannot change while `y` is used), `var y = x.part` borrows it exclusively so `y.append(1)` changes `x.part`, and `var y = x` moves it when `x` is not itself a `var`. A value moves into a moving position (a field, a collection, a `return` of something that is not a parameter) at its last use; `.clone()` makes an explicit deep copy wherever an independent value is wanted. See [mutation and references](../types/references.md).
+A `let` value cannot be mutated. Primitives copy implicitly. A string, a value of a named type or a collection has one owner: `y := x` and `y := x.part` borrow it (`x` stays readable and cannot change while `y` is used), `var y = x.part` borrows it exclusively so `y.append(1)` changes `x.part`, and `var y = x` moves it when `x` is not itself a `var`. A value moves into a moving position (a field, a collection, a `return` of something that is not a parameter) at its last use; `.clone()` makes an explicit deep copy wherever an independent value is wanted. See [mutation and references](../types/references.md).
 
 `var n = r.n` of a primitive copies the number: `n += 1` leaves `r.n` as it was. A call that returns a part of its argument returns a borrow of it, so `var xs = b.list()` changes `b`'s list and `var xs = f()` of a function building a new value owns it.
 

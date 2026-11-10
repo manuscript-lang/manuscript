@@ -26,32 +26,32 @@ export fn main() Int:
     for size in [4, 16, 64, 256, 1024, 8192]:
         piece = "x".repeat(size).get()
 
-        let count = 1000000 / size
+        count := 1000000 / size
         var best = 1000000000000
         var checksum = 0
 
         for rep in 0..40:
-            let started = monotonic()
+            started := monotonic()
             checksum += run(piece, count)
 
-            let elapsed = monotonic().difference(started).to_nanoseconds()
+            elapsed := monotonic().difference(started).to_nanoseconds()
             if elapsed < best:
                 best = elapsed
 
-        let _ignored = stdout().write("append{size}\t{best / 1000}\t# {checksum}\n")
+        _ignored := stdout().write("append{size}\t{best / 1000}\t# {checksum}\n")
 
     for count in [10000, 100000, 1000000]:
         var best = 1000000000000
         var checksum = 0
 
         for rep in 0..40:
-            let started = monotonic()
+            started := monotonic()
             checksum += fill(count)
 
-            let elapsed = monotonic().difference(started).to_nanoseconds()
+            elapsed := monotonic().difference(started).to_nanoseconds()
             if elapsed < best:
                 best = elapsed
 
-        let _ignored = stdout().write("list{count}\t{best / 1000}\t# {checksum}\n")
+        _ignored := stdout().write("list{count}\t{best / 1000}\t# {checksum}\n")
 
     return 0

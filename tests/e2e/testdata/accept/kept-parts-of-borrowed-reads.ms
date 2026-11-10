@@ -10,10 +10,10 @@ fn names(suite: String) List[String]:
     return ["call"]
 
 test "a let keeps the message of a borrowed error":
-    let r = failed()
-    let message = r.err().message
+    r := failed()
+    message := r.err().message
     try expect_equal(message.length(), 4)
 
 test "a let keeps an element of a returned list":
-    let first = names("kernels")[0]
+    first := names("kernels")[0]
     try expect_equal(first, "sieve")

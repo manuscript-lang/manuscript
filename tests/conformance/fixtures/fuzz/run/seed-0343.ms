@@ -6,31 +6,31 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = 49
+    i1 := 49
     say("i1 = {i1}")
 
-    let i2 = (i1 / (-246949))
+    i2 := (i1 / (-246949))
     say("i2 = {i2}")
 
-    let l3 = [(-30), (-15)]
+    l3 := [(-30), (-15)]
     say("l3 = {l3} len {l3.length()}")
 
-    let i4 = (((i2 * 43) * (47 + i1)) % i1)
+    i4 := (((i2 * 43) * (47 + i1)) % i1)
     say("i4 = {i4}")
 
-    let i5 = i1
+    i5 := i1
     say("i5 = {i5}")
 
-    let f6 = 158.617
+    f6 := 158.617
     say("f6 = {f6}")
 
-    let s7 = (("{(i4 % 685710672835)}:" + "beta") + "beta".reverse())
+    s7 := (("{(i4 % 685710672835)}:" + "beta") + "beta".reverse())
     say("s7 = [{s7}]")
 
-    let s8 = ("{(-32)}:" + s7)
+    s8 := ("{(-32)}:" + s7)
     say("s8 = [{s8}]")
 
     var acc9 = 0
@@ -41,13 +41,13 @@ export fn main() Int:
         "{((i5 * i5) % (0 + i1))} {l3.get(1)} {(((i5 * i5) % (0 + i1)) < l3.get(1))} sum {((i5 * i5) % (0 + i1)) + l3.get(1)}"
     )
 
-    let i10 = ((l3.length() * i5) * (l3.get(1) / ((-29) - i5)))
+    i10 := ((l3.length() * i5) * (l3.get(1) / ((-29) - i5)))
     say("i10 = {i10}")
 
-    let f11 = (((f6 - f6) + (f6 - f6)) / 195.787)
+    f11 := (((f6 - f6) + (f6 - f6)) / 195.787)
     say("f11 = {f11}")
 
-    let i12 = (-((35 * i1) * i2))
+    i12 := (-((35 * i1) * i2))
     say("i12 = {i12}")
 
     if s7.contains(s8):
@@ -60,6 +60,6 @@ export fn main() Int:
     else:
         say(("alpha" + s7))
 
-    let big13 = -9223372036854775808
+    big13 := -9223372036854775808
     say("{-big13}")
     return 0

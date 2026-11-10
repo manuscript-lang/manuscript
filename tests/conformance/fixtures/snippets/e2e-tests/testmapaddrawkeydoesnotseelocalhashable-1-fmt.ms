@@ -4,5 +4,5 @@
 import Key from "./domain.ms"
 
 fn invalid() Unit:
-    let m = Map[Key, Int]()
+    m := Map[Key, Int]()
     m.add(Key(-1.0), 1)

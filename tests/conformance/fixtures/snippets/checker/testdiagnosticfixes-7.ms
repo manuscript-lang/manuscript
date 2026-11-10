@@ -9,5 +9,5 @@ impl Equal for K:
         return true
 
 fn f() Int:
-    let s = Set[K]()
+    s := Set[K]()
     return 0

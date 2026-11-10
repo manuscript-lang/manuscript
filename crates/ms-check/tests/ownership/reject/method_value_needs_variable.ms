@@ -3,6 +3,6 @@ type Bag:
 
 export fn main() Int:
     var bag = Bag(items: [])
-    let add = bag.items.append  // error: must come from a variable
+    add := bag.items.append  // error: must come from a variable
     add(1)
     return 0

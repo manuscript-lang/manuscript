@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 export fn main() Int:
-    let r: Equal = none
+    r: Equal = none
     return 0

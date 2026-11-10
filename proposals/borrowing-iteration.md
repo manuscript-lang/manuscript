@@ -43,7 +43,7 @@ is checked, lowered and analysed as (the same expansion mechanism as `Iterator`)
 
 ```
 for $i in 0..deque.length():
-    if let item = deque.at($i):
+    if item := deque.at($i):
         use(item)
 ```
 

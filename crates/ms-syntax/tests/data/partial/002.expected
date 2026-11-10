@@ -1,4 +1,4 @@
-diag parse 37:5:1143 end=37:8:1146 fix=- "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function"
+diag parse 37:5:1143 end=37:8:1146 fix=- "only a call, try call, or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function"
 import 1:1:0 1:8:7 "expect_equal" "@std/test/test.ms"
 import 1:1:0 1:22:21 "expect_false" "@std/test/test.ms"
 (decl 3:1:60 record "Counter" false false 0:0:0 false [] [(param 4:5:78 "value" (type 4:12:85 "Int" [] [] nil) nil) ] [] [] [] nil nil nil [])

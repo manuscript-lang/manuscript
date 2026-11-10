@@ -29,7 +29,7 @@ import win32 from "@std/os/path.ms"
 fn common_result[T](result: T!) T!: result
 
 fn exercise(path: String) Unit!:
-    let _written = try common_result(
+    _written := try common_result(
         result: write_file(path: path, data: "hello", replace: false).wait()
     )
     try expect_false(
@@ -40,20 +40,20 @@ fn exercise(path: String) Unit!:
         )
     )
 
-    let info = try common_result(result: stat(path: path))
+    info := try common_result(result: stat(path: path))
     info.size | try expect_equal(5)
     (not info.is_directory()) | try expect_true
 
-    let bytes = try common_result(result: random_bytes(count: 16))
+    bytes := try common_result(result: random_bytes(count: 16))
     bytes.length() | try expect_equal(16)
 
-    let identifier = try common_result(result: uuid_v4())
+    identifier := try common_result(result: uuid_v4())
     identifier.byte_length() | try expect_equal(36)
 
-    let random = try common_result(result: secure_int(min: -2, max_exclusive: 3))
+    random := try common_result(result: secure_int(min: -2, max_exclusive: 3))
     (random >= -2 and random < 3) | try expect_true
 
-    let now = now()
+    now := now()
     (try common_result(result: parse_timestamp(text: now.to_string()))) | try expect_equal(
         now
     )
@@ -62,7 +62,7 @@ fn exercise(path: String) Unit!:
     var file = try common_result(
         result: open(path, OpenMode.ReadWrite, OpenOptions(permissions: 384))
     )
-    let _updated = try common_result(result: file.write_at(offset: 0, data: "HELLO"))
+    _updated := try common_result(result: file.write_at(offset: 0, data: "HELLO"))
     try expect_false(
         not (
             try common_result(
@@ -71,8 +71,8 @@ fn exercise(path: String) Unit!:
         )
     )
 
-    let _synced = try common_result(result: file.sync())
-    let _resized = try common_result(result: file.truncate(size: 3))
+    _synced := try common_result(result: file.sync())
+    _resized := try common_result(result: file.truncate(size: 3))
     (try common_result(result: file.stat())).size | try expect_equal(3)
     try file.close()
 
@@ -85,12 +85,12 @@ fn exercise(path: String) Unit!:
             )
         )
     )
-    let _appended = try common_result(result: append_file(path: path, data: "!").wait())
-    let events = try watcher.next()
+    _appended := try common_result(result: append_file(path: path, data: "!").wait())
+    events := try watcher.next()
     events.is_some() | try expect_true
     try watcher.close()
 
-    let paths = posix()
+    paths := posix()
     try expect_false(
         not (
             try common_result(
@@ -101,20 +101,20 @@ fn exercise(path: String) Unit!:
         )
     )
 
-    let windows = win32()
+    windows := win32()
     windows.parse("C:/work/file.txt").extension | try expect_equal(".txt")
 
-    let process_info = try common_result(result: process_info())
+    process_info := try common_result(result: process_info())
     (process_info.pid > 0) | try expect_true
 
-    let memory = try common_result(result: memory_usage())
+    memory := try common_result(result: memory_usage())
     (memory.heap_system > 0) | try expect_true
 
-    let _removed = try common_result(result: remove(path: path, recursive: false))
+    _removed := try common_result(result: remove(path: path, recursive: false))
     return ok(unit)
 
 export fn main() Int:
-    let path = arguments().get(index: 0, default: "")
+    path := arguments().get(index: 0, default: "")
     if path == "": return 2
 
     match exercise(path: path):

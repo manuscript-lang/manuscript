@@ -7,30 +7,30 @@ import headers, HttpHeaders from "@std/net/http.ms"
 import promise from "@std/concurrency/promise.ms"
 
 fn open_one(net: Network) String!:
-    let l = try net.listen("127.0.0.1:0")
+    l := try net.listen("127.0.0.1:0")
     return ok(l.address())
 
 fn names_of(h: HttpHeaders) List[String]!:
     return ok(h.names())
 
 test "http headers used in a promise on another thread fault with the cause":
-    let h = headers()
-    let p = promise(fn: names_of(h))
+    h := headers()
+    p := promise(fn: names_of(h))
     var n = 0
     for i in 0..1500000000:
         n += i % 7
 
-    let cause = p.wait() | try expect_error
-    let _ = try expect_true(n > 0)
+    cause := p.wait() | try expect_error
+    _ := try expect_true(n > 0)
     return expect_contains(cause.message, "different thread")
 
 test "a network used in a promise on another thread keeps working":
-    let net = with_resolver("127.0.0.1:53") | try expect_ok
-    let p = promise(fn: open_one(net))
+    net := with_resolver("127.0.0.1:53") | try expect_ok
+    p := promise(fn: open_one(net))
     var n = 0
     for i in 0..1500000000:
         n += i % 7
 
-    let address = p.wait() | try expect_ok
-    let _ = try expect_true(n > 0)
+    address := p.wait() | try expect_ok
+    _ := try expect_true(n > 0)
     return expect_contains(address, "127.0.0.1:")

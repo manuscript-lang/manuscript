@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-35.ms:5:9: type: local binding s is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 5 |     let s = Set[String]()\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-35.ms:5:9: type: local binding s is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 5 |     s := Set[String]()\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

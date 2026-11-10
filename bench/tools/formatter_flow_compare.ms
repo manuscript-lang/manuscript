@@ -27,8 +27,8 @@ fn cases() List[Case]:
 
 // elapsed_ns, checksum, source_bytes, output_bytes, rss
 fn run_one(binary: String, c: Case, rounds: Int, cpu: String) List[Int]!:
-    let out = try run_pinned(binary, ["{c.count}", "{rounds}", c.shape.clone()], cpu)
-    let fields = out.trim().split(",")
+    out := try run_pinned(binary, ["{c.count}", "{rounds}", c.shape.clone()], cpu)
+    fields := out.trim().split(",")
     if (
         fields.length() != 8
         or fields[0] != "{c.count}"
@@ -59,8 +59,8 @@ fn compare(
         var expected = List[Int]()
 
         for name in ["before", "after"]:
-            let first = try run_one(paths.get_or(name, ""), c, 1, cpu)
-            let identity = [first[1], first[2], first[3]]
+            first := try run_one(paths.get_or(name, ""), c, 1, cpu)
+            identity := [first[1], first[2], first[3]]
             if expected.is_empty(): expected = identity.clone()
             if identity != expected: return invalid(
                 "{c.count} {c.shape}: outputs disagree"
@@ -74,8 +74,8 @@ fn compare(
 
         for s in 0..samples:
             for name in (if s % 2 == 0: ["before", "after"] else: ["after", "before"]):
-                let r = rounds.get_or(name, 1)
-                let got = try run_one(paths.get_or(name, ""), c, r, cpu)
+                r := rounds.get_or(name, 1)
+                got := try run_one(paths.get_or(name, ""), c, r, cpu)
                 if [got[1], got[2], got[3]] != expected: return invalid(
                     "{c.count} {c.shape}: output changed"
                 )
@@ -87,8 +87,8 @@ fn compare(
                     "{c.count},{c.shape},{s},{name},{r},{got[0]},{got[1]},{got[2]},{got[3]},{got[4]},{cpu}"
                 )
 
-        let old = median(observed.get_or("before", []))
-        let new = median(observed.get_or("after", []))
+        old := median(observed.get_or("before", []))
+        new := median(observed.get_or("after", []))
         (
             stdout()
             .write(
@@ -101,21 +101,21 @@ fn compare(
     return ok(unit)
 
 export fn main() Int:
-    let args = arguments()
+    args := arguments()
     if args.length() < 2: return fail(
         "usage: formatter_flow_compare.ms -- BEFORE AFTER --out FILE [--samples N] [--cpu N]"
     )
 
-    let parsed = options(
+    parsed := options(
         args.slice(2, args.length()).get([]), ["out", "samples", "cpu"], ["out"]
     )
     if parsed.is_error(): return fail(parsed.err().message)
 
-    let opts = parsed.get(Map[String, String]())
-    let samples = opts.get_or("samples", "10").parse_int().get(0)
+    opts := parsed.get(Map[String, String]())
+    samples := opts.get_or("samples", "10").parse_int().get(0)
     if samples < 5: return fail("--samples must be at least 5")
 
-    let result = compare(
+    result := compare(
         absolute(args[0].clone()), absolute(args[1].clone()), opts.get_or("out", ""),
         samples, opts.get_or("cpu", "")
     )

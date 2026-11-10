@@ -67,9 +67,9 @@ test "Int consumers see the full snapshot while the live list shrinks":
     for callback in [false, true]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var values = [1, 2, 3]
-            let clone = values.clone()
-            let want = remaining(mode, values.clone(), [9])
-            let seen = (try observe(var values, mode, [9], callback))
+            clone := values.clone()
+            want := remaining(mode, values.clone(), [9])
+            seen := (try observe(var values, mode, [9], callback))
             var total = 0
             var wanted = 0
             for value in seen: total += value
@@ -87,9 +87,9 @@ test "Float consumers see the full snapshot while the live list shrinks":
     for callback in [false, true]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var values = [1.5, 2.5, 3.5]
-            let clone = values.clone()
-            let want = remaining(mode, values.clone(), [9.5])
-            let seen = (try observe(var values, mode, [9.5], callback))
+            clone := values.clone()
+            want := remaining(mode, values.clone(), [9.5])
+            seen := (try observe(var values, mode, [9.5], callback))
             var total = 0.0
             var wanted = 0.0
             for value in seen: total += value
@@ -107,9 +107,9 @@ test "String consumers see the full snapshot while the live list shrinks":
     for callback in [false, true]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var values = ["a", "bb", "ccc"]
-            let clone = values.clone()
-            let want = remaining(mode, values.clone(), ["replacement"])
-            let seen = (try observe(var values, mode, ["replacement"], callback))
+            clone := values.clone()
+            want := remaining(mode, values.clone(), ["replacement"])
+            seen := (try observe(var values, mode, ["replacement"], callback))
             var text = ""
             for value in seen: text += value
             (
@@ -129,9 +129,9 @@ test "record consumers keep independent copies after shrink":
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var last = Payload(3)
             var values = [Payload(1), Payload(2), last.clone()]
-            let clone = values.clone()
-            let want = remaining(mode, values.clone(), [Payload(9)])
-            let seen = (try observe(var values, mode, [Payload(9)], callback))
+            clone := values.clone()
+            want := remaining(mode, values.clone(), [Payload(9)])
+            seen := (try observe(var values, mode, [Payload(9)], callback))
             var total = 0
             var wanted = 0
             for value in seen: total += value.value
@@ -152,14 +152,14 @@ fn score(value: Choice) Int:
 test "alternative consumers retain tags and payloads after shrink":
     for callback in [false, true]:
         for mode in ["remove", "splice", "clear", "clear_append"]:
-            let first: Choice = number(1)
-            let second: Choice = label("bb")
-            let last: Choice = number(3)
-            let fill: List[Choice] = [label("replacement")]
+            first: Choice = number(1)
+            second: Choice = label("bb")
+            last: Choice = number(3)
+            fill: List[Choice] = [label("replacement")]
             var values = [first.clone(), second.clone(), last.clone()]
-            let want = remaining(mode, values.clone(), fill.clone())
-            let seen = (try observe(var values, mode, fill, callback))
-            let snapshot = [first, second, last]
+            want := remaining(mode, values.clone(), fill.clone())
+            seen := (try observe(var values, mode, fill, callback))
+            snapshot := [first, second, last]
             var total = 0
             var wanted = 0
             for value in seen: total += score(value.clone())
@@ -171,9 +171,9 @@ test "nested list consumers keep independent inner lists after shrink":
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var last = [3]
             var values = [[1], [2], last.clone()]
-            let clone = values.clone()
-            let want = remaining(mode, values.clone(), [[9]])
-            let seen = (try observe(var values, mode, [[9]], callback))
+            clone := values.clone()
+            want := remaining(mode, values.clone(), [[9]])
+            seen := (try observe(var values, mode, [[9]], callback))
             var total = 0
             var wanted = 0
             for value in seen: total += value.first().get()
@@ -186,7 +186,7 @@ test "map and folds consume snapshots of the live list":
     var mapped = [1, 2, 3]
     var visits = Visits(0)
 
-    let output = (
+    output := (
         mapped
         .clone()
         .map(
@@ -202,7 +202,7 @@ test "map and folds consume snapshots of the live list":
     var folded = [1, 2, 3]
     visits.count = 0
 
-    let total = (
+    total := (
         folded
         .clone()
         .fold(
@@ -222,7 +222,7 @@ test "map and folds consume snapshots of the live list":
     var reversed = [1, 2, 3]
     visits.count = 0
 
-    let backwards = (
+    backwards := (
         reversed
         .clone()
         .fold_right(
@@ -248,9 +248,9 @@ test "interface view consumers dispatch after shrink":
         for mode in ["remove", "splice", "clear", "clear_append"]:
             var last_record = Payload(3)
             var values = [Payload(1), Payload(2), last_record.clone()]
-            let clone = values.clone()
-            let want = remaining(mode, values.clone(), [Payload(9)])
-            let seen = (try observe(var values, mode, [Payload(9)], callback))
+            clone := values.clone()
+            want := remaining(mode, values.clone(), [Payload(9)])
+            seen := (try observe(var values, mode, [Payload(9)], callback))
             var total = 0
             var wanted = 0
             for value in seen: total += value.read()
@@ -262,7 +262,7 @@ test "interface view consumers dispatch after shrink":
 test "find returns the value passed to a mutating predicate":
     var forward = [1, 2, 3]
 
-    let found = forward.clone().find(
+    found := forward.clone().find(
         fn value:
             forward.remove(0)
             return value == 1
@@ -272,7 +272,7 @@ test "find returns the value passed to a mutating predicate":
 
     var replaced = [1, 2, 3]
 
-    let original = (
+    original := (
         replaced
         .clone()
         .find(
@@ -286,7 +286,7 @@ test "find returns the value passed to a mutating predicate":
 
     var reverse = [1, 2, 3]
 
-    let last = (
+    last := (
         reverse
         .clone()
         .find_last(
@@ -300,7 +300,7 @@ test "find returns the value passed to a mutating predicate":
 
     var last_replaced = [1, 2, 3]
 
-    let before = (
+    before := (
         last_replaced
         .clone()
         .find_last(
@@ -314,7 +314,7 @@ test "find returns the value passed to a mutating predicate":
 
     var indexes = [1, 2, 3]
 
-    let index = (
+    index := (
         indexes
         .clone()
         .find_index(
@@ -326,7 +326,7 @@ test "find returns the value passed to a mutating predicate":
 
     var reverse_indexes = [1, 2, 3]
 
-    let last_index = (
+    last_index := (
         reverse_indexes
         .clone()
         .find_last_index(
@@ -338,14 +338,14 @@ test "find returns the value passed to a mutating predicate":
 
     (index.get() == 0 and last_index.get() == 1) | try expect_true
 
-    let record = Payload(1)
+    record := Payload(1)
     var records = [record.clone(), Payload(2)]
-    let retained = (
+    retained := (
         records
         .clone()
         .find(
             fn value:
-                let matches = value.value == 1
+                matches := value.value == 1
                 records.set(0, Payload(9))
                 return matches
         )
@@ -361,7 +361,7 @@ test "find returns the value passed to a mutating predicate":
 
 test "preferred List mutators and explicit reversed copy iterate snapshots":
     var values = [1, 2, 3]
-    let clone = values.clone()
+    clone := values.clone()
     var seen: List[Int] = []
 
     for value in values.clone():
@@ -376,13 +376,13 @@ test "preferred List mutators and explicit reversed copy iterate snapshots":
     values.append(4)
     values | try expect_equal([3, 9, 4])
 
-    let separate = values.reversed()
+    separate := values.reversed()
     values.set(1, 5)
     (separate == [4, 9, 3] and values == [3, 5, 4]) | try expect_true
 
     var child = Payload(1)
     var children = [child.clone(), Payload(2)]
-    let shallow = children.reversed()
+    shallow := children.reversed()
     child.value = 7
     children.remove(0)
     (shallow.last().get().value == 1 and children.length() == 1) | try expect_true

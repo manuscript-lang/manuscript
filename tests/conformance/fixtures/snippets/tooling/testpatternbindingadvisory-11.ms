@@ -5,5 +5,5 @@ enum Failure:
     NotFound
 
 fn use() Int:
-    let NotFound = 1
+    NotFound := 1
     return NotFound

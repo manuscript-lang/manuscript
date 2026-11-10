@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -15,25 +15,25 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let s1 = ("héllo".upper() + ("a" + "  padded  "))
+    s1 := ("héllo".upper() + ("a" + "  padded  "))
     say("s1 = [{s1}]")
 
-    let bad = Map[Int, Int]().get(1, 2, 3)
+    bad := Map[Int, Int]().get(1, 2, 3)
     say(
         "{7} {(((-29) + 334691) / (30 * 38))} {(7 < (((-29) + 334691) / (30 * 38)))} sum {7 + (((-29) + 334691) / (30 * 38))}"
     )
 
-    let i2 = 655878616535
+    i2 := 655878616535
     say("i2 = {i2}")
 
-    let i3 = ((i2 + ((-20) * i2)) + i2)
+    i3 := ((i2 + ((-20) * i2)) + i2)
     say("i3 = {i3}")
     say("fact(7) = {fact(7)}")
 
-    let i4 = (((i2 + i3) - i3) + (38 + (-21)))
+    i4 := (((i2 + i3) - i3) + (38 + (-21)))
     say("i4 = {i4}")
 
-    let b5 = (
+    b5 := (
         ("{(i3 / 120311)}:" + "").ends_with("delta")
         or (s1 + "ms").ends_with("MiXeD CaSe")
     )

@@ -22,16 +22,16 @@ fn direct() Int:
 
 fn method() Int:
     var values = [1]
-    let updater = Updater(2)
+    updater := Updater(2)
     return updater.adjust(values: values)
 
 fn ordinary() Int:
-    let values = [1]
+    values := [1]
     return observe(values: values)
 
 fn mutable_method() Int:
     var values = [1]
-    let updater = Updater(2)
+    updater := Updater(2)
     return updater.modify(var values)
 
 fn push_one(var values: List[Int]) Int:
@@ -40,7 +40,7 @@ fn push_one(var values: List[Int]) Int:
 
 fn function_value() Int:
     var values = [1]
-    let change = push_one
+    change := push_one
     return change(var values)
 
 export fn update_generic[T](var values: List[T], value: T) Int:

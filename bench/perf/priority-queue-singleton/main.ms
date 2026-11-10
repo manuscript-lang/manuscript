@@ -5,18 +5,18 @@ import monotonic from "@std/time.ms"
 import keep from "@std/test/bench.ms"
 
 export fn main() Int:
-    let args = arguments()
-    let operation = args[0]
-    let size = args[1].parse_int().get()
-    let shape = args[2]
-    let repeats = args[3].parse_int().get()
+    args := arguments()
+    operation := args[0]
+    size := args[1].parse_int().get()
+    shape := args[2]
+    repeats := args[3].parse_int().get()
     var values: List[Int] = []
     var random = 1
 
     for i in 0..size:
         random = (random * 1103515245 + 12345) % 2147483648
 
-        let value = if shape == "ascending": i else: (
+        value := if shape == "ascending": i else: (
             if shape == "descending": size - i else: (
                 if shape == "duplicate": i % 7 else: random % 100003
             )
@@ -27,7 +27,7 @@ export fn main() Int:
     var priority = PriorityQueue[Int]()
     var queue = Queue[Int]()
     var deque = Deque[Int]()
-    let started = monotonic()
+    started := monotonic()
 
     for unused in 0..repeats:
         if operation == "priority":
@@ -52,6 +52,6 @@ export fn main() Int:
 
         keep(checksum).get()
 
-    let elapsed = monotonic().difference(started).to_nanoseconds()
+    elapsed := monotonic().difference(started).to_nanoseconds()
     print("{elapsed} {checksum}")
     return 0

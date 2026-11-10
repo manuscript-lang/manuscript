@@ -5,5 +5,5 @@ fn fail() Int:
     return 1 / "".byte_length()
 
 export fn main() Int:
-    let shapes = [Shape.Circle(2)]
+    shapes := [Shape.Circle(2)]
     return area(shapes.get(fail() * 0))

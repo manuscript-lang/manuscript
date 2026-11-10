@@ -15,7 +15,7 @@ impl Closeable for Item:
         return ok(unit)
 
 fn events(log: String) String!:
-    let bytes = try read_file(log).wait()
+    bytes := try read_file(log).wait()
     return ok(bytes.decode_utf8().get(""))
 
 fn list_remove(log: String) Unit:
@@ -37,27 +37,27 @@ fn list_splice(log: String) Unit:
     items.splice(0, 1, [])
 
 test "remove whose close fails closes the entry once":
-    let temp = try temporary("w1-")
-    let log = "{temp.path()}/log"
-    let _f = try expect_fault(fn: list_remove(log.clone()))
+    temp := try temporary("w1-")
+    log := "{temp.path()}/log"
+    _f := try expect_fault(fn: list_remove(log.clone()))
     try expect_equal(try events(log), "1,")
 
 test "map add over an entry whose close fails closes each once":
-    let temp = try temporary("w2-")
-    let log = "{temp.path()}/log"
-    let _f = try expect_fault(fn: map_add(log.clone()))
+    temp := try temporary("w2-")
+    log := "{temp.path()}/log"
+    _f := try expect_fault(fn: map_add(log.clone()))
     try expect_equal(try events(log), "1,2,")
 
 test "map remove whose close fails closes the entry once":
-    let temp = try temporary("w3-")
-    let log = "{temp.path()}/log"
-    let _f = try expect_fault(fn: map_remove(log.clone()))
+    temp := try temporary("w3-")
+    log := "{temp.path()}/log"
+    _f := try expect_fault(fn: map_remove(log.clone()))
     try expect_equal(try events(log), "1,")
 
 test "splice over an entry whose close fails closes each once":
-    let temp = try temporary("w4-")
-    let log = "{temp.path()}/log"
-    let _f = try expect_fault(fn: list_splice(log.clone()))
+    temp := try temporary("w4-")
+    log := "{temp.path()}/log"
+    _f := try expect_fault(fn: list_splice(log.clone()))
     try expect_equal(try events(log), "1,5,")
 
 fn list_set(log: String) Unit:
@@ -65,8 +65,8 @@ fn list_set(log: String) Unit:
     items.set(0, Item(2, log, false))
 
 test "set over an entry whose close fails closes each once":
-    let temp = try temporary("w5-")
-    let log = "{temp.path()}/log"
-    let fault = try expect_fault(fn: list_set(log.clone()))
+    temp := try temporary("w5-")
+    log := "{temp.path()}/log"
+    fault := try expect_fault(fn: list_set(log.clone()))
     try expect_contains(fault, "could not be closed")
     try expect_equal(try events(log), "1,2,")

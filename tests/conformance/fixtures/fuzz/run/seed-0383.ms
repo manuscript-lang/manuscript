@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [(-19), (-3), 15]
+    l1 := [(-19), (-3), 15]
     say("l1 = {l1} len {l1.length()}")
 
-    let f2 = (
+    f2 := (
         ((0.0 * 232.544) + (683.559 * 647.261))
         + ((65.469 * 733.25) - (621.888 + 2.0e9))
     )
     say("f2 = {f2}")
 
-    let s3 = "42"
+    s3 := "42"
     say("s3 = [{s3}]")
 
     var acc4 = 0
@@ -31,10 +31,10 @@ export fn main() Int:
 
     say("acc4 = {acc4}")
 
-    let i5 = (-147596)
+    i5 := (-147596)
     say("i5 = {i5}")
 
-    let l6 = l1.map(fn x: x * 5)
+    l6 := l1.map(fn x: x * 5)
     say("l6 = {l6} len {l6.length()}")
 
     var acc7 = 0
@@ -46,17 +46,17 @@ export fn main() Int:
 
     say("acc7 = {acc7}")
 
-    let f8 = ((5.0e15 * (87.921 * f2)) + (f2 / (4.5 + f2)))
+    f8 := ((5.0e15 * (87.921 * f2)) + (f2 / (4.5 + f2)))
     say("f8 = {f8}")
 
-    let i9 = (((-i5) / (i5 * 34)) - i5)
+    i9 := (((-i5) / (i5 * 34)) - i5)
     say("i9 = {i9}")
     say("{l6.get(0)} {i9} {(l6.get(0) < i9)} sum {l6.get(0) + i9}")
 
-    let i10 = ((i9 * s3.length()) + ((i9 * 46) % (50 + i9)))
+    i10 := ((i9 * s3.length()) + ((i9 * 46) % (50 + i9)))
     say("i10 = {i10}")
 
-    let s11 = ("delta".replace(s3, s3).reverse() + "back\\slash".lower())
+    s11 := ("delta".replace(s3, s3).reverse() + "back\\slash".lower())
     say("s11 = [{s11}]")
 
     if (false or (28 > i10)):
@@ -64,7 +64,7 @@ export fn main() Int:
     else:
         say(s3)
 
-    let i12 = l1.get(2)
+    i12 := l1.get(2)
     say("i12 = {i12}")
 
     var acc13 = 0
@@ -82,15 +82,15 @@ export fn main() Int:
     else:
         say(s11)
 
-    let s14 = (s3 + "x").trim()
+    s14 := (s3 + "x").trim()
     say("s14 = [{s14}]")
 
-    let i15 = (-((-5) * (-33)))
+    i15 := (-((-5) * (-33)))
     say("i15 = {i15}")
 
-    let i16 = (-(-19))
+    i16 := (-(-19))
     say("i16 = {i16}")
 
-    let big17 = ((i16 - (-35)) + (i10 + 21)) - ((i16 - (-35)) + (i10 + 21))
+    big17 := ((i16 - (-35)) + (i10 + 21)) - ((i16 - (-35)) + (i10 + 21))
     say("{((i16 - (-35)) + (i10 + 21)) / big17}")
     return 0

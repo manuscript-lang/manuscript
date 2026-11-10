@@ -7,11 +7,11 @@ fn bump(factor: Int) Int:
     var offset = 10
     offset = 99
 
-    let scale = fn(value: Int) Int: value * factor + offset
+    scale := fn(value: Int) Int: value * factor + offset
     return scale(value: 2)
 
 fn lookup(limit: Int) Int:
-    let find = fn(key: Int) Int?:
+    find := fn(key: Int) Int?:
         if key < limit:
             return (key * 2)
 
@@ -32,30 +32,30 @@ fn lookup(limit: Int) Int:
     return total
 
 fn parse(text: String) Int!Error:
-    let guard = fn(number: Int) Int!Error:
+    guard := fn(number: Int) Int!Error:
         if number < 0:
             return Result[Int, Error].error(Error("negative"))
 
         return Result[Int, Error].ok(number)
 
-    let checked = try guard(number: text.length())
+    checked := try guard(number: text.length())
     return Result[Int, Error].ok(checked + 1)
 
 fn labels(prefix: String) String:
-    let join = fn(left: String, right: String) String: "{prefix}{left}-{right}"
+    join := fn(left: String, right: String) String: "{prefix}{left}-{right}"
     return join(left: "a", right: "b")
 
 fn reordered() Int:
-    let subtract = fn(left: Int, right: Int) Int: left - right
+    subtract := fn(left: Int, right: Int) Int: left - right
     return subtract(right: 2, left: 7)
 
 fn passed() List[Int]:
-    let double = fn(value: Int) Int: value * 2
+    double := fn(value: Int) Int: value * 2
     return [1, 2, 3].map(double)
 
 fn nested(n: Int) Int:
-    let inner = fn(x: Int) Int: x + 1
-    let outer = fn(y: Int) Int: inner(x: y) * 2
+    inner := fn(x: Int) Int: x + 1
+    outer := fn(y: Int) Int: inner(x: y) * 2
     return outer(y: n)
 
 test "local closures":

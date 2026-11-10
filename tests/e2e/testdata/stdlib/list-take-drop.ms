@@ -1,11 +1,11 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 test "List take and drop copy prefix and remainder":
-    let values = [1, 2, 3]
+    values := [1, 2, 3]
     try expect_false(values.take(2) != [1, 2] or values.drop(2) != [3])
 
 test "List take and drop clamp positive counts and preserve empty boundaries":
-    let values = [1, 2, 3]
+    values := [1, 2, 3]
     try expect_false(not (values.take(0).is_empty()) or values.drop(0) != values)
     try expect_false(values.take(3) != values or not (values.drop(3).is_empty()))
     try expect_false(
@@ -15,11 +15,11 @@ test "List take and drop clamp positive counts and preserve empty boundaries":
         )
     )
 
-    let empty: List[Int] = []
+    empty: List[Int] = []
     try expect_false(not (empty.take(0).is_empty()) or not (empty.drop(7).is_empty()))
 
 test "List take and drop allocate independent outer storage":
-    let values = [1, 2, 3]
+    values := [1, 2, 3]
     var prefix = values.take(3)
     var remainder = values.drop(0)
     prefix.set(0, 9)
@@ -39,9 +39,9 @@ type Box:
     value: Int
 
 test "List take and drop copy payloads before changing them":
-    let boxes = [Box(1), Box(2)]
+    boxes := [Box(1), Box(2)]
     var prefix = boxes.take(1)
-    let remainder = boxes.drop(0)
+    remainder := boxes.drop(0)
     var changed = prefix.get(0).clone()
     changed.value = 7
     prefix.set(0, changed)
@@ -51,8 +51,8 @@ test "List take and drop copy payloads before changing them":
         ).value != 7
     )
 
-    let nested = [1]
-    let lists = [nested.clone()]
+    nested := [1]
+    lists := [nested.clone()]
     var copied = lists.take(1).drop(0)
     var inner = copied.get(0).clone()
     inner.append(2)
@@ -65,13 +65,13 @@ fn copy_window[T: Clonable](values: List[T], first: Int, skip: Int) List[T]:
 test "List take and drop support generic and nested values":
     try expect_equal(copy_window[String](["a", "b", "c"], 2, 1), ["b"])
 
-    let values: List[Int?!Error] = [ok(1), error(Error("cause"))]
+    values: List[Int?!Error] = [ok(1), error(Error("cause"))]
     try expect_equal(copy_window(values, 2, 1).get(0).err().message, "cause")
 
 test "List take and drop bound methods read the retained receiver":
     var values = [1, 2, 3, 4]
-    let take = values.take
-    let drop: fn(Int) List[Int] = values.drop
+    take := values.take
+    drop: fn(Int) List[Int] = values.drop
     try expect_false(take(7) != [1, 2, 3, 4] or drop(2) != [3, 4])
 
     var first = take(2)

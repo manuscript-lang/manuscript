@@ -9,13 +9,13 @@ fn hs() Result[HttpHeaders, Error]: return ok(headers())
 fn one() Result[String, Error]: return ok("b")
 
 fn go(n: Int) Result[Int, Error]:
-    let _r = request(
+    _r := request(
         method: HttpMethod.Get, url: "http://x/{n}",
         options: RequestOptions(headers: (try hs()))
     )
-    let _s = "abc {n}".replace("a", (try one()))
+    _s := "abc {n}".replace("a", (try one()))
     return ok(0)
 
 export fn main() Int:
-    let _r = go(1)
+    _r := go(1)
     return 0

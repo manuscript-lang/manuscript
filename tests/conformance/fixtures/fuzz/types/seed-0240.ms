@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     if false:
@@ -14,13 +14,13 @@ export fn main() Int:
     else:
         say(("ms" + "héllo"))
 
-    let bad = true + 1
-    let l1 = [1, 2, 3].take(0)
+    bad := true + 1
+    l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
 
-    let s2 = ((("x" + "quote\"d") + "ms") + ("" + "alpha".replace("beta", "42")))
+    s2 := ((("x" + "quote\"d") + "ms") + ("" + "alpha".replace("beta", "42")))
     say("s2 = [{s2}]")
 
-    let s3 = s2
+    s3 := s2
     say("s3 = [{s3}]")
     return 0

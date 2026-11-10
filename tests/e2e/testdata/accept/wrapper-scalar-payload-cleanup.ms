@@ -14,31 +14,31 @@ fn success() Marker!Int: ok(Marker(2))
 fn failure() Int!Marker: error(Marker(3))
 
 fn optional_cause() Unit:
-    let _kept = present().ok_or(0)
+    _kept := present().ok_or(0)
 
 fn optional_callback() Unit:
-    let _kept = present().ok_or_else(fn: 0)
+    _kept := present().ok_or_else(fn: 0)
 
 fn result_error_map() Unit:
-    let _kept = success().map_error(fn cause: cause + 1)
+    _kept := success().map_error(fn cause: cause + 1)
 
 fn result_optional() Unit:
-    let _kept = success().to_optional()
+    _kept := success().to_optional()
 
 fn result_map() Unit:
-    let _kept = failure().map(fn item: item + 1)
+    _kept := failure().map(fn item: item + 1)
 
 fn result_then() Unit:
-    let _kept = failure().and_then(fn item: ok(item + 1))
+    _kept := failure().and_then(fn item: ok(item + 1))
 
 fn transformed_map() Unit:
-    let _mapped = success().map(fn item: item.id)
+    _mapped := success().map(fn item: item.id)
 
 fn transformed_error() Unit:
-    let _mapped = failure().map_error(fn item: item.id)
+    _mapped := failure().map_error(fn item: item.id)
 
 fn transformed_then() Unit:
-    let _mapped: Int!Int = success().and_then(fn item: ok(item.id))
+    _mapped: Int!Int = success().and_then(fn item: ok(item.id))
 
 test "scalar retained wrapper branches retain their cleanup duty":
     (try expect_fault(optional_cause)) | try expect_contains(
@@ -70,10 +70,10 @@ test "direct transforming callbacks close their owned scalar input":
     )
 
 fn optional_or_else() Unit:
-    let _kept = present().or_else(fn: none)
+    _kept := present().or_else(fn: none)
 
 fn result_or_else() Unit:
-    let _kept = success().or_else(fn cause: error(cause))
+    _kept := success().or_else(fn cause: error(cause))
 
 test "scalar or_else success branches retain their cleanup duty":
     (try expect_fault(optional_or_else)) | try expect_contains(

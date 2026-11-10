@@ -12,10 +12,10 @@ type Holder:
 
 // A copy of a resource would be closed a second time.
 fn main() Int:
-    let r = Res("a")
-    let copy = r.clone()  // error: cannot be cloned
-    let h = Holder([Res("b")])
-    let again = h.clone()  // error: cannot be cloned
+    r := Res("a")
+    copy := r.clone()  // error: cannot be cloned
+    h := Holder([Res("b")])
+    again := h.clone()  // error: cannot be cloned
     return (
         copy.name.length()
         + again.items.length()

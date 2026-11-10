@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,32 +23,32 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let s1 = "emoji 😀".upper().lower()
+    s1 := "emoji 😀".upper().lower()
     say("s1 = [{s1}]")
     say("collatz(1275) = {collatz(1275)}")
 
-    let i2 = (
+    i2 := (
         (((-26) * (-405936271935)) - (-944831251255))
         + (-((-47) * (-710768722292)))
     )
     say("i2 = {i2}")
 
-    let i3 = (((i2 - 35) - (i2 + (-25))) % (i2 / (-(-14))))
+    i3 := (((i2 - 35) - (i2 + (-25))) % (i2 / (-(-14))))
     say("i3 = {i3}")
 
-    let s4 = "naïve"
+    s4 := "naïve"
     say("s4 = [{s4}]")
 
-    let i5 = i2
+    i5 := i2
     say("i5 = {i5}")
 
-    let s6 = (s4.lower() + s1)
+    s6 := (s4.lower() + s1)
     say("s6 = [{s6}]")
 
-    let b7 = (i3 < ((895859 + i5) + s6.length()))
+    b7 := (i3 < ((895859 + i5) + s6.length()))
     say("b7 = {b7}")
 
-    let l8 = [2, 12]
+    l8 := [2, 12]
     say("l8 = {l8} len {l8.length()}")
 
     var acc9 = 0
@@ -61,16 +61,16 @@ export fn main() Int:
 
     say("acc9 = {acc9}")
 
-    let b10 = (
+    b10 := (
         (s4.is_empty() and "  padded  ".is_empty())
         or ("line\nbreak" + "delta").starts_with("alpha")
     )
     say("b10 = {b10}")
 
-    let i11 = s6.length()
+    i11 := s6.length()
     say("i11 = {i11}")
 
-    let l12 = [9]
+    l12 := [9]
     say("l12 = {l12} len {l12.length()}")
     say(
         "{9223372036854775806} {(-903656)} {(9223372036854775806 < (-903656))} sum {9223372036854775806 + (-903656)}"

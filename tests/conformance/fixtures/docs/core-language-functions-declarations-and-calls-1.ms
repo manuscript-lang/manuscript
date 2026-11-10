@@ -4,4 +4,4 @@
 fn decrement(value: Int) Int:
     return value - 1
 
-let remaining = decrement(3)
+remaining := decrement(3)

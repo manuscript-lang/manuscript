@@ -12,7 +12,7 @@ type EntityCase:
     decoded: String
 
 test "HTML unescape recognizes named numeric and multi-scalar references":
-    let cases = [
+    cases := [
         EntityCase("", ""), EntityCase("plain é🙂", "plain é🙂"),
         EntityCase("&lt;&gt;&amp;&quot;&apos;", "<>&\"'"),
         EntityCase("&aacute;&eacute;&copy;", "áé©"),
@@ -43,19 +43,19 @@ fn apply[T, U](text: T, operation: fn(T) U) U:
     return operation(text)
 
 test "HTML unescape stored and generic calls preserve labels":
-    let convert = unescape
-    let typed: fn(String) String = unescape
+    convert := unescape
+    typed: fn(String) String = unescape
     try expect_false(convert("&lt;") != "<" or typed("&gt;") != ">")
     try expect_equal(apply[String, String]("&amp;", unescape), "&")
 
 test "HTML escape and unescape retain immutable text":
-    let texts = ["", "<&>\"'é🙂", "&amp;lt;", "e\u{301}", "a\u{0}b", "\n\r\t"]
+    texts := ["", "<&>\"'é🙂", "&amp;lt;", "e\u{301}", "a\u{0}b", "\n\r\t"]
     for text in texts:
         try expect_equal(unescape(escape(text)), text)
 
-    let original = "&lt;é&gt;"
-    let alias = original.clone()
-    let decoded = unescape(original)
+    original := "&lt;é&gt;"
+    alias := original.clone()
+    decoded := unescape(original)
     try expect_false((alias != "&lt;é&gt;" or original != alias or decoded != "<é>"))
 
 test "HTML unescape keeps a hexadecimal reference without digits literal":

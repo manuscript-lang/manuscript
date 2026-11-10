@@ -5,8 +5,8 @@ fn text[T](value: T) String:
     return value.to_string()
 
 test "string conversion":
-    let count = 3
-    let convert: fn() String = count.to_string
-    let _direct = count.to_string()
-    let _bound = convert()
-    let _embedded = "{count}"
+    count := 3
+    convert: fn() String = count.to_string
+    _direct := count.to_string()
+    _bound := convert()
+    _embedded := "{count}"

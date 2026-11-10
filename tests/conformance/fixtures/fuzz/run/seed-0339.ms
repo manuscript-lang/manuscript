@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -29,16 +29,16 @@ export fn main() Int:
         "{(-1)} {(((-35) - (-29)) - (456524 - (-995501751035)))} {((-1) < (((-35) - (-29)) - (456524 - (-995501751035))))} sum {(-1) + (((-35) - (-29)) - (456524 - (-995501751035)))}"
     )
 
-    let l1 = [(-25), 22, 28, (-9)]
+    l1 := [(-25), 22, 28, (-9)]
     say("l1 = {l1} len {l1.length()}")
 
-    let i2 = (((-19) * (-412608)) - 10)
+    i2 := (((-19) * (-412608)) - 10)
     say("i2 = {i2}")
 
-    let b3 = true
+    b3 := true
     say("b3 = {b3}")
 
-    let i4 = i2
+    i4 := i2
     say("i4 = {i4}")
 
     if "line\nbreak".is_empty():
@@ -46,29 +46,29 @@ export fn main() Int:
     else:
         say("delta")
 
-    let s5 = "héllo".replace("日本語", "back\\slash")
+    s5 := "héllo".replace("日本語", "back\\slash")
     say("s5 = [{s5}]")
     say("fib(33) = {fib(33)}")
 
-    let b6 = not "beta".is_empty()
+    b6 := not "beta".is_empty()
     say("b6 = {b6}")
 
-    let i7 = 49
+    i7 := 49
     say("i7 = {i7}")
 
-    let l8 = l1.reversed()
+    l8 := l1.reversed()
     say("l8 = {l8} len {l8.length()}")
 
-    let i9 = (-((i4 - (-13)) + (46 + i7)))
+    i9 := (-((i4 - (-13)) + (46 + i7)))
     say("i9 = {i9}")
 
-    let s10 = ("héllo" + s5).upper().lower()
+    s10 := ("héllo" + s5).upper().lower()
     say("s10 = [{s10}]")
 
-    let l11 = l8.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l11 := l8.map(fn x: x + 3).filter(fn x: x % 2 == 0)
     say("l11 = {l11} len {l11.length()}")
 
-    let i12 = ((l8.length() - (-(-49))) / 16)
+    i12 := ((l8.length() - (-(-49))) / 16)
     say("i12 = {i12}")
 
     var acc13 = 0

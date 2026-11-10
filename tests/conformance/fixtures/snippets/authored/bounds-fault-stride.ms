@@ -10,5 +10,5 @@ fn stride(a: List[Int]) Int:
     return t
 
 export fn main() Int:
-    let _ = stdout().write("{stride([1, 2, 3, 4, 5, 6, 7])}\n")
+    _ := stdout().write("{stride([1, 2, 3, 4, 5, 6, 7])}\n")
     return 0

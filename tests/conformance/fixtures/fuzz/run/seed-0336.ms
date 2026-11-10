@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -28,22 +28,22 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let l1 = [13, 10, (-14), (-4), 22]
+    l1 := [13, 10, (-14), (-4), 22]
     say("l1 = {l1} len {l1.length()}")
 
-    let s2 = (
+    s2 := (
         (("brace\{s\}" + "back\\slash") + ("line\nbreak" + "gamma"))
         + "back\\slash".trim().reverse()
     )
     say("s2 = [{s2}]")
 
-    let i3 = l1.get(3)
+    i3 := l1.get(3)
     say("i3 = {i3}")
     say(
         "{(-(-(-317867366551)))} {(((-702120) + 0) - (i3 / 7))} {((-(-(-317867366551))) < (((-702120) + 0) - (i3 / 7)))} sum {(-(-(-317867366551))) + (((-702120) + 0) - (i3 / 7))}"
     )
 
-    let s4 = (
+    s4 := (
         ("héllo".lower() + s2.reverse())
         + (("delta" + "  padded  ") + "hello world".trim())
     )
@@ -54,20 +54,20 @@ export fn main() Int:
     else:
         say("emoji 😀".reverse())
 
-    let i5 = l1.length()
+    i5 := l1.length()
     say("i5 = {i5}")
     say("fib(29) = {fib(29)}")
 
-    let i6 = i5
+    i6 := i5
     say("i6 = {i6}")
 
-    let f7 = (((369.822 + 994.507) * 273.864) - ((0.0 + 149.947) * (531.287 + 538.418)))
+    f7 := (((369.822 + 994.507) * 273.864) - ((0.0 + 149.947) * (531.287 + 538.418)))
     say("f7 = {f7}")
 
-    let l8 = [(-24), (-23), 25, 18]
+    l8 := [(-24), (-23), 25, 18]
     say("l8 = {l8} len {l8.length()}")
 
-    let s9 = s2
+    s9 := s2
     say("s9 = [{s9}]")
 
     if ((false and false) and (true and true)):
@@ -75,19 +75,19 @@ export fn main() Int:
     else:
         say("naïve".replace("line\nbreak", "Tab\there"))
 
-    let i10 = (-((i6 + i6) * i3))
+    i10 := (-((i6 + i6) * i3))
     say("i10 = {i10}")
 
-    let f11 = (((f7 / f7) - 306.316) * (f7 + (f7 / 4.0e25)))
+    f11 := (((f7 / f7) - 306.316) * (f7 + (f7 / 4.0e25)))
     say("f11 = {f11}")
 
-    let f12 = (3.0e-1 + (f7 + 175.088))
+    f12 := (3.0e-1 + (f7 + 175.088))
     say("f12 = {f12}")
 
-    let l13 = l8.drop(3)
+    l13 := l8.drop(3)
     say("l13 = {l13} len {l13.length()}")
 
-    let b14 = (((f11 - f12) + f12) > 991.574)
+    b14 := (((f11 - f12) + f12) > 991.574)
     say("b14 = {b14}")
     say("fact(14) = {fact(14)}")
     return 0

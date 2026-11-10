@@ -29,7 +29,7 @@ fn text_content(node: HtmlNode) String:
         _: return ""
 
 fn body_nodes(node: HtmlNode) List[HtmlNode]:
-    let html = children(node).get(0).clone()
+    html := children(node).get(0).clone()
     return children(children(html).get(1))
 
 test "HTML escaping preserves Unicode and escapes all markup characters":
@@ -38,10 +38,10 @@ test "HTML escaping preserves Unicode and escapes all markup characters":
     try expect_equal(escape(""), "")
 
 test "HTML parses nested elements attributes entities and comments":
-    let doc = try parse(
+    doc := try parse(
         "<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
     )
-    let div = body_nodes(doc.clone()).get(0).clone()
+    div := body_nodes(doc.clone()).get(0).clone()
 
     match div:
         Element(tag, namespace, attributes, items):
@@ -74,9 +74,9 @@ test "HTML parses nested elements attributes entities and comments":
     try expect_equal(text_content(doc), "Hello é🙂 <world>")
 
 test "HTML recovers unclosed tags and inserts document and table structure":
-    let doc = try parse("<ul><li>one<li>two</ul><table><tr><td>cell")
-    let nodes = body_nodes(doc)
-    let entries = children(nodes.get(0).clone())
+    doc := try parse("<ul><li>one<li>two</ul><table><tr><td>cell")
+    nodes := body_nodes(doc)
+    entries := children(nodes.get(0).clone())
     try expect_false(
         (
             entries.length() != 2
@@ -92,14 +92,14 @@ test "HTML recovers unclosed tags and inserts document and table structure":
 
     try expect_equal(text_content(nodes.get(1).clone()), "cell")
 
-    let empty = try parse("")
+    empty := try parse("")
     try expect_equal(children(children(empty).get(0)).length(), 2)
 
 test "HTML preserves doctypes foreign namespaces and raw script text":
-    let doc = try parse(
+    doc := try parse(
         "<!DOCTYPE html PUBLIC 'public' 'system'><!--before--><svg><a xlink:href='#icon'/></svg><script>if (a < b) x = '&amp;';</script>"
     )
-    let nodes = children(doc)
+    nodes := children(doc)
     try expect_false(
         (
             nodes.get(0) != HtmlNode.Doctype(
@@ -109,9 +109,9 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     )
     try expect_equal(nodes.get(1), HtmlNode.Comment("before"))
 
-    let body = children(children(nodes.get(2).clone()).get(1).clone())
+    body := children(children(nodes.get(2).clone()).get(1).clone())
 
-    let svg_items = match body.get(0):
+    svg_items := match body.get(0):
         Element(tag, namespace, _, items):
             try expect_false(tag != "svg" or namespace != "svg")
             items.clone()
@@ -132,37 +132,37 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
     try expect_equal(text_content(body.get(1).clone()), "if (a < b) x = '&amp;';")
 
 test "HTML honors optional byte depth and node limits":
-    let empty = try parse("")
+    empty := try parse("")
     try expect_equal(
         (try parse("", HtmlOptions(max_bytes: 0, max_depth: 2, max_nodes: 4))), empty
     )
     try expect_equal((try parse("é", HtmlOptions())), (try parse("é")))
 
-    let limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
+    limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(parse("é", HtmlOptions(max_bytes: 1)), limited)
     try expect_equal(parse("", HtmlOptions(max_depth: 1)), limited)
     try expect_equal(parse("", HtmlOptions(max_nodes: 3)), limited)
 
-    let invalid: HtmlNode! = error(Error("HTML: invalid input", kind: "EINVAL"))
+    invalid: HtmlNode! = error(Error("HTML: invalid input", kind: "EINVAL"))
     try expect_equal(parse("", HtmlOptions(max_nodes: -1)), invalid)
     try expect_not_equal(Error("HTML: invalid data", kind: "EBADMSG").message, "")
 
 test "HTML depth limit stops deeply nested input without quadratic work":
     // 60,000 open divs take tens of seconds when the parser only checks depth afterwards.
-    let nested = "<div>".repeat(60000).get()
-    let started = monotonic()
-    let limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
+    nested := "<div>".repeat(60000).get()
+    started := monotonic()
+    limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(parse(nested, HtmlOptions(max_depth: 100)), limited)
 
-    let elapsed = monotonic().difference(started).to_milliseconds()
+    elapsed := monotonic().difference(started).to_milliseconds()
     if elapsed > 5000: return fail("depth limit took {elapsed} ms")
 
 test "HTML parse applies default limits and none lifts them":
-    let nested = "<div>".repeat(20000).get()
-    let limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
+    nested := "<div>".repeat(20000).get()
+    limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(parse(nested), limited)
 
-    let lifted = parse(nested, HtmlOptions(max_depth: none, max_nodes: none))
+    lifted := parse(nested, HtmlOptions(max_depth: none, max_nodes: none))
     try expect_false(lifted.is_error())
 
 test "unescape maps overflowing numeric references to U+FFFD instead of wrapping":

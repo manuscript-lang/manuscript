@@ -25,7 +25,7 @@ fn take(r: Room) List[Door]:
     return keep(r.door)
 
 fn sibling(r: Room) Int:
-    let xs = keep(r.door)
+    xs := keep(r.door)
     return xs.length() + r.tag.length()
 
 fn branch(r: Room, flag: Bool) List[Door]:
@@ -38,5 +38,5 @@ fn nested(w: Wrap) List[Door]:
     return keep(w.room.spare)
 
 fn local() List[Door]:
-    let r = Room(Door(1), Door(2), "t")
+    r := Room(Door(1), Door(2), "t")
     return keep(r.spare)

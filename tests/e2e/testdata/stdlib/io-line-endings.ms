@@ -4,43 +4,43 @@ import expect_equal from "@std/test/test.ms"
 import memory from "./support/streams.ms"
 
 test "an unterminated carriage return remains line content":
-    let temporary = try temporary("manuscript-line-endings-")
-    let path = "{temporary.path()}/line.txt"
+    temporary := try temporary("manuscript-line-endings-")
+    path := "{temporary.path()}/line.txt"
 
     for text in ["\r", "tail\r", "tail\r\r"]:
         try write_file(path, text, replace: true).wait()
 
-        let file = try open(path, OpenMode.Read, OpenOptions(permissions: 384))
-        let found = try collect(lines(try file.reader()), none)
+        file := try open(path, OpenMode.Read, OpenOptions(permissions: 384))
+        found := try collect(lines(try file.reader()), none)
         try expect_equal(found, [text])
 
 test "file and memory line readers agree on endings and byte limits":
-    let limits: List[Int?] = [none, 0, 1, 2, 3, 8]
-    let temporary = try temporary("manuscript-line-parity-")
-    let path = "{temporary.path()}/lines.txt"
+    limits: List[Int?] = [none, 0, 1, 2, 3, 8]
+    temporary := try temporary("manuscript-line-parity-")
+    path := "{temporary.path()}/lines.txt"
 
     for text in ["", "a", "a\n", "a\r\n", "a\r", "\r", "\r\n", "a\nb\r", "é\r", "🙂\r\n"]:
         for limit in limits:
             try write_file(path, text, replace: true).wait()
 
-            let file = try open(path, OpenMode.Read, OpenOptions(permissions: 384))
-            let actual = collect(lines(try file.reader(), limit), none)
+            file := try open(path, OpenMode.Read, OpenOptions(permissions: 384))
+            actual := collect(lines(try file.reader(), limit), none)
             try expect_equal(actual, collect(lines(memory(text), limit), none))
 
 test "a carriage return split from its newline does not count toward the limit":
-    let chunks = ["abc\r".to_bytes(), "\n".to_bytes()]
-    let found = try collect(lines(from_list(chunks), 3), none)
+    chunks := ["abc\r".to_bytes(), "\n".to_bytes()]
+    found := try collect(lines(from_list(chunks), 3), none)
     try expect_equal(found, ["abc"])
 
 test "an unterminated carriage return counts toward the limit at the end":
-    let found = collect(lines(from_list(["abc\r".to_bytes()]), 3), none)
+    found := collect(lines(from_list(["abc\r".to_bytes()]), 3), none)
     try expect_equal(found.is_error(), true)
 
 test "a line that is not valid UTF-8 is an error, not an empty line":
-    let bad = "ok\n".to_bytes().concat("\u{ff}".to_bytes().slice(0, 1).get()).concat(
+    bad := "ok\n".to_bytes().concat("\u{ff}".to_bytes().slice(0, 1).get()).concat(
         "\nnext\n".to_bytes()
     )
-    let found = collect(lines(from_bytes(bad)), none)
+    found := collect(lines(from_bytes(bad)), none)
     try expect_equal(found.err().kind, "EBADMSG")
 
 test "lines decode in place across chunks with non-ASCII text and a final unterminated line":
@@ -48,7 +48,7 @@ test "lines decode in place across chunks with non-ASCII text and a final unterm
     var expected: List[String] = []
 
     for i in 0..3000:
-        let text = "ligne {i} é日本"
+        text := "ligne {i} é日本"
         expected.append(text.clone())
         source += text
         source += if i % 2 == 0: "\r\n" else: "\n"
@@ -56,21 +56,21 @@ test "lines decode in place across chunks with non-ASCII text and a final unterm
     expected.append("last")
     source += "last"
 
-    let found = try collect(lines(memory(source, 7)), none)
+    found := try collect(lines(memory(source, 7)), none)
     try expect_equal(found, expected)
 
 test "long lines cross small chunks without changing output":
-    let text = try "é日本".repeat(8192)
+    text := try "é日本".repeat(8192)
 
     for chunk in [1, 7, 64, 4096]:
-        let source = "{text}\r\nnext\n{text}"
-        let found = try collect(lines(from_bytes(source.to_bytes(), chunk)), none)
+        source := "{text}\r\nnext\n{text}"
+        found := try collect(lines(from_bytes(source.to_bytes(), chunk)), none)
         try expect_equal(found, [text.clone(), "next", text.clone()])
 
 test "empty chunks preserve pending carriage returns and byte budgets":
     for tail in ["\n", ""]:
-        let chunks = ["abc\r".to_bytes(), "".to_bytes(), "".to_bytes(), tail.to_bytes()]
-        let found = collect(lines(from_list(chunks), 3), none)
+        chunks := ["abc\r".to_bytes(), "".to_bytes(), "".to_bytes(), tail.to_bytes()]
+        found := collect(lines(from_list(chunks), 3), none)
 
         if tail == "\n": try expect_equal(found, ok(["abc"]))
         else: try expect_equal(found.err().kind, "EOVERFLOW")

@@ -10,8 +10,8 @@ with `jitter` the wait is a random share of that, so many callers do not retry i
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
-let policy = RetryPolicy(attempts: 5, delay: milliseconds(50))
-let body = retry(policy, fn attempt: fetch(url).wait())
+policy := RetryPolicy(attempts: 5, delay: milliseconds(50))
+body := retry(policy, fn attempt: fetch(url).wait())
 ```
 */
 export type RetryPolicy:
@@ -57,11 +57,11 @@ export fn retry[T, E: Clonable](
     var attempt = 1
 
     while true:
-        let result = operation(attempt)
+        result := operation(attempt)
         if attempt >= policy.attempts: return result
 
         if result.is_error():
-            if let accepts = retryable:
+            if accepts := retryable:
                 if not accepts(result.err()): return result
             sleep(jittered(policy, attempt)).wait().get(unit)
             attempt += 1
@@ -69,10 +69,10 @@ export fn retry[T, E: Clonable](
             return result
 
 fn jittered(policy: RetryPolicy, attempt: Int) Duration:
-    let wait = policy.wait_after(attempt)
+    wait := policy.wait_after(attempt)
     if not policy.jitter: return wait
 
-    let share = float().get(1.0)
+    share := float().get(1.0)
     return Duration(nanos: (wait.nanos.to_float() * share).truncate_to_int().get(0))
 
 /*
@@ -83,7 +83,7 @@ A token bucket: holds up to `burst` tokens and gains one every `interval`. Each 
 var limiter = rate_limiter(10, burst: 20)
 for url in urls:
     limiter.acquire()
-    let _ = try fetch(url).wait()
+    _ := try fetch(url).wait()
 ```
 */
 export type RateLimiter:
@@ -110,8 +110,8 @@ export fn rate_limiter(count: Int, burst: Int) RateLimiter:
 impl RateLimiter:
     // Adds the tokens earned since the last refill.
     var fn refill() Unit:
-        let now = monotonic()
-        let earned = now.difference(self.stamp).nanos / self.interval.nanos.max(1)
+        now := monotonic()
+        earned := now.difference(self.stamp).nanos / self.interval.nanos.max(1)
         if earned <= 0: return unit
 
         // Compare with remaining room before adding: a valid large burst can overflow the sum.
@@ -133,7 +133,7 @@ impl RateLimiter:
     // Waits until a token is available, then takes it. The wait ends when the task is cancelled.
     var fn acquire() Unit:
         while not self.try_acquire():
-            let ready = self.stamp.shift(self.interval)
+            ready := self.stamp.shift(self.interval)
             sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(
                 unit
             )
@@ -155,7 +155,7 @@ after `cooldown` one call is let through, and its result closes the circuit (suc
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
 var breaker = CircuitBreaker(threshold: 5, cooldown: seconds(10))
-let reply = breaker.call(fn: send(request))
+reply := breaker.call(fn: send(request))
 ```
 */
 export type CircuitBreaker:
@@ -171,7 +171,7 @@ export type CircuitBreaker:
 impl CircuitBreaker:
     // Whether a call may go ahead now: the circuit is closed, or its cooldown has passed (the trial call).
     fn is_open() Bool:
-        if let since = self.opened:
+        if since := self.opened:
             return monotonic().difference(since).compare(self.cooldown) < 0
 
         return false
@@ -180,9 +180,9 @@ impl CircuitBreaker:
     var fn call[T: Clonable, E: Clonable](operation: fn() T!E) T!CircuitError[E]:
         if self.is_open(): return error(CircuitError.Open)
 
-        let result = operation()
+        result := operation()
 
-        if let value = result:
+        if value := result:
             self.failures = 0
             self.opened = none
             return ok(value.clone())
@@ -197,13 +197,13 @@ impl CircuitBreaker:
 //
 // <!-- manuscript-example: {"mode":"fragment"} -->
 // ```manuscript
-// let doubled = try map_concurrent([1, 2, 3], 2, fn n: n * 2)  // [2, 4, 6]
+// doubled := try map_concurrent([1, 2, 3], 2, fn n: n * 2)  // [2, 4, 6]
 // ```
 export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
     if limit < 1:
         panic("map_concurrent: limit must be at least 1, found {limit}")
 
-    let stripes = limit.min(items.length())
+    stripes := limit.min(items.length())
     var running: List[Promise[List[U]]] = []
     for stripe in 0..stripes:
         running.append(promise(fn: stripe_results(items, stripe, stripes, work)))
@@ -214,7 +214,7 @@ export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U
 
     while index > 0:
         index -= 1
-        if let value = parts[index % stripes].pop():
+        if value := parts[index % stripes].pop():
             results.append(value)
 
     results.reverse()
@@ -251,16 +251,16 @@ export type Throttle:
 impl Throttle:
     // Reports whether an action may happen now, and if so counts it. Never waits.
     var fn allow() Bool:
-        let now = monotonic()
-        if let previous = self.last:
+        now := monotonic()
+        if previous := self.last:
             if now.difference(previous).compare(self.interval) < 0: return false
         self.last = now
         return true
 
     // Waits until an action may happen, then counts it. The wait ends when the task is cancelled.
     var fn wait() Unit:
-        if let previous = self.last:
-            let remaining = self.interval.subtract(monotonic().difference(previous))
+        if previous := self.last:
+            remaining := self.interval.subtract(monotonic().difference(previous))
             if remaining.nanos > 0:
                 sleep(remaining).wait().get(unit)
 

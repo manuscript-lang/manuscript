@@ -13,8 +13,8 @@ test "List operations written in Manuscript apply without an import":
     try expect_equal([5, 4].sorted(), [4, 5])
 
 test "a comparator-less call and a comparator call share a name":
-    let items = [Plain(3), Plain(1), Plain(2)]
-    let ordered = items.sorted(fn a, b: a.n - b.n)
+    items := [Plain(3), Plain(1), Plain(2)]
+    ordered := items.sorted(fn a, b: a.n - b.n)
     try expect_equal(ordered.map(fn p: p.n), [1, 2, 3])
 
     var numbers = [2, 3, 1]

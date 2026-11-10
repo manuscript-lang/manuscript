@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [24, (-24), (-16)]
+    l1 := [24, (-24), (-16)]
     say("l1 = {l1} len {l1.length()}")
 
-    let l2 = l1.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l2 := l1.map(fn x: x + 3).filter(fn x: x % 2 == 0)
     say("l2 = {l2} len {l2.length()}")
 
-    let f3 = ((559.724 * 329.840) / ((839.150 / 0.0) - (547.347 + 67.159)))
+    f3 := ((559.724 * 329.840) / ((839.150 / 0.0) - (547.347 + 67.159)))
     say("f3 = {f3}")
 
-    let i4 = ((-968323683883) + (-31))
+    i4 := ((-968323683883) + (-31))
     say("i4 = {i4}")
 
     var acc5 = 0
@@ -31,7 +31,7 @@ export fn main() Int:
 
     say("acc5 = {acc5}")
 
-    let bad = 1.5 + 2
+    bad := 1.5 + 2
 
     if false:
         say("".upper())

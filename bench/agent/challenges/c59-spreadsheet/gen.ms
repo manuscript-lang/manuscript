@@ -213,7 +213,7 @@ export fn gen_c59() Unit:
         "\nset A1 =1.5E3\nset A2 =.5+.5\nset A3 =1.+1\nset A4 =1e2+1E-2\nset A5 =\"say \"\"hi\"\"\"\nset A6 =\"\"\"\"\nset A7 =LEN(A6)\nset A8 =\" a \"&\"b\"\nset A9 =1E\nset A10 =2e+3\nset A11 =TRUE&FALSE\nset A12 =true=TRUE\nset A13 =sum(1,2)\nset A14 =Z999\nset A15 =Z999+1\nset Z999 5\nset A16 =Z999*2\nset A17 =AA1\nset A18 =a1+b$2\nset A19 =$B$2\nset A20 =1E+\nprint A1:A20\nshow A5\ndependents Z999\nprecedents A15\n"
     )
 
-    let examples = [
+    examples := [
         cs.make(
             "ex-basic",
             "set A1 10\nset A2 20\nset A3 =SUM(A1:A2)*2\nget A3\nset A1 5\nget A3\nshow A3\nstats\n"

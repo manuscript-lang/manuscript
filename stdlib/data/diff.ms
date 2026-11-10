@@ -12,8 +12,8 @@ Strings are compared by Unicode scalar, lines by exact equality.
 export fn edit_distance(left: String, right: String) Int:
     if left == right: return 0
 
-    let a = left.chars()
-    let b = right.chars()
+    a := left.chars()
+    b := right.chars()
     var previous: List[Int] = []
     for j in 0..b.length() + 1:
         previous.append(j)
@@ -22,7 +22,7 @@ export fn edit_distance(left: String, right: String) Int:
         var current: List[Int] = [i]
 
         for j in 1..b.length() + 1:
-            let cost = if a[i - 1] == b[j - 1]: 0 else: 1
+            cost := if a[i - 1] == b[j - 1]: 0 else: 1
             current.append(
                 (previous[j] + 1).min(
                     (current[j - 1] + 1).min(previous[j - 1] + cost)
@@ -58,9 +58,9 @@ Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
 export fn similarity_ratio(left: String, right: String) Float:
     if left == right: return 1.0
 
-    let a = left.chars()
-    let b = right.chars()
-    let total = a.length() + b.length()
+    a := left.chars()
+    b := right.chars()
+    total := a.length() + b.length()
     if total == 0: return 1.0
 
     return 2.0 * common_length(a, b).to_float() / total.to_float()
@@ -86,8 +86,8 @@ export fn close_matches(
     candidates: List[String],
     options: CloseMatchesOptions = CloseMatchesOptions()
 ) List[String]:
-    let limit = options.limit
-    let cutoff = options.cutoff
+    limit := options.limit
+    cutoff := options.cutoff
     if limit < 1:
         panic("close_matches: limit must be at least 1")
     if not (cutoff >= 0.0 and cutoff <= 1.0):
@@ -96,11 +96,11 @@ export fn close_matches(
     var scored: List[Scored] = []
 
     for candidate in candidates:
-        let score = similarity_ratio(word, candidate)
+        score := similarity_ratio(word, candidate)
         if score >= cutoff:
             scored.append(Scored(text: candidate.clone(), score: score))
 
-    let ranked = scored.sorted(fn a, b: compare_scores(a.score, b.score))
+    ranked := scored.sorted(fn a, b: compare_scores(a.score, b.score))
     return ranked.take(limit).map(fn s: s.text.clone())
 
 fn compare_scores(left: Float, right: Float) Int:
@@ -197,8 +197,8 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
     steps.extend(middle_steps(old_middle, new_middle, head))
 
     for i in 0..tail:
-        let at = old.length() - tail + i
-        let other = new.length() - tail + i
+        at := old.length() - tail + i
+        other := new.length() - tail + i
         steps.append(Step(kind: 0, text: old[at].clone(), old_at: at, new_at: other))
 
     return steps
@@ -228,13 +228,13 @@ export fn unified_diff(
     new: List[String],
     options: UnifiedDiffOptions = UnifiedDiffOptions()
 ) String:
-    let context = options.context
-    let old_name = options.old_name
-    let new_name = options.new_name
+    context := options.context
+    old_name := options.old_name
+    new_name := options.new_name
     if context < 0:
         panic("unified_diff: context must not be negative")
 
-    let steps = line_steps(old, new)
+    steps := line_steps(old, new)
     var keep = [false].repeated(steps.length())
     var any_change = false
 
@@ -242,8 +242,8 @@ export fn unified_diff(
         if steps[i].kind != 0:
             any_change = true
 
-            let from = (i - context).max(0)
-            let to = i + context.min(steps.length() - 1 - i)
+            from := (i - context).max(0)
+            to := i + context.min(steps.length() - 1 - i)
 
             // Windows move right: the first marked position joins the prior window.
             var j = to

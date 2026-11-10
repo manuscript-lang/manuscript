@@ -38,15 +38,15 @@ test "fifty thousand parked promise tasks fit and cancel in bounded time":
 // Forty thousand task-backed reads at once used to exhaust the process's memory mappings
 // (two per task stack); slots carved from large regions cost none.
 test "forty thousand concurrent file reads complete":
-    let dir = try temporary_directory("many-tasks")
-    let path = dir + "/read.txt"
+    dir := try temporary_directory("many-tasks")
+    path := dir + "/read.txt"
     try write_file(path, "hello").wait()
 
     var reads: List[Promise[Bytes]] = []
     for unused in 0..40000:
         reads.append(read_file(path, none))
 
-    let results = try wait_all(reads)
+    results := try wait_all(reads)
     var total = 0
     for data in results:
         total += data.length()

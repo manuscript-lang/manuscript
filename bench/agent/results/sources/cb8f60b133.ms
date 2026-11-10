@@ -12,7 +12,7 @@ fn is_digit(c: String) Bool:
 
 // Amount grammar: digits, optionally `.` followed by one or two digits.
 fn valid_amount(s: String) Bool:
-    let n = s.length()
+    n := s.length()
     var i = 0
     while i < n and is_digit(s.get(i)):
         i += 1
@@ -23,7 +23,7 @@ fn valid_amount(s: String) Bool:
     if s.get(i) != ".":
         return false
 
-    let frac = n - i - 1
+    frac := n - i - 1
     if frac < 1 or frac > 2:
         return false
 
@@ -38,12 +38,12 @@ fn parse_line(line: String) Record?:
     var amount = ""
 
     if line.get(0) == "\"":
-        let rest_after_quote = line.drop(1)
+        rest_after_quote := line.drop(1)
 
-        if let close = rest_after_quote.index_of("\""):
+        if close := rest_after_quote.index_of("\""):
             category = rest_after_quote.take(close)
 
-            let tail = rest_after_quote.drop(close + 1)
+            tail := rest_after_quote.drop(close + 1)
             if not tail.starts_with(","):
                 return none
 
@@ -51,7 +51,7 @@ fn parse_line(line: String) Record?:
         else:
             return none
     else:
-        if let comma = line.index_of(","):
+        if comma := line.index_of(","):
             category = line.take(comma)
             amount = line.drop(comma + 1)
         else:
@@ -67,7 +67,7 @@ fn to_cents(amount: String) String:
     var whole = amount.clone()
     var frac = "00"
 
-    if let dot = amount.index_of("."):
+    if dot := amount.index_of("."):
         whole = amount.take(dot)
         frac = amount.drop(dot + 1).pad_end(2, "0")
 
@@ -101,23 +101,23 @@ fn add_digits(a: String, b: String) String:
 
 // Renders a cents digit string as `whole.cc`.
 fn format_cents(cents: String) String:
-    let s = cents.pad_start(3, "0")
-    let cut = s.length() - 2
+    s := cents.pad_start(3, "0")
+    cut := s.length() - 2
     return "{s.take(cut)}.{s.drop(cut)}"
 
 export fn main() Int:
     var skipped = 0
     var totals = SortedMap[String, String]()
 
-    if let lines = read_lines(stdin()):
+    if lines := read_lines(stdin()):
         for line in lines:
             if line.trim().is_empty():
                 continue
 
-            if let rec = parse_line(line):
-                let cents = to_cents(rec.amount)
+            if rec := parse_line(line):
+                cents := to_cents(rec.amount)
 
-                if let current = totals.get(rec.category):
+                if current := totals.get(rec.category):
                     totals.add(rec.category, add_digits(current, cents))
                 else:
                     totals.add(rec.category, cents)

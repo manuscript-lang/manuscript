@@ -23,7 +23,7 @@ fn digits_value(s: String, a: Int, b: Int) Int:
     var v = 0
 
     for i in a..b:
-        let c = s.get(i)
+        c := s.get(i)
         if not is_digit(c):
             return -1
 
@@ -33,11 +33,11 @@ fn digits_value(s: String, a: Int, b: Int) Int:
 
 // A 1-2 digit number in [lo, hi], or -1.
 fn num_in(s: String, lo: Int, hi: Int) Int:
-    let n = s.length()
+    n := s.length()
     if n < 1 or n > 2:
         return -1
 
-    let v = digits_value(s, 0, n)
+    v := digits_value(s, 0, n)
     if v < lo or v > hi:
         return -1
 
@@ -77,17 +77,17 @@ fn weekday(y: Int, m: Int, d: Int) Int:
     return (4 + n) % 7
 
 fn parse_start(s: String) Stamp:
-    let bad = Stamp(year: -1, month: 0, day: 0, hour: 0, minute: 0)
+    bad := Stamp(year: -1, month: 0, day: 0, hour: 0, minute: 0)
     if s.length() != 16:
         return bad
     if s.get(4) != "-" or s.get(7) != "-" or s.get(10) != "T" or s.get(13) != ":":
         return bad
 
-    let y = digits_value(s, 0, 4)
-    let mo = digits_value(s, 5, 7)
-    let d = digits_value(s, 8, 10)
-    let h = digits_value(s, 11, 13)
-    let mi = digits_value(s, 14, 16)
+    y := digits_value(s, 0, 4)
+    mo := digits_value(s, 5, 7)
+    d := digits_value(s, 8, 10)
+    h := digits_value(s, 11, 13)
+    mi := digits_value(s, 14, 16)
     if not in_range(y, 1970, 2099) or not in_range(mo, 1, 12):
         return bad
     if (
@@ -107,7 +107,7 @@ fn blank_bits(n: Int) List[Bool]:
 
 // Adds one cron item (`*`, `*/S`, `A`, `A-B`, `A-B/S`) to bits. False when invalid.
 fn add_item(item: String, lo: Int, hi: Int, var bits: List[Bool]) Bool:
-    let parts = item.split("/")
+    parts := item.split("/")
     if parts.length() > 2:
         return false
 
@@ -120,10 +120,10 @@ fn add_item(item: String, lo: Int, hi: Int, var bits: List[Bool]) Bool:
 
     var a = lo
     var b = hi
-    let range = parts[0]
+    range := parts[0]
 
     if range != "*":
-        let dash = range.split("-")
+        dash := range.split("-")
 
         if dash.length() == 1:
             if parts.length() == 2:
@@ -189,7 +189,7 @@ fn find_runs(sp: Spec, st: Stamp, count: Int) List[String]:
     var mo = st.month
     var d = st.day
     var wd = weekday(y, mo, d)
-    let start_min = st.hour * 60 + st.minute
+    start_min := st.hour * 60 + st.minute
     var i = 0
 
     while i <= 3000 and out.length() < count:
@@ -217,15 +217,15 @@ fn error_line(n: Int, msg: String) String:
     return "line {n}: error: {msg}\n"
 
 fn process_line(line: String, n: Int) String:
-    let toks = line.split(" ")
+    toks := line.split(" ")
     if toks.length() != 7:
         return error_line(n, "bad line")
 
-    let st = parse_start(toks[0])
+    st := parse_start(toks[0])
     if st.year < 0:
         return error_line(n, "bad start")
 
-    let cnt = num_in(toks[1], 1, 20)
+    cnt := num_in(toks[1], 1, 20)
     if cnt < 0:
         return error_line(n, "bad count")
 
@@ -249,11 +249,11 @@ fn process_line(line: String, n: Int) String:
     if not load_field(toks[6], 0, 6, var dows):
         return error_line(n, "bad day-of-week")
 
-    let sp = Spec(
+    sp := Spec(
         minutes: to_values(mins), hours: to_values(hrs), doms: doms, months: mons,
         dows: dows
     )
-    let runs = find_runs(sp, st, cnt)
+    runs := find_runs(sp, st, cnt)
     if runs.length() == 0:
         return "line {n}: never\n"
 
@@ -269,7 +269,7 @@ fn is_blank(line: String) Bool:
     return true
 
 export fn main() Int:
-    let text = read_all(stdin()).get().decode_utf8().get("")
+    text := read_all(stdin()).get().decode_utf8().get("")
     var buf = ""
     var n = 0
 

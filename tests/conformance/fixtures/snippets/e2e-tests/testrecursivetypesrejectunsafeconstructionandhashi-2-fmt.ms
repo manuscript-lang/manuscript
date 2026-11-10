@@ -5,6 +5,6 @@ type Node:
     next: Node?
 
 export fn main() Int:
-    let node = Node(none)
+    node := Node(none)
     node.next = node
     return node.hash()

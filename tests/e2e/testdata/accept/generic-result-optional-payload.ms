@@ -18,10 +18,10 @@ test "a generic Result lifts an owned payload into its optional field":
     try expect_equal(lifted([1, 2]).get().get(), [1, 2])
 
 test "a generic Result keeps an optional payload as it is":
-    let missing: Int? = none
+    missing: Int? = none
     try expect_false(passed(missing).get().is_some())
 
-    let present: Int? = 3
+    present: Int? = 3
     try expect_equal(passed(present).get().get(), 3)
 
 test "a concrete Result lifts a borrowed parameter":

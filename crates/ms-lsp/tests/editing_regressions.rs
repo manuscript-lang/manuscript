@@ -500,7 +500,7 @@ fn rename_preserves_unicode_and_original_ranges_when_name_length_changes() {
 fn rename_ignores_an_unrelated_unread_binding() {
     let syms = ms_syntax::Names::global();
     let ws = Workspace::new("rename-unread");
-    let source = "fn identity(value: Int) Int:\n    let spare = 1\n    return value\n";
+    let source = "fn identity(value: Int) Int:\n    spare := 1\n    return value\n";
     let d = Document::new(ws.uri("unread.ms"), source);
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
     let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
@@ -706,7 +706,7 @@ fn project_exports_are_offered_before_standard_ones() {
 
 #[test]
 fn checker_fixes_become_quick_fixes() {
-    let source = "export fn main() Int:\n    let n: Strin = \"a\"\n    return n.length()\n";
+    let source = "export fn main() Int:\n    n: Strin = \"a\"\n    return n.length()\n";
     let (_, found) = actions(source, "quickfix");
     let action = found
         .iter()
@@ -773,8 +773,8 @@ fn completion_distinguishes_multiline_payload_and_interpolation() {
 #[test]
 fn completion_recovers_incomplete_multiline_interpolation() {
     for newline in ["\n", "\r\n"] {
-        for suffix in ["", "}\n        \"\"\"\nlet broken = \""] {
-            for prefix in ["", "let broken = \"\n"] {
+        for suffix in ["", "}\n        \"\"\"\nbroken := \""] {
+            for prefix in ["", "broken := \"\n"] {
                 let source = format!(
                 "{prefix}fn greet(name: String) String:\n    return \"\"\"\n        hello {{name.{suffix}"
             )

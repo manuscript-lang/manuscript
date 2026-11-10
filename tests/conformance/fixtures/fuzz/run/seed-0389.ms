@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -29,22 +29,22 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let b1 = ("MiXeD CaSe".reverse() + "naïve".trim()).is_empty()
+    b1 := ("MiXeD CaSe".reverse() + "naïve".trim()).is_empty()
     say("b1 = {b1}")
 
-    let f2 = (((8.5 + 345.731) + (0.0 + 502.25)) + 633.362)
+    f2 := (((8.5 + 345.731) + (0.0 + 502.25)) + 633.362)
     say("f2 = {f2}")
 
-    let b3 = true
+    b3 := true
     say("b3 = {b3}")
 
-    let b4 = (7.5 < (f2 / (f2 + 198.671)))
+    b4 := (7.5 < (f2 / (f2 + 198.671)))
     say("b4 = {b4}")
 
-    let s5 = "x"
+    s5 := "x"
     say("s5 = [{s5}]")
 
-    let b6 = (
+    b6 := (
         ("brace\{s\}" + s5).reverse() != (
             "{((-33) + 10)}:"
             + "beta".replace(s5, "alpha")
@@ -52,23 +52,23 @@ export fn main() Int:
     )
     say("b6 = {b6}")
 
-    let l7 = [1, 2, 3].take(0)
+    l7 := [1, 2, 3].take(0)
     say("l7 = {l7} len {l7.length()}")
 
-    let i8 = ((((-17) + (-22)) + (-43)) / (-15))
+    i8 := ((((-17) + (-22)) + (-43)) / (-15))
     say("i8 = {i8}")
     say("fact(10) = {fact(10)}")
 
-    let s9 = (("back\\slash".lower() + s5.lower()) + "beta".trim())
+    s9 := (("back\\slash".lower() + s5.lower()) + "beta".trim())
     say("s9 = [{s9}]")
 
-    let l10 = l7.sorted(fn a, b: a.compare(b))
+    l10 := l7.sorted(fn a, b: a.compare(b))
     say("l10 = {l10} len {l10.length()}")
 
-    let s11 = s5.clone()
+    s11 := s5.clone()
     say("s11 = [{s11}]")
 
-    let i12 = (i8 % (((-50) - 23) + l10.length()))
+    i12 := (i8 % (((-50) - 23) + l10.length()))
     say("i12 = {i12}")
 
     if b6:
@@ -78,10 +78,10 @@ export fn main() Int:
 
     say("fact(11) = {fact(11)}")
 
-    let s13 = ("x" + "42")
+    s13 := ("x" + "42")
     say("s13 = [{s13}]")
 
-    let i14 = ((-26) / (44 - (i12 - i12)))
+    i14 := ((-26) / (44 - (i12 - i12)))
     say("i14 = {i14}")
     say("collatz(1509) = {collatz(1509)}")
     return 0

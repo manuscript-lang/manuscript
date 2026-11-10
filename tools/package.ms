@@ -12,14 +12,14 @@ import (
 ) from "@std/os/env.ms"
 
 fn supported(target_os: String, target_arch: String) Bool:
-    let key = "{target_os}/{target_arch}"
+    key := "{target_os}/{target_arch}"
     return [
         "linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64",
         "windows/arm64"
     ].contains(key)
 
 export fn main() Int:
-    let args = arguments()
+    args := arguments()
     var target_os = dist_os()
     var target_arch = dist_arch()
 
@@ -59,11 +59,11 @@ export fn main() Int:
     )
     if code != 0: return code
 
-    let name = "manuscript-rust-{target_os}-{target_arch}"
+    name := "manuscript-rust-{target_os}-{target_arch}"
     create_directory("dist", recursive: true).get()
 
-    let staging = temporary("ms-package-").get()
-    let bundle = "{staging.path()}/{name}"
+    staging := temporary("ms-package-").get()
+    bundle := "{staging.path()}/{name}"
     create_directory("{bundle}/examples/hello/src", recursive: true).get()
     copy("target/{triple}/release/{executable}", "{bundle}/{executable}").get()
     copy("examples/hello/ms.toml", "{bundle}/examples/hello/ms.toml").get()
@@ -84,8 +84,8 @@ export fn main() Int:
         archive = "dist/{name}.zip"
         archive_name = "{name}.zip"
 
-        let _ = remove(archive.clone(), recursive: false)
-        let root = working_directory().get()
+        _ := remove(archive.clone(), recursive: false)
+        root := working_directory().get()
         change_directory(staging.path()).get()
         code = run_program(
             "7z",
@@ -103,7 +103,7 @@ export fn main() Int:
 
     if code != 0: return code
 
-    let digest = file_sha256(archive)
+    digest := file_sha256(archive)
     write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).wait().get()
     print("{archive}")
     return 0

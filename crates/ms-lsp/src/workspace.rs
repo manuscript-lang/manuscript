@@ -402,8 +402,11 @@ fn may_contain_symbol(
                 use ms_syntax::token::Tok;
                 matches!(
                     before.kind,
-                    Tok::Fn | Tok::Type | Tok::Enum | Tok::Interface | Tok::Let | Tok::Var
+                    Tok::Fn | Tok::Type | Tok::Enum | Tok::Interface | Tok::Var
                 )
+            })
+            || lexed.tokens.get(i + 1).is_some_and(|after| {
+                matches!(after.kind, ms_syntax::token::Tok::ColonAssign)
             });
         if !declares {
             return false;

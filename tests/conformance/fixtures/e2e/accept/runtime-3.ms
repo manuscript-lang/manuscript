@@ -7,12 +7,12 @@ fn identity[T](value: T) T:
     return value
 
 fn probe() Unit!:
-    let first = fn() Int!Error:
+    first := fn() Int!Error:
         return ok(3)
-    let second = fn:
+    second := fn:
         return true
-    let number = identity(first)()
-    let flag = second()
+    number := identity(first)()
+    flag := second()
     (flag) | try expect_true
 
     match number:
@@ -26,7 +26,7 @@ fn probe() Unit!:
 test "typed callback helper":
     match probe():
         ok(_):
-            let _completed = unit
+            _completed := unit
         error(_):
             return fail(message: "Unexpected case")
 
@@ -41,10 +41,10 @@ fn describe(outcome: Int!Code) Int!Error:
             return error(Error("Error {cause.number}"))
 
 test "explicit error conversion":
-    let failed: Int!Code = error(Code(7))
-    let expected: Int!Error = error(Error("Error 7"))
+    failed: Int!Code = error(Code(7))
+    expected: Int!Error = error(Error("Error 7"))
     describe(outcome: failed) | try expect_equal(expected)
 
-    let succeeded: Int!Code = ok(3)
-    let unchanged: Int!Error = ok(3)
+    succeeded: Int!Code = ok(3)
+    unchanged: Int!Error = ok(3)
     describe(outcome: succeeded) | try expect_equal(unchanged)

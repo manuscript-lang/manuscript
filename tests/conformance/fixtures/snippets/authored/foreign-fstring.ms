@@ -2,5 +2,5 @@
 // conform: phase=parse
 // conform: origin=foreign-syntax diagnostics
 fn f() String:
-    let n = 1
+    n := 1
     return f"n={n}"

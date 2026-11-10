@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=foreign-syntax diagnostics
 fn f() Unit:
-    let a = this
+    a := this

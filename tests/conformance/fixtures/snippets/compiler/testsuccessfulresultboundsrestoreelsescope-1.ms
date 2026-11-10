@@ -6,7 +6,7 @@ fn probe(found: Int) Int:
     var i = 0
 
     while i < 1000:
-        if let fresh = affine(i):
+        if fresh := affine(i):
             sum += fresh
         else:
             sum += found

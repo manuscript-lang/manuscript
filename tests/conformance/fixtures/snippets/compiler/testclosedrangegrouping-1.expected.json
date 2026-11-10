@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testclosedrangegrouping-1.ms:4:13: resolution: unknown binding values; add: import values from \"@std/bytes.ms\"\n   |\n 4 | let alias = values\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testclosedrangegrouping-1.ms:4:13: resolution: unknown binding values; add: import values from \"@std/bytes.ms\"\n   |\n 4 | alias := values\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

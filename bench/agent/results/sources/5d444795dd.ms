@@ -13,13 +13,13 @@ fn all_digits(s: String) Bool:
 
 // Accepts digits, optionally followed by '.' and one or two digits.
 fn valid_amount(s: String) Bool:
-    let parts = s.split(".")
+    parts := s.split(".")
     if parts.length() == 1:
         return parts[0].length() > 0 and all_digits(parts[0])
 
     if parts.length() == 2:
-        let ip = parts[0]
-        let fp = parts[1]
+        ip := parts[0]
+        fp := parts[1]
         return (
             ip.length() > 0
             and all_digits(ip)
@@ -34,12 +34,12 @@ fn parse_line(line: String) Rec?:
     var amt = ""
 
     if line.starts_with("\""):
-        let rest = line.slice(1, line.length()).get()
+        rest := line.slice(1, line.length()).get()
 
-        if let close = rest.find_char(fn(c: String) Bool: c == "\""):
+        if close := rest.find_char(fn(c: String) Bool: c == "\""):
             cat = rest.slice(0, close).get()
 
-            let after = rest.slice(close + 1, rest.length()).get()
+            after := rest.slice(close + 1, rest.length()).get()
             if not after.starts_with(","):
                 return none
 
@@ -47,7 +47,7 @@ fn parse_line(line: String) Rec?:
         else:
             return none
     else:
-        let parts = line.split(",")
+        parts := line.split(",")
         if parts.length() != 2:
             return none
 
@@ -68,12 +68,12 @@ fn strip_zeros(s: String) String:
 
 // Converts a valid amount to a digit string of hundredths.
 fn to_cents(amt: String) String:
-    let parts = amt.split(".")
-    let ip = parts[0]
+    parts := amt.split(".")
+    ip := parts[0]
     if parts.length() == 1:
         return strip_zeros("{ip}00")
 
-    let fp = parts[1]
+    fp := parts[1]
     if fp.length() == 1:
         return strip_zeros("{ip}{fp}0")
 
@@ -103,7 +103,7 @@ fn add_digits(a: String, b: String) String:
     return strip_zeros(out)
 
 export fn main() Int:
-    let rows = collect(lines(stdin())).get()
+    rows := collect(lines(stdin())).get()
     var totals = Map[String, String]()
     var cats = List[String]()
     var skipped = 0
@@ -112,16 +112,16 @@ export fn main() Int:
         if row.trim().length() == 0:
             continue
 
-        if let r = parse_line(row):
-            let c = to_cents(r.amt)
-            let key = r.cat.clone()
-            let old = totals.get(key).get("").clone()
+        if r := parse_line(row):
+            c := to_cents(r.amt)
+            key := r.cat.clone()
+            old := totals.get(key).get("").clone()
 
             if old.length() == 0:
                 cats.append(key.clone())
                 totals.add(key, c)
             else:
-                let sum = add_digits(old, c)
+                sum := add_digits(old, c)
                 totals.add(key, sum)
         else:
             skipped += 1
@@ -131,11 +131,11 @@ export fn main() Int:
     var out = stdout()
 
     for cat in cats:
-        let t = totals.get(cat).get("0")
-        let padded = t.pad_start(3, "0")
-        let n = padded.length()
-        let ip = padded.slice(0, n - 2).get()
-        let fp = padded.slice(n - 2, n).get()
+        t := totals.get(cat).get("0")
+        padded := t.pad_start(3, "0")
+        n := padded.length()
+        ip := padded.slice(0, n - 2).get()
+        fp := padded.slice(n - 2, n).get()
         out.write("{cat}: {ip}.{fp}\n").get()
 
     if skipped > 0:

@@ -15,7 +15,7 @@ impl Picker[Int] for Bag:
         var best = key(self.items[0])
 
         for i in 1..self.items.length():
-            let k = key(self.items[i])
+            k := key(self.items[i])
 
             if k.compare(best) > 0:
                 at = i
@@ -36,7 +36,7 @@ fn pick_with[B: Picker[Int]](bag: B) Int?:
     return bag.pick(fn(x: Int) Int: 0 - x)
 
 test "an interface operation takes type parameters of its own":
-    let bag = Bag(items: [3, 1, 2])
+    bag := Bag(items: [3, 1, 2])
     bag.pick(fn(x: Int) Int: x) | try expect_equal(3)
     bag.pick(fn(x: Int) String: "\{x\}") | try expect_equal(3)
     bag.mapped(fn(x: Int) String: "n") | try expect_equal(["n", "n", "n"])
@@ -49,7 +49,7 @@ test "an inherent method takes type parameters of its own":
     Bag(items: [1, 2]).paired(true) | try expect_equal([true, true])
 
 test "List max_by and min_by are source methods":
-    let words = ["bb", "a", "ccc", "dd"]
+    words := ["bb", "a", "ccc", "dd"]
     words.max_by(fn(w: String) Int: w.length()) | try expect_equal("ccc")
     words.min_by(fn(w: String) Int: w.length()) | try expect_equal("a")
 

@@ -41,7 +41,7 @@ fn fixed_num(s: String, width: Int) Int:
 fn num_in(s: String, lo: Int, hi: Int) Int:
     if s.length() < 1 or s.length() > 2 or not all_digits(s): return -1
 
-    let v = s.parse_int().get(-1)
+    v := s.parse_int().get(-1)
     if v < lo or v > hi: return -1
 
     return v
@@ -76,19 +76,19 @@ fn weekday(y: Int, m: Int, d: Int) Int:
     return (epoch_days(y, m, d) + 4) % 7
 
 fn parse_start(s: String) Start:
-    let bad = Start(year: -1, month: 0, day: 0, hour: 0, minute: 0)
-    let halves = s.split("T")
+    bad := Start(year: -1, month: 0, day: 0, hour: 0, minute: 0)
+    halves := s.split("T")
     if halves.length() != 2: return bad
 
-    let dp = halves[0].split("-")
-    let tp = halves[1].split(":")
+    dp := halves[0].split("-")
+    tp := halves[1].split(":")
     if dp.length() != 3 or tp.length() != 2: return bad
 
-    let y = fixed_num(dp[0], 4)
-    let mo = fixed_num(dp[1], 2)
-    let d = fixed_num(dp[2], 2)
-    let h = fixed_num(tp[0], 2)
-    let mi = fixed_num(tp[1], 2)
+    y := fixed_num(dp[0], 4)
+    mo := fixed_num(dp[1], 2)
+    d := fixed_num(dp[2], 2)
+    h := fixed_num(tp[0], 2)
+    mi := fixed_num(tp[1], 2)
     if y < 1970 or y > 2099: return bad
     if mo < 1 or mo > 12: return bad
     if d < 1 or d > days_in_month(y, mo): return bad
@@ -99,8 +99,8 @@ fn parse_start(s: String) Start:
 
 // Parses one item: `*`, `*/S`, `A`, `A-B`, `A-B/S`.
 fn parse_span(item: String, lo: Int, hi: Int) Span:
-    let bad = Span(start: -1, stop: -1, step: 1)
-    let parts = item.split("/")
+    bad := Span(start: -1, stop: -1, step: 1)
+    parts := item.split("/")
     if parts.length() > 2: return bad
 
     var step = 1
@@ -113,7 +113,7 @@ fn parse_span(item: String, lo: Int, hi: Int) Span:
     var b = hi
 
     if parts[0] != "*":
-        let bounds = parts[0].split("-")
+        bounds := parts[0].split("-")
 
         if bounds.length() == 1:
             if parts.length() == 2: return bad
@@ -156,11 +156,11 @@ fn pad(n: Int) String:
 // Up to `count` matches strictly after `st`, searching days st..st+3000.
 fn search(st: Start, count: Int, spec: Spec) List[String]:
     var out = List[String]()
-    let sy = st.year
-    let sm = st.month
-    let sd = st.day
-    let sh = st.hour
-    let smin = st.minute
+    sy := st.year
+    sm := st.month
+    sd := st.day
+    sh := st.hour
+    smin := st.minute
     var y = sy
     var m = sm
     var d = sd
@@ -191,32 +191,32 @@ fn search(st: Start, count: Int, spec: Spec) List[String]:
     return out
 
 fn solve(no: Int, line: String) String:
-    let toks = line.split(" ")
+    toks := line.split(" ")
     if toks.length() != 7: return "line {no}: error: bad line\n"
 
-    let st = parse_start(toks[0])
+    st := parse_start(toks[0])
     if st.year < 0: return "line {no}: error: bad start\n"
 
-    let count = num_in(toks[1], 1, 20)
+    count := num_in(toks[1], 1, 20)
     if count < 0: return "line {no}: error: bad count\n"
 
-    let mins = parse_field(toks[2], 0, 59)
+    mins := parse_field(toks[2], 0, 59)
     if mins.length() == 0: return "line {no}: error: bad minute\n"
 
-    let hrs = parse_field(toks[3], 0, 23)
+    hrs := parse_field(toks[3], 0, 23)
     if hrs.length() == 0: return "line {no}: error: bad hour\n"
 
-    let dom = parse_field(toks[4], 1, 31)
+    dom := parse_field(toks[4], 1, 31)
     if dom.length() == 0: return "line {no}: error: bad day-of-month\n"
 
-    let mon = parse_field(toks[5], 1, 12)
+    mon := parse_field(toks[5], 1, 12)
     if mon.length() == 0: return "line {no}: error: bad month\n"
 
-    let dow = parse_field(toks[6], 0, 6)
+    dow := parse_field(toks[6], 0, 6)
     if dow.length() == 0: return "line {no}: error: bad day-of-week\n"
 
-    let spec = Spec(minutes: mins, hours: hrs, days: dom, months: mon, weekdays: dow)
-    let runs = search(st, count, spec)
+    spec := Spec(minutes: mins, hours: hrs, days: dom, months: mon, weekdays: dow)
+    runs := search(st, count, spec)
     if runs.length() == 0: return "line {no}: never\n"
 
     var block = "line {no}: {runs.length()} runs\n"
@@ -230,7 +230,7 @@ fn is_blank(line: String) Bool:
     return true
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var no = 0
 
     for line in lines:

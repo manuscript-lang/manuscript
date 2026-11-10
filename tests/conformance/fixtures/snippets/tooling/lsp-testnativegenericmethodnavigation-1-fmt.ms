@@ -5,6 +5,6 @@ fn label(value: Int) String:
     return "{value}"
 
 test "methods":
-    let _labels = [1].map(transform: label)
-    let _convert = [2].map[String]
-    let _text = " hello ".trim()
+    _labels := [1].map(transform: label)
+    _convert := [2].map[String]
+    _text := " hello ".trim()

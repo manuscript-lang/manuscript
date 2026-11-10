@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = ((578.860 - (6.0e-8 + 213.380)) / (539.458 * (815.929 + 612.792)))
+    f1 := ((578.860 - (6.0e-8 + 213.380)) / (539.458 * (815.929 + 612.792)))
     say("f1 = {f1}")
 
-    let b2 = true
+    b2 := true
     say("b2 = {b2}")
 
     var acc3 = 0
@@ -24,19 +24,19 @@ export fn main() Int:
 
     say("acc3 = {acc3}")
 
-    let f4 = 936.537
+    f4 := 936.537
     say("f4 = {f4}")
 
-    let s6 = ("{34}:" + "42").trim().lower()
+    s6 := ("{34}:" + "42").trim().lower()
     say("s6 = [{s6}]")
 
-    let i7 = ((-203404) * (-370417))
+    i7 := ((-203404) * (-370417))
     say("i7 = {i7}")
 
-    let i8 = ((i7 * (671247 % i7)) - i7)
+    i8 := ((i7 * (671247 % i7)) - i7)
     say("i8 = {i8}")
 
-    let l10 = [17, (-27)]
+    l10 := [17, (-27)]
     say("l10 = {l10} len {l10.length()}")
 
     var acc11 = 0
@@ -44,6 +44,6 @@ export fn main() Int:
         acc11 += i * (-5)
     say("acc11 = {acc11}")
 
-    let i12 = i7
+    i12 := i7
     say("i12 = {i12}")
     return 0

@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = ((-5) - ((6 + (-29)) % ((-9223372036854775807) / 46)))
+    i1 := ((-5) - ((6 + (-29)) % ((-9223372036854775807) / 46)))
     say("i1 = {i1}")
 
-    let i2 = (-38)
+    i2 := (-38)
     say("i2 = {i2}")
 
     if ((true or false) and "a".is_empty()):
@@ -20,7 +20,7 @@ export fn main() Int:
     else:
         say(("x" + "brace\{s\}"))
 
-    let b3 = true
+    b3 := true
     say("b3 = {b3}")
 
     if true:

@@ -16,13 +16,13 @@ fn update[K: Hashable, V](var values: Map[K, V], key: K, value: V) Map[K, V]:
     return values.clone()
 
 test "issue 187 programs need no collection imports":
-    let shapes = [Shape.Circle(1.0)]
+    shapes := [Shape.Circle(1.0)]
     try expect_false(shapes.length() != 1 or count(["/var", "log"]) != 2)
 
     var rolls: List[Int] = []
 
     for i in 0..5:
-        if let n = roll(i):
+        if n := roll(i):
             rolls.append(n)
         else:
             return fail("roll")
@@ -33,12 +33,12 @@ test "issue 187 programs need no collection imports":
     points.add(Point(1, 2), 7)
     try expect_equal(points[Point(1, 2)], 7)
 
-    let nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
+    nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
     try expect_equal(nested[1]["a"].length(), 0)
 
 test "map add retains clones and insertion order":
     var values = {"a": 1, "b": 2}
-    let copy = values.clone()
+    copy := values.clone()
     values.add("a", 3)
     values.add("c", 4)
     values.add(value: 5, key: "b")

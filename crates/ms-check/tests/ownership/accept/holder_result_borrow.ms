@@ -12,13 +12,13 @@ type Holder:
     gate: Gate
 
 fn relay[T](source: T!) T!:
-    let gate = Gate(1)
-    let _holder = Holder(gate)
+    gate := Gate(1)
+    _holder := Holder(gate)
     return source
 
 export fn main() Int:
-    let original: String! = error(Error("body", kind: "EBODY"))
-    let returned = relay(original)
+    original: String! = error(Error("body", kind: "EBODY"))
+    returned := relay(original)
     print(returned.err().kind.get(""))
     print(original.err().kind.get(""))
     return 0

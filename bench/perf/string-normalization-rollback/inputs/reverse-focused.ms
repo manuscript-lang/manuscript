@@ -14,7 +14,7 @@ fn iterations_for(size: Int) Int:
     return 100000
 
 fn reverse_sum(text: String, expected: String) Int:
-    let output = text.reverse()
+    output := text.reverse()
     if output != expected: return -1
 
     return output.byte_length() + 17
@@ -41,38 +41,38 @@ fn measure(name: String, text: String, expected: String) Int:
         and name != "early_unicode_1048576"
     ): return 0
 
-    let expected_sum = expected.byte_length() + 17
+    expected_sum := expected.byte_length() + 17
     if reverse_sum(text, expected) != expected_sum: return 1
 
-    let iterations = iterations_for(text.byte_length())
+    iterations := iterations_for(text.byte_length())
     var checksum = 0
-    let started = monotonic()
+    started := monotonic()
     for iteration in 0..iterations:
         checksum += reverse_sum(text, expected)
 
-    let elapsed = monotonic().difference(started).to_nanoseconds()
+    elapsed := monotonic().difference(started).to_nanoseconds()
     if checksum != expected_sum * iterations: return 1
 
-    let _written = stdout().write(
+    _written := stdout().write(
         "{name},{text.byte_length()},{iterations},{elapsed},{checksum}\n"
     )
     return 0
 
 export fn main() Int:
-    let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
+    _header := stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
 
     for pattern in [
         Pattern("ascii_mixed", "abcDE09_", "_90EDcba"),
         Pattern("ascii_controls", "a\u{0}b\tc\nd!", "!d\nc\tb\u{0}a")
     ]:
         for length in [0, 1, 2, 7, 8, 15, 16, 17, 31, 32, 63, 64, 128, 4096, 1048576]:
-            let copies = length / 8
-            let tail = length % 8
-            let text = (
+            copies := length / 8
+            tail := length % 8
+            text := (
                 pattern.forward.repeat(copies).get()
                 + pattern.forward.slice_scalars(0, tail).get()
             )
-            let expected = (
+            expected := (
                 pattern.backward.slice_scalars(8 - tail, 8).get()
                 + pattern.backward.repeat(copies).get()
             )
@@ -90,12 +90,12 @@ export fn main() Int:
         Pattern("replacement", "\u{fffd}", "\u{fffd}")
     ]:
         for copies in [1, 2, 8, 32, 256, 4096, 65536]:
-            let text = pattern.forward.repeat(copies).get()
-            let expected = pattern.backward.repeat(copies).get()
+            text := pattern.forward.repeat(copies).get()
+            expected := pattern.backward.repeat(copies).get()
             if measure("{pattern.name}_copies{copies}", text, expected) != 0: return 1
 
     for length in [4096, 1048576]:
-        let ascii = "x".repeat(length).get()
+        ascii := "x".repeat(length).get()
         if measure("late_unicode_{length}", ascii + "é日😀", "😀日é" + ascii) != 0: return 1
         if measure("early_unicode_{length}", "é日😀" + ascii, ascii + "😀日é") != 0: return 1
 

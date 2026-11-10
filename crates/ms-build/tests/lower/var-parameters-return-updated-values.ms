@@ -15,7 +15,7 @@ fn add(var xs: List[Int], v: Int) Unit:
 
 export fn main() Int:
     var c = Counter(total: 1)
-    let a = c.bump(4)
+    a := c.bump(4)
     var l = [1]
     add(var l, a)
     return l.length()

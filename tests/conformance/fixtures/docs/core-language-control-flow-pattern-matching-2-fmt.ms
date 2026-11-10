@@ -7,7 +7,7 @@ enum Cents:
     Invalid
 
 fn total(cents: Cents) Result[Int, Error]:
-    let amount = match cents:
+    amount := match cents:
         Valid(value):
             value
         Invalid:

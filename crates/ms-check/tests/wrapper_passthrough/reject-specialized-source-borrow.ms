@@ -10,6 +10,6 @@ impl Box:
 
 fn bad() Int:
     var box = Box([1, 2])
-    let view = box.read[Int](0)
+    view := box.read[Int](0)
     box.change[Int](0)
     return view.length()

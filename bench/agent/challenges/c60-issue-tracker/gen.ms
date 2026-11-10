@@ -2,8 +2,8 @@
 // local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c60
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-let WF = "workflow\n  # simple board\n  initial: todo\n  todo -> doing, wontfix\n  doing -> review requires assignee+points, todo\n  review -> done requires labels, doing\n  final: done, wontfix\nend\n"
-let SEED = (
+WF := "workflow\n  # simple board\n  initial: todo\n  todo -> doing, wontfix\n  doing -> review requires assignee+points, todo\n  review -> done requires labels, doing\n  final: done, wontfix\nend\n"
+SEED := (
     WF
     + "actor ann\ntoday 2024-03-10\ncreate \"Fix login bug\" priority=high points=5 labels=Bug,auth due=2024-03-01 assignee=bob\ncreate \"Add dark mode\" points=3 labels=ui due=2024-04-01\ncreate \"Refactor database layer\" priority=low points=13 labels=tech,db assignee=Carl\nactor dave\ncreate \"Write docs\" assignee=bob labels=docs due=2024-03-10\ncreate \"Crash on save\" priority=critical points=2 labels=bug,ui assignee=carl due=2024-02-20\ncreate \"Upgrade deps\" priority=medium labels=tech\nmove 1 doing\nmove 5 doing\nactor eve\nmove 4 doing\ncomment 1 reproduced on staging\ncomment 3 needs design review\n"
 )
@@ -218,7 +218,7 @@ export fn gen_c60() Unit:
         "\nview save top priority>=medium sort -priority limit 2\nview run top\nview run top sort id\nview run top limit 5\nview run top sort -id limit 1\nview run top sort bogus\nview run top limit zz\nview run top limit\nview show top\n"
     )
 
-    let examples = [
+    examples := [
         cs.make(
             "ex-workflow",
             WF

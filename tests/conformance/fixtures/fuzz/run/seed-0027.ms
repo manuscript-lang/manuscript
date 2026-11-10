@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [23, (-15), (-9)]
+    l1 := [23, (-15), (-9)]
     say("l1 = {l1} len {l1.length()}")
 
-    let b2 = (
+    b2 := (
         ("{(-349096)}:" + "ms").is_empty()
         or ("  padded  ".upper() == "hello world")
     )
     say("b2 = {b2}")
 
-    let l3 = l1.concat(l1)
+    l3 := l1.concat(l1)
     say("l3 = {l3} len {l3.length()}")
 
     if (((-15570) + (-798682)) > 26):
@@ -26,19 +26,19 @@ export fn main() Int:
     else:
         say("brace\{s\}")
 
-    let b4 = (b2 and "delta".trim().is_empty())
+    b4 := (b2 and "delta".trim().is_empty())
     say("b4 = {b4}")
 
-    let i5 = 968408581873
+    i5 := 968408581873
     say("i5 = {i5}")
 
-    let s6 = ("{((-51057) + i5)}:" + "back\\slash".replace("42", "brace\{s\}").upper())
+    s6 := ("{((-51057) + i5)}:" + "back\\slash".replace("42", "brace\{s\}").upper())
     say("s6 = [{s6}]")
 
-    let b7 = false
+    b7 := false
     say("b7 = {b7}")
 
-    let l8 = [(-15), (-12), (-12)]
+    l8 := [(-15), (-12), (-12)]
     say("l8 = {l8} len {l8.length()}")
 
     if (b4 and (b4 or false)):
@@ -46,22 +46,22 @@ export fn main() Int:
     else:
         say("gamma")
 
-    let i9 = ((i5 + (-41)) + (-25))
+    i9 := ((i5 + (-41)) + (-25))
     say("i9 = {i9}")
     say(
         "{((601938 - i5) - (i5 / i9))} {((i5 % i9) + ((-34) % 29))} {(((601938 - i5) - (i5 / i9)) < ((i5 % i9) + ((-34) % 29)))} sum {((601938 - i5) - (i5 / i9)) + ((i5 % i9) + ((-34) % 29))}"
     )
 
-    let i10 = (((28 + (-42)) - (i9 + 226729)) + l1.get(2))
+    i10 := (((28 + (-42)) - (i9 + 226729)) + l1.get(2))
     say("i10 = {i10}")
 
-    let i11 = l3.length()
+    i11 := l3.length()
     say("i11 = {i11}")
 
-    let i12 = (((-i11) + (205636 * 32)) + 2)
+    i12 := (((-i11) + (205636 * 32)) + 2)
     say("i12 = {i12}")
 
-    let i13 = l8.get(2)
+    i13 := l8.get(2)
     say("i13 = {i13}")
     say(
         "{((44 - i13) * (i10 - i11))} {((i11 + i13) / ((-17) / i13))} {(((44 - i13) * (i10 - i11)) < ((i11 + i13) / ((-17) / i13)))} sum {((44 - i13) * (i10 - i11)) + ((i11 + i13) / ((-17) / i13))}"

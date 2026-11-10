@@ -23,7 +23,7 @@ fn valid_sku(text: String) Bool:
         return false
 
     for i in 0..text.length():
-        let c = text.get(i)
+        c := text.get(i)
         if not (("A" <= c and c <= "Z") or is_digit(c) or c == "-"):
             return false
 
@@ -34,7 +34,7 @@ fn valid_id(text: String) Bool:
         return false
 
     for i in 0..text.length():
-        let c = text.get(i)
+        c := text.get(i)
         if not (("a" <= c and c <= "z") or is_digit(c) or c == "-"):
             return false
 
@@ -48,14 +48,14 @@ fn parse_num(text: String, lo: Int, hi: Int) Optional[Int]:
         if not is_digit(text.get(i)):
             return none
 
-    let value = text.parse_int().get(0)
+    value := text.parse_int().get(0)
     if value < lo or value > hi:
         return none
 
     return some(value)
 
 fn money(cents: Int) String:
-    let frac = cents % 100
+    frac := cents % 100
     if frac < 10:
         return "{cents / 100}.0{frac}"
 
@@ -74,12 +74,12 @@ impl Shop:
         if not valid_sku(parts[1]):
             return "error: bad sku"
 
-        if let qty = parse_num(parts[2], 1, 100000):
-            let sku = parts[1]
+        if qty := parse_num(parts[2], 1, 100000):
+            sku := parts[1]
             if not self.price.contains(sku):
                 self.price[sku.clone()] = 0
 
-            let now = self.stock.get(sku).get(0) + qty
+            now := self.stock.get(sku).get(0) + qty
             self.stock[sku.clone()] = now
             return "ok {sku} stock={now}"
 
@@ -89,8 +89,8 @@ impl Shop:
         if parts.length() != 3:
             return "error: usage"
 
-        if let cents = parse_num(parts[2], 0, 10000000):
-            let sku = parts[1]
+        if cents := parse_num(parts[2], 0, 10000000):
+            sku := parts[1]
             if not self.price.contains(sku):
                 return "error: unknown sku {sku}"
 
@@ -103,18 +103,18 @@ impl Shop:
         if parts.length() < 3:
             return "error: usage"
 
-        let id = parts[1]
+        id := parts[1]
         if not valid_id(id):
             return "error: bad order id"
 
         var items = List[Item]()
 
         for i in 2..parts.length():
-            let pieces = parts[i].split(":")
+            pieces := parts[i].split(":")
             if pieces.length() != 2 or not valid_sku(pieces[0]):
                 return "error: bad item {parts[i]}"
 
-            if let qty = parse_num(pieces[1], 1, 100000):
+            if qty := parse_num(pieces[1], 1, 100000):
                 items.append(Item(pieces[0].clone(), qty))
             else:
                 return "error: bad item {parts[i]}"
@@ -132,7 +132,7 @@ impl Shop:
             if not self.price.contains(it.sku):
                 return "error: unknown sku {it.sku}"
 
-            let have = self.stock.get(it.sku).get(0)
+            have := self.stock.get(it.sku).get(0)
             if it.qty > have:
                 return "error: insufficient stock for {it.sku} (have {have}, need {it.qty})"
 
@@ -148,9 +148,9 @@ impl Shop:
         if parts.length() != 2:
             return "error: usage"
 
-        let id = parts[1]
+        id := parts[1]
 
-        if let o = self.orders.get(id).clone():
+        if o := self.orders.get(id).clone():
             if o.status == "shipped":
                 return "error: order {id} already shipped"
             if o.status == "cancelled":
@@ -167,9 +167,9 @@ impl Shop:
         if parts.length() != 2:
             return "error: usage"
 
-        let id = parts[1]
+        id := parts[1]
 
-        if let o = self.orders.get(id).clone():
+        if o := self.orders.get(id).clone():
             if o.status == "shipped":
                 return "error: order {id} already shipped"
             if o.status == "cancelled":
@@ -212,7 +212,7 @@ impl Shop:
         return lines.join("\n")
 
     var fn handle(parts: List[String]) String:
-        let cmd = parts[0]
+        cmd := parts[0]
         if cmd == "stock":
             return self.stock_cmd(parts)
         if cmd == "price":
@@ -242,11 +242,11 @@ export fn main() Int:
     var shop = Shop(Map[String, Int](), Map[String, Int](), Map[String, Order]())
 
     for line in read_lines(stdin()).get():
-        let parts = line.split(" ")
+        parts := line.split(" ")
         if is_blank(parts):
             continue
 
-        let out = shop.handle(parts)
+        out := shop.handle(parts)
         stdout().write("{out}\n").get()
 
     return 0

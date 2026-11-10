@@ -74,7 +74,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding fs; declare it with 'let fs = ...' before use, define 'fn fs(...) T:', or import it from a module",
+        "message": "unknown binding fs; declare it with 'fs := ...' before use, define 'fn fs(...) T:', or import it from a module",
         "position": {
           "file": "src/fsbench.ms",
           "line": 79,
@@ -86,7 +86,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/src/strings.ms:43:31: resolution: unknown or ambiguous member replace_all on String; did you mean 'replace'?\n    |\n 43 |                 n = (n + text.replace_all(\"word\", \"w\").get(\"\").length())\n    |                               ^\n<DIR>/src/binarybench.ms:36:29: type: expected UInt8, found Int (in argument 'value' of bb.append)\n    |\n 36 |                 bb.append(j % 256)\n    |                             ^\n<DIR>/src/fsbench.ms:2:8: resolution: module does not export FileSystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 2 | import FileSystem, list, read_file, stat, temporary from \"@std/os/fs.ms\"\n   |        ^^^^^^^^^^\n<DIR>/src/fsbench.ms:5:12: resolution: unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it\n   |\n 5 | fn run(fs: FileSystem, root: String) Unit:\n   |            ^\n<DIR>/src/fsbench.ms:79:13: resolution: unknown binding fs; declare it with 'let fs = ...' before use, define 'fn fs(...) T:', or import it from a module\n    |\n 79 |         run(fs, dir.path())\n    |             ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/src/strings.ms:43:31: resolution: unknown or ambiguous member replace_all on String; did you mean 'replace'?\n    |\n 43 |                 n = (n + text.replace_all(\"word\", \"w\").get(\"\").length())\n    |                               ^\n<DIR>/src/binarybench.ms:36:29: type: expected UInt8, found Int (in argument 'value' of bb.append)\n    |\n 36 |                 bb.append(j % 256)\n    |                             ^\n<DIR>/src/fsbench.ms:2:8: resolution: module does not export FileSystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 2 | import FileSystem, list, read_file, stat, temporary from \"@std/os/fs.ms\"\n   |        ^^^^^^^^^^\n<DIR>/src/fsbench.ms:5:12: resolution: unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it\n   |\n 5 | fn run(fs: FileSystem, root: String) Unit:\n   |            ^\n<DIR>/src/fsbench.ms:79:13: resolution: unknown binding fs; declare it with 'fs := ...' before use, define 'fn fs(...) T:', or import it from a module\n    |\n 79 |         run(fs, dir.path())\n    |             ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

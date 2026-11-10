@@ -18,7 +18,7 @@ fn shipping(subtotal: Int) Int:
     return 500
 
 fn order_total(prices: List[Int]) Int:
-    let subtotal = prices.sum()
+    subtotal := prices.sum()
     return subtotal + shipping(subtotal)
 
 test "small orders pay shipping":

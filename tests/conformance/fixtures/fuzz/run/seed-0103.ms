@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -28,33 +28,33 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let l1 = [(-27), 10, 27, (-25), 12]
+    l1 := [(-27), 10, 27, (-25), 12]
     say("l1 = {l1} len {l1.length()}")
     say("fib(35) = {fib(35)}")
 
-    let i2 = (-40)
+    i2 := (-40)
     say("i2 = {i2}")
 
-    let f3 = ((409.433 * (638.343 + 5.5)) / (0.0 * (373.098 * 253.371)))
+    f3 := ((409.433 * (638.343 + 5.5)) / (0.0 * (373.098 * 253.371)))
     say("f3 = {f3}")
 
-    let i4 = ((i2 - ((-856867984659) / i2)) * ((i2 % i2) % (i2 + 35)))
+    i4 := ((i2 - ((-856867984659) / i2)) * ((i2 % i2) % (i2 + 35)))
     say("i4 = {i4}")
 
-    let i5 = (-4)
+    i5 := (-4)
     say("i5 = {i5}")
 
-    let s6 = ("{(-(-808402999828))}:" + "日本語")
+    s6 := ("{(-(-808402999828))}:" + "日本語")
     say("s6 = [{s6}]")
     say("gcd(4058, 3244) = {gcd(4058, 3244)}")
 
-    let s7 = (("{(i2 + i2)}:" + ("{(-12)}:" + "")) + s6.trim())
+    s7 := (("{(i2 + i2)}:" + ("{(-12)}:" + "")) + s6.trim())
     say("s7 = [{s7}]")
 
-    let i8 = (10 - l1.get(1))
+    i8 := (10 - l1.get(1))
     say("i8 = {i8}")
 
-    let i9 = ((97925 * (i4 * i5)) * (((-43) + (-161369)) + (-49)))
+    i9 := ((97925 * (i4 * i5)) * (((-43) + (-161369)) + (-49)))
     say("i9 = {i9}")
 
     var acc10 = 0
@@ -67,13 +67,13 @@ export fn main() Int:
 
     say("acc10 = {acc10}")
 
-    let i11 = i8
+    i11 := i8
     say("i11 = {i11}")
 
-    let s12 = s6.trim()
+    s12 := s6.trim()
     say("s12 = [{s12}]")
     say("gcd(3384, 4220) = {gcd(3384, 4220)}")
 
-    let i13 = 529666518520
+    i13 := 529666518520
     say("i13 = {i13}")
     return 0

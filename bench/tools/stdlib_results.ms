@@ -29,17 +29,17 @@ fn finite(value: Float) Bool:
     return value >= 0.0 and value < 1.0e300
 
 fn valid_optional(value: Float?) Bool:
-    if let v = value: return finite(v)
+    if v := value: return finite(v)
 
     return true
 
 // The passed cases of one `ms bench --json` document, in order.
 export fn read_cases(output: String) List[Bench]!:
-    let parsed = parse[Document](output)
+    parsed := parse[Document](output)
     if parsed.is_error(): return invalid("invalid benchmark document")
 
-    let doc = parsed.get(Document(List[Bench](), none))
-    let diagnostics = doc.diagnostics.get([])
+    doc := parsed.get(Document(List[Bench](), none))
+    diagnostics := doc.diagnostics.get([])
     if not diagnostics.is_empty(): return invalid(
         diagnostics.map(fn d: d.message.clone()).join("; ")
     )
@@ -54,7 +54,7 @@ export fn read_cases(output: String) List[Bench]!:
             "{bench.name}: {bench.status}: {bench.failure.get("")}"
         )
 
-        let stats = bench.stats.get(Stats(0, none, none, -1.0, none, none, none, none))
+        stats := bench.stats.get(Stats(0, none, none, -1.0, none, none, none, none))
         if stats.operations <= 0: return invalid("invalid operations: {bench.name}")
         if (stats.iterations.get(1) <= 0) or (stats.samples.get(1) <= 0):
             return invalid("invalid iterations or samples: {bench.name}")
@@ -86,9 +86,9 @@ export fn case_labels(names: List[String]) Map[String, String]:
     var short = Map[String, String]()
 
     for name in names:
-        let parts = name.split("::")
-        let s = parts.slice(1, parts.length()).get([]).join("::")
-        let label = if parts.length() > 1: s else: name.clone()
+        parts := name.split("::")
+        s := parts.slice(1, parts.length()).get([]).join("::")
+        label := if parts.length() > 1: s else: name.clone()
         short.add(name.clone(), label.clone())
         counts.add(label.clone(), counts.get_or(label, 0) + 1)
 
@@ -96,7 +96,7 @@ export fn case_labels(names: List[String]) Map[String, String]:
     var distinct = Set[String]()
 
     for name in names:
-        let s = short.get_or(name, "")
+        s := short.get_or(name, "")
         labels.add(name.clone(), if counts.get_or(s, 0) == 1: s else: name.clone())
         distinct.add(labels.get_or(name, ""))
 

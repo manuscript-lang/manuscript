@@ -6,16 +6,16 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = "gamma"
+    s1 := "gamma"
     say("s1 = [{s1}]")
 
-    let f2 = 8.0e22
+    f2 := 8.0e22
     say("f2 = {f2}")
 
-    let fixed = 1
+    fixed := 1
     fixed = 2
 
     if (925330 >= (32 - 922195)):
@@ -23,6 +23,6 @@ export fn main() Int:
     else:
         say("hello world")
 
-    let b3 = (s1.reverse().starts_with(s1) or ((false and false) or (false and false)))
+    b3 := (s1.reverse().starts_with(s1) or ((false and false) or (false and false)))
     say("b3 = {b3}")
     return 0

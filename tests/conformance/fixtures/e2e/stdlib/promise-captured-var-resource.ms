@@ -23,6 +23,6 @@ fn use(var door: Door) Int!:
 // when its work ends and drops its names (`make leak-check` reports a block left behind).
 export fn main() Int:
     var door = Door(["front", "back"])
-    let moved = promise(fn: use(var door))
+    moved := promise(fn: use(var door))
     print("{moved.wait().get(0)}")
     return 0

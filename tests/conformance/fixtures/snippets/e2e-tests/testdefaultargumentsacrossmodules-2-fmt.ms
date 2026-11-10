@@ -8,6 +8,6 @@ fn private_value() Int:
     return 99
 
 test "defaults use their declaration module":
-    let copy = defaulted
+    copy := defaulted
     if defaulted() != 7 or copy() != 7 or defaulted(0) != 0:
         return fail("incorrect default scope")

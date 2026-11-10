@@ -10,9 +10,9 @@ Internet mail messages (RFC 5322): addresses, address lists, and message parsing
 message into `Headers` and body and decodes RFC 2047 encoded words on request.
 
     import parse_address, parse_message from "@std/net/mail.ms"
-    let sender = try parse_address("Ada Lovelace <ada@example.com>")
+    sender := try parse_address("Ada Lovelace <ada@example.com>")
     print(sender.name)              // "Ada Lovelace"
-    let mail = try parse_message(raw)
+    mail := try parse_message(raw)
     print(mail.headers.get("Subject").get(""))
 */
 
@@ -35,10 +35,10 @@ impl Address:
     fn to_text() String:
         if self.name.is_empty(): return self.address.clone()
 
-        let specials = self.name.contains_any("()<>[]:;@\\,.\"")
+        specials := self.name.contains_any("()<>[]:;@\\,.\"")
 
         if specials:
-            let escaped = self.name.replace("\\", "\\\\").replace("\"", "\\\"")
+            escaped := self.name.replace("\\", "\\\\").replace("\"", "\\\"")
             return "\"{escaped}\" <{self.address}>"
 
         return "{self.name} <{self.address}>"
@@ -46,13 +46,13 @@ impl Address:
 // Parses one mailbox: `addr`, `<addr>`, `Name <addr>` or `"Quoted, Name" <addr>`. Encoded words in
 // the name are decoded. Comments are not supported.
 export fn parse_address(text: String) Address!:
-    let trimmed = text.trim()
+    trimmed := text.trim()
     if trimmed.is_empty(): return error(Error("mail: invalid address", kind: "EBADMSG"))
 
     var name = ""
     var address = trimmed.clone()
 
-    if let open = trimmed.last_index_of("<"):
+    if open := trimmed.last_index_of("<"):
         if not trimmed.ends_with(">"): return error(
             Error("mail: invalid address", kind: "EBADMSG")
         )
@@ -78,11 +78,11 @@ export fn parse_address(text: String) Address!:
     return ok(Address(name: decode_words(name), address: address))
 
 fn valid_address(address: String) Bool:
-    let at = address.last_index_of("@")
+    at := address.last_index_of("@")
     if at.is_none(): return false
 
-    let local = address.take(at.get(0))
-    let domain = address.drop(at.get(0) + 1)
+    local := address.take(at.get(0))
+    domain := address.drop(at.get(0) + 1)
     if local.is_empty() or domain.is_empty(): return false
 
     return not address.contains_any(" \t<>,;")
@@ -135,18 +135,18 @@ export fn parse_message(raw: String) Message!:
 
     var head = ""
     var body = ""
-    let crlf = raw.index_of("\r\n\r\n")
-    let lf = raw.index_of("\n\n")
+    crlf := raw.index_of("\r\n\r\n")
+    lf := raw.index_of("\n\n")
 
     // The first blank line ends the headers, whichever line ending it uses.
     var at = -1
     var skip = 0
 
-    if let found = crlf:
+    if found := crlf:
         at = found
         skip = 4
 
-    if let found = lf:
+    if found := lf:
         if at < 0 or found < at:
             at = found
             skip = 2
@@ -157,7 +157,7 @@ export fn parse_message(raw: String) Message!:
     else:
         head = raw.clone()
 
-    let headers = parse_headers(head)
+    headers := parse_headers(head)
     if headers.is_error(): return error(Error("mail: invalid message", kind: "EBADMSG"))
 
     return ok(Message(headers: headers.get(), body: body))
@@ -169,7 +169,7 @@ export fn decode_words(text: String) String:
 
     // Splitting at `?` once keeps decoding linear. A word starts where a field ends in `=` and takes the
     // next three fields (charset, encoding, payload); the field after them must start with the closing `=`.
-    let fields = text.split("?")
+    fields := text.split("?")
     var out = StringBuilder()
     var head = StringBuilder()
     var previous_encoded = false
@@ -188,7 +188,7 @@ export fn decode_words(text: String) String:
 
         head.append(seg.take(seg.scalar_length() - 1))
 
-        let literal = head.drain()
+        literal := head.drain()
         var decoded: String? = none
         if index + 4 < fields.length() and fields[index + 4].starts_with("="):
             decoded = decode_word(
@@ -214,12 +214,12 @@ export fn decode_words(text: String) String:
     return out.build()
 
 fn decode_word(charset: String, encoding: String, payload: String) String?:
-    let set = charset.lower()
-    let kind = encoding.upper()
+    set := charset.lower()
+    kind := encoding.upper()
     var bytes = "".to_bytes()
 
     if kind == "B":
-        let decoded = base64_decode(payload)
+        decoded := base64_decode(payload)
         if decoded.is_error(): return none
 
         bytes = decoded.get()
@@ -235,16 +235,16 @@ fn decode_word(charset: String, encoding: String, payload: String) String?:
 
 fn q_decode(payload: String) Bytes:
     var out = BytesBuilder()
-    let chars = payload.chars()
+    chars := payload.chars()
     var i = 0
 
     while i < chars.length():
-        let c = chars[i]
+        c := chars[i]
 
         if c == "_":
             out.append(32)
         else if c == "=" and i + 2 < chars.length():
-            let value = parse_int("{chars[i + 1]}{chars[i + 2]}", 16)
+            value := parse_int("{chars[i + 1]}{chars[i + 2]}", 16)
 
             if value.is_ok():
                 out.append(value.get(0).to_uint8().get(0))

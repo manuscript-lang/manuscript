@@ -13,7 +13,7 @@ fn is_digits(text: String) Bool:
         return false
 
     for i in range(0, text.length()):
-        let code = text.scalar_at(i)
+        code := text.scalar_at(i)
         if code < 48 or code > 57:
             return false
 
@@ -21,11 +21,11 @@ fn is_digits(text: String) Bool:
 
 // Converts "12", "12.5" or "0.07" into cents as digits; none when the text is not a valid amount.
 fn amount_cents(text: String) Optional[String]:
-    let parts = text.split(".")
+    parts := text.split(".")
     if parts.length() > 2:
         return none
 
-    let whole = parts[0]
+    whole := parts[0]
     var fraction = ""
 
     if parts.length() == 2:
@@ -56,14 +56,14 @@ fn parse_line(line: String) Optional[Record]:
     var amount = ""
 
     if line.starts_with("\""):
-        let quoted = line.split("\"")
+        quoted := line.split("\"")
         if quoted.length() != 3 or not quoted[2].starts_with(","):
             return none
 
         category = quoted[1]
         amount = quoted[2].slice_scalars(1, quoted[2].length()).get()
     else:
-        let fields = line.split(",")
+        fields := line.split(",")
         if fields.length() != 2:
             return none
 
@@ -73,7 +73,7 @@ fn parse_line(line: String) Optional[Record]:
     if category.length() == 0:
         return none
 
-    if let cents = amount_cents(amount):
+    if cents := amount_cents(amount):
         return some(Record(category: category, cents: cents))
     else:
         return none
@@ -106,7 +106,7 @@ fn format_total(cents: String) String:
     while padded.length() < 3:
         padded = "0" + padded
 
-    let n = padded.length()
+    n := padded.length()
     return (
         padded.slice_scalars(0, n - 2).get()
         + "."
@@ -114,7 +114,7 @@ fn format_total(cents: String) String:
     )
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var totals = SortedMap[String, String]()
     var skipped = 0
 
@@ -122,7 +122,7 @@ export fn main() Int:
         if line.trim().length() == 0:
             continue
 
-        if let record = parse_line(line):
+        if record := parse_line(line):
             totals.add(
                 record.category,
                 add_digits(

@@ -49,15 +49,15 @@ impl Commands for Override:
         return error(Error("process: service unavailable", kind: "EAGAIN"))
 
 test "concrete implementation defaults and interface defaults stay distinct":
-    let service = Override("custom".to_bytes())
-    let concrete = service.run
+    service := Override("custom".to_bytes())
+    concrete := service.run
     try expect_equal((try concrete("fake", [])).stdout, service.input)
 
-    let commands: Commands = service
-    let viewed = commands.run
+    commands: Commands = service
+    viewed := commands.run
     try expect_equal((try viewed("fake", [])).stdout.length(), 0)
 
-    let explicit = "explicit".to_bytes()
+    explicit := "explicit".to_bytes()
     try expect_equal(
         (try viewed("fake", [], RunOptions(input: explicit.clone()))).stdout, explicit
     )
@@ -67,7 +67,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     first.delimiter = ";"
     first.line_ending = "\r\n"
 
-    let second = CsvOptions()
+    second := CsvOptions()
     try expect_false(
         (
             first.delimiter != ";"
@@ -81,13 +81,13 @@ test "CSV defaults are fresh and explicit options retain their meaning":
     try expect_equal((try stringify([["a", "b"]], first)), "a;b\r\n")
     try expect_equal((try parse("a,b\n")), [["a", "b"]])
 
-    let bound = stringify
+    bound := stringify
     try expect_equal((try bound([["a", "b"]])), "a,b\n")
 
-    let typed = forward(stringify)
+    typed := forward(stringify)
     try expect_equal((try typed([["a", "b"]], second, none)), "a,b\n")
 
-    let limited: List[List[String]]! = error(
+    limited: List[List[String]]! = error(
         Error("CSV: limit exceeded", kind: "EOVERFLOW")
     )
     try expect_false(
@@ -97,11 +97,11 @@ test "CSV defaults are fresh and explicit options retain their meaning":
         )
     )
 
-    let invalid: String! = error(Error("CSV: invalid input", kind: "EINVAL"))
+    invalid: String! = error(Error("CSV: invalid input", kind: "EINVAL"))
     try expect_equal(stringify([["a"]], CsvOptions("")), invalid)
 
 test "Base64 defaults support stored functions and explicit alphabets":
-    let bytes = Bytes([255])
+    bytes := Bytes([255])
     try expect_false(
         (
             base64_encode(bytes) != "/w=="
@@ -110,11 +110,11 @@ test "Base64 defaults support stored functions and explicit alphabets":
     )
     try expect_equal(base64_encode(bytes, true), "_w==")
 
-    let encode = base64_encode
-    let copied = base64_encode
+    encode := base64_encode
+    copied := base64_encode
     try expect_equal(copied(bytes), "/w==")
 
-    let typed: fn(Bytes, Bool, Bool) String = encode
+    typed: fn(Bytes, Bool, Bool) String = encode
     try expect_equal(typed(bytes, false, true), "/w==")
     try expect_false(
         (
@@ -123,31 +123,31 @@ test "Base64 defaults support stored functions and explicit alphabets":
         )
     )
 
-    let decode = base64_decode
+    decode := base64_decode
     try expect_equal((try decode("/w==", max_bytes: 1)), bytes)
 
-    let invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+    invalid: Bytes! = error(Error("encoding: invalid data", kind: "EBADMSG"))
     try expect_equal(base64_decode("_w=="), invalid)
 
-    let limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+    limited: Bytes! = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
     try expect_equal(base64_decode("/w==", max_bytes: 0), limited)
 
 test "Commands defaults cross concrete bound view and generic boundaries":
-    let capture = Capture("x".to_bytes())
-    let bound = capture.run
+    capture := Capture("x".to_bytes())
+    bound := capture.run
     try expect_equal((try bound("fake", [])).stdout.length(), 0)
     try expect_equal((try capture.run("fake", [])).stdout.length(), 0)
 
-    let view: Commands = Capture("x".to_bytes())
-    let viewed = view.run
+    view: Commands = Capture("x".to_bytes())
+    viewed := view.run
     try expect_equal((try viewed("fake", [])).stdout.length(), 0)
     try expect_equal((try generic_run(Capture("x".to_bytes()))).length(), 0)
 
-    let input = Bytes([42])
-    let output = (try view.run("fake", [], RunOptions(input: input.clone()))).stdout
+    input := Bytes([42])
+    output := (try view.run("fake", [], RunOptions(input: input.clone()))).stdout
     try expect_equal(output, input)
 
-    let forwarded = forward(view.run)
+    forwarded := forward(view.run)
     try expect_equal(
         (
             try forwarded("fake", [], RunOptions(input: input.clone()))
@@ -155,6 +155,6 @@ test "Commands defaults cross concrete bound view and generic boundaries":
         42
     )
 
-    let invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
-    let native = run
+    invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
+    native := run
     try expect_equal(native("", []).wait(), invalid)

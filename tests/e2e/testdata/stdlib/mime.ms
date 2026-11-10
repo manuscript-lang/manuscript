@@ -13,7 +13,7 @@ import (
 ) from "@std/net/mime.ms"
 
 test "media types parse and format":
-    let media = parse_media_type("Text/HTML; Charset=\"utf-8\"; q=\"a\\\"b\"").get()
+    media := parse_media_type("Text/HTML; Charset=\"utf-8\"; q=\"a\\\"b\"").get()
     try expect_equal(media.essence, "text/html")
     try expect_equal(media.params.get("charset").get(""), "utf-8")
     try expect_equal(media.params.get("q").get(""), "a\"b")
@@ -31,10 +31,10 @@ test "an escaped closing quote does not end a quoted parameter":
     try expect_true(parse_media_type("text/plain; name=\"x\"y").is_error())
     try expect_true(parse_media_type("text/plain; name=\"").is_error())
 
-    let pair = parse_media_type("text/plain; name=\"x\\\"y\"").get()
+    pair := parse_media_type("text/plain; name=\"x\\\"y\"").get()
     try expect_equal(pair.params.get("name").get(""), "x\"y")
 
-    let slash = parse_media_type("text/plain; name=\"x\\\\\"").get()
+    slash := parse_media_type("text/plain; name=\"x\\\\\"").get()
     try expect_equal(slash.params.get("name").get(""), "x\\")
 
 test "extension table maps both ways":
@@ -44,7 +44,7 @@ test "extension table maps both ways":
     try expect_equal(extension_for_media_type("image/svg+xml; x=y").get(""), ".svg")
 
 test "headers fold and look up ignoring case":
-    let headers = parse_headers(
+    headers := parse_headers(
         "Subject: hello\r\n  world\r\nX-Tag: a\r\nx-tag: b\r\n\r\nbody: no"
     ).get()
     try expect_equal(headers.get("subject").get(""), "hello world")
@@ -54,15 +54,15 @@ test "headers fold and look up ignoring case":
     try expect_true(parse_headers(" folded first").is_error())
 
 test "multipart round-trips fields and files":
-    let parts = [
+    parts := [
         form_part("title", "Hello".to_bytes()),
         form_part(
             "upload", "line1\r\nline2".to_bytes(), filename: "a b.txt",
             content_type: "text/plain"
         )
     ]
-    let body = encode_multipart(parts, "XyZ")
-    let back = parse_multipart(body, "XyZ").get()
+    body := encode_multipart(parts, "XyZ")
+    back := parse_multipart(body, "XyZ").get()
     try expect_equal(back.length(), 2)
     try expect_equal(back[0].name, "title")
     try expect_equal(back[0].data.decode_utf8().get(""), "Hello")
@@ -80,13 +80,13 @@ test "multipart rejects a missing closing delimiter":
 
 test "multipart accepts only transport padding before delimiter line endings":
     for padding in ["", " ", "\t", " \t \t"]:
-        let body = "--b{padding}\r\nX-Label: first\r\n\r\n \tpayload \r\n--b{padding}\r\n\r\n\r\n--b--{padding}\r\nepilogue".to_bytes()
-        let parts = try parse_multipart(body, "b")
+        body := "--b{padding}\r\nX-Label: first\r\n\r\n \tpayload \r\n--b{padding}\r\n\r\n\r\n--b--{padding}\r\nepilogue".to_bytes()
+        parts := try parse_multipart(body, "b")
         try expect_equal(parts.length(), 2)
         try expect_equal(parts[0].headers.get("X-Label"), "first")
         try expect_equal(parts[0].data, " \tpayload ".to_bytes())
         try expect_equal(parts[1].data, "".to_bytes())
 
     for padding in ["x", "\n", "\u{b}", "\u{a0}", "\r"]:
-        let body = "--b{padding}\r\n\r\nx\r\n--b--\r\n".to_bytes()
+        body := "--b{padding}\r\n\r\nx\r\n--b--\r\n".to_bytes()
         try expect_equal(parse_multipart(body, "b").err().kind, "EBADMSG")

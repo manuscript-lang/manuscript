@@ -7,17 +7,17 @@ import milliseconds, seconds, sleep from "@std/time.ms"
 // heap value in every frame, so cancelling it unwinds across grown segments (`make leak-check`
 // reports any block the unwind leaves behind).
 fn descend(n: Int) Int!:
-    let label = "frame {n}"
-    let parts = [label.clone(), "x"]
+    label := "frame {n}"
+    parts := [label.clone(), "x"]
     if n == 0:
         try sleep(seconds(600)).wait()
 
-    let below = try descend(n - 1)
+    below := try descend(n - 1)
     return ok(below + parts.length())
 
 export fn main() Int:
-    let deep = promise(fn: descend(20000))
-    let _ = sleep(milliseconds(200)).wait()
+    deep := promise(fn: descend(20000))
+    _ := sleep(milliseconds(200)).wait()
     deep.cancel()
     print("{deep.wait().is_error()}")
     return 0

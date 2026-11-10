@@ -12,7 +12,7 @@ export fn main() Int:
     for i in 0..8000000:
         data.append(i)
 
-    let m = Matrix(data: data)
+    m := Matrix(data: data)
     var total = 0
     for round in 0..50:
         total += apply(fn i: m.data[(i + round) % 8000000], 10)

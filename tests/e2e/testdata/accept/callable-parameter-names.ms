@@ -11,15 +11,15 @@ type Pair[T]:
     right: T
 
 test "callable identity uses ordered types rather than parameter names":
-    let selected = choose(first, second)
+    selected := choose(first, second)
     try expect_equal(selected(3), 4)
     try expect_equal(choose(second, first)(3), 5)
 
-    let callbacks = [first, second]
+    callbacks := [first, second]
     try expect_equal(callbacks[0](3), 4)
     try expect_equal(callbacks[1](3), 5)
 
-    let pair = Pair(first, second)
+    pair := Pair(first, second)
     try expect_equal(pair.left(3), 4)
     try expect_equal(pair.right(3), 5)
 
@@ -27,7 +27,7 @@ test "callable identity uses ordered types rather than parameter names":
     callback = second
     try expect_equal(callback(3), 5)
 
-    let factory = fn(flag: Bool):
+    factory := fn(flag: Bool):
         if flag: return first
 
         return second

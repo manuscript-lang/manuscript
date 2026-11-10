@@ -32,8 +32,8 @@ fn sum(chain: Chain) Int:
         Link(value, rest): return value + sum(rest)
 
 test "payloadless cases survive clone, equality and drop":
-    let tree = build(10)
-    let copy = tree.clone()
+    tree := build(10)
+    copy := tree.clone()
     count(copy.clone()) | try expect_equal(expected: count(tree.clone()))
     (copy == tree) | try expect_equal(expected: true)
     (Leaf == Gap) | try expect_equal(expected: false)
@@ -46,6 +46,6 @@ test "chains end in a shared block":
         chain = Link(i, chain)
         i += 1
 
-    let copy = chain.clone()
+    copy := chain.clone()
     sum(copy) | try expect_equal(expected: 499500)
     sum(chain.clone()) | try expect_equal(expected: 499500)

@@ -2,9 +2,9 @@ import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
 // Kinds of script entries.
-let SAME = 0
-let DEL = 1
-let INS = 2
+SAME := 0
+DEL := 1
+INS := 2
 
 fn range_str(start: Int, len: Int) String:
     if len == 1:
@@ -49,16 +49,16 @@ fn emit_hunk(
             out.append("+{texts[k]}")
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
-    let hdr = lines[0].split(" ")
-    let name_a = hdr[0].clone()
-    let name_b = hdr[1].clone()
-    let ctx = hdr[2].parse_int().get(0)
-    let n = hdr[3].parse_int().get(0)
-    let m = hdr[4].parse_int().get(0)
+    lines := read_lines(stdin()).get()
+    hdr := lines[0].split(" ")
+    name_a := hdr[0].clone()
+    name_b := hdr[1].clone()
+    ctx := hdr[2].parse_int().get(0)
+    n := hdr[3].parse_int().get(0)
+    m := hdr[4].parse_int().get(0)
 
     // A line i is lines[1 + i]; B line j is lines[1 + n + j].
-    let w = m + 1
+    w := m + 1
     var table = List[Int](reserve: (n + 1) * w)
     for k in 0..(n + 1) * w:
         table.append(0)
@@ -72,8 +72,8 @@ export fn main() Int:
             if lines[1 + i] == lines[1 + n + j]:
                 table[i * w + j] = table[(i + 1) * w + j + 1] + 1
             else:
-                let down = table[(i + 1) * w + j]
-                let right = table[i * w + j + 1]
+                down := table[(i + 1) * w + j]
+                right := table[i * w + j + 1]
                 table[i * w + j] = if down >= right: down else: right
 
             j -= 1
@@ -102,7 +102,7 @@ export fn main() Int:
             texts.append(lines[1 + n + j].clone())
             j += 1
 
-    let total = kinds.length()
+    total := kinds.length()
 
     // ia[p]: A lines before script entry p; jb[p]: B lines before entry p.
     var ia = List[Int]()
@@ -133,8 +133,8 @@ export fn main() Int:
             else if p - last - 1 <= 2 * ctx:
                 last = p
             else:
-                let s = if first - ctx > 0: first - ctx else: 0
-                let e = if last + ctx < total - 1: last + ctx else: total - 1
+                s := if first - ctx > 0: first - ctx else: 0
+                e := if last + ctx < total - 1: last + ctx else: total - 1
                 emit_hunk(kinds, texts, var ia, var jb, s, e, var out)
                 first = p
                 last = p
@@ -142,8 +142,8 @@ export fn main() Int:
         p += 1
 
     if first >= 0:
-        let s = if first - ctx > 0: first - ctx else: 0
-        let e = if last + ctx < total - 1: last + ctx else: total - 1
+        s := if first - ctx > 0: first - ctx else: 0
+        e := if last + ctx < total - 1: last + ctx else: total - 1
         emit_hunk(kinds, texts, var ia, var jb, s, e, var out)
 
     if out.length() == 0:

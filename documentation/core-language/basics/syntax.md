@@ -30,7 +30,7 @@ Calls take positional arguments, optional labels, or both; an unlabeled argument
 Expressions inside parentheses, brackets, or braces can span lines:
 
 ```manuscript
-let customer = Customer(
+customer := Customer(
     name: "Ada",
     active: true,
 )
@@ -40,7 +40,7 @@ Comments start with `//` and run to the end of the line (a trailing comment foll
 
 ```manuscript
 // A local binding can infer its type from the value.
-let count = 3
+count := 3
 ```
 
 ## Idiomatic Manuscript
@@ -52,8 +52,8 @@ Manuscript is written tersely: one idea per line, the standard form for each tas
 fn check(rows: List[String], limit: Int) String:
     if rows.is_empty(): return "empty"
     if rows.any(fn r: r.length() > limit): return "too long"
-    let blanks = rows.count(fn r: r.is_empty())
-    let kind = if blanks == 0: "dense" else: "sparse"
+    blanks := rows.count(fn r: r.is_empty())
+    kind := if blanks == 0: "dense" else: "sparse"
     for i in 0..rows.length():
         if rows[i] == "stop": return "stopped at {i}"
     print("{kind} {blanks}")
@@ -65,8 +65,8 @@ fn check(rows: List[String], limit: Int) String:
 - Read with `xs[i]`; count with `for i in 0..n:`; walk with `for x in xs:`; use `for _i in 0..n:` when the counter is unused.
 - Collections are built and tested with `any`, `all`, `count`, `sum`, `map`, `filter`, `fold`, `[0].repeated(n)`, `a.extend(b)` and `(0..n)`, not loops.
 - Conditions are `x`, `not x`, `xs.is_empty()`, `a.max(b)`.
-- A value chosen by a condition is `let x = if c: a else: b`.
-- An absent value is `o.get(d)`, `m.get_or(k, d)` or `if let v = o:`; a `Result` is unwrapped with `try`.
+- A value chosen by a condition is `x := if c: a else: b`.
+- An absent value is `o.get(d)`, `m.get_or(k, d)` or `if v := o:`; a `Result` is unwrapped with `try`.
 
 ## Module boundaries
 

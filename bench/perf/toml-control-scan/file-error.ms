@@ -10,11 +10,11 @@ fn diagnostic(text: String) String:
         error(cause): return cause.message
 
 export fn main() Int:
-    let args = arguments()
-    let path = args.get(0)
-    let text = read_file(path).wait().get().decode_utf8().get()
-    let count = args.get(1).parse_int().get()
-    let expected = diagnostic(text)
+    args := arguments()
+    path := args.get(0)
+    text := read_file(path).wait().get().decode_utf8().get()
+    count := args.get(1).parse_int().get()
+    expected := diagnostic(text)
 
     if count == 0:
         stdout().write(expected).get()
@@ -25,15 +25,15 @@ export fn main() Int:
         write_file(args.get(2), "ready").wait().get()
 
     var checksum = 0
-    let start = monotonic()
+    start := monotonic()
 
     for unused in 0..count:
-        let current = read_file(path).wait().get().decode_utf8().get()
-        let output = diagnostic(current)
+        current := read_file(path).wait().get().decode_utf8().get()
+        output := diagnostic(current)
         if output != expected: return 1
 
         checksum += output.byte_length()
 
-    let elapsed = monotonic().difference(start).to_nanoseconds()
+    elapsed := monotonic().difference(start).to_nanoseconds()
     print("{elapsed}\t{checksum}\t{expected.byte_length()}")
     return 0

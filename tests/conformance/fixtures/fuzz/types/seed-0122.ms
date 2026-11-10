@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -25,7 +25,7 @@ fn collatz(start: Int) Int:
 export fn main() Int:
     say("{((-23) % 13)} {(-44)} {(((-23) % 13) < (-44))} sum {((-23) % 13) + (-44)}")
 
-    let l1 = [22, (-2), 29, 26, 23]
+    l1 := [22, (-2), 29, 26, 23]
     say("l1 = {l1} len {l1.length()}")
 
     var acc2 = 0
@@ -41,7 +41,7 @@ export fn main() Int:
         "{((0 / (-39)) - (-394672826604))} {((-(-50)) - ((-36) % (-654058)))} {(((0 / (-39)) - (-394672826604)) < ((-(-50)) - ((-36) % (-654058))))} sum {((0 / (-39)) - (-394672826604)) + ((-(-50)) - ((-36) % (-654058)))}"
     )
 
-    let bad = [1, "two"]
+    bad := [1, "two"]
     say(
         "{(((-48) % 45) * (-39))} {(-927885746960)} {((((-48) % 45) * (-39)) < (-927885746960))} sum {(((-48) % 45) * (-39)) + (-927885746960)}"
     )

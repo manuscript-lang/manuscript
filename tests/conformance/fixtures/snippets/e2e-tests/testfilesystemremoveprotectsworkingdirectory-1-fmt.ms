@@ -12,7 +12,7 @@ export fn main() Int:
     if not refused(remove(path: ".", recursive: true)): return 2
     if not refused(remove(path: "child/..", recursive: true)): return 3
 
-    if let base = canonicalize("."):
+    if base := canonicalize("."):
         if not refused(remove(path: base, recursive: true)): return 4
     else:
         return 8

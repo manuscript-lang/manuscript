@@ -28,17 +28,17 @@ fn write_all(text: String) Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() Int:
-    let header = next_line().split(" ")
-    let name_a = header.get(0)
-    let name_b = header.get(1)
-    let context = header.get(2).parse_int().get(0)
-    let n = header.get(3).parse_int().get(0)
-    let m = header.get(4).parse_int().get(0)
-    let a = read_lines(n)
-    let b = read_lines(m)
+    header := next_line().split(" ")
+    name_a := header.get(0)
+    name_b := header.get(1)
+    context := header.get(2).parse_int().get(0)
+    n := header.get(3).parse_int().get(0)
+    m := header.get(4).parse_int().get(0)
+    a := read_lines(n)
+    b := read_lines(m)
 
     // table[i * width + j] holds L(i, j); row n and column m are all zero.
-    let width = m + 1
+    width := m + 1
     var table = List[Int]()
     for k in range(0, (n + 1) * width):
         table.append(0)
@@ -90,7 +90,7 @@ export fn main() Int:
                 j += 1
 
     // Group the changes into hunks as [start, end] ranges over the script.
-    let count = kinds.length()
+    count := kinds.length()
     var starts = List[Int]()
     var ends = List[Int]()
     var first = -1
@@ -119,8 +119,8 @@ export fn main() Int:
     out.append("+++ {name_b}")
 
     for h in range(0, starts.length()):
-        let s = starts.get(h)
-        let e = ends.get(h)
+        s := starts.get(h)
+        e := ends.get(h)
         var la = 0
         var lb = 0
 
@@ -130,8 +130,8 @@ export fn main() Int:
             if kinds.get(k) != 1:
                 lb += 1
 
-        let sa = a_before.get(s) + present(la)
-        let sb = b_before.get(s) + present(lb)
+        sa := a_before.get(s) + present(la)
+        sb := b_before.get(s) + present(lb)
         out.append("@@ -{span(sa, la)} +{span(sb, lb)} @@")
 
         for k in range(s, e + 1):

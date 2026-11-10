@@ -65,18 +65,18 @@ fn weekday(st: Stamp) Int:
     return (days + st.day - 1 + 4) % 7
 
 fn parse_start(s: String) Optional[Stamp]:
-    let halves = s.split("T")
+    halves := s.split("T")
     if halves.length() != 2: return none
 
-    let date = halves[0].split("-")
-    let time = halves[1].split(":")
+    date := halves[0].split("-")
+    time := halves[1].split(":")
     if date.length() != 3 or time.length() != 2: return none
 
-    let year = parse_fixed(date[0], 4)
-    let month = parse_fixed(date[1], 2)
-    let day = parse_fixed(date[2], 2)
-    let hour = parse_fixed(time[0], 2)
-    let minute = parse_fixed(time[1], 2)
+    year := parse_fixed(date[0], 4)
+    month := parse_fixed(date[1], 2)
+    day := parse_fixed(date[2], 2)
+    hour := parse_fixed(time[0], 2)
+    minute := parse_fixed(time[1], 2)
     if (
         year.is_none()
         or month.is_none()
@@ -85,9 +85,9 @@ fn parse_start(s: String) Optional[Stamp]:
         or minute.is_none()
     ): return none
 
-    let y = year.get()
-    let mo = month.get()
-    let d = day.get()
+    y := year.get()
+    mo := month.get()
+    d := day.get()
     if y < 1970 or y > 2099: return none
     if mo < 1 or mo > 12: return none
     if d < 1 or d > days_in_month(y, mo): return none
@@ -101,13 +101,13 @@ fn parse_start(s: String) Optional[Stamp]:
 
 // Values selected by one cron item: `*`, `*/S`, `A`, `A-B`, or `A-B/S`.
 fn item_values(item: String, lo: Int, hi: Int) Optional[List[Int]]:
-    let parts = item.split("/")
+    parts := item.split("/")
     if parts.length() > 2: return none
 
     var step = 1
 
     if parts.length() == 2:
-        let s = parse_num(parts[1])
+        s := parse_num(parts[1])
         if s.is_none(): return none
 
         step = s.get()
@@ -117,16 +117,16 @@ fn item_values(item: String, lo: Int, hi: Int) Optional[List[Int]]:
     var last = hi
 
     if parts[0] != "*":
-        let bounds = parts[0].split("-")
+        bounds := parts[0].split("-")
         if bounds.length() > 2: return none
 
-        let a = parse_num(bounds[0])
+        a := parse_num(bounds[0])
         if a.is_none(): return none
 
         first = a.get()
 
         if bounds.length() == 2:
-            let b = parse_num(bounds[1])
+            b := parse_num(bounds[1])
             if b.is_none(): return none
 
             last = b.get()
@@ -150,7 +150,7 @@ fn parse_field(text: String, lo: Int, hi: Int) Optional[Set[Int]]:
     var values = Set[Int]()
 
     for item in text.split(","):
-        let items = item_values(item, lo, hi)
+        items := item_values(item, lo, hi)
         if items.is_none(): return none
 
         for v in items.get():
@@ -211,34 +211,34 @@ fn is_blank(line: String) Bool:
     return true
 
 fn solve(line: String, n: Int) List[String]:
-    let head = "line {n}:"
-    let tokens = line.split(" ")
+    head := "line {n}:"
+    tokens := line.split(" ")
     if tokens.length() != 7: return ["{head} error: bad line"]
 
-    let start = parse_start(tokens[0])
+    start := parse_start(tokens[0])
     if start.is_none(): return ["{head} error: bad start"]
 
-    let count = parse_num(tokens[1])
+    count := parse_num(tokens[1])
     if count.is_none() or count.get() < 1 or count.get() > 20: return [
         "{head} error: bad count"
     ]
 
-    let minutes = parse_field(tokens[2], 0, 59)
+    minutes := parse_field(tokens[2], 0, 59)
     if minutes.is_none(): return ["{head} error: bad minute"]
 
-    let hours = parse_field(tokens[3], 0, 23)
+    hours := parse_field(tokens[3], 0, 23)
     if hours.is_none(): return ["{head} error: bad hour"]
 
-    let doms = parse_field(tokens[4], 1, 31)
+    doms := parse_field(tokens[4], 1, 31)
     if doms.is_none(): return ["{head} error: bad day-of-month"]
 
-    let months = parse_field(tokens[5], 1, 12)
+    months := parse_field(tokens[5], 1, 12)
     if months.is_none(): return ["{head} error: bad month"]
 
-    let dows = parse_field(tokens[6], 0, 6)
+    dows := parse_field(tokens[6], 0, 6)
     if dows.is_none(): return ["{head} error: bad day-of-week"]
 
-    let runs = next_runs(
+    runs := next_runs(
         start.get(), count.get(), minutes.get(), hours.get(), doms.get(), months.get(),
         dows.get()
     )
@@ -250,7 +250,7 @@ fn solve(line: String, n: Int) List[String]:
     return out
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var out = List[String]()
     var n = 0
 

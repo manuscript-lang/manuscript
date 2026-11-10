@@ -24,13 +24,13 @@ tokens! {
     And => "and", Break => "break", Continue => "continue", Else => "else", Enum => "enum",
     Export => "export", Extern => "extern", False => "false", Fixture => "fixture", Fn => "fn",
     For => "for", If => "if", Impl => "impl", Import => "import", In => "in",
-    Interface => "interface", Let => "let", Match => "match", Not => "not",
+    Interface => "interface", Match => "match", Not => "not",
     Or => "or", Ref => "ref", Return => "return", SelfKw => "self", Test => "test", True => "true", Try => "try",
     Type => "type", Unit => "unit", Var => "var", While => "while", Underscore => "_",
     LParen => "(", RParen => ")", LBracket => "[", RBracket => "]", LBrace => "{", RBrace => "}",
     Colon => ":", Comma => ",", Dot => ".", Plus => "+", Minus => "-", Star => "*", Slash => "/",
     Percent => "%", Lt => "<", Gt => ">", Assign => "=", Amp => "&", Pipe => "|", Ellipsis => "...", DotDot => "..", Question => "?", Bang => "!",
-    Arrow => "->", EqEq => "==", NotEq => "!=", Le => "<=", Ge => ">=",
+    ColonAssign => ":=", Arrow => "->", EqEq => "==", NotEq => "!=", Le => "<=", Ge => ">=",
 }
 
 impl Tok {
@@ -53,7 +53,6 @@ impl Tok {
             "import" => Tok::Import,
             "in" => Tok::In,
             "interface" => Tok::Interface,
-            "let" => Tok::Let,
             "match" => Tok::Match,
             "not" => Tok::Not,
             "or" => Tok::Or,
@@ -97,7 +96,6 @@ pub const KEYWORDS: &[&str] = &[
     "import",
     "in",
     "interface",
-    "let",
     "match",
     "not",
     "or",

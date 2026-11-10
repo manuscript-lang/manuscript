@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     if ((false and true) and "delta".is_empty()):
@@ -14,13 +14,13 @@ export fn main() Int:
     else:
         say("x".lower())
 
-    let i1 = ((-48) - ((-48) - (992388 / 5)))
+    i1 := ((-48) - ((-48) - (992388 / 5)))
     say("i1 = {i1}")
 
-    let f2 = (((6.5 / 0.0) / 7.0e-9) * 2.0e-4)
+    f2 := (((6.5 / 0.0) / 7.0e-9) * 2.0e-4)
     say("f2 = {f2}")
 
-    let i3 = i1
+    i3 := i1
     say("i3 = {i3}")
 
     if (not "ms".contains("naïve")):

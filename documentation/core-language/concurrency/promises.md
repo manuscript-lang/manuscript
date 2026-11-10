@@ -15,10 +15,10 @@ import read_file from "@std/os/fs.ms"
 import PromiseOptions from "@std/concurrency/promise.ms"
 
 export fn main() Int:
-    let pending = read_file("config.json").with(
+    pending := read_file("config.json").with(
         options: PromiseOptions(timeout: 5.seconds())
     )
-    let contents = pending.wait()
+    contents := pending.wait()
     if contents.is_error():
         print(contents.err().message)
         return 1
@@ -52,9 +52,9 @@ For a `config.json` containing exactly `{}` (two bytes), the program prints:
 For several file reads, give each promise the same signal (this fragment assumes `paths` is a `List[String]` and imports `cancel_switch`):
 
 ```manuscript
-let stop = cancel_switch()
-let options = PromiseOptions(timeout: 30.seconds(), cancel: stop.signal())
-let reads = paths.map(fn path: read_file(path).with(options: options.clone()))
+stop := cancel_switch()
+options := PromiseOptions(timeout: 30.seconds(), cancel: stop.signal())
+reads := paths.map(fn path: read_file(path).with(options: options.clone()))
 stop.cancel()
 ```
 

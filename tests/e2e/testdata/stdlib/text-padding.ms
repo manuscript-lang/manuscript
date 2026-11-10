@@ -24,13 +24,13 @@ test "a short target, negative target or empty padding leaves the text unchanged
     try expect_equal("".pad_start(2, ""), "")
 
 test "a table row needs no unwrap":
-    let row = "total".pad_end(8, " ") + 42.to_string().pad_start(5, " ")
+    row := "total".pad_end(8, " ") + 42.to_string().pad_start(5, " ")
     try expect_equal(row, "total      42")
 
 test "padding beyond the string limit faults":
-    let message = try expect_fault(
+    message := try expect_fault(
         fn:
-            let _huge = "ab".pad_start(9223372036854775807, "xyz")
+            _huge := "ab".pad_start(9223372036854775807, "xyz")
     )
     message | try expect_contains("limit exceeded")
 
@@ -42,26 +42,26 @@ test "fixed-digit float formatting returns a plain String":
     try expect_equal(1.005.to_fixed(2), "1.00")
 
 test "a digit count outside the range faults":
-    let fixed = try expect_fault(
+    fixed := try expect_fault(
         fn:
-            let _text = 1.0.to_fixed(101)
+            _text := 1.0.to_fixed(101)
     )
     fixed | try expect_contains("to_fixed")
 
-    let negative = try expect_fault(
+    negative := try expect_fault(
         fn:
-            let _text = 1.0.to_fixed(-1)
+            _text := 1.0.to_fixed(-1)
     )
     negative | try expect_contains("to_fixed")
 
-    let precision = try expect_fault(
+    precision := try expect_fault(
         fn:
-            let _text = 1.0.to_precision(0)
+            _text := 1.0.to_precision(0)
     )
     precision | try expect_contains("to_precision")
 
-    let exponential = try expect_fault(
+    exponential := try expect_fault(
         fn:
-            let _text = 1.0.to_exponential(101)
+            _text := 1.0.to_exponential(101)
     )
     exponential | try expect_contains("to_exponential")

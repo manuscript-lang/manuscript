@@ -13,9 +13,9 @@ Decision (Chinmay, 2026-11-03): approved; keep `signal()` (owner `Cancel`, copya
 ## Problem
 
 ```manuscript
-let job = promise(fn: crunch(data))
+job := promise(fn: crunch(data))
 // 5 s limit exists only if this exact wait runs; done() or a drop-free exit never enforces it
-let result = try job.wait(timeout: seconds(5))
+result := try job.wait(timeout: seconds(5))
 ```
 
 - The limit starts when `wait` is called, not when work starts (`msrt_promise_wait`, `crates/ms-rt/src/promise.rs:909`).
@@ -40,8 +40,8 @@ export type Signal                       // plain data; `.clone()` copies it
 impl Signal:
     fn cancelled() Bool                  // for CPU loops that never wait
 
-let stop = cancel_switch()          // opaque types are made by a function, like `pipe`
-let a = promise(fn: crunch(data), options: PromiseOptions(timeout: seconds(5), cancel: stop.signal()))
+stop := cancel_switch()          // opaque types are made by a function, like `pipe`
+a := promise(fn: crunch(data), options: PromiseOptions(timeout: seconds(5), cancel: stop.signal()))
 stop.cancel()                          // a ends: wait reports Cancelled
 ```
 

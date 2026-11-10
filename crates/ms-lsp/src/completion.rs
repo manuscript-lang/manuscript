@@ -592,7 +592,7 @@ impl Completer<'_> {
         let line_start = text[..c.start].rfind('\n').map_or(0, |at| at + 1);
         if text[line_start..c.start].trim().is_empty() {
             let mut words: Vec<&str> = vec![
-                "let", "var", "if", "else", "for", "while", "match", "return", "break", "continue",
+                "var", "if", "else", "for", "while", "match", "return", "break", "continue",
             ];
             if line_start == c.start {
                 words = vec![

@@ -17,7 +17,7 @@ test "insert and remove shift the tail for every element kind":
     try expect_equal(words, ["z", "b"])
 
     var rows: List[List[Int]] = [[1], [2]]
-    let row = [7, 7]
+    row := [7, 7]
     rows.insert(1, row.clone())
     rows.remove(0)
     try expect_equal(rows, [[7, 7], [2]])

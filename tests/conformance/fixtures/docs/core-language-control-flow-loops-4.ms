@@ -5,7 +5,7 @@ import range_by from "@std/collections/collections.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "sum even indexes":
-    let indexes = try range_by(start: 0, end: 6, step: 2)
+    indexes := try range_by(start: 0, end: 6, step: 2)
     var total = 0
     for index in indexes:
         total += index

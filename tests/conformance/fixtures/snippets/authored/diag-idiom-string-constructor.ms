@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 export fn main() Int:
-    let a = String(1)
+    a := String(1)
     return 0

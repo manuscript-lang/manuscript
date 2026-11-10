@@ -1,4 +1,4 @@
-diag parse 23:5:633 end=23:13:641 fix=- "only a call, try call, or match can be a standalone expression statement; use 'let name = ...' to keep the value, 'return' to return it, or call a function"
+diag parse 23:5:633 end=23:13:641 fix=- "only a call, try call, or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function"
 import 1:1:0 1:8:7 "Key" "./domain.ms"
 import 2:1:30 2:8:37 "insert" "./helper.ms"
 import 2:1:30 2:16:45 "insert_bound" "./helper.ms"

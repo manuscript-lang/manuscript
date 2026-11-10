@@ -53,14 +53,14 @@ impl Scan<'_> {
         let (code, message, first, second) = if ty.is(Builtin::Optional) {
             (
                 "MSL108",
-                "Matching an Optional with only a payload arm and none; use 'if let value = ...:' with 'else:', or an Optional method such as get(default) or map",
+                "Matching an Optional with only a payload arm and none; use 'if value := ...:' with 'else:', or an Optional method such as get(default) or map",
                 "some",
                 "none",
             )
         } else if ty.is(Builtin::Result) {
             (
                 "MSL109",
-                "Matching a Result with only ok and error; use 'try', 'if let value = ...:' with 'else:', or a Result method such as get(default), is_error, or err",
+                "Matching a Result with only ok and error; use 'try', 'if value := ...:' with 'else:', or a Result method such as get(default), is_error, or err",
                 "ok",
                 "error",
             )

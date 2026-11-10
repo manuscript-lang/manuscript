@@ -9,8 +9,8 @@ import escape from "@std/data/html.ms"
 Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
 
     import compile, to_data from "@std/text/template.ms"
-    let page = try compile("Hello \{\{ name | title \}\}!")
-    let rendered = try page.render(try to_data(user))
+    page := try compile("Hello \{\{ name | title \}\}!")
+    rendered := try page.render(try to_data(user))
 
 Actions sit between `{{` and `}}`:
 
@@ -124,11 +124,11 @@ type Tok:
     kind: String
     text: String
 
-let FILTERS = [
+FILTERS := [
     "upper", "lower", "trim", "title", "length", "join", "json", "default", "escape",
     "raw", "first", "last", "reverse", "keys", "contains", "replace", "truncate"
 ]
-let MAX_DEPTH = 64
+MAX_DEPTH := 64
 
 // Builds a template error. Each message names the line, path, filter or partial but never echoes values.
 fn syntax_error(line: Int, reason: String) Error:
@@ -153,9 +153,9 @@ fn unknown_partial_error(name: String) Error:
 
 // Compiles template source. With `html: true`, printed values are HTML-escaped unless they end in `| raw`.
 export fn compile(source: String, html: Bool = false) Template!Error:
-    let tokens = try tokenize(source)
+    tokens := try tokenize(source)
     var builder = Builder(tokens: tokens, at: 0, html: html)
-    let done = try builder.block(0)
+    done := try builder.block(0)
     if done.end != "": return error(
         syntax_error(line: done.line, reason: "unexpected {done.end}")
     )
@@ -164,17 +164,17 @@ export fn compile(source: String, html: Bool = false) Template!Error:
 
 // Compiles and renders in one call; use `compile` when rendering more than once.
 export fn render(source: String, data: JsonValue, html: Bool = false) String!Error:
-    let template = try compile(source, html: html)
+    template := try compile(source, html: html)
     return template.render(data)
 
 // Converts any `Data` value (records, lists, scalars) to the `JsonValue` a template reads.
 export fn to_data[T: Data](value: T) JsonValue!Error:
-    let text = stringify(value: value)
+    text := stringify(value: value)
     if text.is_error(): return error(
         Error("template: data is not JSON", kind: "EBADMSG")
     )
 
-    let parsed = parse(text.get())
+    parsed := parse(text.get())
     if parsed.is_error(): return error(
         Error("template: data is not JSON", kind: "EBADMSG")
     )
@@ -212,11 +212,11 @@ export fn render_to(
     var output: WriteStream[String],
     options: RenderOptions = RenderOptions()
 ) Unit!Error:
-    let text = try template.render(data, options)
+    text := try template.render(data, options)
     return output.write(text)
 
 fn root_names(data: JsonValue) Map[String, JsonValue]:
-    if let members = data.as_map(): return members
+    if members := data.as_map(): return members
 
     return Map[String, JsonValue]()
 
@@ -229,7 +229,7 @@ fn tokenize(source: String) List[Token]!Error:
     var tokens = List[Token]()
 
     // Splitting once keeps lexing linear: each piece starts right after an opening delimiter.
-    let pieces = source.split("\{\{")
+    pieces := source.split("\{\{")
     var literal = pieces[0].clone()
     var index = 1
     var line = 1
@@ -245,10 +245,10 @@ fn tokenize(source: String) List[Token]!Error:
         var closed = false
 
         while index < pieces.length():
-            let piece = pieces[index]
+            piece := pieces[index]
             index += 1
 
-            let close = piece.index_of("\}\}")
+            close := piece.index_of("\}\}")
 
             if close.is_some():
                 chunks.append(piece.take(close.get(0)))
@@ -264,9 +264,9 @@ fn tokenize(source: String) List[Token]!Error:
             )
         )
 
-        let raw = chunks.join("\{\{")
+        raw := chunks.join("\{\{")
         var body = raw.clone()
-        let action_line = line + count_lines(literal)
+        action_line := line + count_lines(literal)
         trim_next = false
 
         if body.starts_with("-") and (body.length() == 1 or is_blank(body.get(1))):
@@ -310,12 +310,12 @@ fn is_digit(c: String) Bool:
 
 fn lex(text: String, line: Int) List[Tok]!Error:
     var toks = List[Tok]()
-    let chars = text.chars()
+    chars := text.chars()
     var i = 0
 
     while i < chars.length():
-        let c = chars[i]
-        let two = if i + 1 < chars.length(): "{c}{chars[i + 1]}" else: c.clone()
+        c := chars[i]
+        two := if i + 1 < chars.length(): "{c}{chars[i + 1]}" else: c.clone()
 
         if is_blank(c):
             i += 1
@@ -338,7 +338,7 @@ fn lex(text: String, line: Int) List[Tok]!Error:
                     break
 
                 if chars[i] == "\\" and i + 1 < chars.length():
-                    let e = chars[i + 1]
+                    e := chars[i + 1]
                     out.append(if e == "n": "\n" else if e == "t": "\t" else: e.clone())
                     i += 2
                 else:
@@ -399,11 +399,11 @@ impl ExprParser:
         return self.toks.get(self.at, Tok(kind: "end", text: ""))
 
     fn is_sym(text: String) Bool:
-        let t = self.peek()
+        t := self.peek()
         return t.kind == "sym" and t.text == text
 
     fn is_word(text: String) Bool:
-        let t = self.peek()
+        t := self.peek()
         return t.kind == "word" and t.text == text
 
     fn fail(reason: String) Error:
@@ -415,7 +415,7 @@ impl ExprParser:
         while self.is_word("or"):
             self.at += 1
 
-            let right = try self.and_expr()
+            right := try self.and_expr()
             left = Op("or", [left, right])
 
         return ok(left)
@@ -426,7 +426,7 @@ impl ExprParser:
         while self.is_word("and"):
             self.at += 1
 
-            let right = try self.not_expr()
+            right := try self.not_expr()
             left = Op("and", [left, right])
 
         return ok(left)
@@ -435,15 +435,15 @@ impl ExprParser:
         if self.is_word("not"):
             self.at += 1
 
-            let inner = try self.not_expr()
+            inner := try self.not_expr()
             return ok(Op("not", [inner]))
 
         return self.compare()
 
     var fn compare() TemplateExpr!Error:
-        let left = try self.filtered()
-        let t = self.peek()
-        let is_cmp = (
+        left := try self.filtered()
+        t := self.peek()
+        is_cmp := (
             t.kind == "sym"
             and ["==", "!=", "<", "<=", ">", ">="].contains(t.text)
         )
@@ -451,7 +451,7 @@ impl ExprParser:
 
         self.at += 1
 
-        let right = try self.filtered()
+        right := try self.filtered()
         return ok(Op(t.text.clone(), [left, right]))
 
     var fn filtered() TemplateExpr!Error:
@@ -460,7 +460,7 @@ impl ExprParser:
         while self.is_sym("|"):
             self.at += 1
 
-            let name = self.peek()
+            name := self.peek()
             if name.kind != "word" or not FILTERS.contains(name.text): return error(
                 self.fail("unknown filter")
             )
@@ -487,13 +487,13 @@ impl ExprParser:
         return ok(value)
 
     var fn primary() TemplateExpr!Error:
-        let t = self.peek()
+        t := self.peek()
         self.at += 1
         if t.kind == "str": return ok(Literal(JsonValue.StringValue(t.text.clone())))
         if t.kind == "num": return ok(Literal(JsonValue.NumberValue(t.text.clone())))
 
         if t.kind == "sym" and t.text == "(":
-            let inner = try self.or_expr()
+            inner := try self.or_expr()
             if not self.is_sym(")"): return error(self.fail("expected )"))
 
             self.at += 1
@@ -512,13 +512,13 @@ impl ExprParser:
         return error(self.fail("expected a value"))
 
 fn parse_expr(text: String, line: Int) TemplateExpr!Error:
-    let toks = try lex(text, line)
+    toks := try lex(text, line)
     var parser = ExprParser(toks: toks, at: 0, line: line)
     if parser.toks.is_empty(): return error(
         syntax_error(line: line, reason: "empty action")
     )
 
-    let expr = try parser.or_expr()
+    expr := try parser.or_expr()
     if parser.at < parser.toks.length(): return error(
         syntax_error(line: line, reason: "unexpected text after expression")
     )
@@ -553,15 +553,15 @@ impl Builder:
         )
 
         while self.at < self.tokens.length():
-            let token = self.tokens[self.at].clone()
+            token := self.tokens[self.at].clone()
             self.at += 1
 
             if not token.action:
                 nodes.append(Text(token.body.clone()))
                 continue
 
-            let word = first_word(token.body)
-            let rest = after_word(token.body)
+            word := first_word(token.body)
+            rest := after_word(token.body)
             if word == "end":
                 return ok(
                     BlockEnd(
@@ -598,7 +598,7 @@ impl Builder:
     fn emit(body: String, line: Int) TemplateNode!Error:
         var expr = try parse_expr(body, line)
         var escape_output = self.html
-        let last = trailing_filter(expr)
+        last := trailing_filter(expr)
 
         if last == "raw":
             escape_output = false
@@ -614,7 +614,7 @@ impl Builder:
         var guard = try parse_expr(cond, line)
 
         while true:
-            let done = try self.block(depth + 1)
+            done := try self.block(depth + 1)
             branches.append(TemplateBranch(cond: guard, body: done.nodes))
             if done.end == "end": break
 
@@ -623,7 +623,7 @@ impl Builder:
                 continue
 
             if done.end == "else":
-                let tail = try self.block(depth + 1)
+                tail := try self.block(depth + 1)
                 if tail.end != "end": return error(
                     syntax_error(
                         line: done.line, reason: "if needs end"
@@ -638,18 +638,18 @@ impl Builder:
         return ok(If(branches, otherwise))
 
     var fn for_block(header: String, line: Int, depth: Int) TemplateNode!Error:
-        let at = header.index_of(" in ")
+        at := header.index_of(" in ")
         if at.is_none(): return error(
             syntax_error(line: line, reason: "for needs `name in value`")
         )
 
-        let names = header.take(at.get(0)).split(",")
+        names := header.take(at.get(0)).split(",")
         if names.length() > 2: return error(
             syntax_error(line: line, reason: "for takes one or two names")
         )
 
-        let first = names[0].trim()
-        let second = if names.length() == 2: names[1].trim() else: ""
+        first := names[0].trim()
+        second := if names.length() == 2: names[1].trim() else: ""
         if first.is_empty() or not is_word_start(first.take(1)) or first.contains("."):
             return error(syntax_error(line: line, reason: "bad loop name"))
         if (
@@ -662,12 +662,12 @@ impl Builder:
         ):
             return error(syntax_error(line: line, reason: "bad loop name"))
 
-        let source = try parse_expr(header.drop(at.get(0) + 4), line)
-        let body = try self.block(depth + 1)
+        source := try parse_expr(header.drop(at.get(0) + 4), line)
+        body := try self.block(depth + 1)
         var otherwise = List[TemplateNode]()
 
         if body.end == "else":
-            let tail = try self.block(depth + 1)
+            tail := try self.block(depth + 1)
             if tail.end != "end": return error(
                 syntax_error(line: line, reason: "for needs end")
             )
@@ -714,7 +714,7 @@ impl Run:
         var i = self.frames.length() - 1
 
         while i >= 0:
-            if let found = self.frames[i].get(parts[0]):
+            if found := self.frames[i].get(parts[0]):
                 current = found.clone()
                 break
 
@@ -725,7 +725,7 @@ impl Run:
         var value = current.get(JsonValue.Null)
 
         for k in 1..parts.length():
-            let next = member(value, parts[k])
+            next := member(value, parts[k])
             if next.is_none(): return none
 
             value = next.get(JsonValue.Null)
@@ -740,23 +740,23 @@ impl Run:
             Op(op, args): return self.operator(op, args)
 
     fn path_value(parts: List[String], strict: Bool) JsonValue!Error:
-        if let found = self.lookup(parts): return ok(found)
+        if found := self.lookup(parts): return ok(found)
         if strict: return error(missing_value_error(path: parts.join(".")))
 
         return ok(JsonValue.Null)
 
     fn operator(op: String, args: List[TemplateExpr]) JsonValue!Error:
-        let left = try self.eval(args[0].clone(), false)
+        left := try self.eval(args[0].clone(), false)
         if op == "not": return ok(JsonValue.BoolValue(not truthy(left)))
         if op == "and" and not truthy(left): return ok(JsonValue.BoolValue(false))
         if op == "or" and truthy(left): return ok(JsonValue.BoolValue(true))
 
-        let right = try self.eval(args[1].clone(), false)
+        right := try self.eval(args[1].clone(), false)
         if op == "and" or op == "or": return ok(JsonValue.BoolValue(truthy(right)))
         if op == "==": return ok(JsonValue.BoolValue(equal(left, right)))
         if op == "!=": return ok(JsonValue.BoolValue(not equal(left, right)))
 
-        let order = compare_values(left, right)
+        order := compare_values(left, right)
         if op == "<": return ok(JsonValue.BoolValue(order < 0))
         if op == "<=": return ok(JsonValue.BoolValue(order <= 0))
         if op == ">": return ok(JsonValue.BoolValue(order > 0 and order != 2))
@@ -765,7 +765,7 @@ impl Run:
 
     fn call(name: String, args: List[TemplateExpr], strict: Bool) JsonValue!Error:
         if name == "default":
-            let input = try self.eval(args[0].clone(), false)
+            input := try self.eval(args[0].clone(), false)
             if truthy(input): return ok(input)
             if args.length() != 2: return error(
                 invalid_filter_error(
@@ -775,7 +775,7 @@ impl Run:
 
             return self.eval(args[1].clone(), strict)
 
-        let input = try self.eval(args[0].clone(), strict)
+        input := try self.eval(args[0].clone(), strict)
         var values = List[JsonValue]()
         for i in 1..args.length():
             values.append(try self.eval(args[i].clone(), strict))
@@ -797,8 +797,8 @@ impl Run:
             Include(name): return self.include(name, depth)
 
     var fn emit(expr: TemplateExpr, escape_output: Bool) Unit!Error:
-        let value = try self.eval(expr, self.strict)
-        let text = to_text(value)
+        value := try self.eval(expr, self.strict)
+        text := to_text(value)
         if escape_output: return self.write(escape(text))
 
         return self.write(text)
@@ -809,7 +809,7 @@ impl Run:
         depth: Int
     ) Unit!Error:
         for branch in branches:
-            let verdict = try self.eval(branch.cond.clone(), false)
+            verdict := try self.eval(branch.cond.clone(), false)
             if truthy(verdict): return self.nodes(branch.body.clone(), depth + 1)
 
         return self.nodes(otherwise, depth + 1)
@@ -822,8 +822,8 @@ impl Run:
         otherwise: List[TemplateNode],
         depth: Int
     ) Unit!Error:
-        let collection = try self.eval(source, false)
-        let rows = rows_of(collection, first, second)
+        collection := try self.eval(source, false)
+        rows := rows_of(collection, first, second)
         if rows.is_empty(): return self.nodes(otherwise, depth + 1)
 
         for i in 0..rows.length():
@@ -831,17 +831,17 @@ impl Run:
             frame.add("loop", loop_info(i, rows.length()))
             self.frames.append(frame)
 
-            let result = self.nodes(body.clone(), depth + 1)
-            let _frame = self.frames.remove(self.frames.length() - 1)
+            result := self.nodes(body.clone(), depth + 1)
+            _frame := self.frames.remove(self.frames.length() - 1)
             if result.is_error(): return result
 
         return ok(unit)
 
     var fn include(name: TemplateExpr, depth: Int) Unit!Error:
-        let key = to_text(try self.eval(name, true))
+        key := to_text(try self.eval(name, true))
         if depth > MAX_DEPTH: return error(unknown_partial_error(name: key))
 
-        let partial = self.partials.get(key).clone()
+        partial := self.partials.get(key).clone()
         if partial.is_none(): return error(unknown_partial_error(name: key))
 
         return self.nodes(
@@ -854,8 +854,8 @@ impl Run:
 // ---- values --------------------------------------------------------------------------------
 
 fn member(value: JsonValue, key: String) JsonValue?:
-    if let found = value.get(key): return found
-    if let index = key.parse_int(): return value.at(index).clone()
+    if found := value.get(key): return found
+    if index := key.parse_int(): return value.at(index).clone()
 
     return none
 
@@ -875,7 +875,7 @@ fn rows_of(
 ) List[Map[String, JsonValue]]:
     var rows = List[Map[String, JsonValue]]()
 
-    if let items = collection.as_list():
+    if items := collection.as_list():
         for i in 0..items.length():
             var frame = Map[String, JsonValue]()
 
@@ -886,7 +886,7 @@ fn rows_of(
                 frame.add(second.clone(), items[i].clone())
 
             rows.append(frame)
-    else if let members = collection.as_map():
+    else if members := collection.as_map():
         for entry in members.entries():
             var frame = Map[String, JsonValue]()
 
@@ -914,7 +914,7 @@ type ExactNumber:
     exponent: String
 
 fn unsigned_digits(text: String) String:
-    let chars = text.chars()
+    chars := text.chars()
     var first = 0
     while first < chars.length() and chars[first] == "0": first += 1
     return if first == chars.length(): "0" else: text.drop(first)
@@ -926,16 +926,16 @@ fn magnitude_compare(a: String, b: String) Int:
 
 // Add or subtract unsigned decimal magnitudes. Subtraction requires a >= b.
 fn magnitude_sum(a: String, b: String, subtract: Bool) String:
-    let left = a.chars()
-    let right = b.chars()
+    left := a.chars()
+    right := b.chars()
     var i = left.length() - 1
     var j = right.length() - 1
     var carry = 0
     var out = StringBuilder()
 
     while i >= 0 or j >= 0:
-        let x = if i >= 0: left[i].parse_int().get(0) else: 0
-        let y = if j >= 0: right[j].parse_int().get(0) else: 0
+        x := if i >= 0: left[i].parse_int().get(0) else: 0
+        y := if j >= 0: right[j].parse_int().get(0) else: 0
         var digit = x + (if subtract: -y else: y) + carry
         carry = 0
 
@@ -956,14 +956,14 @@ fn magnitude_sum(a: String, b: String, subtract: Bool) String:
 fn decimal_order(exponent: String, offset: Int) String:
     if exponent == "0": return "{offset}"
 
-    let negative = exponent.starts_with("-")
-    let magnitude = unsigned_digits(
+    negative := exponent.starts_with("-")
+    magnitude := unsigned_digits(
         if negative or exponent.starts_with("+"): exponent.drop(
             1
         ) else: exponent.clone()
     )
-    let delta_text = "{offset}"
-    let delta = if offset < 0: delta_text.drop(1) else: delta_text.clone()
+    delta_text := "{offset}"
+    delta := if offset < 0: delta_text.drop(1) else: delta_text.clone()
     var result = ""
     var result_negative = negative
 
@@ -978,11 +978,11 @@ fn decimal_order(exponent: String, offset: Int) String:
     return if result_negative and result != "0": "-{result}" else: result
 
 fn order_compare(a: String, b: String) Int:
-    let an = a.starts_with("-")
-    let bn = b.starts_with("-")
+    an := a.starts_with("-")
+    bn := b.starts_with("-")
     if an != bn: return if an: -1 else: 1
 
-    let comparison = magnitude_compare(
+    comparison := magnitude_compare(
         if an: a.drop(1) else: a.clone(), if bn: b.drop(1) else: b.clone()
     )
     return if an: -comparison else: comparison
@@ -993,14 +993,14 @@ fn number_digit(byte: UInt8) Bool:
 fn exact_number(text: String) ExactNumber?:
     // Validate a JSON number while locating its coefficient and exponent. Raw
     // NumberValue constructors need not have passed through the JSON parser.
-    let chars = text.to_bytes()
+    chars := text.to_bytes()
     if chars.is_empty(): return none
 
-    let negative = chars.get(0) == 45
+    negative := chars.get(0) == 45
     var at = if negative: 1 else: 0
     if at == chars.length(): return none
 
-    let start = at
+    start := at
 
     if chars.get(at) == 48:
         at += 1
@@ -1009,16 +1009,16 @@ fn exact_number(text: String) ExactNumber?:
 
         while at < chars.length() and number_digit(chars.get(at)): at += 1
 
-    let before_point = at - start
+    before_point := at - start
 
     if at < chars.length() and chars.get(at) == 46:
         at += 1
 
-        let fraction_start = at
+        fraction_start := at
         while at < chars.length() and number_digit(chars.get(at)): at += 1
         if at == fraction_start: return none
 
-    let coefficient_end = at
+    coefficient_end := at
     var exponent = "0"
 
     if at < chars.length():
@@ -1026,10 +1026,10 @@ fn exact_number(text: String) ExactNumber?:
 
         at += 1
 
-        let exponent_start = at
+        exponent_start := at
         if at < chars.length() and (chars.get(at) == 43 or chars.get(at) == 45): at += 1
 
-        let digits_start = at
+        digits_start := at
         while at < chars.length() and number_digit(chars.get(at)): at += 1
         if at == digits_start or at != chars.length(): return none
 
@@ -1039,7 +1039,7 @@ fn exact_number(text: String) ExactNumber?:
     var leading_zeros = 0
 
     while first < coefficient_end:
-        let byte = chars.get(first)
+        byte := chars.get(first)
         if byte != 48 and byte != 46: break
 
         if byte == 48: leading_zeros += 1
@@ -1054,8 +1054,8 @@ fn exact_number(text: String) ExactNumber?:
 fn number_compare(a: ExactNumber, b: ExactNumber) Int:
     if a.negative != b.negative: return if a.negative: -1 else: 1
 
-    let az = a.first == a.end
-    let bz = b.first == b.end
+    az := a.first == a.end
+    bz := b.first == b.end
     if az or bz: return if az == bz: 0 else if az: -1 else: 1
 
     var order = 0
@@ -1073,8 +1073,8 @@ fn number_compare(a: ExactNumber, b: ExactNumber) Int:
 // Most unequal coefficients differ immediately. For a shared prefix, use the
 // native string comparison instead of inspecting every byte in Manuscript.
 fn coefficient_compare(a: ExactNumber, b: ExactNumber) Int:
-    let x = a.coefficient.get(a.first)
-    let y = b.coefficient.get(b.first)
+    x := a.coefficient.get(a.first)
+    y := b.coefficient.get(b.first)
     if x != y: return if x < y: -1 else: 1
 
     return coefficient_text(a).compare(coefficient_text(b))
@@ -1083,7 +1083,7 @@ fn coefficient_text(number: ExactNumber) String:
     var end = number.end
 
     while end > number.first + 1:
-        let last = number.coefficient.get(end - 1)
+        last := number.coefficient.get(end - 1)
         if last != 48 and last != 46: break
 
         end -= 1
@@ -1096,28 +1096,28 @@ fn coefficient_text(number: ExactNumber) String:
 // Common integer tokens compare directly without losing precision. Noncanonical
 // or out-of-range text continues through the general exact-number path.
 fn exact_integer(text: String) Int?:
-    if let integer = text.parse_int():
+    if integer := text.parse_int():
         if text == "{integer}" or text == "-0": return integer
     return none
 
 fn truthy(value: JsonValue) Bool:
     if value.is_null(): return false
-    if let flag = value.as_bool(): return flag
-    if let list = value.as_list(): return not list.is_empty()
-    if let members = value.as_map(): return not members.is_empty()
-    if let text = value.as_string(): return not text.is_empty()
+    if flag := value.as_bool(): return flag
+    if list := value.as_list(): return not list.is_empty()
+    if members := value.as_map(): return not members.is_empty()
+    if text := value.as_string(): return not text.is_empty()
 
-    if let text = number_text(value):
-        if let integer = exact_integer(text): return integer != 0
-        if let number = exact_number(text): return number.first != number.end
+    if text := number_text(value):
+        if integer := exact_integer(text): return integer != 0
+        if number := exact_number(text): return number.first != number.end
 
     return true
 
 fn to_text(value: JsonValue) String:
     if value.is_null(): return ""
-    if let text = value.as_string(): return text
-    if let flag = value.as_bool(): return if flag: "true" else: "false"
-    if let found = number_text(value): return found.clone()
+    if text := value.as_string(): return text
+    if flag := value.as_bool(): return if flag: "true" else: "false"
+    if found := number_text(value): return found.clone()
 
     return stringify(value: value).get("")
 
@@ -1144,25 +1144,25 @@ fn equal(left: JsonValue, right: JsonValue) Bool:
 
 // -1, 0, 1 for numbers or strings of the same kind; 2 when the values cannot be ordered.
 fn compare_values(left: JsonValue, right: JsonValue) Int:
-    if let text = number_text(left):
-        let other = number_text(right)
+    if text := number_text(left):
+        other := number_text(right)
         if other.is_none(): return 2
 
-        let right_text = other.get("")
-        if let integer = exact_integer(text):
-            if let other_integer = exact_integer(right_text):
+        right_text := other.get("")
+        if integer := exact_integer(text):
+            if other_integer := exact_integer(right_text):
                 return if integer < other_integer: -1 else if integer > other_integer: 1 else: 0
 
-        let a = exact_number(text)
+        a := exact_number(text)
         if a.is_none(): return 2
 
-        let b = exact_number(right_text)
+        b := exact_number(right_text)
         if b.is_none(): return 2
 
         return number_compare(a.get(), b.get())
 
-    if let a = left.as_string():
-        if let b = right.as_string(): return a.compare(b)
+    if a := left.as_string():
+        if b := right.as_string(): return a.compare(b)
     return 2
 
 fn text_value(text: String) JsonValue:
@@ -1177,7 +1177,7 @@ fn arg_text(name: String, args: List[JsonValue], at: Int) String!Error:
     return ok(to_text(args[at]))
 
 fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue!Error:
-    let text = to_text(input)
+    text := to_text(input)
     if name == "upper": return ok(text_value(text.upper()))
     if name == "lower": return ok(text_value(text.lower()))
     if name == "trim": return ok(text_value(text.trim()))
@@ -1190,7 +1190,7 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
     if name == "keys": return ok(keys_of(input))
 
     if name == "join":
-        let sep = try arg_text(name.clone(), args, 0)
+        sep := try arg_text(name.clone(), args, 0)
         return ok(text_value(join_values(input, sep)))
 
     if name == "contains":
@@ -1199,36 +1199,36 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
         return ok(JsonValue.BoolValue(contains_value(input, args[0])))
 
     if name == "replace":
-        let old = try arg_text(name.clone(), args, 0)
-        let new = try arg_text(name.clone(), args, 1)
+        old := try arg_text(name.clone(), args, 0)
+        new := try arg_text(name.clone(), args, 1)
         return ok(text_value(if old.is_empty(): text else: text.replace(old, new)))
 
     if name == "truncate":
-        let count = try arg_text(name.clone(), args, 0)
-        let limit = count.parse_int()
+        count := try arg_text(name.clone(), args, 0)
+        limit := count.parse_int()
         if limit.is_none() or limit.get(0) < 0: return error(
             invalid(name.clone(), "needs a count")
         )
 
-        let n = limit.get(0)
+        n := limit.get(0)
         return ok(text_value(if text.length() > n: "{text.take(n)}..." else: text))
 
     // `raw` and any other registered name pass through; unknown names fail at compile time.
     return ok(input.clone())
 
 fn length_of(value: JsonValue) Int:
-    if let list = value.as_list(): return list.length()
-    if let members = value.as_map(): return members.length()
+    if list := value.as_list(): return list.length()
+    if members := value.as_map(): return members.length()
 
     return to_text(value).length()
 
 fn reverse_value(value: JsonValue) JsonValue!Error:
-    if let list = value.as_list(): return ok(JsonValue.ArrayValue(list.reversed()))
+    if list := value.as_list(): return ok(JsonValue.ArrayValue(list.reversed()))
 
     return ok(text_value(to_text(value).reverse()))
 
 fn end_of(value: JsonValue, first: Bool) JsonValue:
-    if let list = value.as_list():
+    if list := value.as_list():
         if list.is_empty(): return JsonValue.Null
 
         return list[if first: 0 else: list.length() - 1].clone()
@@ -1237,7 +1237,7 @@ fn end_of(value: JsonValue, first: Bool) JsonValue:
 
 fn keys_of(value: JsonValue) JsonValue:
     var keys = List[JsonValue]()
-    if let members = value.as_map():
+    if members := value.as_map():
         for key in members.keys():
             keys.append(JsonValue.StringValue(key.clone()))
     return JsonValue.ArrayValue(keys)
@@ -1245,7 +1245,7 @@ fn keys_of(value: JsonValue) JsonValue:
 fn join_values(value: JsonValue, sep: String) String:
     var parts = List[String]()
 
-    if let list = value.as_list():
+    if list := value.as_list():
         for item in list:
             parts.append(to_text(item))
         return parts.join(sep)
@@ -1253,11 +1253,11 @@ fn join_values(value: JsonValue, sep: String) String:
     return to_text(value)
 
 fn contains_value(haystack: JsonValue, needle: JsonValue) Bool:
-    if let list = haystack.as_list():
+    if list := haystack.as_list():
         for item in list:
             if equal(item, needle): return true
         return false
 
-    if let members = haystack.as_map(): return members.contains(to_text(needle))
+    if members := haystack.as_map(): return members.contains(to_text(needle))
 
     return to_text(haystack).contains(to_text(needle))

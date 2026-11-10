@@ -79,14 +79,14 @@ Save as `port.ms` and run `ms run port.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"8080\n"} -->
 ```manuscript
 fn port_number(text: String) Int!:
-    let port = text.trim()
+    port := text.trim()
         | .parse_int()
         | .ok_or(Error("expected a port number"))
         | try
     return ok(port)
 
 export fn main() Int:
-    if let port = port_number(" 8080 "):
+    if port := port_number(" 8080 "):
         print(port)
         return 0
     return 1
@@ -139,7 +139,7 @@ The operand types, not the expected result type, select the operator row.
 - Two Never operands cannot select a numeric, ordering, or equality row; unary signs and `try` need an independently known operand.
 - `not`, `and`, and `or` take Bool, so Never is fine.
 
-The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `instant - panic(...)` is rejected (Duration or Instant?), as is `let x: Int = -panic(message: "stop")`.
+The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `instant - panic(...)` is rejected (Duration or Instant?), as is `x: Int = -panic(message: "stop")`.
 
 See [compatibility](../types/compatibility.md) and [error propagation](../errors/propagation.md) for Never in calls, returns, and `try`.
 
@@ -167,8 +167,8 @@ export fn main() Int:
 
 ```manuscript
 fn calculated(value: Int, active: Bool) Int:
-    let product = 1 + 2 * 3             // 7
-    let same = not value == product     // not (value == product)
+    product := 1 + 2 * 3             // 7
+    same := not value == product     // not (value == product)
     if active and same:
         return product
     return value
@@ -176,7 +176,7 @@ fn calculated(value: Int, active: Bool) Int:
 
 ```manuscript
 fn invalid(value: Int, ratio: Float) Bool:
-    let mixed = value + ratio           // Type error: exact numeric types differ.
+    mixed := value + ratio           // Type error: exact numeric types differ.
     return 0 < value < 10               // Syntax error: comparison chain.
 ```
 

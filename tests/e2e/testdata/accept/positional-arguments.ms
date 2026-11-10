@@ -50,8 +50,8 @@ fn optional(value: Int?, fallback: Int = 0) Int: value.get(fallback)
 fn default_before_required(first: Int = 9, second: Int) Int: first - second
 
 test "positional labeled mixed and identifier calls":
-    let amount = 10
-    let deduction = 3
+    amount := 10
+    deduction := 3
     try expect_false(
         (
             subtract(10, 3) != 7
@@ -76,15 +76,15 @@ test "generic calls constructors and callback inference":
     try expect_equal(pick([1, 2], fn item: item > 1).get(0), 2)
     try expect_equal(pick(keep: fn item: item > 1, [1, 2]).get(0), 2)
 
-    let record = Record(3)
-    let explicit = Record[Int](second: 4, 3)
+    record := Record(3)
+    explicit := Record[Int](second: 4, 3)
     try expect_false(
         (record.second != 3 or explicit.first != 3 or explicit.second != 4)
     )
 
-    let first = 4
-    let second = 3
-    let shorthand = Record(second, first)
+    first := 4
+    second := 3
+    shorthand := Record(second, first)
     try expect_false(shorthand.first != 3 or shorthand.second != 4)
 
     match Choice.Pair(second: "right", "left"):
@@ -95,16 +95,16 @@ test "generic calls constructors and callback inference":
         Pair(left, right):
             try expect_false(left != 3 or right != 4)
 
-    let sum = [1, 2, 3].fold(0, fn total, item: total + item)
-    let reordered_sum = [1, 2, 3].fold(step: fn total, item: total + item, 0)
-    let explicit_sum = [1, 2, 3].fold[Int](0, fn total, item: total + item)
+    sum := [1, 2, 3].fold(0, fn total, item: total + item)
+    reordered_sum := [1, 2, 3].fold(step: fn total, item: total + item, 0)
+    explicit_sum := [1, 2, 3].fold[Int](0, fn total, item: total + item)
     try expect_false((sum != 6 or reordered_sum != 6 or explicit_sum != 6))
     try expect_false(optional(4) != 4 or optional(none, 2) != 2)
 
 test "methods native APIs function values and contextual labels":
-    let offset = Offset(3)
-    let bound = offset.subtract
-    let view: Subtract = offset
+    offset := Offset(3)
+    bound := offset.subtract
+    view: Subtract = offset
     try expect_false(
         (
             offset.subtract(10) != 7
@@ -113,12 +113,12 @@ test "methods native APIs function values and contextual labels":
         )
     )
 
-    let copied = subtract
-    let typed: fn(Int, Int) Int = subtract
+    copied := subtract
+    typed: fn(Int, Int) Int = subtract
     var mutable = subtract
     try expect_false((copied(10, 3) != 7 or typed(10, 3) != 7 or mutable(10, 3) != 7))
 
-    let contextual: fn(Int, Int) Int = fn x, y: x - y
+    contextual: fn(Int, Int) Int = fn x, y: x - y
     try expect_false(
         (
             contextual(10, 3) != 7
@@ -130,26 +130,26 @@ test "methods native APIs function values and contextual labels":
     var memo = Map[Int, Int]()
     memo.add(1, 7)
 
-    let add = memo.add
+    add := memo.add
     add(value: 8, 2)
     try expect_false(memo[1] != 7 or memo[2] != 8)
     try expect_equal("abcd".slice(1, 3).get(), "bc")
 
 test "written order before omitted defaults and body":
     var counter = Counter()
-    let total = ordered(var counter, third: mark(var counter, 1), mark(var counter, 2))
+    total := ordered(var counter, third: mark(var counter, 1), mark(var counter, 2))
     try expect_false(total != 7 or counter.value != 1245)
     counter.value = 0
 
-    let reordered = first(right: mark(var counter, 2), mark(var counter, 1))
+    reordered := first(right: mark(var counter, 2), mark(var counter, 1))
     try expect_false(reordered != 1 or counter.value != 21)
     counter.value = 0
 
-    let record = Record(second: mark(var counter, 2), mark(var counter, 1))
+    record := Record(second: mark(var counter, 2), mark(var counter, 1))
     try expect_false((record.first != 1 or record.second != 2 or counter.value != 21))
 
     var early = 7
-    let selected = first(
+    selected := first(
         early,
         match present(0):
             _value:
@@ -162,19 +162,19 @@ test "written order before omitted defaults and body":
     var receiver = Offset(3)
     receiver = Offset(9)
 
-    let result = receiver.subtract(10)
+    result := receiver.subtract(10)
     try expect_equal(result, 1)
 
 test "callable expression precedes positional arguments":
     var counter = Counter()
-    let result = chosen(var counter)(mark(var counter, 2), mark(var counter, 3))
+    result := chosen(var counter)(mark(var counter, 2), mark(var counter, 3))
     try expect_false(result != -1 or counter.value != 123)
 
 test "a mutable callable value is called in place":
     var selected = subtract
     selected = fn(amount: Int, deduction: Int) Int: (amount + deduction)
 
-    let result = selected(10, 3)
+    result := selected(10, 3)
     try expect_equal(result, 13)
 
 fn present[T](value: T) T?:

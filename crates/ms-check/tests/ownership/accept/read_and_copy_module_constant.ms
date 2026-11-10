@@ -1,4 +1,4 @@
-let ITEMS = [1, 2]
+ITEMS := [1, 2]
 
 fn total() Int:
     var copy = ITEMS.clone()

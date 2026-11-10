@@ -19,7 +19,7 @@ export fn id_direct(var values: Map[Key, Int], key: Key) Unit:
     values.remove(key)
 
 export fn id_bound(var values: Map[Key, Int], key: Key) Unit:
-    let remove = values.remove
+    remove := values.remove
     remove(key)
 
 export fn id_generic(var values: Map[Key, Int], key: Key) Unit:

@@ -9,22 +9,22 @@ type Op:
 
 // L(i, j) for suffixes, stored row-major with width b.length() + 1.
 fn lcs_table(a: List[String], b: List[String]) List[Int]:
-    let w = b.length() + 1
+    w := b.length() + 1
     var t: List[Int] = []
     for k in range(0, (a.length() + 1) * w):
         t.append(0)
 
     for x in range(0, a.length()):
-        let i = a.length() - 1 - x
+        i := a.length() - 1 - x
 
         for y in range(0, b.length()):
-            let j = b.length() - 1 - y
+            j := b.length() - 1 - y
 
             if a[i] == b[j]:
                 t[i * w + j] = t[(i + 1) * w + j + 1] + 1
             else:
-                let down = t[(i + 1) * w + j]
-                let right = t[i * w + j + 1]
+                down := t[(i + 1) * w + j]
+                right := t[i * w + j + 1]
 
                 if down >= right:
                     t[i * w + j] = down
@@ -34,9 +34,9 @@ fn lcs_table(a: List[String], b: List[String]) List[Int]:
     return t
 
 fn edit_script(a: List[String], b: List[String], t: List[Int]) List[Op]:
-    let n = a.length()
-    let m = b.length()
-    let w = m + 1
+    n := a.length()
+    m := b.length()
+    w := m + 1
     var ops: List[Op] = []
     var i = 0
     var j = 0
@@ -76,13 +76,13 @@ fn hunk_span(start: Int, length: Int) String:
     return "{start},{length}"
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
-    let head = lines[0].split(" ")
-    let name_a = head[0]
-    let name_b = head[1]
-    let ctx = head[2].parse_int().get()
-    let n = head[3].parse_int().get()
-    let m = head[4].parse_int().get()
+    lines := read_lines(stdin()).get()
+    head := lines[0].split(" ")
+    name_a := head[0]
+    name_b := head[1]
+    ctx := head[2].parse_int().get()
+    n := head[3].parse_int().get()
+    m := head[4].parse_int().get()
     var a: List[String] = []
     var b: List[String] = []
     for i in range(0, n):
@@ -90,8 +90,8 @@ export fn main() Int:
     for j in range(0, m):
         b.append(lines[1 + n + j])
 
-    let ops = edit_script(a, b, lcs_table(a, b))
-    let total = ops.length()
+    ops := edit_script(a, b, lcs_table(a, b))
+    total := ops.length()
 
     // apre[p] and bpre[p] count the A and B lines consumed by the first p script lines.
     var apre = [0]
@@ -140,14 +140,14 @@ export fn main() Int:
         var hi = ends[h] + ctx + 1
         if hi > total: hi = total
 
-        let la = apre[hi] - apre[lo]
-        let lb = bpre[hi] - bpre[lo]
-        let sa = hunk_span(hunk_start(apre[lo], la), la)
-        let sb = hunk_span(hunk_start(bpre[lo], lb), lb)
+        la := apre[hi] - apre[lo]
+        lb := bpre[hi] - bpre[lo]
+        sa := hunk_span(hunk_start(apre[lo], la), la)
+        sb := hunk_span(hunk_start(bpre[lo], lb), lb)
         out.append("@@ -{sa} +{sb} @@\n")
 
         for p in range(lo, hi):
-            let op = ops[p]
+            op := ops[p]
 
             if op.kind == 0:
                 out.append(" {op.text}\n")

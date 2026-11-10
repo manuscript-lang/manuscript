@@ -14,9 +14,9 @@ Proposal, 2026-10-27, checked against `origin/main` at `c69a68ed` (after #1731).
 
 ## Problem
 
-- Verified (`ms run`, repro in #1726): `let h = open_handle("x")` prints `closed x` at scope end; `open_handle("t").id()`, `Holder(open_handle("f"))` and `[open_handle("e")]` print nothing, for both interface handles and `impl Closeable` types.
+- Verified (`ms run`, repro in #1726): `h := open_handle("x")` prints `closed x` at scope end; `open_handle("t").id()`, `Holder(open_handle("f"))` and `[open_handle("e")]` print nothing, for both interface handles and `impl Closeable` types.
 - Verified: native handles still release the OS resource in Rust `Drop` (`crates/ms-std-fs/src/stream.rs`). What is skipped is Manuscript `close()` code (loggers, stream wrappers).
-- Verified: `let h2 = mk(5)` where `Holder` holds a resource but has no `close` reports ``call `h2.close()` `` advice that cannot be followed; `let ho = Holder(R(3))` is silently never closed because `derived_from_resource` (`crates/ms-check/src/ownership/walk.rs`) exempts any call with a resource argument.
+- Verified: `h2 := mk(5)` where `Holder` holds a resource but has no `close` reports ``call `h2.close()` `` advice that cannot be followed; `ho := Holder(R(3))` is silently never closed because `derived_from_resource` (`crates/ms-check/src/ownership/walk.rs`) exempts any call with a resource argument.
 - Verified: `List[T]` is always `Move` class (`classify.rs` `native`), so a list of resources is never a resource.
 - Verified: about 13 stdlib types hold a resource in a field and most write their own `close`; hand-written `impl Closeable` is the norm (10 in stdlib, 80 in tests, docs and bench).
 - Regression found while reviewing: classifying interface handles as resources closed process `stdout` at scope end (#1691, reverted in #1731), because `stdout()`, `stderr()`, `stdin()` and `network()` return interfaces with `close() -> Unit`.
@@ -37,8 +37,8 @@ Proposal, 2026-10-27, checked against `origin/main` at `c69a68ed` (after #1731).
 - **Temporaries.** Unchanged. A resource temporary used as a receiver (`open("t").id()`) keeps relying on Rust `Drop` for native handles. Revisit after Stage 2 with a rule that exempts process-owned accessors.
 - Examples to be checked against stubs before approval:
   ```
-  let h = Holder(open_handle("f"))    # Stage 2: closes `inner` at scope end; Stage 1: `h` is tracked
-  let hs = [open_handle("e")]         # Stage 2: closes each element, last first
+  h := Holder(open_handle("f"))    # Stage 2: closes `inner` at scope end; Stage 1: `h` is tracked
+  hs := [open_handle("e")]         # Stage 2: closes each element, last first
   ```
 
 ## Components touched

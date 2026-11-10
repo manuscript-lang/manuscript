@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (-((-(-6)) - ((-758206) - (-43))))
+    i1 := (-((-(-6)) - ((-758206) - (-43))))
     say("i1 = {i1}")
 
-    let i2 = ((-35) + ((-i1) - (i1 * i1)))
+    i2 := ((-35) + ((-i1) - (i1 * i1)))
     say("i2 = {i2}")
 
-    let i3 = ((-(39 + i1)) + ((i2 % i2) - ((-26) % i2)))
+    i3 := ((-(39 + i1)) + ((i2 % i2) - ((-26) % i2)))
     say("i3 = {i3}")
 
-    let f4 = (((875.881 * 0.0) + 234.614) - 389.608)
+    f4 := (((875.881 * 0.0) + 234.614) - 389.608)
     say("f4 = {f4}")
 
-    let l5 = [18, (-13), (-21), 10]
+    l5 := [18, (-13), (-21), 10]
     say("l5 = {l5} len {l5.length()}")
 
     var acc6 = 0
@@ -29,13 +29,13 @@ export fn main() Int:
         acc6 += i * 3
     say("acc6 = {acc6}")
 
-    let i7 = (i2 + i1)
+    i7 := (i2 + i1)
     say("i7 = {i7}")
 
-    let f8 = (((f4 * 118.997) + (f4 * f4)) * ((f4 * f4) * (522.736 / f4)))
+    f8 := (((f4 * 118.997) + (f4 * f4)) * ((f4 * f4) * (522.736 / f4)))
     say("f8 = {f8}")
 
-    let s9 = "ms"
+    s9 := "ms"
     say("s9 = [{s9}]")
 
     var acc10 = 0
@@ -48,7 +48,7 @@ export fn main() Int:
 
     say("acc10 = {acc10}")
 
-    let i11 = (i1 * (-(i3 + (-10))))
+    i11 := (i1 * (-(i3 + (-10))))
     say("i11 = {i11}")
 
     var acc12 = 0
@@ -61,21 +61,21 @@ export fn main() Int:
 
     say("acc12 = {acc12}")
 
-    let i13 = ((35 + i3) / ((13 + (-5)) - 44))
+    i13 := ((35 + i3) / ((13 + (-5)) - 44))
     say("i13 = {i13}")
 
-    let l14 = l5.filter(fn x: x > 2)
+    l14 := l5.filter(fn x: x > 2)
     say("l14 = {l14} len {l14.length()}")
 
-    let i15 = s9.length()
+    i15 := s9.length()
     say("i15 = {i15}")
 
-    let b16 = (
+    b16 := (
         ("alpha" == "Tab\there".upper())
         and ((false and false) and (false and false))
     )
     say("b16 = {b16}")
 
-    let big17 = -9223372036854775808
+    big17 := -9223372036854775808
     say("{big17 - 4}")
     return 0

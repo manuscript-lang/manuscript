@@ -1,10 +1,10 @@
 import expect_equal from "@std/test/test.ms"
 
 test "ASCII normalization is identical under every form and byte budget":
-    let pattern = "aZ09\u{0}\t\n\u{7f}"
+    pattern := "aZ09\u{0}\t\n\u{7f}"
 
     for length in [0, 1, 2, 15, 16, 17, 31, 32, 128, 4096, 1048576]:
-        let text = pattern.repeat((length + 7) / 8).get().slice_scalars(0, length).get()
+        text := pattern.repeat((length + 7) / 8).get().slice_scalars(0, length).get()
 
         for form in ["NFC", "NFD", "NFKC", "NFKD"]:
             try expect_equal(text.normalize(form).get(), text.clone())
@@ -31,7 +31,7 @@ test "ASCII normalization is identical under every form and byte budget":
 
 test "normalization falls back for Unicode before and after long ASCII prefixes":
     for length in [0, 1, 4096, 1048576]:
-        let ascii = "x".repeat(length).get()
+        ascii := "x".repeat(length).get()
 
         for form in ["NFC", "NFD", "NFKC", "NFKD"]:
             var expected = "e\u{301}fi"

@@ -4,4 +4,4 @@
 fn make[T, U = Int]() T?: none
 
 fn use() Unit:
-    let x = make()
+    x := make()

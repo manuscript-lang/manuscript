@@ -35,5 +35,5 @@ fn both(first: Holder, second: Holder) Int!:
     return ok(2)
 
 test "a held temporary is consumed by the call":
-    let count = try both(Holder(Door()), try make())
+    count := try both(Holder(Door()), try make())
     try expect_equal(count, 2)

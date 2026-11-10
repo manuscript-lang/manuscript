@@ -4,37 +4,37 @@ import from_scalars from "@std/string.ms"
 // Backtracking regular-expression engine and the line-oriented command driver from TASK.md.
 // Patterns and subjects are byte lists (values 0-255), so raw bytes are handled exactly.
 
-let NL = 10
-let TAB = 9
-let CR = 13
-let QUOTE = 34
-let DOT = 46
-let DOLLAR = 36
-let LPAREN = 40
-let RPAREN = 41
-let STAR = 42
-let PLUS = 43
-let COMMA = 44
-let DASH = 45
-let LT = 60
-let GT = 62
-let QUESTION = 63
-let LBRACKET = 91
-let BACKSLASH = 92
-let RBRACKET = 93
-let CARET = 94
-let LBRACE = 123
-let BAR = 124
-let RBRACE = 125
+NL := 10
+TAB := 9
+CR := 13
+QUOTE := 34
+DOT := 46
+DOLLAR := 36
+LPAREN := 40
+RPAREN := 41
+STAR := 42
+PLUS := 43
+COMMA := 44
+DASH := 45
+LT := 60
+GT := 62
+QUESTION := 63
+LBRACKET := 91
+BACKSLASH := 92
+RBRACKET := 93
+CARET := 94
+LBRACE := 123
+BAR := 124
+RBRACE := 125
 // Anchor kinds
-let BOL = 0
-let EOL = 1
-let WORDB = 2
-let NOTWORDB = 3
-let MBOL = 4
-let MEOL = 5
+BOL := 0
+EOL := 1
+WORDB := 2
+NOTWORDB := 3
+MBOL := 4
+MEOL := 5
 // Class members at or above SHORT_BASE stand for the shorthand classes \d \D \w \W \s \S
-let SHORT_BASE = 256
+SHORT_BASE := 256
 
 fn ch(s: String) Int:
     return s.scalar_at(0)
@@ -133,8 +133,8 @@ fn shorthand_index(e: Int) Int:
 
 fn shorthand_bits(which: Int) List[Bool]:
     var bits = empty_bits()
-    let family = which / 2
-    let negated = which % 2 == 1
+    family := which / 2
+    negated := which % 2 == 1
 
     for c in 0..256:
         var on = false
@@ -216,7 +216,7 @@ impl Parser:
             return 0
 
         var i = self.pos + 1
-        let digits_start = i
+        digits_start := i
         while is_digit(self.byte_at(i)):
             i += 1
         if i == digits_start:
@@ -235,7 +235,7 @@ impl Parser:
         return 0
 
     fn is_quantifier() Bool:
-        let c = self.cur()
+        c := self.cur()
         return c == STAR or c == PLUS or c == QUESTION or self.brace_length() > 0
 
     // Reads decimal digits, saturating so that any value above 1000 stays detectable
@@ -252,7 +252,7 @@ impl Parser:
     var fn quantify(atom: Node) Result[Node, Problem]:
         var low = 0
         var high = -1
-        let c = self.cur()
+        c := self.cur()
 
         if c == STAR:
             self.pos += 1
@@ -291,7 +291,7 @@ impl Parser:
         if not (is_alpha(self.cur()) or self.cur() == 95):
             return error(Problem(err))
 
-        let start = self.pos
+        start := self.pos
         while is_word(self.cur()):
             self.pos += 1
 
@@ -313,8 +313,8 @@ impl Parser:
             return ok(CR)
 
         if e == ch("x"):
-            let hi = hex_value(self.cur())
-            let lo = hex_value(self.byte_at(self.pos + 1))
+            hi := hex_value(self.cur())
+            lo := hex_value(self.byte_at(self.pos + 1))
             if hi < 0 or lo < 0:
                 return error(Problem("bad escape"))
 
@@ -330,10 +330,10 @@ impl Parser:
         if self.pos >= self.pat.length():
             return error(Problem("bad escape"))
 
-        let e = self.cur()
+        e := self.cur()
         self.pos += 1
 
-        let i = shorthand_index(e)
+        i := shorthand_index(e)
         if i >= 0:
             return ok(Chars(shorthand_bits(i)))
         if e == ch("b"):
@@ -351,26 +351,26 @@ impl Parser:
 
             self.pos += 1
 
-            let nm = try self.name("bad escape")
+            nm := try self.name("bad escape")
             self.ref_names.append(nm.clone())
             return ok(Backref(0, nm, self.icase))
 
-        let c = try self.char_escape(e)
+        c := try self.char_escape(e)
         return ok(Chars(self.single(c)))
 
     // One class member: a byte, or SHORT_BASE + index for a shorthand class
     var fn class_member() Result[Int, Problem]:
-        let c = self.cur()
+        c := self.cur()
         self.pos += 1
         if c != BACKSLASH:
             return ok(c)
         if self.pos >= self.pat.length():
             return error(Problem("bad escape"))
 
-        let e = self.cur()
+        e := self.cur()
         self.pos += 1
 
-        let i = shorthand_index(e)
+        i := shorthand_index(e)
         if i >= 0:
             return ok(SHORT_BASE + i)
 
@@ -401,10 +401,10 @@ impl Parser:
                 closed = true
                 break
 
-            let a = try self.class_member()
+            a := try self.class_member()
 
             if a >= SHORT_BASE:
-                let extra = shorthand_bits(a - SHORT_BASE)
+                extra := shorthand_bits(a - SHORT_BASE)
                 for x in 0..256:
                     if extra[x]:
                         bits[x] = true
@@ -413,7 +413,7 @@ impl Parser:
             else if self.dash_follows():
                 self.pos += 1
 
-                let b = try self.class_member()
+                b := try self.class_member()
                 if b >= SHORT_BASE or b < a:
                     return error(Problem("bad range"))
 
@@ -440,7 +440,7 @@ impl Parser:
 
     // Parses the body of a group up to and including its closing parenthesis
     var fn group_body() Result[Node, Problem]:
-        let body = try self.alt()
+        body := try self.alt()
         if self.cur() != RPAREN:
             return error(Problem("unmatched ("))
 
@@ -449,7 +449,7 @@ impl Parser:
 
     var fn group() Result[Node, Problem]:
         if self.cur() == QUESTION:
-            let k = self.byte_at(self.pos + 1)
+            k := self.byte_at(self.pos + 1)
 
             if k == ch(":"):
                 self.pos += 2
@@ -458,40 +458,40 @@ impl Parser:
             if k == ch("=") or k == ch("!"):
                 self.pos += 2
 
-                let body = try self.group_body()
+                body := try self.group_body()
                 return ok(Look(body, k == ch("!")))
 
             if k == LT:
-                let op = self.byte_at(self.pos + 2)
+                op := self.byte_at(self.pos + 2)
                 if op == ch("=") or op == ch("!"):
                     return error(Problem("bad group"))
 
                 self.pos += 2
 
-                let nm = try self.name("bad group")
+                nm := try self.name("bad group")
                 for other in self.names:
                     if same(other, nm):
                         return error(Problem("duplicate group name"))
                 self.groups += 1
 
-                let g = self.groups
+                g := self.groups
                 self.names.append(nm)
 
-                let body = try self.group_body()
+                body := try self.group_body()
                 return ok(Capture(g, body))
 
             return error(Problem("bad group"))
 
         self.groups += 1
 
-        let g = self.groups
+        g := self.groups
         self.names.append(List[Int]())
 
-        let body = try self.group_body()
+        body := try self.group_body()
         return ok(Capture(g, body))
 
     var fn atom() Result[Node, Problem]:
-        let c = self.cur()
+        c := self.cur()
         self.pos += 1
         if c == LPAREN:
             return self.group()
@@ -516,7 +516,7 @@ impl Parser:
             and self.cur() != BAR
             and self.cur() != RPAREN
         ):
-            let c = self.cur()
+            c := self.cur()
             if c == STAR or c == PLUS or c == QUESTION:
                 return error(Problem("nothing to repeat"))
 
@@ -576,7 +576,7 @@ fn compile(pat: List[Int]) Result[Regex, Problem]:
 
         p.pos += 1
 
-    let root = try p.alt()
+    root := try p.alt()
     if p.pos < pat.length():
         return error(Problem("unmatched )"))
 
@@ -604,7 +604,7 @@ type Subject:
     names: List[List[Int]]
 
 fn anchor_ok(kind: Int, text: List[Int], pos: Int) Bool:
-    let n = text.length()
+    n := text.length()
     if kind == BOL:
         return pos == 0
     if kind == EOL:
@@ -614,8 +614,8 @@ fn anchor_ok(kind: Int, text: List[Int], pos: Int) Bool:
     if kind == MEOL:
         return pos == n or text[pos] == NL
 
-    let left = pos > 0 and is_word(text[pos - 1])
-    let right = pos < n and is_word(text[pos])
+    left := pos > 0 and is_word(text[pos - 1])
+    right := pos < n and is_word(text[pos])
     if kind == WORDB:
         return left != right
 
@@ -646,7 +646,7 @@ fn run(
             return run_from(items, 0, sub, pos, caps, k)
         Choice(branches):
             for branch in branches:
-                if let r = run(branch, sub, pos, caps, k):
+                if r := run(branch, sub, pos, caps, k):
                     return r
             return none
         Repeat(body, low, high, lazy):
@@ -658,12 +658,12 @@ fn run(
             if name.length() > 0:
                 g = group_of(sub.names, name)
 
-            let st = caps[2 * g]
-            let en = caps[2 * g + 1]
+            st := caps[2 * g]
+            en := caps[2 * g + 1]
             if st < 0 or en < 0:
                 return none
 
-            let width = en - st
+            width := en - st
             if pos + width > sub.text.length():
                 return none
 
@@ -672,15 +672,15 @@ fn run(
                     return none
             return k(pos + width, caps)
         Look(body, negate):
-            let r = run(body, sub, pos, caps, fn _p, c: c)
+            r := run(body, sub, pos, caps, fn _p, c: c)
 
             if negate:
-                if let _r = r:
+                if _r := r:
                     return none
 
                 return k(pos, caps)
 
-            if let c = r:
+            if c := r:
                 return k(pos, c)
 
             return none
@@ -725,12 +725,12 @@ fn step(
         return iterate(body, low, high, lazy, count, sub, pos, caps, k)
 
     if lazy:
-        if let r = k(pos, caps):
+        if r := k(pos, caps):
             return r
 
         return iterate(body, low, high, lazy, count, sub, pos, caps, k)
 
-    if let r = iterate(body, low, high, lazy, count, sub, pos, caps, k):
+    if r := iterate(body, low, high, lazy, count, sub, pos, caps, k):
         return r
 
     return k(pos, caps)
@@ -778,8 +778,8 @@ fn try_at(re: Regex, text: List[Int], start: Int, full: Bool) Optional[List[Int]
     for _i in 0..2 * (re.groups + 1):
         caps.append(-1)
 
-    let sub = Subject(text: text.clone(), names: re.names.clone())
-    let end = text.length()
+    sub := Subject(text: text.clone(), names: re.names.clone())
+    end := text.length()
     return run(re.root, sub, start, caps, fn p, c: accept(p, c, start, end, full))
 
 fn accept(p: Int, c: List[Int], start: Int, end: Int, full: Bool) Optional[List[Int]]:
@@ -792,7 +792,7 @@ fn search(re: Regex, text: List[Int], from_start: Int) Optional[List[Int]]:
     var start = from_start
 
     while start <= text.length():
-        if let caps = try_at(re, text.clone(), start, false):
+        if caps := try_at(re, text.clone(), start, false):
             return caps
 
         start += 1
@@ -804,7 +804,7 @@ fn find_all(re: Regex, text: List[Int]) List[List[Int]]:
     var at = 0
 
     while at <= text.length():
-        if let caps = search(re, text.clone(), at):
+        if caps := search(re, text.clone(), at):
             found.append(caps.clone())
 
             at = if caps[1] > caps[0]: caps[1] else: caps[1] + 1
@@ -848,13 +848,13 @@ fn describe(re: Regex, text: List[Int], caps: List[Int]) List[String]:
 
     for g in 0..re.groups + 1:
         var label = "{g}"
-        let nm = re.names[g]
+        nm := re.names[g]
         if nm.length() > 0:
             label = "{g} ({text_of(nm)})"
 
         if caps[2 * g] >= 0:
-            let st = caps[2 * g]
-            let en = caps[2 * g + 1]
+            st := caps[2 * g]
+            en := caps[2 * g + 1]
             lines.append("{label}: {st}..{en} {quoted(span_of(text, st, en))}")
         else:
             lines.append("{label}: unset")
@@ -895,20 +895,20 @@ fn expand(
     var i = 0
 
     while i < repl.length():
-        let c = repl[i]
+        c := repl[i]
 
         if c != DOLLAR:
             out.append(c)
             i += 1
             continue
 
-        let d = if i + 1 < repl.length(): repl[i + 1] else: -1
+        d := if i + 1 < repl.length(): repl[i + 1] else: -1
 
         if d == DOLLAR:
             out.append(DOLLAR)
             i += 2
         else if is_digit(d):
-            let g = d - 48
+            g := d - 48
             if g > re.groups:
                 return error(Problem("bad replacement"))
 
@@ -923,7 +923,7 @@ fn expand(
             if j >= repl.length():
                 return error(Problem("bad replacement"))
 
-            let g = group_of(re.names, span_of(repl, i + 2, j))
+            g := group_of(re.names, span_of(repl, i + 2, j))
             if g < 0:
                 return error(Problem("bad replacement"))
 
@@ -959,7 +959,7 @@ fn unescape(s: List[Int]) Result[List[Int], Problem]:
     var i = 0
 
     while i < s.length():
-        let c = s[i]
+        c := s[i]
 
         if c != BACKSLASH:
             out.append(c)
@@ -969,7 +969,7 @@ fn unescape(s: List[Int]) Result[List[Int], Problem]:
         if i + 1 >= s.length():
             return error(Problem("bad command"))
 
-        let e = s[i + 1]
+        e := s[i + 1]
 
         if e == ch("n"):
             out.append(NL)
@@ -984,8 +984,8 @@ fn unescape(s: List[Int]) Result[List[Int], Problem]:
             if i + 3 >= s.length():
                 return error(Problem("bad command"))
 
-            let hi = hex_value(s[i + 2])
-            let lo = hex_value(s[i + 3])
+            hi := hex_value(s[i + 2])
+            lo := hex_value(s[i + 3])
             if hi < 0 or lo < 0:
                 return error(Problem("bad command"))
 
@@ -1011,8 +1011,8 @@ fn split_tab(line: List[Int]) List[List[Int]]:
     return fields
 
 fn execute(line: List[Int]) Result[List[String], Problem]:
-    let fields = split_tab(line)
-    let commands = ["test", "match", "full", "find-all", "split", "replace"]
+    fields := split_tab(line)
+    commands := ["test", "match", "full", "find-all", "split", "replace"]
     var kind = -1
     for k in 0..commands.length():
         if same(fields[0], as_list(commands[k])):
@@ -1020,17 +1020,17 @@ fn execute(line: List[Int]) Result[List[String], Problem]:
     if kind < 0:
         return error(Problem("bad command"))
 
-    let arity = if kind == 5: 4 else: 3
+    arity := if kind == 5: 4 else: 3
 
     if fields.length() != arity:
         return error(Problem("bad command"))
 
-    let subject = try unescape(fields[2])
+    subject := try unescape(fields[2])
     var repl = List[Int]()
     if kind == 5:
         repl = try unescape(fields[3])
 
-    let re = try compile(fields[1].clone())
+    re := try compile(fields[1].clone())
 
     if kind == 0:
         if search(re, subject.clone(), 0).is_some():
@@ -1039,13 +1039,13 @@ fn execute(line: List[Int]) Result[List[String], Problem]:
         return ok(["false"])
 
     if kind == 1:
-        if let caps = search(re, subject.clone(), 0):
+        if caps := search(re, subject.clone(), 0):
             return ok(describe(re, subject, caps))
 
         return ok(["no match"])
 
     if kind == 2:
-        if let caps = try_at(re, subject.clone(), 0, true):
+        if caps := try_at(re, subject.clone(), 0, true):
             return ok(describe(re, subject, caps))
 
         return ok(["no match"])
@@ -1055,26 +1055,26 @@ fn execute(line: List[Int]) Result[List[String], Problem]:
     if kind == 4:
         return ok(split_lines(subject, find_all(re, subject)))
 
-    let replaced = try replace_all(re, subject.clone(), repl)
+    replaced := try replace_all(re, subject.clone(), repl)
     return ok([quoted(replaced)])
 
 fn command(line: List[Int]) List[String]:
     if line.length() == 0:
         return List[String]()
 
-    let result = execute(line)
+    result := execute(line)
     if result.is_error():
         return ["error: {result.err().text}"]
 
     return result.get().clone()
 
 export fn main() Int:
-    let data = read_all(stdin()).get()
+    data := read_all(stdin()).get()
     var out = List[String]()
     var line = List[Int]()
 
     for i in 0..data.length():
-        let b = data.get(i).to_int()
+        b := data.get(i).to_int()
 
         if b == NL:
             for s in command(line):

@@ -8,10 +8,10 @@ fn make() Link:
     return Link(Link(Link(none, 3), 2), 1)
 
 test "two chains through record payloads share one interpolation":
-    let head = make()
-    let text = "{head.next?.value} {head.next?.value} {head.next?.next?.value}"
+    head := make()
+    text := "{head.next?.value} {head.next?.value} {head.next?.next?.value}"
     try expect_equal(text, "some(2) some(2) some(3)")
 
 test "a chain on a call result keeps its temporary until the statement ends":
-    let text = "{make().next?.value} {make().next?.next?.value}"
+    text := "{make().next?.value} {make().next?.next?.value}"
     try expect_equal(text, "some(2) some(3)")

@@ -76,23 +76,23 @@ export fn sse_events(
     )
 
 fn positive(limit: Int?) Bool:
-    if let maximum = limit: return maximum > 0
+    if maximum := limit: return maximum > 0
 
     return true
 
 fn exceeds(value: Int, limit: Int?) Bool:
-    if let maximum = limit: return value > maximum
+    if maximum := limit: return value > maximum
 
     return false
 
 impl Transform[Bytes, SseEvent] for Decoder:
     var fn step(value: Bytes, var out: List[SseEvent]) Unit!:
         var events = List[SseEvent]()
-        if let failure = self.failure: return error(failure.clone())
+        if failure := self.failure: return error(failure.clone())
         if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
 
-        let chunk = value
-        let total = chunk.length()
+        chunk := value
+        total := chunk.length()
         var start = 0
         var lf = chunk.index_of_byte(10, 0).get(total)
         var cr = chunk.index_of_byte(13, 0).get(total)
@@ -102,16 +102,16 @@ impl Transform[Bytes, SseEvent] for Decoder:
             if cr < end: end = cr
             if end == total: break
 
-            let byte = chunk.get(end)
+            byte := chunk.get(end)
 
             if byte == 10 and self.carriage and end == start:
                 self.carriage = false
             else:
-                let step = complete(var self, chunk, start, end, var events)
+                step := complete(var self, chunk, start, end, var events)
                 self.carriage = byte == 13
 
                 if step.is_error():
-                    let failure = step.err().clone()
+                    failure := step.err().clone()
                     self.failure = failure.clone()
                     return error(failure)
 
@@ -122,10 +122,10 @@ impl Transform[Bytes, SseEvent] for Decoder:
         if start < total:
             self.carriage = false
 
-            let step = self.hold(chunk.slice(start, total).get())
+            step := self.hold(chunk.slice(start, total).get())
 
             if step.is_error():
-                let failure = step.err().clone()
+                failure := step.err().clone()
                 self.failure = failure.clone()
                 return error(failure)
 
@@ -133,7 +133,7 @@ impl Transform[Bytes, SseEvent] for Decoder:
         return ok(unit)
 
     var fn finish(var out: List[SseEvent]) Unit!:
-        if let failure = self.failure: return error(failure.clone())
+        if failure := self.failure: return error(failure.clone())
         if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
 
         self.closed = true
@@ -185,7 +185,7 @@ impl Decoder:
     var fn reconnect(value: String) Unit:
         if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return unit
 
-        let milliseconds = value.parse_int()
+        milliseconds := value.parse_int()
         if milliseconds.is_some(): self.retry_ms = milliseconds
 
 // Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any bytes held from earlier chunks.
@@ -201,7 +201,7 @@ fn complete(
 
     try decoder.hold(chunk.slice(start, end).get())
 
-    let joined = decoder.line.drain()
+    joined := decoder.line.drain()
     decoder.line_bytes = 0
     return end_line(var decoder, joined, 0, joined.length(), var events)
 
@@ -218,7 +218,7 @@ fn end_line(
         dispatch(var decoder, var events)
         return ok(unit)
 
-    let line = try bytes.decode_utf8_range(
+    line := try bytes.decode_utf8_range(
         from, end
     ).ok_or(Error("SSE line is not valid UTF-8", kind: "EBADMSG"))
     if line.starts_with(":"): return ok(unit)

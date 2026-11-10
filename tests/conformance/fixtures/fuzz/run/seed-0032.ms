@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,7 +15,7 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let i1 = ((-4) + 784987)
+    i1 := ((-4) + 784987)
     say("i1 = {i1}")
 
     var acc2 = 0
@@ -23,10 +23,10 @@ export fn main() Int:
         acc2 += i * 5
     say("acc2 = {acc2}")
 
-    let i3 = (-i1)
+    i3 := (-i1)
     say("i3 = {i3}")
 
-    let i4 = ((-30) * (((-12) * (-38)) / (5 % i1)))
+    i4 := ((-30) * (((-12) * (-38)) / (5 % i1)))
     say("i4 = {i4}")
 
     if ("delta".is_empty() and ("  padded  " == "quote\"d")):
@@ -34,7 +34,7 @@ export fn main() Int:
     else:
         say("MiXeD CaSe".trim())
 
-    let i5 = (-((-36) % (32 + 12)))
+    i5 := (-((-36) % (32 + 12)))
     say("i5 = {i5}")
 
     if (221.731 < (5.0e2 - 469.605)):
@@ -42,35 +42,35 @@ export fn main() Int:
     else:
         say(("héllo" + "back\\slash"))
 
-    let i6 = (((42 + 43) + (i5 - i1)) + (-((-6) * i4)))
+    i6 := (((42 + 43) + (i5 - i1)) + (-((-6) * i4)))
     say("i6 = {i6}")
 
-    let l7 = [1, 2, 3].take(0)
+    l7 := [1, 2, 3].take(0)
     say("l7 = {l7} len {l7.length()}")
 
-    let f8 = (((1.0e8 + 634.614) - (4.5 + 121.25)) + 0.0)
+    f8 := (((1.0e8 + 634.614) - (4.5 + 121.25)) + 0.0)
     say("f8 = {f8}")
 
-    let l9 = l7.map(fn x: x + 4).filter(fn x: x % 2 == 0)
+    l9 := l7.map(fn x: x + 4).filter(fn x: x % 2 == 0)
     say("l9 = {l9} len {l9.length()}")
 
-    let f10 = (((f8 - 600.25) - f8) + f8)
+    f10 := (((f8 - 600.25) - f8) + f8)
     say("f10 = {f10}")
 
-    let b11 = ((f8 + (7.0e-2 * 737.25)) != ((f8 * f10) * (367.516 * f8)))
+    b11 := ((f8 + (7.0e-2 * 737.25)) != ((f8 * f10) * (367.516 * f8)))
     say("b11 = {b11}")
 
-    let s12 = "naïve"
+    s12 := "naïve"
     say("s12 = [{s12}]")
 
-    let i13 = (31 + ((45 * i1) + ((-763530) % i5)))
+    i13 := (31 + ((45 * i1) + ((-763530) % i5)))
     say("i13 = {i13}")
     say("gcd(4201, 302) = {gcd(4201, 302)}")
 
-    let f14 = 8.0e24
+    f14 := 8.0e24
     say("f14 = {f14}")
 
-    let i15 = (1 % ((-544759) % (i5 * 44)))
+    i15 := (1 % ((-544759) % (i5 * 44)))
     say("i15 = {i15}")
 
     if ((81.359 + f10) != (f10 * f10)):

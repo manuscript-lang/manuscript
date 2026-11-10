@@ -6,20 +6,20 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [21, (-18)]
+    l1 := [21, (-18)]
     say("l1 = {l1} len {l1.length()}")
 
-    let f2 = (((745.783 + 1.5) * (5.5 / 303.135)) + ((686.747 + 640.673) + 935.786))
+    f2 := (((745.783 + 1.5) * (5.5 / 303.135)) + ((686.747 + 640.673) + 935.786))
     say("f2 = {f2}")
     say("{4} {(-l1.get(0))} {(4 < (-l1.get(0)))} sum {4 + (-l1.get(0))}")
 
-    let i3 = (l1.get(1) + ((-(-73068759431)) + 10))
+    i3 := (l1.get(1) + ((-(-73068759431)) + 10))
     say("i3 = {i3}")
 
-    let l4 = [16]
+    l4 := [16]
     say("l4 = {l4} len {l4.length()}")
     if 1:
         say("truthy")

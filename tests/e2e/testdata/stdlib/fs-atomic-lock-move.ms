@@ -19,27 +19,27 @@ import which from "@std/os/env.ms"
 import os, Os from "@std/os/system.ms"
 
 fn text_of(path: String) String!:
-    let data = try read_file(path).wait()
+    data := try read_file(path).wait()
     return ok(data.decode_utf8().get(""))
 
 test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
-    let directory = try temporary("manuscript-atomic-")
-    let root = directory.path()
-    let path = "{root}/config.txt"
+    directory := try temporary("manuscript-atomic-")
+    root := directory.path()
+    path := "{root}/config.txt"
     try write_atomic(path, "one").wait()
     try expect_equal(try text_of(path), "one")
     try write_file("{root}/mode.txt", "x", false).wait()
     try chmod("{root}/mode.txt", 384)
 
-    let before = (try stat("{root}/mode.txt")).permissions
-    let expected = if os() == Os.Windows: 438 else: 384
+    before := (try stat("{root}/mode.txt")).permissions
+    expected := if os() == Os.Windows: 438 else: 384
     try expect_equal(before, expected)
     try write_atomic("{root}/mode.txt", "y").wait()
     try expect_equal((try stat("{root}/mode.txt")).permissions, before)
     try expect_equal(try text_of("{root}/mode.txt"), "y")
     try chmod("{root}/mode.txt", 438)
 
-    let writable = (try stat("{root}/mode.txt")).permissions
+    writable := (try stat("{root}/mode.txt")).permissions
     try expect_equal(writable, 438)
     try write_atomic("{root}/mode.txt", "z").wait()
     try expect_equal((try stat("{root}/mode.txt")).permissions, writable)
@@ -47,12 +47,12 @@ test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
     try write_atomic(path, "two".to_bytes()).wait()
     try expect_equal(try text_of(path), "two")
 
-    let names = (try list(root, none)).map(fn e: e.name)
+    names := (try list(root, none)).map(fn e: e.name)
     try expect_equal(names.length(), 2)
 
 test "write_atomic writes through a symbolic link and keeps the link":
-    let directory = try temporary("manuscript-atomic-link-")
-    let root = directory.path()
+    directory := try temporary("manuscript-atomic-link-")
+    root := directory.path()
     try write_file("{root}/real.txt", "old", false).wait()
     try create_symlink("{root}/link.txt", "real.txt")
     try write_atomic("{root}/link.txt", "new").wait()
@@ -63,8 +63,8 @@ test "write_atomic writes through a symbolic link and keeps the link":
     try expect_equal((try list(root, none)).length(), 2)
 
 test "write_atomic replaces a link that names nothing":
-    let directory = try temporary("manuscript-atomic-dangling-")
-    let root = directory.path()
+    directory := try temporary("manuscript-atomic-dangling-")
+    root := directory.path()
     try create_symlink("{root}/dangling.txt", "missing.txt")
     try write_atomic("{root}/dangling.txt", "made").wait()
     try expect_false(
@@ -73,13 +73,13 @@ test "write_atomic replaces a link that names nothing":
     try expect_equal(try text_of("{root}/dangling.txt"), "made")
 
 test "write_atomic fails without touching the target when the directory is missing":
-    let directory = try temporary("manuscript-atomic-")
-    let outcome = write_atomic("{directory.path()}/missing/file.txt", "x").wait()
+    directory := try temporary("manuscript-atomic-")
+    outcome := write_atomic("{directory.path()}/missing/file.txt", "x").wait()
     try expect_true(outcome.is_error())
 
 test "advisory locks exclude other handles until unlocked or closed":
-    let directory = try temporary("manuscript-lock-")
-    let path = "{directory.path()}/lock"
+    directory := try temporary("manuscript-lock-")
+    path := "{directory.path()}/lock"
     try write_file(path, "", false).wait()
 
     var first = try open(path, OpenMode.Read)
@@ -99,8 +99,8 @@ test "advisory locks exclude other handles until unlocked or closed":
     try expect_true(try third.try_lock(true))
 
 test "move renames files and trees":
-    let directory = try temporary("manuscript-move-")
-    let root = directory.path()
+    directory := try temporary("manuscript-move-")
+    root := directory.path()
     try create_directory("{root}/tree/sub", true)
     try write_file("{root}/tree/sub/a.txt", "a", false).wait()
     try move("{root}/tree", "{root}/moved")
@@ -117,13 +117,13 @@ test "which finds executables on PATH and rejects missing names":
     try expect_true(which("sh").is_some() or which("cmd").is_some())
 
 test "write_atomic replaces a file whose name is near the name length limit":
-    let directory = try temporary("manuscript-atomic-long-")
-    let root = directory.path()
-    let name = try "ñ".repeat(120)
-    let path = "{root}/{name}"
+    directory := try temporary("manuscript-atomic-long-")
+    root := directory.path()
+    name := try "ñ".repeat(120)
+    path := "{root}/{name}"
     try write_atomic(path, "one").wait()
     try write_atomic(path, "two").wait()
     try expect_equal(try text_of(path), "two")
 
-    let names = (try list(root, none)).map(fn e: e.name)
+    names := (try list(root, none)).map(fn e: e.name)
     try expect_equal(names.length(), 1)

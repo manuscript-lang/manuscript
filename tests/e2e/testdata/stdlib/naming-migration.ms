@@ -35,7 +35,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     values.add("b", 2)
     try expect_equal(values.keys(), ["a", "b"])
 
-    let lazy: fn(String, fn(String) Int) Unit = values.add_default_from
+    lazy: fn(String, fn(String) Int) Unit = values.add_default_from
     lazy("a", key_length)
     lazy("ccc", key_length)
     values.add_default("d", 4)
@@ -50,7 +50,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
     try expect_false(values.contains("copy") or not copy.contains("copy"))
     try expect_equal(values.keys(), ["a", "b", "ccc", "d"])
 
-    let legacy: fn(String, Int) Unit = values.add_default
+    legacy: fn(String, Int) Unit = values.add_default
     legacy("a", 100)
     values.add_default_from("ff", key_length)
     try expect_false(counter.calls != 1 or values.get("a") != 1)
@@ -58,28 +58,28 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 
 test "text and byte builders keep Unit mutation function types":
     var bytes = BytesBuilder()
-    let append_byte: fn(UInt8) Unit = bytes.append
+    append_byte: fn(UInt8) Unit = bytes.append
     append_byte(65)
 
-    let concat_bytes: fn(Bytes) Unit = bytes.append_bytes
+    concat_bytes: fn(Bytes) Unit = bytes.append_bytes
     concat_bytes("B".to_bytes())
     try expect_false(bytes.build() != "AB".to_bytes())
 
     var text = StringBuilder()
-    let append_text: fn(String) Unit = text.append
+    append_text: fn(String) Unit = text.append
     append_text("ab")
     try expect_false(text.build() != "ab")
 
 test "copy names preserve Bytes and collection storage":
-    let bytes = Bytes([1, 2, 3])
-    let copied = bytes.with_value(0, 9)
+    bytes := Bytes([1, 2, 3])
+    copied := bytes.with_value(0, 9)
     try expect_false(bytes != Bytes([1, 2, 3]) or copied != Bytes([9, 2, 3]))
 
-    let values = [1, 2, 3]
+    values := [1, 2, 3]
     var reversed = values.reversed()
     reversed.set(0, 9)
     try expect_false(values != [1, 2, 3] or reversed != [9, 2, 1])
 
-    let set = Set[Int]([1])
+    set := Set[Int]([1])
     set.clone().add(2)
     try expect_equal(set.values(), [1])

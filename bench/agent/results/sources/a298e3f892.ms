@@ -17,18 +17,18 @@ fn is_digits(text: String) Bool:
 
 // Returns the amount in cents, so "12.5" becomes 1250 and "0.07" becomes 7.
 fn parse_amount(text: String) Optional[BigInt]:
-    let parts = text.split(".")
+    parts := text.split(".")
     if parts.length() > 2:
         return none
 
-    let whole = parts[0]
+    whole := parts[0]
     if not is_digits(whole):
         return none
 
     var fraction = "00"
 
     if parts.length() == 2:
-        let digits = parts[1]
+        digits := parts[1]
         if digits.length() == 0 or digits.length() > 2 or not is_digits(digits):
             return none
 
@@ -45,14 +45,14 @@ fn parse_line(line: String) Optional[Entry]:
     var amount = ""
 
     if line.starts_with("\""):
-        let parts = line.split("\"")
+        parts := line.split("\"")
         if parts.length() != 3 or not parts[2].starts_with(","):
             return none
 
         category = parts[1]
         amount = parts[2].slice(1, parts[2].length()).get()
     else:
-        let parts = line.split(",")
+        parts := line.split(",")
         if parts.length() != 2:
             return none
 
@@ -61,14 +61,14 @@ fn parse_line(line: String) Optional[Entry]:
 
     if category.is_empty():
         return none
-    if let cents = parse_amount(amount):
+    if cents := parse_amount(amount):
         return some(Entry(category: category, cents: cents))
 
     return none
 
 fn format_cents(cents: BigInt) String:
-    let digits = "00" + cents.to_string_radix(10)
-    let split_at = digits.length() - 2
+    digits := "00" + cents.to_string_radix(10)
+    split_at := digits.length() - 2
     var whole = digits.slice(0, split_at).get()
     while whole.length() > 1 and whole.starts_with("0"):
         whole = whole.slice(1, whole.length()).get()
@@ -80,16 +80,16 @@ fn compare_text(left: String, right: String) Int:
 export fn main() Int:
     var totals = Map[String, BigInt]()
     var skipped = 0
-    let input = stdin()
+    input := stdin()
     var done = false
 
     while not done:
-        if let line = read_line(input).get():
+        if line := read_line(input).get():
             if line.trim().is_empty():
                 continue
 
-            if let entry = parse_line(line):
-                if let total = totals.get(entry.category):
+            if entry := parse_line(line):
+                if total := totals.get(entry.category):
                     totals.add(entry.category, total.add(entry.cents))
                 else:
                     totals.add(entry.category, entry.cents)

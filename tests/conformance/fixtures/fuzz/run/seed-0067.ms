@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = (("a".lower() + "42".upper()) + "hello world")
+    s1 := (("a".lower() + "42".upper()) + "hello world")
     say("s1 = [{s1}]")
 
     var acc2 = 0
@@ -26,30 +26,30 @@ export fn main() Int:
 
     say("acc3 = {acc3}")
 
-    let l4 = [26, (-10)]
+    l4 := [26, (-10)]
     say("l4 = {l4} len {l4.length()}")
 
-    let f5 = (((0.0 - 389.268) * 1.5) + 361.513)
+    f5 := (((0.0 - 389.268) * 1.5) + 361.513)
     say("f5 = {f5}")
 
-    let i6 = (
+    i6 := (
         ((710712 * 24) / (44 * 461400))
         % (((-24) - (-469329246152)) % s1.length())
     )
     say("i6 = {i6}")
 
-    let i7 = i6
+    i7 := i6
     say("i7 = {i7}")
 
-    let b8 = (true and (not (true or true)))
+    b8 := (true and (not (true or true)))
     say("b8 = {b8}")
 
-    let f9 = (71.25 - ((617.676 / f5) + (749.950 / f5)))
+    f9 := (71.25 - ((617.676 / f5) + (749.950 / f5)))
     say("f9 = {f9}")
 
-    let i10 = i6
+    i10 := i6
     say("i10 = {i10}")
 
-    let l11 = l4.filter(fn x: x > 5)
+    l11 := l4.filter(fn x: x > 5)
     say("l11 = {l11} len {l11.length()}")
     return 0

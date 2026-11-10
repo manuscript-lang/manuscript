@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -23,13 +23,13 @@ fn gcd(a: Int, b: Int) Int:
 export fn main() Int:
     say("fact(16) = {fact(16)}")
 
-    let s1 = "  padded  ".lower()
+    s1 := "  padded  ".lower()
     say("s1 = [{s1}]")
 
-    let s2 = s1.trim()
+    s2 := s1.trim()
     say("s2 = [{s2}]")
 
-    let b3 = (
+    b3 := (
         ("{((-35) / (-626112))}:" + ("42" + "quote\"d")) == (
             s2.trim()
             + "ms".lower()
@@ -37,7 +37,7 @@ export fn main() Int:
     )
     say("b3 = {b3}")
 
-    let i4 = ((-30) * (-279449))
+    i4 := ((-30) * (-279449))
     say("i4 = {i4}")
     say("gcd(184, 3086) = {gcd(184, 3086)}")
 
@@ -46,6 +46,6 @@ export fn main() Int:
     else:
         say(("42" + "  padded  "))
 
-    let s5 = ("{(-16)}:" + "alpha")
+    s5 := ("{(-16)}:" + "alpha")
     say("s5 = [{s5}]")
     return 0

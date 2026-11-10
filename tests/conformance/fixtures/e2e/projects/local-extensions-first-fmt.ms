@@ -45,11 +45,11 @@ export fn first_generic() fn(Item) Int:
     return relay[Item]
 
 test "first local extensions":
-    let item = Item(2)
+    item := Item(2)
     (item.get() != 12 or invoke(item) != 12 or relay(item) != 12) | try expect_false
     as_view(item).get() | try expect_equal(12)
 
-    let holder = Holder(item)
+    holder := Holder(item)
     (holder.get() != 12 or invoke(holder) != 12 or holder.extract() != 12) | try expect_false
     Box("hello").get() | try expect_equal("hello")
     Choice.Some(2).get() | try expect_equal(12)
@@ -63,14 +63,14 @@ impl Closeable for Resource:
         return ok(unit)
 
 fn leave(resource: Resource) Unit:
-    let _local = resource
+    _local := resource
     return
 
 export fn first_resource(resource: Resource) Closeable:
     return resource
 
 test "first local cleanup":
-    let events = share(List[Int]())
+    events := share(List[Int]())
     leave(Resource(events))
     events.get().get(index: 0) | try expect_equal(10)
 

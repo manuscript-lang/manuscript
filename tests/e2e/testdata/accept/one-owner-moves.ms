@@ -45,32 +45,32 @@ test "pop moves the element out of the list":
     var counters = [counter(1), counter(2), counter(3)]
     var seen: List[Int] = []
     while not counters.is_empty():
-        if let c = counters.pop(): seen.append(c.read())
+        if c := counters.pop(): seen.append(c.read())
     seen | try expect_equal([3, 2, 1])
     counters.length() | try expect_equal(0)
 
 test "get on an owned optional hands the payload over":
-    let taken = maybe(6).get()
+    taken := maybe(6).get()
     taken.read() | try expect_equal(6)
 
-    let later = maybe(9).get()
+    later := maybe(9).get()
     later.read() | try expect_equal(9)
 
 test "get on a borrowed result lends the payload":
-    let r = make(7)
+    r := make(7)
     (not r.is_error() and r.get().read() == 7) | try expect_true
     r.get().read() | try expect_equal(7)
 
 test "a native lend beside a none path still lends":
-    let slots: List[Counter?] = [counter(8), none]
-    let ring = Ring(slots: slots, size: 2)
-    if let c = ring.at(0): c.read() | try expect_equal(8)
+    slots: List[Counter?] = [counter(8), none]
+    ring := Ring(slots: slots, size: 2)
+    if c := ring.at(0): c.read() | try expect_equal(8)
     ring.at(1).is_none() | try expect_true
     ring.at(5).is_none() | try expect_true
 
 test "a function value with defaults passes a supplied argument through":
-    let alias = total
-    let counters = [counter(1), counter(2)]
+    alias := total
+    counters := [counter(1), counter(2)]
     alias(counters) | try expect_equal(3)
     alias(counters, 10) | try expect_equal(30)
     counters.length() | try expect_equal(2)

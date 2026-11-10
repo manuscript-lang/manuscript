@@ -8,7 +8,7 @@ Use instead of:
 - `print("x")` over `stdout().write("x\n").get()`; `stdout()` only for bytes, no newline, or handled errors.
 - `a.length().max(b.length())` over `var m = a.length()` plus `if ...: m = ...`. The Int methods are ambient in user code and in stdlib modules outside the extension-module import closure; `math`, `string` and `big` cannot see them (cycle), so those write `max(a, b)`.
 - `[0].repeated(n)` (one element takes a native fill), `(0..n)`, `.map`, `.filter`, `.any`/`.all`, `.sum()`, `.contains` over loops that build a list or accumulate; `for _round in` over `unusedN` (bare `_` is a reserved word; names starting `_` are exempt from unread and shadowing checks); `xs.extend(ys)` over a loop that appends copies.
-- `let x = if c: a else: b` over `var x = a` plus a reassignment.
+- `x := if c: a else: b` over `var x = a` plus a reassignment.
 - `.is_empty()` over `.length() == 0`; no `== true`; no `else:` after `return`.
 - `if let`, `get(default)`, `try` over `is_none()` guards and `match` unwrapping. Avoid chained `.get(a).get(b)`; use `get_or(key, default)` on a Map (`Headers`, `JsonValue` and `Result` lack it). Inside a type's own `get_or` do not write `self.get_or`: it recurses.
 - `"""` multi-line literals over `+ "\n" +` chains.

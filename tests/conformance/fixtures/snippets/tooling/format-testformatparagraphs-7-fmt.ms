@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/format/format_paragraphs_test.go:83 TestFormatParagraphs
 fn work(enabled: Bool) Int:
-    let count = 2
+    count := 2
 
     if enabled:
         run(count)

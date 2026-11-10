@@ -21,8 +21,8 @@ fn show(number: Int) Result[Unit, Error]:
     return stdout().flush()
 
 export fn main() Int:
-    let number = arguments().get(0, default: "42").parse_int()
-    if let value = number:
+    number := arguments().get(0, default: "42").parse_int()
+    if value := number:
         if show(value).is_ok():
             return 0
     return 1
@@ -49,7 +49,7 @@ import parse from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
-    let text = try parse[String](arguments().get(0, default: "\"hello\""))
+    text := try parse[String](arguments().get(0, default: "\"hello\""))
     try stdout().write("{text}\n")
     return stdout().flush()
 
@@ -86,9 +86,9 @@ type Config:
     enabled: Bool = true
 
 fn run() Result[Unit, Error]:
-    let text = arguments().get(0, default: "\{\"name\":\"Sam\"\}")
-    let config = try parse[Config](text)
-    let encoded = try stringify(config, StringifyOptions(strict: true))
+    text := arguments().get(0, default: "\{\"name\":\"Sam\"\}")
+    config := try parse[Config](text)
+    encoded := try stringify(config, StringifyOptions(strict: true))
     try stdout().write("{encoded}\n")
     return stdout().flush()
 

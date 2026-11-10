@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = ("quote\"d".replace("back\\slash", "brace\{s\}") + "line\nbreak".upper()).reverse()
+    s1 := ("quote\"d".replace("back\\slash", "brace\{s\}") + "line\nbreak".upper()).reverse()
     say("s1 = [{s1}]")
 
-    let f2 = 538.676
+    f2 := 538.676
     say("f2 = {f2}")
     return "not an int"
 
-    let f3 = (((f2 * 303.579) + (2.5 - f2)) * ((f2 - f2) * (6.0e15 * f2)))
+    f3 := (((f2 * 303.579) + (2.5 - f2)) * ((f2 - f2) * (6.0e15 * f2)))
     say("f3 = {f3}")
 
-    let i4 = 802015
+    i4 := 802015
     say("i4 = {i4}")
 
-    let b5 = "delta".upper().trim().is_empty()
+    b5 := "delta".upper().trim().is_empty()
     say("b5 = {b5}")
     return 0

@@ -5,11 +5,11 @@ import Decimal from "@std/math/decimal.ms"
 import expect_equal from "@std/test/test.ms"
 
 fn amount_text() Result[String, Error]:
-    let subtotal = 19.99d * 3d
-    let tax = try (subtotal * 0.0825d).round(places: 2)
-    let tax_text = try tax.to_fixed(digits: 2)
-    let total_text = try (subtotal + tax).to_fixed(digits: 2)
-    let padded = try 25.50d.to_fixed(digits: 2)
+    subtotal := 19.99d * 3d
+    tax := try (subtotal * 0.0825d).round(places: 2)
+    tax_text := try tax.to_fixed(digits: 2)
+    total_text := try (subtotal + tax).to_fixed(digits: 2)
+    padded := try 25.50d.to_fixed(digits: 2)
     return ok("tax {tax_text} total {total_text} padded {padded}")
 
 test "decimal amounts":

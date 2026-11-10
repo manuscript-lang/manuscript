@@ -61,7 +61,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...) T:', or import it from a module",
+        "message": "unknown binding acquire; declare it with 'acquire := ...' before use, define 'fn acquire(...) T:', or import it from a module",
         "position": {
           "file": "format-testformatparagraphs-1.ms",
           "line": 11,
@@ -99,7 +99,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatparagraphs-1.ms:7:9: resolution: unknown binding run; add: import run from \"@std/os/process.ms\"\n   |\n 7 |         run(count)\n   |         ^\n<DIR>/format-testformatparagraphs-1.ms:9:9: resolution: unknown binding run; add: import run from \"@std/os/process.ms\"\n   |\n 9 |         run(item)\n   |         ^\n<DIR>/format-testformatparagraphs-1.ms:11:20: resolution: unknown binding acquire; declare it with 'let acquire = ...' before use, define 'fn acquire(...) T:', or import it from a module\n    |\n 11 |     var resource = acquire()\n    |                    ^\n<DIR>/format-testformatparagraphs-1.ms:12:5: resolution: unknown binding run; add: import run from \"@std/os/process.ms\"\n    |\n 12 |     run(resource)\n    |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatparagraphs-1.ms:7:9: resolution: unknown binding run; add: import run from \"@std/os/process.ms\"\n   |\n 7 |         run(count)\n   |         ^\n<DIR>/format-testformatparagraphs-1.ms:9:9: resolution: unknown binding run; add: import run from \"@std/os/process.ms\"\n   |\n 9 |         run(item)\n   |         ^\n<DIR>/format-testformatparagraphs-1.ms:11:20: resolution: unknown binding acquire; declare it with 'acquire := ...' before use, define 'fn acquire(...) T:', or import it from a module\n    |\n 11 |     var resource = acquire()\n    |                    ^\n<DIR>/format-testformatparagraphs-1.ms:12:5: resolution: unknown binding run; add: import run from \"@std/os/process.ms\"\n    |\n 12 |     run(resource)\n    |     ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

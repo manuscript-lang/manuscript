@@ -14,8 +14,8 @@ Save as `names.ms` and run `ms run names.ms`:
 <!-- manuscript-example: {"mode":"run","stdout":"Ada and Grace\n"} -->
 ```manuscript
 export fn main() Int:
-    let names = ["Ada", "Grace"]
-    let [first_name, second_name] = names
+    names := ["Ada", "Grace"]
+    [first_name, second_name] := names
     print("{first_name} and {second_name}")
     return 0
 ```
@@ -29,8 +29,8 @@ Positions bind left to right. A `List[T]` binds each position as `T`, and its le
 ## Type bindings
 
 ```manuscript
-let {name, email} = customer
-let {name: customer_name, email: customer_email} = customer
+{name, email} := customer
+{name: customer_name, email: customer_email} := customer
 ```
 
 Shorthand binds a field to a same-named local; `field: local` renames it. A pattern may select a subset of fields, which must exist on the statically known type. A `Map` has no named fields and takes no field patterns.
@@ -39,7 +39,7 @@ Shorthand binds a field to a same-named local; `field: local` renames it. A patt
 
 ```manuscript
 let {customer: {name}, shipping: {city: destination}} = order
-let [{name: first_name}, {name: second_name}] = customers
+[{name: first_name}, {name: second_name}] := customers
 ```
 
 Patterns nest freely. The initializer is evaluated once and extraction follows pattern order. Duplicate binding names are rejected.

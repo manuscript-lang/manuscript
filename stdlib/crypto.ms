@@ -52,7 +52,7 @@ export fn constant_time_select(choice: Int, left: Int, right: Int) Int:
     if choice != 0 and choice != 1:
         panic("crypto: choice must be 0 or 1")
 
-    let mask = -choice
+    mask := -choice
     return bit_or(bit_and(mask, left), bit_and(bit_not(mask), right))
 
 // Returns 1 if `left <= right` and 0 otherwise, without branching on the values.

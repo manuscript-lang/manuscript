@@ -16,27 +16,27 @@ fn loop_depth(n: Int, rounds: Int) Int:
     return total
 
 fn status(label: String) Unit:
-    let text = read_file("/proc/self/status", none).wait().get().decode_utf8().get()
+    text := read_file("/proc/self/status", none).wait().get().decode_utf8().get()
     for line in text.lines():
         if line.contains("VmRSS") or line.contains("VmPTE"):
             print(label + " " + line)
 
 fn in_task(n: Int, rounds: Int) Int:
-    let p = owned_task[Int](fn: ok(loop_depth(n, rounds)))
+    p := owned_task[Int](fn: ok(loop_depth(n, rounds)))
     return p.wait().get()
 
 export fn main() Int:
     // Crossing cost: the same loop just below and just above the first slot's boundary.
-    let rounds = 20000
-    let t0 = monotonic()
-    let below = in_task(3000, rounds)
-    let t1 = monotonic()
-    let above = in_task(3400, rounds)
-    let t2 = monotonic()
-    let main_below = loop_depth(3000, rounds)
-    let t3 = monotonic()
-    let main_above = loop_depth(3400, rounds)
-    let t4 = monotonic()
+    rounds := 20000
+    t0 := monotonic()
+    below := in_task(3000, rounds)
+    t1 := monotonic()
+    above := in_task(3400, rounds)
+    t2 := monotonic()
+    main_below := loop_depth(3000, rounds)
+    t3 := monotonic()
+    main_above := loop_depth(3400, rounds)
+    t4 := monotonic()
     print(
         "task 3000 frames x {rounds}: {t1.difference(t0).to_nanoseconds() / 1000000} ms ({below})"
     )
@@ -51,11 +51,11 @@ export fn main() Int:
     )
 
     // Deep recursion: 900k frames in a task and on the main task.
-    let t5 = monotonic()
-    let deep = in_task(900000, 1)
-    let t6 = monotonic()
-    let main_deep = depth(900000)
-    let t7 = monotonic()
+    t5 := monotonic()
+    deep := in_task(900000, 1)
+    t6 := monotonic()
+    main_deep := depth(900000)
+    t7 := monotonic()
     print(
         "task 900k frames: {t6.difference(t5).to_nanoseconds() / 1000000} ms ({deep}); main: {t7.difference(t6).to_nanoseconds() / 1000000} ms ({main_deep})"
     )

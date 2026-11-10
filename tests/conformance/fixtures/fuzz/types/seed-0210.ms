@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -18,7 +18,7 @@ export fn main() Int:
 
     say("acc1 = {acc1}")
 
-    let bad = (1 < 2) < 3
+    bad := (1 < 2) < 3
 
     if ("  padded  ".replace("ms", "a") != "".reverse()):
         say("beta".trim())

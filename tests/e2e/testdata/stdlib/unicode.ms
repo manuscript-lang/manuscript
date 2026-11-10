@@ -38,7 +38,7 @@ test "Unicode whitespace and controls keep distinct property sets":
     is_ascii(128) | try expect_false
 
 test "Unicode invalid scalars never wrap into valid characters":
-    let predicates = [
+    predicates := [
         is_alphabetic, is_alphanumeric, is_numeric, is_lowercase, is_uppercase,
         is_whitespace, is_control, is_ascii
     ]
@@ -48,5 +48,5 @@ test "Unicode invalid scalars never wrap into valid characters":
         predicate(1114111) | try expect_false
 
 test "Unicode predicates can be passed as ordinary function values":
-    let values = [65, 233, 32, 51, 128578]
+    values := [65, 233, 32, 51, 128578]
     values.filter(is_alphanumeric) | try expect_equal([65, 233, 51])

@@ -13,29 +13,29 @@ fn propagated() Int!Failure:
     return ok(try failure())
 
 test "prelude cases and optional methods need no imports":
-    let inferred: Int? = 3
-    let absent: Int? = none
-    let qualified: Int? = 5
+    inferred: Int? = 3
+    absent: Int? = none
+    qualified: Int? = 5
     try expect_false(inferred.is_none() or absent.is_some())
     try expect_false(inferred.get() != 3 or qualified.get() != 5)
     try expect_false(
         (absent.get(9) != 9 or absent.or_else(fn() Int?: return 11).get() != 11)
     )
 
-    let value = try success()
+    value := try success()
     try expect_equal(value.get(), 7)
 
 test "try forwards an error of the same type unchanged":
-    let outcome = propagated()
+    outcome := propagated()
     try expect_false(not outcome.is_error())
     try expect_equal(outcome.err().message_text, "failed")
 
 test "Error is a record with a message, a kind and details":
-    let plain = Error("failed")
+    plain := Error("failed")
     try expect_equal(plain.message, "failed")
     try expect_equal(plain.kind, none)
     try expect_equal(plain.details.length(), 0)
 
-    let detailed = Error("no such file", kind: "ENOENT", details: {"path": "/tmp/x"})
+    detailed := Error("no such file", kind: "ENOENT", details: {"path": "/tmp/x"})
     try expect_equal(detailed.kind, "ENOENT")
     try expect_equal(detailed.details["path"], "/tmp/x")

@@ -59,18 +59,18 @@ type HashConfig:
 
 fn hasher(parent: Channel[String, Bytes], argument: HashConfig):
     while true:
-        if let chunk = parent.receive():
+        if chunk := parent.receive():
             parent.send(digest(argument.algorithm, chunk))
         else:
             break
 
 fn hash_all(chunks: List[Bytes]) List[String]:
     var digests = List[String]()
-    with let group = ProcessGroup():
-        let worker = group.spawn(hasher, HashConfig(algorithm="sha256"))
+    with group := ProcessGroup():
+        worker := group.spawn(hasher, HashConfig(algorithm="sha256"))
         for chunk in chunks:
             worker.send(chunk.clone())
-            if let digest = worker.receive():
+            if digest := worker.receive():
                 digests.append(digest)
         worker.close_input()
         worker.wait()

@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = ("quote\"d" + ("  padded  " + "x".upper()))
+    s1 := ("quote\"d" + ("  padded  " + "x".upper()))
     say("s1 = [{s1}]")
 
     var acc2 = 0

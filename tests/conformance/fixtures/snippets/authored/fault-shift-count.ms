@@ -4,6 +4,6 @@
 import shift_left from "@std/math/math.ms"
 
 export fn main() Int:
-    let count = 64
+    count := 64
     print(shift_left(1, count))
     return 0

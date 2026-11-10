@@ -7,7 +7,7 @@ fn map_total(values: Map[String, Int]) Int:
     var total = 0
 
     for entry in values:
-        let {value} = entry
+        {value} := entry
         total += value
 
     return total
@@ -19,6 +19,6 @@ fn set_total(values: Set[Int]) Int:
     return total
 
 test "map entry type":
-    let entry = MapEntry[String, Int]("a", 3)
+    entry := MapEntry[String, Int]("a", 3)
     try expect_equal(entry.key, "a")
     try expect_equal(entry.value, 3)

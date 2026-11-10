@@ -7,5 +7,5 @@ interface Named:
 fn describe[E: Named](item: E) String: item.name()
 
 export fn main() Int:
-    let _message = describe("missing")
+    _message := describe("missing")
     return 0

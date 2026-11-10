@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -29,19 +29,19 @@ fn fact(n: Int) Int:
     return n * fact(n - 1)
 
 export fn main() Int:
-    let f1 = (
+    f1 := (
         ((983.574 - 758.025) - (455.110 + 655.218))
         * (447.154 * (173.303 * 301.644))
     )
     say("f1 = {f1}")
 
-    let b2 = (((49 * 6) >= 2) or false)
+    b2 := (((49 * 6) >= 2) or false)
     say("b2 = {b2}")
 
-    let f3 = (((372.532 * f1) - (f1 * f1)) * ((f1 + f1) * (183.878 * f1)))
+    f3 := (((372.532 * f1) - (f1 * f1)) * ((f1 + f1) * (183.878 * f1)))
     say("f3 = {f3}")
 
-    let b4 = "alpha".replace("alpha", "hello world").ends_with("quote\"d")
+    b4 := "alpha".replace("alpha", "hello world").ends_with("quote\"d")
     say("b4 = {b4}")
 
     var acc5 = 0
@@ -50,7 +50,7 @@ export fn main() Int:
     say("acc5 = {acc5}")
     say("collatz(2506) = {collatz(2506)}")
 
-    let l6 = [21, (-16), (-14), 11]
+    l6 := [21, (-16), (-14), 11]
     say("l6 = {l6} len {l6.length()}")
     say("fact(7) = {fact(7)}")
 
@@ -61,22 +61,22 @@ export fn main() Int:
 
     say("collatz(2254) = {collatz(2254)}")
 
-    let l7 = l6.map(fn x: x + 1).filter(fn x: x % 2 == 0)
+    l7 := l6.map(fn x: x + 1).filter(fn x: x % 2 == 0)
     say("l7 = {l7} len {l7.length()}")
 
-    let b8 = (
+    b8 := (
         "日本語".is_empty()
         or ("Tab\there".starts_with("emoji 😀") or "beta".is_empty())
     )
     say("b8 = {b8}")
 
-    let i9 = (-((-11) * ((-19) * (-49))))
+    i9 := (-((-11) * ((-19) * (-49))))
     say("i9 = {i9}")
     say(
         "{((-19) * ((-21) + (-3)))} {i9} {(((-19) * ((-21) + (-3))) < i9)} sum {((-19) * ((-21) + (-3))) + i9}"
     )
 
-    let s10 = "42"
+    s10 := "42"
     say("s10 = [{s10}]")
 
     if (not (false and b4)):

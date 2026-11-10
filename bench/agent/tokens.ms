@@ -8,16 +8,16 @@ import stdout, stderr from "@std/io/io.ms"
 import load_challenges from "./core/model.ms"
 import bash from "./lib/text.ms"
 
-let LANGS = ["ts", "rust", "go", "ms"]
+LANGS := ["ts", "rust", "go", "ms"]
 
 // Token counts of `paths` from one tiktoken process; none when tiktoken is unavailable.
 fn count_tokens(paths: List[String]) List[Int]?:
-    let program = "import sys, tiktoken; e = tiktoken.get_encoding('o200k_base'); [print(len(e.encode(open(p, encoding='utf-8').read()))) for p in sys.argv[1:]]"
-    let quoted = paths.map(fn p: "'{p}'").join(" ")
-    let ran = bash("python3 -c \"{program}\" {quoted}", ".", 600, "")
+    program := "import sys, tiktoken; e = tiktoken.get_encoding('o200k_base'); [print(len(e.encode(open(p, encoding='utf-8').read()))) for p in sys.argv[1:]]"
+    quoted := paths.map(fn p: "'{p}'").join(" ")
+    ran := bash("python3 -c \"{program}\" {quoted}", ".", 600, "")
     if ran.code != 0: return none
 
-    let counts = ran.out.trim().split("\n").map(fn n: n.parse_int().get(0))
+    counts := ran.out.trim().split("\n").map(fn n: n.parse_int().get(0))
     return counts
 
 fn ratio(top: Int, bottom: Int) String: (top.to_float() / bottom.to_float()).to_fixed(2)
@@ -31,7 +31,7 @@ export fn main() Int:
         var row = List[String]()
 
         for lang in LANGS:
-            let refs = glob(
+            refs := glob(
                 "{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])
             ).get([])
             if not refs.is_empty(): row.append(
@@ -42,7 +42,7 @@ export fn main() Int:
             names.append(ch.id.clone())
             paths = paths.concat(row)
 
-    let counts = count_tokens(paths)
+    counts := count_tokens(paths)
 
     if counts.is_none():
         (
@@ -54,7 +54,7 @@ export fn main() Int:
         )
         return 1
 
-    let all = counts.get([])
+    all := counts.get([])
     var totals = [0, 0, 0, 0]
     var out = (
         "challenge".pad_end(26, " ")
@@ -63,7 +63,7 @@ export fn main() Int:
     )
 
     for i in 0..names.length():
-        let row = all.slice(i * 4, i * 4 + 4).get([])
+        row := all.slice(i * 4, i * 4 + 4).get([])
         for j in 0..4: totals[j] = totals[j] + row[j]
         out = (
             out

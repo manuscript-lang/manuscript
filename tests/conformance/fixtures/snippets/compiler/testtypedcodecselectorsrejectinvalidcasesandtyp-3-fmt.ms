@@ -4,4 +4,4 @@
 import HashAlgorithm from "@std/crypto.ms"
 
 fn wrong() Unit:
-    let algorithm = HashAlgorithm.Sha257
+    algorithm := HashAlgorithm.Sha257

@@ -23,7 +23,7 @@ fn copies(text: String) List[String]:
     return sites
 
 export fn main() Int:
-    let root = working_directory().get()
+    root := working_directory().get()
     var files = List[String]()
     for f in arguments(): files.append(f.clone())
     if files.length() == 0:
@@ -35,9 +35,9 @@ export fn main() Int:
             for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):
                 files.append("{dir}/{f.path}")
 
-    let ms = tool_ms(root.clone())
-    let scratch = temporary("ms-copy-").get()
-    let binary = "{scratch.path()}/program"
+    ms := tool_ms(root.clone())
+    scratch := temporary("ms-copy-").get()
+    binary := "{scratch.path()}/program"
     var env = Map[String, String]()
     env.add("MS_COPY_PROBE", "1")
     env.add("MS_CACHE", "off")
@@ -47,8 +47,8 @@ export fn main() Int:
     var failing = 0
 
     for f in files:
-        let absolute = "{root}/{f}"
-        let source = read_file(absolute.clone()).wait().get().decode_utf8().get("")
+        absolute := "{root}/{f}"
+        source := read_file(absolute.clone()).wait().get().decode_utf8().get("")
         var command = List[String]()
 
         if source.contains("export fn main"):
@@ -58,12 +58,12 @@ export fn main() Int:
         else:
             continue
 
-        if let out = run(
+        if out := run(
             ms.clone(), command, RunOptions(timeout: seconds(120), env: env.clone())
         ).wait():
             swept += 1
 
-            let sites = copies(out.stderr.decode_utf8().get(""))
+            sites := copies(out.stderr.decode_utf8().get(""))
             if sites.length() == 0: continue
 
             failing += 1

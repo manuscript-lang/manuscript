@@ -21,12 +21,12 @@ fn capture_keys(source: Map[String, Int]) List[fn() String]:
     return out
 
 test "map values move from their owned traversal result":
-    let source = {"a": "alpha", "b": "beta", "c": "gamma"}
+    source := {"a": "alpha", "b": "beta", "c": "gamma"}
     try expect_equal(collect_values(source), ["alpha", "beta", "gamma"])
     try expect_equal(source.get("b").get(), "beta")
 
 test "map entries retain independent nested values after a move":
-    let source = {"a": ["alpha"], "b": ["beta"]}
+    source := {"a": ["alpha"], "b": ["beta"]}
     var entries = collect_entries(source)
     entries[0].value.append("changed")
     try expect_equal(entries[0].value, ["alpha", "changed"])
@@ -34,15 +34,15 @@ test "map entries retain independent nested values after a move":
     try expect_equal(entries[1].value, ["beta"])
 
 test "map keys can move into escaping closures":
-    let source = {"a": 1, "b": 2, "c": 3}
-    let keys = capture_keys(source)
+    source := {"a": 1, "b": 2, "c": 3}
+    keys := capture_keys(source)
     try expect_equal(keys[0](), "a")
     try expect_equal(keys[1](), "b")
     try expect_equal(keys[2](), "c")
     try expect_equal(source.length(), 3)
 
 test "set values move from their owned traversal result":
-    let source = Set(["alpha", "beta", "gamma"])
+    source := Set(["alpha", "beta", "gamma"])
     var out = List[String]()
     out.extend(source.values())
     try expect_equal(out, ["alpha", "beta", "gamma"])

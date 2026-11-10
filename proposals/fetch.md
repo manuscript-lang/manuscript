@@ -29,11 +29,11 @@ type User:
     name: String
 
 fn load() Result[User, FetchError]:
-    let response = try fetch("https://example.com/user/1")
+    response := try fetch("https://example.com/user/1")
     return read_json[User](response)
 
 fn create(user: User) Result[Int, FetchError]:
-    let response = try fetch(
+    response := try fetch(
         "https://example.com/users",
         FetchOptions(method: HttpMethod.Post, body: try json_body(user))
     )

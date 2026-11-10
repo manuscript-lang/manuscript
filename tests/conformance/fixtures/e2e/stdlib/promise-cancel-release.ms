@@ -10,15 +10,15 @@ fn hold(label: String) Int:
     for i in 0..600:
         parts.append("{label} {i}")
 
-        let _ = sleep(milliseconds(100)).wait()
+        _ := sleep(milliseconds(100)).wait()
 
     return parts.length()
 
 export fn main() Int:
-    let slow = promise(fn: ok(hold("timed out")))
-    let timed_out = slow.with(options: PromiseOptions(timeout: milliseconds(20))).wait()
-    let first = wait_first([promise(fn: ok(hold("loser"))), promise(fn: ok(4))])
-    let pending = promise(fn: ok(hold("dropped")))
-    let _ = pending
+    slow := promise(fn: ok(hold("timed out")))
+    timed_out := slow.with(options: PromiseOptions(timeout: milliseconds(20))).wait()
+    first := wait_first([promise(fn: ok(hold("loser"))), promise(fn: ok(4))])
+    pending := promise(fn: ok(hold("dropped")))
+    _ := pending
     print("{timed_out.is_error()} {first.get(0)}")
     return 0

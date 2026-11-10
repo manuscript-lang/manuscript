@@ -233,13 +233,13 @@ fn partial_root_start(source: &str) -> bool {
         "interface",
         "impl",
         "test",
-        "let",
     ] {
         if after_keyword(source, keyword).is_some() {
             return true;
         }
     }
-    after_keyword(source, "fn").is_some_and(|rest| {
+    constant_start(source)
+        || after_keyword(source, "fn").is_some_and(|rest| {
         let rest = rest.trim_start();
         let name_start = rest
             .as_bytes()
@@ -258,6 +258,17 @@ fn partial_root_start(source: &str) -> bool {
                 .iter()
                 .any(|keyword| after_keyword(rest.trim_start(), keyword).is_some())
         })
+}
+
+/// A module constant starts `name :=` or `name: Type =`.
+fn constant_start(source: &str) -> bool {
+    let name = source
+        .bytes()
+        .take_while(|b| b.is_ascii_alphanumeric() || *b == b'_')
+        .count();
+    name > 0
+        && !source.as_bytes()[0].is_ascii_digit()
+        && source[name..].trim_start().starts_with(':')
 }
 
 fn after_keyword<'a>(source: &'a str, keyword: &str) -> Option<&'a str> {
@@ -280,7 +291,6 @@ fn single_partial_root(module: &Module) -> bool {
     }
     for decl in &module.decls {
         let pos = match &decl.kind {
-            DeclKind::Const(c) => c.group.unwrap_or(decl.pos),
             _ => decl.pos,
         };
         if root.is_some_and(|r| r != pos.offset) {
@@ -458,7 +468,7 @@ mod continuation_tests {
         ];
         for ending in ["\n", "\r\n"] {
             for body in bodies {
-                let source = ("let data = [\n".to_string() + body).replace('\n', ending);
+                let source = ("data := [\n".to_string() + body).replace('\n', ending);
                 let lines: Vec<&str> = source.split_inclusive('\n').collect();
                 let stop_at: Vec<bool> = lines
                     .iter()

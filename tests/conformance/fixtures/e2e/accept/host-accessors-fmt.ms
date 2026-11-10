@@ -11,13 +11,13 @@ import system_info from "@std/os/system.ms"
 fn check_services() Unit!:
     arguments().length() | try expect_equal(0)
 
-    let before = monotonic()
-    let after = monotonic()
+    before := monotonic()
+    after := monotonic()
     (after - before < 0.milliseconds()) | try expect_false
     (now().unix_seconds() <= 0) | try expect_false
     (system_info().cpu_count <= 0) | try expect_false
 
-    let _variables = try environment()
+    _variables := try environment()
 
     match random_bytes(0):
         ok(data):
@@ -28,7 +28,7 @@ fn check_services() Unit!:
     return ok(unit)
 
 test "host accessors work in callbacks":
-    let check = check_services
+    check := check_services
     try check()
 
 test "closing a standard stream leaves the process stream open":

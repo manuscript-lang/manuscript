@@ -34,7 +34,7 @@ impl Iterator[Int] for Counter:
         return self.n
 
 fn add(a: Int, b: Int) Int:
-    let total = a + b
+    total := a + b
     return total
 
 fn area(shape: Shape) Int:
@@ -47,18 +47,18 @@ fn area(shape: Shape) Int:
             return 0
 
 fn describe(p: Point) String:
-    let n = p.norm()
+    n := p.norm()
     return "norm is {n} at {p.x}"
 
 export fn main() Int:
-    let _p = Point(x: 1, y: 2)
-    let values = [1, 2, 3]
+    _p := Point(x: 1, y: 2)
+    values := [1, 2, 3]
     for v in values:
-        let _ = say("{v}")
+        _ := say("{v}")
     for tick in Counter(n: 2):
-        let _ = say("{tick}")
+        _ := say("{tick}")
 
-    let result = add(1, 2)
+    result := add(1, 2)
     return result
 
 fn say(text: String) Result[Unit, Error]:

@@ -1,10 +1,10 @@
 import expect_true from "@std/test/test.ms"
     
 test "primitive list loops":
-    let ints = List[Int]()
-    let floats = List[Float]()
-    let bools = List[Bool]()
-    let words = List[String]()
+    ints := List[Int]()
+    floats := List[Float]()
+    bools := List[Bool]()
+    words := List[String]()
     var i = 0
 
     while i < 5:
@@ -36,7 +36,7 @@ test "primitive list loops":
     for w in words:
         joined = joined + w
     try expect_true((joined == "w0w1w2w3w4"))
-    let unique = Set[Int]()
+    unique := Set[Int]()
     unique.add(value: 4)
     unique.add(value: 7)
     var seen = 0

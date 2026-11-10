@@ -7,8 +7,8 @@ fn object(keys: List[String], values: List[YamlValue]) YamlValue:
     return YamlValue.ObjectValue(result)
 
 test "YAML flow plain keys retain nonseparating colons":
-    let source = "\{a:1, key:\"word\", url:http://example.org\}"
-    let expected = object(
+    source := "\{a:1, key:\"word\", url:http://example.org\}"
+    expected := object(
         ["a:1", "key:\"word\"", "url:http://example.org"],
         [YamlValue.Null, YamlValue.Null, YamlValue.Null]
     )
@@ -37,7 +37,7 @@ test "YAML flow colon separators retain quoted and empty values":
     parse("\{a:]\}").is_error() | try expect_true
 
 fn invalid(source: String) Unit!:
-    let cause = parse(source) | try expect_error
+    cause := parse(source) | try expect_error
     if cause.kind != "EBADMSG": return fail("expected malformed YAML, got {cause}")
 
     cause.details["reason"] | try expect_equal("unexpected mapping colon")

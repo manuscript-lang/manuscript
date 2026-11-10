@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [22, (-21), 15, (-6), 18]
+    l1 := [22, (-21), 15, (-6), 18]
     say("l1 = {l1} len {l1.length()}")
 
-    let l2 = l1.concat(l1)
+    l2 := l1.concat(l1)
     say("l2 = {l2} len {l2.length()}")
 
-    let l3 = [19, 10]
+    l3 := [19, 10]
     say("l3 = {l3} len {l3.length()}")
 
-    let l4 = l1.filter(fn x: x > (-3))
+    l4 := l1.filter(fn x: x > (-3))
     say("l4 = {l4} len {l4.length()}")
 
     if (not (true and true)):
@@ -26,16 +26,16 @@ export fn main() Int:
     else:
         say(("back\\slash" + "x"))
 
-    let b5 = (not false)
+    b5 := (not false)
     say("b5 = {b5}")
 
-    let i6 = ((22 * ((-11) - 868321)) % (l3.length() - (-39)))
+    i6 := ((22 * ((-11) - 868321)) % (l3.length() - (-39)))
     say("i6 = {i6}")
 
-    let s7 = "brace\{s\}".lower()
+    s7 := "brace\{s\}".lower()
     say("s7 = [{s7}]")
 
-    let f8 = (((614.265 / 389.300) / (6.5 / 162.802)) + 433.053)
+    f8 := (((614.265 / 389.300) / (6.5 / 162.802)) + 433.053)
     say("f8 = {f8}")
 
     if ("x" != "brace\{s\}".trim()):

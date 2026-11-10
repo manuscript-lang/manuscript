@@ -14,7 +14,7 @@ import arguments, working_directory from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 import JsonValue, parse from "@std/data/json.ms"
 
-let HEADER = """
+HEADER := """
 import Closeable, print from "@std/core.ms"
 
 type Marker:
@@ -37,7 +37,7 @@ fn mk(id: Int) Marker:
 
 fn run() Unit:
 """
-let FOOTER = """
+FOOTER := """
 export fn main() Int:
     run()
     return 0
@@ -70,14 +70,14 @@ fn list_setup() String: return "var items = [mk(1)]"
 fn map_setup() String: return "var items = Map[Int, Marker]()\n    items.add(1, mk(1))"
 
 fn optional_setup(present: Bool) String:
-    if present: return "let held: Marker? = mk(1)"
+    if present: return "held: Marker? = mk(1)"
 
-    return "let held: Marker? = none"
+    return "held: Marker? = none"
 
 fn result_setup(good: Bool) String:
-    if good: return "let held: Marker!Error = ok(mk(1))"
+    if good: return "held: Marker!Error = ok(mk(1))"
 
-    return "let held: Marker!Error = error(Error(\"x\"))"
+    return "held: Marker!Error = error(Error(\"x\"))"
 
 fn operations() List[Operation]:
     return [
@@ -86,52 +86,52 @@ fn operations() List[Operation]:
         op("list_insert", list_setup(), "items", "insert", "0, @V@", "", ""),
         op("list_set", list_setup(), "items", "set", "0, @V@", "", ""),
         op(
-            "list_replace", list_setup(), "items", "replace", "0, @V@", "let r = ",
+            "list_replace", list_setup(), "items", "replace", "0, @V@", "r := ",
             "saw(r)"
         ),
         op(
-            "list_pop", list_setup(), "items", "pop", "", "let r = ", "saw_opt(r)"
+            "list_pop", list_setup(), "items", "pop", "", "r := ", "saw_opt(r)"
         ),
         op("list_remove", list_setup(), "items", "remove", "0", "", ""),
         op(
-            "list_get", list_setup(), "items", "get", "0, @V@", "let r = ", "saw(r)"
+            "list_get", list_setup(), "items", "get", "0, @V@", "r := ", "saw(r)"
         ),
         op(
-            "result_map", result_setup(true), "held", "map", "fn m: m.id", "let r = ",
+            "result_map", result_setup(true), "held", "map", "fn m: m.id", "r := ",
             "print(\"\{r.is_ok()\}\")"
         ),
         op("map_add", map_setup(), "items", "add", "1, @V@", "", ""),
         op(
-            "map_get", map_setup(), "items", "get", "1", "let r = ",
+            "map_get", map_setup(), "items", "get", "1", "r := ",
             "print(\"\{r.is_some()\}\")"
         ),
         op(
             "optional_or_else", optional_setup(false), "held", "or_else", "fn: @V@",
-            "let r = ", "saw_opt(r)"
+            "r := ", "saw_opt(r)"
         ),
         op(
-            "result_err", result_setup(false), "held", "err", "", "let r = ",
+            "result_err", result_setup(false), "held", "err", "", "r := ",
             "print(r.message)"
         ),
         op(
             "optional_get_present", optional_setup(true), "held", "get", "@V@",
-            "let r = ", "saw(r)"
+            "r := ", "saw(r)"
         ),
         op(
             "optional_get_absent", optional_setup(false), "held", "get", "@V@",
-            "let r = ", "saw(r)"
+            "r := ", "saw(r)"
         ),
         op(
-            "result_get_ok", result_setup(true), "held", "get", "@V@", "let r = ",
+            "result_get_ok", result_setup(true), "held", "get", "@V@", "r := ",
             "saw(r)"
         ),
         op(
-            "result_get_error", result_setup(false), "held", "get", "@V@", "let r = ",
+            "result_get_error", result_setup(false), "held", "get", "@V@", "r := ",
             "saw(r)"
         ),
         op(
             "result_to_optional", result_setup(true), "held", "to_optional", "",
-            "let r = ", "saw_opt(r)"
+            "r := ", "saw_opt(r)"
         )
     ]
 
@@ -176,7 +176,7 @@ fn words(text: String) List[String]:
 fn mentions_parameter(signature: String, names: List[String]) Bool:
     if signature.contains("var fn"): return true
 
-    let parts = signature.split("fn ")
+    parts := signature.split("fn ")
     if parts.length() < 2: return false
 
     var depth = 0
@@ -194,25 +194,25 @@ fn mentions_parameter(signature: String, names: List[String]) Bool:
     return false
 
 fn field(entry: JsonValue, key: String) String:
-    if let value = entry.get(key): return value.as_string().get("")
+    if value := entry.get(key): return value.as_string().get("")
 
     return ""
 
 // Every `Type.operation` of the standard type whose declaration mentions a type parameter.
 fn declared_operations(ms: String, name: String) List[String]!:
-    let ran = try run(
+    ran := try run(
         ms, ["search_symbol", "prelude.{name}", "--json", "--limit", "300"]
     ).wait()
-    let page = try parse(ran.stdout.decode_utf8().get(""))
+    page := try parse(ran.stdout.decode_utf8().get(""))
     var found = List[String]()
-    let names = type_parameters(name.clone())
+    names := type_parameters(name.clone())
 
-    if let all = page.get("matches"):
+    if all := page.get("matches"):
         for entry in all.as_list().get([]):
             if field(entry, "kind") != "operation": continue
             if not mentions_parameter(field(entry, "type"), names.clone()): continue
 
-            let last = field(entry, "name").split(".")
+            last := field(entry, "name").split(".")
             found.append("{name}.{last[last.length() - 1]}")
 
     return ok(found)
@@ -220,8 +220,8 @@ fn declared_operations(ms: String, name: String) List[String]!:
 // How many standard operations that mention a type parameter have neither a row nor a reason.
 fn uncovered(ms: String, ops: List[Operation]) Int:
     var known = List[String]()
-    let kinds = ["list", "map", "set", "optional", "result"]
-    let titles = ["List", "Map", "Set", "Optional", "Result"]
+    kinds := ["list", "map", "set", "optional", "result"]
+    titles := ["List", "Map", "Set", "Optional", "Result"]
     for o in ops:
         for i in 0..kinds.length():
             if o.name.starts_with("{kinds[i]}_"): known.append("{titles[i]}.{o.method}")
@@ -230,7 +230,7 @@ fn uncovered(ms: String, ops: List[Operation]) Int:
     var missing = 0
 
     for title in titles:
-        let listed = declared_operations(ms.clone(), title.clone())
+        listed := declared_operations(ms.clone(), title.clone())
 
         if listed.is_error():
             missing += 1
@@ -266,7 +266,7 @@ fn program(o: Operation, call_form: String, arg_form: String) String:
         var value = "mk(2)"
 
         if arg_form == "named":
-            lines.append("let v = mk(2)")
+            lines.append("v := mk(2)")
             value = "v"
 
         argument = o.arguments.replace("@V@", value)
@@ -274,7 +274,7 @@ fn program(o: Operation, call_form: String, arg_form: String) String:
         argument = o.arguments.clone()
 
     if call_form == "bound":
-        lines.append("let f = {o.receiver}.{o.method}")
+        lines.append("f := {o.receiver}.{o.method}")
         lines.append("{o.binds}f({argument})")
     else:
         lines.append("{o.binds}{o.receiver}.{o.method}({argument})")
@@ -292,15 +292,15 @@ fn count(lines: List[String], prefix: String) Map[String, Int]:
     for line in lines:
         if not line.starts_with(prefix): continue
 
-        let key = line.trim()
+        key := line.trim()
         counts.add(key.clone(), counts.get(key.clone()).get(0) + 1)
 
     return counts
 
 export fn main() Int:
-    let root = working_directory().get()
-    let ms = tool_ms(root)
-    let scratch = temporary("ms-matrix-").get()
+    root := working_directory().get()
+    ms := tool_ms(root)
+    scratch := temporary("ms-matrix-").get()
     var filter = ""
     for a in arguments(): filter = a.clone()
 
@@ -311,18 +311,18 @@ export fn main() Int:
     for o in operations():
         for call_form in ["direct", "bound"]:
             for arg_form in ["temporary", "named"]:
-                let name = "{o.name}_{call_form}_{arg_form}"
+                name := "{o.name}_{call_form}_{arg_form}"
                 if filter != "" and not name.contains(filter): continue
 
-                let file = "{scratch.path()}/{name}.ms"
+                file := "{scratch.path()}/{name}.ms"
                 write_file(file, program(o, call_form, arg_form)).wait().get()
 
-                let verdict = run(ms.clone(), ["check", file.clone()]).wait()
+                verdict := run(ms.clone(), ["check", file.clone()]).wait()
 
                 if verdict.is_error() or verdict.get().exit_code != 0:
                     rejected += 1
 
-                    let why = verdict.get().stderr.decode_utf8().get("")
+                    why := verdict.get().stderr.decode_utf8().get("")
 
                     // Only a checker rule may reject a combination; a program that does not parse is this tool's bug.
                     if why.contains(": parse:"):
@@ -342,7 +342,7 @@ export fn main() Int:
                 for build in ["debug", "release"]:
                     checked += 1
 
-                    let ran = run(
+                    ran := run(
                         ms.clone(),
                         [
                             "run", file.clone(), "--build-type", build.clone()
@@ -360,13 +360,13 @@ export fn main() Int:
                         )
                         continue
 
-                    let child = ran.get()
-                    let lines = child.stdout.decode_utf8().get("").split("\n")
+                    child := ran.get()
+                    lines := child.stdout.decode_utf8().get("").split("\n")
 
                     if child.exit_code != 0:
                         failures += 1
 
-                        let why = child.stderr.decode_utf8().get("")
+                        why := child.stderr.decode_utf8().get("")
                         (
                             stdout()
                             .write(
@@ -388,11 +388,11 @@ export fn main() Int:
                         if line.starts_with("closed-"):
                             closed.append(line.slice(7, line.length()).get(""))
 
-                    let made_counts = count(lines, "made-")
+                    made_counts := count(lines, "made-")
                     var wrong = made.length() != closed.length()
 
                     for id in made:
-                        let want = made_counts.get("made-{id}").get(0)
+                        want := made_counts.get("made-{id}").get(0)
                         var have = 0
                         for c in closed:
                             if c == id: have += 1

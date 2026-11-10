@@ -2,4 +2,4 @@
 // conform: phase=test
 // conform: origin=pkg/build/library_test.go:275 TestNativeBuildInSymlinkedTemporaryDirectory
 test "native module identity":
-    let _value = 1
+    _value := 1

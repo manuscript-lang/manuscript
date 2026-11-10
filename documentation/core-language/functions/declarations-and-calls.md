@@ -11,14 +11,14 @@ A function names its inputs, declares their types, and declares its return type.
 fn decrement(value: Int) Int:
     return value - 1
 
-let remaining = decrement(3)
+remaining := decrement(3)
 ```
 
 Parameters and return types are explicit; local annotations are optional.
 
 ## Declarations and resolution
 
-- Named functions are module declarations or operations inside an `impl`. A `fn` inside a function body declares a local function: sugar for binding a `fn` to the name (`let f = fn ...`). It cannot call itself; module-level functions recurse.
+- Named functions are module declarations or operations inside an `impl`. A `fn` inside a function body declares a local function: sugar for binding a `fn` to the name (`f := fn ...`). It cannot call itself; module-level functions recurse.
 - Parameter names are unique and every parameter and result type is explicit, including `Unit`.
 - Signatures are collected before bodies are checked, so functions may call later declarations and recurse, including mutually.
 - Duplicate module names and overloads are rejected. Generics follow [generics](../types/generics.md).
@@ -32,12 +32,12 @@ Labels are optional. An unlabeled argument fills the first parameter not yet fil
 fn reduce(amount: Int, deduction: Int) Int:
     return amount - deduction
 
-let remaining = reduce(10, 3)
-let explicit_remaining = reduce(amount: 10, deduction: 3)
-let mixed = reduce(deduction: 3, 10)
-let amount = 10
-let deduction = 3
-let swapped = reduce(deduction: deduction, amount: amount)
+remaining := reduce(10, 3)
+explicit_remaining := reduce(amount: 10, deduction: 3)
+mixed := reduce(deduction: 3, 10)
+amount := 10
+deduction := 3
+swapped := reduce(deduction: deduction, amount: amount)
 ```
 
 All five results are `7`. Arguments resolve left to right and labels do not reserve parameters for later arguments:
@@ -63,8 +63,8 @@ fn subtract(amount: Int, deduction: Int = 1) Int:
     return amount - deduction
 
 fn example() Int:
-    let usual = subtract(5)
-    let explicit = subtract(5, 2)
+    usual := subtract(5)
+    explicit := subtract(5, 2)
     return usual + explicit
 ```
 
@@ -85,12 +85,12 @@ To accept a variable number of values, declare an ordinary list parameter:
 
 ```manuscript
 fn sum(values: List[Int]) Int:
-    let total = values.sum()
+    total := values.sum()
 
     return total
 
-let total = sum([1, 2, 3])
-let empty = sum([])
+total := sum([1, 2, 3])
+empty := sum([])
 ```
 
 The argument is one list reference: `sum(existing_values)` or `sum(values: existing_values)`. The parameter is required even for an empty list.

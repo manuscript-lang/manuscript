@@ -63,8 +63,8 @@ fn line_lengths(input: ReadStream[Bytes]) ReadStream[Int]:
     return input | lines | filter(fn line: line != "") | map(fn line: line.length())
 
 test "measure lines":
-    let input = from_bytes("first\n\nok\n".to_bytes())
-    let lengths = try collect(line_lengths(input), max_items: 10)
+    input := from_bytes("first\n\nok\n".to_bytes())
+    lengths := try collect(line_lengths(input), max_items: 10)
     try expect_equal(lengths, [5, 2])
 ```
 
@@ -103,7 +103,7 @@ fn send_numbers(var out: WriteStream[Int]) Unit!:
 test "sum values from a producer":
     var p = pipe[Int](capacity: 64)
     var out = p.writer()
-    let producer = promise(fn: send_numbers(var out))
+    producer := promise(fn: send_numbers(var out))
     var total = 0
     for n in p.reader():
         total += n

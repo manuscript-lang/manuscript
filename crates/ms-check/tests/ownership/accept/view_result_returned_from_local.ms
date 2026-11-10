@@ -2,5 +2,5 @@ fn make() String:
     return "  a  "
 
 fn f() String:
-    let line = make()
+    line := make()
     return line.trim()

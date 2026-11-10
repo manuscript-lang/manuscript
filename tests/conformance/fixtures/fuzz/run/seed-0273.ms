@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (("a" + "delta").is_empty() and ((-23) >= (-18211295)))
+    b1 := (("a" + "delta").is_empty() and ((-23) >= (-18211295)))
     say("b1 = {b1}")
 
-    let s3 = (("line\nbreak" + "gamma") + "  padded  ").replace("x", "quote\"d")
+    s3 := (("line\nbreak" + "gamma") + "  padded  ").replace("x", "quote\"d")
     say("s3 = [{s3}]")
 
-    let s4 = s3.lower()
+    s4 := s3.lower()
     say("s4 = [{s4}]")
 
-    let l5 = [(-7), 19, (-29), 9, 1]
+    l5 := [(-7), 19, (-29), 9, 1]
     say("l5 = {l5} len {l5.length()}")
 
-    let i6 = 607888385042
+    i6 := 607888385042
     say("i6 = {i6}")
 
     if s4.ends_with(s4):
@@ -29,7 +29,7 @@ export fn main() Int:
     else:
         say(("" + "delta"))
 
-    let i7 = (((-i6) + (-4)) + 21)
+    i7 := (((-i6) + (-4)) + 21)
     say("i7 = {i7}")
 
     if (b1 and (5 != 26)):

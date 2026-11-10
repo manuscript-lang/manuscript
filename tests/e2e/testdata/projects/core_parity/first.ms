@@ -20,7 +20,7 @@ fn describe(cause: Cause) Error:
     return Error("first {cause.count}")
 
 export fn first_mapped() Set[Key]:
-    let values = Set[Int]([1, 2])
+    values := Set[Int]([1, 2])
     return transform_set(values, fn n: Key(0, n.to_string()))
 
 export fn first_bound_map() fn(fn(Int) Key) Set[Key]:
@@ -35,22 +35,22 @@ export fn first_lookup() String:
     return values.filter(fn k, v: true) | lookup(Key(5, "different"), "absent")
 
 export fn first_failure(cause: Cause) String!:
-    let value: Int! = error(describe(cause))
+    value: Int! = error(describe(cause))
     return value.map(fn n: n.to_string()).and_then(fn text: ok(text))
 
 export fn first_queries() Bool:
-    let key = Key(5, "original")
+    key := Key(5, "original")
     var map = Map[Key, String]()
     map.add(key.clone(), "found")
 
-    let set = Set[Key]([key])
+    set := Set[Key]([key])
     return (
         locate_map(map, Key(5, "different")).is_some()
         and locate_set(set, Key(5, "different")).is_some()
     )
 
 export fn first_converted(cause: Cause) Int!:
-    let missing: Int? = none
+    missing: Int? = none
     return convert(missing, fn() Error: describe(cause))
 
 export fn first_folded(cause: Cause) Error:
@@ -71,5 +71,5 @@ export fn first_value_transform() Int:
     var input = Map[Key, Int]()
     input.add(Key(5, "original"), 2)
 
-    let mapped = remap_values(input, fn key, value: value + 1)
+    mapped := remap_values(input, fn key, value: value + 1)
     return mapped.get_or(Key(5, "different"), 0)

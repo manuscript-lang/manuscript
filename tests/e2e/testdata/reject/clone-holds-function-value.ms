@@ -4,6 +4,6 @@ type Handler:
     run: fn(Int) Int
 
 export fn main() Int:
-    let first = Handler(run: fn x: x * 2)
-    let again = first.clone()
+    first := Handler(run: fn x: x * 2)
+    again := first.clone()
     return again.run(2)

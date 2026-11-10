@@ -15,5 +15,5 @@ fn pair() Pair:
     return Pair(Door(1), Door(2))
 
 fn f() Int:
-    let d = pair().a  // error: cannot move `pair(..).a` out of a computed value
+    d := pair().a  // error: cannot move `pair(..).a` out of a computed value
     return d.n

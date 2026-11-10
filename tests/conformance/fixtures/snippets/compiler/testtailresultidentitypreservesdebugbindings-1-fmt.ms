@@ -3,5 +3,5 @@
 // conform: origin=pkg/compiler/result_tail_test.go:39 TestTailResultIdentityPreservesDebugBindings
 
 fn tail(value: Int!Error) Int!Error:
-    let output = try value
+    output := try value
     return ok(output)

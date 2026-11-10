@@ -5,5 +5,5 @@ type Node:
     next: Node?
 
 export fn main() Int:
-    let node = Node(node)
+    node := Node(node)
     return 0

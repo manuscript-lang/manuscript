@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testresulttypefollowsparameterswithoutarrow-3.ms:5:16: type: cannot infer callback parameter x; provide a type or a known function context\n   |\n 5 |     let g = fn(x) Int: x + 1\n   |                ^\n<DIR>/testresulttypefollowsparameterswithoutarrow-3.ms:6:16: type: cannot infer callback parameter x; provide a type or a known function context\n   |\n 6 |     let h = fn x: x + 1\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testresulttypefollowsparameterswithoutarrow-3.ms:5:16: type: cannot infer callback parameter x; provide a type or a known function context\n   |\n 5 |     g := fn(x) Int: x + 1\n   |                ^\n<DIR>/testresulttypefollowsparameterswithoutarrow-3.ms:6:16: type: cannot infer callback parameter x; provide a type or a known function context\n   |\n 6 |     h := fn x: x + 1\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

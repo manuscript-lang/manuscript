@@ -4,7 +4,7 @@
 
 - Problem: ownership is tracked per binding, not per field. A field of an owned record cannot be moved out, so code clones it (`return b.items.clone()`), and four separate facts (`drops_old`, `close_moves`, `moved_payloads`, `implicit_closes`) each approximate one slice of "what is still initialized here".
 - Change: one forward dataflow over field paths (`Place`, `ownership/places.rs`) computes initialized, moved and re-initialized state at every point. Diagnostics and lowering's cleanup both read its result. It replaces the four facts above rather than running beside them.
-- New behavior it enables: `let x = b.f`, `return b.f` and passing `b.f` to a consuming parameter move the field when `b` is an owned local or parameter and the use is the field's last. The other fields keep their exact cleanup.
+- New behavior it enables: `x := b.f`, `return b.f` and passing `b.f` to a consuming parameter move the field when `b` is an owned local or parameter and the use is the field's last. The other fields keep their exact cleanup.
 - Gate: a counting harness lands first (results, cleanup order and count, clones, allocations, copied bytes; Debug and Release). No stage may raise a count without a stated reason.
 - Cost: static analysis only. No syntax change. No runtime representation change in this stage (drop flags per moved field path already exist as `drop.if`).
 - Evidence of benefit is modest today: of 224 `.clone()` calls in `stdlib/`, none clones a field of an owned local or parameter at its last use (the field clones are `self.failure` in `io.ms:130`, `self.middleware` in `router.ms:216` and `entry.key` in `sorted.ms:352-387`, all of borrowed or `self` storage, which stay clones). The win is user-code ergonomics and a sound fact for stage 6; the harness measures it on fixtures, not on stdlib.
@@ -24,13 +24,13 @@ type Big:
     items: List[Int]
 
 fn take(b: Big) List[Int]:
-    let xs = b.items
+    xs := b.items
     return xs
 ```
 
-- Rejected: `cannot move `xs` out: it only borrows its value (a borrow); use `xs.clone()` to get an owned copy`. `let xs = b.items` is a shared borrow even though `b` is owned and dead afterwards.
+- Rejected: `cannot move `xs` out: it only borrows its value (a borrow); use `xs.clone()` to get an owned copy`. `xs := b.items` is a shared borrow even though `b` is owned and dead afterwards.
 - `fn items_of(b: Big) List[Int]: return b.items` is rejected too: "returns part of a parameter ... write `ref` ... or return an owned copy with `.clone()`". The owned parameter is consumed by the caller, yet the only escape is a deep copy of `items`.
-- Both `let xs = b.items` and `let n = b.name` followed by use of each is accepted today, as borrows.
+- Both `xs := b.items` and `n := b.name` followed by use of each is accepted today, as borrows.
 - `var b = Big(..); if c: b.items = [4]` is accepted; `Access::Write` plus `drops_old` handle whole-binding reassign, and field assignment drops the old part in lowering (`close_discarded`). Nothing models "this field was moved, this one was not".
 
 Where state is derived today:
@@ -53,7 +53,7 @@ A field path appears only in `Place` for overlap checks (`places.rs`), never as 
 
 ## Revision after step 3 (2026-10-30): lowering keeps copying
 
-Implementing the checker showed that cleanup needs no new per-field flags to be sound. A consumed projection already lowers as a borrowed leaf plus `Copy` (`FnLower::owned`), and the rest of the record is dropped whole at scope exit, so accepting the move in the checker cannot double free. Per-place liveness (`Liveness.places`, `live.rs`) replaces the forward moved/maybe state: a move is legal at its last use, which already covers branches, loops, early exits and re-initialization, and a later use of an overlapping place is reported as `moved here but used again`. What the earlier design called per-field drop flags becomes an optimizer job: the copies thread's `rec.release` and the `copyelim` rewrite turn `rec.get; copy; drop` into a move plus a release of the other leaves, and `make count-check` shows when the copy disappears. The `PathFacts` table, `exit_state` and `flags` below are therefore not built unless the optimizer cannot cover a shape. `Facts.partial_moves` records the accepted moves. Receivers (`self`) are excluded from the first cut, and `let x = b.items` stays a borrow.
+Implementing the checker showed that cleanup needs no new per-field flags to be sound. A consumed projection already lowers as a borrowed leaf plus `Copy` (`FnLower::owned`), and the rest of the record is dropped whole at scope exit, so accepting the move in the checker cannot double free. Per-place liveness (`Liveness.places`, `live.rs`) replaces the forward moved/maybe state: a move is legal at its last use, which already covers branches, loops, early exits and re-initialization, and a later use of an overlapping place is reported as `moved here but used again`. What the earlier design called per-field drop flags becomes an optimizer job: the copies thread's `rec.release` and the `copyelim` rewrite turn `rec.get; copy; drop` into a move plus a release of the other leaves, and `make count-check` shows when the copy disappears. The `PathFacts` table, `exit_state` and `flags` below are therefore not built unless the optimizer cannot cover a shape. `Facts.partial_moves` records the accepted moves. Receivers (`self`) are excluded from the first cut, and `x := b.items` stays a borrow.
 
 ## Design
 
@@ -107,9 +107,9 @@ MIR already flattens records to leaves with `rec.get`, `move.out` and `drop.if` 
 - Loop moves `b.items` with no re-initialization before the back edge: rejected "moved in a previous iteration".
 - Closure: a non-escaping closure that reads `b.items` borrows it; an escaping capture of `b.items` at last use moves that place; capturing `b` whole while a field is moved or maybe is rejected.
 - `try`/early return/`break`: each exit carries its own state; error paths drop exactly the initialized leaves; a fault or cancel unwinds only unmoved leaves.
-- `match b` and `b.clone()` after `let xs = b.items`: rejected; `match b.name` accepted; a payload pattern over a moved alternative field rejected.
+- `match b` and `b.clone()` after `xs := b.items`: rejected; `match b.name` accepted; a payload pattern over a moved alternative field rejected.
 - Reassign: `b.items = v` re-initializes only when `b` is `var`; moving a field out of a `let` or a non-`var` parameter and reassigning is rejected.
-- `Copy`-class fields (`Int`, records of scalars) never move; `let n = b.count` does not change state.
+- `Copy`-class fields (`Int`, records of scalars) never move; `n := b.count` does not change state.
 - Generic `T` field: class is decided on the checked type (`Move`, as today); a `T: Closeable` field behaves as a Resource field and is outside the first cut (see Open questions).
 - A live shared borrow of `b.items` followed by a move of it is rejected by the existing lexical-borrow rules; a `ref` result derived from `b.name` keeps `b.name` initialized.
 - Through `Element`: never tracked; moves rejected as today.
@@ -126,15 +126,15 @@ fn take(b: Big) List[Int]:      // accepted: moves b.items; b.name is dropped at
     return b.items
 
 fn both(b: Big) Int:
-    let xs = b.items            // moves items
+    xs := b.items            // moves items
     return xs.length() + b.name.length()   // accepted: name is still init
 
 fn bad(b: Big) Int:
-    let xs = b.items
+    xs := b.items
     return b.items.length()     // rejected: use of moved field `b.items`
 ```
 
-Branches: `if c: let xs = b.items` leaves `b.items` **maybe**; any later read of `b.items` or of `b` is rejected, and scope exit drops `items` under a flag.
+Branches: `if c: xs := b.items` leaves `b.items` **maybe**; any later read of `b.items` or of `b` is rejected, and scope exit drops `items` under a flag.
 
 ## Counting harness (lands first)
 

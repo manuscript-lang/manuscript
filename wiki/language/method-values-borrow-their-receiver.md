@@ -8,4 +8,4 @@ Mechanism: the ownership walk records `bound_borrows` for a non-escaping method 
 
 Apply when: changing how function values hold receivers or captures, or adding a thunk kind for method values.
 Evidence: [function values](../../documentation/core-language/functions/function-values-and-closures.md), [ownership notes](../../crates/ms-check/OWNERSHIP.md), `tests/e2e/testdata/stdlib/regex-spans.ms` ("span methods support bound calls"), `tests/e2e/testdata/stdlib/log.ms` ("levels filter methods and function values").
-Verify: `let find = re.find_all_spans` followed by `re.capture_spans` works with no copy under `MS_COPY_PROBE=1`; `holders.append(re.find_all)` followed by a use of `re` is rejected as a move.
+Verify: `find := re.find_all_spans` followed by `re.capture_spans` works with no copy under `MS_COPY_PROBE=1`; `holders.append(re.find_all)` followed by a use of `re` is rejected as a move.

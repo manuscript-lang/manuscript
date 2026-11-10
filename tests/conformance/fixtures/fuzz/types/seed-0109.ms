@@ -6,14 +6,14 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = 954.25
+    f1 := 954.25
     say("f1 = {f1}")
     return "not an int"
 
-    let l2 = [23, 10, 19, 28, (-1)]
+    l2 := [23, 10, 19, 28, (-1)]
     say("l2 = {l2} len {l2.length()}")
 
     if ("  padded  ".replace("quote\"d", "line\nbreak") != "alpha".trim()):

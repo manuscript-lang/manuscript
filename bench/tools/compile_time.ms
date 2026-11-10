@@ -30,15 +30,15 @@ type Dep:
     file: Int
 
 fn deps(var rng: SeededRandom, files: Int, p: Int, f: Int) List[Dep]:
-    let i = p * files + f
+    i := p * files + f
     var found = List[Dep]()
 
     for _n in 0..3:
         if i == 0: break
 
-        let low = if chance(var rng): (if i - 60 > 0: i - 60 else: 0) else: 0
-        let j = low + rng.int(0, i - low)
-        let d = Dep(j / files, j % files)
+        low := if chance(var rng): (if i - 60 > 0: i - 60 else: 0) else: 0
+        j := low + rng.int(0, i - low)
+        d := Dep(j / files, j % files)
         if not found.any(fn e: e.pkg == d.pkg and e.file == d.file): found.append(d)
 
     return found.sorted(
@@ -48,13 +48,13 @@ fn deps(var rng: SeededRandom, files: Int, p: Int, f: Int) List[Dep]:
 fn call_of(prefix: String, d: List[Dep], k: Int, own: Int, qualified: Bool) String:
     if d.is_empty(): return "0"
 
-    let dep = d[k % d.length()]
-    let pk = if qualified and dep.pkg != own: "p{dep.pkg}." else: ""
+    dep := d[k % d.length()]
+    pk := if qualified and dep.pkg != own: "p{dep.pkg}." else: ""
     return "{pk}{prefix}_{dep.pkg}_{dep.file}_0(acc % 1000)"
 
 fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
-    let call = call_of("w", d, k, p, false)
-    let shape = k % 4
+    call := call_of("w", d, k, p, false)
+    shape := k % 4
     var b = ["export fn w_{p}_{f}_{k}(x: Int) Int:"]
 
     if shape == 0:
@@ -70,14 +70,14 @@ fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
             [
                 "    var xs = List[Int]()", "    for i in 0..8:",
                 "        xs.append(i + x)", "    var t = 0", "    for v in xs:",
-                "        t += v % 7", "    let acc = t + xs.length()",
+                "        t += v % 7", "    acc := t + xs.length()",
                 "    return acc + {call}"
             ]
         )
     else if shape == 2:
         b = b.concat(
             [
-                q("    let r = R_{p}_{f}(x, \"n‹x›\", [x, 1, 2])"),
+                q("    r := R_{p}_{f}(x, \"n‹x›\", [x, 1, 2])"),
                 "    var acc = r.score()", "    while acc > 1000:",
                 "        acc = acc / 2", "    return acc + {call}"
             ]
@@ -85,7 +85,7 @@ fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
     else:
         b = b.concat(
             [
-                q("    let s = \"v‹x›\""), "    var acc = s.length()", "    if x > 50:",
+                q("    s := \"v‹x›\""), "    var acc = s.length()", "    if x > 50:",
                 "        acc += x / 3", "    else if x > 10:", "        acc += x * 2",
                 "    else:", "        acc += 1", "    return acc + {call}"
             ]
@@ -94,8 +94,8 @@ fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
     return b.join("\n") + "\n"
 
 fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
-    let call = call_of("W", d, k, p, true)
-    let shape = k % 4
+    call := call_of("W", d, k, p, true)
+    shape := k % 4
     var b = [q("func W_{p}_{f}_{k}(x int) int ‹")]
 
     if shape == 0:
@@ -143,12 +143,12 @@ fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 fn rs_call(d: List[Dep], k: Int) String:
     if d.is_empty(): return "0"
 
-    let dep = d[k % d.length()]
+    dep := d[k % d.length()]
     return "crate::p{dep.pkg}::f{dep.file}::w_{dep.pkg}_{dep.file}_0(acc % 1000)"
 
 fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
-    let call = rs_call(d, k)
-    let shape = k % 4
+    call := rs_call(d, k)
+    shape := k % 4
     var b = [q("pub fn w_{p}_{f}_{k}(x: i64) -> i64 ‹")]
 
     if shape == 0:
@@ -166,14 +166,14 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
                 "    let mut xs: Vec<i64> = Vec::new();", q("    for i in 0..8 ‹"),
                 "        xs.push(i + x);", "    ›", "    let mut t = 0;",
                 q("    for v in &xs ‹"), "        t += v % 7;", "    ›",
-                "    let acc = t + xs.len() as i64;", "    acc + {call}"
+                "    acc := t + xs.len() as i64;", "    acc + {call}"
             ]
         )
     else if shape == 2:
         b = b.concat(
             [
                 q(
-                    "    let r = R_{p}_{f} ‹ a: x, b: format!(\"n‹›\", x), c: vec![x, 1, 2] ›;"
+                    "    r := R_{p}_{f} ‹ a: x, b: format!(\"n‹›\", x), c: vec![x, 1, 2] ›;"
                 ),
                 "    let mut acc = r.score();",
                 q("    while acc > 1000 ‹"),
@@ -185,7 +185,7 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
     else:
         b = b.concat(
             [
-                q("    let s = format!(\"v‹›\", x);"),
+                q("    s := format!(\"v‹›\", x);"),
                 "    let mut acc = s.len() as i64;", q("    if x > 50 ‹"),
                 "        acc += x / 3;", q("    › else if x > 10 ‹"),
                 "        acc += x * 2;", q("    › else ‹"), "        acc += 1;",
@@ -211,11 +211,11 @@ fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
         var modrs = List[String]()
 
         for f in 0..files:
-            let d = deps(var rng, files, p, f)
+            d := deps(var rng, files, p, f)
             var m = List[String]()
 
             for dep in d:
-                let path = if dep.pkg == p: "./f{dep.file}.ms" else: "../pkg{dep.pkg}/f{dep.file}.ms"
+                path := if dep.pkg == p: "./f{dep.file}.ms" else: "../pkg{dep.pkg}/f{dep.file}.ms"
                 m.append("import w_{dep.pkg}_{dep.file}_0 from \"{path}\"\n")
 
             m.append(
@@ -311,9 +311,9 @@ fn timed(
     program: String,
     args: List[String]
 ) Result[Unit, Error]:
-    let start = now_ns()
-    let _ = try must(label, run_in(dir, program, args))
-    let seconds = (now_ns() - start).to_float() / 1000000000.0
+    start := now_ns()
+    _ := try must(label, run_in(dir, program, args))
+    seconds := (now_ns() - start).to_float() / 1000000000.0
     print("{label} {seconds.to_fixed(2)} s")
     return ok(unit)
 
@@ -323,9 +323,9 @@ fn drop_cache(dir: String) Unit:
 fn run(out: String, p: Int, f: Int, k: Int) Result[Unit, Error]:
     generate(out, p, f, k)
 
-    let ms = ms_binary()
-    let go = env("GO", "go")
-    let _ = try must("go clean", run_in("{out}/go", go, ["clean", "-cache"]))
+    ms := ms_binary()
+    go := env("GO", "go")
+    _ := try must("go clean", run_in("{out}/go", go, ["clean", "-cache"]))
     try timed("go cold:  ", "{out}/go", go, ["build", "-o", "../gobin", "."])
     try timed("ms check: ", "{out}/ms", ms, ["check", "ms.toml"])
     try timed("ms emit:  ", "{out}/ms", ms, ["emit", "ms.toml"])
@@ -344,7 +344,7 @@ fn run(out: String, p: Int, f: Int, k: Int) Result[Unit, Error]:
         try timed("ms release:", "{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin"])
 
     if env("SKIP_RUST", "") == "":
-        let cargo = env("CARGO", "cargo")
+        cargo := env("CARGO", "cargo")
         try rust_timed("rust check:  ", out, cargo, ["check"])
         try rust_timed("rust debug:  ", out, cargo, ["build"])
         try rust_timed("rust release:", out, cargo, ["build", "--release"])
@@ -362,17 +362,17 @@ fn rust_timed(
     return timed(label, "{out}/rs", cargo, args)
 
 export fn main() Int:
-    let args = arguments()
+    args := arguments()
     var dims = [40, 25, 10]
 
     for i in 0..3:
         if args.length() > i:
-            let v = args[i].parse_int().get(0)
+            v := args[i].parse_int().get(0)
             if v < 1: return usage("packages, files and fns must be positive integers")
 
             dims[i] = v
 
-    let keep = env("OUT", "")
+    keep := env("OUT", "")
     var out = ""
 
     if keep != "":
@@ -381,7 +381,7 @@ export fn main() Int:
     else:
         out = temporary("compile-time-").get().path()
 
-    let result = run(out, dims[0], dims[1], dims[2])
+    result := run(out, dims[0], dims[1], dims[2])
     if result.is_error(): return fail(result.err().message)
 
     return 0

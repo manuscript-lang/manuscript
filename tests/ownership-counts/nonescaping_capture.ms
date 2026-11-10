@@ -8,7 +8,7 @@ fn apply(xs: List[Int], f: fn(Int) Int) Int:
     return t
 
 export fn main() Int:
-    let xs = [1, 2, 3]
-    let k = 5
-    let r = apply(xs, fn x: x + k)
+    xs := [1, 2, 3]
+    k := 5
+    r := apply(xs, fn x: x + k)
     return r - 21

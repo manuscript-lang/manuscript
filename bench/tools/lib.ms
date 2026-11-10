@@ -23,7 +23,7 @@ export fn fail(message: String) Int:
 
 // `linux`, `macos` or `windows`.
 export fn host() String:
-    let family = os()
+    family := os()
     if family == Os.Macos: return "macos"
     if family == Os.Windows: return "windows"
 
@@ -31,8 +31,8 @@ export fn host() String:
 
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
-    let all = environment().get(Map[String, String]())
-    if let value = all.get(name): return value.clone()
+    all := environment().get(Map[String, String]())
+    if value := all.get(name): return value.clone()
 
     return fallback.clone()
 
@@ -56,7 +56,7 @@ export fn capture(
     input: String = "",
     cwd: String? = none
 ) Ran:
-    if let out = run(program, arguments, RunOptions(input: input.to_bytes(), cwd: cwd)).wait():
+    if out := run(program, arguments, RunOptions(input: input.to_bytes(), cwd: cwd)).wait():
         return Ran(
             true, out.exit_code, out.stdout.decode_utf8().get(""),
             out.stderr.decode_utf8().get(""), out.max_resident_bytes
@@ -66,22 +66,22 @@ export fn capture(
 
 // Runs `program` and returns its stdout, or fails the driver by returning an empty string when it does not exit zero.
 export fn output_of(program: String, arguments: List[String]) String:
-    let ran = capture(program, arguments)
+    ran := capture(program, arguments)
     if ran.ok and ran.code == 0: return ran.stdout.clone()
 
     return ""
 
 // Median of a nonempty list of numbers; the mean of the middle pair for an even count.
 export fn median(values: List[Float]) Float:
-    let sorted = values.sorted()
-    let n = sorted.length()
+    sorted := values.sorted()
+    n := sorted.length()
     if n % 2 == 1: return sorted[n / 2]
 
     return (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
 
 // Median absolute deviation.
 export fn mad(values: List[Float]) Float:
-    let m = median(values)
+    m := median(values)
     return median(values.map(fn v: if v > m: v - m else: m - v))
 
 export fn minimum(values: List[Float]) Float:
@@ -92,7 +92,7 @@ export fn maximum(values: List[Float]) Float:
 
 // Rotates `items` left by `by` positions.
 export fn rotate[T: Clonable](items: List[T], by: Int) List[T]:
-    let n = items.length()
+    n := items.length()
     var out = List[T](reserve: n)
     for i in 0..n:
         out.append(items[(i + by) % n].clone())
@@ -119,9 +119,9 @@ export fn left(text: String, width: Int) String:
 
 // `value` with a comma between each group of three digits.
 export fn grouped(value: Int) String:
-    let digits = "{if value < 0: -value else: value}"
+    digits := "{if value < 0: -value else: value}"
     var out = ""
-    let n = digits.length()
+    n := digits.length()
 
     for i in 0..n:
         if i > 0 and (n - i) % 3 == 0: out += ","
@@ -131,17 +131,17 @@ export fn grouped(value: Int) String:
 
 // `value` to `digits` decimal places, with grouped thousands.
 export fn fixed(value: Float, digits: Int) String:
-    let text = value.to_fixed(digits)
-    let parts = text.split(".")
-    let whole = parts[0].parse_int().get(0)
-    let head = if text.starts_with("-") and whole == 0: "-0" else: grouped(whole)
+    text := value.to_fixed(digits)
+    parts := text.split(".")
+    whole := parts[0].parse_int().get(0)
+    head := if text.starts_with("-") and whole == 0: "-0" else: grouped(whole)
     if parts.length() == 1: return head
 
     return "{head}.{parts[1]}"
 
 // Parses a positive repeat count.
 export fn repeats(text: String) Int!:
-    if let n = text.parse_int():
+    if n := text.parse_int():
         if n > 0: return ok(n)
     return invalid("repeats must be a positive integer")
 
@@ -167,17 +167,17 @@ export fn ms_binary() String:
 
 // Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is fine; pass an absolute path).
 export fn build_ms(dir: String, out: String) Unit!:
-    let _stale = remove("{dir}/ms.lock")
-    let ran = run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
-    let _ = try must("ms build {dir}", ran)
+    _stale := remove("{dir}/ms.lock")
+    ran := run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
+    _ := try must("ms build {dir}", ran)
     return ok(unit)
 
 // Builds the Go module in `dir` as a static binary.
 export fn build_go(dir: String, out: String) Unit!:
     set_environment("CGO_ENABLED", "0").get()
 
-    let go = env("GO", "go")
-    let ran = run_in(
+    go := env("GO", "go")
+    ran := run_in(
         dir,
         go,
         [
@@ -185,7 +185,7 @@ export fn build_go(dir: String, out: String) Unit!:
             out, "."
         ]
     )
-    let _ = try must("go build {dir}", ran)
+    _ := try must("go build {dir}", ran)
     return ok(unit)
 
 // Compiles one Rust source at the usual release settings plus `flags`.
@@ -194,7 +194,7 @@ export fn build_rust(source: String, out: String, flags: List[String]) Unit!:
     args = args.concat(flags)
     args = args.concat(["-o", out.clone(), source.clone()])
 
-    let _ = try must("rustc {source}", capture(env("RUSTC", "rustc"), args))
+    _ := try must("rustc {source}", capture(env("RUSTC", "rustc"), args))
     return ok(unit)
 
 // Runs `exe` with `input` on standard input and returns its standard output.
@@ -203,7 +203,7 @@ export fn sample(exe: String, arguments: List[String], input: String = "") Strin
 
 // Prints the text of `result` to standard output and returns 0, or reports its error and returns 1.
 export fn finish(result: String!) Int:
-    if let text = result:
+    if text := result:
         stdout().write(text + "\n").get()
         return 0
 
@@ -219,7 +219,7 @@ export fn options(
     var i = 0
 
     while i < args.length():
-        let flag = args[i]
+        flag := args[i]
         if (
             not flag.starts_with("--")
             or not known.contains(flag.slice(2, flag.length()).get(""))
@@ -277,7 +277,7 @@ export fn exe() String:
 
 // A short platform description such as `linux-amd64`.
 export fn platform() String:
-    let info = system_info()
+    info := system_info()
     return "{info.os}-{info.architecture}"
 
 // All of standard input as text.
@@ -317,7 +317,7 @@ export fn dump(value: JsonValue) String:
 export fn run_inherit(dir: String, program: String, arguments: List[String]) Int:
     var code = 125
 
-    if let child = spawn(
+    if child := spawn(
         program,
         arguments,
         SpawnOptions(
@@ -338,7 +338,7 @@ export type RssRun:
 
 // Runs `program arguments` and returns the child's peak resident set in KiB. The child's output is captured in `ran`.
 export fn peak_run(program: String, arguments: List[String], input: String = "") RssRun!:
-    let ran = capture(program, arguments, input)
+    ran := capture(program, arguments, input)
     if not ran.ok or ran.code != 0: return invalid(
         "{program} failed ({ran.code}): {ran.stderr}"
     )

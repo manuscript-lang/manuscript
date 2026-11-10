@@ -4,10 +4,10 @@
 import compress, CompressionFormat from "@std/io/archive.ms"
 
 fn explicit() Unit:
-    let data = "".to_bytes()
-    let _ = compress(data, "gzip", 6)
-    let _ = compress(data, "zlib", 0, max_bytes: none)
-    let _ = compress(data, "deflate", 9, max_bytes: 100)
-    let _ = CompressionFormat.Gzip.compress(data, 6)
-    let _ = CompressionFormat.Zlib.compress(data, 0, max_bytes: none)
-    let _ = CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)
+    data := "".to_bytes()
+    _ := compress(data, "gzip", 6)
+    _ := compress(data, "zlib", 0, max_bytes: none)
+    _ := compress(data, "deflate", 9, max_bytes: 100)
+    _ := CompressionFormat.Gzip.compress(data, 6)
+    _ := CompressionFormat.Zlib.compress(data, 0, max_bytes: none)
+    _ := CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)

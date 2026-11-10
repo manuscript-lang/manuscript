@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -27,26 +27,26 @@ export fn main() Int:
     else:
         say(("x" + "a"))
 
-    let b1 = ((false and true) and ((false and false) and (false and true)))
+    b1 := ((false and true) and ((false and false) and (false and true)))
     say("b1 = {b1}")
 
-    let i2 = (((14 / 41) + (43 - (-23))) - (((-16) % (-20)) + (432041 - 4)))
+    i2 := (((14 / 41) + (43 - (-23))) - (((-16) % (-20)) + (432041 - 4)))
     say("i2 = {i2}")
     say("fib(20) = {fib(20)}")
 
-    let f3 = 83.25
+    f3 := 83.25
     say("f3 = {f3}")
 
-    let i4 = (((i2 * (-590239)) + (-i2)) - (-24))
+    i4 := (((i2 * (-590239)) + (-i2)) - (-24))
     say("i4 = {i4}")
 
-    let i5 = ((-i4) + i4)
+    i5 := ((-i4) + i4)
     say("i5 = {i5}")
 
-    let f6 = 4.0e1
+    f6 := 4.0e1
     say("f6 = {f6}")
 
-    let b7 = (905.148 != (f3 / (5.5 / f6)))
+    b7 := (905.148 != (f3 / (5.5 / f6)))
     say("b7 = {b7}")
 
     if (not ("a" == "日本語")):
@@ -54,22 +54,22 @@ export fn main() Int:
     else:
         say("beta".upper())
 
-    let l8 = [19]
+    l8 := [19]
     say("l8 = {l8} len {l8.length()}")
 
-    let i9 = i4
+    i9 := i4
     say("i9 = {i9}")
 
-    let s10 = "delta"
+    s10 := "delta"
     say("s10 = [{s10}]")
 
-    let l11 = l8.reversed()
+    l11 := l8.reversed()
     say("l11 = {l11} len {l11.length()}")
 
-    let f12 = (((f6 / 3.0e-9) * f6) + (f6 * (7.5 * f3)))
+    f12 := (((f6 / 3.0e-9) * f6) + (f6 * (7.5 * f3)))
     say("f12 = {f12}")
 
-    let b13 = (((0.0 * f6) - (245.116 / 0.0)) > ((985.837 * f6) * 812.150))
+    b13 := (((0.0 * f6) - (245.116 / 0.0)) > ((985.837 * f6) * 812.150))
     say("b13 = {b13}")
 
     var acc14 = 0
@@ -77,9 +77,9 @@ export fn main() Int:
         acc14 += i * 1
     say("acc14 = {acc14}")
 
-    let i15 = (i5 + ((i9 * (-41)) + (i9 / i9)))
+    i15 := (i5 + ((i9 * (-41)) + (i9 / i9)))
     say("i15 = {i15}")
 
-    let i16 = (i4 - (((-50) * 31) * (i2 + i2)))
+    i16 := (i4 - (((-50) * 31) * (i2 + i2)))
     say("i16 = {i16}")
     return 0

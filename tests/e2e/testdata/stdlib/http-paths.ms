@@ -19,7 +19,7 @@ fn route(request: HttpRequest) HttpResponse:
     cookies.add("Set-Cookie", "a=1")
     cookies.add("set-cookie", "b=2")
 
-    let fields = match text_headers(cookies):
+    fields := match text_headers(cookies):
         ok(found): found
         error(cause): return HttpResponse(
             status: 500, headers: headers(), body: (cause.message.to_bytes())
@@ -33,16 +33,16 @@ fn stream_route(var exchange: HttpExchange) Unit!:
     var chain_1 = Map[String, List[String]]()
     chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
-    let _sent = try exchange.send_headers(
+    _sent := try exchange.send_headers(
         status: 200, headers: (try list_headers(chain_1))
     )
-    let _written = (
+    _written := (
         try http_result(exchange.write("{exchange.path()}|{exchange.query()}"))
     )
     return ok(unit)
 
 fn check_route(url: String, expected: String) Unit!:
-    let response = request(
+    response := request(
         method: HttpMethod.Get,
         url: url,
         options: RequestOptions(
@@ -59,7 +59,7 @@ fn check_route(url: String, expected: String) Unit!:
     return ok(unit)
 
 fn check_rejected(url: String) Unit!:
-    let response = request(
+    response := request(
         method: HttpMethod.Get,
         url: url,
         options: RequestOptions(
@@ -83,11 +83,11 @@ fn check_paths(base: String) Unit!:
     return ok(unit)
 
 test "buffered routes validate original input and decode once":
-    let server = serve(address: "127.0.0.1:0", handler: buffered(route)) | try expect_ok
+    server := serve(address: "127.0.0.1:0", handler: buffered(route)) | try expect_ok
     (try check_paths("http://{server.address()}"))
 
 test "streaming routes validate original input and decode once":
-    let server = serve(
+    server := serve(
         address: "127.0.0.1:0", handler: stream_route,
         options: HttpServerOptions(tls: none)
     ) | try expect_ok
@@ -104,18 +104,18 @@ fn expect_http_error[T](outcome: T!) Unit!:
     return ok(unit)
 
 test "buffered and reusable clients reject malformed ports as InvalidInput":
-    let headers = (try text_headers(Map[String, String]()))
-    let body = ""
+    headers := (try text_headers(Map[String, String]()))
+    body := ""
     request(
         method: HttpMethod.Get, url: "http://127.0.0.1:99999/", body: body,
         options: RequestOptions(headers: headers.clone())
     ) | try expect_http_error
 
-    let tls = TlsOptions(
+    tls := TlsOptions(
         server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
         alpn: [], require_client_certificate: false
     )
-    let client = http_client(
+    client := http_client(
         HttpClientOptions(decompress: false, cookies: false, tls: tls)
     ) | try expect_ok
     client.request(
@@ -124,8 +124,8 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
     ) | try expect_http_error
 
 test "buffered and reusable clients reject URLs with an empty host":
-    let fields = headers()
-    let client = http_client(HttpClientOptions()) | try expect_ok
+    fields := headers()
+    client := http_client(HttpClientOptions()) | try expect_ok
 
     for address in ["http://:80/", "https://:443/", "http://:/", "https://:/"]:
         request(HttpMethod.Get, address, options: RequestOptions(timeout: 1.seconds())) | try expect_http_error

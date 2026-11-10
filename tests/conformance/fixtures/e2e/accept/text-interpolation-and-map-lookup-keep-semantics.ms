@@ -21,10 +21,10 @@ fn describe(key: Point, m: Map[Point, String]) String:
             return "missing"
 
 test "text interpolation":
-    let n = 42
-    let f = 1.5
-    let ok = true
-    let s = "hi"
+    n := 42
+    f := 1.5
+    ok := true
+    s := "hi"
     try expect_true(("n={n} f={f} ok={ok} s={s}" == "n=42 f=1.5 ok=true s=hi"))
     try expect_true(("{n}" == "42"))
     try expect_true(("{s}{s}" == "hihi"))

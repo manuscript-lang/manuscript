@@ -9,12 +9,12 @@ test "new count":
 
 test "bound start":
     var items = [1]
-    let splice = items.splice
+    splice := items.splice
     splice(2, 0, [])
 
 test "bound count":
     var items = [1]
-    let splice = items.splice
+    splice := items.splice
     splice(0, -1, [])
 
 test "continues":

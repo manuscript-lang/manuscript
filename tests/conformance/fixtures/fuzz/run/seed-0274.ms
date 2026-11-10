@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     if "ms".trim().contains("line\nbreak"):
@@ -14,19 +14,19 @@ export fn main() Int:
     else:
         say("quote\"d")
 
-    let f1 = (
+    f1 := (
         ((180.932 * 609.684) + (500.25 / 181.892))
         + ((3.0e6 + 4.5) * (873.25 * 606.25))
     )
     say("f1 = {f1}")
 
-    let l2 = [2, (-6), 5, (-14)]
+    l2 := [2, (-6), 5, (-14)]
     say("l2 = {l2} len {l2.length()}")
 
-    let s3 = ("{7}:" + ("line\nbreak" + "MiXeD CaSe".replace("hello world", "ms")))
+    s3 := ("{7}:" + ("line\nbreak" + "MiXeD CaSe".replace("hello world", "ms")))
     say("s3 = [{s3}]")
 
-    let i4 = ((-107163) * (((-41) * (-587336647547)) + ((-655223) + (-27))))
+    i4 := ((-107163) * (((-41) * (-587336647547)) + ((-655223) + (-27))))
     say("i4 = {i4}")
 
     var acc5 = 0

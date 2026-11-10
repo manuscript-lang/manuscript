@@ -1,5 +1,5 @@
 fn layouts(flag: Bool) Int:
-    let callbacks = [
+    callbacks := [
         (
             fn(value: Int) Int:
                 return value + 1
@@ -9,7 +9,7 @@ fn layouts(flag: Bool) Int:
                 return value - 1
         )
     ]
-    let values = [
+    values := [
         match flag:
             true: 1
             false: 2

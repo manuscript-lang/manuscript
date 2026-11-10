@@ -11,7 +11,7 @@ Strings, types and collections have one owner: a binding, a field, or a slot in 
 
 Everything else, including strings, types, lists and maps, is handed around by reference until you put it somewhere that must own it:
 
-- `let b = a` and `f(a)` *borrow*: `b` and `f` read `a` in place, and `a` is still yours afterwards. `var b = a` and `f(var a)` borrow exclusively, so changes reach `a`.
+- `b := a` and `f(a)` *borrow*: `b` and `f` read `a` in place, and `a` is still yours afterwards. `var b = a` and `f(var a)` borrow exclusively, so changes reach `a`.
 - Storing a value in a field or a collection, returning a new value, or binding it at its last use *moves* it. After a move the old name is dead and the new owner frees it.
 - `.clone()` is the only copy. Write it when you want a value of your own that outlives or diverges from the original.
 
@@ -21,9 +21,9 @@ Functions can return a borrow of an argument without a marker. Wrapping a borrow
 
 ## Borrowing
 
-A borrow is a handle to a value another binding owns: many readers, or one writer, until the borrow's last use. Binding a place borrows it without a marker: `let x = a.b` is a shared borrow and `var x = a.b` an exclusive one. A loop variable and a match payload borrow the same way.
+A borrow is a handle to a value another binding owns: many readers, or one writer, until the borrow's last use. Binding a place borrows it without a marker: `x := a.b` is a shared borrow and `var x = a.b` an exclusive one. A loop variable and a match payload borrow the same way.
 
-- A function can return a borrowed part of a parameter or receiver: `fn list() List[Int]: return self.items`. A binding of that result borrows the original place; `let xs = b.list()` reads it and `var xs = b.list()` changes it exclusively.
+- A function can return a borrowed part of a parameter or receiver: `fn list() List[Int]: return self.items`. A binding of that result borrows the original place; `xs := b.list()` reads it and `var xs = b.list()` changes it exclusively.
 - `Optional` and `Result` can carry borrowed payloads. When the relevant return paths borrow the payload, `ok(self.name)` or `self.slots.get(i)` keeps it borrowed; `none` needs no owner. A `Result` can own its success value while borrowing its error from an argument, and `try` preserves the ownership of the active case. A borrowed payload must be cloned before storing it in a new owner.
 - A plain returned part cannot be mixed with a newly owned value on another path; clone the part when the result needs to own it. Wrapping a part does not make every function return a borrow: the checker considers all return paths. A lambda or an interface method owns its result.
 - A call that borrows from a temporary must leave an owned result: it can move the whole temporary, but retaining a part requires a clonable result. Bind the argument first to borrow a part of a non-clonable value.
@@ -43,7 +43,7 @@ fn grow(var b: Box) Int:
     xs.append(1)
     return b.items.length()
 ```
-`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` borrow their element. `let x = m.get(k)` keeps `m` unchangeable until `x` is last used, `let x = m.get(k).get()` borrows the entry the same way, and `if var x = m.get(k)` or `var x = m.get(k).get()` changes the entry in place (a missing key faults for the second). Use `if let` to read a borrowed resource or function value without moving it out of its container.
+`grow` returns the new length: `xs` borrows `b.items` through `list`, so `append` reaches `b`. `var xs = b.list().clone()` gives `xs` its own list. The standard library follows the same rule: `List.first`, `List.last` and `Map.get` borrow their element. `x := m.get(k)` keeps `m` unchangeable until `x` is last used, `x := m.get(k).get()` borrows the entry the same way, and `if var x = m.get(k)` or `var x = m.get(k).get()` changes the entry in place (a missing key faults for the second). Use `if let` to read a borrowed resource or function value without moving it out of its container.
 
 ## Reassignment
 

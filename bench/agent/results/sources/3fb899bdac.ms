@@ -2,8 +2,8 @@ import read_lines from "@std/streams.ms"
 import stdin, stdout from "@std/io.ms"
 import values from "@std/bytes.ms"
 
-let BAD = "error: bad command"
-let INF = 1000000000
+BAD := "error: bad command"
+INF := 1000000000
 
 // Returns the value of a 1-6 digit decimal token, or -1 when malformed.
 fn num(t: String) Int:
@@ -13,7 +13,7 @@ fn num(t: String) Int:
     var n = 0
 
     for b in values(t.to_bytes()):
-        let d = b.to_int()
+        d := b.to_int()
         if d < 48 or d > 57:
             return -1
 
@@ -28,8 +28,8 @@ fn blank(line: String) Bool:
     return true
 
 fn lcs(a: List[UInt8], b: List[UInt8]) Int:
-    let m = b.length()
-    let size = m + 1
+    m := b.length()
+    size := m + 1
     var prev = List[Int](reserve: size)
     for j in 0..size:
         prev.append(0)
@@ -42,7 +42,7 @@ fn lcs(a: List[UInt8], b: List[UInt8]) Int:
             if a[i] == b[j]:
                 cur.append(prev[j] + 1)
             else:
-                let skip = prev[j + 1].max(cur[j])
+                skip := prev[j + 1].max(cur[j])
                 cur.append(skip)
 
         prev = cur
@@ -50,8 +50,8 @@ fn lcs(a: List[UInt8], b: List[UInt8]) Int:
     return prev[m]
 
 fn edit(a: List[UInt8], b: List[UInt8]) Int:
-    let m = b.length()
-    let size = m + 1
+    m := b.length()
+    size := m + 1
     var prev = List[Int](reserve: size)
     for j in 0..size:
         prev.append(j)
@@ -65,10 +65,10 @@ fn edit(a: List[UInt8], b: List[UInt8]) Int:
             if a[i] == b[j]:
                 cost = 0
 
-            let diag = prev[j] + cost
-            let up = prev[j + 1] + 1
-            let left = cur[j] + 1
-            let best = diag.min(up).min(left)
+            diag := prev[j] + cost
+            up := prev[j + 1] + 1
+            left := cur[j] + 1
+            best := diag.min(up).min(left)
             cur.append(best)
 
         prev = cur
@@ -84,18 +84,18 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
     if total < cap:
         top = total
 
-    let size = top + 1
+    size := top + 1
     var dp = List[Int](reserve: size)
     for i in 0..size:
         dp.append(0)
 
     for k in 0..ws.length():
-        let w = ws[k]
-        let v = vs[k]
+        w := ws[k]
+        v := vs[k]
         var c = top
 
         while c >= w:
-            let cand = dp[c - w] + v
+            cand := dp[c - w] + v
             if cand > dp[c]:
                 dp[c] = cand
             c -= 1
@@ -104,7 +104,7 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
 
 // Returns the minimum coin count, or -1 when the amount cannot be made.
 fn coins(amount: Int, cs: List[Int]) Int:
-    let size = amount + 1
+    size := amount + 1
     var dp = List[Int](reserve: size)
     dp.append(0)
 
@@ -122,19 +122,19 @@ fn coins(amount: Int, cs: List[Int]) Int:
     return dp[amount]
 
 fn run(line: String) String:
-    let t = line.split(" ")
-    let n = t.length()
+    t := line.split(" ")
+    n := t.length()
     if n == 0:
         return BAD
 
-    let cmd = t[0]
+    cmd := t[0]
 
     if cmd == "lcs" or cmd == "edit":
         if n != 3 or t[1].length() == 0 or t[2].length() == 0:
             return BAD
 
-        let a = values(t[1].to_bytes())
-        let b = values(t[2].to_bytes())
+        a := values(t[1].to_bytes())
+        b := values(t[2].to_bytes())
         if cmd == "lcs":
             return "{lcs(a, b)}"
 
@@ -144,7 +144,7 @@ fn run(line: String) String:
         if n < 2:
             return BAD
 
-        let cap = num(t[1])
+        cap := num(t[1])
         if cap < 0:
             return BAD
 
@@ -152,12 +152,12 @@ fn run(line: String) String:
         var vs = List[Int]()
 
         for k in 2..n:
-            let p = t[k].split(":")
+            p := t[k].split(":")
             if p.length() != 2:
                 return BAD
 
-            let w = num(p[0])
-            let v = num(p[1])
+            w := num(p[0])
+            v := num(p[1])
             if w < 1 or v < 0:
                 return BAD
 
@@ -170,20 +170,20 @@ fn run(line: String) String:
         if n < 3:
             return BAD
 
-        let amount = num(t[1])
+        amount := num(t[1])
         if amount < 0:
             return BAD
 
         var cs = List[Int]()
 
         for k in 2..n:
-            let c = num(t[k])
+            c := num(t[k])
             if c < 1:
                 return BAD
 
             cs.append(c)
 
-        let r = coins(amount, cs)
+        r := coins(amount, cs)
         if r < 0:
             return "impossible"
 
@@ -192,7 +192,7 @@ fn run(line: String) String:
     return BAD
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
 
     for line in lines:
         if blank(line):

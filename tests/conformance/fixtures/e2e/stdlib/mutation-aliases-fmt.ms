@@ -9,7 +9,7 @@ test "Map remove direct and bound preserve order and no-op absence":
     values.add(2, "two")
     values.add(3, "three")
 
-    let snapshot = values.clone()
+    snapshot := values.clone()
     values.remove(2)
     values.add(4, "four")
     try expect_equal(values.keys(), [1, 3, 4])
@@ -36,7 +36,7 @@ test "Map remove evaluates its key after choosing the receiver and keeps convers
     var first = Map[Int?, Int]()
     first.add(1, 10)
 
-    let trigger: Int? = 1
+    trigger: Int? = 1
     first.remove(
         match trigger:
             key: key

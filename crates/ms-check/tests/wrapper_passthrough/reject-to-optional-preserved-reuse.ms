@@ -7,6 +7,6 @@ impl Closeable for Marker:
     var fn close() Unit!: ok(unit)
 
 fn bad() Unit:
-    let value: Marker!Int = ok(Marker(1))
-    let kept = value.to_optional()
-    let again = value.to_optional()
+    value: Marker!Int = ok(Marker(1))
+    kept := value.to_optional()
+    again := value.to_optional()

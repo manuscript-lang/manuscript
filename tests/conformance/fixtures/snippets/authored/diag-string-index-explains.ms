@@ -2,6 +2,6 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 export fn main() Int:
-    let s = "abc"
-    let c = s[0]
+    s := "abc"
+    c := s[0]
     return 0

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,22 +15,22 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let l1 = [29, (-21), 22, 6, (-6)]
+    l1 := [29, (-21), 22, 6, (-6)]
     say("l1 = {l1} len {l1.length()}")
 
-    let i2 = (5 - (20 - ((-838189) / (-17))))
+    i2 := (5 - (20 - ((-838189) / (-17))))
     say("i2 = {i2}")
     say("gcd(3521, 2958) = {gcd(3521, 2958)}")
 
-    let f3 = (((516.312 + 580.928) + 950.923) * ((715.456 + 4.5) / (567.896 + 0.0)))
+    f3 := (((516.312 + 580.928) + 950.923) * ((715.456 + 4.5) / (567.896 + 0.0)))
     say("f3 = {f3}")
 
-    let l4 = l1.concat(l1)
+    l4 := l1.concat(l1)
     say("l4 = {l4} len {l4.length()}")
 
-    let l5 = l4.map(fn x: x + 3).filter(fn x: x % 2 == 0)
+    l5 := l4.map(fn x: x + 3).filter(fn x: x % 2 == 0)
     say("l5 = {l5} len {l5.length()}")
 
-    let l6 = l4.drop(3)
+    l6 := l4.drop(3)
     say("l6 = {l6} len {l6.length()}")
     return 0

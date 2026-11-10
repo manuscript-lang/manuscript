@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,13 +22,13 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let b1 = "".replace("a", "héllo").starts_with("back\\slash")
+    b1 := "".replace("a", "héllo").starts_with("back\\slash")
     say("b1 = {b1}")
 
-    let s2 = ("  padded  " + "MiXeD CaSe".replace("quote\"d", "gamma"))
+    s2 := ("  padded  " + "MiXeD CaSe".replace("quote\"d", "gamma"))
     say("s2 = [{s2}]")
 
-    let s3 = (s2 + s2)
+    s3 := (s2 + s2)
     say("s3 = [{s3}]")
     say("fib(48) = {fib(48)}")
 
@@ -37,7 +37,7 @@ export fn main() Int:
     else:
         say((s2 + s3))
 
-    let f4 = 305.870
+    f4 := 305.870
     say("f4 = {f4}")
     say(
         "{(12 - (-27))} {(((-19) + (-17)) * ((-42) * 18))} {((12 - (-27)) < (((-19) + (-17)) * ((-42) * 18)))} sum {(12 - (-27)) + (((-19) + (-17)) * ((-42) * 18))}"
@@ -46,16 +46,16 @@ export fn main() Int:
         "{((-34) % (-732802248486))} {(((-3) - 22) * (13 % (-711257603304)))} {(((-34) % (-732802248486)) < (((-3) - 22) * (13 % (-711257603304))))} sum {((-34) % (-732802248486)) + (((-3) - 22) * (13 % (-711257603304)))}"
     )
 
-    let f7 = (((510.060 * 7.5) - (5.0e8 + 324.011)) + (933.25 / (9.5 + 553.25)))
+    f7 := (((510.060 * 7.5) - (5.0e8 + 324.011)) + (933.25 / (9.5 + 553.25)))
     say("f7 = {f7}")
 
-    let f8 = (((8.0e-8 - 950.237) * (567.935 - f7)) * (f7 + (431.996 - 468.939)))
+    f8 := (((8.0e-8 - 950.237) * (567.935 - f7)) * (f7 + (431.996 - 468.939)))
     say("f8 = {f8}")
 
-    let l9 = [27, (-7), (-19)]
+    l9 := [27, (-7), (-19)]
     say("l9 = {l9} len {l9.length()}")
 
-    let l10 = l9.take(4)
+    l10 := l9.take(4)
     say("l10 = {l10} len {l10.length()}")
     say(
         "{(((-47) - 14) - l10.get(2))} {5} {((((-47) - 14) - l10.get(2)) < 5)} sum {(((-47) - 14) - l10.get(2)) + 5}"
@@ -69,9 +69,9 @@ export fn main() Int:
     else:
         say("ms")
 
-    let i11 = ((-302590) * ((-7) - ((-84274) * 17)))
+    i11 := ((-302590) * ((-7) - ((-84274) * 17)))
     say("i11 = {i11}")
 
-    let l12 = l10.filter(fn x: x > 3)
+    l12 := l10.filter(fn x: x > 3)
     say("l12 = {l12} len {l12.length()}")
     return 0

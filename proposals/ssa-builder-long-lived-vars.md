@@ -15,7 +15,7 @@
 
 ## Problem
 
-- Repro (`gen-longlived-repro.sh N long`, in project files `architecture/mir-scaling-review/`): N `let k_i = "key{i}".upper()`, then N `if` checks updating `bad`, then N `bad += k_i.length()`. Measured Debug 0.75s, 2.8s, 12.7s at N=400, 800, 1600 (about 4.5x per doubling); a `while` loop before the checks changes nothing (reviewer: 0.84, 3.6, 15.9).
+- Repro (`gen-longlived-repro.sh N long`, in project files `architecture/mir-scaling-review/`): N `k_i := "key{i}".upper()`, then N `if` checks updating `bad`, then N `bad += k_i.length()`. Measured Debug 0.75s, 2.8s, 12.7s at N=400, 800, 1600 (about 4.5x per doubling); a `while` loop before the checks changes nothing (reviewer: 0.84, 3.6, 15.9).
 - Cause (verified, `builder.rs` `read_var`): the lazy construction adds a `(var, block)` entry per variable per join between its definition and a read, with a block parameter that is then removed as trivial. N variables x N joins = N² entries.
 - Non-goals: reassigned variables (`bad`) keep the existing algorithm, which costs one walk per variable.
 

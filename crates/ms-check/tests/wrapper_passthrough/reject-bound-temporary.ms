@@ -12,4 +12,4 @@ impl Marker:
 fn marker() Marker!Error: ok(Marker(1))
 
 fn bad() Unit:
-    let recover = marker().or_else
+    recover := marker().or_else

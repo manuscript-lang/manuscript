@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = (
+    b1 := (
         ((330.939 + 423.176) - (2.0e-5 + 1.0e-8)) < (
             (67.837 + 620.25)
             * (3.0e6 * 0.0)
@@ -17,14 +17,14 @@ export fn main() Int:
     )
     say("b1 = {b1}")
 
-    let bad = 1.5 + 2
+    bad := 1.5 + 2
     say(
         "{((-39) + (28 * (-25)))} {3} {(((-39) + (28 * (-25))) < 3)} sum {((-39) + (28 * (-25))) + 3}"
     )
 
-    let l2 = [(-2), (-10)]
+    l2 := [(-2), (-10)]
     say("l2 = {l2} len {l2.length()}")
 
-    let i3 = ((((-763029) * 299781) - l2.length()) * (l2.length() + (31 / (-50))))
+    i3 := ((((-763029) * 299781) - l2.length()) * (l2.length() + (31 / (-50))))
     say("i3 = {i3}")
     return 0

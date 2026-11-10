@@ -2,4 +2,4 @@
 // conform: phase=parse
 // conform: origin=foreign-syntax diagnostics
 fn f() Unit:
-    let a = new Point()
+    a := new Point()

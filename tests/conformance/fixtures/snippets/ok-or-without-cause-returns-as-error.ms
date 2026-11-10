@@ -11,6 +11,6 @@ fn b(s: String) Result[Int, Error]:
 
 export fn main() Int:
     stdout().write("{a("4").get(0)} {b("x").is_ok()}\n").get()
-    if let e = a("x"):
+    if e := a("x"):
         stdout().write("ok {e}\n").get()
     return 0

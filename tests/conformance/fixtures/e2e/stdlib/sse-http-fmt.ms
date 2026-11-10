@@ -24,16 +24,16 @@ fn stream_events(var exchange: HttpExchange) Unit!:
     return ok(unit)
 
 test "HTTP response bodies decode as SSE and close with the reader":
-    let server = try serve("127.0.0.1:0", stream_events, HttpServerOptions())
-    let client = try http_client(HttpClientOptions())
-    let response = try client.request(
+    server := try serve("127.0.0.1:0", stream_events, HttpServerOptions())
+    client := try http_client(HttpClientOptions())
+    response := try client.request(
         HttpMethod.Get, "http://{server.address()}/", headers()
     )
-    let {metadata: head, body: payload} = response
-    let status = head.status
+    {metadata: head, body: payload} := response
+    status := head.status
     var events = sse_events(payload)
-    let first = (try events.next()).get()
-    let second = (try events.next()).get()
+    first := (try events.next()).get()
+    second := (try events.next()).get()
     if first.event != "greet" or first.data != "h\u{e9}!": return fail(
         "first event {first.data}"
     )

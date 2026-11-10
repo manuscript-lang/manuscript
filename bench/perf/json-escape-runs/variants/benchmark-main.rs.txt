@@ -27,7 +27,7 @@ fn payload(case: &str) -> Payload {
                 bits ^= bits << 13;
                 bits ^= bits >> 7;
                 bits ^= bits << 17;
-                let v = f64::from_bits(bits);
+                v := f64::from_bits(bits);
                 if v.is_finite() {
                     values.push(v);
                 }
@@ -77,7 +77,7 @@ fn float_oracle() {
     use std::io::Write;
     let mut out = std::io::BufWriter::new(std::io::stdout().lock());
     let mut bits = 0x9e37_79b9_7f4a_7c15u64;
-    let edges = [
+    edges := [
         0.0,
         -0.0,
         f64::INFINITY,
@@ -94,14 +94,14 @@ fn float_oracle() {
         bits ^= bits << 13;
         bits ^= bits >> 7;
         bits ^= bits << 17;
-        let value = if i % 5 == 0 {
+        value := if i % 5 == 0 {
             edges[bits as usize % edges.len()]
         } else if i % 5 == 1 {
             (bits % 1_000_000_000_000_000) as f64 / 10f64.powi((bits >> 32) as i32 % 22)
         } else {
             f64::from_bits(bits)
         };
-        let text = ms_std_json::float_text(value);
+        text := ms_std_json::float_text(value);
         writeln!(
             out,
             "{:016x}\t{}",
@@ -113,16 +113,16 @@ fn float_oracle() {
 }
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    args: Vec<String> = std::env::args().collect();
     if args[1] == "float-oracle" {
         float_oracle();
         return;
     }
-    let data = payload(&args[1]);
-    let operation = &args[2];
-    let count: usize = args[3].parse().unwrap();
-    let text = rust_write(&data);
-    let ms_expected = ms_write(&data);
+    data := payload(&args[1]);
+    operation := &args[2];
+    count: usize = args[3].parse().unwrap();
+    text := rust_write(&data);
+    ms_expected := ms_write(&data);
     match &data {
         Payload::Strings(v) => assert_eq!(
             &serde_json::from_str::<Vec<String>>(&ms_expected).unwrap(),
@@ -132,7 +132,7 @@ fn main() {
             assert_eq!(&serde_json::from_str::<Vec<i64>>(&ms_expected).unwrap(), v)
         }
         Payload::Floats(v) => {
-            let decoded = serde_json::from_str::<Vec<f64>>(&ms_expected).unwrap();
+            decoded := serde_json::from_str::<Vec<f64>>(&ms_expected).unwrap();
             assert_eq!(decoded.len(), v.len());
             assert!(
                 decoded
@@ -143,12 +143,12 @@ fn main() {
         }
     }
     let (doc, root) = ms_std_json::parse(&text, Limits::default()).unwrap();
-    let reencoded = doc.stringify(root, None, None).unwrap();
+    reencoded := doc.stringify(root, None, None).unwrap();
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&reencoded).unwrap(),
         serde_json::from_str::<serde_json::Value>(&text).unwrap()
     );
-    let nodes = doc.nodes.len();
+    nodes := doc.nodes.len();
     if operation == "ms-output" {
         print!("{ms_expected}");
         return;
@@ -157,22 +157,22 @@ fn main() {
         print!("{text}");
         return;
     }
-    let expected = if operation == "ms-write" {
+    expected := if operation == "ms-write" {
         &ms_expected
     } else {
         &text
     };
     let mut checksum = 0usize;
-    let start = Instant::now();
+    start := Instant::now();
     for _ in 0..count {
         match operation.as_str() {
             "ms-write" => {
-                let out = ms_write(black_box(&data));
+                out := ms_write(black_box(&data));
                 assert_eq!(black_box(&out), expected);
                 checksum += out.len();
             }
             "rust-write" => {
-                let out = rust_write(black_box(&data));
+                out := rust_write(black_box(&data));
                 assert_eq!(black_box(&out), expected);
                 checksum += out.len();
             }
@@ -183,7 +183,7 @@ fn main() {
                 checksum += nodes;
             }
             "rust-parse" => {
-                let value: serde_json::Value = serde_json::from_str(black_box(&text)).unwrap();
+                value: serde_json::Value = serde_json::from_str(black_box(&text)).unwrap();
                 black_box(&value);
                 assert_eq!(value.as_array().unwrap().len() + 1, nodes);
                 checksum += nodes;
@@ -191,7 +191,7 @@ fn main() {
             _ => panic!("unknown operation"),
         }
     }
-    let unit = if operation.ends_with("parse") {
+    unit := if operation.ends_with("parse") {
         nodes
     } else {
         expected.len()

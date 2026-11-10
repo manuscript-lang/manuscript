@@ -20,7 +20,7 @@ fn chain() {
     // never reported: 1600 links took 1.7 s, 4800 about 15 s.
     let links = 4_800;
     let source = format!(
-        "fn f() Int:\n    let x = [1]{}\n    return x[0]\n",
+        "fn f() Int:\n    x := [1]{}\n    return x[0]\n",
         ".map(fn v: v + 1)".repeat(links)
     );
     let file: Arc<str> = Arc::from("chain.ms");

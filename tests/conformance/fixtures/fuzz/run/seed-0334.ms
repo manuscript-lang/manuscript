@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
     var acc1 = 0
@@ -14,19 +14,19 @@ export fn main() Int:
         acc1 += i * 0
     say("acc1 = {acc1}")
 
-    let b2 = (not ((816.120 == 619.936) and ("gamma" != "delta")))
+    b2 := (not ((816.120 == 619.936) and ("gamma" != "delta")))
     say("b2 = {b2}")
 
-    let b3 = ((false or (not b2)) or "Tab\there".upper().is_empty())
+    b3 := ((false or (not b2)) or "Tab\there".upper().is_empty())
     say("b3 = {b3}")
 
-    let i4 = ((188962474228 + 42) + ((-2) * (-839457)))
+    i4 := ((188962474228 + 42) + ((-2) * (-839457)))
     say("i4 = {i4}")
     say(
         "{(((-424858808943) / i4) + (-100444))} {i4} {((((-424858808943) / i4) + (-100444)) < i4)} sum {(((-424858808943) / i4) + (-100444)) + i4}"
     )
 
-    let l5 = [1, 2, 3].take(0)
+    l5 := [1, 2, 3].take(0)
     say("l5 = {l5} len {l5.length()}")
 
     if b2:
@@ -34,7 +34,7 @@ export fn main() Int:
     else:
         say("Tab\there")
 
-    let l6 = [(-5), 11, 7, (-19)]
+    l6 := [(-5), 11, 7, (-19)]
     say("l6 = {l6} len {l6.length()}")
     say(
         "{(-(-i4))} {(i4 + (i4 + i4))} {((-(-i4)) < (i4 + (i4 + i4)))} sum {(-(-i4)) + (i4 + (i4 + i4))}"
@@ -45,6 +45,6 @@ export fn main() Int:
     else:
         say(("{(i4 - i4)}:" + ""))
 
-    let i7 = l6.get(2)
+    i7 := l6.get(2)
     say("i7 = {i7}")
     return 0

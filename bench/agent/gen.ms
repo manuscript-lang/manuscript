@@ -25,13 +25,13 @@ import gen_c59 from "./challenges/c59-spreadsheet/gen.ms"
 import gen_c60 from "./challenges/c60-issue-tracker/gen.ms"
 
 export fn main() Int:
-    let args = arguments()
+    args := arguments()
 
     if args.length() != 1:
         stderr().write("usage: gen.ms <challenge id prefix such as c03 | all>\n").get()
         return 2
 
-    let which = args[0].clone()
+    which := args[0].clone()
     var ran = 0
 
     if which == "c03" or which == "all":

@@ -44,7 +44,7 @@ fn is_number(s: String) Bool:
 fn parse_cents(s: String) Optional[Int]:
     if not is_number(s): return none
 
-    let cents = s.parse_int().get()
+    cents := s.parse_int().get()
     if cents > 10000000: return none
 
     return some(cents)
@@ -52,13 +52,13 @@ fn parse_cents(s: String) Optional[Int]:
 fn parse_qty(s: String) Optional[Int]:
     if not is_number(s): return none
 
-    let qty = s.parse_int().get()
+    qty := s.parse_int().get()
     if qty < 1 or qty > 100000: return none
 
     return some(qty)
 
 fn money(cents: Int) String:
-    let frac = cents % 100
+    frac := cents % 100
     if frac < 10: return "{cents / 100}.0{frac}"
 
     return "{cents / 100}.{frac}"
@@ -73,14 +73,14 @@ fn cmd_stock(var shop: Shop, parts: List[String]) Unit:
         emit("error: usage")
         return
 
-    let sku = parts[1]
+    sku := parts[1]
 
     if not is_sku(sku):
         emit("error: bad sku")
         return
 
-    if let qty = parse_qty(parts[2]):
-        let stock = shop.stock.get_or(sku, 0) + qty
+    if qty := parse_qty(parts[2]):
+        stock := shop.stock.get_or(sku, 0) + qty
         if not shop.stock.contains(sku): shop.price.add(sku, 0)
         shop.stock.add(sku, stock)
         emit("ok {sku} stock={stock}")
@@ -92,8 +92,8 @@ fn cmd_price(var shop: Shop, parts: List[String]) Unit:
         emit("error: usage")
         return
 
-    if let cents = parse_cents(parts[2]):
-        let sku = parts[1]
+    if cents := parse_cents(parts[2]):
+        sku := parts[1]
 
         if not shop.stock.contains(sku):
             emit("error: unknown sku {sku}")
@@ -109,7 +109,7 @@ fn cmd_order(var shop: Shop, parts: List[String]) Unit:
         emit("error: usage")
         return
 
-    let id = parts[1]
+    id := parts[1]
 
     if not is_order_id(id):
         emit("error: bad order id")
@@ -118,13 +118,13 @@ fn cmd_order(var shop: Shop, parts: List[String]) Unit:
     var lines = List[Line]()
 
     for token in parts.slice(2, parts.length()).get():
-        let pieces = token.split(":")
+        pieces := token.split(":")
 
         if pieces.length() != 2 or not is_sku(pieces[0]):
             emit("error: bad item {token}")
             return
 
-        if let qty = parse_qty(pieces[1]):
+        if qty := parse_qty(pieces[1]):
             lines.append(Line(sku: pieces[0], qty: qty))
         else:
             emit("error: bad item {token}")
@@ -148,7 +148,7 @@ fn cmd_order(var shop: Shop, parts: List[String]) Unit:
             emit("error: unknown sku {line.sku}")
             return
 
-        let stock = shop.stock.get_or(line.sku, 0)
+        stock := shop.stock.get_or(line.sku, 0)
 
         if line.qty > stock:
             emit(
@@ -168,13 +168,13 @@ fn cmd_cancel(var shop: Shop, parts: List[String]) Unit:
         emit("error: usage")
         return
 
-    let id = parts[1]
+    id := parts[1]
 
     if not shop.orders.contains(id):
         emit("error: unknown order {id}")
         return
 
-    let order = shop.orders.get(id).get()
+    order := shop.orders.get(id).get()
 
     if order.status == "shipped":
         emit("error: order {id} already shipped")
@@ -199,13 +199,13 @@ fn cmd_ship(var shop: Shop, parts: List[String]) Unit:
         emit("error: usage")
         return
 
-    let id = parts[1]
+    id := parts[1]
 
     if not shop.orders.contains(id):
         emit("error: unknown order {id}")
         return
 
-    let order = shop.orders.get(id).get()
+    order := shop.orders.get(id).get()
 
     if order.status == "shipped":
         emit("error: order {id} already shipped")
@@ -245,8 +245,8 @@ fn cmd_report(var shop: Shop, parts: List[String]) Unit:
             cancelled += 1
 
     for sku in (shop.stock.keys().sorted(fn(a: String, b: String) Int: a.compare(b))):
-        let stock = shop.stock.get_or(sku, 0)
-        let price = shop.price.get_or(sku, 0)
+        stock := shop.stock.get_or(sku, 0)
+        price := shop.price.get_or(sku, 0)
         emit(
             "{sku} stock={stock} price={money(price)} reserved={reserved.get_or(sku, 0)}"
         )
@@ -257,8 +257,8 @@ fn cmd_report(var shop: Shop, parts: List[String]) Unit:
 fn run(var shop: Shop, text: String) Unit:
     if text.replace(" ", "").is_empty(): return
 
-    let parts = text.split(" ")
-    let name = parts[0]
+    parts := text.split(" ")
+    name := parts[0]
 
     if name == "stock":
         cmd_stock(var shop, parts)

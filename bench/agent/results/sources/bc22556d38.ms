@@ -41,13 +41,13 @@ fn valid_amount(s: String) Bool:
     return is_digits(s) and value_of(s) > 0
 
 fn is_frozen(led: Ledger, id: String) Bool:
-    if let a = led.accts.get(id):
+    if a := led.accts.get(id):
         return a.frozen
 
     return false
 
 fn bal(led: Ledger, id: String) Int:
-    if let a = led.accts.get(id):
+    if a := led.accts.get(id):
         return a.balance
 
     return 0
@@ -86,8 +86,8 @@ fn take(var led: Ledger, id: String, amount: Int) Int:
     return fee
 
 fn cmd_open(var led: Ledger, toks: List[String]) String:
-    let id = toks[1]
-    let lim = toks[2]
+    id := toks[1]
+    lim := toks[2]
     if not is_digits(lim): return "error: invalid limit"
     if led.accts.contains(id): return "error: account exists {id}"
 
@@ -108,12 +108,12 @@ fn cmd_freeze(var led: Ledger, id: String, flag: Bool) String:
     return "ok"
 
 fn cmd_deposit(var led: Ledger, toks: List[String]) String:
-    let id = toks[1]
+    id := toks[1]
     if not led.accts.contains(id): return "error: unknown account {id}"
     if not valid_amount(toks[2]): return reject(var led, id, "error: invalid amount")
     if is_frozen(led, id): return reject(var led, id, "error: account frozen {id}")
 
-    let amt = value_of(toks[2])
+    amt := value_of(toks[2])
 
     if var a = led.accts.get(id):
         a.balance += amt
@@ -122,12 +122,12 @@ fn cmd_deposit(var led: Ledger, toks: List[String]) String:
     return "ok {bal(led, id)}"
 
 fn cmd_withdraw(var led: Ledger, toks: List[String]) String:
-    let id = toks[1]
+    id := toks[1]
     if not led.accts.contains(id): return "error: unknown account {id}"
     if not valid_amount(toks[2]): return reject(var led, id, "error: invalid amount")
     if is_frozen(led, id): return reject(var led, id, "error: account frozen {id}")
 
-    let fee = take(var led, id, value_of(toks[2]))
+    fee := take(var led, id, value_of(toks[2]))
     if fee < 0: return reject(var led, id, "error: overdraft limit exceeded {id}")
 
     bump_ops(var led, id)
@@ -136,8 +136,8 @@ fn cmd_withdraw(var led: Ledger, toks: List[String]) String:
     return "ok {bal(led, id)}"
 
 fn cmd_transfer(var led: Ledger, toks: List[String]) String:
-    let from = toks[1]
-    let to = toks[2]
+    from := toks[1]
+    to := toks[2]
     if not led.accts.contains(from): return "error: unknown account {from}"
     if not led.accts.contains(to): return "error: unknown account {to}"
     if from == to: return reject(var led, from, "error: same account")
@@ -147,8 +147,8 @@ fn cmd_transfer(var led: Ledger, toks: List[String]) String:
     )
     if is_frozen(led, to): return reject(var led, to, "error: account frozen {to}")
 
-    let amt = value_of(toks[3])
-    let fee = take(var led, from, amt)
+    amt := value_of(toks[3])
+    fee := take(var led, from, amt)
     if fee < 0: return reject(var led, from, "error: overdraft limit exceeded {from}")
 
     if var b = led.accts.get(to):
@@ -164,10 +164,10 @@ fn cmd_report(led: Ledger) String:
     var total = 0
 
     for id in led.ids.sorted():
-        if let a = led.accts.get(id):
+        if a := led.accts.get(id):
             total += a.balance
 
-            let fz = if a.frozen: "yes" else: "no"
+            fz := if a.frozen: "yes" else: "no"
             out.append(
                 "{id} balance={a.balance} limit={a.limit} ops={a.ops} rejected={a.rejected} frozen={fz}"
             )
@@ -177,8 +177,8 @@ fn cmd_report(led: Ledger) String:
 
 // Returns the output text for one command line (without trailing newline).
 fn handle(var led: Ledger, toks: List[String]) String:
-    let cmd = toks[0]
-    let n = toks.length()
+    cmd := toks[0]
+    n := toks.length()
 
     if cmd == "open":
         if n != 3: return "error: bad command"
@@ -221,10 +221,10 @@ fn run() Unit!:
     var led = Ledger(ids: List[String](), accts: Map[String, Acct](), fees: 0)
 
     for line in stdin() | lines:
-        let toks = tokens(line)
+        toks := tokens(line)
         if toks.length() == 0: continue
 
-        let text = handle(var led, toks)
+        text := handle(var led, toks)
         stdout().write("{text}\n").get()
 
     return ok(unit)

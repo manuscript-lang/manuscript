@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = 28
+    i1 := 28
     say("i1 = {i1}")
 
-    let i2 = ((i1 + i1) + i1)
+    i2 := ((i1 + i1) + i1)
     say("i2 = {i2}")
 
-    let s3 = "x"
+    s3 := "x"
     say("s3 = [{s3}]")
 
-    let i4 = (i1 - ((594675 - i2) * s3.length()))
+    i4 := (i1 - ((594675 - i2) * s3.length()))
     say("i4 = {i4}")
 
-    let i5 = i4
+    i5 := i4
     say("i5 = {i5}")
 
-    let i6 = ((-34) + ((-50) * (i4 * 44)))
+    i6 := ((-34) + ((-50) * (i4 * 44)))
     say("i6 = {i6}")
 
     var acc7 = 0
@@ -39,15 +39,15 @@ export fn main() Int:
         "{(-44521915495)} {(-555253154113)} {((-44521915495) < (-555253154113))} sum {(-44521915495) + (-555253154113)}"
     )
 
-    let b8 = (((i4 >= i2) and ("emoji 😀" != "Tab\there")) and true)
+    b8 := (((i4 >= i2) and ("emoji 😀" != "Tab\there")) and true)
     say("b8 = {b8}")
 
-    let b9 = ((i2 < ((-622459368462) + (-14))) and ((6.5 - 2.0e4) < 8.5))
+    b9 := ((i2 < ((-622459368462) + (-14))) and ((6.5 - 2.0e4) < 8.5))
     say("b9 = {b9}")
 
-    let f10 = (((399.904 / 0.0) - 2.5) - 4.5)
+    f10 := (((399.904 / 0.0) - 2.5) - 4.5)
     say("f10 = {f10}")
 
-    let s11 = "日本語"
+    s11 := "日本語"
     say("s11 = [{s11}]")
     return 0

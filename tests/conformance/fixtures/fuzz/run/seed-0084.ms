@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -27,7 +27,7 @@ export fn main() Int:
         "{(((-10) - (-793311500759)) + 46)} {(-((-41) * (-11)))} {((((-10) - (-793311500759)) + 46) < (-((-41) * (-11))))} sum {(((-10) - (-793311500759)) + 46) + (-((-41) * (-11)))}"
     )
 
-    let b1 = "a".is_empty()
+    b1 := "a".is_empty()
     say("b1 = {b1}")
 
     var acc2 = 0
@@ -39,15 +39,15 @@ export fn main() Int:
 
     say("acc2 = {acc2}")
 
-    let l3 = [3, (-15)]
+    l3 := [3, (-15)]
     say("l3 = {l3} len {l3.length()}")
 
-    let b4 = ((319.398 / (727.988 - 190.109)) < 3.0e6)
+    b4 := ((319.398 / (727.988 - 190.109)) < 3.0e6)
     say("b4 = {b4}")
 
-    let s5 = ("{47}:" + "back\\slash".upper())
+    s5 := ("{47}:" + "back\\slash".upper())
     say("s5 = [{s5}]")
 
-    let big6 = 9223372036854775807
+    big6 := 9223372036854775807
     say("{big6 + 1}")
     return 0

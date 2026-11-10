@@ -42,10 +42,10 @@ type View:
 
 export fn main() Int:
     var xs = [1, 2, 3]
-    let v = View(items: xs)
+    v := View(items: xs)
     var fs: List[fn() Int] = []
     fs.append(fn (): v.items[0] + v.items[2])
-    let n = v.items.length()
+    n := v.items.length()
     xs = [9]
     // ... allocate other lists ...
     stdout().write("n={n} closure={fs[0]()}\n").get()
@@ -66,8 +66,8 @@ fn dup[T: Clonable](x: T) T:
     return x.clone()
 
 export fn main() Int:
-    let a = Holder.Has(Res(1))
-    let _b = dup(a)
+    a := Holder.Has(Res(1))
+    _b := dup(a)
     return 0
 ```
 
@@ -86,8 +86,8 @@ impl Closeable for Res:
         stdout().write("close {self.id}\n").get()
 
 export fn main() Int:
-    let a = make(7).get_id()          // Res: Int field only
-    let b = make_named("heap").get_id() // Named: String field
+    a := make(7).get_id()          // Res: Int field only
+    b := make_named("heap").get_id() // Named: String field
     return 0
 ```
 
@@ -101,11 +101,11 @@ type Wrap[T]:
     value: T
 
 fn keep[T](v: T) Int:
-    let _w = Wrap(v)
+    _w := Wrap(v)
     return 0
 
 export fn main() Int:
-    let _ = keep(Res(2))
+    _ := keep(Res(2))
     return 0
 ```
 
@@ -117,16 +117,16 @@ export fn main() Int:
 ### P5. `let` values mutated through implicit copies
 
 ```manuscript
-let a = headers()
-let b = a
-let _ = b.append("x-k", "v")
-let r = Req(a)
-let s = r
-let _ = s.h.append("x-j", "w")
+a := headers()
+b := a
+_ := b.append("x-k", "v")
+r := Req(a)
+s := r
+_ := s.h.append("x-j", "w")
 // a.names().length() == 2
 ```
 
-- `HttpHeaders` is an `extern type` with plain `fn append`. `classify.rs::native` (lines 76-78) defaults every other native to `Copy`, so `let b = a` shares the handle. `effects.rs::collection_mutation` lists mutators only for the five builders, by name, so `let` does not stop the change.
+- `HttpHeaders` is an `extern type` with plain `fn append`. `classify.rs::native` (lines 76-78) defaults every other native to `Copy`, so `b := a` shares the handle. `effects.rs::collection_mutation` lists mutators only for the five builders, by name, so `let` does not stop the change.
 - Builders with `var`: `var b = a; b.append("x"); a.append("y")` gives `xy`, and `[a, a]` shares one buffer. A record `.clone()` keeps the builder shared (`x|0`). `build()` followed by `append` is a runtime "builder is sealed" fault.
 
 ### Not reproduced, and kept out of the design
@@ -162,7 +162,7 @@ Expected diagnostics:
 
 ### Stage 2: escaping captures and generic cleanup (D1, D2)
 
-- **D1.** A capture at its last use is moved into the closure, with no `.clone()` needed. An escaping closure that cannot move a capture (the capture is used later, or is borrowed) is rejected, with the fix `let c = x.clone()` before the closure. This brings the code in line with `function-values-and-closures.md` ("Use `.clone()` before capturing to keep using the original") and with `OWNERSHIP.md:36` ("moved at creation"). Before landing, count the repo programs that rely on the implicit copy.
+- **D1.** A capture at its last use is moved into the closure, with no `.clone()` needed. An escaping closure that cannot move a capture (the capture is used later, or is borrowed) is rejected, with the fix `c := x.clone()` before the closure. This brings the code in line with `function-values-and-closures.md` ("Use `.clone()` before capturing to keep using the original") and with `OWNERSHIP.md:36` ("moved at creation"). Before landing, count the repo programs that rely on the implicit copy.
 - **D2.** The checker also lists in `implicit_closes` any binding whose type mentions a type variable. Lowering then asks `cx.classes` for the instance type and emits no code when the instance has no closer.
 - D2 lands only after D1. Otherwise P4's escaping copy closes the same resource twice.
 - Each unreproduced item gets its repro in this stage. A reproduced one is fixed through `Classifier`; one that does not reproduce is dropped.

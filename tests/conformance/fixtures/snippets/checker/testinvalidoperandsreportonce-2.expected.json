@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding nope; declare it with 'let nope = ...' before use, define 'fn nope(...) T:', or import it from a module",
+        "message": "unknown binding nope; declare it with 'nope := ...' before use, define 'fn nope(...) T:', or import it from a module",
         "position": {
           "file": "testinvalidoperandsreportonce-2.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testinvalidoperandsreportonce-2.ms:4:9: resolution: unknown binding nope; declare it with 'let nope = ...' before use, define 'fn nope(...) T:', or import it from a module\n   |\n 4 | let X = nope\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testinvalidoperandsreportonce-2.ms:4:9: resolution: unknown binding nope; declare it with 'nope := ...' before use, define 'fn nope(...) T:', or import it from a module\n   |\n 4 | X := nope\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

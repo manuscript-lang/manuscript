@@ -45,7 +45,7 @@ fn parse_bounded(text: String, low: Int, high: Int, max_digits: Int) Optional[In
     var value = 0
 
     for c in text.chars():
-        let code = c.scalar_at(0)
+        code := c.scalar_at(0)
         if not is_digit(code):
             return none
 
@@ -57,7 +57,7 @@ fn parse_bounded(text: String, low: Int, high: Int, max_digits: Int) Optional[In
     return some(value)
 
 fn money(cents: Int) String:
-    let rest = cents % 100
+    rest := cents % 100
     if rest < 10:
         return "{cents / 100}.0{rest}"
 
@@ -71,19 +71,19 @@ fn stock_cmd(var store: Store, sku: String, qty_text: String) Unit:
         emit("error: bad sku")
         return
 
-    if let qty = parse_bounded(qty_text, 1, 100000, 7):
+    if qty := parse_bounded(qty_text, 1, 100000, 7):
         if not store.stock.contains(sku):
             store.stock.add(key: sku, value: 0)
             store.prices.add(key: sku, value: 0)
 
-        let now = store.stock.get_or(sku, 0) + qty
+        now := store.stock.get_or(sku, 0) + qty
         store.stock.add(key: sku, value: now)
         emit("ok {sku} stock={now}")
     else:
         emit("error: bad quantity")
 
 fn price_cmd(var store: Store, sku: String, cents_text: String) Unit:
-    if let cents = parse_bounded(cents_text, 0, 10000000, 8):
+    if cents := parse_bounded(cents_text, 0, 10000000, 8):
         if store.stock.contains(sku):
             store.prices.add(key: sku, value: cents)
             emit("ok")
@@ -104,13 +104,13 @@ fn order_cmd(var store: Store, id: String, items: List[String]) Unit:
     var lines = List[Line]()
 
     for token in items:
-        let parts = token.split(":")
+        parts := token.split(":")
 
         if parts.length() != 2 or not valid_sku(parts.get(0)):
             emit("error: bad item {token}")
             return
 
-        if let qty = parse_bounded(parts.get(1), 1, 100000, 7):
+        if qty := parse_bounded(parts.get(1), 1, 100000, 7):
             lines.append(Line(sku: parts.get(0), qty: qty))
         else:
             emit("error: bad item {token}")
@@ -129,7 +129,7 @@ fn order_cmd(var store: Store, id: String, items: List[String]) Unit:
             emit("error: unknown sku {line.sku}")
             return
 
-        let have = store.stock.get_or(line.sku, 0)
+        have := store.stock.get_or(line.sku, 0)
 
         if line.qty > have:
             emit(
@@ -140,7 +140,7 @@ fn order_cmd(var store: Store, id: String, items: List[String]) Unit:
     var total = 0
 
     for line in lines:
-        let price = store.prices.get_or(line.sku, 0)
+        price := store.prices.get_or(line.sku, 0)
 
         if line.qty >= 10:
             total += (line.qty * price * 90 + 50) / 100
@@ -161,7 +161,7 @@ fn cancel_cmd(var store: Store, id: String) Unit:
         emit("error: unknown order {id}")
         return
 
-    let status = store.statuses.get_or(id, "")
+    status := store.statuses.get_or(id, "")
 
     if status == "shipped":
         emit("error: order {id} already shipped")
@@ -180,7 +180,7 @@ fn ship_cmd(var store: Store, id: String) Unit:
         emit("error: unknown order {id}")
         return
 
-    let status = store.statuses.get_or(id, "")
+    status := store.statuses.get_or(id, "")
 
     if status == "shipped":
         emit("error: order {id} already shipped")
@@ -201,8 +201,8 @@ fn reserved(store: Store, sku: String) Int:
 
 fn report_cmd(store: Store) Unit:
     for sku in store.stock.keys().sorted(compare_text):
-        let stock = store.stock.get_or(sku, 0)
-        let price = store.prices.get_or(sku, 0)
+        stock := store.stock.get_or(sku, 0)
+        price := store.prices.get_or(sku, 0)
         emit("{sku} stock={stock} price={money(price)} reserved={reserved(store, sku)}")
 
     var placed = 0
@@ -229,9 +229,9 @@ fn is_blank(line: String) Bool:
     return true
 
 fn handle(var store: Store, line: String) Unit:
-    let tokens = line.split(" ")
-    let count = tokens.length()
-    let cmd = tokens.get(0)
+    tokens := line.split(" ")
+    count := tokens.length()
+    cmd := tokens.get(0)
 
     if cmd == "stock":
         if count != 3:
@@ -272,10 +272,10 @@ export fn main() Int:
         statuses: Map[String, String](), totals: Map[String, Int](),
         lines: Map[String, List[Line]]()
     )
-    let input = stdin()
+    input := stdin()
 
     while true:
-        if let text = read_line(input).get():
+        if text := read_line(input).get():
             if not is_blank(text):
                 handle(var store, text)
         else:

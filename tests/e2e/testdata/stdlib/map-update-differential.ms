@@ -25,12 +25,12 @@ fn append_length(xs: List[Int]) List[Int]:
 // `get_or` plus `add` pair, which looks it up twice. The maps must stay equal after every step.
 
 test "update matches get_or and add for String keys":
-    let words = ["a", "bb", "a", "ccc", "bb", "a", "", "ccc", ""]
+    words := ["a", "bb", "a", "ccc", "bb", "a", "", "ccc", ""]
     var once: Map[String, Int] = {}
     var twice: Map[String, Int] = {}
 
     for index in 0..words.length():
-        let w = words[index]
+        w := words[index]
         once.update(w.clone(), 1, fn v: v * 2 - index)
         twice.add(w.clone(), twice.get_or(w, 1) * 2 - index)
 
@@ -60,7 +60,7 @@ test "update matches get_or and add for source-defined key types":
     try expect_equal(once.length(), twice.length())
 
     for name in ["x", "y", "z", "w"]:
-        let tag = Tag(name: name)
+        tag := Tag(name: name)
         try expect_equal(once.get(tag), twice.get(tag))
 
 test "update replaces owned values and keeps insertion order":

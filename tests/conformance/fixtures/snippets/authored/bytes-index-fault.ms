@@ -4,7 +4,7 @@
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:
-    let data = "abc".to_bytes()
-    let _ = stdout().write("{data[-1]}\n")
-    let _ = stdout().write("{data[3]}\n")
+    data := "abc".to_bytes()
+    _ := stdout().write("{data[-1]}\n")
+    _ := stdout().write("{data[3]}\n")
     return 0

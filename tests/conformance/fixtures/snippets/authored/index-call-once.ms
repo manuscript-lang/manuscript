@@ -12,9 +12,9 @@ impl Counter:
 export fn main() Int:
     var c = Counter(0)
     var xs = ["a", "b", "c", "d", "e", "f", "g"]
-    let one = xs[c.next()].clone()
-    let two = xs[c.next()].clone()
-    let len = xs[c.next()].length()
+    one := xs[c.next()].clone()
+    two := xs[c.next()].clone()
+    len := xs[c.next()].length()
     xs[c.next()] = "z"
     print("{one} {two} {len} {xs} {c.n}")
     return 0

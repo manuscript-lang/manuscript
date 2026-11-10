@@ -19,7 +19,7 @@ test "a kept value is a copy that later changes do not reach":
     var m = Map[String, Item]()
     m.add(key: "a", value: Item(name: "x", tags: ["p"]))
 
-    let kept = m.get("a").get().clone()
+    kept := m.get("a").get().clone()
     m.add(key: "a", value: Item(name: "y", tags: []))
     try expect_equal(kept.name, "x")
     try expect_equal(kept.tags.length(), 1)

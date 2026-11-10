@@ -5,7 +5,7 @@ import expect_equal from "@std/test/test.ms"
 
 export fn main() Int:
     var number = 1
-    let total = (
+    total := (
         number
         + (
             match present(1):

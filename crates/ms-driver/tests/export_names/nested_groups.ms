@@ -1,18 +1,14 @@
-export let (
 // A comment does not change the binding column.
-    LOW = (
-    1
+export LOW := (
+1
 )
-    HIGH: Int = 2
-    FLAGS = {
-    "ready": LOW == 1
-    }
-    ITEMS = [
-    LOW,
-    HIGH
-    ]
-)
+export HIGH: Int = 2
+export FLAGS := {
+"ready": LOW == 1
+}
+export ITEMS := [
+LOW,
+HIGH
+]
 
-export let (
-    LAST = 3
-)
+export LAST := 3

@@ -5,7 +5,7 @@ fn report(msg: String) Unit:
     stdout().write("{msg}\n").get()
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
 
     // Trailing empty lines are ignored; interior empty lines are rows of width 0.
     var n = lines.length()
@@ -19,7 +19,7 @@ export fn main() Int:
     // 1. Bad characters, in reading order.
     for r in 0..n:
         for c in 0..grid[r].length():
-            let ch = grid[r][c]
+            ch := grid[r][c]
 
             if ch != "#" and ch != "." and ch != "S" and ch != "E":
                 report("error: bad character at {r + 1},{c + 1}")
@@ -43,7 +43,7 @@ export fn main() Int:
 
     for r in 0..n:
         for c in 0..width:
-            let ch = grid[r][c]
+            ch := grid[r][c]
 
             if ch == "S":
                 starts += 1
@@ -69,7 +69,7 @@ export fn main() Int:
         return 0
 
     // Breadth-first search over a flat index r * width + c.
-    let total = n * width
+    total := n * width
     var passable = List[Bool]()
     for r in 0..n:
         for c in 0..width:
@@ -86,11 +86,11 @@ export fn main() Int:
     var head = 0
 
     while head < queue.length():
-        let cur = queue[head]
+        cur := queue[head]
         head += 1
 
-        let r = cur / width
-        let c = cur % width
+        r := cur / width
+        c := cur % width
 
         for d in 0..4:
             var nr = r
@@ -106,7 +106,7 @@ export fn main() Int:
                 nc = c + 1
 
             if nr >= 0 and nr < n and nc >= 0 and nc < width:
-                let idx = nr * width + nc
+                idx := nr * width + nc
 
                 if passable[idx] and dist[idx] < 0:
                     dist[idx] = dist[cur] + 1

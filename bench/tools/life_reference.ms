@@ -1,7 +1,7 @@
 // Independent checksum oracle for bench/language/life.ms (not a performance comparator).
 
 export fn main() Int:
-    let size = 128
+    size := 128
     var cells = List[Int](reserve: size * size)
     for i in 0..size * size:
         cells.append(if (i * 17 + i / size * 13) % 7 < 3: 1 else: 0)
@@ -22,7 +22,7 @@ export fn main() Int:
                                 ) * size + (x + dx + size) % size
                             ]
 
-                let here = cells[y * size + x]
+                here := cells[y * size + x]
                 next.append(
                     if neighbors == 3 or (
                         neighbors == 2
@@ -32,7 +32,7 @@ export fn main() Int:
 
         cells = next
 
-    let alive = cells.fold(0, fn(a: Int, c: Int) Int: a + c)
+    alive := cells.fold(0, fn(a: Int, c: Int) Int: a + c)
 
     if alive != 3914:
         print("unexpected live count {alive}")

@@ -6,8 +6,8 @@ fn wrap[T](callback: (fn(Int) T)?) Unit: return
 fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
 
 fn first() Unit:
-    let offset = 7
-    let _result = apply(
+    offset := 7
+    _result := apply(
         value: 1,
         transform: fn outer: apply(
             value: 2, transform: fn inner: (outer + inner + offset)

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -24,7 +24,7 @@ fn fib(n: Int) Int:
 export fn main() Int:
     say("fib(52) = {fib(52)}")
 
-    let s1 = ("naïve" + "beta".trim().upper())
+    s1 := ("naïve" + "beta".trim().upper())
     say("s1 = [{s1}]")
 
     if ("{22}:" + "quote\"d").starts_with("x"):
@@ -32,22 +32,22 @@ export fn main() Int:
     else:
         say("")
 
-    let l2 = [19, 7, 29, 26, (-5)]
+    l2 := [19, 7, 29, 26, (-5)]
     say("l2 = {l2} len {l2.length()}")
 
-    let s3 = "MiXeD CaSe".upper().reverse()
+    s3 := "MiXeD CaSe".upper().reverse()
     say("s3 = [{s3}]")
 
-    let i4 = s3.length()
+    i4 := s3.length()
     say("i4 = {i4}")
 
-    let i5 = (19 * 27)
+    i5 := (19 * 27)
     say("i5 = {i5}")
 
-    let i6 = (((i5 / i4) + ((-466166) / i5)) + ((43 * i4) - (i5 * i5)))
+    i6 := (((i5 / i4) + ((-466166) / i5)) + ((43 * i4) - (i5 * i5)))
     say("i6 = {i6}")
 
-    let i7 = i6
+    i7 := i6
     say("i7 = {i7}")
 
     var acc8 = 0
@@ -55,10 +55,10 @@ export fn main() Int:
         acc8 += i * 5
     say("acc8 = {acc8}")
 
-    let s9 = s1
+    s9 := s1
     say("s9 = [{s9}]")
 
-    let b10 = ((298.997 + 5.0e2) == 811.908)
+    b10 := ((298.997 + 5.0e2) == 811.908)
     say("b10 = {b10}")
 
     var acc11 = 0
@@ -84,13 +84,13 @@ export fn main() Int:
         acc13 += i * 9
     say("acc13 = {acc13}")
 
-    let l14 = [(-19)]
+    l14 := [(-19)]
     say("l14 = {l14} len {l14.length()}")
 
-    let f15 = 219.25
+    f15 := 219.25
     say("f15 = {f15}")
 
-    let s16 = (("{i7}:" + "日本語".reverse()) + ("{(-36)}:" + "  padded  "))
+    s16 := (("{i7}:" + "日本語".reverse()) + ("{(-36)}:" + "  padded  "))
     say("s16 = [{s16}]")
     say("{l14.get(3)}")
     return 0

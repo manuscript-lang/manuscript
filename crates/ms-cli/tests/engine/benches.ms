@@ -17,7 +17,7 @@ test "is not a bench":
     try expect_equal(sum_to(3), 3)
 
 bench "measures after setup":
-    let data = [3, 1, 2]
+    data := [3, 1, 2]
     try measure(3, fn: keep(data.sorted().length()))
 
 bench "reports per operation" per 8:

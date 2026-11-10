@@ -10,5 +10,5 @@ fn named(state: Queue[Int], value: Int = read(state)) Int:
     return value
 
 fn nested(state: Queue[Int]) Unit:
-    let _callback = fn(value: Int = read(state)) Int:
+    _callback := fn(value: Int = read(state)) Int:
         return value

@@ -10,5 +10,5 @@ fn rows(g: List[List[Int]]) Int:
     return t
 
 export fn main() Int:
-    let _ = stdout().write("{rows([[1, 2, 3], [4]])}\n")
+    _ := stdout().write("{rows([[1, 2, 3], [4]])}\n")
     return 0

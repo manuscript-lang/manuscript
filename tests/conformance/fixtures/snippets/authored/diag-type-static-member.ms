@@ -4,5 +4,5 @@
 import BigInt from "@std/math/math.ms"
 
 export fn main() Int:
-    let b = BigInt.from_int(2)
+    b := BigInt.from_int(2)
     return b.to_int().get(0)

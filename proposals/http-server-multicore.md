@@ -58,11 +58,11 @@ import HttpServer, HttpServerOptions, serve_cores from "@std/net/http.ms"
 
 // Named top-level, capture-free: runs once in each serving isolate and returns that isolate's handler.
 fn init(config: AppConfig) fn(HttpExchange) Result[Unit, HttpError]:
-    let hits: Shared[Int] = share(0)    // per isolate
+    hits: Shared[Int] = share(0)    // per isolate
     ...
     return buffered(handler)
 
-let started = serve_cores("127.0.0.1:8080", init, AppConfig(greeting: "hi"))
+started := serve_cores("127.0.0.1:8080", init, AppConfig(greeting: "hi"))
 ```
 
 - `Network.serve_cores[C: Data](address, init, config: C, options) Result[HttpServer, HttpError]` (spelling is Open question 1). It is a method of `Network`, like `serve` (`stdlib/net.ms:484`), so the caller's restrictions (`restrict`) decide whether it may listen. `config` crosses to each isolate as JSON, like a worker message. `init` crosses as its code pointer: `msrt_worker_start` (`ms-rt/src/worker.rs:316`) already hands a capture-free closure's code pointer to a thread of the same process, so no offset primitive is needed.

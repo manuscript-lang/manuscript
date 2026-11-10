@@ -4,9 +4,9 @@
 export fn main() Int:
     var values: Map[String, Int] = {"b": 2, "a": 1}
     var seen: List[String] = []
-    let any_of = values.any
+    any_of := values.any
 
-    let found = any_of(
+    found := any_of(
         fn key,
         value:
             seen.append(key)

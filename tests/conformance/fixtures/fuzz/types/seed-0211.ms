@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,22 +22,22 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let i1 = 19
+    i1 := 19
     say("i1 = {i1}")
 
-    let bad: Bool = 1
+    bad: Bool = 1
     say("fib(22) = {fib(22)}")
 
-    let i2 = (i1 + (-138927))
+    i2 := (i1 + (-138927))
     say("i2 = {i2}")
 
-    let i3 = (((i1 - i2) + (-24)) * (i2 - (44 % i1)))
+    i3 := (((i1 - i2) + (-24)) * (i2 - (44 % i1)))
     say("i3 = {i3}")
 
-    let i4 = i3
+    i4 := i3
     say("i4 = {i4}")
 
-    let s5 = ("{(-22)}:" + "ms".replace("naïve", "beta")).upper()
+    s5 := ("{(-22)}:" + "ms".replace("naïve", "beta")).upper()
     say("s5 = [{s5}]")
 
     if ("日本語" + s5).ends_with("  padded  "):

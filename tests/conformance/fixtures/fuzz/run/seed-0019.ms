@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,25 +15,25 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let b1 = (("MiXeD CaSe" + "ms").replace("héllo", "") == "emoji 😀".trim())
+    b1 := (("MiXeD CaSe" + "ms").replace("héllo", "") == "emoji 😀".trim())
     say("b1 = {b1}")
 
-    let i2 = (9 + (((-279226) % 13855) + (2 * (-13))))
+    i2 := (9 + (((-279226) % 13855) + (2 * (-13))))
     say("i2 = {i2}")
 
-    let i3 = (i2 * (((-14) - i2) - (-i2)))
+    i3 := (i2 * (((-14) - i2) - (-i2)))
     say("i3 = {i3}")
 
-    let i4 = 22
+    i4 := 22
     say("i4 = {i4}")
 
-    let i5 = ((((-1258) + 828906) + ((-801429) / i4)) + 817951)
+    i5 := ((((-1258) + 828906) + ((-801429) / i4)) + 817951)
     say("i5 = {i5}")
 
-    let s6 = "Tab\there".replace("日本語", "gamma").reverse()
+    s6 := "Tab\there".replace("日本語", "gamma").reverse()
     say("s6 = [{s6}]")
     say("gcd(2313, 3959) = {gcd(2313, 3959)}")
 
-    let i7 = (i3 + ((472451 - 14) + i4))
+    i7 := (i3 + ((472451 - 14) + i4))
     say("i7 = {i7}")
     return 0

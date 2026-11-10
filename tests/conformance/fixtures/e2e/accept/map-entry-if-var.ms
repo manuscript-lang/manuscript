@@ -24,7 +24,7 @@ export fn main() Int:
     print("{xs[0]} {y}")
 
     // A `let` of a record borrows it; the record stays usable.
-    let p = [7, 8]
-    let alias = p
+    p := [7, 8]
+    alias := p
     print("{alias.length()} {p.length()}")
     return 0

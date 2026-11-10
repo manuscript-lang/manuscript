@@ -93,29 +93,29 @@ fn looped(r: Room, n: Int) List[Door]:
     return xs
 
 fn local() Unit:
-    let r = Room(Door("l1"), Door("l2"), "t")
+    r := Room(Door("l1"), Door("l2"), "t")
     var xs: List[Door] = []
     xs.append(r.first)
     say("local: end")
 
 export fn main() Int:
-    let _a = both(Room(Door("a1"), Door("a2"), "t"))
+    _a := both(Room(Door("a1"), Door("a2"), "t"))
     say("main: a")
 
-    let _b = branch(Room(Door("b1"), Door("b2"), "t"), true)
+    _b := branch(Room(Door("b1"), Door("b2"), "t"), true)
     say("main: b")
 
-    let _c = branch(Room(Door("c1"), Door("c2"), "t"), false)
+    _c := branch(Room(Door("c1"), Door("c2"), "t"), false)
     say("main: c")
 
-    let _d = early(Room(Door("d1"), Door("d2"), "t"), true)
-    let _e = early(Room(Door("e1"), Door("e2"), "t"), false)
+    _d := early(Room(Door("d1"), Door("d2"), "t"), true)
+    _e := early(Room(Door("e1"), Door("e2"), "t"), false)
     say("main: e")
 
-    let _f = nested(Wrap(Room(Door("f1"), Door("f2"), "t"), Door("fx")))
+    _f := nested(Wrap(Room(Door("f1"), Door("f2"), "t"), Door("fx")))
     say("main: f")
 
-    let _g = looped(Room(Door("g1"), Door("g2"), "t"), 3)
+    _g := looped(Room(Door("g1"), Door("g2"), "t"), 3)
     local()
     say("main: end")
     return 0

@@ -12,5 +12,5 @@ impl Picker for Bag:
         return out
 
 export fn main() Int:
-    let picker: Picker = Bag(items: [1])
+    picker: Picker = Bag(items: [1])
     return 0

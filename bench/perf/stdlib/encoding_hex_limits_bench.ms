@@ -20,7 +20,7 @@ fn decode_case(length: Int, limit: Int?, bad: Int = 0) Unit!:
     if bad == 1: text = "z" + text.drop(1)
     if bad == 2: text = text.take(length - 1) + "z"
 
-    let maximum = limit.get(9223372036854775807)
+    maximum := limit.get(9223372036854775807)
     var expected: Bytes! = ok(Bytes([]))
 
     if maximum < 0:
@@ -40,7 +40,7 @@ fn decode_case(length: Int, limit: Int?, bad: Int = 0) Unit!:
     return ok(unit)
 
 fn unicode_case(limit: Int) Unit!:
-    let expected: Bytes! = error(
+    expected: Bytes! = error(
         Error(
             if limit == 0: "encoding: limit exceeded" else: "encoding: invalid data",
             kind: if limit == 0: "EOVERFLOW" else: "EBADMSG"
@@ -55,12 +55,12 @@ fn unicode_case(limit: Int) Unit!:
     return ok(unit)
 
 fn neighbor(which: Int) Unit!:
-    let data = zeros(if which == 3 or which == 4: 8192 else: 4096)
-    let text = try "\u{0}".repeat(4096)
-    let expected_text: String! = ok(text.clone())
-    let hex = try "00".repeat(4096)
-    let b64 = (try "A".repeat(5462)) + "=="
-    let scalar = "é".to_bytes()
+    data := zeros(if which == 3 or which == 4: 8192 else: 4096)
+    text := try "\u{0}".repeat(4096)
+    expected_text: String! = ok(text.clone())
+    hex := try "00".repeat(4096)
+    b64 := (try "A".repeat(5462)) + "=="
+    scalar := "é".to_bytes()
 
     fn work() Unit!:
         if which == 0: try expect_equal(hex_encode(data), hex)

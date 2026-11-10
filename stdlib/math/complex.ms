@@ -59,7 +59,7 @@ fn hyperbolic_product(factor: Float, argument: Float, value: Float) Float:
     if value.is_finite() or value.is_nan() or not argument.is_finite():
         return product(factor, value)
 
-    let quarter = exp(argument.abs() / 4.0)
+    quarter := exp(argument.abs() / 4.0)
     var result = factor
     for _step in 0..3:
         result = product(result, quarter)
@@ -73,19 +73,19 @@ fn sin_double(phase: Float) Float:
 
 // Divides by the larger part of the divisor (Smith's algorithm).
 fn smith_divide(numerator: Complex, other: Complex) Complex:
-    let abs_re = other.re.abs()
-    let abs_im = other.im.abs()
+    abs_re := other.re.abs()
+    abs_im := other.im.abs()
 
     if abs_re >= abs_im:
-        let ratio = other.im / other.re
-        let denominator = other.re + other.im * ratio
+        ratio := other.im / other.re
+        denominator := other.re + other.im * ratio
         return Complex(
             re: (numerator.re + numerator.im * ratio) / denominator,
             im: (numerator.im - numerator.re * ratio) / denominator
         )
 
-    let ratio = other.re / other.im
-    let denominator = other.re * ratio + other.im
+    ratio := other.re / other.im
+    denominator := other.re * ratio + other.im
     return Complex(
         re: (numerator.re * ratio + numerator.im) / denominator,
         im: (numerator.im * ratio - numerator.re) / denominator
@@ -115,8 +115,8 @@ impl Complex:
     // The divisor is scaled by its larger part to avoid overflow in the intermediate squares.
     // Finite operands whose parts are near the Float range limits are first scaled by exact powers of two so the quotient keeps its precision.
     fn divide(other: Complex) Complex:
-        let sn = self.re.abs().max(self.im.abs())
-        let sd = other.re.abs().max(other.im.abs())
+        sn := self.re.abs().max(self.im.abs())
+        sd := other.re.abs().max(other.im.abs())
 
         if (
             sd > 0.0
@@ -128,9 +128,9 @@ impl Complex:
                 or sn > 0.0 and sn < 3.054936363499605e-151
             )
         ):
-            let numerator_exponent = frexp(sn).exponent
-            let divisor_exponent = frexp(sd).exponent
-            let quotient = smith_divide(
+            numerator_exponent := frexp(sn).exponent
+            divisor_exponent := frexp(sd).exponent
+            quotient := smith_divide(
                 Complex(
                     re: ldexp(self.re, -numerator_exponent),
                     im: ldexp(self.im, -numerator_exponent)
@@ -140,7 +140,7 @@ impl Complex:
                     im: ldexp(other.im, -divisor_exponent)
                 )
             )
-            let shift = numerator_exponent - divisor_exponent
+            shift := numerator_exponent - divisor_exponent
             return Complex(re: ldexp(quotient.re, shift), im: ldexp(quotient.im, shift))
 
         return smith_divide(self, other)
@@ -180,7 +180,7 @@ impl Complex:
 
     // Returns `e` raised to this number.
     fn exp() Complex:
-        let radius = exp(self.re)
+        radius := exp(self.re)
 
         // A zero imaginary part stays zero where the radius overflows; `inf * sin(0)` would be NaN.
         if self.im == 0.0: return Complex(re: radius, im: self.im)
@@ -188,7 +188,7 @@ impl Complex:
         // The full radius can overflow while either final component still fits.
         // Four growing factors also preserve tiny phases beyond the half-exponential range.
         if not radius.is_finite() and self.re.is_finite() and self.im.is_finite():
-            let quarter = exp(self.re / 4.0)
+            quarter := exp(self.re / 4.0)
             var result = Complex(re: cos(self.im), im: sin(self.im))
             for _step in 0..4:
                 result = Complex(
@@ -200,7 +200,7 @@ impl Complex:
 
     // Returns the principal natural logarithm; the imaginary part is the phase.
     fn log() Complex:
-        let modulus = self.abs()
+        modulus := self.abs()
 
         // A finite number whose magnitude overflows still has a finite logarithm: log(m) = log(m/2) + ln 2.
         if not modulus.is_finite() and self.re.is_finite() and self.im.is_finite():
@@ -220,7 +220,7 @@ impl Complex:
 
             return Complex(re: 0.0, im: copy_sign(sqrt(-self.re), self.im))
 
-        let modulus = self.abs()
+        modulus := self.abs()
 
         // A finite number whose magnitude overflows has a finite root: take the root of the half and scale by sqrt(2).
         if not modulus.is_finite() and self.re.is_finite() and self.im.is_finite():
@@ -228,10 +228,10 @@ impl Complex:
 
         // Halving a subnormal modulus loses its low bits: scale up by 2^200, take the root, and scale back by 2^-100.
         if modulus < 4.450147717014403e-308:
-            let root = Complex(re: ldexp(self.re, 200), im: ldexp(self.im, 200)).sqrt()
+            root := Complex(re: ldexp(self.re, 200), im: ldexp(self.im, 200)).sqrt()
             return Complex(re: ldexp(root.re, -100), im: ldexp(root.im, -100))
 
-        let real = sqrt(modulus / 2.0 + self.re.abs() / 2.0)
+        real := sqrt(modulus / 2.0 + self.re.abs() / 2.0)
         if self.re >= 0.0: return Complex(re: real, im: self.im / (2.0 * real))
 
         return Complex(re: self.im.abs() / (2.0 * real), im: copy_sign(real, self.im))
@@ -303,23 +303,23 @@ impl Complex:
 
     // Returns the principal inverse sine, `-i * log(i*z + sqrt(1 - z^2))`.
     fn asin() Complex:
-        let root = Complex(re: 1.0, im: 0.0).subtract(self.multiply(self)).sqrt()
-        let inner = imaginary_unit().multiply(self).add(root).log()
+        root := Complex(re: 1.0, im: 0.0).subtract(self.multiply(self)).sqrt()
+        inner := imaginary_unit().multiply(self).add(root).log()
         return Complex(re: inner.im, im: -inner.re)
 
     // Returns the principal inverse cosine, pi/2 minus the inverse sine.
     fn acos() Complex:
-        let s = self.asin()
+        s := self.asin()
         return Complex(re: 1.5707963267948966 - s.re, im: -s.im)
 
     // Returns the principal inverse tangent, `i/2 * (log(1 - iz) - log(1 + iz))`.
     fn atan() Complex:
-        let iz = imaginary_unit().multiply(self)
-        let diff = Complex(re: 1.0, im: 0.0).subtract(iz).log().subtract(
+        iz := imaginary_unit().multiply(self)
+        diff := Complex(re: 1.0, im: 0.0).subtract(iz).log().subtract(
             Complex(re: 1.0, im: 0.0).add(iz).log()
         )
         var imaginary = diff.re / 2.0
-        let magnitude = self.re.abs().max(self.im.abs())
+        magnitude := self.re.abs().max(self.im.abs())
 
         // The logarithms cancel for a small imaginary part or large components.
         // log1p of their squared-magnitude ratio keeps the small difference.
@@ -330,11 +330,11 @@ impl Complex:
             and self.im.is_finite()
             and (self.im.abs() < 0.5 or magnitude > 2.0)
         ):
-            let scale = magnitude.max(1.0)
-            let real = self.re / scale
-            let offset = (self.im.abs() - 1.0) / scale
-            let denominator = real * real + offset * offset
-            let ratio = 4.0 * (self.im.abs() / scale) / denominator / scale
+            scale := magnitude.max(1.0)
+            real := self.re / scale
+            offset := (self.im.abs() - 1.0) / scale
+            denominator := real * real + offset * offset
+            ratio := 4.0 * (self.im.abs() / scale) / denominator / scale
 
             if ratio < 1e-300:
                 // log1p(t) is t here. Divide before the factor of four could

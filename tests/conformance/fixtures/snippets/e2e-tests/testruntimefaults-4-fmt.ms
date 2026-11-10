@@ -5,4 +5,4 @@ fn divide(value: Int, divisor: Int) Int:
     return value / divisor
 
 test "fault":
-    let _impossible = divide(value: 3, divisor: 0)
+    _impossible := divide(value: 3, divisor: 0)

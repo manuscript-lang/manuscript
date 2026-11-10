@@ -1,3 +1,1 @@
-export let (
-    Bytes = 1
-)
+export Bytes := 1

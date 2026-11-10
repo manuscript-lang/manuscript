@@ -1,5 +1,5 @@
 fn f() Int:
-    let a = [1, 2, 3]
-    let b = a
-    let c = b
+    a := [1, 2, 3]
+    b := a
+    c := b
     return c.length()

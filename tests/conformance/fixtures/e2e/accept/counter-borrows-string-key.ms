@@ -7,14 +7,14 @@ fn tally(words: List[String]) Map[String, Int]:
     var m = Map[String, Int]()
 
     for i in 0..words.length():
-        let w = words.get(i)
+        w := words.get(i)
         m.add(w.clone(), m.get_or(w, 0) + 1)
 
     return m
 
 export fn main() Int:
-    let m = tally(["a", "b", "a", "c", "a", "b"])
-    let _ = stdout().write(
+    m := tally(["a", "b", "a", "c", "a", "b"])
+    _ := stdout().write(
         "{m.length()} {m.get_or("a", 0)} {m.get_or("b", 0)} {m.get_or("c", 0)}\n"
     )
     return 0

@@ -14,7 +14,7 @@ Stage 1 implemented on this branch; proposal, 2026-10-27, against `dcdaee5d`. Di
 
 ## Problem
 
-- `with let f = open(...):` costs an indent level and a keyword for the common case where `f` lives to the end of the block.
+- `with f := open(...):` costs an indent level and a keyword for the common case where `f` lives to the end of the block.
 - Forgetting it is a compile error, so the checker already knows every binding that would be closed; it only refuses to act.
 - Native handles free the OS resource in Rust `Drop` but skip Manuscript `close()` (flush, shutdown), so drop and `close()` disagree.
 - Non-goals: moved resources, fields, collection elements, `Shared[T]` payloads.
@@ -34,10 +34,10 @@ Stage 1 implemented on this branch; proposal, 2026-10-27, against `dcdaee5d`. Di
 Before/after:
 
     # before
-    with let f = open(path):
+    with f := open(path):
         use(f)
     # after
-    let f = open(path)
+    f := open(path)
     use(f)
 
 ## Components touched

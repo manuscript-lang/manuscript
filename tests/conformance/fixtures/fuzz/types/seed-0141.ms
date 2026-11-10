@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -20,7 +20,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -30,18 +30,18 @@ fn fib(n: Int) Int:
 export fn main() Int:
     say("gcd(1637, 325) = {gcd(1637, 325)}")
 
-    let f1 = (9.0e11 * 3.5)
+    f1 := (9.0e11 * 3.5)
     say("f1 = {f1}")
 
-    let i2 = (7 * 4)
+    i2 := (7 * 4)
     say("i2 = {i2}")
     say("fib(36) = {fib(36)}")
 
-    let s3 = "hello world".replace("delta", "MiXeD CaSe")
+    s3 := "hello world".replace("delta", "MiXeD CaSe")
     say("s3 = [{s3}]")
     return "not an int"
 
-    let b4 = ("{i2}:" + s3.trim()).is_empty()
+    b4 := ("{i2}:" + s3.trim()).is_empty()
     say("b4 = {b4}")
     say("fib(28) = {fib(28)}")
     return 0

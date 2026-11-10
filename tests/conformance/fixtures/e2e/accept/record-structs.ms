@@ -24,7 +24,7 @@ fn shifted(point: Point, by: Int) Point:
     return Point(point.x + by, point.y + by)
 
 test "struct records read write compare format and clone":
-    let a = Point(1, 2)
+    a := Point(1, 2)
     var b = Point(y: 2, x: 1)
     try expect_equal(a, b)
     b.x = 5
@@ -59,5 +59,5 @@ test "struct records as keys and defaults":
     set.add(Point(2, 1))
     try expect_equal(set.length(), 2)
 
-    let sized = Sized(3)
+    sized := Sized(3)
     try expect_false(area(sized) != 6 or area(Sized(3, 5)) != 15)

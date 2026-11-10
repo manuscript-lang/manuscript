@@ -22,12 +22,12 @@ fn replace(log: String) Unit:
     doors.set(0, Door(9, log))
 
 test "replacement stays owned while the discarded entry closes":
-    let tmp = temporary("replacement-close-") | try expect_ok
-    let log = "{tmp.path()}/log"
-    let message = try expect_fault(fn: replace(log.clone()))
+    tmp := temporary("replacement-close-") | try expect_ok
+    log := "{tmp.path()}/log"
+    message := try expect_fault(fn: replace(log.clone()))
     try expect_contains(message, "a resource could not be closed")
 
-    let events = read_file(log).wait().get().decode_utf8().get("")
+    events := read_file(log).wait().get().decode_utf8().get("")
     try expect_equal(events, "1,9,")
 
 fn replace_in_map(log: String) Unit:
@@ -36,10 +36,10 @@ fn replace_in_map(log: String) Unit:
     doors.add(0, Door(9, log))
 
 test "map replacement keeps the incoming entry owned while the old one closes":
-    let tmp = temporary("replacement-close-map-") | try expect_ok
-    let log = "{tmp.path()}/log"
-    let message = try expect_fault(fn: replace_in_map(log.clone()))
+    tmp := temporary("replacement-close-map-") | try expect_ok
+    log := "{tmp.path()}/log"
+    message := try expect_fault(fn: replace_in_map(log.clone()))
     try expect_contains(message, "a resource could not be closed")
 
-    let events = read_file(log).wait().get().decode_utf8().get("")
+    events := read_file(log).wait().get().decode_utf8().get("")
     try expect_equal(events, "1,9,")

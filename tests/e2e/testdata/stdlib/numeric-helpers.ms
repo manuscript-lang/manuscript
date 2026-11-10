@@ -25,7 +25,7 @@ test "bit and byte reversal map every position in a 64-bit pattern":
     try expect_equal(reverse_bytes(-1), -1)
 
     for position in 0..64:
-        let value = shift_left(1, position)
+        value := shift_left(1, position)
         try expect_equal(reverse_bits(value), shift_left(1, 63 - position))
         try expect_equal(
             reverse_bytes(value), shift_left(1, (7 - position / 8) * 8 + position % 8)
@@ -51,8 +51,8 @@ test "base-two exponentiation includes underflow overflow and special values":
     try expect_true(exp2(nan).is_nan())
 
 test "ties-even rounding and sign helpers preserve IEEE sign distinctions":
-    let values = [0.5, 1.5, 2.5, -0.5, -1.5, -2.5]
-    let expected = [0.0, 2.0, 2.0, 0.0, -2.0, -2.0]
+    values := [0.5, 1.5, 2.5, -0.5, -1.5, -2.5]
+    expected := [0.0, 2.0, 2.0, 0.0, -2.0, -2.0]
     for i in 0..values.length():
         try expect_equal(round_to_even(values.get(i)), expected.get(i))
     try expect_true(sign_bit(round_to_even(-0.5)))
@@ -66,7 +66,7 @@ test "ties-even rounding and sign helpers preserve IEEE sign distinctions":
     try expect_true(sign_bit(copy_sign(0.0, -1.0)))
     try expect_false(sign_bit(copy_sign(-0.0, 1.0)))
 
-    let negative_nan = copy_sign(nan, -1.0)
+    negative_nan := copy_sign(nan, -1.0)
     try expect_true(negative_nan.is_nan())
     try expect_true(sign_bit(negative_nan))
     try expect_equal(copy_sign(infinity, negative_nan), -infinity)
@@ -88,8 +88,8 @@ test "adjacent floats cross signed zeros subnormals and infinities exactly":
     try expect_true(next_after(0.0, nan).is_nan())
 
 test "fused multiply-add rounds once and avoids intermediate overflow":
-    let left = 1.0000000074505806
-    let right = 0.9999999925494194
+    left := 1.0000000074505806
+    right := 0.9999999925494194
     try expect_equal(left * right - 1.0, 0.0)
     try expect_equal(fma(left, right, -1.0), -5.551115123125783e-17)
     try expect_equal(fma(max_float, 2.0, -max_float), max_float)
@@ -99,10 +99,10 @@ test "fused multiply-add rounds once and avoids intermediate overflow":
 test "big integer gcd and lcm normalize signs and zero":
     for left in [-12, 0, 12]:
         for right in [-18, 0, 18]:
-            let a = from_int(left)
-            let b = from_int(right)
-            let common = a.gcd(b)
-            let multiple = a.lcm(b)
+            a := from_int(left)
+            b := from_int(right)
+            common := a.gcd(b)
+            multiple := a.lcm(b)
             try expect_equal(common, b.gcd(a))
             try expect_equal(multiple, b.lcm(a))
             try expect_equal(common * multiple, (a * b).abs())
@@ -116,14 +116,14 @@ test "big integer gcd and lcm normalize signs and zero":
 
 test "big integer square root is exact and rejects negative input":
     for number in [0, 1, 2, 3, 4, 15, 16, 17, 9223372036854775807]:
-        let value = from_int(number)
-        let root = try value.sqrt()
+        value := from_int(number)
+        root := try value.sqrt()
         try expect_true(root * root <= value)
 
-        let above = root + from_int(1)
+        above := root + from_int(1)
         try expect_true(above * above > value)
 
-    let invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
+    invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
     try expect_equal(from_int(-1).sqrt(), invalid)
 
 test "modular exponentiation normalizes results and validates its domain":
@@ -135,37 +135,37 @@ test "modular exponentiation normalizes results and validates its domain":
     try expect_equal((try from_int(0).pow_mod(from_int(0), from_int(7))), from_int(1))
     try expect_equal((try from_int(0).pow_mod(from_int(0), from_int(1))), from_int(0))
 
-    let invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
+    invalid: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
     try expect_equal(from_int(2).pow_mod(from_int(-1), from_int(7)), invalid)
     try expect_equal(from_int(2).pow_mod(from_int(3), from_int(0)), invalid)
     try expect_equal(from_int(2).pow_mod(from_int(3), from_int(-7)), invalid)
 
 test "big integer helpers scale from machine words to 4096-bit values":
-    let one = from_int(1)
+    one := from_int(1)
 
     for width in [64, 256, 1024, 4096]:
-        let factor = (try one.shift_left(width)) + one
-        let a = factor * from_int(35)
-        let b = factor * from_int(77)
+        factor := (try one.shift_left(width)) + one
+        a := factor * from_int(35)
+        b := factor * from_int(77)
         try expect_equal(a.gcd(b), factor * from_int(7))
         try expect_equal(a.lcm(b), factor * from_int(385))
 
-        let square = factor * factor
+        square := factor * factor
         try expect_equal((try square.sqrt()), factor)
         try expect_equal((try (square - one).sqrt()), factor - one)
 
-        let modulus = (try one.shift_left(width)) - one
+        modulus := (try one.shift_left(width)) - one
         try expect_equal((try from_int(2).pow_mod(from_int(width), modulus)), one)
 
-    let exponent = try parse("184467440737095516160000000000000000000000", 10)
+    exponent := try parse("184467440737095516160000000000000000000000", 10)
     try expect_equal((try from_int(2).pow_mod(exponent, from_int(7))), from_int(2))
 
 test "modular exponentiation matches exact large odd and even modulus reference vectors":
-    let base = try parse("-123456789012345678901234567891", 10)
-    let exponent = from_int(12345)
-    let odd = try parse("10000000000000000000000000000000000000007", 10)
-    let even = try parse("340282366920938463463374607431768211456", 10)
-    let odd_result = try parse("4339799581317112657124184116489215648661", 10)
-    let even_result = try parse("223193219010250399600239597668322418573", 10)
+    base := try parse("-123456789012345678901234567891", 10)
+    exponent := from_int(12345)
+    odd := try parse("10000000000000000000000000000000000000007", 10)
+    even := try parse("340282366920938463463374607431768211456", 10)
+    odd_result := try parse("4339799581317112657124184116489215648661", 10)
+    even_result := try parse("223193219010250399600239597668322418573", 10)
     try expect_equal((try base.pow_mod(exponent, odd)), odd_result)
     try expect_equal((try base.pow_mod(exponent, even)), even_result)

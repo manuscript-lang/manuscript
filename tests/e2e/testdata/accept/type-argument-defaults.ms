@@ -18,23 +18,23 @@ impl Box[A]:
     fn copies[B = Self]() List[B]: return []
 
 fn exercise() Int:
-    let box = Box(7)
-    let read = box.read()
-    let nested = box.nested()
-    let own = box.own()
-    let copies = box.copies()
-    let ints: List[Int] = read
-    let lists: List[List[Int]] = nested
-    let more_ints: List[Int] = own
-    let boxes: List[Box[Int]] = copies
+    box := Box(7)
+    read := box.read()
+    nested := box.nested()
+    own := box.own()
+    copies := box.copies()
+    ints: List[Int] = read
+    lists: List[List[Int]] = nested
+    more_ints: List[Int] = own
+    boxes: List[Box[Int]] = copies
     return ints.length() + lists.length() + more_ints.length() + boxes.length()
 
 test "method type defaults specialize receiver parameters and Self":
     exercise() | try expect_equal(0)
 
-    let box = Box(7)
-    let bound = box.own[String]
-    let values: List[String] = bound()
+    box := Box(7)
+    bound := box.own[String]
+    values: List[String] = bound()
     values.length() | try expect_equal(0)
 
 interface Mark:
@@ -71,29 +71,29 @@ fn default_value[T: Mark = Value]() List[T]: return []
 fn recursive_default[T: Relation[T] = Value]() List[T]: return []
 
 test "type defaults validate local and recursive interface implementations":
-    let values = default_value()
-    let typed: List[Value] = values
+    values := default_value()
+    typed: List[Value] = values
     typed.length() | try expect_equal(0)
 
-    let related = recursive_default()
-    let recursive: List[Value] = related
+    related := recursive_default()
+    recursive: List[Value] = related
     recursive.length() | try expect_equal(0)
     read(Value(7)) | try expect_equal(7)
 
 fn from_bound[S: Reader[Int]](source: S) Int:
-    let values = source.read()
-    let ints: List[Int] = values
+    values := source.read()
+    ints: List[Int] = values
     return ints.length()
 
 fn alternate_receivers() Int:
-    let int_box = Box(7)
-    let text_box = Box("value")
-    let first = int_box.own()
-    let second = text_box.own()
-    let again = int_box.own()
-    let ints: List[Int] = first
-    let strings: List[String] = second
-    let more_ints: List[Int] = again
+    int_box := Box(7)
+    text_box := Box("value")
+    first := int_box.own()
+    second := text_box.own()
+    again := int_box.own()
+    ints: List[Int] = first
+    strings: List[String] = second
+    more_ints: List[Int] = again
     return ints.length() + strings.length() + more_ints.length() + from_bound(int_box)
 
 test "receiver defaults stay independent and work through generic bounds":

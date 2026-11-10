@@ -5,55 +5,55 @@ import StringBuilder, from_scalars from "@std/string.ms"
 
 // ---- constants ----------------------------------------------------------
 
-let OP_MOV = 0
-let OP_ADD = 1
-let OP_SUB = 2
-let OP_MUL = 3
-let OP_DIV = 4
-let OP_MOD = 5
-let OP_AND = 6
-let OP_OR = 7
-let OP_XOR = 8
-let OP_SHL = 9
-let OP_SHR = 10
-let OP_SAR = 11
-let OP_CMP = 12
-let OP_NEG = 13
-let OP_NOT = 14
-let OP_INC = 15
-let OP_DEC = 16
-let OP_LEA = 17
-let OP_PUSH = 18
-let OP_POP = 19
-let OP_JMP = 20
-let OP_JE = 21
-let OP_JNE = 22
-let OP_JL = 23
-let OP_JLE = 24
-let OP_JG = 25
-let OP_JGE = 26
-let OP_CALL = 27
-let OP_RET = 28
-let OP_IN = 29
-let OP_OUT = 30
-let OP_OUTC = 31
-let OP_HALT = 32
-let OP_NOP = 33
-let KIND_REG = 0
-let KIND_IMM = 1
-let KIND_MEM = 2
-let SYM_TEXT = 0
-let SYM_DATA = 1
-let SYM_EQU = 2
-let SP = 8
-let BP = 9
-let WORDS = 4096
-let MASK32 = 4294967295
-let TWO32 = 4294967296
-let DEFAULT_BUDGET = 100000
-let MAX_BUDGET = 10000000
-let IDENT_HEAD = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-let IDENT_TAIL = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789."
+OP_MOV := 0
+OP_ADD := 1
+OP_SUB := 2
+OP_MUL := 3
+OP_DIV := 4
+OP_MOD := 5
+OP_AND := 6
+OP_OR := 7
+OP_XOR := 8
+OP_SHL := 9
+OP_SHR := 10
+OP_SAR := 11
+OP_CMP := 12
+OP_NEG := 13
+OP_NOT := 14
+OP_INC := 15
+OP_DEC := 16
+OP_LEA := 17
+OP_PUSH := 18
+OP_POP := 19
+OP_JMP := 20
+OP_JE := 21
+OP_JNE := 22
+OP_JL := 23
+OP_JLE := 24
+OP_JG := 25
+OP_JGE := 26
+OP_CALL := 27
+OP_RET := 28
+OP_IN := 29
+OP_OUT := 30
+OP_OUTC := 31
+OP_HALT := 32
+OP_NOP := 33
+KIND_REG := 0
+KIND_IMM := 1
+KIND_MEM := 2
+SYM_TEXT := 0
+SYM_DATA := 1
+SYM_EQU := 2
+SP := 8
+BP := 9
+WORDS := 4096
+MASK32 := 4294967295
+TWO32 := 4294967296
+DEFAULT_BUDGET := 100000
+MAX_BUDGET := 10000000
+IDENT_HEAD := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+IDENT_TAIL := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789."
 
 // ---- records ------------------------------------------------------------
 
@@ -126,7 +126,7 @@ type Trap:
 // ---- small helpers ------------------------------------------------------
 
 fn wrap32(x: Int) Int:
-    let u = bit_and(x, MASK32)
+    u := bit_and(x, MASK32)
     if u >= 2147483648:
         return u - TWO32
 
@@ -171,18 +171,18 @@ fn ident_len(cs: List[String], start: Int) Int:
     return n
 
 fn is_identifier(s: String) Bool:
-    let cs = s.chars()
+    cs := s.chars()
     return cs.length() > 0 and ident_len(cs, 0) == cs.length()
 
 fn reg_index(name: String) Int:
-    let names = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"]
+    names := ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"]
     for k in 0..10:
         if names[k] == name:
             return k
     return -1
 
 fn digit_value(c: String) Int:
-    let digits = "0123456789abcdefABCDEF".chars()
+    digits := "0123456789abcdefABCDEF".chars()
 
     for k in 0..22:
         if digits[k] == c:
@@ -333,7 +333,7 @@ fn escape_of(c: String) Int:
 
 // cs is a complete character literal such as 'a' or '\n'; -1 when malformed.
 fn char_value(cs: List[String]) Int:
-    let n = cs.length()
+    n := cs.length()
     if n == 3 and cs[1] != "\\" and cs[1] != "'":
         return byte_of(cs[1])
     if n == 4 and cs[1] == "\\":
@@ -343,7 +343,7 @@ fn char_value(cs: List[String]) Int:
 
 // End index (exclusive) of the term starting at i; i itself when there is none.
 fn term_end(cs: List[String], i: Int) Int:
-    let n = cs.length()
+    n := cs.length()
 
     if i < n and cs[i] == "'":
         var j = i + 1
@@ -364,8 +364,8 @@ fn term_end(cs: List[String], i: Int) Int:
     return e
 
 fn parse_number(tok: String, whole: String) Result[Int, Fault]:
-    let cs = tok.chars()
-    let n = cs.length()
+    cs := tok.chars()
+    n := cs.length()
     var base = 10
     var start = 0
 
@@ -382,7 +382,7 @@ fn parse_number(tok: String, whole: String) Result[Int, Fault]:
     var v = 0
 
     for k in start..n:
-        let d = digit_value(cs[k])
+        d := digit_value(cs[k])
         if d < 0 or d >= base:
             return error(Fault(text: "invalid expression '{whole}'"))
 
@@ -401,17 +401,17 @@ fn eval_token(
     syms: Map[String, Sym],
     stack: List[String]
 ) Result[Int, Fault]:
-    let cs = tok.chars()
+    cs := tok.chars()
 
     if cs[0] == "'":
-        let v = char_value(cs)
+        v := char_value(cs)
         if v < 0:
             return error(Fault(text: "invalid expression '{whole}'"))
 
         return ok(v)
 
     if is_head(cs[0]):
-        if let sym = syms.get(tok):
+        if sym := syms.get(tok):
             if sym.kind == SYM_EQU:
                 if stack.contains(tok):
                     return error(Fault(text: "circular definition of '{tok}'"))
@@ -435,9 +435,9 @@ fn eval_expr(
     syms: Map[String, Sym],
     stack: List[String]
 ) Result[Int, Fault]:
-    let whole = text.trim()
-    let cs = text.chars()
-    let n = cs.length()
+    whole := text.trim()
+    cs := text.chars()
+    n := cs.length()
     var i = skip_space(cs, 0)
     var sign = 1
 
@@ -451,11 +451,11 @@ fn eval_expr(
     while true:
         i = skip_space(cs, i)
 
-        let e = term_end(cs, i)
+        e := term_end(cs, i)
         if e == i:
             return error(Fault(text: "invalid expression '{whole}'"))
 
-        let v = try eval_token(join_range(cs, i, e), whole, syms, stack)
+        v := try eval_token(join_range(cs, i, e), whole, syms, stack)
         total = wrap32(total + sign * v)
         i = skip_space(cs, e)
         if i >= n:
@@ -474,8 +474,8 @@ fn eval_expr(
 
 // Value of a decimal integer input token (optional leading '-'), wrapped to 32 bits; none when invalid.
 fn input_value(tok: String) Optional[Int]:
-    let cs = tok.chars()
-    let n = cs.length()
+    cs := tok.chars()
+    n := cs.length()
     var k = 0
     var neg = false
 
@@ -501,8 +501,8 @@ fn input_value(tok: String) Optional[Int]:
 // ---- operands and statements (pass 1) -----------------------------------
 
 fn parse_memory(text: String) Result[Operand, Fault]:
-    let cs = text.chars()
-    let n = cs.length()
+    cs := text.chars()
+    n := cs.length()
     if n < 2 or cs[n - 1] != "]":
         return error(Fault(text: "invalid operand '{text}'"))
 
@@ -510,13 +510,13 @@ fn parse_memory(text: String) Result[Operand, Fault]:
     var expr = ""
 
     for part in split_signed(join_range(cs, 1, n - 1)):
-        let pcs = part.chars()
-        let sign = pcs[0]
-        let body = join_range(pcs, 1, pcs.length()).trim()
+        pcs := part.chars()
+        sign := pcs[0]
+        body := join_range(pcs, 1, pcs.length()).trim()
         if body == "":
             return error(Fault(text: "invalid operand '{text}'"))
 
-        let r = reg_index(body)
+        r := reg_index(body)
 
         if r >= 0:
             if sign == "-" or reg >= 0:
@@ -532,7 +532,7 @@ fn parse_operand(text: String) Result[Operand, Fault]:
     if text == "":
         return error(Fault(text: "invalid operand ''"))
 
-    let r = reg_index(text)
+    r := reg_index(text)
     if r >= 0:
         return ok(Operand(kind: KIND_REG, reg: r, expr: ""))
     if text.starts_with("["):
@@ -668,7 +668,7 @@ fn pass1_instruction(var a: Asm, line: Int, head: String, rest: String) Result[
     if a.in_data:
         return error(Fault(text: "instruction in data section"))
 
-    let op = opcode_of(head)
+    op := opcode_of(head)
     if op < 0:
         return error(Fault(text: "unknown mnemonic '{head}'"))
 
@@ -676,7 +676,7 @@ fn pass1_instruction(var a: Asm, line: Int, head: String, rest: String) Result[
 
     if rest != "":
         for part in split_operands(rest):
-            let o = try parse_operand(part.trim().clone())
+            o := try parse_operand(part.trim().clone())
             operands.append(o)
 
     if operands.length() != arity(op):
@@ -700,12 +700,12 @@ fn trimmed_parts(text: String) List[String]:
     return parts
 
 fn pass1_equ(var a: Asm, rest: String) Result[Unit, Fault]:
-    let parts = if rest == "": List[String]() else: trimmed_parts(rest)
+    parts := if rest == "": List[String]() else: trimmed_parts(rest)
 
     if parts.length() != 2:
         return error(Fault(text: "wrong number of operands for '.equ'"))
 
-    let name = parts[0]
+    name := parts[0]
     if not is_identifier(name):
         return error(Fault(text: "invalid operand '{name}'"))
 
@@ -714,8 +714,8 @@ fn pass1_equ(var a: Asm, rest: String) Result[Unit, Fault]:
     )
 
 fn pass1_budget(var a: Asm, rest: String) Result[Unit, Fault]:
-    let cs = rest.chars()
-    let bad = Fault(text: "invalid operand '{rest}'")
+    cs := rest.chars()
+    bad := Fault(text: "invalid operand '{rest}'")
     if cs.length() == 0:
         return error(bad)
 
@@ -736,9 +736,9 @@ fn pass1_budget(var a: Asm, rest: String) Result[Unit, Fault]:
     return ok(unit)
 
 fn parse_string(rest: String) Result[List[Int], Fault]:
-    let cs = rest.chars()
-    let n = cs.length()
-    let bad = Fault(text: "invalid string")
+    cs := rest.chars()
+    n := cs.length()
+    bad := Fault(text: "invalid string")
     if n < 2 or cs[0] != "\"":
         return error(bad)
 
@@ -746,7 +746,7 @@ fn parse_string(rest: String) Result[List[Int], Fault]:
     var i = 1
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if c == "\"":
             if i == n - 1:
@@ -758,14 +758,14 @@ fn parse_string(rest: String) Result[List[Int], Fault]:
             if i + 1 >= n:
                 return error(bad)
 
-            let e = escape_of(cs[i + 1])
+            e := escape_of(cs[i + 1])
             if e < 0:
                 return error(bad)
 
             bytes.append(e)
             i += 2
         else:
-            let enc = c.to_bytes()
+            enc := c.to_bytes()
             for k in 0..enc.length():
                 bytes.append(enc.get(k).to_int())
             i += 1
@@ -779,7 +779,7 @@ fn pass1_string(var a: Asm, line: Int, rest: String, zero_term: Bool) Result[
     if zero_term:
         bytes.append(0)
 
-    let count = bytes.length()
+    count := bytes.length()
     if a.data_count + count > WORDS:
         return error(Fault(text: "data section too large"))
 
@@ -799,8 +799,8 @@ fn pass1_word(var a: Asm, line: Int, rest: String) Result[Unit, Fault]:
     if rest == "":
         return error(Fault(text: "wrong number of operands for '.word'"))
 
-    let exprs = trimmed_parts(rest)
-    let count = exprs.length()
+    exprs := trimmed_parts(rest)
+    count := exprs.length()
     if a.data_count + count > WORDS:
         return error(Fault(text: "data section too large"))
 
@@ -814,12 +814,12 @@ fn pass1_word(var a: Asm, line: Int, rest: String) Result[Unit, Fault]:
     return ok(unit)
 
 fn pass1_space(var a: Asm, line: Int, rest: String) Result[Unit, Fault]:
-    let parts = if rest == "": List[String]() else: trimmed_parts(rest)
+    parts := if rest == "": List[String]() else: trimmed_parts(rest)
 
     if parts.length() < 1 or parts.length() > 2:
         return error(Fault(text: "wrong number of operands for '.space'"))
 
-    let n = try eval_expr(parts[0], a.syms, List[String]())
+    n := try eval_expr(parts[0], a.syms, List[String]())
     if n < 0:
         return error(Fault(text: "invalid operand '{parts[0]}'"))
     if a.data_count + n > WORDS:
@@ -873,31 +873,31 @@ fn define_label(var a: Asm, name: String) Result[Unit, Fault]:
     return add_symbol(var a, name, Sym(kind: SYM_TEXT, value: a.instr_count, expr: ""))
 
 fn pass1_line(var a: Asm, line: Int, raw: String) Result[Unit, Fault]:
-    let cs = strip_comment(raw).trim().chars()
-    let n = cs.length()
+    cs := strip_comment(raw).trim().chars()
+    n := cs.length()
     var pos = 0
 
     while true:
         pos = skip_space(cs, pos)
 
-        let m = ident_len(cs, pos)
+        m := ident_len(cs, pos)
         if m == 0 or pos + m >= n or cs[pos + m] != ":":
             break
 
         try define_label(var a, join_range(cs, pos, pos + m))
         pos = pos + m + 1
 
-    let rest = join_range(cs, pos, n).trim()
+    rest := join_range(cs, pos, n).trim()
     if rest == "":
         return ok(unit)
 
-    let rcs = rest.chars()
+    rcs := rest.chars()
     var k = 0
     while k < rcs.length() and not is_space(rcs[k]):
         k += 1
 
-    let head = join_range(rcs, 0, k)
-    let tail = join_range(rcs, k, rcs.length()).trim()
+    head := join_range(rcs, 0, k)
+    tail := join_range(rcs, k, rcs.length()).trim()
     if head.starts_with("."):
         return pass1_directive(var a, line, head, tail)
 
@@ -928,7 +928,7 @@ fn resolve_instr(s: Stmt, syms: Map[String, Sym], ninstr: Int) Result[Instr, Fau
     var k = 0
 
     for o in s.operands:
-        let r = try resolve_operand(o, syms, is_jump(s.op), ninstr)
+        r := try resolve_operand(o, syms, is_jump(s.op), ninstr)
 
         if k == 0:
             a = r
@@ -942,10 +942,10 @@ fn resolve_instr(s: Stmt, syms: Map[String, Sym], ninstr: Int) Result[Instr, Fau
 fn write_data(var mem: List[Int], s: Stmt, syms: Map[String, Sym]) Result[Unit, Fault]:
     if s.kind == 1:
         for k in 0..s.count:
-            let v = try eval_expr(s.exprs[k], syms, List[String]())
+            v := try eval_expr(s.exprs[k], syms, List[String]())
             mem[s.addr + k] = v
     else:
-        let v = try eval_expr(s.exprs[0], syms, List[String]())
+        v := try eval_expr(s.exprs[0], syms, List[String]())
         for k in 0..s.count:
             mem[s.addr + k] = v
 
@@ -998,7 +998,7 @@ fn pop_value(var m: Machine) Result[Int, Fault]:
     if m.regs[SP] >= WORDS:
         return error(Fault(text: "stack underflow"))
 
-    let v = try mem_read(m, m.regs[SP])
+    v := try mem_read(m, m.regs[SP])
     m.regs[SP] = m.regs[SP] + 1
     return ok(v)
 
@@ -1032,20 +1032,20 @@ fn alu(op: Int, d: Int, s: Int) Result[Int, Fault]:
     return ok(wrap32(shift_right(d, bit_and(s, 31))))
 
 fn exec_step(var m: Machine, code: List[Instr]) Result[Unit, Fault]:
-    let ins = code[m.pc]
-    let op = ins.op
+    ins := code[m.pc]
+    op := ins.op
     var next = m.pc + 1
 
     if op == OP_MOV:
-        let v = try read_op(m, ins.b)
+        v := try read_op(m, ins.b)
         try write_op(var m, ins.a, v)
     else if is_alu(op):
-        let s = try read_op(m, ins.b)
-        let r = try alu(op, m.regs[ins.a.reg], s)
+        s := try read_op(m, ins.b)
+        r := try alu(op, m.regs[ins.a.reg], s)
         m.regs[ins.a.reg] = r
     else if op == OP_CMP:
-        let s = try read_op(m, ins.b)
-        let d = try read_op(m, ins.a)
+        s := try read_op(m, ins.b)
+        d := try read_op(m, ins.a)
         m.zf = d == s
         m.lf = d < s
     else if op == OP_NEG:
@@ -1059,10 +1059,10 @@ fn exec_step(var m: Machine, code: List[Instr]) Result[Unit, Fault]:
     else if op == OP_LEA:
         m.regs[ins.a.reg] = effective(m, ins.b)
     else if op == OP_PUSH:
-        let v = try read_op(m, ins.a)
+        v := try read_op(m, ins.a)
         try push_value(var m, v)
     else if op == OP_POP:
-        let v = try pop_value(var m)
+        v := try pop_value(var m)
         m.regs[ins.a.reg] = v
     else if is_jump(op):
         var taken = false
@@ -1095,12 +1095,12 @@ fn exec_step(var m: Machine, code: List[Instr]) Result[Unit, Fault]:
         m.regs[ins.a.reg] = m.input[m.in_pos]
         m.in_pos += 1
     else if op == OP_OUT:
-        let v = try read_op(m, ins.a)
+        v := try read_op(m, ins.a)
         m.out.append("{v}\n")
         m.has_out = true
         m.ends_nl = true
     else if op == OP_OUTC:
-        let v = try read_op(m, ins.a)
+        v := try read_op(m, ins.a)
         if v < 0 or v > 127:
             return error(Fault(text: "invalid character"))
 
@@ -1121,7 +1121,7 @@ fn run_machine(var m: Machine, code: List[Instr], budget: Int) Trap:
         if m.steps == budget:
             return Trap(msg: "budget exceeded", pc: m.pc, line: "{code[m.pc].line}")
 
-        let r = exec_step(var m, code)
+        r := exec_step(var m, code)
         if r.is_error():
             return Trap(msg: r.err().text.clone(), pc: m.pc, line: "{code[m.pc].line}")
 
@@ -1152,7 +1152,7 @@ export fn main() Int:
     )
 
     for k in 0..source.length():
-        let r = pass1_line(var a, k + 1, source[k])
+        r := pass1_line(var a, k + 1, source[k])
         if r.is_error():
             return report_asm_error(k + 1, r.err().text.clone())
 
@@ -1164,32 +1164,32 @@ export fn main() Int:
 
     for s in a.stmts:
         if s.kind == 0:
-            let r = resolve_instr(s, a.syms, a.instr_count)
+            r := resolve_instr(s, a.syms, a.instr_count)
             if r.is_error():
                 return report_asm_error(s.line, r.err().text.clone())
 
             code.append(r.get())
         else:
-            let r = write_data(var mem, s, a.syms)
+            r := write_data(var mem, s, a.syms)
             if r.is_error():
                 return report_asm_error(s.line, r.err().text.clone())
 
     var entry = 0
-    if let sym = a.syms.get("main"):
+    if sym := a.syms.get("main"):
         if sym.kind == SYM_TEXT:
             entry = sym.value
 
     var input = List[Int]()
     for l in input_lines:
         for tok in split_words(l):
-            if let v = input_value(tok):
+            if v := input_value(tok):
                 input.append(v)
 
     var codes = List[Int]()
     for k in 0..128:
         codes.append(k)
 
-    let table = from_scalars(codes).get().chars()
+    table := from_scalars(codes).get().chars()
     var regs = List[Int](reserve: 10)
     for k in 0..10:
         regs.append(0)
@@ -1200,7 +1200,7 @@ export fn main() Int:
         in_pos: 0, out: StringBuilder(), has_out: false, ends_nl: false, halted: false,
         table: table
     )
-    let t = run_machine(var m, code, a.budget)
+    t := run_machine(var m, code, a.budget)
     var text = m.out.build()
     if m.has_out and not m.ends_nl:
         text += "\n"
@@ -1210,9 +1210,9 @@ export fn main() Int:
     else:
         text += "-- trap: {t.msg} (pc={t.pc} line={t.line}) after {m.steps} steps\n"
 
-    let z = if m.zf: 1 else: 0
+    z := if m.zf: 1 else: 0
 
-    let l = if m.lf: 1 else: 0
+    l := if m.lf: 1 else: 0
 
     text += "regs: r0={m.regs[0]} r1={m.regs[1]} r2={m.regs[2]} r3={m.regs[3]} r4={m.regs[4]} r5={m.regs[5]} r6={m.regs[6]} r7={m.regs[7]} sp={m.regs[SP]} bp={m.regs[BP]}\n"
     text += "flags: Z={z} L={l}\n"

@@ -105,10 +105,10 @@ type TerminalEvents:
 
 impl Source[TerminalEvent] for TerminalEvents:
     var fn next() TerminalEvent?!:
-        let ready = try msstd_terminal_raw_terminal_next_event(self.handle.native, none)
+        ready := try msstd_terminal_raw_terminal_next_event(self.handle.native, none)
         if ready.is_none(): return ok(none)
 
-        let kind = msstd_terminal_event_kind()
+        kind := msstd_terminal_event_kind()
         if kind == 0: return ok(TerminalEvent.Text(msstd_terminal_event_text()))
         if kind == 1: return ok(
             TerminalEvent.Key(
@@ -220,5 +220,5 @@ export fn terminal_size() TerminalSize!:
 // ms: effect std.console.read
 // ms: effect std.console.write
 export fn raw_mode(alternate_screen: Bool) RawTerminal!:
-    let native = try msstd_terminal_raw_mode(alternate_screen)
+    native := try msstd_terminal_raw_mode(alternate_screen)
     return ok(RawTerminal(handle: RawHandle(native)))

@@ -27,8 +27,8 @@ fn project(id: Int) Int:
     return success(id).get().id
 
 test "a projection of a scalar resource taken from a Result closes it once":
-    let id = try secure_int(1, 1000000000)
-    let log = try tag_log(id)
+    id := try secure_int(1, 1000000000)
+    log := try tag_log(id)
     try expect_equal(project(id), id)
     try expect_equal(events(log.clone()), "closed,")
     try remove(log)

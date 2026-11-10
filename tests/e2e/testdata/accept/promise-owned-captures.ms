@@ -19,26 +19,26 @@ fn slow(door: Door) Int!:
     return ok(door.name.length())
 
 test "a promise owns the resource moved into it and closes it when it ends":
-    let dir = try temporary_directory("promise-owned")
-    let log = dir + "/log"
-    let door = Door(name: "front", log: log.clone())
-    let p = promise(fn: size(door))
+    dir := try temporary_directory("promise-owned")
+    log := dir + "/log"
+    door := Door(name: "front", log: log.clone())
+    p := promise(fn: size(door))
     try expect_equal(try p.wait(), 5)
 
-    let data = try read_file(log, none).wait()
-    let text = data.decode_utf8().get("")
+    data := try read_file(log, none).wait()
+    text := data.decode_utf8().get("")
     try expect_equal(text, "closed front;")
     try remove(dir, true)
 
 test "a promise dropped before waiting still closes what it owns":
-    let dir = try temporary_directory("promise-dropped")
-    let log = dir + "/log"
+    dir := try temporary_directory("promise-dropped")
+    log := dir + "/log"
 
     if true:
-        let door = Door(name: "back", log: log.clone())
-        let _p = promise(fn: slow(door))
+        door := Door(name: "back", log: log.clone())
+        _p := promise(fn: slow(door))
 
-    let data = try read_file(log, none).wait()
-    let text = data.decode_utf8().get("")
+    data := try read_file(log, none).wait()
+    text := data.decode_utf8().get("")
     try expect_equal(text, "closed back;")
     try remove(dir, true)

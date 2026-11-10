@@ -11,7 +11,7 @@ fn html_doc(count: Int) String:
     return sb.build()
 
 export fn bench_html() Unit:
-    let html = html_doc(2000)
+    html := html_doc(2000)
 
     bench(
         "html.parse",
@@ -23,7 +23,7 @@ export fn bench_html() Unit:
             return 0
     )
 
-    let text = words(2000).join(" <&> ")
+    text := words(2000).join(" <&> ")
     bench(
         "html.escape_unescape", 2000,
         fn() Int: return text | escape | unescape | .length()

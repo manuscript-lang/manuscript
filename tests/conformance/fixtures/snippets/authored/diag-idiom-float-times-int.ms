@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 export fn main() Int:
-    let a = 1.0 * 2
+    a := 1.0 * 2
     return 0

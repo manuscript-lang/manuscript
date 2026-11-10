@@ -25,10 +25,10 @@ test "decimal arithmetic is exact and conversion truncates":
     try expect_equal(123.to_decimal(), 123d)
 
 test "decimal integer conversions normalize boundary values":
-    let minimum: Int = -9223372036854775808
-    let maximum: Int = 9223372036854775807
-    let unsigned: UInt64 = 18446744073709551615
-    let power: UInt64 = 10000000000000000000
+    minimum: Int = -9223372036854775808
+    maximum: Int = 9223372036854775807
+    unsigned: UInt64 = 18446744073709551615
+    power: UInt64 = 10000000000000000000
     try expect_equal(minimum.to_decimal(), -9223372036854775808d)
     try expect_equal(maximum.to_decimal(), 9223372036854775807d)
     try expect_equal(unsigned.to_decimal(), 18446744073709551615d)
@@ -37,8 +37,8 @@ test "decimal integer conversions normalize boundary values":
     try expect_equal(0.to_decimal(), 0d)
 
 test "decimal negation keeps full precision and exponent":
-    let maximum = 9.999999999999999999999999999999999e6144d
-    let minimum = 1e-6176d
+    maximum := 9.999999999999999999999999999999999e6144d
+    minimum := 1e-6176d
     try expect_equal(-maximum, -9.999999999999999999999999999999999e6144d)
     try expect_equal(-(-maximum), maximum)
     try expect_equal(-minimum, -1e-6176d)

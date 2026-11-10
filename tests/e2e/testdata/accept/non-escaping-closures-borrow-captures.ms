@@ -16,8 +16,8 @@ fn scaled(m: Matrix) Int:
     return total(m, fn x: x + m.data.length())
 
 fn nested(m: Matrix, names: List[String]) Int:
-    let outer = fn(x: Int) Int:
-        let inner = fn(y: Int) Int:
+    outer := fn(x: Int) Int:
+        inner := fn(y: Int) Int:
             return y + m.data.length() + names.length()
         return inner(x)
 
@@ -48,7 +48,7 @@ fn lit(text: String) Int:
     var t = 0
 
     for p in text.split(","):
-        let fs = [fn() Int: return p.length()]
+        fs := [fn() Int: return p.length()]
         t += fs[0]()
 
     return t
@@ -105,7 +105,7 @@ test "closure stored by a call keeps what it captured":
     try expect_equal(stored_total("x,yyyy,zz"), 35)
 
 test "non-escaping closure reads its capture":
-    let m = Matrix(data: [1, 2, 3], label: "m")
+    m := Matrix(data: [1, 2, 3], label: "m")
     try expect_equal(scaled(m), 15)
     try expect_equal(nested(m, ["x", "y"]), 21)
 
@@ -117,7 +117,7 @@ test "closure made in a loop sees each iteration":
         for unused in 0..i:
             names.append("n")
 
-        let count = fn: names.length()
+        count := fn: names.length()
         results.append(count())
 
     try expect_equal(results, [1, 2, 3])
@@ -126,5 +126,5 @@ test "closure passes a captured var on without copying":
     try expect_equal(collect(), [1, 2, 3])
 
 test "escaping closure keeps its own value":
-    let read = make_reader()
+    read := make_reader()
     try expect_equal(read(), 2)

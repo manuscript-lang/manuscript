@@ -8,17 +8,17 @@ fn payload(case: &str) -> Vec<f64> {
         bits ^= bits << 13;
         bits ^= bits >> 7;
         bits ^= bits << 17;
-        let fraction = (bits & ((1u64 << 52) - 1)) | (1023u64 << 52);
-        let value = match case {
+        fraction := (bits & ((1u64 << 52) - 1)) | (1023u64 << 52);
+        value := match case {
             "midrange" => (f64::from_bits(fraction) - 1.0) * 1e10 - 5e9,
             "whole" => (f64::from_bits(fraction) - 1.0) * 1e18 - 5e17,
             "halfway" => {
-                let edges = [f64::from_bits(0x4317_9085_685d_83c9), 2f64.powi(-25), 0.125];
-                let sign = if i % 2 == 0 { 1.0 } else { -1.0 };
+                edges := [f64::from_bits(0x4317_9085_685d_83c9), 2f64.powi(-25), 0.125];
+                sign := if i % 2 == 0 { 1.0 } else { -1.0 };
                 edges[i % edges.len()] * sign
             }
             "thresholds" => {
-                let edges: [f64; 8] = [
+                edges: [f64; 8] = [
                     1e-6,
                     1e-5,
                     1e15,
@@ -28,9 +28,9 @@ fn payload(case: &str) -> Vec<f64> {
                     f64::MAX,
                     1.0,
                 ];
-                let value = edges[i % edges.len()];
-                let bits = value.to_bits();
-                let delta = i / edges.len() % 3;
+                value := edges[i % edges.len()];
+                bits := value.to_bits();
+                delta := i / edges.len() % 3;
                 if delta == 0 {
                     value
                 } else if delta == 1 {
@@ -61,23 +61,23 @@ fn ms_write(value: &[f64]) -> String {
 }
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let data = payload(&args[1]);
-    let operation = &args[2];
-    let count: usize = args[3].parse().unwrap();
-    let text = rust_write(&data);
-    let ms_expected = ms_write(&data);
+    args: Vec<String> = std::env::args().collect();
+    data := payload(&args[1]);
+    operation := &args[2];
+    count: usize = args[3].parse().unwrap();
+    text := rust_write(&data);
+    ms_expected := ms_write(&data);
     assert_eq!(
         serde_json::from_str::<Vec<f64>>(&ms_expected).unwrap(),
         data
     );
     let (doc, root) = ms_std_json::parse(&text, Limits::default()).unwrap();
-    let reencoded = doc.stringify(root, None, None).unwrap();
+    reencoded := doc.stringify(root, None, None).unwrap();
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&reencoded).unwrap(),
         serde_json::from_str::<serde_json::Value>(&text).unwrap()
     );
-    let nodes = doc.nodes.len();
+    nodes := doc.nodes.len();
     if operation == "ms-output" {
         print!("{ms_expected}");
         return;
@@ -86,22 +86,22 @@ fn main() {
         print!("{text}");
         return;
     }
-    let expected = if operation == "ms-write" {
+    expected := if operation == "ms-write" {
         &ms_expected
     } else {
         &text
     };
     let mut checksum = 0usize;
-    let start = Instant::now();
+    start := Instant::now();
     for _ in 0..count {
         match operation.as_str() {
             "ms-write" => {
-                let out = ms_write(black_box(&data));
+                out := ms_write(black_box(&data));
                 assert_eq!(black_box(&out), expected);
                 checksum += out.len();
             }
             "rust-write" => {
-                let out = rust_write(black_box(&data));
+                out := rust_write(black_box(&data));
                 assert_eq!(black_box(&out), expected);
                 checksum += out.len();
             }
@@ -112,7 +112,7 @@ fn main() {
                 checksum += nodes;
             }
             "rust-parse" => {
-                let value: serde_json::Value = serde_json::from_str(black_box(&text)).unwrap();
+                value: serde_json::Value = serde_json::from_str(black_box(&text)).unwrap();
                 black_box(&value);
                 assert_eq!(value.as_array().unwrap().len() + 1, nodes);
                 checksum += nodes;
@@ -120,7 +120,7 @@ fn main() {
             _ => panic!("unknown operation"),
         }
     }
-    let unit = if operation.ends_with("parse") {
+    unit := if operation.ends_with("parse") {
         nodes
     } else {
         expected.len()

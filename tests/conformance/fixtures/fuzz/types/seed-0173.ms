@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let s1 = "  padded  ".upper()
+    s1 := "  padded  ".upper()
     say("s1 = [{s1}]")
 
     if ("beta" != "  padded  ".reverse()):
@@ -22,14 +22,14 @@ export fn main() Int:
     else:
         say("MiXeD CaSe".upper())
 
-    let f2 = (((259.445 - 509.254) - (4.0e-4 / 78.502)) + 931.079)
+    f2 := (((259.445 - 509.254) - (4.0e-4 / 78.502)) + 931.079)
     say("f2 = {f2}")
 
-    let l3 = [(-21), 23, 17, 25]
+    l3 := [(-21), 23, 17, 25]
     say("l3 = {l3} len {l3.length()}")
 
-    let f4 = 92.313
+    f4 := 92.313
     say("f4 = {f4}")
 
-    let bad = 1 and 2
+    bad := 1 and 2
     return 0

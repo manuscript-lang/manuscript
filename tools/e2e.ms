@@ -21,15 +21,15 @@ type Ran:
     output: String
 
 fn exec(ms: String, args: List[String]) Ran:
-    if let out = run(ms, args).wait():
-        let text = out.stdout.decode_utf8().get("") + out.stderr.decode_utf8().get("")
+    if out := run(ms, args).wait():
+        text := out.stdout.decode_utf8().get("") + out.stderr.decode_utf8().get("")
         return Ran(out.exit_code, text)
 
     return Ran(125, "cannot start {ms}\n")
 
 // The first lines of `output` that are not progress lines.
 fn excerpt(output: String) String:
-    let kept = output.split("\n").filter(
+    kept := output.split("\n").filter(
         fn l: (not l.starts_with("RUN") and not l.starts_with("PASS"))
     )
     var shown = List[String]()
@@ -42,12 +42,12 @@ fn read_expected(files: List[String]) Map[String, String]:
     var listed = Map[String, String]()
 
     for file in files:
-        let text = read_file(file).wait().get().decode_utf8().get("")
+        text := read_file(file).wait().get().decode_utf8().get("")
 
         for line in text.split("\n"):
             if line.starts_with("#") or line == "": continue
 
-            let parts = line.split("\t")
+            parts := line.split("\t")
 
             if parts.length() > 1:
                 listed.add(parts[0].clone(), parts[1].clone())
@@ -62,23 +62,23 @@ type Context:
     expected: Map[String, String]
 
 fn base(path: String) String:
-    let parts = path.split("/")
+    parts := path.split("/")
     return parts[parts.length() - 1].clone()
 
 // The corpus replays a single-file accept/stdlib fixture under `ms test` with the same default build type when its
 // frozen copy under tests/conformance/fixtures/e2e is identical, so running it here again adds nothing. A fixture
 // listed as failing still runs, and so does one whose copy is tagged aliasing (the corpus run excludes those).
 fn covered_by_corpus(ctx: Context, case_path: String) Bool:
-    let parts = case_path.split("/")
-    let twin = "tests/conformance/fixtures/e2e/{parts[parts.length() - 2]}/{parts[parts.length() - 1]}"
+    parts := case_path.split("/")
+    twin := "tests/conformance/fixtures/e2e/{parts[parts.length() - 2]}/{parts[parts.length() - 1]}"
     if not access(twin, 0).is_ok(): return false
     if ctx.expected.contains(case_path): return false
 
-    let lines = read_file(twin).wait().get().decode_utf8().get("").split("\n")
+    lines := read_file(twin).wait().get().decode_utf8().get("").split("\n")
     if not lines.contains("// conform: phase=test"): return false
     if lines.any(fn l: l.starts_with("// conform: tags=") and l.contains("aliasing")): return false
 
-    let body = lines.filter(fn l: not l.starts_with("// conform:")).join("\n")
+    body := lines.filter(fn l: not l.starts_with("// conform:")).join("\n")
     return body == read_file(case_path).wait().get().decode_utf8().get("")
 
 // Whether the project's tests pass, or its main.ms checks and prints expected-output.txt.
@@ -86,7 +86,7 @@ fn project_passes(ctx: Context, dir: String) Ran:
     if access("{dir}/conformance_test.ms", 0).is_ok():
         change_directory(dir).get()
 
-        let ran = exec(
+        ran := exec(
             ctx.ms,
             [
                 "test", "conformance_test.ms", "--build-type", ctx.build_type.clone()
@@ -99,17 +99,17 @@ fn project_passes(ctx: Context, dir: String) Ran:
         ctx.ms, ["check", "{dir}/ms.toml"]
     )
 
-    let checked = exec(ctx.ms, ["check", "{dir}/main.ms"])
+    checked := exec(ctx.ms, ["check", "{dir}/main.ms"])
     if checked.code != 0: return checked
     if not access("{dir}/expected-output.txt", 0).is_ok(): return checked
 
     change_directory(dir).get()
 
-    let ran = exec(ctx.ms, ["run", "main.ms", "--build-type", ctx.build_type.clone()])
+    ran := exec(ctx.ms, ["run", "main.ms", "--build-type", ctx.build_type.clone()])
     change_directory(back(dir)).get()
     if ran.code != 0: return ran
 
-    let want = read_file("{dir}/expected-output.txt").wait().get().decode_utf8().get("")
+    want := read_file("{dir}/expected-output.txt").wait().get().decode_utf8().get("")
     if ran.output == want: return ran
 
     return Ran(1, "output differs from expected-output.txt\n")
@@ -130,8 +130,8 @@ fn check_fixture(ctx: Context, case_path: String) List[String]:
         if project_passes(ctx, case_path).code == 0:
             failures.append("FAIL {case_path}: a reject project checked clean")
     else if case_path.contains("/projects/"):
-        let ran = project_passes(ctx, case_path)
-        let listed = ctx.expected.contains(case_path)
+        ran := project_passes(ctx, case_path)
+        listed := ctx.expected.contains(case_path)
 
         if ran.code == 0:
             if listed: failures.append("FAIL {case_path}: listed as failing but passes")
@@ -148,9 +148,9 @@ fn check_fixture(ctx: Context, case_path: String) List[String]:
 // An accept or stdlib fixture; a listed failure is a whole fixture, or the tests its regex names.
 fn check_test_fixture(ctx: Context, case_path: String) List[String]:
     var failures = List[String]()
-    let build = ctx.build_type.clone()
+    build := ctx.build_type.clone()
 
-    if let pattern = ctx.expected.get(case_path):
+    if pattern := ctx.expected.get(case_path):
         if pattern == "":
             if (
                 exec(
@@ -164,7 +164,7 @@ fn check_test_fixture(ctx: Context, case_path: String) List[String]:
             return failures
 
         // A missing selection also exits nonzero; it is not evidence of a failing test.
-        let listing = exec(
+        listing := exec(
             ctx.ms,
             [
                 "test", case_path.clone(), "--build-type", build.clone(), "--list",
@@ -178,7 +178,7 @@ fn check_test_fixture(ctx: Context, case_path: String) List[String]:
             )
             return failures
 
-        let rest = exec(
+        rest := exec(
             ctx.ms,
             [
                 "test", case_path.clone(), "--build-type", build.clone(), "--exclude",
@@ -201,7 +201,7 @@ fn check_test_fixture(ctx: Context, case_path: String) List[String]:
             )
         return failures
 
-    let ran = exec(ctx.ms, ["test", case_path.clone(), "--build-type", build])
+    ran := exec(ctx.ms, ["test", case_path.clone(), "--build-type", build])
     if ran.code != 0:
         failures.append("FAIL {case_path}\n{excerpt(ran.output)}")
     return failures
@@ -215,8 +215,8 @@ fn ms_files(dir: String) List[String]:
     return names.sorted(fn(a: String, b: String) Int: a.compare(b))
 
 export fn main() Int:
-    let root = working_directory().get()
-    let build_type = env("E2E_BUILD_TYPE", "Release")
+    root := working_directory().get()
+    build_type := env("E2E_BUILD_TYPE", "Release")
     var expect_files = ["tests/e2e/expect-fail.txt"]
     if host() == "windows": expect_files.append("tests/e2e/expect-fail.windows.txt")
 
@@ -225,13 +225,13 @@ export fn main() Int:
 
     // `ms-cli` is not rebuilt here: this tool runs on `target/debug/ms`, and Windows cannot replace an
     // executable that is running (`make e2e` and CI build it before they start the tool).
-    let ctx = Context(
+    ctx := Context(
         "{root}/target/debug/ms{exe()}", build_type.clone(), read_expected(expect_files)
     )
     var fixtures = List[String]()
     var skipped = 0
     var projects = List[String]()
-    let given = arguments()
+    given := arguments()
 
     if given.length() > 0:
         for f in given: fixtures.append(f.clone())
@@ -245,7 +245,7 @@ export fn main() Int:
         for f in ms_files("tests/e2e/testdata/reject"): fixtures.append(f.clone())
 
         for entry in list("tests/e2e/testdata/projects").get(List[DirectoryEntry]()):
-            let path = "tests/e2e/testdata/projects/{entry.name}"
+            path := "tests/e2e/testdata/projects/{entry.name}"
             projects.append(path.clone())
 
         for dir in projects.sorted(fn(a: String, b: String) Int: a.compare(b)):
@@ -256,7 +256,7 @@ export fn main() Int:
 
     var jobs = 2
 
-    if let n = env("E2E_JOBS", "").parse_int(): jobs = n
+    if n := env("E2E_JOBS", "").parse_int(): jobs = n
     // `cpus()` is Linux-only; on macOS and Windows it failed and the suite ran on one worker.
     else: jobs = system_info().cpu_count
 
@@ -330,19 +330,19 @@ fn run_all(ctx: Context, fixtures: List[String]) List[String]:
     var times = List[String]()
 
     for f in fixtures:
-        let started = monotonic()
+        started := monotonic()
         for message in check_fixture(ctx, f): out.append(message.clone())
         times.append(timed(started, f))
 
     return out.concat(times)
 
 fn timed(started: Instant, path: String) String:
-    let millis = monotonic().difference(started).to_microseconds() / 1000
+    millis := monotonic().difference(started).to_microseconds() / 1000
     return "TIME {millis} {path}"
 
 // The fixtures that dominate the run, from `<milliseconds> <fixture>` entries.
 fn print_slowest(times: List[String]) Unit:
-    let slowest = times.sorted(
+    slowest := times.sorted(
         fn(a: String, b: String) Int: millis_of(b) - millis_of(a)
     )
     var shown = List[String]()

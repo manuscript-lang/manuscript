@@ -4,7 +4,7 @@
 import stdout from "@std/io/io.ms"
 
 export fn main() Int:
-    let scores = {"ann": 1, "bob": 2}
-    let _ = stdout().write("{scores["ann"]}\n")
-    let _ = stdout().write("{scores["eve"]}\n")
+    scores := {"ann": 1, "bob": 2}
+    _ := stdout().write("{scores["ann"]}\n")
+    _ := stdout().write("{scores["eve"]}\n")
     return 0

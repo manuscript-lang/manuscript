@@ -6,16 +6,16 @@ fn ints(size: Int, unique: Int, repeats: Int) Int:
     for i in 0..size:
         data.append(i % unique)
 
-    let started = monotonic()
+    started := monotonic()
     var checksum = 0
 
     for unused in 0..repeats:
-        let result = data.distinct()
+        result := data.distinct()
         checksum += result.length()
         for x in result:
             checksum += x
 
-    let elapsed = monotonic().difference(started).to_nanoseconds()
+    elapsed := monotonic().difference(started).to_nanoseconds()
     print("{elapsed} {checksum}")
     return 0
 
@@ -24,24 +24,24 @@ fn strings(size: Int, unique: Int, repeats: Int) Int:
     for i in 0..size:
         data.append("key-{i % unique}-long-enough-to-be-heap-backed")
 
-    let started = monotonic()
+    started := monotonic()
     var checksum = 0
 
     for unused in 0..repeats:
-        let result = data.distinct()
+        result := data.distinct()
         checksum += result.length()
         for x in result:
             checksum += x.length()
 
-    let elapsed = monotonic().difference(started).to_nanoseconds()
+    elapsed := monotonic().difference(started).to_nanoseconds()
     print("{elapsed} {checksum}")
     return 0
 
 export fn main() Int:
-    let args = arguments()
-    let size = args[1].parse_int().get()
-    let unique = args[2].parse_int().get()
-    let repeats = args[3].parse_int().get()
+    args := arguments()
+    size := args[1].parse_int().get()
+    unique := args[2].parse_int().get()
+    repeats := args[3].parse_int().get()
     if args[0] == "int": return ints(size, unique, repeats)
 
     return strings(size, unique, repeats)

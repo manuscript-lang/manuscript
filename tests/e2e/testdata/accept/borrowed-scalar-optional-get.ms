@@ -8,13 +8,13 @@ impl Closeable for Marker:
     var fn close() Unit!: error(Error("scalar marker closed"))
 
 fn inspect(value: Marker?) Unit:
-    let _id = value.get().id
-    let _still_present = value.is_some()
+    _id := value.get().id
+    _still_present := value.is_some()
     panic("borrowed owner remains alive")
 
 fn collection(values: List[Marker]) Unit:
-    let _id = values.first().get().id
-    let _still_present = values.length()
+    _id := values.first().get().id
+    _still_present := values.length()
     panic("collection owner remains alive")
 
 test "a borrowed scalar Optional getter leaves its owner alive":
@@ -28,13 +28,13 @@ test "a scalar collection lend leaves its owner alive":
     )
 
 fn owned_result() Unit:
-    let value: Marker!Int = ok(Marker(3))
-    let _id = value.get().id
+    value: Marker!Int = ok(Marker(3))
+    _id := value.get().id
 
 fn scalar_optional() Marker?: Marker(4)
 
 fn owned_optional() Unit:
-    let _id = scalar_optional().get().id
+    _id := scalar_optional().get().id
 
 test "owned scalar getter results still close their temporary":
     (try expect_fault(owned_result)) | try expect_contains(
@@ -51,8 +51,8 @@ impl Closeable for HeapMarker:
     var fn close() Unit!: error(Error("heap marker closed"))
 
 fn inspect_heap(value: HeapMarker?) Unit:
-    let _length = value.get().text.length()
-    let _still_present = value.is_some()
+    _length := value.get().text.length()
+    _still_present := value.is_some()
     panic("heap owner remains alive")
 
 test "heap resource Optional getters retain their existing borrow":
@@ -61,13 +61,13 @@ test "heap resource Optional getters retain their existing borrow":
     )
 
 fn collection_last(values: List[Marker]) Unit:
-    let _id = values.last().get().id
-    let _still_present = values.length()
+    _id := values.last().get().id
+    _still_present := values.length()
     panic("last owner remains alive")
 
 fn map_entry(values: Map[String, Marker]) Unit:
-    let _id = values.get("present").get().id
-    let _still_present = values.length()
+    _id := values.get("present").get().id
+    _still_present := values.length()
     panic("map owner remains alive")
 
 fn make_map() Map[String, Marker]:
@@ -76,25 +76,25 @@ fn make_map() Map[String, Marker]:
     return values
 
 fn collection_named(values: List[Marker]) Unit:
-    let entry = values.first()
-    let _id = entry.get().id
-    let _still_present = values.length()
+    entry := values.first()
+    _id := entry.get().id
+    _still_present := values.length()
     panic("named owner remains alive")
 
 fn collection_missing(values: List[Marker]) Unit:
-    let _id = values.first().get().id
-    let _still_present = values.length()
+    _id := values.first().get().id
+    _still_present := values.length()
 
 fn map_missing(values: Map[String, Marker]) Unit:
-    let _id = values.get("absent").get().id
-    let _still_present = values.length()
+    _id := values.get("absent").get().id
+    _still_present := values.length()
 
 fn read_generic[T](values: List[T], read: fn(T) Int) Int:
     return read(values.first().get())
 
 fn generic_collection(values: List[Marker]) Unit:
-    let _id = read_generic(values, fn value: value.id)
-    let _still_present = values.length()
+    _id := read_generic(values, fn value: value.id)
+    _still_present := values.length()
     panic("generic owner remains alive")
 
 fn temporary_text() String:
@@ -129,24 +129,24 @@ test "generic inline collection reads lend to their callback":
     )
 
 test "Clonable results survive their temporary collection":
-    let text = temporary_text()
+    text := temporary_text()
     try expect_equal(text, "temporary payload")
     try expect_equal(text.length(), 17)
 
 fn labeled_map_entry(values: Map[String, Marker]) Unit:
-    let _id = values.get(key: "present").get().id
-    let _still_present = values.length()
+    _id := values.get(key: "present").get().id
+    _still_present := values.length()
     panic("labeled map owner remains alive")
 
 fn labeled_map_binding(values: Map[String, Marker]) Unit:
-    let entry = values.get(key: "present")
-    let _id = entry.get().id
-    let _still_present = values.length()
+    entry := values.get(key: "present")
+    _id := entry.get().id
+    _still_present := values.length()
     panic("labeled binding owner remains alive")
 
 fn labeled_map_missing(values: Map[String, Marker]) Unit:
-    let _id = values.get(key: "absent").get().id
-    let _still_present = values.length()
+    _id := values.get(key: "absent").get().id
+    _still_present := values.length()
 
 test "a labeled map lend leaves its scalar owner alive":
     (try expect_fault(fn: labeled_map_entry(make_map()))) | try expect_contains(
@@ -175,9 +175,9 @@ test "labeled map lends evaluate receiver and key once in order":
     var values = Map[String, String]()
     values.add("present", "payload")
 
-    let maps = [values]
+    maps := [values]
     var events: List[Int] = []
-    let length = maps[map_index(var events)].get(
+    length := maps[map_index(var events)].get(
         key: map_key(var events)
     ).get().length()
     try expect_equal(length, 7)

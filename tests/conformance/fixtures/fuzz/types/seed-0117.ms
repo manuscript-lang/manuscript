@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -17,10 +17,10 @@ fn fact(n: Int) Int:
 export fn main() Int:
     say("fact(5) = {fact(5)}")
 
-    let f1 = (((219.160 - 0.0) / 9.5) * ((3.0e17 - 9.0e23) + (0.0 - 620.655)))
+    f1 := (((219.160 - 0.0) / 9.5) * ((3.0e17 - 9.0e23) + (0.0 - 620.655)))
     say("f1 = {f1}")
 
-    let bad = 1 and 2
-    let s3 = "delta"
+    bad := 1 and 2
+    s3 := "delta"
     say("s3 = [{s3}]")
     return 0

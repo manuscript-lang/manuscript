@@ -66,24 +66,24 @@ fn square_all(ch: Channel[Int, Int]) Result[Unit, ChannelError]:
     var c = ch                       // issue #1191: a var parameter cannot be a Callable today
     var open = true
     while open:
-        if let n = try c.receive():
+        if n := try c.receive():
             try c.send(n * n)
         else:
             open = false
     return ok(unit)
 
 fn fetch_all(urls: List[String]) Result[List[Int], TaskError]:
-    with let group = TaskGroup[Int]():                 // no messages: Channel[Unit, Unit]
+    with group := TaskGroup[Int]():                 // no messages: Channel[Unit, Unit]
         for url in urls:
             group.spawn(fn ch: fetch_size(url.clone()))
         return group.results()
 
 fn main() Int:
-    with let group = WorkerGroup[Result[Unit, ChannelError], Int, Int]():   // or TaskGroup / ProcessGroup
+    with group := WorkerGroup[Result[Unit, ChannelError], Int, Int]():   // or TaskGroup / ProcessGroup
         var worker = group.spawn(square_all)
         if worker.channel.send(3).is_error():
             return 1
-        if let reply = worker.channel.receive():
+        if reply := worker.channel.receive():
             ...
         worker.channel.close()       // child's receive() returns ok(none), child returns
     return 0

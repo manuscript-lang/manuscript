@@ -9,16 +9,16 @@ type Holder:
     label: String
 
 export fn main() Int:
-    let opened = open_read("data.txt")
+    opened := open_read("data.txt")
     if opened.is_error():
         return 4
 
-    let file = opened.get()
-    let read = file.read(1)
+    file := opened.get()
+    read := file.read(1)
     if read.is_error():
         return 7
 
-    let chunk = read.get()
+    chunk := read.get()
 
     match chunk:
         data:
@@ -27,7 +27,7 @@ export fn main() Int:
         none:
             return 6
 
-    let original = Holder(file: file, label: "original")
+    original := Holder(file: file, label: "original")
     var copy = original.clone()
     copy.label = "copy"
     if original.label != "original":
@@ -35,11 +35,11 @@ export fn main() Int:
 
     copy.file.close()
 
-    let reread = original.file.read(1)
+    reread := original.file.read(1)
     if reread.is_ok():
         return 3
 
-    let cause = reread.err()
+    cause := reread.err()
 
     match cause:
         Error("I/O: resource is closed", kind: "EBADF"):

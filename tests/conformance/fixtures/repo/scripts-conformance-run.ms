@@ -74,13 +74,13 @@ fn inventory(suite: String) Result[List[String], Error]:
     var files: List[String] = []
 
     if suite == "all" or suite == "core":
-        let core = try glob(
+        core := try glob(
             "tests/e2e/testdata/accept", GlobOptions(patterns: ["*.ms"])
         )
         core.is_empty() | try expect_false
         for file in core: files.append("tests/e2e/testdata/accept/{file.path}")
 
-        let projects = try glob(
+        projects := try glob(
             "tests/e2e/testdata/projects",
             GlobOptions(patterns: ["*/conformance_test.ms"])
         )
@@ -94,7 +94,7 @@ fn inventory(suite: String) Result[List[String], Error]:
             files.append(file)
 
     if suite == "all" or suite == "stdlib":
-        let library = try glob(
+        library := try glob(
             "tests/e2e/testdata/stdlib", GlobOptions(patterns: ["*.ms"])
         )
         library.is_empty() | try expect_false
@@ -112,15 +112,15 @@ fn run_conformance(args: List[String]) Result[Unit, Error]:
             "usage: conformance <ms executable> <all|core|stdlib> <shard> <count>"
         )
 
-    let ms = args.get(0)
-    let suite = args.get(1)
+    ms := args.get(0)
+    suite := args.get(1)
     (suite == "all" or suite == "core" or suite == "stdlib") | try expect_true
 
-    let shard = args.get(2) | .parse_int() | try expect_some
-    let count = args.get(3) | .parse_int() | try expect_some
+    shard := args.get(2) | .parse_int() | try expect_some
+    count := args.get(3) | .parse_int() | try expect_some
     (count > 0 and shard >= 0 and shard < count) | try expect_true
 
-    let files = try inventory(suite)
+    files := try inventory(suite)
     var index = 0
     var failed = 0
     var ran = 0
@@ -130,7 +130,7 @@ fn run_conformance(args: List[String]) Result[Unit, Error]:
             ran = ran + 1
             try emit("TEST {file}")
 
-            let result = run_file(ms, file.clone())
+            result := run_file(ms, file.clone())
 
             match result:
                 ok(_): try emit("PASS {file}")
@@ -145,12 +145,12 @@ fn run_conformance(args: List[String]) Result[Unit, Error]:
     return ok(unit)
 
 fn run_file(ms: String, file: String) Result[Unit, Error]:
-    let output = try run(
+    output := try run(
         ms, ["test", file, "--json", "--timeout=30s"],
         RunOptions(timeout: 3.minutes(), max_output_bytes: 16000000)
     ).wait()
-    let text = output.stdout.decode_utf8() | try expect_some
-    let stderr = output.stderr.decode_utf8() | try expect_some
+    text := output.stdout.decode_utf8() | try expect_some
+    stderr := output.stderr.decode_utf8() | try expect_some
 
     match check_output(output.exit_code, text):
         ok(_): return ok(unit)
@@ -161,14 +161,14 @@ fn run_file(ms: String, file: String) Result[Unit, Error]:
 fn check_output(status: Int, text: String) Result[Unit, Error]:
     status | try expect_equal(expected: 0)
 
-    let report = try parse[Report](text)
+    report := try parse[Report](text)
     return validate(report)
 
 export fn main() Int:
     match run_conformance(arguments()):
         ok(_): return 0
         error(cause):
-            let _written = stdout().write("{cause.message}\n")
+            _written := stdout().write("{cause.message}\n")
             return 1
 
 test "reports require complete nonempty executions and count explicit skips":

@@ -6,22 +6,22 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = ("ms".reverse().is_empty() and (not (117.25 > 133.365)))
+    b1 := ("ms".reverse().is_empty() and (not (117.25 > 133.365)))
     say("b1 = {b1}")
 
-    let f2 = 550.198
+    f2 := 550.198
     say("f2 = {f2}")
 
-    let i3 = 0
+    i3 := 0
     say("i3 = {i3}")
 
-    let i4 = (23 * ((i3 + (-171722682063)) * i3))
+    i4 := (23 * ((i3 + (-171722682063)) * i3))
     say("i4 = {i4}")
 
-    let i5 = (i3 % (-505181491637))
+    i5 := (i3 % (-505181491637))
     say("i5 = {i5}")
 
     if "beta".is_empty():
@@ -29,11 +29,11 @@ export fn main() Int:
     else:
         say("naïve")
 
-    let b6 = ((30 + (i3 - (-34))) == 11)
+    b6 := ((30 + (i3 - (-34))) == 11)
     say("b6 = {b6}")
     say("{(-6)} {(-35)} {((-6) < (-35))} sum {(-6) + (-35)}")
 
-    let i7 = i3
+    i7 := i3
     say("i7 = {i7}")
     say(
         "{(((-27) / 6) - i7)} {(i4 + ((-20) / 16))} {((((-27) / 6) - i7) < (i4 + ((-20) / 16)))} sum {(((-27) / 6) - i7) + (i4 + ((-20) / 16))}"

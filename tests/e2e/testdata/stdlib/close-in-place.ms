@@ -15,7 +15,7 @@ impl Closeable for Latch:
         if self.open:
             self.open = false
 
-            let _ = append_file(self.log, "{self.id},").wait()
+            _ := append_file(self.log, "{self.id},").wait()
 
         return ok(unit)
 
@@ -23,7 +23,7 @@ fn latch(log: String, id: Int) Latch:
     return Latch(log, id, true)
 
 fn closed(log: String) String:
-    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
+    if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 
@@ -41,34 +41,34 @@ fn explicit_then_scope(log: String) Int!:
     return ok(1)
 
 fn holder_part(log: String) Int:
-    let holder = Holder(latch(log, 2), 0)
+    holder := Holder(latch(log, 2), 0)
     return holder.tag
 
 fn optional_part(log: String) Int:
-    let maybe: Latch? = latch(log, 3)
+    maybe: Latch? = latch(log, 3)
     if maybe.is_some(): return 1
 
     return 0
 
 fn list_parts(log: String) Int:
-    let xs = [latch(log.clone(), 4), latch(log, 5)]
+    xs := [latch(log.clone(), 4), latch(log, 5)]
     return xs.length()
 
 fn case_part(log: String) Int:
-    let slot = Full(latch(log, 6))
+    slot := Full(latch(log, 6))
 
-    let n = match slot:
+    n := match slot:
         Full(inner): inner.id
         Empty: 0
 
     return n
 
 fn make_closure(log: String) fn() Int:
-    let held = latch(log, 7)
+    held := latch(log, 7)
     return fn: held.id
 
 fn closure_capture(log: String) Int:
-    let f = make_closure(log)
+    f := make_closure(log)
     return f()
 
 fn map_values(log: String) Int:
@@ -77,25 +77,25 @@ fn map_values(log: String) Int:
     return m.length()
 
 fn fault_through_holder(log: String) Unit:
-    let holder = Holder(latch(log, 9), 0)
+    holder := Holder(latch(log, 9), 0)
     panic("holder fault")
 
-    let _ = holder.tag
+    _ := holder.tag
 
 fn fault_plain(log: String) Unit:
-    let one = latch(log, 10)
+    one := latch(log, 10)
     panic("plain fault")
 
-    let _ = one.id
+    _ := one.id
 
 fn destructured_record(log: String) Int:
-    let holder = Holder(latch(log, 13), 3)
-    let {inner: part, tag: n} = holder
+    holder := Holder(latch(log, 13), 3)
+    {inner: part, tag: n} := holder
     return part.id + n
 
 fn destructured_list(log: String) Int:
-    let xs = [latch(log.clone(), 14), latch(log, 15)]
-    let [first, _] = xs
+    xs := [latch(log.clone(), 14), latch(log, 15)]
+    [first, _] := xs
     return first.id
 
 // A resource that hands out other resources: what it returns is the caller's to close (#2435).
@@ -122,7 +122,7 @@ fn made_by_resource(log: String) Int:
 
 fn found_by_resource(log: String) Int:
     var maker = Maker(0)
-    if let found = maker.find(log, 17): return found.id
+    if found := maker.find(log, 17): return found.id
 
     return 0
 
@@ -133,93 +133,93 @@ fn reassigned(log: String, swap: Bool) Int:
     return one.id
 
 test "an explicit close followed by the scope end closes once":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(try explicit_then_scope(log.clone()), 1)
     try expect_equal(closed(log), "1,")
 
 test "a holder's part closes in place at the scope end":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(holder_part(log.clone()), 0)
     try expect_equal(closed(log), "2,")
 
 test "an optional payload closes in place":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(optional_part(log.clone()), 1)
     try expect_equal(closed(log), "3,")
 
 test "list elements close in place, last first":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(list_parts(log.clone()), 2)
     try expect_equal(closed(log), "5,4,")
 
 test "a case field closes in place":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(case_part(log.clone()), 6)
     try expect_equal(closed(log), "6,")
 
 test "a closure's capture closes when the closure is dropped":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(closure_capture(log.clone()), 7)
     try expect_equal(closed(log), "7,")
 
 test "a part a record pattern binds closes at the scope end":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(destructured_record(log.clone()), 16)
     try expect_equal(closed(log), "13,")
 
 test "a list pattern closes the elements it binds and the ones it drops":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(destructured_list(log.clone()), 14)
     try expect_equal(closed(log), "15,14,")
 
 test "a resource a method on another resource returns closes at the scope end":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(made_by_resource(log.clone()), 17)
     try expect_equal(closed(log), "16,")
 
 test "a resource payload a method on another resource returns closes with its branch":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(found_by_resource(log.clone()), 17)
     try expect_equal(closed(log), "17,")
 
 test "map values close in place":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(map_values(log.clone()), 1)
     try expect_equal(closed(log), "8,")
 
 test "a fault closes a holder's part from the cleanup stack":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
-    let message = try expect_fault(fn: fault_through_holder(log.clone()))
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
+    message := try expect_fault(fn: fault_through_holder(log.clone()))
     try expect_equal(message, "holder fault")
     try expect_equal(closed(log), "9,")
 
 test "a fault closes a plain binding from the cleanup stack":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
-    let message = try expect_fault(fn: fault_plain(log.clone()))
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
+    message := try expect_fault(fn: fault_plain(log.clone()))
     try expect_equal(message, "plain fault")
     try expect_equal(closed(log), "10,")
 
 test "a reassigned binding closes the replaced value then the final one":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(reassigned(log.clone(), true), 12)
     try expect_equal(closed(log), "11,12,")
 
 test "a binding kept to the end closes once":
-    let temporary = temporary("manuscript-close-in-place-") | try expect_ok
-    let log = "{temporary.path()}/log"
+    temporary := temporary("manuscript-close-in-place-") | try expect_ok
+    log := "{temporary.path()}/log"
     try expect_equal(reassigned(log.clone(), false), 11)
     try expect_equal(closed(log), "11,")

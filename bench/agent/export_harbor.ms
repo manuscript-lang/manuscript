@@ -32,7 +32,7 @@ fn base_image(lang_id: String) String:
     return "ubuntu:24.04"
 
 fn dockerfile(lang_id: String) String:
-    let install = "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git && rm -rf /var/lib/apt/lists/*"
+    install := "apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git && rm -rf /var/lib/apt/lists/*"
     return [
         "FROM {base_image(lang_id)}", "RUN {install}", "COPY ms /usr/local/bin/ms",
         "WORKDIR /app", "COPY workspace /app", ""
@@ -60,12 +60,12 @@ fn export_one(
     ms_binary: String,
     agent_timeout: Int
 ) Unit:
-    let name = "{ch.id}-{lang.id}"
-    let d = "{out}/{name}"
+    name := "{ch.id}-{lang.id}"
+    d := "{out}/{name}"
     remove(d, recursive: true).to_optional()
     create_directory("{d}/environment", recursive: true).get()
 
-    let prompt = make_workspace(ch, lang, "{d}/environment/workspace")
+    prompt := make_workspace(ch, lang, "{d}/environment/workspace")
     write_text("{d}/instruction.md", prompt + "\n\n---\n\n" + ch.spec())
     write_text("{d}/task.toml", task_toml(name, ch, agent_timeout))
     write_text("{d}/environment/Dockerfile", dockerfile(lang.id))
@@ -90,7 +90,7 @@ fn export_one(
         "#!/bin/bash\nms run /tests/grade.ms -- /tests/cases.json {quote(lang.build)} {quote(lang.run)} {ch.timeout_s} {lang.suffix()}\n"
     )
 
-    let reference = "{ch.solution(lang.template)}/{lang.reference()}"
+    reference := "{ch.solution(lang.template)}/{lang.reference()}"
 
     if stat(reference).is_ok():
         put(reference, "{d}/solution/reference")
@@ -125,7 +125,7 @@ fn run_export(o: Options) Int!:
     return ok(0)
 
 export fn main() Int:
-    let root = command[Options](
+    root := command[Options](
         name: "export_harbor.ms",
         about: "Export agent-bench challenges as Harbor tasks (one per challenge x language)",
         flags: [

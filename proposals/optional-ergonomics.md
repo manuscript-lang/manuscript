@@ -30,7 +30,7 @@ fn find(name: String, limit: Int? = none) Int?:
 Stage 1: no qualified cases.
 
 - `none` is one value whose type comes from the expected type or the binding's annotation.
-- `Optional[Int].none`, `Optional[Int].some(x)` and `Int?.none` are rejected: "write the type on the binding, e.g. `let x: Int? = none`".
+- `Optional[Int].none`, `Optional[Int].some(x)` and `Int?.none` are rejected: "write the type on the binding, e.g. `x: Int? = none`".
 
 Stage 2: default `none`.
 
@@ -46,8 +46,8 @@ find("a", 3)          // a plain value wraps implicitly
 Stage 3: no `some`.
 
 - A plain `T` wraps implicitly wherever `T?` is expected (already true); `some(x)` is rejected with a pointer to the plain value.
-- Where no `T?` is expected, annotate: `let x: Int? = 1`.
-- Patterns: `if let v = opt:` is unchanged; in `match opt:` the present arm is a bare binding next to `none:` (open question 1).
+- Where no `T?` is expected, annotate: `x: Int? = 1`.
+- Patterns: `if v := opt:` is unchanged; in `match opt:` the present arm is a bare binding next to `none:` (open question 1).
 - `Optional` keeps `some` and `none` internally as its two cases; `some` is no longer a name in the prelude.
 
 Stage 4: `a?.b`.

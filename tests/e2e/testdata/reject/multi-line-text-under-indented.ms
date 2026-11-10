@@ -1,5 +1,5 @@
 export fn main() Int:
-    let text = """
+    text := """
         deep
       shallow
         """

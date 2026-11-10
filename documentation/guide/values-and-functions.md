@@ -18,18 +18,18 @@ fn shipping(subtotal: Int) Int:
     return 500
 
 fn money(cents: Int) String:
-    let rest = cents % 100
-    let pad = if rest < 10: "0" else: ""
+    rest := cents % 100
+    pad := if rest < 10: "0" else: ""
     return "{cents / 100}.{pad}{rest}"
 
 export fn main() Int:
-    let prices = [1250, 800, 2500]
+    prices := [1250, 800, 2500]
     var subtotal = 0
     for price in prices:
         subtotal += line_total(price)
-    let discounted = prices.map(fn price: price - 200)
-    let cheap = discounted.filter(fn price: price <= 1000)
-    let total = subtotal + shipping(subtotal)
+    discounted := prices.map(fn price: price - 200)
+    cheap := discounted.filter(fn price: price <= 1000)
+    total := subtotal + shipping(subtotal)
     print("Subtotal: {money(subtotal)}")
     print("Shipping: {money(shipping(subtotal))}")
     print("Total: {money(total)}")
@@ -50,7 +50,7 @@ Save it as `invoice.ms` and run `ms run invoice.ms`.
 
 - `let` names a value and `var` names one that changes. `subtotal` is a `var` because the loop adds to it; everything else is a `let`. Types are inferred, so you rarely write them.
 - A function declares its parameter types and its result type after the parameter list. `quantity: Int = 1` is a default, so `line_total(price)` works without the second argument.
-- `if` works as a statement and as an expression: `let pad = if rest < 10: "0" else: ""` picks a value.
+- `if` works as a statement and as an expression: `pad := if rest < 10: "0" else: ""` picks a value.
 - `{expression}` inside a string interpolates any expression, including a function call.
 - A function is a value. `prices.map(fn price: price - 200)` passes a function to `map`, and `filter` keeps the items for which a function returns `true`. `prices` itself does not change.
 - Four spaces open a block. There are no braces and no semicolons.

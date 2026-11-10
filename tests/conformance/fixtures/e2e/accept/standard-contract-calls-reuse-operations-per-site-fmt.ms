@@ -16,8 +16,8 @@ test "repeated calls through one site":
     var i = 0
 
     while i < 3:
-        let a = monotonic()
-        let b = monotonic()
+        a := monotonic()
+        b := monotonic()
         try expect_true((b.difference(other: a).to_milliseconds() >= 0))
         i = i + 1
 

@@ -17,6 +17,6 @@ fn keep(d: Door) List[Door]:
     return xs
 
 fn captured(r: Room) Int:
-    let f = fn() List[Door]:
+    f := fn() List[Door]:
         return keep(r.door)  // error: cannot move the resource
     return f().length()

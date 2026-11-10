@@ -10,7 +10,7 @@ import sha256 from "@std/crypto.ms"
 
 // `linux`, `macos` or `windows`.
 export fn host() String:
-    let family = os()
+    family := os()
     if family == Os.Macos: return "macos"
     if family == Os.Windows: return "windows"
 
@@ -30,7 +30,7 @@ export fn dist_os() String:
 
 // The distribution architecture name: `amd64` or `arm64`.
 export fn dist_arch() String:
-    let machine = capture("uname", ["-m"]).trim()
+    machine := capture("uname", ["-m"]).trim()
     if machine == "aarch64" or machine == "arm64" or machine == "ARM64": return "arm64"
 
     return "amd64"
@@ -41,8 +41,8 @@ export fn note(message: String) Unit:
 
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
-    let all = environment().get(Map[String, String]())
-    if let value = all.get(name): return value.clone()
+    all := environment().get(Map[String, String]())
+    if value := all.get(name): return value.clone()
 
     return fallback.clone()
 
@@ -55,7 +55,7 @@ export fn status(code: Int) Int:
 // Runs `program` with the parent's streams and returns its exit status; the PATH is searched.
 // A program that cannot start, or one that ends with a status above 125, reports 125.
 export fn run_program(program: String, arguments: List[String]) Int:
-    if let child = spawn(
+    if child := spawn(
         program,
         arguments,
         SpawnOptions(
@@ -69,19 +69,19 @@ export fn run_program(program: String, arguments: List[String]) Int:
 
 // Runs `program` and returns its standard output; empty when it cannot run or fails.
 export fn capture(program: String, arguments: List[String]) String:
-    if let out = run(program, arguments).wait():
+    if out := run(program, arguments).wait():
         if out.exit_code == 0: return out.stdout.decode_utf8().get("")
     return ""
 
 // Whether `program` runs and exits zero with `arguments`.
 export fn works(program: String, arguments: List[String]) Bool:
-    if let out = run(program, arguments).wait(): return out.exit_code == 0
+    if out := run(program, arguments).wait(): return out.exit_code == 0
 
     return false
 
 // The SHA-256 of the file at `path` as lowercase hex.
 export fn file_sha256(path: String) String:
-    let data = read_file(path).wait().get()
+    data := read_file(path).wait().get()
     return hex_encode(sha256(data))
 
 // The host triple's architecture field, as `rustc` reports it (`x86_64`, `aarch64`).
@@ -96,10 +96,10 @@ export fn rust_arch() String:
 // programs link against (glibc on Linux, mingw-w64 on Windows) and points MS_RT_LIB at it. The caller's
 // `ms` is the release build (`make build`). Returns a nonzero status when a build fails. LEAK_TARGET_DIR overrides the directory.
 export fn use_stats_runtime() Int:
-    let stats_target = env("LEAK_TARGET_DIR", "target/leak-stats")
+    stats_target := env("LEAK_TARGET_DIR", "target/leak-stats")
     var release = "release"
     var target = ""
-    let arch = rust_arch()
+    arch := rust_arch()
 
     if host() == "linux":
         target = "{arch}-unknown-linux-gnu"
@@ -108,7 +108,7 @@ export fn use_stats_runtime() Int:
         target = "{arch}-pc-windows-gnullvm"
         release = "{target}/release"
 
-        let mingw = env("MS_MINGW", "target/llvm-bundle/mingw")
+        mingw := env("MS_MINGW", "target/llvm-bundle/mingw")
         set_environment(
             "CC_{target.replace("-", "_")}", "{mingw}/bin/{arch}-w64-mingw32-clang"
         ).get()
@@ -128,14 +128,14 @@ export fn use_stats_runtime() Int:
     code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
-    let lib = canonicalize("{stats_target}/{release}/libms_native.a").get()
+    lib := canonicalize("{stats_target}/{release}/libms_native.a").get()
     set_environment("MS_RT_LIB", lib).get()
     return 0
 
 // The ms that runs the programs under test: `MS` (resolved against `root` when relative), else
 // target/release/ms.
 export fn tool_ms(root: String) String:
-    let named = env("MS", "")
+    named := env("MS", "")
     if named == "": return "{root}/target/release/ms{exe()}"
     if named.starts_with("/") or named.contains(":"): return named
 

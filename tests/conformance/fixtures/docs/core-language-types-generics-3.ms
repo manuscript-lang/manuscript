@@ -10,6 +10,6 @@ fn identity[T](value: T) T:
 fn same[T: Equal](left: T, right: T) Bool:
     return left == right
 
-let box = Box[Int](1)
-let exact = identity[Int](1)
-let inferred = identity(1)
+box := Box[Int](1)
+exact := identity[Int](1)
+inferred := identity(1)

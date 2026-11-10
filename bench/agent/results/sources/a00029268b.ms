@@ -131,7 +131,7 @@ fn words(text: String) List[String]:
     return out
 
 fn cut_word(text: String) Word:
-    let cs = text.chars()
+    cs := text.chars()
     var i = 0
     while i < cs.length() and not is_space(cs.get(i)):
         i += 1
@@ -146,7 +146,7 @@ fn dash(s: String) String:
     return s
 
 fn opt_text(o: Optional[String]) String:
-    if let s = o:
+    if s := o:
         return s
 
     return ""
@@ -155,7 +155,7 @@ fn opt_show(o: Optional[String]) String:
     return dash(opt_text(o))
 
 fn points_text(o: Optional[Int]) String:
-    if let p = o:
+    if p := o:
         return "{p}"
 
     return ""
@@ -180,8 +180,8 @@ fn is_digit_text(c: String) Bool:
     return c.compare("0") >= 0 and c.compare("9") <= 0
 
 fn parse_uint(s: String) Optional[Int]:
-    let v = s.scalar_values()
-    let n = v.length()
+    v := s.scalar_values()
+    n := v.length()
     if n == 0 or n > 7:
         return none
     if n > 1 and v.get(0) == 48:
@@ -190,7 +190,7 @@ fn parse_uint(s: String) Optional[Int]:
     var x = 0
 
     for i in range(0, n):
-        let c = v.get(i)
+        c := v.get(i)
         if not in_range(c, 48, 57):
             return none
 
@@ -211,7 +211,7 @@ fn is_label(s: String) Bool:
     return true
 
 fn is_state_name(s: String) Bool:
-    let v = s.scalar_values()
+    v := s.scalar_values()
     if v.length() == 0 or not in_range(v.get(0), 97, 122):
         return false
 
@@ -221,7 +221,7 @@ fn is_state_name(s: String) Bool:
     return true
 
 fn is_view_name(s: String) Bool:
-    let v = s.scalar_values()
+    v := s.scalar_values()
     if v.length() == 0 or not in_range(v.get(0), 97, 122):
         return false
 
@@ -249,12 +249,12 @@ fn num_at(v: List[Int], a: Int, b: Int) Int:
     return x
 
 fn valid_date(s: String) Bool:
-    let v = s.scalar_values()
+    v := s.scalar_values()
     if v.length() != 10:
         return false
 
     for i in range(0, 10):
-        let c = v.get(i)
+        c := v.get(i)
 
         if i == 4 or i == 7:
             if c != 45:
@@ -262,9 +262,9 @@ fn valid_date(s: String) Bool:
         else if not in_range(c, 48, 57):
             return false
 
-    let y = num_at(v, 0, 4)
-    let m = num_at(v, 5, 7)
-    let d = num_at(v, 8, 10)
+    y := num_at(v, 0, 4)
+    m := num_at(v, 5, 7)
+    d := num_at(v, 8, 10)
     if y < 1 or m < 1 or m > 12:
         return false
 
@@ -277,7 +277,7 @@ fn id_value(digits: String) Int:
     return num_at(digits.scalar_values(), 0, digits.length())
 
 fn tokenize(text: String) Result[List[String], Fail]:
-    let cs = text.chars()
+    cs := text.chars()
     var out: List[String] = []
     var cur = ""
     var in_token = false
@@ -285,7 +285,7 @@ fn tokenize(text: String) Result[List[String], Fail]:
     var i = 0
 
     while i < cs.length():
-        let c = cs.get(i)
+        c := cs.get(i)
 
         if in_quote:
             if (
@@ -334,7 +334,7 @@ fn parse_id(arg: String) Result[String, Fail]:
     while k < cs.length() and cs.get(k) == "0":
         k += 1
 
-    let digits = cs.drop(k).join("")
+    digits := cs.drop(k).join("")
     if not digits_only or digits == "":
         return error(Fail(msg: "bad issue id '{arg}'"))
 
@@ -347,8 +347,8 @@ fn find_index(app: App, id: Int) Optional[Int]:
     return none
 
 fn lookup(app: App, arg: String) Result[Int, Fail]:
-    let d = try parse_id(arg)
-    let idx = find_index(app, id_value(d))
+    d := try parse_id(arg)
+    idx := find_index(app, id_value(d))
     if idx.is_none():
         return error(Fail(msg: "no such issue #{d}"))
 
@@ -406,7 +406,7 @@ fn normalize(field: String, value: String) Result[String, Fail]:
         if value == "none":
             return ok("")
 
-        let p = parse_uint(value)
+        p := parse_uint(value)
         if p.is_none():
             return error(Fail(msg: "bad points '{value}'"))
 
@@ -426,7 +426,7 @@ fn normalize(field: String, value: String) Result[String, Fail]:
     var labs: List[String] = []
 
     for item in value.split(","):
-        let l = item.lower()
+        l := item.lower()
         if not is_label(l):
             return error(Fail(msg: "bad label '{l}'"))
 
@@ -435,18 +435,18 @@ fn normalize(field: String, value: String) Result[String, Fail]:
     return ok(unique_sorted(labs).join(","))
 
 fn parse_update(tok: String) Result[Update, Fail]:
-    let parts = tok.split("=")
+    parts := tok.split("=")
     if parts.length() < 2 or parts.get(0) == "":
         return error(Fail(msg: "expected field=value, got '{tok}'"))
 
-    let field = parts.get(0)
-    let value = parts.drop(1).join("=")
+    field := parts.get(0)
+    value := parts.drop(1).join("=")
     if field == "state":
         return error(Fail(msg: "use move to change state"))
     if not is_field(field):
         return error(Fail(msg: "unknown field '{field}'"))
 
-    let norm = try normalize(field, value)
+    norm := try normalize(field, value)
     return ok(Update(field: field, norm: norm))
 
 fn parse_updates(toks: List[String]) Result[List[Update], Fail]:
@@ -472,7 +472,7 @@ fn field_norm(it: Issue, field: String) String:
     return opt_text(it.reporter)
 
 fn apply_update(var it: Issue, u: Update) Unit:
-    let f = u.field
+    f := u.field
 
     if f == "title":
         it.title = u.norm
@@ -505,7 +505,7 @@ fn log_add(var app: App, id: Int, detail: String) Unit:
     app.journal.append(Entry(t: app.t, actor: app.actor, id: id, detail: detail))
 
 fn commit(var app: App, idx: Int, updates: List[Update]) Result[List[String], Fail]:
-    let old = app.issues.get(idx).clone()
+    old := app.issues.get(idx).clone()
     var nw = old.clone()
     for u in updates:
         apply_update(var nw, u)
@@ -513,8 +513,8 @@ fn commit(var app: App, idx: Int, updates: List[Update]) Result[List[String], Fa
     var changes: List[String] = []
 
     for f in field_order():
-        let before = field_norm(old, f)
-        let after = field_norm(nw, f)
+        before := field_norm(old, f)
+        after := field_norm(nw, f)
         if before != after:
             changes.append("{f}: {dash(before)} -> {dash(after)}")
 
@@ -529,47 +529,47 @@ fn commit(var app: App, idx: Int, updates: List[Update]) Result[List[String], Fa
     return ok(["updated #{old.id}"])
 
 fn edit_core(var app: App, id: Int, fields: List[String]) Result[List[String], Fail]:
-    let idx = find_index(app, id).get()
-    let it = app.issues.get(idx).clone()
+    idx := find_index(app, id).get()
+    it := app.issues.get(idx).clone()
     if is_final(app, it.state):
         return error(Fail(msg: "#{id} is in final state '{it.state}'"))
     if fields.length() == 0:
         return error(Fail(msg: "usage: edit ID field=value..."))
 
-    let updates = try parse_updates(fields)
+    updates := try parse_updates(fields)
     return commit(var app, idx, updates)
 
 fn cmd_edit(var app: App, rest: String) Result[List[String], Fail]:
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() == 0:
         return error(Fail(msg: "usage: edit ID field=value..."))
 
-    let id = try lookup_id(app, toks.get(0))
+    id := try lookup_id(app, toks.get(0))
     return edit_core(var app, id, toks.drop(1))
 
 fn cmd_assign(var app: App, rest: String) Result[List[String], Fail]:
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() != 2:
         return error(Fail(msg: "usage: assign ID NAME"))
 
-    let id = try lookup_id(app, toks.get(0))
+    id := try lookup_id(app, toks.get(0))
     return edit_core(var app, id, ["assignee=".concat(toks.get(1))])
 
 fn lookup_id(app: App, arg: String) Result[Int, Fail]:
-    let idx = try lookup(app, arg)
+    idx := try lookup(app, arg)
     return ok(app.issues.get(idx).id)
 
 fn label_core(var app: App, id: Int, toks: List[String]) Result[List[String], Fail]:
-    let idx = find_index(app, id).get()
-    let it = app.issues.get(idx).clone()
+    idx := find_index(app, id).get()
+    it := app.issues.get(idx).clone()
     if is_final(app, it.state):
         return error(Fail(msg: "#{id} is in final state '{it.state}'"))
 
     var labs = it.labels.clone()
 
     for tok in toks:
-        let w = sign_split(tok)
-        let l = w.rest.lower()
+        w := sign_split(tok)
+        l := w.rest.lower()
         if not is_label(l):
             return error(Fail(msg: "bad label '{l}'"))
 
@@ -583,29 +583,29 @@ fn label_core(var app: App, id: Int, toks: List[String]) Result[List[String], Fa
     )
 
 fn sign_split(tok: String) Word:
-    let cs = tok.chars()
+    cs := tok.chars()
     if cs.length() > 0 and (cs.get(0) == "+" or cs.get(0) == "-"):
         return Word(head: cs.get(0), rest: join_range(cs, 1, cs.length()))
 
     return Word(head: "", rest: tok)
 
 fn cmd_label(var app: App, rest: String) Result[List[String], Fail]:
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() < 2:
         return error(Fail(msg: "usage: label ID +label -label..."))
 
-    let id = try lookup_id(app, toks.get(0))
+    id := try lookup_id(app, toks.get(0))
     return label_core(var app, id, toks.drop(1))
 
 fn cmd_create(var app: App, rest: String) Result[List[String], Fail]:
     if not app.has_workflow:
         return error(Fail(msg: "no workflow defined"))
 
-    let toks = try tokenize(rest)
+    toks := try tokenize(rest)
     if toks.length() == 0:
         return error(Fail(msg: "usage: create TITLE [field=value...]"))
 
-    let title = toks.get(0)
+    title := toks.get(0)
     if title.trim() == "":
         return error(Fail(msg: "empty title"))
 
@@ -614,8 +614,8 @@ fn cmd_create(var app: App, rest: String) Result[List[String], Fail]:
         assignee: none, reporter: some(app.actor), points: none, due: none, labels: [],
         comments: [], created: 0, updated: 0
     )
-    let base = it.clone()
-    let updates = try parse_updates(toks.drop(1))
+    base := it.clone()
+    updates := try parse_updates(toks.drop(1))
     for u in updates:
         apply_update(var it, u)
     app.t += 1
@@ -626,8 +626,8 @@ fn cmd_create(var app: App, rest: String) Result[List[String], Fail]:
     log_add(var app, it.id, "created \"{title}\"")
 
     for f in field_order():
-        let before = field_norm(base, f)
-        let after = field_norm(it, f)
+        before := field_norm(base, f)
+        after := field_norm(it, f)
         if before != after:
             log_add(var app, it.id, "{f}: {dash(before)} -> {dash(after)}")
 
@@ -654,9 +654,9 @@ fn trans_guards(app: App, src: String, dst: String) Optional[List[String]]:
 fn move_core(var app: App, id: Int, to: String, comment: String) Result[
     List[String], Fail
 ]:
-    let idx = find_index(app, id).get()
-    let it = app.issues.get(idx).clone()
-    let from = it.state
+    idx := find_index(app, id).get()
+    it := app.issues.get(idx).clone()
+    from := it.state
     if is_final(app, from):
         return error(Fail(msg: "#{id} is in final state '{from}'"))
     if not app.states.contains(to):
@@ -664,7 +664,7 @@ fn move_core(var app: App, id: Int, to: String, comment: String) Result[
     if from == to:
         return error(Fail(msg: "already in state '{to}'"))
 
-    let guards = trans_guards(app, from, to)
+    guards := trans_guards(app, from, to)
     if guards.is_none():
         return error(Fail(msg: "transition '{from} -> {to}' not allowed"))
 
@@ -693,20 +693,20 @@ fn move_core(var app: App, id: Int, to: String, comment: String) Result[
     return ok(["moved #{id}: {from} -> {to}"])
 
 fn cmd_move(var app: App, rest: String) Result[List[String], Fail]:
-    let w1 = cut_word(rest)
-    let w2 = cut_word(w1.rest)
+    w1 := cut_word(rest)
+    w2 := cut_word(w1.rest)
     if w1.head == "" or w2.head == "":
         return error(Fail(msg: "usage: move ID STATE [comment...]"))
 
-    let id = try lookup_id(app, w1.head)
+    id := try lookup_id(app, w1.head)
     return move_core(var app, id, w2.head, w2.rest)
 
 fn cmd_comment(var app: App, rest: String) Result[List[String], Fail]:
-    let w = cut_word(rest)
+    w := cut_word(rest)
     if w.head == "" or w.rest == "":
         return error(Fail(msg: "usage: comment ID TEXT"))
 
-    let idx = try lookup(app, w.head)
+    idx := try lookup(app, w.head)
     app.t += 1
 
     var nw = app.issues.get(idx).clone()
@@ -717,25 +717,25 @@ fn cmd_comment(var app: App, rest: String) Result[List[String], Fail]:
     return ok(["commented #{nw.id}"])
 
 fn cmd_delete(var app: App, rest: String) Result[List[String], Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: delete ID"))
 
-    let idx = try lookup(app, ws.get(0))
+    idx := try lookup(app, ws.get(0))
     app.t += 1
 
-    let id = app.issues.get(idx).id
+    id := app.issues.get(idx).id
     app.issues.remove(idx)
     log_add(var app, id, "deleted")
     return ok(["deleted #{id}"])
 
 fn cmd_show(app: App, rest: String) Result[List[String], Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: show ID"))
 
-    let idx = try lookup(app, ws.get(0))
-    let it = app.issues.get(idx)
+    idx := try lookup(app, ws.get(0))
+    it := app.issues.get(idx)
     var out: List[String] = []
     out.append("#{it.id} {it.title}")
     out.append("  state: {it.state}")
@@ -752,7 +752,7 @@ fn cmd_show(app: App, rest: String) Result[List[String], Fail]:
     return ok(out)
 
 fn cmd_actor(var app: App, rest: String) Result[List[String], Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: actor NAME"))
 
@@ -760,7 +760,7 @@ fn cmd_actor(var app: App, rest: String) Result[List[String], Fail]:
     return ok(["actor is {app.actor}"])
 
 fn cmd_today(var app: App, rest: String) Result[List[String], Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: today DATE"))
     if not valid_date(ws.get(0)):
@@ -787,14 +787,14 @@ fn define_workflow(var app: App, body: List[String]) Result[List[String], Fail]:
     var trans: List[Trans] = []
 
     for raw in body:
-        let line = raw.trim()
+        line := raw.trim()
         if line == "" or line.starts_with("#"):
             continue
 
-        let colon = line.split(":")
+        colon := line.split(":")
 
         if colon.length() == 2 and colon.get(0) == "initial":
-            let name = colon.get(1).trim()
+            name := colon.get(1).trim()
             if not is_state_name(name):
                 return error(Fail(msg: "workflow: bad state name '{name}'"))
             if has_initial:
@@ -805,28 +805,28 @@ fn define_workflow(var app: App, body: List[String]) Result[List[String], Fail]:
             register(var states, name)
         else if colon.length() == 2 and colon.get(0) == "final":
             for part in colon.get(1).split(","):
-                let name = part.trim()
+                name := part.trim()
                 if not is_state_name(name):
                     return error(Fail(msg: "workflow: bad state name '{name}'"))
 
                 register(var states, name)
                 finals.append(name)
         else if line.contains("->"):
-            let arrow = line.split("->")
-            let src = arrow.get(0).trim()
+            arrow := line.split("->")
+            src := arrow.get(0).trim()
             if not is_state_name(src):
                 return error(Fail(msg: "workflow: bad state name '{src}'"))
 
             register(var states, src)
 
-            let dst = arrow.drop(1).join("->")
+            dst := arrow.drop(1).join("->")
 
             for entry in dst.split(","):
-                let ws = words(entry)
+                ws := words(entry)
                 if ws.length() == 0:
                     return error(Fail(msg: "workflow: bad state name ''"))
 
-                let target = ws.get(0)
+                target := ws.get(0)
                 if not is_state_name(target):
                     return error(Fail(msg: "workflow: bad state name '{target}'"))
 
@@ -887,13 +887,13 @@ fn is_field_text(s: String) Bool:
     return true
 
 fn lex_filter(text: String) Result[List[Tok], Fail]:
-    let cs = text.chars()
-    let n = cs.length()
+    cs := text.chars()
+    n := cs.length()
     var out: List[Tok] = []
     var i = 0
 
     while i < n:
-        let c = cs.get(i)
+        c := cs.get(i)
 
         if is_space(c):
             i += 1
@@ -905,12 +905,12 @@ fn lex_filter(text: String) Result[List[Tok], Fail]:
             while j < n and not is_term_stop(cs.get(j)):
                 j += 1
 
-            let name = join_range(cs, i, j)
+            name := join_range(cs, i, j)
             var op = ""
             var k = j
 
             if j < n:
-                let two = join_range(cs, j, j + 2)
+                two := join_range(cs, j, j + 2)
 
                 if two == "!=" or two == "<=" or two == ">=":
                     op = two
@@ -936,7 +936,7 @@ fn lex_filter(text: String) Result[List[Tok], Fail]:
                     var closed = false
 
                     while p < n and not closed:
-                        let d = cs.get(p)
+                        d := cs.get(p)
 
                         if (
                             d == "\\"
@@ -983,7 +983,7 @@ fn lex_filter(text: String) Result[List[Tok], Fail]:
                 ):
                     p += 1
 
-                let word = join_range(cs, i, p)
+                word := join_range(cs, i, p)
 
                 if word == "AND" or word == "OR" or word == "NOT":
                     out.append(
@@ -1058,8 +1058,8 @@ fn value_ok(app: App, f: String, op: String, a: String) Bool:
     return true
 
 fn check_term(app: App, t: Tok) Result[Expr, Fail]:
-    let field = t.field
-    let op = t.op
+    field := t.field
+    op := t.op
     var canon = field
     if field == "label":
         canon = "labels"
@@ -1106,7 +1106,7 @@ fn parse_or(var ps: Parser, app: App) Result[Expr, Fail]:
     while peek_kind(ps) == "OR":
         ps.pos += 1
 
-        let right = try parse_and(var ps, app)
+        right := try parse_and(var ps, app)
         left = Or(left, right)
 
     return ok(left)
@@ -1118,7 +1118,7 @@ fn parse_and(var ps: Parser, app: App) Result[Expr, Fail]:
         if peek_kind(ps) == "AND":
             ps.pos += 1
 
-        let right = try parse_not(var ps, app)
+        right := try parse_not(var ps, app)
         left = And(left, right)
 
     return ok(left)
@@ -1127,7 +1127,7 @@ fn parse_not(var ps: Parser, app: App) Result[Expr, Fail]:
     if peek_kind(ps) == "NOT":
         ps.pos += 1
 
-        let inner = try parse_not(var ps, app)
+        inner := try parse_not(var ps, app)
         return ok(Not(inner))
 
     return parse_primary(var ps, app)
@@ -1136,12 +1136,12 @@ fn parse_primary(var ps: Parser, app: App) Result[Expr, Fail]:
     if ps.pos >= ps.toks.length():
         return error(Fail(msg: "query: unexpected end of query"))
 
-    let t = ps.toks.get(ps.pos)
+    t := ps.toks.get(ps.pos)
 
     if t.kind == "(":
         ps.pos += 1
 
-        let inner = try parse_or(var ps, app)
+        inner := try parse_or(var ps, app)
         if ps.pos >= ps.toks.length():
             return error(Fail(msg: "query: unexpected end of query"))
         if ps.toks.get(ps.pos).kind != ")":
@@ -1164,17 +1164,17 @@ fn parse_filter(app: App, text: String) Result[Expr, Fail]:
     if text.trim() == "":
         return ok(All)
 
-    let toks = try lex_filter(text)
+    toks := try lex_filter(text)
     var ps = Parser(toks: toks, pos: 0)
-    let e = try parse_or(var ps, app)
+    e := try parse_or(var ps, app)
     if ps.pos < ps.toks.length():
         return error(Fail(msg: "query: unexpected token '{ps.toks.get(ps.pos).value}'"))
 
     return ok(e)
 
 fn split_limit(text: String) Clause:
-    let cs = text.chars()
-    let n = cs.length()
+    cs := text.chars()
+    n := cs.length()
     var s = n
     while s > 0 and not is_space(cs.get(s - 1)):
         s -= 1
@@ -1195,8 +1195,8 @@ fn split_limit(text: String) Clause:
     return Clause(head: text, found: false, tail: "")
 
 fn split_sort(text: String) Clause:
-    let cs = text.chars()
-    let n = cs.length()
+    cs := text.chars()
+    n := cs.length()
     var i = 0
 
     while i + 4 < n:
@@ -1222,7 +1222,7 @@ fn parse_sort_keys(text: String) Result[List[SortKey], Fail]:
     for w in words(text.split(",").join(" ")):
         var desc = false
         var name = w
-        let s = sign_split(w)
+        s := sign_split(w)
 
         if s.head == "-":
             desc = true
@@ -1236,18 +1236,18 @@ fn parse_sort_keys(text: String) Result[List[SortKey], Fail]:
     return ok(out)
 
 fn parse_spec(app: App, text: String) Result[Spec, Fail]:
-    let lim = split_limit(text.trim())
+    lim := split_limit(text.trim())
     var limit = 0
 
     if lim.found:
-        let v = parse_uint(lim.tail)
+        v := parse_uint(lim.tail)
         if v.is_none():
             return error(Fail(msg: "bad limit '{lim.tail}'"))
 
         limit = v.get()
 
-    let srt = split_sort(lim.head)
-    let filter = try parse_filter(app, srt.head)
+    srt := split_sort(lim.head)
+    filter := try parse_filter(app, srt.head)
     var keys: List[SortKey] = []
     if srt.found:
         keys = try parse_sort_keys(srt.tail)
@@ -1303,7 +1303,7 @@ fn one(app: App, f: String, op: String, a: String, it: Issue) Bool:
         return text_match(it.reporter.get(), op, a)
 
     if f == "text":
-        let lo = a.lower()
+        lo := a.lower()
         if it.title.lower().contains(lo):
             return true
 
@@ -1325,14 +1325,14 @@ fn one(app: App, f: String, op: String, a: String, it: Issue) Bool:
         if it.due.is_none():
             return op == ":" and a == "none"
 
-        let d = it.due.get()
+        d := it.due.get()
         if op == ":":
             return d == a
 
         return cmp_ok(d.compare(a), op)
 
     if f == "labels":
-        let lo = a.lower()
+        lo := a.lower()
 
         if op == "~":
             for l in it.labels:
@@ -1375,7 +1375,7 @@ fn one(app: App, f: String, op: String, a: String, it: Issue) Bool:
 
         return it.reporter.is_some()
 
-    let spec = try_view(app, a)
+    spec := try_view(app, a)
     return eval(app, spec, it)
 
 fn try_view(app: App, name: String) Expr:
@@ -1420,11 +1420,11 @@ fn view_refs(e: Expr) List[String]:
             return view_refs(inner)
 
 fn reaches(app: App, text: String, target: String) Bool:
-    let spec = parse_spec(app, text)
+    spec := parse_spec(app, text)
     if spec.is_error():
         return false
 
-    let sp = spec.get().clone()
+    sp := spec.get().clone()
 
     for r in view_refs(sp.filter.clone()):
         if r == target:
@@ -1478,7 +1478,7 @@ fn cmp_field(states: List[String], f: String, a: Issue, b: Issue) Int:
 
 fn cmp_issues(states: List[String], keys: List[SortKey], a: Issue, b: Issue) Int:
     for k in keys:
-        let c = cmp_field(states, k.name, a, b)
+        c := cmp_field(states, k.name, a, b)
 
         if c != 0:
             if k.desc:
@@ -1513,7 +1513,7 @@ fn count_line(n: Int) String:
 
 fn query_lines(app: App, spec: Spec) List[String]:
     var hits: List[Issue] = []
-    let matcher = spec.filter.clone()
+    matcher := spec.filter.clone()
     for it in app.issues:
         if eval(app, matcher.clone(), it):
             hits.append(it.clone())
@@ -1529,18 +1529,18 @@ fn query_lines(app: App, spec: Spec) List[String]:
     return out
 
 fn cmd_list(app: App, rest: String) Result[List[String], Fail]:
-    let spec = try parse_spec(app, rest)
+    spec := try parse_spec(app, rest)
     return ok(query_lines(app, spec))
 
 fn view_save(var app: App, rest: String) Result[List[String], Fail]:
-    let w = cut_word(rest)
+    w := cut_word(rest)
     if w.head == "":
         return error(Fail(msg: "usage: view save NAME QUERY"))
     if not is_view_name(w.head):
         return error(Fail(msg: "bad view name '{w.head}'"))
 
-    let text = w.rest.trim()
-    let checked = try parse_spec(app, text)
+    text := w.rest.trim()
+    checked := try parse_spec(app, text)
     if reaches(app, text, w.head):
         return error(Fail(msg: "view '{w.head}' would reference itself"))
 
@@ -1548,24 +1548,24 @@ fn view_save(var app: App, rest: String) Result[List[String], Fail]:
     return ok(["saved view {w.head}"])
 
 fn view_run(app: App, rest: String) Result[List[String], Fail]:
-    let w = cut_word(rest)
+    w := cut_word(rest)
     if w.head == "":
         return error(Fail(msg: "usage: view run NAME [sort FIELDS] [limit N]"))
     if not app.views.contains(w.head):
         return error(Fail(msg: "unknown view '{w.head}'"))
 
     var spec = try parse_spec(app, app.views.get(w.head).get())
-    let lim = split_limit(w.rest.trim())
+    lim := split_limit(w.rest.trim())
 
     if lim.found:
-        let v = parse_uint(lim.tail)
+        v := parse_uint(lim.tail)
         if v.is_none():
             return error(Fail(msg: "bad limit '{lim.tail}'"))
 
         spec.has_limit = true
         spec.limit = v.get()
 
-    let srt = split_sort(lim.head)
+    srt := split_sort(lim.head)
     if srt.head.trim() != "":
         return error(Fail(msg: "unexpected '{srt.head.trim()}'"))
 
@@ -1574,7 +1574,7 @@ fn view_run(app: App, rest: String) Result[List[String], Fail]:
     return ok(query_lines(app, spec))
 
 fn view_list(app: App) Result[List[String], Fail]:
-    let names = sorted_text(app.views.keys())
+    names := sorted_text(app.views.keys())
     if names.length() == 0:
         return ok(["(no views)"])
 
@@ -1584,22 +1584,22 @@ fn view_list(app: App) Result[List[String], Fail]:
     return ok(out)
 
 fn view_show(app: App, rest: String) Result[List[String], Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: view show NAME"))
 
-    let name = ws.get(0)
+    name := ws.get(0)
     if not app.views.contains(name):
         return error(Fail(msg: "unknown view '{name}'"))
 
     return ok(["{name}: {app.views.get(name).get()}"])
 
 fn view_delete(var app: App, rest: String) Result[List[String], Fail]:
-    let ws = words(rest)
+    ws := words(rest)
     if ws.length() != 1:
         return error(Fail(msg: "usage: view delete NAME"))
 
-    let name = ws.get(0)
+    name := ws.get(0)
     if not app.views.contains(name):
         return error(Fail(msg: "unknown view '{name}'"))
 
@@ -1610,7 +1610,7 @@ fn view_delete(var app: App, rest: String) Result[List[String], Fail]:
     return ok(["deleted view {name}"])
 
 fn cmd_view(var app: App, rest: String) Result[List[String], Fail]:
-    let w = cut_word(rest)
+    w := cut_word(rest)
     if w.head == "save":
         return view_save(var app, w.rest)
     if w.head == "run":
@@ -1637,8 +1637,8 @@ fn bulk_one(var app: App, verb: String, args: List[String], id: Int) Result[
     return edit_core(var app, id, args)
 
 fn cmd_bulk(var app: App, rest: String) Result[List[String], Fail]:
-    let cs = rest.chars()
-    let n = cs.length()
+    cs := rest.chars()
+    n := cs.length()
     var at = -1
     var i = 0
 
@@ -1654,14 +1654,14 @@ fn cmd_bulk(var app: App, rest: String) Result[List[String], Fail]:
     if at < 0:
         return error(Fail(msg: "usage: bulk ACTION... where QUERY"))
 
-    let action = join_range(cs, 0, at).trim()
-    let query = join_range(cs, at + 5, n).trim()
+    action := join_range(cs, 0, at).trim()
+    query := join_range(cs, at + 5, n).trim()
     if action == "":
         return error(Fail(msg: "usage: bulk ACTION... where QUERY"))
 
-    let toks = try tokenize(action)
-    let verb = toks.get(0)
-    let args = toks.drop(1)
+    toks := try tokenize(action)
+    verb := toks.get(0)
+    args := toks.drop(1)
 
     if verb == "move":
         if args.length() != 1:
@@ -1678,7 +1678,7 @@ fn cmd_bulk(var app: App, rest: String) Result[List[String], Fail]:
     else:
         return error(Fail(msg: "unknown bulk action '{verb}'"))
 
-    let filt = try parse_filter(app, query)
+    filt := try parse_filter(app, query)
     var ids: List[Int] = []
     for it in app.issues:
         if eval(app, filt.clone(), it):
@@ -1689,7 +1689,7 @@ fn cmd_bulk(var app: App, rest: String) Result[List[String], Fail]:
     var failed = 0
 
     for id in ids:
-        let r = bulk_one(var app, verb, args.clone(), id)
+        r := bulk_one(var app, verb, args.clone(), id)
 
         if r.is_error():
             out.append("#{id} error: {r.err().message()}")
@@ -1703,10 +1703,10 @@ fn cmd_bulk(var app: App, rest: String) Result[List[String], Fail]:
     return ok(out)
 
 fn cmd_log(app: App, rest: String) Result[List[String], Fail]:
-    let ws = words(rest)
-    let n = ws.length()
-    let usage_text = "usage: log [ID] [tail N]"
-    let shape_ok = (
+    ws := words(rest)
+    n := ws.length()
+    usage_text := "usage: log [ID] [tail N]"
+    shape_ok := (
         n == 0
         or (n == 2 and ws.get(0) == "tail")
         or (n == 1 and ws.get(0) != "tail")
@@ -1718,7 +1718,7 @@ fn cmd_log(app: App, rest: String) Result[List[String], Fail]:
     var wanted = 0
 
     if n == 1 or n == 3:
-        let d = try parse_id(ws.get(0))
+        d := try parse_id(ws.get(0))
         if id_value(d) >= app.next_id:
             return error(Fail(msg: "no such issue #{d}"))
 
@@ -1727,7 +1727,7 @@ fn cmd_log(app: App, rest: String) Result[List[String], Fail]:
     var limit_n = -1
 
     if n == 2 or n == 3:
-        let t = parse_uint(ws.get(n - 1))
+        t := parse_uint(ws.get(n - 1))
         if t.is_none():
             return error(Fail(msg: "bad tail '{ws.get(n - 1)}'"))
 
@@ -1777,8 +1777,8 @@ fn report_summary(app: App) List[String]:
             if it.points.is_some():
                 open_points += it.points.get()
 
-    let total = app.issues.length()
-    let final_n = total - open_n
+    total := app.issues.length()
+    final_n := total - open_n
     var out: List[String] = []
     out.append("issues: {total} (open {open_n}, final {final_n})")
     out.append("by state:")
@@ -1807,7 +1807,7 @@ fn issue_word(n: Int) String:
     return "issues"
 
 fn points_or_zero(o: Optional[Int]) Int:
-    if let p = o:
+    if p := o:
         return p
 
     return 0
@@ -1824,14 +1824,14 @@ fn report_workload(app: App) List[String]:
 
         any_open = true
 
-        let pts = points_or_zero(it.points)
+        pts := points_or_zero(it.points)
 
         if it.assignee.is_none():
             unassigned_n += 1
             unassigned_pts += pts
         else:
-            let name = it.assignee.get()
-            let key = name.lower()
+            name := it.assignee.get()
+            key := name.lower()
             var found = -1
             for gi in range(0, groups.length()):
                 if groups.get(gi).key == key:
@@ -1864,7 +1864,7 @@ fn cmp_label(a: LabelCount, b: LabelCount) Int:
     return a.name.compare(b.name)
 
 fn report_labels(app: App, text: String) Result[List[String], Fail]:
-    let filt = try parse_filter(app, text)
+    filt := try parse_filter(app, text)
     var counts = Map[String, Int]()
     for it in app.issues:
         if eval(app, filt.clone(), it):
@@ -1877,7 +1877,7 @@ fn report_labels(app: App, text: String) Result[List[String], Fail]:
     for l in counts.keys():
         rows.append(LabelCount(name: l, count: counts.get(l).get()))
 
-    let sorted_rows = rows.sorted(
+    sorted_rows := rows.sorted(
         fn(a: LabelCount, b: LabelCount) Int: return cmp_label(a, b)
     )
     var out: List[String] = []
@@ -1886,23 +1886,23 @@ fn report_labels(app: App, text: String) Result[List[String], Fail]:
     return ok(out)
 
 fn period(state: String, from: Int, to: Int) String:
-    let dur = to - from
+    dur := to - from
     return "{state}: t={from}..{to} ({dur})"
 
 fn report_timeline(app: App, rest: String) Result[List[String], Fail]:
-    let w = cut_word(rest)
+    w := cut_word(rest)
     if w.head == "":
         return error(Fail(msg: "usage: report timeline ID"))
 
-    let idx = try lookup(app, w.head)
-    let it = app.issues.get(idx)
+    idx := try lookup(app, w.head)
+    it := app.issues.get(idx)
     var out: List[String] = []
     var state = app.initial
     var from = it.created
 
     for e in app.journal:
         if e.id == it.id and e.detail.starts_with("state: "):
-            let to_state = e.detail.split(" -> ").get(1)
+            to_state := e.detail.split(" -> ").get(1)
             out.append(period(state, from, e.t))
             state = to_state
             from = e.t
@@ -1911,7 +1911,7 @@ fn report_timeline(app: App, rest: String) Result[List[String], Fail]:
     return ok(out)
 
 fn cmd_report(app: App, rest: String) Result[List[String], Fail]:
-    let w = cut_word(rest)
+    w := cut_word(rest)
     if w.head == "summary":
         return ok(report_summary(app))
     if w.head == "workload":
@@ -1959,10 +1959,10 @@ fn dispatch(var app: App, cmd: String, rest: String) Result[List[String], Fail]:
 
 fn read_all() List[String]:
     var out: List[String] = []
-    let input = stdin()
+    input := stdin()
 
     while true:
-        let line = read_line(input, none).get()
+        line := read_line(input, none).get()
         if line.is_none():
             break
 
@@ -1983,20 +1983,20 @@ export fn main() Int:
         states: [], finals: [], trans: [], issues: [], next_id: 1, journal: [],
         views: Map[String, String]()
     )
-    let lines = read_all()
+    lines := read_all()
     var i = 0
 
     while i < lines.length():
-        let line = lines.get(i).trim_end()
+        line := lines.get(i).trim_end()
         i += 1
 
-        let body = line.trim_start()
+        body := line.trim_start()
         if body == "" or body.starts_with("#"):
             continue
 
         emit("> {line}\n")
 
-        let w = cut_word(body)
+        w := cut_word(body)
 
         if w.head == "workflow":
             var block: List[String] = []

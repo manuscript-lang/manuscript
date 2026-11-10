@@ -16,16 +16,16 @@ fn count_rows(text: String) Int:
     return text.split("\n").filter(fn line: not line.is_empty()).length()
 
 fn run(paths: List[String]) Int!:
-    let reads = paths.map(fn path: read_file(path))
-    let files = try wait_all(reads)
+    reads := paths.map(fn path: read_file(path))
+    files := try wait_all(reads)
     var rows = 0
     for file in files:
-        let text = try file.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
+        text := try file.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
         rows += count_rows(text)
     return ok(rows)
 
 export fn main() Int:
-    let rows = run(["a.csv", "b.csv"])
+    rows := run(["a.csv", "b.csv"])
     if rows.is_error():
         print(rows.err().message)
         return 1

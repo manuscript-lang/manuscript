@@ -693,7 +693,7 @@ impl ListOrder[T] for List[T]:
         var high = self.length()
 
         while low < high:
-            let middle = low + (high - low) / 2
+            middle := low + (high - low) / 2
 
             if self[middle].compare(value) < 0:
                 low = middle + 1
@@ -746,7 +746,7 @@ impl ListKeyedExtremes[T] for List[T]:
         var best = key(self[0])
 
         for i in 1..self.length():
-            let k = key(self[i])
+            k := key(self[i])
 
             if k.compare(best) > 0:
                 at = i
@@ -766,7 +766,7 @@ impl ListKeyedExtremes[T] for List[T]:
         var best = key(self[0])
 
         for i in 1..self.length():
-            let k = key(self[i])
+            k := key(self[i])
 
             if k.compare(best) < 0:
                 at = i
@@ -830,10 +830,10 @@ impl ListReshape[T] for List[T]:
     Example: `var xs = [1, 2, 3, 4]` then `xs.rotate(1)` leaves `[2, 3, 4, 1]`.
     */
     var fn rotate(by: Int) Unit:
-        let size = self.length()
+        size := self.length()
         if size < 2: return
 
-        let shift = (by % size + size) % size
+        shift := (by % size + size) % size
         if shift == 0: return
 
         reverse_span(var self, 0, shift)
@@ -888,7 +888,7 @@ impl ListCopiesKeyed[T] for List[T]:
 
         // One element repeated is a native fill, as fast as `filled`; a native failure falls through to the loop below.
         if self.length() == 1:
-            if let same = msrt_list_filled(self[0].clone(), count, none): return same
+            if same := msrt_list_filled(self[0].clone(), count, none): return same
 
         var out = List[T](reserve: self.length() * count)
         for _round in 0..count:

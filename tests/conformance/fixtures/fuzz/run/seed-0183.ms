@@ -6,25 +6,25 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let b1 = ("日本語" != "")
+    b1 := ("日本語" != "")
     say("b1 = {b1}")
 
-    let b2 = (not ((false or true) and (true and false)))
+    b2 := (not ((false or true) and (true and false)))
     say("b2 = {b2}")
 
-    let i3 = 83211166825
+    i3 := 83211166825
     say("i3 = {i3}")
 
-    let i4 = i3
+    i4 := i3
     say("i4 = {i4}")
     say(
         "{((i3 - i4) * ((-12) + 265240))} {((i3 % i4) + ((-44) / i3))} {(((i3 - i4) * ((-12) + 265240)) < ((i3 % i4) + ((-44) / i3)))} sum {((i3 - i4) * ((-12) + 265240)) + ((i3 % i4) + ((-44) / i3))}"
     )
 
-    let i5 = (((-475275731858) + (-50)) % i4)
+    i5 := (((-475275731858) + (-50)) % i4)
     say("i5 = {i5}")
 
     if ("emoji 😀".contains("日本語") and b1):
@@ -32,10 +32,10 @@ export fn main() Int:
     else:
         say("ms".reverse())
 
-    let b6 = ("  padded  ".lower() != ("naïve" + "brace\{s\}".lower()))
+    b6 := ("  padded  ".lower() != ("naïve" + "brace\{s\}".lower()))
     say("b6 = {b6}")
 
-    let s7 = ("{(212323 + 39)}:" + ("" + "beta"))
+    s7 := ("{(212323 + 39)}:" + ("" + "beta"))
     say("s7 = [{s7}]")
 
     if ((-15) != i5):
@@ -43,15 +43,15 @@ export fn main() Int:
     else:
         say("hello world")
 
-    let b8 = false
+    b8 := false
     say("b8 = {b8}")
 
-    let i9 = i4
+    i9 := i4
     say("i9 = {i9}")
 
-    let i10 = i3
+    i10 := i3
     say("i10 = {i10}")
 
-    let i11 = 10
+    i11 := 10
     say("i11 = {i11}")
     return 0

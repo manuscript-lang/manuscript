@@ -20,10 +20,10 @@ impl Calc:
         var v = self.term()
 
         while self.kind() == 1 or self.kind() == 2:
-            let k = self.kind()
+            k := self.kind()
             self.pos += 1
 
-            let r = self.term()
+            r := self.term()
 
             if k == 1:
                 v = v + r
@@ -36,10 +36,10 @@ impl Calc:
         var v = self.unary()
 
         while self.kind() == 3 or self.kind() == 4:
-            let k = self.kind()
+            k := self.kind()
             self.pos += 1
 
-            let r = self.unary()
+            r := self.unary()
 
             if k == 3:
                 v = v * r
@@ -59,17 +59,17 @@ impl Calc:
         return self.primary()
 
     var fn primary() Int:
-        let k = self.kind()
+        k := self.kind()
 
         if k == 0:
-            let n = self.vals[self.pos]
+            n := self.vals[self.pos]
             self.pos += 1
             return n
 
         if k == 5:
             self.pos += 1
 
-            let v = self.expr()
+            v := self.expr()
 
             if self.kind() == 6:
                 self.pos += 1
@@ -90,7 +90,7 @@ fn tokenize(line: String) Calc?:
     var bad = false
 
     for ch in line.chars():
-        let d = ch.parse_int().get(-1)
+        d := ch.parse_int().get(-1)
 
         if d >= 0:
             cur = cur * 10 + d
@@ -138,15 +138,15 @@ export fn main() Int:
     var rows = lines(stdin())
 
     while true:
-        let item = rows.next().get()
+        item := rows.next().get()
 
-        if let line = item:
+        if line := item:
             if line.trim_chars(" \t") == "":
                 continue
 
-            if let c = tokenize(line):
+            if c := tokenize(line):
                 var calc = c
-                let v = calc.expr()
+                v := calc.expr()
 
                 if calc.bad or calc.pos < calc.kinds.length():
                     print("error: syntax")

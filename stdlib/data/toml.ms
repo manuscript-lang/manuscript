@@ -105,20 +105,20 @@ fn put_array(var reader: Reader, id: Int, key: String, first: Int) Unit:
     put(var reader, id, key, Node.TableArray(reader.arrays.length() - 1))
 
 // Byte values the parser tests.
-let TAB = 9
-let NEWLINE = 10
-let SPACE = 32
-let DOUBLE_QUOTE = 34
-let HASH = 35
-let SINGLE_QUOTE = 39
-let COMMA = 44
-let DOT = 46
-let EQUALS = 61
-let LEFT_BRACKET = 91
-let BACKSLASH = 92
-let RIGHT_BRACKET = 93
-let LEFT_BRACE = 123
-let RIGHT_BRACE = 125
+TAB := 9
+NEWLINE := 10
+SPACE := 32
+DOUBLE_QUOTE := 34
+HASH := 35
+SINGLE_QUOTE := 39
+COMMA := 44
+DOT := 46
+EQUALS := 61
+LEFT_BRACKET := 91
+BACKSLASH := 92
+RIGHT_BRACKET := 93
+LEFT_BRACE := 123
+RIGHT_BRACE := 125
 
 // The byte at `pos` as an Int, or -1 past either end of the document.
 fn byte_at(data: Bytes, pos: Int) Int:
@@ -139,7 +139,7 @@ fn ahead(reader: Reader, offset: Int) Int:
 
 // Consumes one byte and returns it, or returns -1 without moving at the end.
 fn advance(var reader: Reader) Int:
-    let b = byte_at(reader.data, reader.pos)
+    b := byte_at(reader.data, reader.pos)
     if b >= 0: reader.pos += 1
     return b
 
@@ -150,7 +150,7 @@ fn locate(data: Bytes, pos: Int) List[Int]:
     var index = 0
 
     while index < pos:
-        let b = data.get(index).to_int()
+        b := data.get(index).to_int()
 
         if b == NEWLINE:
             line += 1
@@ -170,7 +170,7 @@ fn toml_invalid(line: Int, column: Int, reason: String) Error:
     )
 
 fn invalid_at(reader: Reader, pos: Int, reason: String) Error:
-    let place = locate(reader.data, pos)
+    place := locate(reader.data, pos)
     return toml_invalid(line: place.get(0), column: place.get(1), reason: reason)
 
 fn invalid(reader: Reader, reason: String) Error:
@@ -198,7 +198,7 @@ fn space(var reader: Reader, multiline: Bool) Unit:
     reader.pos = pos
 
 fn within(value: Int, limit: Int?) Bool:
-    if let maximum = limit: return value <= maximum
+    if maximum := limit: return value <= maximum
 
     return true
 
@@ -228,7 +228,7 @@ fn quote_char(quote: Int) String:
 
 // Basic and literal strings, including multiline delimiters and escaped newline folding.
 fn string_value(var reader: Reader, key: Bool) String!:
-    let quote = advance(var reader)
+    quote := advance(var reader)
     var multiline = false
 
     if (not key and peek(reader) == quote and ahead(reader, 1) == quote):
@@ -252,7 +252,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
             b = byte_at(reader.data, end)
 
         if b == quote:
-            let text = slice_text(reader, reader.pos, end)
+            text := slice_text(reader, reader.pos, end)
             reader.pos = end + 1
             return ok(text)
 
@@ -261,7 +261,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
     var run = cursor(reader)
 
     while true:
-        let c = advance(var reader)
+        c := advance(var reader)
         if c < 0: return error(invalid(reader, "unterminated string"))
 
         if c == quote:
@@ -312,7 +312,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
             run = reader.pos
             continue
 
-        let escaped = advance(var reader)
+        escaped := advance(var reader)
 
         if escaped == 98: result.append("\u{8}")
         else if escaped == 116: result.append("\t")
@@ -325,21 +325,21 @@ fn string_value(var reader: Reader, key: Bool) String!:
             var count = 4
             if escaped == 85: count = 8
 
-            let digits_start = cursor(reader)
+            digits_start := cursor(reader)
 
             while count > 0:
-                let digit = advance(var reader)
+                digit := advance(var reader)
                 if not hex_digit(digit):
                     return error(invalid(reader, "invalid Unicode escape"))
 
                 count -= 1
 
-            let parsed = parse_int(slice_text(reader, digits_start, reader.pos), 16)
+            parsed := parse_int(slice_text(reader, digits_start, reader.pos), 16)
             if parsed.is_error(): return error(
                 invalid(reader, "invalid Unicode escape")
             )
 
-            if let text = from_scalars([parsed.get()]):
+            if text := from_scalars([parsed.get()]):
                 result.append(text)
             else:
                 return error(invalid(reader, "invalid Unicode scalar"))
@@ -371,7 +371,7 @@ fn key_path(var reader: Reader) List[String]!:
         if peek(reader) == DOUBLE_QUOTE or peek(reader) == SINGLE_QUOTE:
             key = try string_value(var reader, key: true)
         else:
-            let start = cursor(reader)
+            start := cursor(reader)
             var end = start
             while bare_key_byte(byte_at(reader.data, end)): end += 1
             if end == start: return error(invalid(reader, "expected key"))
@@ -390,16 +390,16 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
         invalid(reader, "inline table is closed")
     )
 
-    let existing = lookup(reader, parent, key).clone()
+    existing := lookup(reader, parent, key).clone()
 
     if existing.is_none():
         try allocate(var reader)
 
-        let created = new_table(var reader, explicit: false, dotted)
+        created := new_table(var reader, explicit: false, dotted)
         put(var reader, parent, key, Node.TableNode(created))
         return ok(created)
 
-    let node = existing.get()
+    node := existing.get()
 
     match node:
         TableNode(value):
@@ -423,14 +423,14 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
     Unit, Error
 ]:
-    let existing = lookup(reader, parent, key).clone()
+    existing := lookup(reader, parent, key).clone()
 
     if existing.is_none():
         try allocate(var reader)
         put_array(var reader, parent, key, next)
         return ok(unit)
 
-    let node = existing.get()
+    node := existing.get()
 
     match node:
         TableArray(slot):
@@ -463,7 +463,7 @@ fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
         invalid(reader, "duplicate or closed key")
     )
 
-    let before = reader.entries.get(parent).length()
+    before := reader.entries.get(parent).length()
     reader.entries[parent].add_default(key.clone(), value)
     if reader.entries.get(parent).length() == before: return error(
         invalid(reader, "duplicate or closed key")
@@ -475,7 +475,7 @@ fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
 fn simple_key(var reader: Reader) String?:
     space(var reader, multiline: false)
 
-    let start = cursor(reader)
+    start := cursor(reader)
     var end = start
     while bare_key_byte(byte_at(reader.data, end)): end += 1
     if end == start: return none
@@ -494,14 +494,14 @@ fn simple_key(var reader: Reader) String?:
 
 // Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
 fn key_value(var reader: Reader, table: Int, depth: Int) Unit!:
-    if let key = simple_key(var reader):
-        let value = try read_value(var reader, depth + 1)
+    if key := simple_key(var reader):
+        value := try read_value(var reader, depth + 1)
         return assign_one(reader: var reader, parent: table, key: key, value: value)
 
-    let keys = try key_path(var reader)
+    keys := try key_path(var reader)
     if advance(var reader) != EQUALS: return error(invalid(reader, "expected equals"))
 
-    let value = try read_value(var reader, depth + keys.length())
+    value := try read_value(var reader, depth + keys.length())
     return assign(reader: var reader, parent: table, keys: keys, value: value)
 
 fn seal(var reader: Reader, value: Node) Unit:
@@ -542,12 +542,12 @@ fn decimal_digits(text: String) Bool:
 fn decimal_part(text: String) Bool:
     if not decimal_digits(text): return false
 
-    let clean = text.replace("_", "")
+    clean := text.replace("_", "")
     return clean == "0" or not clean.starts_with("0")
 
 fn date_number(text: String, minimum: Int, maximum: Int) Bool:
     if not digits(text, "0123456789") or text.contains("_"): return false
-    if let value = parse_int(text, 10): return value >= minimum and value <= maximum
+    if value := parse_int(text, 10): return value >= minimum and value <= maximum
 
     return false
 
@@ -558,19 +558,19 @@ fn date_valid(text: String) Bool:
         or text.get(7, default: "") != "-"
     ): return false
 
-    let year = text.slice(0, 4).get("")
-    let month = text.slice(5, 7).get("")
-    let day = text.slice(8, 10).get("")
+    year := text.slice(0, 4).get("")
+    month := text.slice(5, 7).get("")
+    day := text.slice(8, 10).get("")
     if (not date_number(year, 0, 9999) or not date_number(month, 1, 12)): return false
 
-    let m = month.parse_int().get()
+    m := month.parse_int().get()
     var maximum = 31
     if (m == 4 or m == 6 or m == 9 or m == 11): maximum = 30
 
     if m == 2:
         maximum = 28
 
-        let y = year.parse_int().get()
+        y := year.parse_int().get()
         if y % 4 == 0 and (y % 100 != 0 or y % 400 == 0): maximum = 29
 
     return date_number(day, 1, maximum)
@@ -586,7 +586,7 @@ fn time_valid(text: String) Bool:
     if not date_number(text.slice(6, 8).get(""), 0, 60): return false
     if text.scalar_length() == 8: return true
 
-    let fraction = text.slice(9, text.scalar_length()).get("")
+    fraction := text.slice(9, text.scalar_length()).get("")
     return (
         text.get(8, default: "") == "."
         and decimal_digits(fraction)
@@ -598,7 +598,7 @@ fn datetime_valid(text: String) Bool:
     if time_valid(text): return true
     if (text.scalar_length() < 19 or not date_valid((text.slice(0, 10).get("")))): return false
 
-    let separator = text.get(10, default: "")
+    separator := text.get(10, default: "")
     if (separator != "T" and separator != "t" and separator != " "): return false
 
     var rest = text.slice(11, text.scalar_length()).get("")
@@ -609,7 +609,7 @@ fn datetime_valid(text: String) Bool:
         var index = rest.index_of("+").get(-1)
         if index < 0: index = rest.index_of("-").get(-1)
 
-        let zone = rest.slice(index + 1, rest.scalar_length()).get("")
+        zone := rest.slice(index + 1, rest.scalar_length()).get("")
         if zone.scalar_length() != 5 or zone.get(2, default: "") != ":": return false
         if not date_number(zone.slice(0, 2).get(""), 0, 23): return false
         if not date_number(zone.slice(3, 5).get(""), 0, 59): return false
@@ -651,7 +651,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
             )
         ):
             return error(invalid_at(reader, at, "invalid integer"))
-        if let value = parse_int(
+        if value := parse_int(
             (
                 clean
                 .slice(2, clean.scalar_length())
@@ -679,7 +679,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
         or clean.contains("E")
     ):
         if clean != "inf" and clean != "nan":
-            let parts = clean.lower().split("e")
+            parts := clean.lower().split("e")
             if parts.length() > 2: return error(invalid_at(reader, at, "invalid float"))
 
             if parts.length() == 2:
@@ -693,7 +693,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
                     invalid_at(reader, at, "invalid exponent")
                 )
 
-            let fraction = parts.first().get().split(".")
+            fraction := parts.first().get().split(".")
             if fraction.length() > 2 or not decimal_part(fraction.first().get()): return error(
                 invalid_at(reader, at, "invalid float")
             )
@@ -708,15 +708,15 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 
         if clean == "nan": return ok(Node.Leaf(TomlValue.FloatValue(sqrt((-1.0)))))
 
-        let number = text.replace("_", "")
-        if let value = parse_float(number): return ok(
+        number := text.replace("_", "")
+        if value := parse_float(number): return ok(
             Node.Leaf(TomlValue.FloatValue(value))
         )
 
         return error(invalid_at(reader, at, "float out of range"))
 
     if not decimal_part(clean): return error(invalid_at(reader, at, "invalid value"))
-    if let value = parse_int(text.replace("_", ""), 10): return ok(
+    if value := parse_int(text.replace("_", ""), 10): return ok(
         Node.Leaf(TomlValue.IntValue(value))
     )
 
@@ -755,7 +755,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
     try budget(reader, depth)
     space(var reader, multiline: false)
 
-    let c = peek(reader)
+    c := peek(reader)
     if c == DOUBLE_QUOTE or c == SINGLE_QUOTE: return ok(
         Node.Leaf(
             TomlValue.StringValue(try string_value(var reader, key: false))
@@ -784,7 +784,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
     if c == LEFT_BRACE:
         advance(var reader)
 
-        let result = new_table(var reader, explicit: true, dotted: false)
+        result := new_table(var reader, explicit: true, dotted: false)
         space(var reader, multiline: false)
 
         if peek(reader) != RIGHT_BRACE:
@@ -798,11 +798,11 @@ fn read_value(var reader: Reader, depth: Int) Node!:
 
         advance(var reader)
 
-        let node = Node.TableNode(result)
+        node := Node.TableNode(result)
         seal(var reader, node.clone())
         return ok(node)
 
-    let start = cursor(reader)
+    start := cursor(reader)
     var end = start
     while not token_end(byte_at(reader.data, end)): end += 1
 
@@ -810,7 +810,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
     var sign = 0
     if c == 45 or c == 43: sign = 1
 
-    let width = end - start - sign
+    width := end - start - sign
 
     if (
         width >= 1
@@ -821,7 +821,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
         var index = start + sign
 
         while index < end:
-            let digit = reader.data.get(index).to_int() - 48
+            digit := reader.data.get(index).to_int() - 48
 
             if digit < 0 or digit > 9:
                 number = -1
@@ -910,7 +910,7 @@ fn control_pattern() Regex:
 // Parses a TOML document into a table value and reports source line and column on invalid input.
 export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
     for limit in [options.max_bytes, options.max_depth, options.max_values]:
-        if let value = limit:
+        if value := limit:
             if value < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
     if not within(text.byte_length(), options.max_bytes): return error(
         Error("TOML limit exceeded", kind: "EOVERFLOW")
@@ -926,8 +926,8 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
         entries: [], arrays: []
     )
 
-    if let span = control_pattern().find_span(normalized):
-        let place = locate(reader.data, span.get(0))
+    if span := control_pattern().find_span(normalized):
+        place := locate(reader.data, span.get(0))
         var reason = "invalid control character"
         if reader.data.get(span.get(0)) == 13: reason = "bare carriage return"
         return error(
@@ -938,7 +938,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 
     try allocate(var reader)
 
-    let root = new_table(var reader, explicit: true, dotted: false)
+    root := new_table(var reader, explicit: true, dotted: false)
     var current = root
     var current_depth = 1
 
@@ -955,7 +955,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
                 advance(var reader)
                 array = true
 
-            let keys = try key_path(var reader)
+            keys := try key_path(var reader)
             if (
                 advance(var reader) != RIGHT_BRACKET
                 or (array and advance(var reader) != RIGHT_BRACKET)
@@ -971,7 +971,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
                 )
                 index += 1
 
-            let key = keys.last().get()
+            key := keys.last().get()
             if flags(reader, parent).sealed: return error(
                 invalid(reader, "inline table is closed")
             )
@@ -979,7 +979,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
             if array:
                 try allocate(var reader)
 
-                let next = new_table(var reader, explicit: true, dotted: false)
+                next := new_table(var reader, explicit: true, dotted: false)
                 try append_table(
                     reader: var reader, parent: parent, key: key.clone(), next: next
                 )
@@ -1040,7 +1040,7 @@ fn format_float(value: Float) String:
 
         return "inf"
 
-    let text = value.to_string()
+    text := value.to_string()
     if (text.contains(".") or text.contains("e") or text.contains("E")): return text
 
     return text.concat(".0")
@@ -1155,10 +1155,10 @@ fn datetimes_valid(value: TomlValue) Bool:
 
 // Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
 export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
-    if let limit = max_bytes:
+    if limit := max_bytes:
         if limit < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
 
-    let root = match value:
+    root := match value:
         TableValue(values): values.clone()
         _: return error(Error("invalid TOML input", kind: "EINVAL"))
 
@@ -1169,8 +1169,8 @@ export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
     var writer = Writer(StringBuilder(), started: false)
     emit_table(var writer, [], root)
 
-    let {out} = writer
-    let text = out.build()
+    {out} := writer
+    text := out.build()
     if not within(text.byte_length(), max_bytes): return error(
         Error("TOML limit exceeded", kind: "EOVERFLOW")
     )

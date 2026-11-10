@@ -10,10 +10,10 @@ Use `Int` for counts and indexes, `Float` for approximate measurements, and `Dec
 ```manuscript
 import Decimal from "@std/math/decimal.ms"
 
-let count = 3
-let ratio = 0.5
-let price = 12.50d
-let active = true
+count := 3
+ratio := 0.5
+price := 12.50d
+active := true
 ```
 
 Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary; `_` separates digits (`1_000_000`, `0xFF_FF`, `0b1010_0101`, `3.141_592`). A hex or binary literal is a value, not a bit pattern, so `0xFFFF_FFFF_FFFF_FFFF` is out of range. Integer literals are `Int`; a fraction or exponent selects `Float`; the `d` suffix selects `Decimal` (`1d` included). See the [grammar](grammar.md#source-characters-and-tokens) for literal forms.
@@ -36,18 +36,18 @@ Decimal literals need `import Decimal from "@std/math/decimal.ms"`. Integer lite
 - Conversions between existing values use the [methods below](#numeric-conversion). A literal can take a sized type from context, as described below.
 - Integer literals are checked against the signed 64-bit range. `9223372036854775808` is accepted only when directly negated (parentheses do not help).
 - A Float literal rounds to binary64; one that rounds to infinity is rejected.
-- A literal takes a sized type from an expected type or from the other operand of an operator: `let x: Int8 = 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`let x: Int8 = 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). Arithmetic made only of literals takes the type as a whole (`let x: Float32 = 0.1 + 0.2`, `let y: Int8 = 100 + 27`), and each step must fit. A literal never changes kind: `let x: Float32 = 1` is rejected. A `Float32` literal is rounded once, directly from its decimal text to binary32 (not through `Float`), so `let x: Float32 = 340282356779733661637539395458142568447.0` is the largest finite `Float32` while the overflow midpoint `...448.0` is rejected.
+- A literal takes a sized type from an expected type or from the other operand of an operator: `x: Int8 = 100` and `x / 2` both type the literal as `Int8`. It must fit that type (`x: Int8 = 128` is rejected), and a negated literal is checked after negation (`-128` fits `Int8`). Arithmetic made only of literals takes the type as a whole (`x: Float32 = 0.1 + 0.2`, `y: Int8 = 100 + 27`), and each step must fit. A literal never changes kind: `x: Float32 = 1` is rejected. A `Float32` literal is rounded once, directly from its decimal text to binary32 (not through `Float`), so `x: Float32 = 340282356779733661637539395458142568447.0` is the largest finite `Float32` while the overflow midpoint `...448.0` is rejected.
 - The default types remain `Int`/`Int64` and `Float`/`Float64`; choose a sized type explicitly when storage or precision matters.
 
 ```manuscript
 fn literals() Unit:
-    let smallest: Int = -9223372036854775808
-    let exponent: Float = 1e3
-    let mask: Int = 0xFF_00
-    let flags: Int = 0b1010_0101
-    let precise: Decimal = 1e3d
+    smallest: Int = -9223372036854775808
+    exponent: Float = 1e3
+    mask: Int = 0xFF_00
+    flags: Int = 0b1010_0101
+    precise: Decimal = 1e3d
     // Rejected: an Int token does not become Float from context.
-    let mismatch: Float = 1
+    mismatch: Float = 1
 ```
 
 ## Sized numbers
@@ -56,13 +56,13 @@ fn literals() Unit:
 
 ```manuscript
 fn sized() Unit:
-    let a: Int8 = 100
-    let wide: Int32 = 2000000000
-    let ratio: Float32 = 0.1
+    a: Int8 = 100
+    wide: Int32 = 2000000000
+    ratio: Float32 = 0.1
     // Faults: 200 does not fit Int8.
-    let b = a + a
+    b := a + a
     // Rejected: operand types differ.
-    let c = a + wide
+    c := a + wide
 ```
 
 `Float32` operations round once to binary32, so `0.1 + 0.2` is `0.3` for `Float32` and `0.30000000000000004` for `Float`. Typed JSON supports sized integers and `Float32`, preserving their range checks. List indexes and literal `match` subjects still use `Int`; convert a sized integer at those boundaries. See [numeric conversion](#numeric-conversion), [list indexing](../types/collections.md), [matching literals](../control-flow/pattern-matching.md#matching-literals), and the [JSON API](../../standard-library/reference/data/json.ms.md).
@@ -79,7 +79,7 @@ fn sized() Unit:
 
 `to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000); conversions to a float round to the nearest value, ties to even. Int→Decimal is exact. Int→Float rounds once to nearest binary64, ties to even. A conversion to a float returns `none` only when a finite value is beyond the target range (`1e300.to_float32()`, a huge `Decimal` or `BigInt` `to_float()`); rounding itself is silent. `truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
 
-Unsigned types follow the same rules with a lower bound of zero: `let b: UInt8 = 200`, `let x: UInt8 = -1` and `256` are rejected, `a - b` faults when `b > a`, and unary `-` is a compile error. `to_uintN()` exists where it is used: `Int` has all of them, `UInt64` has `to_uint8` and `to_uint32`, and `UInt16` has `to_uint8`; each returns `Optional` unless every source value fits (`Int.to_uint8()` is `none` for -1 or 256, `UInt32.to_int32()` is `none` above 2147483647). Other pairs, such as `UInt8.to_int16()`, are not declared: go through `to_int()` (`UInt8.to_int().to_int16()`). `UInt8.to_int()` widens directly; `UInt64.to_int()` is `none` above 9223372036854775807. `UInt64` literals and results above that bound print, compare, sort and divide as unsigned values. Floats reach an unsigned type through `truncate_to_int().get(0).to_uint8()`-style chains, as there is no `truncate_to_uintN()`.
+Unsigned types follow the same rules with a lower bound of zero: `b: UInt8 = 200`, `x: UInt8 = -1` and `256` are rejected, `a - b` faults when `b > a`, and unary `-` is a compile error. `to_uintN()` exists where it is used: `Int` has all of them, `UInt64` has `to_uint8` and `to_uint32`, and `UInt16` has `to_uint8`; each returns `Optional` unless every source value fits (`Int.to_uint8()` is `none` for -1 or 256, `UInt32.to_int32()` is `none` above 2147483647). Other pairs, such as `UInt8.to_int16()`, are not declared: go through `to_int()` (`UInt8.to_int().to_int16()`). `UInt8.to_int()` widens directly; `UInt64.to_int()` is `none` above 9223372036854775807. `UInt64` literals and results above that bound print, compare, sort and divide as unsigned values. Floats reach an unsigned type through `truncate_to_int().get(0).to_uint8()`-style chains, as there is no `truncate_to_uintN()`.
 
 `abs()` and `sign()` are methods on every signed integer and float type (unsigned values are never negative, so they have neither), so no cast is needed: `abs()` returns the receiver's own type (`Int8` `-128` has no absolute value and faults like any overflow), integer `sign()` returns `Int` (-1, 0 or 1), and float `sign()` returns the receiver's type with zeros and NaN unchanged. `@std/math/math.ms` has no `abs`, `sign` or `to_float32` functions; the methods are the one spelling. Every integer width, Float, Float32 and String also have `a.min(b)`, `a.max(b)` and `a.clamp(low, high)` methods that need no import and return the receiver's own type; the lesser or greater of equal values is the receiver, Float orders NaN above every other value, and `clamp` with `low` greater than `high` is a programming fault. `math.min`, `math.max`, `List.min` and `List.max` accept any `Comparable` type, including Decimal, BigInt and the time types.
 
@@ -115,9 +115,9 @@ A Decimal literal must be exactly representable: `1.00d` is fine, but 35 signifi
 Every literal needs the `d` suffix to stay `Decimal`:
 
 ```manuscript
-let price = 100d
-let percent = 15d
-let discounted = price * (1d - percent / 100d)
+price := 100d
+percent := 15d
+discounted := price * (1d - percent / 100d)
 ```
 
 Validate expected bad input with [expected failures](../errors/results.md); see [programming faults](../errors/faults.md) for invariants.
@@ -129,7 +129,7 @@ Validate expected bad input with [expected failures](../errors/results.md); see 
 ```manuscript
 import from_int from "@std/math/math.ms"
 
-let big = from_int(2) * from_int(3) + from_int(1)
+big := from_int(2) * from_int(3) + from_int(1)
 ```
 
 #### Scale rounding and fixed places
@@ -157,11 +157,11 @@ import Decimal from "@std/math/decimal.ms"
 import expect_equal from "@std/test/test.ms"
 
 fn amount_text() String!:
-    let subtotal = 19.99d * 3d
-    let tax = try (subtotal * 0.0825d).round(places: 2)
-    let tax_text = try tax.to_fixed(digits: 2)
-    let total_text = try (subtotal + tax).to_fixed(digits: 2)
-    let padded = try 25.50d.to_fixed(digits: 2)
+    subtotal := 19.99d * 3d
+    tax := try (subtotal * 0.0825d).round(places: 2)
+    tax_text := try tax.to_fixed(digits: 2)
+    total_text := try (subtotal + tax).to_fixed(digits: 2)
+    padded := try 25.50d.to_fixed(digits: 2)
     return ok("tax {tax_text} total {total_text} padded {padded}")
 
 test "decimal amounts":

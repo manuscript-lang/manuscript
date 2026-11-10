@@ -4,7 +4,7 @@ import seeded from "../../lib/pyrandom.ms"
 import Random from "../../lib/pyrandom.ms"
 import full_match from "../../lib/text.ms"
 
-let NUM2 = "[0-9]\{1,2\}"
+NUM2 := "[0-9]\{1,2\}"
 
 type Range:
     name: String
@@ -19,24 +19,24 @@ fn ranges() List[Range]:
 
 // Days since 1970-01-01 of a proleptic Gregorian date.
 fn days_from_civil(year: Int, month: Int, day: Int) Int:
-    let y = if month <= 2: year - 1 else: year
-    let era = (if y >= 0: y else: y - 399) / 400
-    let yoe = y - era * 400
-    let doy = (153 * (if month > 2: month - 3 else: month + 9) + 2) / 5 + day - 1
-    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
+    y := if month <= 2: year - 1 else: year
+    era := (if y >= 0: y else: y - 399) / 400
+    yoe := y - era * 400
+    doy := (153 * (if month > 2: month - 3 else: month + 9) + 2) / 5 + day - 1
+    doe := yoe * 365 + yoe / 4 - yoe / 100 + doy
     return era * 146097 + doe - 719468
 
 // The year, month and day of a count of days since 1970-01-01.
 fn civil_from_days(days: Int) List[Int]:
-    let z = days + 719468
-    let era = (if z >= 0: z else: z - 146096) / 146097
-    let doe = z - era * 146097
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
-    let mp = (5 * doy + 2) / 153
-    let day = doy - (153 * mp + 2) / 5 + 1
-    let month = if mp < 10: mp + 3 else: mp - 9
-    let year = yoe + era * 400 + (if month <= 2: 1 else: 0)
+    z := days + 719468
+    era := (if z >= 0: z else: z - 146096) / 146097
+    doe := z - era * 146097
+    yoe := (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    doy := doe - (365 * yoe + yoe / 4 - yoe / 100)
+    mp := (5 * doy + 2) / 153
+    day := doy - (153 * mp + 2) / 5 + 1
+    month := if mp < 10: mp + 3 else: mp - 9
+    year := yoe + era * 400 + (if month <= 2: 1 else: 0)
     return [year, month, day]
 
 fn days_in_month(year: Int, month: Int) Int:
@@ -48,9 +48,9 @@ fn pad(n: Int, width: Int) String: "{n}".pad_start(width, "0")
 
 // `YYYY-MM-DD HH:MM` for a count of minutes since the epoch, with `sep` between date and time.
 fn stamp(minutes: Int, sep: String) String:
-    let days = minutes / 1440
-    let c = civil_from_days(days)
-    let rest = minutes - days * 1440
+    days := minutes / 1440
+    c := civil_from_days(days)
+    rest := minutes - days * 1440
     return "{pad(c[0], 4)}-{pad(c[1], 2)}-{pad(c[2], 2)}{sep}{pad(rest / 60, 2)}:{pad(rest % 60, 2)}"
 
 // The values a field selects, or none when it is malformed or out of range.
@@ -61,7 +61,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
         var step = 1
         var body = item.clone()
         var stepped = false
-        let slash = item.last_index_of("/")
+        slash := item.last_index_of("/")
 
         if (
             slash.is_some()
@@ -91,7 +91,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
         else:
             if not full_match("[0-9]\{1,2\}-[0-9]\{1,2\}", body): return none
 
-            let ends = body.split("-")
+            ends := body.split("-")
             a = ends[0].parse_int().get(0)
             b = ends[1].parse_int().get(0)
             if a > b: return none
@@ -104,7 +104,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
             vals.add(v)
             v += step
 
-    let out: List[Int] = vals.values()
+    out: List[Int] = vals.values()
     return out
 
 fn solve(s: String) String:
@@ -114,11 +114,11 @@ fn solve(s: String) String:
     var out = List[String]()
 
     for n in 1..lines.length() + 1:
-        let l = lines[n - 1].clone()
+        l := lines[n - 1].clone()
         if l.replace(" ", "") == "": continue
 
-        let t = l.split(" ")
-        let pre = "line {n}:"
+        t := l.split(" ")
+        pre := "line {n}:"
 
         if t.length() != 7:
             out.append("{pre} error: bad line")
@@ -127,12 +127,12 @@ fn solve(s: String) String:
         var start = -1
 
         if full_match("[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}T[0-9]\{2\}:[0-9]\{2\}", t[0]):
-            let y = t[0].slice(0, 4).get("").parse_int().get(0)
-            let mo = t[0].slice(5, 7).get("").parse_int().get(0)
-            let d = t[0].slice(8, 10).get("").parse_int().get(0)
-            let h = t[0].slice(11, 13).get("").parse_int().get(0)
-            let mi = t[0].slice(14, 16).get("").parse_int().get(0)
-            let valid = (
+            y := t[0].slice(0, 4).get("").parse_int().get(0)
+            mo := t[0].slice(5, 7).get("").parse_int().get(0)
+            d := t[0].slice(8, 10).get("").parse_int().get(0)
+            h := t[0].slice(11, 13).get("").parse_int().get(0)
+            mi := t[0].slice(14, 16).get("").parse_int().get(0)
+            valid := (
                 mo >= 1
                 and mo <= 12
                 and d >= 1
@@ -158,13 +158,13 @@ fn solve(s: String) String:
             out.append("{pre} error: bad count")
             continue
 
-        let count = t[1].parse_int().get(0)
+        count := t[1].parse_int().get(0)
         var sets = List[List[Int]]()
         var bad = ""
         var k = 0
 
         for r in ranges():
-            if let v = parse_field(t[2 + k], r.low, r.high):
+            if v := parse_field(t[2 + k], r.low, r.high):
                 sets.append(v)
             else:
                 bad = r.name.clone()
@@ -176,15 +176,15 @@ fn solve(s: String) String:
             out.append("{pre} error: bad {bad}")
             continue
 
-        let minutes = sets[0].sorted()
-        let hours = sets[1].sorted()
+        minutes := sets[0].sorted()
+        hours := sets[1].sorted()
         var runs = List[Int]()
-        let day0 = start / 1440
+        day0 := start / 1440
 
         for dk in 0..3001:
-            let day = day0 + dk
-            let c = civil_from_days(day)
-            let weekday = ((day + 4) % 7 + 7) % 7
+            day := day0 + dk
+            c := civil_from_days(day)
+            weekday := ((day + 4) % 7 + 7) % 7
             if (
                 not sets[3].contains(c[1])
                 or not sets[2].contains(c[2])
@@ -193,7 +193,7 @@ fn solve(s: String) String:
 
             for h in hours:
                 for mn in minutes:
-                    let t2 = day * 1440 + h * 60 + mn
+                    t2 := day * 1440 + h * 60 + mn
 
                     if t2 > start:
                         runs.append(t2)
@@ -215,16 +215,16 @@ fn solve(s: String) String:
 fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
 fn rand_field(var rnd: Random, lo: Int, hi: Int) String:
-    let a = "*/{rnd.randint(1, 7)}"
-    let b = "{rnd.randint(lo, hi)}"
-    let c = "{lo}-{rnd.randint(lo, hi)}".replace("{lo}-{lo}", "{lo}")
-    let d1 = rnd.randint(lo, hi)
-    let d2 = rnd.randint(lo, hi)
+    a := "*/{rnd.randint(1, 7)}"
+    b := "{rnd.randint(lo, hi)}"
+    c := "{lo}-{rnd.randint(lo, hi)}".replace("{lo}-{lo}", "{lo}")
+    d1 := rnd.randint(lo, hi)
+    d2 := rnd.randint(lo, hi)
     return rnd.choice(["*", a, b, c, "{d1},{d2}"])
 
 fn rand_line(var rnd: Random) String:
     var fields = List[String]()
-    let rs = ranges()
+    rs := ranges()
     fields.append(rand_field(var rnd, 0, 59))
     fields.append(rand_field(var rnd, 0, 23))
     fields.append(rand_field(var rnd, 1, 31))
@@ -238,12 +238,12 @@ fn rand_line(var rnd: Random) String:
         ].clone() else: "*"
     )
 
-    let when = stamp(rnd.randint(0, 60 * 24 * 365 * 129), "T")
+    when := stamp(rnd.randint(0, 60 * 24 * 365 * 129), "T")
     return "{when} {rnd.randint(1, 20)} {checked.join(" ")}"
 
 export fn gen_c18() Unit:
     var rnd = seeded(18)
-    let examples = [
+    examples := [
         mk(
             "basic",
             "2024-02-28T23:59 3 0 0 * * *\n2024-01-31T12:00 2 30 8 29 2 *\n2024-03-01T00:00 2 0 12 * * 1-5/2\n"
@@ -253,7 +253,7 @@ export fn gen_c18() Unit:
     var random_lines = List[String]()
     for _i in 0..40: random_lines.append(rand_line(var rnd))
 
-    let hidden = examples.concat(
+    hidden := examples.concat(
         [
             mk(
                 "start-excluded",

@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = (
+    f1 := (
         ((120.485 * 458.25) - (0.0 + 444.619))
         - ((948.25 / 280.758) * (3.0e8 / 956.292))
     )
     say("f1 = {f1}")
 
-    let f2 = ((f1 * (59.465 * 67.808)) - f1)
+    f2 := ((f1 * (59.465 * 67.808)) - f1)
     say("f2 = {f2}")
 
-    let s3 = ""
+    s3 := ""
     say("s3 = [{s3}]")
     if 1:
         say("truthy")

@@ -38,15 +38,15 @@ type Case:
     stdin: String
 
 fn largest_input(path: String) String!:
-    let cases = parse[List[Case]](read_text(path))
+    cases := parse[List[Case]](read_text(path))
     if cases.is_error(): return invalid("cannot read {path}")
 
     var best = ""
     for c in cases.get([]):
         if c.stdin.length() > best.length(): best = c.stdin.clone()
 
-    let size = if not best.is_empty(): best.length() else: 1
-    let copies = if 3000000 / size > 1: 3000000 / size else: 1
+    size := if not best.is_empty(): best.length() else: 1
+    copies := if 3000000 / size > 1: 3000000 / size else: 1
     return ok(best.repeat(copies).get(""))
 
 fn evidence(dir: String, name: String, n: Int, input: String, measured: Measured) Unit:
@@ -74,7 +74,7 @@ fn evidence(dir: String, name: String, n: Int, input: String, measured: Measured
 
 fn run(work: String, n: Int) Result[String, Error]:
     var rows = [header()]
-    let root = "bench/agent/challenges"
+    root := "bench/agent/challenges"
 
     for entry in try list(root):
         if (
@@ -82,9 +82,9 @@ fn run(work: String, n: Int) Result[String, Error]:
             or not "01234".contains(entry.name.slice(1, 2).get("9"))
         ): continue
 
-        let name = entry.name.clone()
-        let dir = "{work}/{name}"
-        let source = "{root}/{name}"
+        name := entry.name.clone()
+        dir := "{work}/{name}"
+        source := "{root}/{name}"
         for sub in ["ms/src", "go", "rs"]:
             try create_directory("{dir}/{sub}", recursive: true)
         try copy("bench/agent/templates/ms/ms.toml", "{dir}/ms/ms.toml")
@@ -92,30 +92,30 @@ fn run(work: String, n: Int) Result[String, Error]:
         try copy("{source}/solutions/go/main.go.ref", "{dir}/go/main.go")
         try copy("{source}/solutions/rust/main.rs.ref", "{dir}/rs/main.rs")
 
-        let _mod = try must(
+        _mod := try must(
             "go mod init", run_in("{dir}/go", env("GO", "go"), ["mod", "init", "x"])
         )
-        let _go = try must(
+        _go := try must(
             "go build",
             run_in(
                 "{dir}/go", env("GO", "go"),
                 ["build", "-buildvcs=false", "-o", "app", "."]
             )
         )
-        let _rs = try must(
+        _rs := try must(
             "rustc",
             capture(
                 env("RUSTC", "rustc"), ["-O", "-o", "{dir}/rs/app", "{dir}/rs/main.rs"]
             )
         )
-        let _ms = try must(
+        _ms := try must(
             "ms build",
             run_in(
                 "{dir}/ms", ms_binary(), ["build", "ms.toml", "-o", "app"]
             )
         )
-        let input = try largest_input("{source}/hidden/cases.json")
-        let measured = try measure(n, name, fn v: sample("{dir}/{v}/app", [], input))
+        input := try largest_input("{source}/hidden/cases.json")
+        measured := try measure(n, name, fn v: sample("{dir}/{v}/app", [], input))
         evidence(dir, name.clone(), n, input, measured)
         rows.append(row(name, measured.samples))
 
@@ -125,19 +125,19 @@ fn run(work: String, n: Int) Result[String, Error]:
 
 export fn main() Int:
     var n = 3
-    let args = arguments()
+    args := arguments()
 
     if not args.is_empty():
-        if let parsed = repeats(args[0]):
+        if parsed := repeats(args[0]):
             n = parsed
         else:
             return usage("repeats must be a positive integer")
 
-    let keep = env("BENCH_OUTPUT", "")
+    keep := env("BENCH_OUTPUT", "")
 
     if keep != "":
         ensure_directory(keep)
         return finish(run(absolute(keep), n))
 
-    let tmp = temporary("workloads-").get()
+    tmp := temporary("workloads-").get()
     return finish(run(tmp.path(), n))

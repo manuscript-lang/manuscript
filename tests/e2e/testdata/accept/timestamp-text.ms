@@ -4,7 +4,7 @@ import expect_equal from "@std/test/test.ms"
 test "timestamp text pads and trims fractions across UTC boundaries":
     for nanos in [0, 1, 9, 10, 99, 100, 99999999, 100000000, 250000000, 999999999]:
         for seconds in [-62135596800, -1, 0, 1710073815, 253402300799]:
-            let value = timestamp(seconds, nanos).get()
+            value := timestamp(seconds, nanos).get()
             try expect_equal(parse_timestamp(value.to_string()).get(), value)
 
     try expect_equal(

@@ -19,7 +19,7 @@ export fn label_direct(var values: Map[Key, Int], key: Key) Unit:
     values.remove(key)
 
 export fn label_bound(var values: Map[Key, Int], key: Key) Unit:
-    let remove = values.remove
+    remove := values.remove
     remove(key)
 
 export fn label_generic(var values: Map[Key, Int], key: Key) Unit:

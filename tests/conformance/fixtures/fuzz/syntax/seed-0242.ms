@@ -6,12 +6,12 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (1 + (-21))
+    i1 := (1 + (-21))
     say("i1 = {i1}")
 
-    let i3 = ((-695340970079) * (i1 + (22 + i1)))
+    i3 := ((-695340970079) * (i1 + (22 + i1)))
     say("i3 = {i3}")
     return 0

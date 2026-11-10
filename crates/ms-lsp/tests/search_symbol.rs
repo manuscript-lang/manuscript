@@ -16,13 +16,13 @@ fn fuzzy_search_keeps_private_function_uses_and_distinct_declarations() {
     for file in ["a.ms", "b.ms"] {
         std::fs::write(
             root.join(file),
-            "fn read_file() Int:\r\n    return 1\r\n\r\nfn main() Int:\r\n    let reader = read_file\r\n    return reader()\r\n",
+            "fn read_file() Int:\r\n    return 1\r\n\r\nfn main() Int:\r\n    reader := read_file\r\n    return reader()\r\n",
         )
         .unwrap();
     }
     std::fs::write(
         root.join("unrelated.ms"),
-        "// read_file\nlet note = \"read_file\"\nfn main() Int:\n    return 0\n",
+        "// read_file\nnote := \"read_file\"\nfn main() Int:\n    return 0\n",
     )
     .unwrap();
     for query in ["read file", "readFile", "raed_file", "rdf"] {

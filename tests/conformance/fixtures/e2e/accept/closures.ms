@@ -16,7 +16,7 @@ test "closures borrow variables and returned closures copy":
     var offset = 1
     offset = 10
 
-    let action = fn(value: Int):
+    action := fn(value: Int):
         return value + offset
 
     if true:
@@ -30,10 +30,10 @@ test "closures borrow variables and returned closures copy":
 
     // A returned closure owns its captures, so it takes a `let` copy and
     // does not see later changes to the variable.
-    let base = offset
-    let factory = fn() fn(Int) Int:
+    base := offset
+    factory := fn() fn(Int) Int:
         return fn inner:
             return inner + base
-    let nested = factory()
+    nested := factory()
     offset = 100
     try expect_equal(nested(1), 11)

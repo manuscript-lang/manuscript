@@ -6,19 +6,19 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = ((44 % ((-27) - (-39))) - ((-16) * (49 + 18)))
+    i1 := ((44 % ((-27) - (-39))) - ((-16) * (49 + 18)))
     say("i1 = {i1}")
 
-    let l2 = [1, 2, 3].take(0)
+    l2 := [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
 
-    let f3 = (((266.583 / 0.0) + (185.25 * 5.0e19)) + ((328.101 - 369.811) + 202.25))
+    f3 := (((266.583 / 0.0) + (185.25 * 5.0e19)) + ((328.101 - 369.811) + 202.25))
     say("f3 = {f3}")
 
-    let s4 = "delta"
+    s4 := "delta"
     say("s4 = [{s4}]")
 
     if ((s4 == "héllo") and (false and true)):
@@ -26,10 +26,10 @@ export fn main() Int:
     else:
         say((s4 + s4))
 
-    let i5 = (i1 * i1)
+    i5 := (i1 * i1)
     say("i5 = {i5}")
 
-    let l6 = l2.filter(fn x: x > 2)
+    l6 := l2.filter(fn x: x > 2)
     say("l6 = {l6} len {l6.length()}")
 
     var acc7 = 0
@@ -42,10 +42,10 @@ export fn main() Int:
 
     say("acc7 = {acc7}")
 
-    let b8 = (((f3 == f3) and (false and true)) or (not (f3 != f3)))
+    b8 := (((f3 == f3) and (false and true)) or (not (f3 != f3)))
     say("b8 = {b8}")
 
-    let l9 = [20]
+    l9 := [20]
     say("l9 = {l9} len {l9.length()}")
 
     var acc10 = 0
@@ -57,12 +57,12 @@ export fn main() Int:
 
     say("acc10 = {acc10}")
 
-    let s11 = "beta"
+    s11 := "beta"
     say("s11 = [{s11}]")
 
-    let b12 = s4.is_empty()
+    b12 := s4.is_empty()
     say("b12 = {b12}")
 
-    let b13 = ((s4.length() + (i5 - (-36))) >= (s11.length() * s4.length()))
+    b13 := ((s4.length() + (i5 - (-36))) >= (s11.length() * s4.length()))
     say("b13 = {b13}")
     return 0

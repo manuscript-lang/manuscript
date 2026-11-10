@@ -20,13 +20,13 @@ type Room:
     second: Door
 
 fn faulting() Unit:
-    let r = Room(Door("one"), Door("two"))
+    r := Room(Door("one"), Door("two"))
     var xs: List[Door] = []
     xs.append(r.first)
     panic("fault after the move")
 
 export fn main() Int:
-    let work = promise(fn: ok(faulting()))
-    let waited = work.wait()
+    work := promise(fn: ok(faulting()))
+    waited := work.wait()
     stdout().write("waited: {waited.is_error()}\n").get()
     return 0

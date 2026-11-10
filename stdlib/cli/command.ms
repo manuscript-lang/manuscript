@@ -20,7 +20,7 @@ fn greet(options: Greeting) Int!:
     return ok(0)
 
 export fn main() Int:
-    let greeting = command[Greeting](
+    greeting := command[Greeting](
         name: "greet",
         about: "Print a greeting",
         flags: [Flag("shout", FlagKind.Bool, "s", help: "Uppercase the greeting")],
@@ -136,19 +136,19 @@ impl Matches:
 
     // Returns the text, or none for an optional argument or flag that was not supplied.
     fn string_or_none(name: String) String?:
-        if let items = self.values.get(name):
+        if items := self.values.get(name):
             if not items.is_empty(): return items[0].clone()
         return none
 
     // Returns an Int value, or none when absent.
     fn int_or_none(name: String) Int?:
-        if let text = self.string_or_none(name): return text.parse_int()
+        if text := self.string_or_none(name): return text.parse_int()
 
         return none
 
     // Returns a Float value, or none when absent.
     fn float_or_none(name: String) Float?:
-        if let text = self.string_or_none(name): return text.parse_float()
+        if text := self.string_or_none(name): return text.parse_float()
 
         return none
 
@@ -194,7 +194,7 @@ impl Command:
     // Parses `argv`, writes help to stdout or the error plus a usage hint to stderr, and runs the handler.
     // Returns the handler's status, 0 after help, 1 when the handler fails and 2 for a usage error.
     fn execute(argv: List[String]) Int:
-        let parsed = self.parse(argv)
+        parsed := self.parse(argv)
 
         if parsed.is_error():
             stderr().write(
@@ -207,7 +207,7 @@ impl Command:
                 stdout().write(text).get()
                 return 0
             Run(matches):
-                let result = self.run(matches)
+                result := self.run(matches)
 
                 if result.is_error():
                     stderr().write(result.err().message + "\n").get()
@@ -218,13 +218,13 @@ impl Command:
     // Runs the handler of the command `matches.path` names, as `parse` resolved it, and returns its exit status.
     // The path starts at this node's name; an unknown path is an `EINVAL` error.
     fn run(matches: Matches) Int!:
-        if let node = node_at(self, matches.path, 1): return node.exec(matches)
+        if node := node_at(self, matches.path, 1): return node.exec(matches)
 
         return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
 
     // Returns the help text for the command reached by following `path` from this node, or none for an unknown path.
     fn help(path: List[String] = []) String?:
-        let rendered = help_at(self, path, 0, [self.name.clone()], [])
+        rendered := help_at(self, path, 0, [self.name.clone()], [])
         if rendered.is_error(): return none
 
         return rendered.get()
@@ -238,7 +238,7 @@ impl Command:
 // The command reached by following `path` from `from` on, or none for an unknown word.
 fn node_at(node: Command, path: List[String], from: Int) Command?:
     if from >= path.length(): return node
-    if let next = node.child(path[from]): return node_at(next, path, from + 1)
+    if next := node.child(path[from]): return node_at(next, path, from + 1)
 
     return none
 
@@ -252,7 +252,7 @@ fn help_at(
     inherited: List[Flag]
 ) String!:
     if from >= words.length(): return ok(render_help(node, names, inherited))
-    if let next = node.child(words[from]):
+    if next := node.child(words[from]):
         return help_at(
             next, words, from + 1, names.concat([words[from].clone()]),
             inherited.concat(persistent_flags(node.flags))
@@ -296,7 +296,7 @@ fn decode[T: Data](matches: Matches) T!:
     var members = matches.fields.entries().map(
         fn entry: (stringify(entry.key.clone()).get() + ":" + entry.value)
     )
-    let parsed = parse[T]("\{" + members.join(",") + "\}")
+    parsed := parse[T]("\{" + members.join(",") + "\}")
     return parsed.map_error(
         fn cause: cli_invalid_schema(
             "options record does not match the declared flags and arguments: {cause.message}"
@@ -320,7 +320,7 @@ fn collect_fields(
     var fields = Map[String, String]()
 
     for flag in flags:
-        let items = values.get_or(flag.name, [])
+        items := values.get_or(flag.name, [])
 
         if is_list(flag.kind):
             fields[field_name(flag.name)] = stringify(items.clone()).get()
@@ -328,7 +328,7 @@ fn collect_fields(
             fields[field_name(flag.name)] = literal(flag.kind, items[0].clone())
 
     for arg in args:
-        let items = values.get_or(arg.name, [])
+        items := values.get_or(arg.name, [])
 
         if arg.rest:
             fields[field_name(arg.name)] = stringify(items.clone()).get()
@@ -384,7 +384,7 @@ fn fits(flag: Flag, value: String) Bool:
         Bool: return value == "true" or value == "false"
         Int: return value.parse_int().is_some()
         Float:
-            if let number = value.parse_float(): return number.is_finite()
+            if number := value.parse_float(): return number.is_finite()
 
             return false
         _: return true
@@ -398,10 +398,10 @@ fn claim(var seen: List[String], key: String, label: String) Unit!:
 
 // Validates a node and everything below it; `inherited` holds ancestors' persistent flags.
 fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
-    let where = path.join(" ")
+    where := path.join(" ")
     var names: List[String] = []
     var shorts: List[String] = []
-    let all = inherited.concat(node.flags)
+    all := inherited.concat(node.flags)
 
     for flag in all:
         if flag.name.is_empty(): return error(
@@ -423,7 +423,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
         try claim(var shorts, flag.short.clone(), "short -{flag.short} in {where}")
 
     for flag in node.flags:
-        if let text = flag.default:
+        if text := flag.default:
             if not fits(flag, text):
                 return error(
                     cli_invalid_schema(
@@ -463,7 +463,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
 
         try claim(var words, child.name.clone(), "command {child.name} in {where}")
 
-    let below = inherited.concat(persistent_flags(node.flags))
+    below := inherited.concat(persistent_flags(node.flags))
     for child in node.children:
         try check_schema(child, below, path.concat([child.name.clone()]))
     return ok(unit)
@@ -514,7 +514,7 @@ fn walk_from(
     var index = start
 
     while index < argv.length():
-        let token = argv[index].clone()
+        token := argv[index].clone()
         index += 1
 
         if literal:
@@ -529,16 +529,16 @@ fn walk_from(
             return ok(Parsed.Help(render_help(node, path, inherited)))
 
         if token.starts_with("-") and token.length() > 1:
-            let flags = inherited.concat(node.flags)
-            let long = token.starts_with("--")
-            let body = token.drop(if long: 2 else: 1)
-            let cut = body.index_of("=")
-            let key = body.take(cut.get(body.length()))
+            flags := inherited.concat(node.flags)
+            long := token.starts_with("--")
+            body := token.drop(if long: 2 else: 1)
+            cut := body.index_of("=")
+            key := body.take(cut.get(body.length()))
             var flag = find_flag(flags, key, long)
             var negated = false
 
             if long and flag.is_none() and key.starts_with("no-"):
-                let positive = find_flag(flags, key.drop(3), true)
+                positive := find_flag(flags, key.drop(3), true)
 
                 if positive.is_some() and is_bool(positive.get().kind):
                     flag = positive
@@ -546,7 +546,7 @@ fn walk_from(
 
             if flag.is_none(): return error(cli_unknown_flag(token))
 
-            let chosen = flag.get()
+            chosen := flag.get()
 
             if is_bool(chosen.kind):
                 if negated: values[chosen.name.clone()] = ["false"]
@@ -572,7 +572,7 @@ fn walk_from(
             continue
 
         if words.is_empty():
-            if let next = node.child(token):
+            if next := node.child(token):
                 return walk_from(
                     next, argv, index, path.concat([token.clone()]),
                     inherited.concat(persistent_flags(node.flags)), values
@@ -589,7 +589,7 @@ fn walk_from(
     for flag in inherited.concat(node.flags):
         try fill(var values, flag)
 
-    let fields = collect_fields(values, inherited.concat(node.flags), node.args)
+    fields := collect_fields(values, inherited.concat(node.flags), node.args)
     return ok(Parsed.Run(Matches(values, path, fields)))
 
 // Assigns positional words to the node's arguments.
@@ -603,7 +603,7 @@ fn bind(
 
     for arg in node.args:
         if arg.rest:
-            let remaining = words.drop(next)
+            remaining := words.drop(next)
             if arg.required and remaining.is_empty(): return error(
                 cli_missing_required(arg.name.clone())
             )
@@ -632,7 +632,7 @@ fn bind(
 fn fill(var values: Map[String, List[String]], flag: Flag) Unit!:
     if values.contains(flag.name): return ok(unit)
 
-    if let text = flag.default:
+    if text := flag.default:
         values[flag.name.clone()] = [text.clone()]
         return ok(unit)
 
@@ -658,7 +658,7 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
     if not node.flags.is_empty() or not inherited.is_empty(): usage += " [flags]"
 
     for arg in node.args:
-        let label = arg.name + (if arg.rest: "..." else: "")
+        label := arg.name + (if arg.rest: "..." else: "")
         usage += if arg.required: " <{label}>" else: " [{label}]"
 
     out += "Usage:\n{usage}\n"
@@ -697,7 +697,7 @@ fn flag_section(title: String, flags: List[Flag]) String:
         if not is_bool(flag.kind): label += " <{value_hint(flag)}>"
 
         var help = flag.help.clone()
-        if let text = flag.default: help += " (default {text})"
+        if text := flag.default: help += " (default {text})"
         if flag.required: help += " (required)"
         help_row(var table, [label, help])
 

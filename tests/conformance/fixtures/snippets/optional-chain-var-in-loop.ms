@@ -14,7 +14,7 @@ impl C:
 fn main2() Unit:
     for i in 0..2:
         var o: C? = C(i)
-        let v = o?.bump()
+        v := o?.bump()
         stdout().write("{v.get(0)}\n").get()
 
 export fn main() Int:

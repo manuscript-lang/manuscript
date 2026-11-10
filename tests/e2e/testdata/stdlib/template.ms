@@ -6,7 +6,7 @@ fn data(text: String) JsonValue:
     return parse(text).get()
 
 test "values paths and filters":
-    let d = data(
+    d := data(
         "\{\"name\":\"ada lovelace\",\"user\":\{\"tags\":[\"a\",\"b\"]\},\"n\":3\}"
     )
     try expect_equal(render("Hi \{\{ name | title \}\}!", d).get(), "Hi Ada Lovelace!")
@@ -26,7 +26,7 @@ test "values paths and filters":
     try expect_equal(render("\{\{ n \}\} \{\{ \"\{\{\" \}\}", d).get(), "3 \{\{")
 
 test "conditions":
-    let d = data("\{\"n\":3,\"s\":\"hi\",\"empty\":[],\"on\":true\}")
+    d := data("\{\"n\":3,\"s\":\"hi\",\"empty\":[],\"on\":true\}")
     try expect_equal(
         render(
             "\{\{ if n > 2 and on \}\}big\{\{ else \}\}small\{\{ end \}\}", d
@@ -46,7 +46,7 @@ test "conditions":
     )
 
 test "loops":
-    let d = data("\{\"xs\":[\"a\",\"b\",\"c\"],\"m\":\{\"k\":1,\"j\":2\},\"none\":[]\}")
+    d := data("\{\"xs\":[\"a\",\"b\",\"c\"],\"m\":\{\"k\":1,\"j\":2\},\"none\":[]\}")
     try expect_equal(
         render(
             "\{\{ for x in xs \}\}\{\{ x \}\}\{\{ if not loop.last \}\},\{\{ end \}\}\{\{ end \}\}",
@@ -77,7 +77,7 @@ test "loops":
     )
 
 test "html escaping and raw":
-    let d = data("\{\"t\":\"<b>&\\\"'\"\}")
+    d := data("\{\"t\":\"<b>&\\\"'\"\}")
     try expect_equal(
         render("\{\{ t \}\}", d, html: true).get(), "&lt;b&gt;&amp;&#34;&#39;"
     )
@@ -88,11 +88,11 @@ test "html escaping and raw":
     )
 
 test "trim markers and comments":
-    let d = data("\{\"a\":1\}")
+    d := data("\{\"a\":1\}")
     try expect_equal(render("x  \{\{- a -\}\}  y\{\{# note \}\}", d).get(), "x1y")
 
 test "partials":
-    let page = compile("[\{\{ include \"row\" \}\}]").get()
+    page := compile("[\{\{ include \"row\" \}\}]").get()
     var partials = Map[String, Template]()
     partials.add("row", compile("\{\{ a \}\}").get())
     try expect_equal(
@@ -107,10 +107,10 @@ test "strict missing values and limits":
     try expect_true(render("\{\{ nope \}\}", data("\{\}")).is_error())
     try expect_equal(render("[\{\{ nope \}\}]", data("\{\}")).get(""), "")
 
-    let page = compile("\{\{ nope \}\}").get()
+    page := compile("\{\{ nope \}\}").get()
     try expect_equal(page.render(data("\{\}"), RenderOptions(strict: false)).get(), "")
 
-    let big = compile("\{\{ for i in xs \}\}abcdefgh\{\{ end \}\}").get()
+    big := compile("\{\{ for i in xs \}\}abcdefgh\{\{ end \}\}").get()
     try expect_true(
         big.render(
             data("\{\"xs\":[1,2,3,4]\}"), RenderOptions(max_output: 10)
@@ -118,7 +118,7 @@ test "strict missing values and limits":
     )
 
 test "the output limit counts UTF-8 bytes":
-    let accent = compile("é").get()
+    accent := compile("é").get()
     try expect_equal(
         accent.render(data("null"), RenderOptions(max_output: 2)).get(), "é"
     )
@@ -127,7 +127,7 @@ test "the output limit counts UTF-8 bytes":
         "EOVERFLOW"
     )
 
-    let emoji = compile("😀").get()
+    emoji := compile("😀").get()
     try expect_equal(
         emoji.render(data("null"), RenderOptions(max_output: 3)).err().kind, "EOVERFLOW"
     )
@@ -135,8 +135,8 @@ test "the output limit counts UTF-8 bytes":
         emoji.render(data("null"), RenderOptions(max_output: 4)).get(), "😀"
     )
 
-    let value = compile("\{\{ v \}\}\{\{ v \}\}").get()
-    let input = data("\{\"v\":\"é\"\}")
+    value := compile("\{\{ v \}\}\{\{ v \}\}").get()
+    input := data("\{\"v\":\"é\"\}")
     try expect_equal(value.render(input, RenderOptions(max_output: 4)).get(), "éé")
     try expect_equal(
         value.render(input, RenderOptions(max_output: 3)).err().kind, "EOVERFLOW"
@@ -150,12 +150,12 @@ test "compile errors name the line":
     ]:
         try expect_true(compile(bad).is_error())
 
-    let failed = compile("a\n\n\{\{ if \}\}")
+    failed := compile("a\n\n\{\{ if \}\}")
     try expect_true(failed.is_error())
 
 test "typed data converts":
-    let page = compile("\{\{ id \}\}:\{\{ tags | join(\",\") \}\}").get()
-    let d = to_data(Row(id: 4, tags: ["x", "y"])).get()
+    page := compile("\{\{ id \}\}:\{\{ tags | join(\",\") \}\}").get()
+    d := to_data(Row(id: 4, tags: ["x", "y"])).get()
     try expect_equal(page.render(d).get(), "4:x,y")
 
 type Row:
@@ -163,17 +163,17 @@ type Row:
     tags: List[String]
 
 test "lexing handles openers inside actions and large sources":
-    let d = data("\{\"x\":\"v\"\}")
+    d := data("\{\"x\":\"v\"\}")
     try expect_equal(render("a\{\{ \"\{\{\" \}\}b", d).get(), "a\{\{b")
     try expect_equal(render("\{\{ x \}\}\{\{ x \}\}", d).get(), "vv")
     try expect_true(compile("a \{\{ x \}\} \{\{ y").is_error())
 
     // A quadratic lexer would take minutes on this many actions.
-    let big = compile("\{\{ x \}\},".repeat(60000).get()).get()
+    big := compile("\{\{ x \}\},".repeat(60000).get()).get()
     try expect_equal(big.render(d).get().scalar_length(), 120000)
 
 test "equality never crosses value kinds":
-    let d = data("\{\"one\":1,\"text\":\"1\",\"yes\":true\}")
+    d := data("\{\"one\":1,\"text\":\"1\",\"yes\":true\}")
     try expect_equal(
         render(
             "\{\{ one == text \}\}|\{\{ text == \"1\" \}\}|\{\{ one == 1 \}\}", d

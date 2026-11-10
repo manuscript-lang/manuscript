@@ -18,6 +18,6 @@ type Pair:
     b: Res
 
 export fn main() Int:
-    let p = Pair(a: Res(1), b: Res(2))
-    let _c = Res(3)
+    p := Pair(a: Res(1), b: Res(2))
+    _c := Res(3)
     return p.a.id - 1

@@ -15,7 +15,7 @@ fn run(work: String, n: Int) Result[String, Error]:
     try build_ms("{work}/ms", "{work}/ms/bench{exe()}")
 
     var flags = List[String]()
-    let linker = env("RUSTC_LINKER", "")
+    linker := env("RUSTC_LINKER", "")
     if linker != "": flags = ["-C", "linker={linker}"]
     try build_rust("bench/perf/strappend/rust/main.rs", "{work}/rust{exe()}", flags)
 
@@ -23,7 +23,7 @@ fn run(work: String, n: Int) Result[String, Error]:
 
     for i in 0..n:
         for v in ["ms", "rust"]:
-            let path = if v == "ms": "{work}/ms/bench{exe()}" else: "{work}/rust{exe()}"
+            path := if v == "ms": "{work}/ms/bench{exe()}" else: "{work}/rust{exe()}"
             for line in (try sample(path, [])).split("\n"):
                 if line != "": raw.append("{i} {v} {line}")
 
@@ -31,13 +31,13 @@ fn run(work: String, n: Int) Result[String, Error]:
 
 export fn main() Int:
     var n = 5
-    let args = arguments()
+    args := arguments()
 
     if not args.is_empty():
-        if let parsed = repeats(args[0]):
+        if parsed := repeats(args[0]):
             n = parsed
         else:
             return usage("repeats must be a positive integer")
 
-    let tmp = temporary("strappend-").get()
+    tmp := temporary("strappend-").get()
     return finish(run(tmp.path(), n))

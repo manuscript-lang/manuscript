@@ -6,13 +6,13 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let l1 = [10]
+    l1 := [10]
     say("l1 = {l1} len {l1.length()}")
 
-    let i2 = ((-20) + ((-363437) * 14))
+    i2 := ((-20) + ((-363437) * 14))
     say("i2 = {i2}")
 
     if ("ms" == "emoji 😀".replace("MiXeD CaSe", "x")):
@@ -20,16 +20,16 @@ export fn main() Int:
     else:
         say(("MiXeD CaSe" + "delta"))
 
-    let l3 = [1, 2, 3].take(0)
+    l3 := [1, 2, 3].take(0)
     say("l3 = {l3} len {l3.length()}")
 
-    let b4 = "line\nbreak".replace("  padded  ", "héllo").reverse().contains("")
+    b4 := "line\nbreak".replace("  padded  ", "héllo").reverse().contains("")
     say("b4 = {b4}")
 
-    let s5 = "line\nbreak"
+    s5 := "line\nbreak"
     say("s5 = [{s5}]")
 
-    let b6 = ("naïve" + s5.reverse()).ends_with("")
+    b6 := ("naïve" + s5.reverse()).ends_with("")
     say("b6 = {b6}")
 
     if (920.247 == 530.133):
@@ -37,21 +37,21 @@ export fn main() Int:
     else:
         say((s5 + "line\nbreak"))
 
-    let s7 = s5
+    s7 := s5
     say("s7 = [{s7}]")
 
-    let l8 = l3.map(fn x: x * 9)
+    l8 := l3.map(fn x: x * 9)
     say("l8 = {l8} len {l8.length()}")
 
-    let l9 = [(-1), 15, (-19)]
+    l9 := [(-1), 15, (-19)]
     say("l9 = {l9} len {l9.length()}")
 
-    let s10 = "beta"
+    s10 := "beta"
     say("s10 = [{s10}]")
 
-    let b11 = ((9.5 != (111.924 + 52.155)) and false)
+    b11 := ((9.5 != (111.924 + 52.155)) and false)
     say("b11 = {b11}")
 
-    let b12 = b11
+    b12 := b11
     say("b12 = {b12}")
     return 0

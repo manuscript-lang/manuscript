@@ -6,7 +6,7 @@ fn generated(var rng: Rng, depth: Int) TomlValue:
     var choices = 7
     if depth > 2: choices = 4
 
-    let kind = next(var rng, choices)
+    kind := next(var rng, choices)
     if kind == 0: return TomlValue.BoolValue(next(var rng, 2) == 0)
     if kind == 1: return TomlValue.IntValue(next(var rng, 200000) - 100000)
     if kind == 2: return TomlValue.FloatValue(
@@ -29,7 +29,7 @@ fn table(var rng: Rng, depth: Int) TomlValue:
     return TomlValue.TableValue(entries)
 
 fn check_round_trip(seed: Int, original: TomlValue) Unit!:
-    let rendered = try stringify(original)
+    rendered := try stringify(original)
     if (try parse(rendered)) != original: return fail(
         "seed {seed}: changed\n{rendered}"
     )
@@ -37,7 +37,7 @@ fn check_round_trip(seed: Int, original: TomlValue) Unit!:
     return ok(unit)
 
 fn check_stable(seed: Int, mutated: String, first: TomlValue) Unit!:
-    let again = try stringify(first)
+    again := try stringify(first)
     if (try parse(again)) != first: return fail(
         "seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
     )
@@ -54,12 +54,12 @@ test "TOML parse never faults on mutated documents and accepted input is stable"
 
     for seed in 1..301:
         var rng = Rng(seed)
-        let rendered = table(var rng, 0) | stringify | try
+        rendered := table(var rng, 0) | stringify | try
 
         for round in 0..4:
-            let mutated = mutate(var rng, rendered)
+            mutated := mutate(var rng, rendered)
 
-            if let first = parse(mutated):
+            if first := parse(mutated):
                 accepted += 1
                 try check_stable(seed, mutated, first)
 

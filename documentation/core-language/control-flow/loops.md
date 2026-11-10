@@ -64,7 +64,7 @@ import range_by from "@std/collections/collections.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "sum even indexes":
-    let indexes = try range_by(start: 0, end: 6, step: 2)
+    indexes := try range_by(start: 0, end: 6, step: 2)
     var total = 0
     for index in indexes:
         total += index
@@ -91,7 +91,7 @@ The iterable is evaluated once. Traversal borrows the collection for the loop bo
 fn total(values: Map[String, Int]) Int:
     var sum = 0
     for entry in values:
-        let {key: _key, value} = entry
+        {key: _key, value} := entry
         sum += value
     return sum
 ```
@@ -100,7 +100,7 @@ fn total(values: Map[String, Int]) Int:
 
 ## Destructuring the element
 
-A list or record pattern after `for` binds the same names as `let` does with the element, so `for [a, b] in pairs:` is `for pair in pairs:` followed by `let [a, b] = pair`. The element is borrowed, the names are scoped to the body, and a pattern that does not fit the element type is rejected as it is after `let`. A closure parameter takes the same patterns: `pairs.map(fn [a, b]: a + b)`.
+A list or record pattern after `for` binds the same names as `let` does with the element, so `for [a, b] in pairs:` is `for pair in pairs:` followed by `[a, b] := pair`. The element is borrowed, the names are scoped to the body, and a pattern that does not fit the element type is rejected as it is after `let`. A closure parameter takes the same patterns: `pairs.map(fn [a, b]: a + b)`.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -120,7 +120,7 @@ test "destructure each element":
 
 ## Iterators
 
-A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T` as the owned result of `next` (`var fn next() T?`). It is the same as `while true:` with `if let item = source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
+A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item in source:` calls `source.next()` until it returns `none`, binding each `T` as the owned result of `next` (`var fn next() T?`). It is the same as `while true:` with `if item := source.next(): ... else: break`, so `break`, `continue`, and `return` behave as in any loop and the body may use the loop variable as `T`. A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
 ```manuscript

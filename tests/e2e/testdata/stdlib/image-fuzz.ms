@@ -24,10 +24,10 @@ impl Rng:
 
 // One random mutation of `data`: byte flips, truncation, extreme field values, or a spliced range.
 fn mutate(data: Bytes, var rng: Rng) Bytes:
-    let n = data.length()
+    n := data.length()
     if n == 0: return data.clone()
 
-    let kind = rng.next(6)
+    kind := rng.next(6)
     var values = data.values()
 
     if kind == 0:
@@ -36,22 +36,22 @@ fn mutate(data: Bytes, var rng: Rng) Bytes:
     else if kind == 1:
         return data.slice(0, rng.next(n)).get(Bytes([]))
     else if kind == 2:
-        let at = rng.next(n)
-        let extremes = [0, 255, 127, 128, 1]
+        at := rng.next(n)
+        extremes := [0, 255, 127, 128, 1]
         for i in 0..4:
             if at + i < n: values[at + i] = extremes[rng.next(5)].to_uint8().get(0)
     else if kind == 3:
         // Drop a range.
-        let from = rng.next(n)
-        let to = min_int(n, from + 1 + rng.next(16))
+        from := rng.next(n)
+        to := min_int(n, from + 1 + rng.next(16))
         var kept = List[UInt8]()
         for i in 0..n:
             if i < from or i >= to: kept.append(values[i])
         return Bytes(kept)
     else if kind == 4:
         // Duplicate a range.
-        let from = rng.next(n)
-        let to = min_int(n, from + 1 + rng.next(16))
+        from := rng.next(n)
+        to := min_int(n, from + 1 + rng.next(16))
         var grown = List[UInt8]()
 
         for i in 0..n:
@@ -81,11 +81,11 @@ fn fix_png_crcs(data: Bytes) Bytes:
     var at = 8
 
     while at + 12 <= values.length():
-        let length = be32_at(values, at)
+        length := be32_at(values, at)
         if length > values.length() - at - 12: break
 
-        let crc = crc32(data.slice(at + 4, at + 8 + length).get(Bytes([]))).to_int()
-        let post = at + 8 + length
+        crc := crc32(data.slice(at + 4, at + 8 + length).get(Bytes([]))).to_int()
+        post := at + 8 + length
         values[post] = (crc / 16777216 % 256).to_uint8().get(0)
         values[post + 1] = (crc / 65536 % 256).to_uint8().get(0)
         values[post + 2] = (crc / 256 % 256).to_uint8().get(0)
@@ -121,7 +121,7 @@ fn seeds() List[Bytes]:
 
 test "decoders never fault on mutated input":
     var rng = Rng(20261109)
-    let corpus = seeds()
+    corpus := seeds()
     var rejected = 0
     var accepted = 0
 
@@ -133,7 +133,7 @@ test "decoders never fault on mutated input":
             )
 
             // The decoder must return a value, whatever the bytes. A fault aborts this test.
-            let result = decode_image(mutated, max_pixels: 4000000)
+            result := decode_image(mutated, max_pixels: 4000000)
 
             if result.is_ok():
                 accepted += 1
@@ -144,7 +144,7 @@ test "decoders never fault on mutated input":
     print("fuzz: {accepted} accepted, {rejected} rejected")
 
 fn expect_error(data: Bytes, kind: String) Unit!:
-    let result = decode_image(data)
+    result := decode_image(data)
     if result.is_ok(): return fail("expected {kind}, decoded an image")
 
     try expect_equal(result.err().kind, kind)
@@ -157,7 +157,7 @@ test "hostile headers fail before allocating":
     try expect_error("P5\n40000 40000\n255\nx".to_bytes(), "EOVERFLOW")
 
     // PNG IHDR 2^31-1 square, valid CRC, no pixel data.
-    let ihdr = hex_decode(
+    ihdr := hex_decode(
         "89504e470d0a1a0a0000000d494844527fffffff7fffffff0806000000", none
     ).get()
     try expect_error(
@@ -166,19 +166,19 @@ test "hostile headers fail before allocating":
     )
 
     // JPEG SOF 65535x65535 with a scan header and almost no data.
-    let jpeg = hex_decode(
+    jpeg := hex_decode(
         "ffd8ffdb004300"
         + "01".repeat(64, none).get()
         + "ffc0000b08ffffffff0101110000ffc400150000010000000000000000000000000000000000ffda0008010100003f00ffd9",
         none
     ).get()
-    let result = decode_image(jpeg)
+    result := decode_image(jpeg)
     if result.is_ok(): try fail("hostile JPEG decoded")
 
     // BMP with a gigapixel header and no pixel data.
-    let bmp = hex_decode(
+    bmp := hex_decode(
         "424d3600000000000000360000002800000000ca9a3b00ca9a3b0100180000000000000000000000000000000000000000000000",
         none
     ).get()
-    let bmp_result = decode_image(bmp)
+    bmp_result := decode_image(bmp)
     if bmp_result.is_ok(): try fail("hostile BMP decoded")

@@ -2,4 +2,4 @@
 // conform: phase=parse
 // conform: origin=pkg/compiler/counter_aggregate_test.go:77 TestCounterAggregatePrivateCellSelection
 fn probe() Int:
-    let cell = Cell(0)
+    cell := Cell(0)

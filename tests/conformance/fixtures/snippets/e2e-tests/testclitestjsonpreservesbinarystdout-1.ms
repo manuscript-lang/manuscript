@@ -5,5 +5,5 @@ import stdout_bytes from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 
 test "bytes":
-    let data = "x".to_bytes().with_value(index: 0, value: 255)
-    let _out = stdout_bytes().write(data)
+    data := "x".to_bytes().with_value(index: 0, value: 255)
+    _out := stdout_bytes().write(data)

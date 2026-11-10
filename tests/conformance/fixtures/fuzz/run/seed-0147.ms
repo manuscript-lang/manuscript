@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -25,7 +25,7 @@ fn collatz(start: Int) Int:
 export fn main() Int:
     say("collatz(373) = {collatz(373)}")
 
-    let l1 = [(-6), 21, (-22), 19]
+    l1 := [(-6), 21, (-22), 19]
     say("l1 = {l1} len {l1.length()}")
 
     var acc2 = 0
@@ -38,40 +38,40 @@ export fn main() Int:
 
     say("acc2 = {acc2}")
 
-    let l3 = [(-10), 13, (-25), 13]
+    l3 := [(-10), 13, (-25), 13]
     say("l3 = {l3} len {l3.length()}")
 
-    let b4 = false
+    b4 := false
     say("b4 = {b4}")
     say("collatz(1467) = {collatz(1467)}")
 
-    let i5 = 33
+    i5 := 33
     say("i5 = {i5}")
 
-    let s6 = (
+    s6 := (
         ("héllo" + ("back\\slash" + "delta"))
         + ("".lower() + ("a" + "  padded  "))
     )
     say("s6 = [{s6}]")
 
-    let s7 = (s6 + s6.upper()).replace("ms", "alpha")
+    s7 := (s6 + s6.upper()).replace("ms", "alpha")
     say("s7 = [{s7}]")
     say(
         "{i5} {(i5 * (i5 - (-42)))} {(i5 < (i5 * (i5 - (-42))))} sum {i5 + (i5 * (i5 - (-42)))}"
     )
 
-    let i8 = ((l3.length() * s6.length()) + (-25))
+    i8 := ((l3.length() * s6.length()) + (-25))
     say("i8 = {i8}")
 
-    let i9 = i5
+    i9 := i5
     say("i9 = {i9}")
 
-    let f10 = 1.5
+    f10 := 1.5
     say("f10 = {f10}")
 
-    let l11 = [1, 2, 3].take(0)
+    l11 := [1, 2, 3].take(0)
     say("l11 = {l11} len {l11.length()}")
 
-    let big12 = 9223372036854775807
+    big12 := 9223372036854775807
     say("{big12 * 6}")
     return 0

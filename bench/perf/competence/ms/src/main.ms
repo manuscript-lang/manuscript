@@ -43,7 +43,7 @@ type P:
     vy: Int
 
 fn say(text: String) Unit:
-    let _ignored = stdout().write(text)
+    _ignored := stdout().write(text)
 
 fn fib(n: Int) Int:
     if n < 2: return n
@@ -51,7 +51,7 @@ fn fib(n: Int) Int:
     return fib(n - 1) + fib(n - 2)
 
 fn dispatch(n: Int) Int:
-    let shapes: List[Shape] = [Sq(3), Rect(2, 5), Tri(4, 6), Sq(7)]
+    shapes: List[Shape] = [Sq(3), Rect(2, 5), Tri(4, 6), Sq(7)]
     var total = 0
     var i = 0
 
@@ -75,12 +75,12 @@ fn sorting(n: Int) Int:
         v.append(i * 7919 % 1000003)
         i += 1
 
-    let s = v.sorted(compare)
+    s := v.sorted(compare)
     return s.get(0) + s.get(n / 2) + s.get(n - 1)
 
 fn closures(n: Int) Int:
-    let base = 3
-    let f = fn(x: Int) Int:
+    base := 3
+    f := fn(x: Int) Int:
         return x * base + 1
     var total = 0
     var i = 0
@@ -99,7 +99,7 @@ fn text_build_parse(n: Int) Int:
         b.append("{i * 31 % 1000},")
         i += 1
 
-    let parts = b.build().split(",")
+    parts := b.build().split(",")
     var total = 0
     for p in parts:
         total += p.parse_int().get(0)
@@ -117,7 +117,7 @@ fn word_map(n: Int) Int:
     var j = 0
 
     while j < n:
-        let w = words.get(j * 7 % 1000)
+        w := words.get(j * 7 % 1000)
         m.add(w.clone(), m.get_or(w, 0) + 1)
         j += 1
 
@@ -129,7 +129,7 @@ fn check(i: Int) Result[Int, Fail]:
     return ok(i)
 
 fn step(i: Int) Result[Int, Fail]:
-    let v = try check(i)
+    v := try check(i)
     return ok(v + 1)
 
 fn errors(n: Int) Int:
@@ -137,7 +137,7 @@ fn errors(n: Int) Int:
     var i = 0
 
     while i < n:
-        if let v = step(i):
+        if v := step(i):
             total += v
         else:
             total += 7
@@ -236,7 +236,7 @@ fn optionals(n: Int) Int:
         if i % 5 != 0:
             o = i
 
-        if let v = o:
+        if v := o:
             total += v
         else:
             total += 1
@@ -277,8 +277,8 @@ fn chars(n: Int) Int:
     return total
 
 fn timed(name: String, run: fn() Int) Unit:
-    let t = monotonic()
-    let r = run()
+    t := monotonic()
+    r := run()
     say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
 export fn main() Int:

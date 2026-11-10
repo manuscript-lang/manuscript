@@ -16,19 +16,19 @@ type Holder:
     token: Token
 
 fn concrete(values: List[Token], token: Token, nested: List[List[Token]]) Unit:
-    let _distinct = values.distinct()  // error: Clonable
-    let _repeated = filled(token, 2)  // error: Clonable
-    let _flattened = flatten(nested)  // error: Clonable
-    let _nested_distinct = nested.distinct()  // error: Clonable
+    _distinct := values.distinct()  // error: Clonable
+    _repeated := filled(token, 2)  // error: Clonable
+    _flattened := flatten(nested)  // error: Clonable
+    _nested_distinct := nested.distinct()  // error: Clonable
 
 fn callable_values(values: List[Token]) Unit:
-    let _distinct = values.distinct  // error: Clonable
-    let _repeat = filled[Token]  // error: Clonable
-    let _concatenate = flatten[Token]  // error: Clonable
+    _distinct := values.distinct  // error: Clonable
+    _repeat := filled[Token]  // error: Clonable
+    _concatenate := flatten[Token]  // error: Clonable
 
 fn held_resource(holder: Holder) Unit:
-    let _repeated = filled(holder, 2)  // error: Clonable
-    let _flattened = flatten([[holder]])  // error: Clonable
+    _repeated := filled(holder, 2)  // error: Clonable
+    _flattened := flatten([[holder]])  // error: Clonable
 
 fn distinct_unbounded[T: Equal](values: List[T]) List[T]:
     return values.distinct()  // error: Clonable

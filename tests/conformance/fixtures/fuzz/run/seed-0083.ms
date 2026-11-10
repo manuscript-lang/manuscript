@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -17,7 +17,7 @@ fn gcd(a: Int, b: Int) Int:
 export fn main() Int:
     say("{(-46)} {(-(8 + 11))} {((-46) < (-(8 + 11)))} sum {(-46) + (-(8 + 11))}")
 
-    let f1 = 220.410
+    f1 := 220.410
     say("f1 = {f1}")
 
     var acc2 = 0
@@ -26,10 +26,10 @@ export fn main() Int:
     say("acc2 = {acc2}")
     say("gcd(1325, 4941) = {gcd(1325, 4941)}")
 
-    let f3 = (((0.0 - 573.25) + 0.5) + ((992.259 - 324.718) + 0.0))
+    f3 := (((0.0 - 573.25) + 0.5) + ((992.259 - 324.718) + 0.0))
     say("f3 = {f3}")
 
-    let b4 = false
+    b4 := false
     say("b4 = {b4}")
 
     if ((42 != (-765710)) and ((-35) < 26)):
@@ -37,24 +37,24 @@ export fn main() Int:
     else:
         say("hello world".replace("a", "MiXeD CaSe"))
 
-    let i5 = 390945
+    i5 := 390945
     say("i5 = {i5}")
     say(
         "{(((-412856770689) - i5) * i5)} {((-i5) + i5)} {((((-412856770689) - i5) * i5) < ((-i5) + i5))} sum {(((-412856770689) - i5) * i5) + ((-i5) + i5)}"
     )
 
-    let l6 = [10, (-9), (-26)]
+    l6 := [10, (-9), (-26)]
     say("l6 = {l6} len {l6.length()}")
 
-    let s7 = ("{l6.length()}:" + "héllo".replace("emoji 😀", "a"))
+    s7 := ("{l6.length()}:" + "héllo".replace("emoji 😀", "a"))
     say("s7 = [{s7}]")
 
-    let b8 = false
+    b8 := false
     say("b8 = {b8}")
     say(
         "{((i5 + 49) / ((-45) - (-44)))} {(i5 * (31 - (-47)))} {(((i5 + 49) / ((-45) - (-44))) < (i5 * (31 - (-47))))} sum {((i5 + 49) / ((-45) - (-44))) + (i5 * (31 - (-47)))}"
     )
 
-    let big9 = -9223372036854775808
+    big9 := -9223372036854775808
     say("{-big9}")
     return 0

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -23,6 +23,6 @@ export fn main() Int:
     say("gcd(3181, 1800) = {gcd(3181, 1800)}")
     return "not an int"
 
-    let f1 = ((772.25 - 0.0) * 277.25)
+    f1 := ((772.25 - 0.0) * 277.25)
     say("f1 = {f1}")
     return 0

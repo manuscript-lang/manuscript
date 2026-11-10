@@ -4,4 +4,4 @@
 fn convert[T, U](value: T) U?: none
 
 fn first() Unit:
-    let value = convert(1)
+    value := convert(1)

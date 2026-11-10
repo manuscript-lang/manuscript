@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,16 +22,16 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let l1 = [(-16), (-18), (-30)]
+    l1 := [(-16), (-18), (-30)]
     say("l1 = {l1} len {l1.length()}")
 
-    let b2 = ((40 + (44 + 859973)) != (((-601437) / (-779777)) * (-47)))
+    b2 := ((40 + (44 + 859973)) != (((-601437) / (-779777)) * (-47)))
     say("b2 = {b2}")
 
-    let l3 = l1.drop(1)
+    l3 := l1.drop(1)
     say("l3 = {l3} len {l3.length()}")
 
-    let l4 = [(-3), 4, (-21), 20]
+    l4 := [(-3), 4, (-21), 20]
     say("l4 = {l4} len {l4.length()}")
 
     var l5 = l1.clone()
@@ -39,13 +39,13 @@ export fn main() Int:
     say("l5 = {l5} len {l5.length()}")
     say("fib(52) = {fib(52)}")
 
-    let i6 = ((((-17) + 50) + 40) + (((-419679) * 50) + 33))
+    i6 := ((((-17) + 50) + 40) + (((-419679) * 50) + 33))
     say("i6 = {i6}")
     say("fib(21) = {fib(21)}")
 
-    let l7 = [(-18), 5, 12, 19]
+    l7 := [(-18), 5, 12, 19]
     say("l7 = {l7} len {l7.length()}")
 
-    let big8 = 9223372036854775807
+    big8 := 9223372036854775807
     say("{big8 * 5}")
     return 0

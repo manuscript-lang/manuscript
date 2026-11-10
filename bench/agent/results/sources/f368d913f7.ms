@@ -20,8 +20,8 @@ fn tokenize(chars: List[String]) List[Token]:
     var i = 0
 
     while i < chars.length():
-        let c = chars[i]
-        let digit = c.parse_int().get(-1)
+        c := chars[i]
+        digit := c.parse_int().get(-1)
 
         if c == " " or c == "\t":
             i += 1
@@ -57,7 +57,7 @@ fn parse_primary(tokens: List[Token], pos: Int) Parsed:
         return failed()
 
     if symbol_at(tokens, pos) == "(":
-        let inner = parse_expr(tokens, pos + 1)
+        inner := parse_expr(tokens, pos + 1)
         if inner.failed or symbol_at(tokens, inner.next) != ")":
             return failed()
 
@@ -74,7 +74,7 @@ fn parse_primary(tokens: List[Token], pos: Int) Parsed:
 
 fn parse_unary(tokens: List[Token], pos: Int) Parsed:
     if symbol_at(tokens, pos) == "-":
-        let inner = parse_unary(tokens, pos + 1)
+        inner := parse_unary(tokens, pos + 1)
         if inner.failed:
             return inner
 
@@ -86,7 +86,7 @@ fn parse_unary(tokens: List[Token], pos: Int) Parsed:
     return parse_primary(tokens, pos)
 
 fn parse_term(tokens: List[Token], pos: Int) Parsed:
-    let first = parse_unary(tokens, pos)
+    first := parse_unary(tokens, pos)
     if first.failed:
         return first
 
@@ -98,8 +98,8 @@ fn parse_term(tokens: List[Token], pos: Int) Parsed:
     div_zero = first.div_zero
 
     while symbol_at(tokens, next) == "*" or symbol_at(tokens, next) == "/":
-        let op = symbol_at(tokens, next)
-        let right = parse_unary(tokens, next + 1)
+        op := symbol_at(tokens, next)
+        right := parse_unary(tokens, next + 1)
         if right.failed:
             return right
 
@@ -118,7 +118,7 @@ fn parse_term(tokens: List[Token], pos: Int) Parsed:
     return Parsed(value: value, next: next, failed: false, div_zero: div_zero)
 
 fn parse_expr(tokens: List[Token], pos: Int) Parsed:
-    let first = parse_term(tokens, pos)
+    first := parse_term(tokens, pos)
     if first.failed:
         return first
 
@@ -130,8 +130,8 @@ fn parse_expr(tokens: List[Token], pos: Int) Parsed:
     div_zero = first.div_zero
 
     while symbol_at(tokens, next) == "+" or symbol_at(tokens, next) == "-":
-        let op = symbol_at(tokens, next)
-        let right = parse_term(tokens, next + 1)
+        op := symbol_at(tokens, next)
+        right := parse_term(tokens, next + 1)
         if right.failed:
             return right
 
@@ -147,8 +147,8 @@ fn parse_expr(tokens: List[Token], pos: Int) Parsed:
     return Parsed(value: value, next: next, failed: false, div_zero: div_zero)
 
 fn evaluate(line: String) String:
-    let tokens = tokenize(line.chars())
-    let parsed = parse_expr(tokens, 0)
+    tokens := tokenize(line.chars())
+    parsed := parse_expr(tokens, 0)
     if parsed.failed or parsed.next != tokens.length():
         return "error: syntax"
     if parsed.div_zero:
@@ -157,7 +157,7 @@ fn evaluate(line: String) String:
     return "{parsed.value}"
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var out = stdout()
 
     for line in lines:

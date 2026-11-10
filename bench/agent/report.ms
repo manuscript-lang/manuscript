@@ -48,11 +48,11 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
     out += "|---|---:|---:|---:|---:|---:|---:|---:|\n"
 
     for k in runs.map(key).distinct().sorted():
-        let rs = runs.filter(fn r: key(r) == k)
-        let ok = rs.filter(fn r: r.pass)
-        let n = rs.length().to_float()
-        let first_ok = rs.filter(fn r: r.first_build_ok).length().to_float()
-        let tokens = average(
+        rs := runs.filter(fn r: key(r) == k)
+        ok := rs.filter(fn r: r.pass)
+        n := rs.length().to_float()
+        first_ok := rs.filter(fn r: r.first_build_ok).length().to_float()
+        tokens := average(
             ok,
             fn r: (
                 r.usage.tokens_in
@@ -73,8 +73,8 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
     return out
 
 export fn main() Int:
-    let args = arguments()
-    let path = if args.is_empty(): "{root()}/results/runs.jsonl" else: args[0].clone()
+    args := arguments()
+    path := if args.is_empty(): "{root()}/results/runs.jsonl" else: args[0].clone()
     var runs = List[Run]()
     for line in nonblank_lines(read_text(path)):
         runs.append(parse[Run](line).get())

@@ -4,9 +4,9 @@
 import compress, CompressionFormat, CompressOptions from "@std/io/archive.ms"
 
 fn explicit() Unit:
-    let data = "".to_bytes()
-    let _ = compress(data, CompressionFormat.Gzip, CompressOptions(level: 6))
-    let _ = compress(data, CompressionFormat.Zlib, CompressOptions(level: 0))
-    let _ = compress(
+    data := "".to_bytes()
+    _ := compress(data, CompressionFormat.Gzip, CompressOptions(level: 6))
+    _ := compress(data, CompressionFormat.Zlib, CompressOptions(level: 0))
+    _ := compress(
         data, CompressionFormat.Deflate, CompressOptions(level: 9, max_bytes: 100)
     )

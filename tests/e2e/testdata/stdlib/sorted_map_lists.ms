@@ -6,16 +6,16 @@ fn filled(count: Int) SortedMap[Int, String]:
 
     // Insert from both ends so the chunks split in more than one place.
     for i in 0..count:
-        let key = if i % 2 == 0: i else: count * 2 - i
+        key := if i % 2 == 0: i else: count * 2 - i
         map.add(key, "v{key}")
 
     return map
 
 test "keys and values join every chunk in key order":
     for count in [0, 1, 2, 63, 64, 65, 129, 1000, 5000]:
-        let map = filled(count)
-        let keys = map.keys()
-        let values = map.values()
+        map := filled(count)
+        keys := map.keys()
+        values := map.values()
         try expect_equal(keys.length(), count)
         try expect_equal(values.length(), count)
 

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn fact(n: Int) Int:
     if n <= 1:
@@ -29,8 +29,8 @@ export fn main() Int:
         "{7} {((-(-845159)) - (-415598506378))} {(7 < ((-(-845159)) - (-415598506378)))} sum {7 + ((-(-845159)) - (-415598506378))}"
     )
 
-    let f2 = 948.285
+    f2 := 948.285
     say("f2 = {f2}")
 
-    let bad = 1 + "one"
+    bad := 1 + "one"
     return 0

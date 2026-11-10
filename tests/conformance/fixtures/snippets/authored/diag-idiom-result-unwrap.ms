@@ -5,5 +5,5 @@ fn f() Int!:
     return ok(1)
 
 export fn main() Int:
-    let x = f().unwrap()
+    x := f().unwrap()
     return 0

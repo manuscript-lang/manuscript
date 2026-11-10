@@ -10,15 +10,15 @@ import from_scalars from "@std/string.ms"
 import read_all from "@std/io/streams.ms"
 import stdin, stdout from "@std/io/io.ms"
 
-let TWO32 = 4294967296
-let TWO31 = 2147483648
-let MAXU32 = 4294967295
-let MEMSIZE = 4096
-let WS = " \t\r"
-let DIGITS = "0123456789"
-let ALNUM = "_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-let IDSTART = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-let IDCHARS = "._0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+TWO32 := 4294967296
+TWO31 := 2147483648
+MAXU32 := 4294967295
+MEMSIZE := 4096
+WS := " \t\r"
+DIGITS := "0123456789"
+ALNUM := "_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+IDSTART := "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+IDCHARS := "._0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 type Sym:
     is_text: Bool
@@ -128,15 +128,15 @@ fn sub(cs: List[String], a: Int, b: Int) String:
     return s
 
 fn reg_index(name: String) Int:
-    let names = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"]
+    names := ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"]
     for i in 0..10:
         if names[i] == name:
             return i
     return -1
 
 fn is_ident(s: String) Bool:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     if n == 0:
         return false
     if not IDSTART.contains(cs[0]):
@@ -148,7 +148,7 @@ fn is_ident(s: String) Bool:
     return true
 
 fn all_digits(s: String) Bool:
-    let cs = s.chars()
+    cs := s.chars()
     if cs.length() == 0:
         return false
 
@@ -171,7 +171,7 @@ fn skip_ws(cs: List[String], from: Int) Int:
 
 // Length of a character literal starting at i (0 when there is none).
 fn char_lit_len(cs: List[String], i: Int) Int:
-    let n = cs.length()
+    n := cs.length()
     if i + 1 >= n:
         return 0
 
@@ -208,7 +208,7 @@ fn escape_code(c: String) Int:
 // Value of a character literal of length L at i, or -1 when invalid.
 fn char_value(cs: List[String], i: Int, len: Int) Int:
     if len == 3:
-        let code = cs[i + 1].scalar_at(0)
+        code := cs[i + 1].scalar_at(0)
         if code > 127:
             return -1
 
@@ -217,7 +217,7 @@ fn char_value(cs: List[String], i: Int, len: Int) Int:
     return escape_code(cs[i + 2])
 
 fn digit_value(c: String) Int:
-    let code = c.scalar_at(0)
+    code := c.scalar_at(0)
     if code >= 48 and code <= 57:
         return code - 48
     if code >= 97 and code <= 102:
@@ -229,8 +229,8 @@ fn digit_value(c: String) Int:
 
 // Number token value; -1 invalid, -2 out of range.
 fn parse_num(tok: String) Int:
-    let cs = tok.chars()
-    let n = cs.length()
+    cs := tok.chars()
+    n := cs.length()
     var base = 10
     var start = 0
 
@@ -249,7 +249,7 @@ fn parse_num(tok: String) Int:
     var i = start
 
     while i < n:
-        let d = digit_value(cs[i])
+        d := digit_value(cs[i])
         if d < 0 or d >= base:
             return -1
 
@@ -265,18 +265,18 @@ fn parse_num(tok: String) Int:
 
 // Splits at commas outside brackets and character literals; parts are trimmed.
 fn split_top(s: String) List[String]:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var out = List[String]()
     var depth = 0
     var start = 0
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if c == "'":
-            let L = char_lit_len(cs, i)
+            L := char_lit_len(cs, i)
 
             if L > 0:
                 i += L
@@ -298,8 +298,8 @@ fn split_top(s: String) List[String]:
 
 // Splits memory-operand contents at top-level + and -. Each piece keeps its sign as the first char.
 fn split_terms(s: String) List[String]:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var out = List[String]()
     var sign = "+"
     var start = 0
@@ -312,10 +312,10 @@ fn split_terms(s: String) List[String]:
     var i = start
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
 
         if c == "'":
-            let L = char_lit_len(cs, i)
+            L := char_lit_len(cs, i)
 
             if L > 0:
                 i += L
@@ -333,24 +333,24 @@ fn split_terms(s: String) List[String]:
 
 // Validates a memory operand; the base register (or -1) and the expression terms.
 fn parse_mem(op: String) MemRes:
-    let cs = op.chars()
-    let n = cs.length()
-    let bad = "invalid operand '" + op + "'"
+    cs := op.chars()
+    n := cs.length()
+    bad := "invalid operand '" + op + "'"
     var terms = List[String]()
     if n < 2 or cs[n - 1] != "]":
         return MemRes(err: bad, base: -1, terms: terms)
 
-    let pieces = split_terms(sub(cs, 1, n - 1))
+    pieces := split_terms(sub(cs, 1, n - 1))
     var base = -1
 
     for p in pieces:
-        let pc = p.chars()
-        let sign = pc[0]
-        let text = sub(pc, 1, pc.length()).trim_chars(WS)
+        pc := p.chars()
+        sign := pc[0]
+        text := sub(pc, 1, pc.length()).trim_chars(WS)
         if text == "":
             return MemRes(err: bad, base: -1, terms: terms)
 
-        let r = reg_index(text)
+        r := reg_index(text)
 
         if r >= 0:
             if sign == "-" or base >= 0:
@@ -363,10 +363,10 @@ fn parse_mem(op: String) MemRes:
     return MemRes(err: "", base: base, terms: terms)
 
 fn parse_string(s: String) StrRes:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var vals = List[Int]()
-    let bad = "invalid string"
+    bad := "invalid string"
     if n < 2 or cs[0] != "\"":
         return StrRes(err: bad, vals: vals)
 
@@ -376,7 +376,7 @@ fn parse_string(s: String) StrRes:
         if i >= n:
             return StrRes(err: bad, vals: vals)
 
-        let c = cs[i]
+        c := cs[i]
 
         if c == "\"":
             if i != n - 1:
@@ -388,7 +388,7 @@ fn parse_string(s: String) StrRes:
             if i + 1 >= n:
                 return StrRes(err: bad, vals: vals)
 
-            let e = escape_code(cs[i + 1])
+            e := escape_code(cs[i + 1])
             if e < 0:
                 return StrRes(err: bad, vals: vals)
 
@@ -397,7 +397,7 @@ fn parse_string(s: String) StrRes:
             continue
 
         // Ordinary scalar: append its UTF-8 bytes.
-        let code = c.scalar_at(0)
+        code := c.scalar_at(0)
 
         if code < 128:
             vals.append(code)
@@ -421,9 +421,9 @@ fn parse_string(s: String) StrRes:
 // ---------- expressions ----------
 
 fn scan_terms(t: String) TermsRes:
-    let cs = t.chars()
-    let n = cs.length()
-    let bad = "invalid expression '" + t + "'"
+    cs := t.chars()
+    n := cs.length()
+    bad := "invalid expression '" + t + "'"
     var terms = List[Term]()
     if n == 0:
         return TermsRes(err: bad, terms: terms)
@@ -442,7 +442,7 @@ fn scan_terms(t: String) TermsRes:
         if i >= n:
             return TermsRes(err: bad, terms: terms)
 
-        let c = cs[i]
+        c := cs[i]
 
         if DIGITS.contains(c):
             var j = i
@@ -453,7 +453,7 @@ fn scan_terms(t: String) TermsRes:
 
                 j += 1
 
-            let v = parse_num(sub(cs, i, j))
+            v := parse_num(sub(cs, i, j))
             if v == -1:
                 return TermsRes(err: bad, terms: terms)
             if v == -2:
@@ -462,11 +462,11 @@ fn scan_terms(t: String) TermsRes:
             terms.append(Term(neg: neg, kind: 0, val: v, name: ""))
             i = j
         else if c == "'":
-            let L = char_lit_len(cs, i)
+            L := char_lit_len(cs, i)
             if L == 0:
                 return TermsRes(err: bad, terms: terms)
 
-            let v = char_value(cs, i, L)
+            v := char_value(cs, i, L)
             if v < 0:
                 return TermsRes(err: bad, terms: terms)
 
@@ -490,7 +490,7 @@ fn scan_terms(t: String) TermsRes:
         if i >= n:
             break
 
-        let op = cs[i]
+        op := cs[i]
 
         if op == "+":
             neg = false
@@ -505,8 +505,8 @@ fn scan_terms(t: String) TermsRes:
 
 // Evaluates an expression. `stack` holds the .equ names being evaluated (for cycle detection).
 fn eval(text: String, syms: Map[String, Sym], stack: String) Ev:
-    let t = text.trim_chars(WS)
-    let sr = scan_terms(t)
+    t := text.trim_chars(WS)
+    sr := scan_terms(t)
     if sr.err != "":
         return Ev(err: sr.err, val: 0)
 
@@ -519,16 +519,16 @@ fn eval(text: String, syms: Map[String, Sym], stack: String) Ev:
             if not syms.contains(term.name):
                 return Ev(err: "undefined symbol '" + term.name + "'", val: 0)
 
-            let s = syms.get(
+            s := syms.get(
                 term.name
             ).get(Sym(is_text: false, is_equ: false, value: 0, expr: ""))
 
             if s.is_equ:
-                let key = "|" + term.name + "|"
+                key := "|" + term.name + "|"
                 if stack.contains(key):
                     return Ev(err: "circular definition of '" + term.name + "'", val: 0)
 
-                let inner = eval(s.expr, syms, stack + key)
+                inner := eval(s.expr, syms, stack + key)
                 if inner.err != "":
                     return Ev(err: inner.err, val: 0)
 
@@ -605,21 +605,21 @@ fn operand_syntax(op: String) String:
 
 // Pass-2 encoding of one operand.
 fn encode_operand(op: String, syms: Map[String, Sym]) Opv:
-    let r = reg_index(op)
+    r := reg_index(op)
     if r >= 0:
         return Opv(err: "", k: 0, r: r, v: 0)
 
     if op.starts_with("["):
-        let m = parse_mem(op)
+        m := parse_mem(op)
         if m.err != "":
             return Opv(err: m.err, k: 2, r: -1, v: 0)
 
         var total = 0
 
         for t in m.terms:
-            let tcs = t.chars()
-            let text = sub(tcs, 1, tcs.length())
-            let e = eval(text, syms, "")
+            tcs := t.chars()
+            text := sub(tcs, 1, tcs.length())
+            e := eval(text, syms, "")
             if e.err != "":
                 return Opv(err: e.err, k: 2, r: -1, v: 0)
 
@@ -632,7 +632,7 @@ fn encode_operand(op: String, syms: Map[String, Sym]) Opv:
 
         return Opv(err: "", k: 2, r: m.base, v: total)
 
-    let e = eval(op, syms, "")
+    e := eval(op, syms, "")
     if e.err != "":
         return Opv(err: e.err, k: 1, r: -1, v: 0)
 
@@ -640,7 +640,7 @@ fn encode_operand(op: String, syms: Map[String, Sym]) Opv:
 
 // Input token: optional '-', decimal digits, wrapped to 32 bits. none when invalid.
 fn parse_input(tok: String) Int?:
-    let cs = tok.chars()
+    cs := tok.chars()
     var i = 0
     var neg = false
 
@@ -648,7 +648,7 @@ fn parse_input(tok: String) Int?:
         neg = true
         i = 1
 
-    let digits = sub(cs, i, cs.length())
+    digits := sub(cs, i, cs.length())
     if not all_digits(digits):
         return none
 
@@ -696,15 +696,15 @@ impl Asm:
             return ""
 
         if word == ".equ":
-            let ops = split_top(rest)
+            ops := split_top(rest)
             if rest == "" or ops.length() != 2:
                 return "wrong number of operands for '.equ'"
 
-            let name = ops[0].clone()
+            name := ops[0].clone()
             if not is_ident(name):
                 return "invalid operand '" + name + "'"
 
-            let e = self.define(name, num)
+            e := self.define(name, num)
             if e != "":
                 return e
 
@@ -721,7 +721,7 @@ impl Asm:
             if rest == "":
                 return "wrong number of operands for '.word'"
 
-            let ops = split_top(rest)
+            ops := split_top(rest)
             if self.dc + ops.length() > MEMSIZE:
                 return "data section too large"
 
@@ -735,7 +735,7 @@ impl Asm:
             return ""
 
         if word == ".ascii" or word == ".asciz":
-            let sr = parse_string(rest)
+            sr := parse_string(rest)
             if sr.err != "":
                 return sr.err
 
@@ -745,7 +745,7 @@ impl Asm:
             if self.dc + vals.length() > MEMSIZE:
                 return "data section too large"
 
-            let cnt = vals.length()
+            cnt := vals.length()
             self.stmts.append(
                 Stmt(
                     line: num, kind: 2, mnem: "", ops: List[String](), addr: self.dc,
@@ -756,12 +756,12 @@ impl Asm:
             return ""
 
         if word == ".space":
-            let ops = split_top(rest)
+            ops := split_top(rest)
             if rest == "" or ops.length() > 2:
                 return "wrong number of operands for '.space'"
 
-            let nt = ops[0].clone()
-            let ev = eval(nt, self.syms, "")
+            nt := ops[0].clone()
+            ev := eval(nt, self.syms, "")
             if ev.err != "":
                 return ev.err
             if ev.val < 0:
@@ -787,7 +787,7 @@ impl Asm:
         if not self.text:
             return "instruction in data section"
 
-        let info = op_info(word)
+        info := op_info(word)
         if info.id < 0:
             return "unknown mnemonic '" + word + "'"
 
@@ -796,7 +796,7 @@ impl Asm:
             ops = split_top(rest)
 
         for op in ops:
-            let e = operand_syntax(op)
+            e := operand_syntax(op)
             if e != "":
                 return e
 
@@ -808,8 +808,8 @@ impl Asm:
                 return "invalid operands for '" + word + "'"
 
         if info.nargs == 2:
-            let l1 = kind_letter(ops[0])
-            let l2 = kind_letter(ops[1])
+            l1 := kind_letter(ops[0])
+            l2 := kind_letter(ops[1])
             if not info.c2.contains(l2):
                 return "invalid operands for '" + word + "'"
             if l1 == "M" and l2 == "M":
@@ -829,8 +829,8 @@ impl Asm:
 
         // Leading labels.
         while true:
-            let cs = s.chars()
-            let n = cs.length()
+            cs := s.chars()
+            n := cs.length()
             if n == 0:
                 break
             if not IDSTART.contains(cs[0]):
@@ -849,8 +849,8 @@ impl Asm:
             if cs[j] != ":":
                 break
 
-            let name = sub(cs, 0, j)
-            let e = self.define(name, num)
+            name := sub(cs, 0, j)
+            e := self.define(name, num)
             if e != "":
                 return e
 
@@ -868,8 +868,8 @@ impl Asm:
         if s == "":
             return ""
 
-        let cs = s.chars()
-        let n = cs.length()
+        cs := s.chars()
+        n := cs.length()
         var we = 0
 
         while we < n:
@@ -878,8 +878,8 @@ impl Asm:
 
             we += 1
 
-        let word = sub(cs, 0, we)
-        let rest = sub(cs, we, n).trim_chars(WS)
+        word := sub(cs, 0, we)
+        rest := sub(cs, we, n).trim_chars(WS)
         if word.starts_with("."):
             return self.directive(num, word, rest)
 
@@ -887,12 +887,12 @@ impl Asm:
 
 // Removes a `;` comment that is outside string and character literals.
 fn strip_comment(s: String) String:
-    let cs = s.chars()
-    let n = cs.length()
+    cs := s.chars()
+    n := cs.length()
     var i = 0
 
     while i < n:
-        let c = cs[i]
+        c := cs[i]
         if c == ";":
             return sub(cs, 0, i)
 
@@ -911,7 +911,7 @@ fn strip_comment(s: String) String:
             continue
 
         if c == "'":
-            let L = char_lit_len(cs, i)
+            L := char_lit_len(cs, i)
 
             if L > 0:
                 i += L
@@ -938,11 +938,11 @@ fn build(asm: Asm, inputs: List[Int], chartab: List[String]) Vm:
     var lines = List[Int]()
     var aerr = ""
     var aline = 0
-    let ntext = asm.tc
+    ntext := asm.tc
 
     for s in asm.stmts:
         if s.kind == 0:
-            let info = op_info(s.mnem)
+            info := op_info(s.mnem)
             var o1 = Opv(err: "", k: -1, r: -1, v: 0)
             var o2 = Opv(err: "", k: -1, r: -1, v: 0)
 
@@ -980,7 +980,7 @@ fn build(asm: Asm, inputs: List[Int], chartab: List[String]) Vm:
             var i = 0
 
             for op in s.ops:
-                let e = eval(op, asm.syms, "")
+                e := eval(op, asm.syms, "")
 
                 if e.err != "":
                     aerr = e.err
@@ -999,7 +999,7 @@ fn build(asm: Asm, inputs: List[Int], chartab: List[String]) Vm:
                 mem[s.addr + i] = b
                 i += 1
         else if s.kind == 3:
-            let e = eval(s.fill, asm.syms, "")
+            e := eval(s.fill, asm.syms, "")
 
             if e.err != "":
                 aerr = e.err
@@ -1012,7 +1012,7 @@ fn build(asm: Asm, inputs: List[Int], chartab: List[String]) Vm:
     var entry = 0
 
     if asm.syms.contains("main"):
-        let m = asm.syms.get(
+        m := asm.syms.get(
             "main"
         ).get(Sym(is_text: false, is_equ: false, value: 0, expr: ""))
         if m.is_text and not m.is_equ:
@@ -1078,18 +1078,18 @@ impl Vm:
         self.mem_set(self.ea(r, v), val)
 
     var fn exec() Unit:
-        let pc = self.pc
-        let op = self.ops[pc]
-        let k1 = self.k1[pc]
-        let r1 = self.r1[pc]
-        let v1 = self.v1[pc]
-        let k2 = self.k2[pc]
-        let r2 = self.r2[pc]
-        let v2 = self.v2[pc]
+        pc := self.pc
+        op := self.ops[pc]
+        k1 := self.k1[pc]
+        r1 := self.r1[pc]
+        v1 := self.v1[pc]
+        k2 := self.k2[pc]
+        r2 := self.r2[pc]
+        v2 := self.v2[pc]
         var nextpc = pc + 1
 
         if op == 0:
-            let s = self.read(k2, r2, v2)
+            s := self.read(k2, r2, v2)
             if self.done:
                 return
 
@@ -1097,11 +1097,11 @@ impl Vm:
             if self.done:
                 return
         else if op >= 1 and op <= 11:
-            let s = self.read(k2, r2, v2)
+            s := self.read(k2, r2, v2)
             if self.done:
                 return
 
-            let d = self.regs[r1]
+            d := self.regs[r1]
             var res = 0
 
             if op == 1:
@@ -1137,15 +1137,15 @@ impl Vm:
 
             self.regs[r1] = wrap32(res)
         else if op == 12:
-            let s = self.read(k2, r2, v2)
+            s := self.read(k2, r2, v2)
             if self.done:
                 return
 
-            let d = self.regs[r1]
+            d := self.regs[r1]
             self.zf = (d == s)
             self.lf = (d < s)
         else if op >= 13 and op <= 16:
-            let d = self.regs[r1]
+            d := self.regs[r1]
             var res = d
 
             if op == 13:
@@ -1161,7 +1161,7 @@ impl Vm:
         else if op == 17:
             self.regs[r1] = self.ea(r2, v2)
         else if op == 18:
-            let s = self.read(k1, r1, v1)
+            s := self.read(k1, r1, v1)
             if self.done:
                 return
 
@@ -1178,7 +1178,7 @@ impl Vm:
                 self.fail("stack underflow")
                 return
 
-            let v = self.mem_get(self.regs[8])
+            v := self.mem_get(self.regs[8])
             if self.done:
                 return
 
@@ -1220,7 +1220,7 @@ impl Vm:
                 self.fail("stack underflow")
                 return
 
-            let v = self.mem_get(self.regs[8])
+            v := self.mem_get(self.regs[8])
             if self.done:
                 return
 
@@ -1234,7 +1234,7 @@ impl Vm:
             self.regs[r1] = self.input[self.inpos]
             self.inpos += 1
         else if op == 30:
-            let s = self.read(k1, r1, v1)
+            s := self.read(k1, r1, v1)
             if self.done:
                 return
 
@@ -1242,7 +1242,7 @@ impl Vm:
             self.last_nl = true
             self.has_out = true
         else if op == 31:
-            let s = self.read(k1, r1, v1)
+            s := self.read(k1, r1, v1)
             if self.done:
                 return
 
@@ -1278,10 +1278,10 @@ impl Vm:
 // ---------- driver ----------
 
 export fn main() Int:
-    let raw = read_all(stdin()).get()
+    raw := read_all(stdin()).get()
     var text = ""
 
-    if let decoded = raw.decode_utf8():
+    if decoded := raw.decode_utf8():
         text = decoded
     else:
         // Not valid UTF-8: keep every byte as one scalar (Latin-1) so the source still assembles.
@@ -1318,7 +1318,7 @@ export fn main() Int:
 
     var inputs = List[Int]()
     for t in toks:
-        if let v = parse_input(t):
+        if v := parse_input(t):
             inputs.append(v)
 
     var chartab = List[String]()
@@ -1333,7 +1333,7 @@ export fn main() Int:
     var aline = 0
 
     for i in 0..src.length():
-        let e = asm.line1(i + 1, src[i])
+        e := asm.line1(i + 1, src[i])
 
         if e != "":
             aerr = e
@@ -1364,7 +1364,7 @@ export fn main() Int:
             else:
                 outtext += "-- halted after " + vm.steps.to_string() + " steps\n"
 
-            let names = ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"]
+            names := ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"]
             var rl = "regs:"
             for i in 0..10:
                 rl += " " + names[i] + "=" + vm.regs[i].to_string()

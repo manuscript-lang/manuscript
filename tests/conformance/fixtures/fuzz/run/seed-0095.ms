@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -28,16 +28,16 @@ export fn main() Int:
         acc1 += i * 4
     say("acc1 = {acc1}")
 
-    let f2 = (((314.048 - 617.959) * (559.336 / 418.25)) / 0.0)
+    f2 := (((314.048 - 617.959) * (559.336 / 418.25)) / 0.0)
     say("f2 = {f2}")
 
-    let l3 = [29]
+    l3 := [29]
     say("l3 = {l3} len {l3.length()}")
 
-    let s4 = "emoji 😀"
+    s4 := "emoji 😀"
     say("s4 = [{s4}]")
     say("collatz(397) = {collatz(397)}")
 
-    let f5 = 3.5
+    f5 := 3.5
     say("f5 = {f5}")
     return 0

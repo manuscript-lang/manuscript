@@ -3,7 +3,7 @@ import stdout from "@std/io/io.ms"
 import monotonic from "@std/time.ms"
 
 fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int) Int:
-    let checked = data.index_of_byte(255, start)
+    checked := data.index_of_byte(255, start)
 
     if expected == data.length():
         if checked.is_some(): return 1
@@ -11,20 +11,20 @@ fn measure(name: String, data: Bytes, start: Int, expected: Int, iterations: Int
         if checked.get(-1) != expected: return 1
 
     var checksum = 0
-    let started = monotonic()
+    started := monotonic()
     for unused in 0..iterations:
         checksum += data.index_of_byte(255, start).get(data.length())
 
-    let elapsed = monotonic().difference(started).to_nanoseconds()
+    elapsed := monotonic().difference(started).to_nanoseconds()
     if checksum != expected * iterations: return 1
 
-    let _written = stdout().write(
+    _written := stdout().write(
         "{name},{data.length()},{iterations},{elapsed},{checksum}\n"
     )
     return 0
 
 export fn main() Int:
-    let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
+    _header := stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
 
     for n in [0, 1, 7, 15, 31, 32, 64, 256, 4096, 1048576]:
         for kind in [

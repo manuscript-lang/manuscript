@@ -6,10 +6,10 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let f1 = (375.102 * 328.25)
+    f1 := (375.102 * 328.25)
     say("f1 = {f1}")
 
     if true:
@@ -17,13 +17,13 @@ export fn main() Int:
     else:
         say(("gamma" + "beta"))
 
-    let bad = [1, 2].get("x")
-    let b2 = (false and ((false or false) or (190.739 == 28.237)))
+    bad := [1, 2].get("x")
+    b2 := (false and ((false or false) or (190.739 == 28.237)))
     say("b2 = {b2}")
 
-    let i3 = 38
+    i3 := 38
     say("i3 = {i3}")
 
-    let i4 = (393580 + ((i3 + i3) / 32))
+    i4 := (393580 + ((i3 + i3) / 32))
     say("i4 = {i4}")
     return 0

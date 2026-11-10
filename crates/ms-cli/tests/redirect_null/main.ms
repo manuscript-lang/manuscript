@@ -13,11 +13,11 @@ export fn main() Int:
     if redirect_to_null(StdStream.Output).is_error():
         return 2
 
-    let _ = stdout().write("hidden\n")
+    _ := stdout().write("hidden\n")
     if redirect_to_null(StdStream.Error).is_error():
         return 3
 
-    let _ = stderr().write("hidden\n")
+    _ := stderr().write("hidden\n")
     if redirect_to_null(StdStream.Input).is_error():
         return 4
 

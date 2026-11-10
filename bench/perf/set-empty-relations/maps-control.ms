@@ -2,11 +2,11 @@ import arguments from "@std/os/env.ms"
 import monotonic from "@std/time.ms"
 
 export fn main() Int:
-    let args = arguments()
-    let mode = args[0]
-    let size = args[1].parse_int().get()
-    let repeats = args[2].parse_int().get()
-    let prefix = args[3]
+    args := arguments()
+    mode := args[0]
+    size := args[1].parse_int().get()
+    repeats := args[2].parse_int().get()
+    prefix := args[3]
     var int_map = Map[Int, Int]()
     var string_map = Map[String, Int]()
     var keys: List[String] = []
@@ -18,7 +18,7 @@ export fn main() Int:
             int_map.add(i, i * 2)
             string_map.add(keys[i].clone(), i * 2)
 
-    let start = monotonic()
+    start := monotonic()
     var checksum = 0
 
     for iteration in 0..repeats:
@@ -39,6 +39,6 @@ export fn main() Int:
             for i in 0..size * 2:
                 checksum += string_map.get_or(keys[i], 0)
 
-    let elapsed = monotonic().difference(start).to_nanoseconds()
+    elapsed := monotonic().difference(start).to_nanoseconds()
     print("{elapsed} {checksum}")
     return 0

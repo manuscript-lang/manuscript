@@ -20,7 +20,7 @@ test "Map removal keeps direct bound generic and defining-module key scopes":
     (second.is_empty()) | try expect_true
 
     var returned_values = id_map()
-    let remove = returned_values.remove
+    remove := returned_values.remove
     remove(Key(1, "different"))
     try expect_false(
         (returned_values.length() != 2 or returned_values.keys()[0].id != 2)

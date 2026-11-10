@@ -4,4 +4,4 @@
 fn operation() Unit!: ok(unit)
 
 fn caller() Unit:
-    let _ = operation()
+    _ := operation()

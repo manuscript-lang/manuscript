@@ -12,12 +12,12 @@ fn say(ok: Bool, ok_text: String, missing_text: String) Bool:
 
 // Whether `version` ("0.146.7") is at least 0.146.7.
 fn hugo_new_enough(version: String) Bool:
-    let parts = version.split("-")[0].split("+")[0].split(".")
+    parts := version.split("-")[0].split("+")[0].split(".")
     if parts.length() < 3: return false
 
-    let major = parts[0].parse_int().get(0)
-    let minor = parts[1].parse_int().get(0)
-    let patch = parts[2].parse_int().get(0)
+    major := parts[0].parse_int().get(0)
+    minor := parts[1].parse_int().get(0)
+    patch := parts[2].parse_int().get(0)
     return major > 0 or minor > 146 or (minor == 146 and patch >= 7)
 
 export fn main() Int:
@@ -25,7 +25,7 @@ export fn main() Int:
     for command in ["git", "tar"]:
         if not say(works(command, ["--version"]), command, command): failed += 1
 
-    let expected_node = (
+    expected_node := (
         read_file(".node-version")
         .wait()
         .get()
@@ -33,7 +33,7 @@ export fn main() Int:
         .get("")
         .trim()
     )
-    let node = capture("node", ["--version"]).trim()
+    node := capture("node", ["--version"]).trim()
     if not say(
         node == "v{expected_node}", "Node {expected_node}",
         "Node {expected_node} (install the version in .node-version)"
@@ -47,10 +47,10 @@ export fn main() Int:
         "cargo-nextest (cargo install cargo-nextest --locked)"
     ): failed += 1
 
-    let hugo = env("HUGO", "hugo")
-    let hugo_output = capture(hugo, ["version"])
+    hugo := env("HUGO", "hugo")
+    hugo_output := capture(hugo, ["version"])
     var hugo_ok = false
-    let fields = hugo_output.split(" ")
+    fields := hugo_output.split(" ")
     if hugo_output.contains("extended") and fields.length() > 1:
         hugo_ok = hugo_new_enough(fields[1].replace("v", ""))
 

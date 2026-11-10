@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -19,10 +19,10 @@ export fn main() Int:
         "{((-15) + ((-50) % (-6607)))} {((1 + (-39)) * (929365 * 49))} {(((-15) + ((-50) % (-6607))) < ((1 + (-39)) * (929365 * 49)))} sum {((-15) + ((-50) % (-6607))) + ((1 + (-39)) * (929365 * 49))}"
     )
 
-    let b1 = (("emoji 😀".ends_with("hello world") and (false and true)) or false)
+    b1 := (("emoji 😀".ends_with("hello world") and (false and true)) or false)
     say("b1 = {b1}")
 
-    let l2 = [1, 2, 3].take(0)
+    l2 := [1, 2, 3].take(0)
     say("l2 = {l2} len {l2.length()}")
 
     var acc3 = 0
@@ -34,10 +34,10 @@ export fn main() Int:
 
     say("acc3 = {acc3}")
 
-    let l4 = [26, (-8), (-7)]
+    l4 := [26, (-8), (-7)]
     say("l4 = {l4} len {l4.length()}")
 
-    let f5 = (((0.0 - 8.5) * (968.25 + 502.935)) + ((651.709 * 7.0e-3) + 60.369))
+    f5 := (((0.0 - 8.5) * (968.25 + 502.935)) + ((651.709 * 7.0e-3) + 60.369))
     say("f5 = {f5}")
 
     if "hello world".starts_with("日本語"):
@@ -55,10 +55,10 @@ export fn main() Int:
         acc6 += i * (-3)
     say("acc6 = {acc6}")
 
-    let i7 = ((((-28) % (-12)) * 718158) - (8 + 46))
+    i7 := ((((-28) % (-12)) * 718158) - (8 + 46))
     say("i7 = {i7}")
 
-    let f8 = (f5 * 848.578)
+    f8 := (f5 * 848.578)
     say("f8 = {f8}")
 
     if true:
@@ -66,7 +66,7 @@ export fn main() Int:
     else:
         say(("{(-i7)}:" + "beta"))
 
-    let s9 = ("{(i7 * 433100)}:" + "x".reverse())
+    s9 := ("{(i7 * 433100)}:" + "x".reverse())
     say("s9 = [{s9}]")
     say("gcd(1974, 2356) = {gcd(1974, 2356)}")
 
@@ -75,9 +75,9 @@ export fn main() Int:
     else:
         say("naïve")
 
-    let f10 = f5
+    f10 := f5
     say("f10 = {f10}")
 
-    let l11 = [1, 2, 3].take(0)
+    l11 := [1, 2, 3].take(0)
     say("l11 = {l11} len {l11.length()}")
     return 0

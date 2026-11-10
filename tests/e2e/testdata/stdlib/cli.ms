@@ -48,7 +48,7 @@ type AddOptions:
     dry_run: Bool
 
 fn remote_group() Command:
-    let add = command[AddOptions](
+    add := command[AddOptions](
         name: "add",
         flags: [Flag("dry-run", FlagKind.Bool)],
         args: [
@@ -72,7 +72,7 @@ fn app() Command:
     )
 
 fn run(argv: List[String]) Matches!:
-    let parsed = app().parse(argv)
+    parsed := app().parse(argv)
     if parsed.is_error(): return error(parsed.err().clone())
 
     match parsed.get():
@@ -80,13 +80,13 @@ fn run(argv: List[String]) Matches!:
         Help(text): return ok(Matches(path: [text.clone()]))
 
 fn failure(argv: List[String]) String!:
-    let result = app().parse(argv)
+    result := app().parse(argv)
     if result.is_ok(): return error(Error("accepted", kind: "EIO"))
 
     return ok(result.err().message)
 
 test "nested command resolves path and typed options":
-    let matches = (run(["serve", "site"]) | try expect_ok)
+    matches := (run(["serve", "site"]) | try expect_ok)
     matches.path | try expect_equal(["tool", "serve"])
     matches.int("port") | try expect_equal(8080)
     matches.string("mode") | try expect_equal("dev")
@@ -94,7 +94,7 @@ test "nested command resolves path and typed options":
     matches.bool("verbose") | try expect_equal(false)
 
 test "flags take values in every spelling and persistent flags work on both sides":
-    let matches = (
+    matches := (
         run(
             [
                 "-v", "serve", "--port=9090", "-p", "7", "--mode", "prod", "--tags",
@@ -108,15 +108,15 @@ test "flags take values in every spelling and persistent flags work on both side
     matches.string("root") | try expect_equal("-x")
     matches.bool("verbose") | try expect_equal(true)
 
-    let after = (run(["serve", "site", "--verbose", "--no-verbose"]) | try expect_ok)
+    after := (run(["serve", "site", "--verbose", "--no-verbose"]) | try expect_ok)
     after.bool("verbose") | try expect_equal(false)
 
 test "optional and rest arguments":
-    let matches = (run(["remote", "add", "origin"]) | try expect_ok)
+    matches := (run(["remote", "add", "origin"]) | try expect_ok)
     matches.string("name") | try expect_equal("origin")
     matches.string_or_none("url") | try expect_equal(none)
 
-    let full = (run(["remote", "add", "origin", "u", "x", "y"]) | try expect_ok)
+    full := (run(["remote", "add", "origin", "u", "x", "y"]) | try expect_ok)
     full.list("extra") | try expect_equal(["x", "y"])
     full.string_or_none("url") | try expect_equal("u")
 
@@ -144,35 +144,35 @@ test "usage errors name the problem":
     )
 
 test "help is generated for groups, leaves and the help word":
-    let root = app().help() | try expect_some
+    root := app().help() | try expect_some
     root | try expect_contains("Usage:\n  tool <command> [flags]")
     root | try expect_contains("  serve   Run the server")
     root | try expect_contains("-v, --verbose  Print more")
 
-    let leaf = app().help(["serve"]) | try expect_some
+    leaf := app().help(["serve"]) | try expect_some
     leaf | try expect_contains("Usage:\n  tool serve [flags] <root>")
     leaf | try expect_contains("-p, --port <int>       Listen port (default 8080)")
     leaf | try expect_contains("Global Flags:")
     app().help(["nope"]) | try expect_equal(none)
 
-    let via_word = (run(["help", "serve"]) | try expect_ok)
+    via_word := (run(["help", "serve"]) | try expect_ok)
     via_word.path[0] | try expect_contains("tool serve")
 
-    let group = (run(["remote"]) | try expect_ok)
+    group := (run(["remote"]) | try expect_ok)
     group.path[0] | try expect_contains("Manage remotes")
 
-    let flag = (run(["serve", "--help"]) | try expect_ok)
+    flag := (run(["serve", "--help"]) | try expect_ok)
     flag.path[0] | try expect_contains("Run the server")
 
 test "float flags reject NaN and infinities":
-    let ratio = Command(name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float)])
+    ratio := Command(name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float)])
     for text in ["NaN", "Infinity", "-Infinity"]:
         (ratio.parse(["--ratio", text.clone()]) | try expect_error).message | try expect_equal(
             "cli: flag ratio: {text} is not a number"
         )
 
-    let _ = try expect_ok(ratio.parse(["--ratio", "1e5"]))
-    let bad_default = Command(
+    _ := try expect_ok(ratio.parse(["--ratio", "1e5"]))
+    bad_default := Command(
         name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float, default: "NaN")]
     )
     (bad_default.parse([]) | try expect_error).message | try expect_contains(
@@ -180,7 +180,7 @@ test "float flags reject NaN and infinities":
     )
 
 test "schema mistakes are reported before parsing":
-    let duplicate = Command(
+    duplicate := Command(
         name: "x",
         flags: [
             Flag(name: "a", kind: FlagKind.Bool), Flag(name: "a", kind: FlagKind.String)
@@ -190,35 +190,35 @@ test "schema mistakes are reported before parsing":
         "duplicate flag a"
     )
 
-    let bad_default = Command(
+    bad_default := Command(
         name: "x", flags: [Flag(name: "n", kind: FlagKind.Int, default: "z")]
     )
     (bad_default.parse([]) | try expect_error).message | try expect_contains(
         "default z does not fit"
     )
 
-    let rest_first = Command(
+    rest_first := Command(
         name: "x", args: [Arg(name: "a", rest: true), Arg(name: "b")]
     )
     (rest_first.parse([]) | try expect_error).message | try expect_contains(
         "must be last"
     )
 
-    let order = Command(
+    order := Command(
         name: "x", args: [Arg(name: "a", required: false), Arg(name: "b")]
     )
     (order.parse([]) | try expect_error).message | try expect_contains(
         "follows an optional"
     )
 
-    let reserved = Command(name: "x", children: [Command(name: "help")])
+    reserved := Command(name: "x", children: [Command(name: "help")])
     (reserved.parse([]) | try expect_error).message | try expect_contains(
         "bad command name help"
     )
 
 fn handled(argv: List[String]) Int!:
-    let tool = app()
-    let parsed = tool.parse(argv)
+    tool := app()
+    parsed := tool.parse(argv)
     if parsed.is_error(): return error(parsed.err().clone())
 
     match parsed.get():
@@ -237,9 +237,9 @@ test "optional, rest and dashed names decode into record fields":
     )
 
 test "a record that does not match the schema is reported when the handler runs":
-    let mismatched = command[ServeOptions](name: "bad", run: fn options: ok(0))
-    let tool = Command(name: "tool", children: [mismatched])
-    let parsed = (tool.parse(["bad"]) | try expect_ok)
+    mismatched := command[ServeOptions](name: "bad", run: fn options: ok(0))
+    tool := Command(name: "tool", children: [mismatched])
+    parsed := (tool.parse(["bad"]) | try expect_ok)
 
     match parsed:
         Run(matches):
@@ -249,14 +249,14 @@ test "a record that does not match the schema is reported when the handler runs"
         Help(_): return fail("help")
 
 test "help rows without text carry no trailing spaces":
-    let quiet = Command(
+    quiet := Command(
         name: "t",
         args: [Arg("file")],
         children: [
             Command(name: "sub"), Command(name: "other-long", about: "Other")
         ]
     )
-    let text = quiet.help() | try expect_some
+    text := quiet.help() | try expect_some
     text | try expect_contains("  sub        \n".trim_end() + "\n")
     text | try expect_contains("  file\n")
     for line in text.split("\n"):

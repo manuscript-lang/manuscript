@@ -79,17 +79,17 @@ fn checked_expansion() Unit!:
     return ok(unit)
 
 test "list methods mutate explicit clones and remain typed":
-    let original = [3, 1, 2, 1]
-    let alias = original.clone()
+    original := [3, 1, 2, 1]
+    alias := original.clone()
     original.get(index: -1) | try expect_equal(1)
 
-    let absent: Int? = none
+    absent: Int? = none
     original.get(index: -9223372036854775808, default: -1) | try expect_equal(-1)
     original.get(index: 9223372036854775807, default: -1) | try expect_equal(-1)
     original.first() | try expect_equal(3)
     original.last() | try expect_equal(1)
 
-    let empty: List[Int] = []
+    empty: List[Int] = []
     empty.first() | try expect_equal(absent)
     empty.last() | try expect_equal(absent)
     (empty.is_empty()) | try expect_true
@@ -158,15 +158,15 @@ test "list methods mutate explicit clones and remain typed":
     original.fold(initial: 0, step: total) | try expect_equal(7)
     original.fold_right(initial: "", step: ordered) | try expect_equal("1213")
 
-    let convert = original.map[String]
+    convert := original.map[String]
     convert(transform: stringify) | try expect_equal(["3", "1", "2", "1"])
 
     var reversing = original.clone()
-    let reverse = reversing.reverse
+    reverse := reversing.reverse
     reverse()
     reversing | try expect_equal([1, 2, 1, 3])
 
-    let reduce = original.fold[Int]
+    reduce := original.fold[Int]
     reduce(initial: 0, step: total) | try expect_equal(7)
 
     var chain_5 = original.clone()
@@ -233,7 +233,7 @@ test "map enumeration, merge, and clear preserve insertion order":
     observed_keys | try expect_equal(merged.keys())
     observed_values | try expect_equal(merged.values())
 
-    let get_keys = merged.keys
+    get_keys := merged.keys
     get_keys() | try expect_equal(["a", "b", "c"])
 
     var chain_1 = original.clone()
@@ -243,8 +243,8 @@ test "map enumeration, merge, and clear preserve insertion order":
     other.values() | try expect_equal([3, 4])
 
 test "set algebra and enumeration preserve source values":
-    let left = [1, 2, 3].to_set()
-    let right = [3, 4].to_set()
+    left := [1, 2, 3].to_set()
+    right := [3, 4].to_set()
     left.union(other: right).values() | try expect_equal([1, 2, 3, 4])
     left.intersection(other: right).values() | try expect_equal([3])
     left.difference(other: right).values() | try expect_equal([1, 2])
@@ -256,7 +256,7 @@ test "set algebra and enumeration preserve source values":
     (left.is_disjoint_from(other: [5].to_set())) | try expect_true
     (not left.is_disjoint_from(other: right)) | try expect_true
 
-    let empty = Set[Int]()
+    empty := Set[Int]()
     (empty.is_subset_of(other: left)) | try expect_true
     (left.is_superset_of(other: empty)) | try expect_true
     (empty.is_disjoint_from(other: left)) | try expect_true
@@ -277,7 +277,7 @@ test "string methods use Unicode scalars":
     "é🙂é".get(index: -1) | try expect_equal("é")
     "é🙂é".scalar_at(index: 1) | try expect_equal(128578)
 
-    let _missing: String? = none
+    _missing: String? = none
     "".get(index: 0, default: "?") | try expect_equal("?")
     "é".get(index: -9223372036854775808, default: "?") | try expect_equal("?")
     "é🙂é".index_of(value: "🙂") | try expect_equal(1)
@@ -285,7 +285,7 @@ test "string methods use Unicode scalars":
     "é🙂é".last_index_of(value: "") | try expect_equal(3)
     "é🙂é".index_of(value: "") | try expect_equal(0)
 
-    let absent: Int? = none
+    absent: Int? = none
     "é🙂é".index_of(value: "z") | try expect_equal(absent)
     "é🙂é".last_index_of(value: "z") | try expect_equal(absent)
     "é🙂é".slice(start: -2, end: 3).get() | try expect_equal("🙂é")
@@ -304,20 +304,20 @@ test "string methods use Unicode scalars":
     "a,b,c".split(separator: ",", max_parts: 2) | try expect_equal(["a", "b"])
     "aba".replace_first(old: "a", new: "x") | try expect_equal("xba")
 
-    let strip = " hello ".trim
+    strip := " hello ".trim
     strip() | try expect_equal("hello")
 
     match checked_expansion():
         ok(_):
-            let _completed = unit
+            _completed := unit
         error(cause):
             return fail(message: cause.message)
 
 test "bytes have analogous immutable operations":
-    let data = Bytes([1, 2, 3, 2])
+    data := Bytes([1, 2, 3, 2])
     data.get(index: -1) | try expect_equal(2)
 
-    let missing: Int? = none
+    missing: Int? = none
     data.get(index: -9223372036854775808, default: 255) | try expect_equal(255)
     (data.contains(value: Bytes([2, 3]))) | try expect_true
     data.index_of(value: Bytes([2])) | try expect_equal(1)
@@ -341,10 +341,10 @@ test "growth limits and invalid inputs return values":
     "x".pad_start(target_length: -1, padding: " ") | try expect_equal("x")
     "x".pad_end(target_length: 4, padding: "") | try expect_equal("x")
 
-    let list_limit: List[Int]! = error(
+    list_limit: List[Int]! = error(
         Error("collection: limit exceeded", kind: "EOVERFLOW")
     )
-    let list_invalid: List[Int]! = error(
+    list_invalid: List[Int]! = error(
         Error("collection: invalid input", kind: "EINVAL")
     )
     range_by(start: 0, end: 4, step: 1, options: RangeOptions(max_items: 3)) | try expect_equal(
@@ -364,11 +364,11 @@ fn default_value(key: String) Int:
     return 3
 
 test "grouping and lazy map defaults":
-    let grouped = [1, 2, 3, 4].group_by(key: parity)
+    grouped := [1, 2, 3, 4].group_by(key: parity)
     grouped.keys() | try expect_equal([1, 0])
     grouped.values() | try expect_equal([[1, 3], [2, 4]])
 
-    let group = [1, 2, 3, 4].group_by[Int]
+    group := [1, 2, 3, 4].group_by[Int]
     group(key: parity) | try expect_equal(grouped)
 
     var original = Map[String, Int]()
@@ -378,7 +378,7 @@ test "grouping and lazy map defaults":
 
     var calls: List[Int] = []
 
-    let create = fn(key: String):
+    create := fn(key: String):
         calls.append(1)
         return 0
 
@@ -426,26 +426,26 @@ fn verify_text_and_numbers() Unit!:
 test "normalization, empty separators, and precision formatting":
     match verify_text_and_numbers():
         ok(_):
-            let _completed = unit
+            _completed := unit
         error(cause):
             return fail(message: cause.message)
 
     "é🙂".split(separator: "", max_parts: 8) | try expect_equal(["é", "🙂"])
 
-    let empty_texts: List[String] = []
+    empty_texts: List[String] = []
     "".split(separator: "", max_parts: 8) | try expect_equal(empty_texts)
     "é🙂".replace_first(old: "", new: "-") | try expect_equal("-é🙂")
     "".replace_first(old: "", new: "-") | try expect_equal("-")
     "é".concat(other: "🙂") | try expect_equal("é🙂")
 
-    let invalid: String! = error(Error("string: invalid input", kind: "EINVAL"))
-    let limit: String! = error(Error("string: limit exceeded", kind: "EOVERFLOW"))
+    invalid: String! = error(Error("string: invalid input", kind: "EINVAL"))
+    limit: String! = error(Error("string: limit exceeded", kind: "EOVERFLOW"))
     "é".normalize(form: "invalid", max_bytes: 8) | try expect_equal(invalid)
     "é".normalize(form: "NFD", max_bytes: 2) | try expect_equal(limit)
 
 fn verify_bigint_and_regex() Unit!:
-    let a = from_int(value: 12)
-    let b = from_int(value: 5)
+    a := from_int(value: 12)
+    b := from_int(value: 5)
     a.add(other: b).to_string_radix(radix: 10) | try expect_equal("17")
     a.subtract(other: b).to_string_radix(radix: 10) | try expect_equal("7")
     a.multiply(other: b).to_string_radix(radix: 10) | try expect_equal("60")
@@ -457,8 +457,8 @@ fn verify_bigint_and_regex() Unit!:
     a.bit_xor(other: b).to_int() | try expect_equal(9)
 
     // A Regex has one owner and no clone, so the lent part comes from a binding, not a temporary.
-    let compiled = compile(pattern: "[0-9]+")
-    let pattern = try common_result(result: compiled)
+    compiled := compile(pattern: "[0-9]+")
+    pattern := try common_result(result: compiled)
     (pattern.matches(text: "a12b3")) | try expect_true
     (
         not (
@@ -481,18 +481,18 @@ fn verify_bigint_and_regex() Unit!:
 test "BigInt and Regex share function implementations with methods":
     match verify_bigint_and_regex():
         ok(_):
-            let _completed = unit
+            _completed := unit
         error(cause):
             return fail(message: cause.message)
 
 test "generic native methods accept omitted single-parameter labels":
-    let values = [1, 2]
+    values := [1, 2]
     values.map(stringify) | try expect_equal(["1", "2"])
     values.map[String](stringify) | try expect_equal(["1", "2"])
     values.flat_map(expand) | try expect_equal(["1", "x", "2", "x"])
     values.group_by(parity).keys() | try expect_equal([1, 0])
 
-    let convert = values.map[String]
+    convert := values.map[String]
     convert(stringify) | try expect_equal(["1", "2"])
 
     var observed_values: List[Int] = []

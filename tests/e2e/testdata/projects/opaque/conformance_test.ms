@@ -16,7 +16,7 @@ fn show[T](value: T) String:
     return "{value}"
 
 test "module functions and methods work on an opaque value":
-    let a = approve("u1")
+    a := approve("u1")
     entity(a) | try expect_equal("u1")
     nonce_of(a) | try expect_equal("n1")
     a.label() | try expect_equal("approved:u1")
@@ -28,14 +28,14 @@ test "a mutating method changes an opaque value":
     c.value() | try expect_equal(2)
 
 test "an opaque value copies, clones and compares":
-    let a = approve("u1")
-    let b = a.clone()
+    a := approve("u1")
+    b := a.clone()
     try expect_true(a == b)
     try expect_false(a == approve("u2"))
     entity(b) | try expect_equal("u1")
 
 test "an opaque value prints only its type name":
-    let a = approve("u1")
+    a := approve("u1")
     "{a}" | try expect_equal("Approved")
     a.to_string() | try expect_equal("Approved")
     show(a) | try expect_equal("Approved")
@@ -51,9 +51,9 @@ test "an opaque value lives in collections and optionals":
     all.length() | try expect_equal(2)
     entity(all[1]) | try expect_equal("u2")
 
-    let maybe: Approved? = approve("u3")
+    maybe: Approved? = approve("u3")
 
-    if let found = maybe:
+    if found := maybe:
         entity(found) | try expect_equal("u3")
     else:
         try expect_true(false)

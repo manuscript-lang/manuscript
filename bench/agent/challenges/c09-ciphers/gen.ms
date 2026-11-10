@@ -4,19 +4,19 @@ import seeded from "../../lib/pyrandom.ms"
 import from_scalars from "@std/string.ms"
 import split_max, strip_spaces from "../../lib/text.ms"
 
-let DIGITS = "0123456789"
-let LETTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+DIGITS := "0123456789"
+LETTERS := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 fn shift(text: String, keys: List[Int], fixed: Int, use_keys: Bool, sign: Int) String:
     var out = List[Int]()
     var i = 0
 
     for ch in text.scalar_values():
-        let lower = ch >= 97 and ch <= 122
+        lower := ch >= 97 and ch <= 122
 
         if lower or (ch >= 65 and ch <= 90):
-            let base = if lower: 97 else: 65
-            let k = if use_keys: keys[i % keys.length()] else: fixed
+            base := if lower: 97 else: 65
+            k := if use_keys: keys[i % keys.length()] else: fixed
             out.append((((ch - base + sign * k) % 26) + 26) % 26 + base)
             i += 1
         else:
@@ -26,7 +26,7 @@ fn shift(text: String, keys: List[Int], fixed: Int, use_keys: Bool, sign: Int) S
 
 // A caesar key: an optional minus sign and one to seven digits.
 fn caesar_key(key: String) Bool:
-    let digits = if key.starts_with("-"): key.slice(1, key.length()).get("") else: key.clone()
+    digits := if key.starts_with("-"): key.slice(1, key.length()).get("") else: key.clone()
     return (
         digits.length() >= 1
         and digits.length() <= 7
@@ -34,17 +34,17 @@ fn caesar_key(key: String) Bool:
     )
 
 fn solve_line(line: String) String:
-    let parts = split_max(line, " ", 3)
+    parts := split_max(line, " ", 3)
     if parts.length() < 4 or parts[3].is_empty(): return "error: bad command"
 
-    let cipher = parts[0].clone()
-    let mode = parts[1].clone()
-    let key = parts[2].clone()
-    let text = parts[3].clone()
+    cipher := parts[0].clone()
+    mode := parts[1].clone()
+    key := parts[2].clone()
+    text := parts[3].clone()
     if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
     if mode != "enc" and mode != "dec": return "error: bad mode"
 
-    let sign = if mode == "enc": 1 else: -1
+    sign := if mode == "enc": 1 else: -1
 
     if cipher == "caesar":
         if not caesar_key(key): return "error: bad key"
@@ -53,7 +53,7 @@ fn solve_line(line: String) String:
 
     if key.is_empty() or not key.chars().all(fn c: LETTERS.contains(c)): return "error: bad key"
 
-    let ks = key.lower().scalar_values().map(fn c: c - 97)
+    ks := key.lower().scalar_values().map(fn c: c - 97)
     return shift(text, ks, 0, true, sign)
 
 fn solve(s: String) String:
@@ -67,21 +67,21 @@ fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
 
 export fn gen_c09() Unit:
     var rnd = seeded(9)
-    let alpha = (LETTERS + "      .,!?" + DIGITS).chars()
+    alpha := (LETTERS + "      .,!?" + DIGITS).chars()
     var big = List[String]()
 
     for _n in 0..200:
-        let c = rnd.choice(["caesar", "vigenere"])
+        c := rnd.choice(["caesar", "vigenere"])
         var k = ""
 
         if c == "caesar":
             k = "{rnd.randint(-100, 100)}"
         else:
-            let n = rnd.randint(1, 8)
+            n := rnd.randint(1, 8)
             for _m in 0..n: k += rnd.choice(["a", "b", "c", "X", "Y", "Z"])
 
-        let mode = rnd.choice(["enc", "dec"])
-        let n = rnd.randint(1, 80)
+        mode := rnd.choice(["enc", "dec"])
+        n := rnd.randint(1, 80)
         var text = ""
         for _m in 0..n: text += rnd.choice(alpha)
 
@@ -89,14 +89,14 @@ export fn gen_c09() Unit:
         if trimmed.is_empty(): trimmed = "x"
         big.append("{c} {mode} {k} {trimmed}")
 
-    let examples = [
+    examples := [
         mk(
             "basic",
             "caesar enc 3 Hello, World!\ncaesar dec 3 Khoor, Zruog!\nvigenere enc Key Attack at dawn\nvigenere dec Key Kxrkgi kx bkal\nrot13 enc 13 x\ncaesar enc 3x abc\ncaesar enc\n"
         ),
         mk("wraparound", "caesar enc 1 xyz XYZ\ncaesar enc -1 abc ABC\n")
     ]
-    let hidden = examples.concat(
+    hidden := examples.concat(
         [
             mk(
                 "big-shifts",

@@ -19,7 +19,7 @@ Scalar classification lives in `@std/unicode.ms`; whole-string operations such a
 
 // Parses `true`/`false` ignoring case, and `1`/`0`, `t`/`f`, `yes`/`no`, `on`/`off`; anything else is none.
 export fn parse_bool(text: String) Bool?:
-    let word = text.trim().lower()
+    word := text.trim().lower()
     if ["true", "t", "1", "yes", "on"].contains(word): return true
     if ["false", "f", "0", "no", "off"].contains(word): return false
 
@@ -77,16 +77,16 @@ Reverses quote: reads a double-quoted literal and returns its text. Supports `\"
 anything else, or text that is not fully quoted, is EINVAL.
 */
 export fn unquote(text: String) String!:
-    let cs = text.scalar_values()
+    cs := text.scalar_values()
     if cs.length() < 2 or cs[0] != 34 or cs[cs.length() - 1] != 34:
         return error(Error("string: invalid input", kind: "EINVAL"))
 
     var out = List[Int]()
     var i = 1
-    let end = cs.length() - 1
+    end := cs.length() - 1
 
     while i < end:
-        let c = cs[i]
+        c := cs[i]
         if c == 34: return error(Error("string: invalid input", kind: "EINVAL"))
 
         if c != 92:
@@ -95,7 +95,7 @@ export fn unquote(text: String) String!:
         else if i + 1 >= end:
             return error(Error("string: invalid input", kind: "EINVAL"))
         else:
-            let e = cs[i + 1]
+            e := cs[i + 1]
             i += 2
 
             if e == 110:
@@ -113,7 +113,7 @@ export fn unquote(text: String) String!:
                 var hex = List[Int]()
 
                 while j < end and cs[j] != 125:
-                    let digit = cs[j]
+                    digit := cs[j]
                     if (
                         hex.length() == 6
                         or not (
@@ -133,8 +133,8 @@ export fn unquote(text: String) String!:
                 if j >= end or hex.is_empty():
                     return error(Error("string: invalid input", kind: "EINVAL"))
 
-                let digits = try from_scalars(hex)
-                let value = parse_int(digits, 16)
+                digits := try from_scalars(hex)
+                value := parse_int(digits, 16)
                 if value.is_error():
                     return error(Error("string: invalid input", kind: "EINVAL"))
 
@@ -172,15 +172,15 @@ impl TextCursor:
     fn peek() String?:
         if self.is_done(): return none
 
-        let stop = self.at + utf8_width(self.bytes.get(self.at).to_int())
+        stop := self.at + utf8_width(self.bytes.get(self.at).to_int())
         return self.bytes.decode_utf8_range(self.at, stop)
 
     // Reads the next scalar and moves past it, or returns none at the end.
     var fn read() String?:
         if self.is_done(): return none
 
-        let stop = self.at + utf8_width(self.bytes.get(self.at).to_int())
-        let scalar = self.bytes.decode_utf8_range(self.at, stop)
+        stop := self.at + utf8_width(self.bytes.get(self.at).to_int())
+        scalar := self.bytes.decode_utf8_range(self.at, stop)
         self.at = stop
         return scalar
 

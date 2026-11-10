@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -23,28 +23,28 @@ fn fact(n: Int) Int:
 export fn main() Int:
     say("gcd(934, 3786) = {gcd(934, 3786)}")
 
-    let s1 = "quote\"d"
+    s1 := "quote\"d"
     say("s1 = [{s1}]")
 
-    let i2 = (((415980 + (-28)) - (24 * 33)) + (-37))
+    i2 := (((415980 + (-28)) - (24 * 33)) + (-37))
     say("i2 = {i2}")
     say("fact(1) = {fact(1)}")
 
-    let i4 = (-(895520 + ((-312427) + i2)))
+    i4 := (-(895520 + ((-312427) + i2)))
     say("i4 = {i4}")
 
-    let l5 = [6, 28, (-7)]
+    l5 := [6, 28, (-7)]
     say("l5 = {l5} len {l5.length()}")
 
-    let f6 = 309.598
+    f6 := 309.598
     say("f6 = {f6}")
 
-    let i7 = l5.length()
+    i7 := l5.length()
     say("i7 = {i7}")
 
-    let i8 = (((i2 + i7) + (42 * i4)) / ((i7 * i7) + (i2 * (-5))))
+    i8 := (((i2 + i7) + (42 * i4)) / ((i7 * i7) + (i2 * (-5))))
     say("i8 = {i8}")
 
-    let f9 = (((f6 * f6) * f6) * f6)
+    f9 := (((f6 * f6) * f6) * f6)
     say("f9 = {f9}")
     return 0

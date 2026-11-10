@@ -6,28 +6,28 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 export fn main() Int:
-    let i1 = (33 * (-207115075029))
+    i1 := (33 * (-207115075029))
     say("i1 = {i1}")
 
-    let f2 = (((126.647 + 958.989) + (864.186 - 5.0e14)) * (7.0e6 / (213.278 + 3.5)))
+    f2 := (((126.647 + 958.989) + (864.186 - 5.0e14)) * (7.0e6 / (213.278 + 3.5)))
     say("f2 = {f2}")
 
-    let b3 = (((846.029 / f2) < (f2 + 0.0)) and ((6 % (-689974)) <= (0 * 940755745557)))
+    b3 := (((846.029 / f2) < (f2 + 0.0)) and ((6 % (-689974)) <= (0 * 940755745557)))
     say("b3 = {b3}")
 
-    let f4 = f2
+    f4 := f2
     say("f4 = {f4}")
 
-    let s5 = "back\\slash"
+    s5 := "back\\slash"
     say("s5 = [{s5}]")
 
-    let b6 = (s5.replace("Tab\there", s5) + ("MiXeD CaSe" + s5)).starts_with("beta")
+    b6 := (s5.replace("Tab\there", s5) + ("MiXeD CaSe" + s5)).starts_with("beta")
     say("b6 = {b6}")
 
-    let s7 = (
+    s7 := (
         ("{i1}:" + ("{(i1 + i1)}:" + "quote\"d"))
         + ("gamma" + ("{(i1 + i1)}:" + s5))
     )
@@ -38,9 +38,9 @@ export fn main() Int:
         acc8 += i * 9
     say("acc8 = {acc8}")
 
-    let b9 = ("MiXeD CaSe".lower() + "hello world").contains("  padded  ")
+    b9 := ("MiXeD CaSe".lower() + "hello world").contains("  padded  ")
     say("b9 = {b9}")
 
-    let i10 = (-(-18))
+    i10 := (-(-18))
     say("i10 = {i10}")
     return 0

@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -20,33 +20,33 @@ export fn main() Int:
     else:
         say(("42" + "brace\{s\}"))
 
-    let l1 = [1, 2, 3].take(0)
+    l1 := [1, 2, 3].take(0)
     say("l1 = {l1} len {l1.length()}")
 
-    let i2 = ((((-47) * 8) + 24) + ((115902 + (-14)) - 632383438090))
+    i2 := ((((-47) * 8) + 24) + ((115902 + (-14)) - 632383438090))
     say("i2 = {i2}")
     say("{i2} {i2} {(i2 < i2)} sum {i2 + i2}")
 
-    let f3 = 539.333
+    f3 := 539.333
     say("f3 = {f3}")
     say("{i2} {i2} {(i2 < i2)} sum {i2 + i2}")
 
-    let l4 = l1.drop(1)
+    l4 := l1.drop(1)
     say("l4 = {l4} len {l4.length()}")
 
-    let i5 = (((i2 - i2) / (9 + i2)) + (-41))
+    i5 := (((i2 - i2) / (9 + i2)) + (-41))
     say("i5 = {i5}")
     say("gcd(1352, 4833) = {gcd(1352, 4833)}")
 
-    let f6 = 20.534
+    f6 := 20.534
     say("f6 = {f6}")
 
-    let l7 = [1, 2, 3].take(0)
+    l7 := [1, 2, 3].take(0)
     say("l7 = {l7} len {l7.length()}")
 
-    let i8 = (i2 - l1.length())
+    i8 := (i2 - l1.length())
     say("i8 = {i8}")
 
-    let i9 = (-i2)
+    i9 := (-i2)
     say("i9 = {i9}")
     return 0

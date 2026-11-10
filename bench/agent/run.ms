@@ -62,8 +62,8 @@ fn split_ids(text: String) List[String]:
 
 // Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none without tiktoken.
 fn llm_tokens(path: String) Int?:
-    let program = "import sys, tiktoken; print(len(tiktoken.get_encoding('o200k_base').encode(open(sys.argv[1], errors='replace').read(), disallowed_special=())))"
-    let ran = bash("python3 -c \"{program}\" \"{path}\"", ".", 60, "")
+    program := "import sys, tiktoken; print(len(tiktoken.get_encoding('o200k_base').encode(open(sys.argv[1], errors='replace').read(), disallowed_special=())))"
+    ran := bash("python3 -c \"{program}\" \"{path}\"", ".", 60, "")
     if ran.code != 0: return none
 
     return ran.out.trim().parse_int()
@@ -81,19 +81,19 @@ fn run_one(
     out_file: String,
     tag: String
 ) RunRecord:
-    let run_id = uuid_v4().get("").replace("-", "").take(10)
-    let base = temporary_directory("agent-bench-").get()
-    let ws = "{base}/ws"
-    let prompt = make_workspace(ch, lang, ws)
-    let transcripts = "{root()}/results/transcripts"
+    run_id := uuid_v4().get("").replace("-", "").take(10)
+    base := temporary_directory("agent-bench-").get()
+    ws := "{base}/ws"
+    prompt := make_workspace(ch, lang, ws)
+    transcripts := "{root()}/results/transcripts"
     create_directory(transcripts, recursive: true).get()
 
-    let transcript = "{transcripts}/{run_id}.log"
+    transcript := "{transcripts}/{run_id}.log"
     var agent = AgentRun(Usage(), 0.0, 0, false)
 
     if h.name() == "oracle":
-        let src = reference_for(ch, lang)
-        let size = stat(src).to_optional()
+        src := reference_for(ch, lang)
+        size := stat(src).to_optional()
         create_directory(
             "{ws}/{lang.solution.split("/").take(lang.solution.split("/").length() - 1).join("/")}",
             recursive: true
@@ -102,24 +102,24 @@ fn run_one(
     else:
         agent = run_agent(h, prompt, model, ws, timeout_s, transcript)
 
-    let log = read_log(ws)
+    log := read_log(ws)
 
     // Cheap leak guard: flag runs whose transcript mentions the benchmark's own challenge tree.
-    let said = read_text(transcript)
-    let peeked = (
+    said := read_text(transcript)
+    peeked := (
         said.contains("bench/agent/challenges")
         or said.contains("hidden/cases.json")
     )
     var g = grade(ch, lang, ws)
-    let sol = "{ws}/{lang.solution}"
+    sol := "{ws}/{lang.solution}"
 
     if stat(sol).is_ok() and h.name() != "oracle":
-        let copied = "{root()}/results/sources/{run_id}{lang.suffix()}"
+        copied := "{root()}/results/sources/{run_id}{lang.suffix()}"
         create_directory("{root()}/results/sources", recursive: true).get()
         copy(sol, copied, CopyOptions(replace: true)).get()
         g.llm_tokens = llm_tokens(sol)
 
-    let rec = RunRecord(
+    rec := RunRecord(
         run_id.clone(), now().unix_seconds(), tag.clone(), ch.id.clone(),
         ch.category.clone(), ch.tier, lang.id.clone(), h.name(), model.clone(),
         agent.usage.clone(), agent.wall_s, agent.exit_code, agent.timed_out, log.builds,
@@ -140,14 +140,14 @@ type Job:
 
 // Runs every job in `items`, printing one verdict line each; returns how many failed.
 fn work(items: List[Job], harness: String, o: Options, tag: String) Int:
-    let h = find(harness).get()
+    h := find(harness).get()
     var bad = 0
 
     for item in items:
-        let rec = run_one(
+        rec := run_one(
             item.challenge, item.language, h, o.model, o.timeout, o.keep, o.out, tag
         )
-        let verdict = if rec.pass: "PASS" else: "FAIL"
+        verdict := if rec.pass: "PASS" else: "FAIL"
         (
             stdout()
             .write(
@@ -183,10 +183,10 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
         o.out = "{root()}/results/oracle.jsonl"
         remove(o.out, recursive: false).to_optional()
 
-    let chs = load_challenges(split_ids(o.challenges))
-    let langs = load_languages(split_ids(o.languages))
-    let which = if oracle: "oracle" else: o.harness.clone()  // workaround for #3218; remove once fixed
-    let h = find(which).get()
+    chs := load_challenges(split_ids(o.challenges))
+    langs := load_languages(split_ids(o.languages))
+    which := if oracle: "oracle" else: o.harness.clone()  // workaround for #3218; remove once fixed
+    h := find(which).get()
     var todo = List[Job]()
 
     for ch in chs:
@@ -204,8 +204,8 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
             for _n in 0..(if oracle: 1 else: o.repeat):
                 todo.append(Job(ch.clone(), lang.clone()))
 
-    let jobs = if oracle: 1 else: if o.jobs < 1: 1 else: o.jobs
-    let tag = if oracle: "oracle" else: o.tag.clone()
+    jobs := if oracle: 1 else: if o.jobs < 1: 1 else: o.jobs
+    tag := if oracle: "oracle" else: o.tag.clone()
     var bad = 0
     var running: List[Promise[Int]] = []
     for w in 0..jobs:
@@ -227,14 +227,14 @@ fn spawn(mine: List[Job], me: String, own: Options, label: String) Promise[Int]:
     return promise(fn: ok(work(mine.clone(), me.clone(), own.clone(), label.clone())))
 
 export fn main() Int:
-    let flags = [
+    flags := [
         Flag(
             "challenges", help: "comma list of ids or prefixes (default all)",
             default: ""
         ),
         Flag("languages", help: "comma list (default all)", default: "")
     ]
-    let run_flags = flags.concat(
+    run_flags := flags.concat(
         [
             Flag("harness", required: true, choices: names()),
             Flag("model"),
@@ -253,7 +253,7 @@ export fn main() Int:
             Flag("out", default: "{root()}/results/runs.jsonl")
         ]
     )
-    let root = Command(
+    root := Command(
         name: "run.ms",
         about: "Agent-effectiveness benchmark runner",
         children: [

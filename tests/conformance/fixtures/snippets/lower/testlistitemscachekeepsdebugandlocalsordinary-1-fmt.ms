@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/lower/list_items_test.go:38 TestListItemsCacheKeepsDebugAndLocalsOrdinary
 fn work() Int:
-    let values = [1, 2]
+    values := [1, 2]
     var i = 0
     var total = 0
 

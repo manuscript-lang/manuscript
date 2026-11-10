@@ -47,7 +47,7 @@ var fn dequeue() Optional[T]:
     if self.head >= self.items.length():
         return none
 
-    let value = replace(var self.items[self.head], none)
+    value := replace(var self.items[self.head], none)
     self.head += 1
     return value
 ```
@@ -61,7 +61,7 @@ Binary heap: `dequeue` does `self.heap.swap(0, last)`, `pop()`, then sifts with 
 | Do nothing; ship only the `List.swap` stopgap | Fixes `PriorityQueue` but not `Queue.dequeue`, compaction, `Optional` fields, linked structures or any user code. Every container would grow its own `take_at`-style native. Cheapest, least general. |
 | Only `List.swap` and `List.replace` natives | Smaller checker risk, but Rust-side special casing per container and no field or `Optional` support. Violates "prefer a general primitive". |
 | **`replace` / `swap` on `var` places (recommended)** | Covers lists, maps (`if var v = m.get(k)`), fields and locals with one rule. Plus `List.swap` for same-container indexes. |
-| Move out with a hole (`let x = move xs[i]`) | Needs definite-initialization tracking per element. A dynamic index cannot be tracked statically, so the hole must live at runtime (an `Optional` slot and drop flag), which is what `Optional` + `replace` already is. Rejected. |
+| Move out with a hole (`x := move xs[i]`) | Needs definite-initialization tracking per element. A dynamic index cannot be tracked statically, so the hole must live at runtime (an `Optional` slot and drop flag), which is what `Optional` + `replace` already is. Rejected. |
 | Element handles (`var ref`, or `pair(i, j) -> (var T, var T)` like `split_at_mut`) | Needs `ref` in tuples or bindings, which `one-borrow-model.md` deliberately removed (`ref` only on results). Two exclusive borrows of one list violate the one-writer rule. Rejected. |
 | `take` with a `Default` bound | Requires a default value for every `T` and an extra construct; `replace` subsumes it. Rejected. |
 

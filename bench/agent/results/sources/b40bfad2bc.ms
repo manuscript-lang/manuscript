@@ -2,7 +2,7 @@ import Bytes from "@std/bytes.ms"
 import stdin, stdout from "@std/io.ms"
 import read_lines from "@std/streams.ms"
 
-let BAD = "error: bad command"
+BAD := "error: bad command"
 
 fn is_blank(line: String) Bool:
     for i in 0..line.length():
@@ -25,8 +25,8 @@ fn value(text: String) Int:
     return number(text).get(-1)
 
 fn lcs(a: Bytes, b: Bytes) Int:
-    let n = a.length()
-    let m = b.length()
+    n := a.length()
+    m := b.length()
     var prev = List[Int]()
     for _j in 0..m + 1: prev.append(0)
 
@@ -45,8 +45,8 @@ fn lcs(a: Bytes, b: Bytes) Int:
     return prev[m]
 
 fn edit(a: Bytes, b: Bytes) Int:
-    let n = a.length()
-    let m = b.length()
+    n := a.length()
+    m := b.length()
     var prev = List[Int]()
     for j in 0..m + 1: prev.append(j)
 
@@ -68,12 +68,12 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
     var total = 0
     for w in ws: total += w
 
-    let limit = cap.min(total)
+    limit := cap.min(total)
     var best = List[Int]()
     for _c in 0..limit + 1: best.append(0)
 
     for i in 0..ws.length():
-        let w = ws[i]
+        w := ws[i]
         if w > limit: continue
 
         var c = limit
@@ -86,7 +86,7 @@ fn knap(cap: Int, ws: List[Int], vs: List[Int]) Int:
 
 // Minimum coin count, or -1 when the amount cannot be made.
 fn coins(amount: Int, cs: List[Int]) Int:
-    let inf = amount + 1
+    inf := amount + 1
     var best = List[Int]()
     best.append(0)
 
@@ -101,29 +101,29 @@ fn coins(amount: Int, cs: List[Int]) Int:
     return best[amount]
 
 fn run(line: String) String:
-    let t = line.split(" ")
+    t := line.split(" ")
     for s in t:
         if s.length() == 0: return BAD
 
-    let cmd = t[0]
+    cmd := t[0]
     if cmd == "lcs" and t.length() == 3:
         return "{lcs(t[1].to_bytes(), t[2].to_bytes())}"
     if cmd == "edit" and t.length() == 3:
         return "{edit(t[1].to_bytes(), t[2].to_bytes())}"
 
     if cmd == "knap" and t.length() >= 2:
-        let cap = value(t[1])
+        cap := value(t[1])
         if cap < 0: return BAD
 
         var ws = List[Int]()
         var vs = List[Int]()
 
         for k in 2..t.length():
-            let parts = t[k].split(":")
+            parts := t[k].split(":")
             if parts.length() != 2: return BAD
 
-            let w = value(parts[0])
-            let v = value(parts[1])
+            w := value(parts[0])
+            v := value(parts[1])
             if w < 1 or v < 0: return BAD
 
             ws.append(w)
@@ -132,18 +132,18 @@ fn run(line: String) String:
         return "{knap(cap, ws, vs)}"
 
     if cmd == "coins" and t.length() >= 3:
-        let amount = value(t[1])
+        amount := value(t[1])
         if amount < 0: return BAD
 
         var cs = List[Int]()
 
         for k in 2..t.length():
-            let c = value(t[k])
+            c := value(t[k])
             if c < 1: return BAD
 
             cs.append(c)
 
-        let n = coins(amount, cs)
+        n := coins(amount, cs)
         if n < 0: return "impossible"
 
         return "{n}"

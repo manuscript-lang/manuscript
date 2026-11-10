@@ -9,38 +9,38 @@ test "each paragraph develops one case":
     copy.enqueue(9)
     try expect_equal(copy.dequeue(), 9)
     // An absent value stays absent.
-    let missing: Int? = none
+    missing: Int? = none
     try expect_equal(queue.dequeue(), missing)
 
 fn prepare(value: Int) Int:
-    let adjusted = value + 1
+    adjusted := value + 1
     return adjusted
 
 fn guarded(value: Int) Int:
-    let adjusted = value + 1
+    adjusted := value + 1
     if adjusted < 0: return 0
     if adjusted > 10: return 10
     record(adjusted)
-    let result = adjusted * 2
+    result := adjusted * 2
     return result
 
 fn sections() Unit:
-    let first = 1
+    first := 1
     // Explain the next stage.
-    let second = first + 1
+    second := first + 1
     record(second)
     // Report its result.
     record(first + second)
 
 fn callbacks() Unit:
     record(0)
-    let transform = fn(value: Int) Int:
-        let adjusted = value + 1
+    transform := fn(value: Int) Int:
+        adjusted := value + 1
         return adjusted
     record(transform(2))
     consume(
         fn:
-            let value = 3
+            value := 3
             return value
     )
     record(4)

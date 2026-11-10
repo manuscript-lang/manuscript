@@ -68,7 +68,7 @@ fn in_category(scalar: Int, category: String) Bool:
     if scalar < 0 or scalar > 1114111: return false
     if is_ascii(scalar) and (is_digit(scalar) or is_alphanumeric(scalar)): return false
 
-    let text = from_scalars([scalar])
-    if let s = text:
-        if let re = compile("^\\p\{" + category + "\}$"): return re.matches(s)
+    text := from_scalars([scalar])
+    if s := text:
+        if re := compile("^\\p\{" + category + "\}$"): return re.matches(s)
     return false

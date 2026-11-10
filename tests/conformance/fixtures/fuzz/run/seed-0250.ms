@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -35,21 +35,21 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let i1 = (((208871 + (-687414)) + (828064 * 27)) - (-39))
+    i1 := (((208871 + (-687414)) + (828064 * 27)) - (-39))
     say("i1 = {i1}")
     say("gcd(636, 1285) = {gcd(636, 1285)}")
 
-    let f2 = 662.533
+    f2 := 662.533
     say("f2 = {f2}")
 
-    let f3 = f2
+    f3 := f2
     say("f3 = {f3}")
 
-    let l4 = [(-22), 22, (-6), (-29), 26]
+    l4 := [(-22), 22, (-6), (-29), 26]
     say("l4 = {l4} len {l4.length()}")
     say("fact(3) = {fact(3)}")
 
-    let b5 = (
+    b5 := (
         (
             "beta".ends_with("Tab\there")
             and "back\\slash".ends_with("  padded  ")
@@ -63,13 +63,13 @@ export fn main() Int:
     else:
         say("quote\"d")
 
-    let f6 = (666.414 / ((85.993 * f2) + 832.032))
+    f6 := (666.414 / ((85.993 * f2) + 832.032))
     say("f6 = {f6}")
 
-    let i7 = (35 * i1)
+    i7 := (35 * i1)
     say("i7 = {i7}")
 
-    let f8 = (f2 + 970.081)
+    f8 := (f2 + 970.081)
     say("f8 = {f8}")
     say("collatz(1127) = {collatz(1127)}")
     say("gcd(3895, 1044) = {gcd(3895, 1044)}")
@@ -79,9 +79,9 @@ export fn main() Int:
     else:
         say("MiXeD CaSe".replace("héllo", "alpha"))
 
-    let i9 = i1
+    i9 := i1
     say("i9 = {i9}")
 
-    let s10 = "naïve"
+    s10 := "naïve"
     say("s10 = [{s10}]")
     return 0

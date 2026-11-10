@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let written = stdout().write("{text}\n")
+    written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -42,14 +42,14 @@ export fn main() Int:
     say("collatz(1545) = {collatz(1545)}")
     say("fact(10) = {fact(10)}")
 
-    let s1 = ("{(3 - (-41492))}:" + "brace\{s\}").replace("ms", "alpha").reverse()
+    s1 := ("{(3 - (-41492))}:" + "brace\{s\}").replace("ms", "alpha").reverse()
     say("s1 = [{s1}]")
 
-    let s2 = s1
+    s2 := s1
     say("s2 = [{s2}]")
 
-    let i3 = (-(-(848399 * 0)))
+    i3 := (-(-(848399 * 0)))
     say("i3 = {i3}")
 
-    let bad = "abc".no_such_method()
+    bad := "abc".no_such_method()
     return 0

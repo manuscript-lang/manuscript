@@ -64,7 +64,7 @@ fn remove_generic[T: Hashable](var items: Set[T], value: T) Unit:
 
 test "list names mutate in place and retain shallow copies":
     var items = [1, 2, 3]
-    let copied = items.clone()
+    copied := items.clone()
     items.set(-1, 4)
     items.remove(0)
     try expect_false((items != [2, 4] or copied != [1, 2, 3]))
@@ -79,13 +79,13 @@ test "list names mutate in place and retain shallow copies":
     try expect_equal(optional.get(0), 7)
 
     var nested = [[1]]
-    let outer_copy = nested.clone()
+    outer_copy := nested.clone()
     nested.set(0, [2])
     try expect_false(nested != [[2]] or outer_copy != [[1]])
 
 test "set names mutate in place keep order and no-op membership":
     var items = Set[Int]([3, 1, 2])
-    let copied = items.clone()
+    copied := items.clone()
     items.add(1)
     items.remove(99)
     try expect_equal(items.values(), [3, 1, 2])
@@ -104,7 +104,7 @@ test "set names mutate in place keep order and no-op membership":
     optional.add(9)
     optional.remove(7)
 
-    let expected_values: List[Int?] = [9]
+    expected_values: List[Int?] = [9]
     try expect_equal(optional.values(), expected_values)
 
 interface FirstReplacement:
@@ -141,8 +141,8 @@ test "explicit views and bound views preserve native mutation":
     set_view.add(5)
     try expect_equal(set_view.values(), [3, 4, 5])
 
-    let text_view: FirstReplacement = TextAdapter("aaaa")
-    let view_first = text_view.replace_first
+    text_view: FirstReplacement = TextAdapter("aaaa")
+    view_first := text_view.replace_first
     try expect_false(
         text_view.replace_first("a", "b") != "baaa" or view_first(
             "a", "b"
@@ -155,21 +155,21 @@ test "replace_first changes one match and scalar boundaries":
     try expect_equal("".replace_first("", "x"), "x")
     try expect_equal("abc".replace_first("z", "x"), "abc")
 
-    let first = "aaaa".replace_first
+    first := "aaaa".replace_first
     try expect_false(first(new: "b", "a") != "baaa")
     try expect_equal(first("a", "b"), "aaaa".replace_first("a", "b"))
 
 test "regex replace_all preserves literal text and exact output budgets":
-    let pattern = try compile("(a)")
-    let all = pattern.replace_all
+    pattern := try compile("(a)")
+    all := pattern.replace_all
     try expect_equal((try pattern.replace_all("aaa", "b")), "bbb")
     try expect_equal((try all(replacement: "$1", "aa")), "$1$1")
     try expect_equal((try pattern.replace_all("aa", "é", 4)), "éé")
 
-    let limited: String! = error(
+    limited: String! = error(
         Error("regular expression: limit exceeded", kind: "EOVERFLOW")
     )
-    let invalid: String! = error(
+    invalid: String! = error(
         Error("regular expression: invalid input", kind: "EINVAL")
     )
     try expect_equal(pattern.replace_all("aa", "é", 3), limited)
@@ -180,11 +180,11 @@ test "regex replace_all preserves literal text and exact output budgets":
         pattern.replace_all("aa", "b", none), pattern.replace_all("aa", "b", none)
     )
 
-    let empty = try compile("")
+    empty := try compile("")
     try expect_equal((try empty.replace_all("é🙂", "x")), "xéx🙂x")
 
-    let view: RegexReplacement = RegexAdapter(pattern)
-    let view_all = view.replace_all
+    view: RegexReplacement = RegexAdapter(pattern)
+    view_all := view.replace_all
     try expect_false(
         (
             (try view.replace_all("aaa", "b", none)) != "bbb"
@@ -222,7 +222,7 @@ impl ByteCopy for ByteAdapter:
 
 test "list reversal names distinguish receiver mutation and shallow copies":
     var items = [1, 2, 3]
-    let copied = items.reversed()
+    copied := items.reversed()
     items.reverse()
     items.append(4)
     try expect_false((items != [3, 2, 1, 4] or copied != [3, 2, 1]))
@@ -230,7 +230,7 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     var changed = copied.clone()
     changed.set(0, 8)
 
-    let reversed = items.reversed
+    reversed := items.reversed
     var detached = reversed()
     detached.remove(0)
     try expect_equal(items, [3, 2, 1, 4])
@@ -245,12 +245,12 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     flipped.append(1)
     try expect_false(not empty.is_empty())
 
-    let one = [1]
+    one := [1]
     var one_flipped = one.reversed()
     one_flipped.set(0, 2)
     try expect_equal(one, [1])
 
-    let nested = [Cell(1), Cell(2)]
+    nested := [Cell(1), Cell(2)]
     var shallow = nested.reversed()
     shallow.set(1, Cell(7))
     try expect_false(nested.get(0).value != 1 or nested.get(1).value != 2)
@@ -261,17 +261,17 @@ test "list reversal names distinguish receiver mutation and shallow copies":
     other.append(6)
     view.reverse()
 
-    let view_reversed = view.reversed
+    view_reversed := view.reversed
     var view_copy = view_reversed()
     view_copy.set(0, 7)
     view.reverse()
     try expect_equal(view.reversed(), [5, 4])
 
 test "byte reversal names copy across direct bound and view calls":
-    let data = Bytes([0, 1, 255])
-    let reversed = data.reversed
-    let view: ByteCopy = ByteAdapter(data.clone())
-    let view_reversed = view.reversed
+    data := Bytes([0, 1, 255])
+    reversed := data.reversed
+    view: ByteCopy = ByteAdapter(data.clone())
+    view_reversed := view.reversed
     try expect_false(
         (data.reversed() != Bytes([255, 1, 0]) or reversed() != data.reversed())
     )

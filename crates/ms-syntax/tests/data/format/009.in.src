@@ -4,5 +4,5 @@ fn map_total(values: Map[String, Int]) Int:
     var total = 0
 
     for entry in values:
-        let {value} = entry
+        {value} := entry
        

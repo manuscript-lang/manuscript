@@ -5,6 +5,6 @@ fn pick[T](items: List[T], keep: fn(T) Bool) T?:
     return none
 
 fn f() Int:
-    let nums = [1, 2]
-    let hit = pick(nums, fn(value: Int) Bool: value > 1)
+    nums := [1, 2]
+    hit := pick(nums, fn(value: Int) Bool: value > 1)
     return hit.get(0)

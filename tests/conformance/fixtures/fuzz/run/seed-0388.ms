@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn fib(n: Int) Int:
     var a = 0
@@ -14,7 +14,7 @@ fn fib(n: Int) Int:
     var i = 0
 
     while i < n:
-        let next = a + b
+        next := a + b
         a = b
         b = next
         i += 1
@@ -22,10 +22,10 @@ fn fib(n: Int) Int:
     return a
 
 export fn main() Int:
-    let i2 = ((((-26) + 19) + ((-37) + 441776543010)) - (-400843))
+    i2 := ((((-26) + 19) + ((-37) + 441776543010)) - (-400843))
     say("i2 = {i2}")
 
-    let l3 = [18, 7, (-11), (-13)]
+    l3 := [18, 7, (-11), (-13)]
     say("l3 = {l3} len {l3.length()}")
 
     if ("hello world" == ("42" + "42")):
@@ -33,11 +33,11 @@ export fn main() Int:
     else:
         say("Tab\there".reverse())
 
-    let i4 = (l3.length() * (i2 * (-46)))
+    i4 := (l3.length() * (i2 * (-46)))
     say("i4 = {i4}")
     say("fib(42) = {fib(42)}")
 
-    let s5 = ("emoji 😀".reverse() + "naïve".reverse()).replace("emoji 😀", "Tab\there")
+    s5 := ("emoji 😀".reverse() + "naïve".reverse()).replace("emoji 😀", "Tab\there")
     say("s5 = [{s5}]")
     say(
         "{(-(i4 + (-45)))} {((i2 / i4) - (i4 % i4))} {((-(i4 + (-45))) < ((i2 / i4) - (i4 % i4)))} sum {(-(i4 + (-45))) + ((i2 / i4) - (i4 % i4))}"

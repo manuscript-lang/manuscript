@@ -11,11 +11,11 @@ type Pair:
     right: Big
 
 fn left_of(p: Pair) Big:
-    let l = p.left.clone()
+    l := p.left.clone()
     return l
 
 export fn main() Int:
-    let p = Pair(
+    p := Pair(
         left: Big(
             name: "a name that is long enough to live on the heap", items: [1, 2, 3]
         ),
@@ -23,5 +23,5 @@ export fn main() Int:
             name: "another name that is long enough to live on the heap", items: [4]
         )
     )
-    let l = left_of(p)
+    l := left_of(p)
     return l.items.length() - 3

@@ -22,16 +22,16 @@ fn all_digits(text: String) Bool:
     return true
 
 fn parse_record(line: String) Optional[Record]:
-    let fields = line.split(" ")
+    fields := line.split(" ")
     if fields.length() != 6:
         return none
 
-    let timestamp = fields[0]
-    let level = fields[1]
-    let method = fields[2]
-    let path = fields[3]
-    let status = fields[4]
-    let latency = fields[5]
+    timestamp := fields[0]
+    level := fields[1]
+    method := fields[2]
+    path := fields[3]
+    status := fields[4]
+    latency := fields[5]
     if timestamp.is_empty():
         return none
     if level != "DEBUG" and level != "INFO" and level != "WARN" and level != "ERROR":
@@ -59,7 +59,7 @@ fn rank_order(left: PathStat, right: PathStat) Int:
     return left.path.compare(right.path)
 
 export fn main() Int:
-    let lines = read_lines(stdin()).get()
+    lines := read_lines(stdin()).get()
     var malformed = 0
     var records: List[Record] = []
 
@@ -67,7 +67,7 @@ export fn main() Int:
         if line.trim().is_empty():
             continue
 
-        if let record = parse_record(line):
+        if record := parse_record(line):
             records.append(record)
         else:
             malformed += 1
@@ -96,7 +96,7 @@ export fn main() Int:
         else:
             error_count += 1
 
-        let class = record.status / 100
+        class := record.status / 100
 
         if class == 2:
             class_2xx += 1
@@ -111,7 +111,7 @@ export fn main() Int:
 
         latencies.append(record.latency)
 
-        if let current = slowest:
+        if current := slowest:
             if record.latency > current.latency:
                 slowest = some(record)
         else:
@@ -123,8 +123,8 @@ export fn main() Int:
     var p95 = 0
 
     if latencies.length() > 0:
-        let sorted_latencies = latencies.sorted(fn(a: Int, b: Int) Int: a - b)
-        let rank = (95 * sorted_latencies.length() + 99) / 100
+        sorted_latencies := latencies.sorted(fn(a: Int, b: Int) Int: a - b)
+        rank := (95 * sorted_latencies.length() + 99) / 100
         p95 = sorted_latencies[rank - 1]
 
     var out = ""
@@ -136,7 +136,7 @@ export fn main() Int:
     out += "ERROR: {error_count}\n"
     out += "status: 2xx={class_2xx} 3xx={class_3xx} 4xx={class_4xx} 5xx={class_5xx} other={class_other}\n"
     out += "p95: {p95}\n"
-    if let worst = slowest:
+    if worst := slowest:
         out += "slowest: {worst.latency} {worst.method} {worst.path} {worst.timestamp}\n"
     out += "top:\n"
 
@@ -148,13 +148,13 @@ export fn main() Int:
             )
         )
 
-    let ranked = stats.sorted(rank_order)
+    ranked := stats.sorted(rank_order)
     var shown = ranked.length()
     if shown > 3:
         shown = 3
 
     for i in range(0, shown):
-        let stat = ranked[i]
+        stat := ranked[i]
         out += "{stat.path} {stat.count} avg={stat.total / stat.count}\n"
 
     stdout().write(out).get()

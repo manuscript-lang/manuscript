@@ -13,6 +13,6 @@ fn evaluate(expr: Expr) Int:
         Add(left, right): return evaluate(left) + evaluate(right)
 
 test "recursive expression":
-    let expr = Expr.Add(Expr.Num(1), Expr.Num(2))
+    expr := Expr.Add(Expr.Num(1), Expr.Num(2))
     if evaluate(expr) != 3:
         panic("unexpected expression value")

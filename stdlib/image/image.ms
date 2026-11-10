@@ -15,9 +15,9 @@ Raster images as one flat, interleaved byte buffer, decoded from and encoded to 
 An `Image` owns `pixels`: row-major, `channels` bytes per pixel, no padding. The byte of
 channel `c` at `(x, y)` is `pixels[(y * width + x) * channels + c]`.
 
-    let img = try decode_image(read_file("photo.jpg").wait().get())
-    let small = try img.resize(img.width / 4, img.height / 4)
-    let png = try encode_image(small, ImageFormat.Png)
+    img := try decode_image(read_file("photo.jpg").wait().get())
+    small := try img.resize(img.width / 4, img.height / 4)
+    png := try encode_image(small, ImageFormat.Png)
 
 Decoding never faults on hostile input. Malformed data is an `Error` of kind `EBADMSG`, an unsupported
 feature (arithmetic-coded JPEG, RLE BMP) is `ENOTSUP`, and a size past `max_pixels` or the hard
@@ -45,7 +45,7 @@ export enum ImageFormat:
     Bmp  // Windows bitmap: 1, 4, 8, 24 and 32-bit uncompressed decode; 24-bit (or 32-bit with alpha) encode.
 
 // A width-by-height raster. Build one with `new_image`, `decode`, or the transforms below.
-// Example: `let img = new_image(2, 2, ColorMode.Rgb).get(); img.pixel(0, 0)` is opaque black.
+// Example: `img := new_image(2, 2, ColorMode.Rgb).get(); img.pixel(0, 0)` is opaque black.
 export type Image:
     // Columns, at least 1.
     width: Int
@@ -98,7 +98,7 @@ export enum Resampling:
     Bilinear  // Weighted average of the four nearest pixels.
 
 // The largest pixel count any decoder or constructor accepts; keeps index arithmetic far from overflow.
-let HARD_MAX_PIXELS = 1073741824
+HARD_MAX_PIXELS := 1073741824
 
 fn bad(message: String) Error:
     return Error("image: {message}", kind: "EBADMSG")
@@ -130,8 +130,8 @@ fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
         too_big("{width}x{height} is too large")
     )
 
-    let count = width * height
-    if let limit = max_pixels:
+    count := width * height
+    if limit := max_pixels:
         if count > limit: return error(
             too_big("{width}x{height} exceeds {limit} pixels")
         )
@@ -151,8 +151,8 @@ export fn new_image(
         Error("image: dimensions must be positive", kind: "EINVAL")
     )
 
-    let count = try pixel_count(width, height, max_pixels)
-    let n = color_channels(mode)
+    count := try pixel_count(width, height, max_pixels)
+    n := color_channels(mode)
     var pixels = zeroed(count * n)
     if mode == ColorMode.GrayAlpha or mode == ColorMode.Rgba:
         for i in 0..count:
@@ -168,9 +168,9 @@ impl Image:
     fn pixel(x: Int, y: Int) Rgba?:
         if x < 0 or y < 0 or x >= self.width or y >= self.height: return none
 
-        let n = color_channels(self.mode)
-        let at = (y * self.width + x) * n
-        let p = self.pixels
+        n := color_channels(self.mode)
+        at := (y * self.width + x) * n
+        p := self.pixels
 
         match self.mode:
             Gray: return Rgba(p[at].to_int(), p[at].to_int(), p[at].to_int(), 255)
@@ -189,9 +189,9 @@ impl Image:
     var fn set_pixel(x: Int, y: Int, color: Rgba) Bool:
         if x < 0 or y < 0 or x >= self.width or y >= self.height: return false
 
-        let n = color_channels(self.mode)
-        let at = (y * self.width + x) * n
-        let luma = (color.red * 299 + color.green * 587 + color.blue * 114) / 1000
+        n := color_channels(self.mode)
+        at := (y * self.width + x) * n
+        luma := (color.red * 299 + color.green * 587 + color.blue * 114) / 1000
 
         match self.mode:
             Gray:
@@ -218,11 +218,11 @@ impl Image:
         if area.x > self.width - area.width or area.y > self.height - area.height:
             return error(Error("image: crop area leaves the image", kind: "ERANGE"))
 
-        let n = color_channels(self.mode)
+        n := color_channels(self.mode)
         var out = List[UInt8](reserve: area.width * area.height * n)
 
         for row in 0..area.height:
-            let start = ((area.y + row) * self.width + area.x) * n
+            start := ((area.y + row) * self.width + area.x) * n
             for i in 0..area.width * n:
                 out.append(self.pixels[start + i])
 
@@ -230,12 +230,12 @@ impl Image:
 
     // Mirrors left to right.
     fn flip_horizontal() Image:
-        let n = color_channels(self.mode)
+        n := color_channels(self.mode)
         var out = List[UInt8](reserve: self.pixels.length())
 
         for y in 0..self.height:
             for x in 0..self.width:
-                let at = (y * self.width + self.width - 1 - x) * n
+                at := (y * self.width + self.width - 1 - x) * n
                 for c in 0..n:
                     out.append(self.pixels[at + c])
 
@@ -243,12 +243,12 @@ impl Image:
 
     // Mirrors top to bottom.
     fn flip_vertical() Image:
-        let n = color_channels(self.mode)
-        let row = self.width * n
+        n := color_channels(self.mode)
+        row := self.width * n
         var out = List[UInt8](reserve: self.pixels.length())
 
         for y in 0..self.height:
-            let start = (self.height - 1 - y) * row
+            start := (self.height - 1 - y) * row
             for i in 0..row:
                 out.append(self.pixels[start + i])
 
@@ -256,12 +256,12 @@ impl Image:
 
     // Rotates a quarter turn clockwise; the result is `height` wide and `width` tall.
     fn rotate90() Image:
-        let n = color_channels(self.mode)
+        n := color_channels(self.mode)
         var out = List[UInt8](reserve: self.pixels.length())
 
         for y in 0..self.width:
             for x in 0..self.height:
-                let at = ((self.height - 1 - x) * self.width + y) * n
+                at := ((self.height - 1 - x) * self.width + y) * n
                 for c in 0..n:
                     out.append(self.pixels[at + c])
 
@@ -282,13 +282,13 @@ impl Image:
             self.width, self.height, self.mode, self.pixels.clone()
         )
 
-        let count = self.width * self.height
-        let m = color_channels(target)
+        count := self.width * self.height
+        m := color_channels(target)
         var out = List[UInt8](reserve: count * m)
 
         for i in 0..count:
-            let c = self.pixel(i % self.width, i / self.width).get(Rgba(0, 0, 0, 255))
-            let luma = (c.red * 299 + c.green * 587 + c.blue * 114) / 1000
+            c := self.pixel(i % self.width, i / self.width).get(Rgba(0, 0, 0, 255))
+            luma := (c.red * 299 + c.green * 587 + c.blue * 114) / 1000
 
             match target:
                 Gray:
@@ -315,22 +315,22 @@ impl Image:
         method: Resampling = Resampling.Bilinear,
         max_pixels: Int? = none
     ) Image!:
-        let count = try pixel_count(width, height, max_pixels)
-        let n = color_channels(self.mode)
+        count := try pixel_count(width, height, max_pixels)
+        n := color_channels(self.mode)
         var out = List[UInt8](reserve: count * n)
 
         for y in 0..height:
             for x in 0..width:
                 match method:
                     Nearest:
-                        let sx = x * self.width / width
-                        let sy = y * self.height / height
-                        let at = (sy * self.width + sx) * n
+                        sx := x * self.width / width
+                        sy := y * self.height / height
+                        at := (sy * self.width + sx) * n
                         for c in 0..n:
                             out.append(self.pixels[at + c])
                     Bilinear:
                         // Sample centers, in 1/256ths, clamped to the source.
-                        let fx = max_of(
+                        fx := max_of(
                             0,
                             (
                                 (2 * x + 1)
@@ -338,7 +338,7 @@ impl Image:
                                 * 128
                             ) / width - 128
                         )
-                        let fy = max_of(
+                        fy := max_of(
                             0,
                             (
                                 (2 * y + 1)
@@ -346,20 +346,20 @@ impl Image:
                                 * 128
                             ) / height - 128
                         )
-                        let x0 = min_of(fx / 256, self.width - 1)
-                        let y0 = min_of(fy / 256, self.height - 1)
-                        let x1 = min_of(x0 + 1, self.width - 1)
-                        let y1 = min_of(y0 + 1, self.height - 1)
-                        let wx = if x0 == x1: 0 else: fx % 256
-                        let wy = if y0 == y1: 0 else: fy % 256
+                        x0 := min_of(fx / 256, self.width - 1)
+                        y0 := min_of(fy / 256, self.height - 1)
+                        x1 := min_of(x0 + 1, self.width - 1)
+                        y1 := min_of(y0 + 1, self.height - 1)
+                        wx := if x0 == x1: 0 else: fx % 256
+                        wy := if y0 == y1: 0 else: fy % 256
 
                         for c in 0..n:
-                            let a = self.pixels[(y0 * self.width + x0) * n + c].to_int()
-                            let b = self.pixels[(y0 * self.width + x1) * n + c].to_int()
-                            let d = self.pixels[(y1 * self.width + x0) * n + c].to_int()
-                            let e = self.pixels[(y1 * self.width + x1) * n + c].to_int()
-                            let top = a * (256 - wx) + b * wx
-                            let bottom = d * (256 - wx) + e * wx
+                            a := self.pixels[(y0 * self.width + x0) * n + c].to_int()
+                            b := self.pixels[(y0 * self.width + x1) * n + c].to_int()
+                            d := self.pixels[(y1 * self.width + x0) * n + c].to_int()
+                            e := self.pixels[(y1 * self.width + x1) * n + c].to_int()
+                            top := a * (256 - wx) + b * wx
+                            bottom := d * (256 - wx) + e * wx
                             out.append(
                                 byte(
                                     (
@@ -386,8 +386,8 @@ fn min_of(a: Int, b: Int) Int:
 // Names the format of `data` from its leading bytes, or `none`.
 export fn detect_image_format(data: Bytes) ImageFormat?:
     if data.length() >= 2:
-        let a = data.get(0).to_int()
-        let b = data.get(1).to_int()
+        a := data.get(0).to_int()
+        b := data.get(1).to_int()
         if a == 255 and b == 216: return ImageFormat.Jpeg
         if a == 137 and b == 80: return ImageFormat.Png
         if a == 66 and b == 77: return ImageFormat.Bmp
@@ -397,9 +397,9 @@ export fn detect_image_format(data: Bytes) ImageFormat?:
 
 // Decodes any supported format. `max_pixels` rejects larger images with `EOVERFLOW` before any allocation.
 export fn decode_image(data: Bytes, max_pixels: Int? = none) Image!:
-    let format = detect_image_format(data)
+    format := detect_image_format(data)
 
-    if let f = format:
+    if f := format:
         match f:
             Jpeg: return decode_jpeg(data, max_pixels)
             Png: return decode_png(data, max_pixels)
@@ -426,7 +426,7 @@ fn ppm_number(data: Bytes, start: Int) List[Int]!:
     var at = start
 
     while at < data.length():
-        let b = data.get(at).to_int()
+        b := data.get(at).to_int()
 
         if b == 35:
             while at < data.length() and data.get(at).to_int() != 10:
@@ -440,7 +440,7 @@ fn ppm_number(data: Bytes, start: Int) List[Int]!:
     var digits = 0
 
     while at < data.length():
-        let b = data.get(at).to_int()
+        b := data.get(at).to_int()
         if b < 48 or b > 57: break
 
         value = value * 10 + b - 48
@@ -456,36 +456,36 @@ fn ppm_number(data: Bytes, start: Int) List[Int]!:
 fn decode_ppm(data: Bytes, max_pixels: Int?) Image!:
     if data.length() < 2: return error(bad("truncated PNM header"))
 
-    let kind = data.get(1).to_int()
-    let n = if kind == 54: 3 else: 1
-    let wide = try ppm_number(data, 2)
-    let tall = try ppm_number(data, wide[1])
-    let peak = try ppm_number(data, tall[1])
-    let width = wide[0]
-    let height = tall[0]
-    let maxval = peak[0]
+    kind := data.get(1).to_int()
+    n := if kind == 54: 3 else: 1
+    wide := try ppm_number(data, 2)
+    tall := try ppm_number(data, wide[1])
+    peak := try ppm_number(data, tall[1])
+    width := wide[0]
+    height := tall[0]
+    maxval := peak[0]
     if maxval < 1 or maxval > 65535: return error(
         bad("PNM maxval {maxval} out of range")
     )
 
     // Exactly one whitespace byte separates the header from the raster.
-    let start = peak[1] + 1
+    start := peak[1] + 1
     if peak[1] >= data.length() or not is_space(data.get(peak[1]).to_int()):
         return error(bad("missing separator after PNM header"))
 
-    let count = try pixel_count(width, height, max_pixels)
-    let sample = if maxval > 255: 2 else: 1
+    count := try pixel_count(width, height, max_pixels)
+    sample := if maxval > 255: 2 else: 1
 
     // The raster must be present in full before anything is allocated.
     if count > (data.length() - start) / (n * sample): return error(
         bad("truncated PNM raster")
     )
 
-    let total = count * n
+    total := count * n
     var pixels = List[UInt8](reserve: total)
 
     for i in 0..total:
-        let raw = data.get(start + i * sample).to_int()
+        raw := data.get(start + i * sample).to_int()
 
         if sample == 2:
             pixels.append(byte(raw))
@@ -510,7 +510,7 @@ fn encode_ppm(image: Image) Bytes!:
         )
 
     var out = BytesBuilder()
-    let magic = if image.mode == ColorMode.Rgb: "P6" else: "P5"
+    magic := if image.mode == ColorMode.Rgb: "P6" else: "P5"
     out.append_bytes("{magic}\n{image.width} {image.height}\n255\n".to_bytes())
     for b in image.pixels:
         out.append(b)
@@ -530,8 +530,8 @@ fn signed32(value: Int) Int:
 fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
     if data.length() < 26: return error(bad("truncated BMP header"))
 
-    let offset = le32(data, 10)
-    let header = le32(data, 14)
+    offset := le32(data, 10)
+    header := le32(data, 14)
     if (
         header != 12
         and header != 40
@@ -560,7 +560,7 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
         compression = le32(data, 30)
         colors = le32(data, 46)
 
-    let top_down = height < 0
+    top_down := height < 0
     if top_down: height = 0 - height
     if compression != 0: return error(unsupported("BMP compression {compression}"))
     if bits != 1 and bits != 4 and bits != 8 and bits != 24 and bits != 32:
@@ -568,10 +568,10 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
     if width < 1 or width > 2147483647 or height > 2147483647:
         return error(bad("BMP dimensions out of range"))
 
-    let count = try pixel_count(width, height, max_pixels)
+    count := try pixel_count(width, height, max_pixels)
 
     // Palette entries sit between the header and the pixels.
-    let entry = if header == 12: 3 else: 4
+    entry := if header == 12: 3 else: 4
     var palette_size = 0
 
     if bits <= 8:
@@ -580,11 +580,11 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
             bad("BMP palette too large")
         )
 
-    let palette_at = 14 + header
+    palette_at := 14 + header
     if palette_at + palette_size * entry > data.length():
         return error(bad("truncated BMP palette"))
 
-    let row = ((width * bits + 31) / 32) * 4
+    row := ((width * bits + 31) / 32) * 4
     if offset < palette_at or offset > data.length(): return error(
         bad("BMP pixel offset out of range")
     )
@@ -592,15 +592,15 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
         bad("truncated BMP pixel data")
     )
 
-    let alpha = bits == 32
-    let mode = if alpha: ColorMode.Rgba else: ColorMode.Rgb
-    let m = color_channels(mode)
+    alpha := bits == 32
+    mode := if alpha: ColorMode.Rgba else: ColorMode.Rgb
+    m := color_channels(mode)
     var pixels = zeroed(count * m)
     var any_alpha = false
 
     for y in 0..height:
-        let source_row = if top_down: y else: height - 1 - y
-        let base = offset + source_row * row
+        source_row := if top_down: y else: height - 1 - y
+        base := offset + source_row * row
 
         for x in 0..width:
             var r = 0
@@ -609,7 +609,7 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
             var a = 255
 
             if bits == 24 or bits == 32:
-                let at = base + x * (bits / 8)
+                at := base + x * (bits / 8)
                 b = data.get(at).to_int()
                 g = data.get(at + 1).to_int()
                 r = data.get(at + 2).to_int()
@@ -618,9 +618,9 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
                     a = data.get(at + 3).to_int()
                     if a != 0: any_alpha = true
             else:
-                let bit = x * bits
-                let shift = 8 - bits - bit % 8
-                let index = bit_and(
+                bit := x * bits
+                shift := 8 - bits - bit % 8
+                index := bit_and(
                     shift_right_unsigned(
                         data.get(base + bit / 8).to_int(), shift
                     ),
@@ -630,12 +630,12 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
                     bad("BMP palette index out of range")
                 )
 
-                let p = palette_at + index * entry
+                p := palette_at + index * entry
                 b = data.get(p).to_int()
                 g = data.get(p + 1).to_int()
                 r = data.get(p + 2).to_int()
 
-            let out = (y * width + x) * m
+            out := (y * width + x) * m
             pixels[out] = byte(r)
             pixels[out + 1] = byte(g)
             pixels[out + 2] = byte(b)
@@ -659,10 +659,10 @@ fn encode_bmp(image: Image) Bytes!:
     if image.width > 2147483647 or image.height > 2147483647:
         return error(too_big("BMP dimensions too large"))
 
-    let alpha = image.mode == ColorMode.Rgba or image.mode == ColorMode.GrayAlpha
-    let bytes_per = if alpha: 4 else: 3
-    let row = ((image.width * bytes_per * 8 + 31) / 32) * 4
-    let size = 54 + row * image.height
+    alpha := image.mode == ColorMode.Rgba or image.mode == ColorMode.GrayAlpha
+    bytes_per := if alpha: 4 else: 3
+    row := ((image.width * bytes_per * 8 + 31) / 32) * 4
+    size := 54 + row * image.height
     if size > 4294967295: return error(too_big("BMP is larger than 4 GiB"))
 
     var out = BytesBuilder()
@@ -684,10 +684,10 @@ fn encode_bmp(image: Image) Bytes!:
     put32(var out, 0)
 
     for y in 0..image.height:
-        let sy = image.height - 1 - y
+        sy := image.height - 1 - y
 
         for x in 0..image.width:
-            let c = image.pixel(x, sy).get(Rgba(0, 0, 0, 255))
+            c := image.pixel(x, sy).get(Rgba(0, 0, 0, 255))
             out.append(byte(c.blue))
             out.append(byte(c.green))
             out.append(byte(c.red))
@@ -700,11 +700,11 @@ fn encode_bmp(image: Image) Bytes!:
 
 // ---- PNG ----
 
-let CHUNK_IHDR = 1229472850
-let CHUNK_PLTE = 1347179589
-let CHUNK_TRNS = 1951551059
-let CHUNK_IDAT = 1229209940
-let CHUNK_IEND = 1229278788
+CHUNK_IHDR := 1229472850
+CHUNK_PLTE := 1347179589
+CHUNK_TRNS := 1951551059
+CHUNK_IDAT := 1229209940
+CHUNK_IEND := 1229278788
 
 fn be32(data: Bytes, at: Int) Int:
     return (
@@ -735,18 +735,18 @@ fn png_raw_size(width: Int, height: Int, bits_per_pixel: Int, interlaced: Bool) 
     var total = 0
 
     for pass in png_passes(interlaced):
-        let pw = (width - pass[0] + pass[2] - 1) / pass[2]
-        let ph = (height - pass[1] + pass[3] - 1) / pass[3]
+        pw := (width - pass[0] + pass[2] - 1) / pass[2]
+        ph := (height - pass[1] + pass[3] - 1) / pass[3]
         if pw > 0 and ph > 0:
             total += ph * (1 + (pw * bits_per_pixel + 7) / 8)
 
     return total
 
 fn paeth(a: Int, b: Int, c: Int) Int:
-    let p = a + b - c
-    let pa = abs_of(p - a)
-    let pb = abs_of(p - b)
-    let pc = abs_of(p - c)
+    p := a + b - c
+    pa := abs_of(p - a)
+    pb := abs_of(p - b)
+    pc := abs_of(p - c)
     if pa <= pb and pa <= pc: return a
     if pb <= pc: return b
 
@@ -758,7 +758,7 @@ fn abs_of(value: Int) Int:
 fn decode_png(data: Bytes, max_pixels: Int?) Image!:
     if data.length() < 33: return error(bad("truncated PNG"))
 
-    let magic = [137, 80, 78, 71, 13, 10, 26, 10]
+    magic := [137, 80, 78, 71, 13, 10, 26, 10]
     for i in 0..8:
         if data.get(i).to_int() != magic[i]: return error(bad("not a PNG signature"))
 
@@ -779,13 +779,13 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
     while at < data.length() and not have_end:
         if data.length() - at < 12: return error(bad("truncated PNG chunk"))
 
-        let length = be32(data, at)
+        length := be32(data, at)
         if length > data.length() - at - 12: return error(
             bad("PNG chunk longer than the file")
         )
 
-        let kind = be32(data, at + 4)
-        let body = at + 8
+        kind := be32(data, at + 4)
+        body := at + 8
         if (
             be32(data, body + length) != crc32(
                 data.view(at + 4, body + length)
@@ -808,7 +808,7 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
             if data.get(body + 10).to_int() != 0 or data.get(body + 11).to_int() != 0:
                 return error(unsupported("PNG compression or filter method"))
 
-            let method = data.get(body + 12).to_int()
+            method := data.get(body + 12).to_int()
             if method > 1: return error(bad("PNG interlace method {method}"))
 
             interlaced = method == 1
@@ -816,7 +816,7 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
                 return error(bad("PNG dimensions out of range"))
 
             // Reject oversized images from the header alone, before reading any further.
-            let _ = try pixel_count(width, height, max_pixels)
+            _ := try pixel_count(width, height, max_pixels)
             have_header = true
         else if kind == CHUNK_PLTE:
             if idat_seen or length % 3 != 0 or length == 0 or length > 768:
@@ -849,7 +849,7 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
         bad("truncated PNG: missing IDAT or IEND")
     )
 
-    let valid = (
+    valid := (
         (
             color == 0
             and (
@@ -875,54 +875,54 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
     if width < 1 or height < 1 or width > 2147483647 or height > 2147483647:
         return error(bad("PNG dimensions out of range"))
 
-    let count = try pixel_count(width, height, max_pixels)
+    count := try pixel_count(width, height, max_pixels)
     if color == 3 and palette.is_empty(): return error(
         bad("indexed PNG without a palette")
     )
 
-    let samples = png_channels(color)
-    let bits_per_pixel = samples * depth
-    let expected = png_raw_size(width, height, bits_per_pixel, interlaced)
+    samples := png_channels(color)
+    bits_per_pixel := samples * depth
+    expected := png_raw_size(width, height, bits_per_pixel, interlaced)
 
     // The inflate budget is the size the header implies, so a bomb stops at that bound.
-    let raw = try decompress(idat.build(), CompressionFormat.Zlib, expected)
+    raw := try decompress(idat.build(), CompressionFormat.Zlib, expected)
     if raw.length() != expected: return error(
         bad("PNG pixel data is {raw.length()} bytes, expected {expected}")
     )
 
     // Output layout. A tRNS chunk adds alpha to gray, RGB and indexed images.
-    let keyed = not transparency.is_empty()
+    keyed := not transparency.is_empty()
     var mode = ColorMode.Rgba
     if color == 0: mode = if keyed: ColorMode.GrayAlpha else: ColorMode.Gray
     if color == 2: mode = if keyed: ColorMode.Rgba else: ColorMode.Rgb
     if color == 3: mode = if keyed: ColorMode.Rgba else: ColorMode.Rgb
     if color == 4: mode = ColorMode.GrayAlpha
 
-    let m = color_channels(mode)
+    m := color_channels(mode)
     var pixels = zeroed(count * m)
-    let step = if bits_per_pixel < 8: 1 else: bits_per_pixel / 8
-    let top = shift_left(1, depth) - 1
+    step := if bits_per_pixel < 8: 1 else: bits_per_pixel / 8
+    top := shift_left(1, depth) - 1
     var pos = 0
 
     for pass in png_passes(interlaced):
-        let pw = (width - pass[0] + pass[2] - 1) / pass[2]
-        let ph = (height - pass[1] + pass[3] - 1) / pass[3]
+        pw := (width - pass[0] + pass[2] - 1) / pass[2]
+        ph := (height - pass[1] + pass[3] - 1) / pass[3]
         if pw < 1 or ph < 1: continue
 
-        let row_bytes = (pw * bits_per_pixel + 7) / 8
+        row_bytes := (pw * bits_per_pixel + 7) / 8
         var prev = [0].repeated(row_bytes)
 
         for row in 0..ph:
-            let filter = raw.get(pos).to_int()
+            filter := raw.get(pos).to_int()
             if filter > 4: return error(bad("PNG filter type {filter}"))
 
             var cur = [0].repeated(row_bytes)
 
             for i in 0..row_bytes:
-                let x = raw.get(pos + 1 + i).to_int()
-                let a = if i >= step: cur[i - step] else: 0
-                let b = prev[i]
-                let c = if i >= step: prev[i - step] else: 0
+                x := raw.get(pos + 1 + i).to_int()
+                a := if i >= step: cur[i - step] else: 0
+                b := prev[i]
+                c := if i >= step: prev[i - step] else: 0
                 var v = x
 
                 if filter == 1: v = x + a
@@ -934,10 +934,10 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
 
             pos += 1 + row_bytes
 
-            let y = pass[1] + row * pass[3]
+            y := pass[1] + row * pass[3]
 
             for px in 0..pw:
-                let out = (y * width + pass[0] + px * pass[2]) * m
+                out := (y * width + pass[0] + px * pass[2]) * m
 
                 if color == 3 or color == 0:
                     var v = 0
@@ -947,7 +947,7 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
                     else if depth == 8:
                         v = cur[px]
                     else:
-                        let bit = px * depth
+                        bit := px * depth
                         v = bit_and(
                             shift_right_unsigned(
                                 cur[bit / 8], 8 - depth - bit % 8
@@ -971,18 +971,18 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
                             ] else: 255
                         )
                     else:
-                        let level = if depth == 16: v / 256 else: (
+                        level := if depth == 16: v / 256 else: (
                             if depth == 8: v else: v * 255 / top
                         )
                         pixels[out] = byte(level)
 
                         if keyed:
-                            let key = if transparency.length() >= 2: transparency[0] * 256 + transparency[
+                            key := if transparency.length() >= 2: transparency[0] * 256 + transparency[
                                 1
                             ] else: -1
                             pixels[out + 1] = byte(if v == key: 0 else: 255)
                 else:
-                    let width_bytes = depth / 8
+                    width_bytes := depth / 8
                     for ch in 0..samples:
                         pixels[out + ch] = byte(cur[(px * samples + ch) * width_bytes])
 
@@ -991,7 +991,7 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
 
                         if hit:
                             for ch in 0..3:
-                                let sample = if depth == 16: cur[(px * 3 + ch) * 2] * 256 + cur[
+                                sample := if depth == 16: cur[(px * 3 + ch) * 2] * 256 + cur[
                                     (
                                         px * 3
                                         + ch
@@ -1018,7 +1018,7 @@ fn put_be32(var out: BytesBuilder, value: Int) Unit:
 fn png_chunk(var out: BytesBuilder, kind: String, body: Bytes) Unit:
     put_be32(var out, body.length())
 
-    let tag = kind.to_bytes()
+    tag := kind.to_bytes()
     out.append_bytes(tag)
     out.append_bytes(body)
     put_be32(var out, crc32(tag.concat(body)).to_int())
@@ -1035,9 +1035,9 @@ fn filter_row(row: List[Int], prev: List[Int], step: Int) List[Int]:
         var cost = 0
 
         for i in 0..row.length():
-            let a = if i >= step: row[i - step] else: 0
-            let b = prev[i]
-            let c = if i >= step: prev[i - step] else: 0
+            a := if i >= step: row[i - step] else: 0
+            b := prev[i]
+            c := if i >= step: prev[i - step] else: 0
             var predicted = 0
 
             if filter == 1: predicted = a
@@ -1045,7 +1045,7 @@ fn filter_row(row: List[Int], prev: List[Int], step: Int) List[Int]:
             else if filter == 3: predicted = (a + b) / 2
             else if filter == 4: predicted = paeth(a, b, c)
 
-            let residual = (row[i] - predicted + 256) % 256
+            residual := (row[i] - predicted + 256) % 256
             out.append(residual)
             cost += if residual < 128: residual else: 256 - residual
 
@@ -1059,7 +1059,7 @@ fn encode_png(image: Image) Bytes!:
     if image.width > 2147483647 or image.height > 2147483647:
         return error(too_big("PNG dimensions too large"))
 
-    let n = color_channels(image.mode)
+    n := color_channels(image.mode)
     var color = 6
 
     match image.mode:
@@ -1069,7 +1069,7 @@ fn encode_png(image: Image) Bytes!:
         Rgba: color = 6
 
     var raw = BytesBuilder()
-    let row_bytes = image.width * n
+    row_bytes := image.width * n
     var prev = [0].repeated(row_bytes)
 
     for y in 0..image.height:
@@ -1093,20 +1093,20 @@ fn encode_png(image: Image) Bytes!:
     out.append_bytes(Bytes([137, 80, 78, 71, 13, 10, 26, 10]))
     png_chunk(var out, "IHDR", header.build())
 
-    let packed = try compress(raw.build(), CompressionFormat.Zlib)
+    packed := try compress(raw.build(), CompressionFormat.Zlib)
     png_chunk(var out, "IDAT", packed)
     png_chunk(var out, "IEND", Bytes([]))
     return ok(out.build())
 
 // ---- JPEG ----
 
-let zigzag = [
+zigzag := [
     0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41,
     34, 27, 20, 13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23,
     30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63
 ]
 // Fixed-point (x4096) 8-point transform matrix: row x, column u is c(u)/2 * cos((2x+1)u*pi/16).
-let dct_matrix = [
+dct_matrix := [
     1448, 2008, 1892, 1702, 1448, 1138, 784, 400, 1448, 1702, 784, -400, -1448, -2008,
     -1892, -1138, 1448, 1138, -784, -2008, -1448, 400, 1892, 1702, 1448, 400, -1892,
     -1138, 1448, 1702, -784, -2008, 1448, -400, -1892, 1138, 1448, -1702, -784, 2008,
@@ -1152,7 +1152,7 @@ impl JpegBits:
             var b = data.get(self.pos).to_int()
 
             if b == 255:
-                let next = if self.pos + 1 < data.length(): data.get(
+                next := if self.pos + 1 < data.length(): data.get(
                     self.pos + 1
                 ).to_int() else: 217
 
@@ -1246,7 +1246,7 @@ fn jpeg_block(
     scan: JpegScan
 ) Unit:
     if not scan.progressive:
-        let t = bits.symbol(data, dc)
+        t := bits.symbol(data, dc)
 
         if t < 0 or t > 15:
             bits.failed = true
@@ -1258,11 +1258,11 @@ fn jpeg_block(
         var zi = 1
 
         while zi < 64:
-            let rs = bits.symbol(data, ac)
+            rs := bits.symbol(data, ac)
             if rs < 0: return
 
-            let r = rs / 16
-            let size = rs % 16
+            r := rs / 16
+            size := rs % 16
 
             if size == 0:
                 if r != 15: break
@@ -1284,7 +1284,7 @@ fn jpeg_block(
 
     if scan.ss == 0:
         if scan.ah == 0:
-            let t = bits.symbol(data, dc)
+            t := bits.symbol(data, dc)
 
             if t < 0 or t > 15:
                 bits.failed = true
@@ -1307,11 +1307,11 @@ fn jpeg_block(
         var zi = scan.ss
 
         while zi <= scan.se:
-            let rs = bits.symbol(data, ac)
+            rs := bits.symbol(data, ac)
             if rs < 0: return
 
-            let r = rs / 16
-            let size = rs % 16
+            r := rs / 16
+            size := rs % 16
 
             if size != 0:
                 zi += r
@@ -1336,13 +1336,13 @@ fn jpeg_block(
         return
 
     // AC refinement.
-    let p1 = shift_left(1, scan.al)
-    let m1 = 0 - p1
+    p1 := shift_left(1, scan.al)
+    m1 := 0 - p1
     var zi = scan.ss
 
     if bits.eobrun == 0:
         while zi <= scan.se:
-            let rs = bits.symbol(data, ac)
+            rs := bits.symbol(data, ac)
             if rs < 0: return
 
             var r = rs / 16
@@ -1356,7 +1356,7 @@ fn jpeg_block(
                 break
 
             while zi <= scan.se:
-                let at = base + zigzag[zi]
+                at := base + zigzag[zi]
 
                 if comp.coef[at] != 0:
                     if bits.bit(data) == 1 and bit_and(comp.coef[at], p1) == 0:
@@ -1379,7 +1379,7 @@ fn jpeg_block(
 
     if bits.eobrun > 0:
         while zi <= scan.se:
-            let at = base + zigzag[zi]
+            at := base + zigzag[zi]
             if comp.coef[at] != 0:
                 if bits.bit(data) == 1 and bit_and(comp.coef[at], p1) == 0:
                     comp.coef[at] += if comp.coef[at] >= 0: p1 else: m1
@@ -1389,13 +1389,13 @@ fn jpeg_block(
 
 // Dequantizes and inverse-transforms every block of `comp` into a padded sample plane.
 fn jpeg_plane(comp: JpegComponent) List[UInt8]:
-    let stride = comp.blocks_wide * 8
+    stride := comp.blocks_wide * 8
     var plane = zeroed(stride * comp.blocks_high * 8)
     var tmp = [0].repeated(64)
 
     for by in 0..comp.blocks_high:
         for bx in 0..comp.blocks_wide:
-            let base = (by * comp.blocks_wide + bx) * 64
+            base := (by * comp.blocks_wide + bx) * 64
 
             // Rows: tmp[y][x] = sum_u M[x][u] * F[y][u], kept at scale 64.
             for y in 0..8:
@@ -1403,7 +1403,7 @@ fn jpeg_plane(comp: JpegComponent) List[UInt8]:
                     var sum = 0
 
                     for u in 0..8:
-                        let f = comp.coef[base + y * 8 + u]
+                        f := comp.coef[base + y * 8 + u]
                         if f != 0: sum += (
                             dct_matrix[x * 8 + u]
                             * f
@@ -1424,7 +1424,7 @@ fn jpeg_plane(comp: JpegComponent) List[UInt8]:
     return plane
 
 fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
-    let n = data.length()
+    n := data.length()
     if n < 4 or data.get(0).to_int() != 255 or data.get(1).to_int() != 216:
         return error(bad("not a JPEG"))
 
@@ -1458,7 +1458,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
             at += 1
         if at >= n: return error(bad("truncated JPEG marker"))
 
-        let marker = data.get(at).to_int()
+        marker := data.get(at).to_int()
         at += 1
 
         if marker == 217:
@@ -1470,25 +1470,25 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
         else:
             if at + 2 > n: return error(bad("truncated JPEG segment"))
 
-            let length = be16(data, at)
+            length := be16(data, at)
             if length < 2 or at + length > n: return error(
                 bad("truncated JPEG segment")
             )
 
-            let body = at + 2
-            let end = at + length
+            body := at + 2
+            end := at + length
 
             if marker == 219:
                 var p = body
 
                 while p < end:
-                    let precision = data.get(p).to_int() / 16
-                    let id = data.get(p).to_int() % 16
+                    precision := data.get(p).to_int() / 16
+                    id := data.get(p).to_int() % 16
                     if id > 3 or precision > 1: return error(
                         bad("bad JPEG quantization table")
                     )
 
-                    let size = if precision == 1: 128 else: 64
+                    size := if precision == 1: 128 else: 64
                     if p + 1 + size > end: return error(
                         bad("truncated JPEG quantization table")
                     )
@@ -1512,8 +1512,8 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                 while p < end:
                     if p + 17 > end: return error(bad("truncated JPEG Huffman table"))
 
-                    let table_class = data.get(p).to_int() / 16
-                    let id = data.get(p).to_int() % 16
+                    table_class := data.get(p).to_int() / 16
+                    id := data.get(p).to_int() % 16
                     if table_class > 1 or id > 3: return error(
                         bad("bad JPEG Huffman table")
                     )
@@ -1533,7 +1533,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                     for zi in 0..total:
                         values.append(data.get(p + 17 + zi).to_int())
 
-                    let table = try build_huffman(counts, values)
+                    table := try build_huffman(counts, values)
 
                     if table_class == 0:
                         dc_tables[id] = table
@@ -1555,7 +1555,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                 height = be16(data, body + 1)
                 width = be16(data, body + 3)
 
-                let count = data.get(body + 5).to_int()
+                count := data.get(body + 5).to_int()
                 if height == 0: return error(
                     unsupported("JPEG with deferred height (DNL)")
                 )
@@ -1569,14 +1569,14 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                     bad("bad JPEG frame header length")
                 )
 
-                let _total = try pixel_count(width, height, max_pixels)
+                _total := try pixel_count(width, height, max_pixels)
                 progressive = marker == 194
 
                 for i in 0..count:
-                    let q = body + 6 + i * 3
-                    let h = data.get(q + 1).to_int() / 16
-                    let v = data.get(q + 1).to_int() % 16
-                    let tq = data.get(q + 2).to_int()
+                    q := body + 6 + i * 3
+                    h := data.get(q + 1).to_int() / 16
+                    v := data.get(q + 1).to_int() % 16
+                    tq := data.get(q + 2).to_int()
                     if h < 1 or h > 4 or v < 1 or v > 4 or tq > 3: return error(
                         bad("bad JPEG component")
                     )
@@ -1634,7 +1634,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
             else if marker == 218:
                 if not have_frame: return error(bad("JPEG scan before frame header"))
 
-                let ns = data.get(body).to_int()
+                ns := data.get(body).to_int()
                 if ns < 1 or ns > 4 or length != 6 + ns * 2: return error(
                     bad("bad JPEG scan header")
                 )
@@ -1644,7 +1644,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                 var ac_ids = List[Int]()
 
                 for i in 0..ns:
-                    let q = body + 1 + i * 2
+                    q := body + 1 + i * 2
                     var found = -1
                     for c in 0..comps.length():
                         if comps[c].id == data.get(q).to_int(): found = c
@@ -1664,11 +1664,11 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                         bad("bad JPEG table selector")
                     )
 
-                let tail = body + 1 + ns * 2
+                tail := body + 1 + ns * 2
                 var ss = data.get(tail).to_int()
                 var se = data.get(tail + 1).to_int()
-                let ah = data.get(tail + 2).to_int() / 16
-                let al = data.get(tail + 2).to_int() % 16
+                ah := data.get(tail + 2).to_int() / 16
+                al := data.get(tail + 2).to_int() % 16
 
                 if not progressive:
                     ss = 0
@@ -1686,15 +1686,15 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                         )
                     )
 
-                let scan = JpegScan(members.clone(), ss, se, ah, al, progressive)
+                scan := JpegScan(members.clone(), ss, se, ah, al, progressive)
 
                 // Blocks per component this scan codes, and the allocation budget check.
                 var coded = 0
 
                 if ns == 1:
-                    let c = members[0]
-                    let cw = (width * comps[c].h + hmax - 1) / hmax
-                    let ch = (height * comps[c].v + vmax - 1) / vmax
+                    c := members[0]
+                    cw := (width * comps[c].h + hmax - 1) / hmax
+                    ch := (height * comps[c].v + vmax - 1) / vmax
                     coded = ((cw + 7) / 8) * ((ch + 7) / 8)
                 else:
                     for c in members:
@@ -1705,7 +1705,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                 )
 
                 for m in 0..members.length():
-                    let c = members[m]
+                    c := members[m]
 
                     if comps[c].coef.is_empty():
                         if progressive and (ss != 0 or ah != 0):
@@ -1723,8 +1723,8 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                             ].blocks_high * 64
                         )
 
-                    let needs_dc = not progressive or (ss == 0 and ah == 0)
-                    let needs_ac = not progressive or ss > 0
+                    needs_dc := not progressive or (ss == 0 and ah == 0)
+                    needs_ac := not progressive or ss > 0
                     if needs_dc and not dc_tables[dc_ids[m]].present:
                         return error(bad("JPEG scan uses a missing DC table"))
                     if needs_ac and not ac_tables[ac_ids[m]].present:
@@ -1733,7 +1733,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                     comps[c].pred = 0
 
                 var bits = JpegBits(end, 0, 0, false, 0)
-                let units = if ns == 1: coded else: mcus_x * mcus_y
+                units := if ns == 1: coded else: mcus_x * mcus_y
                 var across = mcus_x
                 if ns == 1:
                     across = ((width * comps[members[0]].h + hmax - 1) / hmax + 7) / 8
@@ -1748,7 +1748,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                         if bits.pos + 1 >= n or data.get(bits.pos).to_int() != 255:
                             return error(bad("missing JPEG restart marker"))
 
-                        let rst = data.get(bits.pos + 1).to_int()
+                        rst := data.get(bits.pos + 1).to_int()
                         if rst < 208 or rst > 215: return error(
                             bad(
                                 "missing JPEG restart marker"
@@ -1760,14 +1760,14 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                         for c in members:
                             comps[c].pred = 0
 
-                    let ux = step_index % across
-                    let uy = step_index / across
+                    ux := step_index % across
+                    uy := step_index / across
 
                     for m in 0..members.length():
-                        let c = members[m]
+                        c := members[m]
 
                         if ns == 1:
-                            let base = (uy * comps[c].blocks_wide + ux) * 64
+                            base := (uy * comps[c].blocks_wide + ux) * 64
                             jpeg_block(
                                 data, var bits, var comps[c], base,
                                 dc_tables[dc_ids[m]], ac_tables[ac_ids[m]], scan
@@ -1775,7 +1775,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                         else:
                             for v in 0..comps[c].v:
                                 for h in 0..comps[c].h:
-                                    let base = (
+                                    base := (
                                         (
                                             (
                                                 uy * comps[
@@ -1828,7 +1828,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
     for c in comps:
         planes.append(jpeg_plane(c))
 
-    let zi = comps.length()
+    zi := comps.length()
     var spans = List[List[Int]]()
     for c in comps:
         spans.append(
@@ -1837,10 +1837,10 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
             ]
         )
 
-    let mode = if zi == 1: ColorMode.Gray else: ColorMode.Rgb
-    let m = color_channels(mode)
+    mode := if zi == 1: ColorMode.Gray else: ColorMode.Rgb
+    m := color_channels(mode)
     var pixels = zeroed(width * height * m)
-    let ycc = (
+    ycc := (
         zi == 3
         and adobe != 0
         and not (
@@ -1856,7 +1856,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
             var s = [0, 0, 0, 0]
 
             for c in 0..zi:
-                let stride = comps[c].blocks_wide * 8
+                stride := comps[c].blocks_wide * 8
                 s[c] = jpeg_sample(
                     planes[c],
                     stride,
@@ -1870,7 +1870,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                     ].v == 0
                 )
 
-            let out = (y * width + x) * m
+            out := (y * width + x) * m
 
             if zi == 1:
                 pixels[out] = byte(s[0])
@@ -1879,7 +1879,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                 pixels[out + 1] = byte(s[1])
                 pixels[out + 2] = byte(s[2])
             else if zi == 3:
-                let rgb = ycc_to_rgb(s[0], s[1], s[2])
+                rgb := ycc_to_rgb(s[0], s[1], s[2])
                 pixels[out] = byte(rgb[0])
                 pixels[out + 1] = byte(rgb[1])
                 pixels[out + 2] = byte(rgb[2])
@@ -1891,7 +1891,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
                 var tk = s[3]
 
                 if adobe == 2:
-                    let rgb = ycc_to_rgb(s[0], s[1], s[2])
+                    rgb := ycc_to_rgb(s[0], s[1], s[2])
                     t0 = 255 - rgb[0]
                     t1 = 255 - rgb[1]
                     t2 = 255 - rgb[2]
@@ -1913,7 +1913,7 @@ fn scan_end(data: Bytes, from: Int) Int:
     var at = from
 
     while at + 1 < data.length():
-        let b = data.get(at + 1).to_int()
+        b := data.get(at + 1).to_int()
         if (
             data.get(at).to_int() == 255
             and b != 0
@@ -1940,30 +1940,30 @@ fn jpeg_sample(
     if not exact or (hr == 1 and vr == 1) or hr > 2 or vr > 2:
         return plane[(y / max_of(vr, 1)) * stride + x / max_of(hr, 1)].to_int()
 
-    let last_x = span[0] - 1
-    let last_y = span[1] - 1
-    let px = min_of(x / hr, last_x)
-    let py = min_of(y / vr, last_y)
+    last_x := span[0] - 1
+    last_y := span[1] - 1
+    px := min_of(x / hr, last_x)
+    py := min_of(y / vr, last_y)
 
     if vr == 1:
-        let here = plane[py * stride + px].to_int()
-        let near = plane[
+        here := plane[py * stride + px].to_int()
+        near := plane[
             py * stride + clamp_to(
                 if x % 2 == 0: px - 1 else: px + 1, last_x
             )
         ].to_int()
         return (3 * here + near + (if x % 2 == 0: 1 else: 2)) / 4
 
-    let ny = clamp_to(if y % 2 == 0: py - 1 else: py + 1, last_y)
+    ny := clamp_to(if y % 2 == 0: py - 1 else: py + 1, last_y)
 
     if hr == 1:
-        let here = plane[py * stride + px].to_int()
-        let near = plane[ny * stride + px].to_int()
+        here := plane[py * stride + px].to_int()
+        near := plane[ny * stride + px].to_int()
         return (3 * here + near + (if y % 2 == 0: 1 else: 2)) / 4
 
-    let nx = clamp_to(if x % 2 == 0: px - 1 else: px + 1, last_x)
-    let here = 3 * plane[py * stride + px].to_int() + plane[ny * stride + px].to_int()
-    let near = 3 * plane[py * stride + nx].to_int() + plane[ny * stride + nx].to_int()
+    nx := clamp_to(if x % 2 == 0: px - 1 else: px + 1, last_x)
+    here := 3 * plane[py * stride + px].to_int() + plane[ny * stride + px].to_int()
+    near := 3 * plane[py * stride + nx].to_int() + plane[ny * stride + nx].to_int()
     return (3 * here + near + (if x % 2 == 0: 8 else: 7)) / 16
 
 fn clamp_to(value: Int, high: Int) Int:
@@ -1973,31 +1973,31 @@ fn zeroed_ints(count: Int) List[Int]:
     return [0].repeated(count)
 
 fn ycc_to_rgb(y: Int, cb: Int, cr: Int) List[Int]:
-    let u = cb - 128
-    let v = cr - 128
+    u := cb - 128
+    v := cr - 128
     return [
         y + shift_right(91881 * v + 32768, 16),
         y - shift_right(22554 * u + 46802 * v + 32768, 16),
         y + shift_right(116130 * u + 32768, 16)
     ]
 
-let jpeg_base_luma = [
+jpeg_base_luma := [
     16, 11, 12, 14, 12, 10, 16, 14, 13, 14, 18, 17, 16, 19, 24, 40, 26, 24, 22, 22, 24,
     49, 35, 37, 29, 40, 58, 51, 61, 60, 57, 51, 56, 55, 64, 72, 92, 78, 64, 68, 87, 69,
     55, 56, 80, 109, 81, 87, 95, 98, 103, 104, 103, 62, 77, 113, 121, 112, 100, 120, 92,
     101, 103, 99
 ]
-let jpeg_base_chroma = [
+jpeg_base_chroma := [
     17, 18, 18, 24, 21, 24, 47, 26, 26, 47, 99, 66, 56, 66, 99, 99, 99, 99, 99, 99, 99,
     99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
     99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
     99
 ]
-let jpeg_dc_luma_counts = [0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]
-let jpeg_dc_chroma_counts = [0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
-let jpeg_dc_values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-let jpeg_ac_luma_counts = [0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 125]
-let jpeg_ac_luma_values = [
+jpeg_dc_luma_counts := [0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0]
+jpeg_dc_chroma_counts := [0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
+jpeg_dc_values := [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+jpeg_ac_luma_counts := [0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 125]
+jpeg_ac_luma_values := [
     1, 2, 3, 0, 4, 17, 5, 18, 33, 49, 65, 6, 19, 81, 97, 7, 34, 113, 20, 50, 129, 145,
     161, 8, 35, 66, 177, 193, 21, 82, 209, 240, 36, 51, 98, 114, 130, 9, 10, 22, 23, 24,
     25, 26, 37, 38, 39, 40, 41, 42, 52, 53, 54, 55, 56, 57, 58, 67, 68, 69, 70, 71, 72,
@@ -2008,8 +2008,8 @@ let jpeg_ac_luma_values = [
     210, 211, 212, 213, 214, 215, 216, 217, 218, 225, 226, 227, 228, 229, 230, 231, 232,
     233, 234, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250
 ]
-let jpeg_ac_chroma_counts = [0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 119]
-let jpeg_ac_chroma_values = [
+jpeg_ac_chroma_counts := [0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 119]
+jpeg_ac_chroma_values := [
     0, 1, 2, 3, 17, 4, 5, 33, 49, 6, 18, 65, 81, 7, 97, 113, 19, 34, 50, 129, 8, 20, 66,
     145, 161, 177, 193, 9, 35, 51, 82, 240, 21, 98, 114, 209, 10, 22, 36, 52, 225, 37,
     241, 23, 24, 25, 26, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 67, 68, 69, 70, 71,
@@ -2054,7 +2054,7 @@ impl JpegWriter:
         self.count += size
 
         while self.count >= 8:
-            let b = bit_and(shift_right_unsigned(self.acc, self.count - 8), 255)
+            b := bit_and(shift_right_unsigned(self.acc, self.count - 8), 255)
             self.out.append(byte(b))
             if b == 255: self.out.append(byte(0))
             self.count -= 8
@@ -2098,16 +2098,16 @@ fn jpeg_forward(
     var levels = zeroed_ints(64)
 
     for zi in 0..64:
-        let at = zigzag[zi]
-        let v = at / 8
-        let u = at % 8
+        at := zigzag[zi]
+        v := at / 8
+        u := at % 8
         var sum = 0
         for y in 0..8:
             sum += dct_matrix[y * 8 + v] * tmp[y * 8 + u]
 
-        let q = quant.get(zi)
-        let half = q * 8388608
-        let scale = q * 16777216
+        q := quant.get(zi)
+        half := q * 8388608
+        scale := q * 16777216
         levels[zi] = if sum >= 0: (sum + half) / scale else: 0 - ((half - sum) / scale)
 
     return levels
@@ -2115,15 +2115,15 @@ fn jpeg_forward(
 fn jpeg_emit(
     var w: JpegWriter, levels: List[Int], previous: Int, dc: JpegCodes, ac: JpegCodes
 ) Unit:
-    let diff = levels[0] - previous
-    let size = bit_length(diff)
+    diff := levels[0] - previous
+    size := bit_length(diff)
     w.put(dc.code[size], dc.size[size])
     if size > 0: w.put(if diff >= 0: diff else: diff + shift_left(1, size) - 1, size)
 
     var run = 0
 
     for zi in 1..64:
-        let v = levels[zi]
+        v := levels[zi]
 
         if v == 0:
             run += 1
@@ -2132,8 +2132,8 @@ fn jpeg_emit(
                 w.put(ac.code[240], ac.size[240])
                 run -= 16
 
-            let n = bit_length(v)
-            let symbol = run * 16 + n
+            n := bit_length(v)
+            symbol := run * 16 + n
             w.put(ac.code[symbol], ac.size[symbol])
             w.put(if v >= 0: v else: v + shift_left(1, n) - 1, n)
             run = 0
@@ -2160,7 +2160,7 @@ fn jpeg_dht(var out: BytesBuilder, class_id: Int, counts: List[Int], values: Lis
     jpeg_marker(var out, 196, body.build())
 
 fn jpeg_scaled(base: List[Int], quality: Int) List[Int]:
-    let scale = if quality < 50: 5000 / quality else: 200 - quality * 2
+    scale := if quality < 50: 5000 / quality else: 200 - quality * 2
     var table = List[Int]()
     for zi in 0..64:
         table.append(clamp_to(max_of((base.get(zi) * scale + 50) / 100, 1), 255))
@@ -2187,30 +2187,30 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
     if image.width > 65535 or image.height > 65535:
         return error(too_big("JPEG dimensions are limited to 65535"))
 
-    let color = image.mode == ColorMode.Rgb
-    let sub = color and options.chroma == Chroma.Quarter
-    let unit_size = if sub: 16 else: 8
-    let mcus_x = (image.width + unit_size - 1) / unit_size
-    let mcus_y = (image.height + unit_size - 1) / unit_size
-    let pw = mcus_x * unit_size
-    let ph = mcus_y * unit_size
+    color := image.mode == ColorMode.Rgb
+    sub := color and options.chroma == Chroma.Quarter
+    unit_size := if sub: 16 else: 8
+    mcus_x := (image.width + unit_size - 1) / unit_size
+    mcus_y := (image.height + unit_size - 1) / unit_size
+    pw := mcus_x * unit_size
+    ph := mcus_y * unit_size
 
     // Full-resolution planes, edge-replicated to whole MCUs.
     var luma = zeroed_ints(pw * ph)
     var cb = zeroed_ints(if color: pw * ph else: 0)
     var cr = zeroed_ints(if color: pw * ph else: 0)
-    let n = color_channels(image.mode)
+    n := color_channels(image.mode)
 
     for y in 0..ph:
-        let sy = min_of(y, image.height - 1)
+        sy := min_of(y, image.height - 1)
 
         for x in 0..pw:
-            let at = (sy * image.width + min_of(x, image.width - 1)) * n
+            at := (sy * image.width + min_of(x, image.width - 1)) * n
 
             if color:
-                let r = image.pixels[at].to_int()
-                let g = image.pixels[at + 1].to_int()
-                let b = image.pixels[at + 2].to_int()
+                r := image.pixels[at].to_int()
+                g := image.pixels[at + 1].to_int()
+                b := image.pixels[at + 2].to_int()
                 luma[y * pw + x] = shift_right(
                     19595 * r + 38470 * g + 7471 * b + 32768, 16
                 )
@@ -2233,7 +2233,7 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
 
         for y in 0..ph / 2:
             for x in 0..cw:
-                let i = 2 * y * pw + 2 * x
+                i := 2 * y * pw + 2 * x
                 small_cb[y * cw + x] = (
                     (
                         cb[i]
@@ -2258,8 +2258,8 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
         cb = small_cb
         cr = small_cr
 
-    let q_luma = jpeg_scaled(jpeg_base_luma, options.quality)
-    let q_chroma = jpeg_scaled(jpeg_base_chroma, options.quality)
+    q_luma := jpeg_scaled(jpeg_base_luma, options.quality)
+    q_chroma := jpeg_scaled(jpeg_base_chroma, options.quality)
     var out = BytesBuilder()
     out.append(byte(255))
     out.append(byte(216))
@@ -2324,10 +2324,10 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
     scan.append(byte(0))
     jpeg_marker(var out, 218, scan.build())
 
-    let dc_luma = jpeg_codes(jpeg_dc_luma_counts, jpeg_dc_values)
-    let ac_luma = jpeg_codes(jpeg_ac_luma_counts, jpeg_ac_luma_values)
-    let dc_chroma = jpeg_codes(jpeg_dc_chroma_counts, jpeg_dc_values)
-    let ac_chroma = jpeg_codes(jpeg_ac_chroma_counts, jpeg_ac_chroma_values)
+    dc_luma := jpeg_codes(jpeg_dc_luma_counts, jpeg_dc_values)
+    ac_luma := jpeg_codes(jpeg_ac_luma_counts, jpeg_ac_luma_values)
+    dc_chroma := jpeg_codes(jpeg_dc_chroma_counts, jpeg_dc_values)
+    ac_chroma := jpeg_codes(jpeg_ac_chroma_counts, jpeg_ac_chroma_values)
     var w = JpegWriter(out, 0, 0)
     var p_y = 0
     var p_cb = 0
@@ -2348,11 +2348,11 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
                 p_cb = 0
                 p_cr = 0
 
-            let blocks_y = if sub: 2 else: 1
+            blocks_y := if sub: 2 else: 1
 
             for by in 0..blocks_y:
                 for bx in 0..blocks_y:
-                    let levels = jpeg_forward(
+                    levels := jpeg_forward(
                         luma, pw, mx * unit_size + bx * 8, my * unit_size + by * 8,
                         q_luma
                     )
@@ -2360,13 +2360,13 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
                     p_y = levels[0]
 
             if color:
-                let x0 = mx * 8
-                let y0 = my * 8
-                let lb = jpeg_forward(cb, cw, x0, y0, q_chroma)
+                x0 := mx * 8
+                y0 := my * 8
+                lb := jpeg_forward(cb, cw, x0, y0, q_chroma)
                 jpeg_emit(var w, lb, p_cb, dc_chroma, ac_chroma)
                 p_cb = lb[0]
 
-                let lr = jpeg_forward(cr, cw, x0, y0, q_chroma)
+                lr := jpeg_forward(cr, cw, x0, y0, q_chroma)
                 jpeg_emit(var w, lr, p_cr, dc_chroma, ac_chroma)
                 p_cr = lr[0]
 

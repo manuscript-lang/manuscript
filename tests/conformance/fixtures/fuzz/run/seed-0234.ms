@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn gcd(a: Int, b: Int) Int:
     if b == 0:
@@ -15,26 +15,26 @@ fn gcd(a: Int, b: Int) Int:
     return gcd(b, a % b)
 
 export fn main() Int:
-    let i1 = (-468677643685)
+    i1 := (-468677643685)
     say("i1 = {i1}")
 
-    let b2 = "brace\{s\}".starts_with("line\nbreak")
+    b2 := "brace\{s\}".starts_with("line\nbreak")
     say("b2 = {b2}")
 
-    let i3 = (i1 + ((i1 + i1) / i1))
+    i3 := (i1 + ((i1 + i1) / i1))
     say("i3 = {i3}")
 
-    let i4 = (-195335)
+    i4 := (-195335)
     say("i4 = {i4}")
     say("gcd(4170, 4670) = {gcd(4170, 4670)}")
 
-    let i5 = 11
+    i5 := 11
     say("i5 = {i5}")
 
-    let b6 = b2
+    b6 := b2
     say("b6 = {b6}")
 
-    let l7 = [(-7), 14, (-9)]
+    l7 := [(-7), 14, (-9)]
     say("l7 = {l7} len {l7.length()}")
 
     var acc8 = 0
@@ -47,9 +47,9 @@ export fn main() Int:
 
     say("acc8 = {acc8}")
 
-    let i9 = ((((-41) * i4) % ((-446961410644) + i5)) - i5)
+    i9 := ((((-41) * i4) % ((-446961410644) + i5)) - i5)
     say("i9 = {i9}")
 
-    let f10 = 491.348
+    f10 := 491.348
     say("f10 = {f10}")
     return 0

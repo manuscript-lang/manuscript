@@ -6,7 +6,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Unit:
-    let _written = stdout().write("{text}\n")
+    _written := stdout().write("{text}\n")
 
 fn collatz(start: Int) Int:
     var n = start
@@ -23,20 +23,20 @@ fn collatz(start: Int) Int:
     return steps
 
 export fn main() Int:
-    let f1 = ((116.25 / (689.25 + 0.0)) + (4.0e15 + (9.0e11 + 248.652)))
+    f1 := ((116.25 / (689.25 + 0.0)) + (4.0e15 + (9.0e11 + 248.652)))
     say("f1 = {f1}")
 
-    let i2 = (((41 + 46) / ((-44) + 48)) + (-46))
+    i2 := (((41 + 46) / ((-44) + 48)) + (-46))
     say("i2 = {i2}")
     say("collatz(2759) = {collatz(2759)}")
 
-    let i3 = (-43)
+    i3 := (-43)
     say("i3 = {i3}")
 
-    let b4 = (((-i3) - (i3 % 236627)) <= 461538)
+    b4 := (((-i3) - (i3 % 236627)) <= 461538)
     say("b4 = {b4}")
 
-    let b6 = ((not (not true)) and (("alpha" + "line\nbreak") == "Tab\there".upper()))
+    b6 := ((not (not true)) and (("alpha" + "line\nbreak") == "Tab\there".upper()))
     say("b6 = {b6}")
 
     if (not ("" == "emoji 😀")):
@@ -44,18 +44,18 @@ export fn main() Int:
     else:
         say(("gamma" + "  padded  "))
 
-    let b7 = (
+    b7 := (
         ("brace\{s\}" != ("Tab\there" + "hello world"))
         and "".contains("  padded  ")
     )
     say("b7 = {b7}")
 
-    let b8 = ("Tab\there" == (("hello world" + "x") + ("{(i3 - (-46))}:" + "ms")))
+    b8 := ("Tab\there" == (("hello world" + "x") + ("{(i3 - (-46))}:" + "ms")))
     say("b8 = {b8}")
 
-    let f9 = ((417.465 / (178.247 * f1)) / ((f1 * 0.0) - f1))
+    f9 := ((417.465 / (178.247 * f1)) / ((f1 * 0.0) - f1))
     say("f9 = {f9}")
 
-    let l10 = [2]
+    l10 := [2]
     say("l10 = {l10} len {l10.length()}")
     return 0
