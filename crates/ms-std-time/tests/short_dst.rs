@@ -7,7 +7,7 @@ fn short_dst_roundtrip() {
     const MARKER: &str = "MS_TIME_SHORT_DST_CHILD";
     if std::env::var_os(MARKER).is_none() {
         let output = std::process::Command::new(std::env::current_exe().unwrap())
-            .args(["--exact", "short_dst_roundtrip", "--nocapture"])
+            .args(["--exact", "short_dst::short_dst_roundtrip", "--nocapture"])
             .env(MARKER, "1")
             .env("TZ", "STD0DST,M3.2.0/0,M3.2.0/4")
             .output()
