@@ -41,9 +41,7 @@ fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
     )
 
     fn work() Unit!:
-        actual := base32_encode(
-            data, Base32Options(hex_alphabet: hex, padded: padded)
-        )
+        actual := base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
         try expect_equal(actual, expected)
         return keep(actual.byte_length())
 

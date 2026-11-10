@@ -195,9 +195,7 @@ fn main() Int:
 
         for form in ["NFC", "NFD", "NFKC", "NFKD"]:
             expected_block := expected_for(unicode_boundary, form)
-            iterations := iterations_for(
-                length + unicode_boundary.text.byte_length()
-            )
+            iterations := iterations_for(length + unicode_boundary.text.byte_length())
             if (
                 measure(
                     "early_unicode_{length}_{form}",

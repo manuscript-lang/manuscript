@@ -13,15 +13,15 @@
         "position": {
           "file": "seed-0077.ms",
           "line": 34,
-          "column": 19,
-          "offset": 1017
+          "column": 16,
+          "offset": 999
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0077.ms:34:19: type: expected Int, found String (in entry 2 of the literal, whose entries share one type)\n    |\n 34 |     bad := [1, \"two\"]\n    |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0077.ms:34:16: type: expected Int, found String (in entry 2 of the literal, whose entries share one type)\n    |\n 34 |     bad := [1, \"two\"]\n    |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

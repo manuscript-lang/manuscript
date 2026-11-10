@@ -13,8 +13,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 16,
-          "column": 24,
-          "offset": 456
+          "column": 21,
+          "offset": 441
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 16,
-          "column": 36,
-          "offset": 468
+          "column": 33,
+          "offset": 453
         }
       },
       {
@@ -35,8 +35,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 16,
-          "column": 16,
-          "offset": 448
+          "column": 13,
+          "offset": 433
         }
       },
       {
@@ -46,8 +46,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 16,
-          "column": 16,
-          "offset": 448
+          "column": 13,
+          "offset": 433
         }
       },
       {
@@ -57,8 +57,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 17,
-          "column": 17,
-          "offset": 497
+          "column": 14,
+          "offset": 479
         }
       },
       {
@@ -68,8 +68,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 18,
-          "column": 26,
-          "offset": 535
+          "column": 23,
+          "offset": 514
         }
       },
       {
@@ -79,8 +79,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 18,
-          "column": 18,
-          "offset": 527
+          "column": 15,
+          "offset": 506
         }
       },
       {
@@ -90,8 +90,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 19,
-          "column": 26,
-          "offset": 570
+          "column": 23,
+          "offset": 546
         }
       },
       {
@@ -101,8 +101,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 19,
-          "column": 17,
-          "offset": 561
+          "column": 14,
+          "offset": 537
         }
       },
       {
@@ -112,8 +112,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 19,
-          "column": 17,
-          "offset": 561
+          "column": 14,
+          "offset": 537
         }
       },
       {
@@ -123,8 +123,8 @@
         "position": {
           "file": "function-value-positional-labels-rejected.ms",
           "line": 20,
-          "column": 17,
-          "offset": 596
+          "column": 14,
+          "offset": 569
         }
       },
       {
@@ -135,7 +135,7 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 21,
           "column": 22,
-          "offset": 633
+          "offset": 606
         }
       },
       {
@@ -146,14 +146,14 @@
           "file": "function-value-positional-labels-rejected.ms",
           "line": 21,
           "column": 12,
-          "offset": 623
+          "offset": 596
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/function-value-positional-labels-rejected.ms:16:24: type: unknown argument first; function values take positional arguments (String, String), so pass them without labels\n    |\n 16 |     text := combine(first: \"a\", second: \"b\")\n    |                        ^\n<DIR>/function-value-positional-labels-rejected.ms:16:36: type: unknown argument second; function values take positional arguments (String, String), so pass them without labels\n    |\n 16 |     text := combine(first: \"a\", second: \"b\")\n    |                                    ^\n<DIR>/function-value-positional-labels-rejected.ms:16:16: type: missing argument 1: String in call to combine; pass it positionally, without a label\n    |\n 16 |     text := combine(first: \"a\", second: \"b\")\n    |                ^\n<DIR>/function-value-positional-labels-rejected.ms:16:16: type: missing argument 2: String in call to combine; pass it positionally, without a label\n    |\n 16 |     text := combine(first: \"a\", second: \"b\")\n    |                ^\n<DIR>/function-value-positional-labels-rejected.ms:17:17: type: missing argument 2: String in call to combine; pass it positionally, without a label\n    |\n 17 |     other := combine(\"a\")\n    |                 ^\n<DIR>/function-value-positional-labels-rejected.ms:18:26: type: unknown argument other; parameters of _hidden: _value\n    |\n 18 |     direct := _hidden(other: 1)\n    |                          ^\n<DIR>/function-value-positional-labels-rejected.ms:18:18: type: missing argument _value: Int in call to _hidden; add '_value: <Int>'\n    |\n 18 |     direct := _hidden(other: 1)\n    |                  ^\n<DIR>/function-value-positional-labels-rejected.ms:19:26: type: unknown argument value; parameters of numbered: _0, _1\n    |\n 19 |     named := numbered(value: 2)\n    |                          ^\n<DIR>/function-value-positional-labels-rejected.ms:19:17: type: missing argument _0: Int in call to numbered; add '_0: <Int>'\n    |\n 19 |     named := numbered(value: 2)\n    |                 ^\n<DIR>/function-value-positional-labels-rejected.ms:19:17: type: missing argument _1: Int in call to numbered; add '_1: <Int>'\n    |\n 19 |     named := numbered(value: 2)\n    |                 ^\n<DIR>/function-value-positional-labels-rejected.ms:20:17: type: missing argument _1: Int in call to numbered; add '_1: <Int>'\n    |\n 20 |     short := numbered(_0: 1)\n    |                 ^\n<DIR>/function-value-positional-labels-rejected.ms:21:22: type: unknown argument value; function values take positional arguments (Int), so pass them without labels\n    |\n 21 |     return transform(value: 2) + keep(1)\n    |                      ^\n<DIR>/function-value-positional-labels-rejected.ms:21:12: type: missing argument 1: Int in call to transform; pass it positionally, without a label\n    |\n 21 |     return transform(value: 2) + keep(1)\n    |            ^\n13 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/function-value-positional-labels-rejected.ms:16:21: type: unknown argument first; function values take positional arguments (String, String), so pass them without labels\n    |\n 16 |     text := combine(first: \"a\", second: \"b\")\n    |                     ^\n<DIR>/function-value-positional-labels-rejected.ms:16:33: type: unknown argument second; function values take positional arguments (String, String), so pass them without labels\n    |\n 16 |     text := combine(first: \"a\", second: \"b\")\n    |                                 ^\n<DIR>/function-value-positional-labels-rejected.ms:16:13: type: missing argument 1: String in call to combine; pass it positionally, without a label\n    |\n 16 |     text := combine(first: \"a\", second: \"b\")\n    |             ^\n<DIR>/function-value-positional-labels-rejected.ms:16:13: type: missing argument 2: String in call to combine; pass it positionally, without a label\n    |\n 16 |     text := combine(first: \"a\", second: \"b\")\n    |             ^\n<DIR>/function-value-positional-labels-rejected.ms:17:14: type: missing argument 2: String in call to combine; pass it positionally, without a label\n    |\n 17 |     other := combine(\"a\")\n    |              ^\n<DIR>/function-value-positional-labels-rejected.ms:18:23: type: unknown argument other; parameters of _hidden: _value\n    |\n 18 |     direct := _hidden(other: 1)\n    |                       ^\n<DIR>/function-value-positional-labels-rejected.ms:18:15: type: missing argument _value: Int in call to _hidden; add '_value: <Int>'\n    |\n 18 |     direct := _hidden(other: 1)\n    |               ^\n<DIR>/function-value-positional-labels-rejected.ms:19:23: type: unknown argument value; parameters of numbered: _0, _1\n    |\n 19 |     named := numbered(value: 2)\n    |                       ^\n<DIR>/function-value-positional-labels-rejected.ms:19:14: type: missing argument _0: Int in call to numbered; add '_0: <Int>'\n    |\n 19 |     named := numbered(value: 2)\n    |              ^\n<DIR>/function-value-positional-labels-rejected.ms:19:14: type: missing argument _1: Int in call to numbered; add '_1: <Int>'\n    |\n 19 |     named := numbered(value: 2)\n    |              ^\n<DIR>/function-value-positional-labels-rejected.ms:20:14: type: missing argument _1: Int in call to numbered; add '_1: <Int>'\n    |\n 20 |     short := numbered(_0: 1)\n    |              ^\n<DIR>/function-value-positional-labels-rejected.ms:21:22: type: unknown argument value; function values take positional arguments (Int), so pass them without labels\n    |\n 21 |     return transform(value: 2) + keep(1)\n    |                      ^\n<DIR>/function-value-positional-labels-rejected.ms:21:12: type: missing argument 1: Int in call to transform; pass it positionally, without a label\n    |\n 21 |     return transform(value: 2) + keep(1)\n    |            ^\n13 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

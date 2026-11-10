@@ -13,8 +13,8 @@
         "position": {
           "file": "core-language-basics-numbers-and-booleans-2.ms",
           "line": 7,
-          "column": 18,
-          "offset": 272
+          "column": 14,
+          "offset": 260
         },
         "fix": {
           "position": {
@@ -39,21 +39,21 @@
         "position": {
           "file": "core-language-basics-numbers-and-booleans-2.ms",
           "line": 10,
-          "column": 27,
-          "offset": 380
+          "column": 23,
+          "offset": 364
         },
         "fix": {
           "position": {
             "file": "core-language-basics-numbers-and-booleans-2.ms",
             "line": 10,
-            "column": 27,
-            "offset": 380
+            "column": 23,
+            "offset": 364
           },
           "end": {
             "file": "core-language-basics-numbers-and-booleans-2.ms",
             "line": 10,
-            "column": 28,
-            "offset": 381
+            "column": 24,
+            "offset": 365
           },
           "replacement": "1.0"
         }
@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-2.ms:7:18: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 7 |     precise: Decimal = 1e3d\n   |                  ^\n<DIR>/core-language-basics-numbers-and-booleans-2.ms:10:27: type: expected Float, found Int (in the initializer of 'mismatch'); Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value\n    |\n 10 |     mismatch: Float = 1\n    |                           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-basics-numbers-and-booleans-2.ms:7:14: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 7 |     precise: Decimal = 1e3d\n   |              ^\n<DIR>/core-language-basics-numbers-and-booleans-2.ms:10:23: type: expected Float, found Int (in the initializer of 'mismatch'); Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value\n    |\n 10 |     mismatch: Float = 1\n    |                       ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

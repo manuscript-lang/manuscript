@@ -13,15 +13,15 @@
         "position": {
           "file": "testresulttypefollowsparameterswithoutarrow-6.ms",
           "line": 5,
-          "column": 9,
-          "offset": 209
+          "column": 5,
+          "offset": 205
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testresulttypefollowsparameterswithoutarrow-6.ms:5:9: type: local binding g is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 5 |     g := fn(x: Int) Int!String: ok(x)\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testresulttypefollowsparameterswithoutarrow-6.ms:5:5: type: local binding g is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 5 |     g := fn(x: Int) Int!String: ok(x)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

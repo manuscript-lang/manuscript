@@ -13,21 +13,21 @@
         "position": {
           "file": "seed-0101.ms",
           "line": 21,
-          "column": 23,
-          "offset": 642
+          "column": 19,
+          "offset": 626
         },
         "fix": {
           "position": {
             "file": "seed-0101.ms",
             "line": 21,
-            "column": 23,
-            "offset": 642
+            "column": 19,
+            "offset": 626
           },
           "end": {
             "file": "seed-0101.ms",
             "line": 21,
-            "column": 24,
-            "offset": 643
+            "column": 20,
+            "offset": 627
           },
           "replacement": "\"5\""
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0101.ms:21:23: type: expected String, found Int (in the initializer of 'bad'); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n    |\n 21 |     bad: String = 5\n    |                       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0101.ms:21:19: type: expected String, found Int (in the initializer of 'bad'); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n    |\n 21 |     bad: String = 5\n    |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

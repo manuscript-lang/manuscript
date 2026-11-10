@@ -14,7 +14,7 @@
           "file": "format-testformatparagraphs-8.ms",
           "line": 8,
           "column": 9,
-          "offset": 250
+          "offset": 247
         },
         "fix": {
           "position": {
@@ -40,7 +40,7 @@
           "file": "format-testformatparagraphs-8.ms",
           "line": 9,
           "column": 24,
-          "offset": 284
+          "offset": 281
         },
         "fix": {
           "position": {
@@ -66,7 +66,7 @@
           "file": "format-testformatparagraphs-8.ms",
           "line": 11,
           "column": 9,
-          "offset": 309
+          "offset": 306
         },
         "fix": {
           "position": {
@@ -92,7 +92,7 @@
           "file": "format-testformatparagraphs-8.ms",
           "line": 16,
           "column": 9,
-          "offset": 374
+          "offset": 371
         },
         "fix": {
           "position": {
@@ -118,7 +118,7 @@
           "file": "format-testformatparagraphs-8.ms",
           "line": 22,
           "column": 9,
-          "offset": 464
+          "offset": 461
         },
         "fix": {
           "position": {
@@ -144,7 +144,7 @@
           "file": "format-testformatparagraphs-8.ms",
           "line": 24,
           "column": 20,
-          "offset": 494
+          "offset": 491
         }
       },
       {
@@ -155,7 +155,7 @@
           "file": "format-testformatparagraphs-8.ms",
           "line": 25,
           "column": 5,
-          "offset": 508
+          "offset": 505
         },
         "fix": {
           "position": {

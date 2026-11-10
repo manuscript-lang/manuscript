@@ -70,8 +70,7 @@ bench "compress.roundtrip":
     size := blob.length()
 
     fn work() Result[Unit, Error]:
-        if b := compress(blob, CompressionFormat.Gzip):
-            return keep(unpacked_length(b))
+        if b := compress(blob, CompressionFormat.Gzip): return keep(unpacked_length(b))
 
         return keep(0)
 

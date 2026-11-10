@@ -110,9 +110,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
     return ok(text)
 
 fn main() Int:
-    parsed := options(
-        arguments(), ["cli", "output", "runs", "cpu"], ["cli", "output"]
-    )
+    parsed := options(arguments(), ["cli", "output", "runs", "cpu"], ["cli", "output"])
     if parsed.is_error(): return fail(parsed.err().message)
 
     opts := parsed.get(Map[String, String]())

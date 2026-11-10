@@ -7,29 +7,14 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown or ambiguous member replace_all on String; did you mean 'replace'?",
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Int, found String (in argument 'index' of get)",
         "position": {
           "file": "src/strings.ms",
           "line": 43,
-          "column": 31,
-          "offset": 920
-        },
-        "fix": {
-          "position": {
-            "file": "src/strings.ms",
-            "line": 43,
-            "column": 31,
-            "offset": 920
-          },
-          "end": {
-            "file": "src/strings.ms",
-            "line": 43,
-            "column": 42,
-            "offset": 931
-          },
-          "replacement": "replace"
+          "column": 56,
+          "offset": 942
         }
       },
       {
@@ -40,13 +25,112 @@
           "file": "src/binarybench.ms",
           "line": 36,
           "column": 29,
-          "offset": 978
+          "offset": 969
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected CompressionFormat, found String (in argument 'format' of compress)",
+        "position": {
+          "file": "src/numbers.ms",
+          "line": 44,
+          "column": 36,
+          "offset": 1131
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected CompressOptions, found Int (in argument 'options' of compress)",
+        "position": {
+          "file": "src/numbers.ms",
+          "line": 44,
+          "column": 44,
+          "offset": 1139
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected CompressionFormat, found String (in argument 'format' of compress)",
+        "position": {
+          "file": "src/numbers.ms",
+          "line": 54,
+          "column": 36,
+          "offset": 1323
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected CompressOptions, found Int (in argument 'options' of compress)",
+        "position": {
+          "file": "src/numbers.ms",
+          "line": 54,
+          "column": 44,
+          "offset": 1331
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected CompressionFormat, found String (in argument 'format' of decompress)",
+        "position": {
+          "file": "src/numbers.ms",
+          "line": 100,
+          "column": 30,
+          "offset": 2375
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected ArchiveFormat, found String (in argument 'format' of pack)",
+        "position": {
+          "file": "src/hostbench.ms",
+          "line": 32,
+          "column": 32,
+          "offset": 943
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected ArchiveFormat, found String (in argument 'format' of pack)",
+        "position": {
+          "file": "src/hostbench.ms",
+          "line": 42,
+          "column": 32,
+          "offset": 1116
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected ArchiveFormat, found String (in argument 'format' of pack)",
+        "position": {
+          "file": "src/hostbench.ms",
+          "line": 48,
+          "column": 29,
+          "offset": 1215
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected ArchiveFormat, found String (in argument 'format' of unpack)",
+        "position": {
+          "file": "src/hostbench.ms",
+          "line": 56,
+          "column": 36,
+          "offset": 1398
         }
       },
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export FileSystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'",
+        "message": "module does not export FileSystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'",
         "position": {
           "file": "src/fsbench.ms",
           "line": 2,
@@ -72,6 +156,17 @@
         }
       },
       {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument timestamp; parameters of create: options, transport",
+        "position": {
+          "file": "src/fsbench.ms",
+          "line": 62,
+          "column": 36,
+          "offset": 1507
+        }
+      },
+      {
         "code": "MS2001",
         "phase": "resolution",
         "message": "unknown binding fs; declare it with 'fs := ...' before use, define 'fn fs(...) T:', or import it from a module",
@@ -79,14 +174,14 @@
           "file": "src/fsbench.ms",
           "line": 79,
           "column": 13,
-          "offset": 1909
+          "offset": 1901
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/src/strings.ms:43:31: resolution: unknown or ambiguous member replace_all on String; did you mean 'replace'?\n    |\n 43 |                 n = (n + text.replace_all(\"word\", \"w\").get(\"\").length())\n    |                               ^\n<DIR>/src/binarybench.ms:36:29: type: expected UInt8, found Int (in argument 'value' of bb.append)\n    |\n 36 |                 bb.append(j % 256)\n    |                             ^\n<DIR>/src/fsbench.ms:2:8: resolution: module does not export FileSystem; @std/os/fs.ms exports: CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileSystemInfo, FileWatcher, GlobOptions, NativeDirectory, NativeFile, NativeTemporary, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 2 | import FileSystem, list, read_file, stat, temporary from \"@std/os/fs.ms\"\n   |        ^^^^^^^^^^\n<DIR>/src/fsbench.ms:5:12: resolution: unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it\n   |\n 5 | fn run(fs: FileSystem, root: String) Unit:\n   |            ^\n<DIR>/src/fsbench.ms:79:13: resolution: unknown binding fs; declare it with 'fs := ...' before use, define 'fn fs(...) T:', or import it from a module\n    |\n 79 |         run(fs, dir.path())\n    |             ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/src/strings.ms:43:56: type: expected Int, found String (in argument 'index' of get)\n    |\n 43 |                 n = (n + text.replace(\"word\", \"w\").get(\"\").length())\n    |                                                        ^\n<DIR>/src/binarybench.ms:36:29: type: expected UInt8, found Int (in argument 'value' of bb.append)\n    |\n 36 |                 bb.append(j % 256)\n    |                             ^\n<DIR>/src/numbers.ms:44:36: type: expected CompressionFormat, found String (in argument 'format' of compress)\n    |\n 44 |             if b := compress(blob, \"gzip\", 6):\n    |                                    ^\n<DIR>/src/numbers.ms:44:44: type: expected CompressOptions, found Int (in argument 'options' of compress)\n    |\n 44 |             if b := compress(blob, \"gzip\", 6):\n    |                                            ^\n<DIR>/src/numbers.ms:54:36: type: expected CompressionFormat, found String (in argument 'format' of compress)\n    |\n 54 |             if b := compress(blob, \"gzip\", 6):\n    |                                    ^\n<DIR>/src/numbers.ms:54:44: type: expected CompressOptions, found Int (in argument 'options' of compress)\n    |\n 54 |             if b := compress(blob, \"gzip\", 6):\n    |                                            ^\n<DIR>/src/numbers.ms:100:30: type: expected CompressionFormat, found String (in argument 'format' of decompress)\n     |\n 100 |     if b := decompress(data, \"gzip\"):\n     |                              ^\n<DIR>/src/hostbench.ms:32:32: type: expected ArchiveFormat, found String (in argument 'format' of pack)\n    |\n 32 |             if b := pack(list, \"zip\"):\n    |                                ^\n<DIR>/src/hostbench.ms:42:32: type: expected ArchiveFormat, found String (in argument 'format' of pack)\n    |\n 42 |             if b := pack(list, \"tar\"):\n    |                                ^\n<DIR>/src/hostbench.ms:48:29: type: expected ArchiveFormat, found String (in argument 'format' of pack)\n    |\n 48 |     if packed := pack(list, \"zip\"):\n    |                             ^\n<DIR>/src/hostbench.ms:56:36: type: expected ArchiveFormat, found String (in argument 'format' of unpack)\n    |\n 56 |             if e := unpack(packed, \"zip\"):\n    |                                    ^\n<DIR>/src/fsbench.ms:2:8: resolution: module does not export FileSystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 2 | import FileSystem, list, read_file, stat, temporary from \"@std/os/fs.ms\"\n   |        ^^^^^^^^^^\n<DIR>/src/fsbench.ms:5:12: resolution: unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it\n   |\n 5 | fn run(fs: FileSystem, root: String) Unit:\n   |            ^\n<DIR>/src/fsbench.ms:62:36: type: unknown argument timestamp; parameters of create: options, transport\n    |\n 62 |     if logger := create(transport, timestamp: false):\n    |                                    ^\n<DIR>/src/fsbench.ms:79:13: resolution: unknown binding fs; declare it with 'fs := ...' before use, define 'fn fs(...) T:', or import it from a module\n    |\n 79 |         run(fs, dir.path())\n    |             ^\n15 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -13,15 +13,15 @@
         "position": {
           "file": "testclosedrecordrejectsdifferentmethodshapes-5.ms",
           "line": 5,
-          "column": 16,
-          "offset": 218
+          "column": 13,
+          "offset": 215
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testclosedrecordrejectsdifferentmethodshapes-5.ms:5:16: resolution: unknown binding Cell; declare it with 'Cell := ...' before use, define 'fn Cell(...) T:', or import it from a module\n   |\n 5 |     cell := Cell(0)\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testclosedrecordrejectsdifferentmethodshapes-5.ms:5:13: resolution: unknown binding Cell; declare it with 'Cell := ...' before use, define 'fn Cell(...) T:', or import it from a module\n   |\n 5 |     cell := Cell(0)\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

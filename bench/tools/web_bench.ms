@@ -347,9 +347,7 @@ fn main() Int:
     if seconds <= 0: return usage("seconds must be a positive integer")
 
     here := absolute("bench/perf/web")
-    result := if args[0] == "run": run_all(here, seconds) else: fetch_all(
-        here, seconds
-    )
+    result := if args[0] == "run": run_all(here, seconds) else: fetch_all(here, seconds)
     if result.is_error(): return fail(result.err().message)
 
     return 0

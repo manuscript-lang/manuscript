@@ -13,8 +13,8 @@
         "position": {
           "file": "testhtmlunescaperejectsinvalidcontracts-1.ms",
           "line": 5,
-          "column": 19,
-          "offset": 205
+          "column": 16,
+          "offset": 202
         },
         "fix": {
           "position": {
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testhtmlunescaperejectsinvalidcontracts-1.ms:5:19: resolution: unknown binding unescape; add: import unescape from \"@std/data/html.ms\"\n   |\n 5 |     convert := unescape\n   |                   ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testhtmlunescaperejectsinvalidcontracts-1.ms:5:16: resolution: unknown binding unescape; add: import unescape from \"@std/data/html.ms\"\n   |\n 5 |     convert := unescape\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -13,15 +13,15 @@
         "position": {
           "file": "literal-reject-hex-range.ms",
           "line": 5,
-          "column": 13,
-          "offset": 142
+          "column": 10,
+          "offset": 139
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/literal-reject-hex-range.ms:5:13: type: Int literal is outside signed 64-bit range; use a value between -9223372036854775808 and 9223372036854775807, or BigInt\n   |\n 5 |     x := 0xFFFF_FFFF_FFFF_FFFF\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/literal-reject-hex-range.ms:5:10: type: Int literal is outside signed 64-bit range; use a value between -9223372036854775808 and 9223372036854775807, or BigInt\n   |\n 5 |     x := 0xFFFF_FFFF_FFFF_FFFF\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

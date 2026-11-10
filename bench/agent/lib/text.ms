@@ -17,11 +17,7 @@ export fn env(name: String, fallback: String) String:
 
 // The text of the file at `path`; empty when it cannot be read.
 export fn read_text(path: String) String:
-    if data := read_file(path).wait().to_optional(): return (
-        data
-        .decode_utf8()
-        .get("")
-    )
+    if data := read_file(path).wait().to_optional(): return data.decode_utf8().get("")
 
     return ""
 

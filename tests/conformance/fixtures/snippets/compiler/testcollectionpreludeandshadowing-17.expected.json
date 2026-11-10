@@ -13,15 +13,15 @@
         "position": {
           "file": "testcollectionpreludeandshadowing-17.ms",
           "line": 5,
-          "column": 18,
-          "offset": 178
+          "column": 15,
+          "offset": 175
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testcollectionpreludeandshadowing-17.ms:5:18: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n   |\n 5 |     values := Set()\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testcollectionpreludeandshadowing-17.ms:5:15: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n   |\n 5 |     values := Set()\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -13,8 +13,8 @@
         "position": {
           "file": "sized-int-literal-range.ms",
           "line": 5,
-          "column": 25,
-          "offset": 164
+          "column": 21,
+          "offset": 160
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "sized-int-literal-range.ms",
           "line": 6,
-          "column": 28,
-          "offset": 195
+          "column": 24,
+          "offset": 187
         }
       },
       {
@@ -35,8 +35,8 @@
         "position": {
           "file": "sized-int-literal-range.ms",
           "line": 7,
-          "column": 23,
-          "offset": 221
+          "column": 19,
+          "offset": 209
         }
       },
       {
@@ -46,15 +46,15 @@
         "position": {
           "file": "sized-int-literal-range.ms",
           "line": 8,
-          "column": 24,
-          "offset": 255
+          "column": 20,
+          "offset": 239
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/sized-int-literal-range.ms:5:25: type: literal 128 is out of range for Int8; use a value between -128 and 127\n   |\n 5 |     too_big: Int8 = 128\n   |                         ^\n<DIR>/sized-int-literal-range.ms:6:28: type: literal -129 is out of range for Int8; use a value between -128 and 127\n   |\n 6 |     too_small: Int8 = -129\n   |                            ^\n<DIR>/sized-int-literal-range.ms:7:23: type: literal 3000000000 is out of range for Int32; use a value between -2147483648 and 2147483647\n   |\n 7 |     wide: Int32 = 3000000000\n   |                       ^\n<DIR>/sized-int-literal-range.ms:8:24: type: Float literal is outside finite binary32 range; use a smaller magnitude (about 3.4e38 at most)\n   |\n 8 |     hot: Float32 = 1e39\n   |                        ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/sized-int-literal-range.ms:5:21: type: literal 128 is out of range for Int8; use a value between -128 and 127\n   |\n 5 |     too_big: Int8 = 128\n   |                     ^\n<DIR>/sized-int-literal-range.ms:6:24: type: literal -129 is out of range for Int8; use a value between -128 and 127\n   |\n 6 |     too_small: Int8 = -129\n   |                        ^\n<DIR>/sized-int-literal-range.ms:7:19: type: literal 3000000000 is out of range for Int32; use a value between -2147483648 and 2147483647\n   |\n 7 |     wide: Int32 = 3000000000\n   |                   ^\n<DIR>/sized-int-literal-range.ms:8:20: type: Float literal is outside finite binary32 range; use a smaller magnitude (about 3.4e38 at most)\n   |\n 8 |     hot: Float32 = 1e39\n   |                    ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

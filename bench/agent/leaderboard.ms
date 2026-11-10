@@ -359,10 +359,7 @@ fn source_table(rows: List[Trial]) String:
         )
         if ok.is_empty(): continue
 
-        mean_in := (
-            ok.map(fn t: t.tokens_in.to_float()).sum()
-            / ok.length().to_float()
-        )
+        mean_in := (ok.map(fn t: t.tokens_in.to_float()).sum() / ok.length().to_float())
         out := ok.map(fn t: t.tokens_out.to_float()).sum() / ok.length().to_float()
         cells := CATEGORIES.map(
             fn c: (

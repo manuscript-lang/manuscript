@@ -13,15 +13,15 @@
         "position": {
           "file": "testinterfaceandreceiverhints-9.ms",
           "line": 5,
-          "column": 24,
-          "offset": 198
+          "column": 21,
+          "offset": 195
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testinterfaceandreceiverhints-9.ms:5:24: resolution: Error has no member message; a type name is followed only by an enum case\n   |\n 5 |     method := Error.message\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testinterfaceandreceiverhints-9.ms:5:21: resolution: Error has no member message; a type name is followed only by an enum case\n   |\n 5 |     method := Error.message\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

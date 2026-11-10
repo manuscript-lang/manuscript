@@ -13,15 +13,15 @@
         "position": {
           "file": "seed-0114.ms",
           "line": 29,
-          "column": 15,
-          "offset": 645
+          "column": 12,
+          "offset": 636
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0114.ms:29:15: type: not requires Bool, found Int; compare explicitly, e.g. not (x == 0)\n    |\n 29 |     bad := not 5\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0114.ms:29:12: type: not requires Bool, found Int; compare explicitly, e.g. not (x == 0)\n    |\n 29 |     bad := not 5\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -9,19 +9,19 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "this closure outlives the statement but captures the `var` `offset`, which is used again at 5:19; the closure would keep a stale value, so bind a `let` clone before the closure and capture that",
+        "message": "this closure outlives the statement but captures the `var` `offset`, which is used again at 5:16; the closure would keep a stale value, so bind a `let` clone before the closure and capture that",
         "position": {
           "file": "escaping-closure-stale-var.ms",
           "line": 6,
           "column": 16,
-          "offset": 174
+          "offset": 171
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/escaping-closure-stale-var.ms:6:16: type: this closure outlives the statement but captures the `var` `offset`, which is used again at 5:19; the closure would keep a stale value, so bind a `let` clone before the closure and capture that\n   |\n 6 |         return fn inner:\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/escaping-closure-stale-var.ms:6:16: type: this closure outlives the statement but captures the `var` `offset`, which is used again at 5:16; the closure would keep a stale value, so bind a `let` clone before the closure and capture that\n   |\n 6 |         return fn inner:\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

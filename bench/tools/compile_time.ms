@@ -184,11 +184,10 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
     else:
         b = b.concat(
             [
-                q("    s := format!(\"v‹›\", x);"),
-                "    let mut acc = s.len() as i64;", q("    if x > 50 ‹"),
-                "        acc += x / 3;", q("    › else if x > 10 ‹"),
-                "        acc += x * 2;", q("    › else ‹"), "        acc += 1;",
-                "    ›", "    acc + {call}"
+                q("    s := format!(\"v‹›\", x);"), "    let mut acc = s.len() as i64;",
+                q("    if x > 50 ‹"), "        acc += x / 3;",
+                q("    › else if x > 10 ‹"), "        acc += x * 2;", q("    › else ‹"),
+                "        acc += 1;", "    ›", "    acc + {call}"
             ]
         )
 

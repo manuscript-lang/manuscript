@@ -36,9 +36,9 @@ fn main() Int:
     var same = 0
     var differ = 0
     var skipped = 0
-    projects := glob("bench/perf", GlobOptions(patterns: ["**/ms.toml"])).get(
-        []
-    ).map(fn e: e.path.clone())
+    projects := glob("bench/perf", GlobOptions(patterns: ["**/ms.toml"])).get([]).map(
+        fn e: e.path.clone()
+    )
 
     for toml in projects.sorted():
         dir := (

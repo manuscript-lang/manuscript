@@ -13,15 +13,15 @@
         "position": {
           "file": "testmaptransformcontracts-4.ms",
           "line": 5,
-          "column": 43,
-          "offset": 252
+          "column": 40,
+          "offset": 249
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testmaptransformcontracts-4.ms:5:43: type: expected Bool, found Int (in the return value)\n   |\n 5 |     found := values.find_last(fn k, v: v)\n   |                                           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testmaptransformcontracts-4.ms:5:40: type: expected Bool, found Int (in the return value)\n   |\n 5 |     found := values.find_last(fn k, v: v)\n   |                                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

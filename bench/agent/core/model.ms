@@ -67,9 +67,7 @@ export type Lang:
 impl Lang:
     fn suffix() String:
         base := self.solution.split("/").last().get("")
-        if at := base.last_index_of("."): return base.slice(
-            at, base.length()
-        ).get("")
+        if at := base.last_index_of("."): return base.slice(at, base.length()).get("")
 
         return ""
 
@@ -96,9 +94,7 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
         meta_text := read_file("{dir}/challenge.json").wait()
         if not meta_text.is_ok(): continue
 
-        m := parse[Meta](meta_text.get().decode_utf8().get("")).get(
-            Meta("", "", 0, 5)
-        )
+        m := parse[Meta](meta_text.get().decode_utf8().get("")).get(Meta("", "", 0, 5))
         wanted := (
             ids.is_empty()
             or ids.any(fn i: (name == i or name.starts_with("{i}-")))

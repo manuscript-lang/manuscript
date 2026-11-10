@@ -33,9 +33,9 @@ fn main() Int:
         var row = List[String]()
 
         for lang in LANGS:
-            refs := glob(
-                "{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])
-            ).get([])
+            refs := glob("{ch.dir}/solutions/{lang}", GlobOptions(patterns: ["*.ref"])).get(
+                []
+            )
             if not refs.is_empty(): row.append(
                 "{ch.dir}/solutions/{lang}/{refs[0].path}"
             )

@@ -12,13 +12,13 @@
           "file": "foreign-fstring.ms",
           "line": 6,
           "column": 13,
-          "offset": 157
+          "offset": 154
         },
         "end": {
           "file": "foreign-fstring.ms",
           "line": 6,
           "column": 20,
-          "offset": 164
+          "offset": 161
         }
       }
     ],

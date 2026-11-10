@@ -13,21 +13,21 @@
         "position": {
           "file": "diag-idiom-float-times-int.ms",
           "line": 5,
-          "column": 17,
-          "offset": 147
+          "column": 14,
+          "offset": 144
         },
         "fix": {
           "position": {
             "file": "diag-idiom-float-times-int.ms",
             "line": 5,
-            "column": 19,
-            "offset": 149
+            "column": 16,
+            "offset": 146
           },
           "end": {
             "file": "diag-idiom-float-times-int.ms",
             "line": 5,
-            "column": 20,
-            "offset": 150
+            "column": 17,
+            "offset": 147
           },
           "replacement": "2.0"
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-idiom-float-times-int.ms:5:17: type: operator operands require the same independently known type, found Float * Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)\n   |\n 5 |     a := 1.0 * 2\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-idiom-float-times-int.ms:5:14: type: operator operands require the same independently known type, found Float * Int; convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)\n   |\n 5 |     a := 1.0 * 2\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -14,7 +14,7 @@
           "file": "testboundedmatchsignedandendpointnative-3.ms",
           "line": 6,
           "column": 9,
-          "offset": 226
+          "offset": 223
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "testboundedmatchsignedandendpointnative-3.ms",
           "line": 6,
           "column": 35,
-          "offset": 252
+          "offset": 249
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "testboundedmatchsignedandendpointnative-3.ms",
           "line": 6,
           "column": 62,
-          "offset": 279
+          "offset": 276
         }
       },
       {
@@ -47,7 +47,7 @@
           "file": "testboundedmatchsignedandendpointnative-3.ms",
           "line": 8,
           "column": 8,
-          "offset": 318
+          "offset": 315
         }
       },
       {
@@ -58,7 +58,7 @@
           "file": "testboundedmatchsignedandendpointnative-3.ms",
           "line": 9,
           "column": 8,
-          "offset": 378
+          "offset": 375
         }
       },
       {
@@ -69,7 +69,7 @@
           "file": "testboundedmatchsignedandendpointnative-3.ms",
           "line": 10,
           "column": 8,
-          "offset": 438
+          "offset": 435
         }
       }
     ],

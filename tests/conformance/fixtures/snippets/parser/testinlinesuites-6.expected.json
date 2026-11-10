@@ -14,7 +14,7 @@
           "file": "testinlinesuites-6.ms",
           "line": 6,
           "column": 5,
-          "offset": 192
+          "offset": 189
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "testinlinesuites-6.ms",
           "line": 8,
-          "column": 34,
-          "offset": 266
+          "column": 31,
+          "offset": 260
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testinlinesuites-6.ms:6:5: resolution: unknown binding use; declare it with 'use := ...' before use, define 'fn use(...) T:', or import it from a module\n   |\n 6 |     use(fn(x: Int) Int: return x, other: 1)\n   |     ^\n<DIR>/testinlinesuites-6.ms:8:34: type: expected fn() Unit, found fn() Int (in entry 2 of the literal, whose entries share one type)\n   |\n 8 |     gs := [fn() Unit: return, fn() Int: return 2]\n   |                                  ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testinlinesuites-6.ms:6:5: resolution: unknown binding use; declare it with 'use := ...' before use, define 'fn use(...) T:', or import it from a module\n   |\n 6 |     use(fn(x: Int) Int: return x, other: 1)\n   |     ^\n<DIR>/testinlinesuites-6.ms:8:31: type: expected fn() Unit, found fn() Int (in entry 2 of the literal, whose entries share one type)\n   |\n 8 |     gs := [fn() Unit: return, fn() Int: return 2]\n   |                               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

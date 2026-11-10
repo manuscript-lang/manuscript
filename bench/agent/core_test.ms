@@ -86,9 +86,7 @@ test "random matches CPython's Mersenne Twister":
     try expect_equal(s.randrange(5, 50), 20)
 
 test "json layout matches json.dumps":
-    doc := parse("[\{\"a\": \"é\\n\", \"b\": [], \"c\": \{\}\}, 1]").get(
-        JsonValue.Null
-    )
+    doc := parse("[\{\"a\": \"é\\n\", \"b\": [], \"c\": \{\}\}, 1]").get(JsonValue.Null)
     try expect_equal(
         dumps(doc, 1),
         "[\n \{\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": \{\}\n \},\n 1\n]"

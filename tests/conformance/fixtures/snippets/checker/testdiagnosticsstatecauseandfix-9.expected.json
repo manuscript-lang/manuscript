@@ -13,15 +13,15 @@
         "position": {
           "file": "testdiagnosticsstatecauseandfix-9.ms",
           "line": 8,
-          "column": 13,
-          "offset": 208
+          "column": 10,
+          "offset": 205
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-9.ms:8:13: type: a generic function value requires explicit specialization; write id[Type] or call it with arguments\n   |\n 8 |     g := id\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-9.ms:8:10: type: a generic function value requires explicit specialization; write id[Type] or call it with arguments\n   |\n 8 |     g := id\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

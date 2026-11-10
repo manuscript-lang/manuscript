@@ -29,9 +29,9 @@ fn main() Int:
         promises.append(promise[Int](fn: work(i, jitter)))
 
     spawned := monotonic()
-    results := if args.length() > 2 and args[2] == "ordered": ordered_wait_all(
+    results := if args.length() > 2 and args[2] == "ordered": ordered_wait_all(promises).get() else: wait_all(
         promises
-    ).get() else: wait_all(promises).get()
+    ).get()
     var total = 0
     var at = 0
 

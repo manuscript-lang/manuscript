@@ -9,12 +9,12 @@
       {
         "code": "MS3060",
         "phase": "type",
-        "message": "cannot change `scores`: `scores` is declared with let, which is immutable including its contents; declare it `var scores` to change it",
+        "message": "cannot change `scores`: `scores` is an immutable binding, immutable including its contents; declare it `var scores` to change it",
         "position": {
           "file": "map-index-assign-immutable.ms",
           "line": 6,
           "column": 5,
-          "offset": 156
+          "offset": 153
         },
         "fix": {
           "position": {
@@ -26,17 +26,17 @@
           "end": {
             "file": "map-index-assign-immutable.ms",
             "line": 5,
-            "column": 8,
-            "offset": 133
+            "column": 14,
+            "offset": 139
           },
-          "replacement": "var"
+          "replacement": "var scores ="
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/map-index-assign-immutable.ms:6:5: type: cannot change `scores`: `scores` is declared with let, which is immutable including its contents; declare it `var scores` to change it\n   |\n 6 |     scores[\"b\"] = 2\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/map-index-assign-immutable.ms:6:5: type: cannot change `scores`: `scores` is an immutable binding, immutable including its contents; declare it `var scores` to change it\n   |\n 6 |     scores[\"b\"] = 2\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

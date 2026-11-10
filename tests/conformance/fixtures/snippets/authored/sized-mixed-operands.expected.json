@@ -13,8 +13,8 @@
         "position": {
           "file": "sized-mixed-operands.ms",
           "line": 7,
-          "column": 19,
-          "offset": 200
+          "column": 16,
+          "offset": 189
         }
       },
       {
@@ -24,8 +24,8 @@
         "position": {
           "file": "sized-mixed-operands.ms",
           "line": 9,
-          "column": 22,
-          "offset": 248
+          "column": 18,
+          "offset": 229
         }
       },
       {
@@ -35,15 +35,15 @@
         "position": {
           "file": "sized-mixed-operands.ms",
           "line": 11,
-          "column": 19,
-          "offset": 299
+          "column": 16,
+          "offset": 273
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/sized-mixed-operands.ms:7:19: type: operator operands require the same independently known type, found Int32 + Int; convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)\n   |\n 7 |     mixed := a + b\n   |                   ^\n<DIR>/sized-mixed-operands.ms:9:22: type: expected Int8, found Int (in the initializer of 'both')\n   |\n 9 |     both: Int8 = plain\n   |                      ^\n<DIR>/sized-mixed-operands.ms:11:19: type: remainder requires integer operands, found Float32; convert to Int or use math functions\n    |\n 11 |     bad := rem % rem\n    |                   ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/sized-mixed-operands.ms:7:16: type: operator operands require the same independently known type, found Int32 + Int; convert one side so both have one type (e.g. interpolate into text with \"{value}\", or convert between Int and Float)\n   |\n 7 |     mixed := a + b\n   |                ^\n<DIR>/sized-mixed-operands.ms:9:18: type: expected Int8, found Int (in the initializer of 'both')\n   |\n 9 |     both: Int8 = plain\n   |                  ^\n<DIR>/sized-mixed-operands.ms:11:16: type: remainder requires integer operands, found Float32; convert to Int or use math functions\n    |\n 11 |     bad := rem % rem\n    |                ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

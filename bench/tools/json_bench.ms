@@ -85,9 +85,7 @@ fn mbps(r: Rate) Float:
 fn run(names: List[String]) Result[String, Error]:
     try fetch_corpora()
 
-    node := try must(
-        "node", capture("node", ["bench/perf/json/node.js"].concat(names))
-    )
+    node := try must("node", capture("node", ["bench/perf/json/node.js"].concat(names)))
     ms := try must(
         "ms run",
         capture(

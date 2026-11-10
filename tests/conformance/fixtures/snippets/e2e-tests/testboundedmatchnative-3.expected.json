@@ -35,8 +35,8 @@
         "position": {
           "file": "testboundedmatchnative-3.ms",
           "line": 7,
-          "column": 19,
-          "offset": 228
+          "column": 16,
+          "offset": 225
         }
       },
       {
@@ -46,8 +46,8 @@
         "position": {
           "file": "testboundedmatchnative-3.ms",
           "line": 8,
-          "column": 16,
-          "offset": 260
+          "column": 13,
+          "offset": 254
         }
       },
       {
@@ -58,20 +58,20 @@
           "file": "testboundedmatchnative-3.ms",
           "line": 9,
           "column": 20,
-          "offset": 299
+          "offset": 293
         },
         "fix": {
           "position": {
             "file": "testboundedmatchnative-3.ms",
             "line": 9,
             "column": 20,
-            "offset": 299
+            "offset": 293
           },
           "end": {
             "file": "testboundedmatchnative-3.ms",
             "line": 9,
             "column": 25,
-            "offset": 304
+            "offset": 298
           },
           "replacement": "shapes"
         }
@@ -80,7 +80,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testboundedmatchnative-3.ms:4:15: resolution: unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 4 | fn unknown(s: Shape) Int: return area(s)\n   |               ^\n<DIR>/testboundedmatchnative-3.ms:4:34: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 4 | fn unknown(s: Shape) Int: return area(s)\n   |                                  ^\n<DIR>/testboundedmatchnative-3.ms:7:19: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module\n   |\n 7 |     shapes := [Shape.Circle(2)]\n   |                   ^\n<DIR>/testboundedmatchnative-3.ms:8:16: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 8 |     good := area(shapes.get(0))\n   |                ^\n<DIR>/testboundedmatchnative-3.ms:9:20: resolution: unknown binding Shape; did you mean 'shapes'?\n   |\n 9 |     return unknown(Shape.Square(9223372036854775807))\n   |                    ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testboundedmatchnative-3.ms:4:15: resolution: unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 4 | fn unknown(s: Shape) Int: return area(s)\n   |               ^\n<DIR>/testboundedmatchnative-3.ms:4:34: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 4 | fn unknown(s: Shape) Int: return area(s)\n   |                                  ^\n<DIR>/testboundedmatchnative-3.ms:7:16: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module\n   |\n 7 |     shapes := [Shape.Circle(2)]\n   |                ^\n<DIR>/testboundedmatchnative-3.ms:8:13: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 8 |     good := area(shapes.get(0))\n   |             ^\n<DIR>/testboundedmatchnative-3.ms:9:20: resolution: unknown binding Shape; did you mean 'shapes'?\n   |\n 9 |     return unknown(Shape.Square(9223372036854775807))\n   |                    ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
