@@ -435,7 +435,7 @@ fn render(src_arg: String?) Int:
     print("wrote {board}")
     return 0
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() >= 2 and args[0] == "collect": return collect(
         args.slice(1, args.length()).get([])

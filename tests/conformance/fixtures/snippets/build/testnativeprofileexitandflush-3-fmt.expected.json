@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n    nanoseconds, sleep from \"@std/time.ms\",\n    stdout from \"@std/io/io.ms\",\n)\n\nexport fn main() Int:\n    let _ = stdout().write(\"ready\\n\")\n    sleep(nanoseconds(60000000000)).wait()\n    return 0\n"
+    "fmt": "import (\n    nanoseconds, sleep from \"@std/time.ms\",\n    stdout from \"@std/io/io.ms\",\n)\n\nfn main() Unit:\n    let _ = stdout().write(\"ready\\n\")\n    sleep(nanoseconds(60000000000)).wait()\n"
   }
 }

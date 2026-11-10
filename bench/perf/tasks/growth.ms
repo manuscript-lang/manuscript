@@ -27,7 +27,7 @@ fn in_task(n: Int, rounds: Int) Int:
     let p = owned_task[Int](fn: ok(loop_depth(n, rounds)))
     return p.wait().get()
 
-export fn main() Int:
+fn main() Int:
     // Crossing cost: the same loop just below and just above the first slot's boundary.
     let rounds = 20000
     let t0 = monotonic()

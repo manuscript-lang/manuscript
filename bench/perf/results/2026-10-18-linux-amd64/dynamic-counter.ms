@@ -17,8 +17,7 @@ fn measure(start: Int) Int:
     let ignored = stdout().write(line.to_bytes())
     return hits
 
-export fn main() Int:
+fn main() Unit:
     measure(-137)
     measure(0)
     measure(5)
-    return 0

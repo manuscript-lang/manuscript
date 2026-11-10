@@ -70,9 +70,8 @@ fn with_storage() Unit:
     let {first: kept} = tokens
     let _ = kept.name.length()
 
-export fn main() Int:
+fn main() Unit:
     local()
     temporary()
     nested()
     with_storage()
-    return 0

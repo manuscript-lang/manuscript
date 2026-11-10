@@ -20,7 +20,7 @@ fn show(number: Int) Result[Unit, Error]:
     try stdout().write("{number}\n")
     return stdout().flush()
 
-export fn main() Int:
+fn main() Int:
     let number = arguments().get(0, default: "42").parse_int()
     if let value = number:
         if show(value).is_ok():
@@ -53,10 +53,8 @@ fn run() Result[Unit, Error]:
     try stdout().write("{text}\n")
     return stdout().flush()
 
-export fn main() Int:
-    if run().is_error():
-        return 1
-    return 0
+fn main() Unit!:
+    return run()
 ```
 
 ```sh
@@ -92,10 +90,8 @@ fn run() Result[Unit, Error]:
     try stdout().write("{encoded}\n")
     return stdout().flush()
 
-export fn main() Int:
-    if run().is_error():
-        return 1
-    return 0
+fn main() Unit!:
+    return run()
 ```
 
 ```sh

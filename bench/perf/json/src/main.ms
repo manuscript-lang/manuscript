@@ -118,7 +118,7 @@ fn stringify_body(tree: JsonValue) fn() Int:
         return 0
 
 // Arguments are `name` or `name:op` (op is parse or stringify); a leading `quick` makes it 5 runs, no time floor.
-export fn main() Int:
+fn main() Unit:
     var budget = 1000000000
     var runs = 5
 
@@ -130,5 +130,3 @@ export fn main() Int:
             var op = "both"
             if parts.length() > 1: op = parts.get(1).clone()
             bench_one(parts.get(0), op, budget, runs)
-
-    return 0

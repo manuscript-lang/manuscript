@@ -54,7 +54,7 @@ fn run(work: String, n: Int) Result[String, Error]:
     var rows = best.keys().sorted().map(fn k: "{k} {best.get_or(k, 0.0).to_fixed(2)}")
     return ok(rows.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     var n = 5
     let args = arguments()
 

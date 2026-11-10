@@ -27,7 +27,7 @@ type Detail:
     checks: Int
     error: String?
 
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let cases = parse[List[Case]](must_read(args[0])).get([])
     let build = args[1].clone()
@@ -75,4 +75,3 @@ export fn main() Int:
 
     let reward = if detail.built and detail.passed == detail.total: "1" else: "0"
     write_file("{out_dir}/reward.txt", reward, replace: true).wait().get()
-    return 0

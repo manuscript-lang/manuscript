@@ -123,7 +123,7 @@ fn run(work: String, n: Int) Result[String, Error]:
     write_text("{work}/table.txt", rows.join("\n") + "\n")
     return ok(rows.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     var n = 3
     let args = arguments()
 

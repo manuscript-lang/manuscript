@@ -11,12 +11,11 @@ Save as `stock.ms` and run `ms run stock.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"2 of 3 left\n"} -->
 ```manuscript
-export fn main() Int:
+fn main() Unit:
     let count = 3
     var remaining = count
     remaining -= 1
     print("{remaining} of {count} left")
-    return 0
 ```
 
 ```text

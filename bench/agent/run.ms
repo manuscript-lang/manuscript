@@ -226,7 +226,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 fn spawn(mine: List[Job], me: String, own: Options, label: String) Promise[Int]:
     return promise(fn: ok(work(mine.clone(), me.clone(), own.clone(), label.clone())))
 
-export fn main() Int:
+fn main() Int:
     let flags = [
         Flag(
             "challenges", help: "comma list of ids or prefixes (default all)",

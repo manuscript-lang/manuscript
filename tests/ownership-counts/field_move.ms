@@ -42,7 +42,7 @@ fn reinit(b: Big) Int:
 fn nested(w: Wrap) List[Int]:
     return w.inner.items
 
-export fn main() Int:
+fn main() Unit:
     let name = "a name that is long enough to live on the heap"
     let total = (
         items_of(Big(name: name.clone(), items: [1, 2, 3])).length()
@@ -62,4 +62,3 @@ export fn main() Int:
         .get()
     )
     stdout().write("{reinit(Big(name: name.clone(), items: [7]))}\n").get()
-    return 0

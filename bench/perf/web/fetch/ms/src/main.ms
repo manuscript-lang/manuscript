@@ -22,7 +22,7 @@ fn worker(url: String, nanos: Int) Int:
     return n
 
 // Runs `conns` fetching promises; the runtime spreads them over its threads.
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let url = args.get(0)
     let conns = args.get(1).parse_int().get()
@@ -35,4 +35,3 @@ export fn main() Int:
         total += r
 
     let _ = stdout().write("req/s {total / secs}\n")
-    return 0

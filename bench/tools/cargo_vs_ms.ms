@@ -6,7 +6,7 @@ import (
     arguments from "@std/os/env.ms",
 )
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() != 1 or (args[0] != "toml" and args[0] != "csv"):
         return usage("usage: cargo_vs_ms.ms -- <toml|csv>")

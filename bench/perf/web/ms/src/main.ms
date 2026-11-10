@@ -123,7 +123,7 @@ fn serve_here(port: String, dir: String, threads: Int) Int:
 
     return 1
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 2 or args.length() > 3: return 2
 

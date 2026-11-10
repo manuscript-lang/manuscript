@@ -8,7 +8,7 @@ fn make_cells() List[Int]:
 
     return panic("fill failure")
 
-export fn main() Int:
+fn main() Int:
     var cells = make_cells()
     var next = make_cells()
 

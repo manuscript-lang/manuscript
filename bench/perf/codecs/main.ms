@@ -7,7 +7,7 @@ import (
     monotonic from "@std/time.ms",
 )
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let length = args[0].parse_int().get()
     let count = args[1].parse_int().get()

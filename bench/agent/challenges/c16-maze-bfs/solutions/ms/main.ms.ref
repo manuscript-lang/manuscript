@@ -28,8 +28,7 @@ fn solve(rows: List[List[String]]) String:
             q.append(r * w + c)
     return "no path"
 
-export fn main() Int:
+fn main() Unit:
     if var rows = stdin() | lines | collect(none):
         while rows.last().get("x") == "": rows.pop()
         print(solve(rows.map(fn l: l.chars())))
-    return 0

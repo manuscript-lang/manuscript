@@ -5,7 +5,7 @@ import (
     create_directory, temporary from "@std/os/fs.ms",
 )
 
-export fn main() Int:
+fn main() Int:
     if host() == "windows":
         note("dist-check supports Linux and macOS hosts")
         return 1

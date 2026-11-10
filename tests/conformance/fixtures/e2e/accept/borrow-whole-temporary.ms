@@ -24,7 +24,7 @@ impl Big:
 fn first_of(b: Big) Int:
     return b.items[0]
 
-export fn main() Int:
+fn main() Unit:
     let w = id(mk(3))
     let p = pass(mk(4))
     let q = id(id(mk(5)))
@@ -39,4 +39,3 @@ export fn main() Int:
         )
         .get()
     )
-    return 0

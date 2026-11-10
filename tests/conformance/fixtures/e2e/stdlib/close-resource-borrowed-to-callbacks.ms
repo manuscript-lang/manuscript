@@ -21,7 +21,7 @@ fn maybe(n: String) Door?:
 fn open(n: String) Door!Error:
     return ok(Door(n))
 
-export fn main() Int:
+fn main() Unit:
     var doors = [Door("first")]
     doors.insert(0, Door("inserted"))
     say("--map")
@@ -33,4 +33,3 @@ export fn main() Int:
     let failed: Door!Error = error(Error("no"))
     let fallback = failed.get_or_else(fn cause: Door("fallback"))
     say("end {doors.length()} {name.get()} {size.get()} {fallback.name}")
-    return 0

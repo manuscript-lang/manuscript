@@ -57,7 +57,7 @@ fn run(opts: Map[String, String], n: Int) Result[String, Error]:
 
     return ok(report.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     let parsed = options(
         arguments(), ["before", "after", "go", "input", "output", "repeats"],
         ["before", "after", "go", "input", "output"]

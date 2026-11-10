@@ -265,7 +265,7 @@ fn timed(name: String, run: fn() Int) Unit:
     let r = run()
     say("{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")
 
-export fn main() Int:
+fn main() Int:
     timed("sieve_5M", fn() Int: return sieve(5000000))
 
     timed(

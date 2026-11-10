@@ -53,5 +53,5 @@ test "List max_by and min_by are source methods":
     words.max_by(fn(w: String) Int: w.length()) | try expect_equal("ccc")
     words.min_by(fn(w: String) Int: w.length()) | try expect_equal("a")
 
-export fn main() Int:
-    return 0
+fn main() Unit:
+    return

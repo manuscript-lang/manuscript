@@ -25,7 +25,6 @@ fn ints_draw(s: Source) Drawn[Int]:
     let {value, source} = draw(middle)
     return Drawn(value + sign, source)
 
-export fn main() Int:
+fn main() Unit:
     let c = ints().make(Source([0, 3, 0, 7], 0))
     let _ = stdout().write("{c.value} {c.source.choices}\n")
-    return 0

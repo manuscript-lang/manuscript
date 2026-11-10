@@ -7,7 +7,7 @@ type Stat:
     count: Int
     total: Int
 
-export fn main() Int:
+fn main() Unit:
     let data = read_all(stdin(), none).get()
     var valid = 0
     var bad = 0
@@ -44,4 +44,3 @@ export fn main() Int:
     let ranked = stats.entries().sorted(fn a, b: if a.value.count != b.value.count: b.value.count - a.value.count else: a.key.compare(b.key))
     for e in ranked.slice(0, ranked.length().min(3)).get():
         print("{e.key} {e.value.count} avg={e.value.total / e.value.count}")
-    return 0

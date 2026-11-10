@@ -1,6 +1,5 @@
 // conform: tags=diagnostics,types,tier-core
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
-export fn main() Int:
+fn main() Unit:
     let a = [1].first().unwrap()
-    return 0

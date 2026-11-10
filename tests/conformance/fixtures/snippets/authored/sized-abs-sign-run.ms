@@ -3,7 +3,7 @@
 // conform: origin=sized numeric types stage 4
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit:
     let a: Int8 = -100
     let b: Int32 = -70000
     let c: Int = -5
@@ -14,4 +14,3 @@ export fn main() Int:
         "{a.abs()} {b.abs()} {c.abs()} {a.sign()} {z.sign()} {b.sign()} {c.sign()}\n"
     )
     let _ = stdout().write("{f.abs()} {f.sign()} {g.abs()} {g.sign()} {(0.5).sign()}\n")
-    return 0

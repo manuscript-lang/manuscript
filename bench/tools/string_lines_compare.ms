@@ -166,7 +166,7 @@ fn compare(
 
     return ok(out.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 3: return fail(
         "usage: string_lines_compare.ms -- BEFORE AFTER OUTPUT [--pairs N] [--identity-file FILE]"

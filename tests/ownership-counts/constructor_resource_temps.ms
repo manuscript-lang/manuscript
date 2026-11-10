@@ -31,7 +31,6 @@ fn build(fail: Bool) Unit!:
     print("body {value.code}")
     return ok(unit)
 
-export fn main() Int:
+fn main() Unit:
     print(build(false).is_error())
     print(build(true).is_error())
-    return 0

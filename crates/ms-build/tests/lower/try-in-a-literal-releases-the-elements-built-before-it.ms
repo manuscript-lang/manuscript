@@ -19,9 +19,8 @@ fn map_key() Result[Int, Error]:
     let m = {"a": "x", (try bad()): "y"}
     return ok(m.length())
 
-export fn main() Int:
+fn main() Unit:
     let _a = list()
     let _b = nested()
     let _c = map_value()
     let _d = map_key()
-    return 0

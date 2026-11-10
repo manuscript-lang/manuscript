@@ -14,16 +14,13 @@ Save this complete program as `read-config.ms` and run `ms run read-config.ms` i
 import read_file from "@std/os/fs.ms"
 import PromiseOptions from "@std/concurrency/promise.ms"
 
-export fn main() Int:
+fn main() Unit!:
     let pending = read_file("config.json").with(
         options: PromiseOptions(timeout: 5.seconds())
     )
-    let contents = pending.wait()
-    if contents.is_error():
-        print(contents.err().message)
-        return 1
-    print(contents.get().length())
-    return 0
+    let contents = try pending.wait()
+    print(contents.length())
+    return ok(unit)
 ```
 
 For a `config.json` containing exactly `{}` (two bytes), the program prints:

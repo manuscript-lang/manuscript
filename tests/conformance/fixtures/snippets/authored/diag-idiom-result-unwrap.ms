@@ -4,6 +4,5 @@
 fn f() Int!:
     return ok(1)
 
-export fn main() Int:
+fn main() Unit:
     let x = f().unwrap()
-    return 0

@@ -27,8 +27,7 @@ fn faulting() Unit:
     xs.append(r.first)
     panic("fault after the move")
 
-export fn main() Int:
+fn main() Unit:
     let work = promise(fn: ok(faulting()))
     let waited = work.wait()
     stdout().write("waited: {waited.is_error()}\n").get()
-    return 0

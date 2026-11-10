@@ -126,7 +126,7 @@ fn run_export(o: Options) Int!:
     print("exported {n} tasks to {o.out}")
     return ok(0)
 
-export fn main() Int:
+fn main() Int:
     let root = command[Options](
         name: "export_harbor.ms",
         about: "Export agent-bench challenges as Harbor tasks (one per challenge x language)",

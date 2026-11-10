@@ -91,7 +91,7 @@ fn optional_or_else() Unit:
 fn result_or_else() Unit:
     let _kept = success(14).or_else(fn cause: error(cause))
 
-export fn main() Int:
+fn main() Unit:
     optional_cause()
     optional_callback()
     result_error_map()
@@ -106,4 +106,3 @@ export fn main() Int:
     bound_then()
     optional_or_else()
     result_or_else()
-    return 0

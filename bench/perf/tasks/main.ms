@@ -37,7 +37,7 @@ fn park_read(a: Int) Int!:
     try sleep(seconds(1000)).wait()
     return ok(data.length() + a)
 
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let n = args[0].parse_int().get()
     let mode = args[1].clone()
@@ -69,4 +69,3 @@ export fn main() Int:
 
     let t3 = monotonic()
     print("cancel ms " + (t3.difference(t2).to_nanoseconds() / 1000000).to_string())
-    return 0

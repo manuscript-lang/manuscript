@@ -39,7 +39,7 @@ fn mix(seed: UInt64) UInt64:
 
     return h
 
-export fn main() Int:
+fn main() Unit:
     let top: UInt64 = 18446744073709551615
     let near: UInt64 = 9223372036854775806
     let _ = stdout().write(
@@ -51,4 +51,3 @@ export fn main() Int:
     let _ = stdout().write("{mix(1)} {mix(0)}\n")
     let _ = stdout().write("{near + near} {near * 2 + 1} {top / 3 * 3}\n")
     let _ = stdout().write("{mix(top / 1000)}\n")
-    return 0

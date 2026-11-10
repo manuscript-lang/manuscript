@@ -98,7 +98,7 @@ fn show(ratio: Float) String:
     let tenths = (ratio * 10.0).truncate_to_int().get(0)
     return "{tenths / 10}.{tenths % 10}x"
 
-export fn main() Int:
+fn main() Int:
     let root = working_directory().get()
     let ms = tool_ms(root.clone())
     let bound = env("SCALING_BOUND", "30").parse_float().get(30.0)

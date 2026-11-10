@@ -26,7 +26,7 @@ fn measure(name: String, text: String, expected: Int, iterations: Int) Int:
     )
     return 0
 
-export fn main() Int:
+fn main() Int:
     let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
     if measure("empty", "", 0, 1000000) != 0: return 1
     if measure("tiny", "a\nb\n", 36, 1000000) != 0: return 1

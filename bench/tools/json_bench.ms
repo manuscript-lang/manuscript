@@ -135,7 +135,7 @@ fn run(names: List[String]) Result[String, Error]:
 
     return ok(rows.join("\n"))
 
-export fn main() Int:
+fn main() Int:
     let names = env("NAMES", "small twitter canada citm_catalog records").split(
         " "
     ).filter(fn s: (s != ""))

@@ -74,7 +74,7 @@ fn table(runs: List[Run], title: String, key: fn(Run) String) String:
 
     return out
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let path = if args.is_empty(): "{root()}/results/runs.jsonl" else: args[0].clone()
     var runs = List[Run]()

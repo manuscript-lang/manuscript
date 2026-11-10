@@ -142,7 +142,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
     write_text("{out}/results.md", rendered)
     return ok(rendered)
 
-export fn main() Int:
+fn main() Int:
     let parsed = options(
         arguments(), ["before", "after", "output", "repeats", "samples", "filter"],
         ["before", "after", "output"]

@@ -229,7 +229,7 @@ fn json_failure(
     print(summary.join("\n"))
     return ok(unit)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 4 or not ["decode", "json-failure"].contains(args[0]):
         return fail(

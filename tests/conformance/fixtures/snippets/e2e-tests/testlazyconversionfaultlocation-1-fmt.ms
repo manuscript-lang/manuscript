@@ -5,7 +5,6 @@
 fn crash() Error:
     return Error((1 / "".byte_length()).to_string())
 
-export fn main() Int:
+fn main() Unit:
     let value: Int? = none
     let _result = value.ok_or_else(crash)
-    return 0

@@ -35,7 +35,7 @@ fn pair() Pair:
 fn show(l: Labeled) String:
     return l.label()
 
-export fn main() Int:
+fn main() Unit:
     let present = maybe("optional").is_some()
     print("--list")
 
@@ -47,4 +47,3 @@ export fn main() Int:
 
     let shown = show(Door("converted"))
     print("end {present} {second} {first} {shown}")
-    return 0

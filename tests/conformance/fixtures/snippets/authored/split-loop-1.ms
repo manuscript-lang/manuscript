@@ -30,7 +30,7 @@ fn count(text: String) Int:
 
     return n
 
-export fn main() Int:
+fn main() Unit:
     let a = keep("aa,bbbb,c,,dddddd,eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee,f")
     for x in a:
         say("[{x}]")
@@ -60,7 +60,6 @@ export fn main() Int:
             say("{q}{r} ")
 
     say("\n")
-    return 0
 
 fn let_form(text: String) Int:
     let parts = text.split(",")

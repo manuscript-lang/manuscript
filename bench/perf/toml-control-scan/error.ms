@@ -11,7 +11,7 @@ fn diagnostic(text: String) String:
         ok(_): return "accepted"
         error(cause): return cause.message
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let text = read_file(args[0]).wait().get().decode_utf8().get()
     let count = args[1].parse_int().get()

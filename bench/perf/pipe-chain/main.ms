@@ -39,6 +39,5 @@ fn run() Unit!:
     try stdout().write("{n} {sum}\n")
     return ok(unit)
 
-export fn main() Int:
+fn main() Unit:
     run().get()
-    return 0

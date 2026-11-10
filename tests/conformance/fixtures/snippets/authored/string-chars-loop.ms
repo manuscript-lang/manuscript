@@ -24,7 +24,7 @@ fn first_o(s: String) Int:
 
     return -1
 
-export fn main() Int:
+fn main() Unit:
     show("héllo wörld ✓ 😀!")
     show("")
     show("abc")
@@ -48,4 +48,3 @@ export fn main() Int:
             total += 1
 
     let _k = stdout().write("{total}\n")
-    return 0

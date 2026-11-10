@@ -331,7 +331,7 @@ fn fetch_all(here: String, seconds: Int) Unit!:
     tmp.close().get(unit)
     return ok(unit)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if (
         args.length() < 1

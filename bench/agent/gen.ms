@@ -26,7 +26,7 @@ import (
     gen_c60 from "./challenges/c60-issue-tracker/gen.ms",
 )
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
 
     if args.length() != 1:

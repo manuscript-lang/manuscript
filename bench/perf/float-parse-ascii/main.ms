@@ -4,7 +4,7 @@ import (
     infinity, nan from "@std/math/math.ms",
 )
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let operation = args[0]
     let dataset = args[1]

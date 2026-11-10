@@ -69,7 +69,7 @@ fn measure(item: Case) Unit!:
 
     return ok(unit)
 
-export fn main() Int:
+fn main() Unit:
     for chunk in [1, 64, 1000000]:
         for length in [4096, 8192, 16384, 32768, 65536]:
             let expected = "x".repeat(length).get()
@@ -99,5 +99,3 @@ export fn main() Int:
                 malformed: true
             )
         ).get()
-
-    return 0

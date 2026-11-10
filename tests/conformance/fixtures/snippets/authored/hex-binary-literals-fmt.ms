@@ -3,7 +3,7 @@
 // conform: origin=literals format as written
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit:
     let a = 0xFF_FF
     let b = 0b1010_0101
     let c = 1_000_000
@@ -14,4 +14,3 @@ export fn main() Int:
     let _ = stdout().write(
         "{a} {b} {c} {d} {e} {f} {0xFF} {m[255]} {-0x8000_0000_0000_0000}\n"
     )
-    return 0

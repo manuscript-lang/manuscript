@@ -6,7 +6,7 @@ import (
 
 // Arguments: left JSON number, right JSON number, comparison, repetitions.
 // Choose a comparison that is true; an incorrect result exits nonzero.
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() != 4: return 2
 

@@ -11,7 +11,7 @@ fn encoded(text: String) String:
     fields.add("value", TomlValue.StringValue(text))
     return stringify(TomlValue.TableValue(fields)).get()
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let path = args[0]
     let text = read_file(path).wait().get().decode_utf8().get()

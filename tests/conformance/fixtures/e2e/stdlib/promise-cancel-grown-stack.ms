@@ -15,9 +15,8 @@ fn descend(n: Int) Int!:
     let below = try descend(n - 1)
     return ok(below + parts.length())
 
-export fn main() Int:
+fn main() Unit:
     let deep = promise(fn: descend(20000))
     let _ = sleep(milliseconds(200)).wait()
     deep.cancel()
     print("{deep.wait().is_error()}")
-    return 0

@@ -10,6 +10,5 @@ export fn insertion_sort(numbers: List[Int]) List[Int]:
 
     return sorted
 
-export fn main() Int:
+fn main() Unit:
     print("{insertion_sort([3, 1, 2]).join(",")}")
-    return 0

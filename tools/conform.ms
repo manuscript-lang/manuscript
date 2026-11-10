@@ -8,7 +8,7 @@ import (
     arguments from "@std/os/env.ms",
 )
 
-export fn main() Int:
+fn main() Int:
     var code = run_program("cargo", ["xtask", "runtime"])
     if code != 0: return code
 
