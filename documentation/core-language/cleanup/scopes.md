@@ -48,7 +48,7 @@ _ := file.close()
 slow_work(head)
 ```
 
-`close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`try output.flush()`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush`, `sync` or `commit`. There are no enter or error-suppression hooks.
+`close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`try output.flush()`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush` or `commit`. A `FileHandle` is not reported: its writes go straight to the OS, close does not need a flush, and `sync` (fsync) only adds durability. There are no enter or error-suppression hooks.
 
 ## Close a resource explicitly
 
