@@ -266,11 +266,20 @@ fn parse_range(text: &str) -> Result<(i64, i64), String> {
         Some((a, b)) => (a, Some(b)),
         None => (text, None),
     };
-    let start = first.parse().map_err(|_| malformed())?;
-    let length = match second {
+    let unsigned = |value: &str| !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit());
+    if !unsigned(first) || second.is_some_and(|value| !unsigned(value)) {
+        return Err(malformed());
+    }
+    let start: i64 = first.parse().map_err(|_| malformed())?;
+    let length: i64 = match second {
         Some(s) => s.parse().map_err(|_| malformed())?,
         None => 1,
     };
+    // Nonempty ranges start at one; traversal also needs the exclusive end,
+    // or the following line for a zero-length deletion/insertion anchor.
+    if (start == 0 && length != 0) || start.checked_add(length.max(1)).is_none() {
+        return Err(malformed());
+    }
     Ok((start, length))
 }
 
