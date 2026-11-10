@@ -1,7 +1,10 @@
 // Handle to a value an Arena[T] owns: a slot index with a generation in the upper bits. It is a scalar, so it copies freely, and a stale handle (its value was removed) reads as none.
 export enum Id[T]:
-	// Raw handle: `generation * 2^32 + slot`.
-	At(raw: Int)
+	// A live handle; its payload packs the generation and slot.
+	At(
+		// `generation * 2^32 + slot`. Internal state: pass the handle, do not build it.
+		raw: Int,
+	)
 
 /*
 Owns many values of one type in a single flat list and hands out `Id[T]` handles instead of references.
