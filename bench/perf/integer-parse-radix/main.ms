@@ -32,10 +32,7 @@ fn main() Int:
 		return 0
 
 	if operation == "parse_error":
-		var length = 4096
-		if dataset == "overflow-short":
-			length = 32
-
+		length := if dataset == "overflow-short": 32 else: 4096
 		var text = (digits - 1).to_string_radix(digits).repeat(length).get()
 
 		if dataset == "late":

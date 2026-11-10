@@ -186,11 +186,9 @@ fn nth(h: Heap, lst: Int, i: Int) Int:
 
 fn cdr_n(h: Heap, lst: Int, k: Int) Int:
     var p = lst
-    var i = 0
 
-    while i < k:
+    for i in 0..k:
         p = h.cdrs[p]
-        i += 1
 
     return p
 
@@ -378,12 +376,9 @@ fn mul_int(a: Int, b: Int) Int!Fail:
 
 fn digit_val(c: String) Int:
     ds := "0123456789".chars()
-    var k = 0
 
-    while k < 10:
+    for k in 0..10:
         if ds[k] == c: return k
-
-        k += 1
 
     return -1
 
@@ -564,7 +559,7 @@ fn read_list(var h: Heap) Int!Fail:
             break
 
         if c == "." and dot_is_token(h):
-            if items.length() == 0: return error(syn("bad dotted list"))
+            if items.is_empty(): return error(syn("bad dotted list"))
 
             h.pos += 1
             skip_ws(var h)
@@ -748,9 +743,7 @@ fn bind_args(var h: Heap, idx: Int, args: List[Int]) Int!Fail:
     m := args.length()
 
     if (rest and m < n) or ((not rest) and m != n):
-        var nm = "lambda"
-        if h.cl_name[idx] != NO_ID:
-            nm = h.symnames[h.cl_name[idx]].clone()
+        nm := if h.cl_name[idx] != NO_ID: h.symnames[h.cl_name[idx]].clone() else: "lambda"
 
         var e = "{n}"
         if rest:
@@ -1390,13 +1383,11 @@ fn prim_list(var h: Heap, name: String, args: List[Int]) Int!Fail:
         if k < 0: return error(rt(name + ": index out of range"))
 
         var p = a0
-        var i = 0
 
-        while i < k:
+        for i in 0..k:
             if h.tags[p] != T_PAIR: return error(rt(name + ": index out of range"))
 
             p = h.cdrs[p]
-            i += 1
 
         if name == "list-tail": return ok(p)
         if h.tags[p] != T_PAIR: return error(rt(name + ": index out of range"))

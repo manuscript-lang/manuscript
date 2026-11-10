@@ -2,7 +2,7 @@ import (
 	Bytes from "@std/bytes.ms",
 	environment from "@std/os/env.ms",
 	create_directory, read_file, write_file from "@std/os/fs.ms",
-	dirname, join from "@std/os/path.ms",
+	dirname from "@std/os/path.ms",
 	fail from "@std/test/test.ms",
 )
 

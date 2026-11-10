@@ -18,7 +18,7 @@ type PathStat:
     total: Int
 
 fn all_digits(s: String) Bool:
-    if s.length() == 0: return false
+    if s.is_empty(): return false
 
     for c in s.chars():
         if not "0123456789".contains(c): return false
@@ -34,7 +34,7 @@ fn parse_entry(line: String) Entry?:
     path := parts[3]
     status := parts[4]
     latency := parts[5]
-    if ts.length() == 0: return none
+    if ts.is_empty(): return none
     if not (level == "DEBUG" or level == "INFO" or level == "WARN" or level == "ERROR"): return none
     if not (
         method == "GET"
@@ -42,7 +42,7 @@ fn parse_entry(line: String) Entry?:
         or method == "PUT"
         or method == "DELETE"
     ): return none
-    if path.length() == 0 or not path.starts_with("/"): return none
+    if path.is_empty() or not path.starts_with("/"): return none
     if status.length() != 3 or not all_digits(status): return none
     if latency.length() < 1 or latency.length() > 9 or not all_digits(latency): return none
 

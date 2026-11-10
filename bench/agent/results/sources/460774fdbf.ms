@@ -332,9 +332,8 @@ fn split_args(s: String) List[String]:
     var out = List[String]()
     var depth = 0
     var start = 0
-    var i = 0
 
-    while i < n:
+    for i in 0..n:
         c := cs[i]
 
         if c == "(" or c == "\{":
@@ -344,8 +343,6 @@ fn split_args(s: String) List[String]:
         else if c == "," and depth == 0:
             out.append(cjoin(cs, start, i))
             start = i + 1
-
-        i += 1
 
     out.append(cjoin(cs, start, n))
     return out
@@ -461,14 +458,11 @@ fn ref_value(var e: Env, inner: String) String!Fatal:
     ic := inner.chars()
     n := ic.length()
     var sp = -1
-    var k = 0
 
-    while k < n:
+    for k in 0..n:
         if ic[k] == " " or ic[k] == "\t":
             sp = k
             break
-
-        k += 1
 
     if sp > 0:
         fname := cjoin(ic, 0, sp)
@@ -554,9 +548,7 @@ fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
     if f == "foreach":
         vn := try argv(var e, args, 0)
         lst := try argv(var e, args, 1)
-        var body = ""
-        if args.length() > 2:
-            body = args[2].trim()
+        body := if args.length() > 2: args[2].trim() else: ""
 
         words := lst.fields()
         had := e.vars.contains(vn)
@@ -628,7 +620,7 @@ fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
 
         var out = List[String]()
         for w in ws:
-            if out.length() == 0 or out[out.length() - 1] != w:
+            if out.is_empty() or out[out.length() - 1] != w:
                 out.append(w.clone())
         return ok(out.join(" "))
 
@@ -670,13 +662,13 @@ fn call_fn(var e: Env, f: String, args: List[String]) String!Fatal:
 
     if f == "firstword":
         ws := (try argv(var e, args, 0)).fields()
-        if ws.length() == 0: return ok("")
+        if ws.is_empty(): return ok("")
 
         return ok(ws[0].clone())
 
     if f == "lastword":
         ws := (try argv(var e, args, 0)).fields()
-        if ws.length() == 0: return ok("")
+        if ws.is_empty(): return ok("")
 
         return ok(ws[ws.length() - 1].clone())
 
@@ -761,8 +753,8 @@ fn close_rule(var e: Env) Unit:
             for p in ol:
                 r.oo.append(p.clone())
 
-            if rl.length() > 0:
-                if r.recipe.length() > 0:
+            if not rl.is_empty():
+                if not r.recipe.is_empty():
                     emit(
                         var e,
                         "Makefile:{ln}: warning: overriding recipe for target '{t}'"
@@ -1002,12 +994,11 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
 
     close_rule(var e)
 
-    if e.frames.length() > 0:
+    if not e.frames.is_empty():
         k := e.frames.length() - 1
         e.line = e.frames[k].line
         return error(fatal_at(e, "missing 'endif'"))
 
-    return ok(unit)
 
 // ---------- rule resolution ----------
 
@@ -1017,7 +1008,7 @@ fn canmake(e: Env, name: String, levels: Int) Bool:
     if levels <= 0: return false
 
     for pr in e.prules:
-        if pr.recipe.length() > 0:
+        if not pr.recipe.is_empty():
             if st := pmatch(pr.pat, name, true):
                 var good = true
                 for p in pr.normal:
@@ -1032,14 +1023,14 @@ fn canmake(e: Env, name: String, levels: Int) Bool:
 
 fn resolve(e: Env, t: String) Res:
     if r := e.explicit.get(t):
-        if r.recipe.length() > 0:
+        if not r.recipe.is_empty():
             return Res(
                 has: true, normal: r.normal.clone(), oo: r.oo.clone(),
                 recipe: r.recipe.clone(), stem: ""
             )
 
     for pr in e.prules:
-        if pr.recipe.length() > 0:
+        if not pr.recipe.is_empty():
             if st := pmatch(pr.pat, t, true):
                 var good = true
                 for p in pr.normal:
@@ -1089,7 +1080,7 @@ fn default_goal(e: Env) String?:
 
 fn simulate(var e: Env, cmd: String) Int:
     ws := cmd.fields()
-    if ws.length() == 0: return 0
+    if ws.is_empty(): return 0
 
     w0 := ws[0].clone()
     var args = List[String]()
@@ -1102,7 +1093,7 @@ fn simulate(var e: Env, cmd: String) Int:
     if w0 == "false": return 1
 
     if w0 == "exit":
-        if args.length() == 0: return 0
+        if args.is_empty(): return 0
         if v := args[0].parse_int(): return v
 
         return 2
@@ -1206,7 +1197,6 @@ fn run_recipe(
         e.clock += 1
         e.files[t.clone()] = e.clock
 
-    return ok(unit)
 
 fn update_one(var e: Env, t: String, needed: String) Bool!Fatal:
     r := resolve(e, t.clone())
@@ -1219,9 +1209,7 @@ fn update_one(var e: Env, t: String, needed: String) Bool!Fatal:
         return error(make_fatal("No rule to make target '{t}', needed by '{needed}'"))
 
     in0 := e.files.contains(t)
-    var m0 = 0
-    if in0:
-        m0 = e.files[t]
+    m0 := if in0: e.files[t] else: 0
 
     dn := dedupe(r.normal)
     var anyc = false
@@ -1248,10 +1236,8 @@ fn update_one(var e: Env, t: String, needed: String) Bool!Fatal:
     need := e.phony.contains(t) or not e.files.contains(t) or anyc or newer
     if not need: return ok(false)
 
-    if r.recipe.length() > 0:
-        var first = ""
-        if dn.length() > 0:
-            first = dn[0].clone()
+    if not r.recipe.is_empty():
+        first := if dn.length() > 0: dn[0].clone() else: ""
         try run_recipe(var e, t.clone(), r.recipe, first, dn, qs, doo, r.stem)
 
     return ok(true)
@@ -1272,7 +1258,7 @@ fn run_goals(var e: Env, tgs: List[String]) Unit!Fatal:
     for g in tgs:
         goals.append(g.clone())
 
-    if goals.length() == 0:
+    if goals.is_empty():
         if g := default_goal(e):
             goals.append(g)
         else:
@@ -1286,14 +1272,13 @@ fn run_goals(var e: Env, tgs: List[String]) Unit!Fatal:
             r := resolve(e, g.clone())
 
             if (
-                (r.has and r.recipe.length() > 0)
+                (r.has and not r.recipe.is_empty())
                 or (not e.phony.contains(g) and e.files.contains(g))
             ):
                 emit(var e, "make: '{g}' is up to date.")
             else:
                 emit(var e, "make: Nothing to be done for '{g}'.")
 
-    return ok(unit)
 
 fn deps_visit(var e: Env, name: String) Unit!Fatal:
     r := resolve(e, name.clone())
@@ -1311,13 +1296,12 @@ fn deps_visit(var e: Env, name: String) Unit!Fatal:
         e.dseen.append(p.clone())
         e.dres.append(p.clone())
 
-    return ok(unit)
 
 fn fmt_rule(name: String, normal: List[String], oo: List[String]) String:
     var s = name + ":"
-    if normal.length() > 0:
+    if not normal.is_empty():
         s += " " + normal.join(" ")
-    if oo.length() > 0:
+    if not oo.is_empty():
         s += " | " + oo.join(" ")
     return s
 
@@ -1361,7 +1345,7 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
             e.dstack.append(tgs[0].clone())
             try deps_visit(var e, tgs[0].clone())
 
-            if e.dres.length() == 0:
+            if e.dres.is_empty():
                 emit(var e, "(no prerequisites)")
             else:
                 for x in e.dres.clone():
@@ -1376,7 +1360,7 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
 
             for pr in e.prules.clone():
                 emit(var e, "pattern " + fmt_rule(pr.pat.clone(), pr.normal, pr.oo))
-            if e.phony.length() > 0:
+            if not e.phony.is_empty():
                 emit(var e, "phony: " + e.phony.join(" "))
 
         return ok(unit)
@@ -1398,7 +1382,7 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
     if cmd == "files":
         var ks = e.files.keys()
         ks.sort()
-        if ks.length() == 0:
+        if ks.is_empty():
             emit(var e, "(no files)")
 
         for k in ks:
@@ -1433,7 +1417,6 @@ fn handle(var e: Env, raw: String) Unit!Fatal:
         return ok(unit)
 
     emit(var e, "unknown request: " + cmd)
-    return ok(unit)
 
 export fn main() Int:
     b := read_all(stdin()).get()
@@ -1442,17 +1425,14 @@ export fn main() Int:
     n := all.length()
     var s1 = -1
     var s2 = -1
-    var i = 0
 
-    while i < n:
+    for i in 0..n:
         if all[i] == "====":
             if s1 < 0:
                 s1 = i
             else:
                 s2 = i
                 break
-
-        i += 1
 
     var mk = List[String]()
     var ftab = List[String]()

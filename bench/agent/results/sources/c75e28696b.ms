@@ -143,14 +143,12 @@ fn rest_after(line: String, n: Int) String:
     cs := line.chars()
     len := cs.length()
     var i = 0
-    var k = 0
 
-    while k < n:
+    for k in 0..n:
         while i < len and is_sp(cs[i]):
             i += 1
         while i < len and not is_sp(cs[i]):
             i += 1
-        k += 1
 
     while i < len and is_sp(cs[i]):
         i += 1
@@ -193,7 +191,7 @@ fn tail(xs: List[String], from: Int) List[String]:
     return out
 
 fn dash(s: String) String:
-    if s.length() == 0: return "-"
+    if s.is_empty(): return "-"
 
     return s.clone()
 
@@ -206,12 +204,12 @@ fn labels_text(xs: List[String]) String:
     return xs.join(",")
 
 fn labels_dash(xs: List[String]) String:
-    if xs.length() == 0: return "-"
+    if xs.is_empty(): return "-"
 
     return xs.join(",")
 
 fn labels_sp(xs: List[String]) String:
-    if xs.length() == 0: return "-"
+    if xs.is_empty(): return "-"
 
     return xs.join(", ")
 
@@ -246,7 +244,7 @@ fn parse_id(arg: String) Int:
     var body = arg.clone()
     if arg.starts_with("#"):
         body = after(arg, 1)
-    if body.length() == 0: return 0
+    if body.is_empty(): return 0
 
     var v = 0
 
@@ -275,15 +273,12 @@ fn valid_date(s: String) Bool:
     if s.length() != 10: return false
 
     cs := s.chars()
-    var i = 0
 
-    while i < 10:
+    for i in 0..10:
         if i == 4 or i == 7:
             if cs[i] != "-": return false
         else if cs[i] < "0" or cs[i] > "9":
             return false
-
-        i += 1
 
     y := s.slice_scalars(0, 4).get().parse_int().get(0)
     mo := s.slice_scalars(5, 7).get().parse_int().get(0)
@@ -293,7 +288,7 @@ fn valid_date(s: String) Bool:
     return d >= 1 and d <= days_in(y, mo)
 
 fn valid_name(s: String, dash_ok: Bool) Bool:
-    if s.length() == 0: return false
+    if s.is_empty(): return false
 
     var i = 0
 
@@ -316,7 +311,7 @@ fn valid_state(s: String) Bool:
     return valid_name(s, false)
 
 fn valid_label(s: String) Bool:
-    if s.length() == 0: return false
+    if s.is_empty(): return false
 
     for c in s.chars():
         lower_c := c >= "a" and c <= "z"
@@ -457,7 +452,7 @@ fn token_upd(var up: Upd, tok: String) String:
     if field == "state": return "use move to change state"
 
     if field == "title":
-        if val.trim().length() == 0: return "empty title"
+        if val.trim().is_empty(): return "empty title"
 
         up.has_title = true
         up.title = val.clone()
@@ -477,7 +472,7 @@ fn token_upd(var up: Upd, tok: String) String:
             up.assignee = ""
             return ""
 
-        if val.trim().length() == 0: return "empty assignee"
+        if val.trim().is_empty(): return "empty assignee"
 
         up.has_assignee = true
         up.assignee = val.clone()
@@ -489,7 +484,7 @@ fn token_upd(var up: Upd, tok: String) String:
             up.reporter = ""
             return ""
 
-        if val.trim().length() == 0: return "empty reporter"
+        if val.trim().is_empty(): return "empty reporter"
 
         up.has_reporter = true
         up.reporter = val.clone()
@@ -722,7 +717,7 @@ fn make_term(
         return ok(Node(kind: 0, kids: List[Node](), field: field, op: op, alts: one))
 
     msg := check_values(app, field, op, alts)
-    if msg.length() > 0: return error(msg)
+    if not msg.is_empty(): return error(msg)
 
     return ok(Node(kind: 0, kids: List[Node](), field: field, op: op, alts: alts))
 
@@ -753,7 +748,7 @@ fn parse_term(app: App, w: String) Result[Node, String]:
     else if r.starts_with("~"):
         op = "~"
 
-    if op.length() == 0: return error("query: unexpected token '{w}'")
+    if op.is_empty(): return error("query: unexpected token '{w}'")
 
     alts := parse_alts(after(r, op.length()))
     return make_term(app, field, op, alts)
@@ -845,7 +840,7 @@ fn parse_filter(app: App, text: String) Result[Node, String]:
     if tr.is_error(): return error(tr.err())
 
     toks := tr.get()
-    if toks.length() == 0:
+    if toks.is_empty():
         return ok(
             Node(
                 kind: 1, kids: List[Node](), field: "", op: "", alts: List[String]()
@@ -985,25 +980,25 @@ fn eq_match(app: App, idx: Int, f: String, v: String) Bool:
     if f == "title": return it.title.lower() == v.lower()
 
     if f == "assignee":
-        if v == "none": return it.assignee.length() == 0
+        if v == "none": return it.assignee.is_empty()
 
-        return it.assignee.length() > 0 and it.assignee.lower() == v.lower()
+        return not it.assignee.is_empty() and it.assignee.lower() == v.lower()
 
     if f == "reporter":
-        if v == "none": return it.reporter.length() == 0
+        if v == "none": return it.reporter.is_empty()
 
-        return it.reporter.length() > 0 and it.reporter.lower() == v.lower()
+        return not it.reporter.is_empty() and it.reporter.lower() == v.lower()
 
     if f == "state": return it.state == v
     if f == "priority": return it.priority == prio_rank(v)
 
     if f == "due":
-        if v == "none": return it.due.length() == 0
+        if v == "none": return it.due.is_empty()
 
-        return it.due.length() > 0 and it.due == v
+        return not it.due.is_empty() and it.due == v
 
     if f == "labels" or f == "label":
-        if v == "none": return it.labels.length() == 0
+        if v == "none": return it.labels.is_empty()
 
         return it.labels.contains(v.lower())
 
@@ -1011,18 +1006,18 @@ fn eq_match(app: App, idx: Int, f: String, v: String) Bool:
         fin := app.is_final(it.state)
         if v == "open": return not fin
         if v == "final": return fin
-        if v == "overdue": return not fin and it.due.length() > 0 and it.due < app.today
-        if v == "unassigned": return it.assignee.length() == 0
+        if v == "overdue": return not fin and not it.due.is_empty() and it.due < app.today
+        if v == "unassigned": return it.assignee.is_empty()
 
         return false
 
     if f == "has":
-        if v == "assignee": return it.assignee.length() > 0
-        if v == "due": return it.due.length() > 0
+        if v == "assignee": return not it.assignee.is_empty()
+        if v == "due": return not it.due.is_empty()
         if v == "points": return it.points >= 0
-        if v == "labels": return it.labels.length() > 0
-        if v == "comments": return it.comments.length() > 0
-        if v == "reporter": return it.reporter.length() > 0
+        if v == "labels": return not it.labels.is_empty()
+        if v == "comments": return not it.comments.is_empty()
+        if v == "reporter": return not it.reporter.is_empty()
 
         return false
 
@@ -1033,9 +1028,9 @@ fn sub_match(app: App, idx: Int, f: String, v: String) Bool:
     lv := v.lower()
     if f == "title": return it.title.lower().contains(lv)
     if f == "assignee":
-        return it.assignee.length() > 0 and it.assignee.lower().contains(lv)
+        return not it.assignee.is_empty() and it.assignee.lower().contains(lv)
     if f == "reporter":
-        return it.reporter.length() > 0 and it.reporter.lower().contains(lv)
+        return not it.reporter.is_empty() and it.reporter.lower().contains(lv)
 
     if f == "text":
         if it.title.lower().contains(lv): return true
@@ -1068,7 +1063,7 @@ fn ord_match(app: App, idx: Int, f: String, op: String, v: String) Bool:
     else if f == "priority":
         c = cmp_int(it.priority, prio_rank(v))
     else if f == "due":
-        if it.due.length() == 0: return false
+        if it.due.is_empty(): return false
 
         c = cmp_str(it.due, v)
     else:
@@ -1136,9 +1131,9 @@ fn cmp_absent_int(x: Int, y: Int) Int:
     return cmp_int(x, y)
 
 fn cmp_absent_str(x: String, y: String) Int:
-    if x.length() == 0 and y.length() == 0: return 0
-    if x.length() == 0: return 1
-    if y.length() == 0: return -1
+    if x.is_empty() and y.is_empty(): return 0
+    if x.is_empty(): return 1
+    if y.is_empty(): return -1
 
     return cmp_str(x.lower(), y.lower())
 
@@ -1278,13 +1273,13 @@ fn build_workflow(lines: List[String], start: Int, stop: Int) Result[WF, String]
     while j < stop:
         l := lines[j].trim()
         j += 1
-        if l.length() == 0 or l.starts_with("#"): continue
+        if l.is_empty() or l.starts_with("#"): continue
 
         e := wf_line(var wf, l)
-        if err.length() == 0 and e.length() > 0:
+        if err.is_empty() and not e.is_empty():
             err = e
 
-    if err.length() > 0: return error(err)
+    if not err.is_empty(): return error(err)
     if not wf.has_initial: return error("workflow: initial state missing")
 
     for e in wf.edges:
@@ -1342,11 +1337,11 @@ impl App:
 
     fn unmet(idx: Int, g: String) Bool:
         it := self.issues[idx]
-        if g == "assignee": return it.assignee.length() == 0
+        if g == "assignee": return it.assignee.is_empty()
         if g == "points": return it.points < 0
-        if g == "due": return it.due.length() == 0
-        if g == "labels": return it.labels.length() == 0
-        if g == "reporter": return it.reporter.length() == 0
+        if g == "due": return it.due.is_empty()
+        if g == "labels": return it.labels.is_empty()
+        if g == "reporter": return it.reporter.is_empty()
 
         return false
 
@@ -1401,7 +1396,7 @@ impl App:
             details.append("reporter: {dash(cur.reporter)} -> {dash(up.reporter)}")
             nr = up.reporter.clone()
 
-        if details.length() == 0: return false
+        if details.is_empty(): return false
 
         self.clock += 1
 
@@ -1426,7 +1421,7 @@ impl App:
             report(bulk, id, "#{id} is in final state '{self.issues[idx].state}'")
             return false
 
-        if toks.length() == 0:
+        if toks.is_empty():
             report(bulk, id, "usage: edit ID field=value...")
             return false
 
@@ -1435,7 +1430,7 @@ impl App:
         for tok in toks:
             e := token_upd(var up, tok)
 
-            if e.length() > 0:
+            if not e.is_empty():
                 report(bulk, id, e)
                 return false
 
@@ -1529,7 +1524,7 @@ impl App:
             if self.unmet(idx, g):
                 missing.append(g.clone())
 
-        if missing.length() > 0:
+        if not missing.is_empty():
             mtxt := missing.join(", ")
             report(bulk, id, "cannot move #{id} to {target}: missing {mtxt}")
             return false
@@ -1541,7 +1536,7 @@ impl App:
         self.issues[idx].updated = t
         self.log_add(id, "state: {cur} -> {target}")
 
-        if comment.length() > 0:
+        if not comment.is_empty():
             self.issues[idx].comments.append(
                 Comment(
                     t: t, actor: self.actor.clone(), text: comment.clone()
@@ -1560,9 +1555,7 @@ impl App:
             j += 1
 
         stop := j
-        var next = j
-        if j < lines.length():
-            next = j + 1
+        next := if j < lines.length(): j + 1 else: j
 
         if self.next_id > 1:
             print("error: workflow: cannot redefine after issues were created")
@@ -1614,13 +1607,13 @@ impl App:
 
         toks := tr.get()
 
-        if toks.length() == 0:
+        if toks.is_empty():
             print("error: usage: create TITLE [field=value...]")
             return
 
         title := toks[0].clone()
 
-        if title.trim().length() == 0:
+        if title.trim().is_empty():
             print("error: empty title")
             return
 
@@ -1630,7 +1623,7 @@ impl App:
         while k < toks.length():
             e := token_upd(var up, toks[k])
 
-            if e.length() > 0:
+            if not e.is_empty():
                 print("error: {e}")
                 return
 
@@ -1661,7 +1654,7 @@ impl App:
             it.priority = up.priority
 
         if up.has_assignee:
-            if up.assignee.length() > 0:
+            if not up.assignee.is_empty():
                 details.append("assignee: - -> {up.assignee}")
             it.assignee = up.assignee.clone()
 
@@ -1671,17 +1664,17 @@ impl App:
             it.points = up.points
 
         if up.has_due:
-            if up.due.length() > 0:
+            if not up.due.is_empty():
                 details.append("due: - -> {up.due}")
             it.due = up.due.clone()
 
         if up.has_labels:
-            if up.labels.length() > 0:
+            if not up.labels.is_empty():
                 details.append("labels: - -> {labels_text(up.labels)}")
             it.labels = up.labels.clone()
 
         if up.has_reporter:
-            if up.reporter.length() > 0:
+            if not up.reporter.is_empty():
                 details.append("reporter: - -> {up.reporter}")
             it.reporter = up.reporter.clone()
 
@@ -1699,7 +1692,7 @@ impl App:
 
         toks := tr.get()
 
-        if toks.length() == 0:
+        if toks.is_empty():
             print("error: usage: edit ID field=value...")
             return
 
@@ -1822,11 +1815,9 @@ impl App:
         if c.limit >= 0 and c.limit < n:
             n = c.limit
 
-        var k = 0
 
-        while k < n:
+        for k in 0..n:
             print(issue_line(self.issues[order[k]]))
-            k += 1
 
         if n == 1:
             print("(1 issue)")
@@ -1913,7 +1904,7 @@ impl App:
 
             parts := pr.get()
 
-            if parts.filter.length() > 0:
+            if not parts.filter.is_empty():
                 print("error: unexpected '{parts.filter}'")
                 return
 
@@ -1941,7 +1932,7 @@ impl App:
 
         if sub == "list":
             names := self.sorted_view_names()
-            if names.length() == 0:
+            if names.is_empty():
                 print("(no views)")
 
             for nm in names:
@@ -1990,7 +1981,7 @@ impl App:
     var fn cmd_bulk(line: String) Unit:
         sp := split_where(rest_after(line, 1))
 
-        if not sp.found or sp.before.length() == 0:
+        if not sp.found or sp.before.is_empty():
             print("error: usage: bulk ACTION... where QUERY")
             return
 
@@ -2002,7 +1993,7 @@ impl App:
 
         toks := tr.get()
 
-        if toks.length() == 0:
+        if toks.is_empty():
             print("error: usage: bulk ACTION... where QUERY")
             return
 
@@ -2111,9 +2102,7 @@ impl App:
                 sel.append(i)
             i += 1
 
-        var start = 0
-        if has_tail and tailn < sel.length():
-            start = sel.length() - tailn
+        start := if has_tail and tailn < sel.length(): sel.length() - tailn else: 0
 
         var printed = 0
         var j = start
@@ -2173,9 +2162,9 @@ impl App:
                 nfin += 1
             else:
                 nopen += 1
-                if it.assignee.length() == 0:
+                if it.assignee.is_empty():
                     unassigned += 1
-                if it.due.length() > 0 and it.due < self.today:
+                if not it.due.is_empty() and it.due < self.today:
                     overdue += 1
                 if it.points > 0:
                     openpts += it.points
@@ -2214,11 +2203,9 @@ impl App:
 
             any_open = true
 
-            var p = 0
-            if it.points > 0:
-                p = it.points
+            p := if it.points > 0: it.points else: 0
 
-            if it.assignee.length() == 0:
+            if it.assignee.is_empty():
                 un_n += 1
                 un_pts += p
             else:
@@ -2285,7 +2272,7 @@ impl App:
                 else:
                     lcs[p].count += 1
 
-        if lcs.length() == 0:
+        if lcs.is_empty():
             print("(no labels)")
             return
 
@@ -2413,7 +2400,7 @@ export fn main() Int:
         i += 1
 
         st := line.trim_start()
-        if st.length() == 0 or st.starts_with("#"): continue
+        if st.is_empty() or st.starts_with("#"): continue
 
         print("> {line}")
         i = app.exec(line, lines, i)

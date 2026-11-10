@@ -327,7 +327,7 @@ fn count(lines: List[String], prefix: String) Map[String, Int]:
 		if not line.starts_with(prefix): continue
 
 		key := line.trim()
-		counts.add(key.clone(), counts.get(key.clone()).get(0) + 1)
+		counts.add(key.clone(), counts.get_or(key.clone(), 0) + 1)
 
 	return counts
 
@@ -408,7 +408,7 @@ fn main() Int:
 
 				for key in made.keys():
 					id := key.slice(5, key.length()).get("")
-					if made.get(key.clone()).get(0) != closed.get("closed-{id}").get(0): wrong = true
+					if made.get_or(key.clone(), 0) != closed.get_or("closed-{id}", 0): wrong = true
 
 				if closed.length() != made.length(): wrong = true
 

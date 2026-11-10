@@ -1,5 +1,4 @@
 import (
-	Iterator from "@std/core.ms",
 	Iterable from "@std/collections/iterable.ms",
 )
 

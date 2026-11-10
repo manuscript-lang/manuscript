@@ -185,7 +185,7 @@ fn digit_val(c: String) Int:
 
 // -1 when empty or not all digits; saturates at 10^12
 fn digits_value(s: String) Int:
-    if s.length() == 0: return -1
+    if s.is_empty(): return -1
 
     var v = 0
 
@@ -199,7 +199,7 @@ fn digits_value(s: String) Int:
 
 // canonical integer rule: digits, no leading zeros, at most 1000000; -1 when invalid
 fn canon_int(s: String) Int:
-    if s.length() == 0: return -1
+    if s.is_empty(): return -1
     if s.length() > 1 and s.starts_with("0"): return -1
 
     v := digits_value(s)
@@ -249,7 +249,7 @@ fn rank(p: String) Int:
     return 3
 
 fn label_ok(l: String) Bool:
-    if l.length() == 0: return false
+    if l.is_empty(): return false
 
     for c in l.chars():
         if not LABEL_CHARS.contains(c): return false
@@ -257,7 +257,7 @@ fn label_ok(l: String) Bool:
 
 fn valid_state(n: String) Bool:
     cs := n.chars()
-    if cs.length() == 0: return false
+    if cs.is_empty(): return false
 
     var i = 0
 
@@ -274,7 +274,7 @@ fn valid_state(n: String) Bool:
 
 fn valid_view_name(n: String) Bool:
     cs := n.chars()
-    if cs.length() == 0: return false
+    if cs.is_empty(): return false
 
     var i = 0
 
@@ -475,12 +475,12 @@ fn points_or_zero(a: Int?) Int:
     return 0
 
 fn show_labels(l: List[String]) String:
-    if l.length() == 0: return "-"
+    if l.is_empty(): return "-"
 
     return join_with(l, ",")
 
 fn show_labels_spaced(l: List[String]) String:
-    if l.length() == 0: return "-"
+    if l.is_empty(): return "-"
 
     return join_with(l, ", ")
 
@@ -554,7 +554,7 @@ fn field_missing(iss: Issue, g: String) Bool:
     if g == "points": return not present_i(iss.points)
     if g == "due": return not present_s(iss.due)
     if g == "reporter": return not present_s(iss.reporter)
-    if g == "labels": return iss.labels.length() == 0
+    if g == "labels": return iss.labels.is_empty()
 
     return false
 
@@ -586,7 +586,7 @@ fn commit_update(var t: Tracker, idx: Int, nw: Issue) String:
     diffs := diff_entries(old, nw)
     id := nw.id
 
-    if diffs.length() == 0:
+    if diffs.is_empty():
         print("#{id} unchanged")
         return ""
 
@@ -755,10 +755,10 @@ fn cmd_today(var t: Tracker, rest: String) String:
 fn cmd_create(var t: Tracker, rest: String) String:
     tk := tokenize(rest)
     if tk.err != "": return tk.err.clone()
-    if t.states.length() == 0: return "no workflow defined"
+    if t.states.is_empty(): return "no workflow defined"
 
     toks := tk.items
-    if toks.length() == 0: return "usage: create TITLE [field=value...]"
+    if toks.is_empty(): return "usage: create TITLE [field=value...]"
 
     title := toks[0].clone()
     if title.trim() == "": return "empty title"
@@ -798,7 +798,7 @@ fn edit_common(var t: Tracker, id_arg: String, asgs: List[Asg], usage: String) S
     idx := f.idx
     cur := t.issues[idx].clone()
     if is_final(t.finals, cur.state): return "#{cur.id} is in final state '{cur.state}'"
-    if asgs.length() == 0: return usage.clone()
+    if asgs.is_empty(): return usage.clone()
 
     var nw = cur.clone()
 
@@ -817,7 +817,7 @@ fn cmd_edit(var t: Tracker, rest: String) String:
     if tk.err != "": return tk.err.clone()
 
     toks := tk.items
-    if toks.length() == 0: return "usage: edit ID field=value..."
+    if toks.is_empty(): return "usage: edit ID field=value..."
 
     var asgs = List[Asg]()
     var k = 1
@@ -918,7 +918,7 @@ fn move_common(var t: Tracker, id_arg: String, dst: String, comment: String) Str
         if field_missing(cur, g):
             missing.append(g.clone())
 
-    if missing.length() > 0:
+    if not missing.is_empty():
         mtxt := join_with(missing, ", ")
         return "cannot move #{cur.id} to {dst}: missing {mtxt}"
 
@@ -1029,9 +1029,7 @@ fn qtok_simple(kind: String, text: String) QTok:
 fn read_op(cs: List[String], j: Int) String:
     n := cs.length()
     c := cs[j]
-    var nx = ""
-    if j + 1 < n:
-        nx = cs[j + 1].clone()
+    nx := if j + 1 < n: cs[j + 1].clone() else: ""
     if c == "!" and nx == "=": return "!="
     if c == "<" and nx == "=": return "<="
     if c == ">" and nx == "=": return ">="
@@ -1058,14 +1056,10 @@ fn tokenize_filter(text: String) QTokRes:
             while j < n and is_field_char(cs[j]):
                 j += 1
 
-            var op = ""
-            if j > i and j < n:
-                op = read_op(cs, j)
+            op := if j > i and j < n: read_op(cs, j) else: ""
 
             if op != "":
-                var oplen = 1
-                if op.length() == 2:
-                    oplen = 2
+                oplen := if op.length() == 2: 2 else: 1
 
                 var p = j + oplen
                 var value = ""
@@ -1124,9 +1118,7 @@ fn tokenize_filter(text: String) QTokRes:
                     k += 1
 
                 w := sub(cs, i, k)
-                var kind = "BARE"
-                if w == "AND" or w == "OR" or w == "NOT":
-                    kind = w.clone()
+                kind := if w == "AND" or w == "OR" or w == "NOT": w.clone() else: "BARE"
                 toks.append(qtok_simple(kind, w))
                 i = k
 
@@ -1218,7 +1210,7 @@ fn make_term(tok: QTok, states: List[String], views: Map[String, String]) PE:
         name := tok.value.clone()
         if not views.contains(name): return pe_err("query: unknown view '{name}'")
 
-        stored := views.get(name).get("")
+        stored := views.get_or(name, "")
         inner := parse_stored(stored, states, views)
         if inner.err != "": return inner
 
@@ -1337,7 +1329,7 @@ fn parse_primary(var p: QP, states: List[String], views: Map[String, String]) PE
 fn parse_filter(text: String, states: List[String], views: Map[String, String]) PE:
     qt := tokenize_filter(text)
     if qt.err != "": return pe_err(qt.err)
-    if qt.toks.length() == 0: return PE(e: empty_expr(), err: "")
+    if qt.toks.is_empty(): return PE(e: empty_expr(), err: "")
 
     var p = QP(toks: qt.toks.clone(), pos: 0)
     r := parse_expr(var p, states, views)
@@ -1517,7 +1509,7 @@ fn match_one(f: String, op: String, a: String, iss: Issue, ctx: EvalCtx) Bool:
                 if l.contains(needle): return true
             return false
 
-        if a == "none": return iss.labels.length() == 0
+        if a == "none": return iss.labels.is_empty()
 
         return find_str(iss.labels, a.lower()) >= 0
 
@@ -1539,8 +1531,8 @@ fn match_one(f: String, op: String, a: String, iss: Issue, ctx: EvalCtx) Bool:
         if a == "assignee": return present_s(iss.assignee)
         if a == "due": return present_s(iss.due)
         if a == "points": return present_i(iss.points)
-        if a == "labels": return iss.labels.length() > 0
-        if a == "comments": return iss.comments.length() > 0
+        if a == "labels": return not iss.labels.is_empty()
+        if a == "comments": return not iss.comments.is_empty()
         if a == "reporter": return present_s(iss.reporter)
 
         return false
@@ -1651,7 +1643,7 @@ fn select_issues(t: Tracker, e: Expr, keys: List[SortKey], limit: Int) List[Issu
     for iss in t.issues:
         if eval_expr(e, iss, ctx):
             hits.append(iss.clone())
-    if keys.length() > 0:
+    if not keys.is_empty():
         hits = sort_issues(hits, keys, t.states)
 
     var out = List[Issue]()
@@ -1731,7 +1723,7 @@ fn view_run(t: Tracker, rest: String) String:
     if extra.err != "": return extra.err.clone()
     if extra.filter != "": return "unexpected '{extra.filter}'"
 
-    stored := t.views.get(name).get("")
+    stored := t.views.get_or(name, "")
     st := split_query(stored)
     pe := parse_filter(st.filter, t.states, t.views)
     if pe.err != "": return pe.err.clone()
@@ -1754,14 +1746,14 @@ fn view_run(t: Tracker, rest: String) String:
 fn view_list(t: Tracker) String:
     var names = t.views.keys()
 
-    if names.length() == 0:
+    if names.is_empty():
         print("(no views)")
         return ""
 
     names.sort()
 
     for n in names:
-        q := t.views.get(n).get("")
+        q := t.views.get_or(n, "")
         print("{n}: {q}")
 
     return ""
@@ -1773,7 +1765,7 @@ fn view_show(t: Tracker, rest: String) String:
     name := a.first.clone()
     if not t.views.contains(name): return "unknown view '{name}'"
 
-    q := t.views.get(name).get("")
+    q := t.views.get_or(name, "")
     print("{name}: {q}")
     return ""
 
@@ -1789,7 +1781,7 @@ fn view_delete(var t: Tracker, rest: String) String:
 
     for other in names:
         if other != name:
-            stored := t.views.get(other).get("")
+            stored := t.views.get_or(other, "")
             pe := parse_stored(stored, t.states, t.views)
             if pe.err == "" and uses_view(pe.e, name):
                 return "view '{name}' is used by '{other}'"
@@ -1848,7 +1840,7 @@ fn cmd_bulk(var t: Tracker, rest: String) String:
     if tk.err != "": return tk.err.clone()
 
     toks := tk.items
-    if toks.length() == 0: return usage.clone()
+    if toks.is_empty(): return usage.clone()
 
     kind := toks[0].clone()
     n := toks.length()
@@ -1892,11 +1884,9 @@ fn cmd_bulk(var t: Tracker, rest: String) String:
             err = label_common(var t, arg, tail_list(toks, 1))
         else:
             var asgs = List[Asg]()
-            var k = 1
 
-            while k < n:
+            for k in 1..n:
                 asgs.append(parse_asg(toks[k]))
-                k += 1
 
             err = edit_common(var t, arg, asgs, usage)
 
@@ -1960,7 +1950,7 @@ fn cmd_log(t: Tracker, rest: String) String:
         if start < 0:
             start = 0
 
-    if entries.length() == 0 or start >= entries.length():
+    if entries.is_empty() or start >= entries.length():
         print("(no log entries)")
         return ""
 
@@ -2064,9 +2054,8 @@ fn report_workload(t: Tracker) String:
     if not any_open: return "(no open issues)"
 
     m := rows.length()
-    var i = 0
 
-    while i < m:
+    for i in 0..m:
         var j = 0
 
         while j + 1 < m - i:
@@ -2076,8 +2065,6 @@ fn report_workload(t: Tracker) String:
                 rows[j + 1] = tmp
 
             j += 1
-
-        i += 1
 
     for r in rows:
         print("{r.name}: {r.count} {plural_issue(r.count)}, {r.pts} points")
@@ -2104,12 +2091,11 @@ fn report_labels(t: Tracker, rest: String) String:
                 else:
                     rows[k].count += 1
 
-    if rows.length() == 0: return "(no labels)"
+    if rows.is_empty(): return "(no labels)"
 
     m := rows.length()
-    var i = 0
 
-    while i < m:
+    for i in 0..m:
         var j = 0
 
         while j + 1 < m - i:
@@ -2121,8 +2107,6 @@ fn report_labels(t: Tracker, rest: String) String:
                 rows[j + 1] = b.clone()
 
             j += 1
-
-        i += 1
 
     for r in rows:
         print("{r.name}: {r.count}")

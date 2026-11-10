@@ -92,11 +92,9 @@ fn join_range(cs: List[String], a: Int, b: Int) String:
 
 fn rep(s: String, n: Int) String:
     var r = ""
-    var k = 0
 
-    while k < n:
+    for k in 0..n:
         r += s
-        k += 1
 
     return r
 
@@ -347,7 +345,7 @@ fn parse_fence(lines: List[String], i: Int) Block:
     info := trim_sp(sub(line, ind + n, line.length()))
     var open = "<pre><code>"
 
-    if info.length() > 0:
+    if not info.is_empty():
         word := info.split(" ").get(0, "")
         open = "<pre><code class=\"language-" + esc(word) + "\">"
 
@@ -374,9 +372,7 @@ fn parse_fence(lines: List[String], i: Int) Block:
         body = body + esc(sub(l, k, l.length())) + "\n"
         j += 1
 
-    var nxt = j
-    if closed:
-        nxt = j + 1
+    nxt := if closed: j + 1 else: j
     return html_block(open + body + "</code></pre>\n", nxt)
 
 fn parse_heading(line: String, i: Int) Block:
@@ -470,9 +466,7 @@ fn parse_table(lines: List[String], i: Int) Block:
         k = 0
 
         while k < nc:
-            var cell = ""
-            if k < cells.length():
-                cell = cells[k].clone()
+            cell := if k < cells.length(): cells[k].clone() else: ""
             r = r + "<td" + align_attr(aligns[k]) + ">" + inline(cell) + "</td>\n"
             k += 1
 
@@ -534,11 +528,9 @@ fn parse_list(lines: List[String], i: Int) Block:
             if is_blank(l):
                 pend += 1
             else if leading(l) >= m.w:
-                var z = 0
 
-                while z < pend:
+                for z in 0..pend:
                     content.append("")
-                    z += 1
 
                 pend = 0
                 content.append(sub(l, m.w, l.length()))
@@ -776,7 +768,7 @@ fn code_content(cs: List[String], a: Int, b: Int) String:
         s.length() >= 2
         and s.get(0) == " "
         and s.get(s.length() - 1) == " "
-        and trim_sp(s).length() > 0
+        and not trim_sp(s).is_empty()
     ):
         s = sub(s, 1, s.length() - 1)
     return s
@@ -983,18 +975,14 @@ fn resolve(input: List[Node]) List[Node]:
                 i += 1
             else:
                 o := found
-                var use = 1
-                if ns[o].cnt >= 2 and ns[i].cnt >= 2:
-                    use = 2
+                use := if ns[o].cnt >= 2 and ns[i].cnt >= 2: 2 else: 1
 
                 var inner = List[Node]()
                 between := i - o - 1
-                var t = 0
 
-                while t < between:
+                for t in 0..between:
                     inner.append(delim_to_text(ns[o + 1].clone()))
                     ns.remove(o + 1)
-                    t += 1
 
                 ns[o].cnt -= use
                 ns[o + 1].cnt = ns[o + 1].cnt - use
@@ -1058,9 +1046,7 @@ fn render_node(x: Node) String:
     if x.kind == 2: return "<code>" + esc(x.text) + "</code>"
 
     if x.kind == 5:
-        var t = ""
-        if x.has_title:
-            t = " title=\"" + esc(x.title) + "\""
+        t := if x.has_title: " title=\"" + esc(x.title) + "\"" else: ""
         if x.img:
             return (
                 "<img src=\""
@@ -1100,7 +1086,7 @@ export fn main() Int:
     data := read_all(stdin()).get()
     text := data.decode_utf8().get("")
     var lines = text.split("\n")
-    if lines.length() > 0 and lines[lines.length() - 1] == "":
+    if not lines.is_empty() and lines[lines.length() - 1] == "":
         lines.pop()
     stdout().write(render_top(parse_blocks(lines))).get()
     return 0

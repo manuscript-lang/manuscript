@@ -13,7 +13,7 @@ export fn main() Int:
 
     // Trailing empty lines are ignored; interior empty lines are rows of width 0.
     var n = rows.length()
-    while n > 0 and rows[n - 1].length() == 0:
+    while n > 0 and rows[n - 1].is_empty():
         n -= 1
 
     if n == 0:

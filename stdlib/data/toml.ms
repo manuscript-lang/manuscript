@@ -149,9 +149,8 @@ fn advance(var reader: Reader) Int:
 fn locate(data: Bytes, pos: Int) List[Int]:
 	var line = 1
 	var column = 1
-	var index = 0
 
-	while index < pos:
+	for index in 0..pos:
 		b := data.get(index).to_int()
 
 		if b == NEWLINE:
@@ -159,8 +158,6 @@ fn locate(data: Bytes, pos: Int) List[Int]:
 			column = 1
 		else if b < 128 or b >= 192:
 			column += 1
-
-		index += 1
 
 	return [line, column]
 
@@ -805,9 +802,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
 	while not token_end(byte_at(reader.data, end)): end += 1
 
 	// Short plain decimal integers, the common scalar, skip the general classifier.
-	var sign = 0
-	if c == 45 or c == 43: sign = 1
-
+	sign := if c == 45 or c == 43: 1 else: 0
 	width := end - start - sign
 
 	if (
@@ -926,8 +921,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 
 	if span := control_pattern().find_span(normalized):
 		place := locate(reader.data, span[0])
-		var reason = "invalid control character"
-		if reader.data.get(span[0]) == 13: reason = "bare carriage return"
+		reason := if reader.data.get(span[0]) == 13: "bare carriage return" else: "invalid control character"
 		return error(toml_invalid(line: place[0], column: place[1], reason: reason))
 
 	try allocate(var reader)

@@ -15,13 +15,13 @@ fn all_digits(s: String) Bool:
 // Accepts digits, optionally followed by '.' and one or two digits.
 fn valid_amount(s: String) Bool:
     parts := s.split(".")
-    if parts.length() == 1: return parts[0].length() > 0 and all_digits(parts[0])
+    if parts.length() == 1: return not parts[0].is_empty() and all_digits(parts[0])
 
     if parts.length() == 2:
         ip := parts[0]
         fp := parts[1]
         return (
-            ip.length() > 0
+            not ip.is_empty()
             and all_digits(ip)
             and (fp.length() == 1 or fp.length() == 2)
             and all_digits(fp)
@@ -52,7 +52,7 @@ fn parse_line(line: String) Rec?:
         cat = parts[0].clone()
         amt = parts[1].clone()
 
-    if cat.length() == 0 or not valid_amount(amt): return none
+    if cat.is_empty() or not valid_amount(amt): return none
 
     return Rec(cat: cat, amt: amt)
 
@@ -104,14 +104,14 @@ export fn main() Int:
     var skipped = 0
 
     for row in rows:
-        if row.trim().length() == 0: continue
+        if row.trim().is_empty(): continue
 
         if r := parse_line(row):
             c := to_cents(r.amt)
             key := r.cat.clone()
-            old := totals.get(key).get("").clone()
+            old := totals.get_or(key, "").clone()
 
-            if old.length() == 0:
+            if old.is_empty():
                 cats.append(key.clone())
                 totals.add(key, c)
             else:
@@ -125,7 +125,7 @@ export fn main() Int:
     var out = stdout()
 
     for cat in cats:
-        t := totals.get(cat).get("0")
+        t := totals.get_or(cat, "0")
         padded := t.pad_start(3, "0")
         n := padded.length()
         ip := padded.slice(0, n - 2).get()
