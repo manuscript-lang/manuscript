@@ -10,4 +10,6 @@ Verify: an invalid-byte argument returns usage status 2 even when its lossy spel
 
 The same boundary applies after manifest escape decoding: hex/octal bytes must form valid UTF-8 before becoming source, entry or alias paths. Lossy decoding can otherwise select a real U+FFFD filename. [Manifest regressions](../../crates/ms-driver/tests/project_project.rs) preserve valid multibyte byte escapes and explicit replacement characters while rejecting invalid encodings.
 
+URI percent escapes require exactly two ASCII hex digits before numeric conversion: integer parsers may also accept a leading `+`, decoding `%+A` as a newline. [URI decoder tests](../../crates/ms-lsp/src/uri.rs) cover every ASCII digit pair; [protocol regressions](../../crates/ms-lsp/tests/uri_identity.rs) require malformed requests to return Invalid params while a valid `%2B` filename still receives hover information.
+
 Argument reordering must preserve positional meaning too: moving the first input out of `--` can turn `-input.ms` back into an option or `--help` into a help request. Keep its path spelling unambiguous and test options before the separator through the actual CLI; [the regression](../../crates/ms-cli/tests/cli_errors.rs) checks existing and missing paths, JSON and normal help.
