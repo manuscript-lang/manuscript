@@ -358,12 +358,10 @@ impl Parser:
     var fn need_kw(w: String) Unit!String:
         if not self.eat_kw(w): return error("syntax error")
 
-        return ok(unit)
 
     var fn need_op(o: String) Unit!String:
         if not self.eat_op(o): return error("syntax error")
 
-        return ok(unit)
 
     var fn ident() String!String:
         if self.kind() == "id":
@@ -617,7 +615,7 @@ impl Parser:
         var joins = List[JoinSpec]()
 
         while (
-            from_.length() > 0
+            not from_.is_empty()
             and (
                 self.is_kw(0, "JOIN")
                 or self.is_kw(0, "INNER")
@@ -1219,7 +1217,7 @@ fn agg_val(
         vals = u
 
     if name == "COUNT": return ok(VInt(v: vals.length()))
-    if vals.length() == 0: return ok(VNull)
+    if vals.is_empty(): return ok(VNull)
 
     if name == "SUM":
         var total = 0
@@ -1340,7 +1338,7 @@ fn ev(e: Expr, sc: List[SCol], row: List[Value], grp: List[List[Value]]) Value!S
             return ok(res)
 
 fn rep_row(u: List[List[Value]], w: Int) List[Value]:
-    if u.length() > 0: return u[0].clone()
+    if not u.is_empty(): return u[0].clone()
 
     return nulls(w)
 
@@ -1413,7 +1411,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
         scs.append(acc.clone())
 
     var sc = List[SCol]()
-    if scs.length() > 0:
+    if not scs.is_empty():
         sc = scs[scs.length() - 1].clone()
 
     ck_row := Ck(aggq: false, aggok: false, grp: List[Int]())
@@ -1514,7 +1512,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
     // ---- row production
     var rows = List[List[Value]]()
 
-    if refs.length() == 0:
+    if refs.is_empty():
         rows.append(List[Value]())
     else:
         for r in tables[tix[0]].rows:
@@ -1554,7 +1552,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
     var units = List[List[List[Value]]]()
 
     if aggq:
-        if gidx.length() == 0:
+        if gidx.is_empty():
             units.append(rows)
         else:
             var keys = List[List[Value]]()
@@ -1633,7 +1631,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
     for i in sel:
         var keys = List[Value]()
 
-        if okind.length() > 0:
+        if not okind.is_empty():
             rp := rep_row(ukeep[i], w_all)
 
             for k in 0..okind.length():
@@ -1645,7 +1643,7 @@ fn run_select(tables: List[TableDef], s: Sel) List[String]!String:
 
         srt.append(SortRow(keys: keys, idx: i))
 
-    if okind.length() > 0:
+    if not okind.is_empty():
         srt.sort(fn(a: SortRow, b: SortRow) Int: cmp_keys(a.keys, b.keys, descs))
 
     // ---- OFFSET / LIMIT
@@ -1692,7 +1690,6 @@ fn check_val(t: TableDef, i: Int, v: Value) Unit!String:
     if t.types[i] == "TEXT" and vkind(v) != 3:
         return error("type mismatch in column " + t.cols[i])
 
-    return ok(unit)
 
 fn pk_check(t: TableDef, rows: List[List[Value]]) Unit!String:
     if t.pk < 0: return ok(unit)
@@ -1701,7 +1698,6 @@ fn pk_check(t: TableDef, rows: List[List[Value]]) Unit!String:
         for j in 0..i:
             if same_val(rows[j][t.pk], rows[i][t.pk]):
                 return error("duplicate primary key: " + fmt_val(rows[i][t.pk]))
-    return ok(unit)
 
 fn do_create(var tables: List[TableDef], name: String, cols: List[ColDef]) List[String]!String:
     if find_table(tables, name) >= 0: return error("table " + name + " already exists")
@@ -1933,7 +1929,7 @@ export fn main() Int:
     for seg in segs:
         if seg.err:
             out.append("error: syntax error")
-        else if seg.toks.length() > 0:
+        else if not seg.toks.is_empty():
             pr := parse_stmt(seg.toks)
 
             if pr.is_error():
@@ -1948,6 +1944,6 @@ export fn main() Int:
                     for l in lines:
                         out.append(l.clone())
 
-    if out.length() > 0:
+    if not out.is_empty():
         stdout().write(out.join("\n") + "\n").get()
     return 0

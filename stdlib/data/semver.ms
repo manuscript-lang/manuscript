@@ -27,18 +27,14 @@ impl Version:
 		if self.prerelease.is_empty(): return 1
 		if other.prerelease.is_empty(): return -1
 
-		var index = 0
 		shared := compare_ints(self.prerelease.length(), other.prerelease.length())
 		limit := self.prerelease.length()
 		other_length := other.prerelease.length()
-		var count = limit
-		if other_length < limit: count = other_length
+		count := if other_length < limit: other_length else: limit
 
-		while index < count:
+		for index in 0..count:
 			order := compare_identifier(self.prerelease[index], other.prerelease[index])
 			if order != 0: return order
-
-			index += 1
 
 		return shared
 

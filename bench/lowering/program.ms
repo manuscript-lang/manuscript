@@ -15,5 +15,5 @@ fn calls(limit: Int) Int:
 fn items(values: List[Int], limit: Int) Int:
 	var total = 0
 	for index in 0..limit:
-		total += values.get(index)
+		total += values[index]
 	return total

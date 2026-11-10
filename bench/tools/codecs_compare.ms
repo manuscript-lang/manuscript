@@ -96,7 +96,7 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
 				]
 			):
 				text := try run_pinned(
-					paths.get(name).get(""), ["{c.size}", "{c.count}", "{c.rounds}"], ""
+					paths.get_or(name, ""), ["{c.size}", "{c.count}", "{c.rounds}"], ""
 				)
 				parts := text.replace("\n", " ").split(" ").filter(fn p: p != "")
 				if parts.length() != 5: return invalid("invalid output {name}: {text}")
@@ -121,12 +121,12 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
 				append_json_line("{out}/samples.jsonl", jobject(row))
 
 				if pair >= 0:
-					var list = samples.get(name).get([])
+					var list = samples.get_or(name, [])
 					list.append(elapsed)
 					samples.add(name.clone(), list)
 
-		b := samples.get("before").get([])
-		a := samples.get("after").get([])
+		b := samples.get_or("before", [])
+		a := samples.get_or("after", [])
 		(
 			stdout()
 			.write(
@@ -174,8 +174,8 @@ fn json_failure(
 				]
 			):
 				text := try run_pinned(
-					paths.get(name).get(""),
-					["{c.size}", "{c.rounds}", c.shape.clone()], ""
+					paths.get_or(name, ""), ["{c.size}", "{c.rounds}", c.shape.clone()],
+					""
 				)
 				fields := text.replace("\n", " ").split(" ").filter(fn p: p != "")
 				if (
@@ -206,19 +206,19 @@ fn json_failure(
 				append_json_line("{out}/samples.jsonl", jobject(row))
 
 				if repeat >= 0:
-					var wl = wall.get(name).get([])
+					var wl = wall.get_or(name, [])
 					wl.append(w)
 					wall.add(name.clone(), wl)
 
-					var cl = cpu.get(name).get([])
+					var cl = cpu.get_or(name, [])
 					cl.append(u)
 					cpu.add(name.clone(), cl)
 
 		summary.append(
-			"{c.shape} {c.size} wall_ns: before {stats_line("", wall.get("before").get([]))} after {stats_line("", wall.get("after").get([]))}"
+			"{c.shape} {c.size} wall_ns: before {stats_line("", wall.get_or("before", []))} after {stats_line("", wall.get_or("after", []))}"
 		)
 		summary.append(
-			"{c.shape} {c.size} cpu_ns: before {stats_line("", cpu.get("before").get([]))} after {stats_line("", cpu.get("after").get([]))}"
+			"{c.shape} {c.size} cpu_ns: before {stats_line("", cpu.get_or("before", []))} after {stats_line("", cpu.get_or("after", []))}"
 		)
 
 	manifest.add("complete", jbool(true))
@@ -237,7 +237,7 @@ fn main() Int:
 	parsed := options(args.slice(4, args.length()).get([]), ["pairs"], [])
 	if parsed.is_error(): return fail(parsed.err().message)
 
-	pairs := parsed.get(Map[String, String]()).get("pairs").get("9").parse_int().get(0)
+	pairs := parsed.get(Map[String, String]()).get_or("pairs", "9").parse_int().get(0)
 	if pairs < 2: return fail("at least two pairs required")
 
 	before := absolute(args[1].clone())

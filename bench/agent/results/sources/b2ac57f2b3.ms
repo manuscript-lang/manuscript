@@ -122,11 +122,9 @@ fn isAllSpace(s: String) Bool:
 
 fn repeatStr(s: String, n: Int) String:
     var out = ""
-    var k = 0
 
-    while k < n:
+    for k in 0..n:
         out += s
-        k += 1
 
     return out
 
@@ -213,11 +211,9 @@ fn markerAt(s: String) Marker:
     if after2 != "" and after2 != " ": return Marker(ok: false)
 
     var num = 0
-    var k = 0
 
-    while k < d:
+    for k in 0..d:
         num = num * 10 + DIGITS.index_of(ch(s, ind + k)).get(0)
-        k += 1
 
     return Marker(ok: true, ordered: true, delim: dl, num: num, width: ind + d + 1)
 
@@ -257,9 +253,8 @@ fn splitCells(line: String) List[String]:
     var cells = List[String]()
     var cur = ""
     m := s.length()
-    var k = 0
 
-    while k < m:
+    for k in 0..m:
         c := ch(s, k)
 
         if c == "|" and ch(s, k - 1) != "\\":
@@ -267,8 +262,6 @@ fn splitCells(line: String) List[String]:
             cur = ""
         else:
             cur += c
-
-        k += 1
 
     cells.append(strip(cur))
     return cells
@@ -333,7 +326,7 @@ fn itemBody(kids: List[Block], tight: Bool) String:
         if c.is_para and tight:
             body += c.inl
         else:
-            if body.length() == 0 or not body.ends_with("\n"):
+            if body.is_empty() or not body.ends_with("\n"):
                 body += "\n"
             body += c.html
 
@@ -376,15 +369,13 @@ fn parseFence(lines: List[String], i: Int, run: Int) Step:
 
     var opening = "<pre><code>"
 
-    if info.length() > 0:
+    if not info.is_empty():
         var w = 0
         while ch(info, w) != "" and ch(info, w) != " ":
             w += 1
         opening = "<pre><code class=\"language-" + esc(cut(info, 0, w)) + "\">"
 
-    var nxt = n
-    if close < n:
-        nxt = close + 1
+    nxt := if close < n: close + 1 else: n
     return Step(node: Block(html: opening + body + "</code></pre>\n"), next: nxt)
 
 fn parseQuote(lines: List[String], i: Int) Step:
@@ -454,28 +445,22 @@ fn parseTable(lines: List[String], i: Int) Step:
 
     ncols := head.length()
     var out = "<table>\n<thead>\n<tr>\n"
-    var k = 0
 
-    while k < ncols:
+    for k in 0..ncols:
         out += "<th" + alignAttr(aligns[k]) + ">" + inlineHtml(head[k]) + "</th>\n"
-        k += 1
 
     out += "</tr>\n</thead>\n"
 
-    if rows.length() > 0:
+    if not rows.is_empty():
         out += "<tbody>\n"
 
         for r in rows:
             out += "<tr>\n"
 
-            var q = 0
 
-            while q < ncols:
-                var cell = ""
-                if q < r.length():
-                    cell = r[q].clone()
+            for q in 0..ncols:
+                cell := if q < r.length(): r[q].clone() else: ""
                 out += "<td" + alignAttr(aligns[q]) + ">" + inlineHtml(cell) + "</td>\n"
-                q += 1
 
             out += "</tr>\n"
 
@@ -552,11 +537,9 @@ fn parseList(lines: List[String], i: Int) Step:
             if isBlank(l):
                 pending += 1
             else if indentOf(l) >= w:
-                var q = 0
 
-                while q < pending:
+                for q in 0..pending:
                     content.append("")
-                    q += 1
 
                 pending = 0
                 content.append(cut(l, w, l.length()))
@@ -569,9 +552,7 @@ fn parseList(lines: List[String], i: Int) Step:
         items.append(parseBlocks(content))
         last = lastIdx
 
-        var nextSame = false
-        if k < n:
-            nextSame = sameKind(markerAt(lines[k]), first) and not isHr(lines[k])
+        nextSame := if k < n: sameKind(markerAt(lines[k]), first) and not isHr(lines[k]) else: false
 
         if nextSame:
             if pending > 0:
@@ -802,11 +783,9 @@ fn scan(cs: List[String]) List[Inline]:
                     j += 1
 
             if found < 0:
-                var z = 0
 
-                while z < run:
+                for z in 0..run:
                     nodes.append(Inline(kind: 0, text: "`"))
-                    z += 1
 
                 p = r
             else:
@@ -895,12 +874,10 @@ fn scan(cs: List[String]) List[Inline]:
                     is_img := nodes[m].kind == 9
 
                     if not is_img:
-                        var z = 0
 
-                        while z < m:
+                        for z in 0..m:
                             if nodes[z].kind == 4:
                                 nodes[z].kind = 10
-                            z += 1
 
                     var kids = List[Inline]()
                     var q = m + 1
@@ -971,9 +948,7 @@ fn resolve(input: List[Inline]) List[Inline]:
             if j < 0:
                 i += 1
             else:
-                var use = 1
-                if nodes[j].cnt >= 2 and nodes[i].cnt >= 2:
-                    use = 2
+                use := if nodes[j].cnt >= 2 and nodes[i].cnt >= 2: 2 else: 1
 
                 var inner = List[Inline]()
                 var q = j + 1
@@ -982,9 +957,7 @@ fn resolve(input: List[Inline]) List[Inline]:
                     inner.append(literalize(nodes[q].clone()))
                     q += 1
 
-                var em = 5
-                if use == 2:
-                    em = 6
+                em := if use == 2: 6 else: 5
 
                 var one = List[Inline]()
                 one.append(Inline(kind: em, kids: inner))
@@ -1041,9 +1014,7 @@ fn render(nodes: List[Inline]) String:
         else if nd.kind == 6:
             out += "<strong>" + render(nd.kids) + "</strong>"
         else if nd.kind == 7:
-            var t = ""
-            if nd.has_title:
-                t = " title=\"" + esc(nd.title) + "\""
+            t := if nd.has_title: " title=\"" + esc(nd.title) + "\"" else: ""
             out += (
                 "<a href=\""
                 + esc(nd.text)
@@ -1054,9 +1025,7 @@ fn render(nodes: List[Inline]) String:
                 + "</a>"
             )
         else if nd.kind == 8:
-            var t2 = ""
-            if nd.has_title:
-                t2 = " title=\"" + esc(nd.title) + "\""
+            t2 := if nd.has_title: " title=\"" + esc(nd.title) + "\"" else: ""
             out += (
                 "<img src=\""
                 + esc(nd.text)
@@ -1070,7 +1039,7 @@ fn render(nodes: List[Inline]) String:
     return out
 
 fn inlineHtml(text: String) String:
-    if text.length() == 0: return ""
+    if text.is_empty(): return ""
 
     return render(resolve(scan(text.split_after(""))))
 
@@ -1083,7 +1052,7 @@ export fn main() Int:
     text := bytes.decode_utf8().get("")
     var lines = List[String]()
 
-    if text.length() > 0:
+    if not text.is_empty():
         lines = text.split("\n")
 
         cnt := lines.length()

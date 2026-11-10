@@ -128,9 +128,8 @@ fn eval_line(line: String) String:
 
 fn run() Unit!:
     for line in stdin() | lines:
-        if line.trim().length() > 0:
+        if not line.trim().is_empty():
             print(eval_line(line))
-    return ok(unit)
 
 export fn main() Int:
     run().get()

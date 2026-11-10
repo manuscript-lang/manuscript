@@ -13,7 +13,7 @@ type Ledger:
     total_fees: Int
 
 fn is_digits(s: String) Bool:
-    if s.length() == 0: return false
+    if s.is_empty(): return false
 
     for c in s.chars():
         if not "0123456789".contains(c): return false
@@ -32,20 +32,20 @@ fn charged(b: Int, amt: Int) Bool:
 
 impl Ledger:
     fn bal(id: String) Int:
-        return self.balances.get(id).get(0)
+        return self.balances.get_or(id, 0)
 
     fn lim(id: String) Int:
-        return self.limits.get(id).get(0)
+        return self.limits.get_or(id, 0)
 
     fn is_frozen(id: String) Bool:
-        return self.frozen.get(id).get(false)
+        return self.frozen.get_or(id, false)
 
     var fn count_op(id: String) Unit:
-        n := self.ops.get(id.clone()).get(0) + 1
+        n := self.ops.get_or(id.clone(), 0) + 1
         self.ops[id] = n
 
     var fn blame(id: String, msg: String) String:
-        n := self.rejected.get(id.clone()).get(0) + 1
+        n := self.rejected.get_or(id.clone(), 0) + 1
         self.rejected[id] = n
         return msg
 
@@ -148,7 +148,7 @@ impl Ledger:
         for id in sorted_ids:
             fz := if self.is_frozen(id.clone()): "yes" else: "no"
             rows.append(
-                "{id} balance={self.bal(id.clone())} limit={self.lim(id.clone())} ops={self.ops.get(id.clone()).get(0)} rejected={self.rejected.get(id.clone()).get(0)} frozen={fz}"
+                "{id} balance={self.bal(id.clone())} limit={self.lim(id.clone())} ops={self.ops.get_or(id.clone(), 0)} rejected={self.rejected.get_or(id.clone(), 0)} frozen={fz}"
             )
 
         rows.append("total balance={total} fees={self.total_fees}")
@@ -178,12 +178,11 @@ fn process() Unit!:
     )
 
     for raw in lines(stdin()):
-        t := raw.replace("\t", " ").split(" ").filter(fn s: s.length() > 0)
-        if t.length() == 0: continue
+        t := raw.replace("\t", " ").split(" ").filter(fn s: not s.is_empty())
+        if t.is_empty(): continue
 
         print(led.run_cmd(t))
 
-    return ok(unit)
 
 export fn main() Int:
     process().get()

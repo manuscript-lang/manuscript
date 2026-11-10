@@ -361,12 +361,10 @@ fn unaryWord(name: String, w: String) String:
     cs := w.chars()
     n := cs.length()
     var slash = -1
-    var k = 0
 
-    while k < n:
+    for k in 0..n:
         if cs[k] == "/":
             slash = k
-        k += 1
 
     base := catRange(cs, slash + 1, n)
 
@@ -408,7 +406,7 @@ fn rawVar(st: St, name: String) String:
     return ""
 
 fn isDefined(st: St, name: String) Bool:
-    if st.cmd.contains(name): return st.cmd.get(name).get("") != ""
+    if st.cmd.contains(name): return st.cmd.get_or(name, "") != ""
     if st.vars.contains(name): return rawVar(st, name) != ""
 
     return false
@@ -435,10 +433,10 @@ fn lookup(var st: St, name: String) String!Fail:
 
         k -= 1
 
-    if st.autos.contains(name): return ok(st.autos.get(name).get(""))
+    if st.autos.contains(name): return ok(st.autos.get_or(name, ""))
 
     if st.cmd.contains(name):
-        cv := st.cmd.get(name).get("")
+        cv := st.cmd.get_or(name, "")
         return recur(var st, name, cv)
 
     if st.vars.contains(name):
@@ -544,7 +542,7 @@ fn callFn(var st: St, name: String, argtext: String) String!Fail:
 
         var res = List[String]()
         for w in ws:
-            if res.length() == 0 or res[res.length() - 1] != w:
+            if res.is_empty() or res[res.length() - 1] != w:
                 res.append(w.clone())
         return ok(res.join(" "))
 
@@ -589,7 +587,7 @@ fn callFn(var st: St, name: String, argtext: String) String!Fail:
     if name == "firstword" or name == "lastword":
         x := try expand(var st, argAt(raw, 0))
         ws := wordsOf(x)
-        if ws.length() == 0: return ok("")
+        if ws.is_empty(): return ok("")
         if name == "firstword": return ok(ws[0].clone())
 
         return ok(ws[ws.length() - 1].clone())
@@ -760,7 +758,7 @@ fn closeRule(var st: St) Unit:
                 )
                 st.ridx.add(t.clone(), st.rules.length() - 1)
 
-            k := st.ridx.get(t).get(0)
+            k := st.ridx.get_or(t, 0)
             pres := st.rPre.clone()
             for p in pres:
                 st.rules[k].prereqs.append(p.clone())
@@ -770,7 +768,7 @@ fn closeRule(var st: St) Unit:
                 st.rules[k].oprereqs.append(p.clone())
 
             if hasRec:
-                if st.rules[k].recipe.length() > 0:
+                if not st.rules[k].recipe.is_empty():
                     (
                         st
                         .out
@@ -780,7 +778,6 @@ fn closeRule(var st: St) Unit:
                     )
                 st.rules[k].recipe = st.rRecipe.clone()
 
-    return unit
 
 fn ruleLine(var st: St, cs: List[String], col: Int, num: Int) Unit!Fail:
     n := cs.length()
@@ -794,9 +791,7 @@ fn ruleLine(var st: St, cs: List[String], col: Int, num: Int) Unit!Fail:
 
         k += 1
 
-    var preEnd = n
-    if semi >= 0:
-        preEnd = semi
+    preEnd := if semi >= 0: semi else: n
 
     tgtRaw := catRange(cs, 0, col)
     preRaw := catRange(cs, col + 1, preEnd)
@@ -828,7 +823,6 @@ fn ruleLine(var st: St, cs: List[String], col: Int, num: Int) Unit!Fail:
         if c != "":
             st.rRecipe.append(RLine(line: num, text: c))
 
-    return ok(unit)
 
 fn assignLine(var st: St, cs: List[String], eq: Int, num: Int) Unit!Fail:
     var nameEnd = eq
@@ -876,7 +870,6 @@ fn assignLine(var st: St, cs: List[String], eq: Int, num: Int) Unit!Fail:
                     )
                 )
 
-    return ok(unit)
 
 fn directive(var st: St, word: String, text: String, rest: String, num: Int) Unit!Fail:
     if text == "else":
@@ -888,7 +881,7 @@ fn directive(var st: St, word: String, text: String, rest: String, num: Int) Uni
         return ok(unit)
 
     if word == "endif":
-        if st.frames.length() == 0: return error(lfail(num, "extraneous 'endif'"))
+        if st.frames.is_empty(): return error(lfail(num, "extraneous 'endif'"))
 
         _f := st.frames.pop()
         return ok(unit)
@@ -926,7 +919,6 @@ fn directive(var st: St, word: String, text: String, rest: String, num: Int) Uni
                 cond = not same
 
     st.frames.append(Frame(parent: parent, cond: cond, elsed: false, line: num))
-    return ok(unit)
 
 fn processLine(var st: St, num: Int, raw: String) Unit!Fail:
     st.line = num
@@ -978,7 +970,6 @@ fn processLine(var st: St, num: Int, raw: String) Unit!Fail:
     v := try expand(var st, text)
     if trimSp(v) != "": return error(lfail(num, "missing separator"))
 
-    return ok(unit)
 
 fn loadMake(var st: St) Unit!Fail:
     st.vars = Map[String, VarDef]()
@@ -1004,11 +995,10 @@ fn loadMake(var st: St) Unit!Fail:
     closeRule(var st)
     st.line = 0
 
-    if st.frames.length() > 0:
+    if not st.frames.is_empty():
         top := st.frames[st.frames.length() - 1].line
         return error(lfail(top, "missing 'endif'"))
 
-    return ok(unit)
 
 // ---------- resolution ----------
 
@@ -1018,7 +1008,7 @@ fn canMake(st: St, name: String, level: Int) Bool:
     if level > 8: return false
 
     for pr in st.pats:
-        if pr.recipe.length() > 0 and patMatch(pr.pat, name):
+        if not pr.recipe.is_empty() and patMatch(pr.pat, name):
             stem := stemOf(pr.pat, name)
             if stem != "" and allMake(st, pr.prereqs, pr.oprereqs, stem, level + 1):
                 return true
@@ -1034,8 +1024,8 @@ fn allMake(st: St, prs: List[String], oprs: List[String], stem: String, level: I
 
 fn resolveRule(st: St, t: String) Res:
     if st.ridx.contains(t):
-        k := st.ridx.get(t).get(0)
-        if st.rules[k].recipe.length() > 0:
+        k := st.ridx.get_or(t, 0)
+        if not st.rules[k].recipe.is_empty():
             return Res(
                 found: true, prereqs: st.rules[k].prereqs.clone(),
                 oprereqs: st.rules[k].oprereqs.clone(),
@@ -1043,7 +1033,7 @@ fn resolveRule(st: St, t: String) Res:
             )
 
     for pr in st.pats:
-        if pr.recipe.length() > 0 and patMatch(pr.pat, t):
+        if not pr.recipe.is_empty() and patMatch(pr.pat, t):
             stem := stemOf(pr.pat, t)
 
             if stem != "" and allMake(st, pr.prereqs, pr.oprereqs, stem, 1):
@@ -1055,7 +1045,7 @@ fn resolveRule(st: St, t: String) Res:
                     opre.append(subPct(p, stem))
 
                 if st.ridx.contains(t):
-                    k := st.ridx.get(t).get(0)
+                    k := st.ridx.get_or(t, 0)
                     for p in st.rules[k].prereqs:
                         pre.append(p.clone())
                     for p in st.rules[k].oprereqs:
@@ -1067,7 +1057,7 @@ fn resolveRule(st: St, t: String) Res:
                 )
 
     if st.ridx.contains(t):
-        k := st.ridx.get(t).get(0)
+        k := st.ridx.get_or(t, 0)
         return Res(
             found: true, prereqs: st.rules[k].prereqs.clone(),
             oprereqs: st.rules[k].oprereqs.clone(), recipe: List[RLine](), stem: "",
@@ -1104,24 +1094,19 @@ fn simulate(var st: St, cmd: String) Int:
         return 0
 
     if name == "touch":
-        var j = 1
 
-        while j < n:
+        for j in 1..n:
             if not ws[j].starts_with("-"):
                 st.clock += 1
                 st.files.add(ws[j].clone(), st.clock)
 
-            j += 1
-
         return 0
 
     if name == "rm":
-        var j = 1
 
-        while j < n:
+        for j in 1..n:
             if not ws[j].starts_with("-"):
                 st.files.remove(ws[j].clone())
-            j += 1
 
         return 0
 
@@ -1138,11 +1123,9 @@ fn simulate(var st: St, cmd: String) Int:
 
     if name == "echo":
         var args = List[String]()
-        var j = 1
 
-        while j < n:
+        for j in 1..n:
             args.append(ws[j].replace("'", "").replace("\"", ""))
-            j += 1
 
         st.out.append(args.join(" "))
         return 0
@@ -1153,9 +1136,7 @@ fn runRecipe(var st: St, t: String, r: Res, pre: List[String], qlist: List[Strin
     var au = Map[String, String]()
     au.add("@", t.clone())
 
-    var firstP = ""
-    if r.prereqs.length() > 0:
-        firstP = r.prereqs[0].clone()
+    firstP := if r.prereqs.length() > 0: r.prereqs[0].clone() else: ""
     au.add("<", firstP)
     au.add("^", pre.join(" "))
     au.add("?", qlist.join(" "))
@@ -1224,10 +1205,9 @@ fn runRecipe(var st: St, t: String, r: Res, pre: List[String], qlist: List[Strin
         st.clock += 1
         st.files.add(t.clone(), st.clock)
 
-    return ok(unit)
 
 fn bupdate(var st: St, t: String, needed: String) Bool!Fail:
-    if st.memo.contains(t): return ok(st.memo.get(t).get(false))
+    if st.memo.contains(t): return ok(st.memo.get_or(t, false))
 
     if st.bstack.contains(t):
         k := indexOfStr(st.bstack, t)
@@ -1259,9 +1239,7 @@ fn bupdate(var st: St, t: String, needed: String) Bool!Fail:
     st.bstack.append(t.clone())
 
     existed := st.files.contains(t)
-    var oldm = 0
-    if existed:
-        oldm = st.files.get(t).get(0)
+    oldm := if existed: st.files.get_or(t, 0) else: 0
 
     var changed = false
     var newer = false
@@ -1271,9 +1249,7 @@ fn bupdate(var st: St, t: String, needed: String) Bool!Fail:
     for p in pre:
         c := try bupdate(var st, p.clone(), t.clone())
         pe := st.files.contains(p)
-        var pm = 0
-        if pe:
-            pm = st.files.get(p).get(0)
+        pm := if pe: st.files.get_or(p, 0) else: 0
 
         isNewer := existed and pe and pm > oldm
         if c:
@@ -1301,7 +1277,7 @@ fn doBuild(var st: St, goals: List[String], dry: Bool) Unit!Fail:
     for g in goals:
         gs.append(g.clone())
 
-    if gs.length() == 0:
+    if gs.is_empty():
         d := defaultGoal(st)
         if d == "": return error(mkFail("No targets"))
 
@@ -1323,7 +1299,6 @@ fn doBuild(var st: St, goals: List[String], dry: Bool) Unit!Fail:
             else:
                 st.out.append("make: Nothing to be done for '{g}'.")
 
-    return ok(unit)
 
 // ---------- deps / targets ----------
 
@@ -1355,13 +1330,12 @@ fn depsWalk(var st: St, t: String) Unit!Fail:
         st.ddone.append(p.clone())
         st.dres.append(p.clone())
 
-    return ok(unit)
 
 fn depLine(name: String, pre: List[String], opre: List[String]) String:
     var s = name + ":"
-    if pre.length() > 0:
+    if not pre.is_empty():
         s += " " + pre.join(" ")
-    if opre.length() > 0:
+    if not opre.is_empty():
         s += " | " + opre.join(" ")
     return s
 
@@ -1374,11 +1348,10 @@ fn printTargets(var st: St) Unit:
         outl.append(depLine(m.name, m.prereqs, m.oprereqs))
     for p in st.pats:
         outl.append("pattern " + depLine(p.pat, p.prereqs, p.oprereqs))
-    if st.phony.length() > 0:
+    if not st.phony.is_empty():
         outl.append("phony: " + st.phony.join(" "))
     for l in outl:
         st.out.append(l.clone())
-    return unit
 
 // ---------- requests ----------
 
@@ -1411,7 +1384,7 @@ fn doRequest(var st: St, req: String) Unit!Fail:
     parts := wordsOf(req)
     st.cmd = Map[String, String]()
     st.line = 0
-    if parts.length() == 0: return ok(unit)
+    if parts.is_empty(): return ok(unit)
 
     w := parts[0].clone()
     var rest = List[String]()
@@ -1444,7 +1417,7 @@ fn doRequest(var st: St, req: String) Unit!Fail:
         st.ddone = List[String]()
         st.dres = List[String]()
         try depsWalk(var st, target.clone())
-        if st.dres.length() == 0:
+        if st.dres.is_empty():
             st.out.append("(no prerequisites)")
         for d in st.dres:
             st.out.append(d.clone())
@@ -1467,11 +1440,11 @@ fn doRequest(var st: St, req: String) Unit!Fail:
     if w == "files":
         var names = st.files.keys()
         names.sort()
-        if names.length() == 0:
+        if names.is_empty():
             st.out.append("(no files)")
 
         for nm in names:
-            mt := st.files.get(nm).get(0)
+            mt := st.files.get_or(nm, 0)
             st.out.append("{nm} {mt}")
 
         return ok(unit)
@@ -1498,13 +1471,11 @@ fn doRequest(var st: St, req: String) Unit!Fail:
         return ok(unit)
 
     st.out.append("unknown request: " + w)
-    return ok(unit)
 
 fn handle(var st: St, req: String) Unit:
     r := doRequest(var st, req)
     if r.is_error():
         st.out.append(r.err().msg.clone())
-    return unit
 
 export fn main() Int:
     all := (stdin() | lines | collect(none)).get()

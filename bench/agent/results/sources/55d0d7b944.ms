@@ -108,7 +108,7 @@ fn peek_at(p: Pat, k: Int) Int:
     return -1
 
 fn perr(var p: Pat, msg: String) Int:
-    if p.err.length() == 0:
+    if p.err.is_empty():
         p.err = msg
     return -1
 
@@ -245,12 +245,12 @@ fn parse_atom_escape(var p: Pat) Int:
         p.pos += 1
 
         name := parse_name(var p)
-        if name.length() == 0: return perr(var p, "bad escape")
+        if name.is_empty(): return perr(var p, "bad escape")
 
         return bref_node(var p, -1, name)
 
     e := escape_char(var p)
-    if p.err.length() > 0: return -1
+    if not p.err.is_empty(): return -1
 
     if e >= 1000:
         id := new_set(var p)
@@ -290,7 +290,7 @@ fn parse_class(var p: Pat) Int:
             p.pos += 1
 
             e := escape_char(var p)
-            if p.err.length() > 0: return -1
+            if not p.err.is_empty(): return -1
 
             if e >= 1000:
                 add_short(var p, id, e)
@@ -315,7 +315,7 @@ fn parse_class(var p: Pat) Int:
             if peek(p) == 92:
                 p.pos += 1
                 hi = escape_char(var p)
-                if p.err.length() > 0: return -1
+                if not p.err.is_empty(): return -1
                 if hi >= 1000: return perr(var p, "bad range")
             else:
                 hi = peek(p)
@@ -360,7 +360,7 @@ fn parse_group(var p: Pat) Int:
             p.pos += 2
 
             body := parse_alt(var p)
-            if p.err.length() > 0: return -1
+            if not p.err.is_empty(): return -1
             if not close_group(var p): return -1
 
             var one = List[Int]()
@@ -371,12 +371,10 @@ fn parse_group(var p: Pat) Int:
             p.pos += 2
 
             lbody := parse_alt(var p)
-            if p.err.length() > 0: return -1
+            if not p.err.is_empty(): return -1
             if not close_group(var p): return -1
 
-            var neg = 0
-            if c2 == 33:
-                neg = 1
+            neg := if c2 == 33: 1 else: 0
             return add_node(var p, N_LOOK, lbody, neg, 0, 0)
 
         if c2 == 60:
@@ -386,7 +384,7 @@ fn parse_group(var p: Pat) Int:
             p.pos += 2
 
             name := parse_name(var p)
-            if name.length() == 0: return perr(var p, "bad group")
+            if name.is_empty(): return perr(var p, "bad group")
 
             for g in 1..p.gnames.length():
                 if same_name(p.gnames[g], name, 0, name.length()):
@@ -397,7 +395,7 @@ fn parse_group(var p: Pat) Int:
             p.gnames.append(name)
 
             nbody := parse_alt(var p)
-            if p.err.length() > 0: return -1
+            if not p.err.is_empty(): return -1
             if not close_group(var p): return -1
 
             return add_node(var p, N_GROUP, gi, nbody, 0, 0)
@@ -410,7 +408,7 @@ fn parse_group(var p: Pat) Int:
     p.gnames.append(List[Int]())
 
     body := parse_alt(var p)
-    if p.err.length() > 0: return -1
+    if not p.err.is_empty(): return -1
     if not close_group(var p): return -1
 
     return add_node(var p, N_GROUP, g, body, 0, 0)
@@ -434,17 +432,13 @@ fn parse_atom(var p: Pat) Int:
     if c == 94:
         p.pos += 1
 
-        var kind = 0
-        if p.multi:
-            kind = 1
+        kind := if p.multi: 1 else: 0
         return add_node(var p, N_ASSERT, kind, 0, 0, 0)
 
     if c == 36:
         p.pos += 1
 
-        var kind = 2
-        if p.multi:
-            kind = 3
+        kind := if p.multi: 3 else: 2
         return add_node(var p, N_ASSERT, kind, 0, 0, 0)
 
     if c == 92: return parse_atom_escape(var p)
@@ -551,7 +545,7 @@ fn parse_seq(var p: Pat) Int:
         if c < 0 or c == 124 or c == 41: break
 
         var node = parse_atom(var p)
-        if p.err.length() > 0: return -1
+        if not p.err.is_empty(): return -1
 
         if quant_here(p):
             if not repeatable(p, node): return perr(var p, "nothing to repeat")
@@ -559,9 +553,7 @@ fn parse_seq(var p: Pat) Int:
 
             mn := p.qmin
             mx := p.qmax
-            var gi = 0
-            if p.qgreedy:
-                gi = 1
+            gi := if p.qgreedy: 1 else: 0
             node = add_node(var p, N_REPEAT, node, mn, mx, gi)
             if quant_here(p): return perr(var p, "nothing to repeat")
 
@@ -576,7 +568,7 @@ fn parse_alt(var p: Pat) Int:
 
     while true:
         s := parse_seq(var p)
-        if p.err.length() > 0: return -1
+        if not p.err.is_empty(): return -1
 
         alts.append(s)
 
@@ -622,9 +614,7 @@ fn compile_node(var p: Pat, node: Int) Unit:
     else if k == N_ASSERT:
         emit(var p, OP_ASSERT, a, 0, 0, 0, 0)
     else if k == N_BREF:
-        var ic = 0
-        if p.icase:
-            ic = 1
+        ic := if p.icase: 1 else: 0
         emit(var p, OP_BREF, a, ic, 0, 0, 0)
     else if k == N_SEQ:
         m := p.kids[a].length()
@@ -675,9 +665,7 @@ fn compile_node(var p: Pat, node: Int) Unit:
         p.nslots = cs + 2
         emit(var p, OP_SETVAL, cs, 0, 0, 0, 0)
 
-        var hop = OP_LOOPL
-        if d == 1:
-            hop = OP_LOOPG
+        hop := if d == 1: OP_LOOPG else: OP_LOOPL
 
         h := emit(var p, hop, cs, b, c, 0, 0)
         emit(var p, OP_SETPOS, es, 0, 0, 0, 0)
@@ -715,16 +703,16 @@ fn build_pattern(src: List[Int]) Pat:
             p.pos = j + 1
 
     root := parse_alt(var p)
-    if p.err.length() == 0 and p.pos < n:
+    if p.err.is_empty() and p.pos < n:
         perr(var p, "unmatched )")
-    if p.err.length() > 0: return p
+    if not p.err.is_empty(): return p
 
     var k = 0
 
     while k < p.brefs.length():
         id := p.brefs[k]
 
-        if p.brefnames[k].length() == 0:
+        if p.brefnames[k].is_empty():
             if p.na[id] > p.ngroups:
                 perr(var p, "bad backreference")
                 return p
@@ -1054,7 +1042,7 @@ fn ascii_str(bytes: List[Int]) String:
 fn print_groups(p: Pat, subj: List[Int], slots: List[Int]) Unit:
     for g in 0..p.ngroups + 1:
         var label = "{g}"
-        if g > 0 and p.gnames[g].length() > 0:
+        if g > 0 and not p.gnames[g].is_empty():
             label = "{g} ({ascii_str(p.gnames[g])})"
 
         s := slots[2 * g]
@@ -1077,7 +1065,7 @@ fn append_group(var res: List[Int], subj: List[Int], slots: List[Int], g: Int) U
 
 fn find_name(names: List[List[Int]], src: List[Int], from: Int, to: Int) Int:
     for g in 1..names.length():
-        if names[g].length() > 0 and same_name(names[g], src, from, to): return g
+        if not names[g].is_empty() and same_name(names[g], src, from, to): return g
     return -1
 
 fn expand(
@@ -1213,9 +1201,7 @@ fn process_line(line: List[Int]) Unit:
         print("error: bad command")
         return
 
-    var want = 3
-    if kind == 6:
-        want = 4
+    want := if kind == 6: 4 else: 3
 
     if fields.length() != want:
         print("error: bad command")
@@ -1236,7 +1222,7 @@ fn process_line(line: List[Int]) Unit:
 
     p := build_pattern(fields[1].clone())
 
-    if p.err.length() > 0:
+    if not p.err.is_empty():
         print("error: {p.err}")
         return
 

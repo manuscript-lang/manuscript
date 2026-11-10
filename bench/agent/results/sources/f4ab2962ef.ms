@@ -39,7 +39,7 @@ fn span(start: Int, len: Int) String:
 
 export fn main() Int:
     all := read_all()
-    if all.length() == 0: return 0
+    if all.is_empty(): return 0
 
     header := all[0].split(" ")
     name_a := header[0]

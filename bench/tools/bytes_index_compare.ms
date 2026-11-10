@@ -163,7 +163,7 @@ fn main() Int:
 	paths.add("rust", absolute(args[2].clone()))
 
 	result := run(
-		paths, args[3].clone(), parsed.get(Map[String, String]()).get("cpu").get("")
+		paths, args[3].clone(), parsed.get(Map[String, String]()).get_or("cpu", "")
 	)
 	if result.is_error(): return fail(result.err().message)
 

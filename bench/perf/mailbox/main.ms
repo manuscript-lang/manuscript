@@ -16,10 +16,7 @@ fn main() Unit:
 	args := arguments()
 	n := args[0].parse_int().get()
 	rounds := args[1].parse_int().get()
-	var window = 64
-	if args.length() > 2:
-		window = args[2].parse_int().get()
-
+	window := if args.length() > 2: args[2].parse_int().get() else: 64
 	var total = 0
 	t0 := monotonic()
 

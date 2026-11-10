@@ -46,5 +46,4 @@ export fn float_boundaries() List[Float]:
 
 // Returns `float_boundaries` without NaN and the two infinities, for references that need an exact rational.
 export fn finite_float_boundaries() List[Float]:
-	values := float_boundaries().filter(fn value: value.is_finite())
-	return values
+	return float_boundaries().filter(fn value: value.is_finite())

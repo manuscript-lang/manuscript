@@ -29,14 +29,14 @@ fn num(s: String) Int:
     return v
 
 fn valid_sku(s: String) Bool:
-    if s.length() == 0: return false
+    if s.is_empty(): return false
 
     for c in s.scalar_values():
         if not ((c >= 65 and c <= 90) or (c >= 48 and c <= 57) or c == 45): return false
     return true
 
 fn valid_id(s: String) Bool:
-    if s.length() == 0: return false
+    if s.is_empty(): return false
 
     for c in s.scalar_values():
         if not ((c >= 97 and c <= 122) or (c >= 48 and c <= 57) or c == 45): return false
@@ -267,7 +267,6 @@ fn run() Unit!:
     )
     for raw in lines(stdin()):
         process(var st, raw)
-    return ok(unit)
 
 export fn main() Int:
     run().get()

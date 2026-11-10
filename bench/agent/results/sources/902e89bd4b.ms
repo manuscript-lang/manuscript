@@ -19,7 +19,7 @@ fn range_text(start: Int, len: Int) String:
 
 export fn main() Int:
     var input = read_input().get()
-    if input.length() == 0: return 0
+    if input.is_empty(): return 0
 
     head := input[0].split(" ")
     ctx := head[2].parse_int().get(0)
@@ -137,13 +137,9 @@ export fn main() Int:
                 if kinds[q] != 1:
                     lb += 1
 
-            var sa = ca
-            if la > 0:
-                sa = ca + 1
+            sa := if la > 0: ca + 1 else: ca
 
-            var sb = cb
-            if lb > 0:
-                sb = cb + 1
+            sb := if lb > 0: cb + 1 else: cb
 
             ra := range_text(sa, la)
             rb := range_text(sb, lb)
