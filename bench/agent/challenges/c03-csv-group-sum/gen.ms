@@ -1,7 +1,9 @@
 // Generator for c03-csv-group-sum. Deterministic; run: ms run bench/agent/gen.ms -- c03
-import make_case, write_cases from "../../lib/gen.ms"
-import GenCase from "../../lib/gen.ms"
-import seeded from "../../lib/pyrandom.ms"
+import (
+    make_case, write_cases from "../../lib/gen.ms",
+    GenCase from "../../lib/gen.ms",
+    seeded from "../../lib/pyrandom.ms",
+)
 
 // The amount in cents, or none when `amt` is not digits with an optional fraction of one or two digits.
 fn cents(amt: String) Int?:
@@ -71,9 +73,9 @@ fn solve(s: String) String:
 
     for k in order.sorted():
         let v = totals.get(k).get(0)
-        out = out + "{k}: {v / 100}.{"{v % 100}".pad_start(2, "0")}\n"
+        out += "{k}: {v / 100}.{"{v % 100}".pad_start(2, "0")}\n"
 
-    if bad > 0: out = out + "skipped: {bad}\n"
+    if bad > 0: out += "skipped: {bad}\n"
     return out
 
 fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))

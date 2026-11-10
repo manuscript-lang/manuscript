@@ -25,7 +25,7 @@ fn take(x: Shape?) Int:
 
     return -1
 
-export fn main() Int:
+fn main() Unit:
     let h = Holder(Sq(4))
     let t: Shape? = Sq(5)
     var v: Shape? = none
@@ -37,4 +37,3 @@ export fn main() Int:
         )
         .get()
     )
-    return 0

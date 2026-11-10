@@ -1,9 +1,11 @@
-import stdout from "@std/io/io.ms"
-import Instant, monotonic from "@std/time.ms"
-import StringBuilder from "@std/string.ms"
-import BytesBuilder from "@std/bytes.ms"
-import PriorityQueue from "@std/collections/queue.ms"
-import SortedMap from "@std/collections/sorted.ms"
+import (
+    stdout from "@std/io/io.ms",
+    Instant, monotonic from "@std/time.ms",
+    StringBuilder from "@std/string.ms",
+    BytesBuilder from "@std/bytes.ms",
+    PriorityQueue from "@std/collections/queue.ms",
+    SortedMap from "@std/collections/sorted.ms",
+)
 
 type Rec:
     key: Int
@@ -186,7 +188,7 @@ fn bench_sorted_map(n: Int) Int:
     report("sorted_map_add_contains", n * 2, t)
     return hits
 
-export fn main() Int:
+fn main() Int:
     var total = 0
     total += bench_list_append(1000000)
     total += bench_list_get(1000000)
@@ -199,7 +201,6 @@ export fn main() Int:
     total += bench_bytes(4000000)
     total += bench_pq(300000)
     total += bench_sorted_map(300000)
-    if total == 0:
-        return 1
+    if total == 0: return 1
 
     return 0

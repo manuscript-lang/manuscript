@@ -1687,7 +1687,17 @@ impl Checker {
             };
             fall = self.block(body, false).0;
         }
-        if fall && !is_test && !result_ty.is(Builtin::Unit) && !result_ty.is_invalid() {
+        // A function returning `Unit` or `Unit!` may end without a `return`: the end returns `unit`
+        // or `ok(unit)`.
+        let unit_result = result_ty.is(Builtin::Result)
+            && result_ty.args.len() == 2
+            && self.syms.str(result_ty.args[0].id) == "Unit";
+        if fall
+            && !is_test
+            && !unit_result
+            && !result_ty.is(Builtin::Unit)
+            && !result_ty.is_invalid()
+        {
             self.type_error(
                 d.pos(),
                 format!(

@@ -113,6 +113,35 @@ fn missing_enums_opaque_types_and_grouped_constants_get_import_fixes() {
 }
 
 #[test]
+fn a_name_the_file_already_imports_gets_no_import_fix() {
+    let syms = ms_syntax::Names::global();
+    let dir = TempDir::new();
+    write(
+        dir.path(),
+        "helpers.ms",
+        include_str!("export_names/helpers.ms"),
+    );
+    let main = write(
+        dir.path(),
+        "main.ms",
+        include_str!("export_names/already_imported.ms"),
+    );
+    let mut issues = vec![Diagnostic {
+        cause: Default::default(),
+        opener_line: 0,
+        file: main.as_str().into(),
+        pos: Pos::new(0, 1, 1),
+        phase: Phase::Resolution,
+        message: "unknown binding helper; declare or import it".to_string(),
+        end: None,
+        fix: None,
+    }];
+    suggest_project_imports(syms, &mut issues, dir.path());
+    assert!(issues[0].fix.is_none(), "{:?}", issues[0]);
+    assert!(!issues[0].message.contains("add:"), "{}", issues[0].message);
+}
+
+#[test]
 fn export_lookalikes_in_comments_and_text_declare_nothing() {
     let syms = ms_syntax::Names::global();
     let source = concat!(

@@ -1,6 +1,8 @@
 // ms: allow_effect std.console.read
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+)
 
 type Op:
     kind: Int  // 0 unchanged, 1 deletion, 2 insertion
@@ -31,15 +33,13 @@ fn next_change(ops: List[Op], begin: Int) Int:
     return p
 
 fn span(start: Int, len: Int) String:
-    if len == 1:
-        return "{start}"
+    if len == 1: return "{start}"
 
     return "{start},{len}"
 
 export fn main() Int:
     let all = read_all()
-    if all.length() == 0:
-        return 0
+    if all.length() == 0: return 0
 
     let header = all[0].split(" ")
     let name_a = header[0]

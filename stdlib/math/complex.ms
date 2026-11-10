@@ -67,8 +67,7 @@ fn hyperbolic_product(factor: Float, argument: Float, value: Float) Float:
 
 // Computes sin(2*x) without overflowing a finite phase when doubling it.
 fn sin_double(phase: Float) Float:
-    if phase.abs() > 8.988465674311579e307:
-        return 2.0 * sin(phase) * cos(phase)
+    if phase.abs() > 8.988465674311579e307: return 2.0 * sin(phase) * cos(phase)
 
     return sin(2.0 * phase)
 
@@ -172,8 +171,7 @@ impl Complex:
 
     // True when either part is infinite and neither is NaN.
     fn is_infinite() Bool:
-        if self.is_nan():
-            return false
+        if self.is_nan(): return false
 
         return (
             not self.re.is_finite() and not self.re.is_nan()
@@ -185,8 +183,7 @@ impl Complex:
         let radius = exp(self.re)
 
         // A zero imaginary part stays zero where the radius overflows; `inf * sin(0)` would be NaN.
-        if self.im == 0.0:
-            return Complex(re: radius, im: self.im)
+        if self.im == 0.0: return Complex(re: radius, im: self.im)
 
         // The full radius can overflow while either final component still fits.
         // Four growing factors also preserve tiny phases beyond the half-exponential range.
@@ -219,8 +216,7 @@ impl Complex:
     // Returns the principal square root, with a non-negative real part.
     fn sqrt() Complex:
         if self.im == 0.0:
-            if self.re >= 0.0:
-                return Complex(re: sqrt(self.re), im: self.im)
+            if self.re >= 0.0: return Complex(re: sqrt(self.re), im: self.im)
 
             return Complex(re: 0.0, im: copy_sign(sqrt(-self.re), self.im))
 
@@ -236,8 +232,7 @@ impl Complex:
             return Complex(re: ldexp(root.re, -100), im: ldexp(root.im, -100))
 
         let real = sqrt(modulus / 2.0 + self.re.abs() / 2.0)
-        if self.re >= 0.0:
-            return Complex(re: real, im: self.im / (2.0 * real))
+        if self.re >= 0.0: return Complex(re: real, im: self.im / (2.0 * real))
 
         return Complex(re: self.im.abs() / (2.0 * real), im: copy_sign(real, self.im))
 
@@ -246,8 +241,7 @@ impl Complex:
         if self.re == 0.0 and self.im == 0.0:
             if exponent.re == 0.0 and exponent.im == 0.0:
                 return Complex(re: 1.0, im: 0.0)
-            if exponent.re > 0.0:
-                return Complex(re: 0.0, im: 0.0)
+            if exponent.re > 0.0: return Complex(re: 0.0, im: 0.0)
 
             return Complex(re: infinity, im: 0.0)
 
@@ -355,7 +349,6 @@ impl Complex:
 
     // Formats as `a+bi` or `a-bi` using the Float text of each part, e.g. `1.5-2i`.
     fn format() String:
-        if sign_bit(self.im):
-            return "{self.re}-{(-self.im)}i"
+        if sign_bit(self.im): return "{self.re}-{(-self.im)}i"
 
         return "{self.re}+{self.im}i"

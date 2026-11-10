@@ -1,5 +1,7 @@
-import seeded from "@std/random.ms"
-import expect_equal, expect_true from "@std/test/test.ms"
+import (
+    seeded from "@std/random.ms",
+    expect_equal, expect_true from "@std/test/test.ms",
+)
 
 test "seeded distributions repeat for equal seeds":
     var left = seeded(7)

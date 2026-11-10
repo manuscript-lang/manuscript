@@ -1,8 +1,10 @@
-import permutations from "@std/collections/itertools.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
+import (
+    permutations from "@std/collections/itertools.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     let n = args[0].parse_int().get()
     let size = args[1].parse_int().get()
@@ -17,8 +19,7 @@ export fn main() Int:
 
     for unused in 0..repeats:
         let result = permutations(values, size)
-        if result.length() != expected or result[0].length() != size:
-            return 1
+        if result.length() != expected or result[0].length() != size: return 1
 
         checksum += result.length()
 

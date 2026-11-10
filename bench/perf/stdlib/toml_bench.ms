@@ -1,6 +1,8 @@
-import keep, measure from "@std/test/bench.ms"
-import StringBuilder from "@std/string.ms"
-import parse from "@std/data/toml.ms"
+import (
+    keep, measure from "@std/test/bench.ms",
+    StringBuilder from "@std/string.ms",
+    parse from "@std/data/toml.ms",
+)
 
 fn toml_doc(count: Int) String:
     var sb = StringBuilder()
@@ -12,8 +14,7 @@ bench "toml.parse":
     let toml = toml_doc(2000)
 
     fn work() Result[Unit, Error]:
-        if parse(toml).is_ok():
-            return keep(1)
+        if parse(toml).is_ok(): return keep(1)
 
         return keep(0)
 

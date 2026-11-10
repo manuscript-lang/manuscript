@@ -18,11 +18,11 @@ import (
     now_ns,
     options,
     platform,
-    write_text
-) from "./lib.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue from "@std/data/json.ms"
-import stdout from "@std/io/io.ms"
+    write_text from "./lib.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue from "@std/data/json.ms",
+    stdout from "@std/io/io.ms",
+)
 
 fn execute(binary: String, cpu: String) Result[Unit, Error]:
     if cpu == "":
@@ -30,7 +30,6 @@ fn execute(binary: String, cpu: String) Result[Unit, Error]:
         return ok(unit)
 
     let _ = try must(binary, capture("taskset", ["-c", cpu.clone(), binary.clone()]))
-    return ok(unit)
 
 fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
     let out = absolute(opts.get_or("output", ""))
@@ -127,7 +126,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
     write_text("{out}/results.json", text)
     return ok(text)
 
-export fn main() Int:
+fn main() Int:
     let parsed = options(
         arguments(), ["before", "after", "output", "runs", "cpu"],
         ["before", "after", "output"]

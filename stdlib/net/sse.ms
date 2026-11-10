@@ -1,6 +1,8 @@
 // Server-Sent Events decoder implemented in Manuscript.
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Transform, WriteStream, through from "@std/io/io.ms"
+import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+)
 
 // One dispatched event, with the `message` type used when no `event:` field was sent.
 export type SseEvent:
@@ -76,14 +78,12 @@ export fn sse_events(
     )
 
 fn positive(limit: Int?) Bool:
-    if let maximum = limit:
-        return maximum > 0
+    if let maximum = limit: return maximum > 0
 
     return true
 
 fn exceeds(value: Int, limit: Int?) Bool:
-    if let maximum = limit:
-        return value > maximum
+    if let maximum = limit: return value > maximum
 
     return false
 
@@ -132,7 +132,6 @@ impl Transform[Bytes, SseEvent] for Decoder:
                 return error(failure)
 
         for event in events: out.append(event)
-        return ok(unit)
 
     var fn finish(var out: List[SseEvent]) Unit!:
         if let failure = self.failure: return error(failure.clone())
@@ -144,8 +143,6 @@ impl Transform[Bytes, SseEvent] for Decoder:
             self.failure = Error("SSE stream ended inside an event", kind: "EBADMSG")
             return error(Error("SSE stream ended inside an event", kind: "EBADMSG"))
 
-        return ok(unit)
-
 impl Decoder:
     // Buffers the unterminated tail of a chunk as part of the line being assembled.
     var fn hold(segment: Bytes) Unit!:
@@ -155,7 +152,6 @@ impl Decoder:
         )
 
         self.line.append_bytes(segment)
-        return ok(unit)
 
     var fn apply(line: String) Unit:
         if line.starts_with("data:"):

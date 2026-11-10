@@ -1,6 +1,8 @@
-import Closeable from "@std/core.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_contains, expect_equal, expect_fault, expect_ok from "@std/test/test.ms"
+import (
+    Closeable from "@std/core.ms",
+    append_file, read_file, temporary from "@std/os/fs.ms",
+    expect_contains, expect_equal, expect_fault, expect_ok from "@std/test/test.ms",
+)
 
 type Door:
     id: Int
@@ -14,8 +16,6 @@ impl Closeable for Door:
             self.closed = true
             try append_file(self.log, "{self.id},").wait()
             if self.fail: return error(Error("close failed"))
-
-        return ok(unit)
 
 fn replace(log: String) Unit:
     var doors = [Door(1, log.clone(), fail: true)]

@@ -9,7 +9,7 @@
       {
         "code": "MS3003",
         "phase": "type",
-        "message": "missing argument _0: Int in call to callback; add '_0: <Int>'",
+        "message": "missing argument 1: Int in call to callback; pass it positionally, without a label",
         "position": {
           "file": "testdefaultargumentboundaries-11.ms",
           "line": 8,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdefaultargumentboundaries-11.ms:8:12: type: missing argument _0: Int in call to callback; add '_0: <Int>'\n   |\n 8 |     return callback()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdefaultargumentboundaries-11.ms:8:12: type: missing argument 1: Int in call to callback; pass it positionally, without a label\n   |\n 8 |     return callback()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

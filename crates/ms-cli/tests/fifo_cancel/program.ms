@@ -33,7 +33,7 @@ fn open_io_then_read(path: String) Int:
 
     return -1
 
-export fn main() Int:
+fn main() Unit:
     let path = arguments()[0].clone()
     let first = path.clone()
     let second = path.clone()
@@ -54,4 +54,3 @@ export fn main() Int:
         )
         .get()
     )
-    return 0

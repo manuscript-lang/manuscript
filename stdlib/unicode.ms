@@ -1,5 +1,5 @@
-import compile, from_scalars from "@std/string.ms"
 import (
+    compile, from_scalars from "@std/string.ms",
     msstd_unicode_is_alphabetic,
     msstd_unicode_is_alphanumeric,
     msstd_unicode_is_numeric,
@@ -7,8 +7,8 @@ import (
     msstd_unicode_is_uppercase,
     msstd_unicode_is_whitespace,
     msstd_unicode_is_control,
-    msstd_unicode_is_ascii
-) from "@std/internal/unicode.ms"
+    msstd_unicode_is_ascii from "@std/internal/unicode.ms",
+)
 
 /*
 Tests Unicode scalar values (integers), using the Unicode data of the pinned Rust toolchain.
@@ -65,13 +65,10 @@ export fn is_mark(scalar: Int) Bool:
     return in_category(scalar, "M")
 
 fn in_category(scalar: Int, category: String) Bool:
-    if scalar < 0 or scalar > 1114111:
-        return false
-    if is_ascii(scalar) and (is_digit(scalar) or is_alphanumeric(scalar)):
-        return false
+    if scalar < 0 or scalar > 1114111: return false
+    if is_ascii(scalar) and (is_digit(scalar) or is_alphanumeric(scalar)): return false
 
     let text = from_scalars([scalar])
     if let s = text:
-        if let re = compile("^\\p\{" + category + "\}$"):
-            return re.matches(s)
+        if let re = compile("^\\p\{" + category + "\}$"): return re.matches(s)
     return false

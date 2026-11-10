@@ -7,7 +7,7 @@ type Pending:
     values: List[Int]
 
 fn counted(var counter: Counter) Counter:
-    counter.calls = counter.calls + 1
+    counter.calls += 1
     return counter
 
 fn require_value[T, E](value: T?, cause: E) T!E:
@@ -17,8 +17,7 @@ fn require_lazy[T, E](value: T?, create: fn() E) T!E:
     return value.ok_or_else[E](create)
 
 fn success_only[T, E](value: T!E) T?:
-    if let item = value:
-        return item
+    if let item = value: return item
 
     return none
 

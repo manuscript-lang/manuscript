@@ -20,10 +20,8 @@ test "a scalar walk stops at return, break, and continue":
     var seen = 0
 
     for c in "aé😀b".scalar_values():
-        if c == 233:
-            continue
-        if c == 128512:
-            break
+        if c == 233: continue
+        if c == 128512: break
 
         seen += c
 

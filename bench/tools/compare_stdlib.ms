@@ -16,11 +16,11 @@ import (
     options,
     platform,
     stdlib_bench,
-    write_text
-) from "./lib.ms"
-import Stats, case_labels, read_cases from "./stdlib_results.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    Stats, case_labels, read_cases from "./stdlib_results.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue from "@std/data/json.ms",
+)
 
 // One document as `{case: operations}` and `{case: median ns/op}`.
 export type Sample:
@@ -142,7 +142,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
     write_text("{out}/results.md", rendered)
     return ok(rendered)
 
-export fn main() Int:
+fn main() Int:
     let parsed = options(
         arguments(), ["before", "after", "output", "repeats", "samples", "filter"],
         ["before", "after", "output"]

@@ -1,5 +1,5 @@
-import Data, Writable from "@std/core.ms"
 import (
+    Data, Writable from "@std/core.ms",
     msrt_bytes_join,
     msrt_bytes_values,
     msrt_bytes_read_word,
@@ -8,9 +8,9 @@ import (
     msrt_float32_from_bits,
     msrt_float32_to_bits,
     msrt_bits_bit_and,
-    msrt_bits_shift_right
-) from "@std/internal/bytes.ms"
-import msrt_bits_bit_or, msrt_bits_shift_left from "@std/internal/math.ms"
+    msrt_bits_shift_right from "@std/internal/bytes.ms",
+    msrt_bits_bit_or, msrt_bits_shift_left from "@std/internal/math.ms",
+)
 
 // An immutable sequence of bytes, such as `"hello".to_bytes()`. Use `decode_utf8()` to read text; invalid UTF-8 returns `none`. Indices and slice bounds count bytes from zero.
 export extern type Bytes
@@ -140,15 +140,13 @@ fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
 
 // Reads a signed value from its unsigned bit pattern: `half` is 2 to the power `bits - 1`.
 fn signed(raw: Int, half: Int) Int:
-    if raw >= half:
-        return raw - half * 2
+    if raw >= half: return raw - half * 2
 
     return raw
 
 // Converts a 64-bit word without narrowing its unsigned upper half.
 fn unsigned_word(raw: Int) UInt64:
-    if raw >= 0:
-        return raw.to_uint64().get(0)
+    if raw >= 0: return raw.to_uint64().get(0)
 
     return (raw + 9223372036854775807 + 1).to_uint64().get(0) + 9223372036854775808
 
@@ -295,8 +293,7 @@ impl BytesCodecs for Bytes:
                     msrt_bits_bit_and(byte, 127), i * 7
                 )
             )
-            if byte < 128:
-                return ok(VarintRead(unsigned_word(word), at + i + 1))
+            if byte < 128: return ok(VarintRead(unsigned_word(word), at + i + 1))
 
         return error(Error("binary: varint overflows 64 bits", kind: "ERANGE"))
 
@@ -305,8 +302,7 @@ impl BytesCodecs for Bytes:
     fn varint(at: Int) VarintRead[Int]!:
         let raw = try self.uvarint(at)
         let half = (raw.value / 2).to_int().get(0)
-        if raw.value % 2 == 1:
-            return ok(VarintRead(-half - 1, raw.next_offset))
+        if raw.value % 2 == 1: return ok(VarintRead(-half - 1, raw.next_offset))
 
         return ok(VarintRead(half, raw.next_offset))
 

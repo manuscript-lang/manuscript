@@ -1,11 +1,11 @@
-import Bytes from "@std/bytes.ms"
 import (
+    Bytes from "@std/bytes.ms",
     CommandOutput,
     Commands,
     RunOptions,
     SpawnOptions,
-    Subprocess
-) from "@std/os/process.ms"
+    Subprocess from "@std/os/process.ms",
+)
 
 // Shifts the node ids below so that `Echo.run` has the id of a method in another module
 // (`second.ms` or the standard library): defaults must be found by module and id.

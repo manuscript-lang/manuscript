@@ -1,6 +1,8 @@
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
-import Closeable from "@std/core.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
+import (
+    expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
+    Closeable from "@std/core.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+)
 
 type Resource:
     dir: String
@@ -10,7 +12,6 @@ type Resource:
 impl Closeable for Resource:
     var fn close() Unit!:
         let _ = write_file("{self.dir}/{self.id}", "closed", true).wait()
-        return ok(unit)
 
 fn closed(dir: String, id: Int) Bool:
     return read_file("{dir}/{id}").wait().is_ok()
@@ -21,8 +22,7 @@ fn falls_off_the_end(dir: String) Int:
 
 fn returns_early(dir: String, early: Bool) Int:
     let r = Resource(dir, 2)
-    if early:
-        return 1
+    if early: return 1
 
     return r.id
 
@@ -38,10 +38,8 @@ fn breaks_out(dir: String) Int:
     while i < 3:
         let r = Resource(dir.clone(), 10 + i)
         i += 1
-        if i == 2:
-            break
-        if r.id == 10:
-            continue
+        if i == 2: break
+        if r.id == 10: continue
 
     return i
 

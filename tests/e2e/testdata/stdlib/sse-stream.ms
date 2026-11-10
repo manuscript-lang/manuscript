@@ -1,7 +1,9 @@
-import expect_equal, expect_false, fail from "@std/test/test.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import ReadStream, Source from "@std/io/io.ms"
-import sse_events, SseEvent, SseLimits from "@std/net/sse.ms"
+import (
+    expect_equal, expect_false, fail from "@std/test/test.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    ReadStream, Source from "@std/io/io.ms",
+    sse_events, SseEvent, SseLimits from "@std/net/sse.ms",
+)
 
 // Hands out the chunks in order, then fails with `failure` if set, else ends.
 type Chunks:
@@ -65,8 +67,6 @@ fn expect(source: String, want: String) Unit!:
         if got != want: return fail(
             "{source.to_bytes().values()}: want {want}, got {got}"
         )
-
-    return ok(unit)
 
 test "LF CRLF and CR endings decode identically under every chunk split":
     let want = "message|a|-;message|b|-"

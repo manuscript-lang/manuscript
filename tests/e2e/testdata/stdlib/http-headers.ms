@@ -1,6 +1,6 @@
-import send, recv, send_bytes, read_to_end from "./support/conn.ms"
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
 import (
+    send, recv, send_bytes, read_to_end from "./support/conn.ms",
+    expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
     buffered,
     headers,
     HttpHeaders,
@@ -8,11 +8,12 @@ import (
     HttpRequest,
     HttpResponse,
     HttpExchange,
+    HttpClient,
     HttpClientOptions,
-    HttpServerOptions
-) from "@std/net/http.ms"
-import RequestOptions, http_client, request, serve from "@std/net/net.ms"
-import Bytes from "@std/bytes.ms"
+    HttpServerOptions from "@std/net/http.ms",
+    RequestOptions, http_client, request, serve from "@std/net/net.ms",
+    Bytes from "@std/bytes.ms",
+)
 
 fn repeated_headers() HttpHeaders!:
     var fields = headers()
@@ -136,3 +137,44 @@ test "empty options and an omitted request body use checked defaults":
         headers: (try repeated_headers())
     ) | try expect_ok
     response.metadata.status | try expect_equal(200)
+
+fn cookie_handler(var exchange: HttpExchange) Unit!:
+    var fields = headers()
+
+    if exchange.path() == "/set":
+        let _added = try fields.append(
+            "Set-Cookie", "a=live; Path=/; Expires=Fri Jan  1 00:00:00 2100"
+        )
+    else if exchange.path() == "/rfc850":
+        let _added = try fields.append(
+            "Set-Cookie", "a=gone; Path=/; Expires=Thursday, 01-Jan-70 00:00:01 GMT"
+        )
+    else if exchange.path() == "/asctime":
+        let _added = try fields.append(
+            "Set-Cookie", "a=gone; Path=/; Expires=Thu Jan  1 00:00:01 1970"
+        )
+
+    let cookie = exchange.headers().values("Cookie").join("; ")
+    return exchange.send(200, fields, cookie.to_bytes())
+
+fn echoed_cookie(client: HttpClient, url: String) String!:
+    var response = try client.request(
+        HttpMethod.Get, url, headers(), timeout: 3.seconds()
+    )
+    var text = ""
+    for chunk in response.body:
+        text += chunk.decode_utf8().get()
+    try response.close()
+    return ok(text)
+
+test "legacy Expires removes a cookie before the next request":
+    let server = try serve(
+        "127.0.0.1:0", cookie_handler, HttpServerOptions(timeout: 3.seconds())
+    )
+    let client = try http_client(HttpClientOptions(cookies: true))
+    let url = "http://{server.address()}"
+
+    for path in ["/rfc850", "/asctime"]:
+        let _set = try echoed_cookie(client, "{url}/set")
+        (try echoed_cookie(client, "{url}{path}")) | try expect_equal("a=live")
+        (try echoed_cookie(client, "{url}/echo")) | try expect_equal("")

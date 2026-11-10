@@ -9,7 +9,6 @@ type Res:
 impl Closeable for Res:
     var fn close() Unit!:
         print("close {self.name}")
-        return ok(unit)
 
 fn make(name: String) Res!Error:
     return ok(Res(name))
@@ -20,7 +19,6 @@ fn keep(r: Res) Res:
 fn via_try() Unit!Error:
     let r = try make("try")
     print("body {r.name}")
-    return ok(unit)
 
 fn via_get() Unit:
     let r = make("get").get()
@@ -35,9 +33,8 @@ fn via_passthrough() Unit:
     let r = keep(Res("keep"))
     print("body {r.name}")
 
-export fn main() Int:
+fn main() Unit:
     let _ = via_try()
     via_get()
     via_optional_get()
     via_passthrough()
-    return 0

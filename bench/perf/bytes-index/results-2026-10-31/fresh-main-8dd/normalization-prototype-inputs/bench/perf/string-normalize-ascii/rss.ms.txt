@@ -1,6 +1,6 @@
 import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Int:
     let text = "x".repeat(4194304).get()
     let result = text.normalize("NFC").get()
     if result != text: return 1

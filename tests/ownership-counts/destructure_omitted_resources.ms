@@ -13,8 +13,10 @@
 // expect-stdout: close 11
 // Destructuring closes omitted resource fields even when their types own no heap storage.
 // Omitted fields close last declared first, before the fields moved into named bindings.
-import Closeable from "@std/core.ms"
-import stdout from "@std/io/io.ms"
+import (
+    Closeable from "@std/core.ms",
+    stdout from "@std/io/io.ms",
+)
 
 type Token:
     id: Int
@@ -68,9 +70,8 @@ fn with_storage() Unit:
     let {first: kept} = tokens
     let _ = kept.name.length()
 
-export fn main() Int:
+fn main() Unit:
     local()
     temporary()
     nested()
     with_storage()
-    return 0

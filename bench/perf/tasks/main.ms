@@ -3,10 +3,12 @@
 // `read`, after a file read), then reports the process's resident set and page tables.
 // `ms run bench/perf/tasks/main.ms -- 1000000 sleep`. Linux only for the report
 // (it reads /proc/self/status); the tasks themselves are portable.
-import owned_task, Promise from "@std/concurrency/promise.ms"
-import monotonic, seconds, sleep from "@std/time.ms"
-import read_file from "@std/os/fs.ms"
-import arguments from "@std/os/env.ms"
+import (
+    owned_task, Promise from "@std/concurrency/promise.ms",
+    monotonic, seconds, sleep from "@std/time.ms",
+    read_file from "@std/os/fs.ms",
+    arguments from "@std/os/env.ms",
+)
 
 fn status(label: String) Unit:
     let text = read_file("/proc/self/status", none).wait().get().decode_utf8().get()
@@ -19,8 +21,7 @@ fn park_sleep(a: Int) Int!:
     return ok(a)
 
 fn descend(depth: Int, acc: Int) Int:
-    if depth == 0:
-        return acc
+    if depth == 0: return acc
 
     let scratch: List[Int] = [acc, depth, acc + depth]
     let below = descend(depth - 1, acc + scratch[1])
@@ -36,7 +37,7 @@ fn park_read(a: Int) Int!:
     try sleep(seconds(1000)).wait()
     return ok(data.length() + a)
 
-export fn main() Int:
+fn main() Unit:
     let args = arguments()
     let n = args[0].parse_int().get()
     let mode = args[1].clone()
@@ -68,4 +69,3 @@ export fn main() Int:
 
     let t3 = monotonic()
     print("cancel ms " + (t3.difference(t2).to_nanoseconds() / 1000000).to_string())
-    return 0

@@ -19,11 +19,14 @@ function purePage(data, source = template) {
     between(source, 'const D={', 'const $='),
     between(source, 'const esc=', 'const KI='),
     between(source, 'const KW=', '/* checked types'),
+    between(source, 'const base=', 'const byFile='),
     between(source, 'function sigOf(', 'const fns='),
+    between(source, 'const fcls=', '/* overview:'),
     between(source, 'function stage(', 'const fcls='),
     between(source, 'function types(){', '/* sequence:'),
     between(source, 'const empty=', 'function behavior('),
-    'return {D,E,S,hl,sigOf,types};',
+    between(source, 'function sequenceEvents(', 'function sequence(){'),
+    'return {D,E,S,hl,sigOf,types,sequenceEvents,sequenceDiagram};',
   ].join('\n');
   return new Function('R', code)(data);
 }

@@ -1,12 +1,12 @@
-import Copy, Data, panic from "@std/core.ms"
 import (
+    Copy, Data, panic from "@std/core.ms",
     msstd_decimal_compare,
     msstd_decimal_to_string,
     msstd_decimal_to_float,
     msstd_decimal_truncate_to_int,
     msstd_decimal_round,
-    msstd_decimal_to_fixed
-) from "@std/internal/decimal.ms"
+    msstd_decimal_to_fixed from "@std/internal/decimal.ms",
+)
 
 // How a Decimal rounds to a multiple of the requested power of ten.
 export enum RoundingMode:
@@ -34,15 +34,13 @@ impl Decimal:
 
     // Returns the lesser of this value and `other`, or this value when they compare equal.
     fn min(other: Decimal) Decimal:
-        if other.compare(self) < 0:
-            return other
+        if other.compare(self) < 0: return other
 
         return self
 
     // Returns the greater of this value and `other`, or this value when they compare equal.
     fn max(other: Decimal) Decimal:
-        if other.compare(self) > 0:
-            return other
+        if other.compare(self) > 0: return other
 
         return self
 
@@ -50,10 +48,8 @@ impl Decimal:
     fn clamp(low: Decimal, high: Decimal) Decimal:
         if low.compare(high) > 0:
             panic("clamp: low must not be greater than high")
-        if self.compare(low) < 0:
-            return low
-        if self.compare(high) > 0:
-            return high
+        if self.compare(low) < 0: return low
+        if self.compare(high) > 0: return high
 
         return self
 
@@ -61,8 +57,7 @@ impl Decimal:
     // Returns none when the value is beyond the Float range.
     fn to_float() Float?:
         let value = msstd_decimal_to_float(self)
-        if value.is_finite():
-            return value
+        if value.is_finite(): return value
 
         return none
 

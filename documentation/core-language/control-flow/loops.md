@@ -75,7 +75,7 @@ test "sum even indexes":
 
 ## Iterable types and binding
 
-The iterable is evaluated once. Traversal borrows the collection for the loop body; mutating, reassigning, or moving that collection while the borrow is live is rejected. The loop variable is one immutable name per iteration, with no pattern or annotation. Supported iterables:
+The iterable is evaluated once. Traversal borrows the collection for the loop body; mutating, reassigning, or moving that collection while the borrow is live is rejected. The loop variable is one immutable name per iteration, or a list or record pattern (see [Destructuring the element](#destructuring-the-element)); it takes no annotation. Supported iterables:
 
 | Iterable | Iteration binding type | Traversal order |
 | --- | --- | --- |
@@ -96,7 +96,27 @@ fn total(values: Map[String, Int]) Int:
     return sum
 ```
 
-`for [key, value] in values:` is a parse error. Numbers, text, optionals, functions, and types that merely have a `next` method without `impl Iterator` are not iterable. Each iteration has a new scope; assigning to the loop variable is rejected, but an outer `var` can change.
+`for [key, value] in values:` is a type error: a `MapEntry` is a record, so write `for {key, value} in values:`. Numbers, text, optionals, functions, and types that merely have a `next` method without `impl Iterator` are not iterable. Each iteration has a new scope; assigning to the loop variable is rejected, but an outer `var` can change.
+
+## Destructuring the element
+
+A list or record pattern after `for` binds the same names as `let` does with the element, so `for [a, b] in pairs:` is `for pair in pairs:` followed by `let [a, b] = pair`. The element is borrowed, the names are scoped to the body, and a pattern that does not fit the element type is rejected as it is after `let`. A closure parameter takes the same patterns: `pairs.map(fn [a, b]: a + b)`.
+
+<!-- manuscript-example: {"mode":"test"} -->
+```manuscript
+import expect_equal from "@std/test/test.ms"
+
+test "destructure each element":
+    var total = 0
+    for [a, b] in [[1, 2], [3, 4]]:
+        total += a * b
+    try expect_equal(total, 14)
+
+    var names = ""
+    for {key, value: _value} in {"x": 1, "y": 2}:
+        names = "{names}{key}"
+    try expect_equal(names, "xy")
+```
 
 ## Iterators
 
@@ -105,7 +125,6 @@ A type that implements `Iterator[T]` from `@std/core.ms` is iterable: `for item 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n2\n1\n"} -->
 ```manuscript
 import Iterator from "@std/core.ms"
-import stdout from "@std/io/io.ms"
 
 type Countdown:
     left: Int
@@ -117,11 +136,9 @@ impl Iterator[Int] for Countdown:
         self.left -= 1
         return self.left + 1
 
-export fn main() Int:
+fn main() Unit:
     for n in Countdown(3):
-        if stdout().write("{n}\n").is_error():
-            return 1
-    return 0
+        print(n)
 ```
 
 Output:
@@ -140,16 +157,13 @@ A type that implements `Iterable[T]` from `@std/collections/iterable.ms` (`fn le
 <!-- manuscript-example: {"mode":"run","stdout":"11\n12\n"} -->
 ```manuscript
 import Deque from "@std/collections/deque.ms"
-import stdout from "@std/io/io.ms"
 
-export fn main() Int:
+fn main() Unit:
     var steps = Deque[Int]()
     steps.push_back(11)
     steps.push_back(12)
     for step in steps:
-        if stdout().write("{step}\n").is_error():
-            return 1
-    return 0
+        print(step)
 ```
 
 Output:

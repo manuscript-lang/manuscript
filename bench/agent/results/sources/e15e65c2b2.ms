@@ -1,5 +1,7 @@
-import stdin, stdout from "@std/io/io.ms"
-import read_all from "@std/io/streams.ms"
+import (
+    stdin, stdout from "@std/io/io.ms",
+    read_all from "@std/io/streams.ms",
+)
 
 // ---------------------------------------------------------------
 // Data types
@@ -55,15 +57,13 @@ type Node:
 
 // Character at k (as a fresh string), or "" when out of range.
 fn chr(s: String, k: Int) String:
-    if k >= 0 and k < s.length():
-        return s.get(k)
+    if k >= 0 and k < s.length(): return s.get(k)
 
     return ""
 
 // Scalar at k of a char list, or "" when out of range.
 fn cat(cs: List[String], k: Int) String:
-    if k >= 0 and k < cs.length():
-        return cs[k].clone()
+    if k >= 0 and k < cs.length(): return cs[k].clone()
 
     return ""
 
@@ -75,8 +75,7 @@ fn sub(s: String, a: Int, b: Int) String:
         x = 0
     if y > s.length():
         y = s.length()
-    if y <= x:
-        return ""
+    if y <= x: return ""
 
     return s.slice(x, y).get("")
 
@@ -86,7 +85,7 @@ fn join_range(cs: List[String], a: Int, b: Int) String:
     var k = a
 
     while k < b:
-        r = r + cs[k]
+        r += cs[k]
         k += 1
 
     return r
@@ -96,7 +95,7 @@ fn rep(s: String, n: Int) String:
     var k = 0
 
     while k < n:
-        r = r + s
+        r += s
         k += 1
 
     return r
@@ -149,20 +148,16 @@ fn html_block(h: String, nxt: Int) Block:
 // Length of the opening fence run, or 0 when the line is not a fence opener.
 fn fence_run(line: String) Int:
     let ind = leading(line)
-    if ind > 3 or ind >= line.length():
-        return 0
+    if ind > 3 or ind >= line.length(): return 0
 
     let c = line.get(ind)
-    if c != "`" and c != "~":
-        return 0
+    if c != "`" and c != "~": return 0
 
     var n = 0
     while ind + n < line.length() and line.get(ind + n) == c:
         n += 1
-    if n < 3:
-        return 0
-    if c == "`" and sub(line, ind + n, line.length()).contains("`"):
-        return 0
+    if n < 3: return 0
+    if c == "`" and sub(line, ind + n, line.length()).contains("`"): return 0
 
     return n
 
@@ -172,23 +167,19 @@ fn is_fence(line: String) Bool:
 // ATX heading level, or 0.
 fn heading_level(line: String) Int:
     let ind = leading(line)
-    if ind > 3:
-        return 0
+    if ind > 3: return 0
 
     var n = 0
     while ind + n < line.length() and line.get(ind + n) == "#":
         n += 1
-    if n < 1 or n > 6:
-        return 0
-    if ind + n == line.length() or line.get(ind + n) == " ":
-        return n
+    if n < 1 or n > 6: return 0
+    if ind + n == line.length() or line.get(ind + n) == " ": return n
 
     return 0
 
 fn is_hr(line: String) Bool:
     let ind = leading(line)
-    if ind > 3:
-        return false
+    if ind > 3: return false
 
     var mark = ""
     var cnt = 0
@@ -199,13 +190,11 @@ fn is_hr(line: String) Bool:
 
         if c != " ":
             if mark == "":
-                if c != "-" and c != "*" and c != "_":
-                    return false
+                if c != "-" and c != "*" and c != "_": return false
 
                 mark = c.clone()
 
-            if c != mark:
-                return false
+            if c != mark: return false
 
             cnt += 1
 
@@ -220,8 +209,7 @@ fn is_quote(line: String) Bool:
 fn marker(line: String) Marker:
     let none = Marker(ok: false, ordered: false, ch: "", num: 0, w: 0, empty: true)
     let ind = leading(line)
-    if ind > 3 or ind >= line.length():
-        return none
+    if ind > 3 or ind >= line.length(): return none
 
     let c = line.get(ind)
     var after = ind + 1
@@ -237,20 +225,17 @@ fn marker(line: String) Marker:
             k += 1
 
         let nd = k - ind
-        if nd < 1 or nd > 9 or k >= line.length():
-            return none
+        if nd < 1 or nd > 9 or k >= line.length(): return none
 
         let d = line.get(k)
-        if d != "." and d != ")":
-            return none
+        if d != "." and d != ")": return none
 
         ordered = true
         ch = d
         num = sub(line, ind, k).parse_int().get(0)
         after = k + 1
 
-    if after < line.length() and line.get(after) != " ":
-        return none
+    if after < line.length() and line.get(after) != " ": return none
 
     var sp = 0
     var p = after
@@ -287,7 +272,7 @@ fn split_cells(line: String) List[String]:
             cells.append(trim_sp(cur))
             cur = ""
         else:
-            cur = cur + c
+            cur += c
 
         k += 1
 
@@ -309,43 +294,33 @@ fn align_of(cell: String) Int:
         trail = true
         b -= 1
 
-    if b <= a:
-        return -1
+    if b <= a: return -1
 
     var k = a
 
     while k < b:
-        if cell.get(k) != "-":
-            return -1
+        if cell.get(k) != "-": return -1
 
         k += 1
 
-    if lead and trail:
-        return 2
-    if lead:
-        return 1
-    if trail:
-        return 3
+    if lead and trail: return 2
+    if lead: return 1
+    if trail: return 3
 
     return 0
 
 fn is_delim_row(line: String) Bool:
-    if not line.contains("|"):
-        return false
+    if not line.contains("|"): return false
 
     let cells = split_cells(line)
     for c in cells:
-        if align_of(c) < 0:
-            return false
+        if align_of(c) < 0: return false
     return true
 
 fn table_start(lines: List[String], i: Int) Bool:
-    if i + 1 >= lines.length():
-        return false
-    if not lines[i].contains("|"):
-        return false
-    if not is_delim_row(lines[i + 1]):
-        return false
+    if i + 1 >= lines.length(): return false
+    if not lines[i].contains("|"): return false
+    if not is_delim_row(lines[i + 1]): return false
 
     return split_cells(lines[i]).length() == split_cells(lines[i + 1]).length()
 
@@ -354,10 +329,8 @@ fn is_block_start(line: String) Bool:
     return is_fence(line) or heading_level(line) > 0 or is_hr(line) or is_quote(line)
 
 fn interrupts_para(line: String) Bool:
-    if is_blank(line):
-        return true
-    if is_block_start(line):
-        return true
+    if is_blank(line): return true
+    if is_block_start(line): return true
 
     let m = marker(line)
     return m.ok and not m.empty and (not m.ordered or m.num == 1)
@@ -460,12 +433,9 @@ fn parse_indented(lines: List[String], i: Int) Block:
     return html_block(html + "</code></pre>\n", last + 1)
 
 fn align_attr(a: Int) String:
-    if a == 1:
-        return " align=\"left\""
-    if a == 2:
-        return " align=\"center\""
-    if a == 3:
-        return " align=\"right\""
+    if a == 1: return " align=\"left\""
+    if a == 2: return " align=\"center\""
+    if a == 3: return " align=\"right\""
 
     return ""
 
@@ -484,7 +454,7 @@ fn parse_table(lines: List[String], i: Int) Block:
         html = html + "<th" + align_attr(aligns[k]) + ">" + inline(head[k]) + "</th>\n"
         k += 1
 
-    html = html + "</tr>\n</thead>\n"
+    html += "</tr>\n</thead>\n"
 
     var rows = ""
     var nrows = 0
@@ -512,7 +482,7 @@ fn parse_table(lines: List[String], i: Int) Block:
 
     if nrows > 0:
         html = html + "<tbody>\n" + rows + "</tbody>\n"
-    html = html + "</table>\n"
+    html += "</table>\n"
     return html_block(html, j)
 
 fn parse_para(lines: List[String], i: Int) Block:
@@ -533,10 +503,10 @@ fn parse_para(lines: List[String], i: Int) Block:
             let trailing = l.length() - rtrim_sp(l).length()
             s = rtrim_sp(s)
             if trailing >= 2:
-                s = s + "\r"
-            s = s + "\n"
+                s += "\r"
+            s += "\n"
 
-        text = text + s
+        text += s
         k += 1
 
     return Block(kind: 1, html: "", text: text, blank: false, nxt: j)
@@ -638,34 +608,27 @@ fn render_body(kids: List[Block], tight: Bool) String:
     for k in kids:
         if k.kind == 1:
             if tight:
-                body = body + inline(k.text)
+                body += inline(k.text)
             else:
                 if not body.ends_with("\n"):
-                    body = body + "\n"
+                    body += "\n"
                 body = body + "<p>" + inline(k.text) + "</p>\n"
         else:
             if not body.ends_with("\n"):
-                body = body + "\n"
-            body = body + k.html
+                body += "\n"
+            body += k.html
 
     return body
 
 fn block_at(lines: List[String], i: Int) Block:
     let line = lines[i]
-    if leading(line) >= 4:
-        return parse_indented(lines, i)
-    if is_fence(line):
-        return parse_fence(lines, i)
-    if heading_level(line) > 0:
-        return parse_heading(line, i)
-    if is_hr(line):
-        return html_block("<hr />\n", i + 1)
-    if is_quote(line):
-        return parse_quote(lines, i)
-    if marker(line).ok:
-        return parse_list(lines, i)
-    if table_start(lines, i):
-        return parse_table(lines, i)
+    if leading(line) >= 4: return parse_indented(lines, i)
+    if is_fence(line): return parse_fence(lines, i)
+    if heading_level(line) > 0: return parse_heading(line, i)
+    if is_hr(line): return html_block("<hr />\n", i + 1)
+    if is_quote(line): return parse_quote(lines, i)
+    if marker(line).ok: return parse_list(lines, i)
+    if table_start(lines, i): return parse_table(lines, i)
 
     return parse_para(lines, i)
 
@@ -694,7 +657,7 @@ fn render_top(blocks: List[Block]) String:
         if b.kind == 1:
             s = s + "<p>" + inline(b.text) + "</p>\n"
         else:
-            s = s + b.html
+            s += b.html
 
     return s
 
@@ -713,8 +676,7 @@ fn mk(kind: Int, text: String) Node:
 fn parse_tail(cs: List[String], p: Int) Tail:
     let n = cs.length()
     let failed = Tail(ok: false, dest: "", title: "", has_title: false, stop: 0)
-    if cat(cs, p) != "(":
-        return failed
+    if cat(cs, p) != "(": return failed
 
     var k = p + 1
     while k < n and is_space_nl(cat(cs, k)):
@@ -727,18 +689,16 @@ fn parse_tail(cs: List[String], p: Int) Tail:
 
         while k < n and cat(cs, k) != ">":
             let c = cat(cs, k)
-            if c == "\n" or c == "\r" or c == "<":
-                return failed
+            if c == "\n" or c == "\r" or c == "<": return failed
 
             if c == "\\" and is_punct(cat(cs, k + 1)):
-                dest = dest + cat(cs, k + 1)
+                dest += cat(cs, k + 1)
                 k += 2
             else:
-                dest = dest + c
+                dest += c
                 k += 1
 
-        if k >= n:
-            return failed
+        if k >= n: return failed
 
         k += 1
     else:
@@ -746,23 +706,21 @@ fn parse_tail(cs: List[String], p: Int) Tail:
 
         while k < n:
             let c = cat(cs, k)
-            if is_space_nl(c):
-                break
+            if is_space_nl(c): break
 
             if c == "\\" and is_punct(cat(cs, k + 1)):
-                dest = dest + cat(cs, k + 1)
+                dest += cat(cs, k + 1)
                 k += 2
                 continue
 
             if c == "(":
                 depth += 1
             else if c == ")":
-                if depth == 0:
-                    break
+                if depth == 0: break
 
                 depth -= 1
 
-            dest = dest + c
+            dest += c
             k += 1
 
     var ws = 0
@@ -779,22 +737,20 @@ fn parse_tail(cs: List[String], p: Int) Tail:
 
         while k < n and cat(cs, k) != "\"":
             if cat(cs, k) == "\\" and cat(cs, k + 1) == "\"":
-                title = title + "\""
+                title += "\""
                 k += 2
             else:
-                title = title + cat(cs, k)
+                title += cat(cs, k)
                 k += 1
 
-        if k >= n:
-            return failed
+        if k >= n: return failed
 
         k += 1
         has_title = true
         while k < n and is_space_nl(cat(cs, k)):
             k += 1
 
-    if cat(cs, k) != ")":
-        return failed
+    if cat(cs, k) != ")": return failed
 
     return Tail(ok: true, dest: dest, title: title, has_title: has_title, stop: k + 1)
 
@@ -807,13 +763,13 @@ fn code_content(cs: List[String], a: Int, b: Int) String:
         let c = cs[k]
 
         if c == "\r" and k + 1 < b and cs[k + 1] == "\n":
-            s = s + " "
+            s += " "
             k += 2
         else if c == "\n":
-            s = s + " "
+            s += " "
             k += 1
         else:
-            s = s + c
+            s += c
             k += 1
 
     if (
@@ -980,23 +936,20 @@ fn add_text(var nodes: List[Node], s: String) Unit:
     let last = nodes.length() - 1
 
     if last >= 0 and nodes[last].kind == 0:
-        nodes[last].text = nodes[last].text + s
+        nodes[last].text += s
     else:
         nodes.append(mk(0, s.clone()))
 
 fn delim_to_text(x: Node) Node:
-    if x.kind == 3:
-        return mk(0, rep(x.text, x.cnt))
+    if x.kind == 3: return mk(0, rep(x.text, x.cnt))
 
     return x.clone()
 
 fn mult_ok(o: Node, c: Node) Bool:
-    if not (o.can_close or c.can_open):
-        return true
+    if not (o.can_close or c.can_open): return true
 
     let s = o.orig + c.orig
-    if s % 3 != 0:
-        return true
+    if s % 3 != 0: return true
 
     return o.orig % 3 == 0 and c.orig % 3 == 0
 
@@ -1043,7 +996,7 @@ fn resolve(input: List[Node]) List[Node]:
                     ns.remove(o + 1)
                     t += 1
 
-                ns[o].cnt = ns[o].cnt - use
+                ns[o].cnt -= use
                 ns[o + 1].cnt = ns[o + 1].cnt - use
 
                 var em = mk(6, "")
@@ -1085,27 +1038,24 @@ fn plain(ns: List[Node]) String:
 
     for x in ns:
         if x.kind == 0 or x.kind == 2:
-            s = s + x.text.replace("\n", " ")
+            s += x.text.replace("\n", " ")
         else if x.kind == 1:
-            s = s + " "
+            s += " "
         else:
-            s = s + plain(x.kids)
+            s += plain(x.kids)
 
     return s
 
 fn render_nodes(ns: List[Node]) String:
     var s = ""
     for x in ns:
-        s = s + render_node(x)
+        s += render_node(x)
     return s
 
 fn render_node(x: Node) String:
-    if x.kind == 0:
-        return esc(x.text)
-    if x.kind == 1:
-        return "<br />\n"
-    if x.kind == 2:
-        return "<code>" + esc(x.text) + "</code>"
+    if x.kind == 0: return esc(x.text)
+    if x.kind == 1: return "<br />\n"
+    if x.kind == 2: return "<code>" + esc(x.text) + "</code>"
 
     if x.kind == 5:
         var t = ""
@@ -1133,8 +1083,7 @@ fn render_node(x: Node) String:
         )
 
     if x.kind == 6:
-        if x.strong:
-            return "<strong>" + render_nodes(x.kids) + "</strong>"
+        if x.strong: return "<strong>" + render_nodes(x.kids) + "</strong>"
 
         return "<em>" + render_nodes(x.kids) + "</em>"
 

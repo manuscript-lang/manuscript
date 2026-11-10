@@ -9,7 +9,6 @@ type Door:
 impl Closeable for Door:
     var fn close() Unit!:
         print("closed {self.name}")
-        return ok(unit)
 
 impl Door:
     fn id() Int:
@@ -77,7 +76,7 @@ fn else_branch(c: Bool) Int:
     else:
         return consume(h)
 
-export fn main() Int:
+fn main() Unit:
     ret_or_fall(true)
     print("--ret_or_fall false")
     ret_or_fall(false)
@@ -104,4 +103,3 @@ export fn main() Int:
     print("--else false")
     else_branch(false)
     print("--end")
-    return 0

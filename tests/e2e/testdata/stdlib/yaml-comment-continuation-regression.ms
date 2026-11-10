@@ -1,10 +1,11 @@
-import expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms"
-import parse, YamlValue from "@std/data/yaml.ms"
+import (
+    expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms",
+    parse, YamlValue from "@std/data/yaml.ms",
+)
 
 fn rejects_continuation(text: String) Unit!Error:
     let cause = parse(text) | try expect_error
-    if cause.kind != "EBADMSG":
-        return fail("expected InvalidData, got {cause}")
+    if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
     return expect_equal(
         cause.details["reason"], "unexpected indentation or additional document"
@@ -83,8 +84,7 @@ test "YAML quoted and flow hashes retain their scalar behavior":
 
 fn rejects_flow_continuation(text: String, reason: String) Unit!Error:
     let cause = parse(text) | try expect_error
-    if cause.kind != "EBADMSG":
-        return fail("expected InvalidData, got {cause}")
+    if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
     return expect_equal(cause.details["reason"], reason)
 

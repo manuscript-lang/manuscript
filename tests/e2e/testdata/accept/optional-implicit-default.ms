@@ -5,8 +5,7 @@ type Config:
     limit: Int?
 
 fn find(name: String, limit: Int?, tag: String?) Int:
-    if let l = limit:
-        return l
+    if let l = limit: return l
 
     return name.length()
 

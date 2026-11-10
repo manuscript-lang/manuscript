@@ -3,10 +3,12 @@
 // Usage (from the repository root): ms run bench/agent/tokens.ms   # needs `pip install tiktoken`
 // The reference table shows how verbose each language is when the same program is written by hand;
 // agent-written sizes come from `llm_tokens` in results/runs.jsonl (see README).
-import glob, GlobOptions from "@std/os/fs.ms"
-import stdout, stderr from "@std/io/io.ms"
-import load_challenges from "./core/model.ms"
-import bash from "./lib/text.ms"
+import (
+    glob, GlobOptions from "@std/os/fs.ms",
+    stdout, stderr from "@std/io/io.ms",
+    load_challenges from "./core/model.ms",
+    bash from "./lib/text.ms",
+)
 
 let LANGS = ["ts", "rust", "go", "ms"]
 
@@ -22,7 +24,7 @@ fn count_tokens(paths: List[String]) List[Int]?:
 
 fn ratio(top: Int, bottom: Int) String: (top.to_float() / bottom.to_float()).to_fixed(2)
 
-export fn main() Int:
+fn main() Int:
     // Each challenge with a reference solution in every language, as a row of file paths in LANGS order.
     var names = List[String]()
     var paths = List[String]()
@@ -64,7 +66,7 @@ export fn main() Int:
 
     for i in 0..names.length():
         let row = all.slice(i * 4, i * 4 + 4).get([])
-        for j in 0..4: totals[j] = totals[j] + row[j]
+        for j in 0..4: totals[j] += row[j]
         out = (
             out
             + names[i].pad_end(26, " ")
@@ -78,6 +80,6 @@ export fn main() Int:
         + totals.map(fn n: "{n}".pad_start(8, " ")).join("")
         + "  {ratio(totals[3], totals[0])}\n"
     )
-    out = out + "ms/rust {ratio(totals[3], totals[1])}\n"
+    out += "ms/rust {ratio(totals[3], totals[1])}\n"
     stdout().write(out).get()
     return 0

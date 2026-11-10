@@ -1,5 +1,7 @@
-import stdout from "@std/io/io.ms"
-import monotonic from "@std/time.ms"
+import (
+    stdout from "@std/io/io.ms",
+    monotonic from "@std/time.ms",
+)
 
 type Pattern:
     name: String
@@ -84,7 +86,7 @@ fn measure(
     )
     return 0
 
-export fn main() Int:
+fn main() Int:
     let _header = stdout().write("case,input_bytes,iterations,elapsed_ns,checksum\n")
     if measure("empty_NFC_full", "", "NFC", false, 0, "", 0, 1000000) != 0: return 1
     if measure("empty_NFD_full", "", "NFD", false, 0, "", 0, 1000000) != 0: return 1

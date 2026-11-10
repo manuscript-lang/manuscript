@@ -26,7 +26,7 @@ fn g[T: Hashable](xs: List[T]) Set[T]:
 
 fn h[T: Comparable & Clonable](xs: List[T]) List[T]: xs.sorted()
 
-export fn main() Int:
+fn main() Unit:
     let l = a([Box(1), Box(2)])
     let s = g(["a", "b", "a"])
     let t = h([3, 1, 2])
@@ -37,4 +37,3 @@ export fn main() Int:
         )
         .get()
     )
-    return 0

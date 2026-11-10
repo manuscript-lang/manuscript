@@ -10,7 +10,7 @@ type Stamp:
 fn mix(h: UInt64, b: UInt64) UInt64:
     return (h * 31 + b) % 18446744073709551557
 
-export fn main() Int:
+fn main() Unit:
     let max: UInt64 = 18446744073709551615
     let half: UInt64 = 9223372036854775808
     let one: UInt64 = 1
@@ -37,4 +37,3 @@ export fn main() Int:
         h = mix(h, i.to_uint64().get(0))
 
     let _ = stdout().write("{h}\n")
-    return 0

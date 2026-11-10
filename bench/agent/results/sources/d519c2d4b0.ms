@@ -1,6 +1,8 @@
-import stdout from "@std/io.ms"
-import stdin from "@std/io.ms"
-import read_lines from "@std/streams.ms"
+import (
+    stdout from "@std/io.ms",
+    stdin from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+)
 
 // Recursive-descent parser over the token list. Syntax errors set `bad`; division by zero sets `div0`
 // and keeps evaluating, so a later syntax error still takes precedence.
@@ -24,9 +26,9 @@ impl Parser:
             let r = self.term()
 
             if op == "+":
-                v = v + r
+                v += r
             else:
-                v = v - r
+                v -= r
 
         return v
 
@@ -40,12 +42,12 @@ impl Parser:
             let r = self.unary()
 
             if op == "*":
-                v = v * r
+                v *= r
             else if r == 0:
                 self.div0 = true
                 v = 0
             else:
-                v = v / r
+                v /= r
 
         return v
 
@@ -74,8 +76,7 @@ impl Parser:
 
             return v
 
-        if let n = t.parse_int():
-            return n
+        if let n = t.parse_int(): return n
 
         self.bad = true
         return 0
@@ -106,16 +107,12 @@ fn tokenize(line: String) Parser:
 // Returns the output line for one input line, or "" when the input line is blank.
 fn answer(line: String) String:
     var p = tokenize(line)
-    if p.bad:
-        return "error: syntax"
-    if p.toks.is_empty():
-        return ""
+    if p.bad: return "error: syntax"
+    if p.toks.is_empty(): return ""
 
     let v = p.expr()
-    if p.bad or p.pos != p.toks.length():
-        return "error: syntax"
-    if p.div0:
-        return "error: division by zero"
+    if p.bad or p.pos != p.toks.length(): return "error: syntax"
+    if p.div0: return "error: division by zero"
 
     return "{v}"
 

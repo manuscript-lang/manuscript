@@ -1,22 +1,22 @@
-import send, recv, within from "./support/conn.ms"
-import expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
-import http_result from "./support/http.ms"
-import headers, HttpMethod, upgrade from "@std/net/http.ms"
-import text_headers, list_headers from "./support/http.ms"
 import (
+    send, recv, within from "./support/conn.ms",
+    expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
+    Bytes from "@std/bytes.ms",
+    http_result from "./support/http.ms",
+    headers, HttpMethod, upgrade from "@std/net/http.ms",
+    text_headers, list_headers from "./support/http.ms",
     RequestOptions,
     connect,
     http_client,
     request,
     serve,
-    web_socket
-) from "@std/net/net.ms"
-import (HttpExchange, HttpServerOptions, HttpClientOptions) from "@std/net/http.ms"
-import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms"
-import TlsOptions from "@std/net/tls.ms"
-import sleep from "@std/time.ms"
-import promise, PromiseOptions from "@std/concurrency/promise.ms"
+    web_socket from "@std/net/net.ms",
+    HttpExchange, HttpServerOptions, HttpClientOptions from "@std/net/http.ms",
+    WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms",
+    TlsOptions from "@std/net/tls.ms",
+    sleep from "@std/time.ms",
+    promise, PromiseOptions from "@std/concurrency/promise.ms",
+)
 
 fn tls_options() TlsOptions:
     return TlsOptions(
@@ -53,7 +53,6 @@ fn echo(var exchange: HttpExchange) Unit!:
     let headers = (try list_headers(chain_1))
     let _started = try exchange.send_headers(status: 201, headers: headers)
     let _written = (try http_result(exchange.write("hello")))
-    return ok(unit)
 
 test "HTTP buffered and streaming clients call a Manuscript handler":
     let options = HttpServerOptions(
@@ -154,7 +153,6 @@ fn report_host(var exchange: HttpExchange) Unit!:
     let hosts = exchange.headers().values("Host")
     let _started = try exchange.send_headers(status: 200, headers: headers())
     let _written = (try http_result(exchange.write(hosts.join(","))))
-    return ok(unit)
 
 test "HTTP streaming handlers see the Host request header":
     let options = HttpServerOptions(
@@ -192,7 +190,6 @@ fn silent(var exchange: HttpExchange) Unit!:
         )
     )
     let _ = sleep(30.seconds()).wait()
-    return ok(unit)
 
 test "a WebSocket read cancelled by its timeout leaves the socket closable":
     let server = serve(address: "127.0.0.1:0", handler: silent) | try expect_ok

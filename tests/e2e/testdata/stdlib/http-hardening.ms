@@ -1,6 +1,6 @@
-import send, recv from "./support/conn.ms"
-import expect_ok from "@std/test/test.ms"
 import (
+    send, recv from "./support/conn.ms",
+    expect_ok from "@std/test/test.ms",
     headers,
     reply,
     text,
@@ -8,12 +8,12 @@ import (
     HttpRequest,
     HttpResponse,
     buffered,
-    HttpServerOptions
-) from "@std/net/http.ms"
-import Connection, connect, serve from "@std/net/net.ms"
-import Bytes from "@std/bytes.ms"
-import read_file, temporary, write_file from "@std/os/fs.ms"
-import sleep from "@std/time.ms"
+    HttpServerOptions from "@std/net/http.ms",
+    Connection, connect, serve from "@std/net/net.ms",
+    Bytes from "@std/bytes.ms",
+    read_file, temporary, write_file from "@std/os/fs.ms",
+    sleep from "@std/time.ms",
+)
 
 fn ok_route(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "ok".to_bytes())
@@ -95,8 +95,6 @@ fn expect_file_reply(var conn: Connection) Unit!:
         Error("file handler failed: {text}")
     )
 
-    return ok(unit)
-
 test "serve answers requests while handlers read and write files":
     var dir = temporary("ms-http-io") | try expect_ok
     let root = dir.path()
@@ -105,12 +103,10 @@ test "serve answers requests while handlers read and write files":
     fn io_route(request: HttpRequest) HttpResponse:
         let path = "{root}/slot{request.query}.bin"
         let wrote = write_file(path, payload.clone(), replace: true).wait()
-        if wrote.is_error():
-            return HttpResponse(500, headers(), "write".to_bytes())
+        if wrote.is_error(): return HttpResponse(500, headers(), "write".to_bytes())
 
         let read = read_file(path).wait()
-        if read.is_error():
-            return HttpResponse(500, headers(), "read".to_bytes())
+        if read.is_error(): return HttpResponse(500, headers(), "read".to_bytes())
 
         return HttpResponse(200, headers(), "{read.get().length()}".to_bytes())
 

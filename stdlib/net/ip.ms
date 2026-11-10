@@ -1,12 +1,12 @@
-import Data from "@std/core.ms"
 import (
+    Data from "@std/core.ms",
     msstd_net_ip_address_text,
     msstd_net_ip_address_family,
     msstd_net_cidr_text,
     msstd_net_contains_ip,
     msstd_net_parse_cidr,
-    msstd_net_parse_ip
-) from "@std/internal/net.ms"
+    msstd_net_parse_ip from "@std/internal/net.ms",
+)
 
 // Supported DNS query categories; unknown spellings are rejected by checking.
 export enum DnsKind:
@@ -56,8 +56,7 @@ impl IpAddress:
 
     // Returns the normalized address family.
     fn family() IpFamily:
-        if msstd_net_ip_address_family(self):
-            return IPv6
+        if msstd_net_ip_address_family(self): return IPv6
 
         return IPv4
 

@@ -1,3 +1,2 @@
-fn main() Int:
-    print("abc"[1])
-    return 0
+fn main() Unit:
+    print("abc" [1])

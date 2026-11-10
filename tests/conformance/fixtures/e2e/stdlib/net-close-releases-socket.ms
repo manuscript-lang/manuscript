@@ -57,7 +57,7 @@ fn cancel_receive(address: String) Unit:
     let work = promise(fn: ok(receive_one(address.clone())))
     let _ = work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
-export fn main() Int:
+fn main() Unit:
     var first = listen("127.0.0.1:0").get()
     let address = first.address().clone()
     first.close().get(none)
@@ -74,6 +74,7 @@ export fn main() Int:
         cancel_read(target.clone())
 
         let accepted = server.accept(nanoseconds(500000000)).wait()
+
         if accepted.is_ok():
             var connection = accepted.get(none)
             connection.close().get(none)
@@ -95,4 +96,3 @@ export fn main() Int:
             "cancelled receive rebound: {rebound_datagram(udp_address.clone())}\n"
         ).get()
     )
-    return 0

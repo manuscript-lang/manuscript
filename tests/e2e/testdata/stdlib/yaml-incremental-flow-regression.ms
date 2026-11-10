@@ -1,6 +1,8 @@
-import expect_equal, expect_ok from "@std/test/test.ms"
-import parse, YamlValue from "@std/data/yaml.ms"
-import StringBuilder from "@std/string.ms"
+import (
+    expect_equal, expect_ok from "@std/test/test.ms",
+    parse, YamlValue from "@std/data/yaml.ms",
+    StringBuilder from "@std/string.ms",
+)
 
 test "YAML long multiline flow retains every scalar":
     var source = StringBuilder()

@@ -19,7 +19,7 @@ type Greeting:
 fn greet(options: Greeting) Int!:
     return ok(0)
 
-export fn main() Int:
+fn main() Int:
     let greeting = command[Greeting](
         name: "greet",
         about: "Print a greeting",
@@ -30,10 +30,12 @@ export fn main() Int:
     return Command(name: "tool", children: [greeting]).execute(arguments())
 ```
 */
-import Align, Table from "@std/cli/table.ms"
-import Data from "@std/core.ms"
-import stderr, stdout from "@std/io/io.ms"
-import parse, stringify from "@std/data/json.ms"
+import (
+    Align, Table from "@std/cli/table.ms",
+    Data from "@std/core.ms",
+    stderr, stdout from "@std/io/io.ms",
+    parse, stringify from "@std/data/json.ms",
+)
 
 fn cli_unknown_flag(name: String) Error:
     return Error("cli: unknown flag {name}", kind: "EINVAL")
@@ -394,7 +396,6 @@ fn claim(var seen: List[String], key: String, label: String) Unit!:
     if seen.contains(key): return error(cli_invalid_schema("duplicate {label}"))
 
     seen.append(key)
-    return ok(unit)
 
 // Validates a node and everything below it; `inherited` holds ancestors' persistent flags.
 fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
@@ -466,7 +467,6 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
     let below = inherited.concat(persistent_flags(node.flags))
     for child in node.children:
         try check_schema(child, below, path.concat([child.name.clone()]))
-    return ok(unit)
 
 // Finds a flag by long name or one-letter alias.
 fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
@@ -645,8 +645,6 @@ fn fill(var values: Map[String, List[String]], flag: Flag) Unit!:
         return ok(unit)
 
     if flag.required: return error(cli_missing_required("--{flag.name}"))
-
-    return ok(unit)
 
 // Renders usage, commands, arguments and flags for one node.
 fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:

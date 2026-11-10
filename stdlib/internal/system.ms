@@ -1,11 +1,11 @@
-import Duration from "@std/time.ms"
 import (
+    Duration from "@std/time.ms",
     CpuInfo,
     MemoryUsage,
     NetworkInterface,
     SystemInfo,
-    UserInfo
-) from "@std/os/system.ms"
+    UserInfo from "@std/os/system.ms",
+)
 
 // The host's memory, uptime, load, and parallelism numbers in one flat record; `metrics` shapes it into `SystemMetrics`.
 export type MetricsSnapshot:

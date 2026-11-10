@@ -25,21 +25,18 @@ fn order(id: String, n: Int) Order:
 
 fn by_binding(orders: Map[String, Order], id: String) Int:
     let found = orders.get(id)
-    if found.is_none():
-        return 0
+    if found.is_none(): return 0
 
     let o = found.get()
     return o.items.length() + o.status.length()
 
 fn by_if_let(orders: Map[String, Order], id: String) Int:
-    if let o = orders.get(id):
-        return o.items.length() + o.status.length()
+    if let o = orders.get(id): return o.items.length() + o.status.length()
 
     return 0
 
 fn by_chain(orders: Map[String, Order], id: String) Int:
-    if orders.get(id).is_none():
-        return 0
+    if orders.get(id).is_none(): return 0
 
     let o = orders[id]
     return o.items.length() + o.status.length()
@@ -49,8 +46,7 @@ fn returned(orders: Map[String, Order], id: String) Order?:
     return found.clone()
 
 fn take_optional(o: Order?) Int:
-    if let v = o:
-        return v.items.length()
+    if let v = o: return v.items.length()
 
     return -1
 

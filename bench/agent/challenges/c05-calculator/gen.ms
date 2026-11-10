@@ -1,7 +1,9 @@
 // Generator for c05-calculator. Deterministic; run: ms run bench/agent/gen.ms -- c05
-import GenCase, make_case, write_cases from "../../lib/gen.ms"
-import seeded from "../../lib/pyrandom.ms"
-import Random from "../../lib/pyrandom.ms"
+import (
+    GenCase, make_case, write_cases from "../../lib/gen.ms",
+    seeded from "../../lib/pyrandom.ms",
+    Random from "../../lib/pyrandom.ms",
+)
 
 // A token: `n` with a value, or `o` with the operator character.
 type Tok:
@@ -23,7 +25,7 @@ fn tokens(line: String) List[Tok]:
             var digits = ""
 
             while i < chars.length() and "0123456789".contains(chars[i]):
-                digits = digits + chars[i]
+                digits += chars[i]
                 i += 1
 
             out.append(Tok("n", digits.clone(), digits.parse_int().get(0)))
@@ -69,12 +71,12 @@ impl Parser:
             let r = self.unary()
 
             if times:
-                v = v * r
+                v *= r
             else if r == 0:
                 self.div = true
                 v = 0
             else:
-                v = v / r
+                v /= r
 
         return v
 

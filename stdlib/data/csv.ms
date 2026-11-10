@@ -1,7 +1,9 @@
-import StringBuilder from "@std/string.ms"
-import Bytes, join from "@std/bytes.ms"
-import ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms"
-import Promise from "@std/concurrency/promise.ms"
+import (
+    StringBuilder from "@std/string.ms",
+    Bytes, join from "@std/bytes.ms",
+    ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms",
+    Promise from "@std/concurrency/promise.ms",
+)
 
 // Delimiter and line ending used when parsing or writing CSV, and the row and cell bounds for `parse`.
 export type CsvOptions:
@@ -97,8 +99,6 @@ fn check_options(options: CsvOptions) Unit!:
     if options.line_ending != "\n" and options.line_ending != "\r\n": return error(
         Error("CSV: invalid input", kind: "EINVAL")
     )
-
-    return ok(unit)
 
 // The input as bytes with a cursor. The cached offsets are the next quote, delimiter and LF at or
 // after the cursor, or total when there is none; they are searched again only once passed.
@@ -254,13 +254,13 @@ impl Reader:
             self.at = end + 1
 
 // Cuts a byte stream at the line ends outside quotes and parses each complete block of records with `parse`.
-// `tail` holds the unfinished last record; `scanned` is how much of it has been searched, and `quoted`
-// whether the scan ended inside a quoted cell.
+// `pending` holds the already-scanned fragments of the unfinished record; `quoted` says whether
+// that scan ended inside a quoted cell. Fragments are joined only at a record boundary or EOF.
 type CsvRows:
     options: CsvOptions
     max_record_bytes: Int?
-    tail: Bytes
-    scanned: Int
+    pending: List[Bytes]
+    pending_size: Int
     quoted: Bool
     // The longest complete record the last `boundary` call passed, without its line feed.
     longest: Int
@@ -269,8 +269,9 @@ impl CsvRows:
     // Offset just past the last line end outside quotes in `data`, or 0 when the block holds none.
     var fn boundary(data: Bytes) Int:
         let total = data.length()
-        var pos = self.scanned
+        var pos = 0
         var cut = 0
+        var previous = self.pending_size
         self.longest = 0
 
         var quote = data.index_of_byte(34, pos).get(total)
@@ -289,7 +290,9 @@ impl CsvRows:
             if quote < pos: quote = data.index_of_byte(34, pos).get(total)
 
             if line < quote:
-                if line - cut > self.longest: self.longest = line - cut
+                let size = previous + line - cut
+                if size > self.longest: self.longest = size
+                previous = 0
                 cut = line + 1
                 pos = line + 1
                 continue
@@ -307,29 +310,46 @@ impl CsvRows:
             if size > limit: return error(
                 Error("CSV: limit exceeded", kind: "EOVERFLOW")
             )
-        return ok(unit)
 
 impl Transform[Bytes, List[String]] for CsvRows:
     var fn step(value: Bytes, var out: List[List[String]]) Unit!:
-        let data = self.tail.concat(value)
-        let cut = self.boundary(data)
-        self.scanned = data.length() - cut
-        self.tail = try data.slice(cut, data.length())
-        try self.check_size(self.longest)
-        try self.check_size(self.tail.length())
-        if cut == 0: return ok(unit)
+        let cut = self.boundary(value)
+        let rest = value.length() - cut
+        let size = if cut == 0: self.pending_size + rest else: rest
 
-        let decoded = data.decode_utf8_range(0, cut)
+        if cut == 0:
+            if not value.is_empty(): self.pending.append(value)
+            self.pending_size = size
+            try self.check_size(self.longest)
+            return self.check_size(size)
+
+        var data = value
+        var end = cut
+
+        if self.pending_size > 0:
+            self.pending.append(data)
+            data = join(self.pending)
+            end += self.pending_size
+
+        self.pending = []
+        self.pending_size = rest
+        if rest > 0: self.pending.append(try data.slice(end, data.length()))
+        try self.check_size(self.longest)
+        try self.check_size(size)
+
+        let decoded = data.decode_utf8_range(0, end)
         if decoded.is_none(): return invalid_text()
 
         let text = decoded.get("")
         return write_rows(try parse(text, self.options), var out)
 
     var fn finish(var out: List[List[String]]) Unit!:
-        let data = self.tail.clone()
-        self.tail = join([])
-        self.scanned = 0
-        if data.is_empty(): return ok(unit)
+        let data = join(self.pending)
+        self.pending = []
+        self.pending_size = 0
+        if data.is_empty(): return check_options(self.options)
+
+        try self.check_size(data.length())
 
         let decoded = data.decode_utf8()
         if decoded.is_none(): return invalid_text()
@@ -342,7 +362,6 @@ fn invalid_text() Unit!:
 
 fn write_rows(rows: List[List[String]], var out: List[List[String]]) Unit!:
     for row in rows: out.append(row)
-    return ok(unit)
 
 /*
 Reads CSV rows from a byte stream, one `List[String]` per record, with the cells `parse` returns.
@@ -365,8 +384,8 @@ export fn csv_rows(
                 delimiter: options.delimiter, line_ending: options.line_ending
             ),
             max_record_bytes: max_record_bytes,
-            tail: join([]),
-            scanned: 0,
+            pending: [],
+            pending_size: 0,
             quoted: false,
             longest: 0
         )

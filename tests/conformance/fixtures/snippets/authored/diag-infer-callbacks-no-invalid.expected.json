@@ -14,7 +14,7 @@
           "file": "diag-infer-callbacks-no-invalid.ms",
           "line": 8,
           "column": 13,
-          "offset": 235
+          "offset": 229
         }
       },
       {
@@ -25,7 +25,7 @@
           "file": "diag-infer-callbacks-no-invalid.ms",
           "line": 8,
           "column": 24,
-          "offset": 246
+          "offset": 240
         }
       },
       {
@@ -36,7 +36,7 @@
           "file": "diag-infer-callbacks-no-invalid.ms",
           "line": 8,
           "column": 37,
-          "offset": 259
+          "offset": 253
         }
       }
     ],

@@ -6,17 +6,17 @@ type P:
 
 test "for_each changes records in place":
     var xs = [P(1, "a"), P(2, "b")]
-    xs.for_each(fn var p: p.n = p.n * 10)
+    xs.for_each(fn var p: p.n *= 10)
     try expect_equal(xs[0].n, 10)
     try expect_equal(xs[1].n, 20)
 
 test "for_each changes scalars and strings":
     var ns = [1, 2, 3]
-    ns.for_each(fn var n: n = n * 2)
+    ns.for_each(fn var n: n *= 2)
     try expect_equal(ns, [2, 4, 6])
 
     var ss = ["a", "b"]
-    ss.for_each(fn var s: s = s + "!")
+    ss.for_each(fn var s: s += "!")
     try expect_equal(ss, ["a!", "b!"])
 
 test "for_each on an empty list does nothing":
@@ -27,11 +27,11 @@ test "for_each on an empty list does nothing":
 test "a reading callback works on a let list":
     let xs = [1, 2, 3]
     var total = 0
-    xs.for_each(fn n: total = total + n)
+    xs.for_each(fn n: total += n)
     try expect_equal(total, 6)
 
 fn bump(var p: P) Unit:
-    p.n = p.n + 1
+    p.n += 1
 
 test "a named function with a var parameter":
     var xs = [P(1, "a"), P(5, "b")]
@@ -41,17 +41,17 @@ test "a named function with a var parameter":
 
 test "Map.for_each changes values in place":
     var m: Map[String, Int] = {"a": 1, "b": 2}
-    m.for_each(fn k, var v: v = v + k.length() * 10)
+    m.for_each(fn k, var v: v += k.length() * 10)
     try expect_equal(m["a"], 11)
     try expect_equal(m["b"], 12)
 
 test "Map.for_each changes record values":
     var m: Map[String, P] = {"a": P(1, "x")}
-    m.for_each(fn k, var p: p.n = p.n + 5)
+    m.for_each(fn k, var p: p.n += 5)
     try expect_equal(m["a"].n, 6)
 
 test "Map.for_each reads on a let map":
     let m: Map[String, Int] = {"a": 1, "b": 2}
     var total = 0
-    m.for_each(fn k, v: total = total + v)
+    m.for_each(fn k, v: total += v)
     try expect_equal(total, 3)

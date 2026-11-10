@@ -1631,7 +1631,7 @@ pub(crate) fn native_method(
     if syms.str(name) == "clone"
         && (matches!(t.kind, Kind::Record | Kind::Alternative)
             || (t.kind == Kind::Variable && t.bounds().iter().any(implies_clonable))
-            || (t.kind == Kind::Primitive && t.is(Builtin::String))
+            || t.kind == Kind::Primitive
             || t.is(Builtin::List)
             || t.is(Builtin::Map)
             || t.is(Builtin::Set)

@@ -1,8 +1,10 @@
-import max, min, sqrt from "@std/math/math.ms"
-import stdout from "@std/io/io.ms"
-import environment, set_environment from "@std/os/env.ms"
-import fail from "@std/test/test.ms"
-import monotonic from "@std/time.ms"
+import (
+    max, min, sqrt from "@std/math/math.ms",
+    stdout from "@std/io/io.ms",
+    environment, set_environment from "@std/os/env.ms",
+    fail from "@std/test/test.ms",
+    monotonic from "@std/time.ms",
+)
 
 /*
 Measurement driver for `bench` blocks. `ms bench` runs each block in its own process; the block's body is one iteration,
@@ -66,8 +68,7 @@ export fn measure(operations: Int, work: fn() Unit!) Unit!:
         // Calibration doubles as the warmup.
         while true:
             let elapsed = try time_batch(body, count)
-            if elapsed >= config.target_nanoseconds or count >= max_iterations:
-                break
+            if elapsed >= config.target_nanoseconds or count >= max_iterations: break
 
             count = next_count(count, elapsed, config.target_nanoseconds)
 
@@ -87,7 +88,6 @@ export fn measure(operations: Int, work: fn() Unit!) Unit!:
     let line = "MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)}\}\n"
     stdout().write(line).get()
     set_environment(measured_flag, "1").get()
-    return ok(unit)
 
 // Set once a body has timed its own work with `measure`.
 let measured_flag = "MS_BENCH_MEASURED"
@@ -98,8 +98,7 @@ export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
     try body()
 
     let environment = environment().get(Map[String, String]())
-    if environment.get_or(measured_flag, "") == "1":
-        return ok(unit)
+    if environment.get_or(measured_flag, "") == "1": return ok(unit)
 
     return measure(operations, body)
 
@@ -110,5 +109,3 @@ export fn keep(checksum: Int) Unit!:
         return fail(
             "bench result is the smallest Int; the workload is probably degenerate"
         )
-
-    return ok(unit)

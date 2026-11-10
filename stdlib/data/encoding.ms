@@ -1,13 +1,13 @@
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import from_scalars, StringBuilder from "@std/string.ms"
 import (
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    from_scalars, StringBuilder from "@std/string.ms",
     msstd_encoding_ascii85_encode,
     msstd_encoding_ascii85_decode,
     msstd_encoding_base64_encode_unpadded,
     msstd_encoding_base64_decode_unpadded,
     msstd_encoding_base32_encode,
-    msstd_encoding_base32_decode
-) from "@std/internal/encoding.ms"
+    msstd_encoding_base32_decode from "@std/internal/encoding.ms",
+)
 
 fn encoding_invalid_data() Error:
     return Error("encoding: invalid data", kind: "EBADMSG")

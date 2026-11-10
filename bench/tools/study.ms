@@ -13,10 +13,10 @@ import (
     platform,
     read_text,
     sample,
-    write_text
-) from "./lib.ms"
-import append_file, create_directory from "@std/os/fs.ms"
-import JsonValue, parse, stringify from "@std/data/json.ms"
+    write_text from "./lib.ms",
+    append_file, create_directory from "@std/os/fs.ms",
+    JsonValue, parse, stringify from "@std/data/json.ms",
+)
 
 // A labeled prebuilt binary.
 export type Labeled:
@@ -31,7 +31,6 @@ export fn fresh_directory(path: String) Unit!:
     if exists(path): return invalid("{path} already exists")
 
     create_directory(path, recursive: true).get()
-    return ok(unit)
 
 // Trial order: rotated by the trial number and reversed on odd trials.
 export fn trial_order(labels: List[String], trial: Int) List[String]:

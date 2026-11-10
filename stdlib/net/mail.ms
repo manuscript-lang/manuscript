@@ -1,8 +1,10 @@
-import StringBuilder from "@std/string.ms"
-import Bytes, BytesBuilder from "@std/bytes.ms"
-import parse_int from "@std/math/math.ms"
-import base64_decode, latin1_decode from "@std/data/encoding.ms"
-import Headers, HeaderField, parse_headers from "@std/net/mime.ms"
+import (
+    StringBuilder from "@std/string.ms",
+    Bytes, BytesBuilder from "@std/bytes.ms",
+    parse_int from "@std/math/math.ms",
+    base64_decode, latin1_decode from "@std/data/encoding.ms",
+    Headers, HeaderField, parse_headers from "@std/net/mime.ms",
+)
 
 /*
 Internet mail messages (RFC 5322): addresses, address lists, and message parsing.
@@ -229,8 +231,7 @@ fn decode_word(charset: String, encoding: String, payload: String) String?:
         return none
 
     if set == "utf-8" or set == "us-ascii": return bytes.decode_utf8()
-    if set == "iso-8859-1" or set == "latin1":
-        return latin1_decode(bytes)
+    if set == "iso-8859-1" or set == "latin1": return latin1_decode(bytes)
 
     return none
 

@@ -1,9 +1,9 @@
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
-import process_info from "@std/os/process.ms"
-import memory_usage from "@std/os/system.ms"
-import arguments from "@std/os/env.ms"
-import random_bytes from "@std/random.ms"
 import (
+    expect_equal, expect_false, expect_true from "@std/test/test.ms",
+    process_info from "@std/os/process.ms",
+    memory_usage from "@std/os/system.ms",
+    arguments from "@std/os/env.ms",
+    random_bytes from "@std/random.ms",
     OpenMode,
     OpenOptions,
     WatchOptions,
@@ -13,15 +13,15 @@ import (
     remove,
     stat,
     watch,
-    write_file
-) from "@std/os/fs.ms"
-import system_info from "@std/os/system.ms"
-import now from "@std/time.ms"
-import uuid_v4 from "@std/data/uuid.ms"
-import secure_int from "@std/random.ms"
-import parse_timestamp from "@std/time.ms"
-import posix from "@std/os/path.ms"
-import win32 from "@std/os/path.ms"
+    write_file from "@std/os/fs.ms",
+    system_info from "@std/os/system.ms",
+    now from "@std/time.ms",
+    uuid_v4 from "@std/data/uuid.ms",
+    secure_int from "@std/random.ms",
+    parse_timestamp from "@std/time.ms",
+    posix from "@std/os/path.ms",
+    win32 from "@std/os/path.ms",
+)
 
 fn common_result[T](result: T!) T!: result
 
@@ -108,7 +108,6 @@ fn exercise(path: String) Unit!:
     (memory.heap_system > 0) | try expect_true
 
     let _removed = try common_result(result: remove(path: path, recursive: false))
-    return ok(unit)
 
 export fn main() Int:
     let path = arguments().get(index: 0, default: "")

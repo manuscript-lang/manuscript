@@ -91,7 +91,6 @@ fn exercise() Unit!:
             return fail(message: "Unexpected case")
 
     try server.close()
-    return ok(unit)
 
 export fn main() Int:
     match exercise():

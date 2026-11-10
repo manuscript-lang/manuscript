@@ -3,10 +3,10 @@ import (
     headers,
     HttpRequest,
     HttpResponse,
-    HttpServerOptions
-) from "@std/net/http.ms"
-import serve from "@std/net/net.ms"
-import stdout from "@std/io/io.ms"
+    HttpServerOptions from "@std/net/http.ms",
+    serve from "@std/net/net.ms",
+    stdout from "@std/io/io.ms",
+)
 
 fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
@@ -21,8 +21,7 @@ export fn main() Int:
         address: "127.0.0.1:0", handler: buffered(handle), options: options
     ):
         let server = acquired
-        if stdout().write("{server.address()}\n").is_error():
-            return 1
+        if stdout().write("{server.address()}\n").is_error(): return 1
 
         let _ignored = server.wait()
         return 0

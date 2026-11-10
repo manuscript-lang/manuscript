@@ -5,10 +5,10 @@ import (
     complete,
     deferred,
     wait_all,
-    wait_first
-) from "@std/concurrency/promise.ms"
-import expect_equal from "@std/test/test.ms"
-import sleep from "@std/time.ms"
+    wait_first from "@std/concurrency/promise.ms",
+    expect_equal from "@std/test/test.ms",
+    sleep from "@std/time.ms",
+)
 
 fn spin(n: Int) Int:
     var s = 0

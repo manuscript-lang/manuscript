@@ -1,9 +1,11 @@
 // TOML 1.0 parser implemented in Manuscript.
-import parse_int, parse_float from "@std/math/math.ms"
-import from_scalars, StringBuilder, Regex, compile from "@std/string.ms"
-import Bytes from "@std/bytes.ms"
-import log, sqrt from "@std/math/math.ms"
-import quote_text from "@std/data/quote.ms"
+import (
+    parse_int, parse_float from "@std/math/math.ms",
+    from_scalars, StringBuilder, Regex, compile from "@std/string.ms",
+    Bytes from "@std/bytes.ms",
+    log, sqrt from "@std/math/math.ms",
+    quote_text from "@std/data/quote.ms",
+)
 
 // A TOML value. Date and time values retain their original TOML text.
 export enum TomlValue:
@@ -85,16 +87,16 @@ fn new_table(var reader: Reader, explicit: Bool, dotted: Bool) Int:
     return reader.tables.length() - 1
 
 fn flags(reader: Reader, id: Int) Table:
-    return reader.tables.get(id)
+    return reader.tables[id]
 
 fn store_flags(var reader: Reader, id: Int, flags: Table) Unit:
     reader.tables.set(id, flags)
 
 fn lookup(reader: Reader, id: Int, key: String) Node?:
-    return reader.entries.get(id).get(key)
+    return reader.entries[id].get(key)
 
 fn contains_key(reader: Reader, id: Int, key: String) Bool:
-    return reader.entries.get(id).contains(key)
+    return reader.entries[id].contains(key)
 
 // Adds an entry to the table's map in place.
 fn put(var reader: Reader, id: Int, key: String, node: Node) Unit:
@@ -171,7 +173,7 @@ fn toml_invalid(line: Int, column: Int, reason: String) Error:
 
 fn invalid_at(reader: Reader, pos: Int, reason: String) Error:
     let place = locate(reader.data, pos)
-    return toml_invalid(line: place.get(0), column: place.get(1), reason: reason)
+    return toml_invalid(line: place[0], column: place[1], reason: reason)
 
 fn invalid(reader: Reader, reason: String) Error:
     return invalid_at(reader, reader.pos, reason)
@@ -198,8 +200,7 @@ fn space(var reader: Reader, multiline: Bool) Unit:
     reader.pos = pos
 
 fn within(value: Int, limit: Int?) Bool:
-    if let maximum = limit:
-        return value <= maximum
+    if let maximum = limit: return value <= maximum
 
     return true
 
@@ -209,14 +210,10 @@ fn allocate(var reader: Reader) Unit!:
         Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
 
-    return ok(unit)
-
 fn budget(reader: Reader, depth: Int) Unit!:
     if not within(depth, reader.options.max_depth): return error(
         Error("TOML limit exceeded", kind: "EOVERFLOW")
     )
-
-    return ok(unit)
 
 // Whether a byte is a control character that a string may not contain unescaped.
 fn string_control(b: Int, multiline: Bool) Bool:
@@ -263,8 +260,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
 
     while true:
         let c = advance(var reader)
-        if c < 0:
-            return error(invalid(reader, "unterminated string"))
+        if c < 0: return error(invalid(reader, "unterminated string"))
 
         if c == quote:
             if not multiline:
@@ -419,7 +415,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
         TableArray(slot):
             if dotted: return error(invalid(reader, "dotted key extends a table array"))
 
-            return ok(reader.arrays.get(slot).last().get())
+            return ok(reader.arrays[slot].last().get())
         _: return error(invalid(reader, "key is already a value"))
 
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
@@ -448,7 +444,7 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 
     while index < keys.length() - 1:
         current = try child(
-            reader: var reader, parent: current, key: (keys.get(index).clone()),
+            reader: var reader, parent: current, key: (keys[index].clone()),
             dotted: true
         )
         index += 1
@@ -465,9 +461,9 @@ fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
         invalid(reader, "duplicate or closed key")
     )
 
-    let before = reader.entries.get(parent).length()
+    let before = reader.entries[parent].length()
     reader.entries[parent].add_default(key.clone(), value)
-    if reader.entries.get(parent).length() == before: return error(
+    if reader.entries[parent].length() == before: return error(
         invalid(reader, "duplicate or closed key")
     )
 
@@ -514,7 +510,7 @@ fn seal(var reader: Reader, value: Node) Unit:
 
             state.sealed = true
             store_flags(var reader, id, state)
-            for entry in reader.entries.get(id).clone(): seal(
+            for entry in reader.entries[id].clone(): seal(
                 var reader, entry.value.clone()
             )
         ArrayNode(values):
@@ -549,8 +545,7 @@ fn decimal_part(text: String) Bool:
 
 fn date_number(text: String, minimum: Int, maximum: Int) Bool:
     if not digits(text, "0123456789") or text.contains("_"): return false
-    if let value = parse_int(text, 10):
-        return value >= minimum and value <= maximum
+    if let value = parse_int(text, 10): return value >= minimum and value <= maximum
 
     return false
 
@@ -686,7 +681,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
             if parts.length() > 2: return error(invalid_at(reader, at, "invalid float"))
 
             if parts.length() == 2:
-                var exponent = parts.get(1).clone()
+                var exponent = parts[1].clone()
                 if exponent.starts_with("+") or exponent.starts_with("-"): exponent = (
                     exponent
                     .slice(1, exponent.scalar_length())
@@ -700,7 +695,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
             if fraction.length() > 2 or not decimal_part(fraction.first().get()): return error(
                 invalid_at(reader, at, "invalid float")
             )
-            if fraction.length() == 2 and not decimal_digits(fraction.get(1)): return error(
+            if fraction.length() == 2 and not decimal_digits(fraction[1]): return error(
                 invalid_at(reader, at, "invalid fraction")
             )
 
@@ -881,7 +876,7 @@ fn materialize(
         Leaf(value): return ok(value.clone())
         TableNode(id):
             var entries = Map[String, TomlValue]()
-            for entry in tables.get(id):
+            for entry in tables[id]:
                 entries.add(
                     entry.key.clone(),
                     try materialize(
@@ -930,14 +925,10 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
     )
 
     if let span = control_pattern().find_span(normalized):
-        let place = locate(reader.data, span.get(0))
+        let place = locate(reader.data, span[0])
         var reason = "invalid control character"
-        if reader.data.get(span.get(0)) == 13: reason = "bare carriage return"
-        return error(
-            toml_invalid(
-                line: place.get(0), column: place.get(1), reason: reason
-            )
-        )
+        if reader.data.get(span[0]) == 13: reason = "bare carriage return"
+        return error(toml_invalid(line: place[0], column: place[1], reason: reason))
 
     try allocate(var reader)
 
@@ -969,7 +960,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 
             while index < keys.length() - 1:
                 parent = try child(
-                    reader: var reader, parent: parent, key: (keys.get(index).clone()),
+                    reader: var reader, parent: parent, key: (keys[index].clone()),
                     dotted: false
                 )
                 index += 1

@@ -1,7 +1,9 @@
-import stdin from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
-import Bytes from "@std/bytes.ms"
-import max from "@std/math/math.ms"
+import (
+    stdin from "@std/io/io.ms",
+    lines from "@std/io/streams.ms",
+    Bytes from "@std/bytes.ms",
+    max from "@std/math/math.ms",
+)
 
 let INF = 1000000000
 let BAD = "error: bad command"
@@ -126,8 +128,7 @@ fn solve(line: String) String:
 
     if cmd == "lcs" or cmd == "edit":
         if n != 3 or toks[1].length() == 0 or toks[2].length() == 0: return BAD
-        if cmd == "lcs":
-            return "{lcs_len(toks[1].as_bytes(), toks[2].as_bytes())}"
+        if cmd == "lcs": return "{lcs_len(toks[1].as_bytes(), toks[2].as_bytes())}"
 
         return "{edit_dist(toks[1].as_bytes(), toks[2].as_bytes())}"
 

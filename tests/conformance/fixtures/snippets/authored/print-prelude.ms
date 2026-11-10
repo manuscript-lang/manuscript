@@ -5,11 +5,11 @@ type Point:
     x: Int
     y: Int
 
-export fn main() Int:
+fn main() Unit:
     print("hello")
     print(42)
     print(Point(1, 2))
     print([1, 2, 3])
+
     let name = "ms"
     print("name: {name}")
-    return 0

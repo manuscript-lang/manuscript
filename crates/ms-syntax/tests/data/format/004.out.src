@@ -1,6 +1,8 @@
-import headers, HttpRequest, HttpResponse from "@std/net/http.ms"
-import network from "@std/net/net.ms"
-import stdout from "@std/io/io.ms"
+import (
+    headers, HttpRequest, HttpResponse from "@std/net/http.ms",
+    network from "@std/net/net.ms",
+    stdout from "@std/io/io.ms",
+)
 
 fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello \{request.path\}".to_bytes())
@@ -13,8 +15,7 @@ export fn main() Int:
         max_response_bytes: 1024, timeout: 2.seconds, grace: 0.seconds
     ):
         let server = acquired
-        if stdout().write("{server.address()}\n").is_error():
-            return 1
+        if stdout().write("{server.address()}\n").is_error(): return 1
 
         let _ignored = server.wait()
         return 0

@@ -27,7 +27,6 @@ fn initial(words: List[String]) String:
 fn failed_scan(words: List[String]) Unit!:
     for c in first(words).chars():
         try expect_equal(c, "not the first character")
-    return ok(unit)
 
 test "helper and receiver strings support character and scalar scans":
     let words = ["aé😀"]
@@ -106,10 +105,8 @@ test "borrowed string scans support break continue return and try":
     var output = ""
 
     for c in first(words).chars():
-        if c == "é":
-            continue
-        if c == "b":
-            break
+        if c == "é": continue
+        if c == "b": break
 
         output += c
 

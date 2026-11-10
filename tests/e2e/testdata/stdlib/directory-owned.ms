@@ -1,5 +1,7 @@
-import open_directory, stat, temporary, write_file from "@std/os/fs.ms"
-import expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms"
+import (
+    open_directory, stat, temporary, write_file from "@std/os/fs.ms",
+    expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
+)
 
 // `Directory` and `TemporaryDirectory` are nominal types with `impl Closeable`, so a binding owns them.
 fn leaves_a_temporary() String!:
@@ -18,8 +20,7 @@ fn counts_entries(path: String) Int!:
 
     while true:
         let next = try cursor.read()
-        if next.is_none():
-            break
+        if next.is_none(): break
 
         seen += 1
 

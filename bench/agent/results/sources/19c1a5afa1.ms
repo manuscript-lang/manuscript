@@ -70,7 +70,7 @@ fn joinc(cs: List[String], a: Int, b: Int) String:
     var k = a
 
     while k < b:
-        s = s + cs[k]
+        s += cs[k]
         k += 1
 
     return s
@@ -90,7 +90,7 @@ fn repeatStr(s: String, n: Int) String:
     var k = 0
 
     while k < n:
-        out = out + s
+        out += s
         k += 1
 
     return out
@@ -121,31 +121,25 @@ fn isBlank(s: String) Bool:
 
 fn isThematic(line: String) Bool:
     let t = line.replace(" ", "")
-    if t.length() < 3:
-        return false
+    if t.length() < 3: return false
 
     let cs = t.chars()
     let c = cs[0]
-    if c != "-" and c != "*" and c != "_":
-        return false
+    if c != "-" and c != "*" and c != "_": return false
 
     return runAt(cs, 0, c) == cs.length()
 
 // Fence length of a line body (already left-trimmed), or 0 when it is not a fence opener.
 fn fenceOpen(body: String) Int:
     let cs = body.chars()
-    if cs.length() == 0:
-        return 0
+    if cs.length() == 0: return 0
 
     let c = cs[0]
-    if c != "`" and c != "~":
-        return 0
+    if c != "`" and c != "~": return 0
 
     let f = runAt(cs, 0, c)
-    if f < 3:
-        return 0
-    if c == "`" and sub(body, f).contains("`"):
-        return 0
+    if f < 3: return 0
+    if c == "`" and sub(body, f).contains("`"): return 0
 
     return f
 
@@ -153,10 +147,8 @@ fn fenceOpen(body: String) Int:
 fn atxLevel(body: String) Int:
     let cs = body.chars()
     let h = runAt(cs, 0, "#")
-    if h < 1 or h > 6:
-        return 0
-    if h == cs.length() or cs[h] == " ":
-        return h
+    if h < 1 or h > 6: return 0
+    if h == cs.length() or cs[h] == " ": return h
 
     return 0
 
@@ -165,30 +157,24 @@ fn isQuoteLine(line: String) Bool:
 
 // Rules 1-4 tested for a line on its own (indent <= 3).
 fn interruptsStruct(line: String) Bool:
-    if lead(line) > 3:
-        return false
+    if lead(line) > 3: return false
 
     let body = line.trim_start()
-    if fenceOpen(body) > 0:
-        return true
-    if atxLevel(body) > 0:
-        return true
-    if isThematic(line):
-        return true
+    if fenceOpen(body) > 0: return true
+    if atxLevel(body) > 0: return true
+    if isThematic(line): return true
 
     return body.starts_with(">")
 
 fn parseMarker(line: String) Marker:
     let none = Marker(ok: false, ordered: false, delim: "", num: 0, empty: false, w: 0)
     let ind = lead(line)
-    if ind > 3:
-        return none
+    if ind > 3: return none
 
     let cs = line.chars()
     let n = cs.length()
     let p = ind
-    if p >= n:
-        return none
+    if p >= n: return none
 
     let c = cs[p]
     var mlen = 0
@@ -202,10 +188,8 @@ fn parseMarker(line: String) Marker:
         var d = 0
         while p + d < n and DIGITS.contains(cs[p + d]) and d < 10:
             d += 1
-        if d < 1 or d > 9 or p + d >= n:
-            return none
-        if cs[p + d] != "." and cs[p + d] != ")":
-            return none
+        if d < 1 or d > 9 or p + d >= n: return none
+        if cs[p + d] != "." and cs[p + d] != ")": return none
 
         ordered = true
         mlen = d + 1
@@ -218,8 +202,7 @@ fn parseMarker(line: String) Marker:
             k += 1
 
     let q = p + mlen
-    if q < n and cs[q] != " ":
-        return none
+    if q < n and cs[q] != " ": return none
 
     var sp = 0
     var r = q
@@ -244,9 +227,8 @@ fn isDelimCell(c: String) Bool:
     if b > a and cs[a] == ":":
         a = 1
     if b > a and cs[b - 1] == ":":
-        b = b - 1
-    if b <= a:
-        return false
+        b -= 1
+    if b <= a: return false
 
     return runAt(cs, a, "-") == b - a
 
@@ -255,12 +237,9 @@ fn alignOf(c: String) Int:
     let n = cs.length()
     let lead = n > 0 and cs[0] == ":"
     let trail = n > 1 and cs[n - 1] == ":"
-    if lead and trail:
-        return 2
-    if lead:
-        return 1
-    if trail:
-        return 3
+    if lead and trail: return 2
+    if lead: return 1
+    if trail: return 3
 
     return 0
 
@@ -273,7 +252,7 @@ fn splitRow(line: String) List[String]:
     if b > 0 and cs[0] == "|":
         a = 1
     if b > a and cs[b - 1] == "|" and not (b - 2 >= 0 and cs[b - 2] == "\\"):
-        b = b - 1
+        b -= 1
 
     var cells = List[String]()
     var cur = ""
@@ -286,7 +265,7 @@ fn splitRow(line: String) List[String]:
             cells.append(cur.trim())
             cur = ""
         else:
-            cur = cur + c
+            cur += c
 
         k += 1
 
@@ -294,12 +273,10 @@ fn splitRow(line: String) List[String]:
     return cells
 
 fn isDelimRow(line: String) Bool:
-    if not line.contains("|"):
-        return false
+    if not line.contains("|"): return false
 
     for c in splitRow(line):
-        if not isDelimCell(c):
-            return false
+        if not isDelimCell(c): return false
     return true
 
 fn mkPara(text: String) Blk:
@@ -337,8 +314,7 @@ fn parseOne(lines: List[String], i: Int) Step:
 
     if ind <= 3:
         let f = fenceOpen(body)
-        if f > 0:
-            return parseFence(lines, i, ind, f)
+        if f > 0: return parseFence(lines, i, ind, f)
 
         let h = atxLevel(body)
 
@@ -353,21 +329,17 @@ fn parseOne(lines: List[String], i: Int) Step:
                 content = joinc(ccs, 0, cn - r).trim_end()
             return Step(blk: Blk(kind: 1, text: content, level: h), next: i + 1)
 
-        if isThematic(line):
-            return Step(blk: Blk(kind: 2), next: i + 1)
-        if body.starts_with(">"):
-            return parseQuote(lines, i)
+        if isThematic(line): return Step(blk: Blk(kind: 2), next: i + 1)
+        if body.starts_with(">"): return parseQuote(lines, i)
 
         let m = parseMarker(line)
-        if m.ok:
-            return parseList(lines, i, m)
+        if m.ok: return parseList(lines, i, m)
 
         if i + 1 < n and line.contains("|") and isDelimRow(lines[i + 1]):
             if splitRow(line).length() == splitRow(lines[i + 1]).length():
                 return parseTable(lines, i)
 
-    if ind >= 4:
-        return parseIndented(lines, i)
+    if ind >= 4: return parseIndented(lines, i)
 
     return parsePara(lines, i)
 
@@ -526,8 +498,7 @@ fn parseTable(lines: List[String], i: Int) Step:
 
     while j < lines.length():
         let l = lines[j]
-        if isBlank(l) or interruptsStruct(l):
-            break
+        if isBlank(l) or interruptsStruct(l): break
 
         let cells = splitRow(l)
         var row = List[String]()
@@ -543,8 +514,7 @@ fn parseTable(lines: List[String], i: Int) Step:
     return Step(blk: Blk(kind: 6, head: head, aligns: aligns, rows: rows), next: j)
 
 fn interruptsPara(line: String) Bool:
-    if interruptsStruct(line):
-        return true
+    if interruptsStruct(line): return true
 
     let m = parseMarker(line)
     return m.ok and not m.empty and (not m.ordered or m.num == 1)
@@ -556,8 +526,7 @@ fn parsePara(lines: List[String], i: Int) Step:
 
     while j < n:
         let l = lines[j]
-        if j > i and (isBlank(l) or interruptsPara(l)):
-            break
+        if j > i and (isBlank(l) or interruptsPara(l)): break
 
         raw.append(l.trim_start())
         j += 1
@@ -577,8 +546,8 @@ fn parsePara(lines: List[String], i: Int) Step:
             s = s.trim_end()
 
         if k > 0:
-            text = text + "\n"
-        text = text + s
+            text += "\n"
+        text += s
         k += 1
 
     return Step(blk: mkPara(text), next: j)
@@ -588,16 +557,13 @@ fn parsePara(lines: List[String], i: Int) Step:
 fn renderBlocks(blocks: List[Blk]) String:
     var out = ""
     for b in blocks:
-        out = out + renderBlock(b)
+        out += renderBlock(b)
     return out
 
 fn alignAttr(a: Int) String:
-    if a == 1:
-        return " align=\"left\""
-    if a == 2:
-        return " align=\"center\""
-    if a == 3:
-        return " align=\"right\""
+    if a == 1: return " align=\"left\""
+    if a == 2: return " align=\"center\""
+    if a == 3: return " align=\"right\""
 
     return ""
 
@@ -616,13 +582,13 @@ fn renderTable(b: Blk) String:
         )
         k += 1
 
-    out = out + "</tr>\n</thead>\n"
+    out += "</tr>\n</thead>\n"
 
     if b.rows.length() > 0:
-        out = out + "<tbody>\n"
+        out += "<tbody>\n"
 
         for row in b.rows:
-            out = out + "<tr>\n"
+            out += "<tr>\n"
 
             var c = 0
 
@@ -637,9 +603,9 @@ fn renderTable(b: Blk) String:
                 )
                 c += 1
 
-            out = out + "</tr>\n"
+            out += "</tr>\n"
 
-        out = out + "</tbody>\n"
+        out += "</tbody>\n"
 
     return out + "</table>\n"
 
@@ -648,11 +614,11 @@ fn renderItem(children: List[Blk], tight: Bool) String:
 
     for c in children:
         if c.kind == 5 and tight:
-            body = body + inline(c.text)
+            body += inline(c.text)
         else:
             if body == "" or not body.ends_with("\n"):
-                body = body + "\n"
-            body = body + renderBlock(c)
+                body += "\n"
+            body += renderBlock(c)
 
     return body
 
@@ -666,8 +632,7 @@ fn renderList(b: Blk) String:
 
     for item in b.items:
         out = out + "<li>" + renderItem(item, not b.loose) + "</li>\n"
-    if b.ordered:
-        return out + "</ol>\n"
+    if b.ordered: return out + "</ol>\n"
 
     return out + "</ul>\n"
 
@@ -678,16 +643,12 @@ fn renderBlock(b: Blk) String:
             cls = " class=\"language-" + esc(b.lang) + "\""
         return "<pre><code" + cls + ">" + esc(b.text) + "</code></pre>\n"
 
-    if b.kind == 1:
-        return "<h{b.level}>" + inline(b.text) + "</h{b.level}>\n"
-    if b.kind == 2:
-        return "<hr />\n"
+    if b.kind == 1: return "<h{b.level}>" + inline(b.text) + "</h{b.level}>\n"
+    if b.kind == 2: return "<hr />\n"
     if b.kind == 3:
         return "<blockquote>\n" + renderBlocks(b.children) + "</blockquote>\n"
-    if b.kind == 4:
-        return renderList(b)
-    if b.kind == 5:
-        return "<p>" + inline(b.text) + "</p>\n"
+    if b.kind == 4: return renderList(b)
+    if b.kind == 5: return "<p>" + inline(b.text) + "</p>\n"
 
     return renderTable(b)
 
@@ -709,8 +670,7 @@ fn nOpener(image: Bool, active: Bool) Node:
     return Node(kind: 6, image: image, active: active)
 
 fn openerText(image: Bool) String:
-    if image:
-        return "!["
+    if image: return "!["
 
     return "["
 
@@ -759,18 +719,16 @@ fn parseTail(cs: List[String], p0: Int) Tail:
                 found = true
                 break
 
-            if c == "\n" or c == "<":
-                break
+            if c == "\n" or c == "<": break
 
             if c == "\\" and q + 1 < n and isPunct(cs[q + 1]):
-                buf = buf + cs[q + 1]
+                buf += cs[q + 1]
                 q += 2
             else:
-                buf = buf + c
+                buf += c
                 q += 1
 
-        if not found:
-            return failTail()
+        if not found: return failTail()
 
         dest = buf
         p = q + 1
@@ -781,23 +739,21 @@ fn parseTail(cs: List[String], p0: Int) Tail:
 
         while q < n:
             let c = cs[q]
-            if isWs(c):
-                break
+            if isWs(c): break
 
             if c == "\\" and q + 1 < n and isPunct(cs[q + 1]):
-                buf = buf + cs[q + 1]
+                buf += cs[q + 1]
                 q += 2
                 continue
 
             if c == "(":
                 depth += 1
             else if c == ")":
-                if depth == 0:
-                    break
+                if depth == 0: break
 
                 depth -= 1
 
-            buf = buf + c
+            buf += c
             q += 1
 
         dest = buf
@@ -820,17 +776,16 @@ fn parseTail(cs: List[String], p0: Int) Tail:
             let c = cs[q]
 
             if c == "\\" and q + 1 < n and cs[q + 1] == "\"":
-                buf = buf + "\""
+                buf += "\""
                 q += 2
             else if c == "\"":
                 closed = true
                 break
             else:
-                buf = buf + c
+                buf += c
                 q += 1
 
-        if not closed:
-            return failTail()
+        if not closed: return failTail()
 
         title = buf
         hasTitle = true
@@ -849,8 +804,7 @@ fn lastOpener(nodes: List[Node]) Int:
     var k = nodes.length() - 1
 
     while k >= 0:
-        if nodes[k].kind == 6:
-            return k
+        if nodes[k].kind == 6: return k
 
         k -= 1
 
@@ -862,8 +816,7 @@ fn findRun(cs: List[String], from: Int, run: Int) Int:
     while j < cs.length():
         if cs[j] == "`":
             let len = runAt(cs, j, "`")
-            if len == run:
-                return j
+            if len == run: return j
 
             j += len
         else:
@@ -879,9 +832,9 @@ fn codeContent(cs: List[String], a: Int, b: Int) String:
         let c = cs[k]
 
         if c == "\n":
-            s = s + " "
+            s += " "
         else if c != HB:
-            s = s + c
+            s += c
 
         k += 1
 
@@ -1008,8 +961,7 @@ fn findOpener(nodes: List[Node], c: Int) Int:
                 and ((o.orig + cl.orig) % 3 == 0)
                 and not (o.orig % 3 == 0 and cl.orig % 3 == 0)
             )
-            if not blocked:
-                return j
+            if not blocked: return j
 
         j -= 1
 
@@ -1079,35 +1031,32 @@ fn plain(nodes: List[Node]) String:
 
     for x in nodes:
         if x.kind == 0:
-            out = out + x.text.replace("\n", " ")
+            out += x.text.replace("\n", " ")
         else if x.kind == 1:
-            out = out + repeatStr(x.ch, x.count)
+            out += repeatStr(x.ch, x.count)
         else if x.kind == 2 or x.kind == 3:
-            out = out + plain(x.children)
+            out += plain(x.children)
         else if x.kind == 4:
-            out = out + x.text
+            out += x.text
         else if x.kind == 5:
-            out = out + " "
+            out += " "
         else:
-            out = out + openerText(x.image)
+            out += openerText(x.image)
 
     return out
 
 fn renderNodes(nodes: List[Node]) String:
     var out = ""
     for x in nodes:
-        out = out + renderNode(x)
+        out += renderNode(x)
     return out
 
 fn renderNode(x: Node) String:
-    if x.kind == 0:
-        return esc(x.text)
-    if x.kind == 1:
-        return repeatStr(x.ch, x.count)
+    if x.kind == 0: return esc(x.text)
+    if x.kind == 1: return repeatStr(x.ch, x.count)
 
     if x.kind == 2:
-        if x.strong:
-            return "<strong>" + renderNodes(x.children) + "</strong>"
+        if x.strong: return "<strong>" + renderNodes(x.children) + "</strong>"
 
         return "<em>" + renderNodes(x.children) + "</em>"
 
@@ -1136,10 +1085,8 @@ fn renderNode(x: Node) String:
             + "</a>"
         )
 
-    if x.kind == 4:
-        return "<code>" + esc(x.text) + "</code>"
-    if x.kind == 5:
-        return "<br />\n"
+    if x.kind == 4: return "<code>" + esc(x.text) + "</code>"
+    if x.kind == 5: return "<br />\n"
 
     return openerText(x.image)
 

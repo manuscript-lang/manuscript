@@ -2,8 +2,8 @@
 // Usage: ms run bench/tools/bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]
 // Programs print the string-lines CSV (see string_lines_compare.ms). Expected checksums come from a straightforward search of a
 // buffer of `a` bytes holding one 0xFF byte, an oracle independent of the programs. --cpu pins every run with `taskset`.
-import Identity, run_rows from "./string_lines_compare.ms"
 import (
+    Identity, run_rows from "./string_lines_compare.ms",
     absolute,
     fail,
     jbool,
@@ -15,12 +15,12 @@ import (
     options,
     permutations,
     platform,
-    write_text
-) from "./lib.ms"
-import binaries_json, fresh_directory, labeled, write_json from "./study.ms"
-import arguments from "@std/os/env.ms"
-import JsonValue from "@std/data/json.ms"
-import stdout from "@std/io/io.ms"
+    write_text from "./lib.ms",
+    binaries_json, fresh_directory, labeled, write_json from "./study.ms",
+    arguments from "@std/os/env.ms",
+    JsonValue from "@std/data/json.ms",
+    stdout from "@std/io/io.ms",
+)
 
 fn sizes() List[Int]:
     return [0, 1, 7, 15, 31, 32, 64, 256, 4096, 1048576]
@@ -147,9 +147,8 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
             "{expected.length()} cases, {orders.length()} orders, {out}/summary.csv\n"
         ).get()
     )
-    return ok(unit)
 
-export fn main() Int:
+fn main() Int:
     let args = arguments()
     if args.length() < 4: return fail(
         "usage: bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]"

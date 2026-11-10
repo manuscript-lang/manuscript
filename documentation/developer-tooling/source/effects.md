@@ -13,9 +13,8 @@ Save this as `hello.ms`:
 
 <!-- manuscript-example: {"mode":"run","stdout":"Hello, Manuscript!\n"} -->
 ```manuscript
-export fn main() Int:
+fn main() Unit:
     print("Hello, Manuscript!")
-    return 0
 ```
 
 `ms run hello.ms` prints `Hello, Manuscript!`. To inspect its calls without running it:

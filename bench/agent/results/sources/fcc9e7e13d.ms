@@ -1,6 +1,8 @@
-import stdin, stdout from "@std/io.ms"
-import read_lines from "@std/streams.ms"
-import bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right from "@std/math.ms"
+import (
+    stdin, stdout from "@std/io.ms",
+    read_lines from "@std/streams.ms",
+    bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right from "@std/math.ms",
+)
 
 let MASK32 = 4294967295
 let MOD32 = 4294967296
@@ -71,8 +73,7 @@ type Machine:
 
 fn wrap32(x: Int) Int:
     let u = bit_and(x, MASK32)
-    if u >= HALF32:
-        return u - MOD32
+    if u >= HALF32: return u - MOD32
 
     return u
 
@@ -94,21 +95,17 @@ fn is_ws(k: Int) Bool:
 fn is_ident(s: String) Bool:
     let cs = s.chars()
     let n = cs.length()
-    if n == 0:
-        return false
-    if not is_ident_start(cc(cs[0])):
-        return false
+    if n == 0: return false
+    if not is_ident_start(cc(cs[0])): return false
 
     for i in 1..n:
-        if not is_ident_char(cc(cs[i])):
-            return false
+        if not is_ident_char(cc(cs[i])): return false
     return true
 
 fn reg_of(s: String) Int:
     let names = REG_NAMES
     for i in 0..names.length():
-        if names[i] == s:
-            return i
+        if names[i] == s: return i
     return -1
 
 fn join_range(cs: List[String], a: Int, b: Int) String:
@@ -123,28 +120,20 @@ fn join_range(cs: List[String], a: Int, b: Int) String:
 
 fn lit_len(cs: List[String], i: Int) Int:
     let n = cs.length()
-    if cs[i] != "'":
-        return 0
+    if cs[i] != "'": return 0
     if i + 2 < n and cs[i + 1] != "\\" and cs[i + 1] != "'" and cs[i + 2] == "'":
         return 3
-    if i + 3 < n and cs[i + 1] == "\\" and cs[i + 3] == "'":
-        return 4
+    if i + 3 < n and cs[i + 1] == "\\" and cs[i + 3] == "'": return 4
 
     return 0
 
 fn esc_value(c: String) Int:
-    if c == "n":
-        return 10
-    if c == "t":
-        return 9
-    if c == "0":
-        return 0
-    if c == "\\":
-        return 92
-    if c == "'":
-        return 39
-    if c == "\"":
-        return 34
+    if c == "n": return 10
+    if c == "t": return 9
+    if c == "0": return 0
+    if c == "\\": return 92
+    if c == "'": return 39
+    if c == "\"": return 34
 
     return -1
 
@@ -155,8 +144,7 @@ fn strip_comment(cs: List[String]) String:
 
     while i < n:
         let c = cs[i]
-        if c == ";":
-            break
+        if c == ";": break
 
         if c == "\"":
             var j = i + 1
@@ -188,8 +176,7 @@ fn strip_comment(cs: List[String]) String:
 
 fn split_operands(s: String) List[String]:
     var res = List[String]()
-    if s.trim() == "":
-        return res
+    if s.trim() == "": return res
 
     let cs = s.chars()
     let n = cs.length()
@@ -244,8 +231,7 @@ fn split_terms(cs: List[String]) List[String]:
 
         if c == "+" or c == "-":
             if cur.trim() == "":
-                if res.length() > 0 or sign_set:
-                    return List[String]()
+                if res.length() > 0 or sign_set: return List[String]()
 
                 sign = c.clone()
                 sign_set = true
@@ -258,8 +244,7 @@ fn split_terms(cs: List[String]) List[String]:
 
         i += 1
 
-    if cur.trim() == "":
-        return List[String]()
+    if cur.trim() == "": return List[String]()
 
     res.append(sign.concat(cur.trim()))
     return res
@@ -278,23 +263,19 @@ fn mem_content(t: String) String:
 fn check_mem(t: String) Bool:
     let cs = t.chars()
     let n = cs.length()
-    if n < 2 or cs[n - 1] != "]":
-        return false
+    if n < 2 or cs[n - 1] != "]": return false
 
     let inner = join_range(cs, 1, n - 1)
-    if inner.contains("[") or inner.contains("]"):
-        return false
+    if inner.contains("[") or inner.contains("]"): return false
 
     let terms = split_terms(inner.chars())
-    if terms.length() == 0:
-        return false
+    if terms.length() == 0: return false
 
     var regs = 0
 
     for term in terms:
         if reg_of(body_of(term)) >= 0:
-            if is_neg(term):
-                return false
+            if is_neg(term): return false
 
             regs += 1
 
@@ -311,16 +292,13 @@ fn parse_string(s: String) StrRes:
 
     while i < n - 1:
         let c = cs[i]
-        if c == "\"":
-            return StrRes(good: false, bytes: out)
+        if c == "\"": return StrRes(good: false, bytes: out)
 
         if c == "\\":
-            if i + 1 >= n - 1:
-                return StrRes(good: false, bytes: out)
+            if i + 1 >= n - 1: return StrRes(good: false, bytes: out)
 
             let v = esc_value(cs[i + 1])
-            if v < 0:
-                return StrRes(good: false, bytes: out)
+            if v < 0: return StrRes(good: false, bytes: out)
 
             out.append(v)
             i += 2
@@ -334,20 +312,17 @@ fn parse_string(s: String) StrRes:
 fn parse_budget(s: String) Int:
     let cs = s.chars()
     let n = cs.length()
-    if n == 0 or n > 8:
-        return -1
+    if n == 0 or n > 8: return -1
 
     var v = 0
 
     for c in cs:
         let k = cc(c)
-        if not is_digit(k):
-            return -1
+        if not is_digit(k): return -1
 
         v = v * 10 + (k - 48)
 
-    if v < 1 or v > 10000000:
-        return -1
+    if v < 1 or v > 10000000: return -1
 
     return v
 
@@ -360,16 +335,13 @@ fn ev_err(e: String) Ev:
 fn digit_val(k: Int, base: Int) Int:
     if k >= 48 and k <= 57:
         let d = k - 48
-        if d < base:
-            return d
+        if d < base: return d
 
         return -1
 
     if base == 16:
-        if k >= 97 and k <= 102:
-            return k - 87
-        if k >= 65 and k <= 70:
-            return k - 55
+        if k >= 97 and k <= 102: return k - 87
+        if k >= 65 and k <= 70: return k - 55
 
     return -1
 
@@ -391,52 +363,44 @@ fn eval_number(body: String, ctx: String) Ev:
 
     while i < n:
         let d = digit_val(cc(cs[i]), base)
-        if d < 0:
-            return ev_err("invalid expression '{ctx}'")
+        if d < 0: return ev_err("invalid expression '{ctx}'")
 
         v = v * base + d
         if v > MASK32:
             v = MASK32 + 1
         i += 1
 
-    if v > MASK32:
-        return ev_err("immediate out of range")
+    if v > MASK32: return ev_err("immediate out of range")
 
     return ev_ok(wrap32(v))
 
 fn eval_term(body: String, ctx: String, var syms: Map[String, Sym]) Ev:
     let cs = body.chars()
     let n = cs.length()
-    if n == 0:
-        return ev_err("invalid expression '{ctx}'")
+    if n == 0: return ev_err("invalid expression '{ctx}'")
 
     let k = cc(cs[0])
-    if is_digit(k):
-        return eval_number(body, ctx)
+    if is_digit(k): return eval_number(body, ctx)
 
     if cs[0] == "'":
         let L = lit_len(cs, 0)
-        if L == 0 or L != n:
-            return ev_err("invalid expression '{ctx}'")
+        if L == 0 or L != n: return ev_err("invalid expression '{ctx}'")
 
         var v = -1
         if L == 3 and cc(cs[1]) < 128:
             v = cc(cs[1])
         if L == 4:
             v = esc_value(cs[2])
-        if v < 0:
-            return ev_err("invalid expression '{ctx}'")
+        if v < 0: return ev_err("invalid expression '{ctx}'")
 
         return ev_ok(v)
 
     if is_ident_start(k):
-        if not is_ident(body):
-            return ev_err("invalid expression '{ctx}'")
+        if not is_ident(body): return ev_err("invalid expression '{ctx}'")
 
         if let s = syms.get(body):
             if s.kind == 2:
-                if s.busy:
-                    return ev_err("circular definition '{body}'")
+                if s.busy: return ev_err("circular definition '{body}'")
 
                 let e = s.expr.clone()
                 syms.remove(body.clone())
@@ -461,20 +425,18 @@ fn eval_term(body: String, ctx: String, var syms: Map[String, Sym]) Ev:
 fn eval_expr(text: String, var syms: Map[String, Sym]) Ev:
     let t = text.trim()
     let terms = split_terms(t.chars())
-    if terms.length() == 0:
-        return ev_err("invalid expression '{t}'")
+    if terms.length() == 0: return ev_err("invalid expression '{t}'")
 
     var acc = 0
 
     for term in terms:
         let r = eval_term(body_of(term), t, var syms)
-        if not r.good:
-            return r
+        if not r.good: return r
 
         if is_neg(term):
-            acc = acc - r.val
+            acc -= r.val
         else:
-            acc = acc + r.val
+            acc += r.val
 
     return ev_ok(wrap32(acc))
 
@@ -491,31 +453,26 @@ fn resolve_mem(t: String, var syms: Map[String, Sym]) Ev:
             base = rr
         else:
             let r = eval_term(body.clone(), body, var syms)
-            if not r.good:
-                return r
+            if not r.good: return r
 
             if is_neg(term):
-                off = off - r.val
+                off -= r.val
             else:
-                off = off + r.val
+                off += r.val
 
     return Ev(good: true, val: wrap32(off), reg: base, err: "")
 
 fn opcode(w: String) Int:
     let names = OP_NAMES
     for i in 0..names.length():
-        if names[i] == w:
-            return i
-    if w == "jz":
-        return 21
-    if w == "jnz":
-        return 22
+        if names[i] == w: return i
+    if w == "jz": return 21
+    if w == "jnz": return 22
 
     return -1
 
 fn nops(op: Int) Int:
-    if op == 28 or op == 32 or op == 33:
-        return 0
+    if op == 28 or op == 32 or op == 33: return 0
     if (
         (op >= 13 and op <= 16)
         or op == 18
@@ -530,14 +487,12 @@ fn nops(op: Int) Int:
     return 2
 
 fn valid_classes(op: Int, k0: Int, k1: Int, want: Int) Bool:
-    if want == 0:
-        return true
+    if want == 0: return true
 
     if want == 1:
         if op == 13 or op == 14 or op == 15 or op == 16 or op == 19 or op == 29:
             return k0 == 1
-        if op == 18 or op == 30 or op == 31:
-            return k0 == 1 or k0 == 2 or k0 == 3
+        if op == 18 or op == 30 or op == 31: return k0 == 1 or k0 == 2 or k0 == 3
 
         return k0 == 2
 
@@ -546,16 +501,13 @@ fn valid_classes(op: Int, k0: Int, k1: Int, want: Int) Bool:
             (k0 == 1 and (k1 == 1 or k1 == 2 or k1 == 3))
             or (k0 == 3 and (k1 == 1 or k1 == 2))
         )
-    if op == 17:
-        return k0 == 1 and k1 == 3
+    if op == 17: return k0 == 1 and k1 == 3
 
     return k0 == 1 and (k1 == 1 or k1 == 2 or k1 == 3)
 
 fn classify(t: String) Int:
-    if t.starts_with("["):
-        return 3
-    if reg_of(t) >= 0:
-        return 1
+    if t.starts_with("["): return 3
+    if reg_of(t) >= 0: return 1
 
     return 2
 
@@ -566,33 +518,26 @@ fn empty_opnd() Opnd:
     return Opnd(kind: 0, reg: -1, text: "", base: -1, val: 0)
 
 fn define(var syms: Map[String, Sym], name: String, kind: Int, value: Int, expr: String) String:
-    if reg_of(name) >= 0:
-        return "reserved name '{name}'"
-    if syms.contains(name):
-        return "duplicate symbol '{name}'"
+    if reg_of(name) >= 0: return "reserved name '{name}'"
+    if syms.contains(name): return "duplicate symbol '{name}'"
 
     syms.add(name, Sym(kind: kind, value: value, expr: expr, busy: false))
     return ""
 
 fn pass1_ins(var prog: Prog, lineno: Int, word: String, args: String) String:
-    if prog.in_data:
-        return "instruction in data section"
+    if prog.in_data: return "instruction in data section"
 
     let op = opcode(word)
-    if op < 0:
-        return "unknown mnemonic '{word}'"
+    if op < 0: return "unknown mnemonic '{word}'"
 
     let ops = split_operands(args)
 
     for t in ops:
-        if t == "":
-            return "invalid operand ''"
-        if t.starts_with("[") and not check_mem(t):
-            return "invalid operand '{t}'"
+        if t == "": return "invalid operand ''"
+        if t.starts_with("[") and not check_mem(t): return "invalid operand '{t}'"
 
     let want = nops(op)
-    if ops.length() != want:
-        return "wrong number of operands for '{word}'"
+    if ops.length() != want: return "wrong number of operands for '{word}'"
 
     var k0 = 0
     var k1 = 0
@@ -609,8 +554,7 @@ fn pass1_ins(var prog: Prog, lineno: Int, word: String, args: String) String:
         k1 = classify(t1)
         b = mk_opnd(t1.clone(), k1)
 
-    if not valid_classes(op, k0, k1, want):
-        return "invalid operands for '{word}'"
+    if not valid_classes(op, k0, k1, want): return "invalid operands for '{word}'"
 
     prog.ins.append(Ins(op: op, line: lineno, nops: want, a: a, b: b))
     return ""
@@ -621,10 +565,8 @@ fn data_dir(
 ) String:
     if word == ".word":
         let ops = split_operands(args)
-        if ops.length() == 0:
-            return "wrong number of operands for '.word'"
-        if prog.dsize + ops.length() > MEM_SIZE:
-            return "data section too large"
+        if ops.length() == 0: return "wrong number of operands for '.word'"
+        if prog.dsize + ops.length() > MEM_SIZE: return "data section too large"
 
         for t in ops:
             prog.items.append(Item(line: lineno, addr: prog.dsize, count: 1, text: t))
@@ -634,14 +576,12 @@ fn data_dir(
 
     if word == ".ascii" or word == ".asciz":
         let sr = parse_string(args)
-        if not sr.good:
-            return "invalid string"
+        if not sr.good: return "invalid string"
 
         var bytes = sr.bytes.clone()
         if word == ".asciz":
             bytes.append(0)
-        if prog.dsize + bytes.length() > MEM_SIZE:
-            return "data section too large"
+        if prog.dsize + bytes.length() > MEM_SIZE: return "data section too large"
 
         for b in bytes:
             mem[prog.dsize] = b
@@ -655,12 +595,9 @@ fn data_dir(
 
     let count_text = ops[0].clone()
     let r = eval_expr(count_text, var syms)
-    if not r.good:
-        return r.err
-    if r.val < 0:
-        return "invalid operand '{count_text}'"
-    if prog.dsize + r.val > MEM_SIZE:
-        return "data section too large"
+    if not r.good: return r.err
+    if r.val < 0: return "invalid operand '{count_text}'"
+    if prog.dsize + r.val > MEM_SIZE: return "data section too large"
 
     var fill = "0"
     if ops.length() == 2:
@@ -674,41 +611,35 @@ fn pass1_dir(
     word: String, args: String
 ) String:
     if word == ".text":
-        if args != "":
-            return "invalid operand '{args}'"
+        if args != "": return "invalid operand '{args}'"
 
         prog.in_data = false
         return ""
 
     if word == ".data":
-        if args != "":
-            return "invalid operand '{args}'"
+        if args != "": return "invalid operand '{args}'"
 
         prog.in_data = true
         return ""
 
     if word == ".equ":
         let ops = split_operands(args)
-        if ops.length() != 2:
-            return "wrong number of operands for '.equ'"
+        if ops.length() != 2: return "wrong number of operands for '.equ'"
 
         let name = ops[0]
-        if not is_ident(name):
-            return "invalid operand '{name}'"
+        if not is_ident(name): return "invalid operand '{name}'"
 
         return define(var syms, name.clone(), 2, 0, ops[1].clone())
 
     if word == ".budget":
         let v = parse_budget(args)
-        if v < 0:
-            return "invalid operand '{args}'"
+        if v < 0: return "invalid operand '{args}'"
 
         prog.budget = v
         return ""
 
     if word == ".word" or word == ".ascii" or word == ".asciz" or word == ".space":
-        if not prog.in_data:
-            return "data directive in text section"
+        if not prog.in_data: return "data directive in text section"
 
         return data_dir(var syms, var mem, var prog, lineno, word, args)
 
@@ -743,15 +674,13 @@ fn pass1_line(
                 else:
                     e = define(var syms, name, 0, prog.ins.length(), "")
 
-                if e != "":
-                    return e
+                if e != "": return e
 
                 i = j + 1
                 going = true
 
     let rest = join_range(cs, i, n).trim()
-    if rest == "":
-        return ""
+    if rest == "": return ""
 
     let rcs = rest.chars()
     let rn = rcs.length()
@@ -768,8 +697,7 @@ fn pass1_line(
 
 fn pass2_item(it: Item, var syms: Map[String, Sym], var mem: List[Int]) String:
     let r = eval_expr(it.text, var syms)
-    if not r.good:
-        return r.err
+    if not r.good: return r.err
 
     var k = 0
 
@@ -780,21 +708,17 @@ fn pass2_item(it: Item, var syms: Map[String, Sym], var mem: List[Int]) String:
     return ""
 
 fn resolve_op(o: Opnd, var syms: Map[String, Sym]) Ev:
-    if o.kind == 2:
-        return eval_expr(o.text, var syms)
-    if o.kind == 3:
-        return resolve_mem(o.text, var syms)
+    if o.kind == 2: return eval_expr(o.text, var syms)
+    if o.kind == 3: return resolve_mem(o.text, var syms)
 
     return ev_ok(0)
 
 fn pass2_ins(ins: Ins, var syms: Map[String, Sym], n: Int, var code: List[Ins]) String:
     let ra = resolve_op(ins.a, var syms)
-    if not ra.good:
-        return ra.err
+    if not ra.good: return ra.err
 
     let rb = resolve_op(ins.b, var syms)
-    if not rb.good:
-        return rb.err
+    if not rb.good: return rb.err
 
     let a = Opnd(
         kind: ins.a.kind, reg: ins.a.reg, text: ins.a.text, base: ra.reg, val: ra.val
@@ -803,8 +727,7 @@ fn pass2_ins(ins: Ins, var syms: Map[String, Sym], n: Int, var code: List[Ins]) 
         kind: ins.b.kind, reg: ins.b.reg, text: ins.b.text, base: rb.reg, val: rb.val
     )
     if ins.op >= 20 and ins.op <= 27:
-        if a.val < 0 or a.val >= n:
-            return "invalid jump target"
+        if a.val < 0 or a.val >= n: return "invalid jump target"
     code.append(Ins(op: ins.op, line: ins.line, nops: ins.nops, a: a, b: b))
     return ""
 
@@ -813,14 +736,11 @@ fn char_of(code: Int) String:
     return b.decode_utf8().get("?")
 
 fn rd(var m: Machine, o: Opnd) Int:
-    if o.kind == 1:
-        return m.regs[o.reg]
-    if o.kind == 2:
-        return o.val
+    if o.kind == 1: return m.regs[o.reg]
+    if o.kind == 2: return o.val
 
     let addr = ea(var m, o)
-    if m.trap != "":
-        return 0
+    if m.trap != "": return 0
 
     return m.mem[addr]
 
@@ -840,8 +760,7 @@ fn wr(var m: Machine, o: Opnd, v: Int) Unit:
         return
 
     let addr = ea(var m, o)
-    if m.trap != "":
-        return
+    if m.trap != "": return
 
     m.mem[addr] = v
 
@@ -852,16 +771,14 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
 
     if op == 0:
         let v = rd(var m, b)
-        if m.trap != "":
-            return pc
+        if m.trap != "": return pc
 
         wr(var m, a, v)
         return pc + 1
 
     if op >= 1 and op <= 11:
         let s = rd(var m, b)
-        if m.trap != "":
-            return pc
+        if m.trap != "": return pc
 
         let d = m.regs[a.reg]
         var r = 0
@@ -900,8 +817,7 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
     if op == 12:
         let x = m.regs[a.reg]
         let y = rd(var m, b)
-        if m.trap != "":
-            return pc
+        if m.trap != "": return pc
 
         m.z = x == y
         m.l = x < y
@@ -932,8 +848,7 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
 
     if op == 18:
         let v = rd(var m, a)
-        if m.trap != "":
-            return pc
+        if m.trap != "": return pc
 
         let sp = m.regs[8]
 
@@ -1002,8 +917,7 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
         else:
             take = not m.l
 
-        if take:
-            return a.val
+        if take: return a.val
 
         return pc + 1
 
@@ -1034,8 +948,7 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
 
     if op == 30:
         let v = rd(var m, a)
-        if m.trap != "":
-            return pc
+        if m.trap != "": return pc
 
         m.out.append("{v}\n")
         m.last_nl = true
@@ -1043,8 +956,7 @@ fn exec(var m: Machine, ins: Ins, pc: Int) Int:
 
     if op == 31:
         let v = rd(var m, a)
-        if m.trap != "":
-            return pc
+        if m.trap != "": return pc
 
         if v < 0 or v > 127:
             m.trap = "invalid character"
@@ -1070,22 +982,19 @@ fn input_value(tok: String) Int:
         neg = true
         start = 1
 
-    if start >= n:
-        return 0
+    if start >= n: return 0
 
     var u = 0
     var i = start
 
     while i < n:
         let k = cc(cs[i])
-        if not is_digit(k):
-            return 0
+        if not is_digit(k): return 0
 
         u = (u * 10 + (k - 48)) % MOD32
         i += 1
 
-    if neg:
-        return wrap32(0 - u)
+    if neg: return wrap32(0 - u)
 
     return wrap32(u)
 
@@ -1095,14 +1004,12 @@ fn is_valid_token(tok: String) Bool:
     var start = 0
     if n > 0 and cs[0] == "-":
         start = 1
-    if start >= n:
-        return false
+    if start >= n: return false
 
     var i = start
 
     while i < n:
-        if not is_digit(cc(cs[i])):
-            return false
+        if not is_digit(cc(cs[i])): return false
 
         i += 1
 
@@ -1111,8 +1018,7 @@ fn is_valid_token(tok: String) Bool:
 fn strip_cr(l: String) String:
     let cs = l.chars()
     let n = cs.length()
-    if n > 0 and cc(cs[n - 1]) == 13:
-        return join_range(cs, 0, n - 1)
+    if n > 0 and cc(cs[n - 1]) == 13: return join_range(cs, 0, n - 1)
 
     return l
 
@@ -1252,8 +1158,7 @@ export fn main() Int:
             break
 
         steps += 1
-        if m.halted:
-            break
+        if m.halted: break
 
         pc = next
 
