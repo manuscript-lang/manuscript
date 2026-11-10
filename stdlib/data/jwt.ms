@@ -88,6 +88,7 @@ export fn sign_token[T: Data](
 Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
 The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
 The payload must be a JSON object; any other JSON value returns EBADMSG.
+Critical header extensions and unencoded payloads are unsupported and rejected.
 `exp` and `nbf` (seconds since the Unix epoch) are enforced when present; `iss` and `aud` are enforced when `check` names them.
 `key` is the secret for the HMAC algorithms and the public key for the others, in the form `JwtAlgorithm` describes.
 Failures return an `Error` that says which check failed; show a caller one generic message, as the specific cause helps an attacker.
@@ -105,10 +106,19 @@ export fn verify_token[T: Data = JsonValue](
     if parts.length() != 3: return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
     let header = try decode_json[JsonValue](parts[0], check.max_bytes)
-    let name = header.get("alg").get(JsonValue.Null).as_string().get("")
-    if name != algorithm_name(check.algorithm): return error(
-        Error("jwt: wrong algorithm", kind: "EBADMSG")
+    if not header_algorithm_matches(
+        header.get("alg").get(JsonValue.Null), check.algorithm
+    ): return error(Error("jwt: wrong algorithm", kind: "EBADMSG"))
+
+    // No critical header extension is supported by this verifier.
+    if header.get("crit").is_some(): return error(
+        Error("jwt: unsupported critical header", kind: "EBADMSG")
     )
+
+    if let encoded = header.get("b64"):
+        if not encoded.as_bool().get(false): return error(
+            Error("jwt: unsupported payload encoding", kind: "EBADMSG")
+        )
 
     let signature = base64_decode(
         parts[2], url_safe: true, max_bytes: check.max_bytes, padded: false
@@ -126,6 +136,11 @@ export fn verify_token[T: Data = JsonValue](
     let claims = try decode_json[JsonValue](parts[1], check.max_bytes)
     try check_claims(claims, check)
     return decode_json[T](parts[1], check.max_bytes)
+
+fn header_algorithm_matches(value: JsonValue, algorithm: JwtAlgorithm) Bool:
+    match value:
+        StringValue(name): return name == algorithm_name(algorithm)
+        _: return false
 
 fn algorithm_name(algorithm: JwtAlgorithm) String:
     match algorithm:
