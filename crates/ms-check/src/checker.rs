@@ -1013,15 +1013,55 @@ impl Checker {
             }
             self.scope = old;
         }
-        for d in &module.decls {
-            if matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
-                continue;
-            }
-            if let Some(s) = self.own_symbol(d) {
-                let vars = s.variables();
-                self.type_defaults(d.type_params(), &vars);
+        // A default that names a type with defaulted parameters needs that type's defaults first,
+        // whichever is declared earlier. A cycle leaves the inner type unresolved.
+        let declared: HashMap<Name, usize> = module
+            .decls
+            .iter()
+            .enumerate()
+            .filter(|(_, d)| !matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)))
+            .map(|(i, d)| (d.name(), i))
+            .collect();
+        let mut state: HashMap<usize, bool> = HashMap::new();
+        for index in 0..module.decls.len() {
+            self.declaration_type_defaults(module, &declared, &mut state, index);
+        }
+    }
+
+    /// Resolves the type defaults of declaration `index` after those of the declarations its
+    /// defaults name. `state` maps a started declaration to whether it finished.
+    fn declaration_type_defaults(
+        &mut self,
+        module: &ModRef,
+        declared: &HashMap<Name, usize>,
+        state: &mut HashMap<usize, bool>,
+        index: usize,
+    ) {
+        if state.contains_key(&index) {
+            return;
+        }
+        state.insert(index, false);
+        let d = &module.decls[index];
+        if matches!(d.decl().kind, DeclKind::Impl(_) | DeclKind::Test(_)) {
+            return;
+        }
+        let Some(s) = self.own_symbol(d) else {
+            return;
+        };
+        let mut named = Vec::new();
+        for param in d.type_params() {
+            if let Some(default) = &param.default {
+                named_types(default, &mut named);
             }
         }
+        for name in named {
+            if let Some(&dependency) = declared.get(&name) {
+                self.declaration_type_defaults(module, declared, state, dependency);
+            }
+        }
+        let vars = s.variables();
+        self.type_defaults(d.type_params(), &vars);
+        state.insert(index, true);
     }
 
     /// Resolves default type arguments.
@@ -1983,4 +2023,22 @@ fn crosses_callback(syms: ms_syntax::Names, t: &Ty) -> bool {
 /// Whether `t` is an `extern type` declared outside the standard library.
 pub(crate) fn is_user_extern_type(syms: ms_syntax::Names, t: &Ty) -> bool {
     t.kind == Kind::Native && t.args.is_empty() && syms.str(t.id).starts_with("extern:")
+}
+
+/// Appends every name a written type mentions, including type arguments and function parts.
+fn named_types(t: &TypeRef, out: &mut Vec<Name>) {
+    match &t.kind {
+        TypeKind::Named { name, args } => {
+            out.push(*name);
+            for arg in args {
+                named_types(arg, out);
+            }
+        }
+        TypeKind::Fn { params, result } => {
+            for ty in params.iter().filter_map(|p| p.ty.as_ref()) {
+                named_types(ty, out);
+            }
+            named_types(result, out);
+        }
+    }
 }
