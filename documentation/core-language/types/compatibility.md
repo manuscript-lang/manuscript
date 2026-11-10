@@ -63,7 +63,7 @@ Expressions whose type cannot be determined are rejected.
 
 A list whose independently typed elements disagree is rejected.
 
-Operators and `try` do not pass an expected type back into their operands, which must determine their own types first.
+Operators and `try` normally require operands to determine their own types first. The exception is [arithmetic over numeric literals](../basics/numbers-and-booleans.md#sized-numbers): it takes an expected sized numeric type, including the payload of an expected optional, without changing numeric kind or narrowing a named value.
 
 ```manuscript
 fn known() Result[Int, Error]:

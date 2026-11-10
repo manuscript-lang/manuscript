@@ -18,6 +18,7 @@ mod match_patterns;
 mod member_names;
 mod module_exports;
 mod opaque_cases;
+mod optional_literal_context;
 mod optional_result_return;
 mod ownership;
 mod prelude_import_fixes;
