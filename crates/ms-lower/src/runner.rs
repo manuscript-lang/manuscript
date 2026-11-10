@@ -132,8 +132,8 @@ pub(crate) fn build_runner(m: &mut Module, tests: &[FuncId]) -> Result<FuncId, E
     Ok(m.add_func(f))
 }
 
-/// Wraps a `main` that returns `Unit` or `Result[Unit, Error]` in the `Int` entry the runtime
-/// expects: success exits 0, and an error prints `error: <message>` to standard error and exits 1.
+/// Wraps a `main` that returns `Unit`, `Result[Unit, Error]` or `Result[Int?, Error]` in the `Int`
+/// entry the runtime expects: success exits 0 (or the `Int?` payload), and an error prints `error: <message>` to standard error and exits 1.
 pub(crate) fn build_main_wrapper(m: &mut Module, user: FuncId) -> Result<Func, Error> {
     let ret = m.funcs[user.index()].ret;
     let mut b = FuncBuilder::new(m, "main", Vec::new(), MTy::INT);
@@ -171,9 +171,19 @@ pub(crate) fn build_main_wrapper(m: &mut Module, user: FuncId) -> Result<Func, E
     let one = b.iconst(1);
     b.ret(Some(one));
     b.switch_to(good);
+    let ok = b.m.alts[a.index()].ok_case().expect("result") as u32;
+    let payload = b.alt_get(a, ok, 0, r);
+    let status = if matches!(b.m.types.kind(b.ty(payload)), TyKind::Opt(_)) {
+        // `Int?!`: some(n) exits n and none exits 0.
+        let present = b.opt_is_some(payload);
+        let n = b.opt_get(payload);
+        let zero = b.iconst(0);
+        b.select(present, n, zero)
+    } else {
+        b.iconst(0)
+    };
     b.emit(Op::Drop, &[r], Imm::None, None);
-    let z = b.iconst(0);
-    b.ret(Some(z));
+    b.ret(Some(status));
     Ok(finish_entry(b))
 }
 

@@ -199,7 +199,7 @@ fn entry_diagnostics_name_the_required_signature() {
     let issue = &checked.diagnostics[0];
     assert_eq!(
         issue.message,
-        "entry must declare fn main; main returns String, so return Unit, Unit! (an error prints and exits 1), or an Int exit status"
+        "entry must declare fn main; main returns String, so return Unit, Unit! (an error prints and exits 1), Int?!, or an Int exit status"
     );
     // Without the entry requirement the same file checks.
     let fine = check_graph(

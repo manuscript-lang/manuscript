@@ -145,6 +145,7 @@ fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option
                 r.id == n("Int")
                     || r.id == n("Unit")
                     || ms_check::api::types::is_close_result(syms, r)
+                    || is_status_result(syms, r)
             })
         {
             return None;
@@ -164,7 +165,7 @@ fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option
             let shown =
                 result.map_or_else(|| "<invalid>".to_string(), |r| r.display(syms).to_string());
             format!(
-                "main returns {shown}, so return Unit, Unit! (an error prints and exits 1), or an Int exit status"
+                "main returns {shown}, so return Unit, Unit! (an error prints and exits 1), Int?!, or an Int exit status"
             )
         };
     }
@@ -178,4 +179,15 @@ fn check_entry(syms: ms_syntax::Names, program: &Program, entry: &str) -> Option
         end: None,
         fix: None,
     })
+}
+
+/// Whether `t` is `Result[Int?, Error]` (`Int?!`): an exit status that may be absent, or an error.
+fn is_status_result(syms: ms_syntax::Names, t: &ms_check::api::types::Ty) -> bool {
+    use ms_check::api::types::Builtin;
+    t.is(Builtin::Result)
+        && t.args.len() == 2
+        && t.args[0].is(Builtin::Optional)
+        && t.args[0].args.len() == 1
+        && syms.str(t.args[0].args[0].id) == "Int"
+        && t.args[1].is(Builtin::Error)
 }

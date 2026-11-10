@@ -26,7 +26,7 @@ Parameters and return types are explicit; local annotations are optional.
 
 ## The program entry
 
-An entry file declares a nongeneric `fn main()` with no parameters; `export` is optional. Its result is `Unit`, `Unit!`, or `Int`. `Unit` exits 0. `Unit!` exits 0 on `ok` and, on an error, prints `error: <message>` to standard error and exits 1. `Int` is the exit status.
+An entry file declares a nongeneric `fn main()` with no parameters; `export` is optional. Its result is `Unit`, `Unit!`, `Int?!`, or `Int`. `Unit` exits 0. `Unit!` exits 0 on `ok` and, on an error, prints `error: <message>` to standard error and exits 1. `Int?!` does the same for an error, and otherwise exits with the `Int` in `ok(n)`, or 0 for `ok(none)`. `Int` is the exit status.
 
 <!-- manuscript-example: {"mode":"run","stdout":"checking\n"} -->
 ```manuscript
