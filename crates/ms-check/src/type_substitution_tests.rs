@@ -116,3 +116,18 @@ fn result_only_substitution_keeps_concrete_arguments_and_parameters() {
     }
     assert!(got.is_default(n("p0")));
 }
+
+#[test]
+fn substitution_walks_a_shared_concrete_subtree_once() {
+    // Each level repeats the previous node as both arguments, so a walk that revisits shared
+    // nodes takes 2^60 steps.
+    let syms = ms_syntax::Names::global();
+    let mut node = int();
+    for _ in 0..60 {
+        let mut pair = Type::new(syms, n("Pair"), n("substitution/Pair"), Kind::Record);
+        pair.args = vec![node.clone(), node];
+        node = Rc::new(pair);
+    }
+    let bindings = Subst::from([(n("substitution/C"), string())]);
+    assert!(Rc::ptr_eq(&node, &sub(&node, &bindings)));
+}
