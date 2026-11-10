@@ -1,6 +1,6 @@
 # Manuscript cheat sheet
 
-Four-space indent, `//` comments.
+Tab indent (one tab per level; four spaces also parse), `//` comments.
 
 <!-- complete -->
 ```manuscript

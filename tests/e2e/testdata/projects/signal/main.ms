@@ -1,22 +1,22 @@
 import (
-    stdout from "@std/io/io.ms",
-    WriteStream from "@std/io/io.ms",
-    Closeable from "@std/core.ms",
+	stdout from "@std/io/io.ms",
+	WriteStream from "@std/io/io.ms",
+	Closeable from "@std/core.ms",
 )
 
 type Resource:
-    label: String
-    output: WriteStream[String]
+	label: String
+	output: WriteStream[String]
 
 impl Closeable for Resource:
-    var fn close() Unit!:
-        _ignored := self.output.write("close {self.label}\n")
+	var fn close() Unit!:
+		_ignored := self.output.write("close {self.label}\n")
 
 fn main() Unit:
-    var output = stdout()
-    var _resource = Resource("parent", stdout())
-    _child := Resource("child", stdout())
-    _ignored := output.write("ready\n")
-    while true:
-        continue
-    _resource.close().get(none)
+	var output = stdout()
+	var _resource = Resource("parent", stdout())
+	_child := Resource("child", stdout())
+	_ignored := output.write("ready\n")
+	while true:
+		continue
+	_resource.close().get(none)

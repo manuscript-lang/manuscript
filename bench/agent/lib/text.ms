@@ -1,121 +1,121 @@
 // Small helpers shared by the benchmark tools: environment, files, shell commands.
 import (
-    create_directory, read_file, write_file from "@std/os/fs.ms",
-    dirname from "@std/os/path.ms",
-    compile from "@std/string.ms",
-    monotonic, seconds from "@std/time.ms",
-    RunOptions, run from "@std/os/process.ms",
-    environment from "@std/os/env.ms",
+	create_directory, read_file, write_file from "@std/os/fs.ms",
+	dirname from "@std/os/path.ms",
+	compile from "@std/string.ms",
+	monotonic, seconds from "@std/time.ms",
+	RunOptions, run from "@std/os/process.ms",
+	environment from "@std/os/env.ms",
 )
 
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
-    all := environment().get(Map[String, String]())
-    if value := all.get(name): return value.clone()
+	all := environment().get(Map[String, String]())
+	if value := all.get(name): return value.clone()
 
-    return fallback.clone()
+	return fallback.clone()
 
 // The text of the file at `path`; empty when it cannot be read.
 export fn read_text(path: String) String:
-    if data := read_file(path).wait().to_optional(): return data.decode_utf8().get("")
+	if data := read_file(path).wait().to_optional(): return data.decode_utf8().get("")
 
-    return ""
+	return ""
 
 // The text of the file at `path`; a missing file stops the program.
 export fn must_read(path: String) String:
-    return read_file(path).wait().get().decode_utf8().get("")
+	return read_file(path).wait().get().decode_utf8().get("")
 
 // Replaces the file at `path`, creating its directory first.
 export fn write_text(path: String, text: String) Unit:
-    create_directory(dirname(path), recursive: true).get()
-    write_file(path, text, replace: true).wait().get()
+	create_directory(dirname(path), recursive: true).get()
+	write_file(path, text, replace: true).wait().get()
 
 // Trailing whitespace removed from every line and from the whole text, as the graders compare output.
 export fn norm(text: String) String:
-    if text.trim().is_empty(): return ""
+	if text.trim().is_empty(): return ""
 
-    return text.trim_end().split("\n").map(fn line: line.trim_end()).join("\n")
+	return text.trim_end().split("\n").map(fn line: line.trim_end()).join("\n")
 
 // The nonblank lines of `text`.
 export fn nonblank_lines(text: String) List[String]:
-    return text.split("\n").filter(fn l: not l.trim().is_empty())
+	return text.split("\n").filter(fn l: not l.trim().is_empty())
 
 // What a finished shell command left behind.
 export type Ran:
-    code: Int
-    out: String
-    err: String
-    seconds: Float
+	code: Int
+	out: String
+	err: String
+	seconds: Float
 
 // Runs `command` with `bash -c` in directory `cwd`, feeding it `input`. A command still running after
 // `timeout_s` seconds is killed and reports status 124 with "timeout" on standard error.
 export fn bash(command: String, cwd: String, timeout_s: Int, input: String) Ran:
-    return run_in(
-        "bash", ["-c", "cd \"$0\" && {command}", cwd.clone()], timeout_s, input
-    )
+	return run_in(
+		"bash", ["-c", "cd \"$0\" && {command}", cwd.clone()], timeout_s, input
+	)
 
 // Runs `program` with `arguments` and the same timeout rule as `bash`.
 export fn run_in(
-    program: String,
-    arguments: List[String],
-    timeout_s: Int,
-    input: String
+	program: String,
+	arguments: List[String],
+	timeout_s: Int,
+	input: String
 ) Ran:
-    start := monotonic()
-    result := run(
-        program, arguments,
-        RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s))
-    ).wait()
-    elapsed := monotonic().difference(start).nanos.to_float() / 1000000000.0
-    if done := result.to_optional():
-        return Ran(
-            done.exit_code, done.stdout.decode_utf8().get(""),
-            done.stderr.decode_utf8().get(""), elapsed
-        )
-    if result.err().kind == "ETIMEDOUT": return Ran(124, "", "timeout", elapsed)
+	start := monotonic()
+	result := run(
+		program, arguments,
+		RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s))
+	).wait()
+	elapsed := monotonic().difference(start).nanos.to_float() / 1000000000.0
+	if done := result.to_optional():
+		return Ran(
+			done.exit_code, done.stdout.decode_utf8().get(""),
+			done.stderr.decode_utf8().get(""), elapsed
+		)
+	if result.err().kind == "ETIMEDOUT": return Ran(124, "", "timeout", elapsed)
 
-    return Ran(127, "", "cannot start {program}", elapsed)
+	return Ran(127, "", "cannot start {program}", elapsed)
 
 // `text.split(separator, maxsplit)` as Python defines it: at most `splits` splits, the rest stays in the last piece.
 export fn split_max(text: String, separator: String, splits: Int) List[String]:
-    var out = List[String]()
-    var rest = text.clone()
+	var out = List[String]()
+	var rest = text.clone()
 
-    while out.length() < splits:
-        at := rest.index_of(separator)
-        if at.is_none(): break
+	while out.length() < splits:
+		at := rest.index_of(separator)
+		if at.is_none(): break
 
-        out.append(rest.slice(0, at.get(0)).get(""))
-        rest = rest.slice(at.get(0) + separator.length(), rest.length()).get("")
+		out.append(rest.slice(0, at.get(0)).get(""))
+		rest = rest.slice(at.get(0) + separator.length(), rest.length()).get("")
 
-    out.append(rest)
-    return out
+	out.append(rest)
+	return out
 
 // `text.strip(" ")`: the spaces at both ends removed.
 export fn strip_spaces(text: String) String:
-    var start = 0
-    var end = text.length()
-    while start < end and text.get(start) == " ": start += 1
-    while end > start and text.get(end - 1) == " ": end -= 1
-    return text.slice(start, end).get("")
+	var start = 0
+	var end = text.length()
+	while start < end and text.get(start) == " ": start += 1
+	while end > start and text.get(end - 1) == " ": end -= 1
+	return text.slice(start, end).get("")
 
 // Whether the regular expression `pattern` matches all of `text`, as Python's `re.fullmatch`.
 export fn full_match(pattern: String, text: String) Bool:
-    if re := compile("^(?:{pattern})$").to_optional(): return re.matches(text)
+	if re := compile("^(?:{pattern})$").to_optional(): return re.matches(text)
 
-    return false
+	return false
 
 // `text.split()`: the words between runs of whitespace.
 export fn words(text: String) List[String]:
-    var out = List[String]()
-    var current = ""
+	var out = List[String]()
+	var current = ""
 
-    for ch in text.chars():
-        if ch.trim().is_empty():
-            if current != "": out.append(current.clone())
-            current = ""
-        else:
-            current += ch
+	for ch in text.chars():
+		if ch.trim().is_empty():
+			if current != "": out.append(current.clone())
+			current = ""
+		else:
+			current += ch
 
-    if current != "": out.append(current.clone())
-    return out
+	if current != "": out.append(current.clone())
+	return out

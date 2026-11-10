@@ -1,65 +1,65 @@
 import (
-    Bytes, BytesBuilder from "@std/bytes.ms",
-    panic from "@std/core.ms",
-    bit_and,
-    bit_or,
-    bit_xor,
-    rotate_right,
-    shift_left,
-    shift_right_unsigned,
-    wrapping_add from "@std/math/math.ms",
+	Bytes, BytesBuilder from "@std/bytes.ms",
+	panic from "@std/core.ms",
+	bit_and,
+	bit_or,
+	bit_xor,
+	rotate_right,
+	shift_left,
+	shift_right_unsigned,
+	wrapping_add from "@std/math/math.ms",
 )
 
 // Message word schedule shared by BLAKE2b (12 rounds, rows 0-9 then 0-1 again) and BLAKE2s (10 rounds).
 fn sigma() List[List[Int]]:
-    return [
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-        [14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
-        [11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4],
-        [7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8],
-        [9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13],
-        [2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9],
-        [12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11],
-        [13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10],
-        [6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5],
-        [10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0]
-    ]
+	return [
+		[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+		[14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
+		[11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4],
+		[7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8],
+		[9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13],
+		[2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9],
+		[12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11],
+		[13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10],
+		[6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5],
+		[10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0]
+	]
 
 // Reads a little-endian word of `width` bytes at `at`, zero padding past the end of `data`.
 fn word(data: Bytes, at: Int, width: Int) Int:
-    var value = 0
+	var value = 0
 
-    for offset in 0..width:
-        index := at + offset
-        if index < data.length():
-            value = bit_or(value, shift_left(data.get(index).to_int(), 8 * offset))
+	for offset in 0..width:
+		index := at + offset
+		if index < data.length():
+			value = bit_or(value, shift_left(data.get(index).to_int(), 8 * offset))
 
-    return value
+	return value
 
 // The padded input: the key block (if any) followed by the data, zero filled to a whole number of blocks (at least one).
 fn padded(key: Bytes, data: Bytes, block: Int) Bytes:
-    var out = BytesBuilder()
+	var out = BytesBuilder()
 
-    if not key.is_empty():
-        out.append_bytes(key)
-        for fill in key.length()..block:
-            out.append(0)
+	if not key.is_empty():
+		out.append_bytes(key)
+		for fill in key.length()..block:
+			out.append(0)
 
-    out.append_bytes(data)
+	out.append_bytes(data)
 
-    written := if not key.is_empty(): block + data.length() else: data.length()
-    var fill_to = ((written + block - 1) / block) * block
-    if fill_to == 0:
-        fill_to = block
-    for fill in written..fill_to:
-        out.append(0)
-    return out.build()
+	written := if not key.is_empty(): block + data.length() else: data.length()
+	var fill_to = ((written + block - 1) / block) * block
+	if fill_to == 0:
+		fill_to = block
+	for fill in written..fill_to:
+		out.append(0)
+	return out.build()
 
 fn check(length: Int, key: Bytes, max: Int) Unit:
-    if length < 1 or length > max:
-        panic("blake2: digest length must be 1 through {max}")
-    if key.length() > max:
-        panic("blake2: key must be at most {max} bytes")
+	if length < 1 or length > max:
+		panic("blake2: digest length must be 1 through {max}")
+	if key.length() > max:
+		panic("blake2: key must be at most {max} bytes")
 
 /*
 Returns the BLAKE2b digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
@@ -67,105 +67,105 @@ Returns the BLAKE2b digest (RFC 7693) of `data`, optionally keyed, of `length` b
 `blake2b("abc".to_bytes())` begins with the bytes ba80a53f981c4d0d.
 */
 export fn blake2b(data: Bytes, key: Bytes = Bytes([]), length: Int = 64) Bytes:
-    check(length, key, 64)
+	check(length, key, 64)
 
-    iv := [
-        7640891576956012808, -4942790177534073029, 4354685564936845355,
-        -6534734903238641935, 5840696475078001361, -7276294671716946913,
-        2270897969802886507, 6620516959819538809
-    ]
-    var h = iv.clone()
-    h.set(0, bit_xor(h[0], 16842752 + key.length() * 256 + length))
+	iv := [
+		7640891576956012808, -4942790177534073029, 4354685564936845355,
+		-6534734903238641935, 5840696475078001361, -7276294671716946913,
+		2270897969802886507, 6620516959819538809
+	]
+	var h = iv.clone()
+	h.set(0, bit_xor(h[0], 16842752 + key.length() * 256 + length))
 
-    message := padded(key, data, 128)
-    blocks := message.length() / 128
-    schedule := sigma()
-    var total = data.length()
-    if not key.is_empty():
-        total += 128
+	message := padded(key, data, 128)
+	blocks := message.length() / 128
+	schedule := sigma()
+	var total = data.length()
+	if not key.is_empty():
+		total += 128
 
-    var counted = 0
+	var counted = 0
 
-    for block in 0..blocks:
-        last := block == blocks - 1
+	for block in 0..blocks:
+		last := block == blocks - 1
 
-        if last:
-            counted = total
-        else:
-            counted = (block + 1) * 128
+		if last:
+			counted = total
+		else:
+			counted = (block + 1) * 128
 
-        var m: List[Int] = []
-        for index in 0..16:
-            m.append(word(message, block * 128 + index * 8, 8))
+		var m: List[Int] = []
+		for index in 0..16:
+			m.append(word(message, block * 128 + index * 8, 8))
 
-        var v = h.clone()
-        for index in 0..8:
-            v.append(iv[index])
-        v.set(12, bit_xor(v[12], counted))
-        if last:
-            v.set(14, bit_xor(v[14], -1))
+		var v = h.clone()
+		for index in 0..8:
+			v.append(iv[index])
+		v.set(12, bit_xor(v[12], counted))
+		if last:
+			v.set(14, bit_xor(v[14], -1))
 
-        for round in 0..12:
-            s := schedule[round % 10]
+		for round in 0..12:
+			s := schedule[round % 10]
 
-            for step in 0..8:
-                var a = step % 4
-                var b = 4 + step % 4
-                var c = 8 + step % 4
-                var d = 12 + step % 4
-                var x = 0
-                var y = 0
+			for step in 0..8:
+				var a = step % 4
+				var b = 4 + step % 4
+				var c = 8 + step % 4
+				var d = 12 + step % 4
+				var x = 0
+				var y = 0
 
-                if step < 4:
-                    x = m[s[2 * step]]
-                    y = m[s[2 * step + 1]]
-                else:
-                    b = 4 + (step + 1) % 4
-                    c = 8 + (step + 2) % 4
-                    d = 12 + (step + 3) % 4
-                    x = m[s[2 * step]]
-                    y = m[s[2 * step + 1]]
+				if step < 4:
+					x = m[s[2 * step]]
+					y = m[s[2 * step + 1]]
+				else:
+					b = 4 + (step + 1) % 4
+					c = 8 + (step + 2) % 4
+					d = 12 + (step + 3) % 4
+					x = m[s[2 * step]]
+					y = m[s[2 * step + 1]]
 
-                var va = v[a]
-                var vb = v[b]
-                var vc = v[c]
-                var vd = v[d]
-                va = wrapping_add(wrapping_add(va, vb), x)
-                vd = rotate_right(bit_xor(vd, va), 32)
-                vc = wrapping_add(vc, vd)
-                vb = rotate_right(bit_xor(vb, vc), 24)
-                va = wrapping_add(wrapping_add(va, vb), y)
-                vd = rotate_right(bit_xor(vd, va), 16)
-                vc = wrapping_add(vc, vd)
-                vb = rotate_right(bit_xor(vb, vc), 63)
-                v.set(a, va)
-                v.set(b, vb)
-                v.set(c, vc)
-                v.set(d, vd)
+				var va = v[a]
+				var vb = v[b]
+				var vc = v[c]
+				var vd = v[d]
+				va = wrapping_add(wrapping_add(va, vb), x)
+				vd = rotate_right(bit_xor(vd, va), 32)
+				vc = wrapping_add(vc, vd)
+				vb = rotate_right(bit_xor(vb, vc), 24)
+				va = wrapping_add(wrapping_add(va, vb), y)
+				vd = rotate_right(bit_xor(vd, va), 16)
+				vc = wrapping_add(vc, vd)
+				vb = rotate_right(bit_xor(vb, vc), 63)
+				v.set(a, va)
+				v.set(b, vb)
+				v.set(c, vc)
+				v.set(d, vd)
 
-        for index in 0..8:
-            h.set(index, bit_xor(bit_xor(h[index], v[index]), v[index + 8]))
+		for index in 0..8:
+			h.set(index, bit_xor(bit_xor(h[index], v[index]), v[index + 8]))
 
-    var out = BytesBuilder()
+	var out = BytesBuilder()
 
-    for index in 0..length:
-        w := h[index / 8]
-        out.append(
-            bit_and(
-                shift_right_unsigned(w, 8 * (index % 8)), 255
-            ).to_uint8().get(0)
-        )
+	for index in 0..length:
+		w := h[index / 8]
+		out.append(
+			bit_and(
+				shift_right_unsigned(w, 8 * (index % 8)), 255
+			).to_uint8().get(0)
+		)
 
-    return out.build()
+	return out.build()
 
 // Rotates a 32-bit word toward the low end.
 fn rotr32(value: Int, count: Int) Int:
-    return bit_and(
-        bit_or(
-            shift_right_unsigned(value, count), shift_left(value, 32 - count)
-        ),
-        4294967295
-    )
+	return bit_and(
+		bit_or(
+			shift_right_unsigned(value, count), shift_left(value, 32 - count)
+		),
+		4294967295
+	)
 
 /*
 Returns the BLAKE2s digest (RFC 7693) of `data`, optionally keyed, of `length` bytes.
@@ -173,81 +173,81 @@ Returns the BLAKE2s digest (RFC 7693) of `data`, optionally keyed, of `length` b
 `blake2s("abc".to_bytes())` begins with the bytes 508c5e8c327c14e2.
 */
 export fn blake2s(data: Bytes, key: Bytes = Bytes([]), length: Int = 32) Bytes:
-    check(length, key, 32)
+	check(length, key, 32)
 
-    iv := [
-        1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924,
-        528734635, 1541459225
-    ]
-    var h = iv.clone()
-    h.set(0, bit_xor(h[0], 16842752 + key.length() * 256 + length))
+	iv := [
+		1779033703, 3144134277, 1013904242, 2773480762, 1359893119, 2600822924,
+		528734635, 1541459225
+	]
+	var h = iv.clone()
+	h.set(0, bit_xor(h[0], 16842752 + key.length() * 256 + length))
 
-    message := padded(key, data, 64)
-    blocks := message.length() / 64
-    schedule := sigma()
-    var total = data.length()
-    if not key.is_empty():
-        total += 64
+	message := padded(key, data, 64)
+	blocks := message.length() / 64
+	schedule := sigma()
+	var total = data.length()
+	if not key.is_empty():
+		total += 64
 
-    for block in 0..blocks:
-        last := block == blocks - 1
-        counted := if last: total else: (block + 1) * 64
-        var m: List[Int] = []
-        for index in 0..16:
-            m.append(word(message, block * 64 + index * 4, 4))
+	for block in 0..blocks:
+		last := block == blocks - 1
+		counted := if last: total else: (block + 1) * 64
+		var m: List[Int] = []
+		for index in 0..16:
+			m.append(word(message, block * 64 + index * 4, 4))
 
-        var v = h.clone()
-        for index in 0..8:
-            v.append(iv[index])
-        v.set(12, bit_xor(v[12], bit_and(counted, 4294967295)))
-        v.set(13, bit_xor(v[13], shift_right_unsigned(counted, 32)))
-        if last:
-            v.set(14, bit_xor(v[14], 4294967295))
+		var v = h.clone()
+		for index in 0..8:
+			v.append(iv[index])
+		v.set(12, bit_xor(v[12], bit_and(counted, 4294967295)))
+		v.set(13, bit_xor(v[13], shift_right_unsigned(counted, 32)))
+		if last:
+			v.set(14, bit_xor(v[14], 4294967295))
 
-        for round in 0..10:
-            s := schedule[round]
+		for round in 0..10:
+			s := schedule[round]
 
-            for step in 0..8:
-                a := step % 4
-                var b = 4 + step % 4
-                var c = 8 + step % 4
-                var d = 12 + step % 4
+			for step in 0..8:
+				a := step % 4
+				var b = 4 + step % 4
+				var c = 8 + step % 4
+				var d = 12 + step % 4
 
-                if step >= 4:
-                    b = 4 + (step + 1) % 4
-                    c = 8 + (step + 2) % 4
-                    d = 12 + (step + 3) % 4
+				if step >= 4:
+					b = 4 + (step + 1) % 4
+					c = 8 + (step + 2) % 4
+					d = 12 + (step + 3) % 4
 
-                x := m[s[2 * step]]
-                y := m[s[2 * step + 1]]
-                var va = v[a]
-                var vb = v[b]
-                var vc = v[c]
-                var vd = v[d]
-                va = bit_and(va + vb + x, 4294967295)
-                vd = rotr32(bit_xor(vd, va), 16)
-                vc = bit_and(vc + vd, 4294967295)
-                vb = rotr32(bit_xor(vb, vc), 12)
-                va = bit_and(va + vb + y, 4294967295)
-                vd = rotr32(bit_xor(vd, va), 8)
-                vc = bit_and(vc + vd, 4294967295)
-                vb = rotr32(bit_xor(vb, vc), 7)
-                v.set(a, va)
-                v.set(b, vb)
-                v.set(c, vc)
-                v.set(d, vd)
+				x := m[s[2 * step]]
+				y := m[s[2 * step + 1]]
+				var va = v[a]
+				var vb = v[b]
+				var vc = v[c]
+				var vd = v[d]
+				va = bit_and(va + vb + x, 4294967295)
+				vd = rotr32(bit_xor(vd, va), 16)
+				vc = bit_and(vc + vd, 4294967295)
+				vb = rotr32(bit_xor(vb, vc), 12)
+				va = bit_and(va + vb + y, 4294967295)
+				vd = rotr32(bit_xor(vd, va), 8)
+				vc = bit_and(vc + vd, 4294967295)
+				vb = rotr32(bit_xor(vb, vc), 7)
+				v.set(a, va)
+				v.set(b, vb)
+				v.set(c, vc)
+				v.set(d, vd)
 
-        for index in 0..8:
-            h.set(index, bit_xor(bit_xor(h[index], v[index]), v[index + 8]))
+		for index in 0..8:
+			h.set(index, bit_xor(bit_xor(h[index], v[index]), v[index + 8]))
 
-    var out = BytesBuilder()
+	var out = BytesBuilder()
 
-    for index in 0..length:
-        w := h[index / 4]
-        out.append(
-            bit_and(
-                shift_right_unsigned(w, 8 * (index % 4)), 255
-            ).to_uint8().get(0)
-        )
+	for index in 0..length:
+		w := h[index / 4]
+		out.append(
+			bit_and(
+				shift_right_unsigned(w, 8 * (index % 4)), 255
+			).to_uint8().get(0)
+		)
 
-    return out.build()
+	return out.build()

@@ -1,34 +1,34 @@
 import (
-    Key from "./key.ms",
-    remove_generic from "./generic.ms",
+	Key from "./key.ms",
+	remove_generic from "./generic.ms",
 )
 
 impl Equal for Key:
-    fn equals(other: Key) Bool:
-        return self.id == other.id
+	fn equals(other: Key) Bool:
+		return self.id == other.id
 
 impl Hashable for Key:
-    fn hash() Int: self.id
+	fn hash() Int: self.id
 
 export fn id_map() Map[Key, Int]:
-    var values = Map[Key, Int]()
-    values.add(Key(1, "one"), 10)
-    values.add(Key(2, "two"), 20)
-    values.add(Key(3, "three"), 30)
-    return values
+	var values = Map[Key, Int]()
+	values.add(Key(1, "one"), 10)
+	values.add(Key(2, "two"), 20)
+	values.add(Key(3, "three"), 30)
+	return values
 
 export fn id_direct(var values: Map[Key, Int], key: Key) Unit:
-    values.remove(key)
+	values.remove(key)
 
 export fn id_bound(var values: Map[Key, Int], key: Key) Unit:
-    remove := values.remove
-    remove(key)
+	remove := values.remove
+	remove(key)
 
 export fn id_generic(var values: Map[Key, Int], key: Key) Unit:
-    remove_generic(var values, key)
+	remove_generic(var values, key)
 
 export fn id_empty() Map[Key, Int]:
-    return Map[Key, Int]()
+	return Map[Key, Int]()
 
 export fn id_set() Set[Key]:
-    return Set([Key(1, "one"), Key(2, "two"), Key(3, "three")])
+	return Set([Key(1, "one"), Key(2, "two"), Key(3, "three")])

@@ -1,2 +1,2 @@
 fn main() Unit:
-    return
+	return

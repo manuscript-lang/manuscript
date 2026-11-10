@@ -30,7 +30,7 @@ fn pair(name: &str, path: &str) -> (String, String) {
 
 #[test]
 fn group_expands_to_one_import_per_name() {
-    let source = "import (\n    A, B from \"./a.ms\",\n    C from \"./c.ms\",\n)\n";
+    let source = "import (\n\tA, B from \"./a.ms\",\n\tC from \"./c.ms\",\n)\n";
     assert_eq!(
         imports(source),
         [
@@ -52,7 +52,7 @@ fn older_forms_still_parse() {
     assert_eq!(imports("import A from \"./a.ms\"\n").len(), 1);
     assert_eq!(imports("import A, B from \"./a.ms\"\n").len(), 2);
     assert_eq!(
-        imports("import (\n    A,\n    B,\n) from \"./a.ms\"\n").len(),
+        imports("import (\n\tA,\n\tB,\n) from \"./a.ms\"\n").len(),
         2
     );
 }
@@ -76,8 +76,8 @@ fn malformed_groups_are_rejected() {
 
 #[test]
 fn format_groups_adjacent_imports() {
-    let source = "import A from \"./a.ms\"\nimport B, C from \"./b.ms\"\nimport (\n    D,\n    E,\n) from \"./d.ms\"\n\nfn f() Int:\n    return 1\n";
-    let expected = "import (\n    A from \"./a.ms\",\n    B, C from \"./b.ms\",\n    D, E from \"./d.ms\",\n)\n\nfn f() Int:\n    return 1\n";
+    let source = "import A from \"./a.ms\"\nimport B, C from \"./b.ms\"\nimport (\n\tD,\n\tE,\n) from \"./d.ms\"\n\nfn f() Int:\n\treturn 1\n";
+    let expected = "import (\n\tA from \"./a.ms\",\n\tB, C from \"./b.ms\",\n\tD, E from \"./d.ms\",\n)\n\nfn f() Int:\n\treturn 1\n";
     let once = format(source);
     assert_eq!(once, expected);
     assert_eq!(format(&once), once);
@@ -85,9 +85,10 @@ fn format_groups_adjacent_imports() {
 
 #[test]
 fn format_keeps_lone_import_and_commented_neighbors() {
-    let lone = "import A from \"./a.ms\"\n\nfn f() Int:\n    return 1\n";
+    let lone = "import A from \"./a.ms\"\n\nfn f() Int:\n\treturn 1\n";
     assert_eq!(format(lone), lone);
-    let commented = "import A from \"./a.ms\"  // keep\nimport B from \"./b.ms\"\n\nfn f() Int:\n    return 1\n";
+    let commented =
+        "import A from \"./a.ms\"  // keep\nimport B from \"./b.ms\"\n\nfn f() Int:\n\treturn 1\n";
     assert_eq!(format(commented), commented);
 }
 
@@ -99,9 +100,9 @@ fn format_wraps_a_wide_clause_one_name_per_line() {
         names.join(", ")
     );
     let once = format(&source);
-    assert!(once.contains("    long_imported_name_0,\n"), "{once}");
+    assert!(once.contains("\tlong_imported_name_0,\n"), "{once}");
     assert!(
-        once.contains("    long_imported_name_11 from \"./wide.ms\",\n"),
+        once.contains("\tlong_imported_name_11 from \"./wide.ms\",\n"),
         "{once}"
     );
     assert_eq!(format(&once), once);

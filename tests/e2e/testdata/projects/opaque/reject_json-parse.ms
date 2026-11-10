@@ -1,8 +1,8 @@
 import (
-    Approved, Mode, approve, safe from "./gate.ms",
-    parse, stringify from "@std/data/json.ms",
+	Approved, Mode, approve, safe from "./gate.ms",
+	parse, stringify from "@std/data/json.ms",
 )
 
 export fn main() Int:
-    a := parse[Approved]("\{\}")
-    return 0
+	a := parse[Approved]("\{\}")
+	return 0

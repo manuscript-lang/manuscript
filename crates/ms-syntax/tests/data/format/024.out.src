@@ -1,16 +1,16 @@
 import (
-    TextError from "@std/core.ms",
-    stdout, stdin, read_line, ReadStream from "@std/io/io.ms",
-    clock, Instant from "@std/time.ms",
-    StringBuilder from "@std/string.ms",
+	TextError from "@std/core.ms",
+	stdout, stdin, read_line, ReadStream from "@std/io/io.ms",
+	clock, Instant from "@std/time.ms",
+	StringBuilder from "@std/string.ms",
 )
 
 interface Counter:
-    fn bump(by: Int) Int
+	fn bump(by: Int) Int
 
 type Acc:
-    total: Int
+	total: Int
 
 impl Counter for Acc:
-    fn bump(by: Int) Int:
-        self.total += by
+	fn bump(by: Int) Int:
+		self.total += by

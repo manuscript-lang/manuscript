@@ -5,9 +5,9 @@ fn f() (fn() Int)?: return none
 fn h[T](a: Int) (fn() Int)!String: return g
 
 fn work(first: Int, second: String) (Map[String, String]?)!ApplicationError:
-    return error(cause)
+	return error(cause)
 
 fn main() Unit:
-    a := g()(1)
-    b := g(1)(2)
-    c: fn(Int) (fn() Int) = x
+	a := g()(1)
+	b := g(1)(2)
+	c: fn(Int) (fn() Int) = x

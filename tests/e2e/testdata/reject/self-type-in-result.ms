@@ -1,5 +1,5 @@
 interface Copier:
-    fn copies() List[Self]
+	fn copies() List[Self]
 
 export fn main() Int:
-    return 0
+	return 0

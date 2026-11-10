@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Same[V: Equal]:\n    fn same(other: V) Bool\n\ntype Box[T]:\n    value: T\n\nimpl Same[T] for Box[T]:\n    fn same(other: T) Bool:\n        return self.value == other\n\nfn compare[T](value: Box[T], other: T) Bool:\n    return value.same(other: other)\n"
+    "fmt": "interface Same[V: Equal]:\n\tfn same(other: V) Bool\n\ntype Box[T]:\n\tvalue: T\n\nimpl Same[T] for Box[T]:\n\tfn same(other: T) Bool:\n\t\treturn self.value == other\n\nfn compare[T](value: Box[T], other: T) Bool:\n\treturn value.same(other: other)\n"
   }
 }

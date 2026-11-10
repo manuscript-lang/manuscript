@@ -1,15 +1,15 @@
 import (
-    Bytes from "@std/bytes.ms",
-    HttpHeaders,
-    HttpResponseMetadata,
-    NativeHttpClient,
-    HttpExchange,
-    HttpServerOptions,
-    NativeServing,
-    NativeWorker,
-    NativeResponseBody,
-    RawResponse from "@std/net/http.ms",
-    Duration from "@std/time.ms",
+	Bytes from "@std/bytes.ms",
+	HttpHeaders,
+	HttpResponseMetadata,
+	NativeHttpClient,
+	HttpExchange,
+	HttpServerOptions,
+	NativeServing,
+	NativeWorker,
+	NativeResponseBody,
+	RawResponse from "@std/net/http.ms",
+	Duration from "@std/time.ms",
 )
 
 export extern fn msstd_http_client_close(handle: NativeHttpClient) Unit
@@ -17,19 +17,19 @@ export extern fn msstd_http_client_close(handle: NativeHttpClient) Unit
 export extern fn msstd_http_client_share(handle: NativeHttpClient) NativeHttpClient
 
 export extern fn msstd_http_client_request_bytes(
-    handle: NativeHttpClient,
-    method: String,
-    url: String,
-    headers: HttpHeaders,
-    body: Bytes,
-    max_response_bytes: Int?,
-    timeout: Duration?
+	handle: NativeHttpClient,
+	method: String,
+	url: String,
+	headers: HttpHeaders,
+	body: Bytes,
+	max_response_bytes: Int?,
+	timeout: Duration?
 ) RawResponse!
 
 export extern fn msstd_http_serving_new(
-    address: String,
-    options: HttpServerOptions,
-    handler: fn(var HttpExchange) Unit!
+	address: String,
+	options: HttpServerOptions,
+	handler: fn(var HttpExchange) Unit!
 ) NativeServing!
 
 // Another handle on the same serving, for a connection promise to own.
@@ -52,25 +52,25 @@ export extern fn msstd_http_serving_release(serving: NativeServing) Unit
 export extern fn msstd_http_body_close(handle: NativeResponseBody) Unit
 
 export extern fn msstd_http_body_metadata(
-    handle: NativeResponseBody
+	handle: NativeResponseBody
 ) HttpResponseMetadata
 
 export extern fn msstd_http_body_read(
-    handle: NativeResponseBody,
-    max_bytes: Int?
+	handle: NativeResponseBody,
+	max_bytes: Int?
 ) Bytes?!
 
 export extern fn msstd_http_body_read_all(handle: NativeResponseBody) Bytes!
 
 export extern fn msstd_http_headers_append(
-    headers: HttpHeaders,
-    name: String,
-    value: Bytes
+	headers: HttpHeaders,
+	name: String,
+	value: Bytes
 ) Unit!
 
 export extern fn msstd_http_headers_values(
-    value: HttpHeaders,
-    name: String
+	value: HttpHeaders,
+	name: String
 ) List[Bytes]?
 
 export extern fn msstd_http_headers_names(value: HttpHeaders) List[String]

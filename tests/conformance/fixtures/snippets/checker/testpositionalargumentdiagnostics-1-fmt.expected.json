@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Pair:\n    first: Int\n    second: Int\n"
+    "fmt": "type Pair:\n\tfirst: Int\n\tsecond: Int\n"
   }
 }

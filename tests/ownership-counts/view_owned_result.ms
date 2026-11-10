@@ -2,19 +2,19 @@
 // expect-release: allocs=40 alloc_bytes=2380
 // Trimming through a function whose owned result is a trim of its parameter.
 type Line:
-    text: String
+	text: String
 
 fn body(l: Line) String:
-    return l.text.trim()
+	return l.text.trim()
 
 fn size(l: Line) Int:
-    return body(l).length()
+	return body(l).length()
 
 export fn main() Int:
-    var total = 0
+	var total = 0
 
-    for i in 0..20:
-        l := Line("  a line of text that is long enough to live on the heap {i}  ")
-        total += size(l)
+	for i in 0..20:
+		l := Line("  a line of text that is long enough to live on the heap {i}  ")
+		total += size(l)
 
-    return total - total
+	return total - total

@@ -27,108 +27,108 @@
 import Closeable from "@std/core.ms"
 
 type Token:
-    id: Int
+	id: Int
 
 impl Closeable for Token:
-    var fn close() Unit!:
-        print("close {self.id}")
+	var fn close() Unit!:
+		print("close {self.id}")
 
 type NamedToken:
-    id: Int
-    name: String
+	id: Int
+	name: String
 
 impl Closeable for NamedToken:
-    var fn close() Unit!:
-        print("close {self.id}")
+	var fn close() Unit!:
+		print("close {self.id}")
 
 enum Choice:
-    Full(first: Token, second: Token, third: Token, code: Int)
-    Empty
+	Full(first: Token, second: Token, third: Token, code: Int)
+	Empty
 
 enum NamedChoice:
-    NamedFull(first: NamedToken, second: NamedToken, third: NamedToken, code: Int)
-    NamedEmpty
+	NamedFull(first: NamedToken, second: NamedToken, third: NamedToken, code: Int)
+	NamedEmpty
 
 enum GenericChoice[T]:
-    GenericFull(first: T, second: T, code: Int)
-    GenericEmpty
+	GenericFull(first: T, second: T, code: Int)
+	GenericEmpty
 
 fn scalar_omitted() Unit:
-    value := Full(Token(1), Token(2), Token(3), 7)
+	value := Full(Token(1), Token(2), Token(3), 7)
 
-    code := match value:
-        Full(_, _, _, code): code
-        Empty: 0
+	code := match value:
+		Full(_, _, _, code): code
+		Empty: 0
 
-    print("code {code}")
+	print("code {code}")
 
 fn heap_omitted() Unit:
-    value := NamedFull(
-        NamedToken(4, "first"), NamedToken(5, "second"), NamedToken(6, "third"), 8
-    )
+	value := NamedFull(
+		NamedToken(4, "first"), NamedToken(5, "second"), NamedToken(6, "third"), 8
+	)
 
-    code := match value:
-        NamedFull(_, _, _, code): code
-        NamedEmpty: 0
+	code := match value:
+		NamedFull(_, _, _, code): code
+		NamedEmpty: 0
 
-    print("code {code}")
+	print("code {code}")
 
 fn mixed() Unit:
-    value := Full(Token(7), Token(8), Token(9), 0)
+	value := Full(Token(7), Token(8), Token(9), 0)
 
-    _ := match value:
-        Full(first, _, third, _):
-            print("kept {first.id} {third.id}")
-        Empty: unit
+	_ := match value:
+		Full(first, _, third, _):
+			print("kept {first.id} {third.id}")
+		Empty: unit
 
 fn borrowed() Unit:
-    value := Full(Token(10), Token(11), Token(12), 9)
+	value := Full(Token(10), Token(11), Token(12), 9)
 
-    code := match value:
-        Full(first, _, _, code): code + first.id
-        Empty: 0
+	code := match value:
+		Full(first, _, _, code): code + first.id
+		Empty: 0
 
-    original := match value:
-        Full(_, _, _, saved): saved
-        Empty: 0
+	original := match value:
+		Full(_, _, _, saved): saved
+		Empty: 0
 
-    print("borrowed {code - original} {original}")
+	print("borrowed {code - original} {original}")
 
-    _ := match value:
-        Full(first, _, _, _): first.id
-        Empty: 0
+	_ := match value:
+		Full(first, _, _, _): first.id
+		Empty: 0
 
 fn wildcard() Unit:
-    value := Full(Token(13), Token(14), Token(15), 0)
+	value := Full(Token(13), Token(14), Token(15), 0)
 
-    code := match value:
-        _: 0
+	code := match value:
+		_: 0
 
-    print("wildcard {code}")
+	print("wildcard {code}")
 
 fn generic() Unit:
-    value := GenericFull(Token(16), Token(17), 11)
+	value := GenericFull(Token(16), Token(17), 11)
 
-    code := match value:
-        GenericFull(_, _, code): code
-        GenericEmpty: 0
+	code := match value:
+		GenericFull(_, _, code): code
+		GenericEmpty: 0
 
-    print("generic {code}")
+	print("generic {code}")
 
 fn empty() Unit:
-    value: Choice = Empty
+	value: Choice = Empty
 
-    code := match value:
-        Full(_, _, _, code): code
-        Empty: 0
+	code := match value:
+		Full(_, _, _, code): code
+		Empty: 0
 
-    print("empty {code}")
+	print("empty {code}")
 
 fn main() Unit:
-    scalar_omitted()
-    heap_omitted()
-    mixed()
-    borrowed()
-    wildcard()
-    generic()
-    empty()
+	scalar_omitted()
+	heap_omitted()
+	mixed()
+	borrowed()
+	wildcard()
+	generic()
+	empty()

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum A:\n    X\n\nenum B:\n    X\n\nfn f() Int:\n    a := X\n    return 1\n"
+    "fmt": "enum A:\n\tX\n\nenum B:\n\tX\n\nfn f() Int:\n\ta := X\n\treturn 1\n"
   }
 }

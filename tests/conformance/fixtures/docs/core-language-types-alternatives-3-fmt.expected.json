@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum LeftState:\n    Ready\n\nenum RightState:\n    Ready\n\nleft: LeftState = LeftState.Ready\n// Rejected: two visible Ready cases, even with an annotation.\nannotated: LeftState = Ready\n// Rejected: two visible Ready cases.\nambiguous := Ready\n// Rejected: a different nominal alternative.\nwrong: LeftState = RightState.Ready\n"
+    "fmt": "enum LeftState:\n\tReady\n\nenum RightState:\n\tReady\n\nleft: LeftState = LeftState.Ready\n// Rejected: two visible Ready cases, even with an annotation.\nannotated: LeftState = Ready\n// Rejected: two visible Ready cases.\nambiguous := Ready\n// Rejected: a different nominal alternative.\nwrong: LeftState = RightState.Ready\n"
   }
 }

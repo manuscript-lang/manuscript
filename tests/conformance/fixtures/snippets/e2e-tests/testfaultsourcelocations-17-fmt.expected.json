@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\ntest \"several checks\":\n    good := 2 + 3\n    if good == 5:\n        panic(\"last check failed\")\n"
+    "fmt": "import panic from \"@std/core.ms\"\n\ntest \"several checks\":\n\tgood := 2 + 3\n\tif good == 5:\n\t\tpanic(\"last check failed\")\n"
   }
 }

@@ -31,89 +31,89 @@
 // expect-stdout: close b1
 // A resource field moves out of an owned record: the new owner closes it once, and the record closes only the other fields, last declared first.
 import (
-    stdout from "@std/io/io.ms",
-    Closeable from "@std/core.ms",
+	stdout from "@std/io/io.ms",
+	Closeable from "@std/core.ms",
 )
 
 type Door:
-    name: String
+	name: String
 
 impl Closeable for Door:
-    var fn close() Unit!:
-        stdout().write("close {self.name}\n").get()
+	var fn close() Unit!:
+		stdout().write("close {self.name}\n").get()
 
 type Room:
-    first: Door
-    second: Door
+	first: Door
+	second: Door
 
 type Oops:
-    why: String
+	why: String
 
 fn say(s: String) Unit:
-    stdout().write("{s}\n").get()
+	stdout().write("{s}\n").get()
 
 fn check(fail: Bool) Int!Oops:
-    if fail: return error(Oops("no"))
+	if fail: return error(Oops("no"))
 
-    return ok(1)
+	return ok(1)
 
 fn after_move(r: Room, fail: Bool) List[Door]!Oops:
-    var xs: List[Door] = []
-    xs.append(r.first)
+	var xs: List[Door] = []
+	xs.append(r.first)
 
-    _n := try check(fail)
-    say("after_move: ok")
-    return ok(xs)
+	_n := try check(fail)
+	say("after_move: ok")
+	return ok(xs)
 
 fn before_move(r: Room, fail: Bool) List[Door]!Oops:
-    _n := try check(fail)
-    var xs: List[Door] = []
-    xs.append(r.second)
-    return ok(xs)
+	_n := try check(fail)
+	var xs: List[Door] = []
+	xs.append(r.second)
+	return ok(xs)
 
 fn both_cond(r: Room, a: Bool, b: Bool) List[Door]:
-    var xs: List[Door] = []
-    if a:
-        xs.append(r.first)
-    if b:
-        xs.append(r.second)
-    say("both_cond: end")
-    return xs
+	var xs: List[Door] = []
+	if a:
+		xs.append(r.first)
+	if b:
+		xs.append(r.second)
+	say("both_cond: end")
+	return xs
 
 fn whole_or_part(r: Room, flag: Bool) List[Door]:
-    var xs: List[Door] = []
+	var xs: List[Door] = []
 
-    if flag:
-        xs.append(r.second)
-    else:
-        moved := r
-        xs.append(moved.first)
+	if flag:
+		xs.append(r.second)
+	else:
+		moved := r
+		xs.append(moved.first)
 
-    return xs
+	return xs
 
 export fn main() Int:
-    _a := after_move(Room(Door("a1"), Door("a2")), true)
-    say("main: a")
+	_a := after_move(Room(Door("a1"), Door("a2")), true)
+	say("main: a")
 
-    _b := after_move(Room(Door("b1"), Door("b2")), false)
-    say("main: b")
+	_b := after_move(Room(Door("b1"), Door("b2")), false)
+	say("main: b")
 
-    _c := before_move(Room(Door("c1"), Door("c2")), true)
-    say("main: c")
+	_c := before_move(Room(Door("c1"), Door("c2")), true)
+	say("main: c")
 
-    _d := before_move(Room(Door("d1"), Door("d2")), false)
-    say("main: d")
+	_d := before_move(Room(Door("d1"), Door("d2")), false)
+	say("main: d")
 
-    e := both_cond(Room(Door("e1"), Door("e2")), true, false)
-    f := both_cond(Room(Door("f1"), Door("f2")), false, true)
-    g := both_cond(Room(Door("g1"), Door("g2")), true, true)
-    h := both_cond(Room(Door("h1"), Door("h2")), false, false)
-    say("main: h")
+	e := both_cond(Room(Door("e1"), Door("e2")), true, false)
+	f := both_cond(Room(Door("f1"), Door("f2")), false, true)
+	g := both_cond(Room(Door("g1"), Door("g2")), true, true)
+	h := both_cond(Room(Door("h1"), Door("h2")), false, false)
+	say("main: h")
 
-    i := whole_or_part(Room(Door("i1"), Door("i2")), true)
-    j := whole_or_part(Room(Door("j1"), Door("j2")), false)
-    say("main: end")
-    if e.length() + f.length() + g.length() + h.length() + i.length() + j.length() != 6:
-        return 1
+	i := whole_or_part(Room(Door("i1"), Door("i2")), true)
+	j := whole_or_part(Room(Door("j1"), Door("j2")), false)
+	say("main: end")
+	if e.length() + f.length() + g.length() + h.length() + i.length() + j.length() != 6:
+		return 1
 
-    return 0
+	return 0

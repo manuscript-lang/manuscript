@@ -1,7 +1,7 @@
 enum ReadError:
-    Failed(reason: String)
+	Failed(reason: String)
 
 extern fn read_value() Int!ReadError
 
 export fn main() Int:
-    return 0
+	return 0

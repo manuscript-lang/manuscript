@@ -1,9 +1,9 @@
 type P:
-    n: Int
+	n: Int
 
 fn f(p: P?) Int:
-    a := p?.n
-    b := 1
-    c := if b > 0: 1 else: 2
-    d := 3
-    return a.get(0) + b + c + d
+	a := p?.n
+	b := 1
+	c := if b > 0: 1 else: 2
+	d := 3
+	return a.get(0) + b + c + d

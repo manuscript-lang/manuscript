@@ -1,46 +1,46 @@
 import (
-    filled from "@std/collections/collections.ms",
-    panic from "@std/core.ms",
+	filled from "@std/collections/collections.ms",
+	panic from "@std/core.ms",
 )
 
 fn make_cells() List[Int]:
-    if values := filled(0, 16384): return values
+	if values := filled(0, 16384): return values
 
-    return panic("fill failure")
+	return panic("fill failure")
 
 fn main() Int:
-    var cells = make_cells()
-    var next = make_cells()
+	var cells = make_cells()
+	var next = make_cells()
 
-    for i in 0..16384:
-        var value = 0
-        if (i * 17 + i / 128 * 13) % 7 < 3: value = 1
-        cells.set(i, value)
+	for i in 0..16384:
+		var value = 0
+		if (i * 17 + i / 128 * 13) % 7 < 3: value = 1
+		cells.set(i, value)
 
-    for generation in 0..50:
-        for y in 0..128:
-            for x in 0..128:
-                var neighbors = 0
+	for generation in 0..50:
+		for y in 0..128:
+			for x in 0..128:
+				var neighbors = 0
 
-                for dy in - 1..2:
-                    for dx in - 1..2:
-                        if dx != 0 or dy != 0:
-                            index := ((y + dy + 128) % 128 * 128 + (x + dx + 128) % 128)
-                            neighbors += cells.get(index)
+				for dy in - 1..2:
+					for dx in - 1..2:
+						if dx != 0 or dy != 0:
+							index := ((y + dy + 128) % 128 * 128 + (x + dx + 128) % 128)
+							neighbors += cells.get(index)
 
-                index := y * 128 + x
-                alive := (neighbors == 3 or (neighbors == 2 and cells.get(index) == 1))
-                var value = 0
-                if alive: value = 1
-                next.set(index, value)
+				index := y * 128 + x
+				alive := (neighbors == 3 or (neighbors == 2 and cells.get(index) == 1))
+				var value = 0
+				if alive: value = 1
+				next.set(index, value)
 
-        old := cells
-        cells = next
-        next = old
+		old := cells
+		cells = next
+		next = old
 
-    var sum = 0
-    for i in 0..16384:
-        sum += cells.get(i)
-    if sum != 3914: return panic("life checksum")
+	var sum = 0
+	for i in 0..16384:
+		sum += cells.get(i)
+	if sum != 3914: return panic("life checksum")
 
-    return 0
+	return 0

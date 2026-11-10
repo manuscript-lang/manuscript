@@ -1,3 +1,3 @@
 // sample
 fn item_N(value: Int) Int:
-    return value + 123
+	return value + 123

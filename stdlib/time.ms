@@ -1,322 +1,322 @@
 import (
-    Data, panic from "@std/core.ms",
-    ReadStream, Source from "@std/io/io.ms",
-    Promise, adopt from "@std/concurrency/promise.ms",
-    msstd_time_duration_add,
-    msstd_time_duration_subtract,
-    msstd_time_duration_multiply,
-    msstd_time_duration_divide,
-    msstd_time_duration_negate,
-    msstd_time_duration_abs,
-    msstd_time_duration_to_microseconds,
-    msstd_time_duration_to_milliseconds,
-    msstd_time_duration_to_seconds,
-    msstd_time_duration_to_minutes,
-    msstd_time_duration_to_hours,
-    msstd_time_local_zone,
-    msstd_time_instant_shift,
-    msstd_time_instant_unshift,
-    msstd_time_instant_difference,
-    msstd_time_instant_compare,
-    msstd_time_timestamp_to_string,
-    msstd_time_timestamp_shift,
-    msstd_time_timestamp_difference,
-    msstd_time_timestamp_compare,
-    msstd_time_timestamp_calendar,
-    msstd_time_timestamp_format,
-    msstd_time_parse_timestamp,
-    msstd_time_from_calendar,
-    msstd_time_timestamp,
-    msstd_time_clock_now,
-    msstd_time_wall_clock_now from "@std/internal/time.ms",
-    msrt_promise_sleep from "@std/internal/promises.ms",
+	Data, panic from "@std/core.ms",
+	ReadStream, Source from "@std/io/io.ms",
+	Promise, adopt from "@std/concurrency/promise.ms",
+	msstd_time_duration_add,
+	msstd_time_duration_subtract,
+	msstd_time_duration_multiply,
+	msstd_time_duration_divide,
+	msstd_time_duration_negate,
+	msstd_time_duration_abs,
+	msstd_time_duration_to_microseconds,
+	msstd_time_duration_to_milliseconds,
+	msstd_time_duration_to_seconds,
+	msstd_time_duration_to_minutes,
+	msstd_time_duration_to_hours,
+	msstd_time_local_zone,
+	msstd_time_instant_shift,
+	msstd_time_instant_unshift,
+	msstd_time_instant_difference,
+	msstd_time_instant_compare,
+	msstd_time_timestamp_to_string,
+	msstd_time_timestamp_shift,
+	msstd_time_timestamp_difference,
+	msstd_time_timestamp_compare,
+	msstd_time_timestamp_calendar,
+	msstd_time_timestamp_format,
+	msstd_time_parse_timestamp,
+	msstd_time_from_calendar,
+	msstd_time_timestamp,
+	msstd_time_clock_now,
+	msstd_time_wall_clock_now from "@std/internal/time.ms",
+	msrt_promise_sleep from "@std/internal/promises.ms",
 )
 
 // A span of elapsed time, counted in signed nanoseconds.
 export type Duration:
-    // The signed count of nanoseconds; `nanoseconds(n)` and the unit constructors build one.
-    nanos: Int
+	// The signed count of nanoseconds; `nanoseconds(n)` and the unit constructors build one.
+	nanos: Int
 
 impl Duration:
-    // Adds signed nanoseconds; a result outside Duration's representable range faults.
-    fn add(other: Duration) Duration:
-        return Duration(nanos: msstd_time_duration_add(self.nanos, other.nanos))
+	// Adds signed nanoseconds; a result outside Duration's representable range faults.
+	fn add(other: Duration) Duration:
+		return Duration(nanos: msstd_time_duration_add(self.nanos, other.nanos))
 
-    // Subtracts signed nanoseconds; a result outside Duration's representable range faults.
-    fn subtract(other: Duration) Duration:
-        return Duration(nanos: msstd_time_duration_subtract(self.nanos, other.nanos))
+	// Subtracts signed nanoseconds; a result outside Duration's representable range faults.
+	fn subtract(other: Duration) Duration:
+		return Duration(nanos: msstd_time_duration_subtract(self.nanos, other.nanos))
 
-    // Multiplies by an integer factor; overflow faults.
-    fn multiply(factor: Int) Duration:
-        return Duration(nanos: msstd_time_duration_multiply(self.nanos, factor))
+	// Multiplies by an integer factor; overflow faults.
+	fn multiply(factor: Int) Duration:
+		return Duration(nanos: msstd_time_duration_multiply(self.nanos, factor))
 
-    // Divides by a nonzero integer, truncating toward zero; zero faults.
-    fn divide(divisor: Int) Duration:
-        return Duration(nanos: msstd_time_duration_divide(self.nanos, divisor))
+	// Divides by a nonzero integer, truncating toward zero; zero faults.
+	fn divide(divisor: Int) Duration:
+		return Duration(nanos: msstd_time_duration_divide(self.nanos, divisor))
 
-    // Negates this duration; the minimum Duration faults.
-    fn negate() Duration:
-        return Duration(nanos: msstd_time_duration_negate(self.nanos))
+	// Negates this duration; the minimum Duration faults.
+	fn negate() Duration:
+		return Duration(nanos: msstd_time_duration_negate(self.nanos))
 
-    // Returns the absolute value; the minimum Duration faults.
-    fn abs() Duration:
-        return Duration(nanos: msstd_time_duration_abs(self.nanos))
+	// Returns the absolute value; the minimum Duration faults.
+	fn abs() Duration:
+		return Duration(nanos: msstd_time_duration_abs(self.nanos))
 
-    // Returns -1, 0, or 1.
-    fn compare(other: Duration) Int:
-        if self.nanos < other.nanos: return -1
-        if self.nanos > other.nanos: return 1
+	// Returns -1, 0, or 1.
+	fn compare(other: Duration) Int:
+		if self.nanos < other.nanos: return -1
+		if self.nanos > other.nanos: return 1
 
-        return 0
+		return 0
 
-    // Returns the lesser of this value and `other`, or this value when they compare equal.
-    fn min(other: Duration) Duration:
-        if other.compare(self) < 0: return other
+	// Returns the lesser of this value and `other`, or this value when they compare equal.
+	fn min(other: Duration) Duration:
+		if other.compare(self) < 0: return other
 
-        return self
+		return self
 
-    // Returns the greater of this value and `other`, or this value when they compare equal.
-    fn max(other: Duration) Duration:
-        if other.compare(self) > 0: return other
+	// Returns the greater of this value and `other`, or this value when they compare equal.
+	fn max(other: Duration) Duration:
+		if other.compare(self) > 0: return other
 
-        return self
+		return self
 
-    // Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
-    fn clamp(low: Duration, high: Duration) Duration:
-        if low.compare(high) > 0:
-            panic("clamp: low must not be greater than high")
-        if self.compare(low) < 0: return low
-        if self.compare(high) > 0: return high
+	// Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
+	fn clamp(low: Duration, high: Duration) Duration:
+		if low.compare(high) > 0:
+			panic("clamp: low must not be greater than high")
+		if self.compare(low) < 0: return low
+		if self.compare(high) > 0: return high
 
-        return self
+		return self
 
-    // Converts this duration to an integer number of nanoseconds.
-    fn to_nanoseconds() Int:
-        return self.nanos
+	// Converts this duration to an integer number of nanoseconds.
+	fn to_nanoseconds() Int:
+		return self.nanos
 
-    // Converts this duration to an integer number of microseconds.
-    fn to_microseconds() Int:
-        return msstd_time_duration_to_microseconds(self.nanos)
+	// Converts this duration to an integer number of microseconds.
+	fn to_microseconds() Int:
+		return msstd_time_duration_to_microseconds(self.nanos)
 
-    // Converts this duration to an integer number of milliseconds.
-    fn to_milliseconds() Int:
-        return msstd_time_duration_to_milliseconds(self.nanos)
+	// Converts this duration to an integer number of milliseconds.
+	fn to_milliseconds() Int:
+		return msstd_time_duration_to_milliseconds(self.nanos)
 
-    // Returns human text such as `1m30.5s`, `250ms`, `1.5µs`, `-2h`, or `0s`; string interpolation uses it too.
-    fn to_string() String:
-        total := self.to_nanoseconds()
-        if total == 0: return "0s"
+	// Returns human text such as `1m30.5s`, `250ms`, `1.5µs`, `-2h`, or `0s`; string interpolation uses it too.
+	fn to_string() String:
+		total := self.to_nanoseconds()
+		if total == 0: return "0s"
 
-        // Work on magnitudes of the truncated parts so the minimum Duration, which has no positive counterpart, formats too.
-        step := if total < 0: -1 else: 1
-        sign := if total < 0: "-" else: ""
-        whole := total / 1000000000 * step
-        sub := total % 1000000000 * step
-        if whole == 0 and sub < 1000: return "{sign}{sub}ns"
-        if whole == 0 and sub < 1000000:
-            return "{sign}{duration_decimal(sub / 1000, sub % 1000, 3)}µs"
-        if whole == 0:
-            return "{sign}{duration_decimal(sub / 1000000, sub % 1000000, 6)}ms"
+		// Work on magnitudes of the truncated parts so the minimum Duration, which has no positive counterpart, formats too.
+		step := if total < 0: -1 else: 1
+		sign := if total < 0: "-" else: ""
+		whole := total / 1000000000 * step
+		sub := total % 1000000000 * step
+		if whole == 0 and sub < 1000: return "{sign}{sub}ns"
+		if whole == 0 and sub < 1000000:
+			return "{sign}{duration_decimal(sub / 1000, sub % 1000, 3)}µs"
+		if whole == 0:
+			return "{sign}{duration_decimal(sub / 1000000, sub % 1000000, 6)}ms"
 
-        hours := whole / 3600
-        minutes := whole % 3600 / 60
-        clock := if hours == 0: "" else: "{hours}h"
-        minute_part := if hours == 0 and minutes == 0: "" else: "{minutes}m"
-        seconds_part := duration_decimal(whole % 60, sub, 9)
-        return "{sign}{clock}{minute_part}{seconds_part}s"
+		hours := whole / 3600
+		minutes := whole % 3600 / 60
+		clock := if hours == 0: "" else: "{hours}h"
+		minute_part := if hours == 0 and minutes == 0: "" else: "{minutes}m"
+		seconds_part := duration_decimal(whole % 60, sub, 9)
+		return "{sign}{clock}{minute_part}{seconds_part}s"
 
-    // Converts this duration to floating-point seconds.
-    fn to_seconds() Float:
-        return msstd_time_duration_to_seconds(self.nanos)
+	// Converts this duration to floating-point seconds.
+	fn to_seconds() Float:
+		return msstd_time_duration_to_seconds(self.nanos)
 
-    // Converts this duration to floating-point minutes.
-    fn to_minutes() Float:
-        return msstd_time_duration_to_minutes(self.nanos)
+	// Converts this duration to floating-point minutes.
+	fn to_minutes() Float:
+		return msstd_time_duration_to_minutes(self.nanos)
 
-    // Converts this duration to floating-point hours.
-    fn to_hours() Float:
-        return msstd_time_duration_to_hours(self.nanos)
+	// Converts this duration to floating-point hours.
+	fn to_hours() Float:
+		return msstd_time_duration_to_hours(self.nanos)
 
 // An instant on a monotonic clock; it is not a calendar timestamp.
 export type Instant:
-    // The clock the reading belongs to; instants from different domains do not compare.
-    domain: Int
-    // Nanoseconds on that clock.
-    tick: Int
+	// The clock the reading belongs to; instants from different domains do not compare.
+	domain: Int
+	// Nanoseconds on that clock.
+	tick: Int
 
 impl Instant:
-    // Shifts this monotonic instant by a duration.
-    fn shift(duration: Duration) Instant:
-        return msstd_time_instant_shift(self, duration.nanos)
+	// Shifts this monotonic instant by a duration.
+	fn shift(duration: Duration) Instant:
+		return msstd_time_instant_shift(self, duration.nanos)
 
-    // Shifts this monotonic instant back by a duration.
-    fn unshift(duration: Duration) Instant:
-        return msstd_time_instant_unshift(self, duration.nanos)
+	// Shifts this monotonic instant back by a duration.
+	fn unshift(duration: Duration) Instant:
+		return msstd_time_instant_unshift(self, duration.nanos)
 
-    // Returns the elapsed duration from `right` to this instant.
-    fn difference(other: Instant) Duration:
-        return Duration(nanos: msstd_time_instant_difference(self, other))
+	// Returns the elapsed duration from `right` to this instant.
+	fn difference(other: Instant) Duration:
+		return Duration(nanos: msstd_time_instant_difference(self, other))
 
-    // Returns -1, 0, or 1; instants from different clock domains fault.
-    fn compare(other: Instant) Int:
-        return msstd_time_instant_compare(self, other)
+	// Returns -1, 0, or 1; instants from different clock domains fault.
+	fn compare(other: Instant) Int:
+		return msstd_time_instant_compare(self, other)
 
-    // Returns the lesser of this value and `other`, or this value when they compare equal.
-    fn min(other: Instant) Instant:
-        if other.compare(self) < 0: return other
+	// Returns the lesser of this value and `other`, or this value when they compare equal.
+	fn min(other: Instant) Instant:
+		if other.compare(self) < 0: return other
 
-        return self
+		return self
 
-    // Returns the greater of this value and `other`, or this value when they compare equal.
-    fn max(other: Instant) Instant:
-        if other.compare(self) > 0: return other
+	// Returns the greater of this value and `other`, or this value when they compare equal.
+	fn max(other: Instant) Instant:
+		if other.compare(self) > 0: return other
 
-        return self
+		return self
 
-    // Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
-    fn clamp(low: Instant, high: Instant) Instant:
-        if low.compare(high) > 0:
-            panic("clamp: low must not be greater than high")
-        if self.compare(low) < 0: return low
-        if self.compare(high) > 0: return high
+	// Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
+	fn clamp(low: Instant, high: Instant) Instant:
+		if low.compare(high) > 0:
+			panic("clamp: low must not be greater than high")
+		if self.compare(low) < 0: return low
+		if self.compare(high) > 0: return high
 
-        return self
+		return self
 
 // A wall-clock time with Unix seconds and nanoseconds.
 export type Timestamp:
-    // Whole seconds since the Unix epoch.
-    seconds: Int
-    // The nanosecond within the second, 0 through 999999999.
-    nanos: Int
+	// Whole seconds since the Unix epoch.
+	seconds: Int
+	// The nanosecond within the second, 0 through 999999999.
+	nanos: Int
 
 impl Timestamp:
-    // Formats this timestamp in RFC 3339 form.
-    fn to_string() String:
-        return msstd_time_timestamp_to_string(self)
+	// Formats this timestamp in RFC 3339 form.
+	fn to_string() String:
+		return msstd_time_timestamp_to_string(self)
 
-    // Returns the whole Unix seconds represented by this timestamp.
-    fn unix_seconds() Int:
-        return self.seconds
+	// Returns the whole Unix seconds represented by this timestamp.
+	fn unix_seconds() Int:
+		return self.seconds
 
-    // Returns this timestamp's nanosecond component.
-    fn nanoseconds() Int:
-        return self.nanos
+	// Returns this timestamp's nanosecond component.
+	fn nanoseconds() Int:
+		return self.nanos
 
-    // Adds a duration to this wall-clock timestamp.
-    fn shift(duration: Duration) Timestamp!:
-        return msstd_time_timestamp_shift(self, duration.nanos)
+	// Adds a duration to this wall-clock timestamp.
+	fn shift(duration: Duration) Timestamp!:
+		return msstd_time_timestamp_shift(self, duration.nanos)
 
-    // Returns `self - right` as a duration.
-    fn difference(other: Timestamp) Duration!:
-        nanos := try msstd_time_timestamp_difference(self, other)
-        return ok(Duration(nanos: nanos))
+	// Returns `self - right` as a duration.
+	fn difference(other: Timestamp) Duration!:
+		nanos := try msstd_time_timestamp_difference(self, other)
+		return ok(Duration(nanos: nanos))
 
-    // Returns -1, 0, or 1 across the full calendar range.
-    fn compare(other: Timestamp) Int:
-        return msstd_time_timestamp_compare(self, other)
+	// Returns -1, 0, or 1 across the full calendar range.
+	fn compare(other: Timestamp) Int:
+		return msstd_time_timestamp_compare(self, other)
 
-    // Returns the lesser of this value and `other`, or this value when they compare equal.
-    fn min(other: Timestamp) Timestamp:
-        if other.compare(self) < 0: return other
+	// Returns the lesser of this value and `other`, or this value when they compare equal.
+	fn min(other: Timestamp) Timestamp:
+		if other.compare(self) < 0: return other
 
-        return self
+		return self
 
-    // Returns the greater of this value and `other`, or this value when they compare equal.
-    fn max(other: Timestamp) Timestamp:
-        if other.compare(self) > 0: return other
+	// Returns the greater of this value and `other`, or this value when they compare equal.
+	fn max(other: Timestamp) Timestamp:
+		if other.compare(self) > 0: return other
 
-        return self
+		return self
 
-    // Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
-    fn clamp(low: Timestamp, high: Timestamp) Timestamp:
-        if low.compare(high) > 0:
-            panic("clamp: low must not be greater than high")
-        if self.compare(low) < 0: return low
-        if self.compare(high) > 0: return high
+	// Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
+	fn clamp(low: Timestamp, high: Timestamp) Timestamp:
+		if low.compare(high) > 0:
+			panic("clamp: low must not be greater than high")
+		if self.compare(low) < 0: return low
+		if self.compare(high) > 0: return high
 
-        return self
+		return self
 
-    // Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`.
-    // An unknown zone returns EINVAL.
-    fn calendar(zone: String) Calendar!:
-        return msstd_time_timestamp_calendar(self, zone)
+	// Breaks this timestamp into calendar fields in a time zone: `"UTC"`, `"Local"`, an IANA name such as `"America/New_York"`, or a fixed offset such as `"+05:30"`.
+	// An unknown zone returns EINVAL.
+	fn calendar(zone: String) Calendar!:
+		return msstd_time_timestamp_calendar(self, zone)
 
-    /*
+	/*
     Formats this timestamp in a zone with a token pattern.
     Tokens are `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, `SSS` (milliseconds), `ZZ` (offset such as `+05:30`), and `zone` (abbreviation); other text is copied.
     An unknown zone returns EINVAL.
     */
-    fn format(pattern: String, zone: String) String!:
-        return msstd_time_timestamp_format(self, pattern, zone)
+	fn format(pattern: String, zone: String) String!:
+		return msstd_time_timestamp_format(self, pattern, zone)
 
 // Calendar fields of a timestamp in one time zone.
 export type Calendar:
-    // The year, 1 through 9999 in UTC and nearby values in other zones.
-    year: Int
-    // The month, 1 (January) through 12.
-    month: Int
-    // The day of the month, starting at 1.
-    day: Int
-    // The hour, 0 through 23.
-    hour: Int
-    // The minute, 0 through 59.
-    minute: Int
-    // The second, 0 through 59.
-    second: Int
-    // The nanosecond within the second, 0 through 999999999.
-    nanosecond: Int
-    // The day of the week, 0 (Sunday) through 6 (Saturday).
-    weekday: Int
-    // The day of the year, starting at 1.
-    day_of_year: Int
-    // The zone's offset from UTC in seconds at this moment; positive is east.
-    offset_seconds: Int
-    // The zone abbreviation at this moment, such as `UTC` or `EST`.
-    zone: String
+	// The year, 1 through 9999 in UTC and nearby values in other zones.
+	year: Int
+	// The month, 1 (January) through 12.
+	month: Int
+	// The day of the month, starting at 1.
+	day: Int
+	// The hour, 0 through 23.
+	hour: Int
+	// The minute, 0 through 59.
+	minute: Int
+	// The second, 0 through 59.
+	second: Int
+	// The nanosecond within the second, 0 through 999999999.
+	nanosecond: Int
+	// The day of the week, 0 (Sunday) through 6 (Saturday).
+	weekday: Int
+	// The day of the year, starting at 1.
+	day_of_year: Int
+	// The zone's offset from UTC in seconds at this moment; positive is east.
+	offset_seconds: Int
+	// The zone abbreviation at this moment, such as `UTC` or `EST`.
+	zone: String
 
 // Writes `whole` with the digits of a fractional part `frac` of `width` places, trailing zeros dropped.
 fn duration_decimal(whole: Int, frac: Int, width: Int) String:
-    if frac == 0: return "{whole}"
+	if frac == 0: return "{whole}"
 
-    var rest = frac
-    var places = width
+	var rest = frac
+	var places = width
 
-    while rest % 10 == 0:
-        rest /= 10
-        places -= 1
+	while rest % 10 == 0:
+		rest /= 10
+		places -= 1
 
-    var digits = ""
+	var digits = ""
 
-    while places > 0:
-        digits = "{rest % 10}{digits}"
-        rest /= 10
-        places -= 1
+	while places > 0:
+		digits = "{rest % 10}{digits}"
+		rest /= 10
+		places -= 1
 
-    return "{whole}.{digits}"
+	return "{whole}.{digits}"
 
 // Constructs a duration of `n` nanoseconds, the unit `Duration` counts in; `n` may be negative.
 export fn nanoseconds(n: Int) Duration:
-    return Duration(nanos: n)
+	return Duration(nanos: n)
 
 // Constructs a duration of `n` microseconds; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export fn microseconds(n: Int) Duration:
-    return nanoseconds(n * 1000)
+	return nanoseconds(n * 1000)
 
 // Constructs a duration of `n` milliseconds; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export fn milliseconds(n: Int) Duration:
-    return nanoseconds(n * 1000000)
+	return nanoseconds(n * 1000000)
 
 // Constructs a duration of `n` seconds, as in `sleep(seconds(2))`; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export fn seconds(n: Int) Duration:
-    return nanoseconds(n * 1000000000)
+	return nanoseconds(n * 1000000000)
 
 // Constructs a duration of `n` minutes, as in `monotonic().difference(start).compare(minutes(5)) > 0` to test an elapsed span; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export fn minutes(n: Int) Duration:
-    return nanoseconds(n * 60000000000)
+	return nanoseconds(n * 60000000000)
 
 // Constructs a duration of `n` hours; `n` may be negative, and a nanosecond count outside Int faults like any Int multiplication.
 export fn hours(n: Int) Duration:
-    return nanoseconds(n * 3600000000000)
+	return nanoseconds(n * 3600000000000)
 
 /*
 Parses a span such as `1h30m`, `-250ms`, or `1.5µs`, including every Duration.to_string() result.
@@ -327,128 +327,128 @@ Whitespace, exponents, missing units, and other syntax return EBADMSG, even afte
 A syntactically valid result outside -9223372036854775808 through 9223372036854775807 nanoseconds returns ERANGE.
 */
 export fn parse_duration(text: String) Duration!:
-    data := text.to_bytes()
-    size := data.length()
-    if size == 0: return error(Error("time: invalid data", kind: "EBADMSG"))
+	data := text.to_bytes()
+	size := data.length()
+	if size == 0: return error(Error("time: invalid data", kind: "EBADMSG"))
 
-    var pos = 0
-    negative := data.get(0).to_int() == 45
-    if negative or data.get(0).to_int() == 43: pos += 1
-    if pos == size: return error(Error("time: invalid data", kind: "EBADMSG"))
-    if size - pos == 1 and data.get(pos).to_int() == 48: return ok(nanoseconds(0))
+	var pos = 0
+	negative := data.get(0).to_int() == 45
+	if negative or data.get(0).to_int() == 43: pos += 1
+	if pos == size: return error(Error("time: invalid data", kind: "EBADMSG"))
+	if size - pos == 1 and data.get(pos).to_int() == 48: return ok(nanoseconds(0))
 
-    // Accumulate negatively: the minimum Duration has no positive counterpart.
-    limit := if negative: -9223372036854775807 - 1 else: -9223372036854775807
-    var total = 0
-    var overflow = false
+	// Accumulate negatively: the minimum Duration has no positive counterpart.
+	limit := if negative: -9223372036854775807 - 1 else: -9223372036854775807
+	var total = 0
+	var overflow = false
 
-    while pos < size:
-        start := pos
-        var whole = 0
+	while pos < size:
+		start := pos
+		var whole = 0
 
-        while pos < size:
-            digit := data.get(pos).to_int() - 48
-            if digit < 0 or digit > 9: break
+		while pos < size:
+			digit := data.get(pos).to_int() - 48
+			if digit < 0 or digit > 9: break
 
-            if not overflow:
-                if (
-                    whole < -922337203685477580
-                    or (whole == -922337203685477580 and digit > 8)
-                ):
-                    overflow = true
-                else:
-                    whole = whole * 10 - digit
+			if not overflow:
+				if (
+					whole < -922337203685477580
+					or (whole == -922337203685477580 and digit > 8)
+				):
+					overflow = true
+				else:
+					whole = whole * 10 - digit
 
-            pos += 1
+			pos += 1
 
-        has_whole := pos > start
-        var fraction_start = pos
+		has_whole := pos > start
+		var fraction_start = pos
 
-        if pos < size and data.get(pos).to_int() == 46:
-            pos += 1
-            fraction_start = pos
+		if pos < size and data.get(pos).to_int() == 46:
+			pos += 1
+			fraction_start = pos
 
-            while pos < size:
-                digit := data.get(pos).to_int() - 48
-                if digit < 0 or digit > 9: break
+			while pos < size:
+				digit := data.get(pos).to_int() - 48
+				if digit < 0 or digit > 9: break
 
-                pos += 1
+				pos += 1
 
-        fraction_end := pos
-        if not has_whole and fraction_start == fraction_end:
-            return error(Error("time: invalid data", kind: "EBADMSG"))
-        if pos == size: return error(Error("time: invalid data", kind: "EBADMSG"))
+		fraction_end := pos
+		if not has_whole and fraction_start == fraction_end:
+			return error(Error("time: invalid data", kind: "EBADMSG"))
+		if pos == size: return error(Error("time: invalid data", kind: "EBADMSG"))
 
-        var scale = 0
-        suffix := data.get(pos).to_int()
-        pos += 1
+		var scale = 0
+		suffix := data.get(pos).to_int()
+		pos += 1
 
-        if suffix == 104:
-            scale = 3600000000000
-        else if suffix == 115:
-            scale = 1000000000
-        else if suffix == 109:
-            scale = 60000000000
+		if suffix == 104:
+			scale = 3600000000000
+		else if suffix == 115:
+			scale = 1000000000
+		else if suffix == 109:
+			scale = 60000000000
 
-            if pos < size and data.get(pos).to_int() == 115:
-                scale = 1000000
-                pos += 1
-        else if suffix == 110 or suffix == 117:
-            if pos == size or data.get(pos).to_int() != 115:
-                return error(Error("time: invalid data", kind: "EBADMSG"))
+			if pos < size and data.get(pos).to_int() == 115:
+				scale = 1000000
+				pos += 1
+		else if suffix == 110 or suffix == 117:
+			if pos == size or data.get(pos).to_int() != 115:
+				return error(Error("time: invalid data", kind: "EBADMSG"))
 
-            scale = if suffix == 110: 1 else: 1000
-            pos += 1
-        else if suffix == 194 or suffix == 206:
-            second := if suffix == 194: 181 else: 188
-            if (
-                size - pos < 2
-                or data.get(pos).to_int() != second
-                or data.get(pos + 1).to_int() != 115
-            ):
-                return error(Error("time: invalid data", kind: "EBADMSG"))
+			scale = if suffix == 110: 1 else: 1000
+			pos += 1
+		else if suffix == 194 or suffix == 206:
+			second := if suffix == 194: 181 else: 188
+			if (
+				size - pos < 2
+				or data.get(pos).to_int() != second
+				or data.get(pos + 1).to_int() != 115
+			):
+				return error(Error("time: invalid data", kind: "EBADMSG"))
 
-            scale = 1000
-            pos += 2
-        else:
-            return error(Error("time: invalid data", kind: "EBADMSG"))
+			scale = 1000
+			pos += 2
+		else:
+			return error(Error("time: invalid data", kind: "EBADMSG"))
 
-        // Continue syntax validation after overflow, but skip further arithmetic.
-        if overflow: continue
+		// Continue syntax validation after overflow, but skip further arithmetic.
+		if overflow: continue
 
-        if whole < limit / scale:
-            overflow = true
-            continue
+		if whole < limit / scale:
+			overflow = true
+			continue
 
-        integral := whole * scale
+		integral := whole * scale
 
-        if total < limit - integral:
-            overflow = true
-            continue
+		if total < limit - integral:
+			overflow = true
+			continue
 
-        total += integral
+		total += integral
 
-        // Reverse decimal evaluation gives floor(fraction * scale) exactly for
-        // arbitrarily many digits. Each intermediate is less than 10 * scale.
-        var fraction = 0
-        var cursor = fraction_end
+		// Reverse decimal evaluation gives floor(fraction * scale) exactly for
+		// arbitrarily many digits. Each intermediate is less than 10 * scale.
+		var fraction = 0
+		var cursor = fraction_end
 
-        while cursor > fraction_start:
-            cursor -= 1
-            fraction = ((data.get(cursor).to_int() - 48) * scale + fraction) / 10
+		while cursor > fraction_start:
+			cursor -= 1
+			fraction = ((data.get(cursor).to_int() - 48) * scale + fraction) / 10
 
-        if total < limit + fraction:
-            overflow = true
-        else:
-            total -= fraction
+		if total < limit + fraction:
+			overflow = true
+		else:
+			total -= fraction
 
-    if overflow: return error(Error("time: value out of range", kind: "ERANGE"))
+	if overflow: return error(Error("time: value out of range", kind: "ERANGE"))
 
-    return ok(nanoseconds(if negative: total else: -total))
+	return ok(nanoseconds(if negative: total else: -total))
 
 // Parses an RFC 3339 timestamp with an explicit time zone.
 export fn parse_timestamp(text: String) Timestamp!:
-    return msstd_time_parse_timestamp(text)
+	return msstd_time_parse_timestamp(text)
 
 /*
 Builds a timestamp from calendar fields interpreted in a time zone (see `Timestamp.calendar` for zone names).
@@ -456,68 +456,68 @@ Fields outside their calendar range, such as month 13 or February 30, return ERA
 A local time skipped or repeated by a daylight-saving change resolves to the earlier valid offset.
 */
 export fn from_calendar(
-    year: Int,
-    month: Int,
-    day: Int,
-    hour: Int,
-    minute: Int,
-    second: Int,
-    nanosecond: Int,
-    zone: String
+	year: Int,
+	month: Int,
+	day: Int,
+	hour: Int,
+	minute: Int,
+	second: Int,
+	nanosecond: Int,
+	zone: String
 ) Timestamp!:
-    return msstd_time_from_calendar(
-        year, month, day, hour, minute, second, nanosecond, zone
-    )
+	return msstd_time_from_calendar(
+		year, month, day, hour, minute, second, nanosecond, zone
+	)
 
 // Returns the host's local time zone name, or `UTC` when it cannot be determined.
 // ms: effect std.system.read
 export fn local_zone() String:
-    return msstd_time_local_zone()
+	return msstd_time_local_zone()
 
 // Starts a timer for the requested duration and returns its promise; `wait()` it to pause the current task for at least
 // that long. The timer has no task of its own, and dropping the promise cancels it.
 // ms: effect std.clock.sleep
 export fn sleep(duration: Duration) Promise[Unit]:
-    return adopt[Unit](msrt_promise_sleep(duration.nanos))
+	return adopt[Unit](msrt_promise_sleep(duration.nanos))
 
 // Constructs a timestamp from Unix seconds and a nanosecond adjustment.
 export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
-    return msstd_time_timestamp(seconds, nanoseconds)
+	return msstd_time_timestamp(seconds, nanoseconds)
 
 // Returns the current reading of the monotonic clock, for measuring elapsed time.
 // Readings are only comparable with others from this clock and do not correspond to a calendar date.
 // ms: effect std.clock.read
 export fn monotonic() Instant:
-    return msstd_time_clock_now()
+	return msstd_time_clock_now()
 
 // Returns the current calendar time as a UTC Timestamp with nanosecond precision.
 // It can jump when the system clock is adjusted, so use `monotonic` for elapsed time.
 // ms: effect std.clock.read
 export fn now() Timestamp:
-    return msstd_time_wall_clock_now()
+	return msstd_time_wall_clock_now()
 
 // A point on the monotonic clock to wait for or check against, such as a request's time budget.
 export type Deadline:
-    // The instant the deadline expires.
-    at: Instant
+	// The instant the deadline expires.
+	at: Instant
 
 // Returns a deadline `duration` from now.
 // ms: effect std.clock.read
 export fn deadline_after(duration: Duration) Deadline:
-    return Deadline(at: monotonic().shift(duration))
+	return Deadline(at: monotonic().shift(duration))
 
 impl Deadline:
-    // Returns the time left, or zero once the deadline has passed.
-    fn remaining() Duration:
-        return self.at.difference(monotonic()).max(nanoseconds(0))
+	// Returns the time left, or zero once the deadline has passed.
+	fn remaining() Duration:
+		return self.at.difference(monotonic()).max(nanoseconds(0))
 
-    // Whether the deadline has passed.
-    fn expired() Bool:
-        return self.at.compare(monotonic()) <= 0
+	// Whether the deadline has passed.
+	fn expired() Bool:
+		return self.at.compare(monotonic()) <= 0
 
-    // Suspends the current task until the deadline passes. Returns at once if it already has.
-    fn wait() Unit:
-        sleep(self.remaining()).wait().get(unit)
+	// Suspends the current task until the deadline passes. Returns at once if it already has.
+	fn wait() Unit:
+		sleep(self.remaining()).wait().get(unit)
 
 /*
 A source of evenly spaced instants, for loops that run work on a schedule.
@@ -525,33 +525,33 @@ Each read suspends the task until the next tick; stop by dropping the stream. Ti
 with the loop body: a body slower than the period gets the next tick at once, and the ticks it missed are dropped.
 */
 type TickSource:
-    // The time between ticks.
-    period: Duration
-    // The instant of the next tick.
-    due: Instant
+	// The time between ticks.
+	period: Duration
+	// The instant of the next tick.
+	due: Instant
 
 impl Source[Instant] for TickSource:
-    // Waits for the next tick and returns the instant it was due; never ends.
-    var fn next() Instant?!:
-        tick := self.due.clone()
-        try sleep(tick.difference(monotonic()).max(nanoseconds(0))).wait()
+	// Waits for the next tick and returns the instant it was due; never ends.
+	var fn next() Instant?!:
+		tick := self.due.clone()
+		try sleep(tick.difference(monotonic()).max(nanoseconds(0))).wait()
 
-        current := monotonic()
-        period := self.period.to_nanoseconds()
-        elapsed := current.difference(tick).to_nanoseconds()
+		current := monotonic()
+		period := self.period.to_nanoseconds()
+		elapsed := current.difference(tick).to_nanoseconds()
 
-        // Drop missed ticks, retaining the original phase without multiplying a tick count.
-        self.due = current.shift(nanoseconds(period - elapsed % period))
-        return ok(tick)
+		// Drop missed ticks, retaining the original phase without multiplying a tick count.
+		self.due = current.shift(nanoseconds(period - elapsed % period))
+		return ok(tick)
 
-    var fn close() Unit!:
-        return ok(unit)
+	var fn close() Unit!:
+		return ok(unit)
 
 // Returns a ticker whose first tick comes one `period` from now. A period of zero or less is a programming fault.
 // ms: effect std.clock.sleep
 export fn ticker(period: Duration) ReadStream[Instant]:
-    if period.compare(nanoseconds(0)) <= 0:
-        panic("ticker: period must be positive")
+	if period.compare(nanoseconds(0)) <= 0:
+		panic("ticker: period must be positive")
 
-    due := monotonic().shift(period.clone())
-    return ReadStream[Instant](TickSource(period: period, due: due))
+	due := monotonic().shift(period.clone())
+	return ReadStream[Instant](TickSource(period: period, due: due))

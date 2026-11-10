@@ -1,111 +1,111 @@
 // Validates the shared `ms bench --json` result protocol before rendering comparisons (bench/perf/stdlib).
 import (
-    invalid from "./lib.ms",
-    parse from "@std/data/json.ms",
+	invalid from "./lib.ms",
+	parse from "@std/data/json.ms",
 )
 
 export type Stats:
-    operations: Int
-    iterations: Int?
-    samples: Int?
-    median_ns: Float
-    min_ns: Float?
-    max_ns: Float?
-    mean_ns: Float?
-    stddev_ns: Float?
+	operations: Int
+	iterations: Int?
+	samples: Int?
+	median_ns: Float
+	min_ns: Float?
+	max_ns: Float?
+	mean_ns: Float?
+	stddev_ns: Float?
 
 export type Bench:
-    name: String
-    status: String
-    failure: String?
-    stats: Stats?
+	name: String
+	status: String
+	failure: String?
+	stats: Stats?
 
 type Diagnostic:
-    message: String
+	message: String
 
 type Document:
-    benches: List[Bench]
-    diagnostics: List[Diagnostic]?
+	benches: List[Bench]
+	diagnostics: List[Diagnostic]?
 
 fn finite(value: Float) Bool:
-    return value >= 0.0 and value < 1.0e300
+	return value >= 0.0 and value < 1.0e300
 
 fn valid_optional(value: Float?) Bool:
-    if v := value: return finite(v)
+	if v := value: return finite(v)
 
-    return true
+	return true
 
 // The passed cases of one `ms bench --json` document, in order.
 export fn read_cases(output: String) List[Bench]!:
-    parsed := parse[Document](output)
-    if parsed.is_error(): return invalid("invalid benchmark document")
+	parsed := parse[Document](output)
+	if parsed.is_error(): return invalid("invalid benchmark document")
 
-    doc := parsed.get(Document(List[Bench](), none))
-    diagnostics := doc.diagnostics.get([])
-    if not diagnostics.is_empty(): return invalid(
-        diagnostics.map(fn d: d.message.clone()).join("; ")
-    )
+	doc := parsed.get(Document(List[Bench](), none))
+	diagnostics := doc.diagnostics.get([])
+	if not diagnostics.is_empty(): return invalid(
+		diagnostics.map(fn d: d.message.clone()).join("; ")
+	)
 
-    var seen = Set[String]()
+	var seen = Set[String]()
 
-    for bench in doc.benches:
-        if seen.contains(bench.name): return invalid("duplicate case: {bench.name}")
+	for bench in doc.benches:
+		if seen.contains(bench.name): return invalid("duplicate case: {bench.name}")
 
-        seen.add(bench.name.clone())
-        if bench.status != "passed": return invalid(
-            "{bench.name}: {bench.status}: {bench.failure.get("")}"
-        )
+		seen.add(bench.name.clone())
+		if bench.status != "passed": return invalid(
+			"{bench.name}: {bench.status}: {bench.failure.get("")}"
+		)
 
-        stats := bench.stats.get(Stats(0, none, none, -1.0, none, none, none, none))
-        if stats.operations <= 0: return invalid("invalid operations: {bench.name}")
-        if (stats.iterations.get(1) <= 0) or (stats.samples.get(1) <= 0):
-            return invalid("invalid iterations or samples: {bench.name}")
-        if not finite(stats.median_ns): return invalid(
-            "invalid median_ns: {bench.name}"
-        )
-        if not (
-            valid_optional(stats.min_ns)
-            and valid_optional(stats.max_ns)
-            and valid_optional(stats.mean_ns)
-            and valid_optional(stats.stddev_ns)
-        ):
-            return invalid("invalid timing: {bench.name}")
+		stats := bench.stats.get(Stats(0, none, none, -1.0, none, none, none, none))
+		if stats.operations <= 0: return invalid("invalid operations: {bench.name}")
+		if (stats.iterations.get(1) <= 0) or (stats.samples.get(1) <= 0):
+			return invalid("invalid iterations or samples: {bench.name}")
+		if not finite(stats.median_ns): return invalid(
+			"invalid median_ns: {bench.name}"
+		)
+		if not (
+			valid_optional(stats.min_ns)
+			and valid_optional(stats.max_ns)
+			and valid_optional(stats.mean_ns)
+			and valid_optional(stats.stddev_ns)
+		):
+			return invalid("invalid timing: {bench.name}")
 
-        if stats.min_ns.is_some() and stats.max_ns.is_some():
-            if not (
-                stats.min_ns.get(0.0) <= stats.median_ns
-                and stats.median_ns <= stats.max_ns.get(0.0)
-            ):
-                return invalid("inconsistent timing range: {bench.name}")
+		if stats.min_ns.is_some() and stats.max_ns.is_some():
+			if not (
+				stats.min_ns.get(0.0) <= stats.median_ns
+				and stats.median_ns <= stats.max_ns.get(0.0)
+			):
+				return invalid("inconsistent timing range: {bench.name}")
 
-    if doc.benches.is_empty(): return invalid("no cases were measured")
+	if doc.benches.is_empty(): return invalid("no cases were measured")
 
-    return ok(doc.benches)
+	return ok(doc.benches)
 
 // Display labels: the part after `::`, or the whole name when two cases would collide.
 export fn case_labels(names: List[String]) Map[String, String]:
-    var counts = Map[String, Int]()
-    var short = Map[String, String]()
+	var counts = Map[String, Int]()
+	var short = Map[String, String]()
 
-    for name in names:
-        parts := name.split("::")
-        s := parts.slice(1, parts.length()).get([]).join("::")
-        label := if parts.length() > 1: s else: name.clone()
-        short.add(name.clone(), label.clone())
-        counts.add(label.clone(), counts.get_or(label, 0) + 1)
+	for name in names:
+		parts := name.split("::")
+		s := parts.slice(1, parts.length()).get([]).join("::")
+		label := if parts.length() > 1: s else: name.clone()
+		short.add(name.clone(), label.clone())
+		counts.add(label.clone(), counts.get_or(label, 0) + 1)
 
-    var labels = Map[String, String]()
-    var distinct = Set[String]()
+	var labels = Map[String, String]()
+	var distinct = Set[String]()
 
-    for name in names:
-        s := short.get_or(name, "")
-        labels.add(name.clone(), if counts.get_or(s, 0) == 1: s else: name.clone())
-        distinct.add(labels.get_or(name, ""))
+	for name in names:
+		s := short.get_or(name, "")
+		labels.add(name.clone(), if counts.get_or(s, 0) == 1: s else: name.clone())
+		distinct.add(labels.get_or(name, ""))
 
-    if distinct.length() != labels.length():
-        var plain = Map[String, String]()
-        for name in names:
-            plain.add(name.clone(), name.clone())
-        return plain
+	if distinct.length() != labels.length():
+		var plain = Map[String, String]()
+		for name in names:
+			plain.add(name.clone(), name.clone())
+		return plain
 
-    return labels
+	return labels

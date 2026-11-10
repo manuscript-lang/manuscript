@@ -8,7 +8,7 @@
 
 ## Status
 
-Stage 1 implemented, 2026-11-10; skeptical review: revise (virtual column, missed helper sites), both folded in. Stage 2 proposed, checked against `5752aefd`. Direction (Chinmay): "i don't thin tab saves that much, can you check" then, after the measurement below, "do the tab fmt".
+Stages 1 and 2 implemented, 2026-11-10; skeptical review: revise (virtual column, missed helper sites), both folded in. Stage 2 proposed, checked against `5752aefd`. Direction (Chinmay): "i don't thin tab saves that much, can you check" then, after the measurement below, "do the tab fmt".
 
 ## Problem
 

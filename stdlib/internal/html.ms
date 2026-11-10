@@ -2,9 +2,9 @@ import HtmlTree from "@std/data/html.ms"
 
 // Native parse bounds; `parse` builds them from `HtmlOptions`.
 export type HtmlLimits:
-    max_bytes: Int?
-    max_depth: Int?
-    max_nodes: Int?
+	max_bytes: Int?
+	max_depth: Int?
+	max_nodes: Int?
 
 export extern fn msstd_html_escape(text: String) String
 

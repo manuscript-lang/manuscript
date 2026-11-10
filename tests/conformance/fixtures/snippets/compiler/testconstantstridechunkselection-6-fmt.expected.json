@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn probe() Int:\n    var sum = 0\n    var i = 0\n\n    while i < 255:\n        sum += 3\n        i += 1\n\n    return sum\n"
+    "fmt": "fn probe() Int:\n\tvar sum = 0\n\tvar i = 0\n\n\twhile i < 255:\n\t\tsum += 3\n\t\ti += 1\n\n\treturn sum\n"
   }
 }

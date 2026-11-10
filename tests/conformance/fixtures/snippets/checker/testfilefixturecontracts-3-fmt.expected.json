@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "impl TestHooks for State:\n    fn before_each() Unit:\n        self.value += 1\n\nfn make_fixture() State:\n    return State(value: 1)\n\ntest \"closure captures fixture\":\n    read := fn() Int: fixture.value\n    value: Int = read()\n"
+    "fmt": "impl TestHooks for State:\n\tfn before_each() Unit:\n\t\tself.value += 1\n\nfn make_fixture() State:\n\treturn State(value: 1)\n\ntest \"closure captures fixture\":\n\tread := fn() Int: fixture.value\n\tvalue: Int = read()\n"
   }
 }

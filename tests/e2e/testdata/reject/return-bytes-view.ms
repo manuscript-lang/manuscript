@@ -3,8 +3,8 @@
 import Bytes from "@std/bytes.ms"
 
 fn result() Bytes:
-    bytes := Bytes([10, 20, 30])
-    return bytes.view(1, 3)
+	bytes := Bytes([10, 20, 30])
+	return bytes.view(1, 3)
 
 export fn main() Int:
-    return result().length()
+	return result().length()

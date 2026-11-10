@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(var counts: Map[String, Int], var names: List[String], found: Int?) Unit:\n    match found:\n        n:\n            counts.add(key: \"a\", value: n)\n        none:\n            names.append(\"x\")\n"
+    "fmt": "fn f(var counts: Map[String, Int], var names: List[String], found: Int?) Unit:\n\tmatch found:\n\t\tn:\n\t\t\tcounts.add(key: \"a\", value: n)\n\t\tnone:\n\t\t\tnames.append(\"x\")\n"
   }
 }

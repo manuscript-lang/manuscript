@@ -1,5 +1,5 @@
 fn number() Int:
-    return "wrong"
+	return "wrong"
 
 fn text() String:
-    return 1
+	return 1

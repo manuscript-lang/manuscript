@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type DnsRecord:\n    kind: DnsKind\n    value: String\n    priority: Int\n    weight: Int\n    port: Int\n"
+    "fmt": "type DnsRecord:\n\tkind: DnsKind\n\tvalue: String\n\tpriority: Int\n\tweight: Int\n\tport: Int\n"
   }
 }

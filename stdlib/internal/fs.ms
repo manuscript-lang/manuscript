@@ -1,21 +1,21 @@
 // ms: words 5 file or directory not found
 // ms: native msstd_fs_copy msstd_fs_glob_entries
 import (
-    Bytes from "@std/bytes.ms",
-    Directory,
-    DirectoryEntry,
-    FileEvent,
-    FileHandle,
-    FileInfo,
-    FileSystem,
-    FileSystemInfo,
-    RawWatcher,
-    NativeDirectory,
-    NativeFile,
-    NativeTemporary,
-    NativeWatcher,
-    TemporaryDirectory from "@std/os/fs.ms",
-    Duration, Timestamp from "@std/time.ms",
+	Bytes from "@std/bytes.ms",
+	Directory,
+	DirectoryEntry,
+	FileEvent,
+	FileHandle,
+	FileInfo,
+	FileSystem,
+	FileSystemInfo,
+	RawWatcher,
+	NativeDirectory,
+	NativeFile,
+	NativeTemporary,
+	NativeWatcher,
+	TemporaryDirectory from "@std/os/fs.ms",
+	Duration, Timestamp from "@std/time.ms",
 )
 
 export extern fn msstd_fs_filesystem() FileSystem
@@ -31,29 +31,29 @@ export extern fn msstd_io_write(file: NativeFile, data: String) Unit!
 export extern fn msstd_io_write_bytes(file: NativeFile, data: Bytes) Unit!
 
 export extern fn msstd_fs_file_read_at(
-    file: NativeFile,
-    offset: Int,
-    max_bytes: Int?
+	file: NativeFile,
+	offset: Int,
+	max_bytes: Int?
 ) Bytes!
 
 export extern fn msstd_fs_file_write_at(
-    file: NativeFile,
-    offset: Int,
-    data: Bytes
+	file: NativeFile,
+	offset: Int,
+	data: Bytes
 ) Unit!
 
 export extern fn msstd_fs_file_read_file(file: NativeFile, max_bytes: Int?) Bytes!
 
 export extern fn msstd_fs_file_read_vectors(
-    file: NativeFile,
-    sizes: List[Int],
-    offset: Int
+	file: NativeFile,
+	sizes: List[Int],
+	offset: Int
 ) List[Bytes]!
 
 export extern fn msstd_fs_file_write_vectors(
-    file: NativeFile,
-    buffers: List[Bytes],
-    offset: Int
+	file: NativeFile,
+	buffers: List[Bytes],
+	offset: Int
 ) Unit!
 
 export extern fn msstd_fs_file_seek(file: NativeFile, offset: Int, origin: Int) Int!
@@ -75,15 +75,15 @@ export extern fn msstd_fs_file_chmod(file: NativeFile, mode: Int) Unit!
 export extern fn msstd_fs_file_chown(file: NativeFile, uid: Int, gid: Int) Unit!
 
 export extern fn msstd_fs_file_set_times(
-    file: NativeFile,
-    accessed: Timestamp,
-    modified: Timestamp
+	file: NativeFile,
+	accessed: Timestamp,
+	modified: Timestamp
 ) Unit!
 
 export extern fn msstd_fs_file_read_lines(
-    file: NativeFile,
-    max_bytes: Int?,
-    max_lines: Int?
+	file: NativeFile,
+	max_bytes: Int?,
+	max_lines: Int?
 ) List[String]!
 
 export extern fn msstd_fs_directory_read(dir: NativeDirectory) DirectoryEntry?!
@@ -147,25 +147,25 @@ export extern fn msstd_fs_stat(path: String, follow: Bool) FileInfo!
 export extern fn msstd_fs_list(path: String, max_entries: Int?) List[DirectoryEntry]!
 
 export extern fn msstd_fs_set_times(
-    path: String,
-    accessed: Timestamp,
-    modified: Timestamp,
-    follow: Bool
+	path: String,
+	accessed: Timestamp,
+	modified: Timestamp,
+	follow: Bool
 ) Unit!
 
 export extern fn msstd_fs_stat_filesystem(path: String) FileSystemInfo!
 
 export extern fn msstd_fs_watch(
-    path: String,
-    recursive: Bool,
-    interval: Duration,
-    max_entries: Int?
+	path: String,
+	recursive: Bool,
+	interval: Duration,
+	max_entries: Int?
 ) RawWatcher!
 
 export extern fn msstd_fs_watch_native(
-    path: String,
-    recursive: Bool,
-    max_entries: Int?,
-    max_events: Int?,
-    overflow: String
+	path: String,
+	recursive: Bool,
+	max_entries: Int?,
+	max_events: Int?,
+	overflow: String
 ) RawWatcher!

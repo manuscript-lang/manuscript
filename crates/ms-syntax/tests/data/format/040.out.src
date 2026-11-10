@@ -1,29 +1,29 @@
 fn checked(value: Int) Int:
-    first := value
-    second := first + 1
-    if second < 0: return 0
+	first := value
+	second := first + 1
+	if second < 0: return 0
 
-    consume(second)
+	consume(second)
 
-    // Prepare the next case.
-    third := second + 1
-    fourth := third + 1
-    consume(fourth)
-    consume(third)
+	// Prepare the next case.
+	third := second + 1
+	fourth := third + 1
+	consume(fourth)
+	consume(third)
 
-    var (
-        left = third
-        right = fourth
-    )
-    return left + right
+	var (
+		left = third
+		right = fourth
+	)
+	return left + right
 
 test "setup and assertions":
-    actual := 3
-    expected := 3
-    actual | try expect_equal(expected)
+	actual := 3
+	expected := 3
+	actual | try expect_equal(expected)
 
-    callback := fn(value: Int) Int:
-        result := value + 1
-        return result
+	callback := fn(value: Int) Int:
+		result := value + 1
+		return result
 
-    callback(3) | try expect_equal(4)
+	callback(3) | try expect_equal(4)

@@ -880,7 +880,7 @@ impl Scanner<'_> {
         i += 1;
         while i < n {
             let mut j = i;
-            while j < n && self.src[j] == b' ' {
+            while j < n && matches!(self.src[j], b' ' | b'\t') {
                 j += 1;
             }
             if j >= n {

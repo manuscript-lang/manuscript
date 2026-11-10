@@ -54,7 +54,7 @@ ms fmt src/*.ms --check
 
 ## Formatter contract
 
-Formatting preserves meaning and comments, uses four-space indentation and LF endings with a final newline, and is idempotent. Rules:
+Formatting preserves meaning and comments, indents with one tab per level and uses LF endings with a final newline, and is idempotent. Rules:
 
 - Keep token spellings; wrap only past 88 columns. Groups that fit stay on one line; wrapped lists pack simple elements into rows.
 - Keep single-step blocks beside adjacent work; separate substantial blocks and guards with blank lines. Authored blank lines are discarded, except one kept after a comment-only line so a comment block stays apart from the next comment or declaration.

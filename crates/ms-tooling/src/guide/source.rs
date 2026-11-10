@@ -95,7 +95,7 @@ pub fn leading_comment(source: &str, offset: usize) -> String {
     if !matches!(own_line.trim(), "" | "export" | "fn" | "var fn" | "case") {
         return String::new();
     }
-    let indent = own_line.len() - own_line.trim_start_matches([' ', '\t']).len();
+    let indent = ms_syntax::doc::indent_columns(own_line);
     let above = ms_syntax::doc::comments_above(source, line_start, Some(indent));
     if !above.is_empty() {
         return above;

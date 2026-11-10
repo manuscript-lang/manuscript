@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntest \"receiver before index\":\n    values := [7]\n    var calls = 0\n    index: Int? = 0\n    result := values.get(\n        match index:\n            i:\n                calls += 1\n                i\n            none: 0\n    )\n    try expect_equal(result, 7)\n    try expect_equal(calls, 1)\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntest \"receiver before index\":\n\tvalues := [7]\n\tvar calls = 0\n\tindex: Int? = 0\n\tresult := values.get(\n\t\tmatch index:\n\t\t\ti:\n\t\t\t\tcalls += 1\n\t\t\t\ti\n\t\t\tnone: 0\n\t)\n\ttry expect_equal(result, 7)\n\ttry expect_equal(calls, 1)\n"
   }
 }

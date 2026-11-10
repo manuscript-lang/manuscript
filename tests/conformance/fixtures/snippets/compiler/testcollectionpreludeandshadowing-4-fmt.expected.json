@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Int:\n    List := fn(value: Int) Int: value\n    Map := fn(value: Int) Int: value\n    Set := fn(value: Int) Int: value\n    items := [1]\n    entries := {1: 2}\n    return List(3) + Map(4) + Set(5) + items.length() + entries.length()\n"
+    "fmt": "fn f() Int:\n\tList := fn(value: Int) Int: value\n\tMap := fn(value: Int) Int: value\n\tSet := fn(value: Int) Int: value\n\titems := [1]\n\tentries := {1: 2}\n\treturn List(3) + Map(4) + Set(5) + items.length() + entries.length()\n"
   }
 }

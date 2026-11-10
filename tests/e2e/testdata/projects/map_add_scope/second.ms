@@ -1,26 +1,26 @@
 import (
-    Key from "./domain.ms",
-    insert, insert_bound from "./helper.ms",
-    expect_equal from "@std/test/test.ms",
+	Key from "./domain.ms",
+	insert, insert_bound from "./helper.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 impl Equal for Key:
-    fn equals(other: Key) Bool:
-        return self.code == other.code
+	fn equals(other: Key) Bool:
+		return self.code == other.code
 
 impl Hashable for Key:
-    fn hash() Int: 0
+	fn hash() Int: 0
 
 export fn second() Int!:
-    var m = Map[Key, Int]()
-    var original = Key(1.0)
-    m.add(original.clone(), 1)
-    insert(var m, Key(-1.0), 2)
-    insert_bound(var m, Key(1.0), 3)
+	var m = Map[Key, Int]()
+	var original = Key(1.0)
+	m.add(original.clone(), 1)
+	insert(var m, Key(-1.0), 2)
+	insert_bound(var m, Key(1.0), 3)
 
-    add := m.add
-    add(value: 4, key: Key(2.0))
-    m.get(Key(1.0)).get() | try expect_equal(3)
-    original.code = 9.0
-    m.keys()[0].code | try expect_equal(1.0)
-    return ok(m.length())
+	add := m.add
+	add(value: 4, key: Key(2.0))
+	m.get(Key(1.0)).get() | try expect_equal(3)
+	original.code = 9.0
+	m.keys()[0].code | try expect_equal(1.0)
+	return ok(m.length())

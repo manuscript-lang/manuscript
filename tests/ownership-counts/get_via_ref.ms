@@ -2,16 +2,16 @@
 // expect-release: allocs=21 alloc_bytes=1310
 // Reading list elements through `get` without cloning: the floor for get_via_clone.ms.
 fn total(names: List[String]) Int:
-    var n = 0
+	var n = 0
 
-    for i in 0..names.length():
-        s := names.get(i)
-        n += s.length()
+	for i in 0..names.length():
+		s := names.get(i)
+		n += s.length()
 
-    return n
+	return n
 
 export fn main() Int:
-    var names = List[String]()
-    for i in 0..20:
-        names.append("a name that is long enough to live on the heap {i}")
-    return total(names) - total(names)
+	var names = List[String]()
+	for i in 0..20:
+		names.append("a name that is long enough to live on the heap {i}")
+	return total(names) - total(names)

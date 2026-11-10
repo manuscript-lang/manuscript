@@ -3,107 +3,107 @@
 // each target builds it natively.
 // Usage: ms run tools/package.ms [-- OS ARCH]
 import (
-    capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms",
-    chmod, copy, create_directory, remove, temporary, write_file from "@std/os/fs.ms",
-    arguments,
-    change_directory,
-    set_environment,
-    working_directory from "@std/os/env.ms",
+	capture, dist_arch, dist_os, file_sha256, note, run_program from "./lib.ms",
+	chmod, copy, create_directory, remove, temporary, write_file from "@std/os/fs.ms",
+	arguments,
+	change_directory,
+	set_environment,
+	working_directory from "@std/os/env.ms",
 )
 
 fn supported(target_os: String, target_arch: String) Bool:
-    key := "{target_os}/{target_arch}"
-    return [
-        "linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64",
-        "windows/arm64"
-    ].contains(key)
+	key := "{target_os}/{target_arch}"
+	return [
+		"linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64", "windows/amd64",
+		"windows/arm64"
+	].contains(key)
 
 fn main() Int:
-    args := arguments()
-    var target_os = dist_os()
-    var target_arch = dist_arch()
+	args := arguments()
+	var target_os = dist_os()
+	var target_arch = dist_arch()
 
-    if args.length() == 2:
-        target_os = args[0].clone()
-        target_arch = args[1].clone()
-    else if not args.is_empty():
-        note("Usage: ms run tools/package.ms [-- OS ARCH]")
-        return 2
+	if args.length() == 2:
+		target_os = args[0].clone()
+		target_arch = args[1].clone()
+	else if not args.is_empty():
+		note("Usage: ms run tools/package.ms [-- OS ARCH]")
+		return 2
 
-    if not supported(target_os, target_arch):
-        note("Unsupported distribution target: {target_os}/{target_arch}")
-        return 1
+	if not supported(target_os, target_arch):
+		note("Unsupported distribution target: {target_os}/{target_arch}")
+		return 1
 
-    var executable = "ms"
-    if target_os == "windows": executable = "ms.exe"
+	var executable = "ms"
+	if target_os == "windows": executable = "ms.exe"
 
-    // ms-native is built in release mode first; `ms-cli`'s build script embeds the archive.
-    var code = run_program("cargo", ["xtask", "runtime"])
-    if code != 0: return code
+	// ms-native is built in release mode first; `ms-cli`'s build script embeds the archive.
+	var code = run_program("cargo", ["xtask", "runtime"])
+	if code != 0: return code
 
-    // Debug sections are dropped from the shipped binary (symbol names stay for fault traces and
-    // the profiler). The host triple is explicit so CARGO_BUILD_TARGET or `build.target` cannot move
-    // the output away from where the copy below reads it.
-    var triple = ""
-    for line in capture("rustc", ["-vV"]).split("\n"):
-        if line.starts_with("host: "): triple = line.slice(
-            6, line.length()
-        ).get("").trim()
-    set_environment("CARGO_PROFILE_RELEASE_STRIP", "debuginfo").get()
-    code = run_program(
-        "cargo",
-        [
-            "build", "--release", "--locked", "-p", "ms-cli", "--target",
-            triple.clone(), "--target-dir", "target"
-        ]
-    )
-    if code != 0: return code
+	// Debug sections are dropped from the shipped binary (symbol names stay for fault traces and
+	// the profiler). The host triple is explicit so CARGO_BUILD_TARGET or `build.target` cannot move
+	// the output away from where the copy below reads it.
+	var triple = ""
+	for line in capture("rustc", ["-vV"]).split("\n"):
+		if line.starts_with("host: "): triple = line.slice(
+			6, line.length()
+		).get("").trim()
+	set_environment("CARGO_PROFILE_RELEASE_STRIP", "debuginfo").get()
+	code = run_program(
+		"cargo",
+		[
+			"build", "--release", "--locked", "-p", "ms-cli", "--target",
+			triple.clone(), "--target-dir", "target"
+		]
+	)
+	if code != 0: return code
 
-    name := "manuscript-rust-{target_os}-{target_arch}"
-    create_directory("dist", recursive: true).get()
+	name := "manuscript-rust-{target_os}-{target_arch}"
+	create_directory("dist", recursive: true).get()
 
-    staging := temporary("ms-package-").get()
-    bundle := "{staging.path()}/{name}"
-    create_directory("{bundle}/examples/hello/src", recursive: true).get()
-    copy("target/{triple}/release/{executable}", "{bundle}/{executable}").get()
-    copy("examples/hello/ms.toml", "{bundle}/examples/hello/ms.toml").get()
-    copy("examples/hello/test.ms", "{bundle}/examples/hello/test.ms").get()
-    copy("examples/hello/src/main.ms", "{bundle}/examples/hello/src/main.ms").get()
+	staging := temporary("ms-package-").get()
+	bundle := "{staging.path()}/{name}"
+	create_directory("{bundle}/examples/hello/src", recursive: true).get()
+	copy("target/{triple}/release/{executable}", "{bundle}/{executable}").get()
+	copy("examples/hello/ms.toml", "{bundle}/examples/hello/ms.toml").get()
+	copy("examples/hello/test.ms", "{bundle}/examples/hello/test.ms").get()
+	copy("examples/hello/src/main.ms", "{bundle}/examples/hello/src/main.ms").get()
 
-    // `copy` writes private modes; the archive carries the usual ones.
-    for dir in ["", "/examples", "/examples/hello", "/examples/hello/src"]:
-        chmod("{bundle}{dir}", 493).get()
-    chmod("{bundle}/{executable}", 493).get()
-    for file in ["ms.toml", "test.ms", "src/main.ms"]:
-        chmod("{bundle}/examples/hello/{file}", 420).get()
+	// `copy` writes private modes; the archive carries the usual ones.
+	for dir in ["", "/examples", "/examples/hello", "/examples/hello/src"]:
+		chmod("{bundle}{dir}", 493).get()
+	chmod("{bundle}/{executable}", 493).get()
+	for file in ["ms.toml", "test.ms", "src/main.ms"]:
+		chmod("{bundle}/examples/hello/{file}", 420).get()
 
-    var archive = "dist/{name}.tar.gz"
-    var archive_name = "{name}.tar.gz"
+	var archive = "dist/{name}.tar.gz"
+	var archive_name = "{name}.tar.gz"
 
-    if target_os == "windows":
-        archive = "dist/{name}.zip"
-        archive_name = "{name}.zip"
+	if target_os == "windows":
+		archive = "dist/{name}.zip"
+		archive_name = "{name}.zip"
 
-        _ := remove(archive.clone(), recursive: false)
-        root := working_directory().get()
-        change_directory(staging.path()).get()
-        code = run_program(
-            "7z",
-            [
-                "a", "-tzip", "-bso0", "{root}/dist/{archive_name}", name.clone()
-            ]
-        )
+		_ := remove(archive.clone(), recursive: false)
+		root := working_directory().get()
+		change_directory(staging.path()).get()
+		code = run_program(
+			"7z",
+			[
+				"a", "-tzip", "-bso0", "{root}/dist/{archive_name}", name.clone()
+			]
+		)
 
-        // The checksum below reads the archive by its repository-relative path.
-        change_directory(root).get()
-    else:
-        code = run_program(
-            "tar", ["-C", staging.path(), "-czf", archive.clone(), name.clone()]
-        )
+		// The checksum below reads the archive by its repository-relative path.
+		change_directory(root).get()
+	else:
+		code = run_program(
+			"tar", ["-C", staging.path(), "-czf", archive.clone(), name.clone()]
+		)
 
-    if code != 0: return code
+	if code != 0: return code
 
-    digest := file_sha256(archive)
-    write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).wait().get()
-    print("{archive}")
-    return 0
+	digest := file_sha256(archive)
+	write_file("{archive}.sha256", "{digest}  {archive_name}\n", replace: true).wait().get()
+	print("{archive}")
+	return 0

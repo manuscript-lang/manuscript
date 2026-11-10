@@ -1,12 +1,12 @@
 fn edited() Int:
-    first := value.one().two()
-    second := value.three().four()
-    text := "λ"
-    consume(fn: return first)
-    return (
-        alpha_long_name
-        + beta_long_name
-        + gamma_long_name
-        + delta_long_name
-        + epsilon_long_name
-    )
+	first := value.one().two()
+	second := value.three().four()
+	text := "λ"
+	consume(fn: return first)
+	return (
+		alpha_long_name
+		+ beta_long_name
+		+ gamma_long_name
+		+ delta_long_name
+		+ epsilon_long_name
+	)
