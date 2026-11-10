@@ -4,6 +4,8 @@
 
 # ASCII identity normalization and lazy Unicode input
 
+> Raw result data, logs and patches named below were removed from the tree; recover them from git history at `c1af1db3` or earlier. The conclusions and programs stay.
+
 Candidate on pinned baseline `4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192`.
 Focused correctness, recorded comparisons, and local gate evidence are complete.
 The failed canonical conformance invocation and successful separate controlled
@@ -48,7 +50,7 @@ source tests plus two ASCII-extension tests pass in both explicit Release and
 Debug; both existing typed-normalization tests pass in each profile too.
 Frontend/format checks passed before measurement. The final runtime rebuild,
 Rust formatting and workspace clippy (`--workspace --all-targets -- -D warnings`)
-also pass. Focused logs are under [logs](logs/); final gate records are under
+also pass. Focused logs are under `logs`; final gate records are under
 [checks](checks/). Repository checks passed again under root orchestration with a unique confirmed
 log. The original `make conform` failed. A separate serial pinned-input strict
 replay passed all 2393 selected cases (1603 check, 531 run, 259 test), with zero
@@ -62,7 +64,7 @@ to obtain a pass.
 
 Normal builds requested Release with the explicit cached `MS_LLVM_TOOLS` path.
 Verbatim public CLI JSON and companion metadata are retained; companion copies
-use ordinary names under [build-metadata](build-metadata/). Both full and
+use ordinary names under `build-metadata`. Both full and
 focused companion files label the programs **Cranelift, Release**. Effective
 optimization beyond that metadata is unverified; no backend, trace, assembly,
 or code-placement investigation occurred.
@@ -89,10 +91,10 @@ and printing are outside timing. Normalization, full validation and result
 release are included. These are end-to-end operation timings, not isolated
 Unicode-algorithm costs. No expected output calls the operation being measured.
 
-All producer/identity guards passed. [samples.csv](samples.csv) retains all 1400
-rows from 100 cases, two variants and seven alternating pairs. [summary.csv](summary.csv)
-retains every median and min/max range. [paired-samples.csv](paired-samples.csv)
-retains all 700 per-pair normalized times/deltas/ratios; [paired.csv](paired.csv)
+All producer/identity guards passed. `samples.csv` retains all 1400
+rows from 100 cases, two variants and seven alternating pairs. `summary.csv`
+retains every median and min/max range. `paired-samples.csv`
+retains all 700 per-pair normalized times/deltas/ratios; `paired.csv`
 retains paired signs and distributions separately from ratio-of-medians.
 
 The full matrix improves 88 medians. Representative results follow; all values
@@ -136,13 +138,13 @@ pairs: all negative-budget and invalid-form controls, all zero/exact/exceeded
 budgets, the unfavorable Unicode/scaling medians and nearby counterparts, plus
 empty/one-ASCII controls. Shorts use 5M operations, mid-size/combining cases 1024,
 and large cases 64. The source and exact inventory are [focused-controls.ms](focused-controls.ms)
-and [focused-identities.json](focused-identities.json).
+and `focused-identities.json`.
 
 All checked warm-ups, producer exits, exact outputs/errors and identity guards
-passed. [focused-samples.csv](focused-samples.csv) retains all 540 rows;
-[focused-summary.csv](focused-summary.csv) every median/range;
-[focused-paired-samples.csv](focused-paired-samples.csv) all 270 paired observations;
-and [focused-paired.csv](focused-paired.csv) the separate paired statistics.
+passed. `focused-samples.csv` retains all 540 rows;
+`focused-summary.csv` every median/range;
+`focused-paired-samples.csv` all 270 paired observations;
+and `focused-paired.csv` the separate paired statistics.
 Focused processes omit preceding full-matrix workloads and allocation phases.
 They do not replace, pool with, or erase the original 100-case observations.
 
@@ -223,7 +225,7 @@ snapshots remain under `/tmp/string-round2/normalize-{before,after}` and the ext
 
 ## Reproduce and pending gates
 
-[builds.json](builds.json) records source/patch/compiler/archive/helper/program,
+`builds.json` records source/patch/compiler/archive/helper/program,
 runner, fixture, public metadata and all data/log hashes. Build both runtime
 versions from this same source path, preserving the candidate via an exit trap,
 and keep pure helpers identical. Pinned artifacts are in
@@ -267,7 +269,7 @@ target runtime archive SHA-256 was
 from the validated candidate
 `3b3c1b8bdc8dc97ce207ddf1750ca2e6d1c66e134fba48488bbbdb7baa3b014e`.
 [checks/conform-failed-report.md](checks/conform-failed-report.md) and
-[checks/conform-failed-input.json](checks/conform-failed-input.json) preserve the
+`checks/conform-failed-input.json` preserve the
 failure and input hashes. This remains a **failed `make conform`**, not a source
 fix or a CI pass. No backend, strip-code, or compiler investigation/repair was
 performed in this lane.
@@ -278,12 +280,12 @@ strict replay**, using the existing corpus runner with pinned Release compiler
 archive. It selects the same 2393 cases, run/check/test phases, strict expectations,
 allowlist and shard. This replay exited **0**: **2393/2393 passed** (1603 check,
 531 run, 259 test), with zero failed, expected-failed, unexpected-passed or
-unrecorded outcomes. The completed [log](checks/conform-pinned.log) and
+unrecorded outcomes. The completed `log` and
 [report](checks/conform-pinned-report.md) preserve that separate result. The
 original make invocation remains failed. Normal required CI remains mandatory;
 this controlled local replay is not a CI pass or merge approval.
 
-The [input-integrity record](checks/conform-pinned-input-integrity.json) retains
+The `input-integrity record` retains
 post-replay compiler, selected runtime archive, and pure-helper hashes; all match
 the prior pins. The selected archive was rehashed immediately before replay and
 recorded in `checks/conform-failed-input.json`. The compiler was verified at its

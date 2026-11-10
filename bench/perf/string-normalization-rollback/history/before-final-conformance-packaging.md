@@ -270,9 +270,9 @@ The full rollback restores `normalize_kind` byte for byte to public baseline
 `db975ce2f01ddf8da108ec9045ecaf66a63ab22c` on current main
 `85cfb96b889ec4176cfe71a42d74acfd091cbe60`. The entire post-change `string.rs`
 SHA-256 is `d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0`.
-[The exact rollback patch](full-rollback/source-states/rollback.patch) changes
+`The exact rollback patch` changes
 23 production lines (+5/−18), entirely inside this function; all existing tests
-remain. [The source proof](full-rollback/source-states/restore-proof.json) compares
+remain. `The source proof` compares
 the exact function bytes and verifies that everything outside the function is
 unchanged. The historical full-file baseline differs because later tests remain.
 
@@ -286,7 +286,7 @@ tradeoffs, not a claim that every workload becomes faster. Full-rollback max0/ma
 early-budget timings are not part of this 100-case phase; the separately retained
 partial-revert budget results above must not be relabeled as full-rollback results.
 
-[Completed-phase metadata](full-rollback/completed-phase.json) records commands,
+`Completed-phase metadata` records commands,
 exits, source/native/compiler/program hashes and public build metadata. It is an
 explicit derived snapshot of the still-active root record, restricted to completed
 checks through performance. The original tool session `14649` became unavailable
@@ -294,10 +294,10 @@ after a context transition; its overall exit status is **not established**. The
 filesystem record confirms completed per-step exits through performance. No
 conformance log existed before root resumed only offline analysis and the
 never-started lint/conformance phase in continuation cell `61939`; that cell is
-still running and has no reported actual exit. The [original check script](full-rollback/protocol/check-normalization-full-revert.py),
-[continuation script](full-rollback/protocol/continue-normalization-full-revert.py),
-[paired analyzer](full-rollback/protocol/analyze-pairs.py), and
-[execution status](full-rollback/execution-status.json) preserve this boundary.
+still running and has no reported actual exit. The `original check script`,
+`continuation script`,
+`paired analyzer`, and
+`execution status` preserve this boundary.
 These scripts document the protocol; do not run the check scripts from this
 archive because they contain the original worktree/state-changing commands.
 All included checks exited 0: native before/after,
@@ -319,16 +319,16 @@ Public companion metadata says **Release / cranelift**; the effective backend an
 optimization beyond these labels remain unverified. No backend, code placement,
 allocator, ownership or compiler-mechanism investigation was performed.
 
-All **1400 raw samples**, [100 complete distributions](full-rollback/all-case-statistics.csv),
-[700 raw paired observations](full-rollback/performance/paired-samples.csv),
-[100 original paired summaries](full-rollback/performance/paired.csv), and
-[69 unfavorable case medians](full-rollback/unfavorable-medians.csv) remain
+All **1400 raw samples**, `100 complete distributions`,
+`700 raw paired observations`,
+`100 original paired summaries`, and
+`69 unfavorable case medians` remain
 available, including mixed signs and every range/outlier. The original summary
 rounds to 0.1 ns; tables and derived distributions below recompute ns/op from
 integer elapsed/iterations. There are 31 favorable median cases and 69 unfavorable
 ones. A ratio of medians and a median paired difference are distinct statistics;
 seven pairs establish neither a universal speedup nor a confidence interval.
-[Offline validation](full-rollback/sample-validation.json) checks every expected
+`Offline validation` checks every expected
 identity, checksum, operation count, unique row and complete pair without running
 any benchmark again.
 
@@ -347,7 +347,7 @@ and signs retain the degree of agreement:
 | `late_unicode_1048576_NFKD` | 24.219122 | 20.969129 | -13.42% | -3.242220 | 6 / 1 |
 
 The empty and ASCII shortcuts are removed too. All four large ASCII controls
-below are slower in every pair; [all ASCII scales](full-rollback/ascii-scale.csv)
+below are slower in every pair; `all ASCII scales`
 and their ranges remain alongside them. Large percentage ratios are less useful
 than the absolute added times here.
 
@@ -360,21 +360,21 @@ than the absolute added times here.
 
 ### Reproduction and retained boundaries
 
-The [completed command record](full-rollback/completed-phase.json) gives the exact
-invoked argv and original paths. Read the [before](full-rollback/source-states/before.rs.txt)
-and [after](full-rollback/source-states/after.rs.txt) document snapshots together
+The `completed command record` gives the exact
+invoked argv and original paths. Read the `before`
+and `after` document snapshots together
 with the rollback patch. Build each native state serially from current main and
 its exact function change using `cargo xtask runtime`; build the normal CLI and
 harness using `cargo build --release --locked -p ms-cli -p ms-conform`. Build the
 unchanged `bench/perf/string-normalize-ascii/main.ms` with that CLI, its corresponding
 native state and `--build-type Release`, preserving each output and companion
-metadata. The complete input snapshot is [here](inputs/normalize-full.ms) and
-its identity oracle is [here](inputs/normalize-full-identities.json).
+metadata. The complete input snapshot is `here` and
+its identity oracle is `here`.
 
 The recorded paired command is `taskset -c 0 python3 bench/perf/string-lines/compare.py
 BEFORE_PROGRAM AFTER_PROGRAM NEW_SAMPLES.csv --pairs 7 --identity-file
 bench/perf/string-normalize-ascii/identities.json`, using the preserved
-[shared comparison driver](inputs/shared-compare.py). Use a fresh output path for
+`shared comparison driver`. Use a fresh output path for
 any authorized reproduction; preserve old failures and samples. This packaging
 work executed no builds, native-state changes, timings or reruns. Run
 `python3 verify_evidence.py` from this report directory for read-only local hash,
@@ -382,7 +382,7 @@ source-restoration and sample validation. It does not execute compiled programs.
 
 The report stays open for strict conformance, final review and root publication.
 The earlier report and manifest are preserved in
-[history](history/before-full-rollback-results.md); historical failure evidence and
+`history`; historical failure evidence and
 all 5392 partial-candidate rows remain intact. No binary, native archive or helper
 IR is copied into this package.
 

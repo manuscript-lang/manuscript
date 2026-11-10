@@ -4,6 +4,8 @@
 
 # TOML control-escape performance
 
+> Raw result data, logs and patches named below were removed from the tree; recover them from git history at `c1af1db3` or earlier. The conclusions and programs stay.
+
 On 2026-10-31, replacing general radix conversion and zero-padding in the private
 TOML `hex4` helper made the dense-control workload **1.46x faster**. Its only caller
 passes ASCII controls (`0..31` or `127`), so `00` and two hexadecimal digits preserve
@@ -16,7 +18,7 @@ strings and mixed Unicode/escapes still have substantial gaps.
 ## Matched final controls
 
 Base: `d4a94aa9283348133542078e22ccaa3b2c9dc348`. Candidate source SHA-256 and every
-binary/source/runtime digest are in [environment.json](results/2026-10-31/environment.json).
+binary/source/runtime digest are in `environment.json`.
 Host: Linux x86-64, AMD EPYC 9V45 96-Core Processor. Both builds use Rust
 1.99.1; Manuscript uses its pinned LLVM 23.1.1 Release pipeline and musl runtime.
 The idiomatic Rust control uses pinned `toml` 0.9.8, `Value::Table` and `to_string`,
@@ -34,8 +36,8 @@ printing are outside timing; result release and equality validation are included
 
 Twelve interleaved process trials use complete six-trial ordering blocks, equal
 operation counts, and baseline calibration to at least 50ms per process. No other
-build or benchmark ran during timing. Raw [samples](results/2026-10-31/samples.jsonl)
-and [distributions](results/2026-10-31/summary.json) retain median, MAD, min and max.
+build or benchmark ran during timing. Raw `samples`
+and `distributions` retain median, MAD, min and max.
 No wall-clock CI threshold is added.
 
 | Input | Before µs | After µs | Rust µs | Before / after | After / Rust |
@@ -56,8 +58,8 @@ own exec high-water mark, avoiding inherited Python RSS. Six balanced trials use
 approximately 0.6–1.2MiB strings and one timed call after setup. These are whole
 process peak RSS measurements, not allocation counts; small differences include
 binary/process overhead. The retained helper has no new large buffer and no
-material increase in these controls. Raw [memory records](results/2026-10-31/memory.json)
-include input/output sizes and every sample; [memory provenance](results/2026-10-31/memory-environment.json)
+material increase in these controls. Raw `memory records`
+include input/output sizes and every sample; `memory provenance`
 records producer/launcher/source hashes. The committed `memory.py` generates all
 five inputs, checks full outputs, verifies the timing binaries and runs the launcher.
 
@@ -71,7 +73,7 @@ five inputs, checks full outputs, verifies the timing binaries and runs the laun
 
 ## Rejected alternatives
 
-[Historical records](results/2026-10-31/rejected/) retain all measured candidates:
+`Historical records` retain all measured candidates:
 
 - `clean-scan`: scan bytes, then use the old character fallback. A late escape
   caused a second traversal and about 25% slowdown.
@@ -169,6 +171,6 @@ those changes. Both baseline and candidate producers were rebuilt with that
 compiler/main state, changing only the TOML helper, then all eight timing and five
 RSS controls were repeated. Dense controls improve **1.504x**; the other seven
 median ratios range from 0.980x to 1.017x, with overlapping distributions. Whole
-process RSS remains flat. [Integrated raw records, hashes and distributions](results/2026-10-31/integrated/)
+process RSS remains flat. `Integrated raw records, hashes and distributions`
 retain all 288 timing and 90 RSS records. This validates that combined state; it
 does not claim other serialization paths or later main revisions are clean.

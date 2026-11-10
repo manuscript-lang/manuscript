@@ -8,15 +8,15 @@ these numbers belong to this checkpoint, not an unmeasured later main.
 
 Baseline and word archives were rebuilt serially in the same worktree. The
 baseline runtime source matches the named main; the candidate differs only by
-[the production patch](production.patch). Both states use fixed compiler SHA-256
+`the production patch`. Both states use fixed compiler SHA-256
 `c0206ad63cab27353feb941a70d4f500dca2856beeb184e4cd98cf3b997a4a85`.
-[Build records](build-record.json) identify all eight programs, sources,
+`Build records` identify all eight programs, sources,
 archives, commands and exits. Companion metadata reports normal Release /
 Cranelift; no stronger effective-backend claim or investigation is made.
 
 All builds/checks finished before serial CPU-0 timing. Every producer's exact
 identity, iterations, complete output guard, checksum and exit passed. The
-[replay record](replay-record.json) validates unchanged programs and inputs
+`replay record` validates unchanged programs and inputs
 before/after. The complete suites are:
 
 | Suite | Variants | Rounds | Cases | Raw rows |

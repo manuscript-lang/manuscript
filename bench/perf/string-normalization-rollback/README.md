@@ -1,5 +1,7 @@
 # Integration normalization regression: completed evidence and open correction
 
+> Raw result data, logs and patches named below were removed from the tree; recover them from git history at `c1af1db3` or earlier. The conclusions and programs stay.
+
 **Attribution established; partial correction rejected; full rollback measurements and current-main checks complete.** The new same-path
 current-baseline comparisons expose material Unicode-prefix costs. Four-state
 measurement reproduces all eight 1 MiB prefix median regressions with the
@@ -270,9 +272,9 @@ The full rollback restores `normalize_kind` byte for byte to public baseline
 `db975ce2f01ddf8da108ec9045ecaf66a63ab22c` on current main
 `85cfb96b889ec4176cfe71a42d74acfd091cbe60`. The entire post-change `string.rs`
 SHA-256 is `d9124ee3a902263ee12b9daa6668dab4e6609044e40e72c5074c167e1be4a2c0`.
-[The exact rollback patch](full-rollback/source-states/rollback.patch) changes
+`The exact rollback patch` changes
 23 production lines (+5/−18), entirely inside this function; all existing tests
-remain. [The source proof](full-rollback/source-states/restore-proof.json) compares
+remain. `The source proof` compares
 the exact function bytes and verifies that everything outside the function is
 unchanged. The historical full-file baseline differs because later tests remain.
 
@@ -286,38 +288,38 @@ tradeoffs, not a claim that every workload becomes faster. Full-rollback max0/ma
 early-budget timings are not part of this 100-case phase; the separately retained
 partial-revert budget results above must not be relabeled as full-rollback results.
 
-[The final record](full-rollback/record.json) preserves the completed producer
+`The final record` preserves the completed producer
 metadata byte for byte: commands, per-step exits, source/native/compiler/program
 hashes, public metadata and continuation note. The earlier
-[completed-phase snapshot](full-rollback/completed-phase.json) remains as a labeled
+`completed-phase snapshot` remains as a labeled
 historical packaging boundary limited to checks through performance. The original tool session `14649` became unavailable
 after a context transition; its overall exit status is **not established**. The
 filesystem record confirms completed per-step exits through performance. No
 conformance log existed before root resumed only offline analysis and the
 never-started lint/conformance phase in continuation cell `61939`. That continuation
 finished with actual exit **0**, as root confirmed from its tool transcript.
-[The continuation launch record](full-rollback/continuation-launch-record.json)
+`The continuation launch record`
 explicitly labels this as an **after-run transcript handoff**, not a
 producer-generated overall status. The [original check script](full-rollback/protocol/check-normalization-full-revert.py),
 [continuation script](full-rollback/protocol/continue-normalization-full-revert.py),
 [paired analyzer](full-rollback/protocol/analyze-pairs.py), and
-[execution status](full-rollback/execution-status.json) preserve this boundary.
+`execution status` preserve this boundary.
 These scripts document the protocol; do not run the check scripts from this
 archive because they contain the original worktree/state-changing commands.
 All included checks exited 0: native before/after,
 Rust fmt, 22 runtime string tests, workspace/all-target Clippy, release CLI and
 harness build, repository check, and seven source normalization tests in each of
 Release and Debug (three fixtures: 3+2+2). Corpus lint also exited 0:
-[4154 fixtures, zero problems](full-rollback/checks/corpus-lint.log).
+`4154 fixtures, zero problems`.
 
 Strict conformance completed **2394/2394 passing**: check **1603/1603**, run
 **532/532**, test **259/259**, with zero failures, expected failures, unexpected
 passes or unrecorded fixtures. This is the selected `run,check,test` scope with
 `aliasing` excluded under the recorded strict command, not all 4154 discovered
-fixtures. The [JSON report](full-rollback/checks/conform-report.json),
+fixtures. The `JSON report`,
 [Markdown report](full-rollback/checks/conform-report.md) and
-[completed log](full-rollback/checks/conform.log) are preserved exactly.
-[The before/after input-integrity proof](full-rollback/checks/conform-input-integrity.json)
+`completed log` are preserved exactly.
+`The before/after input-integrity proof`
 records matching compiler/harness/native/helper/expectation hashes and dedicated
 read-only snapshots. All builds and timing finished before this suite; no native
 writer ran during it. The requested current-main local validation is complete;
@@ -335,16 +337,16 @@ Public companion metadata says **Release / cranelift**; the effective backend an
 optimization beyond these labels remain unverified. No backend, code placement,
 allocator, ownership or compiler-mechanism investigation was performed.
 
-All **1400 raw samples**, [100 complete distributions](full-rollback/all-case-statistics.csv),
-[700 raw paired observations](full-rollback/performance/paired-samples.csv),
-[100 original paired summaries](full-rollback/performance/paired.csv), and
-[69 unfavorable case medians](full-rollback/unfavorable-medians.csv) remain
+All **1400 raw samples**, `100 complete distributions`,
+`700 raw paired observations`,
+`100 original paired summaries`, and
+`69 unfavorable case medians` remain
 available, including mixed signs and every range/outlier. The original summary
 rounds to 0.1 ns; tables and derived distributions below recompute ns/op from
 integer elapsed/iterations. There are 31 favorable median cases and 69 unfavorable
 ones. A ratio of medians and a median paired difference are distinct statistics;
 seven pairs establish neither a universal speedup nor a confidence interval.
-[Offline validation](full-rollback/sample-validation.json) checks every expected
+`Offline validation` checks every expected
 identity, checksum, operation count, unique row and complete pair without running
 any benchmark again.
 
@@ -363,7 +365,7 @@ and signs retain the degree of agreement:
 | `late_unicode_1048576_NFKD` | 24.219122 | 20.969129 | -13.42% | -3.242220 | 6 / 1 |
 
 The empty and ASCII shortcuts are removed too. All four large ASCII controls
-below are slower in every pair; [all ASCII scales](full-rollback/ascii-scale.csv)
+below are slower in every pair; `all ASCII scales`
 and their ranges remain alongside them. Large percentage ratios are less useful
 than the absolute added times here.
 
@@ -376,16 +378,16 @@ than the absolute added times here.
 
 ### Reproduction and retained boundaries
 
-The [final command record](full-rollback/record.json) gives the exact invoked argv
-and original paths. Read the [before](full-rollback/source-states/before.rs.txt)
-and [after](full-rollback/source-states/after.rs.txt) document snapshots together
+The `final command record` gives the exact invoked argv
+and original paths. Read the `before`
+and `after` document snapshots together
 with the rollback patch. Build each native state serially from current main and
 its exact function change using `cargo xtask runtime`; build the normal CLI and
 harness using `cargo build --release --locked -p ms-cli -p ms-conform`. Build the
 unchanged `bench/perf/string-normalize-ascii/main.ms` with that CLI, its corresponding
 native state and `--build-type Release`, preserving each output and companion
 metadata. The complete input snapshot is [here](inputs/normalize-full.ms) and
-its identity oracle is [here](inputs/normalize-full-identities.json).
+its identity oracle is `here`.
 
 The recorded paired command is `taskset -c 0 python3 bench/perf/string-lines/compare.py
 BEFORE_PROGRAM AFTER_PROGRAM NEW_SAMPLES.csv --pairs 7 --identity-file
