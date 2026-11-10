@@ -233,6 +233,8 @@ pub struct Decoder {
     max: i64,
     total: i64,
     input: Vec<u8>,
+    /// Input consumed so far in this call; dropped from `input` once per public call, not per step.
+    start: usize,
     eof: bool,
     phase: Phase,
     /// Gzip members completed so far.
@@ -256,6 +258,7 @@ impl Decoder {
             max: max_bytes.unwrap_or(i64::MAX),
             total: 0,
             input: Vec::new(),
+            start: 0,
             eof: false,
             phase: if format == Format::Deflate {
                 Phase::Body
@@ -291,6 +294,8 @@ impl Decoder {
         }
         let mut out = Vec::new();
         let r = self.step(&mut out);
+        self.input.drain(..self.start);
+        self.start = 0;
         if let Err(e) = r {
             self.failed = Some(e);
             return Err(e);
@@ -303,32 +308,32 @@ impl Decoder {
         loop {
             match self.phase {
                 // Nothing may follow the payload, whether it arrived with it or in a later chunk.
-                Phase::Done if self.input.is_empty() => return Ok(()),
+                Phase::Done if self.rest().is_empty() => return Ok(()),
                 Phase::Done => return Err(Fail::InvalidData),
                 Phase::Header => {
                     if self.format == Format::Zlib {
-                        if self.input.len() < 2 {
+                        if self.rest().len() < 2 {
                             return self.need_input();
                         }
-                        let (b0, b1) = (self.input[0], self.input[1]);
+                        let (b0, b1) = (self.rest()[0], self.rest()[1]);
                         let h = u16::from_be_bytes([b0, b1]);
                         if b0 & 0x0f != 8 || b0 >> 4 > 7 || !h.is_multiple_of(31) || b1 & 0x20 != 0
                         {
                             return Err(Fail::InvalidData);
                         }
-                        self.input.drain(..2);
+                        self.start += 2;
                         self.check = 1;
                     } else {
                         // A clean end of input between members finishes a gzip stream.
-                        if self.members > 0 && self.input.is_empty() && self.eof {
+                        if self.members > 0 && self.rest().is_empty() && self.eof {
                             self.phase = Phase::Done;
                             continue;
                         }
-                        match gzip_header(&self.input) {
+                        match gzip_header(self.rest()) {
                             Header::Need => return self.need_input(),
                             Header::Bad => return Err(Fail::InvalidData),
                             Header::Len(n) => {
-                                self.input.drain(..n);
+                                self.start += n;
                                 self.check = 0;
                             }
                         }
@@ -345,12 +350,12 @@ impl Decoder {
                     }
                     let (status, used, made) = decompress(
                         &mut self.inflate,
-                        &self.input,
+                        &self.input[self.start..],
                         &mut self.window[..],
                         self.hist,
                         flags,
                     );
-                    self.input.drain(..used);
+                    self.start += used;
                     let produced = &self.window[self.hist..self.hist + made];
                     match self.format {
                         Format::Gzip => self.check = crc32(self.check, produced),
@@ -385,10 +390,10 @@ impl Decoder {
                 }
                 Phase::Trailer => {
                     let n = if self.format == Format::Gzip { 8 } else { 4 };
-                    if self.input.len() < n {
+                    if self.rest().len() < n {
                         return self.need_input();
                     }
-                    let t = &self.input[..n];
+                    let t = &self.rest()[..n];
                     let ok = if self.format == Format::Gzip {
                         u32::from_le_bytes([t[0], t[1], t[2], t[3]]) == self.check
                             && u32::from_le_bytes([t[4], t[5], t[6], t[7]]) == self.size
@@ -398,7 +403,7 @@ impl Decoder {
                     if !ok {
                         return Err(Fail::InvalidData);
                     }
-                    self.input.drain(..n);
+                    self.start += n;
                     if self.format == Format::Gzip {
                         self.members += 1;
                         self.phase = Phase::Header;
@@ -408,6 +413,11 @@ impl Decoder {
                 }
             }
         }
+    }
+
+    /// Input not yet consumed.
+    fn rest(&self) -> &[u8] {
+        &self.input[self.start..]
     }
 
     /// The decoder cannot go on without input: wait for the next chunk, or fail when none can come.

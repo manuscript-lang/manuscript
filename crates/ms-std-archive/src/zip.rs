@@ -182,7 +182,7 @@ pub fn open_archive(data: &[u8]) -> Result<Vec<File>, Bad> {
         offset: u64::from(u32le(b, 12)),
     };
     let mut end_offset = end_at as i64;
-    if end.records == 0xffff || end.size == 0xffff || end.offset == 0xffff_ffff {
+    if end.records == 0xffff || end.size == 0xffff_ffff || end.offset == 0xffff_ffff {
         let loc = end_offset - DIR64_LOC_LEN as i64;
         if loc >= 0 {
             let l = data
