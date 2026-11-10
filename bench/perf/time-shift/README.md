@@ -107,6 +107,25 @@ retained, including the original 27-case input and candidate diffs:
   These initial single-process observations were not contemporaneous pairs;
   do not interpret their differences as a regression or speedup.
 
+The earlier oversized-fraction observation needed its own follow-up: the short
+valid parse control does not exercise malformed text. After local CPU work
+stopped, [stdlib-controls.py](stdlib-controls.py) ran eight AB/BA pairs of the
+three existing parser cases and timestamp formatting, all pinned to CPU 0.
+Each CLI invocation used 11 samples of 100 ms. The [unmodified CLI JSON reports](results-2026-11-10/stdlib-paired.json)
+retain commands, operation counts, all reported statistics and binary hashes.
+All cases passed. Medians of process medians, ns/op:
+
+| Existing case | Before | After | After / before |
+| --- | ---: | ---: | ---: |
+| Ordinary parsing | 27.873 | 28.369 | 1.018 |
+| Maximum-width parsing | 35.712 | 35.728 | 1.000 |
+| Oversized-fraction rejection | 20.405 | 20.491 | 1.004 |
+| Timestamp formatting | 166.161 | 165.767 | 0.998 |
+
+The earlier apparent 9.4% oversized-fraction slowdown did not repeat in paired
+trials. These unchanged-operation differences are within the observed noise
+envelope; no speedup is claimed for them.
+
 ### Reproduction
 
 Use the pinned Rust toolchain and repository build prerequisites. In separate
@@ -119,6 +138,7 @@ with both compilers, using absolute paths as needed:
 /path/to/candidate/target/release/ms build bench/perf/time-shift/main.ms -o /tmp/time-after
 python3 bench/perf/time-shift/run.py /tmp/time-before /tmp/time-after /tmp/time-paired.json 12
 python3 bench/perf/time-shift/run.py /tmp/time-before /tmp/time-before /tmp/time-identical.json 6
+python3 bench/perf/time-shift/stdlib-controls.py /path/to/baseline/target/release/ms /path/to/candidate/target/release/ms /tmp/stdlib-paired.json 8
 ```
 
 Check both adjacent `.ms-build.json` files for LLVM Release. The actual run used
