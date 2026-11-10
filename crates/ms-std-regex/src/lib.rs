@@ -6,6 +6,7 @@
 use ms_rt as _;
 
 extern crate alloc;
+extern crate std;
 
 pub mod ffi;
 mod template;
@@ -57,6 +58,26 @@ impl Iterator for Spans<'_> {
         }
         None
     }
+}
+
+/// Whether `value` is a scalar of the Unicode general category `category` ("P", "S" or "M").
+/// Each category's regex is compiled once, on first use, and shared by every thread.
+pub fn in_category(value: i64, category: &str) -> bool {
+    use std::sync::OnceLock;
+    static CACHE: [OnceLock<regex::Regex>; 3] = [const { OnceLock::new() }; 3];
+    let Some(scalar) = u32::try_from(value).ok().and_then(char::from_u32) else {
+        return false;
+    };
+    let slot = match category {
+        "P" => 0,
+        "S" => 1,
+        "M" => 2,
+        _ => return false,
+    };
+    let re = CACHE[slot].get_or_init(|| {
+        regex::Regex::new(&alloc::format!("^\\p{{{category}}}$")).expect("category regex")
+    });
+    re.is_match(scalar.encode_utf8(&mut [0; 4]))
 }
 
 pub fn compile(pattern: &str) -> Result<Regex, Fail> {

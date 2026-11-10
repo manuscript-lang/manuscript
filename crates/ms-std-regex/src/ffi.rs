@@ -22,6 +22,11 @@ native! {
     }
 
     // ms: leaf
+    fn msstd_unicode_in_category(value: i64, category: &str) -> bool {
+        crate::in_category(value, category)
+    }
+
+    // ms: leaf
     fn msstd_regex_matches(re: ObjRef<Regex>, text: &str) -> bool {
         re.is_match(text)
     }
