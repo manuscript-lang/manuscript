@@ -65,6 +65,7 @@ fn main() Int:
 	bundle := "{staging.path()}/{name}"
 	create_directory("{bundle}/examples/hello/src", recursive: true).get()
 	copy("target/{triple}/release/{executable}", "{bundle}/{executable}").get()
+	copy("LICENSE", "{bundle}/LICENSE").get()
 	copy("examples/hello/ms.toml", "{bundle}/examples/hello/ms.toml").get()
 	copy("examples/hello/test.ms", "{bundle}/examples/hello/test.ms").get()
 	copy("examples/hello/src/main.ms", "{bundle}/examples/hello/src/main.ms").get()
@@ -73,6 +74,7 @@ fn main() Int:
 	for dir in ["", "/examples", "/examples/hello", "/examples/hello/src"]:
 		chmod("{bundle}{dir}", 493).get()
 	chmod("{bundle}/{executable}", 493).get()
+	chmod("{bundle}/LICENSE", 420).get()
 	for file in ["ms.toml", "test.ms", "src/main.ms"]:
 		chmod("{bundle}/examples/hello/{file}", 420).get()
 
