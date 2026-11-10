@@ -302,3 +302,31 @@ test "complex inverse tangent preserves poles and ordinary controls":
 	negative_zero := complex(1.0, -0.0).atan()
 	try expect_equal(negative_zero.im, 0.0)
 	try expect_true(sign_bit(negative_zero.im))
+
+test "inverse sine keeps large imaginary parts finite and conjugate-symmetric":
+	// asin(i*y) = i*asinh(y); asinh(1e10) = 23.7189981105004...
+	for y in [1e10, 1e100]:
+		up := complex(0.0, y).asin()
+		down := complex(0.0, -y).asin()
+		try expect_true(up.re == 0.0 and down.re == 0.0)
+		try expect_true(up.im.is_finite() and up.im > 0.0)
+		try expect_equal(up.im, -down.im)
+
+	try component_close(complex(0.0, 1e10).asin().im, 23.7189981105004)
+	try expect_true(
+		near(
+			complex(0.0, 1e10).acos(), complex(1.5707963267948966, -23.7189981105004)
+		)
+	)
+	try component_close(complex(0.5, 1e6).asin().im, 14.508657738524594)
+	try component_close(complex(-1e5, 2.0).asin().re, -1.5707763267948982)
+
+	// Ordinary points are unchanged and symmetric under conjugation and negation.
+	z := complex(3.0, 4.0)
+	try expect_true(near(z.asin(), complex(0.6339838656391766, 2.305509031243477)))
+	try expect_true(near(z.conjugate().asin(), z.asin().conjugate()))
+	try expect_true(
+		near(
+			z.multiply(complex(-1.0, 0.0)).asin(), z.asin().multiply(complex(-1.0, 0.0))
+		)
+	)
