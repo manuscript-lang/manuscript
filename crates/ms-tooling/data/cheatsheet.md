@@ -38,7 +38,7 @@ export fn main() Int:
 - Stdlib (`@std/<dir>/<m>.ms`): `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
 - Imports: `import a, b from "@std/x.ms"`, `import a from "./local.ms"`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; `else` needs a block `if`, not `if c: x`; lines starting `|` or `.` continue.
-- Bindings: `let` once, `var` reassigns, `n += 1`; destructure `let [a, b] = xs`, `let {name} = rec`, also in `for [a, b] in pairs:` and `fn [a, b]: ...`. `and or not`, not `&& || !`.
+- Bindings: `let` once, `var` reassigns, `n += 1`; unpack `let [a, b] = xs`, `let {name} = rec`, `for [a, b] in xs`. `and or not`, not `&& || !`.
 - Types: `Int Float Bool String Unit`, no implicit casts. `"{expr}"` interpolates; write `\{` and `\}` for literal braces. `unit`.
 - Control: `if`/`else if`/`else`, `while c:`, `for i in 0..n:` (excludes `n`; steps `range_by`, `@std/collections/collections.ms`), `break`, `continue`. `if` is a statement; the expression is `if c: a else: b`.
 - Functions: `fn f(a: Int, b: Int = 1) Int:` (no `->`; `Unit` if none), called `f(1, b: 2)`; generics `fn f[T](x: T) T`; closures `fn x: x + 1`, typed `fn(x: Int) Int: x + 1`; types `fn(Int) Int`.
