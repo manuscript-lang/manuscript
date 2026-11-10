@@ -78,7 +78,17 @@ fn resolve_destination(dest: &[u8]) -> Result<Vec<u8>, Fail> {
         suffix.push(path::base(&ancestor));
         ancestor = parent;
     }
-    let mut real = ops::eval_symlinks(&ancestor).map_err(|e| Fail::errno(e, "lstat", &ancestor))?;
+    let mut real = match ops::eval_symlinks(&ancestor) {
+        Ok(real) => real,
+        // A dangling link has no target to resolve; it is the entry a replacing copy unlinks.
+        Err(e) if sys::is_not_found(e) && ancestor != path::dir(&ancestor) => {
+            let parent = path::dir(&ancestor);
+            let parent =
+                ops::eval_symlinks(&parent).map_err(|e| Fail::errno(e, "lstat", &parent))?;
+            path::join(&parent, &path::base(&ancestor))
+        }
+        Err(e) => return Err(Fail::errno(e, "lstat", &ancestor)),
+    };
     for part in suffix.iter().rev() {
         real = path::join(&real, part);
     }
@@ -1093,6 +1103,30 @@ mod tests {
         assert!(path::is_abs(&target));
         assert!(ops::stat(&copy_path, true).is_ok());
         assert!(path::is_abs(&ops::absolute(b"x")));
+        ops::remove(&root, true).unwrap();
+    }
+
+    #[test]
+    fn copy_replaces_a_dangling_destination_link_only_when_asked() {
+        let root = tree();
+        let dest = path::join(&root, b"dangling");
+        sys::symlink(&cpath(b"missing").unwrap(), &cpath(&dest).unwrap()).unwrap();
+        let source = path::join(&root, b"a.txt");
+
+        let mut keep = options();
+        keep.error_on_exists = true;
+        let kept = copy(&source, &dest, keep, None).unwrap_err();
+        assert_eq!(kept.status, STATUS_ALREADY_EXISTS);
+        assert!(sys::readlink(&cpath(&dest).unwrap()).is_ok());
+
+        let mut replace = options();
+        replace.replace = true;
+        copy(&source, &dest, replace, None).unwrap();
+        assert!(sys::readlink(&cpath(&dest).unwrap()).is_err());
+        assert_eq!(
+            ops::read_file(&dest, UNLIMITED).unwrap(),
+            ops::read_file(&source, UNLIMITED).unwrap()
+        );
         ops::remove(&root, true).unwrap();
     }
 
