@@ -10,6 +10,7 @@ import (
 	sleep,
 	microseconds,
 	milliseconds from "@std/time.ms",
+	nanoseconds from "@std/time.ms",
 )
 
 test "timestamps preserve nanoseconds and shift across epoch":
@@ -27,6 +28,37 @@ test "time rejects invalid timestamps and out of range nanoseconds":
 
 	out_of_range: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
 	try expect_equal(timestamp(0, 1000000000), out_of_range)
+
+test "timestamp shifts normalize raw fields and preserve wide sums":
+	minimum := -9223372036854775807 - 1
+	maximum := 9223372036854775807
+	try expect_equal(
+		(try Timestamp(-62135596801, 1000000000).shift(nanoseconds(0))),
+		Timestamp(-62135596800, 0)
+	)
+	try expect_equal(
+		(try Timestamp(253402300800, 0).shift(nanoseconds(-1000000000))),
+		Timestamp(253402300799, 0)
+	)
+	try expect_equal(
+		(try Timestamp(0, -1).shift(nanoseconds(0))), Timestamp(-1, 999999999)
+	)
+	try expect_equal(
+		(try Timestamp(0, maximum).shift(nanoseconds(maximum))),
+		Timestamp(18446744073, 709551614)
+	)
+	try expect_equal(
+		(try Timestamp(0, minimum).shift(nanoseconds(minimum))),
+		Timestamp(-18446744074, 290448384)
+	)
+	try expect_equal(
+		(try Timestamp(0, maximum).shift(nanoseconds(minimum))),
+		Timestamp(-1, 999999999)
+	)
+
+	out_of_range: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
+	try expect_equal(Timestamp(maximum, 0).shift(nanoseconds(maximum)), out_of_range)
+	try expect_equal(Timestamp(minimum, 0).shift(nanoseconds(minimum)), out_of_range)
 
 test "host clocks are usable and zero sleep completes":
 	before := monotonic()
