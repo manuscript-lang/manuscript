@@ -305,9 +305,7 @@ test "DOCTYPE public identifiers accept only XML PubidChar scalars":
     let malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
 
     for quote in ["\"", "'"]:
-        for invalid in [
-            "[", "]", "<", ">", "&", "\t", "é", "😀", "\"", "\\", "\{", "\}"
-        ]:
+        for invalid in ["[", "]", "<", ">", "&", "\t", "é", "😀", "\"", "\\", "\{", "\}"]:
             try expect_equal(invalid.length(), 1)
             if invalid == quote: continue
 
