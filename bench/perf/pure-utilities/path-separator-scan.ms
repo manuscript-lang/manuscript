@@ -1,8 +1,10 @@
 // Build once with each compiler, then pass one case name to each executable.
-import posix, win32 from "@std/os/path.ms"
-import arguments from "@std/os/env.ms"
-import monotonic from "@std/time.ms"
-import print from "@std/core.ms"
+import (
+    posix, win32 from "@std/os/path.ms",
+    arguments from "@std/os/env.ms",
+    monotonic from "@std/time.ms",
+    print from "@std/core.ms",
+)
 
 fn work(mode: String, path: String) String:
     if mode.starts_with("basename"): return posix().basename(path)
