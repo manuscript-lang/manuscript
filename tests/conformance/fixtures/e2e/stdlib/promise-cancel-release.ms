@@ -1,6 +1,5 @@
 // conform: tags=scope-cleanup,stdlib-promise,tier-io
 // conform: phase=run
-import stdout from "@std/io/io.ms"
 import promise, wait_first, PromiseOptions from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
 
@@ -21,5 +20,5 @@ export fn main() Int:
     let first = wait_first([promise(fn: ok(hold("loser"))), promise(fn: ok(4))])
     let pending = promise(fn: ok(hold("dropped")))
     let _ = pending
-    stdout().write("{timed_out.is_error()} {first.get(0)}\n").get()
+    print("{timed_out.is_error()} {first.get(0)}")
     return 0

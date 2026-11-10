@@ -549,12 +549,12 @@ pub fn resolve_path(base: &[u8], r: &[u8]) -> S {
         if elem == b"." {
             first = false;
         } else if elem == b".." {
-            let str_ = dst[1..].to_vec();
-            dst.clear();
-            dst.push(b'/');
-            match str_.iter().rposition(|&b| b == b'/') {
-                None => first = true,
-                Some(index) => dst.extend_from_slice(&str_[..index]),
+            match dst[1..].iter().rposition(|&b| b == b'/') {
+                None => {
+                    dst.truncate(1);
+                    first = true;
+                }
+                Some(index) => dst.truncate(index + 1),
             }
         } else {
             if !first {

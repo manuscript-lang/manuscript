@@ -1,8 +1,7 @@
-import list, read_file, read_link from "@std/os/fs.ms"
+import list, read_file, read_symlink from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
 import promise, PromiseOptions from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
-import stdout from "@std/io/io.ms"
 
 fn read_pipe(path: String) Int:
     let _data = read_file(path).wait()
@@ -21,7 +20,7 @@ fn cancel_read(path: String) Int:
 fn open_on(path: String) Int:
     var count = 0
     for entry in list("/proc/self/fd").get():
-        if read_link("/proc/self/fd/{entry.name}").get("") == path: count += 1
+        if read_symlink("/proc/self/fd/{entry.name}").get("") == path: count += 1
     return count
 
 export fn main() Int:
@@ -39,5 +38,5 @@ export fn main() Int:
         waited += 1
         open = open_on(path.clone())
 
-    stdout().write("{cancelled} {open}\n").get()
+    print("{cancelled} {open}")
     return 0

@@ -1,6 +1,7 @@
 //! C ABI shims for `@std/crypto.ms`. Symbols are `msstd_crypto_<function>`; fallible functions
 //! return a `CryptoError` status (0 ok, 1 InvalidInput, 5 Unsupported, 6 AuthenticationFailed)
 //! and write the ok value through `out` only on success. `alg` is the `HashAlgorithm` case index.
+//! ms: domain cryptography
 use crate::{Alg, CryptoFail, Hasher, asym};
 use alloc::vec::Vec;
 use ms_rt::ffi::{Fail, ObjMut, Object, Status, abi_handle, native};

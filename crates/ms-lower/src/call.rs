@@ -4,6 +4,7 @@ use crate::Error;
 use crate::func::{FnLower, Val};
 use ms_check::api::ast::*;
 use ms_check::api::hir::{CallView, Callable, Resolution};
+use ms_check::api::syntax::DefaultForm;
 use ms_check::api::types::{self as ct, Builtin, Subst};
 use ms_mir::ir::{Mode, Op, Value};
 use ms_mir::types::{Ty as MTy, TyKind};
@@ -50,7 +51,7 @@ impl<'a> FnLower<'a> {
             return Err(Error::new("call without resolution"));
         };
         let out = match &view.target {
-            Resolution::Function(sym) if self.syms.str(sym.native).is_empty() => {
+            Resolution::Function(sym) if sym.native == ct::Native::Source => {
                 let c = self.callable_of_decl(sym.module, sym.decl.as_ref().map(|d| d.id()))?;
                 let vars = sym.variables();
                 let subst = self.callee_subst(&vars, &view.type_args)?;
@@ -82,7 +83,7 @@ impl<'a> FnLower<'a> {
                     .as_ref()
                     .map(|t| t.params.clone())
                     .unwrap_or_default();
-                self.native_function(e, &view, self.syms.str(sym.native), &params, sym)?
+                self.native_function(e, &view, sym.native, &params, sym)?
             }
             // `x.get()(7)`: the callee is itself a call, so this one calls its function value.
             Resolution::Method(_) if self.receiver_expr(e).is_none() => {
@@ -101,7 +102,7 @@ impl<'a> FnLower<'a> {
             Resolution::Local(_) | Resolution::Value => self.call_value(e, &view)?,
             _ => return Err(Error::new("unsupported call target")),
         };
-        if !self.dead && self.ety(e).is_never(self.syms) {
+        if !self.dead && self.ety(e).is_never() {
             self.b.unreachable();
             self.terminated();
         }
@@ -362,15 +363,16 @@ impl<'a> FnLower<'a> {
                 let v = self.b.opt_none(mty);
                 return Ok(Val { v, own: false });
             }
-            if let Some((decl, sig)) = self.contract_operation(callee) {
-                return self.contract_default(decl.as_ref(), &sig, i);
+            if let Some((decl, sig, module)) = self.contract_operation(callee) {
+                return self.contract_default(module, decl.as_ref(), &sig, i);
             }
             return Err(Error::new(format!(
                 "missing argument {}",
                 self.syms.str(binding.name)
             )));
         };
-        if is_caller_site(self.syms, d) {
+        let form = callee.module.default_form(self.syms, d);
+        if form == DefaultForm::CallerSite {
             // The position of the call that omitted the argument, not of the default.
             let pos = call_pos
                 .ok_or_else(|| Error::new("a function with a caller_site() default can only be called directly, not used as a function value"))?;
@@ -388,10 +390,7 @@ impl<'a> FnLower<'a> {
                 .str_lit(&format!("{file}:{}:{}", pos.line, pos.column));
             return Ok(Val { v, own: false });
         }
-        // `none` in a bundled declaration carries no checked expression.
-        if matches!(&d.kind, ExprKind::Name(n) if self.syms.str(n) == "none")
-            && ty.is(Builtin::Optional)
-        {
+        if form == DefaultForm::None {
             let v = self.b.opt_none(mty);
             return Ok(Val { v, own: false });
         }
@@ -865,13 +864,11 @@ impl<'a> FnLower<'a> {
         let recv_expr = self
             .receiver_expr(e)
             .ok_or_else(|| Error::new("method call without receiver"))?;
-        let native = self.syms.str(m.native);
-        if native.is_empty() {
-            return self.source_method_call(e, view, m, recv_expr);
-        }
-        if native == "contract" {
-            return self.contract_call(e, view, m, recv_expr);
-        }
+        let native = match m.native {
+            ct::Native::Source => return self.source_method_call(e, view, m, recv_expr),
+            ct::Native::Contract => return self.contract_call(e, view, m, recv_expr),
+            native => native.text(self.syms),
+        };
         let method = m
             .name()
             .map(|n| self.syms.str(n).to_string())
@@ -1053,7 +1050,9 @@ impl<'a> FnLower<'a> {
             // A concrete receiver (a generic instance): call its implementation directly.
             let Some(im) = self.contract_impl(m, &static_ty) else {
                 // Hashing is derived for every hashable type.
-                if m.name().is_some_and(|n| self.syms.str(n) == "hash") {
+                if m.name().is_some_and(|n| self.syms.str(n) == "hash")
+                    && contract.is(Builtin::Hashable)
+                {
                     let recv = self.expr(recv_expr)?;
                     if self.dead {
                         return Ok(recv);
@@ -1216,7 +1215,12 @@ impl<'a> FnLower<'a> {
                         let v = self.b.opt_none(t);
                         Val { v, own: false }
                     } else {
-                        self.contract_default(m.decl.as_ref(), &m.ty, i)?
+                        let module = m
+                            .contract
+                            .as_ref()
+                            .and_then(|c| c.symbol())
+                            .map_or(m.module, |s| s.module);
+                        self.contract_default(module, m.decl.as_ref(), &m.ty, i)?
                     }
                 }
             };
@@ -1282,7 +1286,7 @@ impl<'a> FnLower<'a> {
     fn contract_operation(
         &self,
         callee: &Callable,
-    ) -> Option<(Option<ms_check::api::syntax::FuncRef>, ct::Ty)> {
+    ) -> Option<(Option<ms_check::api::syntax::FuncRef>, ct::Ty, ct::Name)> {
         // Node ids repeat across modules, so the module must match too.
         let im = self.cx.methods.iter().find(|m| {
             !self.syms.str(m.id).is_empty()
@@ -1290,9 +1294,41 @@ impl<'a> FnLower<'a> {
                 && m.decl.as_ref().is_some_and(|d| d.id() == callee.func.id())
         })?;
         let def = im.contract.as_ref()?.def.as_ref()?;
+        let module = def.symbol()?.module;
         let ops = def.operations.borrow();
         let op = ops.iter().find(|o| Some(o.name) == im.name())?;
-        Some((op.decl.clone(), op.ty.clone()))
+        Some((op.decl.clone(), op.ty.clone(), module))
+    }
+
+    /// The checked module declared in `file`: a program module or a bundled one.
+    pub(crate) fn decl_module(
+        &self,
+        file: ct::Name,
+    ) -> Result<ms_check::api::syntax::ModRef, Error> {
+        if let Ok(m) = self.cx.module(file) {
+            return Ok(m.data.clone());
+        }
+        self.cx
+            .session
+            .bundled_module(file)
+            .ok_or_else(|| Error::new(format!("no checked module {}", self.syms.str(file))))
+    }
+
+    /// The checked module declaring `f`, found by the declaration itself: a native method of the
+    /// standard library and an interface operation viewed through a contract name no file.
+    pub(crate) fn func_decl_module(
+        &self,
+        file: ct::Name,
+        f: &ms_check::api::ast::Func,
+    ) -> Result<ms_check::api::syntax::ModRef, Error> {
+        if let Some(m) = self.cx.session.func_module(f) {
+            return Ok(m);
+        }
+        // An operation of a program interface is viewed through a method that names no file.
+        if let Some(m) = self.cx.mods.values().find(|m| m.data.declares(f)) {
+            return Ok(m.data.clone());
+        }
+        self.decl_module(file)
     }
 
     /// The bytes default `"".to_bytes()` of a bundled declaration.
@@ -1307,18 +1343,21 @@ impl<'a> FnLower<'a> {
     /// number, a text literal, and `"".to_bytes()`.
     fn contract_default(
         &mut self,
+        module: ct::Name,
         decl: Option<&ms_check::api::syntax::FuncRef>,
         sig: &ct::Ty,
         i: usize,
     ) -> Result<Val, Error> {
         let missing = || Error::new("missing argument");
-        let default = decl
-            .and_then(|d| d.func())
-            .and_then(|f| f.params.get(i))
+        let func = decl.and_then(|d| d.func()).ok_or_else(missing)?;
+        let default = func
+            .params
+            .get(i)
             .and_then(|p| p.default.as_ref())
             .ok_or_else(missing)?;
         let param_ty = sig.params.get(i).ok_or_else(missing)?.ty.clone();
-        self.literal_default(default, &param_ty)?
+        let module = self.func_decl_module(module, func)?;
+        self.literal_default(&module, default, &param_ty)?
             .ok_or_else(missing)
     }
 
@@ -1566,14 +1605,13 @@ impl<'a> FnLower<'a> {
                 self.syms.str(field.name)
             )));
         };
-        if matches!(&d.kind, ExprKind::Name(n) if self.syms.str(n) == "none")
-            && ft.is(Builtin::Optional)
-        {
+        let module = self.decl_module(sym.module)?;
+        if module.default_form(self.syms, d) == DefaultForm::None {
             return Ok(self.none_owned(fm));
         }
         if self.cx.module(sym.module).is_err() {
             // Bundled declarations carry no checked facts: build literal defaults directly.
-            return match self.literal_default(d, &ft)? {
+            return match self.literal_default(&module, d, &ft)? {
                 Some(v) => Ok(self.owned(v)),
                 None => Err(Error::new(format!(
                     "unsupported default of field {}",
@@ -1603,15 +1641,20 @@ impl<'a> FnLower<'a> {
 
     /// A default written as a literal, `none`, an empty list or map, or a constructor call of literals in a
     /// declaration module without checked facts; none when `d` is anything else.
-    pub(crate) fn literal_default(&mut self, d: &Expr, t: &ct::Ty) -> Result<Option<Val>, Error> {
+    pub(crate) fn literal_default(
+        &mut self,
+        module: &ms_check::api::syntax::ModRef,
+        d: &Expr,
+        t: &ct::Ty,
+    ) -> Result<Option<Val>, Error> {
         let mt = self.cx.lower_ty(self.b.m, t)?;
         let val = |v| Val { v, own: false };
         Ok(match &d.kind {
             ExprKind::Bool(b) => Some(val(self.b.bconst(*b))),
-            ExprKind::Name(n) if self.syms.str(n) == "none" && t.is(Builtin::Optional) => {
+            ExprKind::Name(_) if module.default_form(self.syms, d) == DefaultForm::None => {
                 Some(val(self.b.opt_none(mt)))
             }
-            ExprKind::Number(n) if self.syms.str(t.id) == "Int" => {
+            ExprKind::Number(n) if t.is(ct::Builtin::Int) => {
                 ms_check::api::number::canonical(self.syms.str(n))
                     .parse::<i64>()
                     .ok()
@@ -1680,7 +1723,7 @@ impl<'a> FnLower<'a> {
                     let Some(e) = given else {
                         return Ok(None);
                     };
-                    let Some(x) = self.literal_default(e, &ft.ty)? else {
+                    let Some(x) = self.literal_default(module, e, &ft.ty)? else {
                         return Ok(None);
                     };
                     vals.push(self.owned(x));
@@ -1715,12 +1758,4 @@ impl<'a> FnLower<'a> {
             }
         }
     }
-}
-
-/// Whether a default is the call `caller_site()` of `@std/test/test.ms`.
-fn is_caller_site(syms: ms_check::api::Names, d: &Expr) -> bool {
-    let ExprKind::Call { callee, args } = &d.kind else {
-        return false;
-    };
-    args.is_empty() && matches!(&callee.kind, ExprKind::Name(n) if syms.str(n) == "caller_site")
 }

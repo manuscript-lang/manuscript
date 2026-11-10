@@ -13,3 +13,9 @@ Choosing an entire large list has one output, so its feasible output size does
 not justify a call-depth fault. Advance a lexicographic position vector instead;
 check zero-size results, equal-valued positions, nested independent copies and a
 large full-size selection. Keep the documented invalid-size faults unchanged.
+
+Zero-size permutations have one empty result regardless of input length (#3276).
+Resolve the size before returning it, and allocate no used-position bitmap.
+Keep healthy nonzero sizes on one branch by handling zero alongside invalid sizes;
+zero is valid for every list length. Check omitted/none sizes on empty input and
+preserve invalid-size faults, including on empty input.

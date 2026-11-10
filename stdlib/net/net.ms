@@ -1,4 +1,4 @@
-import Closeable from "@std/core.ms"
+import Closeable, Writable from "@std/core.ms"
 import (ReadStream, WriteStream, Source, Sink, pipe, Pipe) from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import ClientResponse from "@std/net/http.ms"
@@ -40,7 +40,6 @@ import (
     msstd_net_network_listen_tls,
     msstd_net_network_listen_unix,
     msstd_net_network_lookup,
-    msstd_net_network_request,
     msstd_net_network_request_bytes,
     msstd_net_network_resolve,
     msstd_net_network_restrict,
@@ -124,8 +123,7 @@ impl ConnectionInfo:
     // Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
     // A connection that is not TLS returns EINVAL.
     fn tls_info() TlsInfo!:
-        if let info = self.tls:
-            return ok(info.clone())
+        if let info = self.tls: return ok(info.clone())
 
         return error(Error("network: invalid input", kind: "EINVAL"))
 
@@ -381,24 +379,12 @@ impl Network:
     fn request(
         method: HttpMethod,
         url: String,
-        body: String = "",
-        options: RequestOptions = RequestOptions()
-    ) ClientResponse!:
-        return msstd_net_network_request(
-            self.native, method, url, options.headers, body, options.max_bytes,
-            options.timeout
-        )
-
-    // Performs the same buffered request with a raw bytes body.
-    fn request_bytes(
-        method: HttpMethod,
-        url: String,
-        body: Bytes,
+        body: Writable = "",
         options: RequestOptions = RequestOptions()
     ) ClientResponse!:
         return msstd_net_network_request_bytes(
-            self.native, method, url, options.headers, body, options.max_bytes,
-            options.timeout
+            self.native, method.text(), url, options.headers, body.as_bytes(),
+            options.max_bytes, options.timeout
         )
 
     // Resolves the selected supported category, retaining it in each record.
@@ -521,20 +507,10 @@ export fn lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!
 export fn request(
     method: HttpMethod,
     url: String,
-    body: String = "",
+    body: Writable = "",
     options: RequestOptions = RequestOptions()
 ) ClientResponse!:
     return host_network().request(method, url, body, options)
-
-// Performs the same buffered request with a raw bytes body.
-// ms: effect std.net.connect
-export fn request_bytes(
-    method: HttpMethod,
-    url: String,
-    body: Bytes,
-    options: RequestOptions = RequestOptions()
-) ClientResponse!:
-    return host_network().request_bytes(method, url, body, options)
 
 // Resolves the selected supported category, retaining it in each record.
 // ms: effect std.net.connect
@@ -567,8 +543,7 @@ export fn serve(
     options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
     if let cores = options.cores:
-        if cores < 1:
-            return error(Error("network: invalid input", kind: "EINVAL"))
+        if cores < 1: return error(Error("network: invalid input", kind: "EINVAL"))
 
     let serving = try msstd_http_serving_new(address, options, handler)
     let bound = msstd_http_serving_address(serving)
@@ -612,7 +587,7 @@ type Accepting:
 
 impl Closeable for Accepting:
     var fn close() Unit!:
-        while self.deals.length() > 0:
+        while not self.deals.is_empty():
             if let deal = self.deals.pop():
                 var closing = deal
                 let _ = closing.close()
@@ -643,8 +618,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
         let accepted = msstd_http_serving_accept(listening.serving)
 
         if accepted.is_error():
-            if accepted.err().kind == "EBADF":
-                return ok(unit)
+            if accepted.err().kind == "EBADF": return ok(unit)
 
             sleep(50.milliseconds()).wait().get(unit)
             continue
@@ -660,8 +634,7 @@ fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
 
     while true:
         let item = input.receive()
-        if item.is_error():
-            break
+        if item.is_error(): break
 
         if let raw = item.get():
             msstd_http_worker_adopt(engine.worker, raw)

@@ -3,6 +3,7 @@
 //! `Url` and `QueryEntry` are records at their natural layout, fields in declaration order (see
 //! [`UrlRec`], [`QueryEntryRec`]). Strings inside a record written by the runtime are owned (+1)
 //! by the record; strings inside a record read by the runtime are borrowed.
+//! ms: domain URL
 use crate::Components;
 use alloc::string::String;
 use alloc::vec::Vec;

@@ -75,7 +75,7 @@ test "nested loops share one cached list":
         var column = 0
 
         while column < 2:
-            total += grid.get(row).get(column)
+            total += grid.get_or(row, column)
             column += 1
 
         row += 1

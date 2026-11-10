@@ -1,5 +1,3 @@
-import stdout from "@std/io/io.ms"
-
 type Pair[A, B]:
     first: A
     second: B
@@ -39,5 +37,5 @@ export fn main() Int:
     let held = optional(Pair(5, "retained"))
     if let x = held:
         total += first(x)
-    stdout().write("{total}\n").get()
+    print("{total}")
     return 0

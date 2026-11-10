@@ -28,6 +28,7 @@ Start with the [first-program workflow](../learn/getting-started.md) for a compl
 - Arguments after `--` are forwarded to the application unchanged.
 - Commands taking one source input also accept a project directory with `ms.toml`. Native commands select one application entrypoint.
 - `ms check <targets> --fix` and `ms lint <targets> --fix` apply available machine-applicable diagnostic fixes in place, then report what remains. They skip overlapping edits and cannot be combined with `--watch`. See the [diagnostic fix contract](source/diagnostics.md#json-diagnostics) for the supported repairs and JSON fields.
+- A failed source read or write while applying `--fix` returns status 1 and appears in the diagnostics, including `--json`. Independent writable files are still fixed and rechecked.
 - Final stdout handling reports failed writes or flushes with status 1 when the command would otherwise succeed. It preserves existing nonzero statuses and does not add a failure for a broken pipe.
 
 ## Rebuild on save
@@ -273,6 +274,8 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL115 | warning | A promise dropped as soon as it is made, which cancels its work. Bind it and call `wait()`, or pass it to `wait_all` |
 | MSL116 | warning | A function reaches an effect no `// ms: allow_effect` line permits. A function is pure unless a line above it, or in the file's header comment, permits what it reaches (`std.fs.read`, `std.fs.*`, `*.read`, `*`). A function's own lines can only tighten the header. `// ms: effect NAME` declares an effect and hides the body from callers. `main`, `test` and `fixture` are unrestricted. Converting a record to an interface, naming a function as a value and writing a closure charge the enclosing function. The message names the call path |
 | MSL117 | warning | An integer literal interpolated into text, such as the `{4}` of `"\\d{4}"`, which interpolates the number 4 instead of writing a regex quantifier. Write `\{4\}` or use `r"""` raw text |
+| MSL118 | warning | A `length()` of a string, list, map or set compared with zero, such as `xs.length() == 0`. Write `xs.is_empty()`, or `not xs.is_empty()` for `!= 0` and `> 0` in a condition. `ms lint --fix` rewrites it |
+| MSL119 | warning | A list in a name or field read with `xs.get(i)`. Write `xs[i]`. `ms lint --fix` rewrites it |
 
 Whitespace warnings exclude text-literal payloads. Whitespace deletion fixes are withheld while lexical boundaries are invalid or incomplete.
 

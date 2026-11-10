@@ -6,6 +6,8 @@ Verified: a generic native receiver's type name does not carry lexical Equal/Has
 
 Borrowed-key updates must resolve the map's stored creator descriptor before hashing or copying a key, just as consuming updates do. This also applies to an empty stamped map: using caller evidence can insert an entry that ordinary lookup cannot reach. Runtime regression coverage lives in `map::tests::borrowed_adds_keep_creator_identity_and_release_owned_values`.
 
+Binary Set operations must probe each operand's index with that operand's stored descriptor, while derived outputs keep the left creator. Even identical equality rules can have different valid hashes in two modules; using the left hash against the right index loses shared members. `projects/set_operand_hash` tests algebra, relations, bound/generic calls and independent copies without changing the equality rule.
+
 
 Apply when: adding native transformations with output bounds or changing receiver specialization.
 Evidence: [cross-module output evidence](../../tests/e2e/testdata/projects/core_parity/conformance_test.ms), [callback mutation conformance](../../tests/e2e/testdata/stdlib/core-parity.ms).

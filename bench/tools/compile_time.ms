@@ -46,7 +46,7 @@ fn deps(var rng: SeededRandom, files: Int, p: Int, f: Int) List[Dep]:
     )
 
 fn call_of(prefix: String, d: List[Dep], k: Int, own: Int, qualified: Bool) String:
-    if d.length() == 0: return "0"
+    if d.is_empty(): return "0"
 
     let dep = d[k % d.length()]
     let pk = if qualified and dep.pkg != own: "p{dep.pkg}." else: ""
@@ -141,7 +141,7 @@ fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
     return q(b.join("\n")) + "\n"
 
 fn rs_call(d: List[Dep], k: Int) String:
-    if d.length() == 0: return "0"
+    if d.is_empty(): return "0"
 
     let dep = d[k % d.length()]
     return "crate::p{dep.pkg}::f{dep.file}::w_{dep.pkg}_{dep.file}_0(acc % 1000)"
@@ -314,7 +314,7 @@ fn timed(
     let start = now_ns()
     let _ = try must(label, run_in(dir, program, args))
     let seconds = (now_ns() - start).to_float() / 1000000000.0
-    stdout().write("{label} {seconds.to_fixed(2)} s\n").get()
+    print("{label} {seconds.to_fixed(2)} s")
     return ok(unit)
 
 fn drop_cache(dir: String) Unit:

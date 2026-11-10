@@ -3,6 +3,7 @@
 //! A switch is one slot of a process-wide flat table, named by an id `(generation << 32) | (index + 1)`, so a
 //! stale id never matches. It lists the promises made with its signal, from any thread. Firing it tells each
 //! promise's own thread to stop it, the way a timeout does, so the work ends at its next wait.
+//! ms: domain cancel
 use crate::promise;
 use std::collections::BTreeSet;
 use std::sync::Mutex;

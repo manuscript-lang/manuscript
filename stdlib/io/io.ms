@@ -61,16 +61,14 @@ export type ReadStream[T]:
 impl ReadStream[T]:
     // Returns the next item; none at the end or after `close`. A failed read is the error.
     var fn next() T?!:
-        if self.closed:
-            return ok(none)
+        if self.closed: return ok(none)
 
         return self.source.next()
 
 impl Closeable for ReadStream[T]:
     // Closes the source and drops it, so a socket or file it held is released now; later calls do nothing.
     var fn close() Unit!:
-        if self.closed:
-            return ok(unit)
+        if self.closed: return ok(unit)
 
         self.closed = true
 
@@ -145,12 +143,10 @@ impl Source[Bytes] for DescriptorSource:
 
         let chunk = msrt_promise_take[Bytes](p)
         msrt_promise_drop(p)
-        if let data = chunk:
-            return ok(data)
+        if let data = chunk: return ok(data)
 
         let message = msrt_streams_error(self.id)
-        if message.length() > 0:
-            return error(Error(message, kind: "EIO"))
+        if not message.is_empty(): return error(Error(message, kind: "EIO"))
 
         return ok(none)
 
@@ -282,10 +278,8 @@ type PipeSource[T]:
 impl Source[T] for PipeSource[T]:
     var fn next() T?!:
         // Fast path: a queued value or the end needs no promise.
-        if let queued = msrt_pipe_try[T](self.id):
-            return ok(queued)
-        if msrt_pipe_ended(self.id) == 1:
-            return ok(none)
+        if let queued = msrt_pipe_try[T](self.id): return ok(queued)
+        if msrt_pipe_ended(self.id) == 1: return ok(none)
 
         let p = msrt_pipe_read(self.id)
         let code = msrt_promise_wait(p, -1)
@@ -311,12 +305,10 @@ type PipeSink[T: Clonable]:
 impl Sink[T] for PipeSink[T]:
     var fn write(value: T) Unit!:
         let status = msrt_pipe_write[T](self.id, value)
-        if status == 1:
-            return error(Error("pipe: the reader is gone", kind: "EBADF"))
+        if status == 1: return error(Error("pipe: the reader is gone", kind: "EBADF"))
 
         // Back pressure: status 2 says the pipe is above its capacity; the writer waits for the reader to take it back down.
-        if status == 2:
-            return adopt[Unit](msrt_pipe_flush(self.id)).wait()
+        if status == 2: return adopt[Unit](msrt_pipe_flush(self.id)).wait()
 
         return ok(unit)
 
@@ -351,8 +343,7 @@ impl Pipe[T]:
 
     // The reading end. A pipe has one: later calls return a stream that is already at its end.
     var fn reader() ReadStream[T]:
-        if self.taken:
-            return ReadStream[T](PipeSource[T](0))
+        if self.taken: return ReadStream[T](PipeSource[T](0))
 
         self.taken = true
         return ReadStream[T](PipeSource[T](self.id))
@@ -396,10 +387,8 @@ type Through[A, B]:
 impl Source[B] for Through[A, B]:
     var fn next() B?!:
         while true:
-            if let item = self.out.pop():
-                return ok(item)
-            if self.finished:
-                return ok(none)
+            if let item = self.out.pop(): return ok(item)
+            if self.finished: return ok(none)
 
             let step = try self.input.next()
             var wrote: Unit! = ok(unit)

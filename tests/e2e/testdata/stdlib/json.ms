@@ -352,7 +352,7 @@ test "JSON parse decodes records by field name with defaults and optional fields
     let profile: Profile = try parse[Profile](text)
     try expect_equal(profile.name, "Ada")
     try expect_equal(profile.age, 18)
-    try expect_false(not profile.nickname.is_none())
+    try expect_false(profile.nickname.is_some())
     try expect_false(profile.scores.length() != 2 or profile.scores.get(1) != 2.5)
 
     let full = "\{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[]\}"
@@ -405,11 +405,7 @@ test "JSON parse decodes alternatives and generic records":
 
     let wrapper: Wrapper[Int] = try parse[Wrapper[Int]]("\{\"first\":1\}")
     try expect_false(
-        (
-            wrapper.first != 1
-            or not wrapper.second.is_none()
-            or wrapper.extra != 7
-        )
+        (wrapper.first != 1 or wrapper.second.is_some() or wrapper.extra != 7)
     )
 
     let nested: Wrapper[Wrapper[String]] = try parse[Wrapper[Wrapper[String]]](

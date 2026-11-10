@@ -14,7 +14,6 @@ export fn main() Int:
             return value == 1
     )
 
-    if found:
-        return 1
+    if found: return 1
 
     return 0

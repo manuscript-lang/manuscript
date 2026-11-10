@@ -1,5 +1,6 @@
 import Bytes from "@std/bytes.ms"
 import panic from "@std/core.ms"
+import parse_int from "@std/math/math.ms"
 import StringBuilder, from_scalars from "@std/string.ms"
 
 /*
@@ -7,9 +8,8 @@ Conversions between text and values: booleans, integers in any base, and quoted 
 Scalar classification lives in `@std/unicode.ms`; whole-string operations such as `fields_by`,
 `trim_chars` and `title` are methods on String.
 
-    import quote, parse_int_radix from "@std/text.ms"
+    import quote from "@std/text.ms"
     quote("a\tb")                  # a double-quoted literal with the escape written out
-    parse_int_radix("-ff", 16)     # -255
 
     import cursor from "@std/text.ms"
     var at = cursor("héllo wörld")      # scan long non-ASCII text in constant time per scalar
@@ -20,76 +20,10 @@ Scalar classification lives in `@std/unicode.ms`; whole-string operations such a
 // Parses `true`/`false` ignoring case, and `1`/`0`, `t`/`f`, `yes`/`no`, `on`/`off`; anything else is none.
 export fn parse_bool(text: String) Bool?:
     let word = text.trim().lower()
-    if ["true", "t", "1", "yes", "on"].contains(word):
-        return true
-    if ["false", "f", "0", "no", "off"].contains(word):
-        return false
+    if ["true", "t", "1", "yes", "on"].contains(word): return true
+    if ["false", "f", "0", "no", "off"].contains(word): return false
 
     return none
-
-/*
-Parses an integer in base 2 to 36 with an optional sign; `_` separators and surrounding
-white space are not accepted. Base 0 chooses the base from a `0x`, `0o` or `0b` prefix and
-otherwise uses 10. An overflow, bad digit or unsupported base is none.
-*/
-export fn parse_int_radix(text: String, base: Int) Int?:
-    var negative = false
-    var sign = 0
-
-    if text.starts_with("-"):
-        negative = true
-        sign = 1
-    else if text.starts_with("+"):
-        sign = 1
-
-    var digits = text.drop(sign)
-    var radix = base
-
-    if radix == 0:
-        radix = 10
-
-        let lowered = digits.lower()
-
-        if lowered.starts_with("0x"):
-            radix = 16
-            digits = digits.drop(2)
-        else if lowered.starts_with("0o"):
-            radix = 8
-            digits = digits.drop(2)
-        else if lowered.starts_with("0b"):
-            radix = 2
-            digits = digits.drop(2)
-
-    if radix < 2 or radix > 36 or digits.is_empty():
-        return none
-
-    var value = 0
-
-    for c in digits.scalar_values():
-        var d = 99
-
-        if c >= 48 and c <= 57:
-            d = c - 48
-        else if c >= 97 and c <= 122:
-            d = c - 87
-        else if c >= 65 and c <= 90:
-            d = c - 55
-
-        if d >= radix:
-            return none
-
-        // Accumulate negatively so the most negative Int parses.
-        if value < (-9223372036854775807 - 1 + d) / radix:
-            return none
-
-        value = value * radix - d
-
-    if negative:
-        return value
-    if value == -9223372036854775807 - 1:
-        return none
-
-    return 0 - value
 
 /*
 Quotes text as a double-quoted literal using the escapes of Manuscript string literals.
@@ -153,8 +87,7 @@ export fn unquote(text: String) String!:
 
     while i < end:
         let c = cs[i]
-        if c == 34:
-            return error(Error("string: invalid input", kind: "EINVAL"))
+        if c == 34: return error(Error("string: invalid input", kind: "EINVAL"))
 
         if c != 92:
             out.append(c)
@@ -201,13 +134,11 @@ export fn unquote(text: String) String!:
                     return error(Error("string: invalid input", kind: "EINVAL"))
 
                 let digits = try from_scalars(hex)
-                let value = parse_int_radix(digits, 16)
-
-                if let v = value:
-                    out.append(v)
-                else:
+                let value = parse_int(digits, 16)
+                if value.is_error():
                     return error(Error("string: invalid input", kind: "EINVAL"))
 
+                out.append(value.get(0))
                 i = j + 1
             else:
                 return error(Error("string: invalid input", kind: "EINVAL"))

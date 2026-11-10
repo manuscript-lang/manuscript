@@ -424,8 +424,7 @@ impl Source[FileEvent] for WatchSource:
     // Waits for the next change. A closed watcher is `EBADF`; a native watcher that overflowed with policy `error` is `EOVERFLOW`.
     var fn next() FileEvent?!:
         while true:
-            if let event = self.pending.pop():
-                return ok(event)
+            if let event = self.pending.pop(): return ok(event)
 
             var batch = try msstd_fs_watch_next(self.watcher.native)
             batch.reverse()
@@ -630,7 +629,7 @@ export fn create_directory(path: String, recursive: Bool = false) Unit!:
 
 // Creates a symbolic link at `path` pointing to `target`.
 // ms: effect std.fs.write
-export fn create_link(path: String, target: String) Unit!:
+export fn create_symlink(path: String, target: String) Unit!:
     return msstd_fs_create_link(path, target)
 
 // Lists a directory, optionally limiting the number of returned entries.
@@ -670,7 +669,7 @@ fn read_job(path: String, max_bytes: Int?) fn() Bytes!:
 // Returns the target text stored in the symbolic link at `path`, without resolving it.
 // A path that is not a link returns EINVAL.
 // ms: effect std.fs.read
-export fn read_link(path: String) String!:
+export fn read_symlink(path: String) String!:
     return msstd_fs_read_link(path)
 
 // Removes a file or empty directory; recursive defaults to False, retaining nonempty trees.
@@ -736,41 +735,38 @@ fn append_job(path: String, data: Bytes, held: Bool) fn() Unit!:
         let permit = WritePermit(held: held)
         return msstd_fs_append_file(path, data)
 
-// Changes target permissions with mode 0..4095; follows a final symbolic link.
+// Changes target permissions with mode 0..4095. `follow_links` True (the default) follows a final symbolic link; False changes the link itself, which returns ENOTSUP on hosts lacking this operation.
 // ms: effect std.fs.write
-export fn chmod(path: String, mode: Int) Unit!:
-    return msstd_fs_chmod(path, mode, follow: true)
+export fn chmod(path: String, mode: Int, follow_links: Bool = true) Unit!:
+    return msstd_fs_chmod(path, mode, follow: follow_links)
 
-// Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged. Follows a final symbolic link.
+// Sets the owning user and group of `path` by numeric id; -1 leaves that id unchanged.
+// `follow_links` True (the default) follows a final symbolic link; False changes the link itself, with ENOTSUP on hosts lacking this operation.
 // Usually needs privilege, and Windows returns ENOTSUP.
 // ms: effect std.fs.write
-export fn chown(path: String, uid: Int, gid: Int) Unit!:
-    return msstd_fs_chown(path, uid, gid, follow: true)
-
-// Like `chown`, but changes the link itself without following it; ENOTSUP on hosts lacking this operation.
-// ms: effect std.fs.write
-export fn chown_link(path: String, uid: Int, gid: Int) Unit!:
-    return msstd_fs_chown(path, uid, gid, follow: false)
+export fn chown(path: String, uid: Int, gid: Int, follow_links: Bool = true) Unit!:
+    return msstd_fs_chown(path, uid, gid, follow: follow_links)
 
 // Sets the target size in bytes; follows a final symbolic link.
 // ms: effect std.fs.write
 export fn truncate(path: String, size: Int) Unit!:
     return msstd_fs_truncate(path, size)
 
-// Sets the access and modification times of `path`, following a final symbolic link.
+// Sets the access and modification times of `path`. `follow_links` True (the default) follows a final symbolic link;
+// False updates the link itself, with ENOTSUP where the host lacks it, such as Windows.
 // ms: effect std.fs.write
-export fn set_times(path: String, accessed: Timestamp, modified: Timestamp) Unit!:
-    return msstd_fs_set_times(path, accessed, modified, follow: true)
-
-// Like `set_times`, but updates the link itself; ENOTSUP where the host lacks it, such as Windows.
-// ms: effect std.fs.write
-export fn set_times_link(path: String, accessed: Timestamp, modified: Timestamp) Unit!:
-    return msstd_fs_set_times(path, accessed, modified, follow: false)
+export fn set_times(
+    path: String,
+    accessed: Timestamp,
+    modified: Timestamp,
+    follow_links: Bool = true
+) Unit!:
+    return msstd_fs_set_times(path, accessed, modified, follow: follow_links)
 
 // Creates `destination` as another name for the file at `source`.
 // An existing destination returns EEXIST; it must be on the same filesystem as `source`.
 // ms: effect std.fs.write
-export fn hard_link(source: String, destination: String) Unit!:
+export fn create_hard_link(source: String, destination: String) Unit!:
     return msstd_fs_hard_link(source, destination)
 
 // The runtime's mode text: `x` after the first letter makes creation exclusive.
@@ -972,8 +968,3 @@ export fn temporary(prefix: String) TemporaryDirectory!:
 // ms: effect std.fs.read
 export fn stat_filesystem(path: String) FileSystemInfo!:
     return msstd_fs_stat_filesystem(path)
-
-// Changes the link itself without following it; ENOTSUP on hosts lacking this operation.
-// ms: effect std.fs.write
-export fn chmod_link(path: String, mode: Int) Unit!:
-    return msstd_fs_chmod(path, mode, follow: false)

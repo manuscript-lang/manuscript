@@ -85,7 +85,7 @@ test "path operations match the recorded corpus":
         checked += 1
         if got != want and failures.length() < 10: failures.append("{line} -> {got}")
 
-    if failures.length() > 0: return fail(
+    if not failures.is_empty(): return fail(
         "{failures.length()} mismatches, first:\n{failures.join("\n")}"
     )
     if checked < 9000: return fail("only {checked} cases")

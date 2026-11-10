@@ -1,4 +1,3 @@
-import stdout from "@std/io/io.ms"
 import arguments from "@std/os/env.ms"
 import monotonic from "@std/time.ms"
 
@@ -17,7 +16,7 @@ fn ints(size: Int, unique: Int, repeats: Int) Int:
             checksum += x
 
     let elapsed = monotonic().difference(started).to_nanoseconds()
-    stdout().write("{elapsed} {checksum}\n").get()
+    print("{elapsed} {checksum}")
     return 0
 
 fn strings(size: Int, unique: Int, repeats: Int) Int:
@@ -35,7 +34,7 @@ fn strings(size: Int, unique: Int, repeats: Int) Int:
             checksum += x.length()
 
     let elapsed = monotonic().difference(started).to_nanoseconds()
-    stdout().write("{elapsed} {checksum}\n").get()
+    print("{elapsed} {checksum}")
     return 0
 
 export fn main() Int:
@@ -43,7 +42,6 @@ export fn main() Int:
     let size = args[1].parse_int().get()
     let unique = args[2].parse_int().get()
     let repeats = args[3].parse_int().get()
-    if args[0] == "int":
-        return ints(size, unique, repeats)
+    if args[0] == "int": return ints(size, unique, repeats)
 
     return strings(size, unique, repeats)

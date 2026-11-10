@@ -2,6 +2,7 @@ import (
     RetryPolicy,
     retry,
     rate_limiter,
+    RateLimiter,
     CircuitBreaker,
     CircuitError,
     map_concurrent,
@@ -11,8 +12,7 @@ import expect_equal, expect_true, expect_error, expect_ok from "@std/test/test.m
 import Duration, milliseconds, sleep, monotonic from "@std/time.ms"
 
 fn flaky(attempt: Int) Int!String:
-    if attempt < 3:
-        return error("try again")
+    if attempt < 3: return error("try again")
 
     return ok(attempt)
 
@@ -66,6 +66,28 @@ test "rate limiter allows a burst then waits":
     let start = monotonic()
     limiter.acquire()
     try expect_true(monotonic().difference(start).nanos >= milliseconds(5).nanos)
+
+test "rate limiter refills a full maximum burst without overflowing":
+    var limiter = rate_limiter(1, burst: 9223372036854775807)
+    limiter.stamp = limiter.stamp.unshift(Duration(nanos: 1000000000))
+    try expect_true(limiter.try_acquire())
+    try expect_equal(limiter.tokens, 9223372036854775807 - 1)
+
+test "rate limiter clamps an almost full maximum burst":
+    var limiter = RateLimiter(
+        burst: 9223372036854775807, tokens: 9223372036854775807 - 1,
+        interval: Duration(nanos: 1), stamp: monotonic().unshift(Duration(nanos: 1000))
+    )
+    try expect_true(limiter.try_acquire())
+    try expect_equal(limiter.tokens, 9223372036854775807 - 1)
+
+test "rate limiter refills an empty bucket only up to its burst":
+    var limiter = RateLimiter(
+        burst: 3, tokens: 0, interval: Duration(nanos: 1),
+        stamp: monotonic().unshift(Duration(nanos: 1000))
+    )
+    try expect_true(limiter.try_acquire())
+    try expect_equal(limiter.tokens, 2)
 
 fn boom() Int!String:
     return error("down")

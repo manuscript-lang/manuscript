@@ -1,8 +1,8 @@
 //! `@std/math` natives. Symbols are `msstd_math_<name>`; every function takes and returns
 //! scalars by value or writes ordinary result records through the existing record mechanism.
 //!
-//! The generic `max` and `min` are not natives: they are lowered by the
-//! compiler through the element comparison.
+//! The generic `max` and `min` are not natives: `@std/math` writes them over `Comparable`.
+//! ms: domain number
 use ms_rt::ffi::{STATUS_INVALID_INPUT, STATUS_OUT_OF_RANGE, StatusCode, abi_record, native};
 
 abi_record! {
@@ -66,7 +66,7 @@ unary! {
     msstd_math_asin => f64::asin,
     // ms: leaf
     msstd_math_atan => f64::atan,
-    // ms: leaf
+    // ms: leaf op=fceil
     msstd_math_ceil => f64::ceil,
     // ms: leaf
     msstd_math_cos => f64::cos,
@@ -74,7 +74,7 @@ unary! {
     msstd_math_cosh => f64::cosh,
     // ms: leaf
     msstd_math_exp => f64::exp,
-    // ms: leaf
+    // ms: leaf op=ffloor
     msstd_math_floor => f64::floor,
     // ms: leaf
     msstd_math_log => f64::ln,
@@ -88,13 +88,13 @@ unary! {
     msstd_math_sin => f64::sin,
     // ms: leaf
     msstd_math_sinh => f64::sinh,
-    // ms: leaf
+    // ms: leaf op=fsqrt
     msstd_math_sqrt => f64::sqrt,
     // ms: leaf
     msstd_math_tan => f64::tan,
     // ms: leaf
     msstd_math_tanh => f64::tanh,
-    // ms: leaf
+    // ms: leaf op=ftrunc
     msstd_math_truncate => f64::trunc,
     // ms: leaf
     msstd_math_acosh => f64::acosh,

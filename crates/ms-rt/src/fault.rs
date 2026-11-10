@@ -1531,7 +1531,7 @@ pub extern "C-unwind" fn msrt_cleanup_cancel(handle: usize) {
 /// Generated drop cleanups act only then: an unguarded fault ends the process and process exit
 /// needs no frees.
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=unwind
 pub extern "C" fn msrt_unwind_drops() -> u8 {
     // SAFETY: single threaded access.
     u8::from(unsafe { *UNWIND_DROPS.ptr() })

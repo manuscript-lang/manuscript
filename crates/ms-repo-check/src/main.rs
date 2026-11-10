@@ -139,13 +139,16 @@ fn standard_syntax() -> Vec<String> {
 }
 
 /// `ms fmt --check` over the repository's own sources; crate test inputs
-/// deliberately keep their original spelling.
+/// deliberately keep their original spelling, and recorded agent solutions are
+/// evidence that stays as the agent wrote it.
 fn format_drift(files: &[String]) -> Vec<String> {
     let mut issues = Vec::new();
-    for path in files
-        .iter()
-        .filter(|p| p.ends_with(".ms") && !skipped(p) && !p.contains("/tests/"))
-    {
+    for path in files.iter().filter(|p| {
+        p.ends_with(".ms")
+            && !skipped(p)
+            && !p.contains("/tests/")
+            && !p.starts_with("bench/agent/results/sources/")
+    }) {
         let Ok(source) = std::fs::read_to_string(path) else {
             continue;
         };

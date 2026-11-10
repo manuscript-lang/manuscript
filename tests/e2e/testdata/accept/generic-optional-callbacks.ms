@@ -65,12 +65,12 @@ test "generic callbacks preserve both layers of nested Optional inputs":
     try expect_true(every([absent], fn value: value.is_none()))
     try expect_true(
         every(
-            [present_absent], fn value: (not value.is_none() and value.get().is_none())
+            [present_absent], fn value: (value.is_some() and value.get().is_none())
         )
     )
     try expect_true(
         every(
-            [present_zero], fn value: (not value.is_none() and value.get().get() == 0)
+            [present_zero], fn value: (value.is_some() and value.get().get() == 0)
         )
     )
 
@@ -78,7 +78,7 @@ test "generic callbacks keep Optional inputs through nested closures":
     let value: Int? = none
     let zero: Int? = 0
     try expect_true(nested(value, fn item: item.is_none()))
-    try expect_true(nested(zero, fn item: not item.is_none() and item.get() == 0))
+    try expect_true(nested(zero, fn item: item.is_some() and item.get() == 0))
 
 test "generic closure defaults and explicit callable arguments keep their behavior":
     try expect_true(defaulted(7, 7, fn left, right: left == right))

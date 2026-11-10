@@ -286,7 +286,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
 
     for index in 0..11:
         block[134 - index] = 48 + left % 8
-        left = left / 8
+        left /= 8
 
     block[156] = flag
 
@@ -298,15 +298,12 @@ fn header(name: String, size: Int, flag: Int) Bytes:
     for index in 148..156:
         block[index] = 32
 
-    var sum = 0
-    for byte in block:
-        sum += byte
-
+    var sum = block.sum()
     var rest = sum
 
     for index in 0..6:
         block[153 - index] = 48 + rest % 8
-        rest = rest / 8
+        rest /= 8
 
     block[154] = 0
     block[155] = 32
@@ -348,6 +345,40 @@ fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
     out.append(value.to_uint8().get(0))
     out.append_bytes(data.slice(at + 1, data.length()).get("".to_bytes()))
     return out.build()
+
+test "gzip rejects reserved flags in whole and fragmented member headers":
+    let text = "gzip flags".to_bytes()
+    let packed = try compress(text.clone(), CompressionFormat.Gzip)
+
+    for flags in [0, 1, 32, 64, 128, 224]:
+        let member = with_byte(packed.clone(), 3, flags)
+
+        if flags < 32:
+            try expect_equal(
+                try decompress(member.clone(), CompressionFormat.Gzip), text
+            )
+
+            for size in [1, 9, 4096]:
+                let decoded = try read_all(
+                    decompressed(
+                        chunked(member.clone(), size), CompressionFormat.Gzip
+                    )
+                )
+                try expect_equal(decoded, text)
+
+            continue
+
+        for input in [member.clone(), packed.concat(member)]:
+            let whole = decompress(input.clone(), CompressionFormat.Gzip)
+            try expect_equal(whole.err().kind, "EBADMSG")
+
+            for size in [1, 9, 4096]:
+                let streamed = read_all(
+                    decompressed(
+                        chunked(input.clone(), size), CompressionFormat.Gzip
+                    )
+                )
+                try expect_equal(streamed.err().kind, "EBADMSG")
 
 // "ok" with the entries' paths and sizes, or the error kind.
 fn outcome(entries: List[ArchiveEntry]!) String:

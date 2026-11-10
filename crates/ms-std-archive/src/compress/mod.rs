@@ -184,6 +184,9 @@ fn gzip_header(d: &[u8]) -> Header {
         return Header::Bad;
     }
     let flg = d[3];
+    if flg & 0xe0 != 0 {
+        return Header::Bad;
+    }
     let mut pos = 10;
     if flg & 4 != 0 {
         let Some(len) = d.get(pos..pos + 2) else {

@@ -28,8 +28,7 @@ export type Regression:
 // Returns the arithmetic mean, or none for an empty list.
 // Example: `mean([1.0, 2.0, 6.0])` is `3.0`.
 export fn mean(values: List[Float]) Float?:
-    if values.is_empty():
-        return none
+    if values.is_empty(): return none
 
     let sum = values.sum()
     let ordinary = sum / values.length().to_float()
@@ -57,13 +56,11 @@ export fn mean(values: List[Float]) Float?:
 // Returns the median, the middle value of the sorted list or the mean of the two middle values, or none for an empty list.
 // Example: `median([5.0, 1.0, 3.0, 2.0])` is `2.5`.
 export fn median(values: List[Float]) Float?:
-    if values.is_empty():
-        return none
+    if values.is_empty(): return none
 
     let ordered = values.sorted()
     let middle = ordered.length() / 2
-    if ordered.length() % 2 == 1:
-        return ordered[middle]
+    if ordered.length() % 2 == 1: return ordered[middle]
 
     let low = ordered[middle - 1]
     let high = ordered[middle]
@@ -78,8 +75,7 @@ export fn median(values: List[Float]) Float?:
 // Returns the most frequent value, or none for an empty list. When several values are equally frequent the least one wins.
 // Example: `mode([2.0, 1.0, 2.0, 1.0, 3.0])` is `1.0`.
 export fn mode(values: List[Float]) Float?:
-    if values.is_empty():
-        return none
+    if values.is_empty(): return none
 
     let ordered = values.sorted()
     var best = ordered[0]
@@ -104,8 +100,7 @@ type Moments:
 // Returns the centered second moment, or none for an empty list or any nonfinite value (which keeps plain Float rules).
 // Values are scaled by a power of two to at most 1 in magnitude, shifted by the first value, then summed with compensation, so a large common offset keeps its variation.
 fn centered_moments(values: List[Float]) Moments?:
-    if values.is_empty():
-        return none
+    if values.is_empty(): return none
 
     var scale = 0.0
 
@@ -154,8 +149,7 @@ export fn population_variance(values: List[Float]) Float?:
 // Returns the sample variance (divide by n - 1), or none when the list has fewer than two values.
 // Example: `variance([1.0, 2.0, 3.0, 4.0])` is `1.6666666666666667`.
 export fn variance(values: List[Float]) Float?:
-    if values.length() < 2:
-        return none
+    if values.length() < 2: return none
 
     return spread_variance(values, values.length() - 1)
 
@@ -274,8 +268,7 @@ Example: `percentile([1.0, 2.0, 3.0, 4.0, 5.0], 25.0)` is `2.0`.
 export fn percentile(values: List[Float], percent: Float) Float?:
     if not (percent >= 0.0 and percent <= 100.0):
         panic("percentile: percent must be from 0 to 100")
-    if values.is_empty():
-        return none
+    if values.is_empty(): return none
 
     return percentile_sorted(values.sorted(), percent)
 
@@ -288,19 +281,16 @@ fn percentile_sorted(ordered: List[Float], percent: Float) Float:
 
 // Blends the neighbours at `below` and `below + 1` by `fraction` in 0 through 1.
 fn interpolate_sorted(ordered: List[Float], below: Int, fraction: Float) Float:
-    if below + 1 >= ordered.length():
-        return ordered[ordered.length() - 1]
+    if below + 1 >= ordered.length(): return ordered[ordered.length() - 1]
 
     let low = ordered[below]
     let high = ordered[below + 1]
 
     // An exact position or equal neighbors return the neighbor; interpolating would turn `inf - inf` or `inf * 0` into NaN.
-    if fraction == 0.0 or low == high:
-        return low
+    if fraction == 0.0 or low == high: return low
 
     // A lone infinite neighbor stays the result of the weighted blend.
-    if not low.is_finite() and high != -low:
-        return low
+    if not low.is_finite() and high != -low: return low
 
     let span = high - low
 
@@ -321,8 +311,7 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
         panic("quantiles: parts must be at least 2")
 
     var cuts: List[Float] = []
-    if values.is_empty():
-        return cuts
+    if values.is_empty(): return cuts
 
     let ordered = values.sorted()
 
@@ -348,8 +337,7 @@ Example: `if let bins = bin_counts([1.0, 2.0, 2.0, 3.0], 2): print(bins.counts)`
 export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
     if bins < 1:
         panic("bin_counts: bins must be at least 1")
-    if values.is_empty():
-        return none
+    if values.is_empty(): return none
 
     let low = values.min().get(0.0)
     let high = values.max().get(0.0)
@@ -373,9 +361,7 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
                 low: low, high: high, counts: exact_bin_counts(values, low, high, bins)
             )
 
-    var counts: List[Int] = []
-    for index in 0..bins:
-        counts.append(0)
+    var counts = [0].repeated(bins)
 
     for value in values:
         var bin = 0
@@ -396,9 +382,7 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
 fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) List[Int]:
     let origin = finite_bin_rat(low)
     let span = finite_bin_rat(high).subtract(origin)
-    var counts: List[Int] = []
-    for index in 0..bins:
-        counts.append(0)
+    var counts = [0].repeated(bins)
 
     if let multiplier = rat_of_int(bins).divide(span):
         for value in values:
@@ -440,8 +424,7 @@ type Spread:
 fn spread(xs: List[Float], ys: List[Float]) Spread?:
     if xs.length() != ys.length():
         panic("statistics: the lists must have the same length")
-    if xs.length() < 2:
-        return none
+    if xs.length() < 2: return none
 
     let mean_x = mean(xs).get(0.0)
     let mean_y = mean(ys).get(0.0)
@@ -469,8 +452,7 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 
     // Correlation is unchanged by scaling each list, so power-of-two scaling keeps every square and product in range.
     if let s = spread(unit_scaled(xs), unit_scaled(ys)):
-        if s.xx == 0.0 or s.yy == 0.0:
-            return none
+        if s.xx == 0.0 or s.yy == 0.0: return none
 
         return s.xy / (sqrt(s.xx) * sqrt(s.yy))
 
@@ -488,9 +470,7 @@ fn unit_scaled(values: List[Float]) List[Float]:
     if scale == 0.0: return values.clone()
 
     let exponent = frexp(scale).exponent
-    var scaled: List[Float] = []
-    for value in values:
-        scaled.append(ldexp(value, -exponent))
+    var scaled = values.map(fn value: ldexp(value, -exponent))
     return scaled
 
 /*
@@ -500,8 +480,7 @@ Example: `linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0])` has slope `2.0` a
 */
 export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:
     if let s = spread(xs, ys):
-        if s.xx == 0.0:
-            return none
+        if s.xx == 0.0: return none
 
         let slope = s.xy / s.xx
         return Regression(slope: slope, intercept: s.mean_y - slope * s.mean_x)

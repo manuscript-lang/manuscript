@@ -131,9 +131,7 @@ export type VarintRead[T]:
 // Appends the low `width` bytes of `value` in the requested byte order.
 fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
     for i in 0..width:
-        var place = width - 1 - i
-        if little:
-            place = i
+        let place = if little: i else: width - 1 - i
         out.append(
             msrt_bits_bit_and(
                 msrt_bits_shift_right(value, 8 * place), 255
@@ -142,15 +140,13 @@ fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
 
 // Reads a signed value from its unsigned bit pattern: `half` is 2 to the power `bits - 1`.
 fn signed(raw: Int, half: Int) Int:
-    if raw >= half:
-        return raw - half * 2
+    if raw >= half: return raw - half * 2
 
     return raw
 
 // Converts a 64-bit word without narrowing its unsigned upper half.
 fn unsigned_word(raw: Int) UInt64:
-    if raw >= 0:
-        return raw.to_uint64().get(0)
+    if raw >= 0: return raw.to_uint64().get(0)
 
     return (raw + 9223372036854775807 + 1).to_uint64().get(0) + 9223372036854775808
 
@@ -297,8 +293,7 @@ impl BytesCodecs for Bytes:
                     msrt_bits_bit_and(byte, 127), i * 7
                 )
             )
-            if byte < 128:
-                return ok(VarintRead(unsigned_word(word), at + i + 1))
+            if byte < 128: return ok(VarintRead(unsigned_word(word), at + i + 1))
 
         return error(Error("binary: varint overflows 64 bits", kind: "ERANGE"))
 
@@ -307,8 +302,7 @@ impl BytesCodecs for Bytes:
     fn varint(at: Int) VarintRead[Int]!:
         let raw = try self.uvarint(at)
         let half = (raw.value / 2).to_int().get(0)
-        if raw.value % 2 == 1:
-            return ok(VarintRead(-half - 1, raw.next_offset))
+        if raw.value % 2 == 1: return ok(VarintRead(-half - 1, raw.next_offset))
 
         return ok(VarintRead(half, raw.next_offset))
 

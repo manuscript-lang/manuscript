@@ -39,7 +39,8 @@ fn digits(b: &[u8]) -> Option<i64> {
 /// `time.parse_timestamp`: RFC 3339 with an optional fraction of 1 to 9 digits and a `Z` or `+hh:mm` zone.
 pub fn parse_timestamp(text: &[u8]) -> Result<Ts, u8> {
     let bad = STATUS_INVALID_DATA;
-    if text.len() < 20
+    // The longest supported form has a nine-digit fraction and a numeric offset.
+    if !(20..=35).contains(&text.len())
         || text[4] != b'-'
         || text[7] != b'-'
         || text[10] != b'T'
@@ -466,6 +467,44 @@ mod tests {
             parse_timestamp(b"9999-12-31T23:59:59-01:00"),
             Err(STATUS_OUT_OF_RANGE)
         );
+    }
+
+    #[test]
+    fn timestamp_length_boundaries_preserve_values_and_errors() {
+        for suffix in ["Z", "+00:00", "-23:59"] {
+            for digits in 0..=10 {
+                let fraction = if digits == 0 {
+                    String::new()
+                } else {
+                    alloc::format!(".{}", "1".repeat(digits))
+                };
+                let text = alloc::format!("2024-02-29T12:30:45{fraction}{suffix}");
+                let parsed = parse_timestamp(text.as_bytes());
+                assert_eq!(parsed.is_ok(), digits <= 9, "{text}");
+                if digits == 10 {
+                    assert_eq!(parsed, Err(STATUS_INVALID_DATA), "{text}");
+                }
+            }
+        }
+        assert_eq!(
+            parse_timestamp(b"0001-01-01T00:00:00.123456789+00:01"),
+            Err(STATUS_OUT_OF_RANGE)
+        );
+        assert_eq!(
+            parse_timestamp(b"9999-12-31T23:59:59.123456789-00:01"),
+            Err(STATUS_OUT_OF_RANGE)
+        );
+        for text in [
+            b"2024-02-29T12:30:45".as_slice(),
+            b"2024-02-29T12:30:45.Z",
+            b"2024-02-29T12:30:45.123456789+00:000",
+            b"2024-02-29T12:30:45.123456789+00:00Z",
+            b"2024-02-29T12:30:45.123456789+00:0\xff",
+        ] {
+            assert_eq!(parse_timestamp(text), Err(STATUS_INVALID_DATA), "{text:?}");
+        }
+        let text = alloc::format!("2024-02-29T12:30:45.{}Z", "0".repeat(1 << 20));
+        assert_eq!(parse_timestamp(text.as_bytes()), Err(STATUS_INVALID_DATA));
     }
 
     #[test]

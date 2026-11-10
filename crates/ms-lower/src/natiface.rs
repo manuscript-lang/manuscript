@@ -39,8 +39,9 @@ enum Shape {
     Record,
     /// A list of records read through the getters of the group named by the row's symbol.
     Records,
-    /// A directory walk (`glob_entries`, `copy`) with a predicate closure.
-    Walk,
+    /// A directory walk with a predicate closure: `glob_entries` (a path and an exclude
+    /// predicate) or, with `copy`, a copy (a source, a destination and the copy options).
+    Walk { copy: bool },
 }
 
 /// One row of `METHODS`: module, interface, operation, runtime symbol, call shape.
@@ -142,9 +143,15 @@ const METHODS: &[MethodRow] = &[
         "FileSystem",
         "glob",
         "msstd_fs_glob_entries",
-        Shape::Walk,
+        Shape::Walk { copy: false },
     ),
-    ("fs", "FileSystem", "copy", "msstd_fs_copy", Shape::Walk),
+    (
+        "fs",
+        "FileSystem",
+        "copy",
+        "msstd_fs_copy",
+        Shape::Walk { copy: true },
+    ),
 ];
 
 /// The MIR type of a runtime handle object.
@@ -332,8 +339,8 @@ fn forward(fl: &mut FnLower<'_>, job: &MethodJob, args: &[ms_mir::ir::Value]) ->
         .collect();
     debug_assert_eq!(job.params.len(), nargs.len());
     let decl = job.decl.clone();
-    if job.shape == Shape::Walk {
-        let r = fl.fs_walk(sym, &decl, &nargs, job.ret)?;
+    if let Shape::Walk { copy } = job.shape {
+        let r = fl.fs_walk(sym, copy, &decl, &nargs, job.ret)?;
         fl.emit_return(Some(r));
         return Ok(());
     }

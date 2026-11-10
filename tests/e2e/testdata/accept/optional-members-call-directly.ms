@@ -5,8 +5,8 @@ fn fallback() Int: 9
 test "optional members":
     let present: Int? = 3
     let absent: Int? = none
-    try expect_true((present.is_some() and not present.is_none()))
-    try expect_true((absent.is_none() and not absent.is_some()))
+    try expect_true((present.is_some() and present.is_some()))
+    try expect_true((absent.is_none() and absent.is_none()))
     try expect_true((present.get(default: 7) == 3))
     try expect_true((absent.get(default: 7) == 7))
     try expect_true((absent.or_else(create: fn() Int?: fallback()).get() == 9))

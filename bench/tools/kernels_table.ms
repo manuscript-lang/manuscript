@@ -88,7 +88,7 @@ export fn summarize(
             ):
                 return invalid("incomplete {version} trial")
 
-            trials.add(version.clone(), trials.get(version).get(0) + 1)
+            trials.add(version.clone(), trials.get_or(version, 0) + 1)
             pending = Set[String]()
             active = ""
             continue
@@ -109,20 +109,20 @@ export fn summarize(
         if micros.get(0) < 0: return invalid("negative timing: {line.trim()}")
 
         let key = "{name} {version}"
-        var list = samples.get(key).get(List[Float]())
+        var list = samples.get_or(key, List[Float]())
         list.append(micros.get(0).to_float())
         samples.add(key.clone(), list)
 
-        var seen = checks.get(name).get(Set[Int]())
+        var seen = checks.get_or(name, Set[Int]())
         seen.add(check.get(0))
         checks.add(name.clone(), seen)
         pending.add(name.clone())
 
-    if active != "" or versions.any(fn v: trials.get(v).get(0) != repeats):
+    if active != "" or versions.any(fn v: trials.get_or(v, 0) != repeats):
         return invalid("expected {repeats} complete trials of every version")
 
     for name in names:
-        if checks.get(name).get(Set[Int]()).length() != 1:
+        if checks.get_or(name, Set[Int]()).length() != 1:
             return invalid("{name}: checksums differ between runs or versions")
 
     let others = versions.filter(fn v: v != "go")
@@ -139,17 +139,17 @@ export fn summarize(
         var times = Map[String, Float]()
         for v in versions:
             if not omitted(v).contains(name):
-                times.add(v.clone(), minimum(samples.get("{name} {v}").get([])))
+                times.add(v.clone(), minimum(samples.get_or("{name} {v}", [])))
 
-        let go = times.get("go").get(0.0)
+        let go = times.get_or("go", 0.0)
         var cells = others.map(
             fn v: if omitted(v).contains(
                 name
-            ): "n/a | n/a" else: "{times.get(v).get(0.0).to_fixed(0)} | {ratio(times.get(v).get(0.0), go)}"
+            ): "n/a | n/a" else: "{times.get_or(v, 0.0).to_fixed(0)} | {ratio(times.get_or(v, 0.0), go)}"
         )
-        let ms = times.get("ms").get(0.0)
+        let ms = times.get_or("ms", 0.0)
         for v in others:
-            if v.starts_with("rust"): cells.append(ratio(ms, times.get(v).get(0.0)))
+            if v.starts_with("rust"): cells.append(ratio(ms, times.get_or(v, 0.0)))
         rows.append("| {name} | {go.to_fixed(0)} | " + cells.join(" | ") + " |")
 
     return ok(rows.join("\n"))

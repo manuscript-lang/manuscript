@@ -71,10 +71,10 @@ export fn main() Int:
             for site in sites: stdout().write("copy: {f}\t{site}\n").get()
 
     change_directory(root).get()
-    stdout().write("swept {swept} programs, {total} object copies in {failing}\n").get()
+    print("swept {swept} programs, {total} object copies in {failing}")
 
     if swept == 0:
-        stdout().write("no program was built\n").get()
+        print("no program was built")
         return 1
 
     if total != 0: return 1

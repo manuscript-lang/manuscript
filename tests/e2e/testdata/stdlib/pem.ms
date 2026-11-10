@@ -27,7 +27,7 @@ test "headers round-trip":
         [PemBlock(label: "KEY", headers: headers, data: "k".to_bytes())]
     )
     let back = parse(text).get()
-    try expect_equal(back[0].headers.get("Proc-Type").get(""), "4,ENCRYPTED")
+    try expect_equal(back[0].headers.get_or("Proc-Type", ""), "4,ENCRYPTED")
     try expect_equal(back[0].data.decode_utf8().get(""), "k")
 
 test "malformed armor is an error":

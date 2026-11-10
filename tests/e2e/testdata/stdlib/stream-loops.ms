@@ -15,8 +15,7 @@ impl Source[Int] for Counter:
             self.at += 1
             return error(Error("boom", kind: "EIO"))
 
-        if self.at >= self.stop:
-            return ok(none)
+        if self.at >= self.stop: return ok(none)
 
         self.at += 1
         return ok(self.at)
@@ -32,8 +31,7 @@ test "a loop that breaks hands the source back to its stream":
 
     for x in s:
         seen.append(x)
-        if seen.length() == 2:
-            break
+        if seen.length() == 2: break
 
     let next = try s.next()
     try expect_equal(next.get(-1), 3)
@@ -55,8 +53,7 @@ test "an error ends the loop and the stream reads on":
             failures += 1
             break
 
-        if item.get().is_none():
-            break
+        if item.get().is_none(): break
 
     try expect_equal(failures, 1)
 

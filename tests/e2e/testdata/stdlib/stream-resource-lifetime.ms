@@ -26,10 +26,8 @@ type Tokens:
 impl Source[Token] for Tokens:
     var fn next() Token?!:
         self.at += 1
-        if self.at == self.fail_at:
-            return error(Error("source failed", kind: "EIO"))
-        if self.at <= 2:
-            return ok(Token(self.at, self.log.clone()))
+        if self.at == self.fail_at: return error(Error("source failed", kind: "EIO"))
+        if self.at <= 2: return ok(Token(self.at, self.log.clone()))
 
         return ok(none)
 
@@ -37,8 +35,7 @@ impl Source[Token] for Tokens:
         return ok(unit)
 
 fn events(log: String) String:
-    if let bytes = read_file(log).wait():
-        return bytes.decode_utf8().get("")
+    if let bytes = read_file(log).wait(): return bytes.decode_utf8().get("")
 
     return ""
 
@@ -93,14 +90,10 @@ fn walk(log: String, action: Int) Unit!:
 
         let token = item
         try use_token(token)
-        if action == 1:
-            break
-        if action == 2:
-            return ok(unit)
-        if action == 3:
-            return error(Error("body failed", kind: "EBODY"))
-        if action == 4:
-            continue
+        if action == 1: break
+        if action == 2: return ok(unit)
+        if action == 3: return error(Error("body failed", kind: "EBODY"))
+        if action == 4: continue
 
         if action == 6:
             try input.close()
@@ -178,8 +171,7 @@ type PlainTokens:
 impl Iterator[Token] for PlainTokens:
     var fn next() Token?:
         self.at += 1
-        if self.at <= 2:
-            return Token(self.at, self.log.clone())
+        if self.at <= 2: return Token(self.at, self.log.clone())
 
         return none
 
@@ -201,8 +193,7 @@ type OptionalTokens:
 impl Source[Token?] for OptionalTokens:
     var fn next() Token??!:
         self.at += 1
-        if self.at > 1:
-            return ok(none)
+        if self.at > 1: return ok(none)
 
         let inner: Token? = Token(1, self.log.clone())
         return ok(inner)
@@ -233,8 +224,7 @@ type ResultTokens:
 impl Source[Token!] for ResultTokens:
     var fn next() Result[Result[Token, Error]?, Error]:
         self.at += 1
-        if self.at > 1:
-            return ok(none)
+        if self.at > 1: return ok(none)
 
         let inner: Token! = ok(Token(1, self.log.clone()))
         return ok(inner)
@@ -260,8 +250,7 @@ test "a nested result payload transfers its resource":
 // Wait for the exact acquisition/body event before cancelling; the deadline bounds a failed handshake.
 fn wait_for_event(log: String, expected: String) Unit!:
     for attempt in 0..1000:
-        if events(log).contains(expected):
-            return ok(unit)
+        if events(log).contains(expected): return ok(unit)
 
         let _ = sleep(milliseconds(10)).wait()
 

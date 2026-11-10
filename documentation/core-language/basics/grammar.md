@@ -213,7 +213,7 @@ RecordEntry   = Name, [ ":", BindingPattern ] ;
 ```
 
 - `CallStatement` accepts a call or match and discards the result, or `try call()` when the success type is `Unit` ([propagation](../errors/propagation.md)). Bare names and arithmetic are not statements.
-- Assignment replaces a `var` or record field. `target op= value` means `target = target op (value)`; write the operator and `=` adjacent. The target is mutable storage: a name, field path (`box.inner.count += 1`), or list index (`values[i] += 1`). Calls cannot be assignment targets. `+=` appends text; `-=` on text is an error.
+- Assignment replaces a `var` or record field. `target op= value` means `target = target op (value)`; write the operator and `=` adjacent. The target is mutable storage: a name, field path (`box.inner.count += 1`), list index (`values[i] += 1`), or map entry (`stock[line.sku] -= line.qty`). The index of a compound target is a name, field path or literal, so it is read twice without effect; the store takes a clone of the key and the name stays usable. Calls cannot be assignment targets. `+=` appends text; `-=` on text is an error.
 - Only a simple name takes a type annotation. Positional patterns may be empty; empty record patterns are rejected. `_` discards a binding or match payload and is the wildcard match arm; it cannot be read as a value.
 - Inline suites (functions, methods, tests, branches, loops) hold one simple statement, no nested compound statements. Functions and methods alone may hold one expression, which is returned:
 

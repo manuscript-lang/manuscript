@@ -80,7 +80,7 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 
 export fn main() Int:
     let args = arguments()
-    if args.length() == 0 or (args[0] != "kernels" and args[0] != "competence"):
+    if args.is_empty() or (args[0] != "kernels" and args[0] != "competence"):
         return fail("usage: kernels.ms -- <kernels|competence> [repeats]")
 
     var n = 5

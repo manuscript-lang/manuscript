@@ -314,12 +314,12 @@ pub(crate) fn build_format(
             b.seal_block(some);
             b.seal_block(none);
             b.switch_to(none);
-            let acc = start(&mut b, if repr { "none" } else { "Optional.none" });
+            let acc = start(&mut b, "none");
             let r = finish(&mut b, acc);
             b.ret(Some(r));
             b.switch_to(some);
             let v = b.opt_get(x);
-            let acc = start(&mut b, if repr { "some" } else { "Optional.some" });
+            let acc = start(&mut b, "some");
             append_fields(cx, &mut b, acc, &[(None, inner, v)], repr, depth);
             let r = finish(&mut b, acc);
             b.ret(Some(r));
@@ -353,7 +353,9 @@ pub(crate) fn build_format(
             for (i, c) in def.cases.iter().enumerate() {
                 b.seal_block(blocks[i]);
                 b.switch_to(blocks[i]);
-                let head = if repr {
+                let base = def.name.split('[').next().unwrap_or(&def.name);
+                // `Result` prints as its source cases (`ok(1)`), like `Optional`'s `some(3)`.
+                let head = if repr || base == "Result" {
                     c.name.clone()
                 } else {
                     // Generic arguments are not part of the printed name.
@@ -567,7 +569,7 @@ impl<'a> FnLower<'a> {
     /// The text of a `Duration`: `Duration.to_string` from `@std/time.ms`.
     pub(crate) fn duration_text(&mut self, x: Val) -> Result<Val, Error> {
         let n = self.borrow(x);
-        let v = self.time_call("Duration", "to_string", &[n])?;
+        let v = self.time_call(ms_check::api::types::Builtin::Duration, "to_string", &[n])?;
         Ok(Val { v, own: true })
     }
 
@@ -575,7 +577,7 @@ impl<'a> FnLower<'a> {
     /// `Timestamp`) with the receiver first.
     pub(crate) fn time_call(
         &mut self,
-        record: &str,
+        record: ms_check::api::types::Builtin,
         name: &str,
         args: &[Value],
     ) -> Result<Value, Error> {
@@ -584,12 +586,12 @@ impl<'a> FnLower<'a> {
             .methods
             .iter()
             .find(|m| {
-                m.receiver.is_time(self.syms, record)
+                m.receiver.is(record)
                     && m.decl
                         .as_ref()
                         .is_some_and(|d| self.syms.str(d.name()) == name)
             })
-            .ok_or_else(|| Error::new(format!("{record}.{name} not found")))?;
+            .ok_or_else(|| Error::new(format!("{record:?}.{name} not found")))?;
         let callable =
             self.callable_of_decl(method.module, method.decl.as_ref().map(|d| d.id()))?;
         let f = self
@@ -637,7 +639,7 @@ impl<'a> FnLower<'a> {
                         return Ok(x);
                     }
                     let _ = Kind::Record;
-                    if self.ety(e).is_time(self.syms, "Duration") {
+                    if self.ety(e).is(ms_check::api::types::Builtin::Duration) {
                         self.duration_text(x)?
                     } else {
                         self.format_value(x)?

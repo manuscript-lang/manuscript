@@ -76,14 +76,12 @@ export fn sse_events(
     )
 
 fn positive(limit: Int?) Bool:
-    if let maximum = limit:
-        return maximum > 0
+    if let maximum = limit: return maximum > 0
 
     return true
 
 fn exceeds(value: Int, limit: Int?) Bool:
-    if let maximum = limit:
-        return value > maximum
+    if let maximum = limit: return value > maximum
 
     return false
 
@@ -241,7 +239,7 @@ fn value_after(line: String, colon_end: Int, spaced: Bool) String:
     return line.slice(colon_end, line.length()).get()
 
 fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
-    if decoder.data.length() > 0:
+    if not decoder.data.is_empty():
         var name = decoder.event_type.clone()
         if name == "": name = "message"
         events.append(

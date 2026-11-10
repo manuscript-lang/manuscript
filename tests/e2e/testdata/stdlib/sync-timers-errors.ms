@@ -1,6 +1,6 @@
 import expect_equal, expect_true, expect_false from "@std/test/test.ms"
 import wrap_error, join_errors from "@std/core.ms"
-import sleep, deadline_after, ticker, monotonic from "@std/time.ms"
+import sleep, deadline_after, ticker, monotonic, nanoseconds from "@std/time.ms"
 
 test "wrap_error adds context and keeps the kind":
     let gone = Error("gone", kind: "ENOENT", details: {"path": "a.txt"})
@@ -37,3 +37,22 @@ test "deadline expires and ticker paces":
         count += 1
 
     try expect_true(monotonic().difference(start).to_milliseconds() >= 29)
+
+test "ticker keeps its original cadence when the consumer misses ticks":
+    // Alignment is exact even on a loaded runner; no upper bound on elapsed time is assumed.
+    let period = nanoseconds(10000019)
+    var ticks = ticker(period.clone())
+    let first = (try ticks.next()).get().clone()
+
+    for pause in [
+        period.multiply(4).add(nanoseconds(1)), period.multiply(7).add(nanoseconds(3))
+    ]:
+        try sleep(pause).wait()
+
+        let pending = (try ticks.next()).get().clone()
+        let next = (try ticks.next()).get().clone()
+        let pending_offset = pending.difference(first).to_nanoseconds()
+        let next_offset = next.difference(first).to_nanoseconds()
+        try expect_equal(pending_offset % period.to_nanoseconds(), 0)
+        try expect_equal(next_offset % period.to_nanoseconds(), 0)
+        try expect_true(next.difference(pending).compare(period) > 0)

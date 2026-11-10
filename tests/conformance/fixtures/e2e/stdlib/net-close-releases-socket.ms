@@ -61,9 +61,9 @@ export fn main() Int:
     var first = listen("127.0.0.1:0").get()
     let address = first.address().clone()
     first.close().get(none)
-    stdout().write("closed listener rebound: {rebound(address.clone())}\n").get()
+    print("closed listener rebound: {rebound(address.clone())}")
     cancel_accept(address.clone())
-    stdout().write("cancelled accept rebound: {rebound(address.clone())}\n").get()
+    print("cancelled accept rebound: {rebound(address.clone())}")
 
     let third = listen("127.0.0.1:0").get()
     let third_address = third.address().clone()
@@ -75,10 +75,11 @@ export fn main() Int:
 
         let accepted = server.accept(nanoseconds(500000000)).wait()
         if accepted.is_ok():
-            accepted.get().close().get(none)
+            var connection = accepted.get(none)
+            connection.close().get(none)
 
     server.close().get(none)
-    stdout().write("cancelled reads rebound: {rebound(third_address.clone())}\n").get()
+    print("cancelled reads rebound: {rebound(third_address.clone())}")
 
     var udp = bind_datagram("127.0.0.1:0").get()
     let udp_address = udp.address.clone()

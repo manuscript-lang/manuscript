@@ -126,7 +126,14 @@ fn default_project_target(args: &[String]) -> Option<Vec<String>> {
         if matches!(command, "fmt" | "verify") || dashes == 1 {
             return None;
         }
-        let mut out = vec![args[0].clone(), args[first].clone()];
+        // Moving an input out of `--` must preserve its path meaning, including
+        // names such as `--help` that the early help scan otherwise consumes.
+        let target = if args[first].starts_with('-') {
+            format!("./{}", args[first])
+        } else {
+            args[first].clone()
+        };
+        let mut out = vec![args[0].clone(), target];
         if lists {
             // Further inputs follow `--` so they are not read as options.
             let others = (1..args.len()).filter(|i| !inputs.contains(i) && *i != dashes);
@@ -366,5 +373,27 @@ mod default_target_tests {
             default_project_target(&args(&["diagram", "--view", "calls", "a.ms"])),
             Some(args(&["diagram", "a.ms", "--view", "calls"]))
         );
+    }
+
+    #[test]
+    fn moved_positional_inputs_keep_dash_prefixed_path_meaning() {
+        for command in ["check", "lint"] {
+            for target in ["-input.ms", "--help", "-h", "--"] {
+                assert_eq!(
+                    default_project_target(&args(&[command, "--json", "--", target])),
+                    Some(args(&[command, &format!("./{target}"), "--json"]))
+                );
+                assert_eq!(
+                    default_project_target(&args(&[command, "--json", "--", target, "--help"])),
+                    Some(args(&[
+                        command,
+                        &format!("./{target}"),
+                        "--json",
+                        "--",
+                        "--help"
+                    ]))
+                );
+            }
+        }
     }
 }

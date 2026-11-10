@@ -829,7 +829,7 @@ import Bytes from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 fn forward[T](item: T) T: item
 resolution	3	8	121	module does not export commands; did you mean 'Commands'?
-resolution	3	43	156	module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, cpu_usage, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
+resolution	3	43	156	module does not export CommandError; @std/os/process.ms exports: CommandOutput, Commands, CpuUsage, IdentityKind, NativeSignals, NativeSubprocess, ProcessInfo, ResourceUsage, RunOptions, SpawnOptions, Stdio, Subprocess, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/process.ms"'let f: fn(data: Bytes, url_safe: Bool) String = base64_encode
     f(Bytes([]))parse	2	5	66	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f = forward(base64_encode)
     f(Bytes([]))parse	2	5	35	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itlet f: fn(program: String, arguments: List[String], input: Bytes, max_output_bytes: Int?, timeout: Duration?) Result[CommandOutput, CommandError] = commands().run
     f(program: "", arguments: [])parse	2	5	167	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itexport fn main() Int:
@@ -2337,7 +2337,7 @@ fn probe() Int:
     let values = [fn() Int: 1]
     return values.distinct().length()resolution	3	19	65	unknown or ambiguous member distinct on List[fn() Int]; distinct requires fn() Int to be Equal; fn() Int does not satisfy Equal; use a type that implements itfn wrong() List[Int]:
     let copy = [1].METHOD
-    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export interface Read[T]:
+    return copy(length: 1)resolution	2	20	41	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, extend, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, ...export interface Read[T]:
     fn get() T
 export type Box[T]:
     value: T
@@ -3405,7 +3405,7 @@ fn g() Int: return 1
     for i, x in [1]:
         return i
     return 0
-parse	2	10	21	for binds one name; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value)fn f() Int:
+parse	2	10	21	for binds one name or one pattern; to read positions, loop over the entries, e.g. 'for entry in items.entries():' and use entry.index and entry.value (a Map's entries() give entry.key and entry.value), or destructure each element with 'for [a, b] in pairs:'fn f() Int:
     let n = [1].map(fn(x) => x + 1)
     return 0
 parse	2	27	38	expected a name, found '='fn f() Int:
@@ -3503,7 +3503,8 @@ test "bad":
 parse	2	20	31	expected ']', found ','; close the bracket, separating items with commasfn f() Unit:
     for [key, value] in entries:
         return
-parse	2	9	21	expected a name, found '['fn f() String:
+resolution	2	25	37	unknown binding entries; declare it with 'let entries = ...' before use, define 'fn entries(...) T:', or import it from a module
+type	2	9	21	positional binding requires a list; use [a, b] patterns only with List valuesfn f() String:
     return "\{1 # comment\}"
 fn f() Unit:
     consume(transform: fn() Unit:
@@ -4328,14 +4329,14 @@ resolution	4	12	81	unknown binding tagged_detail; declare it with 'let tagged_de
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
     return text
-resolution	3	53	97	unknown binding format; add: import format from "@std/data/semver.ms"
+resolution	3	53	97	unknown binding format; add: import format from "@std/net/url.ms"
 resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...) T:', or import it from a modulefn work() String:
     let values = [1, 2, 3]
     let text = "# A deliberately long literal with {format(value: "nested text")} that must retain its exact original spelling."
     if enabled: return text
 
     return text
-resolution	3	53	97	unknown binding format; add: import format from "@std/data/semver.ms"
+resolution	3	53	97	unknown binding format; add: import format from "@std/net/url.ms"
 resolution	4	8	181	unknown binding enabled; declare it with 'let enabled = ...' before use, define 'fn enabled(...) T:', or import it from a modulefn f() Bool:
     return active or allowed and remaining > 0
 resolution	2	12	24	unknown binding active; declare it with 'let active = ...' before use, define 'fn active(...) T:', or import it from a module
@@ -6397,15 +6398,15 @@ test "unimported":
     let values = [1, 2]
     let part = values.METHOD(-7)
     return part.length()
-resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export fn main() Int:
+resolution	3	23	68	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, extend, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, ...export fn main() Int:
     let copy = [1, 2].METHOD
     let part = copy(count: -7)
     return part.length()
-resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...export fn main() Int:
+resolution	2	23	44	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, extend, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, ...export fn main() Int:
     let empty: List[Int] = []
     let part = empty.METHOD(-7)
     return part.length()
-resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, max, ...import panic from "@std/faults.ms"
+resolution	3	22	73	unknown or ambiguous member METHOD on List[Int]; available: all, any, append, binary_search, chunks, clone, compact, compact_by, concat, contains, copy_within, count, distinct, drop, entries, extend, fill, filter, find, find_index, find_last, find_last_index, first, flat_map, fold, fold_right, for_each, get, group_by, index_of, insert, is_empty, is_sorted, is_sorted_by, join, keys, last, last_index_of, length, map, ...import panic from "@std/faults.ms"
 
 fn run() Int:
     let boom = fn(value: Int) Int: panic(message: "closure failed")

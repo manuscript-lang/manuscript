@@ -10,7 +10,7 @@
 import Flag, FlagKind, command from "@std/cli/command.ms"
 import chmod, copy, CopyOptions, create_directory, remove, stat from "@std/os/fs.ms"
 import JsonValue from "@std/data/json.ms"
-import stderr, stdout from "@std/io/io.ms"
+import stderr from "@std/io/io.ms"
 import arguments from "@std/os/env.ms"
 import Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms"
 import make_workspace from "./core/workspace.ms"
@@ -121,7 +121,7 @@ fn run_export(o: Options) Int!:
             export_one(ch, lang, o.out, o.ms_binary, o.agent_timeout)
             n += 1
 
-    stdout().write("exported {n} tasks to {o.out}\n").get()
+    print("exported {n} tasks to {o.out}")
     return ok(0)
 
 export fn main() Int:

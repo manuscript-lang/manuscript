@@ -84,6 +84,23 @@ test "regex repeated template expansion preserves byte budgets":
     try expect_equal((try re.replace_template("a b", "xy", 5)), "xy xy")
     try expect_equal(re.replace_template("a b", "xy", 4), limited)
 
+test "regex capped templates preserve Unicode references and malformed syntax":
+    let re = try compile("(?P<word>é)(?P<名字>🙂)(x)?")
+    let template = "$\{名字\}:$\{+1\}:$$:$3"
+    try expect_equal((try re.replace_template("é🙂", template, 10)), "🙂:é:$:")
+    try expect_equal((try re.replace_template("é🙂", "$3$\{missing\}", 0)), "")
+    try expect_equal((try re.replace_template("é🙂", "$\{open $1", 9)), "$\{open é")
+
+    let limited: String! = error(
+        Error("regular expression: limit exceeded", kind: "EOVERFLOW")
+    )
+    try expect_equal(re.replace_template("é🙂", template, 9), limited)
+
+    let text = try "é".repeat(65536)
+    let repeated = try "$0".repeat(128)
+    let whole = try compile(".+")
+    try expect_equal(whole.replace_template(text, repeated, 0), limited)
+
 test "regex named captures preserve unnamed gaps and absent groups":
     let re = try compile("(a)?(?P<first>b)?(c)(?P<empty>d*)(?P<last>e)")
     let found = re.named_captures("ce")
@@ -152,6 +169,22 @@ test "regex compile errors preserve columns after anchors and numbered lines":
         ["^(", "unclosed group at column 2"], ["^ (", "unclosed group at column 3"],
         ["é🙂(", "unclosed group at column 3"], ["a\n(", "unclosed group at column 1"],
         ["(?x)\n^(", "unclosed group at column 2"]
+    ]:
+        let invalid = compile(item[0])
+        try expect_equal(invalid.err().kind, "EBADMSG")
+        try expect_equal(
+            invalid.err().message, "regular expression: invalid data: " + item[1]
+        )
+
+test "regex compile errors point to duplicate flags and group names":
+    for item in [
+        ["(?ii)", "duplicate flag at column 4"],
+        ["(?i-i)", "duplicate flag at column 5"],
+        ["(?-i-m)", "flag negation operator repeated at column 5"],
+        ["(?P<word>a)(?P<word>b)", "duplicate capture group name at column 16"],
+        ["(?P<名字>a)\n  (?P<名字>b)", "duplicate capture group name at column 7"],
+        ["a\n(?ii)", "duplicate flag at column 4"],
+        ["a\n(?-i-m)", "flag negation operator repeated at column 5"]
     ]:
         let invalid = compile(item[0])
         try expect_equal(invalid.err().kind, "EBADMSG")

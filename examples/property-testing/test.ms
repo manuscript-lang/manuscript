@@ -26,6 +26,5 @@ test "sorted output is ordered":
 
 fn is_ordered(xs: List[Int]) Bool:
     for i in 1..xs.length():
-        if xs[i - 1] > xs[i]:
-            return false
+        if xs[i - 1] > xs[i]: return false
     return true

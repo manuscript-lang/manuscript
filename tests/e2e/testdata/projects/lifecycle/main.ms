@@ -81,7 +81,7 @@ fn exercise() Int!:
 
     while count < 2:
         let _resource = Resource(label: "iteration", output: stdout())
-        count = count + 1
+        count += 1
         continue
 
     var iterable_out = stdout()

@@ -22,12 +22,12 @@ pub struct Directory {
 }
 
 impl Directory {
-    /// Opens `path`; anything but a directory is `Failed("not a directory")`.
+    /// Opens `path`; anything but a directory is invalid input.
     pub fn open(path: &[u8]) -> Res<Directory> {
         let p = CPath::new(path).ok_or_else(Fail::invalid)?;
         let st = sys::stat(&p, true).map_err(|e| Fail::errno(e, "open", path))?;
         if !sys::is_dir(&st) {
-            return Err(Fail::failed("not a directory"));
+            return Err(Fail::invalid());
         }
         let dir = sys::Dir::open(&p).map_err(|e| Fail::errno(e, "fdopendir", path))?;
         Ok(Directory {
@@ -108,7 +108,7 @@ impl Temporary {
 mod tests {
     use super::*;
     use alloc::string::String;
-    use ms_rt_abi::STATUS_NOT_FOUND;
+    use ms_rt_abi::{STATUS_INVALID_INPUT, STATUS_NOT_FOUND};
 
     #[test]
     fn cursor_and_temporary() {
@@ -136,7 +136,14 @@ mod tests {
         let err = Directory::open(&crate::path::join(&root, b"a"))
             .err()
             .unwrap();
-        assert_eq!(err.message.as_deref(), Some(b"not a directory".as_slice()));
+        assert_eq!(err.status, STATUS_INVALID_INPUT);
+        assert_eq!(
+            Directory::open(&crate::path::join(&root, b"missing"))
+                .err()
+                .unwrap()
+                .status,
+            STATUS_NOT_FOUND
+        );
         t.close().unwrap();
         assert_eq!(
             ops::stat(&root, true).err().unwrap().status,

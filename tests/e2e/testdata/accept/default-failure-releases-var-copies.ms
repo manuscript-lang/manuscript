@@ -14,14 +14,12 @@ test "a failed default releases its earlier var copy":
     try expect_equal(call_default().is_error(), true)
 
 fn default_count(values: List[Int]) Int!:
-    if values.length() > 1:
-        return error(Error("default-error"))
+    if values.length() > 1: return error(Error("default-error"))
 
     return ok(values.length())
 
 fn recursive(var values: List[Int], remaining: Int = try default_count(values)) Int!:
-    if remaining == 0:
-        return ok(values.length())
+    if remaining == 0: return ok(values.length())
 
     values.append(2)
     return recursive(var values)

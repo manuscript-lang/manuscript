@@ -8,9 +8,7 @@ fn filled_sum() Int:
         values.append(i)
         i += 1
 
-    var sum = 0
-    for value in values:
-        sum += value
+    var sum = values.sum()
     return sum
 
 fn conditional_length(flag: Bool) Int:
@@ -48,9 +46,7 @@ fn peer_overflow() Int:
 
 fn prefix_overflow() Int:
     let values = [9223372036854775807, 1, -1]
-    var sum = 0
-    for value in values:
-        sum += value
+    var sum = values.sum()
     return sum
 
 fn optional_overflow(default: Int?) Int:
@@ -69,9 +65,7 @@ fn mutated_alias() Int:
     var alias = values.clone()
     alias.set(0, 9223372036854775807)
 
-    var sum = 0
-    for value in values:
-        sum += value
+    var sum = values.sum()
     return sum + 1
 
 test "closed list scalar summaries preserve sums and lengths":
@@ -80,9 +74,7 @@ test "closed list scalar summaries preserve sums and lengths":
     conditional_length(flag: false) | try expect_equal(0)
 
     let empty: List[Int] = []
-    var sum = 0
-    for value in empty:
-        sum += value
+    var sum = empty.sum()
     sum | try expect_equal(0)
     empty.length() | try expect_equal(0)
 
@@ -146,9 +138,7 @@ fn scalar_append_overflow() Int:
         carry = 9223372036854775807
         i += 1
 
-    var sum = 0
-    for value in values:
-        sum += value
+    var sum = values.sum()
     return sum + 1
 
 fn match_length() Int:

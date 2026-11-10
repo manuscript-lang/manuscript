@@ -3,7 +3,7 @@
 use crate::common;
 
 use common::*;
-use ms_driver::imports::{exported_names, suggest_project_imports};
+use ms_driver::imports::{exported_declarations, exported_names, suggest_project_imports};
 use ms_syntax::{Diagnostic, Phase, Pos};
 
 #[test]
@@ -20,6 +20,30 @@ fn export_hints_include_enums_opaque_types_and_grouped_constants() {
             "Plain", "Opaque", "LOW", "HIGH", "read", "Measure", "native", "Color", "Outcome"
         ]
     );
+}
+
+#[test]
+fn export_kinds_distinguish_types_from_values_in_complete_and_recovered_source() {
+    let syms = ms_syntax::Names::global();
+    for (source, expected) in [
+        (
+            include_str!("export_names/declarations.ms"),
+            vec!["Plain", "Opaque", "Measure", "Color", "Outcome"],
+        ),
+        (
+            include_str!("export_names/recovery.ms"),
+            vec!["Recovered", "RecoveredEnum"],
+        ),
+    ] {
+        for source in [source.to_string(), source.replace('\n', "\r\n")] {
+            let types: Vec<_> = exported_declarations(syms, &source)
+                .into_iter()
+                .filter(|export| export.is_type)
+                .map(|export| export.name)
+                .collect();
+            assert_eq!(types, expected);
+        }
+    }
 }
 
 #[test]
@@ -66,6 +90,7 @@ fn missing_enums_opaque_types_and_grouped_constants_get_import_fixes() {
         ("type", "Outcome"),
     ] {
         let mut issues = vec![Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: main.as_str().into(),
             pos: Pos::new(0, 1, 1),

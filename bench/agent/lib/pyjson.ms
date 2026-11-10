@@ -13,26 +13,26 @@ fn quote(text: String) String:
 
     for code in text.scalar_values():
         if code == 34:
-            out = out + "\\\""
+            out += "\\\""
         else if code == 92:
-            out = out + "\\\\"
+            out += "\\\\"
         else if code == 10:
-            out = out + "\\n"
+            out += "\\n"
         else if code == 13:
-            out = out + "\\r"
+            out += "\\r"
         else if code == 9:
-            out = out + "\\t"
+            out += "\\t"
         else if code == 8:
-            out = out + "\\b"
+            out += "\\b"
         else if code == 12:
-            out = out + "\\f"
+            out += "\\f"
         else if code < 32 or (code > 126 and code < 65536):
-            out = out + hex4(code)
+            out += hex4(code)
         else if code >= 65536:
             let v = code - 65536
             out = out + hex4(55296 + v / 1024) + hex4(56320 + v % 1024)
         else:
-            out = out + from_scalars([code]).get("")
+            out += from_scalars([code]).get("")
 
     return out + "\""
 

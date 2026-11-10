@@ -2,10 +2,9 @@
 import create_directory, read_file, write_file from "@std/os/fs.ms"
 import dirname from "@std/os/path.ms"
 import compile from "@std/string.ms"
-import seconds from "@std/time.ms"
+import monotonic, seconds from "@std/time.ms"
 import RunOptions, run from "@std/os/process.ms"
 import environment from "@std/os/env.ms"
-import monotonic_time from "@std/os/system.ms"
 
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
@@ -64,12 +63,12 @@ export fn run_in(
     timeout_s: Int,
     input: String
 ) Ran:
-    let start = monotonic_time()
+    let start = monotonic()
     let result = run(
         program, arguments,
         RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s))
     ).wait()
-    let elapsed = (monotonic_time() - start).to_float() / 1000000000.0
+    let elapsed = monotonic().difference(start).nanos.to_float() / 1000000000.0
     if let done = result.to_optional():
         return Ran(
             done.exit_code, done.stdout.decode_utf8().get(""),
@@ -118,7 +117,7 @@ export fn words(text: String) List[String]:
             if current != "": out.append(current.clone())
             current = ""
         else:
-            current = current + ch
+            current += ch
 
     if current != "": out.append(current.clone())
     return out

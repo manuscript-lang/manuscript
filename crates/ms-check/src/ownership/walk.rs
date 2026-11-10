@@ -420,24 +420,11 @@ fn clone_blocker(t: &Ty) -> Option<&'static str> {
     })
 }
 
-fn copy_after(e: &Expr) -> Option<DiagnosticFix> {
-    (e.end.offset > e.pos.offset).then(|| insert_at(e.end, &format!(".{CLONE}()")))
-}
-
 fn insert_at(pos: Pos, text: &str) -> DiagnosticFix {
     DiagnosticFix {
         pos,
         end: pos,
         replacement: text.to_string(),
-    }
-}
-
-/// `pos` moved forward by `n` bytes on its line.
-fn forward(pos: Pos, n: usize) -> Pos {
-    Pos {
-        offset: pos.offset + n as u32,
-        line: pos.line,
-        column: pos.column + n as u32,
     }
 }
 
@@ -995,7 +982,7 @@ mod type_query_tests {
             id: n(&format!("{module}/Promise")),
             kind: SymKind::Type,
             module: n(module),
-            native: n(""),
+            native: Native::Source,
             export: true,
             ty: RefCell::new(None),
             variables: RefCell::new(vec![]),

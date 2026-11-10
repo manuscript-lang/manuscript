@@ -51,7 +51,6 @@ import (
     msrt_bits_bit_and,
     msrt_bits_bit_or,
     msrt_bits_bit_xor,
-    msrt_bits_bit_not,
     msrt_bits_shift_left,
     msrt_bits_shift_right,
     msrt_bits_shift_right_unsigned,
@@ -214,15 +213,13 @@ export fn log2(value: Float) Float:
 
 // Returns the greater of two values, or `left` when they compare equal. Float orders NaN above every other value, so a NaN operand makes the result NaN.
 export fn max[T: Comparable](left: T, right: T) T:
-    if right.compare(left) > 0:
-        return right
+    if right.compare(left) > 0: return right
 
     return left
 
 // Returns the lesser of two values, or `left` when they compare equal. Float orders NaN above every other value.
 export fn min[T: Comparable](left: T, right: T) T:
-    if right.compare(left) < 0:
-        return right
+    if right.compare(left) < 0: return right
 
     return left
 
@@ -332,7 +329,8 @@ export let sqrt_half: Float = 0.7071067811865476
 export fn parse_float(text: String) Float!:
     return msrt_numbers_parse_float(text)
 
-// Parses an integer in a radix from 2 through 36.
+// Parses an integer with an optional sign in a radix from 2 through 36; `_` separators and white space are not accepted.
+// Radix 0 reads a `0x`, `0o` or `0b` prefix and otherwise uses 10. A bad digit is EBADMSG, an overflow ERANGE and an unsupported radix EINVAL.
 export fn parse_int(text: String, radix: Int = 10) Int!:
     return msrt_numbers_parse_int(text, radix)
 
@@ -350,19 +348,26 @@ export fn bit_xor(left: Int, right: Int) Int:
 
 // Returns the bitwise complement, so every bit of the two's-complement value flips.
 export fn bit_not(value: Int) Int:
-    return msrt_bits_bit_not(value)
+    return msrt_bits_bit_xor(value, -1)
 
 // Shifts bits toward the high end, discarding bits shifted out; `count` must be 0 through 63 or the call faults.
 export fn shift_left(value: Int, count: Int) Int:
+    check_shift_count("shift_left", count)
     return msrt_bits_shift_left(value, count)
 
 // Shifts bits toward the low end, filling with the sign bit; `count` must be 0 through 63 or the call faults.
 export fn shift_right(value: Int, count: Int) Int:
+    check_shift_count("shift_right", count)
     return msrt_bits_shift_right(value, count)
 
 // Shifts bits toward the low end, filling with zeros; `count` must be 0 through 63 or the call faults.
 export fn shift_right_unsigned(value: Int, count: Int) Int:
+    check_shift_count("shift_right_unsigned", count)
     return msrt_bits_shift_right_unsigned(value, count)
+
+fn check_shift_count(operation: String, count: Int) Unit:
+    if count < 0 or count > 63:
+        panic("{operation}: count must be between 0 and 63, found {count}")
 
 // Rotates the 64-bit pattern toward the high end; any `count` is reduced modulo 64.
 export fn rotate_left(value: Int, count: Int) Int:
@@ -530,15 +535,13 @@ impl BigInt:
 
     // Returns the lesser of this value and `other`, or this value when they compare equal.
     fn min(other: BigInt) BigInt:
-        if other.compare(self) < 0:
-            return other
+        if other.compare(self) < 0: return other
 
         return self
 
     // Returns the greater of this value and `other`, or this value when they compare equal.
     fn max(other: BigInt) BigInt:
-        if other.compare(self) > 0:
-            return other
+        if other.compare(self) > 0: return other
 
         return self
 
@@ -546,10 +549,8 @@ impl BigInt:
     fn clamp(low: BigInt, high: BigInt) BigInt:
         if low.compare(high) > 0:
             panic("clamp: low must not be greater than high")
-        if self.compare(low) < 0:
-            return low
-        if self.compare(high) > 0:
-            return high
+        if self.compare(low) < 0: return low
+        if self.compare(high) > 0: return high
 
         return self
 
@@ -596,8 +597,7 @@ impl BigInt:
     // Converts to the nearest Float, or returns none when the magnitude exceeds the Float range.
     fn to_float() Float?:
         let value = msstd_bigint_to_float(self)
-        if value.is_finite():
-            return value
+        if value.is_finite(): return value
 
         return none
 
@@ -640,10 +640,8 @@ export fn parse(text: String, radix: Int, max_digits: Int?) BigInt!:
 
 // Returns n! for a non-negative n; a negative n returns EINVAL. Work and result size grow quickly with n.
 export fn factorial(n: Int) BigInt!:
-    if n < 0:
-        return error(Error("big integer: invalid input", kind: "EINVAL"))
-    if n < 2:
-        return ok(msstd_bigint_from_int(1))
+    if n < 0: return error(Error("big integer: invalid input", kind: "EINVAL"))
+    if n < 2: return ok(msstd_bigint_from_int(1))
 
     return ok(range_product(2, n))
 
@@ -652,7 +650,7 @@ fn range_product(low: Int, high: Int) BigInt:
     if high - low < 16:
         var product = msstd_bigint_from_int(low)
         for factor in low + 1..high + 1:
-            product = product * msstd_bigint_from_int(factor)
+            product *= msstd_bigint_from_int(factor)
         return product
 
     let middle = low + (high - low) / 2
@@ -660,15 +658,10 @@ fn range_product(low: Int, high: Int) BigInt:
 
 // Returns the binomial coefficient "n choose k", which is 0 when k exceeds n; a negative n or k returns EINVAL.
 export fn binomial(n: Int, k: Int) BigInt!:
-    if n < 0 or k < 0:
-        return error(Error("big integer: invalid input", kind: "EINVAL"))
-    if k > n:
-        return ok(msstd_bigint_from_int(0))
+    if n < 0 or k < 0: return error(Error("big integer: invalid input", kind: "EINVAL"))
+    if k > n: return ok(msstd_bigint_from_int(0))
 
-    var choose = k
-    if n - k < k:
-        choose = n - k
-
+    let choose = if n - k < k: n - k else: k
     var result = msstd_bigint_from_int(1)
     for step in 0..choose:
         result = (
@@ -685,8 +678,7 @@ fn bigint_is_even(value: BigInt) Bool:
     return (value % msstd_bigint_from_int(2)).sign() == 0
 
 fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
-    if n.compare(msstd_bigint_from_int(2)) < 0:
-        return false
+    if n.compare(msstd_bigint_from_int(2)) < 0: return false
 
     let primes = [
         2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73,
@@ -695,10 +687,8 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
 
     for p in primes:
         let divisor = msstd_bigint_from_int(p)
-        if n.compare(divisor) == 0:
-            return true
-        if (n % divisor).sign() == 0:
-            return false
+        if n.compare(divisor) == 0: return true
+        if (n % divisor).sign() == 0: return false
 
     let minus_one = n - msstd_bigint_from_int(1)
     var odd_part = minus_one.clone()
@@ -708,9 +698,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
         odd_part = odd_part.shift_right(1).get(bigint_zero())
         twos += 1
 
-    var fixed = rounds
-    if fixed > primes.length():
-        fixed = primes.length()
+    let fixed = min(rounds, primes.length())
     for index in 0..fixed:
         if not bigint_strong_probable(
             n, msstd_bigint_from_int(primes[index]), odd_part, twos
@@ -722,8 +710,7 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
     let bound = msstd_bigint_parse("3317044064679887385961981", 10, none).get(
         bigint_zero()
     )
-    if n.compare(bound) < 0:
-        return true
+    if n.compare(bound) < 0: return true
 
     for _round in 0..rounds:
         if not bigint_strong_probable(n, bigint_random_base(n), odd_part, twos):
@@ -735,13 +722,11 @@ fn bigint_strong_probable(n: BigInt, base: BigInt, odd_part: BigInt, twos: Int) 
     let one = msstd_bigint_from_int(1)
     let minus_one = n - one
     var x = base.pow_mod(odd_part, n).get(bigint_zero())
-    if x.compare(one) == 0 or x.compare(minus_one) == 0:
-        return true
+    if x.compare(one) == 0 or x.compare(minus_one) == 0: return true
 
     for _step in 1..twos:
         x = x * x % n
-        if x.compare(minus_one) == 0:
-            return true
+        if x.compare(minus_one) == 0: return true
 
     return false
 
@@ -774,11 +759,10 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 
     var target = value % modulus
     if target.sign() < 0:
-        target = target + modulus
+        target += modulus
 
     let absent: BigInt? = none
-    if target.sign() == 0:
-        return ok(bigint_zero())
+    if target.sign() == 0: return ok(bigint_zero())
 
     let minus_one = modulus - one
     let half = minus_one / two
@@ -796,7 +780,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
         var twos = 0
 
         while bigint_is_even(odd_part):
-            odd_part = odd_part / two
+            odd_part /= two
             twos += 1
 
         var non_residue = two.clone()
@@ -807,7 +791,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
                 minus_one
             ) != 0
         ):
-            non_residue = non_residue + one
+            non_residue += one
             tries += 1
             if tries > 1000:
                 return error(Error("big integer: invalid input", kind: "EINVAL"))

@@ -18,7 +18,7 @@ test "http headers used in a promise on another thread fault with the cause":
     let p = promise(fn: names_of(h))
     var n = 0
     for i in 0..1500000000:
-        n = n + i % 7
+        n += i % 7
 
     let cause = p.wait() | try expect_error
     let _ = try expect_true(n > 0)
@@ -29,7 +29,7 @@ test "a network used in a promise on another thread keeps working":
     let p = promise(fn: open_one(net))
     var n = 0
     for i in 0..1500000000:
-        n = n + i % 7
+        n += i % 7
 
     let address = p.wait() | try expect_ok
     let _ = try expect_true(n > 0)

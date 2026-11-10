@@ -77,14 +77,22 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
                                 }
                                 end += next.len();
                             }
+                            let mut start_line = last_start_index as u32;
                             if starts.len() == 1 {
                                 start = 0; // The first chunk owns its leading trivia.
+                                start_line = 0;
                             }
                             // An open prefix cannot parse without a later closer. This
                             // rejects common unfinished headers before another lex/parse;
                             // strings and comments may only cause harmless false positives.
                             if source[offset..end].contains([')', ']', '}']) {
-                                let parsed = parse(file, &source[start..end]);
+                                let parsed = parse_chunk(
+                                    file,
+                                    &source[start..end],
+                                    start as u32,
+                                    start_line,
+                                    0,
+                                );
                                 let single = parsed.as_ref().is_ok_and(single_partial_root);
                                 if parsed.is_err() || single {
                                     probes.insert(start, (end, parsed.err()));
@@ -146,38 +154,22 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
         let err = match probes.remove(&start) {
             // Failed probes also avoid repeating the same strict parse.
             Some((probe_end, err)) if probe_end == end => err,
-            _ => parse(file, chunk).err(),
+            _ => parse_chunk(file, chunk, start as u32, line_offset, 0).err(),
         };
         let mut text: &str = chunk;
         let recovered_text;
         if let Some(err) = err {
-            let rebased = |mut issue: Diagnostic| {
-                shift_opened(&mut issue, line_offset);
-                issue.pos.offset += start as u32;
-                issue.pos.line += line_offset;
-                if let Some(e) = issue.end.as_mut() {
-                    e.offset += start as u32;
-                    e.line += line_offset;
-                }
-                if let Some(f) = issue.fix.as_mut() {
-                    f.pos.offset += start as u32;
-                    f.pos.line += line_offset;
-                    f.end.offset += start as u32;
-                    f.end.line += line_offset;
-                }
-                issue
-            };
-            match recover_statements(file, chunk, *err.clone()) {
+            match recover_statements(file, chunk, start as u32, line_offset, *err.clone()) {
                 None => {
                     if let Some(name) = declared_name(chunk) {
                         module.omitted.push(name);
                     }
-                    diagnostics.push(rebased(*err));
+                    diagnostics.push(*err);
                     continue;
                 }
                 Some((blanked, mut issues)) => {
                     issues.sort_by_key(|i| i.pos.offset);
-                    diagnostics.extend(issues.into_iter().map(rebased));
+                    diagnostics.extend(issues);
                     module.recovered.push(Span {
                         start: start as u32,
                         end: end as u32,
@@ -187,8 +179,8 @@ pub fn parse_partial(file: &Arc<str>, source: &str) -> (Module, Vec<Diagnostic>)
                 }
             }
         }
-        // The chunk is known to parse; parse again at its true position and
-        // node-id range so the merged tree needs no rewriting.
+        // The chunk is known to parse; parse again in the merged node-id range
+        // so the retained tree needs no rewriting.
         if let Ok(parsed) = parse_chunk(file, text, start as u32, line_offset, module.node_count) {
             module.node_count = parsed.node_count;
             module.imports.extend(parsed.imports);
@@ -300,11 +292,14 @@ fn single_partial_root(module: &Module) -> bool {
 }
 /// Retries a failed declaration chunk with each offending statement (and the
 /// block it opens) blanked to spaces, so every remaining statement keeps its
-/// original position. Returns `None` when no bounded number of blankings
-/// parses, in which case the whole declaration is omitted.
+/// original position. Parses retries at the chunk's file origin so messages,
+/// ranges and fixes all use original coordinates. Returns `None` when no bounded
+/// number of blankings parses, in which case the whole declaration is omitted.
 fn recover_statements(
     file: &Arc<str>,
     chunk: &str,
+    base_offset: u32,
+    base_line: u32,
     first: Diagnostic,
 ) -> Option<(String, Vec<Diagnostic>)> {
     let mut issues = Vec::new();
@@ -315,8 +310,8 @@ fn recover_statements(
         // statement to drop is the one that opened it. Only the first failure
         // is redirected: a delimiter left open by an earlier blanking is a
         // cascade, and the declaration is omitted rather than reported twice.
-        let mut line = issue.pos.line as usize;
-        let opened = issue.opener_line as usize;
+        let mut line = (issue.pos.line - base_line) as usize;
+        let opened = issue.opener_line.saturating_sub(base_line) as usize;
         if opened > 0 && attempt == 0 {
             line = opened;
         }
@@ -353,7 +348,7 @@ fn recover_statements(
             *text = blank(text);
         }
         let text = lines.concat();
-        match parse(file, &text) {
+        match parse_chunk(file, &text, base_offset, base_line, 0) {
             Ok(_) => return Some((text, issues)),
             Err(e) => issue = *e,
         }
@@ -398,18 +393,6 @@ fn trim_dangling(file: &Arc<str>, lines: &[String], at: usize) -> Option<String>
         }
     }
     None
-}
-
-/// Rewrites the chunk-relative opener position in an unterminated-delimiter
-/// diagnostic to the file-relative one.
-fn shift_opened(issue: &mut Diagnostic, lines: u32) {
-    if issue.opener_line == 0 {
-        return;
-    }
-    let old = format!("opened at line {}:", issue.opener_line);
-    issue.opener_line += lines;
-    let new = format!("opened at line {}:", issue.opener_line);
-    issue.message = issue.message.replacen(&old, &new, 1);
 }
 
 fn leading_space(line: &str) -> usize {

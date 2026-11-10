@@ -1,9 +1,7 @@
 // conform: tags=alternatives,generics,optional,strings,testing,tier-core,try-result
 // conform: phase=test
 // conform: origin=tests/e2e/testdata/accept/result-error-values.ms
-import expect_equal, expect_error, expect_ok from "@std/test/test.ms"
-import assert_error, assert_ok from "@std/test/test.ms"
-import expect_contains, expect_true from "@std/test/test.ms"
+import expect_contains, expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms"
 
 enum ValidationError:
     BelowMinimum(actual: Int, minimum: Int)
@@ -50,14 +48,14 @@ test "named failures propagate without a reporting implementation":
 
 test "primitive failures work with contextual constructors and assertion aliases":
     let text: Int!String = error("missing")
-    let message = try assert_error(relay(text))
+    let message = try expect_error(relay(text))
     message | try expect_equal("missing")
 
     let number: String!Int = error(7)
     let code = try expect_error(relay(number))
     code | try expect_equal(7)
 
-    let success = try assert_ok(Result[Int, String].ok(4))
+    let success = try expect_ok(Result[Int, String].ok(4))
     success | try expect_equal(4)
 
 test "Result transforms preserve primitive errors and map to named cases":
@@ -96,13 +94,13 @@ test "Result transforms preserve primitive errors and map to named cases":
 
 test "assertion failures can describe values without a reporting implementation":
     expect_ok(checked(3)).err().message | try expect_contains("BelowMinimum")
-    assert_ok(Result[Int, String].error("missing")).err().message | try expect_contains(
+    expect_ok(Result[Int, String].error("missing")).err().message | try expect_contains(
         "missing"
     )
     expect_error(Result[Int, Int].ok(4)).err().message | try expect_contains(
         "expected error"
     )
-    assert_error(Result[Int, String].ok(4)).err().message | try expect_contains(
+    expect_error(Result[Int, String].ok(4)).err().message | try expect_contains(
         "expected error"
     )
 

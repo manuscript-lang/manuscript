@@ -1,126 +1,45 @@
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import stdin from "@std/io/io.ms"
+import lines, collect from "@std/io/streams.ms"
 import from_scalars from "@std/string.ms"
 
-fn is_upper(c: Int) Bool:
-    return c >= 65 and c <= 90
-
-fn is_lower(c: Int) Bool:
-    return c >= 97 and c <= 122
+fn is_upper(c: Int) Bool: return c >= 65 and c <= 90
+fn is_lower(c: Int) Bool: return c >= 97 and c <= 122
 
 // Shifts letters by keys[position % keys.length()] * sign; position counts letters only.
 fn transform(text: String, keys: List[Int], sign: Int) String:
-    var out = List[Int]()
     var i = 0
-
-    for c in text.scalar_values():
-        if is_upper(c) or is_lower(c):
-            var base = 97
-            if is_upper(c):
-                base = 65
-
-            let k = keys.get(i % keys.length())
-            let v = ((c - base + sign * k) % 26 + 26) % 26
-            out.append(v + base)
-            i = i + 1
-        else:
-            out.append(c)
-
+    let out = text.scalar_values().map(fn c:
+        if not is_upper(c) and not is_lower(c): return c
+        let base = if is_upper(c): 65 else: 97
+        i += 1
+        return ((c - base + sign * keys[(i - 1) % keys.length()]) % 26 + 26) % 26 + base
+    )
     return from_scalars(out).get()
 
 fn parse_caesar_key(key: String) Int?:
-    let codes = key.scalar_values()
-    var start = 0
-    var negative = false
-
-    if codes.length() > 0 and codes.get(0) == 45:
-        negative = true
-        start = 1
-
-    let digits = codes.length() - start
-    if digits < 1 or digits > 7:
-        return none
-
-    var k = 0
-    var i = start
-
-    while i < codes.length():
-        let c = codes.get(i)
-        if c < 48 or c > 57:
-            return none
-
-        k = k * 10 + (c - 48)
-        i = i + 1
-
-    if negative:
-        k = 0 - k
-    return k
+    let neg = key.starts_with("-")
+    let digits = if neg: key.slice(1, key.length()).get() else: key
+    if digits.length() < 1 or digits.length() > 7 or not digits.scalar_values().all(fn c: c >= 48 and c <= 57): return none
+    let k = digits.parse_int().get()
+    return if neg: -k else: k
 
 fn solve_line(line: String) String:
-    var parts = List[String]()
-    var rest = line
-
-    while parts.length() < 3:
-        let at = rest.index_of(" ")
-        if at.is_none():
-            return "error: bad command"
-
-        parts.append(rest.slice(0, at.get()).get())
-        rest = rest.slice(at.get() + 1, rest.length()).get()
-
-    if rest.is_empty():
-        return "error: bad command"
-
-    let cipher = parts.get(0)
-    let mode = parts.get(1)
-    let key = parts.get(2)
-    if cipher != "caesar" and cipher != "vigenere":
-        return "error: bad cipher"
-    if mode != "enc" and mode != "dec":
-        return "error: bad mode"
-
-    var sign = 1
-    if mode == "dec":
-        sign = -1
-
+    let parts = line.split(" ")
+    if parts.length() < 4: return "error: bad command"
+    let [cipher, mode, key] = parts.slice(0, 3).get()
+    let rest = parts.slice(3, parts.length()).get().join(" ")
+    if rest.is_empty(): return "error: bad command"
+    if cipher != "caesar" and cipher != "vigenere": return "error: bad cipher"
+    if mode != "enc" and mode != "dec": return "error: bad mode"
+    let sign = if mode == "dec": -1 else: 1
     if cipher == "caesar":
-        let k = parse_caesar_key(key)
-        if k.is_none():
-            return "error: bad key"
-
-        return transform(rest, [k.get()], sign)
-
-    if key.is_empty():
+        if let k = parse_caesar_key(key): return transform(rest, [k], sign)
         return "error: bad key"
-
-    var keys = List[Int]()
-
-    for c in key.scalar_values():
-        if is_upper(c):
-            keys.append(c - 65)
-        else if is_lower(c):
-            keys.append(c - 97)
-        else:
-            return "error: bad key"
-
+    let keys = key.scalar_values().map(fn c: if is_upper(c): c - 65 else if is_lower(c): c - 97 else: -1)
+    if keys.is_empty() or keys.any(fn k: k < 0): return "error: bad key"
     return transform(rest, keys, sign)
 
-fn run() Result[Unit, Error]:
-    var input = lines(stdin(), 1048576)
-    while true:
-        let next = try input.next()
-        if next.is_none():
-            break
-
-        let line = next.get()
-        if line.replace(old: " ", new: "").is_empty():
-            continue
-
-        try stdout().write("{solve_line(line.clone())}\n")
-
-    return stdout().flush()
-
 export fn main() Int:
-    match run():
-        ok(_): return 0
-        error(_): return 1
+    if let ls = stdin() | lines | collect(none):
+        for l in ls.filter(fn l: not l.replace(" ", "").is_empty()): print(solve_line(l))
+    return 0

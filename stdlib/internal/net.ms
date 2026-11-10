@@ -20,8 +20,7 @@ import (
     ClientResponse,
     HttpClient,
     HttpClientOptions,
-    HttpHeaders,
-    HttpMethod
+    HttpHeaders
 ) from "@std/net/http.ms"
 import Duration, Timestamp from "@std/time.ms"
 
@@ -201,19 +200,9 @@ export extern fn msstd_net_network_lookup(
     timeout: Duration?
 ) List[String]!
 
-export extern fn msstd_net_network_request(
-    net: NativeNetwork,
-    method: HttpMethod,
-    url: String,
-    headers: HttpHeaders,
-    body: String,
-    max_response_bytes: Int?,
-    timeout: Duration?
-) ClientResponse!
-
 export extern fn msstd_net_network_request_bytes(
     net: NativeNetwork,
-    method: HttpMethod,
+    method: String,
     url: String,
     headers: HttpHeaders,
     body: Bytes,

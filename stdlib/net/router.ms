@@ -12,7 +12,7 @@ import (
 ) from "@std/net/http.ms"
 import NativeWebSocket from "@std/net/websocket.ms"
 import Logger from "@std/log.ms"
-import uuid_v4 from "@std/random.ms"
+import uuid_v4 from "@std/data/uuid.ms"
 import monotonic from "@std/time.ms"
 import Closeable from "@std/core.ms"
 import (
@@ -79,8 +79,7 @@ export type RouteParams:
 impl RouteParams:
     // Returns the text captured for `name`, or none when the pattern has no such parameter.
     fn get(name: String) String?:
-        if let index = self.names.index_of(name):
-            return self.values[index].clone()
+        if let index = self.names.index_of(name): return self.values[index].clone()
 
         return none
 

@@ -1,5 +1,6 @@
 //! Natives for the client half of `@std/net/http.ms` and the `Network.request` entry points of
 //! `@std/net/net.ms`: headers, clients, response bodies and one-shot requests.
+//! ms: domain HTTP
 
 use super::tls::TlsOptionsWire;
 use super::{BodyH, ClientH, HeadersH, NetH, code, opt, report};
@@ -285,6 +286,7 @@ native! {
     // -------------------------------------------------------------------- client
 
     /// `Network.http_client(options) -> Result[HttpClient, Error]`.
+    // ms: domain=network
     fn msstd_net_network_http_client(
         net: ObjRef<NetH>,
         opts: &HttpClientOptionsWire,
@@ -305,31 +307,6 @@ native! {
     /// `HttpClient.close()`.
     fn msstd_http_client_close(c: ObjRef<ClientH>) -> () {
         c.close();
-    }
-
-    /// `HttpClient.request(method, address, headers, body, max_response, timeout)`.
-    fn msstd_http_client_request(
-        c: ObjRef<ClientH>,
-        method: &str,
-        address: &str,
-        headers: ObjRef<HeadersH>,
-        body: &str,
-        has_max: Has,
-        max: i64,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<Object<BodyH>>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let args = Args {
-            method,
-            address,
-            headers: &headers,
-            max: opt(*has_max, max),
-            timeout: opt(*has_timeout, timeout),
-        };
-        let body = Body::Bytes(Rc::new(body.as_bytes().to_vec()));
-        client_send(&c, &args, body, out, &err)
     }
 
     /// `HttpClient.request` with a `Bytes` body.
@@ -402,31 +379,8 @@ native! {
 
     // ----------------------------------------------------------------- one-shot
 
-    /// `Network.request(method, address, headers, body, max_response, timeout)`.
-    fn msstd_net_network_request(
-        net: ObjRef<NetH>,
-        method: &str,
-        address: &str,
-        headers: ObjRef<HeadersH>,
-        body: &str,
-        has_max: Has,
-        max: i64,
-        has_timeout: Has,
-        timeout: i64,
-        out: Out<ClientResponseWire>,
-        err: ErrOut,
-    ) -> Result<(), StatusCode> {
-        let args = Args {
-            method,
-            address,
-            headers: &headers,
-            max: opt(*has_max, max),
-            timeout: opt(*has_timeout, timeout),
-        };
-        one_shot(&net, &args, body.as_bytes().to_vec(), out, &err)
-    }
-
     /// `Network.request` with a `Bytes` body.
+    // ms: domain=network
     fn msstd_net_network_request_bytes(
         net: ObjRef<NetH>,
         method: &str,

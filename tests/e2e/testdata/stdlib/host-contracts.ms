@@ -1,7 +1,5 @@
 import expect_equal, expect_error, expect_false from "@std/test/test.ms"
 import OpenMode, OpenOptions, Seek, open, temporary, write_file from "@std/os/fs.ms"
-import monotonic_time, uptime from "@std/os/system.ms"
-import nanoseconds from "@std/time.ms"
 import (
     compress,
     decompress,
@@ -9,12 +7,6 @@ import (
     CompressOptions
 ) from "@std/io/archive.ms"
 import Bytes from "@std/bytes.ms"
-
-test "raw monotonic nanoseconds share the typed process uptime origin":
-    let before = try uptime()
-    let reading = nanoseconds(monotonic_time())
-    let after = try uptime()
-    try expect_false(reading.compare(before) < 0 or reading.compare(after) > 0)
 
 test "closed normalization forms reject spelling changes with their domain errors":
     let data = "text".to_bytes()

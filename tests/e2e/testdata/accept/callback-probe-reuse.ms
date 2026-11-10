@@ -32,7 +32,7 @@ test "callback inference retains captures and contextual metadata":
     try expect_equal(optional(value: 5, transform: fn item: item + offset), 12)
 
     let missing = choose(first: fn: none, second: fn() Int?: 3)
-    try expect_false(not missing.is_none())
+    try expect_false(missing.is_some())
 
     let failure = with_result(
         fn:
@@ -62,7 +62,7 @@ test "later returns repair incomplete and convertible evidence":
             return one
     )
 
-    try expect_false(not value.is_none())
+    try expect_false(value.is_some())
 
     let cause = from_callback(
         fn:

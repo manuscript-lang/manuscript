@@ -21,10 +21,10 @@ fn run(opts: Map[String, String], n: Int) Result[String, Error]:
     let names = ["go", "before", "after"]
     var programs = Map[String, String]()
     for name in names:
-        programs.add(name.clone(), absolute(opts.get(name).get("")))
+        programs.add(name.clone(), absolute(opts.get_or(name, "")))
 
     let orders = permutations(names)
-    let input = read_text(opts.get("input").get(""))
+    let input = read_text(opts.get_or("input", ""))
     var raw = Map[String, List[String]]()
     raw.add("before", List[String]())
     raw.add("after", List[String]())
@@ -33,22 +33,22 @@ fn run(opts: Map[String, String], n: Int) Result[String, Error]:
         var results = Map[String, String]()
         for version in orders[i % orders.length()]:
             results.add(
-                version.clone(), try sample(programs.get(version).get(""), [], input)
+                version.clone(), try sample(programs.get_or(version, ""), [], input)
             )
 
         for revision in ["before", "after"]:
-            var lines = raw.get(revision).get([])
-            lines = lines.concat(lines_of("go", results.get("go").get("")))
-            lines = lines.concat(lines_of("ms", results.get(revision).get("")))
+            var lines = raw.get_or(revision, [])
+            lines = lines.concat(lines_of("go", results.get_or("go", "")))
+            lines = lines.concat(lines_of("ms", results.get_or(revision, "")))
             raw.add(revision.clone(), lines)
 
-    let out = opts.get("output").get("")
+    let out = opts.get_or("output", "")
     ensure_directory(out)
 
     var report = List[String]()
 
     for revision in ["before", "after"]:
-        let lines = raw.get(revision).get([])
+        let lines = raw.get_or(revision, [])
         write_text("{out}/programs-{revision}.txt", lines.map(fn l: l + "\n").join(""))
 
         let table = try summarize(lines, n)
@@ -65,7 +65,7 @@ export fn main() Int:
     if parsed.is_error(): return fail(parsed.err().message)
 
     let opts = parsed.get(Map[String, String]())
-    let n = opts.get("repeats").get("30").parse_int().get(0)
+    let n = opts.get_or("repeats", "30").parse_int().get(0)
     if n < 1: return fail("repeats must be positive")
 
     return finish(run(opts, n))

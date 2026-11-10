@@ -1,6 +1,5 @@
 import arguments from "@std/os/env.ms"
 import monotonic from "@std/time.ms"
-import stdout from "@std/io/io.ms"
 import infinity, nan from "@std/math/math.ms"
 
 export fn main() Int:
@@ -27,8 +26,7 @@ export fn main() Int:
 
             values.append(value)
             texts.append(value.to_string())
-            if texts[i].parse_int().get() != value:
-                return 1
+            if texts[i].parse_int().get() != value: return 1
 
         if operation == "signed":
             let start = monotonic()
@@ -38,7 +36,7 @@ export fn main() Int:
                 checksum += last.byte_length()
 
             let elapsed = monotonic().difference(start).to_nanoseconds()
-            stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
+            print("ns={elapsed} checksum={checksum} last={last}")
         else:
             var value = 0
             let start = monotonic()
@@ -49,7 +47,7 @@ export fn main() Int:
 
             let elapsed = monotonic().difference(start).to_nanoseconds()
             last = value.to_string()
-            stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
+            print("ns={elapsed} checksum={checksum} last={last}")
     else if operation == "parse_float":
         var texts = List[String]()
         var values = List[Float]()
@@ -86,7 +84,7 @@ export fn main() Int:
 
         let elapsed = monotonic().difference(start).to_nanoseconds()
         last = "ok"
-        stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
+        print("ns={elapsed} checksum={checksum} last={last}")
     else if operation == "float_special":
         let texts = ["Infinity", "-Infinity", "NaN"]
         let values = [infinity, -infinity, nan]
@@ -104,7 +102,7 @@ export fn main() Int:
 
         let elapsed = monotonic().difference(start).to_nanoseconds()
         last = "ok"
-        stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
+        print("ns={elapsed} checksum={checksum} last={last}")
     else if operation == "float_error":
         var text = "!"
 
@@ -118,8 +116,7 @@ export fn main() Int:
         else if dataset == "unicode":
             text = "١"
 
-        if not text.parse_float().is_none():
-            return 1
+        if not text.parse_float().is_none(): return 1
 
         let start = monotonic()
         for unused in 0..count:
@@ -128,11 +125,10 @@ export fn main() Int:
 
         let elapsed = monotonic().difference(start).to_nanoseconds()
         last = "none"
-        stdout().write("ns={elapsed} checksum={checksum} last={last}\n").get()
+        print("ns={elapsed} checksum={checksum} last={last}")
     else:
         return 2
 
-    if checksum != expected_checksum or last != expected_last:
-        return 1
+    if checksum != expected_checksum or last != expected_last: return 1
 
     return 0

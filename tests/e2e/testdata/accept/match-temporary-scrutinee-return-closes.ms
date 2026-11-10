@@ -13,8 +13,7 @@ impl Closeable for Door:
 
 fn logged(path: String) String:
     let read = read_file(path).wait()
-    if let bytes = read:
-        return bytes.decode_utf8().get("")
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 
@@ -24,8 +23,7 @@ fn open(id: Int, log: String) Door?:
 fn early(log: String) Int:
     match open(1, log.clone()):
         d:
-            if d.id == 1:
-                return 10
+            if d.id == 1: return 10
 
             return 20
         none:

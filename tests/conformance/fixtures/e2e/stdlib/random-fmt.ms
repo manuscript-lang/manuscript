@@ -2,9 +2,9 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/stdlib/random.ms
 import expect_equal from "@std/test/test.ms"
+import uuid_v4 from "@std/data/uuid.ms"
 import (
     secure_int,
-    uuid_v4,
     float,
     shuffle,
     choice,

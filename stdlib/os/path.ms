@@ -279,7 +279,7 @@ fn normalize_core(windows: Bool, text: String) String:
                 and data.get(start + 1, none).to_int() == 46
             ):
                 if (
-                    stack.length() > 0
+                    not stack.is_empty()
                     and not span_is_parent(
                         data, stack[stack.length() - 1]
                     )
@@ -319,7 +319,7 @@ fn normalize_core(windows: Bool, text: String) String:
 
     // A relative first component shaped like a drive ("./C:") must not become a drive-relative path
     // once the leading "." is removed.
-    if root.is_empty() and stack.length() > 0:
+    if root.is_empty() and not stack.is_empty():
         let first = stack[0]
         let head = data.view(span_start(first), span_end(first)).decode_utf8().get("")
         if root_of(true, head) != "": value = "./{value}"
@@ -424,8 +424,7 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
         var tail = ""
         var absolute = false
         var components = [base.clone()]
-        for part in parts:
-            components.append(part.clone())
+        components.extend(parts)
 
         var at = components.length()
 

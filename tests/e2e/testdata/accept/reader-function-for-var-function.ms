@@ -12,7 +12,7 @@ fn apply(f: fn(var P) Unit) Int:
     return p.n
 
 fn bump(var p: P) Unit:
-    p.n = p.n + 1
+    p.n += 1
 
 test "readers stand in for var functions":
     try expect_equal(apply(fn p: let _ = p.n), 1)
@@ -20,7 +20,7 @@ test "readers stand in for var functions":
 
     let r = fn(p: P) Unit: let _ = p.n
     try expect_equal(apply(r), 1)
-    try expect_equal(apply(fn var p: p.n = p.n + 5), 6)
+    try expect_equal(apply(fn var p: p.n += 5), 6)
     try expect_equal(apply(bump), 2)
 
 type Holder:

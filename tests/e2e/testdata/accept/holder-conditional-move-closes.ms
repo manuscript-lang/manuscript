@@ -13,8 +13,7 @@ impl Closeable for Door:
 
 fn logged(path: String) String:
     let read = read_file(path).wait()
-    if let bytes = read:
-        return bytes.decode_utf8().get("")
+    if let bytes = read: return bytes.decode_utf8().get("")
 
     return ""
 
@@ -27,10 +26,9 @@ test "a list moved on one path closes on the path that keeps it":
 fn block(log: String, id: Int) Unit:
     let doors = [Door(id, log.clone())]
     var moved: List[Door]? = none
-    if doors.length() == 0:
+    if doors.is_empty():
         moved = doors
-    if moved.is_some():
-        return
+    if moved.is_some(): return
 
 test "an optional resource reassigned after a conditional move closes the new value":
     let tmp = temporary("ms-log-") | try expect_ok
@@ -43,16 +41,14 @@ fn reassign(log: String) Unit:
     if var door = held:
         door.id = 1
     held = Door(2, log.clone())
-    if held.is_none():
-        return
+    if held.is_none(): return
 
 fn walk(log: String, stop: Int) Unit:
     let doors = [Door(1, log.clone()), Door(2, log.clone()), Door(3, log.clone())]
     var kept = List[Door]()
 
     for door in doors:
-        if door.id == stop:
-            break
+        if door.id == stop: break
 
         if door.id == 1:
             kept.append(door)
@@ -82,8 +78,7 @@ test "a binding built from a call that consumes a resource closes it":
 
 fn block_wrap(log: String) Unit:
     let made = wrap(Door(1, log.clone()), log.clone())
-    if made.length() == 0:
-        return
+    if made.is_empty(): return
 
 enum Shape:
     Circle(door: Door)

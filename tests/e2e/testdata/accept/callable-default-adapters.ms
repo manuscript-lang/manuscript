@@ -82,8 +82,7 @@ test "inherited defaults remain available on immutable bound callables":
 
 test "inferred callable returns use required arguments consistently":
     let factory = fn(flag: Bool):
-        if flag:
-            return original
+        if flag: return original
 
         return replacement
 

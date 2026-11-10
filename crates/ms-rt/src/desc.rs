@@ -330,7 +330,7 @@ pub unsafe extern "C-unwind" fn msrt_slot_copy(d: *const TypeDesc, src: *const u
 }
 
 #[unsafe(no_mangle)]
-// ms: leaf
+// ms: leaf domain=slot
 pub unsafe extern "C-unwind" fn msrt_slot_eq(d: *const TypeDesc, a: *const u8, b: *const u8) -> u8 {
     // SAFETY: caller contract.
     unsafe { slot_eq(&*d, a, b) as u8 }

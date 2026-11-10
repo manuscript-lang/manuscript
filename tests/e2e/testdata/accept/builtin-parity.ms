@@ -28,10 +28,8 @@ fn ordered(accumulator: String, value: Int) String:
     return "{accumulator}{value}"
 
 fn compare(left: Int, right: Int) Int:
-    if left < right:
-        return -1
-    if left > right:
-        return 1
+    if left < right: return -1
+    if left > right: return 1
 
     return 0
 

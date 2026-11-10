@@ -187,6 +187,17 @@ runs:
       if: env.GATES == 'true'
       shell: bash
       run: MS=target/debug/ms target/debug/ms run tools/close-matrix.ms
+    - name: Benchmark programs still type-check and their tests pass
+      if: env.GATES == 'true' && inputs.os == 'linux'
+      shell: bash
+      run: |
+        set -euo pipefail
+        # The same checks as `make bench-check` and the type-check half of `make agent-bench-check`
+        # (the oracle needs agent tooling), on the debug binary built above.
+        ms="$PWD/target/debug/ms"
+        for t in $(find bench/perf -name ms.toml | sort); do (cd "$(dirname "$t")" && "$ms" check ms.toml); done
+        for t in bench/tools/*.ms bench/agent/run.ms; do "$ms" check "$t"; done
+        for t in bench/tools/*_test.ms bench/agent/core_test.ms; do "$ms" test "$t"; done
     - name: Package and run the distribution on a hello project
       if: env.GATES == 'true'
       shell: bash

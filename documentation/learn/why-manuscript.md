@@ -17,7 +17,6 @@ A model writes Manuscript well because there is little to get wrong. The concept
 
 <!-- manuscript-example: {"mode":"run","stdout":"1650 cents\n"} -->
 ```manuscript {filename="shop.ms"}
-import stdout from "@std/io/io.ms"
 
 enum Item:
     Book(pages: Int)
@@ -41,7 +40,7 @@ fn sum_by[T](items: List[T], price: fn(T) Int) Int:
 export fn main() Int:
     let cart = [Item.Book(pages: 200), Item.Coffee(grams: 250)]
     let total = sum_by(cart, fn item: item.cents())
-    stdout().write("{total} cents\n").get()
+    print("{total} cents")
     return 0
 ```
 
@@ -117,6 +116,6 @@ The [agent benchmark](https://github.com/manuscript-lang/manuscript/blob/main/be
 
 ## Where it stands
 
-The language core, the `ms` toolchain and the standard library work today. Syntax and APIs still evolve, and each release hardens them further. The [vision](https://github.com/manuscript-lang/manuscript/blob/main/VISION.md) describes where this is heading.
+The language core, the `ms` toolchain and the standard library work today. The syntax is mostly stable and will not change much; APIs and the standard library may change, and each release hardens them further. The [vision](https://github.com/manuscript-lang/manuscript/blob/main/VISION.md) describes where this is heading.
 
 **Next:** [Run your first program](getting-started.md)

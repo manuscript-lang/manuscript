@@ -291,6 +291,40 @@ fn wait_for(log: &Log, entry: &str) -> bool {
 }
 
 #[test]
+fn legacy_cookie_expiry_is_honored_on_the_next_request() {
+    let (address, _, _) = serve(|req, _| {
+        let cookie = match req.path() {
+            "/set" => Some("a=live; Path=/; Expires=Fri Jan  1 00:00:00 2100"),
+            "/delete-rfc850" => Some("a=gone; Path=/; Expires=Thursday, 01-Jan-70 00:00:01 GMT"),
+            "/delete-asctime" => Some("a=gone; Path=/; Expires=Thu Jan  1 00:00:01 1970"),
+            _ => None,
+        };
+        Reply::Respond {
+            status: 200,
+            headers: cookie
+                .into_iter()
+                .map(|c| ("set-cookie".into(), c.into()))
+                .collect(),
+            body: req.get("cookie").unwrap_or("").as_bytes().to_vec(),
+        }
+    });
+    let (_net, c) = client(ClientOptions {
+        cookies: true,
+        ..ClientOptions::default()
+    });
+    for path in ["/delete-rfc850", "/delete-asctime"] {
+        text(&c.send(request("GET", &address, "/set")).unwrap());
+        assert_eq!(
+            text(&c.send(request("GET", &address, path)).unwrap()),
+            "a=live"
+        );
+        let response = c.send(request("GET", &address, "/echo")).unwrap();
+        assert_eq!(response.protocol, "HTTP/2.0");
+        assert_eq!(text(&response), "");
+    }
+}
+
+#[test]
 fn custom_method_case_does_not_discard_response_bodies() {
     let (address, _, _) = serve(|req, _| ok(req.method().as_bytes().to_vec()));
     let (_net, c) = client(ClientOptions::default());
@@ -474,6 +508,54 @@ fn decompresses_gzip() {
         text(&plain.send(request("GET", &address, "/")).unwrap()),
         "plain"
     );
+}
+
+#[test]
+fn stacked_content_encodings_keep_the_body_and_metadata() {
+    let gzip = |bytes: &[u8]| {
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(bytes).unwrap();
+        encoder.finish().unwrap()
+    };
+    let encoded = gzip(&gzip(b"payload"));
+    let served = encoded.clone();
+    let (address, _, _) = serve(move |req, _| {
+        let mut headers = vec![("content-length".into(), served.len().to_string())];
+        if req.path() == "/combined" {
+            headers.push(("content-encoding".into(), "gzip, gzip".into()));
+        } else {
+            headers.push(("content-encoding".into(), "gzip".into()));
+            headers.push(("content-encoding".into(), "gzip".into()));
+        }
+        Reply::Respond {
+            status: 200,
+            headers,
+            body: served.clone(),
+        }
+    });
+    let (_net, client) = client(ClientOptions {
+        decompress: true,
+        ..ClientOptions::default()
+    });
+    for path in ["/combined", "/split"] {
+        let body = client.send(request("GET", &address, path)).unwrap();
+        assert_eq!(body.read_all().unwrap(), encoded, "{path}");
+        let headers = body.headers.borrow();
+        assert_eq!(
+            headers.text("Content-Length").unwrap(),
+            Some(vec![encoded.len().to_string()]),
+            "{path}"
+        );
+        let expected = if path == "/combined" {
+            vec![b"gzip, gzip".to_vec()]
+        } else {
+            vec![b"gzip".to_vec(), b"gzip".to_vec()]
+        };
+        assert_eq!(
+            headers.values("Content-Encoding"),
+            Some(expected.as_slice())
+        );
+    }
 }
 
 #[test]

@@ -7,6 +7,7 @@ import (
     replace,
     resource_usage,
     set_groups,
+    IdentityKind,
     set_identity
 ) from "@std/os/process.ms"
 import (memory_usage) from "@std/os/system.ms"
@@ -58,7 +59,7 @@ test "process usage records report this process":
 
 test "set_identity and set_groups validate input and apply or refuse":
     try expect_process_error(
-        set_identity(kind: "nope", id: 0),
+        set_identity(kind: IdentityKind.Uid, id: -1),
         Error("process: invalid input", kind: "EINVAL")
     )
     try expect_process_error(
@@ -70,7 +71,7 @@ test "set_identity and set_groups validate input and apply or refuse":
     if info.uid < 0:
         // Windows has no ids.
         try expect_process_error(
-            set_identity(kind: "uid", id: 0),
+            set_identity(kind: IdentityKind.Uid, id: 0),
             Error("process: operation not supported", kind: "ENOTSUP")
         )
         try expect_process_error(
@@ -79,10 +80,10 @@ test "set_identity and set_groups validate input and apply or refuse":
         )
     else:
         // Setting the identity it already has changes nothing and needs no privilege.
-        try set_identity(kind: "uid", id: info.uid)
-        try set_identity(kind: "gid", id: info.gid)
-        try set_identity(kind: "euid", id: info.effective_uid)
-        try set_identity(kind: "egid", id: info.effective_gid)
+        try set_identity(kind: IdentityKind.Uid, id: info.uid)
+        try set_identity(kind: IdentityKind.Gid, id: info.gid)
+        try set_identity(kind: IdentityKind.Euid, id: info.effective_uid)
+        try set_identity(kind: IdentityKind.Egid, id: info.effective_gid)
 
         let groups = try groups()
 

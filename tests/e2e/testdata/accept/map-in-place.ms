@@ -35,8 +35,7 @@ test "a for loop walks a map's entries, values and keys in insertion order":
         seen.append("{v}")
 
     for k in m.keys():
-        if k == "c":
-            break
+        if k == "c": break
 
         seen.append(k.clone())
 
@@ -67,8 +66,7 @@ test "walks borrow record values and sets without copying them":
         total += x
 
     for x in s.values():
-        if x == 4:
-            continue
+        if x == 4: continue
 
         total += x
 

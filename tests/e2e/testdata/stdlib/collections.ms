@@ -29,7 +29,7 @@ test "list search callbacks empty identities and folding":
 
     let empty: List[Int] = []
     try expect_false(empty.any(positive) or not empty.all(positive))
-    try expect_false(not empty.first().is_none() or not empty.last().is_none())
+    try expect_false(empty.first().is_some() or empty.last().is_some())
 
     let groups = ([1, 2, 3]).group_by(parity)
     try expect_false(groups.get(1) != [1, 3] or groups.get(0) != [2])
@@ -82,7 +82,7 @@ test "maps preserve insertion order and overwrite duplicate keys":
     var copy = map.clone()
     copy.remove("a")
     try expect_false(copy.keys() != ["b"] or map.keys() != ["a", "b"])
-    try expect_false(not map.get("missing").is_none())
+    try expect_false(map.get("missing").is_some())
 
 test "set algebra removes duplicates and preserves values":
     let left = ([1, 2, 2]).to_set()
@@ -211,3 +211,35 @@ test "List join renders any element type":
         [JoinPoint(1), JoinPoint(2)].join(";"), "JoinPoint(x: 1);JoinPoint(x: 2)"
     )
     try expect_equal(List[Int]().join(","), "")
+
+fn repeat_copy[T: Clonable](value: T) List[T]!:
+    return filled(value, 2)
+
+fn flatten_copy[T: Clonable](values: List[List[T]]) List[T]:
+    return flatten(values)
+
+test "filled copies nested values independently through generic and function calls":
+    let source = [1]
+    var copies = try repeat_copy(source)
+    copies[0].append(2)
+    try expect_equal(copies, [[1, 2], [1]])
+    try expect_equal(source, [1])
+
+    let repeat = filled[List[Int]]
+    var via_function = try repeat(source, 2, none)
+    via_function[1].append(3)
+    try expect_equal(via_function, [[1], [1, 3]])
+    try expect_equal(source, [1])
+
+test "flatten copies nested elements through generic and function calls":
+    let source = [[[1]], [[2]]]
+    var copies = flatten_copy(source)
+    copies[0].append(3)
+    try expect_equal(copies, [[1, 3], [2]])
+    try expect_equal(source, [[[1]], [[2]]])
+
+    let concatenate = flatten[List[Int]]
+    var via_function = concatenate(source)
+    via_function[1].append(4)
+    try expect_equal(via_function, [[1], [2, 4]])
+    try expect_equal(source, [[[1]], [[2]]])

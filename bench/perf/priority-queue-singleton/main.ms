@@ -1,6 +1,5 @@
 import Deque from "@std/collections/deque.ms"
 import Queue, PriorityQueue from "@std/collections/queue.ms"
-import stdout from "@std/io/io.ms"
 import arguments from "@std/os/env.ms"
 import monotonic from "@std/time.ms"
 import keep from "@std/test/bench.ms"
@@ -54,5 +53,5 @@ export fn main() Int:
         keep(checksum).get()
 
     let elapsed = monotonic().difference(started).to_nanoseconds()
-    stdout().write("{elapsed} {checksum}\n").get()
+    print("{elapsed} {checksum}")
     return 0

@@ -1,0 +1,31 @@
+{
+  "baseline_commit": "cace8b98094541f60916e80efef5f66f81ab592c",
+  "host": "Linux 6.18.57 x86_64; Intel Xeon Platinum 8573C; 5 vCPUs; shared cloud VM",
+  "toolchain": "Rust 1.99.1",
+  "compiler_build": "Release",
+  "program_backend": "Cranelift Release",
+  "cpu_affinity": 0,
+  "process_pairs": 5,
+  "process_order": [
+    "before-after",
+    "after-before",
+    "before-after",
+    "after-before",
+    "before-after"
+  ],
+  "samples_per_case_per_process": 6,
+  "excluded_warmup_samples": [
+    0
+  ],
+  "rows_per_process": 234,
+  "cases": 39,
+  "native_archive_id": "7a3f072657e7e403-47308782",
+  "hashes": {
+    "before_compiler": "36830cb3a69c10a747e12616b041b6494143471803e4b007ac6273d3db4e7223",
+    "after_compiler": "e4f658467eb3c20fd33a07518f4bdba996a48194ecb1111b2b83021967206af3",
+    "before_program": "d8d5f60579530f8d22071c0421bcb79c7a1cfb6830502d27d69b69436679b7a7",
+    "after_program": "e9fba039d1ba50c03fc0ad5a20e42998a62a841497c1da66c0c7908c484d494e",
+    "implementation_patch": "4cde0455a81c206a2328a89d75a651400296543d12f21a8fc8d2af67ed147760",
+    "producer": "5c4d78a64f41d11d1e35c2c6d9e31925ba5fb2f5687cab6cd5fc189c6f242afc"
+  }
+}

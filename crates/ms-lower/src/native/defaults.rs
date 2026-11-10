@@ -22,7 +22,8 @@ impl<'a> FnLower<'a> {
             let Some(d) = f.params.get(i).and_then(|q| q.default.as_ref()) else {
                 continue;
             };
-            if matches!(&d.kind, ExprKind::Name(n) if self.syms.str(n) == "none") {
+            let decl_module = self.func_decl_module(module, f)?;
+            if decl_module.default_form(self.syms, d) == DefaultForm::None {
                 continue;
             }
             // Bundled declarations carry no checked facts: literal defaults are built directly,
@@ -32,7 +33,7 @@ impl<'a> FnLower<'a> {
                     v: self.b.bconst(*b),
                     own: false,
                 }),
-                ExprKind::Number(t) if self.syms.str(p.ty.id) == "Int" => {
+                ExprKind::Number(t) if p.ty.is(ct::Builtin::Int) => {
                     match ms_check::api::number::canonical(self.syms.str(t)).parse::<i64>() {
                         Ok(n) => Ok(Val {
                             v: self.b.iconst(n),
@@ -54,7 +55,7 @@ impl<'a> FnLower<'a> {
                 ExprKind::Call { .. } | ExprKind::Member { .. }
                     if self.cx.module(module).is_err() =>
                 {
-                    match self.literal_default(d, &p.ty)? {
+                    match self.literal_default(&decl_module, d, &p.ty)? {
                         Some(v) => Ok(v),
                         None => continue,
                     }
@@ -112,7 +113,7 @@ impl<'a> FnLower<'a> {
         for (n, a) in view.arguments.iter().enumerate() {
             let at = self.b.current();
             // A native takes a reading function for a `var` function parameter as written.
-            let reader = matches!(&view.target, Resolution::Method(m) if !self.syms.str(m.native).is_empty())
+            let reader = matches!(&view.target, Resolution::Method(m) if m.native != ct::Native::Source)
                 && self.hir.info(a.expr).function_source.is_some();
             let val = if reader {
                 self.expr_unfit(a.expr)?

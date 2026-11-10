@@ -5,7 +5,6 @@
 
 use crate::Error;
 use crate::func::{FnLower, Val};
-use ms_check::api::hir::CallView;
 use ms_check::api::types as ct;
 use ms_check::api::types::Builtin;
 use ms_mir::ir::{Cc, Imm, Op, Value};
@@ -85,47 +84,5 @@ impl FnLower<'_> {
             self.drop_value(back);
         }
         Ok(r)
-    }
-
-    /// `min(left, right)` or `max(left, right)`.
-    pub(crate) fn math_extreme(
-        &mut self,
-        view: &CallView<'_>,
-        greater: bool,
-    ) -> Result<Val, Error> {
-        let args = self.native_args(view)?;
-        if self.dead {
-            return Ok(self.dummy(MTy::UNIT));
-        }
-        let find = |n: &str| {
-            args.iter()
-                .find(|a| self.syms.str(a.name) == n)
-                .map(|a| a.val)
-        };
-        let (Some(left), Some(right)) = (find("left"), find("right")) else {
-            return Err(Error::new("min and max take two operands"));
-        };
-        let t = self.ty_of(left.v);
-        let concrete = view
-            .arguments
-            .iter()
-            .find(|a| self.syms.str(a.slot.name) == "left")
-            .map(|a| self.ety(a.expr))
-            .ok_or_else(|| Error::new("min and max take two operands"))?;
-        let (l, r) = (self.borrow(left), self.borrow(right));
-        let c = self.order(t, &concrete, l, r)?;
-        let zero = self.b.iconst(0);
-        // The left operand wins ties.
-        let keep_left = self.b.icmp(if greater { Cc::Ge } else { Cc::Le }, c, zero);
-        if !self.needs_drop(t) {
-            let v = self.b.select(keep_left, l, r);
-            return Ok(Val { v, own: false });
-        }
-        self.two_ways(
-            keep_left,
-            t,
-            &mut |s| Ok(Some(s.owned(Val { v: l, own: false }))),
-            &mut |s| Ok(Some(s.owned(Val { v: r, own: false }))),
-        )
     }
 }

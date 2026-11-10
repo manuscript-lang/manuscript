@@ -3,8 +3,7 @@ import Promise, owned_task, promise, wait_all from "@std/concurrency/promise.ms"
 import microseconds, sleep from "@std/time.ms"
 
 fn depth(n: Int) Int:
-    if n == 0:
-        return 0
+    if n == 0: return 0
 
     return depth(n - 1) + 1
 
@@ -42,8 +41,7 @@ test "a fault inside a grown segment unwinds to its guard":
 
 fn catch_in_task() Int:
     let message = expect_fault(fn: faulting_depth(10000))
-    if message.is_error():
-        return -1
+    if message.is_error(): return -1
 
     return depth(10000)
 

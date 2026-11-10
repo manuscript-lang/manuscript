@@ -1,4 +1,4 @@
-import Closeable, Data from "@std/core.ms"
+import Closeable, Data, Writable from "@std/core.ms"
 import Bytes, join from "@std/bytes.ms"
 import Duration from "@std/time.ms"
 import (
@@ -21,7 +21,6 @@ import (
     msstd_http_headers_remove,
     msstd_http_headers_clone,
     msstd_http_headers_new,
-    msstd_http_client_request,
     msstd_http_client_request_bytes,
     msstd_http_body_close,
     msstd_http_body_metadata,
@@ -160,31 +159,17 @@ impl Closeable for HttpClient:
         return ok(unit)
 
 impl HttpClient:
-    // Sends the UTF-8 text body and returns the response with its body as a stream.
+    // Sends the body (text or `Bytes`) and returns the response with its body as a stream.
     fn request(
         method: HttpMethod,
         url: String,
         headers: HttpHeaders = headers(),
-        body: String = "",
-        max_response_bytes: Int? = none,
-        timeout: Duration? = none
-    ) StreamingResponse!:
-        let raw = try msstd_http_client_request(
-            self.native, method, url, headers, body, max_response_bytes, timeout
-        )
-        return ok(response(raw))
-
-    // Sends immutable Bytes and returns the response with its body as a stream.
-    fn request_bytes(
-        method: HttpMethod,
-        url: String,
-        headers: HttpHeaders = headers(),
-        body: Bytes = "".to_bytes(),
-        max_response_bytes: Int? = none,
-        timeout: Duration? = none
+        body: Writable = "",
+        max_response_bytes: Int?,
+        timeout: Duration?
     ) StreamingResponse!:
         let raw = try self.request_raw(
-            method, url, headers, body, max_response_bytes, timeout
+            method, url, headers, body.as_bytes(), max_response_bytes, timeout
         )
         return ok(response(raw))
 
@@ -198,7 +183,7 @@ impl HttpClient:
         timeout: Duration? = none
     ) RawResponse!:
         return msstd_http_client_request_bytes(
-            self.native, method, url, headers, body, max_response_bytes, timeout
+            self.native, method.text(), url, headers, body, max_response_bytes, timeout
         )
 
     // Reads `body` to its end, then sends it as the request body. The upload is buffered until the request can
@@ -212,9 +197,7 @@ impl HttpClient:
         timeout: Duration? = none
     ) StreamingResponse!:
         let data = try read_all(body, none)
-        return self.request_bytes(
-            method, url, headers, data, max_response_bytes, timeout
-        )
+        return self.request(method, url, headers, data, max_response_bytes, timeout)
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 export type HttpClientOptions:
@@ -332,8 +315,7 @@ impl HttpServer:
         set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
 
         let ended = self.accepting.wait()
-        if self.stopped:
-            return ok(unit)
+        if self.stopped: return ok(unit)
 
         return ended
 
@@ -415,8 +397,7 @@ fn response(raw: RawResponse) StreamingResponse:
 // A body over `max_body_bytes` of the server's options returns EOVERFLOW; `limit` also bounds it when given.
 export fn read_body(var exchange: HttpExchange, limit: Int? = none) Bytes!:
     let first = try exchange.read()
-    if let head = first:
-        return read_rest(var exchange, head, limit)
+    if let head = first: return read_rest(var exchange, head, limit)
 
     return ok("".to_bytes())
 
@@ -457,8 +438,7 @@ fn read_more(var exchange: HttpExchange, chunks: List[Bytes], total: Int, limit:
             return ok(join(parts))
 
 fn over_limit(total: Int, limit: Int?) Bool:
-    if let max = limit:
-        return total > max
+    if let max = limit: return total > max
 
     return false
 

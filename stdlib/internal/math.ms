@@ -138,8 +138,6 @@ export extern fn msrt_bits_bit_or(left: Int, right: Int) Int
 
 export extern fn msrt_bits_bit_xor(left: Int, right: Int) Int
 
-export extern fn msrt_bits_bit_not(value: Int) Int
-
 export extern fn msrt_bits_shift_left(value: Int, count: Int) Int
 
 export extern fn msrt_bits_shift_right(value: Int, count: Int) Int

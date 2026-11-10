@@ -198,8 +198,7 @@ fn space(var reader: Reader, multiline: Bool) Unit:
     reader.pos = pos
 
 fn within(value: Int, limit: Int?) Bool:
-    if let maximum = limit:
-        return value <= maximum
+    if let maximum = limit: return value <= maximum
 
     return true
 
@@ -263,8 +262,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
 
     while true:
         let c = advance(var reader)
-        if c < 0:
-            return error(invalid(reader, "unterminated string"))
+        if c < 0: return error(invalid(reader, "unterminated string"))
 
         if c == quote:
             if not multiline:
@@ -405,11 +403,15 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 
     match node:
         TableNode(value):
-            let state = flags(reader, value)
+            var state = flags(reader, value).clone()
             if state.sealed: return error(invalid(reader, "inline table is closed"))
             if dotted and state.explicit: return error(
                 invalid(reader, "dotted key extends an explicit table")
             )
+
+            if dotted and not state.dotted:
+                state.dotted = true
+                store_flags(var reader, value, state)
 
             return ok(value)
         TableArray(slot):
@@ -545,8 +547,7 @@ fn decimal_part(text: String) Bool:
 
 fn date_number(text: String, minimum: Int, maximum: Int) Bool:
     if not digits(text, "0123456789") or text.contains("_"): return false
-    if let value = parse_int(text, 10):
-        return value >= minimum and value <= maximum
+    if let value = parse_int(text, 10): return value >= minimum and value <= maximum
 
     return false
 

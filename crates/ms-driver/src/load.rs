@@ -90,6 +90,7 @@ impl Failure {
 
 fn resolution(file: &Arc<str>, pos: Pos, message: String) -> Diagnostic {
     Diagnostic {
+        cause: Default::default(),
         opener_line: 0,
         file: file.clone(),
         pos,
@@ -180,6 +181,7 @@ fn load_entries(
         }
     };
     let library = graph.library;
+    let seen_inputs = graph.inputs.iter().cloned().collect();
     let mut loader = Loader {
         config: &config,
         overlay: &overlay,
@@ -189,6 +191,7 @@ fn load_entries(
         loaded: HashMap::new(),
         failed: HashMap::new(),
         resolved: HashMap::new(),
+        seen_inputs,
     };
     let file: Arc<str> = Arc::from(filename);
     if !config.entry.is_empty() {
@@ -460,6 +463,8 @@ struct Loader<'a> {
     failed: HashMap<String, Failure>,
     // Project and overlay are fixed for this load; relative paths are directory-local.
     resolved: HashMap<(String, Box<str>), String>,
+    // Keep first-seen input order without scanning every earlier path per module or asset.
+    seen_inputs: HashSet<String>,
 }
 
 impl Loader<'_> {
@@ -588,7 +593,9 @@ impl Loader<'_> {
     }
 
     fn add_input(&mut self, path: String) {
-        push_input(&mut self.graph.inputs, path);
+        if self.seen_inputs.insert(path.clone()) {
+            self.graph.inputs.push(path);
+        }
     }
 
     /// Resolves a local import, noting the symbolic links its path passes through.
@@ -668,6 +675,7 @@ mod tests {
             loaded: HashMap::new(),
             failed: HashMap::new(),
             resolved: HashMap::new(),
+            seen_inputs: HashSet::new(),
         };
         test(&mut loader, &root);
         std::fs::remove_dir_all(dir).unwrap();

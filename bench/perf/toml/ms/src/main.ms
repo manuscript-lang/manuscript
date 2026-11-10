@@ -10,8 +10,7 @@ fn document(count: Int) String:
     return sb.build()
 
 fn parse_ok(text: String) Int:
-    if parse(text).is_ok():
-        return 1
+    if parse(text).is_ok(): return 1
 
     return 0
 

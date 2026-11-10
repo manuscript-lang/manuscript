@@ -1025,7 +1025,7 @@ impl FnLower<'_> {
 
     /// The close operation `cleanup` names for the concrete receiver `ty`.
     fn own_closer(&mut self, cleanup: &ct::MethodRef, ty: &ct::Ty) -> Result<CloseKind, Error> {
-        let im = if self.syms.str(cleanup.native) == "contract" {
+        let im = if cleanup.native == ct::Native::Contract {
             self.contract_impl(cleanup, ty).ok_or_else(|| {
                 Error::new(format!(
                     "{ty_t} has no close operation",
@@ -1035,10 +1035,10 @@ impl FnLower<'_> {
         } else {
             cleanup.clone()
         };
-        if !self.syms.str(im.native).is_empty() {
+        if im.native != ct::Native::Source {
             return Err(Error::new(format!(
                 "unsupported native close {}",
-                self.syms.str(im.native)
+                im.native.text(self.syms)
             )));
         }
         let decl = im

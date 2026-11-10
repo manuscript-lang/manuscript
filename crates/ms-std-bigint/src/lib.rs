@@ -3,6 +3,7 @@
 //! A `BigInt` is an immutable [`Big`] handle with one owner; operations return fresh handles.
 //! Fallible calls return a `STATUS_*` code and write `out` only on success; `to_int` returns
 //! a presence flag (0 where the value does not fit an `Int`).
+//! ms: domain big integer
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.

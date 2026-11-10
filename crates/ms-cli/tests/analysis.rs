@@ -89,6 +89,67 @@ fn ms(dir: &Path, args: &[&str]) -> Output {
 }
 
 #[test]
+fn collection_diagnostic_fixes_identify_the_original_source() {
+    for crlf in [false, true] {
+        for targets in [
+            vec!["a/bad.ms", "b/bad.ms"],
+            vec!["."],
+            vec!["a/entry.ms", "b/entry.ms"],
+        ] {
+            let dir = scratch("collection-fix-paths");
+            let original = include_str!("check_fix/float_fix_unicode.ms");
+            let source = if crlf {
+                original.replace('\n', "\r\n")
+            } else {
+                original.to_string()
+            };
+            for name in ["a", "b"] {
+                std::fs::create_dir(dir.join(name)).unwrap();
+                std::fs::write(dir.join(name).join("bad.ms"), &source).unwrap();
+                std::fs::write(
+                    dir.join(name).join("entry.ms"),
+                    include_str!("check_fix/import_main.ms"),
+                )
+                .unwrap();
+            }
+            // A same-named file at the invocation root must never receive these edits.
+            std::fs::write(dir.join("bad.ms"), "").unwrap();
+            let mut args = vec!["check"];
+            args.extend(targets.iter().copied());
+            args.push("--json");
+            let output = ms(&dir, &args);
+            assert_eq!(output.status.code(), Some(1), "{output:?}");
+            let document = ms_json::parse(std::str::from_utf8(&output.stdout).unwrap()).unwrap();
+            let diagnostics = document.get("diagnostics").unwrap().as_array().unwrap();
+            assert_eq!(diagnostics.len(), 2, "{document:?}");
+            for issue in diagnostics {
+                let position = issue.get("position").unwrap();
+                let file = position.get("file").unwrap().as_str().unwrap();
+                assert!(["a/bad.ms", "b/bad.ms"].contains(&file), "{issue:?}");
+                let fix = issue.get("fix").unwrap();
+                let start = fix.get("position").unwrap();
+                let end = fix.get("end").unwrap();
+                assert_eq!(start, position, "{issue:?}");
+                assert_eq!(end.get("file").unwrap().as_str(), Some(file), "{issue:?}");
+                let begin = start.get("offset").unwrap().as_i64().unwrap() as usize;
+                let stop = end.get("offset").unwrap().as_i64().unwrap() as usize;
+                assert_eq!(&source[begin..stop], "n");
+                let mut fixed = std::fs::read_to_string(dir.join(file)).unwrap();
+                fixed.replace_range(
+                    begin..stop,
+                    fix.get("replacement").unwrap().as_str().unwrap(),
+                );
+                std::fs::write(dir.join(file), fixed).unwrap();
+            }
+            assert_eq!(std::fs::read_to_string(dir.join("bad.ms")).unwrap(), "");
+            let rechecked = ms(&dir, &args);
+            assert!(rechecked.status.success(), "{rechecked:?}");
+            std::fs::remove_dir_all(dir).unwrap();
+        }
+    }
+}
+
+#[test]
 fn mixed_inputs_keep_successes_and_report_each_failure_once() {
     let dir = scratch("mixed");
     std::fs::write(dir.join("good.ms"), "fn value() Int:\n    return 1\n").unwrap();

@@ -79,7 +79,14 @@ jobs:
           fi
           "$ms" --version
           cd "extracted distribution/$name/examples/hello"
-          "../../$(basename "$ms")" run ms.toml
+          bin="../../$(basename "$ms")"
+          test "$("$bin" run ms.toml -- first second | tr -d '\r')" = "Arguments: 2"
+          "$bin" test test.ms
+          # A release build links with the pinned lld, so it proves the embedded runtime is usable.
+          exe="$RUNNER_TEMP/hello"
+          if [ '${{ matrix.os }}' = windows ]; then exe="$exe.exe"; fi
+          "$bin" build ms.toml -o "$exe"
+          test "$("$exe" first second | tr -d '\r')" = "Arguments: 2"
       - uses: actions/upload-artifact@v7
         with:
           name: manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}

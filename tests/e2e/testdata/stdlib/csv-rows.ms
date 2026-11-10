@@ -2,6 +2,7 @@ import expect_equal, fail from "@std/test/test.ms"
 import csv_rows, parse, CsvOptions from "@std/data/csv.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
 import ReadStream, Source from "@std/io/io.ms"
+import from_list, collect from "@std/io/streams.ms"
 
 // Hands out the chunks in order, then ends.
 type Chunks:
@@ -62,11 +63,62 @@ test "rows match parse under every chunk size":
 test "a final record without a line end is read at the end":
     try expect_equal(try read_rows("a,b\nc,d", 3), [["a", "b"], ["c", "d"]])
 
+test "large fragmented records preserve rows and exact record budgets":
+    let field = try "é\"日\n".repeat(1024)
+    let encoded = "\"{field.replace("\"", "\"\"")}\",tail\r"
+    let text = "first,row\n{encoded}\nlast,row"
+    let expected = [["first", "row"], [field, "tail"], ["last", "row"]]
+    let limit = encoded.byte_length()
+
+    for size in [1, 2, 7, 64, 4096, text.byte_length()]:
+        try expect_equal(try read_rows(text, size, max_record_bytes: limit), expected)
+        try expect_equal(
+            read_rows(text, size, max_record_bytes: limit - 1).err().kind, "EOVERFLOW"
+        )
+
+    var chunks: List[Bytes] = ["".to_bytes()]
+
+    for byte in "a,\"é\"\r\nb,c\nlast,row".to_bytes().values():
+        var chunk = BytesBuilder()
+        chunk.append(byte)
+        chunks.append(chunk.build())
+        chunks.append("".to_bytes())
+
+    from_list(chunks) | csv_rows | try collect(none)
+        | try expect_equal([["a", "é"], ["b", "c"], ["last", "row"]])
+
 test "options apply":
     let semicolons = CsvOptions(delimiter: ";")
     try expect_equal(
         try read_rows("a;b\n\"c;d\";e\n", 2, semicolons), [["a", "b"], ["c;d", "e"]]
     )
+
+test "empty CSV streams reject invalid options":
+    let invalid: List[List[String]]! = error(
+        Error("CSV: invalid input", kind: "EINVAL")
+    )
+
+    for options in [
+        CsvOptions(delimiter: ""), CsvOptions(delimiter: "::"),
+        CsvOptions(delimiter: "\""), CsvOptions(delimiter: "\n"),
+        CsvOptions(delimiter: "é"), CsvOptions(line_ending: "\r")
+    ]:
+        for text in ["", "a", "a\n"]:
+            try expect_equal(read_rows(text, 1, options.clone()), invalid)
+
+        let empty_chunks = from_list(["".to_bytes(), "".to_bytes()])
+        try expect_equal(
+            empty_chunks | csv_rows(options.clone()) | collect(none), invalid
+        )
+
+    let no_rows: List[List[String]] = []
+    try expect_equal(try read_rows("", 1), no_rows)
+    try expect_equal(
+        try read_rows("", 1, CsvOptions(delimiter: ";", line_ending: "\r\n")), no_rows
+    )
+
+    let empty_chunks = from_list(["".to_bytes(), "".to_bytes()])
+    empty_chunks | csv_rows | try collect(none) | try expect_equal(no_rows)
 
 test "an unterminated quote is InvalidData at the end":
     let outcome = read_rows("a,\"open\nmore", 4)
@@ -83,6 +135,28 @@ test "the record budget reports LimitExceeded":
         try read_rows("ab,cd\nef,gh\n", 3, CsvOptions(), 8),
         [["ab", "cd"], ["ef", "gh"]]
     )
+
+test "continued reads after a record limit error keep only the consumed tail":
+    for chunks in [
+        ["ab", "cd\n", "x\n"], ["ab", "cd\nx", "\n"], ["ab", "cd\n\"", "x\"\n"]
+    ]:
+        var data: List[Bytes] = []
+        for chunk in chunks:
+            data.append(chunk.to_bytes())
+
+        var rows = csv_rows(from_list(data), max_record_bytes: 3)
+        try expect_equal(rows.next().err().kind, "EOVERFLOW")
+        try expect_equal((try rows.next()).get(), ["x"])
+        try expect_equal((try rows.next()).is_none(), true)
+
+    let input = from_list(
+        ["ab".to_bytes(), "cd".to_bytes(), "\n".to_bytes(), "x\n".to_bytes()]
+    )
+    var rows = csv_rows(input, max_record_bytes: 3)
+    try expect_equal(rows.next().err().kind, "EOVERFLOW")
+    try expect_equal(rows.next().err().kind, "EOVERFLOW")
+    try expect_equal((try rows.next()).get(), ["x"])
+    try expect_equal((try rows.next()).is_none(), true)
 
 test "the record budget does not depend on where chunks end":
     for size in 1..12:

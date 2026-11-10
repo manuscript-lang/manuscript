@@ -27,6 +27,7 @@
 //!
 //! The pipe starts with one writer, the `Pipe` value itself; `msrt_pipe_close_writer` releases
 //! it, like any other writer.
+//! ms: domain pipe
 use crate::desc::slot_drop;
 use crate::{alloc, promise};
 use core::cell::UnsafeCell;
@@ -599,6 +600,7 @@ pub extern "C-unwind" fn msrt_pipe_add_writer(pipe: i64) {
 ///
 /// # Safety
 /// `value` holds an owned value of `d`, which the callee takes.
+// ms: takes:value
 #[unsafe(no_mangle)]
 pub unsafe extern "C-unwind" fn msrt_pipe_write(
     pipe: i64,

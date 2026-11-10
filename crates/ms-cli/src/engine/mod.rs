@@ -275,11 +275,21 @@ impl Failure {
 
 /// The JSON shape of one source diagnostic.
 pub(crate) fn command_diagnostic(issue: &Diagnostic) -> CommandDiagnostic {
-    let position = |pos: Pos| Position {
-        file: issue.file.to_string(),
-        line: pos.line as usize,
-        column: pos.column as usize,
-        offset: pos.offset as usize,
+    placed_command_diagnostic(issue, &|position| position)
+}
+
+/// Place every source coordinate, including machine-applicable edit boundaries.
+pub(crate) fn placed_command_diagnostic(
+    issue: &Diagnostic,
+    place: &dyn Fn(Position) -> Position,
+) -> CommandDiagnostic {
+    let position = |pos: Pos| {
+        place(Position {
+            file: issue.file.to_string(),
+            line: pos.line as usize,
+            column: pos.column as usize,
+            offset: pos.offset as usize,
+        })
     };
     CommandDiagnostic {
         severity: String::new(),
@@ -413,6 +423,7 @@ pub(crate) fn compile_target<L: Lower>(
             let file = if entry.is_empty() { filename } else { &entry };
             Err(failure(
                 vec![Diagnostic {
+                    cause: Default::default(),
                     opener_line: 0,
                     file: file.into(),
                     pos: Pos::new(0, 1, 1),
@@ -435,6 +446,7 @@ fn library_failure(graph: &Graph) -> Failure {
     Failure {
         source_root: graph.source_root.clone(),
         diagnostics: vec![Diagnostic {
+            cause: Default::default(),
             opener_line: 0,
             file: file.as_str().into(),
             pos,

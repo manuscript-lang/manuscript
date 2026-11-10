@@ -96,3 +96,31 @@ test "sub-millisecond sleeps are not rounded up to a millisecond":
             fastest = elapsed
 
     try expect_true(fastest.compare(milliseconds(400)) < 0)
+
+test "timestamp parsing preserves maximum-width precision and offsets":
+    for text in [
+        "2024-02-29T12:30:45.123456789Z", "2024-02-29T12:30:45.123456789+23:59",
+        "2024-02-29T12:30:45.123456789-23:59"
+    ]:
+        let parsed = try parse_timestamp(text)
+        try expect_equal(parsed.nanoseconds(), 123456789)
+        try expect_equal((try parse_timestamp(parsed.to_string())), parsed)
+
+    let out_of_range: Timestamp! = error(
+        Error("time: value out of range", kind: "ERANGE")
+    )
+    try expect_equal(
+        parse_timestamp("0001-01-01T00:00:00.123456789+00:01"), out_of_range
+    )
+    try expect_equal(
+        parse_timestamp("9999-12-31T23:59:59.123456789-00:01"), out_of_range
+    )
+
+test "timestamp parsing rejects oversized fractions and suffixes":
+    let invalid: Timestamp! = error(Error("time: invalid data", kind: "EBADMSG"))
+    for text in [
+        "2024-02-29T12:30:45.1234567890Z", "2024-02-29T12:30:45.1234567890+00:00",
+        "2024-02-29T12:30:45.123456789+00:00Z", "2024-02-29T12:30:45.123456789+00:000",
+        "2024-02-29T12:30:45." + "0".repeat(1048576).get() + "Z"
+    ]:
+        try expect_equal(parse_timestamp(text), invalid)

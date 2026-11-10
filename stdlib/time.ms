@@ -64,24 +64,20 @@ impl Duration:
 
     // Returns -1, 0, or 1.
     fn compare(other: Duration) Int:
-        if self.nanos < other.nanos:
-            return -1
-        if self.nanos > other.nanos:
-            return 1
+        if self.nanos < other.nanos: return -1
+        if self.nanos > other.nanos: return 1
 
         return 0
 
     // Returns the lesser of this value and `other`, or this value when they compare equal.
     fn min(other: Duration) Duration:
-        if other.compare(self) < 0:
-            return other
+        if other.compare(self) < 0: return other
 
         return self
 
     // Returns the greater of this value and `other`, or this value when they compare equal.
     fn max(other: Duration) Duration:
-        if other.compare(self) > 0:
-            return other
+        if other.compare(self) > 0: return other
 
         return self
 
@@ -89,10 +85,8 @@ impl Duration:
     fn clamp(low: Duration, high: Duration) Duration:
         if low.compare(high) > 0:
             panic("clamp: low must not be greater than high")
-        if self.compare(low) < 0:
-            return low
-        if self.compare(high) > 0:
-            return high
+        if self.compare(low) < 0: return low
+        if self.compare(high) > 0: return high
 
         return self
 
@@ -111,16 +105,14 @@ impl Duration:
     // Returns human text such as `1m30.5s`, `250ms`, `1.5µs`, `-2h`, or `0s`; string interpolation uses it too.
     fn to_string() String:
         let total = self.to_nanoseconds()
-        if total == 0:
-            return "0s"
+        if total == 0: return "0s"
 
         // Work on magnitudes of the truncated parts so the minimum Duration, which has no positive counterpart, formats too.
         let step = if total < 0: -1 else: 1
         let sign = if total < 0: "-" else: ""
         let whole = total / 1000000000 * step
         let sub = total % 1000000000 * step
-        if whole == 0 and sub < 1000:
-            return "{sign}{sub}ns"
+        if whole == 0 and sub < 1000: return "{sign}{sub}ns"
         if whole == 0 and sub < 1000000:
             return "{sign}{duration_decimal(sub / 1000, sub % 1000, 3)}µs"
         if whole == 0:
@@ -171,15 +163,13 @@ impl Instant:
 
     // Returns the lesser of this value and `other`, or this value when they compare equal.
     fn min(other: Instant) Instant:
-        if other.compare(self) < 0:
-            return other
+        if other.compare(self) < 0: return other
 
         return self
 
     // Returns the greater of this value and `other`, or this value when they compare equal.
     fn max(other: Instant) Instant:
-        if other.compare(self) > 0:
-            return other
+        if other.compare(self) > 0: return other
 
         return self
 
@@ -187,10 +177,8 @@ impl Instant:
     fn clamp(low: Instant, high: Instant) Instant:
         if low.compare(high) > 0:
             panic("clamp: low must not be greater than high")
-        if self.compare(low) < 0:
-            return low
-        if self.compare(high) > 0:
-            return high
+        if self.compare(low) < 0: return low
+        if self.compare(high) > 0: return high
 
         return self
 
@@ -229,15 +217,13 @@ impl Timestamp:
 
     // Returns the lesser of this value and `other`, or this value when they compare equal.
     fn min(other: Timestamp) Timestamp:
-        if other.compare(self) < 0:
-            return other
+        if other.compare(self) < 0: return other
 
         return self
 
     // Returns the greater of this value and `other`, or this value when they compare equal.
     fn max(other: Timestamp) Timestamp:
-        if other.compare(self) > 0:
-            return other
+        if other.compare(self) > 0: return other
 
         return self
 
@@ -245,10 +231,8 @@ impl Timestamp:
     fn clamp(low: Timestamp, high: Timestamp) Timestamp:
         if low.compare(high) > 0:
             panic("clamp: low must not be greater than high")
-        if self.compare(low) < 0:
-            return low
-        if self.compare(high) > 0:
-            return high
+        if self.compare(low) < 0: return low
+        if self.compare(high) > 0: return high
 
         return self
 
@@ -292,21 +276,20 @@ export type Calendar:
 
 // Writes `whole` with the digits of a fractional part `frac` of `width` places, trailing zeros dropped.
 fn duration_decimal(whole: Int, frac: Int, width: Int) String:
-    if frac == 0:
-        return "{whole}"
+    if frac == 0: return "{whole}"
 
     var rest = frac
     var places = width
 
     while rest % 10 == 0:
-        rest = rest / 10
+        rest /= 10
         places -= 1
 
     var digits = ""
 
     while places > 0:
         digits = "{rest % 10}{digits}"
-        rest = rest / 10
+        rest /= 10
         places -= 1
 
     return "{whole}.{digits}"
@@ -352,8 +335,7 @@ export fn parse_duration(text: String) Duration!:
     let negative = data.get(0).to_int() == 45
     if negative or data.get(0).to_int() == 43: pos += 1
     if pos == size: return error(Error("time: invalid data", kind: "EBADMSG"))
-    if size - pos == 1 and data.get(pos).to_int() == 48:
-        return ok(nanoseconds(0))
+    if size - pos == 1 and data.get(pos).to_int() == 48: return ok(nanoseconds(0))
 
     // Accumulate negatively: the minimum Duration has no positive counterpart.
     let limit = if negative: -9223372036854775807 - 1 else: -9223372036854775807
@@ -553,7 +535,13 @@ impl Source[Instant] for TickSource:
     var fn next() Instant?!:
         let tick = self.due.clone()
         try sleep(tick.difference(monotonic()).max(nanoseconds(0))).wait()
-        self.due = tick.shift(self.period.clone()).max(monotonic())
+
+        let current = monotonic()
+        let period = self.period.to_nanoseconds()
+        let elapsed = current.difference(tick).to_nanoseconds()
+
+        // Drop missed ticks, retaining the original phase without multiplying a tick count.
+        self.due = current.shift(nanoseconds(period - elapsed % period))
         return ok(tick)
 
     var fn close() Unit!:

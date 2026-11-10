@@ -13,7 +13,6 @@ import (
     temporary
 ) from "@std/os/fs.ms"
 import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
 
 fn same_bytes(a: String, b: String) Bool:
     let left = read_file(a).wait()
@@ -61,7 +60,7 @@ export fn main() Int:
         )
 
         if not lowers:
-            stdout().write("skip   {name} (does not lower)\n").get()
+            print("skip   {name} (does not lower)")
             skipped += 1
             continue
 
@@ -76,11 +75,11 @@ export fn main() Int:
             same_bytes("{w}/a.mir", "{w}/b.mir")
             and same_bytes("{w}/a.bin", "{w}/b.bin")
         ):
-            stdout().write("same   {name}\n").get()
+            print("same   {name}")
             same += 1
         else:
-            stdout().write("DIFFER {name}\n").get()
+            print("DIFFER {name}")
             differ += 1
 
-    stdout().write("{same} identical, {differ} different, {skipped} skipped\n").get()
+    print("{same} identical, {differ} different, {skipped} skipped")
     return if differ == 0: 0 else: 1

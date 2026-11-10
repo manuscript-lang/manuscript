@@ -23,7 +23,7 @@ fn tokens(line: String) List[Tok]:
             var digits = ""
 
             while i < chars.length() and "0123456789".contains(chars[i]):
-                digits = digits + chars[i]
+                digits += chars[i]
                 i += 1
 
             out.append(Tok("n", digits.clone(), digits.parse_int().get(0)))
@@ -69,12 +69,12 @@ impl Parser:
             let r = self.unary()
 
             if times:
-                v = v * r
+                v *= r
             else if r == 0:
                 self.div = true
                 v = 0
             else:
-                v = v / r
+                v /= r
 
         return v
 

@@ -71,9 +71,9 @@ fn solve(s: String) String:
 
     for k in order.sorted():
         let v = totals.get(k).get(0)
-        out = out + "{k}: {v / 100}.{"{v % 100}".pad_start(2, "0")}\n"
+        out += "{k}: {v / 100}.{"{v % 100}".pad_start(2, "0")}\n"
 
-    if bad > 0: out = out + "skipped: {bad}\n"
+    if bad > 0: out += "skipped: {bad}\n"
     return out
 
 fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))

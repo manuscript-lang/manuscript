@@ -184,6 +184,13 @@ export type ProcessInfo:
     // Effective group id used for permission checks; -1 on Windows.
     effective_gid: Int
 
+// Which of the process identities `set_identity` changes.
+export enum IdentityKind:
+    Uid  // The real user id.
+    Gid  // The real group id.
+    Euid  // The effective user id.
+    Egid  // The effective group id.
+
 // Cumulative CPU time consumed by the current process, in integer microseconds.
 export type CpuUsage:
     // User CPU time in microseconds.
@@ -234,16 +241,12 @@ impl Source[Int] for SignalSource:
 
 // The names of an environment map, in the order of its values.
 fn environment_names(environment: Map[String, String]) List[String]:
-    var names: List[String] = []
-    for entry in environment.entries():
-        names.append(entry.key.clone())
+    var names = environment.entries().map(fn entry: entry.key.clone())
     return names
 
 // The values of an environment map, in the order of its names.
 fn environment_values(environment: Map[String, String]) List[String]:
-    var values: List[String] = []
-    for entry in environment.entries():
-        values.append(entry.value.clone())
+    var values = environment.entries().map(fn entry: entry.value.clone())
     return values
 
 // The work of `run`: a returned closure owns the program, arguments and options.
@@ -367,11 +370,15 @@ export fn resource_usage() ResourceUsage!:
 export fn umask(mask: Int) Int!:
     return msstd_process_umask(mask)
 
-// Accepts exactly uid, gid, euid, or egid and id 0..2147483647; other inputs return EINVAL.
+// Sets the real or effective user or group id to `id`, 0..2147483647; other ids return EINVAL.
 // Identity changes require OS permission and are ENOTSUP on Windows.
 // ms: effect std.process.write
-export fn set_identity(kind: String, id: Int) Unit!:
-    return msstd_process_set_identity(kind, id)
+export fn set_identity(kind: IdentityKind, id: Int) Unit!:
+    if kind == IdentityKind.Uid: return msstd_process_set_identity("uid", id)
+    if kind == IdentityKind.Gid: return msstd_process_set_identity("gid", id)
+    if kind == IdentityKind.Euid: return msstd_process_set_identity("euid", id)
+
+    return msstd_process_set_identity("egid", id)
 
 // Replaces the supplementary group list with the given numeric ids, each 0 through 2147483647. Requires privilege.
 // Invalid ids return EINVAL, a lack of privilege returns EACCES, and Windows returns ENOTSUP.

@@ -1,6 +1,5 @@
 // conform: tags=scope-cleanup,stdlib-promise,tier-io
 // conform: phase=run
-import stdout from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"
 import milliseconds, seconds, sleep from "@std/time.ms"
 
@@ -10,7 +9,6 @@ import milliseconds, seconds, sleep from "@std/time.ms"
 fn descend(n: Int) Int!:
     let label = "frame {n}"
     let parts = [label.clone(), "x"]
-
     if n == 0:
         try sleep(seconds(600)).wait()
 
@@ -21,5 +19,5 @@ export fn main() Int:
     let deep = promise(fn: descend(20000))
     let _ = sleep(milliseconds(200)).wait()
     deep.cancel()
-    stdout().write("{deep.wait().is_error()}\n").get()
+    print("{deep.wait().is_error()}")
     return 0

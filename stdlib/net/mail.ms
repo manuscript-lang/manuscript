@@ -1,6 +1,6 @@
 import StringBuilder from "@std/string.ms"
 import Bytes, BytesBuilder from "@std/bytes.ms"
-import parse_int_radix from "@std/text.ms"
+import parse_int from "@std/math/math.ms"
 import base64_decode, latin1_decode from "@std/data/encoding.ms"
 import Headers, HeaderField, parse_headers from "@std/net/mime.ms"
 
@@ -79,7 +79,7 @@ export fn parse_address(text: String) Address!:
 
 fn valid_address(address: String) Bool:
     let at = address.last_index_of("@")
-    if not at.is_some(): return false
+    if at.is_none(): return false
 
     let local = address.take(at.get(0))
     let domain = address.drop(at.get(0) + 1)
@@ -195,7 +195,7 @@ export fn decode_words(text: String) String:
                 fields[index + 1], fields[index + 2], fields[index + 3]
             )
 
-        if not decoded.is_some():
+        if decoded.is_none():
             out.append(literal)
             out.append("=?")
             previous_encoded = false
@@ -229,8 +229,7 @@ fn decode_word(charset: String, encoding: String, payload: String) String?:
         return none
 
     if set == "utf-8" or set == "us-ascii": return bytes.decode_utf8()
-    if set == "iso-8859-1" or set == "latin1":
-        return latin1_decode(bytes)
+    if set == "iso-8859-1" or set == "latin1": return latin1_decode(bytes)
 
     return none
 
@@ -245,9 +244,9 @@ fn q_decode(payload: String) Bytes:
         if c == "_":
             out.append(32)
         else if c == "=" and i + 2 < chars.length():
-            let value = parse_int_radix("{chars[i + 1]}{chars[i + 2]}", 16)
+            let value = parse_int("{chars[i + 1]}{chars[i + 2]}", 16)
 
-            if value.is_some():
+            if value.is_ok():
                 out.append(value.get(0).to_uint8().get(0))
                 i += 2
             else:

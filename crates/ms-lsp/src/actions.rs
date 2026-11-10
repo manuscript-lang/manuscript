@@ -105,7 +105,7 @@ fn project_exports(
     syms: ms_syntax::Names,
     d: &Document,
     docs: &Documents,
-) -> Vec<(String, String)> {
+) -> Vec<(String, String, bool)> {
     let Ok(files) = workspace::workspace_documents(d, docs, true, None) else {
         return Vec::new();
     };
@@ -120,8 +120,8 @@ fn project_exports(
         let Some(import) = ms_driver::imports::import_path(&dir, &path) else {
             continue;
         };
-        for name in ms_driver::imports::exported_names(syms, &file.text) {
-            found.push((name, import.clone()));
+        for export in ms_driver::imports::exported_declarations(syms, &file.text) {
+            found.push((export.name, import.clone(), export.is_type));
         }
     }
     found.sort();
@@ -304,7 +304,7 @@ pub fn editor_actions(
             vec![diagnostic],
         ));
     }
-    let mut project: Option<Vec<(String, String)>> = None;
+    let mut project: Option<Vec<(String, String, bool)>> = None;
     for issue in &checked.diagnostics {
         let Some(m) = &module else { break };
         if issue.file.as_ref() != syms.str(m.file) {
@@ -323,13 +323,18 @@ pub fn editor_actions(
             continue;
         }
         let exports = project.get_or_insert_with(|| project_exports(syms, d, docs));
+        let types_only = issue.message.starts_with("unknown type ");
         let mut statements: Vec<String> = exports
             .iter()
-            .filter(|(exported, _)| exported == name)
-            .map(|(_, path)| ms_driver::imports::import_statement(name, path))
+            .filter(|(exported, _, is_type)| exported == name && (!types_only || *is_type))
+            .map(|(_, path, _)| ms_driver::imports::import_statement(name, path))
             .collect();
         // A project declaration is preferred over a standard-library one.
-        let standard = ms_check::api::hints::import_hint(&checked.session, name);
+        let standard = if types_only {
+            ms_check::api::hints::type_import_hint(&checked.session, name)
+        } else {
+            ms_check::api::hints::import_hint(&checked.session, name)
+        };
         if let Some((_, statement)) = standard.split_once("; add: ") {
             statements.push(statement.to_string());
         }

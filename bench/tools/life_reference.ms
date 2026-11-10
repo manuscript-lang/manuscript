@@ -1,5 +1,4 @@
 // Independent checksum oracle for bench/language/life.ms (not a performance comparator).
-import stdout from "@std/io/io.ms"
 
 export fn main() Int:
     let size = 128
@@ -36,8 +35,8 @@ export fn main() Int:
     let alive = cells.fold(0, fn(a: Int, c: Int) Int: a + c)
 
     if alive != 3914:
-        stdout().write("unexpected live count {alive}\n").get()
+        print("unexpected live count {alive}")
         return 1
 
-    stdout().write("{alive}\n").get()
+    print("{alive}")
     return 0

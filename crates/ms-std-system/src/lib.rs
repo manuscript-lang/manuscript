@@ -5,6 +5,7 @@
 //! (`SystemInfo`, `UserInfo`, `CpuInfo`, `NetworkInterface` and the metrics snapshot) cross as
 //! one record, or a list of them, per call. `os` and `architecture` report the target names
 //! `@std/system` uses (`linux`, `darwin`, `windows`; `amd64`, `arm64`).
+//! ms: domain system
 #![no_std]
 
 // Links the msrt_* runtime symbols into this crate's test binaries.

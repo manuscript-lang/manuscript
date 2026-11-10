@@ -275,8 +275,7 @@ export fn stringify[T: Data](
 fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
     if from >= keys.length(): return none
     if from == keys.length() - 1: return value.get(keys[from])
-    if let next = value.get(keys[from]):
-        return member_path(next, keys, from + 1)
+    if let next = value.get(keys[from]): return member_path(next, keys, from + 1)
 
     return none
 
@@ -328,8 +327,7 @@ impl JsonReading[T]:
     var fn complete() T!:
         let bytes = self.pending.drain()
         self.reset()
-        if let text = bytes.decode_utf8():
-            return parse[T](text, self.options)
+        if let text = bytes.decode_utf8(): return parse[T](text, self.options)
 
         return error(Error("JSON: invalid data", kind: "EBADMSG"))
 
@@ -404,7 +402,7 @@ impl Transform[Bytes, T] for JsonReading[T]:
             let stepped = self.advance(byte)
             if stepped.is_error(): return self.fail(stepped.err())
 
-            if let found = stepped.get(): out.append(found)
+            if let found = stepped.get(none): out.append(found)
 
         return ok(unit)
 

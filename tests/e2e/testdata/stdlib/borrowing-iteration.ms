@@ -48,10 +48,8 @@ test "break and continue work in a borrowing loop":
     var seen: List[Int] = []
 
     for item in d:
-        if item == 1:
-            continue
-        if item == 4:
-            break
+        if item == 1: continue
+        if item == 4: break
 
         seen.append(item)
 

@@ -40,7 +40,7 @@ export fn read_cases(output: String) List[Bench]!:
 
     let doc = parsed.get(Document(List[Bench](), none))
     let diagnostics = doc.diagnostics.get([])
-    if diagnostics.length() > 0: return invalid(
+    if not diagnostics.is_empty(): return invalid(
         diagnostics.map(fn d: d.message.clone()).join("; ")
     )
 
@@ -76,7 +76,7 @@ export fn read_cases(output: String) List[Bench]!:
             ):
                 return invalid("inconsistent timing range: {bench.name}")
 
-    if doc.benches.length() == 0: return invalid("no cases were measured")
+    if doc.benches.is_empty(): return invalid("no cases were measured")
 
     return ok(doc.benches)
 
@@ -90,15 +90,15 @@ export fn case_labels(names: List[String]) Map[String, String]:
         let s = parts.slice(1, parts.length()).get([]).join("::")
         let label = if parts.length() > 1: s else: name.clone()
         short.add(name.clone(), label.clone())
-        counts.add(label.clone(), counts.get(label).get(0) + 1)
+        counts.add(label.clone(), counts.get_or(label, 0) + 1)
 
     var labels = Map[String, String]()
     var distinct = Set[String]()
 
     for name in names:
-        let s = short.get(name).get("")
-        labels.add(name.clone(), if counts.get(s).get(0) == 1: s else: name.clone())
-        distinct.add(labels.get(name).get(""))
+        let s = short.get_or(name, "")
+        labels.add(name.clone(), if counts.get_or(s, 0) == 1: s else: name.clone())
+        distinct.add(labels.get_or(name, ""))
 
     if distinct.length() != labels.length():
         var plain = Map[String, String]()

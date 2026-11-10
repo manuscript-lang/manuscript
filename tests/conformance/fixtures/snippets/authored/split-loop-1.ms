@@ -8,8 +8,7 @@ fn say(text: String) Unit:
 
 fn keep(text: String) List[String]:
     var out: List[String] = []
-    for p in text.split(","):
-        out.append(p)
+    out.extend(text.split(","))
     return out
 
 fn first_long(text: String) String:
@@ -85,10 +84,7 @@ fn nested(text: String) Int:
     return total
 
 fn closure_keeps(text: String) Int:
-    var fs: List[fn() Int] = []
-    for p in text.split(","):
-        fs.append(fn() Int: return p.length())
-
+    var fs = text.split(",").map(fn p: fn() Int: return p.length())
     var t = 0
     for f in fs:
         t += f()

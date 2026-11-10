@@ -112,8 +112,7 @@ fn blank_trim(text: String) String:
     return blank_trim_end(blank_trim_start(text))
 
 fn within(value: Int, limit: Int?) Bool:
-    if let maximum = limit:
-        return value <= maximum
+    if let maximum = limit: return value <= maximum
 
     return true
 
@@ -510,8 +509,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
         let name = try anchor_name(var flow)
         if let size = flow.context.sizes.get(name):
             try charge(var flow.context, size)
-        if let value = flow.context.anchors.get(name):
-            return ok(value.clone())
+        if let value = flow.context.anchors.get(name): return ok(value.clone())
 
         return error(flow_invalid(flow, "unknown or recursive alias"))
 
@@ -596,7 +594,7 @@ fn flow_entry(
 
         if cause.kind != "EBADMSG": return error(cause)
 
-        let reason = cause.details.get("reason").get("").clone()
+        let reason = cause.details.get_or("reason", "").clone()
 
         // A plain value may have consumed trailing separation before the delimiter.
         // Point this value-type error at its end, rather than a later closing line.
@@ -1117,7 +1115,7 @@ fn skip(var context: Context) Unit:
 
         context.index += 1
 
-// A document start or end marker at column zero ends a plain scalar that would otherwise continue.
+// A document start or end marker at column zero cannot be node content.
 fn document_marker(text: String) Bool:
     let first = text.scalar_at(0, default: 0)
     if first != 45 and first != 46: return false
@@ -1125,8 +1123,10 @@ fn document_marker(text: String) Bool:
     return (
         text == "---"
         or text.starts_with("--- ")
+        or text.starts_with("---\t")
         or text == "..."
         or text.starts_with("... ")
+        or text.starts_with("...\t")
     )
 
 fn sequence(text: String) Bool:
@@ -1201,6 +1201,10 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
         and (state.quote != 0 or state.depth != 0)
         and context.index < context.lines.length()
     ):
+        if document_marker(context.lines.get(context.index)): return error(
+            invalid(context, "unexpected document marker in flow node")
+        )
+
         let next = "\n".concat(context.lines.get(context.index))
         let scan = scan_structure_part(next, "#", var state)
 
@@ -1557,7 +1561,7 @@ fn sequence_items(
         var chain: List[Int] = []
         if item.starts_with("-"): chain = nested_columns(line, base)
 
-        if chain.length() > 0:
+        if not chain.is_empty():
             // A run of compact sequence indicators (`- - x`) opens one level per
             // indicator. Scan the line once and rewrite it once instead of per level.
             let innermost = chain.get(chain.length() - 1)
@@ -1967,7 +1971,7 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
     if options.max_depth.is_none() and options.max_values.is_none(): return ok(result)
 
     // Without aliases, parsing already counted every container and leaf at its depth.
-    if context.values > 0 and context.anchors.length() == 0: return ok(result)
+    if context.values > 0 and context.anchors.is_empty(): return ok(result)
 
     context.values = 0
     try validate(var context, result, 1)

@@ -76,7 +76,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
             ):
                 return invalid("incomplete {version} trial")
 
-            trials.add(version.clone(), trials.get(version).get(0) + 1)
+            trials.add(version.clone(), trials.get_or(version, 0) + 1)
             active = ""
             pending = Set[String]()
             continue
@@ -108,7 +108,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
         pending.add(name.clone())
 
-    if active != "" or versions().any(fn v: trials.get(v).get(0) != repeats):
+    if active != "" or versions().any(fn v: trials.get_or(v, 0) != repeats):
         return invalid("expected {repeats} complete trials of every version")
 
     var rows = [
@@ -121,11 +121,11 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
     for op in operations():
         let n = op.count.to_float()
-        let m = best.get("{op.name} ms").get(0.0) / n
+        let m = best.get_or("{op.name} ms", 0.0) / n
         var g: Float? = none
         if let t = best.get("{op.name} go"): g = t / n
 
-        let r = best.get("{op.name} rs").get(0.0) / n
+        let r = best.get_or("{op.name} rs", 0.0) / n
         rows.append(
             left(op.name, 34) + cell(m) + cell(g) + cell(r) + right(
                 ratio(m, g), 8

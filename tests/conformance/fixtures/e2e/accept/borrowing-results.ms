@@ -42,19 +42,19 @@ export fn main() Int:
     let p = Person(name: "bob", tags: ["t1", "t2"])
     let q = Person(name: "cat", tags: ["u1"])
     let t = first_tag(p)
-    stdout().write("{t} {pick(p, q, false)} {pick(p, q, true)}\n").get()
+    print("{t} {pick(p, q, false)} {pick(p, q, true)}")
 
     let rows = [[1, 2], [3]]
     let h = head(rows)
-    stdout().write("{h.length()} {h[1]}\n").get()
+    print("{h.length()} {h[1]}")
 
     var team = Team(members: [p, q], label: "team")
-    stdout().write("{deep(team)} {members(team).length()}\n").get()
+    print("{deep(team)} {members(team).length()}")
 
     // A lend from a temporary is owned by the caller.
     let fresh = first_tag(Person(name: "tmp", tags: ["owned"]))
     let also = deep(make_team())
-    stdout().write("{fresh} {also}\n").get()
+    print("{fresh} {also}")
 
     // `var` of a lent part changes the origin.
     var ms = members(team)
@@ -68,5 +68,5 @@ export fn main() Int:
     // Keeping a lent value is an explicit copy.
     var names: List[String] = []
     names.append(first_tag(team.members[0]).clone())
-    stdout().write("{names.length()} {names[0]}\n").get()
+    print("{names.length()} {names[0]}")
     return 0

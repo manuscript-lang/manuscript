@@ -119,7 +119,7 @@ impl Scan<'_> {
 
     /// The outcome of evaluating `e`; `returned` when its value is the function's result.
     fn value(&self, syms: ms_syntax::Names, e: &Expr, returned: bool) -> Outcome {
-        if self.exits(syms, e) {
+        if self.exits(e) {
             return Outcome::Escaped;
         }
         if let ExprKind::Match { scrutinee, arms } = &e.kind {
@@ -149,7 +149,7 @@ impl Scan<'_> {
 
     /// Whether evaluating `e` can leave the function without returning normally: a `try`, or a
     /// call that never completes.
-    fn exits(&self, syms: ms_syntax::Names, e: &Expr) -> bool {
+    fn exits(&self, e: &Expr) -> bool {
         let mut found = false;
         visit(e, &mut |x| {
             if matches!(
@@ -166,7 +166,7 @@ impl Scan<'_> {
                 .facts()
                 .info(x.id)
                 .and_then(|i| i.ty.as_ref())
-                .is_some_and(|t| t.is_never(syms));
+                .is_some_and(|t| t.is_never());
             found |= never && matches!(x.kind, ExprKind::Call { .. });
         });
         found

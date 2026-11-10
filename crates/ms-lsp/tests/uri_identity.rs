@@ -6,20 +6,39 @@ use ms_lsp::json::Json;
 #[test]
 fn malformed_file_uri_documents_are_rejected_and_roots_ignored() {
     let ws = Workspace::new("uri-identity");
-    let bad = format!("{}/%FF.ms", ws.uri("").trim_end_matches('/'));
     let mut s = Script::initialize(&ws.root.to_string_lossy(), false);
-    s.open(&bad, "export fn value() Int: 7\n", 1);
-    let id = s.at("textDocument/hover", &bad, 0, 12);
+    let mut ids = Vec::new();
+    for escape in ["%FF", "%+1", "%+A"] {
+        let bad = format!("{}/{escape}.ms", ws.uri("").trim_end_matches('/'));
+        s.open(&bad, "export fn value() Int: 7\n", 1);
+        ids.push(s.at("textDocument/hover", &bad, 0, 12));
+    }
+    let valid = ws.uri("+1.ms").replace('+', "%2B");
+    s.open(&valid, "export fn value() Int: 7\n", 1);
+    let valid_id = s.at("textDocument/hover", &valid, 0, 12);
     let replies = s.rust();
+    for id in ids {
+        let reply = replies
+            .iter()
+            .find(|m| m.get("id").and_then(Json::as_i64) == Some(id))
+            .expect("hover reply");
+        let code = reply
+            .get("error")
+            .and_then(|e| e.get("code"))
+            .and_then(Json::as_i64);
+        assert_eq!(code, Some(-32602), "{reply:?}");
+    }
     let reply = replies
         .iter()
-        .find(|m| m.get("id").and_then(Json::as_i64) == Some(id))
-        .expect("hover reply");
-    let code = reply
-        .get("error")
-        .and_then(|e| e.get("code"))
-        .and_then(Json::as_i64);
-    assert_eq!(code, Some(-32602), "{reply:?}");
+        .find(|m| m.get("id").and_then(Json::as_i64) == Some(valid_id))
+        .expect("valid hover reply");
+    assert!(reply.get("error").is_none(), "{reply:?}");
+    assert!(
+        reply
+            .get("result")
+            .is_some_and(|r| r.get("contents").is_some()),
+        "{reply:?}"
+    );
 }
 
 /// Names found by `workspace/symbol` for a session rooted at `root`.

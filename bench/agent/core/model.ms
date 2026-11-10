@@ -78,8 +78,7 @@ fn text_of(file: String) String:
     return read_file(file).wait().get().decode_utf8().get("")
 
 fn field(doc: JsonValue, key: String) String:
-    if let value = doc.get(key):
-        return value.as_string().get("")
+    if let value = doc.get(key): return value.as_string().get("")
 
     return ""
 
