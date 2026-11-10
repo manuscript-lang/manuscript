@@ -130,6 +130,17 @@ fn every_signature_type_round_trips_on_both_backends() {
     let _ = std::fs::remove_file(&object);
 }
 
+#[test]
+fn c_string_lengths_exclude_metadata_on_both_backends() {
+    let object = compile("abi");
+    for build_type in ["Debug", "Release"] {
+        let (code, out) = run_abi(&object, build_type, "string-length");
+        assert_eq!(code, Some(0), "{build_type}: {out}");
+        assert_eq!(out, "", "{build_type}");
+    }
+    let _ = std::fs::remove_file(&object);
+}
+
 /// A shim blocked in C returns when a stop hook runs, and the program then stops with 130. The
 /// shim requests the stop itself: SIGINT on Unix, Ctrl-Break to its own process group on Windows.
 #[test]
