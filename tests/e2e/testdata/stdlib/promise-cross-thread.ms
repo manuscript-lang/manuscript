@@ -2,10 +2,13 @@ import (
     Promise,
     PromiseOptions,
     promise,
+    complete,
+    deferred,
     wait_all,
     wait_first
 ) from "@std/concurrency/promise.ms"
 import expect_equal from "@std/test/test.ms"
+import sleep from "@std/time.ms"
 
 fn spin(n: Int) Int:
     var s = 0
@@ -66,3 +69,39 @@ test "wait_all and wait_first accept promises of several threads":
 
     let first = try wait_first(more)
     try expect_equal(first >= base, true)
+
+fn long_sleep() Promise[Unit]!:
+    return ok(sleep(60.seconds()))
+
+fn deferred_error() Promise[Unit]!:
+    return ok(
+        deferred[Unit](
+            fn id: complete[Unit](id, error(Error("should stay deferred")))
+        )
+    )
+
+test "wait_first runs a local deferred input beside a foreign promise":
+    for k in 0..8:
+        let outer = promise(fn: long_sleep())
+
+        // Give idle threads work to take while this thread computes; the result is checked.
+        let busy = spin(2000000)
+        try expect_equal(busy >= 0, true)
+
+        let remote = (try outer.wait()).with(
+            options: PromiseOptions(timeout: 1.seconds())
+        )
+        let local = deferred[Unit](fn id: complete[Unit](id, ok(unit)))
+        try wait_first([local, remote])
+
+test "wait_first returns a ready input before foreign deferred work":
+    for k in 0..8:
+        let outer = promise(fn: deferred_error())
+        let busy = spin(2000000)
+        try expect_equal(busy >= 0, true)
+
+        let remote = try outer.wait()
+        let ready = promise[Unit](fn: ok(unit))
+        while not ready.done():
+            continue
+        try wait_first([remote, ready])
