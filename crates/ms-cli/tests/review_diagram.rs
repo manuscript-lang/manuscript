@@ -1326,3 +1326,68 @@ fn review_and_diagram_keep_in_root_two_dot_source_names() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn ownership_view_shows_receiver_modes_and_interface_operations() {
+    let dir = scratch("ownership-receivers");
+    std::fs::write(
+        dir.join("main.ms"),
+        include_str!("ownership_receivers/main.ms"),
+    )
+    .unwrap();
+    for (entity, expected) in [
+        ("Counter.bump", "self  var (exclusive borrow)"),
+        ("Counter.read", "self  borrow"),
+        ("Shape", "area() Int  self borrow"),
+        ("Shape", "grow(by: Int) Unit  self var (exclusive borrow)"),
+    ] {
+        let doc = json(&ms(
+            &dir,
+            &[
+                "diagram",
+                "main.ms",
+                "--view",
+                "ownership",
+                "--entity",
+                entity,
+                "--json",
+            ],
+        ));
+        let root = &doc
+            .get("tree")
+            .unwrap()
+            .get("children")
+            .unwrap()
+            .as_array()
+            .unwrap()[0];
+        let labels: Vec<_> = root
+            .get("children")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|n| n.get("label").unwrap().as_str().unwrap())
+            .collect();
+        assert!(
+            labels.contains(&expected),
+            "{entity}: expected {expected:?}, got {labels:?}"
+        );
+    }
+    let out = ms(
+        &dir,
+        &[
+            "diagram",
+            "main.ms",
+            "--view",
+            "ownership",
+            "--entity",
+            "Counter.bump",
+        ],
+    );
+    assert!(
+        String::from_utf8(out.stdout)
+            .unwrap()
+            .contains("bump(var self)")
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}

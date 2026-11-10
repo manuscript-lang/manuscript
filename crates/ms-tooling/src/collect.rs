@@ -271,6 +271,15 @@ fn callable_ownership(
             ParameterOwnership::Borrow
         };
     }
+    if let Some(index) = callable.index {
+        fact.receiver = if callable.decl.methods()[index].mutating {
+            "var"
+        } else if moving.and_then(|m| m.first()).copied().unwrap_or(false) {
+            "move"
+        } else {
+            "borrow"
+        };
+    }
     let has = |flag| program.node_facts.has(file, node, flag);
     fact.result_ownership = match (
         has(OwnershipFact::BorrowedOk),
