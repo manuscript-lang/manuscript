@@ -628,6 +628,13 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 	if bitfields and (masks[0] == 0 or masks[1] == 0 or masks[2] == 0):
 		return error(bad("BMP bit fields omit a color channel"))
 
+	// Each channel needs bits of its own.
+	for k in 1..4:
+		for j in 0..k:
+			if bit_and(masks[j], masks[k]) != 0: return error(
+				bad("BMP bit fields overlap")
+			)
+
 	alpha := bits == 32 and (not bitfields or masks[3] != 0)
 	mode := if alpha: ColorMode.Rgba else: ColorMode.Rgb
 	m := color_channels(mode)
