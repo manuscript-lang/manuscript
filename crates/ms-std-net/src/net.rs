@@ -263,7 +263,7 @@ impl Network {
         let policy = Arc::new(Policy::new(
             set,
             prefixes,
-            allow_listen,
+            allow_listen && self.policy.as_ref().is_none_or(|p| p.listen),
             self.policy.clone(),
         ));
         let child = Network::make(Some(policy), self.resolver, Some(Arc::downgrade(self)));
@@ -788,6 +788,31 @@ mod tests {
             Some(NetErr::InvalidInput)
         );
         assert!(n.restrict(&["localhost"], &["127.0.0.0/8"], true).is_ok());
+    }
+
+    #[test]
+    fn child_cannot_restore_parent_listening_permission() {
+        let root = Network::new_root();
+        let parent = root.restrict(&[], &["127.0.0.0/8"], false).unwrap();
+        let child = parent.restrict(&[], &["127.0.0.0/8"], true).unwrap();
+        let grandchild = child.restrict(&[], &["127.0.0.0/8"], true).unwrap();
+        let resolved = parent.with_resolver("127.0.0.1:53").unwrap();
+        let resolved_child = resolved.restrict(&[], &["127.0.0.0/8"], true).unwrap();
+        for network in [&parent, &child, &grandchild, &resolved_child] {
+            assert!(!network.listen_allowed("127.0.0.1:0"));
+            assert!(matches!(
+                network.bind_udp("127.0.0.1:0"),
+                Err(NetErr::PermissionDenied)
+            ));
+            assert!(matches!(
+                network.listen("127.0.0.1:0"),
+                Err(NetErr::PermissionDenied)
+            ));
+        }
+        let allowed = root.restrict(&[], &["127.0.0.0/8"], true).unwrap();
+        let narrowed = allowed.restrict(&[], &["127.0.0.0/8"], true).unwrap();
+        assert!(narrowed.listen_allowed("127.0.0.1:0"));
+        assert!(!narrowed.listen_allowed("192.0.2.1:0"));
     }
 
     #[test]
