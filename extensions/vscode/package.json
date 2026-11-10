@@ -109,9 +109,9 @@
     }
   },
   "scripts": {
-    "check": "node --check extension.js && npm test",
+    "check": "node --check extension.js && node --check build.js && node --check notices.js && npm test",
     "package": "vsce package --no-dependencies",
-    "bundle": "esbuild extension.js --bundle --platform=node --external:vscode --outdir=dist --minify",
+    "bundle": "node build.js",
     "vscode:prepublish": "npm run check && npm run bundle",
     "test": "node --test tests/*.test.js"
   },
