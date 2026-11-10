@@ -1,0 +1,44 @@
+names ok
+close failure
+write
+sync
+close
+remove tmp
+close
+write wins
+write
+close
+remove tmp
+write
+chmod wins
+write
+chmod
+close
+remove tmp
+chmod
+sync wins
+write
+sync
+close
+remove tmp
+sync
+cleanup cannot hide close
+write
+sync
+close
+remove cleanup-error
+close
+success
+write
+chmod
+sync
+close
+rename tmp target
+ok
+rename failure
+write
+sync
+close
+rename tmp rename-error
+remove tmp
+rename

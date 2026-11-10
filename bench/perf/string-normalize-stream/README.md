@@ -1,5 +1,7 @@
 # Lazy input decoding for Unicode normalization
 
+> Raw result data, logs and patches named below were removed from the tree; recover them from git history at `c1af1db3` or earlier. The conclusions and programs stay.
+
 Prepared candidate at baseline `4be5d6d8c2defb9fc6eb75c8c43bd68a5314d192`.
 Matched native builds and focused correctness checks pass. The initial 84-case comparison is recorded below; its prepared focused subset
 has not been built or run.

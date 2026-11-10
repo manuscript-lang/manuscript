@@ -129,6 +129,14 @@ fn operations() List[Operation]:
 		op(
 			"result_to_optional", result_setup(true), "held", "to_optional", "",
 			"r := ", "saw_opt(r)"
+		),
+		op(
+			"result_error_ok", result_setup(true), "held", "error", "", "r := ",
+			"print(\"\{r.is_some()\}\")"
+		),
+		op(
+			"result_error_failed", result_setup(false), "held", "error", "", "r := ",
+			"print(\"\{r.is_some()\}\")"
 		)
 	]
 

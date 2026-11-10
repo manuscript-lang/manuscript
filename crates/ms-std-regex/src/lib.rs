@@ -6,6 +6,7 @@
 use ms_rt as _;
 
 extern crate alloc;
+extern crate std;
 
 pub mod ffi;
 mod template;
@@ -57,6 +58,26 @@ impl Iterator for Spans<'_> {
         }
         None
     }
+}
+
+/// Whether `value` is a scalar of the Unicode general category `category` ("P", "S" or "M").
+/// Each category's regex is compiled once, on first use, and shared by every thread.
+pub fn in_category(value: i64, category: &str) -> bool {
+    use std::sync::OnceLock;
+    static CACHE: [OnceLock<regex::Regex>; 3] = [const { OnceLock::new() }; 3];
+    let Some(scalar) = u32::try_from(value).ok().and_then(char::from_u32) else {
+        return false;
+    };
+    let slot = match category {
+        "P" => 0,
+        "S" => 1,
+        "M" => 2,
+        _ => return false,
+    };
+    let re = CACHE[slot].get_or_init(|| {
+        regex::Regex::new(&alloc::format!("^\\p{{{category}}}$")).expect("category regex")
+    });
+    re.is_match(scalar.encode_utf8(&mut [0; 4]))
 }
 
 pub fn compile(pattern: &str) -> Result<Regex, Fail> {
@@ -275,6 +296,9 @@ impl Regex {
     /// Byte span pairs, with the same empty-match adjacency rule as `find_all`.
     pub fn find_all_spans(&self, text: &str, max: Option<i64>) -> Result<Vec<i64>, Fail> {
         let max = limit(max)?;
+        if max == 0 {
+            return self.exists_or_limit(text);
+        }
         let mut out = Vec::new();
         for (start, end) in self.spans_iter(text) {
             if out.len() / 2 == max {
@@ -284,6 +308,18 @@ impl Regex {
             out.extend([start as i64, end as i64]);
         }
         Ok(out)
+    }
+
+    /// The result of a query whose budget cannot hold even one match: the limit error when a
+    /// match exists, and an empty list otherwise.
+    fn exists_or_limit(&self, text: &str) -> Result<Vec<i64>, Fail> {
+        #[cfg(test)]
+        self.scans.set(self.scans.get() + 1);
+        if self.pattern.is_match(text) {
+            Err(Fail::LimitExceeded)
+        } else {
+            Ok(Vec::new())
+        }
     }
 
     /// Capture slots of the first match. Empty when absent; otherwise a slot-count header
@@ -336,6 +372,10 @@ impl Regex {
         let max_matches = limit(max_matches)?;
         let max_captures = limit(max_captures)?;
         let count = self.pattern.captures_len();
+        // No first row can fit: only whether a match exists decides the result.
+        if max_matches == 0 || count > max_captures {
+            return self.exists_or_limit(text);
+        }
         let words = count.checked_mul(2).ok_or(Fail::LimitExceeded)?;
         let mut out = Vec::new();
         let mut locations = None;
@@ -779,6 +819,44 @@ mod tests {
                 let expected = re.pattern.find(text).is_some();
                 assert_eq!(re.find_all(text, Some(0)).is_err(), expected);
                 assert_eq!(re.captures_all(text, Some(0)).is_err(), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn span_queries_that_cannot_hold_a_match_only_test_existence() {
+        for pattern in ["", "a*", "(a+)", "(a)?()", "^", "$", r"\b", "(é)|(🙂)"] {
+            let re = compile(pattern).unwrap();
+            let count = re.pattern.captures_len();
+            for text in ["", "a", "aaaa", "é🙂", "ba a"] {
+                let expected = if re.pattern.is_match(text) {
+                    Err(Fail::LimitExceeded)
+                } else {
+                    Ok(Vec::new())
+                };
+                assert_eq!(re.find_all_spans(text, Some(0)), expected);
+                assert_eq!(re.capture_all_spans(text, Some(0), None), expected);
+                assert_eq!(re.capture_all_spans(text, Some(0), Some(100)), expected);
+                assert_eq!(
+                    re.capture_all_spans(text, None, Some(count as i64 - 1)),
+                    expected
+                );
+                assert_eq!(re.find_all_spans(text, Some(-1)), Err(Fail::InvalidInput));
+                assert_eq!(
+                    re.capture_all_spans(text, Some(-1), Some(0)),
+                    Err(Fail::InvalidInput)
+                );
+                assert_eq!(
+                    re.capture_all_spans(text, Some(0), Some(-1)),
+                    Err(Fail::InvalidInput)
+                );
+                // A budget that holds one row keeps the ordinary traversal.
+                let rows = re.capture_all_spans(text, None, Some(count as i64));
+                assert_eq!(
+                    rows.is_err(),
+                    re.spans_iter(text).count() > 1,
+                    "{pattern:?} {text:?}"
+                );
             }
         }
     }

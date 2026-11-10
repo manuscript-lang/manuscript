@@ -45,8 +45,8 @@ export fn panic(message: String) Never: ...
 extern fn msrt_io_write_stdout(text: String) Unit
 
 /*
-Writes `value` as text and a newline to standard output. Generic printing can show a record structurally; pass `value.to_string()` or an interpolated string for its type-specific formatting.
-It returns `Unit`; output is buffered and flushed at exit. Use `stdout()` from `@std/io/io.ms` for text without an appended newline, or `stdout_bytes()` for bytes.
+Writes `value` as text and `end` (a newline unless given) to standard output; `print(chunk, end: "")` streams text without a newline. Generic printing can show a record structurally; pass `value.to_string()` or an interpolated string for its type-specific formatting.
+It returns `Unit`. Output to a terminal is flushed at each newline and output to a pipe or file is flushed when the program blocks or exits, so a line printed before a wait is visible while it waits. Use `stdout()` from `@std/io/io.ms` for text without an appended newline, or `stdout_bytes()` for bytes.
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
@@ -55,9 +55,9 @@ print(order)
 ```
 */
 // ms: effect std.console.write
-export fn print[T](value: T) Unit:
+export fn print[T](value: T, end: String = "\n") Unit:
 	msrt_io_write_stdout(value.to_string())
-	msrt_io_write_stdout("\n")
+	msrt_io_write_stdout(end)
 
 /*
 Data that a write accepts as either text or raw bytes: `String` and `Bytes` both implement it, so
@@ -162,6 +162,9 @@ impl T!E:
 
 	// Returns the error payload; check `is_error()` first, because a successful result raises a fault.
 	fn err() E: ...
+
+	// Returns some with the error payload, or none for a success, so a function that cannot return a Result can handle a failure: `if bad := r.error():`.
+	fn error() E?: ...
 
 	// Returns the successful payload, or calls create once with the original error and returns its value.
 	fn get_or_else(create: fn(E) T) T: ...

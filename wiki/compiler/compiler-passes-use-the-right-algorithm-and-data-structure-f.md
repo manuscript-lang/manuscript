@@ -33,10 +33,19 @@ Verified: nominal ownership classification tracks active declaration identities 
 Collect declared `Copy`, `Closeable` and native `clone` facts in one method pass, preserving resource priority and native-only `Copy` behavior. Resolve the `clone` symbol lazily once, only when a named native method needs comparison. Borrow variable bounds directly for builtin-only read predicates; keep occurrence snapshots in `Type::clone` and `sub`, and release query borrows before returning. Build generic case bindings only when actual payload fields need substitution. An unused map does no validation or bound snapshotting; every actual payload still calls `sub` separately, after record-field classification, including payloads following empty cases.
 Walk owning native collection argument chains iteratively. Keep every node’s declared-resource and declared-copy checks, root `Copy` versus held `Move`, value-only Map traversal, and unchanged nominal ancestry and depth.
 Completed child classifications may be reused for pointer-identical record fields within the same nominal frame, after every field has received its own substitution. Keep the first child alive through that frame, preserve its exact ancestor chain and depth, and continue visiting other fields after a resource result. Never carry this fact into another frame, substituted case payload, or public query.
-Evidence: [classification regressions](../../crates/ms-check/tests/type_classification.rs), [native cleanup fixture](../../tests/e2e/testdata/projects/nominal_cycle_identity/conformance_test.ms).
+Evidence: [classification regressions](../../crates/ms-check/src/type_classification_tests.rs), [native cleanup fixture](../../tests/e2e/testdata/projects/nominal_cycle_identity/conformance_test.ms).
 
 Verified: shared type DAGs need query-local deduplication in equality and negative searches; create the hash table only after bounded ordinary work, and keep allocation-free small controls. Equality may reuse completed successful pairs, never active pairs or an unrestricted pointer shortcut: incomplete callable results retain their existing comparison behavior. A negative omission-permission preflight can preserve the root directly; a positive preflight must use the original recursive mapper so changed variable occurrences retain independent snapshots. Predicates must stay stable within each query. Inference-resolution searches need the same bounded traversal across arguments, parameters and results; retain the root rejection fast path and the distinction between invalid markers and unresolved inference variables. Ownership searches for promises use argument edges only and the defining module identity; preserve those decisions while deduplicating shared arguments.
 Evidence: [shared graph and metadata regressions](../../crates/ms-check/src/type_graph_tests.rs).
+
+Argument matching commits trial bindings only after a successful match. Build the
+substituted pattern for widening and diagnostics only after matching fails; a
+successful match does not use it. Keep partial-prefix failure and Optional retry,
+widening and plain-value controls. Combining independently bounded inference
+searches also needs unshared-forest measurements: a shared-root win can introduce
+hashing for ordinary independent children.
+Evidence: [inference regressions](../../crates/ms-check/src/diagnostic_cascade_tests.rs),
+[inference benchmark harness](../../bench/perf/checker-inference-resolution/README.md).
 
 Verified: type interning deduplicates completed input nodes within each `intern` or `shape` query, preserving first representatives, flags and child order. Reuse empty memo storage, never answers across queries. Bypass recursive frames for leaves and leave short leaf-only rows uncached; cache wide rows too so shallow fanout cannot become quadratic.
 Evidence: [type identity regressions](../../crates/ms-check/src/tytable_tests.rs).

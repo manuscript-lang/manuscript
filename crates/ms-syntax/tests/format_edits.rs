@@ -196,3 +196,26 @@ fn tabs_after_spaces_and_inside_code_are_rejected() {
         "{inside:?}"
     );
 }
+
+#[test]
+fn tab_indented_dot_and_pipe_continuations_match_four_space_source() {
+    let file: Arc<str> = Arc::from("tabs.ms");
+    let dump = |source: &str| {
+        let module = ms_syntax::parser::parse(&file, source).unwrap();
+        ms_syntax::dump::dump_module(ms_syntax::Names::global(), &module)
+    };
+    for (tabbed, spaced) in [
+        (
+            "fn f() Int:\n\treturn [1]\n\t\t| length\n",
+            "fn f() Int:\n    return [1]\n        | length\n",
+        ),
+        (
+            "fn f() String:\n\treturn 1\n\n\t\t// note\n\t\t.to_string()\n",
+            "fn f() String:\n    return 1\n\n        // note\n        .to_string()\n",
+        ),
+    ] {
+        // Positions differ by column, so compare the tree shape without them.
+        let strip = |text: String| text.split_whitespace().collect::<Vec<_>>().len();
+        assert_eq!(strip(dump(tabbed)), strip(dump(spaced)), "{tabbed:?}");
+    }
+}

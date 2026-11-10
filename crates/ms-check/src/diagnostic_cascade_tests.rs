@@ -65,3 +65,23 @@ fn none_without_a_target_names_none() {
         "{got:?}"
     );
 }
+
+#[test]
+fn failed_argument_prefix_does_not_bind_later_evidence() {
+    let got = diagnostics(include_str!(
+        "../tests/diagnostic_cascade/inference_prefix.ms"
+    ));
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert_eq!(
+        got[0].message,
+        "expected Pair[String, Int], found Pair[Int, String] (in argument '_pair' of probe)"
+    );
+}
+
+#[test]
+fn successful_argument_inference_keeps_structural_and_optional_paths() {
+    let got = diagnostics(include_str!(
+        "../tests/diagnostic_cascade/inference_success.ms"
+    ));
+    assert!(got.is_empty(), "{got:?}");
+}

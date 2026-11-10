@@ -74,3 +74,20 @@ test "authentication failures use EAUTH":
 		chacha20poly1305_open(key, nonce, sealed, "changed".to_bytes())
 	)
 	try expect_equal(failure.kind.get(""), "EAUTH")
+
+test "chacha20 rejects data past the 32-bit block counter":
+	key := "01234567890123456789012345678901".to_bytes()
+	nonce := "012345678901".to_bytes()
+	last := 4294967295
+
+	for count in [0, 64]:
+		data := (try "a".repeat(count)).to_bytes()
+		try expect_equal(chacha20(key, nonce, last, data).is_error(), false)
+
+	data65 := (try "a".repeat(65)).to_bytes()
+	try expect_equal(chacha20(key, nonce, last, data65).is_error(), true)
+
+	data128 := (try "a".repeat(128)).to_bytes()
+	data129 := (try "a".repeat(129)).to_bytes()
+	try expect_equal(chacha20(key, nonce, last - 1, data128).is_error(), false)
+	try expect_equal(chacha20(key, nonce, last - 1, data129).is_error(), true)

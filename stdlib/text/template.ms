@@ -711,27 +711,17 @@ impl Run:
 		self.out.append(text)
 
 	fn lookup(parts: List[String]) JsonValue?:
-		var current: JsonValue? = none
 		var i = self.frames.length() - 1
 
 		while i >= 0:
 			if found := self.frames[i].get(parts[0]):
-				current = found.clone()
-				break
+				if parts.length() == 1: return found.clone()
+
+				return descend(found, parts)
 
 			i -= 1
 
-		if current.is_none(): return none
-
-		var value = current.get(JsonValue.Null)
-
-		for k in 1..parts.length():
-			next := member(value, parts[k])
-			if next.is_none(): return none
-
-			value = next.get(JsonValue.Null)
-
-		return value
+		return none
 
 	fn eval(expr: TemplateExpr, strict: Bool) JsonValue!Error:
 		match expr:
@@ -852,6 +842,21 @@ impl Run:
 		)
 
 // ---- values --------------------------------------------------------------------------------
+
+// Walks `parts[1..]` below `root`, copying only the member each step reaches, never the unused siblings.
+fn descend(root: JsonValue, parts: List[String]) JsonValue?:
+	first := member(root, parts[1])
+	if first.is_none(): return none
+
+	var value = first.get(JsonValue.Null)
+
+	for k in 2..parts.length():
+		next := member(value, parts[k])
+		if next.is_none(): return none
+
+		value = next.get(JsonValue.Null)
+
+	return value
 
 fn member(value: JsonValue, key: String) JsonValue?:
 	if found := value.get(key): return found

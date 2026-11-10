@@ -308,6 +308,8 @@ pub(super) unsafe fn reactor_wait() {
             }
             trim_idle_stacks();
             hibernate_idle();
+            // Output buffered for a pipe or file must be visible before the program blocks.
+            crate::io::flush_stdout();
             poll_ready(timeout_ns);
             crate::isolate::set_sleeping(false);
             crate::sched::set_idle(false);

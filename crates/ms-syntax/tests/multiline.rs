@@ -84,6 +84,19 @@ fn raw_text_is_literal() {
 }
 
 #[test]
+fn one_line_raw_text_is_literal() {
+    assert_eq!(
+        parts(r#"r"C:\new {x}\d+""#),
+        r#"(part "C:\x5cnew {x}\x5cd+" nil)"#
+    );
+    assert_eq!(parts(r#"r"""#), r#"(part "" nil)"#);
+    assert!(parts(r#""{r"a{b"}""#).contains(r#"(part "a{b" nil)"#));
+    assert!(error("r\"abc\n").contains("unterminated raw text"));
+    assert!(error("r\"abc").contains("unterminated raw text"));
+    assert!(error("r\"a\tb\"").contains("control characters"));
+}
+
+#[test]
 fn multiline_text_needs_its_own_lines() {
     assert!(error("\"\"\"abc\n    \"\"\"").contains("start on the line after"));
     assert!(error("\"\"\"\n    abc\"\"\"").contains("alone on its own line"));

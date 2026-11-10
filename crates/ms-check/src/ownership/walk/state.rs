@@ -145,6 +145,20 @@ impl Walker<'_> {
         }
     }
 
+    /// Why a call argument counts as a move when the callee, not the call, consumes it.
+    pub(super) fn consumed_note(&self) -> String {
+        let Some(c) = self.move_note else {
+            return String::new();
+        };
+        format!(
+            "; the callee consumes its parameter `{}` at {}:{}:{} (clone it there to avoid the move)",
+            self.syms.str(c.param),
+            self.syms.str(c.file),
+            c.at.line,
+            c.at.column
+        )
+    }
+
     pub(super) fn at(&self, node: NodeId) -> String {
         self.positions
             .get(&node)

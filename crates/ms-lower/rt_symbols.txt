@@ -322,6 +322,7 @@ msrt_task_forget_fd(fd: i32) @domain=task
 msrt_task_grow(shim: unsafe extern "C-unwind" fn(*mut u8), block: *mut u8)
 msrt_task_join(handle: u64, msg_out: *mut StrVal) -> u8 @domain=task
 msrt_task_others_stalled() -> bool @domain=task
+msrt_task_read_limit(timeout_ns: i64) @domain=task
 msrt_task_sleep(ns: i64) -> u32 @domain=task
 msrt_task_spawn(entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize) -> u64 @domain=task
 msrt_task_wait_fd(fd: i32, events: u32, timeout_ns: i64) -> u32 @domain=task
@@ -808,6 +809,7 @@ msstd_tls_parse_certificates(pem: *const StrVal, has_max: HasRaw, max: i64, out:
 msstd_tls_verify_certificates(chain: *const StrVal, roots: *const StrVal, server_name: *const StrVal, now: *const Timestamp) -> u8 @domain=TLS
 msstd_unicode_display_width(text: *const StrVal, out: *mut i64) -> u8 @domain=unicode
 msstd_unicode_fields(text: *const StrVal, out: *mut VecVal) @domain=unicode
+msstd_unicode_in_category(value: i64, category: *const StrVal) -> u8 @domain=regular expression @leaf
 msstd_unicode_is_alphabetic(value: i64) -> u8 @domain=unicode
 msstd_unicode_is_alphanumeric(value: i64) -> u8 @domain=unicode
 msstd_unicode_is_ascii(value: i64) -> u8 @domain=unicode

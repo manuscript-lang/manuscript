@@ -37,7 +37,7 @@ fn main() Unit:
 - Imports: `import a, b from "x.ms"`, `import (a from "x.ms", b from "y.ms")`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; `else` needs a block `if`, not `if c: x`; lines starting `|` or `.` continue.
 - Bindings: `x := e` (or `x: T = e`) once, `var x = e` reassigns, `n += 1`; unpack `[a, b] := xs`, `{name} := rec`, `for [a, b] in xs`. `and or not`, not `&& || !`.
-- Types: `Int Float Bool String Unit`, no implicit casts. `"{expr}"` interpolates; write `\{` and `\}` for literal braces. `unit`.
+- Types: `Int Float Bool String Unit`, no implicit casts. `"{expr}"` interpolates, `\{` `\}` escape; `r"\d+"`, `r"""` raw. `unit`.
 - Control: `if`/`else if`/`else`, `while c:`, `for i in 0..n:` (excludes `n`; steps `range_by`, `@std/collections/collections.ms`), `break`, `continue`. `if` is a statement; the expression is `if c: a else: b`.
 - Functions: `fn f(a: Int, b: Int = 1) Int:` (no `->`; `Unit` if none), called `f(1, b: 2)`; generics `fn f[T](x: T) T`; closures `fn x: x + 1`, typed `fn(x: Int) Int: x + 1`; types `fn(Int) Int`.
 - Collections: `[1, 2]`, `xs[i] = v`, `List[T](reserve: n)`, `xs.slice(a, b)` is a `Result`; `Map[K, V]()` (`m[k] = v`, `m.add(k, v)`, `m.get(k)` is optional), `Set[T]()` mutate in place; `for e in m.entries():`, `if var n = m.get(k): n += 1`; `contains`, `split`.

@@ -20,7 +20,7 @@ make vscode-install
 
 The VS Code CLI (`code`) must be on PATH. On macOS, run **Shell Command: Install 'code' command in PATH** from VS Code's Command Palette. To use another CLI executable or a path containing spaces, run `make vscode-install VSCODE_CLI="/path/to/code"`. Installation uses that CLI's editor environment; run it where you want the extension installed. Repeated installs replace the same extension version.
 
-`make vscode-package` only creates `extensions/vscode/<name>-<version>.vsix`, using the extension's current package metadata. Both targets install locked npm dependencies and reuse the package script's checks and bundling. They package the client only; the `ms` binary still needs the setup described above.
+`make vscode-package` only creates `extensions/vscode/<name>-<version>.vsix`, using the extension's current package metadata. Both targets install locked npm dependencies and reuse the package script's checks and bundling. Bundling writes `dist/THIRD-PARTY-NOTICES.txt` from the dependencies actually included by esbuild, preserving their installed license and notice files in the VSIX. A missing or empty notice fails packaging. They package the client only; the `ms` binary still needs the setup described above.
 
 For development inside `extensions/vscode`:
 

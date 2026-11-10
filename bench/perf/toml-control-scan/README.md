@@ -1,5 +1,7 @@
 # TOML control admission, 2026-10-31
 
+> Raw result data, logs and patches named below were removed from the tree; recover them from git history at `c1af1db3` or earlier. The conclusions and programs stay.
+
 Both byte-scan admission experiments are **rejected**. Production TOML code is
 unchanged. The inline form improves a tiny cached-file round trip **2.591×** and
 short errors **3.224–3.278×**, but broader controls confirmed a **1.75% slowdown**
@@ -33,7 +35,7 @@ Base is main `81b804d58131224a00a10ebe3f3824e6c84313e1` (including #2139); candi
 core tree `bd1f5f153f6051cc0b71f0aaf9efbfca6a24f0f9`. Normal native/CLI builds
 were repeated for baseline and candidate on that same tree, toggling only TOML's
 admission code. All eight produced binary hashes match the independently measured
-previous main-f900 cohort exactly: [rebuilt identities](results/2026-10-31/rebuilt-identities.json).
+previous main-f900 cohort exactly: `rebuilt identities`.
 This supports reusing that cohort's long controls and RSS alongside the fresh
 1,224-observation actual-main matrix. Native sources, Cargo inputs and toolchains
 match; no security setting, check or compiler/backend option was changed.
@@ -73,10 +75,10 @@ possible, so raw observations and A/A controls are retained.
 
 ## Inline candidate actual-main matrix
 
-[Full samples](results/2026-10-31/actual-main/samples.jsonl),
-[distributions](results/2026-10-31/actual-main/summary.json),
-[environment](results/2026-10-31/actual-main/environment.json) and
-[payload hashes](results/2026-10-31/actual-main/payloads-manifest.json) are retained.
+`Full samples`,
+`distributions`,
+`environment` and
+`payload hashes` are retained.
 
 Nanoseconds per complete cached-file operation. Before/after >1 is a gain;
 after/Rust >1 is remaining overhead. Full median/MAD/min/max distributions are
@@ -122,7 +124,7 @@ retained. Rust errors are deliberately omitted.
 | read | unicode1m | 318645.4 | 322811.7 | 360655.8 | 0.987× | 0.895× |
 
 The fresh matrix covers 396 roundtrip, 144 error, 288 writer and 396 read observations.
-The [long writer A/A controls](results/2026-10-31/inline-writer-long/summary.json)
+The `long writer A/A controls`
 use about 700ms baseline processes. All three writer labels (baseline A,
 baseline B and candidate) use the **same binary SHA-256**, as do before/after
 read-only controls. Their observed label differences are A/A variation:
@@ -134,7 +136,7 @@ The earlier helper variant used different writer binaries and its reproducible
 penalty remains a reason for rejection. This is not a claim that all timings
 are identical.
 
-[Whole-process RSS](results/2026-10-31/inline-memory/samples.json) covers 150 unique
+`Whole-process RSS` covers 150 unique
 fresh-process measurements across nine tiny/large/error/writer/read cases. Parser
 roundtrip medians fall by 728 KiB on the listed cases; large error cases fall by 908 KiB.
 Writer/read medians are unchanged. These include setup, I/O and teardown; they are
@@ -142,7 +144,7 @@ not allocation counts, and no mechanism is inferred from RSS alone.
 
 ## Structural discovery and rejection
 
-The [broader pass](results/2026-10-31/structure-discovery/summary.json) covers nine
+The `broader pass` covers nine
 valid shapes: nested tables at depths 8/32, arrays of 1,024 strings and integers,
 one array of 128 tables, shared dotted keys, Unicode keys, an empty key and a long
 multiline string. All Rust abstract-value and exact before/after output checks
@@ -151,7 +153,7 @@ pass; blocked cases are an empty list. Six balanced three-label trials produce
 
 Arrays of tables lost about 1.48% in that pass, so a prespecified longer A/A
 confirmation used twelve trials at about 700ms per baseline process. The
-[36 retained observations](results/2026-10-31/structure-tables-long/samples.jsonl)
+`36 retained observations`
 give baseline A/B medians 135650.55/135656.48 ns and candidate 138036.28 ns:
 **+1.75%** versus mean baseline medians. Paired candidate-minus-mean-baselines
 has median +1870 ns and is positive in 11/12 trials. Baseline MADs are 844/897 ns,
@@ -161,23 +163,23 @@ because other cases improve more or because some individual ranges overlap.
 
 The inline candidate is rejected and the production source restored. No third
 placement variant or excluded backend/lifetime investigation was attempted.
-[Original structural driver](variants/structure-discovery.py.txt), full payloads,
+`Original structural driver`, full payloads,
 calibration counts, hashes and long-run provenance are retained. The driver was
 run from .artifacts/control-scan in this worktree; it intentionally stops on
 changed valid outputs and records invalid/unsupported cases separately.
 The exact candidate patch against 81b is
-[archived](variants/inline-scan-81b.patch), as are the four baseline-passing
-[behavior tests](variants/toml-controls.ms.txt). These are evidence, not active
+`archived`, as are the four baseline-passing
+`behavior tests`. These are evidence, not active
 production/test-suite changes. Reapply them only for a future matched experiment.
 
 ## Retained rejected and exploratory work
 
 The initial one-use control_offset helper also improved parsing but was held after
-[long A/A writer controls](results/2026-10-31/helper-writer-long/summary.json)
+`long A/A writer controls`
 showed reproducible costs of about 1.5–2.4%: paired candidate costs 36.9 ns empty
 (12/12 slower), 30.5 ns tiny(11/12), 47.2 ns common(10/12). Overlapping ranges did
 not erase that signal. Its full 1,224 observations, 144 long observations and 150 RSS
-records remain separate. The [unapplied helper patch](variants/helper-scan-f900.patch)
+records remain separate. The `unapplied helper patch`
 reconstructs that candidate against f900; zero-context patches use git apply
 --unidiff-zero. The inline version has a real error-path simplification but its later arrays-of-tables
 regression independently requires rejection.
@@ -185,13 +187,13 @@ regression independently requires rejection.
 Earlier invariant-text loops reported much larger apparent factors (including
 66× empty and 123× short errors). Whole-output guards and printed checksums prove
 observable results, but do not source-prove recomputation of invariant parsing on
-every iteration. Those [guarded observations](results/2026-10-31/guarded-discovery/summary.json)
+every iteration. Those `guarded observations`
 are **discovery only** and support no isolated-parser/Rust performance claim.
 No excluded compiler/backend investigation was used to resolve that uncertainty;
 the primary workload instead reads fresh external input per iteration.
 
 The first cached-file Rust read control held an unnecessary setup string copy.
-Its [source snapshot](variants/read-setup-copy.rs.txt) and complete matrix remain
+Its `source snapshot` and complete matrix remain
 in file-discovery; the corrected Rust read control is used for file-final and later
 cohorts. Historical source snapshots/patches preserve old source hashes. A failed
 failure-probe attempt lacked rustc on PATH and stopped before bad producers ran;

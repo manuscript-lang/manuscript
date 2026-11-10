@@ -17,6 +17,9 @@
       "include": "#multiline-string"
     },
     {
+      "include": "#raw-string"
+    },
+    {
       "include": "#string"
     },
     {
@@ -156,6 +159,10 @@
       "name": "string.quoted.other.raw.manuscript",
       "begin": "r\"\"\"",
       "end": "\"\"\""
+    },
+    "raw-string": {
+      "name": "string.quoted.other.raw.manuscript",
+      "match": "\\br\"[^\"\\n]*\""
     },
     "string": {
       "name": "string.quoted.double.manuscript",

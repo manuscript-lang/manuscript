@@ -4,6 +4,8 @@
 
 Decision: the user chose `"""` (interpolating) plus `r"""` (raw) literals, indent stripped to the closing line, to end `\"`, `\{`, `\}` escaping in JSON fixtures (#2167). This replaced the earlier "no raw or multiline literals" rule.
 
+Later: one-line `r"..."` (no escapes, ends at the first quote, so no quote inside) was added for regexes; it is a single-line token and needs no masking.
+
 Verified: the formatter, the suite-header pass and expression layout all work per source line, so a token that spans lines is corrupted unless it is swapped for a one-line placeholder first. `format` masks each such token and restores it shifted with the line it lands on. A new multi-line construct needs the same treatment, and a position inside the literal needs a line and column computed from its text.
 
 Apply when: changing text literals, the lexer's string scanning, or any line-based formatter or editor pass.

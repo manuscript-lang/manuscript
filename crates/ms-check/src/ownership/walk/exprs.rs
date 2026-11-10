@@ -587,7 +587,8 @@ impl Walker<'_> {
             let later = self
                 .next_use(e.id, b)
                 .map(|n| self.later_at(e.id, n))
-                .unwrap_or_default();
+                .unwrap_or_default()
+                + &self.consumed_note();
             if b.ty.kind == Kind::Function {
                 self.error(
                     e.pos,
@@ -615,6 +616,7 @@ impl Walker<'_> {
         self.record(e.id, b, Access::Move);
         if parameter.is_some() || receiver {
             self.consumed.insert(b.uid);
+            self.consumed_at.entry(b.uid).or_insert(e.pos);
         }
         if let Some(l) = lambda {
             self.escaped.insert(l);
@@ -781,6 +783,7 @@ impl Walker<'_> {
         self.record(info.root_node, &root, Access::Borrow);
         if meta_is_parameter(self, root.uid) {
             self.consumed.insert(root.uid);
+            self.consumed_at.entry(root.uid).or_insert(e.pos);
         }
         if resource {
             let at = self.facts.resource_moves.entry(root.uid).or_default();

@@ -391,6 +391,30 @@ fn entry_must_be_a_parameterless_main() {
 }
 
 #[test]
+fn check_reports_an_invalid_declared_main_and_names_the_callee_consuming_a_parameter() {
+    let dir = scratch("check-entry");
+    let backend = Engine::new(Fixed(EXIT_SEVEN));
+    let bad = write(&dir, "bad.ms", include_str!("check_entry/bad_main.ms"));
+    let (status, _, err) = ms(&backend, &["check", &bad]);
+    assert_eq!(status, 1);
+    assert!(
+        err.contains("entry must declare fn main; main returns"),
+        "{err}"
+    );
+    let library = write(&dir, "lib.ms", include_str!("check_entry/library.ms"));
+    let (status, _, err) = ms(&backend, &["check", &library]);
+    assert_eq!(status, 0, "{err}");
+
+    let moved = write(&dir, "moved.ms", include_str!("check_entry/moved.ms"));
+    let (status, _, err) = ms(&backend, &["check", &moved]);
+    assert_eq!(status, 1);
+    assert!(
+        err.contains("the callee consumes its parameter `path` at"),
+        "{err}"
+    );
+}
+
+#[test]
 fn imports_load_in_dependency_order() {
     let dir = scratch("imports");
     write(&dir, "lib.ms", "export fn one() Int:\n    return 1\n");

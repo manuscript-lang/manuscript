@@ -19,6 +19,9 @@ The whole toolchain is tuned for agents. Errors tell you how to fix them, and bu
 Here's a simple HTTP server:
 
 ```rust
+import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
+import serve from "@std/net/net.ms"
+
 fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
 

@@ -74,3 +74,16 @@ test "histogram percentile returns the observation at an exact rank":
 			h.record(value)
 		for p in [14, 28, 56]:
 			try expect_equal(h.percentile(p.to_float()), (p * count + 99) / 100)
+
+test "large observations keep an exact mean":
+	var h = histogram()
+	h.record(4611686018427387904)
+	h.record(4611686018427387904)
+	try expect_equal(h.count(), 2)
+	try expect_equal(h.mean(), 4611686018427387904.0)
+	h.record(9223372036854775807)
+	try expect_equal(h.maximum(), 9223372036854775807)
+	h.reset()
+	h.record(10)
+	h.record(20)
+	try expect_equal(h.mean(), 15.0)

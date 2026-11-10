@@ -2,11 +2,12 @@ import (
 	Closeable from "@std/core.ms",
 	Bytes from "@std/bytes.ms",
 	adopt from "@std/concurrency/promise.ms",
-	Duration from "@std/time.ms",
+	Duration, monotonic from "@std/time.ms",
 	msrt_promise_take,
 	msrt_promise_wait,
 	msrt_promise_drop,
 	msrt_streams_open,
+	msrt_task_read_limit,
 	msrt_streams_read,
 	msrt_streams_error,
 	msrt_streams_close,
@@ -60,8 +61,10 @@ export type ReadStream[T]:
 
 impl ReadStream[T]:
 	// Returns the next item; none at the end or after `close`. A failed read is the error.
-	var fn next() T?!:
+	// With `timeout`, a read that waits that long in all (a stalled socket) fails with `ETIMEDOUT`; the source may be left mid-item, so close the stream afterwards.
+	var fn next(timeout: Duration? = none) T?!:
 		if self.closed: return ok(none)
+		if bound := timeout: return read_bounded(var self.source, bound)
 
 		return self.source.next()
 
@@ -75,6 +78,21 @@ impl Closeable for ReadStream[T]:
 		result := self.source.close()
 		self.source = EndedSource[T]()
 		return result
+
+// One read of `source` that waits at most `bound` in all.
+fn read_bounded[T](var source: Source[T], bound: Duration) T?!:
+	var nanos = bound.to_nanoseconds()
+	if nanos < 0: nanos = 0
+
+	started := monotonic()
+	msrt_task_read_limit(nanos)
+
+	got := source.next()
+	msrt_task_read_limit(-1)
+	if got.is_error() and monotonic().difference(started).compare(bound) >= 0:
+		return error(Error("I/O: read timed out", kind: "ETIMEDOUT"))
+
+	return got
 
 // A source with nothing left: the one a closed `ReadStream` holds.
 type EndedSource[T]:
