@@ -3,9 +3,6 @@ import (
 	DirectoryEntry, list, read_file from "@std/os/fs.ms",
 )
 
-fn fs_invalid_input() Error:
-	return Error("filesystem: invalid input", kind: "EINVAL")
-
 /*
 Read-only file trees you can swap: code that takes a `FileTree` reads the host disk (`host_tree`) or an in-memory
 tree (`MemoryTree`) the same way, so tests need no temporary directories. `walk` visits every entry under a root.
@@ -387,3 +384,6 @@ fn push_children(tree: FileTree, directory: String, var pending: List[WalkEntry]
 fn relative(path: String, start: String) String:
 	if start == "": return path.clone()
 	return path.slice(start.length() + 1, path.length()).get().clone()
+
+fn fs_invalid_input() Error:
+	return Error("filesystem: invalid input", kind: "EINVAL")

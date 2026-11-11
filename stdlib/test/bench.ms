@@ -29,31 +29,6 @@ type Settings:
 // Calibration never runs more iterations than this per sample.
 max_iterations := 100000000
 
-fn settings() Settings:
-	environment := environment().get(Map[String, String]())
-	var found = Settings(100 * 1000000, 10, 0)
-	if text := environment.get("MS_BENCH_TIME_MS"):
-		found.target_nanoseconds = max(text.parse_int().get(100), 1) * 1000000
-	if text := environment.get("MS_BENCH_SAMPLES"):
-		found.samples = max(text.parse_int().get(10), 1)
-	if text := environment.get("MS_BENCH_ITERATIONS"):
-		found.iterations = max(text.parse_int().get(0), 0)
-	return found
-
-// Runs `body` `count` times and returns the elapsed nanoseconds; the first failure
-// stops the run and is returned.
-fn time_batch(body: fn() Unit!, count: Int) Int!:
-	started := monotonic()
-	for unused in 0..count:
-		body()?
-	return ok(monotonic().difference(started).to_nanoseconds())
-
-// Returns the iteration count whose sample should take about `target` nanoseconds,
-// given that `count` took `elapsed`.
-fn next_count(count: Int, elapsed: Int, target: Int) Int:
-	scaled := count * target / max(elapsed, 1) * 12 / 10
-	return min(max(scaled, count + 1), min(count * 100, max_iterations))
-
 /*
 Runs `work` repeatedly and writes the statistics line, per operation for `operations` operations per run.
 A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
@@ -114,3 +89,28 @@ export fn keep(checksum: Int) Unit!:
 		return fail(
 			"bench result is the smallest Int; the workload is probably degenerate"
 		)
+
+fn settings() Settings:
+	environment := environment().get(Map[String, String]())
+	var found = Settings(100 * 1000000, 10, 0)
+	if text := environment.get("MS_BENCH_TIME_MS"):
+		found.target_nanoseconds = max(text.parse_int().get(100), 1) * 1000000
+	if text := environment.get("MS_BENCH_SAMPLES"):
+		found.samples = max(text.parse_int().get(10), 1)
+	if text := environment.get("MS_BENCH_ITERATIONS"):
+		found.iterations = max(text.parse_int().get(0), 0)
+	return found
+
+// Runs `body` `count` times and returns the elapsed nanoseconds; the first failure
+// stops the run and is returned.
+fn time_batch(body: fn() Unit!, count: Int) Int!:
+	started := monotonic()
+	for unused in 0..count:
+		body()?
+	return ok(monotonic().difference(started).to_nanoseconds())
+
+// Returns the iteration count whose sample should take about `target` nanoseconds,
+// given that `count` took `elapsed`.
+fn next_count(count: Int, elapsed: Int, target: Int) Int:
+	scaled := count * target / max(elapsed, 1) * 12 / 10
+	return min(max(scaled, count + 1), min(count * 100, max_iterations))

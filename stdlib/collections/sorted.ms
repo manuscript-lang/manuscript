@@ -1,20 +1,3 @@
-// Orders two keys: negative when `left` sorts first, zero when equal, positive when
-// `right` sorts first.
-fn order[T: Comparable](left: T, right: T) Int:
-	return left.compare(right)
-
-// Returns one new list holding `chunks[low]` through `chunks[high - 1]` in order.
-// Halving the range copies each element about log2(chunk count) times; folding left
-// with `concat` would recopy every earlier chunk for each later one.
-fn joined[T: Clonable](chunks: List[List[T]], low: Int, high: Int) List[T]:
-	count := high - low
-	if count == 0: return []
-	if count == 1: return chunks[low].clone()
-	if count == 2: return chunks[low].concat(chunks[low + 1])
-
-	middle := low + count / 2
-	return joined(chunks, low, middle).concat(joined(chunks, middle, high))
-
 // One key-value pair of a SortedMap.
 export type SortedEntry[K: Comparable & Clonable, V: Clonable]:
 	// The entry's key, which orders it within the map.
@@ -397,3 +380,20 @@ impl SortedSet[T]:
 	// Returns a new list of the members in ascending order.
 	fn values() List[T]:
 		return self.members.keys()
+
+// Orders two keys: negative when `left` sorts first, zero when equal, positive when
+// `right` sorts first.
+fn order[T: Comparable](left: T, right: T) Int:
+	return left.compare(right)
+
+// Returns one new list holding `chunks[low]` through `chunks[high - 1]` in order.
+// Halving the range copies each element about log2(chunk count) times; folding left
+// with `concat` would recopy every earlier chunk for each later one.
+fn joined[T: Clonable](chunks: List[List[T]], low: Int, high: Int) List[T]:
+	count := high - low
+	if count == 0: return []
+	if count == 1: return chunks[low].clone()
+	if count == 2: return chunks[low].concat(chunks[low + 1])
+
+	middle := low + count / 2
+	return joined(chunks, low, middle).concat(joined(chunks, middle, high))

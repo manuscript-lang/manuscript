@@ -7,9 +7,6 @@ import (
 	now from "@std/time.ms",
 )
 
-fn log_closed() Error:
-	return Error("logging: resource is closed", kind: "EBADF")
-
 // Severity levels accepted by a logger, ordered from Trace through Fatal.
 export enum LogLevel:
 	// Most detailed records, encoded with numeric level 10.
@@ -418,3 +415,6 @@ export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Trans
 				)
 			)
 		error(cause): return error(cause)
+
+fn log_closed() Error:
+	return Error("logging: resource is closed", kind: "EBADF")

@@ -10,26 +10,6 @@ EXACT := 64
 // Bucket count: 64 exact values plus 32 steps for each of the 57 higher powers of two.
 BUCKETS := 1888
 
-fn zeros() List[Int]:
-	var counts = List[Int](reserve: BUCKETS)
-	for _index in 0..BUCKETS: counts.append(0)
-	return counts
-
-fn bucket_of(value: Int) Int:
-	if value < EXACT: return value
-
-	shift := 64 - leading_zeros(value) - 6
-	return EXACT + (shift - 1) * 32 + (shift_right(value, shift) - 32)
-
-// The largest value that falls in bucket `index`.
-fn bucket_top(index: Int) Int:
-	if index < EXACT: return index
-
-	offset := index - EXACT
-	shift := offset / 32 + 1
-	low := shift_left(offset % 32 + 32, shift)
-	return low + (shift_left(1, shift) - 1)
-
 /*
 A latency histogram: records non-negative `Int` values, usually nanoseconds, in fixed memory and
 answers count, extremes, mean and percentiles. Values below 64 are exact and larger ones fall in
@@ -136,3 +116,23 @@ impl Histogram:
 // Creates an empty histogram.
 export fn histogram() Histogram:
 	return Histogram(zeros(), 0, 0, 0, 0, 0)
+
+fn zeros() List[Int]:
+	var counts = List[Int](reserve: BUCKETS)
+	for _index in 0..BUCKETS: counts.append(0)
+	return counts
+
+fn bucket_of(value: Int) Int:
+	if value < EXACT: return value
+
+	shift := 64 - leading_zeros(value) - 6
+	return EXACT + (shift - 1) * 32 + (shift_right(value, shift) - 32)
+
+// The largest value that falls in bucket `index`.
+fn bucket_top(index: Int) Int:
+	if index < EXACT: return index
+
+	offset := index - EXACT
+	shift := offset / 32 + 1
+	low := shift_left(offset % 32 + 32, shift)
+	return low + (shift_left(1, shift) - 1)

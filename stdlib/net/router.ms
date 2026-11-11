@@ -25,32 +25,6 @@ import (
 	msrt_promise_wait from "@std/internal/promises.ms",
 )
 
-// A value with one holder at a time, kept in a one-message in-memory pipe whose id is
-// the slot: `take_slot` moves it out (waiting while another holder has it) and
-// `put_slot` moves it back. The exchange state below lives in one because middleware
-// replaces the exchange with a wrapper of its own type, so the value that comes back
-// from a handler is not the one that was handed in; the slot is what both sides can
-// reach.
-fn new_slot[T](value: T) Int:
-	pipe := msrt_pipe_new(1)
-	_first := msrt_pipe_write(pipe, value)
-	return pipe
-
-fn take_slot[T](slot: Int) T:
-	read := msrt_pipe_read(slot)
-	_code := msrt_promise_wait(read, -1)
-	value := msrt_promise_take[T](read).get()
-	msrt_promise_drop(read)
-	return value
-
-fn put_slot[T](slot: Int, value: T) Unit:
-	_written := msrt_pipe_write(slot, value)
-
-// Ends the pipe of `slot`; call it once, when the last holder is done.
-fn release_slot(slot: Int) Unit:
-	msrt_pipe_close_writer(slot)
-	msrt_pipe_close_reader(slot)
-
 // The value of a slot while one holder works on it; it returns to the slot when the
 // scope ends, however it ends.
 type Held[T]:
@@ -65,9 +39,6 @@ impl Closeable for Held[T]:
 			self.held = false
 			if value := self.items.pop():
 				put_slot(self.slot, value)
-
-fn hold[T](slot: Int) Held[T]:
-	return Held[T](slot: slot, items: [take_slot[T](slot)], held: true)
 
 // The values a matched pattern captured, by name.
 export type RouteParams:
@@ -905,3 +876,32 @@ fn answered(status: Int, succeeded: Bool) Int:
 	if succeeded: return 204
 
 	return 500
+
+// A value with one holder at a time, kept in a one-message in-memory pipe whose id is
+// the slot: `take_slot` moves it out (waiting while another holder has it) and
+// `put_slot` moves it back. The exchange state below lives in one because middleware
+// replaces the exchange with a wrapper of its own type, so the value that comes back
+// from a handler is not the one that was handed in; the slot is what both sides can
+// reach.
+fn new_slot[T](value: T) Int:
+	pipe := msrt_pipe_new(1)
+	_first := msrt_pipe_write(pipe, value)
+	return pipe
+
+fn take_slot[T](slot: Int) T:
+	read := msrt_pipe_read(slot)
+	_code := msrt_promise_wait(read, -1)
+	value := msrt_promise_take[T](read).get()
+	msrt_promise_drop(read)
+	return value
+
+fn put_slot[T](slot: Int, value: T) Unit:
+	_written := msrt_pipe_write(slot, value)
+
+// Ends the pipe of `slot`; call it once, when the last holder is done.
+fn release_slot(slot: Int) Unit:
+	msrt_pipe_close_writer(slot)
+	msrt_pipe_close_reader(slot)
+
+fn hold[T](slot: Int) Held[T]:
+	return Held[T](slot: slot, items: [take_slot[T](slot)], held: true)

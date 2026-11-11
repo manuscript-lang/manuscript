@@ -159,18 +159,6 @@ impl BigRat:
 		if self.is_integer(): return self.num.to_string_radix(10)
 		return "{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
 
-// Reduces `numerator / denominator` for a nonzero denominator.
-fn reduced(numerator: BigInt, denominator: BigInt) BigRat:
-	divisor := numerator.gcd(denominator)
-	var top = numerator / divisor
-	var bottom = denominator / divisor
-
-	if bottom.sign() < 0:
-		top = -top
-		bottom = -bottom
-
-	return BigRat(num: top, den: bottom)
-
 // Returns `numerator / denominator` in lowest terms; a zero denominator returns EINVAL.
 export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
 	if denominator.sign() == 0:
@@ -640,3 +628,15 @@ fn binary_to_float(value: Binary, sticky: Bool) Float?:
 		if result.is_finite(): return result
 
 	return none
+
+// Reduces `numerator / denominator` for a nonzero denominator.
+fn reduced(numerator: BigInt, denominator: BigInt) BigRat:
+	divisor := numerator.gcd(denominator)
+	var top = numerator / divisor
+	var bottom = denominator / divisor
+
+	if bottom.sign() < 0:
+		top = -top
+		bottom = -bottom
+
+	return BigRat(num: top, den: bottom)

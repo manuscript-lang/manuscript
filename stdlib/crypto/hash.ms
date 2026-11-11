@@ -8,12 +8,6 @@ import (
 	secure_int from "@std/random.ms",
 )
 
-// 64-bit state is held in an Int; this reads its bit pattern as an unsigned word.
-fn unsigned(raw: Int) UInt64:
-	high := shift_right_unsigned(raw, 32).to_uint64().get(0)
-	low := bit_and(raw, 4294967295).to_uint64().get(0)
-	return high * 4294967296 + low
-
 /*
 Hashes `data` with 32-bit FNV-1a (offset 2166136261, prime 16777619).
 These hashes spread keys over buckets; they detect nothing adversarial and authenticate nothing.
@@ -164,3 +158,9 @@ export fn crc64_of(input: ReadStream[Bytes], polynomial: Crc64Polynomial) UInt64
 		sum.update(chunk)
 	source.close()?
 	return ok(sum.value())
+
+// 64-bit state is held in an Int; this reads its bit pattern as an unsigned word.
+fn unsigned(raw: Int) UInt64:
+	high := shift_right_unsigned(raw, 32).to_uint64().get(0)
+	low := bit_and(raw, 4294967295).to_uint64().get(0)
+	return high * 4294967296 + low

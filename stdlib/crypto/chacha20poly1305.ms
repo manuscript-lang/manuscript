@@ -10,114 +10,6 @@ import (
 	shift_right_unsigned from "@std/math/math.ms",
 )
 
-fn rotl32(value: Int, count: Int) Int:
-	return bit_and(
-		bit_or(
-			shift_left(value, count),
-			shift_right_unsigned(value, 32 - count),
-		),
-		4294967295,
-	)
-
-fn le32(data: Bytes, at: Int) Int:
-	var value = 0
-	for offset in 0..4:
-		value = bit_or(value, shift_left(data.get(at + offset).to_int(), 8 * offset))
-	return value
-
-fn quarter(var state: List[Int], a: Int, b: Int, c: Int, d: Int) Unit:
-	var va = state[a]
-	var vb = state[b]
-	var vc = state[c]
-	var vd = state[d]
-	va = bit_and(va + vb, 4294967295)
-	vd = rotl32(bit_xor(vd, va), 16)
-	vc = bit_and(vc + vd, 4294967295)
-	vb = rotl32(bit_xor(vb, vc), 12)
-	va = bit_and(va + vb, 4294967295)
-	vd = rotl32(bit_xor(vd, va), 8)
-	vc = bit_and(vc + vd, 4294967295)
-	vb = rotl32(bit_xor(vb, vc), 7)
-	state.set(a, va)
-	state.set(b, vb)
-	state.set(c, vc)
-	state.set(d, vd)
-
-// One 64-byte ChaCha20 keystream block (RFC 8439) for a 32-byte key, 32-bit counter and
-// 12-byte nonce.
-fn initial_state(key: Bytes, counter: Int, nonce: Bytes) List[Int]:
-	var initial = [1634760805, 857760878, 2036477234, 1797285236]
-	for index in 0..8:
-		initial.append(le32(key, index * 4))
-	initial.append(counter)
-	for index in 0..3:
-		initial.append(le32(nonce, index * 4))
-	return initial
-
-// Runs the 20 ChaCha rounds over `initial` and returns the 16 keystream words.
-fn keystream(initial: List[Int]) List[Int]:
-	var state = initial.clone()
-
-	for round in 0..10:
-		quarter(var state, 0, 4, 8, 12)
-		quarter(var state, 1, 5, 9, 13)
-		quarter(var state, 2, 6, 10, 14)
-		quarter(var state, 3, 7, 11, 15)
-		quarter(var state, 0, 5, 10, 15)
-		quarter(var state, 1, 6, 11, 12)
-		quarter(var state, 2, 7, 8, 13)
-		quarter(var state, 3, 4, 9, 14)
-
-	for index in 0..16:
-		state.set(index, bit_and(state[index] + initial[index], 4294967295))
-	return state
-
-fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
-	words := keystream(initial_state(key, counter, nonce))
-	var out = BytesBuilder()
-	for word in words:
-		for offset in 0..4:
-			out.append(
-				bit_and(
-					shift_right_unsigned(word, 8 * offset),
-					255,
-				).to_uint8().get(0)
-			)
-	return out.build()
-
-fn check_key_nonce(key: Bytes, nonce: Bytes) Bool:
-	return key.length() == 32 and nonce.length() == 12
-
-// Whether `length` bytes fit in the block counter space left from `counter` (RFC 8439
-// counters are 32 bits).
-fn fits_counter(counter: Int, length: Int) Bool:
-	return (length + 63) / 64 <= 4294967296 - counter
-
-fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
-	var out = BytesBuilder()
-	var state = initial_state(key, counter, nonce)
-	var position = 0
-	var index = counter
-
-	while position < data.length():
-		state.set(12, index)
-
-		for word in keystream(state):
-			for offset in 0..4:
-				if position < data.length():
-					pad := bit_and(shift_right_unsigned(word, 8 * offset), 255)
-					out.append(
-						bit_xor(
-							data.get(position).to_int(),
-							pad,
-						).to_uint8().get(0)
-					)
-					position += 1
-
-		index += 1
-
-	return out.build()
-
 /*
 Encrypts or decrypts `data` with the ChaCha20 stream cipher (RFC 8439); the same call does both.
 `key` is 32 bytes, `nonce` 12 bytes and `counter` the initial 32-bit block counter (normally 1 after the Poly1305 key block).
@@ -356,3 +248,111 @@ export fn chacha20poly1305_open(
 		return error(Error("crypto: authentication failed", kind: "EAUTH"))
 
 	return ok(xor_stream(key, 1, nonce, ciphertext))
+
+fn rotl32(value: Int, count: Int) Int:
+	return bit_and(
+		bit_or(
+			shift_left(value, count),
+			shift_right_unsigned(value, 32 - count),
+		),
+		4294967295,
+	)
+
+fn le32(data: Bytes, at: Int) Int:
+	var value = 0
+	for offset in 0..4:
+		value = bit_or(value, shift_left(data.get(at + offset).to_int(), 8 * offset))
+	return value
+
+fn quarter(var state: List[Int], a: Int, b: Int, c: Int, d: Int) Unit:
+	var va = state[a]
+	var vb = state[b]
+	var vc = state[c]
+	var vd = state[d]
+	va = bit_and(va + vb, 4294967295)
+	vd = rotl32(bit_xor(vd, va), 16)
+	vc = bit_and(vc + vd, 4294967295)
+	vb = rotl32(bit_xor(vb, vc), 12)
+	va = bit_and(va + vb, 4294967295)
+	vd = rotl32(bit_xor(vd, va), 8)
+	vc = bit_and(vc + vd, 4294967295)
+	vb = rotl32(bit_xor(vb, vc), 7)
+	state.set(a, va)
+	state.set(b, vb)
+	state.set(c, vc)
+	state.set(d, vd)
+
+// One 64-byte ChaCha20 keystream block (RFC 8439) for a 32-byte key, 32-bit counter and
+// 12-byte nonce.
+fn initial_state(key: Bytes, counter: Int, nonce: Bytes) List[Int]:
+	var initial = [1634760805, 857760878, 2036477234, 1797285236]
+	for index in 0..8:
+		initial.append(le32(key, index * 4))
+	initial.append(counter)
+	for index in 0..3:
+		initial.append(le32(nonce, index * 4))
+	return initial
+
+// Runs the 20 ChaCha rounds over `initial` and returns the 16 keystream words.
+fn keystream(initial: List[Int]) List[Int]:
+	var state = initial.clone()
+
+	for round in 0..10:
+		quarter(var state, 0, 4, 8, 12)
+		quarter(var state, 1, 5, 9, 13)
+		quarter(var state, 2, 6, 10, 14)
+		quarter(var state, 3, 7, 11, 15)
+		quarter(var state, 0, 5, 10, 15)
+		quarter(var state, 1, 6, 11, 12)
+		quarter(var state, 2, 7, 8, 13)
+		quarter(var state, 3, 4, 9, 14)
+
+	for index in 0..16:
+		state.set(index, bit_and(state[index] + initial[index], 4294967295))
+	return state
+
+fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
+	words := keystream(initial_state(key, counter, nonce))
+	var out = BytesBuilder()
+	for word in words:
+		for offset in 0..4:
+			out.append(
+				bit_and(
+					shift_right_unsigned(word, 8 * offset),
+					255,
+				).to_uint8().get(0)
+			)
+	return out.build()
+
+fn check_key_nonce(key: Bytes, nonce: Bytes) Bool:
+	return key.length() == 32 and nonce.length() == 12
+
+// Whether `length` bytes fit in the block counter space left from `counter` (RFC 8439
+// counters are 32 bits).
+fn fits_counter(counter: Int, length: Int) Bool:
+	return (length + 63) / 64 <= 4294967296 - counter
+
+fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
+	var out = BytesBuilder()
+	var state = initial_state(key, counter, nonce)
+	var position = 0
+	var index = counter
+
+	while position < data.length():
+		state.set(12, index)
+
+		for word in keystream(state):
+			for offset in 0..4:
+				if position < data.length():
+					pad := bit_and(shift_right_unsigned(word, 8 * offset), 255)
+					out.append(
+						bit_xor(
+							data.get(position).to_int(),
+							pad,
+						).to_uint8().get(0)
+					)
+					position += 1
+
+		index += 1
+
+	return out.build()

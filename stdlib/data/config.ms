@@ -1,12 +1,3 @@
-// Builds the error for a malformed line: `config: line <n>: <reason>`, with the line in
-// `details`.
-fn config_error(line: Int, reason: String) Error:
-	return Error(
-		"config: line {line}: {reason}",
-		kind: "EBADMSG",
-		details: {"line": "{line}"},
-	)
-
 /*
 Parses `.env` text into a map in file order, without touching the process environment.
 Use it to layer settings: read the file, then let real variables win, `values.add(name, value)`.
@@ -186,3 +177,12 @@ fn ini_value(value: String) String:
 		if at := value.index_of(marker):
 			cut = cut.min(at)
 	return value.take(cut).trim()
+
+// Builds the error for a malformed line: `config: line <n>: <reason>`, with the line in
+// `details`.
+fn config_error(line: Int, reason: String) Error:
+	return Error(
+		"config: line {line}: {reason}",
+		kind: "EBADMSG",
+		details: {"line": "{line}"},
+	)

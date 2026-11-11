@@ -10,9 +10,6 @@ import (
 	msstd_encoding_base64_encode_unpadded from "@std/internal/encoding.ms",
 )
 
-fn encoding_invalid_data() Error:
-	return Error("encoding: invalid data", kind: "EBADMSG")
-
 // Encodes unframed ASCII85; complete groups of four zero bytes become `z`. No Adobe
 // `<~`/`~>` delimiters are added. Example: `ascii85_encode("hello".to_bytes())` is
 // `"BOu!rDZ"`.
@@ -357,3 +354,6 @@ export fn ascii_decode(data: Bytes) String!:
 	for byte in bytes:
 		if byte > 127: return error(encoding_invalid_data())
 	return ok(data.decode_utf8().get(""))
+
+fn encoding_invalid_data() Error:
+	return Error("encoding: invalid data", kind: "EBADMSG")

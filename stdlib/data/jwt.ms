@@ -15,9 +15,6 @@ import (
 	now from "@std/time.ms",
 )
 
-fn jwt_invalid_key() Error:
-	return Error("jwt: invalid key", kind: "EINVAL")
-
 // Selects how a token is signed. A verifier names the one it accepts; it never trusts
 // the algorithm a token claims.
 export enum JwtAlgorithm:
@@ -450,3 +447,6 @@ fn raw_to_der(raw: Bytes) Bytes:
 	out.append(inner.length().to_uint8().get(0))
 	out.append_bytes(inner)
 	return out.build()
+
+fn jwt_invalid_key() Error:
+	return Error("jwt: invalid key", kind: "EINVAL")
