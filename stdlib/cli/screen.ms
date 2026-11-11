@@ -33,26 +33,6 @@ export type Screen:
 	// Terminal height in rows, used to tell whether a changed row is still in view.
 	height: Int
 
-// A screen that starts drawing at the current cursor row; the height is the terminal's, or 24 when unknown.
-// ms: effect std.console.read
-export fn new_screen() Screen:
-	size := terminal_size()
-	rows := if size.is_error(): 24 else: size.get(none).rows
-	return Screen(previous: List[String](), cursor_row: 0, height: rows)
-
-fn first_difference(before: List[String], after: List[String]) Int:
-	limit := if before.length() < after.length(): before.length() else: after.length()
-	var i = 0
-	while i < limit and before[i] == after[i]: i += 1
-	return i
-
-// The sequence moving the cursor from row `from` to row `to` within the block, then to the line start.
-fn vertical(from: Int, to: Int) String:
-	if from > to: return "{esc}[{from - to}A\r"
-	if from < to: return "{esc}[{to - from}B\r"
-
-	return "\r"
-
 impl Screen:
 	// Draws `rows` on `terminal` and leaves the cursor at `cursor_row` (an index into `rows`, negative for the first) and `cursor_column`.
 	var fn draw(
@@ -123,3 +103,23 @@ impl Screen:
 	// Updates the terminal height after a `Resize` event.
 	var fn resize(rows: Int) Unit:
 		self.height = rows
+
+// A screen that starts drawing at the current cursor row; the height is the terminal's, or 24 when unknown.
+// ms: effect std.console.read
+export fn new_screen() Screen:
+	size := terminal_size()
+	rows := if size.is_error(): 24 else: size.get(none).rows
+	return Screen(previous: List[String](), cursor_row: 0, height: rows)
+
+fn first_difference(before: List[String], after: List[String]) Int:
+	limit := if before.length() < after.length(): before.length() else: after.length()
+	var i = 0
+	while i < limit and before[i] == after[i]: i += 1
+	return i
+
+// The sequence moving the cursor from row `from` to row `to` within the block, then to the line start.
+fn vertical(from: Int, to: Int) String:
+	if from > to: return "{esc}[{from - to}A\r"
+	if from < to: return "{esc}[{to - from}B\r"
+
+	return "\r"

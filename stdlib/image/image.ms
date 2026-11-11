@@ -56,109 +56,6 @@ export type Image:
 	// `width * height * channels` bytes, row-major.
 	pixels: List[UInt8]
 
-// One RGBA sample, each channel 0 to 255.
-export type Rgba:
-	// Red level, 0 to 255; writes clamp.
-	red: Int
-	// Green level, 0 to 255; writes clamp.
-	green: Int
-	// Blue level, 0 to 255; writes clamp.
-	blue: Int
-	// Opacity, 0 transparent to 255 opaque (the default).
-	alpha: Int = 255
-
-// Chroma resolution of an encoded JPEG.
-export enum Chroma:
-	Full  // 4:4:4, no subsampling.
-	Quarter  // 4:2:0, chroma at half width and height (smaller files).
-
-// Settings for `encode_jpeg`.
-export type JpegOptions:
-	// 1 (smallest) to 100 (best); outside that range `encode_jpeg` fails with `EINVAL`.
-	quality: Int = 85
-	// Chroma resolution for color images; gray images ignore it.
-	chroma: Chroma = Chroma.Quarter
-	// MCUs between restart markers, or 0 for none. Markers let readers recover from damage.
-	restart_interval: Int = 0
-
-// A rectangle in pixels: top-left corner and size.
-export type Rect:
-	// Column of the left edge, counted from 0.
-	x: Int
-	// Row of the top edge, counted from 0.
-	y: Int
-	// Columns covered; at least 1.
-	width: Int
-	// Rows covered; at least 1.
-	height: Int
-
-// How `resize` samples the source.
-export enum Resampling:
-	Nearest  // Fastest; keeps hard edges.
-	Bilinear  // Weighted average of the four nearest pixels.
-
-// The largest pixel count any decoder or constructor accepts; keeps index arithmetic far from overflow.
-HARD_MAX_PIXELS := 1073741824
-
-fn bad(message: String) Error:
-	return Error("image: {message}", kind: "EBADMSG")
-
-fn unsupported(message: String) Error:
-	return Error("image: {message}", kind: "ENOTSUP")
-
-fn too_big(message: String) Error:
-	return Error("image: {message}", kind: "EOVERFLOW")
-
-fn byte(value: Int) UInt8:
-	if value <= 0: return 0.to_uint8().get(0)
-	if value >= 255: return 255.to_uint8().get(0)
-
-	return value.to_uint8().get(0)
-
-// Number of byte channels in `mode`.
-export fn color_channels(mode: ColorMode) Int:
-	match mode:
-		Gray: return 1
-		GrayAlpha: return 2
-		Rgb: return 3
-		Rgba: return 4
-
-// Checks dimensions against `max_pixels` and the hard ceiling, returning the pixel count.
-fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
-	if width < 1 or height < 1: return error(bad("dimensions must be positive"))
-	if width > HARD_MAX_PIXELS / height: return error(
-		too_big("{width}x{height} is too large")
-	)
-
-	count := width * height
-	if limit := max_pixels:
-		if count > limit: return error(
-			too_big("{width}x{height} exceeds {limit} pixels")
-		)
-	return ok(count)
-
-fn zeroed(count: Int) List[UInt8]:
-	return [0.to_uint8().get(0)].repeated(count)
-
-// Creates an opaque black image (alpha modes are fully opaque); `EINVAL` for a non-positive size, `EOVERFLOW` past `max_pixels`.
-export fn new_image(
-	width: Int,
-	height: Int,
-	mode: ColorMode,
-	max_pixels: Int? = none
-) Image!:
-	if width < 1 or height < 1: return error(
-		Error("image: dimensions must be positive", kind: "EINVAL")
-	)
-
-	count := try pixel_count(width, height, max_pixels)
-	n := color_channels(mode)
-	var pixels = zeroed(count * n)
-	if mode == ColorMode.GrayAlpha or mode == ColorMode.Rgba:
-		for i in 0..count:
-			pixels[i * n + n - 1] = byte(255)
-	return ok(Image(width, height, mode, pixels))
-
 impl Image:
 	// Number of byte channels per pixel.
 	fn channel_count() Int:
@@ -367,6 +264,109 @@ impl Image:
 							)
 
 		return ok(Image(width, height, self.mode, out))
+
+// One RGBA sample, each channel 0 to 255.
+export type Rgba:
+	// Red level, 0 to 255; writes clamp.
+	red: Int
+	// Green level, 0 to 255; writes clamp.
+	green: Int
+	// Blue level, 0 to 255; writes clamp.
+	blue: Int
+	// Opacity, 0 transparent to 255 opaque (the default).
+	alpha: Int = 255
+
+// Chroma resolution of an encoded JPEG.
+export enum Chroma:
+	Full  // 4:4:4, no subsampling.
+	Quarter  // 4:2:0, chroma at half width and height (smaller files).
+
+// Settings for `encode_jpeg`.
+export type JpegOptions:
+	// 1 (smallest) to 100 (best); outside that range `encode_jpeg` fails with `EINVAL`.
+	quality: Int = 85
+	// Chroma resolution for color images; gray images ignore it.
+	chroma: Chroma = Chroma.Quarter
+	// MCUs between restart markers, or 0 for none. Markers let readers recover from damage.
+	restart_interval: Int = 0
+
+// A rectangle in pixels: top-left corner and size.
+export type Rect:
+	// Column of the left edge, counted from 0.
+	x: Int
+	// Row of the top edge, counted from 0.
+	y: Int
+	// Columns covered; at least 1.
+	width: Int
+	// Rows covered; at least 1.
+	height: Int
+
+// How `resize` samples the source.
+export enum Resampling:
+	Nearest  // Fastest; keeps hard edges.
+	Bilinear  // Weighted average of the four nearest pixels.
+
+// The largest pixel count any decoder or constructor accepts; keeps index arithmetic far from overflow.
+HARD_MAX_PIXELS := 1073741824
+
+fn bad(message: String) Error:
+	return Error("image: {message}", kind: "EBADMSG")
+
+fn unsupported(message: String) Error:
+	return Error("image: {message}", kind: "ENOTSUP")
+
+fn too_big(message: String) Error:
+	return Error("image: {message}", kind: "EOVERFLOW")
+
+fn byte(value: Int) UInt8:
+	if value <= 0: return 0.to_uint8().get(0)
+	if value >= 255: return 255.to_uint8().get(0)
+
+	return value.to_uint8().get(0)
+
+// Number of byte channels in `mode`.
+export fn color_channels(mode: ColorMode) Int:
+	match mode:
+		Gray: return 1
+		GrayAlpha: return 2
+		Rgb: return 3
+		Rgba: return 4
+
+// Checks dimensions against `max_pixels` and the hard ceiling, returning the pixel count.
+fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
+	if width < 1 or height < 1: return error(bad("dimensions must be positive"))
+	if width > HARD_MAX_PIXELS / height: return error(
+		too_big("{width}x{height} is too large")
+	)
+
+	count := width * height
+	if limit := max_pixels:
+		if count > limit: return error(
+			too_big("{width}x{height} exceeds {limit} pixels")
+		)
+	return ok(count)
+
+fn zeroed(count: Int) List[UInt8]:
+	return [0.to_uint8().get(0)].repeated(count)
+
+// Creates an opaque black image (alpha modes are fully opaque); `EINVAL` for a non-positive size, `EOVERFLOW` past `max_pixels`.
+export fn new_image(
+	width: Int,
+	height: Int,
+	mode: ColorMode,
+	max_pixels: Int? = none
+) Image!:
+	if width < 1 or height < 1: return error(
+		Error("image: dimensions must be positive", kind: "EINVAL")
+	)
+
+	count := try pixel_count(width, height, max_pixels)
+	n := color_channels(mode)
+	var pixels = zeroed(count * n)
+	if mode == ColorMode.GrayAlpha or mode == ColorMode.Rgba:
+		for i in 0..count:
+			pixels[i * n + n - 1] = byte(255)
+	return ok(Image(width, height, mode, pixels))
 
 fn max_of(a: Int, b: Int) Int:
 	return if a > b: a else: b

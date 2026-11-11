@@ -51,42 +51,6 @@ type Decoder:
 	// Internal: True after `finish`.
 	closed: Bool
 
-/*
-Decodes a Server-Sent Events byte stream into events, in order.
-
-Chunks may split any line, line ending or UTF-8 scalar. A stream with no partial line and no unfinished
-event ends cleanly; otherwise the final read fails with `EBADMSG` and the unfinished event is never
-dispatched. A malformed line or an exceeded limit fails the read, and the failure is final. Supplied limits
-must be positive, otherwise the first read fails with `EINVAL`. Closing the result closes `input`.
-*/
-// ms: effect std.net.connect
-export fn sse_events(
-	input: ReadStream[Bytes],
-	limits: SseLimits = SseLimits()
-) ReadStream[SseEvent]:
-	var failure: Error? = none
-	if not positive(limits.max_line_bytes) or not positive(limits.max_event_bytes):
-		failure = Error("SSE invalid input", kind: "EINVAL")
-	return through[Bytes, SseEvent](
-		input,
-		Decoder(
-			limits: limits, retry_ms: none, last_id: none, line: BytesBuilder(),
-			line_bytes: 0, event_bytes: 0, carriage: false, started: false,
-			open_block: false, event_type: "", data: List[String](), failure: failure,
-			closed: false
-		)
-	)
-
-fn positive(limit: Int?) Bool:
-	if maximum := limit: return maximum > 0
-
-	return true
-
-fn exceeds(value: Int, limit: Int?) Bool:
-	if maximum := limit: return value > maximum
-
-	return false
-
 impl Transform[Bytes, SseEvent] for Decoder:
 	var fn step(value: Bytes, var out: List[SseEvent]) Unit!:
 		var events = List[SseEvent]()
@@ -185,6 +149,42 @@ impl Decoder:
 
 		milliseconds := value.parse_int()
 		if milliseconds.is_some(): self.retry_ms = milliseconds
+
+/*
+Decodes a Server-Sent Events byte stream into events, in order.
+
+Chunks may split any line, line ending or UTF-8 scalar. A stream with no partial line and no unfinished
+event ends cleanly; otherwise the final read fails with `EBADMSG` and the unfinished event is never
+dispatched. A malformed line or an exceeded limit fails the read, and the failure is final. Supplied limits
+must be positive, otherwise the first read fails with `EINVAL`. Closing the result closes `input`.
+*/
+// ms: effect std.net.connect
+export fn sse_events(
+	input: ReadStream[Bytes],
+	limits: SseLimits = SseLimits()
+) ReadStream[SseEvent]:
+	var failure: Error? = none
+	if not positive(limits.max_line_bytes) or not positive(limits.max_event_bytes):
+		failure = Error("SSE invalid input", kind: "EINVAL")
+	return through[Bytes, SseEvent](
+		input,
+		Decoder(
+			limits: limits, retry_ms: none, last_id: none, line: BytesBuilder(),
+			line_bytes: 0, event_bytes: 0, carriage: false, started: false,
+			open_block: false, event_type: "", data: List[String](), failure: failure,
+			closed: false
+		)
+	)
+
+fn positive(limit: Int?) Bool:
+	if maximum := limit: return maximum > 0
+
+	return true
+
+fn exceeds(value: Int, limit: Int?) Bool:
+	if maximum := limit: return value > maximum
+
+	return false
 
 // Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any bytes held from earlier chunks.
 fn complete(
