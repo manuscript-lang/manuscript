@@ -22,7 +22,7 @@ fn check(expression: &str, expected_name: &str, expected: usize, valid: bool) {
         let source = source.replace('\n', newline);
         let d = Document::new(ws.uri("signature.ms"), source.clone());
         if valid {
-            let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
+            let checked = analyze(syms, &support::session(), &d, &Documents::new());
             assert!(
                 checked.diagnostics.is_empty(),
                 "{expression}: {:?}",
@@ -32,7 +32,7 @@ fn check(expression: &str, expected_name: &str, expected: usize, valid: bool) {
         }
         let help = signature_help(
             syms,
-            &ms_check::Session::new(),
+            &support::session(),
             &d,
             &Documents::new(),
             text::position(&source, cursor),
@@ -258,7 +258,7 @@ fn signature_help_stays_suppressed_outside_calls_and_in_literals_or_comments() {
         assert!(
             signature_help(
                 syms,
-                &ms_check::Session::new(),
+                &support::session(),
                 &d,
                 &Documents::new(),
                 text::position(&source, cursor)
@@ -316,7 +316,7 @@ fn unfinished_multiline_interpolation_signature_help() {
         let d = Document::new(ws.uri("signature.ms"), source.clone());
         let answer = signature_help(
             syms,
-            &ms_check::Session::new(),
+            &support::session(),
             &d,
             &Documents::new(),
             text::position(&source, source.len()),

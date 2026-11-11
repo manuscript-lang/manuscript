@@ -785,9 +785,21 @@ impl FnLower<'_> {
         id
     }
 
-    /// Whether the elaborate pass can close the owned binding that lives in memory: nothing moves
-    /// or closes it by hand, its close cannot fail, and no closer of its scope was declared
-    /// before it (the pass closes at the scope end, after the scope's other closers).
+    /// Whether the success of a fallible close carries no value, so the pass can stand in for a
+    /// close that did not run (the value moved out) with a plain success.
+    fn close_succeeds_with_unit(&self, kind: &CloseKind) -> bool {
+        let Some(r) = self.close_result_ty(kind) else {
+            return true;
+        };
+        let TyKind::Alt(a) = self.b.m.types.kind(r).clone() else {
+            return false;
+        };
+        self.b.m.alts[a.index()].cases[Std::OK].fields[0].1 == MTy::UNIT
+    }
+
+    /// Whether the elaborate pass can close the owned binding that lives in memory: nothing
+    /// closes it by hand, a move of it is one the pass tracks, and no closer of its scope was
+    /// declared before it (the pass closes at the scope end, after the scope's other closers).
     fn raw_closable(&mut self, binding: &ct::BindingRef, kind: &CloseKind, owned: bool) -> bool {
         let uid = binding.uid;
         let CloseKind::Func { fid, .. } = kind else {
@@ -798,18 +810,19 @@ impl FnLower<'_> {
             return false;
         }
         let own = &self.cx.ownership;
+        let moves = own.moves.contains_key(&uid)
+            || own.close_moves.contains_key(&uid)
+            || own
+                .binding_facts
+                .has(uid, ms_check::api::ownership::BindingFact::ConditionalMove);
         owned
             && !self.dead
             && !binding.mutable
             && self.scope_closes_nothing()
-            && !own.moves.contains_key(&uid)
-            && !own.close_moves.contains_key(&uid)
             && !own
                 .binding_facts
                 .has(uid, ms_check::api::ownership::BindingFact::ExplicitClose)
-            && !own
-                .binding_facts
-                .has(uid, ms_check::api::ownership::BindingFact::ConditionalMove)
+            && (!moves || self.close_succeeds_with_unit(kind))
     }
 
     pub(crate) fn bind_closing_kind(
@@ -860,6 +873,7 @@ impl FnLower<'_> {
                 scope.retain(|u| *u != binding.uid);
             }
             self.own_raw_kind(binding.uid, ptr, thunk.index() as u32 + 2);
+            self.raw_slots.insert(binding.uid, (ptr, kind));
             return Ok(());
         }
         let thunk = self.close_thunk(&kind, ty, slot.is_some());
@@ -1565,6 +1579,13 @@ impl FnLower<'_> {
     /// The function that closes a value of the closing binding `uid` held by a closure built at
     /// `e`, when `e` moves the binding into its environment.
     pub(crate) fn capture_closer(&mut self, uid: usize, e: &Expr, ty: MTy) -> Option<FuncId> {
+        if let Some((_, kind)) = self.raw_slots.get(&uid).cloned() {
+            let moves = self.cx.ownership.close_moves.get(&uid)?;
+            if self.dead || !moves.contains(&e.id) {
+                return None;
+            }
+            return Some(self.close_thunk(&kind, ty, true));
+        }
         let closer = self.closers.get(&uid).cloned()?;
         closer.flag?;
         let moves = self.cx.ownership.close_moves.get(&uid)?;
@@ -1578,6 +1599,18 @@ impl FnLower<'_> {
     /// A move of the closing binding `uid` at the name expression `e`: the new owner closes the
     /// value, so neither the cleanup entry nor the scope end does.
     pub(crate) fn moved_closer(&mut self, uid: usize, e: &Expr) {
+        if let Some((slot, _)) = self.raw_slots.get(&uid).cloned() {
+            let moved = self
+                .cx
+                .ownership
+                .close_moves
+                .get(&uid)
+                .is_some_and(|n| n.contains(&e.id));
+            if moved && !self.dead {
+                self.disown_raw(uid, slot);
+            }
+            return;
+        }
         let Some(closer) = self.closers.get(&uid).cloned() else {
             return;
         };

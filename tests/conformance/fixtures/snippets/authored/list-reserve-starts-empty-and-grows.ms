@@ -1,3 +1,5 @@
+// conform: tags=testing,tier-core
+// conform: phase=run
 export fn main() Int:
     var reserved = List[Int](reserve: 1000)
     if not reserved.is_empty(): return 1

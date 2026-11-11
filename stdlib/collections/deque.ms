@@ -140,6 +140,3 @@ fn Deque[T].length() Int:
 fn Deque[T].at(index: Int) T?:
 	if index < 0 or index >= self.size: return none
 	return self.slots.get(self.slot_of(index))
-
-interface DequeCopy[T: Clonable]:
-	fn to_list() List[T]

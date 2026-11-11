@@ -11,7 +11,7 @@ use support::Workspace;
 #[test]
 fn field_and_column_zero_parameter_annotations_keep_type_context() {
     let syms = ms_syntax::Names::global();
-    let session = ms_check::Session::new();
+    let session = support::session();
     let workspace = Workspace::new("completion-field-types");
     for newline in ["\n", "\r\n"] {
         let fixture = include_str!("completion/field-types.ms").replace('\n', newline);
@@ -92,7 +92,7 @@ fn field_and_column_zero_parameter_annotations_keep_type_context() {
 #[test]
 fn argument_label_edits_preserve_following_trivia_and_value() {
     let syms = ms_syntax::Names::global();
-    let session = ms_check::Session::new();
+    let session = support::session();
     let workspace = Workspace::new("completion-label-trivia");
     for newline in ["\n", "\r\n"] {
         for trivia in [
@@ -152,7 +152,7 @@ fn argument_label_edits_preserve_following_trivia_and_value() {
 #[test]
 fn completion_preserves_existing_call_and_type_arguments() {
     let syms = ms_syntax::Names::global();
-    let session = ms_check::Session::new();
+    let session = support::session();
     let workspace = Workspace::new("completion-existing-arguments");
     std::fs::write(
         workspace.path("increment.ms"),
@@ -240,7 +240,7 @@ fn completion_preserves_existing_call_and_type_arguments() {
 #[test]
 fn multiline_parameter_types_keep_type_snippets_and_variables() {
     let syms = ms_syntax::Names::global();
-    let session = ms_check::Session::new();
+    let session = support::session();
     let workspace = Workspace::new("completion-parameter-types");
     for newline in ["\n", "\r\n"] {
         let fixture = include_str!("completion/parameter-types.ms").replace('\n', newline);
@@ -352,14 +352,9 @@ fn positional_arguments_complete_values_and_keep_argument_labels() {
         let fixture = include_str!("completion/positional-values.ms").replace('\n', newline);
         let document = Document::new(workspace.uri("values.ms"), fixture.clone());
         assert!(
-            analyze(
-                syms,
-                &ms_check::Session::new(),
-                &document,
-                &Documents::new()
-            )
-            .diagnostics
-            .is_empty()
+            analyze(syms, &support::session(), &document, &Documents::new())
+                .diagnostics
+                .is_empty()
         );
         for snippets in [false, true] {
             for prefix in [
@@ -372,7 +367,7 @@ fn positional_arguments_complete_values_and_keep_argument_labels() {
                 let offset = fixture.find(prefix).unwrap() + prefix.len();
                 let items: Vec<_> = completion_at(
                     syms,
-                    &ms_check::Session::new(),
+                    &support::session(),
                     &document,
                     &Documents::new(),
                     ms_lsp::text::position(&fixture, offset),
@@ -395,7 +390,7 @@ fn positional_arguments_complete_values_and_keep_argument_labels() {
                 let mut filled = document.clone();
                 filled.text.replace_range(start..end, "amount");
                 assert!(
-                    analyze(syms, &ms_check::Session::new(), &filled, &Documents::new())
+                    analyze(syms, &support::session(), &filled, &Documents::new())
                         .diagnostics
                         .is_empty()
                 );
@@ -405,7 +400,7 @@ fn positional_arguments_complete_values_and_keep_argument_labels() {
             let document = Document::new(workspace.uri("values.ms"), source.clone());
             let items: Vec<_> = completion_at(
                 syms,
-                &ms_check::Session::new(),
+                &support::session(),
                 &document,
                 &Documents::new(),
                 ms_lsp::text::position(&source, offset),
@@ -425,7 +420,7 @@ fn positional_arguments_complete_values_and_keep_argument_labels() {
             let document = Document::new(workspace.uri("values.ms"), fixture.clone());
             let items: Vec<_> = completion_at(
                 syms,
-                &ms_check::Session::new(),
+                &support::session(),
                 &document,
                 &Documents::new(),
                 ms_lsp::text::position(&fixture, offset),
@@ -465,7 +460,7 @@ fn positional_arguments_complete_values_and_keep_argument_labels() {
             let offset = fixture.find("take(value: amount)").unwrap() + "take(va".len();
             let items: Vec<_> = completion_at(
                 syms,
-                &ms_check::Session::new(),
+                &support::session(),
                 &document,
                 &Documents::new(),
                 ms_lsp::text::position(&fixture, offset),

@@ -11,7 +11,7 @@ use support::Workspace;
 #[test]
 fn enum_outline_and_workspace_search_keep_enum_identity() {
     let syms = ms_syntax::Names::global();
-    let session = ms_check::Session::new();
+    let session = support::session();
     let ws = Workspace::new("enum-symbols");
     let source = include_str!("enum_declarations/source.ms");
     std::fs::write(ws.root.join("source.ms"), source).unwrap();
@@ -36,7 +36,7 @@ fn enum_outline_and_workspace_search_keep_enum_identity() {
 #[test]
 fn enum_keyword_snippet_inserts_a_checked_declaration() {
     let syms = ms_syntax::Names::global();
-    let session = ms_check::Session::new();
+    let session = support::session();
     let ws = Workspace::new("enum-snippet");
     let mut document = Document::new(ws.uri("source.ms"), "enu");
     let item = completion_at(

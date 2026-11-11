@@ -741,9 +741,6 @@ export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K,
 export fn flatten[T: Clonable](lists: List[List[T]]) List[T]:
 	return msrt_list_flatten(lists)
 
-// List operations written in Manuscript. Each interface gathers the operations that
-// need a bound on the element type; a List[T] has them only when T meets the bound.
-// They apply wherever List is used, without an import.
 // Operations that copy elements. A copy of a resource would be closed twice, so the
 // elements must be Clonable.
 export interface ListCopies[T: Clonable]:
@@ -842,24 +839,6 @@ export interface MapCopies[T: Hashable, U: Clonable]:
 	// order. `other` is unchanged.
 	var fn merge(other: Map[T, U]) Unit
 
-interface ListSearch[T: Equal]:
-	fn contains(value: T) Bool
-	fn index_of(value: T) Int?
-	fn last_index_of(value: T) Int?
-
-interface ListDistinct[T: Equal & Clonable]:
-	fn distinct() List[T]
-
-interface ListToSet[T: Hashable & Clonable]:
-	fn to_set() Set[T]
-
-interface ListJoin[T]:
-	fn join(separator: String) String
-
-interface ListOrder[T: Comparable]:
-	var fn sort() Unit
-	fn binary_search(value: T) SearchResult
-
 // Ordering a list into a fresh copy; the elements must be Comparable and Clonable.
 export interface ListOrderCopy[T: Comparable & Clonable]:
 	/*
@@ -868,14 +847,6 @@ export interface ListOrderCopy[T: Comparable & Clonable]:
     Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
     */
 	fn sorted() List[T]
-
-interface ListExtremes[T: Comparable & Clonable]:
-	fn min() T?
-	fn max() T?
-
-interface ListKeyedExtremes[T: Clonable]:
-	fn max_by[K: Comparable](key: fn(T) K) T?
-	fn min_by[K: Comparable](key: fn(T) K) T?
 
 // Reverses the elements of `items` in [start, end) in place; used by `rotate`.
 fn reverse_span[T](var items: List[T], start: Int, end: Int) Unit:
@@ -886,25 +857,6 @@ fn reverse_span[T](var items: List[T], start: Int, end: Int) Unit:
 		items.swap(low, high)
 		low += 1
 		high -= 1
-
-// In-place List operations that move elements and never copy them, so they apply to any
-// element type.
-interface ListReshape[T]:
-	var fn retain(keep: fn(T) Bool) Unit
-	var fn compact_by(same: fn(T, T) Bool) Unit
-	var fn rotate(by: Int) Unit
-	fn is_sorted_by(compare: fn(T, T) Int) Bool
-
-interface ListCompact[T: Equal]:
-	var fn compact() Unit
-
-interface ListIsSorted[T: Comparable]:
-	fn is_sorted() Bool
-
-interface ListCopiesKeyed[T: Clonable]:
-	fn sorted_by_key[K: Comparable](key: fn(T) K) List[T]
-	fn repeated(count: Int) List[T]
-	var fn extend(other: List[T]) Unit
 
 // Map operations written in Manuscript. A Map[T, U] has them only when T can be cloned
 // for storage.
@@ -920,12 +872,6 @@ import (
 	msrt_list_flatten,
 	msrt_list_range_by from "@std/internal/collections.ms",
 )
-
-interface MapRetain[T: Hashable & Clonable, U]:
-	var fn retain(keep: fn(T, U) Bool) Unit
-
-interface SetRetain[T: Hashable & Clonable]:
-	var fn retain(keep: fn(T) Bool) Unit
 
 // The built-in integer and float types: the element types `sum` adds.
 export type Numeric = Int | Int8 | Int16 | Int32 | UInt8 | UInt16 | UInt32 | Float | Float32

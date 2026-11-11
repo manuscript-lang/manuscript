@@ -1,3 +1,5 @@
+// conform: tags=testing,tier-core
+// conform: phase=run
 interface Shape:
     fn label() String
 
