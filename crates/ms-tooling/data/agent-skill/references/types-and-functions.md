@@ -5,35 +5,33 @@ Declare parameter/return types: `fn f(value: Int, offset: Int = 1) Int:`. Call l
 <!-- complete: types.ms -->
 ```manuscript
 interface Apply:
-    fn apply(value: Int) Int
+	fn apply(value: Int) Int
 
 type Offset:
-    delta: Int
+	delta: Int
 
 fn Offset.apply(value: Int) Int:
-    return value + self.delta
+	return value + self.delta
 
 fn use(value: Int, operation: Apply) Int:
-    return operation.apply(value)
+	return operation.apply(value)
 
 fn identity[T](value: T) T: value
 
 enum Choice:
-    Empty
-    Number(value: Int)
+	Empty
+	Number(value: Int)
 
 fn number(choice: Choice) Int:
-    match choice:
-        Empty: return 0
-        Number(value): return value
+	match choice:
+		Empty: return 0
+		Number(value): return value
 
 fn main() Int:
-    chosen := Choice.Number(identity(40))
-    if use(number(chosen), Offset(2)) == 42: return 0
-    return 1
+	chosen := Choice.Number(identity(40))
+	if use(number(chosen), Offset(2)) == 42: return 0
+	return 1
 ```
-
-`ms run types.ms` exits 0, without output.
 
 Matching receiver methods satisfy interfaces by shape: names, parameter labels/types, mutability and return types must agree. Explicit implementations use `impl Contract for Type:` with methods inside.
 

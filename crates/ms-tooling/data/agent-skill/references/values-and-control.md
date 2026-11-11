@@ -7,19 +7,17 @@ Types: Int, Float, Bool, String, Unit. Literals: `true`, `false`, `unit`. Numeri
 <!-- complete: control.ms -->
 ```manuscript
 fn main() Int:
-    var total = 0
-    for n in 0..5:
-        if n == 2: continue
-        total += n
-    while total < 10:
-        total += 1
-    label := if total == 10: "ready" else: "wrong"
-    if label == "ready" and not (total < 10):
-        return 0
-    return 1
+	var total = 0
+	for n in 0..5:
+		if n == 2: continue
+		total += n
+	while total < 10:
+		total += 1
+	label := if total == 10: "ready" else: "wrong"
+	if label == "ready" and not (total < 10):
+		return 0
+	return 1
 ```
-
-`ms run control.ms` exits 0, without output.
 
 `0..n` excludes n. `break` exits a loop; `continue` advances it. Boolean operators: `and`, `or`, `not`.
 

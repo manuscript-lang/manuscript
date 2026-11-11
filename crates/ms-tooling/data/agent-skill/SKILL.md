@@ -9,7 +9,7 @@ Generated for Manuscript {{MS_VERSION}}. Compare with `ms --version`; regenerate
 
 ## Defaults
 
-Use four-space indents, `:=` for immutable locals, `var` for mutation, and explicit named-function types. Prefer early returns and short pipelines. Handle Results with `?` or explicit branches; clone only for an independent owner.
+Use tabs for indentation, `:=` for immutable locals, `var` for mutation, and explicit named-function types. Prefer early returns and short pipelines. Handle Results with `?` or explicit branches; clone only for an independent owner.
 
 ## References
 

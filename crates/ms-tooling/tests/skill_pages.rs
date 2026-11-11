@@ -7,10 +7,13 @@ use std::sync::Arc;
 fn skill_complete_examples_check() {
     let mut examples = 0;
     for (path, text) in FILES {
-        assert!(
-            !text.contains('\t'),
-            "skill uses four-space indentation: {path}"
-        );
+        for fence in text.split("```manuscript\n").skip(1) {
+            let source = fence.split_once("```").expect("closed fence").0;
+            assert!(
+                source.lines().all(|line| !line.starts_with(' ')),
+                "skill code indentation must use tabs: {path}"
+            );
+        }
         for after in text.split("<!-- complete").skip(1) {
             let (_, after_marker) = after.split_once(" -->\n").expect("complete marker");
             let source = after_marker
@@ -59,6 +62,7 @@ fn skill_root_is_short_and_references_are_substantive() {
     assert!(root.len() <= 2600, "entry skill should remain concise");
     assert!(root.starts_with("---\nname: manuscript\n"));
     assert!(root.contains("{{MS_VERSION}}"));
+    assert!(root.contains("Use tabs for indentation"));
     for (path, text) in FILES
         .iter()
         .filter(|(path, _)| path.starts_with("references/"))

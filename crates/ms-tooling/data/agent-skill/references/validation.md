@@ -11,10 +11,10 @@ import expect_equal from "@std/test/test.ms"
 fn twice(value: Int) Int: value * 2
 
 test "twice":
-    expect_equal(twice(21), 42)?
+	expect_equal(twice(21), 42)?
 ```
 
-`ms test arithmetic.ms` reports `1 tests, 0 failed`. Assertions return Results; `?` fails the test on error. Tests need no main. `bench "name":` introduces benchmark bodies.
+Assertions return Results; `?` fails the test on error. Tests need no main. `bench "name":` introduces benchmark bodies.
 
 Test success, failure and boundary inputs. Never expect exceptions. Avoid undeclared assignment, `try`/`await`, unwrap-style calls, `def`, enum `case`, or methods inside type bodies. Use `:=`, postfix `?`, `fn Type.method` and explicit returns instead.
 

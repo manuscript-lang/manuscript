@@ -1,6 +1,6 @@
 # Manuscript cheat sheet
 
-Alpha: syntax/APIs may change. Use four-space indents and `//` comments.
+Alpha: syntax/APIs may change. Use tabs for indentation and `//` comments.
 
 ## Write, check, run
 
@@ -11,15 +11,15 @@ Save as `total.ms`:
 <!-- complete -->
 ```manuscript
 fn total(texts: List[String]) Int!:
-    var sum = 0
-    for text in texts:
-        n := text.parse_int().ok_or(Error("not an integer: {text}"))?
-        sum += n
-    return ok(sum)
+	var sum = 0
+	for text in texts:
+		n := text.parse_int().ok_or(Error("not an integer: {text}"))?
+		sum += n
+	return ok(sum)
 
 // ms: allow_effect std.console.write
 fn main() Unit!:
-    ["12", "30"] | total? | print
+	["12", "30"] | total? | print
 ```
 
 `ms check total.ms` checks it; `ms run total.ms` prints `42`.
@@ -37,17 +37,17 @@ Save as `counter.ms`; `ms run counter.ms` exits 0:
 <!-- complete -->
 ```manuscript
 type Counter:
-    n: Int = 0
+	n: Int = 0
 
 fn Counter.value() Int: self.n
 
 fn var Counter.add(n: Int) Unit:
-    self.n += n
+	self.n += n
 
 fn main() Int:
-    var counter = Counter()
-    counter.add(42)
-    return counter.value() - 42
+	var counter = Counter()
+	counter.add(42)
+	return counter.value() - 42
 ```
 
 ## Values and syntax

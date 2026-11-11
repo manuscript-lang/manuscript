@@ -12,14 +12,12 @@ import from_list, map, collect from "@std/io/streams.ms"
 fn work() Int!: ok(21)
 
 fn main() Unit!:
-    pending := promise(fn: work())
-    value := pending.wait()?
-    output := from_list([value]) | map(fn x: x * 2) | collect(none)?
-    if output.get(0, 0) != 42:
-        return error(Error("unexpected output"))
+	pending := promise(fn: work())
+	value := pending.wait()?
+	output := from_list([value]) | map(fn x: x * 2) | collect(none)?
+	if output.get(0, 0) != 42:
+		return error(Error("unexpected output"))
 ```
-
-`ms run concurrency.ms` exits 0, without output.
 
 Import PromiseOptions from `"@std/concurrency/promise.ms"`; set `promise(..., options: PromiseOptions(timeout: duration))`, never a wait argument.
 

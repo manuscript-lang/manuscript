@@ -5,17 +5,15 @@ Prelude constructors: `[1, 2]`, `List[Int](reserve: 8)`, `Map[String, Int]()`, `
 <!-- complete: collections.ms -->
 ```manuscript
 fn main() Int:
-    values := [1, 2, 3, 4]
-    total := values | .filter(fn x: x > 2) | .map(fn x: x * 2) | .sum()
-    var counts = Map[String, Int]()
-    counts["total"] = total
-    if var n = counts["total"]?:
-        n += 1
-    if counts.get_or("total", 0) == 15: return 0
-    return 1
+	values := [1, 2, 3, 4]
+	total := values | .filter(fn x: x > 2) | .map(fn x: x * 2) | .sum()
+	var counts = Map[String, Int]()
+	counts["total"] = total
+	if var n = counts["total"]?:
+		n += 1
+	if counts.get_or("total", 0) == 15: return 0
+	return 1
 ```
-
-`ms run collections.ms` exits 0, without output.
 
 Map `.get(key)` returns Optional; `.get_or(key, default)` supplies a fallback. Iterate `.entries()` and read `.key`/`.value`. List `.slice(start, end)` returns Result; `.get(index, default)` supplies a fallback.
 

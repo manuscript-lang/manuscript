@@ -7,23 +7,21 @@ Storage in records/collections can move ownership, invalidating the old name. Cl
 <!-- complete: ownership.ms -->
 ```manuscript
 type User:
-    name: String
+	name: String
 
 fn name(user: User) String:
-    return user.name
+	return user.name
 
 fn add(var names: List[String], user: User) Unit:
-    names.append(user.name.clone())
+	names.append(user.name.clone())
 
 fn main() Int:
-    user := User("Ada")
-    var names = List[String]()
-    add(var names, user)
-    if name(user) == "Ada" and names.get(0, "") == "Ada": return 0
-    return 1
+	user := User("Ada")
+	var names = List[String]()
+	add(var names, user)
+	if name(user) == "Ada" and names.get(0, "") == "Ada": return 0
+	return 1
 ```
-
-`ms run ownership.ms` exits 0, without output.
 
 Returning part of a parameter borrows it without a marker. Clone for an independent return owner. `:=` is immutable, including contents; var can mutably borrow a collection field.
 
