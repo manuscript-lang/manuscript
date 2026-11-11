@@ -216,7 +216,7 @@ export extern type NativeListener
 
 // A listening socket that accepts incoming connections.
 // Several tasks may call `accept` on one listener (an accept pool); each incoming connection goes to exactly one of them.
-export type Listener:
+export opaque type Listener:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeListener
 
@@ -246,7 +246,7 @@ fn accept_job(native: NativeListener, timeout: Duration?) fn() Connection!:
 export extern type NativeNetwork
 
 // A set of network permissions and a resolver for the connections, listeners, sockets, clients and servers opened through it. Nothing restricts the host network.
-export type Network:
+export opaque type Network:
 	// The runtime handle; it is released when the last reference to this network ends.
 	native: NativeNetwork
 
