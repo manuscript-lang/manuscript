@@ -42,11 +42,11 @@ test "immutable copies and captured native values keep invocation defaults":
 	nested_result := nested()
 	expect_equal(
 		copied_result.err().message,
-		"missing value at bound-missing-value-source.ms:37",
+		"missing value at bound-missing-value-source.ms:39",
 	)?
 	expect_equal(
 		nested_result.err().message,
-		"missing value at bound-missing-value-source.ms:39",
+		"missing value at bound-missing-value-source.ms:41",
 	)?
 
 test "generic callers and direct calls keep their invocation lines":
@@ -59,7 +59,7 @@ test "generic callers and direct calls keep their invocation lines":
 	direct := absent.ok_or()
 	expect_equal(
 		direct.err().message,
-		"missing value at bound-missing-value-source.ms:55",
+		"missing value at bound-missing-value-source.ms:59",
 	)?
 
 	zero: Int? := 0
