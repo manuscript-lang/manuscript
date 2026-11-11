@@ -200,17 +200,17 @@ fn constructs() List[Construct]:
 		c("fn_value_named", "", "f := see\n    x: @TY@ := @M1@\n    f(x)"),
 		c(
 			"method_temporary",
-			"type Sink:\n    n: Int\n\nimpl Sink:\n    fn take(v: @TY@) Unit: return\n    fn take_later(v: @TY@, n: Int) Unit: return",
+			"type Sink:\n    n: Int\n\nfn Sink.take(v: @TY@) Unit: return\nfn Sink.take_later(v: @TY@, n: Int) Unit: return",
 			"Sink(0).take(@M1@)",
 		),
 		c(
 			"method_later_try",
-			"type Sink:\n    n: Int\n\nimpl Sink:\n    fn take(v: @TY@) Unit: return\n    fn take_later(v: @TY@, n: Int) Unit: return",
+			"type Sink:\n    n: Int\n\nfn Sink.take(v: @TY@) Unit: return\nfn Sink.take_later(v: @TY@, n: Int) Unit: return",
 			"Sink(0).take_later(@M1@, fail_int()?)",
 		),
 		c(
 			"method_bound_later_try",
-			"type Sink:\n    n: Int\n\nimpl Sink:\n    fn take_later(v: @TY@, n: Int) Unit: return",
+			"type Sink:\n    n: Int\n\nfn Sink.take_later(v: @TY@, n: Int) Unit: return",
 			"s := Sink(0)\n    f := s.take_later\n    f(@M1@, fail_int()?)",
 		),
 		c(

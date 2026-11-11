@@ -15,7 +15,7 @@ import (
 )
 
 fn source(count: Int, mode: String) String:
-	header := "type Counter:\n    value: Int\n\nimpl Counter:\n    fn next() Counter: Counter(self.value + 1)\n\n"
+	header := "type Counter:\n    value: Int\n\nfn Counter.next() Counter: Counter(self.value + 1)\n\n"
 	if mode == "native-chain":
 		return (
 			"export fn main() Int:\n    result := [0]"
