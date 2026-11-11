@@ -27,12 +27,18 @@
       "match": "\\bfrom\\b(?=[ \\t]*\")"
     },
     {
-      "match": "\\b(fn)[ \\t]+([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "\\b(fn)[ \\t]+(?:(var)[ \\t]+)?(?:([A-Z][A-Za-z0-9_]*)(?:\\[[^(\\n]*?\\])?\\.)?([A-Za-z_][A-Za-z0-9_]*)",
       "captures": {
         "1": {
           "name": "keyword.control.manuscript"
         },
         "2": {
+          "name": "keyword.control.manuscript"
+        },
+        "3": {
+          "name": "entity.name.type.manuscript"
+        },
+        "4": {
           "name": "entity.name.function.manuscript"
         }
       }
@@ -83,7 +89,7 @@
     },
     {
       "name": "keyword.control.manuscript",
-      "match": "\\b(fn|type|enum|interface|import|export|extern|ref|var|if|else|for|in|while|match|return|try|break|continue|test|fixture|and|or|not|self)\\b"
+      "match": "\\b(fn|type|enum|interface|impl|import|export|extern|ref|var|if|else|for|in|while|match|return|try|break|continue|test|fixture|and|or|not|self)\\b"
     },
     {
       "name": "constant.language.manuscript",
