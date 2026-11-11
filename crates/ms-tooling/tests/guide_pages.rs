@@ -2,8 +2,7 @@
 
 use ms_check::{CheckOptions, ImportMap};
 use ms_tooling::guide::{
-    cheatsheet, format_matches, index, mistake_entries, mistakes, module_names, page, search,
-    standard_library,
+    format_matches, index, mistake_entries, mistakes, module_names, page, search, standard_library,
 };
 use std::sync::Arc;
 
@@ -38,44 +37,13 @@ fn issues(file: &str, source: &str) -> Vec<String> {
         .unwrap()
 }
 
-// Check every complete program a reader can copy verbatim from the cheat sheet.
-#[test]
-fn cheatsheet_program_checks() {
-    let mut programs = 0;
-    for after in cheatsheet()
-        .split("<!-- complete -->\n```manuscript\n")
-        .skip(1)
-    {
-        programs += 1;
-        let source = after.split("```").next().unwrap();
-        let found = issues("cheatsheet.ms", source);
-        assert!(found.is_empty(), "cheat sheet program: {found:?}");
-    }
-    assert_eq!(
-        programs, 2,
-        "guide must retain its workflow and structure examples"
-    );
-}
-
 #[test]
 fn cheatsheet_terse_idioms_check() {
     let found = issues("guide_idioms.ms", include_str!("testdata/guide_idioms.ms"));
     assert!(found.is_empty(), "guide idioms: {found:?}");
-    assert!(cheatsheet().contains("`x: T := e`"));
-    assert!(!cheatsheet().contains("an `else` requires a block `if`"));
 }
 
-// Agents read the guide every session, so its size is part of the contract.
-#[test]
-fn cheatsheet_stays_short() {
-    assert!(
-        cheatsheet().len() <= 5800,
-        "cheat sheet is {} bytes",
-        cheatsheet().len()
-    );
-}
-
-// Each cheat-sheet claim a reader might get wrong is checked against the compiler.
+// Preserve compiler regressions originally established by the language guide.
 #[test]
 fn cheatsheet_claims_match_the_compiler() {
     let check = |body: &str| {
@@ -277,12 +245,16 @@ fn search_rejects_noise_and_empty_queries() {
     assert!(format_matches("zzqxjv", &[]).contains("No standard-library match"));
 }
 
-/// Scope-end close replaced the `with` statement; the cheat sheet must not teach it.
+/// Scope-end close replaced `with`; no skill reference should teach it.
 #[test]
 fn cheatsheet_does_not_teach_with() {
-    let text = cheatsheet();
-    let taught = text.lines().find(|l| l.contains("`with "));
-    assert!(taught.is_none(), "removed with statement: {taught:?}");
+    for (path, text) in ms_tooling::guide::skill::FILES {
+        let taught = text.lines().find(|line| line.contains("`with "));
+        assert!(
+            taught.is_none(),
+            "removed with statement in {path}: {taught:?}"
+        );
+    }
 }
 
 // Every listed mistake is real: `wrong` fails (or is silently accepted) as stated, `right` checks clean.

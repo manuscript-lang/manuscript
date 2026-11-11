@@ -15,5 +15,5 @@ pub mod skill;
 pub mod source;
 
 pub use api::{ApiDeclaration, ApiMember, ApiModule, module_documentation, standard_library};
-pub use pages::{Mistake, cheatsheet, index, mistake_entries, mistakes, module_names, page};
+pub use pages::{Mistake, index, mistake_entries, mistakes, module_names, page};
 pub use search::{Match, format_matches, search};
