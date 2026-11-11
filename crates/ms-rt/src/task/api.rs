@@ -412,18 +412,27 @@ pub unsafe extern "C-unwind" fn msrt_task_sleep(ns: i64) -> u32 {
     unsafe { msrt_task_wait_fd(-1, 0, ns.max(0)) }
 }
 
-/// Bounds every park of the running task until the next call: from now, no wait lasts past
-/// `timeout_ns` nanoseconds in all, and one that reaches it reports a timeout. A negative value
-/// removes the bound.
+/// Bounds every park of the running task until `msrt_task_read_limit_restore`: from now, no wait
+/// lasts past `timeout_ns` nanoseconds in all, and one that reaches it reports a timeout. A bound
+/// already in force stays when it ends sooner, so nested reads cannot outlast the outer one.
+/// Returns the previous limit for `msrt_task_read_limit_restore`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C-unwind" fn msrt_task_read_limit(timeout_ns: i64) {
+pub unsafe extern "C-unwind" fn msrt_task_read_limit(timeout_ns: i64) -> i64 {
     // SAFETY: single threaded scheduler; the running task's record is live.
     unsafe {
-        (*ensure_init()).read_limit = if timeout_ns < 0 {
-            NO_DEADLINE
-        } else {
-            clock_ns().saturating_add(timeout_ns)
-        };
+        let task = ensure_init();
+        let previous = (*task).read_limit;
+        (*task).read_limit = clock_ns().saturating_add(timeout_ns.max(0)).min(previous);
+        previous
+    }
+}
+
+/// Puts back the limit `msrt_task_read_limit` returned (`i64::MAX` is no bound).
+#[unsafe(no_mangle)]
+pub unsafe extern "C-unwind" fn msrt_task_read_limit_restore(previous: i64) {
+    // SAFETY: single threaded scheduler; the running task's record is live.
+    unsafe {
+        (*ensure_init()).read_limit = previous;
     }
 }
 
