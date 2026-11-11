@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "present: String? = \"Ada\"\nmissing: String? = none\n"
+    "fmt": "present: String? := \"Ada\"\nmissing: String? := none\n"
   }
 }
