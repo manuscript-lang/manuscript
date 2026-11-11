@@ -40,13 +40,13 @@ fn main() Unit!:
 - Records: `type T:` with fields (`tag: String = "x"`); construct `T(a: 1)` or `T(1)`. `enum Choice:` declares `A`, `B(x: Int)`; no `case` keyword.
 - Methods: `fn T.name() Unit`; `fn var` mutates self. An `interface I:` is met by matching methods or `impl I for T:`. `export opaque` hides fields/cases outside the file.
 - Collections: `[1, 2]`, `List[T](reserve: n)`, `Map[K, V]()`, `Set[T]()`. Use `var` for `xs[i] = v`, `m[k] = v`. `xs.slice(a, b)` returns a Result. `m.get(k)` returns an Optional; `m.get_or(k, d)` supplies a default. Iterate `for e in m.entries():`; `if var n = m[k]?: n += 1` updates a present value in place.
-- Prefer `any all count sum map filter fold` over bookkeeping loops. `x | f(a: 1) | g? | .m()` means `(g(f(x, a: 1))?).m()`.
+- List methods: `xs | .filter(fn x: x > 0) | .map(fn x: x * 2) | .sum()`. `x | f(a: 1) | g? | .m()` means `(g(f(x, a: 1))?).m()`.
 
 ## Absence and errors
 
 - `T?` is Optional: values convert, `none` is absent. Read with `if x := v:` or `v.get(default)`; `a?.b` chains absence. `?` only propagates Result errors.
 - `T!` means `Result[T, Error]`; `T!E` uses your error type. Return `ok(value)` or `error(reason)`. `Error("message", kind: "EINVAL")` is a record; read `.message`.
-- `r?` yields success or returns the error; the enclosing function must return a compatible Result. `if x := r:` handles success only; use `r.is_error()` and `r.err()` for failure. Never silently drop a Result.
+- `r?` yields success or returns the error; the enclosing function must return a compatible Result. `if x := r:` binds success; in `else:`, `r.err()` is the error value, not Optional. Never call `.err()` on success. Never silently drop a Result.
 - `match v:` handles your own types: `Case(x):`, `_:`, exhaustive. Keep match flat; use methods for Result/Optional. Optional `.map(f)` preserves Result returns as `(T!)?`; handle both layers.
 - Faults (`panic`, failed `get()`) abort; they are not Results.
 
