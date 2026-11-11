@@ -503,7 +503,7 @@ fn List[T: Clonable].repeated(count: Int) List[T]:
 	// One element repeated is a native fill, as fast as `filled`; a native failure
 	// falls through to the loop below.
 	if self.length() == 1:
-		if same := msrt_list_filled(self[0].clone(), count, none): return same
+		if same := filled(self[0].clone(), count, none): return same
 
 	var out = List[T](reserve: self.length() * count)
 	for _round in 0..count:
@@ -771,7 +771,21 @@ export type SearchResult:
 // Creates a list containing independent copies of `value` repeated `count` times; the
 // value must be Clonable.
 export fn filled[T: Clonable](value: T, count: Int, max_items: Int?) List[T]!:
-	return msrt_list_filled(value, count, max_items)
+	limit := max_items.get(9223372036854775807)
+	if count < 0 or limit < 0: return error(
+		Error("collection: invalid input", kind: "EINVAL")
+	)
+	if count > limit or count > MAX_LIST_ITEMS: return error(
+		Error("collection: limit exceeded", kind: "EOVERFLOW")
+	)
+
+	var out = List[T](reserve: count)
+	for _index in 0..count:
+		out.append(value.clone())
+	return ok(out)
+
+// The largest list a native allocation accepts.
+MAX_LIST_ITEMS := 268435456
 
 // Creates the integers from `start` up to but excluding `end`, counting by one. Written
 // `start..end`; the name `range` is not importable. The list is empty when
@@ -931,7 +945,6 @@ import (
 	StringBuilder from "@std/string.ms",
 
 	msrt_list_distinct,
-	msrt_list_filled,
 	msrt_list_flatten,
 	msrt_list_range_by from "@std/internal/collections.ms",
 )

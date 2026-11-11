@@ -1303,37 +1303,6 @@ pub unsafe extern "C-unwind" fn msrt_list_sorted(
 
 #[unsafe(no_mangle)]
 // ms: leaf
-pub unsafe extern "C-unwind" fn msrt_list_filled(
-    value: *const u8,
-    d: ElemDesc,
-    count: i64,
-    has_max: HasRaw,
-    max: i64,
-    out: *mut VecVal,
-) -> u8 {
-    // SAFETY: caller contract.
-    unsafe {
-        let limit = if has_max.is_set() { max } else { i64::MAX };
-        if count < 0 || limit < 0 {
-            return STATUS_INVALID_INPUT;
-        }
-        if count as u64 > (limit as u64).min(MAX_ITEMS as u64) {
-            return STATUS_LIMIT_EXCEEDED;
-        }
-        let d = &*d;
-        let mut v = EMPTY;
-        reserve(&mut v, d, count as usize);
-        for i in 0..count as usize {
-            slot_copy(d, value, v.ptr.add(i * d.size as usize));
-        }
-        v.len = count as usize;
-        *out = v;
-        STATUS_OK
-    }
-}
-
-#[unsafe(no_mangle)]
-// ms: leaf
 pub unsafe extern "C-unwind" fn msrt_list_range(start: i64, end: i64, out: *mut VecVal) {
     // SAFETY: caller contract.
     unsafe {

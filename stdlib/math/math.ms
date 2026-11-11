@@ -2,6 +2,7 @@ import (
 	Data, panic from "@std/core.ms",
 	random_bytes from "@std/random.ms",
 
+	msrt_float_from_bits, msrt_float_to_bits from "@std/internal/bytes.ms",
 	msrt_bits_bit_and,
 	msrt_bits_bit_or,
 	msrt_bits_bit_xor,
@@ -27,9 +28,6 @@ import (
 	msstd_bigint_compare,
 	msstd_bigint_divide,
 	msstd_bigint_from_int,
-	msstd_bigint_gcd,
-	msstd_bigint_inverse_mod,
-	msstd_bigint_lcm,
 	msstd_bigint_modulo,
 	msstd_bigint_multiply,
 	msstd_bigint_negate,
@@ -41,7 +39,6 @@ import (
 	msstd_bigint_shift_left,
 	msstd_bigint_shift_right,
 	msstd_bigint_sign,
-	msstd_bigint_sqrt,
 	msstd_bigint_subtract,
 	msstd_bigint_to_float,
 	msstd_bigint_to_int,
@@ -56,7 +53,6 @@ import (
 	msstd_math_atanh,
 	msstd_math_cbrt,
 	msstd_math_ceil,
-	msstd_math_copy_sign,
 	msstd_math_cos,
 	msstd_math_cosh,
 	msstd_math_divide_wide,
@@ -65,27 +61,18 @@ import (
 	msstd_math_expm1,
 	msstd_math_floor,
 	msstd_math_fma,
-	msstd_math_frexp,
 	msstd_math_hypot,
 	msstd_math_ieee_remainder,
-	msstd_math_is_integer,
-	msstd_math_is_safe_integer,
 	msstd_math_ldexp,
 	msstd_math_log,
 	msstd_math_log10,
 	msstd_math_log1p,
 	msstd_math_log2,
-	msstd_math_modf,
 	msstd_math_multiply_wide,
-	msstd_math_next_after,
 	msstd_math_pow,
 	msstd_math_remainder,
 	msstd_math_remainder_wide,
-	msstd_math_reverse_bits,
-	msstd_math_reverse_bytes,
 	msstd_math_round,
-	msstd_math_round_to_even,
-	msstd_math_sign_bit,
 	msstd_math_sin,
 	msstd_math_sinh,
 	msstd_math_sqrt,
@@ -137,21 +124,46 @@ export fn exp2(value: Float) Float:
 // Rounds to the nearest integer, choosing the even integer at a tie; preserves signed
 // zero, infinities, and NaN.
 export fn round_to_even(value: Float) Float:
-	return msstd_math_round_to_even(value)
+	if value - value != 0.0 or value == 0.0: return value
+
+	low := msstd_math_floor(value)
+	gap := value - low
+	var result = low
+	if gap > 0.5 or (gap == 0.5 and msstd_math_floor(low / 2.0) * 2.0 != low):
+		result = low + 1.0
+	if result == 0.0: return copy_sign(0.0, value)
+
+	return result
+
+// The sign bit of a Float's 64-bit pattern, as an Int.
+SIGN_BIT := -9223372036854775807 - 1
+// Every bit of a Float's pattern except the exponent field's high bits cleared by
+// frexp: the sign and the 52 mantissa bits.
+SIGN_BIT_AND_MANTISSA := -9223372036854775807 - 1 + 4503599627370495
 
 // Returns `value`'s magnitude with `sign`'s sign bit, including signed zero and NaN.
 export fn copy_sign(value: Float, sign: Float) Float:
-	return msstd_math_copy_sign(value, sign)
+	magnitude := msrt_float_to_bits(value)
+	signed := msrt_float_to_bits(sign)
+	if (magnitude < 0) == (signed < 0): return value
+
+	return msrt_float_from_bits(msrt_bits_bit_xor(magnitude, SIGN_BIT))
 
 // Reports the sign bit, including for negative zero and negative NaN.
 export fn sign_bit(value: Float) Bool:
-	return msstd_math_sign_bit(value)
+	return msrt_float_to_bits(value) < 0
 
 // Returns the next representable Float from `value` toward `toward`, crossing
 // subnormals, zero, and infinity exactly. Equal operands return `toward`, including its
 // zero sign; either NaN operand gives NaN.
 export fn next_after(value: Float, toward: Float) Float:
-	return msstd_math_next_after(value, toward)
+	if value != value or toward != toward: return 0.0 / 0.0
+	if value == toward: return toward
+	if value == 0.0: return copy_sign(msrt_float_from_bits(1), toward)
+
+	bits := msrt_float_to_bits(value)
+	grows := (toward > value) == (value > 0.0)
+	return msrt_float_from_bits(if grows: bits + 1 else: bits - 1)
 
 // Computes `left * right + addend` with one rounding, avoiding the intermediate
 // product's rounding and overflow.
@@ -178,7 +190,28 @@ export type FloatParts:
 // Decomposes `value` exactly as fraction * 2^exponent; use `ldexp` to reconstruct it.
 // Zero, infinity and NaN give the unchanged fraction and exponent 0.
 export fn frexp(value: Float) BinaryFloatParts:
-	return msstd_math_frexp(value)
+	if value - value != 0.0 or value == 0.0: return BinaryFloatParts(
+		fraction: value,
+		exponent: 0,
+	)
+
+	var bits = msrt_float_to_bits(value)
+	var adjust = 0
+	field := msrt_bits_bit_and(msrt_bits_shift_right_unsigned(bits, 52), 2047)
+
+	if field == 0:
+		// Subnormal: scale into the normal range, then undo the scale in the exponent.
+		bits = msrt_float_to_bits(value * 18014398509481984.0)
+		adjust = 54
+
+	exponent := msrt_bits_bit_and(msrt_bits_shift_right_unsigned(bits, 52), 2047)
+	kept := msrt_bits_bit_and(bits, SIGN_BIT_AND_MANTISSA)
+	return BinaryFloatParts(
+		fraction: msrt_float_from_bits(
+			msrt_bits_bit_or(kept, msrt_bits_shift_left(1022, 52))
+		),
+		exponent: exponent - 1022 - adjust,
+	)
 
 // Multiplies `fraction` by 2^exponent with normal IEEE rounding, overflow and subnormal
 // underflow. Accepts every Int exponent and preserves signed zero, infinity and NaN.
@@ -189,7 +222,18 @@ export fn ldexp(fraction: Float, exponent: Int) Float:
 // both with the input's sign. Infinity gives itself and signed zero; NaN gives NaN for
 // both parts.
 export fn modf(value: Float) FloatParts:
-	return msstd_math_modf(value)
+	if value != value: return FloatParts(integer: value, fraction: value)
+	if value - value != 0.0: return FloatParts(
+		integer: value,
+		fraction: copy_sign(0.0, value),
+	)
+
+	whole := msstd_math_truncate(value)
+	rest := value - whole
+	return FloatParts(
+		integer: whole,
+		fraction: if rest == 0.0: copy_sign(0.0, value) else: rest,
+	)
 
 /*
 Returns `left - n * right`, where n is the nearest integer to left/right, choosing an even n at a tie.
@@ -298,12 +342,16 @@ export fn log1p(value: Float) Float:
 
 // Reports whether the value is finite and has no fractional part.
 export fn is_integer(value: Float) Bool:
-	return msstd_math_is_integer(value)
+	return value - value == 0.0 and msstd_math_truncate(value) == value
 
 // Reports whether the value is an integer within -(2^53 - 1) through 2^53 - 1, where
 // Float represents integers exactly.
 export fn is_safe_integer(value: Float) Bool:
-	return msstd_math_is_safe_integer(value)
+	return (
+		is_integer(value)
+		and value >= -9007199254740991.0
+		and value <= 9007199254740991.0
+	)
 
 // Positive infinity, the Float that exceeds every finite value; negate it for negative
 // infinity.
@@ -413,12 +461,47 @@ export fn trailing_zeros(value: Int) Int:
 // Reverses all 64 bits of the two's-complement pattern; reversing twice returns
 // `value`.
 export fn reverse_bits(value: Int) Int:
-	return msstd_math_reverse_bits(value)
+	x := reverse_bytes(value)
+	nibbles := msrt_bits_bit_or(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(x, 4),
+			0x0F0F0F0F0F0F0F0F,
+		),
+		msrt_bits_shift_left(msrt_bits_bit_and(x, 0x0F0F0F0F0F0F0F0F), 4),
+	)
+	pairs := msrt_bits_bit_or(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(nibbles, 2),
+			0x3333333333333333,
+		),
+		msrt_bits_shift_left(msrt_bits_bit_and(nibbles, 0x3333333333333333), 2),
+	)
+	return msrt_bits_bit_or(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(pairs, 1),
+			0x5555555555555555,
+		),
+		msrt_bits_shift_left(msrt_bits_bit_and(pairs, 0x5555555555555555), 1),
+	)
 
 // Reverses the eight bytes of the 64-bit pattern, keeping bit order within each byte;
 // independent of host byte order.
 export fn reverse_bytes(value: Int) Int:
-	return msstd_math_reverse_bytes(value)
+	bytes := msrt_bits_bit_or(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(value, 8),
+			0x00FF00FF00FF00FF,
+		),
+		msrt_bits_shift_left(msrt_bits_bit_and(value, 0x00FF00FF00FF00FF), 8),
+	)
+	halves := msrt_bits_bit_or(
+		msrt_bits_bit_and(
+			msrt_bits_shift_right_unsigned(bytes, 16),
+			0x0000FFFF0000FFFF,
+		),
+		msrt_bits_shift_left(msrt_bits_bit_and(bytes, 0x0000FFFF0000FFFF), 16),
+	)
+	return msrt_bits_rotate_left(halves, 32)
 
 // The wrapped sum and output carry from `add_with_carry`; `add_with_carry(1, 2).sum` is
 // 3.
@@ -523,17 +606,50 @@ fn BigInt.multiply(other: BigInt) BigInt:
 // Returns the non-negative greatest common divisor; gcd(0, 0) is zero.
 // Example: `from_int(-12).gcd(from_int(18))` is `from_int(6)`.
 fn BigInt.gcd(other: BigInt) BigInt:
-	return msstd_bigint_gcd(self, other)
+	var a = msstd_bigint_abs(self)
+	var b = msstd_bigint_abs(other)
+
+	while msstd_bigint_sign(b) != 0:
+		r := msstd_bigint_modulo(a, b)
+		a = b
+		b = r
+
+	return a
 
 // Returns the non-negative least common multiple, or zero when either operand is
 // zero.
 fn BigInt.lcm(other: BigInt) BigInt:
-	return msstd_bigint_lcm(self, other)
+	g := self.gcd(other)
+	if msstd_bigint_sign(g) == 0: return g
+
+	return msstd_bigint_multiply(
+		msstd_bigint_quotient(msstd_bigint_abs(self), g),
+		msstd_bigint_abs(other),
+	)
 
 // Returns the floor of the exact integer square root; a negative receiver returns
 // EINVAL.
 fn BigInt.sqrt() BigInt!:
-	return msstd_bigint_sqrt(self)
+	if msstd_bigint_sign(self) < 0: return error(
+		Error("big integer: invalid input", kind: "EINVAL")
+	)
+	if msstd_bigint_sign(self) == 0: return ok(msstd_bigint_from_int(0))
+
+	// Newton's iteration from a power of two at or above the root decreases to the
+	// floor.
+	bits := msstd_bigint_to_string_radix(self, 2).length()
+	var x = msstd_bigint_shift_left(msstd_bigint_from_int(1), (bits + 1) / 2)?
+
+	while true:
+		y := msstd_bigint_shift_right(
+			msstd_bigint_add(x, msstd_bigint_quotient(self, x)),
+			1,
+		)?
+		if msstd_bigint_compare(y, x) >= 0: return ok(x)
+
+		x = y
+
+	return ok(x)
 
 /*
 Returns `self` raised to a non-negative BigInt exponent modulo a positive modulus, in 0 through modulus - 1.
@@ -550,7 +666,28 @@ fn BigInt.inverse_mod(modulus: BigInt) BigInt?!:
 	if modulus.sign() <= 0: return error(
 		Error("big integer: invalid input", kind: "EINVAL")
 	)
-	return ok(msstd_bigint_inverse_mod(self, modulus))
+	if msstd_bigint_compare(modulus, msstd_bigint_from_int(1)) == 0:
+		return ok(msstd_bigint_from_int(0))
+
+	// Extended Euclid on (modulus, self mod modulus), tracking only the self
+	// coefficient.
+	var old_r = modulus.clone()
+	var r = residue(self, modulus)
+	var old_t = msstd_bigint_from_int(0)
+	var t = msstd_bigint_from_int(1)
+
+	while msstd_bigint_sign(r) != 0:
+		q := msstd_bigint_quotient(old_r, r)
+		next_r := msstd_bigint_subtract(old_r, msstd_bigint_multiply(q, r))
+		next_t := msstd_bigint_subtract(old_t, msstd_bigint_multiply(q, t))
+		old_r = r
+		r = next_r
+		old_t = t
+		t = next_t
+
+	if msstd_bigint_compare(old_r, msstd_bigint_from_int(1)) != 0: return ok(none)
+
+	return ok(residue(old_t, modulus))
 
 // Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
 // A zero divisor returns EINVAL.
@@ -875,3 +1012,10 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 		return error(Error("big integer: invalid input", kind: "EINVAL"))
 
 	return ok(root)
+
+// Returns `value` modulo a positive `modulus`, in 0 through modulus - 1.
+fn residue(value: BigInt, modulus: BigInt) BigInt:
+	rest := msstd_bigint_modulo(value, modulus)
+	if msstd_bigint_sign(rest) < 0: return msstd_bigint_add(rest, modulus)
+
+	return rest

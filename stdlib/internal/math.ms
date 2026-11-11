@@ -34,37 +34,13 @@ export extern fn msstd_math_remainder_wide(
 	divisor: UInt64,
 ) UInt64!
 
-export extern fn msstd_math_frexp(value: Float) BinaryFloatParts
-
 export extern fn msstd_math_ldexp(fraction: Float, exponent: Int) Float
-
-export extern fn msstd_math_modf(value: Float) FloatParts
 
 export extern fn msstd_math_ieee_remainder(left: Float, right: Float) Float
 
-export extern fn msstd_bigint_inverse_mod(value: BigInt, modulus: BigInt) BigInt?
-
-export extern fn msstd_math_reverse_bits(value: Int) Int
-
-export extern fn msstd_math_reverse_bytes(value: Int) Int
-
 export extern fn msstd_math_exp2(value: Float) Float
 
-export extern fn msstd_math_round_to_even(value: Float) Float
-
-export extern fn msstd_math_copy_sign(value: Float, sign: Float) Float
-
-export extern fn msstd_math_sign_bit(value: Float) Bool
-
-export extern fn msstd_math_next_after(value: Float, toward: Float) Float
-
 export extern fn msstd_math_fma(left: Float, right: Float, addend: Float) Float
-
-export extern fn msstd_bigint_gcd(value: BigInt, other: BigInt) BigInt
-
-export extern fn msstd_bigint_lcm(value: BigInt, other: BigInt) BigInt
-
-export extern fn msstd_bigint_sqrt(value: BigInt) BigInt!
 
 export extern fn msstd_bigint_pow_mod(
 	value: BigInt,
@@ -127,10 +103,6 @@ export extern fn msstd_math_cbrt(value: Float) Float
 export extern fn msstd_math_expm1(value: Float) Float
 
 export extern fn msstd_math_log1p(value: Float) Float
-
-export extern fn msstd_math_is_integer(value: Float) Bool
-
-export extern fn msstd_math_is_safe_integer(value: Float) Bool
 
 export extern fn msrt_bits_bit_and(left: Int, right: Int) Int
 
