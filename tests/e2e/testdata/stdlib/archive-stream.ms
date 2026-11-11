@@ -161,7 +161,8 @@ test "tar entries enforce limits and report truncation":
 	cut := read_entries(chunked(archive.slice(0, 1000).get("".to_bytes()), 300))
 	try expect_equal(cut.err().kind, "EBADMSG")
 
-// Sends its bytes once, then fails every read, so a reader that waits for data it should have refused sees `EIO`.
+// Sends its bytes once, then fails every read, so a reader that waits for data it
+// should have refused sees `EIO`.
 type HeaderThenFail:
 	head: Bytes
 	sent: Bool
@@ -387,7 +388,8 @@ test "tar entries and unpack agree on corrupted and truncated archives":
 	archive := try pack(sample(), ArchiveFormat.Tar)
 	var cases: List[Bytes] = []
 
-	// Header fields (name, size, checksum, type) and data bytes of each member, set to boundary values.
+	// Header fields (name, size, checksum, type) and data bytes of each member, set to
+	// boundary values.
 	for at in [
 		0, 1, 100, 124, 125, 130, 135, 148, 155, 156, 257, 512, 700, 1024, 1536, 2048
 	]:
@@ -398,7 +400,8 @@ test "tar entries and unpack agree on corrupted and truncated archives":
 	for cut in [0, 1, 511, 512, 513, 1024, 1500, 2047, 2048, 2561, 3000]:
 		cases.append(archive.slice(0, cut).get("".to_bytes()))
 
-	// Bytes after the end blocks: a tar has no trailer, so both readers stop at the first zero block.
+	// Bytes after the end blocks: a tar has no trailer, so both readers stop at the
+	// first zero block.
 	cases.append(archive.concat("junk".to_bytes()))
 	cases.append(archive.concat("j".repeat(1024).get("").to_bytes()))
 

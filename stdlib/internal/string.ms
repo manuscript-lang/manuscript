@@ -6,7 +6,8 @@ export extern fn msstd_unicode_in_category(value: Int, category: String) Bool
 
 export extern fn msstd_regex_compile(pattern: String) Regex!
 
-// Flat byte-offset pairs; captures start with the number of slots per match and use -1 for absent groups.
+// Flat byte-offset pairs; captures start with the number of slots per match and use -1
+// for absent groups.
 export extern fn msstd_regex_find_all_spans(
 	re: Regex,
 	text: String,

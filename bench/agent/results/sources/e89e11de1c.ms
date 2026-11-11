@@ -91,7 +91,8 @@ fn parse_start(text: String) Start:
 
 	return Start(year: year, month: month, day: day, minute_of_day: hour * 60 + minute)
 
-// Allowed values as a list indexed by value (size high + 1); empty when the field is invalid.
+// Allowed values as a list indexed by value (size high + 1); empty when the field is
+// invalid.
 fn parse_field(text: String, low: Int, high: Int) List[Bool]:
 	var allowed = List[Bool]()
 	for ignored in 0..high + 1:

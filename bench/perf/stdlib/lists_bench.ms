@@ -4,7 +4,8 @@ import (
 	Point, ints from "./src/harness.ms",
 )
 
-// Index of the greatest key; `key` is a known lambda at every call site (see proposals/specialize-closure-args.md).
+// Index of the greatest key; `key` is a known lambda at every call site (see
+// proposals/specialize-closure-args.md).
 fn best_index(points: List[Point], key: fn(Point) Int) Int:
 	var best = 0
 	var best_key = key(points.get(0, default: Point(x: 0, y: 0)))

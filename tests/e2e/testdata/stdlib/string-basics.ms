@@ -79,7 +79,8 @@ test "lines preserve interior empties and recognize LF and CRLF only":
 test "String basic bound methods capture immutable receiver values":
 	var text = "é\n🙂\n"
 
-	// A method value borrows its receiver, so a snapshot that outlives a change is a clone.
+	// A method value borrows its receiver, so a snapshot that outlives a change is a
+	// clone.
 	snapshot := text.clone()
 	chars := snapshot.chars
 	lines := snapshot.lines

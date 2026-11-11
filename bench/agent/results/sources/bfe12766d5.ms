@@ -1,6 +1,7 @@
 import read_all, stdin, stdout from "@std/io.ms"
 
-// One ledger account. Records are copied on assignment, so changes are written back with `add`.
+// One ledger account. Records are copied on assignment, so changes are written back
+// with `add`.
 type Account:
 	limit: Int
 	balance: Int

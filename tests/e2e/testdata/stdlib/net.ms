@@ -57,8 +57,8 @@ test "a read cancelled by its timeout leaves the stream closable":
 	var client = try connect(listener.address(), timeout: 2.seconds()).wait()
 	_server := try listener.accept(2.seconds()).wait()
 
-	// The peer is silent, so the limit cancels the read mid-park. The borrowed stream still
-	// belongs to the caller: closing it afterwards frees the socket once.
+	// The peer is silent, so the limit cancels the read mid-park. The borrowed stream
+	// still belongs to the caller: closing it afterwards frees the socket once.
 	try expect_true(within(var client.input, 50.milliseconds()).is_error())
 	try client.close()
 
@@ -71,8 +71,9 @@ test "a promise that accepts on a listener runs where the listener lives":
 	address := listener.address()
 	_accepting := promise(fn: accept_all(listener))
 
-	// Accepts and connects register their connections with one network, which is not thread
-	// safe: running the accepts on another thread raced these connects and panicked.
+	// Accepts and connects register their connections with one network, which is not
+	// thread safe: running the accepts on another thread raced these connects and
+	// panicked.
 	for i in 0..2000:
 		var client = try connect(address, timeout: 2.seconds()).wait()
 		try client.close()
@@ -176,7 +177,8 @@ test "a promise accepts on a listener it owns":
 	try expect_equal(try a.wait(), 1)
 	try client.close()
 
-// Accepts one connection and reads from it, all inside the promise that owns the connection.
+// Accepts one connection and reads from it, all inside the promise that owns the
+// connection.
 fn accept_and_read(listener: Listener) Int:
 	var conn = listener.accept(2.seconds()).wait().get()
 	r := within(var conn.input, 2.seconds())
@@ -194,7 +196,8 @@ test "a promise reads a connection it owns":
 	try expect_equal(try a.wait(), 1)
 	try client.close()
 
-// Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
+// Answers one DNS query with a single MX record: preference 10, exchange
+// mail.example.test.
 fn answer_mx(var served: DatagramSocket) Int!:
 	query := (try within(var served.input, 2.seconds())).get()
 	question := (query.data.slice(12, query.data.length())).get(Bytes([]))

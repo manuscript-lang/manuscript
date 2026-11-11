@@ -43,7 +43,8 @@ test "probable primes":
 
 	pseudoprime := try parse("3825123056546413051", 10)
 
-	// A strong pseudoprime to the first nine prime bases: nine rounds are fooled, the default thirteen are not.
+	// A strong pseudoprime to the first nine prime bases: nine rounds are fooled, the
+	// default thirteen are not.
 	try expect_true(pseudoprime.is_probable_prime(9))
 	try expect_false(pseudoprime.is_probable_prime())
 

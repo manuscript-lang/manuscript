@@ -6,10 +6,11 @@ import (
 	files from "@oracle",
 )
 
-// Replays data/path.tsv, the corpus recorded from the original path implementation (the Go oracle,
-// then the Rust natives): one case per line as `operation<TAB>windows<TAB>inputs...<TAB>=><TAB>expected`.
-// A text is `x` followed by the hex of its UTF-8 bytes; a list is `[x61,x62]`; path parts are five
-// texts separated by spaces.
+// Replays data/path.tsv, the corpus recorded from the original path implementation (the
+// Go oracle, then the Rust natives): one case per line as
+// `operation<TAB>windows<TAB>inputs...<TAB>=><TAB>expected`. A text is `x` followed by
+// the hex of its UTF-8 bytes; a list is `[x61,x62]`; path parts are five texts
+// separated by spaces.
 
 fn text(token: String) String:
 	digits := token.drop(1)

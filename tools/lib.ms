@@ -1,5 +1,5 @@
-// Shared helpers for the repository tools in this directory. Run a tool from the repository root
-// with `ms run tools/<name>.ms [-- arguments]`.
+// Shared helpers for the repository tools in this directory. Run a tool from the
+// repository root with `ms run tools/<name>.ms [-- arguments]`.
 import (
 	sha256 from "@std/crypto.ms",
 	hex_encode from "@std/data/encoding.ms",
@@ -51,8 +51,9 @@ export fn status(code: Int) Int:
 	if code < 0 or code > 125: return 125
 	return code
 
-// Runs `program` with the parent's streams and returns its exit status; the PATH is searched.
-// A program that cannot start, or one that ends with a status above 125, reports 125.
+// Runs `program` with the parent's streams and returns its exit status; the PATH is
+// searched. A program that cannot start, or one that ends with a status above 125,
+// reports 125.
 export fn run_program(program: String, arguments: List[String]) Int:
 	if child := spawn(
 		program,
@@ -90,8 +91,9 @@ export fn rust_arch() String:
 		).get("").split("-")[0].clone()
 	return "x86_64"
 
-// Builds the native runtime with allocation counters (`ms-rt` feature `stats`) for the target the
-// programs link against (glibc on Linux, mingw-w64 on Windows) and points MS_RT_LIB at it. The caller's
+// Builds the native runtime with allocation counters (`ms-rt` feature `stats`) for the
+// target the programs link against (glibc on Linux, mingw-w64 on Windows) and points
+// MS_RT_LIB at it. The caller's
 // `ms` is the release build (`make build`). Returns a nonzero status when a build fails. LEAK_TARGET_DIR overrides the directory.
 export fn use_stats_runtime() Int:
 	stats_target := env("LEAK_TARGET_DIR", "target/leak-stats")
@@ -130,8 +132,8 @@ export fn use_stats_runtime() Int:
 	set_environment("MS_RT_LIB", lib).get()
 	return 0
 
-// The ms that runs the programs under test: `MS` (resolved against `root` when relative), else
-// target/release/ms.
+// The ms that runs the programs under test: `MS` (resolved against `root` when
+// relative), else target/release/ms.
 export fn tool_ms(root: String) String:
 	named := env("MS", "")
 	if named == "": return "{root}/target/release/ms{exe()}"

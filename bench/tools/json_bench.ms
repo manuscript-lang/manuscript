@@ -1,6 +1,7 @@
-// Compares @std/json against Node (V8) and Rust's serde_json on standard documents (bench/perf/json).
-// Usage: ms run bench/tools/json_bench.ms   (NAMES="twitter canada" selects documents; MS picks the compiler)
-// The corpora are downloaded into bench/perf/json/data (not committed).
+// Compares @std/json against Node (V8) and Rust's serde_json on standard documents
+// (bench/perf/json). Usage: ms run bench/tools/json_bench.ms (NAMES="twitter canada"
+// selects documents; MS picks the compiler) The corpora are downloaded into
+// bench/perf/json/data (not committed).
 import (
 	JsonValue, stringify from "@std/data/json.ms",
 	create_directory from "@std/os/fs.ms",
@@ -25,7 +26,8 @@ import (
 
 DATA := "bench/perf/json/data"
 
-// The small-message document, built as a value because a JSON literal needs every quote and brace escaped.
+// The small-message document, built as a value because a JSON literal needs every quote
+// and brace escaped.
 fn small() String:
 	var params = Map[String, JsonValue]()
 	params.add("name", jstr("worker-7"))

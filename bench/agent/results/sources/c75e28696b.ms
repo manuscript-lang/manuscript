@@ -138,7 +138,8 @@ fn after(s: String, n: Int) String:
 
 	return s.slice_scalars(n, s.length()).get()
 
-// Text after the first `n` whitespace-separated words of `line`, leading blanks removed.
+// Text after the first `n` whitespace-separated words of `line`, leading blanks
+// removed.
 fn rest_after(line: String, n: Int) String:
 	cs := line.chars()
 	len := cs.length()
@@ -221,7 +222,8 @@ fn cmp_str(a: String, b: String) Int:
 
 	return 0
 
-// Integer rule: digits only, no leading zeros unless "0", at most 1000000. -1 when invalid.
+// Integer rule: digits only, no leading zeros unless "0", at most 1000000. -1 when
+// invalid.
 fn rule_int(s: String) Int:
 	n := s.length()
 	if n == 0 or n > 7: return -1
@@ -850,7 +852,8 @@ fn parse_filter(app: App, text: String) Result[Node, String]:
 
 	return ok(node)
 
-// Splits a query into filter, sort clause and limit, textually (limit first, then sort).
+// Splits a query into filter, sort clause and limit, textually (limit first, then
+// sort).
 fn split_query(raw: String) Result[QParts, String]:
 	s := raw.trim()
 	cs := s.chars()

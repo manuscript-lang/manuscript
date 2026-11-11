@@ -14,7 +14,8 @@ import (
 	vectors from "./image-png-vectors.ms",
 )
 
-// Deterministic generator (Numerical Recipes LCG); the fuzz is reproducible from the seed.
+// Deterministic generator (Numerical Recipes LCG); the fuzz is reproducible from the
+// seed.
 type Rng:
 	state: Int
 
@@ -23,7 +24,8 @@ impl Rng:
 		self.state = (self.state * 1103515245 + 12345) % 2147483648
 		return (self.state / 65536) % limit
 
-// One random mutation of `data`: byte flips, truncation, extreme field values, or a spliced range.
+// One random mutation of `data`: byte flips, truncation, extreme field values, or a
+// spliced range.
 fn mutate(data: Bytes, var rng: Rng) Bytes:
 	n := data.length()
 	if n == 0: return data.clone()
@@ -133,7 +135,8 @@ test "decoders never fault on mutated input":
 				mutated
 			)
 
-			// The decoder must return a value, whatever the bytes. A fault aborts this test.
+			// The decoder must return a value, whatever the bytes. A fault aborts this
+			// test.
 			result := decode_image(mutated, max_pixels: 4000000)
 
 			if result.is_ok():

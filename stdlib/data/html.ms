@@ -19,9 +19,11 @@ import (
 export type HtmlOptions:
 	// Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
 	max_bytes: Int? = none
-	// Maximum normalized node depth; the document is depth zero and direct children depth one.
+	// Maximum normalized node depth; the document is depth zero and direct children
+	// depth one.
 	max_depth: Int? = 10000
-	// Maximum returned nodes, including document/text/comment/doctype and implied element nodes.
+	// Maximum returned nodes, including document/text/comment/doctype and implied
+	// element nodes.
 	max_nodes: Int? = 1000000
 
 // An HTML attribute, including its namespace and decoded value.
@@ -48,7 +50,8 @@ export enum HtmlNode:
 		namespace: String,
 		// Attributes in parser order, with decoded values and namespace information.
 		attributes: List[HtmlAttribute],
-		// Direct child nodes in normalized tree order; mutable list storage is retained.
+		// Direct child nodes in normalized tree order; mutable list storage is
+		// retained.
 		children: List[HtmlNode]
 	)
 	// Text node contents after HTML entity decoding and tree normalization.
@@ -81,7 +84,8 @@ export fn escape(text: String) String:
 export fn unescape(text: String) String:
 	return msstd_html_unescape(text)
 
-// A parse tree owned by the runtime; node ids are valid only for the tree that issued them, and -1 is no node.
+// A parse tree owned by the runtime; node ids are valid only for the tree that issued
+// them, and -1 is no node.
 export extern type HtmlTree
 
 // Parses HTML into a normalized tree and applies the resource limits in `options`.

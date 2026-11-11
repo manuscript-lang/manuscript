@@ -129,7 +129,8 @@ fn isThematic(line: String) Bool:
 
 	return runAt(cs, 0, c) == cs.length()
 
-// Fence length of a line body (already left-trimmed), or 0 when it is not a fence opener.
+// Fence length of a line body (already left-trimmed), or 0 when it is not a fence
+// opener.
 fn fenceOpen(body: String) Int:
 	cs := body.chars()
 	if cs.length() == 0: return 0

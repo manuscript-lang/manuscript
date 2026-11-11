@@ -1,5 +1,6 @@
-// Non-cryptographic hashes and checksums (FNV, CRC-64, a seeded table hash). They spread keys and detect accidental
-// damage; for SHA-2, HMAC and other secure digests, see `@std/crypto.ms`.
+// Non-cryptographic hashes and checksums (FNV, CRC-64, a seeded table hash). They
+// spread keys and detect accidental damage; for SHA-2, HMAC and other secure digests,
+// see `@std/crypto.ms`.
 import (
 	Bytes from "@std/bytes.ms",
 	ReadStream from "@std/io/io.ms",
@@ -58,7 +59,8 @@ export fn fnv1_64(data: Bytes) UInt64:
 
 // Selects the polynomial of a 64-bit cyclic redundancy check.
 export enum Crc64Polynomial:
-	// CRC-64/XZ (ECMA-182, reflected 0xC96C5795D7870F42), as used by xz and Go's `crc64.ECMA`.
+	// CRC-64/XZ (ECMA-182, reflected 0xC96C5795D7870F42), as used by xz and Go's
+	// `crc64.ECMA`.
 	Ecma
 	// CRC-64/GO-ISO (reflected 0xD800000000000000), Go's `crc64.ISO`.
 	Iso
@@ -120,7 +122,8 @@ export type MapHash:
 	seed: Int
 
 impl MapHash:
-	// Hashes the bytes with this seed, finishing with a 64-bit avalanche so every output bit depends on all input bits.
+	// Hashes the bytes with this seed, finishing with a 64-bit avalanche so every
+	// output bit depends on all input bits.
 	fn hash(data: Bytes) UInt64:
 		var state = bit_xor(self.seed, -3750763034362895579)
 

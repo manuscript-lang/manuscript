@@ -1,12 +1,14 @@
-// Resource ownership matrix (`make resource-matrix`): generates one program for each combination of a
-// standard operation that takes, returns or discards a one-owner resource, a call form (direct call, or a
-// method value called later) and an argument form (a temporary, or a named variable), then checks each one.
-// A combination the checker rejects is fine: the rule is that anything `ms check` accepts must lower, run and
-// close every resource it made exactly once. The oracle needs no expected output per case: `mk` prints
+// Resource ownership matrix (`make resource-matrix`): generates one program for each
+// combination of a standard operation that takes, returns or discards a one-owner
+// resource, a call form (direct call, or a method value called later) and an argument
+// form (a temporary, or a named variable), then checks each one. A combination the
+// checker rejects is fine: the rule is that anything `ms check` accepts must lower, run
+// and close every resource it made exactly once. The oracle needs no expected output
+// per case: `mk` prints
 // `made-N`, `close` prints `closed-N`, and the two must match at exit, in Debug and Release.
-// A new standard operation that stores, returns or discards a `T` belongs in OPERATIONS below.
-// MS names the ms that runs the programs (default target/release/ms).
-// Usage: ms run tools/resource-matrix.ms [-- name-filter]
+// A new standard operation that stores, returns or discards a `T` belongs in OPERATIONS
+// below. MS names the ms that runs the programs (default target/release/ms). Usage: ms
+// run tools/resource-matrix.ms [-- name-filter]
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
@@ -44,8 +46,8 @@ fn main() Unit:
     run()
 """
 
-// One standard operation: the receiver it runs on, its method, its arguments (`@V@` is the resource
-// argument) and what to do with a result.
+// One standard operation: the receiver it runs on, its method, its arguments (`@V@` is
+// the resource argument) and what to do with a result.
 type Operation:
 	name: String
 	setup: String
@@ -139,8 +141,9 @@ fn operations() List[Operation]:
 		)
 	]
 
-// Standard operations that mention a type parameter and need no matrix row, each with the reason. An
-// operation that returns, stores or discards a `T` does not belong here: add a row to `operations()`.
+// Standard operations that mention a type parameter and need no matrix row, each with
+// the reason. An operation that returns, stores or discards a `T` does not belong here:
+// add a row to `operations()`.
 fn exempt() List[String]:
 	return [
 		"List.max: returns a copy of a Comparable and Clonable element, so a resource cannot reach it",
@@ -176,7 +179,8 @@ fn words(text: String) List[String]:
 		if word != "": found.append(word.clone())
 	return found
 
-// Whether the declaration `signature` changes its receiver, or takes or returns one of `names` outside a callback.
+// Whether the declaration `signature` changes its receiver, or takes or returns one of
+// `names` outside a callback.
 fn mentions_parameter(signature: String, names: List[String]) Bool:
 	if signature.contains("var fn"): return true
 
@@ -201,7 +205,8 @@ fn field(entry: JsonValue, key: String) String:
 	if value := entry.get(key): return value.as_string().get("")
 	return ""
 
-// Every `Type.operation` of the standard type whose declaration mentions a type parameter.
+// Every `Type.operation` of the standard type whose declaration mentions a type
+// parameter.
 fn declared_operations(ms: String, name: String) List[String]!:
 	ran := try run(ms, ["search_symbol", "prelude.{name}", "--json", "--limit", "300"]).wait()
 	page := try parse(ran.stdout.decode_utf8().get(""))
@@ -218,7 +223,8 @@ fn declared_operations(ms: String, name: String) List[String]!:
 
 	return ok(found)
 
-// How many standard operations that mention a type parameter have neither a row nor a reason.
+// How many standard operations that mention a type parameter have neither a row nor a
+// reason.
 fn uncovered(ms: String, ops: List[Operation]) Int:
 	var known = List[String]()
 	kinds := ["list", "map", "set", "optional", "result"]
@@ -258,7 +264,8 @@ fn uncovered(ms: String, ops: List[Operation]) Int:
 
 	return missing
 
-// The program for `o`, called as `call_form` (`direct` or `bound`), with its resource argument made as `arg_form`.
+// The program for `o`, called as `call_form` (`direct` or `bound`), with its resource
+// argument made as `arg_form`.
 fn program(o: Operation, call_form: String, arg_form: String) String:
 	var lines = [o.setup.clone()]
 	var argument = ""
@@ -325,7 +332,8 @@ fn main() Int:
 
 					why := verdict.get().stderr.decode_utf8().get("")
 
-					// Only a checker rule may reject a combination; a program that does not parse is this tool's bug.
+					// Only a checker rule may reject a combination; a program that does
+					// not parse is this tool's bug.
 					if why.contains(": parse:"):
 						failures += 1
 						(

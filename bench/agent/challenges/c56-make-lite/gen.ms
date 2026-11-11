@@ -1,12 +1,13 @@
-// Generator for c56-make-lite. The expected outputs come from the Go oracle in oracle/*.ref (built with the
-// local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c56
+// Generator for c56-make-lite. The expected outputs come from the Go oracle in
+// oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
+// Deterministic; run: ms run bench/agent/gen.ms -- c56
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 CPROJ := "\nCC = gcc\nCFLAGS := -O2 -Wall\nOBJS = main.o util.o\nSRCS = $(patsubst %.o,%.c,$(OBJS))\n\n.PHONY: all clean\nall: app\n\napp: $(OBJS)\n<T>$(CC) $(CFLAGS) -o $@ $^\n<T>@echo built $@\n\n%.o: %.c util.h\n<T>$(CC) $(CFLAGS) -c $< -o $@\n\nclean:\n<T>-rm -f app $(OBJS)\n<T>@echo cleaned\n"
 CFILES := ["main.c", "10", "util.c", "12", "util.h", "5"]
 
-// The oracle input: the makefile (with `<T>` standing for a tab), the file times as a flat list of
-// name and mtime, and the requests.
+// The oracle input: the makefile (with `<T>` standing for a tab), the file times as a
+// flat list of name and mtime, and the requests.
 fn mk(makefile: String, files: List[String], reqs: List[String]) String:
 	mf := strip_nl(makefile.replace("<T>", "\t"))
 	var file_lines = ""

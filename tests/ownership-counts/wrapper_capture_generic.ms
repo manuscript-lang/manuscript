@@ -1,6 +1,6 @@
-// expect-debug: allocs=5 alloc_bytes=256
-// expect-release: allocs=3 alloc_bytes=192
-// Nested wrappers, a generic pass-through and a capture: the baseline that owned-argument and return-slot work must not raise.
+// expect-debug: allocs=5 alloc_bytes=256 expect-release: allocs=3 alloc_bytes=192
+// Nested wrappers, a generic pass-through and a capture: the baseline that
+// owned-argument and return-slot work must not raise.
 type Big:
 	name: String
 	items: List[Int]

@@ -1,7 +1,8 @@
-// Scheduler mailbox traffic: starts short promise tasks from the main thread, `window` at a time, and
-// waits for each batch. Every promise is a Start sent to a scheduler thread and an Ended event sent
-// back, so the run is dominated by cross-thread mail and wake-ups. A small window keeps the stacks of
-// finished tasks in the pool, so stack setup does not hide the mail cost.
+// Scheduler mailbox traffic: starts short promise tasks from the main thread, `window`
+// at a time, and waits for each batch. Every promise is a Start sent to a scheduler
+// thread and an Ended event sent back, so the run is dominated by cross-thread mail and
+// wake-ups. A small window keeps the stacks of finished tasks in the pool, so stack
+// setup does not hide the mail cost.
 // `ms run bench/perf/mailbox/main.ms -- 100000 5 [window]`: promises per round, rounds, window (default 64).
 import (
 	Promise, promise from "@std/concurrency/promise.ms",

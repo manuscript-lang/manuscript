@@ -4,7 +4,8 @@ import (
 	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
-// Library failures are plain Error values: callers branch on `kind`, not on a domain type.
+// Library failures are plain Error values: callers branch on `kind`, not on a domain
+// type.
 
 fn describe_error(cause: Error) String:
 	if cause.kind == "EINVAL": return "bad limits"

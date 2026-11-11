@@ -1,7 +1,7 @@
 // Harness adapter interface.
 //
-// A harness drives one coding agent CLI inside a workspace. To add one, implement `Harness` in its own file
-// next to this one and register it in `all.ms`.
+// A harness drives one coding agent CLI inside a workspace. To add one, implement
+// `Harness` in its own file next to this one and register it in `all.ms`.
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	round from "@std/math/math.ms",
@@ -31,7 +31,8 @@ export type AgentRun:
 
 export interface Harness:
 	fn name() String
-	// The argv that runs the agent non-interactively in `workspace` and exits when done.
+	// The argv that runs the agent non-interactively in `workspace` and exits when
+	// done.
 	fn command(prompt: String, model: String?, workspace: String) List[String]
 	// Extracts usage from the harness's raw standard output.
 	fn parse(transcript: String) Usage
@@ -47,7 +48,8 @@ export fn int_at(doc: JsonValue, key: String) Int:
 	if value := doc.get(key): return value.as_int().get(0)
 	return 0
 
-// Runs the agent in `workspace`, saves its output to `transcript` and returns the measured run.
+// Runs the agent in `workspace`, saves its output to `transcript` and returns the
+// measured run.
 export fn run_agent(
 	h: Harness,
 	prompt: String,

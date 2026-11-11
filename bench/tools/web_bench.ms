@@ -1,8 +1,11 @@
-// Web server and fetch client benchmarks against Go (bench/perf/web; replaces run.sh and fetch.sh). Linux only: it needs taskset, pgrep, ps, strace and /proc.
+// Web server and fetch client benchmarks against Go (bench/perf/web; replaces run.sh
+// and fetch.sh). Linux only: it needs taskset, pgrep, ps, strace and /proc.
 //
-// Usage: ms run bench/tools/web_bench.ms -- run [SECONDS]     serves the same endpoints from Manuscript, Go and Rust and measures each
+// Usage: ms run bench/tools/web_bench.ms -- run [SECONDS] serves the same endpoints
+// from Manuscript, Go and Rust and measures each
 //        ms run bench/tools/web_bench.ms -- fetch [SECONDS]  Manuscript's fetch and Go's net/http client against one Go file server
-// Environment: MS, GO, SERVER_CPUS (0,1), LOAD_CPUS (2,3), MS_THREADS (2). Without taskset or with fewer than 4 CPUs nothing is pinned.
+// Environment: MS, GO, SERVER_CPUS (0,1), LOAD_CPUS (2,3), MS_THREADS (2). Without
+// taskset or with fewer than 4 CPUs nothing is pinned.
 import (
 	arguments from "@std/os/env.ms",
 	CopyOptions, copy, create_directory, list, temporary from "@std/os/fs.ms",
@@ -303,7 +306,8 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 				"{file} connections={conns} ms threads=2 {cell(p, ["{w}/ms/fetch", url.clone(), conns.clone(), "{seconds}", "2"])}"
 			)
 
-	// Framings of the same 8 MiB: chunked (random) and gzip (compressible text), one connection.
+	// Framings of the same 8 MiB: chunked (random) and gzip (compressible text), one
+	// connection.
 	for path in ["chunked/big", "gzip/text"]:
 		url := "http://127.0.0.1:18950/{path}"
 		go := tail(

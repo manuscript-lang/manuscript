@@ -22,23 +22,28 @@ interface StringAffixCuts:
 	fn cut_suffix(suffix: String) String?
 
 impl StringAffixCuts for String:
-	// Removes one exact prefix, or returns none when absent; an empty prefix succeeds unchanged.
+	// Removes one exact prefix, or returns none when absent; an empty prefix succeeds
+	// unchanged.
 	fn cut_prefix(prefix: String) String?:
 		if self.starts_with(prefix): return self.drop(prefix.length())
 		return none
 
-	// Removes one exact suffix, or returns none when absent; an empty suffix succeeds unchanged.
+	// Removes one exact suffix, or returns none when absent; an empty suffix succeeds
+	// unchanged.
 	fn cut_suffix(suffix: String) String?:
 		if self.ends_with(suffix): return self.take(self.length() - suffix.length())
 		return none
 
-// The four Unicode normalization forms, selected without runtime string spelling errors.
+// The four Unicode normalization forms, selected without runtime string spelling
+// errors.
 export enum NormalizationForm:
-	// Canonical decomposition followed by canonical recomposition where Unicode permits it.
+	// Canonical decomposition followed by canonical recomposition where Unicode permits
+	// it.
 	Nfc
 	// Canonical decomposition with combining marks placed in canonical order.
 	Nfd
-	// Compatibility decomposition followed by canonical recomposition where Unicode permits it.
+	// Compatibility decomposition followed by canonical recomposition where Unicode
+	// permits it.
 	Nfkc
 	// Compatibility decomposition with combining marks placed in canonical order.
 	Nfkd
@@ -62,45 +67,56 @@ impl StringBuilder:
 	// Consumes the builder and returns its text; the builder cannot be used afterwards.
 	fn build() String: ...
 
-	// Returns the text appended so far and leaves the builder empty, for a builder held in a field.
+	// Returns the text appended so far and leaves the builder empty, for a builder held
+	// in a field.
 	var fn drain() String: ...
 
 // A compiled regular expression that can be reused across input strings.
 export extern type Regex
 
 impl Regex:
-	// Tests whether any match occurs; anchor the pattern explicitly to require a whole-string match.
+	// Tests whether any match occurs; anchor the pattern explicitly to require a
+	// whole-string match.
 	fn matches(text: String) Bool: ...
 
-	// Returns nonoverlapping full-match text in occurrence order, excluding capture groups.
-	// A supplied cap is a strict budget, not truncation; zero-width matches follow the engine's rules.
+	// Returns nonoverlapping full-match text in occurrence order, excluding capture
+	// groups. A supplied cap is a strict budget, not truncation; zero-width matches
+	// follow the engine's rules.
 	fn find_all(text: String, max_matches: Int?) List[String]!: ...
 
-	// Replaces every nonoverlapping match with literal replacement text; $ and capture names are not expanded.
-	// max_bytes optionally bounds UTF-8 output; negatives return EINVAL, exhaustion EOVERFLOW.
+	// Replaces every nonoverlapping match with literal replacement text; $ and capture
+	// names are not expanded. max_bytes optionally bounds UTF-8 output; negatives
+	// return EINVAL, exhaustion EOVERFLOW.
 	fn replace_all(text: String, replacement: String, max_bytes: Int?) String!: ...
 
-	// Returns the first match as [whole, group1, ...]; groups that did not participate are "". Empty list when nothing matches.
+	// Returns the first match as [whole, group1, ...]; groups that did not participate
+	// are "". Empty list when nothing matches.
 	fn captures(text: String) List[String]: ...
 
-	// Like captures for every nonoverlapping match, under find_all's match-count budget.
+	// Like captures for every nonoverlapping match, under find_all's match-count
+	// budget.
 	fn captures_all(text: String, max_matches: Int?) List[List[String]]!: ...
 
-	// Returns the first match's named groups that participated; empty map when nothing matches.
+	// Returns the first match's named groups that participated; empty map when nothing
+	// matches.
 	fn named_captures(text: String) Map[String, String]: ...
 
-	// Returns [start, end] UTF-8 byte offsets of the first match, or none when nothing matches.
+	// Returns [start, end] UTF-8 byte offsets of the first match, or none when nothing
+	// matches.
 	fn find_span(text: String) List[Int]?: ...
 
-	// Splits text around every match, always returning at least one piece. max_pieces is a strict budget like find_all's.
+	// Splits text around every match, always returning at least one piece. max_pieces
+	// is a strict budget like find_all's.
 	fn split(text: String, max_pieces: Int?) List[String]!: ...
 
-	// Like replace_all but expands $1, ${name}, and $$ in template from each match (Rust regex syntax: use ${1}x, not $1x).
+	// Like replace_all but expands $1, ${name}, and $$ in template from each match
+	// (Rust regex syntax: use ${1}x, not $1x).
 	fn replace_template(text: String, template: String, max_bytes: Int?) String!: ...
 
 impl RegexSpanQueries for Regex:
-	// Returns all full-match byte ranges in find_all order, without copying matched text.
-	// max_matches is a strict output budget: negatives return EINVAL, excess returns EOVERFLOW.
+	// Returns all full-match byte ranges in find_all order, without copying matched
+	// text. max_matches is a strict output budget: negatives return EINVAL, excess
+	// returns EOVERFLOW.
 	fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!:
 		raw := try msstd_regex_find_all_spans(self, text, max_matches)
 		var out = List[RegexSpan](reserve: raw.length() / 2)
@@ -159,14 +175,16 @@ export fn compile(pattern: String) Regex!:
 	return msstd_regex_compile(pattern)
 
 impl String:
-	// Splits on Unicode White_Space, omitting empty fields; empty or all-whitespace text gives an empty list.
-	// Exact field text is preserved without normalization; the byte-order mark and zero-width space are not separators.
+	// Splits on Unicode White_Space, omitting empty fields; empty or all-whitespace
+	// text gives an empty list. Exact field text is preserved without normalization;
+	// the byte-order mark and zero-width space are not separators.
 	fn fields() List[String]:
 		return msstd_unicode_fields(self)
 
-	// Terminal columns the text occupies, measured by Unicode sequence width with ambiguous characters narrow:
-	// combining marks add nothing, wide characters and supported emoji sequences count two.
-	// An estimate, not a promise for every font or terminal. Controls (tabs, CR/LF, ESC, C1), U+2028 and U+2029 return EBADMSG.
+	// Terminal columns the text occupies, measured by Unicode sequence width with
+	// ambiguous characters narrow: combining marks add nothing, wide characters and
+	// supported emoji sequences count two. An estimate, not a promise for every font or
+	// terminal. Controls (tabs, CR/LF, ESC, C1), U+2028 and U+2029 return EBADMSG.
 	fn display_width() Int!:
 		return msstd_unicode_display_width(self)
 
@@ -185,11 +203,13 @@ interface StringTextOperations:
 	fn find_char(predicate: fn(String) Bool) Int?
 	fn replace_each(pairs: Map[String, String]) String
 
-// Scalars read per step by the prefix scans below; each step doubles, so a scan costs its distance.
+// Scalars read per step by the prefix scans below; each step doubles, so a scan costs
+// its distance.
 SCAN_WINDOW := 32
 
 impl StringTextOperations for String:
-	// Splits around runs of characters (one-scalar strings) the predicate accepts; no empty items.
+	// Splits around runs of characters (one-scalar strings) the predicate accepts; no
+	// empty items.
 	fn fields_by(is_separator: fn(String) Bool) List[String]:
 		var out = List[String]()
 		var current = StringBuilder()
@@ -208,9 +228,10 @@ impl StringTextOperations for String:
 			out.append(current.drain())
 		return out
 
-	// Compares text ignoring case: both sides are uppercased and then lowercased with Unicode full case mapping
-	// (no locale, no normalization), so "Straße" equals "STRASSE". This is not Unicode default case folding:
-	// the dotless "ı" (U+0131) uppercases to "I" and so compares equal to "i" and "I".
+	// Compares text ignoring case: both sides are uppercased and then lowercased with
+	// Unicode full case mapping (no locale, no normalization), so "Straße" equals
+	// "STRASSE". This is not Unicode default case folding: the dotless "ı" (U+0131)
+	// uppercases to "I" and so compares equal to "i" and "I".
 	fn equal_fold(other: String) Bool:
 		return self.upper().lower() == other.upper().lower()
 
@@ -224,7 +245,8 @@ impl StringTextOperations for String:
 		var window = SCAN_WINDOW
 
 		while true:
-			// Scalars are read in doubling windows, so the cost follows the trimmed run, not the text length.
+			// Scalars are read in doubling windows, so the cost follows the trimmed
+			// run, not the text length.
 			cs := self.take(skipped + window).drop(skipped).chars()
 			var i = 0
 			while i < cs.length() and set.contains(cs[i]):
@@ -265,7 +287,8 @@ impl StringTextOperations for String:
 	fn index_any(set: String) Int?:
 		return self.find_char(fn c: set.contains(c))
 
-	// Splits after each separator, keeping it at the end of each piece; an empty separator splits into scalars.
+	// Splits after each separator, keeping it at the end of each piece; an empty
+	// separator splits into scalars.
 	fn split_after(separator: String) List[String]:
 		if separator.is_empty(): return self.chars()
 
@@ -284,7 +307,8 @@ impl StringTextOperations for String:
 	fn capitalize() String:
 		return self.take(1).upper().concat(self.drop(1))
 
-	// Capitalizes the first letter of each run of letters, digits and apostrophes and lowercases the others.
+	// Capitalizes the first letter of each run of letters, digits and apostrophes and
+	// lowercases the others.
 	fn title() String:
 		var out = StringBuilder()
 		var in_word = false
@@ -326,8 +350,9 @@ impl StringTextOperations for String:
 
 		return none
 
-	// Replaces many patterns in one pass. At each position the first pair, in map order, whose key matches
-	// wins and its replacement is not rescanned; empty keys are ignored.
+	// Replaces many patterns in one pass. At each position the first pair, in map
+	// order, whose key matches wins and its replacement is not rescanned; empty keys
+	// are ignored.
 	fn replace_each(pairs: Map[String, String]) String:
 		if pairs.is_empty(): return self.clone()
 

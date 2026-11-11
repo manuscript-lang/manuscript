@@ -34,8 +34,8 @@ fn tokens(line: String) List[Tok]:
 
 	return out
 
-// A recursive-descent evaluator. `bad` records a syntax error (which wins over a division by zero); once set
-// the parser sees no more tokens, so every loop ends.
+// A recursive-descent evaluator. `bad` records a syntax error (which wins over a
+// division by zero); once set the parser sees no more tokens, so every loop ends.
 type Parser:
 	toks: List[Tok]
 	pos: Int = 0

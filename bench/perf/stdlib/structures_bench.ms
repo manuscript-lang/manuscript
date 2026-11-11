@@ -6,7 +6,8 @@ import (
 	keep, measure from "@std/test/bench.ms",
 )
 
-// Queue, PriorityQueue, Deque, BitSet and SortedMap at two sizes each, so ns/op staying flat shows the complexity class.
+// Queue, PriorityQueue, Deque, BitSet and SortedMap at two sizes each, so ns/op staying
+// flat shows the complexity class.
 bench "queue.enqueue_dequeue_100000":
 	fn work() Result[Unit, Error]:
 		var queue = Queue[Int]()

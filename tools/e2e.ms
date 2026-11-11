@@ -1,11 +1,13 @@
 // Every fixture under tests/e2e/testdata against the Rust ms on this host (`make e2e`).
-// accept/ and stdlib/ fixtures pass `ms test`; reject/ fixtures fail `ms check`. A project directory runs its
-// conformance_test.ms with `ms test`; otherwise its main.ms must check, and run to expected-output.txt when that
-// exists. project_check is a project whose check must fail; projects/*/reject_*.ms are reject files beside the
-// modules they import. Known failures are listed in tests/e2e/expect-fail.txt (Windows-only ones in
-// expect-fail.windows.txt). E2E_BUILD_TYPE picks the build type (default Release, which the deep-nesting
-// fixtures need to finish quickly); E2E_JOBS the number of parallel workers.
-// Usage: ms run tools/e2e.ms [-- fixture paths to run instead]
+// accept/ and stdlib/ fixtures pass `ms test`; reject/ fixtures fail `ms check`. A
+// project directory runs its conformance_test.ms with `ms test`; otherwise its main.ms
+// must check, and run to expected-output.txt when that exists. project_check is a
+// project whose check must fail; projects/*/reject_*.ms are reject files beside the
+// modules they import. Known failures are listed in tests/e2e/expect-fail.txt
+// (Windows-only ones in expect-fail.windows.txt). E2E_BUILD_TYPE picks the build type
+// (default Release, which the deep-nesting fixtures need to finish quickly); E2E_JOBS
+// the number of parallel workers. Usage: ms run tools/e2e.ms [-- fixture paths to run
+// instead]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	stdout from "@std/io/io.ms",
@@ -40,7 +42,8 @@ fn excerpt(output: String) String:
 		if shown.length() < 8: shown.append(line.clone())
 	return shown.join("\n")
 
-// The listed failures: fixture path to the regex of failing test names (empty for the whole fixture).
+// The listed failures: fixture path to the regex of failing test names (empty for the
+// whole fixture).
 fn read_expected(files: List[String]) Map[String, String]:
 	var listed = Map[String, String]()
 
@@ -68,9 +71,10 @@ fn base(path: String) String:
 	parts := path.split("/")
 	return parts[parts.length() - 1].clone()
 
-// The corpus replays a single-file accept/stdlib fixture under `ms test` with the same default build type when its
-// frozen copy under tests/conformance/fixtures/e2e is identical, so running it here again adds nothing. A fixture
-// listed as failing still runs, and so does one whose copy is tagged aliasing (the corpus run excludes those).
+// The corpus replays a single-file accept/stdlib fixture under `ms test` with the same
+// default build type when its frozen copy under tests/conformance/fixtures/e2e is
+// identical, so running it here again adds nothing. A fixture listed as failing still
+// runs, and so does one whose copy is tagged aliasing (the corpus run excludes those).
 fn covered_by_corpus(ctx: Context, case_path: String) Bool:
 	parts := case_path.split("/")
 	twin := "tests/conformance/fixtures/e2e/{parts[parts.length() - 2]}/{parts[parts.length() - 1]}"
@@ -84,7 +88,8 @@ fn covered_by_corpus(ctx: Context, case_path: String) Bool:
 	body := lines.filter(fn l: not l.starts_with("// conform:")).join("\n")
 	return body == read_file(case_path).wait().get().decode_utf8().get("")
 
-// Whether the project's tests pass, or its main.ms checks and prints expected-output.txt.
+// Whether the project's tests pass, or its main.ms checks and prints
+// expected-output.txt.
 fn project_passes(ctx: Context, dir: String) Ran:
 	if access("{dir}/conformance_test.ms", 0).is_ok():
 		change_directory(dir).get()
@@ -126,7 +131,8 @@ fn check_fixture(ctx: Context, case_path: String) List[String]:
 	var failures = List[String]()
 
 	if case_path.contains("/projects/") and base(case_path).starts_with("reject_"):
-		// A project-local reject case imports its sibling modules, so it must live beside them.
+		// A project-local reject case imports its sibling modules, so it must live
+		// beside them.
 		if exec(ctx.ms, ["check", case_path.clone()]).code == 0:
 			failures.append("FAIL {case_path}: a reject case_path checked clean")
 	else if case_path.ends_with("/projects/project_check"):
@@ -148,7 +154,8 @@ fn check_fixture(ctx: Context, case_path: String) List[String]:
 
 	return failures
 
-// An accept or stdlib fixture; a listed failure is a whole fixture, or the tests its regex names.
+// An accept or stdlib fixture; a listed failure is a whole fixture, or the tests its
+// regex names.
 fn check_test_fixture(ctx: Context, case_path: String) List[String]:
 	var failures = List[String]()
 	build := ctx.build_type.clone()
@@ -227,7 +234,8 @@ fn main() Int:
 	if code != 0: return code
 
 	// `ms-cli` is not rebuilt here: this tool runs on `target/debug/ms`, and Windows cannot replace an
-	// executable that is running (`make e2e` and CI build it before they start the tool).
+	// executable that is running (`make e2e` and CI build it before they start the
+	// tool).
 	ctx := Context(
 		"{root}/target/debug/ms{exe()}", build_type.clone(), read_expected(expect_files)
 	)
@@ -269,7 +277,8 @@ fn main() Int:
 	var failed = 0
 	var messages = List[String]()
 
-	// Project fixtures change directory, which is process-wide, so they run alone after the parallel part.
+	// Project fixtures change directory, which is process-wide, so they run alone after
+	// the parallel part.
 	var parallel = List[String]()
 	var serial = List[String]()
 
@@ -279,7 +288,8 @@ fn main() Int:
 		)
 		else: parallel.append(f.clone())
 
-	// A promise reads its captures until it is dropped, so the chunks outlive the loop that starts them.
+	// A promise reads its captures until it is dropped, so the chunks outlive the loop
+	// that starts them.
 	var chunks = List[List[String]]()
 
 	for worker in 0..jobs:

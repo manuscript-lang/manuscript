@@ -34,14 +34,16 @@ impl Ledger:
 	var fn bump_ops(id: String) Unit:
 		self.ops.add(id.clone(), self.ops.get(id).get(0) + 1)
 
-	// Fee charged by a debit of `amount` from `id` (independent of whether it succeeds).
+	// Fee charged by a debit of `amount` from `id` (independent of whether it
+	// succeeds).
 	fn fee_for(id: String, amount: Int) Int:
 		bal := self.balance.get(id).get(0)
 		if bal >= 0 and bal - amount < 0: return FEE
 
 		return 0
 
-	// Empty string when the debit is allowed, otherwise the error line (without newline).
+	// Empty string when the debit is allowed, otherwise the error line (without
+	// newline).
 	fn debit_error(id: String, amount: Int) String:
 		bal := self.balance.get(id).get(0)
 		fee := self.fee_for(id, amount)

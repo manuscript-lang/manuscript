@@ -20,7 +20,8 @@ fn all_digits(s: String) Bool:
 		if not "0123456789".contains(s.get(i)): return false
 	return true
 
-// Returns the value of a run of ASCII digits whose length is within [minlen, maxlen], or -1.
+// Returns the value of a run of ASCII digits whose length is within [minlen, maxlen],
+// or -1.
 fn digits_value(s: String, minlen: Int, maxlen: Int) Int:
 	n := s.length()
 	if n < minlen or n > maxlen: return -1
@@ -100,7 +101,8 @@ fn parse_item(item: String, lo: Int, hi: Int, var set: List[Bool]) Bool:
 
 	return true
 
-// Returns a membership list indexed by value (size hi+1), or an empty list when invalid.
+// Returns a membership list indexed by value (size hi+1), or an empty list when
+// invalid.
 fn parse_field(text: String, lo: Int, hi: Int) List[Bool]:
 	var set = List[Bool]()
 	for i in 0..hi + 1:

@@ -42,7 +42,8 @@ fn quarter(var state: List[Int], a: Int, b: Int, c: Int, d: Int) Unit:
 	state.set(c, vc)
 	state.set(d, vd)
 
-// One 64-byte ChaCha20 keystream block (RFC 8439) for a 32-byte key, 32-bit counter and 12-byte nonce.
+// One 64-byte ChaCha20 keystream block (RFC 8439) for a 32-byte key, 32-bit counter and
+// 12-byte nonce.
 fn initial_state(key: Bytes, counter: Int, nonce: Bytes) List[Int]:
 	var initial = [1634760805, 857760878, 2036477234, 1797285236]
 	for index in 0..8:
@@ -85,7 +86,8 @@ fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
 fn check_key_nonce(key: Bytes, nonce: Bytes) Bool:
 	return key.length() == 32 and nonce.length() == 12
 
-// Whether `length` bytes fit in the block counter space left from `counter` (RFC 8439 counters are 32 bits).
+// Whether `length` bytes fit in the block counter space left from `counter` (RFC 8439
+// counters are 32 bits).
 fn fits_counter(counter: Int, length: Int) Bool:
 	return (length + 63) / 64 <= 4294967296 - counter
 
@@ -129,8 +131,9 @@ export fn chacha20(key: Bytes, nonce: Bytes, counter: Int, data: Bytes) Bytes!:
 fn limbs_load(data: Bytes, at: Int, shift: Int) Int:
 	return shift_right_unsigned(le32(data, at), shift)
 
-// Computes the Poly1305 one-time authenticator (RFC 8439) of `data` with a 32-byte one-time key, returning 16 bytes.
-// Authenticate with a key used for one message only; use `chacha20poly1305_seal` unless implementing a protocol.
+// Computes the Poly1305 one-time authenticator (RFC 8439) of `data` with a 32-byte
+// one-time key, returning 16 bytes. Authenticate with a key used for one message only;
+// use `chacha20poly1305_seal` unless implementing a protocol.
 export fn poly1305(key: Bytes, data: Bytes) Bytes!:
 	if key.length() != 32: return error(Error("crypto: invalid input", kind: "EINVAL"))
 
@@ -233,8 +236,9 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
 
 	g4 := h4 + carry - 67108864
 
-	// g4 is negative exactly when h < 2^130 - 5, so keep h in that case. The choice is a mask, not a
-	// branch, so the time taken does not depend on the secret accumulator.
+	// g4 is negative exactly when h < 2^130 - 5, so keep h in that case. The choice is
+	// a mask, not a branch, so the time taken does not depend on the secret
+	// accumulator.
 	keep := shift_right(g4, 63)
 	take := bit_not(keep)
 	h0 = bit_or(bit_and(h0, keep), bit_and(g0, take))
@@ -301,7 +305,8 @@ fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) 
 	put_le64(var mac, ciphertext.length())
 	return poly1305(one_time.slice(0, 32).get(Bytes([])), mac.build())
 
-// Encrypts and authenticates `plaintext` with ChaCha20-Poly1305 (RFC 8439), returning the ciphertext followed by a 16-byte tag.
+// Encrypts and authenticates `plaintext` with ChaCha20-Poly1305 (RFC 8439), returning
+// the ciphertext followed by a 16-byte tag.
 // `key` is 32 bytes and `nonce` 12 bytes; a wrong length returns EINVAL. The caller supplies a nonce never reused with the key.
 export fn chacha20poly1305_seal(
 	key: Bytes,
@@ -319,8 +324,9 @@ export fn chacha20poly1305_seal(
 	out.append_bytes(tag)
 	return ok(out.build())
 
-// Authenticates and decrypts a value produced by `chacha20poly1305_seal`.
-// A wrong key, nonce, associated data or altered ciphertext returns EAUTH; a wrong key or nonce length or input shorter than the 16-byte tag returns EINVAL.
+// Authenticates and decrypts a value produced by `chacha20poly1305_seal`. A wrong key,
+// nonce, associated data or altered ciphertext returns EAUTH; a wrong key or nonce
+// length or input shorter than the 16-byte tag returns EINVAL.
 export fn chacha20poly1305_open(
 	key: Bytes,
 	nonce: Bytes,

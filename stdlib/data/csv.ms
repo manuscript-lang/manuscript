@@ -4,7 +4,8 @@ import (
 	StringBuilder from "@std/string.ms",
 )
 
-// Delimiter and line ending used when parsing or writing CSV, and the row and cell bounds for `parse`.
+// Delimiter and line ending used when parsing or writing CSV, and the row and cell
+// bounds for `parse`.
 export type CsvOptions:
 	// One non-NUL ASCII delimiter other than quote, CR or LF; defaults to comma.
 	delimiter: String = ","
@@ -15,7 +16,8 @@ export type CsvOptions:
 	// Maximum cells `parse` returns across all rows; none adds no cell budget.
 	max_cells: Int? = none
 
-// A malformed-input error at the one-based line and character column of byte offset `at`.
+// A malformed-input error at the one-based line and character column of byte offset
+// `at`.
 fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 	var line = 1
 	var start = 0
@@ -76,7 +78,8 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 
 	return ok(rows)
 
-// The budget as a count, with no budget as a very large one and a negative budget as -1.
+// The budget as a count, with no budget as a very large one and a negative budget as
+// -1.
 fn budget(limit: Int?) Int:
 	if value := limit: return value
 	return 9223372036854775807
@@ -98,8 +101,9 @@ fn check_options(options: CsvOptions) Unit!:
 		Error("CSV: invalid input", kind: "EINVAL")
 	)
 
-// The input as bytes with a cursor. The cached offsets are the next quote, delimiter and LF at or
-// after the cursor, or total when there is none; they are searched again only once passed.
+// The input as bytes with a cursor. The cached offsets are the next quote, delimiter
+// and LF at or after the cursor, or total when there is none; they are searched again
+// only once passed.
 type Reader:
 	bytes: Bytes
 	total: Int
@@ -133,7 +137,8 @@ impl Reader:
 		if text := self.bytes.decode_utf8_range(start, end): return text
 		return ""
 
-	// The offset just past the line ending at the cursor, or the cursor when the cursor is not at one.
+	// The offset just past the line ending at the cursor, or the cursor when the cursor
+	// is not at one.
 	fn line_end_after(at: Int) Int:
 		if at >= self.total: return at
 
@@ -154,7 +159,8 @@ impl Reader:
 
 		if self.at >= self.total: return ok(none)
 
-		// A line without quotes is one record whose cells are the delimiter-separated pieces.
+		// A line without quotes is one record whose cells are the delimiter-separated
+		// pieces.
 		line := self.next_line(self.at)
 
 		if self.next_quote(self.at) > line:
@@ -248,20 +254,24 @@ impl Reader:
 			row.append(self.text_between(at, end))
 			self.at = end + 1
 
-// Cuts a byte stream at the line ends outside quotes and parses each complete block of records with `parse`.
+// Cuts a byte stream at the line ends outside quotes and parses each complete block of
+// records with `parse`.
 // `pending` holds the already-scanned fragments of the unfinished record; `quoted` says whether
-// that scan ended inside a quoted cell. Fragments are joined only at a record boundary or EOF.
+// that scan ended inside a quoted cell. Fragments are joined only at a record boundary
+// or EOF.
 type CsvRows:
 	options: CsvOptions
 	max_record_bytes: Int?
 	pending: List[Bytes]
 	pending_size: Int
 	quoted: Bool
-	// The longest complete record the last `boundary` call passed, without its line feed.
+	// The longest complete record the last `boundary` call passed, without its line
+	// feed.
 	longest: Int
 
 impl CsvRows:
-	// Offset just past the last line end outside quotes in `data`, or 0 when the block holds none.
+	// Offset just past the last line end outside quotes in `data`, or 0 when the block
+	// holds none.
 	var fn boundary(data: Bytes) Int:
 		total := data.length()
 		var pos = 0

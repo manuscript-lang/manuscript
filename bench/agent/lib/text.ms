@@ -29,7 +29,8 @@ export fn write_text(path: String, text: String) Unit:
 	create_directory(dirname(path), recursive: true).get()
 	write_file(path, text, replace: true).wait().get()
 
-// Trailing whitespace removed from every line and from the whole text, as the graders compare output.
+// Trailing whitespace removed from every line and from the whole text, as the graders
+// compare output.
 export fn norm(text: String) String:
 	if text.trim().is_empty(): return ""
 	return text.trim_end().split("\n").map(fn line: line.trim_end()).join("\n")
@@ -45,7 +46,8 @@ export type Ran:
 	err: String
 	seconds: Float
 
-// Runs `command` with `bash -c` in directory `cwd`, feeding it `input`. A command still running after
+// Runs `command` with `bash -c` in directory `cwd`, feeding it `input`. A command still
+// running after
 // `timeout_s` seconds is killed and reports status 124 with "timeout" on standard error.
 export fn bash(command: String, cwd: String, timeout_s: Int, input: String) Ran:
 	return run_in(
@@ -97,7 +99,8 @@ export fn strip_spaces(text: String) String:
 	while end > start and text.get(end - 1) == " ": end -= 1
 	return text.slice(start, end).get("")
 
-// Whether the regular expression `pattern` matches all of `text`, as Python's `re.fullmatch`.
+// Whether the regular expression `pattern` matches all of `text`, as Python's
+// `re.fullmatch`.
 export fn full_match(pattern: String, text: String) Bool:
 	if re := compile("^(?:{pattern})$").to_optional(): return re.matches(text)
 	return false

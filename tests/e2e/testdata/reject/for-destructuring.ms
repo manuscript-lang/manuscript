@@ -1,5 +1,5 @@
-// A destructuring `for` pattern follows `let` rules: the element must match the pattern's shape,
-// and the pattern's names are scoped to the body.
+// A destructuring `for` pattern follows `let` rules: the element must match the
+// pattern's shape, and the pattern's names are scoped to the body.
 export fn main() Int:
 	numbers := [1, 2, 3]
 

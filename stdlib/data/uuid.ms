@@ -57,8 +57,9 @@ export fn uuid_v7() String!:
 	raw.append_bytes(noise)
 	return ok(format_uuid(raw.build(), 7))
 
-// Returns the version digit (1 through 8) of an RFC 9562 UUID text, or none when `text` is not a UUID of that variant.
-// Case does not matter. Example: `uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d")` is `5`.
+// Returns the version digit (1 through 8) of an RFC 9562 UUID text, or none when `text`
+// is not a UUID of that variant. Case does not matter. Example:
+// `uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d")` is `5`.
 export fn uuid_version(text: String) Int?:
 	raw := uuid_to_bytes(text)
 
@@ -85,7 +86,8 @@ fn uuid_to_bytes(text: String) Bytes!:
 
 	return error(Error("uuid: invalid data", kind: "EBADMSG"))
 
-// Stamps the version and RFC 9562 variant onto the first 16 bytes and renders them as lowercase `8-4-4-4-12` text.
+// Stamps the version and RFC 9562 variant onto the first 16 bytes and renders them as
+// lowercase `8-4-4-4-12` text.
 fn format_uuid(source: Bytes, version: Int) String:
 	var raw = BytesBuilder()
 

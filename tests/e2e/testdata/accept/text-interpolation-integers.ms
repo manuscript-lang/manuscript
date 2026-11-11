@@ -3,8 +3,9 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-// Integer interpolations are written straight into the joined text (the `strfuse` pass passes the
-// integer to `msrt_string_fmtN`), so every integer shape and length must still read back the same.
+// Integer interpolations are written straight into the joined text (the `strfuse` pass
+// passes the integer to `msrt_string_fmtN`), so every integer shape and length must
+// still read back the same.
 fn label(prefix: String, n: Int) String:
 	return "{prefix}{n}"
 
@@ -21,7 +22,8 @@ test "integer interpolation shapes":
 	try expect_equal("{max_int}|{min_int}", "9223372036854775807|-9223372036854775808")
 
 test "integer interpolation at the inline boundary":
-	// 14 bytes of text plus one digit is the longest inline string; one more byte allocates.
+	// 14 bytes of text plus one digit is the longest inline string; one more byte
+	// allocates.
 	try expect_equal("abcdefghijklmn{5}", "abcdefghijklmn5")
 	try expect_equal("abcdefghijklmn{56}", "abcdefghijklmn56")
 	try expect_equal("abcdefghijklmn{56}".length(), 16)

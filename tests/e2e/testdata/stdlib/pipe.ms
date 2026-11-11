@@ -52,7 +52,8 @@ test "a write waits while the pipe holds more than its capacity, so the reader s
 	var gate = p.writer()
 	producer := promise(fn: fill(p, 20))
 
-	// The producer cannot finish 20 writes into a pipe of capacity 1 until the reader takes values.
+	// The producer cannot finish 20 writes into a pipe of capacity 1 until the reader
+	// takes values.
 	try sleep(milliseconds(50)).wait()
 	try expect_false(producer.done())
 
@@ -87,7 +88,8 @@ test "a promise that owns a pipe writes to it through a writer of its own":
 	var p = pipe[Int](8)
 	var input = p.reader()
 
-	// Holds the pipe open until the producer is done, since the reader ends when the last writer closes.
+	// Holds the pipe open until the producer is done, since the reader ends when the
+	// last writer closes.
 	var gate = p.writer()
 	producer := promise(fn: produce(p, 5))
 	try producer.wait()
@@ -127,7 +129,8 @@ fn start_sender(p: Pipe[Int]) Promise[Unit]:
 	var w = p.writer()
 	return promise(fn: send_range(var w, 0))
 
-// The promise owns the writer from the capture on: the function that made it returning does not close it.
+// The promise owns the writer from the capture on: the function that made it returning
+// does not close it.
 test "a promise keeps the writer it captured after its maker returns":
 	var p = pipe[Int](2)
 	var input = p.reader()

@@ -225,6 +225,7 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
     if output.is_empty() {
         return Ok(String::new());
     }
+    let output = wrap_comments(output);
     let result = output.join("\n") + "\n";
     let result = format_expression_layout(file, &result)?;
     parse(file, &result)?;
@@ -395,6 +396,104 @@ fn wrap_import(parts: &[Token], flat: &str, source: &str) -> Option<String> {
     }
     out.push_str(&format!("{indent}) from {}", text(parts.get(from + 1)?)));
     Some(out)
+}
+
+/// The text of a plain prose comment line (`// text`), or `None` for anything a
+/// reflow must leave alone: code, an empty comment, indented or list or table
+/// text, a code fence, tool metadata, or a block-comment placeholder.
+fn prose_comment(line: &str) -> Option<&str> {
+    let body = line.trim_start_matches(' ').strip_prefix("// ")?;
+    let first = body.chars().next()?;
+    let special = first.is_whitespace()
+        || matches!(
+            first,
+            '-' | '*' | '|' | '`' | '#' | '<' | '>' | '\u{e000}'..='\u{f8ff}'
+        )
+        || body.starts_with("conform:")
+        || body.starts_with("ms:")
+        || body.starts_with("manuscript:")
+        || body
+            .split_once(". ")
+            .is_some_and(|(n, _)| n.chars().all(|c| c.is_ascii_digit()));
+    (!special).then_some(body)
+}
+
+/// Rewraps each paragraph of consecutive prose `//` lines that has a line wider
+/// than the formatter width, filling lines greedily up to the width. Paragraphs
+/// that already fit, and everything that is not plain prose, are unchanged.
+fn wrap_comments(lines: Vec<String>) -> Vec<String> {
+    let mut out = Vec::with_capacity(lines.len());
+    let mut fenced = false;
+    let mut i = 0;
+    while i < lines.len() {
+        let trimmed = lines[i].trim_start_matches(' ');
+        if trimmed.starts_with("// ```") {
+            fenced = !fenced;
+        }
+        let Some(first) = prose_comment(&lines[i]).filter(|_| !fenced) else {
+            out.push(lines[i].clone());
+            i += 1;
+            continue;
+        };
+        let indent = lines[i].len() - trimmed.len();
+        let mut end = i + 1;
+        while end < lines.len()
+            && lines[end].len() - lines[end].trim_start_matches(' ').len() == indent
+            && prose_comment(&lines[end]).is_some()
+        {
+            end += 1;
+        }
+        let paragraph = &lines[i..end];
+        if !paragraph.iter().any(|l| l.chars().count() > WIDTH) {
+            out.extend(paragraph.iter().cloned());
+            i = end;
+            continue;
+        }
+        let prefix = format!("{}// ", " ".repeat(indent));
+        let room = WIDTH.saturating_sub(prefix.chars().count());
+        let mut row = String::new();
+        let mut words: Vec<String> = Vec::new();
+        for text in
+            std::iter::once(first).chain(paragraph[1..].iter().filter_map(|l| prose_comment(l)))
+        {
+            words.extend(comment_words(text));
+        }
+        for word in words {
+            let width = row.chars().count() + usize::from(!row.is_empty()) + word.chars().count();
+            if !row.is_empty() && width > room {
+                out.push(format!("{prefix}{row}"));
+                row.clear();
+            }
+            if !row.is_empty() {
+                row.push(' ');
+            }
+            row.push_str(&word);
+        }
+        out.push(format!("{prefix}{row}"));
+        i = end;
+    }
+    out
+}
+
+/// Splits comment text into words, keeping a short backtick span whole so code
+/// is not broken across lines.
+fn comment_words(text: &str) -> Vec<String> {
+    let mut words: Vec<String> = Vec::new();
+    let mut open = false;
+    for word in text.split_whitespace() {
+        let ticks = word.matches('`').count();
+        match words.last_mut() {
+            Some(last) if open && last.chars().count() < 60 => {
+                last.push(' ');
+                last.push_str(word);
+            }
+            _ => words.push(word.to_string()),
+        }
+        if ticks % 2 == 1 {
+            open = !open;
+        }
+    }
+    words
 }
 
 /// Replaces each tab in a code line's leading whitespace with four spaces,

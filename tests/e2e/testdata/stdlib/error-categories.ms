@@ -5,7 +5,8 @@ import (
 	expect_equal, expect_true from "@std/test/test.ms",
 )
 
-// Standard failures are Error values whose kind callers compare, whatever package raised them.
+// Standard failures are Error values whose kind callers compare, whatever package
+// raised them.
 
 fn is_missing(cause: Error) Bool:
 	return cause.kind == "ENOENT"

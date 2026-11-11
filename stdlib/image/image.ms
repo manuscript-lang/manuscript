@@ -44,8 +44,9 @@ export enum ImageFormat:
 	Ppm  // Netpbm binary P5 (gray) and P6 (RGB), 8-bit.
 	Bmp  // Windows bitmap: 1, 4, 8, 24 and 32-bit uncompressed decode; 24-bit (or 32-bit with alpha) encode.
 
-// A width-by-height raster. Build one with `new_image`, `decode`, or the transforms below.
-// Example: `img := new_image(2, 2, ColorMode.Rgb).get(); img.pixel(0, 0)` is opaque black.
+// A width-by-height raster. Build one with `new_image`, `decode`, or the transforms
+// below. Example: `img := new_image(2, 2, ColorMode.Rgb).get(); img.pixel(0, 0)` is
+// opaque black.
 export type Image:
 	// Columns, at least 1.
 	width: Int
@@ -82,7 +83,8 @@ impl Image:
 				p[at + 3].to_int()
 			)
 
-	// Writes `color` at `(x, y)`, converting to the image's mode; returns false outside the image.
+	// Writes `color` at `(x, y)`, converting to the image's mode; returns false outside
+	// the image.
 	var fn set_pixel(x: Int, y: Int, color: Rgba) Bool:
 		if x < 0 or y < 0 or x >= self.width or y >= self.height: return false
 
@@ -172,8 +174,9 @@ impl Image:
 	fn rotate270() Image:
 		return self.rotate90().rotate180()
 
-	// Converts to `target`: gray from RGB uses Rec. 601 luma, gray expands by repeating, missing alpha is opaque,
-	// and dropping alpha keeps the stored color (no compositing).
+	// Converts to `target`: gray from RGB uses Rec. 601 luma, gray expands by
+	// repeating, missing alpha is opaque, and dropping alpha keeps the stored color (no
+	// compositing).
 	fn convert(target: ColorMode) Image:
 		if target == self.mode: return Image(
 			self.width, self.height, self.mode, self.pixels.clone()
@@ -205,7 +208,8 @@ impl Image:
 
 		return Image(self.width, self.height, target, out)
 
-	// Scales to `width` by `height`; `ERANGE` for a non-positive size, `EOVERFLOW` past `max_pixels`.
+	// Scales to `width` by `height`; `ERANGE` for a non-positive size, `EOVERFLOW` past
+	// `max_pixels`.
 	fn resize(
 		width: Int,
 		height: Int,
@@ -287,7 +291,8 @@ export type JpegOptions:
 	quality: Int = 85
 	// Chroma resolution for color images; gray images ignore it.
 	chroma: Chroma = Chroma.Quarter
-	// MCUs between restart markers, or 0 for none. Markers let readers recover from damage.
+	// MCUs between restart markers, or 0 for none. Markers let readers recover from
+	// damage.
 	restart_interval: Int = 0
 
 // A rectangle in pixels: top-left corner and size.
@@ -306,7 +311,8 @@ export enum Resampling:
 	Nearest  // Fastest; keeps hard edges.
 	Bilinear  // Weighted average of the four nearest pixels.
 
-// The largest pixel count any decoder or constructor accepts; keeps index arithmetic far from overflow.
+// The largest pixel count any decoder or constructor accepts; keeps index arithmetic
+// far from overflow.
 HARD_MAX_PIXELS := 1073741824
 
 fn bad(message: String) Error:
@@ -332,7 +338,8 @@ export fn color_channels(mode: ColorMode) Int:
 		Rgb: return 3
 		Rgba: return 4
 
-// Checks dimensions against `max_pixels` and the hard ceiling, returning the pixel count.
+// Checks dimensions against `max_pixels` and the hard ceiling, returning the pixel
+// count.
 fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
 	if width < 1 or height < 1: return error(bad("dimensions must be positive"))
 	if width > HARD_MAX_PIXELS / height: return error(
@@ -349,7 +356,8 @@ fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
 fn zeroed(count: Int) List[UInt8]:
 	return [0.to_uint8().get(0)].repeated(count)
 
-// Creates an opaque black image (alpha modes are fully opaque); `EINVAL` for a non-positive size, `EOVERFLOW` past `max_pixels`.
+// Creates an opaque black image (alpha modes are fully opaque); `EINVAL` for a
+// non-positive size, `EOVERFLOW` past `max_pixels`.
 export fn new_image(
 	width: Int,
 	height: Int,
@@ -388,7 +396,8 @@ export fn detect_image_format(data: Bytes) ImageFormat?:
 
 	return none
 
-// Decodes any supported format. `max_pixels` rejects larger images with `EOVERFLOW` before any allocation.
+// Decodes any supported format. `max_pixels` rejects larger images with `EOVERFLOW`
+// before any allocation.
 export fn decode_image(data: Bytes, max_pixels: Int? = none) Image!:
 	format := detect_image_format(data)
 
@@ -414,7 +423,8 @@ export fn encode_image(image: Image, format: ImageFormat) Bytes!:
 fn is_space(b: Int) Bool:
 	return b == 32 or b == 9 or b == 10 or b == 13 or b == 11 or b == 12
 
-// Reads one header integer from `at`, skipping whitespace and # comments; returns (value, next offset).
+// Reads one header integer from `at`, skipping whitespace and # comments; returns
+// (value, next offset).
 fn ppm_number(data: Bytes, start: Int) List[Int]!:
 	var at = start
 
@@ -567,7 +577,8 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 	top_down := height < 0
 	if top_down: height = 0 - height
 
-	// BI_BITFIELDS (3) carries explicit channel masks and applies to 32-bit pixels only.
+	// BI_BITFIELDS (3) carries explicit channel masks and applies to 32-bit pixels
+	// only.
 	if compression != 0 and (compression != 3 or bits != 32):
 		return error(unsupported("BMP compression {compression}"))
 	if bits != 1 and bits != 4 and bits != 8 and bits != 24 and bits != 32:
@@ -587,7 +598,8 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 			bad("BMP palette too large")
 		)
 
-	// A 40-byte header stores its bit-field masks right after it; later headers include them.
+	// A 40-byte header stores its bit-field masks right after it; later headers include
+	// them.
 	bitfields := compression == 3
 	palette_at := 14 + header + (if bitfields and header == 40: 12 else: 0)
 	if bitfields and header < 40: return error(
@@ -604,7 +616,8 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 		bad("truncated BMP pixel data")
 	)
 
-	// Masks in red, green, blue, alpha order; legacy 32-bit pixels are BGRA without a mask.
+	// Masks in red, green, blue, alpha order; legacy 32-bit pixels are BGRA without a
+	// mask.
 	var masks = [0, 0, 0, 0]
 	if bitfields: masks = [
 		le32(data, 54), le32(data, 58), le32(data, 62),
@@ -778,7 +791,8 @@ fn be32(data: Bytes, at: Int) Int:
 		+ data.get(at + 3).to_int()
 	)
 
-// The seven Adam7 passes as [x start, y start, x step, y step]; non-interlaced is one pass.
+// The seven Adam7 passes as [x start, y start, x step, y step]; non-interlaced is one
+// pass.
 fn png_passes(interlaced: Bool) List[List[Int]]:
 	if not interlaced: return [[0, 0, 1, 1]]
 	return [
@@ -878,7 +892,8 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
 			if width < 1 or height < 1 or width > 2147483647 or height > 2147483647:
 				return error(bad("PNG dimensions out of range"))
 
-			// Reject oversized images from the header alone, before reading any further.
+			// Reject oversized images from the header alone, before reading any
+			// further.
 			_ := try pixel_count(width, height, max_pixels)
 			have_header = true
 		else if kind == CHUNK_PLTE:
@@ -1086,7 +1101,8 @@ fn png_chunk(var out: BytesBuilder, kind: String, body: Bytes) Unit:
 	out.append_bytes(body)
 	put_be32(var out, crc32(tag.concat(body)).to_int())
 
-// Filters one row with the type whose residuals have the smallest absolute sum (the usual heuristic).
+// Filters one row with the type whose residuals have the smallest absolute sum (the
+// usual heuristic).
 fn filter_row(row: List[Int], prev: List[Int], step: Int) List[Int]:
 	var best = List[Int]()
 	var best_cost = -1
@@ -1168,7 +1184,8 @@ zigzag := [
 	34, 27, 20, 13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23,
 	30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63
 ]
-// Fixed-point (x4096) 8-point transform matrix: row x, column u is c(u)/2 * cos((2x+1)u*pi/16).
+// Fixed-point (x4096) 8-point transform matrix: row x, column u is c(u)/2 *
+// cos((2x+1)u*pi/16).
 dct_matrix := [
 	1448, 2008, 1892, 1702, 1448, 1138, 784, 400, 1448, 1702, 784, -400, -1448, -2008,
 	-1892, -1138, 1448, 1138, -784, -2008, -1448, 400, 1892, 1702, 1448, 400, -1892,
@@ -1220,7 +1237,8 @@ impl JpegBits:
 				).to_int() else: 217
 
 				if next != 0:
-					// A marker ends the entropy-coded segment; reading into it is corruption.
+					// A marker ends the entropy-coded segment; reading into it is
+					// corruption.
 					self.failed = true
 					return 0
 
@@ -1751,7 +1769,8 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 
 				scan := JpegScan(members.clone(), ss, se, ah, al, progressive)
 
-				// Blocks per component this scan codes, and the allocation budget check.
+				// Blocks per component this scan codes, and the allocation budget
+				// check.
 				var coded = 0
 
 				if ns == 1:
@@ -1947,7 +1966,8 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 				pixels[out + 1] = byte(rgb[1])
 				pixels[out + 2] = byte(rgb[2])
 			else:
-				// Four components: Adobe CMYK/YCCK store inverted ink, so a stored value acts as its own transmittance.
+				// Four components: Adobe CMYK/YCCK store inverted ink, so a stored
+				// value acts as its own transmittance.
 				var t0 = s[0]
 				var t1 = s[1]
 				var t2 = s[2]
@@ -1971,7 +1991,8 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 
 	return ok(Image(width, height, mode, pixels))
 
-// First offset at or after `from` that starts a marker other than a stuffed zero, fill or restart.
+// First offset at or after `from` that starts a marker other than a stuffed zero, fill
+// or restart.
 fn scan_end(data: Bytes, from: Int) Int:
 	var at = from
 
@@ -1988,8 +2009,9 @@ fn scan_end(data: Bytes, from: Int) Int:
 
 	return data.length()
 
-// Reads component sample (x, y) of the full-resolution grid. A 2:1 ratio uses libjpeg's triangle filter ("fancy"
-// upsampling) so output matches libjpeg; other ratios replicate the nearest sample.
+// Reads component sample (x, y) of the full-resolution grid. A 2:1 ratio uses libjpeg's
+// triangle filter ("fancy" upsampling) so output matches libjpeg; other ratios
+// replicate the nearest sample.
 fn jpeg_sample(
 	plane: List[UInt8],
 	stride: Int,
@@ -2138,7 +2160,8 @@ fn bit_length(value: Int) Int:
 
 	return n
 
-// Forward DCT and quantization of the 8x8 block at (x0, y0); returns 64 levels in zigzag order.
+// Forward DCT and quantization of the 8x8 block at (x0, y0); returns 64 levels in
+// zigzag order.
 fn jpeg_forward(
 	plane: List[Int],
 	stride: Int,
@@ -2229,7 +2252,8 @@ fn jpeg_scaled(base: List[Int], quality: Int) List[Int]:
 		table.append(clamp_to(max_of((base[zi] * scale + 50) / 100, 1), 255))
 	return table
 
-// Encodes baseline JPEG: gray stays gray, Rgb uses YCbCr with the chosen chroma resolution. Alpha images fail with
+// Encodes baseline JPEG: gray stays gray, Rgb uses YCbCr with the chosen chroma
+// resolution. Alpha images fail with
 // `EINVAL`; convert or composite first.
 export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!:
 	if image.mode == ColorMode.Rgba or image.mode == ColorMode.GrayAlpha:

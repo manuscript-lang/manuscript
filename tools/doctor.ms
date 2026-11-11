@@ -1,5 +1,5 @@
-// Reports build prerequisites without downloading or changing the checkout (`make doctor`).
-// Usage: ms run tools/doctor.ms
+// Reports build prerequisites without downloading or changing the checkout
+// (`make doctor`). Usage: ms run tools/doctor.ms
 import (
 	stdout from "@std/io/io.ms",
 	read_file from "@std/os/fs.ms",

@@ -24,7 +24,8 @@ fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:
 	match outcome:
 		ok(_): return error(Error("filesystem misuse succeeded"))
 		error(cause):
-			// A failure names the path after the status words: "filesystem: <failure>: <path>".
+			// A failure names the path after the status words: "filesystem: <failure>:
+			// <path>".
 			named := cause.message.starts_with("{expected.message}: ")
 			if (
 				cause.kind != expected.kind

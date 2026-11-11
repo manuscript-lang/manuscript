@@ -29,7 +29,8 @@ BEGIN := "-----BEGIN "
 END := "-----END "
 DASHES := "-----"
 
-// Parses every PEM block in `text`; text outside blocks is ignored, and a text without blocks gives an empty list.
+// Parses every PEM block in `text`; text outside blocks is ignored, and a text without
+// blocks gives an empty list.
 export fn parse(text: String) List[PemBlock]!:
 	var blocks = List[PemBlock]()
 	var label = ""
@@ -92,7 +93,8 @@ export fn parse(text: String) List[PemBlock]!:
 
 	return ok(blocks)
 
-// Encodes one block with headers first, then the body in 64-character base64 lines, ending with a newline.
+// Encodes one block with headers first, then the body in 64-character base64 lines,
+// ending with a newline.
 export fn encode_block(block: PemBlock) String:
 	var out = StringBuilder()
 	out.append("{BEGIN}{block.label}{DASHES}\n")

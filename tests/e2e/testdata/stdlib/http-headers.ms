@@ -63,7 +63,8 @@ test "one header type preserves repeated values through buffered requests":
 		)
 	)
 
-	// The clone is independent: appending to it leaves the response's headers as received.
+	// The clone is independent: appending to it leaves the response's headers as
+	// received.
 	_appended := ((metadata.headers.append("x-dup", "third")) | try expect_ok)
 	metadata.headers.values("X-Dup") | try expect_equal(["first", "second", "third"])
 	try expect_false(

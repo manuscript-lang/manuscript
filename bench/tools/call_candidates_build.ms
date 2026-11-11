@@ -1,5 +1,5 @@
-// End-to-end uncached Release builds plus exact native output checks.
-// MS_CACHE=off ms run bench/tools/call_candidates_build.ms -- BEFORE AFTER INPUTS OUTPUT ROUNDS
+// End-to-end uncached Release builds plus exact native output checks. MS_CACHE=off ms
+// run bench/tools/call_candidates_build.ms -- BEFORE AFTER INPUTS OUTPUT ROUNDS
 import (
 	arguments, set_environment from "@std/os/env.ms",
 

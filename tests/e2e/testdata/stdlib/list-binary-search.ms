@@ -79,7 +79,8 @@ test "binary search uses Comparable equality and works through a generic bound":
 	try expect_equal(values[result.index].label, "first")
 	try check_search(values, Key(2, "missing"))
 
-// Lists are sorted before searching: search does not scan to validate this precondition.
+// Lists are sorted before searching: search does not scan to validate this
+// precondition.
 test "binary search agrees with a linear oracle over sorted duplicate-heavy lists":
 	for length in 0..65:
 		for seed in 0..13:

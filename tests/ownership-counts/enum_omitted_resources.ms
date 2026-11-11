@@ -1,29 +1,13 @@
-// expect-stdout: close 3
-// expect-stdout: close 2
-// expect-stdout: close 1
-// expect-stdout: code 7
-// expect-stdout: close 6
-// expect-stdout: close 5
-// expect-stdout: close 4
-// expect-stdout: code 8
-// expect-stdout: close 8
-// expect-stdout: kept 7 9
-// expect-stdout: close 9
-// expect-stdout: close 7
-// expect-stdout: borrowed 10 9
-// expect-stdout: close 12
-// expect-stdout: close 11
-// expect-stdout: close 10
-// expect-stdout: close 15
-// expect-stdout: close 14
-// expect-stdout: close 13
-// expect-stdout: wildcard 0
-// expect-stdout: close 17
-// expect-stdout: close 16
-// expect-stdout: generic 11
-// expect-stdout: empty 0
-// A match that moves named fields closes omitted resource payloads last declared first,
-// including resources with no heap storage. Borrowed matches keep the owner's close duty.
+// expect-stdout: close 3 expect-stdout: close 2 expect-stdout: close 1 expect-stdout:
+// code 7 expect-stdout: close 6 expect-stdout: close 5 expect-stdout: close 4
+// expect-stdout: code 8 expect-stdout: close 8 expect-stdout: kept 7 9 expect-stdout:
+// close 9 expect-stdout: close 7 expect-stdout: borrowed 10 9 expect-stdout: close 12
+// expect-stdout: close 11 expect-stdout: close 10 expect-stdout: close 15
+// expect-stdout: close 14 expect-stdout: close 13 expect-stdout: wildcard 0
+// expect-stdout: close 17 expect-stdout: close 16 expect-stdout: generic 11
+// expect-stdout: empty 0 A match that moves named fields closes omitted resource
+// payloads last declared first, including resources with no heap storage. Borrowed
+// matches keep the owner's close duty.
 import Closeable from "@std/core.ms"
 
 type Token:

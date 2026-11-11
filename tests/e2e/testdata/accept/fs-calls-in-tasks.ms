@@ -12,8 +12,8 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-// With several tasks alive, file-system calls run on the blocking pool; the results must match
-// the single-task behaviour.
+// With several tasks alive, file-system calls run on the blocking pool; the results
+// must match the single-task behaviour.
 fn churn(root: String, name: String) Int:
 	dir := "{root}/{name}"
 	made := create_directory(dir)

@@ -1,11 +1,13 @@
-// Collect Harbor trials into results/trials-YYYY-MM-DD.jsonl and render results/leaderboard-YYYY-MM-DD.md.
+// Collect Harbor trials into results/trials-YYYY-MM-DD.jsonl and render
+// results/leaderboard-YYYY-MM-DD.md.
 //
 //     ms run bench/agent/leaderboard.ms -- collect JOBS_DIR [JOBS_DIR ...]   # write results/trials-YYYY-MM-DD.jsonl
 //     ms run bench/agent/leaderboard.ms -- render [trials-file]              # write results/leaderboard-YYYY-MM-DD.md
 //
-// Run from the repository root. Pass rate counts every trial. Cost, tokens, turns and time average over PASSING
-// trials only, so a cheap wrong answer never improves a ranking. Tokens are input (cache reads included) plus
-// output. Turns are agent steps in the Harbor trajectory. Ranking: pass rate, then mean cost of passing trials.
+// Run from the repository root. Pass rate counts every trial. Cost, tokens, turns and
+// time average over PASSING trials only, so a cheap wrong answer never improves a
+// ranking. Tokens are input (cache reads included) plus output. Turns are agent steps
+// in the Harbor trajectory. Ranking: pass rate, then mean cost of passing trials.
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	stderr from "@std/io/io.ms",
@@ -102,11 +104,13 @@ fn metric(step: JsonValue, key: String) Float:
 		JsonValue.Null
 	).as_float().get(0.0)
 
-// Attributes input tokens (cache reads included) to the source of the context they carry.
+// Attributes input tokens (cache reads included) to the source of the context they
+// carry.
 //
-// Each step re-sends the whole context. We track how the context grew since the previous step, credit the growth to
-// the previous step's tool category (and its completion tokens to "model output"), and split every step's prompt
-// tokens by the running composition. The total equals the sum of prompt tokens over agent steps.
+// Each step re-sends the whole context. We track how the context grew since the
+// previous step, credit the growth to the previous step's tool category (and its
+// completion tokens to "model output"), and split every step's prompt tokens by the
+// running composition. The total equals the sum of prompt tokens over agent steps.
 fn breakdown(steps: List[JsonValue]) List[Float]:
 	var comp = CATEGORIES.map(fn _c: 0.0)
 	var out = CATEGORIES.map(fn _c: 0.0)
@@ -229,7 +233,8 @@ fn collect(dirs: List[String]) Int:
 					rows = rows.filter(fn old: old.trial != t.trial)
 					rows.append(t)
 
-	// A resumed job reruns trials; keep one (the latest) per challenge, language, agent and model.
+	// A resumed job reruns trials; keep one (the latest) per challenge, language, agent
+	// and model.
 	var latest = List[Trial]()
 
 	for t in rows.sorted(fn a, b: a.started.compare(b.started)):
@@ -320,7 +325,8 @@ fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) S
 
 	return lines.join("\n") + "\n"
 
-// Higher pass rate first, then lower cost; trials without a passing run sort last, then input order.
+// Higher pass rate first, then lower cost; trials without a passing run sort last, then
+// input order.
 fn order(a: Row, b: Row, ai: Int, bi: Int) Int:
 	if a.stats.pass != b.stats.pass: return if a.stats.pass > b.stats.pass: -1 else: 1
 

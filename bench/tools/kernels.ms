@@ -1,7 +1,8 @@
-// Whole-kernel comparisons against hand-written Go, Rust and (kernels only) C, minimum of N runs (bench/perf/kernels, bench/perf/competence).
-// Usage: ms run bench/tools/kernels.ms -- <kernels|competence> [repeats]
-// kernels: c-ms is the C a no-GC Manuscript backend would emit; ABLATE=1 adds c-ms builds with one runtime check removed each.
-// MS, GO, RUSTC and CC pick the tools.
+// Whole-kernel comparisons against hand-written Go, Rust and (kernels only) C, minimum
+// of N runs (bench/perf/kernels, bench/perf/competence). Usage: ms run
+// bench/tools/kernels.ms -- <kernels|competence> [repeats] kernels: c-ms is the C a
+// no-GC Manuscript backend would emit; ABLATE=1 adds c-ms builds with one runtime check
+// removed each. MS, GO, RUSTC and CC pick the tools.
 import (
 	arguments from "@std/os/env.ms",
 	CopyOptions, copy, create_directory, temporary from "@std/os/fs.ms",

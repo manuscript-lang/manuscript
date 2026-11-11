@@ -48,7 +48,8 @@ impl Hasher for NativeHasher:
 export fn constant_time_equal(left: Bytes, right: Bytes) Bool:
 	return msstd_crypto_constant_time_equal(left, right)
 
-// Returns `left` if `choice` is 1 and `right` if it is 0, without branching on `choice`. Any other `choice` faults.
+// Returns `left` if `choice` is 1 and `right` if it is 0, without branching on
+// `choice`. Any other `choice` faults.
 export fn constant_time_select(choice: Int, left: Int, right: Int) Int:
 	if choice != 0 and choice != 1:
 		panic("crypto: choice must be 0 or 1")
@@ -61,7 +62,8 @@ export fn constant_time_select(choice: Int, left: Int, right: Int) Int:
 export fn constant_time_less_or_equal(left: Int, right: Int) Int:
 	return 1 + shift_right(right - left, 63)
 
-// Returns the byte-wise exclusive OR of two equal-length byte strings, or EINVAL when the lengths differ.
+// Returns the byte-wise exclusive OR of two equal-length byte strings, or EINVAL when
+// the lengths differ.
 export fn xor_bytes(left: Bytes, right: Bytes) Bytes!:
 	if left.length() != right.length():
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
@@ -79,7 +81,8 @@ export fn xor_bytes(left: Bytes, right: Bytes) Bytes!:
 export fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) Bytes!:
 	return HashAlgorithm.Sha256.derive_key(password, salt, iterations, length)
 
-// Authenticates and decrypts a value produced by `seal` using AES-GCM with a 16, 24 or 32-byte key.
+// Authenticates and decrypts a value produced by `seal` using AES-GCM with a 16, 24 or
+// 32-byte key.
 export fn open(
 	key: Bytes,
 	nonce: Bytes,
@@ -92,8 +95,8 @@ export fn open(
 export fn public_key(seed: Bytes) Bytes!:
 	return msstd_crypto_public_key(seed)
 
-// Encrypts and authenticates plaintext with AES-GCM using a 16, 24 or 32-byte key and 12-byte nonce.
-// The caller supplies a unique nonce.
+// Encrypts and authenticates plaintext with AES-GCM using a 16, 24 or 32-byte key and
+// 12-byte nonce. The caller supplies a unique nonce.
 export fn seal(
 	key: Bytes,
 	nonce: Bytes,
@@ -133,7 +136,8 @@ export enum Curve:
 export interface Hasher:
 	// Appends data to the running hash.
 	fn update(data: Bytes) Unit
-	// Returns the digest of all data supplied since creation or the last finish, then resets the state.
+	// Returns the digest of all data supplied since creation or the last finish, then
+	// resets the state.
 	fn finish() Bytes
 
 /*
@@ -153,7 +157,8 @@ export fn digest(input: ReadStream[Bytes], algorithm: HashAlgorithm) Bytes!:
 export fn aes_ctr(key: Bytes, iv: Bytes, data: Bytes) Bytes!:
 	return msstd_crypto_aes_ctr(key, iv, data)
 
-// Encrypts with AES in CBC mode and PKCS#7 padding. `key` is 16, 24 or 32 bytes; `iv` is 16 bytes.
+// Encrypts with AES in CBC mode and PKCS#7 padding. `key` is 16, 24 or 32 bytes; `iv`
+// is 16 bytes.
 export fn aes_cbc_encrypt(key: Bytes, iv: Bytes, plaintext: Bytes) Bytes!:
 	return msstd_crypto_aes_cbc_encrypt(key, iv, plaintext)
 
@@ -171,11 +176,13 @@ export fn ecdsa_generate(curve: Curve) Bytes!:
 export fn public_key_der(private_key: Bytes) Bytes!:
 	return msstd_crypto_public_key_der(private_key)
 
-// Signs the digest of data with an ECDSA private key (PKCS#8 DER) and returns an ASN.1 DER signature.
+// Signs the digest of data with an ECDSA private key (PKCS#8 DER) and returns an ASN.1
+// DER signature.
 export fn ecdsa_sign(private_key: Bytes, hash: HashAlgorithm, data: Bytes) Bytes!:
 	return msstd_crypto_ecdsa_sign(private_key, hash, data)
 
-// Verifies an ASN.1 DER ECDSA signature with a PKIX DER public key. Malformed keys or signatures return False.
+// Verifies an ASN.1 DER ECDSA signature with a PKIX DER public key. Malformed keys or
+// signatures return False.
 export fn ecdsa_verify(
 	public_key: Bytes,
 	hash: HashAlgorithm,
@@ -184,8 +191,8 @@ export fn ecdsa_verify(
 ) Bool:
 	return msstd_crypto_ecdsa_verify(public_key, hash, data, signature)
 
-// Computes the shared secret between a PKCS#8 DER private key and a PKIX DER public key.
-// Both keys must use the same curve (P-256, P-384, P-521 or X25519).
+// Computes the shared secret between a PKCS#8 DER private key and a PKIX DER public
+// key. Both keys must use the same curve (P-256, P-384, P-521 or X25519).
 export fn ecdh_shared_secret(private_key: Bytes, peer_public_key: Bytes) Bytes!:
 	return msstd_crypto_ecdh_shared_secret(private_key, peer_public_key)
 
@@ -219,16 +226,19 @@ export fn rsa_verify_pss(
 ) Bool:
 	return msstd_crypto_rsa_verify_pss(public_key, hash, data, signature)
 
-// Encrypts a short message with RSA-OAEP using the given hash and a PKIX DER public key.
+// Encrypts a short message with RSA-OAEP using the given hash and a PKIX DER public
+// key.
 export fn rsa_encrypt(public_key: Bytes, hash: HashAlgorithm, message: Bytes) Bytes!:
 	return msstd_crypto_rsa_encrypt(public_key, hash, message)
 
-// Decrypts an RSA-OAEP message with a PKCS#8 DER private key. Fails with EAUTH when decryption is rejected.
+// Decrypts an RSA-OAEP message with a PKCS#8 DER private key. Fails with EAUTH when
+// decryption is rejected.
 export fn rsa_decrypt(private_key: Bytes, hash: HashAlgorithm, ciphertext: Bytes) Bytes!:
 	return msstd_crypto_rsa_decrypt(private_key, hash, ciphertext)
 
-// Selects a supported hash algorithm for digests, HMAC, PBKDF2 and HKDF.
-// Md5 and Sha1 exist for interoperability with existing formats; prefer SHA-2 or SHA-3 for new designs.
+// Selects a supported hash algorithm for digests, HMAC, PBKDF2 and HKDF. Md5 and Sha1
+// exist for interoperability with existing formats; prefer SHA-2 or SHA-3 for new
+// designs.
 export enum HashAlgorithm:
 	Md5  // MD5, producing a 16-byte digest or HMAC. Not collision resistant.
 	Sha1  // SHA-1, producing a 20-byte digest or HMAC. Not collision resistant.
@@ -249,8 +259,9 @@ impl HashAlgorithm:
 	fn hmac(key: Bytes, data: Bytes) Bytes!:
 		return msstd_crypto_hmac(self, key, data)
 
-	// Derives a key with PBKDF2-HMAC using this algorithm, the iteration count and length.
-	// Fails with EINVAL for non-positive iterations or a length outside 1..1048576.
+	// Derives a key with PBKDF2-HMAC using this algorithm, the iteration count and
+	// length. Fails with EINVAL for non-positive iterations or a length outside
+	// 1..1048576.
 	fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) Bytes!:
 		return msstd_crypto_derive_key(self, password, salt, iterations, length)
 

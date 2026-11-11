@@ -18,7 +18,8 @@ The result is one line on standard output: `MSBENCH ` followed by a JSON object 
 Run settings.
 */
 type Settings:
-	// Target duration of one sample in nanoseconds; calibration grows the iteration count until a sample takes this long.
+	// Target duration of one sample in nanoseconds; calibration grows the iteration
+	// count until a sample takes this long.
 	target_nanoseconds: Int
 	// Timed samples to take.
 	samples: Int
@@ -39,14 +40,16 @@ fn settings() Settings:
 		found.iterations = max(text.parse_int().get(0), 0)
 	return found
 
-// Runs `body` `count` times and returns the elapsed nanoseconds; the first failure stops the run and is returned.
+// Runs `body` `count` times and returns the elapsed nanoseconds; the first failure
+// stops the run and is returned.
 fn time_batch(body: fn() Unit!, count: Int) Int!:
 	started := monotonic()
 	for unused in 0..count:
 		try body()
 	return ok(monotonic().difference(started).to_nanoseconds())
 
-// Returns the iteration count whose sample should take about `target` nanoseconds, given that `count` took `elapsed`.
+// Returns the iteration count whose sample should take about `target` nanoseconds,
+// given that `count` took `elapsed`.
 fn next_count(count: Int, elapsed: Int, target: Int) Int:
 	scaled := count * target / max(elapsed, 1) * 12 / 10
 	return min(max(scaled, count + 1), min(count * 100, max_iterations))
@@ -92,8 +95,9 @@ export fn measure(operations: Int, work: fn() Unit!) Unit!:
 // Set once a body has timed its own work with `measure`.
 measured_flag := "MS_BENCH_MEASURED"
 
-// The entry `ms bench` builds calls this with each block's body; programs do not. The body runs once first (the
-// warmup); a body that called `measure` has reported already, and any other body is one iteration to repeat and time.
+// The entry `ms bench` builds calls this with each block's body; programs do not. The
+// body runs once first (the warmup); a body that called `measure` has reported already,
+// and any other body is one iteration to repeat and time.
 export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
 	try body()
 
@@ -102,8 +106,9 @@ export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
 
 	return measure(operations, body)
 
-// Checks a bench's Int result so the work that computed it stays observable. Apply `try keep(value)` in the body.
-// The smallest Int returns an error; choose a different checksum if that value is a valid result of your workload.
+// Checks a bench's Int result so the work that computed it stays observable. Apply
+// `try keep(value)` in the body. The smallest Int returns an error; choose a different
+// checksum if that value is a valid result of your workload.
 export fn keep(checksum: Int) Unit!:
 	if checksum == -9223372036854775807 - 1:
 		return fail(

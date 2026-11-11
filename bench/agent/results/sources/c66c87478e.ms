@@ -3,13 +3,14 @@ import (
 	read_lines from "@std/streams.ms",
 )
 
-// Stands in for a hard break inside paragraph text. Input is ASCII, so it cannot clash with source text.
+// Stands in for a hard break inside paragraph text. Input is ASCII, so it cannot clash
+// with source text.
 HARD := "\u{E000}"
 DIGITS := "0123456789"
 PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
 
-// kind: 0 ready HTML in text, 1 paragraph (text is the paragraph text), 2 list, 3 list item.
-// next_line is the index of the first line after the block.
+// kind: 0 ready HTML in text, 1 paragraph (text is the paragraph text), 2 list, 3 list
+// item. next_line is the index of the first line after the block.
 type Block:
 	kind: Int = 0
 	text: String = ""

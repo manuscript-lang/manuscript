@@ -1,4 +1,5 @@
-// Bash's built-in timer supplies child user/system CPU time without an external time binary.
+// Bash's built-in timer supplies child user/system CPU time without an external time
+// binary.
 import Ran, capture, invalid from "./lib.ms"
 
 export type Timed:

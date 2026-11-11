@@ -176,7 +176,8 @@ fn bref_node(var p: Pat, g: Int, name: List[Int]) Int:
 
 // ---- escapes --------------------------------------------------------------
 
-// p.pos is just after the backslash. Returns a byte, a shorthand code (>= 1000), or -1 (error set).
+// p.pos is just after the backslash. Returns a byte, a shorthand code (>= 1000), or -1
+// (error set).
 fn escape_char(var p: Pat) Int:
 	c := peek(p)
 	if c < 0: return perr(var p, "bad escape")
@@ -959,7 +960,8 @@ fn new_slots(p: Pat) List[Int]:
 		s.append(-1)
 	return s
 
-// Leftmost match starting at or after `from`. Returns start or -1; slots 0 and 1 hold the whole match.
+// Leftmost match starting at or after `from`. Returns start or -1; slots 0 and 1 hold
+// the whole match.
 fn find_from(p: Pat, subj: List[Int], from: Int, full: Bool, var slots: List[Int]) Int:
 	n := subj.length()
 	var st = from

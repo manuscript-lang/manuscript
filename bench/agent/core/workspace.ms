@@ -30,7 +30,8 @@ type LogRow:
 	phase: String
 	ok: Bool
 
-// Creates `dest` with the language template, spec, examples and `check.sh`. Returns the agent prompt.
+// Creates `dest` with the language template, spec, examples and `check.sh`. Returns the
+// agent prompt.
 export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 	create_directory(dest, recursive: true).get()
 	copy(

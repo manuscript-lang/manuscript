@@ -1,5 +1,6 @@
-// Generator for c59-spreadsheet. The expected outputs come from the Go oracle in oracle/*.ref (built with the
-// local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c59
+// Generator for c59-spreadsheet. The expected outputs come from the Go oracle in
+// oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
+// Deterministic; run: ms run bench/agent/gen.ms -- c59
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 fn add(var cs: Cases, name: String, script: String) Unit:

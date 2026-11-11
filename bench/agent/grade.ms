@@ -1,8 +1,9 @@
 // Verifier used inside Harbor tasks: build /app, run hidden cases, write the reward.
 //
-// Usage: ms run /tests/grade.ms -- <cases.json> <build-cmd> <run-cmd> <timeout-s> [source-suffix]
-// Writes /logs/verifier/reward.txt (1 if every case passes, else 0) and detail.json. export_harbor.ms copies this file
-// and the modules it imports next to each other under /tests, keeping their relative layout.
+// Usage: ms run /tests/grade.ms -- <cases.json> <build-cmd> <run-cmd> <timeout-s>
+// [source-suffix] Writes /logs/verifier/reward.txt (1 if every case passes, else 0) and
+// detail.json. export_harbor.ms copies this file and the modules it imports next to
+// each other under /tests, keeping their relative layout.
 import (
 	parse, stringify from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",

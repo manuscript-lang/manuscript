@@ -416,7 +416,8 @@ impl Repo:
 
 		return false
 
-	// Prints the error and returns true when an untracked working file would be overwritten.
+	// Prints the error and returns true when an untracked working file would be
+	// overwritten.
 	fn untracked(names: List[String]) Bool:
 		for name in names.sorted():
 			if self.files.contains(name) and not self.index.contains(name):

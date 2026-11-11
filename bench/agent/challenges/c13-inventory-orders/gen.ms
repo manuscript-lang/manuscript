@@ -1,4 +1,5 @@
-// Generator for c13-inventory-orders. Deterministic; run: ms run bench/agent/gen.ms -- c13
+// Generator for c13-inventory-orders. Deterministic; run: ms run bench/agent/gen.ms --
+// c13
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
 	seeded from "../../lib/pyrandom.ms",

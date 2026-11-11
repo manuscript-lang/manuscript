@@ -4,9 +4,10 @@ import (
 	expect_equal, expect_fault, expect_ok from "@std/test/test.ms",
 )
 
-// A close that changes its receiver works on the value where it lives: a holder, a part, a
-// closure's capture or the cleanup stack sees the closed state afterwards, so a second close of
-// the same value (an explicit close followed by the scope end) logs nothing.
+// A close that changes its receiver works on the value where it lives: a holder, a
+// part, a closure's capture or the cleanup stack sees the closed state afterwards, so a
+// second close of the same value (an explicit close followed by the scope end) logs
+// nothing.
 type Latch:
 	log: String
 	id: Int
@@ -97,7 +98,8 @@ fn destructured_list(log: String) Int:
 	[first, _] := xs
 	return first.id
 
-// A resource that hands out other resources: what it returns is the caller's to close (#2435).
+// A resource that hands out other resources: what it returns is the caller's to close
+// (#2435).
 type Maker:
 	made: Int
 

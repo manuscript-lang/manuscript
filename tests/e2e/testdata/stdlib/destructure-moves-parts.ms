@@ -3,8 +3,9 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-// Destructuring a record or a list at its last use moves the parts out of it: a stream bound
-// by a record pattern keeps its cell (#2430), and the parts the pattern leaves out are dropped.
+// Destructuring a record or a list at its last use moves the parts out of it: a stream
+// bound by a record pattern keeps its cell (#2430), and the parts the pattern leaves
+// out are dropped.
 type Count:
 	n: Int
 

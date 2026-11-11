@@ -4,9 +4,10 @@
 //         [--ms-binary ./ms] [--agent-timeout 900]
 //
 // Run from the repository root. Each task directory: instruction.md, task.toml,
-// environment/{Dockerfile,workspace/,ms}, tests/{test.sh,grade.ms,cases.json,...}, solution/solve.sh. Hidden cases
-// live only in tests/, which Harbor uploads at verification time. The verifier runs `ms` inside the task, so every
-// image carries the binary given by --ms-binary. The output is generated; do not commit it.
+// environment/{Dockerfile,workspace/,ms}, tests/{test.sh,grade.ms,cases.json,...},
+// solution/solve.sh. Hidden cases live only in tests/, which Harbor uploads at
+// verification time. The verifier runs `ms` inside the task, so every image carries the
+// binary given by --ms-binary. The output is generated; do not commit it.
 import (
 	Flag, FlagKind, command from "@std/cli/command.ms",
 	JsonValue from "@std/data/json.ms",
@@ -102,7 +103,8 @@ fn export_one(
 			"#!/bin/bash\nmkdir -p \"$(dirname /app/{lang.solution})\"\ncp \"$(dirname \"$0\")/reference\" /app/{lang.solution}\n"
 		)
 	else:
-		// Large challenges are oracle-validated in Go only; the oracle agent has nothing to apply.
+		// Large challenges are oracle-validated in Go only; the oracle agent has
+		// nothing to apply.
 		write_text(
 			"{d}/solution/solve.sh",
 			"#!/bin/bash\necho 'no reference solution for this language' >&2\nexit 1\n"

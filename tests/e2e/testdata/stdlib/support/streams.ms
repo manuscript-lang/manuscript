@@ -4,11 +4,13 @@ import (
 	from_bytes from "@std/io/streams.ms",
 )
 
-// A reader over `text` in chunks of `chunk` bytes, so line and scalar boundaries fall inside reads.
+// A reader over `text` in chunks of `chunk` bytes, so line and scalar boundaries fall
+// inside reads.
 export fn memory(text: String, chunk: Int = 3) ReadStream[Bytes]:
 	return from_bytes(text.to_bytes(), chunk)
 
-// A reader whose every read fails with `Closed`, like a stream that was closed under its reader.
+// A reader whose every read fails with `Closed`, like a stream that was closed under
+// its reader.
 type ClosedSource:
 	unused: Int
 

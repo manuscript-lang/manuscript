@@ -41,7 +41,8 @@ export fn main() Int:
 				else:
 					table[i * cols + j] = right
 
-	// Walk the edit script. Kind 0 is unchanged, 1 a deletion from A, 2 an insertion from B.
+	// Walk the edit script. Kind 0 is unchanged, 1 a deletion from A, 2 an insertion
+	// from B.
 	var kinds = List[Int]()
 	var texts = List[String]()
 	var x = 0

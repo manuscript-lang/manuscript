@@ -5,7 +5,8 @@ import (
 	expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
 )
 
-// A line read answers `String?`: an empty line is present, and only the end of the stream is none.
+// A line read answers `String?`: an empty line is present, and only the end of the
+// stream is none.
 fn present(var input: ReadStream[String]) Bool!:
 	line := try input.next()
 	return ok(line.is_some())

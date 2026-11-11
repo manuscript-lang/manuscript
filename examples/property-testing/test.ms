@@ -5,7 +5,8 @@ import (
 	insertion_sort from "./src/main.ms",
 )
 
-// Each property runs on 100 generated lists. A failure prints a shrunk counterexample and a seed.
+// Each property runs on 100 generated lists. A failure prints a shrunk counterexample
+// and a seed.
 test "sorting keeps every element":
 	try check(
 		"same elements", lists(ints(-50, 50)),

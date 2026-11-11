@@ -20,7 +20,8 @@ fn use_named(path: String) Unit!:
 	bytes := try read_file(path).wait()
 	try expect_equal(bytes.decode_utf8().get(""), "")
 
-// A named resource borrowed through an implicit Optional stays open; its owner closes it once.
+// A named resource borrowed through an implicit Optional stays open; its owner closes
+// it once.
 test "borrowing through an Optional does not close the named owner":
 	directory := try temporary("optional-borrow-")
 	path := "{directory.path()}/log"

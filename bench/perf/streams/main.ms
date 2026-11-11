@@ -12,7 +12,8 @@ import (
 	Instant, monotonic from "@std/time.ms",
 )
 
-// ns per item for stream pipelines against the loops they replace. One line per case: `name ns checksum`.
+// ns per item for stream pipelines against the loops they replace. One line per case:
+// `name ns checksum`.
 
 fn say(text: String) Unit:
 	_ignored := stdout().write(text)

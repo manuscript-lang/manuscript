@@ -1,11 +1,12 @@
-// Copy sweep (`make copy-check`): builds the programs and test fixtures of the corpus with
+// Copy sweep (`make copy-check`): builds the programs and test fixtures of the corpus
+// with
 // `MS_COPY_PROBE=1`, which makes the compiler print every implicit `copy` of an object value (a
-// closure, interface or runtime object, or a value holding one) in the lowered code. Such a
-// value has one owner and a program duplicates it only through a written `.clone()`, which the
-// probe leaves out, so each line is a lowering site to fix; the sweep fails while any remain.
-// Arguments name the files to sweep instead.
-// MS names the ms that builds the programs (default target/release/ms).
-// Usage: ms run tools/copy-check.ms [-- files]
+// closure, interface or runtime object, or a value holding one) in the lowered code.
+// Such a value has one owner and a program duplicates it only through a written
+// `.clone()`, which the probe leaves out, so each line is a lowering site to fix; the
+// sweep fails while any remain. Arguments name the files to sweep instead. MS names the
+// ms that builds the programs (default target/release/ms). Usage: ms run
+// tools/copy-check.ms [-- files]
 import (
 	arguments, change_directory, working_directory from "@std/os/env.ms",
 	GlobOptions, glob, read_file, temporary from "@std/os/fs.ms",

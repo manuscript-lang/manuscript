@@ -1,7 +1,7 @@
-// Paired CLI effect-analysis measurements. Run from the repository root:
-// ms run bench/tools/effect_reachability.ms -- OUT BASE CANDIDATE REPEATS SIZES MODES ACTION
-// SIZES and MODES are comma-separated; ACTION is check, lint, build, or projects.
-// Set MS_CACHE=off for build measurements. Pin the driver externally when supported.
+// Paired CLI effect-analysis measurements. Run from the repository root: ms run
+// bench/tools/effect_reachability.ms -- OUT BASE CANDIDATE REPEATS SIZES MODES ACTION
+// SIZES and MODES are comma-separated; ACTION is check, lint, build, or projects. Set
+// MS_CACHE=off for build measurements. Pin the driver externally when supported.
 import (
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",

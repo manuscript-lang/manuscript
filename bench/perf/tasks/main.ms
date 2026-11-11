@@ -1,4 +1,5 @@
-// Memory and time per parked task: starts N promise tasks that park (mode `sleep`, on a timer;
+// Memory and time per parked task: starts N promise tasks that park (mode `sleep`, on a
+// timer;
 // `deep`, on a timer after a 256-frame call chain, as a handler parks after real work; or
 // `read`, after a file read), then reports the process's resident set and page tables.
 // `ms run bench/perf/tasks/main.ms -- 1000000 sleep`. Linux only for the report

@@ -8,18 +8,22 @@ import (
 export type SseEvent:
 	// The event type from the last `event:` field, or `message`.
 	event: String
-	// Every `data:` line of the event joined with LF; a bare `data:` line gives an empty line.
+	// Every `data:` line of the event joined with LF; a bare `data:` line gives an
+	// empty line.
 	data: String
-	// The last event ID in effect when the event was dispatched, or none if the stream never set one.
+	// The last event ID in effect when the event was dispatched, or none if the stream
+	// never set one.
 	id: String?
-	// The latest valid `retry:` reconnection time in milliseconds sent up to this event, or none if the stream sent none.
+	// The latest valid `retry:` reconnection time in milliseconds sent up to this
+	// event, or none if the stream sent none.
 	retry: Int?
 
 // Optional byte budgets for one line and for one event.
 export type SseLimits:
 	// Largest line in bytes, excluding its line ending; none adds no budget.
 	max_line_bytes: Int?
-	// Largest total of all field lines in one event, excluding line endings and comments; none adds no budget.
+	// Largest total of all field lines in one event, excluding line endings and
+	// comments; none adds no budget.
 	max_event_bytes: Int?
 
 // Internal transform state behind `sse_events`.
@@ -36,9 +40,11 @@ type Decoder:
 	line_bytes: Int
 	// Internal: bytes counted against the event budget.
 	event_bytes: Int
-	// Internal: True when the previous byte was CR, so an immediately following LF is part of the same ending.
+	// Internal: True when the previous byte was CR, so an immediately following LF is
+	// part of the same ending.
 	carriage: Bool
-	// Internal: True once the first line has been assembled and the byte order mark has been considered.
+	// Internal: True once the first line has been assembled and the byte order mark has
+	// been considered.
 	started: Bool
 	// Internal: True while field lines have arrived since the last blank line.
 	open_block: Bool
@@ -184,7 +190,8 @@ fn exceeds(value: Int, limit: Int?) Bool:
 	if maximum := limit: return value > maximum
 	return false
 
-// Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any bytes held from earlier chunks.
+// Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any
+// bytes held from earlier chunks.
 fn complete(
 	var decoder: Decoder, chunk: Bytes, start: Int, end: Int, var events: List[SseEvent]
 ) Unit!:

@@ -36,7 +36,8 @@ action with `| raw` to print trusted markup unchanged. Values come from data onl
 call functions or run code, and `max_output` bounds the result.
 */
 
-// A parsed template expression: a literal, a path, a filter call or an operator. Internal to the engine; hidden from callers.
+// A parsed template expression: a literal, a path, a filter call or an operator.
+// Internal to the engine; hidden from callers.
 export opaque enum TemplateExpr:
 	// A literal string, number, boolean or null written in the template.
 	Literal(
@@ -70,7 +71,8 @@ export opaque type TemplateBranch:
 	// Nodes rendered when the condition holds.
 	body: List[TemplateNode]
 
-// A parsed template node: text, a printed value, a conditional, a loop or an include. Internal to the engine.
+// A parsed template node: text, a printed value, a conditional, a loop or an include.
+// Internal to the engine.
 export opaque enum TemplateNode:
 	// Literal text copied to the output.
 	Text(
@@ -118,7 +120,8 @@ export opaque type Template:
 	html: Bool
 
 impl Template:
-	// Renders with `data` (an object supplies the root names) and the settings in `options`.
+	// Renders with `data` (an object supplies the root names) and the settings in
+	// `options`.
 	fn render(data: JsonValue, options: RenderOptions = RenderOptions()) String!Error:
 		var frames = List[Map[String, JsonValue]]()
 		frames.append(root_names(data))
@@ -146,7 +149,8 @@ FILTERS := [
 ]
 MAX_DEPTH := 64
 
-// Builds a template error. Each message names the line, path, filter or partial but never echoes values.
+// Builds a template error. Each message names the line, path, filter or partial but
+// never echoes values.
 fn syntax_error(line: Int, reason: String) Error:
 	return Error(
 		"template: line {line}: {reason}", kind: "EBADMSG", details: {"line": "{line}"}
@@ -167,7 +171,8 @@ fn unknown_partial_error(name: String) Error:
 		"template: unknown partial {name}", kind: "ENOENT", details: {"partial": name}
 	)
 
-// Compiles template source. With `html: true`, printed values are HTML-escaped unless they end in `| raw`.
+// Compiles template source. With `html: true`, printed values are HTML-escaped unless
+// they end in `| raw`.
 export fn compile(source: String, html: Bool = false) Template!Error:
 	tokens := try tokenize(source)
 	var builder = Builder(tokens: tokens, at: 0, html: html)
@@ -183,7 +188,8 @@ export fn render(source: String, data: JsonValue, html: Bool = false) String!Err
 	template := try compile(source, html: html)
 	return template.render(data)
 
-// Converts any `Data` value (records, lists, scalars) to the `JsonValue` a template reads.
+// Converts any `Data` value (records, lists, scalars) to the `JsonValue` a template
+// reads.
 export fn to_data[T: Data](value: T) JsonValue!Error:
 	text := stringify(value: value)
 	if text.is_error(): return error(
@@ -206,8 +212,9 @@ export type RenderOptions:
 	// Maximum text length in bytes (default 16 MiB).
 	max_output: Int = 16777216
 
-// Renders `template` as its `render` method does and writes the text to `output`, which the caller keeps and closes.
-// A failed render writes nothing; a failed write returns the stream's error.
+// Renders `template` as its `render` method does and writes the text to `output`, which
+// the caller keeps and closes. A failed render writes nothing; a failed write returns
+// the stream's error.
 export fn render_to(
 	template: Template,
 	data: JsonValue,
@@ -229,7 +236,8 @@ fn count_lines(text: String) Int:
 fn tokenize(source: String) List[Token]!Error:
 	var tokens = List[Token]()
 
-	// Splitting once keeps lexing linear: each piece starts right after an opening delimiter.
+	// Splitting once keeps lexing linear: each piece starts right after an opening
+	// delimiter.
 	pieces := source.split("\{\{")
 	var literal = pieces[0].clone()
 	var index = 1
@@ -240,7 +248,8 @@ fn tokenize(source: String) List[Token]!Error:
 		var text = literal.clone()
 		if trim_next: text = text.trim_start()
 
-		// An action ends at the first closing delimiter, even when its body holds a literal opener.
+		// An action ends at the first closing delimiter, even when its body holds a
+		// literal opener.
 		var chunks = List[String]()
 		var tail = ""
 		var closed = false
@@ -840,7 +849,8 @@ impl Run:
 
 // ---- values --------------------------------------------------------------------------------
 
-// Walks `parts[1..]` below `root`, copying only the member each step reaches, never the unused siblings.
+// Walks `parts[1..]` below `root`, copying only the member each step reaches, never the
+// unused siblings.
 fn descend(root: JsonValue, parts: List[String]) JsonValue?:
 	first := member(root, parts[1])
 	if first.is_none(): return none
@@ -1127,7 +1137,8 @@ fn number_text(value: JsonValue) String?:
 		NumberValue(text): return text
 		_: return none
 
-// 0 null, 1 bool, 2 number, 3 string, 4 list, 5 object: values of different kinds are never equal.
+// 0 null, 1 bool, 2 number, 3 string, 4 list, 5 object: values of different kinds are
+// never equal.
 fn kind_of(value: JsonValue) Int:
 	if value.is_null(): return 0
 	if value.as_bool().is_some(): return 1

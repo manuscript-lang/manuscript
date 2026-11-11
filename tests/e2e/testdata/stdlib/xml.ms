@@ -335,7 +335,8 @@ test "elements with many attributes keep their order and reject duplicates at an
 	try expect_equal(doc.attribute("a15").get(""), "15")
 	try expect_equal(doc.attribute("a16").get(""), "16")
 
-	// The 16th attribute is the first one checked through the set, and its list-scanned predecessors count.
+	// The 16th attribute is the first one checked through the set, and its list-scanned
+	// predecessors count.
 	try expect_true(parse(text + " a0=\"x\"/>").is_error())
 	try expect_true(parse(text + " a16=\"x\"/>").is_error())
 	try expect_true(parse(text + " a39=\"x\"/>").is_error())

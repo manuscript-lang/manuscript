@@ -44,18 +44,21 @@ export enum TomlValue:
 		values: Map[String, TomlValue]
 	)
 
-// Input-byte, nesting-depth, and parsed-value limit settings for TOML parsing.
-// Fields set to none add no budget. The defaults, depth 10,000 and 1,000,000 values, guard against deep nesting and alias expansion.
+// Input-byte, nesting-depth, and parsed-value limit settings for TOML parsing. Fields
+// set to none add no budget. The defaults, depth 10,000 and 1,000,000 values, guard
+// against deep nesting and alias expansion.
 export type TomlOptions:
 	// Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
 	max_bytes: Int? = none
-	// Maximum value depth, including scalar leaves and implicit tables, with the root at one.
+	// Maximum value depth, including scalar leaves and implicit tables, with the root
+	// at one.
 	max_depth: Int? = 10000
-	// Maximum containers and leaves, excluding keys; checked during parsing and materialization.
+	// Maximum containers and leaves, excluding keys; checked during parsing and
+	// materialization.
 	max_values: Int? = 1000000
 
-// The document is read as UTF-8 bytes; `pos` is a byte offset and line/column are derived from it
-// only when an error is reported.
+// The document is read as UTF-8 bytes; `pos` is a byte offset and line/column are
+// derived from it only when an error is reported.
 type Reader:
 	data: Bytes
 	pos: Int
@@ -72,8 +75,8 @@ type Table:
 	dotted: Bool
 	sealed: Bool
 
-// Tables are stored in the reader and referenced by index, so a parent can name a child that
-// later keys keep extending without two copies of the same table.
+// Tables are stored in the reader and referenced by index, so a parent can name a child
+// that later keys keep extending without two copies of the same table.
 enum Node:
 	Leaf(value: TomlValue)
 	TableNode(id: Int)
@@ -217,7 +220,8 @@ fn quote_char(quote: Int) String:
 	if quote == DOUBLE_QUOTE: return "\""
 	return "'"
 
-// Basic and literal strings, including multiline delimiters and escaped newline folding.
+// Basic and literal strings, including multiline delimiters and escaped newline
+// folding.
 fn string_value(var reader: Reader, key: Bool) String!:
 	quote := advance(var reader)
 	var multiline = false
@@ -247,7 +251,8 @@ fn string_value(var reader: Reader, key: Bool) String!:
 			reader.pos = end + 1
 			return ok(text)
 
-	// Append through a builder: per-character concatenation is quadratic on long strings.
+	// Append through a builder: per-character concatenation is quadratic on long
+	// strings.
 	var result = StringBuilder()
 	var run = cursor(reader)
 
@@ -461,7 +466,8 @@ fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
 
 	return ok(unit)
 
-// Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where it was.
+// Reads `key =` when the key is one plain bare word; otherwise leaves the cursor where
+// it was.
 fn simple_key(var reader: Reader) String?:
 	space(var reader, multiline: false)
 
@@ -891,11 +897,13 @@ fn materialize(
 			)
 			return ok(TomlValue.ArrayValue(result))
 
-// ASCII control characters other than tab and newline, which no TOML document may contain.
+// ASCII control characters other than tab and newline, which no TOML document may
+// contain.
 fn control_pattern() Regex:
 	return compile("[\\x00-\\x08\\x0b-\\x1f\\x7f]").get()
 
-// Parses a TOML document into a table value and reports source line and column on invalid input.
+// Parses a TOML document into a table value and reports source line and column on
+// invalid input.
 export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
 		if value := limit:
@@ -1134,7 +1142,8 @@ fn datetimes_valid(value: TomlValue) Bool:
 			return true
 		_: return true
 
-// Serializes a table value as a TOML document. Tables and arrays of tables use headers; other values are written inline.
+// Serializes a table value as a TOML document. Tables and arrays of tables use headers;
+// other values are written inline.
 export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
 	if limit := max_bytes:
 		if limit < 0: return error(Error("invalid TOML input", kind: "EINVAL"))

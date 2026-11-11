@@ -62,7 +62,8 @@ test "close cancels a handler that outlives the grace period":
 	_ := sleep(100.milliseconds()).wait()
 	try server.close()
 
-	// An error here is the connection ending (a reset on macOS); only a served reply fails.
+	// An error here is the connection ending (a reset on macOS); only a served reply
+	// fails.
 	if reply := recv(var client, 5.seconds()):
 		text := reply.get(Bytes([])).decode_utf8().get("")
 		if text.starts_with("HTTP/1.1 200"): return error(
@@ -76,8 +77,9 @@ test "close cancels a handler parked on a request body and releases its stream":
 	) | try expect_ok
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
 
-	// The head promises a body that never comes, so the handler parks reading it. Cancelling it
-	// must free the stream (`make leak-check` counts a leaked stream as a live block).
+	// The head promises a body that never comes, so the handler parks reading it.
+	// Cancelling it must free the stream (`make leak-check` counts a leaked stream as a
+	// live block).
 	send(var client, "POST / HTTP/1.1\r\nHost: t\r\nContent-Length: 100\r\n\r\nab") | try expect_ok
 
 	_ := sleep(100.milliseconds()).wait()

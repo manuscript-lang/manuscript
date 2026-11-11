@@ -1,5 +1,6 @@
-// Generator for c60-issue-tracker. The expected outputs come from the Go oracle in oracle/*.ref (built with the
-// local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c60
+// Generator for c60-issue-tracker. The expected outputs come from the Go oracle in
+// oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
+// Deterministic; run: ms run bench/agent/gen.ms -- c60
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 WF := "workflow\n  # simple board\n  initial: todo\n  todo -> doing, wontfix\n  doing -> review requires assignee+points, todo\n  review -> done requires labels, doing\n  final: done, wontfix\nend\n"

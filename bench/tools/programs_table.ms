@@ -1,4 +1,5 @@
-// Validates equivalent work before comparing paired process samples (bench/perf/programs).
+// Validates equivalent work before comparing paired process samples
+// (bench/perf/programs).
 import fixed, invalid, median from "./lib.ms"
 
 export type Op:
@@ -32,7 +33,8 @@ fn ops_of(name: String) Int?:
 		if op.name == name: return op.count
 	return none
 
-// One sample line: `<version> <operation> <count> <ns>` or `<version> # sink <checksums>`.
+// One sample line: `<version> <operation> <count> <ns>` or
+// `<version> # sink <checksums>`.
 export fn summarize(lines: List[String], repeats: Int) String!:
 	if repeats < 1: return invalid("repeats must be positive")
 

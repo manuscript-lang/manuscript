@@ -1,5 +1,6 @@
-// Generator for c57-assembler-vm. The expected outputs come from the Go oracle in oracle/*.ref (built with the
-// local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c57
+// Generator for c57-assembler-vm. The expected outputs come from the Go oracle in
+// oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
+// Deterministic; run: ms run bench/agent/gen.ms -- c57
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 JT := "\n.data\ntable:  .word case0, case1, case2\n.text\nmain:   in r5\n        mov r1, [table+r5]\n        push r1\n        ret\ncase0:  out 100\n        halt\ncase1:  out 101\n        halt\ncase2:  out 102\n        halt\n"

@@ -18,7 +18,8 @@ fn updating() Bool:
 
 	return false
 
-// Names the first line where two texts differ, with both sides, so a mismatch is readable without a diff tool.
+// Names the first line where two texts differ, with both sides, so a mismatch is
+// readable without a diff tool.
 fn first_difference(expected: String, actual: String) String:
 	want := expected.split("\n")
 	got := actual.split("\n")
@@ -36,8 +37,8 @@ fn first_difference(expected: String, actual: String) String:
 
 	return "line {line + 1}: golden has {want.length()} lines, actual has {got.length()}"
 
-// Compares `actual` with the text in the golden file at `path`, or rewrites the file under `MS_UPDATE_GOLDEN=1`.
-// The failure names the file and the first differing line.
+// Compares `actual` with the text in the golden file at `path`, or rewrites the file
+// under `MS_UPDATE_GOLDEN=1`. The failure names the file and the first differing line.
 export fn expect_golden(path: String, actual: String) Unit!:
 	if updating():
 		try create_directory(dirname(path), true)
@@ -59,7 +60,8 @@ export fn expect_golden(path: String, actual: String) Unit!:
 		"{path} differs from the output at {first_difference(expected.get(), actual)}\nrun with MS_UPDATE_GOLDEN=1 to accept the output"
 	)
 
-// Byte-for-byte version of `expect_golden`; the failure names the first differing offset.
+// Byte-for-byte version of `expect_golden`; the failure names the first differing
+// offset.
 export fn expect_golden_bytes(path: String, actual: Bytes) Unit!:
 	if updating():
 		try create_directory(dirname(path), true)

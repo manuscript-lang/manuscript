@@ -1,5 +1,5 @@
-// Agent-effectiveness benchmark runner. See README.md.
-// Usage (from the repository root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
+// Agent-effectiveness benchmark runner. See README.md. Usage (from the repository
+// root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
 import (
 	Command, Flag, FlagKind, command from "@std/cli/command.ms",
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
@@ -61,7 +61,8 @@ type Options:
 fn split_ids(text: String) List[String]:
 	return text.split(",").filter(fn x: not x.is_empty())
 
-// Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none without tiktoken.
+// Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none
+// without tiktoken.
 fn llm_tokens(path: String) Int?:
 	program := "import sys, tiktoken; print(len(tiktoken.get_encoding('o200k_base').encode(open(sys.argv[1], errors='replace').read(), disallowed_special=())))"
 	ran := bash("python3 -c \"{program}\" \"{path}\"", ".", 60, "")
@@ -105,7 +106,8 @@ fn run_one(
 
 	log := read_log(ws)
 
-	// Cheap leak guard: flag runs whose transcript mentions the benchmark's own challenge tree.
+	// Cheap leak guard: flag runs whose transcript mentions the benchmark's own
+	// challenge tree.
 	said := read_text(transcript)
 	peeked := (
 		said.contains("bench/agent/challenges")

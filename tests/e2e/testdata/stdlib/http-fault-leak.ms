@@ -52,7 +52,8 @@ test "a fetch cancelled by its timeout releases its read buffer":
 		).wait()
 		if timed_out.is_ok(): return error(Error("a hanging handler answered"))
 
-	// Each cancelled read leaked a 64 KiB buffer, so 300 fetches grew the process by about 19 MB.
+	// Each cancelled read leaked a 64 KiB buffer, so 300 fetches grew the process by
+	// about 19 MB.
 	grown := (memory_usage() | try expect_ok).resident - before
 	if grown > 8000000: return error(Error("resident memory grew {grown} bytes"))
 
@@ -70,7 +71,8 @@ test "a fetch cancelled by its timeout frees the request state its frames own":
 		).wait()
 		if timed_out.is_ok(): return error(Error("a hanging handler answered"))
 
-	// The method, URLs, header vectors and pool key leaked about 340 bytes per cancelled fetch.
+	// The method, URLs, header vectors and pool key leaked about 340 bytes per
+	// cancelled fetch.
 	grown := (memory_usage() | try expect_ok).heap_used - before
 	if grown > 2000 * 64: return error(
 		Error("heap grew {grown} bytes over 2000 cancelled fetches")

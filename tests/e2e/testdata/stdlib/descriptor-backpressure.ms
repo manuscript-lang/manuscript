@@ -4,7 +4,8 @@ import (
 	milliseconds, monotonic from "@std/time.ms",
 )
 
-// The child reads nothing for a second, so a writer that never waited would queue all 8 MiB and return at once.
+// The child reads nothing for a second, so a writer that never waited would queue all 8
+// MiB and return at once.
 test "a descriptor write waits while the reader is slow":
 	child := try spawn("sh", ["-c", "sleep 1; wc -c | tr -d ' '"])
 	chunk := ("x".repeat(1024 * 1024) | try expect_ok).to_bytes()

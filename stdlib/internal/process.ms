@@ -33,7 +33,8 @@ export extern fn msstd_process_command_spawn(
 	env_values: List[String]
 ) Subprocess!
 
-// The runtime stream-table id of the child's pipe: 0 stdin, 1 stdout, 2 stderr; -1 when there is no pipe.
+// The runtime stream-table id of the child's pipe: 0 stdin, 1 stdout, 2 stderr; -1 when
+// there is no pipe.
 export extern fn msstd_process_subprocess_stream_id(
 	handle: NativeSubprocess,
 	which: Int

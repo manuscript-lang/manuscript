@@ -1,7 +1,9 @@
-// Runs the `bench` blocks of bench/perf/stdlib with the ms binary (MS, default target/release/ms) and prints the median, min and
-// max ns per operation for each case, optionally limited to names containing a prefix.
-// Usage: ms run bench/tools/stdlib_bench.ms [-- samples [name-prefix]]
-// With `--table` as the first argument it reads an `ms bench --json` document from standard input instead of running it.
+// Runs the `bench` blocks of bench/perf/stdlib with the ms binary (MS, default
+// target/release/ms) and prints the median, min and max ns per operation for each case,
+// optionally limited to names containing a prefix. Usage: ms run
+// bench/tools/stdlib_bench.ms [-- samples [name-prefix]] With `--table` as the first
+// argument it reads an `ms bench --json` document from standard input instead of
+// running it.
 import (
 	arguments from "@std/os/env.ms",
 

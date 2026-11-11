@@ -10,7 +10,8 @@ import (
 	wrapping_add from "@std/math/math.ms",
 )
 
-// Message word schedule shared by BLAKE2b (12 rounds, rows 0-9 then 0-1 again) and BLAKE2s (10 rounds).
+// Message word schedule shared by BLAKE2b (12 rounds, rows 0-9 then 0-1 again) and
+// BLAKE2s (10 rounds).
 fn sigma() List[List[Int]]:
 	return [
 		[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -25,7 +26,8 @@ fn sigma() List[List[Int]]:
 		[10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0]
 	]
 
-// Reads a little-endian word of `width` bytes at `at`, zero padding past the end of `data`.
+// Reads a little-endian word of `width` bytes at `at`, zero padding past the end of
+// `data`.
 fn word(data: Bytes, at: Int, width: Int) Int:
 	var value = 0
 
@@ -36,7 +38,8 @@ fn word(data: Bytes, at: Int, width: Int) Int:
 
 	return value
 
-// The padded input: the key block (if any) followed by the data, zero filled to a whole number of blocks (at least one).
+// The padded input: the key block (if any) followed by the data, zero filled to a whole
+// number of blocks (at least one).
 fn padded(key: Bytes, data: Bytes, block: Int) Bytes:
 	var out = BytesBuilder()
 

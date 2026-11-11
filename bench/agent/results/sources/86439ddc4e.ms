@@ -61,7 +61,8 @@ fn vigenere(text: List[Int], key: List[Int], decrypt: Bool) List[Int]:
 
 	return out
 
-// Rejoins the fields from `start` on with single spaces, restoring the text that was split on spaces.
+// Rejoins the fields from `start` on with single spaces, restoring the text that was
+// split on spaces.
 fn join_from(parts: List[String], start: Int) String:
 	var out = ""
 

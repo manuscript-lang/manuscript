@@ -146,7 +146,8 @@ fn strip_comment(line: String) String:
 
 	return line
 
-// Index just past the character literal that starts at i, or i + 1 if it is not terminated.
+// Index just past the character literal that starts at i, or i + 1 if it is not
+// terminated.
 fn char_end(s: String, i: Int) Int:
 	n := s.length()
 	var j = i + 1
@@ -210,7 +211,8 @@ fn split_args(s: String) List[String]:
 	out.append(sub(s, start, n).trim())
 	return out
 
-// Splits an expression into signed terms such as "+a" and "-1". Each term keeps its sign as the first character.
+// Splits an expression into signed terms such as "+a" and "-1". Each term keeps its
+// sign as the first character.
 fn split_terms(text: String) List[String]:
 	var terms = List[String]()
 	n := text.length()
@@ -637,7 +639,8 @@ fn operand_value(var a: Asm, o: Operand) Result[Int, AsmError]:
 fn is_jump(opc: Int) Bool:
 	return opc >= 20 and opc <= 27
 
-// Pass 2 for one item. Instructions append 8 slots to code: op, line, then (kind, reg, value) for two operands.
+// Pass 2 for one item. Instructions append 8 slots to code: op, line, then (kind, reg,
+// value) for two operands.
 fn item_pass2(var a: Asm, var code: List[Int], var mem: List[Int], item: Item) Result[
 	Int, AsmError
 ]:
@@ -866,7 +869,8 @@ fn run(var vm: Machine) String:
 
 	return ""
 
-// Records every .equ name and expression before pass 1, so .space counts can use constants defined further down.
+// Records every .equ name and expression before pass 1, so .space counts can use
+// constants defined further down.
 fn prescan_equ(var a: Asm, raw: String) Int:
 	var body = raw.trim()
 	var k = label_len(body)

@@ -205,8 +205,8 @@ test "a promise cancelled while it owns a WebSocket closes it without ending the
 	server := serve(address: "127.0.0.1:0", handler: silent) | try expect_ok
 	var socket = web_socket("ws://{server.address()}/") | try expect_ok
 
-	// The closure takes the socket; its close at the end of the cancelled task parks, which a
-	// cancel still pending on that task used to turn into a process exit.
+	// The closure takes the socket; its close at the end of the cancelled task parks,
+	// which a cancel still pending on that task used to turn into a process exit.
 	read := promise(fn: socket.input.next()).with(
 		options: PromiseOptions(timeout: 50.milliseconds())
 	).wait()

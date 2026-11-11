@@ -332,7 +332,8 @@ fn rest_after(s: String, k: Int) String:
 		i += 1
 	return s.slice(i, n).get()
 
-// token style: whitespace separates tokens, quotes group, \" and \\ escape inside quotes
+// token style: whitespace separates tokens, quotes group, \" and \\ escape inside
+// quotes
 fn tokens(s: String) Toks:
 	cs := s.chars()
 	n := cs.length()

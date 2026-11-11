@@ -1,5 +1,6 @@
-// Builds Release Manuscript reproductions of the List workloads (bench/lists/program.ms) and measures native wall time and peak RSS.
-// Usage: ms run bench/tools/lists_native.ms -- --cli MS --output DIR [--runs 3] [--cpu N]
+// Builds Release Manuscript reproductions of the List workloads
+// (bench/lists/program.ms) and measures native wall time and peak RSS. Usage: ms run
+// bench/tools/lists_native.ms -- --cli MS --output DIR [--runs 3] [--cpu N]
 // --cpu pins executions with `taskset` (Linux).
 import (
 	JsonValue from "@std/data/json.ms",

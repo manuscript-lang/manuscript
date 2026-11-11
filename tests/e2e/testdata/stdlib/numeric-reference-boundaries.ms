@@ -180,7 +180,8 @@ test "to_fixed matches the exact decimal expansion":
 				expected := try exact.to_fixed(digits)
 				actual := x.to_fixed(digits)
 
-				// A negative value that rounds to zero prints as `-0`, as in C; compare it without the sign.
+				// A negative value that rounds to zero prints as `-0`, as in C; compare
+				// it without the sign.
 				unsigned := if actual.starts_with("-") and not expected.starts_with("-"): actual.drop(
 					1
 				) else: actual

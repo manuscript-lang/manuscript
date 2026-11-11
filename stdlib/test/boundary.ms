@@ -14,8 +14,9 @@ reference such as `BigRat` or `BigInt`, which is how a missing overflow, sign or
 Example: `for x in int_boundaries(): try expect_equal(wrapping_add(x, 0), x)`.
 */
 
-// Returns the Int values where arithmetic changes behavior: zero, plus and minus one and two, powers of two and
-// their neighbors up to 2^62, 2^31 and 2^32 edges, 10^18, and both extremes with their neighbors.
+// Returns the Int values where arithmetic changes behavior: zero, plus and minus one
+// and two, powers of two and their neighbors up to 2^62, 2^31 and 2^32 edges, 10^18,
+// and both extremes with their neighbors.
 export fn int_boundaries() List[Int]:
 	var values = [
 		0, 1, -1, 2, -2, 3, 7, -7, 10, 255, 256, -128, -129, 127, 128, 32767, 32768,
@@ -28,9 +29,10 @@ export fn int_boundaries() List[Int]:
 	]
 	return values
 
-// Returns the Float values where results change character: both zeros, plus and minus one, values near one,
-// the halves and ties around integers, 2^53 and its neighbors, the Int range edges, the largest and smallest
-// finite values, the subnormal range from its smallest to its largest value, both infinities, and NaN.
+// Returns the Float values where results change character: both zeros, plus and minus
+// one, values near one, the halves and ties around integers, 2^53 and its neighbors,
+// the Int range edges, the largest and smallest finite values, the subnormal range from
+// its smallest to its largest value, both infinities, and NaN.
 export fn float_boundaries() List[Float]:
 	smallest_normal := 2.2250738585072014e-308
 	largest_subnormal := next_after(smallest_normal, 0.0)
@@ -44,6 +46,7 @@ export fn float_boundaries() List[Float]:
 		min_float * 2.0, 1e-300, infinity, -infinity, nan
 	]
 
-// Returns `float_boundaries` without NaN and the two infinities, for references that need an exact rational.
+// Returns `float_boundaries` without NaN and the two infinities, for references that
+// need an exact rational.
 export fn finite_float_boundaries() List[Float]:
 	return float_boundaries().filter(fn value: value.is_finite())

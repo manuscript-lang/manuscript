@@ -1,4 +1,5 @@
-// A `let` that keeps a part of a borrowed result or of an indexed temporary copies just that part.
+// A `let` that keeps a part of a borrowed result or of an indexed temporary copies just
+// that part.
 import expect_equal from "@std/test/test.ms"
 
 fn failed() String!:

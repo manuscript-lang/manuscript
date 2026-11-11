@@ -784,7 +784,8 @@ fn apply_proc(var h: Heap, f: Int, args: List[Int]) Int!Fail:
 	h.depth -= 1
 	return r
 
-// Sentinel results of `special`: a tail position (h.tx in h.tenv) or a pending call (h.tproc applied to h.targs).
+// Sentinel results of `special`: a tail position (h.tx in h.tenv) or a pending call
+// (h.tproc applied to h.targs).
 TAILX := -2
 TAILAPP := -3
 

@@ -19,7 +19,9 @@ import (
 	Regex, compile from "@std/string.ms",
 )
 
-// A terminal color: the terminal default, a 16-color index, a 256-color palette index, or a 24-bit RGB value. `paint` downgrades richer colors to what the terminal supports.
+// A terminal color: the terminal default, a 16-color index, a 256-color palette index,
+// or a 24-bit RGB value. `paint` downgrades richer colors to what the terminal
+// supports.
 export enum Color:
 	// The terminal's own default color, which emits no color sequence.
 	Default
@@ -28,7 +30,8 @@ export enum Color:
 		// 0 to 7 normal colors, 8 to 15 bright colors.
 		index: Int
 	)
-	// An entry of the 256-color palette; values outside 0 to 255 are clamped, and terminals below 256 colors get the nearest of 16.
+	// An entry of the 256-color palette; values outside 0 to 255 are clamped, and
+	// terminals below 256 colors get the nearest of 16.
 	Indexed(
 		// 0 to 255 in the 256-color palette.
 		index: Int
@@ -71,7 +74,8 @@ fn clamp(value: Int, low: Int, high: Int) Int:
 
 	return value
 
-// The 256-color index nearest to an RGB color: the 6x6x6 cube or the gray ramp, whichever is closer.
+// The 256-color index nearest to an RGB color: the 6x6x6 cube or the gray ramp,
+// whichever is closer.
 fn rgb_to_indexed(red: Int, green: Int, blue: Int) Int:
 	levels := [0, 95, 135, 175, 215, 255]
 
@@ -134,7 +138,8 @@ fn indexed_to_ansi(index: Int) Int:
 	hb := if blue > 127: 4 else: 0
 	return bright + hi + hg + hb
 
-// The SGR parameters selecting `color`, `base` being 30 for foreground and 40 for background.
+// The SGR parameters selecting `color`, `base` being 30 for foreground and 40 for
+// background.
 fn color_codes(color: Color, base: Int, colors: Int) String:
 	match color:
 		Default: return ""
@@ -156,7 +161,8 @@ fn color_codes(color: Color, base: Int, colors: Int) String:
 
 			return color_codes(Color.Indexed(rgb_to_indexed(r, g, b)), base, colors)
 
-// The escape sequence that starts `style` for a terminal with `colors` colors, or "" when it changes nothing.
+// The escape sequence that starts `style` for a terminal with `colors` colors, or ""
+// when it changes nothing.
 export fn style_start(style: Style, colors: Int) String:
 	if colors <= 0: return ""
 
@@ -176,7 +182,8 @@ export fn style_start(style: Style, colors: Int) String:
 
 	return "{esc}[{codes.join(";")}m"
 
-// Wraps `text` in `style` and a reset. Returns `text` unchanged when `colors` is 0 or the style is plain.
+// Wraps `text` in `style` and a reset. Returns `text` unchanged when `colors` is 0 or
+// the style is plain.
 export fn paint(text: String, style: Style, colors: Int) String:
 	start := style_start(style, colors)
 	if start.is_empty() or text.is_empty(): return text.clone()
@@ -256,7 +263,8 @@ export fn wrap_text(text: String, width: Int) List[String]:
 
 	return out
 
-// Cuts the single line `text` to at most `width` visible columns, keeping escape sequences and ending a styled cut with a reset.
+// Cuts the single line `text` to at most `width` visible columns, keeping escape
+// sequences and ending a styled cut with a reset.
 export fn truncate_text(text: String, width: Int) String:
 	rows := wrap_text(text, width)
 	if rows.is_empty(): return ""

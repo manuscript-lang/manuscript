@@ -1,7 +1,8 @@
-// Proves that closing what containers and fields own costs nothing when no element is a resource: every benchmark project under
-// bench/perf is lowered by a compiler from before the change (BASE) and one with it (HEAD), and the lowered MIR (`ms emit`) and
-// the linked binaries must be byte for byte the same. Prints one line per project and exits 1 on a difference.
-// Usage: ms run bench/tools/close_parts.ms -- BASE_MS HEAD_MS
+// Proves that closing what containers and fields own costs nothing when no element is a
+// resource: every benchmark project under bench/perf is lowered by a compiler from
+// before the change (BASE) and one with it (HEAD), and the lowered MIR (`ms emit`) and
+// the linked binaries must be byte for byte the same. Prints one line per project and
+// exits 1 on a difference. Usage: ms run bench/tools/close_parts.ms -- BASE_MS HEAD_MS
 import (
 	arguments from "@std/os/env.ms",
 	CopyOptions,
@@ -48,7 +49,8 @@ fn main() Int:
 		)
 		name := dir.slice("bench/perf/".length(), dir.length() - 1).get("")
 
-		// Both compilers build the same directory, so no path differs between the outputs.
+		// Both compilers build the same directory, so no path differs between the
+		// outputs.
 		remove("{w}/p", recursive: true).get(unit)
 		copy(dir, "{w}/p", CopyOptions(recursive: true, replace: true)).get()
 		remove("{w}/p/ms.lock").get(unit)

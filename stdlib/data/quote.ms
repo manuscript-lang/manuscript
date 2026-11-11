@@ -4,7 +4,8 @@ import StringBuilder from "@std/string.ms"
 fn hex4(code: Int) String:
 	return code.to_string_radix(16).pad_start(4, "0")
 
-// Double-quotes text with JSON-style escapes. Controls below U+0020 and U+007F are always escaped as \uXXXX;
+// Double-quotes text with JSON-style escapes. Controls below U+0020 and U+007F are
+// always escaped as \uXXXX;
 // `escape_c1` also escapes U+0080 to U+009F.
 export fn quote_text(text: String, escape_c1: Bool) String:
 	var clean = true

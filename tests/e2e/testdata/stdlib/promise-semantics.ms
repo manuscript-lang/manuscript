@@ -30,8 +30,9 @@ fn fault_at(index: Int) Int!:
 	empty: List[Int] := []
 	return ok(empty[index])
 
-// Faults on different scheduler threads leave their guards at the same moment. They once shared one message
-// cell, so a report came back empty or from another promise, and a string was released twice.
+// Faults on different scheduler threads leave their guards at the same moment. They
+// once shared one message cell, so a report came back empty or from another promise,
+// and a string was released twice.
 test "promises faulting on several threads each report their own fault":
 	for round in 0..100:
 		var batch: List[Promise[Int]] = []

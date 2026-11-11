@@ -226,7 +226,8 @@ type MeanCase:
 	expected: Float
 
 test "mean recovers finite overflow using exact binary64 rational cases":
-	// Expected values are the rounded exact sum of the binary64 inputs divided by count.
+	// Expected values are the rounded exact sum of the binary64 inputs divided by
+	// count.
 	for sample in [
 		MeanCase(
 			[1.7976931348623157e+308, 1.7976931348623157e+308], 1.7976931348623157e+308
@@ -333,7 +334,8 @@ test "subnormal bins match an exact integer grid across signs and shifted ranges
 					for index in 0..bins: expected.append(0)
 
 					for position in 0..span + 1:
-						// Reverse ordering and duplicate values must not change placement.
+						// Reverse ordering and duplicate values must not change
+						// placement.
 						coordinate := span - position
 						value := base + (offset + coordinate).to_float() * step
 						values.append(value)

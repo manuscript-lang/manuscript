@@ -1,7 +1,9 @@
-// Generates the same program in Manuscript, Go and Rust and times each build.
-// Usage: ms run bench/tools/compile_time.ms [-- packages files fns]   (default 40 25 10, about 122k lines of Manuscript)
-// OUT keeps the generated sources; MS picks the compiler; SKIP_LLVM=1 skips the release build; SKIP_RUST=1 skips the Rust builds (CARGO picks cargo).
-// Generated Manuscript and Go source contains many braces; `q` writes them as ‹ and › so the generator reads as source.
+// Generates the same program in Manuscript, Go and Rust and times each build. Usage: ms
+// run bench/tools/compile_time.ms [-- packages files fns] (default 40 25 10, about 122k
+// lines of Manuscript) OUT keeps the generated sources; MS picks the compiler;
+// SKIP_LLVM=1 skips the release build; SKIP_RUST=1 skips the Rust builds (CARGO picks
+// cargo). Generated Manuscript and Go source contains many braces; `q` writes them as ‹
+// and › so the generator reads as source.
 import (
 	arguments, set_environment from "@std/os/env.ms",
 	create_directory, remove, temporary from "@std/os/fs.ms",

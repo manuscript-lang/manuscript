@@ -1,13 +1,15 @@
-// Close-once matrix (`make close-matrix`): generates one program for each combination of a resource shape (a
-// bare resource, an Optional, a List, a record or a Result holding one) and a language construct that ends or
-// moves its life (scope end, early return, `try` error, loop exits, reassignment, by-value argument, generic
-// pass-through, returned owner, closure capture, escaping closure, promise capture, explicit close). A
-// combination the checker rejects is fine; anything `ms check` accepts must run and close every resource it made
-// exactly once, in Debug and Release. The oracle needs no expected output per case: `mk` prints `made-N`, the
-// idempotent `close` prints `closed-N` the first time only, and every made id must close as often as it was made.
-// A new construct that moves, drops or closes a value belongs in constructs() below.
-// MS names the ms that runs the programs (default target/release/ms).
-// Usage: ms run tools/close-matrix.ms [-- name-filter]
+// Close-once matrix (`make close-matrix`): generates one program for each combination
+// of a resource shape (a bare resource, an Optional, a List, a record or a Result
+// holding one) and a language construct that ends or moves its life (scope end, early
+// return, `try` error, loop exits, reassignment, by-value argument, generic
+// pass-through, returned owner, closure capture, escaping closure, promise capture,
+// explicit close). A combination the checker rejects is fine; anything `ms check`
+// accepts must run and close every resource it made exactly once, in Debug and Release.
+// The oracle needs no expected output per case: `mk` prints `made-N`, the idempotent
+// `close` prints `closed-N` the first time only, and every made id must close as often
+// as it was made. A new construct that moves, drops or closes a value belongs in
+// constructs() below. MS names the ms that runs the programs (default
+// target/release/ms). Usage: ms run tools/close-matrix.ms [-- name-filter]
 import (
 	stdout from "@std/io/io.ms",
 	arguments, working_directory from "@std/os/env.ms",

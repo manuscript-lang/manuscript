@@ -1,4 +1,5 @@
-// Unit tests for the runner's core. Run from the repository root: ms test bench/agent/core_test.ms
+// Unit tests for the runner's core. Run from the repository root: ms test
+// bench/agent/core_test.ms
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	GlobOptions, access, glob from "@std/os/fs.ms",

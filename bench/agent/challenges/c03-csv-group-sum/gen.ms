@@ -4,7 +4,8 @@ import (
 	seeded from "../../lib/pyrandom.ms",
 )
 
-// The amount in cents, or none when `amt` is not digits with an optional fraction of one or two digits.
+// The amount in cents, or none when `amt` is not digits with an optional fraction of
+// one or two digits.
 fn cents(amt: String) Int?:
 	parts := amt.split(".")
 	if parts.length() > 2: return none

@@ -25,8 +25,9 @@ fn after(first: Promise[Int]) Int!:
 fn make(k: Int) Promise[Int]!:
 	return ok(promise(fn: work(k)))
 
-// An idle thread may take a promise while the promises it uses belong to another thread's table, so these
-// waits must not depend on where the work ran. Each shape is repeated so that some runs cross threads.
+// An idle thread may take a promise while the promises it uses belong to another
+// thread's table, so these waits must not depend on where the work ran. Each shape is
+// repeated so that some runs cross threads.
 test "a promise waits on a promise made by another thread":
 	base := spin(2000000)
 	var total = 0
@@ -84,7 +85,8 @@ test "wait_first runs a local deferred input beside a foreign promise":
 	for k in 0..8:
 		outer := promise(fn: long_sleep())
 
-		// Give idle threads work to take while this thread computes; the result is checked.
+		// Give idle threads work to take while this thread computes; the result is
+		// checked.
 		busy := spin(2000000)
 		try expect_equal(busy >= 0, true)
 

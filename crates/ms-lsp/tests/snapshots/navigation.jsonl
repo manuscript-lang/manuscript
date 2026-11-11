@@ -120,12 +120,12 @@
 {"id":119,"jsonrpc":"2.0","result":[]}
 {"id":120,"jsonrpc":"2.0","result":null}
 {"id":121,"jsonrpc":"2.0","result":[]}
-{"id":122,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(T, T, String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}}}
+{"id":122,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(T, T, String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nCompares using ordinary Equal semantics; reports expected and actual values on\nfailure."},"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}}}
 {"id":123,"jsonrpc":"2.0","result":[{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
 {"id":124,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":125,"jsonrpc":"2.0","result":null}
 {"id":126,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}},{"kind":2,"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}]}
-{"id":127,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(T, T, String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}}}
+{"id":127,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(T, T, String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nCompares using ordinary Equal semantics; reports expected and actual values on\nfailure."},"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}}}
 {"id":128,"jsonrpc":"2.0","result":[{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
 {"id":129,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":130,"jsonrpc":"2.0","result":null}
@@ -1430,12 +1430,12 @@
 {"id":1429,"jsonrpc":"2.0","result":[]}
 {"id":1430,"jsonrpc":"2.0","result":null}
 {"id":1431,"jsonrpc":"2.0","result":[]}
-{"id":1432,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nError: Error\n```\n\nAn expected failure as a plain value: a message, a short code callers can branch on, and string details.\nBuild one like any record: `Error(\"no such file\", kind: \"ENOENT\", details: {\"path\": path})`. `T!` is `Result[T, Error]`."},"range":{"end":{"character":39,"line":63},"start":{"character":34,"line":63}}}}
+{"id":1432,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nError: Error\n```\n\nAn expected failure as a plain value: a message, a short code callers can branch on,\nand string details. Build one like any record:\n`Error(\"no such file\", kind: \"ENOENT\", details: {\"path\": path})`. `T!` is\n`Result[T, Error]`."},"range":{"end":{"character":39,"line":63},"start":{"character":34,"line":63}}}}
 {"id":1433,"jsonrpc":"2.0","result":[{"range":"Error","uri":"manuscript-stdlib:///core.ms"}]}
 #large
 {"id":1435,"jsonrpc":"2.0","result":[{"range":"Error","uri":"manuscript-stdlib:///core.ms"}]}
 {"id":1436,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":39,"line":63},"start":{"character":34,"line":63}}}]}
-{"id":1437,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nError: Error\n```\n\nAn expected failure as a plain value: a message, a short code callers can branch on, and string details.\nBuild one like any record: `Error(\"no such file\", kind: \"ENOENT\", details: {\"path\": path})`. `T!` is `Result[T, Error]`."},"range":{"end":{"character":39,"line":63},"start":{"character":34,"line":63}}}}
+{"id":1437,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nError: Error\n```\n\nAn expected failure as a plain value: a message, a short code callers can branch on,\nand string details. Build one like any record:\n`Error(\"no such file\", kind: \"ENOENT\", details: {\"path\": path})`. `T!` is\n`Result[T, Error]`."},"range":{"end":{"character":39,"line":63},"start":{"character":34,"line":63}}}}
 {"id":1438,"jsonrpc":"2.0","result":[{"range":"Error","uri":"manuscript-stdlib:///core.ms"}]}
 #large
 {"id":1440,"jsonrpc":"2.0","result":[{"range":"Error","uri":"manuscript-stdlib:///core.ms"}]}
@@ -1460,12 +1460,12 @@
 {"id":1459,"jsonrpc":"2.0","result":[{"range":"stdout","uri":"manuscript-stdlib:///cli/command.ms"},{"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":"stdout","uri":"manuscript-stdlib:///log.ms"},{"range":"stdout","uri":"manuscript-stdlib:///test/bench.ms"},{"range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1460,"jsonrpc":"2.0","result":null}
 {"id":1461,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}}},{"kind":2,"range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}}},{"kind":2,"range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}}}]}
-{"id":1462,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nwrite: fn(String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nSends `value` to the sink, which may wait; returns sink errors, including `EBADF` for a closed pipe reader."},"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}
+{"id":1462,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nwrite: fn(String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nSends `value` to the sink, which may wait; returns sink errors, including `EBADF`\nfor a closed pipe reader."},"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}
 {"id":1463,"jsonrpc":"2.0","result":[{"range":"write","uri":"manuscript-stdlib:///io/io.ms"}]}
 {"id":1464,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1465,"jsonrpc":"2.0","result":null}
 {"id":1466,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}]}
-{"id":1467,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nwrite: fn(String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nSends `value` to the sink, which may wait; returns sink errors, including `EBADF` for a closed pipe reader."},"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}
+{"id":1467,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nwrite: fn(String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nSends `value` to the sink, which may wait; returns sink errors, including `EBADF`\nfor a closed pipe reader."},"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}}}}
 {"id":1468,"jsonrpc":"2.0","result":[{"range":"write","uri":"manuscript-stdlib:///io/io.ms"}]}
 {"id":1469,"jsonrpc":"2.0","result":[{"range":{"end":{"character":22,"line":64},"start":{"character":17,"line":64}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1470,"jsonrpc":"2.0","result":null}
@@ -1505,12 +1505,12 @@
 {"id":1504,"jsonrpc":"2.0","result":[{"range":"stdout","uri":"manuscript-stdlib:///cli/command.ms"},{"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":"stdout","uri":"manuscript-stdlib:///log.ms"},{"range":"stdout","uri":"manuscript-stdlib:///test/bench.ms"},{"range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1505,"jsonrpc":"2.0","result":null}
 {"id":1506,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":13,"line":1},"start":{"character":7,"line":1}}},{"kind":2,"range":{"end":{"character":14,"line":64},"start":{"character":8,"line":64}}},{"kind":2,"range":{"end":{"character":17,"line":65},"start":{"character":11,"line":65}}}]}
-{"id":1507,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nReturns once the sink has drained what was written; a pipe may still hold up to its capacity of unread values."},"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}}
+{"id":1507,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nReturns once the sink has drained what was written; a pipe may still hold up to\nits capacity of unread values."},"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}}
 {"id":1508,"jsonrpc":"2.0","result":[{"range":"flush","uri":"manuscript-stdlib:///io/io.ms"}]}
 {"id":1509,"jsonrpc":"2.0","result":[{"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1510,"jsonrpc":"2.0","result":null}
 {"id":1511,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}]}
-{"id":1512,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nReturns once the sink has drained what was written; a pipe may still hold up to its capacity of unread values."},"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}}
+{"id":1512,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nflush: fn() Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nReturns once the sink has drained what was written; a pipe may still hold up to\nits capacity of unread values."},"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}}}}
 {"id":1513,"jsonrpc":"2.0","result":[{"range":"flush","uri":"manuscript-stdlib:///io/io.ms"}]}
 {"id":1514,"jsonrpc":"2.0","result":[{"range":{"end":{"character":25,"line":65},"start":{"character":20,"line":65}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1515,"jsonrpc":"2.0","result":null}
@@ -1545,12 +1545,12 @@
 {"id":1544,"jsonrpc":"2.0","result":[]}
 {"id":1545,"jsonrpc":"2.0","result":null}
 {"id":1546,"jsonrpc":"2.0","result":[]}
-{"id":1547,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(Int, Int, String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}}
+{"id":1547,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(Int, Int, String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nCompares using ordinary Equal semantics; reports expected and actual values on\nfailure."},"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}}
 {"id":1548,"jsonrpc":"2.0","result":[{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
 {"id":1549,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1550,"jsonrpc":"2.0","result":null}
 {"id":1551,"jsonrpc":"2.0","result":[{"kind":2,"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}}},{"kind":2,"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}]}
-{"id":1552,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(Int, Int, String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nCompares using ordinary Equal semantics; reports expected and actual values on failure."},"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}}
+{"id":1552,"jsonrpc":"2.0","result":{"contents":{"kind":"markdown","value":"```manuscript\nexpect_equal: fn(Int, Int, String) Result[Unit, Error]\n```\n\neffects: pure (ambient authority only)\n\nCompares using ordinary Equal semantics; reports expected and actual values on\nfailure."},"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}}}}
 {"id":1553,"jsonrpc":"2.0","result":[{"range":"expect_equal","uri":"manuscript-stdlib:///test/test.ms"}]}
 {"id":1554,"jsonrpc":"2.0","result":[{"range":{"end":{"character":19,"line":2},"start":{"character":7,"line":2}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"},{"range":{"end":{"character":20,"line":68},"start":{"character":8,"line":68}},"uri":"file://$TMP/ms-lsp-navigation-PID/main.ms"}]}
 {"id":1555,"jsonrpc":"2.0","result":null}

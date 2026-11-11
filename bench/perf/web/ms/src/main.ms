@@ -1,4 +1,5 @@
-// Benchmark server: main <port> <data-dir> [threads]. `serve` places each connection on one of that many scheduler threads. The Go server in ../go answers the same requests.
+// Benchmark server: main <port> <data-dir> [threads]. `serve` places each connection on
+// one of that many scheduler threads. The Go server in ../go answers the same requests.
 import (
 	Bytes from "@std/bytes.ms",
 	max from "@std/math/math.ms",
@@ -110,7 +111,8 @@ fn make_handler(dir: String) fn(var HttpExchange) Result[Unit, Error]:
 
 	return buffered(handler)
 
-// Serves the benchmark endpoints on 127.0.0.1:<port> on `threads` scheduler threads until the server stops.
+// Serves the benchmark endpoints on 127.0.0.1:<port> on `threads` scheduler threads
+// until the server stops.
 fn serve_here(port: String, dir: String, threads: Int) Int:
 	options := HttpServerOptions(cores: threads)
 

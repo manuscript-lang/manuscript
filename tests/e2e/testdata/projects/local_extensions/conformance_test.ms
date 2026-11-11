@@ -36,7 +36,8 @@ test "views and functions retain local implementations across modules":
 	events := "{dir.path()}/events"
 	resource := Resource(events.clone())
 
-	// Each `Closeable` closes through its own module's implementation when its scope ends.
+	// Each `Closeable` closes through its own module's implementation when its scope
+	// ends.
 	close_first(Resource(events.clone()))
 	close_second(resource)
 	(try expect_ok(read_file(events).wait())).decode_utf8() | try expect_equal("10,20,")

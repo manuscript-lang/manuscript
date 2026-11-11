@@ -9,8 +9,8 @@ type Resource:
 	output: WriteStream[String]
 	done: Bool = false
 
-// Idempotent, as the Closeable contract requires: the block that ends early closes by hand and
-// the scope closes again.
+// Idempotent, as the Closeable contract requires: the block that ends early closes by
+// hand and the scope closes again.
 impl Closeable for Resource:
 	var fn close() Unit!:
 		if self.done: return ok(unit)

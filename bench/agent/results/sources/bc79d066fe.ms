@@ -748,8 +748,8 @@ fn restore(var xs: List[Int], src: List[Int]) Unit:
 	for i in 0..xs.length():
 		xs[i] = src[i]
 
-// Runs the program from start_pc at start_pos. Returns the end position on success or -1.
-// caps and regs are restored to their entry values on failure.
+// Runs the program from start_pc at start_pos. Returns the end position on success or
+// -1. caps and regs are restored to their entry values on failure.
 fn run(
 	prog: List[Instr],
 	sets: List[List[Bool]],
@@ -1033,7 +1033,8 @@ fn append_group(var out: List[Int], subj: List[Int], c: List[Int], g: Int) Unit:
 		for k in s..e:
 			out.append(subj[k])
 
-// Name bytes as a String; anything that is not an identifier byte gives "" (never a group name).
+// Name bytes as a String; anything that is not an identifier byte gives "" (never a
+// group name).
 fn name_of(repl: List[Int], s: Int, e: Int) String:
 	for i in s..e:
 		if not is_word(repl[i]): return ""

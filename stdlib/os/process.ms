@@ -38,11 +38,14 @@ import (
 
 // Captured exit status and standard output/error from a completed command.
 export type CommandOutput:
-	// The child's exit status; 0 conventionally means success. A nonzero status is still an Ok result, and a child ended by a signal reports -1 on Unix.
+	// The child's exit status; 0 conventionally means success. A nonzero status is
+	// still an Ok result, and a child ended by a signal reports -1 on Unix.
 	exit_code: Int
-	// Everything the child wrote to standard output, as raw bytes that may not be valid UTF-8.
+	// Everything the child wrote to standard output, as raw bytes that may not be valid
+	// UTF-8.
 	stdout: Bytes
-	// Everything the child wrote to standard error, as raw bytes that may not be valid UTF-8.
+	// Everything the child wrote to standard error, as raw bytes that may not be valid
+	// UTF-8.
 	stderr: Bytes
 	// The child's peak resident set size in bytes, or 0 when the host cannot report it.
 	max_resident_bytes: Int
@@ -55,11 +58,14 @@ export enum Stdio:
 	Inherit  // The parent's own stream, so the child reads or writes it directly.
 	Null  // The null device: input is at end of file, output is discarded.
 
-// Settings for `run`. Every field has a default, so `RunOptions()` runs the program with no input, no output cap, no deadline, the caller's directory and the inherited environment.
+// Settings for `run`. Every field has a default, so `RunOptions()` runs the program
+// with no input, no output cap, no deadline, the caller's directory and the inherited
+// environment.
 export type RunOptions:
 	// Bytes written to the child's standard input.
 	input: Bytes = "".to_bytes()
-	// Largest total output of both streams in bytes; none sets no cap. More returns EOVERFLOW.
+	// Largest total output of both streams in bytes; none sets no cap. More returns
+	// EOVERFLOW.
 	max_output_bytes: Int?
 	// How long the child may run; none waits without limit. Expiry returns ETIMEDOUT.
 	timeout: Duration?
@@ -68,7 +74,8 @@ export type RunOptions:
 	// Variables added to or replaced in the inherited environment.
 	env: Map[String, String] = Map[String, String]()
 
-// Settings for `spawn`. Every field has a default, so `SpawnOptions()` pipes all three streams, inherits the caller's directory and environment.
+// Settings for `spawn`. Every field has a default, so `SpawnOptions()` pipes all three
+// streams, inherits the caller's directory and environment.
 export type SpawnOptions:
 	// Where the child reads standard input.
 	stdin: Stdio = Stdio.Pipe
@@ -81,7 +88,9 @@ export type SpawnOptions:
 	// Variables added to or replaced in the inherited environment.
 	env: Map[String, String] = Map[String, String]()
 
-// The shape of `run` and `spawn`, for code that takes child-process operations as a parameter so a test can pass a fake. Programs call the module functions `run` and `spawn` directly.
+// The shape of `run` and `spawn`, for code that takes child-process operations as a
+// parameter so a test can pass a fake. Programs call the module functions `run` and
+// `spawn` directly.
 export interface Commands:
 	/*
     Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `options.input` is written to its standard input, and its output is captured.
@@ -93,7 +102,12 @@ export interface Commands:
 		arguments: List[String],
 		options: RunOptions = RunOptions()
 	) CommandOutput!
-	// Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+	// Starts `program` directly, without a shell, searching the PATH, and returns a
+	// live Subprocess that its scope closes. `arguments` follow the program name;
+	// `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the
+	// default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or
+	// EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring
+	// execution, kills the child's process group.
 	// `options.cwd` and `options.env` behave as in `run`.
 	fn spawn(
 		program: String,
@@ -114,12 +128,14 @@ export opaque type Subprocess:
 	native: NativeSubprocess
 
 impl Closeable for Subprocess:
-	// Kills the process group, joins the child, kills leftover group members, and closes all three streams. Idempotent; scope exit calls it.
+	// Kills the process group, joins the child, kills leftover group members, and
+	// closes all three streams. Idempotent; scope exit calls it.
 	var fn close() Unit!:
 		msstd_process_subprocess_close(self.native)
 
 impl Subprocess:
-	// The child's standard input as a WriteStream; writes block when the pipe is full. Closing the stream delivers end-of-input to the child.
+	// The child's standard input as a WriteStream; writes block when the pipe is full.
+	// Closing the stream delivers end-of-input to the child.
 	fn stdin() WriteStream[Bytes]:
 		return WriteStream[Bytes](
 			DescriptorSink(
@@ -127,7 +143,8 @@ impl Subprocess:
 			)
 		)
 
-	// The child's standard output as a ReadStream over the OS pipe; reads block until output or end-of-file, and nothing is buffered without bound.
+	// The child's standard output as a ReadStream over the OS pipe; reads block until
+	// output or end-of-file, and nothing is buffered without bound.
 	fn stdout() ReadStream[Bytes]:
 		return ReadStream[Bytes](
 			DescriptorSource(
@@ -135,7 +152,8 @@ impl Subprocess:
 			)
 		)
 
-	// The child's standard error as a ReadStream over the OS pipe, with the same blocking and backpressure behavior as stdout.
+	// The child's standard error as a ReadStream over the OS pipe, with the same
+	// blocking and backpressure behavior as stdout.
 	fn stderr() ReadStream[Bytes]:
 		return ReadStream[Bytes](
 			DescriptorSource(
@@ -143,15 +161,18 @@ impl Subprocess:
 			)
 		)
 
-	// Waits for the child to exit and returns its exit status. Returns ETIMEDOUT if `timeout` elapses first, leaving the child running.
+	// Waits for the child to exit and returns its exit status. Returns ETIMEDOUT if
+	// `timeout` elapses first, leaving the child running.
 	fn wait(timeout: Duration? = none) Int!:
 		return msstd_process_subprocess_wait(self.native, timeout)
 
-	// The child's peak resident set size in bytes, known once `wait` has returned its exit status; 0 before that or when the host cannot report it.
+	// The child's peak resident set size in bytes, known once `wait` has returned its
+	// exit status; 0 before that or when the host cannot report it.
 	fn max_resident_bytes() Int:
 		return msstd_process_subprocess_max_resident(self.native)
 
-	// Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it kills the direct process. Does not wait.
+	// Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it
+	// kills the direct process. Does not wait.
 	fn terminate() Unit:
 		return msstd_process_subprocess_terminate(self.native)
 
@@ -167,7 +188,8 @@ export type ProcessInfo:
 	parent_pid: Int
 	// Absolute path of the running program file.
 	executable: String
-	// Live native argv including argv[0]; process.arguments() is the supplied startup tail without it.
+	// Live native argv including argv[0]; process.arguments() is the supplied startup
+	// tail without it.
 	arguments: List[String]
 	// Operating system name, such as `linux`, `darwin`, or `windows`.
 	os: String
@@ -217,12 +239,14 @@ export type ResourceUsage:
 	filesystem_reads: Int
 	// Block output operations charged to the process, as a count.
 	filesystem_writes: Int
-	// Context switches where the process gave up the CPU, such as to wait for I/O, as a count.
+	// Context switches where the process gave up the CPU, such as to wait for I/O, as a
+	// count.
 	voluntary_switches: Int
 	// Context switches where the scheduler preempted the process, as a count.
 	involuntary_switches: Int
 
-// The runtime observer behind `watch_signals`; signals arriving while no read waits are buffered.
+// The runtime observer behind `watch_signals`; signals arriving while no read waits are
+// buffered.
 export extern type NativeSignals
 
 type SignalSource:
@@ -272,7 +296,12 @@ export fn run(
 		run_job(program.clone(), arguments.clone(), options.clone())
 	)
 
-// Starts `program` directly, without a shell, searching the PATH, and returns a live Subprocess that its scope closes. `arguments` follow the program name; `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO when it cannot start. Closing the Subprocess, or cancelling the acquiring execution, kills the child's process group.
+// Starts `program` directly, without a shell, searching the PATH, and returns a live
+// Subprocess that its scope closes. `arguments` follow the program name;
+// `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the
+// default), the parent's own stream, or the null device. Returns EINVAL, EAGAIN, or EIO
+// when it cannot start. Closing the Subprocess, or cancelling the acquiring execution,
+// kills the child's process group.
 // `options.cwd` and `options.env` behave as in `run`.
 // ms: effect std.process.run
 export fn spawn(
@@ -303,19 +332,22 @@ export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
 export fn title() String!:
 	return msstd_process_title()
 
-// Sets the process title shown by tools such as `ps`.
-// A title with NUL or newline returns EINVAL, and platforms that cannot rename a process return ENOTSUP.
-// ms: effect std.process.write
+// Sets the process title shown by tools such as `ps`. A title with NUL or newline
+// returns EINVAL, and platforms that cannot rename a process return ENOTSUP. ms: effect
+// std.process.write
 export fn set_title(title: String) Unit!:
 	return msstd_process_set_title(title)
 
-// Replaces the supplementary group list with the groups of `username` from the account database plus `gid` first. Requires privilege.
-// A failed user lookup returns EIO, a `gid` outside 0 through 2147483647 returns EINVAL, and a lack of privilege returns EACCES.
-// ms: effect std.process.write
+// Replaces the supplementary group list with the groups of `username` from the account
+// database plus `gid` first. Requires privilege. A failed user lookup returns EIO, a
+// `gid` outside 0 through 2147483647 returns EINVAL, and a lack of privilege returns
+// EACCES. ms: effect std.process.write
 export fn initialize_groups(username: String, gid: Int) Unit!:
 	return msstd_process_initialize_groups(username, gid)
 
-// Replaces the running process image with `program` using exactly the given `arguments` as argv, where `arguments[0]` is the program name, and exactly the given `environment`. On success it never returns.
+// Replaces the running process image with `program` using exactly the given `arguments`
+// as argv, where `arguments[0]` is the program name, and exactly the given
+// `environment`. On success it never returns.
 // `program` is a path, not a PATH lookup. An empty program, an empty argument list, or NUL bytes return EINVAL, and exec failures return ENOENT, EACCES, or EIO. ENOTSUP on Windows.
 // ms: effect std.process.run
 export fn replace(
@@ -332,9 +364,9 @@ export fn replace(
 
 	return msstd_process_replace(program, arguments, names, values)
 
-// Returns the process id, parent id, executable path, arguments, platform, and real and effective user and group ids.
-// Text that is not valid UTF-8 returns ENOTSUP.
-// ms: effect std.process.read
+// Returns the process id, parent id, executable path, arguments, platform, and real and
+// effective user and group ids. Text that is not valid UTF-8 returns ENOTSUP. ms:
+// effect std.process.read
 export fn process_info() ProcessInfo!:
 	return msstd_process_info()
 
@@ -344,9 +376,10 @@ export fn process_info() ProcessInfo!:
 export fn cpu_usage() CpuUsage!:
 	return msstd_process_cpu_usage()
 
-// Validates a signed 32-bit PID and signal 0..64; the OS decides supported numbers/permissions.
-// Signal 0 checks existence; Windows positive PIDs support 0 and forced INT/KILL/TERM termination. A pid that names no process returns ENOENT.
-// ms: effect std.process.signal
+// Validates a signed 32-bit PID and signal 0..64; the OS decides supported
+// numbers/permissions. Signal 0 checks existence; Windows positive PIDs support 0 and
+// forced INT/KILL/TERM termination. A pid that names no process returns ENOENT. ms:
+// effect std.process.signal
 export fn send_signal(pid: Int, signal: Int) Unit!:
 	return msstd_process_send_signal(pid, signal)
 
@@ -356,8 +389,8 @@ export fn send_signal(pid: Int, signal: Int) Unit!:
 export fn groups() List[Int]!:
 	return msstd_process_groups()
 
-// Returns kernel resource counters for this process: CPU times, peak resident size, page faults, block I/O, and context switches.
-// Platforms without them return ENOTSUP.
+// Returns kernel resource counters for this process: CPU times, peak resident size,
+// page faults, block I/O, and context switches. Platforms without them return ENOTSUP.
 // ms: effect std.process.read
 export fn resource_usage() ResourceUsage!:
 	return msstd_process_resource_usage()
@@ -367,9 +400,9 @@ export fn resource_usage() ResourceUsage!:
 export fn umask(mask: Int) Int!:
 	return msstd_process_umask(mask)
 
-// Sets the real or effective user or group id to `id`, 0..2147483647; other ids return EINVAL.
-// Identity changes require OS permission and are ENOTSUP on Windows.
-// ms: effect std.process.write
+// Sets the real or effective user or group id to `id`, 0..2147483647; other ids return
+// EINVAL. Identity changes require OS permission and are ENOTSUP on Windows. ms: effect
+// std.process.write
 export fn set_identity(kind: IdentityKind, id: Int) Unit!:
 	if kind == IdentityKind.Uid: return msstd_process_set_identity("uid", id)
 	if kind == IdentityKind.Gid: return msstd_process_set_identity("gid", id)
@@ -377,15 +410,16 @@ export fn set_identity(kind: IdentityKind, id: Int) Unit!:
 
 	return msstd_process_set_identity("egid", id)
 
-// Replaces the supplementary group list with the given numeric ids, each 0 through 2147483647. Requires privilege.
-// Invalid ids return EINVAL, a lack of privilege returns EACCES, and Windows returns ENOTSUP.
-// ms: effect std.process.write
+// Replaces the supplementary group list with the given numeric ids, each 0 through
+// 2147483647. Requires privilege. Invalid ids return EINVAL, a lack of privilege
+// returns EACCES, and Windows returns ENOTSUP. ms: effect std.process.write
 export fn set_groups(groups: List[Int]) Unit!:
 	return msstd_process_set_groups(groups)
 
-// Returns the scheduling priority of process `pid` (0 means the calling process) as a nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority classes onto this range.
-// A pid outside 0 through 2147483647 returns EINVAL, and platforms without priorities return ENOTSUP.
-// ms: effect std.process.read
+// Returns the scheduling priority of process `pid` (0 means the calling process) as a
+// nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority
+// classes onto this range. A pid outside 0 through 2147483647 returns EINVAL, and
+// platforms without priorities return ENOTSUP. ms: effect std.process.read
 export fn get_priority(pid: Int) Int!:
 	return msstd_system_get_priority(pid)
 

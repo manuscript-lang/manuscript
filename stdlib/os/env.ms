@@ -75,16 +75,18 @@ fn runnable(path: String, windows: Bool) Bool:
 export fn environment() Map[String, String]!:
 	return msstd_process_environment_map()
 
-// Sets environment variable `name` for this process to `value`, or removes it when `value` is none.
-// An empty name, or a name or value with `=` or NUL, returns EINVAL. The change is visible to child processes started afterwards.
-// ms: effect std.env.write
+// Sets environment variable `name` for this process to `value`, or removes it when
+// `value` is none. An empty name, or a name or value with `=` or NUL, returns EINVAL.
+// The change is visible to child processes started afterwards. ms: effect std.env.write
 export fn set_environment(name: String, value: String?) Unit!:
 	return msstd_process_set_environment(name, value)
 
-// Reads `KEY=value` lines from the file at `path` and sets each variable that is not already present in the environment. Existing variables keep their values.
-// Blank lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted values spanning lines are accepted. The whole file is validated first, so a malformed or non-UTF-8 file returns EBADMSG and changes nothing. A file larger than `max_bytes` returns EOVERFLOW.
-// ms: effect std.env.write
-// ms: effect std.fs.read
+// Reads `KEY=value` lines from the file at `path` and sets each variable that is not
+// already present in the environment. Existing variables keep their values. Blank
+// lines, `#` comments, an `export ` prefix, and single-, double-, or backtick-quoted
+// values spanning lines are accepted. The whole file is validated first, so a malformed
+// or non-UTF-8 file returns EBADMSG and changes nothing. A file larger than `max_bytes`
+// returns EOVERFLOW. ms: effect std.env.write ms: effect std.fs.read
 export fn load_environment(path: String, max_bytes: Int? = none) Unit!:
 	return msstd_process_load_environment(path, max_bytes)
 
@@ -93,14 +95,14 @@ export fn load_environment(path: String, max_bytes: Int? = none) Unit!:
 export fn working_directory() String!:
 	return msstd_process_working_directory()
 
-// Changes the working directory of the whole process, affecting relative paths everywhere.
-// A missing path returns ENOENT, a path containing NUL returns EINVAL, and a denied path returns EACCES.
-// ms: effect std.env.write
+// Changes the working directory of the whole process, affecting relative paths
+// everywhere. A missing path returns ENOENT, a path containing NUL returns EINVAL, and
+// a denied path returns EACCES. ms: effect std.env.write
 export fn change_directory(path: String) Unit!:
 	return msstd_process_change_directory(path)
 
-// Returns the current user's home directory path, from the host's environment or account database.
-// A path that is not valid UTF-8 returns ENOTSUP.
-// ms: effect std.env.read
+// Returns the current user's home directory path, from the host's environment or
+// account database. A path that is not valid UTF-8 returns ENOTSUP. ms: effect
+// std.env.read
 export fn home_directory() String!:
 	return msstd_system_home_directory()

@@ -1,7 +1,7 @@
 import expect_equal, expect_true from "@std/test/test.ms"
 
-// A function of the program named caller_site is an ordinary default, not the test library's
-// call-site default.
+// A function of the program named caller_site is an ordinary default, not the test
+// library's call-site default.
 fn caller_site() Int:
 	return 5
 

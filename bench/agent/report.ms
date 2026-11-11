@@ -1,8 +1,8 @@
 // Summarize results/runs.jsonl as Markdown tables.
 //
-// Pass rate counts every run. Tokens, turns, time and cost average over PASSING runs only,
-// so a cheap wrong answer never improves a language's numbers.
-// Usage (from the repository root): ms run bench/agent/report.ms [-- path/to/runs.jsonl]
+// Pass rate counts every run. Tokens, turns, time and cost average over PASSING runs
+// only, so a cheap wrong answer never improves a language's numbers. Usage (from the
+// repository root): ms run bench/agent/report.ms [-- path/to/runs.jsonl]
 import (
 	parse from "@std/data/json.ms",
 	stderr, stdout from "@std/io/io.ms",

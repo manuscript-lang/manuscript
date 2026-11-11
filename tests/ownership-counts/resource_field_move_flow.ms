@@ -1,35 +1,15 @@
-// expect-stdout: close a1
-// expect-stdout: close a2
-// expect-stdout: main: a
-// expect-stdout: after_move: ok
-// expect-stdout: close b2
-// expect-stdout: main: b
-// expect-stdout: close c2
-// expect-stdout: close c1
-// expect-stdout: main: c
-// expect-stdout: close d1
-// expect-stdout: main: d
-// expect-stdout: both_cond: end
-// expect-stdout: close e2
-// expect-stdout: both_cond: end
-// expect-stdout: close f1
-// expect-stdout: both_cond: end
-// expect-stdout: both_cond: end
-// expect-stdout: close h2
-// expect-stdout: close h1
-// expect-stdout: main: h
-// expect-stdout: close i1
-// expect-stdout: close j2
-// expect-stdout: main: end
-// expect-stdout: close j1
-// expect-stdout: close i2
-// expect-stdout: close g2
-// expect-stdout: close g1
-// expect-stdout: close f2
-// expect-stdout: close e1
-// expect-stdout: close d2
-// expect-stdout: close b1
-// A resource field moves out of an owned record: the new owner closes it once, and the record closes only the other fields, last declared first.
+// expect-stdout: close a1 expect-stdout: close a2 expect-stdout: main: a expect-stdout:
+// after_move: ok expect-stdout: close b2 expect-stdout: main: b expect-stdout: close c2
+// expect-stdout: close c1 expect-stdout: main: c expect-stdout: close d1 expect-stdout:
+// main: d expect-stdout: both_cond: end expect-stdout: close e2 expect-stdout:
+// both_cond: end expect-stdout: close f1 expect-stdout: both_cond: end expect-stdout:
+// both_cond: end expect-stdout: close h2 expect-stdout: close h1 expect-stdout: main: h
+// expect-stdout: close i1 expect-stdout: close j2 expect-stdout: main: end
+// expect-stdout: close j1 expect-stdout: close i2 expect-stdout: close g2
+// expect-stdout: close g1 expect-stdout: close f2 expect-stdout: close e1
+// expect-stdout: close d2 expect-stdout: close b1 A resource field moves out of an
+// owned record: the new owner closes it once, and the record closes only the other
+// fields, last declared first.
 import (
 	Closeable from "@std/core.ms",
 	stdout from "@std/io/io.ms",

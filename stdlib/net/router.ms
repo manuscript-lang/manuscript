@@ -25,10 +25,12 @@ import (
 	msrt_promise_wait from "@std/internal/promises.ms",
 )
 
-// A value with one holder at a time, kept in a one-message in-memory pipe whose id is the slot: `take_slot` moves it out
-// (waiting while another holder has it) and `put_slot` moves it back. The exchange state below lives in one because
-// middleware replaces the exchange with a wrapper of its own type, so the value that comes back from a handler is not
-// the one that was handed in; the slot is what both sides can reach.
+// A value with one holder at a time, kept in a one-message in-memory pipe whose id is
+// the slot: `take_slot` moves it out (waiting while another holder has it) and
+// `put_slot` moves it back. The exchange state below lives in one because middleware
+// replaces the exchange with a wrapper of its own type, so the value that comes back
+// from a handler is not the one that was handed in; the slot is what both sides can
+// reach.
 fn new_slot[T](value: T) Int:
 	pipe := msrt_pipe_new(1)
 	_first := msrt_pipe_write(pipe, value)
@@ -49,7 +51,8 @@ fn release_slot(slot: Int) Unit:
 	msrt_pipe_close_writer(slot)
 	msrt_pipe_close_reader(slot)
 
-// The value of a slot while one holder works on it; it returns to the slot when the scope ends, however it ends.
+// The value of a slot while one holder works on it; it returns to the slot when the
+// scope ends, however it ends.
 type Held[T]:
 	slot: Int
 	// One item while held; moving it out through `pop` returns it to the slot.
@@ -70,16 +73,19 @@ fn hold[T](slot: Int) Held[T]:
 export type RouteParams:
 	// Names in pattern order.
 	names: List[String]
-	// The captured text for each name; a wildcard holds the remaining segments joined by `/`.
+	// The captured text for each name; a wildcard holds the remaining segments joined
+	// by `/`.
 	values: List[String]
 
 impl RouteParams:
-	// Returns the text captured for `name`, or none when the pattern has no such parameter.
+	// Returns the text captured for `name`, or none when the pattern has no such
+	// parameter.
 	fn get(name: String) String?:
 		if index := self.names.index_of(name): return self.values[index].clone()
 		return none
 
-	// Returns the text captured for `name`, or `fallback` when the pattern has no such parameter.
+	// Returns the text captured for `name`, or `fallback` when the pattern has no such
+	// parameter.
 	fn get_or(name: String, fallback: String) String:
 		return self.get(name).get(fallback)
 
@@ -101,7 +107,8 @@ export enum Segment:
 		name: String
 	)
 
-// A registered route: the method token and pattern it answers, and the handler that runs on a match.
+// A registered route: the method token and pattern it answers, and the handler that
+// runs on a match.
 export type Route:
 	// The method token the route answers, such as `GET`.
 	method: String
@@ -109,29 +116,31 @@ export type Route:
 	pattern: String
 	// The pattern split at `/` into segments, in path order.
 	segments: List[Segment]
-	// The middleware groups of the routers this route was mounted through, outermost first, as
-	// positions in `Router.groups`.
+	// The middleware groups of the routers this route was mounted through, outermost
+	// first, as positions in `Router.groups`.
 	around: List[Int]
 	// Runs when the route matches, with the values the pattern captured.
 	handler: fn(var HttpExchange, RouteParams) Unit!
 
 // Routes requests by method and path and wraps them in middleware.
 //
-// Patterns are `/` followed by literal segments, `:name` parameters that match one segment, and
-// a final `*name` that matches the rest of the path (possibly nothing). The first route
-// registered that matches wins, and a trailing slash is part of the path.
+// Patterns are `/` followed by literal segments, `:name` parameters that match one
+// segment, and a final `*name` that matches the rest of the path (possibly nothing).
+// The first route registered that matches wins, and a trailing slash is part of the
+// path.
 export type Router:
 	// Registered routes in registration order.
 	routes: List[Route] = []
 	// Middleware in the order it wraps requests: the first one added runs outermost.
 	middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!] = []
-	// The middleware of each mounted router, in mount order; a route names the groups around it.
+	// The middleware of each mounted router, in mount order; a route names the groups
+	// around it.
 	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]] = []
 
 impl Router:
-	// Registers `handler` for `method` and `pattern`.
-	// A route also answers HEAD when `method` is GET and no HEAD route matches. Registering the
-	// same method and pattern shape twice returns Duplicate.
+	// Registers `handler` for `method` and `pattern`. A route also answers HEAD when
+	// `method` is GET and no HEAD route matches. Registering the same method and
+	// pattern shape twice returns Duplicate.
 	var fn route(
 		method: HttpMethod,
 		pattern: String,
@@ -146,47 +155,55 @@ impl Router:
 			)
 		)
 
-	// Registers `handler` for GET requests to `pattern`; shorthand for `route(HttpMethod.Get, pattern, handler)`.
+	// Registers `handler` for GET requests to `pattern`; shorthand for
+	// `route(HttpMethod.Get, pattern, handler)`.
 	var fn get(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
 		return self.route(HttpMethod.Get, pattern, handler)
 
-	// Registers `handler` for HEAD requests to `pattern`; shorthand for `route(HttpMethod.Head, pattern, handler)`.
+	// Registers `handler` for HEAD requests to `pattern`; shorthand for
+	// `route(HttpMethod.Head, pattern, handler)`.
 	var fn head(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
 		return self.route(HttpMethod.Head, pattern, handler)
 
-	// Registers `handler` for POST requests to `pattern`; shorthand for `route(HttpMethod.Post, pattern, handler)`.
+	// Registers `handler` for POST requests to `pattern`; shorthand for
+	// `route(HttpMethod.Post, pattern, handler)`.
 	var fn post(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
 		return self.route(HttpMethod.Post, pattern, handler)
 
-	// Registers `handler` for PUT requests to `pattern`; shorthand for `route(HttpMethod.Put, pattern, handler)`.
+	// Registers `handler` for PUT requests to `pattern`; shorthand for
+	// `route(HttpMethod.Put, pattern, handler)`.
 	var fn put(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
 		return self.route(HttpMethod.Put, pattern, handler)
 
-	// Registers `handler` for PATCH requests to `pattern`; shorthand for `route(HttpMethod.Patch, pattern, handler)`.
+	// Registers `handler` for PATCH requests to `pattern`; shorthand for
+	// `route(HttpMethod.Patch, pattern, handler)`.
 	var fn patch(
 		pattern: String,
 		handler: fn(var HttpExchange, RouteParams) Unit!
 	) Unit!:
 		return self.route(HttpMethod.Patch, pattern, handler)
 
-	// Registers `handler` for DELETE requests to `pattern`; shorthand for `route(HttpMethod.Delete, pattern, handler)`.
+	// Registers `handler` for DELETE requests to `pattern`; shorthand for
+	// `route(HttpMethod.Delete, pattern, handler)`.
 	var fn delete(
 		pattern: String,
 		handler: fn(var HttpExchange, RouteParams) Unit!
 	) Unit!:
 		return self.route(HttpMethod.Delete, pattern, handler)
 
-	// Registers `handler` for OPTIONS requests to `pattern`; shorthand for `route(HttpMethod.Options, pattern, handler)`.
+	// Registers `handler` for OPTIONS requests to `pattern`; shorthand for
+	// `route(HttpMethod.Options, pattern, handler)`.
 	var fn options(
 		pattern: String,
 		handler: fn(var HttpExchange, RouteParams) Unit!
 	) Unit!:
 		return self.route(HttpMethod.Options, pattern, handler)
 
-	// Moves every route of `routes` under `prefix`, wrapped in that router's own middleware.
-	// The prefix is `/` followed by segments with no trailing slash, and it may hold parameters.
-	// The mounted router's `/` route answers `prefix` itself. A router holds functions, which
-	// have one owner, so `routes` is taken: build it again to mount it elsewhere.
+	// Moves every route of `routes` under `prefix`, wrapped in that router's own
+	// middleware. The prefix is `/` followed by segments with no trailing slash, and it
+	// may hold parameters. The mounted router's `/` route answers `prefix` itself. A
+	// router holds functions, which have one owner, so `routes` is taken: build it
+	// again to mount it elsewhere.
 	var fn mount(prefix: String, routes: Router) Unit!:
 		if prefix.ends_with("/") and prefix != "/":
 			return error(invalid_pattern(prefix))
@@ -209,13 +226,15 @@ impl Router:
 			try insert(var self.routes, route)
 
 	// Adds middleware around every route and around the 404, 405 and OPTIONS answers.
-	// It receives the exchange and a continuation that runs the rest of the chain with the exchange
-	// it is given, so a middleware can pass on a wrapped one (see `request_id` and `access_log`).
+	// It receives the exchange and a continuation that runs the rest of the chain with
+	// the exchange it is given, so a middleware can pass on a wrapped one (see
+	// `request_id` and `access_log`).
 	var fn use(middleware: fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!) Unit:
 		self.middleware.append(middleware)
 
-	// Returns the function to pass to `serve`; it takes the router, so register every route first.
-	// Unmatched paths answer 404, a path matched only under other methods answers 405 with
+	// Returns the function to pass to `serve`; it takes the router, so register every
+	// route first. Unmatched paths answer 404, a path matched only under other methods
+	// answers 405 with
 	// `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
 	// the `Allow` of every registered method.
 	fn handler() fn(var HttpExchange) Unit!:
@@ -224,9 +243,9 @@ impl Router:
 		)
 
 impl Router:
-	// Runs `request` through the router without a socket and returns the response it produced.
-	// A handler error is returned as is; the server would answer it with a 500. A handler that
-	// sends nothing answers 204.
+	// Runs `request` through the router without a socket and returns the response it
+	// produced. A handler error is returned as is; the server would answer it with a
+	// 500. A handler that sends nothing answers 204.
 	fn call(request: HttpRequest) HttpResponse!:
 		state := new_slot(
 			TestState(
@@ -273,7 +292,8 @@ fn remount(var route: Route, base: String, own: Int, offset: Int) Unit!:
 		around.append(group + offset)
 	route.around = around
 
-// Empties `from` into a new list, last element first; popping the result walks `from` in order.
+// Empties `from` into a new list, last element first; popping the result walks `from`
+// in order.
 fn drain[T](var from: List[T]) List[T]:
 	var stack: List[T] = []
 	while not from.is_empty():
@@ -291,7 +311,8 @@ fn invalid_pattern(pattern: String) Error:
 		details: {"pattern": pattern.clone()}
 	)
 
-// Parses `pattern` into segments, rejecting empty or repeated names and a wildcard that is not last.
+// Parses `pattern` into segments, rejecting empty or repeated names and a wildcard that
+// is not last.
 fn parse_pattern(pattern: String) List[Segment]!:
 	if not pattern.starts_with("/"): return error(invalid_pattern(pattern))
 
@@ -423,16 +444,18 @@ fn accepts(segment: Segment, part: String, var values: List[String]) Bool:
 			return true
 		Rest(_): return true
 
-// What `finish` needs from the routes: the matched route and, for `OPTIONS *`, every registered method. Copies of
-// the little the request uses, so the continuation handed to middleware owns it.
-// Where a request goes: the method, the lookup, and the `Allow` of every route for `OPTIONS *`.
+// What `finish` needs from the routes: the matched route and, for `OPTIONS *`, every
+// registered method. Copies of the little the request uses, so the continuation handed
+// to middleware owns it. Where a request goes: the method, the lookup, and the `Allow`
+// of every route for `OPTIONS *`.
 type Target:
 	method: String
 	found: Lookup
 	every: List[String]
 
-// Runs one request through the router's middleware and into `finish`. The continuations borrow
-// the routing table: each is called once by the middleware before it and owns nothing.
+// Runs one request through the router's middleware and into `finish`. The continuations
+// borrow the routing table: each is called once by the middleware before it and owns
+// nothing.
 fn dispatch(
 	routes: List[Route],
 	middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
@@ -515,7 +538,8 @@ fn finish(
 	try response.headers.append("Allow", allow_text(found.allow))
 	return reply(var exchange, response)
 
-// Methods with a route for the path, sorted and without repeats; GET adds HEAD, and OPTIONS is always answered.
+// Methods with a route for the path, sorted and without repeats; GET adds HEAD, and
+// OPTIONS is always answered.
 fn allow_text(methods: List[String]) String:
 	var all = methods.clone()
 	if all.contains("GET"): all.append("HEAD")
@@ -660,7 +684,8 @@ type TapState:
 	status: Int
 	bytes: Int
 
-// An exchange that passes everything to `inner`, adds `extra` to the headers of its response, and counts the status and body bytes sent.
+// An exchange that passes everything to `inner`, adds `extra` to the headers of its
+// response, and counts the status and body bytes sent.
 type Tap:
 	inner: HttpExchange
 	extra: HttpHeaders
@@ -668,7 +693,8 @@ type Tap:
 	state: Int?
 
 impl Tap:
-	// The body bytes the exchange transmits: none for HEAD or a status that forbids a body.
+	// The body bytes the exchange transmits: none for HEAD or a status that forbids a
+	// body.
 	fn sent_length(status: Int, length: Int) Int:
 		if self.inner.method() == HttpMethod.Head or not has_body(status): return 0
 		return length
@@ -737,8 +763,9 @@ fn new_tap(
 ) Tap:
 	return Tap(inner: inner, extra: extra, request: request, state: state)
 
-// Replaces `exchange` with one whose `headers()` reports `request` and everything else passes through.
-// Middleware uses it to hand later layers changed request headers, since a received header set is a copy.
+// Replaces `exchange` with one whose `headers()` reports `request` and everything else
+// passes through. Middleware uses it to hand later layers changed request headers,
+// since a received header set is a copy.
 export fn with_request_headers(var exchange: HttpExchange, request: HttpHeaders) Unit:
 	exchange = new_tap(exchange, headers(), request)
 
@@ -761,9 +788,10 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
 				all.append(name, value).get(unit)
 	return all
 
-// Middleware that gives every request an id: the request's own `X-Request-Id` when it is 1 to 128
-// printable ASCII characters, otherwise a new UUID. The id is set on the request headers the wrapped exchange reports, where
-// handlers and later middleware read it, and added to the response as `X-Request-Id`.
+// Middleware that gives every request an id: the request's own `X-Request-Id` when it
+// is 1 to 128 printable ASCII characters, otherwise a new UUID. The id is set on the
+// request headers the wrapped exchange reports, where handlers and later middleware
+// read it, and added to the response as `X-Request-Id`.
 export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!:
 	return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!): with_request_id(
 		var exchange, next
@@ -805,10 +833,10 @@ type AccessEntry:
 	bytes: Int
 	duration_ms: Int
 
-// Middleware that writes one Info record named `request` to `logger` after each request, with
-// the method, path, protocol, response status, body bytes written and duration in milliseconds.
-// A handler that sends nothing is logged as 204 and one that fails before sending as 500. A
-// logging failure never fails the request.
+// Middleware that writes one Info record named `request` to `logger` after each
+// request, with the method, path, protocol, response status, body bytes written and
+// duration in milliseconds. A handler that sends nothing is logged as 204 and one that
+// fails before sending as 500. A logging failure never fails the request.
 export fn access_log(
 	logger: Logger
 ) fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!:

@@ -964,7 +964,8 @@ type Formula:
 	cells: List[Int]
 	rects: List[Rect]
 
-// Collects the cells named by valid single references and by ranges, outside ROW/COLUMN.
+// Collects the cells named by valid single references and by ranges, outside
+// ROW/COLUMN.
 fn collect_refs(n: Node, var cells: List[Int], var rects: List[Rect]) Unit:
 	if n.kind == N_REF:
 		if n.r1.valid:
@@ -1046,7 +1047,8 @@ fn eval_bin(s: Sheet, n: Node) Value:
 
 	return arith(op, va, vb)
 
-// Evaluates arguments that may be ranges into numbers. Empty on success, else the error.
+// Evaluates arguments that may be ranges into numbers. Empty on success, else the
+// error.
 fn gather_nums(s: Sheet, args: List[Node], var out: List[Float]) Value:
 	for a in args:
 		if a.kind == N_RANGE:
@@ -1612,8 +1614,8 @@ fn filled_bool(n: Int, v: Bool) List[Bool]:
 		out.append(v)
 	return out
 
-// Tarjan's strongly connected components over the affected formulas.
-// Edges are linked lists: head[v] is the first edge out of v, nxt[e] the next, to[e] its target.
+// Tarjan's strongly connected components over the affected formulas. Edges are linked
+// lists: head[v] is the first edge out of v, nxt[e] the next, to[e] its target.
 type Scc:
 	head: List[Int]
 	nxt: List[Int]
@@ -1807,8 +1809,9 @@ fn build_index(sh: Sheet) DepIndex:
 		rrect: rrect
 	)
 
-// Formula cell keys that depend on the start cells, directly or transitively, in discovery order.
-// With seed, a formula among the start cells is itself included (it is affected by its own change).
+// Formula cell keys that depend on the start cells, directly or transitively, in
+// discovery order. With seed, a formula among the start cells is itself included (it is
+// affected by its own change).
 fn closure(idx: DepIndex, start: List[Int], seed: Bool) List[Int]:
 	var seen = filled_bool(idx.fkeys.length(), false)
 	var out = List[Int]()
@@ -1928,7 +1931,8 @@ fn shift_token(t: Tok, cs: List[String], dc: Int, dr: Int) String:
 		if b := shifted_ref(t.r2, dc, dr): return "{ref_text(a)}:{ref_text(b)}"
 	return "#REF!"
 
-// Shifts the references of a formula source by (dc, dr); unchanged if it cannot be tokenized.
+// Shifts the references of a formula source by (dc, dr); unchanged if it cannot be
+// tokenized.
 fn shift_source(src: String, dc: Int, dr: Int) String:
 	cs := src.chars()
 

@@ -17,40 +17,49 @@ export interface TestHooks:
 	var fn before_all() Unit
 	// Runs before each selected test execution, including repetitions.
 	var fn before_each() Unit
-	// Runs after each test attempt, including before_each failure, skip, or assertion failure.
+	// Runs after each test attempt, including before_each failure, skip, or assertion
+	// failure.
 	var fn after_each() Unit
-	// Runs after the test finishes or stops in its process; also runs when before_all fails.
+	// Runs after the test finishes or stops in its process; also runs when before_all
+	// fails.
 	var fn after_all() Unit
 
-// The position (`file:line:col`) of the call that omitted this argument. Valid only as a parameter default, in a function called directly.
+// The position (`file:line:col`) of the call that omitted this argument. Valid only as
+// a parameter default, in a function called directly.
 export fn caller_site() String:
 	panic("caller_site() is only valid as a parameter default")
 
-// A failed expectation: `message`, kind EIO, and the failing call's position in `details["site"]`.
+// A failed expectation: `message`, kind EIO, and the failing call's position in
+// `details["site"]`.
 fn failure(message: String, site: String) Error:
 	var details = Map[String, String]()
 	details.add("site", site)
 	return Error(message, kind: "EIO", details: details)
 
-// The debug text of a value, with strings quoted and records and collections spelled out.
+// The debug text of a value, with strings quoted and records and collections spelled
+// out.
 export fn repr[T](value: T) String:
 	return msstd_test_repr(value)
 
-// Runs operation once behind the fault trap and returns the fault message, or none when it returns normally.
+// Runs operation once behind the fault trap and returns the fault message, or none when
+// it returns normally.
 export fn catch_fault(operation: fn() Unit) String?:
 	return msstd_test_catch_fault(operation)
 
-// Fails unless actual is True. `site` names the call in the failure and defaults to the caller's position.
+// Fails unless actual is True. `site` names the call in the failure and defaults to the
+// caller's position.
 export fn expect_true(actual: Bool, site: String = caller_site()) Unit!:
 	if actual: return ok(unit)
 	return error(failure("expected true, got false", site))
 
-// Fails unless actual is False. `site` names the call in the failure and defaults to the caller's position.
+// Fails unless actual is False. `site` names the call in the failure and defaults to
+// the caller's position.
 export fn expect_false(actual: Bool, site: String = caller_site()) Unit!:
 	if not actual: return ok(unit)
 	return error(failure("expected false, got true", site))
 
-// Compares using ordinary Equal semantics; reports expected and actual values on failure.
+// Compares using ordinary Equal semantics; reports expected and actual values on
+// failure.
 export fn expect_equal[T: Equal](
 	actual: T,
 	expected: T,
@@ -68,7 +77,8 @@ export fn expect_not_equal[T: Equal](
 	if actual != expected: return ok(unit)
 	return error(failure("expected different values, got {repr(actual)}", site))
 
-// Checks absolute difference against a finite nonnegative tolerance. NaN fails; identical infinities pass.
+// Checks absolute difference against a finite nonnegative tolerance. NaN fails;
+// identical infinities pass.
 export fn expect_close(
 	actual: Float,
 	expected: Float,
@@ -125,7 +135,8 @@ export fn expect_error[T, E: Clonable](actual: T!E, site: String = caller_site()
 	if actual.is_error(): return ok(actual.err().clone())
 	return error(failure("expected error, got {repr(actual)}", site))
 
-// Calls operation once, requires a programming fault, and returns its message. Cancellation and skip propagate.
+// Calls operation once, requires a programming fault, and returns its message.
+// Cancellation and skip propagate.
 export fn expect_fault(operation: fn() Unit, site: String = caller_site()) String!:
 	if message := catch_fault(operation): return ok(message)
 	return error(
@@ -138,6 +149,7 @@ export fn expect_fault(operation: fn() Unit, site: String = caller_site()) Strin
 export fn fail(message: String, site: String = caller_site()) Unit!:
 	return error(failure(message, site))
 
-// Stops and skips the current test, unwinding lexical cleanup. A cleanup failure overrides the skip.
+// Stops and skips the current test, unwinding lexical cleanup. A cleanup failure
+// overrides the skip.
 export fn skip(reason: String) Never:
 	panic("\u{1}SKIP\u{1}{reason}")

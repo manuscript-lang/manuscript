@@ -13,8 +13,9 @@ import (
 fn encoding_invalid_data() Error:
 	return Error("encoding: invalid data", kind: "EBADMSG")
 
-// Encodes unframed ASCII85; complete groups of four zero bytes become `z`.
-// No Adobe `<~`/`~>` delimiters are added. Example: `ascii85_encode("hello".to_bytes())` is `"BOu!rDZ"`.
+// Encodes unframed ASCII85; complete groups of four zero bytes become `z`. No Adobe
+// `<~`/`~>` delimiters are added. Example: `ascii85_encode("hello".to_bytes())` is
+// `"BOu!rDZ"`.
 export fn ascii85_encode(data: Bytes) String:
 	return msstd_encoding_ascii85_encode(data)
 
@@ -147,13 +148,15 @@ fn base64_table(url_safe: Bool) List[UInt8]:
 		.values()
 	)
 
-// The budget as a count, with no budget as a very large one and a negative budget as -1.
+// The budget as a count, with no budget as a very large one and a negative budget as
+// -1.
 fn budget(max_bytes: Int?) Int:
 	if limit := max_bytes: return limit
 	return 9223372036854775807
 
-// Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text and `padded: false` to omit `=`.
-// Example: `base64_encode("f".to_bytes(), padded: false)` returns `"Zg"`.
+// Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text
+// and `padded: false` to omit `=`. Example:
+// `base64_encode("f".to_bytes(), padded: false)` returns `"Zg"`.
 export fn base64_encode(data: Bytes, url_safe: Bool = false, padded: Bool = true) String:
 	if not padded: return msstd_encoding_base64_encode_unpadded(data, url_safe)
 
@@ -273,8 +276,9 @@ fn text_of(scalars: List[Int]) String:
 	if text := from_scalars(scalars): return text
 	return ""
 
-// Decodes UTF-16 bytes, little-endian unless `little_endian` is false.
-// An odd length or an unpaired surrogate returns EBADMSG; a negative `max_bytes` returns EINVAL, and decoded text longer than `max_bytes` UTF-8 bytes returns EOVERFLOW.
+// Decodes UTF-16 bytes, little-endian unless `little_endian` is false. An odd length or
+// an unpaired surrogate returns EBADMSG; a negative `max_bytes` returns EINVAL, and
+// decoded text longer than `max_bytes` UTF-8 bytes returns EOVERFLOW.
 export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?) String!:
 	limit := budget(max_bytes)
 	if limit < 0: return error(Error("encoding: invalid input", kind: "EINVAL"))
@@ -319,7 +323,8 @@ export fn utf16_decode(data: Bytes, little_endian: Bool = true, max_bytes: Int?)
 
 	return ok(text_of(scalars))
 
-// Encodes text as ISO-8859-1, one byte per scalar. A scalar above U+00FF returns EBADMSG.
+// Encodes text as ISO-8859-1, one byte per scalar. A scalar above U+00FF returns
+// EBADMSG.
 export fn latin1_encode(text: String) Bytes!:
 	return narrow(text, 255)
 

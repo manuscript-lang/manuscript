@@ -148,7 +148,8 @@ test "HTML honors optional byte depth and node limits":
 	try expect_not_equal(Error("HTML: invalid data", kind: "EBADMSG").message, "")
 
 test "HTML depth limit stops deeply nested input without quadratic work":
-	// 60,000 open divs take tens of seconds when the parser only checks depth afterwards.
+	// 60,000 open divs take tens of seconds when the parser only checks depth
+	// afterwards.
 	nested := "<div>".repeat(60000).get()
 	started := monotonic()
 	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))

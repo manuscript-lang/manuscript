@@ -267,7 +267,8 @@ fn split_top(s: String) List[String]:
 	out.append(sub(cs, start, n).trim_chars(WS))
 	return out
 
-// Splits memory-operand contents at top-level + and -. Each piece keeps its sign as the first char.
+// Splits memory-operand contents at top-level + and -. Each piece keeps its sign as the
+// first char.
 fn split_terms(s: String) List[String]:
 	cs := s.chars()
 	n := cs.length()
@@ -457,7 +458,8 @@ fn scan_terms(t: String) TermsRes:
 
 	return TermsRes(err: "", terms: terms)
 
-// Evaluates an expression. `stack` holds the .equ names being evaluated (for cycle detection).
+// Evaluates an expression. `stack` holds the .equ names being evaluated (for cycle
+// detection).
 fn eval(text: String, syms: Map[String, Sym], stack: String) Ev:
 	t := text.trim_chars(WS)
 	sr := scan_terms(t)
@@ -1176,7 +1178,8 @@ export fn main() Int:
 	if decoded := raw.decode_utf8():
 		text = decoded
 	else:
-		// Not valid UTF-8: keep every byte as one scalar (Latin-1) so the source still assembles.
+		// Not valid UTF-8: keep every byte as one scalar (Latin-1) so the source still
+		// assembles.
 		var codes = List[Int]()
 		for i in 0..raw.length():
 			codes.append(raw.get(i).to_int())

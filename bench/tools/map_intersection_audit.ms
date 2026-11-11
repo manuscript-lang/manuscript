@@ -1,5 +1,6 @@
-// Paired runtime Set intersection/algebra controls. Producers verify exact ordered members.
-// Usage: ms run bench/tools/map_intersection_audit.ms -- BEFORE AFTER_OR_DASH OUTPUT PAIRS WORK [MODE [PATTERN [SIZE]]]
+// Paired runtime Set intersection/algebra controls. Producers verify exact ordered
+// members. Usage: ms run bench/tools/map_intersection_audit.ms -- BEFORE AFTER_OR_DASH
+// OUTPUT PAIRS WORK [MODE [PATTERN [SIZE]]]
 import (
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",

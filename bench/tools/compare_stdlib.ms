@@ -1,5 +1,6 @@
-// Compares two `ms` builds on the bench/perf/stdlib bench blocks, alternating runs and checking the cases match.
-// Usage: ms run bench/tools/compare_stdlib.ms -- --before MS --after MS --output DIR [--repeats 5] [--samples 5] [--filter TEXT]
+// Compares two `ms` builds on the bench/perf/stdlib bench blocks, alternating runs and
+// checking the cases match. Usage: ms run bench/tools/compare_stdlib.ms -- --before MS
+// --after MS --output DIR [--repeats 5] [--samples 5] [--filter TEXT]
 import (
 	JsonValue from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",

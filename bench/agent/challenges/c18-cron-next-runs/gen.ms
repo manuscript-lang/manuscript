@@ -1,4 +1,5 @@
-// Generator for c18-cron-next-runs. Deterministic; run: ms run bench/agent/gen.ms -- c18
+// Generator for c18-cron-next-runs. Deterministic; run: ms run bench/agent/gen.ms --
+// c18
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
 	Random, seeded from "../../lib/pyrandom.ms",

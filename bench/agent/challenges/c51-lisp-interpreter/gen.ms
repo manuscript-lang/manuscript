@@ -1,5 +1,6 @@
-// Generator for c51-lisp-interpreter. The expected outputs come from the Go oracle in oracle/*.ref (built with the
-// local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c51
+// Generator for c51-lisp-interpreter. The expected outputs come from the Go oracle in
+// oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
+// Deterministic; run: ms run bench/agent/gen.ms -- c51
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 export fn gen_c51() Unit:

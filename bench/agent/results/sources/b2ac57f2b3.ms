@@ -221,7 +221,8 @@ fn isQuote(s: String) Bool:
 fn blockStops(s: String) Bool:
 	return isBlank(s) or fenceRun(s) > 0 or headingLevel(s) > 0 or isHr(s) or isQuote(s)
 
-// Lines that end a paragraph (a list interrupts only when it is non-empty and starts at 1).
+// Lines that end a paragraph (a list interrupts only when it is non-empty and starts at
+// 1).
 fn paraStops(s: String) Bool:
 	if blockStops(s): return true
 
@@ -476,7 +477,8 @@ fn parsePara(lines: List[String], i: Int) Step:
 		text += strip(lines[k])
 
 		if k < j - 1:
-			// two or more trailing spaces: hard break, marked with a tab before the newline
+			// two or more trailing spaces: hard break, marked with a tab before the
+			// newline
 			if trailingSpaces(lines[k]) >= 2:
 				text += "\t"
 			text += "\n"

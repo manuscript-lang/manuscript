@@ -1,5 +1,6 @@
-// Generator for c55-jq-lite. The expected outputs come from the Go oracle in oracle/*.ref (built with the
-// local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c55
+// Generator for c55-jq-lite. The expected outputs come from the Go oracle in
+// oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
+// Deterministic; run: ms run bench/agent/gen.ms -- c55
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 PEOPLE := "[\{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"],\"addr\":\{\"city\":\"Paris\",\"zip\":\"75001\"\}\},\{\"name\":\"Bob\",\"age\":25,\"tags\":[],\"addr\":\{\"city\":\"Rome\",\"zip\":null\}\},\{\"name\":\"Carol\",\"age\":35,\"tags\":[\"c\"],\"addr\":null\}]"

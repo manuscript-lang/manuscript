@@ -5,7 +5,8 @@ import (
 	expect_ok, expect_true from "@std/test/test.ms",
 )
 
-// Tells the test the watch is registered, reads events until `last` shows up, tells the test again, then waits for more inside the native watcher.
+// Tells the test the watch is registered, reads events until `last` shows up, tells the
+// test again, then waits for more inside the native watcher.
 fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
 	var events = try watch(root, recursive: true)
 	var out = seen
@@ -20,9 +21,10 @@ fn follow(root: String, last: String, seen: WriteStream[Int]) Unit!:
 		else:
 			break
 
-// A cancelled read inside the native watcher must leave the watcher to the stream that owns it. The
-// frame of `WatchSource.next` held the source it took out of the stream, refilled after `pending.pop()`,
-// and unwinding dropped that copy too, so the watcher (and its map of watch descriptors) was freed twice.
+// A cancelled read inside the native watcher must leave the watcher to the stream that
+// owns it. The frame of `WatchSource.next` held the source it took out of the stream,
+// refilled after `pending.pop()`, and unwinding dropped that copy too, so the watcher
+// (and its map of watch descriptors) was freed twice.
 test "cancelling a recursive watch after a burst of events releases the watcher once":
 	temp := temporary("ms-watch-cancel-") | try expect_ok
 	path := temp.path()

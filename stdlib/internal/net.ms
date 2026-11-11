@@ -112,7 +112,8 @@ export extern fn msstd_net_listener_accept(
 	timeout: Duration?
 ) NativeConnection!
 
-// Another handle on the same listener, for a promise that accepts on it; dropping it leaves the listener open.
+// Another handle on the same listener, for a promise that accepts on it; dropping it
+// leaves the listener open.
 export extern fn msstd_net_listener_share(handle: NativeListener) NativeListener
 
 export extern fn msstd_net_listener_address(handle: NativeListener) String

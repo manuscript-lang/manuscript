@@ -6,7 +6,8 @@ export type Version:
 	minor: Int
 	// Patch version number; incremented for compatible fixes.
 	patch: Int
-	// Dot-separated pre-release identifiers in input order; empty for a release version.
+	// Dot-separated pre-release identifiers in input order; empty for a release
+	// version.
 	prerelease: List[String] = []
 	// Dot-separated build metadata identifiers in input order; ignored by compare.
 	build: List[String] = []
@@ -45,7 +46,8 @@ impl Version:
 		if not self.build.is_empty(): text = "{text}+{self.build.join(".")}"
 		return text
 
-// Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
+// Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are
+// rejected.
 export fn parse(text: String) Version!:
 	build_parts := split_first(text, "+")
 	core_and_pre := split_first(build_parts[0].clone(), "-")
@@ -101,7 +103,8 @@ export fn parse(text: String) Version!:
 		)
 	)
 
-// Splits at the first separator only; `String.split` with a part cap drops the rest instead of keeping it.
+// Splits at the first separator only; `String.split` with a part cap drops the rest
+// instead of keeping it.
 fn split_first(text: String, separator: String) List[String]:
 	if at := text.index_of(separator): return [text.take(at), text.drop(at + 1)]
 	return [text.clone()]
@@ -112,7 +115,8 @@ fn compare_ints(left: Int, right: Int) Int:
 
 	return 0
 
-// Digits only, at least one; the caller has already rejected non-ASCII through scalar values.
+// Digits only, at least one; the caller has already rejected non-ASCII through scalar
+// values.
 fn all_digits(scalars: List[Int]) Bool:
 	if scalars.is_empty(): return false
 
@@ -135,7 +139,8 @@ fn valid_identifier(scalars: List[Int]) Bool:
 
 	return true
 
-// Numeric identifiers sort numerically and before alphanumeric ones; others sort bytewise.
+// Numeric identifiers sort numerically and before alphanumeric ones; others sort
+// bytewise.
 fn compare_identifier(left: String, right: String) Int:
 	left_numeric := all_digits(left.scalar_values())
 	right_numeric := all_digits(right.scalar_values())

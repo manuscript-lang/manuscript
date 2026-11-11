@@ -205,7 +205,8 @@ fn canon_int(s: String) Int:
 
 	return v
 
-// issue id argument: optional '#', digits, leading zeros allowed, at least 1; -1 when bad
+// issue id argument: optional '#', digits, leading zeros allowed, at least 1; -1 when
+// bad
 fn id_value(s: String) Int:
 	var body = s.clone()
 	if s.starts_with("#"):
@@ -328,7 +329,8 @@ fn norm_labels(raw: List[String]) StrList:
 	out.sort()
 	return StrList(items: out, err: "")
 
-// first word of s (leading whitespace skipped) and the text after it (leading whitespace skipped)
+// first word of s (leading whitespace skipped) and the text after it (leading
+// whitespace skipped)
 fn split_first(s: String) SF:
 	cs := s.chars()
 	n := cs.length()
@@ -347,7 +349,8 @@ fn split_first(s: String) SF:
 
 // ---------------------------------------------------------------- tokens
 
-// token rules: whitespace separates; a double quote starts a quoted section inside a token
+// token rules: whitespace separates; a double quote starts a quoted section inside a
+// token
 fn tokenize(s: String) StrList:
 	cs := s.chars()
 	n := cs.length()

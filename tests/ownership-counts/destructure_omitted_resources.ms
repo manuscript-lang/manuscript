@@ -1,18 +1,9 @@
-// expect-stdout: close 3
-// expect-stdout: close 2
-// expect-stdout: close 1
-// expect-stdout: close 6
-// expect-stdout: close 5
-// expect-stdout: close 4
-// expect-stdout: close 10
-// expect-stdout: close 9
-// expect-stdout: close 8
-// expect-stdout: close 7
-// expect-stdout: close 13
-// expect-stdout: close 12
-// expect-stdout: close 11
-// Destructuring closes omitted resource fields even when their types own no heap storage.
-// Omitted fields close last declared first, before the fields moved into named bindings.
+// expect-stdout: close 3 expect-stdout: close 2 expect-stdout: close 1 expect-stdout:
+// close 6 expect-stdout: close 5 expect-stdout: close 4 expect-stdout: close 10
+// expect-stdout: close 9 expect-stdout: close 8 expect-stdout: close 7 expect-stdout:
+// close 13 expect-stdout: close 12 expect-stdout: close 11 Destructuring closes omitted
+// resource fields even when their types own no heap storage. Omitted fields close last
+// declared first, before the fields moved into named bindings.
 import (
 	Closeable from "@std/core.ms",
 	stdout from "@std/io/io.ms",

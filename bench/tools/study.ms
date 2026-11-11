@@ -1,5 +1,6 @@
-// Building blocks for the per-experiment paired-trial drivers under bench/tools (names ending in a study topic). A study runs prebuilt
-// producer binaries in rotating order, validates every record, and keeps samples, environment and a summary.
+// Building blocks for the per-experiment paired-trial drivers under bench/tools (names
+// ending in a study topic). A study runs prebuilt producer binaries in rotating order,
+// validates every record, and keeps samples, environment and a summary.
 import (
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	append_file, create_directory from "@std/os/fs.ms",
@@ -27,7 +28,8 @@ export type Labeled:
 export fn labeled(label: String, path: String) Labeled:
 	return Labeled(label, absolute(path))
 
-// Creates `path` and fails when it already exists (a study never overwrites earlier evidence).
+// Creates `path` and fails when it already exists (a study never overwrites earlier
+// evidence).
 export fn fresh_directory(path: String) Unit!:
 	if exists(path): return invalid("{path} already exists")
 
@@ -108,7 +110,8 @@ export fn read_json(path: String) JsonValue!:
 
 	return ok(doc.get(JsonValue.Null))
 
-// The `median_ns` of `before` in the summary row for `case` (summary lists `{case, distributions: {before: {median_ns}}}`).
+// The `median_ns` of `before` in the summary row for `case` (summary lists
+// `{case, distributions: {before: {median_ns}}}`).
 export fn before_median(summary: JsonValue, name: String, operation: String) Float!:
 	for row in summary.as_list().get([]):
 		c := row.get("case").get(JsonValue.Null).as_string().get("")
@@ -127,7 +130,8 @@ export fn before_median(summary: JsonValue, name: String, operation: String) Flo
 export fn platform_name() String:
 	return platform()
 
-// Runs `binary args` and returns its standard output, pinned to one CPU with `taskset` (Linux) when `cpu` is not empty.
+// Runs `binary args` and returns its standard output, pinned to one CPU with `taskset`
+// (Linux) when `cpu` is not empty.
 export fn run_pinned(binary: String, args: List[String], cpu: String) String!:
 	if cpu == "": return sample(binary, args)
 	return sample("taskset", ["--cpu-list", cpu.clone(), binary.clone()].concat(args))

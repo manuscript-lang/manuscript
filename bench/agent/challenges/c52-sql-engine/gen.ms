@@ -1,5 +1,6 @@
-// Generator for c52-sql-engine. The expected outputs come from the Go oracle in oracle/*.ref (built with the
-// local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c52
+// Generator for c52-sql-engine. The expected outputs come from the Go oracle in
+// oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
+// Deterministic; run: ms run bench/agent/gen.ms -- c52
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
 SETUP := "CREATE TABLE dept (id INT PRIMARY KEY, name TEXT NOT NULL, city TEXT);\nCREATE TABLE emp (id INT PRIMARY KEY, name TEXT NOT NULL, dept_id INT, salary INT, title TEXT);\nINSERT INTO dept VALUES (1, 'Engineering', 'Berlin'), (2, 'Sales', 'Paris'), (3, 'Support', NULL), (4, 'Legal', 'Rome');\nINSERT INTO emp VALUES\n  (1, 'Alice', 1, 120, 'lead'),\n  (2, 'Bob', 1, 100, 'dev'),\n  (3, 'Carol', 2, 90, 'rep'),\n  (4, 'Dan', 2, 95, 'rep'),\n  (5, 'Eve', NULL, 70, NULL),\n  (6, 'Frank', 3, 60, 'agent'),\n  (7, 'Grace', 1, 100, 'dev'),\n  (8, 'Heidi', 3, NULL, 'agent');\n"

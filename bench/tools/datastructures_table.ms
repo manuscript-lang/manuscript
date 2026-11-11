@@ -1,6 +1,7 @@
-// Validates complete data-structure trials before comparing minimum ns/op (bench/perf/datastructures).
-// Samples are `<version> <operation> <count> <nanoseconds>`. The runner appends `<version> # end` only after a successful
-// producer. Producers do not emit checksums.
+// Validates complete data-structure trials before comparing minimum ns/op
+// (bench/perf/datastructures). Samples are
+// `<version> <operation> <count> <nanoseconds>`. The runner appends `<version> # end`
+// only after a successful producer. Producers do not emit checksums.
 import invalid, left, right from "./lib.ms"
 
 export type Operation:

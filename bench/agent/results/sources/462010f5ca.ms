@@ -38,7 +38,8 @@ fn weekday_of(year: Int, month: Int, day: Int) Int:
 	days += day - 1
 	return (days + 4) % 7
 
-// Returns the value of unsigned ASCII digits, or -1 for empty text or any other character.
+// Returns the value of unsigned ASCII digits, or -1 for empty text or any other
+// character.
 fn digits_value(text: String) Int:
 	if text.length() == 0: return -1
 
@@ -133,7 +134,8 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Bool]:
 	return chosen
 
 impl Cron:
-	// The first `count` matching minutes strictly after `start`, searching 3000 days past its date.
+	// The first `count` matching minutes strictly after `start`, searching 3000 days
+	// past its date.
 	fn runs(start: Stamp, count: Int) List[Stamp]:
 		var found = List[Stamp]()
 		var at = start.clone()

@@ -35,8 +35,8 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 	).wait() | try expect_ok
 	first.head.protocol | try expect_equal("HTTP/2.0")
 
-	// Each cancelled request used to stay open on the connection, so the peer's stream limit
-	// filled and later requests failed.
+	// Each cancelled request used to stay open on the connection, so the peer's stream
+	// limit filled and later requests failed.
 	for i in 0..400:
 		_ := client.fetch("{base}/hang", FetchOptions(timeout: none)).with(
 			options: PromiseOptions(timeout: 5.milliseconds())

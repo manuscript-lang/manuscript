@@ -5,7 +5,8 @@ import (
 	measure, versions from "./workloads_measure.ms",
 )
 
-// A producer for `version` that prints "correct" unless `mode` says otherwise for `bad`. Calls are counted per version.
+// A producer for `version` that prints "correct" unless `mode` says otherwise for
+// `bad`. Calls are counted per version.
 type Producer:
 	bad: String
 	mode: String

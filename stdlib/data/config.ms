@@ -1,4 +1,5 @@
-// Builds the error for a malformed line: `config: line <n>: <reason>`, with the line in `details`.
+// Builds the error for a malformed line: `config: line <n>: <reason>`, with the line in
+// `details`.
 fn config_error(line: Int, reason: String) Error:
 	return Error(
 		"config: line {line}: {reason}", kind: "EBADMSG", details: {"line": "{line}"}
@@ -19,14 +20,16 @@ Example: `parse_dotenv("PORT=8080\nNAME='my app' # label")` holds `PORT` as `"80
 export fn parse_dotenv(text: String) Map[String, String]!:
 	var out = Map[String, String]()
 
-	// Split on LF alone: a CR before it stays until the parser knows it is outside a quoted value.
+	// Split on LF alone: a CR before it stays until the parser knows it is outside a
+	// quoted value.
 	lines := text.cut_prefix("\u{feff}").get(text).split("\n")
 	var index = 0
 
 	while index < lines.length():
 		number := index + 1
 
-		// Text inside an opening quote is literal, so only the front of the line is trimmed here.
+		// Text inside an opening quote is literal, so only the front of the line is
+		// trimmed here.
 		entry := lines[index].trim_start()
 		index += 1
 		if entry.trim().is_empty() or entry.starts_with("#"): continue
@@ -48,7 +51,8 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 			out.add(name, bare_value(value.trim()))
 			continue
 
-		// Only the newest line is searched for the closing quote, so a long value stays linear.
+		// Only the newest line is searched for the closing quote, so a long value stays
+		// linear.
 		var parts = [value.drop(1)]
 		var closing = parts[0].index_of(quote)
 
@@ -117,7 +121,8 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
 
 	return ok(sections)
 
-// The text before an inline comment: a `#` at the start or after a space or tab. Other `#` characters belong to the value.
+// The text before an inline comment: a `#` at the start or after a space or tab. Other
+// `#` characters belong to the value.
 fn bare_value(value: String) String:
 	chars := value.chars()
 	var previous = " "
@@ -157,8 +162,9 @@ fn ini_value(value: String) String:
 	quote := trimmed.take(1)
 	quoted := quote == "\"" or quote == "'"
 
-	// A closing quote followed only by whitespace and a ` #` or ` ;` comment ends the value; the
-	// comment may itself contain or end with the quote, so this precedes the whole-suffix rule.
+	// A closing quote followed only by whitespace and a ` #` or ` ;` comment ends the
+	// value; the comment may itself contain or end with the quote, so this precedes the
+	// whole-suffix rule.
 	if quoted:
 		if closing := trimmed.drop(1).index_of(quote):
 			tail := trimmed.drop(closing + 2)

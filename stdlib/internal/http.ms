@@ -39,7 +39,8 @@ export extern fn msstd_http_serving_address(serving: NativeServing) String
 
 export extern fn msstd_http_serving_accept(serving: NativeServing) Int!
 
-// A worker engine on the calling thread; it adopts connections and serves them from the poller.
+// A worker engine on the calling thread; it adopts connections and serves them from the
+// poller.
 export extern fn msstd_http_serving_worker(serving: NativeServing) NativeWorker!
 
 export extern fn msstd_http_worker_adopt(worker: NativeWorker, connection: Int) Unit

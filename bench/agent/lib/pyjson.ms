@@ -1,5 +1,6 @@
-// JSON text laid out like CPython's `json.dumps` (ASCII-only output, `", "` and `": "` separators, or one
-// item per line with `indent` spaces), so regenerated challenge files and result lines stay byte-identical.
+// JSON text laid out like CPython's `json.dumps` (ASCII-only output, `", "` and `": "`
+// separators, or one item per line with `indent` spaces), so regenerated challenge
+// files and result lines stay byte-identical.
 import (
 	Data from "@std/core.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
@@ -69,7 +70,8 @@ fn emit(value: JsonValue, indent: Int, level: Int) String:
 
 			return "\{\n" + pad + parts.join(",\n" + pad) + "\n" + end + "\}"
 
-// Lays `value` out as `json.dumps(value, indent=indent)` does; `indent` 0 means the single-line form.
+// Lays `value` out as `json.dumps(value, indent=indent)` does; `indent` 0 means the
+// single-line form.
 export fn dumps(value: JsonValue, indent: Int) String:
 	return emit(value, indent, 0)
 

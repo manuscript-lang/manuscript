@@ -453,7 +453,8 @@ fn verify_bigint_and_regex() Unit!:
 	a.bit_or(other: b).to_int() | try expect_equal(13)
 	a.bit_xor(other: b).to_int() | try expect_equal(9)
 
-	// A Regex has one owner and no clone, so the lent part comes from a binding, not a temporary.
+	// A Regex has one owner and no clone, so the lent part comes from a binding, not a
+	// temporary.
 	compiled := compile(pattern: "[0-9]+")
 	pattern := try common_result(result: compiled)
 	(pattern.matches(text: "a12b3")) | try expect_true

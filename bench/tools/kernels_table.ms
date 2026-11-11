@@ -1,6 +1,8 @@
-// Validates complete trials before printing per-kernel minimum microseconds (bench/perf/kernels and competence).
-// Rows are `<version> <kernel> <microseconds> <checksum>`; each successful producer ends its trial with `<version> # end`.
-// Times below two microseconds are reported as folded rather than used in ratios.
+// Validates complete trials before printing per-kernel minimum microseconds
+// (bench/perf/kernels and competence). Rows are
+// `<version> <kernel> <microseconds> <checksum>`; each successful producer ends its
+// trial with `<version> # end`. Times below two microseconds are reported as folded
+// rather than used in ratios.
 import invalid, minimum from "./lib.ms"
 
 export fn suite_names(suite: String) List[String]:
@@ -20,8 +22,9 @@ export fn base_versions() List[String]:
 export fn c_versions() List[String]:
 	return ["c", "c-ms"]
 
-// Kernels a version does not implement. Plain C has no map_count: a hand-rolled int64 open-addressing
-// table is not a like-for-like comparison with the general insertion-ordered `Map`.
+// Kernels a version does not implement. Plain C has no map_count: a hand-rolled int64
+// open-addressing table is not a like-for-like comparison with the general
+// insertion-ordered `Map`.
 export fn omitted(version: String) List[String]:
 	if version == "c": return ["map_count_2M"]
 	return []

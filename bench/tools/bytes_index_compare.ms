@@ -1,7 +1,9 @@
-// Validates and compares already-built byte-search programs in balanced order (bench/perf/bytes-index).
-// Usage: ms run bench/tools/bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]
-// Programs print the string-lines CSV (see string_lines_compare.ms). Expected checksums come from a straightforward search of a
-// buffer of `a` bytes holding one 0xFF byte, an oracle independent of the programs. --cpu pins every run with `taskset`.
+// Validates and compares already-built byte-search programs in balanced order
+// (bench/perf/bytes-index). Usage: ms run bench/tools/bytes_index_compare.ms -- BEFORE
+// AFTER RUST OUTPUT_DIR [--cpu N] Programs print the string-lines CSV (see
+// string_lines_compare.ms). Expected checksums come from a straightforward search of a
+// buffer of `a` bytes holding one 0xFF byte, an oracle independent of the programs.
+// --cpu pins every run with `taskset`.
 import (
 	JsonValue from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",

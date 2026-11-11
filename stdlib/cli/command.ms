@@ -87,7 +87,8 @@ export type Flag:
 	required: Bool = false
 	// Also accepted by every subcommand below the command that declares it.
 	persistent: Bool = false
-	// When not empty, every value must be one of these texts; use with String and List flags.
+	// When not empty, every value must be one of these texts; use with String and List
+	// flags.
 	choices: List[String] = []
 
 // A positional argument, bound in declaration order.
@@ -112,7 +113,8 @@ export type Matches:
 	values: Map[String, List[String]] = Map[String, List[String]]()
 	// The command names walked from the root, root included.
 	path: List[String] = []
-	// The JSON literal for each supplied value by field name (dashes in names become underscores); decoded by `command`.
+	// The JSON literal for each supplied value by field name (dashes in names become
+	// underscores); decoded by `command`.
 	fields: Map[String, String] = Map[String, String]()
 
 impl Matches:
@@ -172,14 +174,16 @@ export type Command:
 	exec: fn(Matches) Int! = fn m: ok(0)
 
 impl Command:
-	// Checks the tree, resolves the subcommand chain, and validates flags and arguments.
-	// Returns `Help` for `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
+	// Checks the tree, resolves the subcommand chain, and validates flags and
+	// arguments. Returns `Help` for `-h`, `--help`, a leading `help` word, or a group
+	// invoked without a subcommand.
 	fn parse(argv: List[String]) Parsed!:
 		try check_schema(self, [], [self.name.clone()])
 		return walk(self, argv)
 
-	// Parses `argv`, writes help to stdout or the error plus a usage hint to stderr, and runs the handler.
-	// Returns the handler's status, 0 after help, 1 when the handler fails and 2 for a usage error.
+	// Parses `argv`, writes help to stdout or the error plus a usage hint to stderr,
+	// and runs the handler. Returns the handler's status, 0 after help, 1 when the
+	// handler fails and 2 for a usage error.
 	fn execute(argv: List[String]) Int:
 		parsed := self.parse(argv)
 
@@ -202,14 +206,16 @@ impl Command:
 
 				return result.get()
 
-	// Runs the handler of the command `matches.path` names, as `parse` resolved it, and returns its exit status.
-	// The path starts at this node's name; an unknown path is an `EINVAL` error.
+	// Runs the handler of the command `matches.path` names, as `parse` resolved it, and
+	// returns its exit status. The path starts at this node's name; an unknown path is
+	// an `EINVAL` error.
 	fn run(matches: Matches) Int!:
 		if matches.path.length() > 0 and matches.path[0] == self.name:
 			if node := node_at(self, matches.path, 1): return node.exec(matches)
 		return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
 
-	// Returns the help text for the command reached by following `path` from this node, or none for an unknown path.
+	// Returns the help text for the command reached by following `path` from this node,
+	// or none for an unknown path.
 	fn help(path: List[String] = []) String?:
 		rendered := help_at(self, path, 0, [self.name.clone()], [])
 		if rendered.is_error(): return none
@@ -231,7 +237,8 @@ export enum Parsed:
 	)
 	// A leaf to run: `Command.run` passes the values to the handler at `matches.path`.
 	Run(
-		// The values to pass the handler; `path` names the command reached from the root.
+		// The values to pass the handler; `path` names the command reached from the
+		// root.
 		matches: Matches
 	)
 
@@ -242,8 +249,9 @@ fn node_at(node: Command, path: List[String], from: Int) Command?:
 
 	return none
 
-// The help of the command reached by following `words` from `from` on, under `names` and the
-// persistent flags `inherited` so far; an unknown word is an error naming the path reached.
+// The help of the command reached by following `words` from `from` on, under `names`
+// and the persistent flags `inherited` so far; an unknown word is an error naming the
+// path reached.
 fn help_at(
 	node: Command,
 	words: List[String],
@@ -394,7 +402,8 @@ fn claim(var seen: List[String], key: String, label: String) Unit!:
 
 	seen.append(key)
 
-// Validates a node and everything below it; `inherited` holds ancestors' persistent flags.
+// Validates a node and everything below it; `inherited` holds ancestors' persistent
+// flags.
 fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
 	where := path.join(" ")
 	var names: List[String] = []
@@ -495,7 +504,8 @@ fn walk(root: Command, argv: List[String]) Parsed!:
 		root, argv, 0, [root.name.clone()], [], Map[String, List[String]]()
 	)
 
-// Resolves `argv` from `start` on at `node`, reached by `path` with the persistent flags
+// Resolves `argv` from `start` on at `node`, reached by `path` with the persistent
+// flags
 // `inherited` and the flag values `given` so far; a subcommand word continues at the child.
 fn walk_from(
 	node: Command,
@@ -697,7 +707,8 @@ fn flag_section(title: String, flags: List[Flag]) String:
 
 	return "\n{title}:\n{table.render()}\n"
 
-// Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row with other controls is omitted.
+// Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row
+// with other controls is omitted.
 fn help_row(var table: Table, row: List[String]) Unit:
 	var cells = row.map(fn cell: cell.replace_each({"\n": " ", "\t": " ", "\r": " "}))
 	if table.add(cells).is_error(): return

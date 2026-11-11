@@ -1,5 +1,6 @@
 // Compares Manuscript, Go and Rust on small whole programs (bench/perf/programs).
-// Usage: ms run bench/tools/programs.ms [-- repeats]; MS, GO, RUSTC pick tools; BENCH_OUTPUT keeps binaries, input and raw samples.
+// Usage: ms run bench/tools/programs.ms [-- repeats]; MS, GO, RUSTC pick tools;
+// BENCH_OUTPUT keeps binaries, input and raw samples.
 import (
 	arguments from "@std/os/env.ms",
 	CopyOptions, copy, create_directory, temporary, write_file from "@std/os/fs.ms",

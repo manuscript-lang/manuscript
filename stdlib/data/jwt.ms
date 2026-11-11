@@ -18,24 +18,30 @@ import (
 fn jwt_invalid_key() Error:
 	return Error("jwt: invalid key", kind: "EINVAL")
 
-// Selects how a token is signed. A verifier names the one it accepts; it never trusts the algorithm a token claims.
+// Selects how a token is signed. A verifier names the one it accepts; it never trusts
+// the algorithm a token claims.
 export enum JwtAlgorithm:
-	// HMAC with SHA-256 and a shared secret of any length (use at least 32 random bytes).
+	// HMAC with SHA-256 and a shared secret of any length (use at least 32 random
+	// bytes).
 	Hs256
 	// HMAC with SHA-384 and a shared secret.
 	Hs384
 	// HMAC with SHA-512 and a shared secret.
 	Hs512
-	// RSASSA-PKCS1-v1_5 with SHA-256. Signing takes a PKCS#8 DER private key; verifying takes a PKIX DER public key.
+	// RSASSA-PKCS1-v1_5 with SHA-256. Signing takes a PKCS#8 DER private key; verifying
+	// takes a PKIX DER public key.
 	Rs256
-	// ECDSA over P-256 with SHA-256. Signing takes a PKCS#8 DER private key; verifying takes a PKIX DER public key.
+	// ECDSA over P-256 with SHA-256. Signing takes a PKCS#8 DER private key; verifying
+	// takes a PKIX DER public key.
 	Es256
-	// Ed25519. Signing takes the 32-byte private seed; verifying takes the 32-byte public key.
+	// Ed25519. Signing takes the 32-byte private seed; verifying takes the 32-byte
+	// public key.
 	EdDsa
 
 // What `verify_token` requires of a token beyond its signature.
 export type JwtCheck:
-	// The only algorithm accepted; a token whose header names another returns an Error with kind `EBADMSG`.
+	// The only algorithm accepted; a token whose header names another returns an Error
+	// with kind `EBADMSG`.
 	algorithm: JwtAlgorithm = JwtAlgorithm.Hs256
 	// When set, the `iss` claim must equal it.
 	issuer: String? = none
@@ -43,9 +49,11 @@ export type JwtCheck:
 	audience: String? = none
 	// Seconds of clock skew tolerated when checking `exp` and `nbf`.
 	leeway: Int = 0
-	// The Unix time in seconds to judge `exp` and `nbf` against; none uses the current time.
+	// The Unix time in seconds to judge `exp` and `nbf` against; none uses the current
+	// time.
 	at: Int? = none
-	// The largest token in bytes accepted before any decoding; larger tokens return an Error with kind `EBADMSG`.
+	// The largest token in bytes accepted before any decoding; larger tokens return an
+	// Error with kind `EBADMSG`.
 	max_bytes: Int = 16384
 
 type JwtHeader:
@@ -272,7 +280,8 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
 			Error("jwt: wrong audience", kind: "EBADMSG")
 		)
 
-// A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is malformed.
+// A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is
+// malformed.
 fn numeric_date(claim: JsonValue, name: String) String!:
 	match claim:
 		NumberValue(text): return ok(text)

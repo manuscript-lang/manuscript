@@ -1,9 +1,11 @@
-// Orders two keys: negative when `left` sorts first, zero when equal, positive when `right` sorts first.
+// Orders two keys: negative when `left` sorts first, zero when equal, positive when
+// `right` sorts first.
 fn order[T: Comparable](left: T, right: T) Int:
 	return left.compare(right)
 
 // Returns one new list holding `chunks[low]` through `chunks[high - 1]` in order.
-// Halving the range copies each element about log2(chunk count) times; folding left with `concat` would recopy every earlier chunk for each later one.
+// Halving the range copies each element about log2(chunk count) times; folding left
+// with `concat` would recopy every earlier chunk for each later one.
 fn joined[T: Clonable](chunks: List[List[T]], low: Int, high: Int) List[T]:
 	count := high - low
 	if count == 0: return []
@@ -28,17 +30,20 @@ add and remove locate the key and shift entries within its chunk; splitting or r
 Use clone() for an independent deep copy. Use Map when insertion order is enough and you need average O(1) key lookup.
 */
 export type SortedMap[K: Comparable & Clonable, V: Clonable]:
-	// Sorted chunks of keys; no chunk is empty. Internal state: use the operations, not this field.
+	// Sorted chunks of keys; no chunk is empty. Internal state: use the operations, not
+	// this field.
 	key_chunks: List[List[K]] = []
 	// Values parallel to `key_chunks`. Internal state.
 	value_chunks: List[List[V]] = []
-	// The last key of each chunk, so a search can choose a chunk without reading any. Internal state.
+	// The last key of each chunk, so a search can choose a chunk without reading any.
+	// Internal state.
 	maxes: List[K] = []
 	// Number of entries. Internal state; read it with `length()`.
 	size: Int = 0
 
 impl SortedMap[K, V]:
-	// Returns the index of the first chunk whose last key is not below `key`, or the last chunk when every key is below it.
+	// Returns the index of the first chunk whose last key is not below `key`, or the
+	// last chunk when every key is below it.
 	fn chunk_for(key: K) Int:
 		var low = 0
 		var high = self.maxes.length() - 1
@@ -53,7 +58,8 @@ impl SortedMap[K, V]:
 
 		return low
 
-	// Returns the index of the first key in chunk `c` that is not below `key`, or the chunk length when none.
+	// Returns the index of the first key in chunk `c` that is not below `key`, or the
+	// chunk length when none.
 	fn lower_bound(c: Int, key: K) Int:
 		var low = 0
 		var high = self.key_chunks[c].length()
@@ -111,7 +117,8 @@ impl SortedMap[K, V]:
 	fn get_or(key: K, fallback: V) V:
 		return self.get(key).get(fallback)
 
-	// Inserts a key or replaces the value of an equal key, which keeps its original key.
+	// Inserts a key or replaces the value of an equal key, which keeps its original
+	// key.
 	var fn add(key: K, value: V) Unit:
 		if self.size == 0:
 			self.key_chunks = [[key.clone()]]
@@ -164,7 +171,8 @@ impl SortedMap[K, V]:
 
 		self.remove_at(c, at)
 
-	// Removes the entry at chunk `c`, position `at`, dropping the chunk when it empties.
+	// Removes the entry at chunk `c`, position `at`, dropping the chunk when it
+	// empties.
 	var fn remove_at(c: Int, at: Int) Unit:
 		self.key_chunks[c].remove(at)
 		self.value_chunks[c].remove(at)
@@ -304,13 +312,15 @@ impl SortedMap[K, V]:
 
 		return out
 
-	// Calls operation(key:, value:) in ascending key order over a snapshot of the entries.
+	// Calls operation(key:, value:) in ascending key order over a snapshot of the
+	// entries.
 	fn for_each(operation: fn(K, V) Unit) Unit:
 		for entry in self.entries():
 			operation(entry.key, entry.value)
 
-// A set kept in ascending order, with the same Comparable ordering and costs as SortedMap.
-// Members that compare equal are the same member. Use clone() for an independent deep copy.
+// A set kept in ascending order, with the same Comparable ordering and costs as
+// SortedMap. Members that compare equal are the same member. Use clone() for an
+// independent deep copy.
 export type SortedSet[T: Comparable & Clonable]:
 	// Members as the keys of a map. Internal state: use the operations, not this field.
 	members: SortedMap[T, Bool] = SortedMap[T, Bool]()
@@ -371,7 +381,8 @@ impl SortedSet[T]:
 		if entry := self.members.floor(value): return entry.key.clone()
 		return none
 
-	// Returns a new list of the members with `low` <= member < `high`, in ascending order.
+	// Returns a new list of the members with `low` <= member < `high`, in ascending
+	// order.
 	fn range(low: T, high: T) List[T]:
 		return self.members.range(low, high).map(fn entry: entry.key.clone())
 

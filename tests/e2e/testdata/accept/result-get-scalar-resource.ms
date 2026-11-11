@@ -5,8 +5,9 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-// A resource with only scalar fields has no drop glue but still has one owner that closes it. Its
-// id names the file the close appends to, since it has nowhere to keep a log path.
+// A resource with only scalar fields has no drop glue but still has one owner that
+// closes it. Its id names the file the close appends to, since it has nowhere to keep a
+// log path.
 type Tag:
 	id: Int
 
