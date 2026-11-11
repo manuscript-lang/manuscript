@@ -123,9 +123,6 @@ impl Deque[T]:
 				self.push_front(value)
 			steps += 1
 
-interface DequeCopy[T: Clonable]:
-	fn to_list() List[T]
-
 impl DequeCopy[T] for Deque[T]:
 	// Returns a new list of copies of the values from front to back.
 	fn to_list() List[T]:
@@ -145,3 +142,6 @@ impl Iterable[T] for Deque[T]:
 	fn at(index: Int) T?:
 		if index < 0 or index >= self.size: return none
 		return self.slots.get(self.slot_of(index))
+
+interface DequeCopy[T: Clonable]:
+	fn to_list() List[T]

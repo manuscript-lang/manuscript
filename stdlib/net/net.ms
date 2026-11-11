@@ -250,24 +250,6 @@ export opaque type Network:
 	// The runtime handle; it is released when the last reference to this network ends.
 	native: NativeNetwork
 
-/*
-Per-call settings of a buffered `request`: the headers to send, a bound on the response body, and a time budget.
-*/
-export type RequestOptions:
-	// The header fields to send with the request; empty by default. Transport headers such as `Host` and `Content-Length` are set by the request itself.
-	headers: HttpHeaders = headers()
-	// Largest accepted response body in bytes. A longer body returns EOVERFLOW; none sets no limit.
-	max_bytes: Int? = none
-	// Time budget for the whole request; ETIMEDOUT when it elapses. none waits indefinitely.
-	timeout: Duration? = none
-
-// Per-call settings of a DNS query: how many records to accept and a time budget.
-export type DnsOptions:
-	// More records than this returns EOVERFLOW; none sets no limit.
-	max_records: Int? = none
-	// Time budget for the query; ETIMEDOUT when it elapses. none waits indefinitely.
-	timeout: Duration? = none
-
 impl Network:
 	// Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
 	// A restricted network without listening permission, or an address outside its CIDRs, returns EACCES.
@@ -413,6 +395,24 @@ impl Network:
 	// The address must be allowed by this network's restrictions, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
 	fn with_resolver(address: String) Network!:
 		return msstd_net_network_with_resolver(self.native, address)
+
+/*
+Per-call settings of a buffered `request`: the headers to send, a bound on the response body, and a time budget.
+*/
+export type RequestOptions:
+	// The header fields to send with the request; empty by default. Transport headers such as `Host` and `Content-Length` are set by the request itself.
+	headers: HttpHeaders = headers()
+	// Largest accepted response body in bytes. A longer body returns EOVERFLOW; none sets no limit.
+	max_bytes: Int? = none
+	// Time budget for the whole request; ETIMEDOUT when it elapses. none waits indefinitely.
+	timeout: Duration? = none
+
+// Per-call settings of a DNS query: how many records to accept and a time budget.
+export type DnsOptions:
+	// More records than this returns EOVERFLOW; none sets no limit.
+	max_records: Int? = none
+	// Time budget for the query; ETIMEDOUT when it elapses. none waits indefinitely.
+	timeout: Duration? = none
 
 // The network of the current host.
 fn host_network() Network:

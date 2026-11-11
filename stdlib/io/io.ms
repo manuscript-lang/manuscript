@@ -182,17 +182,6 @@ export type DescriptorSink:
 	// The runtime descriptor written to.
 	id: Int
 
-// An OS write failure is terminal: bytes may have been partly written, so later drains must not hide it.
-fn descriptor_write_result(id: Int) Unit!:
-	message := msrt_streams_error(id)
-	if message.length() > 0: return error(Error(message, kind: "EIO"))
-
-	return ok(unit)
-
-fn flush_descriptor(id: Int) Unit!:
-	try adopt[Unit](msrt_streams_flush(id)).wait()
-	return descriptor_write_result(id)
-
 impl Sink[Bytes] for DescriptorSink:
 	// Queues the bytes for the descriptor; `EBADF` once it is closed. Back pressure: a write that leaves more than
 	// `HIGH_WATER` bytes queued waits until the descriptor has taken them, so a slow reader slows the writer.
@@ -214,6 +203,17 @@ impl Sink[Bytes] for DescriptorSink:
 		drained := flush_descriptor(self.id)
 		msrt_streams_close(self.id)
 		return drained
+
+// An OS write failure is terminal: bytes may have been partly written, so later drains must not hide it.
+fn descriptor_write_result(id: Int) Unit!:
+	message := msrt_streams_error(id)
+	if message.length() > 0: return error(Error(message, kind: "EIO"))
+
+	return ok(unit)
+
+fn flush_descriptor(id: Int) Unit!:
+	try adopt[Unit](msrt_streams_flush(id)).wait()
+	return descriptor_write_result(id)
 
 // Returns the process standard-input stream.
 // ms: effect std.console.read

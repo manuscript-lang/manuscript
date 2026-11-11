@@ -70,10 +70,15 @@ test('combined third-party and copyright notice filenames are preserved', t => {
     'THIRD-PARTY-NOTICES.txt': 'Separated notice',
     'CopyrightNotice.txt': 'Additional copyright',
   };
-  const root = fixture(t, { 'node_modules/client': files });
-  const text = thirdPartyNotices(root, ['node_modules/client/index.js']);
+  // Case-only variants collide on default macOS and Windows filesystems.
+  // Give each spelling its own package fixture while retaining a sibling license.
   for (const [name, content] of Object.entries(files)) {
+    const root = fixture(t, {
+      'node_modules/client': { 'License.txt': 'Main license', [name]: content },
+    });
+    const text = thirdPartyNotices(root, ['node_modules/client/index.js']);
     assert.ok(text.includes(`--- node_modules/client/${name} ---\n${content}`), name);
+    assert.ok(text.includes('--- node_modules/client/License.txt ---\nMain license'));
   }
 });
 

@@ -336,13 +336,6 @@ export type TerminalDecoder:
 	// True while the rest of an overlong CSI sequence is being dropped.
 	discarding: Bool
 
-// A decoder with nothing pending.
-export fn terminal_decoder() TerminalDecoder:
-	return TerminalDecoder(
-		pending: List[String](), pasting: false, paste: List[String](),
-		discarding: false
-	)
-
 impl TerminalDecoder:
 	// True when an escape sequence is waiting for more input.
 	fn partial() Bool:
@@ -440,6 +433,13 @@ impl TerminalDecoder:
 		if not run.is_empty(): out.append(TerminalEvent.Text(concat_all(run)))
 		return out
 
+// A decoder with nothing pending.
+export fn terminal_decoder() TerminalDecoder:
+	return TerminalDecoder(
+		pending: List[String](), pasting: false, paste: List[String](),
+		discarding: false
+	)
+
 fn read_size(handle: NativeRawTerminal) TerminalSize?:
 	if msstd_terminal_raw_terminal_size_status(handle).is_error(): return none
 	return TerminalSize(
@@ -508,11 +508,6 @@ In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
 export type RawTerminal:
 	// The runtime handle; the event stream holds another on the same terminal.
 	handle: RawHandle
-
-// What the native `raw_mode` returns: the runtime handle itself.
-export opaque type RawHandle:
-	// The runtime terminal handle.
-	native: NativeRawTerminal
 
 impl Closeable for RawTerminal:
 	// Restores the terminal; closing again does nothing.
@@ -608,6 +603,11 @@ impl RawTerminal:
 	fn set_title(title: String) Unit!:
 		clean := title.replace("\u{7}", "").replace(esc, "").replace("\u{9c}", "")
 		return self.write("{esc}]2;{clean}\u{7}")
+
+// What the native `raw_mode` returns: the runtime handle itself.
+export opaque type RawHandle:
+	// The runtime terminal handle.
+	native: NativeRawTerminal
 
 // Reports terminal availability and color support without changing terminal state.
 // ms: effect std.console.read

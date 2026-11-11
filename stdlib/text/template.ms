@@ -117,6 +117,20 @@ export opaque type Template:
 	// True when printed values are HTML-escaped by default.
 	html: Bool
 
+impl Template:
+	// Renders with `data` (an object supplies the root names) and the settings in `options`.
+	fn render(data: JsonValue, options: RenderOptions = RenderOptions()) String!Error:
+		var frames = List[Map[String, JsonValue]]()
+		frames.append(root_names(data))
+
+		var run = Run(
+			out: StringBuilder(), written: 0, frames: frames,
+			partials: options.partials.clone(), strict: options.strict,
+			limit: options.max_output, html: self.html
+		)
+		try run.nodes(self.nodes.clone(), 0)
+		return ok(run.out.build())
+
 type Token:
 	action: Bool
 	body: String
@@ -191,20 +205,6 @@ export type RenderOptions:
 	strict: Bool = true
 	// Maximum text length in bytes (default 16 MiB).
 	max_output: Int = 16777216
-
-impl Template:
-	// Renders with `data` (an object supplies the root names) and the settings in `options`.
-	fn render(data: JsonValue, options: RenderOptions = RenderOptions()) String!Error:
-		var frames = List[Map[String, JsonValue]]()
-		frames.append(root_names(data))
-
-		var run = Run(
-			out: StringBuilder(), written: 0, frames: frames,
-			partials: options.partials.clone(), strict: options.strict,
-			limit: options.max_output, html: self.html
-		)
-		try run.nodes(self.nodes.clone(), 0)
-		return ok(run.out.build())
 
 // Renders `template` as its `render` method does and writes the text to `output`, which the caller keeps and closes.
 // A failed render writes nothing; a failed write returns the stream's error.
@@ -540,12 +540,6 @@ type Builder:
 	at: Int
 	html: Bool
 
-fn first_word(body: String) String:
-	return body.split(" ")[0].trim()
-
-fn after_word(body: String) String:
-	return body.drop(first_word(body).length()).trim()
-
 impl Builder:
 	var fn block(depth: Int) BlockEnd!Error:
 		var nodes = List[TemplateNode]()
@@ -677,6 +671,12 @@ impl Builder:
 			return error(syntax_error(line: line, reason: "for needs end"))
 
 		return ok(Each(first, second, source, body.nodes, otherwise))
+
+fn first_word(body: String) String:
+	return body.split(" ")[0].trim()
+
+fn after_word(body: String) String:
+	return body.drop(first_word(body).length()).trim()
 
 fn trailing_filter(expr: TemplateExpr) String:
 	match expr:

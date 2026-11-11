@@ -171,19 +171,6 @@ export type Command:
 	// Runs after a successful parse; the returned Int is the exit status.
 	exec: fn(Matches) Int! = fn m: ok(0)
 
-// The outcome of parsing: help text to show, or a node ready to run.
-export enum Parsed:
-	// `-h`, `--help`, `help` or a group without a handler.
-	Help(
-		// The rendered help ending in a newline, ready to write to stdout.
-		text: String
-	)
-	// A leaf to run: `Command.run` passes the values to the handler at `matches.path`.
-	Run(
-		// The values to pass the handler; `path` names the command reached from the root.
-		matches: Matches
-	)
-
 impl Command:
 	// Checks the tree, resolves the subcommand chain, and validates flags and arguments.
 	// Returns `Help` for `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
@@ -234,6 +221,19 @@ impl Command:
 		for candidate in self.children:
 			if candidate.name == word: return candidate
 		return none
+
+// The outcome of parsing: help text to show, or a node ready to run.
+export enum Parsed:
+	// `-h`, `--help`, `help` or a group without a handler.
+	Help(
+		// The rendered help ending in a newline, ready to write to stdout.
+		text: String
+	)
+	// A leaf to run: `Command.run` passes the values to the handler at `matches.path`.
+	Run(
+		// The values to pass the handler; `path` names the command reached from the root.
+		matches: Matches
+	)
 
 // The command reached by following `path` from `from` on, or none for an unknown word.
 fn node_at(node: Command, path: List[String], from: Int) Command?:

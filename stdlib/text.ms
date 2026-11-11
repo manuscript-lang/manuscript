@@ -159,10 +159,6 @@ export type TextCursor:
 	// Byte offset of the next scalar, always on a scalar boundary.
 	at: Int
 
-// Starts a cursor at the beginning of `text`, which it copies once.
-export fn cursor(text: String) TextCursor:
-	return TextCursor(text.to_bytes(), 0)
-
 impl TextCursor:
 	// The byte offset of the next scalar, a mark for `seek` and `since`.
 	fn offset() Int: self.at
@@ -202,6 +198,10 @@ impl TextCursor:
 		if mark < 0 or mark > self.at:
 			panic("TextCursor.since: mark must be an earlier offset of this cursor")
 		return self.bytes.decode_utf8_range(mark, self.at).get()
+
+// Starts a cursor at the beginning of `text`, which it copies once.
+export fn cursor(text: String) TextCursor:
+	return TextCursor(text.to_bytes(), 0)
 
 // Whether a byte continues a scalar begun earlier (10xxxxxx).
 fn is_continuation(byte: Int) Bool: byte >= 128 and byte < 192

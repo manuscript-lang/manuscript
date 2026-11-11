@@ -97,104 +97,6 @@ impl Bytes:
 	// Bounds outside 0 <= start <= end <= length() raise a fault.
 	fn decode_utf8_range(start: Int, end: Int) String?: ...
 
-// Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One allocation and one copy of each part, unlike repeated concat.
-export fn join(parts: List[Bytes]) Bytes:
-	return msrt_bytes_join(parts)
-
-// Returns a fresh mutable list of bytes, like data.values().
-export fn values(data: Bytes) List[UInt8]:
-	return msrt_bytes_values(data)
-
-// Builds a byte sequence efficiently before freezing it into an immutable value.
-export extern type BytesBuilder
-
-impl BytesBuilder:
-	// Appends one byte to the end of the builder.
-	var fn append(value: UInt8) Unit: ...
-
-	// Appends all supplied bytes in order; the input is unchanged.
-	var fn append_bytes(values: Bytes) Unit: ...
-
-	// Consumes the builder and returns its bytes; the builder cannot be used afterwards.
-	fn build() Bytes: ...
-
-	// Returns the bytes appended so far and leaves the builder empty, for a builder held in a field.
-	var fn drain() Bytes: ...
-
-// A decoded variable-length integer and the absolute offset of the next byte.
-// Example: `first := try data.uvarint(0); second := try data.varint(first.next_offset)`.
-export type VarintRead[T]:
-	// The integer decoded as unsigned base-128 or signed zigzag by the read method.
-	value: T
-	// The first byte after the encoding, relative to the receiver, including for a slice.
-	next_offset: Int
-
-// Appends the low `width` bytes of `value` in the requested byte order.
-fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
-	for i in 0..width:
-		place := if little: i else: width - 1 - i
-		out.append(
-			msrt_bits_bit_and(
-				msrt_bits_shift_right(value, 8 * place), 255
-			).to_uint8().get(0)
-		)
-
-// Reads a signed value from its unsigned bit pattern: `half` is 2 to the power `bits - 1`.
-fn signed(raw: Int, half: Int) Int:
-	if raw >= half: return raw - half * 2
-	return raw
-
-// Converts a 64-bit word without narrowing its unsigned upper half.
-fn unsigned_word(raw: Int) UInt64:
-	if raw >= 0: return raw.to_uint64().get(0)
-	return (raw + 9223372036854775807 + 1).to_uint64().get(0) + 9223372036854775808
-
-// Reads two unsigned halves so the top bit never passes through a signed conversion.
-fn read_uint64(data: Bytes, at: Int, little: Bool) UInt64!:
-	if at < 0 or at > data.length() - 8:
-		return error(Error("binary: out of range", kind: "ERANGE"))
-
-	first := try msrt_bytes_read_word(data, at, 4, little)
-	second := try msrt_bytes_read_word(data, at + 4, 4, little)
-	if little:
-		return ok(second.to_uint64().get(0) * 4294967296 + first.to_uint64().get(0))
-
-	return ok(first.to_uint64().get(0) * 4294967296 + second.to_uint64().get(0))
-
-fn put_uint64(var out: BytesBuilder, value: UInt64, little: Bool) Unit:
-	high := (value / 4294967296).to_int().get(0)
-	low := (value % 4294967296).to_int().get(0)
-
-	if little:
-		put_word(var out, low, 4, true)
-		put_word(var out, high, 4, true)
-		return unit
-
-	put_word(var out, high, 4, false)
-	put_word(var out, low, 4, false)
-
-interface BytesCodecs:
-	fn int8(at: Int) Int8!
-	fn uint8(at: Int) UInt8!
-	fn int16_le(at: Int) Int16!
-	fn uint16_le(at: Int) UInt16!
-	fn int16_be(at: Int) Int16!
-	fn uint16_be(at: Int) UInt16!
-	fn int32_le(at: Int) Int32!
-	fn uint32_le(at: Int) UInt32!
-	fn int32_be(at: Int) Int32!
-	fn uint32_be(at: Int) UInt32!
-	fn int64_le(at: Int) Int!
-	fn int64_be(at: Int) Int!
-	fn uint64_le(at: Int) UInt64!
-	fn uint64_be(at: Int) UInt64!
-	fn uvarint(at: Int) VarintRead[UInt64]!
-	fn varint(at: Int) VarintRead[Int]!
-	fn float32_le(at: Int) Float32!
-	fn float32_be(at: Int) Float32!
-	fn float64_le(at: Int) Float!
-	fn float64_be(at: Int) Float!
-
 impl BytesCodecs for Bytes:
 	// Reads one signed byte at `at`; a missing byte returns an `Error` of kind `ERANGE`. Offsets are absolute, so a negative `at` is out of range.
 	fn int8(at: Int) Int8!:
@@ -325,26 +227,29 @@ impl BytesCodecs for Bytes:
 		raw := try msrt_bytes_read_word(self, at, 8, false)
 		return ok(msrt_float_from_bits(raw))
 
-interface BytesBuilderCodecs:
-	var fn append_int8(value: Int8) Unit
-	var fn append_int16_le(value: Int16) Unit
-	var fn append_uint16_le(value: UInt16) Unit
-	var fn append_int16_be(value: Int16) Unit
-	var fn append_uint16_be(value: UInt16) Unit
-	var fn append_int32_le(value: Int32) Unit
-	var fn append_uint32_le(value: UInt32) Unit
-	var fn append_int32_be(value: Int32) Unit
-	var fn append_uint32_be(value: UInt32) Unit
-	var fn append_int64_le(value: Int) Unit
-	var fn append_int64_be(value: Int) Unit
-	var fn append_uint64_le(value: UInt64) Unit
-	var fn append_uint64_be(value: UInt64) Unit
-	var fn append_uvarint(value: UInt64) Unit
-	var fn append_varint(value: Int) Unit
-	var fn append_float32_le(value: Float32) Unit
-	var fn append_float32_be(value: Float32) Unit
-	var fn append_float64_le(value: Float) Unit
-	var fn append_float64_be(value: Float) Unit
+// Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One allocation and one copy of each part, unlike repeated concat.
+export fn join(parts: List[Bytes]) Bytes:
+	return msrt_bytes_join(parts)
+
+// Returns a fresh mutable list of bytes, like data.values().
+export fn values(data: Bytes) List[UInt8]:
+	return msrt_bytes_values(data)
+
+// Builds a byte sequence efficiently before freezing it into an immutable value.
+export extern type BytesBuilder
+
+impl BytesBuilder:
+	// Appends one byte to the end of the builder.
+	var fn append(value: UInt8) Unit: ...
+
+	// Appends all supplied bytes in order; the input is unchanged.
+	var fn append_bytes(values: Bytes) Unit: ...
+
+	// Consumes the builder and returns its bytes; the builder cannot be used afterwards.
+	fn build() Bytes: ...
+
+	// Returns the bytes appended so far and leaves the builder empty, for a builder held in a field.
+	var fn drain() Bytes: ...
 
 impl BytesBuilderCodecs for BytesBuilder:
 	// Appends one signed byte.
@@ -432,3 +337,98 @@ impl BytesBuilderCodecs for BytesBuilder:
 	// Appends an IEEE 754 binary64 big-endian float.
 	var fn append_float64_be(value: Float) Unit:
 		put_word(var self, msrt_float_to_bits(value), 8, false)
+
+// A decoded variable-length integer and the absolute offset of the next byte.
+// Example: `first := try data.uvarint(0); second := try data.varint(first.next_offset)`.
+export type VarintRead[T]:
+	// The integer decoded as unsigned base-128 or signed zigzag by the read method.
+	value: T
+	// The first byte after the encoding, relative to the receiver, including for a slice.
+	next_offset: Int
+
+// Appends the low `width` bytes of `value` in the requested byte order.
+fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
+	for i in 0..width:
+		place := if little: i else: width - 1 - i
+		out.append(
+			msrt_bits_bit_and(
+				msrt_bits_shift_right(value, 8 * place), 255
+			).to_uint8().get(0)
+		)
+
+// Reads a signed value from its unsigned bit pattern: `half` is 2 to the power `bits - 1`.
+fn signed(raw: Int, half: Int) Int:
+	if raw >= half: return raw - half * 2
+	return raw
+
+// Converts a 64-bit word without narrowing its unsigned upper half.
+fn unsigned_word(raw: Int) UInt64:
+	if raw >= 0: return raw.to_uint64().get(0)
+	return (raw + 9223372036854775807 + 1).to_uint64().get(0) + 9223372036854775808
+
+// Reads two unsigned halves so the top bit never passes through a signed conversion.
+fn read_uint64(data: Bytes, at: Int, little: Bool) UInt64!:
+	if at < 0 or at > data.length() - 8:
+		return error(Error("binary: out of range", kind: "ERANGE"))
+
+	first := try msrt_bytes_read_word(data, at, 4, little)
+	second := try msrt_bytes_read_word(data, at + 4, 4, little)
+	if little:
+		return ok(second.to_uint64().get(0) * 4294967296 + first.to_uint64().get(0))
+
+	return ok(first.to_uint64().get(0) * 4294967296 + second.to_uint64().get(0))
+
+fn put_uint64(var out: BytesBuilder, value: UInt64, little: Bool) Unit:
+	high := (value / 4294967296).to_int().get(0)
+	low := (value % 4294967296).to_int().get(0)
+
+	if little:
+		put_word(var out, low, 4, true)
+		put_word(var out, high, 4, true)
+		return unit
+
+	put_word(var out, high, 4, false)
+	put_word(var out, low, 4, false)
+
+interface BytesCodecs:
+	fn int8(at: Int) Int8!
+	fn uint8(at: Int) UInt8!
+	fn int16_le(at: Int) Int16!
+	fn uint16_le(at: Int) UInt16!
+	fn int16_be(at: Int) Int16!
+	fn uint16_be(at: Int) UInt16!
+	fn int32_le(at: Int) Int32!
+	fn uint32_le(at: Int) UInt32!
+	fn int32_be(at: Int) Int32!
+	fn uint32_be(at: Int) UInt32!
+	fn int64_le(at: Int) Int!
+	fn int64_be(at: Int) Int!
+	fn uint64_le(at: Int) UInt64!
+	fn uint64_be(at: Int) UInt64!
+	fn uvarint(at: Int) VarintRead[UInt64]!
+	fn varint(at: Int) VarintRead[Int]!
+	fn float32_le(at: Int) Float32!
+	fn float32_be(at: Int) Float32!
+	fn float64_le(at: Int) Float!
+	fn float64_be(at: Int) Float!
+
+interface BytesBuilderCodecs:
+	var fn append_int8(value: Int8) Unit
+	var fn append_int16_le(value: Int16) Unit
+	var fn append_uint16_le(value: UInt16) Unit
+	var fn append_int16_be(value: Int16) Unit
+	var fn append_uint16_be(value: UInt16) Unit
+	var fn append_int32_le(value: Int32) Unit
+	var fn append_uint32_le(value: UInt32) Unit
+	var fn append_int32_be(value: Int32) Unit
+	var fn append_uint32_be(value: UInt32) Unit
+	var fn append_int64_le(value: Int) Unit
+	var fn append_int64_be(value: Int) Unit
+	var fn append_uint64_le(value: UInt64) Unit
+	var fn append_uint64_be(value: UInt64) Unit
+	var fn append_uvarint(value: UInt64) Unit
+	var fn append_varint(value: Int) Unit
+	var fn append_float32_le(value: Float32) Unit
+	var fn append_float32_be(value: Float32) Unit
+	var fn append_float64_le(value: Float) Unit
+	var fn append_float64_be(value: Float) Unit

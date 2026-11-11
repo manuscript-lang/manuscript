@@ -36,17 +36,6 @@ export type Source:
 	// Set by `filter` when it cannot satisfy its predicate; `check` discards such cases instead of running them.
 	invalid: Bool
 
-// Returns a source that generates fresh input from `seed`.
-export fn source(seed: Int) Source:
-	return Source([], 0, seed, true, false)
-
-// A generated value and the source after the draws that made it.
-export type Drawn[T]:
-	// The value a generator built from the draws it read.
-	value: T
-	// The source to continue drawing from; draws already made are recorded in it.
-	source: Source
-
 impl Source:
 	// Returns the next 64 random bits as a signed Int (SplitMix64).
 	var fn next_bits() Int:
@@ -60,6 +49,17 @@ impl Source:
 			bit_xor(z, shift_right_unsigned(z, 27)), -7723592293110705685
 		)
 		return bit_xor(z, shift_right_unsigned(z, 31))
+
+// Returns a source that generates fresh input from `seed`.
+export fn source(seed: Int) Source:
+	return Source([], 0, seed, true, false)
+
+// A generated value and the source after the draws that made it.
+export type Drawn[T]:
+	// The value a generator built from the draws it read.
+	value: T
+	// The source to continue drawing from; draws already made are recorded in it.
+	source: Source
 
 // Draws an integer from 0 through `max`, both included, and returns it with the advanced source; `max` must not be negative.
 // Fresh draws favor the two ends. Shrinking lowers each draw toward 0, so 0 is the simplest outcome.
@@ -97,6 +97,23 @@ export fn draw(source: Source, max: Int) Drawn[Int]:
 export type Gen[T]:
 	// Reads draws from the source and builds a value.
 	make: fn(Source) Drawn[T]
+
+impl Gen[T]:
+	// Transforms every generated value.
+	fn map[B](transform: fn(T) B) Gen[B]:
+		return Gen[B](fn s: map_draw(self, transform, s))
+
+	// Generates a value, then generates again with a generator chosen from it (dependent generation).
+	fn flat_map[B](next: fn(T) Gen[B]) Gen[B]:
+		return Gen[B](fn s: flat_map_draw(self, next, s))
+
+	// Keeps values for which `keep` is true. After 50 consecutive rejections the case is marked invalid and discarded.
+	fn filter(keep: fn(T) Bool) Gen[T]:
+		return Gen[T](fn s: filter_draw(self, keep, s.clone()))
+
+	// Combines one value from this generator with one from `other`.
+	fn zip[B, C](other: Gen[B], combine: fn(T, B) C) Gen[C]:
+		return Gen[C](fn s: zip_draw(self, other, combine, s))
 
 // Generates integers from `low` through `high`, both included, shrinking toward the value nearest 0.
 // When the range spans 0, a sign draw comes first and the magnitude after it. `high - low` must fit in Int.
@@ -156,23 +173,6 @@ export fn one_of[T](gens: List[Gen[T]]) Gen[T]:
 fn one_draw[T](gens: List[Gen[T]], s: Source) Drawn[T]:
 	{value, source} := draw(s, gens.length() - 1)
 	return gens[value].make(source)
-
-impl Gen[T]:
-	// Transforms every generated value.
-	fn map[B](transform: fn(T) B) Gen[B]:
-		return Gen[B](fn s: map_draw(self, transform, s))
-
-	// Generates a value, then generates again with a generator chosen from it (dependent generation).
-	fn flat_map[B](next: fn(T) Gen[B]) Gen[B]:
-		return Gen[B](fn s: flat_map_draw(self, next, s))
-
-	// Keeps values for which `keep` is true. After 50 consecutive rejections the case is marked invalid and discarded.
-	fn filter(keep: fn(T) Bool) Gen[T]:
-		return Gen[T](fn s: filter_draw(self, keep, s.clone()))
-
-	// Combines one value from this generator with one from `other`.
-	fn zip[B, C](other: Gen[B], combine: fn(T, B) C) Gen[C]:
-		return Gen[C](fn s: zip_draw(self, other, combine, s))
 
 fn map_draw[A, B](gen: Gen[A], transform: fn(A) B, s: Source) Drawn[B]:
 	{value, source} := gen.make(s)

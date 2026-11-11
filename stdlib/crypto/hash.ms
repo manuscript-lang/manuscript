@@ -119,10 +119,6 @@ export type MapHash:
 	// The seed mixed into every hash.
 	seed: Int
 
-// Returns an unpredictable seed from the operating system.
-export fn random_seed() Int:
-	return secure_int(-9223372036854775807).get(0)
-
 impl MapHash:
 	// Hashes the bytes with this seed, finishing with a 64-bit avalanche so every output bit depends on all input bits.
 	fn hash(data: Bytes) UInt64:
@@ -145,6 +141,10 @@ impl MapHash:
 	// Hashes a string's UTF-8 bytes with this seed.
 	fn hash_string(text: String) UInt64:
 		return self.hash(text.to_bytes())
+
+// Returns an unpredictable seed from the operating system.
+export fn random_seed() Int:
+	return secure_int(-9223372036854775807).get(0)
 
 /*
 Reads `input` to the end and returns the CRC-64 of all its bytes with the given polynomial, as `crc64` does for

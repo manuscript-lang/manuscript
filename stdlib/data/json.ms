@@ -294,22 +294,6 @@ type JsonReading[T: Data]:
 	finished: Bool
 	failure: Error?
 
-fn is_space(byte: UInt8) Bool:
-	return (byte == 32 or byte == 9 or byte == 10 or byte == 13)
-
-fn starts_value(byte: UInt8) Bool:
-	// Object, array, string, minus sign, digits, and the first letters of the literals.
-	return (
-		byte == 123
-		or byte == 91
-		or byte == 34
-		or byte == 45
-		or byte >= 48 and byte <= 57
-		or byte == 116
-		or byte == 102
-		or byte == 110
-	)
-
 impl JsonReading[T]:
 	var fn reset() Unit:
 		self.pending = BytesBuilder()
@@ -420,6 +404,22 @@ impl Transform[Bytes, T] for JsonReading[T]:
 		if completed.is_error(): return self.fail(completed.err())
 
 		out.append(try completed)
+
+fn is_space(byte: UInt8) Bool:
+	return (byte == 32 or byte == 9 or byte == 10 or byte == 13)
+
+fn starts_value(byte: UInt8) Bool:
+	// Object, array, string, minus sign, digits, and the first letters of the literals.
+	return (
+		byte == 123
+		or byte == 91
+		or byte == 34
+		or byte == 45
+		or byte >= 48 and byte <= 57
+		or byte == 116
+		or byte == 102
+		or byte == 110
+	)
 
 // The error a negative limit reports on the first read, or none.
 fn invalid_limits(options: JsonOptions) Error?:

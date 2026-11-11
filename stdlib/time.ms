@@ -496,11 +496,6 @@ export type Deadline:
 	// The instant the deadline expires.
 	at: Instant
 
-// Returns a deadline `duration` from now.
-// ms: effect std.clock.read
-export fn deadline_after(duration: Duration) Deadline:
-	return Deadline(at: monotonic().shift(duration))
-
 impl Deadline:
 	// Returns the time left, or zero once the deadline has passed.
 	fn remaining() Duration:
@@ -513,6 +508,11 @@ impl Deadline:
 	// Suspends the current task until the deadline passes. Returns at once if it already has.
 	fn wait() Unit:
 		sleep(self.remaining()).wait().get(unit)
+
+// Returns a deadline `duration` from now.
+// ms: effect std.clock.read
+export fn deadline_after(duration: Duration) Deadline:
+	return Deadline(at: monotonic().shift(duration))
 
 /*
 A source of evenly spaced instants, for loops that run work on a schedule.

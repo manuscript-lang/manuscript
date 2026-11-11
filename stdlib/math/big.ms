@@ -15,105 +15,6 @@ export opaque type BigRat:
 	// The positive denominator in lowest terms.
 	den: BigInt
 
-// Reduces `numerator / denominator` for a nonzero denominator.
-fn reduced(numerator: BigInt, denominator: BigInt) BigRat:
-	divisor := numerator.gcd(denominator)
-	var top = numerator / divisor
-	var bottom = denominator / divisor
-
-	if bottom.sign() < 0:
-		top = -top
-		bottom = -bottom
-
-	return BigRat(num: top, den: bottom)
-
-// Returns `numerator / denominator` in lowest terms; a zero denominator returns EINVAL.
-export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
-	if denominator.sign() == 0:
-		return error(Error("bigrat: invalid input", kind: "EINVAL"))
-	if numerator.sign() == 0: return ok(BigRat(num: big(0), den: big(1)))
-
-	return ok(reduced(numerator, denominator))
-
-// Returns the integer `value` as a fraction.
-export fn rat_of_int(value: Int) BigRat:
-	return BigRat(num: big(value), den: big(1))
-
-// Returns an integer as a fraction.
-export fn rat_of_big_int(value: BigInt) BigRat:
-	return BigRat(num: value.clone(), den: big(1))
-
-// Returns the exact value of a Float, such as 0.5 for 0.5 and 3602879701896397/36028797018963968 for 0.1.
-// Returns none for NaN and infinities.
-export fn rat_of_float(value: Float) BigRat?:
-	if not value.is_finite(): return none
-	if value == 0.0: return rat_of_int(0)
-
-	parts := frexp(value)
-	mantissa := ldexp(parts.fraction, 53).truncate_to_int().get(0)
-	return rat_of_binary(big(mantissa), parts.exponent - 53)
-
-// Returns the exact value `mantissa * 2^exponent`. A result needing more than 16777216 bits faults.
-export fn rat_of_binary(mantissa: BigInt, exponent: Int) BigRat:
-	if exponent >= 0: return BigRat(num: shl(mantissa, exponent), den: big(1))
-	return reduced(mantissa.clone(), shl(big(1), -exponent))
-
-fn parse_digits(text: String) BigInt!:
-	if value := parse_big(text): return ok(value)
-	return error(Error("bigrat: invalid data", kind: "EBADMSG"))
-
-// Parses `a/b`, an integer, or a decimal with an optional exponent: `3/4`, `-12`, `1.25`, `6.02e23`, `5e-3`.
-// A zero denominator returns EINVAL, malformed text EBADMSG and an exponent beyond 100000 in magnitude EOVERFLOW.
-export fn parse_rat(text: String) BigRat!:
-	slash := text.split("/")
-	if slash.length() > 2: return error(Error("bigrat: invalid data", kind: "EBADMSG"))
-
-	if slash.length() == 2:
-		top := try parse_digits(slash[0])
-		bottom := try parse_digits(slash[1])
-		return rat(top, bottom)
-
-	exponent_parts := text.lower().split("e")
-	if exponent_parts.length() > 2:
-		return error(Error("bigrat: invalid data", kind: "EBADMSG"))
-
-	var exponent = 0
-
-	if exponent_parts.length() == 2:
-		// `parse_exponent` takes the one optional sign itself, so a second sign is malformed.
-		exponent = try parse_exponent(exponent_parts[1])
-		if exponent > 100000 or exponent < -100000:
-			return error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
-
-	point := exponent_parts[0].split(".")
-	if point.length() > 2: return error(Error("bigrat: invalid data", kind: "EBADMSG"))
-
-	var fraction_digits = 0
-	var joined = point[0].clone()
-
-	if point.length() == 2:
-		// A sign belongs only before the integer digits; joining the halves would hide a misplaced one.
-		if point[1].starts_with("+") or point[1].starts_with("-"):
-			return error(Error("bigrat: invalid data", kind: "EBADMSG"))
-
-		fraction_digits = point[1].scalar_length()
-		joined = "{point[0]}{point[1]}"
-
-	numerator := try parse_digits(joined)
-	scale := fraction_digits - exponent
-	if scale <= 0: return ok(BigRat(num: numerator * pow10(-scale), den: big(1)))
-
-	return rat(numerator, pow10(scale))
-
-// Keep malformed decimal syntax distinct from an exponent exceeding the integer range.
-fn parse_exponent(text: String) Int!:
-	parsed := parse_int(text, 10)
-	if value := parsed: return ok(value)
-	if parsed.err().kind == "ERANGE":
-		return error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
-
-	return error(Error("bigrat: invalid data", kind: "EBADMSG"))
-
 impl BigRat:
 	// Returns the numerator, which carries the sign.
 	fn numerator() BigInt:
@@ -253,6 +154,105 @@ impl BigRat:
 		if self.is_integer(): return self.num.to_string_radix(10)
 		return "{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
 
+// Reduces `numerator / denominator` for a nonzero denominator.
+fn reduced(numerator: BigInt, denominator: BigInt) BigRat:
+	divisor := numerator.gcd(denominator)
+	var top = numerator / divisor
+	var bottom = denominator / divisor
+
+	if bottom.sign() < 0:
+		top = -top
+		bottom = -bottom
+
+	return BigRat(num: top, den: bottom)
+
+// Returns `numerator / denominator` in lowest terms; a zero denominator returns EINVAL.
+export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
+	if denominator.sign() == 0:
+		return error(Error("bigrat: invalid input", kind: "EINVAL"))
+	if numerator.sign() == 0: return ok(BigRat(num: big(0), den: big(1)))
+
+	return ok(reduced(numerator, denominator))
+
+// Returns the integer `value` as a fraction.
+export fn rat_of_int(value: Int) BigRat:
+	return BigRat(num: big(value), den: big(1))
+
+// Returns an integer as a fraction.
+export fn rat_of_big_int(value: BigInt) BigRat:
+	return BigRat(num: value.clone(), den: big(1))
+
+// Returns the exact value of a Float, such as 0.5 for 0.5 and 3602879701896397/36028797018963968 for 0.1.
+// Returns none for NaN and infinities.
+export fn rat_of_float(value: Float) BigRat?:
+	if not value.is_finite(): return none
+	if value == 0.0: return rat_of_int(0)
+
+	parts := frexp(value)
+	mantissa := ldexp(parts.fraction, 53).truncate_to_int().get(0)
+	return rat_of_binary(big(mantissa), parts.exponent - 53)
+
+// Returns the exact value `mantissa * 2^exponent`. A result needing more than 16777216 bits faults.
+export fn rat_of_binary(mantissa: BigInt, exponent: Int) BigRat:
+	if exponent >= 0: return BigRat(num: shl(mantissa, exponent), den: big(1))
+	return reduced(mantissa.clone(), shl(big(1), -exponent))
+
+fn parse_digits(text: String) BigInt!:
+	if value := parse_big(text): return ok(value)
+	return error(Error("bigrat: invalid data", kind: "EBADMSG"))
+
+// Parses `a/b`, an integer, or a decimal with an optional exponent: `3/4`, `-12`, `1.25`, `6.02e23`, `5e-3`.
+// A zero denominator returns EINVAL, malformed text EBADMSG and an exponent beyond 100000 in magnitude EOVERFLOW.
+export fn parse_rat(text: String) BigRat!:
+	slash := text.split("/")
+	if slash.length() > 2: return error(Error("bigrat: invalid data", kind: "EBADMSG"))
+
+	if slash.length() == 2:
+		top := try parse_digits(slash[0])
+		bottom := try parse_digits(slash[1])
+		return rat(top, bottom)
+
+	exponent_parts := text.lower().split("e")
+	if exponent_parts.length() > 2:
+		return error(Error("bigrat: invalid data", kind: "EBADMSG"))
+
+	var exponent = 0
+
+	if exponent_parts.length() == 2:
+		// `parse_exponent` takes the one optional sign itself, so a second sign is malformed.
+		exponent = try parse_exponent(exponent_parts[1])
+		if exponent > 100000 or exponent < -100000:
+			return error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
+
+	point := exponent_parts[0].split(".")
+	if point.length() > 2: return error(Error("bigrat: invalid data", kind: "EBADMSG"))
+
+	var fraction_digits = 0
+	var joined = point[0].clone()
+
+	if point.length() == 2:
+		// A sign belongs only before the integer digits; joining the halves would hide a misplaced one.
+		if point[1].starts_with("+") or point[1].starts_with("-"):
+			return error(Error("bigrat: invalid data", kind: "EBADMSG"))
+
+		fraction_digits = point[1].scalar_length()
+		joined = "{point[0]}{point[1]}"
+
+	numerator := try parse_digits(joined)
+	scale := fraction_digits - exponent
+	if scale <= 0: return ok(BigRat(num: numerator * pow10(-scale), den: big(1)))
+
+	return rat(numerator, pow10(scale))
+
+// Keep malformed decimal syntax distinct from an exponent exceeding the integer range.
+fn parse_exponent(text: String) Int!:
+	parsed := parse_int(text, 10)
+	if value := parsed: return ok(value)
+	if parsed.err().kind == "ERANGE":
+		return error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
+
+	return error(Error("bigrat: invalid data", kind: "EBADMSG"))
+
 // The largest supported precision in bits.
 export max_big_float_precision: Int := 1000000
 
@@ -269,55 +269,6 @@ export opaque type BigFloat:
 	exp: Int
 	// The precision in bits, 1 through 1000000.
 	prec: Int
-
-fn checked(precision: Int) Int:
-	if precision < 1 or precision > max_big_float_precision:
-		panic("precision must be 1 through 1000000, got {precision}")
-	return precision
-
-fn make(value: Binary, precision: Int) BigFloat:
-	return BigFloat(mant: value.mant.clone(), exp: value.exp, prec: precision)
-
-fn binary_of(value: BigFloat) Binary:
-	return Binary(mant: value.mant.clone(), exp: value.exp)
-
-// Returns `value` rounded to `precision` bits; a precision outside 1 through 1000000 is a fault.
-export fn big_float_of_big_int(value: BigInt, precision: Int) BigFloat:
-	bits := checked(precision)
-	return make(round_to(value, 0, false, bits), bits)
-
-// Returns `value` rounded to `precision` bits; a precision outside 1 through 1000000 is a fault.
-export fn big_float_of_int(value: Int, precision: Int) BigFloat:
-	return big_float_of_big_int(big(value), precision)
-
-// Returns a Float rounded to `precision` bits (exact when precision is at least 53), or none for NaN and infinities.
-export fn big_float_of_float(value: Float, precision: Int) BigFloat?:
-	bits := checked(precision)
-	if not value.is_finite(): return none
-	if value == 0.0: return big_float_of_int(0, bits)
-
-	parts := frexp(value)
-	mantissa := ldexp(parts.fraction, 53).truncate_to_int().get(0)
-	return make(round_to(big(mantissa), parts.exponent - 53, false, bits), bits)
-
-// Returns the rational rounded once to `precision` bits.
-export fn big_float_of_rat(value: BigRat, precision: Int) BigFloat:
-	bits := checked(precision)
-	return make(div_round(value.numerator(), value.denominator(), bits), bits)
-
-// Parses an integer or decimal with optional exponent (`2`, `-0.1`, `6.02e23`) and rounds once to `precision` bits.
-// Malformed text returns EBADMSG and an exponent beyond 100000 in magnitude EOVERFLOW.
-export fn parse_big_float(text: String, precision: Int) BigFloat!:
-	bits := checked(precision)
-	if text.contains("/"):
-		return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
-	if value := parse_rat(text): return ok(big_float_of_rat(value, bits))
-
-	too_large: BigRat! := error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
-	if parse_rat(text) == too_large:
-		return error(Error("bigfloat: limit exceeded", kind: "EOVERFLOW"))
-
-	return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 
 impl BigFloat:
 	// Returns the precision in bits.
@@ -470,6 +421,55 @@ impl BigFloat:
 	fn to_fixed(digits: Int) String!:
 		if text := self.to_rat().to_fixed(digits): return ok(text)
 		return error(Error("bigfloat: invalid input", kind: "EINVAL"))
+
+fn checked(precision: Int) Int:
+	if precision < 1 or precision > max_big_float_precision:
+		panic("precision must be 1 through 1000000, got {precision}")
+	return precision
+
+fn make(value: Binary, precision: Int) BigFloat:
+	return BigFloat(mant: value.mant.clone(), exp: value.exp, prec: precision)
+
+fn binary_of(value: BigFloat) Binary:
+	return Binary(mant: value.mant.clone(), exp: value.exp)
+
+// Returns `value` rounded to `precision` bits; a precision outside 1 through 1000000 is a fault.
+export fn big_float_of_big_int(value: BigInt, precision: Int) BigFloat:
+	bits := checked(precision)
+	return make(round_to(value, 0, false, bits), bits)
+
+// Returns `value` rounded to `precision` bits; a precision outside 1 through 1000000 is a fault.
+export fn big_float_of_int(value: Int, precision: Int) BigFloat:
+	return big_float_of_big_int(big(value), precision)
+
+// Returns a Float rounded to `precision` bits (exact when precision is at least 53), or none for NaN and infinities.
+export fn big_float_of_float(value: Float, precision: Int) BigFloat?:
+	bits := checked(precision)
+	if not value.is_finite(): return none
+	if value == 0.0: return big_float_of_int(0, bits)
+
+	parts := frexp(value)
+	mantissa := ldexp(parts.fraction, 53).truncate_to_int().get(0)
+	return make(round_to(big(mantissa), parts.exponent - 53, false, bits), bits)
+
+// Returns the rational rounded once to `precision` bits.
+export fn big_float_of_rat(value: BigRat, precision: Int) BigFloat:
+	bits := checked(precision)
+	return make(div_round(value.numerator(), value.denominator(), bits), bits)
+
+// Parses an integer or decimal with optional exponent (`2`, `-0.1`, `6.02e23`) and rounds once to `precision` bits.
+// Malformed text returns EBADMSG and an exponent beyond 100000 in magnitude EOVERFLOW.
+export fn parse_big_float(text: String, precision: Int) BigFloat!:
+	bits := checked(precision)
+	if text.contains("/"):
+		return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
+	if value := parse_rat(text): return ok(big_float_of_rat(value, bits))
+
+	too_large: BigRat! := error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
+	if parse_rat(text) == too_large:
+		return error(Error("bigfloat: limit exceeded", kind: "EOVERFLOW"))
+
+	return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 
 fn larger(left: Int, right: Int) Int:
 	if left >= right: return left

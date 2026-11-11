@@ -27,6 +27,7 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Function types carry `var` parameters](function-types-carry-var-parameters.md): `fn(var List[Int]) Unit` is a distinct type; a named function with `var` parameters is a value of it, lambdas declare `var` parameters, and calls through the value mark the argument `var`.
 - [Method values borrow their receiver](method-values-borrow-their-receiver.md): a method value is a closure over its receiver: local, it borrows the receiver's place; escaping, it takes the receiver, moving it at its last use.
 - [Methods before free functions](methods-before-free-functions.md): do not add "random" free functions to the standard library or examples; put the operation on the type it acts on.
+- [Types stay next to their impls](types-stay-next-to-their-impls.md): an impl block directly follows its type declaration.
 - [Module-level constants are use-site evaluations, not stored values](module-level-constants-are-use-site-evaluations-not-stored-v.md): Chinmay approved top-level `let NAME[: T] = <constant expression>` in the #332 thread after the ban was found to have no recorded rationale;…
 - [Mutable data uses explicit copying](mutable-data-uses-explicit-copying.md): ordinary record fields and collections are mutable.
 - [Ownership vocabulary is own, borrow, move, clone, capture](ownership-vocabulary-is-own-borrow-move-clone-capture.md): five words for code, diagnostics and docs; no lend, consume or clone.
