@@ -12,6 +12,7 @@ pub mod number;
 pub mod parser;
 pub mod partial;
 pub mod pos;
+pub mod renumber;
 pub mod symbol;
 pub mod token;
 pub mod visit;

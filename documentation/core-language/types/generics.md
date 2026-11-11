@@ -177,4 +177,5 @@ fn total[T: Number](values: List[T]) T:
 - Members are concrete types, not type parameters or interfaces. A set may name another set; its members are flattened in.
 - Inside the body, `+`, `-`, `*`, `/` and comparisons work on a `T` whose members are all numeric, and the literal `0` is the zero of every member. Each instance keeps its own arithmetic: `Int8` overflow faults and `Float32` rounds to binary32.
 - A set cannot be a value type: `fn f(x: Number)` is rejected with `Number is a type set, which constrains a type parameter and has no values`. A type outside the set is rejected where the argument is checked: `String is not a member of the type set Number`.
+- A method may be declared once on a set declared in the same module: `fn Length.double() Self:` with `type Length = Meters | Feet` gives `Meters` and `Feet` each the method, with `Self` the receiving member. The module may declare methods only on types it owns, as for any receiver. The members must be concrete types.
 - `@std/collections/collections.ms` exports `Numeric`, the integer and float types `List.sum` adds.
