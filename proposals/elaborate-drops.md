@@ -14,6 +14,8 @@ Stage 1 result: `scope.begin/own/end` are real ops (`verify::is_raw` marks a fun
 
 Stage 2 result: single-definition locals are Raw-owned whether or not they move; the pass supplies the drop flags, so lowering's optional box and `held` flag are skipped for them, and a returned value leaves its owner (`scope.disown`) before the scopes end. `var` locals (a `scope.own` at each store) are not in yet: `tools/e2e.ms` `main` (a `var` list filled in a loop in one branch of an `if`, with the iterable `given` moved into the loop on that branch only) then fails verification with "owned values differ between incoming edges" at the loop join, a drop-flag and loop-phi interaction in the extended pass still to be isolated. Stage 3 (resources) is untouched.
 
+Stage 3 probe (2026-11-11): the pass now closes an owner with its own function (`scope.own S K v`, K = function index + 2, `fn(borrow T) -> unit`): a shielded close on the paths that still hold it, the cleanup entry retired at the close or a move, covered by `an_infallible_owner_is_closed_shielded_only_where_it_is_still_held`. Lowering is not wired to it: a probe that handed it every never-moved, non-`var` resource whose close cannot fail was hit by no fixture of the 2347 + 1529 corpus, because a `Closeable` close is `var fn close` (`CloseKind::writes_back`) and such a resource lives in memory, registering its address (`close_thunk(.., in_slot)`, `slot_close`). Moving resources over therefore needs memory-slot owners in the pass (move state of a slot, `put`/`take`, the in-slot cleanup entry) and a Result-typed close with first-error-wins against the function's own return type (`propagate_close_error`, `pending_return`), which the pass's integer `close` prototype does not model. Kill criterion applies unless that is built.
+
 ## Problem
 
 - Verified: `verify.rs` already states the rule (live set identical on every edge, empty at `ret`), so the target of placement is fully defined; lowering still re-derives it at about 130 `drop_value`/`drop_local`/`Op::Drop` sites.
@@ -62,3 +64,13 @@ Thresholds, set before measuring: `closed_on_path`, `scope_done`, `rest_closers`
 
 - Unverified: the early scrutinee drop in a match arm (`matching.rs:337-347`) and `list_iters` rest release (`func.rs:1363-1375`) may need their own scope markers to keep close order; `Split` per-field flags (`OWNERSHIP.md:28`) may need field-level owners; `defer_close_failures` (`close.rs:~1537`) is a second failure convention `policy` must cover; whether `unwind.rs` covers plain faults.
 - Drop flags stay runtime values first; measure before cloning exit paths.
+
+## Stage 3 design: memory-slot owners (2026-11-11)
+
+Goal: resources whose close is `var fn close` (the receiver lives in memory) move from lowering's `closed_on_path`, `scope_done`, `rest_closers` and `hidden_closers` into the pass.
+
+- Owner: a slot pointer `p` (`scope.own S K p`, K = close function index + 2, `writes_back`). The owner's contents are the slot's value; its move state is the existing per-owner `Live | Moved | Maybe | Part` state, driven by `put p v` (Live), `take p` / `move.out` of the slot (Moved), and the existing flag blocks for Maybe.
+- Close: `call close(p)` on the slot (shielded), then the slot's storage is released by the pass. The cleanup entry is `cleanup.push` of the slot address, as `close_thunk(.., in_slot)` does today; retired at the close or a take.
+- Fallible close: the pass learns the function's return type from `Func::ret`. A close returning a Result runs unshielded on the normal path; its error joins the return through the existing first-error-wins edge (`pending_return` becomes an ordinary block parameter). Unwind paths stay shielded and discard errors.
+- Order: reverse declaration, as scopes already pop. A raw resource is taken only when no earlier non-raw closer sits in the same scope, so lowering and the pass never interleave in the wrong order.
+- Slices: (1) slot owners with infallible close, unit tests; (2) Result-typed close with first-error-wins; (3) wire lowering for never-moved resources, ledger counters drop; (4) moved and conditionally moved resources, `ExplicitClose`, split resources. Each slice is gated on the full six-platform CI. If slice 3 cannot delete more lowering than the pass gains, the kill criterion applies and stage 3 stops there.
