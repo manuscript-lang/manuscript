@@ -45,9 +45,43 @@ pub fn run(m: &mut Module) -> Result<(), String> {
 
 type Tags = HashMap<Value, (u32, u32)>;
 
+/// The owned values live at a point, with O(1) removal: consuming an operand must not rescan
+/// what else is live (a long function holds many temporaries at once).
+#[derive(Clone, Default)]
+struct Live {
+    seq: HashMap<Value, u32>,
+    next: u32,
+}
+
+impl Live {
+    fn push(&mut self, v: Value) {
+        self.seq.insert(v, self.next);
+        self.next += 1;
+    }
+
+    fn remove(&mut self, v: &Value) {
+        self.seq.remove(v);
+    }
+
+    /// The live values among `candidates`, last defined first.
+    fn latest_first(&self, candidates: impl Iterator<Item = Value>) -> Vec<Value> {
+        let mut vs: Vec<(u32, Value)> = candidates
+            .filter_map(|v| self.seq.get(&v).map(|n| (*n, v)))
+            .collect();
+        vs.sort_by_key(|(n, _)| std::cmp::Reverse(*n));
+        vs.into_iter().map(|(_, v)| v).collect()
+    }
+
+    fn all_latest_first(&self) -> Vec<Value> {
+        self.latest_first(self.seq.keys().copied())
+    }
+}
+
 struct Ctx {
     tags: Tags,
     parents: HashMap<u32, u32>,
+    /// The owners of each scope, in the order their markers were found.
+    owners: HashMap<u32, Vec<Value>>,
     close: Option<FuncId>,
 }
 
@@ -55,6 +89,7 @@ fn function(m: &Module, f: &mut Func, close: Option<FuncId>) -> Result<(), Strin
     let mut cx = Ctx {
         tags: HashMap::new(),
         parents: HashMap::new(),
+        owners: HashMap::new(),
         close,
     };
     for b in &f.blocks {
@@ -65,6 +100,7 @@ fn function(m: &Module, f: &mut Func, close: Option<FuncId>) -> Result<(), Strin
                 }
                 (Op::ScopeOwn, Imm::Scope(s, policy)) => {
                     cx.tags.insert(i.args[0], (s, policy));
+                    cx.owners.entry(s).or_default().push(i.args[0]);
                 }
                 _ => {}
             }
@@ -89,13 +125,13 @@ fn function(m: &Module, f: &mut Func, close: Option<FuncId>) -> Result<(), Strin
             break;
         }
     }
-    let mut entry: HashMap<usize, Vec<Value>> = HashMap::new();
-    let first: Vec<Value> = f.blocks[0]
-        .params
-        .iter()
-        .filter(|p| p.mode == Mode::Move && m.needs_drop(f.ty(p.value)))
-        .map(|p| p.value)
-        .collect();
+    let mut entry: HashMap<usize, Live> = HashMap::new();
+    let mut first = Live::default();
+    for p in &f.blocks[0].params {
+        if p.mode == Mode::Move && m.needs_drop(f.ty(p.value)) {
+            first.push(p.value);
+        }
+    }
     entry.insert(0, first);
     for b in f.rpo() {
         let Some(mut live) = entry.get(&b.index()).cloned() else {
@@ -122,22 +158,21 @@ fn function(m: &Module, f: &mut Func, close: Option<FuncId>) -> Result<(), Strin
             f.blocks[cur].insts.push(inst);
         }
         if let Term::Ret(Some(v)) = &old.term {
-            live.retain(|x| x != v);
+            live.remove(v);
         }
         old.term.for_each_target(|t| {
             let mut after = live.clone();
             let params = &f.blocks[t.block.index()].params;
             for (a, p) in t.args.iter().zip(params) {
                 if p.mode == Mode::Move && m.needs_drop(f.ty(*a)) {
-                    after.retain(|x| x != a);
+                    after.remove(a);
                 }
             }
-            after.extend(
-                params
-                    .iter()
-                    .filter(|p| p.mode == Mode::Move && m.needs_drop(f.ty(p.value)))
-                    .map(|p| p.value),
-            );
+            for p in params {
+                if p.mode == Mode::Move && m.needs_drop(f.ty(p.value)) {
+                    after.push(p.value);
+                }
+            }
             entry.entry(t.block.index()).or_insert(after);
         });
         f.blocks[cur].term = old.term;
@@ -146,10 +181,10 @@ fn function(m: &Module, f: &mut Func, close: Option<FuncId>) -> Result<(), Strin
     Ok(())
 }
 
-fn consume(m: &Module, f: &Func, args: &[Value], modes: &[Mode], live: &mut Vec<Value>) {
+fn consume(m: &Module, f: &Func, args: &[Value], modes: &[Mode], live: &mut Live) {
     for (a, mode) in args.iter().zip(modes) {
         if *mode == Mode::Move && m.needs_drop(f.ty(*a)) {
-            live.retain(|x| x != a);
+            live.remove(a);
         }
     }
 }
@@ -178,18 +213,13 @@ fn cleanup(
     cx: &Ctx,
     f: &mut Func,
     at: usize,
-    live: &mut Vec<Value>,
+    live: &mut Live,
     scope: u32,
     mut outcome: Option<Value>,
 ) -> Result<Option<Value>, String> {
-    let owners: Vec<Value> = live
-        .iter()
-        .rev()
-        .filter(|v| cx.tags.get(v).is_some_and(|t| t.0 == scope))
-        .copied()
-        .collect();
+    let owners = live.latest_first(cx.owners.get(&scope).into_iter().flatten().copied());
     for v in owners {
-        live.retain(|x| *x != v);
+        live.remove(&v);
         if cx.tags[&v].1 == 0 {
             push(f, at, Op::Drop, &[v], Imm::None, None);
             continue;
@@ -227,13 +257,7 @@ fn cleanup(
 }
 
 /// The cleanup of `scope` at a `raw_end`. Returns the block to continue in.
-fn exit(
-    cx: &Ctx,
-    f: &mut Func,
-    cur: usize,
-    live: &mut Vec<Value>,
-    scope: u32,
-) -> Result<usize, String> {
+fn exit(cx: &Ctx, f: &mut Func, cur: usize, live: &mut Live, scope: u32) -> Result<usize, String> {
     let outcome = cleanup(cx, f, cur, live, scope, None)?;
     let Some(first) = outcome else {
         return Ok(cur);
@@ -267,8 +291,8 @@ fn exit(
         outcome = cleanup(cx, f, at, &mut rest, s, outcome)?;
         scope = cx.parents.get(&s).copied().and_then(|p| p.checked_sub(1));
     }
-    for v in rest.iter().rev() {
-        push(f, at, Op::Drop, &[*v], Imm::None, None);
+    for v in rest.all_latest_first() {
+        push(f, at, Op::Drop, &[v], Imm::None, None);
     }
     f.blocks[at].term = Term::Ret(outcome);
     at = cont.index();
