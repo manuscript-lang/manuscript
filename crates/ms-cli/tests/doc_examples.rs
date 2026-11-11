@@ -173,7 +173,9 @@ fn run_case(path: &str, dir: &Path, case: &Json) -> Option<String> {
         .into_iter()
         .map(|a| a.replace("$HTTP_URL", url.as_deref().unwrap_or("")))
         .collect();
-    let mut argv = vec!["run", path, "--"];
+    // Debug (Cranelift) compiles several times faster than Release; both backends agree on every
+    // corpus fixture (`make drift-check`), and these examples check what the documentation says.
+    let mut argv = vec!["run", path, "--build-type", "Debug", "--"];
     argv.extend(args.iter().map(String::as_str));
     let stdin = case.get("stdin").and_then(Json::as_str).unwrap_or_default();
     let (code, got, err) = ms(&argv, stdin, Some(dir));
@@ -209,7 +211,7 @@ fn verify(examples: &[Example], label: &str) {
             continue;
         }
         if example.spec.contains("\"mode\":\"test\"") {
-            let (code, _, err) = ms(&["test", path], "", None);
+            let (code, _, err) = ms(&["test", path, "--build-type", "Debug"], "", None);
             if code != Some(0) {
                 failures.push(format!("{name}: ms test failed\n{err}"));
             }

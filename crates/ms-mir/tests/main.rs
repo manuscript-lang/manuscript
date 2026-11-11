@@ -16,6 +16,5 @@ mod opt_reserve;
 mod opt_simplify;
 mod opt_strfuse;
 mod outline;
-mod parse_file;
 mod text;
 mod unwind;

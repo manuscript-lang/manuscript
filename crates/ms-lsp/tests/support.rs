@@ -10,6 +10,16 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+thread_local! {
+    static SESSION: std::rc::Rc<ms_check::Session> = ms_check::Session::new();
+}
+
+/// One compiler session per test thread. A session loads the standard library on first use, so
+/// tests that check many small sources share it instead of reloading it for each check.
+pub fn session() -> std::rc::Rc<ms_check::Session> {
+    SESSION.with(std::rc::Rc::clone)
+}
+
 /// Distinguishes workspaces made in one process, as tests run on parallel threads.
 static NEXT_WORKSPACE: AtomicUsize = AtomicUsize::new(0);
 
