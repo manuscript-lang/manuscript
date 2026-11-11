@@ -78,10 +78,6 @@ export type HostTree:
 	// Directory that is the tree's root, in the host's spelling.
 	root: String
 
-// Returns a tree over the directory `root` of the host filesystem.
-export fn host_tree(root: String) HostTree:
-	return HostTree(root)
-
 impl FileTree for HostTree:
 	// Reads a file below the root from the host disk; failures are the host's `Error`.
 	fn read(path: String, max_bytes: Int?) Bytes!:
@@ -94,6 +90,10 @@ impl FileTree for HostTree:
 		entries := try list(child_path(self.root, inside), max_entries)
 		return ok(entries.sorted(by_name))
 
+// Returns a tree over the directory `root` of the host filesystem.
+export fn host_tree(root: String) HostTree:
+	return HostTree(root)
+
 // A file tree held in memory: build it with `write_file` and `create_directory`, read it through `FileTree`.
 export type MemoryTree:
 	// File contents by clean path.
@@ -102,12 +102,6 @@ export type MemoryTree:
 	directories: Set[String]
 	// Internal state: clean paths of the entries directly under each directory, so listing is not a scan of the tree.
 	kids: Map[String, Set[String]] = Map[String, Set[String]]()
-
-// Returns an empty in-memory tree holding only its root directory.
-export fn memory_tree() MemoryTree:
-	var directories = Set[String]()
-	directories.add("")
-	return MemoryTree(Map[String, Bytes](), directories)
 
 impl MemoryTree:
 	// Records `path` as a child of its parent directory.
@@ -233,6 +227,12 @@ impl FileTree for MemoryTree:
 				)
 		return limited(entries.sorted(by_name), max_entries)
 
+// Returns an empty in-memory tree holding only its root directory.
+export fn memory_tree() MemoryTree:
+	var directories = Set[String]()
+	directories.add("")
+	return MemoryTree(Map[String, Bytes](), directories)
+
 /*
 Bytes held in the program's read-only data. `[embed]` modules call this with the Base64 text of a file as a
 string literal; the compiler decodes the text when it builds the program, so the running program holds the raw bytes
@@ -254,30 +254,6 @@ export type EmbeddedTree:
 	kids: Map[String, List[String]]
 	// Returns the bytes of the file with that number.
 	load: fn(Int) Bytes
-
-// Returns a read-only tree over file numbers by clean path, the clean paths of every directory (the root, the
-// empty string, included) and the function that returns the bytes of a file number.
-export fn embedded_tree(
-	indexes: Map[String, Int],
-	directories: Set[String],
-	load: fn(Int) Bytes
-) EmbeddedTree:
-	var kids = Map[String, List[String]]()
-	for key in indexes.keys():
-		index_child(var kids, key)
-	for key in directories.values():
-		if key != "": index_child(var kids, key)
-	return EmbeddedTree(indexes, directories, kids, load)
-
-fn index_child(var kids: Map[String, List[String]], path: String) Unit:
-	parent := parent_of(path)
-
-	if var names = kids[parent]?:
-		names.append(path.clone())
-		return unit
-
-	kids[parent] = [path.clone()]
-	return unit
 
 impl FileTree for EmbeddedTree:
 	// Returns a copy of one file; the other files are not touched.
@@ -315,6 +291,30 @@ impl FileTree for EmbeddedTree:
 					)
 				)
 		return limited(entries.sorted(by_name), max_entries)
+
+// Returns a read-only tree over file numbers by clean path, the clean paths of every directory (the root, the
+// empty string, included) and the function that returns the bytes of a file number.
+export fn embedded_tree(
+	indexes: Map[String, Int],
+	directories: Set[String],
+	load: fn(Int) Bytes
+) EmbeddedTree:
+	var kids = Map[String, List[String]]()
+	for key in indexes.keys():
+		index_child(var kids, key)
+	for key in directories.values():
+		if key != "": index_child(var kids, key)
+	return EmbeddedTree(indexes, directories, kids, load)
+
+fn index_child(var kids: Map[String, List[String]], path: String) Unit:
+	parent := parent_of(path)
+
+	if var names = kids[parent]?:
+		names.append(path.clone())
+		return unit
+
+	kids[parent] = [path.clone()]
+	return unit
 
 // One file or directory found by `walk`.
 export type WalkEntry:

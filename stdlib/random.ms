@@ -196,10 +196,6 @@ export type SeededRandom:
 	// Internal state: the SplitMix64 counter, advanced on every draw.
 	state: Int
 
-// Returns a generator that starts from `seed`; equal seeds give equal sequences (SplitMix64).
-export fn seeded(seed: Int) SeededRandom:
-	return SeededRandom(state: seed)
-
 impl SeededRandom:
 	// Returns the next 64 random bits as a signed Int.
 	var fn next_bits() Int:
@@ -303,3 +299,7 @@ impl SeededRandom:
 		for index in 0..count:
 			items.append(index)
 		return self.shuffle(items)
+
+// Returns a generator that starts from `seed`; equal seeds give equal sequences (SplitMix64).
+export fn seeded(seed: Int) SeededRandom:
+	return SeededRandom(state: seed)

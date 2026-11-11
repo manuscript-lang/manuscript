@@ -338,7 +338,7 @@ export extern type NativeResponseBody
 
 // The native response a client operation returns: its body is read through `StreamingResponse.body`.
 // Metadata remains available after close; each metadata() call returns an independent copy.
-export type RawResponse:
+export opaque type RawResponse:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeResponseBody
 

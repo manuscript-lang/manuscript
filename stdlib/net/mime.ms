@@ -34,17 +34,6 @@ export type Headers:
 	// Fields in the order they appeared; repeated names stay separate entries.
 	fields: List[HeaderField] = List[HeaderField]()
 
-// One multipart part: its headers, the decoded `name` and `filename` from Content-Disposition, and body bytes.
-export type Part:
-	// Part header fields; `Content-Disposition` and `Content-Type` live here.
-	headers: Headers = Headers()
-	// Form field name from `Content-Disposition`, or empty text.
-	name: String = ""
-	// Uploaded file name from `Content-Disposition`, or empty text.
-	filename: String = ""
-	// Part body without the delimiter line breaks.
-	data: Bytes
-
 impl Headers:
 	// Returns the first value for `name`, ignoring case, or none.
 	fn get(name: String) String?:
@@ -67,6 +56,17 @@ impl Headers:
 		for field in self.fields:
 			out.append("{field.name}: {field.value}\r\n")
 		return out.build()
+
+// One multipart part: its headers, the decoded `name` and `filename` from Content-Disposition, and body bytes.
+export type Part:
+	// Part header fields; `Content-Disposition` and `Content-Type` live here.
+	headers: Headers = Headers()
+	// Form field name from `Content-Disposition`, or empty text.
+	name: String = ""
+	// Uploaded file name from `Content-Disposition`, or empty text.
+	filename: String = ""
+	// Part body without the delimiter line breaks.
+	data: Bytes
 
 // Extension table behind `media_type_for_extension`.
 TYPES := {

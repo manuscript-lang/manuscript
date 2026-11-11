@@ -213,34 +213,9 @@ export extern type NativeFile
 
 // An open file supporting sequential and positional I/O. It owns its descriptor: `close` it, or let
 // its binding go out of scope.
-export type FileHandle:
+export opaque type FileHandle:
 	// The runtime handle for the open file; it is released by `close` and owned by this value.
 	native: NativeFile
-
-// Chunks of a file from its current position, until the end.
-type FileSource:
-	file: FileHandle
-
-impl Source[Bytes] for FileSource:
-	var fn next() Bytes?!:
-		return self.file.read(none)
-
-	var fn close() Unit!:
-		return self.file.close()
-
-// Complete writes to a file; `flush` synchronizes it.
-type FileSink:
-	file: FileHandle
-
-impl Sink[Bytes] for FileSink:
-	var fn write(value: Bytes) Unit!:
-		return self.file.write(value)
-
-	var fn flush() Unit!:
-		return self.file.sync()
-
-	var fn close() Unit!:
-		return self.file.close()
 
 impl Closeable for FileHandle:
 	// Closes the file, interrupts calls in progress, and waits for them to stop.
@@ -363,6 +338,31 @@ impl FileHandle:
 	fn read_lines(max_bytes: Int?, max_lines: Int?) List[String]!:
 		return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
 
+// Chunks of a file from its current position, until the end.
+type FileSource:
+	file: FileHandle
+
+impl Source[Bytes] for FileSource:
+	var fn next() Bytes?!:
+		return self.file.read(none)
+
+	var fn close() Unit!:
+		return self.file.close()
+
+// Complete writes to a file; `flush` synchronizes it.
+type FileSink:
+	file: FileHandle
+
+impl Sink[Bytes] for FileSink:
+	var fn write(value: Bytes) Unit!:
+		return self.file.write(value)
+
+	var fn flush() Unit!:
+		return self.file.sync()
+
+	var fn close() Unit!:
+		return self.file.close()
+
 fn seek_origin(origin: Seek) Int:
 	match origin:
 		Start: return 0
@@ -373,7 +373,7 @@ fn seek_origin(origin: Seek) Int:
 export extern type NativeDirectory
 
 // An open directory that yields one child per read and must be closed.
-export type Directory:
+export opaque type Directory:
 	// The runtime handle for the open directory; it is released by `close` and owned by this value.
 	native: NativeDirectory
 
@@ -409,7 +409,7 @@ impl Source[DirectoryEntry] for Directory:
 export extern type NativeWatcher
 
 // The native watcher a watch operation returns; `watch` wraps it into a stream.
-export type RawWatcher:
+export opaque type RawWatcher:
 	// The runtime handle for the watch; the stream releases it when it closes.
 	native: NativeWatcher
 
@@ -441,7 +441,7 @@ fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
 export extern type NativeTemporary
 
 // A temporary directory whose contents are removed when it is closed.
-export type TemporaryDirectory:
+export opaque type TemporaryDirectory:
 	// The runtime handle for the directory; it is released by `close` and owned by this value.
 	native: NativeTemporary
 
