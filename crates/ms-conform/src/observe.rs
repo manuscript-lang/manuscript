@@ -379,8 +379,9 @@ fn batch_check_result(result: &Json, root: &Path, i: usize) -> Option<Json> {
         .get("document")
         .filter(|d| d.get("text").is_some())?
         .clone();
-    let dir = format!("w{i}/");
-    report.map_strings(&|s| normalize_text(&strip_dir(s, &dir), &work));
+    // Windows prints the relative paths of the batch with either separator.
+    let (slash, backslash) = (format!("w{i}/"), format!("w{i}\\"));
+    report.map_strings(&|s| normalize_text(&strip_dir(&strip_dir(s, &slash), &backslash), &work));
     drop_additive_keys(&mut report);
     let text = report.get("text")?.clone();
     let stream = |name: &str| {
