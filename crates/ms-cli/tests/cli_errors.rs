@@ -60,9 +60,9 @@ fn stdout_errors_are_not_reported_as_success() {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("empty.ms"), "").unwrap();
-    let mut guide = vec!["guide", "--json"];
-    guide.extend(vec!["MS1001"; 200]);
-    for args in [vec!["diagram", "empty.ms"], guide] {
+    let mut explain = vec!["explain", "--json"];
+    explain.extend(vec!["MS1001"; 200]);
+    for args in [vec!["diagram", "empty.ms"], explain, vec!["skill"]] {
         let normal = Command::new(env!("CARGO_BIN_EXE_ms"))
             .args(&args)
             .current_dir(&dir)
@@ -70,7 +70,7 @@ fn stdout_errors_are_not_reported_as_success() {
             .unwrap();
         assert!(normal.status.success(), "{args:?}: {normal:?}");
         assert!(!normal.stdout.is_empty(), "{args:?}: {normal:?}");
-        if args[0] == "guide" {
+        if args[0] == "explain" {
             assert!(
                 normal.stdout.len() > 16_384,
                 "the large-write case must exceed buffering"

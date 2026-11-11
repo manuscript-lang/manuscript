@@ -63,7 +63,7 @@ fn finding(code: &'static str, message: impl Into<String>, file: &Arc<str>, pos:
     }
 }
 
-/// A lint rule's code with the same family and repair text `ms guide` prints for check codes.
+/// A lint rule's code with the same family and repair text `ms explain` prints for check codes.
 pub struct Rule {
     pub code: &'static str,
     pub family: &'static str,

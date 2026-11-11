@@ -1,4 +1,4 @@
-//! The language cheat sheet and bounded standard-library pages
+//! Checked common mistakes and bounded standard-library pages
 //!
 //! Every page is bounded so an agent can read it without flooding its context:
 //! the index and module pages list one line per item, a declaration page lists
@@ -10,11 +10,6 @@ use std::sync::OnceLock;
 const PAGE_BUDGET: usize = 3500;
 const LINE_WIDTH: usize = 150;
 const MODULE_LINES: usize = 45;
-
-/// The one-page language guide for agents.
-pub fn cheatsheet() -> &'static str {
-    include_str!("../../data/cheatsheet.md")
-}
 
 /// One checked agent mistake: `wrong` and `right` replace `{}` in `body`.
 pub struct Mistake {
@@ -56,7 +51,7 @@ pub fn mistake_entries() -> Vec<Mistake> {
     entries
 }
 
-/// The mistakes section of `ms guide`: each wrong form beside its fix.
+/// Render checked common mistakes: each wrong form beside its fix.
 pub fn mistakes() -> String {
     let show = |text: &str| text.replace(";;", "; ");
     let mut out = String::from("\n## Common mistakes\n\n");

@@ -23,6 +23,7 @@ pub mod json;
 pub mod process;
 pub mod profile;
 mod regexp;
+mod skill;
 mod snippet;
 pub mod util;
 pub mod verify;
@@ -67,12 +68,13 @@ pub fn run<L: Lower>(
     match args[0].as_str() {
         "help" => commands::run_help(&args[1..], io),
         "init" => init::run_init(&args[1..], io),
+        "skill" => skill::run_skill(&args[1..], io),
         "verify" => verify::run_verify(syms, &args[1..], engine, io),
         "fmt" => fmt::run_format(syms, &args[1..], io),
         "lsp" => commands::run_lsp(syms, args, io),
         "review" => commands::run_review(syms, args, io),
         "search_symbol" => commands::run_search_symbol(syms, args, io),
-        "guide" => commands::run_guide(args, io),
+        "explain" => commands::run_explain(args, io),
         _ => run_source_command(syms, args, &usage, engine, io),
     }
 }

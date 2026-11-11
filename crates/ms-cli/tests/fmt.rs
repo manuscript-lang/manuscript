@@ -71,10 +71,3 @@ fn fmt_leaves_empty_and_blank_files_empty() {
     assert_eq!(std::fs::read_to_string(dir.join("blank.ms")).unwrap(), "");
     let _ = std::fs::remove_dir_all(&dir);
 }
-
-#[test]
-fn guide_prints_the_cheat_sheet() {
-    let (status, stdout, _) = ms(&std::env::temp_dir(), &["guide"]);
-    assert_eq!(status, 0);
-    assert!(stdout.starts_with("# Manuscript cheat sheet"));
-}

@@ -180,15 +180,15 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
 }
 
 #[test]
-fn guide_explains_codes_and_names_the_family_and_repair() {
+fn explain_codes_and_names_the_family_and_repair() {
     let dir = std::env::temp_dir();
-    let (status, text) = ms(&["guide", "MS3060"], &dir);
+    let (status, text) = ms(&["explain", "MS3060"], &dir);
     assert_eq!(status, Some(0), "{text}");
     assert!(text.contains("MS3060: Mutation"), "{text}");
-    let (status, text) = ms(&["guide", "MS3000.1"], &dir);
+    let (status, text) = ms(&["explain", "MS3000.1"], &dir);
     assert_eq!(status, Some(0), "{text}");
     assert!(text.contains("MS3000.1: Unused local binding"), "{text}");
-    let (status, text) = ms(&["guide", "MS9999"], &dir);
+    let (status, text) = ms(&["explain", "MS9999"], &dir);
     assert_eq!(status, Some(1), "{text}");
 }
 

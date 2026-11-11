@@ -38,7 +38,7 @@ weight = 1
 | `ms-std-*` | One crate per native standard module, depending on `ms-rt` as an ordinary Rust crate |
 | `ms-driver` | Manifest, lock, import resolution; module graph, entry rule, checking |
 | `ms-build` | Lowering seam, optimization, native codegen and link |
-| `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, `guide`, docgen; language server |
+| `ms-tooling`, `ms-lsp` | Lint, inspect, review, diagram; `search_symbol`, agent skill, docgen; language server |
 | `ms-cli`, `ms-conform`, `ms-repo-check` | The `ms` binary; the conformance runner; repository invariants |
 
 `stdlib/*.ms` holds the public standard declarations and names the native symbols with `extern fn`; it is the signature authority and the Rust implementation embeds it unchanged.
