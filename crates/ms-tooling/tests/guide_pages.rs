@@ -70,6 +70,7 @@ fn cheatsheet_claims_match_the_compiler() {
     };
     for body in [
         "    a := [1, 2]\n",
+        "    e := Error(\"bad input\", kind: \"EINVAL\")\n    print(e.message)\n",
         "    m := Map[String, Int]()\n    s := Set[Int]()\n",
         "    var n = 1\n    n = 2\n",
         "    var n = 1\n    n += 2\n    n %= 2\n",
