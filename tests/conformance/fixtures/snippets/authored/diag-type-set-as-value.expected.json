@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Number is a type set, which constrains a type parameter and has no values; write fn f[T: Number](...) or use one of its members",
+        "position": {
+          "file": "diag-type-set-as-value.ms",
+          "line": 6,
+          "column": 9,
+          "offset": 133
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/diag-type-set-as-value.ms:6:9: type: Number is a type set, which constrains a type parameter and has no values; write fn f[T: Number](...) or use one of its members\n   |\n 6 | fn f(x: Number) Int:\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -115,13 +115,14 @@ In the EBNF, braces repeat, brackets are optional, and quoted brackets are sourc
 Module        = { Import | Declaration } ;
 Import        = "import", ( ImportNames | "(", ImportNames, [ "," ], ")" ), "from", PlainStringLiteral, NEWLINE ;
 ImportNames   = Name, { ",", Name } ;
-Declaration   = [ "export" ], (TypeDeclaration | EnumDeclaration | InterfaceDeclaration | FunctionDeclaration
+Declaration   = [ "export" ], (TypeDeclaration | AliasDeclaration | EnumDeclaration | InterfaceDeclaration | FunctionDeclaration
               | ConstantDeclaration | ExternDeclaration)
               | Implementation | TestDeclaration | BenchDeclaration ;
 ConstantDeclaration = Name, ( ":=", Expression | ":", Type, ":=", Expression ), NEWLINE ;
 
 TypeDeclaration = [ "opaque" ], "type", Name, [ TypeParameters ], ":",
                   ("...", NEWLINE | NEWLINE, INDENT, RecordBody, DEDENT) ;
+AliasDeclaration = "type", Name, [ TypeParameters ], "=", Type, { "|", Type }, NEWLINE ;
 EnumDeclaration = [ "opaque" ], "enum", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, AlternativeBody, DEDENT ;
 RecordBody    = { Field } ;
@@ -166,13 +167,13 @@ FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", T
 ```
 
 - A type suffix `?` is `Optional[T]`; `!` is `Result[T, Error]`, and `!E` with `E` directly after the bang is `Result[T, E]`. Suffixes apply left to right.
-- A `type` declares record fields; an `enum` declares one or more variants. Their methods are receiver methods, `fn Type.name(...)`, written beside the type; a type satisfies an interface by having methods that match it. An `interface` holds only operation signatures. A payloadless variant is `Ready`, without `()`. Names are unique per scope.
+- A `type Name = Type` declares an [alias](../types/named-types.md#aliases): another name for the same type, or with `|` a [type set](../types/generics.md#type-sets) that bounds a type parameter. A `type Name:` declares record fields; an `enum` declares one or more variants. Their methods are receiver methods, `fn Type.name(...)`, written beside the type; a type satisfies an interface by having methods that match it. An `interface` holds only operation signatures. A payloadless variant is `Ready`, without `()`. Names are unique per scope.
 - A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/named-types.md#construction), and `= none` on Optional interface parameters. Function types and enum payloads have none. Parameter names in a function type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.
 - A named function or method body may be `...` (`fn read_bytes(count: Int) Bytes: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. In the standard library, a property interface uses `interface Name: ...`; an empty implementation may supply a marker interface. Test, bench, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths, test names, and bench names are plain literals (escapes allowed, no interpolation).
-- `export` applies to records, enums, interfaces, named functions, constants and extern declarations, not tests, benches, or methods.
+- `export` applies to records, aliases, enums, interfaces, named functions, constants and extern declarations, not tests, benches, or methods.
 - A receiver method is accepted only in the module that declares its type, and repeats the type's parameters (`fn Box[T].get() T`), optionally bounded (`fn Box[T: Equal].same(...)`) or fixed (`fn List[Int].sum()`). Methods may also declare their own [type parameters](../types/contracts.md#generic-operations). Methods of one name on one receiver form are rejected as [contracts](../types/contracts.md#methods) describe.
 - `&` only combines generic bounds, as in `T: Read & Closeable`; order is irrelevant. There is no intersection or refinement syntax for value types.
 - No module-level statements or `var`; a top-level `:=` is a [constant](../modules/declarations.md#constants). Snippets of local bindings are body fragments. Type paths add no wildcard imports; see [module rules](../modules/declarations.md).

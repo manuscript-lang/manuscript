@@ -193,6 +193,9 @@ pub enum Builtin {
     BytesBuilder,
     /// `Regex`.
     Regex,
+    /// A closed set of types, `type Name = A | B`; its members are the type arguments. Only a
+    /// bound can name one.
+    TypeSet,
     /// The implicit `Self` variable of an interface.
     SelfType,
     /// `Int`.
@@ -677,6 +680,8 @@ pub enum SymKind {
     Type,
     /// A function (including constants and native functions).
     Fn,
+    /// `type Name = Type`: its `ty` is the aliased type over the alias's own variables.
+    Alias,
 }
 
 /// What a declaration binds to: a source body, a contract operation, or a bodiless native.

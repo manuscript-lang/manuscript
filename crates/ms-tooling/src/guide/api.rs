@@ -519,6 +519,7 @@ fn document_symbol(
     let source = sources.of(symbol.module);
     let kind = match symbol.kind {
         SymKind::Type => "type",
+        SymKind::Alias => "alias",
         SymKind::Fn => "fn",
     };
     let mut d = ApiDeclaration {

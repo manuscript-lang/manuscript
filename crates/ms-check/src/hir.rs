@@ -193,7 +193,10 @@ impl ModuleHir {
                         out.push(self.callable(CallableKind::Method, m.func.name, func));
                     }
                 }
-                DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_) => {}
+                DeclKind::Record(_)
+                | DeclKind::Alternative(_)
+                | DeclKind::Alias(_)
+                | DeclKind::Interface(_) => {}
             }
         }
         out
@@ -239,7 +242,7 @@ impl ModuleHir {
         }
         if let Some(s) = info.symbol.clone() {
             return match s.kind {
-                SymKind::Type => Resolution::Type(s),
+                SymKind::Type | SymKind::Alias => Resolution::Type(s),
                 SymKind::Fn if s.decl.as_ref().is_some_and(|d| d.is_constant()) => {
                     Resolution::Constant(s)
                 }

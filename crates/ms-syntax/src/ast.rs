@@ -115,6 +115,8 @@ pub enum DeclKind {
     Record(RecordDecl),
     /// `enum Name:` with bare variant declarations.
     Alternative(AlternativeDecl),
+    /// `type Name[T] = Type`: another name for a type expression.
+    Alias(AliasDecl),
     /// `interface Name:` with `fn` signatures.
     Interface(InterfaceDecl),
     /// `impl [Contract for] Type:` with methods.
@@ -173,6 +175,18 @@ pub struct RecordDecl {
     pub external: bool,
     /// `opaque type`: fields are visible only in the declaring file.
     pub opaque: bool,
+}
+
+/// `type Name[T] = Type`: a transparent alias, not a new type.
+#[derive(Debug, Clone)]
+pub struct AliasDecl {
+    /// Alias name.
+    pub name: Symbol,
+    /// Generic parameters.
+    pub type_params: Vec<TypeParam>,
+    /// The aliased type expressions: one for an alias, two or more for a type set
+    /// (`type Number = Int | Float`).
+    pub targets: Vec<TypeRef>,
 }
 
 /// `enum Name[T]:` with bare variant declarations.

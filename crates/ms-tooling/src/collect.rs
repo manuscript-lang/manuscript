@@ -303,6 +303,7 @@ fn kind_and_name(syms: ms_syntax::Names, decl: &DeclRef) -> (&'static str, Strin
         DeclKind::Const(c) => ("constant", syms.str(c.name).to_string()),
         DeclKind::Record(r) => ("record", syms.str(r.name).to_string()),
         DeclKind::Alternative(a) => ("alternative", syms.str(a.name).to_string()),
+        DeclKind::Alias(a) => ("alias", syms.str(a.name).to_string()),
         DeclKind::Interface(i) => ("interface", syms.str(i.name).to_string()),
         DeclKind::Impl(i) => ("impl", i.display_name(syms, d.synthetic)),
         DeclKind::Test(t) => (if t.bench { "bench" } else { "test" }, t.name.to_string()),
@@ -469,6 +470,12 @@ fn declared_slots(syms: ms_syntax::Names, kind: &DeclKind) -> (Vec<Slot>, Option
             f.params.iter().map(|p| slot(syms, p)).collect(),
             Some(type_slot(syms, "", &f.result)),
         ),
+        DeclKind::Alias(a) => {
+            let targets: Vec<String> = a.targets.iter().map(|t| type_text(syms, t)).collect();
+            let mut slot = type_slot(syms, "", &a.targets[0]);
+            slot.ty = targets.join(" | ");
+            (Vec::new(), Some(slot))
+        }
         _ => (Vec::new(), None),
     }
 }

@@ -63,7 +63,15 @@ pub(crate) fn integer(t: &Ty) -> bool {
 
 /// Whether a type is an integer or float of any width, or Decimal.
 pub(crate) fn numeric(t: &Ty) -> bool {
-    integer(t) || float_bits(t).is_some() || t.is(Builtin::Decimal) || t.is(Builtin::BigInt)
+    // A type parameter bounded by a type set is numeric when every member is.
+    (t.kind == Kind::Variable
+        && t.bounds()
+            .iter()
+            .any(|b| b.is(Builtin::TypeSet) && !b.args.is_empty() && b.args.iter().all(numeric)))
+        || integer(t)
+        || float_bits(t).is_some()
+        || t.is(Builtin::Decimal)
+        || t.is(Builtin::BigInt)
 }
 
 /// An unsuffixed number literal, possibly signed.
@@ -400,6 +408,13 @@ impl Checker {
             }
             i.ty = Some(narrow.cloned().unwrap_or_else(|| primitive("Float")));
         } else {
+            // A zero takes the type of a numeric type set's parameter: `0` is the zero of every member.
+            if text == "0"
+                && let Some(t) = expected.filter(|t| t.kind == Kind::Variable && numeric(t))
+            {
+                i.ty = Some(t.clone());
+                return finish_info(i);
+            }
             // An expected sized integer type gives the literal that type.
             let sized = expected.filter(|t| int_bits(t).is_some() && !t.is(Builtin::Int));
             match sized {

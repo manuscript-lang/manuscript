@@ -252,6 +252,7 @@ fn decl_name(d: &Decl) -> Name {
         DeclKind::Const(c) => c.name,
         DeclKind::Record(r) => r.name,
         DeclKind::Alternative(a) => a.name,
+        DeclKind::Alias(a) => a.name,
         DeclKind::Interface(i) => i.name,
         DeclKind::Impl(_) | DeclKind::Test(_) => n(""),
     }
@@ -262,6 +263,7 @@ fn decl_type_params(d: &Decl) -> &[TypeParam] {
         DeclKind::Fn(f) => &f.type_params,
         DeclKind::Record(r) => &r.type_params,
         DeclKind::Alternative(a) => &a.type_params,
+        DeclKind::Alias(a) => &a.type_params,
         DeclKind::Interface(i) => &i.type_params,
         _ => &[],
     }
@@ -439,6 +441,7 @@ fn split_mixed(syms: ms_syntax::Names, parsed: &Module) -> Result<Option<Halves>
             DeclKind::Const(c) => c.name,
             DeclKind::Record(r) => r.name,
             DeclKind::Alternative(a) => a.name,
+            DeclKind::Alias(a) => a.name,
             DeclKind::Interface(i) => i.name,
             DeclKind::Impl(_) | DeclKind::Test(_) => continue,
         };

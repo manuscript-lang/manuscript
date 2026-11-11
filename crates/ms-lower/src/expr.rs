@@ -782,6 +782,8 @@ impl<'a> FnLower<'a> {
     /// Brings a 64-bit result back to its sized type: integers fault when out of range,
     /// binary32 floats round. Default-width and 64-bit types pass through.
     fn narrow(&mut self, v: Value, t: &ct::Ty) -> Value {
+        // A type parameter narrows as the type it stands for in this instance.
+        let t = &ct::sub(t, &self.subst);
         if ct::int_bits(t).is_some_and(|bits| bits < 64) {
             return self.b.narrow_chk(v);
         }

@@ -829,15 +829,21 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
         breaks: HashSet::new(),
     };
     // Imports may be interleaved with declarations. Separate each import
-    // section while keeping consecutive imports, and consecutive constants,
+    // section while keeping consecutive imports, constants and aliases,
     // together.
     let mut groups: HashMap<usize, &str> = HashMap::new();
     let mut top_level: Vec<usize> = Vec::new();
     for d in &module.decls {
         let line = d.pos.line as usize;
         top_level.push(line);
-        if matches!(d.kind, DeclKind::Const(_)) {
-            groups.insert(line, "constant");
+        match d.kind {
+            DeclKind::Const(_) => {
+                groups.insert(line, "constant");
+            }
+            DeclKind::Alias(_) => {
+                groups.insert(line, "alias");
+            }
+            _ => {}
         }
     }
     for item in &module.imports {
@@ -1213,6 +1219,7 @@ impl<'a> Layout<'a> {
             DeclKind::Fn(f) => self.func(f),
             DeclKind::Record(r) => r.fields.iter().for_each(|f| self.typ(f.ty.as_ref())),
             DeclKind::Alternative(a) => a.cases.iter().for_each(|c| self.parameters(&c.fields)),
+            DeclKind::Alias(a) => a.targets.iter().for_each(|t| self.typ(Some(t))),
             DeclKind::Interface(i) => i.methods.iter().for_each(|m| self.func(&m.func)),
             DeclKind::Impl(i) => i.methods.iter().for_each(|m| self.func(&m.func)),
             DeclKind::Const(_) | DeclKind::Test(_) => {}

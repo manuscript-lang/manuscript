@@ -64,7 +64,7 @@ inferred := identity(1)
 
 - Parameter names are unique; an application supplies one argument each, except trailing [defaults](#default-type-arguments).
 - Types, enums, interfaces, and named functions may be generic. Anonymous functions cannot declare parameters. Contract operations and methods may declare their own ([generic operations](contracts.md#generic-operations)), and a receiver names the type's parameters ([generic receivers](contracts.md#generic-receivers)).
-- Higher-kinded parameters, type aliases, and variadic parameters are unsupported.
+- Higher-kinded parameters and variadic parameters are unsupported. A [type alias](named-types.md#aliases) may take parameters.
 - Applications are invariant: `Box[Int]` is not `Box[Float]`.
 - A generic function used as a value must be specialized: `identity[Int]`.
 
@@ -159,3 +159,22 @@ The check also covers mutual recursion, function values such as `grow[List[T]]`,
 ## Built-in requirements
 
 `List[T]`, `Queue[T]`, and other collections accept any value type, including functions and contract views. Map keys and set elements require `Hashable` ([equality and hashing](equality-and-hashing.md)).
+
+## Type sets
+
+`type Name = A | B | C` names a closed set of types. A set is only a bound: `T: Name` accepts exactly its members, and nothing exists at run time (no tag, no layout, no `match`). Generic code is monomorphized, so each instance is compiled for one member.
+
+```manuscript
+type Number = Int | Int8 | Float | Float32
+
+fn total[T: Number](values: List[T]) T:
+    var sum: T = 0
+    for v in values:
+        sum += v
+    return sum
+```
+
+- Members are concrete types, not type parameters or interfaces. A set may name another set; its members are flattened in.
+- Inside the body, `+`, `-`, `*`, `/` and comparisons work on a `T` whose members are all numeric, and the literal `0` is the zero of every member. Each instance keeps its own arithmetic: `Int8` overflow faults and `Float32` rounds to binary32.
+- A set cannot be a value type: `fn f(x: Number)` is rejected with `Number is a type set, which constrains a type parameter and has no values`. A type outside the set is rejected where the argument is checked: `String is not a member of the type set Number`.
+- `@std/collections/collections.ms` exports `Numeric`, the integer and float types `List.sum` adds.

@@ -115,74 +115,11 @@ fn var List[T].append(value: T) Unit: ...
 // Returns the number of elements.
 fn List[T].length() Int: ...
 
-// Adds the elements left to right with `+`, so integer overflow faults; an empty
-// list sums to 0. Example: `[1, 2, 3].sum()` is `6`.
-fn List[Int].sum() Int:
-	var total: Int = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+` in binary64 arithmetic; an empty list
-// sums to 0.0. Example: `[1.5, 2.5].sum()` is `4.0`.
-fn List[Float].sum() Float:
-	var total: Float = 0.0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so Int8 overflow faults; an empty list
-// sums to 0.
-fn List[Int8].sum() Int8:
-	var total: Int8 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so Int16 overflow faults; an empty list
-// sums to 0.
-fn List[Int16].sum() Int16:
-	var total: Int16 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so Int32 overflow faults; an empty list
-// sums to 0.
-fn List[Int32].sum() Int32:
-	var total: Int32 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so UInt8 overflow faults; an empty list
-// sums to 0.
-fn List[UInt8].sum() UInt8:
-	var total: UInt8 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so UInt16 overflow faults; an empty
-// list sums to 0.
-fn List[UInt16].sum() UInt16:
-	var total: UInt16 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so UInt32 overflow faults; an empty
-// list sums to 0.
-fn List[UInt32].sum() UInt32:
-	var total: UInt32 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+` in binary32 arithmetic; an empty list
-// sums to 0.0.
-fn List[Float32].sum() Float32:
-	var total: Float32 = 0.0
+// Adds the elements left to right with `+` in the element type's own arithmetic, so
+// integer overflow faults and floats follow their width; an empty list sums to zero.
+// Example: `[1, 2, 3].sum()` is `6`; `[1.5, 2.5].sum()` is `4.0`.
+fn List[T: Numeric].sum() T:
+	var total: T = 0
 	for x in self:
 		total += x
 	return total
@@ -823,3 +760,6 @@ import (
 	msrt_list_flatten,
 	msrt_list_range_by from "@std/internal/collections.ms",
 )
+
+// The built-in integer and float types: the element types `sum` adds.
+export type Numeric = Int | Int8 | Int16 | Int32 | UInt8 | UInt16 | UInt32 | Float | Float32
