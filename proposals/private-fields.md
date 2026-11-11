@@ -27,7 +27,7 @@ export type Account:
 
 ## Design
 
-Only the checker and parser change. No runtime or layout change: visibility is a compile-time property of a field.
+No runtime or layout change: visibility is a compile-time property of a field.
 
 ```text
 export type Account:
@@ -52,7 +52,8 @@ export type Account:
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `crates/ms-syntax` | none: privacy is derived from the name; no keyword, no grammar change | none |
+| `crates/ms-lower` (`cx.rs` `opaque_tys`), `ms-lsp` (`index.rs`, `completion.rs`, `editor.rs`), `ms-tooling` (`guide/api.rs`), `ms-check` (`contracts.rs`) | consumers of `opaque_module()` become per-field; text form of mixed types | e2e fixture, LSP and api tests |
+| `crates/ms-syntax` | none: privacy derived from the name | none |
 | `crates/ms-check` (`exprs.rs`, `calls.rs`, `stmts.rs`, `checker.rs`, `types.rs`) | generalize `opaque_denied` / `opaque_module` from per-type to per-field; defaults fill omitted private fields | `tests/opaque_cases.rs` plus a conformance reject case |
 | `crates/ms-lsp`, `ms-tooling` (`guide`, `api`) | completion hides private fields outside file; `ms api` and docs show them | guide and api tests |
 | `documentation/core-language/types/named-types.md`, `modules/declarations.md` | replace "no per-field visibility modifiers" | `make docs`, repo-check |
@@ -60,7 +61,7 @@ export type Account:
 
 ## Alternatives
 
-- Do nothing: the split-type workaround works today but costs a type, accessors and a constructor per hidden group, and has no way to hide a single field with a default. Weakest case against.
+- Do nothing: the split-type workaround (skeptic review: no stdlib type declares `_` fields today, so demand evidence is thin; a concrete stdlib type that would shrink must be named before building) works today but costs a type, accessors and a constructor per hidden group, and has no way to hide a single field with a default. Weakest case against.
 - `private` keyword: new grammar and a reserved word; the underscore needs neither. Runner-up if `_` clashes.
 - Type-level `private:` block or section: new grammar shape for one bit per field; per-field modifier is smaller.
 - Type-scoped (not file-scoped) privacy: needs a new notion of "inside the type" that tests and helpers in the same file would lose. File scope matches `opaque` and needs no new boundary.
@@ -73,4 +74,4 @@ export type Account:
 
 ## Open questions
 
-- Leading `_` today only silences the unused-binding warning (`ms-check/src/unused.rs:106`, `checker.rs:1343`); bare `_` is the discard. Decision: `_` alone is the discard; `_name` is an ordinary name, file-private on a field or method, and no longer exempt from the unused warning. Migrate `_oldest :=` style bindings (`stdlib/log.ms:327-337`) to `_ :=`.
+- Scope of `_x`: privacy applies only at field and method declaration sites. Locals, parameters and labels, top-level fns and types, and enum cases stay ordinary names (conformance already has `fn _hidden(_value: Int)`). The unused-binding exemption for `_x` locals (`unused.rs:106`, `checker.rs:1343`) is unchanged: the skeptic counted about 1238 `_name` bindings across 777 files, so no migration. Bare `_` remains the discard.
