@@ -38,15 +38,23 @@ fn issues(file: &str, source: &str) -> Vec<String> {
         .unwrap()
 }
 
-// The cheat sheet's complete program is the one claim a reader can copy verbatim.
+// Check every complete program a reader can copy verbatim from the cheat sheet.
 #[test]
 fn cheatsheet_program_checks() {
-    let (_, after) = cheatsheet()
-        .split_once("<!-- complete -->\n```manuscript\n")
-        .expect("cheat sheet lost its complete program");
-    let source = after.split("```").next().unwrap();
-    let found = issues("cheatsheet.ms", source);
-    assert!(found.is_empty(), "cheat sheet program: {found:?}");
+    let mut programs = 0;
+    for after in cheatsheet()
+        .split("<!-- complete -->\n```manuscript\n")
+        .skip(1)
+    {
+        programs += 1;
+        let source = after.split("```").next().unwrap();
+        let found = issues("cheatsheet.ms", source);
+        assert!(found.is_empty(), "cheat sheet program: {found:?}");
+    }
+    assert_eq!(
+        programs, 2,
+        "guide must retain its workflow and structure examples"
+    );
 }
 
 #[test]
@@ -61,7 +69,7 @@ fn cheatsheet_terse_idioms_check() {
 #[test]
 fn cheatsheet_stays_short() {
     assert!(
-        cheatsheet().len() <= 5500,
+        cheatsheet().len() <= 5800,
         "cheat sheet is {} bytes",
         cheatsheet().len()
     );

@@ -19,3 +19,5 @@ mod lint_terse;
 mod lint_text;
 mod review;
 mod stdlib_effects;
+
+mod skill_pages;

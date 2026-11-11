@@ -22,7 +22,8 @@ Commands:
   init           Create a new project with a manifest, entry, test, and .gitignore
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
-  guide          Print the language cheat sheet, or explain diagnostic codes
+  skill          Write the bundled Manuscript agent skill and references
+  guide          Print the legacy cheat sheet, or explain diagnostic codes
   help           Show help for a command
   version        Print the compiler version
 
@@ -386,6 +387,21 @@ Examples:
   ms search_symbol parse_config
   ms search_symbol read file lines
   ms search_symbol json.parse
+"#;
+
+pub const HELP_SKILL: &str = r#"Usage: ms skill [-o <directory>]
+
+Write the bundled Manuscript agent skill into <directory>/manuscript/.
+Includes SKILL.md and concept references; works offline without this repository.
+Existing manuscript directories are never overwritten.
+
+Options:
+  -o, --output <directory>  Parent skill directory (default .agents/skills)
+  -h, --help               Show this help without writing files
+
+Examples:
+  ms skill
+  ms skill -o ./agents/skills
 "#;
 
 pub const HELP_GUIDE: &str = r#"Usage: ms guide [code...] [--json]

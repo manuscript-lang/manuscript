@@ -1,6 +1,6 @@
 # Manuscript cheat sheet
 
-Alpha: syntax/APIs may change. Indent consistently (tabs or four spaces); `//` comments.
+Alpha: syntax/APIs may change. Use four-space indents and `//` comments.
 
 ## Write, check, run
 
@@ -28,6 +28,28 @@ fn main() Unit!:
 - Repair with `ms check total.ms --json`; follow its message/fix. `ms guide <code>` explains the rule. `ms check total.ms --fix` applies fixes; recheck.
 - Validate: `ms test` runs `test "name":` blocks; `ms verify` checks projects. `ms bench` runs `bench "name":` blocks. Add `--deny-warnings` to reject warnings.
 
+## Program structure
+
+Put imports then declarations at file scope; `main` is the entry point. A trailing `:` opens a block; dedent closes it. Methods sit beside the type; `self` is implicit. `fn var` mutates it.
+
+Save as `counter.ms`; `ms run counter.ms` exits 0:
+
+<!-- complete -->
+```manuscript
+type Counter:
+    n: Int = 0
+
+fn Counter.value() Int: self.n
+
+fn var Counter.add(n: Int) Unit:
+    self.n += n
+
+fn main() Int:
+    var counter = Counter()
+    counter.add(42)
+    return counter.value() - 42
+```
+
 ## Values and syntax
 
 - Bind: `x := e` or `x: T := e`. Mutate: `var x = e`, `n += 1`. Prefix unused names with `_`.
@@ -35,10 +57,10 @@ fn main() Unit!:
 - Functions: `fn f(a: Int, b: Int = 1) Int:`; call `f(1, b: 2)`. Declare return types; `Unit`/`Unit!` may fall through. Inline: `fn twice(x: Int) Int: x * 2`. `main` may return an Int status.
 - Generics: `fn f[T](x: T) T`. Closures: `fn x: x + 1`, or `fn(x: Int) Int: x + 1`; function type: `fn(Int) Int`.
 - Control: `if`/`else if`/`else`, `while c:`, `for i in 0..n:` (excludes n), `break`, `continue`; `and or not`. Expression: `if c: a else: b`.
-- A line-ending `:` needs an indented body. Inline `if c: return x` exits early; align `else` on a new line. Leading `|` or `.` continues a line.
+- Inline `if c: return x` exits early; align `else` on a new line. Leading `|` or `.` continues a line.
 - Imports: `import a, b from "x.ms"`; `export` shares declarations.
-- Records: `type T:` with fields (`tag: String = "x"`); construct `T(a: 1)` or `T(1)`. `enum Choice:` declares `A`, `B(x: Int)`; no `case` keyword.
-- Methods: `fn T.name() Unit`; `fn var` mutates self. An `interface I:` is met by matching methods or `impl I for T:`. `export opaque` hides fields/cases outside the file.
+- Construct records with `T(a: 1)` or `T(1)`. `enum Choice:` declares `A`, `B(x: Int)`; no `case` keyword.
+- `interface I:` is met by matching methods or `impl I for T:`. `export opaque` hides fields/cases outside the file.
 - Collections: `[1, 2]`, `List[T](reserve: n)`, `Map[K, V]()`, `Set[T]()`. Use `var` for `xs[i] = v`, `m[k] = v`. `xs.slice(a, b)` returns a Result. `m.get(k)` returns an Optional; `m.get_or(k, d)` supplies a default. Iterate `for e in m.entries():`; `if var n = m[k]?: n += 1` updates a present value in place.
 - List methods: `xs | .filter(fn x: x > 0) | .map(fn x: x * 2) | .sum()`. `x | f(a: 1) | g? | .m()` means `(g(f(x, a: 1))?).m()`.
 
@@ -63,7 +85,5 @@ fn main() Unit!:
 
 - Effects are linted: put `// ms: allow_effect std.fs.read` above the function, or pass a capability. Directives do not execute effects.
 - `Promise[T]`: `p.wait()` returns `T!` once; dropping unfinished work cancels and joins. Set limits with `promise(fn: f(), options: PromiseOptions(timeout: d))`, not arguments to wait.
-- Coordinate through `pipe[T](cap)`; keep mutable state with one owner. Discover imports/options with `ms search_symbol promise` or `stream`; there is no `async`/`await`.
+- Imports: `promise, PromiseOptions` from `"@std/concurrency/promise.ms"`; `pipe` from `"@std/io/io.ms"`; `lines, map, collect` from `"@std/io/streams.ms"`. Keep mutable state with one owner; no `async`/`await`.
 - Stream reads return promises; `for x in s:` binds T and propagates read errors. Writes wait when full. Pipeline: `input | lines | map(f) | collect(none)`; handle the final Result.
-
-Next: `ms search_symbol <module>`.

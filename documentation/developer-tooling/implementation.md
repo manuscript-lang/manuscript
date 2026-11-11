@@ -152,12 +152,13 @@ Replace the example ID with `diagram.entity` from the explanation. The diff must
 
 ## Commands for agents
 
-Two small commands answer what the compiler commands do not and print only what is needed to act.
+These commands answer what the compiler commands do not and print only what is needed to act.
 
 | Command | Behavior |
 | --- | --- |
 | `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project and standard-library symbols (`--limit n`, default 5, max 10 total matches; `--json`). Project matches come first and print `file:line:column`, type, description, and up to five uses; standard matches fill remaining places and print signature and path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, capped near 3.5 KB; no argument lists modules |
-| `ms guide` | The language cheat sheet with a checked example program, then common mistakes beside their fixes (`crates/ms-tooling/data/mistakes.txt`, verified against the compiler by `guide_pages`) |
+| `ms skill -o <directory>` | Install the versioned, bundled agent writing skill at `<directory>/manuscript/`, with `SKILL.md` and concept references; defaults to `.agents/skills`, never overwrites an existing skill |
+| `ms guide` | The legacy language cheat sheet with a checked example program, then common mistakes beside their fixes (`crates/ms-tooling/data/mistakes.txt`, verified against the compiler by `guide_pages`) |
 
 Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which print compact diagnostics (`--json` for complete documents).
 
