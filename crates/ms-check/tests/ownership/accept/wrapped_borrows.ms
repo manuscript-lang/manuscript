@@ -20,7 +20,7 @@ fn relay(result: Row!Bad) Row!Bad:
 
 // `try` of a borrow-returning call hands a borrowed error on; its payload is a reference too.
 fn tail(result: Row!Bad) String!Bad:
-    row := try relay(result)
+    row := relay(result)?
     return ok(row.name)
 
 fn risky(n: Int) Int!Bad:
@@ -28,9 +28,9 @@ fn risky(n: Int) Int!Bad:
 
     return ok(n)
 
-// A wrapped part beside a new value (the error of `try risky`) is a new value, as before.
+// A wrapped part beside a new value (the error of `risky?`) is a new value, as before.
 fn checked(r: Row, n: Int) String!Bad:
-    _v := try risky(n)
+    _v := risky(n)?
     return ok(r.name)
 
 fn demo(r: Row, result: Row!Bad) Int:

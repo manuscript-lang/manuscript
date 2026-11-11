@@ -13,7 +13,7 @@ export fn first_result(cause: DomainFailure) Unit!:
     return failure(cause).map_error(first_error)
 
 export fn first_propagated(cause: DomainFailure) Unit!:
-    try failure(cause).map_error(first_error)
+    failure(cause).map_error(first_error)?
 
 fn generic[T](cause: T, convert: fn(T) Error) Error:
     return convert(cause)

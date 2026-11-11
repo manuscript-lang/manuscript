@@ -40,7 +40,7 @@ fn reportless_failures_do_not_widen_or_cross_unrelated_boundaries() {
     for returned in ["Error", "OtherError"] {
         assert!(
             got.iter().any(|d| {
-                d.contains("try requires the same error type")
+                d.contains("'?' requires the same error type")
                     && d.contains(&format!("returns Result[Int, {returned}]"))
                     && d.contains("operand fails with DomainError")
             }),

@@ -168,7 +168,7 @@ export fn ms_binary() String:
 export fn build_ms(dir: String, out: String) Unit!:
 	_stale := remove("{dir}/ms.lock")
 	ran := run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
-	_ := try must("ms build {dir}", ran)
+	_ := must("ms build {dir}", ran)?
 
 // Builds the Go module in `dir` as a static binary.
 export fn build_go(dir: String, out: String) Unit!:
@@ -183,7 +183,7 @@ export fn build_go(dir: String, out: String) Unit!:
 			out, "."
 		]
 	)
-	_ := try must("go build {dir}", ran)
+	_ := must("go build {dir}", ran)?
 
 // Compiles one Rust source at the usual release settings plus `flags`.
 export fn build_rust(source: String, out: String, flags: List[String]) Unit!:
@@ -191,7 +191,7 @@ export fn build_rust(source: String, out: String, flags: List[String]) Unit!:
 	args = args.concat(flags)
 	args = args.concat(["-o", out.clone(), source.clone()])
 
-	_ := try must("rustc {source}", capture(env("RUSTC", "rustc"), args))
+	_ := must("rustc {source}", capture(env("RUSTC", "rustc"), args))?
 
 // Runs `exe` with `input` on standard input and returns its standard output.
 export fn sample(exe: String, arguments: List[String], input: String = "") String!:

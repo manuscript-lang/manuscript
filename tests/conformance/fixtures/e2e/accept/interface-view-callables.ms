@@ -51,8 +51,8 @@ impl Read[Int] for DefaultReader:
 test "nested view receiver prepares once and calls later":
     var log = Log("")
     view: Read[Int] := Reader(prepare(var log, 7))
-    try expect_equal(log.events, "prepare;")
-    try expect_equal(view.read(), 7)
+    expect_equal(log.events, "prepare;")?
+    expect_equal(view.read(), 7)?
 
 test "constructor arguments retain written order and capture snapshots":
     var log = Log("")
@@ -74,8 +74,8 @@ test "constructor arguments retain written order and capture snapshots":
     )
 
     value = 90
-    try expect_equal(log.events, "last;first;")
-    try expect_equal(view.read(), 9)
+    expect_equal(log.events, "last;first;")?
+    expect_equal(view.read(), 9)?
 
 test "explicit nested views and bound methods retain generic dispatch":
     var value = 5
@@ -90,17 +90,17 @@ test "explicit nested views and bound methods retain generic dispatch":
     value = 80
 
     bound := view.read
-    try expect_equal(bound(), 5)
-    try expect_equal(invoke(view), 5)
-    try expect_equal(Reader(fn() Int: 6).read(), 6)
-    try expect_equal(Reader(fn() Int: 8).read(), 8)
-    try expect_equal(wrap(fn() String: "text").read(), "text")
+    expect_equal(bound(), 5)?
+    expect_equal(invoke(view), 5)?
+    expect_equal(Reader(fn() Int: 6).read(), 6)?
+    expect_equal(Reader(fn() Int: 8).read(), 8)?
+    expect_equal(wrap(fn() String: "text").read(), "text")?
 
 test "source constructors with callable defaults prepare once":
     var log = Log("")
     view: Read[Int] := DefaultReader(mark(var log, "base;", 12))
-    try expect_equal(log.events, "base;")
-    try expect_equal(view.read(), 12)
+    expect_equal(log.events, "base;")?
+    expect_equal(view.read(), 12)?
 
 test "match receiver side effects and callable body remain ordered":
     var log = Log("")
@@ -113,8 +113,8 @@ test "match receiver side effects and callable body remain ordered":
             mark(var log, "wrong;", 0)
             Reader(fn() Int: 0)
 
-    try expect_equal(log.events, "select;chosen;")
-    try expect_equal(view.read(), 9)
+    expect_equal(log.events, "select;chosen;")?
+    expect_equal(view.read(), 9)?
 
 fn present[T](value: T) T?:
     return value

@@ -55,7 +55,7 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 		write_text(program, source.replace("export fn main() Int: return 0\n", body(w)))
 
 		binary := "{out}/{label}"
-		_build := try must(
+		_build := must(
 			"ms build",
 			capture(
 				cli.clone(),
@@ -64,23 +64,23 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 					binary.clone()
 				]
 			)
-		)
-		_emit := try must(
+		)?
+		_emit := must(
 			"ms emit",
 			capture(
 				cli.clone(), ["emit", program.clone(), "-o", "{out}/{label}.mir"]
 			)
-		)
-		_warm := try must(label, capture(binary.clone(), []))
+		)?
+		_warm := must(label, capture(binary.clone(), []))?
 		var seconds = List[Float]()
 		var peaks = List[Float]()
 		var samples = List[JsonValue]()
 
 		for i in 0..runs:
 			start := now_ns()
-			measured := if cpu == "": try peak_run(binary.clone(), []) else: try peak_run(
+			measured := if cpu == "": peak_run(binary.clone(), [])? else: peak_run(
 				"taskset", ["-c", cpu.clone(), binary.clone()]
-			)
+			)?
 			elapsed := (now_ns() - start).to_float() / 1000000000.0
 			seconds.append(elapsed)
 			peaks.append(measured.kib.to_float())

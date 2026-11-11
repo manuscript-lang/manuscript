@@ -10,12 +10,12 @@ fn parse(n: Int) Int!Error:
     return ok(n)
 
 fn bound(n: Int) Int!Error:
-    v := try parse(n)
+    v := parse(n)?
     return ok(v + 1)
 
 fn reassigned(n: Int) Int!Error:
     var total = 1
-    total = try parse(n)
+    total = parse(n)?
     return ok(total * 2)
 
 fn check(n: Int) Unit!Error:
@@ -23,50 +23,50 @@ fn check(n: Int) Unit!Error:
         return error(Error("neg"))
 
 fn discarded(n: Int) Int!Error:
-    try check(n)
+    check(n)?
     return ok(7)
 
 fn code(r: Int!Error) Int:
     return r.get(-1)
 
 fn nested(n: Int) Int!Error:
-    return ok((try parse(n)) + (try parse(n - 5)))
+    return ok((parse(n)?) + (parse(n - 5)?))
 
 fn chained(n: Int) Int!Error:
-    a := try bound(n)
-    b := try reassigned(a - 10)
+    a := bound(n)?
+    b := reassigned(a - 10)?
     return ok(b)
 
 fn in_loop(values: List[Int]) Int!Error:
     var sum = 0
     for v in values:
-        sum += try parse(v)
+        sum += parse(v)?
     return ok(sum)
 
 fn in_lambda(n: Int) Int!Error:
     inner := fn() Int!Error:
-        v := try parse(n)
+        v := parse(n)?
         return ok(v * 10)
 
-    r := try inner()
+    r := inner()?
     return ok(r + 1)
 
-test "statement try returns the error and binds the value":
-    try expect_equal(code(bound(4)), 5)
-    try expect_equal(code(bound(-1)), -1)
-    try expect_equal(code(reassigned(3)), 6)
-    try expect_equal(code(reassigned(-2)), -1)
-    try expect_equal(code(discarded(1)), 7)
-    try expect_equal(code(discarded(-1)), -1)
+test "statement returns? the error and binds the value":
+    expect_equal(code(bound(4)), 5)?
+    expect_equal(code(bound(-1)), -1)?
+    expect_equal(code(reassigned(3)), 6)?
+    expect_equal(code(reassigned(-2)), -1)?
+    expect_equal(code(discarded(1)), 7)?
+    expect_equal(code(discarded(-1)), -1)?
 
-test "try nested in expressions and chains still propagates":
-    try expect_equal(code(nested(6)), 7)
-    try expect_equal(code(nested(2)), -1)
-    try expect_equal(code(chained(12)), 6)
-    try expect_equal(code(chained(3)), -1)
+test "nested? in expressions and chains still propagates":
+    expect_equal(code(nested(6)), 7)?
+    expect_equal(code(nested(2)), -1)?
+    expect_equal(code(chained(12)), 6)?
+    expect_equal(code(chained(3)), -1)?
 
-test "try in loops and lambdas":
-    try expect_equal(code(in_loop([1, 2, 3])), 6)
-    try expect_equal(code(in_loop([1, -2, 3])), -1)
-    try expect_equal(code(in_lambda(2)), 21)
-    try expect_equal(code(in_lambda(-2)), -1)
+test "in? loops and lambdas":
+    expect_equal(code(in_loop([1, 2, 3])), 6)?
+    expect_equal(code(in_loop([1, -2, 3])), -1)?
+    expect_equal(code(in_lambda(2)), 21)?
+    expect_equal(code(in_lambda(-2)), -1)?

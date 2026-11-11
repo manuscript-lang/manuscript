@@ -17,14 +17,14 @@ Everything else, including strings, types, lists and maps, is handed around by r
 
 The compiler checks that borrows do not outlive their owners. While a borrow lives, the owner cannot change or be reassigned, and the borrow cannot escape the owner’s lifetime. Clone when a new owner needs to keep the data independently.
 
-Functions can return a borrow of an argument without a marker. Wrapping a borrowed part in `Optional` or `Result`, or forwarding a borrowed error with `try`, preserves that borrow. The caller keeps the owner available while it uses the result. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) for the compiler contract.
+Functions can return a borrow of an argument without a marker. Wrapping a borrowed part in `Optional` or `Result`, or forwarding a borrowed error with `?`, preserves that borrow. The caller keeps the owner available while it uses the result. See the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) for the compiler contract.
 
 ## Borrowing
 
 A borrow is a handle to a value another binding owns: many readers, or one writer, until the borrow's last use. Binding a place borrows it without a marker: `x := a.b` is a shared borrow and `var x = a.b` an exclusive one. A loop variable and a match payload borrow the same way.
 
 - A function can return a borrowed part of a parameter or receiver: `fn list() List[Int]: return self.items`. A binding of that result borrows the original place; `xs := b.list()` reads it and `var xs = b.list()` changes it exclusively.
-- `Optional` and `Result` can carry borrowed payloads. When the relevant return paths borrow the payload, `ok(self.name)` or `self.slots.get(i)` keeps it borrowed; `none` needs no owner. A `Result` can own its success value while borrowing its error from an argument, and `try` preserves the ownership of the active case. A borrowed payload must be cloned before storing it in a new owner.
+- `Optional` and `Result` can carry borrowed payloads. When the relevant return paths borrow the payload, `ok(self.name)` or `self.slots.get(i)` keeps it borrowed; `none` needs no owner. A `Result` can own its success value while borrowing its error from an argument, and `?` preserves the ownership of the active case. A borrowed payload must be cloned before storing it in a new owner.
 - A plain returned part cannot be mixed with a newly owned value on another path; clone the part when the result needs to own it. Wrapping a part does not make every function return a borrow: the checker considers all return paths. A lambda or an interface method owns its result.
 - A call that borrows from a temporary must leave an owned result: it can move the whole temporary, but retaining a part requires a clonable result. Bind the argument first to borrow a part of a non-clonable value.
 - A field owns its value. A type cannot view another variable.

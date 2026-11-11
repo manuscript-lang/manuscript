@@ -5,7 +5,7 @@ import expect_equal, expect_false, fail from "@std/test/test.ms"
 import escape, unescape from "@std/data/html.ms"
 
 test "HTML unescape has an explicit text counterpart":
-    try expect_equal(unescape("&lt;é&gt;&amp;"), "<é>&")
+    expect_equal(unescape("&lt;é&gt;&amp;"), "<é>&")?
 
 type EntityCase:
     encoded: String
@@ -27,17 +27,17 @@ test "HTML unescape recognizes named numeric and multi-scalar references":
         )
 
 test "HTML unescape applies text rules with a single decoding pass":
-    try expect_equal(unescape("&amp &lt"), "& <")
-    try expect_equal(unescape("&ampx &notit;"), "&x ¬it;")
-    try expect_equal(unescape("&bogus; &#; &;"), "&bogus; &#; &;")
-    try expect_equal(unescape("&amp;lt; &amp;amp;"), "&lt; &amp;")
-    try expect_equal(unescape("<p>&amp;</p>"), "<p>&</p>")
-    try expect_false(unescape("&AMP;") != "&" or unescape("&Amp;") != "&Amp;")
+    expect_equal(unescape("&amp &lt"), "& <")?
+    expect_equal(unescape("&ampx &notit;"), "&x ¬it;")?
+    expect_equal(unescape("&bogus; &#; &;"), "&bogus; &#; &;")?
+    expect_equal(unescape("&amp;lt; &amp;amp;"), "&lt; &amp;")?
+    expect_equal(unescape("<p>&amp;</p>"), "<p>&</p>")?
+    expect_false(unescape("&AMP;") != "&" or unescape("&Amp;") != "&Amp;")?
 
 test "HTML numeric references use replacement rules":
-    try expect_equal(unescape("&#0;&#xD800;&#x110000;"), "\u{fffd}\u{fffd}\u{fffd}")
-    try expect_equal(unescape("&#128;&#x80;"), "€€")
-    try expect_equal(unescape("&#x10FFFF;"), "\u{10ffff}")
+    expect_equal(unescape("&#0;&#xD800;&#x110000;"), "\u{fffd}\u{fffd}\u{fffd}")?
+    expect_equal(unescape("&#128;&#x80;"), "€€")?
+    expect_equal(unescape("&#x10FFFF;"), "\u{10ffff}")?
 
 fn apply[T, U](text: T, operation: fn(T) U) U:
     return operation(text)
@@ -45,20 +45,20 @@ fn apply[T, U](text: T, operation: fn(T) U) U:
 test "HTML unescape stored and generic calls preserve labels":
     convert := unescape
     typed: fn(String) String := unescape
-    try expect_false(convert("&lt;") != "<" or typed("&gt;") != ">")
-    try expect_equal(apply[String, String]("&amp;", unescape), "&")
+    expect_false(convert("&lt;") != "<" or typed("&gt;") != ">")?
+    expect_equal(apply[String, String]("&amp;", unescape), "&")?
 
 test "HTML escape and unescape retain immutable text":
     texts := ["", "<&>\"'é🙂", "&amp;lt;", "e\u{301}", "a\u{0}b", "\n\r\t"]
     for text in texts:
-        try expect_equal(unescape(escape(text)), text)
+        expect_equal(unescape(escape(text)), text)?
 
     original := "&lt;é&gt;"
     alias := original.clone()
     decoded := unescape(original)
-    try expect_false((alias != "&lt;é&gt;" or original != alias or decoded != "<é>"))
+    expect_false((alias != "&lt;é&gt;" or original != alias or decoded != "<é>"))?
 
 test "HTML unescape keeps a hexadecimal reference without digits literal":
-    try expect_false(unescape("&#x;") != "&#x;" or unescape("&#X;") != "&#X;")
-    try expect_equal(unescape("a&#x;b"), "a&#x;b")
-    try expect_equal(unescape("&amp;&#x;&lt;"), "&&#x;<")
+    expect_false(unescape("&#x;") != "&#x;" or unescape("&#X;") != "&#X;")?
+    expect_equal(unescape("a&#x;b"), "a&#x;b")?
+    expect_equal(unescape("&amp;&#x;&lt;"), "&&#x;<")?

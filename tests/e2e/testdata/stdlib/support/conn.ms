@@ -8,12 +8,12 @@ import (
 
 // Writes `text` to the connection and waits until it is handed to the socket.
 export fn send(var connection: Connection, text: String) Unit!:
-	try connection.output.write(text.to_bytes())
+	connection.output.write(text.to_bytes())?
 	return connection.output.flush()
 
 // Writes `data` to the connection and waits until it is handed to the socket.
 export fn send_bytes(var connection: Connection, data: Bytes) Unit!:
-	try connection.output.write(data)
+	connection.output.write(data)?
 	return connection.output.flush()
 
 // The next chunk, or none at the peer's end of stream; a read that waits longer than `timeout` fails.
@@ -31,7 +31,7 @@ export fn read_to_end(var input: ReadStream[Bytes]) Bytes!:
 	var chunks: List[Bytes] = []
 
 	while true:
-		chunk := try input.next()
+		chunk := input.next()?
 
 		if bytes := chunk:
 			chunks.append(bytes)

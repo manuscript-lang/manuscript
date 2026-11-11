@@ -18,19 +18,19 @@ import (
 fn run(work: String, n: Int) Result[String, Error]:
 	here := "bench/perf/datastructures"
 	for dir in ["go", "ms"]:
-		try copy(
+		copy(
 			"{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
-		)
-	try build_ms("{work}/ms", "{work}/ms/bench")
-	try build_go("{work}/go", "{work}/go/bench")
-	try build_rust("{here}/rust/main.rs", "{work}/rs", [])
+		)?
+	build_ms("{work}/ms", "{work}/ms/bench")?
+	build_go("{work}/go", "{work}/go/bench")?
+	build_rust("{here}/rust/main.rs", "{work}/rs", [])?
 
 	var raw = List[String]()
 
 	for i in 0..n:
 		for v in rotate(["ms", "go", "rs"], i):
 			exe := if v == "rs": "{work}/rs" else: "{work}/{v}/bench"
-			for line in (try sample(exe, [])).split("\n"):
+			for line in (sample(exe, [])?).split("\n"):
 				if line != "": raw.append("{v} {line}")
 			raw.append("{v} # end")
 

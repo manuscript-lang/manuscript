@@ -15,7 +15,7 @@ impl TestHooks for Counter:
 
 test "increments":
     fixture.count += 1
-    try expect_equal(fixture.count, 1)
+    expect_equal(fixture.count, 1)?
 
 test "starts fresh":
-    try expect_equal(fixture.count, 0)
+    expect_equal(fixture.count, 0)?

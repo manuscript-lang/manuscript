@@ -12,7 +12,7 @@ header block (folded lines joined, names kept as written, lookup case-insensitiv
 
     import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
     print(media_type_for_extension(".json").get("")) // "application/json"
-    charset := (try parse_media_type("text/html; charset=utf-8")).params.get("charset")
+    charset := (parse_media_type("text/html; charset=utf-8")?).params.get("charset")
 */
 
 // A parsed media type with lower-cased `essence` and parameters keyed by lower-cased name.
@@ -261,12 +261,12 @@ fn make_part(section: Bytes) Part!:
 
 		padding += 1
 
-	framed := try section.slice(padding, section.length())
+	framed := section.slice(padding, section.length())?
 	if not framed.starts_with(crlf): return error(
 		Error("MIME: invalid multipart body", kind: "EBADMSG")
 	)
 
-	inner := try framed.slice(2, framed.length())
+	inner := framed.slice(2, framed.length())?
 	blank := if inner.starts_with(crlf): 0 else: inner.index_of(
 		"\r\n\r\n".to_bytes()
 	).get(-1)
@@ -280,7 +280,7 @@ fn make_part(section: Bytes) Part!:
 		Error("MIME: invalid multipart body", kind: "EBADMSG")
 	)
 
-	headers := try parse_headers(header_text.get(""))
+	headers := parse_headers(header_text.get(""))?
 	var part = Part(
 		headers: headers,
 		data: inner.slice(blank + skip, inner.length()).get("".to_bytes())
@@ -315,7 +315,7 @@ export fn parse_multipart(body: Bytes, boundary: String) List[Part]!:
 		section := sections[i]
 		if section.starts_with("--".to_bytes()): return ok(parts)
 
-		part := try make_part(section)
+		part := make_part(section)?
 		parts.append(part)
 
 	return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
@@ -358,9 +358,7 @@ impl Transform[Bytes, Part] for MultipartParts:
 					// Preamble text is ignored; keep only a tail that could start the delimiter.
 					keep := self.delimiter.length() - 1
 					size := self.buffer.length()
-					if size > keep: self.buffer = try self.buffer.slice(
-						size - keep, size
-					)
+					if size > keep: self.buffer = self.buffer.slice(size - keep, size)?
 					break
 
 				if limit := self.max_part_bytes:
@@ -375,7 +373,7 @@ impl Transform[Bytes, Part] for MultipartParts:
 				if stop > 0:
 					self.pending.append_bytes(self.buffer.view(0, stop))
 					self.pending_size += stop
-					self.buffer = try self.buffer.slice(stop, self.buffer.length())
+					self.buffer = self.buffer.slice(stop, self.buffer.length())?
 
 				break
 
@@ -390,7 +388,7 @@ impl Transform[Bytes, Part] for MultipartParts:
 					)
 
 				if self.pending_size == 0:
-					out.append(try make_part(self.buffer.view(0, end)))
+					out.append(make_part(self.buffer.view(0, end))?)
 				else:
 					self.pending.append_bytes(self.buffer.view(0, end))
 
@@ -405,9 +403,9 @@ impl Transform[Bytes, Part] for MultipartParts:
 					self.pending_size = 0
 					out.append(part.get())
 
-			self.buffer = try self.buffer.slice(
+			self.buffer = self.buffer.slice(
 				end + self.delimiter.length(), self.buffer.length()
-			)
+			)?
 			self.in_part = true
 
 	var fn finish(var out: List[Part]) Unit!:

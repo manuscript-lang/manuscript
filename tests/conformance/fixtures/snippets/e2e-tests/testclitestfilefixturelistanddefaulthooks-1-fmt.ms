@@ -19,4 +19,4 @@ impl TestHooks for State:
 test "one":
     var hooks: TestHooks = fixture
     hooks.before_all()
-    try expect_equal(fixture.value, 7)
+    expect_equal(fixture.value, 7)?

@@ -74,7 +74,7 @@ fn identities() Map[String, Identity]:
 	return rows
 
 fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]:
-	try fresh_directory(out)
+	fresh_directory(out)?
 
 	expected := identities()
 	names := ["before", "after", "rust"]
@@ -85,12 +85,12 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
 	var per = Map[String, List[Float]]()
 
 	for name in names:
-		_warm := try run_rows(paths.get_or(name, ""), expected, cpu)
+		_warm := run_rows(paths.get_or(name, ""), expected, cpu)?
 		validated.append(jstr("warmup {name}"))
 
 	for pair in 0..orders.length():
 		for variant in orders[pair]:
-			for row in try run_rows(paths.get_or(variant, ""), expected, cpu):
+			for row in run_rows(paths.get_or(variant, ""), expected, cpu)?:
 				csv.append("{pair},{variant},{row.line}")
 
 				key := "{row.name} {variant}"

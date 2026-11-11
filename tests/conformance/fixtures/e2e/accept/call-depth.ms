@@ -27,22 +27,22 @@ fn bounded(n: Int, limit: Int) Int:
     return 1 + bounded(n: n + 1, limit: limit)
 
 test "runaway recursion is a fault":
-    message := try expect_fault(
+    message := expect_fault(
         fn:
             _ignored := runaway(0)
-    )
-    message | try expect_contains("call depth limit exceeded")
+    )?
+    message | expect_contains("call depth limit exceeded")?
 
 test "runaway method recursion faults like function recursion":
     walker := Walker(step: 1, limit: -1)
-    message := try expect_fault(
+    message := expect_fault(
         fn:
             _ignored := walker.walk(n: 0)
-    )
-    message | try expect_contains("call depth limit exceeded")
+    )?
+    message | expect_contains("call depth limit exceeded")?
 
 test "recursion below the limit runs normally":
-    (bounded(n: 0, limit: 100000) - 100000) | try expect_equal(0)
+    (bounded(n: 0, limit: 100000) - 100000) | expect_equal(0)?
 
 test "method recursion below the limit runs normally":
-    (Walker(step: 1, limit: 100000).walk(n: 0) - 100000) | try expect_equal(0)
+    (Walker(step: 1, limit: 100000).walk(n: 0) - 100000) | expect_equal(0)?

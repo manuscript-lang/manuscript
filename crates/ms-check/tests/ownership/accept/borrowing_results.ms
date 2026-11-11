@@ -1,11 +1,11 @@
 // A Result whose error borrows an argument while its ok payload is a new value.
 fn grow(value: String!String) String!String:
-    output := try value
+    output := value?
     return ok(output + "x")
 
 // `try` of a borrowing result relays the borrowed error and owns the ok payload.
 fn relay(value: String!String) String!String:
-    text := try grow(value)
+    text := grow(value)?
     return ok(text + "y")
 
 // A borrowing result returned whole is the same borrowing result.

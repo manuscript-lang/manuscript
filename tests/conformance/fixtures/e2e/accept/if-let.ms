@@ -17,20 +17,20 @@ fn total(items: List[Int?]) Int:
     return sum
 
 fn check(value: Bool, message: String) Unit!:
-    (value) | try expect_true
+    (value) | expect_true?
 
 test "if let unwraps a present optional":
     if value := [4, 5].first():
-        (try check(value: value == 4, message: "wrong value"))
+        (check(value: value == 4, message: "wrong value")?)
     else:
-        try fail(message: "expected some")
+        fail(message: "expected some")?
 
 test "if let takes else when absent and keeps falsy payloads":
-    (try check(value: describe(none) == "Hello!", message: "none"))
-    (try check(value: describe("Ada") == "Hello, Ada", message: "some"))
+    (check(value: describe(none) == "Hello!", message: "none")?)
+    (check(value: describe("Ada") == "Hello, Ada", message: "some")?)
 
     items: List[Int?] := [1, none, 0, 2]
-    (try check(value: total(items) == 3, message: "total"))
+    (check(value: total(items) == 3, message: "total")?)
 
     empty: List[Int] := []
     if value := empty.first(): return fail(message: "unexpected {value}")
@@ -43,11 +43,11 @@ fn parse(text: String) Int!Error:
 
 test "if let unwraps an ok result and takes else on error":
     if value := parse("abc"):
-        (try check(value: value == 3, message: "ok value"))
+        (check(value: value == 3, message: "ok value")?)
     else:
-        try fail(message: "expected ok")
+        fail(message: "expected ok")?
 
     if value := parse(""):
-        try fail(message: "unexpected {value}")
+        fail(message: "unexpected {value}")?
     else:
-        (try check(value: true, message: "error branch"))
+        (check(value: true, message: "error branch")?)

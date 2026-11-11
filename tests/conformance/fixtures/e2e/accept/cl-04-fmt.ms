@@ -8,10 +8,10 @@ fn difference(values: List[Int]) Int:
     return first - second
 
 test "list binding":
-    try expect_equal(difference([9, 4]), 5)
+    expect_equal(difference([9, 4]), 5)?
 
     {value: label} := Label("ready")
-    try expect_equal(label, "ready")
+    expect_equal(label, "ready")?
 
 type Label:
     value: String

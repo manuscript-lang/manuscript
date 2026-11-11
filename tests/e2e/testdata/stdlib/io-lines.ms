@@ -12,15 +12,13 @@ fn gather(input: ReadStream[Bytes], max_bytes: Int? = none) List[String]!:
 	return collect(lines(input, max_bytes), none)
 
 test "an empty stream has no lines":
-	try expect_equal(gather(memory("")), ok([]))
+	expect_equal(gather(memory("")), ok([]))?
 
 test "lines drop terminators and keep an unterminated last line":
-	try expect_equal(
-		gather(memory("one\r\ntwo\n\nlast")), ok(["one", "two", "", "last"])
-	)
+	expect_equal(gather(memory("one\r\ntwo\n\nlast")), ok(["one", "two", "", "last"]))?
 
 test "a final newline adds no empty line":
-	try expect_equal(gather(memory("a\nb\n")), ok(["a", "b"]))
+	expect_equal(gather(memory("a\nb\n")), ok(["a", "b"]))?
 
 test "an over-budget line fails the read after the lines before it":
 	var input = lines(memory("ok\ntoo long line\nnever"), 5)
@@ -39,13 +37,13 @@ test "an over-budget line fails the read after the lines before it":
 		else:
 			break
 
-	try expect_equal(seen, ["ok"])
-	try expect_equal(failure, Error("I/O: limit exceeded", kind: "EOVERFLOW"))
+	expect_equal(seen, ["ok"])?
+	expect_equal(failure, Error("I/O: limit exceeded", kind: "EOVERFLOW"))?
 
 test "a closed stream fails the first read with its error":
 	var input = lines(closed_reader())
 	step := input.next()
-	try expect_equal(step, error(Error("I/O: resource is closed", kind: "EBADF")))
+	expect_equal(step, error(Error("I/O: resource is closed", kind: "EBADF")))?
 
 test "break and continue work in a stream loop":
 	var seen: List[String] = []
@@ -57,7 +55,7 @@ test "break and continue work in a stream loop":
 
 		seen.append(text.clone())
 
-	try expect_equal(seen, ["1", "3"])
+	expect_equal(seen, ["1", "3"])?
 
 type Countdown:
 	left: Int
@@ -73,11 +71,11 @@ test "any Iterator implementation works, including a temporary":
 	var total = 0
 	for n in Countdown(3):
 		total += n
-	try expect_equal(total, 6)
+	expect_equal(total, 6)?
 
 test "an iterator behind the Iterator interface works":
 	var source: Iterator[Int] = Countdown(2)
 	var seen: List[Int] = []
 	for n in source:
 		seen.append(n)
-	try expect_equal(seen, [2, 1])
+	expect_equal(seen, [2, 1])?

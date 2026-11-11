@@ -28,7 +28,7 @@ test "a skipped test still tears down":
     skip("not today")
 
 test "a failed assertion still tears down":
-    try fail("expected failure")
+    fail("expected failure")?
 
 test "a fault still tears down":
     numbers: List[Int] := []

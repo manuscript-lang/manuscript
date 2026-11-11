@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntype CustomerId:\n\tvalue: String\n\ntype OrderId:\n\tvalue: String\n\ntype Customer:\n\tid: CustomerId\n\tname: String\n\nfn customer_name(customer: Customer) String:\n\t{id: {value}, name: display_name} := customer\n\treturn \"{value}: {display_name}\"\n\ntest \"nominal record and nested binding\":\n\tcustomer := Customer(CustomerId(\"c1\"), \"Ada\")\n\ttry expect_equal(customer_name(customer), \"c1: Ada\")\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntype CustomerId:\n\tvalue: String\n\ntype OrderId:\n\tvalue: String\n\ntype Customer:\n\tid: CustomerId\n\tname: String\n\nfn customer_name(customer: Customer) String:\n\t{id: {value}, name: display_name} := customer\n\treturn \"{value}: {display_name}\"\n\ntest \"nominal record and nested binding\":\n\tcustomer := Customer(CustomerId(\"c1\"), \"Ada\")\n\texpect_equal(customer_name(customer), \"c1: Ada\")?\n"
   }
 }

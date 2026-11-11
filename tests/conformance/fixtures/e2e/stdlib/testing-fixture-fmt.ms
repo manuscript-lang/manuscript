@@ -17,7 +17,7 @@ impl TestHooks for Counter:
         self.value = 10
 
 test "first fixture use":
-    try expect_equal(fixture.value, 1)
+    expect_equal(fixture.value, 1)?
 
 test "second fixture use starts from clean state":
-    try expect_equal(fixture.value, 1)
+    expect_equal(fixture.value, 1)?

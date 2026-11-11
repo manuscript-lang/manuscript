@@ -43,19 +43,19 @@ fn nested_reset(flag: Bool) Int:
     return i
 
 test "counts reach the extreme without a fault":
-    count_up(limit: 9223372036854775807) | try expect_equal(3)
-    count_down(limit: -9223372036854775807) | try expect_equal(3)
+    count_up(limit: 9223372036854775807) | expect_equal(3)?
+    count_down(limit: -9223372036854775807) | expect_equal(3)?
 
 test "reassigned counter still faults":
-    message := try expect_fault(
+    message := expect_fault(
         fn:
             _ignored := reset_then_step()
-    )
-    message | try expect_contains("Int overflow;")
+    )?
+    message | expect_contains("Int overflow;")?
 
 test "conditionally reassigned counter still faults":
-    message := try expect_fault(
+    message := expect_fault(
         fn:
             _ignored := nested_reset(flag: true)
-    )
-    message | try expect_contains("Int overflow;")
+    )?
+    message | expect_contains("Int overflow;")?

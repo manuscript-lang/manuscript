@@ -22,18 +22,18 @@ fn check(n: Int) Int!Error:
     return ok(n)
 
 fn flow(text: String) Int!Error:
-    n := try parse(text)
+    n := parse(text)?
         | double
         | add(3)
-        | try check
+        | check?
     return ok(n)
 
 fn bare(text: String) Int!Error:
-    return ok(try parse(text) | double | check | try)
+    return ok(parse(text)? | double | check?)
 
 fn describe(text: String) String!Error:
-    label := try parse(text)
-        | try check
+    label := parse(text)?
+        | check?
         | add(1)
         .to_string_radix(10)
     return ok(label)
@@ -52,26 +52,26 @@ fn code(r: Int!Error) Int:
     return 0 - r.err().message.length()
 
 test "pipe steps call functions with the value first":
-    try expect_equal(code(flow("abc")), 9)
-    try expect_equal(code(flow("-")), -1)
-    try expect_equal(code(flow("big")), -3)
+    expect_equal(code(flow("abc")), 9)?
+    expect_equal(code(flow("-")), -1)?
+    expect_equal(code(flow("big")), -3)?
 
-test "bare try unwraps the value so far":
-    try expect_equal(bare("abc").get(), 6)
-    try expect_equal(code(bare("-")), -1)
+test "bare unwraps? the value so far":
+    expect_equal(bare("abc").get(), 6)?
+    expect_equal(code(bare("-")), -1)?
 
 test "pipe passes a Result through a step without try":
     r := parse("abcd") | .map(fn(value: Int) Int: value * 2)
-    try expect_equal(r.get(), 8)
+    expect_equal(r.get(), 8)?
 
 test "leading dot after a step applies to its result":
-    try expect_equal(describe("xy").get(), "3")
+    expect_equal(describe("xy").get(), "3")?
 
 test "head is evaluated before step arguments":
     var log: List[String] = []
-    try expect_equal(order(var log), 4)
-    try expect_false(log.get(0) != "a" or log.get(1) != "b")
+    expect_equal(order(var log), 4)?
+    expect_false(log.get(0) != "a" or log.get(1) != "b")?
 
 test "dot steps call methods on the value":
     size := "abc" | .length() | double
-    try expect_equal(size, 6)
+    expect_equal(size, 6)?

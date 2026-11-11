@@ -36,16 +36,16 @@ fn canonical_cleanup[T: Closeable](resource: T) Unit:
     _completed := unit
 
 test "cleanup uses the selected contract":
-    direct := try expect_fault(
+    direct := expect_fault(
         fn:
             _resource := Resource(0)
             _completed := unit
-    )
+    )?
 
-    try expect_equal(direct, "closeable")
+    expect_equal(direct, "closeable")?
 
-    bound := try expect_fault(fn: bound_cleanup(resource: Resource(0)))
-    try expect_equal(bound, "disposable")
+    bound := expect_fault(fn: bound_cleanup(resource: Resource(0)))?
+    expect_equal(bound, "disposable")?
 
-    canonical := try expect_fault(fn: canonical_cleanup(resource: Resource(0)))
-    try expect_equal(canonical, "closeable")
+    canonical := expect_fault(fn: canonical_cleanup(resource: Resource(0)))?
+    expect_equal(canonical, "closeable")?

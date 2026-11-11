@@ -16,14 +16,14 @@ test "range iterates a snapshot while the live list changes":
 		values.append(4)
 		index += 1
 
-	try expect_false(
+	expect_false(
 		not (
 			seen == [1, 2, 3]
 			and index == 3
 			and values == [9, 9, 9, 4, 4, 4]
 			and clone == [1, 2, 3]
 		)
-	)
+	)?
 
 test "append growth does not change the iterated snapshot":
 	var values = [1, 2, 3]
@@ -39,7 +39,7 @@ test "append growth does not change the iterated snapshot":
 
 		index += 1
 
-	try expect_false(not (seen == [1, 2, 3] and values == [1, 9, 3, 4]))
+	expect_false(not (seen == [1, 2, 3] and values == [1, 9, 3, 4]))?
 
 test "callbacks run over snapshots and stored methods keep their receiver copy":
 	var values = [1, 2, 3]
@@ -53,9 +53,7 @@ test "callbacks run over snapshots and stored methods keep their receiver copy":
 			values.fill(8, 0, 3)
 	)
 
-	try expect_false(
-		not (seen == [1, 2, 3] and clone == [1, 2, 3] and values == [8, 8, 8])
-	)
+	expect_false(not (seen == [1, 2, 3] and clone == [1, 2, 3] and values == [8, 8, 8]))?
 
 	var mapped = [1, 2, 3]
 
@@ -65,7 +63,7 @@ test "callbacks run over snapshots and stored methods keep their receiver copy":
 			return value + 1
 	)
 
-	try expect_false(not (output == [2, 3, 4] and mapped == [9, 9, 9]))
+	expect_false(not (output == [2, 3, 4] and mapped == [9, 9, 9]))?
 
 test "nested reverse copy shrink and self splice iterate snapshots":
 	var values = [1, 2, 3]
@@ -83,7 +81,7 @@ test "nested reverse copy shrink and self splice iterate snapshots":
 
 		index += 1
 
-	try expect_false(not (outer == [1, 2, 3] and inner == [3, 2, 1]))
+	expect_false(not (outer == [1, 2, 3] and inner == [3, 2, 1]))?
 
 	var backward = [1, 2, 3]
 	var truncated = [1, 2, 3]
@@ -105,14 +103,14 @@ test "nested reverse copy shrink and self splice iterate snapshots":
 			truncated.copy_within(2, 0, 3)
 		count += 1
 
-	try expect_false(
+	expect_false(
 		not (
 			seen_backward == [1, 2, 3]
 			and seen_truncated == [1, 2, 3]
 			and backward == [2, 3, 3]
 			and truncated == [1, 2, 1]
 		)
-	)
+	)?
 
 	var shrinking = [1, 2, 3]
 	var seen_shrinking: List[Int] = []
@@ -124,13 +122,13 @@ test "nested reverse copy shrink and self splice iterate snapshots":
 			shrinking.remove(0)
 		count += 1
 
-	try expect_false(
+	expect_false(
 		not (
 			count == 3
 			and shrinking.is_empty()
 			and seen_shrinking == [2, 3, 4]
 		)
-	)
+	)?
 
 	var self_list = [1, 2, 3]
 	var seen_self: List[Int] = []
@@ -142,7 +140,7 @@ test "nested reverse copy shrink and self splice iterate snapshots":
 			self_list.splice(1, 1, self_list.clone())
 		count += 1
 
-	try expect_false(not (seen_self == [1, 2, 3] and self_list == [1, 1, 2, 3, 3]))
+	expect_false(not (seen_self == [1, 2, 3] and self_list == [1, 1, 2, 3, 3]))?
 
 type Child:
 	value: Int
@@ -165,7 +163,7 @@ test "clone slice and nested values keep their own contracts":
 		)
 	)
 
-	try expect_false(
+	expect_false(
 		not (
 			seen == [1, 1]
 			and child.value == 1
@@ -173,7 +171,7 @@ test "clone slice and nested values keep their own contracts":
 			and slice.first().get().value == 1
 			and values.first().get().value == 9
 		)
-	)
+	)?
 
 	var children: List[Node] = [Node([])]
 	var count = 0
@@ -183,7 +181,7 @@ test "clone slice and nested values keep their own contracts":
 	)
 	for ignored in children.clone():
 		count += 1
-	try expect_false(not (count == 2 and children.last().get().children.length() == 1))
+	expect_false(not (count == 2 and children.last().get().children.length() == 1))?
 
 test "function values can replace later backing elements":
 	var seen: List[Int] = []
@@ -197,6 +195,4 @@ test "function values can replace later backing elements":
 		)
 	)
 
-	try expect_false(
-		not (seen == [7, 7] and functions[0]() == 9 and functions[1]() == 9)
-	)
+	expect_false(not (seen == [7, 7] and functions[0]() == 9 and functions[1]() == 9))?

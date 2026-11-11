@@ -73,7 +73,7 @@ fn triple(values: List[Float]) String:
 	return "{low} {median(values)} {high}"
 
 fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, Error]:
-	try fresh_directory(out)
+	fresh_directory(out)?
 
 	var paths = Map[String, String]()
 	paths.add("before", before.clone())
@@ -96,13 +96,13 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
 					"after", "before"
 				]
 			):
-				text := try run_pinned(
+				text := run_pinned(
 					paths.get_or(name, ""), ["{c.size}", "{c.count}", "{c.rounds}"], ""
-				)
+				)?
 				parts := text.replace("\n", " ").split(" ").filter(fn p: p != "")
 				if parts.length() != 5: return invalid("invalid output {name}: {text}")
 
-				observed := try all_ints(parts)
+				observed := all_ints(parts)?
 				if (
 					observed[0] != c.size
 					or observed[1] != c.count
@@ -142,7 +142,7 @@ fn json_failure(
 	out: String,
 	pairs: Int
 ) Result[Unit, Error]:
-	try fresh_directory(out)
+	fresh_directory(out)?
 
 	var paths = Map[String, String]()
 	paths.add("before", before.clone())
@@ -174,10 +174,10 @@ fn json_failure(
 					"after", "before"
 				]
 			):
-				text := try run_pinned(
+				text := run_pinned(
 					paths.get_or(name, ""), ["{c.size}", "{c.rounds}", c.shape.clone()],
 					""
-				)
+				)?
 				fields := text.replace("\n", " ").split(" ").filter(fn p: p != "")
 				if (
 					fields.length() != 6
@@ -188,7 +188,7 @@ fn json_failure(
 				):
 					return invalid("invalid identity/checksum/timer: {name}: {text}")
 
-				nums := try all_ints(fields.slice(3, 6).get([]))
+				nums := all_ints(fields.slice(3, 6).get([]))?
 				if nums[1] <= 0 or nums[2] <= 0: return invalid(
 					"invalid identity/checksum/timer: {name}: {text}"
 				)

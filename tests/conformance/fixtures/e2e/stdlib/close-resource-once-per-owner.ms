@@ -28,10 +28,10 @@ fn open(n: String) Door!Error:
 fn collect() List[Door]!Error:
     var found = List[Door]()
     first := open("try-move")
-    found.append(try first)
+    found.append(first?)
 
     second := open("try-read")
-    say("read {(try second).name}")
+    say("read {(second?).name}")
     return ok(found)
 
 fn main() Unit:

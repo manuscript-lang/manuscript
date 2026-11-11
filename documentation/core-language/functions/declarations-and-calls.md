@@ -86,7 +86,7 @@ fn example() Int:
 - Defaults may precede required parameters; skip one by labeling a later argument. `fn choose(first: Int = 1, second: Int) Int: second` accepts `choose(second: 2)`, while `choose(2)` supplies `first` and misses `second`.
 - A default is checked against its parameter type in the function's scope. It may use imports, module declarations, earlier parameters, and `self`; current and later parameters are not in scope. Anonymous functions may use captures.
 - Evaluation: the callable and supplied arguments run first in written order, then omitted defaults run once each in declaration order, before the body. Defaults run afresh per call. `none`, `unit`, `false`, and zero are supplied values.
-- A failing default stops later defaults and the body. `try` in a default propagates under the function's result type.
+- A failing default stops later defaults and the body. `?` in a default propagates under the function's result type.
 - Named functions, closures, and `impl` methods may declare defaults; function types and enum payloads cannot. Interface signatures permit only `= none` on Optional parameters. A concrete default wins; an interface view uses the interface's.
 - Fields have their own [defaults](../types/named-types.md#construction). Omitted arguments give no generic type evidence.
 - Defaults are callable permissions of known callables. Inferred immutable copies preserve them; explicit function types, mutable callable bindings, and generic inference require every parameter. Defaults are not part of function-type identity.

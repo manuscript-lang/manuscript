@@ -9,5 +9,5 @@ fn run(l: Loader) Int:
 
 test "a let of a function-valued field borrows it":
 	l := Loader(fn n: n + 1)
-	try expect_equal(run(l), 3)
-	try expect_equal(l.load(5), 6)
+	expect_equal(run(l), 3)?
+	expect_equal(l.load(5), 6)?

@@ -9,7 +9,7 @@ import Connection, connect, serve from "@std/net/net.ms"
 import nanoseconds, sleep from "@std/time.ms"
 
 fn send(var conn: Connection, text: String) Unit!:
-    try conn.output.write(text.to_bytes())
+    conn.output.write(text.to_bytes())?
     return conn.output.flush()
 
 type Reporter:

@@ -36,38 +36,38 @@ test "contextual callbacks and inline returns":
         .filter(fn item: item > 1)
         .map(fn number: (number + offset).to_string())
     )
-    try expect_equal(strings.join(","), "5,6")
+    expect_equal(strings.join(","), "5,6")?
 
     result := apply(transform: fn item: item + offset, value: 2)
-    try expect_equal(result, 5)
-    try expect_equal(chain(second: fn item: item + 2, first: fn: 3), 5)
+    expect_equal(result, 5)?
+    expect_equal(chain(second: fn item: item + 2, first: fn: 3), 5)?
 
     callback := Callback(fn(item: Int): item + 1)
-    try expect_equal(callback.transform(3), 4)
+    expect_equal(callback.transform(3), 4)?
 
     view: Read := Box(7)
-    try expect_equal(view.get(), 7)
-    try expect_false(invoke() != 0 or invoke(fn item: item + 1) != 5)
+    expect_equal(view.get(), 7)?
+    expect_false(invoke() != 0 or invoke(fn item: item + 1) != 5)?
 
     functions: List[fn(Int) Int] := [fn item: item + 4]
-    try expect_equal(functions.get(0)(2), 6)
+    expect_equal(functions.get(0)(2), 6)?
 
     nested := fn(value: Int):
         inner := fn: "text"
         return value + inner().scalar_length()
 
-    try expect_equal(nested(2), 6)
+    expect_equal(nested(2), 6)?
 
     success := with_result(fn: ok(4))
-    try expect_equal(success, Result[Int, Error].ok(4))
+    expect_equal(success, Result[Int, Error].ok(4))?
 
     propagated := with_result(
         fn:
-            value := try checked()
+            value := checked()?
             return ok(value + 2)
     )
 
-    try expect_equal(propagated, Result[Int, Error].ok(5))
+    expect_equal(propagated, Result[Int, Error].ok(5))?
 
     failed := with_result(
         fn:
@@ -76,14 +76,14 @@ test "contextual callbacks and inline returns":
             return ok(4)
     )
 
-    try expect_equal(failed, Result[Int, Error].error(Error("expected")))
+    expect_equal(failed, Result[Int, Error].error(Error("expected")))?
 
     subtract: fn(Int, Int) Int := fn a, b: a - b
-    try expect_equal(subtract(7, 2), 5)
+    expect_equal(subtract(7, 2), 5)?
 
     defaulted: fn(Int) Int := fn(item: Int = 4): item + 1
-    try expect_equal(defaulted(8), 9)
+    expect_equal(defaulted(8), 9)?
 
     outer: fn(Int) fn(Int) Int := fn base:
         return fn extra: base + extra
-    try expect_equal(outer(3)(4), 7)
+    expect_equal(outer(3)(4), 7)?

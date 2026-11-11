@@ -4,6 +4,6 @@
 fn f(x: Int?) Unit!:
     match x:
         n:
-            try g(n)
+            g(n)?
             return ok(unit)
         none: return ok(unit)

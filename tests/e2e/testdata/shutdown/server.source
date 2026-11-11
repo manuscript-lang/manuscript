@@ -34,7 +34,7 @@ impl Closeable for Server:
             return ok(unit)
 
         self.closed = true
-        try self.listener.close()
+        self.listener.close()?
         _ := sleep(10.milliseconds()).wait()
 
         var farewell = self.client.output.write("farewell\n".to_bytes())
@@ -47,15 +47,15 @@ impl Closeable for Server:
         else:
             say("farewell sent\n")
 
-        try self.client.close()
+        self.client.close()?
         return ok(unit)
 
 fn serve() Result[Unit, Error]:
-    var signals = try watch_signals([2, 15])
-    listener := try listen("127.0.0.1:0")
+    var signals = watch_signals([2, 15])?
+    listener := listen("127.0.0.1:0")?
     say("{listener.address()}\n")
 
-    client := try listener.accept().wait()
+    client := listener.accept().wait()?
     _server := Server(listener: listener, client: client)
     _cleanup := WorkerCleanup(label: "worker")
     say("ready\n")

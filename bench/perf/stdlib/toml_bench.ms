@@ -17,4 +17,4 @@ bench "toml.parse":
 		if parse(toml).is_ok(): return keep(1)
 		return keep(0)
 
-	try measure(2000, work)
+	measure(2000, work)?

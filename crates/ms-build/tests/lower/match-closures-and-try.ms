@@ -12,7 +12,7 @@ fn area(s: Shape) Int:
         _: 0
 
 fn first(xs: List[Int]) Result[Int, Error]:
-    n := try parse(xs.length())
+    n := parse(xs.length())?
     return ok(n)
 
 fn parse(n: Int) Result[Int, Error]:

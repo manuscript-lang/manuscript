@@ -17,8 +17,8 @@ impl Box:
 
 test "source consuming argument remains owned after later try":
 	key := "long-dynamic-map-key-{1}"
-	try expect_equal(consume(key, try successful_value(7)), 8)
+	expect_equal(consume(key, successful_value(7)?), 8)?
 
 test "source consuming receiver remains owned after later try":
 	box := Box("long-dynamic-map-key-{1}")
-	try expect_equal(box.consume(try successful_value(7)), 8)
+	expect_equal(box.consume(successful_value(7)?), 8)?

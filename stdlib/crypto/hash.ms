@@ -155,5 +155,5 @@ export fn crc64_of(input: ReadStream[Bytes], polynomial: Crc64Polynomial) UInt64
 	var source = input
 	for chunk in source:
 		sum.update(chunk)
-	try source.close()
+	source.close()?
 	return ok(sum.value())

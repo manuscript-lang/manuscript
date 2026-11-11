@@ -4,19 +4,19 @@ fn bad() Result[String, Error]:
     return error(Error("no"))
 
 fn list() Result[Int, Error]:
-    xs := ["a", try bad(), "c"]
+    xs := ["a", bad()?, "c"]
     return ok(xs.length())
 
 fn nested() Result[Int, Error]:
-    xs := [["a"], ["b", try bad()]]
+    xs := [["a"], ["b", bad()?]]
     return ok(xs.length())
 
 fn map_value() Result[Int, Error]:
-    m := {"a": "x", "b": try bad()}
+    m := {"a": "x", "b": bad()?}
     return ok(m.length())
 
 fn map_key() Result[Int, Error]:
-    m := {"a": "x", (try bad()): "y"}
+    m := {"a": "x", (bad()?): "y"}
     return ok(m.length())
 
 fn main() Unit:

@@ -11,10 +11,10 @@ type Door:
 
 impl Closeable for Door:
 	var fn close() Unit!:
-		try append_file(self.log, "{self.id},").wait()
+		append_file(self.log, "{self.id},").wait()?
 
 fn events(log: String) String!:
-	return ok((try read_file(log).wait()).decode_utf8().get(""))
+	return ok((read_file(log).wait()?).decode_utf8().get(""))
 
 // A nonzero start is required to exercise the old copying growth path.
 fn grow(log: String, front: Bool, wrapped: Bool) Unit!:
@@ -26,37 +26,37 @@ fn grow(log: String, front: Bool, wrapped: Bool) Unit!:
 		queue.pop_front()
 		queue.push_back(Door(4, log.clone()))
 
-	before := try events(log)
+	before := events(log)?
 
 	if front:
 		queue.push_front(Door(5, log.clone()))
 	else:
 		queue.push_back(Door(5, log.clone()))
 
-	try expect_equal((try events(log)), before)
-	try expect_equal(queue.length(), 5)
-	try expect_equal(queue.front().get().id, if front: 5 else: (if wrapped: 1 else: 0))
-	try expect_equal(queue.back().get().id, if front: (if wrapped: 4 else: 3) else: 5)
+	expect_equal((events(log)?), before)?
+	expect_equal(queue.length(), 5)?
+	expect_equal(queue.front().get().id, if front: 5 else: (if wrapped: 1 else: 0))?
+	expect_equal(queue.back().get().id, if front: (if wrapped: 4 else: 3) else: 5)?
 
 	// Popped values remain owned by these bindings until the helper exits.
 	first := queue.pop_front().get()
 	last := queue.pop_back().get()
-	try expect_equal((try events(log)), before)
-	try expect_equal(first.id, if front: 5 else: (if wrapped: 1 else: 0))
-	try expect_equal(last.id, if front: (if wrapped: 4 else: 3) else: 5)
+	expect_equal((events(log)?), before)?
+	expect_equal(first.id, if front: 5 else: (if wrapped: 1 else: 0))?
+	expect_equal(last.id, if front: (if wrapped: 4 else: 3) else: 5)?
 
 fn expect_once(log: String, ids: List[Int]) Unit!:
-	actual := (try events(log)).split(",").filter(fn value: value != "").sorted()
-	try expect_equal(actual, ids.map(fn id: "{id}").sorted())
+	actual := (events(log)?).split(",").filter(fn value: value != "").sorted()
+	expect_equal(actual, ids.map(fn id: "{id}").sorted())?
 
 test "deque growth moves resource owners from either end":
 	for front in [false, true]:
 		for wrapped in [false, true]:
-			tmp := try temporary("deque-resource-")
+			tmp := temporary("deque-resource-")?
 			log := "{tmp.path()}/log"
-			try append_file(log, "").wait()
-			try grow(log.clone(), front, wrapped)
-			try expect_once(log, if wrapped: [0, 1, 2, 3, 4, 5] else: [0, 1, 2, 3, 5])
+			append_file(log, "").wait()?
+			grow(log.clone(), front, wrapped)?
+			expect_once(log, if wrapped: [0, 1, 2, 3, 4, 5] else: [0, 1, 2, 3, 5])?
 
 type Holder:
 	door: Door
@@ -71,8 +71,8 @@ fn nested(log: String) Unit!:
 	queue.pop_front()
 	queue.push_back(Holder(Door(2, log.clone()), "third"))
 	queue.push_back(Holder(Door(3, log.clone()), "fourth"))
-	try expect_equal((try events(log)), "0,")
-	try expect_equal(queue.length(), 5)
+	expect_equal((events(log)?), "0,")?
+	expect_equal(queue.length(), 5)?
 
 	var popped: List[Int] = []
 
@@ -84,14 +84,14 @@ fn nested(log: String) Unit!:
 		else:
 			popped.append(-1)
 
-	try expect_equal(popped, [-1, 1, -1, 2, 3])
+	expect_equal(popped, [-1, 1, -1, 2, 3])?
 
 test "deque growth keeps absent optional slots and nested resource owners":
-	tmp := try temporary("deque-nested-")
+	tmp := temporary("deque-nested-")?
 	log := "{tmp.path()}/log"
-	try append_file(log, "").wait()
-	try nested(log.clone())
-	try expect_once(log, [0, 1, 2, 3])
+	append_file(log, "").wait()?
+	nested(log.clone())?
+	expect_once(log, [0, 1, 2, 3])?
 
 fn interrupted(log: String, fault: Bool) Unit!:
 	var queue = Deque[Door]()
@@ -100,47 +100,47 @@ fn interrupted(log: String, fault: Bool) Unit!:
 	queue.pop_back()
 	queue.push_front(Door(4, log.clone()))
 	queue.push_back(Door(5, log.clone()))
-	try expect_equal((try events(log)), "0,")
+	expect_equal((events(log)?), "0,")?
 	if fault: panic("after deque growth")
 	return error(Error("after deque growth"))
 
 test "grown resource deques close each owner once on error and fault exits":
-	tmp := try temporary("deque-error-")
+	tmp := temporary("deque-error-")?
 	log := "{tmp.path()}/log"
-	try append_file(log, "").wait()
+	append_file(log, "").wait()?
 
-	failure := try expect_error(interrupted(log.clone(), false))
-	try expect_equal(failure.message, "after deque growth")
-	try expect_once(log, [0, 1, 2, 3, 4, 5])
+	failure := expect_error(interrupted(log.clone(), false))?
+	expect_equal(failure.message, "after deque growth")?
+	expect_once(log, [0, 1, 2, 3, 4, 5])?
 
 	other := "{tmp.path()}/fault"
-	try append_file(other, "").wait()
-	try expect_contains(
-		(try expect_fault(fn: interrupted(other.clone(), true).get())),
+	append_file(other, "").wait()?
+	expect_contains(
+		(expect_fault(fn: interrupted(other.clone(), true).get())?),
 		"after deque growth"
-	)
-	try expect_once(other, [0, 1, 2, 3, 4, 5])
+	)?
+	expect_once(other, [0, 1, 2, 3, 4, 5])?
 
 test "wrapped growth leaves opaque native file handles usable":
-	tmp := try temporary("deque-review-native-")
+	tmp := temporary("deque-review-native-")?
 	path := "{tmp.path()}/data"
-	try append_file(path, "still open").wait()
+	append_file(path, "still open").wait()?
 
 	for front in [false, true]:
 		var q = Deque[FileHandle]()
 		for unused in 0..4:
-			q.push_back(try open(path, OpenMode.ReadWrite))
+			q.push_back(open(path, OpenMode.ReadWrite)?)
 		q.pop_front()
-		q.push_back(try open(path, OpenMode.ReadWrite))
+		q.push_back(open(path, OpenMode.ReadWrite)?)
 
 		if front:
-			q.push_front(try open(path, OpenMode.ReadWrite))
+			q.push_front(open(path, OpenMode.ReadWrite)?)
 		else:
-			q.push_back(try open(path, OpenMode.ReadWrite))
+			q.push_back(open(path, OpenMode.ReadWrite)?)
 
 		while not q.is_empty():
 			var handle = q.pop_front().get()
-			content := try handle.read_file()
-			try expect_equal(content.decode_utf8().get(""), "still open")
-			try handle.sync()
-			try handle.close()
+			content := handle.read_file()?
+			expect_equal(content.decode_utf8().get(""), "still open")?
+			handle.sync()?
+			handle.close()?

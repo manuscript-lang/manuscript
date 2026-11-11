@@ -60,7 +60,7 @@ impl Scan<'_> {
         } else if ty.is(Builtin::Result) {
             (
                 "MSL109",
-                "Matching a Result with only ok and error; use 'try', 'if value := ...:' with 'else:', or a Result method such as get(default), is_error, or err",
+                "Matching a Result with only ok and error; use a trailing '?', 'if value := ...:' with 'else:', or a Result method such as get(default), is_error, or err",
                 "ok",
                 "error",
             )
@@ -95,7 +95,7 @@ impl Visitor for Scan<'_> {
         if self.depth > 0 {
             self.findings.push(finding(
                 "MSL107",
-                "Nested match obscures control flow; bind the outer payload with an early exit, use compatible try, or call a small helper",
+                "Nested match obscures control flow; bind the outer payload with an early exit, use a compatible trailing '?', or call a small helper",
                 self.file,
                 e.pos,
             ));

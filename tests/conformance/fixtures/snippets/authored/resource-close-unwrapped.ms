@@ -17,7 +17,7 @@ fn keep(r: Res) Res:
     return r
 
 fn via_try() Unit!Error:
-    r := try make("try")
+    r := make("try")?
     print("body {r.name}")
 
 fn via_get() Unit:

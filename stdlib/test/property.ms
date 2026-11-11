@@ -19,7 +19,7 @@ Property-based testing for `test` blocks. A property is a function that must hol
 Generators draw integers from a `Source` that records them, so a failing input shrinks by editing the recorded
 draws (deleting spans, lowering values) and replaying the generator. Every generator, including your own
 composed with `map`, `flat_map`, `lists`, and the rest, therefore shrinks without a shrinker of its own.
-Example: `try check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))`.
+Example: `check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))?`.
 `ms test --runs N`, `--seed N`, and `--fuzz DURATION` set the case count, the starting seed, and a time budget.
 */
 
@@ -394,7 +394,7 @@ export type PropertyOptions:
 
 /*
 Runs `property` on generated values and fails, naming a shrunk counterexample, when it returns an error.
-Properties return `Result` like test assertions; write them with `expect_*` calls and `try`.
+Properties return `Result` like test assertions; write them with `expect_*` calls and `?`.
 A fault (`panic`) inside a property counts as a failing case and shrinks like an error; each case runs under `expect_fault`.
 */
 export fn check[T](
@@ -413,7 +413,7 @@ export fn check[T](
 	if given := chosen:
 		base = given
 	else:
-		base = try secure_int(0, max_int)
+		base = secure_int(0, max_int)?
 
 	fuzzing := config.fuzz_milliseconds > 0
 	if fuzzing:

@@ -76,7 +76,7 @@ fn run(work: String, n: Int) Result[String, Error]:
 	var rows = [header()]
 	root := "bench/agent/challenges"
 
-	for entry in try list(root):
+	for entry in list(root)?:
 		if (
 			not entry.name.starts_with("c")
 			or not "01234".contains(entry.name.slice(1, 2).get("9"))
@@ -86,36 +86,36 @@ fn run(work: String, n: Int) Result[String, Error]:
 		dir := "{work}/{name}"
 		source := "{root}/{name}"
 		for sub in ["ms/src", "go", "rs"]:
-			try create_directory("{dir}/{sub}", recursive: true)
-		try copy("bench/agent/templates/ms/ms.toml", "{dir}/ms/ms.toml")
-		try copy("{source}/solutions/ms/main.ms.ref", "{dir}/ms/src/main.ms")
-		try copy("{source}/solutions/go/main.go.ref", "{dir}/go/main.go")
-		try copy("{source}/solutions/rust/main.rs.ref", "{dir}/rs/main.rs")
+			create_directory("{dir}/{sub}", recursive: true)?
+		copy("bench/agent/templates/ms/ms.toml", "{dir}/ms/ms.toml")?
+		copy("{source}/solutions/ms/main.ms.ref", "{dir}/ms/src/main.ms")?
+		copy("{source}/solutions/go/main.go.ref", "{dir}/go/main.go")?
+		copy("{source}/solutions/rust/main.rs.ref", "{dir}/rs/main.rs")?
 
-		_mod := try must(
+		_mod := must(
 			"go mod init", run_in("{dir}/go", env("GO", "go"), ["mod", "init", "x"])
-		)
-		_go := try must(
+		)?
+		_go := must(
 			"go build",
 			run_in(
 				"{dir}/go", env("GO", "go"),
 				["build", "-buildvcs=false", "-o", "app", "."]
 			)
-		)
-		_rs := try must(
+		)?
+		_rs := must(
 			"rustc",
 			capture(
 				env("RUSTC", "rustc"), ["-O", "-o", "{dir}/rs/app", "{dir}/rs/main.rs"]
 			)
-		)
-		_ms := try must(
+		)?
+		_ms := must(
 			"ms build",
 			run_in(
 				"{dir}/ms", ms_binary(), ["build", "ms.toml", "-o", "app"]
 			)
-		)
-		input := try largest_input("{source}/hidden/cases.json")
-		measured := try measure(n, name, fn v: sample("{dir}/{v}/app", [], input))
+		)?
+		input := largest_input("{source}/hidden/cases.json")?
+		measured := measure(n, name, fn v: sample("{dir}/{v}/app", [], input))?
 		evidence(dir, name.clone(), n, input, measured)
 		rows.append(row(name, measured.samples))
 

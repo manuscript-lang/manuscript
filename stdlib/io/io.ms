@@ -53,7 +53,7 @@ export interface Sink[T]:
 	var fn close() Unit!
 
 // A stream of items: `for item in stream:` walks it, and a failed read returns its error from the enclosing function
-// as `try` would. `next` waits inside the source, so a task parks only at a file, socket or pipe. Make one with
+// as `?` would. `next` waits inside the source, so a task parks only at a file, socket or pipe. Make one with
 // `ReadStream(source)`. The stream owns its source; closing or dropping it releases that source and what it owns.
 export type ReadStream[T]:
 	// The source this stream pulls; `close` replaces it with an ended one so what it owned is released at once.
@@ -190,7 +190,7 @@ impl Sink[Bytes] for DescriptorSink:
 		if msrt_streams_write(self.id, value) != 0:
 			return error(Error("stream: closed", kind: "EBADF"))
 
-		try descriptor_write_result(self.id)
+		descriptor_write_result(self.id)?
 		if msrt_streams_buffered(self.id) > HIGH_WATER: return flush_descriptor(self.id)
 
 	// Waits until the queued bytes have been handed to the descriptor; an OS write failure returns `EIO`.
@@ -212,7 +212,7 @@ fn descriptor_write_result(id: Int) Unit!:
 	return ok(unit)
 
 fn flush_descriptor(id: Int) Unit!:
-	try adopt[Unit](msrt_streams_flush(id)).wait()
+	adopt[Unit](msrt_streams_flush(id)).wait()?
 	return descriptor_write_result(id)
 
 // Returns the process standard-input stream.
@@ -408,7 +408,7 @@ impl Source[B] for Through[A, B]:
 			if item := self.out.pop(): return ok(item)
 			if self.finished: return ok(none)
 
-			step := try self.input.next()
+			step := self.input.next()?
 			var wrote: Unit! = ok(unit)
 
 			if value := step:

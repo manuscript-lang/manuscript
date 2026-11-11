@@ -7,4 +7,4 @@ import stdout from "@std/io/io.ms"
 fn main() Unit!:
     name := arguments().get(0, default: "world")
     message := "Hello, {name}!\n"
-    try stdout().write(message)
+    stdout().write(message)?

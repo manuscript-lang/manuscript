@@ -18,7 +18,7 @@ fn render(value: Int) String:
 
 test "implementation variables inside function signatures":
     box := Box(render)
-    try expect_equal(box.apply(3), "3")
+    expect_equal(box.apply(3), "3")?
 
     operation: Apply[String] := box
-    try expect_equal(operation.apply(4), "4")
+    expect_equal(operation.apply(4), "4")?

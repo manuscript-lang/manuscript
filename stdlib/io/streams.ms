@@ -37,7 +37,7 @@ impl Lines:
 			var end = stop
 			if terminated and end > self.start and self.data.get(end - 1, 0) == 13:
 				end -= 1
-			try self.check(end - self.start)
+			self.check(end - self.start)?
 
 			from := self.start
 			self.start = if terminated: stop + 1 else: stop
@@ -46,8 +46,8 @@ impl Lines:
 		size := self.pending_size + stop - self.start
 		cr := if stop > self.start: self.data.get(stop - 1, 0) == 13 else: self.pending_cr
 		trimmed := if terminated and cr: size - 1 else: size
-		try self.check(trimmed)
-		self.pending.append(try self.data.slice(self.start, stop))
+		self.check(trimmed)?
+		self.pending.append(self.data.slice(self.start, stop)?)
 
 		all := join(self.pending)
 		self.pending = []
@@ -62,35 +62,35 @@ impl Source[String] for Lines:
 	var fn next() String?!:
 		while true:
 			if end := self.data.index_of_byte(10, self.start):
-				if self.pending_size > 0: return ok(try self.take(end, true))
+				if self.pending_size > 0: return ok(self.take(end, true)?)
 
 				var stop = end
 				if stop > self.start and self.data.get(stop - 1, 0) == 13:
 					stop -= 1
-				try self.check(stop - self.start)
+				self.check(stop - self.start)?
 
 				from := self.start
 				self.start = end + 1
-				return ok(try self.decode(from, stop))
+				return ok(self.decode(from, stop)?)
 
 			if self.ended:
 				if self.pending_size > 0 or self.start < self.data.length():
-					return ok(try self.take(self.data.length(), false))
+					return ok(self.take(self.data.length(), false)?)
 				return ok(none)
 
 			// A trailing CR may belong to a split CRLF, so defer counting it until the next chunk or EOF.
 			rest := self.data.length() - self.start
 			cr := if rest > 0: self.data.get(self.data.length() - 1, 0) == 13 else: self.pending_cr
-			try self.check(self.pending_size + rest - if cr: 1 else: 0)
+			self.check(self.pending_size + rest - if cr: 1 else: 0)?
 
-			chunk := try self.input.next()
+			chunk := self.input.next()?
 
 			if more := chunk:
 				if rest > 0:
 					self.pending.append(
-						try self.data.slice(
+						self.data.slice(
 							self.start, self.data.length()
-						)
+						)?
 					)
 					self.pending_size += rest
 					self.pending_cr = cr
@@ -141,7 +141,7 @@ impl Source[Bytes] for BytesSource:
 		if self.at >= self.data.length(): return ok(none)
 
 		stop := (self.at + self.chunk).min(self.data.length())
-		piece := try self.data.slice(self.at, stop)
+		piece := self.data.slice(self.at, stop)?
 		self.at = stop
 		return ok(piece)
 
@@ -158,7 +158,7 @@ type Mapped[T, U]:
 
 impl Source[U] for Mapped[T, U]:
 	var fn next() U?!:
-		item := try self.input.next()
+		item := self.input.next()?
 		if value := item: return ok(self.f(value))
 
 		return ok(none)
@@ -177,7 +177,7 @@ type Filtered[T]:
 impl Source[T] for Filtered[T]:
 	var fn next() T?!:
 		while true:
-			item := try self.input.next()
+			item := self.input.next()?
 
 			if value := item:
 				if self.keep(value): return ok(value)
@@ -202,7 +202,7 @@ impl Source[T] for Taker[T]:
 	var fn next() T?!:
 		if self.left <= 0: return ok(none)
 
-		item := try self.input.next()
+		item := self.input.next()?
 		self.left -= 1
 		return ok(item)
 
@@ -257,8 +257,8 @@ export fn copy[T](input: ReadStream[T], output: WriteStream[T]) Int!:
 	var count = 0
 
 	for item in source:
-		try sink.write(item)
+		sink.write(item)?
 		count += 1
 
-	try sink.flush()
+	sink.flush()?
 	return ok(count)

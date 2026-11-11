@@ -4,14 +4,14 @@ import (
 )
 
 test "general category predicates":
-	is_digit(53) | try expect_equal(true)
-	is_digit(1635) | try expect_equal(false)
-	is_punctuation(33) | try expect_equal(true)
-	is_punctuation(8230) | try expect_equal(true)
-	is_punctuation(97) | try expect_equal(false)
-	is_symbol(36) | try expect_equal(true)
-	is_symbol(97) | try expect_equal(false)
-	is_mark(769) | try expect_equal(true)
-	is_mark(97) | try expect_equal(false)
-	is_punctuation(-1) | try expect_equal(false)
-	is_symbol(55296) | try expect_equal(false)
+	is_digit(53) | expect_equal(true)?
+	is_digit(1635) | expect_equal(false)?
+	is_punctuation(33) | expect_equal(true)?
+	is_punctuation(8230) | expect_equal(true)?
+	is_punctuation(97) | expect_equal(false)?
+	is_symbol(36) | expect_equal(true)?
+	is_symbol(97) | expect_equal(false)?
+	is_mark(769) | expect_equal(true)?
+	is_mark(97) | expect_equal(false)?
+	is_punctuation(-1) | expect_equal(false)?
+	is_symbol(55296) | expect_equal(false)?

@@ -145,7 +145,7 @@ export fn digest(input: ReadStream[Bytes], algorithm: HashAlgorithm) Bytes!:
 	var source = input
 	for chunk in source:
 		hasher.update(chunk)
-	try source.close()
+	source.close()?
 	return ok(hasher.finish())
 
 // Encrypts or decrypts data with AES in CTR mode. The same call encrypts and decrypts.

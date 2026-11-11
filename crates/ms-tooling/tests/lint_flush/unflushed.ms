@@ -18,7 +18,7 @@ export fn forgets() Int:
 
 export fn flushes() Result[Int, Error]:
     var journal = Journal(2)
-    try journal.flush()
+    journal.flush()?
     return ok(journal.lines)
 
 type Holder:

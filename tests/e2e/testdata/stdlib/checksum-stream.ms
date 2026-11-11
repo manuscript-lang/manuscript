@@ -20,7 +20,7 @@ impl Source[Bytes] for Chunks:
 		var end = self.at + self.size
 		if end > self.data.length(): end = self.data.length()
 
-		piece := try self.data.slice(self.at, end)
+		piece := self.data.slice(self.at, end)?
 		self.at = end
 		return ok(piece)
 
@@ -34,14 +34,12 @@ test "stream checksums match the whole-value functions under every chunk size":
 	data := "123456789 and some more bytes to cross chunk boundaries".to_bytes()
 
 	for size in [1, 3, 8, 100]:
-		try expect_equal(try crc32_of(chunked(data.clone(), size)), crc32(data.clone()))
-		try expect_equal(
-			try adler32_of(chunked(data.clone(), size)), adler32(data.clone())
-		)
-		try expect_equal(
-			try crc64_of(chunked(data.clone(), size), Crc64Polynomial.Ecma),
+		expect_equal(crc32_of(chunked(data.clone(), size))?, crc32(data.clone()))?
+		expect_equal(adler32_of(chunked(data.clone(), size))?, adler32(data.clone()))?
+		expect_equal(
+			crc64_of(chunked(data.clone(), size), Crc64Polynomial.Ecma)?,
 			crc64(Crc64Polynomial.Ecma, data.clone())
-		)
+		)?
 
 test "digest of a stream matches the hasher":
 	data := "digest me in pieces".to_bytes()
@@ -52,12 +50,10 @@ test "digest of a stream matches the hasher":
 		for size in [1, 4, 64]:
 			if (
 				(
-					try digest(
-						chunked(data.clone(), size), algorithm
-					)
+					digest(chunked(data.clone(), size), algorithm)?
 				) != algorithm.digest(data.clone())
 			): return fail("size {size}")
 
 test "an empty stream has the empty checksum":
-	try expect_equal(try crc32_of(chunked("".to_bytes(), 4)), 0)
-	try expect_equal(try adler32_of(chunked("".to_bytes(), 4)), 1)
+	expect_equal(crc32_of(chunked("".to_bytes(), 4))?, 0)?
+	expect_equal(adler32_of(chunked("".to_bytes(), 4))?, 1)?

@@ -5,5 +5,5 @@ import (
 
 test "Decimal.to_string matches its interpolated text":
 	for value in [0d, 25.50d, -1.25d, 1e6144d, 1e-6176d]:
-		try expect_equal(value.to_string(), "{value}")
-	try expect_equal(25.50d.to_string(), "25.5")
+		expect_equal(value.to_string(), "{value}")?
+	expect_equal(25.50d.to_string(), "25.5")?

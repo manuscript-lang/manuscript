@@ -39,15 +39,15 @@ fn churn(root: String, name: String) Int:
 	return -1
 
 test "file-system calls from concurrent tasks":
-	root := try temporary_directory("ms-fs-tasks-")
+	root := temporary_directory("ms-fs-tasks-")?
 	first := root.clone()
 	second := root.clone()
 	a := promise(fn: ok(churn(first.clone(), "one")))
 	b := promise(fn: ok(churn(second.clone(), "two")))
-	try a.wait() | try expect_equal(2)
-	try b.wait() | try expect_equal(2)
+	a.wait()? | expect_equal(2)?
+	b.wait()? | expect_equal(2)?
 
-	text := try read_file("{root}/one/c.txt").wait()
-	text | try expect_equal("one!".to_bytes())
+	text := read_file("{root}/one/c.txt").wait()?
+	text | expect_equal("one!".to_bytes())?
 
 	_gone := remove(root, true)

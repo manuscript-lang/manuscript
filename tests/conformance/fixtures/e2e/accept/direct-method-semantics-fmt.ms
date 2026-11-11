@@ -55,8 +55,8 @@ fn through(shape: Shape) Int:
     return shape.scaled(by: 2)
 
 fn tried(rect: Rect, limit: Int) Int!Error:
-    first := try rect.checked(limit: limit)
-    return ok(value: first + (try rect.checked(limit: limit + 100)))
+    first := rect.checked(limit: limit)?
+    return ok(value: first + (rect.checked(limit: limit + 100)?))
 
 fn order(rect: Rect, var log: List[String]) Int:
     log.append(value: "receiver")
@@ -68,21 +68,21 @@ fn id(var log: List[String]) Int:
 
 test "direct methods":
     rect := Rect(w: 3, h: 4)
-    (rect.area() == 12) | try expect_true
-    (rect.scaled(by: 3) == 36) | try expect_true
-    (through(shape: rect) == 24) | try expect_true
-    (through(shape: Plus(n: 5)) == 10) | try expect_true
-    (Minus(n: 4).area() == 0 - 4) | try expect_true
-    (rect.grow(depth: 10) == 13) | try expect_true
+    (rect.area() == 12) | expect_true?
+    (rect.scaled(by: 3) == 36) | expect_true?
+    (through(shape: rect) == 24) | expect_true?
+    (through(shape: Plus(n: 5)) == 10) | expect_true?
+    (Minus(n: 4).area() == 0 - 4) | expect_true?
+    (rect.grow(depth: 10) == 13) | expect_true?
 
     match tried(rect: rect, limit: 12):
-        ok(value): (value == 24) | try expect_true
+        ok(value): (value == 24) | expect_true?
         error(cause): return fail(cause.message)
 
     match tried(rect: rect, limit: 11):
         ok(_value): return fail("expected failure")
-        error(cause): (cause.message == "too big") | try expect_true
+        error(cause): (cause.message == "too big") | expect_true?
 
     var log = List[String]()
-    (order(rect: rect, log: var log) == 12) | try expect_true
-    (log.join(separator: ",") == "receiver,argument") | try expect_true
+    (order(rect: rect, log: var log) == 12) | expect_true?
+    (log.join(separator: ",") == "receiver,argument") | expect_true?

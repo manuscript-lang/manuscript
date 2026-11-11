@@ -46,44 +46,44 @@ fn result_branch() Int:
 		if _value := result(panic("stop")): break
 
 test "nonreturning conditions cannot reach branch breaks":
-	then_branch_fault := try expect_fault(
+	then_branch_fault := expect_fault(
 		fn:
 			_ := then_branch()
-	)
-	try expect_contains(then_branch_fault, "stop")
+	)?
+	expect_contains(then_branch_fault, "stop")?
 
-	else_branch_fault := try expect_fault(
+	else_branch_fault := expect_fault(
 		fn:
 			_ := else_branch()
-	)
-	try expect_contains(else_branch_fault, "stop")
+	)?
+	expect_contains(else_branch_fault, "stop")?
 
-	optional_then_branch_fault := try expect_fault(
+	optional_then_branch_fault := expect_fault(
 		fn:
 			_ := optional_then_branch()
-	)
-	try expect_contains(optional_then_branch_fault, "stop")
+	)?
+	expect_contains(optional_then_branch_fault, "stop")?
 
-	optional_else_branch_fault := try expect_fault(
+	optional_else_branch_fault := expect_fault(
 		fn:
 			_ := optional_else_branch()
-	)
-	try expect_contains(optional_else_branch_fault, "stop")
+	)?
+	expect_contains(optional_else_branch_fault, "stop")?
 
-	nested_loop_fault := try expect_fault(
+	nested_loop_fault := expect_fault(
 		fn:
 			_ := nested_loop()
-	)
-	try expect_contains(nested_loop_fault, "stop")
+	)?
+	expect_contains(nested_loop_fault, "stop")?
 
-	callback_fault := try expect_fault(
+	callback_fault := expect_fault(
 		fn:
 			_ := callback()
-	)
-	try expect_contains(callback_fault, "stop")
+	)?
+	expect_contains(callback_fault, "stop")?
 
-	result_branch_fault := try expect_fault(
+	result_branch_fault := expect_fault(
 		fn:
 			_ := result_branch()
-	)
-	try expect_contains(result_branch_fault, "stop")
+	)?
+	expect_contains(result_branch_fault, "stop")?

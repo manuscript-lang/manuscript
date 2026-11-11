@@ -22,26 +22,26 @@ impl Offset:
 test "required source functions replace defaulted callable values":
 	var callback = original
 	callback = replacement
-	try expect_equal(callback(3), 5)
+	expect_equal(callback(3), 5)?
 
 	copied := callback
-	try expect_equal(copied(4), 6)
-	try expect_equal(choose(original, replacement)(3), 5)
-	try expect_equal(choose(replacement, original)(3), 4)
+	expect_equal(copied(4), 6)?
+	expect_equal(choose(original, replacement)(3), 5)?
+	expect_equal(choose(replacement, original)(3), 4)?
 
 	callbacks := [original, replacement]
-	try expect_equal(callbacks[0](3), 4)
-	try expect_equal(callbacks[1](3), 5)
+	expect_equal(callbacks[0](3), 4)?
+	expect_equal(callbacks[1](3), 5)?
 
 test "required lambdas replace defaulted callable values":
 	var callback = original
 	callback = fn(value: Int): value + 2
-	try expect_equal(callback(3), 5)
+	expect_equal(callback(3), 5)?
 
 test "required native functions replace defaulted callable values":
 	var callback = original_float
 	callback = floor
-	try expect_equal(callback(3.5), 3.0)
+	expect_equal(callback(3.5), 3.0)?
 
 test "required bound methods replace defaulted callable values":
 	offset := Offset(2)
@@ -49,7 +49,7 @@ test "required bound methods replace defaulted callable values":
 
 	// Assigning a method value takes its receiver, as assigning a closure takes its captures.
 	callback = offset.clone().replacement
-	try expect_equal(callback(3), 6)
+	expect_equal(callback(3), 6)?
 
 fn original_text(value: String = "default") Int: value.length()
 
@@ -60,12 +60,12 @@ test "required lambda adapters retain supplied owned payloads":
 	callback = fn(value: String): value.length()
 
 	text := "a sufficiently long string payload".clone()
-	try expect_equal(callback(text), 34)
+	expect_equal(callback(text), 34)?
 
 test "required bound native methods decode supplied payloads":
 	var callback = original_predicate
 	callback = "the borrowed needle haystack".contains
-	try expect_equal(callback("needle".clone()), true)
+	expect_equal(callback("needle".clone()), true)?
 
 interface Reader:
 	fn read(value: Int?) Int
@@ -79,23 +79,23 @@ impl Reader for ReaderOffset:
 test "inherited defaults remain available on immutable bound callables":
 	offset := ReaderOffset(2)
 	callback := offset.read
-	try expect_equal(callback(), 7)
-	try expect_equal(callback(3), 5)
+	expect_equal(callback(), 7)?
+	expect_equal(callback(3), 5)?
 
 test "inferred callable returns use required arguments consistently":
 	factory := fn(flag: Bool):
 		if flag: return original
 		return replacement
 
-	try expect_equal(factory(true)(3), 4)
-	try expect_equal(factory(false)(3), 5)
+	expect_equal(factory(true)(3), 4)?
+	expect_equal(factory(false)(3), 5)?
 
 	callback := match true:
 		true: original
 		false: replacement
 
-	try expect_equal(callback(3), 4)
+	expect_equal(callback(3), 4)?
 
 	callbacks := {"original": original, "replacement": replacement}
-	try expect_equal(callbacks["original"](3), 4)
-	try expect_equal(callbacks["replacement"](3), 5)
+	expect_equal(callbacks["original"](3), 4)?
+	expect_equal(callbacks["replacement"](3), 5)?

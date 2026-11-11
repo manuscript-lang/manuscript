@@ -22,7 +22,7 @@ test "contract-valued cleanup":
     opened: File := ClosedFile(unit)
     file := opened
     read := file.read(1)
-    try expect_false(read.is_ok())
-    try expect_equal(
+    expect_false(read.is_ok())?
+    expect_equal(
         read.err(), Error("I/O: resource is closed", kind: "EBADF")
-    )
+    )?

@@ -39,7 +39,7 @@ test "a for loop walks a map's entries, values and keys in insertion order":
 
 		seen.append(k.clone())
 
-	try expect_equal(seen, ["b=2", "c=3", "b", "c", "2", "3", "b"])
+	expect_equal(seen, ["b=2", "c=3", "b", "c", "2", "3", "b"])?
 
 test "a walk over a map the body changes still sees a snapshot":
 	var m = Map[String, Int]()
@@ -47,15 +47,15 @@ test "a walk over a map the body changes still sees a snapshot":
 	m.add(key: "y", value: 2)
 	for e in m.entries():
 		m.add(key: "{e.key}{e.key}", value: e.value * 10)
-	try expect_equal(m.length(), 4)
-	try expect_equal(m.get_or(key: "yy", fallback: 0), 20)
+	expect_equal(m.length(), 4)?
+	expect_equal(m.get_or(key: "yy", fallback: 0), 20)?
 
 test "walks borrow record values and sets without copying them":
 	var orders = Map[String, Order]()
 	orders.add(key: "o1", value: Order(status: "placed", items: ["a", "b"]))
 	orders.add(key: "o2", value: Order(status: "shipped", items: ["c"]))
 	orders.add(key: "o3", value: Order(status: "placed", items: ["d"]))
-	try expect_equal(count_placed(orders), 3)
+	expect_equal(count_placed(orders), 3)?
 
 	var s = Set[Int]()
 	s.add(4)
@@ -70,7 +70,7 @@ test "walks borrow record values and sets without copying them":
 
 		total += x
 
-	try expect_equal(total, 22)
+	expect_equal(total, 22)?
 
 	var flags = Map[Bool, String]()
 	flags.add(key: true, value: "yes")
@@ -79,7 +79,7 @@ test "walks borrow record values and sets without copying them":
 	var words = List[String]()
 	for e in flags.entries():
 		words.append("{e.key}:{e.value}")
-	try expect_equal(words, ["true:yes", "false:no"])
+	expect_equal(words, ["true:yes", "false:no"])?
 
 test "if var changes a map entry in place":
 	var counts = Map[String, Int]()
@@ -91,14 +91,14 @@ test "if var changes a map entry in place":
 
 	if var n = counts["missing"]?:
 		n += 1
-	try expect_equal(counts.get_or(key: "a", fallback: 0), 10)
-	try expect_equal(counts.length(), 1)
+	expect_equal(counts.get_or(key: "a", fallback: 0), 10)?
+	expect_equal(counts.length(), 1)?
 
 	var orders = Map[String, Order]()
 	orders.add(key: "o1", value: Order(status: "placed", items: ["a"]))
-	try expect_true(ship(var orders, "o1"))
-	try expect_equal(ship(var orders, "o9"), false)
+	expect_true(ship(var orders, "o1"))?
+	expect_equal(ship(var orders, "o9"), false)?
 
 	o := orders["o1"]
-	try expect_equal(o.status, "shipped")
-	try expect_equal(o.items, ["a", "label"])
+	expect_equal(o.status, "shipped")?
+	expect_equal(o.items, ["a", "label"])?

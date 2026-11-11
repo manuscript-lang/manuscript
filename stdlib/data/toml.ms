@@ -360,7 +360,7 @@ fn key_path(var reader: Reader) List[String]!:
 		var key = ""
 
 		if peek(reader) == DOUBLE_QUOTE or peek(reader) == SINGLE_QUOTE:
-			key = try string_value(var reader, key: true)
+			key = string_value(var reader, key: true)?
 		else:
 			start := cursor(reader)
 			var end = start
@@ -384,7 +384,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 	existing := lookup(reader, parent, key).clone()
 
 	if existing.is_none():
-		try allocate(var reader)
+		allocate(var reader)?
 
 		created := new_table(var reader, explicit: false, dotted)
 		put(var reader, parent, key, Node.TableNode(created))
@@ -416,7 +416,7 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 	existing := lookup(reader, parent, key).clone()
 
 	if existing.is_none():
-		try allocate(var reader)
+		allocate(var reader)?
 		put_array(var reader, parent, key, next)
 		return ok(unit)
 
@@ -435,10 +435,10 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 	var index = 0
 
 	while index < keys.length() - 1:
-		current = try child(
+		current = child(
 			reader: var reader, parent: current, key: (keys[index].clone()),
 			dotted: true
-		)
+		)?
 		index += 1
 
 	return assign_one(
@@ -485,13 +485,13 @@ fn simple_key(var reader: Reader) String?:
 // Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
 fn key_value(var reader: Reader, table: Int, depth: Int) Unit!:
 	if key := simple_key(var reader):
-		value := try read_value(var reader, depth + 1)
+		value := read_value(var reader, depth + 1)?
 		return assign_one(reader: var reader, parent: table, key: key, value: value)
 
-	keys := try key_path(var reader)
+	keys := key_path(var reader)?
 	if advance(var reader) != EQUALS: return error(invalid(reader, "expected equals"))
 
-	value := try read_value(var reader, depth + keys.length())
+	value := read_value(var reader, depth + keys.length())?
 	return assign(reader: var reader, parent: table, keys: keys, value: value)
 
 fn seal(var reader: Reader, value: Node) Unit:
@@ -741,15 +741,13 @@ fn scalar_offset(reader: Reader, count: Int) Int:
 	return pos
 
 fn read_value(var reader: Reader, depth: Int) Node!:
-	try allocate(var reader)
-	try budget(reader, depth)
+	allocate(var reader)?
+	budget(reader, depth)?
 	space(var reader, multiline: false)
 
 	c := peek(reader)
 	if c == DOUBLE_QUOTE or c == SINGLE_QUOTE: return ok(
-		Node.Leaf(
-			TomlValue.StringValue(try string_value(var reader, key: false))
-		)
+		Node.Leaf(TomlValue.StringValue(string_value(var reader, key: false)?))
 	)
 
 	if c == LEFT_BRACKET:
@@ -759,7 +757,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
 		space(var reader, multiline: true)
 
 		while peek(reader) != RIGHT_BRACKET:
-			values.append(try read_value(var reader, depth + 1))
+			values.append(read_value(var reader, depth + 1)?)
 			space(var reader, multiline: true)
 			if peek(reader) == RIGHT_BRACKET: break
 			if advance(var reader) != COMMA: return error(
@@ -779,7 +777,7 @@ fn read_value(var reader: Reader, depth: Int) Node!:
 
 		if peek(reader) != RIGHT_BRACE:
 			while true:
-				try key_value(var reader, result, depth)
+				key_value(var reader, result, depth)?
 				space(var reader, multiline: false)
 				if peek(reader) == RIGHT_BRACE: break
 				if advance(var reader) != COMMA: return error(
@@ -869,25 +867,25 @@ fn materialize(
 			for entry in tables[id]:
 				entries.add(
 					entry.key.clone(),
-					try materialize(
+					materialize(
 						tables, arrays, entry.value, (depth + 1), var budget
-					)
+					)?
 				)
 			return ok(TomlValue.TableValue(entries))
 		ArrayNode(values):
 			var result: List[TomlValue] = []
 			for value in values: result.append(
-				try materialize(
+				materialize(
 					tables, arrays, value, (depth + 1), var budget
-				)
+				)?
 			)
 			return ok(TomlValue.ArrayValue(result))
 		TableArray(slot):
 			var result: List[TomlValue] = []
 			for id in arrays[slot]: result.append(
-				try materialize(
+				materialize(
 					tables, arrays, Node.TableNode(id), (depth + 1), var budget
-				)
+				)?
 			)
 			return ok(TomlValue.ArrayValue(result))
 
@@ -919,7 +917,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 		reason := if reader.data.get(span[0]) == 13: "bare carriage return" else: "invalid control character"
 		return error(toml_invalid(line: place[0], column: place[1], reason: reason))
 
-	try allocate(var reader)
+	allocate(var reader)?
 
 	root := new_table(var reader, explicit: true, dotted: false)
 	var current = root
@@ -938,7 +936,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 				advance(var reader)
 				array = true
 
-			keys := try key_path(var reader)
+			keys := key_path(var reader)?
 			if (
 				advance(var reader) != RIGHT_BRACKET
 				or (array and advance(var reader) != RIGHT_BRACKET)
@@ -948,10 +946,10 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 			var index = 0
 
 			while index < keys.length() - 1:
-				parent = try child(
+				parent = child(
 					reader: var reader, parent: parent, key: (keys[index].clone()),
 					dotted: false
-				)
+				)?
 				index += 1
 
 			key := keys.last().get()
@@ -960,17 +958,17 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 			)
 
 			if array:
-				try allocate(var reader)
+				allocate(var reader)?
 
 				next := new_table(var reader, explicit: true, dotted: false)
-				try append_table(
+				append_table(
 					reader: var reader, parent: parent, key: key.clone(), next: next
-				)
+				)?
 				current = next
 			else:
-				current = try child(
+				current = child(
 					reader: var reader, parent: parent, key: key.clone(), dotted: false
-				)
+				)?
 
 				var state = flags(reader, current).clone()
 				if state.explicit or state.dotted: return error(
@@ -982,9 +980,9 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 
 			current_depth = keys.length() + 1
 			if array: current_depth += 1
-			try budget(reader, current_depth)
+			budget(reader, current_depth)?
 		else:
-			try key_value(var reader, current, current_depth)
+			key_value(var reader, current, current_depth)?
 
 		space(var reader, multiline: false)
 		if peek(reader) == HASH:

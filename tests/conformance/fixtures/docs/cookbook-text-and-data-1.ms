@@ -6,9 +6,9 @@ import parse from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
-    text := try parse[String](arguments().get(0, default: "\"hello\""))
-    try stdout().write("{text}\n")
+    text := parse[String](arguments().get(0, default: "\"hello\""))?
+    stdout().write("{text}\n")?
     return stdout().flush()
 
 fn main() Unit!:
-    try run()
+    run()?

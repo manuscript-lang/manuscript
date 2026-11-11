@@ -6,14 +6,14 @@ import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
-    path := try arguments().first().ok_or(
+    path := arguments().first().ok_or(
         Error("filesystem: invalid input", kind: "EINVAL")
-    )
-    text := try read_file(path, max_bytes: 1048576).wait() | .decode_utf8().ok_or(
+    )?
+    text := read_file(path, max_bytes: 1048576).wait()? | .decode_utf8().ok_or(
         Error("filesystem: invalid data", kind: "EBADMSG")
-    ) | try
-    try stdout().write(text)
+    )?
+    stdout().write(text)?
     return stdout().flush()
 
 fn main() Unit!:
-    try run()
+    run()?

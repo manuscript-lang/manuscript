@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nenum State:\n\tReady\n\tWaiting\n\nfn loop(state: State) Int:\n\tvar count = 0\n\n\tfor value in [1, 2, 3]:\n\t\tcount += 1\n\n\t\tmatch state:\n\t\t\tReady:\n\t\t\t\tbreak\n\t\t\tWaiting:\n\t\t\t\tcontinue\n\n\t\tcount += 100\n\n\treturn count\n\ntest \"match controls nearest source loop\":\n\ttry expect_equal(loop(State.Ready), 1)\n\ttry expect_equal(loop(State.Waiting), 3)\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nenum State:\n\tReady\n\tWaiting\n\nfn loop(state: State) Int:\n\tvar count = 0\n\n\tfor value in [1, 2, 3]:\n\t\tcount += 1\n\n\t\tmatch state:\n\t\t\tReady:\n\t\t\t\tbreak\n\t\t\tWaiting:\n\t\t\t\tcontinue\n\n\t\tcount += 100\n\n\treturn count\n\ntest \"match controls nearest source loop\":\n\texpect_equal(loop(State.Ready), 1)?\n\texpect_equal(loop(State.Waiting), 3)?\n"
   }
 }

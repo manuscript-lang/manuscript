@@ -52,18 +52,18 @@ fn side_effects(shape: Shape) Int:
 	return count
 
 test "statement match returns from the enclosing function":
-	try expect_equal(area(Shape.Circle(2)), 12)
-	try expect_equal(area(Shape.Rect(3, 4)), 12)
-	try expect_equal(area(Shape.Dot), 0)
+	expect_equal(area(Shape.Circle(2)), 12)?
+	expect_equal(area(Shape.Rect(3, 4)), 12)?
+	expect_equal(area(Shape.Dot), 0)?
 
 test "statement match controls the nearest loop":
 	values: List[Int?] := [none, 0, 5, 9]
-	try expect_equal(first_positive(values), 5)
-	try expect_equal(first_positive([none, -1]), -1)
+	expect_equal(first_positive(values), 5)?
+	expect_equal(first_positive([none, -1]), -1)?
 
 	rows: List[List[Int?]] := [[1, none, 100], [2, 3]]
-	try expect_equal(nested(rows), 2006)
+	expect_equal(nested(rows), 2006)?
 
 test "statement match arms assign enclosing locals":
-	try expect_equal(side_effects(Shape.Circle(7)), 7)
-	try expect_equal(side_effects(Shape.Dot), 100)
+	expect_equal(side_effects(Shape.Circle(7)), 7)?
+	expect_equal(side_effects(Shape.Dot), 100)?

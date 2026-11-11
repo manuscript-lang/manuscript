@@ -17,8 +17,8 @@ fn checked(value: Int) Int:
 test "setup and assertions":
     actual := 3
     expected := 3
-    actual | try expect_equal(expected)
+    actual | expect_equal(expected)?
     callback := fn(value: Int) Int:
         result := value + 1
         return result
-    callback(3) | try expect_equal(4)
+    callback(3) | expect_equal(4)?

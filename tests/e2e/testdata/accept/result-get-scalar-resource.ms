@@ -12,11 +12,11 @@ type Tag:
 
 // The host temp root, since a hard-coded /tmp does not exist on Windows.
 fn tag_log(id: Int) String!:
-	return ok("{try temporary_root()}/ms-result-get-tag-{id}")
+	return ok("{ temporary_root()?}/ms-result-get-tag-{id}")
 
 impl Closeable for Tag:
 	var fn close() Unit!:
-		try append_file(try tag_log(self.id), "closed,").wait()
+		append_file(tag_log(self.id)?, "closed,").wait()?
 
 fn success(id: Int) Tag!Int:
 	return ok(Tag(id))
@@ -28,8 +28,8 @@ fn project(id: Int) Int:
 	return success(id).get().id
 
 test "a projection of a scalar resource taken from a Result closes it once":
-	id := try secure_int(1, 1000000000)
-	log := try tag_log(id)
-	try expect_equal(project(id), id)
-	try expect_equal(events(log.clone()), "closed,")
-	try remove(log)
+	id := secure_int(1, 1000000000)?
+	log := tag_log(id)?
+	expect_equal(project(id), id)?
+	expect_equal(events(log.clone()), "closed,")?
+	remove(log)?

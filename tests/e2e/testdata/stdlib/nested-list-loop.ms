@@ -17,6 +17,6 @@ fn lengths(rows: List[List[String]]) Int:
 
 test "a loop borrows an inner list reached by index":
 	rows := [[1, 2], [3, 4, 5]]
-	try expect_equal(total_indexed(rows, 1), 12)
-	try expect_equal(total_get(rows, 0), 3)
-	try expect_equal(lengths([["a"], ["bb", "ccc"]]), 5)
+	expect_equal(total_indexed(rows, 1), 12)?
+	expect_equal(total_get(rows, 0), 3)?
+	expect_equal(lengths([["a"], ["bb", "ccc"]]), 5)?

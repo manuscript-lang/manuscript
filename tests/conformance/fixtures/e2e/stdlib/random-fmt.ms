@@ -12,38 +12,38 @@ import (
 ) from "@std/random.ms"
 
 test "random bytes returns the requested count and rejects out-of-range counts":
-    try expect_equal((try random_bytes(16)).length(), 16)
-    try expect_equal((try random_bytes(0)).length(), 0)
+    expect_equal((random_bytes(16)?).length(), 16)?
+    expect_equal((random_bytes(0)?).length(), 0)?
 
     invalid: Int! := error(
         Error("random: invalid input", kind: "EINVAL")
     )
-    try expect_equal(random_bytes(-1).map(fn bytes: bytes.length()), invalid)
+    expect_equal(random_bytes(-1).map(fn bytes: bytes.length()), invalid)?
 
 test "secure_int stays in range and rejects an empty range":
     invalid: Int! := error(
         Error("random: invalid input", kind: "EINVAL")
     )
-    try expect_equal(secure_int(3, 3), invalid)
-    try expect_equal(
-        (try secure_int(-2, 3)) >= -2 and (try secure_int(-2, 3)) < 3, true
-    )
-    try expect_equal((try secure_int(-3, -2)), -3)
-    try expect_equal((try secure_int(-10, -5)) < -5, true)
+    expect_equal(secure_int(3, 3), invalid)?
+    expect_equal(
+        (secure_int(-2, 3)?) >= -2 and (secure_int(-2, 3)?) < 3, true
+    )?
+    expect_equal((secure_int(-3, -2)?), -3)?
+    expect_equal((secure_int(-10, -5)?) < -5, true)?
 
 test "uuid_v4 has the version and variant bits":
-    id := try uuid_v4()
-    try expect_equal(id.length(), 36)
-    try expect_equal(try id.slice(14, 15), "4")
-    try expect_equal(["8", "9", "a", "b"].contains(try id.slice(19, 20)), true)
+    id := uuid_v4()?
+    expect_equal(id.length(), 36)?
+    expect_equal(id.slice(14, 15)?, "4")?
+    expect_equal(["8", "9", "a", "b"].contains(id.slice(19, 20)?), true)?
 
 test "float shuffle and choice use operating system entropy":
-    sample := try float()
-    try expect_equal(sample >= 0.0 and sample < 1.0, true)
+    sample := float()?
+    expect_equal(sample >= 0.0 and sample < 1.0, true)?
 
-    shuffled := try shuffle([1, 2, 3, 4, 5])
-    try expect_equal(
+    shuffled := shuffle([1, 2, 3, 4, 5])?
+    expect_equal(
         shuffled.sorted(fn(left: Int, right: Int) Int: left - right), [1, 2, 3, 4, 5]
-    )
-    try expect_equal(try choice([7]), 7)
-    try expect_equal(try choice(List[Int]()), none)
+    )?
+    expect_equal(choice([7])?, 7)?
+    expect_equal(choice(List[Int]())?, none)?

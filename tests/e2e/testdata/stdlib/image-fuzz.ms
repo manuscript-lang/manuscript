@@ -141,29 +141,29 @@ test "decoders never fault on mutated input":
 			else:
 				rejected += 1
 
-	try expect_equal(accepted + rejected, 300 * corpus.length())
+	expect_equal(accepted + rejected, 300 * corpus.length())?
 	print("fuzz: {accepted} accepted, {rejected} rejected")
 
 fn expect_error(data: Bytes, kind: String) Unit!:
 	result := decode_image(data)
 	if result.is_ok(): return fail("expected {kind}, decoded an image")
 
-	try expect_equal(result.err().kind, kind)
+	expect_equal(result.err().kind, kind)?
 
 test "hostile headers fail before allocating":
 	// PPM claiming 2^40 pixels with no raster.
-	try expect_error("P6\n1048576 1048576\n255\n".to_bytes(), "EOVERFLOW")
-	try expect_error("P6\n99999999999999999999 1\n255\n".to_bytes(), "EOVERFLOW")
-	try expect_error("P5\n40000 40000\n255\nx".to_bytes(), "EOVERFLOW")
+	expect_error("P6\n1048576 1048576\n255\n".to_bytes(), "EOVERFLOW")?
+	expect_error("P6\n99999999999999999999 1\n255\n".to_bytes(), "EOVERFLOW")?
+	expect_error("P5\n40000 40000\n255\nx".to_bytes(), "EOVERFLOW")?
 
 	// PNG IHDR 2^31-1 square, valid CRC, no pixel data.
 	ihdr := hex_decode(
 		"89504e470d0a1a0a0000000d494844527fffffff7fffffff0806000000", none
 	).get()
-	try expect_error(
+	expect_error(
 		fix_png_crcs(ihdr.concat(Bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))),
 		"EOVERFLOW"
-	)
+	)?
 
 	// JPEG SOF 65535x65535 with a scan header and almost no data.
 	jpeg := hex_decode(
@@ -173,7 +173,7 @@ test "hostile headers fail before allocating":
 		none
 	).get()
 	result := decode_image(jpeg)
-	if result.is_ok(): try fail("hostile JPEG decoded")
+	if result.is_ok(): fail("hostile JPEG decoded")?
 
 	// BMP with a gigapixel header and no pixel data.
 	bmp := hex_decode(
@@ -181,4 +181,4 @@ test "hostile headers fail before allocating":
 		none
 	).get()
 	bmp_result := decode_image(bmp)
-	if bmp_result.is_ok(): try fail("hostile BMP decoded")
+	if bmp_result.is_ok(): fail("hostile BMP decoded")?

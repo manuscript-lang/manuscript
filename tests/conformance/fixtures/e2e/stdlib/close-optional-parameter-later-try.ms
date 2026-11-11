@@ -19,7 +19,7 @@ fn take(door: Door?, n: Int) Unit:
     return
 
 fn attempt() Unit!:
-    take(Door("temp"), try fails())
+    take(Door("temp"), fails()?)
 
 fn main() Unit:
     _ := attempt()

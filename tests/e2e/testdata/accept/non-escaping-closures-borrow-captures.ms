@@ -102,12 +102,12 @@ fn stored_total(text: String) Int:
 	return t + keep_map(text) + keep_opt(text) + keep_user(text)
 
 test "closure stored by a call keeps what it captured":
-	try expect_equal(stored_total("x,yyyy,zz"), 35)
+	expect_equal(stored_total("x,yyyy,zz"), 35)?
 
 test "non-escaping closure reads its capture":
 	m := Matrix(data: [1, 2, 3], label: "m")
-	try expect_equal(scaled(m), 15)
-	try expect_equal(nested(m, ["x", "y"]), 21)
+	expect_equal(scaled(m), 15)?
+	expect_equal(nested(m, ["x", "y"]), 21)?
 
 test "closure made in a loop sees each iteration":
 	var results: List[Int] = []
@@ -120,11 +120,11 @@ test "closure made in a loop sees each iteration":
 		count := fn: names.length()
 		results.append(count())
 
-	try expect_equal(results, [1, 2, 3])
+	expect_equal(results, [1, 2, 3])?
 
 test "closure passes a captured var on without copying":
-	try expect_equal(collect(), [1, 2, 3])
+	expect_equal(collect(), [1, 2, 3])?
 
 test "escaping closure keeps its own value":
 	read := make_reader()
-	try expect_equal(read(), 2)
+	expect_equal(read(), 2)?

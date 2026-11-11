@@ -18,19 +18,19 @@ fn alternate(value: Int) Int:
         return 1
 
 test "inline functions and branches":
-    try expect_equal(choose(3), 6)
-    try expect_equal(choose(-3), 0)
-    try expect_equal(alternate(0), 0)
-    try expect_equal(alternate(3), 1)
+    expect_equal(choose(3), 6)?
+    expect_equal(choose(-3), 0)?
+    expect_equal(alternate(0), 0)?
+    expect_equal(alternate(3), 1)?
 
     increment := fn(value: Int): value + 1
-    try expect_equal(increment(2), 3)
+    expect_equal(increment(2), 3)?
 
     result := apply(4, fn value: value * 3)
-    try expect_equal(result, 12)
+    expect_equal(result, 12)?
 
     var count = 0
     while count < 3: count += 1
-    try expect_equal(count, 3)
+    expect_equal(count, 3)?
 
 test "inline test": return

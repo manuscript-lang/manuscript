@@ -14,59 +14,56 @@ import (
 )
 
 test "timestamps preserve nanoseconds and shift across epoch":
-	epoch := try timestamp(0, 123)
-	try expect_false(epoch.unix_seconds() != 0 or epoch.nanoseconds() != 123)
-	try expect_equal((try parse_timestamp(epoch.to_string())), epoch)
+	epoch := timestamp(0, 123)?
+	expect_false(epoch.unix_seconds() != 0 or epoch.nanoseconds() != 123)?
+	expect_equal((parse_timestamp(epoch.to_string())?), epoch)?
 
-	later := try epoch.shift(2.seconds())
-	try expect_equal((try later.difference(epoch)), 2.seconds())
-	try expect_equal((try later.shift((-2).seconds())), epoch)
+	later := epoch.shift(2.seconds())?
+	expect_equal((later.difference(epoch)?), 2.seconds())?
+	expect_equal((later.shift((-2).seconds())?), epoch)?
 
 test "time rejects invalid timestamps and out of range nanoseconds":
 	invalid: Timestamp! := error(Error("time: invalid data", kind: "EBADMSG"))
-	try expect_equal(parse_timestamp("2024-02-30T00:00:00Z"), invalid)
+	expect_equal(parse_timestamp("2024-02-30T00:00:00Z"), invalid)?
 
 	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
-	try expect_equal(timestamp(0, 1000000000), out_of_range)
+	expect_equal(timestamp(0, 1000000000), out_of_range)?
 
 test "timestamp shifts normalize raw fields and preserve wide sums":
 	minimum := -9223372036854775807 - 1
 	maximum := 9223372036854775807
-	try expect_equal(
-		(try Timestamp(-62135596801, 1000000000).shift(nanoseconds(0))),
+	expect_equal(
+		(Timestamp(-62135596801, 1000000000).shift(nanoseconds(0))?),
 		Timestamp(-62135596800, 0)
-	)
-	try expect_equal(
-		(try Timestamp(253402300800, 0).shift(nanoseconds(-1000000000))),
+	)?
+	expect_equal(
+		(Timestamp(253402300800, 0).shift(nanoseconds(-1000000000))?),
 		Timestamp(253402300799, 0)
-	)
-	try expect_equal(
-		(try Timestamp(0, -1).shift(nanoseconds(0))), Timestamp(-1, 999999999)
-	)
-	try expect_equal(
-		(try Timestamp(0, maximum).shift(nanoseconds(maximum))),
+	)?
+	expect_equal((Timestamp(0, -1).shift(nanoseconds(0))?), Timestamp(-1, 999999999))?
+	expect_equal(
+		(Timestamp(0, maximum).shift(nanoseconds(maximum))?),
 		Timestamp(18446744073, 709551614)
-	)
-	try expect_equal(
-		(try Timestamp(0, minimum).shift(nanoseconds(minimum))),
+	)?
+	expect_equal(
+		(Timestamp(0, minimum).shift(nanoseconds(minimum))?),
 		Timestamp(-18446744074, 290448384)
-	)
-	try expect_equal(
-		(try Timestamp(0, maximum).shift(nanoseconds(minimum))),
-		Timestamp(-1, 999999999)
-	)
+	)?
+	expect_equal(
+		(Timestamp(0, maximum).shift(nanoseconds(minimum))?), Timestamp(-1, 999999999)
+	)?
 
 	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
-	try expect_equal(Timestamp(maximum, 0).shift(nanoseconds(maximum)), out_of_range)
-	try expect_equal(Timestamp(minimum, 0).shift(nanoseconds(minimum)), out_of_range)
+	expect_equal(Timestamp(maximum, 0).shift(nanoseconds(maximum)), out_of_range)?
+	expect_equal(Timestamp(minimum, 0).shift(nanoseconds(minimum)), out_of_range)?
 
 test "host clocks are usable and zero sleep completes":
 	before := monotonic()
 	_ := sleep(0.milliseconds()).wait()
-	try expect_false(monotonic() < before)
+	expect_false(monotonic() < before)?
 
 	current := now()
-	try expect_equal((try parse_timestamp(current.to_string())), current)
+	expect_equal((parse_timestamp(current.to_string())?), current)?
 
 test "parse_timestamp reports offsets that leave years 1 through 9999 as out of range":
 	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
@@ -74,40 +71,40 @@ test "parse_timestamp reports offsets that leave years 1 through 9999 as out of 
 		if parse_timestamp(text) != out_of_range: return fail("range {text}")
 
 test "calendar fields follow the requested zone":
-	moment := try parse_timestamp("2024-03-10T12:30:15.250Z")
-	utc := try moment.calendar("UTC")
-	try expect_equal(utc.year, 2024)
-	try expect_equal(utc.month, 3)
-	try expect_equal(utc.day, 10)
-	try expect_equal(utc.weekday, 0)
-	try expect_equal(utc.day_of_year, 70)
-	try expect_equal(utc.nanosecond, 250000000)
+	moment := parse_timestamp("2024-03-10T12:30:15.250Z")?
+	utc := moment.calendar("UTC")?
+	expect_equal(utc.year, 2024)?
+	expect_equal(utc.month, 3)?
+	expect_equal(utc.day, 10)?
+	expect_equal(utc.weekday, 0)?
+	expect_equal(utc.day_of_year, 70)?
+	expect_equal(utc.nanosecond, 250000000)?
 
-	ny := try moment.calendar("America/New_York")
-	try expect_equal(ny.hour, 8)
-	try expect_equal(ny.offset_seconds, -14400)
+	ny := moment.calendar("America/New_York")?
+	expect_equal(ny.hour, 8)?
+	expect_equal(ny.offset_seconds, -14400)?
 
-	fixed := try moment.calendar("+05:30")
-	try expect_equal(fixed.hour, 18)
-	try expect_equal(fixed.minute, 0)
+	fixed := moment.calendar("+05:30")?
+	expect_equal(fixed.hour, 18)?
+	expect_equal(fixed.minute, 0)?
 
 test "format renders tokens and from_calendar round trips":
-	moment := try parse_timestamp("2024-03-10T12:30:15.250Z")
-	try expect_equal(
-		(try moment.format("YYYY-MM-DD HH:mm:ss.SSS ZZ", "+05:30")),
+	moment := parse_timestamp("2024-03-10T12:30:15.250Z")?
+	expect_equal(
+		(moment.format("YYYY-MM-DD HH:mm:ss.SSS ZZ", "+05:30")?),
 		"2024-03-10 18:00:15.250 +05:30"
-	)
+	)?
 
-	back := try from_calendar(2024, 3, 10, 8, 30, 15, 250000000, "America/New_York")
-	try expect_equal(back, moment)
+	back := from_calendar(2024, 3, 10, 8, 30, 15, 250000000, "America/New_York")?
+	expect_equal(back, moment)?
 
 test "calendar rejects unknown zones and impossible dates":
 	bad_zone: Timestamp! := error(Error("time: invalid input", kind: "EINVAL"))
-	try expect_equal(from_calendar(2024, 1, 1, 0, 0, 0, 0, "Nowhere/Land"), bad_zone)
+	expect_equal(from_calendar(2024, 1, 1, 0, 0, 0, 0, "Nowhere/Land"), bad_zone)?
 
 	bad_date: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
-	try expect_equal(from_calendar(2023, 2, 29, 0, 0, 0, 0, "UTC"), bad_date)
-	try expect_false(local_zone() == "")
+	expect_equal(from_calendar(2023, 2, 29, 0, 0, 0, 0, "UTC"), bad_date)?
+	expect_false(local_zone() == "")?
 
 test "sub-millisecond sleeps are not rounded up to a millisecond":
 	var fastest = milliseconds(5000)
@@ -123,24 +120,20 @@ test "sub-millisecond sleeps are not rounded up to a millisecond":
 		if elapsed.compare(fastest) < 0:
 			fastest = elapsed
 
-	try expect_true(fastest.compare(milliseconds(400)) < 0)
+	expect_true(fastest.compare(milliseconds(400)) < 0)?
 
 test "timestamp parsing preserves maximum-width precision and offsets":
 	for text in [
 		"2024-02-29T12:30:45.123456789Z", "2024-02-29T12:30:45.123456789+23:59",
 		"2024-02-29T12:30:45.123456789-23:59"
 	]:
-		parsed := try parse_timestamp(text)
-		try expect_equal(parsed.nanoseconds(), 123456789)
-		try expect_equal((try parse_timestamp(parsed.to_string())), parsed)
+		parsed := parse_timestamp(text)?
+		expect_equal(parsed.nanoseconds(), 123456789)?
+		expect_equal((parse_timestamp(parsed.to_string())?), parsed)?
 
 	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
-	try expect_equal(
-		parse_timestamp("0001-01-01T00:00:00.123456789+00:01"), out_of_range
-	)
-	try expect_equal(
-		parse_timestamp("9999-12-31T23:59:59.123456789-00:01"), out_of_range
-	)
+	expect_equal(parse_timestamp("0001-01-01T00:00:00.123456789+00:01"), out_of_range)?
+	expect_equal(parse_timestamp("9999-12-31T23:59:59.123456789-00:01"), out_of_range)?
 
 test "timestamp parsing rejects oversized fractions and suffixes":
 	invalid: Timestamp! := error(Error("time: invalid data", kind: "EBADMSG"))
@@ -149,4 +142,4 @@ test "timestamp parsing rejects oversized fractions and suffixes":
 		"2024-02-29T12:30:45.123456789+00:00Z", "2024-02-29T12:30:45.123456789+00:000",
 		"2024-02-29T12:30:45." + "0".repeat(1048576).get() + "Z"
 	]:
-		try expect_equal(parse_timestamp(text), invalid)
+		expect_equal(parse_timestamp(text), invalid)?

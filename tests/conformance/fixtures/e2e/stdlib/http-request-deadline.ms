@@ -20,7 +20,7 @@ fn within(var input: ReadStream[Bytes], timeout: Duration) Bytes?!:
     return promise(fn: input.next()).with(options: PromiseOptions(timeout: timeout)).wait()
 
 fn send(var conn: Connection, text: String) Unit!:
-    try conn.output.write(text.to_bytes())
+    conn.output.write(text.to_bytes())?
     return conn.output.flush()
 
 fn handle(request: HttpRequest) HttpResponse:

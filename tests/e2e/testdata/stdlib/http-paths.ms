@@ -35,21 +35,17 @@ fn stream_route(var exchange: HttpExchange) Unit!:
 	var chain_1 = Map[String, List[String]]()
 	chain_1.add(key: "Set-Cookie", value: ["a=1", "b=2"])
 
-	_sent := try exchange.send_headers(
-		status: 200, headers: (try list_headers(chain_1))
-	)
-	_written := (
-		try http_result(exchange.write("{exchange.path()}|{exchange.query()}"))
-	)
+	_sent := exchange.send_headers(status: 200, headers: (list_headers(chain_1)?))?
+	_written := (http_result(exchange.write("{exchange.path()}|{exchange.query()}"))?)
 
 fn check_route(url: String, expected: String) Unit!:
 	response := request(
 		method: HttpMethod.Get,
 		url: url,
 		options: RequestOptions(
-			headers: (try text_headers(Map[String, String]())), timeout: 2.seconds()
+			headers: (text_headers(Map[String, String]())?), timeout: 2.seconds()
 		)
-	) | try expect_ok
+	) | expect_ok?
 	if response.metadata().status != 200 or response.body != expected.to_bytes(): return error(
 		Error("path or raw query changed")
 	)
@@ -62,32 +58,32 @@ fn check_rejected(url: String) Unit!:
 		method: HttpMethod.Get,
 		url: url,
 		options: RequestOptions(
-			headers: (try text_headers(Map[String, String]())), timeout: 2.seconds()
+			headers: (text_headers(Map[String, String]())?), timeout: 2.seconds()
 		)
-	) | try expect_ok
+	) | expect_ok?
 	if response.metadata().status != 400: return error(
 		Error("unsafe or invalid path was dispatched")
 	)
 
 fn check_paths(base: String) Unit!:
-	(try check_route(url: "{base}/a%20b", expected: "/a b|"))
-	(try check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F"))
-	(try check_route(url: "{base}/a/../b/", expected: "/b/|"))
-	(try check_route(url: "{base}/a%252Fb?x=%2500", expected: "/a%2Fb|x=%2500"))
-	(try check_rejected("{base}/a%2Fb"))
-	(try check_rejected("{base}/a%00b"))
-	(try check_rejected("{base}/bad%ff/../x"))
+	(check_route(url: "{base}/a%20b", expected: "/a b|")?)
+	(check_route(url: "{base}/%2e%2e/x?y=%2F", expected: "/x|y=%2F")?)
+	(check_route(url: "{base}/a/../b/", expected: "/b/|")?)
+	(check_route(url: "{base}/a%252Fb?x=%2500", expected: "/a%2Fb|x=%2500")?)
+	(check_rejected("{base}/a%2Fb")?)
+	(check_rejected("{base}/a%00b")?)
+	(check_rejected("{base}/bad%ff/../x")?)
 
 test "buffered routes validate original input and decode once":
-	server := serve(address: "127.0.0.1:0", handler: buffered(route)) | try expect_ok
-	(try check_paths("http://{server.address()}"))
+	server := serve(address: "127.0.0.1:0", handler: buffered(route)) | expect_ok?
+	(check_paths("http://{server.address()}")?)
 
 test "streaming routes validate original input and decode once":
 	server := serve(
 		address: "127.0.0.1:0", handler: stream_route,
 		options: HttpServerOptions(tls: none)
-	) | try expect_ok
-	(try check_paths("http://{server.address()}"))
+	) | expect_ok?
+	(check_paths("http://{server.address()}")?)
 
 fn expect_http_error[T](outcome: T!) Unit!:
 	match outcome:
@@ -98,12 +94,12 @@ fn expect_http_error[T](outcome: T!) Unit!:
 			)
 
 test "buffered and reusable clients reject malformed ports as InvalidInput":
-	headers := (try text_headers(Map[String, String]()))
+	headers := (text_headers(Map[String, String]())?)
 	body := ""
 	request(
 		method: HttpMethod.Get, url: "http://127.0.0.1:99999/", body: body,
 		options: RequestOptions(headers: headers.clone())
-	) | try expect_http_error
+	) | expect_http_error?
 
 	tls := TlsOptions(
 		server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
@@ -111,18 +107,18 @@ test "buffered and reusable clients reject malformed ports as InvalidInput":
 	)
 	client := http_client(
 		HttpClientOptions(decompress: false, cookies: false, tls: tls)
-	) | try expect_ok
+	) | expect_ok?
 	client.request(
 		method: HttpMethod.Get, url: "http://127.0.0.1:65536/", headers: headers,
 		body: body
-	) | try expect_http_error
+	) | expect_http_error?
 
 test "buffered and reusable clients reject URLs with an empty host":
 	fields := headers()
-	client := http_client(HttpClientOptions()) | try expect_ok
+	client := http_client(HttpClientOptions()) | expect_ok?
 
 	for address in ["http://:80/", "https://:443/", "http://:/", "https://:/"]:
-		request(HttpMethod.Get, address, options: RequestOptions(timeout: 1.seconds())) | try expect_http_error
+		request(HttpMethod.Get, address, options: RequestOptions(timeout: 1.seconds())) | expect_http_error?
 		client.request(
 			HttpMethod.Get, address, fields.clone(), timeout: 1.seconds()
-		) | try expect_http_error
+		) | expect_http_error?

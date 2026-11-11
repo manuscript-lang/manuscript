@@ -17,25 +17,25 @@ fn bump(b: Box[Int]) Int:
 
 test "generic records":
 	a := Box[Int](v: 4, n: 2)
-	try expect_true((a.v == 4 and a.n == 2))
+	expect_true((a.v == 4 and a.n == 2))?
 
 	dyn := wrap(value: 7)
-	try expect_true((bump(b: dyn) == 8))
-	try expect_true((unwrap(b: a) == 4))
+	expect_true((bump(b: dyn) == 8))?
+	expect_true((unwrap(b: a) == 4))?
 
 	s := Box[String](v: "hi", n: 0)
-	try expect_true((s.v == "hi" and unwrap(b: s) == "hi"))
+	expect_true((s.v == "hi" and unwrap(b: s) == "hi"))?
 
 	nested := Box[Box[Int]](v: a, n: 3)
-	try expect_true((nested.v.v == 4 and nested.v == a))
+	expect_true((nested.v.v == 4 and nested.v == a))?
 
 	items := Box[List[Int]](v: [1, 2, 3], n: 0)
-	try expect_true((items.v.length() == 3))
+	expect_true((items.v.length() == 3))?
 
 	pair := Pair[Int, String](first: 1, second: "x")
-	try expect_true((pair.first == 1 and pair.second == "x"))
-	try expect_true((Box[Int](v: 4, n: 2) == a))
-	try expect_true((not (Box[Int](v: 5, n: 2) == a)))
+	expect_true((pair.first == 1 and pair.second == "x"))?
+	expect_true((Box[Int](v: 4, n: 2) == a))?
+	expect_true((not (Box[Int](v: 5, n: 2) == a)))?
 
 	o := Box[Int?](v: 3, n: 0)
-	try expect_true((o.v == 3))
+	expect_true((o.v == 3))?

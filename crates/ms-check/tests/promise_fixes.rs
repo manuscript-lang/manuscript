@@ -35,9 +35,9 @@ const HEAD: &str = "import Promise, promise from \"@std/concurrency/promise.ms\"
 #[test]
 fn try_of_a_promise_waits() {
     let got = fixed(&format!(
-        "{HEAD}fn f() Int!:\n    n := try load()\n    return ok(n)\n"
+        "{HEAD}fn f() Int!:\n    n := load()?\n    return ok(n)\n"
     ));
-    assert!(got.contains("n := try load().wait()\n"), "{got}");
+    assert!(got.contains("n := load().wait()?\n"), "{got}");
 }
 
 #[test]
@@ -55,13 +55,13 @@ fn a_member_of_the_result_waits_first() {
 #[test]
 fn a_bound_promise_waits_where_its_result_is_used() {
     let got = fixed(&format!(
-        "{HEAD}fn f() Int!:\n    r := load()\n    n := try r\n    return ok(n)\n"
+        "{HEAD}fn f() Int!:\n    r := load()\n    n := r?\n    return ok(n)\n"
     ));
-    assert!(got.contains("n := try r.wait()\n"), "{got}");
+    assert!(got.contains("n := r.wait()?\n"), "{got}");
 }
 
 #[test]
 fn a_promise_waited_already_is_unchanged() {
-    let source = format!("{HEAD}fn f() Int!:\n    n := try load().wait()\n    return ok(n)\n");
+    let source = format!("{HEAD}fn f() Int!:\n    n := load().wait()?\n    return ok(n)\n");
     assert_eq!(fixed(&source), source);
 }

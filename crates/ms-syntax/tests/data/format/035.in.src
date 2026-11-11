@@ -13,29 +13,29 @@ fn identity[T](value: T) T:
 test "typed operands retain evaluation order and generic boundaries":
     counter := Counter(0)
     total := (step(counter, 1) + step(counter, 2) * step(counter, 3))
-    try expect_false(total != 7 or counter.value != 123)
+    expect_false(total != 7 or counter.value != 123)?
     var value = identity(9)
     value += 1
     snapshot := fn() Int: return value * 2
     value -= 1
-    try expect_false(snapshot() != 20 or value != 9)
-    try expect_equal(-9223372036854775808 % -1, 0)
-    try expect_false(-7 / 2 != -3 or - 7 % 3 != -1)
-    try expect_equal(9223372036854775807 * 0, 0)
+    expect_false(snapshot() != 20 or value != 9)?
+    expect_equal(-9223372036854775808 % -1, 0)?
+    expect_false(-7 / 2 != -3 or - 7 % 3 != -1)?
+    expect_equal(9223372036854775807 * 0, 0)?
 
     count := 4
     ratio := 2.5
-    try expect_false(
+    expect_false(
         (+ count != 4 or + + count != 4 or + ratio != 2.5 or 3 - + count != -1)
-    )
+    )?
 
 test "floating operations retain binary64 edge behavior":
     negative_zero := -0.0
-    try expect_equal("{1.0 / negative_zero}", "-Infinity")
+    expect_equal("{1.0 / negative_zero}", "-Infinity")?
     nan := 0.0 / 0.0
-    try expect_false((nan <= 0.0 or nan >= 0.0 or nan < 0.0 or nan > 0.0))
-    try expect_false(5e-324 <= 0.0 or 5e-324 / 2.0 != 0.0)
-    try expect_equal("{1.7976931348623157e308 * 2.0}", "Infinity")
+    expect_false((nan <= 0.0 or nan >= 0.0 or nan < 0.0 or nan > 0.0))?
+    expect_false(5e-324 <= 0.0 or 5e-324 / 2.0 != 0.0)?
+    expect_equal("{1.7976931348623157e308 * 2.0}", "Infinity")?
     a := 1.0000000074505806
     b := 0.9999999925494194
-    try expect_equal(a * b - 1.0, 0.0)
+    expect_equal(a * b - 1.0, 0.0)?

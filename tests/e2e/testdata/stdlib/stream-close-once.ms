@@ -30,20 +30,20 @@ fn closes(log: String) String:
 	return ""
 
 test "a read stream closes its source once":
-	dir := temporary("stream-close-") | try expect_ok
+	dir := temporary("stream-close-") | expect_ok?
 	log := "{dir.path()}/r.log"
 	_ := append_file(log, "").wait()
 	var by_hand = ReadStream[Int](Counted(log.clone()))
-	try by_hand.close()
-	try expect_equal(closes(log), "r")
+	by_hand.close()?
+	expect_equal(closes(log), "r")?
 
 test "a write stream closes its sink once":
-	dir := temporary("stream-close-") | try expect_ok
+	dir := temporary("stream-close-") | expect_ok?
 	log := "{dir.path()}/w.log"
 	_ := append_file(log, "").wait()
 	var out = WriteStream[Int](Counted(log.clone()))
-	try out.close()
-	try expect_equal(closes(log), "w")
+	out.close()?
+	expect_equal(closes(log), "w")?
 
 type Failing:
 	unused: Int
@@ -58,5 +58,5 @@ impl Source[Int] for Failing:
 test "an explicit close returns the source's close error":
 	var input = ReadStream[Int](Failing(0))
 	result := input.close()
-	try expect_equal(result.is_error(), true)
-	try expect_equal(result.err().message, "close failed")
+	expect_equal(result.is_error(), true)?
+	expect_equal(result.err().message, "close failed")?

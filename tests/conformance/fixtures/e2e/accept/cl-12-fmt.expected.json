@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nfn map_total(values: Map[String, Int]) Int:\n\tvar total = 0\n\n\tfor entry in values:\n\t\t{value} := entry\n\t\ttotal += value\n\n\treturn total\n\nfn set_total(values: Set[Int]) Int:\n\tvar total = values.sum()\n\treturn total\n\ntest \"map entry type\":\n\tentry := MapEntry[String, Int](\"a\", 3)\n\ttry expect_equal(entry.key, \"a\")\n\ttry expect_equal(entry.value, 3)\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nfn map_total(values: Map[String, Int]) Int:\n\tvar total = 0\n\n\tfor entry in values:\n\t\t{value} := entry\n\t\ttotal += value\n\n\treturn total\n\nfn set_total(values: Set[Int]) Int:\n\tvar total = values.sum()\n\treturn total\n\ntest \"map entry type\":\n\tentry := MapEntry[String, Int](\"a\", 3)\n\texpect_equal(entry.key, \"a\")?\n\texpect_equal(entry.value, 3)?\n"
   }
 }

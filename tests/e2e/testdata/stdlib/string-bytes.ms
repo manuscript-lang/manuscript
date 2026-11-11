@@ -6,52 +6,52 @@ import (
 
 test "Unicode scalar indexing differs from byte length":
 	text := "aé🙂"
-	try expect_false(text.byte_length() != 7 or text.scalar_length() != 3)
-	try expect_equal(text.scalar_values(), [97, 233, 128578])
-	try expect_false(text.get(-1) != "🙂" or text.scalar_at(1) != 233)
-	try expect_equal(text.get(3, default: "none"), "none")
-	try expect_equal((text.scalar_values() | from_scalars | try), text)
-	try expect_equal((try text.slice_scalars(1, 3)), "é🙂")
-	try expect_equal((try "é".normalize("NFC")), "é")
+	expect_false(text.byte_length() != 7 or text.scalar_length() != 3)?
+	expect_equal(text.scalar_values(), [97, 233, 128578])?
+	expect_false(text.get(-1) != "🙂" or text.scalar_at(1) != 233)?
+	expect_equal(text.get(3, default: "none"), "none")?
+	expect_equal((text.scalar_values() | from_scalars?), text)?
+	expect_equal((text.slice_scalars(1, 3)?), "é🙂")?
+	expect_equal(("é".normalize("NFC")?), "é")?
 
 test "strings honor omitted none zero and explicit output limits":
-	try expect_equal((try "ab".repeat(2)), "abab")
-	try expect_equal((try "ab".repeat(2)), "abab")
-	try expect_equal((try "ab".repeat(0, 0)), "")
+	expect_equal(("ab".repeat(2)?), "abab")?
+	expect_equal(("ab".repeat(2)?), "abab")?
+	expect_equal(("ab".repeat(0, 0)?), "")?
 
 	limited: String! := error(Error("string: limit exceeded", kind: "EOVERFLOW"))
-	try expect_equal("é".repeat(2, 3), limited)
-	try expect_equal("x".pad_start(3, "ab"), "abx")
-	try expect_equal("x".pad_end(3, "ab"), "xab")
-	try expect_equal("ab".repeat(4611686018427387904), limited)
-	try expect_equal("aa".replace("a", "xy"), "xyxy")
-	try expect_equal("a,,b".split(",", 2), ["a", ""])
-	try expect_equal(" \té \n".trim(), "é")
+	expect_equal("é".repeat(2, 3), limited)?
+	expect_equal("x".pad_start(3, "ab"), "abx")?
+	expect_equal("x".pad_end(3, "ab"), "xab")?
+	expect_equal("ab".repeat(4611686018427387904), limited)?
+	expect_equal("aa".replace("a", "xy"), "xyxy")?
+	expect_equal("a,,b".split(",", 2), ["a", ""])?
+	expect_equal(" \té \n".trim(), "é")?
 
 	invalid: String! := error(Error("string: invalid input", kind: "EINVAL"))
-	try expect_equal("a".normalize("invalid"), invalid)
+	expect_equal("a".normalize("invalid"), invalid)?
 
 	scalar_error: String! := error(Error("string: invalid input", kind: "EINVAL"))
-	try expect_equal(from_scalars([55296]), scalar_error)
+	expect_equal(from_scalars([55296]), scalar_error)?
 
 test "bytes copy slice search and UTF8 validation":
 	data := Bytes([0, 1, 255, 1])
-	try expect_equal(data.get(-1), 1)
-	try expect_equal(data.get(4, default: 7), 7)
-	try expect_equal(data.index_of(Bytes([1])), 1)
-	try expect_equal(data.last_index_of(Bytes([1])), 3)
-	try expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))
-	try expect_equal(data.slice(-3, -1).get(), Bytes([1, 255]))
+	expect_equal(data.get(-1), 1)?
+	expect_equal(data.get(4, default: 7), 7)?
+	expect_equal(data.index_of(Bytes([1])), 1)?
+	expect_equal(data.last_index_of(Bytes([1])), 3)?
+	expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))?
+	expect_equal(data.slice(-3, -1).get(), Bytes([1, 255]))?
 
 	byte_range: Bytes! := error(Error("binary: value out of range", kind: "ERANGE"))
-	try expect_equal(data.slice(1, 10), byte_range)
-	try expect_equal(data.slice(-10, 2), byte_range)
-	try expect_equal(data.reversed(), Bytes([1, 255, 1, 0]))
+	expect_equal(data.slice(1, 10), byte_range)?
+	expect_equal(data.slice(-10, 2), byte_range)?
+	expect_equal(data.reversed(), Bytes([1, 255, 1, 0]))?
 
 	copied := data.clone().with_value(0, 42)
-	try expect_false(copied.get(0) != 42 or data.get(0) != 0)
-	try expect_false(Bytes([255]).decode_utf8().is_some())
-	try expect_equal("é".to_bytes().decode_utf8(), "é")
+	expect_false(copied.get(0) != 42 or data.get(0) != 0)?
+	expect_false(Bytes([255]).decode_utf8().is_some())?
+	expect_equal("é".to_bytes().decode_utf8(), "é")?
 
 test "Bytes values direct bound and free calls return independent lists":
 	var input: List[UInt8] = [0, 1, 255]
@@ -59,7 +59,7 @@ test "Bytes values direct bound and free calls return independent lists":
 	input.set(0, 42)
 
 	extract: fn() List[UInt8] := data.values
-	try expect_false(data.values() != [0, 1, 255] or extract() != values(data))
+	expect_false(data.values() != [0, 1, 255] or extract() != values(data))?
 
 	var direct = data.values()
 	var bound = extract()
@@ -67,57 +67,57 @@ test "Bytes values direct bound and free calls return independent lists":
 	direct.set(0, 99)
 	bound.append(12)
 	free.reverse()
-	try expect_false(data.values() != [0, 1, 255] or extract() != [0, 1, 255])
+	expect_false(data.values() != [0, 1, 255] or extract() != [0, 1, 255])?
 
 	empty: List[UInt8] := []
-	try expect_false(
+	expect_false(
 		Bytes(empty.clone()).values() != empty or Bytes([255]).values() != [255]
-	)
+	)?
 
 test "String slice uses Unicode scalars with relative bounds and OutOfRange errors":
 	text := "aé🙂z"
 	out_of_range: String! := error(Error("string: value out of range", kind: "ERANGE"))
-	try expect_equal((try text.slice(-2, 4)), "🙂z")
-	try expect_equal((try text.slice(0, -1)), "aé🙂")
-	try expect_equal((try text.slice(4, 4)), "")
-	try expect_equal(text.slice(-2, 10), out_of_range)
-	try expect_equal(text.slice(-100, 4), out_of_range)
-	try expect_equal(text.slice(3, 1), out_of_range)
-	try expect_false(text.index_of("🙂") != 2 or text.last_index_of("") != 4)
+	expect_equal((text.slice(-2, 4)?), "🙂z")?
+	expect_equal((text.slice(0, -1)?), "aé🙂")?
+	expect_equal((text.slice(4, 4)?), "")?
+	expect_equal(text.slice(-2, 10), out_of_range)?
+	expect_equal(text.slice(-100, 4), out_of_range)?
+	expect_equal(text.slice(3, 1), out_of_range)?
+	expect_false(text.index_of("🙂") != 2 or text.last_index_of("") != 4)?
 
 	invalid: String! := error(Error("string: value out of range", kind: "ERANGE"))
-	try expect_equal(text.slice_scalars(-2, 4), invalid)
-	try expect_equal(text.slice_scalars(1, 10), invalid)
-	try expect_equal(text.slice_scalars(3, 1), invalid)
-	try expect_equal((try text.slice_scalars(4, 4)), "")
+	expect_equal(text.slice_scalars(-2, 4), invalid)?
+	expect_equal(text.slice_scalars(1, 10), invalid)?
+	expect_equal(text.slice_scalars(3, 1), invalid)?
+	expect_equal((text.slice_scalars(4, 4)?), "")?
 
 test "string and bytes builders freeze":
 	var text = StringBuilder()
 	text.append("é")
 	text.append("🙂")
-	try expect_equal(text.build(), "é🙂")
+	expect_equal(text.build(), "é🙂")?
 
 	var bytes = BytesBuilder()
 	bytes.append(0)
 	bytes.append_bytes(Bytes([255, 1]))
-	try expect_equal(bytes.build(), Bytes([0, 255, 1]))
+	expect_equal(bytes.build(), Bytes([0, 255, 1]))?
 
 test "empty text splits into one part and case mapping is full Unicode":
-	try expect_equal("".split(","), [""])
+	expect_equal("".split(","), [""])?
 
 	none_requested: List[String] := []
-	try expect_equal("".split(""), none_requested)
-	try expect_equal("".split(",", 0), none_requested)
-	try expect_equal("ß".upper(), "SS")
-	try expect_equal("ﬁ".upper(), "FI")
-	try expect_equal("ΑΣ".lower(), "ας")
-	try expect_equal("İ".lower(), "i\u{307}")
-	try expect_equal("Maße".upper(), "MASSE")
+	expect_equal("".split(""), none_requested)?
+	expect_equal("".split(",", 0), none_requested)?
+	expect_equal("ß".upper(), "SS")?
+	expect_equal("ﬁ".upper(), "FI")?
+	expect_equal("ΑΣ".lower(), "ας")?
+	expect_equal("İ".lower(), "i\u{307}")?
+	expect_equal("Maße".upper(), "MASSE")?
 
 test "scalar reads alternating between long strings match grouped reads":
-	a := try "aé€🙂".repeat(300)
-	b := try "日é".repeat(450)
-	c := try "🙂x".repeat(450)
+	a := "aé€🙂".repeat(300)?
+	b := "日é".repeat(450)?
+	c := "🙂x".repeat(450)?
 	var alternating = 0
 	for step in 0..900:
 		alternating += a.scalar_at(step) + b.scalar_at(step) + c.scalar_at(899 - step)
@@ -129,14 +129,14 @@ test "scalar reads alternating between long strings match grouped reads":
 		grouped += b.scalar_at(step)
 	for step in 0..900:
 		grouped += c.scalar_at(899 - step)
-	try expect_equal(alternating, grouped)
-	try expect_equal(a.scalar_at(-1), 128578)
-	try expect_equal(b.scalar_at(-1), 233)
+	expect_equal(alternating, grouped)?
+	expect_equal(a.scalar_at(-1), 128578)?
+	expect_equal(b.scalar_at(-1), 233)?
 
 test "indexing and slicing long mixed-width text matches scalar positions":
 	block := "aé€🙂"
-	text := try block.repeat(600)
-	try expect_equal(text.length(), 2400)
+	text := block.repeat(600)?
+	expect_equal(text.length(), 2400)?
 
 	// Forward, backward and jumping reads of the same long text.
 	var forward = 0
@@ -146,19 +146,19 @@ test "indexing and slicing long mixed-width text matches scalar positions":
 	var backward = 0
 	for step in 0..2400:
 		backward += text.scalar_at(2399 - step)
-	try expect_false(forward != 600 * (97 + 233 + 8364 + 128578) or backward != forward)
-	try expect_false(
+	expect_false(forward != 600 * (97 + 233 + 8364 + 128578) or backward != forward)?
+	expect_false(
 		(text.get(1200) != "a" or text.get(2399) != "🙂" or text.get(-2) != "€")
-	)
-	try expect_equal((try text.slice(1199, 1203)), "🙂aé€")
-	try expect_equal((try text.slice(2396, 2400)), block)
-	try expect_equal((try text.slice(0, 4)), block)
-	try expect_equal((try text.slice(7, 7)), "")
-	try expect_equal((try text.slice_scalars(1199, 1203)), "🙂aé€")
-	try expect_equal((try text.slice_scalars(2399, 2400)), "🙂")
+	)?
+	expect_equal((text.slice(1199, 1203)?), "🙂aé€")?
+	expect_equal((text.slice(2396, 2400)?), block)?
+	expect_equal((text.slice(0, 4)?), block)?
+	expect_equal((text.slice(7, 7)?), "")?
+	expect_equal((text.slice_scalars(1199, 1203)?), "🙂aé€")?
+	expect_equal((text.slice_scalars(2399, 2400)?), "🙂")?
 
 	out_of_range: String! := error(Error("string: value out of range", kind: "ERANGE"))
-	try expect_equal(text.slice_scalars(2400, 2401), out_of_range)
+	expect_equal(text.slice_scalars(2400, 2401), out_of_range)?
 
 test "builder appends literals of every short length across growth":
 	var sb = StringBuilder()
@@ -179,7 +179,7 @@ test "builder appends literals of every short length across growth":
 	var want = StringBuilder()
 	for i in 0..40:
 		want.append(one)
-	try expect_equal(sb.build(), want.build())
+	expect_equal(sb.build(), want.build())?
 
 test "builder appends variable text of every length across growth":
 	base := "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
@@ -188,32 +188,32 @@ test "builder appends variable text of every length across growth":
 
 	for round in 0..3:
 		for n in 0..70:
-			piece := try base.slice(0, n)
+			piece := base.slice(0, n)?
 			sb.append(piece)
 			want += n
 
 	built := sb.build()
-	try expect_equal(built.byte_length(), want)
-	try expect_equal((try built.slice(0, 10)), "0010120123")
+	expect_equal(built.byte_length(), want)?
+	expect_equal((built.slice(0, 10)?), "0010120123")?
 
 test "search indexes count scalars for ascii, inline and unicode text":
 	long := "a".repeat(100).get().concat("!").concat("é").concat("!")
-	try expect_equal(long.index_of("!").get(-1), 100)
-	try expect_equal(long.last_index_of("!").get(-1), 102)
+	expect_equal(long.index_of("!").get(-1), 100)?
+	expect_equal(long.last_index_of("!").get(-1), 102)?
 
 	ascii := "a".repeat(100).get().concat("!")
-	try expect_equal(ascii.index_of("!").get(-1), 100)
-	try expect_equal(ascii.last_index_of("!").get(-1), 100)
-	try expect_equal(ascii.last_index_of("a").get(-1), 99)
-	try expect_equal("ab!".last_index_of("!").get(-1), 2)
-	try expect_equal("é!".last_index_of("!").get(-1), 1)
-	try expect_equal(ascii.last_index_of("?").get(-1), -1)
+	expect_equal(ascii.index_of("!").get(-1), 100)?
+	expect_equal(ascii.last_index_of("!").get(-1), 100)?
+	expect_equal(ascii.last_index_of("a").get(-1), 99)?
+	expect_equal("ab!".last_index_of("!").get(-1), 2)?
+	expect_equal("é!".last_index_of("!").get(-1), 1)?
+	expect_equal(ascii.last_index_of("?").get(-1), -1)?
 
 test "count matches split for nonempty parts and counts scalars plus one for an empty part":
-	try expect_equal("word,".repeat(10000).get().count(","), 10000)
-	try expect_equal("aaaa".count("aa"), 2)
-	try expect_equal("héllo".count(""), 6)
-	try expect_equal("".count("a"), 0)
-	try expect_equal("".count(""), 1)
-	try expect_equal("🙂x🙂".count("🙂"), 2)
-	try expect_equal("abc".count("abcd"), 0)
+	expect_equal("word,".repeat(10000).get().count(","), 10000)?
+	expect_equal("aaaa".count("aa"), 2)?
+	expect_equal("héllo".count(""), 6)?
+	expect_equal("".count("a"), 0)?
+	expect_equal("".count(""), 1)?
+	expect_equal("🙂x🙂".count("🙂"), 2)?
+	expect_equal("abc".count("abcd"), 0)?

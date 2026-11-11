@@ -12,9 +12,9 @@ fn absent(value: Int? = none) Bool:
 	return value.is_none()
 
 test "a default named caller_site calls the program's function":
-	site() | try expect_equal(5)
-	site(value: 2) | try expect_equal(2)
+	site() | expect_equal(5)?
+	site(value: 2) | expect_equal(2)?
 
 test "an omitted Optional default is none":
-	absent() | try expect_true()
-	(not absent(value: 2)) | try expect_true()
+	absent() | expect_true()?
+	(not absent(value: 2)) | expect_true()?

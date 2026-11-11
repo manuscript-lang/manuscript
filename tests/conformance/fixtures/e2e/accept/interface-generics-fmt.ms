@@ -43,11 +43,11 @@ fn read[T](box: Box[T]) T:
 
 test "parameters and bounds belong to interfaces and types":
     value := Box(7)
-    try expect_false(not (value.same(7)))
-    try expect_false(not (Matching(8).same(8)))
+    expect_false(not (value.same(7)))?
+    expect_false(not (Matching(8).same(8)))?
 
     pair := Pair(1, value)
-    try expect_equal(pair.get(), 7)
+    expect_equal(pair.get(), 7)?
 
     text := Box("seven")
-    try expect_equal(read(text), "seven")
+    expect_equal(read(text), "seven")?

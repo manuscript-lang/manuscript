@@ -11,5 +11,5 @@ fn local_middle() Bytes:
 	return bytes.view(1, 3).clone()
 
 test "a cloned view of a parameter or a local can be returned":
-	try expect_equal(middle(Bytes([1, 2, 3, 4])), Bytes([2, 3]))
-	try expect_equal(local_middle(), Bytes([20, 30]))
+	expect_equal(middle(Bytes([1, 2, 3, 4])), Bytes([2, 3]))?
+	expect_equal(local_middle(), Bytes([20, 30]))?

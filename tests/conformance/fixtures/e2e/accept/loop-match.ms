@@ -24,5 +24,5 @@ fn loop(state: State) Int:
     return count
 
 test "match controls nearest source loop":
-    try expect_equal(loop(State.Ready), 1)
-    try expect_equal(loop(State.Waiting), 3)
+    expect_equal(loop(State.Ready), 1)?
+    expect_equal(loop(State.Waiting), 3)?

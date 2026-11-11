@@ -11,7 +11,7 @@ type TextOwner:
 
 impl Closeable for TextOwner:
 	var fn close() Unit!:
-		try append_file(self.log, "{self.id},").wait()
+		append_file(self.log, "{self.id},").wait()?
 		self.text = "closed"
 
 impl TextOwner:
@@ -47,26 +47,26 @@ fn repeated_default(log: String) List[String]:
 	return [first, second]
 
 test "borrowed String method results outlive their owning source environments":
-	tmp := temporary("source-capture-string-") | try expect_ok
+	tmp := temporary("source-capture-string-") | expect_ok?
 	log := "{tmp.path()}/log"
-	try write_file(log, "").wait()
+	write_file(log, "").wait()?
 
 	first := ordinary(log.clone())
-	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,")
-	try expect_equal(first, "payload-1")
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,")?
+	expect_equal(first, "payload-1")?
 
 	second := defaulted(log.clone())
-	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,")
-	try expect_equal(second, "payload-2")
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,")?
+	expect_equal(second, "payload-2")?
 
 	third := explicit_default(log.clone())
-	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,")
-	try expect_equal(third, "payload-3")
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,")?
+	expect_equal(third, "payload-3")?
 
 	fourth := repeated(log.clone())
-	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,")
-	try expect_equal(fourth, ["payload-4", "payload-4"])
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,")?
+	expect_equal(fourth, ["payload-4", "payload-4"])?
 
 	fifth := repeated_default(log.clone())
-	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,5,")
-	try expect_equal(fifth, ["payload-5", "payload-5"])
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,5,")?
+	expect_equal(fifth, ["payload-5", "payload-5"])?

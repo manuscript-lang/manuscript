@@ -24,8 +24,8 @@ import Align, Table from "@std/cli/table.ms"
 
 fn render() String!:
     var table = Table(columns: [Align.Left, Align.Right])
-    try table.add(["tea", "2"])
-    try table.add(["coffee", "30"])
+    table.add(["tea", "2"])?
+    table.add(["coffee", "30"])?
     return ok(table.render())
 ```
 
@@ -61,7 +61,7 @@ impl Table:
 
 		var measured = List[Int]()
 		for cell in row:
-			measured.append(try cell.display_width())
+			measured.append(cell.display_width()?)
 		if self.widths.is_empty():
 			for _unused in 0..count:
 				self.widths.append(0)

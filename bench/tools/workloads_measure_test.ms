@@ -35,23 +35,23 @@ fn producer(bad: String, mode: String) Producer:
 
 test "every trial rotates and retains samples":
 	var p = producer("", "valid")
-	measured := try expect_ok(measure(3, "workload", fn v: p.run(v)))
-	try expect_equal(
+	measured := expect_ok(measure(3, "workload", fn v: p.run(v)))?
+	expect_equal(
 		p.order,
 		["go", "ms", "rs", "ms", "go", "rs", "go", "rs", "ms", "rs", "ms", "go"]
-	)
-	try expect_equal(measured.samples.length(), 9)
-	try expect_equal(measured.samples.all(fn s: s.elapsed_ns > 0), true)
-	try expect_equal(measured.expected, "correct")
+	)?
+	expect_equal(measured.samples.length(), 9)?
+	expect_equal(measured.samples.all(fn s: s.elapsed_ns > 0), true)?
+	expect_equal(measured.expected, "correct")?
 
 test "wrong or failed warm-up and early trials are rejected for every version":
 	for version in versions():
 		for mode in ["wrong", "wrong_first_trial", "failed", "failed_first_trial"]:
 			var p = producer(version.clone(), mode.clone())
-			_cause := try expect_error(measure(2, "workload", fn v: p.run(v)))
+			_cause := expect_error(measure(2, "workload", fn v: p.run(v)))?
 
 test "invalid repeat counts are refused":
 	var p = producer("", "valid")
-	_zero := try expect_error(measure(0, "workload", fn v: p.run(v)))
+	_zero := expect_error(measure(0, "workload", fn v: p.run(v)))?
 	for text in ["0", "00", "abc", "-1"]:
-		_cause := try expect_error(repeats(text))
+		_cause := expect_error(repeats(text))?

@@ -24,24 +24,24 @@ test "primitive list loops":
         if v == 2:
             ints.append(value: 100)
 
-    try expect_true((sum == 10))
-    try expect_true((ints.length() == 6))
+    expect_true((sum == 10))?
+    expect_true((ints.length() == 6))?
 
     var total = 0.0
     for f in floats:
         total = total + f
-    try expect_true((total == 2.5))
+    expect_true((total == 2.5))?
 
     var trues = 0
     for b in bools:
         if b:
             trues = trues + 1
-    try expect_true((trues == 3))
+    expect_true((trues == 3))?
 
     var joined = ""
     for w in words:
         joined = joined + w
-    try expect_true((joined == "w0w1w2w3w4"))
+    expect_true((joined == "w0w1w2w3w4"))?
 
     var unique = Set[Int]()
     unique.add(value: 4)
@@ -50,4 +50,4 @@ test "primitive list loops":
     var seen = 0
     for n in unique:
         seen = seen + n
-    try expect_true((seen == 11))
+    expect_true((seen == 11))?

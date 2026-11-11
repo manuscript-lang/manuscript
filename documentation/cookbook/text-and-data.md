@@ -17,7 +17,7 @@ import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:
-    try stdout().write("{number}\n")
+    stdout().write("{number}\n")?
     return stdout().flush()
 
 fn main() Int:
@@ -49,8 +49,8 @@ import parse from "@std/data/json.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
-    text := try parse[String](arguments().get(0, default: "\"hello\""))
-    try stdout().write("{text}\n")
+    text := parse[String](arguments().get(0, default: "\"hello\""))?
+    stdout().write("{text}\n")?
     return stdout().flush()
 
 fn main() Unit!:
@@ -85,9 +85,9 @@ type Config:
 
 fn run() Result[Unit, Error]:
     text := arguments().get(0, default: "\{\"name\":\"Sam\"\}")
-    config := try parse[Config](text)
-    encoded := try stringify(config, StringifyOptions(strict: true))
-    try stdout().write("{encoded}\n")
+    config := parse[Config](text)?
+    encoded := stringify(config, StringifyOptions(strict: true))?
+    stdout().write("{encoded}\n")?
     return stdout().flush()
 
 fn main() Unit!:
@@ -104,5 +104,5 @@ ms run config.ms -- '{"name":"Sam"}'
 
 - A missing `enabled` takes its default; a missing `name` or wrong type is an error.
 - Unknown members are ignored unless `JsonOptions(ignore_unknown_fields: false)`.
-- Write `parse[Config]` explicitly after `try`.
+- Write `parse[Config]` explicitly after `?`.
 - `stringify` writes fields in declaration order. `StringifyOptions(strict: true)` is opt-in; ordinary `stringify` can omit values without a JSON form. Strict mode still omits `none` fields.

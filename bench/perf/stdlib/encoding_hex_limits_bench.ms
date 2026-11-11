@@ -16,7 +16,7 @@ fn zeros(count: Int) Bytes:
 	return out.build()
 
 fn decode_case(length: Int, limit: Int?, bad: Int = 0) Unit!:
-	var text = try "0".repeat(length)
+	var text = "0".repeat(length)?
 	if bad == 1: text = "z" + text.drop(1)
 	if bad == 2: text = text.take(length - 1) + "z"
 
@@ -33,10 +33,10 @@ fn decode_case(length: Int, limit: Int?, bad: Int = 0) Unit!:
 		expected = ok(zeros(length / 2))
 
 	fn work() Unit!:
-		try expect_equal(hex_decode(text, limit), expected)
+		expect_equal(hex_decode(text, limit), expected)?
 		return keep(length)
 
-	try measure(1, work)
+	measure(1, work)?
 
 fn unicode_case(limit: Int) Unit!:
 	expected: Bytes! := error(
@@ -47,145 +47,141 @@ fn unicode_case(limit: Int) Unit!:
 	)
 
 	fn work() Unit!:
-		try expect_equal(hex_decode("é", limit), expected)
+		expect_equal(hex_decode("é", limit), expected)?
 		return keep(2)
 
-	try measure(1, work)
+	measure(1, work)?
 
 fn neighbor(which: Int) Unit!:
 	data := zeros(if which == 3 or which == 4: 8192 else: 4096)
-	text := try "\u{0}".repeat(4096)
+	text := "\u{0}".repeat(4096)?
 	expected_text: String! := ok(text.clone())
-	hex := try "00".repeat(4096)
-	b64 := (try "A".repeat(5462)) + "=="
+	hex := "00".repeat(4096)?
+	b64 := ("A".repeat(5462)?) + "=="
 	scalar := "é".to_bytes()
 
 	fn work() Unit!:
-		if which == 0: try expect_equal(hex_encode(data), hex)
-		else if which == 1: try expect_equal(base64_encode(data, false), b64)
-		else if which == 2: try expect_equal(ascii_decode(data), expected_text)
-		else if which == 3: try expect_equal(
-			utf16_decode(data, true, 4096), expected_text
-		)
-		else if which == 4: try expect_equal(
-			utf16_decode(data, false, 4096), expected_text
-		)
-		else if which == 5: try expect_equal(
+		if which == 0: expect_equal(hex_encode(data), hex)?
+		else if which == 1: expect_equal(base64_encode(data, false), b64)?
+		else if which == 2: expect_equal(ascii_decode(data), expected_text)?
+		else if which == 3: expect_equal(utf16_decode(data, true, 4096), expected_text)?
+		else if which == 4: expect_equal(utf16_decode(data, false, 4096), expected_text)?
+		else if which == 5: expect_equal(
 			decode_first(scalar, 0), ok(Utf8Scalar(233, 2))
-		)
-		else: try expect_equal(decode_last(scalar, 2), ok(Utf8Scalar(233, 2)))
+		)?
+		else: expect_equal(decode_last(scalar, 2), ok(Utf8Scalar(233, 2)))?
 
 		return keep(4096)
 
-	try measure(1, work)
+	measure(1, work)?
 
 bench "hex.limit.empty.none":
-	try decode_case(0, none, 0)
+	decode_case(0, none, 0)?
 
 bench "hex.limit.empty.zero":
-	try decode_case(0, 0, 0)
+	decode_case(0, 0, 0)?
 
 bench "hex.limit.empty.negative":
-	try decode_case(0, -1, 0)
+	decode_case(0, -1, 0)?
 
 bench "hex.limit.one.odd":
-	try decode_case(1, 0, 0)
+	decode_case(1, 0, 0)?
 
 bench "hex.limit.tiny.zero":
-	try decode_case(2, 0, 0)
+	decode_case(2, 0, 0)?
 
 bench "hex.limit.tiny.exact":
-	try decode_case(2, 1, 0)
+	decode_case(2, 1, 0)?
 
 bench "hex.limit.tiny.none":
-	try decode_case(2, none, 0)
+	decode_case(2, none, 0)?
 
 bench "hex.limit.tiny.odd.over":
-	try decode_case(3, 0, 0)
+	decode_case(3, 0, 0)?
 
 bench "hex.limit.tiny.bad.limit":
-	try decode_case(2, 0, 1)
+	decode_case(2, 0, 1)?
 
 bench "hex.limit.tiny.bad.fit":
-	try decode_case(2, 1, 1)
+	decode_case(2, 1, 1)?
 
 bench "hex.limit.zero.8192":
-	try decode_case(8192, 0, 0)
+	decode_case(8192, 0, 0)?
 
 bench "hex.limit.under.8192":
-	try decode_case(8192, 4095, 0)
+	decode_case(8192, 4095, 0)?
 
 bench "hex.limit.exact.8192":
-	try decode_case(8192, 4096, 0)
+	decode_case(8192, 4096, 0)?
 
 bench "hex.limit.none.8192":
-	try decode_case(8192, none, 0)
+	decode_case(8192, none, 0)?
 
 bench "hex.limit.negative.8192":
-	try decode_case(8192, -1, 0)
+	decode_case(8192, -1, 0)?
 
 bench "hex.limit.bad.first.8192":
-	try decode_case(8192, none, 1)
+	decode_case(8192, none, 1)?
 
 bench "hex.limit.bad.last.8192":
-	try decode_case(8192, none, 2)
+	decode_case(8192, none, 2)?
 
 bench "hex.limit.odd.fit.8192":
-	try decode_case(8193, 4096, 0)
+	decode_case(8193, 4096, 0)?
 
 bench "hex.limit.odd.under.8192":
-	try decode_case(8193, 4095, 0)
+	decode_case(8193, 4095, 0)?
 
 bench "hex.limit.zero.1048576":
-	try decode_case(1048576, 0, 0)
+	decode_case(1048576, 0, 0)?
 
 bench "hex.limit.under.1048576":
-	try decode_case(1048576, 524287, 0)
+	decode_case(1048576, 524287, 0)?
 
 bench "hex.limit.exact.1048576":
-	try decode_case(1048576, 524288, 0)
+	decode_case(1048576, 524288, 0)?
 
 bench "hex.limit.none.1048576":
-	try decode_case(1048576, none, 0)
+	decode_case(1048576, none, 0)?
 
 bench "hex.limit.negative.1048576":
-	try decode_case(1048576, -1, 0)
+	decode_case(1048576, -1, 0)?
 
 bench "hex.limit.bad.first.1048576":
-	try decode_case(1048576, none, 1)
+	decode_case(1048576, none, 1)?
 
 bench "hex.limit.bad.last.1048576":
-	try decode_case(1048576, none, 2)
+	decode_case(1048576, none, 2)?
 
 bench "hex.limit.odd.fit.1048576":
-	try decode_case(1048577, 524288, 0)
+	decode_case(1048577, 524288, 0)?
 
 bench "hex.limit.odd.under.1048576":
-	try decode_case(1048577, 524287, 0)
+	decode_case(1048577, 524287, 0)?
 
 bench "hex.limit.unicode.0":
-	try unicode_case(0)
+	unicode_case(0)?
 
 bench "hex.limit.unicode.1":
-	try unicode_case(1)
+	unicode_case(1)?
 
 bench "hex.neighbor.hex.encode":
-	try neighbor(0)
+	neighbor(0)?
 
 bench "hex.neighbor.base64.encode":
-	try neighbor(1)
+	neighbor(1)?
 
 bench "hex.neighbor.ascii.decode":
-	try neighbor(2)
+	neighbor(2)?
 
 bench "hex.neighbor.utf16.le":
-	try neighbor(3)
+	neighbor(3)?
 
 bench "hex.neighbor.utf16.be":
-	try neighbor(4)
+	neighbor(4)?
 
 bench "hex.neighbor.utf8.first":
-	try neighbor(5)
+	neighbor(5)?
 
 bench "hex.neighbor.utf8.last":
-	try neighbor(6)
+	neighbor(6)?

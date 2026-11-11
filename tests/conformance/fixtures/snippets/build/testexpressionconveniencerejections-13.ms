@@ -7,6 +7,6 @@ fn p() Int!:
 fn f(x: Int?) Unit!:
     match x:
         n:
-            try p()
+            p()?
             return ok(unit)
         none: return ok(unit)

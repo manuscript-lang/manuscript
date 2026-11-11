@@ -9,30 +9,30 @@ import random_bytes from "@std/random.ms"
 import system_info from "@std/os/system.ms"
 
 fn check_services() Unit!:
-    arguments().length() | try expect_equal(0)
+    arguments().length() | expect_equal(0)?
 
     before := monotonic()
     after := monotonic()
-    (after - before < 0.milliseconds()) | try expect_false
-    (now().unix_seconds() <= 0) | try expect_false
-    (system_info().cpu_count <= 0) | try expect_false
+    (after - before < 0.milliseconds()) | expect_false?
+    (now().unix_seconds() <= 0) | expect_false?
+    (system_info().cpu_count <= 0) | expect_false?
 
-    _variables := try environment()
+    _variables := environment()?
 
     match random_bytes(0):
         ok(data):
-            try expect_equal(data.length(), 0)
+            expect_equal(data.length(), 0)?
         error(_):
             return fail("entropy unavailable")
 
 test "host accessors work in callbacks":
     check := check_services
-    try check()
+    check()?
 
 test "closing a standard stream leaves the process stream open":
-    try stdin().close()
-    try stdout().close()
-    try stderr().close()
+    stdin().close()?
+    stdout().close()?
+    stderr().close()?
 
     match stdout().write(""):
         ok(_):

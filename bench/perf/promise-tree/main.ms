@@ -14,8 +14,8 @@ fn pfib(n: Int, cutoff: Int) Int!:
 
 	m := n - 1
 	p := promise[Int](fn: pfib(m, cutoff))
-	b := try pfib(n - 2, cutoff)
-	a := try p.wait()
+	b := pfib(n - 2, cutoff)?
+	a := p.wait()?
 	return ok(a + b)
 
 fn work(n: Int) Int!:

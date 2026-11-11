@@ -19,78 +19,78 @@ fn sample() Sized:
     return Sized(255, -128, 18446744073709551615, single, maybe, [low, high])
 
 test "JSON writes sized numbers like Int and Float":
-    try expect_equal(
+    expect_equal(
         stringify(sample()),
         ok(
             "\{\"small\":255,\"signed\":-128,\"wide\":18446744073709551615,\"single\":0.1,\"maybe\":7,\"items\":[-1,2]\}"
         )
-    )
+    )?
 
 test "JSON reads sized numbers back":
     text := stringify(sample()).get()
     back := parse[Sized](text).get()
-    try expect_equal(back.small.to_int(), 255)
-    try expect_equal(back.signed.to_int(), -128)
-    try expect_equal(back.wide.to_string_radix(16), "ffffffffffffffff")
-    try expect_equal(stringify(back).get(), text)
+    expect_equal(back.small.to_int(), 255)?
+    expect_equal(back.signed.to_int(), -128)?
+    expect_equal(back.wide.to_string_radix(16), "ffffffffffffffff")?
+    expect_equal(stringify(back).get(), text)?
 
 test "JSON rejects sized numbers outside their range":
     head := "\{\"signed\":0,\"wide\":0,\"single\":0,\"items\":[]"
-    try expect_equal(
-        (try expect_error(parse[Sized](head + ",\"small\":256\}"))).kind,
+    expect_equal(
+        (expect_error(parse[Sized](head + ",\"small\":256\}"))?).kind,
         "EBADMSG"
-    )
-    try expect_equal(
-        (try expect_error(parse[Sized](head + ",\"small\":-1\}"))).kind,
+    )?
+    expect_equal(
+        (expect_error(parse[Sized](head + ",\"small\":-1\}"))?).kind,
         "EBADMSG"
-    )
-    try expect_equal(
+    )?
+    expect_equal(
         (
-            try expect_error(
+            expect_error(
                 parse[Sized](
                     "\{\"small\":0,\"signed\":-129,\"wide\":0,\"single\":0,\"items\":[]\}"
                 )
-            )
+            )?
         ).kind,
         "EBADMSG"
-    )
-    try expect_equal(
+    )?
+    expect_equal(
         (
-            try expect_error(
+            expect_error(
                 parse[Sized](
                     "\{\"small\":0,\"signed\":0,\"wide\":18446744073709551616,\"single\":0,\"items\":[]\}"
                 )
-            )
+            )?
         ).kind,
         "EBADMSG"
-    )
-    try expect_equal(
+    )?
+    expect_equal(
         (
-            try expect_error(
+            expect_error(
                 parse[Sized](
                     "\{\"small\":0,\"signed\":0,\"wide\":-1,\"single\":0,\"items\":[]\}"
                 )
-            )
+            )?
         ).kind,
         "EBADMSG"
-    )
-    try expect_equal(
+    )?
+    expect_equal(
         (
-            try expect_error(
+            expect_error(
                 parse[Sized](
                     "\{\"small\":0,\"signed\":0,\"wide\":0,\"single\":1e39,\"items\":[]\}"
                 )
-            )
+            )?
         ).kind,
         "EBADMSG"
-    )
-    try expect_equal(
+    )?
+    expect_equal(
         (
-            try expect_error(
+            expect_error(
                 parse[Sized](
                     "\{\"small\":0,\"signed\":0,\"wide\":0,\"single\":0,\"items\":[2147483648]\}"
                 )
-            )
+            )?
         ).kind,
         "EBADMSG"
-    )
+    )?

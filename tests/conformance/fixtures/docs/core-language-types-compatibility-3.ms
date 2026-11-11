@@ -3,10 +3,10 @@
 // conform: origin=documentation/core-language/types/compatibility.md:69
 
 fn known() Result[Int, Error]:
-    number: Int := try Result[Int, Error].ok(1)
+    number: Int := Result[Int, Error].ok(1)?
     return ok(number)
 
 fn unknown() Result[Int, Error]:
-    // Rejected: the try operand's error type is undetermined.
-    number: Int := try ok(1)
+    // Rejected: the operand?'s error type is undetermined.
+    number: Int := ok(1)?
     return ok(number)

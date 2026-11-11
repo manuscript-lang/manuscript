@@ -10,11 +10,11 @@ test "decimal comparison orders signs exponent gaps and overlapping digits":
 	]
 
 	for i in 0..ascending.length():
-		try expect_equal(ascending[i].compare(ascending[i]), 0)
+		expect_equal(ascending[i].compare(ascending[i]), 0)?
 
 		for j in (i + 1)..ascending.length():
-			try expect_equal(ascending[i].compare(ascending[j]), -1)
-			try expect_equal(ascending[j].compare(ascending[i]), 1)
+			expect_equal(ascending[i].compare(ascending[j]), -1)?
+			expect_equal(ascending[j].compare(ascending[i]), 1)?
 
-	try expect_equal(1.1d.compare(1d), 1)
-	try expect_equal((-1.1d).compare(-1d), -1)
+	expect_equal(1.1d.compare(1d), 1)?
+	expect_equal((-1.1d).compare(-1d), -1)?

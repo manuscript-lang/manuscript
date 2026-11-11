@@ -22,11 +22,11 @@ test "closures borrow variables and returned closures copy":
     if true:
         var local = 20
         local = 30
-        try expect_equal(action(local), 40)
+        expect_equal(action(local), 40)?
 
-    try expect_equal(action(3), 13)
-    try expect_equal(offset, 10)
-    try expect_equal(countdown("ready", 4), "ready")
+    expect_equal(action(3), 13)?
+    expect_equal(offset, 10)?
+    expect_equal(countdown("ready", 4), "ready")?
 
     // A returned closure owns its captures, so it takes a `let` copy and
     // does not see later changes to the variable.
@@ -36,4 +36,4 @@ test "closures borrow variables and returned closures copy":
             return inner + base
     nested := factory()
     offset = 100
-    try expect_equal(nested(1), 11)
+    expect_equal(nested(1), 11)?

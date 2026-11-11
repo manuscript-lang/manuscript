@@ -13,18 +13,18 @@ fn both() List[String]:
 	return sample("ms").concat(sample("go"))
 
 test "complete equivalent work":
-	result := try summarize(both(), 1)
-	try expect_contains(result, "1.00x")
-	try expect_contains(result, "Checksums and operation counts verified")
+	result := summarize(both(), 1)?
+	expect_contains(result, "1.00x")?
+	expect_contains(result, "Checksums and operation counts verified")?
 
 test "extra versions add columns":
 	lines := both().concat(sample("rust")).concat(sample("rust-checked"))
-	result := try summarize(lines, 1)
-	try expect_contains(
+	result := summarize(lines, 1)?
+	expect_contains(
 		result,
 		"| operation | ops | Manuscript | Go | Rust | Rust, overflow checks | ms / Go | ms / Rust | ms / Rust, overflow checks |"
-	)
-	try expect_equal(result.split("1.00x").length() - 1, 3 * ops().length())
+	)?
+	expect_equal(result.split("1.00x").length() - 1, 3 * ops().length())?
 
 test "rejects invalid evidence":
 	valid := both()
@@ -47,4 +47,4 @@ test "rejects invalid evidence":
 	extra_first := [valid[0].clone()].concat(valid)
 	junk := ["unrecognized output"].concat(valid)
 	for lines in [cut, doubled, short_count, zero_time, bad_sink, extra_first, junk]:
-		_cause := try expect_error(summarize(lines, 1))
+		_cause := expect_error(summarize(lines, 1))?

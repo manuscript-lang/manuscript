@@ -17,15 +17,15 @@ fn count_rows(text: String) Int:
 
 fn run(paths: List[String]) Int!:
     reads := paths.map(fn path: read_file(path))
-    files := try wait_all(reads)
+    files := wait_all(reads)?
     var rows = 0
     for file in files:
-        text := try file.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))
+        text := file.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?
         rows += count_rows(text)
     return ok(rows)
 
 fn main() Unit!:
-    rows := try run(["a.csv", "b.csv"])
+    rows := run(["a.csv", "b.csv"])?
     print("{rows} rows from 2 files")
 ```
 

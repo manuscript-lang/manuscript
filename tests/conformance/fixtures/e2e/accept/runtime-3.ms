@@ -13,11 +13,11 @@ fn probe() Unit!:
         return true
     number := identity(first)()
     flag := second()
-    (flag) | try expect_true
+    (flag) | expect_true?
 
     match number:
         ok(value):
-            try expect_equal(value, 3)
+            expect_equal(value, 3)?
         error(_):
             return fail(message: "Unexpected case")
 
@@ -41,8 +41,8 @@ fn describe(outcome: Int!Code) Int!Error:
 test "explicit error conversion":
     failed: Int!Code := error(Code(7))
     expected: Int!Error := error(Error("Error 7"))
-    describe(outcome: failed) | try expect_equal(expected)
+    describe(outcome: failed) | expect_equal(expected)?
 
     succeeded: Int!Code := ok(3)
     unchanged: Int!Error := ok(3)
-    describe(outcome: succeeded) | try expect_equal(unchanged)
+    describe(outcome: succeeded) | expect_equal(unchanged)?

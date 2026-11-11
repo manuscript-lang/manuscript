@@ -6,24 +6,24 @@ import (
 test "big integer powers enforce the exact result bit limit":
 	limit := 16777216
 	limited: BigInt! := error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
-	largest_power := try from_int(2).pow(limit - 1)
-	try expect_equal((try largest_power.shift_right(limit - 1)).to_int(), 1)
-	try expect_equal(from_int(2).pow(limit), limited)
-	try expect_equal(from_int(-2).pow(limit), limited)
+	largest_power := from_int(2).pow(limit - 1)?
+	expect_equal((largest_power.shift_right(limit - 1)?).to_int(), 1)?
+	expect_equal(from_int(2).pow(limit), limited)?
+	expect_equal(from_int(-2).pow(limit), limited)?
 
 	oversized := largest_power.multiply(from_int(2))
-	try expect_equal(oversized.pow(1), limited)
-	try expect_equal((try oversized.pow(0)).to_int(), 1)
+	expect_equal(oversized.pow(1), limited)?
+	expect_equal((oversized.pow(0)?).to_int(), 1)?
 
-	power := try from_int(1).shift_left(limit / 3 + 1)
+	power := from_int(1).shift_left(limit / 3 + 1)?
 	dense := power.subtract(from_int(1))
-	try expect_equal(dense.pow(3), limited)
-	try expect_equal(dense.negate().pow(3), limited)
+	expect_equal(dense.pow(3), limited)?
+	expect_equal(dense.negate().pow(3), limited)?
 
 test "constant big integer powers remain valid at huge exponents":
 	maximum := 9223372036854775807
-	try expect_equal((try from_int(0).pow(maximum)).to_int(), 0)
-	try expect_equal((try from_int(1).pow(maximum)).to_int(), 1)
-	try expect_equal((try from_int(-1).pow(maximum)).to_int(), -1)
-	try expect_equal((try from_int(-1).pow(maximum - 1)).to_int(), 1)
-	try expect_equal((try from_int(0).pow(0)).to_int(), 1)
+	expect_equal((from_int(0).pow(maximum)?).to_int(), 0)?
+	expect_equal((from_int(1).pow(maximum)?).to_int(), 1)?
+	expect_equal((from_int(-1).pow(maximum)?).to_int(), -1)?
+	expect_equal((from_int(-1).pow(maximum - 1)?).to_int(), 1)?
+	expect_equal((from_int(0).pow(0)?).to_int(), 1)?

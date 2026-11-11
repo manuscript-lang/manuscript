@@ -17,8 +17,8 @@ impl Doc:
         return self.lines[best]
 
 fn load(path: String) Result[Doc, Error]:
-    f := try open(path)
-    lines := try f.read_lines(max_lines: 1000) // Int passes as Int?
+    f := open(path)?
+    lines := f.read_lines(max_lines: 1000)? // Int passes as Int?
     return ok(Doc(lines)) // moves lines
 
 fn main() Unit:
@@ -32,7 +32,7 @@ fn main() Unit:
 - Commands: `ms search_symbol <words>`; `ms verify` (check, fmt, lint, test); `ms review`.
 - Effects: pure unless `// ms: allow_effect std.fs.*`.
 - Be terse: `print(x)` (no import); `if c: return x`, no `else` after `return`; `any all count sum map filter fold`; `m.get_or(k, d)`; infer closure types.
-- `Unit`/`Unit!` fns need no final `return`; `main` may be `Int?!` or `Int` status. `test "name":` runs under `ms test` (`try fail("why")`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
+- `Unit`/`Unit!` fns need no final `return`; `main` may be `Int?!` or `Int` status. `test "name":` runs under `ms test` (`fail("why")?`, `@std/test/test.ms`), `bench "name":` under `ms bench`.
 - Stdlib (`@std/<dir>/<m>.ms`): `io/io` `io/streams` (`stdin() | lines`) `os/fs` `os/process` `string` `time` (regex `compile`) `bytes` `crypto` `collections/collections` `math/math` `math/decimal` `data/json` `data/csv` `data/toml` `data/yaml` `net/http` `concurrency/promise`.
 - Imports: `import a, b from "x.ms"`, `import (a from "x.ms", b from "y.ms")`; `export` shares. `List Map Set Optional Result Error` need none.
 - Lines: a `:` ending a line needs an indented body; `else if` chains; `else` needs a block `if`, not `if c: x`; lines starting `|` or `.` continue.
@@ -44,9 +44,9 @@ fn main() Unit:
 - Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; `enum Choice:` variants `A`, `B(x: Int)`; no `case` keyword. Methods in `impl T:` (`var fn` mutates `self`); `interface I:` contracts, `impl I for T:` conversions.
 - `T?` (Optional): values convert (no `some`); `none` is absent; unwrap with `if x := v:` or `.get(d)`; `a?.b`.
 - `match v:` only on your own types: `Case(x):`, `_:`, exhaustive. Never match `Result`/`Optional` or nest `match`.
-- Errors: `T!E` (`Result[T, E]`) is `ok(v)` / `error(e)`; E needs no interface. Bare `T!` selects `Error`, whose implementations have `.message()`. `try r` gives the value or returns a compatible error; `if x := r:` handles success.
+- Errors: `T!E` (`Result[T, E]`) is `ok(v)` / `error(e)`; E needs no interface. Bare `T!` selects `Error`, whose implementations have `.message()`. `r?` gives the value or returns a compatible error; `if x := r:` handles success.
 - Faults (`panic`, failed `get()`) abort, not a `Result`.
-- Flows: `x | f(a: 1) | try g | .m()` is `(try g(f(x, a: 1))).m()`.
+- Flows: `x | f(a: 1) | g? | .m()` is `(g(f(x, a: 1))?).m()`.
 - Ownership: every `String`, list, map, record and enum has one owner: a variable, field or element. `Int`, `Float`, `Bool` copy freely (no `.clone()`). `:=` is immutable including contents: `xs := [1]; xs.append(2)` fails, write `var xs`.
 - Borrow: `b := a`, `x := a.b`, `xs[i]`, arguments, loop variables and match payloads read the owner's value in place; while `b` is used, `a` cannot change. `var x = a.b` changes `a.b` through `x`.
 - Move: storing a value (`xs.append(s)`, a field, a list) gives it a new owner and kills the old name, so `xs.append(s.clone())` unless it is the last use. A borrowed part cannot be stored: `names.append(u.name.clone())`.

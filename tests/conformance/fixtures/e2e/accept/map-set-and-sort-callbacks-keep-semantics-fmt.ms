@@ -12,11 +12,11 @@ fn record(var into: List[Int], value: Int) Unit:
 test "map callbacks":
     m := {"a": 1, "bb": 2, "ccc": 3}
     sums := m.map(fn(key: String, value: Int) Int: key.length() + value)
-    try expect_true((sums.get("bb") == 4))
-    try expect_true(
+    expect_true((sums.get("bb") == 4))?
+    expect_true(
         (m.filter(fn(key: String, value: Int) Bool: value > 1).length() == 2)
-    )
-    try expect_true(
+    )?
+    expect_true(
         (
             m.fold(
                 initial: 0,
@@ -26,8 +26,8 @@ test "map callbacks":
                 )
             ) == 6
         )
-    )
-    try expect_true(
+    )?
+    expect_true(
         (
             m.fold_right(
                 initial: 0,
@@ -37,7 +37,7 @@ test "map callbacks":
                 )
             ) == 321
         )
-    )
+    )?
 
     var visited = List[Int]()
     m.for_each(
@@ -48,9 +48,9 @@ test "map callbacks":
 
 test "set callbacks":
     s := [1, 2, 3].to_set()
-    try expect_true((s.map(fn(value: Int) Int: value % 2).length() == 2))
-    try expect_true((s.filter(fn(value: Int) Bool: value > 1).length() == 2))
-    try expect_true(
+    expect_true((s.map(fn(value: Int) Int: value % 2).length() == 2))?
+    expect_true((s.filter(fn(value: Int) Bool: value > 1).length() == 2))?
+    expect_true(
         (
             s.fold(
                 initial: 0,
@@ -60,8 +60,8 @@ test "set callbacks":
                 )
             ) == 6
         )
-    )
-    try expect_true(
+    )?
+    expect_true(
         (
             s.fold_right(
                 initial: 0,
@@ -71,12 +71,12 @@ test "set callbacks":
                 )
             ) == 321
         )
-    )
+    )?
 
 test "sort with a comparator":
     words := ["ccc", "a", "bb"]
     sorted := words.sorted(compare: byLength)
-    try expect_true((sorted.get(index: 0) == "a" and sorted.get(index: 2) == "ccc"))
+    expect_true((sorted.get(index: 0) == "a" and sorted.get(index: 2) == "ccc"))?
 
     closure := words.sorted(
         compare: fn(left: String, right: String) Int: (
@@ -84,4 +84,4 @@ test "sort with a comparator":
             - left.length()
         )
     )
-    try expect_true((closure.get(index: 0) == "ccc"))
+    expect_true((closure.get(index: 0) == "ccc"))?

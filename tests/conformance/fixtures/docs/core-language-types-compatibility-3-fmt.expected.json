@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "\nfn known() Result[Int, Error]:\n\tnumber: Int := try Result[Int, Error].ok(1)\n\treturn ok(number)\n\nfn unknown() Result[Int, Error]:\n\t// Rejected: the try operand's error type is undetermined.\n\tnumber: Int := try ok(1)\n\treturn ok(number)\n"
+    "fmt": "\nfn known() Result[Int, Error]:\n\tnumber: Int := Result[Int, Error].ok(1)?\n\treturn ok(number)\n\nfn unknown() Result[Int, Error]:\n\t// Rejected: the operand?'s error type is undetermined.\n\tnumber: Int := ok(1)?\n\treturn ok(number)\n"
   }
 }

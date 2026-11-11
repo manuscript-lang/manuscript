@@ -6,15 +6,15 @@ import (
 test "each paragraph develops one case":
 	var queue = Queue[Int]()
 	queue.enqueue(7)
-	try expect_equal(queue.dequeue(), 7)
+	expect_equal(queue.dequeue(), 7)?
 
 	var copy = queue.clone()
 	copy.enqueue(9)
-	try expect_equal(copy.dequeue(), 9)
+	expect_equal(copy.dequeue(), 9)?
 
 	// An absent value stays absent.
 	missing: Int? := none
-	try expect_equal(queue.dequeue(), missing)
+	expect_equal(queue.dequeue(), missing)?
 
 fn prepare(value: Int) Int:
 	adjusted := value + 1

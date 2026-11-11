@@ -46,7 +46,7 @@ bench "io.lines":
 
 		return keep(count)
 
-	try measure(10, work)
+	measure(10, work)?
 
 fn counted(n: Int) List[Int]:
 	var xs: List[Int] = []
@@ -62,19 +62,19 @@ bench "io.stages.map3_fold":
 
 	fn work() Result[Unit, Error]:
 		stream := map(map(map(from_list(xs.clone()), plus), plus), plus)
-		total := try fold(stream, 0, fn(a: Int, b: Int) Int: return a + b)
+		total := fold(stream, 0, fn(a: Int, b: Int) Int: return a + b)?
 		return keep(total)
 
-	try measure(10, work)
+	measure(10, work)?
 
 bench "io.lines long fragmented":
-	text := try "x".repeat(262144)
+	text := "x".repeat(262144)?
 	data := "{text}\n".to_bytes()
 
 	fn work() Unit!:
 		var input = lines(from_bytes(data.clone(), 64))
-		result := try input.next()
-		try input.close()
+		result := input.next()?
+		input.close()?
 		return keep(result.get("").byte_length())
 
-	try measure(1, work)
+	measure(1, work)?

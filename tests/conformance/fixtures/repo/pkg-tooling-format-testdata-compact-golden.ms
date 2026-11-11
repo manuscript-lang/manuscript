@@ -32,10 +32,10 @@ test "compact formatting preserves behavior":
     mapped := [1, 2, 3, 4, 5, 6].map(
         transform: fn(value: Int) Int: return (value + 1)
     )
-    values | try expect_equal(expected: [1, 2, 2, 4, 3, 6])
-    nested | try expect_equal(expected: [[1, 2], [3, 4]])
-    invalid.length() | try expect_equal(expected: 6)
-    mapped | try expect_equal(expected: [2, 3, 4, 5, 6, 7])
-    count() | try expect_equal(expected: 102)
-    choose(Choice.Zero) | try expect_equal(expected: "zero # unchanged")
-    choose(Choice.Other(3)) | try expect_equal(expected: "value 3")
+    values | expect_equal(expected: [1, 2, 2, 4, 3, 6])?
+    nested | expect_equal(expected: [[1, 2], [3, 4]])?
+    invalid.length() | expect_equal(expected: 6)?
+    mapped | expect_equal(expected: [2, 3, 4, 5, 6, 7])?
+    count() | expect_equal(expected: 102)?
+    choose(Choice.Zero) | expect_equal(expected: "zero # unchanged")?
+    choose(Choice.Other(3)) | expect_equal(expected: "value 3")?

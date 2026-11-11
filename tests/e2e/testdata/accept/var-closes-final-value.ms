@@ -29,12 +29,12 @@ fn count_then_wait(log: String) Int:
 	return 0
 
 test "a var binding closes the value it ended with":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	var counter = Counter(value: 0, log: log.clone())
 	counter.value = 5
-	try counter.close()
-	logged(log.clone()) | try expect_equal("5,")
+	counter.close()?
+	logged(log.clone()) | expect_equal("5,")?
 
 fn cancel_counter(log: String) Unit:
 	work := promise(fn: ok(count_then_wait(log.clone())))
@@ -43,7 +43,7 @@ fn cancel_counter(log: String) Unit:
 	).wait()
 
 test "a cancelled var binding closes the value it had reached":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	cancel_counter(log.clone())
-	logged(log.clone()) | try expect_equal("7,")
+	logged(log.clone()) | expect_equal("7,")?

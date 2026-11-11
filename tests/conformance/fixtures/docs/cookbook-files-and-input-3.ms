@@ -5,7 +5,7 @@ import arguments from "@std/os/env.ms"
 import stdout from "@std/io/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:
-    try stdout().write("{number}\n")
+    stdout().write("{number}\n")?
     return stdout().flush()
 
 export fn main() Int:

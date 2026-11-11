@@ -20,13 +20,13 @@ test "wait_first prefers an already completed input over unstarted deferred work
 	ready := promise(fn: ok(2))
 	while not ready.done():
 		_ := sleep(milliseconds(1)).wait()
-	try expect_equal((try wait_first([pending, ready])), 2)
+	expect_equal((wait_first([pending, ready])?), 2)?
 
 test "wait_first propagates a deferred promise construction limit":
 	pending := deferred[Int](delayed).with(
 		options: PromiseOptions(timeout: milliseconds(20))
 	)
 	start := monotonic()
-	reason := wait_first([pending]) | try expect_error
-	try expect_equal(reason.kind, "ETIMEDOUT")
-	try expect_true(monotonic().difference(start).to_milliseconds() < 2000)
+	reason := wait_first([pending]) | expect_error?
+	expect_equal(reason.kind, "ETIMEDOUT")?
+	expect_true(monotonic().difference(start).to_milliseconds() < 2000)?

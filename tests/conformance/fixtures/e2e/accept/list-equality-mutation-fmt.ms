@@ -76,4 +76,4 @@ test "element Equal mutating either List retains both captured headers":
             "shrink", "shrink_mismatch", "append", "append_write", "grow_write",
             "overwrite"
         ]:
-            (try check_equality(side, mutation))
+            (check_equality(side, mutation)?)

@@ -15,12 +15,12 @@ test "string map":
     m.add(key: "a", value: 1)
     m.add(key: "b", value: 2)
     m.add(key: "a", value: 3)
-    try expect_true((m.length() == 2))
-    try expect_true((lookup(m: m, key: "a") == 3 and lookup(m: m, key: "b") == 2))
-    try expect_true((lookup(m: m, key: "c") == -1))
-    try expect_true((lookup(m: Map[String, Int](), key: "a") == -1))
+    expect_true((m.length() == 2))?
+    expect_true((lookup(m: m, key: "a") == 3 and lookup(m: m, key: "b") == 2))?
+    expect_true((lookup(m: m, key: "c") == -1))?
+    expect_true((lookup(m: Map[String, Int](), key: "a") == -1))?
     m.add(key: "", value: 9)
-    try expect_true((lookup(m: m, key: "") == 9))
+    expect_true((lookup(m: m, key: "") == 9))?
 
     var seen = 0
 
@@ -28,4 +28,4 @@ test "string map":
         m.add(key: "x{seen}", value: seen)
         seen = seen + 1
 
-    try expect_true((seen == 3 and m.length() == 6))
+    expect_true((seen == 3 and m.length() == 6))?

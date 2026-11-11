@@ -96,12 +96,12 @@ fn c9(text: String) (fn() Int)?:
 	return r
 
 test "closures that outlive their statement keep what they captured":
-	try expect_equal(c1("x,yyyy,zz"), 7)
-	try expect_equal(c2("x,yyyy,zz"), 7)
-	try expect_equal(c3("x,yyyy,zz"), 2)
-	try expect_equal(c4("x,yyyy,zz"), 2)
-	try expect_equal(c5("x,yyyy,zz"), 7)
-	try expect_equal(c6("a,b"), 5)
-	try expect_equal(c7("x,yyyy,zz"), 7)
-	try expect_equal(c8("abc"), 6)
-	try expect_equal(c9("x,yyyy,zz").get()(), 2)
+	expect_equal(c1("x,yyyy,zz"), 7)?
+	expect_equal(c2("x,yyyy,zz"), 7)?
+	expect_equal(c3("x,yyyy,zz"), 2)?
+	expect_equal(c4("x,yyyy,zz"), 2)?
+	expect_equal(c5("x,yyyy,zz"), 7)?
+	expect_equal(c6("a,b"), 5)?
+	expect_equal(c7("x,yyyy,zz"), 7)?
+	expect_equal(c8("abc"), 6)?
+	expect_equal(c9("x,yyyy,zz").get()(), 2)?

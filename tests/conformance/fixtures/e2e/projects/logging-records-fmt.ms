@@ -16,14 +16,14 @@ type Payload:
     time: Int
 
 export fn emit(logger: Logger) Unit!:
-    child := try logger.child_json("\{\"request\":\"req-1\"\}")
+    child := logger.child_json("\{\"request\":\"req-1\"\}")?
     fields := Payload(
         count: 9007199254740993, ok: true, nested: [none, false], service: "worker",
         level: 0, msg: "spoofed", time: 0
     )
-    try child.debug("filtered")
-    try record(
+    child.debug("filtered")?
+    record(
         logger: child, level: LogLevel.Info, message: "received \"payload\"\nnext",
         fields
-    )
-    try logger.warn("complete")
+    )?
+    logger.warn("complete")?

@@ -5,13 +5,13 @@ import (
 )
 
 fn size(path: String) Int!:
-	data := try read_file(path).wait()
+	data := read_file(path).wait()?
 	return ok(data.length())
 
 test "blocking file reads work from promises on any thread":
-	dir := temporary("manuscript-promise-") | try expect_ok
+	dir := temporary("manuscript-promise-") | expect_ok?
 	path := "{dir.path()}/data"
-	try write_file(path, "0123456789").wait()
+	write_file(path, "0123456789").wait()?
 
 	all := wait_all(
 		[
@@ -19,4 +19,4 @@ test "blocking file reads work from promises on any thread":
 		]
 	)
 	for n in all.get([]):
-		try expect_equal(n, 10)
+		expect_equal(n, 10)?

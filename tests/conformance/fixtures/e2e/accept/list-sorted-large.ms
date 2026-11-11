@@ -25,10 +25,10 @@ test "sorting a large list is ordered and leaves the source unchanged":
         values.append((i * 7919) % 20011)
 
     sorted := values.sorted(ascending)
-    try expect_equal(sorted.length(), 20000)
+    expect_equal(sorted.length(), 20000)?
     for i in 1..20000:
-        try expect_equal(sorted.get(i - 1) <= sorted.get(i), true)
-    try expect_equal(values.get(1), 7919)
+        expect_equal(sorted.get(i - 1) <= sorted.get(i), true)?
+    expect_equal(values.get(1), 7919)?
 
 test "sorting is stable for equal keys":
     var entries: List[Entry] = []
@@ -41,18 +41,18 @@ test "sorting is stable for equal keys":
     for i in 1..1000:
         current := sorted.get(i)
         if current.key == previous.key:
-            try expect_equal(previous.label.length() <= current.label.length(), true)
+            expect_equal(previous.label.length() <= current.label.length(), true)?
         previous = current.clone()
 
-    try expect_equal(sorted.get(0).label, "e0")
-    try expect_equal(sorted.get(1).label, "e7")
+    expect_equal(sorted.get(0).label, "e0")?
+    expect_equal(sorted.get(1).label, "e7")?
 
 test "strings, empty and single element lists sort":
     words := ["pear", "apple", "fig", "banana", "apple"]
-    try expect_equal(
+    expect_equal(
         words.sorted(alphabetical), ["apple", "apple", "banana", "fig", "pear"]
-    )
+    )?
 
     none: List[Int] := []
-    try expect_equal(none.sorted(ascending), none)
-    try expect_equal([5].sorted(ascending), [5])
+    expect_equal(none.sorted(ascending), none)?
+    expect_equal([5].sorted(ascending), [5])?

@@ -55,9 +55,7 @@ fn fetch_corpora() Unit!:
 		if exists("{DATA}/{f}.json"): continue
 
 		url := "https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/{f}.json"
-		_ := try must(
-			"curl {f}", capture("curl", ["-sSfL", "-o", "{DATA}/{f}.json", url])
-		)
+		_ := must("curl {f}", capture("curl", ["-sSfL", "-o", "{DATA}/{f}.json", url]))?
 
 	// Small messages: the shape worker threads and RPC exchange.
 	if not exists("{DATA}/small.json"): write_text("{DATA}/small.json", small())
@@ -84,22 +82,22 @@ fn mbps(r: Rate) Float:
 	return r.bytes.to_float() / r.nanos.to_float() * 1000.0
 
 fn run(names: List[String]) Result[String, Error]:
-	try fetch_corpora()
+	fetch_corpora()?
 
-	node := try must("node", capture("node", ["bench/perf/json/node.js"].concat(names)))
-	ms := try must(
+	node := must("node", capture("node", ["bench/perf/json/node.js"].concat(names)))?
+	ms := must(
 		"ms run",
 		capture(
 			ms_binary(), ["run", "bench/perf/json/ms.toml", "--"].concat(names)
 		)
-	)
-	rust := try must(
+	)?
+	rust := must(
 		"cargo run",
 		run_in(
 			"bench/perf/json/rust", "cargo",
 			["run", "--release", "--quiet", "--"].concat(names)
 		)
-	)
+	)?
 	n := load(node)
 	r := load(rust)
 	m := load(ms)

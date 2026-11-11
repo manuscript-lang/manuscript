@@ -34,14 +34,12 @@ test "minimum and legitimately missing go operation":
 	lines := trials(100).concat(
 		trial("go", 50)
 	).concat(trial("rs", 50)).concat(trial("ms", 50))
-	report := try expect_ok(summarize(lines, 2))
-	try expect_contains(report, "Minimum of 2 rotating trials")
-	try expect_equal(
-		row(report, "list_append"), ["50.0", "50.0", "50.0", "1.00", "1.00"]
-	)
-	try expect_equal(
+	report := expect_ok(summarize(lines, 2))?
+	expect_contains(report, "Minimum of 2 rotating trials")?
+	expect_equal(row(report, "list_append"), ["50.0", "50.0", "50.0", "1.00", "1.00"])?
+	expect_equal(
 		row(report, "sorted_map_add_contains"), ["50.0", "-", "50.0", "-", "1.00"]
-	)
+	)?
 
 test "zero samples stay visible without ratios":
 	for zero in versions():
@@ -49,11 +47,11 @@ test "zero samples stay visible without ratios":
 		for v in versions():
 			lines = lines.concat(trial(v, if v == zero: 0 else: 100))
 
-		found := row(try expect_ok(summarize(lines, 1)), "list_append")
+		found := row(expect_ok(summarize(lines, 1))?, "list_append")
 		at := if zero == "ms": 0 else: if zero == "go": 1 else: 2
-		try expect_equal(found[at], "0.0")
-		try expect_equal(found[3], if zero == "ms" or zero == "go": "-" else: "1.00")
-		try expect_equal(found[4], if zero == "ms" or zero == "rs": "-" else: "1.00")
+		expect_equal(found[at], "0.0")?
+		expect_equal(found[3], if zero == "ms" or zero == "go": "-" else: "1.00")?
+		expect_equal(found[4], if zero == "ms" or zero == "rs": "-" else: "1.00")?
 
 test "rejects invalid evidence":
 	good := trials(100)
@@ -84,19 +82,19 @@ test "rejects invalid evidence":
 	cases.add("noninteger time", ["ms list_append 1000000 nan"].concat(rest))
 	cases.add("blank", good.concat([""]))
 	for entry in cases.entries():
-		_cause := try expect_error(summarize(entry.value, 1))
+		_cause := expect_error(summarize(entry.value, 1))?
 
-	_zero := try expect_error(summarize(good, 0))
-	_negative := try expect_error(summarize(good, -1))
+	_zero := expect_error(summarize(good, 0))?
+	_negative := expect_error(summarize(good, -1))?
 
 test "a late bad sample produces no report":
 	var lines = trials(100)
 	lines[lines.length() - 2] = "rs sorted_map_add_contains 600000 -1"
 
-	cause := try expect_error(summarize(lines, 1))
-	try expect_contains(cause.message, "invalid count or timing")
+	cause := expect_error(summarize(lines, 1))?
+	expect_contains(cause.message, "invalid count or timing")?
 
 test "invalid repeats are refused before building":
 	for text in ["0", "00", "abc", "-1"]:
-		cause := try expect_error(repeats(text))
-		try expect_contains(cause.message, "repeats must be a positive integer")
+		cause := expect_error(repeats(text))?
+		expect_contains(cause.message, "repeats must be a positive integer")?

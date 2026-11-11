@@ -86,23 +86,23 @@ fn eager(var visits: List[Int]) Int:
     return cell.total
 
 test "closed cell updates preserve each operation":
-    sum() | try expect_equal(1000)
+    sum() | expect_equal(1000)?
 
 test "closed cells retain prefix overflow":
-    (try expect_fault(fn: _ignored := prefix())) | try expect_contains(
+    (expect_fault(fn: _ignored := prefix())?) | expect_contains(
         "Int overflow"
-    )
+    )?
 
 test "peer cells and scalar carries are not initial invariants":
-    (try expect_fault(fn: _ignored := peer())) | try expect_contains("Int overflow")
-    (try expect_fault(fn: _ignored := scalar_peer())) | try expect_contains(
+    (expect_fault(fn: _ignored := peer())?) | expect_contains("Int overflow")?
+    (expect_fault(fn: _ignored := scalar_peer())?) | expect_contains(
         "Int overflow"
-    )
+    )?
 
 test "field resets keep ordinary overflow checks":
-    (try expect_fault(fn: _ignored := reset())) | try expect_contains("Int overflow")
+    (expect_fault(fn: _ignored := reset())?) | expect_contains("Int overflow")?
 
 test "record arguments execute exactly once before the update":
     var visits: List[Int] = []
-    eager(var visits) | try expect_equal(1)
-    visits | try expect_equal([7])
+    eager(var visits) | expect_equal(1)?
+    visits | expect_equal([7])?

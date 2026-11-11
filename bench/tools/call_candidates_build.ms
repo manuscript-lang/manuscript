@@ -22,7 +22,7 @@ fn measure(
 	filter: String
 ) Unit!:
 	ensure_directory(directory)
-	try set_environment("MS_CACHE", "off")
+	set_environment("MS_CACHE", "off")?
 
 	var rows = "round\tlabel\tinput\twall_ns\tmax_resident_bytes\tinput_sha256\tuser_ns\tsystem_ns\n"
 
@@ -43,7 +43,7 @@ fn measure(
 						"{directory}/program"
 					]
 					started := now_ns()
-					measured := try timed("timeout", command)
+					measured := timed("timeout", command)?
 					ran := measured.result
 					elapsed := now_ns() - started
 					write_text("{prefix}.command", "MS_CACHE=off\n" + measured.command)
@@ -74,8 +74,8 @@ export fn main() Unit!:
 	if args.length() < 5 or args.length() > 6:
 		return invalid("expected BEFORE AFTER INPUTS OUTPUT ROUNDS [FILTER]")
 
-	try measure(
+	measure(
 		absolute(args[0].clone()), absolute(args[1].clone()), absolute(args[2].clone()),
 		absolute(args[3].clone()), args[4].parse_int().get(),
 		if args.length() == 6: args[5].clone() else: ""
-	)
+	)?

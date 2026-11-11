@@ -26,16 +26,16 @@ fn start_target(target: Target) Promise[Int]:
 test "a returned promise owns the parameter it captures":
 	address := "localhost"
 	p := start(address.clone())
-	try expect_equal(try p.wait(), 9)
-	try expect_equal(address.length(), 9)
+	expect_equal(p.wait()?, 9)?
+	expect_equal(address.length(), 9)?
 
 test "a returned promise owns a local it captures":
 	p := start_local()
-	try expect_equal(try p.wait(), 5)
+	expect_equal(p.wait()?, 5)?
 
 test "a returned promise owns an aggregate it captures":
 	p := start_target(Target("host", 80))
-	try expect_equal(try p.wait(), 84)
+	expect_equal(p.wait()?, 84)?
 
 test "dropping an unwaited returned promise ends it":
 	_p := start("dropped")

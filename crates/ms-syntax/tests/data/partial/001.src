@@ -19,5 +19,5 @@ export fn first() Result[Int, Error]:
     insert_bound(m, Key(1.0), 3)
     add := m.add
     add(4, 2.0)
-    m.get(Key(1.0)).get() | try expect_equal(expected: 3)
+    m.get(Key(1.0)).get() | expect_equal(expected: 3)?
     original.c

@@ -14,9 +14,9 @@ fn open(name: String, fail: Bool) Door!String:
 
 fn length_of(name: String, fail: Bool) Int!String:
 	door := open(name, fail)
-	length := (try door).name.length()
+	length := (door?).name.length()
 	return ok(length)
 
 test "an error moves out of an owned local and an ok payload is read in place":
-	length_of(heap("door", 2), false).get() | try expect_equal(heap("door", 2).length())
-	length_of(heap("door", 3), true).err() | try expect_equal(heap("failed", 1))
+	length_of(heap("door", 2), false).get() | expect_equal(heap("door", 2).length())?
+	length_of(heap("door", 3), true).err() | expect_equal(heap("failed", 1))?

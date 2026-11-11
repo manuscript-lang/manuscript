@@ -90,7 +90,7 @@ export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
 		max_bytes: options.max_bytes, max_depth: options.max_depth,
 		max_nodes: options.max_nodes
 	)
-	tree := try msstd_html_parse(text, limits)
+	tree := msstd_html_parse(text, limits)?
 	return ok(node(tree, msstd_html_root(tree)))
 
 // Copies the node `id` of `tree`, and everything under it, into an `HtmlNode`.

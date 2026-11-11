@@ -40,8 +40,8 @@ fn first_difference(expected: String, actual: String) String:
 // The failure names the file and the first differing line.
 export fn expect_golden(path: String, actual: String) Unit!:
 	if updating():
-		try create_directory(dirname(path), true)
-		try write_file(path, actual, replace: true).wait()
+		create_directory(dirname(path), true)?
+		write_file(path, actual, replace: true).wait()?
 		return ok(unit)
 
 	stored := read_file(path).wait()
@@ -62,8 +62,8 @@ export fn expect_golden(path: String, actual: String) Unit!:
 // Byte-for-byte version of `expect_golden`; the failure names the first differing offset.
 export fn expect_golden_bytes(path: String, actual: Bytes) Unit!:
 	if updating():
-		try create_directory(dirname(path), true)
-		try write_file(path, actual, replace: true).wait()
+		create_directory(dirname(path), true)?
+		write_file(path, actual, replace: true).wait()?
 		return ok(unit)
 
 	stored := read_file(path).wait()

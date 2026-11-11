@@ -151,14 +151,14 @@ impl Transform[Bytes, Bytes] for Decompressing:
 		if failure := self.failure: return error(failure.clone())
 
 		if decoder := self.decoder:
-			plain := try msstd_compress_decoder_push(decoder, value)
+			plain := msstd_compress_decoder_push(decoder, value)?
 			if not plain.is_empty(): out.append(plain)
 
 	var fn finish(var out: List[Bytes]) Unit!:
 		if failure := self.failure: return error(failure.clone())
 
 		if decoder := self.decoder:
-			plain := try msstd_compress_decoder_end(decoder)
+			plain := msstd_compress_decoder_end(decoder)?
 			if not plain.is_empty(): out.append(plain)
 
 		self.decoder = none
@@ -287,7 +287,7 @@ impl TarEntries:
 		while true:
 			if self.buffer.length() < at + 512: return ok(0)
 
-			block := try self.buffer.slice(at, at + 512)
+			block := self.buffer.slice(at, at + 512)?
 			flag := block.get(156, 0).to_int()
 			var size = tar_size(block)
 			var padded = 0
@@ -302,7 +302,7 @@ impl TarEntries:
 
 			// Refuse a member that is over a limit from its header, before any of its data is buffered.
 			if not extension and padded > 0:
-				try self.check_size(size)
+				self.check_size(size)?
 			at += 512
 			if (
 				flag == 53
@@ -327,7 +327,7 @@ impl TarEntries:
 
 			if flag == 120:
 				start := at - padded
-				records := try self.buffer.slice(start, start + size)
+				records := self.buffer.slice(start, start + size)?
 				found := pax_size(records)
 				if found >= 0: override = found
 
@@ -359,28 +359,25 @@ impl TarEntries:
 	// Emits the members the buffer holds completely; `ended` says no more input will come.
 	var fn drain(var out: List[ArchiveEntry], ended: Bool) Unit!:
 		while true:
-			if (
-				self.buffer.length() >= 512
-				and tar_is_zero(try self.buffer.slice(0, 512))
-			):
+			if (self.buffer.length() >= 512 and tar_is_zero(self.buffer.slice(0, 512)?)):
 				self.done = true
 				self.buffer = join([])
 				break
 
-			length := try self.member_length(ended)
+			length := self.member_length(ended)?
 			if length == 0: break
 
-			var member = try self.buffer.slice(0, length)
-			self.buffer = try self.buffer.slice(length, self.buffer.length())
+			var member = self.buffer.slice(0, length)?
+			self.buffer = self.buffer.slice(length, self.buffer.length())?
 
 			// Padding the archive ended inside is restored so the end blocks stay block-aligned.
 			short := length % 512
-			if short != 0: member = member.concat(try self.end.slice(0, 512 - short))
+			if short != 0: member = member.concat(self.end.slice(0, 512 - short)?)
 
 			end := member.concat(self.end)
 
-			for entry in try unpack(end, ArchiveFormat.Tar, self.options):
-				try self.admit(entry.path.clone(), entry.directory)
+			for entry in unpack(end, ArchiveFormat.Tar, self.options)?:
+				self.admit(entry.path.clone(), entry.directory)?
 				self.count += 1
 				self.total += entry.data.length()
 				out.append(entry)
@@ -408,7 +405,7 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
 	var fn finish(var out: List[ArchiveEntry]) Unit!:
 		if self.done: return ok(unit)
 
-		try self.drain(var out, true)
+		self.drain(var out, true)?
 		if self.done or self.buffer.is_empty(): return ok(unit)
 
 		return error(Error("archive: truncated tar", kind: "EBADMSG"))

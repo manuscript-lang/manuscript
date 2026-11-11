@@ -322,7 +322,7 @@ pub fn promise_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> S
         return String::new();
     }
     format!(
-        "a call that waits returns a Promise; wait() gives its result, {}!, so call wait() and unwrap it with 'try' or '.get()' before using it as {}",
+        "a call that waits returns a Promise; wait() gives its result, {}!, so call wait() and unwrap it with a trailing '?' or '.get()' before using it as {}",
         actual.args[0].display(syms),
         expected.display(syms)
     )
@@ -773,7 +773,7 @@ impl Checker {
         if receiver.is(Builtin::Result) {
             let fix = match self.syms.str(name) {
                 "unwrap" | "expect" | "unwrap_or" | "unwrap_or_else" | "unwrap_or_default" => {
-                    "read a Result with `try x` inside a fn that returns Result, x.get(default), x.get_or_else(create) for a lazy fallback, or `if value := x:`"
+                    "read a Result with `x?` inside a fn that returns Result, x.get(default), x.get_or_else(create) for a lazy fallback, or `if value := x:`"
                 }
                 "unwrap_err" | "err" | "ok" => {
                     "inspect a Result with `if value := x:` or is_error()"
@@ -795,7 +795,7 @@ impl Checker {
             } else {
                 (
                     "a Result",
-                    "`try x` inside a fn that returns Result, `if value := x:` or x.get(default)",
+                    "`x?` inside a fn that returns Result, `if value := x:` or x.get(default)",
                 )
             };
             return format!(

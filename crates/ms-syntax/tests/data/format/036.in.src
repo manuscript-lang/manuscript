@@ -27,10 +27,10 @@ fn table(rng: Rng, depth: Int) TomlValue:
     return TomlValue.TableValue(entries)
 
 fn check_round_trip(seed: Int, original: TomlValue) Result[Unit, Error]:
-    rendered := try stringify(original)
-    if (try parse(rendered)) != original: return fail(
+    rendered := stringify(original)?
+    if (parse(rendered)?) != original: return fail(
         "seed {seed}: changed\n{rendered}"
     )
 
 fn check_stable(seed: Int, mutated: String, first: TomlValue) Result[Unit, Error]:
-    again := try str
+    again := str?

@@ -43,31 +43,31 @@ test "pop moves the element out of the list":
 	var seen: List[Int] = []
 	while not counters.is_empty():
 		if c := counters.pop(): seen.append(c.read())
-	seen | try expect_equal([3, 2, 1])
-	counters.length() | try expect_equal(0)
+	seen | expect_equal([3, 2, 1])?
+	counters.length() | expect_equal(0)?
 
 test "get on an owned optional hands the payload over":
 	taken := maybe(6).get()
-	taken.read() | try expect_equal(6)
+	taken.read() | expect_equal(6)?
 
 	later := maybe(9).get()
-	later.read() | try expect_equal(9)
+	later.read() | expect_equal(9)?
 
 test "get on a borrowed result lends the payload":
 	r := make(7)
-	(not r.is_error() and r.get().read() == 7) | try expect_true
-	r.get().read() | try expect_equal(7)
+	(not r.is_error() and r.get().read() == 7) | expect_true?
+	r.get().read() | expect_equal(7)?
 
 test "a native lend beside a none path still lends":
 	slots: List[Counter?] := [counter(8), none]
 	ring := Ring(slots: slots, size: 2)
-	if c := ring.at(0): c.read() | try expect_equal(8)
-	ring.at(1).is_none() | try expect_true
-	ring.at(5).is_none() | try expect_true
+	if c := ring.at(0): c.read() | expect_equal(8)?
+	ring.at(1).is_none() | expect_true?
+	ring.at(5).is_none() | expect_true?
 
 test "a function value with defaults passes a supplied argument through":
 	alias := total
 	counters := [counter(1), counter(2)]
-	alias(counters) | try expect_equal(3)
-	alias(counters, 10) | try expect_equal(30)
-	counters.length() | try expect_equal(2)
+	alias(counters) | expect_equal(3)?
+	alias(counters, 10) | expect_equal(30)?
+	counters.length() | expect_equal(2)?

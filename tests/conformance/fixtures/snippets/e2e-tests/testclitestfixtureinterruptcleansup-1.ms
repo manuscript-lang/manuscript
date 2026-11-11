@@ -4,7 +4,7 @@
 test "interruptible":
     println("READY")
     while true:
-        try expect_equal(1, 1)
+        expect_equal(1, 1)?
 
 test "later":
-    try fail("must not run")
+    fail("must not run")?

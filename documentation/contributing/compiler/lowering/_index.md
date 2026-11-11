@@ -22,7 +22,7 @@ Every Manuscript type has one word-level representation: `Int` is `i64`, `Float`
 
 ## Defaults belong to the callee
 
-- Source functions bind a defaulted parameter in the callee prologue, so defaults can read earlier parameters and `try` returns from the callee.
+- Source functions bind a defaulted parameter in the callee prologue, so defaults can read earlier parameters and `?` returns from the callee.
 - Native functions, record constructors, and runtime contracts take plain parameters; call sites evaluate their defaults.
 
 ## Equality and keys

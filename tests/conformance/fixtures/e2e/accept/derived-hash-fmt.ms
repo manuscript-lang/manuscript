@@ -16,10 +16,10 @@ fn code[T: Hashable](value: T) Int:
     return value.hash()
 
 test "derived hashes agree for equal values and are stable":
-    try expect_equal(code(P(1, "a")), code(P(1, "a")))
-    try expect_not_equal(code(P(1, "a")), code(P(2, "a")))
-    try expect_equal(code(Line(1, 2)), code(Line(1, 2)))
-    try expect_not_equal(code(Dot(1)), code(Line(1, none)))
-    try expect_false(code("abc") != "abc".hash() or 7.hash() != code(7))
-    try expect_false(code(3) != code(3) or code(12.50d) != code(12.5d))
-    try expect_not_equal(code(true), code(false))
+    expect_equal(code(P(1, "a")), code(P(1, "a")))?
+    expect_not_equal(code(P(1, "a")), code(P(2, "a")))?
+    expect_equal(code(Line(1, 2)), code(Line(1, 2)))?
+    expect_not_equal(code(Dot(1)), code(Line(1, none)))?
+    expect_false(code("abc") != "abc".hash() or 7.hash() != code(7))?
+    expect_false(code(3) != code(3) or code(12.50d) != code(12.5d))?
+    expect_not_equal(code(true), code(false))?

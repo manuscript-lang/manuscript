@@ -6,7 +6,7 @@ fn step(n: Int) Unit!:
     print("step {n}")
 
 fn main() Unit!:
-    try step(1)
-    try step(2)
-    try step(3)
+    step(1)?
+    step(2)?
+    step(3)?
     print("unreachable")

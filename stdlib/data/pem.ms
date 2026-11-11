@@ -10,7 +10,7 @@ Certificates, keys and CSRs travel as PEM blocks; `parse` finds every block in a
 `encode_all` writes blocks back with 64-column lines.
 
     import parse, encode_all, PemBlock from "@std/data/pem.ms"
-    blocks := try parse(text)
+    blocks := parse(text)?
     print(blocks[0].label)         // "CERTIFICATE"
     print(blocks[0].data.length())  // decoded DER byte count
     print(encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())]))

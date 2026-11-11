@@ -1,4 +1,4 @@
 fn g() Int:
 	a := h(text | f | .m() | .n(), a.b.c())
-	b := (text | try f | .m())
+	b := (text | f? | .m())
 	return [x | f | .m(), 1]

@@ -7,21 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding subtract; declare it with 'subtract := ...' before use, define 'fn subtract(...) T:', or import it from a module",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected an expression, found '?'; write a value, name, call, or literal here",
         "position": {
           "file": "format-testformatexpressionlayouts-25.ms",
-          "line": 5,
+          "line": 6,
+          "column": 14,
+          "offset": 232
+        },
+        "end": {
+          "file": "format-testformatexpressionlayouts-25.ms",
+          "line": 6,
           "column": 15,
-          "offset": 209
+          "offset": 233
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/format-testformatexpressionlayouts-25.ms:5:15: resolution: unknown binding subtract; declare it with 'subtract := ...' before use, define 'fn subtract(...) T:', or import it from a module\n   |\n 5 |     result := subtract(\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/format-testformatexpressionlayouts-25.ms:6:14: parse: expected an expression, found '?'; write a value, name, call, or literal here\n   |\n 6 |         match? 0:\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

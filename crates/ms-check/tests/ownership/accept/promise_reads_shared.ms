@@ -22,13 +22,13 @@ fn changed_after_scope() Int!:
     first := total(xs)
     if true:
         p := promise(fn: total(xs))
-        n := try p.wait()
+        n := p.wait()?
         return ok(n)
     xs.append(4)
     return first
 
 fn changed_after_handoff() List[Int]!:
     var xs = [1, 2, 3]
-    all := try wait_all([promise(fn: total(xs)), promise(fn: total(xs))])
+    all := wait_all([promise(fn: total(xs)), promise(fn: total(xs))])?
     xs.append(4)
     return ok(all)

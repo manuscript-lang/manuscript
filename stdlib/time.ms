@@ -205,7 +205,7 @@ impl Timestamp:
 
 	// Returns `self - right` as a duration.
 	fn difference(other: Timestamp) Duration!:
-		nanos := try msstd_time_timestamp_difference(self, other)
+		nanos := msstd_time_timestamp_difference(self, other)?
 		return ok(Duration(nanos: nanos))
 
 	// Returns -1, 0, or 1 across the full calendar range.
@@ -529,7 +529,7 @@ impl Source[Instant] for TickSource:
 	// Waits for the next tick and returns the instant it was due; never ends.
 	var fn next() Instant?!:
 		tick := self.due.clone()
-		try sleep(tick.difference(monotonic()).max(nanoseconds(0))).wait()
+		sleep(tick.difference(monotonic()).max(nanoseconds(0))).wait()?
 
 		current := monotonic()
 		period := self.period.to_nanoseconds()

@@ -7,19 +7,19 @@ test "compression formats roundtrip and enforce expanded byte budgets":
     input := "hello hello hello".to_bytes()
 
     for format in ["gzip", "zlib", "deflate"]:
-        packed := try compress(input, format, 6)
-        try expect_equal((try decompress(packed, format, 17)), input)
+        packed := compress(input, format, 6)?
+        expect_equal((decompress(packed, format, 17)?), input)?
         limited: Result[Bytes, CompressionError] := error(
             CompressionError.LimitExceeded
         )
-        try expect_equal(decompress(packed, format, 16), limited)
+        expect_equal(decompress(packed, format, 16), limited)?
 
     unsupported: Result[Bytes, CompressionError] := error(
         CompressionError.Unsupported
     )
-    try expect_equal(compress(input, "invalid", 6), unsupported)
+    expect_equal(compress(input, "invalid", 6), unsupported)?
     malformed: Result[Bytes, CompressionError] := error(CompressionError.InvalidData)
-    try expect_equal(decompress(input, "gzip"), malformed)
+    expect_equal(decompress(input, "gzip"), malformed)?
 
 test "ZIP and TAR preserve entries and independently enforce archive limits":
     entries := [
@@ -28,17 +28,17 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
     ]
 
     for format in ["zip", "tar"]:
-        packed := try pack(entries, format)
-        try expect_equal((try unpack(packed, format)), entries)
+        packed := pack(entries, format)?
+        expect_equal((unpack(packed, format)?), entries)?
         limited: Result[List[ArchiveEntry], ArchiveError] := error(
             ArchiveError.LimitExceeded
         )
-        try expect_equal(unpack(packed, format, ArchiveLimits(1)), limited)
-        try expect_equal(
+        expect_equal(unpack(packed, format, ArchiveLimits(1)), limited)?
+        expect_equal(
             unpack(packed, format, ArchiveLimits(max_entry_bytes: 4)),
             limited
-        )
-        try expect_&equal(
+        )?
+        expect_?&equal(
             unpack(packed, format, ArchiveLimits(max_total_bytes: 7)),
             limited
         )
@@ -48,4 +48,4 @@ test "archives reject traversal paths":
 
     for path in ["../escape", "/absolute"]:
         entries := [ArchiveEntry(path, "".to_bytes(), directory: false)]
-        try expect_equal(pack(entries, "zip"), invalid)
+        expect_equal(pack(entries, "zip"), invalid)?

@@ -11,7 +11,7 @@ fn checked(n: Int) Int!Error:
     return ok(n + 1)
 
 fn wrapped(n: Int) Int!Error:
-    value := try checked(n)
+    value := checked(n)?
     return ok(value)
 
 fn total(positive: Bool) Int:
@@ -108,30 +108,30 @@ fn ordered(var visits: List[Int]) Int:
     return sum
 
 test "bounded successful Results preserve both branch budgets":
-    total(true) | try expect_equal(500498)
-    total(false) | try expect_equal(-500502)
+    total(true) | expect_equal(500498)?
+    total(false) | expect_equal(-500502)?
 
 test "Result payload bounds retain intermediate overflow":
-    (try expect_fault(fn: _ignored := prefix())) | try expect_contains(
+    (expect_fault(fn: _ignored := prefix())?) | expect_contains(
         "Int overflow"
-    )
-    (try expect_fault(fn: _ignored := peer())) | try expect_contains("Int overflow")
+    )?
+    (expect_fault(fn: _ignored := peer())?) | expect_contains("Int overflow")?
 
 test "Result helper overflow still occurs in the original call":
-    (try expect_fault(fn: _ignored := checked(9223372036854775807))) | try expect_contains(
+    (expect_fault(fn: _ignored := checked(9223372036854775807))?) | expect_contains(
         "Int overflow"
-    )
+    )?
 
 test "hidden successful returns in error construction keep checks":
-    (try expect_fault(fn: _ignored := hidden_success())) | try expect_contains(
+    (expect_fault(fn: _ignored := hidden_success())?) | expect_contains(
         "Int overflow"
-    )
+    )?
 
 test "Result bounds preserve argument effects and cleanup":
     var visits: List[Int] = []
-    ordered(var visits) | try expect_equal(3)
-    visits | try expect_equal([-1, 0, 1])
-    cleanup(visits) | try expect_equal(500498)
+    ordered(var visits) | expect_equal(3)?
+    visits | expect_equal([-1, 0, 1])?
+    cleanup(visits) | expect_equal(500498)?
 
 fn present[T](value: T) T?:
     return value

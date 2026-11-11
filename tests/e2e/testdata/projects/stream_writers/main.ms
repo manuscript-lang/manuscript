@@ -29,20 +29,20 @@ fn echo() WriteStream[Bytes]:
 
 fn run() Unit!:
 	var points = json_writer[Point](echo())
-	try points.write(Point(1, "a \"quoted\" label"))
-	try points.write(Point(2, "é😀"))
+	points.write(Point(1, "a \"quoted\" label"))?
+	points.write(Point(2, "é😀"))?
 
 	var rows = csv_writer(echo(), CsvOptions(delimiter: ";"))
-	try rows.write(["id", "name"])
-	try rows.write(["1", "needs;quote"])
-	try rows.write(["2", "multi\nline"])
+	rows.write(["id", "name"])?
+	rows.write(["1", "needs;quote"])?
+	rows.write(["2", "multi\nline"])?
 
-	page := try compile(
+	page := compile(
 		"\{\{ for p in points \}\}\{\{ p.x \}\}=\{\{ p.label \}\}\n\{\{ end \}\}"
-	)
-	data := try to_data({"points": [Point(1, "one"), Point(2, "two")]})
+	)?
+	data := to_data({"points": [Point(1, "one"), Point(2, "two")]})?
 	var out = stdout()
-	try render_to(page, data, var out)
+	render_to(page, data, var out)?
 
 export fn main() Int:
 	result := run()

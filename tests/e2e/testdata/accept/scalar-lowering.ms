@@ -34,8 +34,8 @@ fn returning_match() Bool:
 
 test "primitive equality captures operands once in order":
 	var counter = Counter()
-	try expect_not_equal(mark(var counter, 1), mark(var counter, 2))
-	try expect_equal(counter.value, 12)
+	expect_not_equal(mark(var counter, 1), mark(var counter, 2))?
+	expect_equal(counter.value, 12)?
 
 	var original = 1
 	captured := original == match present(1):
@@ -43,14 +43,14 @@ test "primitive equality captures operands once in order":
 			original = 2
 			value
 		none: 0
-	try expect_false(not captured or original != 2)
+	expect_false(not captured or original != 2)?
 
 	skipped := false and mark(var counter, 3) == 3
 	skipped_again := true or mark(var counter, 4) == 4
-	try expect_false((skipped or not skipped_again or counter.value != 12))
-	try expect_false("é" == "e\u{0301}" or "λ🙂" != "λ🙂")
-	try expect_false(not generic(left: true, right: true))
-	try expect_false(returning_match())
+	expect_false((skipped or not skipped_again or counter.value != 12))?
+	expect_false("é" == "e\u{0301}" or "λ🙂" != "λ🙂")?
+	expect_false(not generic(left: true, right: true))?
+	expect_false(returning_match())?
 
 fn conditional(marker: String, take: Bool) Int:
 	if take:
@@ -89,16 +89,16 @@ fn failed() Int!Error: error(Error("expected"))
 
 fn propagate(marker: String) Int!Error:
 	var _resource = Resource(marker.clone())
-	value := try failed()
+	value := failed()?
 	return ok(value)
 	return ok(0)
 
 fn bare_propagate() Int!Error:
-	value := try failed()
+	value := failed()?
 	return ok(value)
 
 fn equality_propagate() Bool!Error:
-	matches := (try failed()) == 0
+	matches := (failed()?) == 0
 	return ok(matches)
 
 fn bool_failed() Bool!Error: error(Error("expected"))
@@ -106,19 +106,19 @@ fn bool_failed() Bool!Error: error(Error("expected"))
 fn nested_results(marker: String) Int!Error:
 	child := fn() Bool!Error:
 		var _resource = Resource(marker.clone())
-		value := try bool_failed()
+		value := bool_failed()?
 		return ok(value)
 		return ok(false)
 
 	_ignored := child()
-	value := try failed()
+	value := failed()?
 	return ok(value)
 
 fn statement_match_try(marker: String) Int!Error:
 	match present(1):
 		_value:
 			_resource := Resource(marker.clone())
-			value := try failed()
+			value := failed()?
 			return ok(value)
 		none: return ok(0)
 
@@ -131,7 +131,7 @@ fn value_match_loop_try(marker: String) Int!Error:
 		_selected := match present(index):
 			number:
 				var _resource = Resource(marker.clone())
-				_value := try failed()
+				_value := failed()?
 				_resource.close().get(none)
 				number
 			none: 0
@@ -141,37 +141,37 @@ fn value_match_loop_try(marker: String) Int!Error:
 	return ok(index)
 
 test "combined lowering retains callable state and try boundaries":
-	temporary := temporary("manuscript-scalar-") | try expect_ok
+	temporary := temporary("manuscript-scalar-") | expect_ok?
 	dir := temporary.path()
 	expected := Result[Int, Error].error(Error("expected"))
-	try expect_equal(nested_results("{dir}/nested"), expected)
-	try expect_true(closed("{dir}/nested"))
-	try expect_equal(statement_match_try("{dir}/statement"), expected)
-	try expect_true(closed("{dir}/statement"))
-	try expect_equal(value_match_loop_try("{dir}/loop"), expected)
-	try expect_true(closed("{dir}/loop"))
+	expect_equal(nested_results("{dir}/nested"), expected)?
+	expect_true(closed("{dir}/nested"))?
+	expect_equal(statement_match_try("{dir}/statement"), expected)?
+	expect_true(closed("{dir}/statement"))?
+	expect_equal(value_match_loop_try("{dir}/loop"), expected)?
+	expect_true(closed("{dir}/loop"))?
 
 test "cleanup remains owned by its source callable":
-	temporary := temporary("manuscript-scalar-") | try expect_ok
+	temporary := temporary("manuscript-scalar-") | expect_ok?
 	dir := temporary.path()
-	try expect_equal(conditional("{dir}/skipped", take: false), 8)
-	try expect_false(closed("{dir}/skipped"))
-	try expect_equal(conditional("{dir}/taken", take: true), 7)
-	try expect_true(closed("{dir}/taken"))
-	try expect_equal(matched("{dir}/matched"), 1)
-	try expect_true(closed("{dir}/matched"))
-	try expect_equal(defaulted("{dir}/default"), 2)
-	try expect_true(closed("{dir}/default"))
-	try expect_equal(defaulted("{dir}/supplied", 9), 9)
-	try expect_false(closed("{dir}/supplied"))
+	expect_equal(conditional("{dir}/skipped", take: false), 8)?
+	expect_false(closed("{dir}/skipped"))?
+	expect_equal(conditional("{dir}/taken", take: true), 7)?
+	expect_true(closed("{dir}/taken"))?
+	expect_equal(matched("{dir}/matched"), 1)?
+	expect_true(closed("{dir}/matched"))?
+	expect_equal(defaulted("{dir}/default"), 2)?
+	expect_true(closed("{dir}/default"))?
+	expect_equal(defaulted("{dir}/supplied", 9), 9)?
+	expect_false(closed("{dir}/supplied"))?
 	nested("{dir}/nested")
-	try expect_true(closed("{dir}/nested"))
-	try expect_equal(
+	expect_true(closed("{dir}/nested"))?
+	expect_equal(
 		propagate("{dir}/propagated"), Result[Int, Error].error(Error("expected"))
-	)
-	try expect_true(closed("{dir}/propagated"))
-	try expect_equal(bare_propagate(), Result[Int, Error].error(Error("expected")))
-	try expect_equal(equality_propagate(), Result[Bool, Error].error(Error("expected")))
+	)?
+	expect_true(closed("{dir}/propagated"))?
+	expect_equal(bare_propagate(), Result[Int, Error].error(Error("expected")))?
+	expect_equal(equality_propagate(), Result[Bool, Error].error(Error("expected")))?
 
 	var index = 0
 
@@ -182,9 +182,9 @@ test "cleanup remains owned by its source callable":
 		if index == 1: continue
 		if index == 2: break
 
-	try expect_true(closed("{dir}/loop1"))
-	try expect_true(closed("{dir}/loop2"))
-	try expect_false(closed("{dir}/loop3"))
+	expect_true(closed("{dir}/loop1"))?
+	expect_true(closed("{dir}/loop2"))?
+	expect_false(closed("{dir}/loop3"))?
 
 fn present[T](value: T) T?:
 	return value

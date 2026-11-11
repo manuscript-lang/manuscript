@@ -18,19 +18,19 @@ type Failure[T]:
 test "callback inference retains captures and contextual metadata":
 	offset := 7
 	values := [1, 2].map(fn outer: [3, 4].map(fn inner: return outer + inner + offset))
-	try expect_equal(values, [[11, 12], [12, 13]])
+	expect_equal(values, [[11, 12], [12, 13]])?
 
 	callable: fn(Int) fn(Int) Int := apply(
 		value: 1, transform: fn base: fn item: fn extra: item + extra + base
 	)
-	try expect_equal(callable(3)(4), 8)
+	expect_equal(callable(3)(4), 8)?
 
 	callback := Callback(fn(item: Int = 4): item + offset)
-	try expect_equal(callback.transform(3), 10)
-	try expect_equal(optional(value: 5, transform: fn item: item + offset), 12)
+	expect_equal(callback.transform(3), 10)?
+	expect_equal(optional(value: 5, transform: fn item: item + offset), 12)?
 
 	missing := choose(first: fn: none, second: fn() Int?: 3)
-	try expect_false(missing.is_some())
+	expect_false(missing.is_some())?
 
 	failure := with_result(
 		fn:
@@ -38,13 +38,13 @@ test "callback inference retains captures and contextual metadata":
 			return ok(4)
 	)
 
-	try expect_equal(failure, Result[Int, Error].error(Error("expected")))
+	expect_equal(failure, Result[Int, Error].error(Error("expected")))?
 
 	failed: Int!Failure[Int] := apply(
 		value: 9, transform: fn item: error(Failure(item))
 	)
-	try expect_false(failed.is_ok())
-	try expect_equal(failed.err().detail, 9)
+	expect_false(failed.is_ok())?
+	expect_equal(failed.err().detail, 9)?
 
 fn absent[T]() T?: none
 
@@ -59,7 +59,7 @@ test "later returns repair incomplete and convertible evidence":
 			return one
 	)
 
-	try expect_false(value.is_some())
+	expect_false(value.is_some())?
 
 	cause := from_callback(
 		fn:
@@ -67,15 +67,15 @@ test "later returns repair incomplete and convertible evidence":
 			return Failure(2)
 	)
 
-	try expect_equal(cause.detail, 2)
+	expect_equal(cause.detail, 2)?
 
 fn operation() Int!Error: ok(4)
 
 test "try rechecks the inferred enclosing result":
 	value := from_callback(
 		fn:
-			number := try operation()
+			number := operation()?
 			return Result[Int, Error].ok(number)
 	)
 
-	try expect_equal(value, Result[Int, Error].ok(4))
+	expect_equal(value, Result[Int, Error].ok(4))?

@@ -16,9 +16,9 @@ test "Error boundaries convert a domain value into each module's own Error":
     var original = DomainFailure(7)
     first := first_error(original)
     second := second_error(original)
-    (first.message != "first 7" or second.message != "second 7") | try expect_false
-    first_generic(original).message | try expect_equal("first 7")
-    first_box(original.clone()).message | try expect_equal("box: first 7")
+    (first.message != "first 7" or second.message != "second 7") | expect_false?
+    first_generic(original).message | expect_equal("first 7")?
+    first_box(original.clone()).message | expect_equal("box: first 7")?
     original.code = 8
 
     results := [
@@ -31,4 +31,4 @@ test "Error boundaries convert a domain value into each module's own Error":
             ok(_):
                 return fail(message: "expected domain failure")
             error(cause):
-                try expect_equal(cause.message, expected.get(index))
+                expect_equal(cause.message, expected.get(index))?

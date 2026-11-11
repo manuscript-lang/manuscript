@@ -18,7 +18,7 @@ fn main() Unit!:
     pending := read_file("config.json").with(
         options: PromiseOptions(timeout: 5.seconds())
     )
-    contents := try pending.wait()
+    contents := pending.wait()?
     print(contents.length())
 ```
 

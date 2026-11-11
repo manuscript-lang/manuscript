@@ -25,8 +25,8 @@ fn text[T: Data](value: T) String:
 
 test "Data accepts plain records, lists, codecs, and JSON documents":
 	plain := Plain("a", ["x"], none)
-	try expect_equal(text(plain), "\{\"name\":\"a\",\"tags\":[\"x\"]\}")
-	try expect_equal(text(Money(5)), "\"usd:5\"")
-	try expect_equal(text(Mode.Fast), "\"Fast\"")
-	try expect_equal(text(JsonValue.Null), "null")
-	try expect_equal(text([1, 2, 3]), "[1,2,3]")
+	expect_equal(text(plain), "\{\"name\":\"a\",\"tags\":[\"x\"]\}")?
+	expect_equal(text(Money(5)), "\"usd:5\"")?
+	expect_equal(text(Mode.Fast), "\"Fast\"")?
+	expect_equal(text(JsonValue.Null), "null")?
+	expect_equal(text([1, 2, 3]), "[1,2,3]")?

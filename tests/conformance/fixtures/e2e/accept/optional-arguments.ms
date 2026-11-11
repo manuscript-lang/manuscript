@@ -61,80 +61,80 @@ fn increment(value: Int) Int: value + 1
 fn calls_of(value: Counter?) Int: value.get().calls
 
 test "plain values and explicit optionals share the call contract":
-    try expect_equal(number(4), 4)
-    try expect_equal(number(value: 0), 0)
+    expect_equal(number(4), 4)?
+    expect_equal(number(value: 0), 0)?
 
     supplied: Int? := 4
-    try expect_equal(number(supplied), 4)
-    try expect_equal(number(), -1)
-    try expect_equal(number(), -1)
+    expect_equal(number(supplied), 4)?
+    expect_equal(number(), -1)?
+    expect_equal(number(), -1)?
 
     stored: fn(Int?) Int := number
-    try expect_equal(stored(5), 5)
-    try expect_equal(present(6).get(), 6)
-    try expect_equal(present[Int](7).get(), 7)
+    expect_equal(stored(5), 5)?
+    expect_equal(present(6).get(), 6)?
+    expect_equal(present[Int](7).get(), 7)?
 
     generic_supplied: Int? := 8
-    try expect_equal(present(generic_supplied).get(), 8)
+    expect_equal(present(generic_supplied).get(), 8)?
 
     missing: Int? := none
-    try expect_false(not (nested(missing)))
+    expect_false(not (nested(missing)))?
 
     outer: Int?? := missing
-    try expect_false(not (nested(outer)))
-    try expect_equal(list_size([]), 0)
-    try expect_equal(list_size([1, 2]), 2)
-    try expect_equal(context(value: none, fallback: 9), 9)
-    try expect_equal(context(value: [], fallback: [1]).length(), 0)
-    try expect_equal(success(ok(10)), 10)
-    try expect_false(flag(false))
-    try expect_false(flag(true and false))
-    try expect_equal(invoke(increment), 5)
-    try expect_equal(invoke(fn value: value + 2), 6)
+    expect_false(not (nested(outer)))?
+    expect_equal(list_size([]), 0)?
+    expect_equal(list_size([1, 2]), 2)?
+    expect_equal(context(value: none, fallback: 9), 9)?
+    expect_equal(context(value: [], fallback: [1]).length(), 0)?
+    expect_equal(success(ok(10)), 10)?
+    expect_false(flag(false))?
+    expect_false(flag(true and false))?
+    expect_equal(invoke(increment), 5)?
+    expect_equal(invoke(fn value: value + 2), 6)?
 
 test "constructor fields and methods use optional arguments":
     defaulted := DefaultBox()
-    try expect_false(not (defaulted.value.is_none()))
+    expect_false(not (defaulted.value.is_none()))?
 
     supplied := DefaultBox(3)
-    try expect_equal(supplied.value.get(), 3)
+    expect_equal(supplied.value.get(), 3)?
 
     box := Box(4)
-    try expect_equal(box.value.get(), 4)
+    expect_equal(box.value.get(), 4)?
 
     choice := Choice.chosen(5)
 
     match choice:
         chosen(value):
-            try expect_equal(value.get(), 5)
+            expect_equal(value.get(), 5)?
 
     reader := Reader(2)
-    try expect_equal(reader.read(3), 5)
+    expect_equal(reader.read(3), 5)?
 
     read := reader.read
-    try expect_equal(read(4), 6)
+    expect_equal(read(4), 6)?
 
     view: Read := reader
-    try expect_equal(view.read(5), 7)
+    expect_equal(view.read(5), 7)?
 
     counter := Counter(9)
-    try expect_equal(calls_of(counter.clone()), 9)
-    try expect_equal(counter.calls, 9)
+    expect_equal(calls_of(counter.clone()), 9)?
+    expect_equal(counter.calls, 9)?
 
     notice := Notice(Error("detail"))
-    try expect_equal(notice.failure.get().message, "detail")
+    expect_equal(notice.failure.get().message, "detail")?
 
 test "wrapping evaluates arguments once in written order":
     var counter = Counter(0)
-    try expect_equal(ordered(second: next(var counter), first: next(var counter)), 21)
-    try expect_equal(counter.calls, 2)
+    expect_equal(ordered(second: next(var counter), first: next(var counter)), 21)?
+    expect_equal(counter.calls, 2)?
 
 test "queue capacity accepts a plain value or omission":
     var bounded = Queue[Int](4)
     for value in [1, 2, 3, 4]:
-        try expect_false(not (bounded.enqueue(value)))
-    try expect_false(bounded.enqueue(5))
-    try expect_equal(bounded.dequeue().get(), 1)
+        expect_false(not (bounded.enqueue(value)))?
+    expect_false(bounded.enqueue(5))?
+    expect_equal(bounded.dequeue().get(), 1)?
 
     var unbounded = Queue[Int]()
     var absent = Queue[Int]()
@@ -142,7 +142,7 @@ test "queue capacity accepts a plain value or omission":
     var explicit = Queue[Int](capacity)
 
     for value in [1, 2, 3, 4, 5]:
-        try expect_false(not (unbounded.enqueue(value)))
-        try expect_false(not (absent.enqueue(value)))
+        expect_false(not (unbounded.enqueue(value)))?
+        expect_false(not (absent.enqueue(value)))?
 
-    try expect_false(not (explicit.enqueue(1)))
+    expect_false(not (explicit.enqueue(1)))?

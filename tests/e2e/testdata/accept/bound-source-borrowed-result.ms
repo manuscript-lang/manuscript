@@ -16,22 +16,22 @@ impl Label:
 
 test "a temporary receiver returns its borrowed string":
 	name := Label("example", ["a"]).name
-	try expect_equal(name(), "example")
+	expect_equal(name(), "example")?
 
 test "a named receiver returns its borrowed string":
 	label := Label("named", ["b"])
 	name := label.name
-	try expect_equal(name(), "named")
-	try expect_equal(label.text, "named")
+	expect_equal(name(), "named")?
+	expect_equal(label.text, "named")?
 
 test "a borrowed list element is copied for each call":
 	label := Label("x", ["elem"])
 	first := label.first
-	try expect_equal(first(), "elem")
-	try expect_equal(first(), "elem")
+	expect_equal(first(), "elem")?
+	expect_equal(first(), "elem")?
 
 test "a method with a default keeps its borrowed result":
 	label := Label("dflt", ["c"])
 	greeting := label.greeting
-	try expect_equal(greeting(), "dflt")
-	try expect_equal(greeting("yo"), "dflt")
+	expect_equal(greeting(), "dflt")?
+	expect_equal(greeting("yo"), "dflt")?

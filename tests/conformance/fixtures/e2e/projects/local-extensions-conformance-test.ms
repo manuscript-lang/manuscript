@@ -10,20 +10,20 @@ import share from "@std/concurrency/shared.ms"
 
 test "views and functions retain local implementations across modules":
     item := Item(2)
-    item.original() | try expect_equal(2)
+    item.original() | expect_equal(2)?
 
     first := first_view(item)
     second := second_view(item)
-    (first.get() != 12 or second.get() != 22) | try expect_false
-    try expect_false((read_view(first) != 12 or read_view(second) != 22))
+    (first.get() != 12 or second.get() != 22) | expect_false?
+    expect_false((read_view(first) != 12 or read_view(second) != 22))?
 
     first_call := first_method(item)
     second_call := second_method(item)
-    (first_call() != 12 or second_call() != 22) | try expect_false
+    (first_call() != 12 or second_call() != 22) | expect_false?
 
     first_fn := first_generic()
     second_fn := second_generic()
-    (first_fn(item) != 12 or second_fn(item) != 22) | try expect_false
+    (first_fn(item) != 12 or second_fn(item) != 22) | expect_false?
 
     events := share(List[Int]())
     resource := Resource(events)
@@ -36,4 +36,4 @@ test "views and functions retain local implementations across modules":
     _second_close.close()
 
     values := events.get()
-    (values.get(index: 0) != 10 or values.get(index: 1) != 20) | try expect_false
+    (values.get(index: 0) != 10 or values.get(index: 1) != 20) | expect_false?

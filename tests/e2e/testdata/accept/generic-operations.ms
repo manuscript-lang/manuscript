@@ -37,21 +37,21 @@ fn pick_with[B: Picker[Int]](bag: B) Int?:
 
 test "an interface operation takes type parameters of its own":
 	bag := Bag(items: [3, 1, 2])
-	bag.pick(fn(x: Int) Int: x) | try expect_equal(3)
-	bag.pick(fn(x: Int) String: "\{x\}") | try expect_equal(3)
-	bag.mapped(fn(x: Int) String: "n") | try expect_equal(["n", "n", "n"])
+	bag.pick(fn(x: Int) Int: x) | expect_equal(3)?
+	bag.pick(fn(x: Int) String: "\{x\}") | expect_equal(3)?
+	bag.mapped(fn(x: Int) String: "n") | expect_equal(["n", "n", "n"])?
 
 test "a bounded type parameter calls a generic operation":
-	pick_with(Bag(items: [3, 1, 2])) | try expect_equal(1)
+	pick_with(Bag(items: [3, 1, 2])) | expect_equal(1)?
 
 test "an inherent method takes type parameters of its own":
-	Bag(items: [1, 2]).paired("a") | try expect_equal(["a", "a"])
-	Bag(items: [1, 2]).paired(true) | try expect_equal([true, true])
+	Bag(items: [1, 2]).paired("a") | expect_equal(["a", "a"])?
+	Bag(items: [1, 2]).paired(true) | expect_equal([true, true])?
 
 test "List max_by and min_by are source methods":
 	words := ["bb", "a", "ccc", "dd"]
-	words.max_by(fn(w: String) Int: w.length()) | try expect_equal("ccc")
-	words.min_by(fn(w: String) Int: w.length()) | try expect_equal("a")
+	words.max_by(fn(w: String) Int: w.length()) | expect_equal("ccc")?
+	words.min_by(fn(w: String) Int: w.length()) | expect_equal("a")?
 
 fn main() Unit:
 	return

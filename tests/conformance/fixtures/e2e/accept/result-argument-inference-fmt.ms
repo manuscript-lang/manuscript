@@ -47,28 +47,28 @@ test "infer success and error types from Result arguments":
     for value in [
         inferred.clone(), explicit.clone(), wrapped, inferred_from_known.clone()
     ]:
-        try expect_false(not value.is_error())
-        try expect_equal(value.err().message, "eleven")
-        try expect_equal(value.err().kind, "EBADMSG")
+        expect_false(not value.is_error())?
+        expect_equal(value.err().message, "eleven")?
+        expect_equal(value.err().kind, "EBADMSG")?
 
     generic: Result[Int, Failure] := error(Failure(31))
     failed := erase(generic)
-    try expect_false(not failed.is_error())
-    try expect_equal(failed.err().code, 31)
+    expect_false(not failed.is_error())?
+    expect_equal(failed.err().code, 31)?
 
 test "nested success preserves its domain and inferred errors remain exact":
     inner: Int!Failure := error(Failure(41))
     outer: Result[Int!Failure, Failure] := ok(inner)
     value := erase(outer).get()
-    try expect_false(not value.is_error())
-    try expect_equal(value.err().code, 41)
+    expect_false(not value.is_error())?
+    expect_equal(value.err().code, 41)?
 
     exact := same(inner)
-    try expect_false(not exact.is_error())
-    try expect_equal(exact.err().code, 41)
+    expect_false(not exact.is_error())?
+    expect_equal(exact.err().code, 41)?
 
     if seven := erase(number()):
-        try expect_equal(seven, 7)
+        expect_equal(seven, 7)?
     else:
         return fail("changed success case")
 
@@ -77,7 +77,7 @@ test "inference evaluates once in written order before defaults":
     result := ordered(
         second: record(var events, 2), first: record(var events, 1), var events
     )
-    try expect_equal(events.values, [2, 1, 3, 4])
+    expect_equal(events.values, [2, 1, 3, 4])?
 
-    value := try result
-    try expect_equal(value, 1)
+    value := result?
+    expect_equal(value, 1)?

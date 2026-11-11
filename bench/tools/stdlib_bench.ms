@@ -17,7 +17,7 @@ import (
 )
 
 export fn stdlib_table(output: String) String!:
-	cases := try read_cases(output)
+	cases := read_cases(output)?
 	labels := case_labels(cases.map(fn c: c.name.clone()))
 	var width = 4
 
