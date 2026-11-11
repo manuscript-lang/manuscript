@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parentheses",
+        "position": {
+          "file": "golden-0901.ms",
+          "line": 7,
+          "column": 29,
+          "offset": 167
+        },
+        "end": {
+          "file": "golden-0901.ms",
+          "line": 7,
+          "column": 30,
+          "offset": 168
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0901.ms:7:29: parse: a comma cannot end a statement in an indented function body; to separate enclosing arguments, put the comma on its own line dedented to the fn header, or group the function in parentheses\n   |\n 7 |             return value + 1,\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

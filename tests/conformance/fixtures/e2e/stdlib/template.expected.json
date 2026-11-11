@@ -1,0 +1,115 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "template.ms::values paths and filters",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "template.ms::conditions",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "template.ms::loops",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "template.ms::html escaping and raw",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "template.ms::trim markers and comments",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "template.ms::partials",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "template.ms::strict missing values and limits",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "template.ms::the output limit counts UTF-8 bytes",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "template.ms::compile errors name the line",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "template.ms::typed data converts",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "template.ms::lexing handles openers inside actions and large sources",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "template.ms::equality never crosses value kinds",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "template.ms::nested paths resolve through the loop frames and miss cleanly",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 13,
+        "selected": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN template.ms::values paths and filters\nPASS template.ms::values paths and filters\nRUN template.ms::conditions\nPASS template.ms::conditions\nRUN template.ms::loops\nPASS template.ms::loops\nRUN template.ms::html escaping and raw\nPASS template.ms::html escaping and raw\nRUN template.ms::trim markers and comments\nPASS template.ms::trim markers and comments\nRUN template.ms::partials\nPASS template.ms::partials\nRUN template.ms::strict missing values and limits\nPASS template.ms::strict missing values and limits\nRUN template.ms::the output limit counts UTF-8 bytes\nPASS template.ms::the output limit counts UTF-8 bytes\nRUN template.ms::compile errors name the line\nPASS template.ms::compile errors name the line\nRUN template.ms::typed data converts\nPASS template.ms::typed data converts\nRUN template.ms::lexing handles openers inside actions and large sources\nPASS template.ms::lexing handles openers inside actions and large sources\nRUN template.ms::equality never crosses value kinds\nPASS template.ms::equality never crosses value kinds\nRUN template.ms::nested paths resolve through the loop frames and miss cleanly\nPASS template.ms::nested paths resolve through the loop frames and miss cleanly\n13 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "inherent methods belong in the module that declares Approved; to add operations to another module's type, write a free function or a wrapper type",
+        "position": {
+          "file": "main.ms",
+          "line": 7,
+          "column": 1,
+          "offset": 106
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/main.ms:7:1: type: inherent methods belong in the module that declares Approved; to add operations to another module's type, write a free function or a wrapper type\n   |\n 7 | fn Approved.extra() Int:\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "constructor-resource-lifetime.ms::constructed holders own their resource fields on success",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "constructor-resource-lifetime.ms::try closes earlier fields before returning its original error",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "constructor-resource-lifetime.ms::intact Optional and Result constructor fields close on try failure",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "constructor-resource-lifetime.ms::partial construction closes reverse written acquisition order",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "constructor-resource-lifetime.ms::complete construction closes reverse declaration order",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "constructor-resource-lifetime.ms::a later field fault closes earlier acquired fields repeatedly",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "constructor-resource-lifetime.ms::resource field defaults transfer to the completed holder",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "constructor-resource-lifetime.ms::a faulting default closes both provided and default resources",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "constructor-resource-lifetime.ms::nested acquired holders close depth first on an error",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "constructor-resource-lifetime.ms::moving a prior binding into a partial holder preserves one owner",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "constructor-resource-lifetime.ms::pending constructor fields close before an older call temporary",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "constructor-resource-lifetime.ms::a temporary close failure faults and still closes other fields",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "constructor-resource-lifetime.ms::cancelling a later field closes acquired fields once",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 13,
+        "selected": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN constructor-resource-lifetime.ms::constructed holders own their resource fields on success\nPASS constructor-resource-lifetime.ms::constructed holders own their resource fields on success\nRUN constructor-resource-lifetime.ms::try closes earlier fields before returning its original error\nPASS constructor-resource-lifetime.ms::try closes earlier fields before returning its original error\nRUN constructor-resource-lifetime.ms::intact Optional and Result constructor fields close on try failure\nPASS constructor-resource-lifetime.ms::intact Optional and Result constructor fields close on try failure\nRUN constructor-resource-lifetime.ms::partial construction closes reverse written acquisition order\nPASS constructor-resource-lifetime.ms::partial construction closes reverse written acquisition order\nRUN constructor-resource-lifetime.ms::complete construction closes reverse declaration order\nPASS constructor-resource-lifetime.ms::complete construction closes reverse declaration order\nRUN constructor-resource-lifetime.ms::a later field fault closes earlier acquired fields repeatedly\nPASS constructor-resource-lifetime.ms::a later field fault closes earlier acquired fields repeatedly\nRUN constructor-resource-lifetime.ms::resource field defaults transfer to the completed holder\nPASS constructor-resource-lifetime.ms::resource field defaults transfer to the completed holder\nRUN constructor-resource-lifetime.ms::a faulting default closes both provided and default resources\nPASS constructor-resource-lifetime.ms::a faulting default closes both provided and default resources\nRUN constructor-resource-lifetime.ms::nested acquired holders close depth first on an error\nPASS constructor-resource-lifetime.ms::nested acquired holders close depth first on an error\nRUN constructor-resource-lifetime.ms::moving a prior binding into a partial holder preserves one owner\nPASS constructor-resource-lifetime.ms::moving a prior binding into a partial holder preserves one owner\nRUN constructor-resource-lifetime.ms::pending constructor fields close before an older call temporary\nPASS constructor-resource-lifetime.ms::pending constructor fields close before an older call temporary\nRUN constructor-resource-lifetime.ms::a temporary close failure faults and still closes other fields\nPASS constructor-resource-lifetime.ms::a temporary close failure faults and still closes other fields\nRUN constructor-resource-lifetime.ms::cancelling a later field closes acquired fields once\nPASS constructor-resource-lifetime.ms::cancelling a later field closes acquired fields once\n13 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

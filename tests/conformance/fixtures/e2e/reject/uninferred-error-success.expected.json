@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding",
+        "position": {
+          "file": "uninferred-error-success.ms",
+          "line": 4,
+          "column": 17,
+          "offset": 99
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/uninferred-error-success.ms:4:17: type: cannot infer constructor type argument T; write the type arguments, e.g. Box[Int](...), or annotate the binding\n   |\n 4 |     _outcome := error(\"missing\")\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

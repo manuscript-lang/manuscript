@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "hash.ms::FNV known vectors for both variants and widths",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "hash.ms::CRC64 matches the standard check values",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "hash.ms::CRC64 chunks equal one pass",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "hash.ms::seeded hash is deterministic per seed and differs between seeds",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN hash.ms::FNV known vectors for both variants and widths\nPASS hash.ms::FNV known vectors for both variants and widths\nRUN hash.ms::CRC64 matches the standard check values\nPASS hash.ms::CRC64 matches the standard check values\nRUN hash.ms::CRC64 chunks equal one pass\nPASS hash.ms::CRC64 chunks equal one pass\nRUN hash.ms::seeded hash is deterministic per seed and differs between seeds\nPASS hash.ms::seeded hash is deterministic per seed and differs between seeds\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

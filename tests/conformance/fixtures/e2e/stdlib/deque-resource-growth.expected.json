@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "deque-resource-growth.ms::deque growth moves resource owners from either end",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "deque-resource-growth.ms::deque growth keeps absent optional slots and nested resource owners",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "deque-resource-growth.ms::grown resource deques close each owner once on error and fault exits",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "deque-resource-growth.ms::wrapped growth leaves opaque native file handles usable",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN deque-resource-growth.ms::deque growth moves resource owners from either end\nPASS deque-resource-growth.ms::deque growth moves resource owners from either end\nRUN deque-resource-growth.ms::deque growth keeps absent optional slots and nested resource owners\nPASS deque-resource-growth.ms::deque growth keeps absent optional slots and nested resource owners\nRUN deque-resource-growth.ms::grown resource deques close each owner once on error and fault exits\nPASS deque-resource-growth.ms::grown resource deques close each owner once on error and fault exits\nRUN deque-resource-growth.ms::wrapped growth leaves opaque native file handles usable\nPASS deque-resource-growth.ms::wrapped growth leaves opaque native file handles usable\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

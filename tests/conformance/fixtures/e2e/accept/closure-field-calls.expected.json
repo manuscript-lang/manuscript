@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "closure-field-calls.ms::a closure field set to one lambda everywhere still calls it",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "closure-field-calls.ms::closure fields set to different lambdas keep their own behavior",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "closure-field-calls.ms::assigning a closure field changes later calls",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN closure-field-calls.ms::a closure field set to one lambda everywhere still calls it\nPASS closure-field-calls.ms::a closure field set to one lambda everywhere still calls it\nRUN closure-field-calls.ms::closure fields set to different lambdas keep their own behavior\nPASS closure-field-calls.ms::closure fields set to different lambdas keep their own behavior\nRUN closure-field-calls.ms::assigning a closure field changes later calls\nPASS closure-field-calls.ms::assigning a closure field changes later calls\n3 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

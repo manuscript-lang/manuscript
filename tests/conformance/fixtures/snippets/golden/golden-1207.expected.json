@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'",
+        "position": {
+          "file": "golden-1207.ms",
+          "line": 5,
+          "column": 16,
+          "offset": 129
+        },
+        "end": {
+          "file": "golden-1207.ms",
+          "line": 5,
+          "column": 16,
+          "offset": 129
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1207.ms:5:16: parse: a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found end of line; to continue a flow on the next line, end this line before '|' and start the next line with '|'\n   |\n 5 |     return inp|\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

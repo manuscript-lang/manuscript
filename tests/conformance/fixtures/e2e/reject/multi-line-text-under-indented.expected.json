@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1002",
+        "phase": "parse",
+        "message": "text line is indented less than the closing '\"\"\"'; indent it to the closing quotes' column, or move the closing quotes left",
+        "position": {
+          "file": "multi-line-text-under-indented.ms",
+          "line": 6,
+          "column": 1,
+          "offset": 110
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/multi-line-text-under-indented.ms:6:1: parse: text line is indented less than the closing '\"\"\"'; indent it to the closing quotes' column, or move the closing quotes left\n   |\n 6 |       shallow\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

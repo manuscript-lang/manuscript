@@ -7,7 +7,7 @@ weight = 104
 
 A conformance test checks a rule by observing a program.
 
-Start with a small accepted program or a single rejected use. Place successful core-language examples under `tests/e2e/testdata/accept/` (`cl-*.ms` and related fixtures), and rejection cases under `tests/e2e/testdata/reject/`. The e2e runner executes accepted files with `ms test` and requires rejected files to fail `ms check`. Use a test body when the regression depends on execution; a declaration alone only checks acceptance.
+Start with a small accepted program or a single rejected use. Place successful core-language examples under `tests/conformance/fixtures/e2e/accept/` (`cl-*.ms` and related fixtures), and rejection cases under `tests/conformance/fixtures/e2e/reject/`. The conformance runner executes accepted files under the `test` phase (`ms test`) and records the diagnostics of rejected files under the `check` phase; add `// conform: phase=test` or `phase=check` and run `ms-conform record --only-missing`. Use a test body when the regression depends on execution; a declaration alone only checks acceptance.
 
 For example, save this as `decrement.ms`. Tests use `test "name":` blocks and assertions from `@std/test/test.ms`. Propagate their `Result` with `?` so a failed assertion fails the test.
 

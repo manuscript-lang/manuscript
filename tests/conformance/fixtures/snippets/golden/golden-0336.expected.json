@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0336.ms",
+          "line": 5,
+          "column": 36,
+          "offset": 125
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding parse; add: import parse from \"@std/data/csv.ms\"",
+        "position": {
+          "file": "golden-0336.ms",
+          "line": 6,
+          "column": 12,
+          "offset": 148
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0336.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0336.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import parse from \"@std/data/csv.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0336.ms:5:36: resolution: unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it\n   |\n 5 | fn f(text: String) Result[Request, JsonError]:\n   |                                    ^\n<DIR>/golden-0336.ms:6:12: resolution: unknown binding parse; add: import parse from \"@std/data/csv.ms\"\n   |\n 6 |     return parse[Request](text)\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

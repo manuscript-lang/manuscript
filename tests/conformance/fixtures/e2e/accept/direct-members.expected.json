@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "direct-members.ms::list members match generic dispatch",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "direct-members.ms::map and set members",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "direct-members.ms::string at",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN direct-members.ms::list members match generic dispatch\nPASS direct-members.ms::list members match generic dispatch\nRUN direct-members.ms::map and set members\nPASS direct-members.ms::map and set members\nRUN direct-members.ms::string at\nPASS direct-members.ms::string at\n3 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

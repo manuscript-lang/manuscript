@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected a name, found ')'",
+        "position": {
+          "file": "golden-0983.ms",
+          "line": 3,
+          "column": 14,
+          "offset": 66
+        },
+        "end": {
+          "file": "golden-0983.ms",
+          "line": 3,
+          "column": 15,
+          "offset": 67
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0983.ms:3:14: parse: expected a name, found ')'\n   |\n 3 | fn broken(a: ) Int:\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

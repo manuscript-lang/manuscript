@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found ')'",
+        "position": {
+          "file": "golden-1235.ms",
+          "line": 3,
+          "column": 46,
+          "offset": 98
+        },
+        "end": {
+          "file": "golden-1235.ms",
+          "line": 3,
+          "column": 47,
+          "offset": 99
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1235.ms:3:46: parse: a pipe step is a function name, a call without its first argument, or a '.method' step; write x | f, x | f(a: 1), or x | .method(a: 1), found ')'\n   |\n 3 | fn combine(first: Int = 3, second: Int = fir|) Int:\n   |                                              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "holder-conditional-move-closes.ms::a list moved on one path closes on the path that keeps it",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "holder-conditional-move-closes.ms::an optional resource reassigned after a conditional move closes the new value",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "holder-conditional-move-closes.ms::a loop over owned resources closes each element it does not move",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "holder-conditional-move-closes.ms::a break closes the elements the loop never reached",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "holder-conditional-move-closes.ms::a binding built from a call that consumes a resource closes it",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "holder-conditional-move-closes.ms::a match on a temporary resource closes it when the match ends",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN holder-conditional-move-closes.ms::a list moved on one path closes on the path that keeps it\nPASS holder-conditional-move-closes.ms::a list moved on one path closes on the path that keeps it\nRUN holder-conditional-move-closes.ms::an optional resource reassigned after a conditional move closes the new value\nPASS holder-conditional-move-closes.ms::an optional resource reassigned after a conditional move closes the new value\nRUN holder-conditional-move-closes.ms::a loop over owned resources closes each element it does not move\nPASS holder-conditional-move-closes.ms::a loop over owned resources closes each element it does not move\nRUN holder-conditional-move-closes.ms::a break closes the elements the loop never reached\nPASS holder-conditional-move-closes.ms::a break closes the elements the loop never reached\nRUN holder-conditional-move-closes.ms::a binding built from a call that consumes a resource closes it\nPASS holder-conditional-move-closes.ms::a binding built from a call that consumes a resource closes it\nRUN holder-conditional-move-closes.ms::a match on a temporary resource closes it when the match ends\nPASS holder-conditional-move-closes.ms::a match on a temporary resource closes it when the match ends\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

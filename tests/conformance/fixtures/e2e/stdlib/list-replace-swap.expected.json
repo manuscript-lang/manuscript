@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "list-replace-swap.ms::replace returns the old element and stores the new one",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "list-replace-swap.ms::replace moves owned records",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "list-replace-swap.ms::replace takes an optional slot",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "list-replace-swap.ms::swap exchanges two elements",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "list-replace-swap.ms::swap moves records without copying",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "list-replace-swap.ms::replace takes a scalar optional slot",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "list-replace-swap.ms::swap exchanges scalars, counting negative indexes from the end",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN list-replace-swap.ms::replace returns the old element and stores the new one\nPASS list-replace-swap.ms::replace returns the old element and stores the new one\nRUN list-replace-swap.ms::replace moves owned records\nPASS list-replace-swap.ms::replace moves owned records\nRUN list-replace-swap.ms::replace takes an optional slot\nPASS list-replace-swap.ms::replace takes an optional slot\nRUN list-replace-swap.ms::swap exchanges two elements\nPASS list-replace-swap.ms::swap exchanges two elements\nRUN list-replace-swap.ms::swap moves records without copying\nPASS list-replace-swap.ms::swap moves records without copying\nRUN list-replace-swap.ms::replace takes a scalar optional slot\nPASS list-replace-swap.ms::replace takes a scalar optional slot\nRUN list-replace-swap.ms::swap exchanges scalars, counting negative indexes from the end\nPASS list-replace-swap.ms::swap exchanges scalars, counting negative indexes from the end\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

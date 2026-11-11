@@ -27,7 +27,7 @@ clone can also leave a borrowed String pointing at consumed storage. Keep the si
 path for literals and immutable keys the other operand does not reference; an immutable
 key can still be consumed by that operand. A direct numeric-literal operand also permits a
 mutable key because it cannot access that key. Otherwise use ordinary lowering. See
-[key stability regressions](../../tests/e2e/testdata/accept/map-counter-key-stability.ms) and
+[key stability regressions](../../tests/conformance/fixtures/e2e/accept/map-counter-key-stability.ms) and
 [#2857](https://github.com/manuscript-lang/manuscript/issues/2857).
 
 The fused key slot must also have the map's checked key representation. A plain key lifted
@@ -46,4 +46,4 @@ arguments succeed, restore ownership of that captured value before refreshing or
 arguments. Otherwise lowering can reread a moved source or silently copy an explicit clone
 ([#2866](https://github.com/manuscript-lang/manuscript/issues/2866)).
 
-Regression checks: [checked places](../../tests/e2e/testdata/accept/checked-place-evaluation.ms) and [resource places](../../tests/e2e/testdata/accept/resource-place-evaluation.ms).
+Regression checks: [checked places](../../tests/conformance/fixtures/e2e/accept/checked-place-evaluation.ms) and [resource places](../../tests/conformance/fixtures/e2e/accept/resource-place-evaluation.ms).

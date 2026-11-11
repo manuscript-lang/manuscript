@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "string-scalar-values-loop.ms::a scalar walk yields what the list holds",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "string-scalar-values-loop.ms::a scalar walk stops at return, break, and continue",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "string-scalar-values-loop.ms::a scalar walk reads the text as it was when the loop began",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN string-scalar-values-loop.ms::a scalar walk yields what the list holds\nPASS string-scalar-values-loop.ms::a scalar walk yields what the list holds\nRUN string-scalar-values-loop.ms::a scalar walk stops at return, break, and continue\nPASS string-scalar-values-loop.ms::a scalar walk stops at return, break, and continue\nRUN string-scalar-values-loop.ms::a scalar walk reads the text as it was when the loop began\nPASS string-scalar-values-loop.ms::a scalar walk reads the text as it was when the loop began\n3 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

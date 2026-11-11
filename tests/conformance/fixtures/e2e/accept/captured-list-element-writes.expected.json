@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "captured-list-element-writes.ms::a closure writes elements of a captured list",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "captured-list-element-writes.ms::a negative index counts from the end",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "captured-list-element-writes.ms::droppable elements are replaced and the old ones released",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "captured-list-element-writes.ms::elements of a captured list of lists",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "captured-list-element-writes.ms::the closure and its owner share the list",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "captured-list-element-writes.ms::an index past the end faults",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN captured-list-element-writes.ms::a closure writes elements of a captured list\nPASS captured-list-element-writes.ms::a closure writes elements of a captured list\nRUN captured-list-element-writes.ms::a negative index counts from the end\nPASS captured-list-element-writes.ms::a negative index counts from the end\nRUN captured-list-element-writes.ms::droppable elements are replaced and the old ones released\nPASS captured-list-element-writes.ms::droppable elements are replaced and the old ones released\nRUN captured-list-element-writes.ms::elements of a captured list of lists\nPASS captured-list-element-writes.ms::elements of a captured list of lists\nRUN captured-list-element-writes.ms::the closure and its owner share the list\nPASS captured-list-element-writes.ms::the closure and its owner share the list\nRUN captured-list-element-writes.ms::an index past the end faults\nPASS captured-list-element-writes.ms::an index past the end faults\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

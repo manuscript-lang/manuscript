@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Approved does not satisfy Data; it is opaque; return a plain value from the module that declares it",
+        "position": {
+          "file": "main.ms",
+          "line": 8,
+          "column": 10,
+          "offset": 134
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/main.ms:8:10: type: Approved does not satisfy Data; it is opaque; return a plain value from the module that declares it\n   |\n 8 |     a := parse[Approved](\"\\{\\}\")\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

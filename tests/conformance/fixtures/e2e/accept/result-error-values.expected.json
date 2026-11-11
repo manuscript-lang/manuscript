@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "result-error-values.ms::optional Result arguments supply constructor type context",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "result-error-values.ms::optional failure payloads and nested absence retain their layers",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "result-error-values.ms::named failures propagate without a reporting implementation",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "result-error-values.ms::primitive failures work with contextual constructors and assertion aliases",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "result-error-values.ms::Result transforms preserve primitive errors and map to named cases",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "result-error-values.ms::assertion failures can describe values without a reporting implementation",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "result-error-values.ms::Optional adapters accept primitive errors and remain lazy",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN result-error-values.ms::optional Result arguments supply constructor type context\nPASS result-error-values.ms::optional Result arguments supply constructor type context\nRUN result-error-values.ms::optional failure payloads and nested absence retain their layers\nPASS result-error-values.ms::optional failure payloads and nested absence retain their layers\nRUN result-error-values.ms::named failures propagate without a reporting implementation\nPASS result-error-values.ms::named failures propagate without a reporting implementation\nRUN result-error-values.ms::primitive failures work with contextual constructors and assertion aliases\nPASS result-error-values.ms::primitive failures work with contextual constructors and assertion aliases\nRUN result-error-values.ms::Result transforms preserve primitive errors and map to named cases\nPASS result-error-values.ms::Result transforms preserve primitive errors and map to named cases\nRUN result-error-values.ms::assertion failures can describe values without a reporting implementation\nPASS result-error-values.ms::assertion failures can describe values without a reporting implementation\nRUN result-error-values.ms::Optional adapters accept primitive errors and remain lazy\nPASS result-error-values.ms::Optional adapters accept primitive errors and remain lazy\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

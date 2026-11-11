@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "optional-result-combinators.ms::Optional get_or_else returns the payload and is lazy",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "optional-result-combinators.ms::Optional or_else keeps the wrapper and is lazy",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "optional-result-combinators.ms::Result get_or_else returns the payload and receives the error",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "optional-result-combinators.ms::Result or_else keeps the wrapper and is lazy",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "optional-result-combinators.ms::Result map_error converts the error type and feeds try",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "optional-result-combinators.ms::map and and_then on both types keep their meaning",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN optional-result-combinators.ms::Optional get_or_else returns the payload and is lazy\nPASS optional-result-combinators.ms::Optional get_or_else returns the payload and is lazy\nRUN optional-result-combinators.ms::Optional or_else keeps the wrapper and is lazy\nPASS optional-result-combinators.ms::Optional or_else keeps the wrapper and is lazy\nRUN optional-result-combinators.ms::Result get_or_else returns the payload and receives the error\nPASS optional-result-combinators.ms::Result get_or_else returns the payload and receives the error\nRUN optional-result-combinators.ms::Result or_else keeps the wrapper and is lazy\nPASS optional-result-combinators.ms::Result or_else keeps the wrapper and is lazy\nRUN optional-result-combinators.ms::Result map_error converts the error type and feeds try\nPASS optional-result-combinators.ms::Result map_error converts the error type and feeds try\nRUN optional-result-combinators.ms::map and and_then on both types keep their meaning\nPASS optional-result-combinators.ms::map and and_then on both types keep their meaning\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "csv-rows.ms::rows match parse under every chunk size",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "csv-rows.ms::a final record without a line end is read at the end",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "csv-rows.ms::large fragmented records preserve rows and exact record budgets",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "csv-rows.ms::options apply",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "csv-rows.ms::empty CSV streams reject invalid options",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "csv-rows.ms::an unterminated quote is InvalidData at the end",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "csv-rows.ms::a quote inside an unquoted cell is InvalidData",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "csv-rows.ms::the record budget reports LimitExceeded",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "csv-rows.ms::continued reads after a record limit error keep only the consumed tail",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "csv-rows.ms::the record budget does not depend on where chunks end",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "csv-rows.ms::malformed UTF-8 is InvalidData beside valid rows and a split scalar is not",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "csv-rows.ms::row and cell budgets bound parse only, never depending on chunk size",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "csv-rows.ms::rows and parse agree on malformed and odd inputs under every chunk size",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "csv-rows.ms::oversized EOF records stay rejected after a failed read",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 14,
+        "selected": 14,
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN csv-rows.ms::rows match parse under every chunk size\nPASS csv-rows.ms::rows match parse under every chunk size\nRUN csv-rows.ms::a final record without a line end is read at the end\nPASS csv-rows.ms::a final record without a line end is read at the end\nRUN csv-rows.ms::large fragmented records preserve rows and exact record budgets\nPASS csv-rows.ms::large fragmented records preserve rows and exact record budgets\nRUN csv-rows.ms::options apply\nPASS csv-rows.ms::options apply\nRUN csv-rows.ms::empty CSV streams reject invalid options\nPASS csv-rows.ms::empty CSV streams reject invalid options\nRUN csv-rows.ms::an unterminated quote is InvalidData at the end\nPASS csv-rows.ms::an unterminated quote is InvalidData at the end\nRUN csv-rows.ms::a quote inside an unquoted cell is InvalidData\nPASS csv-rows.ms::a quote inside an unquoted cell is InvalidData\nRUN csv-rows.ms::the record budget reports LimitExceeded\nPASS csv-rows.ms::the record budget reports LimitExceeded\nRUN csv-rows.ms::continued reads after a record limit error keep only the consumed tail\nPASS csv-rows.ms::continued reads after a record limit error keep only the consumed tail\nRUN csv-rows.ms::the record budget does not depend on where chunks end\nPASS csv-rows.ms::the record budget does not depend on where chunks end\nRUN csv-rows.ms::malformed UTF-8 is InvalidData beside valid rows and a split scalar is not\nPASS csv-rows.ms::malformed UTF-8 is InvalidData beside valid rows and a split scalar is not\nRUN csv-rows.ms::row and cell budgets bound parse only, never depending on chunk size\nPASS csv-rows.ms::row and cell budgets bound parse only, never depending on chunk size\nRUN csv-rows.ms::rows and parse agree on malformed and odd inputs under every chunk size\nPASS csv-rows.ms::rows and parse agree on malformed and odd inputs under every chunk size\nRUN csv-rows.ms::oversized EOF records stay rejected after a failed read\nPASS csv-rows.ms::oversized EOF records stay rejected after a failed read\n14 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

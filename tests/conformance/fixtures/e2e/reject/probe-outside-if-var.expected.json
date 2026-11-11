@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`?` after an index is only written as `if var name = place[key]?`, where it borrows the entry in place",
+        "position": {
+          "file": "probe-outside-if-var.ms",
+          "line": 4,
+          "column": 10,
+          "offset": 99
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/probe-outside-if-var.ms:4:10: type: `?` after an index is only written as `if var name = place[key]?`, where it borrows the entry in place\n   |\n 4 |     x := m[\"a\"]?\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

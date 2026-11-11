@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot return a view of `text`: a returned `String` is owned and a view only borrows `text`; copy it with `.clone()` after the view",
+        "position": {
+          "file": "return-string-view.ms",
+          "line": 7,
+          "column": 17,
+          "offset": 290
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/return-string-view.ms:7:17: type: cannot return a view of `text`: a returned `String` is owned and a view only borrows `text`; copy it with `.clone()` after the view\n   |\n 7 |     return text.view(1, 5)\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

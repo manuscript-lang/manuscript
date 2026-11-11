@@ -6,7 +6,7 @@ Verified: runners, packaging, and checks live in `tools/*.ms` and run with `ms r
 
 Apply when: adding a CI step, Make target, or repository automation.
 Evidence: [shared helpers](../../tools/lib.ms), [Makefile](../../Makefile), [CI](../../.github/workflows/cicd.yml).
-Verify: `ms run tools/e2e.ms`, `tools/conform.ms`, `tools/count-check.ms` pass on Linux, macOS, and Windows CI.
+Verify: `ms run tools/conform.ms`, `tools/conform.ms`, `tools/count-check.ms` pass on Linux, macOS, and Windows CI.
 
 Verified (2026-11-10): `tools/package.ms` must copy the repository `LICENSE` into every binary archive with a readable file mode. The local distribution check and both CI packaging paths compare the extracted file with the source, so successful compiler smoke tests alone cannot hide a missing or altered license.
 

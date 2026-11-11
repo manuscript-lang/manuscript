@@ -1,0 +1,175 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "jwt.ms::hs256 matches the published token",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "jwt.ms::hs384 and hs512 match independent implementations",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "jwt.ms::verify returns the claims as a record or as a JSON document",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "jwt.ms::verify rejects a wrong key, a tampered body and a different algorithm",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "jwt.ms::verify rejects the none algorithm and malformed tokens",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "jwt.ms::verify enforces exp, nbf, iss and aud",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "jwt.ms::verify checks nbf and audience claims",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "jwt.ms::verify rejects registered claims of the wrong type",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "jwt.ms::verify rejects signed payloads that are not claim objects",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "jwt.ms::claim object validation applies before typed payload decoding",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "jwt.ms::claim object validation follows signature verification",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "jwt.ms::verify accepts empty claim objects and nested values",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "jwt.ms::rs256 signs with a private key and verifies with the public key",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "jwt.ms::es256 signatures are raw 64 bytes and verify",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "jwt.ms::eddsa signs with a seed and verifies with the public key",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "jwt.ms::sign returns InvalidKey for a key that does not fit",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "jwt.ms::verify rejects unsupported and malformed critical headers",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "jwt.ms::verify rejects unencoded and malformed payload encoding headers",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "jwt.ms::verify keeps unknown noncritical and default encoding headers",
+          "status": "passed"
+        },
+        {
+          "index": 19,
+          "name": "jwt.ms::configured algorithm validation precedes unsupported headers",
+          "status": "passed"
+        },
+        {
+          "index": 20,
+          "name": "jwt.ms::verify rejects missing and nonstring algorithm names",
+          "status": "passed"
+        },
+        {
+          "index": 21,
+          "name": "jwt.ms::numeric dates retain consecutive integer and fractional ordering",
+          "status": "passed"
+        },
+        {
+          "index": 22,
+          "name": "jwt.ms::numeric date exponents and signed zero preserve exact boundaries",
+          "status": "passed"
+        },
+        {
+          "index": 23,
+          "name": "jwt.ms::numeric date leeway is exact across Int boundaries",
+          "status": "passed"
+        },
+        {
+          "index": 24,
+          "name": "jwt.ms::numeric date validation still follows signature verification",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 25,
+        "selected": 25,
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN jwt.ms::hs256 matches the published token\nPASS jwt.ms::hs256 matches the published token\nRUN jwt.ms::hs384 and hs512 match independent implementations\nPASS jwt.ms::hs384 and hs512 match independent implementations\nRUN jwt.ms::verify returns the claims as a record or as a JSON document\nPASS jwt.ms::verify returns the claims as a record or as a JSON document\nRUN jwt.ms::verify rejects a wrong key, a tampered body and a different algorithm\nPASS jwt.ms::verify rejects a wrong key, a tampered body and a different algorithm\nRUN jwt.ms::verify rejects the none algorithm and malformed tokens\nPASS jwt.ms::verify rejects the none algorithm and malformed tokens\nRUN jwt.ms::verify enforces exp, nbf, iss and aud\nPASS jwt.ms::verify enforces exp, nbf, iss and aud\nRUN jwt.ms::verify checks nbf and audience claims\nPASS jwt.ms::verify checks nbf and audience claims\nRUN jwt.ms::verify rejects registered claims of the wrong type\nPASS jwt.ms::verify rejects registered claims of the wrong type\nRUN jwt.ms::verify rejects signed payloads that are not claim objects\nPASS jwt.ms::verify rejects signed payloads that are not claim objects\nRUN jwt.ms::claim object validation applies before typed payload decoding\nPASS jwt.ms::claim object validation applies before typed payload decoding\nRUN jwt.ms::claim object validation follows signature verification\nPASS jwt.ms::claim object validation follows signature verification\nRUN jwt.ms::verify accepts empty claim objects and nested values\nPASS jwt.ms::verify accepts empty claim objects and nested values\nRUN jwt.ms::rs256 signs with a private key and verifies with the public key\nPASS jwt.ms::rs256 signs with a private key and verifies with the public key\nRUN jwt.ms::es256 signatures are raw 64 bytes and verify\nPASS jwt.ms::es256 signatures are raw 64 bytes and verify\nRUN jwt.ms::eddsa signs with a seed and verifies with the public key\nPASS jwt.ms::eddsa signs with a seed and verifies with the public key\nRUN jwt.ms::sign returns InvalidKey for a key that does not fit\nPASS jwt.ms::sign returns InvalidKey for a key that does not fit\nRUN jwt.ms::verify rejects unsupported and malformed critical headers\nPASS jwt.ms::verify rejects unsupported and malformed critical headers\nRUN jwt.ms::verify rejects unencoded and malformed payload encoding headers\nPASS jwt.ms::verify rejects unencoded and malformed payload encoding headers\nRUN jwt.ms::verify keeps unknown noncritical and default encoding headers\nPASS jwt.ms::verify keeps unknown noncritical and default encoding headers\nRUN jwt.ms::configured algorithm validation precedes unsupported headers\nPASS jwt.ms::configured algorithm validation precedes unsupported headers\nRUN jwt.ms::verify rejects missing and nonstring algorithm names\nPASS jwt.ms::verify rejects missing and nonstring algorithm names\nRUN jwt.ms::numeric dates retain consecutive integer and fractional ordering\nPASS jwt.ms::numeric dates retain consecutive integer and fractional ordering\nRUN jwt.ms::numeric date exponents and signed zero preserve exact boundaries\nPASS jwt.ms::numeric date exponents and signed zero preserve exact boundaries\nRUN jwt.ms::numeric date leeway is exact across Int boundaries\nPASS jwt.ms::numeric date leeway is exact across Int boundaries\nRUN jwt.ms::numeric date validation still follows signature verification\nPASS jwt.ms::numeric date validation still follows signature verification\n25 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "case payload arity mismatch; case has 1 payload fields, found 0 bindings (use _ to ignore one)",
+        "position": {
+          "file": "enum-lowercase-payload.ms",
+          "line": 8,
+          "column": 9,
+          "offset": 137
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/enum-lowercase-payload.ms:8:9: type: case payload arity mismatch; case has 1 payload fields, found 0 bindings (use _ to ignore one)\n   |\n 8 |         case: return 0\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

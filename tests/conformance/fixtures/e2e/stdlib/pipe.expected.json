@@ -1,0 +1,100 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "pipe.ms::a pipe delivers values in order and ends when every writer is closed",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "pipe.ms::each writer is its own end like dup: the reader ends after the last one closes",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "pipe.ms::a write waits while the pipe holds more than its capacity, so the reader sets the pace",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "pipe.ms::a write fails with Closed once the reader is gone",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "pipe.ms::a pipe has one reader; asking again gives a stream that has already ended",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "pipe.ms::a promise that owns a pipe writes to it through a writer of its own",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "pipe.ms::several promises each move a writer of their own into a fan-in",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "pipe.ms::a promise keeps the writer it captured after its maker returns",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "pipe.ms::a reader takes queued values directly and still waits and ends in order",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "pipe.ms::a consumer that always finds a value queued still meets its timeout",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 10,
+        "selected": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN pipe.ms::a pipe delivers values in order and ends when every writer is closed\nPASS pipe.ms::a pipe delivers values in order and ends when every writer is closed\nRUN pipe.ms::each writer is its own end like dup: the reader ends after the last one closes\nPASS pipe.ms::each writer is its own end like dup: the reader ends after the last one closes\nRUN pipe.ms::a write waits while the pipe holds more than its capacity, so the reader sets the pace\nPASS pipe.ms::a write waits while the pipe holds more than its capacity, so the reader sets the pace\nRUN pipe.ms::a write fails with Closed once the reader is gone\nPASS pipe.ms::a write fails with Closed once the reader is gone\nRUN pipe.ms::a pipe has one reader; asking again gives a stream that has already ended\nPASS pipe.ms::a pipe has one reader; asking again gives a stream that has already ended\nRUN pipe.ms::a promise that owns a pipe writes to it through a writer of its own\nPASS pipe.ms::a promise that owns a pipe writes to it through a writer of its own\nRUN pipe.ms::several promises each move a writer of their own into a fan-in\nPASS pipe.ms::several promises each move a writer of their own into a fan-in\nRUN pipe.ms::a promise keeps the writer it captured after its maker returns\nPASS pipe.ms::a promise keeps the writer it captured after its maker returns\nRUN pipe.ms::a reader takes queued values directly and still waits and ends in order\nPASS pipe.ms::a reader takes queued values directly and still waits and ends in order\nRUN pipe.ms::a consumer that always finds a value queued still meets its timeout\nPASS pipe.ms::a consumer that always finds a value queued still meets its timeout\n10 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

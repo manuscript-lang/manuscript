@@ -22,7 +22,7 @@ fn diagnostics(source: &str) -> Vec<String> {
 #[test]
 fn named_and_primitive_errors_need_no_interface() {
     let got = diagnostics(include_str!(
-        "../../../tests/e2e/testdata/accept/result-error-values.ms"
+        "../../../tests/conformance/fixtures/e2e/accept/result-error-values.ms"
     ));
     assert!(got.is_empty(), "{got:?}");
 }
@@ -30,7 +30,7 @@ fn named_and_primitive_errors_need_no_interface() {
 #[test]
 fn reportless_failures_do_not_widen_or_cross_unrelated_boundaries() {
     let got = diagnostics(include_str!(
-        "../../../tests/e2e/testdata/reject/reportless-error-boundary.ms"
+        "../../../tests/conformance/fixtures/e2e/reject/reportless-error-boundary.ms"
     ));
     assert!(
         got.iter()
@@ -56,7 +56,7 @@ fn reportless_failures_do_not_widen_or_cross_unrelated_boundaries() {
 #[test]
 fn context_free_string_error_still_needs_a_success_type() {
     let got = diagnostics(include_str!(
-        "../../../tests/e2e/testdata/reject/uninferred-error-success.ms"
+        "../../../tests/conformance/fixtures/e2e/reject/uninferred-error-success.ms"
     ));
     assert!(
         got.iter()

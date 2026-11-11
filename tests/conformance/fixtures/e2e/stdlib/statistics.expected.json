@@ -1,0 +1,245 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "statistics.ms::mean median and mode",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "statistics.ms::variance and standard deviation",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "statistics.ms::percentile and quantiles interpolate",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "statistics.ms::percentile and quantiles return the element at an exact rank",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "statistics.ms::percentile keeps infinite neighbors from becoming NaN",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "statistics.ms::bin_counts bins values",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "statistics.ms::bin_counts places the greatest value in the last bin when the range overflows",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "statistics.ms::correlation and regression",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "statistics.ms::regression stays finite and exact at large and tiny scales and with a large common offset",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "statistics.ms::invalid arguments fault",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "statistics.ms::percentile finite spans do not overflow during interpolation",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "statistics.ms::percentile stays finite ordered and bounded across the widest finite span",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "statistics.ms::percentile preserves finite small spans and special-value behavior",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "statistics.ms::median finite middle values do not overflow their sum",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "statistics.ms::median keeps ordinary tiny and nonfinite behavior",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "statistics.ms::mean recovers finite overflow using exact binary64 rational cases",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "statistics.ms::mean keeps the existing finite sum rounding and nonfinite behavior",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "statistics.ms::mean overflow recovery rounds tiny cancellation residuals to signed zero",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "statistics.ms::subnormal equal width bins preserve mathematical placement",
+          "status": "passed"
+        },
+        {
+          "index": 19,
+          "name": "statistics.ms::rounded subnormal width does not move interior values",
+          "status": "passed"
+        },
+        {
+          "index": 20,
+          "name": "statistics.ms::subnormal bins match an exact integer grid across signs and shifted ranges",
+          "status": "passed"
+        },
+        {
+          "index": 21,
+          "name": "statistics.ms::subnormal bin repair preserves nonfinite and degenerate controls",
+          "status": "passed"
+        },
+        {
+          "index": 22,
+          "name": "statistics.ms::standard deviation survives finite range beyond representable variance",
+          "status": "passed"
+        },
+        {
+          "index": 23,
+          "name": "statistics.ms::standard deviation does not lose small finite spread",
+          "status": "passed"
+        },
+        {
+          "index": 24,
+          "name": "statistics.ms::standard deviation covers finite axis scales and sample normalization",
+          "status": "passed"
+        },
+        {
+          "index": 25,
+          "name": "statistics.ms::standard deviation preserves ordinary and nonfinite paths",
+          "status": "passed"
+        },
+        {
+          "index": 26,
+          "name": "statistics.ms::standard deviation large adjacent",
+          "status": "passed"
+        },
+        {
+          "index": 27,
+          "name": "statistics.ms::standard deviation maximum adjacent",
+          "status": "passed"
+        },
+        {
+          "index": 28,
+          "name": "statistics.ms::standard deviation small adjacent",
+          "status": "passed"
+        },
+        {
+          "index": 29,
+          "name": "statistics.ms::standard deviation half minimum subnormal",
+          "status": "passed"
+        },
+        {
+          "index": 30,
+          "name": "statistics.ms::standard deviation unbalanced minimum subnormal",
+          "status": "passed"
+        },
+        {
+          "index": 31,
+          "name": "statistics.ms::standard deviation balanced minimum subnormal",
+          "status": "passed"
+        },
+        {
+          "index": 32,
+          "name": "statistics.ms::standard deviation finite sample threshold",
+          "status": "passed"
+        },
+        {
+          "index": 33,
+          "name": "statistics.ms::standard deviation infinite sample threshold",
+          "status": "passed"
+        },
+        {
+          "index": 34,
+          "name": "statistics.ms::variance survives an intermediate sum overflow",
+          "status": "passed"
+        },
+        {
+          "index": 35,
+          "name": "statistics.ms::a large common offset does not change variation",
+          "status": "passed"
+        },
+        {
+          "index": 36,
+          "name": "statistics.ms::variance keeps tiny scales",
+          "status": "passed"
+        },
+        {
+          "index": 37,
+          "name": "statistics.ms::variance of nonfinite input follows Float rules",
+          "status": "passed"
+        },
+        {
+          "index": 38,
+          "name": "statistics.ms::correlation of large and tiny perfectly correlated values",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 39,
+        "selected": 39,
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN statistics.ms::mean median and mode\nPASS statistics.ms::mean median and mode\nRUN statistics.ms::variance and standard deviation\nPASS statistics.ms::variance and standard deviation\nRUN statistics.ms::percentile and quantiles interpolate\nPASS statistics.ms::percentile and quantiles interpolate\nRUN statistics.ms::percentile and quantiles return the element at an exact rank\nPASS statistics.ms::percentile and quantiles return the element at an exact rank\nRUN statistics.ms::percentile keeps infinite neighbors from becoming NaN\nPASS statistics.ms::percentile keeps infinite neighbors from becoming NaN\nRUN statistics.ms::bin_counts bins values\nPASS statistics.ms::bin_counts bins values\nRUN statistics.ms::bin_counts places the greatest value in the last bin when the range overflows\nPASS statistics.ms::bin_counts places the greatest value in the last bin when the range overflows\nRUN statistics.ms::correlation and regression\nPASS statistics.ms::correlation and regression\nRUN statistics.ms::regression stays finite and exact at large and tiny scales and with a large common offset\nPASS statistics.ms::regression stays finite and exact at large and tiny scales and with a large common offset\nRUN statistics.ms::invalid arguments fault\nPASS statistics.ms::invalid arguments fault\nRUN statistics.ms::percentile finite spans do not overflow during interpolation\nPASS statistics.ms::percentile finite spans do not overflow during interpolation\nRUN statistics.ms::percentile stays finite ordered and bounded across the widest finite span\nPASS statistics.ms::percentile stays finite ordered and bounded across the widest finite span\nRUN statistics.ms::percentile preserves finite small spans and special-value behavior\nPASS statistics.ms::percentile preserves finite small spans and special-value behavior\nRUN statistics.ms::median finite middle values do not overflow their sum\nPASS statistics.ms::median finite middle values do not overflow their sum\nRUN statistics.ms::median keeps ordinary tiny and nonfinite behavior\nPASS statistics.ms::median keeps ordinary tiny and nonfinite behavior\nRUN statistics.ms::mean recovers finite overflow using exact binary64 rational cases\nPASS statistics.ms::mean recovers finite overflow using exact binary64 rational cases\nRUN statistics.ms::mean keeps the existing finite sum rounding and nonfinite behavior\nPASS statistics.ms::mean keeps the existing finite sum rounding and nonfinite behavior\nRUN statistics.ms::mean overflow recovery rounds tiny cancellation residuals to signed zero\nPASS statistics.ms::mean overflow recovery rounds tiny cancellation residuals to signed zero\nRUN statistics.ms::subnormal equal width bins preserve mathematical placement\nPASS statistics.ms::subnormal equal width bins preserve mathematical placement\nRUN statistics.ms::rounded subnormal width does not move interior values\nPASS statistics.ms::rounded subnormal width does not move interior values\nRUN statistics.ms::subnormal bins match an exact integer grid across signs and shifted ranges\nPASS statistics.ms::subnormal bins match an exact integer grid across signs and shifted ranges\nRUN statistics.ms::subnormal bin repair preserves nonfinite and degenerate controls\nPASS statistics.ms::subnormal bin repair preserves nonfinite and degenerate controls\nRUN statistics.ms::standard deviation survives finite range beyond representable variance\nPASS statistics.ms::standard deviation survives finite range beyond representable variance\nRUN statistics.ms::standard deviation does not lose small finite spread\nPASS statistics.ms::standard deviation does not lose small finite spread\nRUN statistics.ms::standard deviation covers finite axis scales and sample normalization\nPASS statistics.ms::standard deviation covers finite axis scales and sample normalization\nRUN statistics.ms::standard deviation preserves ordinary and nonfinite paths\nPASS statistics.ms::standard deviation preserves ordinary and nonfinite paths\nRUN statistics.ms::standard deviation large adjacent\nPASS statistics.ms::standard deviation large adjacent\nRUN statistics.ms::standard deviation maximum adjacent\nPASS statistics.ms::standard deviation maximum adjacent\nRUN statistics.ms::standard deviation small adjacent\nPASS statistics.ms::standard deviation small adjacent\nRUN statistics.ms::standard deviation half minimum subnormal\nPASS statistics.ms::standard deviation half minimum subnormal\nRUN statistics.ms::standard deviation unbalanced minimum subnormal\nPASS statistics.ms::standard deviation unbalanced minimum subnormal\nRUN statistics.ms::standard deviation balanced minimum subnormal\nPASS statistics.ms::standard deviation balanced minimum subnormal\nRUN statistics.ms::standard deviation finite sample threshold\nPASS statistics.ms::standard deviation finite sample threshold\nRUN statistics.ms::standard deviation infinite sample threshold\nPASS statistics.ms::standard deviation infinite sample threshold\nRUN statistics.ms::variance survives an intermediate sum overflow\nPASS statistics.ms::variance survives an intermediate sum overflow\nRUN statistics.ms::a large common offset does not change variation\nPASS statistics.ms::a large common offset does not change variation\nRUN statistics.ms::variance keeps tiny scales\nPASS statistics.ms::variance keeps tiny scales\nRUN statistics.ms::variance of nonfinite input follows Float rules\nPASS statistics.ms::variance of nonfinite input follows Float rules\nRUN statistics.ms::correlation of large and tiny perfectly correlated values\nPASS statistics.ms::correlation of large and tiny perfectly correlated values\n39 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Duration; add: import Duration from \"@std/time.ms\"",
+        "position": {
+          "file": "golden-0243.ms",
+          "line": 6,
+          "column": 49,
+          "offset": 171
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0243.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0243.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Duration from \"@std/time.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"",
+        "position": {
+          "file": "golden-0243.ms",
+          "line": 6,
+          "column": 74,
+          "offset": 196
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0243.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0243.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Datagram from \"@std/net/net.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0243.ms",
+          "line": 6,
+          "column": 84,
+          "offset": 206
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Duration; add: import Duration from \"@std/time.ms\"",
+        "position": {
+          "file": "golden-0243.ms",
+          "line": 7,
+          "column": 53,
+          "offset": 272
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0243.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0243.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Duration from \"@std/time.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0243.ms",
+          "line": 7,
+          "column": 84,
+          "offset": 303
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"",
+        "position": {
+          "file": "golden-0243.ms",
+          "line": 8,
+          "column": 25,
+          "offset": 341
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0243.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0243.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Bytes from \"@std/bytes.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Duration; add: import Duration from \"@std/time.ms\"",
+        "position": {
+          "file": "golden-0243.ms",
+          "line": 8,
+          "column": 58,
+          "offset": 374
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0243.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0243.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Duration from \"@std/time.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0243.ms",
+          "line": 8,
+          "column": 89,
+          "offset": 405
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0243.ms:6:49: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 6 |     fn receive(max_bytes: Int? = none, timeout: Duration? = none) Result[Datagram, NetworkError]\n   |                                                 ^\n<DIR>/golden-0243.ms:6:74: resolution: unknown type Datagram; add: import Datagram from \"@std/net/net.ms\"\n   |\n 6 |     fn receive(max_bytes: Int? = none, timeout: Duration? = none) Result[Datagram, NetworkError]\n   |                                                                          ^\n<DIR>/golden-0243.ms:6:84: resolution: unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it\n   |\n 6 |     fn receive(max_bytes: Int? = none, timeout: Duration? = none) Result[Datagram, NetworkError]\n   |                                                                                    ^\n<DIR>/golden-0243.ms:7:53: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 7 |     fn send(data: String, address: String, timeout: Duration? = none) Result[Unit, NetworkError]\n   |                                                     ^\n<DIR>/golden-0243.ms:7:84: resolution: unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it\n   |\n 7 |     fn send(data: String, address: String, timeout: Duration? = none) Result[Unit, NetworkError]\n   |                                                                                    ^\n<DIR>/golden-0243.ms:8:25: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 8 |     fn send_bytes(data: Bytes, address: String, timeout: Duration? = none) Result[Unit, NetworkError]\n   |                         ^\n<DIR>/golden-0243.ms:8:58: resolution: unknown type Duration; add: import Duration from \"@std/time.ms\"\n   |\n 8 |     fn send_bytes(data: Bytes, address: String, timeout: Duration? = none) Result[Unit, NetworkError]\n   |                                                          ^\n<DIR>/golden-0243.ms:8:89: resolution: unknown type NetworkError; declare it with 'type NetworkError:' / 'enum NetworkError:' / 'interface NetworkError:', declare it as a type parameter, or import it\n   |\n 8 |     fn send_bytes(data: Bytes, address: String, timeout: Duration? = none) Result[Unit, NetworkError]\n   |                                                                                         ^\n8 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "numeric-reference-boundaries.ms::wrapping arithmetic matches exact arithmetic reduced mod 2^64",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "numeric-reference-boundaries.ms::multiply_wide matches the exact 128-bit product",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "numeric-reference-boundaries.ms::rounding functions agree with exact rationals",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "numeric-reference-boundaries.ms::nonfinite inputs pass through the rounding functions",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "numeric-reference-boundaries.ms::modf splits exactly",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "numeric-reference-boundaries.ms::frexp and ldexp round-trip every finite value",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "numeric-reference-boundaries.ms::next_after moves by exactly one representable step",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "numeric-reference-boundaries.ms::to_fixed matches the exact decimal expansion",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "numeric-reference-boundaries.ms::truncate_to_int is exact inside the Int range and none outside it",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "numeric-reference-boundaries.ms::fma and sqrt are correctly rounded",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "numeric-reference-boundaries.ms::add_with_carry and subtract_with_borrow match exact words",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "numeric-reference-boundaries.ms::divide_wide and remainder_wide match exact division",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "numeric-reference-boundaries.ms::bit operations match BigInt two's complement",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "numeric-reference-boundaries.ms::shifts and rotations agree with exact arithmetic at every count",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "numeric-reference-boundaries.ms::bit counts match the binary expansion",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "numeric-reference-boundaries.ms::integer conversions respect each target range",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "numeric-reference-boundaries.ms::radix text and parsing round-trip every boundary",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "numeric-reference-boundaries.ms::BigInt agrees with Int on operations that cannot overflow",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "numeric-reference-boundaries.ms::Float text round-trips exactly",
+          "status": "passed"
+        },
+        {
+          "index": 19,
+          "name": "numeric-reference-boundaries.ms::parse_float rounds like the exact rational at the range edges",
+          "status": "passed"
+        },
+        {
+          "index": 20,
+          "name": "numeric-reference-boundaries.ms::BigRat and BigFloat arithmetic is exact or correctly rounded on Float boundaries",
+          "status": "passed"
+        },
+        {
+          "index": 21,
+          "name": "numeric-reference-boundaries.ms::ieee_remainder and remainder follow their definitions",
+          "status": "passed"
+        },
+        {
+          "index": 22,
+          "name": "numeric-reference-boundaries.ms::conversions between Int and Float are exact where the type allows",
+          "status": "passed"
+        },
+        {
+          "index": 23,
+          "name": "numeric-reference-boundaries.ms::Float32 conversion rounds once and rejects only overflow",
+          "status": "passed"
+        },
+        {
+          "index": 24,
+          "name": "numeric-reference-boundaries.ms::BigInt shifts powers and bounds at the limits",
+          "status": "passed"
+        },
+        {
+          "index": 25,
+          "name": "numeric-reference-boundaries.ms::extreme exponents do not wrap or hang",
+          "status": "passed"
+        },
+        {
+          "index": 26,
+          "name": "numeric-reference-boundaries.ms::to_exponential matches the exact decimal expansion",
+          "status": "passed"
+        },
+        {
+          "index": 27,
+          "name": "numeric-reference-boundaries.ms::Decimal arithmetic matches BigInt while the result fits 34 digits",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 28,
+        "selected": 28,
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN numeric-reference-boundaries.ms::wrapping arithmetic matches exact arithmetic reduced mod 2^64\nPASS numeric-reference-boundaries.ms::wrapping arithmetic matches exact arithmetic reduced mod 2^64\nRUN numeric-reference-boundaries.ms::multiply_wide matches the exact 128-bit product\nPASS numeric-reference-boundaries.ms::multiply_wide matches the exact 128-bit product\nRUN numeric-reference-boundaries.ms::rounding functions agree with exact rationals\nPASS numeric-reference-boundaries.ms::rounding functions agree with exact rationals\nRUN numeric-reference-boundaries.ms::nonfinite inputs pass through the rounding functions\nPASS numeric-reference-boundaries.ms::nonfinite inputs pass through the rounding functions\nRUN numeric-reference-boundaries.ms::modf splits exactly\nPASS numeric-reference-boundaries.ms::modf splits exactly\nRUN numeric-reference-boundaries.ms::frexp and ldexp round-trip every finite value\nPASS numeric-reference-boundaries.ms::frexp and ldexp round-trip every finite value\nRUN numeric-reference-boundaries.ms::next_after moves by exactly one representable step\nPASS numeric-reference-boundaries.ms::next_after moves by exactly one representable step\nRUN numeric-reference-boundaries.ms::to_fixed matches the exact decimal expansion\nPASS numeric-reference-boundaries.ms::to_fixed matches the exact decimal expansion\nRUN numeric-reference-boundaries.ms::truncate_to_int is exact inside the Int range and none outside it\nPASS numeric-reference-boundaries.ms::truncate_to_int is exact inside the Int range and none outside it\nRUN numeric-reference-boundaries.ms::fma and sqrt are correctly rounded\nPASS numeric-reference-boundaries.ms::fma and sqrt are correctly rounded\nRUN numeric-reference-boundaries.ms::add_with_carry and subtract_with_borrow match exact words\nPASS numeric-reference-boundaries.ms::add_with_carry and subtract_with_borrow match exact words\nRUN numeric-reference-boundaries.ms::divide_wide and remainder_wide match exact division\nPASS numeric-reference-boundaries.ms::divide_wide and remainder_wide match exact division\nRUN numeric-reference-boundaries.ms::bit operations match BigInt two's complement\nPASS numeric-reference-boundaries.ms::bit operations match BigInt two's complement\nRUN numeric-reference-boundaries.ms::shifts and rotations agree with exact arithmetic at every count\nPASS numeric-reference-boundaries.ms::shifts and rotations agree with exact arithmetic at every count\nRUN numeric-reference-boundaries.ms::bit counts match the binary expansion\nPASS numeric-reference-boundaries.ms::bit counts match the binary expansion\nRUN numeric-reference-boundaries.ms::integer conversions respect each target range\nPASS numeric-reference-boundaries.ms::integer conversions respect each target range\nRUN numeric-reference-boundaries.ms::radix text and parsing round-trip every boundary\nPASS numeric-reference-boundaries.ms::radix text and parsing round-trip every boundary\nRUN numeric-reference-boundaries.ms::BigInt agrees with Int on operations that cannot overflow\nPASS numeric-reference-boundaries.ms::BigInt agrees with Int on operations that cannot overflow\nRUN numeric-reference-boundaries.ms::Float text round-trips exactly\nPASS numeric-reference-boundaries.ms::Float text round-trips exactly\nRUN numeric-reference-boundaries.ms::parse_float rounds like the exact rational at the range edges\nPASS numeric-reference-boundaries.ms::parse_float rounds like the exact rational at the range edges\nRUN numeric-reference-boundaries.ms::BigRat and BigFloat arithmetic is exact or correctly rounded on Float boundaries\nPASS numeric-reference-boundaries.ms::BigRat and BigFloat arithmetic is exact or correctly rounded on Float boundaries\nRUN numeric-reference-boundaries.ms::ieee_remainder and remainder follow their definitions\nPASS numeric-reference-boundaries.ms::ieee_remainder and remainder follow their definitions\nRUN numeric-reference-boundaries.ms::conversions between Int and Float are exact where the type allows\nPASS numeric-reference-boundaries.ms::conversions between Int and Float are exact where the type allows\nRUN numeric-reference-boundaries.ms::Float32 conversion rounds once and rejects only overflow\nPASS numeric-reference-boundaries.ms::Float32 conversion rounds once and rejects only overflow\nRUN numeric-reference-boundaries.ms::BigInt shifts powers and bounds at the limits\nPASS numeric-reference-boundaries.ms::BigInt shifts powers and bounds at the limits\nRUN numeric-reference-boundaries.ms::extreme exponents do not wrap or hang\nPASS numeric-reference-boundaries.ms::extreme exponents do not wrap or hang\nRUN numeric-reference-boundaries.ms::to_exponential matches the exact decimal expansion\nPASS numeric-reference-boundaries.ms::to_exponential matches the exact decimal expansion\nRUN numeric-reference-boundaries.ms::Decimal arithmetic matches BigInt while the result fits 34 digits\nPASS numeric-reference-boundaries.ms::Decimal arithmetic matches BigInt while the result fits 34 digits\n28 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

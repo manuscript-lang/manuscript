@@ -1,0 +1,156 @@
+// conform: tags=testing,tier-stdlib
+// conform: phase=test
+import (
+	JsonValue, parse from "@std/data/json.ms",
+	expect_equal from "@std/test/test.ms",
+	compile from "@std/text/template.ms",
+)
+
+fn check(expression: String, data: String, expected: String) Unit!:
+	template := compile("\{\{ if {expression} \}\}yes\{\{ else \}\}no\{\{ end \}\}")?
+	expect_equal((template.render(parse(data)?)?), expected)?
+
+test "underflow is not zero":
+	check("value", "\{\"value\":1e-400\}", "yes")?
+
+test "underflow does not equal zero":
+	check("left == right", "\{\"left\":1e-400,\"right\":0\}", "no")?
+
+test "underflow orders above zero":
+	check("left > right", "\{\"left\":1e-400,\"right\":0\}", "yes")?
+
+test "large integer neighbors are distinct":
+	check(
+		"left == right",
+		"\{\"left\":9007199254740992,\"right\":9007199254740993\}",
+		"no",
+	)?
+
+test "large integer neighbors retain order":
+	check(
+		"left < right",
+		"\{\"left\":9007199254740992,\"right\":9007199254740993\}",
+		"yes",
+	)?
+
+test "overflow values retain order":
+	check("left < right", "\{\"left\":1e400,\"right\":2e400\}", "yes")?
+
+test "equivalent overflow numbers compare equal":
+	check("left == right", "\{\"left\":1e400,\"right\":10e399\}", "yes")?
+
+test "ordinary numbers retain ordering":
+	check("left < right", "\{\"left\":1,\"right\":2\}", "yes")?
+
+test "equivalent ordinary numbers compare equal":
+	check("left == right", "\{\"left\":1,\"right\":1.0\}", "yes")?
+
+test "signed zero remains false":
+	check("value", "\{\"value\":-0.00e-400\}", "no")?
+
+test "decimal coefficient and exponent normalizations agree":
+	pairs := [
+		["1e99", "10e98"],
+		["1e-99", "0.1e-98"],
+		["1e0", "0.01e2"],
+		["-1.2300e+00002", "-123"],
+		[
+			"1e999999999999999999999999999999", "10e999999999999999999999999999998"
+		],
+		[
+			"1e-999999999999999999999999999999", "0.1e-999999999999999999999999999998"
+		],
+	]
+
+	for pair in pairs:
+		values := "\{\"left\":{pair[0]},\"right\":{pair[1]}\}"
+		check("left == right and left <= right and left >= right", values, "yes")?
+		check("left != right or left < right or left > right", values, "no")?
+
+test "coefficient suffixes and negative values preserve order":
+	pairs := [
+		["1.001", "1.01"],
+		["-1.01", "-1.001"],
+		["-1e9999", "-1e9998"],
+		["-1e-9999", "0"],
+	]
+
+	for pair in pairs:
+		values := "\{\"left\":{pair[0]},\"right\":{pair[1]}\}"
+		check("left < right and right > left and left != right", values, "yes")?
+
+test "contains and default use exact numeric semantics":
+	values := "\{\"items\":[1e400,9007199254740992],\"same\":10e399,\"neighbor\":9007199254740993,\"tiny\":1e-400,\"zero\":-0e999\}"
+	check("items | contains(same)", values, "yes")?
+	check("items | contains(neighbor)", values, "no")?
+
+	template := compile(
+		"\{\{ tiny | default(\"fallback\") \}\}|\{\{ zero | default(\"fallback\") \}\}"
+	)?
+	expect_equal((template.render(parse(values)?)?), "1e-400|fallback")?
+
+test "numbers do not become objects or strings on overflow":
+	check("left == right", "\{\"left\":1e400,\"right\":\"1e400\"\}", "no")?
+	check("left == right", "\{\"left\":1e400,\"right\":\{\}\}", "no")?
+
+test "exponents larger than machine integers never expand":
+	nines := "9".repeat(2000)?
+	previous := "{ "9".repeat(1999)?}8"
+	values := "\{\"left\":1e{nines},\"right\":10e{previous}\}"
+	check("left == right", values, "yes")?
+
+	small := "\{\"left\":1e-{nines},\"right\":0.1e-{previous}\}"
+	check("left == right and left", small, "yes")?
+
+test "integer fast path agrees with exact decimal path at machine boundaries":
+	pairs := [
+		["9223372036854775807", "9223372036854775807.0"],
+		["-9223372036854775808", "-9223372036854775808.0"],
+		["0", "-0"],
+	]
+	for pair in pairs:
+		check("left == right", "\{\"left\":{pair[0]},\"right\":{pair[1]}\}", "yes")?
+	check(
+		"left < right",
+		"\{\"left\":9223372036854775807,\"right\":9223372036854775808\}",
+		"yes",
+	)?
+
+test "malformed raw number payloads cannot acquire numeric ordering":
+	condition := compile(
+		"\{\{ if value == value or value < value or value <= value or value > value or value >= value \}\}ordered\{\{ else \}\}unordered\{\{ end \}\}"
+	)?
+	truth := compile("\{\{ if value \}\}true\{\{ else \}\}false\{\{ end \}\}")?
+
+	for raw in [
+		"NaN", "Infinity", "+1", "01", "true", "[]", "\"1\"", "", "-", ".", "1.", "1e",
+		"1e+", "1e-", "--1", "1e1.0", "0x10", "1_0", "1 0", "١"
+	]:
+		var fields = Map[String, JsonValue]()
+		fields.add("value", JsonValue.NumberValue(raw))
+
+		value := JsonValue.ObjectValue(fields)
+		expect_equal((condition.render(value)?), "unordered")?
+		expect_equal((truth.render(value)?), "true")?
+
+test "coefficient spans preserve decimal points and implicit trailing zeros":
+	pairs := [
+		["1.2", "1.2000"],
+		["0.01200", "0.012"],
+		["120.000", "1.2e2"],
+		["-0.000", "0"],
+		["-0.00e99", "0.0"],
+	]
+	for pair in pairs:
+		check(
+			"left == right and left <= right and right <= left",
+			"\{\"left\":{pair[0]},\"right\":{pair[1]}\}",
+			"yes",
+		)?
+	check("left < right", "\{\"left\":1.2,\"right\":1.2001\}", "yes")?
+	check("left > right", "\{\"left\":-1.2,\"right\":-1.2001\}", "yes")?
+
+test "long shared coefficient prefixes retain exact order":
+	prefix := "23456789".repeat(125)?
+	values := "\{\"left\":1.{prefix},\"right\":1.{prefix}1\}"
+	check("left < right and right > left and left != right", values, "yes")?
