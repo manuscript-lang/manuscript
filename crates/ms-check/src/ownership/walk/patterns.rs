@@ -226,7 +226,7 @@ impl Walker<'_> {
             self.error(
                 pos,
                 format!(
-                    "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `{}` is not one; bind a clone with `if let`, then `var x = x.clone()`, or write the changed value back",
+                    "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `{}` is not one; read the payload with `if x := value:`, then use `var copy = x.clone()` for an independent mutable copy, or write the changed value back",
                     info.text
                 ),
             );

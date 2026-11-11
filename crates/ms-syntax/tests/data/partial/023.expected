@@ -1,3 +1,3 @@
-diag parse 1:54:53 end=- fix=- "unterminated text literal"
+diag parse 1:46:45 end=- fix=- "unterminated text literal; add the closing '\x22' on the same line"
 omitted []
 recovered []

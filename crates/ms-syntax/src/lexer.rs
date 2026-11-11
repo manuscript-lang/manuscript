@@ -1177,7 +1177,10 @@ impl Scanner<'_> {
                 return self.fail("an unmatched closing brace must be escaped; write \\} for a literal brace (and \\{ for the opening brace), or open an interpolation with {expression}");
             }
         }
-        self.fail("unterminated text literal")
+        self.fail_at(
+            opened,
+            "unterminated text literal; add the closing '\"' on the same line",
+        )
     }
 
     /// Scans one-line raw text `r"..."`: every character is literal up to the
@@ -1201,7 +1204,10 @@ impl Scanner<'_> {
                 return self.fail_previous_byte(BIDI_TEXT);
             }
         }
-        self.fail_at(opened, "unterminated raw text literal")
+        self.fail_at(
+            opened,
+            "unterminated raw text literal; add the closing '\"' on the same line",
+        )
     }
 
     /// Scans `"""` text (and `r"""` raw text when `raw`): the opening quotes end

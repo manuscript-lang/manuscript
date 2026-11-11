@@ -782,7 +782,7 @@ impl Walker<'_> {
                             .unwrap_or_default();
                         self.error(
                             e.pos,
-                            format!("this closure outlives the statement but captures the `var` `{name_t}`, which is used again{later}; the closure would keep a stale value, so bind a `let` clone before the closure and capture that", name_t = self.syms.str(name)),
+                            format!("this closure outlives the statement but captures the `var` `{name_t}`, which is used again{later}; the closure would keep a stale value, so bind an immutable snapshot with `snapshot := {name_t}` before the closure and capture `snapshot`", name_t = self.syms.str(name)),
                         );
                     }
                     self.record(e.id, b, Access::Copy);

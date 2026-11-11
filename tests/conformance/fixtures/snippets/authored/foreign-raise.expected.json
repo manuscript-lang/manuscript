@@ -7,7 +7,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'raise' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'",
+        "message": "'raise' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch",
         "position": {
           "file": "foreign-raise.ms",
           "line": 5,

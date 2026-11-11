@@ -577,7 +577,7 @@ fn explicit() Unit:
     fs.remove("", false)
 resolution	1	8	7	module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/os/fs.ms"'
 resolution	3	11	69	unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
-type	6	46	191	cannot infer the type of none; give it a target, e.g. `x: Int? = none`, or pass a valueimport panic from "@std/faults.ms"
+type	6	46	191	cannot infer the type of none; give it a target, e.g. `x: Int? := none`, or pass a valueimport panic from "@std/faults.ms"
 type Override:
     received: Bool
 impl FileSystem for Override:
@@ -1717,7 +1717,7 @@ resolution	1	36	35	unknown type Bytes; add: import Bytes from "@std/bytes.ms"ty
     value: T
 fn f() Unit:
     x := none
-type	2	10	22	cannot infer the type of none; give it a target, e.g. `x: Int? = none`, or pass a valuefn f(value: Int?) Int: return value.get()
+type	2	10	22	cannot infer the type of none; give it a target, e.g. `x: Int? := none`, or pass a valuefn f(value: Int?) Int: return value.get()
 fn call() Int: return f(4)
 fn call[T](operation: fn() T) T:
     return operation()
@@ -2074,7 +2074,7 @@ resolution	5	5	139	unknown binding compress; add: import compress from "@std/io/
 resolution	6	5	186	unknown binding compress; add: import compress from "@std/io/archive.ms"
 resolution	7	5	235	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"
 resolution	8	5	280	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"
-type	8	57	332	cannot infer the type of none; give it a target, e.g. `x: Int? = none`, or pass a value
+type	8	57	332	cannot infer the type of none; give it a target, e.g. `x: Int? := none`, or pass a value
 resolution	9	5	342	unknown binding CompressionFormat; add: import CompressionFormat from "@std/io/archive.ms"initial := Mode.Idle
 
 enum Mode:
@@ -2616,7 +2616,7 @@ fn helper() Int: return 3
 fn broken(
 parse	4	1	68	unterminated delimiter '(' opened at line 3:10; add the matching ')' before the end of the filefn f() Unit:
     missing := none
-type	2	16	28	cannot infer the type of none; give it a target, e.g. `x: Int? = none`, or pass a valuefn f() Unit:
+type	2	16	28	cannot infer the type of none; give it a target, e.g. `x: Int? := none`, or pass a valuefn f() Unit:
     result := ok(value: 1)
 type	2	15	27	cannot infer constructor type argument E; write the type arguments, e.g. Box[Int](...), or annotate the bindingfn f() Unit:
     result := error(cause: "failed")
@@ -3408,7 +3408,7 @@ fn f() Int:
 parse	2	5	16	'const' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changesfn f() Int:
     throw "x"
     return 0
-parse	2	5	16	'throw' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'fn f() Int:
+parse	2	5	16	'throw' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branchfn f() Int:
     return [1][0:2]
 parse	2	17	28	there is no slice syntax; call slice(start: 0, end: 2) on a List or Stringfn f() Int:
     if true && false:
@@ -3709,7 +3709,7 @@ fn use(value: Envelope) Int:
             NotFound,
         ): return 1
 resolution	2	15	28	unknown type Envelope; declare it with 'type Envelope:' / 'enum Envelope:' / 'interface Envelope:', declare it as a type parameter, or import itfn value() String:
-    return "parse	2	13	31	unterminated text literalfn broken(
+    return "parse	2	12	30	unterminated text literal; add the closing '"' on the same linefn broken(
 fn later(
 parse	3	1	21	unterminated delimiter '(' opened at line 2:9; add the matching ')' before the end of the filefn later() Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)    value := 1
@@ -5951,7 +5951,7 @@ resolution	4	6	82	unknown type Closeable; add: import Closeable from "@std/core.
 
 fn main() Unit:
     stream := stderr()
-    chunk := "parse	5	15	89	unterminated text literal".to_bytes()
+    chunk := "parse	5	14	88	unterminated text literal; add the closing '"' on the same line".to_bytes()
     while true:
         _written := stream.write_bytes(data: chunk)
 parse	1	1	0	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn add(a: Int, b: Int) Int:

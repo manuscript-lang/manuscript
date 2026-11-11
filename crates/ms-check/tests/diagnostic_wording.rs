@@ -81,3 +81,76 @@ fn ownership_errors_never_carry_a_clone_fix() {
         }
     }
 }
+
+// A remedy is useful only if an agent can paste it back into current Manuscript.
+#[test]
+fn inferred_literal_remedies_use_current_binding_syntax() {
+    for (broken, repair) in [
+        ("x := none", "x: Int? := none"),
+        ("xs := []", "xs: List[Int] := []"),
+        ("m := {}", "m: Map[String, Int] := {}"),
+        ("x := Optional.none", "x: Int? := none"),
+        ("x := Optional.none()", "x: Int? := none"),
+        ("x := some(5)", "x: Int? := 5"),
+    ] {
+        let got = messages(
+            &include_str!("diagnostic_wording/literal-remedy-input.ms").replace("print(0)", broken),
+        );
+        assert!(
+            got.iter().any(|message| message.contains(repair)),
+            "{broken}: {got:?}"
+        );
+        let name = repair.split(':').next().expect("binding name");
+        let fixed = messages(
+            &include_str!("diagnostic_wording/literal-remedy-fixed.ms")
+                .replace("value := none", repair)
+                .replace("value", name),
+        );
+        assert!(fixed.is_empty(), "{repair}: {fixed:?}");
+    }
+}
+
+#[test]
+fn foreign_names_point_to_current_prelude_and_promise_contracts() {
+    for name in ["Object", "Array", "dict", "list"] {
+        let got =
+            messages(&include_str!("diagnostic_wording/foreign-name.ms").replace("value", name));
+        assert!(
+            got.iter()
+                .any(|message| message
+                    .contains("prelude List[T] and Map[K, V] types without imports")),
+            "{got:?}"
+        );
+    }
+    assert!(
+        messages(include_str!(
+            "diagnostic_wording/prelude-collection-remedy.ms"
+        ))
+        .is_empty()
+    );
+    for name in ["Err", "err"] {
+        let got =
+            messages(&include_str!("diagnostic_wording/foreign-name.ms").replace("value", name));
+        assert!(
+            got.iter()
+                .any(|message| message.contains("cause has the Result's error type")),
+            "{got:?}"
+        );
+    }
+    assert!(messages(include_str!("diagnostic_wording/error-payload-remedy.ms")).is_empty());
+    let got =
+        messages(&include_str!("diagnostic_wording/foreign-name.ms").replace("value", "spawn"));
+    assert!(
+        got.iter()
+            .any(|message| message.contains("call wait() on the returned Promise")),
+        "{got:?}"
+    );
+    let promise_repair = messages(include_str!("diagnostic_wording/promise-remedy.ms"));
+    assert!(promise_repair.is_empty(), "{promise_repair:?}");
+}
+
+#[test]
+fn exception_remedies_typecheck_as_complete_result_programs() {
+    let got = messages(include_str!("diagnostic_wording/result-remedies.ms"));
+    assert!(got.is_empty(), "{got:?}");
+}

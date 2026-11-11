@@ -630,7 +630,7 @@ impl Checker {
             if typ.is(Builtin::Optional) {
                 self.res_error(
                     e.pos,
-                    "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? = none",
+                    "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := none",
                 );
                 i.ty = Some(invalid());
                 return i;
@@ -807,7 +807,7 @@ impl Checker {
                     self.type_error_with_cause(
                         e.pos,
                         Cause::CannotInfer,
-                        "cannot infer list element type; add an annotation, e.g. xs: List[Int] = []",
+                        "cannot infer list element type; add an annotation, e.g. xs: List[Int] := []",
                     );
                 }
                 invalid()
@@ -860,7 +860,7 @@ impl Checker {
                 self.type_error_with_cause(
                     e.pos,
                     Cause::CannotInfer,
-                    "cannot infer map key or value type; add an annotation, e.g. m: Map[String, Int] = {}",
+                    "cannot infer map key or value type; add an annotation, e.g. m: Map[String, Int] := {}",
                 );
                 types[index] = Some(invalid());
             }
