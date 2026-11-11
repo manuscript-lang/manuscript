@@ -264,7 +264,7 @@ fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
 				m.append("import w_{dep.pkg}_{dep.file}_0 from \"{path}\"\n")
 
 			m.append(
-				"\nexport type R_{p}_{f}:\n    a: Int\n    b: String\n    c: List[Int]\n\nimpl R_{p}_{f}:\n    fn score() Int:\n        var t = self.a + self.b.length()\n        for v in self.c:\n            t += v\n        return t\n\n"
+				"\nexport type R_{p}_{f}:\n    a: Int\n    b: String\n    c: List[Int]\n\nfn R_{p}_{f}.score() Int:\n    var t = self.a + self.b.length()\n    for v in self.c:\n        t += v\n    return t\n\n"
 			)
 			for k in 0..fns:
 				m.append(ms_fn(p, f, k, d) + "\n")
