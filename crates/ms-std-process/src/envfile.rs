@@ -18,7 +18,9 @@ pub fn parse(text: &str) -> Option<Vec<(String, String)>> {
             continue;
         }
         text = text.strip_prefix("export ").unwrap_or(text);
-        let at = text.find('=').filter(|&at| at >= 1)?;
+        // The key and its `=` share a line; only a quoted value may continue onto later lines.
+        let line_end = text.find('\n').unwrap_or(text.len());
+        let at = text[..line_end].find('=').filter(|&at| at >= 1)?;
         let key = text[..at].trim();
         if key.is_empty() || key.contains([' ', '\t', '\r', '\n', '\0']) {
             return None;
@@ -114,6 +116,19 @@ mod tests {
                 ("E", "x")
             ])
         );
+    }
+
+    #[test]
+    fn a_key_and_its_equals_sign_must_share_a_line() {
+        for bad in [
+            "KEY\n=value\n",
+            "KEY\r\n=value\n",
+            "A=1\nKEY\n  =x\n",
+            "KEY \n= x",
+        ] {
+            assert_eq!(pairs(bad), None, "{bad:?}");
+        }
+        assert_eq!(pairs("A =x\nB=\"m\n=l\"\n").map(|v| v.len()), Some(2));
     }
 
     #[test]
