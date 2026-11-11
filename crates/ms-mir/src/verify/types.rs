@@ -178,6 +178,10 @@ impl InstCheck<'_, '_> {
                 self.arity(1)?;
                 self.want(self.res.is_none(), "scope.disown has no result")
             }
+            Op::ScopeMark => {
+                self.arity(1)?;
+                self.want(self.res.is_none(), "scope.mark has no result")
+            }
         }
     }
 

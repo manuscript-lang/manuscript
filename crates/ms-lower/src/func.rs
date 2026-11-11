@@ -21,6 +21,15 @@ pub(crate) struct Val {
 }
 
 /// The marker state of one lexical scope (`proposals/elaborate-drops.md`).
+/// A closing binding in memory whose scope end the elaborate pass closes.
+#[derive(Clone)]
+pub(crate) struct RawSlot {
+    pub slot: Value,
+    pub kind: crate::close::CloseKind,
+    /// Whether the program called `close()` on the value in the slot, when it can.
+    pub explicit: Option<ms_mir::builder::Var>,
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct ScopeMark {
     id: u32,
@@ -114,7 +123,7 @@ pub(crate) struct FnLower<'a> {
     pub raw_owned: std::collections::HashSet<usize>,
     /// Resources in memory the elaborate pass closes: the slot address and how the value closes.
     /// A move of the value disowns the slot.
-    pub raw_slots: HashMap<usize, (Value, crate::close::CloseKind)>,
+    pub raw_slots: HashMap<usize, RawSlot>,
     /// Bindings closed at scope end and how each is closed when its scope is left.
     pub closers: HashMap<usize, crate::close::Closer>,
     /// Loops that own their elements: how an element closes, the list and the loop index, by
@@ -1455,7 +1464,7 @@ impl<'a> FnLower<'a> {
     /// scope's to drop on this path.
     pub fn disown_raw(&mut self, uid: usize, v: Value) {
         // A resource in memory is owned by its slot: the slot is what leaves the scope.
-        let v = self.raw_slots.get(&uid).map_or(v, |(slot, _)| *slot);
+        let v = self.raw_slots.get(&uid).map_or(v, |r| r.slot);
         if self.raw_owned.contains(&uid) {
             self.b
                 .emit(Op::ScopeDisown, &[v], ms_mir::ir::Imm::None, None);

@@ -123,6 +123,11 @@ enum St {
     Maybe,
     /// An alternative whose payload fields in the mask (of the case) were taken out.
     Part(AltId, u32, u32),
+    /// A slot owner the program closed by hand (`scope.mark p 1`): the scope end closes it
+    /// again to release what is left and drops that close's result.
+    Closed,
+    /// Closed by hand on some paths into a join: the owner carries a flag saying which.
+    MaybeClosed,
 }
 
 /// The owners in scope, in definition order. Untagged values are tracked while live only.
@@ -235,6 +240,9 @@ fn consume_value(cx: &Ctx, st: &mut State, v: Value) -> Result<(), String> {
         St::Moved => return Err(format!("%{} is consumed after it was moved", v.0)),
         St::Maybe => return Err(format!("%{} is consumed but moved on some path", v.0)),
         St::Part(..) => return Err(format!("%{} is consumed after a partial move", v.0)),
+        St::Closed | St::MaybeClosed => {
+            return Err(format!("%{} is consumed after the program closed it", v.0));
+        }
     }
     Ok(())
 }
@@ -276,6 +284,21 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
         }
         st.remove(v);
         return Ok(());
+    }
+    if inst.op == Op::ScopeMark {
+        let v = inst.args[0];
+        let next = match inst.imm {
+            Imm::Int(1) => St::Closed,
+            _ => St::Live,
+        };
+        return match st.get(v) {
+            Some(St::Live | St::Closed | St::MaybeClosed) => {
+                st.set(v, next);
+                Ok(())
+            }
+            None => Ok(()),
+            Some(_) => Err(format!("slot owner %{} closed by hand after a move", v.0)),
+        };
     }
     // A disowned view that moves into another local is owned again by that local's scope.
     if inst.op == Op::ScopeOwn {
@@ -346,6 +369,16 @@ fn merge(old: &State, new: &State) -> Result<State, String> {
             *v,
             match (a, &b) {
                 _ if *a == b => *a,
+                (
+                    St::Live | St::Closed | St::MaybeClosed,
+                    St::Live | St::Closed | St::MaybeClosed,
+                ) => St::MaybeClosed,
+                (St::Closed | St::MaybeClosed, _) | (_, St::Closed | St::MaybeClosed) => {
+                    return Err(format!(
+                        "%{} is moved and closed by hand on different paths",
+                        v.0
+                    ));
+                }
                 (St::Part(..), _) | (_, St::Part(..)) => {
                     return Err(format!("%{} is partially moved on only some paths", v.0));
                 }
@@ -426,17 +459,34 @@ fn function(
         .flatten()
         .flat_map(|s| s.iter().filter(|(_, t)| *t == St::Maybe).map(|(v, _)| *v))
         .collect();
+    // An owner closed by hand on some paths carries a flag too, kept under a key of its own.
+    let mut ckeys: HashMap<Value, Value> = HashMap::new();
+    for s in entry.iter().flatten() {
+        for (v, t) in s.iter() {
+            if *t == St::MaybeClosed && !ckeys.contains_key(v) {
+                let key = f.new_value(Ty::BOOL);
+                ckeys.insert(*v, key);
+            }
+        }
+    }
     // The flag parameters of every block: one per flagged owner that is live on entry.
     let mut fparams: Vec<Vec<(Value, Value)>> = vec![Vec::new(); f.blocks.len()];
     for b in &order {
         let Some(e) = &entry[b.index()] else { continue };
-        for (v, _) in e.iter().filter(|(v, _)| flagged.contains(v)) {
+        for (v, t) in e.iter() {
+            let key = if flagged.contains(v) {
+                *v
+            } else if *t == St::MaybeClosed {
+                ckeys[v]
+            } else {
+                continue;
+            };
             let p = f.new_value(Ty::BOOL);
             f.blocks[b.index()].params.push(BlockParam {
                 value: p,
                 mode: Mode::Borrow,
             });
-            fparams[b.index()].push((*v, p));
+            fparams[b.index()].push((key, p));
         }
     }
     let counts_depth = f
@@ -448,6 +498,7 @@ fn function(
         f,
         cx: &cx,
         flagged,
+        ckeys,
         flags: HashMap::new(),
         handles: HashMap::new(),
         pending: None,
@@ -521,6 +572,8 @@ struct Em<'a> {
     cx: &'a Ctx,
     /// Owners that carry a drop flag.
     flagged: HashSet<Value>,
+    /// The key of the closed-by-hand flag of each owner that has one.
+    ckeys: HashMap<Value, Value>,
     /// The current flag value of each flagged owner (reset per block).
     flags: HashMap<Value, Value>,
     /// The `cleanup.push` handle of each closing owner.
@@ -590,6 +643,20 @@ impl Em<'_> {
         };
         let mut st = entry;
         let mut cur = b;
+        // An owner that is surely open or surely closed by hand here has a constant flag.
+        let known: Vec<(Value, bool)> = self
+            .ckeys
+            .iter()
+            .filter_map(|(v, key)| match st.get(*v) {
+                Some(St::Live) if !self.flags.contains_key(key) => Some((*key, false)),
+                Some(St::Closed) if !self.flags.contains_key(key) => Some((*key, true)),
+                _ => None,
+            })
+            .collect();
+        for (key, on) in known {
+            let c = self.bconst(b, on);
+            self.flags.insert(key, c);
+        }
         for p in own_params(self.m, self.f, b) {
             st.push(p, St::Live);
             self.birth(cur, p);
@@ -604,6 +671,14 @@ impl Em<'_> {
                 }
                 continue;
             }
+            if inst.op == Op::ScopeMark {
+                apply(self.m, self.f, self.cx, &mut st, &inst)?;
+                if let Some(key) = self.ckeys.get(&inst.args[0]).copied() {
+                    let closed = self.bconst(cur, matches!(inst.imm, Imm::Int(1)));
+                    self.flags.insert(key, closed);
+                }
+                continue;
+            }
             match marker_of(&inst) {
                 Some(Marker::Begin) => continue,
                 Some(Marker::Own) => {
@@ -615,6 +690,10 @@ impl Em<'_> {
                     if self.flagged.contains(&v) && is_slot_owner(self.cx, self.f, v) {
                         let held = self.bconst(cur, true);
                         self.flags.insert(v, held);
+                    }
+                    if let Some(key) = self.ckeys.get(&v).copied() {
+                        let open = self.bconst(cur, false);
+                        self.flags.insert(key, open);
                     }
                     continue;
                 }
@@ -815,6 +894,9 @@ impl Em<'_> {
                 None
             }
             (St::Part(..), _) => return Err("a partially moved closing owner".into()),
+            (St::Closed | St::MaybeClosed, _) => {
+                return Err("only a memory slot owner is closed by hand".into());
+            }
             (St::Moved | St::Maybe, 0) => {
                 let flag = flag.ok_or("a moved owner without a drop flag")?;
                 self.push(at, Op::DropIf, &[flag, v], Imm::None, None);
@@ -923,6 +1005,11 @@ impl Em<'_> {
                 Ok(at)
             }
             St::Part(..) => Err("a partially moved closing owner".into()),
+            St::Closed | St::MaybeClosed => {
+                // Closing again releases what the hand close left; the result is ignored.
+                self.close_slot(at, v)?;
+                Ok(at)
+            }
             St::Moved | St::Maybe if self.f.ty(v) == Ty::PTR => {
                 // The flag says whether the value is still in the slot. The cancelled entry (or
                 // the live one) leaves the stack either way.
@@ -991,7 +1078,50 @@ impl Em<'_> {
             return Err("a partially moved slot owner".into());
         }
         let rty = self.m.funcs[rc.index()].ret;
-        let r = if s == St::Live {
+        let r = if s == St::Closed {
+            // Closed by the program: close again to release the rest, drop that result.
+            self.discard(at, v);
+            let again = self.close_result(at, v, rc)?;
+            self.drop_owned(at, again);
+            return Ok((at, outcome));
+        } else if s == St::MaybeClosed {
+            let key = *self
+                .ckeys
+                .get(&v)
+                .ok_or("a maybe-closed owner without a flag")?;
+            let flag = self
+                .flags
+                .get(&key)
+                .copied()
+                .ok_or("a maybe-closed owner without a flag")?;
+            let (yes, no, join) = (self.f.new_block(), self.f.new_block(), self.f.new_block());
+            self.f.blocks[at].term = Term::CondBr {
+                cond: flag,
+                then: Target::to(yes),
+                els: Target::to(no),
+            };
+            self.discard(yes.index(), v);
+            self.discard(no.index(), v);
+            let again = self.close_result(yes.index(), v, rc)?;
+            self.drop_owned(yes.index(), again);
+            let none = self.ok_unit(yes.index(), rty)?;
+            self.f.blocks[yes.index()].term = Term::Br(Target {
+                block: join,
+                args: vec![none],
+            });
+            let real = self.close_result(no.index(), v, rc)?;
+            self.f.blocks[no.index()].term = Term::Br(Target {
+                block: join,
+                args: vec![real],
+            });
+            let p = self.f.new_value(rty);
+            self.f.blocks[join.index()].params.push(BlockParam {
+                value: p,
+                mode: Mode::Move,
+            });
+            at = join.index();
+            p
+        } else if s == St::Live {
             self.discard(at, v);
             self.close_result(at, v, rc)?
         } else {

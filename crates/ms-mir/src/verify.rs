@@ -155,7 +155,7 @@ pub fn is_raw(f: &Func) -> bool {
     f.blocks.iter().flat_map(|b| &b.insts).any(|i| {
         matches!(
             i.op,
-            Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd | Op::ScopeDisown
+            Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd | Op::ScopeDisown | Op::ScopeMark
         )
     })
 }
