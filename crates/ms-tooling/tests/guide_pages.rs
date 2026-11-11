@@ -49,11 +49,19 @@ fn cheatsheet_program_checks() {
     assert!(found.is_empty(), "cheat sheet program: {found:?}");
 }
 
+#[test]
+fn cheatsheet_terse_idioms_check() {
+    let found = issues("guide_idioms.ms", include_str!("testdata/guide_idioms.ms"));
+    assert!(found.is_empty(), "guide idioms: {found:?}");
+    assert!(cheatsheet().contains("`x: T := e`"));
+    assert!(!cheatsheet().contains("an `else` requires a block `if`"));
+}
+
 // Agents read the guide every session, so its size is part of the contract.
 #[test]
 fn cheatsheet_stays_short() {
     assert!(
-        cheatsheet().len() <= 5800,
+        cheatsheet().len() <= 5500,
         "cheat sheet is {} bytes",
         cheatsheet().len()
     );

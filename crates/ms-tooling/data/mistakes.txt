@@ -111,3 +111,8 @@ wrong: xs := [1]
 right: var xs = [1]
 body: {};;xs.append(2)
 diag: immutable including its contents
+
+wrong: n: Int = 1
+right: n: Int := 1
+body: {};;print(n)
+diag: :=
