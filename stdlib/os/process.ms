@@ -127,58 +127,50 @@ export opaque type Subprocess:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeSubprocess
 
-impl Closeable for Subprocess:
-	// Kills the process group, joins the child, kills leftover group members, and
-	// closes all three streams. Idempotent; scope exit calls it.
-	var fn close() Unit!:
-		msstd_process_subprocess_close(self.native)
+// Kills the process group, joins the child, kills leftover group members, and
+// closes all three streams. Idempotent; scope exit calls it.
+fn var Subprocess.close() Unit!:
+	msstd_process_subprocess_close(self.native)
 
-impl Subprocess:
-	// The child's standard input as a WriteStream; writes block when the pipe is full.
-	// Closing the stream delivers end-of-input to the child.
-	fn stdin() WriteStream[Bytes]:
-		return WriteStream[Bytes](
-			DescriptorSink(
-				msstd_process_subprocess_stream_id(self.native, 0)
-			)
-		)
+// The child's standard input as a WriteStream; writes block when the pipe is full.
+// Closing the stream delivers end-of-input to the child.
+fn Subprocess.stdin() WriteStream[Bytes]:
+	return WriteStream[Bytes](
+		DescriptorSink(msstd_process_subprocess_stream_id(self.native, 0))
+	)
 
-	// The child's standard output as a ReadStream over the OS pipe; reads block until
-	// output or end-of-file, and nothing is buffered without bound.
-	fn stdout() ReadStream[Bytes]:
-		return ReadStream[Bytes](
-			DescriptorSource(
-				msstd_process_subprocess_stream_id(self.native, 1)
-			)
-		)
+// The child's standard output as a ReadStream over the OS pipe; reads block until
+// output or end-of-file, and nothing is buffered without bound.
+fn Subprocess.stdout() ReadStream[Bytes]:
+	return ReadStream[Bytes](
+		DescriptorSource(msstd_process_subprocess_stream_id(self.native, 1))
+	)
 
-	// The child's standard error as a ReadStream over the OS pipe, with the same
-	// blocking and backpressure behavior as stdout.
-	fn stderr() ReadStream[Bytes]:
-		return ReadStream[Bytes](
-			DescriptorSource(
-				msstd_process_subprocess_stream_id(self.native, 2)
-			)
-		)
+// The child's standard error as a ReadStream over the OS pipe, with the same
+// blocking and backpressure behavior as stdout.
+fn Subprocess.stderr() ReadStream[Bytes]:
+	return ReadStream[Bytes](
+		DescriptorSource(msstd_process_subprocess_stream_id(self.native, 2))
+	)
 
-	// Waits for the child to exit and returns its exit status. Returns ETIMEDOUT if
-	// `timeout` elapses first, leaving the child running.
-	fn wait(timeout: Duration? = none) Int!:
-		return msstd_process_subprocess_wait(self.native, timeout)
+// Waits for the child to exit and returns its exit status. Returns ETIMEDOUT if
+// `timeout` elapses first, leaving the child running.
+fn Subprocess.wait(timeout: Duration? = none) Int!:
+	return msstd_process_subprocess_wait(self.native, timeout)
 
-	// The child's peak resident set size in bytes, known once `wait` has returned its
-	// exit status; 0 before that or when the host cannot report it.
-	fn max_resident_bytes() Int:
-		return msstd_process_subprocess_max_resident(self.native)
+// The child's peak resident set size in bytes, known once `wait` has returned its
+// exit status; 0 before that or when the host cannot report it.
+fn Subprocess.max_resident_bytes() Int:
+	return msstd_process_subprocess_max_resident(self.native)
 
-	// Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it
-	// kills the direct process. Does not wait.
-	fn terminate() Unit:
-		return msstd_process_subprocess_terminate(self.native)
+// Sends SIGTERM to the child's process group on Unix; Windows has no SIGTERM, so it
+// kills the direct process. Does not wait.
+fn Subprocess.terminate() Unit:
+	return msstd_process_subprocess_terminate(self.native)
 
-	// Sends SIGKILL to the child's process group. Does not wait.
-	fn kill() Unit:
-		return msstd_process_subprocess_kill(self.native)
+// Sends SIGKILL to the child's process group. Does not wait.
+fn Subprocess.kill() Unit:
+	return msstd_process_subprocess_kill(self.native)
 
 // Identity and invocation details for the current process.
 export type ProcessInfo:
@@ -252,13 +244,12 @@ export extern type NativeSignals
 type SignalSource:
 	signals: NativeSignals
 
-impl Source[Int] for SignalSource:
-	var fn next() Int?!:
-		return ok(msstd_process_signal_next(self.signals)?)
+fn var SignalSource.next() Int?!:
+	return ok(msstd_process_signal_next(self.signals)?)
 
-	// Stops observing signals and wakes a pending read with EBADF.
-	var fn close() Unit!:
-		msstd_process_signal_close(self.signals)
+// Stops observing signals and wakes a pending read with EBADF.
+fn var SignalSource.close() Unit!:
+	msstd_process_signal_close(self.signals)
 
 // The names of an environment map, in the order of its values.
 fn environment_names(environment: Map[String, String]) List[String]:

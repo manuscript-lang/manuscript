@@ -85,51 +85,50 @@ export interface PathOperations:
 type Dialect:
 	windows: Bool
 
-impl PathOperations for Dialect:
-	fn basename(path: String) String:
-		return basename_in(self.windows, path)
+fn Dialect.basename(path: String) String:
+	return basename_in(self.windows, path)
 
-	fn basename_without(path: String, suffix: String) String:
-		return basename_without_in(self.windows, path, suffix)
+fn Dialect.basename_without(path: String, suffix: String) String:
+	return basename_without_in(self.windows, path, suffix)
 
-	fn dirname(path: String) String:
-		return dirname_in(self.windows, path)
+fn Dialect.dirname(path: String) String:
+	return dirname_in(self.windows, path)
 
-	fn extension(path: String) String:
-		return extension_in(self.windows, path)
+fn Dialect.extension(path: String) String:
+	return extension_in(self.windows, path)
 
-	fn is_absolute(path: String) Bool:
-		return is_absolute_in(self.windows, path)
+fn Dialect.is_absolute(path: String) Bool:
+	return is_absolute_in(self.windows, path)
 
-	fn join(parts: List[String]) String:
-		return join_in(self.windows, parts)
+fn Dialect.join(parts: List[String]) String:
+	return join_in(self.windows, parts)
 
-	fn normalize(path: String) String:
-		return normalize_in(self.windows, path)
+fn Dialect.normalize(path: String) String:
+	return normalize_in(self.windows, path)
 
-	fn relative(base: String, target: String) String!:
-		return relative_in(self.windows, base, target)
+fn Dialect.relative(base: String, target: String) String!:
+	return relative_in(self.windows, base, target)
 
-	fn resolve(base: String, parts: List[String]) String!:
-		return resolve_in(self.windows, base, parts)
+fn Dialect.resolve(base: String, parts: List[String]) String!:
+	return resolve_in(self.windows, base, parts)
 
-	fn parse(path: String) PathParts:
-		return parse_in(self.windows, path)
+fn Dialect.parse(path: String) PathParts:
+	return parse_in(self.windows, path)
 
-	fn format(parts: PathParts) String:
-		return format_in(self.windows, parts)
+fn Dialect.format(parts: PathParts) String:
+	return format_in(self.windows, parts)
 
-	fn separator() String:
-		return if self.windows: "\\" else: "/"
+fn Dialect.separator() String:
+	return if self.windows: "\\" else: "/"
 
-	fn delimiter() String:
-		return if self.windows: ";" else: ":"
+fn Dialect.delimiter() String:
+	return if self.windows: ";" else: ":"
 
-	fn to_namespaced_path(path: String) String:
-		return namespaced_in(self.windows, path)
+fn Dialect.to_namespaced_path(path: String) String:
+	return namespaced_in(self.windows, path)
 
-	fn matches_glob(path: String, pattern: String) Bool!:
-		return glob_in(self.windows, path, pattern)
+fn Dialect.matches_glob(path: String, pattern: String) Bool!:
+	return glob_in(self.windows, path, pattern)
 
 fn host_windows() Bool:
 	return os() == Os.Windows

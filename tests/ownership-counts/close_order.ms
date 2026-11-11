@@ -10,9 +10,8 @@ import (
 type Res:
 	id: Int
 
-impl Closeable for Res:
-	var fn close() Unit!:
-		stdout().write("close {self.id}\n").get()
+fn var Res.close() Unit!:
+	stdout().write("close {self.id}\n").get()
 
 type Pair:
 	a: Res

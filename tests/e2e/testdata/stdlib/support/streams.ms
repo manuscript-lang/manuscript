@@ -14,12 +14,11 @@ export fn memory(text: String, chunk: Int = 3) ReadStream[Bytes]:
 type ClosedSource:
 	unused: Int
 
-impl Source[Bytes] for ClosedSource:
-	var fn next() Bytes?!:
-		return error(Error("I/O: resource is closed", kind: "EBADF"))
+fn var ClosedSource.next() Bytes?!:
+	return error(Error("I/O: resource is closed", kind: "EBADF"))
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var ClosedSource.close() Unit!:
+	return ok(unit)
 
 export fn closed_reader() ReadStream[Bytes]:
 	return ReadStream[Bytes](ClosedSource(0))

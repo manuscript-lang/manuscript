@@ -9,10 +9,9 @@ type Marker:
 	log: String
 	fail: Bool
 
-impl Closeable for Marker:
-	var fn close() Unit!:
-		append_file(self.log, "{self.id},").wait()?
-		if self.fail: return error(Error("cause close failed"))
+fn var Marker.close() Unit!:
+	append_file(self.log, "{self.id},").wait()?
+	if self.fail: return error(Error("cause close failed"))
 
 fn source(log: String) Marker?: Marker(1, log, false)
 

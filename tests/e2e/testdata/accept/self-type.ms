@@ -21,9 +21,8 @@ impl Comparable for Version:
 interface Merge:
 	fn merge(other: Self) Int
 
-impl Merge for Version:
-	fn merge(other: Version) Int:
-		return self.major + other.major
+fn Version.merge(other: Version) Int:
+	return self.major + other.major
 
 fn same[T: Equal](left: T, right: T) Bool:
 	return left.equals(right)

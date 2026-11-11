@@ -8,9 +8,8 @@ type Item:
 	id: Int
 	log: String
 
-impl Closeable for Item:
-	var fn close() Unit!:
-		append_file(self.log, "{self.id},").wait()?
+fn var Item.close() Unit!:
+	append_file(self.log, "{self.id},").wait()?
 
 interface Sink:
 	fn put(item: Item, n: Int) Int
@@ -18,8 +17,7 @@ interface Sink:
 type Counter:
 	base: Int
 
-impl Sink for Counter:
-	fn put(item: Item, n: Int) Int: n + self.base
+fn Counter.put(item: Item, n: Int) Int: n + self.base
 
 fn keep(item: Item, n: Int) Int: n + item.id
 

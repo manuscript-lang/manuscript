@@ -7,9 +7,8 @@ type Resource:
 	label: String
 	output: WriteStream[String]
 
-impl Closeable for Resource:
-	var fn close() Unit!:
-		_ignored := self.output.write("close {self.label}\n")
+fn var Resource.close() Unit!:
+	_ignored := self.output.write("close {self.label}\n")
 
 fn main() Unit:
 	var output = stdout()

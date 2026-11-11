@@ -6,8 +6,7 @@ import (
 type Marker:
 	id: Int
 
-impl Closeable for Marker:
-	var fn close() Unit!: error(Error("scalar wrapper payload closed"))
+fn var Marker.close() Unit!: error(Error("scalar wrapper payload closed"))
 
 fn present() Marker?: Marker(1)
 

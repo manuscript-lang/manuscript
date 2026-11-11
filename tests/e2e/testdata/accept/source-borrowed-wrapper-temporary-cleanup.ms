@@ -8,10 +8,9 @@ type Resource:
 	id: Int
 	path: String
 
-impl Closeable for Resource:
-	var fn close() Unit!:
-		append_file(self.path, "{self.id},").wait()?
-		self.path = "closed"
+fn var Resource.close() Unit!:
+	append_file(self.path, "{self.id},").wait()?
+	self.path = "closed"
 
 fn present(path: String, id: Int) Resource?: Resource(id, path.clone())
 
@@ -131,8 +130,7 @@ test "nested whole transfers stay path local across branches and loops":
 type ScalarResource:
 	id: Int
 
-impl Closeable for ScalarResource:
-	var fn close() Unit!: error(Error("scalar resource closed"))
+fn var ScalarResource.close() Unit!: error(Error("scalar resource closed"))
 
 fn scalar_present() ScalarResource?: ScalarResource(1)
 
@@ -235,11 +233,10 @@ test "named borrowed arguments close in reverse acquisition order":
 type FaultyResource:
 	path: String
 
-impl Closeable for FaultyResource:
-	var fn close() Unit!:
-		append_file(self.path, "98,").wait()?
-		self.path = "closed"
-		return error(Error("expected close failure"))
+fn var FaultyResource.close() Unit!:
+	append_file(self.path, "98,").wait()?
+	self.path = "closed"
+	return error(Error("expected close failure"))
 
 fn faulty_present(path: String) FaultyResource?: FaultyResource(path.clone())
 
@@ -266,8 +263,7 @@ fn with_default(value: Resource?, tail: Int = 1) Bool:
 type Observer:
 	tag: Int
 
-impl Observer:
-	fn sees(value: Resource?) Bool: value.is_some()
+fn Observer.sees(value: Resource?) Bool: value.is_some()
 
 fn borrowed_conversion_calls(path: String) Unit!:
 	named := Resource(120, path.clone())

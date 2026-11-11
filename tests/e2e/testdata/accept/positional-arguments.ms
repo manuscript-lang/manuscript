@@ -42,8 +42,7 @@ interface Subtract:
 type Offset:
 	value: Int
 
-impl Subtract for Offset:
-	fn subtract(amount: Int, deduction: Int = self.value) Int: amount - deduction
+fn Offset.subtract(amount: Int, deduction: Int = self.value) Int: amount - deduction
 
 fn apply(callback: fn(Int, Int) Int, input: Int) Int: callback(input, 2)
 

@@ -20,30 +20,28 @@ export enum DnsKind:
 	PTR  // Reverse address pointer records for an IP.
 	SRV  // Service location records with priority, weight and port.
 
-impl DnsKind:
-	// Returns the uppercase wire category.
-	fn text() String:
-		match self:
-			A: return "A"
-			AAAA: return "AAAA"
-			CNAME: return "CNAME"
-			MX: return "MX"
-			NS: return "NS"
-			TXT: return "TXT"
-			PTR: return "PTR"
-			SRV: return "SRV"
+// Returns the uppercase wire category.
+fn DnsKind.text() String:
+	match self:
+		A: return "A"
+		AAAA: return "AAAA"
+		CNAME: return "CNAME"
+		MX: return "MX"
+		NS: return "NS"
+		TXT: return "TXT"
+		PTR: return "PTR"
+		SRV: return "SRV"
 
 // Numeric address families reported by IP values and host interfaces.
 export enum IpFamily:
 	IPv4  // A four-byte numeric address.
 	IPv6  // A sixteen-byte numeric address.
 
-impl IpFamily:
-	// Returns IPv4 or IPv6.
-	fn text() String:
-		match self:
-			IPv4: return "IPv4"
-			IPv6: return "IPv6"
+// Returns IPv4 or IPv6.
+fn IpFamily.text() String:
+	match self:
+		IPv4: return "IPv4"
+		IPv6: return "IPv6"
 
 // A validated numeric IPv4/IPv6 address without a port or zone.
 export extern type IpAddress

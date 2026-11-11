@@ -28,11 +28,10 @@ type Marker:
     id: Int
     open: Bool
 
-impl Closeable for Marker:
-    var fn close() Unit!:
-        if self.open:
-            self.open = false
-            print("closed-\{self.id\}")
+fn var Marker.close() Unit!:
+    if self.open:
+        self.open = false
+        print("closed-\{self.id\}")
 
 type Holder:
     m: Marker

@@ -99,11 +99,10 @@ type Tracked:
     name: String
     closed: Bool = false
 
-impl Closeable for Tracked:
-    var fn close() Unit!:
-        if not self.closed:
-            self.closed = true
-            print("close {self.name}")
+fn var Tracked.close() Unit!:
+    if not self.closed:
+        self.closed = true
+        print("close {self.name}")
 
 fn work() Unit!:
     _first := Tracked("first")

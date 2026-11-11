@@ -18,6 +18,7 @@ mod logical_fixes;
 mod multiline;
 mod mutation;
 mod nested_text;
+mod receiver_methods;
 mod recovery_blanking;
 mod recovery_comments;
 mod recovery_declarations;

@@ -9,15 +9,14 @@ import (
 type Count:
 	n: Int
 
-impl Source[Int] for Count:
-	var fn next() Int?!:
-		self.n += 1
-		if self.n > 3: return ok(none)
+fn var Count.next() Int?!:
+	self.n += 1
+	if self.n > 3: return ok(none)
 
-		return ok(self.n)
+	return ok(self.n)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Count.close() Unit!:
+	return ok(unit)
 
 type Box:
 	label: Int

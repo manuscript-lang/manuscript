@@ -119,151 +119,146 @@ type Reader:
 	delimiter_at: Int
 	line_at: Int
 
-impl Reader:
-	var fn next_quote(from: Int) Int:
-		if self.quote < from: self.quote = self.bytes.index_of_byte(34, from).get(
-			self.total
-		)
-		return self.quote
+fn var Reader.next_quote(from: Int) Int:
+	if self.quote < from: self.quote = self.bytes.index_of_byte(34, from).get(
+		self.total
+	)
+	return self.quote
 
-	var fn next_delimiter(from: Int) Int:
-		if self.delimiter_at < from: self.delimiter_at = self.bytes.index_of_byte(
-			self.delimiter,
-			from,
-		).get(self.total)
-		return self.delimiter_at
+fn var Reader.next_delimiter(from: Int) Int:
+	if self.delimiter_at < from: self.delimiter_at = self.bytes.index_of_byte(
+		self.delimiter,
+		from,
+	).get(self.total)
+	return self.delimiter_at
 
-	var fn next_line(from: Int) Int:
-		if self.line_at < from: self.line_at = self.bytes.index_of_byte(10, from).get(
-			self.total
-		)
-		return self.line_at
+fn var Reader.next_line(from: Int) Int:
+	if self.line_at < from: self.line_at = self.bytes.index_of_byte(10, from).get(
+		self.total
+	)
+	return self.line_at
 
-	fn text_between(start: Int, end: Int) String:
-		if text := self.bytes.decode_utf8_range(start, end): return text
-		return ""
+fn Reader.text_between(start: Int, end: Int) String:
+	if text := self.bytes.decode_utf8_range(start, end): return text
+	return ""
 
-	// The offset just past the line ending at the cursor, or the cursor when the cursor
-	// is not at one.
-	fn line_end_after(at: Int) Int:
-		if at >= self.total: return at
+// The offset just past the line ending at the cursor, or the cursor when the cursor
+// is not at one.
+fn Reader.line_end_after(at: Int) Int:
+	if at >= self.total: return at
 
-		byte := self.bytes[at]
-		if byte == 10: return at + 1
-		if byte == 13 and at + 1 >= self.total: return at + 1
-		if byte == 13 and self.bytes[at + 1] == 10: return at + 2
+	byte := self.bytes[at]
+	if byte == 10: return at + 1
+	if byte == 13 and at + 1 >= self.total: return at + 1
+	if byte == 13 and self.bytes[at + 1] == 10: return at + 2
 
-		return at
+	return at
 
-	// Reads the next record, skipping empty lines; none at end of input.
-	var fn read_record() List[String]?!:
-		while true:
-			skipped := self.line_end_after(self.at)
-			if skipped == self.at: break
+// Reads the next record, skipping empty lines; none at end of input.
+fn var Reader.read_record() List[String]?!:
+	while true:
+		skipped := self.line_end_after(self.at)
+		if skipped == self.at: break
 
-			self.at = skipped
+		self.at = skipped
 
-		if self.at >= self.total: return ok(none)
+	if self.at >= self.total: return ok(none)
 
-		// A line without quotes is one record whose cells are the delimiter-separated
-		// pieces.
-		line := self.next_line(self.at)
+	// A line without quotes is one record whose cells are the delimiter-separated
+	// pieces.
+	line := self.next_line(self.at)
 
-		if self.next_quote(self.at) > line:
-			var last = line
-			if last > self.at and self.bytes[last - 1] == 13: last -= 1
+	if self.next_quote(self.at) > line:
+		var last = line
+		if last > self.at and self.bytes[last - 1] == 13: last -= 1
 
-			text := self.text_between(self.at, last)
-			self.at = line
-			if line < self.total: self.at = line + 1
-			return ok(text.split(self.delimiter_text))
+		text := self.text_between(self.at, last)
+		self.at = line
+		if line < self.total: self.at = line + 1
+		return ok(text.split(self.delimiter_text))
 
-		var row = List[String]()
+	var row = List[String]()
 
-		while true:
-			var cell = ""
-			var at = self.at.to_int()
+	while true:
+		var cell = ""
+		var at = self.at.to_int()
 
-			if at < self.total and self.bytes[at] == 34:
-				at += 1
+		if at < self.total and self.bytes[at] == 34:
+			at += 1
 
-				start := at
-				var first_escape = -1
-				var multiple_escapes = false
+			start := at
+			var first_escape = -1
+			var multiple_escapes = false
 
-				while true:
-					close := self.next_quote(at)
-					if close >= self.total: return error(
-						invalid_at(
-							self.bytes,
-							self.at.to_int(),
-							"unterminated quoted cell",
-						)
-					)
-
-					at = close + 1
-
-					if at < self.total and self.bytes[at] == 34:
-						if first_escape < 0: first_escape = close
-						else: multiple_escapes = true
-
-						at += 1
-						continue
-
-					break
-
-				if first_escape >= 0 and not multiple_escapes:
-					prefix := self.text_between(start, first_escape)
-					suffix := self.text_between(first_escape + 2, at - 1)
-					cell = "{prefix}\"{suffix}"
-				else:
-					cell = self.text_between(start, at - 1)
-					if multiple_escapes: cell = cell.replace("\"\"", "\"")
-
-				if cell.contains("\r\n"): cell = cell.replace("\r\n", "\n")
-
-				ended := self.line_end_after(at)
-
-				if at >= self.total or ended > at:
-					row.append(cell)
-					self.at = ended
-					return ok(row)
-
-				if self.bytes[at] != self.delimiter: return error(
+			while true:
+				close := self.next_quote(at)
+				if close >= self.total: return error(
 					invalid_at(
 						self.bytes,
-						at,
-						"expected a delimiter or line end after the closing quote",
+						self.at.to_int(),
+						"unterminated quoted cell",
 					)
 				)
 
-				row.append(cell)
-				self.at = at + 1
-				continue
+				at = close + 1
 
-			stop := self.next_delimiter(at)
-			newline := self.next_line(at)
-			end := if newline < stop: newline else: stop
-			quote := self.next_quote(at)
-			if quote < end: return error(
+				if at < self.total and self.bytes[at] == 34:
+					if first_escape < 0: first_escape = close
+					else: multiple_escapes = true
+
+					at += 1
+					continue
+
+				break
+
+			if first_escape >= 0 and not multiple_escapes:
+				prefix := self.text_between(start, first_escape)
+				suffix := self.text_between(first_escape + 2, at - 1)
+				cell = "{prefix}\"{suffix}"
+			else:
+				cell = self.text_between(start, at - 1)
+				if multiple_escapes: cell = cell.replace("\"\"", "\"")
+
+			if cell.contains("\r\n"): cell = cell.replace("\r\n", "\n")
+
+			ended := self.line_end_after(at)
+
+			if at >= self.total or ended > at:
+				row.append(cell)
+				self.at = ended
+				return ok(row)
+
+			if self.bytes[at] != self.delimiter: return error(
 				invalid_at(
 					self.bytes,
-					quote,
-					"quote inside an unquoted cell",
+					at,
+					"expected a delimiter or line end after the closing quote",
 				)
 			)
 
-			if end < stop or stop >= self.total:
-				// The cell closes the record; drop the CR of a CRLF ending.
-				var last = end
-				if last > at and self.bytes[last - 1] == 13: last -= 1
-				row.append(self.text_between(at, last))
-				self.at = end
-				if end < self.total: self.at = end + 1
-				return ok(row)
+			row.append(cell)
+			self.at = at + 1
+			continue
 
-			row.append(self.text_between(at, end))
-			self.at = end + 1
+		stop := self.next_delimiter(at)
+		newline := self.next_line(at)
+		end := if newline < stop: newline else: stop
+		quote := self.next_quote(at)
+		if quote < end: return error(
+			invalid_at(self.bytes, quote, "quote inside an unquoted cell")
+		)
+
+		if end < stop or stop >= self.total:
+			// The cell closes the record; drop the CR of a CRLF ending.
+			var last = end
+			if last > at and self.bytes[last - 1] == 13: last -= 1
+			row.append(self.text_between(at, last))
+			self.at = end
+			if end < self.total: self.at = end + 1
+			return ok(row)
+
+		row.append(self.text_between(at, end))
+		self.at = end + 1
 
 // Cuts a byte stream at the line ends outside quotes and parses each complete block of
 // records with `parse`.
@@ -280,98 +275,94 @@ type CsvRows:
 	// feed.
 	longest: Int
 
-impl CsvRows:
-	// Offset just past the last line end outside quotes in `data`, or 0 when the block
-	// holds none.
-	var fn boundary(data: Bytes) Int:
-		total := data.length()
-		var pos = 0
-		var cut = 0
-		var previous = self.pending_size
-		self.longest = 0
+// Offset just past the last line end outside quotes in `data`, or 0 when the block
+// holds none.
+fn var CsvRows.boundary(data: Bytes) Int:
+	total := data.length()
+	var pos = 0
+	var cut = 0
+	var previous = self.pending_size
+	self.longest = 0
 
-		var quote = data.index_of_byte(34, pos).get(total)
-		var line = data.index_of_byte(10, pos).get(total)
+	var quote = data.index_of_byte(34, pos).get(total)
+	var line = data.index_of_byte(10, pos).get(total)
 
-		while pos < total:
-			if self.quoted:
-				if quote >= total: break
-
-				self.quoted = false
-				pos = quote + 1
-				quote = data.index_of_byte(34, pos).get(total)
-				continue
-
-			if line < pos: line = data.index_of_byte(10, pos).get(total)
-			if quote < pos: quote = data.index_of_byte(34, pos).get(total)
-
-			if line < quote:
-				size := previous + line - cut
-				if size > self.longest: self.longest = size
-				previous = 0
-				cut = line + 1
-				pos = line + 1
-				continue
-
+	while pos < total:
+		if self.quoted:
 			if quote >= total: break
 
-			self.quoted = true
+			self.quoted = false
 			pos = quote + 1
 			quote = data.index_of_byte(34, pos).get(total)
+			continue
 
-		return cut
+		if line < pos: line = data.index_of_byte(10, pos).get(total)
+		if quote < pos: quote = data.index_of_byte(34, pos).get(total)
 
-	fn check_size(size: Int) Unit!:
-		if limit := self.max_record_bytes:
-			if size > limit: return error(
-				Error("CSV: limit exceeded", kind: "EOVERFLOW")
-			)
+		if line < quote:
+			size := previous + line - cut
+			if size > self.longest: self.longest = size
+			previous = 0
+			cut = line + 1
+			pos = line + 1
+			continue
 
-impl Transform[Bytes, List[String]] for CsvRows:
-	var fn step(value: Bytes, var out: List[List[String]]) Unit!:
-		cut := self.boundary(value)
-		rest := value.length() - cut
-		size := if cut == 0: self.pending_size + rest else: rest
+		if quote >= total: break
 
-		if cut == 0:
-			if not value.is_empty(): self.pending.append(value)
-			self.pending_size = size
-			self.check_size(self.longest)?
-			return self.check_size(size)
+		self.quoted = true
+		pos = quote + 1
+		quote = data.index_of_byte(34, pos).get(total)
 
-		var data = value
-		var end = cut
+	return cut
 
-		if self.pending_size > 0:
-			self.pending.append(data)
-			data = join(self.pending)
-			end += self.pending_size
+fn CsvRows.check_size(size: Int) Unit!:
+	if limit := self.max_record_bytes:
+		if size > limit: return error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
 
-		self.pending = []
-		self.pending_size = rest
-		if rest > 0: self.pending.append(data.slice(end, data.length())?)
+fn var CsvRows.step(value: Bytes, var out: List[List[String]]) Unit!:
+	cut := self.boundary(value)
+	rest := value.length() - cut
+	size := if cut == 0: self.pending_size + rest else: rest
+
+	if cut == 0:
+		if not value.is_empty(): self.pending.append(value)
+		self.pending_size = size
 		self.check_size(self.longest)?
-		self.check_size(size)?
+		return self.check_size(size)
 
-		decoded := data.decode_utf8_range(0, end)
-		if decoded.is_none(): return invalid_text()
+	var data = value
+	var end = cut
 
-		text := decoded.get("")
-		return write_rows(parse(text, self.options)?, var out)
+	if self.pending_size > 0:
+		self.pending.append(data)
+		data = join(self.pending)
+		end += self.pending_size
 
-	var fn finish(var out: List[List[String]]) Unit!:
-		data := join(self.pending)
-		self.pending = []
-		self.pending_size = 0
-		if data.is_empty(): return check_options(self.options)
+	self.pending = []
+	self.pending_size = rest
+	if rest > 0: self.pending.append(data.slice(end, data.length())?)
+	self.check_size(self.longest)?
+	self.check_size(size)?
 
-		self.check_size(data.length())?
+	decoded := data.decode_utf8_range(0, end)
+	if decoded.is_none(): return invalid_text()
 
-		decoded := data.decode_utf8()
-		if decoded.is_none(): return invalid_text()
+	text := decoded.get("")
+	return write_rows(parse(text, self.options)?, var out)
 
-		text := decoded.get("")
-		return write_rows(parse(text, self.options)?, var out)
+fn var CsvRows.finish(var out: List[List[String]]) Unit!:
+	data := join(self.pending)
+	self.pending = []
+	self.pending_size = 0
+	if data.is_empty(): return check_options(self.options)
+
+	self.check_size(data.length())?
+
+	decoded := data.decode_utf8()
+	if decoded.is_none(): return invalid_text()
+
+	text := decoded.get("")
+	return write_rows(parse(text, self.options)?, var out)
 
 fn invalid_text() Unit!:
 	return error(Error("CSV: invalid UTF-8", kind: "EBADMSG"))
@@ -476,16 +467,15 @@ type CsvRowsSink:
 	output: WriteStream[Bytes]
 	options: CsvOptions
 
-impl Sink[List[String]] for CsvRowsSink:
-	var fn write(value: List[String]) Unit!:
-		text := stringify([value], self.options)?
-		return self.output.write(text.to_bytes())
+fn var CsvRowsSink.write(value: List[String]) Unit!:
+	text := stringify([value], self.options)?
+	return self.output.write(text.to_bytes())
 
-	var fn flush() Unit!:
-		return self.output.flush()
+fn var CsvRowsSink.flush() Unit!:
+	return self.output.flush()
 
-	var fn close() Unit!:
-		return self.output.close()
+fn var CsvRowsSink.close() Unit!:
+	return self.output.close()
 
 /*
 Writes rows to a byte stream, each as `stringify` encodes it (quoting cells that need it, ending with the

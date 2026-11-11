@@ -19,10 +19,9 @@ import (
 type Rng:
 	state: Int
 
-impl Rng:
-	var fn next(limit: Int) Int:
-		self.state = (self.state * 1103515245 + 12345) % 2147483648
-		return (self.state / 65536) % limit
+fn var Rng.next(limit: Int) Int:
+	self.state = (self.state * 1103515245 + 12345) % 2147483648
+	return (self.state / 65536) % limit
 
 // One random mutation of `data`: byte flips, truncation, extreme field values, or a
 // spliced range.

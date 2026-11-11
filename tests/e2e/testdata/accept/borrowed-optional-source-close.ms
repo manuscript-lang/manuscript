@@ -7,9 +7,8 @@ import (
 type Resource:
 	path: String
 
-impl Closeable for Resource:
-	var fn close() Unit!:
-		append_file(self.path, "closed,").wait()?
+fn var Resource.close() Unit!:
+	append_file(self.path, "closed,").wait()?
 
 fn observed(value: Resource?) Bool: value.is_some()
 

@@ -204,29 +204,28 @@ type CaptureTransport:
 	path: String
 	suffix: String
 
-impl Transport for CaptureTransport:
-	fn write(data: String) Unit!:
-		return self.write_bytes(data.to_bytes())
+fn CaptureTransport.write(data: String) Unit!:
+	return self.write_bytes(data.to_bytes())
 
-	fn write_bytes(data: Bytes) Unit!:
-		if read_file("{self.path}{self.suffix}").wait().is_ok(): return error(
-			Error("logging: resource is closed", kind: "EBADF")
-		)
+fn CaptureTransport.write_bytes(data: Bytes) Unit!:
+	if read_file("{self.path}{self.suffix}").wait().is_ok(): return error(
+		Error("logging: resource is closed", kind: "EBADF")
+	)
 
-		match append_file(self.path, data).wait():
-			ok(_): return ok(unit)
-			error(cause): return error(cause)
+	match append_file(self.path, data).wait():
+		ok(_): return ok(unit)
+		error(cause): return error(cause)
 
-	fn flush() Unit!:
-		if read_file("{self.path}{self.suffix}").wait().is_ok(): return error(
-			Error("logging: resource is closed", kind: "EBADF")
-		)
+fn CaptureTransport.flush() Unit!:
+	if read_file("{self.path}{self.suffix}").wait().is_ok(): return error(
+		Error("logging: resource is closed", kind: "EBADF")
+	)
 
-	fn duplicate() Transport!:
-		return ok(CaptureTransport(self.path.clone(), "{self.suffix}.child"))
+fn CaptureTransport.duplicate() Transport!:
+	return ok(CaptureTransport(self.path.clone(), "{self.suffix}.child"))
 
-	fn close() Unit:
-		_marked := write_file("{self.path}{self.suffix}", "closed", true).wait()
+fn CaptureTransport.close() Unit:
+	_marked := write_file("{self.path}{self.suffix}", "closed", true).wait()
 
 test "source transports receive complete records and close through their contract":
 	temporary := temporary("manuscript-log-transport-") | expect_ok?
@@ -307,21 +306,20 @@ test "loggers on several threads never interleave a record":
 type Memory:
 	path: String
 
-impl Transport for Memory:
-	fn write(data: String) Unit!:
-		return append_file(self.path, data).wait()
+fn Memory.write(data: String) Unit!:
+	return append_file(self.path, data).wait()
 
-	fn write_bytes(data: Bytes) Unit!:
-		return self.write(data.decode_utf8().get(""))
+fn Memory.write_bytes(data: Bytes) Unit!:
+	return self.write(data.decode_utf8().get(""))
 
-	fn flush() Unit!:
-		return ok(unit)
+fn Memory.flush() Unit!:
+	return ok(unit)
 
-	fn duplicate() Transport!:
-		return ok(Memory(self.path.clone()))
+fn Memory.duplicate() Transport!:
+	return ok(Memory(self.path.clone()))
 
-	fn close() Unit:
-		return unit
+fn Memory.close() Unit:
+	return unit
 
 fn recorded(path: String) String:
 	return written(path).get(none).get("")

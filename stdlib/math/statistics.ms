@@ -254,19 +254,18 @@ type DeviationSum:
 	total: Float = 0.0
 	correction: Float = 0.0
 
-impl DeviationSum:
-	var fn add(value: Float) Unit:
-		next := self.total + value
+fn var DeviationSum.add(value: Float) Unit:
+	next := self.total + value
 
-		if self.total.abs() >= value.abs():
-			self.correction += (self.total - next) + value
-		else:
-			self.correction += (value - next) + self.total
+	if self.total.abs() >= value.abs():
+		self.correction += (self.total - next) + value
+	else:
+		self.correction += (value - next) + self.total
 
-		self.total = next
+	self.total = next
 
-	fn value() Float:
-		return self.total + self.correction
+fn DeviationSum.value() Float:
+	return self.total + self.correction
 
 /*
 Returns the value `percent` percent of the way through the sorted list, interpolating linearly between neighbors, or none for an empty list.

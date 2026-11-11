@@ -12,19 +12,17 @@ interface Gate:
 type Door:
 	unused: Bool = false
 
-impl Gate for Door:
-	var fn put(value: Int) Unit!:
-		return ok(unit)
+fn var Door.put(value: Int) Unit!:
+	return ok(unit)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Door.close() Unit!:
+	return ok(unit)
 
 type Holder:
 	gate: Gate
 
-impl Closeable for Holder:
-	var fn close() Unit!:
-		return self.gate.close()
+fn var Holder.close() Unit!:
+	return self.gate.close()
 
 fn make() Holder!:
 	return ok(Holder(Door()))

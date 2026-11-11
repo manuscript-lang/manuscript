@@ -9,17 +9,15 @@ type Door:
 	log: String
 	swings: Int
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		_ := append_file(self.log, "{self.id},").wait()
+fn var Door.close() Unit!:
+	_ := append_file(self.log, "{self.id},").wait()
 
-impl Door:
-	var fn swing() Int:
-		self.swings += 1
-		return self.swings
+fn var Door.swing() Int:
+	self.swings += 1
+	return self.swings
 
-	fn peek() Int:
-		return self.swings
+fn Door.peek() Int:
+	return self.swings
 
 fn logged(path: String) String:
 	read := read_file(path).wait()

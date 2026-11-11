@@ -74,25 +74,36 @@ impl Cx {
         let mut methods = Vec::new();
         for s in &sigs {
             let mut found = None;
-            for at in self.method_index.candidates(concrete.id, ct::n(&s.name)) {
-                let mm = &self.methods[at];
-                let Some(decl) = &mm.decl else { continue };
-                if self.syms.str(mm.id).is_empty() || !mm.visible_in(scope) {
-                    continue;
+            // A written `impl` wins; otherwise the type's own method of that name satisfies the
+            // operation by shape.
+            for inherent in [false, true] {
+                for at in self.method_index.candidates(concrete.id, ct::n(&s.name)) {
+                    let mm = &self.methods[at];
+                    let Some(decl) = &mm.decl else { continue };
+                    if self.syms.str(mm.id).is_empty()
+                        || !mm.visible_in(scope)
+                        || mm.is_inherent(self.syms) != inherent
+                    {
+                        continue;
+                    }
+                    let mut subst = ct::Subst::new();
+                    let vars = ct::variable_set(&mm.variables);
+                    if !ct::unify(&mm.receiver, concrete, &vars, &mut subst) {
+                        continue;
+                    }
+                    // One receiver may implement several applications of a generic contract.
+                    if !inherent
+                        && let (Some(c), Some(want)) = (&mm.contract, self.contracts.get(&iface))
+                        && !ct::unify(c, want, &vars, &mut subst)
+                    {
+                        continue;
+                    }
+                    found = Some((mm.module, decl.id(), subst, mm.native, mm.clone()));
+                    break;
                 }
-                let mut subst = ct::Subst::new();
-                let vars = ct::variable_set(&mm.variables);
-                if !ct::unify(&mm.receiver, concrete, &vars, &mut subst) {
-                    continue;
+                if found.is_some() {
+                    break;
                 }
-                // One receiver may implement several applications of a generic contract.
-                if let (Some(c), Some(want)) = (&mm.contract, self.contracts.get(&iface))
-                    && !ct::unify(c, want, &vars, &mut subst)
-                {
-                    continue;
-                }
-                found = Some((mm.module, decl.id(), subst, mm.native, mm.clone()));
-                break;
             }
             if found.is_none() && s.name == "equals" && m.ifaces[iface.index()].std == Std::Equal {
                 methods.push(self.builtin_equals(

@@ -15,149 +15,142 @@ export opaque type BigRat:
 	// The positive denominator in lowest terms.
 	den: BigInt
 
-impl BigRat:
-	// Returns the numerator, which carries the sign.
-	fn numerator() BigInt:
-		return self.num
+// Returns the numerator, which carries the sign.
+fn BigRat.numerator() BigInt:
+	return self.num
 
-	// Returns the positive denominator.
-	fn denominator() BigInt:
-		return self.den
+// Returns the positive denominator.
+fn BigRat.denominator() BigInt:
+	return self.den
 
-	// Returns an independent copy.
-	fn clone() BigRat:
-		return BigRat(num: self.num.clone(), den: self.den.clone())
+// Returns an independent copy.
+fn BigRat.clone() BigRat:
+	return BigRat(num: self.num.clone(), den: self.den.clone())
 
-	// Returns the exact sum.
-	fn add(other: BigRat) BigRat:
-		return reduced(
-			self.num * other.den + other.num * self.den,
-			self.den * other.den,
-		)
+// Returns the exact sum.
+fn BigRat.add(other: BigRat) BigRat:
+	return reduced(self.num * other.den + other.num * self.den, self.den * other.den)
 
-	// Returns the exact difference.
-	fn subtract(other: BigRat) BigRat:
-		return reduced(
-			self.num * other.den - other.num * self.den,
-			self.den * other.den,
-		)
+// Returns the exact difference.
+fn BigRat.subtract(other: BigRat) BigRat:
+	return reduced(self.num * other.den - other.num * self.den, self.den * other.den)
 
-	// Returns the exact product.
-	fn multiply(other: BigRat) BigRat:
-		return reduced(self.num * other.num, self.den * other.den)
+// Returns the exact product.
+fn BigRat.multiply(other: BigRat) BigRat:
+	return reduced(self.num * other.num, self.den * other.den)
 
-	// Returns the exact quotient; a zero divisor returns EINVAL.
-	fn divide(other: BigRat) BigRat!:
-		return rat(self.num * other.den, self.den * other.num)
+// Returns the exact quotient; a zero divisor returns EINVAL.
+fn BigRat.divide(other: BigRat) BigRat!:
+	return rat(self.num * other.den, self.den * other.num)
 
-	// Returns `1 / self`; zero returns EINVAL.
-	fn invert() BigRat!:
-		return rat(self.den.clone(), self.num.clone())
+// Returns `1 / self`; zero returns EINVAL.
+fn BigRat.invert() BigRat!:
+	return rat(self.den.clone(), self.num.clone())
 
-	// Returns the same magnitude with the opposite sign; zero stays zero.
-	fn negate() BigRat:
-		return BigRat(num: -self.num, den: self.den.clone())
+// Returns the same magnitude with the opposite sign; zero stays zero.
+fn BigRat.negate() BigRat:
+	return BigRat(num: -self.num, den: self.den.clone())
 
-	// Returns the absolute value.
-	fn abs() BigRat:
-		return BigRat(num: self.num.abs(), den: self.den.clone())
+// Returns the absolute value.
+fn BigRat.abs() BigRat:
+	return BigRat(num: self.num.abs(), den: self.den.clone())
 
-	// Returns -1, 0 or 1 by sign.
-	fn sign() Int:
-		return self.num.sign()
+// Returns -1, 0 or 1 by sign.
+fn BigRat.sign() Int:
+	return self.num.sign()
 
-	// Returns true when the denominator is 1.
-	fn is_integer() Bool:
-		return self.den.compare(big(1)) == 0
+// Returns true when the denominator is 1.
+fn BigRat.is_integer() Bool:
+	return self.den.compare(big(1)) == 0
 
-	// Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
-	fn compare(other: BigRat) Int:
-		return (self.num * other.den).compare(other.num * self.den)
+// Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`.
+fn BigRat.compare(other: BigRat) Int:
+	return (self.num * other.den).compare(other.num * self.den)
 
-	// Returns the lesser value, or this value when they compare equal.
-	fn min(other: BigRat) BigRat:
-		if other.compare(self) < 0: return other.clone()
-		return self.clone()
+// Returns the lesser value, or this value when they compare equal.
+fn BigRat.min(other: BigRat) BigRat:
+	if other.compare(self) < 0: return other.clone()
+	return self.clone()
 
-	// Returns the greater value, or this value when they compare equal.
-	fn max(other: BigRat) BigRat:
-		if other.compare(self) > 0: return other.clone()
-		return self.clone()
+// Returns the greater value, or this value when they compare equal.
+fn BigRat.max(other: BigRat) BigRat:
+	if other.compare(self) > 0: return other.clone()
+	return self.clone()
 
-	// Returns the exact power. A negative exponent returns the reciprocal power, so
-	// zero with a negative exponent returns EINVAL. A numerator or denominator power
-	// above 16777216 bits returns EOVERFLOW.
-	fn pow(exponent: Int) BigRat!:
-		// `abs` faults on the minimum Int, so take its magnitude as `max + 1` powers.
-		extra := exponent == -9223372036854775807 - 1
-		count := if extra: 9223372036854775807 else: exponent.abs()
-		var top = self.num.pow(count)?
-		var bottom = self.den.pow(count)?
+// Returns the exact power. A negative exponent returns the reciprocal power, so
+// zero with a negative exponent returns EINVAL. A numerator or denominator power
+// above 16777216 bits returns EOVERFLOW.
+fn BigRat.pow(exponent: Int) BigRat!:
+	// `abs` faults on the minimum Int, so take its magnitude as `max + 1` powers.
+	extra := exponent == -9223372036854775807 - 1
+	count := if extra: 9223372036854775807 else: exponent.abs()
+	var top = self.num.pow(count)?
+	var bottom = self.den.pow(count)?
 
-		if extra:
-			top *= self.num
-			bottom *= self.den
+	if extra:
+		top *= self.num
+		bottom *= self.den
 
-		if exponent >= 0: return ok(BigRat(num: top, den: bottom))
+	if exponent >= 0: return ok(BigRat(num: top, den: bottom))
 
-		return rat(bottom, top)
+	return rat(bottom, top)
 
-	// Returns the largest integer not greater than this value.
-	fn floor() BigInt:
-		return floor_div(self.num, self.den)
+// Returns the largest integer not greater than this value.
+fn BigRat.floor() BigInt:
+	return floor_div(self.num, self.den)
 
-	// Returns the smallest integer not less than this value.
-	fn ceil() BigInt:
-		return -floor_div(-self.num, self.den)
+// Returns the smallest integer not less than this value.
+fn BigRat.ceil() BigInt:
+	return -floor_div(-self.num, self.den)
 
-	// Discards the fraction toward zero.
-	fn truncate() BigInt:
-		return self.num / self.den
+// Discards the fraction toward zero.
+fn BigRat.truncate() BigInt:
+	return self.num / self.den
 
-	// Rounds to the nearest integer; an exact tie rounds away from zero.
-	fn round() BigInt:
-		twice := self.num.abs() * big(2) + self.den
-		magnitude := twice / (self.den * big(2))
-		if self.num.sign() < 0: return -magnitude
+// Rounds to the nearest integer; an exact tie rounds away from zero.
+fn BigRat.round() BigInt:
+	twice := self.num.abs() * big(2) + self.den
+	magnitude := twice / (self.den * big(2))
+	if self.num.sign() < 0: return -magnitude
 
-		return magnitude
+	return magnitude
 
-	// Converts to the nearest Float, or none when the magnitude is beyond the Float
-	// range.
-	fn to_float() Float?:
-		parts := div_parts(self.num, self.den, 53)
-		return binary_to_float(parts.value, parts.sticky)
+// Converts to the nearest Float, or none when the magnitude is beyond the Float
+// range.
+fn BigRat.to_float() Float?:
+	parts := div_parts(self.num, self.den, 53)
+	return binary_to_float(parts.value, parts.sticky)
 
-	// Prints plain decimal notation with exactly `digits` fractional digits, rounding
-	// ties to even. A negative digit count returns EINVAL; a result that rounds to zero
-	// has no minus sign.
-	fn to_fixed(digits: Int) String!:
-		if digits < 0: return error(Error("bigrat: invalid input", kind: "EINVAL"))
+// Prints plain decimal notation with exactly `digits` fractional digits, rounding
+// ties to even. A negative digit count returns EINVAL; a result that rounds to zero
+// has no minus sign.
+fn BigRat.to_fixed(digits: Int) String!:
+	if digits < 0: return error(Error("bigrat: invalid input", kind: "EINVAL"))
 
-		scaled := self.num.abs() * pow10(digits)
-		var quotient = scaled / self.den
-		twice := (scaled % self.den) * big(2)
-		order := twice.compare(self.den)
-		odd := quotient.bit_and(big(1)).sign() != 0
-		if order > 0 or order == 0 and odd:
-			quotient += big(1)
+	scaled := self.num.abs() * pow10(digits)
+	var quotient = scaled / self.den
+	twice := (scaled % self.den) * big(2)
+	order := twice.compare(self.den)
+	odd := quotient.bit_and(big(1)).sign() != 0
+	if order > 0 or order == 0 and odd:
+		quotient += big(1)
 
-		var text = quotient.to_string_radix(10)
+	var text = quotient.to_string_radix(10)
 
-		if digits > 0:
-			text = text.pad_start(digits + 1, "0")
+	if digits > 0:
+		text = text.pad_start(digits + 1, "0")
 
-			split_at := text.scalar_length() - digits
-			text = "{text.slice(0, split_at).get("")}.{text.slice(split_at, text.scalar_length()).get("")}"
+		split_at := text.scalar_length() - digits
+		text = "{text.slice(0, split_at).get("")}.{text.slice(split_at, text.scalar_length()).get("")}"
 
-		if self.num.sign() < 0 and quotient.sign() != 0: return ok("-{text}")
+	if self.num.sign() < 0 and quotient.sign() != 0: return ok("-{text}")
 
-		return ok(text)
+	return ok(text)
 
-	// Formats as `a/b`, or just `a` for an integer; `parse_rat` reads the result back.
-	fn format() String:
-		if self.is_integer(): return self.num.to_string_radix(10)
-		return "{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
+// Formats as `a/b`, or just `a` for an integer; `parse_rat` reads the result back.
+fn BigRat.format() String:
+	if self.is_integer(): return self.num.to_string_radix(10)
+	return "{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
 
 // Returns `numerator / denominator` in lowest terms; a zero denominator returns EINVAL.
 export fn rat(numerator: BigInt, denominator: BigInt) BigRat!:
@@ -266,169 +259,158 @@ export opaque type BigFloat:
 	// The precision in bits, 1 through 1000000.
 	prec: Int
 
-impl BigFloat:
-	// Returns the precision in bits.
-	fn precision() Int:
-		return self.prec
+// Returns the precision in bits.
+fn BigFloat.precision() Int:
+	return self.prec
 
-	// Returns an independent copy.
-	fn clone() BigFloat:
-		return BigFloat(mant: self.mant.clone(), exp: self.exp, prec: self.prec)
+// Returns an independent copy.
+fn BigFloat.clone() BigFloat:
+	return BigFloat(mant: self.mant.clone(), exp: self.exp, prec: self.prec)
 
-	// Returns this value rounded to `precision` bits; a precision outside 1 through
-	// 1000000 is a fault.
-	fn with_precision(precision: Int) BigFloat:
-		bits := checked(precision)
+// Returns this value rounded to `precision` bits; a precision outside 1 through
+// 1000000 is a fault.
+fn BigFloat.with_precision(precision: Int) BigFloat:
+	bits := checked(precision)
+	return make(round_to(self.mant, self.exp, false, bits), bits)
+
+// Returns -1, 0 or 1 by sign.
+fn BigFloat.sign() Int:
+	return self.mant.sign()
+
+// Returns the same magnitude with the opposite sign and unchanged precision; zero
+// stays zero.
+fn BigFloat.negate() BigFloat:
+	return BigFloat(mant: -self.mant, exp: self.exp, prec: self.prec)
+
+// Returns the absolute value.
+fn BigFloat.abs() BigFloat:
+	return BigFloat(mant: self.mant.abs(), exp: self.exp, prec: self.prec)
+
+// Returns the sum, rounded once at the larger operand precision.
+fn BigFloat.add(other: BigFloat) BigFloat:
+	bits := larger(self.prec, other.prec)
+	if self.mant.sign() == 0:
+		return make(round_to(other.mant, other.exp, false, bits), bits)
+	if other.mant.sign() == 0:
 		return make(round_to(self.mant, self.exp, false, bits), bits)
 
-	// Returns -1, 0 or 1 by sign.
-	fn sign() Int:
-		return self.mant.sign()
+	top_self := self.exp + bit_length(self.mant)
+	top_other := other.exp + bit_length(other.mant)
+	if top_self - top_other > bits + 2:
+		return make(absorb(self.mant, self.exp, other.mant.sign(), bits), bits)
+	if top_other - top_self > bits + 2:
+		return make(absorb(other.mant, other.exp, self.mant.sign(), bits), bits)
 
-	// Returns the same magnitude with the opposite sign and unchanged precision; zero
-	// stays zero.
-	fn negate() BigFloat:
-		return BigFloat(mant: -self.mant, exp: self.exp, prec: self.prec)
+	low := smaller(self.exp, other.exp)
+	total := shl(self.mant, self.exp - low) + shl(other.mant, other.exp - low)
+	return make(round_to(total, low, false, bits), bits)
 
-	// Returns the absolute value.
-	fn abs() BigFloat:
-		return BigFloat(mant: self.mant.abs(), exp: self.exp, prec: self.prec)
+// Returns the difference, rounded once at the larger operand precision.
+fn BigFloat.subtract(other: BigFloat) BigFloat:
+	return self.add(other.negate())
 
-	// Returns the sum, rounded once at the larger operand precision.
-	fn add(other: BigFloat) BigFloat:
-		bits := larger(self.prec, other.prec)
-		if self.mant.sign() == 0:
-			return make(round_to(other.mant, other.exp, false, bits), bits)
-		if other.mant.sign() == 0:
-			return make(round_to(self.mant, self.exp, false, bits), bits)
+// Returns the product, rounded once at the larger operand precision.
+fn BigFloat.multiply(other: BigFloat) BigFloat:
+	bits := larger(self.prec, other.prec)
+	return make(
+		round_to(self.mant * other.mant, self.exp + other.exp, false, bits),
+		bits,
+	)
 
-		top_self := self.exp + bit_length(self.mant)
-		top_other := other.exp + bit_length(other.mant)
-		if top_self - top_other > bits + 2:
-			return make(absorb(self.mant, self.exp, other.mant.sign(), bits), bits)
-		if top_other - top_self > bits + 2:
-			return make(absorb(other.mant, other.exp, self.mant.sign(), bits), bits)
+// Returns the quotient, rounded once at the larger operand precision; a zero
+// divisor returns EINVAL.
+fn BigFloat.divide(other: BigFloat) BigFloat!:
+	if other.mant.sign() == 0:
+		return error(Error("bigfloat: invalid input", kind: "EINVAL"))
 
-		low := smaller(self.exp, other.exp)
-		total := shl(self.mant, self.exp - low) + shl(other.mant, other.exp - low)
-		return make(round_to(total, low, false, bits), bits)
+	bits := larger(self.prec, other.prec)
+	var top = self.mant.clone()
+	if other.mant.sign() < 0:
+		top = -top
 
-	// Returns the difference, rounded once at the larger operand precision.
-	fn subtract(other: BigFloat) BigFloat:
-		return self.add(other.negate())
-
-	// Returns the product, rounded once at the larger operand precision.
-	fn multiply(other: BigFloat) BigFloat:
-		bits := larger(self.prec, other.prec)
-		return make(
-			round_to(
-				self.mant * other.mant,
-				self.exp + other.exp,
-				false,
-				bits,
+	quotient := div_round(top, other.mant.abs(), bits)
+	return ok(
+		make(
+			Binary(
+				mant: quotient.mant.clone(),
+				exp: quotient.exp + self.exp - other.exp,
 			),
 			bits,
 		)
+	)
 
-	// Returns the quotient, rounded once at the larger operand precision; a zero
-	// divisor returns EINVAL.
-	fn divide(other: BigFloat) BigFloat!:
-		if other.mant.sign() == 0:
-			return error(Error("bigfloat: invalid input", kind: "EINVAL"))
-
-		bits := larger(self.prec, other.prec)
-		var top = self.mant.clone()
-		if other.mant.sign() < 0:
-			top = -top
-
-		quotient := div_round(top, other.mant.abs(), bits)
-		return ok(
-			make(
-				Binary(
-					mant: quotient.mant.clone(),
-					exp: quotient.exp + self.exp - other.exp,
-				),
-				bits,
-			)
-		)
-
-	// Returns the square root rounded once; a negative operand returns EINVAL.
-	fn sqrt() BigFloat!:
-		if self.mant.sign() < 0:
-			return error(Error("bigfloat: invalid input", kind: "EINVAL"))
-		if self.mant.sign() == 0: return ok(self.clone())
-
-		var padding = 0
-		wanted := 2 * (self.prec + 2)
-		if bit_length(self.mant) < wanted:
-			padding = wanted - bit_length(self.mant)
-		if (self.exp - padding) % 2 != 0:
-			padding += 1
-
-		scaled := shl(self.mant, padding)
-		root := scaled.sqrt().get(big(0))
-		sticky := (root * root).compare(scaled) != 0
-		return ok(
-			make(
-				round_to(
-					root,
-					(self.exp - padding) / 2,
-					sticky,
-					self.prec,
-				),
-				self.prec,
-			)
-		)
-
-	// Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`,
-	// ignoring precision.
-	fn compare(other: BigFloat) Int:
-		if self.mant.sign() != other.mant.sign():
-			return self.mant.sign().compare(other.mant.sign())
-		if self.mant.sign() == 0: return 0
-
-		// The leading bit's position orders the magnitudes without aligning them across
-		// the exponent gap.
-		own_top := self.exp + bit_length(self.mant)
-		other_top := other.exp + bit_length(other.mant)
-		if own_top != other_top: return own_top.compare(other_top) * self.mant.sign()
-
-		low := smaller(self.exp, other.exp)
-		return shl(self.mant, self.exp - low).compare(shl(other.mant, other.exp - low))
-
-	// Returns the lesser value, or this value when they compare equal.
-	fn min(other: BigFloat) BigFloat:
-		if other.compare(self) < 0: return other.clone()
-		return self.clone()
-
-	// Returns the greater value, or this value when they compare equal.
-	fn max(other: BigFloat) BigFloat:
-		if other.compare(self) > 0: return other.clone()
-		return self.clone()
-
-	// Returns the exact value as a fraction.
-	fn to_rat() BigRat:
-		return rat_of_binary(self.mant, self.exp)
-
-	// Discards the fraction toward zero.
-	fn truncate() BigInt:
-		if self.exp >= 0: return shl(self.mant, self.exp)
-
-		magnitude := shr(self.mant.abs(), -self.exp)
-		if self.mant.sign() < 0: return -magnitude
-
-		return magnitude
-
-	// Converts to the nearest Float, or none when the magnitude is beyond the Float
-	// range.
-	fn to_float() Float?:
-		return binary_to_float(binary_of(self), false)
-
-	// Prints plain decimal notation with exactly `digits` fractional digits, rounding
-	// ties to even. A negative digit count returns EINVAL.
-	fn to_fixed(digits: Int) String!:
-		if text := self.to_rat().to_fixed(digits): return ok(text)
+// Returns the square root rounded once; a negative operand returns EINVAL.
+fn BigFloat.sqrt() BigFloat!:
+	if self.mant.sign() < 0:
 		return error(Error("bigfloat: invalid input", kind: "EINVAL"))
+	if self.mant.sign() == 0: return ok(self.clone())
+
+	var padding = 0
+	wanted := 2 * (self.prec + 2)
+	if bit_length(self.mant) < wanted:
+		padding = wanted - bit_length(self.mant)
+	if (self.exp - padding) % 2 != 0:
+		padding += 1
+
+	scaled := shl(self.mant, padding)
+	root := scaled.sqrt().get(big(0))
+	sticky := (root * root).compare(scaled) != 0
+	return ok(
+		make(
+			round_to(root, (self.exp - padding) / 2, sticky, self.prec),
+			self.prec,
+		)
+	)
+
+// Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`,
+// ignoring precision.
+fn BigFloat.compare(other: BigFloat) Int:
+	if self.mant.sign() != other.mant.sign():
+		return self.mant.sign().compare(other.mant.sign())
+	if self.mant.sign() == 0: return 0
+
+	// The leading bit's position orders the magnitudes without aligning them across
+	// the exponent gap.
+	own_top := self.exp + bit_length(self.mant)
+	other_top := other.exp + bit_length(other.mant)
+	if own_top != other_top: return own_top.compare(other_top) * self.mant.sign()
+
+	low := smaller(self.exp, other.exp)
+	return shl(self.mant, self.exp - low).compare(shl(other.mant, other.exp - low))
+
+// Returns the lesser value, or this value when they compare equal.
+fn BigFloat.min(other: BigFloat) BigFloat:
+	if other.compare(self) < 0: return other.clone()
+	return self.clone()
+
+// Returns the greater value, or this value when they compare equal.
+fn BigFloat.max(other: BigFloat) BigFloat:
+	if other.compare(self) > 0: return other.clone()
+	return self.clone()
+
+// Returns the exact value as a fraction.
+fn BigFloat.to_rat() BigRat:
+	return rat_of_binary(self.mant, self.exp)
+
+// Discards the fraction toward zero.
+fn BigFloat.truncate() BigInt:
+	if self.exp >= 0: return shl(self.mant, self.exp)
+
+	magnitude := shr(self.mant.abs(), -self.exp)
+	if self.mant.sign() < 0: return -magnitude
+
+	return magnitude
+
+// Converts to the nearest Float, or none when the magnitude is beyond the Float
+// range.
+fn BigFloat.to_float() Float?:
+	return binary_to_float(binary_of(self), false)
+
+// Prints plain decimal notation with exactly `digits` fractional digits, rounding
+// ties to even. A negative digit count returns EINVAL.
+fn BigFloat.to_fixed(digits: Int) String!:
+	if text := self.to_rat().to_fixed(digits): return ok(text)
+	return error(Error("bigfloat: invalid input", kind: "EINVAL"))
 
 fn checked(precision: Int) Int:
 	if precision < 1 or precision > max_big_float_precision:

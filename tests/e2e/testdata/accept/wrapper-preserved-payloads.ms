@@ -8,8 +8,7 @@ type Marker:
 	id: Int
 	log: String
 
-impl Closeable for Marker:
-	var fn close() Unit!: append_file(self.log, "{self.id},").wait()
+fn var Marker.close() Unit!: append_file(self.log, "{self.id},").wait()
 
 fn optional_cause(log: String) Unit:
 	value: Marker? := Marker(1, log)

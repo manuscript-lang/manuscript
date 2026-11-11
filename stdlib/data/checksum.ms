@@ -35,14 +35,13 @@ export type Crc32:
 	// Accumulator state, initially the empty checksum. Use update() to append data.
 	state: UInt32 = 0
 
-impl Crc32:
-	// Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-	var fn update(data: Bytes) Unit:
-		self.state = msstd_checksum_crc32_update(self.state.to_int(), data).to_uint32().get()
+// Appends these bytes to the checksum; an empty chunk leaves it unchanged.
+fn var Crc32.update(data: Bytes) Unit:
+	self.state = msstd_checksum_crc32_update(self.state.to_int(), data).to_uint32().get()
 
-	// Returns the current checksum without resetting or otherwise changing it.
-	fn value() UInt32:
-		return self.state
+// Returns the current checksum without resetting or otherwise changing it.
+fn Crc32.value() UInt32:
+	return self.state
 
 /*
 An RFC 1950 Adler-32 checksum built from ordered chunks, retaining no input bytes.
@@ -53,14 +52,13 @@ export type Adler32:
 	// Accumulator state, initially the empty checksum. Use update() to append data.
 	state: UInt32 = 1
 
-impl Adler32:
-	// Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-	var fn update(data: Bytes) Unit:
-		self.state = msstd_checksum_adler32_update(self.state.to_int(), data).to_uint32().get()
+// Appends these bytes to the checksum; an empty chunk leaves it unchanged.
+fn var Adler32.update(data: Bytes) Unit:
+	self.state = msstd_checksum_adler32_update(self.state.to_int(), data).to_uint32().get()
 
-	// Returns the current checksum without resetting or otherwise changing it.
-	fn value() UInt32:
-		return self.state
+// Returns the current checksum without resetting or otherwise changing it.
+fn Adler32.value() UInt32:
+	return self.state
 
 /*
 Reads `input` to the end and returns the CRC-32 of all its bytes, as `crc32` does for bytes in hand.

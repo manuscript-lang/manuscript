@@ -8,12 +8,11 @@ type Resource:
 	id: Int
 	path: String
 
-impl Closeable for Resource:
-	var fn close() Unit!:
-		append_file(self.path, "{self.id},").wait()?
-		if self.id == 98: return error(Error("failed close"))
+fn var Resource.close() Unit!:
+	append_file(self.path, "{self.id},").wait()?
+	if self.id == 98: return error(Error("failed close"))
 
-		self.path = "closed"
+	self.path = "closed"
 
 interface Observer:
 	fn observe(first: Resource?, second: Resource?, tail: Int? = none) Bool

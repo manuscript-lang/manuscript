@@ -280,8 +280,7 @@ test "map and folds consume snapshots of the live list":
 interface ReadValue:
 	fn read() Int
 
-impl ReadValue for Payload:
-	fn read() Int: self.value
+fn Payload.read() Int: self.value
 
 test "interface view consumers dispatch after shrink":
 	for callback in [false, true]:

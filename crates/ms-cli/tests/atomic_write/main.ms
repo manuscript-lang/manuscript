@@ -10,6 +10,7 @@ type FileHandle:
 	chmod_error: Bool = false
 	sync_error: Bool = false
 	close_error: Bool = false
+	closed: Bool = false
 
 impl FileHandle:
 	fn write(data: Bytes) Unit!:
@@ -25,6 +26,9 @@ impl FileHandle:
 		if self.sync_error: return error(Error("sync", kind: "sync"))
 
 	var fn close() Unit!:
+		if self.closed: return ok(unit)
+
+		self.closed = true
 		print("close")
 		if self.close_error: return error(Error("close", kind: "close"))
 

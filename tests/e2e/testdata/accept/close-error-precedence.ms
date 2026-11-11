@@ -11,19 +11,18 @@ type Failing:
 	closed: Bool = false
 	fail: Bool = true
 
-impl Closeable for Failing:
-	var fn close() Unit!:
-		if not self.closed:
-			self.closed = true
-			append_file(self.log, "close {self.id}\n").wait()?
-			if self.fail:
-				return error(
-					Error(
-						"close {self.id}",
-						kind: "ECLOSE",
-						details: {"id": "{self.id}"},
-					)
+fn var Failing.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "close {self.id}\n").wait()?
+		if self.fail:
+			return error(
+				Error(
+					"close {self.id}",
+					kind: "ECLOSE",
+					details: {"id": "{self.id}"},
 				)
+			)
 
 fn events(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
@@ -344,9 +343,8 @@ test "overlapping borrowed errors normalize without copying borrowed success":
 type OwnHolder:
 	resource: Failing
 
-impl Closeable for OwnHolder:
-	var fn close() Unit!:
-		return ok(unit)
+fn var OwnHolder.close() Unit!:
+	return ok(unit)
 
 fn own_holder_result[T](log: String, source: T!) T!:
 	_holder := OwnHolder(Failing(log.clone(), 1, fail: false))

@@ -9,14 +9,13 @@ type Counting:
 	next_value: Int
 	pulled: Int
 
-impl Source[Int] for Counting:
-	var fn next() Int?!:
-		self.pulled += 1
-		self.next_value += 1
-		return ok(self.next_value)
+fn var Counting.next() Int?!:
+	self.pulled += 1
+	self.next_value += 1
+	return ok(self.next_value)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Counting.close() Unit!:
+	return ok(unit)
 
 test "filter keeps matching items in order":
 	kept := collect(from_list([1, 2, 3, 4, 5, 6]) | filter(fn x: x % 2 == 0), none)?
@@ -50,15 +49,14 @@ test "stages compose over an endless stream":
 type Intermittent:
 	calls: Int = 0
 
-impl Source[Int] for Intermittent:
-	var fn next() Int?!:
-		self.calls += 1
-		if self.calls % 2 == 1: return error(Error("retry this read", kind: "EAGAIN"))
+fn var Intermittent.next() Int?!:
+	self.calls += 1
+	if self.calls % 2 == 1: return error(Error("retry this read", kind: "EAGAIN"))
 
-		return ok(self.calls)
+	return ok(self.calls)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Intermittent.close() Unit!:
+	return ok(unit)
 
 test "take does not spend its last item on a failed read":
 	var source = ReadStream[Int](Intermittent()) | take(1)

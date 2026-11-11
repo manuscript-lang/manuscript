@@ -6,9 +6,8 @@ import (
 type Cell:
 	value: Int
 
-impl Cell:
-	var fn bump() Unit:
-		self.value += 1
+fn var Cell.bump() Unit:
+	self.value += 1
 
 // Faults with its own message, so a test tells which fault came first.
 fn later() Int:
@@ -67,9 +66,8 @@ test "a changing source receiver selects its element once":
 type Door:
 	id: Int
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		return ok(unit)
+fn var Door.close() Unit!:
+	return ok(unit)
 
 fn at(var events: List[Int]) Int:
 	events.append(1)

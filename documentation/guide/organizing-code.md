@@ -19,13 +19,11 @@ type Book:
 type Subscription:
     months: Int
 
-impl Priced for Book:
-    fn cents() Int:
-        return 500 + self.pages * 2
+fn Book.cents() Int:
+    return 500 + self.pages * 2
 
-impl Priced for Subscription:
-    fn cents() Int:
-        return self.months * 900
+fn Subscription.cents() Int:
+    return self.months * 900
 
 fn total(items: List[Priced]) Int:
     var sum = 0

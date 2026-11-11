@@ -7,9 +7,8 @@ type Gate:
 	name: String
 	fails: Bool
 
-impl Closeable for Gate:
-	var fn close() Unit!:
-		if self.fails: return error(Error("close {self.name}"))
+fn var Gate.close() Unit!:
+	if self.fails: return error(Error("close {self.name}"))
 
 fn use_gate(fails: Bool) Result[Int, Error]:
 	_gate := Gate("a", fails)

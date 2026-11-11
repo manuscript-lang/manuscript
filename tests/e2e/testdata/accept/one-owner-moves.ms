@@ -10,9 +10,8 @@ import expect_equal, expect_true from "@std/test/test.ms"
 type Counter:
 	values: List[Int]
 
-impl Counter:
-	fn read() Int:
-		return self.values[0]
+fn Counter.read() Int:
+	return self.values[0]
 
 fn counter(n: Int) Counter:
 	return Counter(values: [n])
@@ -21,10 +20,9 @@ type Ring:
 	slots: List[Counter?]
 	size: Int
 
-impl Ring:
-	fn at(index: Int) Counter?:
-		if index < 0 or index >= self.size: return none
-		return self.slots.get(index)
+fn Ring.at(index: Int) Counter?:
+	if index < 0 or index >= self.size: return none
+	return self.slots.get(index)
 
 fn maybe(n: Int) Counter?:
 	if n < 0: return none

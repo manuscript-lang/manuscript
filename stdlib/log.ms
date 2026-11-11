@@ -115,58 +115,56 @@ type FileTransport:
 	file: FileHandle
 	closed: Bool
 
-impl Transport for FileTransport:
-	fn write(data: String) Unit!:
-		return self.write_bytes(data.to_bytes())
+fn FileTransport.write(data: String) Unit!:
+	return self.write_bytes(data.to_bytes())
 
-	fn write_bytes(data: Bytes) Unit!:
-		if self.closed: return error(log_closed())
-		return self.file.write(data)
+fn FileTransport.write_bytes(data: Bytes) Unit!:
+	if self.closed: return error(log_closed())
+	return self.file.write(data)
 
-	fn flush() Unit!:
-		if self.closed: return error(log_closed())
-		return self.file.sync()
+fn FileTransport.flush() Unit!:
+	if self.closed: return error(log_closed())
+	return self.file.sync()
 
-	fn duplicate() Transport!:
-		if self.closed: return error(log_closed())
-		return ok(FileTransport(file: self.file.clone()?, closed: false))
+fn FileTransport.duplicate() Transport!:
+	if self.closed: return error(log_closed())
+	return ok(FileTransport(file: self.file.clone()?, closed: false))
 
-	var fn close() Unit:
-		if self.closed: return
+fn var FileTransport.close() Unit:
+	if self.closed: return
 
-		self.closed = true
-		self.file.close().get(none)
+	self.closed = true
+	self.file.close().get(none)
 
 // Writes to the process standard-output stream. It keeps no handle: every write reaches
 // the process-wide buffer.
 type StdoutTransport:
 	closed: Bool
 
-impl Transport for StdoutTransport:
-	fn write(data: String) Unit!:
-		if self.closed: return error(log_closed())
+fn StdoutTransport.write(data: String) Unit!:
+	if self.closed: return error(log_closed())
 
-		var out = stdout()
-		return out.write(data)
+	var out = stdout()
+	return out.write(data)
 
-	fn write_bytes(data: Bytes) Unit!:
-		if self.closed: return error(log_closed())
+fn StdoutTransport.write_bytes(data: Bytes) Unit!:
+	if self.closed: return error(log_closed())
 
-		var out = stdout_bytes()
-		return out.write(data)
+	var out = stdout_bytes()
+	return out.write(data)
 
-	fn flush() Unit!:
-		if self.closed: return error(log_closed())
+fn StdoutTransport.flush() Unit!:
+	if self.closed: return error(log_closed())
 
-		var out = stdout()
-		return out.flush()
+	var out = stdout()
+	return out.flush()
 
-	fn duplicate() Transport!:
-		if self.closed: return error(log_closed())
-		return ok(StdoutTransport(closed: false))
+fn StdoutTransport.duplicate() Transport!:
+	if self.closed: return error(log_closed())
+	return ok(StdoutTransport(closed: false))
 
-	var fn close() Unit:
-		self.closed = true
+fn var StdoutTransport.close() Unit:
+	self.closed = true
 
 // A structured logger: level filtering, bound fields, and a pluggable `Transport`. The
 // level methods take optional fields of any `Data` type and encode them with
@@ -285,11 +283,10 @@ impl Logger:
 	fn flush() Unit!:
 		return self.transport.flush()
 
-impl Closeable for Logger:
-	// Closes this logger's transport, which consumes the logger; a scope that owns one
-	// closes it on every exit. Children and the parent are not affected.
-	var fn close() Unit!:
-		self.transport.close()
+// Closes this logger's transport, which consumes the logger; a scope that owns one
+// closes it on every exit. Children and the parent are not affected.
+fn var Logger.close() Unit!:
+	self.transport.close()
 
 // Settings for `create`: the minimum level (default Info), whether records carry a
 // timestamp (default true), and an optional per-record byte limit.
@@ -342,39 +339,38 @@ type RotatingTransport:
 	keep: Int
 	closed: Bool
 
-impl Transport for RotatingTransport:
-	fn write(data: String) Unit!:
-		return self.write_bytes(data.to_bytes())
+fn RotatingTransport.write(data: String) Unit!:
+	return self.write_bytes(data.to_bytes())
 
-	fn write_bytes(data: Bytes) Unit!:
-		if self.closed: return error(log_closed())
+fn RotatingTransport.write_bytes(data: Bytes) Unit!:
+	if self.closed: return error(log_closed())
 
-		var size = 0
-		if existing := stat(self.path): size = existing.size
-		if size > 0 and size + data.length() > self.max_bytes:
-			rotate(self.path, self.keep)
+	var size = 0
+	if existing := stat(self.path): size = existing.size
+	if size > 0 and size + data.length() > self.max_bytes:
+		rotate(self.path, self.keep)
 
-		var file = open(self.path, OpenMode.Append, OpenOptions(permissions: 420))?
-		written := file.write(data)
-		file.close().get(none)
-		return written
+	var file = open(self.path, OpenMode.Append, OpenOptions(permissions: 420))?
+	written := file.write(data)
+	file.close().get(none)
+	return written
 
-	fn flush() Unit!:
-		if self.closed: return error(log_closed())
+fn RotatingTransport.flush() Unit!:
+	if self.closed: return error(log_closed())
 
-	fn duplicate() Transport!:
-		if self.closed: return error(log_closed())
-		return ok(
-			RotatingTransport(
-				path: self.path.clone(),
-				max_bytes: self.max_bytes,
-				keep: self.keep,
-				closed: false,
-			)
+fn RotatingTransport.duplicate() Transport!:
+	if self.closed: return error(log_closed())
+	return ok(
+		RotatingTransport(
+			path: self.path.clone(),
+			max_bytes: self.max_bytes,
+			keep: self.keep,
+			closed: false,
 		)
+	)
 
-	var fn close() Unit:
-		self.closed = true
+fn var RotatingTransport.close() Unit:
+	self.closed = true
 
 // Shifts `path.1` to `path.2` and so on (dropping the oldest), then moves `path` to
 // `path.1`.

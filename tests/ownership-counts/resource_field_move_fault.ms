@@ -12,9 +12,8 @@ import (
 type Door:
 	name: String
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		stdout().write("close {self.name}\n").get()
+fn var Door.close() Unit!:
+	stdout().write("close {self.name}\n").get()
 
 type Room:
 	first: Door

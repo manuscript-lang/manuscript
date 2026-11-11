@@ -11,19 +11,18 @@ type Chunks:
 	index: Int
 	failure: Error?
 
-impl Source[Bytes] for Chunks:
-	var fn next() Bytes?!:
-		if self.index < self.parts.length():
-			part := self.parts[self.index].clone()
-			self.index += 1
-			return ok(part)
+fn var Chunks.next() Bytes?!:
+	if self.index < self.parts.length():
+		part := self.parts[self.index].clone()
+		self.index += 1
+		return ok(part)
 
-		if cause := self.failure: return error(cause.clone())
+	if cause := self.failure: return error(cause.clone())
 
-		return ok(none)
+	return ok(none)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Chunks.close() Unit!:
+	return ok(unit)
 
 fn chunks(parts: List[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(parts, 0, none))

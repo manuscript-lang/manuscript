@@ -129,12 +129,11 @@ import Iterator from "@std/core.ms"
 type Countdown:
     left: Int
 
-impl Iterator[Int] for Countdown:
-    var fn next() Int?:
-        if self.left == 0:
-            return none
-        self.left -= 1
-        return self.left + 1
+fn var Countdown.next() Int?:
+    if self.left == 0:
+        return none
+    self.left -= 1
+    return self.left + 1
 
 fn main() Unit:
     for n in Countdown(3):

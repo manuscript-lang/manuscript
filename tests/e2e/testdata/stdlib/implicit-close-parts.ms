@@ -9,9 +9,8 @@ type Tracked:
 	log: String
 	id: Int
 
-impl Closeable for Tracked:
-	var fn close() Unit!:
-		_ := append_file(self.log, "{self.id},").wait()
+fn var Tracked.close() Unit!:
+	_ := append_file(self.log, "{self.id},").wait()
 
 fn track(log: String, id: Int) Tracked:
 	return Tracked(log, id)
@@ -38,9 +37,8 @@ type Wrapper:
 	log: String
 	inner: Tracked
 
-impl Closeable for Wrapper:
-	var fn close() Unit!:
-		_ := append_file(self.log, "wrapper,").wait()
+fn var Wrapper.close() Unit!:
+	_ := append_file(self.log, "wrapper,").wait()
 
 fn holds_fields(log: String) Int:
 	p := Pair(track(log.clone(), 1), track(log, 2))

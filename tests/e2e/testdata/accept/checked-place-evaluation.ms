@@ -6,13 +6,12 @@ import (
 type Cell:
 	value: Int
 
-impl Cell:
-	var fn add(value: Int) Unit:
-		self.value += value
+fn var Cell.add(value: Int) Unit:
+	self.value += value
 
-	var fn add_both(value: Int, var other: Int) Unit:
-		self.value += value
-		other += 10
+fn var Cell.add_both(value: Int, var other: Int) Unit:
+	self.value += value
+	other += 10
 
 fn next(var calls: Int) Int:
 	selected := calls % 2
@@ -96,9 +95,8 @@ interface Change:
 type Adder:
 	unused: Bool = false
 
-impl Change for Adder:
-	fn apply(var value: Int, amount: Int) Unit:
-		value += amount
+fn Adder.apply(var value: Int, amount: Int) Unit:
+	value += amount
 
 test "a contract var argument retains its changing index":
 	change: Change := Adder()

@@ -4,9 +4,8 @@ import expect_equal from "@std/test/test.ms"
 type Tag:
 	name: String
 
-impl Tag:
-	fn clone() Tag:
-		return Tag(name: self.name.clone())
+fn Tag.clone() Tag:
+	return Tag(name: self.name.clone())
 
 impl Equal for Tag:
 	fn equals(other: Tag) Bool:

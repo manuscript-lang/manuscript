@@ -10,9 +10,8 @@ type Node:
 fn wrap(n: Node, i: Int) Node:
 	return Node(i, [n])
 
-impl Node:
-	fn up(i: Int) Node:
-		return Node(i, [self])
+fn Node.up(i: Int) Node:
+	return Node(i, [self])
 
 test "a consumed function argument moves":
 	var nd = Node(0, List[Node]())

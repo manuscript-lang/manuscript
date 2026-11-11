@@ -48,63 +48,58 @@ export type Table:
 	// Internal state: the widest cell of each column.
 	widths: List[Int] = []
 
-impl Table:
-	// Appends a row of exactly one cell per column. A wrong cell count or a cell with
-	// controls returns EBADMSG.
-	var fn add(row: List[String]) Unit!:
-		count := self.columns.length()
-		if row.length() != count:
-			return error(
-				table_invalid(
-					"row has {row.length()} cells, expected {count}"
-				)
-			)
+// Appends a row of exactly one cell per column. A wrong cell count or a cell with
+// controls returns EBADMSG.
+fn var Table.add(row: List[String]) Unit!:
+	count := self.columns.length()
+	if row.length() != count:
+		return error(table_invalid("row has {row.length()} cells, expected {count}"))
 
-		var measured = List[Int]()
-		for cell in row:
-			measured.append(cell.display_width()?)
-		if self.widths.is_empty():
-			for _unused in 0..count:
-				self.widths.append(0)
-		for col in 0..count:
-			self.widths[col] = max(self.widths[col], measured[col])
-		self.cell_widths.append(measured)
-		self.rows.append(row)
+	var measured = List[Int]()
+	for cell in row:
+		measured.append(cell.display_width()?)
+	if self.widths.is_empty():
+		for _unused in 0..count:
+			self.widths.append(0)
+	for col in 0..count:
+		self.widths[col] = max(self.widths[col], measured[col])
+	self.cell_widths.append(measured)
+	self.rows.append(row)
 
-	// Lays out the rows added so far; the table is unchanged and can keep growing.
-	fn render() String:
-		var out = StringBuilder()
-		lead := "".pad_start(self.indent, " ")
-		gap := "".pad_start(self.padding, " ")
+// Lays out the rows added so far; the table is unchanged and can keep growing.
+fn Table.render() String:
+	var out = StringBuilder()
+	lead := "".pad_start(self.indent, " ")
+	gap := "".pad_start(self.padding, " ")
 
-		for index in 0..self.rows.length():
-			if index > 0:
-				out.append("\n")
+	for index in 0..self.rows.length():
+		if index > 0:
+			out.append("\n")
 
-			row := self.rows[index]
-			var last = row.length() - 1
-			while last >= 0 and row[last].is_empty():
-				last -= 1
-			if last < 0: continue
+		row := self.rows[index]
+		var last = row.length() - 1
+		while last >= 0 and row[last].is_empty():
+			last -= 1
+		if last < 0: continue
 
-			out.append(lead)
+		out.append(lead)
 
-			for col in 0..last + 1:
-				if col > 0:
-					out.append(gap)
+		for col in 0..last + 1:
+			if col > 0:
+				out.append(gap)
 
-				spare := self.widths[col] - self.cell_widths[index][col]
-				before := self.before(col, spare)
-				out.append("".pad_start(before, " "))
-				out.append(row[col])
-				if col < last:
-					out.append("".pad_start(spare - before, " "))
+			spare := self.widths[col] - self.cell_widths[index][col]
+			before := self.before(col, spare)
+			out.append("".pad_start(before, " "))
+			out.append(row[col])
+			if col < last:
+				out.append("".pad_start(spare - before, " "))
 
-		return out.build()
+	return out.build()
 
-	// Spaces placed before a cell: all spare for Right, half for Center, none for Left.
-	fn before(col: Int, spare: Int) Int:
-		match self.columns[col]:
-			Left: return 0
-			Right: return spare
-			Center: return spare / 2
+// Spaces placed before a cell: all spare for Right, half for Center, none for Left.
+fn Table.before(col: Int, spare: Int) Int:
+	match self.columns[col]:
+		Left: return 0
+		Right: return spare
+		Center: return spare / 2

@@ -14,10 +14,9 @@ import Closeable from "@std/core.ms"
 type Token:
 	id: Int
 
-impl Closeable for Token:
-	var fn close() Unit!:
-		print("close {self.id}")
-		return error(Error("close failed", kind: "ECLOSE"))
+fn var Token.close() Unit!:
+	print("close {self.id}")
+	return error(Error("close failed", kind: "ECLOSE"))
 
 fn owned() Int!:
 	_first := Token(1)

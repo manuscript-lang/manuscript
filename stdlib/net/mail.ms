@@ -25,19 +25,18 @@ export type Address:
 	// The `local@domain` address without angle brackets.
 	address: String
 
-impl Address:
-	// Formats as `Name <addr>` (quoting the name when it has specials) or the bare
-	// address when unnamed.
-	fn to_text() String:
-		if self.name.is_empty(): return self.address.clone()
+// Formats as `Name <addr>` (quoting the name when it has specials) or the bare
+// address when unnamed.
+fn Address.to_text() String:
+	if self.name.is_empty(): return self.address.clone()
 
-		specials := self.name.contains_any("()<>[]:;@\\,.\"")
+	specials := self.name.contains_any("()<>[]:;@\\,.\"")
 
-		if specials:
-			escaped := self.name.replace("\\", "\\\\").replace("\"", "\\\"")
-			return "\"{escaped}\" <{self.address}>"
+	if specials:
+		escaped := self.name.replace("\\", "\\\\").replace("\"", "\\\"")
+		return "\"{escaped}\" <{self.address}>"
 
-		return "{self.name} <{self.address}>"
+	return "{self.name} <{self.address}>"
 
 // A parsed message: header fields and the body after the first blank line.
 export type Message:

@@ -9,8 +9,7 @@ type Counter:
 type Wrapped:
 	inner: String
 
-impl Wrapped:
-	fn message() String: "wrapped {self.inner}"
+fn Wrapped.message() String: "wrapped {self.inner}"
 
 fn tick(var counter: Counter) Int:
 	counter.calls += 1

@@ -8,8 +8,7 @@ type Cause:
 interface Reportable:
 	fn message() String
 
-impl Reportable for Cause:
-	fn message() String: "cause {self.code}: {self.text}"
+fn Cause.message() String: "cause {self.code}: {self.text}"
 
 type Holder:
 	err: Reportable

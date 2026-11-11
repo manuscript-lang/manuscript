@@ -124,20 +124,19 @@ type Compressing:
 	encoder: NativeEncoder?
 	failure: Error?
 
-impl Transform[Bytes, Bytes] for Compressing:
-	var fn step(value: Bytes, var out: List[Bytes]) Unit!:
-		if failure := self.failure: return error(failure.clone())
+fn var Compressing.step(value: Bytes, var out: List[Bytes]) Unit!:
+	if failure := self.failure: return error(failure.clone())
 
-		if encoder := self.encoder:
-			packed := msstd_compress_encoder_push(encoder, value)
-			if not packed.is_empty(): out.append(packed)
+	if encoder := self.encoder:
+		packed := msstd_compress_encoder_push(encoder, value)
+		if not packed.is_empty(): out.append(packed)
 
-	var fn finish(var out: List[Bytes]) Unit!:
-		if failure := self.failure: return error(failure.clone())
+fn var Compressing.finish(var out: List[Bytes]) Unit!:
+	if failure := self.failure: return error(failure.clone())
 
-		if encoder := self.encoder:
-			out.append(msstd_compress_encoder_end(encoder))
-		self.encoder = none
+	if encoder := self.encoder:
+		out.append(msstd_compress_encoder_end(encoder))
+	self.encoder = none
 
 // Compresses a byte stream into `format`, chunk by chunk, holding only the codec's
 // window. `level` defaults to 6 and must be 0..9, otherwise reads fail with `EINVAL`.
@@ -161,22 +160,21 @@ type Decompressing:
 	decoder: NativeDecoder?
 	failure: Error?
 
-impl Transform[Bytes, Bytes] for Decompressing:
-	var fn step(value: Bytes, var out: List[Bytes]) Unit!:
-		if failure := self.failure: return error(failure.clone())
+fn var Decompressing.step(value: Bytes, var out: List[Bytes]) Unit!:
+	if failure := self.failure: return error(failure.clone())
 
-		if decoder := self.decoder:
-			plain := msstd_compress_decoder_push(decoder, value)?
-			if not plain.is_empty(): out.append(plain)
+	if decoder := self.decoder:
+		plain := msstd_compress_decoder_push(decoder, value)?
+		if not plain.is_empty(): out.append(plain)
 
-	var fn finish(var out: List[Bytes]) Unit!:
-		if failure := self.failure: return error(failure.clone())
+fn var Decompressing.finish(var out: List[Bytes]) Unit!:
+	if failure := self.failure: return error(failure.clone())
 
-		if decoder := self.decoder:
-			plain := msstd_compress_decoder_end(decoder)?
-			if not plain.is_empty(): out.append(plain)
+	if decoder := self.decoder:
+		plain := msstd_compress_decoder_end(decoder)?
+		if not plain.is_empty(): out.append(plain)
 
-		self.decoder = none
+	self.decoder = none
 
 // Decompresses a byte stream from `format`, chunk by chunk. Malformed or truncated
 // data, or bytes after the payload, fail the read with
@@ -287,155 +285,143 @@ type TarEntries:
 	files: Set[String]
 	parents: Set[String]
 
-impl TarEntries:
-	// Fails with `EOVERFLOW` when a member of `size` data bytes exceeds
-	// `max_entry_bytes` or would take the archive past `max_bytes`.
-	fn check_size(size: Int) Unit!:
-		over: Unit! := error(Error("archive: limit exceeded", kind: "EOVERFLOW"))
-		if most := self.options.max_entry_bytes:
-			if size > most: return over
+// Fails with `EOVERFLOW` when a member of `size` data bytes exceeds
+// `max_entry_bytes` or would take the archive past `max_bytes`.
+fn TarEntries.check_size(size: Int) Unit!:
+	over: Unit! := error(Error("archive: limit exceeded", kind: "EOVERFLOW"))
+	if most := self.options.max_entry_bytes:
+		if size > most: return over
+	if most := self.options.max_bytes:
+		if self.total + size > most: return over
+
+// Bytes of the member at the start of the buffer, or 0 while its end has not
+// arrived. Once the input has ended (`ended`), a final member whose data is
+// complete but whose padding is short counts as whole, as `unpack` accepts it.
+fn TarEntries.member_length(ended: Bool) Int!:
+	var at = 0
+
+	// A PAX `size` record replaces the size field of the header that follows it.
+	var override = -1
+
+	while true:
+		if self.buffer.length() < at + 512: return ok(0)
+
+		block := self.buffer.slice(at, at + 512)?
+		flag := block.get(156, 0).to_int()
+		var size = tar_size(block)
+		var padded = 0
+		if size < 0: return error(Error("archive: invalid archive", kind: "EBADMSG"))
+
+		// 'x', 'g', 'L' and 'K' carry data for the header that follows them.
+		extension := flag == 120 or flag == 103 or flag == 76 or flag == 75
+		if not extension and override >= 0: size = override
+		padded = (size + 511) / 512 * 512
+
+		// Refuse a member that is over a limit from its header, before any of its
+		// data is buffered.
+		if not extension and padded > 0:
+			self.check_size(size)?
+		at += 512
+		if (
+			flag == 53
+			or flag == 49
+			or flag == 50
+			or flag == 51
+			or flag == 52
+			or flag == 54
+			or flag == 55
+		):
+			padded = 0
+		at += padded
+
+		if self.buffer.length() < at:
+			slack := if padded > 0: padded - size else: 0
+			if ended and not extension and self.buffer.length() >= at - slack:
+				return ok(self.buffer.length())
+
+			return ok(0)
+
+		if not extension: return ok(at)
+
+		if flag == 120:
+			start := at - padded
+			records := self.buffer.slice(start, start + size)?
+			found := pax_size(records)
+			if found >= 0: override = found
+
+	return ok(0)
+
+// Applies `unpack`'s whole-archive path rules across members: no duplicate path, no
+// file that is also a directory, and no entry below a file.
+fn var TarEntries.admit(path: String, directory: Bool) Unit!:
+	invalid: Unit! := error(Error("archive: invalid archive", kind: "EBADMSG"))
+	if self.names.contains(path.clone()): return invalid
+	if not directory and self.parents.contains(path.clone()): return invalid
+
+	var dir = path.clone()
+
+	while true:
+		slash := dir.last_index_of("/")
+		if slash.is_none(): break
+
+		dir = dir.take(slash.get())
+		if self.files.contains(dir.clone()): return invalid
+
+		self.parents.add(dir.clone())
+
+	if not directory: self.files.add(path.clone())
+	self.names.add(path)
+
+// Emits the members the buffer holds completely; `ended` says no more input will
+// come.
+fn var TarEntries.drain(var out: List[ArchiveEntry], ended: Bool) Unit!:
+	while true:
+		if (self.buffer.length() >= 512 and tar_is_zero(self.buffer.slice(0, 512)?)):
+			self.done = true
+			self.buffer = join([])
+			break
+
+		length := self.member_length(ended)?
+		if length == 0: break
+
+		var member = self.buffer.slice(0, length)?
+		self.buffer = self.buffer.slice(length, self.buffer.length())?
+
+		// Padding the archive ended inside is restored so the end blocks stay
+		// block-aligned.
+		short := length % 512
+		if short != 0: member = member.concat(self.end.slice(0, 512 - short)?)
+
+		end := member.concat(self.end)
+
+		for entry in unpack(end, ArchiveFormat.Tar, self.options)?:
+			self.admit(entry.path.clone(), entry.directory)?
+			self.count += 1
+			self.total += entry.data.length()
+			out.append(entry)
+
+		if most := self.options.max_entries:
+			if self.count > most: return error(
+				Error("archive: limit exceeded", kind: "EOVERFLOW")
+			)
 		if most := self.options.max_bytes:
-			if self.total + size > most: return over
-
-	// Bytes of the member at the start of the buffer, or 0 while its end has not
-	// arrived. Once the input has ended (`ended`), a final member whose data is
-	// complete but whose padding is short counts as whole, as `unpack` accepts it.
-	fn member_length(ended: Bool) Int!:
-		var at = 0
-
-		// A PAX `size` record replaces the size field of the header that follows it.
-		var override = -1
-
-		while true:
-			if self.buffer.length() < at + 512: return ok(0)
-
-			block := self.buffer.slice(at, at + 512)?
-			flag := block.get(156, 0).to_int()
-			var size = tar_size(block)
-			var padded = 0
-			if size < 0: return error(
-				Error("archive: invalid archive", kind: "EBADMSG")
+			if self.total > most: return error(
+				Error("archive: limit exceeded", kind: "EOVERFLOW")
 			)
 
-			// 'x', 'g', 'L' and 'K' carry data for the header that follows them.
-			extension := flag == 120 or flag == 103 or flag == 76 or flag == 75
-			if not extension and override >= 0: size = override
-			padded = (size + 511) / 512 * 512
+fn var TarEntries.step(value: Bytes, var out: List[ArchiveEntry]) Unit!:
+	if self.done: return ok(unit)
 
-			// Refuse a member that is over a limit from its header, before any of its
-			// data is buffered.
-			if not extension and padded > 0:
-				self.check_size(size)?
-			at += 512
-			if (
-				flag == 53
-				or flag == 49
-				or flag == 50
-				or flag == 51
-				or flag == 52
-				or flag == 54
-				or flag == 55
-			):
-				padded = 0
-			at += padded
+	self.buffer = self.buffer.concat(value)
+	return self.drain(var out, false)
 
-			if self.buffer.length() < at:
-				slack := if padded > 0: padded - size else: 0
-				if ended and not extension and self.buffer.length() >= at - slack:
-					return ok(self.buffer.length())
+fn var TarEntries.finish(var out: List[ArchiveEntry]) Unit!:
+	if self.done: return ok(unit)
 
-				return ok(0)
+	self.drain(var out, true)?
+	if self.done or self.buffer.is_empty(): return ok(unit)
 
-			if not extension: return ok(at)
-
-			if flag == 120:
-				start := at - padded
-				records := self.buffer.slice(start, start + size)?
-				found := pax_size(records)
-				if found >= 0: override = found
-
-		return ok(0)
-
-impl TarEntries:
-	// Applies `unpack`'s whole-archive path rules across members: no duplicate path, no
-	// file that is also a directory, and no entry below a file.
-	var fn admit(path: String, directory: Bool) Unit!:
-		invalid: Unit! := error(Error("archive: invalid archive", kind: "EBADMSG"))
-		if self.names.contains(path.clone()): return invalid
-		if not directory and self.parents.contains(path.clone()): return invalid
-
-		var dir = path.clone()
-
-		while true:
-			slash := dir.last_index_of("/")
-			if slash.is_none(): break
-
-			dir = dir.take(slash.get())
-			if self.files.contains(dir.clone()): return invalid
-
-			self.parents.add(dir.clone())
-
-		if not directory: self.files.add(path.clone())
-		self.names.add(path)
-
-impl TarEntries:
-	// Emits the members the buffer holds completely; `ended` says no more input will
-	// come.
-	var fn drain(var out: List[ArchiveEntry], ended: Bool) Unit!:
-		while true:
-			if (self.buffer.length() >= 512 and tar_is_zero(self.buffer.slice(0, 512)?)):
-				self.done = true
-				self.buffer = join([])
-				break
-
-			length := self.member_length(ended)?
-			if length == 0: break
-
-			var member = self.buffer.slice(0, length)?
-			self.buffer = self.buffer.slice(length, self.buffer.length())?
-
-			// Padding the archive ended inside is restored so the end blocks stay
-			// block-aligned.
-			short := length % 512
-			if short != 0: member = member.concat(self.end.slice(0, 512 - short)?)
-
-			end := member.concat(self.end)
-
-			for entry in unpack(end, ArchiveFormat.Tar, self.options)?:
-				self.admit(entry.path.clone(), entry.directory)?
-				self.count += 1
-				self.total += entry.data.length()
-				out.append(entry)
-
-			if most := self.options.max_entries:
-				if self.count > most: return error(
-					Error(
-						"archive: limit exceeded",
-						kind: "EOVERFLOW",
-					)
-				)
-			if most := self.options.max_bytes:
-				if self.total > most: return error(
-					Error(
-						"archive: limit exceeded",
-						kind: "EOVERFLOW",
-					)
-				)
-
-impl Transform[Bytes, ArchiveEntry] for TarEntries:
-	var fn step(value: Bytes, var out: List[ArchiveEntry]) Unit!:
-		if self.done: return ok(unit)
-
-		self.buffer = self.buffer.concat(value)
-		return self.drain(var out, false)
-
-	var fn finish(var out: List[ArchiveEntry]) Unit!:
-		if self.done: return ok(unit)
-
-		self.drain(var out, true)?
-		if self.done or self.buffer.is_empty(): return ok(unit)
-
-		return error(Error("archive: truncated tar", kind: "EBADMSG"))
+	return error(Error("archive: truncated tar", kind: "EBADMSG"))
 
 // Reads the entries of a tar byte stream one at a time, for archives too big to hold in
 // memory. Each entry is validated as `unpack` does; `max_entry_bytes` bounds one entry

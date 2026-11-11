@@ -16,19 +16,18 @@ type Chunks:
 	size: Int
 	at: Int
 
-impl Source[Bytes] for Chunks:
-	var fn next() Bytes?!:
-		if self.at >= self.data.length(): return ok(none)
+fn var Chunks.next() Bytes?!:
+	if self.at >= self.data.length(): return ok(none)
 
-		var end = self.at + self.size
-		if end > self.data.length(): end = self.data.length()
+	var end = self.at + self.size
+	if end > self.data.length(): end = self.data.length()
 
-		piece := self.data.slice(self.at, end)?
-		self.at = end
-		return ok(piece)
+	piece := self.data.slice(self.at, end)?
+	self.at = end
+	return ok(piece)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Chunks.close() Unit!:
+	return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))

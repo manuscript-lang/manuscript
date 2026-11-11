@@ -9,10 +9,9 @@ type Item:
 	log: String
 	fail: Bool
 
-impl Closeable for Item:
-	var fn close() Unit!:
-		append_file(self.log, "{self.id},").wait()?
-		if self.fail: return error(Error("close failed"))
+fn var Item.close() Unit!:
+	append_file(self.log, "{self.id},").wait()?
+	if self.fail: return error(Error("close failed"))
 
 fn events(log: String) String!:
 	bytes := read_file(log).wait()?

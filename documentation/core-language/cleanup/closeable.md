@@ -14,7 +14,7 @@ interface Closeable:
 
 For a type that implements `Closeable`, cleanup calls its declared operation:
 
-- A concrete value with an explicit `Closeable` implementation; the compiler registers that `close` when the binding is created.
+- A concrete value with an explicit `Closeable` implementation, or an own `fn var close() Unit!` ([shape](../types/contracts.md#satisfying-an-interface-by-shape)); the compiler registers that `close` when the binding is created.
 - A generic parameter bounded by `Closeable`; `close` dispatches directly.
 
 A value typed as the standard `Closeable` interface owns its concrete value and closes it automatically. An unrelated interface merely declaring `var fn close() Unit!` does not opt into cleanup; retain a concrete owner or call its `close()` explicitly.
@@ -57,11 +57,10 @@ import Closeable from "@std/core.ms"
 type Gate:
     fails: Bool
 
-impl Closeable for Gate:
-    var fn close() Unit!:
-        if self.fails:
-            self.fails = false
-            return error(Error("gate stuck"))
+fn var Gate.close() Unit!:
+    if self.fails:
+        self.fails = false
+        return error(Error("gate stuck"))
 
 fn use_gate(fails: Bool) Unit!:
     _gate := Gate(fails)

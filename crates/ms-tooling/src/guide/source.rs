@@ -92,7 +92,10 @@ pub fn leading_comment(source: &str, offset: usize) -> String {
     let own_line = &before[line_start..];
     // Names of cases and operations follow their keyword; inline payload fields
     // do not begin a declaration line and must not inherit a case description.
-    if !matches!(own_line.trim(), "" | "export" | "fn" | "var fn" | "case") {
+    let prefix = own_line.trim();
+    // A receiver method's name follows its receiver: `fn Type.name`, `fn var Type[T].name`.
+    let receiver_method = prefix.starts_with("fn ") && prefix.ends_with('.');
+    if !matches!(prefix, "" | "export" | "fn" | "var fn" | "case") && !receiver_method {
         return String::new();
     }
     let indent = ms_syntax::doc::indent_columns(own_line);

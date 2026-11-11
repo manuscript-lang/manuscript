@@ -20,14 +20,13 @@ type Holder:
 	breaks: Bool
 
 // Close records itself by writing a marker file named after the holder.
-impl Closeable for Holder:
-	var fn close() Unit!:
-		if self.pause:
-			_ := sleep(nanoseconds(5000000)).wait()
+fn var Holder.close() Unit!:
+	if self.pause:
+		_ := sleep(nanoseconds(5000000)).wait()
 
-		_ := write_file("{self.dir}/{self.id}", "closed", true).wait()
-		if self.breaks:
-			panic("close fault")
+	_ := write_file("{self.dir}/{self.id}", "closed", true).wait()
+	if self.breaks:
+		panic("close fault")
 
 fn closed(dir: String, id: Int) Bool:
 	return read_file("{dir}/{id}").wait().is_ok()

@@ -39,21 +39,14 @@ export type Source:
 	// instead of running them.
 	invalid: Bool
 
-impl Source:
-	// Returns the next 64 random bits as a signed Int (SplitMix64).
-	var fn next_bits() Int:
-		self.state = wrapping_add(self.state, -7046029254386353131)
+// Returns the next 64 random bits as a signed Int (SplitMix64).
+fn var Source.next_bits() Int:
+	self.state = wrapping_add(self.state, -7046029254386353131)
 
-		var z = self.state
-		z = wrapping_multiply(
-			bit_xor(z, shift_right_unsigned(z, 30)),
-			-4658895280553007687,
-		)
-		z = wrapping_multiply(
-			bit_xor(z, shift_right_unsigned(z, 27)),
-			-7723592293110705685,
-		)
-		return bit_xor(z, shift_right_unsigned(z, 31))
+	var z = self.state
+	z = wrapping_multiply(bit_xor(z, shift_right_unsigned(z, 30)), -4658895280553007687)
+	z = wrapping_multiply(bit_xor(z, shift_right_unsigned(z, 27)), -7723592293110705685)
+	return bit_xor(z, shift_right_unsigned(z, 31))
 
 // Returns a source that generates fresh input from `seed`.
 export fn source(seed: Int) Source:
