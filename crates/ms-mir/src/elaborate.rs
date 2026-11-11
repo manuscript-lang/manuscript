@@ -224,6 +224,13 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
         st.remove(inst.args[0]);
         return Ok(());
     }
+    // A disowned view that moves into another local is owned again by that local's scope.
+    if inst.op == Op::ScopeOwn {
+        if st.get(inst.args[0]).is_none() {
+            st.push(inst.args[0], St::Live);
+        }
+        return Ok(());
+    }
     if marker_of(inst) == Some(Marker::End) {
         let scope = scope_of(inst);
         st.retain(|(v, _)| cx.tags.get(v).is_none_or(|t| t.0 != scope));
@@ -316,7 +323,13 @@ fn function(
                     cx.parents.insert(i64::from(s), i64::from(parent) - 1);
                 }
                 (Op::ScopeOwn, Imm::Scope(s, kind)) => {
-                    cx.tags.insert(i.args[0], (i64::from(s), i64::from(kind)));
+                    // A value owned again by a later scope leaves the earlier scope's list.
+                    if let Some((old, _)) =
+                        cx.tags.insert(i.args[0], (i64::from(s), i64::from(kind)))
+                        && let Some(list) = cx.owners.get_mut(&old)
+                    {
+                        list.retain(|v| *v != i.args[0]);
+                    }
                     cx.owners.entry(i64::from(s)).or_default().push(i.args[0]);
                 }
                 _ => {}
@@ -501,6 +514,7 @@ impl Em<'_> {
                 Some(Marker::Begin) => continue,
                 Some(Marker::Own) => {
                     let v = inst.args[0];
+                    apply(self.m, self.f, self.cx, &mut st, &inst)?;
                     if self.cx.tags[&v].1 == 1 {
                         self.register(cur, v)?;
                     }
