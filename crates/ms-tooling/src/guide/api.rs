@@ -189,7 +189,41 @@ fn compute_standard_library(syms: ms_syntax::Names) -> Vec<ApiModule> {
                 .collect();
             ApiModule { path, declarations }
         })
-        .collect()
+        .collect::<Vec<_>>()
+        .tap_shape_interfaces()
+}
+
+/// Lists, under `implements`, each plain interface whose operations a type has among its own
+/// methods: a type satisfies an interface by shape, with no `impl` naming it.
+trait ShapeInterfaces {
+    fn tap_shape_interfaces(self) -> Self;
+}
+
+impl ShapeInterfaces for Vec<ApiModule> {
+    fn tap_shape_interfaces(mut self) -> Self {
+        // A generic interface or one with a type parameter of its own has no exact operation text.
+        let interfaces: Vec<(String, BTreeSet<String>)> = self
+            .iter()
+            .flat_map(|m| &m.declarations)
+            .filter(|d| {
+                d.kind == "interface" && d.parameters.is_empty() && !d.operations.is_empty()
+            })
+            .map(|d| (d.name.clone(), d.operations.iter().cloned().collect()))
+            .collect();
+        for d in self.iter_mut().flat_map(|m| &mut m.declarations) {
+            if d.kind == "interface" || d.operations.is_empty() {
+                continue;
+            }
+            let own: BTreeSet<&String> = d.operations.iter().collect();
+            for (name, ops) in &interfaces {
+                if !d.implements.contains(name) && ops.iter().all(|op| own.contains(op)) {
+                    d.implements.push(name.clone());
+                }
+            }
+            d.implements.sort();
+        }
+        self
+    }
 }
 
 fn primitive_symbol(name: &str) -> SymRef {
@@ -242,7 +276,7 @@ pub fn module_documentation(syms: ms_syntax::Names, program: &Program) -> Vec<Ap
         });
     }
     modules.sort_by(|a, b| a.path.cmp(&b.path));
-    modules
+    modules.tap_shape_interfaces()
 }
 
 fn variable_text(syms: ms_syntax::Names, v: &Ty) -> String {

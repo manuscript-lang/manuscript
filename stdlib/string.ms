@@ -48,10 +48,9 @@ export enum NormalizationForm:
 	// Compatibility decomposition with combining marks placed in canonical order.
 	Nfkd
 
-impl NormalizationForm:
-	// Normalizes text with the existing String.normalize budgets and error kinds.
-	// Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
-	fn normalize(text: String, max_bytes: Int?) String!: ...
+// Normalizes text with the existing String.normalize budgets and error kinds.
+// Omission or none adds no output budget; a supplied budget counts UTF-8 bytes.
+fn NormalizationForm.normalize(text: String, max_bytes: Int?) String!: ...
 
 // Builds text from Unicode scalar values. Invalid scalars return `EINVAL`.
 export fn from_scalars(values: List[Int]) String!:
@@ -60,58 +59,56 @@ export fn from_scalars(values: List[Int]) String!:
 // Mutable builder for constructing a string without repeated intermediate copies.
 export extern type StringBuilder
 
-impl StringBuilder:
-	// Appends the supplied text in order.
-	var fn append(value: String) Unit: ...
+// Appends the supplied text in order.
+fn var StringBuilder.append(value: String) Unit: ...
 
-	// Consumes the builder and returns its text; the builder cannot be used afterwards.
-	fn build() String: ...
+// Consumes the builder and returns its text; the builder cannot be used afterwards.
+fn StringBuilder.build() String: ...
 
-	// Returns the text appended so far and leaves the builder empty, for a builder held
-	// in a field.
-	var fn drain() String: ...
+// Returns the text appended so far and leaves the builder empty, for a builder held
+// in a field.
+fn var StringBuilder.drain() String: ...
 
 // A compiled regular expression that can be reused across input strings.
 export extern type Regex
 
-impl Regex:
-	// Tests whether any match occurs; anchor the pattern explicitly to require a
-	// whole-string match.
-	fn matches(text: String) Bool: ...
+// Tests whether any match occurs; anchor the pattern explicitly to require a
+// whole-string match.
+fn Regex.matches(text: String) Bool: ...
 
-	// Returns nonoverlapping full-match text in occurrence order, excluding capture
-	// groups. A supplied cap is a strict budget, not truncation; zero-width matches
-	// follow the engine's rules.
-	fn find_all(text: String, max_matches: Int?) List[String]!: ...
+// Returns nonoverlapping full-match text in occurrence order, excluding capture
+// groups. A supplied cap is a strict budget, not truncation; zero-width matches
+// follow the engine's rules.
+fn Regex.find_all(text: String, max_matches: Int?) List[String]!: ...
 
-	// Replaces every nonoverlapping match with literal replacement text; $ and capture
-	// names are not expanded. max_bytes optionally bounds UTF-8 output; negatives
-	// return EINVAL, exhaustion EOVERFLOW.
-	fn replace_all(text: String, replacement: String, max_bytes: Int?) String!: ...
+// Replaces every nonoverlapping match with literal replacement text; $ and capture
+// names are not expanded. max_bytes optionally bounds UTF-8 output; negatives
+// return EINVAL, exhaustion EOVERFLOW.
+fn Regex.replace_all(text: String, replacement: String, max_bytes: Int?) String!: ...
 
-	// Returns the first match as [whole, group1, ...]; groups that did not participate
-	// are "". Empty list when nothing matches.
-	fn captures(text: String) List[String]: ...
+// Returns the first match as [whole, group1, ...]; groups that did not participate
+// are "". Empty list when nothing matches.
+fn Regex.captures(text: String) List[String]: ...
 
-	// Like captures for every nonoverlapping match, under find_all's match-count
-	// budget.
-	fn captures_all(text: String, max_matches: Int?) List[List[String]]!: ...
+// Like captures for every nonoverlapping match, under find_all's match-count
+// budget.
+fn Regex.captures_all(text: String, max_matches: Int?) List[List[String]]!: ...
 
-	// Returns the first match's named groups that participated; empty map when nothing
-	// matches.
-	fn named_captures(text: String) Map[String, String]: ...
+// Returns the first match's named groups that participated; empty map when nothing
+// matches.
+fn Regex.named_captures(text: String) Map[String, String]: ...
 
-	// Returns [start, end] UTF-8 byte offsets of the first match, or none when nothing
-	// matches.
-	fn find_span(text: String) List[Int]?: ...
+// Returns [start, end] UTF-8 byte offsets of the first match, or none when nothing
+// matches.
+fn Regex.find_span(text: String) List[Int]?: ...
 
-	// Splits text around every match, always returning at least one piece. max_pieces
-	// is a strict budget like find_all's.
-	fn split(text: String, max_pieces: Int?) List[String]!: ...
+// Splits text around every match, always returning at least one piece. max_pieces
+// is a strict budget like find_all's.
+fn Regex.split(text: String, max_pieces: Int?) List[String]!: ...
 
-	// Like replace_all but expands $1, ${name}, and $$ in template from each match
-	// (Rust regex syntax: use ${1}x, not $1x).
-	fn replace_template(text: String, template: String, max_bytes: Int?) String!: ...
+// Like replace_all but expands $1, ${name}, and $$ in template from each match
+// (Rust regex syntax: use ${1}x, not $1x).
+fn Regex.replace_template(text: String, template: String, max_bytes: Int?) String!: ...
 
 impl RegexSpanQueries for Regex:
 	// Returns all full-match byte ranges in find_all order, without copying matched

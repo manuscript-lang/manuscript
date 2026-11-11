@@ -475,6 +475,7 @@ fn inherent_methods_keep_public_names_and_real_contracts() {
                 render_site_module(module)
                     .contains("api-legacy-anchor \"Promise.Promise$methods[T].wait\"")
             );
+            assert!(declaration.implements.iter().any(|c| c == "Closeable"));
         }
     }
 }

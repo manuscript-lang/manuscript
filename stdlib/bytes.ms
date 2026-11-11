@@ -25,82 +25,81 @@ impl Writable for Bytes:
 	fn as_bytes() Bytes:
 		return self.clone()
 
-impl Bytes:
-	// Copies byte storage without changing the receiver.
-	fn clone() Bytes: ...
+// Copies byte storage without changing the receiver.
+fn Bytes.clone() Bytes: ...
 
-	// Tests whether `value` occurs as a byte subsequence.
-	fn contains(value: Bytes) Bool: ...
+// Tests whether `value` occurs as a byte subsequence.
+fn Bytes.contains(value: Bytes) Bool: ...
 
-	/*
-    Splits exact byte separators into a fresh list of immutable byte views.
-    Nonempty separators retain empty parts; empty data then yields one empty Bytes.
-    Omitted/none max_parts is unlimited; zero returns no parts, negatives fault.
-    A cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data.
-    */
-	fn split(separator: Bytes, max_parts: Int?) List[Bytes]: ...
+/*
+Splits exact byte separators into a fresh list of immutable byte views.
+Nonempty separators retain empty parts; empty data then yields one empty Bytes.
+Omitted/none max_parts is unlimited; zero returns no parts, negatives fault.
+A cap truncates parts; empty separator yields one Bytes per byte, no parts for empty data.
+*/
+fn Bytes.split(separator: Bytes, max_parts: Int?) List[Bytes]: ...
 
-	/*
-    Selects [start, end) in bytes; negative bounds are relative to the end.
-    Bounds outside 0 <= start <= end <= length() return an `Error` of kind `ERANGE`.
-    The result is a new copy; `view` borrows instead.
-    */
-	fn slice(start: Int, end: Int) Bytes!: ...
+/*
+Selects [start, end) in bytes; negative bounds are relative to the end.
+Bounds outside 0 <= start <= end <= length() return an `Error` of kind `ERANGE`.
+The result is a new copy; `view` borrows instead.
+*/
+fn Bytes.slice(start: Int, end: Int) Bytes!: ...
 
-	/*
-    Borrows [start, end) of the receiver without copying; negative bounds are relative to the end.
-    Bounds outside 0 <= start <= end <= length() raise a fault. Like `List.get`, the result borrows
-    the receiver, which cannot change while the view is used; `.clone()` keeps the bytes.
-    */
-	fn view(start: Int, end: Int) Bytes: ...
+/*
+Borrows [start, end) of the receiver without copying; negative bounds are relative to the end.
+Bounds outside 0 <= start <= end <= length() raise a fault. Like `List.get`, the result borrows
+the receiver, which cannot change while the view is used; `.clone()` keeps the bytes.
+*/
+fn Bytes.view(start: Int, end: Int) Bytes: ...
 
-	// Returns an unsigned byte; negative indexes are relative to the end. An
-	// out-of-range index returns `default`, and without one raises a fault.
-	fn get(index: Int, default: UInt8?) UInt8: ...
+// Returns an unsigned byte; negative indexes are relative to the end. An
+// out-of-range index returns `default`, and without one raises a fault.
+fn Bytes.get(index: Int, default: UInt8?) UInt8: ...
 
-	// Returns the first matching byte offset or `none`; empty `value` matches at zero.
-	fn index_of(value: Bytes) Int?: ...
+// Returns the first matching byte offset or `none`; empty `value` matches at zero.
+fn Bytes.index_of(value: Bytes) Int?: ...
 
-	// Returns the first offset at or after `start` holding the byte `value`, or `none`.
-	// A `start` past length() gives `none`; a negative `start` counts as zero.
-	fn index_of_byte(value: UInt8, start: Int) Int?: ...
+// Returns the first offset at or after `start` holding the byte `value`, or `none`.
+// A `start` past length() gives `none`; a negative `start` counts as zero.
+fn Bytes.index_of_byte(value: UInt8, start: Int) Int?: ...
 
-	// Returns the last matching byte offset or `none`; empty `value` matches at
-	// length().
-	fn last_index_of(value: Bytes) Int?: ...
+// Returns the last matching byte offset or `none`; empty `value` matches at
+// length().
+fn Bytes.last_index_of(value: Bytes) Int?: ...
 
-	// Tests whether the receiver begins with these bytes.
-	fn starts_with(prefix: Bytes) Bool: ...
+// Tests whether the receiver begins with these bytes.
+fn Bytes.starts_with(prefix: Bytes) Bool: ...
 
-	// Tests whether the receiver ends with these bytes.
-	fn ends_with(suffix: Bytes) Bool: ...
+// Tests whether the receiver ends with these bytes.
+fn Bytes.ends_with(suffix: Bytes) Bool: ...
 
-	// Returns a reversed copy without changing the receiver.
-	fn reversed() Bytes: ...
+// Returns a reversed copy without changing the receiver.
+fn Bytes.reversed() Bytes: ...
 
-	// Returns a copy with one byte replaced; negative indexes are relative to the end.
-	// An out-of-range index faults.
-	fn with_value(index: Int, value: UInt8) Bytes: ...
+// Returns a copy with one byte replaced; negative indexes are relative to the end.
+// An out-of-range index faults.
+fn Bytes.with_value(index: Int, value: UInt8) Bytes: ...
 
-	// Tests whether the receiver contains no bytes.
-	fn is_empty() Bool: ...
+// Tests whether the receiver contains no bytes.
+fn Bytes.is_empty() Bool: ...
 
-	// Returns a fresh mutable list of unsigned byte values; changing it leaves the
-	// Bytes unchanged.
-	fn values() List[UInt8]: ...
+// Returns a fresh mutable list of unsigned byte values; changing it leaves the
+// Bytes unchanged.
+fn Bytes.values() List[UInt8]: ...
 
-	// Returns concatenated bytes without changing either operand.
-	fn concat(other: Bytes) Bytes: ...
+// Returns concatenated bytes without changing either operand.
+fn Bytes.concat(other: Bytes) Bytes: ...
 
-	// Returns the number of bytes, not the number of Unicode characters.
-	fn length() Int: ...
+// Returns the number of bytes, not the number of Unicode characters.
+fn Bytes.length() Int: ...
 
-	// Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
-	fn decode_utf8() String?: ...
+// Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
+fn Bytes.decode_utf8() String?: ...
 
-	// Decodes [start, end) as `decode_utf8` does, without copying the range into a new
-	// Bytes first. Bounds outside 0 <= start <= end <= length() raise a fault.
-	fn decode_utf8_range(start: Int, end: Int) String?: ...
+// Decodes [start, end) as `decode_utf8` does, without copying the range into a new
+// Bytes first. Bounds outside 0 <= start <= end <= length() raise a fault.
+fn Bytes.decode_utf8_range(start: Int, end: Int) String?: ...
 
 impl BytesCodecs for Bytes:
 	// Reads one signed byte at `at`; a missing byte returns an `Error` of kind
@@ -262,20 +261,19 @@ export fn values(data: Bytes) List[UInt8]:
 // Builds a byte sequence efficiently before freezing it into an immutable value.
 export extern type BytesBuilder
 
-impl BytesBuilder:
-	// Appends one byte to the end of the builder.
-	var fn append(value: UInt8) Unit: ...
+// Appends one byte to the end of the builder.
+fn var BytesBuilder.append(value: UInt8) Unit: ...
 
-	// Appends all supplied bytes in order; the input is unchanged.
-	var fn append_bytes(values: Bytes) Unit: ...
+// Appends all supplied bytes in order; the input is unchanged.
+fn var BytesBuilder.append_bytes(values: Bytes) Unit: ...
 
-	// Consumes the builder and returns its bytes; the builder cannot be used
-	// afterwards.
-	fn build() Bytes: ...
+// Consumes the builder and returns its bytes; the builder cannot be used
+// afterwards.
+fn BytesBuilder.build() Bytes: ...
 
-	// Returns the bytes appended so far and leaves the builder empty, for a builder
-	// held in a field.
-	var fn drain() Bytes: ...
+// Returns the bytes appended so far and leaves the builder empty, for a builder
+// held in a field.
+fn var BytesBuilder.drain() Bytes: ...
 
 impl BytesBuilderCodecs for BytesBuilder:
 	// Appends one signed byte.

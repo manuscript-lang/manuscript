@@ -504,177 +504,176 @@ export extern type BigInt
 
 impl Data for BigInt:
 
-impl BigInt:
-	// Returns an independent copy, so `var acc = base.clone()` starts an accumulator.
-	fn clone() BigInt:
-		return msstd_bigint_add(self, msstd_bigint_from_int(0))
+// Returns an independent copy, so `var acc = base.clone()` starts an accumulator.
+fn BigInt.clone() BigInt:
+	return msstd_bigint_add(self, msstd_bigint_from_int(0))
 
-	// Returns the exact sum; arbitrary precision means it cannot overflow.
-	fn add(other: BigInt) BigInt:
-		return msstd_bigint_add(self, other)
+// Returns the exact sum; arbitrary precision means it cannot overflow.
+fn BigInt.add(other: BigInt) BigInt:
+	return msstd_bigint_add(self, other)
 
-	// Returns the exact difference `self - other`; it cannot overflow.
-	fn subtract(other: BigInt) BigInt:
-		return msstd_bigint_subtract(self, other)
+// Returns the exact difference `self - other`; it cannot overflow.
+fn BigInt.subtract(other: BigInt) BigInt:
+	return msstd_bigint_subtract(self, other)
 
-	// Returns the exact product; it cannot overflow, though very large operands take
-	// proportionally longer.
-	fn multiply(other: BigInt) BigInt:
-		return msstd_bigint_multiply(self, other)
+// Returns the exact product; it cannot overflow, though very large operands take
+// proportionally longer.
+fn BigInt.multiply(other: BigInt) BigInt:
+	return msstd_bigint_multiply(self, other)
 
-	// Returns the non-negative greatest common divisor; gcd(0, 0) is zero.
-	// Example: `from_int(-12).gcd(from_int(18))` is `from_int(6)`.
-	fn gcd(other: BigInt) BigInt:
-		return msstd_bigint_gcd(self, other)
+// Returns the non-negative greatest common divisor; gcd(0, 0) is zero.
+// Example: `from_int(-12).gcd(from_int(18))` is `from_int(6)`.
+fn BigInt.gcd(other: BigInt) BigInt:
+	return msstd_bigint_gcd(self, other)
 
-	// Returns the non-negative least common multiple, or zero when either operand is
-	// zero.
-	fn lcm(other: BigInt) BigInt:
-		return msstd_bigint_lcm(self, other)
+// Returns the non-negative least common multiple, or zero when either operand is
+// zero.
+fn BigInt.lcm(other: BigInt) BigInt:
+	return msstd_bigint_lcm(self, other)
 
-	// Returns the floor of the exact integer square root; a negative receiver returns
-	// EINVAL.
-	fn sqrt() BigInt!:
-		return msstd_bigint_sqrt(self)
+// Returns the floor of the exact integer square root; a negative receiver returns
+// EINVAL.
+fn BigInt.sqrt() BigInt!:
+	return msstd_bigint_sqrt(self)
 
-	/*
-    Returns `self` raised to a non-negative BigInt exponent modulo a positive modulus, in 0 through modulus - 1.
-    A negative exponent or non-positive modulus returns EINVAL. A zero exponent gives 1 modulo modulus, including 0^0.
-    Reduces during exponentiation instead of constructing the full power. Variable-time; unsuitable for secret exponents.
-    */
-	fn pow_mod(exponent: BigInt, modulus: BigInt) BigInt!:
-		return msstd_bigint_pow_mod(self, exponent, modulus)
+/*
+Returns `self` raised to a non-negative BigInt exponent modulo a positive modulus, in 0 through modulus - 1.
+A negative exponent or non-positive modulus returns EINVAL. A zero exponent gives 1 modulo modulus, including 0^0.
+Reduces during exponentiation instead of constructing the full power. Variable-time; unsuitable for secret exponents.
+*/
+fn BigInt.pow_mod(exponent: BigInt, modulus: BigInt) BigInt!:
+	return msstd_bigint_pow_mod(self, exponent, modulus)
 
-	// Returns the multiplicative inverse modulo a positive modulus, in 0 through
-	// modulus - 1; a non-positive modulus returns EINVAL. No inverse gives ok(none);
-	// modulus 1 gives zero. Variable-time; unsuitable for secret operands.
-	fn inverse_mod(modulus: BigInt) BigInt?!:
-		if modulus.sign() <= 0: return error(
-			Error("big integer: invalid input", kind: "EINVAL")
-		)
-		return ok(msstd_bigint_inverse_mod(self, modulus))
+// Returns the multiplicative inverse modulo a positive modulus, in 0 through
+// modulus - 1; a non-positive modulus returns EINVAL. No inverse gives ok(none);
+// modulus 1 gives zero. Variable-time; unsuitable for secret operands.
+fn BigInt.inverse_mod(modulus: BigInt) BigInt?!:
+	if modulus.sign() <= 0: return error(
+		Error("big integer: invalid input", kind: "EINVAL")
+	)
+	return ok(msstd_bigint_inverse_mod(self, modulus))
 
-	// Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
-	// A zero divisor returns EINVAL.
-	fn divide(other: BigInt) BigInt!:
-		return msstd_bigint_divide(self, other)
+// Returns the quotient truncated toward zero, so -7 divided by 2 is -3.
+// A zero divisor returns EINVAL.
+fn BigInt.divide(other: BigInt) BigInt!:
+	return msstd_bigint_divide(self, other)
 
-	// Returns the remainder whose sign follows the dividend, so -7 remainder 2 is -1.
-	// A zero divisor returns EINVAL.
-	fn remainder(other: BigInt) BigInt!:
-		return msstd_bigint_remainder(self, other)
+// Returns the remainder whose sign follows the dividend, so -7 remainder 2 is -1.
+// A zero divisor returns EINVAL.
+fn BigInt.remainder(other: BigInt) BigInt!:
+	return msstd_bigint_remainder(self, other)
 
-	// Returns -1 when this value is less than `other`, 0 when equal, and 1 when
-	// greater.
-	fn compare(other: BigInt) Int:
-		return msstd_bigint_compare(self, other)
+// Returns -1 when this value is less than `other`, 0 when equal, and 1 when
+// greater.
+fn BigInt.compare(other: BigInt) Int:
+	return msstd_bigint_compare(self, other)
 
-	// Returns the lesser of this value and `other`, or this value when they compare
-	// equal.
-	fn min(other: BigInt) BigInt:
-		if other.compare(self) < 0: return other
-		return self
+// Returns the lesser of this value and `other`, or this value when they compare
+// equal.
+fn BigInt.min(other: BigInt) BigInt:
+	if other.compare(self) < 0: return other
+	return self
 
-	// Returns the greater of this value and `other`, or this value when they compare
-	// equal.
-	fn max(other: BigInt) BigInt:
-		if other.compare(self) > 0: return other
-		return self
+// Returns the greater of this value and `other`, or this value when they compare
+// equal.
+fn BigInt.max(other: BigInt) BigInt:
+	if other.compare(self) > 0: return other
+	return self
 
-	// Returns this value limited to `low` through `high`; `low` greater than `high` is
-	// a programming fault.
-	fn clamp(low: BigInt, high: BigInt) BigInt:
-		if low.compare(high) > 0:
-			panic("clamp: low must not be greater than high")
-		if self.compare(low) < 0: return low
-		if self.compare(high) > 0: return high
+// Returns this value limited to `low` through `high`; `low` greater than `high` is
+// a programming fault.
+fn BigInt.clamp(low: BigInt, high: BigInt) BigInt:
+	if low.compare(high) > 0:
+		panic("clamp: low must not be greater than high")
+	if self.compare(low) < 0: return low
+	if self.compare(high) > 0: return high
 
-		return self
+	return self
 
-	// Returns the bitwise AND using infinite-width two's-complement semantics, so
-	// negative operands behave as if sign-extended.
-	fn bit_and(other: BigInt) BigInt:
-		return msstd_bigint_bit_and(self, other)
+// Returns the bitwise AND using infinite-width two's-complement semantics, so
+// negative operands behave as if sign-extended.
+fn BigInt.bit_and(other: BigInt) BigInt:
+	return msstd_bigint_bit_and(self, other)
 
-	// Returns the bitwise OR using infinite-width two's-complement semantics, so
-	// negative operands behave as if sign-extended.
-	fn bit_or(other: BigInt) BigInt:
-		return msstd_bigint_bit_or(self, other)
+// Returns the bitwise OR using infinite-width two's-complement semantics, so
+// negative operands behave as if sign-extended.
+fn BigInt.bit_or(other: BigInt) BigInt:
+	return msstd_bigint_bit_or(self, other)
 
-	// Returns the bitwise XOR using infinite-width two's-complement semantics, so
-	// negative operands behave as if sign-extended.
-	fn bit_xor(other: BigInt) BigInt:
-		return msstd_bigint_bit_xor(self, other)
+// Returns the bitwise XOR using infinite-width two's-complement semantics, so
+// negative operands behave as if sign-extended.
+fn BigInt.bit_xor(other: BigInt) BigInt:
+	return msstd_bigint_bit_xor(self, other)
 
-	// Returns the bitwise complement using infinite-width two's-complement semantics,
-	// so `bit_not(x)` equals `-x - 1`.
-	fn bit_not() BigInt:
-		return msstd_bigint_bit_not(self)
+// Returns the bitwise complement using infinite-width two's-complement semantics,
+// so `bit_not(x)` equals `-x - 1`.
+fn BigInt.bit_not() BigInt:
+	return msstd_bigint_bit_not(self)
 
-	// Returns the value with its sign flipped.
-	fn negate() BigInt:
-		return msstd_bigint_negate(self)
+// Returns the value with its sign flipped.
+fn BigInt.negate() BigInt:
+	return msstd_bigint_negate(self)
 
-	// Returns the absolute value, which is never negative.
-	fn abs() BigInt:
-		return msstd_bigint_abs(self)
+// Returns the absolute value, which is never negative.
+fn BigInt.abs() BigInt:
+	return msstd_bigint_abs(self)
 
-	// Returns -1, 0 or 1 as the value is negative, zero or positive.
-	fn sign() Int:
-		return msstd_bigint_sign(self)
+// Returns -1, 0 or 1 as the value is negative, zero or positive.
+fn BigInt.sign() Int:
+	return msstd_bigint_sign(self)
 
-	// Raises to a nonnegative `exponent`. A negative exponent returns EINVAL, and a
-	// result above 16777216 bits returns EOVERFLOW.
-	fn pow(exponent: Int) BigInt!:
-		return msstd_bigint_pow(self, exponent)
+// Raises to a nonnegative `exponent`. A negative exponent returns EINVAL, and a
+// result above 16777216 bits returns EOVERFLOW.
+fn BigInt.pow(exponent: Int) BigInt!:
+	return msstd_bigint_pow(self, exponent)
 
-	// Shifts left by `count` bits, multiplying by two to that power. A negative count
-	// returns EINVAL, and a result above 16777216 bits returns EOVERFLOW.
-	fn shift_left(count: Int) BigInt!:
-		return msstd_bigint_shift_left(self, count)
+// Shifts left by `count` bits, multiplying by two to that power. A negative count
+// returns EINVAL, and a result above 16777216 bits returns EOVERFLOW.
+fn BigInt.shift_left(count: Int) BigInt!:
+	return msstd_bigint_shift_left(self, count)
 
-	// Shifts right by `count` bits with floor semantics for negatives, so -5 shifted by
-	// 1 is -3. A negative count returns EINVAL.
-	fn shift_right(count: Int) BigInt!:
-		return msstd_bigint_shift_right(self, count)
+// Shifts right by `count` bits with floor semantics for negatives, so -5 shifted by
+// 1 is -3. A negative count returns EINVAL.
+fn BigInt.shift_right(count: Int) BigInt!:
+	return msstd_bigint_shift_right(self, count)
 
-	// Converts to the nearest Float, or returns none when the magnitude exceeds the
-	// Float range.
-	fn to_float() Float?:
-		value := msstd_bigint_to_float(self)
-		if value.is_finite(): return value
+// Converts to the nearest Float, or returns none when the magnitude exceeds the
+// Float range.
+fn BigInt.to_float() Float?:
+	value := msstd_bigint_to_float(self)
+	if value.is_finite(): return value
 
-		return none
+	return none
 
-	// Returns the value as an Int when it fits in the platform's Int, or none when it
-	// is outside that range.
-	fn to_int() Int?:
-		return msstd_bigint_to_int(self)
+// Returns the value as an Int when it fits in the platform's Int, or none when it
+// is outside that range.
+fn BigInt.to_int() Int?:
+	return msstd_bigint_to_int(self)
 
-	// Formats the value in a radix from 2 through 36 using lowercase digits and a
-	// leading `-` for negatives. A radix outside 2 through 36 is a programming fault.
-	fn to_string_radix(radix: Int) String:
-		return msstd_bigint_to_string_radix(self, radix)
+// Formats the value in a radix from 2 through 36 using lowercase digits and a
+// leading `-` for negatives. A radix outside 2 through 36 is a programming fault.
+fn BigInt.to_string_radix(radix: Int) String:
+	return msstd_bigint_to_string_radix(self, radix)
 
-	/*
-    Reports whether this value is probably prime: trial division by the primes below 100, then Miller-Rabin
-    with the first `rounds` primes as bases (at most 25). The default 13 rounds is exact below 3.3e24. Above that,
-    `rounds` more bases are drawn from operating-system entropy, so a composite passes with odds at most 4^-rounds
-    even when it was built to fool fixed bases; an entropy failure is a fault.
-    Values below 2, including negatives, are not prime. A `rounds` below 1 is a programming fault.
-    */
-	fn is_probable_prime(rounds: Int = 13) Bool:
-		if rounds < 1:
-			panic("is_probable_prime: rounds must be at least 1")
-		return bigint_probable_prime(self, rounds)
+/*
+Reports whether this value is probably prime: trial division by the primes below 100, then Miller-Rabin
+with the first `rounds` primes as bases (at most 25). The default 13 rounds is exact below 3.3e24. Above that,
+`rounds` more bases are drawn from operating-system entropy, so a composite passes with odds at most 4^-rounds
+even when it was built to fool fixed bases; an entropy failure is a fault.
+Values below 2, including negatives, are not prime. A `rounds` below 1 is a programming fault.
+*/
+fn BigInt.is_probable_prime(rounds: Int = 13) Bool:
+	if rounds < 1:
+		panic("is_probable_prime: rounds must be at least 1")
+	return bigint_probable_prime(self, rounds)
 
-	/*
-    Returns a square root of this value modulo the odd prime `modulus`, in 0 through modulus - 1, or none when the value is not a square there.
-    The other root is `modulus` minus the result. A modulus below 3, an even modulus, or one that is not prime returns EINVAL
-    (a composite modulus is detected only when the computation fails to produce a root).
-    */
-	fn mod_sqrt(modulus: BigInt) BigInt?!:
-		return bigint_mod_sqrt(self, modulus)
+/*
+Returns a square root of this value modulo the odd prime `modulus`, in 0 through modulus - 1, or none when the value is not a square there.
+The other root is `modulus` minus the result. A modulus below 3, an even modulus, or one that is not prime returns EINVAL
+(a composite modulus is detected only when the computation fails to produce a root).
+*/
+fn BigInt.mod_sqrt(modulus: BigInt) BigInt?!:
+	return bigint_mod_sqrt(self, modulus)
 
 // Converts a machine-sized integer without loss.
 export fn from_int(value: Int) BigInt:

@@ -48,25 +48,23 @@ export extern type IpAddress
 
 impl Data for IpAddress:
 
-impl IpAddress:
-	// Returns canonical text; mapped IPv6 input is normalized to IPv4.
-	fn text() String:
-		return msstd_net_ip_address_text(self)
+// Returns canonical text; mapped IPv6 input is normalized to IPv4.
+fn IpAddress.text() String:
+	return msstd_net_ip_address_text(self)
 
-	// Returns the normalized address family.
-	fn family() IpFamily:
-		if msstd_net_ip_address_family(self): return IPv6
-		return IPv4
+// Returns the normalized address family.
+fn IpAddress.family() IpFamily:
+	if msstd_net_ip_address_family(self): return IPv6
+	return IPv4
 
 // A validated, masked numeric CIDR range.
 export extern type Cidr
 
 impl Data for Cidr:
 
-impl Cidr:
-	// Returns the canonical masked prefix without reparsing.
-	fn text() String:
-		return msstd_net_cidr_text(self)
+// Returns the canonical masked prefix without reparsing.
+fn Cidr.text() String:
+	return msstd_net_cidr_text(self)
 
 // DNS record data returned by a typed lookup.
 export type DnsRecord:
