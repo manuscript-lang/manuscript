@@ -67,11 +67,11 @@ impl HttpHeaders:
 	fn names() List[String]:
 		return msstd_http_headers_names(self)
 
-	// Removes a name; existing list aliases are detached from this header object.
+	// Removes a name and its values; previously returned value lists remain unchanged.
 	var fn remove(name: String) Bool:
 		return msstd_http_headers_remove(self, name)
 
-	// Copies name/list membership and shares immutable Bytes values.
+	// Copies every name and value into independent headers.
 	fn clone() HttpHeaders:
 		return msstd_http_headers_clone(self)
 
@@ -98,8 +98,8 @@ export type ClientResponse:
 	body: Bytes
 
 impl ClientResponse:
-	// Borrows the current response metadata.
-	// Clone the result for an independent owned value, including its headers.
+	// Returns an independent owned copy of the current response metadata, including its
+	// headers.
 	fn metadata() HttpResponseMetadata:
 		return self.head.clone()
 
@@ -389,8 +389,8 @@ export type HttpServerOptions:
 export extern type NativeResponseBody
 
 // The native response a client operation returns: its body is read through
-// `StreamingResponse.body`. Metadata remains available after close and shares one
-// mutable header object.
+// `StreamingResponse.body`. Metadata remains available after close; each metadata()
+// call returns an independent copy.
 export opaque type RawResponse:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeResponseBody
@@ -403,8 +403,8 @@ impl Closeable for RawResponse:
 		msstd_http_body_close(self.native)
 
 impl RawResponse:
-	// Returns the response head (status and headers) without copying; it stays
-	// available after close.
+	// Returns an independent copy of the response head (status and headers), including
+	// after close.
 	fn metadata() HttpResponseMetadata:
 		return msstd_http_body_metadata(self.native)
 

@@ -37,16 +37,16 @@ export enum ColorMode:
 	Rgb  // Three bytes per pixel: red, green, blue, each 0 to 255.
 	Rgba  // Red, green, blue, then alpha (not premultiplied).
 
-// The file formats `decode` recognizes and `encode` writes.
+// The file formats `decode_image` recognizes and `encode_image` writes.
 export enum ImageFormat:
 	Jpeg  // JPEG: baseline and progressive decode (grayscale, YCbCr, CMYK/YCCK), baseline encode.
 	Png  // PNG: every color type and bit depth, Adam7 interlacing; 16-bit samples keep their high byte.
 	Ppm  // Netpbm binary P5 (gray) and P6 (RGB), 8-bit.
 	Bmp  // Windows bitmap: 1, 4, 8, 24 and 32-bit uncompressed decode; 24-bit (or 32-bit with alpha) encode.
 
-// A width-by-height raster. Build one with `new_image`, `decode`, or the transforms
-// below. Example: `img := new_image(2, 2, ColorMode.Rgb).get(); img.pixel(0, 0)` is
-// opaque black.
+// A width-by-height raster. Build one with `new_image`, `decode_image`, or the
+// transforms below. Example:
+// `img := new_image(2, 2, ColorMode.Rgb).get(); img.pixel(0, 0)` is opaque black.
 export type Image:
 	// Columns, at least 1.
 	width: Int

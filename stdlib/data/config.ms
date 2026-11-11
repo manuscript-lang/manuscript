@@ -8,7 +8,7 @@ fn config_error(line: Int, reason: String) Error:
 /*
 Parses `.env` text into a map in file order, without touching the process environment.
 Use it to layer settings: read the file, then let real variables win, `values.add(name, value)`.
-To load a file straight into the environment use `load_environment` from `@std/os/process.ms`, which accepts the same syntax.
+To load a file straight into the environment use `load_environment` from `@std/os/env.ms`, which accepts the same syntax.
 
 - Blank lines and `#` comment lines are skipped; a leading byte-order mark is ignored.
 - `export NAME=value` is accepted, and a name is letters, digits and `_`, not starting with a digit.
