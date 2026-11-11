@@ -264,7 +264,7 @@ impl Walker<'_> {
                     );
                     self.error(
                         e.pos,
-                        format!("`{name}` would copy `{result_ty_t}` out of `{text}`, which keeps its elements; {why}, so read it in place (`first()`, `if let`)", result_ty_t = result_ty.display(self.syms)),
+                        format!("`{name}` would copy `{result_ty_t}` out of `{text}`, which keeps its elements; {why}, so read it in place (`first()` or `if value := optional:`)", result_ty_t = result_ty.display(self.syms)),
                     );
                 }
                 mode = ParamMode::Move;
@@ -279,7 +279,7 @@ impl Walker<'_> {
                         clone_blocker(&result_ty).unwrap_or("it has one owner and no `clone`");
                     self.error(
                         e.pos,
-                        format!("`{name}` would take `{result_ty_t}` out of `{text}`, which only borrows an element of `{from}`; {why}, so read it in place (`if let`)", result_ty_t = result_ty.display(self.syms)),
+                        format!("`{name}` would take `{result_ty_t}` out of `{text}`, which only borrows an element of `{from}`; {why}, so read it in place (`if value := optional:`)", result_ty_t = result_ty.display(self.syms)),
                     );
                 }
             }

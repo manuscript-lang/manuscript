@@ -525,7 +525,7 @@ impl Checker {
             }
             "Err" | "err" | "Error" => {
                 return format!(
-                    "{message}; write error(cause) for a failed Result, where cause is a value implementing Error"
+                    "{message}; write error(cause) for a failed Result, where cause has the Result's error type"
                 );
             }
             "True" | "False" => {
@@ -554,7 +554,7 @@ impl Checker {
             }
             "Object" | "Array" | "dict" | "list" => {
                 return format!(
-                    "{message}; use List[T] and Map[K, V] from \"@std/collections/collections.ms\"; read a Map with m.keys(), m.values() or m.entries()"
+                    "{message}; use the prelude List[T] and Map[K, V] types without imports; read a Map with m.keys(), m.values() or m.entries()"
                 );
             }
             "Math" | "math" => {
@@ -570,7 +570,7 @@ impl Checker {
             }
             "spawn" | "Promise" | "Future" | "Thread" | "thread" | "setTimeout" | "setInterval" => {
                 return format!(
-                    "{message}; there is no free {name_t}: start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\" and wait on it with timeout: seconds(...)",
+                    "{message}; there is no free {name_t}: start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\" and call wait() on the returned Promise",
                     name_t = self.syms.str(name)
                 );
             }

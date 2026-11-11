@@ -2062,13 +2062,13 @@ impl<'a> Parser<'a> {
                             return self.fail(t, format!("'{n_t}' is not a keyword; write 'name := ...' for a binding that is not reassigned, or 'var name = ...' when it changes", n_t = self.names.str(n)));
                         }
                         "throw" | "raise" | "catch" => {
-                            return self.fail(t, format!("'{n_t}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'", n_t = self.names.str(n)));
+                            return self.fail(t, format!("'{n_t}' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", n_t = self.names.str(n)));
                         }
                         "elseif" => return self.fail(t, "'elseif' is not a keyword; write 'else if <condition>:' for a further branch"),
                         "elif" => return self.fail(t, "there is no 'elif': write 'else if <condition>:' for a further branch"),
                         "def" => return self.fail(t, "there is no 'def': declare a function with 'fn name(a: Int) Int:'"),
                         "switch" => return self.fail(t, "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == a:' with 'else if' for plain values"),
-                        "except" | "finally" => return self.fail(t, format!("'{n_t}' is not a keyword; failures are values, so return error(...) from a fn returning Result and handle it with 'try' or 'if let'", n_t = self.names.str(n))),
+                        "except" | "finally" => return self.fail(t, format!("'{n_t}' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch", n_t = self.names.str(n))),
                         "loop" => return self.fail(t, "'loop' is not a keyword; write 'while true:' and leave it with 'break'"),
                         "foreach" => return self.fail(t, "'foreach' is not a keyword; write 'for item in items:'"),
                         "class" => return self.fail(t, "'class' is not a keyword inside a fn; declare a record with 'type Name:' at module level"),

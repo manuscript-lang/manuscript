@@ -293,7 +293,7 @@ impl Checker {
                 if alt.is(Builtin::Optional) {
                     self.res_error(
                         e.pos,
-                        "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? = none",
+                        "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := none",
                     );
                     return i;
                 }
@@ -337,7 +337,7 @@ impl Checker {
             if alt.is(Builtin::Optional) && self.syms.str(cs.name) == "some" {
                 self.type_error(
                     e.pos,
-                    "there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. x: Int? = 5",
+                    "there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. x: Int? := 5",
                 );
                 i.ty = Some(invalid());
                 return i;
@@ -844,7 +844,7 @@ impl Checker {
                     });
                     if !elsewhere && !self.argument_failed_inference(args) {
                         let message = if t.is(Builtin::Optional) {
-                            "cannot infer the type of none; give it a target, e.g. `x: Int? = none`, or pass a value".to_string()
+                            "cannot infer the type of none; give it a target, e.g. `x: Int? := none`, or pass a value".to_string()
                         } else {
                             format!(
                                 "cannot infer constructor type argument {}; write the type arguments, e.g. Box[Int](...), or annotate the binding",

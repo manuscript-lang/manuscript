@@ -20,7 +20,7 @@
       {
         "code": "MS3080",
         "phase": "type",
-        "message": "cannot infer list element type; add an annotation, e.g. xs: List[Int] = []",
+        "message": "cannot infer list element type; add an annotation, e.g. xs: List[Int] := []",
         "position": {
           "file": "core-language-types-collections-3.ms",
           "line": 8,
@@ -32,7 +32,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-collections-3.ms:6:14: type: expected Int, found Float (in entry 2 of the literal, whose entries share one type); Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)\n   |\n 6 | mixed := [1, 2.0]\n   |              ^\n<DIR>/core-language-types-collections-3.ms:8:12: type: cannot infer list element type; add an annotation, e.g. xs: List[Int] = []\n   |\n 8 | unknown := []\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-collections-3.ms:6:14: type: expected Int, found Float (in entry 2 of the literal, whose entries share one type); Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)\n   |\n 6 | mixed := [1, 2.0]\n   |              ^\n<DIR>/core-language-types-collections-3.ms:8:12: type: cannot infer list element type; add an annotation, e.g. xs: List[Int] := []\n   |\n 8 | unknown := []\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
