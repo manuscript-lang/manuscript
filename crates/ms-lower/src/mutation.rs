@@ -289,7 +289,7 @@ impl Visitor for Mutations<'_> {
         match &view.target {
             Resolution::Method(m) if m.native != ct::Native::Source => {
                 if let ExprKind::Member { left, .. } = &c.kind
-                    && ms_check::api::effects::collection_mutation(syms, m)
+                    && ms_check::api::ownership::collection_mutation(syms, m)
                 {
                     self.roots.extend(place_root(syms, self.hir, left));
                 }
@@ -374,7 +374,9 @@ pub(crate) fn method_changes_receiver(
     match (&m.decl, m.native) {
         (Some(d), ct::Native::Contract) => d.method().is_some_and(|x| x.mutating),
         (_, ct::Native::Contract) => false,
-        (_, native) if native.is_bodiless() => ms_check::api::effects::collection_mutation(syms, m),
+        (_, native) if native.is_bodiless() => {
+            ms_check::api::ownership::collection_mutation(syms, m)
+        }
         (Some(d), _) => mutated.contains(&((m.module, d.id()), 0)),
         _ => false,
     }

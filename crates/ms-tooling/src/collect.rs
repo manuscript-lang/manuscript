@@ -148,6 +148,7 @@ pub fn collect_facts(
             .iter()
             .filter(|(_, b)| {
                 program
+                    .ownership
                     .binding_facts
                     .has(b.uid, ms_check::api::ownership::BindingFact::ImplicitClose)
             })
@@ -242,7 +243,7 @@ fn callable_ownership(
     let node = callable.id();
     let method = callable.index.is_some();
     let file = module.data.file;
-    let moving = program.moving_params.get(&(file, node));
+    let moving = program.ownership.moving_params.get(&(file, node));
     let checked = module.data.facts();
     for (index, (slot, param)) in fact.slots.iter_mut().zip(&func.params).enumerate() {
         let ty = param
@@ -280,7 +281,7 @@ fn callable_ownership(
             "borrow"
         };
     }
-    let has = |flag| program.node_facts.has(file, node, flag);
+    let has = |flag| program.ownership.node_facts.has(file, node, flag);
     fact.result_ownership = match (
         has(OwnershipFact::BorrowedOk),
         has(OwnershipFact::BorrowedError),

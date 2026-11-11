@@ -117,7 +117,8 @@ fn same_names_from_different_modules_keep_resource_cleanup() {
         .find(|b| b.name == n("held"))
         .unwrap();
     assert!(
-        p.binding_facts
+        p.ownership
+            .binding_facts
             .has(held.uid, crate::ownership::BindingFact::ImplicitClose)
     );
 }

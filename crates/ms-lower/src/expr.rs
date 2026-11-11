@@ -614,7 +614,7 @@ impl<'a> FnLower<'a> {
         let Resolution::Local(b) = self.hir.resolution(at) else {
             return None;
         };
-        let names = self.cx.resource_moves.get(&b.uid)?.get(&e.id)?;
+        let names = self.cx.ownership.resource_moves.get(&b.uid)?.get(&e.id)?;
         Some((b.uid, names.clone()))
     }
 
