@@ -26,10 +26,9 @@ interface Fallback:
 type Choice:
 	fallback: String
 
-impl Fallback for Choice:
-	fn choose(value: String?) String:
-		if present := value: return present.clone()
-		return self.fallback.clone()
+fn Choice.choose(value: String? = none) String:
+	if present := value: return present.clone()
+	return self.fallback.clone()
 
 test "bound ok_or results own heap-backed temporary causes":
 	missing := missing_temporary(1)

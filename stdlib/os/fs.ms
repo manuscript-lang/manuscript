@@ -401,12 +401,10 @@ export opaque type Directory:
 	// this value.
 	native: NativeDirectory
 
-impl Closeable for Directory:
-	// Releases the directory handle.
-	// Safe to call repeatedly; later reads return EBADF.
-	// Closes the directory; further reads fail with a closed error.
-	var fn close() Unit!:
-		msstd_fs_directory_close(self.native)
+// Releases the directory handle. Safe to call repeatedly; further reads fail with a
+// closed error.
+fn var Directory.close() Unit!:
+	msstd_fs_directory_close(self.native)
 
 // Returns the path this cursor was opened with.
 fn Directory.path() String:
@@ -420,15 +418,8 @@ fn Directory.read() DirectoryEntry?!:
 // A directory is a stream source: `ReadStream[DirectoryEntry](open_directory(path))`
 // yields its children in native order, so steps compose:
 // `... | filter(...) | collect(none)`. Closing the stream closes the directory.
-impl Source[DirectoryEntry] for Directory:
-	// The next child entry, or none after the last one; the order is the native
-	// directory order.
-	var fn next() DirectoryEntry?!:
-		return msstd_fs_directory_read(self.native)
-
-	// Closes the directory; further reads fail with a closed error.
-	var fn close() Unit!:
-		msstd_fs_directory_close(self.native)
+fn var Directory.next() DirectoryEntry?!:
+	return msstd_fs_directory_read(self.native)
 
 // The runtime handle behind a `FileWatcher`.
 export extern type NativeWatcher

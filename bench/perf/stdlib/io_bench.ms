@@ -9,20 +9,19 @@ type MemorySource:
 	data: Bytes
 	offset: Int
 
-impl Source[Bytes] for MemorySource:
-	var fn next() Bytes?!:
-		if self.offset == self.data.length(): return ok(none)
+fn var MemorySource.next() Bytes?!:
+	if self.offset == self.data.length(): return ok(none)
 
-		var end = self.offset + 65536
-		if end > self.data.length():
-			end = self.data.length()
+	var end = self.offset + 65536
+	if end > self.data.length():
+		end = self.data.length()
 
-		chunk := self.data.slice(self.offset, end).get().clone()
-		self.offset = end
-		return ok(chunk)
+	chunk := self.data.slice(self.offset, end).get().clone()
+	self.offset = end
+	return ok(chunk)
 
-	var fn close() Unit!:
-		self.offset = self.data.length()
+fn var MemorySource.close() Unit!:
+	self.offset = self.data.length()
 
 fn source_text() String:
 	var parts: List[String] = []

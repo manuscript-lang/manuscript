@@ -3,8 +3,7 @@ import Closeable from "@std/core.ms"
 type Item:
     label: String
 
-impl Closeable for Item:
-    var fn close() Unit!: ok(unit)
+fn var Item.close() Unit!: ok(unit)
 
 fn demo() Unit:
     var items = [Item("old")]

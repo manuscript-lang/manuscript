@@ -4,9 +4,8 @@ interface Shape:
 type Sq:
     name: String
 
-impl Shape for Sq:
-    fn label() String:
-        return self.name.clone()
+fn Sq.label() String:
+    return self.name.clone()
 
 type Holder:
     s: Shape

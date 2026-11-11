@@ -84,9 +84,8 @@ interface ReadWithDefault:
 type Reader:
     number: Int = 5
 
-impl ReadWithDefault for Reader:
-    fn get(fallback: Int?) Int:
-        return fallback.get(self.number)
+fn Reader.get(fallback: Int?) Int:
+    return fallback.get(self.number)
 
 type Marker: ...
 

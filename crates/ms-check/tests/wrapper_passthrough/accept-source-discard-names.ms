@@ -3,28 +3,26 @@ import Closeable from "@std/core.ms"
 type Marker:
     id: Int
 
-impl Closeable for Marker:
-    var fn close() Unit!: ok(unit)
+fn var Marker.close() Unit!: ok(unit)
 
 type Counter[T]:
     payload: T
     count: Int
 
-impl Counter[T]:
-    var fn remove() Unit:
-        self.count += 1
+fn var Counter[T].remove() Unit:
+    self.count += 1
 
-    var fn clear() Unit:
-        self.count += 1
+fn var Counter[T].clear() Unit:
+    self.count += 1
 
-    var fn set() Unit:
-        self.count += 1
+fn var Counter[T].set() Unit:
+    self.count += 1
 
-    var fn add() Unit:
-        self.count += 1
+fn var Counter[T].add() Unit:
+    self.count += 1
 
-    var fn splice() Unit:
-        self.count += 1
+fn var Counter[T].splice() Unit:
+    self.count += 1
 
 fn demo() Int:
     var counter = Counter(Marker(1), 0)

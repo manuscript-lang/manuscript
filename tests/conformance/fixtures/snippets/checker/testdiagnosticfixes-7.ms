@@ -4,9 +4,8 @@
 type K:
     v: Float
 
-impl Equal for K:
-    fn equals(other: K) Bool:
-        return true
+fn K.equals(other: K) Bool:
+    return true
 
 fn f() Int:
     s := Set[K]()

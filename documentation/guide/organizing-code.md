@@ -5,7 +5,7 @@ weight = 7
 
 # Organizing code
 
-Orders can hold books and subscriptions, and the total should add up either without caring which is which. An `interface` names the behavior you need, and a type opts in with an `impl`.
+Orders can hold books and subscriptions, and the total should add up either without caring which is which. An `interface` names the behavior you need, and a type meets it by having methods that match.
 
 <!-- manuscript-example: {"mode":"run","stdout":"Cart: 6140 cents\nLargest: 9\n"} -->
 ```manuscript {filename="catalog.ms"}
@@ -55,7 +55,7 @@ Largest: 9
 
 ## What to notice
 
-- `interface Priced` declares one method. `impl Priced for Book:` is where `Book` provides it. Methods never go inside the `type`.
+- `interface Priced` declares one method. `Book.cents` is where `Book` provides it; nothing else declares that `Book` is `Priced`. Methods never go inside the `type`.
 - `total` takes a `List[Priced]` and works with any mix of types that implement the interface. It depends on behavior, not on a concrete type.
 - `largest[T: Clonable]` is generic: it works for any `T` that meets its bound, and the compiler checks the bound at every call. `Clonable` is a bound that says "this type can be copied with `.clone()`". Without it the compiler refuses `item.clone()`, because a generic body cannot assume every type can be copied.
 - There is no `any` and no cast. If you need to handle unknown JSON, use `JsonValue`.

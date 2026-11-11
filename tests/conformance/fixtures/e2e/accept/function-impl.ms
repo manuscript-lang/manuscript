@@ -9,9 +9,8 @@ interface Apply[T]:
 type Box[T]:
     value: T
 
-impl Apply[T] for Box[fn(Int) T]:
-    fn apply(value: Int) T:
-        return self.value(value)
+fn Box[fn(Int) T].apply(value: Int) T:
+    return self.value(value)
 
 fn render(value: Int) String:
     return "{value}"

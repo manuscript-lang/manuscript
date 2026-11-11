@@ -1,10 +1,8 @@
 type Item:
     value: Int
 
-impl Item:
-    fn read() Int:
-        return self.value
+fn Item.read() Int:
+    return self.value
 
-impl Item:
-    fn read() Int:
-        return 2
+fn Item.read() Int:
+    return 2

@@ -20,8 +20,7 @@ type Callback[T, U]:
 interface Read:
     fn get() Int
 
-impl Read for Box[Int]:
-    fn get() Int: self.value
+fn Box[Int].get() Int: self.value
 
 fn invoke(transform: (fn(Int) Int)?) Int:
     if callback := transform:

@@ -7,9 +7,8 @@ interface Same[V]:
 type Box[T: Equal]:
     value: T
 
-impl Same[T] for Box[T]:
-    fn same(other: T) Bool:
-        return self.value == other
+fn Box[T].same(other: T) Bool:
+    return self.value == other
 
 fn compare[T: Equal](value: Box[T], other: T) Bool:
     return value.same(other: other)

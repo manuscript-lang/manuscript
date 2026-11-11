@@ -1,12 +1,11 @@
 type Counter:
     values: List[Int]
 
-impl Counter:
-    var fn bump() Unit:
-        self.values.append(1)
+fn var Counter.bump() Unit:
+    self.values.append(1)
 
-    fn size() Int:
-        return self.values.length()
+fn Counter.size() Int:
+    return self.values.length()
 
 fn f() Int:
     var c = Counter(values: [])

@@ -8,8 +8,7 @@ enum State:
     Ready
     Waiting
 
-impl Describe for State:
-    fn describe() String: "state"
+fn State.describe() String: "state"
 
 fn use(value: Describe) Int:
     match value:

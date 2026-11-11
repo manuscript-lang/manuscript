@@ -1,16 +1,14 @@
 export type Sample:
     number: Int
 
-impl Sample:
-    fn amount() Int:
-        return self.number
+fn Sample.amount() Int:
+    return self.number
+
+fn Sample.label() String:
+    return "sample"
 
 export interface Named:
     fn label() String
-
-impl Named for Sample:
-    fn label() String:
-        return "sample"
 
 export enum Shape:
     Number(value: Int)

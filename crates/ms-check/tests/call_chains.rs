@@ -73,7 +73,7 @@ fn many_implementations_of_one_interface_check_in_linear_time() {
     let mut source = String::from("interface Shape:\n    fn area() Int\n\n");
     for i in 0..types {
         source.push_str(&format!(
-            "type S{i}:\n    a: Int\n\nimpl Shape for S{i}:\n    fn area() Int: self.a + {i}\n\n"
+            "type S{i}:\n    a: Int\n\nfn S{i}.area() Int: self.a + {i}\n\n"
         ));
     }
     source

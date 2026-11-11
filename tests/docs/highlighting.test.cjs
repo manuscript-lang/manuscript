@@ -143,8 +143,8 @@ test('parser fixture covers declarations, implicit borrows, lambdas and patterns
   const source = fs.readFileSync(path.join(__dirname, 'syntax.ms'), 'utf8');
   assertScopes(source, [
     ['extern', 'k'], ['type', 'k'], ['Box', 'nc'], ['interface', 'k'], ['Reader', 'nc'],
-    ['impl', 'k'], ['identity', 'nf'], ['self', 'k'], ['replace', 'nf'],
-    ['var', 'k'], ['fn', 'k'],
+    ['self', 'k'], ['var', 'k'], ['replace', 'nf'], ['identity', 'nf'],
+    ['fn', 'k'],
     ['match', 'k'], ['Ready', 'nc'],
     ['borrowed', ''], ['exclusive', ''], ['specialized', ''], ['...', 'o'],
   ]);

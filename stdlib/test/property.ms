@@ -97,24 +97,23 @@ export type Gen[T]:
 	// Reads draws from the source and builds a value.
 	make: fn(Source) Drawn[T]
 
-impl Gen[T]:
-	// Transforms every generated value.
-	fn map[B](transform: fn(T) B) Gen[B]:
-		return Gen[B](fn s: map_draw(self, transform, s))
+// Transforms every generated value.
+fn Gen[T].map[B](transform: fn(T) B) Gen[B]:
+	return Gen[B](fn s: map_draw(self, transform, s))
 
-	// Generates a value, then generates again with a generator chosen from it
-	// (dependent generation).
-	fn flat_map[B](next: fn(T) Gen[B]) Gen[B]:
-		return Gen[B](fn s: flat_map_draw(self, next, s))
+// Generates a value, then generates again with a generator chosen from it
+// (dependent generation).
+fn Gen[T].flat_map[B](next: fn(T) Gen[B]) Gen[B]:
+	return Gen[B](fn s: flat_map_draw(self, next, s))
 
-	// Keeps values for which `keep` is true. After 50 consecutive rejections the case
-	// is marked invalid and discarded.
-	fn filter(keep: fn(T) Bool) Gen[T]:
-		return Gen[T](fn s: filter_draw(self, keep, s.clone()))
+// Keeps values for which `keep` is true. After 50 consecutive rejections the case
+// is marked invalid and discarded.
+fn Gen[T].filter(keep: fn(T) Bool) Gen[T]:
+	return Gen[T](fn s: filter_draw(self, keep, s.clone()))
 
-	// Combines one value from this generator with one from `other`.
-	fn zip[B, C](other: Gen[B], combine: fn(T, B) C) Gen[C]:
-		return Gen[C](fn s: zip_draw(self, other, combine, s))
+// Combines one value from this generator with one from `other`.
+fn Gen[T].zip[B, C](other: Gen[B], combine: fn(T, B) C) Gen[C]:
+	return Gen[C](fn s: zip_draw(self, other, combine, s))
 
 // Generates integers from `low` through `high`, both included, shrinking toward the
 // value nearest 0. When the range spans 0, a sign draw comes first and the magnitude

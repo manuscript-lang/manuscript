@@ -3,8 +3,7 @@ import panic from "@std/core.ms"
 type Counter:
 	value: Int
 
-impl Counter:
-	fn next() Counter: Counter(self.value + 1)
+fn Counter.next() Counter: Counter(self.value + 1)
 
 fn stop() Int:
 	Counter(panic("stop")).next()

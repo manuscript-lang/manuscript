@@ -6,10 +6,9 @@ import stdout from "@std/io/io.ms"
 type C:
     n: Int
 
-impl C:
-    var fn bump() Int:
-        self.n += 1
-        return self.n
+fn var C.bump() Int:
+    self.n += 1
+    return self.n
 
 fn main2() Unit:
     for i in 0..2:

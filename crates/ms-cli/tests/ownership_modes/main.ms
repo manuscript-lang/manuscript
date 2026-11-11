@@ -65,21 +65,19 @@ fn mixed_both(item: Item, issue: Error, mode: Int) String!:
     return error(Error("missing"))
 
 interface Named:
-    fn name() String
+    fn label() String
 
-impl Named for Item:
-    fn name() String:
-        return self.name.clone()
+fn Item.label() String:
+    return self.name.clone()
 
-impl Item:
-    fn borrowed() String:
-        return self.name
+fn Item.borrowed() String:
+    return self.name
 
-    fn copied(value: Int8) Int8:
-        return value
+fn Item.copied(value: Int8) Int8:
+    return value
 
-    fn boxed(item: Item) List[Item]:
-        return [item]
+fn Item.boxed(item: Item) List[Item]:
+    return [item]
 
 fn named(item: Item) Named:
     return item

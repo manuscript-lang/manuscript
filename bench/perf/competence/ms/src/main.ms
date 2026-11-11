@@ -19,17 +19,14 @@ type Tri:
 	b: Int
 	h: Int
 
-impl Shape for Sq:
-	fn area() Int:
-		return self.s * self.s
+fn Sq.area() Int:
+	return self.s * self.s
 
-impl Shape for Rect:
-	fn area() Int:
-		return self.w * self.h
+fn Rect.area() Int:
+	return self.w * self.h
 
-impl Shape for Tri:
-	fn area() Int:
-		return self.b * self.h / 2
+fn Tri.area() Int:
+	return self.b * self.h / 2
 
 type Item:
 	key: Int

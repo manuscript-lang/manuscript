@@ -5,15 +5,13 @@ interface Reader[A: Equal]:
 type Box[A: Equal]:
     value: A
 
-impl Reader[A] for Box[A]:
-    fn read[B: Equal = A]() List[B]: return []
+fn Box[A: Equal].read[B: Equal = A]() List[B]: return []
 
-    fn nested[B = List[A]]() List[B]: return []
+fn Box[A: Equal].nested[B = List[A]]() List[B]: return []
 
-impl Box[A]:
-    fn own[B = A, C = B]() List[C]: return []
+fn Box[A].own[B = A, C = B]() List[C]: return []
 
-    fn copies[B = Self]() List[B]: return []
+fn Box[A].copies[B = Self]() List[B]: return []
 
 fn exercise() Int:
     box := Box(7)

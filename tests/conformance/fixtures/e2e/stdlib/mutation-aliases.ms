@@ -51,11 +51,10 @@ interface MapRemoval:
 type MapAdapter:
     values: Map[Int, String]
 
-impl MapRemoval for MapAdapter:
-    var fn remove(key: Int) Unit:
-        self.values.remove(key)
+fn var MapAdapter.remove(key: Int) Unit:
+    self.values.remove(key)
 
-    fn keys() List[Int]: self.values.keys()
+fn MapAdapter.keys() List[Int]: self.values.keys()
 
 test "Map explicit and bound interface views remove through the adapter":
     var values = Map[Int, String]()
@@ -118,11 +117,10 @@ interface ListSplicing:
 type ListAdapter:
     values: List[Int]
 
-impl ListSplicing for ListAdapter:
-    var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit:
-        self.values.splice(start, delete_count, replacement)
+fn var ListAdapter.splice(start: Int, delete_count: Int, replacement: List[Int]) Unit:
+    self.values.splice(start, delete_count, replacement)
 
-    fn contents() List[Int]: self.values.clone()
+fn ListAdapter.contents() List[Int]: self.values.clone()
 
 test "List explicit and bound interface views splice through the adapter":
     var adapter = ListAdapter([1, 2, 3])

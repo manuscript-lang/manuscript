@@ -5,10 +5,9 @@
 type Counter:
     total: Int
 
-impl Counter:
-    var fn bump(by: Int) Int:
-        self.total += by
-        return self.total
+fn var Counter.bump(by: Int) Int:
+    self.total += by
+    return self.total
 
 fn add(var xs: List[Int], v: Int) Unit:
     xs.append(v)

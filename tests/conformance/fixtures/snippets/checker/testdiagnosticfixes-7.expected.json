@@ -9,19 +9,19 @@
       {
         "code": "MS3021",
         "phase": "type",
-        "message": "K does not satisfy Hashable; add 'impl Hashable for K:' or use a type that implements it",
+        "message": "K does not satisfy Hashable; give K the methods Hashable declares, or use a type that implements it",
         "position": {
           "file": "testdiagnosticfixes-7.ms",
-          "line": 12,
+          "line": 11,
           "column": 10,
-          "offset": 299
+          "offset": 275
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticfixes-7.ms:12:10: type: K does not satisfy Hashable; add 'impl Hashable for K:' or use a type that implements it\n    |\n 12 |     s := Set[K]()\n    |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticfixes-7.ms:11:10: type: K does not satisfy Hashable; give K the methods Hashable declares, or use a type that implements it\n    |\n 11 |     s := Set[K]()\n    |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

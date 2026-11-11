@@ -558,108 +558,105 @@ type TestExchange:
 	request: HttpRequest
 	state: Int
 
-impl HttpExchange for TestExchange:
-	var fn close() Unit:
-		var guard = hold[TestState](self.state)
-		guard.items[0].closed = true
+fn var TestExchange.close() Unit:
+	var guard = hold[TestState](self.state)
+	guard.items[0].closed = true
 
-	fn headers() HttpHeaders:
-		return self.request.headers.clone()
+fn TestExchange.headers() HttpHeaders:
+	return self.request.headers.clone()
 
-	fn method() HttpMethod:
-		return self.request.method.clone()
+fn TestExchange.method() HttpMethod:
+	return self.request.method.clone()
 
-	fn path() String:
-		return self.request.path.clone()
+fn TestExchange.path() String:
+	return self.request.path.clone()
 
-	fn protocol() String:
-		return self.request.protocol.clone()
+fn TestExchange.protocol() String:
+	return self.request.protocol.clone()
 
-	fn query() String:
-		return self.request.query.clone()
+fn TestExchange.query() String:
+	return self.request.query.clone()
 
-	var fn read(max_bytes: Int?) Bytes?!:
-		requested := max_bytes.get(65536)
-		if requested <= 0: return error(Error("I/O: invalid input", kind: "EINVAL"))
+fn var TestExchange.read(max_bytes: Int?) Bytes?!:
+	requested := max_bytes.get(65536)
+	if requested <= 0: return error(Error("I/O: invalid input", kind: "EINVAL"))
 
-		max := if requested > 65536: 65536 else: requested
-		var guard = hold[TestState](self.state)
-		if guard.items[0].closed: return error(
-			Error("I/O: resource is closed", kind: "EBADF")
-		)
+	max := if requested > 65536: 65536 else: requested
+	var guard = hold[TestState](self.state)
+	if guard.items[0].closed: return error(
+		Error("I/O: resource is closed", kind: "EBADF")
+	)
 
-		chunk := guard.items[0].unread.clone()
-		guard.items[0].unread = none
+	chunk := guard.items[0].unread.clone()
+	guard.items[0].unread = none
 
-		if bytes := chunk:
-			if bytes.length() == 0: return ok(none)
+	if bytes := chunk:
+		if bytes.length() == 0: return ok(none)
 
-			n := if max < bytes.length(): max else: bytes.length()
-			if n < bytes.length():
-				guard.items[0].unread = bytes.slice(n, bytes.length()).get()
-			return ok(bytes.slice(0, n).get())
+		n := if max < bytes.length(): max else: bytes.length()
+		if n < bytes.length():
+			guard.items[0].unread = bytes.slice(n, bytes.length()).get()
+		return ok(bytes.slice(0, n).get())
 
-		return ok(none)
+	return ok(none)
 
-	var fn send_headers(status: Int, headers: HttpHeaders) Unit!:
-		if status < 200 or status > 599: return error(
-			Error("HTTP: invalid input", kind: "EINVAL")
-		)
-		if headers.contains("Content-Length"): return error(
-			Error("HTTP: invalid input", kind: "EINVAL")
-		)
-		if headers.contains("Transfer-Encoding"): return error(
-			Error("HTTP: invalid input", kind: "EINVAL")
-		)
-		if headers.contains("Connection"): return error(
-			Error("HTTP: invalid input", kind: "EINVAL")
-		)
+fn var TestExchange.send_headers(status: Int, headers: HttpHeaders) Unit!:
+	if status < 200 or status > 599: return error(
+		Error("HTTP: invalid input", kind: "EINVAL")
+	)
+	if headers.contains("Content-Length"): return error(
+		Error("HTTP: invalid input", kind: "EINVAL")
+	)
+	if headers.contains("Transfer-Encoding"): return error(
+		Error("HTTP: invalid input", kind: "EINVAL")
+	)
+	if headers.contains("Connection"): return error(
+		Error("HTTP: invalid input", kind: "EINVAL")
+	)
 
-		var guard = hold[TestState](self.state)
-		if guard.items[0].closed: return error(
-			Error("HTTP: resource is closed", kind: "EBADF")
-		)
-		if guard.items[0].sent: return error(
-			Error("HTTP: invalid input", kind: "EINVAL")
-		)
+	var guard = hold[TestState](self.state)
+	if guard.items[0].closed: return error(
+		Error("HTTP: resource is closed", kind: "EBADF")
+	)
+	if guard.items[0].sent: return error(Error("HTTP: invalid input", kind: "EINVAL"))
 
-		guard.items[0].status = status
-		guard.items[0].head = headers.clone()
-		guard.items[0].sent = true
+	guard.items[0].status = status
+	guard.items[0].head = headers.clone()
+	guard.items[0].sent = true
 
-	var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
-		self.send_headers(status, headers)?
+fn var TestExchange.send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
+	self.send_headers(status, headers)?
 
-		var guard = hold[TestState](self.state)
-		guard.items[0].complete = true
-		if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
+	var guard = hold[TestState](self.state)
+	guard.items[0].complete = true
+	if self.request.method.text() == "HEAD" or not has_body(status): return ok(unit)
 
-		guard.items[0].body.append_bytes(body)
+	guard.items[0].body.append_bytes(body)
 
-	var fn upgrade(
-		allowed_origins: List[String],
-		subprotocols: List[String],
-		max_message_bytes: Int?,
-	) NativeWebSocket!:
-		return error(Error("router: WebSocket upgrades need a server", kind: "ENOTSUP"))
+fn var TestExchange.upgrade(
+	allowed_origins: List[String],
+	subprotocols: List[String],
+	max_message_bytes: Int?,
+) NativeWebSocket!:
+	return error(Error("router: WebSocket upgrades need a server", kind: "ENOTSUP"))
 
-	var fn write(data: String) Unit!:
-		return self.write_bytes(data.to_bytes())
+fn var TestExchange.write(data: String) Unit!:
+	return self.write_bytes(data.to_bytes())
 
-	var fn write_bytes(data: Bytes) Unit!:
-		var guard = hold[TestState](self.state)
-		if guard.items[0].closed: return error(
-			Error("I/O: resource is closed", kind: "EBADF")
-		)
-		if not guard.items[0].sent or guard.items[0].complete: return error(
-			Error("I/O: invalid input", kind: "EINVAL")
-		)
-		if not has_body(guard.items[0].status): return error(
-			Error("I/O: invalid input", kind: "EINVAL")
-		)
-		if self.request.method.text() == "HEAD": return ok(unit)
+fn var TestExchange.write_bytes(data: Bytes) Unit!:
+	var guard = hold[TestState](self.state)
+	if guard.items[0].closed: return error(
+		Error("I/O: resource is closed", kind: "EBADF")
+	)
+	if not guard.items[0].sent or guard.items[0].complete: return error(
+		Error("I/O: invalid input", kind: "EINVAL")
+	)
+	if not has_body(guard.items[0].status): return error(
+		Error("I/O: invalid input", kind: "EINVAL")
+	)
+	if self.request.method.text() == "HEAD": return ok(unit)
 
-		guard.items[0].body.append_bytes(data)
+	guard.items[0].body.append_bytes(data)
 
 fn finished(state: Int) HttpResponse!:
 	var guard = hold[TestState](state)
@@ -705,54 +702,49 @@ fn Tap.status_so_far() Int:
 
 	return 200
 
-impl HttpExchange for Tap:
-	var fn close() Unit:
-		self.inner.close()
+fn var Tap.close() Unit:
+	self.inner.close()
 
-	fn headers() HttpHeaders:
-		return self.request.clone()
+fn Tap.headers() HttpHeaders:
+	return self.request.clone()
 
-	fn method() HttpMethod:
-		return self.inner.method()
+fn Tap.method() HttpMethod:
+	return self.inner.method()
 
-	fn path() String:
-		return self.inner.path()
+fn Tap.path() String:
+	return self.inner.path()
 
-	fn protocol() String:
-		return self.inner.protocol()
+fn Tap.protocol() String:
+	return self.inner.protocol()
 
-	fn query() String:
-		return self.inner.query()
+fn Tap.query() String:
+	return self.inner.query()
 
-	var fn read(max_bytes: Int?) Bytes?!:
-		return self.inner.read(max_bytes)
+fn var Tap.read(max_bytes: Int?) Bytes?!:
+	return self.inner.read(max_bytes)
 
-	var fn send_headers(status: Int, headers: HttpHeaders) Unit!:
-		self.inner.send_headers(status, with_extra(headers, self.extra))?
-		counted(self.state, status, 0)
+fn var Tap.send_headers(status: Int, headers: HttpHeaders) Unit!:
+	self.inner.send_headers(status, with_extra(headers, self.extra))?
+	counted(self.state, status, 0)
 
-	var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
-		self.inner.send(status, with_extra(headers, self.extra), body)?
-		counted(self.state, status, self.sent_length(status, body.length()))
+fn var Tap.send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
+	self.inner.send(status, with_extra(headers, self.extra), body)?
+	counted(self.state, status, self.sent_length(status, body.length()))
 
-	var fn upgrade(
-		allowed_origins: List[String],
-		subprotocols: List[String],
-		max_message_bytes: Int?,
-	) NativeWebSocket!:
-		return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
+fn var Tap.upgrade(
+	allowed_origins: List[String],
+	subprotocols: List[String],
+	max_message_bytes: Int?,
+) NativeWebSocket!:
+	return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 
-	var fn write(data: String) Unit!:
-		self.inner.write(data)?
-		counted(
-			self.state,
-			0,
-			self.sent_length(self.status_so_far(), data.byte_length()),
-		)
+fn var Tap.write(data: String) Unit!:
+	self.inner.write(data)?
+	counted(self.state, 0, self.sent_length(self.status_so_far(), data.byte_length()))
 
-	var fn write_bytes(data: Bytes) Unit!:
-		self.inner.write_bytes(data)?
-		counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
+fn var Tap.write_bytes(data: Bytes) Unit!:
+	self.inner.write_bytes(data)?
+	counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
 
 // `state` is a slot counting what is sent, which the caller made and reads afterwards.
 fn new_tap(

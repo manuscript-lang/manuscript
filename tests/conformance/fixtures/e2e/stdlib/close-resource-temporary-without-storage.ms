@@ -7,13 +7,11 @@ import Closeable from "@std/core.ms"
 type Counter:
     id: Int
 
-impl Closeable for Counter:
-    var fn close() Unit!:
-        print("closed {self.id}")
+fn var Counter.close() Unit!:
+    print("closed {self.id}")
 
-impl Counter:
-    fn value() Int:
-        return self.id
+fn Counter.value() Int:
+    return self.id
 
 fn open_counter(id: Int) Counter:
     return Counter(id)

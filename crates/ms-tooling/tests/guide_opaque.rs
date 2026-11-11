@@ -13,17 +13,15 @@ fn opaque_representation_is_hidden_but_public_operations_remain() {
 export opaque type Secret[T]:
     hidden: T
 
-impl Secret[T]:
-    // Read the value.
-    fn value(fallback: Int = 7) Int:
-        return fallback
+// Read the value.
+fn Secret[T].value(fallback: Int = 7) Int:
+    return fallback
 
 export interface Measured:
     fn size() Int
 
-impl Measured for Secret[Int]:
-    fn size() Int:
-        return 1
+fn Secret[Int].size() Int:
+    return 1
 
 export opaque enum Choice[T]:
     Internal(payload: T)

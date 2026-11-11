@@ -23,9 +23,8 @@ fn make_fixture() ApiFixture:
         server: serve(address: "127.0.0.1:0", handler: buffered(handle)).get()
     )
 
-impl TestHooks for ApiFixture:
-    var fn after_all() Unit:
-        self.server.close().get(none)
+fn var ApiFixture.after_all() Unit:
+    self.server.close().get(none)
 
 test "first request":
     response := expect_ok(

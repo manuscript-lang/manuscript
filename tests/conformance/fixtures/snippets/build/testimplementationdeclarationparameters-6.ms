@@ -7,6 +7,5 @@ interface Read[V]:
 type Box[T]:
     value: T
 
-impl Read[T] for Box[Int]:
-    fn get() T:
-        return self.value
+fn Box[Int].get() T:
+    return self.value

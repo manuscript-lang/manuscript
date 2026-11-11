@@ -9,23 +9,21 @@ enum Shape:
     Circle(label: String)
     Rect(label: String, w: Int)
 
-impl Table:
-    fn head() Row:
-        return self.rows[0]
+fn Table.head() Row:
+    return self.rows[0]
 
-    // A field or element of a borrow-returning call's result is a part of the same source.
-    fn first_tag() String:
-        return self.head().tags[0]
+// A field or element of a borrow-returning call's result is a part of the same source.
+fn Table.first_tag() String:
+    return self.head().tags[0]
 
-    fn head_name() String:
-        return self.head().name
+fn Table.head_name() String:
+    return self.head().name
 
-impl Shape:
-    // Every arm of a returned match returns a borrow: so does the function.
-    fn label() String:
-        return match self:
-            Circle(label): label
-            Rect(label, _w): label
+// Every arm of a returned match returns a borrow: so does the function.
+fn Shape.label() String:
+    return match self:
+        Circle(label): label
+        Rect(label, _w): label
 
 fn label(r: Row) String:
     return r.name

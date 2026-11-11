@@ -14,14 +14,12 @@ type Events:
 type Failure:
     detail: String
 
-impl Error for Failure:
-    fn message() String: self.detail
+fn Failure.message() String: self.detail
 
 type GenericFailure[T]:
     detail: T
 
-impl Error for GenericFailure[T]:
-    fn message() String: self.detail.to_string()
+fn GenericFailure[T].message() String: self.detail.to_string()
 
 fn record(events: Events, value: Int) Int:
     events.values = events.values.append(value)

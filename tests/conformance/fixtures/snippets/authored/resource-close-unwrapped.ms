@@ -6,9 +6,8 @@ import Closeable from "@std/core.ms"
 type Res:
     name: String
 
-impl Closeable for Res:
-    var fn close() Unit!:
-        print("close {self.name}")
+fn var Res.close() Unit!:
+    print("close {self.name}")
 
 fn make(name: String) Res!Error:
     return ok(Res(name))

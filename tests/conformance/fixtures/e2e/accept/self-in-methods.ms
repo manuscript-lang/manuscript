@@ -9,20 +9,18 @@ type Point:
 type Box[T: Clonable]:
     items: List[T]
 
-impl Point:
-    fn with_x(x: Int) Self:
-        return Point(x: x, y: self.y)
+fn Point.with_x(x: Int) Self:
+    return Point(x: x, y: self.y)
 
-impl Box[T]:
-    fn added(item: T) Self:
-        var xs = self.items.clone()
-        xs.append(item)
+fn Box[T].added(item: T) Self:
+    var xs = self.items.clone()
+    xs.append(item)
 
-        b: Self := Box[T](items: xs)
-        return b
+    b: Self := Box[T](items: xs)
+    return b
 
-    fn pair(other: Self) List[Self]:
-        return [self.clone(), other.clone()]
+fn Box[T].pair(other: Self) List[Self]:
+    return [self.clone(), other.clone()]
 
 fn main() Unit:
     p := Point(x: 1, y: 2).with_x(5)

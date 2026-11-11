@@ -76,6 +76,42 @@ fn every_sub_code_is_reached_by_a_real_diagnostic() {
             "MS3000.15",
         ),
         (
+            "resolution",
+            "fixture is available only in tests with a local make_fixture factory; declare it",
+            "MS2001.6",
+        ),
+        ("type", "signature does not match contract", "MS3011.1"),
+        (
+            "type",
+            "missing implementation operation f; add fn f to this impl",
+            "MS3000.14",
+        ),
+        (
+            "type",
+            "duplicate implementation operation f; define each operation once per impl",
+            "MS3000.16",
+        ),
+        (
+            "type",
+            "implementation receiver must be nominal source data; declare methods on a type",
+            "MS3012.1",
+        ),
+        (
+            "type",
+            "implementation target must be an interface declared with 'interface'",
+            "MS3000.17",
+        ),
+        (
+            "type",
+            "`x` is an immutable binding; declare it with var",
+            "MS3060.2",
+        ),
+        (
+            "type",
+            "`f` does not change its receiver; declare it var fn",
+            "MS3000.19",
+        ),
+        (
             "type",
             "non-exhaustive match; missing cases: A, or add a final 'case _:' arm",
             "MS3050.1",

@@ -185,103 +185,102 @@ export type Logger:
 	// Internal state: the transport this logger writes to; each child owns a duplicate.
 	transport: Transport
 
-impl Logger:
-	// Internal: writes one record at a level number. `data` is JSON text attached as
-	// is.
-	fn emit(level: Int, message: String, data: String?) Unit!:
-		msg := stringify(JsonValue.StringValue(message))
-		if msg.is_error(): return error(encode_error(msg.err()))
+// Internal: writes one record at a level number. `data` is JSON text attached as
+// is.
+fn Logger.emit(level: Int, message: String, data: String?) Unit!:
+	msg := stringify(JsonValue.StringValue(message))
+	if msg.is_error(): return error(encode_error(msg.err()))
 
-		var line = "\{\"level\":{level},\"msg\":{msg.get()}"
-		if self.timestamp: line = "{line},\"time\":{now_ms()}"
-		if context := self.context: line = "{line},\"context\":{context}"
-		if text := data: line = "{line},\"data\":{text}"
-		line = "{line}\}\n"
-		if max := self.max_bytes:
-			if line.byte_length() > max: return error(
-				Error("logging: limit exceeded", kind: "EOVERFLOW")
-			)
-		return self.transport.write(line)
-
-	/*
-    Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
-
-    The value is written as is under the record's `data` key, so a record, map, list, or number
-    keeps its shape. No fields, or `none`, write the message alone. A value that cannot be encoded,
-    such as a cyclic one, returns `EBADMSG`; encoding happens only when the level is enabled.
-    The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
-    record level, and returns `EINVAL`.
-    */
-	fn log[F: Data = Unit](level: LogLevel, message: String, fields: F? = none) Unit!:
-		if level == LogLevel.Silent: return error(
-			Error("logging: invalid input", kind: "EINVAL")
+	var line = "\{\"level\":{level},\"msg\":{msg.get()}"
+	if self.timestamp: line = "{line},\"time\":{now_ms()}"
+	if context := self.context: line = "{line},\"context\":{context}"
+	if text := data: line = "{line},\"data\":{text}"
+	line = "{line}\}\n"
+	if max := self.max_bytes:
+		if line.byte_length() > max: return error(
+			Error("logging: limit exceeded", kind: "EOVERFLOW")
 		)
-		if not self.enabled(level): return ok(unit)
+	return self.transport.write(line)
 
-		if value := fields:
-			text := encode_fields(value)?
-			return self.emit(level_value(level), message, text)
+/*
+Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
 
-		return self.emit(level_value(level), message, none)
+The value is written as is under the record's `data` key, so a record, map, list, or number
+keeps its shape. No fields, or `none`, write the message alone. A value that cannot be encoded,
+such as a cyclic one, returns `EBADMSG`; encoding happens only when the level is enabled.
+The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
+record level, and returns `EINVAL`.
+*/
+fn Logger.log[F: Data = Unit](level: LogLevel, message: String, fields: F? = none) Unit!:
+	if level == LogLevel.Silent: return error(
+		Error("logging: invalid input", kind: "EINVAL")
+	)
+	if not self.enabled(level): return ok(unit)
 
-	// Logs at Trace when enabled. Most detailed records; a filtered call returns ok
-	// without encoding or transport access. Fields are encoded as in `log`.
-	fn trace[F: Data = Unit](message: String, fields: F? = none) Unit!:
-		return self.log(LogLevel.Trace, message, fields)
+	if value := fields:
+		text := encode_fields(value)?
+		return self.emit(level_value(level), message, text)
 
-	// Logs at Debug when enabled. Development diagnostics, including the logger's
-	// `context`. Fields are encoded as in `log`.
-	fn debug[F: Data = Unit](message: String, fields: F? = none) Unit!:
-		return self.log(LogLevel.Debug, message, fields)
+	return self.emit(level_value(level), message, none)
 
-	// Logs at Info when enabled. Ordinary operational records. Fields are encoded as in
-	// `log`.
-	fn info[F: Data = Unit](message: String, fields: F? = none) Unit!:
-		return self.log(LogLevel.Info, message, fields)
+// Logs at Trace when enabled. Most detailed records; a filtered call returns ok
+// without encoding or transport access. Fields are encoded as in `log`.
+fn Logger.trace[F: Data = Unit](message: String, fields: F? = none) Unit!:
+	return self.log(LogLevel.Trace, message, fields)
 
-	// Logs at Warn when enabled. Warning records, returning encoding, size-budget, or
-	// transport errors unchanged. Fields are encoded as in `log`.
-	fn warn[F: Data = Unit](message: String, fields: F? = none) Unit!:
-		return self.log(LogLevel.Warn, message, fields)
+// Logs at Debug when enabled. Development diagnostics, including the logger's
+// `context`. Fields are encoded as in `log`.
+fn Logger.debug[F: Data = Unit](message: String, fields: F? = none) Unit!:
+	return self.log(LogLevel.Debug, message, fields)
 
-	// Logs at Error when enabled. Failure records: an expected diagnostic rather than a
-	// fault. Fields are encoded as in `log`.
-	fn error[F: Data = Unit](message: String, fields: F? = none) Unit!:
-		return self.log(LogLevel.Error, message, fields)
+// Logs at Info when enabled. Ordinary operational records. Fields are encoded as in
+// `log`.
+fn Logger.info[F: Data = Unit](message: String, fields: F? = none) Unit!:
+	return self.log(LogLevel.Info, message, fields)
 
-	// Logs at Fatal when enabled. Critical records; the caller remains responsible for
-	// process termination. Fields are encoded as in `log`.
-	fn fatal[F: Data = Unit](message: String, fields: F? = none) Unit!:
-		return self.log(LogLevel.Fatal, message, fields)
+// Logs at Warn when enabled. Warning records, returning encoding, size-budget, or
+// transport errors unchanged. Fields are encoded as in `log`.
+fn Logger.warn[F: Data = Unit](message: String, fields: F? = none) Unit!:
+	return self.log(LogLevel.Warn, message, fields)
 
-	/*
-    Returns a logger that writes `fields` under `context` in each record. A child of a child merges
-    object members, the newer value winning; any other combination keeps the newer value. A value
-    that cannot be encoded returns `EBADMSG`.
-    */
-	fn child[F: Data](fields: F) Logger!:
-		text := encode_fields(fields)?
-		context := merge_context(self.context, text)?
-		own := self.transport.duplicate()?
-		return ok(Logger(self.threshold, self.timestamp, self.max_bytes, context, own))
+// Logs at Error when enabled. Failure records: an expected diagnostic rather than a
+// fault. Fields are encoded as in `log`.
+fn Logger.error[F: Data = Unit](message: String, fields: F? = none) Unit!:
+	return self.log(LogLevel.Error, message, fields)
 
-	// Tests the current filtering threshold; Silent is never enabled as a record level.
-	fn enabled(level: LogLevel) Bool:
-		value := level_value(level)
-		return value >= self.threshold and value < 70
+// Logs at Fatal when enabled. Critical records; the caller remains responsible for
+// process termination. Fields are encoded as in `log`.
+fn Logger.fatal[F: Data = Unit](message: String, fields: F? = none) Unit!:
+	return self.log(LogLevel.Fatal, message, fields)
 
-	// Returns this logger's current threshold, independent of its parent or children.
-	fn level() LogLevel:
-		return level_at(self.threshold)
+/*
+Returns a logger that writes `fields` under `context` in each record. A child of a child merges
+object members, the newer value winning; any other combination keeps the newer value. A value
+that cannot be encoded returns `EBADMSG`.
+*/
+fn Logger.child[F: Data](fields: F) Logger!:
+	text := encode_fields(fields)?
+	context := merge_context(self.context, text)?
+	own := self.transport.duplicate()?
+	return ok(Logger(self.threshold, self.timestamp, self.max_bytes, context, own))
 
-	// Changes only this logger's threshold; existing child loggers retain their copied
-	// threshold.
-	var fn set_level(level: LogLevel) Unit:
-		self.threshold = level_value(level)
+// Tests the current filtering threshold; Silent is never enabled as a record level.
+fn Logger.enabled(level: LogLevel) Bool:
+	value := level_value(level)
+	return value >= self.threshold and value < 70
 
-	// Flushes the logger's transport.
-	fn flush() Unit!:
-		return self.transport.flush()
+// Returns this logger's current threshold, independent of its parent or children.
+fn Logger.level() LogLevel:
+	return level_at(self.threshold)
+
+// Changes only this logger's threshold; existing child loggers retain their copied
+// threshold.
+fn var Logger.set_level(level: LogLevel) Unit:
+	self.threshold = level_value(level)
+
+// Flushes the logger's transport.
+fn Logger.flush() Unit!:
+	return self.transport.flush()
 
 // Closes this logger's transport, which consumes the logger; a scope that owns one
 // closes it on every exit. Children and the parent are not affected.

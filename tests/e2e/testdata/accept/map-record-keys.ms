@@ -16,13 +16,11 @@ type Named:
 type Folded:
 	n: Int
 
-impl Hashable for Folded:
-	fn hash() Int:
-		return 0
+fn Folded.hash() Int:
+	return 0
 
-impl Equal for Folded:
-	fn equals(other: Folded) Bool:
-		return true
+fn Folded.equals(other: Folded) Bool:
+	return true
 
 test "plain record keys":
 	var m = Map[Point, Int]()

@@ -9,9 +9,8 @@ type Counter:
 fn make_fixture() Counter:
     return Counter(0)
 
-impl TestHooks for Counter:
-    var fn before_each() Unit:
-        self.count = 0
+fn var Counter.before_each() Unit:
+    self.count = 0
 
 test "increments":
     fixture.count += 1

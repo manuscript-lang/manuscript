@@ -6,7 +6,7 @@ Implicit interface conversion, no construction syntax, borrowed values becoming 
 
 ## Implementing types convert to their interface implicitly
 
-Decision (Chinmay, reversing the explicit-view rule): a type with a declared `impl I for T` passes wherever `I` is expected. The conversion follows the position: a read-only argument borrows the operand, a stored position moves it at its last use; the interface value owns a copy when the operand is borrowed.
+Decision (Chinmay, reversing the explicit-view rule): a type whose own methods satisfy `I` passes wherever `I` is expected (originally a declared `impl I for T`). The conversion follows the position: a read-only argument borrows the operand, a stored position moves it at its last use; the interface value owns a copy when the operand is borrowed.
 
 ## Interfaces convert implicitly; construction is removed
 
@@ -31,8 +31,14 @@ Verify: `fn first_error(cause: Cause) Reportable: return cause` compiles with no
 
 ## A type's own methods satisfy an interface by shape
 
-Decision (Chinmay, 2026-11-10, thread "Resolve ambiguous close across interfaces"): a type has one method per name, so `impl Source for T` plus `impl Sink for T` with two `close` bodies is the wrong shape. Methods are receiver functions (`fn Type.name`, `fn var Type.name`; generics repeat the parameters, `fn Box[T].get()`), no overlap and no specialization, and an interface is satisfied when the own methods match every operation exactly. Implemented as stage 1 (parser) and stage 2 (`shape_implements` in `contracts.rs`; lowering falls back to the own method when no written `impl` carries the operation; `Method::closes` makes an own `fn var close() Unit!` `Closeable`). Not done: removing `impl Contract for`, the stdlib migration, `Equal`/`Hashable`/`Comparable` by shape, and the open questions in [proposals/receiver-methods.md](../../proposals/receiver-methods.md) (nine specialized `sum` impls, local extensions).
+Decision (Chinmay, 2026-11-10 and 2026-11-11): a type has one method per name, so a `Source` plus `Sink` with two `close` bodies is the wrong shape. Methods are receiver functions (`fn Type.name`, `fn var Type.name`; generics repeat the parameters, `fn Box[T].get()`; a receiver may carry bounds, `fn Box[T: Equal].same()`, or fix an argument, `fn List[Int].sum()`), and an interface is satisfied when the own methods match every operation. There is no `impl` keyword; nothing declares conformance.
 
-Evidence: `tests/e2e/testdata/stdlib/shape-interfaces.ms` (a `Source` plus `Sink` with one `close`, closed once by streams and by scope exit), `reject/shape-interface-mismatch.ms`, `reject/duplicate-receiver-method.ms`.
+What carries it: `shape_implements` in `contracts.rs` (records, enums, natives and primitives; it picks the own method whose signature the operation asks for, and matches operation type parameters by position); lowering falls back to the own method by name where a contract impl was once required (`contract_impl`, `user_order`, `json_encode_impl`, `fixture_hook`); `Method::closes` makes an own `fn var close() Unit!` `Closeable`, and `Method::overrides` makes an own `equals`, `hash`, `compare` or `to_json` the type's `Equal`, `Hashable`, `Comparable` or `JsonEncode`. `Clonable`, `Data` and `Copy` are derived; a bundled native type states them with a `// ms: data|copy|clonable` comment above it. Generated interfaces (`Name$methods`, one per bounded or specialized receiver form) carry the receiver methods' signatures without defaults; defaults stay on the method.
 
-A stream driver (`Source`/`Sink` implementation) that a `ReadStream`/`WriteStream` wraps stays `impl Source[T] for X:` in `stdlib/io/io.ms`: its `fn var X.close()` would make `X` `Closeable` by shape, so the driver closed again when the wrapper released it and `http-paths` timed out. Convert a type with `close` only when it is a resource owned directly.
+Lessons:
+- Any own `fn var close() Unit!` makes a type `Closeable`, so a scope end calls it. A stream driver that a `ReadStream`/`WriteStream` also closes needs an idempotent `close` (a `closed` flag, or an id set to a dead value), and a helper that only borrows the driver's behaviour must not build a driver value (`Pipe.receive` called `PipeSource.next` on a local, which closed the reader at scope end; it calls `pipe_next` now).
+- Contract defaults are not inherited: restate a default on the own method (`options: RunOptions = RunOptions()`); an interface view uses the interface's.
+- One method per name also removed: two applications of one generic interface on one type (`Visitor[Int]` and `Visitor[String]`), a field and a method of one name, and per-module extensions with their module-scoped `Equal`/`Hashable` (the `core_parity`, `map_add_scope`, `map_remove`, `preferred_names`, `set_operand_hash`, `interface_views` and `local_extensions` e2e projects were deleted with them).
+- `make e2e` runs `target/debug/ms`; rebuild it (`cargo build -p ms-cli`) before trusting a result, or a stale binary reports failures that are gone.
+
+Evidence: `tests/e2e/testdata/stdlib/shape-interfaces.ms`, `stream-close-once.ms`, `reject/shape-interface-mismatch.ms`, `reject/duplicate-receiver-method.ms`, [proposals/receiver-methods.md](../../proposals/receiver-methods.md).

@@ -7,6 +7,5 @@ interface Counter:
 type Val:
     val: Int
 
-impl Counter for Val:
-    var fn increment() Unit:
-        self.val = self.val + 1
+fn var Val.increment() Unit:
+    self.val = self.val + 1

@@ -414,8 +414,8 @@ fn an_opaque_record_offers_no_fields_outside_its_file() {
     let inside = labels(
         "gate.ms",
         include_str!("completion/opaque-inside.ms"),
-        5,
-        20,
+        4,
+        16,
     );
     assert!(inside.contains(&"id".to_string()), "{inside:?}");
 }

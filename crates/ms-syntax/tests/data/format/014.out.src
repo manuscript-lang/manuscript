@@ -12,13 +12,11 @@ type ReaderHolder:
 type CallbackReader:
 	read_value: fn() Int
 
-impl ReadValue[T] for Box[T]:
-	fn get() T:
-		return self.value
+fn Box[T].get() T:
+	return self.value
 
-impl ReadValue[Int] for CallbackReader:
-	fn get() Int:
-		return self.read_value()
+fn CallbackReader.get() Int:
+	return self.read_value()
 
 fn seven() Int:
 	return

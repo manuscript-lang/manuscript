@@ -12,25 +12,24 @@ type FileHandle:
 	close_error: Bool = false
 	closed: Bool = false
 
-impl FileHandle:
-	fn write(data: Bytes) Unit!:
-		print("write")
-		if self.write_error: return error(Error("write", kind: "write"))
+fn FileHandle.write(data: Bytes) Unit!:
+	print("write")
+	if self.write_error: return error(Error("write", kind: "write"))
 
-	fn chmod(mode: Int) Unit!:
-		print("chmod")
-		if self.chmod_error: return error(Error("chmod", kind: "chmod"))
+fn FileHandle.chmod(mode: Int) Unit!:
+	print("chmod")
+	if self.chmod_error: return error(Error("chmod", kind: "chmod"))
 
-	fn sync() Unit!:
-		print("sync")
-		if self.sync_error: return error(Error("sync", kind: "sync"))
+fn FileHandle.sync() Unit!:
+	print("sync")
+	if self.sync_error: return error(Error("sync", kind: "sync"))
 
-	var fn close() Unit!:
-		if self.closed: return ok(unit)
+fn var FileHandle.close() Unit!:
+	if self.closed: return ok(unit)
 
-		self.closed = true
-		print("close")
-		if self.close_error: return error(Error("close", kind: "close"))
+	self.closed = true
+	print("close")
+	if self.close_error: return error(Error("close", kind: "close"))
 
 fn remove(path: String) Unit!:
 	print("remove {path}")

@@ -20,9 +20,8 @@ enum Payload:
 type Res:
     n: Int
 
-impl Closeable for Res:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Res.close() Unit!:
+    return ok(unit)
 
 type HoldsRes:
     r: Res

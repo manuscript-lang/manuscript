@@ -4,11 +4,10 @@ type Res:
 	id: Int
 	open: Bool = true
 
-impl Closeable for Res:
-	var fn close() Unit!:
-		if self.open:
-			self.open = false
-			print("close {self.id}")
+fn var Res.close() Unit!:
+	if self.open:
+		self.open = false
+		print("close {self.id}")
 
 fn borrowed(values: List[Int]) Int:
 	a := values

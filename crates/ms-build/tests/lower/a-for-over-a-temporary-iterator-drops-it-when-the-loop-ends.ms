@@ -7,12 +7,11 @@ type Counter:
     n: Int
     label: String
 
-impl Iterator[Int] for Counter:
-    var fn next() Int?:
-        if self.n == 0: return none
+fn var Counter.next() Int?:
+    if self.n == 0: return none
 
-        self.n -= 1
-        return self.n
+    self.n -= 1
+    return self.n
 
 fn make() Counter:
     return Counter(n: 3, label: "c")

@@ -1,10 +1,9 @@
 type Counter:
     value: Int
 
-impl Counter:
-    var fn bump() Int:
-        self.value += 1
-        return self.value
+fn var Counter.bump() Int:
+    self.value += 1
+    return self.value
 
 fn counter() Counter: Counter(0)
 

@@ -1,9 +1,8 @@
 type Logger:
     n: Int
 
-impl Logger:
-    fn info() Unit: print("info")
-    fn quiet() Int: self.n
+fn Logger.info() Unit: print("info")
+fn Logger.quiet() Int: self.n
 
 fn stored_method() Unit:
     log := Logger(1)

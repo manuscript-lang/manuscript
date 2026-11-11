@@ -7,9 +7,8 @@ interface Diagnostic:
 type LocalError:
     detail: String
 
-impl Diagnostic for LocalError:
-    fn message() String:
-        return self.detail.clone()
+fn LocalError.message() String:
+    return self.detail.clone()
 
 fn wrong(value: LocalError) Diagnostic:
     return value

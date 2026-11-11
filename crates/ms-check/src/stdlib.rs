@@ -267,9 +267,14 @@ fn decl_type_params(d: &Decl) -> &[TypeParam] {
     }
 }
 
-fn fold_inherent_impls(syms: ms_syntax::Names, module: &Module) -> Result<Vec<DeclRef>, String> {
+fn fold_inherent_impls(
+    syms: ms_syntax::Names,
+    module: &Module,
+) -> Result<(Vec<DeclRef>, u32), String> {
     let mut kept: Vec<(Decl, Vec<Method>)> = Vec::new();
+    let mut next_id = module.node_count;
     let mut types: HashMap<Name, usize> = HashMap::new();
+    let mut specials: Vec<Decl> = Vec::new();
     for d in &module.decls {
         if matches!(&d.kind, DeclKind::Impl(i) if i.contract.is_none()) {
             continue;
@@ -281,6 +286,9 @@ fn fold_inherent_impls(syms: ms_syntax::Names, module: &Module) -> Result<Vec<De
             types.insert(decl_name(d), kept.len());
         }
         kept.push((d.clone(), Vec::new()));
+        for marker in crate::passes::marker_decls(module, d, &mut next_id) {
+            kept.push((marker, Vec::new()));
+        }
     }
     for d in &module.decls {
         let DeclKind::Impl(i) = &d.kind else {
@@ -309,20 +317,64 @@ fn fold_inherent_impls(syms: ms_syntax::Names, module: &Module) -> Result<Vec<De
                 TypeKind::Named { name, args } => *name == p.name && args.is_empty(),
                 TypeKind::Fn { .. } => false,
             });
-        if !repeats {
-            return Err(format!(
-                "inherent impl must repeat the type parameters of {}: {}",
-                syms.str(decl_name(&kept[idx].0)),
-                at()
-            ));
+        if !repeats || !i.bounds.is_empty() {
+            // A bounded or specialized receiver keeps its requirements in a generated interface.
+            specials.push(d.clone());
+            continue;
         }
         let methods = i.methods.clone();
         kept[idx].1.extend(methods);
     }
-    Ok(kept
+    if !specials.is_empty() {
+        let sub = Module {
+            file: module.file.clone(),
+            source: module.source.clone(),
+            imports: module.imports.clone(),
+            decls: module
+                .decls
+                .iter()
+                .filter(|d| {
+                    !matches!(
+                        d.kind,
+                        DeclKind::Impl(_)
+                            | DeclKind::Fn(_)
+                            | DeclKind::Const(_)
+                            | DeclKind::Test(_)
+                    )
+                })
+                .cloned()
+                .chain(specials)
+                .collect(),
+            omitted: Vec::new(),
+            recovered: Vec::new(),
+            node_count: next_id,
+        };
+        let (made, errors, count) = crate::passes::desugar_inherent_impls(syms, &sub, &[]);
+        if let Some(e) = errors.first() {
+            return Err(e.message.clone());
+        }
+        next_id = count;
+        for d in made {
+            let generated = match &d.kind {
+                DeclKind::Interface(i) => {
+                    syms.str(i.name).ends_with(crate::passes::INHERENT_SUFFIX)
+                }
+                DeclKind::Impl(i) => i
+                    .contract
+                    .as_ref()
+                    .is_some_and(|c| c.name(syms).ends_with(crate::passes::INHERENT_SUFFIX)),
+                _ => false,
+            };
+            if generated {
+                kept.push((d, Vec::new()));
+            }
+        }
+    }
+    let decls = kept
         .into_iter()
         .map(|(decl, folded)| DeclRef(Rc::new(DeclNode { decl, folded })))
-        .collect())
+        .collect();
+    Ok((decls, next_id))
 }
 
 fn has_implementation(d: &DeclRef) -> bool {
@@ -343,188 +395,15 @@ fn has_inherent_body(module: &Module) -> bool {
     })
 }
 
-fn fresh(ids: &mut u32) -> NodeId {
-    *ids += 1;
-    NodeId(*ids - 1)
-}
-
-fn renumber_type(syms: ms_syntax::Names, t: &TypeRef, ids: &mut u32) -> Result<TypeRef, String> {
-    let kind = match &t.kind {
-        TypeKind::Named { name, args } => TypeKind::Named {
-            name: *name,
-            args: args
-                .iter()
-                .map(|a| renumber_type(syms, a, ids))
-                .collect::<Result<_, _>>()?,
-        },
-        TypeKind::Fn { params, result } => TypeKind::Fn {
-            params: params
-                .iter()
-                .map(|p| renumber_param(syms, p, ids))
-                .collect::<Result<_, _>>()?,
-            result: Box::new(renumber_type(syms, result, ids)?),
-        },
-    };
-    Ok(TypeRef {
-        id: fresh(ids),
-        pos: t.pos,
-        kind,
-    })
-}
-
-fn renumber_param(
-    syms: ms_syntax::Names,
-    p: &ms_syntax::ast::Param,
-    ids: &mut u32,
-) -> Result<ms_syntax::ast::Param, String> {
-    if p.default.is_some() {
-        return Err(format!(
-            "a source method on a native type cannot have a default argument; declare it through an interface: {}",
-            position_text(syms, n(""), p.pos)
-        ));
-    }
-    let ty = match &p.ty {
-        Some(t) => Some(renumber_type(syms, t, ids)?),
-        None => None,
-    };
-    Ok(ms_syntax::ast::Param {
-        id: fresh(ids),
-        pos: p.pos,
-        name: p.name,
-        ty,
-        default: None,
-        mutable: p.mutable,
-    })
-}
-
-/// The interface and contract `impl` a bodied inherent `impl Receiver[T]:` becomes in the source
-/// half: `impl Receiver[T]:` cannot declare operations on a type the half does not own, so its
-/// methods are declared by a generated unexported interface that the receiver implements.
-fn interface_for_inherent(
-    syms: ms_syntax::Names,
-    parsed: &Module,
-    d: &Decl,
-    i: &ImplDecl,
-    ids: &mut u32,
-    used: &mut Vec<String>,
-) -> Result<(Decl, Decl), String> {
-    let at = || position_text(syms, n(&parsed.file), d.pos);
-    let TypeKind::Named { name, args } = &i.receiver.kind else {
-        return Err(format!("an inherent impl must name a type: {}", at()));
-    };
-    let mut params = Vec::new();
-    for a in args {
-        let TypeKind::Named { name, args } = &a.kind else {
-            return Err(format!(
-                "inherent impl must repeat the type parameters: {}",
-                at()
-            ));
-        };
-        if !args.is_empty() {
-            return Err(format!(
-                "inherent impl must repeat the type parameters: {}",
-                at()
-            ));
-        }
-        params.push(TypeParam {
-            id: fresh(ids),
-            pos: a.pos,
-            name: *name,
-            bounds: Vec::new(),
-            default: None,
-        });
-    }
-    let base = format!("{}SourceMethods", syms.str(name).replace('.', "_"));
-    let mut interface_name = base.clone();
-    while used.contains(&interface_name) {
-        interface_name = format!("{base}{}", used.len());
-    }
-    used.push(interface_name.clone());
-    let interface_name = ms_syntax::Names::global().intern(&interface_name);
-    let mut methods = Vec::new();
-    for m in &i.methods {
-        let mut type_params = Vec::new();
-        for t in &m.func.type_params {
-            type_params.push(TypeParam {
-                id: fresh(ids),
-                pos: t.pos,
-                name: t.name,
-                bounds: t
-                    .bounds
-                    .iter()
-                    .map(|b| renumber_type(syms, b, ids))
-                    .collect::<Result<_, _>>()?,
-                default: match &t.default {
-                    Some(t) => Some(renumber_type(syms, t, ids)?),
-                    None => None,
-                },
-            });
-        }
-        let func = Func {
-            name: m.func.name,
-            type_params,
-            params: m
-                .func
-                .params
-                .iter()
-                .map(|p| renumber_param(syms, p, ids))
-                .collect::<Result<_, _>>()?,
-            result: renumber_type(syms, &m.func.result, ids)?,
-            body: Vec::new(),
-            external: false,
-        };
-        methods.push(Method {
-            id: fresh(ids),
-            pos: m.pos,
-            func,
-            mutating: m.mutating,
-        });
-    }
-    let contract = TypeRef {
-        id: fresh(ids),
-        pos: i.receiver.pos,
-        kind: TypeKind::Named {
-            name: interface_name,
-            args: args
-                .iter()
-                .map(|a| renumber_type(syms, a, ids))
-                .collect::<Result<_, _>>()?,
-        },
-    };
-    let interface = Decl {
-        id: fresh(ids),
-        pos: d.pos,
-        export: false,
-        synthetic: false,
-        kind: DeclKind::Interface(InterfaceDecl {
-            name: interface_name,
-            type_params: params,
-            methods,
-        }),
-    };
-    let implementation = Decl {
-        id: fresh(ids),
-        pos: d.pos,
-        export: false,
-        synthetic: false,
-        kind: DeclKind::Impl(ImplDecl {
-            contract: Some(contract),
-            receiver: i.receiver.clone(),
-            methods: i.methods.clone(),
-        }),
-    };
-    Ok((interface, implementation))
-}
-
 /// Splits a file that has both native operations (an inherent `impl` with bodyless methods) and
 /// bodies into a native module and a source module named `<file>+source`. The source half takes
 /// the bodied declarations and the interfaces only they implement; the rest stays native. Source
 /// methods on a native type are written through an interface, so a bodied inherent method is an
 /// error. Returns `None` for any other file.
-fn split_mixed(
-    syms: ms_syntax::Names,
-    parsed: &Module,
-) -> Result<Option<(Module, Module)>, String> {
+/// The native half, the `+source` half, and the type declarations the source half's receiver methods name.
+type Halves = (Module, Module, Vec<Decl>);
+
+fn split_mixed(syms: ms_syntax::Names, parsed: &Module) -> Result<Option<Halves>, String> {
     if !is_mixed(parsed) {
         return Ok(None);
     }
@@ -532,16 +411,8 @@ fn split_mixed(
     let mut native = Vec::new();
     let mut source = Vec::new();
     let mut ids = parsed.node_count;
-    let mut used: Vec<String> = Vec::new();
     for d in &parsed.decls {
         let to_source = match &d.kind {
-            DeclKind::Impl(i) if i.contract.is_none() && decl_has_body(d) => {
-                let (interface, implementation) =
-                    interface_for_inherent(syms, parsed, d, i, &mut ids, &mut used)?;
-                source.push(interface);
-                source.push(implementation);
-                continue;
-            }
             DeclKind::Interface(i) => {
                 let name = i.name;
                 parsed.decls.iter().any(|x| implements(x, name))
@@ -606,9 +477,16 @@ fn split_mixed(
         true,
     );
     source_half.node_count = ids;
+    let foreign: Vec<Decl> = parsed
+        .decls
+        .iter()
+        .filter(|d| matches!(d.kind, DeclKind::Record(_) | DeclKind::Alternative(_)))
+        .cloned()
+        .collect();
     Ok(Some((
         half(parsed.file.clone(), native, false),
         source_half,
+        foreign,
     )))
 }
 
@@ -621,11 +499,11 @@ fn parse_bundled(file: &str, source: &str) -> Result<Module, String> {
 fn bundled_modules(syms: ms_syntax::Names, parsed: &Module) -> Result<Vec<ModRef>, String> {
     // A file that declares native operations and also has bodies keeps the native declarations
     // under its own name and checks the bodies as a source module named `<file>+source`.
-    if let Some((native, source)) = split_mixed(syms, parsed)? {
-        let decls = fold_inherent_impls(syms, &native)?;
+    if let Some((native, source, foreign)) = split_mixed(syms, parsed)? {
+        let (decls, node_count) = fold_inherent_impls(syms, &native)?;
         return Ok(vec![
-            Rc::new(ModuleData::new(&native, decls, native.node_count)),
-            crate::load_module(syms, &source),
+            Rc::new(ModuleData::new(&native, decls, node_count)),
+            crate::load_module_with(syms, &source, &foreign),
         ]);
     }
     // A module with implementation bodies is checked like user source, so its inherent
@@ -633,12 +511,8 @@ fn bundled_modules(syms: ms_syntax::Names, parsed: &Module) -> Result<Vec<ModRef
     if has_inherent_body(parsed) {
         return Ok(vec![crate::load_module(syms, parsed)]);
     }
-    let decls = fold_inherent_impls(syms, parsed)?;
-    Ok(vec![Rc::new(ModuleData::new(
-        parsed,
-        decls,
-        parsed.node_count,
-    ))])
+    let (decls, node_count) = fold_inherent_impls(syms, parsed)?;
+    Ok(vec![Rc::new(ModuleData::new(parsed, decls, node_count))])
 }
 
 struct Loader<'a> {
@@ -1841,7 +1715,7 @@ pub fn constructor_signature(
 mod tests {
     use super::*;
 
-    fn halves(syms: ms_syntax::Names, text: &str) -> Result<Option<(Module, Module)>, String> {
+    fn halves(syms: ms_syntax::Names, text: &str) -> Result<Option<Halves>, String> {
         let file: Arc<str> = Arc::from("@std/t.ms");
         split_mixed(
             syms,
@@ -1908,10 +1782,10 @@ mod tests {
     }
 
     #[test]
-    fn a_bodied_inherent_impl_becomes_an_interface_and_a_contract_impl() {
+    fn a_bodied_receiver_method_goes_to_the_source_half() {
         let syms = ms_syntax::Names::global();
-        let text = "export type Box[T]: ...\n\nimpl Box[T]:\n    fn native() Int: ...\n\nimpl Box[T]:\n    fn size() Int:\n        return 1\n";
-        let (native, source) = halves(syms, text).unwrap().expect("mixed");
+        let text = "export type Box[T]: ...\n\nfn Box[T].native() Int: ...\n\nfn Box[T].size() Int:\n    return 1\n";
+        let (native, source, foreign) = halves(syms, text).unwrap().expect("mixed");
         assert_eq!(native.file.as_ref(), "@std/t.ms");
         assert_eq!(source.file.as_ref(), "@std/t.ms+source");
         assert_eq!(native.decls.len(), 2);
@@ -1919,26 +1793,19 @@ mod tests {
             .decls
             .iter()
             .map(|d| match &d.kind {
-                DeclKind::Interface(_) => "interface",
-                DeclKind::Impl(i) if i.contract.is_some() => "contract impl",
+                DeclKind::Impl(i) if i.contract.is_none() => "receiver method",
                 _ => "other",
             })
             .collect();
-        assert_eq!(kinds, ["interface", "contract impl"]);
-    }
-
-    #[test]
-    fn a_default_argument_on_a_source_method_is_rejected() {
-        let syms = ms_syntax::Names::global();
-        let text = "export type Box: ...\n\nimpl Box:\n    fn native() Int: ...\n\nimpl Box:\n    fn size(n: Int = 1) Int:\n        return n\n";
-        let error = halves(syms, text).unwrap_err();
-        assert!(error.contains("default argument"), "{error}");
+        assert_eq!(kinds, ["receiver method"]);
+        // The source half names the native half's type through its declaration.
+        assert_eq!(foreign.len(), 1);
     }
 
     #[test]
     fn a_file_without_bodies_is_not_split() {
         let syms = ms_syntax::Names::global();
-        let text = "export type Box: ...\n\nimpl Box:\n    fn native() Int: ...\n";
+        let text = "export type Box: ...\n\nfn Box.native() Int: ...\n";
         assert!(halves(syms, text).unwrap().is_none());
     }
 }

@@ -4,11 +4,9 @@ interface Read:
 type Box[T]:
     value: T
 
-impl Read for Box[fn(Int) Int]:
-    fn read() Int: 1
+fn Box[fn(Int) Int].read() Int: 1
 
-impl Read for Box[fn(var Int) Int]:
-    fn read() Int: 2
+fn Box[fn(var Int) Int].read() Int: 2
 
 fn identity(value: Int) Int: value
 fn increment(var value: Int) Int:

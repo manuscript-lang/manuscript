@@ -14,14 +14,11 @@ type Tri:
 	b: Int
 	h: Int
 
-impl Shape for Sq:
-	fn area(scale: Int) Int: self.side * self.side * scale
+fn Sq.area(scale: Int) Int: self.side * self.side * scale
 
-impl Shape for Rect:
-	fn area(scale: Int) Int: self.w * self.h * scale
+fn Rect.area(scale: Int) Int: self.w * self.h * scale
 
-impl Shape for Tri:
-	fn area(scale: Int) Int: self.b * self.h * scale / 2
+fn Tri.area(scale: Int) Int: self.b * self.h * scale / 2
 
 fn measure(shape: Shape, scale: Int) Int: shape.area(scale: scale)
 

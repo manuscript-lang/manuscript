@@ -9,9 +9,8 @@ interface Read[T]:
 type Reader[T]:
     operation: fn() T
 
-impl Read[T] for Reader[T]:
-    fn read() T:
-        return self.operation()
+fn Reader[T].read() T:
+    return self.operation()
 
 type Log:
     events: String
@@ -36,17 +35,15 @@ type OrderedReader:
     operation: fn() Int
     last: Int
 
-impl Read[Int] for OrderedReader:
-    fn read() Int:
-        return self.first + self.operation() + self.last
+fn OrderedReader.read() Int:
+    return self.first + self.operation() + self.last
 
 type DefaultReader:
     base: Int
     operation: fn() Int = fn() Int: base
 
-impl Read[Int] for DefaultReader:
-    fn read() Int:
-        return self.operation()
+fn DefaultReader.read() Int:
+    return self.operation()
 
 test "nested view receiver prepares once and calls later":
     var log = Log("")

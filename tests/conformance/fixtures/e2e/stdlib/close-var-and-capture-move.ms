@@ -6,13 +6,11 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-impl Closeable for Door:
-    var fn close() Unit!:
-        print("closed {self.name}")
+fn var Door.close() Unit!:
+    print("closed {self.name}")
 
-impl Door:
-    fn id() Int:
-        return 1
+fn Door.id() Int:
+    return 1
 
 fn open_handle(name: String) Door:
     return Door(name)

@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface SameValue[T: Equal]:\n\tfn same(other: T) Bool\n\nimpl SameValue[T] for Box[T]:\n\tfn same(other: T) Bool:\n\t\treturn self.value == other\n"
-  }
-}

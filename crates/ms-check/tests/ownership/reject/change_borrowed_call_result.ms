@@ -1,8 +1,7 @@
 type Bag:
     items: List[Int]
 
-impl Bag:
-    fn view() List[Int]: self.items
+fn Bag.view() List[Int]: self.items
 
 fn same(bag: Bag) Bag:
     return bag

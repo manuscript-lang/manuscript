@@ -4,19 +4,16 @@ type CustomerKey:
 	id: Int
 	label: String
 
-impl Equal for CustomerKey:
-	fn equals(other: CustomerKey) Bool:
-		return self.id == other.id
+fn CustomerKey.equals(other: CustomerKey) Bool:
+	return self.id == other.id
 
-impl Hashable for CustomerKey:
-	fn hash() Int: self.id
+fn CustomerKey.hash() Int: self.id
 
 type Version:
 	major: Int
 
-impl Comparable for Version:
-	fn compare(other: Version) Int:
-		return self.major - other.major
+fn Version.compare(other: Version) Int:
+	return self.major - other.major
 
 interface Merge:
 	fn merge(other: Self) Int
