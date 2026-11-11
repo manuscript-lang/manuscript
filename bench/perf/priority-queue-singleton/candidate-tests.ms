@@ -7,9 +7,8 @@ type Job:
 	priority: Int
 	id: Int
 
-impl Comparable for Job:
-	fn compare(other: Job) Int:
-		return self.priority.compare(other.priority)
+fn Job.compare(other: Job) Int:
+	return self.priority.compare(other.priority)
 
 test "singleton dequeue leaves a bounded queue ready for reuse":
 	var queue = PriorityQueue[Int](capacity: 1)
