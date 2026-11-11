@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "inherent methods belong in the module that declares Approved; to add operations to another module's type, declare an interface and write 'impl <Interface> for Approved:'",
+        "message": "inherent methods belong in the module that declares Approved; to add operations to another module's type, write a free function or a wrapper type",
         "position": {
           "file": "main.ms",
           "line": 7,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/main.ms:7:1: type: inherent methods belong in the module that declares Approved; to add operations to another module's type, declare an interface and write 'impl <Interface> for Approved:'\n   |\n 7 | impl Approved:\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/main.ms:7:1: type: inherent methods belong in the module that declares Approved; to add operations to another module's type, write a free function or a wrapper type\n   |\n 7 | fn Approved.extra() Int:\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

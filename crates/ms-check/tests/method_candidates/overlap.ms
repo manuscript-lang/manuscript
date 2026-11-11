@@ -4,10 +4,8 @@ interface Value[T]:
 type Box[T]:
     value: T
 
-impl Value[T] for Box[T]:
-    fn read() T:
-        return self.value
+fn Box[T].read() T:
+    return self.value
 
-impl Value[Int] for Box[Int]:
-    fn read() Int:
-        return self.value
+fn Box[Int].read() Int:
+    return self.value

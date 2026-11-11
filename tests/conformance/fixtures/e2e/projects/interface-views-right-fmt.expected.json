@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import Read, Reader from \"./domain.ms\"\n\nimpl Read for Reader:\n\tfn read() Int: self.operation() + 20\n\nexport fn right() Read:\n\tvalue := 2\n\treturn Read(Reader(fn() Int: value))\n"
-  }
-}

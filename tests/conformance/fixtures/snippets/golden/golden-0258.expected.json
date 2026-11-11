@@ -7,21 +7,44 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "ambiguous member m on A; it is provided by I, J, so bind it to the interface first, e.g. view: I = value; view.m()",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0258.ms",
-          "line": 14,
-          "column": 14,
-          "offset": 235
+          "line": 9,
+          "column": 1,
+          "offset": 128
+        },
+        "end": {
+          "file": "golden-0258.ms",
+          "line": 9,
+          "column": 5,
+          "offset": 132
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
+        "position": {
+          "file": "golden-0258.ms",
+          "line": 11,
+          "column": 1,
+          "offset": 167
+        },
+        "end": {
+          "file": "golden-0258.ms",
+          "line": 11,
+          "column": 5,
+          "offset": 171
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0258.ms:14:14: resolution: ambiguous member m on A; it is provided by I, J, so bind it to the interface first, e.g. view: I = value; view.m()\n    |\n 14 |     return a.m()\n    |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0258.ms:9:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 9 | impl I for A:\n   | ^^^^\n<DIR>/golden-0258.ms:11:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 11 | impl J for A:\n    | ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

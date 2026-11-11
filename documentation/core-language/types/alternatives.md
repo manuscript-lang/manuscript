@@ -19,7 +19,7 @@ Enums are tagged and exhaustively matched.
 - At least one case; case names are unique, and payload field names are unique within a case.
 - A case may have no payload: `Missing`.
 - Payload types are explicit; fields have no defaults.
-- `enum` bodies contain only bare variant names with optional payload parameters; fields belong in a `type` and methods in an `impl` block.
+- `enum` bodies contain only bare variant names with optional payload parameters; fields belong in a `type` and methods are receiver methods, `fn Enum.name(...)`.
 
 Migration: replace `type Choice:` with `enum Choice:` when its body declares cases. Then remove `case` before each variant. Both legacy spellings are rejected with diagnostics explaining the new spelling. Types keep `type`; constructors and exhaustive matching keep the same behavior. `enum` is reserved, so rename existing identifiers with that spelling. `case` is no longer reserved: `case`, `case(value: Int)`, and field `case: Int` are ordinary names in their respective contexts.
 

@@ -7,27 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2002",
-        "phase": "resolution",
-        "message": "unknown standard module @std/faults.ms",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1539.ms",
-          "line": 5,
-          "column": 8,
-          "offset": 163
+          "line": 14,
+          "column": 1,
+          "offset": 372
         },
         "end": {
           "file": "golden-1539.ms",
-          "line": 5,
-          "column": 13,
-          "offset": 168
+          "line": 14,
+          "column": 5,
+          "offset": 376
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1539.ms:5:8: resolution: unknown standard module @std/faults.ms\n   |\n 5 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1539.ms:14:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 14 | impl TestHooks for State:\n    | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

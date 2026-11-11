@@ -198,9 +198,8 @@ type Handler:
 type Money:
 	cents: Int
 
-impl JsonEncode for Money:
-	fn to_json() JsonValue:
-		return JsonValue.StringValue("usd:{self.cents}")
+fn Money.to_json() JsonValue:
+	return JsonValue.StringValue("usd:{self.cents}")
 
 type Invoice:
 	total: Money
@@ -287,11 +286,10 @@ enum Event:
 	Created(id: Int)
 	Deleted(id: Int)
 
-impl JsonEncode for Event:
-	fn to_json() JsonValue:
-		match self:
-			Created(id): return tagged("created", id)
-			Deleted(id): return tagged("deleted", id)
+fn Event.to_json() JsonValue:
+	match self:
+		Created(id): return tagged("created", id)
+		Deleted(id): return tagged("deleted", id)
 
 fn tagged(kind: String, id: Int) JsonValue:
 	var fields = Map[String, JsonValue]()

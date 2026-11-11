@@ -11,17 +11,13 @@ interface Forward:
 interface Reverse:
 	fn reverse() Int
 
-impl Forward for Box[fn(Int) Int]:
-	fn forward() Int: 1
+fn Box[fn(Int) Int].forward() Int: 1
 
-impl Forward for Box[fn(var Int) Int]:
-	fn forward() Int: 2
+fn Box[fn(var Int) Int].forward() Int: 2
 
-impl Reverse for Box[fn(var Int) Int]:
-	fn reverse() Int: 4
+fn Box[fn(var Int) Int].reverse() Int: 4
 
-impl Reverse for Box[fn(Int) Int]:
-	fn reverse() Int: 3
+fn Box[fn(Int) Int].reverse() Int: 3
 
 fn identity(value: Int) Int: value
 

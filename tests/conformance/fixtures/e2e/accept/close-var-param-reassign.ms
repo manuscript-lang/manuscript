@@ -6,9 +6,8 @@ import Closeable from "@std/core.ms"
 type R:
     name: String
 
-impl Closeable for R:
-    var fn close() Unit!:
-        print("close {self.name}")
+fn var R.close() Unit!:
+    print("close {self.name}")
 
 fn replace(var r: R) Unit:
     r = R("new")

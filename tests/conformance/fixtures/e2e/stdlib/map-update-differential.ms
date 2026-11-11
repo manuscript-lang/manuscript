@@ -9,13 +9,11 @@ type Tag:
 fn Tag.clone() Tag:
 	return Tag(name: self.name.clone())
 
-impl Equal for Tag:
-	fn equals(other: Tag) Bool:
-		return self.name == other.name
+fn Tag.equals(other: Tag) Bool:
+	return self.name == other.name
 
-impl Hashable for Tag:
-	fn hash() Int:
-		return self.name.hash()
+fn Tag.hash() Int:
+	return self.name.hash()
 
 fn append_length(xs: List[Int]) List[Int]:
 	var out = xs.clone()

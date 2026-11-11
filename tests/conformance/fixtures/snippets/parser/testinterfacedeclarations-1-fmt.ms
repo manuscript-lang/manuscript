@@ -7,6 +7,5 @@ export interface Read[T: Equal]:
 type Box[T]:
     value: T
 
-impl Read[T] for Box[T]:
-    fn get() T:
-        return self.value
+fn Box[T: Equal].get() T:
+    return self.value

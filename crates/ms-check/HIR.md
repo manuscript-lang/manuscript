@@ -16,7 +16,7 @@ for c in hir.callables() {
 | Query | Meaning |
 | --- | --- |
 | `Program::hir()` → `Hir` | entry point; `modules()`, `module(file)`, `callables()` |
-| `ModuleHir::callables()` | functions, methods (inherent `impl`s are already desugared to `Type$methods` + `impl`), tests, constants |
+| `ModuleHir::callables()` | functions, methods (receiver methods are already desugared to `Type$methods` + a contract impl), tests, constants |
 | `Callable` | `kind`, `name`, `func`, `parameters`, `self_binding`, `fixture`, `body()`, `id()` |
 | `ModuleHir::ty(e)` / `info(e)` | checked type / all facts of an expression |
 | `ModuleHir::resolution(e)` | `Local`, `Constant`, `Function`, `Type`, `Constructor{ty, case}`, `Method`, `Native`, `Value` |

@@ -6,10 +6,9 @@ import Closeable from "@std/core.ms"
 type Gate:
     closes: Int
 
-impl Closeable for Gate:
-    var fn close() Unit!:
-        self.closes += 1
-        return error(Error("gate stuck"))
+fn var Gate.close() Unit!:
+    self.closes += 1
+    return error(Error("gate stuck"))
 
 fn handled() Unit!:
     var g = Gate(0)

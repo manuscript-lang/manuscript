@@ -4,19 +4,17 @@ interface Reader:
 type Source:
     number: Int
 
-impl Reader for Source:
-    fn read[T = Int]() Int:
-        return self.number
+fn Source.read[T = Int]() Int:
+    return self.number
 
-impl Source:
-    fn choose[A, B = A](first: A, second: B) Int:
-        return self.number
+fn Source.choose[A, B = A](first: A, second: B) Int:
+    return self.number
 
-    fn fallback[T = Int](value: T?) Int:
-        return self.number
+fn Source.fallback[T = Int](value: T?) Int:
+    return self.number
 
-    fn output[T = Int]() T?:
-        return none
+fn Source.output[T = Int]() T?:
+    return none
 
 fn from_bound[S: Reader](source: S) Int:
     return source.read()

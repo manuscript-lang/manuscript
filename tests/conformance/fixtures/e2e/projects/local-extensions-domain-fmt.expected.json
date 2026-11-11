@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "import (\n\tShared from \"@std/concurrency/shared.ms\",\n\n\tRead from \"./contracts.ms\",\n)\n\nexport interface Original:\n\tfn original() Int\n\nexport type Item:\n\tvalue: Int\n\nimpl Original for Item:\n\tfn original() Int:\n\t\treturn self.value\n\nexport type Box[T]:\n\tvalue: T\n\nexport type Holder[T: Read[Int]]:\n\tvalue: T\n\nimpl Read[Int] for Holder[T]:\n\tfn get() Int:\n\t\treturn self.value.get()\n\nexport enum Choice:\n\tSome(value: Int)\n\tEmpty\n\nexport type Resource:\n\tevents: Shared[List[Int]]\n"
-  }
-}

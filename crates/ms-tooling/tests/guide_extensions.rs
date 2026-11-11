@@ -172,7 +172,7 @@ fn receiver_constraints_and_nominal_identity_survive_repeated_method_records() {
         .map(|member| member.name.as_str())
         .collect();
     assert_eq!(names, ["accepts", "number", "precedes"]);
-    assert_eq!(first.implements, ["IntBoxSourceMethods", "OrderedBox[T]"]);
+    assert_eq!(first.implements, ["IntBoxSourceMethods"]);
     assert!(
         first
             .members

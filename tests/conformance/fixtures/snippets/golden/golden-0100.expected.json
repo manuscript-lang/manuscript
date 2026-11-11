@@ -7,21 +7,44 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "cannot move `self.value` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.value.clone()` only if a second owner is needed",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0100.ms",
-          "line": 14,
-          "column": 21,
-          "offset": 315
+          "line": 9,
+          "column": 1,
+          "offset": 166
+        },
+        "end": {
+          "file": "golden-0100.ms",
+          "line": 9,
+          "column": 5,
+          "offset": 170
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
+        "position": {
+          "file": "golden-0100.ms",
+          "line": 12,
+          "column": 1,
+          "offset": 254
+        },
+        "end": {
+          "file": "golden-0100.ms",
+          "line": 12,
+          "column": 5,
+          "offset": 258
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0100.ms:14:21: type: cannot move `self.value` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.value.clone()` only if a second owner is needed\n    |\n 14 |         return self.value\n    |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0100.ms:9:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 9 | impl Same[T] for Box[T]:\n   | ^^^^\n<DIR>/golden-0100.ms:12:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 12 | impl Read[T] for Box[T]:\n    | ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

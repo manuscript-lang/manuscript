@@ -7,21 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown or ambiguous member same on Box[T]; same requires T to be Equal; declare T: Equal on the enclosing function",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0106.ms",
-          "line": 11,
-          "column": 18,
-          "offset": 282
+          "line": 7,
+          "column": 1,
+          "offset": 132
+        },
+        "end": {
+          "file": "golden-0106.ms",
+          "line": 7,
+          "column": 5,
+          "offset": 136
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0106.ms:11:18: resolution: unknown or ambiguous member same on Box[T]; same requires T to be Equal; declare T: Equal on the enclosing function\n    |\n 11 |     return value.same(other: other)\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0106.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Same[T] for Box[T]:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

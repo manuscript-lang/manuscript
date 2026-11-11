@@ -7,65 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration",
-        "position": {
-          "file": "golden-0245.ms",
-          "line": 3,
-          "column": 1,
-          "offset": 53
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'",
-        "position": {
-          "file": "golden-0245.ms",
-          "line": 14,
-          "column": 17,
-          "offset": 334
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it",
-        "position": {
-          "file": "golden-0245.ms",
-          "line": 14,
-          "column": 25,
-          "offset": 342
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'",
-        "position": {
-          "file": "golden-0245.ms",
-          "line": 15,
-          "column": 22,
-          "offset": 413
-        }
-      },
-      {
-        "code": "MS3012",
-        "phase": "type",
-        "message": "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0245.ms",
           "line": 7,
           "column": 1,
           "offset": 87
+        },
+        "end": {
+          "file": "golden-0245.ms",
+          "line": 7,
+          "column": 5,
+          "offset": 91
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0245.ms:3:1: resolution: declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration\n   |\n 3 | enum Optional[T]:\n   | ^\n<DIR>/golden-0245.ms:14:17: type: a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'\n    |\n 14 |     fn ok_or[E: Error = MissingValue](cause: E? = none) Result[T, E]: ...\n    |                 ^\n<DIR>/golden-0245.ms:14:25: resolution: unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it\n    |\n 14 |     fn ok_or[E: Error = MissingValue](cause: E? = none) Result[T, E]: ...\n    |                         ^\n<DIR>/golden-0245.ms:15:22: type: a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'\n    |\n 15 |     fn ok_or_else[E: Error](create: fn() E) Result[T, E]: ...\n    |                      ^\n<DIR>/golden-0245.ms:7:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n   |\n 7 | impl T?:\n   | ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0245.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl T?:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

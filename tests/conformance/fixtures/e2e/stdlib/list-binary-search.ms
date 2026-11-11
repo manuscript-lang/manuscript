@@ -24,18 +24,16 @@ type Key:
 	value: Int
 	label: String
 
-impl Comparable for Key:
-	fn compare(other: Key) Int:
-		return self.value.compare(other.value)
+fn Key.compare(other: Key) Int:
+	return self.value.compare(other.value)
 
 type Counted:
 	value: Int
 	comparisons: String
 
-impl Comparable for Counted:
-	fn compare(other: Counted) Int:
-		_ := append_file(self.comparisons, "x").wait()
-		return self.value.compare(other.value)
+fn Counted.compare(other: Counted) Int:
+	_ := append_file(self.comparisons, "x").wait()
+	return self.value.compare(other.value)
 
 test "binary search reports the first duplicate or insertion position":
 	values := [1, 3, 3, 3, 5]

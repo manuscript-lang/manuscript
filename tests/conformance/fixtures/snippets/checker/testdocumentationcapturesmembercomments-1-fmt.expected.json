@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "// A described record.\nexport type Counter:\n\t// Current count in items.\n\t// May start at zero.\n\tcount: Int = 0\n\t// Detached description.\n\tundocumented: Int = 1\n\nexport enum Outcome:\n\t// A completed count.\n\tReady(value: Int)\n\t// Work is pending.\n\tPending\n\t// Work failed with source context.\n\tFailed(\n\t\t// Original failure diagnostic.\n\t\tmessage: String\n\t)\n\nexport interface Countable:\n\t// Reads the count without mutation.\n\tfn count() Int\n\nimpl Countable for Counter:\n\t// Returns the stored count.\n\tfn count() Int:\n\t\treturn self.count\n\n// Private declarations stay private.\ntype Hidden:\n\t// Hidden member documentation.\n\tvalue: Int\n"
-  }
-}

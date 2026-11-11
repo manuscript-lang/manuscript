@@ -7,60 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2002",
-        "phase": "resolution",
-        "message": "unknown standard module @std/errors.ms",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0441.ms",
-          "line": 3,
-          "column": 8,
-          "offset": 60
+          "line": 23,
+          "column": 1,
+          "offset": 705
         },
         "end": {
           "file": "golden-0441.ms",
-          "line": 3,
-          "column": 17,
-          "offset": 69
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it",
-        "position": {
-          "file": "golden-0441.ms",
-          "line": 6,
-          "column": 40,
-          "offset": 262
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it",
-        "position": {
-          "file": "golden-0441.ms",
-          "line": 6,
-          "column": 62,
-          "offset": 284
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it",
-        "position": {
-          "file": "golden-0441.ms",
-          "line": 7,
-          "column": 26,
-          "offset": 333
+          "line": 23,
+          "column": 5,
+          "offset": 709
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0441.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-0441.ms:6:40: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 6 | fn result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: transform()\n   |                                        ^\n<DIR>/golden-0441.ms:6:62: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 6 | fn result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: transform()\n   |                                                              ^\n<DIR>/golden-0441.ms:7:26: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 7 | fn checked() Result[Int, TextError]: ok(3)\n   |                          ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0441.ms:23:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 23 | impl Read for Box[Int]:\n    | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

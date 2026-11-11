@@ -8,6 +8,5 @@ type Pair[A, B: Clonable]:
     left: A
     right: B
 
-impl Read[B] for Pair[Int, B]:
-    fn get() B:
-        return self.right.clone()
+fn Pair[Int, B].get() B:
+    return self.right.clone()

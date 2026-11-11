@@ -7,10 +7,9 @@ type Element:
     id: Int
     on_equal: fn() Unit
 
-impl Equal for Element:
-    fn equals(other: Element) Bool:
-        self.on_equal()
-        return self.id == other.id
+fn Element.equals(other: Element) Bool:
+    self.on_equal()
+    return self.id == other.id
 
 type Visits:
     count: Int

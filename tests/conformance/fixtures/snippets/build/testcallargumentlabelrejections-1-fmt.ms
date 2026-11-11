@@ -25,6 +25,5 @@ enum Choice:
 interface Read:
     fn get() Int
 
-impl Read for Box:
-    fn get() Int:
-        return self.value
+fn Box.get() Int:
+    return self.value

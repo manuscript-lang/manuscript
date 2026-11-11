@@ -8,8 +8,7 @@ interface Read:
 type Box:
     value: Int  // 😀é
 
-impl Read for Box:
-    fn get() Int:
-        return self.value
+fn Box.get() Int:
+    return self.value
 
 fn neighbor() Int: 1

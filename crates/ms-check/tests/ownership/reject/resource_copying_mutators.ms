@@ -3,9 +3,8 @@ import Closeable from "@std/core.ms"
 type Res:
     name: String
 
-impl Closeable for Res:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Res.close() Unit!:
+    return ok(unit)
 
 // fill, copy_within and merge store copies of what they are given.
 fn main() Int:

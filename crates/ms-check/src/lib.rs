@@ -68,7 +68,17 @@ use syntax::DeclRef;
 /// Wraps a parsed module for checking: desugars inherent `impl Type:` blocks
 /// and allocates the fact tables.
 pub fn load_module(syms: ms_syntax::Names, m: &Module) -> ModRef {
-    let (decls, errors, node_count) = passes::desugar_inherent_impls(syms, m);
+    load_module_with(syms, m, &[])
+}
+
+/// Like [`load_module`], for a module whose receiver methods also name `foreign` types that another
+/// module declares (the native half of a bundled file).
+pub fn load_module_with(
+    syms: ms_syntax::Names,
+    m: &Module,
+    foreign: &[ms_syntax::ast::Decl],
+) -> ModRef {
+    let (decls, errors, node_count) = passes::desugar_inherent_impls(syms, m, foreign);
     let decls: Vec<DeclRef> = decls.into_iter().map(DeclRef::new).collect();
     let mut data = ModuleData::new(m, decls, node_count);
     data.inherent = errors

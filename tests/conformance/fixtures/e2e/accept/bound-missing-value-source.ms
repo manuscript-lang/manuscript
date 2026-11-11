@@ -1,4 +1,4 @@
-// conform: tags=testing,tier-stdlib
+// conform: tags=testing
 // conform: phase=test
 import expect_equal, expect_fault, expect_true from "@std/test/test.ms"
 
@@ -15,9 +15,8 @@ interface Convert:
 type Source:
 	sentinel: Int
 
-impl Convert for Source:
-	fn convert(cause: Error?) Int!Error:
-		return ok(if cause.is_none(): self.sentinel else: 88)
+fn Source.convert(cause: Error? = none) Int!Error:
+	return ok(if cause.is_none(): self.sentinel else: 88)
 
 // Exact expectations deliberately identify invocation lines, not binding lines.
 test "bound Error defaults use each invocation line":
@@ -27,11 +26,11 @@ test "bound Error defaults use each invocation line":
 	second_result := convert()
 	expect_equal(
 		first_result.err().message,
-		"missing value at bound-missing-value-source.ms:26",
+		"missing value at bound-missing-value-source.ms:25",
 	)?
 	expect_equal(
 		second_result.err().message,
-		"missing value at bound-missing-value-source.ms:27",
+		"missing value at bound-missing-value-source.ms:26",
 	)?
 
 test "immutable copies and captured native values keep invocation defaults":
@@ -44,11 +43,11 @@ test "immutable copies and captured native values keep invocation defaults":
 	nested_result := nested()
 	expect_equal(
 		copied_result.err().message,
-		"missing value at bound-missing-value-source.ms:41",
+		"missing value at bound-missing-value-source.ms:40",
 	)?
 	expect_equal(
 		nested_result.err().message,
-		"missing value at bound-missing-value-source.ms:43",
+		"missing value at bound-missing-value-source.ms:42",
 	)?
 
 test "generic callers and direct calls keep their invocation lines":
@@ -61,7 +60,7 @@ test "generic callers and direct calls keep their invocation lines":
 	direct := absent.ok_or()
 	expect_equal(
 		direct.err().message,
-		"missing value at bound-missing-value-source.ms:61",
+		"missing value at bound-missing-value-source.ms:60",
 	)?
 
 	zero: Int? := 0

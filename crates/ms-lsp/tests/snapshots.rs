@@ -648,8 +648,8 @@ fn none_references_cover_written_case_tokens_beyond_snapshot_limit() {
     let main = ws.uri("main.ms");
     let mut script = Script::initialize(&ws.root.to_string_lossy(), true);
     script.open(&main, &ws.read("main.ms"), 1);
-    let first = script.at("textDocument/references", &main, 30, 31);
-    let second = script.at("textDocument/references", &main, 30, 33);
+    let first = script.at("textDocument/references", &main, 27, 28);
+    let second = script.at("textDocument/references", &main, 27, 30);
     let responses = script.rust();
     // The general snapshot caps large responses. Pin how many written `none` tokens each module
     // contributes; implicit Optional defaults have no `none` token and must not add ranges. The

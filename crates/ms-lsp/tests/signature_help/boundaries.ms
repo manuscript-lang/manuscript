@@ -20,9 +20,8 @@ type Pair:
     left: Int
     right: Int
 
-impl Pair:
-    fn combine(left: Int, right: Int) Int:
-        return self.left + left + right
+fn Pair.combine(left: Int, right: Int) Int:
+    return self.left + left + right
 
 fn use(right: Int, left: Int, pair: Pair, callback: fn(Int, Int) Int) Int:
     return combine(1, 2)

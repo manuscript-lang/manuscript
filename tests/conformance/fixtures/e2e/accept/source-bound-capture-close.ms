@@ -16,16 +16,15 @@ fn var Marker.close() Unit!:
 		self.closed = true
 		append_file(self.log, "{self.id},").wait()?
 
-impl Marker:
-	fn status() Int: self.id
+fn Marker.status() Int: self.id
 
-	fn with_default(offset: Int = 10) Int: self.id + offset
+fn Marker.with_default(offset: Int = 10) Int: self.id + offset
 
-	fn generic[T](_value: T) Int: self.id
+fn Marker.generic[T](_value: T) Int: self.id
 
-	var fn bump(delta: Int = 1) Int:
-		self.id += delta
-		return self.id
+fn var Marker.bump(delta: Int = 1) Int:
+	self.id += delta
+	return self.id
 
 fn marker(id: Int, log: String) Marker: Marker(id, log)
 

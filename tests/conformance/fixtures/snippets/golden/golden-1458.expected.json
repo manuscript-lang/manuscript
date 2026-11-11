@@ -7,36 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow that",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1458.ms",
-          "line": 9,
-          "column": 14,
-          "offset": 185
+          "line": 7,
+          "column": 1,
+          "offset": 123
         },
-        "fix": {
-          "position": {
-            "file": "golden-1458.ms",
-            "line": 8,
-            "column": 5,
-            "offset": 150
-          },
-          "end": {
-            "file": "golden-1458.ms",
-            "line": 8,
-            "column": 5,
-            "offset": 150
-          },
-          "replacement": "var "
+        "end": {
+          "file": "golden-1458.ms",
+          "line": 7,
+          "column": 5,
+          "offset": 127
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1458.ms:9:14: type: cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow that\n   |\n 9 |         self.total += by\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1458.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Counter for Cell:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

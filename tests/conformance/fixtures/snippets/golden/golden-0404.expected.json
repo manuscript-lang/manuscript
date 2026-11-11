@@ -7,43 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3011",
-        "phase": "type",
-        "message": "implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) Bool",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0404.ms",
-          "line": 6,
-          "column": 8,
-          "offset": 102
-        }
-      },
-      {
-        "code": "MS3021",
-        "phase": "type",
-        "message": "Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it",
-        "position": {
+          "line": 5,
+          "column": 1,
+          "offset": 75
+        },
+        "end": {
           "file": "golden-0404.ms",
-          "line": 7,
-          "column": 33,
-          "offset": 173
-        }
-      },
-      {
-        "code": "MS3021",
-        "phase": "type",
-        "message": "Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it",
-        "position": {
-          "file": "golden-0404.ms",
-          "line": 7,
-          "column": 11,
-          "offset": 151
+          "line": 5,
+          "column": 5,
+          "offset": 79
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0404.ms:6:8: type: implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) Bool\n   |\n 6 |     fn equals(other: Equal) Bool: return true\n   |        ^\n<DIR>/golden-0404.ms:7:33: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n   |\n 7 | fn keys() Map[Key, Int]: return Map[Key, Int]()\n   |                                 ^\n<DIR>/golden-0404.ms:7:11: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n   |\n 7 | fn keys() Map[Key, Int]: return Map[Key, Int]()\n   |           ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0404.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Equal for Key:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -1,3 +1,2 @@
-impl Head for List[Int]:
-	fn head() Int:
-		return self[0]
+fn List[Int].head() Int:
+	return self[0]

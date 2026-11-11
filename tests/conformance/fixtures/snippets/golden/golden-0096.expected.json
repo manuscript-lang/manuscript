@@ -7,21 +7,44 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3010",
-        "phase": "type",
-        "message": "duplicate or overlapping implementation; Read is already implemented for Box[fn(Int) Int] (or an overlapping type), so remove one impl",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
+        "position": {
+          "file": "golden-0096.ms",
+          "line": 7,
+          "column": 1,
+          "offset": 112
+        },
+        "end": {
+          "file": "golden-0096.ms",
+          "line": 7,
+          "column": 5,
+          "offset": 116
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0096.ms",
           "line": 10,
           "column": 1,
           "offset": 179
+        },
+        "end": {
+          "file": "golden-0096.ms",
+          "line": 10,
+          "column": 5,
+          "offset": 183
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0096.ms:10:1: type: duplicate or overlapping implementation; Read is already implemented for Box[fn(Int) Int] (or an overlapping type), so remove one impl\n    |\n 10 | impl Read for Box[fn(Int) Int]:\n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0096.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Read for Box[fn(Int) Int]:\n   | ^^^^\n<DIR>/golden-0096.ms:10:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 10 | impl Read for Box[fn(Int) Int]:\n    | ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

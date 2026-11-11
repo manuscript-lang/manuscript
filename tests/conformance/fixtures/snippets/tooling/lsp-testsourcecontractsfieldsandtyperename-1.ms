@@ -7,9 +7,8 @@ interface Reader:
 type Box:
     label: String
 
-impl Reader for Box:
-    fn read() String:
-        return self.label.clone()
+fn Box.read() String:
+    return self.label.clone()
 
 fn message(value: Reader) String:
     return value.read()

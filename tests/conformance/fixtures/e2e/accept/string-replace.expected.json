@@ -31,31 +31,26 @@
         },
         {
           "index": 4,
-          "name": "string-replace.ms::explicit and bound views retain method contracts and callable field shadowing",
-          "status": "passed"
-        },
-        {
-          "index": 5,
           "name": "string-replace.ms::replacing long text with a shorter or equal string trims, shares or inlines the result",
           "status": "passed"
         },
         {
-          "index": 6,
+          "index": 5,
           "name": "string-replace.ms::join sizes its result exactly across the inline and heap boundary",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 7,
-        "selected": 7,
-        "passed": 7,
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN string-replace.ms::replace changes every nonoverlapping match and replace_first changes one\nPASS string-replace.ms::replace changes every nonoverlapping match and replace_first changes one\nRUN string-replace.ms::empty patterns use Unicode scalar boundaries without normalization\nPASS string-replace.ms::empty patterns use Unicode scalar boundaries without normalization\nRUN string-replace.ms::replace_first handles early and late matches across output sizes\nPASS string-replace.ms::replace_first handles early and late matches across output sizes\nRUN string-replace.ms::bound typed and generic calls keep the all-versus-first split\nPASS string-replace.ms::bound typed and generic calls keep the all-versus-first split\nRUN string-replace.ms::explicit and bound views retain method contracts and callable field shadowing\nPASS string-replace.ms::explicit and bound views retain method contracts and callable field shadowing\nRUN string-replace.ms::replacing long text with a shorter or equal string trims, shares or inlines the result\nPASS string-replace.ms::replacing long text with a shorter or equal string trims, shares or inlines the result\nRUN string-replace.ms::join sizes its result exactly across the inline and heap boundary\nPASS string-replace.ms::join sizes its result exactly across the inline and heap boundary\n7 tests, 0 failed\n",
+      "stdout": "RUN string-replace.ms::replace changes every nonoverlapping match and replace_first changes one\nPASS string-replace.ms::replace changes every nonoverlapping match and replace_first changes one\nRUN string-replace.ms::empty patterns use Unicode scalar boundaries without normalization\nPASS string-replace.ms::empty patterns use Unicode scalar boundaries without normalization\nRUN string-replace.ms::replace_first handles early and late matches across output sizes\nPASS string-replace.ms::replace_first handles early and late matches across output sizes\nRUN string-replace.ms::bound typed and generic calls keep the all-versus-first split\nPASS string-replace.ms::bound typed and generic calls keep the all-versus-first split\nRUN string-replace.ms::replacing long text with a shorter or equal string trims, shares or inlines the result\nPASS string-replace.ms::replacing long text with a shorter or equal string trims, shares or inlines the result\nRUN string-replace.ms::join sizes its result exactly across the inline and heap boundary\nPASS string-replace.ms::join sizes its result exactly across the inline and heap boundary\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -4,9 +4,8 @@
 type Key:
     id: Int
 
-impl Equal for Key:
-    fn equals(other: Key) Bool:
-        return true
+fn Key.equals(other: Key) Bool:
+    return true
 
 fn accepts(value: Equal) Unit:
     return

@@ -55,9 +55,8 @@ type Key:
 	id: Int
 	label: String
 
-impl Equal for Key:
-	fn equals(other: Key) Bool:
-		return self.id == other.id
+fn Key.equals(other: Key) Bool:
+	return self.id == other.id
 
 test "assertions preserve domain equality":
 	Key(id: 1, label: "first") | expect_equal(Key(id: 1, label: "second"))?

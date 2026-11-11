@@ -1,11 +1,10 @@
 type Counter:
 	n: Int
 
-impl Counter:
-	var fn bump() Unit:
-		self.n = self.n + 1
-	fn read() Int:
-		return self.n
+fn var Counter.bump() Unit:
+	self.n = self.n + 1
+fn Counter.read() Int:
+	return self.n
 
 interface Shape:
 	fn area() Int

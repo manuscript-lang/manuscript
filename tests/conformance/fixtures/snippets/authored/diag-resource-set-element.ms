@@ -5,8 +5,7 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-impl Closeable for Door:
-    var fn close() Unit!: return ok(unit)
+fn var Door.close() Unit!: return ok(unit)
 
 fn main() Unit:
     s := Set[Door]()

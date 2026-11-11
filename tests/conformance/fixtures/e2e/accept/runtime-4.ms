@@ -11,12 +11,11 @@ interface File:
 type ClosedFile:
     marker: Unit
 
-impl File for ClosedFile:
-    fn read(max_bytes: Int?) Bytes?!:
-        return error(Error("I/O: resource is closed", kind: "EBADF"))
+fn ClosedFile.read(max_bytes: Int?) Bytes?!:
+    return error(Error("I/O: resource is closed", kind: "EBADF"))
 
-    fn close() Unit:
-        return
+fn ClosedFile.close() Unit:
+    return
 
 test "contract-valued cleanup":
     opened: File := ClosedFile(unit)

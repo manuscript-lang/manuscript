@@ -9,9 +9,8 @@ interface Parser[T]:
 type IntP:
     base: Int = 10
 
-impl Parser[Int] for IntP:
-    fn parse(s: String) Int!:
-        return s.parse_int().ok_or()
+fn IntP.parse(s: String) Int!:
+    return s.parse_int().ok_or()
 
 fn run[T](p: Parser[T], s: String) T!:
     return p.parse(s)

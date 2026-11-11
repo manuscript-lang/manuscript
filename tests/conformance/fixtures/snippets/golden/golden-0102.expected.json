@@ -7,21 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "cannot move `self.right` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.right.clone()` only if a second owner is needed",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0102.ms",
-          "line": 10,
-          "column": 21,
-          "offset": 196
+          "line": 8,
+          "column": 1,
+          "offset": 129
+        },
+        "end": {
+          "file": "golden-0102.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 133
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0102.ms:10:21: type: cannot move `self.right` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.right.clone()` only if a second owner is needed\n    |\n 10 |         return self.right\n    |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0102.ms:8:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 8 | impl Read[B] for Pair[Int, B]:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

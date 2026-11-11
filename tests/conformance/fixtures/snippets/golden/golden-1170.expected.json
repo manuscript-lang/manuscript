@@ -7,43 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface",
-        "position": {
-          "file": "golden-1170.ms",
-          "line": 3,
-          "column": 17,
-          "offset": 69
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1170.ms",
           "line": 5,
           "column": 1,
           "offset": 94
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown or ambiguous member message on Error; this type has no fields or operations",
-        "position": {
+        },
+        "end": {
           "file": "golden-1170.ms",
-          "line": 6,
-          "column": 37,
-          "offset": 157
+          "line": 5,
+          "column": 5,
+          "offset": 98
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1170.ms:3:17: type: a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface\n   |\n 3 | type Box[Error: Error]:\n   |                 ^\n<DIR>/golden-1170.ms:5:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n   |\n 5 | impl Error for Box[Error]:\n   | ^\n<DIR>/golden-1170.ms:6:37: resolution: unknown or ambiguous member message on Error; this type has no fields or operations\n   |\n 6 |     fn message() String: self.cause.message()\n   |                                     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1170.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Error for Box[Error]:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

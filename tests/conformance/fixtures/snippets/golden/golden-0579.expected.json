@@ -7,21 +7,44 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3011",
-        "phase": "type",
-        "message": "implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) Bool",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0579.ms",
-          "line": 6,
-          "column": 8,
-          "offset": 105
+          "line": 5,
+          "column": 1,
+          "offset": 78
+        },
+        "end": {
+          "file": "golden-0579.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 82
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
+        "position": {
+          "file": "golden-0579.ms",
+          "line": 7,
+          "column": 1,
+          "offset": 137
+        },
+        "end": {
+          "file": "golden-0579.ms",
+          "line": 7,
+          "column": 5,
+          "offset": 141
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0579.ms:6:8: type: implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) Bool\n   |\n 6 |     fn equals(other: Equal) Bool: true\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0579.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Equal for Key:\n   | ^^^^\n<DIR>/golden-0579.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Hashable for Key:\n   | ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

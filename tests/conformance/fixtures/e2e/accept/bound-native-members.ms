@@ -9,13 +9,11 @@ import (
 type Folded:
 	name: String
 
-impl Equal for Folded:
-	fn equals(other: Folded) Bool:
-		return true
+fn Folded.equals(other: Folded) Bool:
+	return true
 
-impl Hashable for Folded:
-	fn hash() Int:
-		return 1
+fn Folded.hash() Int:
+	return 1
 
 fn replace_first[T: Clonable](var xs: List[T], value: T) List[T]:
 	xs.set(index: 0, value: value)

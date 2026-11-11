@@ -7,32 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "local binding callbacks is never read; remove it, use it, or name it with a leading '_' to ignore it",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1012.ms",
-          "line": 6,
-          "column": 5,
-          "offset": 147
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "local binding text is never read; remove it, use it, or name it with a leading '_' to ignore it",
-        "position": {
+          "line": 21,
+          "column": 1,
+          "offset": 489
+        },
+        "end": {
           "file": "golden-1012.ms",
-          "line": 13,
+          "line": 21,
           "column": 5,
-          "offset": 322
+          "offset": 493
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1012.ms:6:5: type: local binding callbacks is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 6 |     callbacks := [\n   |     ^\n<DIR>/golden-1012.ms:13:5: type: local binding text is never read; remove it, use it, or name it with a leading '_' to ignore it\n    |\n 13 |     text := \"{choose(5)}\"\n    |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1012.ms:21:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 21 | impl Read for Box:\n    | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

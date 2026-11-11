@@ -12,16 +12,16 @@
         "message": "concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'",
         "position": {
           "file": "contract-lowercase-bare-pattern.ms",
-          "line": 14,
+          "line": 13,
           "column": 9,
-          "offset": 192
+          "offset": 177
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/contract-lowercase-bare-pattern.ms:14:9: type: concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'\n    |\n 14 |         item: return 0\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/contract-lowercase-bare-pattern.ms:13:9: type: concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'\n    |\n 13 |         item: return 0\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

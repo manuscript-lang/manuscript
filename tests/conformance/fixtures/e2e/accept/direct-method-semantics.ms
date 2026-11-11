@@ -17,39 +17,37 @@ enum Sign:
     Plus(n: Int)
     Minus(n: Int)
 
-impl Shape for Rect:
-    fn area() Int:
-        return self.w * self.h
+fn Rect.area() Int:
+    return self.w * self.h
 
-    fn scaled(by: Int) Int:
-        return self.area() * by
+fn Rect.scaled(by: Int) Int:
+    return self.area() * by
 
-    fn checked(limit: Int) Int!Error:
-        if self.area() > limit:
-            return error(cause: Error("too big"))
+fn Rect.checked(limit: Int) Int!Error:
+    if self.area() > limit:
+        return error(cause: Error("too big"))
 
-        return ok(value: self.area())
+    return ok(value: self.area())
 
-    fn grow(depth: Int) Int:
-        if depth == 0:
-            return self.w
+fn Rect.grow(depth: Int) Int:
+    if depth == 0:
+        return self.w
 
-        return self.grow(depth: depth - 1) + 1
+    return self.grow(depth: depth - 1) + 1
 
-impl Shape for Sign:
-    fn area() Int:
-        match self:
-            Plus(n): return n
-            Minus(n): return 0 - n
+fn Sign.area() Int:
+    match self:
+        Plus(n): return n
+        Minus(n): return 0 - n
 
-    fn scaled(by: Int) Int:
-        return self.area() * by
+fn Sign.scaled(by: Int) Int:
+    return self.area() * by
 
-    fn checked(limit: Int) Int!Error:
-        return ok(value: self.area())
+fn Sign.checked(limit: Int) Int!Error:
+    return ok(value: self.area())
 
-    fn grow(depth: Int) Int:
-        return depth
+fn Sign.grow(depth: Int) Int:
+    return depth
 
 fn through(shape: Shape) Int:
     return shape.scaled(by: 2)

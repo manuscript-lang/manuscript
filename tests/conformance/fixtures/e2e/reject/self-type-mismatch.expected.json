@@ -12,16 +12,16 @@
         "message": "expected Key, found Other (in argument 'other' of key.equals)",
         "position": {
           "file": "self-type-mismatch.ms",
-          "line": 19,
+          "line": 18,
           "column": 19,
-          "offset": 322
+          "offset": 304
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/self-type-mismatch.ms:19:19: type: expected Key, found Other (in argument 'other' of key.equals)\n    |\n 19 |     if key.equals(other): return 1\n    |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/self-type-mismatch.ms:18:19: type: expected Key, found Other (in argument 'other' of key.equals)\n    |\n 18 |     if key.equals(other): return 1\n    |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

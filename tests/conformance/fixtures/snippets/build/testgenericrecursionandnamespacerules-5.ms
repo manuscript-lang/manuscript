@@ -4,6 +4,5 @@
 type Data:
     value: Int
 
-impl Equal for Data:
-    fn compare() Unit:
-        return
+fn Data.compare() Unit:
+    return

@@ -1,10 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
-	CommandOutput,
-	Commands,
-	RunOptions,
-	SpawnOptions,
-	Subprocess from "@std/os/process.ms",
+	CommandOutput, RunOptions, SpawnOptions, Subprocess from "@std/os/process.ms",
 )
 
 // Shifts the node ids below so that `Echo.run` has the id of a method in another module
@@ -21,13 +17,16 @@ export fn padding() Int:
 export type Echo:
 	code: Int
 
-impl Commands for Echo:
-	fn run(program: String, arguments: List[String], options: RunOptions) CommandOutput!:
-		return ok(CommandOutput(self.code, options.input.clone(), "".to_bytes(), 0))
+fn Echo.run(
+	program: String,
+	arguments: List[String],
+	options: RunOptions = RunOptions(),
+) CommandOutput!:
+	return ok(CommandOutput(self.code, options.input.clone(), "".to_bytes(), 0))
 
-	fn spawn(
-		program: String,
-		arguments: List[String],
-		options: SpawnOptions,
-	) Subprocess!:
-		return error(Error("process: service unavailable", kind: "EAGAIN"))
+fn Echo.spawn(
+	program: String,
+	arguments: List[String],
+	options: SpawnOptions,
+) Subprocess!:
+	return error(Error("process: service unavailable", kind: "EAGAIN"))

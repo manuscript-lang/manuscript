@@ -15,12 +15,10 @@ type Key:
 	id: Int
 	label: String
 
-impl Equal for Key:
-	fn equals(other: Key) Bool:
-		return self.id == other.id
+fn Key.equals(other: Key) Bool:
+	return self.id == other.id
 
-impl Hashable for Key:
-	fn hash() Int: self.id
+fn Key.hash() Int: self.id
 
 type Resource:
 	dir: String

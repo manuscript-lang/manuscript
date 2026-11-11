@@ -12,16 +12,16 @@
         "message": "missing argument value: Int in call to value.add; add 'value: <Int>'",
         "position": {
           "file": "testdefaultargumentboundaries-14.ms",
-          "line": 15,
+          "line": 14,
           "column": 18,
-          "offset": 374
+          "offset": 352
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdefaultargumentboundaries-14.ms:15:18: type: missing argument value: Int in call to value.add; add 'value: <Int>'\n    |\n 15 |     return value.add()\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdefaultargumentboundaries-14.ms:14:18: type: missing argument value: Int in call to value.add; add 'value: <Int>'\n    |\n 14 |     return value.add()\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

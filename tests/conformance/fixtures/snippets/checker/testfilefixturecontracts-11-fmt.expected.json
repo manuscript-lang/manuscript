@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface TestHooks:\n\tfn after_all() Unit\n\ntype State:\n\tvalue: Int\n\nimpl TestHooks for State:\n\tfn after_all() Unit:\n\t\treturn\n\nfn make_fixture() State:\n\treturn State(1)\n\ntest \"test\":\n\treturn\n"
-  }
-}

@@ -7,114 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2002",
-        "phase": "resolution",
-        "message": "unknown standard module @std/errors.ms",
-        "position": {
-          "file": "golden-0481.ms",
-          "line": 3,
-          "column": 8,
-          "offset": 60
-        },
-        "end": {
-          "file": "golden-0481.ms",
-          "line": 3,
-          "column": 17,
-          "offset": 69
-        }
-      },
-      {
-        "code": "MS2002",
-        "phase": "resolution",
-        "message": "unknown standard module @std/faults.ms",
-        "position": {
-          "file": "golden-0481.ms",
-          "line": 4,
-          "column": 8,
-          "offset": 99
-        },
-        "end": {
-          "file": "golden-0481.ms",
-          "line": 4,
-          "column": 13,
-          "offset": 104
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'",
-        "position": {
-          "file": "golden-0481.ms",
-          "line": 6,
-          "column": 21,
-          "offset": 223
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it",
-        "position": {
-          "file": "golden-0481.ms",
-          "line": 5,
-          "column": 39,
-          "offset": 165
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0481.ms",
           "line": 22,
           "column": 1,
           "offset": 680
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module",
-        "position": {
-          "file": "golden-0481.ms",
-          "line": 5,
-          "column": 57,
-          "offset": 183
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
-        "position": {
-          "file": "golden-0481.ms",
-          "line": 12,
-          "column": 30,
-          "offset": 496
         },
-        "fix": {
-          "position": {
-            "file": "golden-0481.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "end": {
-            "file": "golden-0481.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "replacement": "import panic from \"@std/core.ms\"\n"
+        "end": {
+          "file": "golden-0481.ms",
+          "line": 22,
+          "column": 5,
+          "offset": 684
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0481.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-0481.ms:4:8: resolution: unknown standard module @std/faults.ms\n   |\n 4 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-0481.ms:6:21: type: a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'\n   |\n 6 | fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)\n   |                     ^\n<DIR>/golden-0481.ms:5:39: resolution: unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it\n   |\n 5 | fn fail[T](message: String) Result[T, TextError]: error(TextError(message))\n   |                                       ^\n<DIR>/golden-0481.ms:22:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n    |\n 22 | impl Error for Failure:\n    | ^\n<DIR>/golden-0481.ms:5:57: resolution: unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module\n   |\n 5 | fn fail[T](message: String) Result[T, TextError]: error(TextError(message))\n   |                                                         ^\n<DIR>/golden-0481.ms:12:30: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 12 | fn repeated[T]() Pair[T, T]: panic(\"not called\")\n    |                              ^\n7 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0481.ms:22:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 22 | impl Error for Failure:\n    | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

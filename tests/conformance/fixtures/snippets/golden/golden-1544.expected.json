@@ -7,54 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1544.ms",
-          "line": 9,
-          "column": 9,
-          "offset": 247
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it",
-        "position": {
+          "line": 7,
+          "column": 1,
+          "offset": 179
+        },
+        "end": {
           "file": "golden-1544.ms",
-          "line": 11,
-          "column": 9,
-          "offset": 335
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it",
-        "position": {
-          "file": "golden-1544.ms",
-          "line": 13,
-          "column": 9,
-          "offset": 423
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it",
-        "position": {
-          "file": "golden-1544.ms",
-          "line": 15,
-          "column": 9,
-          "offset": 509
+          "line": 7,
+          "column": 5,
+          "offset": 183
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1544.ms:9:9: type: local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 9 |         written := stdout().write(\"UNUSED before_all\").get()\n   |         ^\n<DIR>/golden-1544.ms:11:9: type: local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it\n    |\n 11 |         written := stdout().write(\"UNUSED before_each\").get()\n    |         ^\n<DIR>/golden-1544.ms:13:9: type: local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it\n    |\n 13 |         written := stdout().write(\"UNUSED after_each\").get()\n    |         ^\n<DIR>/golden-1544.ms:15:9: type: local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it\n    |\n 15 |         written := stdout().write(\"UNUSED after_all\").get()\n    |         ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1544.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl TestHooks for UnusedFixture:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

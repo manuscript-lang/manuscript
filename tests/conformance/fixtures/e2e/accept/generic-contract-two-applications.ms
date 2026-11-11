@@ -8,21 +8,22 @@ interface Visitor[R]:
 type Doubler:
 	k: Int
 
-impl Visitor[Int] for Doubler:
-	fn visit(n: Int) Int:
-		return n * self.k
+fn Doubler.visit(n: Int) Int:
+	return n * self.k
 
-impl Visitor[String] for Doubler:
-	fn visit(n: Int) String:
-		return "<{n}>"
+type Bracketer:
+	open: String
+
+fn Bracketer.visit(n: Int) String:
+	return "{self.open}{n}>"
 
 fn run[R](v: Visitor[R], n: Int) R:
 	return v.visit(n)
 
-test "one receiver implements two applications of a generic contract":
+test "two receivers implement different applications of a generic contract":
 	d := Doubler(k: 3)
 	as_int: Visitor[Int] := d
-	as_string: Visitor[String] := d
+	as_string: Visitor[String] := Bracketer(open: "<")
 	a: Int := run(as_int, 5)
 	b: String := run(as_string, 5)
 	expect_equal(a, 15)?

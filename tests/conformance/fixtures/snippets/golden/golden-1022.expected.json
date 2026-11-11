@@ -7,62 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3060",
-        "phase": "type",
-        "message": "cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1022.ms",
-          "line": 12,
-          "column": 9,
-          "offset": 291
+          "line": 6,
+          "column": 1,
+          "offset": 133
         },
-        "fix": {
-          "position": {
-            "file": "golden-1022.ms",
-            "line": 10,
-            "column": 5,
-            "offset": 242
-          },
-          "end": {
-            "file": "golden-1022.ms",
-            "line": 10,
-            "column": 14,
-            "offset": 251
-          },
-          "replacement": "var values ="
-        }
-      },
-      {
-        "code": "MS3060",
-        "phase": "type",
-        "message": "cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it",
-        "position": {
+        "end": {
           "file": "golden-1022.ms",
-          "line": 11,
-          "column": 24,
-          "offset": 279
-        },
-        "fix": {
-          "position": {
-            "file": "golden-1022.ms",
-            "line": 10,
-            "column": 5,
-            "offset": 242
-          },
-          "end": {
-            "file": "golden-1022.ms",
-            "line": 10,
-            "column": 14,
-            "offset": 251
-          },
-          "replacement": "var values ="
+          "line": 6,
+          "column": 5,
+          "offset": 137
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1022.ms:12:9: type: cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it\n    |\n 12 |         values.append(1)\n    |         ^\n<DIR>/golden-1022.ms:11:24: type: cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it\n    |\n 11 |     Sequential().start(fn:\n    |                        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1022.ms:6:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 6 | impl Starter for Sequential:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

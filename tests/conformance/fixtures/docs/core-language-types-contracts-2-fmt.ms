@@ -7,6 +7,5 @@ interface Increment:
 type Offset:
     delta: Int
 
-impl Increment for Offset:
-    fn apply(value: Int) Int:
-        return value + self.delta
+fn Offset.apply(value: Int) Int:
+    return value + self.delta

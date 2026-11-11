@@ -10,8 +10,7 @@ interface Reader[A]:
 type Counter:
 	value: Int
 
-impl Reader[Int] for Counter:
-	fn read() Int: return self.value
+fn Counter.read() Int: return self.value
 
 test "a forward generic interface bound dispatches with its argument":
 	expect_equal(read(Counter(7)), 7)?

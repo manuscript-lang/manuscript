@@ -1,8 +1,7 @@
 type Counter:
 	value: Int
 
-impl Counter:
-	fn next() Counter: Counter(self.value + 1)
+fn Counter.next() Counter: Counter(self.value + 1)
 
 fn make(create: fn() Int) Counter: Counter(create())
 

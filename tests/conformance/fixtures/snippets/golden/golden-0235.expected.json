@@ -7,21 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "I is an interface and cannot be constructed; a type with 'impl I for <Type>:' passes wherever I is expected, so pass the value directly",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0235.ms",
-          "line": 12,
-          "column": 12,
-          "offset": 205
+          "line": 8,
+          "column": 1,
+          "offset": 116
+        },
+        "end": {
+          "file": "golden-0235.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 120
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0235.ms:12:12: type: I is an interface and cannot be constructed; a type with 'impl I for <Type>:' passes wherever I is expected, so pass the value directly\n    |\n 12 |     return I(value: Pair[Int, String](a: 1, b: \"x\")).n()\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0235.ms:8:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 8 | impl I for Pair[A, A]:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

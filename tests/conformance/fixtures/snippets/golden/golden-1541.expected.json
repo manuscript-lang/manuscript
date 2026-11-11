@@ -7,71 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2002",
-        "phase": "resolution",
-        "message": "module does not export network; did you mean 'Network'?",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1541.ms",
-          "line": 5,
-          "column": 8,
-          "offset": 217
+          "line": 12,
+          "column": 1,
+          "offset": 542
         },
         "end": {
           "file": "golden-1541.ms",
-          "line": 5,
-          "column": 15,
-          "offset": 224
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"",
-        "position": {
-          "file": "golden-1541.ms",
-          "line": 11,
-          "column": 31,
-          "offset": 478
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"",
-        "position": {
-          "file": "golden-1541.ms",
-          "line": 16,
-          "column": 27,
-          "offset": 674
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"",
-        "position": {
-          "file": "golden-1541.ms",
-          "line": 19,
-          "column": 27,
-          "offset": 908
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose",
-        "position": {
-          "file": "golden-1541.ms",
-          "line": 14,
-          "column": 9,
-          "offset": 606
+          "line": 12,
+          "column": 5,
+          "offset": 546
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1541.ms:5:8: resolution: module does not export network; did you mean 'Network'?\n   |\n 5 | import network from \"@std/net/net.ms\"\n   |        ^^^^^^^\n<DIR>/golden-1541.ms:11:31: resolution: unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"\n    |\n 11 |     return ApiFixture(server: network().serve(address: \"127.0.0.1:0\", handler: handle).get())\n    |                               ^\n<DIR>/golden-1541.ms:16:27: resolution: unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"\n    |\n 16 |     response := expect_ok(network().request(method: HttpMethod.Get, url: \"http://{fixture.server.address()}/\", headers: headers(), body: \"\"))?\n    |                           ^\n<DIR>/golden-1541.ms:19:27: resolution: unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"\n    |\n 19 |     response := expect_ok(network().request(method: HttpMethod.Get, url: \"http://{fixture.server.address()}/\", headers: headers(), body: \"\"))?\n    |                           ^\n<DIR>/golden-1541.ms:14:9: type: this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose\n    |\n 14 |         self.server.close()\n    |         ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1541.ms:12:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 12 | impl TestHooks for ApiFixture:\n    | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

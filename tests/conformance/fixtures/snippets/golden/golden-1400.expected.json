@@ -7,53 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2002",
-        "phase": "resolution",
-        "message": "unknown standard module @std/cleanup.ms",
-        "position": {
-          "file": "golden-1400.ms",
-          "line": 4,
-          "column": 8,
-          "offset": 103
-        },
-        "end": {
-          "file": "golden-1400.ms",
-          "line": 4,
-          "column": 17,
-          "offset": 112
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type Closeable; add: import Closeable from \"@std/core.ms\"",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1400.ms",
           "line": 7,
-          "column": 6,
-          "offset": 178
+          "column": 1,
+          "offset": 173
         },
-        "fix": {
-          "position": {
-            "file": "golden-1400.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "end": {
-            "file": "golden-1400.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          },
-          "replacement": "import Closeable from \"@std/core.ms\"\n"
+        "end": {
+          "file": "golden-1400.ms",
+          "line": 7,
+          "column": 5,
+          "offset": 177
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1400.ms:4:8: resolution: unknown standard module @std/cleanup.ms\n   |\n 4 | import Closeable from \"@std/cleanup.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1400.ms:7:6: resolution: unknown type Closeable; add: import Closeable from \"@std/core.ms\"\n   |\n 7 | impl Closeable for Resource:\n   |      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1400.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Closeable for Resource:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

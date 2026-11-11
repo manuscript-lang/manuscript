@@ -11,22 +11,17 @@ import (
 type Counted:
 	log: String
 
-impl Source[Int] for Counted:
-	var fn next() Int?!:
-		return ok(none)
+fn var Counted.next() Int?!:
+	return ok(none)
 
-	var fn close() Unit!:
-		_ := append_file(self.log, "r").wait()
+fn var Counted.write(value: Int) Unit!:
+	return ok(unit)
 
-impl Sink[Int] for Counted:
-	var fn write(value: Int) Unit!:
-		return ok(unit)
+fn var Counted.flush() Unit!:
+	return ok(unit)
 
-	var fn flush() Unit!:
-		return ok(unit)
-
-	var fn close() Unit!:
-		_ := append_file(self.log, "w").wait()
+fn var Counted.close() Unit!:
+	_ := append_file(self.log, "x").wait()
 
 fn closes(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
@@ -38,7 +33,7 @@ test "a read stream closes its source once":
 	_ := append_file(log, "").wait()
 	var by_hand = ReadStream[Int](Counted(log.clone()))
 	by_hand.close()?
-	expect_equal(closes(log), "r")?
+	expect_equal(closes(log), "x")?
 
 test "a write stream closes its sink once":
 	dir := temporary("stream-close-") | expect_ok?
@@ -46,7 +41,7 @@ test "a write stream closes its sink once":
 	_ := append_file(log, "").wait()
 	var out = WriteStream[Int](Counted(log.clone()))
 	out.close()?
-	expect_equal(closes(log), "w")?
+	expect_equal(closes(log), "x")?
 
 type Failing:
 	unused: Int

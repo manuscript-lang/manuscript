@@ -1248,7 +1248,7 @@ impl Checker {
                 if !self.property(&common, crate::contracts::Property::Equal, None) {
                     self.type_error(
                         e.pos,
-                        format!("equality requires Equal operands; {common_t} has no equality, so add 'impl Equal for {common_t}:' or compare fields", common_t = common.display(self.syms)),
+                        format!("equality requires Equal operands; {common_t} has no equality, so give it 'fn {common_t}.equals(other: {common_t}) Bool' or compare fields", common_t = common.display(self.syms)),
                     );
                 }
             }

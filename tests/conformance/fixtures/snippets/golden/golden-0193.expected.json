@@ -7,43 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'",
-        "position": {
-          "file": "golden-0193.ms",
-          "line": 7,
-          "column": 21,
-          "offset": 167
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0193.ms",
           "line": 5,
           "column": 1,
           "offset": 86
-        }
-      },
-      {
-        "code": "MS3080",
-        "phase": "type",
-        "message": "conflicting generic inference; expected result type Result[Int, Error] does not match Result[T, Failure]; give consistent argument and result types or specify the type arguments",
-        "position": {
+        },
+        "end": {
           "file": "golden-0193.ms",
-          "line": 8,
-          "column": 32,
-          "offset": 242
+          "line": 5,
+          "column": 5,
+          "offset": 90
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0193.ms:7:21: type: a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'\n   |\n 7 | fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)\n   |                     ^\n<DIR>/golden-0193.ms:5:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n   |\n 5 | impl Error for Failure:\n   | ^\n<DIR>/golden-0193.ms:8:32: type: conflicting generic inference; expected result type Result[Int, Error] does not match Result[T, Failure]; give consistent argument and result types or specify the type arguments\n   |\n 8 | fn first() Result[Int, Error]: fail_cause(Failure(\"empty\"))\n   |                                ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0193.ms:5:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 5 | impl Error for Failure:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

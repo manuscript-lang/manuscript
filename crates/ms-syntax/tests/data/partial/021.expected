@@ -1,7 +1,5 @@
-diag parse 7:5:139 end=7:11:145 fix=7:5:139>7:11:145="" "a method is not exported by itself; it is visible wherever its type is, so remove 'export' and export the type"
-diag parse 8:5:195 end=8:11:201 fix=- "expected 'fn', found 'return'"
+diag parse 3:1:41 end=3:5:45 fix=- "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it"
 import 1:1:0 1:8:7 "DomainFailure" "./domain.ms"
-(decl 3:1:41 impl "" false false 0:0:0 false [] [] [] [(decl 4:8:78 fn "message" false false 0:0:0 false [] [] [] [] [] (type 4:18:88 "String" [] [] nil) nil nil [(stmt 5:9:104 return "" "" false 0:0:0 nil nil nil (expr 5:16:111 text "" nil nil [] [] [] [(part "second {self.code}" nil) ] [] nil [] []) [] []) ]) ] [] nil (type 3:6:46 "Error" [] [] nil) (type 3:16:56 "DomainFailure" [] [] nil) [])
 (decl 10:8:216 fn "relay" true false 0:0:0 false [] [] [] [] [(param 10:17:225 "cause" (type 10:24:232 "Error" [] [] nil) nil) ] (type 10:31:239 "Result" [(type 10:38:246 "Unit" [] [] nil) (type 10:44:252 "Error" [] [] nil) ] [] nil) nil nil [(stmt 11:5:264 return "" "" false 0:0:0 nil nil nil (expr 11:12:271 call "" (expr 11:12:271 name "error" nil nil [] [] [] [] [] nil [] []) nil [(arg 11:18:277 "" (expr 11:18:277 name "cause" nil nil [] [] [] [] [] nil [] [])) ] [] [] [] [] nil [] []) [] []) ])
 omitted []
-recovered [41-209 ]
+recovered []

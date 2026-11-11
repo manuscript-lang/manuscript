@@ -7,10 +7,9 @@ interface Counter:
 type Cell:
     total: Int
 
-impl Counter for Cell:
-    fn bump(by: Int) Int:
-        self.total += by
-        return self.total
+fn Cell.bump(by: Int) Int:
+    self.total += by
+    return self.total
 
 fn probe() Int:
     var sum = 0

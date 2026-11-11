@@ -7,32 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type Array; declare it with 'type Array:' / 'enum Array:' / 'interface Array:', declare it as a type parameter, or import it",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-1011.ms",
-          "line": 6,
-          "column": 10,
-          "offset": 164
-        }
-      },
-      {
-        "code": "MS3070",
-        "phase": "type",
-        "message": "a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else",
-        "position": {
+          "line": 16,
+          "column": 1,
+          "offset": 379
+        },
+        "end": {
           "file": "golden-1011.ms",
-          "line": 8,
-          "column": 9,
-          "offset": 218
+          "line": 16,
+          "column": 5,
+          "offset": 383
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1011.ms:6:10: resolution: unknown type Array; declare it with 'type Array:' / 'enum Array:' / 'interface Array:', declare it as a type parameter, or import it\n   |\n 6 |     box: Array[Int] := [choose(3)]\n   |          ^\n<DIR>/golden-1011.ms:8:9: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else\n   |\n 8 |         Color.Red:\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1011.ms:16:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 16 | impl Read for Box:\n    | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

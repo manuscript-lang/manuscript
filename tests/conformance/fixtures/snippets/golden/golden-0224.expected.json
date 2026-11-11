@@ -7,54 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "Result requires 2 type arguments, found 0; write Result[T1, T2]",
-        "position": {
-          "file": "golden-0224.ms",
-          "line": 6,
-          "column": 19,
-          "offset": 138
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "Result requires 2 type arguments, found 0; write Result[T1, T2]",
-        "position": {
-          "file": "golden-0224.ms",
-          "line": 3,
-          "column": 16,
-          "offset": 68
-        }
-      },
-      {
-        "code": "MS3012",
-        "phase": "type",
-        "message": "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0224.ms",
           "line": 3,
           "column": 1,
           "offset": 53
-        }
-      },
-      {
-        "code": "MS3001",
-        "phase": "type",
-        "message": "expected Error, found Result (in the return value)",
-        "position": {
+        },
+        "end": {
           "file": "golden-0224.ms",
-          "line": 7,
-          "column": 12,
-          "offset": 164
+          "line": 3,
+          "column": 5,
+          "offset": 57
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0224.ms:6:19: type: Result requires 2 type arguments, found 0; write Result[T1, T2]\n   |\n 6 | fn general(value: Result) Error:\n   |                   ^\n<DIR>/golden-0224.ms:3:16: type: Result requires 2 type arguments, found 0; write Result[T1, T2]\n   |\n 3 | impl Error for Result:\n   |                ^\n<DIR>/golden-0224.ms:3:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n   |\n 3 | impl Error for Result:\n   | ^\n<DIR>/golden-0224.ms:7:12: type: expected Error, found Result (in the return value)\n   |\n 7 |     return value\n   |            ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0224.ms:3:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 3 | impl Error for Result:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

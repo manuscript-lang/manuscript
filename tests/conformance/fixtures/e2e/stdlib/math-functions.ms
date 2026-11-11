@@ -75,12 +75,11 @@ test "float remainder takes the sign of the dividend":
 type Ranked:
 	rank: Int
 
-impl Comparable for Ranked:
-	fn compare(other: Ranked) Int:
-		if self.rank < other.rank: return -9223372036854775808
-		if self.rank > other.rank: return 9223372036854775807
+fn Ranked.compare(other: Ranked) Int:
+	if self.rank < other.rank: return -9223372036854775808
+	if self.rank > other.rank: return 9223372036854775807
 
-		return 0
+	return 0
 
 test "extrema use comparator signs without negating Int minimum":
 	low := Ranked(1)

@@ -7,65 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it",
-        "position": {
-          "file": "golden-0406.ms",
-          "line": 4,
-          "column": 19,
-          "offset": 97
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0406.ms",
           "line": 3,
-          "column": 20,
-          "offset": 72
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
-        "position": {
-          "file": "golden-0406.ms",
-          "line": 4,
           "column": 1,
-          "offset": 79
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding State; declare it with 'State := ...' before use, define 'fn State(...) T:', or import it from a module",
-        "position": {
+          "offset": 53
+        },
+        "end": {
           "file": "golden-0406.ms",
-          "line": 5,
-          "column": 12,
-          "offset": 115
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this file",
-        "position": {
-          "file": "golden-0406.ms",
-          "line": 7,
-          "column": 19,
-          "offset": 171
+          "line": 3,
+          "column": 5,
+          "offset": 57
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0406.ms:4:19: resolution: unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it\n   |\n 4 | fn make_fixture() State:\n   |                   ^\n<DIR>/golden-0406.ms:3:20: resolution: unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it\n   |\n 3 | impl TestHooks for State:\n   |                    ^\n<DIR>/golden-0406.ms:4:1: type: make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it\n   |\n 4 | fn make_fixture() State:\n   | ^\n<DIR>/golden-0406.ms:5:12: resolution: unknown binding State; declare it with 'State := ...' before use, define 'fn State(...) T:', or import it from a module\n   |\n 5 |     return State(value: 1)\n   |            ^\n<DIR>/golden-0406.ms:7:19: resolution: fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this file\n   |\n 7 |     value: Int := fixture.value\n   |                   ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0406.ms:3:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 3 | impl TestHooks for State:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

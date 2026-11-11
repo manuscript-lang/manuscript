@@ -9,11 +9,10 @@ enum Outcome[T = Int]:
 	Success(value: T)
 	Failure
 
-impl Outcome[T]:
-	fn succeeded() Bool:
-		return match self:
-			Success(_): true
-			Failure: false
+fn Outcome[T].succeeded() Bool:
+	return match self:
+		Success(_): true
+		Failure: false
 
 fn score(value: Outcome[Int]) Int:
 	return match value:

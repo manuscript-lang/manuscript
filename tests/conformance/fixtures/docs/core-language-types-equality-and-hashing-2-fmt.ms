@@ -5,9 +5,7 @@ type CustomerKey:
     id: Int
     label: String
 
-impl Equal for CustomerKey:
-    fn equals(other: CustomerKey) Bool:
-        return self.id == other.id
+fn CustomerKey.equals(other: CustomerKey) Bool:
+    return self.id == other.id
 
-impl Hashable for CustomerKey:
-    fn hash() Int: self.id
+fn CustomerKey.hash() Int: self.id

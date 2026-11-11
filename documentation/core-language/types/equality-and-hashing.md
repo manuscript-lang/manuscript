@@ -23,7 +23,7 @@ interface Hashable:
     fn hash() Int
 ```
 
-`Self` is the implementing type. An implementation writes its own type for `other`, as `impl Equal for CustomerKey` does below, so it needs no match on the argument. In a bound `T: Equal`, `Self` is `T`: `left.equals(right)` takes two `T`. Through an `Equal` or `Comparable` value, `Self` is that interface: values of different types are unequal, and ordering them faults. `Self` is allowed only as a whole parameter or result type of an interface operation.
+`Self` is the implementing type. An implementation writes its own type for `other`, as `CustomerKey.equals` does below, so it needs no match on the argument. In a bound `T: Equal`, `Self` is `T`: `left.equals(right)` takes two `T`. Through an `Equal` or `Comparable` value, `Self` is that interface: values of different types are unequal, and ordering them faults. `Self` is allowed only as a whole parameter or result type of an interface operation.
 
 `==` and `!=` select the visible `Equal` implementation. A custom `Hashable` requires an `Equal`. Matching method names alone never establish either interface.
 
@@ -56,12 +56,10 @@ type CustomerKey:
     id: Int
     label: String
 
-impl Equal for CustomerKey:
-    fn equals(other: CustomerKey) Bool:
-        return self.id == other.id
+fn CustomerKey.equals(other: CustomerKey) Bool:
+    return self.id == other.id
 
-impl Hashable for CustomerKey:
-    fn hash() Int: self.id
+fn CustomerKey.hash() Int: self.id
 ```
 
 These apply to operators, collection searches, and key lookup. Overriding equality disables automatic hashing, so provide a matching `hash` before using the type as a key. Visibility follows [contract rules](contracts.md#coherence-and-visibility).

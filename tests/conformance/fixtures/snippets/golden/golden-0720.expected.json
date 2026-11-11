@@ -7,114 +7,61 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS2002",
-        "phase": "resolution",
-        "message": "unknown standard module @std/errors.ms",
-        "position": {
-          "file": "golden-0720.ms",
-          "line": 3,
-          "column": 8,
-          "offset": 60
-        },
-        "end": {
-          "file": "golden-0720.ms",
-          "line": 3,
-          "column": 17,
-          "offset": 69
-        }
-      },
-      {
-        "code": "MS2002",
-        "phase": "resolution",
-        "message": "unknown standard module @std/faults.ms",
-        "position": {
-          "file": "golden-0720.ms",
-          "line": 4,
-          "column": 8,
-          "offset": 99
-        },
-        "end": {
-          "file": "golden-0720.ms",
-          "line": 4,
-          "column": 13,
-          "offset": 104
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'",
-        "position": {
-          "file": "golden-0720.ms",
-          "line": 30,
-          "column": 16,
-          "offset": 918
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0720.ms",
           "line": 7,
           "column": 1,
           "offset": 150
+        },
+        "end": {
+          "file": "golden-0720.ms",
+          "line": 7,
+          "column": 5,
+          "offset": 154
         }
       },
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0720.ms",
           "line": 11,
           "column": 1,
           "offset": 222
+        },
+        "end": {
+          "file": "golden-0720.ms",
+          "line": 11,
+          "column": 5,
+          "offset": 226
         }
       },
       {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it",
         "position": {
           "file": "golden-0720.ms",
           "line": 17,
           "column": 1,
           "offset": 341
-        }
-      },
-      {
-        "code": "MS2001",
-        "phase": "resolution",
-        "message": "unknown binding panic; did you mean 'pair'?",
-        "position": {
-          "file": "golden-0720.ms",
-          "line": 25,
-          "column": 26,
-          "offset": 642
         },
-        "fix": {
-          "position": {
-            "file": "golden-0720.ms",
-            "line": 25,
-            "column": 26,
-            "offset": 642
-          },
-          "end": {
-            "file": "golden-0720.ms",
-            "line": 25,
-            "column": 31,
-            "offset": 647
-          },
-          "replacement": "pair"
+        "end": {
+          "file": "golden-0720.ms",
+          "line": 17,
+          "column": 5,
+          "offset": 345
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0720.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import TextError from \"@std/errors.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-0720.ms:4:8: resolution: unknown standard module @std/faults.ms\n   |\n 4 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-0720.ms:30:16: type: a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'\n    |\n 30 | fn exact[T, E: Error](r: Result[T, E]) Result[T, E]: r\n    |                ^\n<DIR>/golden-0720.ms:7:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n   |\n 7 | impl Error for E1:\n   | ^\n<DIR>/golden-0720.ms:11:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n    |\n 11 | impl Error for E2:\n    | ^\n<DIR>/golden-0720.ms:17:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n    |\n 17 | impl Error for GenericError[V]:\n    | ^\n<DIR>/golden-0720.ms:25:26: resolution: unknown binding panic; did you mean 'pair'?\n    |\n 25 |         error(_): return panic(\"unused\")\n    |                          ^\n7 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0720.ms:7:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 7 | impl Error for E1:\n   | ^^^^\n<DIR>/golden-0720.ms:11:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 11 | impl Error for E2:\n    | ^^^^\n<DIR>/golden-0720.ms:17:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 17 | impl Error for GenericError[V]:\n    | ^^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

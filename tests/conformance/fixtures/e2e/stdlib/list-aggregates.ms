@@ -6,12 +6,11 @@ type Version:
 	major: Int
 	label: String
 
-impl Comparable for Version:
-	fn compare(other: Version) Int:
-		if self.major < other.major: return -1
-		if self.major > other.major: return 1
+fn Version.compare(other: Version) Int:
+	if self.major < other.major: return -1
+	if self.major > other.major: return 1
 
-		return 0
+	return 0
 
 fn ordered[T: Comparable & Clonable](values: List[T]) List[T]:
 	return values.sorted()

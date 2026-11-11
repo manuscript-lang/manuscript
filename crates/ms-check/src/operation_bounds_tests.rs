@@ -171,14 +171,16 @@ interface Reader[A]:
     fn read[T: Relation[A]](value: T) Int
 ";
 
+const USE: &str = "\nfn use_reader[R: Reader[Int]](r: R) Unit:\n    return\n\nfn run(s: Source) Unit:\n    use_reader(s)\n";
+
 #[test]
 fn implementations_compare_bounds_after_interface_substitution() {
     for source in [
         // A concrete argument, with the operation parameter renamed.
-        "type Source:\n    number: Int\n\nimpl Reader[Int] for Source:\n    fn read[T: Relation[Int]](value: T) Int:\n        return self.number\n",
-        "type Source:\n    number: Int\n\nimpl Reader[Int] for Source:\n    fn read[U: Relation[Int]](value: U) Int:\n        return self.number\n",
+        "type Source:\n    number: Int\n\nfn Source.read[T: Relation[Int]](value: T) Int:\n    return self.number\n\nfn use_reader[R: Reader[Int]](r: R) Unit:\n    return\n\nfn run(s: Source) Unit:\n    use_reader(s)\n",
+        "type Source:\n    number: Int\n\nfn Source.read[U: Relation[Int]](value: U) Int:\n    return self.number\n\nfn use_reader[R: Reader[Int]](r: R) Unit:\n    return\n\nfn run(s: Source) Unit:\n    use_reader(s)\n",
         // A generic receiver passing its own parameter.
-        "type Source[B]:\n    number: Int\n\nimpl Reader[B] for Source[B]:\n    fn read[T: Relation[B]](value: T) Int:\n        return self.number\n",
+        "type Source[B]:\n    number: Int\n\nfn Source[B].read[T: Relation[B]](value: T) Int:\n    return self.number\n",
     ] {
         let got = diagnostics(&format!("{RELATION}\n{source}"));
         assert!(got.is_empty(), "{got:?} for {source}");
@@ -187,11 +189,11 @@ fn implementations_compare_bounds_after_interface_substitution() {
 
 #[test]
 fn implementations_still_reject_mismatched_substituted_bounds() {
-    let source = "type Source:\n    number: Int\n\nimpl Reader[Int] for Source:\n    fn read[T: Relation[String]](value: T) Int:\n        return self.number\n";
-    let got = diagnostics(&format!("{RELATION}\n{source}"));
+    let source = "type Source:\n    number: Int\n\nfn Source.read[T: Relation[String]](value: T) Int:\n    return self.number\n";
+    let got = diagnostics(&format!("{RELATION}\n{source}{USE}"));
     assert!(
         got.iter()
-            .any(|d| d.contains("type parameters do not match contract")),
+            .any(|d| d.contains("Source does not satisfy Reader[Int]")),
         "{got:?}"
     );
 }
