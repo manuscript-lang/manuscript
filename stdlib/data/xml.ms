@@ -152,9 +152,9 @@ impl Reader:
 
 	// XML comments cannot contain a double hyphen or end with a hyphen.
 	var fn comment() String!:
-		try self.expect("<!--")
+		self.expect("<!--")?
 
-		text := try self.take_until("-->")
+		text := self.take_until("-->")?
 		if text.contains("--") or text.ends_with("-"): return error(
 			Error("XML: invalid data", kind: "EBADMSG")
 		)
@@ -179,9 +179,9 @@ impl Reader:
 
 	// The reserved target `xml` belongs to a declaration, never a processing instruction.
 	var fn instruction() Unit!:
-		try self.expect("<?")
+		self.expect("<?")?
 
-		target := try self.name()
+		target := self.name()?
 		if target.length() == 3 and target.lower() == "xml": return error(
 			Error("XML: invalid data", kind: "EBADMSG")
 		)
@@ -189,13 +189,13 @@ impl Reader:
 			Error("XML: invalid data", kind: "EBADMSG")
 		)
 
-		_data := try self.take_until("?>")
+		_data := self.take_until("?>")?
 
 	// Declaration values are literals, not entity-decoded XML attribute values.
 	var fn declaration_attribute() XmlAttribute!:
-		name := try self.name()
+		name := self.name()?
 		self.skip_space()
-		try self.expect("=")
+		self.expect("=")?
 		self.skip_space()
 
 		quote := self.peek()
@@ -204,18 +204,18 @@ impl Reader:
 		)
 
 		self.at += 1
-		return ok(XmlAttribute(name, try self.take_until(quote)))
+		return ok(XmlAttribute(name, self.take_until(quote)?))
 
 	// XMLDecl: mandatory version, optional encoding, optional standalone, in that order.
 	var fn declaration() Unit!:
-		try self.expect("<?xml")
+		self.expect("<?xml")?
 		if not is_space(self.peek()): return error(
 			Error("XML: invalid data", kind: "EBADMSG")
 		)
 
 		self.skip_space()
 
-		version := try self.declaration_attribute()
+		version := self.declaration_attribute()?
 		if version.name != "version" or not is_version(version.value): return error(
 			Error("XML: invalid data", kind: "EBADMSG")
 		)
@@ -235,7 +235,7 @@ impl Reader:
 				Error("XML: invalid data", kind: "EBADMSG")
 			)
 
-			attribute := try self.declaration_attribute()
+			attribute := self.declaration_attribute()?
 
 			if (
 				attribute.name == "encoding"
@@ -265,7 +265,7 @@ impl Reader:
 
 		self.at += 1
 
-		text := try self.take_until(quote)
+		text := self.take_until(quote)?
 
 		if public_id:
 			for c in text.chars():
@@ -295,9 +295,9 @@ impl Reader:
 				return ok(unit)
 
 			if self.looking_at("<!--"):
-				_comment := try self.comment()
+				_comment := self.comment()?
 			else if self.looking_at("<?"):
-				try self.instruction()
+				self.instruction()?
 			else if self.looking_at("<!"):
 				self.at += 2
 
@@ -309,43 +309,43 @@ impl Reader:
 					)
 
 					if self.peek() == "\"" or self.peek() == "'":
-						try self.quoted()
+						self.quoted()?
 					else:
 						self.at += 1
 
 				self.at += 1
 			else if self.looking_at("%"):
-				_reference := try self.take_until(";")
+				_reference := self.take_until(";")?
 			else:
 				return error(Error("XML: invalid data", kind: "EBADMSG"))
 
 	// XML 1.0 section 2.8 `doctypedecl`: name, optional external identifier, optional internal subset.
 	var fn doctype() Unit!:
-		try self.expect("<!DOCTYPE")
-		try self.require_space()
+		self.expect("<!DOCTYPE")?
+		self.require_space()?
 
-		_name := try self.name()
+		_name := self.name()?
 		self.skip_space()
 
 		if self.looking_at("SYSTEM"):
 			self.at += 6
-			try self.require_space()
-			try self.quoted()
+			self.require_space()?
+			self.quoted()?
 			self.skip_space()
 		else if self.looking_at("PUBLIC"):
 			self.at += 6
-			try self.require_space()
-			try self.quoted(public_id: true)
-			try self.require_space()
-			try self.quoted()
+			self.require_space()?
+			self.quoted(public_id: true)?
+			self.require_space()?
+			self.quoted()?
 			self.skip_space()
 
 		if self.looking_at("["):
 			self.at += 1
-			try self.internal_subset()
+			self.internal_subset()?
 			self.skip_space()
 
-		try self.expect(">")
+		self.expect(">")?
 
 	// Only the prolog may have a declaration, before any whitespace or other markup.
 	// The prolog may also hold one DOCTYPE; it is skipped, never expanded.
@@ -366,13 +366,13 @@ impl Reader:
 					and self.looking_at("<?xml")
 					and is_space(self.peek(5))
 				):
-					try self.declaration()
+					self.declaration()?
 				else:
-					try self.instruction()
+					self.instruction()?
 			else if self.looking_at("<!--"):
-				_comment := try self.comment()
+				_comment := self.comment()?
 			else if doctype_open and self.looking_at("<!DOCTYPE"):
-				try self.doctype()
+				self.doctype()?
 				doctype_open = false
 			else:
 				break
@@ -384,9 +384,9 @@ impl Reader:
 			Error("XML: limit exceeded", kind: "EOVERFLOW")
 		)
 
-		try self.expect("<")
+		self.expect("<")?
 
-		name := try self.name()
+		name := self.name()?
 		var attributes = List[XmlAttribute]()
 		var seen = Set[String]()
 
@@ -407,9 +407,9 @@ impl Reader:
 			// Attributes are separated by whitespace, so `a="1"b="2"` is malformed.
 			if not separated: return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-			attribute_name := try self.name()
+			attribute_name := self.name()?
 			self.skip_space()
-			try self.expect("=")
+			self.expect("=")?
 			self.skip_space()
 
 			quote := self.peek()
@@ -419,7 +419,7 @@ impl Reader:
 
 			self.at += 1
 
-			source := try self.take_until(quote)
+			source := self.take_until(quote)?
 			if source.contains("<"): return error(
 				Error("XML: invalid data", kind: "EBADMSG")
 			)
@@ -445,11 +445,7 @@ impl Reader:
 
 				seen.add(attribute_name.clone())
 
-			attributes.append(
-				XmlAttribute(
-					name: attribute_name, value: try decode(raw)
-				)
-			)
+			attributes.append(XmlAttribute(name: attribute_name, value: decode(raw)?))
 
 		var children = List[XmlNode]()
 
@@ -459,24 +455,24 @@ impl Reader:
 			if self.looking_at("</"):
 				self.at += 2
 
-				closing := try self.name()
+				closing := self.name()?
 				if closing != name: return error(
 					Error("XML: invalid data", kind: "EBADMSG")
 				)
 
 				self.skip_space()
-				try self.expect(">")
+				self.expect(">")?
 				return ok(XmlElement(name, attributes, children))
 
 			if self.looking_at("<!--"):
-				children.append(XmlComment(try self.comment()))
+				children.append(XmlComment(self.comment()?))
 			else if self.looking_at("<![CDATA["):
 				self.at += 9
-				children.append(XmlText(try self.take_until("]]>")))
+				children.append(XmlText(self.take_until("]]>")?))
 			else if self.looking_at("<?"):
-				try self.instruction()
+				self.instruction()?
 			else if self.looking_at("<"):
-				children.append(try self.element(depth + 1))
+				children.append(self.element(depth + 1)?)
 			else:
 				var text = StringBuilder()
 
@@ -489,7 +485,7 @@ impl Reader:
 					Error("XML: invalid data", kind: "EBADMSG")
 				)
 
-				children.append(XmlText(try decode(raw)))
+				children.append(XmlText(decode(raw)?))
 
 fn is_space(c: String) Bool:
 	return c == " " or c == "\t" or c == "\n" or c == "\r"
@@ -583,9 +579,9 @@ fn decode(text: String) String!:
 		else if entity == "quot": out.append("\"")
 		else if entity == "apos": out.append("'")
 		else if entity.starts_with("#x"):
-			out.append(try scalar(digits(entity.drop(2), 16)))
+			out.append(scalar(digits(entity.drop(2), 16))?)
 		else if entity.starts_with("#"):
-			out.append(try scalar(digits(entity.drop(1), 10)))
+			out.append(scalar(digits(entity.drop(1), 10))?)
 		else:
 			return error(Error("XML: invalid data", kind: "EBADMSG"))
 
@@ -643,10 +639,10 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 	) else: text.clone()
 	var reader = Reader(chars: normalized.chars(), at: 0, max_depth: max_depth)
 	if reader.peek() == "\u{feff}": reader.at += 1
-	try reader.skip_misc(declaration_allowed: true, doctype_allowed: true)
+	reader.skip_misc(declaration_allowed: true, doctype_allowed: true)?
 
-	root := try reader.element(1)
-	try reader.skip_misc()
+	root := reader.element(1)?
+	reader.skip_misc()?
 	if not reader.done(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
 	return ok(root)

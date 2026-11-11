@@ -35,13 +35,13 @@ fn until_two(log: String) Int:
 	return n
 
 test "return out of an owned loop closes every element once":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
-	first_even(log.clone()) | try expect_equal(2)
-	logged(log.clone()) | try expect_equal("1,2,3,")
+	first_even(log.clone()) | expect_equal(2)?
+	logged(log.clone()) | expect_equal("1,2,3,")?
 
 test "break closes the elements it never reached":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
-	until_two(log.clone()) | try expect_equal(3)
-	logged(log.clone()) | try expect_equal("1,2,3,")
+	until_two(log.clone()) | expect_equal(3)?
+	logged(log.clone()) | expect_equal("1,2,3,")?

@@ -88,8 +88,8 @@ impl BigRat:
 		// `abs` faults on the minimum Int, so take its magnitude as `max + 1` powers.
 		extra := exponent == -9223372036854775807 - 1
 		count := if extra: 9223372036854775807 else: exponent.abs()
-		var top = try self.num.pow(count)
-		var bottom = try self.den.pow(count)
+		var top = self.num.pow(count)?
+		var bottom = self.den.pow(count)?
 
 		if extra:
 			top *= self.num
@@ -208,8 +208,8 @@ export fn parse_rat(text: String) BigRat!:
 	if slash.length() > 2: return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
 	if slash.length() == 2:
-		top := try parse_digits(slash[0])
-		bottom := try parse_digits(slash[1])
+		top := parse_digits(slash[0])?
+		bottom := parse_digits(slash[1])?
 		return rat(top, bottom)
 
 	exponent_parts := text.lower().split("e")
@@ -220,7 +220,7 @@ export fn parse_rat(text: String) BigRat!:
 
 	if exponent_parts.length() == 2:
 		// `parse_exponent` takes the one optional sign itself, so a second sign is malformed.
-		exponent = try parse_exponent(exponent_parts[1])
+		exponent = parse_exponent(exponent_parts[1])?
 		if exponent > 100000 or exponent < -100000:
 			return error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 
@@ -238,7 +238,7 @@ export fn parse_rat(text: String) BigRat!:
 		fraction_digits = point[1].scalar_length()
 		joined = "{point[0]}{point[1]}"
 
-	numerator := try parse_digits(joined)
+	numerator := parse_digits(joined)?
 	scale := fraction_digits - exponent
 	if scale <= 0: return ok(BigRat(num: numerator * pow10(-scale), den: big(1)))
 

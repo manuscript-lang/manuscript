@@ -1,32 +1,33 @@
 // conform: tags=control-flow,interpolation,match,modules,mutation,stdlib-io,stdlib-process,strings,testing,tier-io,try-result
 // conform: phase=run
 // conform: origin=tests/e2e/cli_options_test.go:14 TestCLIInlineValueOptions
-import arguments from "@std/os/env.ms"
-import stdout from "@std/io/io.ms"
-import stderr from "@std/io/io.ms"
+import (
+	stderr, stdout from "@std/io/io.ms",
+	arguments from "@std/os/env.ms",
+)
 
 fn write_line(text: String) Unit!:
-    try stdout().write("{text}\n")
+	stdout().write("{text}\n")?
 
 fn exercise() Int!:
-    args := arguments()
-    var index = 0
+	args := arguments()
+	var index = 0
 
-    while index < args.length():
-        try write_line(args[index])
-        index = index + 1
+	while index < args.length():
+		write_line(args[index])?
+		index += 1
 
-    return ok(0)
+	return ok(0)
 
 export fn main() Int:
-    match exercise():
-        ok(status): return status
-        error(cause):
-            _written := stderr().write("{cause.message}\n")
-            return 1
+	match exercise():
+		ok(status): return status
+		error(cause):
+			_written := stderr().write("{cause.message}\n")
+			return 1
 
 test "selected=a=b":
-    try write_line("selected")
+	write_line("selected")?
 
 test "unselected":
-    try write_line("unselected")
+	write_line("unselected")?

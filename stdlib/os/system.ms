@@ -200,7 +200,7 @@ export fn cpus() List[CpuInfo]!:
 // A host query failure returns an `Error` describing it.
 // ms: effect std.system.read
 export fn metrics() SystemMetrics!:
-	snapshot := try msstd_system_metrics()
+	snapshot := msstd_system_metrics()?
 	return ok(
 		SystemMetrics(
 			total_memory: snapshot.total_memory,

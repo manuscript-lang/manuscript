@@ -21,8 +21,8 @@ bench "html.parse":
 		if parse(html).is_ok(): return keep(1)
 		return keep(0)
 
-	try measure(2000, work)
+	measure(2000, work)?
 
 bench "html.escape_unescape":
 	text := words(2000).join(" <&> ")
-	try measure(2000, fn: keep(text | escape | unescape | .length()))
+	measure(2000, fn: keep(text | escape | unescape | .length()))?

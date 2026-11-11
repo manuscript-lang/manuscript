@@ -64,11 +64,11 @@ import range_by from "@std/collections/collections.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "sum even indexes":
-    indexes := try range_by(start: 0, end: 6, step: 2)
+    indexes := range_by(start: 0, end: 6, step: 2)?
     var total = 0
     for index in indexes:
         total += index
-    try expect_equal(total, 6)
+    expect_equal(total, 6)?
 ```
 
 `try` unwraps the range in a function or test whose error type is compatible; `get([])` supplies a fallback. Use `range_by` for steps; `..` has no step form. See the [`range_by` declaration](../../standard-library/reference/collections/collections.ms.md#range_by).
@@ -110,12 +110,12 @@ test "destructure each element":
     var total = 0
     for [a, b] in [[1, 2], [3, 4]]:
         total += a * b
-    try expect_equal(total, 14)
+    expect_equal(total, 14)?
 
     var names = ""
     for {key, value: _value} in {"x": 1, "y": 2}:
         names = "{names}{key}"
-    try expect_equal(names, "xy")
+    expect_equal(names, "xy")?
 ```
 
 ## Iterators

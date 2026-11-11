@@ -1,21 +1,23 @@
 // conform: tags=control-flow,formatter,interpolation,modules,parser,stdlib-io,tier-core,try-result
 // conform: phase=parse
 // conform: origin=documentation/learn/common-tasks.md:120
-import stdin, stdout from "@std/io/io.ms"
-import lines from "@std/io/streams.ms"
+import (
+	stdin, stdout from "@std/io/io.ms",
+	lines from "@std/io/streams.ms",
+)
 
 fn run() Result[Unit, Error]:
-    var input = lines(stdin())
+	var input = lines(stdin())
 
-    while true:
-        line := try input.next()
+	while true:
+		line := input.next()?
 
-        if text := line:
-            try stdout().write("{text}\n")
-        else:
-            break
+		if text := line:
+			stdout().write("{text}\n")?
+		else:
+			break
 
-    return stdout().flush()
+	return stdout().flush()
 
 fn main() Unit!:
-    try run()
+	run()?

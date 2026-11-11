@@ -21,7 +21,7 @@ bench "yaml.parse":
 		if parse(yaml).is_ok(): return keep(1)
 		return keep(0)
 
-	try measure(2000, work)
+	measure(2000, work)?
 
 bench "yaml.roundtrip":
 	yaml := yaml_doc(2000)
@@ -30,9 +30,9 @@ bench "yaml.roundtrip":
 		if v := parse(yaml): return keep(yaml_length(v))
 		return keep(0)
 
-	try measure(2000, work)
+	measure(2000, work)?
 
 bench "yaml.stringify":
 	yaml := yaml_doc(2000)
 	if v := parse(yaml):
-		try measure(2000, fn: keep(yaml_length(v)))
+		measure(2000, fn: keep(yaml_length(v)))?

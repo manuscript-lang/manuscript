@@ -4,4 +4,4 @@
 fn operation() Unit!: ok(unit)
 
 fn f() Unit:
-    try operation()
+	operation()?

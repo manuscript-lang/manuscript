@@ -4,5 +4,5 @@
 fn operation() Unit!: ok(unit)
 
 fn f() Int!:
-    try operation()
-    return ok(1)
+	operation()?
+	return ok(1)

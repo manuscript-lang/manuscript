@@ -4,8 +4,8 @@
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
-    try stdout().write("Hello, Manuscript!\n")
-    return stdout().flush()
+	stdout().write("Hello, Manuscript!\n")?
+	return stdout().flush()
 
 fn main() Unit!:
-    try run()
+	run()?

@@ -61,7 +61,7 @@ impl Table:
 
 		var measured = List[Int]()
 		for cell in row:
-			measured.append(try cell.display_width())
+			measured.append(cell.display_width()?)
 		if self.widths.is_empty():
 			for _unused in 0..count:
 				self.widths.append(0)

@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=documentation/core-language/errors/propagation.md:12
 fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
-    value := try discount(price, percent)
-    return ok("Discounted price: {value}")
+	value := discount(price, percent)?
+	return ok("Discounted price: {value}")

@@ -17,7 +17,7 @@ fn magnitude(value: Int) Int:
     return llabs(value)
 
 test "an extern calls the native symbol":
-    try expect_equal(magnitude(-7), 7)
+    expect_equal(magnitude(-7), 7)?
 ```
 
 An extern has no body and no trailing `:`. It may be exported. It cannot be generic, take defaults or `var` parameters, or be a method.

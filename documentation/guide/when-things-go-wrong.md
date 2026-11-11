@@ -18,16 +18,16 @@ fn parse_line(text: String) Line!:
     parts := text.split(",")
     if parts.length() != 3:
         return error(Error("expected name,quantity,cents: {text}", kind: "EBADMSG"))
-    quantity := try parts[1].parse_int().ok_or(Error("quantity is not a number: {text}", kind: "EINVAL"))
+    quantity := parts[1].parse_int().ok_or(Error("quantity is not a number: {text}", kind: "EINVAL"))?
     if quantity <= 0:
         return error(Error("quantity must be positive: {text}", kind: "EINVAL"))
-    cents := try parts[2].parse_int().ok_or(Error("price is not a number: {text}", kind: "EINVAL"))
+    cents := parts[2].parse_int().ok_or(Error("price is not a number: {text}", kind: "EINVAL"))?
     return ok(Line(parts[0].clone(), quantity, cents))
 
 fn total(lines: List[String]) Int!:
     var sum = 0
     for text in lines:
-        line := try parse_line(text)
+        line := parse_line(text)?
         sum += line.quantity * line.cents
     return ok(sum)
 

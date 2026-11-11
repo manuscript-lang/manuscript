@@ -12,7 +12,7 @@ bench "promise.spawn_wait_all_1000":
 		r := wait_all(running).get([])
 		return keep(r.length())
 
-	try measure(1000, work)
+	measure(1000, work)?
 
 bench "promise.spawn_wait_each_1000":
 	fn work() Result[Unit, Error]:
@@ -24,7 +24,7 @@ bench "promise.spawn_wait_each_1000":
 
 		return keep(n)
 
-	try measure(1000, work)
+	measure(1000, work)?
 
 bench "promise.spawn_then_wait_5000":
 	fn work() Result[Unit, Error]:
@@ -37,4 +37,4 @@ bench "promise.spawn_then_wait_5000":
 			n += v
 		return keep(n)
 
-	try measure(5000, work)
+	measure(5000, work)?

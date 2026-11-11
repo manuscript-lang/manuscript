@@ -21,13 +21,13 @@ fn score(value: Outcome[Int]) Int:
 test "enum cases retain payload construction and exhaustive matching":
 	success: Outcome := Success(7)
 	failure := Outcome[Int].Failure
-	try expect_equal(score(success), 7)
-	try expect_equal(score(failure), -1)
-	try expect_equal(success.succeeded(), true)
-	try expect_equal(failure.succeeded(), false)
+	expect_equal(score(success), 7)?
+	expect_equal(score(failure), -1)?
+	expect_equal(success.succeeded(), true)?
+	expect_equal(failure.succeeded(), false)?
 
 	named := Outcome[Label].Success(Label("ready"))
 
 	match named:
-		Success(label): try expect_equal(label.text, "ready")
-		Failure: try expect_equal(false, true)
+		Success(label): expect_equal(label.text, "ready")?
+		Failure: expect_equal(false, true)?

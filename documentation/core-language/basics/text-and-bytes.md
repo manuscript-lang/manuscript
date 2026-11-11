@@ -169,7 +169,7 @@ fn row(name: String, amount: Float) String:
     return name.pad_end(8, " ") + amount.to_fixed(2).pad_start(8, " ")
 
 test "padding and fixed digits":
-    try expect_equal(row("total", 3.14159), "total       3.14")
+    expect_equal(row("total", 3.14159), "total       3.14")?
 ```
 
 ## Binary data
@@ -186,8 +186,8 @@ test "binary codecs":
     out.append_uint16_be(258)
     out.append_float64_le(1.5)
     data := out.build()
-    try expect_equal(try data.uint16_be(0), 258)
-    try expect_equal(try data.float64_le(2), 1.5)
+    expect_equal(data.uint16_be(0)?, 258)?
+    expect_equal(data.float64_le(2)?, 1.5)?
 ```
 
 ## Deterministic formatting

@@ -2,9 +2,9 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/test_fixture_test.go:196 TestCLITestFixtureInterruptCleansUp
 test "interruptible":
-    println("READY")
-    while true:
-        try expect_equal(1, 1)
+	println("READY")
+	while true:
+		expect_equal(1, 1)?
 
 test "later":
-    try fail("must not run")
+	fail("must not run")?

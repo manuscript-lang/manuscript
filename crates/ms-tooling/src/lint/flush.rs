@@ -48,7 +48,7 @@ pub(super) fn lint(
         findings.push(finding(
             "MSL114",
             format!(
-                "`{name_t}` is closed when its scope ends, which does not run `{method_t}`; call `try {name_t}.{method_t}()` before the scope ends to handle its failure"
+                "`{name_t}` is closed when its scope ends, which does not run `{method_t}`; call `{name_t}.{method_t}()?` before the scope ends to handle its failure"
             , name_t = syms.str(name), method_t = syms.str(method)),
             &file,
             pos,

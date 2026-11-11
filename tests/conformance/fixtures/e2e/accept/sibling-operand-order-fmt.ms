@@ -1,72 +1,74 @@
 // conform: tags=decimal,faults,formatter,match,modules,mutation,optional,parser,records,stdlib-decimal,stdlib-testing,strings,testing,tier-stdlib,try-result
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/accept/sibling-operand-order.ms
-import expect_equal from "@std/test/test.ms"
-import Decimal from "@std/math/decimal.ms"
+import (
+	Decimal from "@std/math/decimal.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 test "list elements read before a later match assigns them":
-    var x = 1
-    var y = "a"
-    items := [
-        x,
-        match present(5):
-            value:
-                x = 50
-                value
-            none: 0
-        ,
-        x
-    ]
-    try expect_equal(items, [1, 5, 50])
+	var x = 1
+	var y = "a"
+	items := [
+		x,
+		match present(5):
+			value:
+				x = 50
+				value
+			none: 0
+		,
+		x
+	]
+	expect_equal(items, [1, 5, 50])?
 
-    texts := [
-        y,
-        match present("b"):
-            value:
-                y = "z"
-                value
-            none: ""
-    ]
-    try expect_equal(texts, ["a", "b"])
+	texts := [
+		y,
+		match present("b"):
+			value:
+				y = "z"
+				value
+			none: ""
+	]
+	expect_equal(texts, ["a", "b"])?
 
 test "map keys read before a later match assigns them":
-    var key = 1
-    entries := {
-        key: match present(5):
-            value:
-                key = 50
-                value
-            none: 0
-        ,
-        key: key
-    }
-    try expect_equal(entries.length(), 2)
-    try expect_equal(entries.get(key: 1), 5)
+	var key = 1
+	entries := {
+		key: match present(5):
+			value:
+				key = 50
+				value
+			none: 0
+		,
+		key: key
+	}
+	expect_equal(entries.length(), 2)?
+	expect_equal(entries.get(key: 1), 5)?
 
 test "generic binary operands read before a later match assigns them":
-    var amount = 1.5d
-    sum := amount + match present(2.5d):
-        value:
-            amount = 100d
-            value
-        none: 0d
-    try expect_equal(sum, 4d)
+	var amount = 1.5d
+	sum := amount + match present(2.5d):
+		value:
+			amount = 100d
+			value
+		none: 0d
+	expect_equal(sum, 4d)?
 
 type Cell:
-    n: Int
-    s: String
+	n: Int
+	s: String
 
 test "field assignment keeps sibling field writes made while evaluating the value":
-    var cell = Cell(n: 1, s: "a")
+	var cell = Cell(n: 1, s: "a")
 
-    cell.n = match present(2):
-        value:
-            cell.s = "changed"
-            value
-        none: 0
+	cell.n = match present(2):
+		value:
+			cell.s = "changed"
+			value
+		none: 0
 
-    try expect_equal(cell.n, 2)
-    try expect_equal(cell.s, "changed")
+	expect_equal(cell.n, 2)?
+	expect_equal(cell.s, "changed")?
 
 fn present[T](value: T) T?:
-    return value
+	return value

@@ -17,8 +17,8 @@ impl Doc:
         return self.lines[best]
 
 fn load(path: String) Result[Doc, Error]:
-    f := try open(path)
-    lines := try f.read_lines(max_lines: 1000) // Int passes as Int?
+    f := open(path)?
+    lines := f.read_lines(max_lines: 1000)? // Int passes as Int?
     return ok(Doc(lines)) // moves lines
 
 fn main() Unit:

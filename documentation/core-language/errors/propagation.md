@@ -11,7 +11,7 @@ The following continues the `discount` and `DiscountError` declarations in [expe
 
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
-    value := try discount(price, percent)
+    value := discount(price, percent)?
     return ok("Discounted price: {value}")
 ```
 
@@ -58,11 +58,11 @@ import expect_equal from "@std/test/test.ms"
 fn prepare() Unit!: ok(unit)
 
 fn ready_label() String!:
-    try prepare()
+    prepare()?
     return ok("ready")
 
 test "prepare before returning a label":
-    try expect_equal(try ready_label(), "ready")
+    expect_equal(ready_label()?, "ready")?
 ```
 
 ```text
@@ -81,7 +81,7 @@ Omitting `try` discards the Result, which the checker rejects. To ignore it deli
 
 ```manuscript
 fn discounted_label(price: Decimal, percent: Decimal) Result[String, DiscountError]:
-    return ok(try discount(price, percent) | label)
+    return ok(discount(price, percent)? | label)
 ```
 
 ## Error compatibility

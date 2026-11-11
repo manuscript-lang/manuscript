@@ -14,9 +14,9 @@ test "TOML quoting preserves empty plain and Unicode text":
 		"", "Ada", "space punctuation : ; # ' []", "é🙂日本語", "é🙂日本語".repeat(1024).get()
 	]:
 		root := table(text.clone())
-		out := try stringify(root)
-		out | try expect_equal("value = \"".concat(text).concat("\"\n"))
-		(try parse(out)) | try expect_equal(root)
+		out := stringify(root)?
+		out | expect_equal("value = \"".concat(text).concat("\"\n"))?
+		(parse(out)?) | expect_equal(root)?
 
 test "TOML quoting preserves escaped control and Unicode text":
 	for text in [
@@ -24,22 +24,22 @@ test "TOML quoting preserves escaped control and Unicode text":
 		"é🙂\n日本語\\", "abcdefgh".repeat(2048).get().concat("\n")
 	]:
 		root := table(text)
-		(try parse(try stringify(root))) | try expect_equal(root)
+		(parse(stringify(root)?)?) | expect_equal(root)?
 
-	stringify(table("\"\\\n\t\r\u{8}\u{c}\u{0}\u{1f}\u{7f}")) | try expect_equal(
+	stringify(table("\"\\\n\t\r\u{8}\u{c}\u{0}\u{1f}\u{7f}")) | expect_equal(
 		ok("value = \"\\\"\\\\\\n\\t\\r\\b\\f\\u0000\\u001f\\u007f\"\n")
-	)
+	)?
 
 test "TOML quoting retains exact and invalid output budgets":
 	root := table("é🙂")
-	text := try stringify(root)
-	stringify(root, max_bytes: text.byte_length()) | try expect_equal(ok(text.clone()))
-	stringify(root, max_bytes: text.byte_length() - 1) | try expect_equal(
+	text := stringify(root)?
+	stringify(root, max_bytes: text.byte_length()) | expect_equal(ok(text.clone()))?
+	stringify(root, max_bytes: text.byte_length() - 1) | expect_equal(
 		error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
-	)
-	stringify(root, max_bytes: -1) | try expect_equal(
+	)?
+	stringify(root, max_bytes: -1) | expect_equal(
 		error(Error("invalid TOML input", kind: "EINVAL"))
-	)
+	)?
 
 test "TOML quoting preserves quoted keys and all ASCII control escapes":
 	for key in ["", "é🙂", "quote\"", "slash\\", "line\n", "\u{7f}"]:
@@ -47,17 +47,15 @@ test "TOML quoting preserves quoted keys and all ASCII control escapes":
 		fields.add(key, TomlValue.IntValue(7))
 
 		root := TomlValue.TableValue(fields)
-		(try parse(try stringify(root))) | try expect_equal(root)
+		(parse(stringify(root)?)?) | expect_equal(root)?
 
 	var fields = Map[String, TomlValue]()
 	fields.add("é🙂", TomlValue.StringValue("plain"))
-	stringify(TomlValue.TableValue(fields)) | try expect_equal(
-		ok("\"é🙂\" = \"plain\"\n")
-	)
+	stringify(TomlValue.TableValue(fields)) | expect_equal(ok("\"é🙂\" = \"plain\"\n"))?
 
 	var controls = ""
 	for code in 0..32:
 		controls = controls.concat(from_scalars([code]).get())
 
 	root := table(controls)
-	(try parse(try stringify(root))) | try expect_equal(root)
+	(parse(stringify(root)?)?) | expect_equal(root)?

@@ -12,7 +12,7 @@ bench "string.append_builder":
 			sb.append("x")
 		return keep(sb.build().byte_length())
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "string.concat":
 	fn work() Result[Unit, Error]:
@@ -21,7 +21,7 @@ bench "string.concat":
 			s = s.concat("x")
 		return keep(s.length())
 
-	try measure(20000, work)
+	measure(20000, work)?
 
 bench "string.split":
 	text := words(2000).join(" ")
@@ -32,7 +32,7 @@ bench "string.split":
 			n += text.split(" ").length()
 		return keep(n)
 
-	try measure(200, work)
+	measure(200, work)?
 
 bench "string.replace":
 	text := words(2000).join(" ")
@@ -43,7 +43,7 @@ bench "string.replace":
 			n = (n + text.replace("word", "w").length())
 		return keep(n)
 
-	try measure(200, work)
+	measure(200, work)?
 
 bench "string.contains":
 	text := words(2000).join(" ")
@@ -54,7 +54,7 @@ bench "string.contains":
 			if text.contains("word976 word0"): n += 1
 		return keep(n)
 
-	try measure(2000, work)
+	measure(2000, work)?
 
 bench "string.upper":
 	text := words(2000).join(" ")
@@ -65,7 +65,7 @@ bench "string.upper":
 			n += text.upper().length()
 		return keep(n)
 
-	try measure(200, work)
+	measure(200, work)?
 
 bench "string.trim":
 	fn work() Result[Unit, Error]:
@@ -74,7 +74,7 @@ bench "string.trim":
 			n += "  padded  ".trim().length()
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "string.index_char_at":
 	text := words(2000).join(" ")
@@ -85,7 +85,7 @@ bench "string.index_char_at":
 			n += text.get(i % 5000, default: "").length()
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "string.chars":
 	text := words(2000).join(" ")
@@ -96,7 +96,7 @@ bench "string.chars":
 			n += text.chars().length()
 		return keep(n)
 
-	try measure(20, work)
+	measure(20, work)?
 
 bench "string.parse_int":
 	fn work() Result[Unit, Error]:
@@ -105,7 +105,7 @@ bench "string.parse_int":
 			n += "12345".parse_int().get(0)
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "string.interpolate":
 	fn work() Result[Unit, Error]:
@@ -114,4 +114,4 @@ bench "string.interpolate":
 			n += "item {i} of {n}".length()
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?

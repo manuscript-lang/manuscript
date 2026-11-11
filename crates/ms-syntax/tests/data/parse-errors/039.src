@@ -5,7 +5,7 @@ import control, commands, CommandError, CommandOutput from "@std/os/process.ms"
 import read_line from "@std/io/io.ms"
 
 test "CLI test roots have empty arguments and host metadata agrees":
-    try expect_false(not arguments().is_empty())
+    expect_false(not arguments().is_empty())?
     info := system().info()
     try expect_false(
         (
@@ -14,7 +14,7 @@ test "CLI test roots have empty arguments and host metadata agrees":
             or info.architecture.byte_length() == 0
         )
     )
-    process := try control().info()
+    process := control().info()?
     try expect_false(
         (
             process.pid <= 0
@@ -23,21 +23,21 @@ test "CLI test roots have empty arguments and host metadata agrees":
         )
     )
     try expect_equal(system().working_directory(), (try control().working_directory()))
-    try expect_false(endianness() != "LE" and endianness() != "BE")
-    try expect_false(end_of_line() != "\n" and end_of_line() != "\r\n")
-    try expect_not_equal(os_type().byte_length(), 0)
-    try expect_not_equal(dev_null().byte_length(), 0)
+    expect_false(endianness() != "LE" and endianness() != "BE")?
+    expect_false(end_of_line() != "\n" and end_of_line() != "\r\n")?
+    expect_not_equal(os_type().byte_length(), 0)?
+    expect_not_equal(dev_null().byte_length(), 0)?
 
 test "process environment reflects live changes":
     name := "MANUSCRIPT_STDLIB_CONFORMANCE"
     before := (try control().environment()).get(name)
-    try control().set_environment(name, "stdlib")
+    control().set_environment(name, "stdlib")?
     try expect_equal((try control().environment()).get(name), "stdlib")
-    try control().set_environment(name, before)
+    control().set_environment(name, before)?
 
 test "subprocess validation returns expected domain errors":
     invalid: Result[CommandOutput, CommandError] := error(CommandError.InvalidInput)
-    try expect_equal(commands().run("", [], "".to_bytes()), invalid)
+    expect_equal(commands().run("", [], "".to_bytes()), invalid)?
     unavailable: Result[CommandOutput, CommandError] := error(
         CommandError.Unavailable
     )
@@ -54,10 +54,10 @@ test "subprocess validation returns expected domain errors":
 test "managed subprocess streams incrementally and cleans up on scope exit":
     if os_type() == "windows": return
 
-    with child = try commands().spawn("cat", []):
-        try child.stdin().write("ping\n")
-        line := try read_line(child.stdout())
-        try expect_equal(line.get(""), "ping")
+    with child = commands().spawn("cat", [])?:
+        child.stdin().write("ping\n")?
+        line := read_line(child.stdout())?
+        expect_equal(line.get(""), "ping")?
         child.stdin().close()
         try expect_equal((try child.wait()), 0)
         try expect_false((try child.stdout().read()).is_some())

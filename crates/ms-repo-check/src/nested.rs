@@ -91,7 +91,7 @@ fn report(issues: &mut Vec<String>, path: &str, code: &str, first_line: usize, f
             });
         if !allowed {
             issues.push(format!(
-                "{path}:{}: nested match; flatten the outer match with an early exit, compatible try, or a small helper",
+                "{path}:{}: nested match; flatten the outer match with an early exit, a compatible trailing ?, or a small helper",
                 first_line + within - 1
             ));
         }

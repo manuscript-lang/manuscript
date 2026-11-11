@@ -4,13 +4,13 @@
 import expect_equal, skip from "@std/test/test.ms"
 
 test "passing":
-    try expect_equal(2 + 2, 4)
+	expect_equal(2 + 2, 4)?
 
 test "skipped":
-    skip("fixture unavailable")
+	skip("fixture unavailable")
 
 test "failing":
-    try expect_equal(1, 2)
+	expect_equal(1, 2)?
 
 test "later":
-    try expect_equal(true, true)
+	expect_equal(true, true)?

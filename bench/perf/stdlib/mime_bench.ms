@@ -12,7 +12,7 @@ fn consume(body: Bytes, chunk: Int, count: Int, size: Int) Unit!:
 	var bytes = 0
 
 	while true:
-		next := try parts.next()
+		next := parts.next()?
 
 		if part := next:
 			if part.data.length() != size: return error(Error("wrong multipart size"))
@@ -35,27 +35,27 @@ fn body(size: Int, count: Int = 1) Bytes:
 
 bench "multipart.fragmented_1MiB_1KiB_chunks":
 	data := body(1048576)
-	try measure(1, fn: consume(data, 1024, 1, 1048576))
+	measure(1, fn: consume(data, 1024, 1, 1048576))?
 
 bench "multipart.fragmented_4MiB_1KiB_chunks":
 	data := body(4194304)
-	try measure(1, fn: consume(data, 1024, 1, 4194304))
+	measure(1, fn: consume(data, 1024, 1, 4194304))?
 
 bench "multipart.4MiB_default_64KiB_chunks":
 	data := body(4194304)
-	try measure(1, fn: consume(data, 65536, 1, 4194304))
+	measure(1, fn: consume(data, 65536, 1, 4194304))?
 
 bench "multipart.small_128B_single_chunk":
 	data := body(128)
-	try measure(1, fn: consume(data, 65536, 1, 128))
+	measure(1, fn: consume(data, 65536, 1, 128))?
 
 bench "multipart.64KiB_single_chunk":
 	data := body(65536)
-	try measure(1, fn: consume(data, 1048576, 1, 65536))
+	measure(1, fn: consume(data, 1048576, 1, 65536))?
 
 bench "multipart.100_small_parts_single_chunk":
 	data := body(128, 100)
-	try measure(1, fn: consume(data, 65536, 100, 128))
+	measure(1, fn: consume(data, 65536, 100, 128))?
 
 bench "multipart.fragmented_limit_rejection":
 	data := body(65536)
@@ -68,4 +68,4 @@ bench "multipart.fragmented_limit_rejection":
 
 		return keep(1)
 
-	try measure(1, reject)
+	measure(1, reject)?

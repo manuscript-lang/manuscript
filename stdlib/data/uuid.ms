@@ -30,7 +30,7 @@ The same namespace and name always give the same lowercase UUID, so it makes a s
 Example: `uuid_v5(namespace_dns, "python.org")` is `"886313e1-3b8a-5372-9b90-0c9aee199e5d"`.
 */
 export fn uuid_v5(namespace: String, name: String) String!:
-	space := try uuid_to_bytes(namespace)
+	space := uuid_to_bytes(namespace)?
 	var input = BytesBuilder()
 	input.append_bytes(space)
 	input.append_bytes(name.to_bytes())
@@ -46,7 +46,7 @@ Two ids made in the same millisecond are ordered randomly. Entropy failures retu
 export fn uuid_v7() String!:
 	moment := now()
 	millis := moment.seconds * 1000 + moment.nanos / 1000000
-	noise := try random_bytes(10)
+	noise := random_bytes(10)?
 	var raw = BytesBuilder()
 	for place in 0..6:
 		raw.append(

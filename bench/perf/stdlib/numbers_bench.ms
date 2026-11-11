@@ -19,7 +19,7 @@ bench "bigint.factorial_1000":
 			acc = acc.multiply(from_int(i))
 		return keep(acc.to_string_radix(10).length())
 
-	try measure(1000, work)
+	measure(1000, work)?
 
 bench "bigint.multiply_100_digits":
 	fn work() Result[Unit, Error]:
@@ -29,7 +29,7 @@ bench "bigint.multiply_100_digits":
 			acc = base * base
 		return keep(acc.to_string_radix(10).length())
 
-	try measure(20000, work)
+	measure(20000, work)?
 
 bench "decimal.add_round":
 	rate: Decimal := 1.12345d
@@ -41,7 +41,7 @@ bench "decimal.add_round":
 				n += d.truncate_to_int().get(0)
 		return keep(n)
 
-	try measure(20000, work)
+	measure(20000, work)?
 
 bench "compress.gzip":
 	blob := (
@@ -56,7 +56,7 @@ bench "compress.gzip":
 		if b := compress(blob, CompressionFormat.Gzip): return keep(b.length())
 		return keep(0)
 
-	try measure(size, work)
+	measure(size, work)?
 
 bench "compress.roundtrip":
 	blob := (
@@ -71,7 +71,7 @@ bench "compress.roundtrip":
 		if b := compress(blob, CompressionFormat.Gzip): return keep(unpacked_length(b))
 		return keep(0)
 
-	try measure(size, work)
+	measure(size, work)?
 
 bench "time.parse_timestamp":
 	fn work() Result[Unit, Error]:
@@ -81,19 +81,19 @@ bench "time.parse_timestamp":
 				n += t.unix_seconds() % 7
 		return keep(n)
 
-	try measure(20000, work)
+	measure(20000, work)?
 
 bench "time.parse_timestamp_maximum_width":
 	fn work() Result[Unit, Error]:
 		var n = 0
 
 		for i in 0..20000:
-			t := try parse_timestamp("2026-03-01T12:30:45.123456789+05:30")
+			t := parse_timestamp("2026-03-01T12:30:45.123456789+05:30")?
 			n += t.nanoseconds()
 
 		return keep(n)
 
-	try measure(20000, work)
+	measure(20000, work)?
 
 bench "time.parse_timestamp_oversized_fraction":
 	text := "2026-03-01T12:30:45." + "0".repeat(65536).get() + "Z"
@@ -110,7 +110,7 @@ bench "time.parse_timestamp_oversized_fraction":
 
 		return keep(n)
 
-	try measure(1000, work)
+	measure(1000, work)?
 
 bench "queue.enqueue_dequeue":
 	fn work() Result[Unit, Error]:
@@ -123,7 +123,7 @@ bench "queue.enqueue_dequeue":
 			n += q.dequeue().get(0)
 		return keep(n)
 
-	try measure(200000, work)
+	measure(200000, work)?
 
 bench "priority_queue.enqueue_dequeue":
 	fn work() Result[Unit, Error]:
@@ -136,4 +136,4 @@ bench "priority_queue.enqueue_dequeue":
 			n += q.dequeue().get(0)
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?

@@ -4,4 +4,4 @@
 import expect_equal from "@std/test/test.ms"
 
 test "failed assertion":
-    2 + 3 | try expect_equal(expected: 6)
+	2 + 3 | expect_equal(expected: 6)?

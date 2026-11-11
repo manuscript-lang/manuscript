@@ -5,12 +5,12 @@ test "redirected streams report no terminal and refuse raw mode":
     capabilities := terminal().capabilities()
     if capabilities.raw_mode: return
 
-    try expect_false(capabilities.colors != 0 and not capabilities.output_is_terminal)
-    try expect_false(capabilities.resize_events)
+    expect_false(capabilities.colors != 0 and not capabilities.output_is_terminal)?
+    expect_false(capabilities.resize_events)?
     raw := terminal().raw_mode(alternate_screen: false)
 
     if active := raw:
         active.close()
        return fail("raw mode on redirected input")
 
-    try expect_equal(raw.err(), TerminalError.NotTerminal)
+    expect_equal(raw.err(), TerminalError.NotTerminal)?

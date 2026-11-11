@@ -2,18 +2,18 @@ import expect_equal from "@std/test/test.ms"
 
 // Sum three integer values with explicit named arguments.
 export fn total(first: Int, second: Int, third: Int) Int:
-    return first + second + third
+	return first + second + third
 
 // Work long enough to produce visible CPU samples.
 export fn compute(iterations: Int) Int:
-    var index = 0
-    var result = 0
+	var index = 0
+	var result = 0
 
-    while index < iterations:
-        result = result + index % 7
-        index = index + 1
+	while index < iterations:
+		result += index % 7
+		index += 1
 
-    return result
+	return result
 
 test "named arguments":
-    total(first: 10, second: 20, third: 30) | try expect_equal(expected: 60)
+	total(first: 10, second: 20, third: 30) | expect_equal(expected: 60)?

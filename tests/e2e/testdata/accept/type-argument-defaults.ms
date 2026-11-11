@@ -30,12 +30,12 @@ fn exercise() Int:
 	return ints.length() + lists.length() + more_ints.length() + boxes.length()
 
 test "method type defaults specialize receiver parameters and Self":
-	exercise() | try expect_equal(0)
+	exercise() | expect_equal(0)?
 
 	box := Box(7)
 	bound := box.own[String]
 	values: List[String] := bound()
-	values.length() | try expect_equal(0)
+	values.length() | expect_equal(0)?
 
 interface Mark:
 	fn mark() Int
@@ -73,12 +73,12 @@ fn recursive_default[T: Relation[T] = Value]() List[T]: return []
 test "type defaults validate local and recursive interface implementations":
 	values := default_value()
 	typed: List[Value] := values
-	typed.length() | try expect_equal(0)
+	typed.length() | expect_equal(0)?
 
 	related := recursive_default()
 	recursive: List[Value] := related
-	recursive.length() | try expect_equal(0)
-	read(Value(7)) | try expect_equal(7)
+	recursive.length() | expect_equal(0)?
+	read(Value(7)) | expect_equal(7)?
 
 fn from_bound[S: Reader[Int]](source: S) Int:
 	values := source.read()
@@ -97,7 +97,7 @@ fn alternate_receivers() Int:
 	return ints.length() + strings.length() + more_ints.length() + from_bound(int_box)
 
 test "receiver defaults stay independent and work through generic bounds":
-	alternate_receivers() | try expect_equal(0)
+	alternate_receivers() | expect_equal(0)?
 
 type ForwardFirst[T = ForwardMiddle]:
 	value: T
@@ -111,4 +111,4 @@ type ForwardLast[V = Int]:
 fn forward_read(value: ForwardFirst) Int: value.value.value.value
 
 test "a default may name a type declared later, through several hops":
-	forward_read(ForwardFirst(ForwardMiddle(ForwardLast(5)))) | try expect_equal(5)
+	forward_read(ForwardFirst(ForwardMiddle(ForwardLast(5)))) | expect_equal(5)?

@@ -208,7 +208,7 @@ export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U
 	for stripe in 0..stripes:
 		running.append(promise(fn: stripe_results(items, stripe, stripes, work)))
 
-	var parts = try wait_all(running)
+	var parts = wait_all(running)?
 	var results: List[U] = []
 	var index = items.length()
 

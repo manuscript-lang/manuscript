@@ -112,81 +112,76 @@ fn pairs() Map[Int, List[Int]]:
 
 fn tried() Map[Int, Int]!:
 	m := {
-		0: try pick(0), 1: try pick(1), 2: try pick(2), 3: try pick(3), 4: try pick(4),
-		5: try pick(5), 6: try pick(6), 7: try pick(7), 8: try pick(8), 9: try pick(9),
-		10: try pick(10), 11: try pick(11), 12: try pick(12), 13: try pick(13),
-		14: try pick(14), 15: try pick(15), 16: try pick(16), 17: try pick(17),
-		18: try pick(18), 19: try pick(19), 20: try pick(20), 21: try pick(21),
-		22: try pick(22), 23: try pick(23), 24: try pick(24), 25: try pick(25),
-		26: try pick(26), 27: try pick(27), 28: try pick(28), 29: try pick(29),
-		30: try pick(30), 31: try pick(31), 32: try pick(32), 33: try pick(33),
-		34: try pick(34), 35: try pick(35), 36: try pick(36), 37: try pick(37),
-		38: try pick(38), 39: try pick(39), 40: try pick(40), 41: try pick(41),
-		42: try pick(42), 43: try pick(43), 44: try pick(44), 45: try pick(45),
-		46: try pick(46), 47: try pick(47), 48: try pick(48), 49: try pick(49),
-		50: try pick(50), 51: try pick(51), 52: try pick(52), 53: try pick(53),
-		54: try pick(54), 55: try pick(55), 56: try pick(56), 57: try pick(57),
-		58: try pick(58), 59: try pick(59), 60: try pick(60), 61: try pick(61),
-		62: try pick(62), 63: try pick(63), 64: try pick(64), 65: try pick(65),
-		66: try pick(66), 67: try pick(67), 68: try pick(68), 69: try pick(69),
-		70: try pick(70), 71: try pick(71), 72: try pick(72), 73: try pick(73),
-		74: try pick(74), 75: try pick(75), 76: try pick(76), 77: try pick(77),
-		78: try pick(78), 79: try pick(79), 80: try pick(80), 81: try pick(81),
-		82: try pick(82), 83: try pick(83), 84: try pick(84), 85: try pick(85),
-		86: try pick(86), 87: try pick(87), 88: try pick(88), 89: try pick(89),
-		90: try pick(90), 91: try pick(91), 92: try pick(92), 93: try pick(93),
-		94: try pick(94), 95: try pick(95), 96: try pick(96), 97: try pick(97),
-		98: try pick(98), 99: try pick(99), 100: try pick(100), 101: try pick(101),
-		102: try pick(102), 103: try pick(103), 104: try pick(104), 105: try pick(105),
-		106: try pick(106), 107: try pick(107), 108: try pick(108), 109: try pick(109),
-		110: try pick(110), 111: try pick(111), 112: try pick(112), 113: try pick(113),
-		114: try pick(114), 115: try pick(115), 116: try pick(116), 117: try pick(117),
-		118: try pick(118), 119: try pick(119), 120: try pick(120), 121: try pick(121),
-		122: try pick(122), 123: try pick(123), 124: try pick(124), 125: try pick(125),
-		126: try pick(126), 127: try pick(127), 128: try pick(128), 129: try pick(129),
-		130: try pick(130), 131: try pick(131), 132: try pick(132), 133: try pick(133),
-		134: try pick(134), 135: try pick(135), 136: try pick(136), 137: try pick(137),
-		138: try pick(138), 139: try pick(139), 140: try pick(140), 141: try pick(141),
-		142: try pick(142), 143: try pick(143), 144: try pick(144), 145: try pick(145),
-		146: try pick(146), 147: try pick(147), 148: try pick(148), 149: try pick(149),
-		150: try pick(150), 151: try pick(151), 152: try pick(152), 153: try pick(153),
-		154: try pick(154), 155: try pick(155), 156: try pick(156), 157: try pick(157),
-		158: try pick(158), 159: try pick(159), 160: try pick(160), 161: try pick(161),
-		162: try pick(162), 163: try pick(163), 164: try pick(164), 165: try pick(165),
-		166: try pick(166), 167: try pick(167), 168: try pick(168), 169: try pick(169),
-		170: try pick(170), 171: try pick(171), 172: try pick(172), 173: try pick(173),
-		174: try pick(174), 175: try pick(175), 176: try pick(176), 177: try pick(177),
-		178: try pick(178), 179: try pick(179), 180: try pick(180), 181: try pick(181),
-		182: try pick(182), 183: try pick(183), 184: try pick(184), 185: try pick(185),
-		186: try pick(186), 187: try pick(187), 188: try pick(188), 189: try pick(189),
-		190: try pick(190), 191: try pick(191), 192: try pick(192), 193: try pick(193),
-		194: try pick(194), 195: try pick(195), 196: try pick(196), 197: try pick(197),
-		198: try pick(198), 199: try pick(199), 200: try pick(200), 201: try pick(201),
-		202: try pick(202), 203: try pick(203), 204: try pick(204), 205: try pick(205),
-		206: try pick(206), 207: try pick(207), 208: try pick(208), 209: try pick(209),
-		210: try pick(210), 211: try pick(211), 212: try pick(212), 213: try pick(213),
-		214: try pick(214), 215: try pick(215), 216: try pick(216), 217: try pick(217),
-		218: try pick(218), 219: try pick(219), 220: try pick(220), 221: try pick(221),
-		222: try pick(222), 223: try pick(223), 224: try pick(224), 225: try pick(225),
-		226: try pick(226), 227: try pick(227), 228: try pick(228), 229: try pick(229),
-		230: try pick(230), 231: try pick(231), 232: try pick(232), 233: try pick(233),
-		234: try pick(234), 235: try pick(235), 236: try pick(236), 237: try pick(237),
-		238: try pick(238), 239: try pick(239), 240: try pick(240), 241: try pick(241),
-		242: try pick(242), 243: try pick(243), 244: try pick(244), 245: try pick(245),
-		246: try pick(246), 247: try pick(247), 248: try pick(248), 249: try pick(249),
-		250: try pick(250), 251: try pick(251), 252: try pick(252), 253: try pick(253),
-		254: try pick(254), 255: try pick(255), 256: try pick(256), 257: try pick(257),
-		258: try pick(258), 259: try pick(259), 260: try pick(260), 261: try pick(261),
-		262: try pick(262), 263: try pick(263), 264: try pick(264), 265: try pick(265),
-		266: try pick(266), 267: try pick(267), 268: try pick(268), 269: try pick(269),
-		270: try pick(270), 271: try pick(271), 272: try pick(272), 273: try pick(273),
-		274: try pick(274), 275: try pick(275), 276: try pick(276), 277: try pick(277),
-		278: try pick(278), 279: try pick(279), 280: try pick(280), 281: try pick(281),
-		282: try pick(282), 283: try pick(283), 284: try pick(284), 285: try pick(285),
-		286: try pick(286), 287: try pick(287), 288: try pick(288), 289: try pick(289),
-		290: try pick(290), 291: try pick(291), 292: try pick(292), 293: try pick(293),
-		294: try pick(294), 295: try pick(295), 296: try pick(296), 297: try pick(297),
-		298: try pick(298), 299: try pick(299)
+		0: pick(0)?, 1: pick(1)?, 2: pick(2)?, 3: pick(3)?, 4: pick(4)?, 5: pick(5)?,
+		6: pick(6)?, 7: pick(7)?, 8: pick(8)?, 9: pick(9)?, 10: pick(10)?,
+		11: pick(11)?, 12: pick(12)?, 13: pick(13)?, 14: pick(14)?, 15: pick(15)?,
+		16: pick(16)?, 17: pick(17)?, 18: pick(18)?, 19: pick(19)?, 20: pick(20)?,
+		21: pick(21)?, 22: pick(22)?, 23: pick(23)?, 24: pick(24)?, 25: pick(25)?,
+		26: pick(26)?, 27: pick(27)?, 28: pick(28)?, 29: pick(29)?, 30: pick(30)?,
+		31: pick(31)?, 32: pick(32)?, 33: pick(33)?, 34: pick(34)?, 35: pick(35)?,
+		36: pick(36)?, 37: pick(37)?, 38: pick(38)?, 39: pick(39)?, 40: pick(40)?,
+		41: pick(41)?, 42: pick(42)?, 43: pick(43)?, 44: pick(44)?, 45: pick(45)?,
+		46: pick(46)?, 47: pick(47)?, 48: pick(48)?, 49: pick(49)?, 50: pick(50)?,
+		51: pick(51)?, 52: pick(52)?, 53: pick(53)?, 54: pick(54)?, 55: pick(55)?,
+		56: pick(56)?, 57: pick(57)?, 58: pick(58)?, 59: pick(59)?, 60: pick(60)?,
+		61: pick(61)?, 62: pick(62)?, 63: pick(63)?, 64: pick(64)?, 65: pick(65)?,
+		66: pick(66)?, 67: pick(67)?, 68: pick(68)?, 69: pick(69)?, 70: pick(70)?,
+		71: pick(71)?, 72: pick(72)?, 73: pick(73)?, 74: pick(74)?, 75: pick(75)?,
+		76: pick(76)?, 77: pick(77)?, 78: pick(78)?, 79: pick(79)?, 80: pick(80)?,
+		81: pick(81)?, 82: pick(82)?, 83: pick(83)?, 84: pick(84)?, 85: pick(85)?,
+		86: pick(86)?, 87: pick(87)?, 88: pick(88)?, 89: pick(89)?, 90: pick(90)?,
+		91: pick(91)?, 92: pick(92)?, 93: pick(93)?, 94: pick(94)?, 95: pick(95)?,
+		96: pick(96)?, 97: pick(97)?, 98: pick(98)?, 99: pick(99)?, 100: pick(100)?,
+		101: pick(101)?, 102: pick(102)?, 103: pick(103)?, 104: pick(104)?,
+		105: pick(105)?, 106: pick(106)?, 107: pick(107)?, 108: pick(108)?,
+		109: pick(109)?, 110: pick(110)?, 111: pick(111)?, 112: pick(112)?,
+		113: pick(113)?, 114: pick(114)?, 115: pick(115)?, 116: pick(116)?,
+		117: pick(117)?, 118: pick(118)?, 119: pick(119)?, 120: pick(120)?,
+		121: pick(121)?, 122: pick(122)?, 123: pick(123)?, 124: pick(124)?,
+		125: pick(125)?, 126: pick(126)?, 127: pick(127)?, 128: pick(128)?,
+		129: pick(129)?, 130: pick(130)?, 131: pick(131)?, 132: pick(132)?,
+		133: pick(133)?, 134: pick(134)?, 135: pick(135)?, 136: pick(136)?,
+		137: pick(137)?, 138: pick(138)?, 139: pick(139)?, 140: pick(140)?,
+		141: pick(141)?, 142: pick(142)?, 143: pick(143)?, 144: pick(144)?,
+		145: pick(145)?, 146: pick(146)?, 147: pick(147)?, 148: pick(148)?,
+		149: pick(149)?, 150: pick(150)?, 151: pick(151)?, 152: pick(152)?,
+		153: pick(153)?, 154: pick(154)?, 155: pick(155)?, 156: pick(156)?,
+		157: pick(157)?, 158: pick(158)?, 159: pick(159)?, 160: pick(160)?,
+		161: pick(161)?, 162: pick(162)?, 163: pick(163)?, 164: pick(164)?,
+		165: pick(165)?, 166: pick(166)?, 167: pick(167)?, 168: pick(168)?,
+		169: pick(169)?, 170: pick(170)?, 171: pick(171)?, 172: pick(172)?,
+		173: pick(173)?, 174: pick(174)?, 175: pick(175)?, 176: pick(176)?,
+		177: pick(177)?, 178: pick(178)?, 179: pick(179)?, 180: pick(180)?,
+		181: pick(181)?, 182: pick(182)?, 183: pick(183)?, 184: pick(184)?,
+		185: pick(185)?, 186: pick(186)?, 187: pick(187)?, 188: pick(188)?,
+		189: pick(189)?, 190: pick(190)?, 191: pick(191)?, 192: pick(192)?,
+		193: pick(193)?, 194: pick(194)?, 195: pick(195)?, 196: pick(196)?,
+		197: pick(197)?, 198: pick(198)?, 199: pick(199)?, 200: pick(200)?,
+		201: pick(201)?, 202: pick(202)?, 203: pick(203)?, 204: pick(204)?,
+		205: pick(205)?, 206: pick(206)?, 207: pick(207)?, 208: pick(208)?,
+		209: pick(209)?, 210: pick(210)?, 211: pick(211)?, 212: pick(212)?,
+		213: pick(213)?, 214: pick(214)?, 215: pick(215)?, 216: pick(216)?,
+		217: pick(217)?, 218: pick(218)?, 219: pick(219)?, 220: pick(220)?,
+		221: pick(221)?, 222: pick(222)?, 223: pick(223)?, 224: pick(224)?,
+		225: pick(225)?, 226: pick(226)?, 227: pick(227)?, 228: pick(228)?,
+		229: pick(229)?, 230: pick(230)?, 231: pick(231)?, 232: pick(232)?,
+		233: pick(233)?, 234: pick(234)?, 235: pick(235)?, 236: pick(236)?,
+		237: pick(237)?, 238: pick(238)?, 239: pick(239)?, 240: pick(240)?,
+		241: pick(241)?, 242: pick(242)?, 243: pick(243)?, 244: pick(244)?,
+		245: pick(245)?, 246: pick(246)?, 247: pick(247)?, 248: pick(248)?,
+		249: pick(249)?, 250: pick(250)?, 251: pick(251)?, 252: pick(252)?,
+		253: pick(253)?, 254: pick(254)?, 255: pick(255)?, 256: pick(256)?,
+		257: pick(257)?, 258: pick(258)?, 259: pick(259)?, 260: pick(260)?,
+		261: pick(261)?, 262: pick(262)?, 263: pick(263)?, 264: pick(264)?,
+		265: pick(265)?, 266: pick(266)?, 267: pick(267)?, 268: pick(268)?,
+		269: pick(269)?, 270: pick(270)?, 271: pick(271)?, 272: pick(272)?,
+		273: pick(273)?, 274: pick(274)?, 275: pick(275)?, 276: pick(276)?,
+		277: pick(277)?, 278: pick(278)?, 279: pick(279)?, 280: pick(280)?,
+		281: pick(281)?, 282: pick(282)?, 283: pick(283)?, 284: pick(284)?,
+		285: pick(285)?, 286: pick(286)?, 287: pick(287)?, 288: pick(288)?,
+		289: pick(289)?, 290: pick(290)?, 291: pick(291)?, 292: pick(292)?,
+		293: pick(293)?, 294: pick(294)?, 295: pick(295)?, 296: pick(296)?,
+		297: pick(297)?, 298: pick(298)?, 299: pick(299)?
 	}
 	return ok(m)
 
@@ -241,22 +236,22 @@ test "a long map literal keeps the last of repeated keys and every other entry":
 		"k63": 293, "k64": 294, "k65": 295, "k66": 296, "k67": 297, "k68": 298,
 		"k69": 299
 	}
-	try expect_equal(m.length(), 230)
-	try expect_equal(m["k0"], 230)
-	try expect_equal(m["k69"], 299)
-	try expect_equal(m["k70"], 70)
-	try expect_equal(m["k229"], 229)
+	expect_equal(m.length(), 230)?
+	expect_equal(m["k0"], 230)?
+	expect_equal(m["k69"], 299)?
+	expect_equal(m["k70"], 70)?
+	expect_equal(m["k229"], 229)?
 
 test "a long map literal of list values calls its entries in order":
 	m := pairs()
-	try expect_equal(m.length(), 300)
-	try expect_equal(m[0], [0, 1000])
-	try expect_equal(m[299], [299, 1299])
+	expect_equal(m.length(), 300)?
+	expect_equal(m[0], [0, 1000])?
+	expect_equal(m[299], [299, 1299])?
 
 test "a long map literal holding try entries is built one entry at a time":
-	m := try tried()
-	try expect_equal(m.length(), 300)
-	try expect_equal(m[150], 150)
+	m := tried()?
+	expect_equal(m.length(), 300)?
+	expect_equal(m[150], 150)?
 
 test "a literal of constants covers every key and value kind":
 	ints := {
@@ -264,11 +259,11 @@ test "a literal of constants covers every key and value kind":
 		-3: "v7", -2: "v8", -1: "v9", 0: "v10", 1: "v11", 2: "v12", 3: "v13", 4: "v14",
 		5: "v15", 6: "v16", 7: "v17", 8: "v18", 9: "v19", -3: "", 0: "ü\n\"q\""
 	}
-	try expect_equal(ints.length(), 20)
-	try expect_equal(ints[-10], "v0")
-	try expect_equal(ints[-3], "")
-	try expect_equal(ints[0], "ü\n\"q\"")
-	try expect_equal(ints[9], "v19")
+	expect_equal(ints.length(), 20)?
+	expect_equal(ints[-10], "v0")?
+	expect_equal(ints[-3], "")?
+	expect_equal(ints[0], "ü\n\"q\"")?
+	expect_equal(ints[9], "v19")?
 
 	floats := {
 		"f0": 0.5, "f1": 1.5, "f2": 2.5, "f3": 3.5, "f4": 4.5, "f5": 5.5, "f6": 6.5,
@@ -276,9 +271,9 @@ test "a literal of constants covers every key and value kind":
 		"f13": 13.5, "f14": 14.5, "f15": 15.5, "f16": 16.5, "f17": 17.5, "f18": 18.5,
 		"f19": 19.5, "f0": -0.25
 	}
-	try expect_equal(floats.length(), 20)
-	try expect_equal(floats["f0"], -0.25)
-	try expect_equal(floats["f19"], 19.5)
+	expect_equal(floats.length(), 20)?
+	expect_equal(floats["f0"], -0.25)?
+	expect_equal(floats["f19"], 19.5)?
 
 	flags := {
 		"b0": true, "b1": false, "b2": false, "b3": true, "b4": false, "b5": false,
@@ -286,11 +281,11 @@ test "a literal of constants covers every key and value kind":
 		"b12": true, "b13": false, "b14": false, "b15": true, "b16": false,
 		"b17": false, "b18": true, "b19": false
 	}
-	try expect_equal(flags["b0"], true)
-	try expect_equal(flags["b1"], false)
-	try expect_equal(flags["b18"], true)
+	expect_equal(flags["b0"], true)?
+	expect_equal(flags["b1"], false)?
+	expect_equal(flags["b18"], true)?
 
 	var grown = ints.clone()
 	grown[100] = "new"
-	try expect_equal(grown.length(), 21)
-	try expect_equal(ints.length(), 20)
+	expect_equal(grown.length(), 21)?
+	expect_equal(ints.length(), 20)?

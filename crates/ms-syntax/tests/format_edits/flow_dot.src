@@ -5,7 +5,7 @@ fn g() Int:
         .n(), a.b
         .c())
     b := (text
-        | try f
+        | f?
         .m())
     return [x
         | f

@@ -413,7 +413,7 @@ export fn check[T](
 	if given := chosen:
 		base = given
 	else:
-		base = try secure_int(0, max_int)
+		base = secure_int(0, max_int)?
 
 	fuzzing := config.fuzz_milliseconds > 0
 	if fuzzing:

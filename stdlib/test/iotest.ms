@@ -21,7 +21,7 @@ impl Source[Bytes] for OneByte:
 		if held := self.held:
 			data = held.clone()
 		else:
-			fresh := try self.input.next()
+			fresh := self.input.next()?
 			if fresh.is_none(): return ok(none)
 
 			data = fresh.get().clone()
@@ -30,8 +30,8 @@ impl Source[Bytes] for OneByte:
 			self.held = none
 			return ok(data)
 
-		self.held = try data.slice(1, data.length())
-		return ok(try data.slice(0, 1))
+		self.held = data.slice(1, data.length())?
+		return ok(data.slice(0, 1)?)
 
 	var fn close() Unit!:
 		return self.input.close()
@@ -49,11 +49,11 @@ impl Source[Bytes] for FailAfter:
 	var fn next() Bytes?!:
 		if self.remaining <= 0: return error(self.cause.clone())
 
-		chunk := try self.input.next()
+		chunk := self.input.next()?
 
 		if data := chunk:
 			if data.length() > self.remaining:
-				head := try data.slice(0, self.remaining)
+				head := data.slice(0, self.remaining)?
 				self.remaining = 0
 				return ok(head)
 
@@ -90,7 +90,7 @@ impl Sink[Bytes] for FailingSink:
 		prefix := self.remaining
 		self.remaining = 0
 		if prefix > 0:
-			try self.output.write(try value.slice(0, prefix))
+			self.output.write(value.slice(0, prefix)?)?
 		return error(self.cause.clone())
 
 	var fn flush() Unit!:

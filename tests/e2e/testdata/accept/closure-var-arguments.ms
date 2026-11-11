@@ -11,22 +11,22 @@ test "closure direct":
 	var values: List[Int] = []
 	callback := fn() List[Int]: singleton(var values)
 	_r := callback()
-	values.length() | try expect_equal(1)
+	values.length() | expect_equal(1)?
 
 test "closure unit":
 	var values: List[Int] = []
 	callback := fn() Unit: bump(var values)
 	callback()
-	values.length() | try expect_equal(1)
+	values.length() | expect_equal(1)?
 
 test "closure append":
 	var values: List[Int] = []
 	callback := fn() Unit: values.append(1)
 	callback()
-	values.length() | try expect_equal(1)
+	values.length() | expect_equal(1)?
 
 test "closure default passes a captured variable":
 	var values: List[Int] = []
 	callback := fn(value: List[Int] = singleton(var values)) Int: value.length()
-	callback() | try expect_equal(1)
-	values.length() | try expect_equal(1)
+	callback() | expect_equal(1)?
+	values.length() | expect_equal(1)?

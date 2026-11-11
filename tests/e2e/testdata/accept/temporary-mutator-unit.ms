@@ -14,7 +14,7 @@ test "a Unit mutation of a temporary list returns Unit":
 	append_temporary()
 
 	unit_value: Unit := [0].set(0, 9)
-	try expect_equal(unit_value, unit)
+	expect_equal(unit_value, unit)?
 
 test "a mutation of a temporary list keeps its extra result":
-	try expect_equal(pop_temporary(), 4)
+	expect_equal(pop_temporary(), 4)?

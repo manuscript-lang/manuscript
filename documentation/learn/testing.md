@@ -17,10 +17,10 @@ fn add(a: Int, b: Int) Int:
     return a + b
 
 test "addition":
-    try expect_equal(add(1, 2), 3)
+    expect_equal(add(1, 2), 3)?
 
 test "zero is unchanged":
-    try expect_equal(add(0, 7), 7)
+    expect_equal(add(0, 7), 7)?
 ```
 
 ```sh
@@ -76,11 +76,11 @@ import parse from "@std/data/json.ms"
 import expect_equal, expect_ok, expect_error, expect_some from "@std/test/test.ms"
 
 test "typed JSON and Optional payloads":
-    number := try expect_ok(parse[Int]("3"))
-    try expect_equal(number, 3)
-    cause := try expect_error(parse[Int]("true"))
-    try expect_equal(cause.kind, "EBADMSG")
-    try expect_some([number].first()) | try expect_equal(3)
+    number := expect_ok(parse[Int]("3"))?
+    expect_equal(number, 3)?
+    cause := expect_error(parse[Int]("true"))?
+    expect_equal(cause.kind, "EBADMSG")?
+    expect_some([number].first())? | expect_equal(3)?
 ```
 
 Test output:
@@ -130,7 +130,7 @@ import check, ints, lists from "@std/test/property.ms"
 import expect_equal from "@std/test/test.ms"
 
 test "reversing twice restores a list":
-    try check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))
+    check("reverse twice", lists(ints(-100, 100)), fn xs: expect_equal(xs.reversed().reversed(), xs))?
 ```
 
 Test output:
@@ -193,7 +193,7 @@ fn sum_to(n: Int) Int:
     return total
 
 bench "sum to one hundred":
-    try expect_equal(sum_to(100), 4950)
+    expect_equal(sum_to(100), 4950)?
 ```
 
 ```sh
@@ -240,10 +240,10 @@ impl TestHooks for Counter:
 
 test "increments":
     fixture.count += 1
-    try expect_equal(fixture.count, 1)
+    expect_equal(fixture.count, 1)?
 
 test "starts fresh":
-    try expect_equal(fixture.count, 0)
+    expect_equal(fixture.count, 0)?
 ```
 
 Test output:

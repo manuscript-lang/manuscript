@@ -4,23 +4,23 @@
 import expect_equal from "@std/test/test.ms"
 
 type Items:
-    count: Int
+	count: Int
 
 enum Outcome:
-    Value(value: Int)
+	Value(value: Int)
 
 fn compute(value: Int) Int:
-    return value
+	return value
 
 fn ordinary() Outcome:
-    return Outcome.Value(compute(3))
+	return Outcome.Value(compute(3))
 
 test "non-prelude spellings are ordinary names":
-    try expect_equal(Items(2).count, 2)
+	expect_equal(Items(2).count, 2)?
 
-    forward := compute
-    try expect_equal(forward(4), 4)
+	forward := compute
+	expect_equal(forward(4), 4)?
 
-    match ordinary():
-        Value(value):
-            try expect_equal(value, 3)
+	match ordinary():
+		Value(value):
+			expect_equal(value, 3)?

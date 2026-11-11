@@ -175,7 +175,7 @@ impl Command:
 	// Checks the tree, resolves the subcommand chain, and validates flags and arguments.
 	// Returns `Help` for `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
 	fn parse(argv: List[String]) Parsed!:
-		try check_schema(self, [], [self.name.clone()])
+		check_schema(self, [], [self.name.clone()])?
 		return walk(self, argv)
 
 	// Parses `argv`, writes help to stdout or the error plus a usage hint to stderr, and runs the handler.
@@ -288,7 +288,7 @@ export fn command[T: Data](
 ) Command:
 	return Command(
 		name: name, about: about, flags: flags, args: args,
-		exec: fn matches: run(try decode[T](matches))
+		exec: fn matches: run(decode[T](matches)?)
 	)
 
 // Builds `T` from the JSON literals of the supplied values.
@@ -409,7 +409,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
 			cli_invalid_schema("flag help is reserved in {where}")
 		)
 
-		try claim(var names, flag.name.clone(), "flag {flag.name} in {where}")
+		claim(var names, flag.name.clone(), "flag {flag.name} in {where}")?
 		if flag.short.is_empty(): continue
 		if flag.short.length() != 1 or flag.short == "h" or flag.short == "-":
 			return error(
@@ -418,7 +418,7 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
 				)
 			)
 
-		try claim(var shorts, flag.short.clone(), "short -{flag.short} in {where}")
+		claim(var shorts, flag.short.clone(), "short -{flag.short} in {where}")?
 
 	for flag in node.flags:
 		if text := flag.default:
@@ -459,11 +459,11 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
 		if child.name == "help" or child.name.is_empty():
 			return error(cli_invalid_schema("bad command name {child.name} in {where}"))
 
-		try claim(var words, child.name.clone(), "command {child.name} in {where}")
+		claim(var words, child.name.clone(), "command {child.name} in {where}")?
 
 	below := inherited.concat(persistent_flags(node.flags))
 	for child in node.children:
-		try check_schema(child, below, path.concat([child.name.clone()]))
+		check_schema(child, below, path.concat([child.name.clone()]))?
 
 // Finds a flag by long name or one-letter alias.
 fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
@@ -548,23 +548,23 @@ fn walk_from(
 			if is_bool(chosen.kind):
 				if negated: values[chosen.name.clone()] = ["false"]
 				else:
-					try store(
+					store(
 						var values,
 						chosen,
 						if cut.is_some(): body.drop(
 							cut.get() + 1
 						) else: "true"
-					)
+					)?
 
 				continue
 
 			if cut.is_some():
-				try store(var values, chosen, body.drop(cut.get() + 1))
+				store(var values, chosen, body.drop(cut.get() + 1))?
 				continue
 
 			if index >= argv.length(): return error(cli_missing_value(token))
 
-			try store(var values, chosen, argv[index].clone())
+			store(var values, chosen, argv[index].clone())?
 			index += 1
 			continue
 
@@ -575,16 +575,16 @@ fn walk_from(
 					inherited.concat(persistent_flags(node.flags)), values
 				)
 			if token == "help" and not node.children.is_empty():
-				return ok(Parsed.Help(try help_at(node, argv, index, path, inherited)))
+				return ok(Parsed.Help(help_at(node, argv, index, path, inherited)?))
 
 		words.append(token)
 
 	if not node.children.is_empty() and words.is_empty():
 		return ok(Parsed.Help(render_help(node, path, inherited)))
 
-	try bind(node, words, var values, path)
+	bind(node, words, var values, path)?
 	for flag in inherited.concat(node.flags):
-		try fill(var values, flag)
+		fill(var values, flag)?
 
 	fields := collect_fields(values, inherited.concat(node.flags), node.args)
 	return ok(Parsed.Run(Matches(values, path, fields)))

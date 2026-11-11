@@ -47,7 +47,7 @@ fn work(kind: String, data: List[Input], rounds: Int) Int!:
 	for repeat in 0..rounds:
 		for item in data:
 			if kind == "parse":
-				t := try parse_timestamp("2026-03-01T12:30:45.123Z")
+				t := parse_timestamp("2026-03-01T12:30:45.123Z")?
 				checksum += t.seconds + t.nanos
 			else if kind == "format":
 				checksum += item.time.to_string().length()
@@ -58,10 +58,10 @@ fn work(kind: String, data: List[Input], rounds: Int) Int!:
 
 				checksum += 1
 			else:
-				t := try item.time.shift(nanoseconds(item.delta))
+				t := item.time.shift(nanoseconds(item.delta))?
 
 				if kind == "pipeline":
-					u := try parse_timestamp(t.to_string())
+					u := parse_timestamp(t.to_string())?
 					if u.seconds != t.seconds or u.nanos != t.nanos:
 						return error(Error("round-trip mismatch"))
 
@@ -75,9 +75,9 @@ fn main() Unit!:
 	count := args[1].parse_int().get()
 	rounds := args[2].parse_int().get()
 	data := inputs(kind, count)
-	warmup := try work(kind, data, 1)
+	warmup := work(kind, data, 1)?
 	start := monotonic()
-	checksum := try work(kind, data, rounds)
+	checksum := work(kind, data, rounds)?
 	elapsed := monotonic().difference(start).nanos
 	if checksum != warmup * rounds: return error(Error("checksum changed"))
 

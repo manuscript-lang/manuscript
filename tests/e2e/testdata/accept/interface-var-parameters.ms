@@ -39,17 +39,17 @@ impl Holder:
 test "a var parameter on an interface operation writes back to a local":
 	var acc = Acc([])
 	var d: Step = Doubler(0)
-	for i in 0..3: try d.step(i, var acc)
+	for i in 0..3: d.step(i, var acc)?
 
 	var r: Step = Reader(0)
-	try r.step(5, var acc)
-	try expect_equal(acc.items, [0, 2, 4])
+	r.step(5, var acc)?
+	expect_equal(acc.items, [0, 2, 4])?
 
 test "a var field argument writes back to its record":
 	var h = Holder(Doubler(0), Acc([1]))
-	try h.run(4)
-	try h.run(5)
-	try expect_equal(h.acc.items, [1, 8, 10])
+	h.run(4)?
+	h.run(5)?
+	expect_equal(h.acc.items, [1, 8, 10])?
 
 // Writes each word of a line, and the count of words at the end.
 type Words:
@@ -66,7 +66,7 @@ impl Transform[String, String] for Words:
 
 test "a transform writes zero or more items per input and more at the end":
 	words := through[String, String](from_list(["a b", "", "c"]), Words(0))
-	try expect_equal(try collect(words), ["a", "b", "", "c", "4"])
+	expect_equal(collect(words)?, ["a", "b", "", "c", "4"])?
 
 // Writes an item, then fails on a negative input.
 type Checked:
@@ -96,5 +96,5 @@ test "a failed step's partial output is dropped and the failure is the next item
 
 		seen.append(item.get().get(0))
 
-	try expect_equal(seen, [1])
-	try expect_equal(failed, true)
+	expect_equal(seen, [1])?
+	expect_equal(failed, true)?

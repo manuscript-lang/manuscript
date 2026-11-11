@@ -15,4 +15,4 @@ fn read(value: Get) Int:
 		_: return 0
 
 test "lowercase contract patterns require an explicit receiver":
-	try expect_equal(read(item(n: 7)), 7)
+	expect_equal(read(item(n: 7)), 7)?

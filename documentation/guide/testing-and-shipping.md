@@ -22,13 +22,13 @@ fn order_total(prices: List[Int]) Int:
     return subtotal + shipping(subtotal)
 
 test "small orders pay shipping":
-    try expect_equal(order_total([1250, 800]), 2550)
+    expect_equal(order_total([1250, 800]), 2550)?
 
 test "big orders ship free":
-    try expect_equal(order_total([2500, 2500]), 5000)
+    expect_equal(order_total([2500, 2500]), 5000)?
 
 test "the order of items never changes the total":
-    try check("any order", lists(ints(0, 5000), 0, 20), fn prices: expect_equal(order_total(prices.reversed()), order_total(prices)))
+    check("any order", lists(ints(0, 5000), 0, 20), fn prices: expect_equal(order_total(prices.reversed()), order_total(prices)))?
 ```
 
 ```text

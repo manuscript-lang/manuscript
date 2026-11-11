@@ -18,4 +18,4 @@ test! "parse_int":
         )
     )
     try expect_true((parsed(text: "99999999999999999999") == 0 - 1))
-    try expect_true(("héllo".to_bytes().length() == 6))
+    expect_true(("héllo".to_bytes().length() == 6))?

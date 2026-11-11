@@ -13,14 +13,14 @@ import open from "@std/os/fs.ms"
 import lines, collect from "@std/io/streams.ms"
 
 fn count_orders(path: String) Int!:
-    file := try open(path)
-    rows := try collect(try file.reader() | lines)
+    file := open(path)?
+    rows := collect(file.reader()? | lines)?
     if rows.is_empty():
         return error(Error("{path} is empty", kind: "EBADMSG"))
     return ok(rows.length() - 1)
 
 fn main() Unit!:
-    count := try count_orders("orders.csv")
+    count := count_orders("orders.csv")?
     print("{count} orders")
 ```
 

@@ -190,7 +190,7 @@ impl Sink[Bytes] for DescriptorSink:
 		if msrt_streams_write(self.id, value) != 0:
 			return error(Error("stream: closed", kind: "EBADF"))
 
-		try descriptor_write_result(self.id)
+		descriptor_write_result(self.id)?
 		if msrt_streams_buffered(self.id) > HIGH_WATER: return flush_descriptor(self.id)
 
 	// Waits until the queued bytes have been handed to the descriptor; an OS write failure returns `EIO`.
@@ -212,7 +212,7 @@ fn descriptor_write_result(id: Int) Unit!:
 	return ok(unit)
 
 fn flush_descriptor(id: Int) Unit!:
-	try adopt[Unit](msrt_streams_flush(id)).wait()
+	adopt[Unit](msrt_streams_flush(id)).wait()?
 	return descriptor_write_result(id)
 
 // Returns the process standard-input stream.
@@ -408,7 +408,7 @@ impl Source[B] for Through[A, B]:
 			if item := self.out.pop(): return ok(item)
 			if self.finished: return ok(none)
 
-			step := try self.input.next()
+			step := self.input.next()?
 			var wrote: Unit! = ok(unit)
 
 			if value := step:

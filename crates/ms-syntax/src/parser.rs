@@ -14,6 +14,8 @@ pub const MAX_NESTING: usize = 1000;
 /// Bounds left-nested operator, member, call and index chains.
 pub const MAX_CHAIN: usize = 10000;
 
+const TRY_REMOVED: &str = "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step";
+
 /// Parses `source` strictly. The first error aborts the parse.
 pub fn parse(file: &Arc<str>, source: &str) -> PResult<Module> {
     let mut module = parse_chunk(file, source, 0, 0, 0)?;
@@ -2016,7 +2018,7 @@ impl<'a> Parser<'a> {
                         _ => {}
                     }
                 }
-                return self.fail(t, "only a call, try call, or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function");
+                return self.fail(t, "only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a function");
             }
             if self.inline_return {
                 StmtKind::Return(Some(e))
@@ -2329,12 +2331,13 @@ impl<'a> Parser<'a> {
                     operand: Box::new(operand),
                 },
             );
-        } else if matches!(t.kind, Tok::Plus | Tok::Minus | Tok::Try) {
+        } else if t.kind == Tok::Try {
+            return self.fail(t, TRY_REMOVED);
+        } else if matches!(t.kind, Tok::Plus | Tok::Minus) {
             self.at += 1;
             let op = match t.kind {
                 Tok::Plus => UnaryOp::Plus,
-                Tok::Minus => UnaryOp::Neg,
-                _ => UnaryOp::Try,
+                _ => UnaryOp::Neg,
             };
             let operand = self.expression(8)?;
             e = self.mk(
@@ -2476,19 +2479,13 @@ impl<'a> Parser<'a> {
             let first = self.previous();
             return self.fail_word_operator(first, t, "'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step", "or");
         }
-        let try_tok = self.peek();
-        let tried = self.take(Tok::Try);
+        if self.kind() == Tok::Try {
+            let t = self.peek();
+            return self.fail(t, TRY_REMOVED);
+        }
         let mut step;
-        if self.kind() == Tok::Dot && !(tried && self.peek().pos.line != try_tok.pos.line) {
+        if self.kind() == Tok::Dot {
             step = self.postfix(lhs)?;
-        } else if tried && self.kind() != Tok::Name {
-            return Ok(self.mk(
-                try_tok.pos,
-                ExprKind::Unary {
-                    op: UnaryOp::Try,
-                    operand: Box::new(lhs),
-                },
-            ));
         } else {
             let name = self.peek();
             if name.kind != Tok::Name {
@@ -2543,20 +2540,11 @@ impl<'a> Parser<'a> {
                 },
             );
         }
-        if !tried && self.kind() == Tok::Question {
+        if self.kind() == Tok::Question {
             let question = self.peek();
             self.at += 1;
             step = self.mk(
                 question.pos,
-                ExprKind::Unary {
-                    op: UnaryOp::Try,
-                    operand: Box::new(step),
-                },
-            );
-        }
-        if tried {
-            step = self.mk(
-                try_tok.pos,
                 ExprKind::Unary {
                     op: UnaryOp::Try,
                     operand: Box::new(step),
@@ -2749,9 +2737,6 @@ impl<'a> Parser<'a> {
                 let hint = match (t.kind, before) {
                     (Tok::Else, _) => {
                         "'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', directly after the if body"
-                    }
-                    (Tok::Colon, Tok::Try) => {
-                        "'try' is a prefix on a call, not a block: write 'try f(x)' to unwrap a Result or return its error, and 'if let' to handle failure locally"
                     }
                     (Tok::Gt, Tok::Lt) => "'<>' is not an operator; write '!=' for inequality",
                     (Tok::Star, Tok::Star) => {

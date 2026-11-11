@@ -10,7 +10,7 @@ fn g() Int:
         | .m()
         .n(),
         text
-        | try f
+        | f?
         .m()
     )
     return a

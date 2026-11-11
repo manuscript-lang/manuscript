@@ -23,7 +23,7 @@ test "public collection support types retain their standard runtime identities":
 	values := [3, 4]
 	entries: List[ListEntry[Int]] := list_entries(values)
 	entry: ListEntry[Int] := ListEntry(0, 3)
-	try expect_equal(entries[0], entry)
+	expect_equal(entries[0], entry)?
 
 	var map = Map[String, Int]()
 	map.add("a", 3)
@@ -33,23 +33,23 @@ test "public collection support types retain their standard runtime identities":
 	found: MapEntry[String, Int]? := map.find(
 		fn(key: String, value: Int) Bool: (value == 3)
 	)
-	try expect_false(pairs[0] != pair or found.get() != pair)
+	expect_false(pairs[0] != pair or found.get() != pair)?
 
 	selected: List[Int]! := slice(values)
-	try expect_equal(selected.get(), [3])
+	expect_equal(selected.get(), [3])?
 
 	invalid: List[Int]! := values.slice(0, 9)
 	cause: Error := invalid.err()
-	try expect_equal(cause.kind, "ERANGE")
-	try expect_false(explain(cause).is_empty())
+	expect_equal(cause.kind, "ERANGE")?
+	expect_false(explain(cause).is_empty())?
 
 	grouped: Map[Int, List[Int]] := group(values, fn(value: Int) Int: (value % 2))
 	distinct: Set[Int] := unique(values)
-	try expect_false(grouped[1] != [3] or distinct.values() != [3, 4])
-	try expect_equal(index(values, 4).get(), 1)
+	expect_false(grouped[1] != [3] or distinct.values() != [3, 4])?
+	expect_equal(index(values, 4).get(), 1)?
 
 	absent: Int! := first([])
 	missing: Error := absent.err()
-	try expect_equal(missing.kind, "ENOENT")
-	try expect_false(not missing.message.contains("collection-prelude-support.ms:"))
-	try expect_equal(first(values).get(), 3)
+	expect_equal(missing.kind, "ENOENT")?
+	expect_false(not missing.message.contains("collection-prelude-support.ms:"))?
+	expect_equal(first(values).get(), 3)?

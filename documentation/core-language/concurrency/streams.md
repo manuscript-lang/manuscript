@@ -44,7 +44,7 @@ import WriteStream from "@std/io/io.ms"
 
 fn dump(rows: List[String], var out: WriteStream[String]) Unit!:
     for row in rows:
-        try out.write("{row}\n")
+        out.write("{row}\n")?
     return out.flush()
 ```
 
@@ -64,8 +64,8 @@ fn line_lengths(input: ReadStream[Bytes]) ReadStream[Int]:
 
 test "measure lines":
     input := from_bytes("first\n\nok\n".to_bytes())
-    lengths := try collect(line_lengths(input), max_items: 10)
-    try expect_equal(lengths, [5, 2])
+    lengths := collect(line_lengths(input), max_items: 10)?
+    expect_equal(lengths, [5, 2])?
 ```
 
 | Step | Result |
@@ -97,7 +97,7 @@ import expect_equal from "@std/test/test.ms"
 
 fn send_numbers(var out: WriteStream[Int]) Unit!:
     for n in [1, 2, 3]:
-        try out.write(n)
+        out.write(n)?
     return out.close()
 
 test "sum values from a producer":
@@ -107,8 +107,8 @@ test "sum values from a producer":
     var total = 0
     for n in p.reader():
         total += n
-    try producer.wait()
-    try expect_equal(total, 6)
+    producer.wait()?
+    expect_equal(total, 6)?
 ```
 
 ```text

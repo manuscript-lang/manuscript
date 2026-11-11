@@ -14,13 +14,13 @@ test "duration parser accepts units, signs, components and Unicode microseconds"
 		500000000, 1000000000, 1050000000
 	]
 	for i in 0..examples.length():
-		try expect_equal(parse_duration(examples.get(i)), ok(nanoseconds(nanos.get(i))))
+		expect_equal(parse_duration(examples.get(i)), ok(nanoseconds(nanos.get(i))))?
 
 test "duration parser canonicalizes signed and sub-nanosecond zero":
 	for text in ["0", "+0", "-0", "0s", "-0.0h", "+.0μs", ".9ns", "-.9ns", "0.9ns0.9ns"]:
-		value := try parse_duration(text)
-		try expect_equal(value.to_nanoseconds(), 0)
-		try expect_equal(value.to_string(), "0s")
+		value := parse_duration(text)?
+		expect_equal(value.to_nanoseconds(), 0)?
+		expect_equal(value.to_string(), "0s")?
 
 test "duration fractions truncate exactly without rounding or a precision cap":
 	examples := [
@@ -32,7 +32,7 @@ test "duration fractions truncate exactly without rounding or a precision cap":
 	]
 	nanos := [1999, -1999, 1000000000, 0, 0, 1, 19999999999, 20000000000]
 	for i in 0..examples.length():
-		try expect_equal(parse_duration(examples.get(i)), ok(nanoseconds(nanos.get(i))))
+		expect_equal(parse_duration(examples.get(i)), ok(nanoseconds(nanos.get(i))))?
 
 test "duration parser round trips formatter branches and signed extrema":
 	values := [
@@ -44,35 +44,35 @@ test "duration parser round trips formatter branches and signed extrema":
 
 	for n in values:
 		duration := nanoseconds(n)
-		try expect_equal(parse_duration(duration.to_string()), ok(nanoseconds(n)))
+		expect_equal(parse_duration(duration.to_string()), ok(nanoseconds(n)))?
 
-	try expect_equal(
+	expect_equal(
 		parse_duration("-9223372036854775808ns"),
 		ok(nanoseconds(-9223372036854775807 - 1))
-	)
-	try expect_equal(
+	)?
+	expect_equal(
 		parse_duration("9223372036854775807ns"), ok(nanoseconds(9223372036854775807))
-	)
-	try expect_equal(
+	)?
+	expect_equal(
 		parse_duration("9223372036.854775807999999s"),
 		ok(nanoseconds(9223372036854775807))
-	)
-	try expect_equal(
+	)?
+	expect_equal(
 		parse_duration("-9223372036.854775808999999s"),
 		ok(nanoseconds(-9223372036854775807 - 1))
-	)
-	try expect_equal(
+	)?
+	expect_equal(
 		parse_duration("9223372036854775807.999ns"),
 		ok(nanoseconds(9223372036854775807))
-	)
-	try expect_equal(
+	)?
+	expect_equal(
 		parse_duration("-9223372036854775808.999ns"),
 		ok(nanoseconds(-9223372036854775807 - 1))
-	)
-	try expect_equal(
+	)?
+	expect_equal(
 		parse_duration("9223372036854775807ns.999ns"),
 		ok(nanoseconds(9223372036854775807))
-	)
+	)?
 
 test "duration overflow is an expected range error":
 	invalid: Duration! := error(Error("time: value out of range", kind: "ERANGE"))
@@ -83,7 +83,7 @@ test "duration overflow is an expected range error":
 		"-9223372036854775808ns1ns", "9223372036854775808h",
 		"999999999999999999999999999999999999999s"
 	]:
-		try expect_equal(parse_duration(text), invalid)
+		expect_equal(parse_duration(text), invalid)?
 
 test "duration parser rejects malformed input and gives syntax errors precedence":
 	invalid: Duration! := error(Error("time: invalid data", kind: "EBADMSG"))
@@ -96,19 +96,19 @@ test "duration parser rejects malformed input and gives syntax errors precedence
 		"999999999999999999999999999999999999999",
 		"1h999999999999999999999999999999999999999..µs"
 	]:
-		try expect_equal(parse_duration(text), invalid)
+		expect_equal(parse_duration(text), invalid)?
 
 test "duration parsing stays exact for long leading zeros and fractions":
-	zeros := try "0".repeat(10000)
-	try expect_equal(parse_duration("{zeros}1ns"), ok(nanoseconds(1)))
-	try expect_equal(parse_duration("1.{zeros}1s"), ok(nanoseconds(1000000000)))
-	try expect_equal(parse_duration("0.{zeros}1h"), ok(nanoseconds(0)))
+	zeros := "0".repeat(10000)?
+	expect_equal(parse_duration("{zeros}1ns"), ok(nanoseconds(1)))?
+	expect_equal(parse_duration("1.{zeros}1s"), ok(nanoseconds(1000000000)))?
+	expect_equal(parse_duration("0.{zeros}1h"), ok(nanoseconds(0)))?
 
 	invalid: Duration! := error(Error("time: invalid data", kind: "EBADMSG"))
-	try expect_equal(parse_duration("0.{zeros}1h!"), invalid)
+	expect_equal(parse_duration("0.{zeros}1h!"), invalid)?
 
-	nines := try "9".repeat(10000)
-	try expect_equal(parse_duration("{nines}ns!"), invalid)
+	nines := "9".repeat(10000)?
+	expect_equal(parse_duration("{nines}ns!"), invalid)?
 
 	overflow: Duration! := error(Error("time: value out of range", kind: "ERANGE"))
-	try expect_equal(parse_duration("{nines}ns"), overflow)
+	expect_equal(parse_duration("{nines}ns"), overflow)?

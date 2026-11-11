@@ -27,7 +27,7 @@ fn fill(log: String) Unit:
 	items.remove("b")  // the removed value closes at once
 
 test "a map of resources closes the values it holds newest entry first at scope end":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	fill(log.clone())
-	logged(log.clone()) | try expect_equal("2,4,3,1,")
+	logged(log.clone()) | expect_equal("2,4,3,1,")?

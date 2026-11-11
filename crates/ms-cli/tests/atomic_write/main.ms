@@ -41,14 +41,14 @@ fn report(result: Unit!) Unit:
 	else: print("ok")
 
 fn main() Unit!:
-	try expect_equal(temporary_name("config.json", "s"), ".config.json.s.tmp")
-	try expect_equal(temporary_name("資料/config.json", "s"), "資料/.config.json.s.tmp")
-	try expect_equal(temporary_name("dir/設定.json", "s"), "dir/.設定.json.s.tmp")
-	try expect_equal(temporary_name("C:\\資料\\設定.json", "s"), "C:\\資料\\.設定.json.s.tmp")
+	expect_equal(temporary_name("config.json", "s"), ".config.json.s.tmp")?
+	expect_equal(temporary_name("資料/config.json", "s"), "資料/.config.json.s.tmp")?
+	expect_equal(temporary_name("dir/設定.json", "s"), "dir/.設定.json.s.tmp")?
+	expect_equal(temporary_name("C:\\資料\\設定.json", "s"), "C:\\資料\\.設定.json.s.tmp")?
 
-	long := try "ñ".repeat(40)
-	short := try "ñ".repeat(32)
-	try expect_equal(temporary_name("dir/{long}", "s"), "dir/.{short}.s.tmp")
+	long := "ñ".repeat(40)?
+	short := "ñ".repeat(32)?
+	expect_equal(temporary_name("dir/{long}", "s"), "dir/.{short}.s.tmp")?
 	print("names ok")
 	print("close failure")
 	report(

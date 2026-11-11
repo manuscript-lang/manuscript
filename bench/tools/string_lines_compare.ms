@@ -52,7 +52,7 @@ export fn run_rows(
 	expected: Map[String, Identity],
 	cpu: String
 ) List[Row]!:
-	text := try run_pinned(executable, [], cpu)
+	text := run_pinned(executable, [], cpu)?
 	lines := text.split("\n").filter(fn l: l.trim() != "")
 	if (
 		lines.is_empty()
@@ -72,7 +72,7 @@ export fn run_rows(
 			"duplicate or unknown case: {name}"
 		)
 
-		nums := try all_ints(f.slice(1, 5).get([]))
+		nums := all_ints(f.slice(1, 5).get([]))?
 		want := expected.get_or(name, Identity(0, 0, 0))
 		if (
 			nums[0] != want.input_bytes
@@ -135,14 +135,14 @@ fn compare(
 	paths.add("before", before.clone())
 	paths.add("after", after.clone())
 	for name in ["before", "after"]:
-		_warm := try run_rows(paths.get_or(name, ""), expected, "")
+		_warm := run_rows(paths.get_or(name, ""), expected, "")?
 
 	var csv = ["pair,variant,case,input_bytes,iterations,elapsed_ns,checksum"]
 	var per = Map[String, List[Float]]()
 
 	for pair in 0..pairs:
 		for variant in (if pair % 2 == 0: ["before", "after"] else: ["after", "before"]):
-			for row in try run_rows(paths.get_or(variant, ""), expected, ""):
+			for row in run_rows(paths.get_or(variant, ""), expected, "")?:
 				csv.append("{pair},{variant},{row.line}")
 
 				key := "{row.name} {variant}"

@@ -13,7 +13,7 @@ impl Closeable for Marker:
 	var fn close() Unit!:
 		if not self.closed:
 			self.closed = true
-			try append_file(self.log, "{self.id},").wait()
+			append_file(self.log, "{self.id},").wait()?
 
 impl Marker:
 	fn status() Int: self.id
@@ -30,18 +30,18 @@ fn marker(id: Int, log: String) Marker: Marker(id, log)
 
 fn ordinary(log: String) Unit!:
 	status := marker(1, log).status
-	try expect_equal(status(), 1)
-	try expect_equal(status(), 1)
+	expect_equal(status(), 1)?
+	expect_equal(status(), 1)?
 
 fn defaulted(log: String) Unit!:
 	status := marker(2, log).with_default
-	try expect_equal(status(), 12)
-	try expect_equal(status(20), 22)
+	expect_equal(status(), 12)?
+	expect_equal(status(20), 22)?
 
 fn generic(log: String) Unit!:
 	status := marker(3, log).generic[Int]
-	try expect_equal(status(10), 3)
-	try expect_equal(status(20), 3)
+	expect_equal(status(10), 3)?
+	expect_equal(status(20), 3)?
 
 fn escaped(log: String) fn() Int:
 	value := marker(4, log)
@@ -49,47 +49,47 @@ fn escaped(log: String) fn() Int:
 
 fn escaping(log: String) Unit!:
 	status := escaped(log.clone())
-	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,")
-	try expect_equal(status(), 4)
-	try expect_equal(status(), 4)
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,")?
+	expect_equal(status(), 4)?
+	expect_equal(status(), 4)?
 
 fn borrow(value: Marker) Unit!:
 	status := value.status
 	with_default := value.with_default
-	try expect_equal(status(), 5)
-	try expect_equal(with_default(), 15)
+	expect_equal(status(), 5)?
+	expect_equal(with_default(), 15)?
 
 fn borrowed(log: String) Unit!:
 	value := marker(5, log.clone())
-	try borrow(value)
-	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,")
-	try expect_equal(value.status(), 5)
+	borrow(value)?
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,")?
+	expect_equal(value.status(), 5)?
 
 test "nonmutating source default and generic method captures close their owners":
-	tmp := temporary("source-bound-close-") | try expect_ok
+	tmp := temporary("source-bound-close-") | expect_ok?
 	log := "{tmp.path()}/log"
-	try write_file(log, "").wait()
-	try ordinary(log.clone())
-	try defaulted(log.clone())
-	try generic(log.clone())
-	try escaping(log.clone())
-	try borrowed(log.clone())
-	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,5,")
+	write_file(log, "").wait()?
+	ordinary(log.clone())?
+	defaulted(log.clone())?
+	generic(log.clone())?
+	escaping(log.clone())?
+	borrowed(log.clone())?
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,5,")?
 
 fn shared_default(var value: Marker) Unit!:
 	bump := value.bump
-	try expect_equal(bump(), 8)
-	try expect_equal(bump(2), 10)
+	expect_equal(bump(), 8)?
+	expect_equal(bump(2), 10)?
 
 fn shared_owner(log: String) Unit!:
 	var value = marker(7, log.clone())
-	try shared_default(var value)
-	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "")
-	try expect_equal(value.status(), 10)
+	shared_default(var value)?
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "")?
+	expect_equal(value.status(), 10)?
 
 test "shared source default method captures do not close the borrowed receiver":
-	tmp := temporary("source-bound-shared-") | try expect_ok
+	tmp := temporary("source-bound-shared-") | expect_ok?
 	log := "{tmp.path()}/log"
-	try write_file(log, "").wait()
-	try shared_owner(log.clone())
-	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "10,")
+	write_file(log, "").wait()?
+	shared_owner(log.clone())?
+	expect_equal(read_file(log).wait().get().decode_utf8().get(""), "10,")?

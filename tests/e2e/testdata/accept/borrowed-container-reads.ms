@@ -56,95 +56,95 @@ fn build() Map[String, Order]:
 
 test "let and if let of a map entry read it in place":
 	orders := build()
-	try expect_equal(by_binding(orders, "a"), 8)
-	try expect_equal(by_binding(orders, "zz"), 0)
-	try expect_equal(by_if_let(orders, "b"), 9)
-	try expect_equal(by_if_let(orders, "zz"), 0)
-	try expect_equal(by_chain(orders, "a"), 8)
-	try expect_equal(by_chain(orders, "zz"), 0)
-	try expect_equal(take_optional(returned(orders, "b")), 3)
-	try expect_equal(take_optional(returned(orders, "zz")), -1)
+	expect_equal(by_binding(orders, "a"), 8)?
+	expect_equal(by_binding(orders, "zz"), 0)?
+	expect_equal(by_if_let(orders, "b"), 9)?
+	expect_equal(by_if_let(orders, "zz"), 0)?
+	expect_equal(by_chain(orders, "a"), 8)?
+	expect_equal(by_chain(orders, "zz"), 0)?
+	expect_equal(take_optional(returned(orders, "b")), 3)?
+	expect_equal(take_optional(returned(orders, "zz")), -1)?
 
 	found := orders.get("a")
-	try expect_equal(take_optional(found), 2)
+	expect_equal(take_optional(found), 2)?
 
 test "a lent entry of a local var map ends at its last use":
 	var m = build()
 	a := m.get("a")
-	try expect_equal(a.get().id, "a")
+	expect_equal(a.get().id, "a")?
 	m.add("c", order("c", 1))
 	if c := m.get("c"):
-		try expect_equal(c.items.first().get().sku, "c-0")
+		expect_equal(c.items.first().get().sku, "c-0")?
 	m.remove("a")
-	try expect_equal(m.get("a").is_none(), true)
+	expect_equal(m.get("a").is_none(), true)?
 
 	o := m["b"]
-	try expect_equal(o.items.last().get().qty, 3)
+	expect_equal(o.items.last().get().qty, 3)?
 	m.add("d", order("d", 4))
-	try expect_equal(m.length(), 3)
+	expect_equal(m.length(), 3)?
 
 test "first and last lend the element":
 	var xs = ["one", "two", "three"]
 	first := xs.first()
 	last := xs.last()
-	try expect_equal(first.get(), "one")
-	try expect_equal(last.get(), "three")
+	expect_equal(first.get(), "one")?
+	expect_equal(last.get(), "three")?
 	if f := xs.first():
-		try expect_equal(f.length(), 3)
+		expect_equal(f.length(), 3)?
 	xs.append("four")
-	try expect_equal(xs.last().get(), "four")
+	expect_equal(xs.last().get(), "four")?
 
 	empty := List[String]()
-	try expect_equal(empty.first().is_none(), true)
-	try expect_equal(empty.last().is_none(), true)
+	expect_equal(empty.first().is_none(), true)?
+	expect_equal(empty.last().is_none(), true)?
 	if none_here := empty.first():
-		try expect_equal(none_here, "unreachable")
+		expect_equal(none_here, "unreachable")?
 
 test "a temporary container lives as long as its lent entry":
 	o := build().get("b")
-	try expect_equal(o.get().items.length(), 3)
+	expect_equal(o.get().items.length(), 3)?
 	if item := order("t", 2).items.last():
-		try expect_equal(item.sku, "t-1")
+		expect_equal(item.sku, "t-1")?
 
 test "get_or reads through the entry":
 	var stock = Map[String, Int]()
 	stock.add("a", 5)
-	try expect_equal(stock.get_or(key: "a", fallback: 0), 5)
-	try expect_equal(stock.get_or(key: "b", fallback: 7), 7)
+	expect_equal(stock.get_or(key: "a", fallback: 0), 5)?
+	expect_equal(stock.get_or(key: "b", fallback: 7), 7)?
 
 	var names = Map[Int, String]()
 	names.add(1, "one")
 
 	one := names.get_or(key: 1, fallback: "none")
 	two := names.get_or(key: 2, fallback: "{1 + 1}")
-	try expect_equal(one, "one")
-	try expect_equal(two, "2")
+	expect_equal(one, "one")?
+	expect_equal(two, "2")?
 	names.add(2, "two")
-	try expect_equal(names.get_or(key: 2, fallback: ""), "two")
+	expect_equal(names.get_or(key: 2, fallback: ""), "two")?
 
 test "an entry whose optional is boxed is still read correctly":
 	var nodes = Map[String, Node]()
 	nodes.add("x", Node(name: "x", next: Node(name: "y", next: none)))
 
 	x := nodes.get("x")
-	try expect_equal(x.get().next.get().name, "y")
+	expect_equal(x.get().next.get().name, "y")?
 	if n := nodes.get("x"):
-		try expect_equal(n.name, "x")
+		expect_equal(n.name, "x")?
 
 	chain := [Node(name: "head", next: none)]
-	try expect_equal(chain.first().get().name, "head")
+	expect_equal(chain.first().get().name, "head")?
 
 test "if let over a borrowed optional lends its payload":
 	orders := build()
 	maybe := orders.get("a")
 
 	if o := maybe:
-		try expect_equal(o.id, "a")
-		try expect_equal(o.items.length(), 2)
+		expect_equal(o.id, "a")?
+		expect_equal(o.items.length(), 2)?
 
-	try expect_equal(maybe.is_some(), true)
+	expect_equal(maybe.is_some(), true)?
 
 	text: String? := "hello"
 	if t := text:
-		try expect_equal(t.length(), 5)
-	try expect_equal(text.get(), "hello")
+		expect_equal(t.length(), 5)?
+	expect_equal(text.get(), "hello")?

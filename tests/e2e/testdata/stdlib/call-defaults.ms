@@ -6,9 +6,9 @@ import (
 )
 
 test "restrict, parse_int and run take their defaults":
-	network := try restrict(["example.com"])
+	network := restrict(["example.com"])?
 	network.close()
-	try expect_equal(try parse_int("42"), 42)
+	expect_equal(parse_int("42")?, 42)?
 
-	output := try run("true").wait()
-	try expect_true(output.exit_code == 0)
+	output := run("true").wait()?
+	expect_true(output.exit_code == 0)?

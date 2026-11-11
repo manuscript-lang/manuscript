@@ -1,12 +1,14 @@
 // conform: tags=decimal,formatter,modules,parser,stdlib-decimal,stdlib-testing,testing,tier-stdlib,try-result
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/stdlib/decimal-overflow-boundaries.ms
-import expect_equal, expect_false from "@std/test/test.ms"
-import Decimal from "@std/math/decimal.ms"
+import (
+	Decimal from "@std/math/decimal.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
+)
 
 test "Decimal magnitude rounding and underflow boundaries remain unchanged":
-    maximum := 9.999999999999999999999999999999999e6144d
-    try expect_false(maximum + 0d != maximum or maximum * 1d != maximum)
-    try expect_false(-maximum * 1d != -maximum or - maximum - 0d != -maximum)
-    try expect_false(1e-6176d / 10d != 0d or - 1e-6176d / 10d != 0d)
-    try expect_equal(1d / 3d, 0.3333333333333333333333333333333333d)
+	maximum := 9.999999999999999999999999999999999e6144d
+	expect_false(maximum + 0d != maximum or maximum * 1d != maximum)?
+	expect_false(-maximum * 1d != -maximum or - maximum - 0d != -maximum)?
+	expect_false(1e-6176d / 10d != 0d or - 1e-6176d / 10d != 0d)?
+	expect_equal(1d / 3d, 0.3333333333333333333333333333333333d)?

@@ -373,10 +373,10 @@ impl JsonReading[T]:
 
 	// Consumes one byte and returns the value it completes, if any.
 	var fn advance(byte: UInt8) T?!:
-		done := try self.scan(byte)
+		done := self.scan(byte)?
 		if not done: return ok(none)
 
-		value := try self.complete()
+		value := self.complete()?
 		return ok(value)
 
 impl Transform[Bytes, T] for JsonReading[T]:
@@ -403,7 +403,7 @@ impl Transform[Bytes, T] for JsonReading[T]:
 		completed := self.complete()
 		if completed.is_error(): return self.fail(completed.err())
 
-		out.append(try completed)
+		out.append(completed?)
 
 fn is_space(byte: UInt8) Bool:
 	return (byte == 32 or byte == 9 or byte == 10 or byte == 13)
@@ -464,7 +464,7 @@ type JsonLines[T: Data]:
 
 impl Sink[T] for JsonLines[T]:
 	var fn write(value: T) Unit!:
-		text := try stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))
+		text := stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))?
 		return self.output.write("{text}\n".to_bytes())
 
 	var fn flush() Unit!:

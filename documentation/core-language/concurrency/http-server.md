@@ -18,10 +18,10 @@ import expect_equal from "@std/test/test.ms"
 
 test "serve a greeting":
     handler := buffered(fn request: text(200, "Hello, Manuscript!"))
-    server := try serve("127.0.0.1:0", handler)
-    response := try fetch("http://{server.address()}/").wait()
-    try expect_equal(response.head.status, 200)
-    try expect_equal(try response.text(), "Hello, Manuscript!")
+    server := serve("127.0.0.1:0", handler)?
+    response := fetch("http://{server.address()}/").wait()?
+    expect_equal(response.head.status, 200)?
+    expect_equal(response.text()?, "Hello, Manuscript!")?
 ```
 
 ```text

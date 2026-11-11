@@ -4,21 +4,21 @@
 import expect_equal from "@std/test/test.ms"
 
 interface Apply[T]:
-    fn apply(value: Int) T
+	fn apply(value: Int) T
 
 type Box[T]:
-    value: T
+	value: T
 
 impl Apply[T] for Box[fn(Int) T]:
-    fn apply(value: Int) T:
-        return self.value(value)
+	fn apply(value: Int) T:
+		return self.value(value)
 
 fn render(value: Int) String:
-    return "{value}"
+	return "{value}"
 
 test "implementation variables inside function signatures":
-    box := Box(render)
-    try expect_equal(box.apply(3), "3")
+	box := Box(render)
+	expect_equal(box.apply(3), "3")?
 
-    operation: Apply[String] := box
-    try expect_equal(operation.apply(4), "4")
+	operation: Apply[String] := box
+	expect_equal(operation.apply(4), "4")?

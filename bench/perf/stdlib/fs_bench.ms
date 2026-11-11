@@ -27,7 +27,7 @@ bench "fs.write_file_64k":
 					n += 1
 			return keep(n)
 
-		try measure(200, work)
+		measure(200, work)?
 		dir.close().get(none)
 
 bench "fs.read_file_64k":
@@ -42,7 +42,7 @@ bench "fs.read_file_64k":
 					n += b.length()
 			return keep(n)
 
-		try measure(200, work)
+		measure(200, work)?
 		dir.close().get(none)
 
 bench "fs.stat":
@@ -57,7 +57,7 @@ bench "fs.stat":
 					n += 1
 			return keep(n)
 
-		try measure(200, work)
+		measure(200, work)?
 		dir.close().get(none)
 
 bench "fs.list_200":
@@ -69,7 +69,7 @@ bench "fs.list_200":
 			if entries := list(root): return keep(entries.length())
 			return keep(0)
 
-		try measure(1, work)
+		measure(1, work)?
 		dir.close().get(none)
 
 bench "log.info":
@@ -83,6 +83,6 @@ bench "log.info":
 							n += 1
 					return keep(n)
 
-				try measure(20000, work)
+				measure(20000, work)?
 
 		dir.close().get(none)

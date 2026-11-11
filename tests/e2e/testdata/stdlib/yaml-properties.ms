@@ -27,34 +27,32 @@ fn generated(var rng: Rng, depth: Int) YamlValue:
 	return YamlValue.ObjectValue(entries)
 
 fn check_round_trip(seed: Int, original: YamlValue) Unit!:
-	rendered := try stringify(original)
-	if (try parse(rendered)) != original: return fail(
-		"seed {seed}: changed\n{rendered}"
-	)
+	rendered := stringify(original)?
+	if (parse(rendered)?) != original: return fail("seed {seed}: changed\n{rendered}")
 
 fn check_stable(seed: Int, mutated: String, first: YamlValue) Unit!:
-	again := try stringify(first)
-	if (try parse(again)) != first: return fail(
+	again := stringify(first)?
+	if (parse(again)?) != first: return fail(
 		"seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
 	)
 
 test "YAML stringify then parse preserves generated documents":
 	for seed in 1..301:
 		var rng = Rng(seed)
-		try check_round_trip(seed, generated(var rng, 0))
+		check_round_trip(seed, generated(var rng, 0))?
 
 test "YAML parse never faults on mutated documents and accepted input is stable":
 	var accepted = 0
 
 	for seed in 1..301:
 		var rng = Rng(seed)
-		rendered := generated(var rng, 0) | stringify | try
+		rendered := generated(var rng, 0) | stringify?
 
 		for round in 0..4:
 			mutated := mutate(var rng, rendered)
 
 			if first := parse(mutated):
 				accepted += 1
-				try check_stable(seed, mutated, first)
+				check_stable(seed, mutated, first)?
 
-	try expect_not_equal(accepted, 0)
+	expect_not_equal(accepted, 0)?

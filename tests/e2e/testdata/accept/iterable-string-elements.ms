@@ -12,9 +12,9 @@ test "reading string elements while iterating does not change the container":
 	var total = 0
 	for item in deque:
 		total += item.length()
-	total | try expect_equal(30)
-	deque.length() | try expect_equal(5)
-	deque.at(4) | try expect_equal("item-4")
+	total | expect_equal(30)?
+	deque.length() | expect_equal(5)?
+	deque.at(4) | expect_equal("item-4")?
 
 test "an element kept past the loop is an independent copy":
 	var queue = Queue[String](none)
@@ -26,8 +26,8 @@ test "an element kept past the loop is an independent copy":
 		kept.append(item.clone())
 	queue.dequeue()
 	queue.enqueue("later")
-	kept | try expect_equal(["q-0", "q-1", "q-2"])
-	queue.length() | try expect_equal(3)
+	kept | expect_equal(["q-0", "q-1", "q-2"])?
+	queue.length() | expect_equal(3)?
 
 test "iteration sees each element once after the ring buffer wraps":
 	var deque = Deque[String]()
@@ -40,4 +40,4 @@ test "iteration sees each element once after the ring buffer wraps":
 	var seen = ""
 	for item in deque:
 		seen = seen + item + ","
-	seen | try expect_equal("a,b1,b2,b3,z,")
+	seen | expect_equal("a,b1,b2,b3,z,")?

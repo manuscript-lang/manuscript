@@ -6,7 +6,7 @@ import (
 
 fn work(i: Int, jitter: Bool) Int!:
 	if jitter:
-		try sleep(milliseconds(i % 5)).wait()
+		sleep(milliseconds(i % 5)).wait()?
 	return ok(i)
 
 // The list-order implementation before #2915, retained only as a performance control.
@@ -15,7 +15,7 @@ fn ordered_wait_all[T](promises: List[Promise[T]]) List[T]!:
 	var pending = promises
 	var results: List[T] = []
 	for index in 0..pending.length():
-		results.append(try pending[index].wait())
+		results.append(pending[index].wait()?)
 	return ok(results)
 
 fn main() Int:

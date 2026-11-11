@@ -107,7 +107,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL107",
         family: "Nested match",
         severity: Severity::Error,
-        repair: "bind the outer payload with an early exit, use compatible `try`, or call a small helper",
+        repair: "bind the outer payload with an early exit, use a compatible trailing `?`, or call a small helper",
     },
     Rule {
         code: "MSL108",
@@ -119,7 +119,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL109",
         family: "Result matched with only ok and error",
         severity: Severity::Warning,
-        repair: "use `try`, `if value := ...:` with `else:`, or a Result method such as `get(default)`, `is_error` or `err`",
+        repair: "use a trailing `?`, `if value := ...:` with `else:`, or a Result method such as `get(default)`, `is_error` or `err`",
     },
     Rule {
         code: "MSL110",
@@ -143,7 +143,7 @@ pub const RULES: &[Rule] = &[
         code: "MSL114",
         family: "Resource closed at scope end with an uncalled flush",
         severity: Severity::Error,
-        repair: "call `try name.flush()` (or `sync`, `commit`) before the scope ends, or close the resource explicitly",
+        repair: "call `name.flush()?` (or `sync`, `commit`) before the scope ends, or close the resource explicitly",
     },
     Rule {
         code: "MSL115",

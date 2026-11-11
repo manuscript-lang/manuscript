@@ -9,12 +9,12 @@ fn failure(result: Version!) Error!:
 		error(cause): return ok(cause)
 
 test "semver parses and formats every component":
-	version := (parse(text: "1.2.3-alpha.1+build.5") | try expect_ok)
-	(version.major != 1 or version.minor != 2 or version.patch != 3) | try expect_false
-	version.prerelease | try expect_equal(["alpha", "1"])
-	version.build | try expect_equal(["build", "5"])
-	version.format() | try expect_equal("1.2.3-alpha.1+build.5")
-	(parse(text: "0.0.0") | try expect_ok).format() | try expect_equal("0.0.0")
+	version := (parse(text: "1.2.3-alpha.1+build.5") | expect_ok?)
+	(version.major != 1 or version.minor != 2 or version.patch != 3) | expect_false?
+	version.prerelease | expect_equal(["alpha", "1"])?
+	version.build | expect_equal(["build", "5"])?
+	version.format() | expect_equal("1.2.3-alpha.1+build.5")?
+	(parse(text: "0.0.0") | expect_ok?).format() | expect_equal("0.0.0")?
 
 test "semver rejects malformed text":
 	bad := [
@@ -23,15 +23,15 @@ test "semver rejects malformed text":
 	]
 	for text in bad:
 		if (
-			(try failure(parse(text: text))) != Error(
+			(failure(parse(text: text))?) != Error(
 				"semver: invalid data", kind: "EBADMSG"
 			)
 		): return fail("category {text}")
 
 test "semver reports numbers beyond Int":
-	(try failure(parse(text: "99999999999999999999.0.0"))) | try expect_equal(
+	(failure(parse(text: "99999999999999999999.0.0"))?) | expect_equal(
 		Error("semver: value out of range", kind: "ERANGE")
-	)
+	)?
 
 test "semver orders by precedence":
 	ordered := [
@@ -52,8 +52,8 @@ test "semver orders by precedence":
 			left := ordered[i]
 			right := ordered[j]
 			if (
-				(parse(text: left) | try expect_ok).compare(
-					parse(text: right) | try expect_ok
+				(parse(text: left) | expect_ok?).compare(
+					parse(text: right) | expect_ok?
 				) != expected
 			): return fail("order {left} {right}")
 
@@ -62,20 +62,20 @@ test "semver orders by precedence":
 		i += 1
 
 test "semver ignores build metadata and compares huge numeric identifiers":
-	a := (parse(text: "1.0.0+a") | try expect_ok)
-	b := (parse(text: "1.0.0+b") | try expect_ok)
-	a.compare(b) | try expect_equal(0)
+	a := (parse(text: "1.0.0+a") | expect_ok?)
+	b := (parse(text: "1.0.0+b") | expect_ok?)
+	a.compare(b) | expect_equal(0)?
 
-	small := (parse(text: "1.0.0-99999999999999999999") | try expect_ok)
-	large := (parse(text: "1.0.0-100000000000000000000") | try expect_ok)
-	small.compare(large) | try expect_equal(-1)
-	Error("semver: value out of range", kind: "ERANGE").message | try expect_equal(
+	small := (parse(text: "1.0.0-99999999999999999999") | expect_ok?)
+	large := (parse(text: "1.0.0-100000000000000000000") | expect_ok?)
+	small.compare(large) | expect_equal(-1)?
+	Error("semver: value out of range", kind: "ERANGE").message | expect_equal(
 		"semver: value out of range"
-	)
+	)?
 
 test "semver keeps hyphens in pre-release and rejects extra plus signs":
-	version := (parse(text: "1.2.3-alpha-1") | try expect_ok)
-	version.format() | try expect_equal("1.2.3-alpha-1")
-	(try failure(parse(text: "1.2.3+a+b"))) | try expect_equal(
+	version := (parse(text: "1.2.3-alpha-1") | expect_ok?)
+	version.format() | expect_equal("1.2.3-alpha-1")?
+	(failure(parse(text: "1.2.3+a+b"))?) | expect_equal(
 		Error("semver: invalid data", kind: "EBADMSG")
-	)
+	)?

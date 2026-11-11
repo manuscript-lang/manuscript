@@ -36,8 +36,8 @@ test "an outer deadline bounds a longer nested read":
 	started := monotonic()
 	result := input.next(timeout: milliseconds(20))
 	elapsed := monotonic().difference(started)
-	try expect_equal(result.err().kind, "ETIMEDOUT")
-	try expect_true(elapsed.compare(milliseconds(300)) < 0)
+	expect_equal(result.err().kind, "ETIMEDOUT")?
+	expect_true(elapsed.compare(milliseconds(300)) < 0)?
 
 	_gate := gate
 
@@ -48,26 +48,26 @@ test "a shorter nested bound still applies inside a longer outer one":
 	started := monotonic()
 	result := input.next(timeout: milliseconds(600))
 	elapsed := monotonic().difference(started)
-	try expect_equal(result.err().kind, "ETIMEDOUT")
-	try expect_true(elapsed.compare(milliseconds(300)) < 0)
+	expect_equal(result.err().kind, "ETIMEDOUT")?
+	expect_true(elapsed.compare(milliseconds(300)) < 0)?
 
 	_gate := gate
 
 test "a nested read that finishes at once leaves the outer deadline in force":
 	var queue = pipe[Int](4)
 	var gate = queue.writer()
-	try gate.write(7)
+	gate.write(7)?
 
 	var input = ReadStream[Int](ReadyThenStall(queue.reader()))
-	first := try input.next(timeout: milliseconds(600))
+	first := input.next(timeout: milliseconds(600))?
 	expected: Int? := 7
-	try expect_equal(first, expected)
+	expect_equal(first, expected)?
 
 	started := monotonic()
 	second := input.next(timeout: milliseconds(20))
 	elapsed := monotonic().difference(started)
-	try expect_equal(second.err().kind, "ETIMEDOUT")
-	try expect_true(elapsed.compare(milliseconds(300)) < 0)
+	expect_equal(second.err().kind, "ETIMEDOUT")?
+	expect_true(elapsed.compare(milliseconds(300)) < 0)?
 
 test "a bound does not leak into a later unbounded wait":
 	var queue = pipe[Int](4)
@@ -75,8 +75,8 @@ test "a bound does not leak into a later unbounded wait":
 	var input = queue.reader()
 	_early := input.next(timeout: milliseconds(10))
 	sleep(milliseconds(50))
-	try gate.write(5)
+	gate.write(5)?
 
-	value := try input.next()
+	value := input.next()?
 	expected: Int? := 5
-	try expect_equal(value, expected)
+	expect_equal(value, expected)?

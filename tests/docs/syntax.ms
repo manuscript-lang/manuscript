@@ -88,7 +88,7 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
 		Data(value): value
 		_: -1
 
-	parsed := "42" | try parse | normalize
+	parsed := "42" | parse? | normalize
 	return result + parsed
 
 test "fixture and unit":

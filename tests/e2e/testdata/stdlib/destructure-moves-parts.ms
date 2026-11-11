@@ -28,20 +28,20 @@ test "a record pattern moves a stream field out of its record":
 		label: 1, body: ReadStream[Int](Count(0)), spare: ReadStream[Int](Count(10))
 	)
 	var {label: _l, body: p} = b
-	a := try p.next()
-	try expect_equal(a, 1)
+	a := p.next()?
+	expect_equal(a, 1)?
 
 test "a record pattern over a temporary moves its fields":
 	var {body: p} = Box(
 		label: 2, body: ReadStream[Int](Count(0)), spare: ReadStream[Int](Count(10))
 	)
-	a := try p.next()
-	try expect_equal(a, 1)
+	a := p.next()?
+	expect_equal(a, 1)?
 
 test "a list pattern moves its elements":
 	streams := [ReadStream[Int](Count(0)), ReadStream[Int](Count(1))]
 	var [first, second] = streams
-	a := try first.next()
-	b := try second.next()
-	try expect_equal(a, 1)
-	try expect_equal(b, 2)
+	a := first.next()?
+	b := second.next()?
+	expect_equal(a, 1)?
+	expect_equal(b, 2)?

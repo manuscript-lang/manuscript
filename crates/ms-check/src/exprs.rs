@@ -1077,14 +1077,14 @@ impl Checker {
                 self.type_error_with_fix(
                     e.pos,
                     Cause::Other,
-                    format!("try requires Result, found {result_t}; a promise gives its result from wait(), so write `try ...wait()`", result_t = result.display(self.syms)),
+                    format!("'?' requires a Result, found {result_t}; a promise gives its result from wait(), so write `...wait()?`", result_t = result.display(self.syms)),
                     fix,
                 );
                 return;
             }
             self.type_error(
                 e.pos,
-                format!("try requires Result, found {result_t}; apply try only to a call returning Result[T, E]", result_t = result.display(self.syms)),
+                format!("'?' requires a Result, found {result_t}; apply '?' only to a call returning Result[T, E], and use '?.', 'if value := x', or '.get(default)' for an Optional", result_t = result.display(self.syms)),
             );
             return;
         }
@@ -1096,7 +1096,7 @@ impl Checker {
         if !enclosing.is(Builtin::Result) || enclosing.args.len() != 2 {
             self.type_error(
                 e.pos,
-                "try requires an enclosing Result; declare this function to return Result[T, E], or use 'if value := x', '.get(default)', or '.get()'",
+                "'?' requires an enclosing Result; declare this function to return Result[T, E], or use 'if value := x', '.get(default)', or '.get()'",
             );
             return;
         }
@@ -1107,7 +1107,7 @@ impl Checker {
         }
         self.type_error(
             e.pos,
-            format!("try requires the same error type; this function returns {enclosing_t} but the operand fails with {failure_t}, so change the return error type or translate the error with map_error", enclosing_t = enclosing.display(self.syms), failure_t = failure.display(self.syms)),
+            format!("'?' requires the same error type; this function returns {enclosing_t} but the operand fails with {failure_t}, so change the return error type or translate the error with map_error", enclosing_t = enclosing.display(self.syms), failure_t = failure.display(self.syms)),
         );
     }
 

@@ -18,4 +18,4 @@ fn verify_url() Result[Unit, Error]:
     return ok(unit)
 
 test "URLs preserve escaped path structure":
-    try verify_url()
+    verify_url()?

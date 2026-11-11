@@ -24,8 +24,8 @@ test "sorting plain records by a comparator orders by key and keeps equal keys i
 		if before.key > after.key or (before.key == after.key and before.id > after.id):
 			ordered = false
 
-	try expect_equal(ordered, true)
-	try expect_equal(sorted.length(), 500)
+	expect_equal(ordered, true)?
+	expect_equal(sorted.length(), 500)?
 
 test "sorting in place by a descending comparator reverses the key order":
 	var list = entries(200)
@@ -35,7 +35,7 @@ test "sorting in place by a descending comparator reverses the key order":
 	for i in 1..list.length():
 		if list[i - 1].key < list[i].key:
 			ordered = false
-	try expect_equal(ordered, true)
+	expect_equal(ordered, true)?
 
 fn shaped(count: Int, shape: Int) List[Entry]:
 	var out: List[Entry] = []
@@ -74,6 +74,6 @@ test "ascending, descending and interleaved inputs sort stably at every size":
 					):
 						ordered = false
 
-			try expect_equal(ordered, true)
-			try expect_equal(sorted.length(), count)
-			try expect_equal(seen, count * (count - 1) / 2)
+			expect_equal(ordered, true)?
+			expect_equal(sorted.length(), count)?
+			expect_equal(seen, count * (count - 1) / 2)?

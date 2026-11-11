@@ -11,8 +11,8 @@ fn names(suite: String) List[String]:
 test "a let keeps the message of a borrowed error":
 	r := failed()
 	message := r.err().message
-	try expect_equal(message.length(), 4)
+	expect_equal(message.length(), 4)?
 
 test "a let keeps an element of a returned list":
 	first := names("kernels")[0]
-	try expect_equal(first, "sieve")
+	expect_equal(first, "sieve")?

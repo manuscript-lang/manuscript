@@ -85,8 +85,8 @@ fn io_reply(dir: String, slot: String, payload: Bytes) HttpResponse:
 	return reply(500, "lookup failed\n")
 
 fn write_and_read(path: String, payload: Bytes) Result[Bytes, Error]:
-	try write_file(path, payload, replace: true).wait()
-	return ok(try read_file(path).wait())
+	write_file(path, payload, replace: true).wait()?
+	return ok(read_file(path).wait()?)
 
 // The benchmark endpoints.
 fn make_handler(dir: String) fn(var HttpExchange) Result[Unit, Error]:

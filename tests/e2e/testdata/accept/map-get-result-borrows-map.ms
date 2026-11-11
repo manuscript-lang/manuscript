@@ -5,11 +5,11 @@ fn find(m: Map[String, List[Int]], key: String) List[Int]?:
 
 test "a function returning Map.get reads the entry in place":
 	m: Map[String, List[Int]] := {"a": [1, 2]}
-	try expect_equal(find(m, "a").get().length(), 2)
-	try expect_equal(find(m, "z").is_none(), true)
+	expect_equal(find(m, "a").get().length(), 2)?
+	expect_equal(find(m, "z").is_none(), true)?
 
 test "a clone of the result owns its copy":
 	var m: Map[String, List[Int]] = {"a": [1]}
 	found := find(m, "a").clone()
 	m.add("b", [2])
-	try expect_equal(found.is_some(), true)
+	expect_equal(found.is_some(), true)?

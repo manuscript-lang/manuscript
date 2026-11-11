@@ -44,7 +44,7 @@ fn observe[T: Clonable](
 		for value in values.clone():
 			step(var seen, var visits, var values, value, mode, fill.clone())
 
-	visits.count | try expect_equal(3)
+	visits.count | expect_equal(3)?
 	return ok(seen)
 
 fn remaining[T: Clonable](mode: String, items: List[T], fill: List[T]) List[T]:
@@ -69,7 +69,7 @@ test "Int consumers see the full snapshot while the live list shrinks":
 			var values = [1, 2, 3]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), [9])
-			seen := (try observe(var values, mode, [9], callback))
+			seen := (observe(var values, mode, [9], callback)?)
 			var total = 0
 			var wanted = 0
 			for value in seen: total += value
@@ -81,7 +81,7 @@ test "Int consumers see the full snapshot while the live list shrinks":
 					and values == want
 					and clone == [1, 2, 3]
 				)
-			) | try expect_false
+			) | expect_false?
 
 test "Float consumers see the full snapshot while the live list shrinks":
 	for callback in [false, true]:
@@ -89,7 +89,7 @@ test "Float consumers see the full snapshot while the live list shrinks":
 			var values = [1.5, 2.5, 3.5]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), [9.5])
-			seen := (try observe(var values, mode, [9.5], callback))
+			seen := (observe(var values, mode, [9.5], callback)?)
 			var total = 0.0
 			var wanted = 0.0
 			for value in seen: total += value
@@ -101,7 +101,7 @@ test "Float consumers see the full snapshot while the live list shrinks":
 					and values == want
 					and clone == [1.5, 2.5, 3.5]
 				)
-			) | try expect_false
+			) | expect_false?
 
 test "String consumers see the full snapshot while the live list shrinks":
 	for callback in [false, true]:
@@ -109,7 +109,7 @@ test "String consumers see the full snapshot while the live list shrinks":
 			var values = ["a", "bb", "ccc"]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), ["replacement"])
-			seen := (try observe(var values, mode, ["replacement"], callback))
+			seen := (observe(var values, mode, ["replacement"], callback)?)
 			var text = ""
 			for value in seen: text += value
 			(
@@ -119,7 +119,7 @@ test "String consumers see the full snapshot while the live list shrinks":
 					and values == want
 					and clone == ["a", "bb", "ccc"]
 				)
-			) | try expect_false
+			) | expect_false?
 
 type Payload:
 	value: Int
@@ -131,14 +131,14 @@ test "record consumers keep independent copies after shrink":
 			var values = [Payload(1), Payload(2), last.clone()]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), [Payload(9)])
-			seen := (try observe(var values, mode, [Payload(9)], callback))
+			seen := (observe(var values, mode, [Payload(9)], callback)?)
 			var total = 0
 			var wanted = 0
 			for value in seen: total += value.value
 			for value in clone: wanted += value.value
-			(not (total == wanted and seen == clone and values == want)) | try expect_false
+			(not (total == wanted and seen == clone and values == want)) | expect_false?
 			last.value = 11
-			(not (seen.last().get().value == 3 and clone.last().get().value == 3)) | try expect_false
+			(not (seen.last().get().value == 3 and clone.last().get().value == 3)) | expect_false?
 
 enum Choice:
 	number(value: Int)
@@ -158,13 +158,13 @@ test "alternative consumers retain tags and payloads after shrink":
 			fill: List[Choice] := [label("replacement")]
 			var values = [first.clone(), second.clone(), last.clone()]
 			want := remaining(mode, values.clone(), fill.clone())
-			seen := (try observe(var values, mode, fill, callback))
+			seen := (observe(var values, mode, fill, callback)?)
 			snapshot := [first, second, last]
 			var total = 0
 			var wanted = 0
 			for value in seen: total += score(value.clone())
 			for value in snapshot.clone(): wanted += score(value)
-			(not (total == wanted and seen == snapshot and values == want)) | try expect_false
+			(not (total == wanted and seen == snapshot and values == want)) | expect_false?
 
 test "nested list consumers keep independent inner lists after shrink":
 	for callback in [false, true]:
@@ -173,14 +173,14 @@ test "nested list consumers keep independent inner lists after shrink":
 			var values = [[1], [2], last.clone()]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), [[9]])
-			seen := (try observe(var values, mode, [[9]], callback))
+			seen := (observe(var values, mode, [[9]], callback)?)
 			var total = 0
 			var wanted = 0
 			for value in seen: total += value.first().get()
 			for value in clone: wanted += value.first().get()
-			(not (total == wanted and seen == clone and values == want)) | try expect_false
+			(not (total == wanted and seen == clone and values == want)) | expect_false?
 			last.append(11)
-			try expect_true((seen.last().get() == [3] and clone.last().get() == [3]))
+			expect_true((seen.last().get() == [3] and clone.last().get() == [3]))?
 
 test "map and folds consume snapshots of the live list":
 	var mapped = [1, 2, 3]
@@ -197,7 +197,7 @@ test "map and folds consume snapshots of the live list":
 		)
 	)
 
-	(output == [11, 12, 13] and mapped == [2, 3]) | try expect_true
+	(output == [11, 12, 13] and mapped == [2, 3]) | expect_true?
 
 	var folded = [1, 2, 3]
 	visits.count = 0
@@ -217,7 +217,7 @@ test "map and folds consume snapshots of the live list":
 		)
 	)
 
-	(total == 6 and folded.is_empty() and visits.count == 3) | try expect_true
+	(total == 6 and folded.is_empty() and visits.count == 3) | expect_true?
 
 	var reversed = [1, 2, 3]
 	visits.count = 0
@@ -235,7 +235,7 @@ test "map and folds consume snapshots of the live list":
 		)
 	)
 
-	(backwards == 321 and reversed == [2, 3] and visits.count == 3) | try expect_true
+	(backwards == 321 and reversed == [2, 3] and visits.count == 3) | expect_true?
 
 interface ReadValue:
 	fn read() Int
@@ -250,14 +250,14 @@ test "interface view consumers dispatch after shrink":
 			var values = [Payload(1), Payload(2), last_record.clone()]
 			clone := values.clone()
 			want := remaining(mode, values.clone(), [Payload(9)])
-			seen := (try observe(var values, mode, [Payload(9)], callback))
+			seen := (observe(var values, mode, [Payload(9)], callback)?)
 			var total = 0
 			var wanted = 0
 			for value in seen: total += value.read()
 			for value in clone.clone(): wanted += value.read()
-			(not (total == wanted and values.length() == want.length())) | try expect_false
+			(not (total == wanted and values.length() == want.length())) | expect_false?
 			last_record.value = 11
-			(not (seen.last().get().read() == 3 and clone.last().get().read() == 3)) | try expect_false
+			(not (seen.last().get().read() == 3 and clone.last().get().read() == 3)) | expect_false?
 
 test "find returns the value passed to a mutating predicate":
 	var forward = [1, 2, 3]
@@ -268,7 +268,7 @@ test "find returns the value passed to a mutating predicate":
 			return value == 1
 	)
 
-	(found.get() == 1 and forward == [2, 3]) | try expect_true
+	(found.get() == 1 and forward == [2, 3]) | expect_true?
 
 	var replaced = [1, 2, 3]
 
@@ -282,7 +282,7 @@ test "find returns the value passed to a mutating predicate":
 		)
 	)
 
-	(original.get() == 1 and replaced == [9, 2, 3]) | try expect_true
+	(original.get() == 1 and replaced == [9, 2, 3]) | expect_true?
 
 	var reverse = [1, 2, 3]
 
@@ -296,7 +296,7 @@ test "find returns the value passed to a mutating predicate":
 		)
 	)
 
-	(last.get() == 2 and reverse == [1, 3]) | try expect_true
+	(last.get() == 2 and reverse == [1, 3]) | expect_true?
 
 	var last_replaced = [1, 2, 3]
 
@@ -310,7 +310,7 @@ test "find returns the value passed to a mutating predicate":
 		)
 	)
 
-	(before.get() == 3 and last_replaced == [1, 2, 9]) | try expect_true
+	(before.get() == 3 and last_replaced == [1, 2, 9]) | expect_true?
 
 	var indexes = [1, 2, 3]
 
@@ -336,7 +336,7 @@ test "find returns the value passed to a mutating predicate":
 		)
 	)
 
-	(index.get() == 0 and last_index.get() == 1) | try expect_true
+	(index.get() == 0 and last_index.get() == 1) | expect_true?
 
 	record := Payload(1)
 	var records = [record.clone(), Payload(2)]
@@ -357,7 +357,7 @@ test "find returns the value passed to a mutating predicate":
 			and record.value == 1
 			and records.first().get().value == 9
 		)
-	) | try expect_false
+	) | expect_false?
 
 test "preferred List mutators and explicit reversed copy iterate snapshots":
 	var values = [1, 2, 3]
@@ -371,18 +371,18 @@ test "preferred List mutators and explicit reversed copy iterate snapshots":
 			values.set(index: 1, value: 9)
 			values.remove(index: 0)
 
-	(seen == [1, 2, 3] and values == [9, 3] and clone == [1, 2, 3]) | try expect_true
+	(seen == [1, 2, 3] and values == [9, 3] and clone == [1, 2, 3]) | expect_true?
 	values.reverse()
 	values.append(4)
-	values | try expect_equal([3, 9, 4])
+	values | expect_equal([3, 9, 4])?
 
 	separate := values.reversed()
 	values.set(1, 5)
-	(separate == [4, 9, 3] and values == [3, 5, 4]) | try expect_true
+	(separate == [4, 9, 3] and values == [3, 5, 4]) | expect_true?
 
 	var child = Payload(1)
 	var children = [child.clone(), Payload(2)]
 	shallow := children.reversed()
 	child.value = 7
 	children.remove(0)
-	(shallow.last().get().value == 1 and children.length() == 1) | try expect_true
+	(shallow.last().get().value == 1 and children.length() == 1) | expect_true?

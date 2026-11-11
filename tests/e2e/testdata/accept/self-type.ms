@@ -37,26 +37,26 @@ fn total[T: Merge](left: T, right: T) Int:
 test "implementations take their own type":
 	a := CustomerKey(1, "a")
 	b := CustomerKey(1, "b")
-	try expect_true(a == b)
-	try expect_true(a.equals(b))
-	try expect_true(Version(1).compare(Version(2)) < 0)
+	expect_true(a == b)?
+	expect_true(a.equals(b))?
+	expect_true(Version(1).compare(Version(2)) < 0)?
 
 test "bounds take two values of the bounded type":
-	try expect_true(same(CustomerKey(1, "a"), CustomerKey(1, "b")))
-	try expect_false(same(CustomerKey(1, "a"), CustomerKey(2, "a")))
-	try expect_true(lower(Version(1), Version(2)))
-	try expect_true(lower(1, 2))
-	try expect_equal(total(Version(2), Version(3)), 5)
+	expect_true(same(CustomerKey(1, "a"), CustomerKey(1, "b")))?
+	expect_false(same(CustomerKey(1, "a"), CustomerKey(2, "a")))?
+	expect_true(lower(Version(1), Version(2)))?
+	expect_true(lower(1, 2))?
+	expect_equal(total(Version(2), Version(3)), 5)?
 
 test "interface values of different types are unequal":
 	a: Equal := CustomerKey(1, "a")
 	b: Equal := CustomerKey(1, "z")
-	try expect_true(a.equals(b))
-	try expect_false(a.equals(1))
+	expect_true(a.equals(b))?
+	expect_false(a.equals(1))?
 
 	order: Comparable := Version(1)
-	try expect_true(order.compare(Version(3)) < 0)
+	expect_true(order.compare(Version(3)) < 0)?
 
 test "keys use the custom equality":
 	keys := {CustomerKey(1, "a"): "first"}
-	try expect_equal(keys.get(CustomerKey(1, "b")).get(), "first")
+	expect_equal(keys.get(CustomerKey(1, "b")).get(), "first")?

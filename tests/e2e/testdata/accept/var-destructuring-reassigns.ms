@@ -20,6 +20,6 @@ test "var destructuring binds reassignable copies":
 
 	var [q, r] = [3, 4]
 	q += r
-	try expect_equal(xs, [1, 2])
-	try expect_equal([a, b, x, y, q], [11, 7, 6, 0, 7])
-	try expect_equal([point.x, point.y], [1, 2])
+	expect_equal(xs, [1, 2])?
+	expect_equal([a, b, x, y, q], [11, 7, 6, 0, 7])?
+	expect_equal([point.x, point.y], [1, 2])?

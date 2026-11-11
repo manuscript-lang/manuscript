@@ -32,34 +32,32 @@ fn table(var rng: Rng, depth: Int) TomlValue:
 	return TomlValue.TableValue(entries)
 
 fn check_round_trip(seed: Int, original: TomlValue) Unit!:
-	rendered := try stringify(original)
-	if (try parse(rendered)) != original: return fail(
-		"seed {seed}: changed\n{rendered}"
-	)
+	rendered := stringify(original)?
+	if (parse(rendered)?) != original: return fail("seed {seed}: changed\n{rendered}")
 
 fn check_stable(seed: Int, mutated: String, first: TomlValue) Unit!:
-	again := try stringify(first)
-	if (try parse(again)) != first: return fail(
+	again := stringify(first)?
+	if (parse(again)?) != first: return fail(
 		"seed {seed}: reparsed value changed\n{mutated}\n---\n{again}"
 	)
 
 test "TOML stringify then parse preserves generated documents":
 	for seed in 1..301:
 		var rng = Rng(seed)
-		try check_round_trip(seed, table(var rng, 0))
+		check_round_trip(seed, table(var rng, 0))?
 
 test "TOML parse never faults on mutated documents and accepted input is stable":
 	var accepted = 0
 
 	for seed in 1..301:
 		var rng = Rng(seed)
-		rendered := table(var rng, 0) | stringify | try
+		rendered := table(var rng, 0) | stringify?
 
 		for round in 0..4:
 			mutated := mutate(var rng, rendered)
 
 			if first := parse(mutated):
 				accepted += 1
-				try check_stable(seed, mutated, first)
+				check_stable(seed, mutated, first)?
 
-	try expect_not_equal(accepted, 0)
+	expect_not_equal(accepted, 0)?

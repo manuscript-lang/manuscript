@@ -315,7 +315,7 @@ impl Transform[Bytes, List[String]] for CsvRows:
 		if cut == 0:
 			if not value.is_empty(): self.pending.append(value)
 			self.pending_size = size
-			try self.check_size(self.longest)
+			self.check_size(self.longest)?
 			return self.check_size(size)
 
 		var data = value
@@ -328,15 +328,15 @@ impl Transform[Bytes, List[String]] for CsvRows:
 
 		self.pending = []
 		self.pending_size = rest
-		if rest > 0: self.pending.append(try data.slice(end, data.length()))
-		try self.check_size(self.longest)
-		try self.check_size(size)
+		if rest > 0: self.pending.append(data.slice(end, data.length())?)
+		self.check_size(self.longest)?
+		self.check_size(size)?
 
 		decoded := data.decode_utf8_range(0, end)
 		if decoded.is_none(): return invalid_text()
 
 		text := decoded.get("")
-		return write_rows(try parse(text, self.options), var out)
+		return write_rows(parse(text, self.options)?, var out)
 
 	var fn finish(var out: List[List[String]]) Unit!:
 		data := join(self.pending)
@@ -344,13 +344,13 @@ impl Transform[Bytes, List[String]] for CsvRows:
 		self.pending_size = 0
 		if data.is_empty(): return check_options(self.options)
 
-		try self.check_size(data.length())
+		self.check_size(data.length())?
 
 		decoded := data.decode_utf8()
 		if decoded.is_none(): return invalid_text()
 
 		text := decoded.get("")
-		return write_rows(try parse(text, self.options), var out)
+		return write_rows(parse(text, self.options)?, var out)
 
 fn invalid_text() Unit!:
 	return error(Error("CSV: invalid UTF-8", kind: "EBADMSG"))
@@ -456,7 +456,7 @@ type CsvRowsSink:
 
 impl Sink[List[String]] for CsvRowsSink:
 	var fn write(value: List[String]) Unit!:
-		text := try stringify([value], self.options)
+		text := stringify([value], self.options)?
 		return self.output.write(text.to_bytes())
 
 	var fn flush() Unit!:

@@ -4,25 +4,25 @@
 import expect_equal from "@std/test/test.ms"
 
 enum State:
-    Ready
-    Waiting
+	Ready
+	Waiting
 
 fn loop(state: State) Int:
-    var count = 0
+	var count = 0
 
-    for value in [1, 2, 3]:
-        count += 1
+	for value in [1, 2, 3]:
+		count += 1
 
-        match state:
-            Ready:
-                break
-            Waiting:
-                continue
+		match state:
+			Ready:
+				break
+			Waiting:
+				continue
 
-        count += 100
+		count += 100
 
-    return count
+	return count
 
 test "match controls nearest source loop":
-    try expect_equal(loop(State.Ready), 1)
-    try expect_equal(loop(State.Waiting), 3)
+	expect_equal(loop(State.Ready), 1)?
+	expect_equal(loop(State.Waiting), 3)?

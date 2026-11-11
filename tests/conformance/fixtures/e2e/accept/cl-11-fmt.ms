@@ -4,10 +4,10 @@
 import expect_equal from "@std/test/test.ms"
 
 type Tree[T]:
-    value: T
-    children: List[Tree[T]]
+	value: T
+	children: List[Tree[T]]
 
 test "recursive immutable collection":
-    leaf := Tree[Int](1, [])
-    root := Tree[Int](2, [leaf])
-    try expect_equal(root.value, 2)
+	leaf := Tree[Int](1, [])
+	root := Tree[Int](2, [leaf])
+	expect_equal(root.value, 2)?

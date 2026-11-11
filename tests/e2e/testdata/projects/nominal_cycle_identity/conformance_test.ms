@@ -7,28 +7,28 @@ import (
 )
 
 test "same display names keep nested resource cleanup":
-	path := "{try temporary_root()}/ms-nominal-cycle-identity.txt"
+	path := "{ temporary_root()?}/ms-nominal-cycle-identity.txt"
 	_gone := remove(path, false)
 	exercise(path.clone())
 
-	seen := try read_file(path.clone(), none).wait()
+	seen := read_file(path.clone(), none).wait()?
 	_cleaned := remove(path, false)
-	seen.length() | try expect_equal(1)
+	seen.length() | expect_equal(1)?
 
 fn expect_closed(path: String) Unit!:
-	seen := try read_file(path.clone(), none).wait()
+	seen := read_file(path.clone(), none).wait()?
 	_cleaned := remove(path, false)
-	try expect_equal(seen.length(), 1)
+	expect_equal(seen.length(), 1)?
 
 test "shared generic field types keep cleanup for each value":
-	root := try temporary_directory("ms-shared-classification")
+	root := temporary_directory("ms-shared-classification")?
 	first := "{root}/ms-shared-first.txt"
 	second := "{root}/ms-shared-second.txt"
 	third := "{root}/ms-shared-third.txt"
 	fourth := "{root}/ms-shared-fourth.txt"
 	exercise_shared(first.clone(), second.clone(), third.clone(), fourth.clone())
-	try expect_closed(first)
-	try expect_closed(second)
-	try expect_closed(third)
-	try expect_closed(fourth)
-	try remove(root, false)
+	expect_closed(first)?
+	expect_closed(second)?
+	expect_closed(third)?
+	expect_closed(fourth)?
+	remove(root, false)?

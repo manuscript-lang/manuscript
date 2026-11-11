@@ -17,7 +17,7 @@ import expect_equal from "@std/test/test.ms"
 
 test "checked decrement":
     value := 3
-    try expect_equal(value - 1, 2)
+    expect_equal(value - 1, 2)?
 ```
 
 Run it with the compiler built from your checkout:

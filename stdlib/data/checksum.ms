@@ -71,7 +71,7 @@ export fn crc32_of(input: ReadStream[Bytes]) UInt32!:
 	var source = input
 	for chunk in source:
 		sum.update(chunk)
-	try source.close()
+	source.close()?
 	return ok(sum.value())
 
 /*
@@ -83,5 +83,5 @@ export fn adler32_of(input: ReadStream[Bytes]) UInt32!:
 	var source = input
 	for chunk in source:
 		sum.update(chunk)
-	try source.close()
+	source.close()?
 	return ok(sum.value())

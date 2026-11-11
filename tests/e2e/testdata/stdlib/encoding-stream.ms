@@ -22,7 +22,7 @@ impl Source[Bytes] for Chunks:
 		var end = self.at + self.size
 		if end > self.data.length(): end = self.data.length()
 
-		piece := try self.data.slice(self.at, end)
+		piece := self.data.slice(self.at, end)?
 		self.at = end
 		return ok(piece)
 
@@ -65,7 +65,7 @@ fn join_text(input: ReadStream[String]) String!:
 	var out = ""
 
 	while true:
-		next := try source.next()
+		next := source.next()?
 
 		if text := next:
 			out = out.concat(text)
@@ -79,7 +79,7 @@ fn join_bytes(input: ReadStream[Bytes]) Bytes!:
 	var out: List[Bytes] = []
 
 	while true:
-		next := try source.next()
+		next := source.next()?
 
 		if data := next:
 			out.append(data)
@@ -93,7 +93,7 @@ test "base64 encoding matches the whole-value function under every chunk size":
 
 	for size in 1..data.length() + 1:
 		for url_safe in [false, true]:
-			got := try join_text(base64_encoded(chunked(data.clone(), size), url_safe))
+			got := join_text(base64_encoded(chunked(data.clone(), size), url_safe))?
 			if got != base64_encode(data.clone(), url_safe): return fail(
 				"size {size} url_safe {url_safe}"
 			)
@@ -103,22 +103,22 @@ test "base64 decoding matches under every text piece size":
 	text := base64_encode(data.clone())
 
 	for size in 1..text.length() + 1:
-		got := try join_bytes(
+		got := join_bytes(
 			base64_decoded(ReadStream[String](Texts(pieces(text, size), 0)))
-		)
+		)?
 		if got != data: return fail("size {size}")
 
 test "base64 decoding rejects malformed text and truncated groups":
 	bad := join_bytes(base64_decoded(ReadStream[String](Texts(["aGVs", "bG8*"], 0))))
-	try expect_equal(bad.err().kind, "EBADMSG")
+	expect_equal(bad.err().kind, "EBADMSG")?
 
 	cut := join_bytes(base64_decoded(ReadStream[String](Texts(["aGVsb"], 0))))
-	try expect_equal(cut.err().kind, "EBADMSG")
+	expect_equal(cut.err().kind, "EBADMSG")?
 
 test "base64 decoding rejects data after padding at every chunk boundary":
 	for text in ["Zg==Zg==", "Zm8=Zg==", "Zg==AAAA", "Zg==A", "Zg==="]:
 		for url_safe in [false, true]:
-			try expect_equal(base64_decode(text, url_safe).err().kind, "EBADMSG")
+			expect_equal(base64_decode(text, url_safe).err().kind, "EBADMSG")?
 
 			for cut in 0..text.length() + 1:
 				left := text.slice(0, cut).get("")
@@ -131,7 +131,7 @@ test "base64 decoding rejects data after padding at every chunk boundary":
 						url_safe
 					)
 				)
-				try expect_equal(got.err().kind, "EBADMSG")
+				expect_equal(got.err().kind, "EBADMSG")?
 
 test "base64 decoding permits empty chunks after terminal padding":
 	for text in ["Zg==", "Zm8=", "Zm9v", ""]:
@@ -139,7 +139,7 @@ test "base64 decoding permits empty chunks after terminal padding":
 			for cut in 0..text.length() + 1:
 				left := text.slice(0, cut).get("")
 				right := text.slice(cut, text.length()).get("")
-				got := try join_bytes(
+				got := join_bytes(
 					base64_decoded(
 						ReadStream[String](
 							Texts(
@@ -151,37 +151,37 @@ test "base64 decoding permits empty chunks after terminal padding":
 						),
 						url_safe
 					)
-				)
-				try expect_equal(got, try base64_decode(text, url_safe))
+				)?
+				expect_equal(got, base64_decode(text, url_safe)?)?
 
 test "base64 terminal padding survives a rejected read":
 	var same_chunk = base64_decoded(
 		ReadStream[String](Texts(["Zg==A", "", "", "AAA", "", ""], 0))
 	)
-	try expect_equal(same_chunk.next().err().kind, "EBADMSG")
-	try expect_equal(same_chunk.next().err().kind, "EBADMSG")
-	try expect_equal(try same_chunk.next(), none)
+	expect_equal(same_chunk.next().err().kind, "EBADMSG")?
+	expect_equal(same_chunk.next().err().kind, "EBADMSG")?
+	expect_equal(same_chunk.next()?, none)?
 
 	var later_chunk = base64_decoded(
 		ReadStream[String](Texts(["Zg==", "A", "", "", "AAA", "", ""], 0))
 	)
-	try expect_equal((try later_chunk.next()).get(), "f".to_bytes())
-	try expect_equal(later_chunk.next().err().kind, "EBADMSG")
-	try expect_equal(later_chunk.next().err().kind, "EBADMSG")
-	try expect_equal(try later_chunk.next(), none)
+	expect_equal((later_chunk.next()?).get(), "f".to_bytes())?
+	expect_equal(later_chunk.next().err().kind, "EBADMSG")?
+	expect_equal(later_chunk.next().err().kind, "EBADMSG")?
+	expect_equal(later_chunk.next()?, none)?
 
 test "hex steps round trip under every chunk size":
 	data := "hex \u{0}\u{ff} data".to_bytes()
 
 	for size in 1..data.length() + 1:
-		text := try join_text(hex_encoded(chunked(data.clone(), size)))
+		text := join_text(hex_encoded(chunked(data.clone(), size)))?
 		if text != hex_encode(data.clone()): return fail("encode size {size}")
 
-		back := try join_bytes(
+		back := join_bytes(
 			hex_decoded(ReadStream[String](Texts(pieces(text, size), 0)))
-		)
+		)?
 		if back != data: return fail("decode size {size}")
 
 test "hex decoding rejects an odd tail":
 	outcome := join_bytes(hex_decoded(ReadStream[String](Texts(["abc"], 0))))
-	try expect_equal(outcome.err().kind, "EBADMSG")
+	expect_equal(outcome.err().kind, "EBADMSG")?

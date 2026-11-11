@@ -9,5 +9,5 @@ test "a closure that only assigns a captured variable changes it":
 		n = 7
 
 	reset()
-	xs | try expect_equal(["c"])
-	n | try expect_equal(7)
+	xs | expect_equal(["c"])?
+	n | expect_equal(7)?

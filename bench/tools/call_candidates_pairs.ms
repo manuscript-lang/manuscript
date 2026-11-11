@@ -64,11 +64,11 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 		)
 
 		key := "{fields[2]}\t{round}"
-		var value = try finite_counter(fields[3])
+		var value = finite_counter(fields[3])?
 
 		if cpu:
-			user := try finite_counter(fields[6])
-			system := try finite_counter(fields[7])
+			user := finite_counter(fields[6])?
+			system := finite_counter(fields[7])?
 			value = user + system
 
 		if not value.is_finite() or value <= 0.0: return invalid(
@@ -116,7 +116,7 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 
 	for key in groups.keys().sorted():
 		values := groups[key]
-		interval := try median_interval(values)
+		interval := median_interval(values)?
 		slower := values.filter(fn value: value > 1.0).length()
 		report += "{key} n={values.length()} median_candidate_ratio={median(values)} median95_lower={interval[0]} median95_upper={interval[1]} min_ratio={values.min().get()} max_ratio={values.max().get()} candidate_slower={slower}\n"
 
@@ -134,8 +134,8 @@ export fn main() Unit!:
 		"unknown metric"
 	)
 
-	result := try summarize(
+	result := summarize(
 		read_text(args[0]), args.length() > 1 and args[1] == "swap",
 		args.length() > 2 and args[2] == "cpu"
-	)
+	)?
 	print(result)

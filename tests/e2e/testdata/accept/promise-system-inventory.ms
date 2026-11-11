@@ -5,8 +5,8 @@ import (
 )
 
 fn counts() Int!:
-	c := try cpus()
-	n := try network_interfaces()
+	c := cpus()?
+	n := network_interfaces()?
 	return ok(c.length() + n.length())
 
 test "system inventories work from promises on any thread":
@@ -15,4 +15,4 @@ test "system inventories work from promises on any thread":
 		[promise(fn: counts()), promise(fn: counts()), promise(fn: counts())]
 	)
 	for n in all.get([]):
-		try expect_equal(n, here)
+		expect_equal(n, here)?

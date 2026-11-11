@@ -166,9 +166,9 @@ impl HttpClient:
 		max_response_bytes: Int?,
 		timeout: Duration?
 	) StreamingResponse!:
-		raw := try self.request_raw(
+		raw := self.request_raw(
 			method, url, headers, body.as_bytes(), max_response_bytes, timeout
-		)
+		)?
 		return ok(response(raw))
 
 	// Sends immutable Bytes and returns the native response, for callers that buffer the whole body.
@@ -194,7 +194,7 @@ impl HttpClient:
 		max_response_bytes: Int? = none,
 		timeout: Duration? = none
 	) StreamingResponse!:
-		data := try read_all(body, none)
+		data := read_all(body, none)?
 		return self.request(method, url, headers, data, max_response_bytes, timeout)
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
@@ -392,7 +392,7 @@ fn response(raw: RawResponse) StreamingResponse:
 // Reads the rest of the request body into one value.
 // A body over `max_body_bytes` of the server's options returns EOVERFLOW; `limit` also bounds it when given.
 export fn read_body(var exchange: HttpExchange, limit: Int? = none) Bytes!:
-	first := try exchange.read()
+	first := exchange.read()?
 	if head := first: return read_rest(var exchange, head, limit)
 
 	return ok("".to_bytes())
@@ -404,7 +404,7 @@ fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
 		Error("HTTP: limit exceeded", kind: "EOVERFLOW")
 	)
 
-	second := try exchange.read()
+	second := exchange.read()?
 
 	if next := second:
 		total += next.length()
@@ -421,7 +421,7 @@ fn read_more(var exchange: HttpExchange, chunks: List[Bytes], total: Int, limit:
 	var size = total
 
 	while true:
-		chunk := try exchange.read()
+		chunk := exchange.read()?
 
 		if bytes := chunk:
 			size += bytes.length()
@@ -452,14 +452,14 @@ export fn json[T: Data](status: Int, value: T) HttpResponse!:
 	if body.is_error(): return error(Error(body.err().message.clone(), kind: "EIO"))
 
 	var sent = headers()
-	try sent.append("Content-Type", "application/json")
+	sent.append("Content-Type", "application/json")?
 	return ok(HttpResponse(status: status, headers: sent, body: body.get().to_bytes()))
 
 // Builds a redirect to `location` with an empty body.
 // The status should be 301, 302, 303, 307, or 308; the default 303 sends a followed POST on as a GET.
 export fn redirect(location: String, status: Int = 303) HttpResponse!:
 	var sent = headers()
-	try sent.append("Location", location)
+	sent.append("Location", location)?
 	return ok(HttpResponse(status: status, headers: sent, body: "".to_bytes()))
 
 // Adapts a handler that maps a whole request to a whole response into an exchange handler for `serve`.
@@ -471,7 +471,7 @@ fn serve_buffered(
 	handler: fn(HttpRequest) HttpResponse,
 	var exchange: HttpExchange
 ) Unit!:
-	body := try read_body(var exchange)
+	body := read_body(var exchange)?
 	request := HttpRequest(
 		method: exchange.method(), path: exchange.path(), query: exchange.query(),
 		headers: exchange.headers(), body: body, protocol: exchange.protocol()
@@ -483,5 +483,5 @@ export fn upgrade(
 	var exchange: HttpExchange, allowed_origins: List[String] = [],
 	subprotocols: List[String] = [], max_message_bytes: Int? = none
 ) WebSocket!:
-	raw := try exchange.upgrade(allowed_origins, subprotocols, max_message_bytes)
+	raw := exchange.upgrade(allowed_origins, subprotocols, max_message_bytes)?
 	return ok(web_socket_from(raw))

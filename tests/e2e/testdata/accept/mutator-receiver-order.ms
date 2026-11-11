@@ -15,19 +15,19 @@ fn checked(var events: List[Int], fail: Bool) Int!:
 	return ok(9)
 
 fn set_with_try(var events: List[Int], fail: Bool) Unit!:
-	receiver(var events).set(0, try checked(var events, fail))
+	receiver(var events).set(0, checked(var events, fail)?)
 	events.append(3)
 
 test "a changing method evaluates a temporary receiver before its arguments":
 	var events: List[Int] = []
 	receiver(var events).set(0, argument(var events))
-	try expect_equal(events, [1, 2])
+	expect_equal(events, [1, 2])?
 
 test "an argument that leaves through try follows the receiver and releases it":
 	var events: List[Int] = []
-	try expect_equal(set_with_try(var events, false).is_ok(), true)
-	try expect_equal(events, [1, 2, 3])
+	expect_equal(set_with_try(var events, false).is_ok(), true)?
+	expect_equal(events, [1, 2, 3])?
 
 	var failed: List[Int] = []
-	try expect_equal(set_with_try(var failed, true).is_error(), true)
-	try expect_equal(failed, [1, 2])
+	expect_equal(set_with_try(var failed, true).is_error(), true)?
+	expect_equal(failed, [1, 2])?

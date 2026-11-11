@@ -45,7 +45,7 @@ Both calls return normally. The second returns an error value, and `show` choose
 
 ```manuscript
 fn parse_port(text: String) Int!:
-    port := try text.parse_int().ok_or()
+    port := text.parse_int().ok_or()?
     return ok(port)
 ```
 

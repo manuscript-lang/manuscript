@@ -19,96 +19,96 @@ import (
 )
 
 test "CLI test roots have empty arguments and host metadata agrees":
-	try expect_false(not arguments().is_empty())
+	expect_false(not arguments().is_empty())?
 
 	info := system_info()
-	try expect_false(
+	expect_false(
 		(
 			info.cpu_count <= 0
 			or info.os.byte_length() == 0
 			or info.architecture.byte_length() == 0
 		)
-	)
+	)?
 
-	process := try process_info()
-	try expect_false(
+	process := process_info()?
+	expect_false(
 		(
 			process.pid <= 0
 			or process.os != info.os
 			or process.architecture != info.architecture
 		)
-	)
-	try expect_true(endianness() == Endianness.Little or endianness() == Endianness.Big)
-	try expect_false(end_of_line() != "\n" and end_of_line() != "\r\n")
-	try expect_not_equal(os(), Os.Other)
-	try expect_not_equal(dev_null().byte_length(), 0)
+	)?
+	expect_true(endianness() == Endianness.Little or endianness() == Endianness.Big)?
+	expect_false(end_of_line() != "\n" and end_of_line() != "\r\n")?
+	expect_not_equal(os(), Os.Other)?
+	expect_not_equal(dev_null().byte_length(), 0)?
 
 test "process environment reflects live changes":
 	name := "MANUSCRIPT_STDLIB_CONFORMANCE"
-	before := (try environment()).get(name)
-	try set_environment(name, "stdlib")
-	try expect_equal((try environment()).get(name), "stdlib")
-	try set_environment(name, before)
+	before := (environment()?).get(name)
+	set_environment(name, "stdlib")?
+	expect_equal((environment()?).get(name), "stdlib")?
+	set_environment(name, before)?
 
 test "subprocess validation returns expected domain errors":
 	invalid: CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
-	try expect_equal(run("", [], RunOptions(input: "".to_bytes())).wait(), invalid)
+	expect_equal(run("", [], RunOptions(input: "".to_bytes())).wait(), invalid)?
 
 	missing := run(
 		"manuscript-nonexistent-command-stdlib", [], RunOptions(input: "".to_bytes())
 	).wait()
-	try expect_equal(missing.err().kind, "EAGAIN")
-	try expect_equal(
+	expect_equal(missing.err().kind, "EAGAIN")?
+	expect_equal(
 		missing.err().message,
 		"process: service unavailable: manuscript-nonexistent-command-stdlib"
-	)
+	)?
 
 test "subprocess streams that are not piped are closed":
-	child := try spawn(
+	child := spawn(
 		"sh", ["-c", "cat; echo done >&2"],
 		SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null)
-	)
-	try expect_equal((try child.wait()), 0)
+	)?
+	expect_equal((child.wait()?), 0)?
 
 	var errors = lines(child.stderr())
-	line := try errors.next()
-	try expect_equal(line.get(""), "done")
+	line := errors.next()?
+	expect_equal(line.get(""), "done")?
 
 	var silent = child.stdout()
-	try expect_false((try silent.next()).is_some())
+	expect_false((silent.next()?).is_some())?
 
 	var input = child.stdin()
-	try expect_false(input.write("x".to_bytes()).is_ok())
+	expect_false(input.write("x".to_bytes()).is_ok())?
 
 test "managed subprocess streams incrementally and cleans up on scope exit":
-	child := try spawn("cat", [])
+	child := spawn("cat", [])?
 	var input = child.stdin()
-	try input.write("ping\n".to_bytes())
-	try input.flush()
+	input.write("ping\n".to_bytes())?
+	input.flush()?
 
 	var output = lines(child.stdout())
-	line := try output.next()
-	try expect_equal(line.get(""), "ping")
-	try input.close()
-	try expect_equal((try child.wait()), 0)
-	try expect_false((try output.next()).is_some())
+	line := output.next()?
+	expect_equal(line.get(""), "ping")?
+	input.close()?
+	expect_equal((child.wait()?), 0)?
+	expect_false((output.next()?).is_some())?
 
 test "run and spawn pass the environment to the child":
 	var env: Map[String, String] = Map[String, String]()
 	env.add("MS_CHILD_VALUE", "from-parent")
 
-	output := try run(
+	output := run(
 		"sh", ["-c", "printf %s \"$MS_CHILD_VALUE\""],
 		RunOptions(input: "".to_bytes(), env: env.clone())
-	).wait()
-	try expect_equal(output.stdout, "from-parent".to_bytes())
+	).wait()?
+	expect_equal(output.stdout, "from-parent".to_bytes())?
 
-	child := try spawn(
+	child := spawn(
 		"sh", ["-c", "printf %s \"$MS_CHILD_VALUE\" >&2"],
 		SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null, env: env)
-	)
-	try expect_equal((try child.wait()), 0)
+	)?
+	expect_equal((child.wait()?), 0)?
 
 	var errors = child.stderr()
-	text := try errors.next()
-	try expect_equal(text.get("".to_bytes()), "from-parent".to_bytes())
+	text := errors.next()?
+	expect_equal(text.get("".to_bytes()), "from-parent".to_bytes())?

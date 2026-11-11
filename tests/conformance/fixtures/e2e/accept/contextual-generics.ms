@@ -16,7 +16,7 @@ fn from_callback[T](factory: fn() T) T: factory()
 fn transform[T, U](callback: fn(T) U) fn(T) U: callback
 
 type Failure:
-    detail: String
+	detail: String
 
 fn failure_error(cause: Failure) Error: Error(cause.detail.clone())
 
@@ -29,42 +29,42 @@ fn forward[T]() T?: absent()
 fn consume(value: Int?) Int: value.get(0)
 
 type Events:
-    values: List[Int]
+	values: List[Int]
 
 fn record[T](var events: Events, value: Int) T?:
-    events.values.append(value)
-    return none
+	events.values.append(value)
+	return none
 
 fn combine[T](var events: Events, first: T?, second: T?) T?:
-    events.values.append(3)
-    return first
+	events.values.append(3)
+	return first
 
 test "expected generic results preserve behavior and call order":
-    result: List[Int]!Error := first()
-    try expect_false(result.is_ok())
-    try expect_equal(result.err().message, "empty")
+	result: List[Int]!Error := first()
+	expect_false(result.is_ok())?
+	expect_equal(result.err().message, "empty")?
 
-    domain := failed()
-    try expect_false(domain.is_ok())
-    try expect_equal(domain.err().message, "domain")
+	domain := failed()
+	expect_false(domain.is_ok())?
+	expect_equal(domain.err().message, "domain")?
 
-    empty: Int? := forward()
-    try expect_false(not empty.is_none())
+	empty: Int? := forward()
+	expect_false(not empty.is_none())?
 
-    values: List[Int?] := [1, 2].map(fn item: absent())
-    try expect_equal(values.length(), 2)
-    try expect_false(not values.get(0).is_none())
+	values: List[Int?] := [1, 2].map(fn item: absent())
+	expect_equal(values.length(), 2)?
+	expect_false(not values.get(0).is_none())?
 
-    callback: fn(Int) String := transform(fn item: item.to_string())
-    try expect_equal(callback(7), "7")
+	callback: fn(Int) String := transform(fn item: item.to_string())
+	expect_equal(callback(7), "7")?
 
-    defaulted: fn(Int) Int := from_callback(fn: fn(value: Int = 4): (value + 1))
-    try expect_equal(defaulted(8), 9)
-    try expect_equal(consume(identity(5)), 5)
+	defaulted: fn(Int) Int := from_callback(fn: fn(value: Int = 4): (value + 1))
+	expect_equal(defaulted(8), 9)?
+	expect_equal(consume(identity(5)), 5)?
 
-    var events = Events([])
-    combined: Int? := combine(
-        var events, second: record(var events, 2), first: record(var events, 1)
-    )
-    try expect_false(not combined.is_none())
-    try expect_equal(events.values, [2, 1, 3])
+	var events = Events([])
+	combined: Int? := combine(
+		var events, second: record(var events, 2), first: record(var events, 1)
+	)
+	expect_false(not combined.is_none())?
+	expect_equal(events.values, [2, 1, 3])?

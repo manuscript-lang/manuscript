@@ -4,25 +4,23 @@
 import expect_equal from "@std/test/test.ms"
 
 fn apply(value: Int, transform: fn(Int) Int) Int:
-    return transform(value)
+	return transform(value)
 
 test "function suite boundaries":
-    var calls: List[Int] = []
-    _dormant := fn() Unit:
-        calls.append(1)
+	var calls: List[Int] = []
+	_dormant := fn() Unit:
+		calls.append(1)
 
-    grouped := apply(
-        transform: (
-            fn value:
-                if value > 0:
-                    return value - 1
+	grouped := apply(
+		transform: (
+			fn value:
+				if value > 0: return value - 1
+				return 0
+		),
+		value: 3
+	)
 
-                return 0
-        ),
-        value: 3
-    )
-
-    final_argument := apply(value: 3, transform: fn value: return value - 1)
-    calls.length() | try expect_equal(0)
-    grouped | try expect_equal(2)
-    final_argument | try expect_equal(2)
+	final_argument := apply(value: 3, transform: fn value: return value - 1)
+	calls.length() | expect_equal(0)?
+	grouped | expect_equal(2)?
+	final_argument | expect_equal(2)?

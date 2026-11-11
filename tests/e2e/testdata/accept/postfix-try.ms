@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_true from "@std/test/test.ms",
 	parse_int from "@std/math/math.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 )
 
 fn double(text: String) Int!:
@@ -21,7 +21,7 @@ fn both(text: String) Int!:
 	check_positive(value)?
 	return ok(value)
 
-test "postfix ? propagates like try":
+test "postfix ? propagates a failure":
 	expect_equal(double("21")?, 42)?
 	expect_equal(label("4")?, "n=8")?
 	expect_true(double("x").is_error())?

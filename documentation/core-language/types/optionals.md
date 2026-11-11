@@ -163,7 +163,7 @@ Omitting the cause yields an `Error` of kind `"ENOENT"` (the [default type argum
 
 ```manuscript
 fn port_number(text: String) Int!:
-    port := try text.parse_int().ok_or()
+    port := text.parse_int().ok_or()?
     return ok(port)
 ```
 

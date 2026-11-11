@@ -238,7 +238,7 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 		if taken[head]:
 			head += 1
 		else if pending[head].done():
-			value := try pending[head].wait()
+			value := pending[head].wait()?
 			slots[head] = ok(value)
 			taken[head] = true
 			head += 1
@@ -251,14 +251,14 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 
 			for at in head..count:
 				if not taken[at] and pending[at].done():
-					value := try pending[at].wait()
+					value := pending[at].wait()?
 					slots[at] = ok(value)
 					taken[at] = true
 
 	var reversed: List[T] = []
 	for at in 0..count:
 		if slot := slots.pop():
-			reversed.append(try slot)
+			reversed.append(slot?)
 
 	var results: List[T] = []
 	for at in 0..count:

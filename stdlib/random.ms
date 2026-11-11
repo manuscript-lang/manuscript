@@ -37,7 +37,7 @@ Example: `"01ARZ3NDEKTSV4RRFFQ69G5FAV"`. Entropy failures return an `Error`.
 export fn ulid() String!:
 	moment := now()
 	millis := moment.seconds * 1000 + moment.nanos / 1000000
-	noise := try random_bytes(10)
+	noise := random_bytes(10)?
 	var raw = BytesBuilder()
 	for place in 0..6:
 		raw.append(
@@ -72,7 +72,7 @@ The default 32 bytes (256 bits) is 43 characters. Use it for session ids, API ke
 */
 // ms: effect std.random.read
 export fn token(size: Int = 32) String!:
-	data := try random_bytes(size)
+	data := random_bytes(size)?
 	return ok(base64_encode(data, url_safe: true, padded: false))
 
 // Returns a secure Float at least 0.0 and below 1.0 with 53 random bits from the operating system's entropy.
@@ -101,7 +101,7 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 	var out: List[T] = []
 
 	for i in 0..count:
-		at := try secure_int(i, values.length())
+		at := secure_int(i, values.length())?
 		order.swap(i, at)
 		out.append(values[order[i]].clone())
 
@@ -116,7 +116,7 @@ export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?
 	total := weight_total(values.length(), weights)
 	if total == 0.0: return error(Error("random: invalid input", kind: "EINVAL"))
 
-	point := try float()
+	point := float()?
 	return ok(values[weighted_position(weights, point, total)].clone())
 
 fn positions(count: Int) List[Int]:

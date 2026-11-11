@@ -124,7 +124,7 @@ export fn parse_address_list(text: String) List[Address]!:
 	for piece in pieces:
 		if piece.trim().is_empty(): continue
 
-		out.append(try parse_address(piece))
+		out.append(parse_address(piece)?)
 
 	return ok(out)
 

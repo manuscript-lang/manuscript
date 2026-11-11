@@ -60,12 +60,12 @@ fn after_move(r: Room, fail: Bool) List[Door]!Oops:
 	var xs: List[Door] = []
 	xs.append(r.first)
 
-	_n := try check(fail)
+	_n := check(fail)?
 	say("after_move: ok")
 	return ok(xs)
 
 fn before_move(r: Room, fail: Bool) List[Door]!Oops:
-	_n := try check(fail)
+	_n := check(fail)?
 	var xs: List[Door] = []
 	xs.append(r.second)
 	return ok(xs)

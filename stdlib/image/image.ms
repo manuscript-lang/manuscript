@@ -212,7 +212,7 @@ impl Image:
 		method: Resampling = Resampling.Bilinear,
 		max_pixels: Int? = none
 	) Image!:
-		count := try pixel_count(width, height, max_pixels)
+		count := pixel_count(width, height, max_pixels)?
 		n := color_channels(self.mode)
 		var out = List[UInt8](reserve: count * n)
 
@@ -360,7 +360,7 @@ export fn new_image(
 		Error("image: dimensions must be positive", kind: "EINVAL")
 	)
 
-	count := try pixel_count(width, height, max_pixels)
+	count := pixel_count(width, height, max_pixels)?
 	n := color_channels(mode)
 	var pixels = zeroed(count * n)
 	if mode == ColorMode.GrayAlpha or mode == ColorMode.Rgba:
@@ -451,9 +451,9 @@ fn decode_ppm(data: Bytes, max_pixels: Int?) Image!:
 
 	kind := data.get(1).to_int()
 	n := if kind == 54: 3 else: 1
-	wide := try ppm_number(data, 2)
-	tall := try ppm_number(data, wide[1])
-	peak := try ppm_number(data, tall[1])
+	wide := ppm_number(data, 2)?
+	tall := ppm_number(data, wide[1])?
+	peak := ppm_number(data, tall[1])?
 	width := wide[0]
 	height := tall[0]
 	maxval := peak[0]
@@ -466,7 +466,7 @@ fn decode_ppm(data: Bytes, max_pixels: Int?) Image!:
 	if peak[1] >= data.length() or not is_space(data.get(peak[1]).to_int()):
 		return error(bad("missing separator after PNM header"))
 
-	count := try pixel_count(width, height, max_pixels)
+	count := pixel_count(width, height, max_pixels)?
 	sample := if maxval > 255: 2 else: 1
 
 	// The raster must be present in full before anything is allocated.
@@ -575,7 +575,7 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 	if width < 1 or width > 2147483647 or height > 2147483647:
 		return error(bad("BMP dimensions out of range"))
 
-	count := try pixel_count(width, height, max_pixels)
+	count := pixel_count(width, height, max_pixels)?
 
 	// Palette entries sit between the header and the pixels.
 	entry := if header == 12: 3 else: 4
@@ -879,7 +879,7 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
 				return error(bad("PNG dimensions out of range"))
 
 			// Reject oversized images from the header alone, before reading any further.
-			_ := try pixel_count(width, height, max_pixels)
+			_ := pixel_count(width, height, max_pixels)?
 			have_header = true
 		else if kind == CHUNK_PLTE:
 			if idat_seen or length % 3 != 0 or length == 0 or length > 768:
@@ -938,7 +938,7 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
 	if width < 1 or height < 1 or width > 2147483647 or height > 2147483647:
 		return error(bad("PNG dimensions out of range"))
 
-	count := try pixel_count(width, height, max_pixels)
+	count := pixel_count(width, height, max_pixels)?
 	if color == 3 and palette.is_empty(): return error(
 		bad("indexed PNG without a palette")
 	)
@@ -948,7 +948,7 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
 	expected := png_raw_size(width, height, bits_per_pixel, interlaced)
 
 	// The inflate budget is the size the header implies, so a bomb stops at that bound.
-	raw := try decompress(idat.build(), CompressionFormat.Zlib, expected)
+	raw := decompress(idat.build(), CompressionFormat.Zlib, expected)?
 	if raw.length() != expected: return error(
 		bad("PNG pixel data is {raw.length()} bytes, expected {expected}")
 	)
@@ -1156,7 +1156,7 @@ fn encode_png(image: Image) Bytes!:
 	out.append_bytes(Bytes([137, 80, 78, 71, 13, 10, 26, 10]))
 	png_chunk(var out, "IHDR", header.build())
 
-	packed := try compress(raw.build(), CompressionFormat.Zlib)
+	packed := compress(raw.build(), CompressionFormat.Zlib)?
 	png_chunk(var out, "IDAT", packed)
 	png_chunk(var out, "IEND", Bytes([]))
 	return ok(out.build())
@@ -1596,7 +1596,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 					for zi in 0..total:
 						values.append(data.get(p + 17 + zi).to_int())
 
-					table := try build_huffman(counts, values)
+					table := build_huffman(counts, values)?
 
 					if table_class == 0:
 						dc_tables[id] = table
@@ -1632,7 +1632,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 					bad("bad JPEG frame header length")
 				)
 
-				_total := try pixel_count(width, height, max_pixels)
+				_total := pixel_count(width, height, max_pixels)?
 				progressive = marker == 194
 
 				for i in 0..count:

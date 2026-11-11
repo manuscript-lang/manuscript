@@ -23,5 +23,5 @@ test "one receiver implements two applications of a generic contract":
 	as_string: Visitor[String] := d
 	a: Int := run(as_int, 5)
 	b: String := run(as_string, 5)
-	try expect_equal(a, 15)
-	try expect_equal(b, "<5>")
+	expect_equal(a, 15)?
+	expect_equal(b, "<5>")?

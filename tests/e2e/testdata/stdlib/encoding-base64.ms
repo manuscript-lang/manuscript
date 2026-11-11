@@ -6,22 +6,22 @@ import (
 
 test "empty Base64 accepts default and explicit alphabets":
 	empty := Bytes([])
-	try expect_equal(base64_encode(empty), "")
-	try expect_equal(base64_encode(empty, false), "")
-	try expect_equal(base64_encode(empty, true), "")
+	expect_equal(base64_encode(empty), "")?
+	expect_equal(base64_encode(empty, false), "")?
+	expect_equal(base64_encode(empty, true), "")?
 
-	view := try Bytes([251, 255, 0]).slice(1, 1)
-	try expect_equal(base64_encode(view), "")
-	try expect_equal(base64_encode(view, true), "")
+	view := Bytes([251, 255, 0]).slice(1, 1)?
+	expect_equal(base64_encode(view), "")?
+	expect_equal(base64_encode(view, true), "")?
 
 test "Base64 after empty retains alphabets and padding tails":
-	try expect_equal(base64_encode(Bytes([])), "")
-	try expect_equal(base64_encode(Bytes([251])), "+w==")
-	try expect_equal(base64_encode(Bytes([251, 255])), "+/8=")
-	try expect_equal(base64_encode(Bytes([251, 255, 0])), "+/8A")
-	try expect_equal(base64_encode(Bytes([251]), true), "-w==")
-	try expect_equal(base64_encode(Bytes([251, 255]), true), "-_8=")
-	try expect_equal(base64_encode(Bytes([251, 255, 0]), true), "-_8A")
+	expect_equal(base64_encode(Bytes([])), "")?
+	expect_equal(base64_encode(Bytes([251])), "+w==")?
+	expect_equal(base64_encode(Bytes([251, 255])), "+/8=")?
+	expect_equal(base64_encode(Bytes([251, 255, 0])), "+/8A")?
+	expect_equal(base64_encode(Bytes([251]), true), "-w==")?
+	expect_equal(base64_encode(Bytes([251, 255]), true), "-_8=")?
+	expect_equal(base64_encode(Bytes([251, 255, 0]), true), "-_8A")?
 
 test "Base64 encodes every byte and empty views":
 	var out = BytesBuilder()
@@ -29,19 +29,19 @@ test "Base64 encodes every byte and empty views":
 		out.append(n.to_uint8().get(0))
 
 	data := out.build()
-	try expect_equal(
+	expect_equal(
 		base64_encode(data),
 		"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
-	)
-	try expect_equal(
+	)?
+	expect_equal(
 		base64_encode(data, true),
 		"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn-AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq-wsbKztLW2t7i5uru8vb6_wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t_g4eLj5OXm5-jp6uvs7e7v8PHy8_T19vf4-fr7_P3-_w=="
-	)
+	)?
 
-	empty := try data.slice(127, 127)
-	try expect_equal(base64_encode(empty), "")
-	try expect_equal(try base64_decode(base64_encode(data)), data)
-	try expect_equal(try base64_decode(base64_encode(data, true), true), data)
+	empty := data.slice(127, 127)?
+	expect_equal(base64_encode(empty), "")?
+	expect_equal(base64_decode(base64_encode(data))?, data)?
+	expect_equal(base64_decode(base64_encode(data, true), true)?, data)?
 
 fn padded_input(length: Int) Bytes:
 	var out = BytesBuilder()
@@ -60,13 +60,11 @@ test "Base64 preserves tails across small and batch boundaries":
 		24574, 24575, 24576, 24577, 24578, 24579
 	]:
 		data := padded_input(length)
-		try expect_equal(data.length(), length)
+		expect_equal(data.length(), length)?
 
 		tail := if length % 3 == 1: "+w==" else: (if length % 3 == 2: "+/8=" else: "")
 		url_tail := if length % 3 == 1: "-w==" else: (
 			if length % 3 == 2: "-_8=" else: ""
 		)
-		try expect_equal(base64_encode(data), (try "+/8A".repeat(length / 3)) + tail)
-		try expect_equal(
-			base64_encode(data, true), (try "-_8A".repeat(length / 3)) + url_tail
-		)
+		expect_equal(base64_encode(data), ("+/8A".repeat(length / 3)?) + tail)?
+		expect_equal(base64_encode(data, true), ("-_8A".repeat(length / 3)?) + url_tail)?

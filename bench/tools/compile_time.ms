@@ -311,7 +311,7 @@ fn timed(
 	args: List[String]
 ) Result[Unit, Error]:
 	start := now_ns()
-	_ := try must(label, run_in(dir, program, args))
+	_ := must(label, run_in(dir, program, args))?
 	seconds := (now_ns() - start).to_float() / 1000000000.0
 	print("{label} {seconds.to_fixed(2)} s")
 	return ok(unit)
@@ -324,29 +324,29 @@ fn run(out: String, p: Int, f: Int, k: Int) Result[Unit, Error]:
 
 	ms := ms_binary()
 	go := env("GO", "go")
-	_ := try must("go clean", run_in("{out}/go", go, ["clean", "-cache"]))
-	try timed("go cold:  ", "{out}/go", go, ["build", "-o", "../gobin", "."])
-	try timed("ms check: ", "{out}/ms", ms, ["check", "ms.toml"])
-	try timed("ms emit:  ", "{out}/ms", ms, ["emit", "ms.toml"])
+	_ := must("go clean", run_in("{out}/go", go, ["clean", "-cache"]))?
+	timed("go cold:  ", "{out}/go", go, ["build", "-o", "../gobin", "."])?
+	timed("ms check: ", "{out}/ms", ms, ["check", "ms.toml"])?
+	timed("ms emit:  ", "{out}/ms", ms, ["emit", "ms.toml"])?
 	drop_cache("{out}/ms")
-	try timed(
+	timed(
 		"ms debug: ", "{out}/ms", ms,
 		["build", "ms.toml", "-o", "../msbin_d", "--build-type", "Debug"]
-	)
+	)?
 	drop_cache("{out}/ms")
 	set_environment("MS_BACKEND", "cranelift").get()
-	try timed("ms clif:  ", "{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin_c"])
+	timed("ms clif:  ", "{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin_c"])?
 	set_environment("MS_BACKEND", none).get()
 
 	if env("SKIP_LLVM", "") == "":
 		drop_cache("{out}/ms")
-		try timed("ms release:", "{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin"])
+		timed("ms release:", "{out}/ms", ms, ["build", "ms.toml", "-o", "../msbin"])?
 
 	if env("SKIP_RUST", "") == "":
 		cargo := env("CARGO", "cargo")
-		try rust_timed("rust check:  ", out, cargo, ["check"])
-		try rust_timed("rust debug:  ", out, cargo, ["build"])
-		try rust_timed("rust release:", out, cargo, ["build", "--release"])
+		rust_timed("rust check:  ", out, cargo, ["check"])?
+		rust_timed("rust debug:  ", out, cargo, ["build"])?
+		rust_timed("rust release:", out, cargo, ["build", "--release"])?
 
 // Times one cargo build from a cold target directory.
 fn rust_timed(

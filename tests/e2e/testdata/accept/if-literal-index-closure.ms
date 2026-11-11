@@ -20,24 +20,24 @@ fn first_or(m: Int?) Int:
 	return 0
 
 test "if expression":
-	try expect_equal(pick(true), 1)
-	try expect_equal(pick(false), 2)
+	expect_equal(pick(true), 1)?
+	expect_equal(pick(false), 2)?
 
 test "literal match":
-	try expect_equal(describe(0), "zero")
-	try expect_equal(describe(-1), "minus")
-	try expect_equal(describe(7), "other")
+	expect_equal(describe(0), "zero")?
+	expect_equal(describe(-1), "minus")?
+	expect_equal(describe(7), "other")?
 
 test "indexed assignment":
 	var xs = [1, 2, 3]
 	xs[1] = 9
 	xs[2] += 1
-	try expect_equal(xs, [1, 9, 4])
+	expect_equal(xs, [1, 9, 4])?
 
 test "optional wrap":
 	m: Int? := 5
-	try expect_equal(first_or(m), 5)
-	try expect_equal(first_or(maybe(3)), 3)
+	expect_equal(first_or(m), 5)?
+	expect_equal(first_or(maybe(3)), 3)?
 
 test "closure mutates capture":
 	var total = 0
@@ -49,5 +49,5 @@ test "closure mutates capture":
 
 	add(2)
 	add(3)
-	try expect_equal(total, 5)
-	try expect_equal(box.n, 6)
+	expect_equal(total, 5)?
+	expect_equal(box.n, 6)?

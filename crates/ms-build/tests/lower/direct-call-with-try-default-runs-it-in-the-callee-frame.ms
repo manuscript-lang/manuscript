@@ -5,7 +5,7 @@ import stdout from "@std/io/io.ms"
 
 fn fail() Result[Int, Error]: return error(Error("no"))
 
-fn get(value: Int = try fail()) Result[Int, Error]: return ok(value)
+fn get(value: Int = fail()?) Result[Int, Error]: return ok(value)
 
 fn main() Unit:
-    _r := stdout().write("{get(2).is_ok()} {get().is_ok()}\n")
+	_r := stdout().write("{get(2).is_ok()} {get().is_ok()}\n")

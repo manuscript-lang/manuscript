@@ -4,31 +4,31 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 interface ReadValue[T]:
-    fn get() T
+	fn get() T
 
 interface SameValue[T: Equal]:
-    fn same(other: T) Bool
+	fn same(other: T) Bool
 
 type Box[T]:
-    value: T
+	value: T
 
 impl ReadValue[T] for Box[T]:
-    fn get() T:
-        return self.value
+	fn get() T:
+		return self.value
 
 impl SameValue[T] for Box[T]:
-    fn same(other: T) Bool:
-        return self.value == other
+	fn same(other: T) Bool:
+		return self.value == other
 
 fn compare[T: Equal](box: Box[T], other: T) Bool:
-    return box.same(other)
+	return box.same(other)
 
 test "generic implementations":
-    number := Box[Int](7)
-    text := Box[String]("hello")
-    number_view: ReadValue[Int] := number
-    text_view: ReadValue[String] := text
-    try expect_equal(number_view.get(), 7)
-    try expect_equal(text_view.get(), "hello")
-    try expect_false(not (compare(number, 7)))
-    try expect_false(not (not compare(number, 8)))
+	number := Box[Int](7)
+	text := Box[String]("hello")
+	number_view: ReadValue[Int] := number
+	text_view: ReadValue[String] := text
+	expect_equal(number_view.get(), 7)?
+	expect_equal(text_view.get(), "hello")?
+	expect_false(not (compare(number, 7)))?
+	expect_false(not (not compare(number, 8)))?

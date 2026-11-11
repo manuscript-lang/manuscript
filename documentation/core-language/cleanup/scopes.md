@@ -15,7 +15,7 @@ import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 fn read_head(path: String) Bytes?!:
-    file := try open(path)
+    file := open(path)?
     return file.read(max_bytes: 4096)
 ```
 
@@ -63,7 +63,7 @@ Flush before closing when you need the destination to catch up or need to handle
 import WriteStream from "@std/io/io.ms"
 
 fn finish(var output: WriteStream[String]) Unit!:
-    try output.flush()
+    output.flush()?
     return output.close()
 ```
 

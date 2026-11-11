@@ -234,12 +234,12 @@ impl FileHandle:
 
 	// Duplicates this handle for chunk reads; the stream closes its own descriptor independently and shares the file position.
 	fn reader() ReadStream[Bytes]!:
-		own := try self.clone()
+		own := self.clone()?
 		return ok(ReadStream[Bytes](FileSource(own)))
 
 	// Adapts complete writes to `Error`/Unit; flush synchronizes the file.
 	fn writer() WriteStream[Bytes]!:
-		own := try self.clone()
+		own := self.clone()?
 		return ok(WriteStream[Bytes](FileSink(own)))
 
 	// Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
@@ -300,7 +300,7 @@ impl FileHandle:
     Handles made by `clone` share one lock, and locking a handle that already holds one converts it. A closed handle returns EBADF.
     */
 	fn try_lock(exclusive: Bool) Bool!:
-		taken := try msstd_fs_file_try_lock(self.native, exclusive)
+		taken := msstd_fs_file_try_lock(self.native, exclusive)?
 		return ok(taken == 1)
 
 	// Takes an advisory lock like `try_lock`, retrying every few milliseconds for up to `timeout`; none waits until it is granted.
@@ -309,11 +309,11 @@ impl FileHandle:
 		started := monotonic()
 
 		while true:
-			if try self.try_lock(exclusive): return ok(true)
+			if self.try_lock(exclusive)?: return ok(true)
 
 			if limit := timeout:
 				if monotonic().difference(started).compare(limit) >= 0: return ok(false)
-			try sleep(milliseconds(5)).wait()
+			sleep(milliseconds(5)).wait()?
 
 		return ok(false)
 
@@ -424,7 +424,7 @@ impl Source[FileEvent] for WatchSource:
 		while true:
 			if event := self.pending.pop(): return ok(event)
 
-			var batch = try msstd_fs_watch_next(self.watcher.native)
+			var batch = msstd_fs_watch_next(self.watcher.native)?
 			batch.reverse()
 			self.pending = batch
 
@@ -939,18 +939,18 @@ export fn watch(
 		)
 		return ok(
 			watch_stream(
-				try msstd_fs_watch(
+				msstd_fs_watch(
 					path, recursive, interval, options.max_entries
-				)
+				)?
 			)
 		)
 
 	return ok(
 		watch_stream(
-			try msstd_fs_watch_native(
+			msstd_fs_watch_native(
 				path, recursive, options.max_entries, options.max_events,
 				options.overflow.get("error")
-			)
+			)?
 		)
 	)
 

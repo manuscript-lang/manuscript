@@ -29,7 +29,7 @@ export type Sample:
 	medians: Map[String, Float]
 
 export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
-	cases := try read_cases(output)
+	cases := read_cases(output)?
 	var operations = Map[String, Int]()
 	var medians = Map[String, Float]()
 
@@ -58,8 +58,8 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 
 	for i in 0..repeats:
 		for version in (if i % 2 == 0: ["before", "after"] else: ["after", "before"]):
-			output := try stdlib_bench(binaries.get_or(version, ""), samples, filter)
-			parsed := try parse_sample(output, expected)
+			output := stdlib_bench(binaries.get_or(version, ""), samples, filter)?
+			parsed := parse_sample(output, expected)?
 
 			if expected.is_none():
 				expected = parsed.operations.clone()

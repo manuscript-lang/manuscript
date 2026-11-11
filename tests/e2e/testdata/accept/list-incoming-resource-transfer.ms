@@ -14,11 +14,11 @@ impl Closeable for Door:
 	var fn close() Unit!:
 		if not self.closed:
 			self.closed = true
-			try append_file(self.log, "{self.id},").wait()
+			append_file(self.log, "{self.id},").wait()?
 			if self.fail: return error(Error("close failed"))
 
 fn events(log: String) String!:
-	return ok((try read_file(log).wait()).decode_utf8().get(""))
+	return ok((read_file(log).wait()?).decode_utf8().get(""))
 
 fn named(log: String, op: Int, index: Int, fail: Bool = false) Unit:
 	var items = [Door(1, log.clone(), fail: fail)]
@@ -41,40 +41,33 @@ fn computed(log: String, op: Int, index: Int, fail: Bool = false) Unit:
 test "named and computed bad bounds close incoming before existing":
 	for op in 0..3:
 		for index in [-2, 2]:
-			tmp := try temporary("list-transfer-")
+			tmp := temporary("list-transfer-")?
 			log := "{tmp.path()}/log"
-			try expect_contains(
-				(try expect_fault(fn: named(log.clone(), op, index))), "index"
-			)
-			try expect_equal((try events(log)), "2,1,")
+			expect_contains((expect_fault(fn: named(log.clone(), op, index))?), "index")?
+			expect_equal((events(log)?), "2,1,")?
 
-			temp := try temporary("list-computed-transfer-")
+			temp := temporary("list-computed-transfer-")?
 			other := "{temp.path()}/log"
-			try expect_contains(
-				(
-					try expect_fault(
-						fn: computed(other.clone(), op, index)
-					)
-				),
-				"index"
-			)
-			try expect_equal((try events(other)), "2,1,")
+			expect_contains(
+				(expect_fault(fn: computed(other.clone(), op, index))?), "index"
+			)?
+			expect_equal((events(other)?), "2,1,")?
 
 test "successful direct and computed transfers close each owner once":
 	for op in 0..5:
-		tmp := try temporary("list-transfer-ok-")
+		tmp := temporary("list-transfer-ok-")?
 		log := "{tmp.path()}/log"
 		named(log.clone(), op, 0)
 
 		expected := if op == 3: "2,1," else: "1,2,"
-		try expect_equal((try events(log)), expected)
+		expect_equal((events(log)?), expected)?
 
-		temp := try temporary("list-computed-ok-")
+		temp := temporary("list-computed-ok-")?
 		other := "{temp.path()}/log"
 		computed(other.clone(), op, 0)
 
 		computed_expected := if op == 2 or op == 3: "2,1," else: "1,2,"
-		try expect_equal((try events(other)), computed_expected)
+		expect_equal((events(other)?), computed_expected)?
 
 fn later_fault(log: String) Unit:
 	var items = [Door(1, log.clone())]
@@ -85,33 +78,31 @@ fn bad_index() Int!:
 
 fn later_try(log: String) Unit!:
 	var items = [Door(1, log.clone())]
-	items.set(value: Door(2, log), index: try bad_index())
+	items.set(value: Door(2, log), index: bad_index()?)
 
 test "later named operand faults and try exits preserve incoming owner":
-	tmp := try temporary("list-later-fault-")
+	tmp := temporary("list-later-fault-")?
 	log := "{tmp.path()}/log"
-	try expect_contains(
-		(try expect_fault(fn: later_fault(log.clone()))), "later operand"
-	)
-	try expect_equal((try events(log)), "2,1,")
+	expect_contains((expect_fault(fn: later_fault(log.clone()))?), "later operand")?
+	expect_equal((events(log)?), "2,1,")?
 
-	temp := try temporary("list-later-try-")
+	temp := temporary("list-later-try-")?
 	other := "{temp.path()}/log"
-	try expect_equal(later_try(other.clone()).is_error(), true)
-	try expect_equal((try events(other)), "2,1,")
+	expect_equal(later_try(other.clone()).is_error(), true)?
+	expect_equal((events(other)?), "2,1,")?
 
 test "failed old close preserves pending incoming owner":
-	tmp := try temporary("list-old-close-")
+	tmp := temporary("list-old-close-")?
 	log := "{tmp.path()}/log"
-	message := try expect_fault(fn: named(log.clone(), 0, 0, true))
-	try expect_contains(message, "closed")
-	try expect_equal((try events(log)), "1,2,")
+	message := expect_fault(fn: named(log.clone(), 0, 0, true))?
+	expect_contains(message, "closed")?
+	expect_equal((events(log)?), "1,2,")?
 
-	temp := try temporary("list-computed-old-close-")
+	temp := temporary("list-computed-old-close-")?
 	other := "{temp.path()}/log"
-	error := try expect_fault(fn: computed(other.clone(), 0, 0, true))
-	try expect_contains(error, "closed")
-	try expect_equal((try events(other)), "1,2,")
+	error := expect_fault(fn: computed(other.clone(), 0, 0, true))?
+	expect_contains(error, "closed")?
+	expect_equal((events(other)?), "1,2,")?
 
 type Holder:
 	items: List[Door]
@@ -126,15 +117,15 @@ fn slot(log: String) Unit:
 	action(3)
 
 test "field and closure-slot receivers retain cleanup on fault":
-	tmp := try temporary("list-field-")
+	tmp := temporary("list-field-")?
 	log := "{tmp.path()}/log"
-	try expect_contains((try expect_fault(fn: field(log.clone()))), "index")
-	try expect_equal((try events(log)), "2,1,")
+	expect_contains((expect_fault(fn: field(log.clone()))?), "index")?
+	expect_equal((events(log)?), "2,1,")?
 
-	temp := try temporary("list-slot-")
+	temp := temporary("list-slot-")?
 	other := "{temp.path()}/log"
-	try expect_contains((try expect_fault(fn: slot(other))), "index")
-	try expect_equal((try events(other)), "2,1,")
+	expect_contains((expect_fault(fn: slot(other))?), "index")?
+	expect_equal((events(other)?), "2,1,")?
 
 fn optional(log: String, index: Int) Unit:
 	var items: List[Door?] = [Door(1, log.clone())]
@@ -144,16 +135,16 @@ fn computed_failed_new_close(log: String) Unit:
 	_old := [Door(1, log.clone())].replace(0, Door(2, log, fail: true))
 
 test "implicit optional payload and outgoing replacement survive cleanup faults":
-	tmp := try temporary("list-optional-")
+	tmp := temporary("list-optional-")?
 	log := "{tmp.path()}/log"
-	try expect_contains((try expect_fault(fn: optional(log.clone(), 3))), "index")
-	try expect_equal((try events(log)), "2,1,")
+	expect_contains((expect_fault(fn: optional(log.clone(), 3))?), "index")?
+	expect_equal((events(log)?), "2,1,")?
 
-	temp := try temporary("list-replace-new-close-")
+	temp := temporary("list-replace-new-close-")?
 	other := "{temp.path()}/log"
-	message := try expect_fault(fn: computed_failed_new_close(other.clone()))
-	try expect_contains(message, "closed")
-	try expect_equal((try events(other)), "2,1,")
+	message := expect_fault(fn: computed_failed_new_close(other.clone()))?
+	expect_contains(message, "closed")?
+	expect_equal((events(other)?), "2,1,")?
 
 fn repeated(log: String) Unit:
 	var items: List[Door] = []
@@ -163,14 +154,14 @@ fn repeated(log: String) Unit:
 		_old := items.replace(id, Door(id + 40, log.clone()))
 
 test "repeated successful transfers retire only their own cleanup":
-	tmp := try temporary("list-repeated-")
+	tmp := temporary("list-repeated-")?
 	log := "{tmp.path()}/log"
 	repeated(log)
 
 	var expected = ""
 	for id in 0..40: expected = "{expected}{id},"
 	for id in 0..40: expected = "{expected}{79 - id},"
-	try expect_equal((try events(log)), expected)
+	expect_equal((events(log)?), expected)?
 
 type PanicDoor:
 	id: Int
@@ -182,7 +173,7 @@ impl Closeable for PanicDoor:
 	var fn close() Unit!:
 		if not self.closed:
 			self.closed = true
-			try append_file(self.log, "{self.id},").wait()
+			append_file(self.log, "{self.id},").wait()?
 			if self.fail: panic("capture close panic")
 
 fn captured(log: String, id: Int, fail: Bool) fn() Int:
@@ -199,18 +190,18 @@ impl Closeable for Envelope:
 	var fn close() Unit!:
 		if not self.closed:
 			self.closed = true
-			try append_file(self.log, "{self.id},").wait()
+			append_file(self.log, "{self.id},").wait()?
 
 fn callback_drop(log: String) Unit:
 	var items = [Envelope(1, log.clone(), captured(log.clone(), 3, true))]
 	items.set(0, Envelope(2, log, fn: 4))
 
 test "faulting captured close during detached old drop preserves new list owner":
-	tmp := try temporary("list-callback-drop-")
+	tmp := temporary("list-callback-drop-")?
 	log := "{tmp.path()}/log"
-	message := try expect_fault(fn: callback_drop(log.clone()))
-	try expect_contains(message, "capture close panic")
-	try expect_equal((try events(log)), "1,3,2,")
+	message := expect_fault(fn: callback_drop(log.clone()))?
+	expect_contains(message, "capture close panic")?
+	expect_equal((events(log)?), "1,3,2,")?
 
 type EnvelopeHolder:
 	items: List[Envelope]
@@ -235,11 +226,11 @@ fn callback_places(log: String, kind: Int) Unit:
 
 test "old capture drop fault observes updated field indexed slot and computed receivers":
 	for kind in 0..4:
-		tmp := try temporary("list-place-callback-")
+		tmp := temporary("list-place-callback-")?
 		log := "{tmp.path()}/log"
-		message := try expect_fault(fn: callback_places(log.clone(), kind))
-		try expect_contains(message, "capture close panic")
-		try expect_equal((try events(log)), "1,3,2,")
+		message := expect_fault(fn: callback_places(log.clone(), kind))?
+		expect_contains(message, "capture close panic")?
+		expect_equal((events(log)?), "1,3,2,")?
 
 fn owned_named(log: String, index: Int) Unit:
 	var items = [Door(1, log.clone())]
@@ -250,29 +241,29 @@ fn valid_later() Int!: return ok(0)
 
 fn succeeding_try(log: String) Unit!:
 	var items = [Door(1, log.clone())]
-	items.set(value: Door(2, log), index: try valid_later())
+	items.set(value: Door(2, log), index: valid_later()?)
 
 test "valid negative end and named owner transfers preserve single close":
 	for op in [0, 1, 2]:
-		tmp := try temporary("list-negative-ok-")
+		tmp := temporary("list-negative-ok-")?
 		log := "{tmp.path()}/log"
 		named(log.clone(), op, -1)
-		try expect_equal((try events(log)), "1,2,")
+		expect_equal((events(log)?), "1,2,")?
 
-	tmp := try temporary("list-end-ok-")
+	tmp := temporary("list-end-ok-")?
 	log := "{tmp.path()}/log"
 	owned_named(log.clone(), 1)
-	try expect_equal((try events(log)), "2,1,")
+	expect_equal((events(log)?), "2,1,")?
 
-	temp := try temporary("list-named-fault-")
+	temp := temporary("list-named-fault-")?
 	other := "{temp.path()}/log"
-	try expect_contains((try expect_fault(fn: owned_named(other.clone(), 2))), "index")
-	try expect_equal((try events(other)), "2,1,")
+	expect_contains((expect_fault(fn: owned_named(other.clone(), 2))?), "index")?
+	expect_equal((events(other)?), "2,1,")?
 
-	success := try temporary("list-success-try-")
+	success := temporary("list-success-try-")?
 	path := "{success.path()}/log"
-	try succeeding_try(path.clone())
-	try expect_equal((try events(path)), "1,2,")
+	succeeding_try(path.clone())?
+	expect_equal((events(path)?), "1,2,")?
 
 fn after_pop(var items: List[Door]) Int:
 	_removed := items.pop()
@@ -283,10 +274,10 @@ fn changed_length(log: String) Unit:
 	items.set(value: Door(2, log), index: after_pop(var items))
 
 test "final bounds use receiver after later operand mutation":
-	tmp := try temporary("list-current-bounds-")
+	tmp := temporary("list-current-bounds-")?
 	log := "{tmp.path()}/log"
-	try expect_contains((try expect_fault(fn: changed_length(log.clone()))), "index")
-	try expect_equal((try events(log)), "1,2,")
+	expect_contains((expect_fault(fn: changed_length(log.clone()))?), "index")?
+	expect_equal((events(log)?), "1,2,")?
 
 fn optional_list(log: String) List[Door?]:
 	return [Door(1, log)]
@@ -298,14 +289,14 @@ fn computed_arg_fault(log: String) Unit:
 	optional_list(log).append(panic("incoming failed"))
 
 test "computed receiver closes when payload absent or construction faults":
-	tmp := try temporary("list-absent-")
+	tmp := temporary("list-absent-")?
 	log := "{tmp.path()}/log"
 	computed_absent(log.clone())
-	try expect_equal((try events(log)), "1,")
+	expect_equal((events(log)?), "1,")?
 
-	temp := try temporary("list-arg-fault-")
+	temp := temporary("list-arg-fault-")?
 	other := "{temp.path()}/log"
-	try expect_contains(
-		(try expect_fault(fn: computed_arg_fault(other.clone()))), "incoming failed"
-	)
-	try expect_equal((try events(other)), "1,")
+	expect_contains(
+		(expect_fault(fn: computed_arg_fault(other.clone()))?), "incoming failed"
+	)?
+	expect_equal((events(other)?), "1,")?

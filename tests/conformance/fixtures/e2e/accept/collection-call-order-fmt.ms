@@ -4,15 +4,15 @@
 import expect_equal from "@std/test/test.ms"
 
 test "receiver before index":
-    values := [7]
-    var calls = 0
-    index: Int? := 0
-    result := values.get(
-        match index:
-            i:
-                calls += 1
-                i
-            none: 0
-    )
-    try expect_equal(result, 7)
-    try expect_equal(calls, 1)
+	values := [7]
+	var calls = 0
+	index: Int? := 0
+	result := values.get(
+		match index:
+			i:
+				calls += 1
+				i
+			none: 0
+	)
+	expect_equal(result, 7)?
+	expect_equal(calls, 1)?

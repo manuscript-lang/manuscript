@@ -1,62 +1,64 @@
 // conform: tags=control-flow,faults,interfaces,maps,match,modules,optional,records,stdlib-bytes,stdlib-io,stdlib-queues,stdlib-testing,strings,testing,tier-stdlib,try-result
 // conform: phase=test
 // conform: origin=tests/e2e/testdata/accept/stdlib-revamp.ms
-import expect_equal, expect_false, fail from "@std/test/test.ms"
-import Bytes from "@std/bytes.ms"
-import PriorityQueue from "@std/collections/queue.ms"
+import (
+	Bytes from "@std/bytes.ms",
+	PriorityQueue from "@std/collections/queue.ms",
+	expect_equal, expect_false, fail from "@std/test/test.ms",
+)
 
 type Key:
-    id: Int
-    label: String
+	id: Int
+	label: String
 
 impl Equal for Key:
-    fn equals(other: Key) Bool:
-        return self.id == other.id
+	fn equals(other: Key) Bool:
+		return self.id == other.id
 
 impl Hashable for Key:
-    fn hash() Int: self.id
+	fn hash() Int: self.id
 
 impl Comparable for Key:
-    fn compare(other: Key) Int:
-        return self.id - other.id
+	fn compare(other: Key) Int:
+		return self.id - other.id
 
 test "domain equality and hashing select interfaces":
-    a := Key(1, "first")
-    b := Key(1, "second")
-    try expect_equal(a, b)
-    try expect_equal(a.hash(), b.hash())
+	a := Key(1, "first")
+	b := Key(1, "second")
+	expect_equal(a, b)?
+	expect_equal(a.hash(), b.hash())?
 
-    var values = Map[Key, String]()
-    values.add(a.clone(), "a")
-    values.add(b.clone(), "b")
-    try expect_equal(values.length(), 1)
-    try expect_equal(values.get(a), "b")
-    try expect_false(not ([a.clone()].contains(b)))
+	var values = Map[Key, String]()
+	values.add(a.clone(), "a")
+	values.add(b.clone(), "b")
+	expect_equal(values.length(), 1)?
+	expect_equal(values.get(a), "b")?
+	expect_false(not ([a.clone()].contains(b)))?
 
-    view: Equal := a
-    try expect_false(not (view.equals(b)))
+	view: Equal := a
+	expect_false(not (view.equals(b)))?
 
 test "stable priority queue and optional capacity":
-    var queue = PriorityQueue[Key]()
-    queue.enqueue(Key(2, "later"))
-    queue.enqueue(Key(1, "first"))
-    queue.enqueue(Key(1, "second"))
+	var queue = PriorityQueue[Key]()
+	queue.enqueue(Key(2, "later"))
+	queue.enqueue(Key(1, "first"))
+	queue.enqueue(Key(1, "second"))
 
-    if value := queue.dequeue():
-        try expect_equal(value.label, "first")
-    else:
-        return fail("missing item")
+	if value := queue.dequeue():
+		expect_equal(value.label, "first")?
+	else:
+		return fail("missing item")
 
-    if value := queue.dequeue():
-        try expect_equal(value.label, "second")
-    else:
-        return fail("missing item")
+	if value := queue.dequeue():
+		expect_equal(value.label, "second")?
+	else:
+		return fail("missing item")
 
-    var bounded = PriorityQueue[Key](1)
-    try expect_false(not (bounded.enqueue(Key(1, "only"))))
-    try expect_false(bounded.enqueue(Key(0, "full")))
+	var bounded = PriorityQueue[Key](1)
+	expect_false(not (bounded.enqueue(Key(1, "only"))))?
+	expect_false(bounded.enqueue(Key(0, "full")))?
 
 test "limits can be omitted or supplied":
-    repeated := try "ab".repeat(3)
-    try expect_equal(repeated, "ababab")
-    try expect_false("ab".repeat(3, 5).is_ok())
+	repeated := "ab".repeat(3)?
+	expect_equal(repeated, "ababab")?
+	expect_false("ab".repeat(3, 5).is_ok())?

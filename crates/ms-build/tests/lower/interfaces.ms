@@ -5,39 +5,37 @@
 import stdout from "@std/io/io.ms"
 
 interface Shape:
-    fn area() Int
+	fn area() Int
 
 type Sq:
-    s: Int
+	s: Int
 
 impl Shape for Sq:
-    fn area() Int:
-        return self.s * self.s
+	fn area() Int:
+		return self.s * self.s
 
 fn total(x: Shape) Int:
-    return x.area()
+	return x.area()
 
 fn pick(n: Int) Result[Int, Error]:
-    if n < 0:
-        return error(Error(message: "neg"))
-
-    return ok(n)
+	if n < 0: return error(Error(message: "neg"))
+	return ok(n)
 
 fn twice(n: Int) Result[Int, Error]:
-    v := try pick(n)
-    return ok(v * 2)
+	v := pick(n)?
+	return ok(v * 2)
 
 fn show(n: Int) Result[Unit, Error]:
-    try stdout().write("{n}\n")
-    try stdout().flush()
+	stdout().write("{n}\n")?
+	stdout().flush()?
 
 fn main() Unit:
-    show(total(Sq(s: 4))).get()
-    show(twice(3).get()).get()
+	show(total(Sq(s: 4))).get()
+	show(twice(3).get()).get()
 
-    r := twice(0 - 1)
+	r := twice(0 - 1)
 
-    if v := r:
-        show(v).get()
-    else:
-        show(99).get()
+	if v := r:
+		show(v).get()
+	else:
+		show(99).get()

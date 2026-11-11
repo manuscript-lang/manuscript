@@ -15,45 +15,45 @@ fn mark(var log: List[Int], value: Int) Int:
 test "map literals and positional identifier arguments":
 	amount := 10
 	deduction := 3
-	try expect_equal(subtract(amount, deduction), 7)
-	try expect_equal(subtract(amount, 2), 8)
-	try expect_equal(subtract(amount), 9)
+	expect_equal(subtract(amount, deduction), 7)?
+	expect_equal(subtract(amount, 2), 8)?
+	expect_equal(subtract(amount), 9)?
 
 	left := 4
 	right := 8
-	try expect_equal(first(left, right), 4)
+	expect_equal(first(left, right), 4)?
 
 	stored: fn(Int, Int) Int := subtract
-	try expect_equal(stored(amount, deduction), 7)
+	expect_equal(stored(amount, deduction), 7)?
 
 	var values = {"a": 1, "b": 2, "a": 3}
-	try expect_false(values.length() != 2 or values["a"] != 3)
+	expect_false(values.length() != 2 or values["a"] != 3)?
 
 	keys := values.keys()
-	try expect_false(keys.get(0) != "a" or keys.get(1) != "b")
+	expect_false(keys.get(0) != "a" or keys.get(1) != "b")?
 
 	empty: Map[String, Int] := {}
-	try expect_false((not empty.is_empty() or size({}) != 0 or optional_size({}) != 0))
+	expect_false((not empty.is_empty() or size({}) != 0 or optional_size({}) != 0))?
 
 	nested: Map[String, Map[String, Int]] := {"a": {}, "b": {"c": 1}}
-	try expect_equal(nested["b"]["c"], 1)
+	expect_equal(nested["b"]["c"], 1)?
 
 	optional: Map[String, Int?] := {"a": none, "b": 2}
-	try expect_false(not optional["a"].is_none())
+	expect_false(not optional["a"].is_none())?
 
 	key := "c"
 	value := 5
 	values.add(key.clone(), value)
-	try expect_equal(values[key], value)
+	expect_equal(values[key], value)?
 
 	var log: List[Int] = []
 	ordered := {mark(var log, 1): mark(var log, 2), mark(var log, 1): mark(var log, 3)}
-	try expect_false(log != [1, 2, 1, 3] or ordered[1] != 3)
+	expect_false(log != [1, 2, 1, 3] or ordered[1] != 3)?
 
 	shared := {"x": values.clone()}
 	values.add("d", 6)
-	try expect_false(shared["x"].get("d").is_some())
-	try expect_equal(values["d"], 6)
+	expect_false(shared["x"].get("d").is_some())?
+	expect_equal(values["d"], 6)?
 
 type Key:
 	id: Int
@@ -70,4 +70,4 @@ test "map literal uses custom key equality":
 	a := Key(1, "first")
 	b := Key(1, "second")
 	values := {a.clone(): "a", b: "b"}
-	try expect_false(values.length() != 1 or values[a] != "b")
+	expect_false(values.length() != 1 or values[a] != "b")?

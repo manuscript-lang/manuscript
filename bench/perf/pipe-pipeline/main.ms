@@ -5,14 +5,14 @@ import (
 
 fn fill(var out: WriteStream[Int], from: Int, count: Int) Unit!:
 	for i in from..from + count:
-		try out.write(i)
-	try out.flush()
+		out.write(i)?
+	out.flush()?
 	return out.close()
 
 fn stage(var input: ReadStream[Int], var out: WriteStream[Int]) Unit!:
 	for v in input:
-		try out.write(v + 1)
-	try out.flush()
+		out.write(v + 1)?
+	out.flush()?
 	return out.close()
 
 fn run() Unit!:
@@ -23,8 +23,8 @@ fn run() Unit!:
 	var pr = p.reader()
 	var qw = q.writer()
 	var input = q.reader()
-	try p.close()
-	try q.close()
+	p.close()?
+	q.close()?
 
 	a := promise(fn: fill(var w1, 0, 500000))
 	b := promise(fn: fill(var w2, 500000, 500000))
@@ -36,10 +36,10 @@ fn run() Unit!:
 		sum += v
 		n += 1
 
-	try a.wait()
-	try b.wait()
-	try st.wait()
-	try stdout().write("{n} {sum}\n")
+	a.wait()?
+	b.wait()?
+	st.wait()?
+	stdout().write("{n} {sum}\n")?
 
 fn main() Unit:
 	run().get()
