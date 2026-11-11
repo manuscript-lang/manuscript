@@ -18,40 +18,40 @@ impl Closeable for RestoreDirectory:
 		return change_directory(self.path)
 
 fn matched_paths(root: String, options: GlobOptions) List[String]!:
-	entries := try glob(root, options)
+	entries := glob(root, options)?
 	return ok(entries.map(fn(entry: PathEntry) String: entry.path.clone()))
 
 test "glob keeps dot named and parent query results relative to their root":
-	directory := try temporary("manuscript-glob-relative-")
-	_restore := RestoreDirectory(try working_directory())
-	try create_directory("{directory.path()}/src/deep", recursive: true)
+	directory := temporary("manuscript-glob-relative-")?
+	_restore := RestoreDirectory(working_directory()?)
+	create_directory("{directory.path()}/src/deep", recursive: true)?
 	for name in ["a.txt", "café.txt", "src/b.txt", "src/deep/c.txt"]:
-		try write_file("{directory.path()}/{name}", "file").wait()
-	try change_directory(directory.path())
+		write_file("{directory.path()}/{name}", "file").wait()?
+	change_directory(directory.path())?
 
 	all := GlobOptions(patterns: ["**/*.txt"])
 	expected := ["a.txt", "café.txt", "src/b.txt", "src/deep/c.txt"]
 	for root in [".", "./", "src/..", directory.path()]:
-		try expect_equal(try matched_paths(root, all), expected)
-	try expect_equal(
-		try matched_paths(".", GlobOptions(patterns: ["*.txt"])),
+		expect_equal(matched_paths(root, all)?, expected)?
+	expect_equal(
+		matched_paths(".", GlobOptions(patterns: ["*.txt"]))?,
 		["a.txt", "café.txt"],
-	)
-	try expect_equal(try matched_paths("src", all), ["b.txt", "deep/c.txt"])
-	try expect_equal(
-		try matched_paths("src", GlobOptions(patterns: ["../*.txt"])),
+	)?
+	expect_equal(matched_paths("src", all)?, ["b.txt", "deep/c.txt"])?
+	expect_equal(
+		matched_paths("src", GlobOptions(patterns: ["../*.txt"]))?,
 		["../a.txt", "../café.txt"],
-	)
-	try expect_equal(
-		try matched_paths(
+	)?
+	expect_equal(
+		matched_paths(
 			".",
 			GlobOptions(patterns: ["**/*.txt"], exclude: ["src/**"]),
-		),
+		)?,
 		["a.txt", "café.txt"],
-	)
+	)?
 
-	selected := try glob(".", all, fn(entry: PathEntry) Bool: entry.path == "src")
-	try expect_equal(
+	selected := glob(".", all, fn(entry: PathEntry) Bool: entry.path == "src")?
+	expect_equal(
 		selected.map(fn(entry: PathEntry) String: entry.path.clone()),
 		["a.txt", "café.txt"],
-	)
+	)?

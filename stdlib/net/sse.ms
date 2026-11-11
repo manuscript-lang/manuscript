@@ -214,7 +214,7 @@ fn complete(
 		)
 		return end_line(var decoder, chunk, start, end, var events)
 
-	try decoder.hold(chunk.slice(start, end).get())
+	decoder.hold(chunk.slice(start, end).get())?
 
 	joined := decoder.line.drain()
 	decoder.line_bytes = 0
@@ -237,10 +237,10 @@ fn end_line(
 		dispatch(var decoder, var events)
 		return ok(unit)
 
-	line := try bytes.decode_utf8_range(
+	line := bytes.decode_utf8_range(
 		from,
 		end,
-	).ok_or(Error("SSE line is not valid UTF-8", kind: "EBADMSG"))
+	).ok_or(Error("SSE line is not valid UTF-8", kind: "EBADMSG"))?
 	if line.starts_with(":"): return ok(unit)
 
 	decoder.event_bytes += end - from

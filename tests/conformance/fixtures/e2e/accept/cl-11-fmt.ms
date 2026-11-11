@@ -10,4 +10,4 @@ type Tree[T]:
 test "recursive immutable collection":
     leaf := Tree[Int](1, [])
     root := Tree[Int](2, [leaf])
-    try expect_equal(root.value, 2)
+    expect_equal(root.value, 2)?

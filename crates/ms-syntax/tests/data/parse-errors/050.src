@@ -8,4 +8,4 @@ test "snapshot captures":
     second := fn():
 ?        return true
     first() | try expect_equal(expected: 3)
-    second() | try expect_true
+    second() | expect_true?

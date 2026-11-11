@@ -98,7 +98,7 @@ fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
 		args = ["--cpu-list", cpu.clone(), binary.clone()].concat(args)
 		program = "taskset"
 
-	out := try sample(program, args)
+	out := sample(program, args)?
 	fields := out.trim().split(",")
 	if fields.length() != 8: return invalid("malformed harness row: {out.trim()}")
 	if (
@@ -142,7 +142,7 @@ fn compare(
 		var seen = false
 
 		for name in ["before", "after"]:
-			first := try run_harness(paths.get_or(name, ""), c, 1, cpu)
+			first := run_harness(paths.get_or(name, ""), c, 1, cpu)?
 
 			if not seen:
 				expected = Run(0, first.checksum, first.size, 0)
@@ -168,7 +168,7 @@ fn compare(
 		for s in 0..samples:
 			for name in (if s % 2 == 0: ["before", "after"] else: ["after", "before"]):
 				r := rounds.get_or(name, 1)
-				got := try run_harness(paths.get_or(name, ""), c, r, cpu)
+				got := run_harness(paths.get_or(name, ""), c, r, cpu)?
 				if got.checksum != expected.checksum or got.size != expected.size:
 					return invalid("{c.mode} {c.count} {c.shape}: output changed")
 

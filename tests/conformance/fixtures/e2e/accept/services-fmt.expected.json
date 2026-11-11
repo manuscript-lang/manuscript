@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tBytesBuilder from \"@std/bytes.ms\",\n\tStringBuilder from \"@std/string.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\ntest \"builders\":\n\tvar bytes = BytesBuilder()\n\tbytes.append(65)\n\tbytes.append_bytes(\"B\".to_bytes())\n\n\texpected_text: String? := \"AB\"\n\ttry expect_equal(bytes.build().decode_utf8(), expected_text)\n\n\tvar text = StringBuilder()\n\ttext.append(\"hello\")\n\ttext.append(\" world\")\n\ttry expect_equal(text.build(), \"hello world\")\n"
+    "fmt": "import (\n\tBytesBuilder from \"@std/bytes.ms\",\n\tStringBuilder from \"@std/string.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\ntest \"builders\":\n\tvar bytes = BytesBuilder()\n\tbytes.append(65)\n\tbytes.append_bytes(\"B\".to_bytes())\n\n\texpected_text: String? := \"AB\"\n\texpect_equal(bytes.build().decode_utf8(), expected_text)?\n\n\tvar text = StringBuilder()\n\ttext.append(\"hello\")\n\ttext.append(\" world\")\n\texpect_equal(text.build(), \"hello world\")?\n"
   }
 }

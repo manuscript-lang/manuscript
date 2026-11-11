@@ -18,5 +18,5 @@ fn set_total(values: Set[Int]) Int:
 
 test "map entry type":
     entry := MapEntry[String, Int]("a", 3)
-    try expect_equal(entry.key, "a")
-    try expect_equal(entry.value, 3)
+    expect_equal(entry.key, "a")?
+    expect_equal(entry.value, 3)?

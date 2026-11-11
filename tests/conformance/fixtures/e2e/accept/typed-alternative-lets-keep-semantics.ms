@@ -66,12 +66,12 @@ fn captured(n: Int) Int:
     return read()
 
 test "typed alternative lets":
-    try expect_true((matched(n: 8) == 4))
-    try expect_true((matched(n: 7) == 0 - 1))
-    try expect_true((twice(n: 8) == 8))
-    try expect_true((twice(n: 7) == 1100))
-    try expect_true((results(n: 3) == "ok 3"))
-    try expect_true((results(n: 0 - 3) == "negative"))
-    try expect_true((formatted(n: 8) == formatted(n: 8)))
-    try expect_true((captured(n: 8) == 4))
-    try expect_true((captured(n: 7) == 0 - 1))
+    expect_true((matched(n: 8) == 4))?
+    expect_true((matched(n: 7) == 0 - 1))?
+    expect_true((twice(n: 8) == 8))?
+    expect_true((twice(n: 7) == 1100))?
+    expect_true((results(n: 3) == "ok 3"))?
+    expect_true((results(n: 0 - 3) == "negative"))?
+    expect_true((formatted(n: 8) == formatted(n: 8)))?
+    expect_true((captured(n: 8) == 4))?
+    expect_true((captured(n: 7) == 0 - 1))?

@@ -1,1 +1,1 @@
-error parse 47:30:1911 "literal control characters are not allowed in text; write an escape such as \x5ct, \x5cr, or \x5cu{H}"
+error parse 47:30:1884 "literal control characters are not allowed in text; write an escape such as \x5ct, \x5cr, or \x5cu{H}"

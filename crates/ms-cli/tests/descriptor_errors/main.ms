@@ -5,71 +5,71 @@ import stdin from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
 
 fn check_failed_writer(size: Int) Unit!:
-    executable := (try process_info()).executable
-    child := try spawn(executable, ["exit"])
-    try expect_equal((try child.wait()), 0)
+    executable := (process_info()?).executable
+    child := spawn(executable, ["exit"])?
+    expect_equal((child.wait()?), 0)?
 
     var writer = child.stdin()
     written := writer.write("x".repeat(size).get().to_bytes())
 
     if size < 65536:
-        written | try expect_ok
+        written | expect_ok?
     else:
-        failure := written | try expect_error
-        try expect_equal(failure.kind, "EIO")
+        failure := written | expect_error?
+        expect_equal(failure.kind, "EIO")?
 
     for unused in 0..2:
-        failure := writer.flush() | try expect_error
-        try expect_equal(failure.kind, "EIO")
-        try expect_equal(failure.message.starts_with("write: os error "), true)
+        failure := writer.flush() | expect_error?
+        expect_equal(failure.kind, "EIO")?
+        expect_equal(failure.message.starts_with("write: os error "), true)?
 
     // A failed descriptor never queues more bytes or reports a later empty flush as successful.
-    repeated := writer.write("again".to_bytes()) | try expect_error
-    try expect_equal(repeated.kind, "EIO")
+    repeated := writer.write("again".to_bytes()) | expect_error?
+    expect_equal(repeated.kind, "EIO")?
 
-    closed := writer.close() | try expect_error
-    try expect_equal(closed.kind, "EIO")
-    writer.close() | try expect_ok
+    closed := writer.close() | expect_error?
+    expect_equal(closed.kind, "EIO")?
+    writer.close() | expect_ok?
 
-    after_close := writer.write("closed".to_bytes()) | try expect_error
-    try expect_equal(after_close.kind, "EBADF")
+    after_close := writer.write("closed".to_bytes()) | expect_error?
+    expect_equal(after_close.kind, "EBADF")?
     return ok(unit)
 
 fn check_healthy_writer() Unit!:
-    executable := (try process_info()).executable
-    child := try spawn(executable, ["echo"])
+    executable := (process_info()?).executable
+    child := spawn(executable, ["echo"])?
     var writer = child.stdin()
-    writer.write("healthy\n".to_bytes()) | try expect_ok
-    writer.flush() | try expect_ok
-    writer.close() | try expect_ok
-    try expect_equal((try child.wait()), 0)
+    writer.write("healthy\n".to_bytes()) | expect_ok?
+    writer.flush() | expect_ok?
+    writer.close() | expect_ok?
+    expect_equal((child.wait()?), 0)?
 
-    draining_child := try spawn(executable, ["read-large"])
+    draining_child := spawn(executable, ["read-large"])?
     var draining_writer = draining_child.stdin()
-    draining_writer.write("x".repeat(1048577).get().to_bytes()) | try expect_ok
-    draining_writer.flush() | try expect_ok
-    draining_writer.close() | try expect_ok
-    try expect_equal((try draining_child.wait()), 0)
+    draining_writer.write("x".repeat(1048577).get().to_bytes()) | expect_ok?
+    draining_writer.flush() | expect_ok?
+    draining_writer.close() | expect_ok?
+    expect_equal((draining_child.wait()?), 0)?
     return ok(unit)
 
 fn check_failed_close() Unit!:
-    executable := (try process_info()).executable
-    child := try spawn(executable, ["exit"])
-    try expect_equal((try child.wait()), 0)
+    executable := (process_info()?).executable
+    child := spawn(executable, ["exit"])?
+    expect_equal((child.wait()?), 0)?
 
     var writer = child.stdin()
-    writer.write("buffered".to_bytes()) | try expect_ok
+    writer.write("buffered".to_bytes()) | expect_ok?
 
-    closed := writer.close() | try expect_error
-    try expect_equal(closed.kind, "EIO")
-    writer.close() | try expect_ok
+    closed := writer.close() | expect_error?
+    expect_equal(closed.kind, "EIO")?
+    writer.close() | expect_ok?
     return ok(unit)
 
 fn check_writers() Unit!:
     for size in [1, 65535, 65536, 1048576, 1048577]:
-        try check_failed_writer(size)
-    try check_healthy_writer()
-    try check_failed_close()
+        check_failed_writer(size)?
+    check_healthy_writer()?
+    check_failed_close()?
     return ok(unit)
 
 export fn main() Int:

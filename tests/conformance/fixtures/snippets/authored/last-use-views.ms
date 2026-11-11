@@ -16,16 +16,16 @@ test "a trim view keeps its source until the view's last use":
     source := "  hello, world  ".clone()
     view := source.trim()
     n := churn(200)
-    try expect_equal(view, "hello, world")
-    try expect_equal(n > 0, true)
+    expect_equal(view, "hello, world")?
+    expect_equal(n > 0, true)?
 
 test "a source whose last use is early is not needed by later work":
     text := "alpha beta gamma".clone()
     words := text.split(" ")
     count := words.length()
     n := churn(200)
-    try expect_equal(count, 3)
-    try expect_equal(n > 0, true)
+    expect_equal(count, 3)?
+    expect_equal(n > 0, true)?
 
 test "a view carried around a loop stays valid":
     names := ["  a  ".clone(), " bb ".clone(), "ccc".clone()]
@@ -38,8 +38,8 @@ test "a view carried around a loop stays valid":
         if view.length() > longest.length():
             longest = view.clone()
 
-    try expect_equal(longest, "ccc")
-    try expect_equal(total > 0, true)
+    expect_equal(longest, "ccc")?
+    expect_equal(total > 0, true)?
 
 test "a value used only inside one branch is freed on the other path":
     data := [10, 20, 30]
@@ -51,7 +51,7 @@ test "a value used only inside one branch is freed on the other path":
         else:
             sum += churn(5)
 
-    try expect_equal(sum > 20, true)
+    expect_equal(sum > 20, true)?
 
 test "map keys read after the map's earlier uses stay valid":
     var m = Map[String, Int]()
@@ -64,6 +64,6 @@ test "map keys read after the map's earlier uses stay valid":
         seen += k.length()
 
     n := churn(100)
-    try expect_equal(size, 2)
-    try expect_equal(seen, 6)
-    try expect_equal(n > 0, true)
+    expect_equal(size, 2)?
+    expect_equal(seen, 6)?
+    expect_equal(n > 0, true)?

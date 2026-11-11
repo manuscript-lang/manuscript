@@ -62,8 +62,8 @@ export fn main() Int:
     return result
 
 fn say(text: String) Result[Unit, Error]:
-    try stdout().write("{text}\n")
+    stdout().write("{text}\n")?
     return stdout().flush()
 
 test "addition":
-    try expect_equal(add(1, 2), 3)
+    expect_equal(add(1, 2), 3)?

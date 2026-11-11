@@ -11,9 +11,7 @@ enum InputFailure:
 	MissingKey(value: Int)
 
 fn read_number(data: Bytes) UInt64!InputFailure:
-	decoded := try data.uvarint(0).map_error(
-		fn cause: InputFailure.Binary(cause.clone())
-	)
+	decoded := data.uvarint(0).map_error(fn cause: InputFailure.Binary(cause.clone()))?
 	return ok(decoded.value)
 
 fn read_duration(text: String) Duration!InputFailure:
@@ -29,29 +27,26 @@ fn sorted_index(values: List[Int], target: Int) Int!InputFailure:
 	return ok(position.index)
 
 test "library results compose with failure values without a reporting implementation":
-	number := try expect_ok(read_number(Bytes([172, 2])))
-	try expect_equal(number, 300)
-	try expect_equal(
-		(try expect_error(read_number(Bytes([128])))),
+	number := expect_ok(read_number(Bytes([172, 2])))?
+	expect_equal(number, 300)?
+	expect_equal(
+		(expect_error(read_number(Bytes([128])))?),
 		InputFailure.Binary(Error("binary: incomplete varint", kind: "EBADMSG")),
-	)
+	)?
 
-	duration := try expect_ok(read_duration("1.5us"))
-	try expect_equal(duration.to_nanoseconds(), 1500)
-	try expect_equal(
-		(try expect_error(read_duration("invalid"))),
+	duration := expect_ok(read_duration("1.5us"))?
+	expect_equal(duration.to_nanoseconds(), 1500)?
+	expect_equal(
+		(expect_error(read_duration("invalid"))?),
 		InputFailure.Time(Error("time: invalid data", kind: "EBADMSG")),
-	)
+	)?
 
 test "absence adapters and sorted lookup retain an explicit failure type":
-	value := try expect_ok(read_prefixed("name=value"))
-	try expect_equal(value, "value")
-	try expect_equal(
-		(try expect_error(read_prefixed("missing"))),
-		InputFailure.MissingPrefix,
-	)
-	try expect_equal((try expect_ok(sorted_index([1, 3, 3], 3))), 1)
-	try expect_equal(
-		(try expect_error(sorted_index([1, 3, 3], 2))),
+	value := expect_ok(read_prefixed("name=value"))?
+	expect_equal(value, "value")?
+	expect_equal((expect_error(read_prefixed("missing"))?), InputFailure.MissingPrefix)?
+	expect_equal((expect_ok(sorted_index([1, 3, 3], 3))?), 1)?
+	expect_equal(
+		(expect_error(sorted_index([1, 3, 3], 2))?),
 		InputFailure.MissingKey(2),
-	)
+	)?

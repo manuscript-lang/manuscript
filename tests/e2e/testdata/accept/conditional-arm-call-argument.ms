@@ -16,7 +16,7 @@ fn consumed_options(options: Options, oracle: Bool) Int:
 
 test "a conditional with a literal arm and a field arm can be a call argument":
 	options := Options("abc", "t")
-	try expect_equal(owned_options(options.clone(), false), 3)
-	try expect_equal(owned_options(options.clone(), true), 6)
-	try expect_equal(consumed_options(options.clone(), false), 3)
-	try expect_equal(consumed_options(options, true), 6)
+	expect_equal(owned_options(options.clone(), false), 3)?
+	expect_equal(owned_options(options.clone(), true), 6)?
+	expect_equal(consumed_options(options.clone(), false), 3)?
+	expect_equal(consumed_options(options, true), 6)?

@@ -26,14 +26,14 @@ fn shifted(point: Point, by: Int) Point:
 test "struct records read write compare format and clone":
     a := Point(1, 2)
     var b = Point(y: 2, x: 1)
-    try expect_equal(a, b)
+    expect_equal(a, b)?
     b.x = 5
-    try expect_not_equal(a, b)
-    try expect_false(not (a.x == 1 and b.x == 5 and shifted(a, 3).y == 5))
+    expect_not_equal(a, b)?
+    expect_false(not (a.x == 1 and b.x == 5 and shifted(a, 3).y == 5))?
 
     var copy = a.clone()
     copy.y = 9
-    try expect_false(not (a.y == 2 and copy.y == 9))
+    expect_false(not (a.y == 2 and copy.y == 9))?
     if "{a}" != "Point(x: 1, y: 2)": return fail("format changed: {a}")
 
 test "struct records with mixed field types":
@@ -42,7 +42,7 @@ test "struct records with mixed field types":
     shape.name = "{shape.name}!"
     shape.corner.x = 4
     shape.tags.append("b")
-    try expect_false(
+    expect_false(
         not (
             shape.weight == 3.0
             and shape.name == "disc!"
@@ -50,14 +50,14 @@ test "struct records with mixed field types":
             and shape.corner.x == 4
             and shape.tags.length() == 2
         )
-    )
+    )?
 
 test "struct records as keys and defaults":
     var set: Set[Point] = Set[Point]()
     set.add(Point(1, 1))
     set.add(Point(1, 1))
     set.add(Point(2, 1))
-    try expect_equal(set.length(), 2)
+    expect_equal(set.length(), 2)?
 
     sized := Sized(3)
-    try expect_false(area(sized) != 6 or area(Sized(3, 5)) != 15)
+    expect_false(area(sized) != 6 or area(Sized(3, 5)) != 15)?

@@ -275,8 +275,8 @@ fn field(entry: JsonValue, key: String) String:
 // Every `Type.operation` of the standard type whose declaration mentions a type
 // parameter.
 fn declared_operations(ms: String, name: String) List[String]!:
-	ran := try run(ms, ["search_symbol", "prelude.{name}", "--json", "--limit", "300"]).wait()
-	page := try parse(ran.stdout.decode_utf8().get(""))
+	ran := run(ms, ["search_symbol", "prelude.{name}", "--json", "--limit", "300"]).wait()?
+	page := parse(ran.stdout.decode_utf8().get(""))?
 	var found = List[String]()
 	names := type_parameters(name.clone())
 

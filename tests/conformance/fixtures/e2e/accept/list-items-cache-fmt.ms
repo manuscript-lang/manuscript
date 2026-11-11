@@ -14,7 +14,7 @@ test "indexed loops over a list read and write through the shared storage":
         flags.set(i, false)
         i += 2
 
-    try expect_equal(flags, [true, true, false, true, false, true])
+    expect_equal(flags, [true, true, false, true, false, true])?
 
 test "negative indexes inside a cached loop count from the end":
     values := [10, 20, 30]
@@ -25,7 +25,7 @@ test "negative indexes inside a cached loop count from the end":
         total += values.get(-i)
         i += 1
 
-    try expect_equal(total, 60)
+    expect_equal(total, 60)?
 
 test "a list that grows inside the loop is read through its current storage":
     var values = [1, 2, 3]
@@ -38,8 +38,8 @@ test "a list that grows inside the loop is read through its current storage":
             grow(var values)
         i += 1
 
-    try expect_equal(values.length(), 6)
-    try expect_equal(seen, 1 + 2 + 3 + 3 + 4 + 5)
+    expect_equal(values.length(), 6)?
+    expect_equal(seen, 1 + 2 + 3 + 3 + 4 + 5)?
 
 test "appending directly inside the loop is visible to later reads":
     var values = [1]
@@ -51,7 +51,7 @@ test "appending directly inside the loop is visible to later reads":
         values.append(i + 2)
         i += 1
 
-    try expect_equal(total, 1 + 2 + 3 + 4)
+    expect_equal(total, 1 + 2 + 3 + 4)?
 
 test "rebinding the list inside the loop selects the new storage":
     var values = [1, 2, 3]
@@ -64,7 +64,7 @@ test "rebinding the list inside the loop selects the new storage":
         values = other.clone()
         i += 1
 
-    try expect_equal(total, 1 + 20 + 30)
+    expect_equal(total, 1 + 20 + 30)?
 
 test "nested loops share one cached list":
     grid := [[1, 2], [3, 4]]
@@ -80,12 +80,12 @@ test "nested loops share one cached list":
 
         row += 1
 
-    try expect_equal(total, 10)
+    expect_equal(total, 10)?
 
 test "an out of range read or write inside a cached loop faults":
     var values = [1, 2, 3]
 
-    read := try expect_fault(
+    read := expect_fault(
         fn:
             var i = 0
             var _total = 0
@@ -93,17 +93,17 @@ test "an out of range read or write inside a cached loop faults":
             while i < 5:
                 _total += values.get(i)
                 i += 1
-    )
+    )?
 
-    try expect_contains(read, "out of range")
+    expect_contains(read, "out of range")?
 
-    write := try expect_fault(
+    write := expect_fault(
         fn:
             var i = 0
 
             while i < 5:
                 values.set(i, 0)
                 i += 1
-    )
+    )?
 
-    try expect_contains(write, "List.set")
+    expect_contains(write, "List.set")?

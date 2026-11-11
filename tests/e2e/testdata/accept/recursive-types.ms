@@ -44,23 +44,23 @@ impl Hashable for Link:
 
 test "recursive alternatives construct match compare and clone":
 	expr := Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))
-	(evaluate(expr.clone()) != 5 or expr != expr.clone()) | try expect_false
+	(evaluate(expr.clone()) != 5 or expr != expr.clone()) | expect_false?
 
 	tree := Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
 	(
-		tree | try expect_equal(
+		tree | expect_equal(
 			Tree[Int].Branch(
 				left: Tree[Int].Leaf(1),
 				right: Tree[Int].Leaf(2),
 			)
-		)
+		)?
 	)
 
 	forest := Forest.More(MutualTree(value: 3, rest: Forest.Empty))
 
 	match forest:
 		More(first):
-			((first.value != 3 or first.rest != Forest.Empty) | try expect_false)
+			((first.value != 3 or first.rest != Forest.Empty) | expect_false?)
 		Empty: return fail("lost mutual tree")
 
 test "recursive records clone into independent storage":
@@ -79,17 +79,17 @@ test "recursive records clone into independent storage":
 			or alias.value != 3
 			or copy.next.get().value != 4
 			or child.value != 2
-		) | try expect_false
+		) | expect_false?
 	)
 	copy.next = none
-	root.next.is_none() | try expect_false
+	root.next.is_none() | expect_false?
 
 test "recursive structural equality checks nested and unequal fields":
 	var left = Node(value: 1, next: none)
 	var right = Node(value: 1, next: none)
 	left.next = left.clone()
 	right.next = right.clone()
-	left.clone() | try expect_equal(right.clone())
+	left.clone() | expect_equal(right.clone())?
 
 	var copy = left.clone()
 	var inner = copy.next.get().clone()
@@ -101,20 +101,20 @@ test "recursive structural equality checks nested and unequal fields":
 			or copy.value != 1
 			or left == copy
 			or left != right
-		) | try expect_false
+		) | expect_false?
 	)
 
 	var a = Node(value: 1, next: none)
 	b := Node(value: 1, next: a.clone())
 	a.next = b
-	(right == a) | try expect_false
+	(right == a) | expect_false?
 
 test "recursive domain hashing uses explicit implementations":
 	var left = Link(value: 7, next: none)
 	var right = Link(value: 7, next: none)
 	left.next = left.clone()
 	right.next = right.clone()
-	(left != right or left.hash() != right.hash()) | try expect_false
+	(left != right or left.hash() != right.hash()) | expect_false?
 
 	var values = Map[Link, Int]()
 	values.add(key: left.clone(), value: 9)
@@ -124,7 +124,7 @@ test "recursive domain hashing uses explicit implementations":
 		(
 			values.get(right.clone()).get() != 9
 			or not members.contains(right.clone())
-		) | try expect_false
+		) | expect_false?
 	)
 	values.add(key: right.clone(), value: 10)
 	members.add(right.clone())
@@ -133,14 +133,14 @@ test "recursive domain hashing uses explicit implementations":
 			values.length() != 1
 			or members.length() != 1
 			or values.get(left.clone()).get() != 10
-		) | try expect_false
+		) | expect_false?
 	)
 
 test "recursive defaults construct independent complete objects":
 	var first = DefaultNode(value: 1)
 	second := DefaultNode(value: 2)
 	first.next = first.clone()
-	(second.next.is_some() or first.next.get().value != 1) | try expect_false
+	(second.next.is_some() or first.next.get().value != 1) | expect_false?
 
 type Entry:
 	name: String
@@ -164,7 +164,7 @@ type Pair[T, U]:
 
 test "finite nested generic composition constructs and extracts values":
 	person := Person(Entry(name: "Ada", nickname: "A"))
-	person.primary.get().nickname.get() | try expect_equal("A")
+	person.primary.get().nickname.get() | expect_equal("A")?
 
 	four: Int? := 4
 	nested_four: Int?? := four
@@ -172,7 +172,7 @@ test "finite nested generic composition constructs and extracts values":
 
 	match optional:
 		Value(value):
-			try expect_equal(value.get().get(), 4)
+			expect_equal(value.get().get(), 4)?
 
 	result := NestedResult(ok(ok(5)))
 
@@ -182,12 +182,12 @@ test "finite nested generic composition constructs and extracts values":
 
 	match inner:
 		ok(value):
-			try expect_equal(value, 5)
+			expect_equal(value, 5)?
 		error(_): return fail("unexpected inner result error")
 
 	box := Box(Box(6))
-	box.value.value | try expect_equal(6)
+	box.value.value | expect_equal(6)?
 
 	inner_text: String? := "nested"
 	pair: Pair[Int?, String??] := Pair(first: 7, second: inner_text)
-	(pair.first.get() != 7 or pair.second.get().get() != "nested") | try expect_false
+	(pair.first.get() != 7 or pair.second.get().get() != "nested") | expect_false?

@@ -128,7 +128,7 @@ fn measure_server(
 	)
 	if name == "ms": argv.append(ms_threads.clone())
 
-	var server = try background(argv, "/dev/null")
+	var server = background(argv, "/dev/null")?
 
 	if not wait_started(p, port):
 		server.close().get(unit)
@@ -143,10 +143,10 @@ fn measure_server(
 		for round in 0..2:
 			say("{name} io {load(p, port, ["64", "{seconds}", "/io?\{c\}"])}")
 
-		var mixed = try background(
+		var mixed = background(
 			load_cmd(p, port, ["32", "{seconds}", "/io?\{c\}"]),
 			"{p.w}/mixed",
-		)
+		)?
 		_ := sleep(milliseconds(200)).wait()
 		during := if seconds > 1: seconds - 1 else: 1
 		say("{name} health-during-io {load(p, port, ["32", "{during}", "/health"])}")
@@ -159,7 +159,7 @@ fn measure_server(
 	if capture("strace", ["-V"]).code == 0:
 		say("{name} idle_syscalls_5s {syscalls(pid.clone(), 5, "{p.w}/idle")}")
 
-		var busy = try background(
+		var busy = background(
 			[
 				"timeout",
 				"4",
@@ -172,7 +172,7 @@ fn measure_server(
 				"{p.w}/busy",
 			],
 			"/dev/null",
-		)
+		)?
 		_ := sleep(milliseconds(500)).wait()
 		reqs := (
 			load(p, port, ["64", "2", "/health"]).split(" ")[
@@ -194,13 +194,13 @@ fn measure_server(
 			"{name} syscalls_per_request {fixed(per, 2)} (requests under strace {reqs})"
 		)
 
-	var idle = try background(
+	var idle = background(
 		pinned(
 			p.load_cpus.clone(),
 			["{p.w}/load/load", "idle", "{port}", "10000"],
 		),
 		"{p.w}/idle.out",
-	)
+	)?
 	_ := sleep(milliseconds(200)).wait()
 
 	for poll in 0..120:
@@ -224,8 +224,8 @@ fn prepare_run(here: String, w: String) List[String]!:
 	write_text("{w}/rust/Cargo.lock", read_text("{here}/rust/Cargo.lock"))
 	copy("{here}/rust/src", "{w}/rust/src", CopyOptions(recursive: true, replace: true)).get()
 	create_directory("{w}/data", recursive: true).get()
-	try build_go("{w}/go", "{w}/go/server")
-	try build_go("{w}/load", "{w}/load/load")
+	build_go("{w}/go", "{w}/go/server")?
+	build_go("{w}/load", "{w}/load/load")?
 
 	var names = ["ms", "go"]
 
@@ -238,21 +238,21 @@ fn prepare_run(here: String, w: String) List[String]!:
 				"{w}/rust"
 			],
 		)
-		_ := try must("cargo build", ran)
+		_ := must("cargo build", ran)?
 		names = ["ms", "go", "rust"]
 
-	try build_ms("{w}/ms", "{w}/ms/server")
+	build_ms("{w}/ms", "{w}/ms/server")?
 	return ok(names)
 
 fn run_all(here: String, seconds: Int) Unit!:
 	var tmp = temporary("web-bench-").get()
 	w := tmp.path()
-	names := try prepare_run(here, w)
+	names := prepare_run(here, w)?
 	p := plan(w.clone())
 	var port = 18090
 
 	for name in names:
-		try measure_server(p, name, port, seconds, env("MS_THREADS", "2"))
+		measure_server(p, name, port, seconds, env("MS_THREADS", "2"))?
 		port += 1
 
 	tmp.close().get(unit)
@@ -268,7 +268,7 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 	create_directory("{w}/data", recursive: true).get()
 	write_text("{w}/data/small", "ok\n")
 
-	_big := try must(
+	_big := must(
 		"big",
 		capture(
 			"sh",
@@ -278,8 +278,8 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 				w.clone(),
 			],
 		),
-	)
-	_text := try must(
+	)?
+	_text := must(
 		"text",
 		capture(
 			"sh",
@@ -289,18 +289,18 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 				w.clone(),
 			],
 		),
-	)
-	try build_go("{w}/go", "{w}/go/fetch")
-	try build_ms("{w}/ms", "{w}/ms/fetch")
+	)?
+	build_go("{w}/go", "{w}/go/fetch")?
+	build_ms("{w}/ms", "{w}/ms/fetch")?
 
 	p := plan(w.clone())
-	var server = try background(
+	var server = background(
 		pinned(
 			p.server_cpus.clone(),
 			["{w}/go/fetch", "serve", "18950", "{w}/data"],
 		),
 		"/dev/null",
-	)
+	)?
 	_ := sleep(milliseconds(1000)).wait()
 	fetches := [
 		["small", "1"],

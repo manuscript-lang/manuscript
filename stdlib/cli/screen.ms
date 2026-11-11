@@ -15,9 +15,9 @@ import new_screen from "@std/cli/screen.ms"
 import raw_mode from "@std/cli/terminal.ms"
 
 fn main() Unit!:
-    raw := try raw_mode()
+    raw := raw_mode()?
     var screen = new_screen()
-    try screen.draw(raw, ["> hello", "status: ready"], 0, 7)
+    screen.draw(raw, ["> hello", "status: ready"], 0, 7)?
 ```
 */
 import RawTerminal, terminal_size from "@std/cli/terminal.ms"

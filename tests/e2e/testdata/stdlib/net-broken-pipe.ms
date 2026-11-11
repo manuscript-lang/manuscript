@@ -9,13 +9,10 @@ import (
 // A write to a peer that has gone away must return an error. Without SIGPIPE ignored
 // the whole process dies with the signal instead.
 test "writing to a closed connection returns an error":
-	listener := listen("127.0.0.1:0") | try expect_ok
-	var client = (
-		connect(listener.address(), timeout: 2.seconds()).wait()
-		| try expect_ok
-	)
-	var accepted = listener.accept(2.seconds()).wait() | try expect_ok
-	try client.close()
+	listener := listen("127.0.0.1:0") | expect_ok?
+	var client = connect(listener.address(), timeout: 2.seconds()).wait() | expect_ok?
+	var accepted = listener.accept(2.seconds()).wait() | expect_ok?
+	client.close()?
 
 	var attempts = 0
 

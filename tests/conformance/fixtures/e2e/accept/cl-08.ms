@@ -17,5 +17,5 @@ fn selected_sum(values: List[Int]) Int:
     return total
 
 test "iteration control":
-    try expect_equal(selected_sum([2, 0, 3, -1, 9]), 5)
-    try expect_equal(selected_sum([]), 0)
+    expect_equal(selected_sum([2, 0, 3, -1, 9]), 5)?
+    expect_equal(selected_sum([]), 0)?

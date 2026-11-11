@@ -50,9 +50,9 @@ test "second local extensions":
 			item.get() != 22
 			or invoke(item) != 22
 			or relay(item.clone()) != 22
-		) | try expect_false
+		) | expect_false?
 	)
-	as_view(item).get() | try expect_equal(22)
+	as_view(item).get() | expect_equal(22)?
 
 	holder := Holder(item)
 	(
@@ -60,10 +60,10 @@ test "second local extensions":
 			holder.get() != 22
 			or invoke(holder) != 22
 			or holder.extract() != 22
-		) | try expect_false
+		) | expect_false?
 	)
-	Box("hello").get() | try expect_equal("hello")
-	Choice.Some(2).get() | try expect_equal(22)
+	Box("hello").get() | expect_equal("hello")?
+	Choice.Some(2).get() | expect_equal(22)?
 
 import Resource from "./domain.ms"
 
@@ -79,13 +79,13 @@ export fn second_resource(resource: Resource) Closeable:
 	return resource
 
 test "second local cleanup":
-	dir := temporary("ms-ext-") | try expect_ok
+	dir := temporary("ms-ext-") | expect_ok?
 	events := "{dir.path()}/events"
 	leave(Resource(events.clone()))
-	(try expect_ok(read_file(events).wait())).decode_utf8() | try expect_equal("20,")
+	(expect_ok(read_file(events).wait())?).decode_utf8() | expect_equal("20,")?
 
 import mixed from "./first.ms"
 
 test "generic evidence does not change concrete lexical dispatch":
 	item := Item(2)
-	mixed(value: item, concrete: item) | try expect_equal(34)
+	mixed(value: item, concrete: item) | expect_equal(34)?

@@ -16,7 +16,7 @@ bench "path.join_normalize":
 			)
 		return keep(n)
 
-	try measure(50000, work)
+	measure(50000, work)?
 
 bench "path.basename":
 	fn work() Result[Unit, Error]:
@@ -25,7 +25,7 @@ bench "path.basename":
 			n += basename("/a/b/c/file.txt").length()
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "url.parse":
 	fn work() Result[Unit, Error]:
@@ -35,7 +35,7 @@ bench "url.parse":
 			if parse(address).is_ok(): n += 1
 		return keep(n)
 
-	try measure(20000, work)
+	measure(20000, work)?
 
 bench "url.encode_component":
 	fn work() Result[Unit, Error]:
@@ -44,7 +44,7 @@ bench "url.encode_component":
 			n += encode_component("a b&c=d/é").length()
 		return keep(n)
 
-	try measure(50000, work)
+	measure(50000, work)?
 
 bench "math.sqrt_sin":
 	fn work() Result[Unit, Error]:
@@ -53,4 +53,4 @@ bench "math.sqrt_sin":
 			acc += sqrt(2.0) + sin(1.0)
 		return keep(acc.truncate_to_int().get(0))
 
-	try measure(1000000, work)
+	measure(1000000, work)?

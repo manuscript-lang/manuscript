@@ -4,12 +4,12 @@ import (
 )
 
 fn work() Unit!:
-	expected := try "A".repeat(1048576)
+	expected := "A".repeat(1048576)?
 	data := expected.to_bytes()
 	var checksum = 0
 	for unused in 0..32:
-		checksum += (try ascii_decode(data)).byte_length()
-	try expect_equal(checksum, 33554432)
+		checksum += (ascii_decode(data)?).byte_length()
+	expect_equal(checksum, 33554432)?
 
 fn main() Unit:
 	work().get()

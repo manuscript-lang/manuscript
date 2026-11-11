@@ -19,7 +19,7 @@ bench "queue.enqueue_dequeue_100000":
 			total += queue.dequeue().get(0)
 		return keep(total)
 
-	try measure(100000 * 2, work)
+	measure(100000 * 2, work)?
 
 bench "priority_queue.enqueue_dequeue_100000":
 	fn work() Result[Unit, Error]:
@@ -32,7 +32,7 @@ bench "priority_queue.enqueue_dequeue_100000":
 			total += queue.dequeue().get(0)
 		return keep(total)
 
-	try measure(100000 * 2, work)
+	measure(100000 * 2, work)?
 
 bench "deque.push_pop_both_ends_100000":
 	fn work() Result[Unit, Error]:
@@ -47,7 +47,7 @@ bench "deque.push_pop_both_ends_100000":
 			total += deque.pop_front().get(0) + deque.pop_back().get(0)
 		return keep(total)
 
-	try measure(100000 * 4, work)
+	measure(100000 * 4, work)?
 
 bench "bitset.add_contains_100000":
 	fn work() Result[Unit, Error]:
@@ -61,7 +61,7 @@ bench "bitset.add_contains_100000":
 				hits += 1
 		return keep(hits + set.length())
 
-	try measure(100000 * 2, work)
+	measure(100000 * 2, work)?
 
 bench "sorted_map.add_contains_100000":
 	fn work() Result[Unit, Error]:
@@ -81,7 +81,7 @@ bench "sorted_map.add_contains_100000":
 
 		return keep(hits + map.length())
 
-	try measure(100000 * 2, work)
+	measure(100000 * 2, work)?
 
 bench "list.insert_remove_middle_100000":
 	fn work() Result[Unit, Error]:
@@ -93,7 +93,7 @@ bench "list.insert_remove_middle_100000":
 
 		return keep(list.length())
 
-	try measure(2000, work)
+	measure(2000, work)?
 
 bench "queue.enqueue_dequeue_400000":
 	fn work() Result[Unit, Error]:
@@ -106,7 +106,7 @@ bench "queue.enqueue_dequeue_400000":
 			total += queue.dequeue().get(0)
 		return keep(total)
 
-	try measure(400000 * 2, work)
+	measure(400000 * 2, work)?
 
 bench "priority_queue.enqueue_dequeue_400000":
 	fn work() Result[Unit, Error]:
@@ -119,7 +119,7 @@ bench "priority_queue.enqueue_dequeue_400000":
 			total += queue.dequeue().get(0)
 		return keep(total)
 
-	try measure(400000 * 2, work)
+	measure(400000 * 2, work)?
 
 bench "deque.push_pop_both_ends_400000":
 	fn work() Result[Unit, Error]:
@@ -134,7 +134,7 @@ bench "deque.push_pop_both_ends_400000":
 			total += deque.pop_front().get(0) + deque.pop_back().get(0)
 		return keep(total)
 
-	try measure(400000 * 4, work)
+	measure(400000 * 4, work)?
 
 bench "bitset.add_contains_400000":
 	fn work() Result[Unit, Error]:
@@ -148,7 +148,7 @@ bench "bitset.add_contains_400000":
 				hits += 1
 		return keep(hits + set.length())
 
-	try measure(400000 * 2, work)
+	measure(400000 * 2, work)?
 
 bench "sorted_map.add_contains_400000":
 	fn work() Result[Unit, Error]:
@@ -168,7 +168,7 @@ bench "sorted_map.add_contains_400000":
 
 		return keep(hits + map.length())
 
-	try measure(400000 * 2, work)
+	measure(400000 * 2, work)?
 
 bench "list.insert_remove_middle_400000":
 	fn work() Result[Unit, Error]:
@@ -180,4 +180,4 @@ bench "list.insert_remove_middle_400000":
 
 		return keep(list.length())
 
-	try measure(2000, work)
+	measure(2000, work)?

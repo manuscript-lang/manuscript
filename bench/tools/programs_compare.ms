@@ -36,7 +36,7 @@ fn run(opts: Map[String, String], n: Int) Result[String, Error]:
 		for version in orders[i % orders.length()]:
 			results.add(
 				version.clone(),
-				try sample(programs.get_or(version, ""), [], input),
+				sample(programs.get_or(version, ""), [], input)?,
 			)
 
 		for revision in ["before", "after"]:
@@ -54,7 +54,7 @@ fn run(opts: Map[String, String], n: Int) Result[String, Error]:
 		lines := raw.get_or(revision, [])
 		write_text("{out}/programs-{revision}.txt", lines.map(fn l: l + "\n").join(""))
 
-		table := try summarize(lines, n)
+		table := summarize(lines, n)?
 		write_text("{out}/programs-{revision}.md", table + "\n")
 		report.append("{revision}\n{table}")
 

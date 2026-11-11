@@ -15,20 +15,20 @@ test "deque iterates front to back by borrow":
 	var seen: List[Int] = []
 	for item in d:
 		seen.append(item)
-	try expect_equal(seen, [1, 2, 3])
-	try expect_equal(d.length(), 3)
+	expect_equal(seen, [1, 2, 3])?
+	expect_equal(d.length(), 3)?
 
 test "queue iterates oldest first and skips consumed slots":
 	var q = Queue[String]()
 	q.enqueue("a")
 	q.enqueue("b")
 	q.enqueue("c")
-	try expect_equal(q.dequeue(), "a")
+	expect_equal(q.dequeue(), "a")?
 
 	var seen: List[String] = []
 	for item in q:
 		seen.append(item.clone())
-	try expect_equal(seen, ["b", "c"])
+	expect_equal(seen, ["b", "c"])?
 
 test "priority queue iterates every value and peek borrows":
 	var q = PriorityQueue[Int]()
@@ -39,8 +39,8 @@ test "priority queue iterates every value and peek borrows":
 	var total = 0
 	for item in q:
 		total += item
-	try expect_equal(total, 9)
-	try expect_equal(q.peek(), 1)
+	expect_equal(total, 9)?
+	expect_equal(q.peek(), 1)?
 
 test "break and continue work in a borrowing loop":
 	var d = Deque[Int]()
@@ -55,17 +55,17 @@ test "break and continue work in a borrowing loop":
 
 		seen.append(item)
 
-	try expect_equal(seen, [0, 2, 3])
+	expect_equal(seen, [0, 2, 3])?
 
 test "empty container and temporary iterable":
 	var d = Deque[Int]()
 	var count = 0
 	for item in d:
 		count += item + 1
-	try expect_equal(count, 0)
+	expect_equal(count, 0)?
 	for item in Deque[Int]():
 		count += 1
-	try expect_equal(count, 0)
+	expect_equal(count, 0)?
 
 test "nested loops over one container":
 	var d = Deque[Int]()
@@ -76,7 +76,7 @@ test "nested loops over one container":
 	for a in d:
 		for b in d:
 			pairs += a * b
-	try expect_equal(pairs, 9)
+	expect_equal(pairs, 9)?
 
 test "callbacks are called through the borrow":
 	var d = Deque[fn(Int) Int]()
@@ -86,4 +86,4 @@ test "callbacks are called through the borrow":
 	var total = 0
 	for f in d:
 		total += f(2)
-	try expect_equal(total, 23)
+	expect_equal(total, 23)?

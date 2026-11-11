@@ -41,7 +41,7 @@ argument references the key owner.
 Only a checked native structural `clone` may be elided, never a source method that happens
 to have the same name ([#2865](https://github.com/manuscript-lang/manuscript/issues/2865)).
 
-An owned native argument held for a later `try` remains registered on early exit. After all
+An owned native argument held for a later `?` remains registered on early exit. After all
 arguments succeed, restore ownership of that captured value before refreshing or consuming
 arguments. Otherwise lowering can reread a moved source or silently copy an explicit clone
 ([#2866](https://github.com/manuscript-lang/manuscript/issues/2866)).

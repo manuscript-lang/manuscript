@@ -46,7 +46,7 @@ export enum FetchBody:
 // Encodes `value` as a JSON request body, sent as `application/json` unless a
 // `Content-Type` is given.
 export fn json_body[T: Data](value: T) FetchBody!:
-	text := try stringify(value)
+	text := stringify(value)?
 	return ok(FetchBody.JsonText(text))
 
 // Per-request settings. Every field has a default, so `FetchOptions()` (the default) is
@@ -104,14 +104,14 @@ impl FetchResponse:
 		if text := self.body.decode_utf8(): return ok(text)
 		return error(Error("fetch: body is not valid UTF-8", kind: "EBADMSG"))
 
-	// Decodes the body as JSON into `T`, as in `try response.json[User]()`; use
+	// Decodes the body as JSON into `T`, as in `response.json[User]()?`; use
 	// `JsonValue` for untyped data.
 	fn json[T: Data](ignore_unknown_fields: Bool = true) T!:
-		text := try self.text()
+		text := self.text()?
 		return parse[T](text, JsonOptions(ignore_unknown_fields: ignore_unknown_fields))
 
 	// Succeeds when the status is 200 through 299 and otherwise returns `Status`, so
-	// `try response.check_status()` rejects error responses.
+	// `response.check_status()?` rejects error responses.
 	fn check_status() Unit!:
 		if self.ok(): return ok(unit)
 		return error(
@@ -165,9 +165,9 @@ fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchRespon
 	open := body
 	metadata := open.metadata()
 	whole := (
-		try open
+		open
 		.read_all()
-		.map_error(fn cause: read_failure(cause, options, started))
+		.map_error(fn cause: read_failure(cause, options, started))?
 	)
 	if limit_exceeded(options.max_response_bytes, whole.length()):
 		return error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
@@ -233,10 +233,10 @@ export fn fetcher(
 	)
 
 	if restricted := net:
-		client := try restricted.http_client(settings)
+		client := restricted.http_client(settings)?
 		return ok(Fetcher(client: client))
 
-	client := try http_client(settings)
+	client := http_client(settings)?
 	return ok(Fetcher(client: client))
 
 // Starts one buffered request on a one-shot client and returns its promise; requests
@@ -255,7 +255,7 @@ fn fetch_job(url: String, options: FetchOptions) fn() FetchResponse!:
 	return fn: fetched(url, options)
 
 fn fetched(url: String, options: FetchOptions) FetchResponse!:
-	client := try fetcher()
+	client := fetcher()?
 	return sent(client.client.native, url, options)
 
 // The work of `Fetcher.fetch`: a returned closure owns its handle on the pooled client,
@@ -271,7 +271,7 @@ fn send_job(
 fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchResponse!:
 	started := monotonic()
 	outbound := outgoing(options.clone())
-	body := try msstd_http_client_request_bytes(
+	body := msstd_http_client_request_bytes(
 		native,
 		options.method.text(),
 		url,
@@ -279,5 +279,5 @@ fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchRespo
 		outbound.body,
 		options.max_response_bytes,
 		options.timeout,
-	)
+	)?
 	return drain(body, options, started)

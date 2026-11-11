@@ -11,7 +11,7 @@ import (
 /*
 Boundary values for numeric tests. Run a function over every value or pair these return and compare the result with an exact
 reference such as `BigRat` or `BigInt`, which is how a missing overflow, sign or rounding case shows up.
-Example: `for x in int_boundaries(): try expect_equal(wrapping_add(x, 0), x)`.
+Example: `for x in int_boundaries(): expect_equal(wrapping_add(x, 0), x)?`.
 */
 
 // Returns the Int values where arithmetic changes behavior: zero, plus and minus one

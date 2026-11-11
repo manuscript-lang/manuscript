@@ -453,12 +453,12 @@ fn merge(
 
 	for item in values:
 		match item:
-			ObjectValue(_): try merge(
+			ObjectValue(_): merge(
 				line: line,
 				column: column,
 				target: var target,
 				value: item,
-			)
+			)?
 			_: return error(
 				yaml_invalid(
 					line: line,
@@ -521,9 +521,9 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
 	if c == 42:
 		advance(var flow)
 
-		name := try anchor_name(var flow)
+		name := anchor_name(var flow)?
 		if size := flow.context.sizes.get(name):
-			try charge(var flow.context, size)
+			charge(var flow.context, size)?
 		if value := flow.context.anchors.get(name): return ok(value.clone())
 
 		return error(flow_invalid(flow, "unknown or recursive alias"))
@@ -534,7 +534,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
 			reason: "explicit tags are unsupported",
 		)
 	)
-	if c == 34 or c == 39: return ok(YamlValue.StringValue(try quoted(var flow)))
+	if c == 34 or c == 39: return ok(YamlValue.StringValue(quoted(var flow)?))
 
 	start := flow.pos
 	while (flow.next_stop < flow.stops.length() and flow.stops[flow.next_stop] <= start): flow.next_stop += 1
@@ -676,12 +676,12 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 			while true:
 				flow_space(var flow)
 				if not is_key:
-					try count(var flow.context, child_depth)
+					count(var flow.context, child_depth)?
 				if cur(flow) != 38: break
 
 				advance(var flow)
 
-				anchor := try anchor_name(var flow)
+				anchor := anchor_name(var flow)?
 				flow.context.values -= 1
 				written.append(anchor)
 				is_key = false
@@ -721,7 +721,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				phase = 2
 				continue
 
-			leaf := try flow_leaf(var flow, c, is_key)
+			leaf := flow_leaf(var flow, c, is_key)?
 			for anchor in written.reversed():
 				define_anchor(var flow.context, anchor, leaf.clone())
 			done = leaf
@@ -748,14 +748,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 					phase = 2
 					continue
 			else:
-				try flow_entry(
-					var flow,
-					name,
-					quoted_key,
-					var entries,
-					var explicit,
-					done,
-				)
+				flow_entry(var flow, name, quoted_key, var entries, var explicit, done)?
 				done = YamlValue.Null
 				flow_space(var flow)
 
@@ -796,7 +789,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 				quoted_key = cur(flow) == 34 or cur(flow) == 39
 
 				key_start := flow.pos
-				parsed_key := try flow_value(var flow, level, key: true)
+				parsed_key := flow_value(var flow, level, key: true)?
 
 				match parsed_key:
 					StringValue(text): name = text
@@ -814,7 +807,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 
 				// A key with no colon, as in `{a, b: 1}`, maps to null.
 				if cur(flow) == 44 or cur(flow) == 125:
-					try count(var flow.context, level + 1)
+					count(var flow.context, level + 1)?
 					done = YamlValue.Null
 					phase = 1
 					continue
@@ -1203,7 +1196,7 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 		)
 		and plain_may_start(blank_trim(text))
 	):
-		try count(var context, depth)
+		count(var context, depth)?
 		return ok(plain(blank_trim(text).clone()))
 
 	var joined = text.clone()
@@ -1257,7 +1250,7 @@ fn inline_value(var context: Context, text: String, depth: Int, line: Int, colum
 		delimited: false,
 		stops: stops,
 	)
-	result := try flow_value(var flow, depth, key: false)
+	result := flow_value(var flow, depth, key: false)?
 	flow_space(var flow)
 	if cur(flow) != 0: return error(flow_invalid(flow, "unexpected trailing text"))
 
@@ -1443,7 +1436,7 @@ fn block_value(
 			context: flow_context(context),
 			delimited: false,
 		)
-		anchor = try anchor_name(var flow)
+		anchor = anchor_name(var flow)?
 
 		previous_length := remainder.scalar_length()
 		remainder = blank_trim_start(remainder.slice(flow.pos, previous_length).get(""))
@@ -1453,14 +1446,14 @@ fn block_value(
 	var result = YamlValue.Null
 
 	if lead == 124 or lead == 62:
-		try count(var context, depth)
-		result = try block_string(
+		count(var context, depth)?
+		result = block_string(
 			var context,
 			blank_trim_end(remainder),
 			base: block_base.get(base),
 			header_line: start_line,
 			header_column: origin,
-		)
+		)?
 	else if remainder != "":
 		if not structured_lead(lead):
 			remainder = blank_trim_end(remainder).clone()
@@ -1502,7 +1495,7 @@ fn block_value(
 
 					context.index = probe
 
-					_indent := try indentation(context, next)
+					_indent := indentation(context, next)?
 					if (
 						boundary(next, colon: true) >= 0
 						or sequence(blank_trim_start(next))
@@ -1528,13 +1521,13 @@ fn block_value(
 
 				remainder = joined.build()
 
-		result = try inline_value(var context, remainder, depth, start_line, origin)
+		result = inline_value(var context, remainder, depth, start_line, origin)?
 	else:
 		skip(var context)
 
 		if context.index < context.lines.length():
 			line := uncomment(context.lines[context.index])
-			next_indent := try indentation(context, line)
+			next_indent := indentation(context, line)?
 
 			if (
 				next_indent > base
@@ -1544,16 +1537,16 @@ fn block_value(
 					and sequence(blank_trim_start(line))
 				)
 			):
-				result = try block(
+				result = block(
 					var context,
 					next_indent,
 					depth,
 					scalar_base: block_base.get(base),
-				)
+				)?
 			else:
-				try count(var context, depth)
+				count(var context, depth)?
 		else:
-			try count(var context, depth)
+			count(var context, depth)?
 
 	if anchor != "": define_anchor(var context, anchor, result.clone())
 	return ok(result)
@@ -1609,7 +1602,7 @@ fn sequence_items(
 			compact = context.col[context.index] >= 0 or sequence(item)
 		else:
 			line = uncomment(context.lines[context.index])
-			line_indent = try indentation(context, line)
+			line_indent = indentation(context, line)?
 			if line_indent < base: break
 			if line_indent != base or not sequence(blank_trim_start(line)): break
 
@@ -1632,7 +1625,7 @@ fn sequence_items(
 			var level = 1
 
 			while level <= chain.length():
-				try count(var context, (depth + level))
+				count(var context, (depth + level))?
 				frames.append([])
 				level += 1
 
@@ -1653,12 +1646,12 @@ fn sequence_items(
 			level = chain.length()
 
 			var nested = frames[level - 1].clone()
-			try sequence_items(
+			sequence_items(
 				context: var context,
 				values: var nested,
 				base: innermost,
 				depth: (depth + level),
-			)
+			)?
 
 			var value = YamlValue.ArrayValue(nested)
 			level -= 1
@@ -1666,12 +1659,12 @@ fn sequence_items(
 			while level >= 1:
 				nested = frames[level - 1].clone()
 				nested.append(value)
-				try sequence_items(
+				sequence_items(
 					context: var context,
 					values: var nested,
 					base: chain[level - 1],
 					depth: (depth + level),
-				)
+				)?
 				value = YamlValue.ArrayValue(nested)
 				level -= 1
 
@@ -1720,25 +1713,18 @@ fn sequence_items(
 				)
 
 			context.lines.set(context.index, rewritten)
-			values.append(
-				try block(
-					var context,
-					column,
-					(depth + 1),
-					scalar_base: base,
-				)
-			)
+			values.append(block(var context, column, (depth + 1), scalar_base: base)?)
 		else:
 			context.index += 1
 			values.append(
-				try block_value(
+				block_value(
 					context: var context,
 					text: item,
 					base: base,
 					depth: (depth + 1),
 					indentless: false,
 					column: line.scalar_length() - item.scalar_length() + 1,
-				)
+				)?
 			)
 
 	return ok(unit)
@@ -1777,19 +1763,19 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 	)
 
 	if is_sequence:
-		try count(var context, depth)
+		count(var context, depth)?
 
 		var values: List[YamlValue] = []
-		try sequence_items(
+		sequence_items(
 			context: var context,
 			values: var values,
 			base: base,
 			depth: depth,
-		)
+		)?
 		return ok(YamlValue.ArrayValue(values))
 
 	if has_colon:
-		try count(var context, depth)
+		count(var context, depth)?
 
 		var values = Map[String, YamlValue]()
 		var explicit = Set[String]()
@@ -1820,7 +1806,7 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 				value_column = raw.scalar_length() - text.scalar_length() + 1
 			else:
 				line := uncomment(context.lines[context.index])
-				line_indent = try indentation(context, line)
+				line_indent = indentation(context, line)?
 				if line_indent != base or sequence(blank_trim_start(line)): break
 
 				content := blank_trim_start(line)
@@ -1853,7 +1839,7 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 					context: flow_context(context),
 					delimited: false,
 				)
-				name = try quoted(var flow)
+				name = quoted(var flow)?
 				if flow.pos != flow.chars.length(): return error(
 					invalid(context, "invalid quoted key")
 				)
@@ -1898,22 +1884,22 @@ fn block(var context: Context, base: Int, depth: Int, scalar_base: Int) YamlValu
 			key_column := source_column(context, context.index, line_indent + 1)
 			context.index += 1
 
-			value := try block_value(
+			value := block_value(
 				context: var context,
 				text: text,
 				base: base,
 				depth: (depth + 1),
 				indentless: true,
 				column: value_column,
-			)
+			)?
 
 			if name == "<<" and not quoted_key:
-				try merge(
+				merge(
 					line: key_line,
 					column: key_column,
 					target: var values,
 					value: value,
-				)
+				)?
 			else:
 				values.add(name, value)
 
@@ -1953,13 +1939,13 @@ fn flow_context(context: Context) Context:
 	)
 
 fn validate(var context: Context, value: YamlValue, depth: Int) Unit!:
-	try count(var context, depth)
+	count(var context, depth)?
 
 	match value:
 		ArrayValue(values):
-			for item in values: try validate(var context, item, (depth + 1))
+			for item in values: validate(var context, item, (depth + 1))?
 		ObjectValue(values):
-			for entry in values: try validate(var context, entry.value, (depth + 1))
+			for entry in values: validate(var context, entry.value, (depth + 1))?
 		_: unit
 
 // Parses a YAML document. Unsupported YAML features and invalid input include source
@@ -2063,12 +2049,12 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 		context.index < context.lines.length()
 		and uncomment((context.lines[context.index])) != "..."
 	):
-		result = try block(
+		result = block(
 			var context,
-			try indentation(context, (context.lines[context.index])),
+			indentation(context, (context.lines[context.index]))?,
 			1,
 			scalar_base: 0,
-		)
+		)?
 	skip(var context)
 
 	if (
@@ -2087,7 +2073,7 @@ export fn parse(text: String, options: YamlOptions = YamlOptions()) YamlValue!:
 	if context.values > 0 and context.anchors.is_empty(): return ok(result)
 
 	context.values = 0
-	try validate(var context, result, 1)
+	validate(var context, result, 1)?
 	return ok(result)
 
 fn format_key(key: String) String:
@@ -2167,9 +2153,9 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 
 				if is_block(item):
 					out.append("-\n")
-					try emit_block(var out, item, indent.concat("  "))
+					emit_block(var out, item, indent.concat("  "))?
 				else:
-					text := try scalar_text(item.clone())
+					text := scalar_text(item.clone())?
 					out.append("- ")
 					out.append(text)
 					out.append("\n")
@@ -2182,9 +2168,9 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 
 				if is_block(entry.value):
 					out.append(":\n")
-					try emit_block(var out, entry.value, indent.concat("  "))
+					emit_block(var out, entry.value, indent.concat("  "))?
 				else:
-					text := try scalar_text(entry.value.clone())
+					text := scalar_text(entry.value.clone())?
 					out.append(": ")
 					out.append(text)
 					out.append("\n")
@@ -2199,9 +2185,9 @@ export fn stringify(value: YamlValue, max_bytes: Int? = none) String!:
 
 	var out = StringBuilder()
 
-	if is_block(value.clone()): try emit_block(var out, value, "")
+	if is_block(value.clone()): emit_block(var out, value, "")?
 	else:
-		text := try scalar_text(value.clone())
+		text := scalar_text(value.clone())?
 		out.append(text.concat("\n"))
 
 	text := out.build()

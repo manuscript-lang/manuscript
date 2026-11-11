@@ -12,34 +12,34 @@ type Service:
 
 fn exercise(mode: String, path: String) Unit!:
 	if (mode == "file" or mode == "missing"):
-		var root = try create(try file_transport(path), LoggerOptions(timestamp: false))
-		logger := try root.child(Service("api"))
-		try emit(logger)
-		try logger.flush()
-		try root.close()
+		var root = create(file_transport(path)?, LoggerOptions(timestamp: false))?
+		logger := root.child(Service("api"))?
+		emit(logger)?
+		logger.flush()?
+		root.close()?
 		return ok(unit)
 
 	if mode == "limit":
-		logger := try create(stdout_transport(), LoggerOptions(max_bytes: 1))
-		try logger.info("too large")
+		logger := create(stdout_transport(), LoggerOptions(max_bytes: 1))?
+		logger.info("too large")?
 	else if mode == "closed":
-		var root = try create(stdout_transport())
-		logger := try root.child(Service("api"))
-		try root.close()
-		try logger.info("closed")
+		var root = create(stdout_transport())?
+		logger := root.child(Service("api"))?
+		root.close()?
+		logger.info("closed")?
 	else:
-		root := try create(stdout_transport())
-		logger := try root.child(Service("api"))
+		root := create(stdout_transport())?
+		logger := root.child(Service("api"))?
 
 		if mode == "invalid":
-			try logger.info("invalid", JsonValue.NumberValue("NaN"))
+			logger.info("invalid", JsonValue.NumberValue("NaN"))?
 		else:
-			try emit(logger)
-			try logger.flush()
+			emit(logger)?
+			logger.flush()?
 
-	var logger = try create(stdout_transport(), LoggerOptions(timestamp: false))
-	try logger.info("still open")
-	try logger.close()
+	var logger = create(stdout_transport(), LoggerOptions(timestamp: false))?
+	logger.info("still open")?
+	logger.close()?
 
 export fn main() Int:
 	args := arguments()

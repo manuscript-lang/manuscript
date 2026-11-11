@@ -16,7 +16,7 @@ impl Closeable for Token:
 	var fn close() Unit!:
 		if not self.closed:
 			self.closed = true
-			try append_file(self.log, "close {self.id}\n").wait()
+			append_file(self.log, "close {self.id}\n").wait()?
 
 type Tokens:
 	log: String
@@ -40,40 +40,40 @@ fn events(log: String) String:
 
 fn read_one(input: ReadStream[Token]) Unit!:
 	var owned = input
-	if token := try owned.next():
-		try use_token(token)
+	if token := owned.next()?:
+		use_token(token)?
 
 fn wait_one(input: ReadStream[Token]) Unit!:
 	var owned = input
 
 	for item in owned:
 		token := item
-		try use_token(token)
+		use_token(token)?
 		break
 
 test "direct read keeps resource open through the body and closes once":
-	dir := temporary("resource-read-") | try expect_ok
+	dir := temporary("resource-read-") | expect_ok?
 	log := "{dir.path()}/events"
-	try read_one(ReadStream[Token](Tokens(log.clone())))
-	try expect_equal(events(log), "body 1\nclose 1\n")
+	read_one(ReadStream[Token](Tokens(log.clone())))?
+	expect_equal(events(log), "body 1\nclose 1\n")?
 
 test "iterator keeps resource open through the body and closes once":
-	dir := temporary("resource-wait-") | try expect_ok
+	dir := temporary("resource-wait-") | expect_ok?
 	log := "{dir.path()}/events"
-	try wait_one(ReadStream[Token](Tokens(log.clone())))
-	try expect_equal(events(log), "body 1\nclose 1\n")
+	wait_one(ReadStream[Token](Tokens(log.clone())))?
+	expect_equal(events(log), "body 1\nclose 1\n")?
 
 // A body uses the external log as well as the value's state: a duplicated resource can
 // have `closed == false` while another copy already released the same external
 // resource.
 fn use_token(token: Token) Unit!:
-	try expect_equal(token.closed, false)
-	try expect_equal(events(token.log).contains("close {token.id}\n"), false)
-	try append_file(token.log, "body {token.id}\n").wait()
+	expect_equal(token.closed, false)?
+	expect_equal(events(token.log).contains("close {token.id}\n"), false)?
+	append_file(token.log, "body {token.id}\n").wait()?
 
 fn close_item(input: Token) Unit!:
 	var token = input
-	try use_token(token)
+	use_token(token)?
 	return token.close()
 
 fn walk(log: String, action: Int) Unit!:
@@ -81,78 +81,78 @@ fn walk(log: String, action: Int) Unit!:
 
 	for item in input:
 		if action == 5:
-			try close_item(item)
+			close_item(item)?
 			continue
 
 		token := item
-		try use_token(token)
+		use_token(token)?
 		if action == 1: break
 		if action == 2: return ok(unit)
 		if action == 3: return error(Error("body failed", kind: "EBODY"))
 		if action == 4: continue
 
 		if action == 6:
-			try input.close()
+			input.close()?
 
 test "exhaustion and continue close each item after its body":
-	dir := temporary("resource-exhaust-") | try expect_ok
+	dir := temporary("resource-exhaust-") | expect_ok?
 
 	for action in [0, 4]:
 		log := "{dir.path()}/{action}"
-		try walk(log, action)
-		try expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")
+		walk(log, action)?
+		expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")?
 
 test "break return and error close the current item once":
-	dir := temporary("resource-exit-") | try expect_ok
+	dir := temporary("resource-exit-") | expect_ok?
 
 	for action in [1, 2, 3]:
 		log := "{dir.path()}/{action}"
 		result := walk(log, action)
-		try expect_equal(result.is_error(), action == 3)
-		try expect_equal(events(log), "body 1\nclose 1\n")
+		expect_equal(result.is_error(), action == 3)?
+		expect_equal(events(log), "body 1\nclose 1\n")?
 
 test "explicit item close and stream close preserve each item owner":
-	dir := temporary("resource-close-") | try expect_ok
+	dir := temporary("resource-close-") | expect_ok?
 	item_closed := "{dir.path()}/5"
-	try walk(item_closed, 5)
-	try expect_equal(events(item_closed), "body 1\nclose 1\nbody 2\nclose 2\n")
+	walk(item_closed, 5)?
+	expect_equal(events(item_closed), "body 1\nclose 1\nbody 2\nclose 2\n")?
 
 	// Closing the stream ends it: the loop reads no further item.
 	stream_closed := "{dir.path()}/6"
-	try walk(stream_closed, 6)
-	try expect_equal(events(stream_closed), "body 1\nclose 1\n")
+	walk(stream_closed, 6)?
+	expect_equal(events(stream_closed), "body 1\nclose 1\n")?
 
 fn source_error(log: String, fail_at: Int) Unit!:
 	var input = ReadStream[Token](Tokens(log.clone(), fail_at: fail_at))
 
 	for item in input:
 		token := item
-		try use_token(token)
+		use_token(token)?
 
 test "a source error relays through try after closing earlier items":
-	dir := temporary("resource-error-") | try expect_ok
+	dir := temporary("resource-error-") | expect_ok?
 	first := "{dir.path()}/first"
-	reason := source_error(first, 1) | try expect_error
-	try expect_equal(reason.kind, "EIO")
-	try expect_equal(events(first), "")
+	reason := source_error(first, 1) | expect_error?
+	expect_equal(reason.kind, "EIO")?
+	expect_equal(events(first), "")?
 
 	later := "{dir.path()}/later"
-	later_reason := source_error(later, 2) | try expect_error
-	try expect_equal(later_reason.kind, "EIO")
-	try expect_equal(events(later), "body 1\nclose 1\n")
+	later_reason := source_error(later, 2) | expect_error?
+	expect_equal(later_reason.kind, "EIO")?
+	expect_equal(events(later), "body 1\nclose 1\n")?
 
 fn direct_next(log: String) Unit!:
 	var input = ReadStream[Token](Tokens(log.clone()))
 
-	if item := try input.next():
+	if item := input.next()?:
 		token := item
-		try use_token(token)
+		use_token(token)?
 
 test "calling Waiting next directly transfers the item":
-	dir := temporary("resource-next-") | try expect_ok
+	dir := temporary("resource-next-") | expect_ok?
 	log := "{dir.path()}/events"
-	try direct_next(log)
-	try expect_equal(events(log), "body 1\nclose 1\n")
+	direct_next(log)?
+	expect_equal(events(log), "body 1\nclose 1\n")?
 
 type PlainTokens:
 	log: String
@@ -167,13 +167,13 @@ impl Iterator[Token] for PlainTokens:
 
 fn plain(log: String) Unit!:
 	for token in PlainTokens(log.clone()):
-		try use_token(token)
+		use_token(token)?
 
 test "a custom Iterator transfers each freshly produced resource":
-	dir := temporary("resource-plain-") | try expect_ok
+	dir := temporary("resource-plain-") | expect_ok?
 	log := "{dir.path()}/events"
-	try plain(log)
-	try expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")
+	plain(log)?
+	expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")?
 
 type OptionalTokens:
 	log: String
@@ -196,13 +196,13 @@ fn optional_payload(log: String) Unit!:
 	for item in input:
 		maybe := item
 		if token := maybe:
-			try use_token(token)
+			use_token(token)?
 
 test "a nested optional payload transfers its resource":
-	dir := temporary("resource-optional-") | try expect_ok
+	dir := temporary("resource-optional-") | expect_ok?
 	log := "{dir.path()}/events"
-	try optional_payload(log)
-	try expect_equal(events(log), "body 1\nclose 1\n")
+	optional_payload(log)?
+	expect_equal(events(log), "body 1\nclose 1\n")?
 
 type ResultTokens:
 	log: String
@@ -223,14 +223,14 @@ fn result_payload(log: String) Unit!:
 	var input = ReadStream[Token!](ResultTokens(log.clone()))
 
 	for item in input:
-		token := try item
-		try use_token(token)
+		token := item?
+		use_token(token)?
 
 test "a nested result payload transfers its resource":
-	dir := temporary("resource-result-") | try expect_ok
+	dir := temporary("resource-result-") | expect_ok?
 	log := "{dir.path()}/events"
-	try result_payload(log)
-	try expect_equal(events(log), "body 1\nclose 1\n")
+	result_payload(log)?
+	expect_equal(events(log), "body 1\nclose 1\n")?
 
 // Wait for the exact acquisition/body event before cancelling; the deadline bounds a
 // failed handshake.
@@ -247,20 +247,20 @@ fn wait_cancelled(log: String) Unit!:
 
 	for item in input:
 		token := item
-		try use_token(token)
+		use_token(token)?
 
 		_ := sleep(milliseconds(60000)).wait()
 
 test "cancelling an active body closes the delivered item once":
-	dir := temporary("resource-body-cancel-") | try expect_ok
+	dir := temporary("resource-body-cancel-") | expect_ok?
 	log := "{dir.path()}/events"
 	work := promise(fn: wait_cancelled(log))
-	try wait_for_event(log, "body 1\n")
+	wait_for_event(log, "body 1\n")?
 	work.cancel()
 
-	reason := work.wait() | try expect_error
-	try expect_equal(reason.kind, "ECANCELED")
-	try expect_equal(events(log), "body 1\nclose 1\n")
+	reason := work.wait() | expect_error?
+	expect_equal(reason.kind, "ECANCELED")?
+	expect_equal(events(log), "body 1\nclose 1\n")?
 
 type PendingTokens:
 	log: String
@@ -268,7 +268,7 @@ type PendingTokens:
 impl Source[Token] for PendingTokens:
 	var fn next() Token?!:
 		token := Token(1, self.log.clone())
-		try append_file(self.log, "ready\n").wait()
+		append_file(self.log, "ready\n").wait()?
 
 		_ := sleep(milliseconds(60000)).wait()
 		return ok(token)
@@ -281,32 +281,32 @@ fn next_cancelled(log: String) Unit!:
 
 	for item in input:
 		token := item
-		try use_token(token)
+		use_token(token)?
 
 test "cancelling a source step closes its undelivered item once":
-	dir := temporary("resource-next-cancel-") | try expect_ok
+	dir := temporary("resource-next-cancel-") | expect_ok?
 	log := "{dir.path()}/events"
 	work := promise(fn: next_cancelled(log))
-	try wait_for_event(log, "ready\n")
+	wait_for_event(log, "ready\n")?
 	work.cancel()
 
-	reason := work.wait() | try expect_error
-	try expect_equal(reason.kind, "ECANCELED")
-	try expect_equal(events(log), "ready\nclose 1\n")
+	reason := work.wait() | expect_error?
+	expect_equal(reason.kind, "ECANCELED")?
+	expect_equal(events(log), "ready\nclose 1\n")?
 
 fn resume_after_break(log: String) Unit!:
 	var input = ReadStream[Token](Tokens(log.clone()))
 
 	for item in input:
 		token := item
-		try use_token(token)
+		use_token(token)?
 		break
 
-	if token := try input.next():
-		try use_token(token)
+	if token := input.next()?:
+		use_token(token)?
 
 test "breaking returns the source so its next resource can be read":
-	dir := temporary("resource-resume-") | try expect_ok
+	dir := temporary("resource-resume-") | expect_ok?
 	log := "{dir.path()}/events"
-	try resume_after_break(log)
-	try expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")
+	resume_after_break(log)?
+	expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")?

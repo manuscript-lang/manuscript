@@ -15,7 +15,7 @@ import open from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
 fn read_head(path: String) Bytes?!:
-    file := try open(path)
+    file := open(path)?
     return file.read(max_bytes: 4096)
 ```
 
@@ -29,7 +29,7 @@ fn read_head(path: String) Bytes?!:
 4. Run the rest of the scope.
 5. Close the registered resource when execution leaves the scope.
 
-Cleanup runs on every exit: end of scope, `break`, `continue`, `return`, `try` propagation, fault, or cancellation. Nested scopes close inner to outer, and bindings in one scope close last declared first.
+Cleanup runs on every exit: end of scope, `break`, `continue`, `return`, `?` propagation, fault, or cancellation. Nested scopes close inner to outer, and bindings in one scope close last declared first.
 
 ## Which values are closed?
 
@@ -39,16 +39,16 @@ A concrete type opts in through an implementation of the standard `Closeable` in
 
 A binding is closed unless something takes the resource from it. Returning it, passing it to a moving parameter, storing it, or capturing it in a closure that outlives the scope moves it to a new owner, which closes it instead. A resource acquired in a loop closes at the end of that iteration.
 
-To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; handle the `Result` with `try` or `_ :=`.
+To close earlier than the end of the scope, declare the binding with `var` and call `close()`. Close is idempotent, so the scope-end close that follows is harmless; the later statements still see a closed resource, so do not use it afterwards. Closing a file early is a common case; handle the `Result` with `?` or `_ :=`.
 
 ```manuscript
-var file = try open(path)
-head := try file.read_lines(max_lines: 1)
+var file = open(path)?
+head := file.read_lines(max_lines: 1)?
 _ := file.close()
 slow_work(head)
 ```
 
-`close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`try output.flush()`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush` or `commit`. A `FileHandle` is not reported: its writes go straight to the OS, close does not need a flush, and `sync` (fsync) only adds durability. There are no enter or error-suppression hooks.
+`close` returns `Unit!`, so a failed close is returned or faults rather than lost; flush buffered streams first (`output.flush()?`) so delivery errors can be handled. `ms lint` reports **MSL114** when a closed-at-scope-end resource has an uncalled `flush` or `commit`. A `FileHandle` is not reported: its writes go straight to the OS, close does not need a flush, and `sync` (fsync) only adds durability. There are no enter or error-suppression hooks.
 
 ## Close a resource explicitly
 
@@ -63,7 +63,7 @@ Flush before closing when you need the destination to catch up or need to handle
 import WriteStream from "@std/io/io.ms"
 
 fn finish(var output: WriteStream[String]) Unit!:
-    try output.flush()
+    output.flush()?
     return output.close()
 ```
 

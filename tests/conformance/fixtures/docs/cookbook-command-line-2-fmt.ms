@@ -6,8 +6,8 @@ import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
     for name in arguments():
-        try stdout().write("Hello, {name}!\n")
+        stdout().write("Hello, {name}!\n")?
     return stdout().flush()
 
 fn main() Unit!:
-    try run()
+    run()?

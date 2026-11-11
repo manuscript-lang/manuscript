@@ -23,14 +23,14 @@ test "bound Error defaults use each invocation line":
 	convert := absent.ok_or[Error]
 	first_result := convert()
 	second_result := convert()
-	try expect_equal(
+	expect_equal(
 		first_result.err().message,
 		"missing value at bound-missing-value-source.ms:24",
-	)
-	try expect_equal(
+	)?
+	expect_equal(
 		second_result.err().message,
 		"missing value at bound-missing-value-source.ms:25",
-	)
+	)?
 
 test "immutable copies and captured native values keep invocation defaults":
 	absent: Int? := none
@@ -40,42 +40,42 @@ test "immutable copies and captured native values keep invocation defaults":
 	nested := fn:
 		return copied()
 	nested_result := nested()
-	try expect_equal(
+	expect_equal(
 		copied_result.err().message,
 		"missing value at bound-missing-value-source.ms:37",
-	)
-	try expect_equal(
+	)?
+	expect_equal(
 		nested_result.err().message,
 		"missing value at bound-missing-value-source.ms:39",
-	)
+	)?
 
 test "generic callers and direct calls keep their invocation lines":
 	absent: Int? := none
-	try expect_equal(
+	expect_equal(
 		generic_convert(absent).err().message,
 		"missing value at bound-missing-value-source.ms:5",
-	)
+	)?
 
 	direct := absent.ok_or()
-	try expect_equal(
+	expect_equal(
 		direct.err().message,
 		"missing value at bound-missing-value-source.ms:55",
-	)
+	)?
 
 	zero: Int? := 0
 	text: String? := "present"
-	try expect_equal(generic_convert(zero).get(), 0)
-	try expect_equal(generic_convert(text).get(), "present")
+	expect_equal(generic_convert(zero).get(), 0)?
+	expect_equal(generic_convert(text).get(), "present")?
 
 test "ordinary callable and inherited defaults receive none":
 	source := ordinary
 	copied := source
-	try expect_equal(copied().get(), 77)
+	expect_equal(copied().get(), 77)?
 
 	implementation := Source(77)
 	inherited := implementation.convert
-	try expect_equal(inherited().get(), 77)
-	try expect_equal(inherited(none).get(), 77)
+	expect_equal(inherited().get(), 77)?
+	expect_equal(inherited(none).get(), 77)?
 
 test "required joins preserve native and source behavior with supplied none":
 	zero: Int? := 0
@@ -94,31 +94,31 @@ test "required joins preserve native and source behavior with supplied none":
 			false: zero.ok_or[Error]
 
 		conditional := if flag: zero.ok_or[Error] else: ordinary
-		try expect_equal(native_first(none).get(), if flag: 0 else: 77)
-		try expect_equal(source_first(none).get(), if flag: 77 else: 0)
-		try expect_equal(native_only(none).get(), 0)
-		try expect_equal(conditional(none).get(), if flag: 0 else: 77)
+		expect_equal(native_first(none).get(), if flag: 0 else: 77)?
+		expect_equal(source_first(none).get(), if flag: 77 else: 0)?
+		expect_equal(native_only(none).get(), 0)?
+		expect_equal(conditional(none).get(), if flag: 0 else: 77)?
 
 test "supplied none remains supplied and nested Optional errors remain intact":
 	absent: Int? := none
 	convert := absent.ok_or[Error]
-	bound_fault := try expect_fault(
+	bound_fault := expect_fault(
 		fn:
 			_ignored := convert(none)
-	)
-	direct_fault := try expect_fault(
+	)?
+	direct_fault := expect_fault(
 		fn:
 			_ignored := absent.ok_or[Error](none)
-	)
-	try expect_true(bound_fault.contains("Optional.get() on none"))
-	try expect_true(direct_fault.contains("Optional.get() on none"))
+	)?
+	expect_true(bound_fault.contains("Optional.get() on none"))?
+	expect_true(direct_fault.contains("Optional.get() on none"))?
 
 	supplied := absent.ok_or().err()
-	try expect_equal(convert(supplied).err().message, supplied.message)
+	expect_equal(convert(supplied).err().message, supplied.message)?
 
 	nested := absent.ok_or[Int?]
 	inner_none: Int? := none
-	try expect_true(nested(inner_none).err().is_none())
+	expect_true(nested(inner_none).err().is_none())?
 
 	inner_zero: Int? := 0
-	try expect_equal(nested(inner_zero).err().get(), 0)
+	expect_equal(nested(inner_zero).err().get(), 0)?

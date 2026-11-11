@@ -23,7 +23,7 @@ test "Poly1305 matches the RFC 8439 vector":
 		),
 		"Cryptographic Forum Research Group".to_bytes(),
 	).get(Bytes([]))
-	try expect_equal(hex_encode(sum), "a8061dc1305136c6c22b8baf0c0127a9")
+	expect_equal(hex_encode(sum), "a8061dc1305136c6c22b8baf0c0127a9")?
 
 test "ChaCha20-Poly1305 matches the RFC 8439 sealed message":
 	sealed := chacha20poly1305_seal(
@@ -32,10 +32,10 @@ test "ChaCha20-Poly1305 matches the RFC 8439 sealed message":
 		text.to_bytes(),
 		bytes_of(aad_hex),
 	).get(Bytes([]))
-	try expect_equal(
+	expect_equal(
 		hex_encode(sealed),
 		"d31a8d34648e60db7b86afbc53ef7ec2a4aded51296e08fea9e2b5a736ee62d63dbea45e8ca9671282fafb69da92728b1a71de0a9e060b2905d6a5b67ecd3b3692ddbd7f2d778b8c9803aee328091b58fab324e4fad675945585808b4831d7bc3ff4def08e4b7a9de576d26586cec64b61161ae10b594f09e26a7e902ecbd0600691",
-	)
+	)?
 
 	opened := chacha20poly1305_open(
 		bytes_of(key_hex),
@@ -43,7 +43,7 @@ test "ChaCha20-Poly1305 matches the RFC 8439 sealed message":
 		sealed,
 		bytes_of(aad_hex),
 	).get(Bytes([]))
-	try expect_equal(hex_encode(opened), hex_encode(text.to_bytes()))
+	expect_equal(hex_encode(opened), hex_encode(text.to_bytes()))?
 
 test "empty message seals to a bare tag":
 	sealed := chacha20poly1305_seal(
@@ -52,7 +52,7 @@ test "empty message seals to a bare tag":
 		Bytes([]),
 		Bytes([]),
 	).get(Bytes([]))
-	try expect_equal(hex_encode(sealed), "a0784d7a4716f3feb4f64e7f4b39bf04")
+	expect_equal(hex_encode(sealed), "a0784d7a4716f3feb4f64e7f4b39bf04")?
 
 test "tampering and bad lengths are rejected":
 	var sealed = chacha20poly1305_seal(
@@ -61,40 +61,40 @@ test "tampering and bad lengths are rejected":
 		text.to_bytes(),
 		bytes_of(aad_hex),
 	).get(Bytes([]))
-	try expect_true(
+	expect_true(
 		chacha20poly1305_open(
 			bytes_of(key_hex),
 			bytes_of(nonce_hex),
 			sealed,
 			Bytes([]),
 		).is_error()
-	)
-	try expect_true(
+	)?
+	expect_true(
 		chacha20poly1305_open(
 			bytes_of(key_hex),
 			bytes_of(nonce_hex),
 			Bytes([1, 2]),
 			Bytes([]),
 		).is_error()
-	)
-	try expect_true(
+	)?
+	expect_true(
 		chacha20poly1305_seal(
 			Bytes([1]),
 			bytes_of(nonce_hex),
 			Bytes([]),
 			Bytes([]),
 		).is_error()
-	)
-	try expect_true(chacha20(Bytes([1]), bytes_of(nonce_hex), 1, Bytes([])).is_error())
+	)?
+	expect_true(chacha20(Bytes([1]), bytes_of(nonce_hex), 1, Bytes([])).is_error())?
 
 test "authentication failures use EAUTH":
 	key := "01234567890123456789012345678901".to_bytes()
 	nonce := "012345678901".to_bytes()
-	sealed := try chacha20poly1305_seal(key, nonce, Bytes([]), Bytes([]))
-	failure := try expect_error(
+	sealed := chacha20poly1305_seal(key, nonce, Bytes([]), Bytes([]))?
+	failure := expect_error(
 		chacha20poly1305_open(key, nonce, sealed, "changed".to_bytes())
-	)
-	try expect_equal(failure.kind.get(""), "EAUTH")
+	)?
+	expect_equal(failure.kind.get(""), "EAUTH")?
 
 test "chacha20 rejects data past the 32-bit block counter":
 	key := "01234567890123456789012345678901".to_bytes()
@@ -102,13 +102,13 @@ test "chacha20 rejects data past the 32-bit block counter":
 	last := 4294967295
 
 	for count in [0, 64]:
-		data := (try "a".repeat(count)).to_bytes()
-		try expect_equal(chacha20(key, nonce, last, data).is_error(), false)
+		data := ("a".repeat(count)?).to_bytes()
+		expect_equal(chacha20(key, nonce, last, data).is_error(), false)?
 
-	data65 := (try "a".repeat(65)).to_bytes()
-	try expect_equal(chacha20(key, nonce, last, data65).is_error(), true)
+	data65 := ("a".repeat(65)?).to_bytes()
+	expect_equal(chacha20(key, nonce, last, data65).is_error(), true)?
 
-	data128 := (try "a".repeat(128)).to_bytes()
-	data129 := (try "a".repeat(129)).to_bytes()
-	try expect_equal(chacha20(key, nonce, last - 1, data128).is_error(), false)
-	try expect_equal(chacha20(key, nonce, last - 1, data129).is_error(), true)
+	data128 := ("a".repeat(128)?).to_bytes()
+	data129 := ("a".repeat(129)?).to_bytes()
+	expect_equal(chacha20(key, nonce, last - 1, data128).is_error(), false)?
+	expect_equal(chacha20(key, nonce, last - 1, data129).is_error(), true)?

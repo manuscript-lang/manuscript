@@ -6,7 +6,7 @@ test "defaulted closure converts to a required callable":
     fallback := "abc"
     choose := fn(value: String = fallback) Bool: not value.is_empty()
     required: fn(String) Bool := choose
-    try expect_true(choose() and required(fallback))
+    expect_true(choose() and required(fallback))?
 
 test "escaping adapter keeps owning behavior":
     fn make(fallback: String) fn(String) Bool:
@@ -15,4 +15,4 @@ test "escaping adapter keeps owning behavior":
         return required
 
     f := make("xy")
-    try expect_true(f("z"))
+    expect_true(f("z"))?

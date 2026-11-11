@@ -118,7 +118,7 @@ impl RegexSpanQueries for Regex:
 	// text. max_matches is a strict output budget: negatives return EINVAL, excess
 	// returns EOVERFLOW.
 	fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!:
-		raw := try msstd_regex_find_all_spans(self, text, max_matches)
+		raw := msstd_regex_find_all_spans(self, text, max_matches)?
 		var out = List[RegexSpan](reserve: raw.length() / 2)
 		for index in 0..(raw.length() / 2):
 			out.append(RegexSpan(raw[index * 2], raw[index * 2 + 1]))
@@ -131,7 +131,7 @@ impl RegexSpanQueries for Regex:
     excess returns EOVERFLOW. The budget bounds output, not input scanning or engine scratch space.
     */
 	fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!:
-		raw := try msstd_regex_capture_spans(self, text, max_captures)
+		raw := msstd_regex_capture_spans(self, text, max_captures)?
 		if raw.is_empty(): return ok(none)
 
 		return ok(capture_slots(raw, 1, raw[0]))
@@ -146,7 +146,7 @@ impl RegexSpanQueries for Regex:
 		max_matches: Int?,
 		max_captures: Int?,
 	) List[List[RegexSpan?]]!:
-		raw := try msstd_regex_capture_all_spans(self, text, max_matches, max_captures)
+		raw := msstd_regex_capture_all_spans(self, text, max_matches, max_captures)?
 		if raw.is_empty(): return ok(List[List[RegexSpan?]]())
 
 		count := raw[0]

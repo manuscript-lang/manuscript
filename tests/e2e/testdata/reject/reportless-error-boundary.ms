@@ -11,11 +11,11 @@ fn common_boundary() Int!:
 	return domain_failure()
 
 fn propagated_boundary() Int!:
-	value := try domain_failure()
+	value := domain_failure()?
 	return ok(value)
 
 fn unrelated_boundary() Int!OtherError:
-	value := try domain_failure()
+	value := domain_failure()?
 	return ok(value)
 
 fn optional_result(value: Int!String?) Int:

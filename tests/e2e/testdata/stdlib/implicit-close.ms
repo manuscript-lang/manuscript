@@ -29,7 +29,7 @@ fn returns_early(dir: String, early: Bool) Int:
 fn propagates(dir: String) Int!Error:
 	r := Resource(dir, 3)
 	failed: Int!Error := error(Error("boom"))
-	v := try failed
+	v := failed?
 	return ok(v + r.id)
 
 fn breaks_out(dir: String) Int:
@@ -49,32 +49,32 @@ fn closes_by_hand_too(dir: String) Int:
 	return r.id
 
 test "a resource nothing takes is closed when its scope ends":
-	temporary := temporary("manuscript-implicit-") | try expect_ok
+	temporary := temporary("manuscript-implicit-") | expect_ok?
 	dir := temporary.path()
-	try expect_equal(falls_off_the_end(dir.clone()), 1)
-	try expect_true(closed(dir, 1))
-	try expect_equal(returns_early(dir.clone(), true), 1)
-	try expect_true(closed(dir, 2))
+	expect_equal(falls_off_the_end(dir.clone()), 1)?
+	expect_true(closed(dir, 1))?
+	expect_equal(returns_early(dir.clone(), true), 1)?
+	expect_true(closed(dir, 2))?
 
 test "an error leaving the scope still closes it":
-	temporary := temporary("manuscript-implicit-") | try expect_ok
+	temporary := temporary("manuscript-implicit-") | expect_ok?
 	dir := temporary.path()
-	try expect_true(propagates(dir.clone()).is_error())
-	try expect_true(closed(dir, 3))
+	expect_true(propagates(dir.clone()).is_error())?
+	expect_true(closed(dir, 3))?
 
 test "break and continue close the iteration's resource":
-	temporary := temporary("manuscript-implicit-") | try expect_ok
+	temporary := temporary("manuscript-implicit-") | expect_ok?
 	dir := temporary.path()
-	try expect_equal(breaks_out(dir.clone()), 2)
-	try expect_true(closed(dir, 10))
-	try expect_true(closed(dir, 11))
-	try expect_false(closed(dir, 12))
+	expect_equal(breaks_out(dir.clone()), 2)?
+	expect_true(closed(dir, 10))?
+	expect_true(closed(dir, 11))?
+	expect_false(closed(dir, 12))?
 
 test "closing by hand does not stop the scope's own close":
-	temporary := temporary("manuscript-implicit-") | try expect_ok
+	temporary := temporary("manuscript-implicit-") | expect_ok?
 	dir := temporary.path()
-	try expect_equal(closes_by_hand_too(dir.clone()), 20)
-	try expect_true(closed(dir, 20))
+	expect_equal(closes_by_hand_too(dir.clone()), 20)?
+	expect_true(closed(dir, 20))?
 
 fn reassigns(dir: String) Int:
 	var r = Resource(dir.clone(), 30)
@@ -82,11 +82,11 @@ fn reassigns(dir: String) Int:
 	return r.id
 
 test "reassigning a resource closes the value it replaces":
-	temporary := temporary("manuscript-implicit-") | try expect_ok
+	temporary := temporary("manuscript-implicit-") | expect_ok?
 	dir := temporary.path()
-	try expect_equal(reassigns(dir.clone()), 31)
-	try expect_true(closed(dir, 30))
-	try expect_true(closed(dir, 31))
+	expect_equal(reassigns(dir.clone()), 31)?
+	expect_true(closed(dir, 30))?
+	expect_true(closed(dir, 31))?
 
 fn open_resource(dir: String, id: Int) Resource:
 	return Resource(dir, id)
@@ -95,10 +95,10 @@ fn temporary_id(dir: String) Int:
 	return open_resource(dir, 40).id
 
 test "an unbound resource temporary is closed at the end of its statement":
-	temporary := temporary("manuscript-implicit-") | try expect_ok
+	temporary := temporary("manuscript-implicit-") | expect_ok?
 	dir := temporary.path()
-	try expect_equal(temporary_id(dir.clone()), 40)
-	try expect_true(closed(dir, 40))
+	expect_equal(temporary_id(dir.clone()), 40)?
+	expect_true(closed(dir, 40))?
 
 fn pops_and_discards(dir: String) Int:
 	var rs = [Resource(dir.clone(), 50), Resource(dir, 51)]
@@ -106,7 +106,7 @@ fn pops_and_discards(dir: String) Int:
 	return rs.length()
 
 test "a discarded resource result is closed":
-	temporary := temporary("manuscript-implicit-") | try expect_ok
+	temporary := temporary("manuscript-implicit-") | expect_ok?
 	dir := temporary.path()
-	try expect_equal(pops_and_discards(dir.clone()), 1)
-	try expect_true(closed(dir, 51))
+	expect_equal(pops_and_discards(dir.clone()), 1)?
+	expect_true(closed(dir, 51))?

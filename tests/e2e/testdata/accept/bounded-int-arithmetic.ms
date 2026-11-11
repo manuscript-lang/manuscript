@@ -103,42 +103,38 @@ fn extreme_endpoints() Int:
 	return sum
 
 test "bounded scalar sums preserve values":
-	bounded_sum() | try expect_equal(499500)
-	descending_sum() | try expect_equal(-499500)
-	extreme_endpoints() | try expect_equal(9223372036854775805)
-	optional_overflow(flag: false) | try expect_equal(9223372036854775807)
+	bounded_sum() | expect_equal(499500)?
+	descending_sum() | expect_equal(-499500)?
+	extreme_endpoints() | expect_equal(9223372036854775805)?
+	optional_overflow(flag: false) | expect_equal(9223372036854775807)?
 
 test "intermediate carry updates still fault":
 	(
-		(try expect_fault(fn: _ignored := prefix_overflow()))
-		| try expect_contains("Int overflow;")
+		(expect_fault(fn: _ignored := prefix_overflow())?)
+		| expect_contains("Int overflow;")?
 	)
-	(
-		(
-			try expect_fault(fn: _ignored := peer_overflow())
-		) | try expect_contains("Int overflow;")
-	)
+	(expect_fault(fn: _ignored := peer_overflow())?) | expect_contains("Int overflow;")?
 
 test "counter phases and optional updates still fault":
 	(
-		(try expect_fault(fn: _ignored := after_step_overflow()))
-		| try expect_contains("Int overflow;")
+		(expect_fault(fn: _ignored := after_step_overflow())?)
+		| expect_contains("Int overflow;")?
 	)
 	(
 		(
-			try expect_fault(fn: _ignored := optional_overflow(flag: true))
-		) | try expect_contains("Int overflow;")
+			expect_fault(fn: _ignored := optional_overflow(flag: true))?
+		) | expect_contains("Int overflow;")?
 	)
 	(
 		(
-			try expect_fault(fn: _ignored := descending_overflow())
-		) | try expect_contains("Int overflow;")
+			expect_fault(fn: _ignored := descending_overflow())?
+		) | expect_contains("Int overflow;")?
 	)
 
 test "statement expression writes discard scalar bounds":
 	(
-		(try expect_fault(fn: _ignored := expression_overflow()))
-		| try expect_contains("Int overflow;")
+		(expect_fault(fn: _ignored := expression_overflow())?)
+		| expect_contains("Int overflow;")?
 	)
 
 fn product_sum() Int:
@@ -157,12 +153,12 @@ fn zero_effect(var visits: List[Int]) Int:
 
 test "bounded multiplication keeps its operator and operand effects":
 	left := -12
-	(left * -7) | try expect_equal(84)
-	product_sum() | try expect_equal(0)
+	(left * -7) | expect_equal(84)?
+	product_sum() | expect_equal(0)?
 
 	var visits: List[Int] = []
-	(zero_effect(var visits) * 0) | try expect_equal(0)
-	visits | try expect_equal([1])
+	(zero_effect(var visits) * 0) | expect_equal(0)?
+	visits | expect_equal([1])?
 
 fn present[T](value: T) T?:
 	return value

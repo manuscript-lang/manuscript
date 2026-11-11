@@ -630,7 +630,7 @@ impl Completer<'_> {
             }
         }
         if !c.type_context {
-            for word in ["true", "false", "unit", "fn", "not", "try"] {
+            for word in ["true", "false", "unit", "fn", "not"] {
                 self.add(syms, word, 14, None, 5, word, Json::Null);
             }
         }

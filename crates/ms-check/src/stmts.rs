@@ -359,7 +359,7 @@ impl Checker {
                 self.type_error(
                     value.pos,
                     format!(
-                        "standalone try requires a Unit success value, found {t_t}; use 'name := try ...' to keep the value or 'return try ...' to return it"
+                        "a standalone '?' requires a Unit success value, found {t_t}; use 'name := call()?' to keep the value or 'return call()?' to return it"
                     , t_t = t.display(self.syms)),
                 );
             }
@@ -377,7 +377,7 @@ impl Checker {
             self.type_error(
                 pos,
                 format!(
-                    "this statement discards {t_t}, so a failure would be lost; write 'try ...' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose"
+                    "this statement discards {t_t}, so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purpose"
                 , t_t = t.display(self.syms)),
             );
         }

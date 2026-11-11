@@ -42,21 +42,21 @@ fn hand_on(log: String) Door?:
 		none: return none
 
 test "a payload moved out of the arm is not closed by the match":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	kept := hand_on(log.clone())
-	logged(log.clone()) | try expect_equal("")
+	logged(log.clone()) | expect_equal("")?
 	if kept.is_some():
-		logged(log.clone()) | try expect_equal("")
+		logged(log.clone()) | expect_equal("")?
 
 test "return from an arm closes the temporary scrutinee once":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
-	early(log.clone()) | try expect_equal(10)
-	logged(log.clone()) | try expect_equal("1,")
+	early(log.clone()) | expect_equal(10)?
+	logged(log.clone()) | expect_equal("1,")?
 
 test "falling out of the match closes it once":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
-	late(log.clone()) | try expect_equal(2)
-	logged(log.clone()) | try expect_equal("2,")
+	late(log.clone()) | expect_equal(2)?
+	logged(log.clone()) | expect_equal("2,")?

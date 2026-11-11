@@ -25,37 +25,34 @@ import (
 )
 
 fn hello(var exchange: HttpExchange) Unit!:
-	_started := try exchange.send_headers(
+	_started := exchange.send_headers(
 		status: 200,
-		headers: (try list_headers(Map[String, List[String]]())),
-	)
-	_written := (try http_result(exchange.write("secure")))
+		headers: (list_headers(Map[String, List[String]]())?),
+	)?
+	_written := (http_result(exchange.write("secure"))?)
 
 test "TLS certificate parsing verification hostname and expiration":
 	certificates := (
-		parse_certificates(
-			pem: certificate(),
-			max_certificates: 1,
-		) | try expect_ok
+		parse_certificates(pem: certificate(), max_certificates: 1) | expect_ok?
 	)
-	try expect_false(
+	expect_false(
 		(
 			certificates.length() != 1
 			or certificates.get(0).dns_names != ["stdlib.test"]
 		)
-	)
+	)?
 
-	now := (timestamp(seconds: 1893456000, nanoseconds: 0) | try expect_ok)
+	now := (timestamp(seconds: 1893456000, nanoseconds: 0) | expect_ok?)
 	_verified := (
 		verify_certificates(
 			chain_pem: certificate(),
 			roots_pem: certificate(),
 			server_name: "stdlib.test",
 			now: now,
-		) | try expect_ok
+		) | expect_ok?
 	)
 	failed: Unit! := error(Error("TLS: authentication failed", kind: "EAUTH"))
-	try expect_false(
+	expect_false(
 		(
 			verify_certificates(
 				chain_pem: certificate(),
@@ -64,10 +61,10 @@ test "TLS certificate parsing verification hostname and expiration":
 				now: now,
 			) != failed
 		)
-	)
+	)?
 
-	expired := (timestamp(seconds: 4133980800, nanoseconds: 0) | try expect_ok)
-	try expect_false(
+	expired := (timestamp(seconds: 4133980800, nanoseconds: 0) | expect_ok?)
+	expect_false(
 		(
 			verify_certificates(
 				chain_pem: certificate(),
@@ -76,23 +73,18 @@ test "TLS certificate parsing verification hostname and expiration":
 				now: expired,
 			) != failed
 		)
-	)
+	)?
 
 test "TLS rejects malformed PEM and certificate budgets":
 	invalid: List[CertificateInfo]! := error(
 		Error("TLS: invalid data", kind: "EBADMSG")
 	)
-	parse_certificates(pem: "not PEM") | try expect_equal(invalid)
+	parse_certificates(pem: "not PEM") | expect_equal(invalid)?
 
 	limited: List[CertificateInfo]! := error(
 		Error("TLS: limit exceeded", kind: "EOVERFLOW")
 	)
-	(
-		parse_certificates(
-			pem: certificate(),
-			max_certificates: 0,
-		) | try expect_equal(limited)
-	)
+	parse_certificates(pem: certificate(), max_certificates: 0) | expect_equal(limited)?
 
 test "HTTPS trusts only the explicitly supplied local test root":
 	server_tls := TlsOptions(
@@ -113,7 +105,7 @@ test "HTTPS trusts only the explicitly supplied local test root":
 			address: "127.0.0.1:0",
 			handler: hello,
 			options: server_options,
-		) | try expect_ok
+		) | expect_ok?
 	)
 	client_tls := TlsOptions(
 		server_name: "stdlib.test",
@@ -130,33 +122,33 @@ test "HTTPS trusts only the explicitly supplied local test root":
 				cookies: false,
 				tls: client_tls,
 			)
-		) | try expect_ok
+		) | expect_ok?
 	)
 	var response = (
 		client.request(
 			method: HttpMethod.Get,
 			url: "https://{server.address()}/",
-			headers: (try text_headers(Map[String, String]())),
+			headers: (text_headers(Map[String, String]())?),
 			body: "",
 			timeout: 2.seconds(),
 		)
-		| try expect_ok
+		| expect_ok?
 	)
-	try expect_false(
+	expect_false(
 		(
 			response.metadata.status != 200
 			or (
-				read_to_end(var response.body) | try expect_ok
+				read_to_end(var response.body) | expect_ok?
 			) != "secure".to_bytes()
 		)
-	)
+	)?
 
 fn report_protocol(var exchange: HttpExchange) Unit!:
-	_started := try exchange.send_headers(
+	_started := exchange.send_headers(
 		status: 200,
-		headers: (try list_headers(Map[String, List[String]]())),
-	)
-	_written := (try http_result(exchange.write(exchange.protocol())))
+		headers: (list_headers(Map[String, List[String]]())?),
+	)?
+	_written := (http_result(exchange.write(exchange.protocol()))?)
 
 test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 	server_options := HttpServerOptions(
@@ -176,7 +168,7 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 			address: "127.0.0.1:0",
 			handler: report_protocol,
 			options: server_options,
-		) | try expect_ok
+		) | expect_ok?
 	)
 	client_tls := TlsOptions(
 		server_name: "stdlib.test",
@@ -193,20 +185,20 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 				cookies: false,
 				tls: client_tls,
 			)
-		) | try expect_ok
+		) | expect_ok?
 	)
 	var response = (
 		client.request(
 			method: HttpMethod.Get,
 			url: "https://{server.address()}/",
-			headers: (try text_headers(Map[String, String]())),
+			headers: (text_headers(Map[String, String]())?),
 			body: "",
 			timeout: 2.seconds(),
 		)
-		| try expect_ok
+		| expect_ok?
 	)
-	try expect_equal(response.metadata.protocol, "HTTP/2.0")
-	try expect_equal(try read_to_end(var response.body), "HTTP/2.0".to_bytes())
+	expect_equal(response.metadata.protocol, "HTTP/2.0")?
+	expect_equal(read_to_end(var response.body)?, "HTTP/2.0".to_bytes())?
 
 fn answer_ping(var connection: Connection) Int:
 	ping := recv(var connection, 3.seconds())
@@ -240,26 +232,26 @@ test "raw TLS listeners and clients handshake and report negotiated details":
 		alpn: ["http/1.1"],
 		require_client_certificate: false,
 	)
-	listener := try listen_tls("127.0.0.1:0", server_tls, 3.seconds())
+	listener := listen_tls("127.0.0.1:0", server_tls, 3.seconds())?
 	address := listener.address()
 	served := promise(fn: ok(serve_one_tls(listener)))
-	var client = try connect(address.clone(), tls: client_tls, timeout: 3.seconds()).wait()
-	try send(var client, "ping")
-	try expect_equal((try recv(var client, 3.seconds())).get(), "pong".to_bytes())
+	var client = connect(address.clone(), tls: client_tls, timeout: 3.seconds()).wait()?
+	send(var client, "ping")?
+	expect_equal((recv(var client, 3.seconds())?).get(), "pong".to_bytes())?
 
-	info := try client.info.tls_info()
-	try expect_false(info.version < 771)
-	try expect_equal(info.alpn, "http/1.1")
-	try expect_false(not info.verified)
-	try expect_equal(info.peer_certificates.length(), 1)
-	try expect_false(info.peer_certificates[0].length() < 100)
+	info := client.info.tls_info()?
+	expect_false(info.version < 771)?
+	expect_equal(info.alpn, "http/1.1")?
+	expect_false(not info.verified)?
+	expect_equal(info.peer_certificates.length(), 1)?
+	expect_false(info.peer_certificates[0].length() < 100)?
 
 	var more = info.peer_certificates.clone()
 	more.append(more[0].clone())
-	try expect_equal(more.length(), 2)
-	try expect_equal(more[1].length(), more[0].length())
-	try client.close()
-	try expect_equal((try wait_all([served]))[0], 1)
+	expect_equal(more.length(), 2)?
+	expect_equal(more[1].length(), more[0].length())?
+	client.close()?
+	expect_equal((wait_all([served])?)[0], 1)?
 
 test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
 	server_tls := TlsOptions(
@@ -270,20 +262,20 @@ test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
 		alpn: [],
 		require_client_certificate: false,
 	)
-	listener := try listen_tls("127.0.0.1:0", server_tls, 3.seconds())
+	listener := listen_tls("127.0.0.1:0", server_tls, 3.seconds())?
 	address := listener.address()
 	served := promise(fn: ok(serve_one_tls(listener)))
-	_failure := try expect_error(
+	_failure := expect_error(
 		connect(
 			address.clone(),
 			tls: TlsOptions(server_name: "stdlib.test"),
 			timeout: 3.seconds(),
 		).wait()
-	)
-	_served := try wait_all([served])
-	plain := try listen("127.0.0.1:0")
-	var client = try connect(plain.address(), timeout: 2.seconds()).wait()
-	try expect_false(client.info.tls_info().is_ok())
+	)?
+	_served := wait_all([served])?
+	plain := listen("127.0.0.1:0")?
+	var client = connect(plain.address(), timeout: 2.seconds()).wait()?
+	expect_false(client.info.tls_info().is_ok())?
 
 fn count_until_eof(listener: Listener) Int:
 	var accepted = listener.accept(5.seconds()).wait()
@@ -322,12 +314,12 @@ test "raw TLS client that writes a large payload and closes at once loses no byt
 		alpn: [],
 		require_client_certificate: false,
 	)
-	listener := try listen_tls("127.0.0.1:0", server_tls, 5.seconds())
+	listener := listen_tls("127.0.0.1:0", server_tls, 5.seconds())?
 	address := listener.address()
 	served := promise(fn: ok(count_until_eof(listener)))
-	var client = try connect(address.clone(), tls: client_tls, timeout: 5.seconds()).wait()
-	try send(var client, "y".repeat(20000000).get())
+	var client = connect(address.clone(), tls: client_tls, timeout: 5.seconds()).wait()?
+	send(var client, "y".repeat(20000000).get())?
 
 	// No read first: the server's post-handshake bytes must not reset the connection.
-	try client.close()
-	try expect_equal((try wait_all([served]))[0], 20000000)
+	client.close()?
+	expect_equal((wait_all([served])?)[0], 20000000)?

@@ -46,13 +46,13 @@ export fn first_generic() fn(Item) Int:
 
 test "first local extensions":
     item := Item(2)
-    (item.get() != 12 or invoke(item) != 12 or relay(item) != 12) | try expect_false
-    as_view(item).get() | try expect_equal(12)
+    (item.get() != 12 or invoke(item) != 12 or relay(item) != 12) | expect_false?
+    as_view(item).get() | expect_equal(12)?
 
     holder := Holder(item)
-    (holder.get() != 12 or invoke(holder) != 12 or holder.extract() != 12) | try expect_false
-    Box("hello").get() | try expect_equal("hello")
-    Choice.Some(2).get() | try expect_equal(12)
+    (holder.get() != 12 or invoke(holder) != 12 or holder.extract() != 12) | expect_false?
+    Box("hello").get() | expect_equal("hello")?
+    Choice.Some(2).get() | expect_equal(12)?
 
 import Resource from "./domain.ms"
 
@@ -71,7 +71,7 @@ export fn first_resource(resource: Resource) Closeable:
 test "first local cleanup":
     events := share(List[Int]())
     leave(Resource(events))
-    events.get().get(index: 0) | try expect_equal(10)
+    events.get().get(index: 0) | expect_equal(10)?
 
 export fn mixed[T: Read[Int]](value: T, concrete: Item) Int:
     return value.get() + concrete.get()

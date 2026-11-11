@@ -15,7 +15,7 @@ fn exercise() Int!:
         error(_):
             return ok(1)
         ok(output):
-            output.exit_code | try expect_equal(0)
+            output.exit_code | expect_equal(0)?
 
             _ := stdout_bytes().write(value: output.stdout)
             return ok(0)

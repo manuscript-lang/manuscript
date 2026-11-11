@@ -9,7 +9,7 @@ test "distinct hexadecimal list indexes mutate independently":
 	both(var xs[0xd], var xs[0xe])
 	both(var xs[0xD], var xs[0xE])
 	both(var xs[0x0_d], var xs[0b1110])
-	try expect_equal(xs[13], 16)
-	try expect_equal(xs[14], 20)
-	try expect_equal(xs[12], 12)
-	try expect_equal(xs[15], 15)
+	expect_equal(xs[13], 16)?
+	expect_equal(xs[14], 20)?
+	expect_equal(xs[12], 12)?
+	expect_equal(xs[15], 15)?

@@ -9,7 +9,7 @@ fn checked(n: Int) Int!Error:
     return ok(n + 1)
 
 fn chain(n: Int) Int!Error:
-    value := try checked(n)
+    value := checked(n)?
     return ok(value)
 
 export fn main() Int:

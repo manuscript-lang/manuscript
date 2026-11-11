@@ -8,11 +8,11 @@ type Config:
     port: Int = 8080
 
 fn port_of(text: String) Result[Int, Error]:
-    return ok(try parse[Config](text) | .port)
+    return ok(parse[Config](text)? | .port)
 
 test "configuration defaults":
-    try expect_equal(try port_of("\{\}"), 8080)
-    try expect_equal(try port_of("\{\"port\": 9000\}"), 9000)
+    expect_equal(port_of("\{\}")?, 8080)?
+    expect_equal(port_of("\{\"port\": 9000\}")?, 9000)?
 
 test "configuration rejects a wrong type":
-    try expect_equal((try expect_error(parse[Config]("\{\"port\": true\}"))).kind, "EBADMSG")
+    expect_equal((expect_error(parse[Config]("\{\"port\": true\}"))?).kind, "EBADMSG")?

@@ -18,7 +18,7 @@ fn relay(result: Row!Bad, var visits: List[Int]) Row!Bad:
 	return result
 
 fn tail(result: Row!Bad, var visits: List[Int]) String!Bad:
-	row := try relay(result, var visits)
+	row := relay(result, var visits)?
 	return ok(row.name)
 
 fn make(n: Int) Row:
@@ -32,23 +32,23 @@ test "wrapped parts are references into their arguments":
 	r := make(1)
 	o: String? := r.name
 	k: Row!Bad := ok(r)
-	first_tag(r).get() | try expect_equal("tag-1-with-a-heap-allocated-text")
-	named(r).get() | try expect_equal("row-1-with-a-heap-allocated-name")
-	o.get() | try expect_equal(r.name)
-	k.get().tags.length() | try expect_equal(1)
+	first_tag(r).get() | expect_equal("tag-1-with-a-heap-allocated-text")?
+	named(r).get() | expect_equal("row-1-with-a-heap-allocated-name")?
+	o.get() | expect_equal(r.name)?
+	k.get().tags.length() | expect_equal(1)?
 
 	good: Row!Bad := ok(make(2))
-	tail(good, var visits).get() | try expect_equal("row-2-with-a-heap-allocated-name")
+	tail(good, var visits).get() | expect_equal("row-2-with-a-heap-allocated-name")?
 
 	bad: Row!Bad := error(Bad("a failure with a heap allocated reason"))
 	(
-		tail(bad, var visits).err().why | try expect_equal(
+		tail(bad, var visits).err().why | expect_equal(
 			"a failure with a heap allocated reason"
-		)
+		)?
 	)
 	(
-		tail(ok(make(3)), var visits).get() | try expect_equal(
+		tail(ok(make(3)), var visits).get() | expect_equal(
 			"row-3-with-a-heap-allocated-name"
-		)
+		)?
 	)
-	visits | try expect_equal([1, 1, 1])
+	visits | expect_equal([1, 1, 1])?

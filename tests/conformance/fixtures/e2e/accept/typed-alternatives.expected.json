@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "typed-alternatives.ms::try chains",
+          "name": "typed-alternatives.ms::chains?",
           "status": "passed"
         },
         {
@@ -45,7 +45,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN typed-alternatives.ms::result matching\nPASS typed-alternatives.ms::result matching\nRUN typed-alternatives.ms::try chains\nPASS typed-alternatives.ms::try chains\nRUN typed-alternatives.ms::boxed consumers\nPASS typed-alternatives.ms::boxed consumers\nRUN typed-alternatives.ms::optional and payload kinds\nPASS typed-alternatives.ms::optional and payload kinds\nRUN typed-alternatives.ms::list at unwrap\nPASS typed-alternatives.ms::list at unwrap\n5 tests, 0 failed\n",
+      "stdout": "RUN typed-alternatives.ms::result matching\nPASS typed-alternatives.ms::result matching\nRUN typed-alternatives.ms::chains?\nPASS typed-alternatives.ms::chains?\nRUN typed-alternatives.ms::boxed consumers\nPASS typed-alternatives.ms::boxed consumers\nRUN typed-alternatives.ms::optional and payload kinds\nPASS typed-alternatives.ms::optional and payload kinds\nRUN typed-alternatives.ms::list at unwrap\nPASS typed-alternatives.ms::list at unwrap\n5 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

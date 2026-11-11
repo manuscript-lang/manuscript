@@ -95,7 +95,7 @@ ms diagram ms.toml --view flow --entity save --diff change.patch
 | `effects` | Callees that carry an effect, down to the native operation |
 | `errors` | Functions with a `Result` error type or `try` sites |
 | `modules` | Imports per module |
-| `flow` | One function's ordered steps: calls, `try`, branches, loops, `match` arms, resource scopes, exits (needs `--entity`) |
+| `flow` | One function's ordered steps: calls, `?`, branches, loops, `match` arms, resource scopes, exits (needs `--entity`) |
 | `scope` | `flow` pruned to resource scopes and the exits inside them (needs `--entity`) |
 | `tasks` | `flow` pruned to resource scopes that start tasks: each `promise(fn: ...)` with the calls its work makes (needs `--entity`) |
 | `types` (alias `class`) | Types, alternatives and interfaces, each field or case expanding to the project types it holds; a function as `--entity` expands its parameters and result the same way |
@@ -264,13 +264,13 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL102 | warning | Unused import |
 | MSL103 | warning | Unreachable statement |
 | MSL106 | error | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |
-| MSL107 | error | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, `try`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
+| MSL107 | error | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, a trailing `?`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
 | MSL108 | warning | `match` on an Optional with only `some` and `none` arms; use `if v := x` or an Optional method |
-| MSL109 | warning | `match` on a Result with only `ok` and `error` arms; use `try`, `if v := x` or a Result method |
+| MSL109 | warning | `match` on a Result with only `ok` and `error` arms; use a trailing `?`, `if v := x` or a Result method |
 | MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if v := x`, `get(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
 | MSL111 | error | `while true` loop in a module that imports `@std/concurrency/promise.ms` whose body neither waits nor exits; other promises cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
-| MSL112 | error | A function that calls itself on every path: no `return`, `try`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
-| MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush` or `commit` returning a `Result` that nothing calls. Call the separate fallible operation, such as `try x.flush()`, before the scope ends so its result is handled. See [scopes](../core-language/cleanup/scopes.md) |
+| MSL112 | error | A function that calls itself on every path: no `return`, `?`, or fault leaves it before the recursive call, so it cannot finish. Add a base case. Only direct self-calls of module-level functions are found |
+| MSL114 | error | A resource closed when its scope ends whose type has a zero-argument `flush` or `commit` returning a `Result` that nothing calls. Call the separate fallible operation, such as `x.flush()?`, before the scope ends so its result is handled. See [scopes](../core-language/cleanup/scopes.md) |
 | MSL115 | warning | A promise dropped as soon as it is made, which cancels its work. Bind it and call `wait()`, or pass it to `wait_all` |
 | MSL116 | warning | A function reaches an effect no `// ms: allow_effect` line permits. A function is pure unless a line above it, or in the file's header comment, permits what it reaches (`std.fs.read`, `std.fs.*`, `*.read`, `*`). A function's own lines can only tighten the header. `// ms: effect NAME` declares an effect and hides the body from callers. `main`, `test` and `fixture` are unrestricted. Converting a record to an interface, naming a function as a value and writing a closure charge the enclosing function. The message names the call path |
 | MSL117 | warning | An integer literal interpolated into text, such as the `{4}` of `"\\d{4}"`, which interpolates the number 4 instead of writing a regex quantifier. Write `\{4\}` or use `r"""` raw text |

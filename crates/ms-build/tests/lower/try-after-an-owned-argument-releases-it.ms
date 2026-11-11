@@ -10,7 +10,7 @@ fn join(a: String, b: String) String:
     return a + b
 
 fn both(n: Int) Result[String, Error]:
-    return ok(join(a: try make(n), b: try make(n - 1)))
+    return ok(join(a: make(n)?, b: make(n - 1)?))
 
 fn main() Unit:
     return

@@ -23,7 +23,7 @@ fn parse(ok_value: Bool) Int!Error:
 	return error(Error("bad"))
 
 fn convert(ok_value: Bool) Int!Wrapped:
-	value := try parse(ok_value).map_error(widen)
+	value := parse(ok_value).map_error(widen)?
 	return ok(value + 1)
 
 fn unexpected_int() Int: panic("closure must not run")
@@ -41,47 +41,47 @@ test "Optional get_or_else returns the payload and is lazy":
 	present: Int? := 0
 	missing: Int? := none
 	var counter = Counter(0)
-	try expect_equal(present.get_or_else(unexpected_int), 0)
-	try expect_equal(missing.get_or_else(fn: tick(var counter)), 7)
-	try expect_equal(counter.calls, 1)
+	expect_equal(present.get_or_else(unexpected_int), 0)?
+	expect_equal(missing.get_or_else(fn: tick(var counter)), 7)?
+	expect_equal(counter.calls, 1)?
 
 	flag: Bool? := false
-	try expect_false(flag.get_or_else(fn: true))
+	expect_false(flag.get_or_else(fn: true))?
 
 test "Optional or_else keeps the wrapper and is lazy":
 	present: Int? := 0
 	missing: Int? := none
-	try expect_equal(present.or_else(unexpected_optional), 0)
-	try expect_equal(missing.or_else(fn: 4), 4)
-	try expect_equal(missing.or_else(fn: none), none)
+	expect_equal(present.or_else(unexpected_optional), 0)?
+	expect_equal(missing.or_else(fn: 4), 4)?
+	expect_equal(missing.or_else(fn: none), none)?
 
 test "Result get_or_else returns the payload and receives the error":
 	success: Int!Error := ok(0)
 	failure: Int!Error := error(Error("failed"))
-	try expect_equal(success.get_or_else(unexpected_text), 0)
-	try expect_equal(failure.get_or_else(fn cause: cause.message.scalar_length()), 6)
+	expect_equal(success.get_or_else(unexpected_text), 0)?
+	expect_equal(failure.get_or_else(fn cause: cause.message.scalar_length()), 6)?
 
 test "Result or_else keeps the wrapper and is lazy":
 	success: Int!Error := ok(1)
 	failure: Int!Error := error(Error("failed"))
-	try expect_equal(success.or_else(unexpected_recover), success)
-	try expect_equal(failure.or_else(fn cause: ok(9)), ok(9))
+	expect_equal(success.or_else(unexpected_recover), success)?
+	expect_equal(failure.or_else(fn cause: ok(9)), ok(9))?
 
 	still: Int!Error := failure.or_else(fn cause: error(Error("again")))
-	try expect_equal(still.err().message, "again")
+	expect_equal(still.err().message, "again")?
 
 test "Result map_error converts the error type and feeds try":
 	success: Int!Error := ok(3)
 	failure: Int!Error := error(Error("bad"))
-	try expect_equal(success.map_error(unexpected_widen).get(), 3)
-	try expect_equal(failure.map_error(widen).err().inner, "bad")
-	try expect_equal(convert(true).get(), 6)
-	try expect_equal(convert(false).err().message(), "wrapped bad")
+	expect_equal(success.map_error(unexpected_widen).get(), 3)?
+	expect_equal(failure.map_error(widen).err().inner, "bad")?
+	expect_equal(convert(true).get(), 6)?
+	expect_equal(convert(false).err().message(), "wrapped bad")?
 
 test "map and and_then on both types keep their meaning":
 	present: Int? := 2
 	success: Int!Error := ok(2)
-	try expect_equal(present.map(fn n: n + 1).get(), 3)
-	try expect_equal(present.and_then(fn(n: Int) Int?: n * 2).get(), 4)
-	try expect_equal(success.map(fn n: n + 1).get(), 3)
-	try expect_equal(success.and_then(fn n: ok(n * 2)).get(), 4)
+	expect_equal(present.map(fn n: n + 1).get(), 3)?
+	expect_equal(present.and_then(fn(n: Int) Int?: n * 2).get(), 4)?
+	expect_equal(success.map(fn n: n + 1).get(), 3)?
+	expect_equal(success.and_then(fn n: ok(n * 2)).get(), 4)?

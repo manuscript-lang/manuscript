@@ -11,7 +11,7 @@ fn apply[T](operation: fn(T) T, value: T) T:
 
 test "inline callbacks survive contextual rechecking":
     applied := apply(value: 3, fn value: return value + 1)
-    try expect_equal(applied, 4)
+    expect_equal(applied, 4)?
 
     transform := Transform(fn value: return value + 2)
-    try expect_equal(transform.operation(3), 5)
+    expect_equal(transform.operation(3), 5)?

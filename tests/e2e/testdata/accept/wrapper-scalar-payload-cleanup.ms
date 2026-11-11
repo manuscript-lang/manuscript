@@ -43,47 +43,23 @@ fn transformed_then() Unit:
 	_mapped: Int!Int := success().and_then(fn item: ok(item.id))
 
 test "scalar retained wrapper branches retain their cleanup duty":
+	(expect_fault(optional_cause)?) | expect_contains("resource could not be closed")?
 	(
-		(try expect_fault(optional_cause))
-		| try expect_contains("resource could not be closed")
+		(expect_fault(optional_callback)?)
+		| expect_contains("resource could not be closed")?
 	)
-	(
-		(try expect_fault(optional_callback)) | try expect_contains(
-			"resource could not be closed"
-		)
-	)
-	(
-		(try expect_fault(result_error_map)) | try expect_contains(
-			"resource could not be closed"
-		)
-	)
-	(
-		(try expect_fault(result_optional)) | try expect_contains(
-			"resource could not be closed"
-		)
-	)
-	(try expect_fault(result_map)) | try expect_contains("resource could not be closed")
-	(
-		(try expect_fault(result_then)) | try expect_contains(
-			"resource could not be closed"
-		)
-	)
+	(expect_fault(result_error_map)?) | expect_contains("resource could not be closed")?
+	(expect_fault(result_optional)?) | expect_contains("resource could not be closed")?
+	(expect_fault(result_map)?) | expect_contains("resource could not be closed")?
+	(expect_fault(result_then)?) | expect_contains("resource could not be closed")?
 
 test "direct transforming callbacks close their owned scalar input":
+	(expect_fault(transformed_map)?) | expect_contains("resource could not be closed")?
 	(
-		(try expect_fault(transformed_map))
-		| try expect_contains("resource could not be closed")
+		(expect_fault(transformed_error)?)
+		| expect_contains("resource could not be closed")?
 	)
-	(
-		(try expect_fault(transformed_error)) | try expect_contains(
-			"resource could not be closed"
-		)
-	)
-	(
-		(try expect_fault(transformed_then)) | try expect_contains(
-			"resource could not be closed"
-		)
-	)
+	(expect_fault(transformed_then)?) | expect_contains("resource could not be closed")?
 
 fn optional_or_else() Unit:
 	_kept := present().or_else(fn: none)
@@ -92,12 +68,5 @@ fn result_or_else() Unit:
 	_kept := success().or_else(fn cause: error(cause))
 
 test "scalar or_else success branches retain their cleanup duty":
-	(
-		(try expect_fault(optional_or_else))
-		| try expect_contains("resource could not be closed")
-	)
-	(
-		(try expect_fault(result_or_else)) | try expect_contains(
-			"resource could not be closed"
-		)
-	)
+	(expect_fault(optional_or_else)?) | expect_contains("resource could not be closed")?
+	(expect_fault(result_or_else)?) | expect_contains("resource could not be closed")?

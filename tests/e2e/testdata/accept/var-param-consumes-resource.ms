@@ -28,17 +28,17 @@ fn stash(var doors: List[Door], door: Door) Unit:
 	doors.append(door)
 
 test "a temporary passed to a var-parameter function that keeps it closes once, later":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	var slot = Slot(Door(1, log.clone()))
 	put(var slot, Door(2, log.clone()))
-	logged(log.clone()) | try expect_equal("1,")
-	expect_equal(slot.door.id, 2) | try
+	logged(log.clone()) | expect_equal("1,")?
+	expect_equal(slot.door.id, 2)?
 
 test "a list a var-parameter function appends a temporary to closes it with the list":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	var doors = List[Door]()
 	stash(var doors, Door(3, log.clone()))
-	logged(log.clone()) | try expect_equal("")
-	expect_equal(doors.length(), 1) | try
+	logged(log.clone()) | expect_equal("")?
+	expect_equal(doors.length(), 1)?

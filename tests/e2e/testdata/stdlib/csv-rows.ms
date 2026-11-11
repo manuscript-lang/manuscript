@@ -19,7 +19,7 @@ impl Source[Bytes] for Chunks:
 		var end = self.at + self.size
 		if end > self.data.length(): end = self.data.length()
 
-		piece := try self.data.slice(self.at, end)
+		piece := self.data.slice(self.at, end)?
 		self.at = end
 		return ok(piece)
 
@@ -47,7 +47,7 @@ fn read_raw(
 	var out: List[List[String]] = []
 
 	while true:
-		next := try rows.next()
+		next := rows.next()?
 
 		if row := next:
 			out.append(row)
@@ -58,26 +58,26 @@ fn read_raw(
 
 test "rows match parse under every chunk size":
 	text := "a,b,c\r\n1,\"x,y\",3\n\n\"multi\nline \"\"q\"\"\",é,😀\n\"\"\nlast,,"
-	expected := try parse(text)
+	expected := parse(text)?
 	for size in 1..text.to_bytes().length() + 1:
-		if (try read_rows(text, size)) != expected: return fail("chunk size {size}")
+		if (read_rows(text, size)?) != expected: return fail("chunk size {size}")
 
 test "a final record without a line end is read at the end":
-	try expect_equal(try read_rows("a,b\nc,d", 3), [["a", "b"], ["c", "d"]])
+	expect_equal(read_rows("a,b\nc,d", 3)?, [["a", "b"], ["c", "d"]])?
 
 test "large fragmented records preserve rows and exact record budgets":
-	field := try "é\"日\n".repeat(1024)
+	field := "é\"日\n".repeat(1024)?
 	encoded := "\"{field.replace("\"", "\"\"")}\",tail\r"
 	text := "first,row\n{encoded}\nlast,row"
 	expected := [["first", "row"], [field, "tail"], ["last", "row"]]
 	limit := encoded.byte_length()
 
 	for size in [1, 2, 7, 64, 4096, text.byte_length()]:
-		try expect_equal(try read_rows(text, size, max_record_bytes: limit), expected)
-		try expect_equal(
+		expect_equal(read_rows(text, size, max_record_bytes: limit)?, expected)?
+		expect_equal(
 			read_rows(text, size, max_record_bytes: limit - 1).err().kind,
 			"EOVERFLOW",
-		)
+		)?
 
 	var chunks: List[Bytes] = ["".to_bytes()]
 
@@ -88,17 +88,17 @@ test "large fragmented records preserve rows and exact record budgets":
 		chunks.append("".to_bytes())
 
 	(
-		from_list(chunks) | csv_rows | try collect(none) | try expect_equal(
+		from_list(chunks) | csv_rows | collect(none)? | expect_equal(
 			[["a", "é"], ["b", "c"], ["last", "row"]]
-		)
+		)?
 	)
 
 test "options apply":
 	semicolons := CsvOptions(delimiter: ";")
-	try expect_equal(
-		try read_rows("a;b\n\"c;d\";e\n", 2, semicolons),
+	expect_equal(
+		read_rows("a;b\n\"c;d\";e\n", 2, semicolons)?,
 		[["a", "b"], ["c;d", "e"]],
-	)
+	)?
 
 test "empty CSV streams reject invalid options":
 	invalid: List[List[String]]! := error(Error("CSV: invalid input", kind: "EINVAL"))
@@ -112,39 +112,36 @@ test "empty CSV streams reject invalid options":
 		CsvOptions(line_ending: "\r"),
 	]:
 		for text in ["", "a", "a\n"]:
-			try expect_equal(read_rows(text, 1, options.clone()), invalid)
+			expect_equal(read_rows(text, 1, options.clone()), invalid)?
 
 		empty_chunks := from_list(["".to_bytes(), "".to_bytes()])
-		try expect_equal(
-			empty_chunks | csv_rows(options.clone()) | collect(none),
-			invalid,
-		)
+		expect_equal(empty_chunks | csv_rows(options.clone()) | collect(none), invalid)?
 
 	no_rows: List[List[String]] := []
-	try expect_equal(try read_rows("", 1), no_rows)
-	try expect_equal(
-		try read_rows("", 1, CsvOptions(delimiter: ";", line_ending: "\r\n")),
+	expect_equal(read_rows("", 1)?, no_rows)?
+	expect_equal(
+		read_rows("", 1, CsvOptions(delimiter: ";", line_ending: "\r\n"))?,
 		no_rows,
-	)
+	)?
 
 	empty_chunks := from_list(["".to_bytes(), "".to_bytes()])
-	(empty_chunks | csv_rows | try collect(none) | try expect_equal(no_rows))
+	(empty_chunks | csv_rows | collect(none)? | expect_equal(no_rows)?)
 
 test "an unterminated quote is InvalidData at the end":
 	outcome := read_rows("a,\"open\nmore", 4)
-	try expect_equal(outcome.err().kind, "EBADMSG")
+	expect_equal(outcome.err().kind, "EBADMSG")?
 
 test "a quote inside an unquoted cell is InvalidData":
 	outcome := read_rows("a,b\"c\n", 4)
-	try expect_equal(outcome.err().kind, "EBADMSG")
+	expect_equal(outcome.err().kind, "EBADMSG")?
 
 test "the record budget reports LimitExceeded":
 	outcome := read_rows("a,\"never closed", 3, CsvOptions(), 8)
-	try expect_equal(outcome.err().kind, "EOVERFLOW")
-	try expect_equal(
-		try read_rows("ab,cd\nef,gh\n", 3, CsvOptions(), 8),
+	expect_equal(outcome.err().kind, "EOVERFLOW")?
+	expect_equal(
+		read_rows("ab,cd\nef,gh\n", 3, CsvOptions(), 8)?,
 		[["ab", "cd"], ["ef", "gh"]],
-	)
+	)?
 
 test "continued reads after a record limit error keep only the consumed tail":
 	for chunks in [
@@ -157,34 +154,34 @@ test "continued reads after a record limit error keep only the consumed tail":
 			data.append(chunk.to_bytes())
 
 		var rows = csv_rows(from_list(data), max_record_bytes: 3)
-		try expect_equal(rows.next().err().kind, "EOVERFLOW")
-		try expect_equal((try rows.next()).get(), ["x"])
-		try expect_equal((try rows.next()).is_none(), true)
+		expect_equal(rows.next().err().kind, "EOVERFLOW")?
+		expect_equal((rows.next()?).get(), ["x"])?
+		expect_equal((rows.next()?).is_none(), true)?
 
 	input := from_list(
 		["ab".to_bytes(), "cd".to_bytes(), "\n".to_bytes(), "x\n".to_bytes()]
 	)
 	var rows = csv_rows(input, max_record_bytes: 3)
-	try expect_equal(rows.next().err().kind, "EOVERFLOW")
-	try expect_equal(rows.next().err().kind, "EOVERFLOW")
-	try expect_equal((try rows.next()).get(), ["x"])
-	try expect_equal((try rows.next()).is_none(), true)
+	expect_equal(rows.next().err().kind, "EOVERFLOW")?
+	expect_equal(rows.next().err().kind, "EOVERFLOW")?
+	expect_equal((rows.next()?).get(), ["x"])?
+	expect_equal((rows.next()?).is_none(), true)?
 
 test "the record budget does not depend on where chunks end":
 	for size in 1..12:
 		long := read_rows("abcdefghij\n", size, CsvOptions(), 4)
-		try expect_equal(long.err().kind, "EOVERFLOW")
+		expect_equal(long.err().kind, "EOVERFLOW")?
 
 		many := read_rows("ab\ncdefghij\nkl\n", size, CsvOptions(), 4)
-		try expect_equal(many.err().kind, "EOVERFLOW")
+		expect_equal(many.err().kind, "EOVERFLOW")?
 
 		quoted := read_rows("\"a\nb\nc\nd\",x\n", size, CsvOptions(), 4)
-		try expect_equal(quoted.err().kind, "EOVERFLOW")
-		try expect_equal(
-			try read_rows("abcd\nefgh\n", size, CsvOptions(), 4),
+		expect_equal(quoted.err().kind, "EOVERFLOW")?
+		expect_equal(
+			read_rows("abcd\nefgh\n", size, CsvOptions(), 4)?,
 			[["abcd"], ["efgh"]],
-		)
-		try expect_equal(try read_rows("abcd\r\n", size, CsvOptions(), 5), [["abcd"]])
+		)?
+		expect_equal(read_rows("abcd\r\n", size, CsvOptions(), 5)?, [["abcd"]])?
 
 test "malformed UTF-8 is InvalidData beside valid rows and a split scalar is not":
 	var bad = BytesBuilder()
@@ -205,18 +202,18 @@ test "malformed UTF-8 is InvalidData beside valid rows and a split scalar is not
 	cut := truncated.build()
 
 	for size in 1..6:
-		try expect_equal(read_raw(block.clone(), size).err().kind, "EBADMSG")
-		try expect_equal(read_raw(unterminated.clone(), size).err().kind, "EBADMSG")
-		try expect_equal(read_raw(cut.clone(), size).err().kind, "EBADMSG")
+		expect_equal(read_raw(block.clone(), size).err().kind, "EBADMSG")?
+		expect_equal(read_raw(unterminated.clone(), size).err().kind, "EBADMSG")?
+		expect_equal(read_raw(cut.clone(), size).err().kind, "EBADMSG")?
 
 	for size in 1..8:
-		try expect_equal(try read_rows("a,é,😀\n", size), [["a", "é", "😀"]])
+		expect_equal(read_rows("a,é,😀\n", size)?, [["a", "é", "😀"]])?
 
 test "row and cell budgets bound parse only, never depending on chunk size":
 	limits := CsvOptions(max_rows: 1, max_cells: 1)
 	for size in 1..5:
-		try expect_equal(try read_rows("a\nb\n", size, limits.clone()), [["a"], ["b"]])
-	try expect_equal(parse("a\nb\n", limits).is_error(), true)
+		expect_equal(read_rows("a\nb\n", size, limits.clone())?, [["a"], ["b"]])?
+	expect_equal(parse("a\nb\n", limits).is_error(), true)?
 
 // The rows joined for comparison, or the error kind.
 fn csv_outcome(result: List[List[String]]!) String:
@@ -257,18 +254,15 @@ test "oversized EOF records stay rejected after a failed read":
 				chunked(text.to_bytes(), size),
 				max_record_bytes: bytes - 1,
 			)
-			try expect_equal(rows.next().err().kind, "EOVERFLOW")
-			try expect_equal(rows.next().err().kind, "EOVERFLOW")
-			try expect_equal((try rows.next()).is_none(), true)
-			try expect_equal((try rows.next()).is_none(), true)
-			try expect_equal(
-				try read_rows(text, size, max_record_bytes: bytes),
-				try parse(text),
-			)
+			expect_equal(rows.next().err().kind, "EOVERFLOW")?
+			expect_equal(rows.next().err().kind, "EOVERFLOW")?
+			expect_equal((rows.next()?).is_none(), true)?
+			expect_equal((rows.next()?).is_none(), true)?
+			expect_equal(read_rows(text, size, max_record_bytes: bytes)?, parse(text)?)?
 
 	var rows = csv_rows(from_list(["x\nabcd".to_bytes()]), max_record_bytes: 3)
-	try expect_equal(rows.next().err().kind, "EOVERFLOW")
-	try expect_equal(rows.next().err().kind, "EOVERFLOW")
-	try expect_equal((try rows.next()).is_none(), true)
-	try expect_equal((try read_rows("", 1, max_record_bytes: 0)).is_empty(), true)
-	try expect_equal(try read_rows("\"\"", 1, max_record_bytes: 2), [[""]])
+	expect_equal(rows.next().err().kind, "EOVERFLOW")?
+	expect_equal(rows.next().err().kind, "EOVERFLOW")?
+	expect_equal((rows.next()?).is_none(), true)?
+	expect_equal((read_rows("", 1, max_record_bytes: 0)?).is_empty(), true)?
+	expect_equal(read_rows("\"\"", 1, max_record_bytes: 2)?, [[""]])?

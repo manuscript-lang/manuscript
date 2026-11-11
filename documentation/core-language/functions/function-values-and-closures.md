@@ -49,7 +49,7 @@ An anonymous function may omit parameter types when context supplies them (argum
 - Without context, callbacks need parameter annotations.
 - A generic function must be instantiated to be a value: `identity[Int]`, not bare `identity`.
 - A bound method value has the operation's function type with the receiver bound. It borrows the receiver while it stays local, as a closure capturing it would, and takes the receiver when it is stored, returned or passed to a moving parameter: `find := re.find_all` keeps `re` readable, `holders.append(re.find_all)` moves `re` at its last use.
-- An anonymous function is its own boundary for `return`, `try`, `break`, and `continue`.
+- An anonymous function is its own boundary for `return`, `?`, `break`, and `continue`.
 
 ## Changing parameters
 
@@ -128,7 +128,7 @@ import Bytes from "@std/bytes.ms"
 
 fn notes_reader(path: String) fn() Bytes!:
     return fn:
-        file := try open(path: path)
+        file := open(path: path)?
         return file.read_file(max_bytes: 1048576)
 ```
 

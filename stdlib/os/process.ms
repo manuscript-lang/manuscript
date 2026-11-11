@@ -254,7 +254,7 @@ type SignalSource:
 
 impl Source[Int] for SignalSource:
 	var fn next() Int?!:
-		return ok(try msstd_process_signal_next(self.signals))
+		return ok(msstd_process_signal_next(self.signals)?)
 
 	// Stops observing signals and wakes a pending read with EBADF.
 	var fn close() Unit!:
@@ -335,7 +335,7 @@ Use scope-owned `Closeable` resources for shutdown cleanup, since cancellation m
 */
 // ms: effect std.process.signal
 export fn watch_signals(signals: List[Int], capacity: Int?) ReadStream[Int]!:
-	native := try msstd_process_watch_signals(signals, capacity)
+	native := msstd_process_watch_signals(signals, capacity)?
 	return ok(ReadStream[Int](SignalSource(native)))
 
 // Returns the current process title.

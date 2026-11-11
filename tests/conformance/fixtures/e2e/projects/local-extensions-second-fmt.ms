@@ -46,13 +46,13 @@ export fn second_generic() fn(Item) Int:
 
 test "second local extensions":
     item := Item(2)
-    (item.get() != 22 or invoke(item) != 22 or relay(item) != 22) | try expect_false
-    as_view(item).get() | try expect_equal(22)
+    (item.get() != 22 or invoke(item) != 22 or relay(item) != 22) | expect_false?
+    as_view(item).get() | expect_equal(22)?
 
     holder := Holder(item)
-    (holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22) | try expect_false
-    Box("hello").get() | try expect_equal("hello")
-    Choice.Some(2).get() | try expect_equal(22)
+    (holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22) | expect_false?
+    Box("hello").get() | expect_equal("hello")?
+    Choice.Some(2).get() | expect_equal(22)?
 
 import Resource from "./domain.ms"
 
@@ -71,10 +71,10 @@ export fn second_resource(resource: Resource) Closeable:
 test "second local cleanup":
     events := share(List[Int]())
     leave(Resource(events))
-    events.get().get(index: 0) | try expect_equal(20)
+    events.get().get(index: 0) | expect_equal(20)?
 
 import mixed from "./first.ms"
 
 test "generic evidence does not change concrete lexical dispatch":
     item := Item(2)
-    mixed(value: item, concrete: item) | try expect_equal(34)
+    mixed(value: item, concrete: item) | expect_equal(34)?

@@ -18,7 +18,7 @@ fn status(label: String) Unit:
 			print(label + " " + line)
 
 fn park_sleep(a: Int) Int!:
-	try sleep(seconds(1000)).wait()
+	sleep(seconds(1000)).wait()?
 	return ok(a)
 
 fn descend(depth: Int, acc: Int) Int:
@@ -30,12 +30,12 @@ fn descend(depth: Int, acc: Int) Int:
 
 fn park_deep(a: Int) Int!:
 	sum := descend(256, a)
-	try sleep(seconds(1000)).wait()
+	sleep(seconds(1000)).wait()?
 	return ok(sum)
 
 fn park_read(a: Int) Int!:
-	data := try read_file("/proc/self/stat", none).wait()
-	try sleep(seconds(1000)).wait()
+	data := read_file("/proc/self/stat", none).wait()?
+	sleep(seconds(1000)).wait()?
 	return ok(data.length() + a)
 
 fn main() Unit:

@@ -15,17 +15,17 @@ fn endless() Int:
         continue
 
 test "Never faults propagate through initializers and returned values":
-    try expect_contains(
-        try expect_fault(
+    expect_contains(
+        expect_fault(
             fn:
                 _impossible := failed_initializer()
-        ),
+        )?,
         "initializer cannot return"
-    )
-    try expect_contains(
-        try expect_fault(
+    )?
+    expect_contains(
+        expect_fault(
             fn:
                 _impossible := returned_failure()
-        ),
+        )?,
         "result cannot return"
-    )
+    )?

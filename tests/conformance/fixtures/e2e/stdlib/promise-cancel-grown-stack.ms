@@ -10,9 +10,9 @@ fn descend(n: Int) Int!:
     label := "frame {n}"
     parts := [label.clone(), "x"]
     if n == 0:
-        try sleep(seconds(600)).wait()
+        sleep(seconds(600)).wait()?
 
-    below := try descend(n - 1)
+    below := descend(n - 1)?
     return ok(below + parts.length())
 
 fn main() Unit:

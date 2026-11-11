@@ -8,7 +8,7 @@ import (
 
 /*
 Decodes one UTF-8 scalar at a byte position without decoding or copying the entire input.
-Walk forward by adding the returned width: `part := try decode_first(data, position)`.
+Walk forward by adding the returned width: `part := decode_first(data, position)?`.
 The scalar decoders examine at most four input bytes; is_valid checks the whole buffer.
 No normalization or replacement is applied.
 */

@@ -27,13 +27,13 @@ test "compound assignment on bindings":
 
     var text = "a"
     text += "b"
-    try expect_false(number != 4 or ratio != 3.0 or text != "ab")
+    expect_false(number != 4 or ratio != 3.0 or text != "ab")?
 
 test "right side groups as one operand":
     var number = 10
     number -= 4 - 1
     number *= 1 + 1
-    try expect_equal(number, 14)
+    expect_equal(number, 14)?
 
 test "compound assignment on fields":
     var counter = Counter(1, "x")
@@ -43,14 +43,14 @@ test "compound assignment on fields":
 
     var outer = Outer(counter.clone())
     outer.inner.count -= 5
-    try expect_false(
+    expect_false(
         (
             counter.count != 25
             or counter.label != "xy"
             or outer.inner.count != 20
             or tally([1, 2, 3]) != 6
         )
-    )
+    )?
 
 test "compound assignment in loops":
     var index = 0
@@ -60,4 +60,4 @@ test "compound assignment in loops":
         total += index
         index += 1
 
-    try expect_false(total != 10 or index != 5)
+    expect_false(total != 10 or index != 5)?

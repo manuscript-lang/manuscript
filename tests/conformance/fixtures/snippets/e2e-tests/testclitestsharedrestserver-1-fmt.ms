@@ -28,19 +28,19 @@ impl TestHooks for ApiFixture:
         self.server.close().get(none)
 
 test "first request":
-    response := try expect_ok(
+    response := expect_ok(
         request(
             method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
             options: RequestOptions(headers: headers())
         )
-    )
-    try expect_equal(response.metadata().status, 200)
+    )?
+    expect_equal(response.metadata().status, 200)?
 
 test "second request uses same server":
-    response := try expect_ok(
+    response := expect_ok(
         request(
             method: HttpMethod.Get, url: "http://{fixture.server.address()}/",
             options: RequestOptions(headers: headers())
         )
-    )
-    try expect_equal(response.body, "shared".to_bytes())
+    )?
+    expect_equal(response.body, "shared".to_bytes())?

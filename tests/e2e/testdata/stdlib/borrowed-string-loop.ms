@@ -26,24 +26,24 @@ fn initial(words: List[String]) String:
 
 fn failed_scan(words: List[String]) Unit!:
 	for c in first(words).chars():
-		try expect_equal(c, "not the first character")
+		expect_equal(c, "not the first character")?
 
 test "helper and receiver strings support character and scalar scans":
 	words := ["aé😀"]
 	var chars = List[String]()
 	chars.extend(first(words).chars())
-	try expect_equal(chars, ["a", "é", "😀"])
+	expect_equal(chars, ["a", "é", "😀"])?
 
 	var sum = first(words).scalar_values().sum()
-	try expect_equal(sum, 128842)
-	try expect_equal(words[0], "aé😀")
+	expect_equal(sum, 128842)?
+	expect_equal(words[0], "aé😀")?
 
 	text := Text("aé😀")
 	sum = 0
 	for c in text.read().scalar_values():
 		sum += c
-	try expect_equal(sum, 128842)
-	try expect_equal(text.value, "aé😀")
+	expect_equal(sum, 128842)?
+	expect_equal(text.value, "aé😀")?
 
 test "helper scans match materialized snapshots while the source changes":
 	var words = [dynamic_text()]
@@ -54,8 +54,8 @@ test "helper scans match materialized snapshots while the source changes":
 		words[0] = ""
 		actual.append(c)
 
-	try expect_equal(actual, expected)
-	try expect_equal(words[0], "")
+	expect_equal(actual, expected)?
+	expect_equal(words[0], "")?
 	words = ["aé😀"]
 
 	scalars := first(words).scalar_values()
@@ -65,8 +65,8 @@ test "helper scans match materialized snapshots while the source changes":
 		words = ["replacement text longer than the source"]
 		actual_scalars.append(c)
 
-	try expect_equal(actual_scalars, scalars)
-	try expect_equal(words[0], "replacement text longer than the source")
+	expect_equal(actual_scalars, scalars)?
+	expect_equal(words[0], "replacement text longer than the source")?
 
 test "direct scans snapshot a changed source and retain unchanged fast paths":
 	var text = "aé😀"
@@ -76,29 +76,29 @@ test "direct scans snapshot a changed source and retain unchanged fast paths":
 		text = ""
 		output += c
 
-	try expect_equal(output, "aé😀")
-	try expect_equal(text, "")
+	expect_equal(output, "aé😀")?
+	expect_equal(text, "")?
 
 	words := ["aé😀"]
 	bound := first(words)
 	var sum = bound.scalar_values().sum()
-	try expect_equal(sum, 128842)
+	expect_equal(sum, 128842)?
 	sum = 0
 	for c in words[0].scalar_values():
 		sum += c
-	try expect_equal(sum, 128842)
+	expect_equal(sum, 128842)?
 
 test "owned temporary and empty helper strings remain valid":
 	var output = ""
 	for c in first(["aé😀"]).chars():
 		output += c
-	try expect_equal(output, "aé😀")
+	expect_equal(output, "aé😀")?
 
 	var sum = fresh().scalar_values().sum()
-	try expect_equal(sum, 128842)
+	expect_equal(sum, 128842)?
 	for c in first([""]).scalar_values():
 		sum += 1
-	try expect_equal(sum, 128842)
+	expect_equal(sum, 128842)?
 
 test "borrowed string scans support break continue return and try":
 	words := ["aé😀b"]
@@ -110,7 +110,7 @@ test "borrowed string scans support break continue return and try":
 
 		output += c
 
-	try expect_equal(output, "a😀")
-	try expect_equal(initial(words), "a")
-	try expect_equal(failed_scan(words).is_error(), true)
-	try expect_equal(words[0], "aé😀b")
+	expect_equal(output, "a😀")?
+	expect_equal(initial(words), "a")?
+	expect_equal(failed_scan(words).is_error(), true)?
+	expect_equal(words[0], "aé😀b")?

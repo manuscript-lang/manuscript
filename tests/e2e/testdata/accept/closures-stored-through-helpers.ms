@@ -64,8 +64,8 @@ fn d5(text: String) Int:
 	return sum(fs)
 
 test "a closure stored through helper functions owns its captures":
-	try expect_equal(d1("x,yyyy,zz"), 7)
-	try expect_equal(d2("x,yyyy,zz"), 7)
-	try expect_equal(d3("x,yyyy,zz"), 7)
-	try expect_equal(d4("x,yyyy,zz"), 10)
-	try expect_equal(d5("x,yyyy,zz"), 10)
+	expect_equal(d1("x,yyyy,zz"), 7)?
+	expect_equal(d2("x,yyyy,zz"), 7)?
+	expect_equal(d3("x,yyyy,zz"), 7)?
+	expect_equal(d4("x,yyyy,zz"), 10)?
+	expect_equal(d5("x,yyyy,zz"), 10)?

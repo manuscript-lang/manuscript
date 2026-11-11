@@ -457,7 +457,7 @@ pub const KINDS: &[Kind] = &[
         "MS3000.5",
         "this statement discards",
         "Discarded Result",
-        "write `try ...` to propagate the failure, or handle it"
+        "write a trailing `?` to propagate the failure, or handle it"
     ),
     kind!(
         "MS3000",

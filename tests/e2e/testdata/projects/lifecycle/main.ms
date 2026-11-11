@@ -44,7 +44,7 @@ fn failure() Int!Error:
 
 fn propagate(output: WriteStream[String]) Int!Error:
 	_resource := Resource(label: "propagation", output: output)
-	number := try failure()
+	number := failure()?
 	return ok(number)
 
 fn iterable(var output: WriteStream[String]) List[Int]:
@@ -59,7 +59,7 @@ fn exercise() Int!:
 		report(output: var second_out, label: "second", value: 2),
 		report(output: var first_out, label: "first", value: 1),
 	)
-	total | try expect_equal(3)
+	total | expect_equal(3)?
 
 	var pair_second_out = stdout()
 	var pair_first_out = stdout()
@@ -71,11 +71,11 @@ fn exercise() Int!:
 		),
 		first: report(output: var pair_first_out, label: "pair first", value: 1),
 	)
-	(pair.first + pair.second) | try expect_equal(3)
+	(pair.first + pair.second) | expect_equal(3)?
 
 	var _resource = Resource(label: "normal", output: stdout())
 	_completed := unit
-	try _resource.close()
+	_resource.close()?
 
 	_ := stdout().write(value: "after normal\n")
 	var count = 0
@@ -93,12 +93,12 @@ fn exercise() Int!:
 
 	match propagate(output: stdout()):
 		ok(_):
-			try fail(message: "Unexpected case")
+			fail(message: "Unexpected case")?
 		error(_):
 			_completed := unit
 
 	var early_out = stdout()
-	early(output: var early_out) | try expect_equal(5)
+	early(output: var early_out) | expect_equal(5)?
 
 	_ := stdout().write(value: "finished\n")
 	return ok(0)

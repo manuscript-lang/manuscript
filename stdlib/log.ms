@@ -132,7 +132,7 @@ impl Transport for FileTransport:
 
 	fn duplicate() Transport!:
 		if self.closed: return error(log_closed())
-		return ok(FileTransport(file: try self.file.clone(), closed: false))
+		return ok(FileTransport(file: self.file.clone()?, closed: false))
 
 	var fn close() Unit:
 		if self.closed: return
@@ -224,7 +224,7 @@ impl Logger:
 		if not self.enabled(level): return ok(unit)
 
 		if value := fields:
-			text := try encode_fields(value)
+			text := encode_fields(value)?
 			return self.emit(level_value(level), message, text)
 
 		return self.emit(level_value(level), message, none)
@@ -265,9 +265,9 @@ impl Logger:
     that cannot be encoded returns `EBADMSG`.
     */
 	fn child[F: Data](fields: F) Logger!:
-		text := try encode_fields(fields)
-		context := try merge_context(self.context, text)
-		own := try self.transport.duplicate()
+		text := encode_fields(fields)?
+		context := merge_context(self.context, text)?
+		own := self.transport.duplicate()?
 		return ok(Logger(self.threshold, self.timestamp, self.max_bytes, context, own))
 
 	// Tests the current filtering threshold; Silent is never enabled as a record level.
@@ -357,7 +357,7 @@ impl Transport for RotatingTransport:
 		if size > 0 and size + data.length() > self.max_bytes:
 			rotate(self.path, self.keep)
 
-		var file = try open(self.path, OpenMode.Append, OpenOptions(permissions: 420))
+		var file = open(self.path, OpenMode.Append, OpenOptions(permissions: 420))?
 		written := file.write(data)
 		file.close().get(none)
 		return written

@@ -12,10 +12,10 @@ fn call[T](operation: fn(String, Int?) T, text: String) T:
 
 test "typed Unicode forms retain normalization and bound dispatch":
     decomposed := "é"
-    try expect_equal(normalize(NormalizationForm.Nfc, decomposed).get(), "é")
-    try expect_equal(NormalizationForm.Nfd.normalize("é").get(), decomposed)
-    try expect_equal(NormalizationForm.Nfkc.normalize("ﬁ").get(), "fi")
-    try expect_equal(NormalizationForm.Nfkd.normalize("ﬁ").get(), "fi")
+    expect_equal(normalize(NormalizationForm.Nfc, decomposed).get(), "é")?
+    expect_equal(NormalizationForm.Nfd.normalize("é").get(), decomposed)?
+    expect_equal(NormalizationForm.Nfkc.normalize("ﬁ").get(), "fi")?
+    expect_equal(NormalizationForm.Nfkd.normalize("ﬁ").get(), "fi")?
 
     for form in [
         NormalizationForm.Nfc, NormalizationForm.Nfd, NormalizationForm.Nfkc,
@@ -27,28 +27,28 @@ test "typed Unicode forms retain normalization and bound dispatch":
             Nfkc: "NFKC"
             Nfkd: "NFKD"
 
-        try expect_equal(form.normalize("ﬁé").get(), "ﬁé".normalize(spelling).get())
+        expect_equal(form.normalize("ﬁé").get(), "ﬁé".normalize(spelling).get())?
 
     stored := NormalizationForm.Nfc.normalize
-    try expect_equal(call(stored, decomposed).get(), "é")
+    expect_equal(call(stored, decomposed).get(), "é")?
 
 test "typed normalization keeps UTF-8 byte budgets and domain errors":
     form := NormalizationForm.Nfc
-    try expect_equal(form.normalize("é", 2).get(), "é")
-    try expect_equal(form.normalize("", 0).get(), "")
-    try expect_equal(
+    expect_equal(form.normalize("é", 2).get(), "é")?
+    expect_equal(form.normalize("", 0).get(), "")?
+    expect_equal(
         form.normalize("é", 1).err(),
         Error("string: limit exceeded", kind: "EOVERFLOW")
-    )
-    try expect_equal(
+    )?
+    expect_equal(
         form.normalize("x", 0).err(),
         Error("string: limit exceeded", kind: "EOVERFLOW")
-    )
-    try expect_equal(
+    )?
+    expect_equal(
         form.normalize("", -1).err(),
         Error("string: invalid input", kind: "EINVAL")
-    )
-    try expect_equal(
+    )?
+    expect_equal(
         "x".normalize("nfc").err(),
         Error("string: invalid input", kind: "EINVAL")
-    )
+    )?

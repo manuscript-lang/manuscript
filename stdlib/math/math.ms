@@ -842,7 +842,7 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 		var non_residue = two.clone()
 
 		while true:
-			criterion := try non_residue.pow_mod(half, modulus)
+			criterion := non_residue.pow_mod(half, modulus)?
 			if criterion.compare(minus_one) == 0: break
 
 			// A prime gives only +1 or -1 here; any other value proves compositeness.

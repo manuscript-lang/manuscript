@@ -24,15 +24,15 @@
         "position": {
           "file": "core-language-basics-expressions-1.ms",
           "line": 8,
-          "column": 15,
-          "offset": 268
+          "column": 11,
+          "offset": 258
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-basics-expressions-1.ms:4:23: resolution: unknown type Config; declare it with 'type Config:' / 'enum Config:' / 'interface Config:', declare it as a type parameter, or import it\n   |\n 4 | fn load(path: String) Config!:\n   |                       ^\n<DIR>/core-language-basics-expressions-1.ms:8:15: resolution: unknown binding validate; declare it with 'validate := ...' before use, define 'fn validate(...) T:', or import it from a module\n   |\n 8 |         | try validate\n   |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-basics-expressions-1.ms:4:23: resolution: unknown type Config; declare it with 'type Config:' / 'enum Config:' / 'interface Config:', declare it as a type parameter, or import it\n   |\n 4 | fn load(path: String) Config!:\n   |                       ^\n<DIR>/core-language-basics-expressions-1.ms:8:11: resolution: unknown binding validate; declare it with 'validate := ...' before use, define 'fn validate(...) T:', or import it from a module\n   |\n 8 |         | validate?\n   |           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

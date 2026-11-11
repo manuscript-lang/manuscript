@@ -6,14 +6,14 @@ import stdout from "@std/io/io.ms"
 import stderr from "@std/io/io.ms"
 
 fn write_line(text: String) Unit!:
-    try stdout().write("{text}\n")
+    stdout().write("{text}\n")?
 
 fn exercise() Int!:
     args := arguments()
     var index = 0
 
     while index < args.length():
-        try write_line(args[index])
+        write_line(args[index])?
         index = index + 1
 
     return ok(0)
@@ -26,7 +26,7 @@ export fn main() Int:
             return 1
 
 test "selected=a=b":
-    try write_line("selected")
+    write_line("selected")?
 
 test "unselected":
-    try write_line("unselected")
+    write_line("unselected")?

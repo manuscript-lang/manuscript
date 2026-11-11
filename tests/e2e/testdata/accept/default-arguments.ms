@@ -32,7 +32,7 @@ fn optional(value: Int? = 3) Int?:
 fn fail() Int!Error:
 	return error(Error("default failure"))
 
-fn propagate(value: Int = try fail()) Int!Error:
+fn propagate(value: Int = fail()?) Int!Error:
 	return ok(value)
 
 interface Add:
@@ -56,20 +56,18 @@ impl Read[T] for Box[T]:
 		return value
 
 test "omitted and explicit defaults":
-	(
-		(increment() != 4 or increment(7) != 8 or increment(value: 0) != 1)
-		| try expect_false
-	)
+	(increment() != 4 or increment(7) != 8 or increment(value: 0) != 1) | expect_false?
 	(
 		(
 			combine(second: 5) != 14
 			or combine(third: 0, second: 5, first: 0) != 5
-		) | try expect_false
+		)
+		| expect_false?
 	)
-	(identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4) | try expect_false
-	unit_value(unit) | try expect_equal(unit)
-	unit_value() | try expect_equal(unit)
-	(optional(value: none).is_some() or optional() != 3) | try expect_false
+	(identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4) | expect_false?
+	unit_value(unit) | expect_equal(unit)?
+	unit_value() | expect_equal(unit)?
+	(optional(value: none).is_some() or optional() != 3) | expect_false?
 	(
 		(
 			(
@@ -78,40 +76,41 @@ test "omitted and explicit defaults":
 				)
 				or propagate(7) != Result[Int, Error].ok(7)
 			)
-		) | try expect_false
+		)
+		| expect_false?
 	)
 
 test "default evaluation order and repeated calls":
-	ordered(0) | try expect_equal(345)
-	ordered(0, third: 1) | try expect_equal(346)
-	ordered(0, second: 7) | try expect_equal(75)
-	ordered(1, first: 2) | try expect_equal(245)
-	ordered(0) | try expect_equal(345)
+	ordered(0) | expect_equal(345)?
+	ordered(0, third: 1) | expect_equal(346)?
+	ordered(0, second: 7) | expect_equal(75)?
+	ordered(1, first: 2) | expect_equal(245)?
+	ordered(0) | expect_equal(345)?
 
 test "function values and captures":
 	copy := increment
 	copied := copy
-	copied() | try expect_equal(4)
+	copied() | expect_equal(4)?
 
 	typed: fn(Int) Int := increment
-	typed(2) | try expect_equal(3)
+	typed(2) | expect_equal(3)?
 
 	offset := 5
 	callback := fn(value: Int = offset):
 		return value
-	(callback() != 5 or callback(0) != 0) | try expect_false
+	(callback() != 5 or callback(0) != 0) | expect_false?
 
 	nested := fn(first: Int = 6, second: Int = first + 1):
 		return second
-	nested() | try expect_equal(7)
+	nested() | expect_equal(7)?
 
 test "implementation and bound method defaults":
 	offset := Offset(4)
 	bound := offset.add
-	(offset.add() != 8 or bound() != 8 or bound(0) != 4) | try expect_false
+	(offset.add() != 8 or bound() != 8 or bound(0) != 4) | expect_false?
 
 	view: Add := offset
-	view.add(2) | try expect_equal(6)
+	view.add(2) | expect_equal(6)?
 
 	box := Box[String]("boxed")
-	box.read() | try expect_equal("boxed")
+	box.read() | expect_equal("boxed")?

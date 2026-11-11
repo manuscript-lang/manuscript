@@ -16,7 +16,7 @@ test "a lone interpolation of a borrowed string is a new string wherever it is o
 
 	h := Holder("{t.title}")
 	f := fn: "{t.title}"
-	try expect_equal(quoted(t), "a")
-	try expect_equal(xs, ["a"])
-	try expect_equal(h.text, "a")
-	try expect_equal(f(), "a")
+	expect_equal(quoted(t), "a")?
+	expect_equal(xs, ["a"])?
+	expect_equal(h.text, "a")?
+	expect_equal(f(), "a")?

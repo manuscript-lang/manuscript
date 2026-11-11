@@ -19,7 +19,7 @@ fn run[T](p: Parser[T], s: String) T!:
 fn all[T: Clonable](p: Parser[T], xs: List[String]) List[T]!:
     var out = List[T]()
     for x in xs:
-        out.append(try p.parse(x))
+        out.append(p.parse(x)?)
     return ok(out)
 
 type Cb:

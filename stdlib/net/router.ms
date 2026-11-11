@@ -146,7 +146,7 @@ impl Router:
 		pattern: String,
 		handler: fn(var HttpExchange, RouteParams) Unit!
 	) Unit!:
-		segments := try parse_pattern(pattern.clone())
+		segments := parse_pattern(pattern.clone())?
 		return insert(
 			var self.routes,
 			Route(
@@ -225,8 +225,8 @@ impl Router:
 
 		while not sources.is_empty():
 			var route = sources.pop().get()
-			try remount(var route, base, own, offset)
-			try insert(var self.routes, route)
+			remount(var route, base, own, offset)?
+			insert(var self.routes, route)?
 
 	// Adds middleware around every route and around the 404, 405 and OPTIONS answers.
 	// It receives the exchange and a continuation that runs the rest of the chain with
@@ -297,7 +297,7 @@ fn insert(var routes: List[Route], route: Route) Unit!:
 fn remount(var route: Route, base: String, own: Int, offset: Int) Unit!:
 	tail := if route.pattern == "/": "" else: route.pattern.clone()
 	pattern := if not (base + tail).is_empty(): base + tail else: "/"
-	route.segments = try parse_pattern(pattern.clone())
+	route.segments = parse_pattern(pattern.clone())?
 	route.pattern = pattern
 
 	var around = [own]
@@ -550,13 +550,13 @@ fn finish(
 
 	if method == "OPTIONS" and exchange.path() == "*":
 		var server_wide = text(204, "")
-		try server_wide.headers.append("Allow", allow_text(target.every))
+		server_wide.headers.append("Allow", allow_text(target.every))?
 		return reply(var exchange, server_wide)
 
 	if found.allow.is_empty(): return reply(var exchange, text(404, "not found\n"))
 
 	var response = text(if method != "OPTIONS": 405 else: 204, "")
-	try response.headers.append("Allow", allow_text(found.allow))
+	response.headers.append("Allow", allow_text(found.allow))?
 	return reply(var exchange, response)
 
 // Methods with a route for the path, sorted and without repeats; GET adds HEAD, and
@@ -651,7 +651,7 @@ impl HttpExchange for TestExchange:
 		guard.items[0].sent = true
 
 	var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
-		try self.send_headers(status, headers)
+		self.send_headers(status, headers)?
 
 		var guard = hold[TestState](self.state)
 		guard.items[0].complete = true
@@ -752,11 +752,11 @@ impl HttpExchange for Tap:
 		return self.inner.read(max_bytes)
 
 	var fn send_headers(status: Int, headers: HttpHeaders) Unit!:
-		try self.inner.send_headers(status, with_extra(headers, self.extra))
+		self.inner.send_headers(status, with_extra(headers, self.extra))?
 		counted(self.state, status, 0)
 
 	var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!:
-		try self.inner.send(status, with_extra(headers, self.extra), body)
+		self.inner.send(status, with_extra(headers, self.extra), body)?
 		counted(self.state, status, self.sent_length(status, body.length()))
 
 	var fn upgrade(
@@ -767,7 +767,7 @@ impl HttpExchange for Tap:
 		return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 
 	var fn write(data: String) Unit!:
-		try self.inner.write(data)
+		self.inner.write(data)?
 		counted(
 			self.state,
 			0,
@@ -775,7 +775,7 @@ impl HttpExchange for Tap:
 		)
 
 	var fn write_bytes(data: Bytes) Unit!:
-		try self.inner.write_bytes(data)
+		self.inner.write_bytes(data)?
 		counted(self.state, 0, self.sent_length(self.status_so_far(), data.length()))
 
 // `state` is a slot counting what is sent, which the caller made and reads afterwards.
@@ -827,12 +827,12 @@ fn with_request_id(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!)
 	var id = request.values("X-Request-Id").first().get("")
 
 	if not usable_id(id):
-		id = try new_id()
+		id = new_id()?
 		request.remove("X-Request-Id")
-		try request.append("X-Request-Id", id)
+		request.append("X-Request-Id", id)?
 
 	var extra = headers()
-	try extra.append("X-Request-Id", id)
+	extra.append("X-Request-Id", id)?
 	exchange = new_tap(exchange, extra, request)
 	return next(var exchange)
 

@@ -23,14 +23,14 @@ test "a named function with a var parameter is a function value":
 	change: fn(var List[Int]) Unit := push_one
 	change(var values)
 	change(var values)
-	values | try expect_equal([1, 1])
+	values | expect_equal([1, 1])?
 
 test "a lambda declares a var parameter":
 	var values = [7]
 	drop_all := fn(var xs: List[Int]):
 		xs = []
 	drop_all(var values)
-	values.length() | try expect_equal(0)
+	values.length() | expect_equal(0)?
 
 test "a var parameter of a scalar type changes the caller's variable":
 	var count = 1
@@ -38,25 +38,25 @@ test "a var parameter of a scalar type changes the caller's variable":
 		n += by
 	add(var count, 2)
 	bump(var count, 3)
-	count | try expect_equal(6)
+	count | expect_equal(6)?
 
 test "a var parameter passes through a function parameter":
 	var values = [5]
 	apply(push_one, var values)
 	apply(fn(var xs: List[Int]): xs.append(2), var values)
-	values | try expect_equal([5, 1, 2])
+	values | expect_equal([5, 1, 2])?
 
 test "a var parameter changes a field in place":
 	var bag = Bag(items: [])
 	change: fn(var List[Int]) Unit := push_one
 	change(var bag.items)
-	bag.items | try expect_equal([1])
+	bag.items | expect_equal([1])?
 
 test "a function value in a field takes a var argument":
 	var values: List[Int] = []
 	hooks := Hooks(change: push_one)
 	hooks.change(var values)
-	values | try expect_equal([1])
+	values | expect_equal([1])?
 
 fn twice(change: fn(var List[Int]) Unit, var values: List[Int]) Unit:
 	// `values` is this function's own var parameter, passed on by address again.
@@ -66,11 +66,11 @@ fn twice(change: fn(var List[Int]) Unit, var values: List[Int]) Unit:
 test "a var parameter is passed on through another function value":
 	var values: List[Int] = []
 	twice(push_one, var values)
-	values | try expect_equal([1, 1])
+	values | expect_equal([1, 1])?
 
 test "a var parameter of a one-owner value is not copied":
 	var words = ["a"]
 	extend := fn(var xs: List[String], more: List[String]):
 		xs.extend(more)
 	extend(var words, ["b", "c"])
-	words | try expect_equal(["a", "b", "c"])
+	words | expect_equal(["a", "b", "c"])?

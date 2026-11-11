@@ -11,7 +11,7 @@ type Token:
 
 impl Closeable for Token:
 	var fn close() Unit!:
-		try append_file(self.log, "close {self.id}\n").wait()
+		append_file(self.log, "close {self.id}\n").wait()?
 
 type Tokens:
 	log: String
@@ -40,8 +40,8 @@ impl Iterator[T!] for Forward[T]:
 
 fn first_body(log: String) Unit!:
 	for item in Forward[Token](Tokens(log.clone())):
-		token := try item
-		try append_file(log, "body {token.id}\n").wait()
+		token := item?
+		append_file(log, "body {token.id}\n").wait()?
 		break
 
 fn events(log: String) String:
@@ -49,7 +49,7 @@ fn events(log: String) String:
 	return ""
 
 test "a generic adapter forwards a resource through Result.get once":
-	dir := temporary("generic-forward-") | try expect_ok
+	dir := temporary("generic-forward-") | expect_ok?
 	log := "{dir.path()}/events"
-	try first_body(log.clone())
-	try expect_equal(events(log), "body 1\nclose 1\n")
+	first_body(log.clone())?
+	expect_equal(events(log), "body 1\nclose 1\n")?

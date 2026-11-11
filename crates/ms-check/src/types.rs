@@ -1558,7 +1558,7 @@ pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
     if !actual.is(Builtin::Result) || actual.args.is_empty() || !same(&actual.args[0], expected) {
         return String::new();
     }
-    "unwrap it with 'try' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'".to_string()
+    "unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'".to_string()
 }
 
 /// "expected X, found Y" plus a result hint.

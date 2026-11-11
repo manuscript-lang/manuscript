@@ -19,41 +19,41 @@ type Endpoint:
 
 test "JSON payloadless cases are their names and round-trip":
     swatch := Swatch(Color.Green, Color.Red)
-    text := try stringify(swatch)
-    try expect_equal(text, "\{\"color\":\"Green\",\"shade\":\"Red\"\}")
+    text := stringify(swatch)?
+    expect_equal(text, "\{\"color\":\"Green\",\"shade\":\"Red\"\}")?
 
-    back := try parse[Swatch](text)
-    try expect_equal(try stringify(back), text)
+    back := parse[Swatch](text)?
+    expect_equal(stringify(back)?, text)?
 
 test "JSON rejects an unknown case name":
-    try expect_equal(
-        (try expect_error(parse[Color]("\"Blue\""))).kind, "EBADMSG"
-    )
-    try expect_equal(
-        (try expect_error(parse[Color]("\"Color.Red\""))).kind,
+    expect_equal(
+        (expect_error(parse[Color]("\"Blue\""))?).kind, "EBADMSG"
+    )?
+    expect_equal(
+        (expect_error(parse[Color]("\"Color.Red\""))?).kind,
         "EBADMSG"
-    )
+    )?
 
 test "JSON writes and reads IpAddress and Cidr as strings":
     endpoint := Endpoint(
-        try parse_ip("::1"), try parse_cidr("10.1.2.3/8"), try parse_ip("192.0.2.7")
+        parse_ip("::1")?, parse_cidr("10.1.2.3/8")?, parse_ip("192.0.2.7")?
     )
-    text := try stringify(endpoint)
-    try expect_equal(
+    text := stringify(endpoint)?
+    expect_equal(
         text,
         "\{\"host\":\"::1\",\"network\":\"10.0.0.0/8\",\"fallback\":\"192.0.2.7\"\}"
-    )
+    )?
 
-    back := try parse[Endpoint](text)
-    try expect_equal(try stringify(back), text)
+    back := parse[Endpoint](text)?
+    expect_equal(stringify(back)?, text)?
 
-    bare := try parse[Endpoint]("\{\"host\":\"127.0.0.1\",\"network\":\"::/0\"\}")
-    try expect_equal(
-        try stringify(bare), "\{\"host\":\"127.0.0.1\",\"network\":\"::/0\"\}"
-    )
+    bare := parse[Endpoint]("\{\"host\":\"127.0.0.1\",\"network\":\"::/0\"\}")?
+    expect_equal(
+        stringify(bare)?, "\{\"host\":\"127.0.0.1\",\"network\":\"::/0\"\}"
+    )?
 
 test "JSON rejects malformed IpAddress and Cidr text":
-    try expect_equal(parse[IpAddress]("\"999.1.1.1\"").is_error(), true)
-    try expect_equal(parse[IpAddress]("1").is_error(), true)
-    try expect_equal(parse[Cidr]("\"10.0.0.0/99\"").is_error(), true)
-    try expect_equal(parse[Cidr]("null").is_error(), true)
+    expect_equal(parse[IpAddress]("\"999.1.1.1\"").is_error(), true)?
+    expect_equal(parse[IpAddress]("1").is_error(), true)?
+    expect_equal(parse[Cidr]("\"10.0.0.0/99\"").is_error(), true)?
+    expect_equal(parse[Cidr]("null").is_error(), true)?

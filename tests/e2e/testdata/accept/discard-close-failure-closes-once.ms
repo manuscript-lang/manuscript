@@ -11,11 +11,11 @@ type Item:
 
 impl Closeable for Item:
 	var fn close() Unit!:
-		try append_file(self.log, "{self.id},").wait()
+		append_file(self.log, "{self.id},").wait()?
 		if self.fail: return error(Error("close failed"))
 
 fn events(log: String) String!:
-	bytes := try read_file(log).wait()
+	bytes := read_file(log).wait()?
 	return ok(bytes.decode_utf8().get(""))
 
 fn list_remove(log: String) Unit:
@@ -37,36 +37,36 @@ fn list_splice(log: String) Unit:
 	items.splice(0, 1, [])
 
 test "remove whose close fails closes the entry once":
-	temp := try temporary("w1-")
+	temp := temporary("w1-")?
 	log := "{temp.path()}/log"
-	_f := try expect_fault(fn: list_remove(log.clone()))
-	try expect_equal(try events(log), "1,")
+	_f := expect_fault(fn: list_remove(log.clone()))?
+	expect_equal(events(log)?, "1,")?
 
 test "map add over an entry whose close fails closes each once":
-	temp := try temporary("w2-")
+	temp := temporary("w2-")?
 	log := "{temp.path()}/log"
-	_f := try expect_fault(fn: map_add(log.clone()))
-	try expect_equal(try events(log), "1,2,")
+	_f := expect_fault(fn: map_add(log.clone()))?
+	expect_equal(events(log)?, "1,2,")?
 
 test "map remove whose close fails closes the entry once":
-	temp := try temporary("w3-")
+	temp := temporary("w3-")?
 	log := "{temp.path()}/log"
-	_f := try expect_fault(fn: map_remove(log.clone()))
-	try expect_equal(try events(log), "1,")
+	_f := expect_fault(fn: map_remove(log.clone()))?
+	expect_equal(events(log)?, "1,")?
 
 test "splice over an entry whose close fails closes each once":
-	temp := try temporary("w4-")
+	temp := temporary("w4-")?
 	log := "{temp.path()}/log"
-	_f := try expect_fault(fn: list_splice(log.clone()))
-	try expect_equal(try events(log), "1,5,")
+	_f := expect_fault(fn: list_splice(log.clone()))?
+	expect_equal(events(log)?, "1,5,")?
 
 fn list_set(log: String) Unit:
 	var items = [Item(1, log.clone(), true)]
 	items.set(0, Item(2, log, false))
 
 test "set over an entry whose close fails closes each once":
-	temp := try temporary("w5-")
+	temp := temporary("w5-")?
 	log := "{temp.path()}/log"
-	fault := try expect_fault(fn: list_set(log.clone()))
-	try expect_contains(fault, "could not be closed")
-	try expect_equal(try events(log), "1,2,")
+	fault := expect_fault(fn: list_set(log.clone()))?
+	expect_contains(fault, "could not be closed")?
+	expect_equal(events(log)?, "1,2,")?

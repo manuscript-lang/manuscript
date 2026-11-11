@@ -10,7 +10,7 @@ import (
 )
 
 fn open_one(net: Network) String!:
-	l := try net.listen("127.0.0.1:0")
+	l := net.listen("127.0.0.1:0")?
 	return ok(l.address())
 
 fn names_of(h: HttpHeaders) List[String]!:
@@ -23,17 +23,17 @@ test "http headers used in a promise on another thread fault with the cause":
 	for i in 0..1500000000:
 		n += i % 7
 
-	cause := p.wait() | try expect_error
-	_ := try expect_true(n > 0)
+	cause := p.wait() | expect_error?
+	_ := expect_true(n > 0)?
 	return expect_contains(cause.message, "different thread")
 
 test "a network used in a promise on another thread keeps working":
-	net := with_resolver("127.0.0.1:53") | try expect_ok
+	net := with_resolver("127.0.0.1:53") | expect_ok?
 	p := promise(fn: open_one(net))
 	var n = 0
 	for i in 0..1500000000:
 		n += i % 7
 
-	address := p.wait() | try expect_ok
-	_ := try expect_true(n > 0)
+	address := p.wait() | expect_ok?
+	_ := expect_true(n > 0)?
 	return expect_contains(address, "127.0.0.1:")

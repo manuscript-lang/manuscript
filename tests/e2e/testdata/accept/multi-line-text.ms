@@ -15,10 +15,7 @@ fn payload() String:
         """
 
 test "indentation of the closing line is removed":
-	try expect_equal(
-		banner("Ada", 3),
-		"Hello, Ada!\n  3 items, \"quoted\"\t\{literal\}",
-	)
+	expect_equal(banner("Ada", 3), "Hello, Ada!\n  3 items, \"quoted\"\t\{literal\}")?
 
 test "blank lines and a trailing newline survive":
 	text := """
@@ -27,21 +24,21 @@ test "blank lines and a trailing newline survive":
         last
 
         """
-	try expect_equal(text, "first\n\nlast\n")
+	expect_equal(text, "first\n\nlast\n")?
 
 test "raw text keeps braces quotes and backslashes":
-	try expect_equal(
+	expect_equal(
 		payload(),
 		"\{\"name\": \"ada\", \"tags\": [\"a\", \"b\"], \"path\": \"C:\\dir\", \"n\": 1\}",
-	)
+	)?
 
 type Person:
 	name: String
 	n: Int
 
 test "raw text needs no escapes for JSON":
-	person := try parse[Person](text: r"""
+	person := parse[Person](text: r"""
     {"name": "ada", "n": 1}
-    """)
-	try expect_equal(person.name, "ada")
-	try expect_equal(person.n, 1)
+    """)?
+	expect_equal(person.name, "ada")?
+	expect_equal(person.n, 1)?

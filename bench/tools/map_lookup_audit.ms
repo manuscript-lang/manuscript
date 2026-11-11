@@ -19,7 +19,7 @@ fn run(args: List[String]) String!:
 		"invalid numeric argument"
 	)
 
-	prefix := try "a".repeat(width)
+	prefix := "a".repeat(width)?
 	want := n * (n - 1) * repeats
 	ensure_directory(args[2])
 

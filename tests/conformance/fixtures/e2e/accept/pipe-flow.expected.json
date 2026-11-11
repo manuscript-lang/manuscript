@@ -16,7 +16,7 @@
         },
         {
           "index": 1,
-          "name": "pipe-flow.ms::bare try unwraps the value so far",
+          "name": "pipe-flow.ms::bare unwraps? the value so far",
           "status": "passed"
         },
         {
@@ -50,7 +50,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN pipe-flow.ms::pipe steps call functions with the value first\nPASS pipe-flow.ms::pipe steps call functions with the value first\nRUN pipe-flow.ms::bare try unwraps the value so far\nPASS pipe-flow.ms::bare try unwraps the value so far\nRUN pipe-flow.ms::pipe passes a Result through a step without try\nPASS pipe-flow.ms::pipe passes a Result through a step without try\nRUN pipe-flow.ms::leading dot after a step applies to its result\nPASS pipe-flow.ms::leading dot after a step applies to its result\nRUN pipe-flow.ms::head is evaluated before step arguments\nPASS pipe-flow.ms::head is evaluated before step arguments\nRUN pipe-flow.ms::dot steps call methods on the value\nPASS pipe-flow.ms::dot steps call methods on the value\n6 tests, 0 failed\n",
+      "stdout": "RUN pipe-flow.ms::pipe steps call functions with the value first\nPASS pipe-flow.ms::pipe steps call functions with the value first\nRUN pipe-flow.ms::bare unwraps? the value so far\nPASS pipe-flow.ms::bare unwraps? the value so far\nRUN pipe-flow.ms::pipe passes a Result through a step without try\nPASS pipe-flow.ms::pipe passes a Result through a step without try\nRUN pipe-flow.ms::leading dot after a step applies to its result\nPASS pipe-flow.ms::leading dot after a step applies to its result\nRUN pipe-flow.ms::head is evaluated before step arguments\nPASS pipe-flow.ms::head is evaluated before step arguments\nRUN pipe-flow.ms::dot steps call methods on the value\nPASS pipe-flow.ms::dot steps call methods on the value\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

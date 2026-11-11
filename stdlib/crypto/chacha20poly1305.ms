@@ -326,7 +326,7 @@ export fn chacha20poly1305_seal(
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
 
 	ciphertext := xor_stream(key, 1, nonce, plaintext)
-	tag := try tag_for(key, nonce, associated_data, ciphertext)
+	tag := tag_for(key, nonce, associated_data, ciphertext)?
 	var out = BytesBuilder()
 	out.append_bytes(ciphertext)
 	out.append_bytes(tag)
@@ -351,7 +351,7 @@ export fn chacha20poly1305_open(
 	split := sealed.length() - 16
 	ciphertext := sealed.slice(0, split).get(Bytes([]))
 	tag := sealed.slice(split, sealed.length()).get(Bytes([]))
-	expected := try tag_for(key, nonce, associated_data, ciphertext)
+	expected := tag_for(key, nonce, associated_data, ciphertext)?
 	if not constant_time_equal(expected, tag):
 		return error(Error("crypto: authentication failed", kind: "EAUTH"))
 

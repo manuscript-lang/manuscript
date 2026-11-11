@@ -11,9 +11,9 @@ test "builders":
     bytes.append_bytes("B".to_bytes())
 
     expected_text: String? := "AB"
-    try expect_equal(bytes.build().decode_utf8(), expected_text)
+    expect_equal(bytes.build().decode_utf8(), expected_text)?
 
     var text = StringBuilder()
     text.append("hello")
     text.append(" world")
-    try expect_equal(text.build(), "hello world")
+    expect_equal(text.build(), "hello world")?

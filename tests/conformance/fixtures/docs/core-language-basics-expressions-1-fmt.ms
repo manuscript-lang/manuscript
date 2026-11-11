@@ -2,8 +2,8 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/basics/expressions.md:73
 fn load(path: String) Config!:
-    config := try read(path)
-        | try parse
+    config := read(path)?
+        | parse?
         | normalize
-        | try validate
+        | validate?
     return ok(config)

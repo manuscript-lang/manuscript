@@ -7,4 +7,4 @@ test "grouped imports":
     values: List[Int] := [1, 2]
     var entries = Map[String, Int]()
     entries.add("count", values.length())
-    try expect_equal(entries.length(), 1)
+    expect_equal(entries.length(), 1)?

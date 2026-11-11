@@ -11,5 +11,5 @@ test "closures read the variable they borrow":
         return offset
     second := fn:
         return true
-    first() | try expect_equal(99)
-    second() | try expect_true
+    first() | expect_equal(99)?
+    second() | expect_true?

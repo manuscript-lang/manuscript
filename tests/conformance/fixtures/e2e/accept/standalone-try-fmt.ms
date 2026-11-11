@@ -24,50 +24,50 @@ fn operation(var state: State, fail: Bool) Unit!Failure:
 fn exact(state: State, fail: Bool) String!Failure:
     resource := state
     var work = State(resource.calls, resource.marker.clone())
-    try operation(var work, fail)
+    operation(var work, fail)?
     work.calls += 10
     return ok("done {work.calls}")
 
 fn widened(var state: State) Int!:
-    try operation(var state, fail: true).map_error(
+    operation(var state, fail: true).map_error(
         fn cause: Error("failed", details: {"code": cause.code.to_string()})
-    )
+    )?
     return ok(0)
 
 fn closed(marker: String) Bool:
     return read_file(marker).wait().is_ok()
 
-test "standalone try evaluates once and continues on Unit success":
-    temporary := temporary("manuscript-try-") | try expect_ok
+test "standalone evaluates? once and continues on Unit success":
+    temporary := temporary("manuscript-try-") | expect_ok?
     marker := "{temporary.path()}/marker"
     value := exact(State(0, marker.clone()), fail: false).get()
-    try expect_equal(value, "done 11")
-    try expect_true(closed(marker))
+    expect_equal(value, "done 11")?
+    expect_true(closed(marker))?
 
-test "standalone try propagates and cleans up before returning":
-    temporary := temporary("manuscript-try-") | try expect_ok
+test "standalone propagates? and cleans up before returning":
+    temporary := temporary("manuscript-try-") | expect_ok?
     marker := "{temporary.path()}/marker"
     failed := exact(State(0, marker.clone()), fail: true)
-    try expect_false(failed.is_ok())
-    try expect_equal(failed.err().code, 42)
-    try expect_true(closed(marker))
+    expect_false(failed.is_ok())?
+    expect_equal(failed.err().code, 42)?
+    expect_true(closed(marker))?
 
-test "standalone try converts errors explicitly at Error boundaries":
+test "standalone converts? errors explicitly at Error boundaries":
     var state = State(0, "")
     outcome := widened(var state)
-    try expect_false(outcome.is_ok())
+    expect_false(outcome.is_ok())?
 
     cause := outcome.err()
-    try expect_equal(cause.message, "failed")
-    try expect_equal(cause.details["code"], "42")
-    try expect_equal(state.calls, 1)
+    expect_equal(cause.message, "failed")?
+    expect_equal(cause.details["code"], "42")?
+    expect_equal(state.calls, 1)?
 
-test "standalone try in closure returns from that closure":
+test "standalone in? closure returns from that closure":
     callback := fn() Unit!Failure:
         var inner = State(0, "")
-        if true: try operation(var inner, fail: true)
+        if true: operation(var inner, fail: true)?
         return ok(unit)
 
     outcome := callback()
-    try expect_false(outcome.is_ok())
-    try expect_equal(outcome.err().code, 42)
+    expect_false(outcome.is_ok())?
+    expect_equal(outcome.err().code, 42)?

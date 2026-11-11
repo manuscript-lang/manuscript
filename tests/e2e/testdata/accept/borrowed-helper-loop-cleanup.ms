@@ -10,7 +10,7 @@ type Door:
 
 impl Closeable for Door:
 	var fn close() Unit!:
-		try append_file(self.log, "{self.id},").wait()
+		append_file(self.log, "{self.id},").wait()?
 
 fn first[T](rows: List[List[T]]) List[T]:
 	return rows.get(0)
@@ -23,11 +23,11 @@ fn break_borrowed(log: String) Unit!:
 	rows := [[Door(1, log.clone()), Door(2, log.clone())]]
 
 	for door in first(rows):
-		door.id | try expect_equal(1)
+		door.id | expect_equal(1)?
 		break
 
-	logged(log.clone()) | try expect_equal("")
-	rows.get(0).get(1).id | try expect_equal(2)
+	logged(log.clone()) | expect_equal("")?
+	rows.get(0).get(1).id | expect_equal(2)?
 
 fn return_borrowed(rows: List[List[Door]]) Int:
 	for door in first(rows):
@@ -36,44 +36,44 @@ fn return_borrowed(rows: List[List[Door]]) Int:
 
 fn use_after_return(log: String) Unit!:
 	rows := [[Door(1, log.clone()), Door(2, log.clone())]]
-	return_borrowed(rows) | try expect_equal(1)
-	logged(log.clone()) | try expect_equal("")
-	rows.get(0).get(1).id | try expect_equal(2)
+	return_borrowed(rows) | expect_equal(1)?
+	logged(log.clone()) | expect_equal("")?
+	rows.get(0).get(1).id | expect_equal(2)?
 
 test "break from a borrowed helper loop leaves resources with their owner":
-	tmp := temporary("ms-borrow-loop-") | try expect_ok
+	tmp := temporary("ms-borrow-loop-") | expect_ok?
 	log := "{tmp.path()}/log"
-	try break_borrowed(log.clone())
-	logged(log.clone()) | try expect_equal("2,1,")
+	break_borrowed(log.clone())?
+	logged(log.clone()) | expect_equal("2,1,")?
 
 test "return from a borrowed helper loop leaves resources with their owner":
-	tmp := temporary("ms-borrow-loop-") | try expect_ok
+	tmp := temporary("ms-borrow-loop-") | expect_ok?
 	log := "{tmp.path()}/log"
-	try use_after_return(log.clone())
-	logged(log.clone()) | try expect_equal("2,1,")
+	use_after_return(log.clone())?
+	logged(log.clone()) | expect_equal("2,1,")?
 
 test "a helper called with a temporary owner keeps its result alive":
 	var total = 0
 	for number in first([[1, 2], [3, 4]]):
 		total += number
-	total | try expect_equal(3)
+	total | expect_equal(3)?
 
 fn fail() Unit!:
 	return error(Error("stop"))
 
 fn try_borrowed(rows: List[List[Door]]) Unit!:
 	for door in first(rows):
-		door.id | try expect_equal(1)
-		try fail()
+		door.id | expect_equal(1)?
+		fail()?
 
 fn use_after_try(log: String) Unit!:
 	rows := [[Door(1, log.clone()), Door(2, log.clone())]]
-	try_borrowed(rows).is_error() | try expect_equal(true)
-	logged(log.clone()) | try expect_equal("")
-	rows.get(0).get(1).id | try expect_equal(2)
+	try_borrowed(rows).is_error() | expect_equal(true)?
+	logged(log.clone()) | expect_equal("")?
+	rows.get(0).get(1).id | expect_equal(2)?
 
 test "try out of a borrowed helper loop leaves resources with their owner":
-	tmp := temporary("ms-borrow-loop-") | try expect_ok
+	tmp := temporary("ms-borrow-loop-") | expect_ok?
 	log := "{tmp.path()}/log"
-	try use_after_try(log.clone())
-	logged(log.clone()) | try expect_equal("2,1,")
+	use_after_try(log.clone())?
+	logged(log.clone()) | expect_equal("2,1,")?

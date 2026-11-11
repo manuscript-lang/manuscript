@@ -484,7 +484,7 @@ impl Source[TerminalEvent] for TerminalEvents:
 				self.size = current.clone()
 
 			waiting := self.decoder.partial()
-			ready := try msstd_terminal_raw_terminal_read(self.handle.native, waiting)
+			ready := msstd_terminal_raw_terminal_read(self.handle.native, waiting)?
 
 			if ready.is_some():
 				for event in self.decoder.decode(msstd_terminal_input_text()):
@@ -541,7 +541,7 @@ impl RawTerminal:
 
 	// Returns the current terminal size, or `EBADF` after close.
 	fn size() TerminalSize!:
-		try msstd_terminal_raw_terminal_size_status(self.handle.native)
+		msstd_terminal_raw_terminal_size_status(self.handle.native)?
 		return ok(
 			TerminalSize(
 				columns: msstd_terminal_raw_terminal_size_columns(
@@ -635,7 +635,7 @@ export fn terminal_capabilities() TerminalCapabilities:
 // Returns the terminal size, or `ENOTTY` when output is redirected.
 // ms: effect std.console.read
 export fn terminal_size() TerminalSize!:
-	try msstd_terminal_size_status()
+	msstd_terminal_size_status()?
 	return ok(
 		TerminalSize(
 			columns: msstd_terminal_size_columns(),
@@ -648,7 +648,7 @@ export fn terminal_size() TerminalSize!:
 // ms: effect std.console.read
 // ms: effect std.console.write
 export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:
-	native := try msstd_terminal_raw_mode()
+	native := msstd_terminal_raw_mode()?
 	leave := if alternate_screen: "{esc}[?1049l" else: ""
 	enter := if alternate_screen: "{esc}[?1049h" else: ""
 
@@ -658,8 +658,5 @@ export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:
 		native,
 		"{esc}[?25h{esc}[<u{esc}[>4;0m{esc}[?2004l{leave}",
 	)
-	try msstd_terminal_raw_terminal_write(
-		native,
-		"{enter}{esc}[?2004h{esc}[>4;2m{esc}[>1u",
-	)
+	msstd_terminal_raw_terminal_write(native, "{enter}{esc}[?2004h{esc}[>4;2m{esc}[>1u")?
 	return ok(RawTerminal(handle: RawHandle(native)))

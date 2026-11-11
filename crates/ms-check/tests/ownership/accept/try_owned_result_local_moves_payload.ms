@@ -6,7 +6,7 @@ fn make() Big?!:
 
 fn collect(var out: List[Big]) Unit!:
     r := make()
-    if found := try r: out.append(found)
+    if found := r?: out.append(found)
 
 fn forward(var out: List[Big]) Unit:
     r := make()

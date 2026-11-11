@@ -8,7 +8,7 @@ bench "ordering.min_method":
 			total += ((i * 7919) % 10007).min(5000)
 		return keep(total)
 
-	try measure(1000000, work)
+	measure(1000000, work)?
 
 bench "ordering.min_if":
 	fn work() Result[Unit, Error]:
@@ -24,7 +24,7 @@ bench "ordering.min_if":
 
 		return keep(total)
 
-	try measure(1000000, work)
+	measure(1000000, work)?
 
 bench "ordering.clamp_method":
 	fn work() Result[Unit, Error]:
@@ -33,7 +33,7 @@ bench "ordering.clamp_method":
 			total += ((i * 7919) % 10007).clamp(2000, 8000)
 		return keep(total)
 
-	try measure(1000000, work)
+	measure(1000000, work)?
 
 bench "ordering.clamp_if":
 	fn work() Result[Unit, Error]:
@@ -51,4 +51,4 @@ bench "ordering.clamp_if":
 
 		return keep(total)
 
-	try measure(1000000, work)
+	measure(1000000, work)?

@@ -43,4 +43,4 @@ test "consecutive promise faults in an interface read free each scope-closed wra
 		p := promise(fn: run_wrapped(action))
 		if not p.wait().is_ok(): failed += 1
 
-	try expect_equal(failed, 3)
+	expect_equal(failed, 3)?

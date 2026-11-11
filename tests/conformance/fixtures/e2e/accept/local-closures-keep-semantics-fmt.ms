@@ -38,7 +38,7 @@ fn parse(text: String) Int!Error:
 
         return Result[Int, Error].ok(number)
 
-    checked := try guard(number: text.length())
+    checked := guard(number: text.length())?
     return Result[Int, Error].ok(checked + 1)
 
 fn labels(prefix: String) String:
@@ -59,10 +59,10 @@ fn nested(n: Int) Int:
     return outer(y: n)
 
 test "local closures":
-    try expect_true((bump(factor: 3) == 105))
-    try expect_true((lookup(limit: 3) == 0 + 2 + 4 + 100 + 100))
-    try expect_true((parse(text: "abc") == Result[Int, Error].ok(4)))
-    try expect_true((labels(prefix: ">") == ">a-b"))
-    try expect_true((reordered() == 5))
-    try expect_true((passed().length() == 3 and passed().get(index: 2) == 6))
-    try expect_true((nested(n: 4) == 10))
+    expect_true((bump(factor: 3) == 105))?
+    expect_true((lookup(limit: 3) == 0 + 2 + 4 + 100 + 100))?
+    expect_true((parse(text: "abc") == Result[Int, Error].ok(4)))?
+    expect_true((labels(prefix: ">") == ">a-b"))?
+    expect_true((reordered() == 5))?
+    expect_true((passed().length() == 3 and passed().get(index: 2) == 6))?
+    expect_true((nested(n: 4) == 10))?

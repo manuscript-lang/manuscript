@@ -18,8 +18,8 @@ fn square(n: Int) Int:
 test "run work at once and collect it":
     first := promise(fn: ok(square(3)))
     second := promise(fn: ok(square(4)))
-    results := try wait_all([first, second])
-    try expect_equal(results, [9, 16])
+    results := wait_all([first, second])?
+    expect_equal(results, [9, 16])?
 ```
 
 The test passes with the results in input order: `[9, 16]`. The two operations may finish in either order.

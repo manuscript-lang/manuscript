@@ -18,19 +18,19 @@ type Plain:
 
 test "constructors":
     a := Options(count: 5)
-    try expect_true(
+    expect_true(
         (a.total == 6 and a.label == "x" and a.scale == 1.5 and a.scaled == 12)
-    )
+    )?
 
     b := Options(count: 5, total: 0)
-    try expect_true((b.total == 0 and b.scaled == 0))
+    expect_true((b.total == 0 and b.scaled == 0))?
 
     c := Options(count: 1, total: 2, label: "y", scale: 2.0, scaled: 9)
-    try expect_true((c.label == "y" and c.scaled == 9 and c.scale == 2.0))
+    expect_true((c.label == "y" and c.scaled == 9 and c.scale == 2.0))?
 
     d := Options(label: "z", count: 4)
-    try expect_true((d.label == "z" and d.total == 5))
+    expect_true((d.label == "z" and d.total == 5))?
 
     e := Plain()
-    try expect_true((e.name == "p" and e.size == 3))
-    try expect_true((Plain(size: 9).size == 9 and Plain(size: 9).name == "p"))
+    expect_true((e.name == "p" and e.size == 3))?
+    expect_true((Plain(size: 9).size == 9 and Plain(size: 9).name == "p"))?

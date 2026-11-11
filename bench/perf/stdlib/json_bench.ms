@@ -42,7 +42,7 @@ bench "json.parse":
 		if parse(doc).is_ok(): return keep(1)
 		return keep(0)
 
-	try measure(5000, work)
+	measure(5000, work)?
 
 bench "json.roundtrip":
 	doc := json_doc(5000)
@@ -51,7 +51,7 @@ bench "json.roundtrip":
 		if v := parse(doc): return keep(encoded_length(v))
 		return keep(0)
 
-	try measure(5000, work)
+	measure(5000, work)?
 
 bench "json.navigate":
 	doc := json_doc(5000)
@@ -63,4 +63,4 @@ bench "json.navigate":
 				total += row_weight(tree, i % 5000)
 			return keep(total)
 
-		try measure(100000, work)
+		measure(100000, work)?

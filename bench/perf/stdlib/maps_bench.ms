@@ -19,7 +19,7 @@ bench "map.int_put_get":
 			n += m.get_or(i, 0)
 		return keep(n)
 
-	try measure(200000, work)
+	measure(200000, work)?
 
 bench "map.record_key_get":
 	fn work() Result[Unit, Error]:
@@ -32,7 +32,7 @@ bench "map.record_key_get":
 			n += m.get_or(Cell(x: i, y: i * 2), 0)
 		return keep(n)
 
-	try measure(200000, work)
+	measure(200000, work)?
 
 bench "map.string_put_get":
 	fn work() Result[Unit, Error]:
@@ -46,7 +46,7 @@ bench "map.string_put_get":
 			n += m.get_or(k, 0)
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "map.get_let":
 	fn work() Result[Unit, Error]:
@@ -64,7 +64,7 @@ bench "map.get_let":
 
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "map.get_if_let":
 	fn work() Result[Unit, Error]:
@@ -79,7 +79,7 @@ bench "map.get_if_let":
 				n += v.length()
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "map.get_chain":
 	fn work() Result[Unit, Error]:
@@ -93,7 +93,7 @@ bench "map.get_chain":
 			n += m.get_or(k, "").length()
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "map.get_or":
 	fn work() Result[Unit, Error]:
@@ -107,7 +107,7 @@ bench "map.get_or":
 			n += m.get_or(key: k, fallback: "").length()
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "map.iterate_entries":
 	fn work() Result[Unit, Error]:
@@ -120,7 +120,7 @@ bench "map.iterate_entries":
 			n += e.value
 		return keep(n)
 
-	try measure(100000, work)
+	measure(100000, work)?
 
 bench "set.add_contains":
 	fn work() Result[Unit, Error]:
@@ -133,4 +133,4 @@ bench "set.add_contains":
 			if s.contains(i): n += 1
 		return keep(n)
 
-	try measure(200000, work)
+	measure(200000, work)?

@@ -2,7 +2,7 @@
 
 # Errors are plain values with a fixed shape
 
-Decision (2026-11-01): the owner replaced per-domain error types, narrowing and the `Error` interface with one prelude record, `Error(message, kind: String? = none, details: Map[String, String] = {})`, built like any record (Go's `errors.New`). Callers branch on `kind` and read `details`; they import no domain type. `T!` is `Result[T, Error]`. `try` needs the identical error type, so a custom `E` converts by an ordinary function or `map_error`. No cause chain yet; add one when a stdlib site needs it.
+Decision (2026-11-01): the owner replaced per-domain error types, narrowing and the `Error` interface with one prelude record, `Error(message, kind: String? = none, details: Map[String, String] = {})`, built like any record (Go's `errors.New`). Callers branch on `kind` and read `details`; they import no domain type. `T!` is `Result[T, Error]`. `?` needs the identical error type, so a custom `E` converts by an ordinary function or `map_error`. No cause chain yet; add one when a stdlib site needs it.
 
 Apply when: adding a fallible stdlib API, a native adapter, or an error example.
 Evidence: [Error](../../stdlib/core.ms), [results guide](../../documentation/core-language/errors/results.md), [library errors](../../tests/e2e/testdata/accept/library-errors.ms), [proposal](../../proposals/error-values.md).

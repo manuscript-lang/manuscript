@@ -1,1 +1,1 @@
-error parse 2:8:22 "expected an expression, found ':'; 'try' is a prefix on a call, not a block: write 'try f(x)' to unwrap a Result or return its error, and 'if let' to handle failure locally"
+error parse 2:5:19 "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step"

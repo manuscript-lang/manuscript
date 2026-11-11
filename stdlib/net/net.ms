@@ -134,7 +134,7 @@ export type Connection:
 impl Closeable for Connection:
 	// Closes both streams, and with them the socket.
 	var fn close() Unit!:
-		try self.input.close()
+		self.input.close()?
 		return self.output.close()
 
 // Wraps a native socket into a `Connection`.
@@ -171,7 +171,7 @@ impl Source[Datagram] for DatagramSource:
 	// Waits for one datagram, at most 65535 bytes; a larger one is an error of kind
 	// `EOVERFLOW` and is discarded.
 	var fn next() Datagram?!:
-		return ok(try msstd_net_datagram_receive(self.native, none, none))
+		return ok(msstd_net_datagram_receive(self.native, none, none)?)
 
 	var fn close() Unit!:
 		msstd_net_datagram_close_if_last(self.native)
@@ -210,7 +210,7 @@ export type DatagramSocket:
 impl Closeable for DatagramSocket:
 	// Closes both streams, and with them the socket.
 	var fn close() Unit!:
-		try self.input.close()
+		self.input.close()?
 		return self.output.close()
 
 fn datagram_socket(native: NativeDatagramSocket) DatagramSocket:
@@ -256,7 +256,7 @@ impl Listener:
 // The work of `accept`: a returned closure owns its own handle on the listener and the
 // time it waits.
 fn accept_job(native: NativeListener, timeout: Duration?) fn() Connection!:
-	return fn: ok(connection(try msstd_net_listener_accept(native, timeout)))
+	return fn: ok(connection(msstd_net_listener_accept(native, timeout)?))
 
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork
@@ -274,10 +274,7 @@ impl Network:
 	fn bind_datagram(address: String) DatagramSocket!:
 		return ok(
 			datagram_socket(
-				try msstd_net_network_bind_datagram(
-					self.native,
-					address,
-				)
+				msstd_net_network_bind_datagram(self.native, address)?
 			)
 		)
 
@@ -305,24 +302,16 @@ impl Network:
 				return error(Error("network: invalid input", kind: "EINVAL"))
 			return ok(
 				connection(
-					try msstd_net_network_connect_tls_config(
+					msstd_net_network_connect_tls_config(
 						self.native,
 						address,
 						options,
 						timeout,
-					)
+					)?
 				)
 			)
 
-		return ok(
-			connection(
-				try msstd_net_network_connect(
-					self.native,
-					address,
-					timeout,
-				)
-			)
-		)
+		return ok(connection(msstd_net_network_connect(self.native, address, timeout)?))
 
 	// Connects to the Unix domain socket at `path`. Any restricted network returns
 	// EACCES because Unix sockets bypass host and CIDR checks, and an empty path
@@ -330,11 +319,11 @@ impl Network:
 	fn connect_unix(path: String, timeout: Duration? = none) Connection!:
 		return ok(
 			connection(
-				try msstd_net_network_connect_unix(
+				msstd_net_network_connect_unix(
 					self.native,
 					path,
 					timeout,
-				)
+				)?
 			)
 		)
 
@@ -443,13 +432,13 @@ impl Network:
 		)
 		return ok(
 			web_socket_from(
-				try msstd_net_network_web_socket(
+				msstd_net_network_web_socket(
 					self.native,
 					url,
 					options.headers,
 					subprotocols,
 					wire,
-				)
+				)?
 			)
 		)
 
@@ -619,7 +608,7 @@ export fn serve(
 	if cores := options.cores:
 		if cores < 1: return error(Error("network: invalid input", kind: "EINVAL"))
 
-	serving := try msstd_http_serving_new(address, options, handler)
+	serving := msstd_http_serving_new(address, options, handler)?
 	bound := msstd_http_serving_address(serving)
 	listening := ServingHandle(serving: serving, listener: true)
 	if cores := options.cores:
@@ -708,7 +697,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
 // Runs one worker on the thread the runtime placed this promise on: it adopts each
 // connection it is dealt, and the poller drives them from there.
 fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
-	engine := WorkerHandle(worker: try msstd_http_serving_worker(handle.serving))
+	engine := WorkerHandle(worker: msstd_http_serving_worker(handle.serving)?)
 
 	while true:
 		item := input.receive()

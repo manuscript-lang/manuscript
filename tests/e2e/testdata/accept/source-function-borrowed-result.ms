@@ -9,7 +9,7 @@ fn apply(f: fn(String) String, s: String) String:
 test "borrowed string callback":
 	s := "hello"
 	out := apply(identity, s)
-	try expect_equal(out, "hello")
+	expect_equal(out, "hello")?
 
 fn generic[T](value: T) T:
 	return value
@@ -22,8 +22,8 @@ test "generic and list-field callback results outlive arguments":
 	first := generic_string("dynamic-{42}")
 	picker := pick
 	second := picker(["dynamic-{17}"])
-	try expect_equal(first, "dynamic-42")
-	try expect_equal(second, "dynamic-17")
+	expect_equal(first, "dynamic-42")?
+	expect_equal(second, "dynamic-17")?
 
 fn default_identity(value: String, _tag: Int = 0) String:
 	return value
@@ -32,8 +32,8 @@ test "defaulted source callback preserves borrowed strings":
 	f := default_identity
 	first := f("default-{1}")
 	second := f("explicit-{2}", 3)
-	try expect_equal(first, "default-1")
-	try expect_equal(second, "explicit-2")
+	expect_equal(first, "default-1")?
+	expect_equal(second, "explicit-2")?
 
 fn list_identity(items: List[String]) List[String]:
 	return items
@@ -42,5 +42,5 @@ test "borrowed list callback returns independent data":
 	f := list_identity
 	first := f(["a-{1}", "b-{2}"])
 	second := f(["c-{3}"])
-	try expect_equal(first, ["a-1", "b-2"])
-	try expect_equal(second, ["c-3"])
+	expect_equal(first, ["a-1", "b-2"])?
+	expect_equal(second, ["c-3"])?

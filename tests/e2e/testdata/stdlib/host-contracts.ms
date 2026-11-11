@@ -11,39 +11,39 @@ test "closed normalization forms reject spelling changes with their domain error
 		Error("string: invalid input", kind: "EINVAL")
 	)
 	for form in ["nfc", "NFC ", ""]:
-		try expect_equal("text".normalize(form), normalization_error)
+		expect_equal("text".normalize(form), normalization_error)?
 	for form in ["NFC", "NFD", "NFKC", "NFKD"]:
-		try expect_equal((try "text".normalize(form)), "text")
+		expect_equal(("text".normalize(form)?), "text")?
 	for format in [
 		CompressionFormat.Gzip,
 		CompressionFormat.Zlib,
 		CompressionFormat.Deflate,
 	]:
 		for level in [0, 9]:
-			try expect_equal(
+			expect_equal(
 				(
-					try compress(
+					compress(
 						data,
 						format,
 						CompressOptions(level: level),
-					) | try decompress(format)
+					)? | decompress(format)?
 				),
 				data,
-			)
+			)?
 
 	level_error: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
 	for level in [-1, 10]:
-		try expect_equal(
+		expect_equal(
 			compress(
 				data,
 				CompressionFormat.Gzip,
 				CompressOptions(level: level),
 			),
 			level_error,
-		)
+		)?
 
 test "every open mode with and without exclusive creation opens":
-	temporary := try temporary("manuscript-open-modes-")
+	temporary := temporary("manuscript-open-modes-")?
 	modes := [
 		OpenMode.Read,
 		OpenMode.ReadWrite,
@@ -57,67 +57,62 @@ test "every open mode with and without exclusive creation opens":
 		mode := modes[index]
 		path := "{temporary.path()}/{index}"
 		if index < 2:
-			try write_file(path, "", replace: false).wait()
+			write_file(path, "", replace: false).wait()?
 
-		handle := try open(path, mode, OpenOptions(permissions: 384))
-		_fileinfo := try handle.stat()
+		handle := open(path, mode, OpenOptions(permissions: 384))?
+		_fileinfo := handle.stat()?
 
 	// Exclusive creation fails on an existing file and succeeds on a new one.
 	existing := "{temporary.path()}/2"
-	refused := try expect_error(
+	refused := expect_error(
 		open(existing, OpenMode.Write, OpenOptions(exclusive: true))
-	)
-	try expect_equal(refused.kind, "EEXIST")
+	)?
+	expect_equal(refused.kind, "EEXIST")?
 
-	fresh := try open(
+	fresh := open(
 		"{temporary.path()}/fresh",
 		OpenMode.AppendRead,
 		OpenOptions(exclusive: true),
-	)
-	_fresh_info := try fresh.stat()
+	)?
+	_fresh_info := fresh.stat()?
 
 test "full byte counts positions EOF and stream aliases retain their contracts":
-	temporary := try temporary("manuscript-write-contract-")
+	temporary := temporary("manuscript-write-contract-")?
 	path := "{temporary.path()}/data"
-	data := (try "é".repeat(40000)).to_bytes()
-	var handle = try open(path, OpenMode.WriteRead, OpenOptions(permissions: 384))
-	try handle.write(data)
-	try expect_equal((try handle.stat()).size, 80000)
-	try expect_false((try handle.read()).is_some())
-	try expect_equal((try handle.read_at(80000)).length(), 0)
-	try expect_equal((try handle.read_at(0, 80000)).length(), 65536)
-	try expect_equal((try handle.read_file()).length(), 0)
-	try expect_equal((try handle.seek(0, Seek.Start)), 0)
-	try expect_equal((try handle.read()).get().length(), 65536)
-	try expect_equal((try handle.read_file()).length(), 14464)
+	data := ("é".repeat(40000)?).to_bytes()
+	var handle = open(path, OpenMode.WriteRead, OpenOptions(permissions: 384))?
+	handle.write(data)?
+	expect_equal((handle.stat()?).size, 80000)?
+	expect_false((handle.read()?).is_some())?
+	expect_equal((handle.read_at(80000)?).length(), 0)?
+	expect_equal((handle.read_at(0, 80000)?).length(), 65536)?
+	expect_equal((handle.read_file()?).length(), 0)?
+	expect_equal((handle.seek(0, Seek.Start)?), 0)?
+	expect_equal((handle.read()?).get().length(), 65536)?
+	expect_equal((handle.read_file()?).length(), 14464)?
 
-	_count := try handle.seek(0, Seek.Start)
-	try handle.write("XY")
-	try expect_equal((try handle.read_at(0, 2)), "XY".to_bytes())
-	try expect_equal((try handle.stat()).size, 80000)
-	try handle.write_at(4, "ZZ")
-	try expect_equal((try handle.seek(0, Seek.Current)), 2)
+	_count := handle.seek(0, Seek.Start)?
+	handle.write("XY")?
+	expect_equal((handle.read_at(0, 2)?), "XY".to_bytes())?
+	expect_equal((handle.stat()?).size, 80000)?
+	handle.write_at(4, "ZZ")?
+	expect_equal((handle.seek(0, Seek.Current)?), 2)?
 
-	var writer = try handle.writer()
-	try writer.write("AB".to_bytes())
-	try writer.flush()
-	try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
+	var writer = handle.writer()?
+	writer.write("AB".to_bytes())?
+	writer.flush()?
+	expect_equal((handle.read_at(2, 4)?), "ABZZ".to_bytes())?
 
-	var reader = try handle.reader()
-	try writer.close()
-	try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
-	try handle.close()
+	var reader = handle.reader()?
+	writer.close()?
+	expect_equal((handle.read_at(2, 4)?), "ABZZ".to_bytes())?
+	handle.close()?
 
 	closed_read: Bytes! := error(Error("filesystem: resource is closed", kind: "EBADF"))
-	try expect_equal(handle.read_at(0), closed_read)
-	try reader.close()
+	expect_equal(handle.read_at(0), closed_read)?
+	reader.close()?
 
 	missing := "{temporary.path()}/missing"
-	absent := try expect_error(
-		open(missing, OpenMode.Read, OpenOptions(permissions: 384))
-	)
-	try expect_equal(absent.kind, "ENOENT")
-	try expect_equal(
-		absent.message,
-		"filesystem: file or directory not found: {missing}",
-	)
+	absent := expect_error(open(missing, OpenMode.Read, OpenOptions(permissions: 384)))?
+	expect_equal(absent.kind, "ENOENT")?
+	expect_equal(absent.message, "filesystem: file or directory not found: {missing}")?

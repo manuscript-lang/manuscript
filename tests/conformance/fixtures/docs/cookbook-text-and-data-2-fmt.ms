@@ -11,10 +11,10 @@ type Config:
 
 fn run() Result[Unit, Error]:
     text := arguments().get(0, default: "\{\"name\":\"Sam\"\}")
-    encoded := try parse[Config](text)
-        | try stringify
-    try stdout().write("{encoded}\n")
+    encoded := parse[Config](text)?
+        | stringify?
+    stdout().write("{encoded}\n")?
     return stdout().flush()
 
 fn main() Unit!:
-    try run()
+    run()?

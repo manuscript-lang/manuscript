@@ -9,7 +9,7 @@ test "try inside a loop over a list of promises":
 	var total = 0
 
 	for p in [a, b]:
-		value := try p.wait()
+		value := p.wait()?
 		total += value
 
-	try expect_equal(total, 3)
+	expect_equal(total, 3)?

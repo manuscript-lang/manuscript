@@ -23,7 +23,7 @@ fn look_later(c: Closeable, n: Int) Unit:
 
 fn attempt() Unit!:
     look(Door("direct"))
-    look_later(Door("later"), try fails())
+    look_later(Door("later"), fails()?)
 
 fn main() Unit:
     _ := attempt()

@@ -16,11 +16,11 @@ fn ordinary() Outcome:
     return Outcome.Value(compute(3))
 
 test "non-prelude spellings are ordinary names":
-    try expect_equal(Items(2).count, 2)
+    expect_equal(Items(2).count, 2)?
 
     forward := compute
-    try expect_equal(forward(4), 4)
+    expect_equal(forward(4), 4)?
 
     match ordinary():
         Value(value):
-            try expect_equal(value, 3)
+            expect_equal(value, 3)?

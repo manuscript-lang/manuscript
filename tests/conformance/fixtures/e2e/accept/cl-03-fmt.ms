@@ -19,4 +19,4 @@ fn customer_name(customer: Customer) String:
 
 test "nominal record and nested binding":
     customer := Customer(CustomerId("c1"), "Ada")
-    try expect_equal(customer_name(customer), "c1: Ada")
+    expect_equal(customer_name(customer), "c1: Ada")?

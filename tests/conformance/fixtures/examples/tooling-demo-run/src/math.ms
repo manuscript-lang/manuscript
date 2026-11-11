@@ -16,4 +16,4 @@ export fn compute(iterations: Int) Int:
     return result
 
 test "named arguments":
-    total(first: 10, second: 20, third: 30) | try expect_equal(expected: 60)
+    total(first: 10, second: 20, third: 30) | expect_equal(expected: 60)?

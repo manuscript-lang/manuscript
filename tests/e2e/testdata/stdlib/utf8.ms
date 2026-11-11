@@ -11,7 +11,7 @@ import (
 
 test "UTF8 validity checks the complete buffer without replacement":
 	for data in [Bytes([]), "aé🙂e\u{301}\u{0}".to_bytes(), Bytes([239, 191, 189])]:
-		is_valid(data) | try expect_equal(true)
+		is_valid(data) | expect_equal(true)?
 	for data in [
 		Bytes([97, 255]),
 		Bytes([194]),
@@ -20,11 +20,11 @@ test "UTF8 validity checks the complete buffer without replacement":
 		Bytes([237, 160, 128]),
 		Bytes([244, 144, 128, 128]),
 	]:
-		is_valid(data) | try expect_equal(false)
+		is_valid(data) | expect_equal(false)?
 
 fn expect_scalar(actual: Utf8Scalar!Utf8Error, value: Int, width: Int) Unit!:
-	decoded := actual | try expect_ok
-	decoded.scalar | try expect_equal(value)
+	decoded := actual | expect_ok?
+	decoded.scalar | expect_equal(value)?
 	return decoded.width | expect_equal(width)
 
 test "UTF8 decodes exact scalar boundaries and widths":
@@ -32,32 +32,32 @@ test "UTF8 decodes exact scalar boundaries and widths":
 	widths := [1, 1, 2, 2, 3, 3, 3, 3, 3, 4, 4]
 
 	for index in 0..values.length():
-		bytes := from_scalars([values[index]]) | try expect_ok
-		decode_first(bytes.to_bytes()) | try expect_scalar(values[index], widths[index])
-		decode_last(bytes.to_bytes()) | try expect_scalar(values[index], widths[index])
+		bytes := from_scalars([values[index]]) | expect_ok?
+		decode_first(bytes.to_bytes()) | expect_scalar(values[index], widths[index])?
+		decode_last(bytes.to_bytes()) | expect_scalar(values[index], widths[index])?
 
 test "UTF8 offsets count bytes and leave adjacent malformed bytes alone":
 	data := "aé🙂e\u{301}".to_bytes()
-	decode_first(data, 1) | try expect_scalar(233, 2)
-	decode_first(data, 3) | try expect_scalar(128578, 4)
-	decode_last(data, 3) | try expect_scalar(233, 2)
-	decode_last(data, 7) | try expect_scalar(128578, 4)
-	decode_last(data, none) | try expect_scalar(769, 2)
-	decode_first(Bytes([97, 255])) | try expect_scalar(97, 1)
-	decode_first(Bytes([97, 226, 130])) | try expect_scalar(97, 1)
-	decode_first(Bytes([194, 162, 255])) | try expect_scalar(162, 2)
-	decode_last(Bytes([255, 194, 162])) | try expect_scalar(162, 2)
-	decode_last("🙂é".to_bytes()) | try expect_scalar(233, 2)
-	decode_first(Bytes([239, 191, 189])) | try expect_scalar(65533, 3)
+	decode_first(data, 1) | expect_scalar(233, 2)?
+	decode_first(data, 3) | expect_scalar(128578, 4)?
+	decode_last(data, 3) | expect_scalar(233, 2)?
+	decode_last(data, 7) | expect_scalar(128578, 4)?
+	decode_last(data, none) | expect_scalar(769, 2)?
+	decode_first(Bytes([97, 255])) | expect_scalar(97, 1)?
+	decode_first(Bytes([97, 226, 130])) | expect_scalar(97, 1)?
+	decode_first(Bytes([194, 162, 255])) | expect_scalar(162, 2)?
+	decode_last(Bytes([255, 194, 162])) | expect_scalar(162, 2)?
+	decode_last("🙂é".to_bytes()) | expect_scalar(233, 2)?
+	decode_first(Bytes([239, 191, 189])) | expect_scalar(65533, 3)?
 
 test "UTF8 distinguishes incomplete prefixes from malformed encodings":
 	for data in [Bytes([]), Bytes([194]), Bytes([226, 130]), Bytes([240, 144, 128])]:
 		(
 			decode_first(data)
-			| try expect_error
-			| try expect_equal(Utf8Error.Incomplete)
+			| expect_error?
+			| expect_equal(Utf8Error.Incomplete)?
 		)
-		(decode_last(data) | try expect_error | try expect_equal(Utf8Error.Incomplete))
+		(decode_last(data) | expect_error? | expect_equal(Utf8Error.Incomplete)?)
 
 	for data in [
 		Bytes([128]),
@@ -71,35 +71,35 @@ test "UTF8 distinguishes incomplete prefixes from malformed encodings":
 	]:
 		(
 			decode_first(data)
-			| try expect_error
-			| try expect_equal(Utf8Error.InvalidData)
+			| expect_error?
+			| expect_equal(Utf8Error.InvalidData)?
 		)
-		(decode_last(data) | try expect_error | try expect_equal(Utf8Error.InvalidData))
+		(decode_last(data) | expect_error? | expect_equal(Utf8Error.InvalidData)?)
 
 	(
-		decode_last(
-			Bytes([194, 162, 128])
-		) | try expect_error | try expect_equal(Utf8Error.InvalidData)
-	)
-	(
-		decode_first("🙂".to_bytes(), 1) | try expect_error | try expect_equal(
+		decode_last(Bytes([194, 162, 128])) | expect_error? | expect_equal(
 			Utf8Error.InvalidData
-		)
+		)?
 	)
 	(
-		decode_last("🙂".to_bytes(), 3) | try expect_error | try expect_equal(
+		decode_first("🙂".to_bytes(), 1) | expect_error? | expect_equal(
+			Utf8Error.InvalidData
+		)?
+	)
+	(
+		decode_last("🙂".to_bytes(), 3) | expect_error? | expect_equal(
 			Utf8Error.Incomplete
-		)
+		)?
 	)
 	(
-		decode_last(
-			Bytes([255, 226, 130])
-		) | try expect_error | try expect_equal(Utf8Error.Incomplete)
+		decode_last(Bytes([255, 226, 130])) | expect_error? | expect_equal(
+			Utf8Error.Incomplete
+		)?
 	)
 	(
 		decode_first(
 			Bytes([240, 128, 128, 128])
-		) | try expect_error | try expect_equal(Utf8Error.InvalidData)
+		) | expect_error? | expect_equal(Utf8Error.InvalidData)?
 	)
 
 test "UTF8 rejects invalid offsets without negative index wrapping":
@@ -111,22 +111,22 @@ test "UTF8 rejects invalid offsets without negative index wrapping":
 		last_fault := fn:
 			_ignored := decode_last(data, offset)
 		(
-			expect_fault(first_fault) | try expect_ok | try expect_contains(
+			expect_fault(first_fault) | expect_ok? | expect_contains(
 				"utf8.decode_first: at"
-			)
+			)?
 		)
 		(
-			expect_fault(last_fault) | try expect_ok | try expect_contains(
+			expect_fault(last_fault) | expect_ok? | expect_contains(
 				"utf8.decode_last: end"
-			)
+			)?
 		)
 
 	(
-		decode_first(data, data.length()) | try expect_error | try expect_equal(
+		decode_first(data, data.length()) | expect_error? | expect_equal(
 			Utf8Error.Incomplete
-		)
+		)?
 	)
-	(decode_last(data, 0) | try expect_error | try expect_equal(Utf8Error.Incomplete))
+	(decode_last(data, 0) | expect_error? | expect_equal(Utf8Error.Incomplete)?)
 
 test "UTF8 supports forward and reverse walks without normalization":
 	data := "é🙂e\u{301}\u{0}".to_bytes()
@@ -134,28 +134,28 @@ test "UTF8 supports forward and reverse walks without normalization":
 	var position = 0
 
 	while position < data.length():
-		decoded := decode_first(data, position) | try expect_ok
+		decoded := decode_first(data, position) | expect_ok?
 		forward.append(decoded.scalar)
 		position += decoded.width
 
-	forward | try expect_equal([233, 128578, 101, 769, 0])
+	forward | expect_equal([233, 128578, 101, 769, 0])?
 
 	var backward = List[Int]()
 
 	while position > 0:
-		decoded := decode_last(data, position) | try expect_ok
+		decoded := decode_last(data, position) | expect_ok?
 		backward.append(decoded.scalar)
 		position -= decoded.width
 
-	backward | try expect_equal([0, 769, 101, 128578, 233])
+	backward | expect_equal([0, 769, 101, 128578, 233])?
 
 	first := decode_first
 	last := decode_last
-	first(data, 0) | try expect_scalar(233, 2)
-	last(data, none) | try expect_scalar(0, 1)
+	first(data, 0) | expect_scalar(233, 2)?
+	last(data, none) | expect_scalar(0, 1)?
 
 test "UTF8 selects a bounded prefix or suffix in large inputs":
-	fill := "x".repeat(262144) | try expect_ok
+	fill := "x".repeat(262144) | expect_ok?
 	data := "🙂".concat(fill).concat("é").to_bytes()
-	decode_first(data) | try expect_scalar(128578, 4)
-	decode_last(data) | try expect_scalar(233, 2)
+	decode_first(data) | expect_scalar(128578, 4)?
+	decode_last(data) | expect_scalar(233, 2)?

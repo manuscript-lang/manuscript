@@ -12,4 +12,4 @@ impl Reader[Int] for Counter:
 	fn read() Int: return self.value
 
 test "a forward generic interface bound dispatches with its argument":
-	try expect_equal(read(Counter(7)), 7)
+	expect_equal(read(Counter(7)), 7)?

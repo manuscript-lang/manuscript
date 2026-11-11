@@ -10,16 +10,16 @@ fn checked(n: Int) Int!Error:
     return ok(n + 1)
 
 fn chain(n: Int) Int!Error:
-    v := try checked(n)
+    v := checked(n)?
     return ok(v * 2)
 
 fn deeper(n: Int) Int!Error:
-    a := try chain(n)
-    b := try chain(a)
+    a := chain(n)?
+    b := chain(a)?
     return ok(a + b)
 
 fn expression_try(n: Int) Int!Error:
-    x := (try checked(n)) + 100
+    x := (checked(n)?) + 100
     return ok(x)
 
 fn passthrough(n: Int) Int!Error:
@@ -69,74 +69,74 @@ fn sum_all(count: Int) Int!Error:
     var total = 0
 
     for i in 0..count:
-        v := try checked(i)
+        v := checked(i)?
         total += v
 
     return ok(total)
 
 test "result matching":
     v := chain(3).get()
-    try expect_equal(v, 8)
+    expect_equal(v, 8)?
 
     failure := chain(-1)
-    try expect_false(not failure.is_error())
-    try expect_equal(failure.err().message, "negative")
+    expect_false(not failure.is_error())?
+    expect_equal(failure.err().message, "negative")?
 
-test "try chains":
+test "chains?":
     v := deeper(1).get()
     if not (v == 4 + 10): return fail("deeper {v}")
 
     deeper_failure := deeper(-5)
-    try expect_false(not deeper_failure.is_error())
-    try expect_equal(deeper_failure.err().message, "negative")
+    expect_false(not deeper_failure.is_error())?
+    expect_equal(deeper_failure.err().message, "negative")?
 
     x := expression_try(4).get()
-    try expect_equal(x, 105)
-    try expect_false(not expression_try(-4).is_error())
+    expect_equal(x, 105)?
+    expect_false(not expression_try(-4).is_error())?
 
     total := sum_all(5).get()
     if not (total == 15): return fail("sum {total}")
 
 test "boxed consumers":
-    try expect_equal("{checked(2)}", "{passthrough(2)}")
-    try expect_equal(checked(2), through_local(2))
-    try expect_equal(checked(-2), passthrough(-2))
+    expect_equal("{checked(2)}", "{passthrough(2)}")?
+    expect_equal(checked(2), through_local(2))?
+    expect_equal(checked(-2), passthrough(-2))?
 
     f := checked
     v := f(6).get()
-    try expect_equal(v, 7)
-    try expect_equal(matched_value(3), 4)
-    try expect_equal(matched_value(-3), -1)
+    expect_equal(v, 7)?
+    expect_equal(matched_value(3), 4)?
+    expect_equal(matched_value(-3), -1)?
 
 test "optional and payload kinds":
     if h := halve(8):
-        try expect_equal(h, 4)
+        expect_equal(h, 4)?
     else:
         return fail("halve none")
 
-    try expect_false(halve(7).is_some())
+    expect_false(halve(7).is_some())?
 
     w := word(3).get()
-    try expect_equal(w, "w3")
+    expect_equal(w, "w3")?
 
     r := ratio(1).get()
-    try expect_equal(r, 1.5)
+    expect_equal(r, 1.5)?
     nothing(true).get()
 
     if inner := nested(4):
-        try expect_equal(inner, 2)
+        expect_equal(inner, 2)?
     else:
         return fail("nested none")
 
     odd := closure_return(5)
-    try expect_false(not odd.is_error())
-    try expect_equal(odd.err().message, "odd")
+    expect_false(not odd.is_error())?
+    expect_equal(odd.err().message, "odd")?
 
     even := closure_return(6).get()
-    try expect_equal(even, 3)
+    expect_equal(even, 3)?
 
 test "list at unwrap":
     items := [10, 20, 30]
-    try expect_equal(items.get(0), 10)
-    try expect_equal(items.get(-1), 30)
-    try expect_equal(items.get(1) + items.get(2), 50)
+    expect_equal(items.get(0), 10)?
+    expect_equal(items.get(-1), 30)?
+    expect_equal(items.get(1) + items.get(2), 50)?

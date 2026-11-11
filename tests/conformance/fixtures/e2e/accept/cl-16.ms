@@ -15,8 +15,8 @@ test "data constructor context":
     failure: Int!Error := error(Error("unavailable"))
     _absent: Int? := none
     _nested: List[List[Int]] := [[], [1]]
-    try expect_equal(outcome_value(success), 3)
-    try expect_equal(outcome_value(failure), -1)
+    expect_equal(outcome_value(success), 3)?
+    expect_equal(outcome_value(failure), -1)?
 
 type Box[T]:
     value: T
@@ -31,5 +31,5 @@ test "nested constructor arguments receive inferred context":
     request := Request(Box(none))
     provided: Int? := 3
     selected := select(Box(none), Box(provided))
-    try expect_false(not selected.value.is_none())
-    try expect_false(not request.box.value.is_none())
+    expect_false(not selected.value.is_none())?
+    expect_false(not request.box.value.is_none())?

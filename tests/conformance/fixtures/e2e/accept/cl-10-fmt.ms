@@ -20,4 +20,4 @@ test "explicit contract conversion":
     offset := Offset(1)
     operation: Increment := offset
     same_view: Increment := operation
-    try expect_equal(use_increment(same_view), 5)
+    expect_equal(use_increment(same_view), 5)?

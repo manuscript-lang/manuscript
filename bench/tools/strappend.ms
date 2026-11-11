@@ -12,24 +12,24 @@ import (
 )
 
 fn run(work: String, n: Int) Result[String, Error]:
-	try copy(
+	copy(
 		"bench/perf/strappend/ms",
 		"{work}/ms",
 		CopyOptions(recursive: true, replace: true),
-	)
-	try build_ms("{work}/ms", "{work}/ms/bench{exe()}")
+	)?
+	build_ms("{work}/ms", "{work}/ms/bench{exe()}")?
 
 	var flags = List[String]()
 	linker := env("RUSTC_LINKER", "")
 	if linker != "": flags = ["-C", "linker={linker}"]
-	try build_rust("bench/perf/strappend/rust/main.rs", "{work}/rust{exe()}", flags)
+	build_rust("bench/perf/strappend/rust/main.rs", "{work}/rust{exe()}", flags)?
 
 	var raw = List[String]()
 
 	for i in 0..n:
 		for v in ["ms", "rust"]:
 			path := if v == "ms": "{work}/ms/bench{exe()}" else: "{work}/rust{exe()}"
-			for line in (try sample(path, [])).split("\n"):
+			for line in (sample(path, [])?).split("\n"):
 				if line != "": raw.append("{i} {v} {line}")
 
 	return summarize(raw, n)

@@ -16,7 +16,7 @@ impl Closeable for Token:
 	var fn close() Unit!:
 		if not self.closed:
 			self.closed = true
-			try append_file(self.log, "close {self.id}\n").wait()
+			append_file(self.log, "close {self.id}\n").wait()?
 			if self.fail: return error(Error("close failed", kind: "ECLOSE"))
 
 fn token(log: String, id: Int, fail: Bool = false) Token:
@@ -28,11 +28,11 @@ fn events(log: String) String:
 	return ""
 
 fn check(log: String, action: Int) Int!:
-	try append_file(log, "check\n").wait()
+	append_file(log, "check\n").wait()?
 	if action == 1: return error(Error("field failed", kind: "EBODY"))
 
 	if action == 2: panic("field fault")
-	if action == 3: try sleep(milliseconds(60000)).wait()
+	if action == 3: sleep(milliseconds(60000)).wait()?
 	return ok(42)
 
 type Pair:
@@ -41,16 +41,16 @@ type Pair:
 	code: Int
 
 fn direct(log: String, action: Int) Unit!:
-	value := Pair(token(log, 1), token(log, 2), try check(log, action))
-	try append_file(log, "body {value.code}\n").wait()
+	value := Pair(token(log, 1), token(log, 2), check(log, action)?)
+	append_file(log, "body {value.code}\n").wait()?
 
 fn labeled(log: String, action: Int) Unit!:
 	value := Pair(
 		second: token(log, 2),
 		first: token(log, 1),
-		code: try check(log, action),
+		code: check(log, action)?,
 	)
-	try append_file(log, "body {value.code}\n").wait()
+	append_file(log, "body {value.code}\n").wait()?
 
 type Wrapped:
 	first: Token?
@@ -58,8 +58,8 @@ type Wrapped:
 	code: Int
 
 fn wrapped(log: String, action: Int) Unit!:
-	value := Wrapped(token(log, 1), ok(token(log, 2)), try check(log, action))
-	try append_file(log, "body {value.code}\n").wait()
+	value := Wrapped(token(log, 1), ok(token(log, 2)), check(log, action)?)
+	append_file(log, "body {value.code}\n").wait()?
 
 fn default_code(log: String, action: Int) Int:
 	append_file(log, "default\n").wait().get()
@@ -75,7 +75,7 @@ type Defaulted:
 
 fn defaulted(log: String, action: Int) Unit!:
 	value := Defaulted(log.clone(), token(log, 1), action)
-	try append_file(log, "body {value.code}\n").wait()
+	append_file(log, "body {value.code}\n").wait()?
 
 type Nested:
 	first: Pair
@@ -86,15 +86,15 @@ fn nested(log: String, action: Int) Unit!:
 	value := Nested(
 		Pair(token(log, 1), token(log, 2), 0),
 		token(log, 3),
-		try check(log, action),
+		check(log, action)?,
 	)
-	try append_file(log, "body {value.code}\n").wait()
+	append_file(log, "body {value.code}\n").wait()?
 
 fn moved_binding(log: String, action: Int) Unit!:
 	_outer := token(log, 0)
 	first := token(log, 1)
-	value := Pair(first, token(log, 2), try check(log, action))
-	try append_file(log, "body {value.code}\n").wait()
+	value := Pair(first, token(log, 2), check(log, action)?)
+	append_file(log, "body {value.code}\n").wait()?
 
 fn inspect(first: Token, value: Pair) Int:
 	return first.id + value.code
@@ -103,130 +103,130 @@ fn outer_temporary(log: String) Int!:
 	return ok(
 		inspect(
 			token(log, 0),
-			Pair(token(log, 1), token(log, 2), try check(log, 1)),
+			Pair(token(log, 1), token(log, 2), check(log, 1)?),
 		)
 	)
 
 fn failing_cleanup(log: String) Unit!:
-	_value := Pair(token(log, 1), token(log, 2, fail: true), try check(log, 1))
+	_value := Pair(token(log, 1), token(log, 2, fail: true), check(log, 1)?)
 
 fn wait_for_check(log: String) Unit!:
 	for attempt in 0..1000:
 		if events(log).contains("check\n"): return ok(unit)
 
-		try sleep(milliseconds(1)).wait()
+		sleep(milliseconds(1)).wait()?
 
 	return error(Error("constructor handshake timed out", kind: "ETIMEDOUT"))
 
 test "constructed holders own their resource fields on success":
-	dir := temporary("constructor-success-") | try expect_ok
+	dir := temporary("constructor-success-") | expect_ok?
 	log := "{dir.path()}/events"
-	try direct(log, 0)
-	try expect_equal(
+	direct(log, 0)?
+	expect_equal(
 		events(log),
 		"acquire 1\nacquire 2\ncheck\nbody 42\nclose 2\nclose 1\n",
-	)
+	)?
 
 test "try closes earlier fields before returning its original error":
-	dir := temporary("constructor-try-") | try expect_ok
+	dir := temporary("constructor-try-") | expect_ok?
 	log := "{dir.path()}/events"
-	cause := direct(log, 1) | try expect_error
-	try expect_equal(cause.kind, "EBODY")
-	try expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")
+	cause := direct(log, 1) | expect_error?
+	expect_equal(cause.kind, "EBODY")?
+	expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")?
 
 test "intact Optional and Result constructor fields close on try failure":
-	dir := temporary("constructor-wrapper-") | try expect_ok
+	dir := temporary("constructor-wrapper-") | expect_ok?
 	log := "{dir.path()}/events"
-	cause := wrapped(log, 1) | try expect_error
-	try expect_equal(cause.kind, "EBODY")
-	try expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")
+	cause := wrapped(log, 1) | expect_error?
+	expect_equal(cause.kind, "EBODY")?
+	expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")?
 
 test "partial construction closes reverse written acquisition order":
-	dir := temporary("constructor-label-failure-") | try expect_ok
+	dir := temporary("constructor-label-failure-") | expect_ok?
 	log := "{dir.path()}/events"
-	_ := labeled(log, 1) | try expect_error
-	try expect_equal(events(log), "acquire 2\nacquire 1\ncheck\nclose 1\nclose 2\n")
+	_ := labeled(log, 1) | expect_error?
+	expect_equal(events(log), "acquire 2\nacquire 1\ncheck\nclose 1\nclose 2\n")?
 
 test "complete construction closes reverse declaration order":
-	dir := temporary("constructor-label-success-") | try expect_ok
+	dir := temporary("constructor-label-success-") | expect_ok?
 	log := "{dir.path()}/events"
-	try labeled(log, 0)
-	try expect_equal(
+	labeled(log, 0)?
+	expect_equal(
 		events(log),
 		"acquire 2\nacquire 1\ncheck\nbody 42\nclose 2\nclose 1\n",
-	)
+	)?
 
 test "a later field fault closes earlier acquired fields repeatedly":
-	dir := temporary("constructor-fault-") | try expect_ok
+	dir := temporary("constructor-fault-") | expect_ok?
 
 	for attempt in 0..3:
 		log := "{dir.path()}/{attempt}"
 		work := promise(fn: direct(log, 2))
-		cause := work.wait() | try expect_error
-		try expect_equal(cause.kind, "EIO")
-		try expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")
+		cause := work.wait() | expect_error?
+		expect_equal(cause.kind, "EIO")?
+		expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")?
 
 test "resource field defaults transfer to the completed holder":
-	dir := temporary("constructor-default-success-") | try expect_ok
+	dir := temporary("constructor-default-success-") | expect_ok?
 	log := "{dir.path()}/events"
-	try defaulted(log, 0)
-	try expect_equal(
+	defaulted(log, 0)?
+	expect_equal(
 		events(log),
 		"acquire 1\nacquire 2\ndefault\nbody 42\nclose 2\nclose 1\n",
-	)
+	)?
 
 test "a faulting default closes both provided and default resources":
-	dir := temporary("constructor-default-fault-") | try expect_ok
+	dir := temporary("constructor-default-fault-") | expect_ok?
 	log := "{dir.path()}/events"
 	work := promise(fn: defaulted(log, 2))
-	_ := work.wait() | try expect_error
-	try expect_equal(events(log), "acquire 1\nacquire 2\ndefault\nclose 2\nclose 1\n")
+	_ := work.wait() | expect_error?
+	expect_equal(events(log), "acquire 1\nacquire 2\ndefault\nclose 2\nclose 1\n")?
 
 test "nested acquired holders close depth first on an error":
-	dir := temporary("constructor-nested-") | try expect_ok
+	dir := temporary("constructor-nested-") | expect_ok?
 	log := "{dir.path()}/events"
-	_ := nested(log, 1) | try expect_error
-	try expect_equal(
+	_ := nested(log, 1) | expect_error?
+	expect_equal(
 		events(log),
 		"acquire 1\nacquire 2\nacquire 3\ncheck\nclose 3\nclose 2\nclose 1\n",
-	)
+	)?
 
 test "moving a prior binding into a partial holder preserves one owner":
-	dir := temporary("constructor-move-") | try expect_ok
+	dir := temporary("constructor-move-") | expect_ok?
 	log := "{dir.path()}/events"
 	work := promise(fn: moved_binding(log, 2))
-	_ := work.wait() | try expect_error
-	try expect_equal(
+	_ := work.wait() | expect_error?
+	expect_equal(
 		events(log),
 		"acquire 0\nacquire 1\nacquire 2\ncheck\nclose 2\nclose 1\nclose 0\n",
-	)
+	)?
 
 test "pending constructor fields close before an older call temporary":
-	dir := temporary("constructor-outer-temp-") | try expect_ok
+	dir := temporary("constructor-outer-temp-") | expect_ok?
 	log := "{dir.path()}/events"
-	_ := outer_temporary(log) | try expect_error
-	try expect_equal(
+	_ := outer_temporary(log) | expect_error?
+	expect_equal(
 		events(log),
 		"acquire 0\nacquire 1\nacquire 2\ncheck\nclose 2\nclose 1\nclose 0\n",
-	)
+	)?
 
 test "a temporary close failure faults and still closes other fields":
-	dir := temporary("constructor-close-fault-") | try expect_ok
+	dir := temporary("constructor-close-fault-") | expect_ok?
 	log := "{dir.path()}/events"
 	work := promise(fn: failing_cleanup(log))
-	cause := work.wait() | try expect_error
-	try expect_equal(cause.kind, "EIO")
-	try expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")
+	cause := work.wait() | expect_error?
+	expect_equal(cause.kind, "EIO")?
+	expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")?
 
 test "cancelling a later field closes acquired fields once":
-	dir := temporary("constructor-cancel-") | try expect_ok
+	dir := temporary("constructor-cancel-") | expect_ok?
 
 	for attempt in 0..2:
 		log := "{dir.path()}/{attempt}"
 		work := promise(fn: direct(log, 3))
-		try wait_for_check(log)
+		wait_for_check(log)?
 		work.cancel()
 
-		cause := work.wait() | try expect_error
-		try expect_equal(cause.kind, "ECANCELED")
-		try expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")
+		cause := work.wait() | expect_error?
+		expect_equal(cause.kind, "ECANCELED")?
+		expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")?

@@ -8,17 +8,17 @@ fn sum_to(n: Int) Int:
     return total
 
 bench "sums a range":
-    try expect_equal(sum_to(100), 4950)
+    expect_equal(sum_to(100), 4950)?
 
 bench "breaks":
-    try fail("not measurable")
+    fail("not measurable")?
 
 test "is not a bench":
-    try expect_equal(sum_to(3), 3)
+    expect_equal(sum_to(3), 3)?
 
 bench "measures after setup":
     data := [3, 1, 2]
-    try measure(3, fn: keep(data.sorted().length()))
+    measure(3, fn: keep(data.sorted().length()))?
 
 bench "reports per operation" per 8:
-    try keep(8)
+    keep(8)?

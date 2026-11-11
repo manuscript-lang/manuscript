@@ -12,15 +12,15 @@ test "a record with a Map[String, T] field is Data and roundtrips as a JSON obje
     var scores = Map[String, Int]()
     scores["a"] = 1
 
-    text := try stringify(Report(name: "x", scores: scores))
-    try expect_equal(text, "\{\"name\":\"x\",\"scores\":\{\"a\":1\}\}")
+    text := stringify(Report(name: "x", scores: scores))?
+    expect_equal(text, "\{\"name\":\"x\",\"scores\":\{\"a\":1\}\}")?
 
-    back := try parse[Report](text)
-    try expect_equal(back.scores["a"], 1)
+    back := parse[Report](text)?
+    expect_equal(back.scores["a"], 1)?
 
 test "BigInt clone starts an independent accumulator":
     base := from_int(5)
     var acc = base.clone()
     acc = acc + base
-    try expect_equal(acc, from_int(10))
-    try expect_equal(base, from_int(5))
+    expect_equal(acc, from_int(10))?
+    expect_equal(base, from_int(5))?

@@ -38,12 +38,12 @@ fn ok_of(r: Unit!) Bool:
     return false
 
 test "an explicit close consumes the binding":
-    try expect_equal(ok_of(handled()), true)
+    expect_equal(ok_of(handled()), true)?
 
 test "a close on one path leaves the other path to the scope":
-    try expect_equal(ok_of(branchy(true)), true)
-    try expect_equal(ok_of(branchy(false)), false)
+    expect_equal(ok_of(branchy(true)), true)?
+    expect_equal(ok_of(branchy(false)), false)?
 
 test "a binding given a new value is closed afresh":
-    try expect_equal(ok_of(relocked(true)), false)
-    try expect_equal(ok_of(relocked(false)), true)
+    expect_equal(ok_of(relocked(true)), false)?
+    expect_equal(ok_of(relocked(false)), true)?

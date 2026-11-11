@@ -11,4 +11,4 @@ fn apply(value: Int, transform: fn(Int) Int) Int:
 
 test "function label compatibility":
     transform: fn(Int) Int := increase
-    try expect_equal(apply(4, transform), 5)
+    expect_equal(apply(4, transform), 5)?

@@ -32,31 +32,31 @@ test "complete rotating trials preserve minimum and columns":
 		rotated.append(versions[0].clone())
 
 		lines := trials(versions, suite, 100).concat(trials(rotated, suite, 50))
-		report := try expect_ok(summarize(lines, suite, 2, versions))
-		try expect_contains(report, "Minimum of 2 rotating runs")
-		try expect_contains(report, "| ms / rust | ms / rust-checked |")
-		try expect_contains(report, "| {suite_names(suite)[0]} | 50 | 50 | 1.00x")
+		report := expect_ok(summarize(lines, suite, 2, versions))?
+		expect_contains(report, "Minimum of 2 rotating runs")?
+		expect_contains(report, "| ms / rust | ms / rust-checked |")?
+		expect_contains(report, "| {suite_names(suite)[0]} | 50 | 50 | 1.00x")?
 
 test "ablation versions and folded times":
 	versions := kernel_versions().concat(ablations())
-	report := try expect_ok(
+	report := expect_ok(
 		summarize(trials(versions, "kernels", 0), "kernels", 1, versions)
-	)
-	try expect_contains(report, "c-ms-unchecked us")
-	try expect_contains(report, "folded")
+	)?
+	expect_contains(report, "c-ms-unchecked us")?
+	expect_contains(report, "folded")?
 
 test "plain C omits map_count and reports n/a":
 	versions := kernel_versions()
-	report := try expect_ok(
+	report := expect_ok(
 		summarize(trials(versions, "kernels", 100), "kernels", 1, versions)
-	)
-	try expect_contains(
+	)?
+	expect_contains(
 		report,
 		"| map_count_2M | 100 | 100 | 1.00x | 100 | 1.00x | 100 | 1.00x | n/a | n/a |",
-	)
+	)?
 
 	with_map := trials(versions, "kernels", 100).concat(["c map_count_2M 100 1"])
-	_extra := try expect_error(summarize(with_map, "kernels", 1, versions))
+	_extra := expect_error(summarize(with_map, "kernels", 1, versions))?
 
 test "rejects invalid evidence":
 	versions := kernel_versions()
@@ -95,26 +95,26 @@ test "rejects invalid evidence":
 		good.concat(["unrecognized output"]),
 	]
 	for lines in cases:
-		_cause := try expect_error(summarize(lines, "kernels", 1, versions))
+		_cause := expect_error(summarize(lines, "kernels", 1, versions))?
 
-	_zero := try expect_error(summarize(good, "kernels", 0, versions))
-	_short := try expect_error(summarize(good, "kernels", 1, base_versions()))
+	_zero := expect_error(summarize(good, "kernels", 0, versions))?
+	_short := expect_error(summarize(good, "kernels", 1, base_versions()))?
 
 test "a late checksum mismatch produces no report":
 	var lines = trials(kernel_versions(), "kernels", 100)
 	lines[lines.length() - 2] = lines[lines.length() - 2].replace(" 1", " 2")
 
-	cause := try expect_error(summarize(lines, "kernels", 1, kernel_versions()))
-	try expect_contains(cause.message, "checksums differ")
+	cause := expect_error(summarize(lines, "kernels", 1, kernel_versions()))?
+	expect_contains(cause.message, "checksums differ")?
 
 test "a producer that fails or prints nothing is rejected":
 	failed := Ran(true, 42, "", "boom")
-	_failure := try expect_error(must("producer", failed))
+	_failure := expect_error(must("producer", failed))?
 	missing := Ran(false, 125, "", "cannot start")
-	_start := try expect_error(must("producer", missing))
+	_start := expect_error(must("producer", missing))?
 	fine := Ran(true, 0, "ok", "")
-	try expect_equal(try expect_ok(must("producer", fine)), "ok")
+	expect_equal(expect_ok(must("producer", fine))?, "ok")?
 
 	versions := kernel_versions()
 	empty := trials(versions.slice(0, 5).get([]), "kernels", 100)
-	_empty := try expect_error(summarize(empty, "kernels", 1, versions))
+	_empty := expect_error(summarize(empty, "kernels", 1, versions))?

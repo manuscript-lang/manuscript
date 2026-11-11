@@ -10,4 +10,4 @@ fn grown() Int:
 	return 0
 
 test "if var on an optional local changes its own value":
-	try expect_equal(grown(), 2)
+	expect_equal(grown(), 2)?

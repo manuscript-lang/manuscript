@@ -40,7 +40,7 @@ type Sample:
 	wall_ns: Int
 
 fn report(out: String, name: String) Unit!:
-	rows := try parse[List[Sample]](read_text("{out}/{name}-samples.json"))
+	rows := parse[List[Sample]](read_text("{out}/{name}-samples.json"))?
 	var baseline = Map[Int, Float]()
 	var candidate = Map[Int, Float]()
 
@@ -224,7 +224,7 @@ fn measure(
 				):
 					return invalid("hello: unexpected native output")
 			else:
-				doc := try parse[Document](ran.stdout)
+				doc := parse[Document](ran.stdout)?
 				var count = 0
 
 				for d in doc.diagnostics:
@@ -260,7 +260,7 @@ fn measure(
 			write_text("{out}/{name}-samples.json", stringify(samples).get())
 
 	print("{name}: {repeats} exact-output pairs passed")
-	try report(out, name)
+	report(out, name)?
 
 fn run(args: List[String]) String!:
 	if args.length() != 7: return invalid(
@@ -273,7 +273,7 @@ fn run(args: List[String]) String!:
 		action := args[6].slice(8, args[6].length()).get()
 		for size in args[4].split(","):
 			for mode in args[5].split(","):
-				try report(out, "{mode}-{size}-{action}")
+				report(out, "{mode}-{size}-{action}")?
 		return ok("summaries written")
 
 	binaries := [absolute(args[1].clone()), absolute(args[2].clone())]
@@ -307,7 +307,7 @@ fn run(args: List[String]) String!:
 	action := args[6]
 
 	if action == "projects":
-		try measure(
+		measure(
 			out,
 			binaries,
 			repeats,
@@ -315,8 +315,8 @@ fn run(args: List[String]) String!:
 			absolute("examples/hello/ms.toml"),
 			"check",
 			0,
-		)
-		try measure(
+		)?
+		measure(
 			out,
 			binaries,
 			repeats,
@@ -324,8 +324,8 @@ fn run(args: List[String]) String!:
 			absolute("tools/e2e.ms"),
 			"check",
 			0,
-		)
-		try measure(
+		)?
+		measure(
 			out,
 			binaries,
 			repeats,
@@ -333,7 +333,7 @@ fn run(args: List[String]) String!:
 			absolute("bench/perf/programs/ms/ms.toml"),
 			"check",
 			0,
-		)
+		)?
 		return ok("project controls passed")
 
 	for size_text in args[4].split(","):
@@ -349,7 +349,7 @@ fn run(args: List[String]) String!:
 			name := "{mode}-{size}-{action}"
 			input := "{out}/{name}.ms"
 			write_text(input, probe(size, mode))
-			try measure(
+			measure(
 				out,
 				binaries,
 				repeats,
@@ -357,7 +357,7 @@ fn run(args: List[String]) String!:
 				input,
 				action,
 				expected_count(size, mode, action),
-			)
+			)?
 
 	return ok("effect controls passed")
 

@@ -5,5 +5,5 @@ type Request:
     model: String
 
 fn f(text: String) Request!:
-    request := try parse[Request](text)
+    request := parse[Request](text)?
     return ok(request)

@@ -10,7 +10,7 @@ type Marker:
 
 impl Closeable for Marker:
 	var fn close() Unit!:
-		try append_file(self.path, "{self.id},").wait()
+		append_file(self.path, "{self.id},").wait()?
 		self.path = "closed"
 
 type Held:
@@ -20,12 +20,12 @@ type Held:
 
 impl Closeable for Held:
 	var fn close() Unit!:
-		try append_file(self.path, "{self.id},").wait()
+		append_file(self.path, "{self.id},").wait()?
 		self.path = "closed"
 
 fn log_text(path: String) String!:
-	bytes := try read_file(path).wait()
-	return ok(try expect_some(bytes.decode_utf8()))
+	bytes := read_file(path).wait()?
+	return ok(expect_some(bytes.decode_utf8())?)
 
 fn absent_cause(path: String) Bool:
 	cause := Marker(1, path.clone())
@@ -52,12 +52,12 @@ fn default_resource(path: String) Int:
 	return missing.get(fallback).id
 
 test "a resource passed to ok_or or get moves into the result and closes once":
-	directory := try temporary("optional-argument-")
+	directory := temporary("optional-argument-")?
 	path := "{directory.path()}/log"
-	try write_file(path, "").wait()
-	try expect_equal(absent_cause(path), true)
-	try expect_equal(present_cause(path), true)
-	try expect_equal(temporary_cause(path), true)
-	try expect_equal(heap_cause(path), true)
-	try expect_equal(default_resource(path), 5)
-	try expect_equal(try log_text(path), "1,2,3,4,5,")
+	write_file(path, "").wait()?
+	expect_equal(absent_cause(path), true)?
+	expect_equal(present_cause(path), true)?
+	expect_equal(temporary_cause(path), true)?
+	expect_equal(heap_cause(path), true)?
+	expect_equal(default_resource(path), 5)?
+	expect_equal(log_text(path)?, "1,2,3,4,5,")?

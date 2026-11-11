@@ -137,7 +137,7 @@ export fn unquote(text: String) String!:
 				if j >= end or hex.is_empty():
 					return error(Error("string: invalid input", kind: "EINVAL"))
 
-				digits := try from_scalars(hex)
+				digits := from_scalars(hex)?
 				value := parse_int(digits, 16)
 				if value.is_error():
 					return error(Error("string: invalid input", kind: "EINVAL"))

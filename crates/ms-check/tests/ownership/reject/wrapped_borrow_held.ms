@@ -14,7 +14,7 @@ fn risky(n: Int) Int!Bad:
     return ok(n)
 
 fn relay(result: Row!Bad, n: Int) Row!Bad:
-    _v := try risky(n)  // error: this function returns a reference into its arguments at 18:12 but a new value here; return `.clone()` of the part there, or build a new value on every path
+    _v := risky(n)?  // error: this function returns a reference into its arguments at 18:12 but a new value here; return `.clone()` of the part there, or build a new value on every path
     return result
 
 fn demo(var r: Row) Int:

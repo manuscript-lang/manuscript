@@ -4,4 +4,4 @@
 fn operation() Unit!: ok(unit)
 
 test "valid":
-    try operation()
+    operation()?

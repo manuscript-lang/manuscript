@@ -50,9 +50,9 @@ test "first local extensions":
 			item.get() != 12
 			or invoke(item) != 12
 			or relay(item.clone()) != 12
-		) | try expect_false
+		) | expect_false?
 	)
-	as_view(item).get() | try expect_equal(12)
+	as_view(item).get() | expect_equal(12)?
 
 	holder := Holder(item)
 	(
@@ -60,10 +60,10 @@ test "first local extensions":
 			holder.get() != 12
 			or invoke(holder) != 12
 			or holder.extract() != 12
-		) | try expect_false
+		) | expect_false?
 	)
-	Box("hello").get() | try expect_equal("hello")
-	Choice.Some(2).get() | try expect_equal(12)
+	Box("hello").get() | expect_equal("hello")?
+	Choice.Some(2).get() | expect_equal(12)?
 
 import Resource from "./domain.ms"
 
@@ -79,10 +79,10 @@ export fn first_resource(resource: Resource) Closeable:
 	return resource
 
 test "first local cleanup":
-	dir := temporary("ms-ext-") | try expect_ok
+	dir := temporary("ms-ext-") | expect_ok?
 	events := "{dir.path()}/events"
 	leave(Resource(events.clone()))
-	(try expect_ok(read_file(events).wait())).decode_utf8() | try expect_equal("10,")
+	(expect_ok(read_file(events).wait())?).decode_utf8() | expect_equal("10,")?
 
 export fn mixed[T: Read[Int]](value: T, concrete: Item) Int:
 	return value.get() + concrete.get()

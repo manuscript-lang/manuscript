@@ -19,10 +19,10 @@ fn logged(path: String) String:
 	return ""
 
 test "a list moved on one path closes on the path that keeps it":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	block(log.clone(), 1)
-	logged(log.clone()) | try expect_equal("1,")
+	logged(log.clone()) | expect_equal("1,")?
 
 fn block(log: String, id: Int) Unit:
 	doors := [Door(id, log.clone())]
@@ -32,10 +32,10 @@ fn block(log: String, id: Int) Unit:
 	if moved.is_some(): return
 
 test "an optional resource reassigned after a conditional move closes the new value":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	reassign(log.clone())
-	logged(log.clone()) | try expect_equal("1,2,")
+	logged(log.clone()) | expect_equal("1,2,")?
 
 fn reassign(log: String) Unit:
 	var held: Door? = Door(1, log.clone())
@@ -55,16 +55,16 @@ fn walk(log: String, stop: Int) Unit:
 			kept.append(door)
 
 test "a loop over owned resources closes each element it does not move":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	walk(log.clone(), 99)
-	logged(log.clone()) | try expect_equal("2,3,1,")
+	logged(log.clone()) | expect_equal("2,3,1,")?
 
 test "a break closes the elements the loop never reached":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	walk(log.clone(), 1)
-	logged(log.clone()) | try expect_equal("1,2,3,")
+	logged(log.clone()) | expect_equal("1,2,3,")?
 
 fn wrap(door: Door, log: String) List[Door]:
 	var doors = [Door(9, log.clone())]
@@ -72,10 +72,10 @@ fn wrap(door: Door, log: String) List[Door]:
 	return doors
 
 test "a binding built from a call that consumes a resource closes it":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	block_wrap(log.clone())
-	logged(log.clone()) | try expect_equal("1,9,")
+	logged(log.clone()) | expect_equal("1,9,")?
 
 fn block_wrap(log: String) Unit:
 	made := wrap(Door(1, log.clone()), log.clone())
@@ -89,7 +89,7 @@ fn shape(log: String) Shape:
 	return Shape.Circle(Door(5, log.clone()))
 
 test "a match on a temporary resource closes it when the match ends":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	var seen = 0
 
@@ -99,5 +99,5 @@ test "a match on a temporary resource closes it when the match ends":
 		_:
 			seen = 0
 
-	expect_equal(seen, 5) | try
-	logged(log.clone()) | try expect_equal("5,")
+	expect_equal(seen, 5)?
+	logged(log.clone()) | expect_equal("5,")?

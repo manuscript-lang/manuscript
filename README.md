@@ -26,9 +26,9 @@ fn handle(request: HttpRequest) HttpResponse:
     return HttpResponse(200, headers(), "hello {request.path}".to_bytes())
 
 fn main() Unit!:
-    server := try serve("127.0.0.1:0", buffered(handle))
+    server := serve("127.0.0.1:0", buffered(handle))?
     print("{server.address()}")
-    try server.wait()
+    server.wait()?
 ```
 
 HTTP/1.1, HTTP/2 and TLS work too, and each connection runs as its own promise across all cores. Here is what makes programs like this easy to hand to an agent.
@@ -102,7 +102,7 @@ type Config:
     enabled: Bool = true
 
 fn roundtrip(text: String) Result[String, Error]:
-    config := try parse[Config](text)
+    config := parse[Config](text)?
     return stringify(config, StringifyOptions(strict: true))
 ```
 

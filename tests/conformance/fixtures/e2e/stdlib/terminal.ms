@@ -8,18 +8,18 @@ test "redirected streams report no terminal and refuse raw mode":
     capabilities := terminal_capabilities()
     if capabilities.raw_mode: return
 
-    try expect_false(capabilities.colors != 0 and not capabilities.output_is_terminal)
-    try expect_false(capabilities.resize_events)
+    expect_false(capabilities.colors != 0 and not capabilities.output_is_terminal)?
+    expect_false(capabilities.resize_events)?
 
     match raw_mode(alternate_screen: false):
         ok(active):
             var raw = active
-            try raw.close()
+            raw.close()?
             return fail("raw mode on redirected input")
         error(cause):
-            try expect_equal(
+            expect_equal(
                 cause,
                 Error(
                     "terminal: not a terminal", kind: "ENOTTY"
                 )
-            )
+            )?

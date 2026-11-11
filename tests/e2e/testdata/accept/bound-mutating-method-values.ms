@@ -34,28 +34,28 @@ test "a method value that changes its receiver borrows the variable":
 
 	add := xs.append
 	add(9)
-	try expect_equal(xs, [3, 2, 1, 9])
+	expect_equal(xs, [3, 2, 1, 9])?
 
 	var counter = Counter(n: 0)
 	bump := counter.bump
 	bump()
 	bump(by: 5)
-	try expect_equal(counter.n, 6)
+	expect_equal(counter.n, 6)?
 
 	var names = Map[String, Int]()
 	put := names.add
 	put("a", 1)
-	try expect_equal(names.keys(), ["a"])
+	expect_equal(names.keys(), ["a"])?
 
 test "the variable is shared through calls and callbacks":
 	var xs = [1]
 	drain(var xs)
 	each(xs.append)
-	try expect_equal(xs, [1, 7, 8, 100])
+	expect_equal(xs, [1, 7, 8, 100])?
 
 	pop := xs.pop
 	pop()
-	try expect_equal(xs, [1, 7, 8])
+	expect_equal(xs, [1, 7, 8])?
 
 test "an interface method value shares the underlying value":
 	var counter = Counter(n: 0)
@@ -63,11 +63,11 @@ test "an interface method value shares the underlying value":
 	step := view.step
 	step()
 	step()
-	try expect_equal(view.step(), 30)
+	expect_equal(view.step(), 30)?
 
 test "a builder method value appends to the builder":
 	var sb = StringBuilder()
 	append := sb.append
 	append("a")
 	append("b")
-	sb.build() | try expect_equal("ab")
+	sb.build() | expect_equal("ab")?

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nexport fn main() Int:\n\tvar number = 1\n\ttotal := (\n\t\tnumber\n\t\t+ (\n\t\t\tmatch present(1):\n\t\t\t\tvalue:\n\t\t\t\t\tnumber += 1\n\t\t\t\t\tvalue\n\t\t\t\tnone: 0\n\t\t)\n\t)\n\tif total != 2: return 1\n\n\treturn 0\n\ntest \"operands retain evaluation order\":\n\tmain() | try expect_equal(0)\n\nfn present[T](value: T) T?:\n\treturn value\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nexport fn main() Int:\n\tvar number = 1\n\ttotal := (\n\t\tnumber\n\t\t+ (\n\t\t\tmatch present(1):\n\t\t\t\tvalue:\n\t\t\t\t\tnumber += 1\n\t\t\t\t\tvalue\n\t\t\t\tnone: 0\n\t\t)\n\t)\n\tif total != 2: return 1\n\n\treturn 0\n\ntest \"operands retain evaluation order\":\n\tmain() | expect_equal(0)?\n\nfn present[T](value: T) T?:\n\treturn value\n"
   }
 }

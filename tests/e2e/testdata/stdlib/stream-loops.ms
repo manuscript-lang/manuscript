@@ -23,7 +23,7 @@ impl Source[Int] for Counter:
 		return ok(self.at)
 
 	var fn close() Unit!:
-		try self.closes.write(self.at)
+		self.closes.write(self.at)?
 
 test "a loop that breaks hands the source back to its stream":
 	var closes = pipe[Int](capacity: 8)
@@ -34,13 +34,13 @@ test "a loop that breaks hands the source back to its stream":
 		seen.append(x)
 		if seen.length() == 2: break
 
-	next := try s.next()
-	try expect_equal(next.get(-1), 3)
+	next := s.next()?
+	expect_equal(next.get(-1), 3)?
 	for x in s:
 		seen.append(x)
-	try expect_equal(seen, [1, 2, 4, 5])
-	try s.close()
-	try expect_equal(try closes.receive(), 5)
+	expect_equal(seen, [1, 2, 4, 5])?
+	s.close()?
+	expect_equal(closes.receive()?, 5)?
 
 test "an error ends the loop and the stream reads on":
 	var closes = pipe[Int](capacity: 8)
@@ -56,28 +56,28 @@ test "an error ends the loop and the stream reads on":
 
 		if item.get().is_none(): break
 
-	try expect_equal(failures, 1)
+	expect_equal(failures, 1)?
 
-	next := try s.next()
-	try expect_equal(next.get(-1), 3)
+	next := s.next()?
+	expect_equal(next.get(-1), 3)?
 
 test "closing the stream inside its loop still closes the source once":
 	var closes = pipe[Int](capacity: 8)
 	var s = ReadStream[Int](Counter(0, 4, -1, closes.writer()))
 	for x in s:
 		if x == 2:
-			try s.close()
-	try expect_equal(try closes.receive(), 2)
+			s.close()?
+	expect_equal(closes.receive()?, 2)?
 
 test "stages pull directly and keep their results":
-	doubled := try collect(from_list([1, 2, 3]) | map(fn v: v * 2), none)
-	try expect_equal(doubled, [2, 4, 6])
+	doubled := collect(from_list([1, 2, 3]) | map(fn v: v * 2), none)?
+	expect_equal(doubled, [2, 4, 6])?
 
 	limited := collect(from_list([1, 2, 3]), 2)
-	try expect_equal(limited.err().kind, "EOVERFLOW")
+	expect_equal(limited.err().kind, "EOVERFLOW")?
 
 test "copy moves every item":
 	var out = pipe[Int](capacity: 8)
 	var writer = out.writer()
-	count := try copy(from_list([7, 8, 9]), writer)
-	try expect_equal(count, 3)
+	count := copy(from_list([7, 8, 9]), writer)?
+	expect_equal(count, 3)?

@@ -78,7 +78,7 @@ export interface Writable:
 
 /*
 A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
-The implicit close behaves like `try value.close()`: a failed close becomes the function's error, after the
+The implicit close behaves like `value.close()?`: a failed close becomes the function's error, after the
 other bindings of the scopes it leaves have closed. Where the function cannot return an `Error`, or the
 close happens inside a holder (a record, list or temporary), a failed close is a fault. If the scope is
 already returning an error, that error is kept and the close error is dropped. Call `close()` yourself to
@@ -168,7 +168,7 @@ impl T!E:
 	fn is_error() Bool: ...
 
 	// Returns the successful payload, or `default` when this is an error; pass a
-	// default or propagate with `try` unless failure is a bug. Without a default, an
+	// default or propagate with `?` unless failure is a bug. Without a default, an
 	// error raises a fault.
 	fn get(default: T?) T: ...
 
@@ -244,7 +244,7 @@ export interface Hashable:
 	fn hash() Int
 
 /*
-Returns a copy of `cause` with `context` in front of its message: `try read(path)` becomes
+Returns a copy of `cause` with `context` in front of its message: `read(path)?` becomes
 `error(wrap_error("read config", cause))`. The kind and details are kept, and the original message is
 in `details["cause"]`.
 */

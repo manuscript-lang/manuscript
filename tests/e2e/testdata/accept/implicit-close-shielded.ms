@@ -63,41 +63,41 @@ fn faulting_holder(dir: String, id: Int) Unit!:
 	hold_and_fault(dir, id)
 
 test "cancellation closes the binding":
-	temporary := temporary("manuscript-shield-") | try expect_ok
+	temporary := temporary("manuscript-shield-") | expect_ok?
 	dir := temporary.path()
 	cancel_a_holder(dir.clone(), 1, false)
-	try expect_true(closed(dir, 1))
+	expect_true(closed(dir, 1))?
 
 test "cancellation does not interrupt a close that suspends":
-	temporary := temporary("manuscript-shield-") | try expect_ok
+	temporary := temporary("manuscript-shield-") | expect_ok?
 	dir := temporary.path()
 	cancel_a_holder(dir.clone(), 2, true)
-	try expect_true(closed(dir, 2))
+	expect_true(closed(dir, 2))?
 
 test "a fault unwinding the scope closes the binding":
-	temporary := temporary("manuscript-shield-") | try expect_ok
+	temporary := temporary("manuscript-shield-") | expect_ok?
 	dir := temporary.path()
-	message := try expect_fault(fn: hold_and_fault(dir.clone(), 3))
-	try expect_equal(message, "body fault")
-	try expect_true(closed(dir, 3))
+	message := expect_fault(fn: hold_and_fault(dir.clone(), 3))?
+	expect_equal(message, "body fault")?
+	expect_true(closed(dir, 3))?
 
 test "a faulted promise closes its binding before wait reports":
-	temporary := temporary("manuscript-shield-") | try expect_ok
+	temporary := temporary("manuscript-shield-") | expect_ok?
 	dir := temporary.path()
 	work := promise(fn: faulting_holder(dir.clone(), 4))
-	_reason := work.wait() | try expect_error
-	try expect_true(closed(dir, 4))
+	_reason := work.wait() | expect_error?
+	expect_true(closed(dir, 4))?
 
 test "a fault in close on a normal return is the fault":
-	temporary := temporary("manuscript-shield-") | try expect_ok
+	temporary := temporary("manuscript-shield-") | expect_ok?
 	dir := temporary.path()
-	message := try expect_fault(fn: hold_then_break(dir.clone(), 5))
-	try expect_equal(message, "close fault")
-	try expect_true(closed(dir, 5))
+	message := expect_fault(fn: hold_then_break(dir.clone(), 5))?
+	expect_equal(message, "close fault")?
+	expect_true(closed(dir, 5))?
 
 test "a fault in close does not replace a pending fault":
-	temporary := temporary("manuscript-shield-") | try expect_ok
+	temporary := temporary("manuscript-shield-") | expect_ok?
 	dir := temporary.path()
-	message := try expect_fault(fn: hold_fault_and_break(dir.clone(), 6))
-	try expect_equal(message, "body fault")
-	try expect_true(closed(dir, 6))
+	message := expect_fault(fn: hold_fault_and_break(dir.clone(), 6))?
+	expect_equal(message, "body fault")?
+	expect_true(closed(dir, 6))?

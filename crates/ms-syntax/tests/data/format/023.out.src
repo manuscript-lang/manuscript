@@ -18,5 +18,5 @@ fn describe[T](r: Result[T, Error]) String:
 	return "ok"
 
 test "a generic Result[T, Error] parameter infers T and widens a domain error":
-	try expect_equal(describe(failing()), "failure 7")
-	try expect_equal(describe(succeeding()), "ok")
+	expect_equal(describe(failing()), "failure 7")?
+	expect_equal(describe(succeeding()), "ok")?

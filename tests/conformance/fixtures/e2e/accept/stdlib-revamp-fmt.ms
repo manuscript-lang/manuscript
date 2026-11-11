@@ -23,18 +23,18 @@ impl Comparable for Key:
 test "domain equality and hashing select interfaces":
     a := Key(1, "first")
     b := Key(1, "second")
-    try expect_equal(a, b)
-    try expect_equal(a.hash(), b.hash())
+    expect_equal(a, b)?
+    expect_equal(a.hash(), b.hash())?
 
     var values = Map[Key, String]()
     values.add(a.clone(), "a")
     values.add(b.clone(), "b")
-    try expect_equal(values.length(), 1)
-    try expect_equal(values.get(a), "b")
-    try expect_false(not ([a.clone()].contains(b)))
+    expect_equal(values.length(), 1)?
+    expect_equal(values.get(a), "b")?
+    expect_false(not ([a.clone()].contains(b)))?
 
     view: Equal := a
-    try expect_false(not (view.equals(b)))
+    expect_false(not (view.equals(b)))?
 
 test "stable priority queue and optional capacity":
     var queue = PriorityQueue[Key]()
@@ -43,20 +43,20 @@ test "stable priority queue and optional capacity":
     queue.enqueue(Key(1, "second"))
 
     if value := queue.dequeue():
-        try expect_equal(value.label, "first")
+        expect_equal(value.label, "first")?
     else:
         return fail("missing item")
 
     if value := queue.dequeue():
-        try expect_equal(value.label, "second")
+        expect_equal(value.label, "second")?
     else:
         return fail("missing item")
 
     var bounded = PriorityQueue[Key](1)
-    try expect_false(not (bounded.enqueue(Key(1, "only"))))
-    try expect_false(bounded.enqueue(Key(0, "full")))
+    expect_false(not (bounded.enqueue(Key(1, "only"))))?
+    expect_false(bounded.enqueue(Key(0, "full")))?
 
 test "limits can be omitted or supplied":
-    repeated := try "ab".repeat(3)
-    try expect_equal(repeated, "ababab")
-    try expect_false("ab".repeat(3, 5).is_ok())
+    repeated := "ab".repeat(3)?
+    expect_equal(repeated, "ababab")?
+    expect_false("ab".repeat(3, 5).is_ok())?

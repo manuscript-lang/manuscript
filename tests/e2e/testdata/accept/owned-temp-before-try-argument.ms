@@ -32,10 +32,10 @@ fn make() Holder!:
 fn both(first: Holder, second: Holder) Int!:
 	var a = first
 	var b = second
-	try a.gate.put(1)
-	try b.gate.put(2)
+	a.gate.put(1)?
+	b.gate.put(2)?
 	return ok(2)
 
 test "a held temporary is consumed by the call":
-	count := try both(Holder(Door()), try make())
-	try expect_equal(count, 2)
+	count := both(Holder(Door()), make()?)?
+	expect_equal(count, 2)?

@@ -39,18 +39,18 @@ test "a payload identifier binds every alternative without changing semantics":
     )
     missing: Result[Int, Failure[String]] := error(Failure[String].NotFound)
     success: Result[Int, Failure[String]] := ok(7)
-    try expect_false(
+    expect_false(
         (
             captured(denied.clone()) != 1
             or captured(missing.clone()) != 1
             or captured(success.clone()) != 7
         )
-    )
-    try expect_false(
+    )?
+    expect_false(
         (
             precise(denied.clone()) != 2
             or precise(missing) != 1
             or precise(success) != 7
         )
-    )
-    try expect_equal(deliberate(denied), "permission denied")
+    )?
+    expect_equal(deliberate(denied), "permission denied")?

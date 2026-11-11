@@ -15,5 +15,5 @@ fn score(outcome: Outcome) Int:
             return 0
 
 test "alternative result":
-    try expect_equal(score(Outcome.Ready(8)), 8)
-    try expect_equal(score(Outcome.Failed("unavailable")), 0)
+    expect_equal(score(Outcome.Ready(8)), 8)?
+    expect_equal(score(Outcome.Failed("unavailable")), 0)?

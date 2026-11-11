@@ -45,7 +45,7 @@ fn settings() Settings:
 fn time_batch(body: fn() Unit!, count: Int) Int!:
 	started := monotonic()
 	for unused in 0..count:
-		try body()
+		body()?
 	return ok(monotonic().difference(started).to_nanoseconds())
 
 // Returns the iteration count whose sample should take about `target` nanoseconds,
@@ -59,7 +59,7 @@ Runs `work` repeatedly and writes the statistics line, per operation for `operat
 A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
   bench "sorts":
       data := [3, 1, 2]
-      try measure(1, fn: keep(data.sorted().length()))
+      measure(1, fn: keep(data.sorted().length()))?
 Everything the body does before `measure` runs once, untimed.
 */
 export fn measure(operations: Int, work: fn() Unit!) Unit!:
@@ -70,7 +70,7 @@ export fn measure(operations: Int, work: fn() Unit!) Unit!:
 	if config.iterations == 0:
 		// Calibration doubles as the warmup.
 		while true:
-			elapsed := try time_batch(body, count)
+			elapsed := time_batch(body, count)?
 			if elapsed >= config.target_nanoseconds or count >= max_iterations: break
 
 			count = next_count(count, elapsed, config.target_nanoseconds)
@@ -78,7 +78,7 @@ export fn measure(operations: Int, work: fn() Unit!) Unit!:
 	var times = List[Float](reserve: config.samples)
 
 	for unused in 0..config.samples:
-		elapsed := try time_batch(body, count)
+		elapsed := time_batch(body, count)?
 		times.append(elapsed.to_float() / (count * operations).to_float())
 
 	sorted := times.sorted(fn a, b: (if a < b: -1 else: (if a > b: 1 else: 0)))
@@ -99,7 +99,7 @@ measured_flag := "MS_BENCH_MEASURED"
 // body runs once first (the warmup); a body that called `measure` has reported already,
 // and any other body is one iteration to repeat and time.
 export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
-	try body()
+	body()?
 
 	environment := environment().get(Map[String, String]())
 	if environment.get_or(measured_flag, "") == "1": return ok(unit)
@@ -107,7 +107,7 @@ export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
 	return measure(operations, body)
 
 // Checks a bench's Int result so the work that computed it stays observable. Apply
-// `try keep(value)` in the body. The smallest Int returns an error; choose a different
+// `keep(value)?` in the body. The smallest Int returns an error; choose a different
 // checksum if that value is a valid result of your workload.
 export fn keep(checksum: Int) Unit!:
 	if checksum == -9223372036854775807 - 1:

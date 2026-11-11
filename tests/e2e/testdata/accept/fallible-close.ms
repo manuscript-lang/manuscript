@@ -22,7 +22,7 @@ fn nested(outer: Bool, inner: Bool) Result[Int, Error]:
 
 fn explicit(fails: Bool) Result[Int, Error]:
 	var gate = Gate("explicit", fails)
-	try gate.close()
+	gate.close()?
 	return ok(3)
 
 fn loop_exit() Result[Int, Error]:
@@ -33,33 +33,33 @@ fn loop_exit() Result[Int, Error]:
 	return ok(0)
 
 test "a clean close leaves the result alone":
-	value := try use_gate(false)
-	try expect_equal(value, 7)
+	value := use_gate(false)?
+	expect_equal(value, 7)?
 
 test "a failed scope-end close becomes the function's error":
-	failure := try expect_error(use_gate(true))
-	try expect_equal(failure.message, "close a")
+	failure := expect_error(use_gate(true))?
+	expect_equal(failure.message, "close a")?
 
 test "the later binding closes first and its error is the one returned":
-	both := try expect_error(nested(true, true))
-	try expect_equal(both.message, "close second")
+	both := expect_error(nested(true, true))?
+	expect_equal(both.message, "close second")?
 
-	outer_only := try expect_error(nested(true, false))
-	try expect_equal(outer_only.message, "close first")
+	outer_only := expect_error(nested(true, false))?
+	expect_equal(outer_only.message, "close first")?
 
-	none := try nested(false, false)
-	try expect_equal(none, 1)
+	none := nested(false, false)?
+	expect_equal(none, 1)?
 
 test "an explicit close consumes the binding":
-	ok_value := try explicit(false)
-	try expect_equal(ok_value, 3)
+	ok_value := explicit(false)?
+	expect_equal(ok_value, 3)?
 
-	failure := try expect_error(explicit(true))
-	try expect_equal(failure.message, "close explicit")
+	failure := expect_error(explicit(true))?
+	expect_equal(failure.message, "close explicit")?
 
 test "leaving a loop with break closes and returns the error":
-	failure := try expect_error(loop_exit())
-	try expect_equal(failure.message, "close loop")
+	failure := expect_error(loop_exit())?
+	expect_equal(failure.message, "close loop")?
 
 type Holder:
 	gate: Gate
@@ -73,17 +73,11 @@ fn hold(fails: Bool) Int:
 	return 2
 
 test "a function that cannot return an error faults on a failed close":
-	message := try expect_fault(fn: _ := plain(true))
-	try expect_equal(
-		message,
-		"a resource could not be closed: its close returned an error",
-	)
-	try expect_equal(plain(false), 1)
+	message := expect_fault(fn: _ := plain(true))?
+	expect_equal(message, "a resource could not be closed: its close returned an error")?
+	expect_equal(plain(false), 1)?
 
 test "a holder closing a part faults on a failed close":
-	message := try expect_fault(fn: _ := hold(true))
-	try expect_equal(
-		message,
-		"a resource could not be closed: its close returned an error",
-	)
-	try expect_equal(hold(false), 2)
+	message := expect_fault(fn: _ := hold(true))?
+	expect_equal(message, "a resource could not be closed: its close returned an error")?
+	expect_equal(hold(false), 2)?

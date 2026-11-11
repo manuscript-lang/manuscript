@@ -18,15 +18,15 @@ test "keys and values join every chunk in key order":
 		map := filled(count)
 		keys := map.keys()
 		values := map.values()
-		try expect_equal(keys.length(), count)
-		try expect_equal(values.length(), count)
+		expect_equal(keys.length(), count)?
+		expect_equal(values.length(), count)?
 
 		var previous = -1
 		var index = 0
 
 		while index < keys.length():
-			try expect_equal(keys[index] > previous, true)
-			try expect_equal(values[index], "v{keys[index]}")
+			expect_equal(keys[index] > previous, true)?
+			expect_equal(values[index], "v{keys[index]}")?
 			previous = keys[index]
 			index += 1
 
@@ -34,6 +34,6 @@ test "keys returns an independent list":
 	var map = filled(300)
 	var keys = map.keys()
 	keys.set(0, -5)
-	try expect_equal(map.keys()[0], 0)
+	expect_equal(map.keys()[0], 0)?
 	map.add(-1, "extra")
-	try expect_equal(keys.length(), 300)
+	expect_equal(keys.length(), 300)?

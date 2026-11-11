@@ -45,7 +45,7 @@ type MapSource:
 
 impl Source[Int] for MapSource:
 	var fn next() Int?!:
-		step := try self.up.next()
+		step := self.up.next()?
 		if v := step: return ok(self.f(v))
 
 		return ok(none)
@@ -64,7 +64,7 @@ fn drain(source: Source[Int]) Int!:
 	var total = 0
 
 	while true:
-		step := try s.next()
+		step := s.next()?
 
 		if v := step:
 			total += v
@@ -91,7 +91,7 @@ fn stdlib_map3(xs: List[Int]) Int!:
 	return ok(total)
 
 fn stdlib_collect(xs: List[Int]) Int!:
-	all := try collect(from_list(xs) | map(fn x: x + 1), none)
+	all := collect(from_list(xs) | map(fn x: x + 1), none)?
 	return ok(all.length())
 
 fn plain_filter(xs: List[Int]) Int:
@@ -136,7 +136,7 @@ fn hand_lines(data: Bytes) Int!:
 		end := data.index_of_byte(10, at)
 
 		if stop := end:
-			line := try data.slice(at, stop)
+			line := data.slice(at, stop)?
 			if text := line.decode_utf8():
 				count += text.length()
 			at = stop + 1

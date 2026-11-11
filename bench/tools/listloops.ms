@@ -11,16 +11,16 @@ import (
 )
 
 fn run(work: String, n: Int) Result[String, Error]:
-	try copy(
+	copy(
 		"bench/perf/listloops/ms",
 		"{work}/ms",
 		CopyOptions(recursive: true, replace: true),
-	)
-	try build_ms("{work}/ms", "{work}/ms/bench")
+	)?
+	build_ms("{work}/ms", "{work}/ms/bench")?
 
 	cc := env("CC", "cc")
 	source := "bench/perf/listloops/c/kernels.c"
-	_sse2 := try must(
+	_sse2 := must(
 		"cc",
 		capture(
 			cc,
@@ -32,8 +32,8 @@ fn run(work: String, n: Int) Result[String, Error]:
 				"{work}/c-sse2",
 			],
 		),
-	)
-	_avx2 := try must(
+	)?
+	_avx2 := must(
 		"cc",
 		capture(
 			cc,
@@ -41,14 +41,14 @@ fn run(work: String, n: Int) Result[String, Error]:
 				"-O3", "-mavx2", "-ffp-contract=off", source, "-o", "{work}/c-avx2"
 			],
 		),
-	)
+	)?
 	var best = Map[String, Float]()
 
 	for _i in 0..n:
 		for v in ["ms", "c-sse2", "c-avx2"]:
 			exe := if v == "ms": "{work}/ms/bench" else: "{work}/{v}"
 
-			for line in (try sample(exe, [])).split("\n"):
+			for line in (sample(exe, [])?).split("\n"):
 				f := line.split(" ").filter(fn p: p != "")
 				if f.length() < 2 or f[0] == "check": continue
 

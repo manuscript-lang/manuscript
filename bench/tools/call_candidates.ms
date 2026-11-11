@@ -87,7 +87,7 @@ fn measure(
 					"--json",
 				]
 				started := now_ns()
-				measured := try timed("timeout", command)
+				measured := timed("timeout", command)?
 				ran := measured.result
 				elapsed := now_ns() - started
 				prefix := "{directory}/round-{round}-{label}-{i}"
@@ -115,10 +115,10 @@ export fn main() Unit!:
 	if args.length() < 4 or args.length() > 5:
 		return invalid("expected BEFORE AFTER OUTPUT ROUNDS [FILTER]")
 
-	try measure(
+	measure(
 		absolute(args[0].clone()),
 		absolute(args[1].clone()),
 		absolute(args[2].clone()),
 		args[3].parse_int().get(),
 		if args.length() == 5: args[4].clone() else: "",
-	)
+	)?

@@ -21,22 +21,22 @@ fn count(value: Int) Int:
     return value + 1
 
 test "parametric generics keep each instantiation's values":
-    try expect_equal(ident(41), 41)
-    try expect_equal(ident(1.5), 1.5)
-    try expect_equal(ident("go"), "go")
-    try expect_false(not ident(true))
-    try expect_equal(pick(first: true, left: 1, right: 2), 1)
-    try expect_equal(pick(first: false, left: "a", right: "b"), "b")
-    try expect_equal(keep(count(1)), 2)
+    expect_equal(ident(41), 41)?
+    expect_equal(ident(1.5), 1.5)?
+    expect_equal(ident("go"), "go")?
+    expect_false(not ident(true))?
+    expect_equal(pick(first: true, left: 1, right: 2), 1)?
+    expect_equal(pick(first: false, left: "a", right: "b"), "b")?
+    expect_equal(keep(count(1)), 2)?
 
 test "instances copy non-scalar arguments":
     point := Point(3)
     var same = ident(point).clone()
     same.x = 4
-    try expect_equal(same.x, 4)
-    try expect_equal(point.x, 3)
+    expect_equal(same.x, 4)?
+    expect_equal(point.x, 3)?
 
     var alias = pick(first: true, left: point.clone(), right: Point(9)).clone()
     alias.x = 5
-    try expect_equal(alias.x, 5)
-    try expect_equal(point.x, 3)
+    expect_equal(alias.x, 5)?
+    expect_equal(point.x, 3)?

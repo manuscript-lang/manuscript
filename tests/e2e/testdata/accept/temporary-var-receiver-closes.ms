@@ -33,9 +33,9 @@ fn open_door(id: Int, log: String) Door:
 // A temporary that a `var fn` changes in place is still a temporary: it closes when its
 // statement ends.
 test "a temporary receiver of a var method closes at the end of its statement":
-	tmp := temporary("ms-log-") | try expect_ok
+	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"
 	first := open_door(1, log.clone()).swing()
 	second := open_door(2, log.clone()).peek()
-	try expect_equal(first + second, 1)
-	try expect_equal(logged(log), "1,2,")
+	expect_equal(first + second, 1)?
+	expect_equal(logged(log), "1,2,")?

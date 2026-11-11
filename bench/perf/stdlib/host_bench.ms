@@ -62,7 +62,7 @@ bench "archive.zip_pack":
 		if b := pack(list, ArchiveFormat.Zip): return keep(b.length())
 		return keep(0)
 
-	try measure(2000, work)
+	measure(2000, work)?
 
 bench "archive.tar_pack":
 	list := entries(2000)
@@ -71,7 +71,7 @@ bench "archive.tar_pack":
 		if b := pack(list, ArchiveFormat.Tar): return keep(b.length())
 		return keep(0)
 
-	try measure(2000, work)
+	measure(2000, work)?
 
 bench "archive.zip_unpack":
 	if packed := pack(entries(2000), ArchiveFormat.Zip):
@@ -79,13 +79,13 @@ bench "archive.zip_unpack":
 			if e := unpack(packed, ArchiveFormat.Zip): return keep(e.length())
 			return keep(0)
 
-		try measure(2000, work)
+		measure(2000, work)?
 
 bench "sse.feed":
 	data := sse_stream(2000)
 	fn work() Result[Unit, Error]:
 		return keep(count_events(data.clone()))
-	try measure(2000, work)
+	measure(2000, work)?
 
 bench "time.timestamp_to_string":
 	fn work() Result[Unit, Error]:
@@ -95,7 +95,7 @@ bench "time.timestamp_to_string":
 				n += t.to_string().length()
 		return keep(n)
 
-	try measure(20000, work)
+	measure(20000, work)?
 
 bench "random.uuid_v4":
 	fn work() Result[Unit, Error]:
@@ -105,4 +105,4 @@ bench "random.uuid_v4":
 				n += u.length()
 		return keep(n)
 
-	try measure(20000, work)
+	measure(20000, work)?

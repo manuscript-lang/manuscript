@@ -16,7 +16,7 @@ fn paths(found: List[WalkEntry]) List[String]:
 fn total_size(tree: FileTree, names: List[String]) Int!:
 	var total = 0
 	for name in names:
-		total += (try tree.read(name, none)).length()
+		total += (tree.read(name, none)?).length()
 	return ok(total)
 
 fn sample() MemoryTree:
@@ -29,19 +29,16 @@ fn sample() MemoryTree:
 
 test "memory tree lists and reads":
 	tree := sample()
-	top := tree.children("", none) | try expect_ok
+	top := tree.children("", none) | expect_ok?
 	if top.map(fn e: e.name.clone()) != ["docs", "empty", "main.ms"]: return panic(
 		"top"
 	)
 	if not top[0].directory: return panic("docs is a directory")
 	if top[2].directory: return panic("main.ms is a file")
-	if (
-		(
-			tree.read("docs/./api/../guide.md", none)
-			| try expect_ok
-		) != "guide".to_bytes()
-	): return panic("clean path")
-	if (total_size(tree, ["main.ms", "docs/guide.md"]) | try expect_ok) != 9: return panic(
+	if ((tree.read("docs/./api/../guide.md", none) | expect_ok?) != "guide".to_bytes()): return panic(
+		"clean path"
+	)
+	if (total_size(tree, ["main.ms", "docs/guide.md"]) | expect_ok?) != 9: return panic(
 		"generic over FileTree"
 	)
 
@@ -90,15 +87,15 @@ test "memory tree reports precise errors":
 		)
 	): return panic("not empty")
 
-	try tree.remove("docs", recursive: true)
+	tree.remove("docs", recursive: true)?
 	if tree.exists("docs/api/index.md"): return panic("recursive remove")
 
-	try tree.remove("empty")
-	if paths(walk(tree) | try expect_ok) != ["main.ms"]: return panic("after removals")
+	tree.remove("empty")?
+	if paths(walk(tree) | expect_ok?) != ["main.ms"]: return panic("after removals")
 
 test "walk is depth first and sorted":
 	tree := sample()
-	found := walk(tree) | try expect_ok
+	found := walk(tree) | expect_ok?
 	if (
 		paths(found) != [
 			"docs/", "docs/api/", "docs/api/index.md", "docs/guide.md", "empty/",
@@ -106,7 +103,7 @@ test "walk is depth first and sorted":
 		]
 	): return panic("order")
 
-	docs := walk(tree, "docs") | try expect_ok
+	docs := walk(tree, "docs") | expect_ok?
 	if paths(docs) != ["api/", "api/index.md", "guide.md"]: return panic("sub root")
 	if (
 		walk(tree, max_entries: 2).err() != Error(
@@ -116,16 +113,16 @@ test "walk is depth first and sorted":
 	): return panic("limit")
 
 test "host tree walks the same way":
-	dir := temporary("manuscript-tree-") | try expect_ok
-	create_directory("{dir.path()}/b", true) | try expect_ok
-	write_file(path: "{dir.path()}/b/two.txt", data: "22").wait() | try expect_ok
-	write_file(path: "{dir.path()}/one.txt", data: "1").wait() | try expect_ok
+	dir := temporary("manuscript-tree-") | expect_ok?
+	create_directory("{dir.path()}/b", true) | expect_ok?
+	write_file(path: "{dir.path()}/b/two.txt", data: "22").wait() | expect_ok?
+	write_file(path: "{dir.path()}/one.txt", data: "1").wait() | expect_ok?
 
 	tree := host_tree(dir.path())
-	if paths(walk(tree) | try expect_ok) != ["b/", "b/two.txt", "one.txt"]: return panic(
+	if paths(walk(tree) | expect_ok?) != ["b/", "b/two.txt", "one.txt"]: return panic(
 		"host walk"
 	)
-	if (tree.read("b/two.txt", none) | try expect_ok) != "22".to_bytes(): return panic(
+	if (tree.read("b/two.txt", none) | expect_ok?) != "22".to_bytes(): return panic(
 		"host read"
 	)
 	if (
@@ -137,10 +134,10 @@ test "host tree walks the same way":
 
 test "memory tree listing follows writes and removals":
 	var tree = memory_tree()
-	try tree.write_file("a/b/one.txt", "1".to_bytes())
-	try tree.write_file("a/two.txt", "2".to_bytes())
-	try tree.remove("a/b", true)
+	tree.write_file("a/b/one.txt", "1".to_bytes())?
+	tree.write_file("a/two.txt", "2".to_bytes())?
+	tree.remove("a/b", true)?
 
-	names := (try tree.children("a", none)).map(fn e: e.name.clone())
+	names := (tree.children("a", none)?).map(fn e: e.name.clone())
 	if names != ["two.txt"]: return panic("children {names}")
-	if (try tree.children("", none)).length() != 1: return panic("root")
+	if (tree.children("", none)?).length() != 1: return panic("root")

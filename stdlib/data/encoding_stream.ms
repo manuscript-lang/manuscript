@@ -17,10 +17,10 @@ impl Transform[Bytes, String] for Base64Encoding:
 	var fn step(value: Bytes, var out: List[String]) Unit!:
 		data := self.tail.concat(value)
 		whole := data.length() - data.length() % 3
-		self.tail = try data.slice(whole, data.length())
+		self.tail = data.slice(whole, data.length())?
 		if whole == 0: return ok(unit)
 
-		out.append(base64_encode(try data.slice(0, whole), self.url_safe))
+		out.append(base64_encode(data.slice(0, whole)?, self.url_safe))
 
 	var fn finish(var out: List[String]) Unit!:
 		if self.tail.is_empty(): return ok(unit)
@@ -60,7 +60,7 @@ impl Transform[String, Bytes] for Base64Decoding:
 		if whole == 0: return ok(unit)
 
 		part := text.slice(0, whole).get("")
-		decoded := try base64_decode(part, self.url_safe)
+		decoded := base64_decode(part, self.url_safe)?
 
 		// Every complete group decodes to three bytes unless the last group has
 		// padding.
@@ -78,7 +78,7 @@ impl Transform[String, Bytes] for Base64Decoding:
 		self.tail = ""
 		if last == "": return ok(unit)
 
-		out.append(try base64_decode(last, self.url_safe))
+		out.append(base64_decode(last, self.url_safe)?)
 
 // Decodes Base64 text chunks into bytes. Malformed text fails the read with `EBADMSG`;
 // text that ends inside a group fails at the end of the stream. Closing the result
@@ -115,14 +115,14 @@ impl Transform[String, Bytes] for HexDecoding:
 		self.tail = text.slice(whole, text.length()).get("")
 		if whole == 0: return ok(unit)
 
-		out.append(try hex_decode(text.slice(0, whole).get("")))
+		out.append(hex_decode(text.slice(0, whole).get(""))?)
 
 	var fn finish(var out: List[Bytes]) Unit!:
 		last := self.tail.clone()
 		self.tail = ""
 		if last == "": return ok(unit)
 
-		out.append(try hex_decode(last))
+		out.append(hex_decode(last)?)
 
 // Decodes hexadecimal text chunks into bytes. Malformed text, or text that ends inside
 // a pair, fails the read with `EBADMSG`. Closing the result closes `input`.

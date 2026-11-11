@@ -17,21 +17,21 @@ fn present(value: Int?) Int:
 		none: return 0
 
 test "case is an ordinary identifier in declarations and patterns":
-	try expect_equal(case(7), 8)
+	expect_equal(case(7), 8)?
 
 	case := 3
 	item := Item(case: case)
-	try expect_equal(item.case, 3)
+	expect_equal(item.case, 3)?
 
 	value := PayloadKeyword.case(9)
 
 	match value:
-		case(number): try expect_equal(number, 9)
+		case(number): expect_equal(number, 9)?
 
 	flag := NullaryKeyword.case
 
 	match flag:
-		case: try expect_equal(case, 3)
+		case: expect_equal(case, 3)?
 
-	try expect_equal(present(7), 7)
-	try expect_equal(present(none), 0)
+	expect_equal(present(7), 7)?
+	expect_equal(present(none), 0)?

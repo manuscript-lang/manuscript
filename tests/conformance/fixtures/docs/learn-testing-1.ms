@@ -7,7 +7,7 @@ fn add(a: Int, b: Int) Int:
     return a + b
 
 test "addition":
-    try expect_equal(add(1, 2), 3)
+    expect_equal(add(1, 2), 3)?
 
 test "zero is unchanged":
-    try expect_equal(add(0, 7), 7)
+    expect_equal(add(0, 7), 7)?

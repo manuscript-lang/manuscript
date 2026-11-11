@@ -25,32 +25,32 @@ fn build_c(source: String, out: String, flags: List[String]) Result[Unit, Error]
 	var args = ["-O2", "-std=c11", "-ffp-contract=off"].concat(flags)
 	args = args.concat([source.clone(), "-o", out.clone()])
 
-	_ := try must("cc {source}", capture(env("CC", "cc"), args))
+	_ := must("cc {source}", capture(env("CC", "cc"), args))?
 
 fn run(suite: String, n: Int, work: String) Result[String, Error]:
 	here := "bench/perf/{suite}"
 	for dir in ["go", "ms", "rust"]:
-		try copy(
+		copy(
 			"{here}/{dir}",
 			"{work}/{dir}",
 			CopyOptions(recursive: true, replace: true),
-		)
+		)?
 	for dir in ["rust-checked", "c", "c-ms"]:
-		try create_directory("{work}/{dir}")
-	try build_go("{work}/go", "{work}/go/bench")
-	try build_rust("{work}/rust/main.rs", "{work}/rust/bench", [])
-	try build_rust(
+		create_directory("{work}/{dir}")?
+	build_go("{work}/go", "{work}/go/bench")?
+	build_rust("{work}/rust/main.rs", "{work}/rust/bench", [])?
+	build_rust(
 		"{work}/rust/main.rs",
 		"{work}/rust-checked/bench",
 		["-C", "overflow-checks=on"],
-	)
-	try build_ms("{work}/ms", "{work}/ms/bench")
+	)?
+	build_ms("{work}/ms", "{work}/ms/bench")?
 
 	var versions = base_versions()
 
 	if suite == "kernels":
-		try build_c("{here}/c/plain.c", "{work}/c/bench", [])
-		try build_c("{here}/c/ms.c", "{work}/c-ms/bench", [])
+		build_c("{here}/c/plain.c", "{work}/c/bench", [])?
+		build_c("{here}/c/ms.c", "{work}/c-ms/bench", [])?
 		versions = versions.concat(c_versions())
 
 		if env("ABLATE", "0") == "1":
@@ -64,12 +64,8 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 			]
 
 			for entry in flags:
-				try create_directory("{work}/{entry[0]}")
-				try build_c(
-					"{here}/c/ms.c",
-					"{work}/{entry[0]}/bench",
-					entry[1].split(" "),
-				)
+				create_directory("{work}/{entry[0]}")?
+				build_c("{here}/c/ms.c", "{work}/{entry[0]}/bench", entry[1].split(" "))?
 
 			versions = versions.concat(ablations())
 
@@ -78,7 +74,7 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 	for i in 0..n:
 		// Rotate the order each round so no version always runs first.
 		for v in rotate(versions, i):
-			out := try sample("{work}/{v}/bench", [])
+			out := sample("{work}/{v}/bench", [])?
 			for line in out.split("\n"):
 				if line != "": raw.append("{v} {line}")
 			raw.append("{v} # end")

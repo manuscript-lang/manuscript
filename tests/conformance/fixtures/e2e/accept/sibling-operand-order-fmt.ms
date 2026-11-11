@@ -17,7 +17,7 @@ test "list elements read before a later match assigns them":
         ,
         x
     ]
-    try expect_equal(items, [1, 5, 50])
+    expect_equal(items, [1, 5, 50])?
 
     texts := [
         y,
@@ -27,7 +27,7 @@ test "list elements read before a later match assigns them":
                 value
             none: ""
     ]
-    try expect_equal(texts, ["a", "b"])
+    expect_equal(texts, ["a", "b"])?
 
 test "map keys read before a later match assigns them":
     var key = 1
@@ -40,8 +40,8 @@ test "map keys read before a later match assigns them":
         ,
         key: key
     }
-    try expect_equal(entries.length(), 2)
-    try expect_equal(entries.get(key: 1), 5)
+    expect_equal(entries.length(), 2)?
+    expect_equal(entries.get(key: 1), 5)?
 
 test "generic binary operands read before a later match assigns them":
     var amount = 1.5d
@@ -50,7 +50,7 @@ test "generic binary operands read before a later match assigns them":
             amount = 100d
             value
         none: 0d
-    try expect_equal(sum, 4d)
+    expect_equal(sum, 4d)?
 
 type Cell:
     n: Int
@@ -65,8 +65,8 @@ test "field assignment keeps sibling field writes made while evaluating the valu
             value
         none: 0
 
-    try expect_equal(cell.n, 2)
-    try expect_equal(cell.s, "changed")
+    expect_equal(cell.n, 2)?
+    expect_equal(cell.s, "changed")?
 
 fn present[T](value: T) T?:
     return value

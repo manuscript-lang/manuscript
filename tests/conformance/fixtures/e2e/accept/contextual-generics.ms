@@ -41,30 +41,30 @@ fn combine[T](var events: Events, first: T?, second: T?) T?:
 
 test "expected generic results preserve behavior and call order":
     result: List[Int]!Error := first()
-    try expect_false(result.is_ok())
-    try expect_equal(result.err().message, "empty")
+    expect_false(result.is_ok())?
+    expect_equal(result.err().message, "empty")?
 
     domain := failed()
-    try expect_false(domain.is_ok())
-    try expect_equal(domain.err().message, "domain")
+    expect_false(domain.is_ok())?
+    expect_equal(domain.err().message, "domain")?
 
     empty: Int? := forward()
-    try expect_false(not empty.is_none())
+    expect_false(not empty.is_none())?
 
     values: List[Int?] := [1, 2].map(fn item: absent())
-    try expect_equal(values.length(), 2)
-    try expect_false(not values.get(0).is_none())
+    expect_equal(values.length(), 2)?
+    expect_false(not values.get(0).is_none())?
 
     callback: fn(Int) String := transform(fn item: item.to_string())
-    try expect_equal(callback(7), "7")
+    expect_equal(callback(7), "7")?
 
     defaulted: fn(Int) Int := from_callback(fn: fn(value: Int = 4): (value + 1))
-    try expect_equal(defaulted(8), 9)
-    try expect_equal(consume(identity(5)), 5)
+    expect_equal(defaulted(8), 9)?
+    expect_equal(consume(identity(5)), 5)?
 
     var events = Events([])
     combined: Int? := combine(
         var events, second: record(var events, 2), first: record(var events, 1)
     )
-    try expect_false(not combined.is_none())
-    try expect_equal(events.values, [2, 1, 3])
+    expect_false(not combined.is_none())?
+    expect_equal(events.values, [2, 1, 3])?

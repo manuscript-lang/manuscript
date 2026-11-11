@@ -25,34 +25,34 @@ fn unpadded(length: Int, url: Bool) Unit!:
 
 	fn work() Unit!:
 		actual := base64_encode(data, url, false)
-		try expect_equal(actual, expected)
+		expect_equal(actual, expected)?
 		return keep(actual.byte_length())
 
-	try measure(1, work)
+	measure(1, work)?
 
 fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
 	data := sample(length)
 	expected := base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
-	try expect_equal(
-		try base32_decode(
+	expect_equal(
+		base32_decode(
 			expected,
 			Base32Options(hex_alphabet: hex, padded: padded),
-		),
+		)?,
 		data,
-	)
+	)?
 
 	fn work() Unit!:
 		actual := base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
-		try expect_equal(actual, expected)
+		expect_equal(actual, expected)?
 		return keep(actual.byte_length())
 
-	try measure(1, work)
+	measure(1, work)?
 
 fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
 	data := sample(length)
 	var text = base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
-	if mode == 1 or mode == 7: text = "!" + (try "A".repeat(text.byte_length() - 1))
-	if mode == 2: text = (try "A".repeat(text.byte_length() - 1)) + "!"
+	if mode == 1 or mode == 7: text = "!" + ("A".repeat(text.byte_length() - 1)?)
+	if mode == 2: text = ("A".repeat(text.byte_length() - 1)?) + "!"
 
 	var limit: Int? = none
 	if mode == 3: limit = 0
@@ -73,22 +73,22 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
 			Base32Options(hex_alphabet: hex, padded: padded),
 			limit,
 		)
-		try expect_equal(actual, expected)
+		expect_equal(actual, expected)?
 		return keep(if mode == 0 or mode == 5 or mode == 6: data.length() else: 1)
 
-	try measure(1, work)
+	measure(1, work)?
 
 fn encode85(length: Int) Unit!:
 	data := sample(length)
 	expected := ascii85_encode(data)
-	try expect_equal(try ascii85_decode(expected), data)
+	expect_equal(ascii85_decode(expected)?, data)?
 
 	fn work() Unit!:
 		actual := ascii85_encode(data)
-		try expect_equal(actual, expected)
+		expect_equal(actual, expected)?
 		return keep(actual.byte_length())
 
-	try measure(1, work)
+	measure(1, work)?
 
 fn decode85(
 	length: Int,
@@ -111,10 +111,10 @@ fn decode85(
 
 	fn work() Unit!:
 		actual := ascii85_decode(text, limit)
-		try expect_equal(actual, expected)
+		expect_equal(actual, expected)?
 		return keep(if actual.is_ok(): data.length() else: 1)
 
-	try measure(1, work)
+	measure(1, work)?
 	return ok(unit)
 
 fn zero_budget85() Unit!:
@@ -122,168 +122,168 @@ fn zero_budget85() Unit!:
 	expected: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 
 	fn work() Unit!:
-		try expect_equal(ascii85_decode(text, 0), expected)
+		expect_equal(ascii85_decode(text, 0), expected)?
 		return keep(1)
 
-	try measure(1, work)
+	measure(1, work)?
 
 fn whitespace85(bounded: Bool) Unit!:
-	text := try " \t\r\n".repeat(16384)
+	text := " \t\r\n".repeat(16384)?
 	limit: Int? := if bounded: 0 else: none
 	expected: Bytes! := ok(Bytes([]))
 
 	fn work() Unit!:
-		try expect_equal(ascii85_decode(text, limit), expected)
+		expect_equal(ascii85_decode(text, limit), expected)?
 		return keep(1)
 
-	try measure(1, work)
+	measure(1, work)?
 
 bench "buffers.unpadded.std.0":
-	try unpadded(0, false)
+	unpadded(0, false)?
 
 bench "buffers.unpadded.std.4":
-	try unpadded(4, false)
+	unpadded(4, false)?
 
 bench "buffers.unpadded.std.7":
-	try unpadded(7, false)
+	unpadded(7, false)?
 
 bench "buffers.unpadded.std.21":
-	try unpadded(21, false)
+	unpadded(21, false)?
 
 bench "buffers.unpadded.std.4096":
-	try unpadded(4096, false)
+	unpadded(4096, false)?
 
 bench "buffers.unpadded.std.1048576":
-	try unpadded(1048576, false)
+	unpadded(1048576, false)?
 
 bench "buffers.unpadded.url.21":
-	try unpadded(21, true)
+	unpadded(21, true)?
 
 bench "buffers.unpadded.url.4096":
-	try unpadded(4096, true)
+	unpadded(4096, true)?
 
 bench "buffers.base32.std.pad.21":
-	try base32(21, false, true)
+	base32(21, false, true)?
 
 bench "buffers.base32.std.raw.4096":
-	try base32(4096, false, false)
+	base32(4096, false, false)?
 
 bench "buffers.base32.hex.pad.4096":
-	try base32(4096, true, true)
+	base32(4096, true, true)?
 
 bench "buffers.base32.hex.raw.21":
-	try base32(21, true, false)
+	base32(21, true, false)?
 
 bench "buffers.ascii85.encode.21":
-	try encode85(21)
+	encode85(21)?
 
 bench "buffers.ascii85.encode.4096":
-	try encode85(4096)
+	encode85(4096)?
 
 bench "buffers.ascii85.none.0":
-	try decode85(0, false, false)
+	decode85(0, false, false)?
 
 bench "buffers.ascii85.exact.0":
-	try decode85(0, true, false)
+	decode85(0, true, false)?
 
 bench "buffers.ascii85.none.8":
-	try decode85(8, false, false)
+	decode85(8, false, false)?
 
 bench "buffers.ascii85.exact.8":
-	try decode85(8, true, false)
+	decode85(8, true, false)?
 
 bench "buffers.ascii85.none.4096":
-	try decode85(4096, false, false)
+	decode85(4096, false, false)?
 
 bench "buffers.ascii85.exact.4096":
-	try decode85(4096, true, false)
+	decode85(4096, true, false)?
 
 bench "buffers.ascii85.under.8":
-	try decode85(8, true, true)
+	decode85(8, true, true)?
 
 bench "buffers.ascii85.under.4096":
-	try decode85(4096, true, true)
+	decode85(4096, true, true)?
 
 bench "buffers.ascii85.zero.4096":
-	try zero_budget85()
+	zero_budget85()?
 
 bench "buffers.ascii85.invalid.first":
-	try decode85(4096, true, false, bad: 1)
+	decode85(4096, true, false, bad: 1)?
 
 bench "buffers.ascii85.invalid.last":
-	try decode85(4096, true, false, bad: 2)
+	decode85(4096, true, false, bad: 2)?
 
 bench "buffers.ascii85.z.none":
-	try decode85(8, false, false, true)
+	decode85(8, false, false, true)?
 
 bench "buffers.ascii85.z.exact":
-	try decode85(8, true, false, true)
+	decode85(8, true, false, true)?
 
 bench "buffers.ascii85.z.under":
-	try decode85(8, true, true, true)
+	decode85(8, true, true, true)?
 
 bench "buffers.ascii85.whitespace.none":
-	try whitespace85(false)
+	whitespace85(false)?
 
 bench "buffers.ascii85.whitespace.exact":
-	try whitespace85(true)
+	whitespace85(true)?
 
 bench "buffers.decode32.std.pad.valid.7":
-	try decode32(7, false, true, 0)
+	decode32(7, false, true, 0)?
 
 bench "buffers.decode32.std.pad.valid.4096":
-	try decode32(4096, false, true, 0)
+	decode32(4096, false, true, 0)?
 
 bench "buffers.decode32.std.pad.exact.4096":
-	try decode32(4096, false, true, 5)
+	decode32(4096, false, true, 5)?
 
 bench "buffers.decode32.std.pad.generous.4096":
-	try decode32(4096, false, true, 6)
+	decode32(4096, false, true, 6)?
 
 bench "buffers.decode32.std.pad.first.4096":
-	try decode32(4096, false, true, 1)
+	decode32(4096, false, true, 1)?
 
 bench "buffers.decode32.std.pad.first.1048576":
-	try decode32(1048576, false, true, 1)
+	decode32(1048576, false, true, 1)?
 
 bench "buffers.decode32.std.pad.first.generous.4096":
-	try decode32(4096, false, true, 7)
+	decode32(4096, false, true, 7)?
 
 bench "buffers.decode32.std.pad.last.4096":
-	try decode32(4096, false, true, 2)
+	decode32(4096, false, true, 2)?
 
 bench "buffers.decode32.std.pad.zero.4096":
-	try decode32(4096, false, true, 3)
+	decode32(4096, false, true, 3)?
 
 bench "buffers.decode32.std.pad.negative.4096":
-	try decode32(4096, false, true, 4)
+	decode32(4096, false, true, 4)?
 
 bench "buffers.decode32.hex.raw.valid.7":
-	try decode32(7, true, false, 0)
+	decode32(7, true, false, 0)?
 
 bench "buffers.decode32.hex.raw.valid.4096":
-	try decode32(4096, true, false, 0)
+	decode32(4096, true, false, 0)?
 
 bench "buffers.decode32.hex.raw.exact.4096":
-	try decode32(4096, true, false, 5)
+	decode32(4096, true, false, 5)?
 
 bench "buffers.decode32.hex.raw.generous.4096":
-	try decode32(4096, true, false, 6)
+	decode32(4096, true, false, 6)?
 
 bench "buffers.decode32.hex.raw.first.4096":
-	try decode32(4096, true, false, 1)
+	decode32(4096, true, false, 1)?
 
 bench "buffers.decode32.hex.raw.first.1048576":
-	try decode32(1048576, true, false, 1)
+	decode32(1048576, true, false, 1)?
 
 bench "buffers.decode32.hex.raw.first.generous.4096":
-	try decode32(4096, true, false, 7)
+	decode32(4096, true, false, 7)?
 
 bench "buffers.decode32.hex.raw.last.4096":
-	try decode32(4096, true, false, 2)
+	decode32(4096, true, false, 2)?
 
 bench "buffers.decode32.hex.raw.zero.4096":
-	try decode32(4096, true, false, 3)
+	decode32(4096, true, false, 3)?
 
 bench "buffers.decode32.hex.raw.negative.4096":
-	try decode32(4096, true, false, 4)
+	decode32(4096, true, false, 4)?

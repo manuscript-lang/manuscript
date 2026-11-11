@@ -20,7 +20,7 @@ test "a time limit on the loop cancels a source that waits forever":
 		options: PromiseOptions(timeout: milliseconds(100))
 	)
 	result := work.wait()
-	try expect_true(result.is_error())
+	expect_true(result.is_error())?
 
 	_gate := gate
 
@@ -31,8 +31,8 @@ test "a cancel switch ends a loop that waits for an item":
 	work := promise(fn: sum(p.reader())).with(
 		options: PromiseOptions(cancel: switch.signal())
 	)
-	try sleep(milliseconds(50)).wait()
+	sleep(milliseconds(50)).wait()?
 	switch.cancel()
-	try expect_true(work.wait().is_error())
+	expect_true(work.wait().is_error())?
 
 	_gate := gate

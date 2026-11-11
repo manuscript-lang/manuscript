@@ -7,21 +7,21 @@ import RequestOptions, request from "@std/net/net.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Unit, Error]:
-    url := try arguments().first().ok_or(
+    url := arguments().first().ok_or(
         Error("HTTP: invalid input", kind: "EINVAL")
-    )
-    response := try request(
+    )?
+    response := request(
         HttpMethod.Get, url,
         options: RequestOptions(headers: headers(), max_bytes: 1048576)
-    )
+    )?
     if response.metadata().status != 200:
         return error(Error("HTTP: invalid data", kind: "EBADMSG"))
 
-    text := try response.body.decode_utf8().ok_or(
+    text := response.body.decode_utf8().ok_or(
         Error("HTTP: invalid data", kind: "EBADMSG")
-    )
-    try stdout().write(text)
+    )?
+    stdout().write(text)?
     return stdout().flush()
 
 fn main() Unit!:
-    try run()
+    run()?

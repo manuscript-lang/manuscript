@@ -24,7 +24,7 @@ fn failing(cause: Cause) Int!Cause:
     return error(cause)
 
 fn tried(cause: Cause) Int!Cause:
-    v := try failing(cause)
+    v := failing(cause)?
     return ok(v + 1)
 
 fn relay(e: Reportable) Reportable:

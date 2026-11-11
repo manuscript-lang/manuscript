@@ -47,17 +47,17 @@ test "a var parameter of an interface type is wrapped in place":
 	var b: Counter = Box(n: 0)
 	twice(var b)
 	wrapped(var b, twice)
-	b.count() | try expect_equal(42)
+	b.count() | expect_equal(42)?
 
 test "the concrete receiver is recovered by a contract type match":
 	var b: Counter = Box(n: 0)
 	wrapped(var b, twice)
 
 	match b:
-		Wrap(w): w.calls | try expect_equal(2)
-		_: 0 | try expect_equal(1)
+		Wrap(w): w.calls | expect_equal(2)?
+		_: 0 | expect_equal(1)?
 
 test "a var parameter of a one-owner type is rebuilt from itself":
 	var xs = [7, 2, 3]
 	rewrap(var xs)
-	xs | try expect_equal([3, 7])
+	xs | expect_equal([3, 7])?

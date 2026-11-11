@@ -12,7 +12,7 @@ bench "csv.stringify":
 		if s := stringify(rows): return keep(s.length())
 		return keep(0)
 
-	try measure(5000, work)
+	measure(5000, work)?
 
 bench "csv.parse":
 	var rows: List[List[String]] = []
@@ -25,14 +25,14 @@ bench "csv.parse":
 		if r := parse(csv_text): return keep(r.length())
 		return keep(0)
 
-	try measure(5000, work)
+	measure(5000, work)?
 
 bench "csv.parse escaped quote field":
-	value := try "a\"".repeat(8000)
+	value := "a\"".repeat(8000)?
 	text := "\"{value.replace("\"", "\"\"")}\"\n"
 
 	fn work() Unit!:
-		rows := try parse(text)
+		rows := parse(text)?
 		return keep(rows[0][0].byte_length())
 
-	try measure(1, work)
+	measure(1, work)?

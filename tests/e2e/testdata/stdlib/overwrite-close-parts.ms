@@ -45,28 +45,28 @@ fn removes_element(log: String) Int:
 	return xs.length()
 
 test "overwriting a field closes the old value first":
-	temporary := temporary("manuscript-overwrite-") | try expect_ok
+	temporary := temporary("manuscript-overwrite-") | expect_ok?
 	log := "{temporary.path()}/log"
-	try expect_equal(replaces_field(log.clone()), 3)
-	try expect_equal(closed(log), "1,2,3,")
+	expect_equal(replaces_field(log.clone()), 3)?
+	expect_equal(closed(log), "1,2,3,")?
 
 test "set closes the element it replaces":
-	temporary := temporary("manuscript-overwrite-") | try expect_ok
+	temporary := temporary("manuscript-overwrite-") | expect_ok?
 	log := "{temporary.path()}/log"
-	try expect_equal(replaces_element(log.clone()), 2)
-	try expect_equal(closed(log), "1,2,3,")
+	expect_equal(replaces_element(log.clone()), 2)?
+	expect_equal(closed(log), "1,2,3,")?
 
 test "set with a negative index closes the element counted from the end":
-	temporary := temporary("manuscript-overwrite-") | try expect_ok
+	temporary := temporary("manuscript-overwrite-") | expect_ok?
 	log := "{temporary.path()}/log"
-	try expect_equal(replaces_from_end(log.clone()), 2)
-	try expect_equal(closed(log), "2,3,1,")
+	expect_equal(replaces_from_end(log.clone()), 2)?
+	expect_equal(closed(log), "2,3,1,")?
 
 test "remove closes the element it drops":
-	temporary := temporary("manuscript-overwrite-") | try expect_ok
+	temporary := temporary("manuscript-overwrite-") | expect_ok?
 	log := "{temporary.path()}/log"
-	try expect_equal(removes_element(log.clone()), 2)
-	try expect_equal(closed(log), "2,3,1,")
+	expect_equal(removes_element(log.clone()), 2)?
+	expect_equal(closed(log), "2,3,1,")?
 
 fn replaces_map_value(log: String) Int:
 	var m = Map[String, Tracked]()
@@ -97,28 +97,28 @@ fn clears_map(log: String) Int:
 	return m.length()
 
 test "add over an existing key closes the old value":
-	temporary := temporary("manuscript-overwrite-") | try expect_ok
+	temporary := temporary("manuscript-overwrite-") | expect_ok?
 	log := "{temporary.path()}/log"
-	try expect_equal(replaces_map_value(log.clone()), 2)
-	try expect_equal(closed(log), "1,2,3,")
+	expect_equal(replaces_map_value(log.clone()), 2)?
+	expect_equal(closed(log), "1,2,3,")?
 
 test "add under a new key closes nothing until the scope ends":
-	temporary := temporary("manuscript-overwrite-") | try expect_ok
+	temporary := temporary("manuscript-overwrite-") | expect_ok?
 	log := "{temporary.path()}/log"
-	try expect_equal(adds_new_map_key(log.clone()), 2)
-	try expect_equal(closed(log), "2,1,")
+	expect_equal(adds_new_map_key(log.clone()), 2)?
+	expect_equal(closed(log), "2,1,")?
 
 test "remove closes the value it drops":
-	temporary := temporary("manuscript-overwrite-") | try expect_ok
+	temporary := temporary("manuscript-overwrite-") | expect_ok?
 	log := "{temporary.path()}/log"
-	try expect_equal(removes_map_value(log.clone()), 1)
-	try expect_equal(closed(log), "1,2,")
+	expect_equal(removes_map_value(log.clone()), 1)?
+	expect_equal(closed(log), "1,2,")?
 
 test "clear closes every value, last inserted first":
-	temporary := temporary("manuscript-overwrite-") | try expect_ok
+	temporary := temporary("manuscript-overwrite-") | expect_ok?
 	log := "{temporary.path()}/log"
-	try expect_equal(clears_map(log.clone()), 0)
-	try expect_equal(closed(log), "2,1,")
+	expect_equal(clears_map(log.clone()), 0)?
+	expect_equal(closed(log), "2,1,")?
 
 fn splices_elements(log: String) Int:
 	var xs = [
@@ -136,13 +136,13 @@ fn pops_into_ignored(log: String) Int:
 	return xs.length()
 
 test "splice closes the deleted elements, last first":
-	temporary := temporary("manuscript-overwrite-") | try expect_ok
+	temporary := temporary("manuscript-overwrite-") | expect_ok?
 	log := "{temporary.path()}/log"
-	try expect_equal(splices_elements(log.clone()), 3)
-	try expect_equal(closed(log), "3,2,4,5,1,")
+	expect_equal(splices_elements(log.clone()), 3)?
+	expect_equal(closed(log), "3,2,4,5,1,")?
 
 test "a popped value bound to an ignored name closes at scope end":
-	temporary := temporary("manuscript-overwrite-") | try expect_ok
+	temporary := temporary("manuscript-overwrite-") | expect_ok?
 	log := "{temporary.path()}/log"
-	try expect_equal(pops_into_ignored(log.clone()), 1)
-	try expect_equal(closed(log), "2,1,")
+	expect_equal(pops_into_ignored(log.clone()), 1)?
+	expect_equal(closed(log), "2,1,")?

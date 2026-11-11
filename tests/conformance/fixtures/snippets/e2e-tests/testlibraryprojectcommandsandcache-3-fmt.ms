@@ -8,5 +8,5 @@ import fail from "@std/test/test.ms"
 test "root":
     if value() != 3: return fail("bad value")
 
-    data := try read_file(path: "golden/input.txt", max_bytes: 1024).wait()
+    data := read_file(path: "golden/input.txt", max_bytes: 1024).wait()?
     if data.length() != 7: return fail("wrong fixture size")

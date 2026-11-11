@@ -27,10 +27,10 @@ export fn measure(repeats: Int, name: String, run: fn(String) String!) Measured!
 
 	// One untimed run of each version warms executable and input pages. The Go
 	// reference establishes the expected output; every other output must match.
-	expected := try run("go")
+	expected := run("go")?
 
 	for v in ["ms", "rs"]:
-		got := try run(v)
+		got := run(v)?
 		if got != expected: return invalid("{name}: {v} warm-up output differs from Go")
 
 	var samples = List[Sample]()
@@ -38,7 +38,7 @@ export fn measure(repeats: Int, name: String, run: fn(String) String!) Measured!
 	for trial in 0..repeats:
 		for v in rotate(versions(), trial % versions().length()):
 			start := now_ns()
-			got := try run(v)
+			got := run(v)?
 			elapsed := now_ns() - start
 			if elapsed <= 0: return invalid("{name}: nonpositive elapsed time")
 			if got != expected: return invalid(

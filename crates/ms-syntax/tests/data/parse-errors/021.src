@@ -39,12 +39,12 @@ test "cleanup uses the selected contract":
     closed := Flag(value: false)
     unexpected: List[Int] := []
     with resource = Resource(closed, unexpected):
-        (not closed.value) | try expect_true
-    closed.value | try expect_true
+        (not closed.value) | expect_true?
+    closed.value | expect_true?
     closed.value = false
     bound_cleanup(resource: Resource(closed, unexpected))
-    closed.value | try expect_true
+    closed.value | expect_true?
     closed.value = false
     canonical_cleanup(resource: Resource(closed, unexpected))
-    closed.value | try expect_true
-    unexpected.is_empty() | try expect_true
+    closed.value | expect_true?
+    unexpected.is_empty() | expect_true?

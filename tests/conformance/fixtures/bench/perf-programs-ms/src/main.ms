@@ -43,7 +43,7 @@ fn checked(n: Int) Int!Error:
     return ok(n + 1)
 
 fn chain(n: Int) Int!Error:
-    v := try checked(n)
+    v := checked(n)?
     return ok(v)
 
 fn area(s: Shape) Int:

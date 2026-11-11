@@ -17,11 +17,11 @@ test "derived value equality":
     present: Int? := 1
     same: Int? := 1
     missing: Int? := none
-    try expect_equal(present, same)
-    try expect_not_equal(present, missing)
-    try expect_equal(1.00d, 1d)
-    try expect_equal([1, 2], [1, 2])
-    try expect_not_equal([1, 2], [2, 1])
-    try expect_equal(preserve_key("key"), "key")
+    expect_equal(present, same)?
+    expect_not_equal(present, missing)?
+    expect_equal(1.00d, 1d)?
+    expect_equal([1, 2], [1, 2])?
+    expect_not_equal([1, 2], [2, 1])?
+    expect_equal(preserve_key("key"), "key")?
 
     _callback := Callback(increment)

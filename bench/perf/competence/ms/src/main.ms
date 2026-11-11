@@ -129,7 +129,7 @@ fn check(i: Int) Result[Int, Fail]:
 	return ok(i)
 
 fn step(i: Int) Result[Int, Fail]:
-	v := try check(i)
+	v := check(i)?
 	return ok(v + 1)
 
 fn errors(n: Int) Int:

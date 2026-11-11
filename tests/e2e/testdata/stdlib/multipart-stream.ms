@@ -23,7 +23,7 @@ impl Source[Bytes] for Chunks:
 		var end = self.at + self.size
 		if end > self.data.length(): end = self.data.length()
 
-		piece := try self.data.slice(self.at, end)
+		piece := self.data.slice(self.at, end)?
 		self.at = end
 		return ok(piece)
 
@@ -38,7 +38,7 @@ fn read_parts(body: Bytes, size: Int, max_part_bytes: Int? = none) List[Part]!:
 	var out: List[Part] = []
 
 	while true:
-		next := try parts.next()
+		next := parts.next()?
 
 		if part := next:
 			out.append(part)
@@ -64,24 +64,24 @@ fn sample() Bytes:
 
 test "parts match parse_multipart under every chunk size":
 	body := "preamble ignored\r\n".to_bytes().concat(sample())
-	expected := try parse_multipart(body.clone(), "XyZ")
+	expected := parse_multipart(body.clone(), "XyZ")?
 	for size in 1..body.length() + 1:
-		if (try read_parts(body.clone(), size)) != expected: return fail(
+		if (read_parts(body.clone(), size)?) != expected: return fail(
 			"chunk size {size}"
 		)
-	try expect_equal(expected.length(), 3)
-	try expect_equal(expected[1].filename, "a.txt")
+	expect_equal(expected.length(), 3)?
+	expect_equal(expected[1].filename, "a.txt")?
 
 test "a body without the closing delimiter is InvalidData":
 	body := "--XyZ\r\nContent-Disposition: form-data; name=a\r\n\r\nvalue".to_bytes()
 	outcome := read_parts(body, 5)
-	try expect_equal(outcome.err().kind, "EBADMSG")
+	expect_equal(outcome.err().kind, "EBADMSG")?
 
 test "the part budget reports LimitExceeded":
 	big := encode_multipart([form_part("f", "x".repeat(500).get("").to_bytes())], "XyZ")
 	outcome := read_parts(big.clone(), 64, 100)
-	try expect_equal(outcome.err().kind, "EOVERFLOW")
-	try expect_equal((try read_parts(big, 64, 1000)).length(), 1)
+	expect_equal(outcome.err().kind, "EOVERFLOW")?
+	expect_equal((read_parts(big, 64, 1000)?).length(), 1)?
 
 test "a preamble longer than the part budget is ignored under every chunk size":
 	body := "p".repeat(80).get("").to_bytes().concat(
@@ -89,9 +89,9 @@ test "a preamble longer than the part budget is ignored under every chunk size":
 	)
 
 	for size in 1..body.length() + 1:
-		parts := try read_parts(body.clone(), size, 20)
-		try expect_equal(parts.length(), 1)
-		try expect_equal(parts[0].data, "x".to_bytes())
+		parts := read_parts(body.clone(), size, 20)?
+		expect_equal(parts.length(), 1)?
+		expect_equal(parts[0].data, "x".to_bytes())?
 
 test "a non-UTF-8 header block is InvalidData in both parsers":
 	var body = BytesBuilder()
@@ -102,41 +102,41 @@ test "a non-UTF-8 header block is InvalidData in both parsers":
 	body.append_bytes("\r\n\r\nx\r\n--XyZ--\r\n".to_bytes())
 
 	bytes := body.build()
-	try expect_equal(parse_multipart(bytes.clone(), "XyZ").err().kind, "EBADMSG")
+	expect_equal(parse_multipart(bytes.clone(), "XyZ").err().kind, "EBADMSG")?
 	for size in [1, 7, 200]:
-		try expect_equal(read_parts(bytes.clone(), size).err().kind, "EBADMSG")
+		expect_equal(read_parts(bytes.clone(), size).err().kind, "EBADMSG")?
 
 test "an Int-max part limit does not overflow on a partial part":
 	body := "--XyZ\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
 
 	for size in 1..body.length() + 1:
-		parts := try read_parts(body.clone(), size, 9223372036854775807)
-		try expect_equal(parts.length(), 1)
-		try expect_equal(parts[0].data, "x".to_bytes())
+		parts := read_parts(body.clone(), size, 9223372036854775807)?
+		expect_equal(parts.length(), 1)?
+		expect_equal(parts[0].data, "x".to_bytes())?
 
 test "transport padded multipart delimiters survive every chunk size":
 	body := "preamble\r\n--XyZ \t\r\nX-Label: first\r\n\r\n \tpayload \r\n--XyZ\t \r\n\r\n\r\n--XyZ-- \t\r\nepilogue".to_bytes()
-	expected := try parse_multipart(body, "XyZ")
-	try expect_equal(expected.length(), 2)
-	try expect_equal(expected[0].data, " \tpayload ".to_bytes())
-	try expect_equal(expected[1].data, "".to_bytes())
+	expected := parse_multipart(body, "XyZ")?
+	expect_equal(expected.length(), 2)?
+	expect_equal(expected[0].data, " \tpayload ".to_bytes())?
+	expect_equal(expected[1].data, "".to_bytes())?
 	for size in 1..body.length() + 1:
-		try expect_equal(try read_parts(body.clone(), size), expected)
+		expect_equal(read_parts(body.clone(), size)?, expected)?
 
 test "transport padding does not bypass streaming part budget":
 	padding := " ".repeat(40).get("")
 	body := "--XyZ{padding}\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
 	for size in 1..body.length() + 1:
-		try expect_equal(read_parts(body.clone(), size, 10).err().kind, "EOVERFLOW")
+		expect_equal(read_parts(body.clone(), size, 10).err().kind, "EOVERFLOW")?
 
 test "padded multipart sections retain exact raw budget boundary":
 	body := "--XyZ \t\r\n\r\nx\r\n--XyZ--\r\n".to_bytes()
 
 	for size in 1..body.length() + 1:
-		parts := try read_parts(body.clone(), size, 7)
-		try expect_equal(parts.length(), 1)
-		try expect_equal(parts[0].data, "x".to_bytes())
-		try expect_equal(read_parts(body.clone(), size, 6).err().kind, "EOVERFLOW")
+		parts := read_parts(body.clone(), size, 7)?
+		expect_equal(parts.length(), 1)?
+		expect_equal(parts[0].data, "x".to_bytes())?
+		expect_equal(read_parts(body.clone(), size, 6).err().kind, "EOVERFLOW")?
 
 // Replaces the byte at `at` with `value`.
 fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
@@ -211,18 +211,18 @@ test "fragmented multipart bodies keep binary bytes and delimiter prefixes":
 	for size in [1, 2, 5, 7, 64, 1024]:
 		var parts = multipart_parts(from_list(empty_chunks(body, size)), "XyZ", none)
 
-		if first := try parts.next():
-			try expect_equal(first.name, "binary")
-			try expect_equal(first.data, data)
+		if first := parts.next()?:
+			expect_equal(first.name, "binary")?
+			expect_equal(first.data, data)?
 		else:
 			return fail("missing binary part at chunk size {size}")
 
-		if second := try parts.next():
-			try expect_equal(second.data, "tail".to_bytes())
+		if second := parts.next()?:
+			expect_equal(second.data, "tail".to_bytes())?
 		else:
 			return fail("missing trailing part at chunk size {size}")
 
-		try expect_equal((try parts.next()).is_none(), true)
+		expect_equal((parts.next()?).is_none(), true)?
 
 test "retrying an invalid fragmented multipart section retains the error":
 	body := "--XyZ\r\nnot-a-header\r\n\r\nvalue-value-value\r\n--XyZ".to_bytes()
@@ -230,5 +230,5 @@ test "retrying an invalid fragmented multipart section retains the error":
 	chunks.append("".to_bytes())
 
 	var parts = multipart_parts(from_list(chunks), "XyZ", none)
-	try expect_equal(parts.next().err().kind, "EBADMSG")
-	try expect_equal(parts.next().err().kind, "EBADMSG")
+	expect_equal(parts.next().err().kind, "EBADMSG")?
+	expect_equal(parts.next().err().kind, "EBADMSG")?

@@ -17,7 +17,7 @@ impl Source[Bytes] for Chunks:
 		var end = self.at + self.size
 		if end > self.data.length(): end = self.data.length()
 
-		piece := try self.data.slice(self.at, end)
+		piece := self.data.slice(self.at, end)?
 		self.at = end
 		return ok(piece)
 
@@ -42,12 +42,12 @@ fn read(item: Case) Int!:
 
 		return ok(item.data.length())
 
-	found := try first
+	found := first?
 	if found.is_none(): return error(Error("missing row"))
 
 	row := found.get()
 	if row.length() != 1 or row[0] != item.expected: return error(Error("wrong row"))
-	if (try rows.next()).is_some(): return error(Error("extra row"))
+	if (rows.next()?).is_some(): return error(Error("extra row"))
 
 	return ok(row[0].byte_length())
 
@@ -58,7 +58,7 @@ fn measure(item: Case) Unit!:
 		started := monotonic()
 		var checksum = 0
 		for _iteration in 0..item.operations:
-			checksum += try read(item)
+			checksum += read(item)?
 
 		ns := monotonic().difference(started).to_nanoseconds()
 		if checksum != length * item.operations: return error(Error("wrong checksum"))

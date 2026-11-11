@@ -6,9 +6,9 @@ import (
 test "seeded distributions repeat for equal seeds":
 	var left = seeded(7)
 	var right = seeded(7)
-	try expect_equal(left.normal(), right.normal())
-	try expect_equal(left.exponential(), right.exponential())
-	try expect_equal(left.permutation(10), right.permutation(10))
+	expect_equal(left.normal(), right.normal())?
+	expect_equal(left.exponential(), right.exponential())?
+	expect_equal(left.permutation(10), right.permutation(10))?
 
 test "normal samples centre on zero with unit spread":
 	var rng = seeded(1)
@@ -20,8 +20,8 @@ test "normal samples centre on zero with unit spread":
 		sum += value
 		squares += value * value
 
-	try expect_true(sum / 20000.0 > -0.05 and sum / 20000.0 < 0.05)
-	try expect_true(squares / 20000.0 > 0.95 and squares / 20000.0 < 1.05)
+	expect_true(sum / 20000.0 > -0.05 and sum / 20000.0 < 0.05)?
+	expect_true(squares / 20000.0 > 0.95 and squares / 20000.0 < 1.05)?
 
 test "exponential samples are non-negative with mean one":
 	var rng = seeded(2)
@@ -29,10 +29,10 @@ test "exponential samples are non-negative with mean one":
 
 	for ignored in 0..20000:
 		value := rng.exponential()
-		try expect_true(value >= 0.0)
+		expect_true(value >= 0.0)?
 		sum += value
 
-	try expect_true(sum / 20000.0 > 0.95 and sum / 20000.0 < 1.05)
+	expect_true(sum / 20000.0 > 0.95 and sum / 20000.0 < 1.05)?
 
 test "permutation contains each index once":
 	var rng = seeded(3)
@@ -40,6 +40,6 @@ test "permutation contains each index once":
 	var expected: List[Int] = []
 	for index in 0..50:
 		expected.append(index)
-	try expect_equal(order.length(), 50)
-	try expect_equal(order.sorted(), expected)
-	try expect_equal(rng.permutation(0).length(), 0)
+	expect_equal(order.length(), 50)?
+	expect_equal(order.sorted(), expected)?
+	expect_equal(rng.permutation(0).length(), 0)?

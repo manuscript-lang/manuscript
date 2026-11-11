@@ -21,7 +21,7 @@ export fn main() Int:
     return 0
 
 test "operands retain evaluation order":
-    main() | try expect_equal(0)
+    main() | expect_equal(0)?
 
 fn present[T](value: T) T?:
     return value

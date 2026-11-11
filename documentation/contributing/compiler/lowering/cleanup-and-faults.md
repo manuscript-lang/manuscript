@@ -9,7 +9,7 @@ The compiler lowers scope-end cleanup in `ms-lower` (`close.rs`): after a resour
 
 The backend implements [scope-exit order](../../../core-language/cleanup/scopes.md#cleanup-order) and [fault selection](../../../core-language/cleanup/cleanup-faults.md):
 
-1. Normal exits (fall-through, `return`, `break`, `continue`, `try`) call the registered closes in reverse order.
+1. Normal exits (fall-through, `return`, `break`, `continue`, `?`) call the registered closes in reverse order.
 2. Runtime cleanup entries cover faults and cancellation. Guards let a promise or `expect_fault` contain a fault after cleanup; an unhandled root fault ends the program.
 3. Faulting operations report through the runtime's nonreturning fault path. Generated drop and close entries release values when guarded work unwinds.
 

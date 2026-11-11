@@ -18,15 +18,15 @@ test "repeated calls through one site":
     while i < 3:
         a := monotonic()
         b := monotonic()
-        try expect_true((b.difference(other: a).to_milliseconds() >= 0))
+        expect_true((b.difference(other: a).to_milliseconds() >= 0))?
         i = i + 1
 
     var out = stdout()
     var n = 0
 
     while n < 2:
-        try expect_true((out.write("x").is_ok()))
+        expect_true((out.write("x").is_ok()))?
         n = n + 1
 
-    try expect_true((describe(e: boom_error(Boom(code: 1))) == "boom 1"))
-    try expect_true((describe(e: boom_error(Boom(code: 2))) == "boom 2"))
+    expect_true((describe(e: boom_error(Boom(code: 1))) == "boom 1"))?
+    expect_true((describe(e: boom_error(Boom(code: 2))) == "boom 2"))?

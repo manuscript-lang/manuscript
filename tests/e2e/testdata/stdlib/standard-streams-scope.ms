@@ -14,19 +14,19 @@ fn writes_to_stderr_through_a_binding() Bool:
 	return err.write("").is_ok()
 
 test "a binding of a standard stream does not close it at scope end":
-	try expect_true(writes_through_a_binding())
-	try expect_true(writes_through_a_binding())
-	try expect_true(stdout().write("").is_ok())
-	try expect_true(writes_to_stderr_through_a_binding())
-	try expect_true(stderr().write("").is_ok())
+	expect_true(writes_through_a_binding())?
+	expect_true(writes_through_a_binding())?
+	expect_true(stdout().write("").is_ok())?
+	expect_true(writes_to_stderr_through_a_binding())?
+	expect_true(stderr().write("").is_ok())?
 
 test "closing a standard stream flushes it and leaves the process stream open":
 	var out = stdout()
-	try out.write("")
+	out.write("")?
 
 	_ := out.close()
-	try expect_true(stdout().write("").is_ok())
+	expect_true(stdout().write("").is_ok())?
 
 	var err = stderr()
 	_ := err.close()
-	try expect_true(stderr().write("").is_ok())
+	expect_true(stderr().write("").is_ok())?

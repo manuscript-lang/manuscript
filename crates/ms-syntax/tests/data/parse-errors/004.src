@@ -49,4 +49,4 @@ test "a payload identifier binds every alternative without changing semantics":
     try expect_false(
         (precise(denied) != 2 or precise(missing) != 1 or precise(success) != 7)
     )
-    try expect_equal(deliberate(denied), "permission denied")
+    expect_equal(deliberate(denied), "permission denied")?

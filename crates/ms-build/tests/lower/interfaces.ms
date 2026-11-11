@@ -24,12 +24,12 @@ fn pick(n: Int) Result[Int, Error]:
     return ok(n)
 
 fn twice(n: Int) Result[Int, Error]:
-    v := try pick(n)
+    v := pick(n)?
     return ok(v * 2)
 
 fn show(n: Int) Result[Unit, Error]:
-    try stdout().write("{n}\n")
-    try stdout().flush()
+    stdout().write("{n}\n")?
+    stdout().flush()?
 
 fn main() Unit:
     show(total(Sq(s: 4))).get()

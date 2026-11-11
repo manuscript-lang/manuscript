@@ -79,11 +79,11 @@ right: none
 body: x: Int? := {}
 diag: no null
 
-wrong: v := try f()
+wrong: v := f()?
 right: v := f().get(0)
 setup: fn f() Result[Int, Error]: ok(1)
 body: {}
-diag: try requires an enclosing Result
+diag: '?' requires an enclosing Result
 
 wrong: names.append(u.name);;names.append(u.name)
 right: names.append(u.name.clone());;names.append(u.name)

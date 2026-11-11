@@ -6,5 +6,5 @@ import Bytes from "@std/bytes.ms"
 
 fn notes_reader(path: String) fn() Result[Bytes, Error]:
     return fn:
-        file := try open(path, OpenMode.Read)
+        file := open(path, OpenMode.Read)?
         return file.read_file(max_bytes: 1048576)

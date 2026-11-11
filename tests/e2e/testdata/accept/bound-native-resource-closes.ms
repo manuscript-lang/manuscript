@@ -11,7 +11,7 @@ type Marker:
 
 impl Closeable for Marker:
 	var fn close() Unit!:
-		try append_file(self.log, "{self.id},").wait()
+		append_file(self.log, "{self.id},").wait()?
 
 fn failed(id: Int, log: String) Int!Marker:
 	return error(Marker(id, log))
@@ -21,26 +21,26 @@ fn events(log: String) String:
 
 fn call_twice(log: String) Unit!:
 	status := failed(1, log.clone()).is_error
-	try expect_equal(status(), true)
-	try expect_equal(status(), true)
-	try expect_equal(read_file(log).wait().is_error(), true)
+	expect_equal(status(), true)?
+	expect_equal(status(), true)?
+	expect_equal(read_file(log).wait().is_error(), true)?
 
 test "a bound native method owns its temporary receiver and closes it once":
-	tmp := temporary("bound-native-close-") | try expect_ok
+	tmp := temporary("bound-native-close-") | expect_ok?
 	log := "{tmp.path()}/log"
-	try call_twice(log.clone())
-	try expect_equal(events(log), "1,")
+	call_twice(log.clone())?
+	expect_equal(events(log), "1,")?
 
 fn named(log: String) Unit!:
 	held := failed(2, log.clone())
 	status := held.is_error
-	try expect_equal(status(), true)
+	expect_equal(status(), true)?
 
 test "a bound native method over a named receiver closes it once, not twice":
-	tmp := temporary("bound-native-named-") | try expect_ok
+	tmp := temporary("bound-native-named-") | expect_ok?
 	log := "{tmp.path()}/log"
-	try named(log.clone())
-	try expect_equal(events(log), "2,")
+	named(log.clone())?
+	expect_equal(events(log), "2,")?
 
 // A resource with only scalar fields has no drop glue but still has one owner that
 // closes it. Its id names the file the close appends to, since it has nowhere to keep a
@@ -50,24 +50,24 @@ type Tag:
 
 // The host temp root, since a hard-coded /tmp does not exist on Windows.
 fn tag_log(id: Int) String!:
-	return ok("{try temporary_root()}/ms-bound-native-tag-{id}")
+	return ok("{ temporary_root()?}/ms-bound-native-tag-{id}")
 
 impl Closeable for Tag:
 	var fn close() Unit!:
-		try append_file(try tag_log(self.id), "closed,").wait()
+		append_file(tag_log(self.id)?, "closed,").wait()?
 
 fn borrowed_status(result: Int!Tag) Bool:
 	check := result.is_error
 	return check()
 
 test "a method value over a borrowed scalar resource leaves the close to its owner":
-	id := try secure_int(1, 1000000000)
-	log := try tag_log(id)
-	try borrow_then_check(id, log.clone())
-	try expect_equal(events(log.clone()), "closed,")
-	try remove(log)
+	id := secure_int(1, 1000000000)?
+	log := tag_log(id)?
+	borrow_then_check(id, log.clone())?
+	expect_equal(events(log.clone()), "closed,")?
+	remove(log)?
 
 fn borrow_then_check(id: Int, log: String) Unit!:
 	result: Int!Tag := error(Tag(id))
-	try expect_equal(borrowed_status(result), true)
-	try expect_equal(read_file(log.clone()).wait().is_error(), true)
+	expect_equal(borrowed_status(result), true)?
+	expect_equal(read_file(log.clone()).wait().is_error(), true)?

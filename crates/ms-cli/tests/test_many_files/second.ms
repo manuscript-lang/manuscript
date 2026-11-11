@@ -5,4 +5,4 @@ fn value() Int:
     return 2
 
 test "second file":
-    try expect_equal(value(), 2)
+    expect_equal(value(), 2)?

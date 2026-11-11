@@ -36,19 +36,19 @@ fn build(r: fn(Int) Int) List[fn(Int) Int]:
 	return out
 
 test "closures kept by natives own their captures":
-	try expect_equal(dflt(none, "a")(), "ad")
+	expect_equal(dflt(none, "a")(), "ad")?
 
 	b := mk(none, "hello" + "world")
 	c := churn(100)
 	m := Map[Int, fn() String]()
 	l := mk2(m, "abc" + "def")
 	c2 := churn(100)
-	try expect_equal(b.f() + l[0](), "helloworldxabcdefy")
-	try expect_equal(c + c2 > 0, true)
+	expect_equal(b.f() + l[0](), "helloworldxabcdefy")?
+	expect_equal(c + c2 > 0, true)?
 
 	fs := build(inc)
-	try expect_equal(fs.length(), 3)
-	try expect_equal(fs[2](1), 2)
+	expect_equal(fs.length(), 3)?
+	expect_equal(fs[2](1), 2)?
 
 fn keep(r: fn(Int) Int) List[fn(Int) Int]:
 	var out = List[fn(Int) Int]()
@@ -60,5 +60,5 @@ test "an escaping closure takes an explicit clone of a value that is used again"
 	snapshot := a.clone()
 	b := keep(fn x: x + snapshot.length())
 	a.append(4)
-	try expect_equal(b[0](1), 4)
-	try expect_equal(a.length(), 4)
+	expect_equal(b[0](1), 4)?
+	expect_equal(a.length(), 4)?

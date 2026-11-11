@@ -23,6 +23,6 @@ test "function suite boundaries":
     )
 
     final_argument := apply(value: 3, transform: fn value: return value - 1)
-    calls.length() | try expect_equal(0)
-    grouped | try expect_equal(2)
-    final_argument | try expect_equal(2)
+    calls.length() | expect_equal(0)?
+    grouped | expect_equal(2)?
+    final_argument | expect_equal(2)?

@@ -20,7 +20,7 @@ fn work(k: Int) Int!:
 	return ok(spin(2000000) + k)
 
 fn after(first: Promise[Int]) Int!:
-	return ok(try first.wait() + 1)
+	return ok(first.wait()? + 1)
 
 fn make(k: Int) Promise[Int]!:
 	return ok(promise(fn: work(k)))
@@ -35,9 +35,9 @@ test "a promise waits on a promise made by another thread":
 	for k in 0..12:
 		first := promise(fn: work(k))
 		second := promise(fn: after(first))
-		total += try second.wait()
+		total += second.wait()?
 
-	try expect_equal(total, 12 * (base + 1) + 66)
+	expect_equal(total, 12 * (base + 1) + 66)?
 
 test "a promise returned by a promise is waited by its caller":
 	base := spin(2000000)
@@ -45,10 +45,10 @@ test "a promise returned by a promise is waited by its caller":
 
 	for k in 0..12:
 		outer := promise(fn: make(k))
-		inner := try outer.wait()
-		total += try inner.wait()
+		inner := outer.wait()?
+		total += inner.wait()?
 
-	try expect_equal(total, 12 * base + 66)
+	expect_equal(total, 12 * base + 66)?
 
 test "wait_all and wait_first accept promises of several threads":
 	base := spin(2000000)
@@ -56,20 +56,20 @@ test "wait_all and wait_first accept promises of several threads":
 
 	for k in 0..6:
 		outer := promise(fn: make(k))
-		inners.append(try outer.wait())
+		inners.append(outer.wait()?)
 
-	all := try wait_all(inners)
-	try expect_equal(all.length(), 6)
-	try expect_equal(all[5], base + 5)
+	all := wait_all(inners)?
+	expect_equal(all.length(), 6)?
+	expect_equal(all[5], base + 5)?
 
 	var more = List[Promise[Int]]()
 
 	for k in 0..4:
 		outer := promise(fn: make(k))
-		more.append(try outer.wait())
+		more.append(outer.wait()?)
 
-	first := try wait_first(more)
-	try expect_equal(first >= base, true)
+	first := wait_first(more)?
+	expect_equal(first >= base, true)?
 
 fn long_sleep() Promise[Unit]!:
 	return ok(sleep(60.seconds()))
@@ -88,20 +88,20 @@ test "wait_first runs a local deferred input beside a foreign promise":
 		// Give idle threads work to take while this thread computes; the result is
 		// checked.
 		busy := spin(2000000)
-		try expect_equal(busy >= 0, true)
+		expect_equal(busy >= 0, true)?
 
-		remote := (try outer.wait()).with(options: PromiseOptions(timeout: 1.seconds()))
+		remote := (outer.wait()?).with(options: PromiseOptions(timeout: 1.seconds()))
 		local := deferred[Unit](fn id: complete[Unit](id, ok(unit)))
-		try wait_first([local, remote])
+		wait_first([local, remote])?
 
 test "wait_first returns a ready input before foreign deferred work":
 	for k in 0..8:
 		outer := promise(fn: deferred_error())
 		busy := spin(2000000)
-		try expect_equal(busy >= 0, true)
+		expect_equal(busy >= 0, true)?
 
-		remote := try outer.wait()
+		remote := outer.wait()?
 		ready := promise[Unit](fn: ok(unit))
 		while not ready.done():
 			continue
-		try wait_first([remote, ready])
+		wait_first([remote, ready])?

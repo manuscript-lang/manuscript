@@ -11,17 +11,17 @@
       "tests": [
         {
           "index": 0,
-          "name": "try-statement.ms::statement try returns the error and binds the value",
+          "name": "try-statement.ms::statement returns? the error and binds the value",
           "status": "passed"
         },
         {
           "index": 1,
-          "name": "try-statement.ms::try nested in expressions and chains still propagates",
+          "name": "try-statement.ms::nested? in expressions and chains still propagates",
           "status": "passed"
         },
         {
           "index": 2,
-          "name": "try-statement.ms::try in loops and lambdas",
+          "name": "try-statement.ms::in? loops and lambdas",
           "status": "passed"
         }
       ],
@@ -35,7 +35,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN try-statement.ms::statement try returns the error and binds the value\nPASS try-statement.ms::statement try returns the error and binds the value\nRUN try-statement.ms::try nested in expressions and chains still propagates\nPASS try-statement.ms::try nested in expressions and chains still propagates\nRUN try-statement.ms::try in loops and lambdas\nPASS try-statement.ms::try in loops and lambdas\n3 tests, 0 failed\n",
+      "stdout": "RUN try-statement.ms::statement returns? the error and binds the value\nPASS try-statement.ms::statement returns? the error and binds the value\nRUN try-statement.ms::nested? in expressions and chains still propagates\nPASS try-statement.ms::nested? in expressions and chains still propagates\nRUN try-statement.ms::in? loops and lambdas\nPASS try-statement.ms::in? loops and lambdas\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

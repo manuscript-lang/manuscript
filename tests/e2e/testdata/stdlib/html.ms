@@ -33,20 +33,20 @@ fn body_nodes(node: HtmlNode) List[HtmlNode]:
 	return children(children(html).get(1))
 
 test "HTML escaping preserves Unicode and escapes all markup characters":
-	try expect_equal(escape("<&>\"'"), "&lt;&amp;&gt;&#34;&#39;")
-	try expect_equal(escape("é🙂"), "é🙂")
-	try expect_equal(escape(""), "")
+	expect_equal(escape("<&>\"'"), "&lt;&amp;&gt;&#34;&#39;")?
+	expect_equal(escape("é🙂"), "é🙂")?
+	expect_equal(escape(""), "")?
 
 test "HTML parses nested elements attributes entities and comments":
-	doc := try parse(
+	doc := parse(
 		"<DIV id='main' title='A &amp; B' hidden>Hello <b>é🙂</b> &lt;world&gt;<!--note--><br></DIV>"
-	)
+	)?
 	div := body_nodes(doc.clone()).get(0).clone()
 
 	match div:
 		Element(tag, namespace, attributes, items):
-			try expect_false(tag != "div" or namespace != "")
-			try expect_false(
+			expect_false(tag != "div" or namespace != "")?
+			expect_false(
 				(
 					attributes != [
 						HtmlAttribute("id", "", "main"),
@@ -54,15 +54,15 @@ test "HTML parses nested elements attributes entities and comments":
 						HtmlAttribute("hidden", "", ""),
 					]
 				)
-			)
-			try expect_false(
+			)?
+			expect_false(
 				(
 					items.get(0) != HtmlNode.Text("Hello ")
 					or items.get(2) != HtmlNode.Text(" <world>")
 				)
-			)
-			try expect_equal(items.get(3), HtmlNode.Comment("note"))
-			try expect_false(
+			)?
+			expect_equal(items.get(3), HtmlNode.Comment("note"))?
+			expect_false(
 				(
 					items.get(4) != HtmlNode.Element(
 						tag: "br",
@@ -71,39 +71,39 @@ test "HTML parses nested elements attributes entities and comments":
 						children: [],
 					)
 				)
-			)
+			)?
 		_: return fail("expected element")
 
-	try expect_equal(text_content(doc), "Hello é🙂 <world>")
+	expect_equal(text_content(doc), "Hello é🙂 <world>")?
 
 test "HTML recovers unclosed tags and inserts document and table structure":
-	doc := try parse("<ul><li>one<li>two</ul><table><tr><td>cell")
+	doc := parse("<ul><li>one<li>two</ul><table><tr><td>cell")?
 	nodes := body_nodes(doc)
 	entries := children(nodes.get(0).clone())
-	try expect_false(
+	expect_false(
 		(
 			entries.length() != 2
 			or text_content(entries.get(0).clone()) != "one"
 			or text_content(entries.get(1).clone()) != "two"
 		)
-	)
+	)?
 
 	match children(nodes.get(1).clone()).get(0).clone():
 		Element(tag, _, _, _):
-			try expect_equal(tag, "tbody")
+			expect_equal(tag, "tbody")?
 		_: return fail("expected tbody")
 
-	try expect_equal(text_content(nodes.get(1).clone()), "cell")
+	expect_equal(text_content(nodes.get(1).clone()), "cell")?
 
-	empty := try parse("")
-	try expect_equal(children(children(empty).get(0)).length(), 2)
+	empty := parse("")?
+	expect_equal(children(children(empty).get(0)).length(), 2)?
 
 test "HTML preserves doctypes foreign namespaces and raw script text":
-	doc := try parse(
+	doc := parse(
 		"<!DOCTYPE html PUBLIC 'public' 'system'><!--before--><svg><a xlink:href='#icon'/></svg><script>if (a < b) x = '&amp;';</script>"
-	)
+	)?
 	nodes := children(doc)
-	try expect_false(
+	expect_false(
 		(
 			nodes.get(0) != HtmlNode.Doctype(
 				name: "html",
@@ -111,20 +111,20 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 				system_id: "system",
 			)
 		)
-	)
-	try expect_equal(nodes.get(1), HtmlNode.Comment("before"))
+	)?
+	expect_equal(nodes.get(1), HtmlNode.Comment("before"))?
 
 	body := children(children(nodes.get(2).clone()).get(1).clone())
 
 	svg_items := match body.get(0):
 		Element(tag, namespace, _, items):
-			try expect_false(tag != "svg" or namespace != "svg")
+			expect_false(tag != "svg" or namespace != "svg")?
 			items.clone()
 		_: return fail("expected SVG")
 
 	match svg_items.get(0):
 		Element(_, child_namespace, attributes, _):
-			try expect_false(
+			expect_false(
 				(
 					child_namespace != "svg"
 					or attributes.get(0) != HtmlAttribute(
@@ -133,27 +133,27 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 						"#icon",
 					)
 				)
-			)
+			)?
 		_: return fail("expected SVG anchor")
 
-	try expect_equal(text_content(body.get(1).clone()), "if (a < b) x = '&amp;';")
+	expect_equal(text_content(body.get(1).clone()), "if (a < b) x = '&amp;';")?
 
 test "HTML honors optional byte depth and node limits":
-	empty := try parse("")
-	try expect_equal(
-		(try parse("", HtmlOptions(max_bytes: 0, max_depth: 2, max_nodes: 4))),
+	empty := parse("")?
+	expect_equal(
+		(parse("", HtmlOptions(max_bytes: 0, max_depth: 2, max_nodes: 4))?),
 		empty,
-	)
-	try expect_equal((try parse("é", HtmlOptions())), (try parse("é")))
+	)?
+	expect_equal((parse("é", HtmlOptions())?), (parse("é")?))?
 
 	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
-	try expect_equal(parse("é", HtmlOptions(max_bytes: 1)), limited)
-	try expect_equal(parse("", HtmlOptions(max_depth: 1)), limited)
-	try expect_equal(parse("", HtmlOptions(max_nodes: 3)), limited)
+	expect_equal(parse("é", HtmlOptions(max_bytes: 1)), limited)?
+	expect_equal(parse("", HtmlOptions(max_depth: 1)), limited)?
+	expect_equal(parse("", HtmlOptions(max_nodes: 3)), limited)?
 
 	invalid: HtmlNode! := error(Error("HTML: invalid input", kind: "EINVAL"))
-	try expect_equal(parse("", HtmlOptions(max_nodes: -1)), invalid)
-	try expect_not_equal(Error("HTML: invalid data", kind: "EBADMSG").message, "")
+	expect_equal(parse("", HtmlOptions(max_nodes: -1)), invalid)?
+	expect_not_equal(Error("HTML: invalid data", kind: "EBADMSG").message, "")?
 
 test "HTML depth limit stops deeply nested input without quadratic work":
 	// 60,000 open divs take tens of seconds when the parser only checks depth
@@ -161,7 +161,7 @@ test "HTML depth limit stops deeply nested input without quadratic work":
 	nested := "<div>".repeat(60000).get()
 	started := monotonic()
 	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
-	try expect_equal(parse(nested, HtmlOptions(max_depth: 100)), limited)
+	expect_equal(parse(nested, HtmlOptions(max_depth: 100)), limited)?
 
 	elapsed := monotonic().difference(started).to_milliseconds()
 	if elapsed > 5000: return fail("depth limit took {elapsed} ms")
@@ -169,32 +169,32 @@ test "HTML depth limit stops deeply nested input without quadratic work":
 test "HTML parse applies default limits and none lifts them":
 	nested := "<div>".repeat(20000).get()
 	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
-	try expect_equal(parse(nested), limited)
+	expect_equal(parse(nested), limited)?
 
 	lifted := parse(nested, HtmlOptions(max_depth: none, max_nodes: none))
-	try expect_false(lifted.is_error())
+	expect_false(lifted.is_error())?
 
 test "unescape maps overflowing numeric references to U+FFFD instead of wrapping":
-	try expect_equal(unescape("&#4294967361;"), "\u{fffd}")
-	try expect_equal(unescape("&#x100000041;"), "\u{fffd}")
-	try expect_equal(unescape("&#99999999999999999999999"), "\u{fffd}")
-	try expect_equal(unescape("&#1114111;&#1114112;"), "\u{10ffff}\u{fffd}")
+	expect_equal(unescape("&#4294967361;"), "\u{fffd}")?
+	expect_equal(unescape("&#x100000041;"), "\u{fffd}")?
+	expect_equal(unescape("&#99999999999999999999999"), "\u{fffd}")?
+	expect_equal(unescape("&#1114111;&#1114112;"), "\u{10ffff}\u{fffd}")?
 
 test "unescape decodes one-digit numeric references without a semicolon":
-	try expect_equal(unescape("&#9F"), "\u{9}F")
-	try expect_equal(unescape("&#1"), "\u{1}")
-	try expect_equal(unescape("&#0"), "\u{fffd}")
-	try expect_equal(unescape("&#x4"), "\u{4}")
-	try expect_equal(unescape("&#65x"), "Ax")
+	expect_equal(unescape("&#9F"), "\u{9}F")?
+	expect_equal(unescape("&#1"), "\u{1}")?
+	expect_equal(unescape("&#0"), "\u{fffd}")?
+	expect_equal(unescape("&#x4"), "\u{4}")?
+	expect_equal(unescape("&#65x"), "Ax")?
 
 test "unescape keeps references without digits literal":
-	try expect_equal(unescape("&#"), "&#")
-	try expect_equal(unescape("&#;"), "&#;")
-	try expect_equal(unescape("&#x"), "&#x")
-	try expect_equal(unescape("&#xg"), "&#xg")
-	try expect_equal(unescape("&#x;"), "&#x;")
+	expect_equal(unescape("&#"), "&#")?
+	expect_equal(unescape("&#;"), "&#;")?
+	expect_equal(unescape("&#x"), "&#x")?
+	expect_equal(unescape("&#xg"), "&#xg")?
+	expect_equal(unescape("&#x;"), "&#x;")?
 
 test "unescape maps the HTML5 nGt and nLt references to two scalars":
-	try expect_equal(unescape("&nGt;"), "\u{226b}\u{20d2}")
-	try expect_equal(unescape("&nLt;"), "\u{226a}\u{20d2}")
-	try expect_equal(unescape("&nGtv;"), "\u{226b}\u{338}")
+	expect_equal(unescape("&nGt;"), "\u{226b}\u{20d2}")?
+	expect_equal(unescape("&nLt;"), "\u{226a}\u{20d2}")?
+	expect_equal(unescape("&nGtv;"), "\u{226b}\u{338}")?

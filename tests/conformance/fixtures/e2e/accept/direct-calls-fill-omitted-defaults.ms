@@ -21,12 +21,12 @@ fn countdown(n: Int, step: Int = 1) Int:
     return n + countdown(n: n - step, step: step)
 
 test "omitted defaults":
-    try expect_true((scaled(base: 3) == "x6"))
-    try expect_true((scaled(base: 3, factor: 5) == "x15"))
-    try expect_true((scaled(base: 3, factor: 5, label: "y") == "y15"))
-    try expect_true((chained(base: 4) == 9 and chained(base: 4, plus: 1) == 5))
-    try expect_true((maybe(value: 1) == 1 and maybe(value: 1, extra: 4) == 5))
-    try expect_true((countdown(n: 4) == 10 and countdown(n: 4, step: 2) == 6))
+    expect_true((scaled(base: 3) == "x6"))?
+    expect_true((scaled(base: 3, factor: 5) == "x15"))?
+    expect_true((scaled(base: 3, factor: 5, label: "y") == "y15"))?
+    expect_true((chained(base: 4) == 9 and chained(base: 4, plus: 1) == 5))?
+    expect_true((maybe(value: 1) == 1 and maybe(value: 1, extra: 4) == 5))?
+    expect_true((countdown(n: 4) == 10 and countdown(n: 4, step: 2) == 6))?
 
     callback := scaled
-    try expect_true((callback(base: 2, factor: 3, label: "z") == "z6"))
+    expect_true((callback(base: 2, factor: 3, label: "z") == "z6"))?

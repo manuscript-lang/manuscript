@@ -4,61 +4,53 @@ import (
 )
 
 fn invalid(source: String) Unit!:
-	cause := parse(source) | try expect_error
+	cause := parse(source) | expect_error?
 	if cause.kind != "EBADMSG":
 		return fail("expected malformed implicit key, got {cause}")
 
 	(
-		cause.details["reason"] | try expect_equal(
+		cause.details["reason"] | expect_equal(
 			"an implicit mapping key must stay on one line"
-		)
+		)?
 	)
 
 test "YAML plain implicit keys cannot span physical lines":
 	for source in ["\{key\n next: value\}", "\{key\n: value\}"]:
-		try invalid(source)
+		invalid(source)?
 
 test "YAML quoted implicit keys cannot span physical lines":
 	for source in [
 		"\{'key\n next': value\}", "\{\"key\n next\": value\}",
 		"\{\"key\\\n next\": value\}", "\{\"key\"\n: value\}"
 	]:
-		try invalid(source)
+		invalid(source)?
 
 test "YAML quoted implicit keys may contain escaped newline text":
 	var values = Map[String, YamlValue]()
 	values.add("key\nnext", YamlValue.StringValue("value"))
 	(
-		parse("\{\"key\\nnext\": value\}") | try expect_ok | try expect_equal(
+		parse("\{\"key\\nnext\": value\}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
-		)
+		)?
 	)
 
 test "YAML omitted flow values retain multiline node and entry separation":
 	for source in ["\{key\n next\}", "\{\"key\n next\"\}"]:
 		var values = Map[String, YamlValue]()
 		values.add("key next", YamlValue.Null)
-		(
-			parse(source) | try expect_ok | try expect_equal(
-				YamlValue.ObjectValue(values)
-			)
-		)
+		(parse(source) | expect_ok? | expect_equal(YamlValue.ObjectValue(values))?)
 
 	for source in ["\{key\n, next: value\}", "\{\"key\"\n, next: value\}"]:
 		var values = Map[String, YamlValue]()
 		values.add("key", YamlValue.Null)
 		values.add("next", YamlValue.StringValue("value"))
-		(
-			parse(source) | try expect_ok | try expect_equal(
-				YamlValue.ObjectValue(values)
-			)
-		)
+		(parse(source) | expect_ok? | expect_equal(YamlValue.ObjectValue(values))?)
 
 test "YAML flow values can begin on the line after their colon":
 	var values = Map[String, YamlValue]()
 	values.add("key", YamlValue.StringValue("value"))
 	(
-		parse("\{key:\n value\}") | try expect_ok | try expect_equal(
+		parse("\{key:\n value\}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
-		)
+		)?
 	)

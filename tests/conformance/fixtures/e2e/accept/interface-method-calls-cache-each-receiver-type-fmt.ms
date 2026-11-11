@@ -42,4 +42,4 @@ test "three receiver types alternate at one site":
 
         round = round + 1
 
-    try expect_true((total == 4 * (18 + 20 + 20)))
+    expect_true((total == 4 * (18 + 20 + 20)))?

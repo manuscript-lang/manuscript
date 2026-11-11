@@ -1,5 +1,5 @@
 fn grow(value: String!String) String!String:
-    output := try value
+    output := value?
     return ok(output + "x")
 
 fn keep(value: String!String) Int:

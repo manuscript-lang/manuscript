@@ -4,7 +4,7 @@ import (
 )
 
 fn rejects_continuation(text: String) Unit!Error:
-	cause := parse(text) | try expect_error
+	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
 	return expect_equal(
@@ -13,31 +13,31 @@ fn rejects_continuation(text: String) Unit!Error:
 	)
 
 test "YAML inline comments end root and mapping plain scalars":
-	try rejects_continuation("first # comment\nnext")
-	try rejects_continuation("a: first # comment\n  next")
-	try rejects_continuation("a: &value first # comment\n  next")
+	rejects_continuation("first # comment\nnext")?
+	rejects_continuation("a: first # comment\n  next")?
+	rejects_continuation("a: &value first # comment\n  next")?
 
 test "YAML inline comments end later plain continuation lines":
-	try rejects_continuation("first\nnext # comment\nlast")
-	try rejects_continuation("a: first\n  next # comment\n  last")
+	rejects_continuation("first\nnext # comment\nlast")?
+	rejects_continuation("a: first\n  next # comment\n  last")?
 
 test "YAML compact mapping rewrites retain terminating comments":
-	try rejects_continuation("- key: first # comment\n    next")
-	try rejects_continuation("-   key: first # comment\n      next")
-	try rejects_continuation("- key: café # comment\n    next")
+	rejects_continuation("- key: first # comment\n    next")?
+	rejects_continuation("-   key: first # comment\n      next")?
+	rejects_continuation("- key: café # comment\n    next")?
 
 test "YAML nested compact sequences retain terminating comments":
-	try rejects_continuation("- - first # comment\n    next")
-	try rejects_continuation("- - - first # comment\n      next")
-	try rejects_continuation("- - key: first # comment\n      next")
+	rejects_continuation("- - first # comment\n    next")?
+	rejects_continuation("- - - first # comment\n      next")?
+	rejects_continuation("- - key: first # comment\n      next")?
 
 test "YAML plain hashes without separation keep folding":
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("first#hash next#hash last"))
 	(
-		parse(
-			"a: first#hash\n  next#hash\n  last"
-		) | try expect_ok | try expect_equal(YamlValue.ObjectValue(values))
+		parse("a: first#hash\n  next#hash\n  last") | expect_ok? | expect_equal(
+			YamlValue.ObjectValue(values)
+		)?
 	)
 
 test "YAML comment-terminated values retain following siblings":
@@ -45,19 +45,19 @@ test "YAML comment-terminated values retain following siblings":
 	values.add("a", YamlValue.StringValue("first"))
 	values.add("b", YamlValue.StringValue("second"))
 	(
-		parse(
-			"a: first # comment\nb: second"
-		) | try expect_ok | try expect_equal(YamlValue.ObjectValue(values))
+		parse("a: first # comment\nb: second") | expect_ok? | expect_equal(
+			YamlValue.ObjectValue(values)
+		)?
 	)
 	(
-		parse("- first # comment\n- second") | try expect_ok | try expect_equal(
+		parse("- first # comment\n- second") | expect_ok? | expect_equal(
 			YamlValue.ArrayValue(
 				[
 					YamlValue.StringValue("first"),
 					YamlValue.StringValue("second"),
 				]
 			)
-		)
+		)?
 	)
 
 test "YAML compact mapping comments preserve Unicode siblings":
@@ -65,48 +65,46 @@ test "YAML compact mapping comments preserve Unicode siblings":
 	values.add("clé", YamlValue.StringValue("café"))
 	values.add("next", YamlValue.StringValue("ok"))
 	(
-		parse(
-			"- clé: café # comment\n  next: ok"
-		) | try expect_ok | try expect_equal(
+		parse("- clé: café # comment\n  next: ok") | expect_ok? | expect_equal(
 			YamlValue.ArrayValue([YamlValue.ObjectValue(values)])
-		)
+		)?
 	)
 
 test "YAML empty values with comments may begin on a later line":
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("next"))
 	(
-		parse("a: # comment\n  next") | try expect_ok | try expect_equal(
+		parse("a: # comment\n  next") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
-		)
+		)?
 	)
 	(
-		parse("- # comment\n  next") | try expect_ok | try expect_equal(
+		parse("- # comment\n  next") | expect_ok? | expect_equal(
 			YamlValue.ArrayValue([YamlValue.StringValue("next")])
-		)
+		)?
 	)
 
 test "YAML quoted and flow hashes retain their scalar behavior":
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("first # hash next"))
 	(
-		parse("a: \"first # hash\n  next\"") | try expect_ok | try expect_equal(
+		parse("a: \"first # hash\n  next\"") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
-		)
+		)?
 	)
 	(
-		parse("[first, # comment\n next]") | try expect_ok | try expect_equal(
+		parse("[first, # comment\n next]") | expect_ok? | expect_equal(
 			YamlValue.ArrayValue(
 				[
 					YamlValue.StringValue("first"),
 					YamlValue.StringValue("next"),
 				]
 			)
-		)
+		)?
 	)
 
 fn rejects_flow_continuation(text: String, reason: String) Unit!Error:
-	cause := parse(text) | try expect_error
+	cause := parse(text) | expect_error?
 	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
 	return expect_equal(cause.details["reason"], reason)
@@ -117,67 +115,65 @@ test "YAML flow sequence comments terminate plain scalar text":
 		"[first\n # comment\n next]", "[café # comment\n next]",
 		"&items [first # comment\n next]", "- - [first # comment\n     next]"
 	]:
-		try rejects_flow_continuation(source, "expected sequence comma")
+		rejects_flow_continuation(source, "expected sequence comma")?
 
 test "YAML flow mapping comments terminate plain scalar values":
 	for source in ["\{a: first # comment\n next\}", "\{a: first\n # comment\n next\}"]:
-		try rejects_flow_continuation(source, "expected mapping comma")
+		rejects_flow_continuation(source, "expected mapping comma")?
 
 test "YAML flow comments preserve comma and closing boundaries":
 	expected := YamlValue.ArrayValue(
 		[YamlValue.StringValue("first"), YamlValue.StringValue("next")]
 	)
-	(parse("[first, # comment\n next]") | try expect_ok | try expect_equal(expected))
-	(parse("[first # comment\n ,next]") | try expect_ok | try expect_equal(expected))
+	(parse("[first, # comment\n next]") | expect_ok? | expect_equal(expected)?)
+	(parse("[first # comment\n ,next]") | expect_ok? | expect_equal(expected)?)
 	(
-		parse("[first # comment\n ]") | try expect_ok | try expect_equal(
+		parse("[first # comment\n ]") | expect_ok? | expect_equal(
 			YamlValue.ArrayValue([YamlValue.StringValue("first")])
-		)
+		)?
 	)
 
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("first"))
 	values.add("b", YamlValue.StringValue("next"))
 	(
-		parse(
-			"\{a: first # comment\n , b: next\}"
-		) | try expect_ok | try expect_equal(YamlValue.ObjectValue(values))
+		parse("\{a: first # comment\n , b: next\}") | expect_ok? | expect_equal(
+			YamlValue.ObjectValue(values)
+		)?
 	)
 
 test "YAML comments before flow values preserve empty starts":
 	(
 		parse("[ # comment\n first]")
-		| try expect_ok
-		| try expect_equal(
-			YamlValue.ArrayValue([YamlValue.StringValue("first")])
-		)
+		| expect_ok?
+		| expect_equal(YamlValue.ArrayValue([YamlValue.StringValue("first")]))?
 	)
 
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("first"))
 	(
-		parse("\{a: # comment\n first\}") | try expect_ok | try expect_equal(
+		parse("\{a: # comment\n first\}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(values)
-		)
+		)?
 	)
 
 	var empty = Map[String, YamlValue]()
 	empty.add("a", YamlValue.Null)
 	(
-		parse("\{a: # comment\n\}") | try expect_ok | try expect_equal(
+		parse("\{a: # comment\n\}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(empty.clone())
-		)
+		)?
 	)
 	(
-		parse("\{a # comment\n\}") | try expect_ok | try expect_equal(
+		parse("\{a # comment\n\}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(empty.clone())
-		)
+		)?
 	)
 	empty.add("b", YamlValue.Null)
 	(
-		parse("\{a # comment\n , b\}") | try expect_ok | try expect_equal(
+		parse("\{a # comment\n , b\}") | expect_ok? | expect_equal(
 			YamlValue.ObjectValue(empty)
-		)
+		)?
 	)
 
 test "YAML flow comment stops follow quoted and alias nodes":
@@ -193,6 +189,6 @@ test "YAML flow comment stops follow quoted and alias nodes":
 		parse(
 			"&items [&a café # first\n, \"quoted # hash\" # second\n, *a # third\n, last]"
 		)
-		| try expect_ok
-		| try expect_equal(expected)
+		| expect_ok?
+		| expect_equal(expected)?
 	)

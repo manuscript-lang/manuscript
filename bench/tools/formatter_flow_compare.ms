@@ -31,7 +31,7 @@ fn cases() List[Case]:
 
 // elapsed_ns, checksum, source_bytes, output_bytes, rss
 fn run_one(binary: String, c: Case, rounds: Int, cpu: String) List[Int]!:
-	out := try run_pinned(binary, ["{c.count}", "{rounds}", c.shape.clone()], cpu)
+	out := run_pinned(binary, ["{c.count}", "{rounds}", c.shape.clone()], cpu)?
 	fields := out.trim().split(",")
 	if (
 		fields.length() != 8
@@ -63,7 +63,7 @@ fn compare(
 		var expected = List[Int]()
 
 		for name in ["before", "after"]:
-			first := try run_one(paths.get_or(name, ""), c, 1, cpu)
+			first := run_one(paths.get_or(name, ""), c, 1, cpu)?
 			identity := [first[1], first[2], first[3]]
 			if expected.is_empty(): expected = identity.clone()
 			if identity != expected: return invalid(
@@ -79,7 +79,7 @@ fn compare(
 		for s in 0..samples:
 			for name in (if s % 2 == 0: ["before", "after"] else: ["after", "before"]):
 				r := rounds.get_or(name, 1)
-				got := try run_one(paths.get_or(name, ""), c, r, cpu)
+				got := run_one(paths.get_or(name, ""), c, r, cpu)?
 				if [got[1], got[2], got[3]] != expected: return invalid(
 					"{c.count} {c.shape}: output changed"
 				)

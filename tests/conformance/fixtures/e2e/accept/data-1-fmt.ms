@@ -8,10 +8,10 @@ fn positives(values: List[Int]) List[Int]:
     return result
 
 test "dynamic mutable data and explicit copies":
-    try expect_equal(positives([3, -1, 2]), [3, 2])
+    expect_equal(positives([3, -1, 2]), [3, 2])?
 
     _absent: Int? := none
-    try expect_equal([1].get(5, default: -1), -1)
+    expect_equal([1].get(5, default: -1), -1)?
 
     var original = Map[String, Int]()
     original.add("a", 1)
@@ -19,5 +19,5 @@ test "dynamic mutable data and explicit copies":
     var updated = original.clone()
     updated.add("b", 2)
     updated.add("a", 3)
-    try expect_equal(original.get("a"), 1)
-    try expect_equal(updated.get("a"), 3)
+    expect_equal(original.get("a"), 1)?
+    expect_equal(updated.get("a"), 3)?

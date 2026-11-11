@@ -72,8 +72,8 @@ type Session:
     sub: String
     exp: Int
 
-token := try sign_token(Session(sub: "42", exp: 1900000000), secret)
-session := try verify_token[Session](token, secret)
+token := sign_token(Session(sub: "42", exp: 1900000000), secret)?
+session := verify_token[Session](token, secret)?
 ```
 */
 export fn sign_token[T: Data](
@@ -88,7 +88,7 @@ export fn sign_token[T: Data](
 	head := base64_encode(header.get("").to_bytes(), url_safe: true, padded: false)
 	body := base64_encode(payload.get("").to_bytes(), url_safe: true, padded: false)
 	signing_input := "{head}.{body}"
-	signature := try sign_bytes(algorithm, key, signing_input.to_bytes())
+	signature := sign_bytes(algorithm, key, signing_input.to_bytes())?
 	return ok(
 		"{signing_input}.{base64_encode(signature, url_safe: true, padded: false)}"
 	)
@@ -115,7 +115,7 @@ export fn verify_token[T: Data = JsonValue](
 	parts := token.split(".")
 	if parts.length() != 3: return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-	header := try decode_json[JsonValue](parts[0], check.max_bytes)
+	header := decode_json[JsonValue](parts[0], check.max_bytes)?
 	if not header_algorithm_matches(
 		header.get("alg").get(JsonValue.Null),
 		check.algorithm,
@@ -142,16 +142,16 @@ export fn verify_token[T: Data = JsonValue](
 	)
 
 	signing_input := "{parts[0]}.{parts[1]}"
-	genuine := try verify_bytes(
+	genuine := verify_bytes(
 		check.algorithm,
 		key,
 		signing_input.to_bytes(),
 		signature.get("".to_bytes()),
-	)
+	)?
 	if not genuine: return error(Error("jwt: bad signature", kind: "EBADMSG"))
 
-	claims := try decode_json[JsonValue](parts[1], check.max_bytes)
-	try check_claims(claims, check)
+	claims := decode_json[JsonValue](parts[1], check.max_bytes)?
+	check_claims(claims, check)?
 	return decode_json[T](parts[1], check.max_bytes)
 
 fn header_algorithm_matches(value: JsonValue, algorithm: JwtAlgorithm) Bool:
@@ -247,14 +247,14 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
 		moment = now().seconds
 
 	if exp := claims.get("exp"):
-		limit := try numeric_date(exp, "exp")
+		limit := numeric_date(exp, "exp")?
 		boundary := (from_int(moment) - from_int(check.leeway)).to_string()
 		if date_compare(limit, boundary) <= 0: return error(
 			Error("jwt: token expired", kind: "EBADMSG")
 		)
 
 	if nbf := claims.get("nbf"):
-		start := try numeric_date(nbf, "nbf")
+		start := numeric_date(nbf, "nbf")?
 		boundary := (from_int(moment) + from_int(check.leeway)).to_string()
 		if date_compare(start, boundary) > 0: return error(
 			Error("jwt: token not yet valid", kind: "EBADMSG")

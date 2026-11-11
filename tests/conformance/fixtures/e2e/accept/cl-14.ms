@@ -16,12 +16,12 @@ fn checked(value: Int) Int!Problem:
     return ok(value)
 
 fn doubled(value: Int) Int!Problem:
-    accepted := try checked(value)
+    accepted := checked(value)?
     return ok(accepted * 2)
 
 fn summarize(outcome: Int!Problem) Int:
     return outcome.get(-1)
 
 test "unchanged propagated error":
-    try expect_equal(summarize(doubled(3)), 6)
-    try expect_equal(summarize(doubled(-1)), -1)
+    expect_equal(summarize(doubled(3)), 6)?
+    expect_equal(summarize(doubled(-1)), -1)?

@@ -20,14 +20,14 @@ test "a lambda that captures a map orders by the looked-up counts":
 	words := ["fox", "the", "dog"].sorted(
 		compare: fn(a: String, b: String) Int: return (freq[b] - freq[a])
 	)
-	try expect_equal(words, ["the", "dog", "fox"])
+	expect_equal(words, ["the", "dog", "fox"])?
 
 test "a nested function that captures a scalar sorts strings":
 	direction := -1
 	fn by_len(a: String, b: String) Int:
 		return (a.length() - b.length()) * direction
 	words := ["a", "ccc", "bb"].sorted(compare: by_len)
-	try expect_equal(words, ["ccc", "bb", "a"])
+	expect_equal(words, ["ccc", "bb", "a"])?
 
 test "a captured weight orders records and integers":
 	weight := 10
@@ -37,18 +37,18 @@ test "a captured weight orders records and integers":
 			- y.priority * weight
 		)
 	)
-	try expect_equal(tasks.get(0).name, "a")
+	expect_equal(tasks.get(0).name, "a")?
 
 	offset := 100
 	ints := [3, 1, 2].sorted(
 		compare: fn(x: Int, y: Int) Int: return ((y + offset) - (x + offset))
 	)
-	try expect_equal(ints, [3, 2, 1])
+	expect_equal(ints, [3, 2, 1])?
 
 test "a capture-free comparator still sorts":
-	try expect_equal(["ccc", "a", "bb"].sorted(compare: by_length), ["a", "bb", "ccc"])
+	expect_equal(["ccc", "a", "bb"].sorted(compare: by_length), ["a", "bb", "ccc"])?
 
 	plain := ["b", "a"].sorted(
 		compare: fn(a: String, b: String) Int: return a.compare(b)
 	)
-	try expect_equal(plain, ["a", "b"])
+	expect_equal(plain, ["a", "b"])?

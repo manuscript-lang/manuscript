@@ -13,7 +13,7 @@ type Payload:
 	time: Int
 
 export fn emit(logger: Logger) Unit!:
-	child := try logger.child(Request("req-1"))
+	child := logger.child(Request("req-1"))?
 	fields := Payload(
 		count: 9007199254740993,
 		ok: true,
@@ -23,6 +23,6 @@ export fn emit(logger: Logger) Unit!:
 		msg: "spoofed",
 		time: 0,
 	)
-	try child.debug("filtered")
-	try child.info("received \"payload\"\nnext", fields)
-	try logger.warn("complete")
+	child.debug("filtered")?
+	child.info("received \"payload\"\nnext", fields)?
+	logger.warn("complete")?
