@@ -30,7 +30,8 @@ fn logged(path: String) String:
 fn open_door(id: Int, log: String) Door:
 	return Door(id, log, 0)
 
-// A temporary that a `var fn` changes in place is still a temporary: it closes when its statement ends.
+// A temporary that a `var fn` changes in place is still a temporary: it closes when its
+// statement ends.
 test "a temporary receiver of a var method closes at the end of its statement":
 	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"

@@ -223,7 +223,12 @@ fn tab_indented_dot_and_pipe_continuations_match_four_space_source() {
 #[test]
 fn imports_merge_sort_and_split_into_sections() {
     let file: Arc<str> = Arc::from("edits.ms");
-    for name in ["import_sections", "import_lone", "import_commented"] {
+    for name in [
+        "import_sections",
+        "import_lone",
+        "import_commented",
+        "comment_wrap",
+    ] {
         let dir = format!("{}/tests/format_edits", env!("CARGO_MANIFEST_DIR"));
         let source = std::fs::read_to_string(format!("{dir}/{name}.src")).unwrap();
         let expected = std::fs::read_to_string(format!("{dir}/{name}.expected")).unwrap();

@@ -16,8 +16,9 @@ import (
 	sqrt
 ) from "@std/math/math.ms"
 
-// A complex number with `Float` parts. It is plain data and copies freely.
-// Arithmetic uses named methods; `Complex(re: 1.0, im: 2.0).multiply(complex(0.0, 1.0))` is `-2 + 1i`.
+// A complex number with `Float` parts. It is plain data and copies freely. Arithmetic
+// uses named methods; `Complex(re: 1.0, im: 2.0).multiply(complex(0.0, 1.0))` is
+// `-2 + 1i`.
 export type Complex:
 	// The real part, a Float that may be infinite or NaN.
 	re: Float
@@ -29,7 +30,8 @@ impl Complex:
 	fn add(other: Complex) Complex:
 		return Complex(re: self.re + other.re, im: self.im + other.im)
 
-	// Returns the difference, subtracting real and imaginary parts separately with Float rounding.
+	// Returns the difference, subtracting real and imaginary parts separately with
+	// Float rounding.
 	fn subtract(other: Complex) Complex:
 		return Complex(re: self.re - other.re, im: self.im - other.im)
 
@@ -37,16 +39,19 @@ impl Complex:
 	fn multiply(other: Complex) Complex:
 		return Complex(
 			re: self.re * other.re - self.im * other.im,
-			im: self.re * other.im + self.im * other.re
+			im: self.re * other.im + self.im * other.re,
 		)
 
 	// Returns the product with a real factor.
 	fn scale(factor: Float) Complex:
 		return Complex(re: self.re * factor, im: self.im * factor)
 
-	// Returns the quotient. Dividing by zero follows Float rules and gives infinities or NaN, never a fault.
-	// The divisor is scaled by its larger part to avoid overflow in the intermediate squares.
-	// Finite operands whose parts are near the Float range limits are first scaled by exact powers of two so the quotient keeps its precision; a numerator is only scaled enough to stay in range, so its smaller part survives.
+	// Returns the quotient. Dividing by zero follows Float rules and gives infinities
+	// or NaN, never a fault. The divisor is scaled by its larger part to avoid overflow
+	// in the intermediate squares. Finite operands whose parts are near the Float range
+	// limits are first scaled by exact powers of two so the quotient keeps its
+	// precision; a numerator is only scaled enough to stay in range, so its smaller
+	// part survives.
 	fn divide(other: Complex) Complex:
 		sn := self.re.abs().max(self.im.abs())
 		sd := other.re.abs().max(other.im.abs())
@@ -61,8 +66,9 @@ impl Complex:
 				or sn > 0.0 and sn < 3.054936363499605e-151
 			)
 		):
-			// Only pull the numerator back into range when it is extreme, and keep its larger part near 2^900:
-			// scaling it down to 1 would underflow a much smaller part that the quotient still needs.
+			// Only pull the numerator back into range when it is extreme, and keep its
+			// larger part near 2^900: scaling it down to 1 would underflow a much
+			// smaller part that the quotient still needs.
 			exponent := frexp(sn).exponent
 			var numerator_exponent = 0
 			if exponent > 900: numerator_exponent = exponent - 900
@@ -72,12 +78,12 @@ impl Complex:
 			quotient := smith_divide(
 				Complex(
 					re: ldexp(self.re, -numerator_exponent),
-					im: ldexp(self.im, -numerator_exponent)
+					im: ldexp(self.im, -numerator_exponent),
 				),
 				Complex(
 					re: ldexp(other.re, -divisor_exponent),
-					im: ldexp(other.im, -divisor_exponent)
-				)
+					im: ldexp(other.im, -divisor_exponent),
+				),
 			)
 			shift := numerator_exponent - divisor_exponent
 			return Complex(re: ldexp(quotient.re, shift), im: ldexp(quotient.im, shift))
@@ -120,17 +126,19 @@ impl Complex:
 	fn exp() Complex:
 		radius := exp(self.re)
 
-		// A zero imaginary part stays zero where the radius overflows; `inf * sin(0)` would be NaN.
+		// A zero imaginary part stays zero where the radius overflows; `inf * sin(0)`
+		// would be NaN.
 		if self.im == 0.0: return Complex(re: radius, im: self.im)
 
-		// The full radius can overflow while either final component still fits.
-		// Four growing factors also preserve tiny phases beyond the half-exponential range.
+		// The full radius can overflow while either final component still fits. Four
+		// growing factors also preserve tiny phases beyond the half-exponential range.
 		if not radius.is_finite() and self.re.is_finite() and self.im.is_finite():
 			quarter := exp(self.re / 4.0)
 			var result = Complex(re: cos(self.im), im: sin(self.im))
 			for _step in 0..4:
 				result = Complex(
-					re: product(result.re, quarter), im: product(result.im, quarter)
+					re: product(result.re, quarter),
+					im: product(result.im, quarter),
 				)
 			return result
 
@@ -140,13 +148,14 @@ impl Complex:
 	fn log() Complex:
 		modulus := self.abs()
 
-		// A finite number whose magnitude overflows still has a finite logarithm: log(m) = log(m/2) + ln 2.
+		// A finite number whose magnitude overflows still has a finite logarithm:
+		// log(m) = log(m/2) + ln 2.
 		if not modulus.is_finite() and self.re.is_finite() and self.im.is_finite():
 			return Complex(
 				re: log(
 					hypot(self.re / 2.0, self.im / 2.0)
 				) + 0.6931471805599453,
-				im: self.phase()
+				im: self.phase(),
 			)
 
 		return Complex(re: log(modulus), im: self.phase())
@@ -159,11 +168,13 @@ impl Complex:
 
 		modulus := self.abs()
 
-		// A finite number whose magnitude overflows has a finite root: take the root of the half and scale by sqrt(2).
+		// A finite number whose magnitude overflows has a finite root: take the root of
+		// the half and scale by sqrt(2).
 		if not modulus.is_finite() and self.re.is_finite() and self.im.is_finite():
 			return Complex(re: self.re / 2.0, im: self.im / 2.0).sqrt().scale(sqrt(2.0))
 
-		// Halving a subnormal modulus loses its low bits: scale up by 2^200, take the root, and scale back by 2^-100.
+		// Halving a subnormal modulus loses its low bits: scale up by 2^200, take the
+		// root, and scale back by 2^-100.
 		if modulus < 4.450147717014403e-308:
 			root := Complex(re: ldexp(self.re, 200), im: ldexp(self.im, 200)).sqrt()
 			return Complex(re: ldexp(root.re, -100), im: ldexp(root.im, -100))
@@ -173,7 +184,8 @@ impl Complex:
 
 		return Complex(re: self.im.abs() / (2.0 * real), im: copy_sign(real, self.im))
 
-	// Returns this number raised to `exponent`: 0^0 is 1, and a zero base with a positive exponent real part is 0.
+	// Returns this number raised to `exponent`: 0^0 is 1, and a zero base with a
+	// positive exponent real part is 0.
 	fn pow(exponent: Complex) Complex:
 		if self.re == 0.0 and self.im == 0.0:
 			if exponent.re == 0.0 and exponent.im == 0.0:
@@ -188,25 +200,27 @@ impl Complex:
 	fn sin() Complex:
 		return Complex(
 			re: hyperbolic_product(sin(self.re), self.im, cosh(self.im)),
-			im: hyperbolic_product(cos(self.re), self.im, sinh(self.im))
+			im: hyperbolic_product(cos(self.re), self.im, sinh(self.im)),
 		)
 
 	// Returns the complex cosine, `cos(a)cosh(b) - sin(a)sinh(b)i` for `a+bi`.
 	fn cos() Complex:
 		return Complex(
 			re: hyperbolic_product(cos(self.re), self.im, cosh(self.im)),
-			im: -hyperbolic_product(sin(self.re), self.im, sinh(self.im))
+			im: -hyperbolic_product(sin(self.re), self.im, sinh(self.im)),
 		)
 
-	// Returns the complex tangent, sine divided by cosine; poles give infinities or NaN.
+	// Returns the complex tangent, sine divided by cosine; poles give infinities or
+	// NaN.
 	fn tan() Complex:
-		// Past |b| = 40 sine and cosine overflow into inf / inf; the quotient is `sign(b) * i` plus a real part below 1e-34.
+		// Past |b| = 40 sine and cosine overflow into inf / inf; the quotient is
+		// `sign(b) * i` plus a real part below 1e-34.
 		if self.im.abs() > 40.0:
 			return Complex(
 				re: 2.0 * sin_double(self.re) * exp(
 					-2.0 * self.im.abs()
 				),
-				im: copy_sign(1.0, self.im)
+				im: copy_sign(1.0, self.im),
 			)
 		return self.sin().divide(self.cos())
 
@@ -214,14 +228,14 @@ impl Complex:
 	fn sinh() Complex:
 		return Complex(
 			re: hyperbolic_product(cos(self.im), self.re, sinh(self.re)),
-			im: hyperbolic_product(sin(self.im), self.re, cosh(self.re))
+			im: hyperbolic_product(sin(self.im), self.re, cosh(self.re)),
 		)
 
 	// Returns the hyperbolic cosine.
 	fn cosh() Complex:
 		return Complex(
 			re: hyperbolic_product(cos(self.im), self.re, cosh(self.re)),
-			im: hyperbolic_product(sin(self.im), self.re, sinh(self.re))
+			im: hyperbolic_product(sin(self.im), self.re, sinh(self.re)),
 		)
 
 	// Returns the hyperbolic tangent.
@@ -232,13 +246,15 @@ impl Complex:
 				re: copy_sign(1.0, self.re),
 				im: 2.0 * sin_double(self.im) * exp(
 					-2.0 * self.re.abs()
-				)
+				),
 			)
 		return self.sinh().divide(self.cosh())
 
 	// Returns the principal inverse sine, `-i * log(i*z + sqrt(1 - z^2))`.
 	fn asin() Complex:
-		// asin(-z) = -asin(z). In the upper half plane iz and the root have opposite real parts and cancel for large |im|, so evaluate through the lower half plane, where they add.
+		// asin(-z) = -asin(z). In the upper half plane iz and the root have opposite
+		// real parts and cancel for large |im|, so evaluate through the lower half
+		// plane, where they add.
 		sign := if self.im > 0.0: -1.0 else: 1.0
 		z := Complex(re: sign * self.re, im: sign * self.im)
 		root := Complex(re: 1.0, im: 0.0).subtract(z.multiply(z)).sqrt()
@@ -278,7 +294,8 @@ impl Complex:
 				// log1p(t) is t here. Divide before the factor of four could
 				// round a subnormal result twice.
 				imaginary = copy_sign(
-					self.im.abs() / denominator / scale / scale, self.im
+					self.im.abs() / denominator / scale / scale,
+					self.im,
 				)
 			else:
 				imaginary = copy_sign(log1p(ratio) / 4.0, self.im)
@@ -294,7 +311,8 @@ impl Complex:
 export fn complex(re: Float, im: Float) Complex:
 	return Complex(re: re, im: im)
 
-// Returns the number with magnitude `radius` and angle `theta` in radians, so `complex_polar(1.0, pi)` is about -1.
+// Returns the number with magnitude `radius` and angle `theta` in radians, so
+// `complex_polar(1.0, pi)` is about -1.
 export fn complex_polar(radius: Float, theta: Float) Complex:
 	return Complex(re: radius * cos(theta), im: radius * sin(theta))
 
@@ -309,7 +327,9 @@ export type PolarParts:
 	// The angle in radians, from -pi through pi.
 	theta: Float
 
-// Multiplies two factors where one may be an overflowed (infinite) trig or hyperbolic value. An exact zero times such an infinity stays a signed zero, where plain `*` would give NaN.
+// Multiplies two factors where one may be an overflowed (infinite) trig or hyperbolic
+// value. An exact zero times such an infinity stays a signed zero, where plain `*`
+// would give NaN.
 fn product(left: Float, right: Float) Float:
 	if left == 0.0 and not right.is_finite() and not right.is_nan():
 		return left * copy_sign(1.0, right)
@@ -346,12 +366,12 @@ fn smith_divide(numerator: Complex, other: Complex) Complex:
 		denominator := other.re + other.im * ratio
 		return Complex(
 			re: (numerator.re + numerator.im * ratio) / denominator,
-			im: (numerator.im - numerator.re * ratio) / denominator
+			im: (numerator.im - numerator.re * ratio) / denominator,
 		)
 
 	ratio := other.re / other.im
 	denominator := other.re * ratio + other.im
 	return Complex(
 		re: (numerator.re * ratio + numerator.im) / denominator,
-		im: (numerator.im * ratio - numerator.re) / denominator
+		im: (numerator.im * ratio - numerator.re) / denominator,
 	)

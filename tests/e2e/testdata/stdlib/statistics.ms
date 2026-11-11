@@ -36,7 +36,9 @@ test "variance and standard deviation":
 	expect_close(expect_some(population_variance(data))?, 4.0, 0.000001)?
 	expect_close(expect_some(population_stdev(data))?, 2.0, 0.000001)?
 	expect_close(
-		expect_some(variance([1.0, 2.0, 3.0, 4.0]))?, 1.6666666666666667, 0.000001
+		expect_some(variance([1.0, 2.0, 3.0, 4.0]))?,
+		1.6666666666666667,
+		0.000001,
 	)?
 	expect_close(expect_some(stdev(data))?, 2.138089935, 0.000001)?
 	expect_none(variance([1.0]))?
@@ -60,7 +62,8 @@ test "percentile and quantiles return the element at an exact rank":
 		data.append(i.to_float())
 	for percent in 0..101:
 		expect_equal(
-			expect_some(percentile(data, percent.to_float()))?, percent.to_float()
+			expect_some(percentile(data, percent.to_float()))?,
+			percent.to_float(),
 		)?
 
 	cuts := quantiles(data, 100)
@@ -95,10 +98,14 @@ test "bin_counts places the greatest value in the last bin when the range overfl
 
 test "correlation and regression":
 	expect_close(
-		expect_some(correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]))?, 1.0, 0.000001
+		expect_some(correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]))?,
+		1.0,
+		0.000001,
 	)?
 	expect_close(
-		expect_some(correlation([1.0, 2.0, 3.0], [6.0, 4.0, 2.0]))?, -1.0, 0.000001
+		expect_some(correlation([1.0, 2.0, 3.0], [6.0, 4.0, 2.0]))?,
+		-1.0,
+		0.000001,
 	)?
 	expect_none(correlation([1.0, 1.0, 1.0], [1.0, 2.0, 3.0]))?
 	expect_none(correlation([1.0], [2.0]))?
@@ -124,7 +131,8 @@ test "regression stays finite and exact at large and tiny scales and with a larg
 	// Different scales per axis: y = 3e-5 * x + 7 over x in 1e10 .. 4e10.
 	mixed := expect_some(
 		linear_regression(
-			[1e10, 2e10, 3e10, 4e10], [300007.0, 600007.0, 900007.0, 1200007.0]
+			[1e10, 2e10, 3e10, 4e10],
+			[300007.0, 600007.0, 900007.0, 1200007.0],
 		)
 	)?
 	expect_close(mixed.slope, 3e-5, 1e-17)?
@@ -158,7 +166,9 @@ test "percentile finite spans do not overflow during interpolation":
 	expect_equal(cuts[1], 0.0)?
 	expect_close(cuts[2] / 1e308, 0.5, 1e-15)?
 	expect_close(
-		(expect_some(percentile([-1.5e308, 1e308], 40.0))?) / 1e308, -0.5, 1e-15
+		(expect_some(percentile([-1.5e308, 1e308], 40.0))?) / 1e308,
+		-0.5,
+		1e-15,
 	)?
 
 test "percentile stays finite ordered and bounded across the widest finite span":
@@ -175,10 +185,14 @@ test "percentile stays finite ordered and bounded across the widest finite span"
 
 test "percentile preserves finite small spans and special-value behavior":
 	expect_close(
-		(expect_some(percentile([1e308, 1.5e308], 50.0))?) / 1e308, 1.25, 1e-15
+		(expect_some(percentile([1e308, 1.5e308], 50.0))?) / 1e308,
+		1.25,
+		1e-15,
 	)?
 	expect_close(
-		(expect_some(percentile([-1.5e308, -1e308], 50.0))?) / 1e308, -1.25, 1e-15
+		(expect_some(percentile([-1.5e308, -1e308], 50.0))?) / 1e308,
+		-1.25,
+		1e-15,
 	)?
 	expect_equal(expect_some(percentile([-1e-300, 1e-300], 50.0))?, 0.0)?
 	expect_equal(expect_some(percentile([-1e-323, 5e-324], 50.0))?, 0.0)?
@@ -224,66 +238,89 @@ type MeanCase:
 	expected: Float
 
 test "mean recovers finite overflow using exact binary64 rational cases":
-	// Expected values are the rounded exact sum of the binary64 inputs divided by count.
+	// Expected values are the rounded exact sum of the binary64 inputs divided by
+	// count.
 	for sample in [
 		MeanCase(
-			[1.7976931348623157e+308, 1.7976931348623157e+308], 1.7976931348623157e+308
+			[1.7976931348623157e+308, 1.7976931348623157e+308],
+			1.7976931348623157e+308,
 		),
 		MeanCase(
 			[-1.7976931348623157e+308, -1.7976931348623157e+308],
-			-1.7976931348623157e+308
+			-1.7976931348623157e+308,
 		),
 		MeanCase([1e+308, 1e+308, -1e+308], 3.333333333333333e+307),
 		MeanCase(
 			[
-				1.7976931348623157e+308, 1.7976931348623157e+308,
-				-1.7976931348623157e+308, -1.7976931348623157e+308, 1.0
+				1.7976931348623157e+308,
+				1.7976931348623157e+308,
+				-1.7976931348623157e+308,
+				-1.7976931348623157e+308,
+				1.0,
 			],
-			0.2
+			0.2,
 		),
 		MeanCase(
 			[
-				1.7976931348623157e+308, 1.7976931348623157e+308,
-				-1.7976931348623157e+308, -1.7976931348623157e+308, 1e-300
+				1.7976931348623157e+308,
+				1.7976931348623157e+308,
+				-1.7976931348623157e+308,
+				-1.7976931348623157e+308,
+				1e-300,
 			],
-			2e-301
+			2e-301,
 		),
 		MeanCase(
 			[
-				1.7976931348623157e+308, 1.7976931348623157e+308,
-				-1.7976931348623157e+308, -1.7976931348623157e+308, 2.5e-323
+				1.7976931348623157e+308,
+				1.7976931348623157e+308,
+				-1.7976931348623157e+308,
+				-1.7976931348623157e+308,
+				2.5e-323,
 			],
-			5e-324
+			5e-324,
 		),
 		MeanCase(
 			[
-				-1.7976931348623157e+308, -1.7976931348623157e+308,
-				1.7976931348623157e+308, 1.7976931348623157e+308, -2.5e-323
+				-1.7976931348623157e+308,
+				-1.7976931348623157e+308,
+				1.7976931348623157e+308,
+				1.7976931348623157e+308,
+				-2.5e-323,
 			],
-			-5e-324
+			-5e-324,
 		),
 		MeanCase(
 			[
-				1.7976931348623157e+308, 1.7976931348623157e+308,
-				-1.7976931348623157e+308, -1.7976931348623157e+308
+				1.7976931348623157e+308,
+				1.7976931348623157e+308,
+				-1.7976931348623157e+308,
+				-1.7976931348623157e+308,
 			],
-			0.0
+			0.0,
 		),
 		MeanCase(
 			[
-				1.7976931348623157e+308, 1.7976931348623157e+308,
-				-1.7976931348623157e+308, -1.7976931348623157e+308, 1.0000000000000002
+				1.7976931348623157e+308,
+				1.7976931348623157e+308,
+				-1.7976931348623157e+308,
+				-1.7976931348623157e+308,
+				1.0000000000000002,
 			],
-			0.20000000000000004
+			0.20000000000000004,
 		),
-		MeanCase([1e+308, 1e+308, -1.5e+308, -1e+307], 1e+307)
+		MeanCase([1e+308, 1e+308, -1.5e+308, -1e+307], 1e+307),
 	]:
 		expect_equal(expect_some(mean(sample.values))?, sample.expected)?
 
 test "mean keeps the existing finite sum rounding and nonfinite behavior":
 	for values in [
-		[1.0, 2.0, 6.0], [1e16, 1.0, -1e16], [5e-324, 5e-324], [-5e-324, -5e-324],
-		[-0.0, -0.0], [-0.0, 0.0]
+		[1.0, 2.0, 6.0],
+		[1e16, 1.0, -1e16],
+		[5e-324, 5e-324],
+		[-5e-324, -5e-324],
+		[-0.0, -0.0],
+		[-0.0, 0.0],
 	]:
 		original := values.sum() / values.length().to_float()
 		result := expect_some(mean(values))?
@@ -331,7 +368,8 @@ test "subnormal bins match an exact integer grid across signs and shifted ranges
 					for index in 0..bins: expected.append(0)
 
 					for position in 0..span + 1:
-						// Reverse ordering and duplicate values must not change placement.
+						// Reverse ordering and duplicate values must not change
+						// placement.
 						coordinate := span - position
 						value := base + (offset + coordinate).to_float() * step
 						values.append(value)
@@ -348,8 +386,9 @@ test "subnormal bin repair preserves nonfinite and degenerate controls":
 	inf := 1.0 / 0.0
 
 	for values in [
-		[0.0, nan, 5e-324, 1e-323], [nan, 0.0, 5e-324, 1e-323],
-		[0.0, 5e-324, 1e-323, nan]
+		[0.0, nan, 5e-324, 1e-323],
+		[nan, 0.0, 5e-324, 1e-323],
+		[0.0, 5e-324, 1e-323, nan],
 	]:
 		result := expect_some(bin_counts(values, 4))?
 		expect_equal(result.counts, [4, 0, 0, 0])?
@@ -389,7 +428,7 @@ test "standard deviation preserves ordinary and nonfinite paths":
 	for values in [[1.0, 2.0, 6.0], [1e16, 1e16 + 2.0], [0.0, 0.0]]:
 		expect_equal(
 			expect_some(population_stdev(values))?,
-			sqrt(expect_some(population_variance(values))?)
+			sqrt(expect_some(population_variance(values))?),
 		)?
 
 	inf := 1.0 / 0.0
@@ -453,7 +492,9 @@ test "standard deviation balanced minimum subnormal":
 // Exact binary64 rational variance lies below the squared overflow midpoint.
 test "standard deviation finite sample threshold":
 	values := [
-		1.5568479229996504e+308, -1.5568479229996504e+308, -1.5568479229996504e+308
+		1.5568479229996504e+308,
+		-1.5568479229996504e+308,
+		-1.5568479229996504e+308,
 	]
 	p := expect_some(population_stdev(values))?
 	expect_close(p / 1.4678102981723264e+308, 1.0, 0.000000000000005)?
@@ -464,9 +505,15 @@ test "standard deviation finite sample threshold":
 // The rounded normalized estimate alone lands below MAX, but exact variance overflows.
 test "standard deviation infinite sample threshold":
 	values := [
-		1.7054414520639489e+308, 1.7054414520639489e+308, 1.7054414520639489e+308,
-		1.7054414520639489e+308, -1.7054414520639489e+308, -1.7054414520639489e+308,
-		-1.7054414520639489e+308, -1.7054414520639489e+308, -1.7054414520639489e+308
+		1.7054414520639489e+308,
+		1.7054414520639489e+308,
+		1.7054414520639489e+308,
+		1.7054414520639489e+308,
+		-1.7054414520639489e+308,
+		-1.7054414520639489e+308,
+		-1.7054414520639489e+308,
+		-1.7054414520639489e+308,
+		-1.7054414520639489e+308,
 	]
 	p := expect_some(population_stdev(values))?
 	expect_close(p / 1.694881341538195e+308, 1.0, 0.000000000000005)?
@@ -484,7 +531,9 @@ test "a large common offset does not change variation":
 
 test "variance keeps tiny scales":
 	expect_close(
-		expect_some(population_variance([1e-150, 3e-150]))? / 1e-300, 1.0, 1e-12
+		expect_some(population_variance([1e-150, 3e-150]))? / 1e-300,
+		1.0,
+		1e-12,
 	)?
 
 test "variance of nonfinite input follows Float rules":
@@ -494,13 +543,15 @@ test "variance of nonfinite input follows Float rules":
 test "correlation of large and tiny perfectly correlated values":
 	expect_close(expect_some(correlation([1e100, 2e100], [1e100, 2e100]))?, 1.0, 1e-12)?
 	expect_close(
-		expect_some(correlation([1e-200, 2e-200], [-1e-200, -2e-200]))?, -1.0, 1e-12
+		expect_some(correlation([1e-200, 2e-200], [-1e-200, -2e-200]))?,
+		-1.0,
+		1e-12,
 	)?
 	expect_close(
 		expect_some(
 			correlation([1e300, 2e300, 4e300], [1e-300, 2e-300, 4e-300])
 		)?,
 		1.0,
-		1e-12
+		1e-12,
 	)?
 	expect_none(correlation([1e100, 1e100], [1e100, 2e100]))?

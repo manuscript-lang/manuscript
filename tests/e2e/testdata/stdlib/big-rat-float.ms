@@ -83,7 +83,7 @@ test "big floats round once at their precision":
 		(big_float_of_int(1, 100).divide(big_float_of_int(3, 100))?).to_fixed(
 			30
 		)?,
-		"0.333333333333333333333333333333"
+		"0.333333333333333333333333333333",
 	)?
 	expect_equal((big_float_of_int(2, 53).sqrt()?).to_float(), 1.4142135623730951)?
 	expect_equal(big_float_of_int(7, 10).precision(), 10)?
@@ -106,7 +106,7 @@ test "big floats add, subtract and compare across magnitudes":
 		big_float_of_int(-7, 64).divide(big_float_of_int(2, 64)).get(
 			tiny
 		).truncate().to_int(),
-		-3
+		-3,
 	)?
 
 test "big float errors":

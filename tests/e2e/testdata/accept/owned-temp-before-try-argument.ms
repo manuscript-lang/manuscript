@@ -3,8 +3,8 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-// A temporary that owns a resource, followed by a `try` in a later argument of the same call, is moved into the
-// consumed parameter rather than copied.
+// A temporary that owns a resource, followed by a `try` in a later argument of the same
+// call, is moved into the consumed parameter rather than copied.
 interface Gate:
 	var fn put(value: Int) Unit!
 	var fn close() Unit!

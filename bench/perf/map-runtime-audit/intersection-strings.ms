@@ -1,4 +1,5 @@
-// Owned-string filtering followed by metadata lookup, with the same numeric oracle as intersection.ms.
+// Owned-string filtering followed by metadata lookup, with the same numeric oracle as
+// intersection.ms.
 import (
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",

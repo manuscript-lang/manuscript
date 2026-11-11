@@ -93,8 +93,9 @@ test "per-value budgets report LimitExceeded":
 
 test "negative limits fail the first read with EINVAL for every input":
 	for limits in [
-		JsonOptions(max_bytes: -1), JsonOptions(max_depth: -1),
-		JsonOptions(max_values: -1)
+		JsonOptions(max_bytes: -1),
+		JsonOptions(max_depth: -1),
+		JsonOptions(max_values: -1),
 	]:
 		for input in ["", "  ", "1", "\{\}", "\{\"a\":[1"]:
 			outcome := decode(input.to_bytes(), 2, limits.clone())

@@ -261,9 +261,12 @@ fn process(var st: State, line: String) Unit:
 
 fn run() Unit!:
 	var st = State(
-		stock: Map[String, Int](), price: Map[String, Int](), skus: List[String](),
-		status: Map[String, String](), total: Map[String, Int](),
-		items: Map[String, List[Line]]()
+		stock: Map[String, Int](),
+		price: Map[String, Int](),
+		skus: List[String](),
+		status: Map[String, String](),
+		total: Map[String, Int](),
+		items: Map[String, List[Line]](),
 	)
 	for raw in lines(stdin()):
 		process(var st, raw)

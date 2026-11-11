@@ -53,10 +53,11 @@ test "process usage records report this process":
 test "set_identity and set_groups validate input and apply or refuse":
 	expect_process_error(
 		set_identity(kind: IdentityKind.Uid, id: -1),
-		Error("process: invalid input", kind: "EINVAL")
+		Error("process: invalid input", kind: "EINVAL"),
 	)?
 	expect_process_error(
-		set_groups(groups: [-1]), Error("process: invalid input", kind: "EINVAL")
+		set_groups(groups: [-1]),
+		Error("process: invalid input", kind: "EINVAL"),
 	)?
 
 	info := process_info()?
@@ -65,11 +66,11 @@ test "set_identity and set_groups validate input and apply or refuse":
 		// Windows has no ids.
 		expect_process_error(
 			set_identity(kind: IdentityKind.Uid, id: 0),
-			Error("process: operation not supported", kind: "ENOTSUP")
+			Error("process: operation not supported", kind: "ENOTSUP"),
 		)?
 		expect_process_error(
 			set_groups(groups: [0]),
-			Error("process: operation not supported", kind: "ENOTSUP")
+			Error("process: operation not supported", kind: "ENOTSUP"),
 		)?
 	else:
 		// Setting the identity it already has changes nothing and needs no privilege.
@@ -85,23 +86,27 @@ test "set_identity and set_groups validate input and apply or refuse":
 		else:
 			expect_process_error(
 				set_groups(groups: groups),
-				Error("process: permission denied", kind: "EACCES")
+				Error("process: permission denied", kind: "EACCES"),
 			)?
 
 test "replace rejects invalid programs before leaving this process":
 	info := process_info()?
 	empty := replace(program: "", arguments: ["x"], environment: {})
 	missing := replace(
-		program: "/definitely/not/a/program", arguments: ["x"], environment: {}
+		program: "/definitely/not/a/program",
+		arguments: ["x"],
+		environment: {},
 	)
 
 	if info.uid < 0:
 		// Windows has no exec.
 		expect_process_error(
-			empty, Error("process: operation not supported", kind: "ENOTSUP")
+			empty,
+			Error("process: operation not supported", kind: "ENOTSUP"),
 		)?
 		expect_process_error(
-			missing, Error("process: operation not supported", kind: "ENOTSUP")
+			missing,
+			Error("process: operation not supported", kind: "ENOTSUP"),
 		)?
 	else:
 		expect_process_error(empty, Error("process: invalid input", kind: "EINVAL"))?
@@ -113,7 +118,7 @@ test "stat_filesystem describes the filesystem under a path":
 	expect_false(info.blocks_available > info.blocks_free)?
 	expect_fs_error(
 		stat_filesystem(path: "/definitely/not/a/path"),
-		Error("filesystem: file or directory not found", kind: "ENOENT")
+		Error("filesystem: file or directory not found", kind: "ENOENT"),
 	)?
 
 // Reads events until one has `path` and `kind`, or `tries` events passed.
@@ -132,7 +137,9 @@ test "polling and native watchers report a created file and close":
 	temporary := temporary("manuscript-watch-") | expect_ok?
 	root := temporary.path()
 	var polling = watch(
-		path: root, recursive: false, options: WatchOptions(interval: milliseconds(20))
+		path: root,
+		recursive: false,
+		options: WatchOptions(interval: milliseconds(20)),
 	)?
 	write_file(path: "{root}/a.txt", data: "x", replace: false).wait()?
 	expect_true(saw(var polling, join([root.clone(), "a.txt"]), "rename", 8)?)?
@@ -147,13 +154,17 @@ test "native watcher max_entries counts the paths under the root":
 	write_file(path: "{t.path()}/a", data: "x", replace: false).wait()?
 	expect_fs_error(
 		watch(
-			path: t.path(), recursive: true, options: WatchOptions(max_entries: 1)
+			path: t.path(),
+			recursive: true,
+			options: WatchOptions(max_entries: 1),
 		),
-		Error("filesystem: limit exceeded", kind: "EOVERFLOW")
+		Error("filesystem: limit exceeded", kind: "EOVERFLOW"),
 	)?
 
 	var w = watch(
-		path: t.path(), recursive: true, options: WatchOptions(max_entries: 2)
+		path: t.path(),
+		recursive: true,
+		options: WatchOptions(max_entries: 2),
 	)?
 	w.close()?
 
@@ -163,22 +174,23 @@ test "polling options reject native-only settings":
 	expect_fs_error(
 		watch(
 			path: t.path(),
-			options: WatchOptions(interval: milliseconds(20), max_events: 4)
+			options: WatchOptions(interval: milliseconds(20), max_events: 4),
 		),
-		Error("filesystem: invalid input", kind: "EINVAL")
+		Error("filesystem: invalid input", kind: "EINVAL"),
 	)?
 	expect_fs_error(
 		watch(
 			path: t.path(),
 			options: WatchOptions(
-				interval: milliseconds(20), overflow: "ignore"
-			)
+				interval: milliseconds(20),
+				overflow: "ignore",
+			),
 		),
-		Error("filesystem: invalid input", kind: "EINVAL")
+		Error("filesystem: invalid input", kind: "EINVAL"),
 	)?
 	expect_fs_error(
 		watch(path: t.path(), options: WatchOptions(overflow: "bogus")),
-		Error("filesystem: invalid input", kind: "EINVAL")
+		Error("filesystem: invalid input", kind: "EINVAL"),
 	)?
 
 	var w = watch(path: t.path(), options: polled)?

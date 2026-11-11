@@ -38,14 +38,16 @@ test "stream checksums match the whole-value functions under every chunk size":
 		expect_equal(adler32_of(chunked(data.clone(), size))?, adler32(data.clone()))?
 		expect_equal(
 			crc64_of(chunked(data.clone(), size), Crc64Polynomial.Ecma)?,
-			crc64(Crc64Polynomial.Ecma, data.clone())
+			crc64(Crc64Polynomial.Ecma, data.clone()),
 		)?
 
 test "digest of a stream matches the hasher":
 	data := "digest me in pieces".to_bytes()
 	for algorithm in [
-		HashAlgorithm.Md5, HashAlgorithm.Sha1, HashAlgorithm.Sha256,
-		HashAlgorithm.Sha512
+		HashAlgorithm.Md5,
+		HashAlgorithm.Sha1,
+		HashAlgorithm.Sha256,
+		HashAlgorithm.Sha512,
 	]:
 		for size in [1, 4, 64]:
 			if (

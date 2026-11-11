@@ -12,7 +12,8 @@ import (
 	Instant, monotonic from "@std/time.ms",
 )
 
-// ns per item for stream pipelines against the loops they replace. One line per case: `name ns checksum`.
+// ns per item for stream pipelines against the loops they replace. One line per case:
+// `name ns checksum`.
 
 fn say(text: String) Unit:
 	_ignored := stdout().write(text)
@@ -80,7 +81,12 @@ fn stdlib_map(xs: List[Int]) Int!:
 
 fn stdlib_map3(xs: List[Int]) Int!:
 	var total = 0
-	for item in from_list(xs) | map(fn x: x + 1) | map(fn x: x * 3) | map(fn x: x - 2):
+	for item in (
+		from_list(xs)
+		| map(fn x: x + 1)
+		| map(fn x: x * 3)
+		| map(fn x: x - 2)
+	):
 		total += item
 	return ok(total)
 

@@ -4,7 +4,8 @@ import (
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
-// A stream closes its source or sink once, whether the stream is closed by hand or dropped.
+// A stream closes its source or sink once, whether the stream is closed by hand or
+// dropped.
 type Counted:
 	log: String
 

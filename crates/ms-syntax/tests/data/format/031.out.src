@@ -15,13 +15,16 @@ import (
 
 // Errors returned for invalid requests, transport failures, timeouts, and limits.
 export enum HttpError:
-	// The URL is not an `http` or `https` URL with a host, valid port, and no user info; a method, header name, or value is malformed or host-managed; or a limit or timeout is negative.
+	// The URL is not an `http` or `https` URL with a host, valid port, and no user
+	// info; a method, header name, or value is malformed or host-managed; or a limit or
+	// timeout is negative.
 	InvalidInput
 	// The response headers are not valid UTF-8, so they cannot become Strings.
 	InvalidData
 	// A buffered response body is larger than `max_response_bytes`.
 	LimitExceeded
-	// The network's restrictions disallow the host, a resolved address, or a redirect destination.
+	// The network's restrictions disallow the host, a resolved address, or a redirect
+	// destination.
 	PermissionDenied
 	// The client or network was closed before or during the request.
 	Closed

@@ -46,7 +46,8 @@ test "big integers support sign pow shifts and conversion":
 	expect_equal(from_int(0).sign(), 0)?
 	expect_equal(five.bit_not().to_int(), -6)?
 	expect_equal(
-		(from_int(2).pow(100)?).to_string_radix(10), "1267650600228229401496703205376"
+		(from_int(2).pow(100)?).to_string_radix(10),
+		"1267650600228229401496703205376",
 	)?
 	expect_equal((five.shift_left(3)?).to_int(), 40)?
 	expect_equal((from_int(-5).shift_right(1)?).to_int(), -3)?

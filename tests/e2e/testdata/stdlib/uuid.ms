@@ -10,23 +10,39 @@ import (
 )
 
 test "uuid_v5 matches reference vectors":
-	(uuid_v5(namespace_dns, "python.org") | expect_ok?) | expect_equal(
-		"886313e1-3b8a-5372-9b90-0c9aee199e5d"
-	)?
-	(uuid_v5(namespace_url, "https://example.com/a?b=1") | expect_ok?) | expect_equal(
-		"c0c04f10-f8d2-5af0-8144-36577bf29414"
-	)?
-	(uuid_v5(namespace_dns, "") | expect_ok?) | expect_equal(
-		"4ebd0208-8328-5d69-8c44-ec50939c0967"
-	)?
-	(uuid_v5("00000000-0000-0000-0000-000000000000", "héllo") | expect_ok?) | expect_equal(
-		"73447f16-bb71-5922-b638-a95b21012057"
-	)?
+	(
+		(uuid_v5(namespace_dns, "python.org") | expect_ok?)
+		| expect_equal("886313e1-3b8a-5372-9b90-0c9aee199e5d")?
+	)
+	(
+		(
+			uuid_v5(namespace_url, "https://example.com/a?b=1") | expect_ok?
+		) | expect_equal("c0c04f10-f8d2-5af0-8144-36577bf29414")?
+	)
+	(
+		(uuid_v5(namespace_dns, "") | expect_ok?) | expect_equal(
+			"4ebd0208-8328-5d69-8c44-ec50939c0967"
+		)?
+	)
+	(
+		(
+			uuid_v5(
+				"00000000-0000-0000-0000-000000000000",
+				"héllo",
+			) | expect_ok?
+		) | expect_equal("73447f16-bb71-5922-b638-a95b21012057")?
+	)
 
 test "uuid_v5 accepts an uppercase namespace and rejects malformed ones":
-	(uuid_v5("6BA7B810-9DAD-11D1-80B4-00C04FD430C8", "python.org") | expect_ok?) | expect_equal(
-		"886313e1-3b8a-5372-9b90-0c9aee199e5d"
-	)?
+	(
+		(
+			uuid_v5(
+				"6BA7B810-9DAD-11D1-80B4-00C04FD430C8",
+				"python.org",
+			) | expect_ok?
+		)
+		| expect_equal("886313e1-3b8a-5372-9b90-0c9aee199e5d")?
+	)
 
 	for bad in [
 		"", "nope", "6ba7b8109dad11d180b400c04fd430c8",

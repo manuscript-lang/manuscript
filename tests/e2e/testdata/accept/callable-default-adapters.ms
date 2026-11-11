@@ -47,7 +47,8 @@ test "required bound methods replace defaulted callable values":
 	offset := Offset(2)
 	var callback = offset.original
 
-	// Assigning a method value takes its receiver, as assigning a closure takes its captures.
+	// Assigning a method value takes its receiver, as assigning a closure takes its
+	// captures.
 	callback = offset.clone().replacement
 	expect_equal(callback(3), 6)?
 

@@ -1,5 +1,6 @@
-// Core data-structure operations in Manuscript, Go and Rust (ns per operation, best of N) (bench/perf/datastructures).
-// Usage: ms run bench/tools/datastructures.ms [-- repeats]; MS picks the Manuscript compiler.
+// Core data-structure operations in Manuscript, Go and Rust (ns per operation, best of
+// N) (bench/perf/datastructures). Usage: ms run bench/tools/datastructures.ms [--
+// repeats]; MS picks the Manuscript compiler.
 import (
 	arguments from "@std/os/env.ms",
 	CopyOptions, copy, temporary from "@std/os/fs.ms",
@@ -19,7 +20,9 @@ fn run(work: String, n: Int) Result[String, Error]:
 	here := "bench/perf/datastructures"
 	for dir in ["go", "ms"]:
 		copy(
-			"{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
+			"{here}/{dir}",
+			"{work}/{dir}",
+			CopyOptions(recursive: true, replace: true),
 		)?
 	build_ms("{work}/ms", "{work}/ms/bench")?
 	build_go("{work}/go", "{work}/go/bench")?

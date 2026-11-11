@@ -32,7 +32,8 @@ test "typed SHA selectors match their algorithms and retain bound operations":
 	key := "key".to_bytes()
 	for algorithm in [HashAlgorithm.Sha256, HashAlgorithm.Sha384, HashAlgorithm.Sha512]:
 		expect_equal(
-			(algorithm.hmac(key, data)?).length(), (algorithm.digest(data).length())
+			(algorithm.hmac(key, data)?).length(),
+			(algorithm.digest(data).length()),
 		)?
 
 	hmac_operation := HashAlgorithm.Sha512.hmac
@@ -42,7 +43,9 @@ test "typed compression preserves bytes limits and errors":
 	data := "typed codecs typed codecs".to_bytes()
 
 	for format in [
-		CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+		CompressionFormat.Gzip,
+		CompressionFormat.Zlib,
+		CompressionFormat.Deflate,
 	]:
 		for level in [0, 9]:
 			encoded := compress(data, format, CompressOptions(level: level))?
@@ -83,6 +86,7 @@ test "typed archives retain entry limits and validation":
 
 		invalid: Bytes! := error(Error("archive: invalid input", kind: "EINVAL"))
 		expect_equal(
-			pack([ArchiveEntry("../escape", "".to_bytes(), false)], format), invalid
+			pack([ArchiveEntry("../escape", "".to_bytes(), false)], format),
+			invalid,
 		)?
 		expect_equal(pack(entries, format, -1), invalid)?

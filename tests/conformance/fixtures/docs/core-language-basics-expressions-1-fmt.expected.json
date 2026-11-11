@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn load(path: String) Config!:\n\tconfig := read(path)?\n\t\t| parse?\n\t\t| normalize\n\t\t| validate?\n\treturn ok(config)\n"
+    "fmt": "fn load(path: String) Config!:\n\tconfig := (\n\t\tread(path)?\n\t\t| parse?\n\t\t| normalize\n\t\t| validate?\n\t)\n\treturn ok(config)\n"
   }
 }

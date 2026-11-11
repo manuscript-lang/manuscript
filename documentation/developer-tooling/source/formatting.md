@@ -57,6 +57,9 @@ ms fmt src/*.ms --check
 Formatting preserves meaning and comments, indents with one tab per level and uses LF endings with a final newline, and is idempotent. Rules:
 
 - Keep token spellings; wrap only past 88 columns. Groups that fit stay on one line; wrapped lists pack simple elements into rows.
+- A paragraph of consecutive `//` prose lines with a line wider than 88 columns is refilled to 88. Lists, indented text, code fences, `ms:`/`manuscript:`/`conform:` lines and trailing comments are left as written.
+- A call or signature that does not fit on one line puts one argument or parameter on each line, with a trailing comma (none after a callback or block body, where a comma would belong to the body). List literals of simple items still fill lines.
+- A flow of three or more stages (`a | b? | c?`) wider than 50 columns is parenthesized with one stage per line, each starting with `|`; a line starting with `.` after a flow step becomes its own `| .name(...)` stage.
 - Keep single-step blocks beside adjacent work; separate substantial blocks and guards with blank lines, except that a one-line guard directly before the final `return` of a two-statement body stays together with it. Authored blank lines are discarded, except one kept after a comment-only line so a comment block stays apart from the next comment or declaration.
 - Keep match arms together.
 - One space around operators and after colons and commas; none next to delimiters; two before inline comments.

@@ -14,7 +14,8 @@ type Counter:
 type Resource:
 	marker: String
 
-// Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
+// Cleanup runs on the resource's own copy, so a marker file is how a caller observes
+// it.
 impl Closeable for Resource:
 	var fn close() Unit!:
 		_written := write_file(self.marker, "closed", true).wait()
@@ -167,7 +168,8 @@ test "cleanup remains owned by its source callable":
 	nested("{dir}/nested")
 	expect_true(closed("{dir}/nested"))?
 	expect_equal(
-		propagate("{dir}/propagated"), Result[Int, Error].error(Error("expected"))
+		propagate("{dir}/propagated"),
+		Result[Int, Error].error(Error("expected")),
 	)?
 	expect_true(closed("{dir}/propagated"))?
 	expect_equal(bare_propagate(), Result[Int, Error].error(Error("expected")))?

@@ -5,7 +5,8 @@
 // expect-stdout: close 2
 // expect-stdout: close 1
 // expect-stdout: true
-// Scalar-backed resources still have cleanup duties while constructor fields are pending.
+// Scalar-backed resources still have cleanup duties while constructor fields are
+// pending.
 import Closeable from "@std/core.ms"
 
 type Token:

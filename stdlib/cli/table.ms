@@ -49,7 +49,8 @@ export type Table:
 	widths: List[Int] = []
 
 impl Table:
-	// Appends a row of exactly one cell per column. A wrong cell count or a cell with controls returns EBADMSG.
+	// Appends a row of exactly one cell per column. A wrong cell count or a cell with
+	// controls returns EBADMSG.
 	var fn add(row: List[String]) Unit!:
 		count := self.columns.length()
 		if row.length() != count:

@@ -53,7 +53,7 @@ fn normalize_sum(
 	has_max: Bool,
 	max: Int,
 	expected: String,
-	status: Int
+	status: Int,
 ) Int:
 	if has_max: return consume(text.normalize(form, max), expected, status)
 	return consume(text.normalize(form), expected, status)
@@ -66,7 +66,7 @@ fn measure(
 	max: Int,
 	expected: String,
 	status: Int,
-	iterations: Int
+	iterations: Int,
 ) Int:
 	var expected_sum = 17
 	if status == 0: expected_sum += expected.byte_length()
@@ -97,118 +97,242 @@ fn main() Int:
 	if measure("invalid_negative", "é", "UNKNOWN", true, -1, "", 2, 5000000) != 0: return 1
 	if (
 		measure(
-			"budget_NFC_zero", "é".repeat(4096).get(), "NFC", true, 0, "", 1, 1024
+			"budget_NFC_zero",
+			"é".repeat(4096).get(),
+			"NFC",
+			true,
+			0,
+			"",
+			1,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFC_exact", "é".repeat(4096).get(), "NFC", true, 8192,
-			"é".repeat(4096).get(), 0, 1024
+			"budget_NFC_exact",
+			"é".repeat(4096).get(),
+			"NFC",
+			true,
+			8192,
+			"é".repeat(4096).get(),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFC_exceeded", "é".repeat(4096).get(), "NFC", true, 8191, "", 1,
-			1024
+			"budget_NFC_exceeded",
+			"é".repeat(4096).get(),
+			"NFC",
+			true,
+			8191,
+			"",
+			1,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFD_zero", "é".repeat(4096).get(), "NFD", true, 0, "", 1, 1024
+			"budget_NFD_zero",
+			"é".repeat(4096).get(),
+			"NFD",
+			true,
+			0,
+			"",
+			1,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFD_exact", "é".repeat(4096).get(), "NFD", true, 12288,
-			"é".repeat(4096).get(), 0, 1024
+			"budget_NFD_exact",
+			"é".repeat(4096).get(),
+			"NFD",
+			true,
+			12288,
+			"é".repeat(4096).get(),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFD_exceeded", "é".repeat(4096).get(), "NFD", true, 12287, "", 1,
-			1024
+			"budget_NFD_exceeded",
+			"é".repeat(4096).get(),
+			"NFD",
+			true,
+			12287,
+			"",
+			1,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFKC_zero", "é".repeat(4096).get(), "NFKC", true, 0, "", 1, 1024
+			"budget_NFKC_zero",
+			"é".repeat(4096).get(),
+			"NFKC",
+			true,
+			0,
+			"",
+			1,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFKC_exact", "é".repeat(4096).get(), "NFKC", true, 8192,
-			"é".repeat(4096).get(), 0, 1024
+			"budget_NFKC_exact",
+			"é".repeat(4096).get(),
+			"NFKC",
+			true,
+			8192,
+			"é".repeat(4096).get(),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFKC_exceeded", "é".repeat(4096).get(), "NFKC", true, 8191, "", 1,
-			1024
+			"budget_NFKC_exceeded",
+			"é".repeat(4096).get(),
+			"NFKC",
+			true,
+			8191,
+			"",
+			1,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFKD_zero", "é".repeat(4096).get(), "NFKD", true, 0, "", 1, 1024
+			"budget_NFKD_zero",
+			"é".repeat(4096).get(),
+			"NFKD",
+			true,
+			0,
+			"",
+			1,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFKD_exact", "é".repeat(4096).get(), "NFKD", true, 12288,
-			"é".repeat(4096).get(), 0, 1024
+			"budget_NFKD_exact",
+			"é".repeat(4096).get(),
+			"NFKD",
+			true,
+			12288,
+			"é".repeat(4096).get(),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"budget_NFKD_exceeded", "é".repeat(4096).get(), "NFKD", true, 12287, "", 1,
-			1024
+			"budget_NFKD_exceeded",
+			"é".repeat(4096).get(),
+			"NFKD",
+			true,
+			12287,
+			"",
+			1,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"compatibility_scale_4096_NFD_full", "ﬁ①".repeat(4096).get(), "NFD", false,
-			0, "ﬁ①".repeat(4096).get(), 0, 1024
+			"compatibility_scale_4096_NFD_full",
+			"ﬁ①".repeat(4096).get(),
+			"NFD",
+			false,
+			0,
+			"ﬁ①".repeat(4096).get(),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"compatibility_scale_65536_NFD_full", "ﬁ①".repeat(65536).get(), "NFD",
-			false, 0, "ﬁ①".repeat(65536).get(), 0, 64
+			"compatibility_scale_65536_NFD_full",
+			"ﬁ①".repeat(65536).get(),
+			"NFD",
+			false,
+			0,
+			"ﬁ①".repeat(65536).get(),
+			0,
+			64,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"canonical_scale_4096_NFD_full", "é".repeat(4096).get(), "NFD", false, 0,
-			"é".repeat(4096).get(), 0, 1024
+			"canonical_scale_4096_NFD_full",
+			"é".repeat(4096).get(),
+			"NFD",
+			false,
+			0,
+			"é".repeat(4096).get(),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"combining_segment_NFKC_full", ("a" + "̀̕".repeat(256).get()), "NFKC",
-			false, 0, ("à" + "̀".repeat(255).get() + "̕".repeat(256).get()), 0, 1024
+			"combining_segment_NFKC_full",
+			("a" + "̀̕".repeat(256).get()),
+			"NFKC",
+			false,
+			0,
+			("à" + "̀".repeat(255).get() + "̕".repeat(256).get()),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"canonical_scale_65536_NFD_full", "é".repeat(65536).get(), "NFD", false, 0,
-			"é".repeat(65536).get(), 0, 64
+			"canonical_scale_65536_NFD_full",
+			"é".repeat(65536).get(),
+			"NFD",
+			false,
+			0,
+			"é".repeat(65536).get(),
+			0,
+			64,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"late_unicode_4096_NFKC", ("x".repeat(4096).get() + "éﬁ"), "NFKC", false, 0,
-			("x".repeat(4096).get() + "éfi"), 0, 1024
+			"late_unicode_4096_NFKC",
+			("x".repeat(4096).get() + "éﬁ"),
+			"NFKC",
+			false,
+			0,
+			("x".repeat(4096).get() + "éfi"),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"early_unicode_1048576_NFD", ("éﬁ" + "x".repeat(1048576).get()), "NFD",
-			false, 0, ("éﬁ" + "x".repeat(1048576).get()), 0, 64
+			"early_unicode_1048576_NFD",
+			("éﬁ" + "x".repeat(1048576).get()),
+			"NFD",
+			false,
+			0,
+			("éﬁ" + "x".repeat(1048576).get()),
+			0,
+			64,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"late_unicode_1048576_NFD", ("x".repeat(1048576).get() + "éﬁ"), "NFD",
-			false, 0, ("x".repeat(1048576).get() + "éﬁ"), 0, 64
+			"late_unicode_1048576_NFD",
+			("x".repeat(1048576).get() + "éﬁ"),
+			"NFD",
+			false,
+			0,
+			("x".repeat(1048576).get() + "éﬁ"),
+			0,
+			64,
 		) != 0
 	): return 1
 	if measure("empty_NFC_full", "", "NFC", false, 0, "", 0, 5000000) != 0: return 1

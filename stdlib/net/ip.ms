@@ -74,11 +74,14 @@ impl Cidr:
 export type DnsRecord:
 	// The same typed category used by the query.
 	kind: DnsKind
-	// The record's answer: an IP address for A and AAAA, the target host name for CNAME, MX, NS, PTR, and SRV, or the text for TXT.
+	// The record's answer: an IP address for A and AAAA, the target host name for
+	// CNAME, MX, NS, PTR, and SRV, or the text for TXT.
 	value: String
-	// The preference of an MX record or the priority of an SRV record, where lower values are tried first; 0 for other kinds.
+	// The preference of an MX record or the priority of an SRV record, where lower
+	// values are tried first; 0 for other kinds.
 	priority: Int
-	// The relative weight of an SRV record among targets with the same priority; 0 for other kinds.
+	// The relative weight of an SRV record among targets with the same priority; 0 for
+	// other kinds.
 	weight: Int
 	// The service port of an SRV record; 0 for other kinds.
 	port: Int

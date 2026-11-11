@@ -203,8 +203,11 @@ fn bracket(r: Result[String, Fatal]) String:
 
 fn env(line: Int) Env:
 	return Env(
-		line: line, recipe: false, autos: Map[String, String](),
-		binds: Map[String, String](), stack: List[String]()
+		line: line,
+		recipe: false,
+		autos: Map[String, String](),
+		binds: Map[String, String](),
+		stack: List[String](),
 	)
 
 // ---------------------------------------------------------------- logical lines
@@ -376,7 +379,7 @@ fn lookup(name: String, e: Env, st: St) Result[String, Fatal]:
 				return error(
 					fatal(
 						e.line,
-						"Recursive variable '{name}' references itself (eventually)"
+						"Recursive variable '{name}' references itself (eventually)",
 					)
 				)
 
@@ -384,8 +387,11 @@ fn lookup(name: String, e: Env, st: St) Result[String, Fatal]:
 			stk.append(name.clone())
 
 			e2 := Env(
-				line: e.line, recipe: e.recipe, autos: e.autos.clone(),
-				binds: e.binds.clone(), stack: stk
+				line: e.line,
+				recipe: e.recipe,
+				autos: e.autos.clone(),
+				binds: e.binds.clone(),
+				stack: stk,
 			)
 			return expand(v.value, e2, st)
 
@@ -559,8 +565,11 @@ fn call_fn(name: String, args: List[String], e: Env, st: St) Result[String, Fata
 			b[vn.clone()] = w.clone()
 
 			e2 := Env(
-				line: e.line, recipe: e.recipe, autos: e.autos.clone(), binds: b,
-				stack: e.stack.clone()
+				line: e.line,
+				recipe: e.recipe,
+				autos: e.autos.clone(),
+				binds: b,
+				stack: e.stack.clone(),
 			)
 			item := try expand(text, e2, st)
 			items.append(item)
@@ -795,8 +804,11 @@ fn do_directive(var st: St, num: Int, text: String, kw: String) Result[Unit, Fat
 		if c.inelse: return error(fatal(num, "extraneous 'else'"))
 
 		st.conds[k] = Cond(
-			parent: c.parent, cond: c.cond, act: c.parent and not c.cond, inelse: true,
-			line: c.line
+			parent: c.parent,
+			cond: c.cond,
+			act: c.parent and not c.cond,
+			inelse: true,
+			line: c.line,
 		)
 		return ok(unit)
 
@@ -823,7 +835,11 @@ fn do_directive(var st: St, num: Int, text: String, kw: String) Result[Unit, Fat
 
 	st.conds.append(
 		Cond(
-			parent: parent, cond: cnd, act: parent and cnd, inelse: false, line: num
+			parent: parent,
+			cond: cnd,
+			act: parent and cnd,
+			inelse: false,
+			line: num,
 		)
 	)
 	return ok(unit)
@@ -906,7 +922,8 @@ fn do_assign(var st: St, num: Int, cs: List[String], eq: Int) Result[Unit, Fatal
 		else:
 			add := try expand(raw, env(num), st)
 			st.vars[name.clone()] = Var(
-				value: join_sp(old.value, add), recursive: false
+				value: join_sp(old.value, add),
+				recursive: false,
 			)
 
 	return ok(unit)
@@ -967,7 +984,9 @@ fn open_rule(var st: St, num: Int, cs: List[String], col: Int) Result[Unit, Fata
 fn rule_or_empty(st: St, t: String) Rule:
 	if r := st.explicit.get(t):
 		return Rule(
-			normal: r.normal.clone(), order: r.order.clone(), recipe: r.recipe.clone()
+			normal: r.normal.clone(),
+			order: r.order.clone(),
+			recipe: r.recipe.clone(),
 		)
 	return Rule(normal: List[String](), order: List[String](), recipe: List[Recipe]())
 
@@ -985,9 +1004,10 @@ fn close_rule(var st: St) Unit:
 				PRule(
 					pat: t.clone(),
 					rule: Rule(
-						normal: st.onormal.clone(), order: st.oorder.clone(),
-						recipe: st.orecipe.clone()
-					)
+						normal: st.onormal.clone(),
+						order: st.oorder.clone(),
+						recipe: st.orecipe.clone(),
+					),
 				)
 			)
 		else:
@@ -1079,8 +1099,11 @@ fn resolve(st: St, t: String) Res:
 	if ex := st.explicit.get(t):
 		if ex.recipe.length() > 0:
 			return Res(
-				found: true, normal: ex.normal.clone(), order: ex.order.clone(),
-				recipe: ex.recipe.clone(), stem: ""
+				found: true,
+				normal: ex.normal.clone(),
+				order: ex.order.clone(),
+				recipe: ex.recipe.clone(),
+				stem: "",
 			)
 
 	for pr in st.pats:
@@ -1112,19 +1135,28 @@ fn resolve(st: St, t: String) Res:
 							oo.append(p.clone())
 
 					return Res(
-						found: true, normal: nn, order: oo,
-						recipe: pr.rule.recipe.clone(), stem: stem
+						found: true,
+						normal: nn,
+						order: oo,
+						recipe: pr.rule.recipe.clone(),
+						stem: stem,
 					)
 
 	if ex := st.explicit.get(t):
 		return Res(
-			found: true, normal: ex.normal.clone(), order: ex.order.clone(),
-			recipe: List[Recipe](), stem: ""
+			found: true,
+			normal: ex.normal.clone(),
+			order: ex.order.clone(),
+			recipe: List[Recipe](),
+			stem: "",
 		)
 
 	return Res(
-		found: false, normal: List[String](), order: List[String](),
-		recipe: List[Recipe](), stem: ""
+		found: false,
+		normal: List[String](),
+		order: List[String](),
+		recipe: List[Recipe](),
+		stem: "",
 	)
 
 fn default_goal(st: St) String:
@@ -1196,7 +1228,12 @@ fn run_cmd(var st: St, cmd: String) Int:
 	return 0
 
 fn run_recipe(
-	var st: St, t: String, r: Res, dn: List[String], dord: List[String], q: List[String]
+	var st: St,
+	t: String,
+	r: Res,
+	dn: List[String],
+	dord: List[String],
+	q: List[String],
 ) Result[Unit, Fatal]:
 	st.ran += 1
 
@@ -1213,8 +1250,11 @@ fn run_recipe(
 
 	for rl in r.recipe:
 		e := Env(
-			line: rl.line, recipe: true, autos: autos.clone(),
-			binds: Map[String, String](), stack: List[String]()
+			line: rl.line,
+			recipe: true,
+			autos: autos.clone(),
+			binds: Map[String, String](),
+			stack: List[String](),
 		)
 		ex := try expand(rl.text, e, st)
 		cs := ex.chars()
@@ -1394,7 +1434,7 @@ fn dfs(
 	t: String,
 	var stk: List[String],
 	var done: Map[String, Bool],
-	var outl: List[String]
+	var outl: List[String],
 ) Result[Unit, Fatal]:
 	if done.contains(t): return ok(unit)
 
@@ -1603,13 +1643,26 @@ export fn main() Int:
 		reqs = slice_list(lines, seps[1] + 1, n)
 
 	var st = St(
-		files: Map[String, Int](), clock: 0, vars: Map[String, Var](),
-		locked: Map[String, Bool](), explicit: Map[String, Rule](),
-		names: List[String](), pats: List[PRule](), phony: List[String](),
-		conds: List[Cond](), isopen: false, otargets: List[String](),
-		onormal: List[String](), oorder: List[String](), orecipe: List[Recipe](),
-		oline: 0, ophony: false, memo: Map[String, Bool](), stackp: List[String](),
-		dry: false, ran: 0
+		files: Map[String, Int](),
+		clock: 0,
+		vars: Map[String, Var](),
+		locked: Map[String, Bool](),
+		explicit: Map[String, Rule](),
+		names: List[String](),
+		pats: List[PRule](),
+		phony: List[String](),
+		conds: List[Cond](),
+		isopen: false,
+		otargets: List[String](),
+		onormal: List[String](),
+		oorder: List[String](),
+		orecipe: List[Recipe](),
+		oline: 0,
+		ophony: false,
+		memo: Map[String, Bool](),
+		stackp: List[String](),
+		dry: false,
+		ran: 0,
 	)
 
 	for l in tab:

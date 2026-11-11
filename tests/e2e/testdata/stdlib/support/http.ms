@@ -14,7 +14,8 @@ export fn list_headers(fields: Map[String, List[String]]) HttpHeaders!:
 			_appended := result.append(name, item)?
 	return ok(result)
 
-// Streaming callbacks must fail with a Failed Error; retain the diagnostic text of another operation.
+// Streaming callbacks must fail with a Failed Error; retain the diagnostic text of
+// another operation.
 export fn http_result[T](outcome: T!) T!:
 	match outcome:
 		ok(found): return ok(found)

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Unit:\n\tsend(\n\t\tdestination: resolve(name: service, region: region),\n\t\tpayload: encode(build(records))\n\t)\n"
+    "fmt": "fn work() Unit:\n\tsend(\n\t\tdestination: resolve(name: service, region: region),\n\t\tpayload: encode(build(records)),\n\t)\n"
   }
 }

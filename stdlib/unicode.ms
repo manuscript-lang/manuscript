@@ -16,7 +16,8 @@ Every predicate returns false for negative values, surrogates and values above U
 Example: `is_alphabetic("é".scalar_at(0))` is true; no case mapping or normalization is applied.
 */
 
-// Tests the Unicode Alphabetic property, including alphabetic combining marks, not only letter categories.
+// Tests the Unicode Alphabetic property, including alphabetic combining marks, not only
+// letter categories.
 export fn is_alphabetic(scalar: Int) Bool:
 	return msstd_unicode_is_alphabetic(scalar)
 
@@ -24,7 +25,8 @@ export fn is_alphabetic(scalar: Int) Bool:
 export fn is_alphanumeric(scalar: Int) Bool:
 	return msstd_unicode_is_alphanumeric(scalar)
 
-// Tests numeric categories Nd, Nl and No, including fractions; this is broader than decimal digits.
+// Tests numeric categories Nd, Nl and No, including fractions; this is broader than
+// decimal digits.
 export fn is_numeric(scalar: Int) Bool:
 	return msstd_unicode_is_numeric(scalar)
 
@@ -36,15 +38,18 @@ export fn is_lowercase(scalar: Int) Bool:
 export fn is_uppercase(scalar: Int) Bool:
 	return msstd_unicode_is_uppercase(scalar)
 
-// Tests the Unicode White_Space property; excludes the byte-order mark and zero-width space.
+// Tests the Unicode White_Space property; excludes the byte-order mark and zero-width
+// space.
 export fn is_whitespace(scalar: Int) Bool:
 	return msstd_unicode_is_whitespace(scalar)
 
-// Tests Unicode control characters (general category Cc), excluding format characters such as a zero-width joiner.
+// Tests Unicode control characters (general category Cc), excluding format characters
+// such as a zero-width joiner.
 export fn is_control(scalar: Int) Bool:
 	return msstd_unicode_is_control(scalar)
 
-// Tests whether the scalar is in the ASCII range U+0000 through U+007F, including controls.
+// Tests whether the scalar is in the ASCII range U+0000 through U+007F, including
+// controls.
 export fn is_ascii(scalar: Int) Bool:
 	return msstd_unicode_is_ascii(scalar)
 

@@ -42,30 +42,47 @@ fn common_result[T](result: T!) T!:
 
 fn checked_expansion() Unit!:
 	(
-		not (
-			common_result(
-				result: filled(value: "a", count: 3, max_items: 3)
-			)? == ["a", "a", "a"]
+		(
+			not (
+				common_result(
+					result: filled(
+						value: "a",
+						count: 3,
+						max_items: 3,
+					)
+				)? == ["a", "a", "a"]
+			)
 		)
-	) | expect_false?
+		| expect_false?
+	)
 	(
-		not (
-			common_result(
-				result: range_by(
-					start: 0, end: 6, step: 2, options: RangeOptions(max_items: 3)
-				)
-			)? == [0, 2, 4]
-		)
-	) | expect_false?
+		(
+			not (
+				common_result(
+					result: range_by(
+						start: 0,
+						end: 6,
+						step: 2,
+						options: RangeOptions(max_items: 3),
+					)
+				)? == [0, 2, 4]
+			)
+		) | expect_false?
+	)
 	(
-		not (
-			common_result(
-				result: range_by(
-					start: 3, end: -1, step: -1, options: RangeOptions(max_items: 4)
-				)
-			)? == [3, 2, 1, 0]
-		)
-	) | expect_false?
+		(
+			not (
+				common_result(
+					result: range_by(
+						start: 3,
+						end: -1,
+						step: -1,
+						options: RangeOptions(max_items: 4),
+					)
+				)? == [3, 2, 1, 0]
+			)
+		) | expect_false?
+	)
 	"x".pad_start(target_length: 4, padding: "é🙂") | expect_equal("é🙂éx")?
 	"x".pad_end(target_length: 4, padding: "é🙂") | expect_equal("xé🙂é")?
 	(not ("aba".replace(old: "a", new: "é") == "ébé")) | expect_false?
@@ -144,12 +161,15 @@ test "list methods mutate explicit clones and remain typed":
 		)
 	)?
 	(
-		not (
-			original.flat_map(transform: expand) == [
-				"3", "x", "1", "x", "2", "x", "1", "x"
-			]
+		(
+			not (
+				original.flat_map(transform: expand) == [
+					"3", "x", "1", "x", "2", "x", "1", "x"
+				]
+			)
 		)
-	) | expect_false?
+		| expect_false?
+	)
 	original.fold(initial: 0, step: total) | expect_equal(7)?
 	original.fold_right(initial: "", step: ordered) | expect_equal("1213")?
 
@@ -179,7 +199,8 @@ test "list methods mutate explicit clones and remain typed":
 	original.entries().get(index: 0) | expect_equal(ListEntry(index: 0, value: 3))?
 	original.to_set().values() | expect_equal([3, 1, 2])?
 	expect_equal(
-		[[1, 2], [], [3]].flat_map(transform: fn value: value.clone()), [1, 2, 3]
+		[[1, 2], [], [3]].flat_map(transform: fn value: value.clone()),
+		[1, 2, 3],
 	)?
 	alias | expect_equal([3, 1, 2, 1])?
 
@@ -197,23 +218,31 @@ test "map enumeration, merge, and clear preserve insertion order":
 	merged.keys() | expect_equal(["a", "b", "c"])?
 	merged.values() | expect_equal([1, 3, 4])?
 	(
-		not (
-			merged.entries() == [
-				MapEntry(key: "a", value: 1), MapEntry(key: "b", value: 3),
-				MapEntry(key: "c", value: 4)
-			]
+		(
+			not (
+				merged.entries() == [
+					MapEntry(key: "a", value: 1),
+					MapEntry(key: "b", value: 3),
+					MapEntry(key: "c", value: 4),
+				]
+			)
 		)
-	) | expect_false?
+		| expect_false?
+	)
 	map_from_entries(entries: merged.entries()) | expect_equal(merged)?
 	(
-		not (
-			map_from_entries(
-				entries: [
-					MapEntry(key: "a", value: 1), MapEntry(key: "a", value: 2)
-				]
-			).values() == [2]
+		(
+			not (
+				map_from_entries(
+					entries: [
+						MapEntry(key: "a", value: 1),
+						MapEntry(key: "a", value: 2),
+					]
+				).values() == [2]
+			)
 		)
-	) | expect_false?
+		| expect_false?
+	)
 
 	var observed_keys: List[String] = []
 	var observed_values: List[Int] = []
@@ -342,12 +371,22 @@ test "growth limits and invalid inputs return values":
 	list_invalid: List[Int]! := error(
 		Error("collection: invalid input", kind: "EINVAL")
 	)
-	range_by(start: 0, end: 4, step: 1, options: RangeOptions(max_items: 3)) | expect_equal(
-		list_limit
-	)?
-	range_by(start: 0, end: 4, step: 0, options: RangeOptions(max_items: 3)) | expect_equal(
-		list_invalid
-	)?
+	(
+		range_by(
+			start: 0,
+			end: 4,
+			step: 1,
+			options: RangeOptions(max_items: 3),
+		) | expect_equal(list_limit)?
+	)
+	(
+		range_by(
+			start: 0,
+			end: 4,
+			step: 0,
+			options: RangeOptions(max_items: 3),
+		) | expect_equal(list_invalid)?
+	)
 	filled(value: 1, count: 2, max_items: 1) | expect_equal(list_limit)?
 
 fn parity(value: Int) Int:
@@ -390,12 +429,15 @@ test "grouping and lazy map defaults":
 	calls.length() | expect_equal(0)?
 
 fn verify_text_and_numbers() Unit!:
-	(common_result(result: "é".normalize(form: "NFC", max_bytes: 2))?) | expect_equal(
-		"é"
-	)?
-	(common_result(result: "é".normalize(form: "NFD", max_bytes: 3))?) | expect_equal(
-		"é"
-	)?
+	(
+		(common_result(result: "é".normalize(form: "NFC", max_bytes: 2))?)
+		| expect_equal("é")?
+	)
+	(
+		(
+			common_result(result: "é".normalize(form: "NFD", max_bytes: 3))?
+		) | expect_equal("é")?
+	)
 	expect_true(
 		(
 			common_result(
@@ -449,26 +491,37 @@ fn verify_bigint_and_regex() Unit!:
 	a.bit_or(other: b).to_int() | expect_equal(13)?
 	a.bit_xor(other: b).to_int() | expect_equal(9)?
 
-	// A Regex has one owner and no clone, so the lent part comes from a binding, not a temporary.
+	// A Regex has one owner and no clone, so the lent part comes from a binding, not a
+	// temporary.
 	compiled := compile(pattern: "[0-9]+")
 	pattern := common_result(result: compiled)?
 	(pattern.matches(text: "a12b3")) | expect_true?
 	(
-		not (
-			common_result(
-				result: pattern.find_all(text: "a12b3", max_matches: 2)
-			)? == ["12", "3"]
+		(
+			not (
+				common_result(
+					result: pattern.find_all(
+						text: "a12b3",
+						max_matches: 2,
+					)
+				)? == ["12", "3"]
+			)
 		)
-	) | expect_false?
+		| expect_false?
+	)
 	(
-		not (
-			common_result(
-				result: pattern.replace_all(
-					text: "a12b3", replacement: "x", max_bytes: 4
-				)
-			)? == "axbx"
-		)
-	) | expect_false?
+		(
+			not (
+				common_result(
+					result: pattern.replace_all(
+						text: "a12b3",
+						replacement: "x",
+						max_bytes: 4,
+					)
+				)? == "axbx"
+			)
+		) | expect_false?
+	)
 
 test "BigInt and Regex share function implementations with methods":
 	match verify_bigint_and_regex():

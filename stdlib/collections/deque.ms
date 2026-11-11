@@ -6,7 +6,8 @@ Use `.clone()` for an independent deque when its elements are Clonable; assignin
 Use Queue for plain FIFO work and Deque when either end is pushed or popped, such as a sliding window or work stealing.
 */
 export type Deque[T]:
-	// Ring-buffer storage; `none` marks unused slots. Internal state: use the operations, not this field.
+	// Ring-buffer storage; `none` marks unused slots. Internal state: use the
+	// operations, not this field.
 	slots: List[T?] = []
 	// Index in `slots` of the front value. Internal state.
 	start: Int = 0
@@ -33,7 +34,8 @@ impl Deque[T]:
 		for slot in capacity..next:
 			self.slots.append(none)
 
-	// Returns the ring-buffer index of the value `offset` places after the front; `offset` is at most the capacity.
+	// Returns the ring-buffer index of the value `offset` places after the front;
+	// `offset` is at most the capacity.
 	fn slot_of(offset: Int) Int:
 		at := self.start + offset
 		capacity := self.slots.length()

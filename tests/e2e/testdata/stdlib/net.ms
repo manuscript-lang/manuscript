@@ -26,7 +26,8 @@ test "IP parsing CIDR normalization and containment":
 	expect_false(
 		not (
 			contains_ip(
-				parse_cidr("192.0.2.0/24")?, parse_ip("192.0.2.255")?
+				parse_cidr("192.0.2.0/24")?,
+				parse_ip("192.0.2.255")?,
 			)?
 		)
 	)?
@@ -49,8 +50,8 @@ test "a read cancelled by its timeout leaves the stream closable":
 	var client = connect(listener.address(), timeout: 2.seconds()).wait()?
 	_server := listener.accept(2.seconds()).wait()?
 
-	// The peer is silent, so the limit cancels the read mid-park. The borrowed stream still
-	// belongs to the caller: closing it afterwards frees the socket once.
+	// The peer is silent, so the limit cancels the read mid-park. The borrowed stream
+	// still belongs to the caller: closing it afterwards frees the socket once.
 	expect_true(within(var client.input, 50.milliseconds()).is_error())?
 	client.close()?
 
@@ -63,7 +64,8 @@ test "a promise that accepts on a listener runs where the listener lives":
 	address := listener.address()
 	_accepting := promise(fn: accept_all(listener))
 
-	// Accepts and connects register their connections with one network, which is not thread
+	// Accepts and connects register their connections with one network, which is not
+	// thread
 	// safe: running the accepts on another thread raced these connects and panicked.
 	for i in 0..2000:
 		var client = connect(address, timeout: 2.seconds()).wait()?
@@ -79,7 +81,8 @@ test "closing the input leaves the output open and closing both ends the connect
 	client.output.write("still open".to_bytes())?
 	client.output.flush()?
 	expect_equal(
-		(within(var server.input, 2.seconds())?).get(), "still open".to_bytes()
+		(within(var server.input, 2.seconds())?).get(),
+		"still open".to_bytes(),
 	)?
 
 	// Closing the output too closes the socket: the peer sees the end of the stream.
@@ -95,11 +98,12 @@ test "host names resolve whatever their case":
 
 test "an empty Unix socket path is invalid input":
 	expect_equal(
-		expect_error(listen_unix(""))?, Error("network: invalid input", kind: "EINVAL")
+		expect_error(listen_unix(""))?,
+		Error("network: invalid input", kind: "EINVAL"),
 	)?
 	expect_equal(
 		expect_error(connect_unix("", timeout: 1.seconds()).wait())?,
-		Error("network: invalid input", kind: "EINVAL")
+		Error("network: invalid input", kind: "EINVAL"),
 	)?
 
 test "UDP loopback preserves datagram data and sender":
@@ -119,7 +123,8 @@ test "network restriction denies admission and close rejects acquisitions":
 	expect_false(
 		(
 			(expect_error(scoped.listen("127.0.0.1:0"))?) != Error(
-				"network: permission denied", kind: "EACCES"
+				"network: permission denied",
+				kind: "EACCES",
 			)
 		)
 	)?
@@ -130,7 +135,8 @@ test "network restriction denies admission and close rejects acquisitions":
 			(
 				expect_error(
 					closing.connect(
-						"127.0.0.1:1", timeout: 1.seconds()
+						"127.0.0.1:1",
+						timeout: 1.seconds(),
 					)
 				)?
 			) != Error("network: resource is closed", kind: "EBADF")
@@ -147,7 +153,7 @@ test "typed addresses preserve normalization and reject zones":
 fn expect_ip_error(input: String) Unit!:
 	expect_equal(
 		(expect_error(parse_ip(input))?),
-		Error("network: invalid data", kind: "EBADMSG")
+		Error("network: invalid data", kind: "EBADMSG"),
 	)?
 
 fn accept_one(l: Listener) Int:
@@ -167,7 +173,8 @@ test "a promise accepts on a listener it owns":
 	expect_equal(a.wait()?, 1)?
 	client.close()?
 
-// Accepts one connection and reads from it, all inside the promise that owns the connection.
+// Accepts one connection and reads from it, all inside the promise that owns the
+// connection.
 fn accept_and_read(listener: Listener) Int:
 	var conn = listener.accept(2.seconds()).wait().get()
 	r := within(var conn.input, 2.seconds())
@@ -185,7 +192,8 @@ test "a promise reads a connection it owns":
 	expect_equal(a.wait()?, 1)?
 	client.close()?
 
-// Answers one DNS query with a single MX record: preference 10, exchange mail.example.test.
+// Answers one DNS query with a single MX record: preference 10, exchange
+// mail.example.test.
 fn answer_mx(var served: DatagramSocket) Int!:
 	query := (within(var served.input, 2.seconds())?).get()
 	question := (query.data.slice(12, query.data.length())).get(Bytes([]))
@@ -201,7 +209,8 @@ fn answer_mx(var served: DatagramSocket) Int!:
 	)
 	served.output.write(
 		Datagram(
-			header.concat(question).concat(record).concat(name), query.address
+			header.concat(question).concat(record).concat(name),
+			query.address,
 		)
 	)?
 	served.output.flush()?
@@ -217,7 +226,9 @@ test "resolve returns typed DNS records from the configured resolver":
 	derived := with_resolver(server.address.clone())?
 	asking := promise(
 		fn: derived.resolve(
-			"example.test", DnsKind.MX, DnsOptions(timeout: 2.seconds())
+			"example.test",
+			DnsKind.MX,
+			DnsOptions(timeout: 2.seconds()),
 		)
 	)
 	var answering = server

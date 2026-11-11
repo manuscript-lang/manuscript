@@ -54,7 +54,8 @@ impl HttpHeaders:
 				if text := item.decode_utf8(): out.append(text)
 		return out
 
-	// Returns the raw bytes of every value as an owned list, or none for an absent name.
+	// Returns the raw bytes of every value as an owned list, or none for an absent
+	// name.
 	fn values_bytes(name: String) List[Bytes]?:
 		return msstd_http_headers_values(self, name)
 
@@ -84,18 +85,21 @@ export type HttpResponseMetadata:
 	status: Int
 	// The header fields, with every repeated value retained.
 	headers: HttpHeaders
-	// The protocol the response used, such as `HTTP/1.1` or `HTTP/2.0`; empty when the source does not report one.
+	// The protocol the response used, such as `HTTP/1.1` or `HTTP/2.0`; empty when the
+	// source does not report one.
 	protocol: String = ""
 
 // Buffered response body with explicit common metadata access.
 export type ClientResponse:
-	// Response metadata; changing it requires a mutable response and no live borrow of head.
+	// Response metadata; changing it requires a mutable response and no live borrow of
+	// head.
 	head: HttpResponseMetadata
 	// The complete response payload within the supplied byte bound.
 	body: Bytes
 
 impl ClientResponse:
-	// Returns an independent owned copy of the current response metadata, including its headers.
+	// Returns an independent owned copy of the current response metadata, including its
+	// headers.
 	fn metadata() HttpResponseMetadata:
 		return self.head.clone()
 
@@ -115,7 +119,8 @@ export enum HttpMethod:
 	Delete
 	// Establishes a tunnel to the request target.
 	Connect
-	// Asks which communication options the target supports, without transferring a body.
+	// Asks which communication options the target supports, without transferring a
+	// body.
 	Options
 	// Requests a diagnostic loopback.
 	Trace
@@ -150,71 +155,98 @@ export type HttpClient:
 	native: NativeHttpClient
 
 impl Closeable for HttpClient:
-	// Cancels in-flight requests, closes open response bodies, and drops idle pooled connections.
-	// Safe to call repeatedly; later requests return EBADF.
+	// Cancels in-flight requests, closes open response bodies, and drops idle pooled
+	// connections. Safe to call repeatedly; later requests return EBADF.
 	var fn close() Unit!:
 		msstd_http_client_close(self.native)
 
 impl HttpClient:
-	// Sends the body (text or `Bytes`) and returns the response with its body as a stream.
+	// Sends the body (text or `Bytes`) and returns the response with its body as a
+	// stream.
 	fn request(
 		method: HttpMethod,
 		url: String,
 		headers: HttpHeaders = headers(),
 		body: Writable = "",
 		max_response_bytes: Int?,
-		timeout: Duration?
+		timeout: Duration?,
 	) StreamingResponse!:
 		raw := self.request_raw(
-			method, url, headers, body.as_bytes(), max_response_bytes, timeout
+			method,
+			url,
+			headers,
+			body.as_bytes(),
+			max_response_bytes,
+			timeout,
 		)?
 		return ok(response(raw))
 
-	// Sends immutable Bytes and returns the native response, for callers that buffer the whole body.
+	// Sends immutable Bytes and returns the native response, for callers that buffer
+	// the whole body.
 	fn request_raw(
 		method: HttpMethod,
 		url: String,
 		headers: HttpHeaders,
 		body: Bytes,
 		max_response_bytes: Int? = none,
-		timeout: Duration? = none
+		timeout: Duration? = none,
 	) RawResponse!:
 		return msstd_http_client_request_bytes(
-			self.native, method.text(), url, headers, body, max_response_bytes, timeout
+			self.native,
+			method.text(),
+			url,
+			headers,
+			body,
+			max_response_bytes,
+			timeout,
 		)
 
-	// Reads `body` to its end, then sends it as the request body. The upload is buffered until the request can
-	// return a `WriteStream` for the body to be written into.
+	// Reads `body` to its end, then sends it as the request body. The upload is
+	// buffered until the request can return a `WriteStream` for the body to be written
+	// into.
 	fn request_stream(
 		method: HttpMethod,
 		url: String,
 		headers: HttpHeaders,
 		body: ReadStream[Bytes],
 		max_response_bytes: Int? = none,
-		timeout: Duration? = none
+		timeout: Duration? = none,
 	) StreamingResponse!:
 		data := read_all(body, none)?
 		return self.request(method, url, headers, data, max_response_bytes, timeout)
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 export type HttpClientOptions:
-	// Most redirects followed per request. 0 returns the redirect response itself, none sets no cap, and a negative count is rejected.
-	// Redirects that downgrade from HTTPS, leave the network's restrictions, or carry user info are refused.
+	// Most redirects followed per request. 0 returns the redirect response itself, none
+	// sets no cap, and a negative count is rejected. Redirects that downgrade from
+	// HTTPS, leave the network's restrictions, or carry user info are refused.
 	max_redirects: Int?
-	// Number of idle connections kept for reuse. Must be nonnegative; none sets no explicit cap.
+	// Number of idle connections kept for reuse. Must be nonnegative; none sets no
+	// explicit cap.
 	max_idle_connections: Int?
-	// Largest accepted size of a response header block, in bytes. Must be positive; none uses the default of 1 MiB.
+	// Largest accepted size of a response header block, in bytes. Must be positive;
+	// none uses the default of 1 MiB.
 	max_header_bytes: Int?
-	// How long an idle pooled connection is kept before it is closed. none never expires it, and a negative duration is rejected.
+	// How long an idle pooled connection is kept before it is closed. none never
+	// expires it, and a negative duration is rejected.
 	idle_timeout: Duration?
-	// When True, gzip-encoded responses are decoded transparently, with `max_response_bytes` bounding the decoded size; when False (the default), bodies arrive exactly as sent.
+	// When True, gzip-encoded responses are decoded transparently, with
+	// `max_response_bytes` bounding the decoded size; when False (the default), bodies
+	// arrive exactly as sent.
 	decompress: Bool = false
-	// When True, the client keeps an in-memory cookie jar for its lifetime, respecting public-suffix boundaries; when False (the default), no cookies are stored or sent automatically.
+	// When True, the client keeps an in-memory cookie jar for its lifetime, respecting
+	// public-suffix boundaries; when False (the default), no cookies are stored or sent
+	// automatically.
 	cookies: Bool = false
-	// TLS trust and client-certificate settings for `https` requests. The host name is taken from each URL, so `server_name` is ignored.
+	// TLS trust and client-certificate settings for `https` requests. The host name is
+	// taken from each URL, so `server_name` is ignored.
 	tls: TlsOptions = TlsOptions(
-		server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
-		alpn: [], require_client_certificate: false
+		server_name: "",
+		roots_pem: "",
+		certificate_pem: "",
+		private_key_pem: "",
+		alpn: [],
+		require_client_certificate: false,
 	)
 
 // One streaming server exchange. Read or write incrementally and close when done.
@@ -232,23 +264,34 @@ export interface HttpExchange:
 	fn path() String
 	// Returns the protocol the request arrived over, such as `HTTP/1.1` or `HTTP/2.0`.
 	fn protocol() String
-	// Returns the raw query string without the leading `?`; it is empty when there is none.
+	// Returns the raw query string without the leading `?`; it is empty when there is
+	// none.
 	fn query() String
-	// Returns the next chunk of the request body, at most `max_bytes` and never more than 65536, or none at the end of the body.
-	// Reading past `max_body_bytes` returns an `Error` of kind `EIO`, and a non-positive `max_bytes` returns EINVAL.
+	// Returns the next chunk of the request body, at most `max_bytes` and never more
+	// than 65536, or none at the end of the body. Reading past `max_body_bytes` returns
+	// an `Error` of kind `EIO`, and a non-positive `max_bytes` returns EINVAL.
 	var fn read(max_bytes: Int?) Bytes?!
-	// Sends a whole response: the status line, `headers`, and `body` with its length known, so the response carries `Content-Length` rather than chunked framing. Requests with HEAD and statuses without a body get the head alone.
-	// The rules of `send_headers` apply, `body` is bounded by `max_response_bytes`, and nothing else may be sent afterwards.
+	// Sends a whole response: the status line, `headers`, and `body` with its length
+	// known, so the response carries `Content-Length` rather than chunked framing.
+	// Requests with HEAD and statuses without a body get the head alone. The rules of
+	// `send_headers` apply, `body` is bounded by `max_response_bytes`, and nothing else
+	// may be sent afterwards.
 	var fn send(status: Int, headers: HttpHeaders, body: Bytes) Unit!
-	// Sends the status line and headers once, before any body is written.
-	// The status must be 200 through 599, header names cannot be `Content-Length`, `Transfer-Encoding`, or `Connection`, and header bytes are bounded by `max_header_bytes`. A second call returns EINVAL and a closed exchange returns EBADF.
+	// Sends the status line and headers once, before any body is written. The status
+	// must be 200 through 599, header names cannot be `Content-Length`,
+	// `Transfer-Encoding`, or `Connection`, and header bytes are bounded by
+	// `max_header_bytes`. A second call returns EINVAL and a closed exchange returns
+	// EBADF.
 	var fn send_headers(status: Int, headers: HttpHeaders) Unit!
-	// Switches the connection to a WebSocket after checking the `Origin` header. Requests without an Origin are accepted; otherwise it must exactly match an entry of `allowed_origins`, or, when that list is empty, match the request's own scheme and host.
+	// Switches the connection to a WebSocket after checking the `Origin` header.
+	// Requests without an Origin are accepted; otherwise it must exactly match an entry
+	// of `allowed_origins`, or, when that list is empty, match the request's own scheme
+	// and host.
 	// `subprotocols` lists the protocols the server accepts, and `max_message_bytes` must be positive when given. An exchange that already sent headers or upgraded returns EINVAL, and a request that is not a valid WebSocket upgrade returns EIO.
 	var fn upgrade(
 		allowed_origins: List[String] = [],
 		subprotocols: List[String] = [],
-		max_message_bytes: Int? = none
+		max_message_bytes: Int? = none,
 	) NativeWebSocket!
 	// Writes one chunk of the response body and flushes it.
 	// `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `EIO`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return EINVAL.
@@ -260,7 +303,8 @@ export interface HttpExchange:
 export type HttpRequest:
 	// The request method, using the Custom case for extension tokens.
 	method: HttpMethod
-	// The percent-decoded request path with dot segments resolved, so `/a/../b` arrives as `/b`.
+	// The percent-decoded request path with dot segments resolved, so `/a/../b` arrives
+	// as `/b`.
 	path: String
 	// The raw query string without the leading `?`; empty when there is none.
 	query: String
@@ -268,27 +312,34 @@ export type HttpRequest:
 	headers: HttpHeaders
 	// The complete request body, at most `max_body_bytes` long.
 	body: Bytes
-	// The protocol the request arrived over, such as `HTTP/1.1` or `HTTP/2.0`; empty when not reported.
+	// The protocol the request arrived over, such as `HTTP/1.1` or `HTTP/2.0`; empty
+	// when not reported.
 	protocol: String = ""
 
 // Buffered response returned by the simple HTTP server handler.
 export type HttpResponse:
-	// The HTTP status code, which must be 200 through 599; other values are answered with a 500 error.
+	// The HTTP status code, which must be 200 through 599; other values are answered
+	// with a 500 error.
 	status: Int
-	// The response headers to send, empty by default; `Content-Length`, `Transfer-Encoding`, and `Connection` are rejected with a 500 error.
+	// The response headers to send, empty by default; `Content-Length`,
+	// `Transfer-Encoding`, and `Connection` are rejected with a 500 error.
 	headers: HttpHeaders = headers()
-	// The response body bytes, which must not exceed `max_response_bytes`; the server sets the content length.
+	// The response body bytes, which must not exceed `max_response_bytes`; the server
+	// sets the content length.
 	body: Bytes
 
-// The listener, handler, limits, TLS settings and admission count that every connection of one `serve` call shares.
+// The listener, handler, limits, TLS settings and admission count that every connection
+// of one `serve` call shares.
 export extern type NativeServing
 
-// One worker thread's HTTP engine: the connections it adopted, driven by the poller without a task each.
+// One worker thread's HTTP engine: the connections it adopted, driven by the poller
+// without a task each.
 export extern type NativeWorker
 
 // A running HTTP server. Close it, or drop it, to stop accepting and drain.
 export type HttpServer:
-	// The accept loop, which owns the connection promises. It is declared first so it ends before what it uses.
+	// The accept loop, which owns the connection promises. It is declared first so it
+	// ends before what it uses.
 	accepting: Promise[Unit]
 	// The bound local address as `host:port`.
 	bound: String
@@ -296,17 +347,22 @@ export type HttpServer:
 	stopped: Bool
 
 impl Closeable for HttpServer:
-	// Stops accepting and asks every connection to finish: idle ones close at once, requests in flight finish within `grace`, then the rest are cancelled. It returns without waiting; `wait` or dropping the server joins. Safe to call repeatedly.
+	// Stops accepting and asks every connection to finish: idle ones close at once,
+	// requests in flight finish within `grace`, then the rest are cancelled. It returns
+	// without waiting; `wait` or dropping the server joins. Safe to call repeatedly.
 	var fn close() Unit!:
 		self.stopped = true
 		self.accepting.cancel()
 
 impl HttpServer:
-	// Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
+	// Returns the bound local address as `host:port` text, which reveals the port
+	// chosen when listening on port 0.
 	fn address() String:
 		return self.bound.clone()
 
-	// Waits until the server has stopped. Returns Ok after `close`, or the error that ended accepting (`EIO` with the host's text). `timeout` bounds the wait and cancels the server when it passes.
+	// Waits until the server has stopped. Returns Ok after `close`, or the error that
+	// ended accepting (`EIO` with the host's text). `timeout` bounds the wait and
+	// cancels the server when it passes.
 	fn wait(timeout: Duration? = none) Unit!:
 		set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
 
@@ -317,54 +373,70 @@ impl HttpServer:
 
 // Request and response limits, deadlines, graceful shutdown, and TLS server settings.
 export type HttpServerOptions:
-	// Most requests handled at once; further requests are answered with 503. Must be positive; none sets no cap.
+	// Most requests handled at once; further requests are answered with 503. Must be
+	// positive; none sets no cap.
 	max_requests: Int?
 	// Largest accepted request body, in bytes. Must be nonnegative; none sets no cap.
 	max_body_bytes: Int?
-	// Most response body bytes a handler may write, in bytes. Must be nonnegative; none sets no cap.
+	// Most response body bytes a handler may write, in bytes. Must be nonnegative; none
+	// sets no cap.
 	max_response_bytes: Int?
-	// Largest accepted request header block and largest response header block, in bytes. Must be positive; none uses the default of 1 MiB.
+	// Largest accepted request header block and largest response header block, in
+	// bytes. Must be positive; none uses the default of 1 MiB.
 	max_header_bytes: Int?
-	// Per-request time budget covering reading the request, running the handler, and writing the response; an idle plain-HTTP connection waiting for its next request is also closed after it. A handler still running at the deadline is cancelled (its waits end and resource cleanup runs) and the request is answered 504; a WebSocket it opened is not limited. Must be positive; none sets no deadline.
+	// Per-request time budget covering reading the request, running the handler, and
+	// writing the response; an idle plain-HTTP connection waiting for its next request
+	// is also closed after it. A handler still running at the deadline is cancelled
+	// (its waits end and resource cleanup runs) and the request is answered 504; a
+	// WebSocket it opened is not limited. Must be positive; none sets no deadline.
 	timeout: Duration?
-	// How long `close` waits for in-flight requests to finish before cancelling them. none waits without limit and 0 cancels immediately.
+	// How long `close` waits for in-flight requests to finish before cancelling them.
+	// none waits without limit and 0 cancels immediately.
 	grace: Duration?
-	// Some(options) serves HTTPS and negotiates HTTP/2 or HTTP/1.1 through ALPN; none, the default, serves plain HTTP/1.1.
+	// Some(options) serves HTTPS and negotiates HTTP/2 or HTTP/1.1 through ALPN; none,
+	// the default, serves plain HTTP/1.1.
 	tls: TlsOptions?
-	// How many threads serve connections: the runtime starts at most this many scheduler threads. Must be at least 1; none uses every core.
+	// How many threads serve connections: the runtime starts at most this many
+	// scheduler threads. Must be at least 1; none uses every core.
 	cores: Int?
 
 // The runtime handle behind a `RawResponse`.
 export extern type NativeResponseBody
 
-// The native response a client operation returns: its body is read through `StreamingResponse.body`.
-// Metadata remains available after close; each metadata() call returns an independent copy.
+// The native response a client operation returns: its body is read through
+// `StreamingResponse.body`. Metadata remains available after close; each metadata()
+// call returns an independent copy.
 export opaque type RawResponse:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeResponseBody
 
 impl Closeable for RawResponse:
-	// Cancels the rest of the response and releases its connection.
-	// Safe to call repeatedly; reads afterwards return EBADF. A fully read body lets the connection be reused.
+	// Cancels the rest of the response and releases its connection. Safe to call
+	// repeatedly; reads afterwards return EBADF. A fully read body lets the connection
+	// be reused.
 	var fn close() Unit!:
 		msstd_http_body_close(self.native)
 
 impl RawResponse:
-	// Returns an independent copy of the response head (status and headers), including after close.
+	// Returns an independent copy of the response head (status and headers), including
+	// after close.
 	fn metadata() HttpResponseMetadata:
 		return msstd_http_body_metadata(self.native)
 
-	// Reads the rest of the body into one value, bounded by the request's `max_response_bytes`.
-	// A plain HTTP/1.1 body of known length arrives straight into the result without intermediate copies.
+	// Reads the rest of the body into one value, bounded by the request's
+	// `max_response_bytes`. A plain HTTP/1.1 body of known length arrives straight into
+	// the result without intermediate copies.
 	fn read_all() Bytes!:
 		return msstd_http_body_read_all(self.native)
 
-// A client response: the head and the body as a stream. Closing or dropping the body cancels the rest of the
-// response and releases its connection; a fully read body lets the connection be reused.
+// A client response: the head and the body as a stream. Closing or dropping the body
+// cancels the rest of the response and releases its connection; a fully read body lets
+// the connection be reused.
 export type StreamingResponse:
 	// Status and headers, available whether or not the body is read.
 	metadata: HttpResponseMetadata
-	// The body, at most 64 KiB per item. Reading past the request's `max_response_bytes` is an `Error` of kind `EIO`.
+	// The body, at most 64 KiB per item. Reading past the request's
+	// `max_response_bytes` is an `Error` of kind `EIO`.
 	body: ReadStream[Bytes]
 
 impl Closeable for StreamingResponse:
@@ -385,18 +457,20 @@ impl Source[Bytes] for ResponseSource:
 fn response(raw: RawResponse) StreamingResponse:
 	metadata := raw.metadata()
 	return StreamingResponse(
-		metadata: metadata, body: ReadStream[Bytes](ResponseSource(raw))
+		metadata: metadata,
+		body: ReadStream[Bytes](ResponseSource(raw)),
 	)
 
-// Reads the rest of the request body into one value.
-// A body over `max_body_bytes` of the server's options returns EOVERFLOW; `limit` also bounds it when given.
+// Reads the rest of the request body into one value. A body over `max_body_bytes` of
+// the server's options returns EOVERFLOW; `limit` also bounds it when given.
 export fn read_body(var exchange: HttpExchange, limit: Int? = none) Bytes!:
 	first := exchange.read()?
 	if head := first: return read_rest(var exchange, head, limit)
 
 	return ok("".to_bytes())
 
-// Joins `head` with the chunks after it. A body that fits one chunk is returned without copying.
+// Joins `head` with the chunks after it. A body that fits one chunk is returned without
+// copying.
 fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
 	var total = head.length()
 	if over_limit(total, limit): return error(
@@ -444,8 +518,9 @@ export fn reply(var exchange: HttpExchange, response: HttpResponse) Unit!:
 export fn text(status: Int, body: String) HttpResponse:
 	return HttpResponse(status: status, body: body.to_bytes())
 
-// Builds a response whose body is `value` encoded as JSON, with `Content-Type: application/json`.
-// A value `stringify` cannot encode returns EIO with its diagnostic.
+// Builds a response whose body is `value` encoded as JSON, with
+// `Content-Type: application/json`. A value `stringify` cannot encode returns EIO with
+// its diagnostic.
 export fn json[T: Data](status: Int, value: T) HttpResponse!:
 	body := stringify(value)
 	if body.is_error(): return error(Error(body.err().message.clone(), kind: "EIO"))
@@ -454,15 +529,15 @@ export fn json[T: Data](status: Int, value: T) HttpResponse!:
 	sent.append("Content-Type", "application/json")?
 	return ok(HttpResponse(status: status, headers: sent, body: body.get().to_bytes()))
 
-// Builds a redirect to `location` with an empty body.
-// The status should be 301, 302, 303, 307, or 308; the default 303 sends a followed POST on as a GET.
+// Builds a redirect to `location` with an empty body. The status should be 301, 302,
+// 303, 307, or 308; the default 303 sends a followed POST on as a GET.
 export fn redirect(location: String, status: Int = 303) HttpResponse!:
 	var sent = headers()
 	sent.append("Location", location)?
 	return ok(HttpResponse(status: status, headers: sent, body: "".to_bytes()))
 
-// Adapts a handler that maps a whole request to a whole response into an exchange handler for `serve`.
-// The request body is read in full first.
+// Adapts a handler that maps a whole request to a whole response into an exchange
+// handler for `serve`. The request body is read in full first.
 export fn buffered(handler: fn(HttpRequest) HttpResponse) fn(var HttpExchange) Unit!:
 	return fn(var exchange: HttpExchange): serve_buffered(handler, var exchange)
 
@@ -472,15 +547,22 @@ fn serve_buffered(
 ) Unit!:
 	body := read_body(var exchange)?
 	request := HttpRequest(
-		method: exchange.method(), path: exchange.path(), query: exchange.query(),
-		headers: exchange.headers(), body: body, protocol: exchange.protocol()
+		method: exchange.method(),
+		path: exchange.path(),
+		query: exchange.query(),
+		headers: exchange.headers(),
+		body: body,
+		protocol: exchange.protocol(),
 	)
 	return reply(var exchange, handler(request))
 
-// Switches the exchange's connection to a WebSocket; the rules of `HttpExchange.upgrade` apply.
+// Switches the exchange's connection to a WebSocket; the rules of
+// `HttpExchange.upgrade` apply.
 export fn upgrade(
-	var exchange: HttpExchange, allowed_origins: List[String] = [],
-	subprotocols: List[String] = [], max_message_bytes: Int? = none
+	var exchange: HttpExchange,
+	allowed_origins: List[String] = [],
+	subprotocols: List[String] = [],
+	max_message_bytes: Int? = none,
 ) WebSocket!:
 	raw := exchange.upgrade(allowed_origins, subprotocols, max_message_bytes)?
 	return ok(web_socket_from(raw))

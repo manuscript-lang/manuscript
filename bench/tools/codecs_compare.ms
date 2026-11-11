@@ -1,5 +1,7 @@
-// Pairs existing generated executables (bench/perf/codecs, bench/perf/codecs/json-failure); only their internal timer is measured.
-// Usage: ms run bench/tools/codecs_compare.ms -- <decode|json-failure> BEFORE AFTER OUTPUT_DIR [--pairs 9]
+// Pairs existing generated executables (bench/perf/codecs,
+// bench/perf/codecs/json-failure); only their internal timer is measured. Usage: ms run
+// bench/tools/codecs_compare.ms -- <decode|json-failure> BEFORE AFTER OUTPUT_DIR
+// [--pairs 9]
 // `decode` harness: `size count rounds` -> `size count rounds checksum elapsed_ns`.
 // `json-failure` harness: `size rounds shape` -> `size rounds shape rounds_checksum wall_ns cpu_ns`.
 // Pair -1 is an untimed warm-up and is excluded from the printed summary.
@@ -40,9 +42,13 @@ type Failure:
 
 fn decode_cases() List[Decode]:
 	return [
-		Decode(0, 1000, 500), Decode(1, 1000, 500), Decode(3, 1000, 500),
-		Decode(32, 1000, 300), Decode(1024, 100, 50), Decode(65536, 1, 100),
-		Decode(3, 1, 100000)
+		Decode(0, 1000, 500),
+		Decode(1, 1000, 500),
+		Decode(3, 1000, 500),
+		Decode(32, 1000, 300),
+		Decode(1024, 100, 50),
+		Decode(65536, 1, 100),
+		Decode(3, 1, 100000),
 	]
 
 fn failure_cases() List[Failure]:
@@ -80,7 +86,7 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
 	paths.add("after", after.clone())
 	write_json(
 		"{out}/binaries.json",
-		binaries_json([labeled("before", before), labeled("after", after)])
+		binaries_json([labeled("before", before), labeled("after", after)]),
 	)
 	write_text("{out}/samples.jsonl", "")
 
@@ -97,7 +103,9 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Unit, E
 				]
 			):
 				text := run_pinned(
-					paths.get_or(name, ""), ["{c.size}", "{c.count}", "{c.rounds}"], ""
+					paths.get_or(name, ""),
+					["{c.size}", "{c.count}", "{c.rounds}"],
+					"",
 				)?
 				parts := text.replace("\n", " ").split(" ").filter(fn p: p != "")
 				if parts.length() != 5: return invalid("invalid output {name}: {text}")
@@ -140,7 +148,7 @@ fn json_failure(
 	before: String,
 	after: String,
 	out: String,
-	pairs: Int
+	pairs: Int,
 ) Result[Unit, Error]:
 	fresh_directory(out)?
 
@@ -153,7 +161,8 @@ fn json_failure(
 	manifest.add("complete", jbool(false))
 	manifest.add("pairs", jint(pairs))
 	manifest.add(
-		"binaries", binaries_json([labeled("before", before), labeled("after", after)])
+		"binaries",
+		binaries_json([labeled("before", before), labeled("after", after)]),
 	)
 	write_json("{out}/manifest.json", jobject(manifest.clone()))
 	write_text("{out}/samples.jsonl", "")
@@ -175,8 +184,9 @@ fn json_failure(
 				]
 			):
 				text := run_pinned(
-					paths.get_or(name, ""), ["{c.size}", "{c.rounds}", c.shape.clone()],
-					""
+					paths.get_or(name, ""),
+					["{c.size}", "{c.rounds}", c.shape.clone()],
+					"",
 				)?
 				fields := text.replace("\n", " ").split(" ").filter(fn p: p != "")
 				if (
@@ -244,7 +254,10 @@ fn main() Int:
 	before := absolute(args[1].clone())
 	after := absolute(args[2].clone())
 	result := if args[0] == "decode": decode(before, after, args[3].clone(), pairs) else: json_failure(
-		before, after, args[3].clone(), pairs
+		before,
+		after,
+		args[3].clone(),
+		pairs,
 	)
 	if result.is_error(): return fail(result.err().message)
 

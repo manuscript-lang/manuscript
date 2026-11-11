@@ -1,7 +1,9 @@
-// Validates and compares already-built byte-search programs in balanced order (bench/perf/bytes-index).
-// Usage: ms run bench/tools/bytes_index_compare.ms -- BEFORE AFTER RUST OUTPUT_DIR [--cpu N]
-// Programs print the string-lines CSV (see string_lines_compare.ms). Expected checksums come from a straightforward search of a
-// buffer of `a` bytes holding one 0xFF byte, an oracle independent of the programs. --cpu pins every run with `taskset`.
+// Validates and compares already-built byte-search programs in balanced order
+// (bench/perf/bytes-index). Usage: ms run bench/tools/bytes_index_compare.ms -- BEFORE
+// AFTER RUST OUTPUT_DIR [--cpu N] Programs print the string-lines CSV (see
+// string_lines_compare.ms). Expected checksums come from a straightforward search of a
+// buffer of `a` bytes holding one 0xFF byte, an oracle independent of the programs.
+// --cpu pins every run with `taskset`.
 import (
 	JsonValue from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
@@ -109,7 +111,7 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
 	record.add("expected_cases", jint(expected.length()))
 	record.add(
 		"executables",
-		binaries_json(names.map(fn n: labeled(n.clone(), paths.get_or(n, ""))))
+		binaries_json(names.map(fn n: labeled(n.clone(), paths.get_or(n, "")))),
 	)
 	record.add("validated_producers", jlist(validated))
 	write_json("{out}/record.json", jobject(record))
@@ -164,7 +166,9 @@ fn main() Int:
 	paths.add("rust", absolute(args[2].clone()))
 
 	result := run(
-		paths, args[3].clone(), parsed.get(Map[String, String]()).get_or("cpu", "")
+		paths,
+		args[3].clone(),
+		parsed.get(Map[String, String]()).get_or("cpu", ""),
 	)
 	if result.is_error(): return fail(result.err().message)
 

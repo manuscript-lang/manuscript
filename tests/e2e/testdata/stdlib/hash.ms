@@ -22,10 +22,12 @@ test "FNV known vectors for both variants and widths":
 test "CRC64 matches the standard check values":
 	input := "123456789".to_bytes()
 	expect_equal(
-		crc64(Crc64Polynomial.Ecma, input).to_string_radix(10), "11051210869376104954"
+		crc64(Crc64Polynomial.Ecma, input).to_string_radix(10),
+		"11051210869376104954",
 	)?
 	expect_equal(
-		crc64(Crc64Polynomial.Iso, input).to_string_radix(10), "13333283586479230977"
+		crc64(Crc64Polynomial.Iso, input).to_string_radix(10),
+		"13333283586479230977",
 	)?
 	expect_equal(crc64(Crc64Polynomial.Ecma, Bytes([])).to_string_radix(10), "0")?
 
@@ -40,7 +42,7 @@ test "seeded hash is deterministic per seed and differs between seeds":
 	right := MapHash(seed: 2)
 	expect_equal(
 		left.hash("key".to_bytes()).to_string_radix(10),
-		left.hash_string("key").to_string_radix(10)
+		left.hash_string("key").to_string_radix(10),
 	)?
 	expect_true(left.hash_string("key") != right.hash_string("key"))?
 	expect_true(left.hash_string("key") != left.hash_string("kez"))?

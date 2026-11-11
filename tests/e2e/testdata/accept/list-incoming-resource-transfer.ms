@@ -49,7 +49,8 @@ test "named and computed bad bounds close incoming before existing":
 			temp := temporary("list-computed-transfer-")?
 			other := "{temp.path()}/log"
 			expect_contains(
-				(expect_fault(fn: computed(other.clone(), op, index))?), "index"
+				(expect_fault(fn: computed(other.clone(), op, index))?),
+				"index",
 			)?
 			expect_equal((events(other)?), "2,1,")?
 
@@ -221,7 +222,8 @@ fn callback_places(log: String, kind: Int) Unit:
 		action()
 	else:
 		[Envelope(1, log.clone(), captured(log.clone(), 3, true))].set(
-			0, Envelope(2, log, fn: 4)
+			0,
+			Envelope(2, log, fn: 4),
 		)
 
 test "old capture drop fault observes updated field indexed slot and computed receivers":
@@ -297,6 +299,7 @@ test "computed receiver closes when payload absent or construction faults":
 	temp := temporary("list-arg-fault-")?
 	other := "{temp.path()}/log"
 	expect_contains(
-		(expect_fault(fn: computed_arg_fault(other.clone()))?), "incoming failed"
+		(expect_fault(fn: computed_arg_fault(other.clone()))?),
+		"incoming failed",
 	)?
 	expect_equal((events(other)?), "1,")?

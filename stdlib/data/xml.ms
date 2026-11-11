@@ -64,7 +64,8 @@ impl XmlNode:
 				return none
 			_: return none
 
-	// Returns the child nodes of an element, or an empty list. The result is an owned copy.
+	// Returns the child nodes of an element, or an empty list. The result is an owned
+	// copy.
 	fn children() List[XmlNode]:
 		match self:
 			XmlElement(_, _, children): return children.clone()
@@ -76,7 +77,8 @@ impl XmlNode:
 		collect_text(self, var out)
 		return out.build()
 
-	// Returns the first direct child element named `name`, or none. The result is an owned copy.
+	// Returns the first direct child element named `name`, or none. The result is an
+	// owned copy.
 	fn find(name: String) XmlNode?:
 		match self:
 			XmlElement(_, _, children):
@@ -136,7 +138,8 @@ impl Reader:
 
 		self.at += literal.chars().length()
 
-	// Returns the text up to `stop` and consumes it, or fails when `stop` never appears.
+	// Returns the text up to `stop` and consumes it, or fails when `stop` never
+	// appears.
 	var fn take_until(stop: String) String!:
 		var out = StringBuilder()
 
@@ -177,7 +180,8 @@ impl Reader:
 
 		return ok(out.build())
 
-	// The reserved target `xml` belongs to a declaration, never a processing instruction.
+	// The reserved target `xml` belongs to a declaration, never a processing
+	// instruction.
 	var fn instruction() Unit!:
 		self.expect("<?")?
 
@@ -206,7 +210,8 @@ impl Reader:
 		self.at += 1
 		return ok(XmlAttribute(name, self.take_until(quote)?))
 
-	// XMLDecl: mandatory version, optional encoding, optional standalone, in that order.
+	// XMLDecl: mandatory version, optional encoding, optional standalone, in that
+	// order.
 	var fn declaration() Unit!:
 		self.expect("<?xml")?
 		if not is_space(self.peek()): return error(
@@ -284,8 +289,9 @@ impl Reader:
 		self.skip_space()
 		if self.at == before: return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-	// XML 1.0 section 2.8 `intSubset`: declarations, comments, instructions and parameter
-	// references, with quoted spans skipped so `]` and `>` inside them are plain text.
+	// XML 1.0 section 2.8 `intSubset`: declarations, comments, instructions and
+	// parameter references, with quoted spans skipped so `]` and `>` inside them are
+	// plain text.
 	var fn internal_subset() Unit!:
 		while true:
 			self.skip_space()
@@ -304,7 +310,8 @@ impl Reader:
 				while not self.looking_at(">"):
 					if self.done(): return error(
 						Error(
-							"XML: invalid data", kind: "EBADMSG"
+							"XML: invalid data",
+							kind: "EBADMSG",
 						)
 					)
 
@@ -319,7 +326,8 @@ impl Reader:
 			else:
 				return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-	// XML 1.0 section 2.8 `doctypedecl`: name, optional external identifier, optional internal subset.
+	// XML 1.0 section 2.8 `doctypedecl`: name, optional external identifier, optional
+	// internal subset.
 	var fn doctype() Unit!:
 		self.expect("<!DOCTYPE")?
 		self.require_space()?
@@ -351,7 +359,7 @@ impl Reader:
 	// The prolog may also hold one DOCTYPE; it is skipped, never expanded.
 	var fn skip_misc(
 		declaration_allowed: Bool = false,
-		doctype_allowed: Bool = false
+		doctype_allowed: Bool = false,
 	) Unit!:
 		start := self.at
 		var doctype_open = doctype_allowed
@@ -424,15 +432,18 @@ impl Reader:
 				Error("XML: invalid data", kind: "EBADMSG")
 			)
 
-			// XML 1.0 section 3.3.3: literal tabs and line ends in a value become spaces; references are decoded afterwards.
+			// XML 1.0 section 3.3.3: literal tabs and line ends in a value become
+			// spaces; references are decoded afterwards.
 			raw := source.replace("\n", " ").replace("\t", " ")
 
-			// A short list is scanned; a long one moves to a set so names are checked in constant time.
+			// A short list is scanned; a long one moves to a set so names are checked
+			// in constant time.
 			if attributes.length() < ATTRIBUTE_SCAN_LIMIT:
 				for existing in attributes:
 					if existing.name == attribute_name: return error(
 						Error(
-							"XML: invalid data", kind: "EBADMSG"
+							"XML: invalid data",
+							kind: "EBADMSG",
 						)
 					)
 			else:
@@ -552,7 +563,8 @@ fn is_name_start(code: Int) Bool:
 		or (code >= 0x10000 and code <= 0xeffff)
 	)
 
-// Decodes the five predefined entities and numeric references; any other `&name;` is invalid.
+// Decodes the five predefined entities and numeric references; any other `&name;` is
+// invalid.
 fn decode(text: String) String!:
 	if not text.contains("&"): return ok(text.clone())
 
@@ -589,7 +601,8 @@ fn decode(text: String) String!:
 
 	return ok(out.build())
 
-// The value of a character reference's digits, or none for an empty run, a sign, or any non-digit.
+// The value of a character reference's digits, or none for an empty run, a sign, or any
+// non-digit.
 fn digits(text: String, radix: Int) Int?:
 	if text.is_empty() or text.starts_with("+") or text.starts_with("-"): return none
 
@@ -598,7 +611,8 @@ fn digits(text: String, radix: Int) Int?:
 
 	return value.get(0)
 
-// Whether a code point is in XML 1.0's Char production, which excludes NUL, most controls, and U+FFFE and U+FFFF.
+// Whether a code point is in XML 1.0's Char production, which excludes NUL, most
+// controls, and U+FFFE and U+FFFF.
 fn is_xml_char(code: Int) Bool:
 	if code == 9 or code == 10 or code == 13: return true
 	return (
@@ -633,9 +647,11 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 			Error("XML: invalid data", kind: "EBADMSG")
 		)
 
-	// XML 1.0 section 2.11: `\r\n` and a lone `\r` reach the parser as `\n`; `&#13;` is unaffected.
+	// XML 1.0 section 2.11: `\r\n` and a lone `\r` reach the parser as `\n`; `&#13;` is
+	// unaffected.
 	normalized := if text.contains("\r"): text.replace("\r\n", "\n").replace(
-		"\r", "\n"
+		"\r",
+		"\n",
 	) else: text.clone()
 	var reader = Reader(chars: normalized.chars(), at: 0, max_depth: max_depth)
 	if reader.peek() == "\u{feff}": reader.at += 1
@@ -647,20 +663,24 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 
 	return ok(root)
 
-// Escapes `&`, `<`, `>` and carriage return for text content; a raw `\r` would read back as `\n`.
+// Escapes `&`, `<`, `>` and carriage return for text content; a raw `\r` would read
+// back as `\n`.
 export fn escape_text(text: String) String:
 	return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(
-		"\r", "&#13;"
+		"\r",
+		"&#13;",
 	)
 
 // Escapes text for a double-quoted attribute value.
 export fn escape_attribute(text: String) String:
 	return escape_text(text).replace("\"", "&quot;").replace("\n", "&#10;").replace(
-		"\t", "&#9;"
+		"\t",
+		"&#9;",
 	)
 
-// Writes a node as XML. A non-empty `indent` (such as two spaces) puts each element on its own
-// line, except elements holding text, which stay on one line. An element with no children is self-closing.
+// Writes a node as XML. A non-empty `indent` (such as two spaces) puts each element on
+// its own line, except elements holding text, which stay on one line. An element with
+// no children is self-closing.
 export fn stringify(node: XmlNode, indent: String = "") String:
 	var out = StringBuilder()
 	write(node, indent, 0, var out)

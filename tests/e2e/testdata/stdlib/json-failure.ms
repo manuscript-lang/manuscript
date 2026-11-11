@@ -34,5 +34,6 @@ test "JSON value limits preserve Unicode precedence and byte admission":
 	typed_negative: String! := error(Error("JSON: invalid input", kind: "EINVAL"))
 	expect_equal(parse("\"\\uD800\"", JsonOptions(max_values: -1)), negative)?
 	expect_equal(
-		parse[String]("\"\\uD800\"", JsonOptions(max_values: -1)), typed_negative
+		parse[String]("\"\\uD800\"", JsonOptions(max_values: -1)),
+		typed_negative,
 	)?

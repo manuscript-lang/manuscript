@@ -18,7 +18,8 @@ fn is_digit(c: String) Bool:
 fn digit_value(c: String) Int:
 	return c.parse_int().get(0)
 
-// Returns the amount as a string of cents digits ("12.5" -> "1250"), or "" when invalid.
+// Returns the amount as a string of cents digits ("12.5" -> "1250"), or "" when
+// invalid.
 fn amount_cents(s: String) String:
 	n := s.length()
 	if n == 0: return ""

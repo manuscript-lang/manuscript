@@ -18,7 +18,8 @@ test "Windows UNC roots retain scalar lowercase comparisons":
 	expect_equal(paths.relative("//ΟΣ/share/a", "//οσ/share/b")?, "..\\b")?
 	expect_equal(paths.relative("//host/ΟΣ/a", "//host/οσ/b")?, "..\\b")?
 	expect_equal(
-		paths.resolve("//ΟΣ/share/base", ["//οσ/share/child"])?, "\\\\οσ\\share\\child"
+		paths.resolve("//ΟΣ/share/base", ["//οσ/share/child"])?,
+		"\\\\οσ\\share\\child",
 	)?
 
 test "POSIX path comparison remains case sensitive":

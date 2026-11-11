@@ -4,9 +4,9 @@ import (
 	ReadStream, Transform, through from "@std/io/io.ms",
 )
 
-// Stream steps for `@std/data/encoding.ms`, in their own module because the streams depend on `@std/bytes.ms`,
-// which `encoding.ms` must not import.
-// Each step carries only the few bytes or characters that do not yet fill a group.
+// Stream steps for `@std/data/encoding.ms`, in their own module because the streams
+// depend on `@std/bytes.ms`, which `encoding.ms` must not import. Each step carries
+// only the few bytes or characters that do not yet fill a group.
 
 // Encodes bytes in groups of three, so a chunk boundary never splits a Base64 group.
 type Base64Encoding:
@@ -29,17 +29,20 @@ impl Transform[Bytes, String] for Base64Encoding:
 		self.tail = join([])
 		out.append(base64_encode(last, self.url_safe))
 
-// Encodes a byte stream as Base64 text chunks that concatenate to the whole encoding, with padding at the end.
-// Set `url_safe: true` for the URL-safe alphabet. Closing the result closes `input`.
+// Encodes a byte stream as Base64 text chunks that concatenate to the whole encoding,
+// with padding at the end. Set `url_safe: true` for the URL-safe alphabet. Closing the
+// result closes `input`.
 export fn base64_encoded(
 	input: ReadStream[Bytes],
-	url_safe: Bool = false
+	url_safe: Bool = false,
 ) ReadStream[String]:
 	return through[Bytes, String](
-		input, Base64Encoding(url_safe: url_safe, tail: join([]))
+		input,
+		Base64Encoding(url_safe: url_safe, tail: join([])),
 	)
 
-// Decodes Base64 text in groups of four characters, so a chunk boundary never splits a group.
+// Decodes Base64 text in groups of four characters, so a chunk boundary never splits a
+// group.
 type Base64Decoding:
 	url_safe: Bool
 	tail: String
@@ -59,7 +62,8 @@ impl Transform[String, Bytes] for Base64Decoding:
 		part := text.slice(0, whole).get("")
 		decoded := base64_decode(part, self.url_safe)?
 
-		// Every complete group decodes to three bytes unless the last group has padding.
+		// Every complete group decodes to three bytes unless the last group has
+		// padding.
 		if decoded.length() != whole / 4 * 3:
 			self.ended = true
 
@@ -76,11 +80,12 @@ impl Transform[String, Bytes] for Base64Decoding:
 
 		out.append(base64_decode(last, self.url_safe)?)
 
-// Decodes Base64 text chunks into bytes. Malformed text fails the read with `EBADMSG`; text that ends
-// inside a group fails at the end of the stream. Closing the result closes `input`.
+// Decodes Base64 text chunks into bytes. Malformed text fails the read with `EBADMSG`;
+// text that ends inside a group fails at the end of the stream. Closing the result
+// closes `input`.
 export fn base64_decoded(
 	input: ReadStream[String],
-	url_safe: Bool = false
+	url_safe: Bool = false,
 ) ReadStream[Bytes]:
 	return through[String, Bytes](input, Base64Decoding(url_safe: url_safe, tail: ""))
 
@@ -94,7 +99,8 @@ impl Transform[Bytes, String] for HexEncoding:
 	var fn finish(var out: List[String]) Unit!:
 		return ok(unit)
 
-// Encodes a byte stream as lowercase hexadecimal text chunks. Closing the result closes `input`.
+// Encodes a byte stream as lowercase hexadecimal text chunks. Closing the result closes
+// `input`.
 export fn hex_encoded(input: ReadStream[Bytes]) ReadStream[String]:
 	return through[Bytes, String](input, HexEncoding(0))
 
@@ -118,7 +124,7 @@ impl Transform[String, Bytes] for HexDecoding:
 
 		out.append(hex_decode(last)?)
 
-// Decodes hexadecimal text chunks into bytes. Malformed text, or text that ends inside a pair, fails the
-// read with `EBADMSG`. Closing the result closes `input`.
+// Decodes hexadecimal text chunks into bytes. Malformed text, or text that ends inside
+// a pair, fails the read with `EBADMSG`. Closing the result closes `input`.
 export fn hex_decoded(input: ReadStream[String]) ReadStream[Bytes]:
 	return through[String, Bytes](input, HexDecoding(tail: ""))

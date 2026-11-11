@@ -1,7 +1,7 @@
-// Paired CLI effect-analysis measurements. Run from the repository root:
-// ms run bench/tools/effect_reachability.ms -- OUT BASE CANDIDATE REPEATS SIZES MODES ACTION
-// SIZES and MODES are comma-separated; ACTION is check, lint, build, or projects.
-// Set MS_CACHE=off for build measurements. Pin the driver externally when supported.
+// Paired CLI effect-analysis measurements. Run from the repository root: ms run
+// bench/tools/effect_reachability.ms -- OUT BASE CANDIDATE REPEATS SIZES MODES ACTION
+// SIZES and MODES are comma-separated; ACTION is check, lint, build, or projects. Set
+// MS_CACHE=off for build measurements. Pin the driver externally when supported.
 import (
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
@@ -66,10 +66,12 @@ fn report(out: String, name: String) Unit!:
 
 	result := jobject(
 		{
-			"case": jstr(name.clone()), "pairs": jint(ratios.length()),
+			"case": jstr(name.clone()),
+			"pairs": jint(ratios.length()),
 			"baseline_median_ms": jfloat(median(before)),
 			"candidate_median_ms": jfloat(median(after)),
-			"paired_median_ratio": jfloat(median(ratios)), "slower_pairs": jint(slower)
+			"paired_median_ratio": jfloat(median(ratios)),
+			"slower_pairs": jint(slower)
 		}
 	)
 	write_text("{out}/{name}-summary.json", dump(result))
@@ -144,7 +146,7 @@ fn measure(
 	name: String,
 	input: String,
 	action: String,
-	wanted: Int
+	wanted: Int,
 ) Unit!:
 	var samples = List[JsonValue]()
 	var expected_stdout = ""
@@ -161,8 +163,12 @@ fn measure(
 			var command = [action.clone(), input.clone(), "--json"]
 			if action == "build":
 				command = [
-					"build", input.clone(), "--build-type", "Release", "-o",
-					executable.clone()
+					"build",
+					input.clone(),
+					"--build-type",
+					"Release",
+					"-o",
+					executable.clone(),
 				]
 
 			started := now_ns()
@@ -194,10 +200,12 @@ fn measure(
 				)
 
 				write_text(
-					"{out}/{name}-{label}-{trial}.native.stdout", execution.stdout
+					"{out}/{name}-{label}-{trial}.native.stdout",
+					execution.stdout,
 				)
 				write_text(
-					"{out}/{name}-{label}-{trial}.native.stderr", execution.stderr
+					"{out}/{name}-{label}-{trial}.native.stderr",
+					execution.stderr,
 				)
 				if (
 					name != "hello"
@@ -293,22 +301,38 @@ fn run(args: List[String]) String!:
 					)
 				}
 			)
-		)
+		),
 	)
 
 	action := args[6]
 
 	if action == "projects":
 		measure(
-			out, binaries, repeats, "hello", absolute("examples/hello/ms.toml"),
-			"check", 0
+			out,
+			binaries,
+			repeats,
+			"hello",
+			absolute("examples/hello/ms.toml"),
+			"check",
+			0,
 		)?
 		measure(
-			out, binaries, repeats, "e2e-driver", absolute("tools/e2e.ms"), "check", 0
+			out,
+			binaries,
+			repeats,
+			"e2e-driver",
+			absolute("tools/e2e.ms"),
+			"check",
+			0,
 		)?
 		measure(
-			out, binaries, repeats, "programs",
-			absolute("bench/perf/programs/ms/ms.toml"), "check", 0
+			out,
+			binaries,
+			repeats,
+			"programs",
+			absolute("bench/perf/programs/ms/ms.toml"),
+			"check",
+			0,
 		)?
 		return ok("project controls passed")
 
@@ -326,8 +350,13 @@ fn run(args: List[String]) String!:
 			input := "{out}/{name}.ms"
 			write_text(input, probe(size, mode))
 			measure(
-				out, binaries, repeats, name, input, action,
-				expected_count(size, mode, action)
+				out,
+				binaries,
+				repeats,
+				name,
+				input,
+				action,
+				expected_count(size, mode, action),
 			)?
 
 	return ok("effect controls passed")

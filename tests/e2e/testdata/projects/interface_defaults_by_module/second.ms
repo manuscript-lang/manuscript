@@ -17,6 +17,6 @@ impl Commands for Quiet:
 	fn spawn(
 		program: String,
 		arguments: List[String],
-		options: SpawnOptions
+		options: SpawnOptions,
 	) Subprocess!:
 		return error(Error("process: service unavailable", kind: "EAGAIN"))

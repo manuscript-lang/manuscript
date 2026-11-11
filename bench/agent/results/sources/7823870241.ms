@@ -200,7 +200,7 @@ fn resolve_chunk(
 	base: List[String],
 	ours: List[String],
 	theirs: List[String],
-	branch: String
+	branch: String,
 ) Outcome:
 	if ours == base: return Outcome(lines: theirs, clean: true)
 	if theirs == base: return Outcome(lines: ours, clean: true)
@@ -220,7 +220,7 @@ fn merge_lines(
 	base: List[String],
 	ours: List[String],
 	theirs: List[String],
-	branch: String
+	branch: String,
 ) Outcome:
 	po := pairs(base, ours)
 	pt := pairs(base, theirs)
@@ -246,8 +246,10 @@ fn merge_lines(
 	for b in 0..nb:
 		if om[b] >= 0 and tm[b] >= 0:
 			chunk := resolve_chunk(
-				span(base, pb, b), span(ours, pou, om[b]), span(theirs, ptt, tm[b]),
-				branch
+				span(base, pb, b),
+				span(ours, pou, om[b]),
+				span(theirs, ptt, tm[b]),
+				branch,
 			)
 			for l in chunk.lines:
 				out.append(l.clone())
@@ -258,8 +260,10 @@ fn merge_lines(
 			ptt = tm[b] + 1
 
 	last := resolve_chunk(
-		span(base, pb, nb), span(ours, pou, ours.length()),
-		span(theirs, ptt, theirs.length()), branch
+		span(base, pb, nb),
+		span(ours, pou, ours.length()),
+		span(theirs, ptt, theirs.length()),
+		branch,
 	)
 	for l in last.lines:
 		out.append(l.clone())
@@ -270,10 +274,18 @@ fn new_repo() Repo:
 	var branches = Map[String, String]()
 	branches["main"] = ""
 	return Repo(
-		files: Map[String, String](), index: Map[String, String](),
-		commits: Map[String, Commit](), branches: branches, tags: Map[String, String](),
-		head_branch: "main", detached: false, head_at: "", merging: false,
-		merge_other: "", merge_branch: "", conflicts: Map[String, String]()
+		files: Map[String, String](),
+		index: Map[String, String](),
+		commits: Map[String, Commit](),
+		branches: branches,
+		tags: Map[String, String](),
+		head_branch: "main",
+		detached: false,
+		head_at: "",
+		merging: false,
+		merge_other: "",
+		merge_branch: "",
+		conflicts: Map[String, String](),
 	)
 
 impl Repo:
@@ -355,13 +367,16 @@ impl Repo:
 	var fn make_commit(
 		tree: Map[String, String],
 		parents: List[String],
-		message: String
+		message: String,
 	) String:
 		id := commit_hash(tree, parents, message)
 		if not self.commits.contains(id):
 			self.commits[id.clone()] = Commit(
-				id: id.clone(), parents: parents, message: message, tree: tree,
-				number: self.commits.length() + 1
+				id: id.clone(),
+				parents: parents,
+				message: message,
+				tree: tree,
+				number: self.commits.length() + 1,
 			)
 		return id
 
@@ -607,7 +622,9 @@ impl Repo:
 
 		if self.merging:
 			id = self.make_commit(
-				tree, [self.head_id(), self.merge_other.clone()], message.clone()
+				tree,
+				[self.head_id(), self.merge_other.clone()],
+				message.clone(),
 			)
 		else:
 			if self.same_tree(tree, self.head_tree()):
@@ -1070,7 +1087,9 @@ impl Repo:
 
 		if kinds.length() == 0:
 			id := self.make_commit(
-				result.clone(), [cur, other], "Merge branch '" + branch + "'"
+				result.clone(),
+				[cur, other],
+				"Merge branch '" + branch + "'",
 			)
 			self.move_head(id.clone())
 			say("Merge made by the 'three-way' strategy.")

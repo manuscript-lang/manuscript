@@ -40,22 +40,31 @@ test "text, controls and named keys":
 	expect_equal(
 		d.decode("ab\r\u{3}\u{7f}\u{0}"),
 		[
-			TerminalEvent.Text("ab"), plain("enter"), key("c", true, false, false),
-			plain("backspace"), key("space", true, false, false)
-		]
+			TerminalEvent.Text("ab"),
+			plain("enter"),
+			key("c", true, false, false),
+			plain("backspace"),
+			key("space", true, false, false),
+		],
 	)?
 	expect_equal(
 		d.decode("\u{1b}[A\u{1b}[3~\u{1b}OP\u{1b}[Z\u{1b}[1;5C\u{1b}[1;2H"),
 		[
-			plain("up"), plain("delete"), plain("f1"), key("tab", false, false, true),
-			key("right", true, false, false), key("home", false, false, true)
-		]
+			plain("up"),
+			plain("delete"),
+			plain("f1"),
+			key("tab", false, false, true),
+			key("right", true, false, false),
+			key("home", false, false, true),
+		],
 	)?
 	expect_equal(
 		d.decode("\u{1b}b\u{1b}\u{1b}x"),
 		[
-			key("b", false, true, false), plain("escape"), key("x", false, true, false)
-		]
+			key("b", false, true, false),
+			plain("escape"),
+			key("x", false, true, false),
+		],
 	)?
 
 test "a lone escape waits for a flush and unknown sequences are dropped":
@@ -75,17 +84,21 @@ test "modified Enter arrives from the kitty and modifyOtherKeys protocols":
 			"\u{1b}[13;2u\u{1b}[27;5;13~\u{1b}[99;5u\u{1b}[9;2u\u{1b}[27u\u{1b}[13;2:3u"
 		),
 		[
-			key("enter", false, false, true), key("enter", true, false, false),
-			key("c", true, false, false), key("tab", false, false, true),
-			plain("escape"), key("enter", false, false, true)
-		]
+			key("enter", false, false, true),
+			key("enter", true, false, false),
+			key("c", true, false, false),
+			key("tab", false, false, true),
+			plain("escape"),
+			key("enter", false, false, true),
+		],
 	)?
 
 test "a bracketed paste is one event however the input is split":
 	whole := "a\u{1b}[200~one\r\ntwo\rthree\u{1b}[A\u{1b}[201~b"
 	expected := [
-		TerminalEvent.Text("a"), TerminalEvent.Paste("one\ntwo\nthree\u{1b}[A"),
-		TerminalEvent.Text("b")
+		TerminalEvent.Text("a"),
+		TerminalEvent.Paste("one\ntwo\nthree\u{1b}[A"),
+		TerminalEvent.Text("b"),
 	]
 	var d = terminal_decoder()
 	expect_equal(merged(d.decode(whole)), expected)?
@@ -105,7 +118,7 @@ test "a bracketed paste is one event however the input is split":
 	var empty = terminal_decoder()
 	expect_equal(
 		empty.decode("\u{1b}[200~\u{1b}[201~\u{1b}[A"),
-		[TerminalEvent.Paste(""), plain("up")]
+		[TerminalEvent.Paste(""), plain("up")],
 	)?
 
 test "an overlong CSI sequence is dropped whole however it is split":

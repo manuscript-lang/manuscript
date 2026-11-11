@@ -38,7 +38,8 @@ test "minimum and legitimately missing go operation":
 	expect_contains(report, "Minimum of 2 rotating trials")?
 	expect_equal(row(report, "list_append"), ["50.0", "50.0", "50.0", "1.00", "1.00"])?
 	expect_equal(
-		row(report, "sorted_map_add_contains"), ["50.0", "-", "50.0", "-", "1.00"]
+		row(report, "sorted_map_add_contains"),
+		["50.0", "-", "50.0", "-", "1.00"],
 	)?
 
 test "zero samples stay visible without ratios":
@@ -66,14 +67,15 @@ test "rejects invalid evidence":
 	cases.add("missing version", good.filter(fn l: not l.starts_with("go ")))
 	cases.add("missing boundary", good.filter(fn l: l != "ms # end"))
 	cases.add(
-		"unknown operation", [good[0].replace("list_append", "unknown")].concat(rest)
+		"unknown operation",
+		[good[0].replace("list_append", "unknown")].concat(rest),
 	)
 	cases.add("unknown version", [good[0].replace("ms ", "unknown ")].concat(rest))
 	cases.add(
 		"unexpected go sorted map",
 		good.slice(0, go_end).get([]).concat(
 			["go sorted_map_add_contains 600000 1"]
-		).concat(good.slice(go_end, good.length()).get([]))
+		).concat(good.slice(go_end, good.length()).get([])),
 	)
 	cases.add("changed count", ["ms list_append 100000000 100000000"].concat(rest))
 	cases.add("zero count", ["ms list_append 0 100000000"].concat(rest))

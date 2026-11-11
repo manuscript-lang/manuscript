@@ -46,7 +46,9 @@ fn route(request: HttpRequest) HttpResponse:
 
 	if request.path == "/big":
 		return HttpResponse(
-			status: 200, headers: headers(), body: "0123456789".to_bytes()
+			status: 200,
+			headers: headers(),
+			body: "0123456789".to_bytes(),
 		)
 
 	label := request.headers.values("Content-Type").first().get("")
@@ -55,7 +57,7 @@ fn route(request: HttpRequest) HttpResponse:
 		headers: headers(),
 		body: "{request.method.text()}|{label}|".to_bytes().concat(
 			request.body.clone()
-		)
+		),
 	)
 
 fn try_append(var fields: HttpHeaders, name: String, value: String) Unit:
@@ -71,7 +73,8 @@ test "fetch posts text and JSON bodies with default content types":
 	server := serve("127.0.0.1:0", buffered(route))?
 	url := "http://{server.address()}/echo"
 	text := fetch(
-		url, FetchOptions(method: HttpMethod.Post, body: FetchBody.Text("hi"))
+		url,
+		FetchOptions(method: HttpMethod.Post, body: FetchBody.Text("hi")),
 	).wait()?
 	expect_equal(text.text()?, "POST|text/plain; charset=utf-8|hi")?
 
@@ -87,7 +90,9 @@ test "fetch decodes JSON":
 
 fn json_route(request: HttpRequest) HttpResponse:
 	return HttpResponse(
-		status: 200, headers: headers(), body: "\{\"name\":\"ada\"\}".to_bytes()
+		status: 200,
+		headers: headers(),
+		body: "\{\"name\":\"ada\"\}".to_bytes(),
 	)
 
 test "fetch follows redirects unless max_redirects is 0":
@@ -104,7 +109,7 @@ test "fetch does not restore Content-Type after a redirect drops its body":
 	server := serve("127.0.0.1:0", buffered(route))?
 	response := fetch(
 		"http://{server.address()}/chain",
-		FetchOptions(method: HttpMethod.Post, body: FetchBody.Text("hello"))
+		FetchOptions(method: HttpMethod.Post, body: FetchBody.Text("hello")),
 	).wait()?
 	expect_equal(response.head.status, 200)?
 	expect_equal(response.text()?, "GET||")?

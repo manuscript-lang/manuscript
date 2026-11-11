@@ -29,7 +29,8 @@ export fn write_text(path: String, text: String) Unit:
 	create_directory(dirname(path), recursive: true).get()
 	write_file(path, text, replace: true).wait().get()
 
-// Trailing whitespace removed from every line and from the whole text, as the graders compare output.
+// Trailing whitespace removed from every line and from the whole text, as the graders
+// compare output.
 export fn norm(text: String) String:
 	if text.trim().is_empty(): return ""
 	return text.trim_end().split("\n").map(fn line: line.trim_end()).join("\n")
@@ -45,11 +46,15 @@ export type Ran:
 	err: String
 	seconds: Float
 
-// Runs `command` with `bash -c` in directory `cwd`, feeding it `input`. A command still running after
+// Runs `command` with `bash -c` in directory `cwd`, feeding it `input`. A command still
+// running after
 // `timeout_s` seconds is killed and reports status 124 with "timeout" on standard error.
 export fn bash(command: String, cwd: String, timeout_s: Int, input: String) Ran:
 	return run_in(
-		"bash", ["-c", "cd \"$0\" && {command}", cwd.clone()], timeout_s, input
+		"bash",
+		["-c", "cd \"$0\" && {command}", cwd.clone()],
+		timeout_s,
+		input,
 	)
 
 // Runs `program` with `arguments` and the same timeout rule as `bash`.
@@ -57,18 +62,21 @@ export fn run_in(
 	program: String,
 	arguments: List[String],
 	timeout_s: Int,
-	input: String
+	input: String,
 ) Ran:
 	start := monotonic()
 	result := run(
-		program, arguments,
-		RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s))
+		program,
+		arguments,
+		RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s)),
 	).wait()
 	elapsed := monotonic().difference(start).nanos.to_float() / 1000000000.0
 	if done := result.to_optional():
 		return Ran(
-			done.exit_code, done.stdout.decode_utf8().get(""),
-			done.stderr.decode_utf8().get(""), elapsed
+			done.exit_code,
+			done.stdout.decode_utf8().get(""),
+			done.stderr.decode_utf8().get(""),
+			elapsed,
 		)
 	if result.err().kind == "ETIMEDOUT": return Ran(124, "", "timeout", elapsed)
 
@@ -97,7 +105,8 @@ export fn strip_spaces(text: String) String:
 	while end > start and text.get(end - 1) == " ": end -= 1
 	return text.slice(start, end).get("")
 
-// Whether the regular expression `pattern` matches all of `text`, as Python's `re.fullmatch`.
+// Whether the regular expression `pattern` matches all of `text`, as Python's
+// `re.fullmatch`.
 export fn full_match(pattern: String, text: String) Bool:
 	if re := compile("^(?:{pattern})$").to_optional(): return re.matches(text)
 	return false

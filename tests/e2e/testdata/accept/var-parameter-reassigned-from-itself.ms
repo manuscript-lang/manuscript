@@ -1,7 +1,8 @@
 import expect_equal from "@std/test/test.ms"
 
-// A var parameter is the caller's value and cannot be moved out of the function, except into
-// the right side of an assignment to itself, which refills it before the caller sees it.
+// A var parameter is the caller's value and cannot be moved out of the function, except
+// into the right side of an assignment to itself, which refills it before the caller
+// sees it.
 
 interface Counter:
 	var fn bump() Unit

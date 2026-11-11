@@ -30,8 +30,9 @@ fn fault_at(index: Int) Int!:
 	empty: List[Int] := []
 	return ok(empty[index])
 
-// Faults on different scheduler threads leave their guards at the same moment. They once shared one message
-// cell, so a report came back empty or from another promise, and a string was released twice.
+// Faults on different scheduler threads leave their guards at the same moment. They
+// once shared one message cell, so a report came back empty or from another promise,
+// and a string was released twice.
 test "promises faulting on several threads each report their own fault":
 	for round in 0..100:
 		var batch: List[Promise[Int]] = []
@@ -45,7 +46,8 @@ test "promises faulting on several threads each report their own fault":
 
 test "a timed out wait reports Timeout and cancels the work":
 	slow := promise(
-		fn: ok(forever()), options: PromiseOptions(timeout: milliseconds(20))
+		fn: ok(forever()),
+		options: PromiseOptions(timeout: milliseconds(20))
 	)
 	reason := slow.wait() | expect_error?
 	expect_equal(reason.kind, "ETIMEDOUT")?
@@ -61,7 +63,7 @@ test "wait_all ends at the first failure in time, not list order":
 	results := wait_all(
 		[
 			promise(fn: ok(forever())),
-			promise[Int](fn: error(Error("boom", kind: "EFAIL")))
+			promise[Int](fn: error(Error("boom", kind: "EFAIL"))),
 		]
 	)
 	reason := results | expect_error?
@@ -74,9 +76,11 @@ test "wait_all keeps order when later promises finish first":
 			return ok(1)
 	)
 
-	wait_all([slow, promise(fn: ok(2)), promise(fn: ok(3))])
-		| expect_ok?
-		| expect_equal([1, 2, 3])?
+	(
+		wait_all(
+			[slow, promise(fn: ok(2)), promise(fn: ok(3))]
+		) | expect_ok? | expect_equal([1, 2, 3])?
+	)
 
 test "a second wait reports that the result was taken":
 	work := promise(fn: ok(5))
@@ -87,14 +91,16 @@ test "a second wait reports that the result was taken":
 
 test "a negative timeout waits no time instead of waiting forever":
 	slow := promise(
-		fn: ok(forever()), options: PromiseOptions(timeout: nanoseconds(-1))
+		fn: ok(forever()),
+		options: PromiseOptions(timeout: nanoseconds(-1))
 	)
 	reason := slow.wait() | expect_error?
 	expect_equal(reason.kind, "ETIMEDOUT")?
 
 test "a timeout counts from construction, so a late wait still reports Timeout":
 	slow := promise(
-		fn: ok(forever()), options: PromiseOptions(timeout: milliseconds(20))
+		fn: ok(forever()),
+		options: PromiseOptions(timeout: milliseconds(20))
 	)
 	_ := sleep(milliseconds(80)).wait()
 	expect_true(slow.done())?
@@ -155,7 +161,8 @@ test "a signal reports whether its switch fired, and a finished promise keeps it
 
 test "dropping the switch cancels nothing":
 	slow := promise(
-		fn: ok(4), options: PromiseOptions(cancel: cancel_switch().signal())
+		fn: ok(4),
+		options: PromiseOptions(cancel: cancel_switch().signal())
 	)
 	slow.wait() | expect_ok? | expect_equal(4)?
 
@@ -192,13 +199,25 @@ test "waiting in creation, reverse and interleaved order returns every promise's
 
 	// Oldest first, then newest first, then from the middle outward.
 	for i in 0..16:
-		made[i].wait() | expect_ok? | expect_equal(i * 3)?
+		(
+			made[i].wait()
+			| expect_ok?
+			| expect_equal(i * 3)?
+		)
 
 	var j = 63
 
 	while j >= 48:
-		made[j].wait() | expect_ok? | expect_equal(j * 3)?
+		(
+			made[j].wait()
+			| expect_ok?
+			| expect_equal(j * 3)?
+		)
 		j -= 1
 
 	for i in 16..48:
-		made[i].wait() | expect_ok? | expect_equal(i * 3)?
+		(
+			made[i].wait()
+			| expect_ok?
+			| expect_equal(i * 3)?
+		)

@@ -16,13 +16,15 @@ test "unpadded Base64 covers both alphabets and every tail":
 		for url_safe in [false, true]:
 			expect_equal(
 				base64_encode(
-					texts[index].to_bytes(), url_safe, padded: false
+					texts[index].to_bytes(),
+					url_safe,
+					padded: false,
 				),
-				encoded[index]
+				encoded[index],
 			)?
 			expect_equal(
 				base64_decode(encoded[index], url_safe, padded: false)?,
-				texts[index].to_bytes()
+				texts[index].to_bytes(),
 			)?
 
 	bytes := Bytes([251, 255])
@@ -58,24 +60,28 @@ test "Base32 matches RFC 4648 padded and unpadded vectors":
 		expect_equal(base32_encode(bytes), encoded[index])?
 		expect_equal(base32_encode(bytes, Base32Options(padded: false)), raw[index])?
 		expect_equal(
-			base32_encode(bytes, Base32Options(hex_alphabet: true)), hex[index]
+			base32_encode(bytes, Base32Options(hex_alphabet: true)),
+			hex[index],
 		)?
 		expect_equal(
 			base32_encode(
-				bytes, Base32Options(hex_alphabet: true, padded: false)
+				bytes,
+				Base32Options(hex_alphabet: true, padded: false),
 			),
-			hex_raw[index]
+			hex_raw[index],
 		)?
 		expect_equal(base32_decode(encoded[index])?, bytes)?
 		expect_equal(base32_decode(raw[index], Base32Options(padded: false))?, bytes)?
 		expect_equal(
-			base32_decode(hex[index], Base32Options(hex_alphabet: true))?, bytes
+			base32_decode(hex[index], Base32Options(hex_alphabet: true))?,
+			bytes,
 		)?
 		expect_equal(
 			base32_decode(
-				hex_raw[index], Base32Options(hex_alphabet: true, padded: false)
+				hex_raw[index],
+				Base32Options(hex_alphabet: true, padded: false),
 			)?,
-			bytes
+			bytes,
 		)?
 
 test "Base32 enforces exact terminal padding and uppercase alphabets":
@@ -110,7 +116,8 @@ test "encoding variants honor zero exact exceeded absent and negative limits":
 	expect_equal(base64_decode("", max_bytes: 0, padded: false)?, empty)?
 	expect_equal(base32_decode("MY======", max_bytes: 1)?, "f".to_bytes())?
 	expect_equal(
-		base32_decode("MY", Base32Options(padded: false), max_bytes: 1)?, "f".to_bytes()
+		base32_decode("MY", Base32Options(padded: false), max_bytes: 1)?,
+		"f".to_bytes(),
 	)?
 	expect_equal(base32_decode("MY======", max_bytes: 0), limited)?
 	expect_equal(base64_decode("Zg", max_bytes: 0, padded: false), limited)?
@@ -137,28 +144,34 @@ test "encoding variants honor Bytes views and cross block boundaries":
 						base32_encode(
 							bytes,
 							Base32Options(
-								hex_alphabet: hex, padded: padded
-							)
+								hex_alphabet: hex,
+								padded: padded,
+							),
 						),
 						Base32Options(
-							hex_alphabet: hex, padded: padded
+							hex_alphabet: hex,
+							padded: padded,
 						),
-						length
+						length,
 					)?,
-					bytes
+					bytes,
 				)?
 		for url in [false, true]:
 			expect_equal(
 				base64_decode(
-					base64_encode(bytes, url, padded: false), url, length, padded: false
+					base64_encode(bytes, url, padded: false),
+					url,
+					length,
+					padded: false,
 				)?,
-				bytes
+				bytes,
 			)?
 
 	view := all.slice(17, 219)?
 	expect_equal(base32_decode(base32_encode(view))?, view)?
 	expect_equal(
-		base64_decode(base64_encode(view, padded: false), padded: false)?, view
+		base64_decode(base64_encode(view, padded: false), padded: false)?,
+		view,
 	)?
 
 test "encoding variant function values retain defaults":
@@ -182,52 +195,67 @@ test "Base32 rejects interior padding before output budgets":
 		for text in ["A=AAAAAA", "AA======AA======"]:
 			expect_equal(
 				base32_decode(
-					text, Base32Options(hex_alphabet: hex, padded: true), 0
+					text,
+					Base32Options(hex_alphabet: hex, padded: true),
+					0,
 				),
-				invalid
+				invalid,
 			)?
 			expect_equal(
 				base32_decode(
-					text, Base32Options(hex_alphabet: hex, padded: true), -1
+					text,
+					Base32Options(hex_alphabet: hex, padded: true),
+					-1,
 				),
-				negative
+				negative,
 			)?
 			expect_equal(
 				base32_decode(
-					text, Base32Options(hex_alphabet: hex, padded: true)
+					text,
+					Base32Options(hex_alphabet: hex, padded: true),
 				),
-				invalid
+				invalid,
 			)?
 			expect_equal(
 				base32_decode(
-					text, Base32Options(hex_alphabet: hex, padded: true), 100
+					text,
+					Base32Options(hex_alphabet: hex, padded: true),
+					100,
 				),
-				invalid
+				invalid,
 			)?
 
 		expect_equal(
 			base32_decode(
-				"A=AA", Base32Options(hex_alphabet: hex, padded: false), 0
+				"A=AA",
+				Base32Options(hex_alphabet: hex, padded: false),
+				0,
 			),
-			invalid
+			invalid,
 		)?
 		expect_equal(
 			base32_decode(
-				"A=AA", Base32Options(hex_alphabet: hex, padded: false), 100
+				"A=AA",
+				Base32Options(hex_alphabet: hex, padded: false),
+				100,
 			),
-			invalid
+			invalid,
 		)?
 		expect_equal(
 			base32_decode(
-				"!!!!!!!!", Base32Options(hex_alphabet: hex, padded: true), 0
+				"!!!!!!!!",
+				Base32Options(hex_alphabet: hex, padded: true),
+				0,
 			),
-			limited
+			limited,
 		)?
 		expect_equal(
 			base32_decode(
-				"!!!!!!!!", Base32Options(hex_alphabet: hex, padded: true), 100
+				"!!!!!!!!",
+				Base32Options(hex_alphabet: hex, padded: true),
+				100,
 			),
-			invalid
+			invalid,
 		)?
 
 	expect_equal(base64_decode("A=AA", max_bytes: 0, padded: false), limited)?

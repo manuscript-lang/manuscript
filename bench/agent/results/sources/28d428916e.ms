@@ -59,7 +59,10 @@ fn parse_primary(toks: List[Tok], pos: Int) Res:
 	t := toks[pos]
 	if t.kind == "num":
 		return Res(
-			ok: true, value: t.text.parse_int().get(0), pos: pos + 1, div0: false
+			ok: true,
+			value: t.text.parse_int().get(0),
+			pos: pos + 1,
+			div0: false,
 		)
 
 	if t.kind == "lp":

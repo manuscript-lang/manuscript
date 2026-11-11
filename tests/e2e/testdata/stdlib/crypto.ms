@@ -47,7 +47,8 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
 	)?
 
 	mac := HashAlgorithm.Sha256.hmac(
-		"key".to_bytes(), "The quick brown fox jumps over the lazy dog".to_bytes()
+		"key".to_bytes(),
+		"The quick brown fox jumps over the lazy dog".to_bytes(),
 	)?
 	expect_false(
 		(
@@ -71,7 +72,8 @@ test "authenticated encryption detects wrong associated data":
 	nonce := "012345678901".to_bytes()
 	encrypted := seal(key, nonce, "secret".to_bytes(), "header".to_bytes())?
 	expect_equal(
-		(open(key, nonce, encrypted, "header".to_bytes())?), "secret".to_bytes()
+		(open(key, nonce, encrypted, "header".to_bytes())?),
+		"secret".to_bytes(),
 	)?
 
 	failed: Bytes! := error(Error("cryptography: authentication failed", kind: "EAUTH"))
@@ -92,26 +94,30 @@ test "Ed25519 signatures verify only the signed data":
 test "additional hash algorithms match published vectors":
 	abc := "abc".to_bytes()
 	expect_equal(
-		hex_encode(HashAlgorithm.Md5.digest(abc)), "900150983cd24fb0d6963f7d28e17f72"
+		hex_encode(HashAlgorithm.Md5.digest(abc)),
+		"900150983cd24fb0d6963f7d28e17f72",
 	)?
 	expect_equal(
 		hex_encode(HashAlgorithm.Sha1.digest(abc)),
-		"a9993e364706816aba3e25717850c26c9cd0d89d"
+		"a9993e364706816aba3e25717850c26c9cd0d89d",
 	)?
 	expect_equal(
 		hex_encode(HashAlgorithm.Sha224.digest(abc)),
-		"23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7"
+		"23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7",
 	)?
 	expect_equal(
 		hex_encode(HashAlgorithm.Sha3_256.digest(abc)),
-		"3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532"
+		"3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532",
 	)?
 	expect_equal(HashAlgorithm.Sha3_384.digest(abc).length(), 48)?
 	expect_equal(HashAlgorithm.Sha3_512.digest(abc).length(), 64)?
 
 test "key derivation supports PBKDF2 and HKDF across hashes":
 	pbkdf2 := HashAlgorithm.Sha1.derive_key(
-		"password".to_bytes(), "salt".to_bytes(), 1, 20
+		"password".to_bytes(),
+		"salt".to_bytes(),
+		1,
+		20,
 	)?
 	expect_equal(hex_encode(pbkdf2), "0c60c80f961f0e71f3a9b524af6012062fe037a6")?
 
@@ -121,7 +127,7 @@ test "key derivation supports PBKDF2 and HKDF across hashes":
 	okm := HashAlgorithm.Sha256.hkdf(secret, salt, info, 42)?
 	expect_equal(
 		hex_encode(okm),
-		"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
+		"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865",
 	)?
 
 	invalid: Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
@@ -148,7 +154,7 @@ test "incremental hashers match one-shot digests":
 	mac.update("The quick brown fox jumps over the lazy dog".to_bytes())
 	expect_equal(
 		hex_encode(mac.finish()),
-		"f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
+		"f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
 	)?
 
 test "AES CTR and CBC round trip":

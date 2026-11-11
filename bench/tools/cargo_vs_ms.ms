@@ -1,6 +1,6 @@
-// Compares an `@std` parser with the same Rust crate on the same generated document: runs the Manuscript program and then
-// the Rust one, each printing its own timing.
-// Usage: ms run bench/tools/cargo_vs_ms.ms -- <toml|csv>   (MS picks the compiler)
+// Compares an `@std` parser with the same Rust crate on the same generated document:
+// runs the Manuscript program and then the Rust one, each printing its own timing.
+// Usage: ms run bench/tools/cargo_vs_ms.ms -- <toml|csv> (MS picks the compiler)
 import (
 	arguments from "@std/os/env.ms",
 

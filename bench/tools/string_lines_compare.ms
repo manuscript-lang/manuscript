@@ -1,7 +1,9 @@
-// Runs already-built programs in alternating pairs, rejecting failed or incomplete samples (bench/perf/string-lines, also used
-// by bench/tools/bytes_index_compare.ms).
-// Usage: ms run bench/tools/string_lines_compare.ms -- BEFORE AFTER OUTPUT.csv [--pairs 7] [--identity-file FILE.json]
-// A program prints CSV `case,input_bytes,iterations,elapsed_ns,checksum`; the identity file is `{case: [input bytes, iterations, checksum]}`.
+// Runs already-built programs in alternating pairs, rejecting failed or incomplete
+// samples (bench/perf/string-lines, also used by bench/tools/bytes_index_compare.ms).
+// Usage: ms run bench/tools/string_lines_compare.ms -- BEFORE AFTER OUTPUT.csv [--pairs
+// 7] [--identity-file FILE.json] A program prints CSV
+// `case,input_bytes,iterations,elapsed_ns,checksum`; the identity file is
+// `{case: [input bytes, iterations, checksum]}`.
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
@@ -39,18 +41,20 @@ export fn builtin_identities() Map[String, Identity]:
 	for width in [7, 8, 15, 16, 31, 32, 128, 1024, 8192, 65536]:
 		count := 1048576 / (width + 1)
 		rows.add(
-			"lf_{width}", Identity((width + 1) * count, 64, (width + 17) * count * 64)
+			"lf_{width}",
+			Identity((width + 1) * count, 64, (width + 17) * count * 64),
 		)
 
 	rows.add("unicode_crlf", Identity(9002 * 128, 64, 9017 * 128 * 64))
 	rows.add("no_newline", Identity(1048576, 64, (1048576 + 17) * 64))
 	return rows
 
-// Runs `executable` and validates its CSV against `expected`; returns the rows in the program's order.
+// Runs `executable` and validates its CSV against `expected`; returns the rows in the
+// program's order.
 export fn run_rows(
 	executable: String,
 	expected: Map[String, Identity],
-	cpu: String
+	cpu: String,
 ) List[Row]!:
 	text := run_pinned(executable, [], cpu)?
 	lines := text.split("\n").filter(fn l: l.trim() != "")
@@ -129,7 +133,7 @@ fn compare(
 	after: String,
 	output: String,
 	pairs: Int,
-	expected: Map[String, Identity]
+	expected: Map[String, Identity],
 ) Result[String, Error]:
 	var paths = Map[String, String]()
 	paths.add("before", before.clone())
@@ -174,7 +178,9 @@ fn main() Int:
 	)
 
 	parsed := options(
-		args.slice(3, args.length()).get([]), ["pairs", "identity-file"], []
+		args.slice(3, args.length()).get([]),
+		["pairs", "identity-file"],
+		[],
 	)
 	if parsed.is_error(): return fail(parsed.err().message)
 
@@ -192,7 +198,10 @@ fn main() Int:
 
 	return finish(
 		compare(
-			absolute(args[0].clone()), absolute(args[1].clone()), args[2].clone(),
-			pairs, expected
+			absolute(args[0].clone()),
+			absolute(args[1].clone()),
+			args[2].clone(),
+			pairs,
+			expected,
 		)
 	)

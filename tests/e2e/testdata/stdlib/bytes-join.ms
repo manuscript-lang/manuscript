@@ -6,7 +6,7 @@ import (
 test "join concatenates parts in order":
 	expect_equal(
 		join([Bytes([1, 2]), Bytes([]), Bytes([255]), Bytes([0, 7])]),
-		Bytes([1, 2, 255, 0, 7])
+		Bytes([1, 2, 255, 0, 7]),
 	)?
 
 test "join of nothing is empty":

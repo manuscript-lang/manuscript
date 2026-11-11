@@ -31,4 +31,8 @@ test "a directory cursor reads its children and closes at scope end":
 	path := temporary.path()
 	expect_true(write_file("{path}/a.txt", "x", true).wait().is_ok())?
 	expect_true(write_file("{path}/b.txt", "y", true).wait().is_ok())?
-	counts_entries(path) | expect_ok? | expect_equal(2)?
+	(
+		counts_entries(path)
+		| expect_ok?
+		| expect_equal(2)?
+	)

@@ -59,7 +59,7 @@ fn holds_map(log: String) Int:
 fn holds_nested(log: String) Int:
 	n := Nested(
 		Pair(track(log.clone(), 1), track(log.clone(), 2)),
-		[track(log.clone(), 3), track(log, 4)]
+		[track(log.clone(), 3), track(log, 4)],
 	)
 	return n.all.length()
 

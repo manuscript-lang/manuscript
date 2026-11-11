@@ -227,7 +227,8 @@ test "named borrowed arguments close in reverse acquisition order":
 	path := "{directory.path()}/log"
 	write_file(path, "").wait()?
 	expect_equal(
-		pair_observed(second: present(path, 80), first: present(path, 81)), true
+		pair_observed(second: present(path, 80), first: present(path, 81)),
+		true,
 	)?
 	expect_equal(log_text(path)?, "81,80,")?
 

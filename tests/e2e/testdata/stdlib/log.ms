@@ -70,7 +70,8 @@ test "levels filter methods and function values":
 	path := "{directory.path()}/out.ndjson"
 	file := open(path, OpenMode.Write, OpenOptions(permissions: 420))?
 	var logger = create(
-		handle_transport(file), LoggerOptions(level: LogLevel.Warn, timestamp: false)
+		handle_transport(file),
+		LoggerOptions(level: LogLevel.Warn, timestamp: false),
 	)?
 	expect_false((logger.enabled(LogLevel.Info) or not logger.enabled(LogLevel.Warn)))?
 	logger.trace("filtered")?
@@ -127,7 +128,7 @@ test "limits and unencodable values reject before writing":
 	line := "\{\"level\":30,\"msg\":\"x\"\}\n"
 	logger := create(
 		file_transport(path.clone())?,
-		LoggerOptions(timestamp: false, max_bytes: line.to_bytes().length())
+		LoggerOptions(timestamp: false, max_bytes: line.to_bytes().length()),
 	)?
 	logger.info("x")?
 	expect_equal((written(path)?), line)?
@@ -137,7 +138,8 @@ test "limits and unencodable values reject before writing":
 	expect_equal(logger.info("xx"), limited)?
 
 	zero := create(
-		file_transport(path.clone())?, LoggerOptions(timestamp: false, max_bytes: 0)
+		file_transport(path.clone())?,
+		LoggerOptions(timestamp: false, max_bytes: 0),
 	)?
 	expect_equal(zero.info(""), limited)?
 	expect_false(
@@ -145,7 +147,8 @@ test "limits and unencodable values reject before writing":
 			(
 				expect_error(
 					create(
-						file_transport(path.clone())?, LoggerOptions(max_bytes: -1)
+						file_transport(path.clone())?,
+						LoggerOptions(max_bytes: -1),
 					)
 				)?
 			) != Error("logging: invalid input", kind: "EINVAL")
@@ -229,13 +232,14 @@ test "source transports receive complete records and close through their contrac
 	temporary := temporary("manuscript-log-transport-") | expect_ok?
 	path := "{temporary.path()}/records.ndjson"
 	var logger = create(
-		CaptureTransport(path.clone(), ".closed"), LoggerOptions(timestamp: false)
+		CaptureTransport(path.clone(), ".closed"),
+		LoggerOptions(timestamp: false),
 	)?
 	logger.info("source transport")?
 	logger.flush()?
 	expect_equal(
 		(read_file(path).wait() | expect_ok?).decode_utf8(),
-		"\{\"level\":30,\"msg\":\"source transport\"\}\n"
+		"\{\"level\":30,\"msg\":\"source transport\"\}\n",
 	)?
 	logger.close()?
 	expect_true(read_file("{path}.closed").wait().is_ok())?
@@ -246,7 +250,8 @@ fn log_from_child(logger: Logger) Unit!:
 
 fn log_in_scope(path: String) Unit!:
 	logger := create(
-		CaptureTransport(path.clone(), ".closed"), LoggerOptions(timestamp: false)
+		CaptureTransport(path.clone(), ".closed"),
+		LoggerOptions(timestamp: false),
 	)?
 	log_from_child(logger)?
 	return logger.info("parent after child")
@@ -365,7 +370,7 @@ test "the time field is a millisecond count and the size limit counts the newlin
 	plain := "\{\"level\":30,\"msg\":\"ab\"\}\n"
 	exact := create(
 		Memory(quiet.clone()),
-		LoggerOptions(timestamp: false, max_bytes: plain.to_bytes().length())
+		LoggerOptions(timestamp: false, max_bytes: plain.to_bytes().length()),
 	)?
 	exact.info("ab")?
 	expect_equal(recorded(quiet.clone()), plain)?
@@ -373,8 +378,9 @@ test "the time field is a millisecond count and the size limit counts the newlin
 	tight := create(
 		Memory(quiet.clone()),
 		LoggerOptions(
-			timestamp: false, max_bytes: plain.to_bytes().length() - 1
-		)
+			timestamp: false,
+			max_bytes: plain.to_bytes().length() - 1,
+		),
 	)?
 	limited: Unit! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(tight.info("ab"), limited)?
@@ -384,7 +390,8 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
 	directory := temporary("manuscript-rotate-")?
 	path := "{directory.path()}/app.log"
 	var logger = create(
-		rotating_file_transport(path.clone(), 80, 2)?, LoggerOptions(timestamp: false)
+		rotating_file_transport(path.clone(), 80, 2)?,
+		LoggerOptions(timestamp: false),
 	)?
 	for index in 0..12: logger.info("record number {index}")?
 	logger.flush()?

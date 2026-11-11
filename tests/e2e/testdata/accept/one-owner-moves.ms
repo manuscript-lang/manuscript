@@ -2,8 +2,9 @@ import expect_equal, expect_true from "@std/test/test.ms"
 
 // Lowering moves or lends a value with one owner where the program wrote no `.clone()`:
 // `pop` takes the element out of the list, `get` on an owned optional or result hands the
-// payload over and on a borrowed one lends it, a native lend such as `get(i)` is a lending
-// result, and a function value with defaults passes a supplied argument through.
+// payload over and on a borrowed one lends it, a native lend such as `get(i)` is a
+// lending result, and a function value with defaults passes a supplied argument
+// through.
 // `make copy-check` sweeps this fixture for implicit copies.
 
 type Counter:

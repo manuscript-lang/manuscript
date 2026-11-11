@@ -28,7 +28,8 @@
 // expect-stdout: close d1
 // expect-stdout: close b1
 // expect-stdout: close a2
-// A resource field moves out of an owned record: the new owner closes it once, and the record closes only the other fields, last declared first.
+// A resource field moves out of an owned record: the new owner closes it once, and the
+// record closes only the other fields, last declared first.
 import (
 	Closeable from "@std/core.ms",
 	stdout from "@std/io/io.ms",

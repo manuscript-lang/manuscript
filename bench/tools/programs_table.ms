@@ -1,4 +1,5 @@
-// Validates equivalent work before comparing paired process samples (bench/perf/programs).
+// Validates equivalent work before comparing paired process samples
+// (bench/perf/programs).
 import fixed, invalid, median from "./lib.ms"
 
 export type Op:
@@ -7,11 +8,16 @@ export type Op:
 
 export fn ops() List[Op]:
 	return [
-		Op("string_append_50k", 50000), Op("read_line", 200000),
-		Op("map_put_get_8k", 16000), Op("int_eq", 10000000),
-		Op("generic_call", 100000000), Op("method_call", 100000000),
-		Op("try", 100000000), Op("match", 100000000), Op("builtin_length", 100000000),
-		Op("for_list", 100000000)
+		Op("string_append_50k", 50000),
+		Op("read_line", 200000),
+		Op("map_put_get_8k", 16000),
+		Op("int_eq", 10000000),
+		Op("generic_call", 100000000),
+		Op("method_call", 100000000),
+		Op("try", 100000000),
+		Op("match", 100000000),
+		Op("builtin_length", 100000000),
+		Op("for_list", 100000000),
 	]
 
 export SINK := [
@@ -32,7 +38,8 @@ fn ops_of(name: String) Int?:
 		if op.name == name: return op.count
 	return none
 
-// One sample line: `<version> <operation> <count> <ns>` or `<version> # sink <checksums>`.
+// One sample line: `<version> <operation> <count> <ns>` or
+// `<version> # sink <checksums>`.
 export fn summarize(lines: List[String], repeats: Int) String!:
 	if repeats < 1: return invalid("repeats must be positive")
 

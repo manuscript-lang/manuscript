@@ -6,24 +6,24 @@ export extern fn msstd_encoding_ascii85_decode(text: String, max_bytes: Int?) By
 
 export extern fn msstd_encoding_base64_encode_unpadded(
 	data: Bytes,
-	url_safe: Bool
+	url_safe: Bool,
 ) String
 
 export extern fn msstd_encoding_base64_decode_unpadded(
 	text: String,
 	url_safe: Bool,
-	max_bytes: Int?
+	max_bytes: Int?,
 ) Bytes!
 
 export extern fn msstd_encoding_base32_encode(
 	data: Bytes,
 	hex_alphabet: Bool,
-	padded: Bool
+	padded: Bool,
 ) String
 
 export extern fn msstd_encoding_base32_decode(
 	text: String,
 	hex_alphabet: Bool,
 	padded: Bool,
-	max_bytes: Int?
+	max_bytes: Int?,
 ) Bytes!

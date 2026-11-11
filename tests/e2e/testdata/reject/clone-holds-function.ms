@@ -1,5 +1,6 @@
-// A function value owns its captures and has one owner, so a record that holds one is not
-// Clonable: neither `.clone()` nor a copying operation such as `concat` applies to it.
+// A function value owns its captures and has one owner, so a record that holds one is
+// not Clonable: neither `.clone()` nor a copying operation such as `concat` applies to
+// it.
 type Handler:
 	name: String
 	run: fn(Int) Int

@@ -147,7 +147,8 @@ test "explicit views and bound views preserve native mutation":
 	view_first := text_view.replace_first
 	expect_false(
 		text_view.replace_first("a", "b") != "baaa" or view_first(
-			"a", "b"
+			"a",
+			"b",
 		) != "baaa"
 	)?
 
@@ -179,7 +180,8 @@ test "regex replace_all preserves literal text and exact output budgets":
 	expect_equal((all("a", "", 0)?), "")?
 	expect_equal(pattern.replace_all("z", "b", 0), limited)?
 	expect_equal(
-		pattern.replace_all("aa", "b", none), pattern.replace_all("aa", "b", none)
+		pattern.replace_all("aa", "b", none),
+		pattern.replace_all("aa", "b", none),
 	)?
 
 	empty := compile("")?

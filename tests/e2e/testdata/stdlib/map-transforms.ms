@@ -74,11 +74,19 @@ test "Map value transformation copies ordered snapshots and keeps independent va
 	(mapped[first].count != 2 or source[first].count != 2) | expect_false?
 	mapped.remove(first.clone())
 	mapped.add(Key(5, "other"), Counter(5))
-	(not (source.contains(first)) or source.contains(Key(5, "different"))) | expect_false?
+	(
+		(
+			not (source.contains(first))
+			or source.contains(Key(5, "different"))
+		) | expect_false?
+	)
 
 test "Map key transformation retains first equal keys and last values":
 	source: Map[Int, Counter] := {
-		2: Counter(1), 1: Counter(2), 4: Counter(3), 3: Counter(4)
+		2: Counter(1),
+		1: Counter(2),
+		4: Counter(3),
+		3: Counter(4)
 	}
 	var created: List[Key] = []
 
@@ -243,7 +251,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 				empty_calls.append(1)
 				return acc.clone()
 		),
-		initial: initial.clone()
+		initial: initial.clone(),
 	)
 
 	map_result.append(1)
@@ -257,7 +265,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 			v:
 				empty_calls.append(1)
 				return acc.clone()
-		)
+		),
 	)
 
 	set_result.append(2)

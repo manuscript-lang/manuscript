@@ -34,23 +34,24 @@ test "timestamp shifts normalize raw fields and preserve wide sums":
 	maximum := 9223372036854775807
 	expect_equal(
 		(Timestamp(-62135596801, 1000000000).shift(nanoseconds(0))?),
-		Timestamp(-62135596800, 0)
+		Timestamp(-62135596800, 0),
 	)?
 	expect_equal(
 		(Timestamp(253402300800, 0).shift(nanoseconds(-1000000000))?),
-		Timestamp(253402300799, 0)
+		Timestamp(253402300799, 0),
 	)?
 	expect_equal((Timestamp(0, -1).shift(nanoseconds(0))?), Timestamp(-1, 999999999))?
 	expect_equal(
 		(Timestamp(0, maximum).shift(nanoseconds(maximum))?),
-		Timestamp(18446744073, 709551614)
+		Timestamp(18446744073, 709551614),
 	)?
 	expect_equal(
 		(Timestamp(0, minimum).shift(nanoseconds(minimum))?),
-		Timestamp(-18446744074, 290448384)
+		Timestamp(-18446744074, 290448384),
 	)?
 	expect_equal(
-		(Timestamp(0, maximum).shift(nanoseconds(minimum))?), Timestamp(-1, 999999999)
+		(Timestamp(0, maximum).shift(nanoseconds(minimum))?),
+		Timestamp(-1, 999999999),
 	)?
 
 	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
@@ -92,7 +93,7 @@ test "format renders tokens and from_calendar round trips":
 	moment := parse_timestamp("2024-03-10T12:30:15.250Z")?
 	expect_equal(
 		(moment.format("YYYY-MM-DD HH:mm:ss.SSS ZZ", "+05:30")?),
-		"2024-03-10 18:00:15.250 +05:30"
+		"2024-03-10 18:00:15.250 +05:30",
 	)?
 
 	back := from_calendar(2024, 3, 10, 8, 30, 15, 250000000, "America/New_York")?
@@ -109,8 +110,9 @@ test "calendar rejects unknown zones and impossible dates":
 test "sub-millisecond sleeps are not rounded up to a millisecond":
 	var fastest = milliseconds(5000)
 
-	// Rounding each sleep up to 1 ms would take at least 500 ms; 50 us sleeps take about 25 ms.
-	// A loaded or coarse-timer runner can stretch one pass, so the fastest of a few passes decides.
+	// Rounding each sleep up to 1 ms would take at least 500 ms; 50 us sleeps take
+	// about 25 ms. A loaded or coarse-timer runner can stretch one pass, so the fastest
+	// of a few passes decides.
 	for attempt in 0..5:
 		start := monotonic()
 		for round in 0..500:
@@ -138,8 +140,10 @@ test "timestamp parsing preserves maximum-width precision and offsets":
 test "timestamp parsing rejects oversized fractions and suffixes":
 	invalid: Timestamp! := error(Error("time: invalid data", kind: "EBADMSG"))
 	for text in [
-		"2024-02-29T12:30:45.1234567890Z", "2024-02-29T12:30:45.1234567890+00:00",
-		"2024-02-29T12:30:45.123456789+00:00Z", "2024-02-29T12:30:45.123456789+00:000",
-		"2024-02-29T12:30:45." + "0".repeat(1048576).get() + "Z"
+		"2024-02-29T12:30:45.1234567890Z",
+		"2024-02-29T12:30:45.1234567890+00:00",
+		"2024-02-29T12:30:45.123456789+00:00Z",
+		"2024-02-29T12:30:45.123456789+00:000",
+		"2024-02-29T12:30:45." + "0".repeat(1048576).get() + "Z",
 	]:
 		expect_equal(parse_timestamp(text), invalid)?

@@ -1,17 +1,12 @@
-// Non-cryptographic hashes and checksums (FNV, CRC-64, a seeded table hash). They spread keys and detect accidental
-// damage; for SHA-2, HMAC and other secure digests, see `@std/crypto.ms`.
+// Non-cryptographic hashes and checksums (FNV, CRC-64, a seeded table hash). They
+// spread keys and detect accidental damage; for SHA-2, HMAC and other secure digests,
+// see `@std/crypto.ms`.
 import (
 	Bytes from "@std/bytes.ms",
 	ReadStream from "@std/io/io.ms",
 	bit_and, bit_xor, shift_right_unsigned, wrapping_multiply from "@std/math/math.ms",
 	secure_int from "@std/random.ms",
 )
-
-// 64-bit state is held in an Int; this reads its bit pattern as an unsigned word.
-fn unsigned(raw: Int) UInt64:
-	high := shift_right_unsigned(raw, 32).to_uint64().get(0)
-	low := bit_and(raw, 4294967295).to_uint64().get(0)
-	return high * 4294967296 + low
 
 /*
 Hashes `data` with 32-bit FNV-1a (offset 2166136261, prime 16777619).
@@ -23,9 +18,10 @@ export fn fnv1a32(data: Bytes) UInt32:
 	for index in 0..data.length():
 		hash = bit_and(
 			wrapping_multiply(
-				bit_xor(hash, data.get(index).to_int()), 16777619
+				bit_xor(hash, data.get(index).to_int()),
+				16777619,
 			),
-			4294967295
+			4294967295,
 		)
 	return hash.to_uint32().get(0)
 
@@ -36,7 +32,7 @@ export fn fnv1_32(data: Bytes) UInt32:
 	for index in 0..data.length():
 		hash = bit_xor(
 			bit_and(wrapping_multiply(hash, 16777619), 4294967295),
-			data.get(index).to_int()
+			data.get(index).to_int(),
 		)
 	return hash.to_uint32().get(0)
 
@@ -58,7 +54,8 @@ export fn fnv1_64(data: Bytes) UInt64:
 
 // Selects the polynomial of a 64-bit cyclic redundancy check.
 export enum Crc64Polynomial:
-	// CRC-64/XZ (ECMA-182, reflected 0xC96C5795D7870F42), as used by xz and Go's `crc64.ECMA`.
+	// CRC-64/XZ (ECMA-182, reflected 0xC96C5795D7870F42), as used by xz and Go's
+	// `crc64.ECMA`.
 	Ecma
 	// CRC-64/GO-ISO (reflected 0xD800000000000000), Go's `crc64.ISO`.
 	Iso
@@ -120,21 +117,25 @@ export type MapHash:
 	seed: Int
 
 impl MapHash:
-	// Hashes the bytes with this seed, finishing with a 64-bit avalanche so every output bit depends on all input bits.
+	// Hashes the bytes with this seed, finishing with a 64-bit avalanche so every
+	// output bit depends on all input bits.
 	fn hash(data: Bytes) UInt64:
 		var state = bit_xor(self.seed, -3750763034362895579)
 
 		for index in 0..data.length():
 			state = wrapping_multiply(
-				bit_xor(state, data.get(index).to_int()), -7046029254386353131
+				bit_xor(state, data.get(index).to_int()),
+				-7046029254386353131,
 			)
 			state = bit_xor(state, shift_right_unsigned(state, 29))
 
 		state = wrapping_multiply(
-			bit_xor(state, shift_right_unsigned(state, 33)), -49064778989728563
+			bit_xor(state, shift_right_unsigned(state, 33)),
+			-49064778989728563,
 		)
 		state = wrapping_multiply(
-			bit_xor(state, shift_right_unsigned(state, 33)), -4265267296055464877
+			bit_xor(state, shift_right_unsigned(state, 33)),
+			-4265267296055464877,
 		)
 		return unsigned(bit_xor(state, shift_right_unsigned(state, 33)))
 
@@ -157,3 +158,9 @@ export fn crc64_of(input: ReadStream[Bytes], polynomial: Crc64Polynomial) UInt64
 		sum.update(chunk)
 	source.close()?
 	return ok(sum.value())
+
+// 64-bit state is held in an Int; this reads its bit pattern as an unsigned word.
+fn unsigned(raw: Int) UInt64:
+	high := shift_right_unsigned(raw, 32).to_uint64().get(0)
+	low := bit_and(raw, 4294967295).to_uint64().get(0)
+	return high * 4294967296 + low

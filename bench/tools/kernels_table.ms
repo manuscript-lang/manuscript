@@ -1,6 +1,8 @@
-// Validates complete trials before printing per-kernel minimum microseconds (bench/perf/kernels and competence).
-// Rows are `<version> <kernel> <microseconds> <checksum>`; each successful producer ends its trial with `<version> # end`.
-// Times below two microseconds are reported as folded rather than used in ratios.
+// Validates complete trials before printing per-kernel minimum microseconds
+// (bench/perf/kernels and competence). Rows are
+// `<version> <kernel> <microseconds> <checksum>`; each successful producer ends its
+// trial with `<version> # end`. Times below two microseconds are reported as folded
+// rather than used in ratios.
 import invalid, minimum from "./lib.ms"
 
 export fn suite_names(suite: String) List[String]:
@@ -20,8 +22,9 @@ export fn base_versions() List[String]:
 export fn c_versions() List[String]:
 	return ["c", "c-ms"]
 
-// Kernels a version does not implement. Plain C has no map_count: a hand-rolled int64 open-addressing
-// table is not a like-for-like comparison with the general insertion-ordered `Map`.
+// Kernels a version does not implement. Plain C has no map_count: a hand-rolled int64
+// open-addressing table is not a like-for-like comparison with the general
+// insertion-ordered `Map`.
 export fn omitted(version: String) List[String]:
 	if version == "c": return ["map_count_2M"]
 	return []
@@ -42,7 +45,7 @@ export fn summarize(
 	lines: List[String],
 	suite: String,
 	repeats: Int,
-	versions: List[String]
+	versions: List[String],
 ) String!:
 	if repeats < 1: return invalid("repeats must be positive")
 
@@ -50,7 +53,7 @@ export fn summarize(
 	if suite == "kernels":
 		allowed = [
 			base_versions().concat(c_versions()),
-			base_versions().concat(c_versions()).concat(ablations())
+			base_versions().concat(c_versions()).concat(ablations()),
 		]
 	if not allowed.any(fn a: same(a, versions)):
 		return invalid("unexpected versions for {suite}: {versions.join(" ")}")
@@ -130,7 +133,7 @@ export fn summarize(
 	var rows = [
 		"Minimum of {repeats} rotating runs; microseconds. Complete trials and checksums verified.\n",
 		"| kernel | go us | " + head + " | " + extra.join(" | ") + " |",
-		"|---|---:|" + rule + extra.map(fn _e: "---:|").join("")
+		"|---|---:|" + rule + extra.map(fn _e: "---:|").join(""),
 	]
 
 	for name in names:

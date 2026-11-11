@@ -16,7 +16,9 @@ test "compression omission equals explicit level six for every format":
 	data := "repeat repeat repeat repeat".to_bytes()
 
 	for format in [
-		CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+		CompressionFormat.Gzip,
+		CompressionFormat.Zlib,
+		CompressionFormat.Deflate,
 	]:
 		expected := compress(data, format, CompressOptions(level: 6))?
 		expect_equal((compress(data, format)?), expected)?
@@ -24,10 +26,12 @@ test "compression omission equals explicit level six for every format":
 		expect_equal(
 			(
 				compress(
-					data, format, CompressOptions(max_bytes: expected.length())
+					data,
+					format,
+					CompressOptions(max_bytes: expected.length()),
 				)?
 			),
-			expected
+			expected,
 		)?
 		expect_equal((decompress(expected, format)?), data)?
 
@@ -44,7 +48,9 @@ test "compression defaults retain invalid levels and output budgets":
 	limited: Bytes! := error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
 
 	for format in [
-		CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+		CompressionFormat.Gzip,
+		CompressionFormat.Zlib,
+		CompressionFormat.Deflate,
 	]:
 		expect_equal(compress(data, format, CompressOptions(level: -1)), invalid)?
 		expect_equal(compress(data, format, CompressOptions(level: 10)), invalid)?
@@ -56,7 +62,7 @@ test "compression default preparation retains supplied argument order":
 	data := "data".to_bytes()
 	encoded := compress(
 		format: chosen(var log, CompressionFormat.Gzip),
-		data: supplied(var log, data.clone())
+		data: supplied(var log, data.clone()),
 	)?
 	expect_equal(log, ["format", "data"])?
 	expect_equal((decompress(encoded, CompressionFormat.Gzip)?), data)?

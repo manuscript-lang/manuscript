@@ -407,8 +407,11 @@ fn eval_term(body: String, ctx: String, var syms: Map[String, Sym]) Ev:
 				syms.add(
 					body.clone(),
 					Sym(
-						kind: 2, value: 0, expr: e.clone(), busy: true
-					)
+						kind: 2,
+						value: 0,
+						expr: e.clone(),
+						busy: true,
+					),
 				)
 
 				r := eval_expr(e.clone(), var syms)
@@ -560,8 +563,12 @@ fn pass1_ins(var prog: Prog, lineno: Int, word: String, args: String) String:
 	return ""
 
 fn data_dir(
-	var syms: Map[String, Sym], var mem: List[Int], var prog: Prog, lineno: Int,
-	word: String, args: String
+	var syms: Map[String, Sym],
+	var mem: List[Int],
+	var prog: Prog,
+	lineno: Int,
+	word: String,
+	args: String,
 ) String:
 	if word == ".word":
 		ops := split_operands(args)
@@ -607,8 +614,12 @@ fn data_dir(
 	return ""
 
 fn pass1_dir(
-	var syms: Map[String, Sym], var mem: List[Int], var prog: Prog, lineno: Int,
-	word: String, args: String
+	var syms: Map[String, Sym],
+	var mem: List[Int],
+	var prog: Prog,
+	lineno: Int,
+	word: String,
+	args: String,
 ) String:
 	if word == ".text":
 		if args != "": return "invalid operand '{args}'"
@@ -645,8 +656,11 @@ fn pass1_dir(
 	return "unknown directive '{word}'"
 
 fn pass1_line(
-	var syms: Map[String, Sym], var mem: List[Int], var prog: Prog, lineno: Int,
-	line: String
+	var syms: Map[String, Sym],
+	var mem: List[Int],
+	var prog: Prog,
+	lineno: Int,
+	line: String,
 ) String:
 	s := strip_comment(line.chars())
 	cs := s.chars()
@@ -720,10 +734,18 @@ fn pass2_ins(ins: Ins, var syms: Map[String, Sym], n: Int, var code: List[Ins]) 
 	if not rb.good: return rb.err
 
 	a := Opnd(
-		kind: ins.a.kind, reg: ins.a.reg, text: ins.a.text, base: ra.reg, val: ra.val
+		kind: ins.a.kind,
+		reg: ins.a.reg,
+		text: ins.a.text,
+		base: ra.reg,
+		val: ra.val,
 	)
 	b := Opnd(
-		kind: ins.b.kind, reg: ins.b.reg, text: ins.b.text, base: rb.reg, val: rb.val
+		kind: ins.b.kind,
+		reg: ins.b.reg,
+		text: ins.b.text,
+		base: rb.reg,
+		val: rb.val,
 	)
 	if ins.op >= 20 and ins.op <= 27:
 		if a.val < 0 or a.val >= n: return "invalid jump target"
@@ -1062,7 +1084,11 @@ export fn main() Int:
 		mem.append(0)
 
 	var prog = Prog(
-		ins: List[Ins](), items: List[Item](), dsize: 0, in_data: false, budget: 100000
+		ins: List[Ins](),
+		items: List[Item](),
+		dsize: 0,
+		in_data: false,
+		budget: 100000,
 	)
 	var ln = 0
 
@@ -1118,9 +1144,17 @@ export fn main() Int:
 	regs[8] = MEM_SIZE
 
 	var m = Machine(
-		regs: regs, mem: mem, z: false, l: false, trap: "", halted: false,
-		out: List[String](), last_nl: false, input: parse_input_lines(inp), inpos: 0,
-		chars: chars
+		regs: regs,
+		mem: mem,
+		z: false,
+		l: false,
+		trap: "",
+		halted: false,
+		out: List[String](),
+		last_nl: false,
+		input: parse_input_lines(inp),
+		inpos: 0,
+		chars: chars,
 	)
 	var pc = entry
 	var steps = 0

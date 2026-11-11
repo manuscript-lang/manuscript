@@ -11,7 +11,11 @@ fn table(text: String) TomlValue:
 
 test "TOML quoting preserves empty plain and Unicode text":
 	for text in [
-		"", "Ada", "space punctuation : ; # ' []", "é🙂日本語", "é🙂日本語".repeat(1024).get()
+		"",
+		"Ada",
+		"space punctuation : ; # ' []",
+		"é🙂日本語",
+		"é🙂日本語".repeat(1024).get(),
 	]:
 		root := table(text.clone())
 		out := stringify(root)?
@@ -20,26 +24,44 @@ test "TOML quoting preserves empty plain and Unicode text":
 
 test "TOML quoting preserves escaped control and Unicode text":
 	for text in [
-		"\"", "\\", "\n", "\t", "\r", "\u{8}", "\u{c}", "\u{0}", "\u{1f}", "\u{7f}",
-		"é🙂\n日本語\\", "abcdefgh".repeat(2048).get().concat("\n")
+		"\"",
+		"\\",
+		"\n",
+		"\t",
+		"\r",
+		"\u{8}",
+		"\u{c}",
+		"\u{0}",
+		"\u{1f}",
+		"\u{7f}",
+		"é🙂\n日本語\\",
+		"abcdefgh".repeat(2048).get().concat("\n"),
 	]:
 		root := table(text)
 		(parse(stringify(root)?)?) | expect_equal(root)?
 
-	stringify(table("\"\\\n\t\r\u{8}\u{c}\u{0}\u{1f}\u{7f}")) | expect_equal(
-		ok("value = \"\\\"\\\\\\n\\t\\r\\b\\f\\u0000\\u001f\\u007f\"\n")
-	)?
+	(
+		stringify(
+			table("\"\\\n\t\r\u{8}\u{c}\u{0}\u{1f}\u{7f}")
+		) | expect_equal(
+			ok("value = \"\\\"\\\\\\n\\t\\r\\b\\f\\u0000\\u001f\\u007f\"\n")
+		)?
+	)
 
 test "TOML quoting retains exact and invalid output budgets":
 	root := table("é🙂")
 	text := stringify(root)?
 	stringify(root, max_bytes: text.byte_length()) | expect_equal(ok(text.clone()))?
-	stringify(root, max_bytes: text.byte_length() - 1) | expect_equal(
-		error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
-	)?
-	stringify(root, max_bytes: -1) | expect_equal(
-		error(Error("invalid TOML input", kind: "EINVAL"))
-	)?
+	(
+		stringify(root, max_bytes: text.byte_length() - 1) | expect_equal(
+			error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
+		)?
+	)
+	(
+		stringify(root, max_bytes: -1) | expect_equal(
+			error(Error("invalid TOML input", kind: "EINVAL"))
+		)?
+	)
 
 test "TOML quoting preserves quoted keys and all ASCII control escapes":
 	for key in ["", "é🙂", "quote\"", "slash\\", "line\n", "\u{7f}"]:

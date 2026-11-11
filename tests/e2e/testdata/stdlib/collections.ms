@@ -105,7 +105,8 @@ test "empty intersections preserve owned string inputs":
 	result.add("new independent owned identifier")
 	expect_equal(result.values(), ["new independent owned identifier"])?
 	expect_equal(
-		left.values(), ["a long owned document identifier", "another owned identifier"]
+		left.values(),
+		["a long owned document identifier", "another owned identifier"],
 	)?
 	expect_true(right.is_empty())?
 	expect_true(right.intersection(left).is_empty())?
@@ -125,17 +126,18 @@ test "stepped ranges handle full-width spans and minimum negative steps":
 	maximum := 9223372036854775807
 	expect_equal(
 		(range_by(minimum, maximum, maximum, RangeOptions(max_items: 3))?),
-		[minimum, -1, (maximum - 1)]
+		[minimum, -1, (maximum - 1)],
 	)?
 	expect_equal(
 		(range_by(maximum, minimum, minimum, RangeOptions(max_items: 2))?),
-		[maximum, -1]
+		[maximum, -1],
 	)?
 	expect_equal((range_by(0, minimum, minimum, RangeOptions(max_items: 1))?), [0])?
 
 	limited: List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(
-		range_by(minimum, maximum, maximum, RangeOptions(max_items: 2)), limited
+		range_by(minimum, maximum, maximum, RangeOptions(max_items: 2)),
+		limited,
 	)?
 
 test "range counts up by one":
@@ -213,7 +215,8 @@ test "List join renders any element type":
 	expect_equal([1.5, 2.5].join(","), "1.5,2.5")?
 	expect_equal([true, false].join("/"), "true/false")?
 	expect_equal(
-		[JoinPoint(1), JoinPoint(2)].join(";"), "JoinPoint(x: 1);JoinPoint(x: 2)"
+		[JoinPoint(1), JoinPoint(2)].join(";"),
+		"JoinPoint(x: 1);JoinPoint(x: 2)",
 	)?
 	expect_equal(List[Int]().join(","), "")?
 

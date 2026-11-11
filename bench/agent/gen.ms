@@ -1,6 +1,7 @@
-// Regenerates a challenge's examples/cases.json and hidden/cases.json deterministically.
-// Usage (from the repository root): ms run bench/agent/gen.ms -- <c03|c05|...|all>
-// Large challenges (c51 to c60) need `go` on PATH: their expected outputs come from the Go oracle in oracle/*.ref.
+// Regenerates a challenge's examples/cases.json and hidden/cases.json
+// deterministically. Usage (from the repository root): ms run bench/agent/gen.ms --
+// <c03|c05|...|all> Large challenges (c51 to c60) need `go` on PATH: their expected
+// outputs come from the Go oracle in oracle/*.ref.
 import (
 	stderr from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",

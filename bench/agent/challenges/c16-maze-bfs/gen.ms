@@ -85,14 +85,15 @@ export fn gen_c16() Unit:
 	open_big := maze(var rnd, 60, 60, 0.3)
 	examples := [
 		mk("basic", "S.#.....\n.##.###.\n....#...\n.####.#.\n......#E\n"),
-		mk("no-path", "S#E\n.#.\n.#.\n")
+		mk("no-path", "S#E\n.#.\n.#.\n"),
 	]
 	dense := maze(var rnd, 50, 50, 0.38)
 	hidden := examples.concat(
 		[
 			mk("adjacent", "SE\n"),
 			mk(
-				"detour", "S.....\n#####.\n......\n.#####\n......\n#####E\n"
+				"detour",
+				"S.....\n#####.\n......\n.#####\n......\n#####E\n",
 			),
 			mk("e-before-s", "E..\n.#.\n..S\n"),
 			mk("bad-char-reading-order", "S.?\n.x.\n..E\n"),
@@ -106,7 +107,7 @@ export fn gen_c16() Unit:
 			mk("interior-blank-line", "S.E\n\n..\n"),
 			mk("random-60x60", open_big),
 			mk("random-dense-walls", dense),
-			mk("no-trailing-newline", "S.E")
+			mk("no-trailing-newline", "S.E"),
 		]
 	)
 	write_cases("c16-maze-bfs", examples, hidden)

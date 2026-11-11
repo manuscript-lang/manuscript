@@ -7,7 +7,8 @@ import (
 	Duration from "@std/time.ms",
 )
 
-// The host's memory, uptime, load, and parallelism numbers in one flat record; `metrics` shapes it into `SystemMetrics`.
+// The host's memory, uptime, load, and parallelism numbers in one flat record;
+// `metrics` shapes it into `SystemMetrics`.
 export type MetricsSnapshot:
 	total_memory: Int
 	free_memory: Int

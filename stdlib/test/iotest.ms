@@ -36,7 +36,8 @@ impl Source[Bytes] for OneByte:
 	var fn close() Unit!:
 		return self.input.close()
 
-// Returns `input` limited to one byte per read, which exposes code that assumes a read fills its buffer.
+// Returns `input` limited to one byte per read, which exposes code that assumes a read
+// fills its buffer.
 export fn one_byte(input: ReadStream[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](OneByte(input, none))
 
@@ -64,12 +65,13 @@ impl Source[Bytes] for FailAfter:
 	var fn close() Unit!:
 		return self.input.close()
 
-// Returns `input` that delivers `after` bytes and then fails every read with `cause`, even if `input` has ended.
-// Use it to check that a parser reports a truncated or broken source instead of treating it as clean end of input.
+// Returns `input` that delivers `after` bytes and then fails every read with `cause`,
+// even if `input` has ended. Use it to check that a parser reports a truncated or
+// broken source instead of treating it as clean end of input.
 export fn fail_after(
 	input: ReadStream[Bytes],
 	after: Int,
-	cause: Error
+	cause: Error,
 ) ReadStream[Bytes]:
 	return ReadStream[Bytes](FailAfter(input, after, cause))
 
@@ -99,17 +101,19 @@ impl Sink[Bytes] for FailingSink:
 	var fn close() Unit!:
 		return self.output.close()
 
-// Returns a writer that passes `after` bytes through to `output`, writes the prefix of the write that crosses the limit,
-// and then fails that write and every later one with `cause`. Use it to check error handling on a full disk or closed pipe.
+// Returns a writer that passes `after` bytes through to `output`, writes the prefix of
+// the write that crosses the limit, and then fails that write and every later one with
+// `cause`. Use it to check error handling on a full disk or closed pipe.
 export fn fail_writer_after(
 	output: WriteStream[Bytes],
 	after: Int,
-	cause: Error
+	cause: Error,
 ) WriteStream[Bytes]:
 	return WriteStream[Bytes](FailingSink(output, after, cause))
 
-// Checks that `make` builds a well-behaved `ReadStream[Bytes]` over exactly `expected`: whole reads, one-byte reads, and
-// an end of input that stays ended. `make` is called once per check so each starts from the beginning.
+// Checks that `make` builds a well-behaved `ReadStream[Bytes]` over exactly `expected`:
+// whole reads, one-byte reads, and an end of input that stays ended. `make` is called
+// once per check so each starts from the beginning.
 export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Unit!:
 	all := read_all(make())
 	if all.is_error(): return fail("check_reader: reading everything failed")

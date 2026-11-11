@@ -1,8 +1,9 @@
 import expect_equal from "@std/test/test.ms"
 
-// A comparator that captures a variable is called from the generated sort thunk instead of
-// being inlined into it (its `closure.cap` reads need the closure's own layout). Capturing
-// lambdas, nested functions and capture-free comparators must all sort the same way.
+// A comparator that captures a variable is called from the generated sort thunk instead
+// of being inlined into it (its `closure.cap` reads need the closure's own layout).
+// Capturing lambdas, nested functions and capture-free comparators must all sort the
+// same way.
 type Task:
 	name: String
 	priority: Int

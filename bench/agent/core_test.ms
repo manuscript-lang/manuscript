@@ -1,4 +1,5 @@
-// Unit tests for the runner's core. Run from the repository root: ms test bench/agent/core_test.ms
+// Unit tests for the runner's core. Run from the repository root: ms test
+// bench/agent/core_test.ms
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	GlobOptions, access, glob from "@std/os/fs.ms",
@@ -90,10 +91,11 @@ test "json layout matches json.dumps":
 	doc := parse("[\{\"a\": \"é\\n\", \"b\": [], \"c\": \{\}\}, 1]").get(JsonValue.Null)
 	expect_equal(
 		dumps(doc, 1),
-		"[\n \{\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": \{\}\n \},\n 1\n]"
+		"[\n \{\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": \{\}\n \},\n 1\n]",
 	)?
 	expect_equal(
-		dumps(doc, 0), "[\{\"a\": \"\\u00e9\\n\", \"b\": [], \"c\": \{\}\}, 1]"
+		dumps(doc, 0),
+		"[\{\"a\": \"\\u00e9\\n\", \"b\": [], \"c\": \{\}\}, 1]",
 	)?
 
 test "number formats match CPython":

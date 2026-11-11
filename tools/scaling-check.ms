@@ -1,13 +1,16 @@
-// Scaling gate (`make scaling-check`): generates inputs of 1k, 10k and 100k units and fails when work that should be
-// linear grows faster. It compares ratios, never wall time: a shape fails when its time at 100k, minus the fixed
-// start-up cost measured at 1k, exceeds BOUND times the same figure at 10k. Linear work gives about 10, n log n about
-// 12, quadratic work about 100, so the default bound of 30 leaves room for cache effects and noisy runners.
-// Compile shapes (long functions, many locals, long interpolation, many impls, many functions, many branches, big
-// literals) run `ms check` and `ms emit`; the runtime half runs tests/scaling/containers.ms at 10k and 100k and
-// compares each phase's own timing. A ratio over the bound is measured again (RETRIES times) and the lowest kept. An input
-// that exceeds TIMEOUT seconds fails.
-// MS names the ms to measure (default target/release/ms); SCALING_BOUND and SCALING_TIMEOUT override the limits.
-// Usage: ms run tools/scaling-check.ms [-- shape...]
+// Scaling gate (`make scaling-check`): generates inputs of 1k, 10k and 100k units and
+// fails when work that should be linear grows faster. It compares ratios, never wall
+// time: a shape fails when its time at 100k, minus the fixed start-up cost measured at
+// 1k, exceeds BOUND times the same figure at 10k. Linear work gives about 10, n log n
+// about 12, quadratic work about 100, so the default bound of 30 leaves room for cache
+// effects and noisy runners. Compile shapes (long functions, many locals, long
+// interpolation, many impls, many functions, many branches, big literals) run
+// `ms check` and `ms emit`; the runtime half runs tests/scaling/containers.ms at 10k
+// and 100k and compares each phase's own timing. A ratio over the bound is measured
+// again (RETRIES times) and the lowest kept. An input that exceeds TIMEOUT seconds
+// fails. MS names the ms to measure (default target/release/ms); SCALING_BOUND and
+// SCALING_TIMEOUT override the limits. Usage: ms run tools/scaling-check.ms [--
+// shape...]
 import (
 	stdout from "@std/io/io.ms",
 	arguments, working_directory from "@std/os/env.ms",
@@ -64,13 +67,14 @@ SHAPES := [
 	"many_functions", "many_branches", "big_literal"
 ]
 
-// Seconds `ms <command> <file> [extra]` took, or -1.0 when it failed or hit the timeout.
+// Seconds `ms <command> <file> [extra]` took, or -1.0 when it failed or hit the
+// timeout.
 fn measure(
 	ms: String,
 	command: String,
 	file: String,
 	extra: List[String],
-	limit: Int
+	limit: Int,
 ) Float:
 	var args = [command.clone(), file.clone()]
 	for e in extra: args.append(e.clone())
@@ -83,7 +87,8 @@ fn measure(
 
 	return took
 
-// The growth ratio of `big` over `mid` once `base` is removed; `floor` keeps a sub-noise `mid` from inflating it.
+// The growth ratio of `big` over `mid` once `base` is removed; `floor` keeps a
+// sub-noise `mid` from inflating it.
 fn growth(base: Float, mid: Float, big: Float, floor: Float) Float:
 	var denominator = mid - base
 	if denominator < floor: denominator = floor
@@ -134,8 +139,9 @@ fn main() Int:
 
 			var ratio = growth(small, mid, big, 0.05)
 
-			// A wall-clock ratio just over the bound is usually runner noise (a quadratic pass is near 100x): measure
-			// again, up to RETRIES times, and keep the best, so only a ratio that stays high fails.
+			// A wall-clock ratio just over the bound is usually runner noise (a
+			// quadratic pass is near 100x): measure again, up to RETRIES times, and
+			// keep the best, so only a ratio that stays high fails.
 			for attempt in 0..RETRIES:
 				if ratio <= bound: break
 
@@ -174,8 +180,10 @@ fn main() Int:
 			if not big.contains(name.clone()): continue
 
 			ratio := growth(
-				0.0, mid[name.clone()].to_float(), big[name.clone()].to_float(),
-				1000000.0
+				0.0,
+				mid[name.clone()].to_float(),
+				big[name.clone()].to_float(),
+				1000000.0,
 			)
 			say(
 				"{name}: 10k {mid[name.clone()] / 1000}us 100k {big[name.clone()] / 1000}us ratio {show(ratio)}\n"
@@ -194,12 +202,14 @@ fn main() Int:
 
 	return 0
 
-// Phase name to nanoseconds from one run of the container program at size `n`; empty when it failed.
+// Phase name to nanoseconds from one run of the container program at size `n`; empty
+// when it failed.
 fn run_phases(ms: String, program: String, n: Int, limit: Int) Map[String, Int]:
 	var phases = Map[String, Int]()
 	ran := run(
-		ms.clone(), ["run", program.clone(), "--build-type", "Debug", "--", "{n}"],
-		RunOptions(timeout: seconds(limit * 4))
+		ms.clone(),
+		["run", program.clone(), "--build-type", "Debug", "--", "{n}"],
+		RunOptions(timeout: seconds(limit * 4)),
 	).wait()
 	if ran.is_error(): return phases
 	if ran.get().exit_code != 0: return phases

@@ -32,7 +32,8 @@ test "stringify round-trips and escapes":
 test "indent puts elements on lines":
 	doc := parse("<a><b><c/></b><d>t</d></a>").get()
 	expect_equal(
-		stringify(doc, "  "), "<a>\n  <b>\n    <c/>\n  </b>\n  <d>t</d>\n</a>\n"
+		stringify(doc, "  "),
+		"<a>\n  <b>\n    <c/>\n  </b>\n  <d>t</d>\n</a>\n",
 	)?
 
 test "stringify preserves compact and mixed content formatting":
@@ -48,7 +49,8 @@ test "stringify preserves compact and mixed content formatting":
 test "stringify leaves comments and descendant text on indented lines":
 	doc := parse("<a><!--comment--><b>text</b><c/></a>")?
 	expect_equal(
-		stringify(doc, "  "), "<a>\n  <!--comment-->\n  <b>text</b>\n  <c/>\n</a>\n"
+		stringify(doc, "  "),
+		"<a>\n  <!--comment-->\n  <b>text</b>\n  <c/>\n</a>\n",
 	)?
 
 	empty := XmlNode.XmlElement("a", [], [XmlNode.XmlText("")])
@@ -333,7 +335,8 @@ test "elements with many attributes keep their order and reject duplicates at an
 	expect_equal(doc.attribute("a15").get(""), "15")?
 	expect_equal(doc.attribute("a16").get(""), "16")?
 
-	// The 16th attribute is the first one checked through the set, and its list-scanned predecessors count.
+	// The 16th attribute is the first one checked through the set, and its list-scanned
+	// predecessors count.
 	expect_true(parse(text + " a0=\"x\"/>").is_error())?
 	expect_true(parse(text + " a16=\"x\"/>").is_error())?
 	expect_true(parse(text + " a39=\"x\"/>").is_error())?

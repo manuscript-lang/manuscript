@@ -34,22 +34,24 @@ test "glob keeps dot named and parent query results relative to their root":
 	for root in [".", "./", "src/..", directory.path()]:
 		expect_equal(matched_paths(root, all)?, expected)?
 	expect_equal(
-		matched_paths(".", GlobOptions(patterns: ["*.txt"]))?, ["a.txt", "café.txt"]
+		matched_paths(".", GlobOptions(patterns: ["*.txt"]))?,
+		["a.txt", "café.txt"],
 	)?
 	expect_equal(matched_paths("src", all)?, ["b.txt", "deep/c.txt"])?
 	expect_equal(
 		matched_paths("src", GlobOptions(patterns: ["../*.txt"]))?,
-		["../a.txt", "../café.txt"]
+		["../a.txt", "../café.txt"],
 	)?
 	expect_equal(
 		matched_paths(
-			".", GlobOptions(patterns: ["**/*.txt"], exclude: ["src/**"])
+			".",
+			GlobOptions(patterns: ["**/*.txt"], exclude: ["src/**"]),
 		)?,
-		["a.txt", "café.txt"]
+		["a.txt", "café.txt"],
 	)?
 
 	selected := glob(".", all, fn(entry: PathEntry) Bool: entry.path == "src")?
 	expect_equal(
 		selected.map(fn(entry: PathEntry) String: entry.path.clone()),
-		["a.txt", "café.txt"]
+		["a.txt", "café.txt"],
 	)?

@@ -380,7 +380,14 @@ fn scan_ref(cs: List[String], i: Int) SNode:
 		ok = row >= 1 and row <= 999
 
 	return SNode(
-		kind: K_REF, ok: ok, c1: col, r1: row, dc1: dc, dr1: dr, pos: i, endp: p
+		kind: K_REF,
+		ok: ok,
+		c1: col,
+		r1: row,
+		dc1: dc,
+		dr1: dr,
+		pos: i,
+		endp: p,
 	)
 
 fn tokenize(cs: List[String]) SLex:
@@ -458,17 +465,32 @@ fn tokenize(cs: List[String]) SLex:
 					else:
 						toks.append(
 							SNode(
-								kind: K_RANGE, ok: r.ok and r2.ok, c1: r.c1, r1: r.r1,
-								dc1: r.dc1, dr1: r.dr1, c2: r2.c1, r2: r2.r1,
-								dc2: r2.dc1, dr2: r2.dr1, pos: i, endp: r2.endp
+								kind: K_RANGE,
+								ok: r.ok and r2.ok,
+								c1: r.c1,
+								r1: r.r1,
+								dc1: r.dc1,
+								dr1: r.dr1,
+								c2: r2.c1,
+								r2: r2.r1,
+								dc2: r2.dc1,
+								dr2: r2.dr1,
+								pos: i,
+								endp: r2.endp,
 							)
 						)
 						i = r2.endp
 				else:
 					toks.append(
 						SNode(
-							kind: K_REF, ok: r.ok, c1: r.c1, r1: r.r1, dc1: r.dc1,
-							dr1: r.dr1, pos: i, endp: r.endp
+							kind: K_REF,
+							ok: r.ok,
+							c1: r.c1,
+							r1: r.r1,
+							dc1: r.dc1,
+							dr1: r.dr1,
+							pos: i,
+							endp: r.endp,
 						)
 					)
 					i = r.endp
@@ -530,7 +552,10 @@ fn tokenize(cs: List[String]) SLex:
 			else:
 				toks.append(
 					SNode(
-						kind: K_OP, text: op.clone(), pos: i, endp: i + op.length()
+						kind: K_OP,
+						text: op.clone(),
+						pos: i,
+						endp: i + op.length(),
 					)
 				)
 				i += op.length()
@@ -1565,8 +1590,13 @@ fn recalc(var sh: SSheet, changed: List[Int]) Int:
 		onst.append(false)
 
 	var t = STarjan(
-		adj: adj, index: index, low: low, onst: onst, stk: List[Int](),
-		comps: List[List[Int]](), counter: 0
+		adj: adj,
+		index: index,
+		low: low,
+		onst: onst,
+		stk: List[Int](),
+		comps: List[List[Int]](),
+		counter: 0,
 	)
 	for v in 0..m:
 		if t.index[v] < 0:
@@ -1875,15 +1905,27 @@ fn view_args(words: List[String], is_export: Bool) SView:
 	empty_rect := SRect(c1: 0, r1: 1, c2: 0, r2: 1)
 	if nwords > 1 or nrange > 1:
 		return SView(
-			usage: true, bad: "", fml: false, has_range: false, rect: empty_rect
+			usage: true,
+			bad: "",
+			fml: false,
+			has_range: false,
+			rect: empty_rect,
 		)
 	if fml and not is_export:
 		return SView(
-			usage: true, bad: "", fml: false, has_range: false, rect: empty_rect
+			usage: true,
+			bad: "",
+			fml: false,
+			has_range: false,
+			rect: empty_rect,
 		)
 	if nrange == 0:
 		return SView(
-			usage: false, bad: "", fml: fml, has_range: false, rect: empty_rect
+			usage: false,
+			bad: "",
+			fml: fml,
+			has_range: false,
+			rect: empty_rect,
 		)
 	if rc := parse_range(rtext):
 		return SView(usage: false, bad: "", fml: fml, has_range: true, rect: rc)
@@ -2086,7 +2128,8 @@ fn run_cmd(var sh: SSheet, words: List[String], t: String) Unit:
 						assign(var sh, k, "")
 					else if fml:
 						body := raw_src.slice_scalars(
-							1, raw_src.scalar_length()
+							1,
+							raw_src.scalar_length(),
 						).get("")
 						assign(var sh, k, "=" + shift_formula(body, r - srow, c - scol))
 					else:

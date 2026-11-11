@@ -86,7 +86,8 @@ import (
 export type DirectoryEntry:
 	// The child's file name only, without any directory part, in the host's spelling.
 	name: String
-	// True when the child is a directory; a symbolic link is reported by `symlink`, not as a directory.
+	// True when the child is a directory; a symbolic link is reported by `symlink`, not
+	// as a directory.
 	directory: Bool
 	// True when the child itself is a symbolic link, whatever it points to.
 	symlink: Bool
@@ -125,7 +126,8 @@ export enum OpenMode:
 
 // Settings of `open` beyond the mode.
 export type OpenOptions:
-	// When True, creating a file that already exists returns EEXIST. Applies to `Write`, `WriteRead`, `Append` and `AppendRead`.
+	// When True, creating a file that already exists returns EEXIST. Applies to
+	// `Write`, `WriteRead`, `Append` and `AppendRead`.
 	exclusive: Bool = false
 	// Permission bits 0..4095 given to a created file, subject to umask and OS policy.
 	permissions: Int = 438
@@ -145,15 +147,19 @@ export type FileInfo:
 	name: String
 	// File length in bytes.
 	size: Int
-	// What the entry is. A symbolic link is `Symlink` only when links were not followed.
+	// What the entry is. A symbolic link is `Symlink` only when links were not
+	// followed.
 	kind: FileKind
 	// Time the file's contents were last changed.
 	modified: Timestamp
-	// Time the file was last read; it falls back to `modified` where the host lacks access times.
+	// Time the file was last read; it falls back to `modified` where the host lacks
+	// access times.
 	accessed: Timestamp
-	// Time the file's metadata or contents last changed; it falls back to `modified` where the host lacks it.
+	// Time the file's metadata or contents last changed; it falls back to `modified`
+	// where the host lacks it.
 	changed: Timestamp
-	// POSIX mode bits: the file-type bits such as 0100000 for a regular file, plus permission and setuid, setgid, and sticky bits.
+	// POSIX mode bits: the file-type bits such as 0100000 for a regular file, plus
+	// permission and setuid, setgid, and sticky bits.
 	mode: Int
 	// Only the permission, setuid, setgid, and sticky bits of `mode`, 0 through 4095.
 	permissions: Int
@@ -165,10 +171,13 @@ export type FileInfo:
 	blocks: Int
 	// Device id the entry represents when it is a device file, otherwise 0.
 	rdev: Int
-	// Unbounded copies of the numeric fields `size`, `mode`, `device`, `inode`, `links`, `uid`, `gid`, `block_size`, `blocks`, and `rdev`, which cannot overflow, plus the times as nanoseconds since the Unix epoch under `accessed_ns`, `modified_ns`, `changed_ns`, and `created_ns`.
-	// Unavailable values are 0.
+	// Unbounded copies of the numeric fields `size`, `mode`, `device`, `inode`,
+	// `links`, `uid`, `gid`, `block_size`, `blocks`, and `rdev`, which cannot overflow,
+	// plus the times as nanoseconds since the Unix epoch under `accessed_ns`,
+	// `modified_ns`, `changed_ns`, and `created_ns`. Unavailable values are 0.
 	exact: Map[String, BigInt]
-	// Id of the device that holds the file; with `inode` it identifies the file. 0 where unavailable.
+	// Id of the device that holds the file; with `inode` it identifies the file. 0
+	// where unavailable.
 	device: Int
 	// The file's index number on its device; 0 where unavailable.
 	inode: Int
@@ -192,29 +201,32 @@ impl FileInfo:
 	fn is_symlink() Bool:
 		return self.kind == FileKind.Symlink
 
-// The directory walks that run natively, so the runtime can call the caller's predicate closures.
+// The directory walks that run natively, so the runtime can call the caller's predicate
+// closures.
 interface FileSystem:
 	// Returns entries matching the supplied include and exclude patterns.
 	fn glob(
 		path: String,
 		options: GlobOptions,
-		exclude: (fn(PathEntry) Bool)?
+		exclude: (fn(PathEntry) Bool)?,
 	) List[PathEntry]!
-	// Copies a file or tree according to the flattened replacement and size policies of `copy`.
+	// Copies a file or tree according to the flattened replacement and size policies of
+	// `copy`.
 	fn copy(
 		source: String,
 		destination: String,
 		options: NativeCopyOptions,
-		filter: (fn(String, String) Bool)?
+		filter: (fn(String, String) Bool)?,
 	) Unit!
 
 // The runtime handle behind a `FileHandle`.
 export extern type NativeFile
 
-// An open file supporting sequential and positional I/O. It owns its descriptor: `close` it, or let
-// its binding go out of scope.
+// An open file supporting sequential and positional I/O. It owns its descriptor:
+// `close` it, or let its binding go out of scope.
 export opaque type FileHandle:
-	// The runtime handle for the open file; it is released by `close` and owned by this value.
+	// The runtime handle for the open file; it is released by `close` and owned by this
+	// value.
 	native: NativeFile
 
 impl Closeable for FileHandle:
@@ -232,7 +244,8 @@ impl FileHandle:
 	fn clone() FileHandle!:
 		return msstd_fs_file_clone(self.native)
 
-	// Duplicates this handle for chunk reads; the stream closes its own descriptor independently and shares the file position.
+	// Duplicates this handle for chunk reads; the stream closes its own descriptor
+	// independently and shares the file position.
 	fn reader() ReadStream[Bytes]!:
 		own := self.clone()?
 		return ok(ReadStream[Bytes](FileSource(own)))
@@ -242,20 +255,25 @@ impl FileHandle:
 		own := self.clone()?
 		return ok(WriteStream[Bytes](FileSink(own)))
 
-	// Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
+	// Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must
+	// be positive.
 	fn read(max_bytes: Int?) Bytes?!:
 		return msstd_io_read(self.native, max_bytes)
 
-	// Writes all of `data` (text as UTF-8) at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
-	// Writes at the end only when the handle was opened in an append mode.
+	// Writes all of `data` (text as UTF-8) at the current position; errors can leave a
+	// prefix. Does not truncate or reposition this handle. Writes at the end only when
+	// the handle was opened in an append mode.
 	fn write(data: Writable) Unit!:
 		return msstd_io_write_bytes(self.native, data.as_bytes())
 
-	// Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
+	// Reads at a nonnegative byte offset without moving the position; short/empty Bytes
+	// mark EOF.
 	fn read_at(offset: Int, max_bytes: Int?) Bytes!:
 		return msstd_fs_file_read_at(self.native, offset, max_bytes)
 
-	// Writes all of `data` (text as UTF-8) at a nonnegative offset without moving the position; a handle opened for append returns EINVAL because the host would ignore the offset; errors can leave a prefix.
+	// Writes all of `data` (text as UTF-8) at a nonnegative offset without moving the
+	// position; a handle opened for append returns EINVAL because the host would ignore
+	// the offset; errors can leave a prefix.
 	fn write_at(offset: Int, data: Writable) Unit!:
 		return msstd_fs_file_write_at(self.native, offset, data.as_bytes())
 
@@ -263,16 +281,19 @@ impl FileHandle:
 	fn read_file(max_bytes: Int?) Bytes!:
 		return msstd_fs_file_read_file(self.native, max_bytes)
 
-	// Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all together up to 16 MiB, and returns the bytes obtained for each.
+	// Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all
+	// together up to 16 MiB, and returns the bytes obtained for each.
 	// `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns EINVAL.
 	fn read_vectors(sizes: List[Int], offset: Int) List[Bytes]!:
 		return msstd_fs_file_read_vectors(self.native, sizes, offset)
 
-	// Writes every buffer; offset -1 uses the current position. A nonnegative offset on a handle opened for append returns EINVAL.
+	// Writes every buffer; offset -1 uses the current position. A nonnegative offset on
+	// a handle opened for append returns EINVAL.
 	fn write_vectors(buffers: List[Bytes], offset: Int) Unit!:
 		return msstd_fs_file_write_vectors(self.native, buffers, offset)
 
-	// Moves the position to `offset` bytes from `origin` and returns the new position; the OS validates the resulting offset.
+	// Moves the position to `offset` bytes from `origin` and returns the new position;
+	// the OS validates the resulting offset.
 	fn seek(offset: Int, origin: Seek = Seek.Start) Int!:
 		return msstd_fs_file_seek(self.native, offset, seek_origin(origin))
 
@@ -280,8 +301,8 @@ impl FileHandle:
 	fn stat() FileInfo!:
 		return msstd_fs_file_stat(self.native)
 
-	// Sets the file length to `size` bytes, discarding the excess or extending with zero bytes. The current position is not moved.
-	// A negative size returns EINVAL.
+	// Sets the file length to `size` bytes, discarding the excess or extending with
+	// zero bytes. The current position is not moved. A negative size returns EINVAL.
 	fn truncate(size: Int) Unit!:
 		return msstd_fs_file_truncate(self.native, size)
 
@@ -289,8 +310,9 @@ impl FileHandle:
 	fn sync() Unit!:
 		return msstd_fs_file_sync(self.native)
 
-	// Flushes the file's data to stable storage, skipping metadata that is not needed to read it back where the host allows.
-	// Hosts without a separate data sync perform a full sync.
+	// Flushes the file's data to stable storage, skipping metadata that is not needed
+	// to read it back where the host allows. Hosts without a separate data sync perform
+	// a full sync.
 	fn data_sync() Unit!:
 		return msstd_fs_file_data_sync(self.native)
 
@@ -303,8 +325,9 @@ impl FileHandle:
 		taken := msstd_fs_file_try_lock(self.native, exclusive)?
 		return ok(taken == 1)
 
-	// Takes an advisory lock like `try_lock`, retrying every few milliseconds for up to `timeout`; none waits until it is granted.
-	// Returns False when the timeout passes first. The wait is a cancellable sleep, so task cancellation ends it.
+	// Takes an advisory lock like `try_lock`, retrying every few milliseconds for up to
+	// `timeout`; none waits until it is granted. Returns False when the timeout passes
+	// first. The wait is a cancellable sleep, so task cancellation ends it.
 	fn lock(exclusive: Bool, timeout: Duration?) Bool!:
 		started := monotonic()
 
@@ -317,7 +340,8 @@ impl FileHandle:
 
 		return ok(false)
 
-	// Releases the advisory lock this handle holds; releasing when none is held succeeds.
+	// Releases the advisory lock this handle holds; releasing when none is held
+	// succeeds.
 	fn unlock() Unit!:
 		return msstd_fs_file_unlock(self.native)
 
@@ -325,16 +349,20 @@ impl FileHandle:
 	fn chmod(mode: Int) Unit!:
 		return msstd_fs_file_chmod(self.native, mode)
 
-	// Sets the owner and group of the open file by numeric id; -1 leaves that id unchanged. Usually needs privilege.
+	// Sets the owner and group of the open file by numeric id; -1 leaves that id
+	// unchanged. Usually needs privilege.
 	fn chown(uid: Int, gid: Int) Unit!:
 		return msstd_fs_file_chown(self.native, uid, gid)
 
-	// Sets the access and modification times of the open file. Returns ENOTSUP on hosts without descriptor timestamps.
+	// Sets the access and modification times of the open file. Returns ENOTSUP on hosts
+	// without descriptor timestamps.
 	fn set_times(accessed: Timestamp, modified: Timestamp) Unit!:
 		return msstd_fs_file_set_times(self.native, accessed, modified)
 
-	// Reads from the current position to the end and returns the lines with their `\n` or `\r\n` terminators removed.
-	// Invalid UTF-8 returns EBADMSG, and more bytes than `max_bytes` or lines than `max_lines` returns EOVERFLOW. A negative `max_bytes` or `max_lines` returns EINVAL.
+	// Reads from the current position to the end and returns the lines with their `\n`
+	// or `\r\n` terminators removed. Invalid UTF-8 returns EBADMSG, and more bytes than
+	// `max_bytes` or lines than `max_lines` returns EOVERFLOW. A negative `max_bytes`
+	// or `max_lines` returns EINVAL.
 	fn read_lines(max_bytes: Int?, max_lines: Int?) List[String]!:
 		return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
 
@@ -374,7 +402,8 @@ export extern type NativeDirectory
 
 // An open directory that yields one child per read and must be closed.
 export opaque type Directory:
-	// The runtime handle for the open directory; it is released by `close` and owned by this value.
+	// The runtime handle for the open directory; it is released by `close` and owned by
+	// this value.
 	native: NativeDirectory
 
 impl Closeable for Directory:
@@ -394,10 +423,12 @@ impl Directory:
 	fn read() DirectoryEntry?!:
 		return msstd_fs_directory_read(self.native)
 
-// A directory is a stream source: `ReadStream[DirectoryEntry](open_directory(path))` yields its children in native
-// order, so steps compose: `... | filter(...) | collect(none)`. Closing the stream closes the directory.
+// A directory is a stream source: `ReadStream[DirectoryEntry](open_directory(path))`
+// yields its children in native order, so steps compose:
+// `... | filter(...) | collect(none)`. Closing the stream closes the directory.
 impl Source[DirectoryEntry] for Directory:
-	// The next child entry, or none after the last one; the order is the native directory order.
+	// The next child entry, or none after the last one; the order is the native
+	// directory order.
 	var fn next() DirectoryEntry?!:
 		return msstd_fs_directory_read(self.native)
 
@@ -413,13 +444,15 @@ export opaque type RawWatcher:
 	// The runtime handle for the watch; the stream releases it when it closes.
 	native: NativeWatcher
 
-// Events one native call returned and the reader has not taken yet, newest first so `pop` moves the next one out.
+// Events one native call returned and the reader has not taken yet, newest first so
+// `pop` moves the next one out.
 type WatchSource:
 	watcher: RawWatcher
 	pending: List[FileEvent]
 
 impl Source[FileEvent] for WatchSource:
-	// Waits for the next change. A closed watcher is `EBADF`; a native watcher that overflowed with policy `error` is `EOVERFLOW`.
+	// Waits for the next change. A closed watcher is `EBADF`; a native watcher that
+	// overflowed with policy `error` is `EOVERFLOW`.
 	var fn next() FileEvent?!:
 		while true:
 			if event := self.pending.pop(): return ok(event)
@@ -442,7 +475,8 @@ export extern type NativeTemporary
 
 // A temporary directory whose contents are removed when it is closed.
 export opaque type TemporaryDirectory:
-	// The runtime handle for the directory; it is released by `close` and owned by this value.
+	// The runtime handle for the directory; it is released by `close` and owned by this
+	// value.
 	native: NativeTemporary
 
 impl Closeable for TemporaryDirectory:
@@ -452,23 +486,29 @@ impl Closeable for TemporaryDirectory:
 		_ := msstd_fs_temporary_close(self.native)
 
 impl TemporaryDirectory:
-	// Returns the absolute path of the directory, created under the host's temporary root.
+	// Returns the absolute path of the directory, created under the host's temporary
+	// root.
 	fn path() String:
 		return msstd_fs_temporary_path(self.native)
 
 // One filesystem change and the affected path.
 export type FileEvent:
-	// Path of the affected entry, formed from the watched path plus any child components.
+	// Path of the affected entry, formed from the watched path plus any child
+	// components.
 	path: String
-	// Exactly `rename` (appearance/disappearance/rename) or `change` (contents/metadata).
+	// Exactly `rename` (appearance/disappearance/rename) or `change`
+	// (contents/metadata).
 	kind: String
 
 // Capacity/free-space statistics: block_size is bytes, blocks/free/available are counts
-// in those blocks, and files/files_free are native file-node counts (zero if unavailable).
+// in those blocks, and files/files_free are native file-node counts (zero if
+// unavailable).
 export type FileSystemInfo:
-	// The host's numeric filesystem type code, such as the magic number reported by Linux; 0 where unavailable.
+	// The host's numeric filesystem type code, such as the magic number reported by
+	// Linux; 0 where unavailable.
 	type_id: Int
-	// Size in bytes of the blocks that `blocks`, `blocks_free`, and `blocks_available` count.
+	// Size in bytes of the blocks that `blocks`, `blocks_free`, and `blocks_available`
+	// count.
 	block_size: Int
 	// Total number of blocks in the filesystem.
 	blocks: Int
@@ -476,12 +516,14 @@ export type FileSystemInfo:
 	blocks_free: Int
 	// Number of unused blocks available to unprivileged users.
 	blocks_available: Int
-	// Total number of file nodes, such as inodes, the filesystem can hold; 0 where unavailable.
+	// Total number of file nodes, such as inodes, the filesystem can hold; 0 where
+	// unavailable.
 	files: Int
 	// Number of unused file nodes; 0 where unavailable.
 	files_free: Int
 
-// Whether a copy asks the filesystem to clone file data (copy-on-write) instead of copying bytes.
+// Whether a copy asks the filesystem to clone file data (copy-on-write) instead of
+// copying bytes.
 export enum CloneMode:
 	// Always copy the bytes; never ask the filesystem to clone.
 	Off
@@ -492,23 +534,32 @@ export enum CloneMode:
 
 // Policies for recursive copies, including replacement, symlinks, and optional limits.
 export type CopyOptions:
-	// When True, directories are copied with their contents; when False, a directory source returns EINVAL.
+	// When True, directories are copied with their contents; when False, a directory
+	// source returns EINVAL.
 	recursive: Bool = false
-	// When True, an existing destination file or link is replaced; when False, an existing destination returns EEXIST.
+	// When True, an existing destination file or link is replaced; when False, an
+	// existing destination returns EEXIST.
 	replace: Bool = false
-	// When True, symbolic links are followed and their targets copied; when False, links are recreated as links.
+	// When True, symbolic links are followed and their targets copied; when False,
+	// links are recreated as links.
 	dereference: Bool = false
-	// When True, copied files and directories keep the source's access and modification times.
+	// When True, copied files and directories keep the source's access and modification
+	// times.
 	preserve_timestamps: Bool = false
-	// When True, a copied link keeps its target text unchanged. When False, a relative target is rewritten relative to the source directory so it still reaches the original file.
+	// When True, a copied link keeps its target text unchanged. When False, a relative
+	// target is rewritten relative to the source directory so it still reaches the
+	// original file.
 	verbatim_symlinks: Bool = false
 	// Whether to clone file data natively instead of copying bytes.
 	clone: CloneMode = CloneMode.Off
-	// Most files, directories, and links visited, counting the root. Exceeding it returns EOVERFLOW. none sets no limit.
+	// Most files, directories, and links visited, counting the root. Exceeding it
+	// returns EOVERFLOW. none sets no limit.
 	max_entries: Int? = none
-	// Most file bytes copied in total. Exceeding it returns EOVERFLOW. none sets no limit.
+	// Most file bytes copied in total. Exceeding it returns EOVERFLOW. none sets no
+	// limit.
 	max_bytes: Int? = none
-	// Called with each source and destination path; the entry is skipped when it returns False. none copies everything.
+	// Called with each source and destination path; the entry is skipped when it
+	// returns False. none copies everything.
 	filter: (fn(String, String) Bool)? = none
 
 // `CopyOptions` as the native walk reads it: `clone` as text and the replacement policy as two flags.
@@ -531,11 +582,13 @@ Every field has a default, so `WatchOptions()` watches natively with no limits a
 export type WatchOptions:
 	// Polling period, which must be positive. none watches with native OS events.
 	interval: Duration? = none
-	// Most paths under the root, counted when the watcher starts. Exceeding it returns EOVERFLOW. none sets no limit.
+	// Most paths under the root, counted when the watcher starts. Exceeding it returns
+	// EOVERFLOW. none sets no limit.
 	max_entries: Int? = none
 	// Most queued native events. Native watchers only. none sets no limit.
 	max_events: Int? = none
-	// What a native watcher does when its queue overflows: exactly `error` (default) or `ignore`. Native watchers only.
+	// What a native watcher does when its queue overflows: exactly `error` (default) or
+	// `ignore`. Native watchers only.
 	overflow: String? = none
 
 // A matched path together with its filesystem entry metadata.
@@ -549,13 +602,17 @@ export type PathEntry:
 export type GlobOptions:
 	// Glob patterns to include; an entry that matches any of them is returned.
 	patterns: List[String]
-	// Glob patterns for entries to skip; a match is neither returned nor searched further.
+	// Glob patterns for entries to skip; a match is neither returned nor searched
+	// further.
 	exclude: List[String] = []
-	// When True, symbolic links to directories are traversed, with cycles detected; when False, links are reported but not entered.
+	// When True, symbolic links to directories are traversed, with cycles detected;
+	// when False, links are reported but not entered.
 	follow_links: Bool = false
-	// Most filesystem entries visited while searching. Exceeding it returns EOVERFLOW. none sets no limit.
+	// Most filesystem entries visited while searching. Exceeding it returns EOVERFLOW.
+	// none sets no limit.
 	max_entries: Int? = none
-	// Most distinct matches returned. Exceeding it returns EOVERFLOW. none sets no limit.
+	// Most distinct matches returned. Exceeding it returns EOVERFLOW. none sets no
+	// limit.
 	max_results: Int? = none
 
 // The filesystem of the current host.
@@ -576,7 +633,7 @@ sources := glob(".", GlobOptions(patterns: ["*.ms"]))?
 export fn glob(
 	path: String,
 	options: GlobOptions,
-	exclude: (fn(PathEntry) Bool)? = none
+	exclude: (fn(PathEntry) Bool)? = none,
 ) List[PathEntry]!:
 	return host().glob(path, options, exclude)
 
@@ -602,14 +659,18 @@ copy("a.txt", "b.txt", CopyOptions(replace: true))?
 export fn copy(
 	source: String,
 	destination: String,
-	options: CopyOptions = CopyOptions()
+	options: CopyOptions = CopyOptions(),
 ) Unit!:
 	native := NativeCopyOptions(
-		recursive: options.recursive, replace: options.replace, error_on_exists: true,
+		recursive: options.recursive,
+		replace: options.replace,
+		error_on_exists: true,
 		dereference: options.dereference,
 		preserve_timestamps: options.preserve_timestamps,
-		verbatim_symlinks: options.verbatim_symlinks, clone: clone_text(options.clone),
-		max_entries: options.max_entries, max_bytes: options.max_bytes
+		verbatim_symlinks: options.verbatim_symlinks,
+		clone: clone_text(options.clone),
+		max_entries: options.max_entries,
+		max_bytes: options.max_bytes,
 	)
 	return host().copy(source, destination, native, options.filter)
 
@@ -628,14 +689,16 @@ export fn create_directory(path: String, recursive: Bool = false) Unit!:
 export fn create_symlink(path: String, target: String) Unit!:
 	return msstd_fs_create_link(path, target)
 
-// Lists a directory, optionally limiting the number of returned entries.
-// A name that is not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer addresses the entry. The same holds for `glob`, `stat` names and directory cursors.
+// Lists a directory, optionally limiting the number of returned entries. A name that is
+// not valid UTF-8 is listed with U+FFFD in place of each invalid byte, so it no longer
+// addresses the entry. The same holds for `glob`, `stat` names and directory cursors.
 // ms: effect std.fs.read
 export fn list(path: String, max_entries: Int? = none) List[DirectoryEntry]!:
 	return msstd_fs_list(path, max_entries)
 
-// A slot among the few in-flight copies of large write payloads. The blocking pool has a few threads, so a caller
-// that would copy a large payload parks until a slot is free instead of piling copies up; closing it frees the slot.
+// A slot among the few in-flight copies of large write payloads. The blocking pool has
+// a few threads, so a caller that would copy a large payload parks until a slot is free
+// instead of piling copies up; closing it frees the slot.
 type WritePermit:
 	held: Bool
 
@@ -651,12 +714,14 @@ fn already_exists() Error:
 fn invalid_input() Error:
 	return Error("filesystem: invalid input", kind: "EINVAL")
 
-// Starts reading a file fully into memory and returns its promise. Supply `max_bytes` for untrusted or large files.
+// Starts reading a file fully into memory and returns its promise. Supply `max_bytes`
+// for untrusted or large files.
 // ms: effect std.fs.read
 export fn read_file(path: String, max_bytes: Int? = none) Promise[Bytes]:
 	return owned_task[Bytes](read_job(path.clone(), max_bytes))
 
-// The work of `read_file`: a returned closure owns its captures, so the promise borrows nothing.
+// The work of `read_file`: a returned closure owns its captures, so the promise borrows
+// nothing.
 fn read_job(path: String, max_bytes: Int?) fn() Bytes!:
 	return fn: msstd_fs_read_file(path, max_bytes)
 
@@ -666,20 +731,23 @@ fn read_job(path: String, max_bytes: Int?) fn() Bytes!:
 export fn read_symlink(path: String) String!:
 	return msstd_fs_read_link(path)
 
-// Removes a file or empty directory; recursive defaults to False, retaining nonempty trees.
-// A missing path returns ENOENT, except that a recursive removal of a missing path succeeds.
+// Removes a file or empty directory; recursive defaults to False, retaining nonempty
+// trees. A missing path returns ENOENT, except that a recursive removal of a missing
+// path succeeds.
 // ms: effect std.fs.delete
 export fn remove(path: String, recursive: Bool = false) Unit!:
 	return msstd_fs_remove(path, recursive)
 
-// Moves `source` to `destination` using the operating system's rename, applying its rules for replacing an existing destination.
-// It never falls back to copying, so a move across devices returns an error.
+// Moves `source` to `destination` using the operating system's rename, applying its
+// rules for replacing an existing destination. It never falls back to copying, so a
+// move across devices returns an error.
 // ms: effect std.fs.write
 // ms: effect std.fs.delete
 export fn rename(source: String, destination: String) Unit!:
 	return msstd_fs_rename(source, destination)
 
-// Returns metadata for `path`. `follow_links` True (the default) describes the link target and False describes the link itself.
+// Returns metadata for `path`. `follow_links` True (the default) describes the link
+// target and False describes the link itself.
 // ms: effect std.fs.read
 export fn stat(path: String, follow_links: Bool = true) FileInfo!:
 	return msstd_fs_stat(path, follow_links)
@@ -695,7 +763,8 @@ export fn temporary_root() String!:
 export fn temporary_directory(prefix: String) String!:
 	return msstd_fs_temporary_directory(prefix)
 
-// Starts creating a file exclusively and returns its promise; replace defaults to False, retaining an existing file.
+// Starts creating a file exclusively and returns its promise; replace defaults to
+// False, retaining an existing file.
 // `data` is text (written as UTF-8) or `Bytes`.
 // ms: effect std.fs.write
 export fn write_file(path: String, data: Writable, replace: Bool = false) Promise[Unit]:
@@ -703,21 +772,23 @@ export fn write_file(path: String, data: Writable, replace: Bool = false) Promis
 	held := msstd_fs_admit(payload.length())
 	return owned_task[Unit](write_job(path.clone(), payload, replace, held))
 
-// The work of `write_file`. The task runs at once, so the slot frees the moment the write ends, not when the
-// promise is dropped: `permit` is a local that closes at the end of the closure.
+// The work of `write_file`. The task runs at once, so the slot frees the moment the
+// write ends, not when the promise is dropped: `permit` is a local that closes at the
+// end of the closure.
 fn write_job(path: String, data: Bytes, replace: Bool, held: Bool) fn() Unit!:
 	return fn:
 		permit := WritePermit(held: held)
 		return msstd_fs_write_file(path, data, replace)
 
-// Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined bits.
-// Native permissions and Windows access policy still apply.
+// Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined
+// bits. Native permissions and Windows access policy still apply.
 // ms: effect std.fs.read
 export fn access(path: String, mode: Int) Unit!:
 	return msstd_fs_access(path, mode)
 
-// Starts appending `data` (text or `Bytes`) to the end of the file and returns its promise, creating the file with mode 0600 when absent.
-// Writes every byte or fails, possibly leaving a partial append.
+// Starts appending `data` (text or `Bytes`) to the end of the file and returns its
+// promise, creating the file with mode 0600 when absent. Writes every byte or fails,
+// possibly leaving a partial append.
 // ms: effect std.fs.write
 export fn append_file(path: String, data: Writable) Promise[Unit]:
 	payload := data.as_bytes()
@@ -729,7 +800,9 @@ fn append_job(path: String, data: Bytes, held: Bool) fn() Unit!:
 		permit := WritePermit(held: held)
 		return msstd_fs_append_file(path, data)
 
-// Changes target permissions with mode 0..4095. `follow_links` True (the default) follows a final symbolic link; False changes the link itself, which returns ENOTSUP on hosts lacking this operation.
+// Changes target permissions with mode 0..4095. `follow_links` True (the default)
+// follows a final symbolic link; False changes the link itself, which returns ENOTSUP
+// on hosts lacking this operation.
 // ms: effect std.fs.write
 export fn chmod(path: String, mode: Int, follow_links: Bool = true) Unit!:
 	return msstd_fs_chmod(path, mode, follow: follow_links)
@@ -746,19 +819,20 @@ export fn chown(path: String, uid: Int, gid: Int, follow_links: Bool = true) Uni
 export fn truncate(path: String, size: Int) Unit!:
 	return msstd_fs_truncate(path, size)
 
-// Sets the access and modification times of `path`. `follow_links` True (the default) follows a final symbolic link;
-// False updates the link itself, with ENOTSUP where the host lacks it, such as Windows.
+// Sets the access and modification times of `path`. `follow_links` True (the default)
+// follows a final symbolic link; False updates the link itself, with ENOTSUP where the
+// host lacks it, such as Windows.
 // ms: effect std.fs.write
 export fn set_times(
 	path: String,
 	accessed: Timestamp,
 	modified: Timestamp,
-	follow_links: Bool = true
+	follow_links: Bool = true,
 ) Unit!:
 	return msstd_fs_set_times(path, accessed, modified, follow: follow_links)
 
-// Creates `destination` as another name for the file at `source`.
-// An existing destination returns EEXIST; it must be on the same filesystem as `source`.
+// Creates `destination` as another name for the file at `source`. An existing
+// destination returns EEXIST; it must be on the same filesystem as `source`.
 // ms: effect std.fs.write
 export fn create_hard_link(source: String, destination: String) Unit!:
 	return msstd_fs_hard_link(source, destination)
@@ -787,13 +861,14 @@ file := open("out.log", OpenMode.Append)?
 export fn open(
 	path: String,
 	mode: OpenMode = OpenMode.Read,
-	options: OpenOptions = OpenOptions()
+	options: OpenOptions = OpenOptions(),
 ) FileHandle!:
 	return msstd_fs_open(path, open_flags(mode, options.exclusive), options.permissions)
 
-// Opens `path` as a directory cursor that yields one child per `read` in native order; close it when done.
-// It is also a stream source: `stream[DirectoryEntry](open_directory(path)?)`.
-// A path that is not a directory returns EINVAL.
+// Opens `path` as a directory cursor that yields one child per `read` in native order;
+// close it when done. It is also a stream source:
+// `stream[DirectoryEntry](open_directory(path)?)`. A path that is not a directory
+// returns EINVAL.
 // ms: effect std.fs.read
 export fn open_directory(path: String) Directory!:
 	return msstd_fs_directory_open(path)
@@ -811,15 +886,17 @@ export fn write_atomic(path: String, data: Writable) Promise[Unit]:
 fn atomic_job(path: String, data: Bytes) fn() Unit!:
 	return fn: replace_atomically(path, data)
 
-// The file a write to `path` replaces: the target of a symbolic link, so the link stays, else `path`.
-// A link that cannot be resolved (a dangling one) is replaced itself.
+// The file a write to `path` replaces: the target of a symbolic link, so the link
+// stays, else `path`. A link that cannot be resolved (a dangling one) is replaced
+// itself.
 fn through_links(path: String) String:
 	link := stat(path, follow_links: false)
 	if link.is_error() or not link.get().is_symlink(): return path.clone()
 
 	return canonicalize(path).get(path.clone())
 
-// A sibling name for `path` that stays within the 255-byte file name limit: the file name is cut to 32 characters.
+// A sibling name for `path` that stays within the 255-byte file name limit: the file
+// name is cut to 32 characters.
 fn temporary_name(path: String, stamp: String) String:
 	var split = 0
 	if slash := path.last_index_of("/"): split = slash + 1
@@ -841,29 +918,37 @@ fn replace_atomically(link: String, data: Bytes) Unit!:
 
 	while attempt < 16:
 		temporary := temporary_name(
-			path, "{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}"
+			path,
+			"{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}",
 		)
 		attempt += 1
 
 		match open(
-			temporary, OpenMode.Write, OpenOptions(exclusive: true, permissions: mode)
+			temporary,
+			OpenMode.Write,
+			OpenOptions(exclusive: true, permissions: mode),
 		):
 			ok(file):
 				return finish_atomic(
-					file, temporary, path, data, if existing.is_ok(): mode else: none
+					file,
+					temporary,
+					path,
+					data,
+					if existing.is_ok(): mode else: none,
 				)
 			error(cause):
 				if cause.kind != "EEXIST": return error(cause)
 
 	return error(already_exists())
 
-// Writes, syncs, closes and renames the temporary file, removing it when any step fails.
+// Writes, syncs, closes and renames the temporary file, removing it when any step
+// fails.
 fn finish_atomic(
 	file: FileHandle,
 	temporary: String,
 	path: String,
 	data: Bytes,
-	mode: Int?
+	mode: Int?,
 ) Unit!:
 	var out = file
 	var prepared = out.write(data)
@@ -886,8 +971,11 @@ fn finish_atomic(
 		_cleaned := remove(temporary)
 	return moved
 
-// Moves a file or tree from `source` to `destination`, across filesystems too.
-// It renames when it can. When the rename fails with a host error other than a missing or protected path, as a move across devices does, it copies the tree, then removes `source`, and removes the partial copy if copying fails. A destination that already exists is not replaced by the copy fallback and returns EEXIST.
+// Moves a file or tree from `source` to `destination`, across filesystems too. It
+// renames when it can. When the rename fails with a host error other than a missing or
+// protected path, as a move across devices does, it copies the tree, then removes
+// `source`, and removes the partial copy if copying fails. A destination that already
+// exists is not replaced by the copy fallback and returns EEXIST.
 // ms: effect std.fs.write
 // ms: effect std.fs.delete
 export fn move(source: String, destination: String) Unit!:
@@ -905,7 +993,9 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
 	if stat(destination, follow_links: false).is_ok(): return error(already_exists())
 
 	copied := copy(
-		source, destination, CopyOptions(recursive: info.get().is_directory())
+		source,
+		destination,
+		CopyOptions(recursive: info.get().is_directory()),
 	)
 
 	if copied.is_error():
@@ -931,7 +1021,7 @@ var watcher = watch("src", recursive: true, options: WatchOptions(interval: 1.se
 export fn watch(
 	path: String,
 	recursive: Bool = false,
-	options: WatchOptions = WatchOptions()
+	options: WatchOptions = WatchOptions(),
 ) ReadStream[FileEvent]!:
 	if interval := options.interval:
 		if options.max_events.is_some() or options.overflow.is_some(): return error(
@@ -940,7 +1030,10 @@ export fn watch(
 		return ok(
 			watch_stream(
 				msstd_fs_watch(
-					path, recursive, interval, options.max_entries
+					path,
+					recursive,
+					interval,
+					options.max_entries,
 				)?
 			)
 		)
@@ -948,14 +1041,17 @@ export fn watch(
 	return ok(
 		watch_stream(
 			msstd_fs_watch_native(
-				path, recursive, options.max_entries, options.max_events,
-				options.overflow.get("error")
+				path,
+				recursive,
+				options.max_entries,
+				options.max_events,
+				options.overflow.get("error"),
 			)?
 		)
 	)
 
-// Creates a new temp directory whose contents are removed by scoped close.
-// Prefix has the same validation as temporary_directory; this does not query the temp root.
+// Creates a new temp directory whose contents are removed by scoped close. Prefix has
+// the same validation as temporary_directory; this does not query the temp root.
 // ms: effect std.fs.write
 export fn temporary(prefix: String) TemporaryDirectory!:
 	return msstd_fs_temporary_open(prefix)

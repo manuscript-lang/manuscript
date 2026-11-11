@@ -277,9 +277,18 @@ fn plural_issues(n: Int) String:
 
 fn blank_issue() Issue:
 	return Issue(
-		id: 0, title: "", state: "", priority: "medium", assignee: none, reporter: none,
-		points: none, due: none, labels: List[String](), comments: List[Comment](),
-		created: 0, updated: 0
+		id: 0,
+		title: "",
+		state: "",
+		priority: "medium",
+		assignee: none,
+		reporter: none,
+		points: none,
+		due: none,
+		labels: List[String](),
+		comments: List[Comment](),
+		created: 0,
+		updated: 0,
 	)
 
 fn unmet(iss: Issue, g: String) Bool:
@@ -332,7 +341,8 @@ fn rest_after(s: String, k: Int) String:
 		i += 1
 	return s.slice(i, n).get()
 
-// token style: whitespace separates tokens, quotes group, \" and \\ escape inside quotes
+// token style: whitespace separates tokens, quotes group, \" and \\ escape inside
+// quotes
 fn tokens(s: String) Toks:
 	cs := s.chars()
 	n := cs.length()
@@ -439,8 +449,9 @@ fn split_sort(s: String) SplitSort:
 
 		if hit:
 			return SplitSort(
-				text: s.slice(0, i).get().trim(), has: true,
-				sort: s.slice(i + 4, n).get().trim()
+				text: s.slice(0, i).get().trim(),
+				has: true,
+				sort: s.slice(i + 4, n).get().trim(),
 			)
 
 		i += 1
@@ -494,8 +505,9 @@ fn split_where(s: String) Pair:
 
 			if at_end:
 				return Pair(
-					a: s.slice(0, i).get().trim(), b: s.slice(i + 5, n).get().trim(),
-					found: true
+					a: s.slice(0, i).get().trim(),
+					b: s.slice(i + 5, n).get().trim(),
+					found: true,
 				)
 
 		i += 1
@@ -533,7 +545,7 @@ fn value_error(
 	op: String,
 	a: String,
 	views: List[String],
-	states: List[String]
+	states: List[String],
 ) String:
 	bad := "query: bad value '" + a + "' for field '" + field + "'"
 
@@ -613,8 +625,12 @@ impl QP:
 
 			left = self.push(
 				QNode(
-					kind: 2, left: left, right: right, field: "", op: "",
-					alts: List[String]()
+					kind: 2,
+					left: left,
+					right: right,
+					field: "",
+					op: "",
+					alts: List[String](),
 				)
 			)
 			self.skip_ws()
@@ -638,8 +654,12 @@ impl QP:
 
 			left = self.push(
 				QNode(
-					kind: 1, left: left, right: right, field: "", op: "",
-					alts: List[String]()
+					kind: 1,
+					left: left,
+					right: right,
+					field: "",
+					op: "",
+					alts: List[String](),
 				)
 			)
 
@@ -656,7 +676,12 @@ impl QP:
 
 			return self.push(
 				QNode(
-					kind: 3, left: c, right: -1, field: "", op: "", alts: List[String]()
+					kind: 3,
+					left: c,
+					right: -1,
+					field: "",
+					op: "",
+					alts: List[String](),
 				)
 			)
 
@@ -822,14 +847,25 @@ impl QP:
 
 		return self.push(
 			QNode(
-				kind: 0, left: -1, right: -1, field: field, op: op, alts: alts
+				kind: 0,
+				left: -1,
+				right: -1,
+				field: field,
+				op: op,
+				alts: alts,
 			)
 		)
 
 fn compile_query(text: String, views: List[String], states: List[String]) QP:
 	var p = QP(
-		cs: text.chars(), pos: 0, nodes: List[QNode](), refs: List[String](), err: "",
-		root: -1, views: views.clone(), states: states.clone()
+		cs: text.chars(),
+		pos: 0,
+		nodes: List[QNode](),
+		refs: List[String](),
+		err: "",
+		root: -1,
+		views: views.clone(),
+		states: states.clone(),
 	)
 	p.skip_ws()
 	if p.pos >= p.cs.length(): return p
@@ -850,8 +886,9 @@ fn parse_arrow(ln: String) Arrow:
 	rest := ln.slice(p + 2, ln.scalar_length()).get()
 	if not valid_state(src):
 		return Arrow(
-			src: src.clone(), entries: List[Trans](),
-			err: "workflow: bad state name '" + src + "'"
+			src: src.clone(),
+			entries: List[Trans](),
+			err: "workflow: bad state name '" + src + "'",
 		)
 
 	var entries = List[Trans]()
@@ -862,16 +899,18 @@ fn parse_arrow(ln: String) Arrow:
 		if ws.length() == 1:
 			if not valid_state(ws[0]):
 				return Arrow(
-					src: src, entries: entries,
-					err: "workflow: bad state name '" + ws[0] + "'"
+					src: src,
+					entries: entries,
+					err: "workflow: bad state name '" + ws[0] + "'",
 				)
 
 			entries.append(Trans(target: ws[0].clone(), guards: List[String]()))
 		else if ws.length() == 3 and ws[1] == "requires":
 			if not valid_state(ws[0]):
 				return Arrow(
-					src: src, entries: entries,
-					err: "workflow: bad state name '" + ws[0] + "'"
+					src: src,
+					entries: entries,
+					err: "workflow: bad state name '" + ws[0] + "'",
 				)
 
 			var guards = List[String]()
@@ -879,8 +918,9 @@ fn parse_arrow(ln: String) Arrow:
 			for g in ws[2].split("+"):
 				if not GUARDS.contains(g):
 					return Arrow(
-						src: src, entries: entries,
-						err: "workflow: bad guard field '" + g + "'"
+						src: src,
+						entries: entries,
+						err: "workflow: bad guard field '" + g + "'",
 					)
 
 				guards.append(g.clone())
@@ -888,7 +928,9 @@ fn parse_arrow(ln: String) Arrow:
 			entries.append(Trans(target: ws[0].clone(), guards: guards))
 		else:
 			return Arrow(
-				src: src, entries: entries, err: "workflow: bad line '" + ln + "'"
+				src: src,
+				entries: entries,
+				err: "workflow: bad line '" + ln + "'",
 			)
 
 	return Arrow(src: src, entries: entries, err: "")
@@ -948,7 +990,8 @@ fn parse_wf(body: List[String]) WfParse:
 						states.append(e.target.clone())
 					lst.append(
 						Trans(
-							target: e.target.clone(), guards: e.guards.clone()
+							target: e.target.clone(),
+							guards: e.guards.clone(),
 						)
 					)
 					ntrans += 1
@@ -970,11 +1013,15 @@ fn parse_wf(body: List[String]) WfParse:
 	if err != "":
 		return WfParse(
 			wf: Workflow(
-				defined: false, states: List[String](), index: Map[String, Int](),
-				initial: "", finals: List[String](), trans: Map[String, List[Trans]](),
-				ntrans: 0
+				defined: false,
+				states: List[String](),
+				index: Map[String, Int](),
+				initial: "",
+				finals: List[String](),
+				trans: Map[String, List[Trans]](),
+				ntrans: 0,
 			),
-			err: err
+			err: err,
 		)
 
 	var index = Map[String, Int]()
@@ -982,10 +1029,15 @@ fn parse_wf(body: List[String]) WfParse:
 		index[states[k].clone()] = k
 	return WfParse(
 		wf: Workflow(
-			defined: true, states: states, index: index, initial: initial,
-			finals: finals, trans: trans, ntrans: ntrans
+			defined: true,
+			states: states,
+			index: index,
+			initial: initial,
+			finals: finals,
+			trans: trans,
+			ntrans: ntrans,
 		),
-		err: ""
+		err: "",
 	)
 
 // ---------- issue field updates ----------
@@ -1111,7 +1163,7 @@ fn group_before(
 	b: Int,
 	pts: List[Int],
 	counts: List[Int],
-	keys: List[String]
+	keys: List[String],
 ) Bool:
 	if pts[a] != pts[b]: return pts[a] > pts[b]
 	if counts[a] != counts[b]: return counts[a] > counts[b]
@@ -1131,7 +1183,10 @@ impl App:
 	var fn log_add(id: Int, detail: String) Unit:
 		self.log.append(
 			LogEntry(
-				t: self.clock, actor: self.actor.clone(), id: id, detail: detail
+				t: self.clock,
+				actor: self.actor.clone(),
+				id: id,
+				detail: detail,
 			)
 		)
 
@@ -1323,8 +1378,9 @@ impl App:
 			if r == target: return true
 
 			sub := compile_query(
-				filter_part(self.views.get(r).get("")), self.view_names(),
-				self.wf.states
+				filter_part(self.views.get(r).get("")),
+				self.view_names(),
+				self.wf.states,
 			)
 			if self.reaches(sub.refs, target): return true
 
@@ -1371,7 +1427,7 @@ impl App:
 		sort_text: String,
 		has_sort: Bool,
 		limit: Int,
-		has_limit: Bool
+		has_limit: Bool,
 	) String:
 		q := compile_query(filter, self.view_names(), self.wf.states)
 		if q.err != "": return q.err
@@ -1440,7 +1496,7 @@ impl App:
 		if not found:
 			return Out(
 				ok: false,
-				text: "transition '" + iss.state + " -> " + to + "' not allowed"
+				text: "transition '" + iss.state + " -> " + to + "' not allowed",
 			)
 
 		var missing = List[String]()
@@ -1452,7 +1508,7 @@ impl App:
 				ok: false,
 				text: "cannot move #{id} to " + to + ": missing " + missing.join(
 					", "
-				)
+				),
 			)
 
 		prev := iss.state.clone()
@@ -1464,7 +1520,9 @@ impl App:
 		if comment != "":
 			iss.comments.append(
 				Comment(
-					t: self.clock, actor: self.actor.clone(), text: comment.clone()
+					t: self.clock,
+					actor: self.actor.clone(),
+					text: comment.clone(),
 				)
 			)
 			self.log_add(id, "comment: " + comment)
@@ -1541,7 +1599,9 @@ impl App:
 		self.clock += 1
 		iss.comments.append(
 			Comment(
-				t: self.clock, actor: self.actor.clone(), text: text.clone()
+				t: self.clock,
+				actor: self.actor.clone(),
+				text: text.clone(),
 			)
 		)
 		iss.updated = self.clock
@@ -1622,10 +1682,18 @@ impl App:
 			return
 
 		var iss = Issue(
-			id: self.next_id, title: title.clone(), state: self.wf.initial.clone(),
-			priority: "medium", assignee: none, reporter: self.actor.clone(),
-			points: none, due: none, labels: List[String](), comments: List[Comment](),
-			created: 0, updated: 0
+			id: self.next_id,
+			title: title.clone(),
+			state: self.wf.initial.clone(),
+			priority: "medium",
+			assignee: none,
+			reporter: self.actor.clone(),
+			points: none,
+			due: none,
+			labels: List[String](),
+			comments: List[Comment](),
+			created: 0,
+			updated: 0,
 		)
 		def := iss.clone()
 
@@ -2224,8 +2292,9 @@ impl App:
 		for m in names:
 			if m != name:
 				refs := compile_query(
-					filter_part(self.views.get(m).get("")), self.view_names(),
-					self.wf.states
+					filter_part(self.views.get(m).get("")),
+					self.view_names(),
+					self.wf.states,
 				).refs
 
 				if self.reaches(refs, name):
@@ -2351,9 +2420,13 @@ export fn main() Int:
 	raw := read_lines(stdin()).get()
 	var app = App(
 		wf: Workflow(
-			defined: false, states: List[String](), index: Map[String, Int](),
-			initial: "", finals: List[String](), trans: Map[String, List[Trans]](),
-			ntrans: 0
+			defined: false,
+			states: List[String](),
+			index: Map[String, Int](),
+			initial: "",
+			finals: List[String](),
+			trans: Map[String, List[Trans]](),
+			ntrans: 0,
 		),
 		clock: 0,
 		actor: "system",
@@ -2362,7 +2435,7 @@ export fn main() Int:
 		issues: Map[Int, Issue](),
 		log: List[LogEntry](),
 		views: Map[String, String](),
-		out: List[String]()
+		out: List[String](),
 	)
 	var lines = List[String]()
 	for r in raw:

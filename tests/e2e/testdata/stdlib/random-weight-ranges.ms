@@ -17,7 +17,7 @@ fn compare_draws(weights: List[Float], ordinary: List[Float]) Unit!:
 		_point := draws.float()
 		expect_equal(
 			scaled.weighted_choice([0, 1], weights),
-			reference.weighted_choice([0, 1], ordinary)
+			reference.weighted_choice([0, 1], ordinary),
 		)?
 
 	// Selection consumes exactly one draw, independent of the weight scale.
@@ -35,9 +35,10 @@ test "seeded weighted choices retain ratios across the Float range":
 
 test "ordinary weighted choices keep direct draws":
 	for weights in [
-		[1.0, 2.0], [max_float / 2.0, max_float / 4.0],
+		[1.0, 2.0],
+		[max_float / 2.0, max_float / 4.0],
 		[1.1125369292536007e-308, 1.1125369292536007e-308],
-		[0.8833108082136426, 0.1166891917863574]
+		[0.8833108082136426, 0.1166891917863574],
 	]:
 		var rng = seeded(0)
 		var direct = seeded(0)
@@ -48,13 +49,15 @@ test "ordinary weighted choices keep direct draws":
 			expected := if point < weights[0]: 0 else: 1
 			expect_equal(rng.weighted_choice([0, 1], weights), expected)?
 
-	// The largest unit draw rounds to the minimum-normal total; keep the last positive slot.
+	// The largest unit draw rounds to the minimum-normal total; keep the last positive
+	// slot.
 	var edge = seeded(3558559446808474027)
 	expect_equal(
 		edge.weighted_choice(
-			[0, 1, 2], [2.2250738585072014e-308 - min_float, min_float, 0.0]
+			[0, 1, 2],
+			[2.2250738585072014e-308 - min_float, min_float, 0.0],
 		),
-		1
+		1,
 	)?
 
 test "secure weighted choices accept finite extreme weights":
@@ -68,13 +71,13 @@ test "secure weighted choices accept finite extreme weights":
 			expect_some(
 				weighted_choice([0, 1, 2], [0.0, max_float, -0.0])?
 			)?,
-			1
+			1,
 		)?
 		expect_equal(
 			expect_some(
 				weighted_choice([0, 1, 2], [0.0, min_float, -0.0])?
 			)?,
-			1
+			1,
 		)?
 
 test "weighted choices retain zero exclusions and caller values":
@@ -82,12 +85,14 @@ test "weighted choices retain zero exclusions and caller values":
 	var tiny_last = seeded(7046029254386353131)
 	expect_equal(
 		tiny_first.weighted_choice(
-			[0, 1, 2], [min_float, max_float, max_float]
+			[0, 1, 2],
+			[min_float, max_float, max_float],
 		),
-		1
+		1,
 	)?
 	expect_equal(
-		tiny_last.weighted_choice([0, 1, 2], [max_float, max_float, min_float]), 0
+		tiny_last.weighted_choice([0, 1, 2], [max_float, max_float, min_float]),
+		0,
 	)?
 
 	// This seed makes the next SplitMix64 draw exactly zero.
@@ -107,8 +112,15 @@ fn invalid_seeded(weights: List[Float]) Unit:
 
 test "weighted choices preserve invalid input and empty behavior":
 	for weights in [
-		[0.0, 0.0], [-0.0, 0.0], [-1.0, 1.0], [nan, 1.0], [1.0, nan], [infinity, 1.0],
-		[1.0, -infinity], [1.0], List[Float]()
+		[0.0, 0.0],
+		[-0.0, 0.0],
+		[-1.0, 1.0],
+		[nan, 1.0],
+		[1.0, nan],
+		[infinity, 1.0],
+		[1.0, -infinity],
+		[1.0],
+		List[Float](),
 	]:
 		expect_equal((expect_error(weighted_choice([0, 1], weights))?).kind, "EINVAL")?
 

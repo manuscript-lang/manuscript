@@ -18,54 +18,70 @@ import (
 	msstd_path_matches_glob from "@std/internal/path.ms",
 )
 
-// Parsed path components using the familiar root, directory, base, extension, and name fields.
+// Parsed path components using the familiar root, directory, base, extension, and name
+// fields.
 export type PathParts:
-	// Root prefix under the chosen path rules, including a POSIX slash or Windows drive/UNC root.
+	// Root prefix under the chosen path rules, including a POSIX slash or Windows
+	// drive/UNC root.
 	root: String
-	// Directory portion, including the root when present; it takes precedence over root during format.
+	// Directory portion, including the root when present; it takes precedence over root
+	// during format.
 	directory: String
-	// Final component with extension; it takes precedence over name/extension during format.
+	// Final component with extension; it takes precedence over name/extension during
+	// format.
 	base: String
-	// Final extension including its dot; simple dotfiles and dot/dot-dot components have no extension.
+	// Final extension including its dot; simple dotfiles and dot/dot-dot components
+	// have no extension.
 	extension: String
 	// Final component with its extension removed, retaining the original spelling.
 	name: String
 
 // Path operations using either POSIX or Windows path conventions.
 export interface PathOperations:
-	// Returns the last component after ignoring trailing separators under this view's path rules.
+	// Returns the last component after ignoring trailing separators under this view's
+	// path rules.
 	fn basename(path: String) String
-	// Removes an exact suffix under basename compatibility rules; it does not strip arbitrary extensions.
+	// Removes an exact suffix under basename compatibility rules; it does not strip
+	// arbitrary extensions.
 	fn basename_without(path: String, suffix: String) String
 	// Returns the directory component using the selected POSIX or Windows convention.
 	fn dirname(path: String) String
-	// Returns the final dot extension, or empty text for extensionless names and simple dotfiles.
+	// Returns the final dot extension, or empty text for extensionless names and simple
+	// dotfiles.
 	fn extension(path: String) String
 	// Tests absolute-root syntax; a Windows drive-relative spelling is not absolute.
 	fn is_absolute(path: String) Bool
-	// Joins nonempty parts and normalizes separators/dot segments without filesystem access.
+	// Joins nonempty parts and normalizes separators/dot segments without filesystem
+	// access.
 	fn join(parts: List[String]) String
-	// Cleans repeated separators and dot segments lexically; it does not resolve symlinks.
+	// Cleans repeated separators and dot segments lexically; it does not resolve
+	// symlinks.
 	fn normalize(path: String) String
-	// Computes a lexical relative path from absolute anchors; different roots return the original target.
-	// Nonabsolute anchors or invalid NUL input return EINVAL.
+	// Computes a lexical relative path from absolute anchors; different roots return
+	// the original target. Nonabsolute anchors or invalid NUL input return EINVAL.
 	fn relative(base: String, target: String) String!
-	// Resolves parts against an explicit absolute base; no process working directory is consulted.
+	// Resolves parts against an explicit absolute base; no process working directory is
+	// consulted.
 	fn resolve(base: String, parts: List[String]) String!
-	// Splits the original spelling into root, directory, base, extension and name without filesystem access.
+	// Splits the original spelling into root, directory, base, extension and name
+	// without filesystem access.
 	fn parse(path: String) PathParts
-	// Builds a path with directory preferred over root, and base preferred over name plus extension.
+	// Builds a path with directory preferred over root, and base preferred over name
+	// plus extension.
 	fn format(parts: PathParts) String
 	// Returns slash for POSIX or backslash for Windows path components.
 	fn separator() String
 	// Returns colon for POSIX or semicolon for Windows path-list entries.
 	fn delimiter() String
-	// Returns a Windows namespaced absolute path when applicable; POSIX paths are unchanged.
+	// Returns a Windows namespaced absolute path when applicable; POSIX paths are
+	// unchanged.
 	fn to_namespaced_path(path: String) String
-	// Tests one lexical path against the supported glob syntax; malformed patterns return EINVAL.
+	// Tests one lexical path against the supported glob syntax; malformed patterns
+	// return EINVAL.
 	fn matches_glob(path: String, pattern: String) Bool!
 
-// One dialect's rules; the interface implementation forwards to the functions below with its flag.
+// One dialect's rules; the interface implementation forwards to the functions below
+// with its flag.
 type Dialect:
 	windows: Bool
 
@@ -125,7 +141,8 @@ fn is_letter(c: String) Bool:
 	code := c.scalar_at(0, none)
 	return (code >= 65 and code <= 90) or (code >= 97 and code <= 122)
 
-// The path with every backslash read as a slash under Windows rules; POSIX text is unchanged.
+// The path with every backslash read as a slash under Windows rules; POSIX text is
+// unchanged.
 fn slash(windows: Bool, text: String) String:
 	if windows: return text.replace("\\", "/")
 	return text.clone()
@@ -156,7 +173,8 @@ fn trim_start_slashes(text: String) String:
 	while start < count and data.get(start, none).to_int() == 47: start += 1
 	return text_of(data, start, count)
 
-// The root of an already slash-normalized path: a Windows drive or UNC share, `/`, or empty.
+// The root of an already slash-normalized path: a Windows drive or UNC share, `/`, or
+// empty.
 fn root_of(windows: Bool, text: String) String:
 	if windows:
 		count := text.length()
@@ -177,7 +195,8 @@ fn root_of(windows: Bool, text: String) String:
 
 	return ""
 
-// The `//server/share` root of a slash-normalized UNC path, or empty when the text is not one.
+// The `//server/share` root of a slash-normalized UNC path, or empty when the text is
+// not one.
 fn unc_root(text: String) String:
 	data := text.to_bytes()
 	count := data.length()
@@ -226,8 +245,9 @@ fn normalize_in(windows: Bool, raw: String) String:
 	if windows: return normalize_core(true, slash(true, raw))
 	return normalize_core(false, raw)
 
-// A POSIX path that normalizing would leave unchanged: no empty, `.` or `..` segment and no trailing separator
-// (the root alone is clean). One scan, so already-clean paths skip the span list and the rebuild.
+// A POSIX path that normalizing would leave unchanged: no empty, `.` or `..` segment
+// and no trailing separator (the root alone is clean). One scan, so already-clean paths
+// skip the span list and the rebuild.
 fn is_clean(data: Bytes) Bool:
 	count := data.length()
 	if count == 1: return data.get(0, none).to_int() == 47
@@ -263,7 +283,8 @@ fn normalize_core(windows: Bool, text: String) String:
 	unc_open := windows and root.starts_with("//") and not root.ends_with("/")
 	root_ends_slash := unc_open or root.ends_with("/")
 
-	// One pass over the bytes after the root: segments are spans into `data`, never copied until written.
+	// One pass over the bytes after the root: segments are spans into `data`, never
+	// copied until written.
 	data := text.to_bytes()
 	count := data.length()
 	if not windows and is_clean(data): return text.clone()
@@ -287,7 +308,8 @@ fn normalize_core(windows: Bool, text: String) String:
 				if (
 					not stack.is_empty()
 					and not span_is_parent(
-						data, stack[stack.length() - 1]
+						data,
+						stack[stack.length() - 1],
 					)
 				):
 					stack.pop()
@@ -323,8 +345,8 @@ fn normalize_core(windows: Bool, text: String) String:
 
 	if root.length() == 2 and stack.is_empty(): value = "{root}."
 
-	// A relative first component shaped like a drive ("./C:") must not become a drive-relative path
-	// once the leading "." is removed.
+	// A relative first component shaped like a drive ("./C:") must not become a
+	// drive-relative path once the leading "." is removed.
 	if root.is_empty() and not stack.is_empty():
 		first := stack[0]
 		head := data.view(span_start(first), span_end(first)).decode_utf8().get("")
@@ -332,7 +354,8 @@ fn normalize_core(windows: Bool, text: String) String:
 
 	return native(true, value)
 
-// The final extension of a basename that holds no slash: a leading dot alone and `..` have none.
+// The final extension of a basename that holds no slash: a leading dot alone and `..`
+// have none.
 fn extension_of_base(base: String) String:
 	dot := base.last_index_of(".")
 	if dot.is_none(): return ""
@@ -346,8 +369,8 @@ fn parse_in(windows: Bool, original: String) PathParts:
 	if windows: return parse_core(true, slash(true, original), original)
 	return parse_core(false, original, original)
 
-// Splits by byte positions, so every field is one view of `original` decoded; `text` is `original` with
-// backslashes read as slashes (the same positions).
+// Splits by byte positions, so every field is one view of `original` decoded; `text` is
+// `original` with backslashes read as slashes (the same positions).
 fn parse_core(windows: Bool, text: String, original: String) PathParts:
 	root_len := root_of(windows, text).byte_length()
 	data := text.to_bytes()
@@ -378,7 +401,8 @@ fn parse_core(windows: Bool, text: String, original: String) PathParts:
 
 	if base_end == 0 and root_len > 0: directory_end = root_len
 
-	// The extension starts at the last dot of the base, unless that dot is the base's first byte or the base is `..`.
+	// The extension starts at the last dot of the base, unless that dot is the base's
+	// first byte or the base is `..`.
 	var dot = base_end - 1
 	while dot >= base_start and data.get(dot, none).to_int() != 46: dot -= 1
 
@@ -393,7 +417,7 @@ fn parse_core(windows: Bool, text: String, original: String) PathParts:
 		directory: text_of(source, 0, directory_end),
 		base: text_of(source, base_start, base_end),
 		extension: text_of(source, extension_start, base_end),
-		name: text_of(source, base_start, extension_start)
+		name: text_of(source, base_start, extension_start),
 	)
 
 // The text of bytes [start, end) of `data`.
@@ -413,13 +437,15 @@ fn equal_fold(left: String, right: String) Bool:
 	if left == right: return true
 	return lowercase_path(left) == lowercase_path(right)
 
-// Path comparisons retain the original per-scalar lowercase mapping. Whole-string lowercasing
-// makes a capital sigma contextual (Σ -> ς at word end), unlike that mapping (Σ -> σ).
+// Path comparisons retain the original per-scalar lowercase mapping. Whole-string
+// lowercasing makes a capital sigma contextual (Σ -> ς at word end), unlike that
+// mapping (Σ -> σ).
 fn lowercase_path(text: String) String:
 	if text.contains("Σ"): return text.replace("Σ", "σ").lower()
 	return text.lower()
 
-// Resolves `parts` against the absolute `base`; none when `base` is not absolute or any text holds NUL.
+// Resolves `parts` against the absolute `base`; none when `base` is not absolute or any
+// text holds NUL.
 fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 	if not is_absolute_in(windows, base) or base.contains("\u{0}"): return none
 
@@ -429,8 +455,8 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 	var value = ""
 
 	if windows:
-		// Resolve from the last component: absolute paths supersede earlier tails, while an earlier
-		// absolute path on the chosen drive supplies its base.
+		// Resolve from the last component: absolute paths supersede earlier tails,
+		// while an earlier absolute path on the chosen drive supplies its base.
 		var device = ""
 		var tail = ""
 		var absolute = false
@@ -585,7 +611,8 @@ fn same_text(windows: Bool, left: String, right: String) Bool:
 	if windows: return equal_fold(left, right)
 	return left == right
 
-// The slash-separated components of `text` after its `root`; an empty remainder has none.
+// The slash-separated components of `text` after its `root`; an empty remainder has
+// none.
 fn components_after(text: String, root: String) List[String]:
 	rest := text.cut_prefix(root).get(text)
 	if rest.is_empty(): return []

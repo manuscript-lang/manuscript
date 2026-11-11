@@ -16,7 +16,8 @@ Written in Manuscript; clone() makes an independent copy.
 Use it for visited marks, flags, and dense id sets; use Set for sparse or non-integer members.
 */
 export type BitSet:
-	// Bitmap words, 64 members each, grown on demand. Internal state: use the operations, not this field.
+	// Bitmap words, 64 members each, grown on demand. Internal state: use the
+	// operations, not this field.
 	words: List[Int] = []
 
 impl BitSet:
@@ -36,7 +37,8 @@ impl BitSet:
 
 		word := index / 64
 		self.words.set(
-			word, bit_and(self.words[word], bit_not(shift_left(1, index % 64)))
+			word,
+			bit_and(self.words[word], bit_not(shift_left(1, index % 64))),
 		)
 
 	// Reports whether the index is a member; out-of-range indexes are not members.
@@ -59,7 +61,8 @@ impl BitSet:
 	var fn clear() Unit:
 		self.words = []
 
-	// Returns the smallest member that is at least `from`, or `none` when there is none.
+	// Returns the smallest member that is at least `from`, or `none` when there is
+	// none.
 	fn next(from: Int = 0) Int?:
 		start := from.max(0)
 		var word = start / 64
@@ -107,11 +110,13 @@ impl BitSet:
 	fn symmetric_difference(other: BitSet) BitSet:
 		return self.combine(other, 3)
 
-	// Merges words pairwise; `mode` 0 is union, 1 intersection, 2 difference, 3 symmetric difference.
+	// Merges words pairwise; `mode` 0 is union, 1 intersection, 2 difference, 3
+	// symmetric difference.
 	fn combine(other: BitSet, mode: Int) BitSet:
 		var out: List[Int] = []
 
-		// Words past the shorter operand are zero in an intersection; past this set's end, zero in a difference.
+		// Words past the shorter operand are zero in an intersection; past this set's
+		// end, zero in a difference.
 		var count = self.words.length().max(other.words.length())
 		if mode == 1: count = self.words.length().min(other.words.length())
 		if mode == 2: count = self.words.length()

@@ -81,7 +81,8 @@ test "bound native argument copies preserve named effects and propagation":
 	expect_equal((read_file(log).wait()?).decode_utf8().get(), "value,index,")?
 	expect_equal(ordered(log, true).is_error(), true)?
 	expect_equal(
-		(read_file(log).wait()?).decode_utf8().get(), "value,index,value,index,"
+		(read_file(log).wait()?).decode_utf8().get(),
+		"value,index,value,index,",
 	)?
 
 test "nonconsuming bound methods continue borrowing ordinary inputs":

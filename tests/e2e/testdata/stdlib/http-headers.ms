@@ -20,9 +20,13 @@ fn repeated_headers() HttpHeaders!:
 	var fields = headers()
 	_first := fields.append("x-dup", "first") | expect_ok?
 	_second := fields.append("X-Dup", "second") | expect_ok?
-	_cookie := fields.append(
-		"Set-Cookie", "a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT"
-	) | expect_ok?
+	_cookie := (
+		fields.append(
+			"Set-Cookie",
+			"a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT",
+		)
+		| expect_ok?
+	)
 	_other := fields.append("set-cookie", "b=2") | expect_ok?
 	return ok(fields)
 
@@ -44,14 +48,20 @@ fn handle_headers(request: HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, headers: fields, body: "ok".to_bytes())
 
 test "one header type preserves repeated values through buffered requests":
-	server := serve(
-		address: "127.0.0.1:0", handler: buffered(handle_headers),
-		options: HttpServerOptions(max_requests: 2)
-	) | expect_ok?
-	response := request(
-		method: HttpMethod.Get, url: "http://{server.address()}/",
-		options: RequestOptions(headers: (repeated_headers()?))
-	) | expect_ok?
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: buffered(handle_headers),
+			options: HttpServerOptions(max_requests: 2),
+		) | expect_ok?
+	)
+	response := (
+		request(
+			method: HttpMethod.Get,
+			url: "http://{server.address()}/",
+			options: RequestOptions(headers: (repeated_headers()?)),
+		) | expect_ok?
+	)
 	var metadata = response.metadata().clone()
 	metadata.status | expect_equal(200)?
 	metadata.headers.values("x-dup") | expect_equal(["first", "second"])?
@@ -63,7 +73,8 @@ test "one header type preserves repeated values through buffered requests":
 		)
 	)?
 
-	// The clone is independent: appending to it leaves the response's headers as received.
+	// The clone is independent: appending to it leaves the response's headers as
+	// received.
 	_appended := ((metadata.headers.append("x-dup", "third")) | expect_ok?)
 	metadata.headers.values("X-Dup") | expect_equal(["first", "second", "third"])?
 	expect_false(((response.metadata().headers.values("X-Dup")) != ["first", "second"]))?
@@ -80,14 +91,20 @@ fn echo_headers(var exchange: HttpExchange) Unit!:
 	return exchange.send_headers(status: 200, headers: output)
 
 test "streaming proxy uses the same byte-valued header type":
-	server := serve(
-		address: "127.0.0.1:0", handler: echo_headers,
-		options: HttpServerOptions(tls: none)
-	) | expect_ok?
-	response := request(
-		method: HttpMethod.Get, url: "http://{server.address()}/",
-		options: RequestOptions(headers: (repeated_headers()?))
-	) | expect_ok?
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: echo_headers,
+			options: HttpServerOptions(tls: none),
+		) | expect_ok?
+	)
+	response := (
+		request(
+			method: HttpMethod.Get,
+			url: "http://{server.address()}/",
+			options: RequestOptions(headers: (repeated_headers()?)),
+		) | expect_ok?
+	)
 	expect_false(((response.metadata().headers.values("x-DUP")) != ["first", "second"]))?
 
 test "lookup returns membership and clone separates it":
@@ -125,14 +142,22 @@ test "empty options and an omitted request body use checked defaults":
 	(client_options.decompress or client_options.cookies) | expect_false?
 	(HttpServerOptions().tls.is_none()) | expect_true?
 
-	server := serve(
-		address: "127.0.0.1:0", handler: echo_headers, options: HttpServerOptions()
-	) | expect_ok?
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: echo_headers,
+			options: HttpServerOptions(),
+		) | expect_ok?
+	)
 	client := http_client(options: HttpClientOptions()) | expect_ok?
-	response := client.request(
-		method: HttpMethod.Get, url: "http://{server.address()}/",
-		headers: (repeated_headers()?)
-	) | expect_ok?
+	response := (
+		client.request(
+			method: HttpMethod.Get,
+			url: "http://{server.address()}/",
+			headers: (repeated_headers()?),
+		)
+		| expect_ok?
+	)
 	response.metadata.status | expect_equal(200)?
 
 fn cookie_handler(var exchange: HttpExchange) Unit!:
@@ -140,15 +165,18 @@ fn cookie_handler(var exchange: HttpExchange) Unit!:
 
 	if exchange.path() == "/set":
 		_added := fields.append(
-			"Set-Cookie", "a=live; Path=/; Expires=Fri Jan  1 00:00:00 2100"
+			"Set-Cookie",
+			"a=live; Path=/; Expires=Fri Jan  1 00:00:00 2100",
 		)?
 	else if exchange.path() == "/rfc850":
 		_added := fields.append(
-			"Set-Cookie", "a=gone; Path=/; Expires=Thursday, 01-Jan-70 00:00:01 GMT"
+			"Set-Cookie",
+			"a=gone; Path=/; Expires=Thursday, 01-Jan-70 00:00:01 GMT",
 		)?
 	else if exchange.path() == "/asctime":
 		_added := fields.append(
-			"Set-Cookie", "a=gone; Path=/; Expires=Thu Jan  1 00:00:01 1970"
+			"Set-Cookie",
+			"a=gone; Path=/; Expires=Thu Jan  1 00:00:01 1970",
 		)?
 
 	cookie := exchange.headers().values("Cookie").join("; ")
@@ -164,7 +192,9 @@ fn echoed_cookie(client: HttpClient, url: String) String!:
 
 test "legacy Expires removes a cookie before the next request":
 	server := serve(
-		"127.0.0.1:0", cookie_handler, HttpServerOptions(timeout: 3.seconds())
+		"127.0.0.1:0",
+		cookie_handler,
+		HttpServerOptions(timeout: 3.seconds()),
 	)?
 	client := http_client(HttpClientOptions(cookies: true))?
 	url := "http://{server.address()}"
