@@ -170,6 +170,9 @@ pub struct DeferredTypeDefault {
     pub resolved: Ty,
     /// The defaulted variable; its bounds, resolved after defaults, must hold for the default.
     pub variable: Ty,
+    /// The declaration's variables. `resolved` captured them before their bounds were
+    /// resolved, so the check re-reads each one's complete bounds.
+    pub variables: Vec<Ty>,
     /// Where to report.
     pub pos: Pos,
     /// File of the declaring module.
@@ -1135,6 +1138,7 @@ impl Checker {
             self.deferred_type_defaults.push(DeferredTypeDefault {
                 resolved: resolved.clone(),
                 variable: vars[index].clone(),
+                variables: vars[..index].to_vec(),
                 pos: default.pos,
                 module: self.m(),
             });
@@ -1148,13 +1152,15 @@ impl Checker {
         let old_module = self.module.clone();
         for check in std::mem::take(&mut self.deferred_type_defaults) {
             self.module = Some(check.module);
-            self.well_formed(&check.resolved, check.pos, &mut HashSet::new());
-            let bindings = Subst::from([(check.variable.id, check.resolved.clone())]);
+            let current: Subst = check.variables.iter().map(|v| (v.id, v.clone())).collect();
+            let resolved = sub(&check.resolved, &current);
+            self.well_formed(&resolved, check.pos, &mut HashSet::new());
+            let bindings = Subst::from([(check.variable.id, resolved.clone())]);
             for bound in check.variable.bounds() {
                 let bound = sub(&bound, &bindings);
-                if !self.satisfies(&check.resolved, &bound) {
+                if !self.satisfies(&resolved, &bound) {
                     let message = self.unsatisfied_message(
-                        &check.resolved,
+                        &resolved,
                         &bound,
                         "choose a default that already implements it",
                     );
