@@ -251,7 +251,9 @@ fn constructs() List[Construct]:
 			"generic_ident_named", "", "x: @TY@ := @M1@\n    y := ident(x)\n    see(y)"
 		),
 		c("discard_underscore", "", "_: @TY@ := @M1@"),
-		c("closure_borrow", "", "x: @TY@ := @M1@\n    f := fn: see(x)\n    f()"),
+		c(
+			"closure_borrow", "", "x: @TY@ := @M1@\n    f := fn: see(x)\n    f()"
+		),
 		c(
 			"closure_escape",
 			"fn make() fn() Unit:\n    x: @TY@ := @M1@\n    return fn: see(x)",
