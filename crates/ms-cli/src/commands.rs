@@ -1,5 +1,5 @@
 //! Argument parsing for the standalone commands: `review`, `search_symbol`,
-//! `help`, `version`, `lsp` and `guide`.
+//! `help`, `version`, `lsp` and `explain`.
 
 use crate::backend::{Io, ReviewRequest, SearchSymbolRequest, finish};
 use crate::engine;
@@ -64,12 +64,12 @@ pub fn run_lsp(syms: ms_syntax::Names, args: &[String], io: &mut Io) -> i32 {
     finish(engine::lsp(syms, io), io)
 }
 
-pub fn run_guide(args: &[String], io: &mut Io) -> i32 {
+pub fn run_explain(args: &[String], io: &mut Io) -> i32 {
     let mut json = false;
     let mut codes: Vec<&str> = Vec::new();
     for arg in &args[1..] {
         if matches!(arg.as_str(), "-h" | "--help") {
-            return run_help(&["guide".to_string()], io);
+            return run_help(&["explain".to_string()], io);
         }
         match arg.as_str() {
             "--json" => json = true,
@@ -77,16 +77,7 @@ pub fn run_guide(args: &[String], io: &mut Io) -> i32 {
         }
     }
     if codes.is_empty() {
-        if json {
-            return usage_error(io, "ms guide --json needs a diagnostic code");
-        }
-        let _ = write!(
-            io.stdout,
-            "{}{}",
-            ms_tooling::guide::cheatsheet(),
-            ms_tooling::guide::mistakes()
-        );
-        return 0;
+        return usage_error(io, "ms explain needs at least one diagnostic code");
     }
     explain_codes(&codes, json, io)
 }
@@ -103,7 +94,7 @@ fn explain_codes(codes: &[&str], json: bool, io: &mut Io) -> i32 {
                     .map(|r| (r.code, r.family, r.repair, r.severity.name()))
             });
         let Some((code, family, repair, severity)) = found else {
-            let _ = writeln!(io.stderr, "ms guide: unknown diagnostic code {code}");
+            let _ = writeln!(io.stderr, "ms explain: unknown diagnostic code {code}");
             status = 1;
             continue;
         };

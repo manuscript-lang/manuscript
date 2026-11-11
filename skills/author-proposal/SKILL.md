@@ -13,7 +13,7 @@ The default design is no new syntax, no new type, and no new keyword. Earn each 
 
 Do this before writing any section. A proposal that invents syntax or names without it is rejected.
 
-- Run `ms guide` and read the relevant pages in `documentation/core-language/` (types, functions, control flow, errors, modules, cleanup) and `documentation/glossary.md`.
+- Run `ms skill` and read the relevant pages in `documentation/core-language/` (types, functions, control flow, errors, modules, cleanup) and `documentation/glossary.md`.
 - Read `crates/DESIGN.md` for the pipeline, ABI, and recorded decisions, and `wiki/` for the domain (see `wiki/index.yml`).
 - Find existing idioms with `ms search_symbol <words>` and read the nearest `stdlib/*.ms` modules. Copy their naming, argument order, error handling, and ownership style.
 - Read `proposals/` for decisions already made (names, direction, rejected ideas). A past proposal is a record of decisions, not a source of syntax; verify anything it shows against the guide.

@@ -10,7 +10,7 @@ Manuscript is a statically typed, natively compiled language implemented in Rust
 - Apply [language-design](skills/language-design/SKILL.md) (including its taste rules) for language, standard-library, runtime, compiler, or tooling design choices.
 - The user's latest explicit direction and current canonical design take precedence over remembered preferences. Historical proposals and assistant completion reports do not establish current behavior. Identify material differences between a newer decision and this checkout.
 - Read the [wiki](wiki/index.md) for the domains you touch before changing code. When a correction, user decision, or verified failure would change future work, update the wiki in the same change ([protocol](wiki/README.md), [record durable lessons](skills/manuscript-change/SKILL.md#record-durable-lessons)): edit the closest page, keep it short, and delete superseded advice.
-- Find code and standard-library APIs with `ms search_symbol <name or words>` (project and standard library, fuzzy, bounded output) before reading files or guessing signatures; `ms search_symbol <module>` or `<module>.<Name>` shows a page. `ms guide` prints the language cheat sheet.
+- Find code and standard-library APIs with `ms search_symbol <name or words>` (project and standard library, fuzzy, bounded output) before reading files or guessing signatures; `ms search_symbol <module>` or `<module>.<Name>` shows a page. `ms skill -o .agents/skills` installs the bundled Manuscript writing skill and concept references for agents.
 
 ## Workflow skills
 

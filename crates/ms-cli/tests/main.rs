@@ -36,6 +36,7 @@ mod runtime_input_publication;
 mod runtime_symbols;
 mod search_symbol;
 mod shutdown;
+mod skill;
 mod terminal;
 mod test_arguments;
 mod test_many_files;

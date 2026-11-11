@@ -9,4 +9,4 @@ The parser answers each Python word with a targeted diagnostic (`def`, `lambda`,
 
 Apply when: changing keywords, adding a construct that resembles a Python one, or writing examples and prompts. Do not reintroduce Python spellings to save tokens or to look familiar.
 Evidence: [grammar](../../documentation/core-language/basics/grammar.md), [proposal](../../proposals/surface-syntax-distinct.md), `tests/conformance/fixtures/snippets/foreign-*`.
-Verify: `ms check` on `def f() -> Int:`, `lambda x: x`, `True`, `elif`, `f"x"` each reports the targeted fix; `ms guide` shows only the new forms.
+Verify: `ms check` on `def f() -> Int:`, `lambda x: x`, `True`, `elif`, `f"x"` each reports the targeted fix; `ms skill` shows only the new forms.
