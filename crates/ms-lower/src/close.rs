@@ -647,6 +647,37 @@ impl FnLower<'_> {
     }
 
     /// [`Self::bind_closing`] with the close operation already chosen.
+    /// Whether the elaborate pass can close the owned binding that lives in memory: nothing moves
+    /// or closes it by hand, its close cannot fail, and no closer of its scope was declared
+    /// before it (the pass closes at the scope end, after the scope's other closers).
+    fn raw_closable(&self, binding: &ct::BindingRef, kind: &CloseKind, owned: bool) -> bool {
+        let uid = binding.uid;
+        let own = &self.cx.ownership;
+        let CloseKind::Func { fid, .. } = kind else {
+            return false;
+        };
+        owned
+            && !self.dead
+            && !binding.mutable
+            && !self.scope_marks.is_empty()
+            && self.b.m.funcs[fid.index()].ret == MTy::UNIT
+            && !own.moves.contains_key(&uid)
+            && !own.close_moves.contains_key(&uid)
+            && !own
+                .binding_facts
+                .has(uid, ms_check::api::ownership::BindingFact::ExplicitClose)
+            && !own
+                .binding_facts
+                .has(uid, ms_check::api::ownership::BindingFact::ConditionalMove)
+            && self.scopes.last().is_none_or(|s| {
+                s.iter().all(|u| {
+                    !self.closers.contains_key(u)
+                        && !self.rest_closers.contains_key(u)
+                        && !self.hidden_closers.contains_key(u)
+                })
+            })
+    }
+
     pub(crate) fn bind_closing_kind(
         &mut self,
         binding: &ct::BindingRef,
@@ -681,6 +712,18 @@ impl FnLower<'_> {
         let slot = self.locals[&binding.uid].slot;
         if let Some(places) = places {
             return self.bind_split(binding, kind, places);
+        }
+        if let Some(ptr) = slot
+            && raw
+            && self.raw_closable(binding, &kind, x.own)
+        {
+            // The elaborate pass closes it where its scope ends, shielded, and drops what is left.
+            let thunk = self.close_thunk(&kind, ty, true);
+            if let Some(scope) = self.scopes.last_mut() {
+                scope.retain(|u| *u != binding.uid);
+            }
+            self.own_raw_kind(binding.uid, ptr, thunk.index() as u32 + 2);
+            return Ok(());
         }
         let thunk = self.close_thunk(&kind, ty, slot.is_some());
         let registered = match slot {

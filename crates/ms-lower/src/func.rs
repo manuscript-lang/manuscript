@@ -1413,6 +1413,11 @@ impl<'a> FnLower<'a> {
     /// drops it wherever a path leaves the scope still holding it. Only for a local of one
     /// definition that nothing moves, flags or closes (the other kinds still drop themselves).
     fn own_raw(&mut self, uid: usize, v: Value) {
+        self.own_raw_kind(uid, v, 0);
+    }
+
+    /// `own_raw` with the owner's cleanup `kind` (`scope.own S K v`).
+    pub fn own_raw_kind(&mut self, uid: usize, v: Value, kind: u32) {
         let i = self.scope_marks.len() - 1;
         let mark = &mut self.scope_marks[i];
         if !mark.begun {
@@ -1420,7 +1425,7 @@ impl<'a> FnLower<'a> {
             let imm = ms_mir::ir::Imm::Scope(mark.id, mark.parent);
             self.b.emit(Op::ScopeBegin, &[], imm, None);
         }
-        let imm = ms_mir::ir::Imm::Scope(self.scope_marks[i].id, 0);
+        let imm = ms_mir::ir::Imm::Scope(self.scope_marks[i].id, kind);
         self.b.emit(Op::ScopeOwn, &[v], imm, None);
         self.raw_owned.insert(uid);
     }
