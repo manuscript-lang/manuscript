@@ -29,7 +29,14 @@ impl Files {
     /// The input, its manifest and every local module it loads, as of now.
     fn refresh(&mut self, syms: ms_syntax::Names, input: &str) {
         let started = std::time::SystemTime::now();
-        let checked = analyze_with(syms, input, &Overlay::new(), false, false);
+        let checked = analyze_with(
+            syms,
+            &ms_check::Session::new(),
+            input,
+            &Overlay::new(),
+            false,
+            false,
+        );
         self.0 = observed(
             std::mem::take(&mut self.0),
             watched_files(syms, input, &checked)

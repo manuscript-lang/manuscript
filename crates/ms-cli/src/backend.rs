@@ -84,6 +84,9 @@ pub struct AnalysisRequest {
     pub deny_warnings: bool,
     /// `ms check --json --with-text`: also put the terminal output in the document.
     pub with_text: bool,
+    /// `ms check --json --with-text --each`: one document per input, all checked against one
+    /// standard-library load.
+    pub each: bool,
 }
 
 /// `ms build <input> [-o output]`. `output` is empty for the default

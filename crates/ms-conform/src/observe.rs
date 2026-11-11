@@ -81,8 +81,12 @@ impl Ctx {
     }
 
     fn invoke(&self, fx: &Fixture, args: &[&str], cwd: &Path, stdin: &[u8]) -> Output {
+        self.invoke_within(self.timeout(fx), args, cwd, stdin)
+    }
+
+    fn invoke_within(&self, timeout: Duration, args: &[&str], cwd: &Path, stdin: &[u8]) -> Output {
         let args: Vec<String> = args.iter().map(|s| s.to_string()).collect();
-        exec::run(&self.ms, &args, cwd, stdin, self.timeout(fx), &self.env)
+        exec::run(&self.ms, &args, cwd, stdin, timeout, &self.env)
     }
 }
 
@@ -266,8 +270,27 @@ fn check_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
         },
         None => ctx.invoke(fx, &["check", entry], work, b""),
     };
+    check_observation(
+        report,
+        &json_out,
+        text_out.code,
+        &normalize_text(&text_out.stdout_text(), work),
+        &normalize_text(&text_out.stderr_text(), work),
+        work,
+    )
+}
+
+/// The check observation: the JSON report (normalized) beside the terminal output (normalized).
+fn check_observation(
+    report: Json,
+    json_out: &Output,
+    text_code: i32,
+    stdout: &str,
+    stderr: &str,
+    work: &Path,
+) -> Json {
     let mut o = Json::object();
-    process_fields(&mut o, &json_out, work);
+    process_fields(&mut o, json_out, work);
     if let Some(v) = report.get("format") {
         o.set("format", v.clone());
     }
@@ -276,17 +299,129 @@ fn check_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
         o.set("raw", report);
     }
     let mut text = Json::object();
-    text.set("exit_code", Json::int(text_out.code as i64));
-    text.set(
-        "stdout",
-        Json::str(normalize_text(&text_out.stdout_text(), work)),
-    );
-    text.set(
-        "stderr",
-        Json::str(normalize_text(&text_out.stderr_text(), work)),
-    );
+    text.set("exit_code", Json::int(i64::from(text_code)));
+    text.set("stdout", Json::str(stdout));
+    text.set("stderr", Json::str(stderr));
     o.set("text", text);
     o
+}
+
+/// Observe several check fixtures with one `ms check --each`, which loads the standard library
+/// once. A fixture the batch could not report is observed on its own, so a crash or timeout in
+/// one fixture still names that fixture.
+pub fn observe_check_batch(ctx: &Ctx, fixtures: &[&Fixture]) -> Vec<Json> {
+    let root = ctx
+        .scratch
+        .join(format!("b{}", COUNTER.fetch_add(1, Ordering::Relaxed)));
+    let _ = fs::remove_dir_all(&root);
+    let mut targets = Vec::new();
+    let mut slots: Vec<Option<usize>> = Vec::new();
+    for (i, fx) in fixtures.iter().enumerate() {
+        let work = root.join(format!("w{i}"));
+        match fx.materialize(&work) {
+            // A path that leaves the fixture directory prints differently from a batch root.
+            Ok(entry) if !mentions_parent_path(&work) => {
+                slots.push(Some(targets.len()));
+                targets.push(format!("w{i}/{entry}"));
+            }
+            _ => slots.push(None),
+        }
+    }
+    let mut args: Vec<&str> = vec!["check"];
+    args.extend(targets.iter().map(String::as_str));
+    args.extend(["--json", "--with-text", "--each"]);
+    let timeout = fixtures.iter().map(|fx| ctx.timeout(fx)).sum();
+    let out = ctx.invoke_within(timeout, &args, &root, b"");
+    let results = crate::json::parse(out.stdout_text())
+        .ok()
+        .and_then(|doc| {
+            doc.get("results")
+                .and_then(Json::as_array)
+                .map(<[_]>::to_vec)
+        })
+        .filter(|results| results.len() == targets.len());
+    let observed = fixtures
+        .iter()
+        .enumerate()
+        .map(|(i, fx)| {
+            let from_batch = match (&results, slots[i]) {
+                (Some(results), Some(slot)) => batch_check_result(&results[slot], &root, i),
+                _ => None,
+            };
+            from_batch.unwrap_or_else(|| observe(ctx, fx))
+        })
+        .collect();
+    let _ = fs::remove_dir_all(&root);
+    observed
+}
+
+/// True when a file under `dir` names a `../` path, which can reach outside the fixture.
+fn mentions_parent_path(dir: &Path) -> bool {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return false;
+    };
+    entries.flatten().any(|entry| {
+        let path = entry.path();
+        if path.is_dir() {
+            mentions_parent_path(&path)
+        } else {
+            fs::read_to_string(&path).is_ok_and(|text| text.contains("../"))
+        }
+    })
+}
+
+/// The check observation of fixture `i` of a batch run in `root`, or `None` when the run wrote no
+/// document with the terminal output for it.
+fn batch_check_result(result: &Json, root: &Path, i: usize) -> Option<Json> {
+    let work = root.join(format!("w{i}"));
+    let code = i32::try_from(result.get("exit_code").and_then(Json::as_i64)?).ok()?;
+    let mut report = result
+        .get("document")
+        .filter(|d| d.get("text").is_some())?
+        .clone();
+    let dir = format!("w{i}/");
+    report.map_strings(&|s| normalize_text(&strip_dir(s, &dir), &work));
+    drop_additive_keys(&mut report);
+    let text = report.get("text")?.clone();
+    let stream = |name: &str| {
+        text.get(name)
+            .and_then(Json::as_str)
+            .unwrap_or("")
+            .to_string()
+    };
+    let json_out = Output {
+        code,
+        ..Output::default()
+    };
+    Some(check_observation(
+        report,
+        &json_out,
+        code,
+        &stream("stdout"),
+        &stream("stderr"),
+        &work,
+    ))
+}
+
+/// `text` without the batch directory prefix `dir` of a relative path, so a path reads as it does
+/// when the fixture is checked from its own directory.
+fn strip_dir(text: &str, dir: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find(dir) {
+        let (head, tail) = rest.split_at(at);
+        out.push_str(head);
+        let starts_path = out
+            .chars()
+            .next_back()
+            .is_none_or(|c| !(c.is_alphanumeric() || "/._-".contains(c)));
+        if !starts_path {
+            out.push_str(dir);
+        }
+        rest = &tail[dir.len()..];
+    }
+    out.push_str(rest);
+    out
 }
 
 /// One stream of a `--with-text` document as bytes.
@@ -297,7 +432,7 @@ fn text_field(text: &Json, stream: &str) -> Vec<u8> {
 
 fn parse_phase(ctx: &Ctx, fx: &Fixture, work: &Path, entry: &str) -> Json {
     // `fmt --check` parses without loading and checking the standard library, which `check`
-    // does for every file that parses (about 55 of its 60 ms); the parse diagnostics are the same.
+    // does for every file that parses (about 127 ms); the parse diagnostics are the same.
     let json_out = ctx.invoke(fx, &["fmt", entry, "--check", "--json"], work, b"");
     let report = parse_json_output(&json_out, work);
     let parse_diags: Vec<Json> = diagnostics_of(&report)

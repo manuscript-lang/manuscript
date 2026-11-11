@@ -115,6 +115,18 @@ pub fn to_json(ms: &str, cases: &[Case]) -> Json {
         })
         .collect();
     o.set("failures", Json::Arr(failures));
+    // Every fixture's wall time, for finding what dominates a run.
+    let timings = cases
+        .iter()
+        .map(|c| {
+            let mut t = Json::object();
+            t.set("id", Json::str(c.id.clone()));
+            t.set("phase", Json::str(c.phase.name()));
+            t.set("millis", Json::int(c.millis as i64));
+            t
+        })
+        .collect();
+    o.set("timings", Json::Arr(timings));
     o.set(
         "unexpected_passes",
         Json::Arr(

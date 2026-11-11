@@ -235,6 +235,7 @@ fn run_source_command<L: Lower>(
                 fix: inv.fix,
                 deny_warnings: inv.deny_warnings,
                 with_text: inv.with_text,
+                each: inv.each,
             };
             engine::analysis(syms, &request, io)
         }

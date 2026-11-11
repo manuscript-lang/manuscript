@@ -56,7 +56,7 @@ A diagnostic names the violated rule and the declaration or call site involved. 
 
 ## JSON diagnostics
 
-`ms check file.ms --json` emits `{"format": 1, "diagnostics": [...]}`. Each diagnostic has `code`, `phase`, `message`, and `position` with `file`, one-based `line`/UTF-8 byte `column`, and original-byte `offset`. Empty results use `[]`. CRLF normalization preserves original offsets. `--with-text` adds `text` with the `stdout` and `stderr` the command prints without `--json`, so one run yields both.
+`ms check file.ms --json` emits `{"format": 1, "diagnostics": [...]}`. Each diagnostic has `code`, `phase`, `message`, and `position` with `file`, one-based `line`/UTF-8 byte `column`, and original-byte `offset`. Empty results use `[]`. CRLF normalization preserves original offsets. `--with-text` adds `text` with the `stdout` and `stderr` the command prints without `--json`, so one run yields both. With several inputs, `--each` reports each as its own result, `{"results": [{"target", "exit_code", "document"}]}`, from one standard-library load.
 
 Several inputs share one document; see [analysis selection](../implementation.md#selecting-independent-analysis-inputs).
 Each diagnostic's `position`, `end`, and `fix` boundaries use the same source-path spelling, including paths relative to the invocation directory for collection inputs.
