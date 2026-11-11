@@ -433,6 +433,7 @@ impl FnLower<'_> {
         };
         if self
             .cx
+            .ownership
             .binding_facts
             .has(b.uid, ms_check::api::ownership::BindingFact::ImplicitClose)
         {

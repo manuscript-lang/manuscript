@@ -33,8 +33,9 @@ pub mod hir {
 pub mod ownership {
     pub use crate::ownership::{
         Access, BindingFact, BindingFlags, BorrowKind, Class, Classifier, Fact, NodeFacts,
-        OwnedBorrow, ParamMode, native_method_argument_modes,
+        OwnedBorrow, OwnershipFacts, ParamMode, native_method_argument_modes,
     };
+    pub use crate::std_ops::{collection_mutation, discards_entries, is_text_builder};
 }
 
 pub mod syntax {
@@ -48,7 +49,6 @@ pub mod checker {
 pub mod effects {
     pub use crate::effect_directives::matches;
     pub use crate::effect_reach::Violation;
-    pub use crate::effects::{collection_mutation, discards_entries, is_text_builder};
 }
 
 pub mod stdlib {

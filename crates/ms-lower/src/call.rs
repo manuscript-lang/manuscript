@@ -600,7 +600,12 @@ impl<'a> FnLower<'a> {
             // A borrow-returning callee: the result points into the arguments. When one of them is a
             // temporary, the caller owns the result: the temporary itself when the callee hands
             // it back whole, otherwise a copy taken before the temporary is dropped.
-            let Some(how) = self.cx.owned_borrows.get(&(self.hir.data.file, e.id)) else {
+            let Some(how) = self
+                .cx
+                .ownership
+                .owned_borrows
+                .get(&(self.hir.data.file, e.id))
+            else {
                 return Ok(Val { v, own: false });
             };
             if let ms_check::api::ownership::OwnedBorrow::Whole(source) = how {
@@ -643,6 +648,7 @@ impl<'a> FnLower<'a> {
         // result (the part of the temporary is copied out before it is dropped).
         if self
             .cx
+            .ownership
             .owned_borrows
             .contains_key(&(self.hir.data.file, e.id))
             && let TyKind::Alt(a) = self.b.m.types.kind(self.ty_of(v)).clone()
@@ -873,10 +879,10 @@ impl<'a> FnLower<'a> {
             .name()
             .map(|n| self.syms.str(n).to_string())
             .unwrap_or_else(|| native.rsplit('/').next().unwrap_or(native).to_string());
-        if ms_check::api::effects::is_text_builder(self.syms, &m.receiver) && method == "build" {
+        if ms_check::api::ownership::is_text_builder(self.syms, &m.receiver) && method == "build" {
             return self.text_builder_build(e, recv_expr);
         }
-        if ms_check::api::effects::collection_mutation(self.syms, m) {
+        if ms_check::api::ownership::collection_mutation(self.syms, m) {
             return self.mutator_call(e, view, m, recv_expr, &method);
         }
         if let Some(v) = self.map_get_chain(e, view, recv_expr, &method)? {
@@ -1396,7 +1402,7 @@ impl<'a> FnLower<'a> {
         if crate::mapset::is_map_or_set(self.b.m, mt)
             || matches!(self.b.m.types.kind(mt), TyKind::List(_))
             || t.is(Builtin::Bytes)
-            || ms_check::api::effects::is_text_builder(self.syms, &t)
+            || ms_check::api::ownership::is_text_builder(self.syms, &t)
         {
             return self.construct_collection(view, mt);
         }

@@ -217,11 +217,10 @@ impl CallableOwnership {
     }
 }
 
-/// Ownership facts of a whole program, with the rejections found.
-pub struct Ownership {
-    facts: HashMap<Key, CallableOwnership>,
-    /// Rejected programs, in callable order.
-    pub diagnostics: Vec<Diagnostic>,
+/// The ownership facts lowering and tooling read, in one value: the tables the ownership walk
+/// derives for a whole program, none of them recomputed by a later stage.
+#[derive(Default)]
+pub struct OwnershipFacts {
     /// Name expressions that move a closed resource binding, by binding.
     pub close_moves: HashMap<usize, HashSet<NodeId>>,
     /// Resource fields moved out of an owned binding, by binding and member node.
@@ -246,6 +245,15 @@ pub struct Ownership {
     /// `var` bindings of a borrow-returning call, by module file and call node: the field chain of the
     /// argument the binding borrows exclusively.
     pub getter_borrows: HashMap<(Name, NodeId), Vec<Name>>,
+}
+
+/// Ownership of a whole program: the facts, per-callable detail, and the rejections found.
+pub struct Ownership {
+    facts: HashMap<Key, CallableOwnership>,
+    /// Rejected programs, in callable order.
+    pub diagnostics: Vec<Diagnostic>,
+    /// The facts lowering and tooling read.
+    pub tables: OwnershipFacts,
 }
 
 impl Ownership {
@@ -428,15 +436,17 @@ impl Hir<'_> {
         Ownership {
             facts,
             diagnostics,
-            close_moves,
-            resource_moves,
-            moves,
-            borrowed_captures,
-            moving_params,
-            owned_borrows,
-            getter_borrows,
-            node_facts,
-            binding_facts,
+            tables: OwnershipFacts {
+                close_moves,
+                resource_moves,
+                moves,
+                borrowed_captures,
+                moving_params,
+                node_facts,
+                binding_facts,
+                owned_borrows,
+                getter_borrows,
+            },
         }
     }
 }

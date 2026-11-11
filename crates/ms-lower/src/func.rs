@@ -244,7 +244,7 @@ impl Cx {
             return None;
         }
         let key = (c.module.file, c.id());
-        let mask = self.moving_params.get(&key)?;
+        let mask = self.ownership.moving_params.get(&key)?;
         (mask.len() == c.parameters.len() + c.self_binding.iter().count()).then(|| mask.clone())
     }
 
@@ -1050,10 +1050,11 @@ impl<'a> FnLower<'a> {
     /// binding some path moves out of also gets a flag saying whether the local still holds its
     /// value, so the scope end drops it only on the paths that kept it.
     pub fn own_local(&mut self, uid: usize, var: ms_mir::builder::Var, ty: MTy) {
-        let moved = self.needs_drop(ty) && self.cx.moves.contains_key(&uid);
+        let moved = self.needs_drop(ty) && self.cx.ownership.moves.contains_key(&uid);
         let conditional = moved
             && self
                 .cx
+                .ownership
                 .binding_facts
                 .has(uid, ms_check::api::ownership::BindingFact::ConditionalMove);
         if moved && !conditional {
@@ -1105,7 +1106,11 @@ impl<'a> FnLower<'a> {
     /// which must own its value: a borrowed local (a function value's parameter, a loop variable
     /// reading a list in place) hands out a copy instead.
     pub fn moves_at(&self, uid: usize, node: ms_check::api::ast::NodeId) -> bool {
-        self.cx.moves.get(&uid).is_some_and(|n| n.contains(&node))
+        self.cx
+            .ownership
+            .moves
+            .get(&uid)
+            .is_some_and(|n| n.contains(&node))
             && !self.aliases.contains_key(&uid)
             && self.locals.get(&uid).is_some_and(|l| self.local_owned(l))
     }
@@ -1620,6 +1625,7 @@ impl<'a> FnLower<'a> {
                 // The caller handed the value over: the callee owns it and drops it at scope end.
                 if self
                     .cx
+                    .ownership
                     .binding_facts
                     .has(b.uid, ms_check::api::ownership::BindingFact::ImplicitClose)
                 {
