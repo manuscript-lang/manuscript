@@ -17,20 +17,20 @@ fn reject(var l: Ledger, id: String, msg: String) String:
     return msg
 
 fn report(l: Ledger) String:
-    let rows = l.accounts.keys().sorted(fn a, b: a.compare(b)).map(fn id: "{id} balance={l.accounts.get(id).get().bal} limit={l.accounts.get(id).get().lim} ops={l.accounts.get(id).get().ops} rejected={l.accounts.get(id).get().rej} frozen={if l.accounts.get(id).get().frozen: "yes" else: "no"}")
+    rows := l.accounts.keys().sorted(fn a, b: a.compare(b)).map(fn id: "{id} balance={l.accounts.get(id).get().bal} limit={l.accounts.get(id).get().lim} ops={l.accounts.get(id).get().ops} rejected={l.accounts.get(id).get().rej} frozen={if l.accounts.get(id).get().frozen: "yes" else: "no"}")
     return "{rows.map(fn r: r + "\n").join("")}total balance={l.accounts.values().map(fn a: a.bal).sum()} fees={l.fees}"
 
 fn money(var l: Ledger, cmd: String, t: List[String]) String:
-    let ids = t.slice(1, t.length() - 1).get()
+    ids := t.slice(1, t.length() - 1).get()
     for id in ids:
         if not l.accounts.contains(id): return "error: unknown account {id}"
-    let from = ids[0]
-    let amount = t[t.length() - 1]
+    from := ids[0]
+    amount := t[t.length() - 1]
     if cmd == "transfer" and from == ids[1]: return reject(var l, from, "error: same account")
     if amount.scalar_values().any(fn c: c < 48 or c > 57) or amount.parse_int().get(0) <= 0: return reject(var l, from, "error: invalid amount")
     for id in ids:
         if l.accounts.get(id).get().frozen: return reject(var l, id, "error: account frozen {id}")
-    let n = amount.parse_int().get()
+    n := amount.parse_int().get()
     if cmd == "deposit":
         var bal = 0
         if var a = l.accounts[from]?:
@@ -38,14 +38,14 @@ fn money(var l: Ledger, cmd: String, t: List[String]) String:
             a.ops += 1
             bal = a.bal
         return "ok {bal}"
-    let old = l.accounts.get(from).get().bal
-    let fee = if old >= 0 and old - n < 0: 5 else: 0
+    old := l.accounts.get(from).get().bal
+    fee := if old >= 0 and old - n < 0: 5 else: 0
     if old - n - fee < -l.accounts.get(from).get().lim: return reject(var l, from, "error: overdraft limit exceeded {from}")
     l.fees += fee
     if var a = l.accounts[from]?:
         a.bal = old - n - fee
         a.ops += 1
-    let suffix = if fee > 0: " fee={fee}" else: ""
+    suffix := if fee > 0: " fee={fee}" else: ""
     if cmd == "withdraw": return "ok {old - n - fee}{suffix}"
     var to_bal = 0
     if var b = l.accounts[ids[1]]?:
@@ -55,7 +55,7 @@ fn money(var l: Ledger, cmd: String, t: List[String]) String:
     return "ok {old - n - fee} {to_bal}{suffix}"
 
 fn step(var l: Ledger, t: List[String]) String:
-    let arity = {"open": 3, "deposit": 3, "withdraw": 3, "transfer": 4, "freeze": 2, "unfreeze": 2, "report": 1}.get(t[0]).get(0)
+    arity := {"open": 3, "deposit": 3, "withdraw": 3, "transfer": 4, "freeze": 2, "unfreeze": 2, "report": 1}.get(t[0]).get(0)
     if arity != t.length(): return "error: bad command"
     if t[0] == "report": return report(l)
     if t[0] == "open":
@@ -72,5 +72,5 @@ fn step(var l: Ledger, t: List[String]) String:
 
 fn main() Unit:
     var l = Ledger(Map[String, Account](), 0)
-    if let ls = stdin() | lines | collect(none):
+    if ls := stdin() | lines | collect(none):
         for t in ls.map(fn s: s.replace("\t", " ").split(" ").filter(fn p: not p.is_empty())).filter(fn t: not t.is_empty()): print(step(var l, t))
