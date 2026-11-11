@@ -27,6 +27,5 @@ mod prelude_import_fixes;
 mod promise_fixes;
 mod std_ops_vocabulary;
 mod subcodes;
-mod type_aliases;
 mod type_display;
 mod wrapper_passthrough;
