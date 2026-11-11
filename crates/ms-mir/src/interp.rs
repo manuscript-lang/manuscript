@@ -658,7 +658,7 @@ impl<'m> Interp<'m> {
             | Op::GlobalGet
             | Op::GlobalSet => self.calls_and_runtime(f, regs, inst),
             // Raw-phase markers do nothing at run time; `elaborate` replaces them with the cleanup.
-            Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd => Ok(Flow::Next),
+            Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd | Op::ScopeDisown => Ok(Flow::Next),
         }
     }
 

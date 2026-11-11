@@ -174,6 +174,10 @@ impl InstCheck<'_, '_> {
             | Op::GlobalGet
             | Op::GlobalSet => self.runtime_services(),
             Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd => self.scope_markers(),
+            Op::ScopeDisown => {
+                self.arity(1)?;
+                self.want(self.res.is_none(), "scope.disown has no result")
+            }
         }
     }
 

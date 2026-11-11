@@ -8,6 +8,8 @@
 //! * `scope.begin S P`: opens scope `S`, nested in `P - 1` (`P` is 0 for the root).
 //! * `scope.own S K v`: the owned `v` belongs to `S`; `K` 0 drops it, 1 closes it with the
 //!   module's `close` function (`fn(move T) -> int`, nonzero is an error).
+//! * `scope.disown v`: `v` left its owner without an op that consumes it (a view moving into
+//!   the result); the pass stops tracking it on this path.
 //! * `scope.end S`: the point where `S`'s cleanup runs, on the fallthrough end and on every early
 //!   exit that leaves it.
 //!
@@ -143,6 +145,11 @@ fn function(m: &Module, f: &mut Func, close: Option<FuncId>) -> Result<(), Strin
         for inst in old.insts {
             match (inst.op, inst.imm) {
                 (Op::ScopeBegin | Op::ScopeOwn, _) => continue,
+                // The value moved on without a visible consumer: it is no longer this scope's.
+                (Op::ScopeDisown, _) => {
+                    live.remove(&inst.args[0]);
+                    continue;
+                }
                 (Op::ScopeEnd, Imm::Scope(scope, _)) => {
                     cur = exit(&cx, f, cur, &mut live, scope)?;
                     continue;

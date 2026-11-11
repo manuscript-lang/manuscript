@@ -1410,6 +1410,15 @@ impl<'a> FnLower<'a> {
         self.raw_owned.insert(uid);
     }
 
+    /// A Raw-owned local's value moved on without an op that consumes it: it is no longer the
+    /// scope's to drop on this path.
+    pub fn disown_raw(&mut self, uid: usize, v: Value) {
+        if self.raw_owned.contains(&uid) {
+            self.b
+                .emit(Op::ScopeDisown, &[v], ms_mir::ir::Imm::None, None);
+        }
+    }
+
     /// Ends the Raw cleanup of scope `i`: the point `elaborate` places its drops.
     fn end_raw(&mut self, i: usize) {
         let mark = self.scope_marks[i];

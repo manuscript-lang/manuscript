@@ -128,3 +128,29 @@ fn markers_round_trip_and_raw_ownership_is_checked_only_after_elaboration() {
     assert!(!print_module(&m).contains("scope."));
     verify_module(&m).expect("elaborated verifies");
 }
+
+#[test]
+fn a_disowned_value_is_not_dropped_at_the_scope_end() {
+    let (kept, out) = elaborate_and_run(
+        r#"fn @h() -> int {
+b0:
+  %n: int = iconst 4
+  scope.begin 1 0
+  %a: list<int> = call @mk (%n)
+  scope.own 1 0 %a
+  %z: int = iconst 0
+  %v: int = list.get %a, %z
+  scope.disown %a
+  drop %a
+  scope.end 1 0
+  ret %v
+}
+fn @main() -> int {
+b0:
+  %r: int = call @h ()
+  ret %r
+}
+"#,
+    );
+    assert_eq!((kept, out.as_str()), (4, ""));
+}

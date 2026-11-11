@@ -447,6 +447,7 @@ impl<'a> FnLower<'a> {
                     let v = self.local_take(&l);
                     // The return this move belongs to skips the local's drop on this path.
                     self.closed_on_path.insert(b.uid);
+                    self.disown_raw(b.uid, v);
                     return Ok(Val { v, own: true });
                 }
                 if self.moves_at(b.uid, e.id) && !self.dead {

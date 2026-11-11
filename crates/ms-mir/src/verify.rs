@@ -152,10 +152,12 @@ fn verify_func_in(
 
 /// Whether `f` still carries scope markers: it is in the Raw phase until `elaborate` runs.
 pub fn is_raw(f: &Func) -> bool {
-    f.blocks
-        .iter()
-        .flat_map(|b| &b.insts)
-        .any(|i| matches!(i.op, Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd))
+    f.blocks.iter().flat_map(|b| &b.insts).any(|i| {
+        matches!(
+            i.op,
+            Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd | Op::ScopeDisown
+        )
+    })
 }
 
 /// For each argument of `inst`, whether the position moving_params an owned value.

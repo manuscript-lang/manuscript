@@ -298,7 +298,7 @@ pub enum Op {
     // Runtime services.
     TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
     // Raw-phase scope markers, consumed by `elaborate`.
-    ScopeBegin, ScopeOwn, ScopeEnd,
+    ScopeBegin, ScopeOwn, ScopeEnd, ScopeDisown,
 }
 
 /// How an instruction touches machine state; used by optimization passes.
