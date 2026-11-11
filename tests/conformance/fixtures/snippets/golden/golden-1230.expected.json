@@ -9,7 +9,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export SetBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Numeric, Pair, Partition, RangeOptions, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
+        "message": "module does not export SetBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
         "position": {
           "file": "golden-1230.ms",
           "line": 3,
@@ -38,7 +38,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1230.ms:3:8: resolution: module does not export SetBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Numeric, Pair, Partition, RangeOptions, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 3 | import SetBuilder from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^^^\n<DIR>/golden-1230.ms:6:5: resolution: unknown binding SetBuilder; declare it with 'SetBuilder := ...' before use, define 'fn SetBuilder(...) T:', or import it from a module\n   |\n 6 |     SetBuilder[String]()\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1230.ms:3:8: resolution: module does not export SetBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Numeric, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 3 | import SetBuilder from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^^^\n<DIR>/golden-1230.ms:6:5: resolution: unknown binding SetBuilder; declare it with 'SetBuilder := ...' before use, define 'fn SetBuilder(...) T:', or import it from a module\n   |\n 6 |     SetBuilder[String]()\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

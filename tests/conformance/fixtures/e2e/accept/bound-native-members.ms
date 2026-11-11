@@ -1,7 +1,6 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	ListCopies from "@std/collections/collections.ms",
 	StringBuilder from "@std/string.ms",
 	expect_contains, expect_fault, expect_true from "@std/test/test.ms",
 )
@@ -90,8 +89,14 @@ test "size and shape methods as values":
 	(set_length() == 2) | expect_true?
 	(set_is_empty() == false) | expect_true?
 
+interface IntList:
+	fn sorted(compare: fn(Int, Int) Int) List[Int]
+	fn take(count: Int) List[Int]
+	fn reversed() List[Int]
+	fn clone() List[Int]
+
 test "sorted as a value":
-	view: ListCopies[Int] := [3, 1, 2]
+	view: IntList := [3, 1, 2]
 	sort := view.sorted
 	ordered := sort(compare: fn a, b: a - b)
 	(ordered.get(index: 0) == 1) | expect_true?
@@ -167,7 +172,7 @@ test "native calls pass as Equal":
 	("a".to_bytes().equals("a".to_bytes())) | expect_true?
 
 test "native contract methods through an interface value":
-	view: ListCopies[Int] := [3, 1, 2]
+	view: IntList := [3, 1, 2]
 	(view.take(2).length() == 2) | expect_true?
 	(view.reversed().get(index: 0) == 2) | expect_true?
 	(view.clone().length() == 3) | expect_true?

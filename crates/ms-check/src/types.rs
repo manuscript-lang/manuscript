@@ -1472,7 +1472,7 @@ fn holds_function_in(t: &Ty, seen: &mut Vec<Name>) -> bool {
 
 /// Whether the native `t` declares an infallible `clone` of its own as an operation of its
 /// definition (`fn clone() Bytes: ...` in `impl Bytes:`): the runtime can duplicate its storage.
-/// A clone implemented in source (`BigInt`, `List` through `ListCopies`) is a method instead.
+/// A clone implemented in source (`BigInt`, `List`) is a method instead.
 pub fn native_declares_clone(syms: ms_syntax::Names, t: &Ty) -> bool {
     t.def.as_ref().is_some_and(|d| {
         d.operations
