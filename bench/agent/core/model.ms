@@ -36,26 +36,21 @@ export type Challenge:
 	timeout_s: Int
 	dir: String
 
-fn Challenge.spec() String: (
-	read_file("{self.dir}/spec.md")
-	.wait()
-	.get()
-	.decode_utf8()
-	.get("")
-)
+impl Challenge:
+	fn spec() String: read_file("{self.dir}/spec.md").wait().get().decode_utf8().get("")
 
-// `which` is `examples` (visible to the agent) or `hidden`.
-fn Challenge.cases(which: String) List[Case]:
-	text := (
-		read_file("{self.dir}/{which}/cases.json")
-		.wait()
-		.get()
-		.decode_utf8()
-		.get("")
-	)
-	return parse[List[Case]](text).get([])
+	// `which` is `examples` (visible to the agent) or `hidden`.
+	fn cases(which: String) List[Case]:
+		text := (
+			read_file("{self.dir}/{which}/cases.json")
+			.wait()
+			.get()
+			.decode_utf8()
+			.get("")
+		)
+		return parse[List[Case]](text).get([])
 
-fn Challenge.solution(lang: String) String: "{self.dir}/solutions/{lang}"
+	fn solution(lang: String) String: "{self.dir}/solutions/{lang}"
 
 // A language the benchmark can be solved in, as `languages.json` describes it.
 export type Lang:
@@ -69,14 +64,15 @@ export type Lang:
 	context: List[String]
 
 // The extension of the solution file, such as `.ms`.
-fn Lang.suffix() String:
-	base := self.solution.split("/").last().get("")
-	if at := base.last_index_of("."): return base.slice(at, base.length()).get("")
+impl Lang:
+	fn suffix() String:
+		base := self.solution.split("/").last().get("")
+		if at := base.last_index_of("."): return base.slice(at, base.length()).get("")
 
-	return ""
+		return ""
 
-// The file name of the reference solution, such as `main.ms.ref`.
-fn Lang.reference() String: "{self.solution.split("/").last().get("")}.ref"
+	// The file name of the reference solution, such as `main.ms.ref`.
+	fn reference() String: "{self.solution.split("/").last().get("")}.ref"
 
 fn text_of(file: String) String:
 	return read_file(file).wait().get().decode_utf8().get("")

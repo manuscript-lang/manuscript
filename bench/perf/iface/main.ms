@@ -18,14 +18,16 @@ interface Step:
 type AddOne:
 	unused: Int
 
-fn AddOne.apply(x: Int) Int:
-	return x + 1
+impl Step for AddOne:
+	fn apply(x: Int) Int:
+		return x + 1
 
 type Scale:
 	k: Int
 
-fn Scale.apply(x: Int) Int:
-	return x * self.k + 1
+impl Step for Scale:
+	fn apply(x: Int) Int:
+		return x * self.k + 1
 
 fn make_add() Step:
 	return AddOne(unused: 0)

@@ -8,31 +8,32 @@ import (
 export type Pi:
 	placeholder: Bool = true
 
-fn Pi.name() String: "pi"
+impl Harness for Pi:
+	fn name() String: "pi"
 
-fn Pi.command(prompt: String, model: String?, workspace: String) List[String]:
-	var cmd = ["pi", "--mode", "json", "-p", prompt.clone()]
-	if m := model: cmd = cmd.concat(["--model", m.clone()])
-	return cmd
+	fn command(prompt: String, model: String?, workspace: String) List[String]:
+		var cmd = ["pi", "--mode", "json", "-p", prompt.clone()]
+		if m := model: cmd = cmd.concat(["--model", m.clone()])
+		return cmd
 
-fn Pi.parse(transcript: String) Usage:
-	var u = Usage()
+	fn parse(transcript: String) Usage:
+		var u = Usage()
 
-	for ev in events(transcript):
-		msg := ev.get("message").get(JsonValue.Null)
-		if ev.get("type").get(JsonValue.Null).as_string().get("") != "message_end": continue
-		if msg.get("role").get(JsonValue.Null).as_string().get("") != "assistant": continue
+		for ev in events(transcript):
+			msg := ev.get("message").get(JsonValue.Null)
+			if ev.get("type").get(JsonValue.Null).as_string().get("") != "message_end": continue
+			if msg.get("role").get(JsonValue.Null).as_string().get("") != "assistant": continue
 
-		us := msg.get("usage").get(JsonValue.Null)
-		if us.is_null(): continue
+			us := msg.get("usage").get(JsonValue.Null)
+			if us.is_null(): continue
 
-		u.tokens_in += int_at(us, "input")
-		u.tokens_cached += int_at(us, "cacheRead") + int_at(us, "cacheWrite")
-		u.tokens_out += int_at(us, "output")
-		u.turns += 1
+			u.tokens_in += int_at(us, "input")
+			u.tokens_cached += int_at(us, "cacheRead") + int_at(us, "cacheWrite")
+			u.tokens_out += int_at(us, "output")
+			u.turns += 1
 
-		if total := us.get("cost").get(JsonValue.Null).get("total"):
-			u.cost_usd += total.as_float().get(0.0)
-			u.cost_source = "harness"
+			if total := us.get("cost").get(JsonValue.Null).get("total"):
+				u.cost_usd += total.as_float().get(0.0)
+				u.cost_source = "harness"
 
-	return u
+		return u

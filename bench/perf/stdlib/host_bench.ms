@@ -29,14 +29,15 @@ type Whole:
 	data: Bytes
 	done: Bool
 
-fn var Whole.next() Bytes?!:
-	if self.done: return ok(none)
+impl Source[Bytes] for Whole:
+	var fn next() Bytes?!:
+		if self.done: return ok(none)
 
-	self.done = true
-	return ok(self.data.clone())
+		self.done = true
+		return ok(self.data.clone())
 
-fn var Whole.close() Unit!:
-	return ok(unit)
+	var fn close() Unit!:
+		return ok(unit)
 
 fn count_events(data: Bytes) Int:
 	var events = sse_events(ReadStream[Bytes](Whole(data, false)))

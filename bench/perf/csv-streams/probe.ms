@@ -10,18 +10,19 @@ type Chunks:
 	size: Int
 	at: Int = 0
 
-fn var Chunks.next() Bytes?!:
-	if self.at >= self.data.length(): return ok(none)
+impl Source[Bytes] for Chunks:
+	var fn next() Bytes?!:
+		if self.at >= self.data.length(): return ok(none)
 
-	var end = self.at + self.size
-	if end > self.data.length(): end = self.data.length()
+		var end = self.at + self.size
+		if end > self.data.length(): end = self.data.length()
 
-	piece := self.data.slice(self.at, end)?
-	self.at = end
-	return ok(piece)
+		piece := self.data.slice(self.at, end)?
+		self.at = end
+		return ok(piece)
 
-fn var Chunks.close() Unit!:
-	return ok(unit)
+	var fn close() Unit!:
+		return ok(unit)
 
 type Case:
 	name: String

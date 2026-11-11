@@ -42,69 +42,70 @@ type Parser:
 	div: Bool = false
 	bad: Bool = false
 
-fn Parser.at_op(text: String) Bool:
-	if self.bad or self.pos >= self.toks.length(): return false
-	return self.toks[self.pos].kind == "o" and self.toks[self.pos].text == text
+impl Parser:
+	fn at_op(text: String) Bool:
+		if self.bad or self.pos >= self.toks.length(): return false
+		return self.toks[self.pos].kind == "o" and self.toks[self.pos].text == text
 
-fn var Parser.expr() Int:
-	var v = self.term()
+	var fn expr() Int:
+		var v = self.term()
 
-	while self.at_op("+") or self.at_op("-"):
-		plus := self.at_op("+")
-		self.pos += 1
+		while self.at_op("+") or self.at_op("-"):
+			plus := self.at_op("+")
+			self.pos += 1
 
-		r := self.term()
-		v = if plus: v + r else: v - r
+			r := self.term()
+			v = if plus: v + r else: v - r
 
-	return v
+		return v
 
-fn var Parser.term() Int:
-	var v = self.unary()
+	var fn term() Int:
+		var v = self.unary()
 
-	while self.at_op("*") or self.at_op("/"):
-		times := self.at_op("*")
-		self.pos += 1
+		while self.at_op("*") or self.at_op("/"):
+			times := self.at_op("*")
+			self.pos += 1
 
-		r := self.unary()
+			r := self.unary()
 
-		if times:
-			v *= r
-		else if r == 0:
-			self.div = true
-			v = 0
-		else:
-			v /= r
+			if times:
+				v *= r
+			else if r == 0:
+				self.div = true
+				v = 0
+			else:
+				v /= r
 
-	return v
+		return v
 
-fn var Parser.unary() Int:
-	if self.at_op("-"):
-		self.pos += 1
-		return 0 - self.unary()
+	var fn unary() Int:
+		if self.at_op("-"):
+			self.pos += 1
+			return 0 - self.unary()
 
-	return self.atom()
+		return self.atom()
 
-fn var Parser.atom() Int:
-	if self.bad or self.pos >= self.toks.length():
-		self.bad = true
-		return 0
-
-	t := self.toks[self.pos].clone()
-	self.pos += 1
-	if t.kind == "n": return t.value
-
-	if t.text == "(":
-		v := self.expr()
-
-		if not self.at_op(")"):
+	var fn atom() Int:
+		if self.bad or self.pos >= self.toks.length():
 			self.bad = true
 			return 0
 
+		t := self.toks[self.pos].clone()
 		self.pos += 1
-		return v
+		if t.kind == "n": return t.value
 
-	self.bad = true
-	return 0
+		if t.text == "(":
+			v := self.expr()
+
+			if not self.at_op(")"):
+				self.bad = true
+				return 0
+
+			self.pos += 1
+			return v
+
+		self.bad = true
+		return 0
 
 fn evaluate(line: String) String:
 	var p = Parser(tokens(line))

@@ -11,9 +11,10 @@ interface Counter:
 type Acc:
 	total: Int
 
-fn var Acc.bump(by: Int) Int:
-	self.total += by
-	return self.total
+impl Counter for Acc:
+	var fn bump(by: Int) Int:
+		self.total += by
+		return self.total
 
 enum Shape:
 	Circle(r: Int)

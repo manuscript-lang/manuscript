@@ -56,10 +56,11 @@ export type Cases:
 	oracle: String
 	list: List[GenCase] = []
 
-// Appends a case whose expected output is the oracle's answer for `stdin`.
-fn var Cases.push(name: String, stdin: String) Unit:
-	self.list.append(make_case(name, stdin, solve_with(self.oracle, stdin)))
+impl Cases:
+	// Appends a case whose expected output is the oracle's answer for `stdin`.
+	var fn push(name: String, stdin: String) Unit:
+		self.list.append(make_case(name, stdin, solve_with(self.oracle, stdin)))
 
-// The case made from `stdin` without recording it, for the example lists.
-fn Cases.make(name: String, stdin: String) GenCase:
-	return make_case(name, stdin, solve_with(self.oracle, stdin))
+	// The case made from `stdin` without recording it, for the example lists.
+	fn make(name: String, stdin: String) GenCase:
+		return make_case(name, stdin, solve_with(self.oracle, stdin))
