@@ -128,7 +128,7 @@ fn skill_stdout_is_complete_versioned_and_can_be_redirected_without_installing()
     assert!(document.contains(&format!("Generated for Manuscript {}", ms_cli::VERSION)));
     assert!(!document.contains("{{MS_VERSION}}"));
     assert!(!document.contains("](references/"));
-    assert_eq!(document.matches("<!-- complete").count(), 8);
+    assert_eq!(document.matches("<!-- complete").count(), 9);
     for (path, _) in &ms_tooling::guide::skill::FILES[1..] {
         let slug = path
             .trim_start_matches("references/")

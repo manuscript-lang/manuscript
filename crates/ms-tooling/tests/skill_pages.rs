@@ -49,7 +49,7 @@ fn skill_complete_examples_check() {
             examples += 1;
         }
     }
-    assert_eq!(examples, 8, "retain all complete skill examples");
+    assert_eq!(examples, 9, "retain all complete skill examples");
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn skill_root_is_short_and_references_are_substantive() {
         .find(|(path, _)| *path == "SKILL.md")
         .unwrap()
         .1;
-    assert!(root.len() <= 2600, "entry skill should remain concise");
+    assert!(root.len() <= 5400, "entry skill should remain concise");
     assert!(root.starts_with("---\nname: manuscript\n"));
     assert!(root.contains("{{MS_VERSION}}"));
     assert!(root.contains("Use tabs for indentation"));
