@@ -10,7 +10,7 @@ export fn lookup[K: Hashable, V: Clonable](values: Map[K, V], key: K, fallback: 
 
 export fn locate_map[K: Hashable, V: Clonable](
 	values: Map[K, V],
-	needle: K
+	needle: K,
 ) MapEntry[K, V]?:
 	find := values.find
 	return find(fn key, value: key == needle)

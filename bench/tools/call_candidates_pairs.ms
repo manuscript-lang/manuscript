@@ -135,7 +135,8 @@ export fn main() Unit!:
 	)
 
 	result := summarize(
-		read_text(args[0]), args.length() > 1 and args[1] == "swap",
-		args.length() > 2 and args[2] == "cpu"
+		read_text(args[0]),
+		args.length() > 1 and args[1] == "swap",
+		args.length() > 2 and args[2] == "cpu",
 	)?
 	print(result)

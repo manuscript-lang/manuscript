@@ -1,7 +1,9 @@
-// Generates the same program in Manuscript, Go and Rust and times each build.
-// Usage: ms run bench/tools/compile_time.ms [-- packages files fns]   (default 40 25 10, about 122k lines of Manuscript)
-// OUT keeps the generated sources; MS picks the compiler; SKIP_LLVM=1 skips the release build; SKIP_RUST=1 skips the Rust builds (CARGO picks cargo).
-// Generated Manuscript and Go source contains many braces; `q` writes them as ‹ and › so the generator reads as source.
+// Generates the same program in Manuscript, Go and Rust and times each build. Usage: ms
+// run bench/tools/compile_time.ms [-- packages files fns] (default 40 25 10, about 122k
+// lines of Manuscript) OUT keeps the generated sources; MS picks the compiler;
+// SKIP_LLVM=1 skips the release build; SKIP_RUST=1 skips the Rust builds (CARGO picks
+// cargo). Generated Manuscript and Go source contains many braces; `q` writes them as ‹
+// and › so the generator reads as source.
 import (
 	arguments, set_environment from "@std/os/env.ms",
 	create_directory, remove, temporary from "@std/os/fs.ms",
@@ -78,16 +80,24 @@ fn ms_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 		b = b.concat(
 			[
 				q("    r := R_{p}_{f}(x, \"n‹x›\", [x, 1, 2])"),
-				"    var acc = r.score()", "    while acc > 1000:",
-				"        acc = acc / 2", "    return acc + {call}"
+				"    var acc = r.score()",
+				"    while acc > 1000:",
+				"        acc = acc / 2",
+				"    return acc + {call}",
 			]
 		)
 	else:
 		b = b.concat(
 			[
-				q("    s := \"v‹x›\""), "    var acc = s.length()", "    if x > 50:",
-				"        acc += x / 3", "    else if x > 10:", "        acc += x * 2",
-				"    else:", "        acc += 1", "    return acc + {call}"
+				q("    s := \"v‹x›\""),
+				"    var acc = s.length()",
+				"    if x > 50:",
+				"        acc += x / 3",
+				"    else if x > 10:",
+				"        acc += x * 2",
+				"    else:",
+				"        acc += 1",
+				"    return acc + {call}",
 			]
 		)
 
@@ -101,18 +111,30 @@ fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 	if shape == 0:
 		b = b.concat(
 			[
-				"\tacc := x", q("\tfor i := 0; i < 10; i++ ‹"), q("\t\tif i%2 == 0 ‹"),
-				"\t\t\tacc += i * 3", q("\t\t› else ‹"), "\t\t\tacc -= 1", "\t\t›",
-				"\t›", "\treturn acc%100000 + {call}"
+				"\tacc := x",
+				q("\tfor i := 0; i < 10; i++ ‹"),
+				q("\t\tif i%2 == 0 ‹"),
+				"\t\t\tacc += i * 3",
+				q("\t\t› else ‹"),
+				"\t\t\tacc -= 1",
+				"\t\t›",
+				"\t›",
+				"\treturn acc%100000 + {call}",
 			]
 		)
 	else if shape == 1:
 		b = b.concat(
 			[
-				"\txs := []int" + q("‹›"), q("\tfor i := 0; i < 8; i++ ‹"),
-				"\t\txs = append(xs, i+x)", "\t›", "\tt := 0",
-				q("\tfor _, v := range xs ‹"), "\t\tt += v % 7", "\t›",
-				"\tacc := t + len(xs)", "\treturn acc + {call}"
+				"\txs := []int" + q("‹›"),
+				q("\tfor i := 0; i < 8; i++ ‹"),
+				"\t\txs = append(xs, i+x)",
+				"\t›",
+				"\tt := 0",
+				q("\tfor _, v := range xs ‹"),
+				"\t\tt += v % 7",
+				"\t›",
+				"\tacc := t + len(xs)",
+				"\treturn acc + {call}",
 			]
 		)
 	else if shape == 2:
@@ -125,15 +147,22 @@ fn go_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 				q("\tfor acc > 1000 ‹"),
 				"\t\tacc = acc / 2",
 				"\t›",
-				"\treturn acc + {call}"
+				"\treturn acc + {call}",
 			]
 		)
 	else:
 		b = b.concat(
 			[
-				"\ts := fmt.Sprintf(\"v%d\", x)", "\tacc := len(s)", q("\tif x > 50 ‹"),
-				"\t\tacc += x / 3", q("\t› else if x > 10 ‹"), "\t\tacc += x * 2",
-				q("\t› else ‹"), "\t\tacc += 1", "\t›", "\treturn acc + {call}"
+				"\ts := fmt.Sprintf(\"v%d\", x)",
+				"\tacc := len(s)",
+				q("\tif x > 50 ‹"),
+				"\t\tacc += x / 3",
+				q("\t› else if x > 10 ‹"),
+				"\t\tacc += x * 2",
+				q("\t› else ‹"),
+				"\t\tacc += 1",
+				"\t›",
+				"\treturn acc + {call}",
 			]
 		)
 
@@ -154,19 +183,30 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 	if shape == 0:
 		b = b.concat(
 			[
-				"    let mut acc = x;", q("    for i in 0..10 ‹"),
-				q("        if i % 2 == 0 ‹"), "            acc += i * 3;",
-				q("        › else ‹"), "            acc -= 1;", "        ›", "    ›",
-				"    acc % 100000 + {call}"
+				"    let mut acc = x;",
+				q("    for i in 0..10 ‹"),
+				q("        if i % 2 == 0 ‹"),
+				"            acc += i * 3;",
+				q("        › else ‹"),
+				"            acc -= 1;",
+				"        ›",
+				"    ›",
+				"    acc % 100000 + {call}",
 			]
 		)
 	else if shape == 1:
 		b = b.concat(
 			[
-				"    let mut xs: Vec<i64> = Vec::new();", q("    for i in 0..8 ‹"),
-				"        xs.push(i + x);", "    ›", "    let mut t = 0;",
-				q("    for v in &xs ‹"), "        t += v % 7;", "    ›",
-				"    acc := t + xs.len() as i64;", "    acc + {call}"
+				"    let mut xs: Vec<i64> = Vec::new();",
+				q("    for i in 0..8 ‹"),
+				"        xs.push(i + x);",
+				"    ›",
+				"    let mut t = 0;",
+				q("    for v in &xs ‹"),
+				"        t += v % 7;",
+				"    ›",
+				"    acc := t + xs.len() as i64;",
+				"    acc + {call}",
 			]
 		)
 	else if shape == 2:
@@ -179,16 +219,22 @@ fn rs_fn(p: Int, f: Int, k: Int, d: List[Dep]) String:
 				q("    while acc > 1000 ‹"),
 				"        acc = acc / 2;",
 				"    ›",
-				"    acc + {call}"
+				"    acc + {call}",
 			]
 		)
 	else:
 		b = b.concat(
 			[
-				q("    s := format!(\"v‹›\", x);"), "    let mut acc = s.len() as i64;",
-				q("    if x > 50 ‹"), "        acc += x / 3;",
-				q("    › else if x > 10 ‹"), "        acc += x * 2;", q("    › else ‹"),
-				"        acc += 1;", "    ›", "    acc + {call}"
+				q("    s := format!(\"v‹›\", x);"),
+				"    let mut acc = s.len() as i64;",
+				q("    if x > 50 ‹"),
+				"        acc += x / 3;",
+				q("    › else if x > 10 ‹"),
+				"        acc += x * 2;",
+				q("    › else ‹"),
+				"        acc += 1;",
+				"    ›",
+				"    acc + {call}",
 			]
 		)
 
@@ -276,7 +322,7 @@ fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
 	write_text("{out}/ms/src/main.ms", ms.join(""))
 	write_text(
 		"{out}/ms/ms.toml",
-		"[project]\nname = \"big\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n"
+		"[project]\nname = \"big\"\nsource = \"./src\"\nentry = \"./src/main.ms\"\n",
 	)
 
 	var go = ["package main\n\nimport \"fmt\"\n"]
@@ -300,7 +346,7 @@ fn generate(out: String, packages: Int, files: Int, fns: Int) Unit:
 	write_text("{out}/rs/src/main.rs", rs.join(""))
 	write_text(
 		"{out}/rs/Cargo.toml",
-		"[package]\nname = \"big\"\nversion = \"0.1.0\"\nedition = \"2021\"\n"
+		"[package]\nname = \"big\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
 	)
 
 // Runs a build and prints its label with the elapsed seconds.
@@ -308,7 +354,7 @@ fn timed(
 	label: String,
 	dir: String,
 	program: String,
-	args: List[String]
+	args: List[String],
 ) Result[Unit, Error]:
 	start := now_ns()
 	_ := must(label, run_in(dir, program, args))?
@@ -330,8 +376,10 @@ fn run(out: String, p: Int, f: Int, k: Int) Result[Unit, Error]:
 	timed("ms emit:  ", "{out}/ms", ms, ["emit", "ms.toml"])?
 	drop_cache("{out}/ms")
 	timed(
-		"ms debug: ", "{out}/ms", ms,
-		["build", "ms.toml", "-o", "../msbin_d", "--build-type", "Debug"]
+		"ms debug: ",
+		"{out}/ms",
+		ms,
+		["build", "ms.toml", "-o", "../msbin_d", "--build-type", "Debug"],
 	)?
 	drop_cache("{out}/ms")
 	set_environment("MS_BACKEND", "cranelift").get()
@@ -353,7 +401,7 @@ fn rust_timed(
 	label: String,
 	out: String,
 	cargo: String,
-	args: List[String]
+	args: List[String],
 ) Result[Unit, Error]:
 	remove("{out}/rs/target", recursive: true).get(unit)
 	return timed(label, "{out}/rs", cargo, args)

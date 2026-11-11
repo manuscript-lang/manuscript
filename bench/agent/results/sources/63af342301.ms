@@ -248,7 +248,7 @@ fn merge_text(
 	base: List[String],
 	ours: List[String],
 	theirs: List[String],
-	branch: String
+	branch: String,
 ) Merged:
 	var ours_of = List[Int]()
 	var theirs_of = List[Int]()
@@ -317,11 +317,22 @@ fn new_repo(input: List[String]) Repo:
 	var branches = Map[String, String]()
 	branches["main"] = ""
 	return Repo(
-		input: input, pos: 0, out: List[String](), commits: Map[String, Commit](),
-		branches: branches, tags: Map[String, String](), work: Map[String, String](),
-		index: Map[String, String](), conflicts: Set[String](), head_branch: "main",
-		detached: false, detached_at: "", merging: false, merge_other: "",
-		merge_name: "", next_number: 1
+		input: input,
+		pos: 0,
+		out: List[String](),
+		commits: Map[String, Commit](),
+		branches: branches,
+		tags: Map[String, String](),
+		work: Map[String, String](),
+		index: Map[String, String](),
+		conflicts: Set[String](),
+		head_branch: "main",
+		detached: false,
+		detached_at: "",
+		merging: false,
+		merge_other: "",
+		merge_name: "",
+		next_number: 1,
 	)
 
 impl Repo:
@@ -451,7 +462,7 @@ impl Repo:
 	var fn make_commit(
 		tree: Map[String, String],
 		parents: List[String],
-		message: String
+		message: String,
 	) String:
 		var text = "tree " + hex16(tree_hash(tree)) + "\n"
 		for p in parents:
@@ -462,8 +473,11 @@ impl Repo:
 
 		if not self.commits.contains(id):
 			self.commits[id.clone()] = Commit(
-				id: id.clone(), tree: tree.clone(), parents: parents.clone(),
-				message: message.clone(), number: self.next_number
+				id: id.clone(),
+				tree: tree.clone(),
+				parents: parents.clone(),
+				message: message.clone(),
+				number: self.next_number,
 			)
 			self.next_number += 1
 
@@ -1170,7 +1184,9 @@ impl Repo:
 		parents.append(other)
 
 		id := self.make_commit(
-			self.index.clone(), parents, "Merge branch '" + name + "'"
+			self.index.clone(),
+			parents,
+			"Merge branch '" + name + "'",
 		)
 		self.move_head(id.clone())
 		self.emit("Merge made by the 'three-way' strategy.")

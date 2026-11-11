@@ -9,9 +9,8 @@ type Marker:
 	id: Int
 	log: String
 
-impl Closeable for Marker:
-	var fn close() Unit!:
-		append_file(self.log, "{self.id},").wait()?
+fn var Marker.close() Unit!:
+	append_file(self.log, "{self.id},").wait()?
 
 fn failed(id: Int, log: String) Int!Marker:
 	return error(Marker(id, log))
@@ -42,8 +41,9 @@ test "a bound native method over a named receiver closes it once, not twice":
 	named(log.clone())?
 	expect_equal(events(log), "2,")?
 
-// A resource with only scalar fields has no drop glue but still has one owner that closes it. Its
-// id names the file the close appends to, since it has nowhere to keep a log path.
+// A resource with only scalar fields has no drop glue but still has one owner that
+// closes it. Its id names the file the close appends to, since it has nowhere to keep a
+// log path.
 type Tag:
 	id: Int
 
@@ -51,9 +51,8 @@ type Tag:
 fn tag_log(id: Int) String!:
 	return ok("{ temporary_root()?}/ms-bound-native-tag-{id}")
 
-impl Closeable for Tag:
-	var fn close() Unit!:
-		append_file(tag_log(self.id)?, "closed,").wait()?
+fn var Tag.close() Unit!:
+	append_file(tag_log(self.id)?, "closed,").wait()?
 
 fn borrowed_status(result: Int!Tag) Bool:
 	check := result.is_error

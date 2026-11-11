@@ -29,7 +29,8 @@ test "ASCII85 ignores every ASCII control and space including after complete gro
 	expect_equal(ascii85_decode(spaces, 0)?, Bytes([]))?
 	expect_equal(ascii85_decode("z" + spaces)?, Bytes([0, 0, 0, 0]))?
 	expect_equal(
-		ascii85_decode(spaces + "s8W-!" + spaces)?, Bytes([255, 255, 255, 255])
+		ascii85_decode(spaces + "s8W-!" + spaces)?,
+		Bytes([255, 255, 255, 255]),
 	)?
 	expect_equal(ascii85_decode("!" + spaces + "!")?, Bytes([0]))?
 

@@ -76,7 +76,7 @@ test "YAML implicit indentation rejects overindented leading empty lines":
 				"value": YamlValue.StringValue(""),
 				"next": YamlValue.StringValue("word")
 			}
-		)
+		),
 	)?
 
 test "YAML version directive composes with same-line document content":

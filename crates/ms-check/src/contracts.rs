@@ -865,6 +865,79 @@ impl Checker {
             }
         }
         contract.is(Builtin::Comparable) && builtin_comparable(receiver)
+            || self.shape_implements(receiver, contract)
+    }
+
+    /// Whether `receiver`'s own methods supply every operation of `contract` with its exact
+    /// signature, labels and `var`-ness. A type satisfies an interface by having its operations;
+    /// no `impl` names the relationship.
+    fn shape_implements(&self, receiver: &Ty, contract: &Ty) -> bool {
+        self.shape_gap(receiver, contract)
+            .is_some_and(|gap| gap.is_empty())
+    }
+
+    /// Why `receiver`'s own methods do not satisfy `contract` by shape: the first operation that is
+    /// missing or differs. `Some("")` when they satisfy it; `None` when shape does not apply.
+    pub(crate) fn shape_gap(&self, receiver: &Ty, contract: &Ty) -> Option<String> {
+        if !matches!(receiver.kind, Kind::Record | Kind::Alternative)
+            || contract.kind != Kind::Contract
+        {
+            return None;
+        }
+        let def = contract.def.as_ref()?;
+        let ops = def.operations.borrow();
+        if ops.is_empty() || contract.args.len() != def.arity() {
+            return None;
+        }
+        let mut s = substitution(contract);
+        s.extend(self_binding(self.syms, contract, receiver));
+        let declared = |f: &Option<FuncRef>| {
+            let f = f.as_ref()?;
+            let m = f.decl.methods().get(f.index?)?;
+            Some((
+                m.mutating,
+                m.func.params.iter().map(|p| p.name).collect::<Vec<_>>(),
+            ))
+        };
+        for op in ops.iter() {
+            let name = self.syms.str(op.name);
+            let key = format!("{}/{}", self.syms.str(contract.id), name);
+            if !self.session.operation_variables(&key).is_empty() {
+                return Some(format!("{name} declares type parameters of its own"));
+            }
+            let own: Vec<MethodRef> = self
+                .implemented_methods(receiver, op.name)
+                .into_iter()
+                .filter(|m| m.is_inherent(self.syms))
+                .collect();
+            let [m] = own.as_slice() else {
+                return Some(format!("{name} is missing"));
+            };
+            if !m.split_variables().1.is_empty() {
+                return Some(format!("{name} declares type parameters of its own"));
+            }
+            if !same(&m.ty, &sub(&op.ty, &s)) {
+                return Some(format!(
+                    "{name} must be declared as fn {name}{}",
+                    signature_text(self.syms, &sub(&op.ty, &s))
+                ));
+            }
+            match (declared(&m.decl), declared(&op.decl)) {
+                // An operation declared `var fn` may be met by a method that does not change `self`.
+                (Some((own, own_names)), Some((want, want_names))) => {
+                    if own_names != want_names {
+                        return Some(format!(
+                            "{name} must name its parameters like the interface"
+                        ));
+                    }
+                    if own && !want {
+                        return Some(format!("{name} must not be `var fn`"));
+                    }
+                }
+                _ => return Some(format!("{name} has no declaration to compare")),
+            }
+        }
+        Some(String::new())
     }
 
     /// Whether `.clone()` is available for `t`: every value but a resource, which has one owner.
@@ -941,9 +1014,7 @@ impl Checker {
         seen.push(key);
         let closeable = self.p.methods.iter().any(|m| {
             self.method_visible(m)
-                && m.contract
-                    .as_ref()
-                    .is_some_and(|c| c.is(Builtin::Closeable))
+                && m.closes(self.syms)
                 && unify(
                     &m.receiver,
                     t,

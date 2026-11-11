@@ -39,12 +39,13 @@ test "JSON decode errors name the failing path":
 	wrong := parse[Profile]("\{\"name\":1\}")
 	expect_equal(
 		(expect_error(wrong)?).message,
-		"JSON: invalid data: at $.name: expected string, found number"
+		"JSON: invalid data: at $.name: expected string, found number",
 	)?
 
 	nested := parse[List[Profile]]("[\{\"name\":\"a\",\"scores\":[]\}, 3]")
 	expect_contains(
-		(expect_error(nested)?).message, "at $[1]: expected object, found number"
+		(expect_error(nested)?).message,
+		"at $[1]: expected object, found number",
 	)?
 
 test "JSON rejects duplicate keys malformed Unicode and trailing values":
@@ -237,7 +238,8 @@ test "JSON stringify encodes standard-library values":
 	expect_equal((encoded(ok)?), "\{\"ok\":\{\"value\":5\}\}")?
 	expect_equal((encoded("EBADMSG")?), "\"EBADMSG\"")?
 	expect_equal(
-		(encoded(Tagged.Named("n", none))?), "\{\"Named\":\{\"name\":\"n\"\}\}"
+		(encoded(Tagged.Named("n", none))?),
+		"\{\"Named\":\{\"name\":\"n\"\}\}",
 	)?
 	expect_equal((encoded(Tagged.Plain)?), "\"Plain\"")?
 
@@ -276,7 +278,7 @@ test "JSON stringify omits a Unit field and rejects a Unit root":
 	failed: Int! := error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(
 		(encoded(failed)?),
-		"\{\"error\":\{\"cause\":\{\"message\":\"JSON: limit exceeded\",\"kind\":\"EOVERFLOW\",\"details\":\{\}\}\}\}"
+		"\{\"error\":\{\"cause\":\{\"message\":\"JSON: limit exceeded\",\"kind\":\"EOVERFLOW\",\"details\":\{\}\}\}\}",
 	)?
 
 enum Event:

@@ -1,8 +1,8 @@
 // Summarize results/runs.jsonl as Markdown tables.
 //
-// Pass rate counts every run. Tokens, turns, time and cost average over PASSING runs only,
-// so a cheap wrong answer never improves a language's numbers.
-// Usage (from the repository root): ms run bench/agent/report.ms [-- path/to/runs.jsonl]
+// Pass rate counts every run. Tokens, turns, time and cost average over PASSING runs
+// only, so a cheap wrong answer never improves a language's numbers. Usage (from the
+// repository root): ms run bench/agent/report.ms [-- path/to/runs.jsonl]
 import (
 	parse from "@std/data/json.ms",
 	stderr, stdout from "@std/io/io.ms",
@@ -85,18 +85,24 @@ fn main() Int:
 		return 1
 
 	var text = table(
-		runs, "By harness and language", fn r: "{r.harness} / {r.language}"
+		runs,
+		"By harness and language",
+		fn r: "{r.harness} / {r.language}"
 	)
 	text = (
 		text
 		+ table(
-			runs, "By language and category", fn r: "{r.language} / {r.category}"
+			runs,
+			"By language and category",
+			fn r: "{r.language} / {r.category}"
 		)
 	)
 	text = (
 		text
 		+ table(
-			runs, "By language and tier", fn r: "{r.language} / tier {r.tier}"
+			runs,
+			"By language and tier",
+			fn r: "{r.language} / tier {r.tier}"
 		)
 	)
 	stdout().write(text).get()

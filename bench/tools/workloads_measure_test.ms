@@ -5,7 +5,8 @@ import (
 	measure, versions from "./workloads_measure.ms",
 )
 
-// A producer for `version` that prints "correct" unless `mode` says otherwise for `bad`. Calls are counted per version.
+// A producer for `version` that prints "correct" unless `mode` says otherwise for
+// `bad`. Calls are counted per version.
 type Producer:
 	bad: String
 	mode: String
@@ -38,7 +39,7 @@ test "every trial rotates and retains samples":
 	measured := expect_ok(measure(3, "workload", fn v: p.run(v)))?
 	expect_equal(
 		p.order,
-		["go", "ms", "rs", "ms", "go", "rs", "go", "rs", "ms", "rs", "ms", "go"]
+		["go", "ms", "rs", "ms", "go", "rs", "go", "rs", "ms", "rs", "ms", "go"],
 	)?
 	expect_equal(measured.samples.length(), 9)?
 	expect_equal(measured.samples.all(fn s: s.elapsed_ns > 0), true)?

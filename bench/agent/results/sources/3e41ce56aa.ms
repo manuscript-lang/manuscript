@@ -66,8 +66,13 @@ fn range_text(before: Int, len: Int) String:
 	return "{start},{len}"
 
 fn write_hunk(
-	var out: StringBuilder, steps: List[Step], a: List[String], b: List[String],
-	first: Int, last: Int, context: Int
+	var out: StringBuilder,
+	steps: List[Step],
+	a: List[String],
+	b: List[String],
+	first: Int,
+	last: Int,
+	context: Int,
 ) Unit:
 	s := if first > context: first - context else: 0
 	e := if last + context < steps.length(): last + context else: steps.length() - 1

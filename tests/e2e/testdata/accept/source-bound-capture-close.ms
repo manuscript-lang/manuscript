@@ -9,11 +9,10 @@ type Marker:
 	log: String
 	closed: Bool = false
 
-impl Closeable for Marker:
-	var fn close() Unit!:
-		if not self.closed:
-			self.closed = true
-			append_file(self.log, "{self.id},").wait()?
+fn var Marker.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "{self.id},").wait()?
 
 impl Marker:
 	fn status() Int: self.id

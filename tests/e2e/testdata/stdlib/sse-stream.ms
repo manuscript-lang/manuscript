@@ -11,19 +11,18 @@ type Chunks:
 	index: Int
 	failure: Error?
 
-impl Source[Bytes] for Chunks:
-	var fn next() Bytes?!:
-		if self.index < self.parts.length():
-			part := self.parts[self.index].clone()
-			self.index += 1
-			return ok(part)
+fn var Chunks.next() Bytes?!:
+	if self.index < self.parts.length():
+		part := self.parts[self.index].clone()
+		self.index += 1
+		return ok(part)
 
-		if cause := self.failure: return error(cause.clone())
+	if cause := self.failure: return error(cause.clone())
 
-		return ok(none)
+	return ok(none)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Chunks.close() Unit!:
+	return ok(unit)
 
 fn chunks(parts: List[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(parts, 0, none))
@@ -86,7 +85,7 @@ test "comments, unknown fields and a single leading space are handled":
 test "event type applies to one event and id persists":
 	expect(
 		"event: tick\nid: 7\ndata: 1\n\ndata: 2\n\nid\ndata: 3\n\n",
-		"tick|1|7;message|2|7;message|3|"
+		"tick|1|7;message|2|7;message|3|",
 	)?
 
 test "ids containing NUL are ignored":
@@ -134,13 +133,14 @@ test "line and event budgets report LimitExceeded":
 	expect_equal((decode(["data: 12\n\n".to_bytes()], SseLimits(8))?).length(), 1)?
 
 	event := decode(
-		["data: 1\n".to_bytes(), "data: 2\n".to_bytes()], SseLimits(max_event_bytes: 10)
+		["data: 1\n".to_bytes(), "data: 2\n".to_bytes()],
+		SseLimits(max_event_bytes: 10),
 	)
 	expect_equal(event.err().kind, "EOVERFLOW")?
 
 	comments := decode(
 		[": a long comment is not counted\ndata: 1\n\n".to_bytes()],
-		SseLimits(max_event_bytes: 10)
+		SseLimits(max_event_bytes: 10),
 	)
 	expect_equal((comments?).length(), 1)?
 
@@ -161,7 +161,9 @@ test "a read failure is the stream's error and events before it arrive":
 	var events = sse_events(
 		ReadStream[Bytes](
 			Chunks(
-				["data: a\n\n".to_bytes()], 0, Error("I/O: closed", kind: "EBADF")
+				["data: a\n\n".to_bytes()],
+				0,
+				Error("I/O: closed", kind: "EBADF"),
 			)
 		)
 	)

@@ -36,7 +36,8 @@ action with `| raw` to print trusted markup unchanged. Values come from data onl
 call functions or run code, and `max_output` bounds the result.
 */
 
-// A parsed template expression: a literal, a path, a filter call or an operator. Internal to the engine; hidden from callers.
+// A parsed template expression: a literal, a path, a filter call or an operator.
+// Internal to the engine; hidden from callers.
 export opaque enum TemplateExpr:
 	// A literal string, number, boolean or null written in the template.
 	Literal(
@@ -70,7 +71,8 @@ export opaque type TemplateBranch:
 	// Nodes rendered when the condition holds.
 	body: List[TemplateNode]
 
-// A parsed template node: text, a printed value, a conditional, a loop or an include. Internal to the engine.
+// A parsed template node: text, a printed value, a conditional, a loop or an include.
+// Internal to the engine.
 export opaque enum TemplateNode:
 	// Literal text copied to the output.
 	Text(
@@ -117,19 +119,26 @@ export opaque type Template:
 	// True when printed values are HTML-escaped by default.
 	html: Bool
 
-impl Template:
-	// Renders with `data` (an object supplies the root names) and the settings in `options`.
-	fn render(data: JsonValue, options: RenderOptions = RenderOptions()) String!Error:
-		var frames = List[Map[String, JsonValue]]()
-		frames.append(root_names(data))
+// Renders with `data` (an object supplies the root names) and the settings in
+// `options`.
+fn Template.render(
+	data: JsonValue,
+	options: RenderOptions = RenderOptions(),
+) String!Error:
+	var frames = List[Map[String, JsonValue]]()
+	frames.append(root_names(data))
 
-		var run = Run(
-			out: StringBuilder(), written: 0, frames: frames,
-			partials: options.partials.clone(), strict: options.strict,
-			limit: options.max_output, html: self.html
-		)
-		run.nodes(self.nodes.clone(), 0)?
-		return ok(run.out.build())
+	var run = Run(
+		out: StringBuilder(),
+		written: 0,
+		frames: frames,
+		partials: options.partials.clone(),
+		strict: options.strict,
+		limit: options.max_output,
+		html: self.html,
+	)
+	run.nodes(self.nodes.clone(), 0)?
+	return ok(run.out.build())
 
 type Token:
 	action: Bool
@@ -146,28 +155,8 @@ FILTERS := [
 ]
 MAX_DEPTH := 64
 
-// Builds a template error. Each message names the line, path, filter or partial but never echoes values.
-fn syntax_error(line: Int, reason: String) Error:
-	return Error(
-		"template: line {line}: {reason}", kind: "EBADMSG", details: {"line": "{line}"}
-	)
-
-fn missing_value_error(path: String) Error:
-	return Error(
-		"template: no value for {path}", kind: "ENOENT", details: {"path": path}
-	)
-
-fn invalid_filter_error(name: String, reason: String) Error:
-	return Error(
-		"template: filter {name}: {reason}", kind: "EINVAL", details: {"filter": name}
-	)
-
-fn unknown_partial_error(name: String) Error:
-	return Error(
-		"template: unknown partial {name}", kind: "ENOENT", details: {"partial": name}
-	)
-
-// Compiles template source. With `html: true`, printed values are HTML-escaped unless they end in `| raw`.
+// Compiles template source. With `html: true`, printed values are HTML-escaped unless
+// they end in `| raw`.
 export fn compile(source: String, html: Bool = false) Template!Error:
 	tokens := tokenize(source)?
 	var builder = Builder(tokens: tokens, at: 0, html: html)
@@ -183,7 +172,8 @@ export fn render(source: String, data: JsonValue, html: Bool = false) String!Err
 	template := compile(source, html: html)?
 	return template.render(data)
 
-// Converts any `Data` value (records, lists, scalars) to the `JsonValue` a template reads.
+// Converts any `Data` value (records, lists, scalars) to the `JsonValue` a template
+// reads.
 export fn to_data[T: Data](value: T) JsonValue!Error:
 	text := stringify(value: value)
 	if text.is_error(): return error(
@@ -206,13 +196,14 @@ export type RenderOptions:
 	// Maximum text length in bytes (default 16 MiB).
 	max_output: Int = 16777216
 
-// Renders `template` as its `render` method does and writes the text to `output`, which the caller keeps and closes.
-// A failed render writes nothing; a failed write returns the stream's error.
+// Renders `template` as its `render` method does and writes the text to `output`, which
+// the caller keeps and closes. A failed render writes nothing; a failed write returns
+// the stream's error.
 export fn render_to(
 	template: Template,
 	data: JsonValue,
 	var output: WriteStream[String],
-	options: RenderOptions = RenderOptions()
+	options: RenderOptions = RenderOptions(),
 ) Unit!Error:
 	text := template.render(data, options)?
 	return output.write(text)
@@ -229,7 +220,8 @@ fn count_lines(text: String) Int:
 fn tokenize(source: String) List[Token]!Error:
 	var tokens = List[Token]()
 
-	// Splitting once keeps lexing linear: each piece starts right after an opening delimiter.
+	// Splitting once keeps lexing linear: each piece starts right after an opening
+	// delimiter.
 	pieces := source.split("\{\{")
 	var literal = pieces[0].clone()
 	var index = 1
@@ -240,7 +232,8 @@ fn tokenize(source: String) List[Token]!Error:
 		var text = literal.clone()
 		if trim_next: text = text.trim_start()
 
-		// An action ends at the first closing delimiter, even when its body holds a literal opener.
+		// An action ends at the first closing delimiter, even when its body holds a
+		// literal opener.
 		var chunks = List[String]()
 		var tail = ""
 		var closed = false
@@ -261,7 +254,8 @@ fn tokenize(source: String) List[Token]!Error:
 
 		if not closed: return error(
 			syntax_error(
-				line: line + count_lines(text), reason: "unterminated action"
+				line: line + count_lines(text),
+				reason: "unterminated action",
 			)
 		)
 
@@ -295,7 +289,8 @@ fn tokenize(source: String) List[Token]!Error:
 	tokens.append(
 		Token(
 			action: false,
-			body: if trim_next: literal.trim_start() else: literal.clone(), line: line
+			body: if trim_next: literal.trim_start() else: literal.clone(),
+			line: line,
 		)
 	)
 	return ok(tokens)
@@ -395,122 +390,116 @@ type ExprParser:
 	at: Int
 	line: Int
 
-impl ExprParser:
-	fn peek() Tok:
-		return self.toks.get(self.at, Tok(kind: "end", text: ""))
+fn ExprParser.peek() Tok:
+	return self.toks.get(self.at, Tok(kind: "end", text: ""))
 
-	fn is_sym(text: String) Bool:
-		t := self.peek()
-		return t.kind == "sym" and t.text == text
+fn ExprParser.is_sym(text: String) Bool:
+	t := self.peek()
+	return t.kind == "sym" and t.text == text
 
-	fn is_word(text: String) Bool:
-		t := self.peek()
-		return t.kind == "word" and t.text == text
+fn ExprParser.is_word(text: String) Bool:
+	t := self.peek()
+	return t.kind == "word" and t.text == text
 
-	fn fail(reason: String) Error:
-		return syntax_error(line: self.line, reason: reason)
+fn ExprParser.fail(reason: String) Error:
+	return syntax_error(line: self.line, reason: reason)
 
-	var fn or_expr() TemplateExpr!Error:
-		var left = self.and_expr()?
+fn var ExprParser.or_expr() TemplateExpr!Error:
+	var left = self.and_expr()?
 
-		while self.is_word("or"):
-			self.at += 1
+	while self.is_word("or"):
+		self.at += 1
 
-			right := self.and_expr()?
-			left = Op("or", [left, right])
+		right := self.and_expr()?
+		left = Op("or", [left, right])
 
-		return ok(left)
+	return ok(left)
 
-	var fn and_expr() TemplateExpr!Error:
-		var left = self.not_expr()?
+fn var ExprParser.and_expr() TemplateExpr!Error:
+	var left = self.not_expr()?
 
-		while self.is_word("and"):
-			self.at += 1
+	while self.is_word("and"):
+		self.at += 1
 
-			right := self.not_expr()?
-			left = Op("and", [left, right])
+		right := self.not_expr()?
+		left = Op("and", [left, right])
 
-		return ok(left)
+	return ok(left)
 
-	var fn not_expr() TemplateExpr!Error:
-		if self.is_word("not"):
-			self.at += 1
+fn var ExprParser.not_expr() TemplateExpr!Error:
+	if self.is_word("not"):
+		self.at += 1
 
-			inner := self.not_expr()?
-			return ok(Op("not", [inner]))
+		inner := self.not_expr()?
+		return ok(Op("not", [inner]))
 
-		return self.compare()
+	return self.compare()
 
-	var fn compare() TemplateExpr!Error:
-		left := self.filtered()?
-		t := self.peek()
-		is_cmp := (
-			t.kind == "sym"
-			and ["==", "!=", "<", "<=", ">", ">="].contains(t.text)
+fn var ExprParser.compare() TemplateExpr!Error:
+	left := self.filtered()?
+	t := self.peek()
+	is_cmp := (t.kind == "sym" and ["==", "!=", "<", "<=", ">", ">="].contains(t.text))
+	if not is_cmp: return ok(left)
+
+	self.at += 1
+
+	right := self.filtered()?
+	return ok(Op(t.text.clone(), [left, right]))
+
+fn var ExprParser.filtered() TemplateExpr!Error:
+	var value = self.primary()?
+
+	while self.is_sym("|"):
+		self.at += 1
+
+		name := self.peek()
+		if name.kind != "word" or not FILTERS.contains(name.text): return error(
+			self.fail("unknown filter")
 		)
-		if not is_cmp: return ok(left)
 
 		self.at += 1
 
-		right := self.filtered()?
-		return ok(Op(t.text.clone(), [left, right]))
+		var args = [value]
 
-	var fn filtered() TemplateExpr!Error:
-		var value = self.primary()?
-
-		while self.is_sym("|"):
+		if self.is_sym("("):
 			self.at += 1
 
-			name := self.peek()
-			if name.kind != "word" or not FILTERS.contains(name.text): return error(
-				self.fail("unknown filter")
-			)
+			while not self.is_sym(")"):
+				args.append(self.or_expr()?)
+
+				if self.is_sym(","): self.at += 1
+				else if not self.is_sym(")"): return error(self.fail("expected , or )"))
 
 			self.at += 1
 
-			var args = [value]
+		value = Call(name.text.clone(), args)
 
-			if self.is_sym("("):
-				self.at += 1
+	return ok(value)
 
-				while not self.is_sym(")"):
-					args.append(self.or_expr()?)
+fn var ExprParser.primary() TemplateExpr!Error:
+	t := self.peek()
+	self.at += 1
+	if t.kind == "str": return ok(Literal(JsonValue.StringValue(t.text.clone())))
+	if t.kind == "num": return ok(Literal(JsonValue.NumberValue(t.text.clone())))
 
-					if self.is_sym(","): self.at += 1
-					else if not self.is_sym(")"): return error(
-						self.fail("expected , or )")
-					)
+	if t.kind == "sym" and t.text == "(":
+		inner := self.or_expr()?
+		if not self.is_sym(")"): return error(self.fail("expected )"))
 
-				self.at += 1
-
-			value = Call(name.text.clone(), args)
-
-		return ok(value)
-
-	var fn primary() TemplateExpr!Error:
-		t := self.peek()
 		self.at += 1
-		if t.kind == "str": return ok(Literal(JsonValue.StringValue(t.text.clone())))
-		if t.kind == "num": return ok(Literal(JsonValue.NumberValue(t.text.clone())))
+		return ok(inner)
 
-		if t.kind == "sym" and t.text == "(":
-			inner := self.or_expr()?
-			if not self.is_sym(")"): return error(self.fail("expected )"))
+	if t.kind == "word":
+		if t.text == "true": return ok(Literal(JsonValue.BoolValue(true)))
+		if t.text == "false": return ok(Literal(JsonValue.BoolValue(false)))
+		if t.text == "null": return ok(Literal(JsonValue.Null))
+		if t.text == "and" or t.text == "or" or t.text == "not": return error(
+			self.fail("unexpected operator")
+		)
 
-			self.at += 1
-			return ok(inner)
+		return ok(Path(t.text.split(".")))
 
-		if t.kind == "word":
-			if t.text == "true": return ok(Literal(JsonValue.BoolValue(true)))
-			if t.text == "false": return ok(Literal(JsonValue.BoolValue(false)))
-			if t.text == "null": return ok(Literal(JsonValue.Null))
-			if t.text == "and" or t.text == "or" or t.text == "not": return error(
-				self.fail("unexpected operator")
-			)
-
-			return ok(Path(t.text.split(".")))
-
-		return error(self.fail("expected a value"))
+	return error(self.fail("expected a value"))
 
 fn parse_expr(text: String, line: Int) TemplateExpr!Error:
 	toks := lex(text, line)?
@@ -540,137 +529,128 @@ type Builder:
 	at: Int
 	html: Bool
 
-impl Builder:
-	var fn block(depth: Int) BlockEnd!Error:
-		var nodes = List[TemplateNode]()
-		if depth > MAX_DEPTH: return error(
-			syntax_error(line: 0, reason: "nested too deeply")
-		)
+fn var Builder.block(depth: Int) BlockEnd!Error:
+	var nodes = List[TemplateNode]()
+	if depth > MAX_DEPTH: return error(
+		syntax_error(line: 0, reason: "nested too deeply")
+	)
 
-		while self.at < self.tokens.length():
-			token := self.tokens[self.at].clone()
-			self.at += 1
+	while self.at < self.tokens.length():
+		token := self.tokens[self.at].clone()
+		self.at += 1
 
-			if not token.action:
-				nodes.append(Text(token.body.clone()))
-				continue
+		if not token.action:
+			nodes.append(Text(token.body.clone()))
+			continue
 
-			word := first_word(token.body)
-			rest := after_word(token.body)
-			if word == "end":
+		word := first_word(token.body)
+		rest := after_word(token.body)
+		if word == "end":
+			return ok(BlockEnd(nodes: nodes, end: "end", cond: "", line: token.line))
+
+		if word == "else":
+			if first_word(rest) == "if":
 				return ok(
 					BlockEnd(
-						nodes: nodes, end: "end", cond: "", line: token.line
+						nodes: nodes,
+						end: "else if",
+						cond: after_word(rest),
+						line: token.line,
 					)
 				)
+			return ok(BlockEnd(nodes: nodes, end: "else", cond: "", line: token.line))
 
-			if word == "else":
-				if first_word(rest) == "if":
-					return ok(
-						BlockEnd(
-							nodes: nodes, end: "else if", cond: after_word(rest),
-							line: token.line
-						)
-					)
-				return ok(
-					BlockEnd(
-						nodes: nodes, end: "else", cond: "", line: token.line
-					)
-				)
+		if word == "if":
+			nodes.append(self.conditional(rest, token.line, depth)?)
+		else if word == "for":
+			nodes.append(self.for_block(rest, token.line, depth)?)
+		else if word == "include":
+			nodes.append(Include(parse_expr(rest, token.line)?))
+		else:
+			nodes.append(self.emit(token.body, token.line)?)
 
-			if word == "if":
-				nodes.append(self.conditional(rest, token.line, depth)?)
-			else if word == "for":
-				nodes.append(self.for_block(rest, token.line, depth)?)
-			else if word == "include":
-				nodes.append(Include(parse_expr(rest, token.line)?))
-			else:
-				nodes.append(self.emit(token.body, token.line)?)
+	return ok(BlockEnd(nodes: nodes, end: "", cond: "", line: 0))
 
-		return ok(BlockEnd(nodes: nodes, end: "", cond: "", line: 0))
+fn Builder.emit(body: String, line: Int) TemplateNode!Error:
+	var expr = parse_expr(body, line)?
+	var escape_output = self.html
+	last := trailing_filter(expr)
 
-	fn emit(body: String, line: Int) TemplateNode!Error:
-		var expr = parse_expr(body, line)?
-		var escape_output = self.html
-		last := trailing_filter(expr)
+	if last == "raw":
+		escape_output = false
+		expr = strip_filter(expr)
+	else if last == "escape" and self.html:
+		expr = strip_filter(expr)
 
-		if last == "raw":
-			escape_output = false
-			expr = strip_filter(expr)
-		else if last == "escape" and self.html:
-			expr = strip_filter(expr)
+	return ok(Emit(expr, escape_output))
 
-		return ok(Emit(expr, escape_output))
+fn var Builder.conditional(cond: String, line: Int, depth: Int) TemplateNode!Error:
+	var branches = List[TemplateBranch]()
+	var otherwise = List[TemplateNode]()
+	var guard = parse_expr(cond, line)?
 
-	var fn conditional(cond: String, line: Int, depth: Int) TemplateNode!Error:
-		var branches = List[TemplateBranch]()
-		var otherwise = List[TemplateNode]()
-		var guard = parse_expr(cond, line)?
+	while true:
+		done := self.block(depth + 1)?
+		branches.append(TemplateBranch(cond: guard, body: done.nodes))
+		if done.end == "end": break
 
-		while true:
-			done := self.block(depth + 1)?
-			branches.append(TemplateBranch(cond: guard, body: done.nodes))
-			if done.end == "end": break
+		if done.end == "else if":
+			guard = parse_expr(done.cond, done.line)?
+			continue
 
-			if done.end == "else if":
-				guard = parse_expr(done.cond, done.line)?
-				continue
-
-			if done.end == "else":
-				tail := self.block(depth + 1)?
-				if tail.end != "end": return error(
-					syntax_error(
-						line: done.line, reason: "if needs end"
-					)
-				)
-
-				otherwise = tail.nodes
-				break
-
-			return error(syntax_error(line: line, reason: "if needs end"))
-
-		return ok(If(branches, otherwise))
-
-	var fn for_block(header: String, line: Int, depth: Int) TemplateNode!Error:
-		at := header.index_of(" in ")
-		if at.is_none(): return error(
-			syntax_error(line: line, reason: "for needs `name in value`")
-		)
-
-		names := header.take(at.get(0)).split(",")
-		if names.length() > 2: return error(
-			syntax_error(line: line, reason: "for takes one or two names")
-		)
-
-		first := names[0].trim()
-		second := if names.length() == 2: names[1].trim() else: ""
-		if first.is_empty() or not is_word_start(first.take(1)) or first.contains("."):
-			return error(syntax_error(line: line, reason: "bad loop name"))
-		if (
-			names.length() == 2
-			and (
-				second.is_empty()
-				or second.contains(".")
-				or not is_word_start(second.take(1))
-			)
-		):
-			return error(syntax_error(line: line, reason: "bad loop name"))
-
-		source := parse_expr(header.drop(at.get(0) + 4), line)?
-		body := self.block(depth + 1)?
-		var otherwise = List[TemplateNode]()
-
-		if body.end == "else":
+		if done.end == "else":
 			tail := self.block(depth + 1)?
 			if tail.end != "end": return error(
-				syntax_error(line: line, reason: "for needs end")
+				syntax_error(line: done.line, reason: "if needs end")
 			)
 
 			otherwise = tail.nodes
-		else if body.end != "end":
-			return error(syntax_error(line: line, reason: "for needs end"))
+			break
 
-		return ok(Each(first, second, source, body.nodes, otherwise))
+		return error(syntax_error(line: line, reason: "if needs end"))
+
+	return ok(If(branches, otherwise))
+
+fn var Builder.for_block(header: String, line: Int, depth: Int) TemplateNode!Error:
+	at := header.index_of(" in ")
+	if at.is_none(): return error(
+		syntax_error(line: line, reason: "for needs `name in value`")
+	)
+
+	names := header.take(at.get(0)).split(",")
+	if names.length() > 2: return error(
+		syntax_error(line: line, reason: "for takes one or two names")
+	)
+
+	first := names[0].trim()
+	second := if names.length() == 2: names[1].trim() else: ""
+	if first.is_empty() or not is_word_start(first.take(1)) or first.contains("."):
+		return error(syntax_error(line: line, reason: "bad loop name"))
+	if (
+		names.length() == 2
+		and (
+			second.is_empty()
+			or second.contains(".")
+			or not is_word_start(second.take(1))
+		)
+	):
+		return error(syntax_error(line: line, reason: "bad loop name"))
+
+	source := parse_expr(header.drop(at.get(0) + 4), line)?
+	body := self.block(depth + 1)?
+	var otherwise = List[TemplateNode]()
+
+	if body.end == "else":
+		tail := self.block(depth + 1)?
+		if tail.end != "end": return error(
+			syntax_error(line: line, reason: "for needs end")
+		)
+
+		otherwise = tail.nodes
+	else if body.end != "end":
+		return error(syntax_error(line: line, reason: "for needs end"))
+
+	return ok(Each(first, second, source, body.nodes, otherwise))
 
 fn first_word(body: String) String:
 	return body.split(" ")[0].trim()
@@ -699,148 +679,151 @@ type Run:
 	limit: Int
 	html: Bool
 
-impl Run:
-	var fn write(text: String) Unit!Error:
-		self.written += text.byte_length()
-		if self.written > self.limit: return error(
-			Error("template: output limit exceeded", kind: "EOVERFLOW")
+fn var Run.write(text: String) Unit!Error:
+	self.written += text.byte_length()
+	if self.written > self.limit: return error(
+		Error("template: output limit exceeded", kind: "EOVERFLOW")
+	)
+
+	self.out.append(text)
+
+fn Run.lookup(parts: List[String]) JsonValue?:
+	var i = self.frames.length() - 1
+
+	while i >= 0:
+		if found := self.frames[i].get(parts[0]):
+			if parts.length() == 1: return found.clone()
+			return descend(found, parts)
+
+		i -= 1
+
+	return none
+
+fn Run.eval(expr: TemplateExpr, strict: Bool) JsonValue!Error:
+	match expr:
+		Literal(value): return ok(value.clone())
+		Path(parts): return self.path_value(parts, strict)
+		Call(name, args): return self.call(name, args, strict)
+		Op(op, args): return self.operator(op, args)
+
+fn Run.path_value(parts: List[String], strict: Bool) JsonValue!Error:
+	if found := self.lookup(parts): return ok(found)
+	if strict: return error(missing_value_error(path: parts.join(".")))
+
+	return ok(JsonValue.Null)
+
+fn Run.operator(op: String, args: List[TemplateExpr]) JsonValue!Error:
+	left := self.eval(args[0].clone(), false)?
+	if op == "not": return ok(JsonValue.BoolValue(not truthy(left)))
+	if op == "and" and not truthy(left): return ok(JsonValue.BoolValue(false))
+	if op == "or" and truthy(left): return ok(JsonValue.BoolValue(true))
+
+	right := self.eval(args[1].clone(), false)?
+	if op == "and" or op == "or": return ok(JsonValue.BoolValue(truthy(right)))
+	if op == "==": return ok(JsonValue.BoolValue(equal(left, right)))
+	if op == "!=": return ok(JsonValue.BoolValue(not equal(left, right)))
+
+	order := compare_values(left, right)
+	if op == "<": return ok(JsonValue.BoolValue(order < 0))
+	if op == "<=": return ok(JsonValue.BoolValue(order <= 0))
+	if op == ">": return ok(JsonValue.BoolValue(order > 0 and order != 2))
+
+	return ok(JsonValue.BoolValue(order >= 0 and order != 2))
+
+fn Run.call(name: String, args: List[TemplateExpr], strict: Bool) JsonValue!Error:
+	if name == "default":
+		input := self.eval(args[0].clone(), false)?
+		if truthy(input): return ok(input)
+		if args.length() != 2: return error(
+			invalid_filter_error(name: name, reason: "needs one argument")
 		)
 
-		self.out.append(text)
+		return self.eval(args[1].clone(), strict)
 
-	fn lookup(parts: List[String]) JsonValue?:
-		var i = self.frames.length() - 1
+	input := self.eval(args[0].clone(), strict)?
+	var values = List[JsonValue]()
+	for i in 1..args.length():
+		values.append(self.eval(args[i].clone(), strict)?)
+	return apply_filter(name, input, values)
 
-		while i >= 0:
-			if found := self.frames[i].get(parts[0]):
-				if parts.length() == 1: return found.clone()
-				return descend(found, parts)
+fn var Run.nodes(items: List[TemplateNode], depth: Int) Unit!Error:
+	for node in items:
+		self.node(node, depth)?
 
-			i -= 1
-
-		return none
-
-	fn eval(expr: TemplateExpr, strict: Bool) JsonValue!Error:
-		match expr:
-			Literal(value): return ok(value.clone())
-			Path(parts): return self.path_value(parts, strict)
-			Call(name, args): return self.call(name, args, strict)
-			Op(op, args): return self.operator(op, args)
-
-	fn path_value(parts: List[String], strict: Bool) JsonValue!Error:
-		if found := self.lookup(parts): return ok(found)
-		if strict: return error(missing_value_error(path: parts.join(".")))
-
-		return ok(JsonValue.Null)
-
-	fn operator(op: String, args: List[TemplateExpr]) JsonValue!Error:
-		left := self.eval(args[0].clone(), false)?
-		if op == "not": return ok(JsonValue.BoolValue(not truthy(left)))
-		if op == "and" and not truthy(left): return ok(JsonValue.BoolValue(false))
-		if op == "or" and truthy(left): return ok(JsonValue.BoolValue(true))
-
-		right := self.eval(args[1].clone(), false)?
-		if op == "and" or op == "or": return ok(JsonValue.BoolValue(truthy(right)))
-		if op == "==": return ok(JsonValue.BoolValue(equal(left, right)))
-		if op == "!=": return ok(JsonValue.BoolValue(not equal(left, right)))
-
-		order := compare_values(left, right)
-		if op == "<": return ok(JsonValue.BoolValue(order < 0))
-		if op == "<=": return ok(JsonValue.BoolValue(order <= 0))
-		if op == ">": return ok(JsonValue.BoolValue(order > 0 and order != 2))
-
-		return ok(JsonValue.BoolValue(order >= 0 and order != 2))
-
-	fn call(name: String, args: List[TemplateExpr], strict: Bool) JsonValue!Error:
-		if name == "default":
-			input := self.eval(args[0].clone(), false)?
-			if truthy(input): return ok(input)
-			if args.length() != 2: return error(
-				invalid_filter_error(
-					name: name, reason: "needs one argument"
-				)
-			)
-
-			return self.eval(args[1].clone(), strict)
-
-		input := self.eval(args[0].clone(), strict)?
-		var values = List[JsonValue]()
-		for i in 1..args.length():
-			values.append(self.eval(args[i].clone(), strict)?)
-		return apply_filter(name, input, values)
-
-	var fn nodes(items: List[TemplateNode], depth: Int) Unit!Error:
-		for node in items:
-			self.node(node, depth)?
-
-	var fn node(node: TemplateNode, depth: Int) Unit!Error:
-		match node:
-			Text(text): return self.write(text)
-			Emit(expr, escape_output): return self.emit(expr, escape_output)
-			If(branches, otherwise): return self.branch(branches, otherwise, depth)
-			Each(first, second, source, body, otherwise): return self.each(
-				first, second, source, body, otherwise, depth
-			)
-			Include(name): return self.include(name, depth)
-
-	var fn emit(expr: TemplateExpr, escape_output: Bool) Unit!Error:
-		value := self.eval(expr, self.strict)?
-		text := to_text(value)
-		if escape_output: return self.write(escape(text))
-
-		return self.write(text)
-
-	var fn branch(
-		branches: List[TemplateBranch],
-		otherwise: List[TemplateNode],
-		depth: Int
-	) Unit!Error:
-		for branch in branches:
-			verdict := self.eval(branch.cond.clone(), false)?
-			if truthy(verdict): return self.nodes(branch.body.clone(), depth + 1)
-
-		return self.nodes(otherwise, depth + 1)
-
-	var fn each(
-		first: String,
-		second: String,
-		source: TemplateExpr,
-		body: List[TemplateNode],
-		otherwise: List[TemplateNode],
-		depth: Int
-	) Unit!Error:
-		collection := self.eval(source, false)?
-		rows := rows_of(collection, first, second)
-		if rows.is_empty(): return self.nodes(otherwise, depth + 1)
-
-		for i in 0..rows.length():
-			var frame = rows[i].clone()
-			frame.add("loop", loop_info(i, rows.length()))
-			self.frames.append(frame)
-
-			result := self.nodes(body.clone(), depth + 1)
-			_frame := self.frames.remove(self.frames.length() - 1)
-			if result.is_error(): return result
-
-		return ok(unit)
-
-	var fn include(name: TemplateExpr, depth: Int) Unit!Error:
-		key := to_text(self.eval(name, true)?)
-		if depth > MAX_DEPTH: return error(unknown_partial_error(name: key))
-
-		partial := self.partials.get(key).clone()
-		if partial.is_none(): return error(unknown_partial_error(name: key))
-
-		return self.nodes(
-			partial.get(
-				Template(nodes: List[TemplateNode](), html: false)
-			).nodes.clone(),
-			depth + 1
+fn var Run.node(node: TemplateNode, depth: Int) Unit!Error:
+	match node:
+		Text(text): return self.write(text)
+		Emit(expr, escape_output): return self.emit(expr, escape_output)
+		If(branches, otherwise): return self.branch(branches, otherwise, depth)
+		Each(first, second, source, body, otherwise): return self.each(
+			first,
+			second,
+			source,
+			body,
+			otherwise,
+			depth,
 		)
+		Include(name): return self.include(name, depth)
+
+fn var Run.emit(expr: TemplateExpr, escape_output: Bool) Unit!Error:
+	value := self.eval(expr, self.strict)?
+	text := to_text(value)
+	if escape_output: return self.write(escape(text))
+
+	return self.write(text)
+
+fn var Run.branch(
+	branches: List[TemplateBranch],
+	otherwise: List[TemplateNode],
+	depth: Int,
+) Unit!Error:
+	for branch in branches:
+		verdict := self.eval(branch.cond.clone(), false)?
+		if truthy(verdict): return self.nodes(branch.body.clone(), depth + 1)
+
+	return self.nodes(otherwise, depth + 1)
+
+fn var Run.each(
+	first: String,
+	second: String,
+	source: TemplateExpr,
+	body: List[TemplateNode],
+	otherwise: List[TemplateNode],
+	depth: Int,
+) Unit!Error:
+	collection := self.eval(source, false)?
+	rows := rows_of(collection, first, second)
+	if rows.is_empty(): return self.nodes(otherwise, depth + 1)
+
+	for i in 0..rows.length():
+		var frame = rows[i].clone()
+		frame.add("loop", loop_info(i, rows.length()))
+		self.frames.append(frame)
+
+		result := self.nodes(body.clone(), depth + 1)
+		_frame := self.frames.remove(self.frames.length() - 1)
+		if result.is_error(): return result
+
+	return ok(unit)
+
+fn var Run.include(name: TemplateExpr, depth: Int) Unit!Error:
+	key := to_text(self.eval(name, true)?)
+	if depth > MAX_DEPTH: return error(unknown_partial_error(name: key))
+
+	partial := self.partials.get(key).clone()
+	if partial.is_none(): return error(unknown_partial_error(name: key))
+
+	return self.nodes(
+		partial.get(
+			Template(nodes: List[TemplateNode](), html: false)
+		).nodes.clone(),
+		depth + 1,
+	)
 
 // ---- values --------------------------------------------------------------------------------
 
-// Walks `parts[1..]` below `root`, copying only the member each step reaches, never the unused siblings.
+// Walks `parts[1..]` below `root`, copying only the member each step reaches, never the
+// unused siblings.
 fn descend(root: JsonValue, parts: List[String]) JsonValue?:
 	first := member(root, parts[1])
 	if first.is_none(): return none
@@ -873,7 +856,7 @@ fn loop_info(index: Int, length: Int) JsonValue:
 fn rows_of(
 	collection: JsonValue,
 	first: String,
-	second: String
+	second: String,
 ) List[Map[String, JsonValue]]:
 	var rows = List[Map[String, JsonValue]]()
 
@@ -984,7 +967,8 @@ fn order_compare(a: String, b: String) Int:
 	if an != bn: return if an: -1 else: 1
 
 	comparison := magnitude_compare(
-		if an: a.drop(1) else: a.clone(), if bn: b.drop(1) else: b.clone()
+		if an: a.drop(1) else: a.clone(),
+		if bn: b.drop(1) else: b.clone(),
 	)
 	return if an: -comparison else: comparison
 
@@ -1047,9 +1031,12 @@ fn exact_number(text: String) ExactNumber?:
 		first += 1
 
 	return ExactNumber(
-		negative: negative and first != coefficient_end, coefficient: chars,
-		first: first, end: coefficient_end, offset: before_point - leading_zeros,
-		exponent: exponent
+		negative: negative and first != coefficient_end,
+		coefficient: chars,
+		first: first,
+		end: coefficient_end,
+		offset: before_point - leading_zeros,
+		exponent: exponent,
 	)
 
 fn number_compare(a: ExactNumber, b: ExactNumber) Int:
@@ -1065,7 +1052,8 @@ fn number_compare(a: ExactNumber, b: ExactNumber) Int:
 		order = if a.offset < b.offset: -1 else if a.offset > b.offset: 1 else: 0
 	else:
 		order = order_compare(
-			decimal_order(a.exponent, a.offset), decimal_order(b.exponent, b.offset)
+			decimal_order(a.exponent, a.offset),
+			decimal_order(b.exponent, b.offset),
 		)
 
 	if order == 0: order = coefficient_compare(a, b)
@@ -1091,7 +1079,8 @@ fn coefficient_text(number: ExactNumber) String:
 
 	// The lexical scan already validated ASCII; these byte ranges are UTF-8.
 	return number.coefficient.decode_utf8_range(number.first, end).get("").replace(
-		".", ""
+		".",
+		"",
 	)
 
 // Common integer tokens compare directly without losing precision. Noncanonical
@@ -1127,7 +1116,8 @@ fn number_text(value: JsonValue) String?:
 		NumberValue(text): return text
 		_: return none
 
-// 0 null, 1 bool, 2 number, 3 string, 4 list, 5 object: values of different kinds are never equal.
+// 0 null, 1 bool, 2 number, 3 string, 4 list, 5 object: values of different kinds are
+// never equal.
 fn kind_of(value: JsonValue) Int:
 	if value.is_null(): return 0
 	if value.as_bool().is_some(): return 1
@@ -1258,3 +1248,33 @@ fn contains_value(haystack: JsonValue, needle: JsonValue) Bool:
 	if members := haystack.as_map(): return members.contains(to_text(needle))
 
 	return to_text(haystack).contains(to_text(needle))
+
+// Builds a template error. Each message names the line, path, filter or partial but
+// never echoes values.
+fn syntax_error(line: Int, reason: String) Error:
+	return Error(
+		"template: line {line}: {reason}",
+		kind: "EBADMSG",
+		details: {"line": "{line}"},
+	)
+
+fn missing_value_error(path: String) Error:
+	return Error(
+		"template: no value for {path}",
+		kind: "ENOENT",
+		details: {"path": path},
+	)
+
+fn invalid_filter_error(name: String, reason: String) Error:
+	return Error(
+		"template: filter {name}: {reason}",
+		kind: "EINVAL",
+		details: {"filter": name},
+	)
+
+fn unknown_partial_error(name: String) Error:
+	return Error(
+		"template: unknown partial {name}",
+		kind: "ENOENT",
+		details: {"partial": name},
+	)

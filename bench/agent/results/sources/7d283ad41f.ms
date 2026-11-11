@@ -172,9 +172,13 @@ impl Ledger:
 // ms: allow_effect std.console.write
 fn process() Unit!:
 	var led = Ledger(
-		balances: Map[String, Int](), limits: Map[String, Int](),
-		ops: Map[String, Int](), rejected: Map[String, Int](),
-		frozen: Map[String, Bool](), ids: List[String](), total_fees: 0
+		balances: Map[String, Int](),
+		limits: Map[String, Int](),
+		ops: Map[String, Int](),
+		rejected: Map[String, Int](),
+		frozen: Map[String, Bool](),
+		ids: List[String](),
+		total_fees: 0,
 	)
 
 	for raw in lines(stdin()):

@@ -25,18 +25,18 @@ export type Address:
 	// The `local@domain` address without angle brackets.
 	address: String
 
-impl Address:
-	// Formats as `Name <addr>` (quoting the name when it has specials) or the bare address when unnamed.
-	fn to_text() String:
-		if self.name.is_empty(): return self.address.clone()
+// Formats as `Name <addr>` (quoting the name when it has specials) or the bare
+// address when unnamed.
+fn Address.to_text() String:
+	if self.name.is_empty(): return self.address.clone()
 
-		specials := self.name.contains_any("()<>[]:;@\\,.\"")
+	specials := self.name.contains_any("()<>[]:;@\\,.\"")
 
-		if specials:
-			escaped := self.name.replace("\\", "\\\\").replace("\"", "\\\"")
-			return "\"{escaped}\" <{self.address}>"
+	if specials:
+		escaped := self.name.replace("\\", "\\\\").replace("\"", "\\\"")
+		return "\"{escaped}\" <{self.address}>"
 
-		return "{self.name} <{self.address}>"
+	return "{self.name} <{self.address}>"
 
 // A parsed message: header fields and the body after the first blank line.
 export type Message:
@@ -45,8 +45,8 @@ export type Message:
 	// Body text exactly as written after the blank line, with line endings kept.
 	body: String
 
-// Parses one mailbox: `addr`, `<addr>`, `Name <addr>` or `"Quoted, Name" <addr>`. Encoded words in
-// the name are decoded. Comments are not supported.
+// Parses one mailbox: `addr`, `<addr>`, `Name <addr>` or `"Quoted, Name" <addr>`.
+// Encoded words in the name are decoded. Comments are not supported.
 export fn parse_address(text: String) Address!:
 	trimmed := text.trim()
 	if trimmed.is_empty(): return error(Error("mail: invalid address", kind: "EBADMSG"))
@@ -70,7 +70,8 @@ export fn parse_address(text: String) Address!:
 		)
 
 		name = name.slice(1, name.length() - 1).get("").replace("\\\"", "\"").replace(
-			"\\\\", "\\"
+			"\\\\",
+			"\\",
 		)
 
 	if not valid_address(address): return error(
@@ -128,8 +129,8 @@ export fn parse_address_list(text: String) List[Address]!:
 
 	return ok(out)
 
-// Splits a raw message at the first blank line into headers and body.
-// Both CRLF and LF line endings are accepted; a message without a blank line has an empty body.
+// Splits a raw message at the first blank line into headers and body. Both CRLF and LF
+// line endings are accepted; a message without a blank line has an empty body.
 export fn parse_message(raw: String) Message!:
 	if raw.trim().is_empty(): return error(
 		Error("mail: invalid message", kind: "EBADMSG")
@@ -164,13 +165,15 @@ export fn parse_message(raw: String) Message!:
 
 	return ok(Message(headers: headers.get(), body: body))
 
-// Decodes RFC 2047 encoded words (`=?utf-8?B?...?=` and `=?utf-8?Q?...?=`) in header text.
-// Only UTF-8, US-ASCII and ISO-8859-1 charsets are decoded; any other word is left as written.
+// Decodes RFC 2047 encoded words (`=?utf-8?B?...?=` and `=?utf-8?Q?...?=`) in header
+// text. Only UTF-8, US-ASCII and ISO-8859-1 charsets are decoded; any other word is
+// left as written.
 export fn decode_words(text: String) String:
 	if not text.contains("=?"): return text.clone()
 
-	// Splitting at `?` once keeps decoding linear. A word starts where a field ends in `=` and takes the
-	// next three fields (charset, encoding, payload); the field after them must start with the closing `=`.
+	// Splitting at `?` once keeps decoding linear. A word starts where a field ends in
+	// `=` and takes the next three fields (charset, encoding, payload); the field after
+	// them must start with the closing `=`.
 	fields := text.split("?")
 	var out = StringBuilder()
 	var head = StringBuilder()
@@ -194,7 +197,9 @@ export fn decode_words(text: String) String:
 		var decoded: String? = none
 		if index + 4 < fields.length() and fields[index + 4].starts_with("="):
 			decoded = decode_word(
-				fields[index + 1], fields[index + 2], fields[index + 3]
+				fields[index + 1],
+				fields[index + 2],
+				fields[index + 3],
 			)
 
 		if decoded.is_none():

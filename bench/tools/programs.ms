@@ -1,5 +1,6 @@
 // Compares Manuscript, Go and Rust on small whole programs (bench/perf/programs).
-// Usage: ms run bench/tools/programs.ms [-- repeats]; MS, GO, RUSTC pick tools; BENCH_OUTPUT keeps binaries, input and raw samples.
+// Usage: ms run bench/tools/programs.ms [-- repeats]; MS, GO, RUSTC pick tools;
+// BENCH_OUTPUT keeps binaries, input and raw samples.
 import (
 	arguments from "@std/os/env.ms",
 	CopyOptions, copy, create_directory, temporary, write_file from "@std/os/fs.ms",
@@ -18,15 +19,19 @@ import (
 
 fn orders() List[List[String]]:
 	return [
-		["go", "ms", "rust", "rust-checked"], ["ms", "rust-checked", "go", "rust"],
-		["rust-checked", "rust", "ms", "go"], ["rust", "go", "rust-checked", "ms"]
+		["go", "ms", "rust", "rust-checked"],
+		["ms", "rust-checked", "go", "rust"],
+		["rust-checked", "rust", "ms", "go"],
+		["rust", "go", "rust-checked", "ms"],
 	]
 
 fn run(work: String, n: Int) Result[String, Error]:
 	here := "bench/perf/programs"
 	for dir in ["go", "ms", "rust"]:
 		copy(
-			"{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
+			"{here}/{dir}",
+			"{work}/{dir}",
+			CopyOptions(recursive: true, replace: true),
 		)?
 	create_directory("{work}/rust-checked")?
 
@@ -39,7 +44,9 @@ fn run(work: String, n: Int) Result[String, Error]:
 	build_go("{work}/go", "{work}/go/bench")?
 	build_rust("{work}/rust/main.rs", "{work}/rust/bench", [])?
 	build_rust(
-		"{work}/rust/main.rs", "{work}/rust-checked/bench", ["-C", "overflow-checks=on"]
+		"{work}/rust/main.rs",
+		"{work}/rust-checked/bench",
+		["-C", "overflow-checks=on"],
 	)?
 	build_ms("{work}/ms", "{work}/ms/bench")?
 

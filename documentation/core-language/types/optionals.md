@@ -143,10 +143,9 @@ A chain borrows the optional it starts from. When that place is a `var` (a `var`
 type Counter:
     n: Int
 
-impl Counter:
-    var fn bump() Int:
-        self.n += 1
-        return self.n
+fn var Counter.bump() Int:
+    self.n += 1
+    return self.n
 
 fn tick(var counter: Counter?) Int?:
     return counter?.bump()

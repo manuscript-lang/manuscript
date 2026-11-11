@@ -1,5 +1,6 @@
-// Paired runtime Set intersection/algebra controls. Producers verify exact ordered members.
-// Usage: ms run bench/tools/map_intersection_audit.ms -- BEFORE AFTER_OR_DASH OUTPUT PAIRS WORK [MODE [PATTERN [SIZE]]]
+// Paired runtime Set intersection/algebra controls. Producers verify exact ordered
+// members. Usage: ms run bench/tools/map_intersection_audit.ms -- BEFORE AFTER_OR_DASH
+// OUTPUT PAIRS WORK [MODE [PATTERN [SIZE]]]
 import (
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
@@ -64,8 +65,11 @@ fn run(args: List[String]) String!:
 						ran := capture(
 							args[version],
 							[
-								mode.clone(), "{n}", "{repeats}", pattern.clone()
-							]
+								mode.clone(),
+								"{n}",
+								"{repeats}",
+								pattern.clone(),
+							],
 						)
 						wall := monotonic().difference(start).to_nanoseconds()
 						if not ran.ok or ran.code != 0 or ran.stderr != "": return invalid(

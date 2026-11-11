@@ -1021,20 +1021,30 @@ impl<'a> FnLower<'a> {
         // A receiver may implement one generic contract at several applications
         // (`Scorer[String]` and `Scorer[Int]`), so the arguments choose among them.
         let wanted = ct::sub(contract, &self.subst);
-        self.cx
-            .methods
-            .iter()
-            .find(|mm| {
-                mm.name() == Some(name)
-                    && !self.syms.str(mm.id).is_empty()
-                    && mm.visible_in(scope)
-                    && mm.contract.as_ref().is_some_and(|c| {
-                        let vars = ct::variable_set(&mm.variables);
-                        let mut bound = ct::Subst::new();
-                        c.id == contract.id
-                            && ct::unify(&mm.receiver, recv, &vars, &mut bound)
-                            && ct::unify(c, &wanted, &vars, &mut bound)
-                    })
+        let named = |mm: &&ct::MethodRef| {
+            mm.name() == Some(name) && !self.syms.str(mm.id).is_empty() && mm.visible_in(scope)
+        };
+        let written = self.cx.methods.iter().filter(named).find(|mm| {
+            mm.contract.as_ref().is_some_and(|c| {
+                let vars = ct::variable_set(&mm.variables);
+                let mut bound = ct::Subst::new();
+                c.id == contract.id
+                    && ct::unify(&mm.receiver, recv, &vars, &mut bound)
+                    && ct::unify(c, &wanted, &vars, &mut bound)
+            })
+        });
+        // Without a written `impl`, the type's own method of that name satisfies the operation.
+        written
+            .or_else(|| {
+                self.cx.methods.iter().filter(named).find(|mm| {
+                    mm.is_inherent(self.syms)
+                        && ct::unify(
+                            &mm.receiver,
+                            recv,
+                            &ct::variable_set(&mm.variables),
+                            &mut ct::Subst::new(),
+                        )
+                })
             })
             .cloned()
     }

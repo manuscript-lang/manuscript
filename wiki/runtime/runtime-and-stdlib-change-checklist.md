@@ -8,6 +8,7 @@ Apply when: changing `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdl
 
 Use for `crates/ms-rt`, `ms-rt-abi`, `ms-std-*`, `ms-native`, `stdlib/*.ms`, or lowering that changes execution. Read [runtime lessons](index.md), [cleanup](../../documentation/core-language/cleanup/_index.md).
 
+- Stdlib module order: imports, then the public API (each type followed by its impls), then private helper functions at the end, so a reader meets the contract first. A private `fn` before the first `export` moves to the end of the module.
 - State observable result/error identity, evaluation order, aliasing, cancellation, close, join, and use-after-close behavior before editing.
 - Keep value ownership and external resource lifetime separate. Borrowing does not extend a resource lifetime; moves and exclusive mutation must satisfy the checker. Do not carry shared-reference or synchronization assumptions from the retired runtime into native code.
 - Trace admission → acquisition → delivery → scope exit/cancellation → close. Cancelled undelivered acquisitions release resources; stale guards/aliases cannot access reused handles. Consult newer stdlib direction before retaining APIs scheduled for removal.

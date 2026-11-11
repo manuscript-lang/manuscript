@@ -1086,9 +1086,7 @@ impl FnLower<'_> {
             .iter()
             .find(|m| {
                 m.name().is_some_and(|n| self.syms.str(n) == "close")
-                    && m.contract
-                        .as_ref()
-                        .is_some_and(|c| c.is(Builtin::Closeable))
+                    && m.closes(self.syms)
                     && ct::unify(
                         &m.receiver,
                         ty,

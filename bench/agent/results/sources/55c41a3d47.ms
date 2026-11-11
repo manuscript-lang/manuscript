@@ -36,8 +36,13 @@ fn parse(line: String) Rec?:
 
 	lat := f[5].parse_int().get(0)
 	return Rec(
-		ts: f[0].clone(), level: lvl.clone(), method: m.clone(), path: f[3].clone(),
-		status: f[4].clone(), lat_text: f[5].clone(), lat: lat
+		ts: f[0].clone(),
+		level: lvl.clone(),
+		method: m.clone(),
+		path: f[3].clone(),
+		status: f[4].clone(),
+		lat_text: f[5].clone(),
+		lat: lat,
 	)
 
 export fn main() Int:

@@ -22,7 +22,7 @@ test "extra versions add columns":
 	result := summarize(lines, 1)?
 	expect_contains(
 		result,
-		"| operation | ops | Manuscript | Go | Rust | Rust, overflow checks | ms / Go | ms / Rust | ms / Rust, overflow checks |"
+		"| operation | ops | Manuscript | Go | Rust | Rust, overflow checks | ms / Go | ms / Rust | ms / Rust, overflow checks |",
 	)?
 	expect_equal(result.split("1.00x").length() - 1, 3 * ops().length())?
 

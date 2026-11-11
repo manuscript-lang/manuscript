@@ -9,10 +9,9 @@ type Marker:
 	log: String
 	fail: Bool
 
-impl Closeable for Marker:
-	var fn close() Unit!:
-		append_file(self.log, "{self.id},").wait()?
-		if self.fail: return error(Error("cause close failed"))
+fn var Marker.close() Unit!:
+	append_file(self.log, "{self.id},").wait()?
+	if self.fail: return error(Error("cause close failed"))
 
 fn source(log: String) Marker?: Marker(1, log, false)
 
@@ -46,7 +45,8 @@ fn failing_callback(log: String) fn() Marker:
 fn discard_callback(log: String) Unit:
 	_kept := source(log.clone()).ok_or_else(failing_callback(log))
 
-// Capture closer thunks discard returned close errors; this is a cleanup control, not a fault.
+// Capture closer thunks discard returned close errors; this is a cleanup control, not a
+// fault.
 test "unused owning callback cleanup closes its capture without invoking the callback":
 	tmp := temporary("cause-callback-fault-") | expect_ok?
 	log := "{tmp.path()}/log"

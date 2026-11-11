@@ -14,7 +14,8 @@ test "factorial and binomial are exact":
 	expect_equal((binomial(5, 0)?).to_string_radix(10), "1")?
 	expect_equal((binomial(5, 6)?).to_string_radix(10), "0")?
 	expect_equal(
-		(binomial(100, 50)?).to_string_radix(10), "100891344545564193334812497256"
+		(binomial(100, 50)?).to_string_radix(10),
+		"100891344545564193334812497256",
 	)?
 
 test "factorial and binomial reject negative inputs":
@@ -41,7 +42,8 @@ test "probable primes":
 
 	pseudoprime := parse("3825123056546413051", 10)?
 
-	// A strong pseudoprime to the first nine prime bases: nine rounds are fooled, the default thirteen are not.
+	// A strong pseudoprime to the first nine prime bases: nine rounds are fooled, the
+	// default thirteen are not.
 	expect_true(pseudoprime.is_probable_prime(9))?
 	expect_false(pseudoprime.is_probable_prime())?
 

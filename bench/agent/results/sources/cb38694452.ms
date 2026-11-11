@@ -150,7 +150,7 @@ fn same_tree(a: Map[String, String], b: Map[String, String]) Bool:
 fn sorted_union(
 	a: Map[String, String],
 	b: Map[String, String],
-	c: Map[String, String]
+	c: Map[String, String],
 ) List[String]:
 	var s = Set[String]()
 	for k in a.keys():
@@ -175,12 +175,21 @@ fn tree_hash(tree: Map[String, String]) String:
 
 fn new_repo() Repo:
 	var r = Repo(
-		work: Map[String, String](), index: Map[String, String](),
+		work: Map[String, String](),
+		index: Map[String, String](),
 		commit_tree: Map[String, Map[String, String]](),
-		commit_parents: Map[String, List[String]](), commit_msg: Map[String, String](),
-		commit_num: Map[String, Int](), branches: Map[String, String](),
-		tags: Map[String, String](), attached: true, head_name: "main", merging: false,
-		merge_other: "", merge_branch: "", conflicts: Set[String](), created: 0
+		commit_parents: Map[String, List[String]](),
+		commit_msg: Map[String, String](),
+		commit_num: Map[String, Int](),
+		branches: Map[String, String](),
+		tags: Map[String, String](),
+		attached: true,
+		head_name: "main",
+		merging: false,
+		merge_other: "",
+		merge_branch: "",
+		conflicts: Set[String](),
+		created: 0,
 	)
 	r.branches.add("main", "")
 	return r
@@ -248,7 +257,10 @@ fn merge_base(r: Repo, a: String, b: String) String:
 	return best
 
 fn store_commit(
-	var r: Repo, tree: Map[String, String], parents: List[String], msg: String
+	var r: Repo,
+	tree: Map[String, String],
+	parents: List[String],
+	msg: String,
 ) String:
 	var text = "tree " + tree_hash(tree) + "\n"
 	for p in parents:
@@ -399,8 +411,11 @@ fn line_diff(a: List[String], b: List[String]) List[String]:
 
 // Returns true when the chunk is a conflict.
 fn resolve_chunk(
-	var out: List[String], bc: List[String], oc: List[String], tc: List[String],
-	branch: String
+	var out: List[String],
+	bc: List[String],
+	oc: List[String],
+	tc: List[String],
+	branch: String,
 ) Bool:
 	if list_eq(oc, bc):
 		append_all(var out, tc)
@@ -425,7 +440,7 @@ fn merge3(
 	base: List[String],
 	ours: List[String],
 	theirs: List[String],
-	branch: String
+	branch: String,
 ) Merged:
 	bo := match_map(base, ours)
 	bt := match_map(base, theirs)
@@ -438,8 +453,11 @@ fn merge3(
 	for s in 0..base.length():
 		if bo[s] >= 0 and bt[s] >= 0:
 			if resolve_chunk(
-				var out, sub(base, pb, s), sub(ours, po, bo[s]), sub(theirs, pt, bt[s]),
-				branch
+				var out,
+				sub(base, pb, s),
+				sub(ours, po, bo[s]),
+				sub(theirs, pt, bt[s]),
+				branch,
 			):
 				clean = false
 			out.append(base[s].clone())
@@ -448,8 +466,11 @@ fn merge3(
 			pt = bt[s] + 1
 
 	if resolve_chunk(
-		var out, sub(base, pb, base.length()), sub(ours, po, ours.length()),
-		sub(theirs, pt, theirs.length()), branch
+		var out,
+		sub(base, pb, base.length()),
+		sub(ours, po, ours.length()),
+		sub(theirs, pt, theirs.length()),
+		branch,
 	):
 		clean = false
 	return Merged(text: join_lines(out), clean: clean)
@@ -1082,8 +1103,10 @@ fn cmd_merge(var r: Repo, args: List[String]) Unit:
 		else:
 			bl := split_lines(base_tree.get_or(nm, ""))
 			merged := merge3(
-				bl, split_lines(ours.get_or(nm, "")),
-				split_lines(theirs.get_or(nm, "")), bname
+				bl,
+				split_lines(ours.get_or(nm, "")),
+				split_lines(theirs.get_or(nm, "")),
+				bname,
 			)
 
 			if merged.clean:

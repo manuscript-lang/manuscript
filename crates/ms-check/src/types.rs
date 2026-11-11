@@ -863,6 +863,30 @@ impl Method {
         !self.local || self.module == module
     }
 
+    /// Whether the method is a type's own (`fn Type.name`, `impl Type:`), declared through the
+    /// type's synthesized inherent interface instead of a written one.
+    pub fn is_inherent(&self, syms: ms_syntax::Names) -> bool {
+        self.contract
+            .as_ref()
+            .is_some_and(|c| syms.str(c.name).ends_with(crate::passes::INHERENT_SUFFIX))
+    }
+
+    /// Whether the method releases its receiver: a `Closeable` implementation, or a type's own
+    /// `fn var Type.close() Unit!`, which satisfies `Closeable` by shape.
+    pub fn closes(&self, syms: ms_syntax::Names) -> bool {
+        if self
+            .contract
+            .as_ref()
+            .is_some_and(|c| c.is(Builtin::Closeable))
+        {
+            return true;
+        }
+        self.is_inherent(syms)
+            && self.name().is_some_and(|n| syms.str(n) == "close")
+            && self.ty.params.is_empty()
+            && is_close_result(syms, &self.ty.result_ty())
+    }
+
     /// The operation name.
     pub fn name(&self) -> Option<Name> {
         self.decl.as_ref().map(|d| d.name())

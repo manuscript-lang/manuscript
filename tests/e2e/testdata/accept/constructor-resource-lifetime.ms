@@ -12,12 +12,11 @@ type Token:
 	closed: Bool = false
 	fail: Bool = false
 
-impl Closeable for Token:
-	var fn close() Unit!:
-		if not self.closed:
-			self.closed = true
-			append_file(self.log, "close {self.id}\n").wait()?
-			if self.fail: return error(Error("close failed", kind: "ECLOSE"))
+fn var Token.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "close {self.id}\n").wait()?
+		if self.fail: return error(Error("close failed", kind: "ECLOSE"))
 
 fn token(log: String, id: Int, fail: Bool = false) Token:
 	append_file(log, "acquire {id}\n").wait().get()
@@ -46,7 +45,9 @@ fn direct(log: String, action: Int) Unit!:
 
 fn labeled(log: String, action: Int) Unit!:
 	value := Pair(
-		second: token(log, 2), first: token(log, 1), code: check(log, action)?
+		second: token(log, 2),
+		first: token(log, 1),
+		code: check(log, action)?,
 	)
 	append_file(log, "body {value.code}\n").wait()?
 
@@ -82,7 +83,9 @@ type Nested:
 
 fn nested(log: String, action: Int) Unit!:
 	value := Nested(
-		Pair(token(log, 1), token(log, 2), 0), token(log, 3), check(log, action)?
+		Pair(token(log, 1), token(log, 2), 0),
+		token(log, 3),
+		check(log, action)?,
 	)
 	append_file(log, "body {value.code}\n").wait()?
 
@@ -98,7 +101,8 @@ fn inspect(first: Token, value: Pair) Int:
 fn outer_temporary(log: String) Int!:
 	return ok(
 		inspect(
-			token(log, 0), Pair(token(log, 1), token(log, 2), check(log, 1)?)
+			token(log, 0),
+			Pair(token(log, 1), token(log, 2), check(log, 1)?),
 		)
 	)
 
@@ -118,7 +122,8 @@ test "constructed holders own their resource fields on success":
 	log := "{dir.path()}/events"
 	direct(log, 0)?
 	expect_equal(
-		events(log), "acquire 1\nacquire 2\ncheck\nbody 42\nclose 2\nclose 1\n"
+		events(log),
+		"acquire 1\nacquire 2\ncheck\nbody 42\nclose 2\nclose 1\n",
 	)?
 
 test "try closes earlier fields before returning its original error":
@@ -146,7 +151,8 @@ test "complete construction closes reverse declaration order":
 	log := "{dir.path()}/events"
 	labeled(log, 0)?
 	expect_equal(
-		events(log), "acquire 2\nacquire 1\ncheck\nbody 42\nclose 2\nclose 1\n"
+		events(log),
+		"acquire 2\nacquire 1\ncheck\nbody 42\nclose 2\nclose 1\n",
 	)?
 
 test "a later field fault closes earlier acquired fields repeatedly":
@@ -164,7 +170,8 @@ test "resource field defaults transfer to the completed holder":
 	log := "{dir.path()}/events"
 	defaulted(log, 0)?
 	expect_equal(
-		events(log), "acquire 1\nacquire 2\ndefault\nbody 42\nclose 2\nclose 1\n"
+		events(log),
+		"acquire 1\nacquire 2\ndefault\nbody 42\nclose 2\nclose 1\n",
 	)?
 
 test "a faulting default closes both provided and default resources":
@@ -180,7 +187,7 @@ test "nested acquired holders close depth first on an error":
 	_ := nested(log, 1) | expect_error?
 	expect_equal(
 		events(log),
-		"acquire 1\nacquire 2\nacquire 3\ncheck\nclose 3\nclose 2\nclose 1\n"
+		"acquire 1\nacquire 2\nacquire 3\ncheck\nclose 3\nclose 2\nclose 1\n",
 	)?
 
 test "moving a prior binding into a partial holder preserves one owner":
@@ -190,7 +197,7 @@ test "moving a prior binding into a partial holder preserves one owner":
 	_ := work.wait() | expect_error?
 	expect_equal(
 		events(log),
-		"acquire 0\nacquire 1\nacquire 2\ncheck\nclose 2\nclose 1\nclose 0\n"
+		"acquire 0\nacquire 1\nacquire 2\ncheck\nclose 2\nclose 1\nclose 0\n",
 	)?
 
 test "pending constructor fields close before an older call temporary":
@@ -199,7 +206,7 @@ test "pending constructor fields close before an older call temporary":
 	_ := outer_temporary(log) | expect_error?
 	expect_equal(
 		events(log),
-		"acquire 0\nacquire 1\nacquire 2\ncheck\nclose 2\nclose 1\nclose 0\n"
+		"acquire 0\nacquire 1\nacquire 2\ncheck\nclose 2\nclose 1\nclose 0\n",
 	)?
 
 test "a temporary close failure faults and still closes other fields":

@@ -10,12 +10,11 @@ type Door:
 	closed: Bool = false
 	fail: Bool = false
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		if not self.closed:
-			self.closed = true
-			append_file(self.log, "{self.id},").wait()?
-			if self.fail: return error(Error("close failed"))
+fn var Door.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "{self.id},").wait()?
+		if self.fail: return error(Error("close failed"))
 
 fn events(log: String) String!:
 	return ok((read_file(log).wait()?).decode_utf8().get(""))
@@ -49,7 +48,8 @@ test "named and computed bad bounds close incoming before existing":
 			temp := temporary("list-computed-transfer-")?
 			other := "{temp.path()}/log"
 			expect_contains(
-				(expect_fault(fn: computed(other.clone(), op, index))?), "index"
+				(expect_fault(fn: computed(other.clone(), op, index))?),
+				"index",
 			)?
 			expect_equal((events(other)?), "2,1,")?
 
@@ -169,12 +169,11 @@ type PanicDoor:
 	fail: Bool
 	closed: Bool = false
 
-impl Closeable for PanicDoor:
-	var fn close() Unit!:
-		if not self.closed:
-			self.closed = true
-			append_file(self.log, "{self.id},").wait()?
-			if self.fail: panic("capture close panic")
+fn var PanicDoor.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "{self.id},").wait()?
+		if self.fail: panic("capture close panic")
 
 fn captured(log: String, id: Int, fail: Bool) fn() Int:
 	door := PanicDoor(id, log, fail)
@@ -186,11 +185,10 @@ type Envelope:
 	callback: fn() Int
 	closed: Bool = false
 
-impl Closeable for Envelope:
-	var fn close() Unit!:
-		if not self.closed:
-			self.closed = true
-			append_file(self.log, "{self.id},").wait()?
+fn var Envelope.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "{self.id},").wait()?
 
 fn callback_drop(log: String) Unit:
 	var items = [Envelope(1, log.clone(), captured(log.clone(), 3, true))]
@@ -221,7 +219,8 @@ fn callback_places(log: String, kind: Int) Unit:
 		action()
 	else:
 		[Envelope(1, log.clone(), captured(log.clone(), 3, true))].set(
-			0, Envelope(2, log, fn: 4)
+			0,
+			Envelope(2, log, fn: 4),
 		)
 
 test "old capture drop fault observes updated field indexed slot and computed receivers":
@@ -297,6 +296,7 @@ test "computed receiver closes when payload absent or construction faults":
 	temp := temporary("list-arg-fault-")?
 	other := "{temp.path()}/log"
 	expect_contains(
-		(expect_fault(fn: computed_arg_fault(other.clone()))?), "incoming failed"
+		(expect_fault(fn: computed_arg_fault(other.clone()))?),
+		"incoming failed",
 	)?
 	expect_equal((events(other)?), "1,")?

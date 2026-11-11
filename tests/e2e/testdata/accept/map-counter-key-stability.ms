@@ -111,9 +111,8 @@ test "literal increments keep stable mutable-key counters":
 type CounterKey:
 	value: Int
 
-impl CounterKey:
-	fn clone() CounterKey:
-		return CounterKey(self.value + 1)
+fn CounterKey.clone() CounterKey:
+	return CounterKey(self.value + 1)
 
 test "counter updates call a source-defined clone method":
 	key := CounterKey(1)
@@ -155,10 +154,9 @@ test "a later failing try leaves its map unchanged":
 type FaultingCounterKey:
 	value: Int
 
-impl FaultingCounterKey:
-	fn clone() FaultingCounterKey:
-		checked := self.value + 1
-		return FaultingCounterKey(checked - 1)
+fn FaultingCounterKey.clone() FaultingCounterKey:
+	checked := self.value + 1
+	return FaultingCounterKey(checked - 1)
 
 test "counter fusion preserves faults from an equal-valued source clone":
 	key := FaultingCounterKey(9223372036854775807)
@@ -169,6 +167,7 @@ test "counter fusion preserves faults from an equal-valued source clone":
 test "native borrowers retain owned arguments after a later try":
 	separator := "long-dynamic-map-key-{1}"
 	pieces := "before-long-dynamic-map-key-1-after".split(
-		separator.clone(), max_parts: successful_value(2)?
+		separator.clone(),
+		max_parts: successful_value(2)?,
 	)
 	expect_equal(pieces, ["before-", "-after"])?

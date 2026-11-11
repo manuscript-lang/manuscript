@@ -33,14 +33,14 @@ export extern fn msstd_net_network() NativeNetwork
 
 export extern fn msstd_tls_parse_certificates(
 	pem: String,
-	max_certificates: Int?
+	max_certificates: Int?,
 ) List[CertificateInfo]!
 
 export extern fn msstd_tls_verify_certificates(
 	chain_pem: String,
 	roots_pem: String,
 	server_name: String,
-	now: Timestamp
+	now: Timestamp,
 ) Unit!
 
 export extern fn msstd_url_decode_component(text: String) String!
@@ -53,7 +53,7 @@ export extern fn msstd_url_parse(text: String) Url!
 
 export extern fn msstd_url_parse_query(
 	text: String,
-	max_entries: Int?
+	max_entries: Int?,
 ) List[QueryEntry]!
 
 export extern fn msstd_url_resolve(base: Url, reference: String) Url!
@@ -71,7 +71,7 @@ export extern fn msstd_net_connection_peer_address(handle: NativeConnection) Str
 export extern fn msstd_net_connection_read(
 	handle: NativeConnection,
 	max_bytes: Int?,
-	timeout: Duration?
+	timeout: Duration?,
 ) Bytes?!
 
 export extern fn msstd_net_connection_shutdown_write(handle: NativeConnection) Unit!
@@ -81,7 +81,7 @@ export extern fn msstd_net_connection_tls_info(handle: NativeConnection) TlsInfo
 export extern fn msstd_net_connection_write_bytes(
 	handle: NativeConnection,
 	data: Bytes,
-	timeout: Duration?
+	timeout: Duration?,
 ) Unit!
 
 export extern fn msstd_net_datagram_address(handle: NativeDatagramSocket) String
@@ -97,22 +97,23 @@ export extern fn msstd_net_datagram_close_if_last(handle: NativeDatagramSocket) 
 export extern fn msstd_net_datagram_receive(
 	handle: NativeDatagramSocket,
 	max_bytes: Int?,
-	timeout: Duration?
+	timeout: Duration?,
 ) Datagram!
 
 export extern fn msstd_net_datagram_send_bytes(
 	handle: NativeDatagramSocket,
 	data: Bytes,
 	address: String,
-	timeout: Duration?
+	timeout: Duration?,
 ) Unit!
 
 export extern fn msstd_net_listener_accept(
 	handle: NativeListener,
-	timeout: Duration?
+	timeout: Duration?,
 ) NativeConnection!
 
-// Another handle on the same listener, for a promise that accepts on it; dropping it leaves the listener open.
+// Another handle on the same listener, for a promise that accepts on it; dropping it
+// leaves the listener open.
 export extern fn msstd_net_listener_share(handle: NativeListener) NativeListener
 
 export extern fn msstd_net_listener_address(handle: NativeListener) String
@@ -134,14 +135,14 @@ export extern fn msstd_websocket_receive(handle: NativeWebSocket) RawWebSocketMe
 export extern fn msstd_websocket_send_bytes(
 	handle: NativeWebSocket,
 	data: Bytes,
-	text: Bool
+	text: Bool,
 ) Unit!
 
 export extern fn msstd_websocket_subprotocol(handle: NativeWebSocket) String
 
 export extern fn msstd_net_network_bind_datagram(
 	net: NativeNetwork,
-	address: String
+	address: String,
 ) NativeDatagramSocket!
 
 export extern fn msstd_net_network_close(net: NativeNetwork) Unit
@@ -149,25 +150,25 @@ export extern fn msstd_net_network_close(net: NativeNetwork) Unit
 export extern fn msstd_net_network_connect(
 	net: NativeNetwork,
 	address: String,
-	timeout: Duration?
+	timeout: Duration?,
 ) NativeConnection!
 
 export extern fn msstd_net_network_connect_tls_config(
 	net: NativeNetwork,
 	address: String,
 	options: TlsOptions,
-	timeout: Duration?
+	timeout: Duration?,
 ) NativeConnection!
 
 export extern fn msstd_net_network_connect_unix(
 	net: NativeNetwork,
 	path: String,
-	timeout: Duration?
+	timeout: Duration?,
 ) NativeConnection!
 
 export extern fn msstd_net_network_http_client(
 	net: NativeNetwork,
-	options: HttpClientOptions
+	options: HttpClientOptions,
 ) HttpClient!
 
 export extern fn msstd_net_network_listen(net: NativeNetwork, address: String) Listener!
@@ -176,19 +177,19 @@ export extern fn msstd_net_network_listen_tls(
 	net: NativeNetwork,
 	address: String,
 	options: TlsOptions,
-	handshake_timeout: Duration?
+	handshake_timeout: Duration?,
 ) Listener!
 
 export extern fn msstd_net_network_listen_unix(
 	net: NativeNetwork,
-	path: String
+	path: String,
 ) Listener!
 
 export extern fn msstd_net_network_lookup(
 	net: NativeNetwork,
 	name: String,
 	max_records: Int?,
-	timeout: Duration?
+	timeout: Duration?,
 ) List[String]!
 
 export extern fn msstd_net_network_request_bytes(
@@ -198,7 +199,7 @@ export extern fn msstd_net_network_request_bytes(
 	headers: HttpHeaders,
 	body: Bytes,
 	max_response_bytes: Int?,
-	timeout: Duration?
+	timeout: Duration?,
 ) ClientResponse!
 
 export extern fn msstd_net_network_resolve(
@@ -206,14 +207,14 @@ export extern fn msstd_net_network_resolve(
 	name: String,
 	kind: DnsKind,
 	max_records: Int?,
-	timeout: Duration?
+	timeout: Duration?,
 ) List[DnsRecord]!
 
 export extern fn msstd_net_network_restrict(
 	net: NativeNetwork,
 	hosts: List[String],
 	cidrs: List[String],
-	allow_listen: Bool
+	allow_listen: Bool,
 ) Network!
 
 export extern fn msstd_net_network_web_socket(
@@ -221,10 +222,10 @@ export extern fn msstd_net_network_web_socket(
 	url: String,
 	headers: HttpHeaders,
 	subprotocols: List[String],
-	options: WebSocketWire
+	options: WebSocketWire,
 ) NativeWebSocket!
 
 export extern fn msstd_net_network_with_resolver(
 	net: NativeNetwork,
-	address: String
+	address: String,
 ) Network!

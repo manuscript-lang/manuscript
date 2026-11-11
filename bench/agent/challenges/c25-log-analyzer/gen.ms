@@ -28,8 +28,12 @@ fn parse(line: String) Entry?:
 	if not digits(f[5]) or f[5].length() > 9: return none
 
 	return Entry(
-		f[1].clone(), f[3].clone(), f[4].parse_int().get(0), f[5].parse_int().get(0),
-		f[2].clone(), f[0].clone()
+		f[1].clone(),
+		f[3].clone(),
+		f[4].parse_int().get(0),
+		f[5].parse_int().get(0),
+		f[2].clone(),
+		f[0].clone(),
 	)
 
 fn solve(s: String) String:
@@ -79,7 +83,8 @@ fn solve(s: String) String:
 	order := counts.keys().sorted(
 		fn a,
 		b: if counts.get_or(a, 0) != counts.get_or(b, 0): counts.get_or(
-			b, 0
+			b,
+			0,
 		) - counts.get_or(a, 0) else: a.compare(b)
 	)
 	for p in order.take(3):
@@ -145,9 +150,9 @@ export fn gen_c25() Unit:
 	examples := [
 		mk(
 			"basic",
-			"2024-05-01T10:00:00 INFO GET /api/users 200 12\n2024-05-01T10:00:01 ERROR POST /api/orders 503 250\nthis line is broken\n2024-05-01T10:00:02 INFO GET /api/users 200 15\n2024-05-01T10:00:03 WARN GET /health 404 1\n"
+			"2024-05-01T10:00:00 INFO GET /api/users 200 12\n2024-05-01T10:00:01 ERROR POST /api/orders 503 250\nthis line is broken\n2024-05-01T10:00:02 INFO GET /api/users 200 15\n2024-05-01T10:00:03 WARN GET /health 404 1\n",
 		),
-		mk("all-malformed", "x\n\nINFO GET / 200 1\n")
+		mk("all-malformed", "x\n\nINFO GET / 200 1\n"),
 	]
 	var p95 = ""
 	for i in 0..40: p95 += "t{i} INFO PUT /q{i % 3} 200 {(i * 37) % 101}\n"
@@ -162,25 +167,25 @@ export fn gen_c25() Unit:
 			mk("one-valid", "t DEBUG PUT /x 099 0\n"),
 			mk(
 				"tie-break-path",
-				"t INFO GET /b 200 1\nt INFO GET /a 200 1\nt INFO GET /c 200 1\nt INFO GET /d 200 1\nt INFO GET /d 200 3\n"
+				"t INFO GET /b 200 1\nt INFO GET /a 200 1\nt INFO GET /c 200 1\nt INFO GET /d 200 1\nt INFO GET /d 200 3\n",
 			),
 			mk(
 				"floor-avg",
-				"t INFO GET /p 200 1\nt INFO GET /p 200 2\nt INFO GET /p 200 2\n"
+				"t INFO GET /p 200 1\nt INFO GET /p 200 2\nt INFO GET /p 200 2\n",
 			),
 			mk(
 				"status-classes",
-				"t INFO GET /p 499 1\nt INFO GET /p 500 1\nt INFO GET /p 999 1\nt INFO GET /p 099 1\nt INFO GET /p 100 1\nt INFO GET /p 302 1\nt INFO GET /p 204 1\n"
+				"t INFO GET /p 499 1\nt INFO GET /p 500 1\nt INFO GET /p 999 1\nt INFO GET /p 099 1\nt INFO GET /p 100 1\nt INFO GET /p 302 1\nt INFO GET /p 204 1\n",
 			),
 			mk("p95-and-slowest", p95 + "t99 INFO GET /z 200 100\n"),
 			mk(
 				"spacing-and-case",
-				"t INFO  GET /p 200 1\nt  INFO GET /p 200 1\n t INFO GET /p 200 1\nt info GET /p 200 1\nt INFO get /p 200 1\nt INFO GET p 200 1\nt INFO GET /p 2000 1\nt INFO GET /p 20a 1\nt INFO GET /p 200 -1\nt INFO GET /p 200 1234567890\nt INFO GET /p 200 123456789\n"
+				"t INFO  GET /p 200 1\nt  INFO GET /p 200 1\n t INFO GET /p 200 1\nt info GET /p 200 1\nt INFO get /p 200 1\nt INFO GET p 200 1\nt INFO GET /p 2000 1\nt INFO GET /p 20a 1\nt INFO GET /p 200 -1\nt INFO GET /p 200 1234567890\nt INFO GET /p 200 123456789\n",
 			),
 			mk("no-trailing-newline", "t ERROR POST /z 500 7"),
 			mk("random-small", small),
 			mk("random-mid", mid),
-			mk("random-large", large)
+			mk("random-large", large),
 		]
 	)
 	write_cases("c25-log-analyzer", examples, hidden)

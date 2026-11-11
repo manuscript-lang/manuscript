@@ -4,7 +4,8 @@ import (
 	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
-// Library failures are plain Error values: callers branch on `kind`, not on a domain type.
+// Library failures are plain Error values: callers branch on `kind`, not on a domain
+// type.
 
 fn describe_error(cause: Error) String:
 	if cause.kind == "EINVAL": return "bad limits"
@@ -43,8 +44,9 @@ test "propagation with try forwards the same Error":
 
 test "an Error built by hand has a message, a kind and details":
 	read := Error(
-		"read failed", kind: "EAGAIN",
-		details: {"path": "settings.json", "attempt": "2"}
+		"read failed",
+		kind: "EAGAIN",
+		details: {"path": "settings.json", "attempt": "2"},
 	)
 	read.message | expect_equal("read failed")?
 	read.kind | expect_equal("EAGAIN")?
@@ -68,7 +70,13 @@ test "a domain record is still a legal error value":
 			return fail(message: "failed read succeeded")
 		error(cause): cause
 
-	(cause.path != "settings.json" or cause.attempt != 2 or not cause.retryable) | expect_false?
+	(
+		(
+			cause.path != "settings.json"
+			or cause.attempt != 2
+			or not cause.retryable
+		) | expect_false?
+	)
 
 fn read_failure(cause: ReadError) Unit!ReadError:
 	return error(cause)
@@ -78,7 +86,9 @@ fn general_read(cause: ReadError) Unit!:
 	if failed.is_error():
 		return error(
 			Error(
-				"read failed", kind: "EIO", details: {"path": failed.err().path.clone()}
+				"read failed",
+				kind: "EIO",
+				details: {"path": failed.err().path.clone()},
 			)
 		)
 

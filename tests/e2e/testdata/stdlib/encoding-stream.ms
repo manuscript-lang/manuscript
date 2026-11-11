@@ -15,19 +15,18 @@ type Chunks:
 	size: Int
 	at: Int
 
-impl Source[Bytes] for Chunks:
-	var fn next() Bytes?!:
-		if self.at >= self.data.length(): return ok(none)
+fn var Chunks.next() Bytes?!:
+	if self.at >= self.data.length(): return ok(none)
 
-		var end = self.at + self.size
-		if end > self.data.length(): end = self.data.length()
+	var end = self.at + self.size
+	if end > self.data.length(): end = self.data.length()
 
-		piece := self.data.slice(self.at, end)?
-		self.at = end
-		return ok(piece)
+	piece := self.data.slice(self.at, end)?
+	self.at = end
+	return ok(piece)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Chunks.close() Unit!:
+	return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
@@ -36,16 +35,15 @@ type Texts:
 	parts: List[String]
 	at: Int
 
-impl Source[String] for Texts:
-	var fn next() String?!:
-		if self.at >= self.parts.length(): return ok(none)
+fn var Texts.next() String?!:
+	if self.at >= self.parts.length(): return ok(none)
 
-		part := self.parts[self.at].clone()
-		self.at += 1
-		return ok(part)
+	part := self.parts[self.at].clone()
+	self.at += 1
+	return ok(part)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Texts.close() Unit!:
+	return ok(unit)
 
 // Splits text into pieces of `size` characters.
 fn pieces(text: String, size: Int) List[String]:
@@ -128,7 +126,7 @@ test "base64 decoding rejects data after padding at every chunk boundary":
 						ReadStream[String](
 							Texts([left, "", right], 0)
 						),
-						url_safe
+						url_safe,
 					)
 				)
 				expect_equal(got.err().kind, "EBADMSG")?
@@ -146,10 +144,10 @@ test "base64 decoding permits empty chunks after terminal padding":
 								[
 									"", left, "", right, "", ""
 								],
-								0
+								0,
 							)
 						),
-						url_safe
+						url_safe,
 					)
 				)?
 				expect_equal(got, base64_decode(text, url_safe)?)?

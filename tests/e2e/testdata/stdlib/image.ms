@@ -72,18 +72,19 @@ test "bmp bit fields decode independent layouts and reject malformed masks":
 	reversed := decode_image(
 		hex_decode(
 			"424d7e000000000000007a0000006c0000000100000001000000010020000300000004000000130b0000130b00000000000000000000ff00000000ff00000000ff00000000ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a141e28",
-			none
+			none,
 		).get()
 	).get().pixel(0, 0).get()
 	expect_equal(
-		[reversed.red, reversed.green, reversed.blue, reversed.alpha], [10, 20, 30, 40]
+		[reversed.red, reversed.green, reversed.blue, reversed.alpha],
+		[10, 20, 30, 40],
 	)?
 
 	// Three masks after a 40-byte header leave the image without alpha.
 	plain := decode_image(
 		hex_decode(
 			"424d460000000000000042000000280000000100000001000000010020000300000004000000130b0000130b000000000000000000000000ff0000ff0000ff0000001e140a00",
-			none
+			none,
 		).get()
 	).get().pixel(0, 0).get()
 	expect_equal([plain.red, plain.green, plain.blue, plain.alpha], [10, 20, 30, 255])?
@@ -101,7 +102,8 @@ test "bmp bit fields decode independent layouts and reject malformed masks":
 		"424d460000000000000042000000280000000100000001000000010020000300000004000000130b0000130b000000000000000000000000ff0000ff",
 	]
 	for hex in rejected: expect_equal(
-		decode_image(hex_decode(hex, none).get()).is_ok(), false
+		decode_image(hex_decode(hex, none).get()).is_ok(),
+		false,
 	)?
 
 test "bmp fully transparent image stays transparent":
@@ -123,7 +125,7 @@ test "bmp legacy 32-bit with zero fourth bytes is opaque":
 	// 1x1, BI_RGB, 32-bit, pixel B=30 G=20 R=10 A=0.
 	data := hex_decode(
 		"424d3a0000000000000036000000280000000100000001000000010020000000000004000000130b0000130b000000000000000000001e140a00",
-		none
+		none,
 	).get()
 	px := decode_image(data).get().pixel(0, 0).get()
 	expect_equal([px.red, px.green, px.blue, px.alpha], [10, 20, 30, 255])?
@@ -144,7 +146,8 @@ test "png decodes every independent vector":
 				at := (y * v.width + x) * 4
 				c := img.pixel(x, y).get()
 				expect_equal(
-					[c.red, c.green, c.blue, c.alpha], v.rgba.slice(at, at + 4).get()
+					[c.red, c.green, c.blue, c.alpha],
+					v.rgba.slice(at, at + 4).get(),
 				)?
 
 test "png encode decodes back":
@@ -183,8 +186,10 @@ test "jpeg encode round trips close to the source":
 			data := encode_jpeg(
 				img,
 				JpegOptions(
-					quality: 95, chroma: chroma, restart_interval: interval
-				)
+					quality: 95,
+					chroma: chroma,
+					restart_interval: interval,
+				),
 			).get()
 			back := decode_image(data).get()
 			expect_equal(back.width, 37)?

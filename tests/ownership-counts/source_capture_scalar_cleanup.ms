@@ -15,9 +15,8 @@ import Closeable, print from "@std/core.ms"
 type Marker:
 	id: Int
 
-impl Closeable for Marker:
-	var fn close() Unit!:
-		print("close {self.id}")
+fn var Marker.close() Unit!:
+	print("close {self.id}")
 
 impl Marker:
 	fn status() Int: self.id

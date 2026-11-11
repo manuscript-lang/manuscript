@@ -12,19 +12,18 @@ type Chunks:
 	size: Int
 	at: Int
 
-impl Source[Bytes] for Chunks:
-	var fn next() Bytes?!:
-		if self.at >= self.data.length(): return ok(none)
+fn var Chunks.next() Bytes?!:
+	if self.at >= self.data.length(): return ok(none)
 
-		var end = self.at + self.size
-		if end > self.data.length(): end = self.data.length()
+	var end = self.at + self.size
+	if end > self.data.length(): end = self.data.length()
 
-		piece := self.data.slice(self.at, end)?
-		self.at = end
-		return ok(piece)
+	piece := self.data.slice(self.at, end)?
+	self.at = end
+	return ok(piece)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Chunks.close() Unit!:
+	return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
@@ -33,7 +32,7 @@ fn read_rows(
 	text: String,
 	size: Int,
 	options: CsvOptions = CsvOptions(),
-	max_record_bytes: Int? = none
+	max_record_bytes: Int? = none,
 ) List[List[String]]!:
 	return read_raw(text.to_bytes(), size, options, max_record_bytes)
 
@@ -41,7 +40,7 @@ fn read_raw(
 	data: Bytes,
 	size: Int,
 	options: CsvOptions = CsvOptions(),
-	max_record_bytes: Int? = none
+	max_record_bytes: Int? = none,
 ) List[List[String]]!:
 	var rows = csv_rows(chunked(data, size), options, max_record_bytes)
 	var out: List[List[String]] = []
@@ -75,7 +74,8 @@ test "large fragmented records preserve rows and exact record budgets":
 	for size in [1, 2, 7, 64, 4096, text.byte_length()]:
 		expect_equal(read_rows(text, size, max_record_bytes: limit)?, expected)?
 		expect_equal(
-			read_rows(text, size, max_record_bytes: limit - 1).err().kind, "EOVERFLOW"
+			read_rows(text, size, max_record_bytes: limit - 1).err().kind,
+			"EOVERFLOW",
 		)?
 
 	var chunks: List[Bytes] = ["".to_bytes()]
@@ -86,22 +86,29 @@ test "large fragmented records preserve rows and exact record budgets":
 		chunks.append(chunk.build())
 		chunks.append("".to_bytes())
 
-	from_list(chunks) | csv_rows | collect(none)?
-		| expect_equal([["a", "é"], ["b", "c"], ["last", "row"]])?
+	(
+		from_list(chunks) | csv_rows | collect(none)? | expect_equal(
+			[["a", "é"], ["b", "c"], ["last", "row"]]
+		)?
+	)
 
 test "options apply":
 	semicolons := CsvOptions(delimiter: ";")
 	expect_equal(
-		read_rows("a;b\n\"c;d\";e\n", 2, semicolons)?, [["a", "b"], ["c;d", "e"]]
+		read_rows("a;b\n\"c;d\";e\n", 2, semicolons)?,
+		[["a", "b"], ["c;d", "e"]],
 	)?
 
 test "empty CSV streams reject invalid options":
 	invalid: List[List[String]]! := error(Error("CSV: invalid input", kind: "EINVAL"))
 
 	for options in [
-		CsvOptions(delimiter: ""), CsvOptions(delimiter: "::"),
-		CsvOptions(delimiter: "\""), CsvOptions(delimiter: "\n"),
-		CsvOptions(delimiter: "é"), CsvOptions(line_ending: "\r")
+		CsvOptions(delimiter: ""),
+		CsvOptions(delimiter: "::"),
+		CsvOptions(delimiter: "\""),
+		CsvOptions(delimiter: "\n"),
+		CsvOptions(delimiter: "é"),
+		CsvOptions(line_ending: "\r"),
 	]:
 		for text in ["", "a", "a\n"]:
 			expect_equal(read_rows(text, 1, options.clone()), invalid)?
@@ -112,11 +119,12 @@ test "empty CSV streams reject invalid options":
 	no_rows: List[List[String]] := []
 	expect_equal(read_rows("", 1)?, no_rows)?
 	expect_equal(
-		read_rows("", 1, CsvOptions(delimiter: ";", line_ending: "\r\n"))?, no_rows
+		read_rows("", 1, CsvOptions(delimiter: ";", line_ending: "\r\n"))?,
+		no_rows,
 	)?
 
 	empty_chunks := from_list(["".to_bytes(), "".to_bytes()])
-	empty_chunks | csv_rows | collect(none)? | expect_equal(no_rows)?
+	(empty_chunks | csv_rows | collect(none)? | expect_equal(no_rows)?)
 
 test "an unterminated quote is InvalidData at the end":
 	outcome := read_rows("a,\"open\nmore", 4)
@@ -130,12 +138,15 @@ test "the record budget reports LimitExceeded":
 	outcome := read_rows("a,\"never closed", 3, CsvOptions(), 8)
 	expect_equal(outcome.err().kind, "EOVERFLOW")?
 	expect_equal(
-		read_rows("ab,cd\nef,gh\n", 3, CsvOptions(), 8)?, [["ab", "cd"], ["ef", "gh"]]
+		read_rows("ab,cd\nef,gh\n", 3, CsvOptions(), 8)?,
+		[["ab", "cd"], ["ef", "gh"]],
 	)?
 
 test "continued reads after a record limit error keep only the consumed tail":
 	for chunks in [
-		["ab", "cd\n", "x\n"], ["ab", "cd\nx", "\n"], ["ab", "cd\n\"", "x\"\n"]
+		["ab", "cd\n", "x\n"],
+		["ab", "cd\nx", "\n"],
+		["ab", "cd\n\"", "x\"\n"],
 	]:
 		var data: List[Bytes] = []
 		for chunk in chunks:
@@ -166,7 +177,8 @@ test "the record budget does not depend on where chunks end":
 		quoted := read_rows("\"a\nb\nc\nd\",x\n", size, CsvOptions(), 4)
 		expect_equal(quoted.err().kind, "EOVERFLOW")?
 		expect_equal(
-			read_rows("abcd\nefgh\n", size, CsvOptions(), 4)?, [["abcd"], ["efgh"]]
+			read_rows("abcd\nefgh\n", size, CsvOptions(), 4)?,
+			[["abcd"], ["efgh"]],
 		)?
 		expect_equal(read_rows("abcd\r\n", size, CsvOptions(), 5)?, [["abcd"]])?
 
@@ -238,7 +250,8 @@ test "oversized EOF records stay rejected after a failed read":
 
 		for size in [1, 2, bytes]:
 			var rows = csv_rows(
-				chunked(text.to_bytes(), size), max_record_bytes: bytes - 1
+				chunked(text.to_bytes(), size),
+				max_record_bytes: bytes - 1,
 			)
 			expect_equal(rows.next().err().kind, "EOVERFLOW")?
 			expect_equal(rows.next().err().kind, "EOVERFLOW")?

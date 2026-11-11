@@ -9,9 +9,22 @@ test "duration parser accepts units, signs, components and Unicode microseconds"
 		"-1h30m", "1s2h3m", "1s2s", ".5s", "1.s", "01.050s"
 	]
 	nanos := [
-		1, 1000, 1000, 1000, 1000000, 1000000000, 60000000000, 3600000000000,
-		5400000000000, 5400000000000, -5400000000000, 7381000000000, 3000000000,
-		500000000, 1000000000, 1050000000
+		1,
+		1000,
+		1000,
+		1000,
+		1000000,
+		1000000000,
+		60000000000,
+		3600000000000,
+		5400000000000,
+		5400000000000,
+		-5400000000000,
+		7381000000000,
+		3000000000,
+		500000000,
+		1000000000,
+		1050000000,
 	]
 	for i in 0..examples.length():
 		expect_equal(parse_duration(examples.get(i)), ok(nanoseconds(nanos.get(i))))?
@@ -36,10 +49,30 @@ test "duration fractions truncate exactly without rounding or a precision cap":
 
 test "duration parser round trips formatter branches and signed extrema":
 	values := [
-		-9223372036854775807 - 1, -9223372036854775807, -3600000000000, -90500000000,
-		-1000000000, -999999999, -1000000, -999999, -1500, -1000, -999, -1, 0, 1, 999,
-		1000, 1500, 999999, 1000000, 999999999, 1000000000, 90500000000, 3600000000000,
-		9223372036854775807
+		-9223372036854775807 - 1,
+		-9223372036854775807,
+		-3600000000000,
+		-90500000000,
+		-1000000000,
+		-999999999,
+		-1000000,
+		-999999,
+		-1500,
+		-1000,
+		-999,
+		-1,
+		0,
+		1,
+		999,
+		1000,
+		1500,
+		999999,
+		1000000,
+		999999999,
+		1000000000,
+		90500000000,
+		3600000000000,
+		9223372036854775807,
 	]
 
 	for n in values:
@@ -48,30 +81,31 @@ test "duration parser round trips formatter branches and signed extrema":
 
 	expect_equal(
 		parse_duration("-9223372036854775808ns"),
-		ok(nanoseconds(-9223372036854775807 - 1))
+		ok(nanoseconds(-9223372036854775807 - 1)),
 	)?
 	expect_equal(
-		parse_duration("9223372036854775807ns"), ok(nanoseconds(9223372036854775807))
+		parse_duration("9223372036854775807ns"),
+		ok(nanoseconds(9223372036854775807)),
 	)?
 	expect_equal(
 		parse_duration("9223372036.854775807999999s"),
-		ok(nanoseconds(9223372036854775807))
+		ok(nanoseconds(9223372036854775807)),
 	)?
 	expect_equal(
 		parse_duration("-9223372036.854775808999999s"),
-		ok(nanoseconds(-9223372036854775807 - 1))
+		ok(nanoseconds(-9223372036854775807 - 1)),
 	)?
 	expect_equal(
 		parse_duration("9223372036854775807.999ns"),
-		ok(nanoseconds(9223372036854775807))
+		ok(nanoseconds(9223372036854775807)),
 	)?
 	expect_equal(
 		parse_duration("-9223372036854775808.999ns"),
-		ok(nanoseconds(-9223372036854775807 - 1))
+		ok(nanoseconds(-9223372036854775807 - 1)),
 	)?
 	expect_equal(
 		parse_duration("9223372036854775807ns.999ns"),
-		ok(nanoseconds(9223372036854775807))
+		ok(nanoseconds(9223372036854775807)),
 	)?
 
 test "duration overflow is an expected range error":

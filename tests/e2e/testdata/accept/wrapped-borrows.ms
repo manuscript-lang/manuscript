@@ -23,7 +23,8 @@ fn tail(result: Row!Bad, var visits: List[Int]) String!Bad:
 
 fn make(n: Int) Row:
 	return Row(
-		"row-{n}-with-a-heap-allocated-name", ["tag-{n}-with-a-heap-allocated-text"]
+		"row-{n}-with-a-heap-allocated-name",
+		["tag-{n}-with-a-heap-allocated-text"],
 	)
 
 test "wrapped parts are references into their arguments":
@@ -40,10 +41,14 @@ test "wrapped parts are references into their arguments":
 	tail(good, var visits).get() | expect_equal("row-2-with-a-heap-allocated-name")?
 
 	bad: Row!Bad := error(Bad("a failure with a heap allocated reason"))
-	tail(bad, var visits).err().why | expect_equal(
-		"a failure with a heap allocated reason"
-	)?
-	tail(ok(make(3)), var visits).get() | expect_equal(
-		"row-3-with-a-heap-allocated-name"
-	)?
+	(
+		tail(bad, var visits).err().why | expect_equal(
+			"a failure with a heap allocated reason"
+		)?
+	)
+	(
+		tail(ok(make(3)), var visits).get() | expect_equal(
+			"row-3-with-a-heap-allocated-name"
+		)?
+	)
 	visits | expect_equal([1, 1, 1])?

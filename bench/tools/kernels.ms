@@ -1,5 +1,6 @@
-// Whole-kernel comparisons against hand-written Go, Rust and (kernels only) C, minimum of N runs (bench/perf/kernels, bench/perf/competence).
-// Usage: ms run bench/tools/kernels.ms -- <kernels|competence> [repeats]
+// Whole-kernel comparisons against hand-written Go, Rust and (kernels only) C, minimum
+// of N runs (bench/perf/kernels, bench/perf/competence). Usage: ms run
+// bench/tools/kernels.ms -- <kernels|competence> [repeats]
 // kernels: c-ms is the C a no-GC Manuscript backend would emit; ABLATE=1 adds c-ms builds with one runtime check removed each.
 // MS, GO, RUSTC and CC pick the tools.
 import (
@@ -30,14 +31,18 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 	here := "bench/perf/{suite}"
 	for dir in ["go", "ms", "rust"]:
 		copy(
-			"{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
+			"{here}/{dir}",
+			"{work}/{dir}",
+			CopyOptions(recursive: true, replace: true),
 		)?
 	for dir in ["rust-checked", "c", "c-ms"]:
 		create_directory("{work}/{dir}")?
 	build_go("{work}/go", "{work}/go/bench")?
 	build_rust("{work}/rust/main.rs", "{work}/rust/bench", [])?
 	build_rust(
-		"{work}/rust/main.rs", "{work}/rust-checked/bench", ["-C", "overflow-checks=on"]
+		"{work}/rust/main.rs",
+		"{work}/rust-checked/bench",
+		["-C", "overflow-checks=on"],
 	)?
 	build_ms("{work}/ms", "{work}/ms/bench")?
 
@@ -55,7 +60,7 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 				["c-ms-no-bounds", "-DMS_NO_BOUNDS"],
 				[
 					"c-ms-unchecked", "-DMS_NO_POLL -DMS_NO_OVERFLOW -DMS_NO_BOUNDS"
-				]
+				],
 			]
 
 			for entry in flags:

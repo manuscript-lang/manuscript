@@ -10,9 +10,8 @@ type Counter:
 	value: Int
 	log: String
 
-impl Closeable for Counter:
-	var fn close() Unit!:
-		_ := append_file(self.log, "{self.value},").wait()
+fn var Counter.close() Unit!:
+	_ := append_file(self.log, "{self.value},").wait()
 
 fn logged(path: String) String:
 	read := read_file(path).wait()

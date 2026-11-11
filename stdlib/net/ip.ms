@@ -20,30 +20,28 @@ export enum DnsKind:
 	PTR  // Reverse address pointer records for an IP.
 	SRV  // Service location records with priority, weight and port.
 
-impl DnsKind:
-	// Returns the uppercase wire category.
-	fn text() String:
-		match self:
-			A: return "A"
-			AAAA: return "AAAA"
-			CNAME: return "CNAME"
-			MX: return "MX"
-			NS: return "NS"
-			TXT: return "TXT"
-			PTR: return "PTR"
-			SRV: return "SRV"
+// Returns the uppercase wire category.
+fn DnsKind.text() String:
+	match self:
+		A: return "A"
+		AAAA: return "AAAA"
+		CNAME: return "CNAME"
+		MX: return "MX"
+		NS: return "NS"
+		TXT: return "TXT"
+		PTR: return "PTR"
+		SRV: return "SRV"
 
 // Numeric address families reported by IP values and host interfaces.
 export enum IpFamily:
 	IPv4  // A four-byte numeric address.
 	IPv6  // A sixteen-byte numeric address.
 
-impl IpFamily:
-	// Returns IPv4 or IPv6.
-	fn text() String:
-		match self:
-			IPv4: return "IPv4"
-			IPv6: return "IPv6"
+// Returns IPv4 or IPv6.
+fn IpFamily.text() String:
+	match self:
+		IPv4: return "IPv4"
+		IPv6: return "IPv6"
 
 // A validated numeric IPv4/IPv6 address without a port or zone.
 export extern type IpAddress
@@ -74,11 +72,14 @@ impl Cidr:
 export type DnsRecord:
 	// The same typed category used by the query.
 	kind: DnsKind
-	// The record's answer: an IP address for A and AAAA, the target host name for CNAME, MX, NS, PTR, and SRV, or the text for TXT.
+	// The record's answer: an IP address for A and AAAA, the target host name for
+	// CNAME, MX, NS, PTR, and SRV, or the text for TXT.
 	value: String
-	// The preference of an MX record or the priority of an SRV record, where lower values are tried first; 0 for other kinds.
+	// The preference of an MX record or the priority of an SRV record, where lower
+	// values are tried first; 0 for other kinds.
 	priority: Int
-	// The relative weight of an SRV record among targets with the same priority; 0 for other kinds.
+	// The relative weight of an SRV record among targets with the same priority; 0 for
+	// other kinds.
 	weight: Int
 	// The service port of an SRV record; 0 for other kinds.
 	port: Int

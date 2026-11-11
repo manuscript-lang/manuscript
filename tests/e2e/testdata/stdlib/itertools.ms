@@ -45,7 +45,8 @@ test "group_runs groups adjacent equal keys":
 
 test "permutations and combinations":
 	expect_equal(
-		permutations([1, 2, 3], 2), [[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]
+		permutations([1, 2, 3], 2),
+		[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]],
 	)?
 	expect_equal(permutations([1, 2, 3]).length(), 6)?
 	expect_equal(permutations([1, 1]).length(), 2)?
@@ -72,7 +73,7 @@ test "combinations of every size keep their order":
 	expect_equal(combinations(values.clone(), 4), [[10, 20, 30, 40]])?
 	expect_equal(
 		combinations(values.clone(), 3),
-		[[10, 20, 30], [10, 20, 40], [10, 30, 40], [20, 30, 40]]
+		[[10, 20, 30], [10, 20, 40], [10, 30, 40], [20, 30, 40]],
 	)?
 	expect_equal(combinations(values.clone(), 1), [[10], [20], [30], [40]])?
 	expect_equal(combinations(values.clone(), 0), [[]])?
@@ -139,7 +140,8 @@ test "zero-size permutations preserve shape and validate sizes":
 
 test "nonzero permutations retain position order and own their results":
 	expect_equal(
-		permutations([1, 1, 2], 2), [[1, 1], [1, 2], [1, 1], [1, 2], [2, 1], [2, 1]]
+		permutations([1, 1, 2], 2),
+		[[1, 1], [1, 2], [1, 1], [1, 2], [2, 1], [2, 1]],
 	)?
 	expect_equal(permutations([10, 20], none), [[10, 20], [20, 10]])?
 

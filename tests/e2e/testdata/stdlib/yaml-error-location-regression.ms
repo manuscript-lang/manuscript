@@ -76,11 +76,13 @@ test "YAML source projection preserves compact document values":
 	values.add("key", YamlValue.StringValue("value"))
 
 	expected := YamlValue.ArrayValue([YamlValue.ObjectValue(values)])
-	parse("-\t\tkey: value") | expect_ok? | expect_equal(expected)?
-	parse("---\n-\t\tkey: value") | expect_ok? | expect_equal(expected)?
-	parse("-\t\t-\t\tkey: value") | expect_ok? | expect_equal(
-		YamlValue.ArrayValue([expected.clone()])
-	)?
+	(parse("-\t\tkey: value") | expect_ok? | expect_equal(expected)?)
+	(parse("---\n-\t\tkey: value") | expect_ok? | expect_equal(expected)?)
+	(
+		parse("-\t\t-\t\tkey: value") | expect_ok? | expect_equal(
+			YamlValue.ArrayValue([expected.clone()])
+		)?
+	)
 
 test "YAML block header origins distinguish identical quoted key text":
 	error_at("\"|bad\": |bad\n  x", 1, 10)?

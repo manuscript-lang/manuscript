@@ -34,8 +34,8 @@ fn tokens(line: String) List[Tok]:
 
 	return out
 
-// A recursive-descent evaluator. `bad` records a syntax error (which wins over a division by zero); once set
-// the parser sees no more tokens, so every loop ends.
+// A recursive-descent evaluator. `bad` records a syntax error (which wins over a
+// division by zero); once set the parser sees no more tokens, so every loop ends.
 type Parser:
 	toks: List[Tok]
 	pos: Int = 0
@@ -159,13 +159,13 @@ export fn gen_c05() Unit:
 				"deep-parens",
 				"(".repeat(200).get("") + "7" + ")".repeat(200).get(
 					""
-				) + "\n"
+				) + "\n",
 			),
 			mk(
 				"big-numbers",
-				"9999999999 * 99999999\n9223372036854775807\n-9223372036854775807 - 1\n"
+				"9999999999 * 99999999\n9223372036854775807\n-9223372036854775807 - 1\n",
 			),
-			mk("no-trailing-newline", "1+1")
+			mk("no-trailing-newline", "1+1"),
 		]
 	)
 	write_cases("c05-calculator", examples, hidden)

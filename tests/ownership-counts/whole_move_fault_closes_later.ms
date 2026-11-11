@@ -1,7 +1,8 @@
 // expect-stdout: close b
 // expect-stdout: close a
 // expect-stdout: waited: true
-// A guarded task faults after moving one resource: the cleanup stack still closes the binding registered after it.
+// A guarded task faults after moving one resource: the cleanup stack still closes the
+// binding registered after it.
 import (
 	promise from "@std/concurrency/promise.ms",
 	Closeable, panic from "@std/core.ms",
@@ -11,9 +12,8 @@ import (
 type Door:
 	name: String
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		stdout().write("close {self.name}\n").get()
+fn var Door.close() Unit!:
+	stdout().write("close {self.name}\n").get()
 
 fn faulting() Unit:
 	var xs: List[Door] = []

@@ -26,10 +26,9 @@ type Resource:
 
 // Resources own their state, so close records order through the filesystem:
 // resource 1 notes whether resource 2 had already closed.
-impl Closeable for Resource:
-	var fn close() Unit!:
-		inner_closed := read_file("{self.dir}/2").wait().is_ok()
-		_ := write_file("{self.dir}/{self.id}", "{inner_closed}", true).wait()
+fn var Resource.close() Unit!:
+	inner_closed := read_file("{self.dir}/2").wait().is_ok()
+	_ := write_file("{self.dir}/{self.id}", "{inner_closed}", true).wait()
 
 fn leave(dir: String) Int:
 	_outer := Resource(dir.clone(), 1)

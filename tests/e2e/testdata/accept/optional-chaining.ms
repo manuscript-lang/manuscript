@@ -11,9 +11,8 @@ type Outer:
 type Counter:
 	calls: Int
 
-impl Counter:
-	fn scaled(by: Int) Int:
-		return self.calls * by
+fn Counter.scaled(by: Int) Int:
+	return self.calls * by
 
 fn count_of(outer: Outer?) Int?:
 	return outer?.inner?.count

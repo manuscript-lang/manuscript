@@ -6,9 +6,8 @@ fn first(words: List[String]) String:
 type Text:
 	value: String
 
-impl Text:
-	fn read() String:
-		return self.value
+fn Text.read() String:
+	return self.value
 
 fn fresh() String:
 	return "aé😀"

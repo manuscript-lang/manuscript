@@ -18,7 +18,7 @@ export fn main() Int:
 			".a[0] | map(select(. > 1)) as $x | \{a: 1, $x, \"b\": .c, (.d): 2\} | reduce .[] as [$a, \{b: $c\}] (0; . + 1)"
 		),
 		d.fns,
-		d.nid
+		d.nid,
 	)
 	pl("main ok={r.ok}")
 

@@ -65,10 +65,9 @@ interface Logger:
 type ConsoleLogger:
     prefix: String
 
-impl Logger for ConsoleLogger:
-    // ms: allow_effect std.console.write
-    fn info(message: String) Unit:
-        print("{self.prefix}{message}")
+// ms: allow_effect std.console.write
+fn ConsoleLogger.info(message: String) Unit:
+    print("{self.prefix}{message}")
 
 fn total(log: Logger, prices: List[Int]) Int:
     log.info("summing {prices.length()} prices")

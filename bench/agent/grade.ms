@@ -1,8 +1,9 @@
 // Verifier used inside Harbor tasks: build /app, run hidden cases, write the reward.
 //
-// Usage: ms run /tests/grade.ms -- <cases.json> <build-cmd> <run-cmd> <timeout-s> [source-suffix]
-// Writes /logs/verifier/reward.txt (1 if every case passes, else 0) and detail.json. export_harbor.ms copies this file
-// and the modules it imports next to each other under /tests, keeping their relative layout.
+// Usage: ms run /tests/grade.ms -- <cases.json> <build-cmd> <run-cmd> <timeout-s>
+// [source-suffix] Writes /logs/verifier/reward.txt (1 if every case passes, else 0) and
+// detail.json. export_harbor.ms copies this file and the modules it imports next to
+// each other under /tests, keeping their relative layout.
 import (
 	parse, stringify from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
@@ -51,8 +52,15 @@ fn main() Unit:
 	if first := builds.first(): first_ok = first.ok
 
 	var detail = Detail(
-		false, 0, cases.length(), [], tokens, builds.length(), first_ok,
-		rows.count(fn r: (r.phase == "check")), none
+		false,
+		0,
+		cases.length(),
+		[],
+		tokens,
+		builds.length(),
+		first_ok,
+		rows.count(fn r: (r.phase == "check")),
+		none,
 	)
 	built := bash(build, app, 600, "")
 
@@ -69,7 +77,7 @@ fn main() Unit:
 	else:
 		detail.error = built.err.slice(
 			if built.err.length() > 500: built.err.length() - 500 else: 0,
-			built.err.length()
+			built.err.length(),
 		).get("")
 
 	write_file("{out_dir}/detail.json", stringify(detail).get(""), replace: true).wait().get()

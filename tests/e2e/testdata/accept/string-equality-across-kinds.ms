@@ -31,10 +31,12 @@ test "different text is different at every length and kind":
 	expect_equal(same(short, "abc"), false)?
 	expect_equal(same(short, built(["abcd", "e"])), false)?
 	expect_equal(
-		same(built(["fifteen ", "bytes!!"]), built(["fifteen ", "bytes!?"])), false
+		same(built(["fifteen ", "bytes!!"]), built(["fifteen ", "bytes!?"])),
+		false,
 	)?
 	expect_equal(
-		same(built(["fifteen ", "bytes!!"]), built(["fifteen ", "bytes!!!"])), false
+		same(built(["fifteen ", "bytes!!"]), built(["fifteen ", "bytes!!!"])),
+		false,
 	)?
 
 	long := built(["a long string ", "past fifteen bytes"])

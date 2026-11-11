@@ -109,26 +109,33 @@ test "bounded scalar sums preserve values":
 	optional_overflow(flag: false) | expect_equal(9223372036854775807)?
 
 test "intermediate carry updates still fault":
-	(expect_fault(fn: _ignored := prefix_overflow())?) | expect_contains(
-		"Int overflow;"
-	)?
+	(
+		(expect_fault(fn: _ignored := prefix_overflow())?)
+		| expect_contains("Int overflow;")?
+	)
 	(expect_fault(fn: _ignored := peer_overflow())?) | expect_contains("Int overflow;")?
 
 test "counter phases and optional updates still fault":
-	(expect_fault(fn: _ignored := after_step_overflow())?) | expect_contains(
-		"Int overflow;"
-	)?
-	(expect_fault(fn: _ignored := optional_overflow(flag: true))?) | expect_contains(
-		"Int overflow;"
-	)?
-	(expect_fault(fn: _ignored := descending_overflow())?) | expect_contains(
-		"Int overflow;"
-	)?
+	(
+		(expect_fault(fn: _ignored := after_step_overflow())?)
+		| expect_contains("Int overflow;")?
+	)
+	(
+		(
+			expect_fault(fn: _ignored := optional_overflow(flag: true))?
+		) | expect_contains("Int overflow;")?
+	)
+	(
+		(
+			expect_fault(fn: _ignored := descending_overflow())?
+		) | expect_contains("Int overflow;")?
+	)
 
 test "statement expression writes discard scalar bounds":
-	(expect_fault(fn: _ignored := expression_overflow())?) | expect_contains(
-		"Int overflow;"
-	)?
+	(
+		(expect_fault(fn: _ignored := expression_overflow())?)
+		| expect_contains("Int overflow;")?
+	)
 
 fn product_sum() Int:
 	var sum = 0

@@ -15,32 +15,42 @@ test "closed normalization forms reject spelling changes with their domain error
 	for form in ["NFC", "NFD", "NFKC", "NFKD"]:
 		expect_equal(("text".normalize(form)?), "text")?
 	for format in [
-		CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+		CompressionFormat.Gzip,
+		CompressionFormat.Zlib,
+		CompressionFormat.Deflate,
 	]:
 		for level in [0, 9]:
 			expect_equal(
 				(
 					compress(
-						data, format, CompressOptions(level: level)
+						data,
+						format,
+						CompressOptions(level: level),
 					)? | decompress(format)?
 				),
-				data
+				data,
 			)?
 
 	level_error: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
 	for level in [-1, 10]:
 		expect_equal(
 			compress(
-				data, CompressionFormat.Gzip, CompressOptions(level: level)
+				data,
+				CompressionFormat.Gzip,
+				CompressOptions(level: level),
 			),
-			level_error
+			level_error,
 		)?
 
 test "every open mode with and without exclusive creation opens":
 	temporary := temporary("manuscript-open-modes-")?
 	modes := [
-		OpenMode.Read, OpenMode.ReadWrite, OpenMode.Write, OpenMode.WriteRead,
-		OpenMode.Append, OpenMode.AppendRead
+		OpenMode.Read,
+		OpenMode.ReadWrite,
+		OpenMode.Write,
+		OpenMode.WriteRead,
+		OpenMode.Append,
+		OpenMode.AppendRead,
 	]
 
 	for index in 0..modes.length():
@@ -60,7 +70,9 @@ test "every open mode with and without exclusive creation opens":
 	expect_equal(refused.kind, "EEXIST")?
 
 	fresh := open(
-		"{temporary.path()}/fresh", OpenMode.AppendRead, OpenOptions(exclusive: true)
+		"{temporary.path()}/fresh",
+		OpenMode.AppendRead,
+		OpenOptions(exclusive: true),
 	)?
 	_fresh_info := fresh.stat()?
 

@@ -7,9 +7,24 @@ test "rotation preserves order across ring positions and signed boundaries":
 	for size in [0, 1, 2, 3, 4, 7, 8, 9, 17]:
 		for advance in [0, 1, 5]:
 			for count in [
-				-9223372036854775808, -100, -size - 1, -size, -size + 1,
-				-(size / 2) - 1, -(size / 2), -(size / 2) + 1, -1, 0, 1, size / 2,
-				size / 2 + 1, size - 1, size, size + 1, 100, 9223372036854775807
+				-9223372036854775808,
+				-100,
+				-size - 1,
+				-size,
+				-size + 1,
+				-(size / 2) - 1,
+				-(size / 2),
+				-(size / 2) + 1,
+				-1,
+				0,
+				1,
+				size / 2,
+				size / 2 + 1,
+				size - 1,
+				size,
+				size + 1,
+				100,
+				9223372036854775807,
 			]:
 				var q = Deque[Int]()
 				for i in 0..size:

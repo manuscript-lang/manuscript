@@ -42,8 +42,7 @@ fn nested_bound_missing[T: Clonable](value: T?) T!Error:
 type Defaults:
 	base: Int
 
-impl Defaults:
-	fn optional(value: Int? = self.base) Int: value.get(-1)
+fn Defaults.optional(value: Int? = self.base) Int: value.get(-1)
 
 test "generic callbacks preserve Optional inputs and present zero":
 	values: List[Int?] := [none, 0, 4]
@@ -65,12 +64,14 @@ test "generic callbacks preserve both layers of nested Optional inputs":
 	expect_true(every([absent], fn value: value.is_none()))?
 	expect_true(
 		every(
-			[present_absent], fn value: (value.is_some() and value.get().is_none())
+			[present_absent],
+			fn value: (value.is_some() and value.get().is_none())
 		)
 	)?
 	expect_true(
 		every(
-			[present_zero], fn value: (value.is_some() and value.get().get() == 0)
+			[present_zero],
+			fn value: (value.is_some() and value.get().get() == 0)
 		)
 	)?
 

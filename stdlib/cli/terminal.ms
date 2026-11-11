@@ -174,7 +174,10 @@ fn with_modifiers(event: TerminalEvent, modifier: Int) TerminalEvent:
 	match event:
 		Key(name, _ctrl, _alt, _shift):
 			return key(
-				name.clone(), bits / 4 % 2 == 1, bits / 2 % 2 == 1, bits % 2 == 1
+				name.clone(),
+				bits / 4 % 2 == 1,
+				bits / 2 % 2 == 1,
+				bits % 2 == 1,
 			)
 		Text(_text): return event.clone()
 		Resize(_columns, _rows): return event.clone()
@@ -201,7 +204,8 @@ fn first_number(part: String) Int:
 	head := part.split(":")[0]
 	return head.parse_int().get(0)
 
-// The key a CSI sequence with parameters `params` and final byte `last` reports, if any.
+// The key a CSI sequence with parameters `params` and final byte `last` reports, if
+// any.
 fn csi_key(params: String, last: Int) TerminalEvent?:
 	numbers := params.split(";").map(first_number)
 	modifier := numbers.get(1, default: 1)
@@ -234,8 +238,8 @@ fn decoded(event: TerminalEvent, used: Int) Parsed:
 fn code_of(c: String) Int:
 	return c.scalar_at(0, -1)
 
-// Concatenates `parts` in order. Pairwise merging keeps a long paste linear-ish without a string builder,
-// which would make this module import a cycle.
+// Concatenates `parts` in order. Pairwise merging keeps a long paste linear-ish without
+// a string builder, which would make this module import a cycle.
 fn concat_all(parts: List[String]) String:
 	var level = parts.clone()
 
@@ -336,115 +340,121 @@ export type TerminalDecoder:
 	// True while the rest of an overlong CSI sequence is being dropped.
 	discarding: Bool
 
-impl TerminalDecoder:
-	// True when an escape sequence is waiting for more input.
-	fn partial() Bool:
-		return not self.pending.is_empty() and not self.pasting
+// True when an escape sequence is waiting for more input.
+fn TerminalDecoder.partial() Bool:
+	return not self.pending.is_empty() and not self.pasting
 
-	// Resolves a held lone escape into the Escape key and drops any other unfinished sequence.
-	var fn flush() List[TerminalEvent]:
-		var out = List[TerminalEvent]()
-		if not self.partial(): return out
+// Resolves a held lone escape into the Escape key and drops any other unfinished
+// sequence.
+fn var TerminalDecoder.flush() List[TerminalEvent]:
+	var out = List[TerminalEvent]()
+	if not self.partial(): return out
 
-		if self.pending.length() == 1: out.append(plain("escape"))
-		self.pending = List[String]()
-		return out
+	if self.pending.length() == 1: out.append(plain("escape"))
+	self.pending = List[String]()
+	return out
 
-	// Takes pasted characters from `buf` at `at`; returns where ordinary input resumes.
-	var fn take_paste(buf: List[String], at: Int, var out: List[TerminalEvent]) Int:
-		old := self.paste.length()
-		var taken = at
+// Takes pasted characters from `buf` at `at`; returns where ordinary input resumes.
+fn var TerminalDecoder.take_paste(
+	buf: List[String],
+	at: Int,
+	var out: List[TerminalEvent],
+) Int:
+	old := self.paste.length()
+	var taken = at
 
-		while taken < buf.length():
-			self.paste.append(buf[taken].clone())
-			taken += 1
+	while taken < buf.length():
+		self.paste.append(buf[taken].clone())
+		taken += 1
 
-		var j = if old > 5: old - 5 else: 0
-		last := self.paste.length() - paste_end.length()
+	var j = if old > 5: old - 5 else: 0
+	last := self.paste.length() - paste_end.length()
 
-		while j <= last:
-			var k = 0
-			while k < paste_end.length() and self.paste[j + k] == paste_end[k]: k += 1
+	while j <= last:
+		var k = 0
+		while k < paste_end.length() and self.paste[j + k] == paste_end[k]: k += 1
 
-			if k == paste_end.length():
-				out.append(TerminalEvent.Paste(normalise_paste(self.paste.take(j))))
+		if k == paste_end.length():
+			out.append(TerminalEvent.Paste(normalise_paste(self.paste.take(j))))
 
-				used := j + paste_end.length() - old
-				self.paste = List[String]()
-				self.pasting = false
-				return at + used
+			used := j + paste_end.length() - old
+			self.paste = List[String]()
+			self.pasting = false
+			return at + used
 
-			j += 1
+		j += 1
 
-		if self.paste.length() > max_paste: self.paste = self.paste.drop(max_paste / 2)
-		return buf.length()
+	if self.paste.length() > max_paste: self.paste = self.paste.drop(max_paste / 2)
+	return buf.length()
 
-	// Decodes input text into events.
-	var fn decode(text: String) List[TerminalEvent]:
-		buf := self.pending.concat(text.chars())
-		self.pending = List[String]()
+// Decodes input text into events.
+fn var TerminalDecoder.decode(text: String) List[TerminalEvent]:
+	buf := self.pending.concat(text.chars())
+	self.pending = List[String]()
 
-		var out = List[TerminalEvent]()
-		var run = List[String]()
-		var i = 0
+	var out = List[TerminalEvent]()
+	var run = List[String]()
+	var i = 0
 
-		while i < buf.length():
-			b := code_of(buf[i])
+	while i < buf.length():
+		b := code_of(buf[i])
 
-			if self.pasting:
-				i = self.take_paste(buf, i, var out)
-				continue
+		if self.pasting:
+			i = self.take_paste(buf, i, var out)
+			continue
 
-			if self.discarding:
-				if b >= 64 and b <= 126: self.discarding = false
-				if b < 32 or b > 126: self.discarding = false
-				if b >= 32 and b <= 126: i += 1
-				continue
+		if self.discarding:
+			if b >= 64 and b <= 126: self.discarding = false
+			if b < 32 or b > 126: self.discarding = false
+			if b >= 32 and b <= 126: i += 1
+			continue
 
-			if b != 27 and b >= 32 and b != 127:
-				run.append(buf[i].clone())
-				i += 1
-				continue
+		if b != 27 and b >= 32 and b != 127:
+			run.append(buf[i].clone())
+			i += 1
+			continue
 
-			if not run.is_empty():
-				out.append(TerminalEvent.Text(concat_all(run)))
-				run = List[String]()
+		if not run.is_empty():
+			out.append(TerminalEvent.Text(concat_all(run)))
+			run = List[String]()
 
-			if b != 27:
-				out.append(control(b, false))
-				i += 1
-				continue
+		if b != 27:
+			out.append(control(b, false))
+			i += 1
+			continue
 
-			r := escape_at(buf, i)
+		r := escape_at(buf, i)
 
-			if r.kind == 0:
-				self.pending = buf.drop(i)
-				return out
+		if r.kind == 0:
+			self.pending = buf.drop(i)
+			return out
 
-			if r.kind == 3: self.discarding = true
+		if r.kind == 3: self.discarding = true
 
-			if r.kind == 4:
-				self.pasting = true
-				self.paste = List[String]()
+		if r.kind == 4:
+			self.pasting = true
+			self.paste = List[String]()
 
-			if event := r.event: out.append(event.clone())
-			i += r.used
+		if event := r.event: out.append(event.clone())
+		i += r.used
 
-		if not run.is_empty(): out.append(TerminalEvent.Text(concat_all(run)))
-		return out
+	if not run.is_empty(): out.append(TerminalEvent.Text(concat_all(run)))
+	return out
 
 // A decoder with nothing pending.
 export fn terminal_decoder() TerminalDecoder:
 	return TerminalDecoder(
-		pending: List[String](), pasting: false, paste: List[String](),
-		discarding: false
+		pending: List[String](),
+		pasting: false,
+		paste: List[String](),
+		discarding: false,
 	)
 
 fn read_size(handle: NativeRawTerminal) TerminalSize?:
 	if msstd_terminal_raw_terminal_size_status(handle).is_error(): return none
 	return TerminalSize(
 		columns: msstd_terminal_raw_terminal_size_columns(handle),
-		rows: msstd_terminal_raw_terminal_size_rows(handle)
+		rows: msstd_terminal_raw_terminal_size_rows(handle),
 	)
 
 fn resized(before: TerminalSize?, now: TerminalSize) Bool:
@@ -458,39 +468,38 @@ type TerminalEvents:
 	queue: List[TerminalEvent]
 	size: TerminalSize?
 
-impl Source[TerminalEvent] for TerminalEvents:
-	var fn next() TerminalEvent?!:
-		while true:
-			if not self.queue.is_empty():
-				event := self.queue[0].clone()
-				self.queue.remove(0)
-				return ok(event)
+fn var TerminalEvents.next() TerminalEvent?!:
+	while true:
+		if not self.queue.is_empty():
+			event := self.queue[0].clone()
+			self.queue.remove(0)
+			return ok(event)
 
-			// Window changes carry no input, so compare the size on every wake.
-			now := read_size(self.handle.native)
+		// Window changes carry no input, so compare the size on every wake.
+		now := read_size(self.handle.native)
 
-			if current := now:
-				if resized(self.size, current):
-					self.size = current.clone()
-					return ok(TerminalEvent.Resize(current.columns, current.rows))
-
+		if current := now:
+			if resized(self.size, current):
 				self.size = current.clone()
+				return ok(TerminalEvent.Resize(current.columns, current.rows))
 
-			waiting := self.decoder.partial()
-			ready := msstd_terminal_raw_terminal_read(self.handle.native, waiting)?
+			self.size = current.clone()
 
-			if ready.is_some():
-				for event in self.decoder.decode(msstd_terminal_input_text()):
-					self.queue.append(event.clone())
-			else if waiting:
-				// A quiet pause resolves a lone escape into the Escape key.
-				for event in self.decoder.flush():
-					self.queue.append(event.clone())
+		waiting := self.decoder.partial()
+		ready := msstd_terminal_raw_terminal_read(self.handle.native, waiting)?
 
-		return ok(none)
+		if ready.is_some():
+			for event in self.decoder.decode(msstd_terminal_input_text()):
+				self.queue.append(event.clone())
+		else if waiting:
+			// A quiet pause resolves a lone escape into the Escape key.
+			for event in self.decoder.flush():
+				self.queue.append(event.clone())
 
-	var fn close() Unit!:
-		return ok(unit)
+	return ok(none)
+
+fn var TerminalEvents.close() Unit!:
+	return ok(unit)
 
 esc := "\u{1b}"
 // Cursor positions beyond this are refused: older terminals cannot take larger numbers.
@@ -509,100 +518,98 @@ export type RawTerminal:
 	// The runtime handle; the event stream holds another on the same terminal.
 	handle: RawHandle
 
-impl Closeable for RawTerminal:
-	// Restores the terminal; closing again does nothing.
-	var fn close() Unit!:
-		msstd_terminal_raw_terminal_close(self.handle.native)
+// Restores the terminal; closing again does nothing.
+fn var RawTerminal.close() Unit!:
+	msstd_terminal_raw_terminal_close(self.handle.native)
 
-impl RawTerminal:
-	// Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and promise timeouts.
-	// The stream ends with an error once the terminal is closed; closing the stream leaves the terminal open.
-	fn events() ReadStream[TerminalEvent]:
-		return ReadStream[TerminalEvent](
-			TerminalEvents(
-				RawHandle(
-					msstd_terminal_raw_terminal_share(
-						self.handle.native
-					)
-				),
-				terminal_decoder(),
-				List[TerminalEvent](),
-				read_size(self.handle.native)
-			)
+// Input events as a stream: keys, text and resizes, one per read. Waits honor
+// cancellation and promise timeouts. The stream ends with an error once the
+// terminal is closed; closing the stream leaves the terminal open.
+fn RawTerminal.events() ReadStream[TerminalEvent]:
+	return ReadStream[TerminalEvent](
+		TerminalEvents(
+			RawHandle(
+				msstd_terminal_raw_terminal_share(self.handle.native)
+			),
+			terminal_decoder(),
+			List[TerminalEvent](),
+			read_size(self.handle.native),
 		)
+	)
 
-	// Returns the current terminal size, or `EBADF` after close.
-	fn size() TerminalSize!:
-		msstd_terminal_raw_terminal_size_status(self.handle.native)?
-		return ok(
-			TerminalSize(
-				columns: msstd_terminal_raw_terminal_size_columns(
-					self.handle.native
-				),
-				rows: msstd_terminal_raw_terminal_size_rows(
-					self.handle.native
-				)
-			)
+// Returns the current terminal size, or `EBADF` after close.
+fn RawTerminal.size() TerminalSize!:
+	msstd_terminal_raw_terminal_size_status(self.handle.native)?
+	return ok(
+		TerminalSize(
+			columns: msstd_terminal_raw_terminal_size_columns(
+				self.handle.native
+			),
+			rows: msstd_terminal_raw_terminal_size_rows(self.handle.native),
 		)
+	)
 
-	// Writes text or escape sequences to the terminal, after any buffered program output. Fails with `EBADF` after close.
-	fn write(text: String) Unit!:
-		return msstd_terminal_raw_terminal_write(self.handle.native, text)
+// Writes text or escape sequences to the terminal, after any buffered program
+// output. Fails with `EBADF` after close.
+fn RawTerminal.write(text: String) Unit!:
+	return msstd_terminal_raw_terminal_write(self.handle.native, text)
 
-	// Moves the cursor to a zero-based row and column; negative or very large values return `EINVAL`.
-	fn move_cursor(row: Int, column: Int) Unit!:
-		if row < 0 or column < 0 or row > max_position or column > max_position:
-			return error(Error("terminal: position out of range", kind: "EINVAL"))
-		return self.write("{esc}[{row + 1};{column + 1}H")
+// Moves the cursor to a zero-based row and column; negative or very large values
+// return `EINVAL`.
+fn RawTerminal.move_cursor(row: Int, column: Int) Unit!:
+	if row < 0 or column < 0 or row > max_position or column > max_position:
+		return error(Error("terminal: position out of range", kind: "EINVAL"))
+	return self.write("{esc}[{row + 1};{column + 1}H")
 
-	// Moves the cursor down by `rows` and right by `columns`; negative values move up and left. The cursor stops at the screen edge.
-	fn move_by(rows: Int, columns: Int) Unit!:
-		var out = ""
-		if rows < 0: out = "{out}{esc}[{0 - rows}A"
-		if rows > 0: out = "{out}{esc}[{rows}B"
-		if columns > 0: out = "{out}{esc}[{columns}C"
-		if columns < 0: out = "{out}{esc}[{0 - columns}D"
-		if out.is_empty(): return ok(unit)
+// Moves the cursor down by `rows` and right by `columns`; negative values move up
+// and left. The cursor stops at the screen edge.
+fn RawTerminal.move_by(rows: Int, columns: Int) Unit!:
+	var out = ""
+	if rows < 0: out = "{out}{esc}[{0 - rows}A"
+	if rows > 0: out = "{out}{esc}[{rows}B"
+	if columns > 0: out = "{out}{esc}[{columns}C"
+	if columns < 0: out = "{out}{esc}[{0 - columns}D"
+	if out.is_empty(): return ok(unit)
 
-		return self.write(out)
+	return self.write(out)
 
-	// Moves the cursor to a zero-based column of its current row.
-	fn move_to_column(column: Int) Unit!:
-		if column < 0 or column > max_position:
-			return error(Error("terminal: position out of range", kind: "EINVAL"))
-		return self.write("{esc}[{column + 1}G")
+// Moves the cursor to a zero-based column of its current row.
+fn RawTerminal.move_to_column(column: Int) Unit!:
+	if column < 0 or column > max_position:
+		return error(Error("terminal: position out of range", kind: "EINVAL"))
+	return self.write("{esc}[{column + 1}G")
 
-	// Remembers the cursor position for `restore_cursor`.
-	fn save_cursor() Unit!:
-		return self.write("{esc}7")
+// Remembers the cursor position for `restore_cursor`.
+fn RawTerminal.save_cursor() Unit!:
+	return self.write("{esc}7")
 
-	// Returns to the position remembered by `save_cursor`.
-	fn restore_cursor() Unit!:
-		return self.write("{esc}8")
+// Returns to the position remembered by `save_cursor`.
+fn RawTerminal.restore_cursor() Unit!:
+	return self.write("{esc}8")
 
-	// Shows or hides the cursor until the terminal is restored on close.
-	fn show_cursor(visible: Bool) Unit!:
-		return self.write(if visible: "{esc}[?25h" else: "{esc}[?25l")
+// Shows or hides the cursor until the terminal is restored on close.
+fn RawTerminal.show_cursor(visible: Bool) Unit!:
+	return self.write(if visible: "{esc}[?25h" else: "{esc}[?25l")
 
-	// Erases the selected screen region without moving the cursor.
-	fn erase(region: EraseRegion) Unit!:
-		match region:
-			Screen: return self.write("{esc}[2J")
-			Line: return self.write("{esc}[2K")
-			LineEnd: return self.write("{esc}[K")
-			LineStart: return self.write("{esc}[1K")
-			ScreenEnd: return self.write("{esc}[J")
-			ScreenStart: return self.write("{esc}[1J")
-			Scrollback: return self.write("{esc}[3J")
+// Erases the selected screen region without moving the cursor.
+fn RawTerminal.erase(region: EraseRegion) Unit!:
+	match region:
+		Screen: return self.write("{esc}[2J")
+		Line: return self.write("{esc}[2K")
+		LineEnd: return self.write("{esc}[K")
+		LineStart: return self.write("{esc}[1K")
+		ScreenEnd: return self.write("{esc}[J")
+		ScreenStart: return self.write("{esc}[1J")
+		Scrollback: return self.write("{esc}[3J")
 
-	// Erases the screen and moves the cursor to the top left.
-	fn clear() Unit!:
-		return self.write("{esc}[2J{esc}[H")
+// Erases the screen and moves the cursor to the top left.
+fn RawTerminal.clear() Unit!:
+	return self.write("{esc}[2J{esc}[H")
 
-	// Sets the window title; control characters are removed first.
-	fn set_title(title: String) Unit!:
-		clean := title.replace("\u{7}", "").replace(esc, "").replace("\u{9c}", "")
-		return self.write("{esc}]2;{clean}\u{7}")
+// Sets the window title; control characters are removed first.
+fn RawTerminal.set_title(title: String) Unit!:
+	clean := title.replace("\u{7}", "").replace(esc, "").replace("\u{9c}", "")
+	return self.write("{esc}]2;{clean}\u{7}")
 
 // What the native `raw_mode` returns: the runtime handle itself.
 export opaque type RawHandle:
@@ -618,7 +625,7 @@ export fn terminal_capabilities() TerminalCapabilities:
 		error_is_terminal: msstd_terminal_capabilities_error_is_terminal(),
 		raw_mode: msstd_terminal_capabilities_raw_mode(),
 		resize_events: msstd_terminal_capabilities_resize_events(),
-		colors: msstd_terminal_capabilities_colors()
+		colors: msstd_terminal_capabilities_colors(),
 	)
 
 // Returns the terminal size, or `ENOTTY` when output is redirected.
@@ -627,11 +634,13 @@ export fn terminal_size() TerminalSize!:
 	msstd_terminal_size_status()?
 	return ok(
 		TerminalSize(
-			columns: msstd_terminal_size_columns(), rows: msstd_terminal_size_rows()
+			columns: msstd_terminal_size_columns(),
+			rows: msstd_terminal_size_rows(),
 		)
 	)
 
-// Acquires raw input with an optional alternate screen; returns `EBUSY` while another raw terminal is open and `ENOTTY` when streams are redirected.
+// Acquires raw input with an optional alternate screen; returns `EBUSY` while another
+// raw terminal is open and `ENOTTY` when streams are redirected.
 // ms: effect std.console.read
 // ms: effect std.console.write
 export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:
@@ -639,9 +648,11 @@ export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:
 	leave := if alternate_screen: "{esc}[?1049l" else: ""
 	enter := if alternate_screen: "{esc}[?1049h" else: ""
 
-	// The restore text runs on close, at scope exit and at process exit: cursor, key protocols, paste, screen.
+	// The restore text runs on close, at scope exit and at process exit: cursor, key
+	// protocols, paste, screen.
 	msstd_terminal_raw_terminal_set_restore(
-		native, "{esc}[?25h{esc}[<u{esc}[>4;0m{esc}[?2004l{leave}"
+		native,
+		"{esc}[?25h{esc}[<u{esc}[>4;0m{esc}[?2004l{leave}",
 	)
 	msstd_terminal_raw_terminal_write(native, "{enter}{esc}[?2004h{esc}[>4;2m{esc}[>1u")?
 	return ok(RawTerminal(handle: RawHandle(native)))

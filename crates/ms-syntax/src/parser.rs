@@ -1224,6 +1224,36 @@ impl<'a> Parser<'a> {
         let mut export_pos_dummy = ();
         let _ = &mut export_pos_dummy;
         let kind = match token.kind {
+            Tok::Fn if self.receiver_method_ahead() => {
+                // `fn [var] Type[T].name(...)`: one method of `Type`, the same declaration as a
+                // one-method `impl Type:` block.
+                self.at += 1;
+                let mutating = self.take(Tok::Var);
+                // The receiver is a plain name with optional arguments: `named_type` would read
+                // `Type.name` as a module-qualified type.
+                let receiver_name = self.need(Tok::Name)?;
+                let args = if self.take(Tok::LBracket) {
+                    self.type_args()?
+                } else {
+                    Vec::new()
+                };
+                let receiver = TypeRef {
+                    id: self.id(),
+                    pos: receiver_name.pos,
+                    kind: TypeKind::Named {
+                        name: self.sym(receiver_name),
+                        args,
+                    },
+                };
+                self.need(Tok::Dot)?;
+                let name = self.need(Tok::Name)?;
+                let method = self.method_signature(name, true, true, mutating)?;
+                DeclKind::Impl(ImplDecl {
+                    contract: None,
+                    receiver,
+                    methods: vec![method],
+                })
+            }
             Tok::Fn => {
                 self.at += 1;
                 let name = self.need(Tok::Name)?;
@@ -1394,6 +1424,38 @@ impl<'a> Parser<'a> {
             synthetic: false,
             kind,
         })
+    }
+
+    /// Whether the `fn` at the cursor starts a receiver method (`fn [var] Type[T].name`): a name,
+    /// optionally followed by a balanced `[...]`, then `.`. A plain `fn name[T](...)` has `(` there.
+    fn receiver_method_ahead(&self) -> bool {
+        let mut at = 1;
+        if self.ahead(at).kind == Tok::Var {
+            at += 1;
+        }
+        if self.ahead(at).kind != Tok::Name {
+            return false;
+        }
+        at += 1;
+        if self.ahead(at).kind == Tok::LBracket {
+            let mut depth = 0usize;
+            loop {
+                match self.ahead(at).kind {
+                    Tok::LBracket => depth += 1,
+                    Tok::RBracket => {
+                        depth -= 1;
+                        if depth == 0 {
+                            at += 1;
+                            break;
+                        }
+                    }
+                    Tok::Newline | Tok::Eof => return false,
+                    _ => {}
+                }
+                at += 1;
+            }
+        }
+        self.ahead(at).kind == Tok::Dot
     }
 
     fn type_declaration(&mut self, token: Token) -> PResult<Decl> {

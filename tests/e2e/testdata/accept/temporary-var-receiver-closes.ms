@@ -9,17 +9,15 @@ type Door:
 	log: String
 	swings: Int
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		_ := append_file(self.log, "{self.id},").wait()
+fn var Door.close() Unit!:
+	_ := append_file(self.log, "{self.id},").wait()
 
-impl Door:
-	var fn swing() Int:
-		self.swings += 1
-		return self.swings
+fn var Door.swing() Int:
+	self.swings += 1
+	return self.swings
 
-	fn peek() Int:
-		return self.swings
+fn Door.peek() Int:
+	return self.swings
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -30,7 +28,8 @@ fn logged(path: String) String:
 fn open_door(id: Int, log: String) Door:
 	return Door(id, log, 0)
 
-// A temporary that a `var fn` changes in place is still a temporary: it closes when its statement ends.
+// A temporary that a `var fn` changes in place is still a temporary: it closes when its
+// statement ends.
 test "a temporary receiver of a var method closes at the end of its statement":
 	tmp := temporary("ms-log-") | expect_ok?
 	log := "{tmp.path()}/log"

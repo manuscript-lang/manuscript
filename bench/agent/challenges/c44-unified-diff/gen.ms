@@ -160,8 +160,9 @@ export fn gen_c44() Unit:
 	ex_b := ["one", "two", "3", "four", "five", "seven"]
 	examples := [
 		make_case(
-			"basic", mk(ex_a, ex_b, 1, "old.txt", "new.txt"),
-			solve(mk(ex_a, ex_b, 1, "old.txt", "new.txt"))
+			"basic",
+			mk(ex_a, ex_b, 1, "old.txt", "new.txt"),
+			solve(mk(ex_a, ex_b, 1, "old.txt", "new.txt")),
 		)
 	]
 	big_a := doc(var rnd, 280)
@@ -188,26 +189,43 @@ export fn gen_c44() Unit:
 				["new first"].concat(
 					nums.slice(0, nums.length() - 1).get([])
 				).concat(["new last"]),
-				3
+				3,
 			),
 			case3(
-				"gap-exactly-2c", base20, at(base20, [4, 11], ["X", "Y"]), 3
+				"gap-exactly-2c",
+				base20,
+				at(base20, [4, 11], ["X", "Y"]),
+				3,
 			),
 			case3(
-				"gap-2c-plus-1", base20, at(base20, [4, 12], ["X", "Y"]), 3
+				"gap-2c-plus-1",
+				base20,
+				at(base20, [4, 12], ["X", "Y"]),
+				3,
 			),
 			case3(
-				"context-0", base20, at(base20, [2, 3, 9, 15], ["A", "B", "C", "D"]), 0
+				"context-0",
+				base20,
+				at(base20, [2, 3, 9, 15], ["A", "B", "C", "D"]),
+				0,
 			),
 			case3(
-				"context-0-ins-del", ["a", "b", "c", "d"],
-				["a", "x", "y", "c", "d", "e"], 0
+				"context-0-ins-del",
+				["a", "b", "c", "d"],
+				["a", "x", "y", "c", "d", "e"],
+				0,
 			),
 			case3(
-				"context-1", base20, at(base20, [0, 2, 5, 19], ["S", "T", "U", "V"]), 1
+				"context-1",
+				base20,
+				at(base20, [0, 2, 5, 19], ["S", "T", "U", "V"]),
+				1,
 			),
 			case3(
-				"context-huge", base20, at(base20, [2, 17], ["A", "B"]), 100
+				"context-huge",
+				base20,
+				at(base20, [2, 17], ["A", "B"]),
+				100,
 			),
 			case3(
 				"pure-insert-delete",
@@ -215,24 +233,31 @@ export fn gen_c44() Unit:
 				base20.slice(0, 5).get([]).concat(["i1", "i2"]).concat(
 					base20.slice(5, 12).get([])
 				).concat(base20.slice(14, 20).get([])),
-				2
+				2,
 			),
 			case3(
-				"repeated-tiebreak", ["a", "a", "b", "a", "a"], ["a", "b", "a"], 1
+				"repeated-tiebreak",
+				["a", "a", "b", "a", "a"],
+				["a", "b", "a"],
+				1,
 			),
 			case3(
-				"repeated-tiebreak-2", ["x", "y", "x", "y", "x"],
-				["y", "x", "y", "x", "y"], 0
+				"repeated-tiebreak-2",
+				["x", "y", "x", "y", "x"],
+				["y", "x", "y", "x", "y"],
+				0,
 			),
 			case3(
-				"swap-blocks", ["p", "q", "r", "s", "t", "u"],
-				["t", "u", "r", "s", "p", "q"], 1
+				"swap-blocks",
+				["p", "q", "r", "s", "t", "u"],
+				["t", "u", "r", "s", "p", "q"],
+				1,
 			),
 			make_case("odd-lines", odd, solve(odd)),
 			case3("single-line-files", ["only"], ["other"], 3),
 			case3("single-line-same-ctx", ["same"], ["same", "added"], 3),
 			case3("random-small", small_a, small_b, 2),
-			case3("random-large", big_a, big_b, 3)
+			case3("random-large", big_a, big_b, 3),
 		]
 	)
 	write_cases("c44-unified-diff", examples, hidden)

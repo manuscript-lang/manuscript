@@ -4,4 +4,5 @@ import Bytes from "@std/bytes.ms"
 export enum BinaryError:
 	// Integer width is unsupported; the native codec accepts only 1, 2, 4 or 8 bytes.
 	InvalidInput
-	// A read crosses the byte buffer or a number cannot fit the requested signedness/width or result
+	// A read crosses the byte buffer or a number cannot fit the requested
+	// signedness/width or result

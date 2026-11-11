@@ -1009,8 +1009,9 @@ impl Checker {
             && sym.native == Native::Source
             && matches!(actual.kind, Kind::Record | Kind::Alternative)
         {
+            let gap = self.shape_gap(actual, expected).unwrap_or_default();
             return format!(
-                "{message}; no applicable 'impl {expected_t} for {actual_t}' is visible; declare an implementation before passing it as {expected_t}",
+                "{message}; {actual_t} does not satisfy {expected_t} by its own methods ({gap}); declare each operation as a method of {actual_t} with the interface's exact signature, or write 'impl {expected_t} for {actual_t}'",
                 expected_t = expected.display(self.syms),
                 actual_t = actual.display(self.syms)
             );

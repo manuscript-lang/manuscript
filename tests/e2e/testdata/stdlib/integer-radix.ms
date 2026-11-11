@@ -11,7 +11,7 @@ test "integer radix formatting keeps signs zero and high unsigned bits":
 	maximum: UInt64 := 18446744073709551615
 	expect_equal(
 		maximum.to_string_radix(2),
-		"1111111111111111111111111111111111111111111111111111111111111111"
+		"1111111111111111111111111111111111111111111111111111111111111111",
 	)?
 	expect_equal(maximum.to_string_radix(16), "ffffffffffffffff")?
 	expect_equal(maximum.to_string_radix(36), "3w5e11264sgsf")?

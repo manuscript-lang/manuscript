@@ -19,7 +19,11 @@ fn limits(bytes: Int?, depth: Int?, values: Int?) TomlOptions:
 
 test "TOML scalars quoted keys comments exact integers and dates":
 	source := "title = \"é🙂 # text\" # comment\n'' = 'literal\\n'\nbool = true\nlarge = 9007199254740993\nhex = 0xDEAD_BEEF\noct = 0o755\nbin = 0b1010\nfloat = -1_2.5e+2\ndate = 2024-02-29\ntime = 07:32:00.123\nstamp = 1979-05-27 07:32:00-07:00\n"
-	root := parse(text: source) | expect_ok? | entries?
+	root := (
+		parse(text: source)
+		| expect_ok?
+		| entries?
+	)
 	(root["title"] | expect_equal(TomlValue.StringValue("é🙂 # text"))?)
 	root[""] | expect_equal(TomlValue.StringValue("literal\\n"))?
 	root["large"] | expect_equal(TomlValue.IntValue(9007199254740993))?
@@ -39,7 +43,8 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
 			(
 				parse(
 					text: "basic = \"\"\"\nhello \\\n    world\\u0021\"\"\"\nliteral = '''\nraw\\text\nnext'''\narray = [1, # first\n true, \{name = 'Ada', meta.age = 37\},]\n"
-				) | expect_ok?
+				)
+				| expect_ok?
 			)
 		)?
 	)
@@ -61,7 +66,11 @@ test "TOML multiline strings Unicode escapes arrays and inline tables":
 
 test "TOML implicit parents dotted keys and arrays of tables":
 	text := "[owner.details]\nname = 'Ada'\n[owner]\nactive = true\n[[products]]\nname = 'Hammer'\n[products.meta]\nstock = 3\n[[products]]\nname = 'Nail'\n[[products.variants]]\nsize = 1\n[[products.variants]]\nsize = 2\n"
-	root := parse(text: text) | expect_ok? | entries?
+	root := (
+		parse(text: text)
+		| expect_ok?
+		| entries?
+	)
 	owner := (entries(root.get("owner").get())?)
 	expect_false(
 		(
@@ -86,17 +95,27 @@ test "TOML implicit parents dotted keys and arrays of tables":
 	)?
 	(items((entries(products.last().get())?)["variants"])?).length() | expect_equal(2)?
 
-	dotted := parse(text: "a.b.c = 1\na.b.d = 2\n") | expect_ok? | entries?
-	(entries((entries(dotted.get("a").get())?).get("b").get())?).length() | expect_equal(
-		2
-	)?
+	dotted := (
+		parse(text: "a.b.c = 1\na.b.d = 2\n")
+		| expect_ok?
+		| entries?
+	)
+	(
+		(
+			entries((entries(dotted.get("a").get())?).get("b").get())?
+		).length() | expect_equal(2)?
+	)
 
 test "TOML parses a long array of tables in order":
 	var source = ""
 	for i in 0..30000:
 		source += "[[items]]\nid = {i}\n"
 
-	root := parse(text: source) | expect_ok? | entries?
+	root := (
+		parse(text: source)
+		| expect_ok?
+		| entries?
+	)
 	rows := items(root.get("items").get())?
 	rows.length() | expect_equal(30000)?
 
@@ -119,12 +138,20 @@ test "TOML dotted extensions keep sibling assignments and child headers valid":
 	expected := "[a.b]\nd=2\ne=3\n[a.b.c]\nx=1\n[a.b.f]\ny=4"
 	parsed := parse(source) | expect_ok?
 	parsed | expect_equal(parse(expected) | expect_ok?)?
-	parse(stringify(parsed) | expect_ok?) | expect_ok? | expect_equal(parsed)?
+	(
+		parse(stringify(parsed) | expect_ok?)
+		| expect_ok?
+		| expect_equal(parsed)?
+	)
 
 test "TOML untouched implicit parents can still receive table headers":
 	source := "[a.b.c]\nx=1\n[a.b]\ny=2\n[a]\nz=3"
 	expected := "[a]\nz=3\n[a.b]\ny=2\n[a.b.c]\nx=1"
-	parse(source) | expect_ok? | expect_equal(parse(expected) | expect_ok?)?
+	(
+		parse(source)
+		| expect_ok?
+		| expect_equal(parse(expected) | expect_ok?)?
+	)
 
 test "TOML rejects malformed data redefinitions and closed inline tables":
 	for text in [
@@ -149,45 +176,54 @@ test "TOML optional limits include implicit tables and zero":
 	expect_false(
 		(
 			parse(
-				text: "a=1", options: limits(bytes: 2, depth: none, values: none)
+				text: "a=1",
+				options: limits(bytes: 2, depth: none, values: none),
 			) != limited
 		)
 	)?
 	expect_false(
 		(
 			parse(
-				text: "a.b=1", options: limits(bytes: none, depth: 2, values: none)
+				text: "a.b=1",
+				options: limits(bytes: none, depth: 2, values: none),
 			) != limited
 		)
 	)?
 	expect_false(
 		(
 			parse(
-				text: "a.b=1", options: limits(bytes: none, depth: none, values: 2)
+				text: "a.b=1",
+				options: limits(bytes: none, depth: none, values: 2),
 			) != limited
 		)
 	)?
 	expect_false(
 		(
 			parse(
-				text: "", options: limits(bytes: 0, depth: 1, values: 1)
+				text: "",
+				options: limits(bytes: 0, depth: 1, values: 1),
 			) != parse(text: "")
 		)
 	)?
-	parse(text: "", options: limits(bytes: none, depth: none, values: 0)) | expect_equal(
-		limited
-	)?
+	(
+		parse(
+			text: "",
+			options: limits(bytes: none, depth: none, values: 0),
+		) | expect_equal(limited)?
+	)
 	expect_false(
 		(
 			parse(
-				text: "", options: limits(bytes: none, depth: -1, values: none)
+				text: "",
+				options: limits(bytes: none, depth: -1, values: none),
 			) != invalid
 		)
 	)?
 	expect_false(
 		(
 			parse(
-				text: "a=1", options: limits(bytes: 3, depth: 2, values: 2)
+				text: "a=1",
+				options: limits(bytes: 3, depth: 2, values: 2),
 			) != parse(text: "a=1")
 		)
 	)?
@@ -198,7 +234,8 @@ test "TOML nonfinite floats CRLF and repeated separators":
 			(
 				parse(
 					text: "positive=inf\r\nnegative=-inf\r\nnan=+nan\r\ninteger=1_000_000\r\n"
-				) | expect_ok?
+				)
+				| expect_ok?
 			)
 		)?
 	)
@@ -226,9 +263,11 @@ fn failure(text: String) String:
 		error(cause): return cause.message
 
 test "TOML errors report the offending line and column":
-	failure("x = 1\ny = \"a\u{1}b\"") | expect_equal(
-		"TOML 2:7: invalid control character"
-	)?
+	(
+		failure("x = 1\ny = \"a\u{1}b\"") | expect_equal(
+			"TOML 2:7: invalid control character"
+		)?
+	)
 	failure("x = 1\ny = 2\rz = 3") | expect_equal("TOML 2:6: bare carriage return")?
 	failure("x = 1\n\u{0}") | expect_equal("TOML 2:1: invalid control character")?
 	failure("a = 1\u{0}") | expect_equal("TOML 1:6: invalid control character")?
@@ -246,8 +285,12 @@ test "TOML stringify round trips scalars tables and arrays of tables":
 	source := "title = \"é🙂 \\\"q\\\" \\t tab\\u0001\"\nint = -42\nfloat = 3.0\nbig = 1e+21\nflag = true\ndate = 1979-05-27\nmixed = [1, \"two\", [3.5], \{a = 1\}]\nempty = []\n\"odd key\" = 1\n\n[server]\nhost = \"h\"\n\n[server.limits]\nmax = 5\n\n[[products]]\nname = \"a\"\n\n[[products]]\nname = \"b\"\n[products.tags]\nx = 1\n"
 	parsed := (parse(text: source) | expect_ok?)
 	text := (stringify(value: parsed) | expect_ok?)
-	parse(text: text) | expect_ok? | expect_equal(parsed)?
-	stringify(value: (parse(text: text) | expect_ok?)) | expect_ok? | expect_equal(text)?
+	(parse(text: text) | expect_ok? | expect_equal(parsed)?)
+	(
+		stringify(
+			value: (parse(text: text) | expect_ok?)
+		) | expect_ok? | expect_equal(text)?
+	)
 
 test "TOML stringify requires a table root and honors max_bytes":
 	wrong: String! := error(Error("invalid TOML input", kind: "EINVAL"))
@@ -279,7 +322,7 @@ test "TOML long strings parse and stringify in linear time":
 	table["b"] | expect_equal(TomlValue.StringValue(expected))?
 
 	text := (stringify(value: root) | expect_ok?)
-	parse(text: text) | expect_ok? | expect_equal(root)?
+	(parse(text: text) | expect_ok? | expect_equal(root)?)
 
 test "TOML stringify rejects invalid date-time text":
 	invalid: String! := error(Error("invalid TOML input", kind: "EINVAL"))

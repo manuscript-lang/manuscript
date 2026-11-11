@@ -19,7 +19,7 @@ test "media types parse and format":
 	expect_equal(media.params.get("q").get(""), "a\"b")?
 	expect_equal(
 		format_media_type(parse_media_type("text/plain; charset=utf-8").get()),
-		"text/plain; charset=utf-8"
+		"text/plain; charset=utf-8",
 	)?
 	expect_true(parse_media_type("text").is_error())?
 	expect_true(parse_media_type("a/b; x=\"open").is_error())?
@@ -57,9 +57,11 @@ test "multipart round-trips fields and files":
 	parts := [
 		form_part("title", "Hello".to_bytes()),
 		form_part(
-			"upload", "line1\r\nline2".to_bytes(), filename: "a b.txt",
-			content_type: "text/plain"
-		)
+			"upload",
+			"line1\r\nline2".to_bytes(),
+			filename: "a b.txt",
+			content_type: "text/plain",
+		),
 	]
 	body := encode_multipart(parts, "XyZ")
 	back := parse_multipart(body, "XyZ").get()

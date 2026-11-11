@@ -40,10 +40,12 @@ test "paired summaries require complete consistent finite measurements":
 		text.replace("\t100\t", "\tInfinity\t"),
 		text.replace("\t100\t", "\t0\t"),
 		text.replace(
-			"6\tafter\tinput\t100\t0\thash", "6\tafter\tinput\t100\t0\tchanged"
-		)
+			"6\tafter\tinput\t100\t0\thash",
+			"6\tafter\tinput\t100\t0\tchanged",
+		),
 	]:
 		expect_equal(summarize(bad).is_error(), true)?
 	expect_equal(
-		summarize(text.replace("\t80\t20", "\t0\t0"), cpu: true).is_error(), true
+		summarize(text.replace("\t80\t20", "\t0\t0"), cpu: true).is_error(),
+		true,
 	)?

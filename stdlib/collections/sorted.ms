@@ -1,18 +1,3 @@
-// Orders two keys: negative when `left` sorts first, zero when equal, positive when `right` sorts first.
-fn order[T: Comparable](left: T, right: T) Int:
-	return left.compare(right)
-
-// Returns one new list holding `chunks[low]` through `chunks[high - 1]` in order.
-// Halving the range copies each element about log2(chunk count) times; folding left with `concat` would recopy every earlier chunk for each later one.
-fn joined[T: Clonable](chunks: List[List[T]], low: Int, high: Int) List[T]:
-	count := high - low
-	if count == 0: return []
-	if count == 1: return chunks[low].clone()
-	if count == 2: return chunks[low].concat(chunks[low + 1])
-
-	middle := low + count / 2
-	return joined(chunks, low, middle).concat(joined(chunks, middle, high))
-
 // One key-value pair of a SortedMap.
 export type SortedEntry[K: Comparable & Clonable, V: Clonable]:
 	// The entry's key, which orders it within the map.
@@ -28,353 +13,382 @@ add and remove locate the key and shift entries within its chunk; splitting or r
 Use clone() for an independent deep copy. Use Map when insertion order is enough and you need average O(1) key lookup.
 */
 export type SortedMap[K: Comparable & Clonable, V: Clonable]:
-	// Sorted chunks of keys; no chunk is empty. Internal state: use the operations, not this field.
+	// Sorted chunks of keys; no chunk is empty. Internal state: use the operations, not
+	// this field.
 	key_chunks: List[List[K]] = []
 	// Values parallel to `key_chunks`. Internal state.
 	value_chunks: List[List[V]] = []
-	// The last key of each chunk, so a search can choose a chunk without reading any. Internal state.
+	// The last key of each chunk, so a search can choose a chunk without reading any.
+	// Internal state.
 	maxes: List[K] = []
 	// Number of entries. Internal state; read it with `length()`.
 	size: Int = 0
 
-impl SortedMap[K, V]:
-	// Returns the index of the first chunk whose last key is not below `key`, or the last chunk when every key is below it.
-	fn chunk_for(key: K) Int:
-		var low = 0
-		var high = self.maxes.length() - 1
+// Returns the index of the first chunk whose last key is not below `key`, or the
+// last chunk when every key is below it.
+fn SortedMap[K, V].chunk_for(key: K) Int:
+	var low = 0
+	var high = self.maxes.length() - 1
 
-		while low < high:
-			middle := (low + high) / 2
+	while low < high:
+		middle := (low + high) / 2
 
-			if order(self.maxes[middle], key) < 0:
-				low = middle + 1
-			else:
-				high = middle
+		if order(self.maxes[middle], key) < 0:
+			low = middle + 1
+		else:
+			high = middle
 
-		return low
+	return low
 
-	// Returns the index of the first key in chunk `c` that is not below `key`, or the chunk length when none.
-	fn lower_bound(c: Int, key: K) Int:
-		var low = 0
-		var high = self.key_chunks[c].length()
+// Returns the index of the first key in chunk `c` that is not below `key`, or the
+// chunk length when none.
+fn SortedMap[K, V].lower_bound(c: Int, key: K) Int:
+	var low = 0
+	var high = self.key_chunks[c].length()
 
-		while low < high:
-			middle := (low + high) / 2
+	while low < high:
+		middle := (low + high) / 2
 
-			if order(self.key_chunks[c].get(middle), key) < 0:
-				low = middle + 1
-			else:
-				high = middle
+		if order(self.key_chunks[c].get(middle), key) < 0:
+			low = middle + 1
+		else:
+			high = middle
 
-		return low
+	return low
 
-	// Records the last key of chunk `c` after the chunk changed.
-	var fn refresh(c: Int) Unit:
-		self.maxes.set(
-			c, self.key_chunks[c].get(self.key_chunks[c].length() - 1).clone()
-		)
+// Records the last key of chunk `c` after the chunk changed.
+fn var SortedMap[K, V].refresh(c: Int) Unit:
+	self.maxes.set(c, self.key_chunks[c].get(self.key_chunks[c].length() - 1).clone())
 
-	// Returns the number of entries.
-	fn length() Int:
-		return self.size
+// Returns the number of entries.
+fn SortedMap[K, V].length() Int:
+	return self.size
 
-	// Reports whether the map has no entries.
-	fn is_empty() Bool:
-		return self.size == 0
+// Reports whether the map has no entries.
+fn SortedMap[K, V].is_empty() Bool:
+	return self.size == 0
 
-	// Reports whether an equal key is present.
-	fn contains(key: K) Bool:
-		if self.size == 0: return false
+// Reports whether an equal key is present.
+fn SortedMap[K, V].contains(key: K) Bool:
+	if self.size == 0: return false
 
-		c := self.chunk_for(key)
-		at := self.lower_bound(c, key)
-		return (
-			at < self.key_chunks[c].length()
-			and order(self.key_chunks[c].get(at), key) == 0
-		)
+	c := self.chunk_for(key)
+	at := self.lower_bound(c, key)
+	return (
+		at < self.key_chunks[c].length()
+		and order(self.key_chunks[c].get(at), key) == 0
+	)
 
-	// Returns the value stored for an equal key, or none when absent.
-	fn get(key: K) V?:
-		if self.size == 0: return none
+// Returns the value stored for an equal key, or none when absent.
+fn SortedMap[K, V].get(key: K) V?:
+	if self.size == 0: return none
 
-		c := self.chunk_for(key)
-		at := self.lower_bound(c, key)
-		if (
-			at < self.key_chunks[c].length()
-			and order(self.key_chunks[c].get(at), key) == 0
-		):
-			return self.value_chunks[c].get(at).clone()
+	c := self.chunk_for(key)
+	at := self.lower_bound(c, key)
+	if (
+		at < self.key_chunks[c].length()
+		and order(self.key_chunks[c].get(at), key) == 0
+	):
+		return self.value_chunks[c].get(at).clone()
 
-		return none
+	return none
 
-	// Returns the value stored for an equal key, or `fallback` when absent.
-	fn get_or(key: K, fallback: V) V:
-		return self.get(key).get(fallback)
+// Returns the value stored for an equal key, or `fallback` when absent.
+fn SortedMap[K, V].get_or(key: K, fallback: V) V:
+	return self.get(key).get(fallback)
 
-	// Inserts a key or replaces the value of an equal key, which keeps its original key.
-	var fn add(key: K, value: V) Unit:
-		if self.size == 0:
-			self.key_chunks = [[key.clone()]]
-			self.value_chunks = [[value]]
-			self.maxes = [key]
-			self.size = 1
-			return
+// Inserts a key or replaces the value of an equal key, which keeps its original
+// key.
+fn var SortedMap[K, V].add(key: K, value: V) Unit:
+	if self.size == 0:
+		self.key_chunks = [[key.clone()]]
+		self.value_chunks = [[value]]
+		self.maxes = [key]
+		self.size = 1
+		return
 
-		c := self.chunk_for(key)
-		at := self.lower_bound(c, key)
+	c := self.chunk_for(key)
+	at := self.lower_bound(c, key)
 
-		if (
-			at < self.key_chunks[c].length()
-			and order(self.key_chunks[c].get(at), key) == 0
-		):
-			self.value_chunks[c].set(at, value)
-			return
+	if (
+		at < self.key_chunks[c].length()
+		and order(self.key_chunks[c].get(at), key) == 0
+	):
+		self.value_chunks[c].set(at, value)
+		return
 
-		self.key_chunks[c].insert(at, key)
-		self.value_chunks[c].insert(at, value)
-		self.size += 1
-		if at == self.key_chunks[c].length() - 1:
-			self.refresh(c)
-		if self.key_chunks[c].length() > 128:
-			self.split(c)
+	self.key_chunks[c].insert(at, key)
+	self.value_chunks[c].insert(at, value)
+	self.size += 1
+	if at == self.key_chunks[c].length() - 1:
+		self.refresh(c)
+	if self.key_chunks[c].length() > 128:
+		self.split(c)
 
-	// Splits chunk `c` into two halves.
-	var fn split(c: Int) Unit:
-		length := self.key_chunks[c].length()
-		half := length / 2
-		tail_keys := self.key_chunks[c].slice(half, length).get()
-		tail_values := self.value_chunks[c].slice(half, length).get()
-		self.key_chunks[c].splice(half, length - half, [])
-		self.value_chunks[c].splice(half, length - half, [])
-		self.key_chunks.insert(c + 1, tail_keys)
-		self.value_chunks.insert(c + 1, tail_values)
-		self.maxes.insert(c, self.key_chunks[c].get(half - 1).clone())
+// Splits chunk `c` into two halves.
+fn var SortedMap[K, V].split(c: Int) Unit:
+	length := self.key_chunks[c].length()
+	half := length / 2
+	tail_keys := self.key_chunks[c].slice(half, length).get()
+	tail_values := self.value_chunks[c].slice(half, length).get()
+	self.key_chunks[c].splice(half, length - half, [])
+	self.value_chunks[c].splice(half, length - half, [])
+	self.key_chunks.insert(c + 1, tail_keys)
+	self.value_chunks.insert(c + 1, tail_values)
+	self.maxes.insert(c, self.key_chunks[c].get(half - 1).clone())
 
-	// Removes an equal key; an absent key changes nothing.
-	var fn remove(key: K) Unit:
-		if self.size == 0: return
+// Removes an equal key; an absent key changes nothing.
+fn var SortedMap[K, V].remove(key: K) Unit:
+	if self.size == 0: return
 
-		c := self.chunk_for(key)
-		at := self.lower_bound(c, key)
-		if (
-			at >= self.key_chunks[c].length()
-			or order(self.key_chunks[c].get(at), key) != 0
-		):
-			return
+	c := self.chunk_for(key)
+	at := self.lower_bound(c, key)
+	if (
+		at >= self.key_chunks[c].length()
+		or order(self.key_chunks[c].get(at), key) != 0
+	):
+		return
 
-		self.remove_at(c, at)
+	self.remove_at(c, at)
 
-	// Removes the entry at chunk `c`, position `at`, dropping the chunk when it empties.
-	var fn remove_at(c: Int, at: Int) Unit:
-		self.key_chunks[c].remove(at)
-		self.value_chunks[c].remove(at)
-		self.size -= 1
+// Removes the entry at chunk `c`, position `at`, dropping the chunk when it
+// empties.
+fn var SortedMap[K, V].remove_at(c: Int, at: Int) Unit:
+	self.key_chunks[c].remove(at)
+	self.value_chunks[c].remove(at)
+	self.size -= 1
 
-		if self.key_chunks[c].is_empty():
-			self.key_chunks.remove(c)
-			self.value_chunks.remove(c)
-			self.maxes.remove(c)
-		else if at == self.key_chunks[c].length():
-			self.refresh(c)
+	if self.key_chunks[c].is_empty():
+		self.key_chunks.remove(c)
+		self.value_chunks.remove(c)
+		self.maxes.remove(c)
+	else if at == self.key_chunks[c].length():
+		self.refresh(c)
 
-	// Removes every entry and releases the storage; the map is empty afterwards.
-	var fn clear() Unit:
-		self.key_chunks = []
-		self.value_chunks = []
-		self.maxes = []
-		self.size = 0
+// Removes every entry and releases the storage; the map is empty afterwards.
+fn var SortedMap[K, V].clear() Unit:
+	self.key_chunks = []
+	self.value_chunks = []
+	self.maxes = []
+	self.size = 0
 
-	// Returns the entry with the smallest key, or none when empty.
-	fn first() SortedEntry[K, V]?:
-		if self.size == 0: return none
-		return SortedEntry(
-			self.key_chunks[0].get(0).clone(), self.value_chunks[0].get(0).clone()
-		)
+// Returns the entry with the smallest key, or none when empty.
+fn SortedMap[K, V].first() SortedEntry[K, V]?:
+	if self.size == 0: return none
+	return SortedEntry(
+		self.key_chunks[0].get(0).clone(),
+		self.value_chunks[0].get(0).clone(),
+	)
 
-	// Returns the entry with the largest key, or none when empty.
-	fn last() SortedEntry[K, V]?:
-		if self.size == 0: return none
+// Returns the entry with the largest key, or none when empty.
+fn SortedMap[K, V].last() SortedEntry[K, V]?:
+	if self.size == 0: return none
 
+	c := self.key_chunks.length() - 1
+	at := self.key_chunks[c].length() - 1
+	return SortedEntry(
+		self.key_chunks[c].get(at).clone(),
+		self.value_chunks[c].get(at).clone(),
+	)
+
+// Removes and returns the entry with the smallest key, or none when empty.
+fn var SortedMap[K, V].pop_first() SortedEntry[K, V]?:
+	entry := self.first()
+	if self.size > 0:
+		self.remove_at(0, 0)
+	return entry
+
+// Removes and returns the entry with the largest key, or none when empty.
+fn var SortedMap[K, V].pop_last() SortedEntry[K, V]?:
+	entry := self.last()
+
+	if self.size > 0:
 		c := self.key_chunks.length() - 1
-		at := self.key_chunks[c].length() - 1
+		self.remove_at(c, self.key_chunks[c].length() - 1)
+
+	return entry
+
+// Returns the entry with the smallest key that is at least `key`, or none.
+fn SortedMap[K, V].ceiling(key: K) SortedEntry[K, V]?:
+	if self.size == 0: return none
+
+	c := self.chunk_for(key)
+	at := self.lower_bound(c, key)
+	if at >= self.key_chunks[c].length(): return none
+
+	return SortedEntry(
+		self.key_chunks[c].get(at).clone(),
+		self.value_chunks[c].get(at).clone(),
+	)
+
+// Returns the entry with the largest key that is at most `key`, or none.
+fn SortedMap[K, V].floor(key: K) SortedEntry[K, V]?:
+	if self.size == 0: return none
+
+	var c = self.chunk_for(key)
+	var at = self.lower_bound(c, key)
+	if (
+		at < self.key_chunks[c].length()
+		and order(self.key_chunks[c].get(at), key) == 0
+	):
 		return SortedEntry(
-			self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
+			self.key_chunks[c].get(at).clone(),
+			self.value_chunks[c].get(at).clone(),
 		)
 
-	// Removes and returns the entry with the smallest key, or none when empty.
-	var fn pop_first() SortedEntry[K, V]?:
-		entry := self.first()
-		if self.size > 0:
-			self.remove_at(0, 0)
-		return entry
+	if at == 0:
+		if c == 0: return none
 
-	// Removes and returns the entry with the largest key, or none when empty.
-	var fn pop_last() SortedEntry[K, V]?:
-		entry := self.last()
+		c -= 1
+		at = self.key_chunks[c].length()
 
-		if self.size > 0:
-			c := self.key_chunks.length() - 1
-			self.remove_at(c, self.key_chunks[c].length() - 1)
+	at -= 1
+	return SortedEntry(
+		self.key_chunks[c].get(at).clone(),
+		self.value_chunks[c].get(at).clone(),
+	)
 
-		return entry
+// Returns a new list of the entries with `low` <= key < `high`, in ascending order.
+fn SortedMap[K, V].range(low: K, high: K) List[SortedEntry[K, V]]:
+	var out: List[SortedEntry[K, V]] = []
+	if self.size == 0: return out
 
-	// Returns the entry with the smallest key that is at least `key`, or none.
-	fn ceiling(key: K) SortedEntry[K, V]?:
-		if self.size == 0: return none
+	var c = self.chunk_for(low)
+	var at = self.lower_bound(c, low)
 
-		c := self.chunk_for(key)
-		at := self.lower_bound(c, key)
-		if at >= self.key_chunks[c].length(): return none
+	while c < self.key_chunks.length():
+		keys := self.key_chunks[c]
 
-		return SortedEntry(
-			self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
-		)
+		while at < keys.length():
+			if order(keys[at], high) >= 0: return out
 
-	// Returns the entry with the largest key that is at most `key`, or none.
-	fn floor(key: K) SortedEntry[K, V]?:
-		if self.size == 0: return none
+			out.append(
+				SortedEntry(
+					keys[at].clone(),
+					self.value_chunks[c].get(at).clone(),
+				)
+			)
+			at += 1
 
-		var c = self.chunk_for(key)
-		var at = self.lower_bound(c, key)
-		if (
-			at < self.key_chunks[c].length()
-			and order(self.key_chunks[c].get(at), key) == 0
-		):
-			return SortedEntry(
-				self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
+		c += 1
+		at = 0
+
+	return out
+
+// Returns a new list of the keys in ascending order.
+fn SortedMap[K, V].keys() List[K]:
+	return joined(self.key_chunks, 0, self.key_chunks.length())
+
+// Returns a new list of the values in ascending key order.
+fn SortedMap[K, V].values() List[V]:
+	return joined(self.value_chunks, 0, self.value_chunks.length())
+
+// Returns a new list of the entries in ascending key order.
+fn SortedMap[K, V].entries() List[SortedEntry[K, V]]:
+	var out: List[SortedEntry[K, V]] = []
+
+	for c in 0..self.key_chunks.length():
+		keys := self.key_chunks[c]
+		for at in 0..keys.length():
+			out.append(
+				SortedEntry(
+					keys[at].clone(),
+					self.value_chunks[c].get(at).clone(),
+				)
 			)
 
-		if at == 0:
-			if c == 0: return none
+	return out
 
-			c -= 1
-			at = self.key_chunks[c].length()
+// Calls operation(key:, value:) in ascending key order over a snapshot of the
+// entries.
+fn SortedMap[K, V].for_each(operation: fn(K, V) Unit) Unit:
+	for entry in self.entries():
+		operation(entry.key, entry.value)
 
-		at -= 1
-		return SortedEntry(
-			self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
-		)
-
-	// Returns a new list of the entries with `low` <= key < `high`, in ascending order.
-	fn range(low: K, high: K) List[SortedEntry[K, V]]:
-		var out: List[SortedEntry[K, V]] = []
-		if self.size == 0: return out
-
-		var c = self.chunk_for(low)
-		var at = self.lower_bound(c, low)
-
-		while c < self.key_chunks.length():
-			keys := self.key_chunks[c]
-
-			while at < keys.length():
-				if order(keys[at], high) >= 0: return out
-
-				out.append(
-					SortedEntry(
-						keys[at].clone(), self.value_chunks[c].get(at).clone()
-					)
-				)
-				at += 1
-
-			c += 1
-			at = 0
-
-		return out
-
-	// Returns a new list of the keys in ascending order.
-	fn keys() List[K]:
-		return joined(self.key_chunks, 0, self.key_chunks.length())
-
-	// Returns a new list of the values in ascending key order.
-	fn values() List[V]:
-		return joined(self.value_chunks, 0, self.value_chunks.length())
-
-	// Returns a new list of the entries in ascending key order.
-	fn entries() List[SortedEntry[K, V]]:
-		var out: List[SortedEntry[K, V]] = []
-
-		for c in 0..self.key_chunks.length():
-			keys := self.key_chunks[c]
-			for at in 0..keys.length():
-				out.append(
-					SortedEntry(
-						keys[at].clone(), self.value_chunks[c].get(at).clone()
-					)
-				)
-
-		return out
-
-	// Calls operation(key:, value:) in ascending key order over a snapshot of the entries.
-	fn for_each(operation: fn(K, V) Unit) Unit:
-		for entry in self.entries():
-			operation(entry.key, entry.value)
-
-// A set kept in ascending order, with the same Comparable ordering and costs as SortedMap.
-// Members that compare equal are the same member. Use clone() for an independent deep copy.
+// A set kept in ascending order, with the same Comparable ordering and costs as
+// SortedMap. Members that compare equal are the same member. Use clone() for an
+// independent deep copy.
 export type SortedSet[T: Comparable & Clonable]:
 	// Members as the keys of a map. Internal state: use the operations, not this field.
 	members: SortedMap[T, Bool] = SortedMap[T, Bool]()
 
-impl SortedSet[T]:
-	// Returns the number of members.
-	fn length() Int:
-		return self.members.length()
+// Returns the number of members.
+fn SortedSet[T].length() Int:
+	return self.members.length()
 
-	// Reports whether the set has no members.
-	fn is_empty() Bool:
-		return self.members.is_empty()
+// Reports whether the set has no members.
+fn SortedSet[T].is_empty() Bool:
+	return self.members.is_empty()
 
-	// Reports whether an equal member is present.
-	fn contains(value: T) Bool:
-		return self.members.contains(value)
+// Reports whether an equal member is present.
+fn SortedSet[T].contains(value: T) Bool:
+	return self.members.contains(value)
 
-	// Adds a member; an equal member already present is kept.
-	var fn add(value: T) Unit:
-		if not self.members.contains(value):
-			self.members.add(value, true)
+// Adds a member; an equal member already present is kept.
+fn var SortedSet[T].add(value: T) Unit:
+	if not self.members.contains(value):
+		self.members.add(value, true)
 
-	// Removes an equal member; an absent value changes nothing.
-	var fn remove(value: T) Unit:
-		self.members.remove(value)
+// Removes an equal member; an absent value changes nothing.
+fn var SortedSet[T].remove(value: T) Unit:
+	self.members.remove(value)
 
-	// Removes every member and releases the storage; the set is empty afterwards.
-	var fn clear() Unit:
-		self.members.clear()
+// Removes every member and releases the storage; the set is empty afterwards.
+fn var SortedSet[T].clear() Unit:
+	self.members.clear()
 
-	// Returns the smallest member, or none when empty.
-	fn first() T?:
-		if entry := self.members.first(): return entry.key.clone()
-		return none
+// Returns the smallest member, or none when empty.
+fn SortedSet[T].first() T?:
+	if entry := self.members.first(): return entry.key.clone()
+	return none
 
-	// Returns the largest member, or none when empty.
-	fn last() T?:
-		if entry := self.members.last(): return entry.key.clone()
-		return none
+// Returns the largest member, or none when empty.
+fn SortedSet[T].last() T?:
+	if entry := self.members.last(): return entry.key.clone()
+	return none
 
-	// Removes and returns the smallest member, or none when empty.
-	var fn pop_first() T?:
-		if entry := self.members.pop_first(): return entry.key.clone()
-		return none
+// Removes and returns the smallest member, or none when empty.
+fn var SortedSet[T].pop_first() T?:
+	if entry := self.members.pop_first(): return entry.key.clone()
+	return none
 
-	// Removes and returns the largest member, or none when empty.
-	var fn pop_last() T?:
-		if entry := self.members.pop_last(): return entry.key.clone()
-		return none
+// Removes and returns the largest member, or none when empty.
+fn var SortedSet[T].pop_last() T?:
+	if entry := self.members.pop_last(): return entry.key.clone()
+	return none
 
-	// Returns the smallest member that is at least `value`, or none.
-	fn ceiling(value: T) T?:
-		if entry := self.members.ceiling(value): return entry.key.clone()
-		return none
+// Returns the smallest member that is at least `value`, or none.
+fn SortedSet[T].ceiling(value: T) T?:
+	if entry := self.members.ceiling(value): return entry.key.clone()
+	return none
 
-	// Returns the largest member that is at most `value`, or none.
-	fn floor(value: T) T?:
-		if entry := self.members.floor(value): return entry.key.clone()
-		return none
+// Returns the largest member that is at most `value`, or none.
+fn SortedSet[T].floor(value: T) T?:
+	if entry := self.members.floor(value): return entry.key.clone()
+	return none
 
-	// Returns a new list of the members with `low` <= member < `high`, in ascending order.
-	fn range(low: T, high: T) List[T]:
-		return self.members.range(low, high).map(fn entry: entry.key.clone())
+// Returns a new list of the members with `low` <= member < `high`, in ascending
+// order.
+fn SortedSet[T].range(low: T, high: T) List[T]:
+	return self.members.range(low, high).map(fn entry: entry.key.clone())
 
-	// Returns a new list of the members in ascending order.
-	fn values() List[T]:
-		return self.members.keys()
+// Returns a new list of the members in ascending order.
+fn SortedSet[T].values() List[T]:
+	return self.members.keys()
+
+// Orders two keys: negative when `left` sorts first, zero when equal, positive when
+// `right` sorts first.
+fn order[T: Comparable](left: T, right: T) Int:
+	return left.compare(right)
+
+// Returns one new list holding `chunks[low]` through `chunks[high - 1]` in order.
+// Halving the range copies each element about log2(chunk count) times; folding left
+// with `concat` would recopy every earlier chunk for each later one.
+fn joined[T: Clonable](chunks: List[List[T]], low: Int, high: Int) List[T]:
+	count := high - low
+	if count == 0: return []
+	if count == 1: return chunks[low].clone()
+	if count == 2: return chunks[low].concat(chunks[low + 1])
+
+	middle := low + count / 2
+	return joined(chunks, low, middle).concat(joined(chunks, middle, high))

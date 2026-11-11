@@ -1,13 +1,15 @@
-// Close-once matrix (`make close-matrix`): generates one program for each combination of a resource shape (a
-// bare resource, an Optional, a List, a record or a Result holding one) and a language construct that ends or
-// moves its life (scope end, early return, `try` error, loop exits, reassignment, by-value argument, generic
-// pass-through, returned owner, closure capture, escaping closure, promise capture, explicit close). A
-// combination the checker rejects is fine; anything `ms check` accepts must run and close every resource it made
-// exactly once, in Debug and Release. The oracle needs no expected output per case: `mk` prints `made-N`, the
-// idempotent `close` prints `closed-N` the first time only, and every made id must close as often as it was made.
-// A new construct that moves, drops or closes a value belongs in constructs() below.
-// MS names the ms that runs the programs (default target/release/ms).
-// Usage: ms run tools/close-matrix.ms [-- name-filter]
+// Close-once matrix (`make close-matrix`): generates one program for each combination
+// of a resource shape (a bare resource, an Optional, a List, a record or a Result
+// holding one) and a language construct that ends or moves its life (scope end, early
+// return, `try` error, loop exits, reassignment, by-value argument, generic
+// pass-through, returned owner, closure capture, escaping closure, promise capture,
+// explicit close). A combination the checker rejects is fine; anything `ms check`
+// accepts must run and close every resource it made exactly once, in Debug and Release.
+// The oracle needs no expected output per case: `mk` prints `made-N`, the idempotent
+// `close` prints `closed-N` the first time only, and every made id must close as often
+// as it was made. A new construct that moves, drops or closes a value belongs in
+// constructs() below. MS names the ms that runs the programs (default
+// target/release/ms). Usage: ms run tools/close-matrix.ms [-- name-filter]
 import (
 	stdout from "@std/io/io.ms",
 	arguments, working_directory from "@std/os/env.ms",
@@ -26,11 +28,10 @@ type Marker:
     id: Int
     open: Bool
 
-impl Closeable for Marker:
-    var fn close() Unit!:
-        if self.open:
-            self.open = false
-            print("closed-\{self.id\}")
+fn var Marker.close() Unit!:
+    if self.open:
+        self.open = false
+        print("closed-\{self.id\}")
 
 type Holder:
     m: Marker
@@ -74,13 +75,14 @@ type Construct:
 
 fn shapes() List[Shape]:
 	return [
-		Shape("bare", "Marker", "mk(@ID@)"), Shape("optional", "Marker?", "mk(@ID@)"),
+		Shape("bare", "Marker", "mk(@ID@)"),
+		Shape("optional", "Marker?", "mk(@ID@)"),
 		Shape("list", "List[Marker]", "[mk(@ID@)]"),
 		Shape("record", "Holder", "Holder(mk(@ID@))"),
 		Shape("result", "Marker!Error", "ok(mk(@ID@))"),
 		Shape("map", "Map[Int, Marker]", "mk_map(@ID@)"),
 		Shape("enum", "Slot", "Full(mk(@ID@))"),
-		Shape("nested", "List[Marker?]", "mk_nested(@ID@)")
+		Shape("nested", "List[Marker?]", "mk_nested(@ID@)"),
 	]
 
 fn c(name: String, defs: String, body: String) Construct:
@@ -93,88 +95,105 @@ fn constructs() List[Construct]:
 	return [
 		c("scope_end", "", "x: @TY@ := @M1@\n    see(x)"),
 		c(
-			"early_return", "",
-			"x: @TY@ := @M1@\n    if flag():\n        return ok(unit)\n    see(x)"
+			"early_return",
+			"",
+			"x: @TY@ := @M1@\n    if flag():\n        return ok(unit)\n    see(x)",
 		),
-		c("try_error", "", "x: @TY@ := @M1@\n    try fail()\n    see(x)"),
+		c("try_error", "", "x: @TY@ := @M1@\n    fail()?\n    see(x)"),
 		c(
-			"loop_break", "",
-			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 1:\n            break\n        see(x)"
-		),
-		c(
-			"loop_continue", "",
-			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 1:\n            continue\n        see(x)"
+			"loop_break",
+			"",
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 1:\n            break\n        see(x)",
 		),
 		c(
-			"while_loop", "",
-			"var i = 0\n    while i < 2:\n        x: @TY@ := @M1@\n        see(x)\n        i += 1"
+			"loop_continue",
+			"",
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 1:\n            continue\n        see(x)",
 		),
 		c(
-			"loop_try_error", "",
-			"for i in 0..3:\n        x: @TY@ := @M1@\n        try fail()\n        see(x)"
+			"while_loop",
+			"",
+			"var i = 0\n    while i < 2:\n        x: @TY@ := @M1@\n        see(x)\n        i += 1",
 		),
 		c(
-			"nested_scope", "", "if flag():\n        x: @TY@ := @M1@\n        see(x)"
+			"loop_try_error",
+			"",
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        fail()?\n        see(x)",
 		),
 		c(
-			"loop_condition_try", "",
-			"x: @TY@ := @M1@\n    var i = 0\n    while i < (try fail_int()):\n        see(x)\n        i += 1"
+			"nested_scope",
+			"",
+			"if flag():\n        x: @TY@ := @M1@\n        see(x)",
 		),
 		c(
-			"break_nested_arms", "",
-			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 0:\n            if flag():\n                break\n            continue\n        see(x)"
+			"loop_condition_try",
+			"",
+			"x: @TY@ := @M1@\n    var i = 0\n    while i < (fail_int()?):\n        see(x)\n        i += 1",
 		),
 		c(
-			"continue_nested_arms", "",
-			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 0:\n            if flag():\n                continue\n            break\n        see(x)"
+			"break_nested_arms",
+			"",
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 0:\n            if flag():\n                break\n            continue\n        see(x)",
 		),
 		c(
-			"moved_in_one_branch_back_edge", "",
-			"var x: @TY@ = @M1@\n    for i in 0..2:\n        if i == 0:\n            pass(x)\n            x = @M2@\n    see(x)"
+			"continue_nested_arms",
+			"",
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 0:\n            if flag():\n                continue\n            break\n        see(x)",
 		),
 		c(
-			"moved_in_one_branch_exit", "",
-			"x: @TY@ := @M1@\n    for i in 0..2:\n        if i == 1:\n            pass(x)\n            return ok(unit)\n    see(x)"
+			"moved_in_one_branch_back_edge",
+			"",
+			"var x: @TY@ = @M1@\n    for i in 0..2:\n        if i == 0:\n            pass(x)\n            x = @M2@\n    see(x)",
 		),
 		c(
-			"loop_return", "",
-			"for i in 0..2:\n        x: @TY@ := @M1@\n        if flag():\n            return ok(unit)\n        see(x)"
+			"moved_in_one_branch_exit",
+			"",
+			"x: @TY@ := @M1@\n    for i in 0..2:\n        if i == 1:\n            pass(x)\n            return ok(unit)\n    see(x)",
 		),
 		c(
-			"two_locals_try", "",
-			"x: @TY@ := @M1@\n    y: @TY@ := @M2@\n    try fail()\n    see(x)\n    see(y)"
+			"loop_return",
+			"",
+			"for i in 0..2:\n        x: @TY@ := @M1@\n        if flag():\n            return ok(unit)\n        see(x)",
 		),
 		c(
-			"boxed", "type Box:\n    v: @TY@",
-			"b := Box(@M1@)\n    try fail()\n    see(b.v)"
+			"two_locals_try",
+			"",
+			"x: @TY@ := @M1@\n    y: @TY@ := @M2@\n    fail()?\n    see(x)\n    see(y)",
 		),
 		c(
-			"boxed_overwrite", "type Box:\n    v: @TY@",
-			"var b = Box(@M1@)\n    b.v = @M2@\n    see(b.v)"
+			"boxed",
+			"type Box:\n    v: @TY@",
+			"b := Box(@M1@)\n    fail()?\n    see(b.v)",
 		),
 		c(
-			"in_list", "",
-			"xs: List[@TY@] := [@M1@, @M2@]\n    try fail()\n    see_all(xs)"
+			"boxed_overwrite",
+			"type Box:\n    v: @TY@",
+			"var b = Box(@M1@)\n    b.v = @M2@\n    see(b.v)",
+		),
+		c(
+			"in_list",
+			"",
+			"xs: List[@TY@] := [@M1@, @M2@]\n    fail()?\n    see_all(xs)",
 		),
 		c(
 			"cancel_borrowed",
-			"fn hold(x: @TY@) Unit!:\n    try sleep(milliseconds(60000)).wait()\n    return ok(unit)",
-			"x: @TY@ := @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    _ := p.wait()"
+			"fn hold(x: @TY@) Unit!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
+			"x: @TY@ := @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    _ := p.wait()",
 		),
 		c(
 			"cancel_owned",
-			"fn hold(x: @TY@) Unit!:\n    try sleep(milliseconds(60000)).wait()\n    return ok(unit)",
-			"p := promise(fn: hold(@M1@))\n    p.cancel()\n    _ := p.wait()"
+			"fn hold(x: @TY@) Unit!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
+			"p := promise(fn: hold(@M1@))\n    p.cancel()\n    _ := p.wait()",
 		),
 		c(
 			"cancel_local",
-			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
-			"p := promise(fn: hold())\n    p.cancel()\n    _ := p.wait()"
+			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
+			"p := promise(fn: hold())\n    p.cancel()\n    _ := p.wait()",
 		),
 		c(
 			"cancel_dropped",
-			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
-			"_ := promise(fn: hold())"
+			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
+			"_ := promise(fn: hold())",
 		),
 		c("fn_value_temporary", "", "f := see\n    f(@M1@)"),
 		c("fn_value_lambda", "", "f := fn (v: @TY@): see(v)\n    f(@M1@)"),
@@ -182,155 +201,206 @@ fn constructs() List[Construct]:
 		c(
 			"method_temporary",
 			"type Sink:\n    n: Int\n\nimpl Sink:\n    fn take(v: @TY@) Unit: return\n    fn take_later(v: @TY@, n: Int) Unit: return",
-			"Sink(0).take(@M1@)"
+			"Sink(0).take(@M1@)",
 		),
 		c(
 			"method_later_try",
 			"type Sink:\n    n: Int\n\nimpl Sink:\n    fn take(v: @TY@) Unit: return\n    fn take_later(v: @TY@, n: Int) Unit: return",
-			"Sink(0).take_later(@M1@, try fail_int())"
+			"Sink(0).take_later(@M1@, fail_int()?)",
 		),
 		c(
 			"method_bound_later_try",
 			"type Sink:\n    n: Int\n\nimpl Sink:\n    fn take_later(v: @TY@, n: Int) Unit: return",
-			"s := Sink(0)\n    f := s.take_later\n    f(@M1@, try fail_int())"
+			"s := Sink(0)\n    f := s.take_later\n    f(@M1@, fail_int()?)",
 		),
 		c(
-			"two_resources_try", "fn both(a: @TY@, b: @TY@, n: Int) Unit: return",
-			"both(@M1@, @M2@, try fail_int())"
+			"two_resources_try",
+			"fn both(a: @TY@, b: @TY@, n: Int) Unit: return",
+			"both(@M1@, @M2@, fail_int()?)",
 		),
 		c(
-			"generic_later_try", "fn gboth[X](a: X, n: Int) Unit: return",
-			"gboth[@TY@](@M1@, try fail_int())"
+			"generic_later_try",
+			"fn gboth[X](a: X, n: Int) Unit: return",
+			"gboth[@TY@](@M1@, fail_int()?)",
 		),
 		c(
-			"generic_to_optional", "fn opt_of[X](x: X) X?: return x",
-			"r := opt_of[@TY@](@M1@)\n    if r.is_some():\n        return ok(unit)"
+			"generic_to_optional",
+			"fn opt_of[X](x: X) X?: return x",
+			"r := opt_of[@TY@](@M1@)\n    if r.is_some():\n        return ok(unit)",
 		),
 		c(
-			"generic_to_optional_named", "fn opt_of[X](x: X) X?: return x",
-			"x: @TY@ := @M1@\n    r := opt_of[@TY@](x)\n    if r.is_some():\n        return ok(unit)"
+			"generic_to_optional_named",
+			"fn opt_of[X](x: X) X?: return x",
+			"x: @TY@ := @M1@\n    r := opt_of[@TY@](x)\n    if r.is_some():\n        return ok(unit)",
 		),
 		c(
-			"generic_to_list", "fn list_of[X](x: X) List[X]: return [x]",
-			"r := list_of[@TY@](@M1@)\n    try fail()\n    see_all(r)"
+			"generic_to_list",
+			"fn list_of[X](x: X) List[X]: return [x]",
+			"r := list_of[@TY@](@M1@)\n    fail()?\n    see_all(r)",
 		),
 		c(
-			"generic_to_result", "fn res_of[X](x: X) X!Error: return ok(x)",
-			"r := res_of[@TY@](@M1@)\n    try fail()\n    if r.is_ok():\n        return ok(unit)"
+			"generic_to_result",
+			"fn res_of[X](x: X) X!Error: return ok(x)",
+			"r := res_of[@TY@](@M1@)\n    fail()?\n    if r.is_ok():\n        return ok(unit)",
 		),
 		only(
-			"interface_param", "bare", "fn via(c: Closeable) Unit: return", "via(@M1@)"
+			"interface_param",
+			"bare",
+			"fn via(c: Closeable) Unit: return",
+			"via(@M1@)",
 		),
 		only(
-			"interface_param_later_try", "bare",
-			"fn via(c: Closeable, n: Int) Unit: return", "via(@M1@, try fail_int())"
+			"interface_param_later_try",
+			"bare",
+			"fn via(c: Closeable, n: Int) Unit: return",
+			"via(@M1@, fail_int()?)",
 		),
 		only(
-			"bounded_generic", "bare", "fn gen[X: Closeable](x: X) Unit: return",
-			"gen(@M1@)"
+			"bounded_generic",
+			"bare",
+			"fn gen[X: Closeable](x: X) Unit: return",
+			"gen(@M1@)",
 		),
 		only(
-			"destructure", "record", "",
-			"\{m\} := @M1@\n    try fail()\n    see_marker(m)"
+			"destructure",
+			"record",
+			"",
+			"\{m\} := @M1@\n    fail()?\n    see_marker(m)",
 		),
 		only(
-			"match_enum_return", "enum", "",
-			"x: @TY@ := @M1@\n    match x:\n        Full(m): return ok(unit)\n        Empty: return ok(unit)"
+			"match_enum_return",
+			"enum",
+			"",
+			"x: @TY@ := @M1@\n    match x:\n        Full(m): return ok(unit)\n        Empty: return ok(unit)",
 		),
 		only(
-			"match_enum_temporary", "enum", "",
-			"match @M1@:\n        Full(m): see_marker(m)\n        Empty: return ok(unit)"
+			"match_enum_temporary",
+			"enum",
+			"",
+			"match @M1@:\n        Full(m): see_marker(m)\n        Empty: return ok(unit)",
 		),
 		c("reassign", "", "var x: @TY@ = @M1@\n    x = @M2@\n    see(x)"),
 		c(
-			"reassign_branch", "",
-			"var x: @TY@ = @M1@\n    if flag():\n        x = @M2@\n    see(x)"
+			"reassign_branch",
+			"",
+			"var x: @TY@ = @M1@\n    if flag():\n        x = @M2@\n    see(x)",
 		),
 		c("argument_temporary", "", "see(@M1@)"),
 		c("argument_named", "", "x: @TY@ := @M1@\n    see(x)\n    see(x)"),
 		c(
-			"two_arguments_try", "fn two(a: @TY@, n: Int) Unit: return",
-			"two(@M1@, try fail_int())"
+			"two_arguments_try",
+			"fn two(a: @TY@, n: Int) Unit: return",
+			"two(@M1@, fail_int()?)",
 		),
 		c(
-			"returned_whole", "fn give() @TY@:\n    x: @TY@ := @M1@\n    return x",
-			"y := give()\n    see(y)"
+			"returned_whole",
+			"fn give() @TY@:\n    x: @TY@ := @M1@\n    return x",
+			"y := give()\n    see(y)",
 		),
 		c(
 			"returned_conditional",
 			"fn give(f: Bool) @TY@:\n    x: @TY@ := @M1@\n    z: @TY@ := @M2@\n    if f:\n        return x\n    return z",
-			"y := give(flag())\n    see(y)"
+			"y := give(flag())\n    see(y)",
 		),
 		c(
-			"returned_temporary", "fn give() @TY@:\n    return @M1@",
-			"y := give()\n    see(y)"
+			"returned_temporary",
+			"fn give() @TY@:\n    return @M1@",
+			"y := give()\n    see(y)",
 		),
 		c("generic_pass_temporary", "", "pass[@TY@](@M1@)"),
 		c("generic_pass_named", "", "x: @TY@ := @M1@\n    pass(x)"),
 		c("generic_ident_temporary", "", "y: @TY@ := ident(@M1@)\n    see(y)"),
 		c(
-			"generic_ident_named", "", "x: @TY@ := @M1@\n    y := ident(x)\n    see(y)"
+			"generic_ident_named",
+			"",
+			"x: @TY@ := @M1@\n    y := ident(x)\n    see(y)",
 		),
 		c("discard_underscore", "", "_: @TY@ := @M1@"),
 		c(
-			"closure_borrow", "", "x: @TY@ := @M1@\n    f := fn: see(x)\n    f()"
+			"closure_borrow",
+			"",
+			"x: @TY@ := @M1@\n    f := fn: see(x)\n    f()",
 		),
 		c(
 			"closure_escape",
 			"fn make() fn() Unit:\n    x: @TY@ := @M1@\n    return fn: see(x)",
-			"f := make()\n    f()"
+			"f := make()\n    f()",
 		),
 		c(
 			"closure_escape_unused",
 			"fn make() fn() Unit:\n    x: @TY@ := @M1@\n    return fn: see(x)",
-			"f := make()\n    f()"
+			"f := make()\n    f()",
 		),
 		c(
-			"promise_capture", "",
-			"x: @TY@ := @M1@\n    p := promise(fn: seeok(x))\n    try p.wait()"
+			"promise_capture",
+			"",
+			"x: @TY@ := @M1@\n    p := promise(fn: seeok(x))\n    p.wait()?",
 		),
 		c(
-			"promise_result", "fn produce() @TY@!: return ok(@M1@)",
-			"p := promise(fn: produce())\n    y := try p.wait()\n    see(y)"
+			"promise_result",
+			"fn produce() @TY@!: return ok(@M1@)",
+			"p := promise(fn: produce())\n    y := p.wait()?\n    see(y)",
 		),
 		c(
-			"promise_result_dropped", "fn produce() @TY@!: return ok(@M1@)",
-			"p := promise(fn: produce())\n    _ := p.wait()"
+			"promise_result_dropped",
+			"fn produce() @TY@!: return ok(@M1@)",
+			"p := promise(fn: produce())\n    _ := p.wait()",
 		),
 		only(
-			"explicit_close", "bare", "",
-			"var x = @M1@\n    try x.close()\n    try x.close()"
+			"explicit_close",
+			"bare",
+			"",
+			"var x = @M1@\n    x.close()?\n    x.close()?",
 		),
 		only(
-			"explicit_close_reassign", "bare", "",
-			"var x = @M1@\n    try x.close()\n    x = @M2@\n    see(x)"
+			"explicit_close_reassign",
+			"bare",
+			"",
+			"var x = @M1@\n    x.close()?\n    x = @M2@\n    see(x)",
 		),
 		only(
-			"interface_view", "bare", "", "var x: Closeable = @M1@\n    try x.close()"
+			"interface_view",
+			"bare",
+			"",
+			"var x: Closeable = @M1@\n    x.close()?",
 		),
 		only(
-			"if_let", "optional", "",
-			"x: @TY@ := @M1@\n    if m := x:\n        see_marker(m)"
+			"if_let",
+			"optional",
+			"",
+			"x: @TY@ := @M1@\n    if m := x:\n        see_marker(m)",
 		),
 		only(
-			"match_optional", "optional", "",
-			"x: @TY@ := @M1@\n    match x:\n        m: see_marker(m)\n        none: return ok(unit)"
+			"match_optional",
+			"optional",
+			"",
+			"x: @TY@ := @M1@\n    match x:\n        m: see_marker(m)\n        none: return ok(unit)",
 		),
 		only("field_move", "record", "", "h := @M1@\n    see_marker(h.m)"),
 		only(
-			"field_overwrite", "record", "", "var h = @M1@\n    h.m = mk(2)\n    see(h)"
+			"field_overwrite",
+			"record",
+			"",
+			"var h = @M1@\n    h.m = mk(2)\n    see(h)",
 		),
 		only(
-			"list_for", "list", "",
-			"xs := @M1@\n    for m in xs:\n        see_marker(m)"
+			"list_for",
+			"list",
+			"",
+			"xs := @M1@\n    for m in xs:\n        see_marker(m)",
 		),
 		only(
-			"list_for_break", "list", "", "xs := @M1@\n    for m in xs:\n        break"
+			"list_for_break",
+			"list",
+			"",
+			"xs := @M1@\n    for m in xs:\n        break",
 		),
 		only(
-			"result_match", "result", "",
-			"r: @TY@ := @M1@\n    match r:\n        ok(m): see_marker(m)\n        error(e): return ok(unit)"
-		)
+			"result_match",
+			"result",
+			"",
+			"r: @TY@ := @M1@\n    match r:\n        ok(m): see_marker(m)\n        error(e): return ok(unit)",
+		),
 	]
 
 // The program for `construct` applied to `shape`.
@@ -400,8 +470,11 @@ fn main() Int:
 				ran := run(
 					ms.clone(),
 					[
-						"run", file.clone(), "--build-type", build.clone()
-					]
+						"run",
+						file.clone(),
+						"--build-type",
+						build.clone(),
+					],
 				).wait()
 
 				if ran.is_error():

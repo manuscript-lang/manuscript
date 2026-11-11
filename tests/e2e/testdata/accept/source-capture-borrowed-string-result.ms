@@ -9,15 +9,13 @@ type TextOwner:
 	log: String
 	id: Int
 
-impl Closeable for TextOwner:
-	var fn close() Unit!:
-		append_file(self.log, "{self.id},").wait()?
-		self.text = "closed"
+fn var TextOwner.close() Unit!:
+	append_file(self.log, "{self.id},").wait()?
+	self.text = "closed"
 
-impl TextOwner:
-	fn read() String: self.text
+fn TextOwner.read() String: self.text
 
-	fn read_default(_tag: Int = 0) String: self.text
+fn TextOwner.read_default(_tag: Int = 0) String: self.text
 
 fn owner(id: Int, log: String) TextOwner:
 	return TextOwner("payload-{id}", log, id)

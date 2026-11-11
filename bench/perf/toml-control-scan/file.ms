@@ -17,7 +17,8 @@ fn main() Int:
 		stdout().write(expected).get()
 		return 0
 
-	// Optional readiness marker for the external-input observability probe, outside timing.
+	// Optional readiness marker for the external-input observability probe, outside
+	// timing.
 	if args.length() > 2:
 		write_file(args[2], "ready").wait().get()
 

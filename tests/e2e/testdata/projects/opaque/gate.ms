@@ -9,16 +9,14 @@ export opaque enum Mode:
 	Safe
 	Wild(level: Int)
 
-impl Approved:
-	fn label() String:
-		return "approved:{self.entity}"
+fn Approved.label() String:
+	return "approved:{self.entity}"
 
-impl Counter:
-	var fn bump() Unit:
-		self.count += 1
+fn var Counter.bump() Unit:
+	self.count += 1
 
-	fn value() Int:
-		return self.count
+fn Counter.value() Int:
+	return self.count
 
 export fn approve(entity: String) Approved:
 	return Approved(entity: entity, nonce: "n1")

@@ -1,6 +1,7 @@
-// A native handle built on `Rc` and `RefCell` holds non-atomic state, so using it from the thread of another
-// promise is a named fault rather than a data race (#3047). The main thread stays busy so an idle thread takes
-// the promise. A `Network` is shared between threads on purpose (see `net.ms`, "resolve returns typed DNS records").
+// A native handle built on `Rc` and `RefCell` holds non-atomic state, so using it from
+// the thread of another promise is a named fault rather than a data race (#3047). The
+// main thread stays busy so an idle thread takes the promise. A `Network` is shared
+// between threads on purpose (see `net.ms`, "resolve returns typed DNS records").
 import (
 	promise from "@std/concurrency/promise.ms",
 	HttpHeaders, headers from "@std/net/http.ms",

@@ -6,7 +6,12 @@ import (
 test "integer radix parsing preserves signed boundaries in every base":
 	for radix in 2..37:
 		for value in [
-			-9223372036854775808, -9223372036854775807, -1, 0, 1, 9223372036854775807
+			-9223372036854775808,
+			-9223372036854775807,
+			-1,
+			0,
+			1,
+			9223372036854775807,
 		]:
 			expect_equal((parse_int(value.to_string_radix(radix), radix)?), value)?
 		expect_equal((parse_int("+0001", radix)?), 1)?

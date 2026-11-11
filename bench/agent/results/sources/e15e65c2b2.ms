@@ -117,7 +117,8 @@ fn trim_sp(s: String) String:
 
 fn esc(s: String) String:
 	return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(
-		"\"", "&quot;"
+		"\"",
+		"&quot;",
 	)
 
 fn is_digit(c: String) Bool:
@@ -242,7 +243,12 @@ fn marker(line: String) Marker:
 	if after == line.length() or sp >= 5:
 		w = after + 1
 	return Marker(
-		ok: true, ordered: ordered, ch: ch, num: num, w: w, empty: p == line.length()
+		ok: true,
+		ordered: ordered,
+		ch: ch,
+		num: num,
+		w: w,
+		empty: p == line.length(),
 	)
 
 // Splits a table row into trimmed cells.
@@ -384,7 +390,7 @@ fn parse_heading(line: String, i: Int) Block:
 		"<h" + lvl.to_string() + ">" + inline(
 			content
 		) + "</h" + lvl.to_string() + ">\n",
-		i + 1
+		i + 1,
 	)
 
 fn parse_quote(lines: List[String], i: Int) Block:
@@ -653,9 +659,18 @@ fn render_top(blocks: List[Block]) String:
 
 fn mk(kind: Int, text: String) Node:
 	return Node(
-		kind: kind, text: text, title: "", has_title: false, img: false, active: false,
-		cnt: 0, orig: 0, can_open: false, can_close: false, strong: false,
-		kids: List[Node]()
+		kind: kind,
+		text: text,
+		title: "",
+		has_title: false,
+		img: false,
+		active: false,
+		cnt: 0,
+		orig: 0,
+		can_open: false,
+		can_close: false,
+		strong: false,
+		kids: List[Node](),
 	)
 
 // Link destination and title after "[text]"; p is the index of "(".

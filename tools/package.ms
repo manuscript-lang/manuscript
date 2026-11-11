@@ -1,7 +1,7 @@
-// Builds the Rust ms for a target: one binary with the native runtime embedded, archived as
-// dist/manuscript-rust-<os>-<arch>.{tar.gz,zip} with a .sha256 beside it. The release runner for
-// each target builds it natively.
-// Usage: ms run tools/package.ms [-- OS ARCH]
+// Builds the Rust ms for a target: one binary with the native runtime embedded,
+// archived as dist/manuscript-rust-<os>-<arch>.{tar.gz,zip} with a .sha256 beside it.
+// The release runner for each target builds it natively. Usage: ms run tools/package.ms
+// [-- OS ARCH]
 import (
 	arguments,
 	change_directory,
@@ -37,25 +37,34 @@ fn main() Int:
 
 	executable := if target_os == "windows": "ms.exe" else: "ms"
 
-	// ms-native is built in release mode first; `ms-cli`'s build script embeds the archive.
+	// ms-native is built in release mode first; `ms-cli`'s build script embeds the
+	// archive.
 	var code = run_program("cargo", ["xtask", "runtime"])
 	if code != 0: return code
 
-	// Debug sections are dropped from the shipped binary (symbol names stay for fault traces and
-	// the profiler). The host triple is explicit so CARGO_BUILD_TARGET or `build.target` cannot move
-	// the output away from where the copy below reads it.
+	// Debug sections are dropped from the shipped binary (symbol names stay for fault
+	// traces and the profiler). The host triple is explicit so CARGO_BUILD_TARGET or
+	// `build.target` cannot move the output away from where the copy below reads it.
 	var triple = ""
 	for line in capture("rustc", ["-vV"]).split("\n"):
 		if line.starts_with("host: "): triple = line.slice(
-			6, line.length()
+			6,
+			line.length(),
 		).get("").trim()
 	set_environment("CARGO_PROFILE_RELEASE_STRIP", "debuginfo").get()
 	code = run_program(
 		"cargo",
 		[
-			"build", "--release", "--locked", "-p", "ms-cli", "--target",
-			triple.clone(), "--target-dir", "target"
-		]
+			"build",
+			"--release",
+			"--locked",
+			"-p",
+			"ms-cli",
+			"--target",
+			triple.clone(),
+			"--target-dir",
+			"target",
+		],
 	)
 	if code != 0: return code
 
@@ -92,15 +101,20 @@ fn main() Int:
 		code = run_program(
 			"7z",
 			[
-				"a", "-tzip", "-bso0", "{root}/dist/{archive_name}", name.clone()
-			]
+				"a",
+				"-tzip",
+				"-bso0",
+				"{root}/dist/{archive_name}",
+				name.clone(),
+			],
 		)
 
 		// The checksum below reads the archive by its repository-relative path.
 		change_directory(root).get()
 	else:
 		code = run_program(
-			"tar", ["-C", staging.path(), "-czf", archive.clone(), name.clone()]
+			"tar",
+			["-C", staging.path(), "-czf", archive.clone(), name.clone()],
 		)
 
 	if code != 0: return code

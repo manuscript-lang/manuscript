@@ -1,7 +1,10 @@
-// Interleaves two already-built LSP harnesses and rejects mismatched output or work (replaces bench/perf/lsp*/compare.py).
-// Usage: ms run bench/tools/lsp_compare.ms -- <hover|outline|semantic> BEFORE AFTER --out FILE.csv [--samples 9] [--cpu N]
-// Suites are the case lists of the three studies: `hover` (bench/perf/lsp), `outline` (lsp-outline), `semantic` (lsp-semantic).
-// Harness output is `mode,count,rounds,shape,elapsed_ns,checksum,size,rss`. The CSV has a cpu column (empty without --cpu).
+// Interleaves two already-built LSP harnesses and rejects mismatched output or work
+// (replaces bench/perf/lsp*/compare.py). Usage: ms run bench/tools/lsp_compare.ms --
+// <hover|outline|semantic> BEFORE AFTER --out FILE.csv [--samples 9] [--cpu N] Suites
+// are the case lists of the three studies: `hover` (bench/perf/lsp), `outline`
+// (lsp-outline), `semantic` (lsp-semantic). Harness output is
+// `mode,count,rounds,shape,elapsed_ns,checksum,size,rss`. The CSV has a cpu column
+// (empty without --cpu).
 import (
 	stdout from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
@@ -122,7 +125,7 @@ fn compare(
 	after: String,
 	out: String,
 	samples: Int,
-	cpu: String
+	cpu: String,
 ) Result[Unit, Error]:
 	cases := if suite == "hover": hover_cases() else: if suite == "outline": outline_cases() else: semantic_cases()
 	var paths = Map[String, String]()
@@ -155,7 +158,7 @@ fn compare(
 				name.clone(),
 				if want < 1: 1 else: (
 					if want > 100000: 100000 else: want
-				)
+				),
 			)
 
 		var observed = Map[String, List[Float]]()
@@ -197,7 +200,9 @@ fn main() Int:
 		)
 
 	parsed := options(
-		args.slice(3, args.length()).get([]), ["out", "samples", "cpu"], ["out"]
+		args.slice(3, args.length()).get([]),
+		["out", "samples", "cpu"],
+		["out"],
 	)
 	if parsed.is_error(): return fail(parsed.err().message)
 
@@ -207,8 +212,12 @@ fn main() Int:
 	if samples < 5: return fail("--samples must be at least 5")
 
 	result := compare(
-		args[0], absolute(args[1].clone()), absolute(args[2].clone()),
-		opts.get_or("out", ""), samples, opts.get_or("cpu", "")
+		args[0],
+		absolute(args[1].clone()),
+		absolute(args[2].clone()),
+		opts.get_or("out", ""),
+		samples,
+		opts.get_or("cpu", ""),
 	)
 	if result.is_error(): return fail(result.err().message)
 

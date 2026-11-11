@@ -44,8 +44,9 @@ export enum ImageFormat:
 	Ppm  // Netpbm binary P5 (gray) and P6 (RGB), 8-bit.
 	Bmp  // Windows bitmap: 1, 4, 8, 24 and 32-bit uncompressed decode; 24-bit (or 32-bit with alpha) encode.
 
-// A width-by-height raster. Build one with `new_image`, `decode_image`, or the transforms below.
-// Example: `img := new_image(2, 2, ColorMode.Rgb).get(); img.pixel(0, 0)` is opaque black.
+// A width-by-height raster. Build one with `new_image`, `decode_image`, or the
+// transforms below. Example:
+// `img := new_image(2, 2, ColorMode.Rgb).get(); img.pixel(0, 0)` is opaque black.
 export type Image:
 	// Columns, at least 1.
 	width: Int
@@ -56,214 +57,212 @@ export type Image:
 	// `width * height * channels` bytes, row-major.
 	pixels: List[UInt8]
 
-impl Image:
-	// Number of byte channels per pixel.
-	fn channel_count() Int:
-		return color_channels(self.mode)
+// Number of byte channels per pixel.
+fn Image.channel_count() Int:
+	return color_channels(self.mode)
 
-	// The pixel at `(x, y)` as RGBA, or `none` outside the image.
-	fn pixel(x: Int, y: Int) Rgba?:
-		if x < 0 or y < 0 or x >= self.width or y >= self.height: return none
+// The pixel at `(x, y)` as RGBA, or `none` outside the image.
+fn Image.pixel(x: Int, y: Int) Rgba?:
+	if x < 0 or y < 0 or x >= self.width or y >= self.height: return none
 
-		n := color_channels(self.mode)
-		at := (y * self.width + x) * n
-		p := self.pixels
+	n := color_channels(self.mode)
+	at := (y * self.width + x) * n
+	p := self.pixels
 
-		match self.mode:
-			Gray: return Rgba(p[at].to_int(), p[at].to_int(), p[at].to_int(), 255)
-			GrayAlpha: return Rgba(
-				p[at].to_int(), p[at].to_int(), p[at].to_int(), p[at + 1].to_int()
-			)
-			Rgb: return Rgba(
-				p[at].to_int(), p[at + 1].to_int(), p[at + 2].to_int(), 255
-			)
-			Rgba: return Rgba(
-				p[at].to_int(), p[at + 1].to_int(), p[at + 2].to_int(),
-				p[at + 3].to_int()
-			)
-
-	// Writes `color` at `(x, y)`, converting to the image's mode; returns false outside the image.
-	var fn set_pixel(x: Int, y: Int, color: Rgba) Bool:
-		if x < 0 or y < 0 or x >= self.width or y >= self.height: return false
-
-		n := color_channels(self.mode)
-		at := (y * self.width + x) * n
-		luma := (color.red * 299 + color.green * 587 + color.blue * 114) / 1000
-
-		match self.mode:
-			Gray:
-				self.pixels[at] = byte(luma)
-			GrayAlpha:
-				self.pixels[at] = byte(luma)
-				self.pixels[at + 1] = byte(color.alpha)
-			Rgb:
-				self.pixels[at] = byte(color.red)
-				self.pixels[at + 1] = byte(color.green)
-				self.pixels[at + 2] = byte(color.blue)
-			Rgba:
-				self.pixels[at] = byte(color.red)
-				self.pixels[at + 1] = byte(color.green)
-				self.pixels[at + 2] = byte(color.blue)
-				self.pixels[at + 3] = byte(color.alpha)
-
-		return true
-
-	// Copies the pixels of `area`; `ERANGE` when it leaves the image or is empty.
-	fn crop(area: Rect) Image!:
-		if area.width < 1 or area.height < 1 or area.x < 0 or area.y < 0:
-			return error(Error("image: crop area is empty or negative", kind: "ERANGE"))
-		if area.x > self.width - area.width or area.y > self.height - area.height:
-			return error(Error("image: crop area leaves the image", kind: "ERANGE"))
-
-		n := color_channels(self.mode)
-		var out = List[UInt8](reserve: area.width * area.height * n)
-
-		for row in 0..area.height:
-			start := ((area.y + row) * self.width + area.x) * n
-			for i in 0..area.width * n:
-				out.append(self.pixels[start + i])
-
-		return ok(Image(area.width, area.height, self.mode, out))
-
-	// Mirrors left to right.
-	fn flip_horizontal() Image:
-		n := color_channels(self.mode)
-		var out = List[UInt8](reserve: self.pixels.length())
-
-		for y in 0..self.height:
-			for x in 0..self.width:
-				at := (y * self.width + self.width - 1 - x) * n
-				for c in 0..n:
-					out.append(self.pixels[at + c])
-
-		return Image(self.width, self.height, self.mode, out)
-
-	// Mirrors top to bottom.
-	fn flip_vertical() Image:
-		n := color_channels(self.mode)
-		row := self.width * n
-		var out = List[UInt8](reserve: self.pixels.length())
-
-		for y in 0..self.height:
-			start := (self.height - 1 - y) * row
-			for i in 0..row:
-				out.append(self.pixels[start + i])
-
-		return Image(self.width, self.height, self.mode, out)
-
-	// Rotates a quarter turn clockwise; the result is `height` wide and `width` tall.
-	fn rotate90() Image:
-		n := color_channels(self.mode)
-		var out = List[UInt8](reserve: self.pixels.length())
-
-		for y in 0..self.width:
-			for x in 0..self.height:
-				at := ((self.height - 1 - x) * self.width + y) * n
-				for c in 0..n:
-					out.append(self.pixels[at + c])
-
-		return Image(self.height, self.width, self.mode, out)
-
-	// Rotates a half turn.
-	fn rotate180() Image:
-		return self.flip_horizontal().flip_vertical()
-
-	// Rotates three quarter turns clockwise (one counter-clockwise).
-	fn rotate270() Image:
-		return self.rotate90().rotate180()
-
-	// Converts to `target`: gray from RGB uses Rec. 601 luma, gray expands by repeating, missing alpha is opaque,
-	// and dropping alpha keeps the stored color (no compositing).
-	fn convert(target: ColorMode) Image:
-		if target == self.mode: return Image(
-			self.width, self.height, self.mode, self.pixels.clone()
+	match self.mode:
+		Gray: return Rgba(p[at].to_int(), p[at].to_int(), p[at].to_int(), 255)
+		GrayAlpha: return Rgba(
+			p[at].to_int(),
+			p[at].to_int(),
+			p[at].to_int(),
+			p[at + 1].to_int(),
+		)
+		Rgb: return Rgba(p[at].to_int(), p[at + 1].to_int(), p[at + 2].to_int(), 255)
+		Rgba: return Rgba(
+			p[at].to_int(),
+			p[at + 1].to_int(),
+			p[at + 2].to_int(),
+			p[at + 3].to_int(),
 		)
 
-		count := self.width * self.height
-		m := color_channels(target)
-		var out = List[UInt8](reserve: count * m)
+// Writes `color` at `(x, y)`, converting to the image's mode; returns false outside
+// the image.
+fn var Image.set_pixel(x: Int, y: Int, color: Rgba) Bool:
+	if x < 0 or y < 0 or x >= self.width or y >= self.height: return false
 
-		for i in 0..count:
-			c := self.pixel(i % self.width, i / self.width).get(Rgba(0, 0, 0, 255))
-			luma := (c.red * 299 + c.green * 587 + c.blue * 114) / 1000
+	n := color_channels(self.mode)
+	at := (y * self.width + x) * n
+	luma := (color.red * 299 + color.green * 587 + color.blue * 114) / 1000
 
-			match target:
-				Gray:
-					out.append(byte(luma))
-				GrayAlpha:
-					out.append(byte(luma))
-					out.append(byte(c.alpha))
-				Rgb:
-					out.append(byte(c.red))
-					out.append(byte(c.green))
-					out.append(byte(c.blue))
-				Rgba:
-					out.append(byte(c.red))
-					out.append(byte(c.green))
-					out.append(byte(c.blue))
-					out.append(byte(c.alpha))
+	match self.mode:
+		Gray:
+			self.pixels[at] = byte(luma)
+		GrayAlpha:
+			self.pixels[at] = byte(luma)
+			self.pixels[at + 1] = byte(color.alpha)
+		Rgb:
+			self.pixels[at] = byte(color.red)
+			self.pixels[at + 1] = byte(color.green)
+			self.pixels[at + 2] = byte(color.blue)
+		Rgba:
+			self.pixels[at] = byte(color.red)
+			self.pixels[at + 1] = byte(color.green)
+			self.pixels[at + 2] = byte(color.blue)
+			self.pixels[at + 3] = byte(color.alpha)
 
-		return Image(self.width, self.height, target, out)
+	return true
 
-	// Scales to `width` by `height`; `ERANGE` for a non-positive size, `EOVERFLOW` past `max_pixels`.
-	fn resize(
-		width: Int,
-		height: Int,
-		method: Resampling = Resampling.Bilinear,
-		max_pixels: Int? = none
-	) Image!:
-		count := pixel_count(width, height, max_pixels)?
-		n := color_channels(self.mode)
-		var out = List[UInt8](reserve: count * n)
+// Copies the pixels of `area`; `ERANGE` when it leaves the image or is empty.
+fn Image.crop(area: Rect) Image!:
+	if area.width < 1 or area.height < 1 or area.x < 0 or area.y < 0:
+		return error(Error("image: crop area is empty or negative", kind: "ERANGE"))
+	if area.x > self.width - area.width or area.y > self.height - area.height:
+		return error(Error("image: crop area leaves the image", kind: "ERANGE"))
 
-		for y in 0..height:
-			for x in 0..width:
-				match method:
-					Nearest:
-						sx := x * self.width / width
-						sy := y * self.height / height
-						at := (sy * self.width + sx) * n
-						for c in 0..n:
-							out.append(self.pixels[at + c])
-					Bilinear:
-						// Sample centers, in 1/256ths, clamped to the source.
-						fx := max_of(0, ((2 * x + 1) * self.width * 128) / width - 128)
-						fy := max_of(
-							0,
-							(
-								(2 * y + 1)
-								* self.height
-								* 128
-							) / height - 128
-						)
-						x0 := min_of(fx / 256, self.width - 1)
-						y0 := min_of(fy / 256, self.height - 1)
-						x1 := min_of(x0 + 1, self.width - 1)
-						y1 := min_of(y0 + 1, self.height - 1)
-						wx := if x0 == x1: 0 else: fx % 256
-						wy := if y0 == y1: 0 else: fy % 256
+	n := color_channels(self.mode)
+	var out = List[UInt8](reserve: area.width * area.height * n)
 
-						for c in 0..n:
-							a := self.pixels[(y0 * self.width + x0) * n + c].to_int()
-							b := self.pixels[(y0 * self.width + x1) * n + c].to_int()
-							d := self.pixels[(y1 * self.width + x0) * n + c].to_int()
-							e := self.pixels[(y1 * self.width + x1) * n + c].to_int()
-							top := a * (256 - wx) + b * wx
-							bottom := d * (256 - wx) + e * wx
-							out.append(
-								byte(
-									(
-										top * (
-											256
-											- wy
-										)
-										+ bottom * wy
-										+ 32768
-									) / 65536
-								)
+	for row in 0..area.height:
+		start := ((area.y + row) * self.width + area.x) * n
+		for i in 0..area.width * n:
+			out.append(self.pixels[start + i])
+
+	return ok(Image(area.width, area.height, self.mode, out))
+
+// Mirrors left to right.
+fn Image.flip_horizontal() Image:
+	n := color_channels(self.mode)
+	var out = List[UInt8](reserve: self.pixels.length())
+
+	for y in 0..self.height:
+		for x in 0..self.width:
+			at := (y * self.width + self.width - 1 - x) * n
+			for c in 0..n:
+				out.append(self.pixels[at + c])
+
+	return Image(self.width, self.height, self.mode, out)
+
+// Mirrors top to bottom.
+fn Image.flip_vertical() Image:
+	n := color_channels(self.mode)
+	row := self.width * n
+	var out = List[UInt8](reserve: self.pixels.length())
+
+	for y in 0..self.height:
+		start := (self.height - 1 - y) * row
+		for i in 0..row:
+			out.append(self.pixels[start + i])
+
+	return Image(self.width, self.height, self.mode, out)
+
+// Rotates a quarter turn clockwise; the result is `height` wide and `width` tall.
+fn Image.rotate90() Image:
+	n := color_channels(self.mode)
+	var out = List[UInt8](reserve: self.pixels.length())
+
+	for y in 0..self.width:
+		for x in 0..self.height:
+			at := ((self.height - 1 - x) * self.width + y) * n
+			for c in 0..n:
+				out.append(self.pixels[at + c])
+
+	return Image(self.height, self.width, self.mode, out)
+
+// Rotates a half turn.
+fn Image.rotate180() Image:
+	return self.flip_horizontal().flip_vertical()
+
+// Rotates three quarter turns clockwise (one counter-clockwise).
+fn Image.rotate270() Image:
+	return self.rotate90().rotate180()
+
+// Converts to `target`: gray from RGB uses Rec. 601 luma, gray expands by
+// repeating, missing alpha is opaque, and dropping alpha keeps the stored color (no
+// compositing).
+fn Image.convert(target: ColorMode) Image:
+	if target == self.mode: return Image(
+		self.width,
+		self.height,
+		self.mode,
+		self.pixels.clone(),
+	)
+
+	count := self.width * self.height
+	m := color_channels(target)
+	var out = List[UInt8](reserve: count * m)
+
+	for i in 0..count:
+		c := self.pixel(i % self.width, i / self.width).get(Rgba(0, 0, 0, 255))
+		luma := (c.red * 299 + c.green * 587 + c.blue * 114) / 1000
+
+		match target:
+			Gray:
+				out.append(byte(luma))
+			GrayAlpha:
+				out.append(byte(luma))
+				out.append(byte(c.alpha))
+			Rgb:
+				out.append(byte(c.red))
+				out.append(byte(c.green))
+				out.append(byte(c.blue))
+			Rgba:
+				out.append(byte(c.red))
+				out.append(byte(c.green))
+				out.append(byte(c.blue))
+				out.append(byte(c.alpha))
+
+	return Image(self.width, self.height, target, out)
+
+// Scales to `width` by `height`; `ERANGE` for a non-positive size, `EOVERFLOW` past
+// `max_pixels`.
+fn Image.resize(
+	width: Int,
+	height: Int,
+	method: Resampling = Resampling.Bilinear,
+	max_pixels: Int? = none,
+) Image!:
+	count := pixel_count(width, height, max_pixels)?
+	n := color_channels(self.mode)
+	var out = List[UInt8](reserve: count * n)
+
+	for y in 0..height:
+		for x in 0..width:
+			match method:
+				Nearest:
+					sx := x * self.width / width
+					sy := y * self.height / height
+					at := (sy * self.width + sx) * n
+					for c in 0..n:
+						out.append(self.pixels[at + c])
+				Bilinear:
+					// Sample centers, in 1/256ths, clamped to the source.
+					fx := max_of(0, ((2 * x + 1) * self.width * 128) / width - 128)
+					fy := max_of(0, ((2 * y + 1) * self.height * 128) / height - 128)
+					x0 := min_of(fx / 256, self.width - 1)
+					y0 := min_of(fy / 256, self.height - 1)
+					x1 := min_of(x0 + 1, self.width - 1)
+					y1 := min_of(y0 + 1, self.height - 1)
+					wx := if x0 == x1: 0 else: fx % 256
+					wy := if y0 == y1: 0 else: fy % 256
+
+					for c in 0..n:
+						a := self.pixels[(y0 * self.width + x0) * n + c].to_int()
+						b := self.pixels[(y0 * self.width + x1) * n + c].to_int()
+						d := self.pixels[(y1 * self.width + x0) * n + c].to_int()
+						e := self.pixels[(y1 * self.width + x1) * n + c].to_int()
+						top := a * (256 - wx) + b * wx
+						bottom := d * (256 - wx) + e * wx
+						out.append(
+							byte(
+								(
+									top * (256 - wy)
+									+ bottom * wy
+									+ 32768
+								) / 65536
 							)
+						)
 
-		return ok(Image(width, height, self.mode, out))
+	return ok(Image(width, height, self.mode, out))
 
 // One RGBA sample, each channel 0 to 255.
 export type Rgba:
@@ -287,7 +286,8 @@ export type JpegOptions:
 	quality: Int = 85
 	// Chroma resolution for color images; gray images ignore it.
 	chroma: Chroma = Chroma.Quarter
-	// MCUs between restart markers, or 0 for none. Markers let readers recover from damage.
+	// MCUs between restart markers, or 0 for none. Markers let readers recover from
+	// damage.
 	restart_interval: Int = 0
 
 // A rectangle in pixels: top-left corner and size.
@@ -306,7 +306,8 @@ export enum Resampling:
 	Nearest  // Fastest; keeps hard edges.
 	Bilinear  // Weighted average of the four nearest pixels.
 
-// The largest pixel count any decoder or constructor accepts; keeps index arithmetic far from overflow.
+// The largest pixel count any decoder or constructor accepts; keeps index arithmetic
+// far from overflow.
 HARD_MAX_PIXELS := 1073741824
 
 fn bad(message: String) Error:
@@ -332,7 +333,8 @@ export fn color_channels(mode: ColorMode) Int:
 		Rgb: return 3
 		Rgba: return 4
 
-// Checks dimensions against `max_pixels` and the hard ceiling, returning the pixel count.
+// Checks dimensions against `max_pixels` and the hard ceiling, returning the pixel
+// count.
 fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
 	if width < 1 or height < 1: return error(bad("dimensions must be positive"))
 	if width > HARD_MAX_PIXELS / height: return error(
@@ -349,12 +351,13 @@ fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
 fn zeroed(count: Int) List[UInt8]:
 	return [0.to_uint8().get(0)].repeated(count)
 
-// Creates an opaque black image (alpha modes are fully opaque); `EINVAL` for a non-positive size, `EOVERFLOW` past `max_pixels`.
+// Creates an opaque black image (alpha modes are fully opaque); `EINVAL` for a
+// non-positive size, `EOVERFLOW` past `max_pixels`.
 export fn new_image(
 	width: Int,
 	height: Int,
 	mode: ColorMode,
-	max_pixels: Int? = none
+	max_pixels: Int? = none,
 ) Image!:
 	if width < 1 or height < 1: return error(
 		Error("image: dimensions must be positive", kind: "EINVAL")
@@ -388,7 +391,8 @@ export fn detect_image_format(data: Bytes) ImageFormat?:
 
 	return none
 
-// Decodes any supported format. `max_pixels` rejects larger images with `EOVERFLOW` before any allocation.
+// Decodes any supported format. `max_pixels` rejects larger images with `EOVERFLOW`
+// before any allocation.
 export fn decode_image(data: Bytes, max_pixels: Int? = none) Image!:
 	format := detect_image_format(data)
 
@@ -414,7 +418,8 @@ export fn encode_image(image: Image, format: ImageFormat) Bytes!:
 fn is_space(b: Int) Bool:
 	return b == 32 or b == 9 or b == 10 or b == 13 or b == 11 or b == 12
 
-// Reads one header integer from `at`, skipping whitespace and # comments; returns (value, next offset).
+// Reads one header integer from `at`, skipping whitespace and # comments; returns
+// (value, next offset).
 fn ppm_number(data: Bytes, start: Int) List[Int]!:
 	var at = start
 
@@ -491,7 +496,10 @@ fn decode_ppm(data: Bytes, max_pixels: Int?) Image!:
 
 	return ok(
 		Image(
-			width, height, if n == 3: ColorMode.Rgb else: ColorMode.Gray, pixels
+			width,
+			height,
+			if n == 3: ColorMode.Rgb else: ColorMode.Gray,
+			pixels,
 		)
 	)
 
@@ -500,7 +508,7 @@ fn encode_ppm(image: Image) Bytes!:
 		return error(
 			Error(
 				"image: PNM cannot store alpha; convert to Rgb or Gray first",
-				kind: "EINVAL"
+				kind: "EINVAL",
 			)
 		)
 
@@ -567,7 +575,8 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 	top_down := height < 0
 	if top_down: height = 0 - height
 
-	// BI_BITFIELDS (3) carries explicit channel masks and applies to 32-bit pixels only.
+	// BI_BITFIELDS (3) carries explicit channel masks and applies to 32-bit pixels
+	// only.
 	if compression != 0 and (compression != 3 or bits != 32):
 		return error(unsupported("BMP compression {compression}"))
 	if bits != 1 and bits != 4 and bits != 8 and bits != 24 and bits != 32:
@@ -587,7 +596,8 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 			bad("BMP palette too large")
 		)
 
-	// A 40-byte header stores its bit-field masks right after it; later headers include them.
+	// A 40-byte header stores its bit-field masks right after it; later headers include
+	// them.
 	bitfields := compression == 3
 	palette_at := 14 + header + (if bitfields and header == 40: 12 else: 0)
 	if bitfields and header < 40: return error(
@@ -604,11 +614,14 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 		bad("truncated BMP pixel data")
 	)
 
-	// Masks in red, green, blue, alpha order; legacy 32-bit pixels are BGRA without a mask.
+	// Masks in red, green, blue, alpha order; legacy 32-bit pixels are BGRA without a
+	// mask.
 	var masks = [0, 0, 0, 0]
 	if bitfields: masks = [
-		le32(data, 54), le32(data, 58), le32(data, 62),
-		if header >= 56: le32(data, 66) else: 0
+		le32(data, 54),
+		le32(data, 58),
+		le32(data, 62),
+		if header >= 56: le32(data, 66) else: 0,
 	]
 
 	var shifts = [0, 0, 0, 0]
@@ -673,9 +686,10 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 				shift := 8 - bits - bit % 8
 				index := bit_and(
 					shift_right_unsigned(
-						data.get(base + bit / 8).to_int(), shift
+						data.get(base + bit / 8).to_int(),
+						shift,
 					),
-					shift_left(1, bits) - 1
+					shift_left(1, bits) - 1,
 				)
 				if index >= palette_size: return error(
 					bad("BMP palette index out of range")
@@ -778,12 +792,18 @@ fn be32(data: Bytes, at: Int) Int:
 		+ data.get(at + 3).to_int()
 	)
 
-// The seven Adam7 passes as [x start, y start, x step, y step]; non-interlaced is one pass.
+// The seven Adam7 passes as [x start, y start, x step, y step]; non-interlaced is one
+// pass.
 fn png_passes(interlaced: Bool) List[List[Int]]:
 	if not interlaced: return [[0, 0, 1, 1]]
 	return [
-		[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4], [0, 2, 2, 4],
-		[1, 0, 2, 2], [0, 1, 1, 2]
+		[0, 0, 8, 8],
+		[4, 0, 8, 8],
+		[0, 4, 4, 8],
+		[2, 0, 4, 4],
+		[0, 2, 2, 4],
+		[1, 0, 2, 2],
+		[0, 1, 1, 2],
 	]
 
 fn png_channels(color: Int) Int:
@@ -878,7 +898,8 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
 			if width < 1 or height < 1 or width > 2147483647 or height > 2147483647:
 				return error(bad("PNG dimensions out of range"))
 
-			// Reject oversized images from the header alone, before reading any further.
+			// Reject oversized images from the header alone, before reading any
+			// further.
 			_ := pixel_count(width, height, max_pixels)?
 			have_header = true
 		else if kind == CHUNK_PLTE:
@@ -1013,9 +1034,10 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
 						bit := px * depth
 						v = bit_and(
 							shift_right_unsigned(
-								cur[bit / 8], 8 - depth - bit % 8
+								cur[bit / 8],
+								8 - depth - bit % 8,
 							),
-							top
+							top,
 						)
 
 					if color == 3:
@@ -1086,7 +1108,8 @@ fn png_chunk(var out: BytesBuilder, kind: String, body: Bytes) Unit:
 	out.append_bytes(body)
 	put_be32(var out, crc32(tag.concat(body)).to_int())
 
-// Filters one row with the type whose residuals have the smallest absolute sum (the usual heuristic).
+// Filters one row with the type whose residuals have the smallest absolute sum (the
+// usual heuristic).
 fn filter_row(row: List[Int], prev: List[Int], step: Int) List[Int]:
 	var best = List[Int]()
 	var best_cost = -1
@@ -1168,13 +1191,73 @@ zigzag := [
 	34, 27, 20, 13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23,
 	30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63
 ]
-// Fixed-point (x4096) 8-point transform matrix: row x, column u is c(u)/2 * cos((2x+1)u*pi/16).
+// Fixed-point (x4096) 8-point transform matrix: row x, column u is c(u)/2 *
+// cos((2x+1)u*pi/16).
 dct_matrix := [
-	1448, 2008, 1892, 1702, 1448, 1138, 784, 400, 1448, 1702, 784, -400, -1448, -2008,
-	-1892, -1138, 1448, 1138, -784, -2008, -1448, 400, 1892, 1702, 1448, 400, -1892,
-	-1138, 1448, 1702, -784, -2008, 1448, -400, -1892, 1138, 1448, -1702, -784, 2008,
-	1448, -1138, -784, 2008, -1448, -400, 1892, -1702, 1448, -1702, 784, 400, -1448,
-	2008, -1892, 1138, 1448, -2008, 1892, -1702, 1448, -1138, 784, -400
+	1448,
+	2008,
+	1892,
+	1702,
+	1448,
+	1138,
+	784,
+	400,
+	1448,
+	1702,
+	784,
+	-400,
+	-1448,
+	-2008,
+	-1892,
+	-1138,
+	1448,
+	1138,
+	-784,
+	-2008,
+	-1448,
+	400,
+	1892,
+	1702,
+	1448,
+	400,
+	-1892,
+	-1138,
+	1448,
+	1702,
+	-784,
+	-2008,
+	1448,
+	-400,
+	-1892,
+	1138,
+	1448,
+	-1702,
+	-784,
+	2008,
+	1448,
+	-1138,
+	-784,
+	2008,
+	-1448,
+	-400,
+	1892,
+	-1702,
+	1448,
+	-1702,
+	784,
+	400,
+	-1448,
+	2008,
+	-1892,
+	1138,
+	1448,
+	-2008,
+	1892,
+	-1702,
+	1448,
+	-1138,
+	784,
+	-400,
 ]
 
 // A canonical Huffman table in the decoding form of JPEG Annex F.
@@ -1205,57 +1288,57 @@ type JpegBits:
 	failed: Bool
 	eobrun: Int
 
-impl JpegBits:
-	var fn bit(data: Bytes) Int:
-		if self.count == 0:
-			if self.pos >= data.length():
+fn var JpegBits.bit(data: Bytes) Int:
+	if self.count == 0:
+		if self.pos >= data.length():
+			self.failed = true
+			return 0
+
+		var b = data.get(self.pos).to_int()
+
+		if b == 255:
+			next := if self.pos + 1 < data.length(): data.get(
+				self.pos + 1
+			).to_int() else: 217
+
+			if next != 0:
+				// A marker ends the entropy-coded segment; reading into it is
+				// corruption.
 				self.failed = true
 				return 0
 
-			var b = data.get(self.pos).to_int()
+			self.pos += 2
+		else:
+			self.pos += 1
 
-			if b == 255:
-				next := if self.pos + 1 < data.length(): data.get(
-					self.pos + 1
-				).to_int() else: 217
+		self.acc = b
+		self.count = 8
 
-				if next != 0:
-					// A marker ends the entropy-coded segment; reading into it is corruption.
-					self.failed = true
-					return 0
+	self.count -= 1
+	return bit_and(shift_right_unsigned(self.acc, self.count), 1)
 
-				self.pos += 2
-			else:
-				self.pos += 1
+fn var JpegBits.receive(data: Bytes, n: Int) Int:
+	var v = 0
+	for i in 0..n:
+		v = v * 2 + self.bit(data)
+	return v
 
-			self.acc = b
-			self.count = 8
+// Decodes one symbol, or -1 after setting `failed`.
+fn var JpegBits.symbol(data: Bytes, table: JpegHuffman) Int:
+	var code = 0
 
-		self.count -= 1
-		return bit_and(shift_right_unsigned(self.acc, self.count), 1)
+	for length in 1..17:
+		code = code * 2 + self.bit(data)
+		if self.failed: return -1
+		if (
+			table.maxcode[length] >= 0
+			and code <= table.maxcode[length]
+			and code >= table.mincode[length]
+		):
+			return table.values[table.valptr[length] + code - table.mincode[length]]
 
-	var fn receive(data: Bytes, n: Int) Int:
-		var v = 0
-		for i in 0..n:
-			v = v * 2 + self.bit(data)
-		return v
-
-	// Decodes one symbol, or -1 after setting `failed`.
-	var fn symbol(data: Bytes, table: JpegHuffman) Int:
-		var code = 0
-
-		for length in 1..17:
-			code = code * 2 + self.bit(data)
-			if self.failed: return -1
-			if (
-				table.maxcode[length] >= 0
-				and code <= table.maxcode[length]
-				and code >= table.mincode[length]
-			):
-				return table.values[table.valptr[length] + code - table.mincode[length]]
-
-		self.failed = true
-		return -1
+	self.failed = true
+	return -1
 
 fn jpeg_extend(value: Int, size: Int) Int:
 	if size == 0: return 0
@@ -1306,7 +1389,7 @@ fn jpeg_block(
 	base: Int,
 	dc: JpegHuffman,
 	ac: JpegHuffman,
-	scan: JpegScan
+	scan: JpegScan,
 ) Unit:
 	if not scan.progressive:
 		t := bits.symbol(data, dc)
@@ -1339,7 +1422,8 @@ fn jpeg_block(
 					return
 
 				comp.coef[base + zigzag[zi]] = jpeg_extend(
-					bits.receive(data, size), size
+					bits.receive(data, size),
+					size,
 				)
 				zi += 1
 
@@ -1357,7 +1441,8 @@ fn jpeg_block(
 			comp.coef[base] = comp.pred * shift_left(1, scan.al)
 		else:
 			if bits.bit(data) == 1: comp.coef[base] = bit_or(
-				comp.coef[base], shift_left(1, scan.al)
+				comp.coef[base],
+				shift_left(1, scan.al),
 			)
 
 		return
@@ -1646,8 +1731,15 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 
 					comps.append(
 						JpegComponent(
-							data.get(q).to_int(), h, v, tq, 0, 0, List[Int](),
-							List[Int](), 0
+							data.get(q).to_int(),
+							h,
+							v,
+							tq,
+							0,
+							0,
+							List[Int](),
+							List[Int](),
+							0,
 						)
 					)
 					hmax = max_of(hmax, h)
@@ -1751,7 +1843,8 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 
 				scan := JpegScan(members.clone(), ss, se, ah, al, progressive)
 
-				// Blocks per component this scan codes, and the allocation budget check.
+				// Blocks per component this scan codes, and the allocation budget
+				// check.
 				var coded = 0
 
 				if ns == 1:
@@ -1832,8 +1925,13 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 						if ns == 1:
 							base := (uy * comps[c].blocks_wide + ux) * 64
 							jpeg_block(
-								data, var bits, var comps[c], base,
-								dc_tables[dc_ids[m]], ac_tables[ac_ids[m]], scan
+								data,
+								var bits,
+								var comps[c],
+								base,
+								dc_tables[dc_ids[m]],
+								ac_tables[ac_ids[m]],
+								scan,
 							)
 						else:
 							for v in 0..comps[c].v:
@@ -1870,7 +1968,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 												m
 											]
 										],
-										scan
+										scan,
 									)
 
 					if bits.failed: return error(bad("corrupt or truncated JPEG data"))
@@ -1896,7 +1994,8 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 	for c in comps:
 		spans.append(
 			[
-				(width * c.h + hmax - 1) / hmax, (height * c.v + vmax - 1) / vmax
+				(width * c.h + hmax - 1) / hmax,
+				(height * c.v + vmax - 1) / vmax,
 			]
 		)
 
@@ -1930,7 +2029,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 					vmax / comps[c].v,
 					hmax % comps[c].h == 0 and vmax % comps[
 						c
-					].v == 0
+					].v == 0,
 				)
 
 			out := (y * width + x) * m
@@ -1947,7 +2046,8 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 				pixels[out + 1] = byte(rgb[1])
 				pixels[out + 2] = byte(rgb[2])
 			else:
-				// Four components: Adobe CMYK/YCCK store inverted ink, so a stored value acts as its own transmittance.
+				// Four components: Adobe CMYK/YCCK store inverted ink, so a stored
+				// value acts as its own transmittance.
 				var t0 = s[0]
 				var t1 = s[1]
 				var t2 = s[2]
@@ -1971,7 +2071,8 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 
 	return ok(Image(width, height, mode, pixels))
 
-// First offset at or after `from` that starts a marker other than a stuffed zero, fill or restart.
+// First offset at or after `from` that starts a marker other than a stuffed zero, fill
+// or restart.
 fn scan_end(data: Bytes, from: Int) Int:
 	var at = from
 
@@ -1988,8 +2089,9 @@ fn scan_end(data: Bytes, from: Int) Int:
 
 	return data.length()
 
-// Reads component sample (x, y) of the full-resolution grid. A 2:1 ratio uses libjpeg's triangle filter ("fancy"
-// upsampling) so output matches libjpeg; other ratios replicate the nearest sample.
+// Reads component sample (x, y) of the full-resolution grid. A 2:1 ratio uses libjpeg's
+// triangle filter ("fancy" upsampling) so output matches libjpeg; other ratios
+// replicate the nearest sample.
 fn jpeg_sample(
 	plane: List[UInt8],
 	stride: Int,
@@ -1998,7 +2100,7 @@ fn jpeg_sample(
 	x: Int,
 	hr: Int,
 	vr: Int,
-	exact: Bool
+	exact: Bool,
 ) Int:
 	if not exact or (hr == 1 and vr == 1) or hr > 2 or vr > 2:
 		return plane[(y / max_of(vr, 1)) * stride + x / max_of(hr, 1)].to_int()
@@ -2012,7 +2114,8 @@ fn jpeg_sample(
 		here := plane[py * stride + px].to_int()
 		near := plane[
 			py * stride + clamp_to(
-				if x % 2 == 0: px - 1 else: px + 1, last_x
+				if x % 2 == 0: px - 1 else: px + 1,
+				last_x,
 			)
 		].to_int()
 		return (3 * here + near + (if x % 2 == 0: 1 else: 2)) / 4
@@ -2041,7 +2144,7 @@ fn ycc_to_rgb(y: Int, cb: Int, cr: Int) List[Int]:
 	return [
 		y + shift_right(91881 * v + 32768, 16),
 		y - shift_right(22554 * u + 46802 * v + 32768, 16),
-		y + shift_right(116130 * u + 32768, 16)
+		y + shift_right(116130 * u + 32768, 16),
 	]
 
 jpeg_base_luma := [
@@ -2111,22 +2214,21 @@ type JpegWriter:
 	acc: Int
 	count: Int
 
-impl JpegWriter:
-	var fn put(code: Int, size: Int) Unit:
-		self.acc = bit_or(shift_left(self.acc, size), code)
-		self.count += size
+fn var JpegWriter.put(code: Int, size: Int) Unit:
+	self.acc = bit_or(shift_left(self.acc, size), code)
+	self.count += size
 
-		while self.count >= 8:
-			b := bit_and(shift_right_unsigned(self.acc, self.count - 8), 255)
-			self.out.append(byte(b))
-			if b == 255: self.out.append(byte(0))
-			self.count -= 8
+	while self.count >= 8:
+		b := bit_and(shift_right_unsigned(self.acc, self.count - 8), 255)
+		self.out.append(byte(b))
+		if b == 255: self.out.append(byte(0))
+		self.count -= 8
 
-		self.acc = bit_and(self.acc, shift_left(1, self.count) - 1)
+	self.acc = bit_and(self.acc, shift_left(1, self.count) - 1)
 
-	// Pads the partial byte with 1-bits, as the format requires before a marker.
-	var fn align() Unit:
-		if self.count > 0: self.put(shift_left(1, 8 - self.count) - 1, 8 - self.count)
+// Pads the partial byte with 1-bits, as the format requires before a marker.
+fn var JpegWriter.align() Unit:
+	if self.count > 0: self.put(shift_left(1, 8 - self.count) - 1, 8 - self.count)
 
 fn bit_length(value: Int) Int:
 	var v = if value < 0: 0 - value else: value
@@ -2138,13 +2240,14 @@ fn bit_length(value: Int) Int:
 
 	return n
 
-// Forward DCT and quantization of the 8x8 block at (x0, y0); returns 64 levels in zigzag order.
+// Forward DCT and quantization of the 8x8 block at (x0, y0); returns 64 levels in
+// zigzag order.
 fn jpeg_forward(
 	plane: List[Int],
 	stride: Int,
 	x0: Int,
 	y0: Int,
-	quant: List[Int]
+	quant: List[Int],
 ) List[Int]:
 	var tmp = zeroed_ints(64)
 
@@ -2176,7 +2279,11 @@ fn jpeg_forward(
 	return levels
 
 fn jpeg_emit(
-	var w: JpegWriter, levels: List[Int], previous: Int, dc: JpegCodes, ac: JpegCodes
+	var w: JpegWriter,
+	levels: List[Int],
+	previous: Int,
+	dc: JpegCodes,
+	ac: JpegCodes,
 ) Unit:
 	diff := levels[0] - previous
 	size := bit_length(diff)
@@ -2229,14 +2336,15 @@ fn jpeg_scaled(base: List[Int], quality: Int) List[Int]:
 		table.append(clamp_to(max_of((base[zi] * scale + 50) / 100, 1), 255))
 	return table
 
-// Encodes baseline JPEG: gray stays gray, Rgb uses YCbCr with the chosen chroma resolution. Alpha images fail with
+// Encodes baseline JPEG: gray stays gray, Rgb uses YCbCr with the chosen chroma
+// resolution. Alpha images fail with
 // `EINVAL`; convert or composite first.
 export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!:
 	if image.mode == ColorMode.Rgba or image.mode == ColorMode.GrayAlpha:
 		return error(
 			Error(
 				"image: JPEG cannot store alpha; convert to Rgb or Gray first",
-				kind: "EINVAL"
+				kind: "EINVAL",
 			)
 		)
 	if options.quality < 1 or options.quality > 100:
@@ -2244,7 +2352,8 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
 	if options.restart_interval < 0 or options.restart_interval > 65535:
 		return error(
 			Error(
-				"image: JPEG restart interval must be 0 to 65535", kind: "EINVAL"
+				"image: JPEG restart interval must be 0 to 65535",
+				kind: "EINVAL",
 			)
 		)
 	if image.width > 65535 or image.height > 65535:
@@ -2275,13 +2384,16 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
 				g := image.pixels[at + 1].to_int()
 				b := image.pixels[at + 2].to_int()
 				luma[y * pw + x] = shift_right(
-					19595 * r + 38470 * g + 7471 * b + 32768, 16
+					19595 * r + 38470 * g + 7471 * b + 32768,
+					16,
 				)
 				cb[y * pw + x] = shift_right(
-					0 - 11059 * r - 21709 * g + 32768 * b + 8421376, 16
+					0 - 11059 * r - 21709 * g + 32768 * b + 8421376,
+					16,
 				)
 				cr[y * pw + x] = shift_right(
-					32768 * r - 27439 * g - 5329 * b + 8421376, 16
+					32768 * r - 27439 * g - 5329 * b + 8421376,
+					16,
 				)
 			else:
 				luma[y * pw + x] = image.pixels[at].to_int()
@@ -2416,8 +2528,11 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
 			for by in 0..blocks_y:
 				for bx in 0..blocks_y:
 					levels := jpeg_forward(
-						luma, pw, mx * unit_size + bx * 8, my * unit_size + by * 8,
-						q_luma
+						luma,
+						pw,
+						mx * unit_size + bx * 8,
+						my * unit_size + by * 8,
+						q_luma,
 					)
 					jpeg_emit(var w, levels, p_y, dc_luma, ac_luma)
 					p_y = levels[0]

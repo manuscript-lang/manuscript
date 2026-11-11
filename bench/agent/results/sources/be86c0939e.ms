@@ -235,8 +235,11 @@ fn diff_lines(a: List[String], b: List[String]) List[String]:
 	return out
 
 fn emit_chunk(
-	var out: List[String], base: List[String], ours: List[String], theirs: List[String],
-	branch: String
+	var out: List[String],
+	base: List[String],
+	ours: List[String],
+	theirs: List[String],
+	branch: String,
 ) Bool:
 	if ours == base:
 		for l in theirs:
@@ -266,7 +269,7 @@ fn three_way(
 	base: List[String],
 	ours: List[String],
 	theirs: List[String],
-	branch: String
+	branch: String,
 ) Merged:
 	mb := match_pairs(base, ours)
 	mt := match_pairs(base, theirs)
@@ -281,8 +284,11 @@ fn three_way(
 			ob := mb[k]
 			tb := mt[k]
 			ok := emit_chunk(
-				var out, sub_lines(base, pb, k), sub_lines(ours, po, ob),
-				sub_lines(theirs, pt, tb), branch
+				var out,
+				sub_lines(base, pb, k),
+				sub_lines(ours, po, ob),
+				sub_lines(theirs, pt, tb),
+				branch,
 			)
 			if not ok:
 				clean = false
@@ -292,8 +298,11 @@ fn three_way(
 			pt = tb + 1
 
 	ok := emit_chunk(
-		var out, sub_lines(base, pb, base.length()), sub_lines(ours, po, ours.length()),
-		sub_lines(theirs, pt, theirs.length()), branch
+		var out,
+		sub_lines(base, pb, base.length()),
+		sub_lines(ours, po, ours.length()),
+		sub_lines(theirs, pt, theirs.length()),
+		branch,
 	)
 	if not ok:
 		clean = false
@@ -390,7 +399,7 @@ impl Repo:
 	var fn store(
 		tree: Map[String, String],
 		parents: List[String],
-		message: String
+		message: String,
 	) String:
 		id := commit_id(tree_hash(tree), parents, message)
 
@@ -399,8 +408,11 @@ impl Repo:
 
 			number := self.order.length()
 			self.commits[id.clone()] = Commit(
-				id: id.clone(), tree: tree, parents: parents, message: message,
-				number: number
+				id: id.clone(),
+				tree: tree,
+				parents: parents,
+				message: message,
+				number: number,
 			)
 
 		return id
@@ -1073,10 +1085,18 @@ fn new_repo() Repo:
 	var branches = Map[String, String]()
 	branches["main"] = ""
 	return Repo(
-		wt: Map[String, String](), index: Map[String, String](),
-		conflicts: Set[String](), commits: Map[String, Commit](), order: List[String](),
-		branches: branches, tags: Map[String, String](), head_name: "main",
-		detached_id: "", merging: false, merge_other: "", merge_branch: ""
+		wt: Map[String, String](),
+		index: Map[String, String](),
+		conflicts: Set[String](),
+		commits: Map[String, Commit](),
+		order: List[String](),
+		branches: branches,
+		tags: Map[String, String](),
+		head_name: "main",
+		detached_id: "",
+		merging: false,
+		merge_other: "",
+		merge_branch: "",
 	)
 
 export fn main() Int:

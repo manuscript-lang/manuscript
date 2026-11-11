@@ -13,17 +13,14 @@ interface Bumper:
 interface Scaler:
 	fn scale(factor: Int, offset: Int?) Int
 
-impl Bumper for Counter:
-	fn bump(by: Int) Int: self.n + by
+fn Counter.bump(by: Int) Int: self.n + by
 
-impl Scaler for Counter:
-	fn scale(factor: Int, offset: Int?) Int: (self.n * factor + offset.get(0))
+fn Counter.scale(factor: Int, offset: Int?) Int: (self.n * factor + offset.get(0))
 
-impl Bumper for Shape:
-	fn bump(by: Int) Int:
-		match self:
-			Circle(r): return r + by
-			Square(side): return side * by
+fn Shape.bump(by: Int) Int:
+	match self:
+		Circle(r): return r + by
+		Square(side): return side * by
 
 fn through_view(b: Bumper, by: Int) Int:
 	return b.bump(by)
@@ -58,10 +55,9 @@ type Parser:
 interface Parse:
 	fn parse(n: Int) Int!Error
 
-impl Parse for Parser:
-	fn parse(n: Int) Int!Error:
-		if n < 0: return error(Error("negative"))
-		return ok(self.base + n)
+fn Parser.parse(n: Int) Int!Error:
+	if n < 0: return error(Error("negative"))
+	return ok(self.base + n)
 
 type Chain:
 	parser: Parser
@@ -69,9 +65,8 @@ type Chain:
 interface Step:
 	fn step(n: Int) Int!Error
 
-impl Step for Chain:
-	fn step(n: Int) Int!Error:
-		return ok((self.parser.parse(n)?) + 1)
+fn Chain.step(n: Int) Int!Error:
+	return ok((self.parser.parse(n)?) + 1)
 
 fn code(r: Int!Error) Int:
 	return r.get(-1)

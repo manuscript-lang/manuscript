@@ -16,11 +16,10 @@ type SearchEnvironment:
 	extensions: String?
 	directory: String
 
-impl Closeable for SearchEnvironment:
-	var fn close() Unit!:
-		set_environment("PATH", self.path.clone())?
-		set_environment("PATHEXT", self.extensions.clone())?
-		change_directory(self.directory)?
+fn var SearchEnvironment.close() Unit!:
+	set_environment("PATH", self.path.clone())?
+	set_environment("PATHEXT", self.extensions.clone())?
+	change_directory(self.directory)?
 
 fn saved_variable(values: Map[String, String], name: String) String?:
 	windows := os() == Os.Windows
@@ -35,8 +34,9 @@ fn save_search_environment() SearchEnvironment!:
 	values := environment()?
 	return ok(
 		SearchEnvironment(
-			saved_variable(values, "PATH"), saved_variable(values, "PATHEXT"),
-			working_directory()?
+			saved_variable(values, "PATH"),
+			saved_variable(values, "PATHEXT"),
+			working_directory()?,
 		)
 	)
 
@@ -63,7 +63,8 @@ test "which preserves PATH order and rejects directories and nonexecutable files
 	make_program(expected)?
 	make_program(join([second.clone(), "probe{suffix}"]))?
 	set_environment(
-		"PATH", "{separator}{blocked}{separator}{first}{separator}{second}{separator}"
+		"PATH",
+		"{separator}{blocked}{separator}{first}{separator}{second}{separator}",
 	)?
 	set_environment("PATHEXT", ".EXE;.CMD")?
 	expect_equal(which("probe"), expected)?

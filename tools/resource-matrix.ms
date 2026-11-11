@@ -1,12 +1,14 @@
-// Resource ownership matrix (`make resource-matrix`): generates one program for each combination of a
-// standard operation that takes, returns or discards a one-owner resource, a call form (direct call, or a
-// method value called later) and an argument form (a temporary, or a named variable), then checks each one.
-// A combination the checker rejects is fine: the rule is that anything `ms check` accepts must lower, run and
-// close every resource it made exactly once. The oracle needs no expected output per case: `mk` prints
+// Resource ownership matrix (`make resource-matrix`): generates one program for each
+// combination of a standard operation that takes, returns or discards a one-owner
+// resource, a call form (direct call, or a method value called later) and an argument
+// form (a temporary, or a named variable), then checks each one. A combination the
+// checker rejects is fine: the rule is that anything `ms check` accepts must lower, run
+// and close every resource it made exactly once. The oracle needs no expected output
+// per case: `mk` prints
 // `made-N`, `close` prints `closed-N`, and the two must match at exit, in Debug and Release.
-// A new standard operation that stores, returns or discards a `T` belongs in OPERATIONS below.
-// MS names the ms that runs the programs (default target/release/ms).
-// Usage: ms run tools/resource-matrix.ms [-- name-filter]
+// A new standard operation that stores, returns or discards a `T` belongs in OPERATIONS
+// below. MS names the ms that runs the programs (default target/release/ms). Usage: ms
+// run tools/resource-matrix.ms [-- name-filter]
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
@@ -23,9 +25,8 @@ import Closeable, print from "@std/core.ms"
 type Marker:
     id: Int
 
-impl Closeable for Marker:
-    var fn close() Unit!:
-        print("closed-\{self.id\}")
+fn var Marker.close() Unit!:
+    print("closed-\{self.id\}")
 
 fn saw(m: Marker) Unit:
     print("saw-\{m.id\}")
@@ -44,8 +45,8 @@ fn main() Unit:
     run()
 """
 
-// One standard operation: the receiver it runs on, its method, its arguments (`@V@` is the resource
-// argument) and what to do with a result.
+// One standard operation: the receiver it runs on, its method, its arguments (`@V@` is
+// the resource argument) and what to do with a result.
 type Operation:
 	name: String
 	setup: String
@@ -62,7 +63,7 @@ fn op(
 	method: String,
 	arguments: String,
 	binds: String,
-	uses: String
+	uses: String,
 ) Operation:
 	return Operation(name, setup, receiver, method, arguments, binds, uses)
 
@@ -85,62 +86,130 @@ fn operations() List[Operation]:
 		op("list_insert", list_setup(), "items", "insert", "0, @V@", "", ""),
 		op("list_set", list_setup(), "items", "set", "0, @V@", "", ""),
 		op(
-			"list_replace", list_setup(), "items", "replace", "0, @V@", "r := ",
-			"saw(r)"
+			"list_replace",
+			list_setup(),
+			"items",
+			"replace",
+			"0, @V@",
+			"r := ",
+			"saw(r)",
 		),
 		op("list_pop", list_setup(), "items", "pop", "", "r := ", "saw_opt(r)"),
 		op("list_remove", list_setup(), "items", "remove", "0", "", ""),
 		op(
-			"list_get", list_setup(), "items", "get", "0, @V@", "r := ", "saw(r)"
+			"list_get",
+			list_setup(),
+			"items",
+			"get",
+			"0, @V@",
+			"r := ",
+			"saw(r)",
 		),
 		op(
-			"result_map", result_setup(true), "held", "map", "fn m: m.id", "r := ",
-			"print(\"\{r.is_ok()\}\")"
+			"result_map",
+			result_setup(true),
+			"held",
+			"map",
+			"fn m: m.id",
+			"r := ",
+			"print(\"\{r.is_ok()\}\")",
 		),
 		op("map_add", map_setup(), "items", "add", "1, @V@", "", ""),
 		op(
-			"map_get", map_setup(), "items", "get", "1", "r := ",
-			"print(\"\{r.is_some()\}\")"
+			"map_get",
+			map_setup(),
+			"items",
+			"get",
+			"1",
+			"r := ",
+			"print(\"\{r.is_some()\}\")",
 		),
 		op(
-			"optional_or_else", optional_setup(false), "held", "or_else", "fn: @V@",
-			"r := ", "saw_opt(r)"
+			"optional_or_else",
+			optional_setup(false),
+			"held",
+			"or_else",
+			"fn: @V@",
+			"r := ",
+			"saw_opt(r)",
 		),
 		op(
-			"result_err", result_setup(false), "held", "err", "", "r := ",
-			"print(r.message)"
+			"result_err",
+			result_setup(false),
+			"held",
+			"err",
+			"",
+			"r := ",
+			"print(r.message)",
 		),
 		op(
-			"optional_get_present", optional_setup(true), "held", "get", "@V@", "r := ",
-			"saw(r)"
+			"optional_get_present",
+			optional_setup(true),
+			"held",
+			"get",
+			"@V@",
+			"r := ",
+			"saw(r)",
 		),
 		op(
-			"optional_get_absent", optional_setup(false), "held", "get", "@V@", "r := ",
-			"saw(r)"
+			"optional_get_absent",
+			optional_setup(false),
+			"held",
+			"get",
+			"@V@",
+			"r := ",
+			"saw(r)",
 		),
 		op(
-			"result_get_ok", result_setup(true), "held", "get", "@V@", "r := ", "saw(r)"
+			"result_get_ok",
+			result_setup(true),
+			"held",
+			"get",
+			"@V@",
+			"r := ",
+			"saw(r)",
 		),
 		op(
-			"result_get_error", result_setup(false), "held", "get", "@V@", "r := ",
-			"saw(r)"
+			"result_get_error",
+			result_setup(false),
+			"held",
+			"get",
+			"@V@",
+			"r := ",
+			"saw(r)",
 		),
 		op(
-			"result_to_optional", result_setup(true), "held", "to_optional", "",
-			"r := ", "saw_opt(r)"
+			"result_to_optional",
+			result_setup(true),
+			"held",
+			"to_optional",
+			"",
+			"r := ",
+			"saw_opt(r)",
 		),
 		op(
-			"result_error_ok", result_setup(true), "held", "error", "", "r := ",
-			"print(\"\{r.is_some()\}\")"
+			"result_error_ok",
+			result_setup(true),
+			"held",
+			"error",
+			"",
+			"r := ",
+			"print(\"\{r.is_some()\}\")",
 		),
 		op(
-			"result_error_failed", result_setup(false), "held", "error", "", "r := ",
-			"print(\"\{r.is_some()\}\")"
-		)
+			"result_error_failed",
+			result_setup(false),
+			"held",
+			"error",
+			"",
+			"r := ",
+			"print(\"\{r.is_some()\}\")",
+		),
 	]
 
-// Standard operations that mention a type parameter and need no matrix row, each with the reason. An
-// operation that returns, stores or discards a `T` does not belong here: add a row to `operations()`.
+// Standard operations that mention a type parameter and need no matrix row, each with
+// the reason. An operation that returns, stores or discards a `T` does not belong here:
+// add a row to `operations()`.
 fn exempt() List[String]:
 	return [
 		"List.max: returns a copy of a Comparable and Clonable element, so a resource cannot reach it",
@@ -176,7 +245,8 @@ fn words(text: String) List[String]:
 		if word != "": found.append(word.clone())
 	return found
 
-// Whether the declaration `signature` changes its receiver, or takes or returns one of `names` outside a callback.
+// Whether the declaration `signature` changes its receiver, or takes or returns one of
+// `names` outside a callback.
 fn mentions_parameter(signature: String, names: List[String]) Bool:
 	if signature.contains("var fn"): return true
 
@@ -201,7 +271,8 @@ fn field(entry: JsonValue, key: String) String:
 	if value := entry.get(key): return value.as_string().get("")
 	return ""
 
-// Every `Type.operation` of the standard type whose declaration mentions a type parameter.
+// Every `Type.operation` of the standard type whose declaration mentions a type
+// parameter.
 fn declared_operations(ms: String, name: String) List[String]!:
 	ran := run(ms, ["search_symbol", "prelude.{name}", "--json", "--limit", "300"]).wait()?
 	page := parse(ran.stdout.decode_utf8().get(""))?
@@ -218,7 +289,8 @@ fn declared_operations(ms: String, name: String) List[String]!:
 
 	return ok(found)
 
-// How many standard operations that mention a type parameter have neither a row nor a reason.
+// How many standard operations that mention a type parameter have neither a row nor a
+// reason.
 fn uncovered(ms: String, ops: List[Operation]) Int:
 	var known = List[String]()
 	kinds := ["list", "map", "set", "optional", "result"]
@@ -258,7 +330,8 @@ fn uncovered(ms: String, ops: List[Operation]) Int:
 
 	return missing
 
-// The program for `o`, called as `call_form` (`direct` or `bound`), with its resource argument made as `arg_form`.
+// The program for `o`, called as `call_form` (`direct` or `bound`), with its resource
+// argument made as `arg_form`.
 fn program(o: Operation, call_form: String, arg_form: String) String:
 	var lines = [o.setup.clone()]
 	var argument = ""
@@ -325,7 +398,8 @@ fn main() Int:
 
 					why := verdict.get().stderr.decode_utf8().get("")
 
-					// Only a checker rule may reject a combination; a program that does not parse is this tool's bug.
+					// Only a checker rule may reject a combination; a program that does
+					// not parse is this tool's bug.
 					if why.contains(": parse:"):
 						failures += 1
 						(
@@ -346,8 +420,11 @@ fn main() Int:
 					ran := run(
 						ms.clone(),
 						[
-							"run", file.clone(), "--build-type", build.clone()
-						]
+							"run",
+							file.clone(),
+							"--build-type",
+							build.clone(),
+						],
 					).wait()
 
 					if ran.is_error():
@@ -383,7 +460,8 @@ fn main() Int:
 					for line in lines:
 						if line.starts_with("made-"): made.append(
 							line.slice(
-								5, line.length()
+								5,
+								line.length(),
 							).get("")
 						)
 						if line.starts_with("closed-"):

@@ -1,6 +1,7 @@
 import expect_equal from "@std/test/test.ms"
 
-// A loop over `rows[i]` or `rows.get(i)` walks the inner list in place while `rows` is unchanged.
+// A loop over `rows[i]` or `rows.get(i)` walks the inner list in place while `rows` is
+// unchanged.
 fn total_indexed(rows: List[List[Int]], slot: Int) Int:
 	var total = rows[slot].sum()
 	return total

@@ -6,10 +6,11 @@ import (
 	files from "@oracle",
 )
 
-// Replays data/path.tsv, the corpus recorded from the original path implementation (the Go oracle,
-// then the Rust natives): one case per line as `operation<TAB>windows<TAB>inputs...<TAB>=><TAB>expected`.
-// A text is `x` followed by the hex of its UTF-8 bytes; a list is `[x61,x62]`; path parts are five
-// texts separated by spaces.
+// Replays data/path.tsv, the corpus recorded from the original path implementation (the
+// Go oracle, then the Rust natives): one case per line as
+// `operation<TAB>windows<TAB>inputs...<TAB>=><TAB>expected`. A text is `x` followed by
+// the hex of its UTF-8 bytes; a list is `[x61,x62]`; path parts are five texts
+// separated by spaces.
 
 fn text(token: String) String:
 	digits := token.drop(1)
@@ -28,8 +29,11 @@ fn list_of(token: String) List[String]:
 fn parts_of(token: String) PathParts:
 	f := token.split(" ", none).map(fn item: text(item))
 	return PathParts(
-		root: f[0].clone(), directory: f[1].clone(), base: f[2].clone(),
-		extension: f[3].clone(), name: f[4].clone()
+		root: f[0].clone(),
+		directory: f[1].clone(),
+		base: f[2].clone(),
+		extension: f[3].clone(),
+		name: f[4].clone(),
 	)
 
 fn parts_text(parts: PathParts) String:
@@ -70,9 +74,12 @@ fn answer(rules: PathOperations, f: List[String]) String:
 	return "unknown case {op}"
 
 test "path operations match the recorded corpus":
-	data := files().read("path.tsv", none) | .get(
-		"".to_bytes()
-	) | .decode_utf8() | .get("")
+	data := (
+		files().read("path.tsv", none)
+		| .get("".to_bytes())
+		| .decode_utf8()
+		| .get("")
+	)
 	var checked = 0
 	var failures = List[String]()
 

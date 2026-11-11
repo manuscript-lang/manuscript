@@ -37,27 +37,6 @@ import (
 	stderr, stdout from "@std/io/io.ms",
 )
 
-fn cli_unknown_flag(name: String) Error:
-	return Error("cli: unknown flag {name}", kind: "EINVAL")
-
-fn cli_unknown_command(name: String, path: String) Error:
-	return Error("cli: unknown command {name} for {path}", kind: "EINVAL")
-
-fn cli_missing_value(name: String) Error:
-	return Error("cli: flag {name} needs a value", kind: "EINVAL")
-
-fn cli_invalid_value(name: String, value: String, expected: String) Error:
-	return Error("cli: flag {name}: {value} is not {expected}", kind: "EINVAL")
-
-fn cli_missing_required(name: String) Error:
-	return Error("cli: missing required {name}", kind: "EINVAL")
-
-fn cli_too_many_arguments(value: String) Error:
-	return Error("cli: unexpected argument {value}", kind: "EINVAL")
-
-fn cli_invalid_schema(reason: String) Error:
-	return Error("cli: invalid command schema: {reason}", kind: "EINVAL")
-
 // What a flag accepts. Each case fills the record field of the same language type.
 export enum FlagKind:
 	// `Bool` field. Present or absent; `--name`, `--name=false` and `--no-name` are accepted.
@@ -87,7 +66,8 @@ export type Flag:
 	required: Bool = false
 	// Also accepted by every subcommand below the command that declares it.
 	persistent: Bool = false
-	// When not empty, every value must be one of these texts; use with String and List flags.
+	// When not empty, every value must be one of these texts; use with String and List
+	// flags.
 	choices: List[String] = []
 
 // A positional argument, bound in declaration order.
@@ -112,45 +92,45 @@ export type Matches:
 	values: Map[String, List[String]] = Map[String, List[String]]()
 	// The command names walked from the root, root included.
 	path: List[String] = []
-	// The JSON literal for each supplied value by field name (dashes in names become underscores); decoded by `command`.
+	// The JSON literal for each supplied value by field name (dashes in names become
+	// underscores); decoded by `command`.
 	fields: Map[String, String] = Map[String, String]()
 
-impl Matches:
-	// Returns the text of a flag or argument.
-	fn string(name: String) String:
-		return self.values.get(name).get()[0].clone()
+// Returns the text of a flag or argument.
+fn Matches.string(name: String) String:
+	return self.values.get(name).get()[0].clone()
 
-	// Returns an Int flag or argument value.
-	fn int(name: String) Int:
-		return self.string(name).parse_int().get()
+// Returns an Int flag or argument value.
+fn Matches.int(name: String) Int:
+	return self.string(name).parse_int().get()
 
-	// Returns a Float flag or argument value.
-	fn float(name: String) Float:
-		return self.string(name).parse_float().get()
+// Returns a Float flag or argument value.
+fn Matches.float(name: String) Float:
+	return self.string(name).parse_float().get()
 
-	// Returns a Bool flag value; absent is false.
-	fn bool(name: String) Bool:
-		return self.string(name) == "true"
+// Returns a Bool flag value; absent is false.
+fn Matches.bool(name: String) Bool:
+	return self.string(name) == "true"
 
-	// Returns every value of a List flag or rest argument, in order; empty when absent.
-	fn list(name: String) List[String]:
-		return self.values.get_or(name, []).clone()
+// Returns every value of a List flag or rest argument, in order; empty when absent.
+fn Matches.list(name: String) List[String]:
+	return self.values.get_or(name, []).clone()
 
-	// Returns the text, or none for an optional argument or flag that was not supplied.
-	fn string_or_none(name: String) String?:
-		if items := self.values.get(name):
-			if not items.is_empty(): return items[0].clone()
-		return none
+// Returns the text, or none for an optional argument or flag that was not supplied.
+fn Matches.string_or_none(name: String) String?:
+	if items := self.values.get(name):
+		if not items.is_empty(): return items[0].clone()
+	return none
 
-	// Returns an Int value, or none when absent.
-	fn int_or_none(name: String) Int?:
-		if text := self.string_or_none(name): return text.parse_int()
-		return none
+// Returns an Int value, or none when absent.
+fn Matches.int_or_none(name: String) Int?:
+	if text := self.string_or_none(name): return text.parse_int()
+	return none
 
-	// Returns a Float value, or none when absent.
-	fn float_or_none(name: String) Float?:
-		if text := self.string_or_none(name): return text.parse_float()
-		return none
+// Returns a Float value, or none when absent.
+fn Matches.float_or_none(name: String) Float?:
+	if text := self.string_or_none(name): return text.parse_float()
+	return none
 
 /*
 A command or command group: its schema, subcommands and handler.
@@ -171,56 +151,59 @@ export type Command:
 	// Runs after a successful parse; the returned Int is the exit status.
 	exec: fn(Matches) Int! = fn m: ok(0)
 
-impl Command:
-	// Checks the tree, resolves the subcommand chain, and validates flags and arguments.
-	// Returns `Help` for `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
-	fn parse(argv: List[String]) Parsed!:
-		check_schema(self, [], [self.name.clone()])?
-		return walk(self, argv)
+// Checks the tree, resolves the subcommand chain, and validates flags and
+// arguments. Returns `Help` for `-h`, `--help`, a leading `help` word, or a group
+// invoked without a subcommand.
+fn Command.parse(argv: List[String]) Parsed!:
+	check_schema(self, [], [self.name.clone()])?
+	return walk(self, argv)
 
-	// Parses `argv`, writes help to stdout or the error plus a usage hint to stderr, and runs the handler.
-	// Returns the handler's status, 0 after help, 1 when the handler fails and 2 for a usage error.
-	fn execute(argv: List[String]) Int:
-		parsed := self.parse(argv)
+// Parses `argv`, writes help to stdout or the error plus a usage hint to stderr,
+// and runs the handler. Returns the handler's status, 0 after help, 1 when the
+// handler fails and 2 for a usage error.
+fn Command.execute(argv: List[String]) Int:
+	parsed := self.parse(argv)
 
-		if parsed.is_error():
-			stderr().write(
-				parsed.err().message + "\nRun '{self.name} --help' for usage.\n"
-			).get()
-			return 2
+	if parsed.is_error():
+		stderr().write(
+			parsed.err().message + "\nRun '{self.name} --help' for usage.\n"
+		).get()
+		return 2
 
-		match parsed.get():
-			Help(text):
-				stdout().write(text).get()
-				return 0
-			Run(matches):
-				result := self.run(matches)
+	match parsed.get():
+		Help(text):
+			stdout().write(text).get()
+			return 0
+		Run(matches):
+			result := self.run(matches)
 
-				if result.is_error():
-					stderr().write(result.err().message + "\n").get()
-					return 1
+			if result.is_error():
+				stderr().write(result.err().message + "\n").get()
+				return 1
 
-				return result.get()
+			return result.get()
 
-	// Runs the handler of the command `matches.path` names, as `parse` resolved it, and returns its exit status.
-	// The path starts at this node's name; an unknown path is an `EINVAL` error.
-	fn run(matches: Matches) Int!:
-		if matches.path.length() > 0 and matches.path[0] == self.name:
-			if node := node_at(self, matches.path, 1): return node.exec(matches)
-		return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
+// Runs the handler of the command `matches.path` names, as `parse` resolved it, and
+// returns its exit status. The path starts at this node's name; an unknown path is
+// an `EINVAL` error.
+fn Command.run(matches: Matches) Int!:
+	if matches.path.length() > 0 and matches.path[0] == self.name:
+		if node := node_at(self, matches.path, 1): return node.exec(matches)
+	return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
 
-	// Returns the help text for the command reached by following `path` from this node, or none for an unknown path.
-	fn help(path: List[String] = []) String?:
-		rendered := help_at(self, path, 0, [self.name.clone()], [])
-		if rendered.is_error(): return none
+// Returns the help text for the command reached by following `path` from this node,
+// or none for an unknown path.
+fn Command.help(path: List[String] = []) String?:
+	rendered := help_at(self, path, 0, [self.name.clone()], [])
+	if rendered.is_error(): return none
 
-		return rendered.get()
+	return rendered.get()
 
-	// Returns the child named `word`, or none; the result reads the child in place.
-	fn child(word: String) Command?:
-		for candidate in self.children:
-			if candidate.name == word: return candidate
-		return none
+// Returns the child named `word`, or none; the result reads the child in place.
+fn Command.child(word: String) Command?:
+	for candidate in self.children:
+		if candidate.name == word: return candidate
+	return none
 
 // The outcome of parsing: help text to show, or a node ready to run.
 export enum Parsed:
@@ -231,7 +214,8 @@ export enum Parsed:
 	)
 	// A leaf to run: `Command.run` passes the values to the handler at `matches.path`.
 	Run(
-		// The values to pass the handler; `path` names the command reached from the root.
+		// The values to pass the handler; `path` names the command reached from the
+		// root.
 		matches: Matches
 	)
 
@@ -242,20 +226,24 @@ fn node_at(node: Command, path: List[String], from: Int) Command?:
 
 	return none
 
-// The help of the command reached by following `words` from `from` on, under `names` and the
-// persistent flags `inherited` so far; an unknown word is an error naming the path reached.
+// The help of the command reached by following `words` from `from` on, under `names`
+// and the persistent flags `inherited` so far; an unknown word is an error naming the
+// path reached.
 fn help_at(
 	node: Command,
 	words: List[String],
 	from: Int,
 	names: List[String],
-	inherited: List[Flag]
+	inherited: List[Flag],
 ) String!:
 	if from >= words.length(): return ok(render_help(node, names, inherited))
 	if next := node.child(words[from]):
 		return help_at(
-			next, words, from + 1, names.concat([words[from].clone()]),
-			inherited.concat(persistent_flags(node.flags))
+			next,
+			words,
+			from + 1,
+			names.concat([words[from].clone()]),
+			inherited.concat(persistent_flags(node.flags)),
 		)
 
 	return error(cli_unknown_command(words[from].clone(), names.join(" ")))
@@ -287,7 +275,10 @@ export fn command[T: Data](
 	args: List[Arg] = []
 ) Command:
 	return Command(
-		name: name, about: about, flags: flags, args: args,
+		name: name,
+		about: about,
+		flags: flags,
+		args: args,
 		exec: fn matches: run(decode[T](matches)?)
 	)
 
@@ -315,7 +306,7 @@ fn literal(kind: FlagKind, text: String) String:
 fn collect_fields(
 	values: Map[String, List[String]],
 	flags: List[Flag],
-	args: List[Arg]
+	args: List[Arg],
 ) Map[String, String]:
 	var fields = Map[String, String]()
 
@@ -394,7 +385,8 @@ fn claim(var seen: List[String], key: String, label: String) Unit!:
 
 	seen.append(key)
 
-// Validates a node and everything below it; `inherited` holds ancestors' persistent flags.
+// Validates a node and everything below it; `inherited` holds ancestors' persistent
+// flags.
 fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Unit!:
 	where := path.join(" ")
 	var names: List[String] = []
@@ -475,7 +467,8 @@ fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
 
 // Stores one flag occurrence after checking it against the kind.
 fn store(var values: Map[String, List[String]], flag: Flag, value: String) Result[
-	Unit, Error
+	Unit,
+	Error,
 ]:
 	if not fits(flag, value):
 		return error(cli_invalid_value(flag.name.clone(), value, expected_text(flag)))
@@ -492,10 +485,16 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
 // Resolves subcommands, flags and positionals from `argv`.
 fn walk(root: Command, argv: List[String]) Parsed!:
 	return walk_from(
-		root, argv, 0, [root.name.clone()], [], Map[String, List[String]]()
+		root,
+		argv,
+		0,
+		[root.name.clone()],
+		[],
+		Map[String, List[String]](),
 	)
 
-// Resolves `argv` from `start` on at `node`, reached by `path` with the persistent flags
+// Resolves `argv` from `start` on at `node`, reached by `path` with the persistent
+// flags
 // `inherited` and the flag values `given` so far; a subcommand word continues at the child.
 fn walk_from(
 	node: Command,
@@ -503,7 +502,7 @@ fn walk_from(
 	start: Int,
 	path: List[String],
 	inherited: List[Flag],
-	given: Map[String, List[String]]
+	given: Map[String, List[String]],
 ) Parsed!:
 	var values = given
 	var words: List[String] = []
@@ -553,7 +552,7 @@ fn walk_from(
 						chosen,
 						if cut.is_some(): body.drop(
 							cut.get() + 1
-						) else: "true"
+						) else: "true",
 					)?
 
 				continue
@@ -571,8 +570,12 @@ fn walk_from(
 		if words.is_empty():
 			if next := node.child(token):
 				return walk_from(
-					next, argv, index, path.concat([token.clone()]),
-					inherited.concat(persistent_flags(node.flags)), values
+					next,
+					argv,
+					index,
+					path.concat([token.clone()]),
+					inherited.concat(persistent_flags(node.flags)),
+					values,
 				)
 			if token == "help" and not node.children.is_empty():
 				return ok(Parsed.Help(help_at(node, argv, index, path, inherited)?))
@@ -594,7 +597,7 @@ fn bind(
 	node: Command,
 	words: List[String],
 	var values: Map[String, List[String]],
-	path: List[String]
+	path: List[String],
 ) Unit!:
 	var next = 0
 
@@ -660,14 +663,16 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 	if not node.children.is_empty():
 		var commands = Table(columns: [Align.Left, Align.Left], indent: 2)
 		for child in node.children: help_row(
-			var commands, [child.name.clone(), child.about.clone()]
+			var commands,
+			[child.name.clone(), child.about.clone()],
 		)
 		out += "\nCommands:\n{commands.render()}\n"
 
 	if not node.args.is_empty():
 		var arguments = Table(columns: [Align.Left, Align.Left], indent: 2)
 		for arg in node.args: help_row(
-			var arguments, [arg.name.clone(), arg.help.clone()]
+			var arguments,
+			[arg.name.clone(), arg.help.clone()],
 		)
 		out += "\nArguments:\n{arguments.render()}\n"
 
@@ -697,7 +702,29 @@ fn flag_section(title: String, flags: List[Flag]) String:
 
 	return "\n{title}:\n{table.render()}\n"
 
-// Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row with other controls is omitted.
+// Adds a help row. Help text is single-line: tabs and line breaks become spaces; a row
+// with other controls is omitted.
 fn help_row(var table: Table, row: List[String]) Unit:
 	var cells = row.map(fn cell: cell.replace_each({"\n": " ", "\t": " ", "\r": " "}))
 	if table.add(cells).is_error(): return
+
+fn cli_unknown_flag(name: String) Error:
+	return Error("cli: unknown flag {name}", kind: "EINVAL")
+
+fn cli_unknown_command(name: String, path: String) Error:
+	return Error("cli: unknown command {name} for {path}", kind: "EINVAL")
+
+fn cli_missing_value(name: String) Error:
+	return Error("cli: flag {name} needs a value", kind: "EINVAL")
+
+fn cli_invalid_value(name: String, value: String, expected: String) Error:
+	return Error("cli: flag {name}: {value} is not {expected}", kind: "EINVAL")
+
+fn cli_missing_required(name: String) Error:
+	return Error("cli: missing required {name}", kind: "EINVAL")
+
+fn cli_too_many_arguments(value: String) Error:
+	return Error("cli: unexpected argument {value}", kind: "EINVAL")
+
+fn cli_invalid_schema(reason: String) Error:
+	return Error("cli: invalid command schema: {reason}", kind: "EINVAL")

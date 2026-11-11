@@ -137,7 +137,8 @@ fn cancel_cmd(var shop: Shop, id: String) List[String]:
 		for item in items:
 			shop.stock.add(item.sku.clone(), shop.stock.get(item.sku).get(0) + item.qty)
 		shop.orders.add(
-			id.clone(), Order(state: "cancelled", total: total, items: items)
+			id.clone(),
+			Order(state: "cancelled", total: total, items: items),
 		)
 		return ["ok"]
 
@@ -213,8 +214,9 @@ fn blank(parts: List[String]) Bool:
 
 export fn main() Int:
 	var shop = Shop(
-		stock: Map[String, Int](), price: Map[String, Int](),
-		orders: Map[String, Order]()
+		stock: Map[String, Int](),
+		price: Map[String, Int](),
+		orders: Map[String, Order](),
 	)
 	var out = stdout()
 

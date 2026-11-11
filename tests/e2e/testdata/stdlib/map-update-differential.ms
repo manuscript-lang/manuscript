@@ -4,9 +4,8 @@ import expect_equal from "@std/test/test.ms"
 type Tag:
 	name: String
 
-impl Tag:
-	fn clone() Tag:
-		return Tag(name: self.name.clone())
+fn Tag.clone() Tag:
+	return Tag(name: self.name.clone())
 
 impl Equal for Tag:
 	fn equals(other: Tag) Bool:
@@ -21,7 +20,8 @@ fn append_length(xs: List[Int]) List[Int]:
 	out.append(xs.length())
 	return out
 
-// Each pair below spells one update twice: `Map.update`, which looks the key up once, and the
+// Each pair below spells one update twice: `Map.update`, which looks the key up once,
+// and the
 // `get_or` plus `add` pair, which looks it up twice. The maps must stay equal after every step.
 
 test "update matches get_or and add for String keys":

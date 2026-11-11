@@ -1,6 +1,7 @@
-// Runtime half of the scaling gate (`ms run tools/scaling-check.ms`): one pass of container and string work whose
-// size is the first argument. Each phase prints `<name> <nanoseconds>`; the gate compares the same phase at two
-// sizes, so a phase that should be linear cannot silently become quadratic.
+// Runtime half of the scaling gate (`ms run tools/scaling-check.ms`): one pass of
+// container and string work whose size is the first argument. Each phase prints
+// `<name> <nanoseconds>`; the gate compares the same phase at two sizes, so a phase
+// that should be linear cannot silently become quadratic.
 import (
 	SortedMap from "@std/collections/sorted.ms",
 	stdout from "@std/io/io.ms",

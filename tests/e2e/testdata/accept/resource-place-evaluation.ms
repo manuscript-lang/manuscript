@@ -11,12 +11,11 @@ type Door:
 	fail: Bool = false
 	payload: List[String] = ["owned"]
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		if not self.closed:
-			self.closed = true
-			append_file(self.log, "{self.id},").wait()?
-			if self.fail: return error(Error("close failed"))
+fn var Door.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "{self.id},").wait()?
+		if self.fail: return error(Error("close failed"))
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
@@ -117,7 +116,8 @@ test "a propagated resource argument preserves receiver effects and cleanup":
 
 fn failing_remove(log: String, var calls: Int) Unit:
 	var rows = [
-		[Door(1, log.clone(), fail: true), Door(2, log.clone())], [Door(3, log)]
+		[Door(1, log.clone(), fail: true), Door(2, log.clone())],
+		[Door(3, log)],
 	]
 	rows[next(var calls)].remove(0)
 

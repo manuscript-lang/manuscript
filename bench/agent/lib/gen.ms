@@ -1,4 +1,5 @@
-// Shared pieces of the challenge generators: the case record, the committed file layout and the Go oracle.
+// Shared pieces of the challenge generators: the case record, the committed file layout
+// and the Go oracle.
 import (
 	panic from "@std/core.ms",
 	CopyOptions, copy, temporary_directory, write_file from "@std/os/fs.ms",
@@ -20,14 +21,16 @@ export fn make_case(name: String, stdin: String, stdout: String) GenCase:
 // The directory of challenge `id`.
 export fn dir(id: String) String: "{root()}/challenges/{id}"
 
-// Writes examples/cases.json and hidden/cases.json for challenge `id` as `json.dumps(cases, indent=1)` does.
+// Writes examples/cases.json and hidden/cases.json for challenge `id` as
+// `json.dumps(cases, indent=1)` does.
 export fn write_cases(id: String, examples: List[GenCase], hidden: List[GenCase]) Unit:
 	names := hidden.map(fn c: c.name.clone())
 	if names.distinct().length() != names.length(): panic("duplicate case names")
 	write_text("{dir(id)}/examples/cases.json", dumps_data(examples, 1) + "\n")
 	write_text("{dir(id)}/hidden/cases.json", dumps_data(hidden, 1) + "\n")
 
-// The Go oracle of a large challenge, built from `oracle/*.ref`; returns the path of the executable.
+// The Go oracle of a large challenge, built from `oracle/*.ref`; returns the path of
+// the executable.
 export fn build_oracle(id: String) String:
 	tmp := temporary_directory("msbench-oracle-").get()
 	sources := bash("ls oracle/*.ref", dir(id), 10, "").out.trim().split("\n")
@@ -35,8 +38,9 @@ export fn build_oracle(id: String) String:
 	for source in sources:
 		name := source.split("/").last().get("")
 		copy(
-			"{dir(id)}/{source}", "{tmp}/{name.slice(0, name.length() - 4).get("")}",
-			CopyOptions(replace: true)
+			"{dir(id)}/{source}",
+			"{tmp}/{name.slice(0, name.length() - 4).get("")}",
+			CopyOptions(replace: true),
 		).get()
 
 	write_file("{tmp}/go.mod", "module oracle\n\ngo 1.21\n", replace: true).wait().get()
@@ -51,7 +55,8 @@ export fn solve_with(oracle: String, stdin: String) String:
 	if ran.code != 0: panic("oracle failed (exit {ran.code}): {ran.err.take(500)}")
 	return ran.out
 
-// The cases of a large challenge: inputs supplied by the generator, outputs from its Go oracle.
+// The cases of a large challenge: inputs supplied by the generator, outputs from its Go
+// oracle.
 export type Cases:
 	oracle: String
 	list: List[GenCase] = []

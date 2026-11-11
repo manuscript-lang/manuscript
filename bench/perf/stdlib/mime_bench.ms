@@ -5,7 +5,8 @@ import (
 	keep, measure from "@std/test/bench.ms",
 )
 
-// Input construction is outside measure; each operation includes the source's owned body copy.
+// Input construction is outside measure; each operation includes the source's owned
+// body copy.
 fn consume(body: Bytes, chunk: Int, count: Int, size: Int) Unit!:
 	var parts = multipart_parts(from_bytes(body.clone(), chunk), "XyZ", none)
 	var seen = 0

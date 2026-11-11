@@ -1,7 +1,8 @@
 import expect_equal from "@std/test/test.ms"
 
-// A var parameter is the caller's value and cannot be moved out of the function, except into
-// the right side of an assignment to itself, which refills it before the caller sees it.
+// A var parameter is the caller's value and cannot be moved out of the function, except
+// into the right side of an assignment to itself, which refills it before the caller
+// sees it.
 
 interface Counter:
 	var fn bump() Unit
@@ -10,25 +11,23 @@ interface Counter:
 type Box:
 	n: Int
 
-impl Counter for Box:
-	var fn bump() Unit:
-		self.n += 1
+fn var Box.bump() Unit:
+	self.n += 1
 
-	fn count() Int:
-		return self.n
+fn Box.count() Int:
+	return self.n
 
 // Passes everything on to `inner` and counts the calls it saw.
 type Wrap:
 	inner: Counter
 	calls: Int
 
-impl Counter for Wrap:
-	var fn bump() Unit:
-		self.inner.bump()
-		self.calls += 1
+fn var Wrap.bump() Unit:
+	self.inner.bump()
+	self.calls += 1
 
-	fn count() Int:
-		return self.inner.count() * 10 + self.calls
+fn Wrap.count() Int:
+	return self.inner.count() * 10 + self.calls
 
 fn twice(var c: Counter) Unit:
 	c.bump()

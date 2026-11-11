@@ -53,7 +53,7 @@ fn normalize_sum(
 	has_max: Bool,
 	max: Int,
 	expected: String,
-	status: Int
+	status: Int,
 ) Int:
 	if has_max: return consume(text.normalize(form, max), expected, status)
 	return consume(text.normalize(form), expected, status)
@@ -66,7 +66,7 @@ fn measure(
 	max: Int,
 	expected: String,
 	status: Int,
-	iterations: Int
+	iterations: Int,
 ) Int:
 	var expected_sum = 17
 	if status == 0: expected_sum += expected.byte_length()
@@ -92,40 +92,67 @@ fn main() Int:
 		Pattern("empty", "", "", "", "", ""),
 		Pattern("one_ascii", "x", "x", "x", "x", "x"),
 		Pattern(
-			"ascii_controls", "abC9\u{0}\t", "abC9\u{0}\t", "abC9\u{0}\t",
-			"abC9\u{0}\t", "abC9\u{0}\t"
+			"ascii_controls",
+			"abC9\u{0}\t",
+			"abC9\u{0}\t",
+			"abC9\u{0}\t",
+			"abC9\u{0}\t",
+			"abC9\u{0}\t",
 		),
 		Pattern("compose", "e\u{301}", "é", "e\u{301}", "é", "e\u{301}"),
 		Pattern("decompose", "é", "é", "e\u{301}", "é", "e\u{301}"),
 		Pattern("compatibility", "ﬁ①", "ﬁ①", "ﬁ①", "fi1", "fi1"),
 		Pattern(
-			"reorder", "a\u{315}\u{300}", "à\u{315}", "a\u{300}\u{315}", "à\u{315}",
-			"a\u{300}\u{315}"
+			"reorder",
+			"a\u{315}\u{300}",
+			"à\u{315}",
+			"a\u{300}\u{315}",
+			"à\u{315}",
+			"a\u{300}\u{315}",
 		),
 		Pattern("hangul", "각", "각", "각", "각", "각"),
 		Pattern(
-			"replacement_nul", "a\u{fffd}\u{0}", "a\u{fffd}\u{0}", "a\u{fffd}\u{0}",
-			"a\u{fffd}\u{0}", "a\u{fffd}\u{0}"
-		)
+			"replacement_nul",
+			"a\u{fffd}\u{0}",
+			"a\u{fffd}\u{0}",
+			"a\u{fffd}\u{0}",
+			"a\u{fffd}\u{0}",
+			"a\u{fffd}\u{0}",
+		),
 	]:
 		for form in ["NFC", "NFD", "NFKC", "NFKD"]:
 			expected := expected_for(pattern, form)
 			if (
 				measure(
-					"{pattern.name}_{form}_full", pattern.text, form, false, 0,
-					expected, 0, iterations_for(pattern.text.byte_length())
+					"{pattern.name}_{form}_full",
+					pattern.text,
+					form,
+					false,
+					0,
+					expected,
+					0,
+					iterations_for(pattern.text.byte_length()),
 				) != 0
 			): return 1
 
 	for pattern in [
 		Pattern(
-			"ascii_scale", "aZ09\u{0}", "aZ09\u{0}", "aZ09\u{0}", "aZ09\u{0}",
-			"aZ09\u{0}"
+			"ascii_scale",
+			"aZ09\u{0}",
+			"aZ09\u{0}",
+			"aZ09\u{0}",
+			"aZ09\u{0}",
+			"aZ09\u{0}",
 		),
 		Pattern(
-			"canonical_scale", "e\u{301}", "é", "e\u{301}", "é", "e\u{301}"
+			"canonical_scale",
+			"e\u{301}",
+			"é",
+			"e\u{301}",
+			"é",
+			"e\u{301}",
 		),
-		Pattern("compatibility_scale", "ﬁ①", "ﬁ①", "ﬁ①", "fi1", "fi1")
+		Pattern("compatibility_scale", "ﬁ①", "ﬁ①", "ﬁ①", "fi1", "fi1"),
 	]:
 		for copies in [4096, 65536]:
 			text := pattern.text.repeat(copies).get()
@@ -134,8 +161,14 @@ fn main() Int:
 				expected := expected_for(pattern, form).repeat(copies).get()
 				if (
 					measure(
-						"{pattern.name}_{copies}_{form}_full", text, form, false, 0,
-						expected, 0, iterations_for(text.byte_length())
+						"{pattern.name}_{copies}_{form}_full",
+						text,
+						form,
+						false,
+						0,
+						expected,
+						0,
+						iterations_for(text.byte_length()),
 					) != 0
 				): return 1
 
@@ -148,8 +181,14 @@ fn main() Int:
 		if form == "NFC" or form == "NFKC": expected = composed.clone()
 		if (
 			measure(
-				"combining_segment_{form}_full", cluster, form, false, 0, expected, 0,
-				64
+				"combining_segment_{form}_full",
+				cluster,
+				form,
+				false,
+				0,
+				expected,
+				0,
+				64,
 			) != 0
 		): return 1
 
@@ -163,19 +202,38 @@ fn main() Int:
 		iterations := iterations_for(budget_text.byte_length())
 		if (
 			measure(
-				"budget_{form}_zero", budget_text, form, true, 0, "", 1, iterations
+				"budget_{form}_zero",
+				budget_text,
+				form,
+				true,
+				0,
+				"",
+				1,
+				iterations,
 			) != 0
 		): return 1
 		if (
 			measure(
-				"budget_{form}_exact", budget_text, form, true, exact, expected, 0,
-				iterations
+				"budget_{form}_exact",
+				budget_text,
+				form,
+				true,
+				exact,
+				expected,
+				0,
+				iterations,
 			) != 0
 		): return 1
 		if (
 			measure(
-				"budget_{form}_exceeded", budget_text, form, true, exact - 1, "", 1,
-				iterations
+				"budget_{form}_exceeded",
+				budget_text,
+				form,
+				true,
+				exact - 1,
+				"",
+				1,
+				iterations,
 			) != 0
 		): return 1
 		if measure("negative_{form}", "é", form, true, -1, "", 2, 200000) != 0: return 1
@@ -186,7 +244,12 @@ fn main() Int:
 	if measure("invalid_negative", "é", "UNKNOWN", true, -1, "", 2, 200000) != 0: return 1
 
 	unicode_boundary := Pattern(
-		"unicode_boundary", "éﬁ", "éﬁ", "e\u{301}ﬁ", "éfi", "e\u{301}fi"
+		"unicode_boundary",
+		"éﬁ",
+		"éﬁ",
+		"e\u{301}ﬁ",
+		"éfi",
+		"e\u{301}fi",
 	)
 
 	for length in [4096, 1048576]:
@@ -198,15 +261,25 @@ fn main() Int:
 			if (
 				measure(
 					"early_unicode_{length}_{form}",
-					unicode_boundary.text + ascii_prefix, form, false, 0,
-					expected_block + ascii_prefix, 0, iterations
+					unicode_boundary.text + ascii_prefix,
+					form,
+					false,
+					0,
+					expected_block + ascii_prefix,
+					0,
+					iterations,
 				) != 0
 			): return 1
 			if (
 				measure(
 					"late_unicode_{length}_{form}",
-					ascii_prefix + unicode_boundary.text, form, false, 0,
-					ascii_prefix + expected_block, 0, iterations
+					ascii_prefix + unicode_boundary.text,
+					form,
+					false,
+					0,
+					ascii_prefix + expected_block,
+					0,
+					iterations,
 				) != 0
 			): return 1
 

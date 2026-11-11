@@ -9,7 +9,7 @@ export extern fn msrt_bytes_read_word(
 	data: Bytes,
 	at: Int,
 	width: Int,
-	little: Bool
+	little: Bool,
 ) Int!
 
 export extern fn msrt_float_from_bits(bits: Int) Float

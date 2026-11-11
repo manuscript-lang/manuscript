@@ -11,19 +11,18 @@ type Counter:
 	fail_at: Int
 	closes: WriteStream[Int]
 
-impl Source[Int] for Counter:
-	var fn next() Int?!:
-		if self.at == self.fail_at:
-			self.at += 1
-			return error(Error("boom", kind: "EIO"))
-
-		if self.at >= self.stop: return ok(none)
-
+fn var Counter.next() Int?!:
+	if self.at == self.fail_at:
 		self.at += 1
-		return ok(self.at)
+		return error(Error("boom", kind: "EIO"))
 
-	var fn close() Unit!:
-		self.closes.write(self.at)?
+	if self.at >= self.stop: return ok(none)
+
+	self.at += 1
+	return ok(self.at)
+
+fn var Counter.close() Unit!:
+	self.closes.write(self.at)?
 
 test "a loop that breaks hands the source back to its stream":
 	var closes = pipe[Int](capacity: 8)

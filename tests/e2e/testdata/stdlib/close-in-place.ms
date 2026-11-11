@@ -4,20 +4,20 @@ import (
 	expect_equal, expect_fault, expect_ok from "@std/test/test.ms",
 )
 
-// A close that changes its receiver works on the value where it lives: a holder, a part, a
-// closure's capture or the cleanup stack sees the closed state afterwards, so a second close of
-// the same value (an explicit close followed by the scope end) logs nothing.
+// A close that changes its receiver works on the value where it lives: a holder, a
+// part, a closure's capture or the cleanup stack sees the closed state afterwards, so a
+// second close of the same value (an explicit close followed by the scope end) logs
+// nothing.
 type Latch:
 	log: String
 	id: Int
 	open: Bool
 
-impl Closeable for Latch:
-	var fn close() Unit!:
-		if self.open:
-			self.open = false
+fn var Latch.close() Unit!:
+	if self.open:
+		self.open = false
 
-			_ := append_file(self.log, "{self.id},").wait()
+		_ := append_file(self.log, "{self.id},").wait()
 
 fn latch(log: String, id: Int) Latch:
 	return Latch(log, id, true)
@@ -97,22 +97,21 @@ fn destructured_list(log: String) Int:
 	[first, _] := xs
 	return first.id
 
-// A resource that hands out other resources: what it returns is the caller's to close (#2435).
+// A resource that hands out other resources: what it returns is the caller's to close
+// (#2435).
 type Maker:
 	made: Int
 
-impl Closeable for Maker:
-	var fn close() Unit!:
-		return ok(unit)
+fn var Maker.close() Unit!:
+	return ok(unit)
 
-impl Maker:
-	var fn make(log: String, id: Int) Latch:
-		self.made += 1
-		return latch(log, id)
+fn var Maker.make(log: String, id: Int) Latch:
+	self.made += 1
+	return latch(log, id)
 
-	var fn find(log: String, id: Int) Latch?:
-		self.made += 1
-		return latch(log, id)
+fn var Maker.find(log: String, id: Int) Latch?:
+	self.made += 1
+	return latch(log, id)
 
 fn made_by_resource(log: String) Int:
 	var maker = Maker(0)

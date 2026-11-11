@@ -23,7 +23,10 @@ test "buffered adapts a request-to-response handler":
 	server := serve("127.0.0.1:0", buffered(echo))?
 	client := http_client()?
 	var response = client.request(
-		HttpMethod.Post, "http://{server.address()}/x", headers(), "abc"
+		HttpMethod.Post,
+		"http://{server.address()}/x",
+		headers(),
+		"abc",
 	)?
 	expect_equal(response.metadata.status, 201)?
 
@@ -36,12 +39,18 @@ test "read_body bounds the body by its limit":
 	server := serve("127.0.0.1:0", exchange_echo)?
 	client := http_client()?
 	small := client.request(
-		HttpMethod.Post, "http://{server.address()}/", headers(), "12345"
+		HttpMethod.Post,
+		"http://{server.address()}/",
+		headers(),
+		"12345",
 	)?
 	expect_equal(small.metadata.status, 200)?
 
 	large := client.request(
-		HttpMethod.Post, "http://{server.address()}/", headers(), "123456789"
+		HttpMethod.Post,
+		"http://{server.address()}/",
+		headers(),
+		"123456789",
 	)?
 	expect_equal(large.metadata.status, 500)?
 

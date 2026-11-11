@@ -11,8 +11,9 @@
 // expect-stdout: close 13
 // expect-stdout: close 12
 // expect-stdout: close 11
-// Destructuring closes omitted resource fields even when their types own no heap storage.
-// Omitted fields close last declared first, before the fields moved into named bindings.
+// Destructuring closes omitted resource fields even when their types own no heap
+// storage. Omitted fields close last declared first, before the fields moved into named
+// bindings.
 import (
 	Closeable from "@std/core.ms",
 	stdout from "@std/io/io.ms",
@@ -21,9 +22,8 @@ import (
 type Token:
 	id: Int
 
-impl Closeable for Token:
-	var fn close() Unit!:
-		return stdout().write("close {self.id}\n")
+fn var Token.close() Unit!:
+	return stdout().write("close {self.id}\n")
 
 type Triple:
 	first: Token
@@ -38,9 +38,8 @@ type NamedToken:
 	id: Int
 	name: String
 
-impl Closeable for NamedToken:
-	var fn close() Unit!:
-		return stdout().write("close {self.id}\n")
+fn var NamedToken.close() Unit!:
+	return stdout().write("close {self.id}\n")
 
 type NamedTriple:
 	first: NamedToken
@@ -65,7 +64,7 @@ fn with_storage() Unit:
 	tokens := NamedTriple(
 		NamedToken(11, "first-heap-allocated-name"),
 		NamedToken(12, "second-heap-allocated-name"),
-		NamedToken(13, "third-heap-allocated-name")
+		NamedToken(13, "third-heap-allocated-name"),
 	)
 	{first: kept} := tokens
 	_ := kept.name.length()

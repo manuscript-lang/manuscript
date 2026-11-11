@@ -16,7 +16,7 @@ fn ordered(
 	seed: Int,
 	first: Int = seed * 10 + 3,
 	second: Int = first * 10 + 4,
-	third: Int = 0
+	third: Int = 0,
 ) Int:
 	return second * 10 + 5 + third
 
@@ -41,9 +41,8 @@ interface Add:
 type Offset:
 	value: Int
 
-impl Add for Offset:
-	fn add(value: Int = self.value) Int:
-		return self.value + value
+fn Offset.add(value: Int = self.value) Int:
+	return self.value + value
 
 interface Read[T]:
 	fn read(value: T) T
@@ -51,25 +50,33 @@ interface Read[T]:
 type Box[T: Clonable]:
 	value: T
 
-impl Read[T] for Box[T]:
-	fn read(value: T = self.value.clone()) T:
-		return value
+fn Box[T].read(value: T = self.value.clone()) T:
+	return value
 
 test "omitted and explicit defaults":
 	(increment() != 4 or increment(7) != 8 or increment(value: 0) != 1) | expect_false?
-	(combine(second: 5) != 14 or combine(third: 0, second: 5, first: 0) != 5) | expect_false?
+	(
+		(
+			combine(second: 5) != 14
+			or combine(third: 0, second: 5, first: 0) != 5
+		)
+		| expect_false?
+	)
 	(identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4) | expect_false?
 	unit_value(unit) | expect_equal(unit)?
 	unit_value() | expect_equal(unit)?
 	(optional(value: none).is_some() or optional() != 3) | expect_false?
 	(
 		(
-			propagate() != Result[Int, Error].error(
-				Error("default failure")
+			(
+				propagate() != Result[Int, Error].error(
+					Error("default failure")
+				)
+				or propagate(7) != Result[Int, Error].ok(7)
 			)
-			or propagate(7) != Result[Int, Error].ok(7)
 		)
-	) | expect_false?
+		| expect_false?
+	)
 
 test "default evaluation order and repeated calls":
 	ordered(0) | expect_equal(345)?

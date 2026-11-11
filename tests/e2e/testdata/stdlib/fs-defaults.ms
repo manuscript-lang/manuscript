@@ -81,8 +81,20 @@ test "filesystem file copies default to no replacement and retain byte limits":
 	(copy(source, destination, CopyOptions(replace: true)) | expect_ok?)
 	(text(destination)?) | expect_equal("changed")?
 	(generic_copy(source, "{temporary.path()}/generic") | expect_ok?)
-	copy(source, "{temporary.path()}/limited", CopyOptions(max_bytes: 0)) | expect_limit?
-	copy(source, "{temporary.path()}/limited", CopyOptions(max_bytes: 6)) | expect_limit?
+	(
+		copy(
+			source,
+			"{temporary.path()}/limited",
+			CopyOptions(max_bytes: 0),
+		) | expect_limit?
+	)
+	(
+		copy(
+			source,
+			"{temporary.path()}/limited",
+			CopyOptions(max_bytes: 6),
+		) | expect_limit?
+	)
 	(copy(source, "{temporary.path()}/exact", CopyOptions(max_bytes: 7)) | expect_ok?)
 
 test "filesystem tree copies default to no replacement with distinct budgets":
@@ -102,26 +114,41 @@ test "filesystem tree copies default to no replacement with distinct budgets":
 	(text("{destination}/data")?) | expect_equal("abc")?
 	(
 		copy(
-			source, destination, CopyOptions(recursive: true, replace: true)
+			source,
+			destination,
+			CopyOptions(recursive: true, replace: true),
 		) | expect_ok?
 	)
 	(text("{destination}/data")?) | expect_equal("xyz")?
 	(generic_tree(source, "{temporary.path()}/generic") | expect_ok?)
-	copy(
-		source, "{temporary.path()}/entries",
-		CopyOptions(recursive: true, max_entries: 1)
-	) | expect_limit?
-	copy(source, "{temporary.path()}/bytes", CopyOptions(recursive: true, max_bytes: 2)) | expect_limit?
-
-	invalid: Unit! := error(Error("filesystem: invalid input", kind: "EINVAL"))
-	copy(
-		source, "{temporary.path()}/negative-byte",
-		CopyOptions(recursive: true, max_bytes: -1)
-	) | expect_equal(invalid)?
 	(
 		copy(
-			source, "{temporary.path()}/exact",
-			CopyOptions(recursive: true, max_entries: 2, max_bytes: 3)
+			source,
+			"{temporary.path()}/entries",
+			CopyOptions(recursive: true, max_entries: 1),
+		) | expect_limit?
+	)
+	(
+		copy(
+			source,
+			"{temporary.path()}/bytes",
+			CopyOptions(recursive: true, max_bytes: 2),
+		) | expect_limit?
+	)
+
+	invalid: Unit! := error(Error("filesystem: invalid input", kind: "EINVAL"))
+	(
+		copy(
+			source,
+			"{temporary.path()}/negative-byte",
+			CopyOptions(recursive: true, max_bytes: -1),
+		) | expect_equal(invalid)?
+	)
+	(
+		copy(
+			source,
+			"{temporary.path()}/exact",
+			CopyOptions(recursive: true, max_entries: 2, max_bytes: 3),
 		) | expect_ok?
 	)
 
@@ -146,8 +173,9 @@ test "filesystem tree copies reject empty and disjoint existing directories":
 		source,
 		destination,
 		CopyOptions(
-			recursive: true, filter: fn(s: String, d: String) Bool: false
-		)
+			recursive: true,
+			filter: fn(s: String, d: String) Bool: false
+		),
 	)?
 	expect_equal((list(destination)?).length(), 1)?
 	copy(source, destination, CopyOptions(recursive: true, replace: true))?
@@ -193,21 +221,27 @@ test "filesystem removal defaults to retaining nonempty trees":
 test "filesystem default preparation retains written argument order":
 	temporary := temporary("manuscript-default-order-") | expect_ok?
 	var log: List[String] = []
-	write_file(
-		data: data_argument(var log),
-		path: argument(var log, "path", "{temporary.path()}/ordered")
-	).wait() | expect_ok?
+	(
+		write_file(
+			data: data_argument(var log),
+			path: argument(var log, "path", "{temporary.path()}/ordered"),
+		).wait() | expect_ok?
+	)
 	log | expect_equal(["data", "path"])?
 
 	copy := copy
 	(
 		copy(
 			destination: argument(
-				var log, "destination", "{temporary.path()}/copy"
+				var log,
+				"destination",
+				"{temporary.path()}/copy",
 			),
 			source: argument(
-				var log, "source", "{temporary.path()}/ordered"
-			)
+				var log,
+				"source",
+				"{temporary.path()}/ordered",
+			),
 		) | expect_ok?
 	)
 	log | expect_equal(["data", "path", "destination", "source"])?

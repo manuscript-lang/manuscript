@@ -11,13 +11,13 @@ import (
 export extern fn msstd_math_add_with_carry(
 	left: UInt64,
 	right: UInt64,
-	carry: Bool
+	carry: Bool,
 ) WordSum
 
 export extern fn msstd_math_subtract_with_borrow(
 	left: UInt64,
 	right: UInt64,
-	borrow: Bool
+	borrow: Bool,
 ) WordDifference
 
 export extern fn msstd_math_multiply_wide(left: UInt64, right: UInt64) WideProduct
@@ -25,13 +25,13 @@ export extern fn msstd_math_multiply_wide(left: UInt64, right: UInt64) WideProdu
 export extern fn msstd_math_divide_wide(
 	high: UInt64,
 	low: UInt64,
-	divisor: UInt64
+	divisor: UInt64,
 ) WordDivision!
 
 export extern fn msstd_math_remainder_wide(
 	high: UInt64,
 	low: UInt64,
-	divisor: UInt64
+	divisor: UInt64,
 ) UInt64!
 
 export extern fn msstd_math_frexp(value: Float) BinaryFloatParts
@@ -69,7 +69,7 @@ export extern fn msstd_bigint_sqrt(value: BigInt) BigInt!
 export extern fn msstd_bigint_pow_mod(
 	value: BigInt,
 	exponent: BigInt,
-	modulus: BigInt
+	modulus: BigInt,
 ) BigInt!
 
 export extern fn msstd_math_acos(value: Float) Float

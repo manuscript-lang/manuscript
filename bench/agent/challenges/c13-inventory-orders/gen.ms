@@ -1,4 +1,5 @@
-// Generator for c13-inventory-orders. Deterministic; run: ms run bench/agent/gen.ms -- c13
+// Generator for c13-inventory-orders. Deterministic; run: ms run bench/agent/gen.ms --
+// c13
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
 	seeded from "../../lib/pyrandom.ms",
@@ -239,59 +240,60 @@ export fn gen_c13() Unit:
 	examples := [
 		mk(
 			"basic",
-			"stock WIDGET 100\nstock GADGET-2 5\nprice WIDGET 250\nprice GADGET-2 1999\norder o1 WIDGET:10 GADGET-2:2\norder o2 GADGET-2:4\nship o1\ncancel o1\nreport\n"
+			"stock WIDGET 100\nstock GADGET-2 5\nprice WIDGET 250\nprice GADGET-2 1999\norder o1 WIDGET:10 GADGET-2:2\norder o2 GADGET-2:4\nship o1\ncancel o1\nreport\n",
 		),
 		mk(
 			"cancel-restores",
-			"stock A 5\nprice A 100\norder x A:5\norder y A:1\ncancel x\norder y A:1\nreport\n"
-		)
+			"stock A 5\nprice A 100\norder x A:5\norder y A:1\ncancel x\norder y A:1\nreport\n",
+		),
 	]
 	hidden := examples.concat(
 		[
 			mk(
 				"stock-errors",
-				"stock\nstock A\nstock a 5\nstock A 0\nstock A 100001\nstock A 1x\nstock A 00000005\nstock A -1\nstock A 5 6\nstock A- 1\nstock A_B 1\nstock A 100000\nstock A 100000\n"
+				"stock\nstock A\nstock a 5\nstock A 0\nstock A 100001\nstock A 1x\nstock A 00000005\nstock A -1\nstock A 5 6\nstock A- 1\nstock A_B 1\nstock A 100000\nstock A 100000\n",
 			),
 			mk(
 				"price-errors",
-				"price A 1\nstock A 1\nprice A -1\nprice A 10000001\nprice A 10000000\nprice a 1\nprice A x\nprice A 0\nreport\n"
+				"price A 1\nstock A 1\nprice A -1\nprice A 10000001\nprice A 10000000\nprice a 1\nprice A x\nprice A 0\nreport\n",
 			),
 			mk(
 				"discount-rounding",
-				"stock A 100\nprice A 5\norder o1 A:10\norder o2 A:11\nprice A 1\norder o3 A:10\norder o4 A:9\nprice A 3\norder o5 A:10\nreport\n"
+				"stock A 100\nprice A 5\norder o1 A:10\norder o2 A:11\nprice A 1\norder o3 A:10\norder o4 A:9\nprice A 3\norder o5 A:10\nreport\n",
 			),
 			mk(
 				"order-errors",
-				"stock A 5\nprice A 100\norder\norder o1\norder O1 A:1\norder o_1 A:1\norder o1 A\norder o1 A:1:2\norder o1 a:1\norder o1 A:0\norder o1 A:x\norder o1 A:1 B:x\norder o1 B:1 A:x\norder o1 B:1\norder o1 A:6\norder o1 A:3 A:1\norder o1 A:3 B:1 A:1\norder o1 A:1\norder o1 A:1\n"
+				"stock A 5\nprice A 100\norder\norder o1\norder O1 A:1\norder o_1 A:1\norder o1 A\norder o1 A:1:2\norder o1 a:1\norder o1 A:0\norder o1 A:x\norder o1 A:1 B:x\norder o1 B:1 A:x\norder o1 B:1\norder o1 A:6\norder o1 A:3 A:1\norder o1 A:3 B:1 A:1\norder o1 A:1\norder o1 A:1\n",
 			),
 			mk(
 				"all-or-nothing",
-				"stock A 5\nstock B 5\nprice A 100\nprice B 200\norder o1 A:3 B:9\nreport\norder o1 A:3 B:2\nreport\n"
+				"stock A 5\nstock B 5\nprice A 100\nprice B 200\norder o1 A:3 B:9\nreport\norder o1 A:3 B:2\nreport\n",
 			),
 			mk(
 				"duplicate-vs-stock",
-				"stock A 5\norder o1 A:9 A:1\norder o2 A:1 A:9\norder o3 A:5 A:5\nreport\n"
+				"stock A 5\norder o1 A:9 A:1\norder o2 A:1 A:9\norder o3 A:5 A:5\nreport\n",
 			),
 			mk(
 				"cancelled-id-reuse",
-				"stock A 5\norder o1 A:1\ncancel o1\norder o1 A:1\n"
+				"stock A 5\norder o1 A:1\ncancel o1\norder o1 A:1\n",
 			),
 			mk(
 				"cancel-ship-states",
-				"stock A 9\nprice A 10\norder o1 A:1\norder o2 A:1\norder o3 A:1\nship o1\nship o1\ncancel o1\ncancel o2\ncancel o2\nship o2\nship o3\nship o9\ncancel o9\ncancel\nship o1 o2\nreport\n"
+				"stock A 9\nprice A 10\norder o1 A:1\norder o2 A:1\norder o3 A:1\nship o1\nship o1\ncancel o1\ncancel o2\ncancel o2\nship o2\nship o3\nship o9\ncancel o9\ncancel\nship o1 o2\nreport\n",
 			),
 			mk(
 				"report-reserved-and-revenue",
-				"stock B 20\nstock A 20\nprice A 100\nprice B 250\norder p1 A:2 B:3\norder p2 A:10\norder p3 B:1\nship p3\nship p2\nreport\n"
+				"stock B 20\nstock A 20\nprice A 100\nprice B 250\norder p1 A:2 B:3\norder p2 A:10\norder p3 B:1\nship p3\nship p2\nreport\n",
 			),
 			mk(
-				"unknown-and-usage", "STOCK A 1\nlist\n\n  \nreport now\nreport\n"
+				"unknown-and-usage",
+				"STOCK A 1\nlist\n\n  \nreport now\nreport\n",
 			),
 			mk(
 				"price-change-after-order",
-				"stock A 10\nprice A 100\norder o1 A:2\nprice A 999\norder o2 A:2\nship o1\nship o2\nreport\n"
+				"stock A 10\nprice A 100\norder o1 A:2\nprice A 999\norder o2 A:2\nship o1\nship o2\nreport\n",
 			),
-			mk("big-session", big.join("\n") + "\n")
+			mk("big-session", big.join("\n") + "\n"),
 		]
 	)
 	write_cases("c13-inventory-orders", examples, hidden)

@@ -1,7 +1,9 @@
-// Number formatting that matches CPython's format specs, so regenerated Markdown tables stay identical.
+// Number formatting that matches CPython's format specs, so regenerated Markdown tables
+// stay identical.
 import round from "@std/math/math.ms"
 
-// Drops trailing zeros after a decimal point, and the point itself when nothing follows it.
+// Drops trailing zeros after a decimal point, and the point itself when nothing follows
+// it.
 fn strip_zeros(text: String) String:
 	if not text.contains("."): return text.clone()
 
@@ -49,8 +51,9 @@ export fn fmt_g(x: Float, digits: Int) String:
 // `format(x, ".0%")`.
 export fn pct0(x: Float) String: fixed(x * 100.0, 0) + "%"
 
-// The mean of values that carry at most `scale`-ths of precision (wall times to 0.1 s use 10.0), computed from
-// exact integer sums so the result is the correctly rounded quotient, as CPython's `statistics.mean` gives.
+// The mean of values that carry at most `scale`-ths of precision (wall times to 0.1 s
+// use 10.0), computed from exact integer sums so the result is the correctly rounded
+// quotient, as CPython's `statistics.mean` gives.
 export fn mean_scaled(values: List[Float], scale: Float) Float:
 	total := values.map(fn v: round(v * scale).truncate_to_int().get(0)).sum()
 	return total.to_float() / (values.length().to_float() * scale)

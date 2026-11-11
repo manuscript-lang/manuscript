@@ -14,10 +14,9 @@ fn choose[T](left: T, right: T) T: right
 type Offset:
 	base: Int
 
-impl Offset:
-	fn original(value: Int = 7) Int: self.base + value
+fn Offset.original(value: Int = 7) Int: self.base + value
 
-	fn replacement(value: Int) Int: self.base + value + 1
+fn Offset.replacement(value: Int) Int: self.base + value + 1
 
 test "required source functions replace defaulted callable values":
 	var callback = original
@@ -47,7 +46,8 @@ test "required bound methods replace defaulted callable values":
 	offset := Offset(2)
 	var callback = offset.original
 
-	// Assigning a method value takes its receiver, as assigning a closure takes its captures.
+	// Assigning a method value takes its receiver, as assigning a closure takes its
+	// captures.
 	callback = offset.clone().replacement
 	expect_equal(callback(3), 6)?
 

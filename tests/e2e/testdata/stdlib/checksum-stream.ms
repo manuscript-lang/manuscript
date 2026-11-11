@@ -13,19 +13,18 @@ type Chunks:
 	size: Int
 	at: Int
 
-impl Source[Bytes] for Chunks:
-	var fn next() Bytes?!:
-		if self.at >= self.data.length(): return ok(none)
+fn var Chunks.next() Bytes?!:
+	if self.at >= self.data.length(): return ok(none)
 
-		var end = self.at + self.size
-		if end > self.data.length(): end = self.data.length()
+	var end = self.at + self.size
+	if end > self.data.length(): end = self.data.length()
 
-		piece := self.data.slice(self.at, end)?
-		self.at = end
-		return ok(piece)
+	piece := self.data.slice(self.at, end)?
+	self.at = end
+	return ok(piece)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Chunks.close() Unit!:
+	return ok(unit)
 
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
@@ -38,14 +37,16 @@ test "stream checksums match the whole-value functions under every chunk size":
 		expect_equal(adler32_of(chunked(data.clone(), size))?, adler32(data.clone()))?
 		expect_equal(
 			crc64_of(chunked(data.clone(), size), Crc64Polynomial.Ecma)?,
-			crc64(Crc64Polynomial.Ecma, data.clone())
+			crc64(Crc64Polynomial.Ecma, data.clone()),
 		)?
 
 test "digest of a stream matches the hasher":
 	data := "digest me in pieces".to_bytes()
 	for algorithm in [
-		HashAlgorithm.Md5, HashAlgorithm.Sha1, HashAlgorithm.Sha256,
-		HashAlgorithm.Sha512
+		HashAlgorithm.Md5,
+		HashAlgorithm.Sha1,
+		HashAlgorithm.Sha256,
+		HashAlgorithm.Sha512,
 	]:
 		for size in [1, 4, 64]:
 			if (

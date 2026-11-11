@@ -10,15 +10,14 @@ interface Sink:
 type ListSink:
 	fs: List[fn() Int]
 
-impl Sink for ListSink:
-	var fn put(f: fn() Int) Unit:
-		self.fs.append(f)
+fn var ListSink.put(f: fn() Int) Unit:
+	self.fs.append(f)
 
-	fn total() Int:
-		var t = 0
-		for f in self.fs:
-			t += f()
-		return t
+fn ListSink.total() Int:
+	var t = 0
+	for f in self.fs:
+		t += f()
+	return t
 
 fn mk(f: fn() Int) Box:
 	return Box(f: f)

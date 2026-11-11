@@ -14,21 +14,20 @@ interface ListMutation:
 type ListAdapter:
 	items: List[Int]
 
-impl ListMutation for ListAdapter:
-	var fn reverse() Unit:
-		self.items.reverse()
+fn var ListAdapter.reverse() Unit:
+	self.items.reverse()
 
-	fn reversed() List[Int]:
-		return self.items.reversed()
+fn ListAdapter.reversed() List[Int]:
+	return self.items.reversed()
 
-	var fn set(index: Int, value: Int) Unit:
-		self.items.set(index, value)
+fn var ListAdapter.set(index: Int, value: Int) Unit:
+	self.items.set(index, value)
 
-	var fn remove(index: Int) Unit:
-		self.items.remove(index)
+fn var ListAdapter.remove(index: Int) Unit:
+	self.items.remove(index)
 
-	var fn append(value: Int) Unit:
-		self.items.append(value)
+fn var ListAdapter.append(value: Int) Unit:
+	self.items.append(value)
 
 interface SetMutation:
 	var fn add(value: Int) Unit
@@ -38,15 +37,14 @@ interface SetMutation:
 type SetAdapter:
 	items: Set[Int]
 
-impl SetMutation for SetAdapter:
-	var fn add(value: Int) Unit:
-		self.items.add(value)
+fn var SetAdapter.add(value: Int) Unit:
+	self.items.add(value)
 
-	var fn remove(value: Int) Unit:
-		self.items.remove(value)
+fn var SetAdapter.remove(value: Int) Unit:
+	self.items.remove(value)
 
-	fn values() List[Int]:
-		return self.items.values()
+fn SetAdapter.values() List[Int]:
+	return self.items.values()
 
 interface RegexReplacement:
 	fn replace_all(text: String, replacement: String, max_bytes: Int?) String!
@@ -54,9 +52,8 @@ interface RegexReplacement:
 type RegexAdapter:
 	pattern: Regex
 
-impl RegexReplacement for RegexAdapter:
-	fn replace_all(text: String, replacement: String, max_bytes: Int?) String!:
-		return self.pattern.replace_all(text, replacement, max_bytes)
+fn RegexAdapter.replace_all(text: String, replacement: String, max_bytes: Int?) String!:
+	return self.pattern.replace_all(text, replacement, max_bytes)
 
 fn add_generic[T: Hashable](var items: Set[T], value: T) Unit:
 	items.add(value)
@@ -115,9 +112,8 @@ interface FirstReplacement:
 type TextAdapter:
 	text: String
 
-impl FirstReplacement for TextAdapter:
-	fn replace_first(old: String, new: String) String:
-		return self.text.replace_first(old, new)
+fn TextAdapter.replace_first(old: String, new: String) String:
+	return self.text.replace_first(old, new)
 
 test "explicit views and bound views preserve native mutation":
 	var items = [1, 2, 3]
@@ -147,7 +143,8 @@ test "explicit views and bound views preserve native mutation":
 	view_first := text_view.replace_first
 	expect_false(
 		text_view.replace_first("a", "b") != "baaa" or view_first(
-			"a", "b"
+			"a",
+			"b",
 		) != "baaa"
 	)?
 
@@ -179,7 +176,8 @@ test "regex replace_all preserves literal text and exact output budgets":
 	expect_equal((all("a", "", 0)?), "")?
 	expect_equal(pattern.replace_all("z", "b", 0), limited)?
 	expect_equal(
-		pattern.replace_all("aa", "b", none), pattern.replace_all("aa", "b", none)
+		pattern.replace_all("aa", "b", none),
+		pattern.replace_all("aa", "b", none),
 	)?
 
 	empty := compile("")?
@@ -218,9 +216,8 @@ interface ByteCopy:
 type ByteAdapter:
 	data: Bytes
 
-impl ByteCopy for ByteAdapter:
-	fn reversed() Bytes:
-		return self.data.reversed()
+fn ByteAdapter.reversed() Bytes:
+	return self.data.reversed()
 
 test "list reversal names distinguish receiver mutation and shallow copies":
 	var items = [1, 2, 3]

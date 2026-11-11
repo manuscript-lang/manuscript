@@ -71,7 +71,7 @@ test "replacing long text with a shorter or equal string trims, shares or inline
 	expect_equal(long.replace("word", "w"), "w w w w w w w w w w")?
 	expect_equal(
 		long.replace("word", "WORD"),
-		"WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD"
+		"WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD",
 	)?
 	expect_equal(long.replace("word ", ""), "word")?
 	expect_equal(long.replace("word", "").byte_length(), 9)?
@@ -96,5 +96,5 @@ test "join sizes its result exactly across the inline and heap boundary":
 	expect_equal(["é", "世界", "😀"].join("·"), "é·世界·😀")?
 	expect_equal(
 		["one", "two", "three", "four", "five", "six", "seven"].join("--"),
-		"one--two--three--four--five--six--seven"
+		"one--two--three--four--five--six--seven",
 	)?

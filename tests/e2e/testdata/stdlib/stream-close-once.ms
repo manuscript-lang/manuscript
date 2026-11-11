@@ -4,7 +4,8 @@ import (
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
-// A stream closes its source or sink once, whether the stream is closed by hand or dropped.
+// A stream closes its source or sink once, whether the stream is closed by hand or
+// dropped.
 type Counted:
 	log: String
 
@@ -48,12 +49,11 @@ test "a write stream closes its sink once":
 type Failing:
 	unused: Int
 
-impl Source[Int] for Failing:
-	var fn next() Int?!:
-		return ok(none)
+fn var Failing.next() Int?!:
+	return ok(none)
 
-	var fn close() Unit!:
-		return error(Error("close failed", kind: "EIO"))
+fn var Failing.close() Unit!:
+	return error(Error("close failed", kind: "EIO"))
 
 test "an explicit close returns the source's close error":
 	var input = ReadStream[Int](Failing(0))

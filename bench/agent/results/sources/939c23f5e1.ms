@@ -406,7 +406,8 @@ fn recur(var st: St, name: String, value: String) String!Fail:
 	if st.stack.contains(name):
 		return error(
 			lfail(
-				st.line, "Recursive variable '{name}' references itself (eventually)"
+				st.line,
+				"Recursive variable '{name}' references itself (eventually)",
 			)
 		)
 
@@ -735,16 +736,20 @@ fn closeRule(var st: St) Unit:
 		if t.contains("%"):
 			st.pats.append(
 				PRule(
-					pat: t.clone(), prereqs: st.rPre.clone(),
-					oprereqs: st.rOpre.clone(), recipe: st.rRecipe.clone()
+					pat: t.clone(),
+					prereqs: st.rPre.clone(),
+					oprereqs: st.rOpre.clone(),
+					recipe: st.rRecipe.clone(),
 				)
 			)
 		else:
 			if not st.ridx.contains(t):
 				st.rules.append(
 					MRule(
-						name: t.clone(), prereqs: List[String](),
-						oprereqs: List[String](), recipe: List[RLine]()
+						name: t.clone(),
+						prereqs: List[String](),
+						oprereqs: List[String](),
+						recipe: List[RLine](),
 					)
 				)
 				st.ridx.add(t.clone(), st.rules.length() - 1)
@@ -847,15 +852,17 @@ fn assignLine(var st: St, cs: List[String], eq: Int, num: Int) Unit!Fail:
 				st.vars.add(
 					name.clone(),
 					VarDef(
-						value: joinSep(oldVal, add), simple: true
-					)
+						value: joinSep(oldVal, add),
+						simple: true,
+					),
 				)
 			else:
 				st.vars.add(
 					name.clone(),
 					VarDef(
-						value: joinSep(oldVal, value), simple: false
-					)
+						value: joinSep(oldVal, value),
+						simple: false,
+					),
 				)
 
 fn directive(var st: St, word: String, text: String, rest: String, num: Int) Unit!Fail:
@@ -1012,9 +1019,12 @@ fn resolveRule(st: St, t: String) Res:
 		k := st.ridx.get_or(t, 0)
 		if not st.rules[k].recipe.is_empty():
 			return Res(
-				found: true, prereqs: st.rules[k].prereqs.clone(),
+				found: true,
+				prereqs: st.rules[k].prereqs.clone(),
 				oprereqs: st.rules[k].oprereqs.clone(),
-				recipe: st.rules[k].recipe.clone(), stem: "", hasRecipe: true
+				recipe: st.rules[k].recipe.clone(),
+				stem: "",
+				hasRecipe: true,
 			)
 
 	for pr in st.pats:
@@ -1037,21 +1047,32 @@ fn resolveRule(st: St, t: String) Res:
 						opre.append(p.clone())
 
 				return Res(
-					found: true, prereqs: pre, oprereqs: opre,
-					recipe: pr.recipe.clone(), stem: stem, hasRecipe: true
+					found: true,
+					prereqs: pre,
+					oprereqs: opre,
+					recipe: pr.recipe.clone(),
+					stem: stem,
+					hasRecipe: true,
 				)
 
 	if st.ridx.contains(t):
 		k := st.ridx.get_or(t, 0)
 		return Res(
-			found: true, prereqs: st.rules[k].prereqs.clone(),
-			oprereqs: st.rules[k].oprereqs.clone(), recipe: List[RLine](), stem: "",
-			hasRecipe: false
+			found: true,
+			prereqs: st.rules[k].prereqs.clone(),
+			oprereqs: st.rules[k].oprereqs.clone(),
+			recipe: List[RLine](),
+			stem: "",
+			hasRecipe: false,
 		)
 
 	return Res(
-		found: false, prereqs: List[String](), oprereqs: List[String](),
-		recipe: List[RLine](), stem: "", hasRecipe: false
+		found: false,
+		prereqs: List[String](),
+		oprereqs: List[String](),
+		recipe: List[RLine](),
+		stem: "",
+		hasRecipe: false,
 	)
 
 fn defaultGoal(st: St) String:
@@ -1469,15 +1490,35 @@ export fn main() Int:
 			table.append(l.clone())
 
 	var st = St(
-		mk: mk, vars: Map[String, VarDef](), cmd: Map[String, String](),
-		files: Map[String, Int](), clock: 0, out: List[String](), line: 0,
-		autos: Map[String, String](), binds: List[Bind](), stack: List[String](),
-		rules: List[MRule](), ridx: Map[String, Int](), pats: List[PRule](),
-		phony: List[String](), frames: List[Frame](), rOpen: false, rSink: false,
-		rTargets: List[String](), rPre: List[String](), rOpre: List[String](),
-		rRecipe: List[RLine](), rLine: 0, memo: Map[String, Bool](),
-		bstack: List[String](), dry: false, runs: 0, dstack: List[String](),
-		ddone: List[String](), dres: List[String]()
+		mk: mk,
+		vars: Map[String, VarDef](),
+		cmd: Map[String, String](),
+		files: Map[String, Int](),
+		clock: 0,
+		out: List[String](),
+		line: 0,
+		autos: Map[String, String](),
+		binds: List[Bind](),
+		stack: List[String](),
+		rules: List[MRule](),
+		ridx: Map[String, Int](),
+		pats: List[PRule](),
+		phony: List[String](),
+		frames: List[Frame](),
+		rOpen: false,
+		rSink: false,
+		rTargets: List[String](),
+		rPre: List[String](),
+		rOpre: List[String](),
+		rRecipe: List[RLine](),
+		rLine: 0,
+		memo: Map[String, Bool](),
+		bstack: List[String](),
+		dry: false,
+		runs: 0,
+		dstack: List[String](),
+		ddone: List[String](),
+		dres: List[String](),
 	)
 	var clock = 0
 

@@ -1,5 +1,6 @@
-// Compares two already-built revisions against shared handwritten Go samples.
-// Usage: ms run bench/tools/programs_compare.ms -- --before B --after A --go G --input I --output DIR [--repeats 30]
+// Compares two already-built revisions against shared handwritten Go samples. Usage: ms
+// run bench/tools/programs_compare.ms -- --before B --after A --go G --input I --output
+// DIR [--repeats 30]
 import (
 	arguments from "@std/os/env.ms",
 
@@ -34,7 +35,8 @@ fn run(opts: Map[String, String], n: Int) Result[String, Error]:
 		var results = Map[String, String]()
 		for version in orders[i % orders.length()]:
 			results.add(
-				version.clone(), sample(programs.get_or(version, ""), [], input)?
+				version.clone(),
+				sample(programs.get_or(version, ""), [], input)?,
 			)
 
 		for revision in ["before", "after"]:
@@ -60,8 +62,9 @@ fn run(opts: Map[String, String], n: Int) Result[String, Error]:
 
 fn main() Int:
 	parsed := options(
-		arguments(), ["before", "after", "go", "input", "output", "repeats"],
-		["before", "after", "go", "input", "output"]
+		arguments(),
+		["before", "after", "go", "input", "output", "repeats"],
+		["before", "after", "go", "input", "output"],
 	)
 	if parsed.is_error(): return fail(parsed.err().message)
 

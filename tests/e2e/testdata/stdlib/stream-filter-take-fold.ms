@@ -9,20 +9,20 @@ type Counting:
 	next_value: Int
 	pulled: Int
 
-impl Source[Int] for Counting:
-	var fn next() Int?!:
-		self.pulled += 1
-		self.next_value += 1
-		return ok(self.next_value)
+fn var Counting.next() Int?!:
+	self.pulled += 1
+	self.next_value += 1
+	return ok(self.next_value)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Counting.close() Unit!:
+	return ok(unit)
 
 test "filter keeps matching items in order":
 	kept := collect(from_list([1, 2, 3, 4, 5, 6]) | filter(fn x: x % 2 == 0), none)?
 	expect_equal(kept, [2, 4, 6])?
 	expect_equal(
-		collect(from_list([1, 3]) | filter(fn x: x % 2 == 0), none)?, List[Int]()
+		collect(from_list([1, 3]) | filter(fn x: x % 2 == 0), none)?,
+		List[Int](),
 	)?
 
 test "take stops after count items and never reads past them":
@@ -41,7 +41,7 @@ test "stages compose over an endless stream":
 		ReadStream[Int](Counting(0, 0)) | filter(fn x: x > 2) | map(
 			fn x: x * 10
 		) | take(3),
-		none
+		none,
 	)?
 	expect_equal(out, [30, 40, 50])?
 
@@ -49,15 +49,14 @@ test "stages compose over an endless stream":
 type Intermittent:
 	calls: Int = 0
 
-impl Source[Int] for Intermittent:
-	var fn next() Int?!:
-		self.calls += 1
-		if self.calls % 2 == 1: return error(Error("retry this read", kind: "EAGAIN"))
+fn var Intermittent.next() Int?!:
+	self.calls += 1
+	if self.calls % 2 == 1: return error(Error("retry this read", kind: "EAGAIN"))
 
-		return ok(self.calls)
+	return ok(self.calls)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Intermittent.close() Unit!:
+	return ok(unit)
 
 test "take does not spend its last item on a failed read":
 	var source = ReadStream[Int](Intermittent()) | take(1)
@@ -68,9 +67,12 @@ test "take does not spend its last item on a failed read":
 	expect_equal(source.next()?, none)?
 
 test "take preserves its remaining items across errors in composed stages":
-	var source = ReadStream[Int](Intermittent()) | filter(fn x: x % 4 == 0) | map(
-		fn x: x * 10
-	) | take(2)
+	var source = (
+		ReadStream[Int](Intermittent())
+		| filter(fn x: x % 4 == 0)
+		| map(fn x: x * 10)
+		| take(2)
+	)
 
 	for expected in [40, 80]:
 		for failed in 0..2:

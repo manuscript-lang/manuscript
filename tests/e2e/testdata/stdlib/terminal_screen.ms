@@ -16,7 +16,8 @@ test "the first draw writes every row and parks the cursor":
 	var s = screen(24)
 	out := s.render(["> hi", "status"], 0, 4)
 	expect_equal(
-		out, "{begin}\r{esc}[2K> hi\r\n{esc}[2Kstatus{esc}[J{esc}[1A\r{esc}[4C{end}"
+		out,
+		"{begin}\r{esc}[2K> hi\r\n{esc}[2Kstatus{esc}[J{esc}[1A\r{esc}[4C{end}",
 	)?
 
 test "an unchanged frame rewrites only the cursor":

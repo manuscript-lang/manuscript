@@ -9,9 +9,8 @@ type Door:
 	id: Int
 	log: String
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		append_file(self.log, "{self.id},").wait()?
+fn var Door.close() Unit!:
+	append_file(self.log, "{self.id},").wait()?
 
 fn events(log: String) String!:
 	return ok((read_file(log).wait()?).decode_utf8().get(""))
@@ -117,7 +116,7 @@ test "grown resource deques close each owner once on error and fault exits":
 	append_file(other, "").wait()?
 	expect_contains(
 		(expect_fault(fn: interrupted(other.clone(), true).get())?),
-		"after deque growth"
+		"after deque growth",
 	)?
 	expect_once(other, [0, 1, 2, 3, 4, 5])?
 

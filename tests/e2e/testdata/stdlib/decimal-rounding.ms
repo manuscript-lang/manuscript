@@ -51,8 +51,11 @@ test "decimal scale extremes and invalid requests return typed errors":
 
 test "exact rounding retains values at every supported precision":
 	for mode in [
-		RoundingMode.HalfEven, RoundingMode.HalfAwayFromZero, RoundingMode.TowardZero,
-		RoundingMode.Floor, RoundingMode.Ceil
+		RoundingMode.HalfEven,
+		RoundingMode.HalfAwayFromZero,
+		RoundingMode.TowardZero,
+		RoundingMode.Floor,
+		RoundingMode.Ceil,
 	]:
 		for value in [0d, 1.25d, -1.25d, 1e6144d, -1e6144d]:
 			expect_equal((value.round(6176, mode)?), value)?

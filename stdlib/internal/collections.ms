@@ -1,10 +1,11 @@
-// The runtime keeps the first of equal elements, hashing them when the element type is hashable; the compiler lowers this call from the element type.
+// The runtime keeps the first of equal elements, hashing them when the element type is
+// hashable; the compiler lowers this call from the element type.
 export extern fn msrt_list_distinct[T: Equal & Clonable](values: List[T]) List[T]
 
 export extern fn msrt_list_filled[T: Clonable](
 	value: T,
 	count: Int,
-	max_items: Int?
+	max_items: Int?,
 ) List[T]!
 
 export extern fn msrt_list_flatten[T: Clonable](lists: List[List[T]]) List[T]
@@ -13,5 +14,5 @@ export extern fn msrt_list_range_by(
 	start: Int,
 	end: Int,
 	step: Int,
-	max_items: Int?
+	max_items: Int?,
 ) List[Int]!

@@ -17,8 +17,8 @@ export type Run[K: Clonable, T: Clonable]:
 	// The items of the run in their original order.
 	items: List[T]
 
-// Pairs each item with the one after it; a list with fewer than two items gives an empty list.
-// Example: `pairwise([1, 2, 3])` holds the pairs `(1, 2)` and `(2, 3)`.
+// Pairs each item with the one after it; a list with fewer than two items gives an
+// empty list. Example: `pairwise([1, 2, 3])` holds the pairs `(1, 2)` and `(2, 3)`.
 export fn pairwise[T: Clonable](values: List[T]) List[Pair[T, T]]:
 	var out: List[Pair[T, T]] = []
 	for i in 1..values.length():
@@ -41,8 +41,8 @@ export fn accumulate[T: Clonable](values: List[T], step: fn(T, T) T) List[T]:
 
 	return out
 
-// Repeats the whole list `times` times in order. A negative `times` faults; zero gives an empty list.
-// Example: `cycle([1, 2], 3)` is `[1, 2, 1, 2, 1, 2]`.
+// Repeats the whole list `times` times in order. A negative `times` faults; zero gives
+// an empty list. Example: `cycle([1, 2], 3)` is `[1, 2, 1, 2, 1, 2]`.
 export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
 	if times < 0:
 		panic("cycle: times must not be negative")
@@ -50,11 +50,12 @@ export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
 	count := if values.is_empty(): 0 else: times
 	return values.repeated(count)
 
-// Pairs items by position and pads the shorter list with none, so the result is as long as the longer list.
-// Example: `zip_longest([1, 2, 3], ["a"])` pairs `(1, "a")`, `(2, none)` and `(3, none)`.
+// Pairs items by position and pads the shorter list with none, so the result is as long
+// as the longer list. Example: `zip_longest([1, 2, 3], ["a"])` pairs `(1, "a")`,
+// `(2, none)` and `(3, none)`.
 export fn zip_longest[A: Clonable, B: Clonable](
 	left: List[A],
-	right: List[B]
+	right: List[B],
 ) List[Pair[A?, B?]]:
 	var out: List[Pair[A?, B?]] = []
 	longest := left.length().max(right.length())
@@ -117,7 +118,7 @@ fn extend_permutations[T: Clonable](
 	k: Int,
 	var used: List[Bool],
 	var chosen: List[Int],
-	var out: List[List[T]]
+	var out: List[List[T]],
 ) Unit:
 	if chosen.length() == k:
 		out.append(chosen.map(fn i: values[i].clone()))

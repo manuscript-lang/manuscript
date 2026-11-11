@@ -13,7 +13,9 @@ import (
 	msrt_bits_bit_or, msrt_bits_shift_left from "@std/internal/math.ms",
 )
 
-// An immutable sequence of bytes, such as `"hello".to_bytes()`. Use `decode_utf8()` to read text; invalid UTF-8 returns `none`. Indices and slice bounds count bytes from zero.
+// An immutable sequence of bytes, such as `"hello".to_bytes()`. Use `decode_utf8()` to
+// read text; invalid UTF-8 returns `none`. Indices and slice bounds count bytes from
+// zero.
 export extern type Bytes
 
 impl Data for Bytes:
@@ -52,7 +54,8 @@ impl Bytes:
     */
 	fn view(start: Int, end: Int) Bytes: ...
 
-	// Returns an unsigned byte; negative indexes are relative to the end. An out-of-range index returns `default`, and without one raises a fault.
+	// Returns an unsigned byte; negative indexes are relative to the end. An
+	// out-of-range index returns `default`, and without one raises a fault.
 	fn get(index: Int, default: UInt8?) UInt8: ...
 
 	// Returns the first matching byte offset or `none`; empty `value` matches at zero.
@@ -62,7 +65,8 @@ impl Bytes:
 	// A `start` past length() gives `none`; a negative `start` counts as zero.
 	fn index_of_byte(value: UInt8, start: Int) Int?: ...
 
-	// Returns the last matching byte offset or `none`; empty `value` matches at length().
+	// Returns the last matching byte offset or `none`; empty `value` matches at
+	// length().
 	fn last_index_of(value: Bytes) Int?: ...
 
 	// Tests whether the receiver begins with these bytes.
@@ -81,7 +85,8 @@ impl Bytes:
 	// Tests whether the receiver contains no bytes.
 	fn is_empty() Bool: ...
 
-	// Returns a fresh mutable list of unsigned byte values; changing it leaves the Bytes unchanged.
+	// Returns a fresh mutable list of unsigned byte values; changing it leaves the
+	// Bytes unchanged.
 	fn values() List[UInt8]: ...
 
 	// Returns concatenated bytes without changing either operand.
@@ -93,12 +98,13 @@ impl Bytes:
 	// Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
 	fn decode_utf8() String?: ...
 
-	// Decodes [start, end) as `decode_utf8` does, without copying the range into a new Bytes first.
-	// Bounds outside 0 <= start <= end <= length() raise a fault.
+	// Decodes [start, end) as `decode_utf8` does, without copying the range into a new
+	// Bytes first. Bounds outside 0 <= start <= end <= length() raise a fault.
 	fn decode_utf8_range(start: Int, end: Int) String?: ...
 
 impl BytesCodecs for Bytes:
-	// Reads one signed byte at `at`; a missing byte returns an `Error` of kind `ERANGE`. Offsets are absolute, so a negative `at` is out of range.
+	// Reads one signed byte at `at`; a missing byte returns an `Error` of kind
+	// `ERANGE`. Offsets are absolute, so a negative `at` is out of range.
 	fn int8(at: Int) Int8!:
 		raw := msrt_bytes_read_word(self, at, 1, true)?
 		return ok(signed(raw, 128).to_int8().get(0))
@@ -108,63 +114,75 @@ impl BytesCodecs for Bytes:
 		raw := msrt_bytes_read_word(self, at, 1, true)?
 		return ok(raw.to_uint8().get(0))
 
-	// Reads a signed 16-bit little-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads a signed 16-bit little-endian integer from two bytes at `at`; missing bytes
+	// return an `Error` of kind `ERANGE`.
 	fn int16_le(at: Int) Int16!:
 		raw := msrt_bytes_read_word(self, at, 2, true)?
 		return ok(signed(raw, 32768).to_int16().get(0))
 
-	// Reads an unsigned 16-bit little-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads an unsigned 16-bit little-endian integer from two bytes at `at`; missing
+	// bytes return an `Error` of kind `ERANGE`.
 	fn uint16_le(at: Int) UInt16!:
 		raw := msrt_bytes_read_word(self, at, 2, true)?
 		return ok(raw.to_uint16().get(0))
 
-	// Reads a signed 16-bit big-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads a signed 16-bit big-endian integer from two bytes at `at`; missing bytes
+	// return an `Error` of kind `ERANGE`.
 	fn int16_be(at: Int) Int16!:
 		raw := msrt_bytes_read_word(self, at, 2, false)?
 		return ok(signed(raw, 32768).to_int16().get(0))
 
-	// Reads an unsigned 16-bit big-endian integer from two bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads an unsigned 16-bit big-endian integer from two bytes at `at`; missing bytes
+	// return an `Error` of kind `ERANGE`.
 	fn uint16_be(at: Int) UInt16!:
 		raw := msrt_bytes_read_word(self, at, 2, false)?
 		return ok(raw.to_uint16().get(0))
 
-	// Reads a signed 32-bit little-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads a signed 32-bit little-endian integer from four bytes at `at`; missing
+	// bytes return an `Error` of kind `ERANGE`.
 	fn int32_le(at: Int) Int32!:
 		raw := msrt_bytes_read_word(self, at, 4, true)?
 		return ok(signed(raw, 2147483648).to_int32().get(0))
 
-	// Reads an unsigned 32-bit little-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads an unsigned 32-bit little-endian integer from four bytes at `at`; missing
+	// bytes return an `Error` of kind `ERANGE`.
 	fn uint32_le(at: Int) UInt32!:
 		raw := msrt_bytes_read_word(self, at, 4, true)?
 		return ok(raw.to_uint32().get(0))
 
-	// Reads a signed 32-bit big-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads a signed 32-bit big-endian integer from four bytes at `at`; missing bytes
+	// return an `Error` of kind `ERANGE`.
 	fn int32_be(at: Int) Int32!:
 		raw := msrt_bytes_read_word(self, at, 4, false)?
 		return ok(signed(raw, 2147483648).to_int32().get(0))
 
-	// Reads an unsigned 32-bit big-endian integer from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads an unsigned 32-bit big-endian integer from four bytes at `at`; missing
+	// bytes return an `Error` of kind `ERANGE`.
 	fn uint32_be(at: Int) UInt32!:
 		raw := msrt_bytes_read_word(self, at, 4, false)?
 		return ok(raw.to_uint32().get(0))
 
-	// Reads a signed 64-bit little-endian integer from eight bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads a signed 64-bit little-endian integer from eight bytes at `at`; missing
+	// bytes return an `Error` of kind `ERANGE`.
 	fn int64_le(at: Int) Int!:
 		raw := msrt_bytes_read_word(self, at, 8, true)?
 		return ok(raw)
 
-	// Reads a signed 64-bit big-endian integer from eight bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads a signed 64-bit big-endian integer from eight bytes at `at`; missing bytes
+	// return an `Error` of kind `ERANGE`.
 	fn int64_be(at: Int) Int!:
 		raw := msrt_bytes_read_word(self, at, 8, false)?
 		return ok(raw)
 
-	// Reads an unsigned 64-bit little-endian integer from eight bytes at `at`, including the full UInt64 range.
-	// Negative offsets or missing bytes return an `Error` of kind `ERANGE`.
+	// Reads an unsigned 64-bit little-endian integer from eight bytes at `at`,
+	// including the full UInt64 range. Negative offsets or missing bytes return an
+	// `Error` of kind `ERANGE`.
 	fn uint64_le(at: Int) UInt64!:
 		return read_uint64(self, at, true)
 
-	// Reads an unsigned 64-bit big-endian integer from eight bytes at `at`, including the full UInt64 range.
-	// Negative offsets or missing bytes return an `Error` of kind `ERANGE`.
+	// Reads an unsigned 64-bit big-endian integer from eight bytes at `at`, including
+	// the full UInt64 range. Negative offsets or missing bytes return an `Error` of
+	// kind `ERANGE`.
 	fn uint64_be(at: Int) UInt64!:
 		return read_uint64(self, at, false)
 
@@ -191,8 +209,9 @@ impl BytesCodecs for Bytes:
 			word = msrt_bits_bit_or(
 				word,
 				msrt_bits_shift_left(
-					msrt_bits_bit_and(byte, 127), i * 7
-				)
+					msrt_bits_bit_and(byte, 127),
+					i * 7,
+				),
 			)
 			if byte < 128: return ok(VarintRead(unsigned_word(word), at + i + 1))
 
@@ -207,27 +226,32 @@ impl BytesCodecs for Bytes:
 
 		return ok(VarintRead(half, raw.next_offset))
 
-	// Reads an IEEE 754 binary32 little-endian float from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads an IEEE 754 binary32 little-endian float from four bytes at `at`; missing
+	// bytes return an `Error` of kind `ERANGE`.
 	fn float32_le(at: Int) Float32!:
 		raw := msrt_bytes_read_word(self, at, 4, true)?
 		return ok(msrt_float32_from_bits(raw).to_float32().get(0.0))
 
-	// Reads an IEEE 754 binary32 big-endian float from four bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads an IEEE 754 binary32 big-endian float from four bytes at `at`; missing
+	// bytes return an `Error` of kind `ERANGE`.
 	fn float32_be(at: Int) Float32!:
 		raw := msrt_bytes_read_word(self, at, 4, false)?
 		return ok(msrt_float32_from_bits(raw).to_float32().get(0.0))
 
-	// Reads an IEEE 754 binary64 little-endian float from eight bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads an IEEE 754 binary64 little-endian float from eight bytes at `at`; missing
+	// bytes return an `Error` of kind `ERANGE`.
 	fn float64_le(at: Int) Float!:
 		raw := msrt_bytes_read_word(self, at, 8, true)?
 		return ok(msrt_float_from_bits(raw))
 
-	// Reads an IEEE 754 binary64 big-endian float from eight bytes at `at`; missing bytes return an `Error` of kind `ERANGE`.
+	// Reads an IEEE 754 binary64 big-endian float from eight bytes at `at`; missing
+	// bytes return an `Error` of kind `ERANGE`.
 	fn float64_be(at: Int) Float!:
 		raw := msrt_bytes_read_word(self, at, 8, false)?
 		return ok(msrt_float_from_bits(raw))
 
-// Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One allocation and one copy of each part, unlike repeated concat.
+// Returns the parts end to end as one new Bytes; an empty list gives empty bytes. One
+// allocation and one copy of each part, unlike repeated concat.
 export fn join(parts: List[Bytes]) Bytes:
 	return msrt_bytes_join(parts)
 
@@ -245,10 +269,12 @@ impl BytesBuilder:
 	// Appends all supplied bytes in order; the input is unchanged.
 	var fn append_bytes(values: Bytes) Unit: ...
 
-	// Consumes the builder and returns its bytes; the builder cannot be used afterwards.
+	// Consumes the builder and returns its bytes; the builder cannot be used
+	// afterwards.
 	fn build() Bytes: ...
 
-	// Returns the bytes appended so far and leaves the builder empty, for a builder held in a field.
+	// Returns the bytes appended so far and leaves the builder empty, for a builder
+	// held in a field.
 	var fn drain() Bytes: ...
 
 impl BytesBuilderCodecs for BytesBuilder:
@@ -296,7 +322,8 @@ impl BytesBuilderCodecs for BytesBuilder:
 	var fn append_int64_be(value: Int) Unit:
 		put_word(var self, value, 8, false)
 
-	// Appends an unsigned 64-bit little-endian integer, including the full UInt64 range.
+	// Appends an unsigned 64-bit little-endian integer, including the full UInt64
+	// range.
 	var fn append_uint64_le(value: UInt64) Unit:
 		put_uint64(var self, value, true)
 
@@ -314,7 +341,8 @@ impl BytesBuilderCodecs for BytesBuilder:
 
 		self.append(remaining.to_uint8().get(0))
 
-	// Appends the shortest signed 64-bit zigzag encoding; even the most negative Int fits in ten bytes.
+	// Appends the shortest signed 64-bit zigzag encoding; even the most negative Int
+	// fits in ten bytes.
 	var fn append_varint(value: Int) Unit:
 		if value < 0:
 			self.append_uvarint((-(value + 1)).to_uint64().get(0) * 2 + 1)
@@ -343,7 +371,8 @@ impl BytesBuilderCodecs for BytesBuilder:
 export type VarintRead[T]:
 	// The integer decoded as unsigned base-128 or signed zigzag by the read method.
 	value: T
-	// The first byte after the encoding, relative to the receiver, including for a slice.
+	// The first byte after the encoding, relative to the receiver, including for a
+	// slice.
 	next_offset: Int
 
 // Appends the low `width` bytes of `value` in the requested byte order.
@@ -352,11 +381,13 @@ fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
 		place := if little: i else: width - 1 - i
 		out.append(
 			msrt_bits_bit_and(
-				msrt_bits_shift_right(value, 8 * place), 255
+				msrt_bits_shift_right(value, 8 * place),
+				255,
 			).to_uint8().get(0)
 		)
 
-// Reads a signed value from its unsigned bit pattern: `half` is 2 to the power `bits - 1`.
+// Reads a signed value from its unsigned bit pattern: `half` is 2 to the power
+// `bits - 1`.
 fn signed(raw: Int, half: Int) Int:
 	if raw >= half: return raw - half * 2
 	return raw

@@ -94,56 +94,57 @@ export fn gen_c09() Unit:
 	examples := [
 		mk(
 			"basic",
-			"caesar enc 3 Hello, World!\ncaesar dec 3 Khoor, Zruog!\nvigenere enc Key Attack at dawn\nvigenere dec Key Kxrkgi kx bkal\nrot13 enc 13 x\ncaesar enc 3x abc\ncaesar enc\n"
+			"caesar enc 3 Hello, World!\ncaesar dec 3 Khoor, Zruog!\nvigenere enc Key Attack at dawn\nvigenere dec Key Kxrkgi kx bkal\nrot13 enc 13 x\ncaesar enc 3x abc\ncaesar enc\n",
 		),
-		mk("wraparound", "caesar enc 1 xyz XYZ\ncaesar enc -1 abc ABC\n")
+		mk("wraparound", "caesar enc 1 xyz XYZ\ncaesar enc -1 abc ABC\n"),
 	]
 	hidden := examples.concat(
 		[
 			mk(
 				"big-shifts",
-				"caesar enc 26 Same\ncaesar enc 27 Same\ncaesar enc -27 Same\ncaesar dec 1000000 Mixed Case 123\ncaesar enc -0 zero\ncaesar enc 0000012 padded\n"
+				"caesar enc 26 Same\ncaesar enc 27 Same\ncaesar enc -27 Same\ncaesar dec 1000000 Mixed Case 123\ncaesar enc -0 zero\ncaesar enc 0000012 padded\n",
 			),
 			mk(
 				"key-advances-on-letters-only",
-				"vigenere enc ab a-b c d!e\nvigenere enc bcd aaa aaa aaa\nvigenere dec bcd bbb bbb bbb\n"
+				"vigenere enc ab a-b c d!e\nvigenere enc bcd aaa aaa aaa\nvigenere dec bcd bbb bbb bbb\n",
 			),
 			mk(
 				"vigenere-key-case",
-				"vigenere enc KEY hello world\nvigenere enc key hello world\nvigenere enc aA zZ\nvigenere enc Z abc\n"
+				"vigenere enc KEY hello world\nvigenere enc key hello world\nvigenere enc aA zZ\nvigenere enc Z abc\n",
 			),
 			mk(
 				"non-letters",
-				"caesar enc 5 1234 !@#$ ... ---\ncaesar enc 3 café naïve\nvigenere enc abc über\n"
+				"caesar enc 5 1234 !@#$ ... ---\ncaesar enc 3 café naïve\nvigenere enc abc über\n",
 			),
 			mk(
 				"spaces-in-text",
-				"caesar enc 1 a  b   c\ncaesar enc 1  lead\ncaesar enc 1 trail \nvigenere enc a   x\n"
+				"caesar enc 1 a  b   c\ncaesar enc 1  lead\ncaesar enc 1 trail \nvigenere enc a   x\n",
 			),
 			mk(
 				"bad-command",
-				"caesar\ncaesar enc\ncaesar enc 3\ncaesar enc 3 \nvigenere dec key \nx\n"
+				"caesar\ncaesar enc\ncaesar enc 3\ncaesar enc 3 \nvigenere dec key \nx\n",
 			),
 			mk(
 				"bad-cipher",
-				"Caesar enc 3 abc\nrot13 enc 3 abc\nrot enc 3 abc\n vigenere enc k abc\n"
+				"Caesar enc 3 abc\nrot13 enc 3 abc\nrot enc 3 abc\n vigenere enc k abc\n",
 			),
 			mk(
 				"bad-mode",
-				"caesar encrypt 3 abc\ncaesar ENC 3 abc\nvigenere de k abc\nvigenere  k abc\n"
+				"caesar encrypt 3 abc\ncaesar ENC 3 abc\nvigenere de k abc\nvigenere  k abc\n",
 			),
 			mk(
 				"bad-key",
-				"caesar enc +3 abc\ncaesar enc 3.5 abc\ncaesar enc abc abc\ncaesar enc - abc\ncaesar enc 12345678 abc\nvigenere enc k3 abc\nvigenere enc - abc\nvigenere enc k-y abc\ncaesar enc 3 abc\n"
+				"caesar enc +3 abc\ncaesar enc 3.5 abc\ncaesar enc abc abc\ncaesar enc - abc\ncaesar enc 12345678 abc\nvigenere enc k3 abc\nvigenere enc - abc\nvigenere enc k-y abc\ncaesar enc 3 abc\n",
 			),
 			mk(
 				"check-order",
-				"x y z w\ncaesar y z w\ncaesar enc z w\nvigenere enc 5 w\nvigenere enc 5\n"
+				"x y z w\ncaesar y z w\ncaesar enc z w\nvigenere enc 5 w\nvigenere enc 5\n",
 			),
 			mk(
-				"blank-lines", "\n  \ncaesar enc 1 a\n\n   \ncaesar dec 1 b\n"
+				"blank-lines",
+				"\n  \ncaesar enc 1 a\n\n   \ncaesar dec 1 b\n",
 			),
-			mk("big", big.join("\n") + "\n")
+			mk("big", big.join("\n") + "\n"),
 		]
 	)
 	write_cases("c09-ciphers", examples, hidden)

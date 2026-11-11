@@ -10,10 +10,10 @@ type Counter:
 type Resource:
 	marker: String
 
-// Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
-impl Closeable for Resource:
-	var fn close() Unit!:
-		_written := write_file(self.marker, "closed", true).wait()
+// Cleanup runs on the resource's own copy, so a marker file is how a caller observes
+// it.
+fn var Resource.close() Unit!:
+	_written := write_file(self.marker, "closed", true).wait()
 
 fn closed(marker: String) Bool: read_file(marker).wait().is_ok()
 
@@ -59,7 +59,10 @@ test "indexing and generic applications coexist":
 	((items[0] != 10 or items[index] != 20 or items[-1] != 20)) | expect_false?
 	(items[indices[index]] != 20 or items[index - 1] != 10) | expect_false?
 	(items[counter.count] != 10 or [items.clone()][0][1] != 20) | expect_false?
-	(values(var counter)[(tick(var counter)?)] != 7 or counter.count != 2) | expect_false?
+	(
+		(values(var counter)[(tick(var counter)?)] != 7 or counter.count != 2)
+		| expect_false?
+	)
 	identity[Int](items[0]) | expect_equal(10)?
 
 	callbacks: List[fn(Int) Int] := [identity[Int]]
@@ -70,7 +73,13 @@ test "empty list constructors have fresh typed storage":
 	contextual: List[Int] := List()
 	other := List[String]()
 	empty.append("a")
-	(empty[0] != "a" or not other.is_empty() or not contextual.is_empty()) | expect_false?
+	(
+		(
+			empty[0] != "a"
+			or not other.is_empty()
+			or not contextual.is_empty()
+		) | expect_false?
+	)
 
 	map := Map[String, Int]()
 	map.length() | expect_equal(0)?
@@ -78,7 +87,10 @@ test "empty list constructors have fresh typed storage":
 test "string concatenation and scalar ordering":
 	lines := ["a", "b"]
 	(lines.join("\n") + "\n") | expect_equal("a\nb\n")?
-	(("" < "a" and "a" < "aa" and "é" > "z" and "a" <= "a" and "a" >= "a")) | expect_true?
+	(
+		(("" < "a" and "a" < "aa" and "é" > "z" and "a" <= "a" and "a" >= "a"))
+		| expect_true?
+	)
 	("a" < "a" or "a" > "a" or "b" <= "a" or "a" >= "b") | expect_false?
 	("" + "value" != "value" or "value" + "" != "value") | expect_false?
 	("\u{e000}" < "\u{10000}") | expect_true?
@@ -96,7 +108,13 @@ test "string concatenation and scalar ordering":
 test "match expressions preserve returns and cleanup":
 	present: Int? := 4
 	absent: Int? := none
-	(early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | expect_false?
+	(
+		(
+			early(present) != 5
+			or early(absent) != 9
+			or all_return(present) != 4
+		) | expect_false?
+	)
 
 	var temporary = temporary("manuscript-match-") | expect_ok?
 	dir := temporary.path()
@@ -105,7 +123,13 @@ test "match expressions preserve returns and cleanup":
 	closed("{dir}/parsed") | expect_true?
 
 	invalid := amount(text: "invalid", marker: "{dir}/invalid")
-	(invalid != Result[Int, Error].error(cause: Error("Invalid amount"))) | expect_false?
+	(
+		(
+			invalid != Result[Int, Error].error(
+				cause: Error("Invalid amount")
+			)
+		) | expect_false?
+	)
 	closed("{dir}/invalid") | expect_true?
 	temporary.close()?
 
@@ -197,7 +221,7 @@ fn returned_argument(var counter: Counter) Int!:
 				value: value
 				none: return ok(17)
 			,
-			second: (tick(var counter)?)
+			second: (tick(var counter)?),
 		)
 	)
 

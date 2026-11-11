@@ -38,7 +38,7 @@ fn main() Unit!:
 - A line-ending `:` needs an indented body. Inline `if c: return x` exits early; an `else` requires a block `if`. Leading `|` or `.` continues a line.
 - Imports: `import a, b from "x.ms"`, or `import (a from "x.ms", b from "y.ms")`; `export` shares declarations.
 - Records: `type T:` with fields (`tag: String = "x"`); construct `T(a: 1)` or `T(1)`. `enum Choice:` declares `A`, `B(x: Int)`; no `case` keyword.
-- Methods: `impl T:`; `var fn` mutates self. `interface I:` contracts; `impl I for T:` implements it. `export opaque type T:` or `export opaque enum T:` hides fields/cases outside the file.
+- Methods: `fn T.name()`; `fn var` mutates self. An `interface I:` is met by matching methods or `impl I for T:`. `export opaque type T:` or `export opaque enum T:` hides fields/cases outside the file.
 - Collections: `[1, 2]`, `List[T](reserve: n)`, `Map[K, V]()`, `Set[T]()`. Mutation needs `var`; `xs[i] = v`, `m[k] = v`. `xs.slice(a, b)` returns a Result. `m.get(k)` returns an Optional; `m.get_or(k, d)` supplies a default. `for e in m.entries():` visits entries; `if var n = m[k]?: n += 1` updates a present value in place.
 - Use collection operations (`any all count sum map filter fold`) where useful. Pipe `x | f(a: 1) | g? | .m()` means `(g(f(x, a: 1))?).m()`.
 
@@ -57,7 +57,7 @@ fn main() Unit!:
 - Storing (`xs.append(s)`, a record field, a list element) moves ownership; invalidating the old name. Use `.clone()` for another owner. A borrowed part needs a copy before storage: `names.append(u.name.clone())`.
 - Returning part of a parameter/receiver returns a borrow: `fn name(u: User) String: return u.name`. Clone for a separate value. If another path constructs a value, clone the borrowed path too.
 - Mutate: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure mutating xs cannot go to a method of xs.
-- Closeable closes at scope end unless moved. Implement `impl Closeable for T:` with `var fn close() Unit!`; a failed close is returned or faults.
+- Closeable closes at scope end unless moved. Use `impl Closeable for T:` or `fn var T.close() Unit!`; a failed close is returned or faults.
 
 ## Effects, promises and streams
 

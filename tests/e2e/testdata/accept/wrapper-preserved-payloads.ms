@@ -8,8 +8,7 @@ type Marker:
 	id: Int
 	log: String
 
-impl Closeable for Marker:
-	var fn close() Unit!: append_file(self.log, "{self.id},").wait()
+fn var Marker.close() Unit!: append_file(self.log, "{self.id},").wait()
 
 fn optional_cause(log: String) Unit:
 	value: Marker? := Marker(1, log)
@@ -75,7 +74,7 @@ test "preserved resource payloads transfer exactly once":
 	transformed_then(log.clone())?
 	expect_equal(
 		read_file(log).wait().get().decode_utf8().get(""),
-		"1,2,3,4,5,6,7,8,9,11,10,12,13,"
+		"1,2,3,4,5,6,7,8,9,11,10,12,13,",
 	)?
 
 fn bound_transform(log: String) Unit!:

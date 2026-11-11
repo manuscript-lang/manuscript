@@ -1,4 +1,5 @@
-// Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
+// Shared helpers for the benchmark drivers under bench/. Run a driver from the
+// repository root with
 // `ms run bench/tools/<name>.ms [-- arguments]`.
 import (
 	sha256 from "@std/crypto.ms",
@@ -18,7 +19,8 @@ import (
 export fn note(message: String) Unit:
 	stderr().write("{message}\n").get()
 
-// Reports `message` on standard error and returns the status a driver passes back from `main`.
+// Reports `message` on standard error and returns the status a driver passes back from
+// `main`.
 export fn fail(message: String) Int:
 	note(message)
 	return 1
@@ -48,24 +50,30 @@ export type Ran:
 	code: Int
 	stdout: String
 	stderr: String
-	// The child's peak resident set in bytes, 0 when it did not start or the host cannot say.
+	// The child's peak resident set in bytes, 0 when it did not start or the host
+	// cannot say.
 	max_resident_bytes: Int = 0
 
-// Runs `program` without a shell, optionally in directory `cwd`, and captures both streams as text.
+// Runs `program` without a shell, optionally in directory `cwd`, and captures both
+// streams as text.
 export fn capture(
 	program: String,
 	arguments: List[String],
 	input: String = "",
-	cwd: String? = none
+	cwd: String? = none,
 ) Ran:
 	if out := run(program, arguments, RunOptions(input: input.to_bytes(), cwd: cwd)).wait():
 		return Ran(
-			true, out.exit_code, out.stdout.decode_utf8().get(""),
-			out.stderr.decode_utf8().get(""), out.max_resident_bytes
+			true,
+			out.exit_code,
+			out.stdout.decode_utf8().get(""),
+			out.stderr.decode_utf8().get(""),
+			out.max_resident_bytes,
 		)
 	return Ran(false, 125, "", "cannot start {program}\n")
 
-// Runs `program` and returns its stdout, or fails the driver by returning an empty string when it does not exit zero.
+// Runs `program` and returns its stdout, or fails the driver by returning an empty
+// string when it does not exit zero.
 export fn output_of(program: String, arguments: List[String]) String:
 	ran := capture(program, arguments)
 	if ran.ok and ran.code == 0: return ran.stdout.clone()
@@ -151,7 +159,8 @@ export fn absolute(path: String) String:
 	if is_absolute(path): return path.clone()
 	return join([working_directory().get("."), path])
 
-// Runs `program` in directory `dir`; the caller's working directory is untouched, so tasks may run children in different directories.
+// Runs `program` in directory `dir`; the caller's working directory is untouched, so
+// tasks may run children in different directories.
 export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
 	return capture(program, arguments, cwd: dir.clone())
 
@@ -164,7 +173,8 @@ export fn must(what: String, ran: Ran) String!:
 export fn ms_binary() String:
 	return absolute(env("MS", "target/release/ms"))
 
-// Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is fine; pass an absolute path).
+// Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is
+// fine; pass an absolute path).
 export fn build_ms(dir: String, out: String) Unit!:
 	_stale := remove("{dir}/ms.lock")
 	ran := run_in(dir, ms_binary(), ["build", "ms.toml", "-o", out])
@@ -181,7 +191,7 @@ export fn build_go(dir: String, out: String) Unit!:
 		[
 			"build", "-buildvcs=false", "-trimpath", "-ldflags=-s -w -buildid=", "-o",
 			out, "."
-		]
+		],
 	)
 	_ := must("go build {dir}", ran)?
 
@@ -197,7 +207,8 @@ export fn build_rust(source: String, out: String, flags: List[String]) Unit!:
 export fn sample(exe: String, arguments: List[String], input: String = "") String!:
 	return must(exe, capture(exe, arguments, input))
 
-// Prints the text of `result` to standard output and returns 0, or reports its error and returns 1.
+// Prints the text of `result` to standard output and returns 0, or reports its error
+// and returns 1.
 export fn finish(result: String!) Int:
 	if text := result:
 		print(text)
@@ -205,11 +216,12 @@ export fn finish(result: String!) Int:
 
 	return fail(result.err().message.clone())
 
-// Parses `--name value` pairs. A name outside `known` or a missing value is an error; `required` names must be present.
+// Parses `--name value` pairs. A name outside `known` or a missing value is an error;
+// `required` names must be present.
 export fn options(
 	args: List[String],
 	known: List[String],
-	required: List[String]
+	required: List[String],
 ) Map[String, String]!:
 	var found = Map[String, String]()
 	var i = 0
@@ -285,7 +297,8 @@ export fn stdlib_bench(ms: String, samples: Int, filter: String) String!:
 	if filter != "": args = args.concat(["--filter", filter.clone()])
 	return must("ms bench", run_in("bench/perf/stdlib", ms, args))
 
-// Workaround for #2167 (Map fields in stringify). JSON construction helpers; a record holding a Map is not Data, so reports are built as JsonValue objects.
+// Workaround for #2167 (Map fields in stringify). JSON construction helpers; a record
+// holding a Map is not Data, so reports are built as JsonValue objects.
 export fn jstr(text: String) JsonValue:
 	return JsonValue.StringValue(text)
 
@@ -308,7 +321,8 @@ export fn jlist(items: List[JsonValue]) JsonValue:
 export fn dump(value: JsonValue) String:
 	return stringify(value, StringifyOptions(indent: 2)).get("") + "\n"
 
-// Runs `program` in `dir` with the parent's streams and returns its exit status (125 when it cannot start).
+// Runs `program` in `dir` with the parent's streams and returns its exit status (125
+// when it cannot start).
 export fn run_inherit(dir: String, program: String, arguments: List[String]) Int:
 	var code = 125
 
@@ -316,8 +330,11 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
 		program,
 		arguments,
 		SpawnOptions(
-			stdin: Stdio.Null, stdout: Stdio.Inherit, stderr: Stdio.Inherit, cwd: dir
-		)
+			stdin: Stdio.Null,
+			stdout: Stdio.Inherit,
+			stderr: Stdio.Inherit,
+			cwd: dir,
+		),
 	):
 		code = child.wait().get(125)
 		if code < 0 or code > 125: code = 125
@@ -326,12 +343,14 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
 
 	return code
 
-// The result of `peak_run`: the child's peak resident set in KiB and its captured output.
+// The result of `peak_run`: the child's peak resident set in KiB and its captured
+// output.
 export type RssRun:
 	kib: Int
 	ran: Ran
 
-// Runs `program arguments` and returns the child's peak resident set in KiB. The child's output is captured in `ran`.
+// Runs `program arguments` and returns the child's peak resident set in KiB. The
+// child's output is captured in `ran`.
 export fn peak_run(program: String, arguments: List[String], input: String = "") RssRun!:
 	ran := capture(program, arguments, input)
 	if not ran.ok or ran.code != 0: return invalid(

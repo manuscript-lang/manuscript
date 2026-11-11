@@ -5,15 +5,15 @@
 // expect-stdout: close 2
 // expect-stdout: close 1
 // expect-stdout: true
-// Scalar-backed resources still have cleanup duties while constructor fields are pending.
+// Scalar-backed resources still have cleanup duties while constructor fields are
+// pending.
 import Closeable from "@std/core.ms"
 
 type Token:
 	id: Int
 
-impl Closeable for Token:
-	var fn close() Unit!:
-		print("close {self.id}")
+fn var Token.close() Unit!:
+	print("close {self.id}")
 
 type Wrapped:
 	first: Token?

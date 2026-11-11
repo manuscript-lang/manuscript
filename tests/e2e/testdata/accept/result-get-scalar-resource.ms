@@ -5,8 +5,9 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-// A resource with only scalar fields has no drop glue but still has one owner that closes it. Its
-// id names the file the close appends to, since it has nowhere to keep a log path.
+// A resource with only scalar fields has no drop glue but still has one owner that
+// closes it. Its id names the file the close appends to, since it has nowhere to keep a
+// log path.
 type Tag:
 	id: Int
 
@@ -14,9 +15,8 @@ type Tag:
 fn tag_log(id: Int) String!:
 	return ok("{ temporary_root()?}/ms-result-get-tag-{id}")
 
-impl Closeable for Tag:
-	var fn close() Unit!:
-		append_file(tag_log(self.id)?, "closed,").wait()?
+fn var Tag.close() Unit!:
+	append_file(tag_log(self.id)?, "closed,").wait()?
 
 fn success(id: Int) Tag!Int:
 	return ok(Tag(id))
