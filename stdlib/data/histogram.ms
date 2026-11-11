@@ -73,7 +73,7 @@ impl Histogram:
 		self.record(elapsed.to_nanoseconds())
 
 	// Runs `work`, records how long it took in nanoseconds on the monotonic clock, and returns its result.
-	// A span that returns early or faults is not recorded.
+	// A normal return, including an error Result, is recorded; a fault or cancellation that prevents returning is not.
 	var fn time[T](work: fn() T) T:
 		started := monotonic()
 		result := work()
@@ -120,7 +120,7 @@ impl Histogram:
 
 		return self.high
 
-	// Discards every observation and returns the histogram to its empty state, keeping its memory.
+	// Discards every observation and returns the histogram to its empty state.
 	var fn reset() Unit:
 		self.counts = zeros()
 		self.total = 0

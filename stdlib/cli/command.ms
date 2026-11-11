@@ -5,7 +5,7 @@ A `Command` holds a schema (`flags`, `args`), `children`, and a handler. `comman
 receives your own options record `T`: every flag and argument is stored under its name (dashes become underscores),
 and the record is decoded from those values like `json.parse[T]`, so each field needs a flag or argument with its name
 and a matching type; flags and arguments without a field, such as inherited persistent flags, are ignored. Parsing reads only the `List[String]` you give it; pass
-`process.arguments()` from `main`.
+`arguments()` from `@std/os/env.ms` in `main`.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

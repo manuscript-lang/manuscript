@@ -113,3 +113,5 @@ For standard APIs (intrinsic/native members, design), read [declaration ownershi
   continued-read regression alongside exact-limit tests.
 
 - Weighted selection normalizes finite nonnegative weights by their largest entry when the raw total overflows or is subnormal. Reuse the validated normal total and preserve its direct selection loop. Raw sums can overflow, and raw subnormal draw points round equal weights into unequal bins. Keep secure and seeded selection on the same scale, exclude zero weights, and use fixed-seed comparisons across huge/subnormal and ordinary equivalent ratios (`random-weight-ranges.ms`, #3348). Do not multiply by a reciprocal: a minimum-subnormal scale has an infinite reciprocal.
+
+- HTTP response metadata is copied: `ClientResponse.metadata` clones its head and `RawResponse.metadata` clones native headers, including after close. Do not describe either accessor as borrowing or aliasing. `reference-contracts.ms` checks independent metadata mutation without an extra caller-side clone.
