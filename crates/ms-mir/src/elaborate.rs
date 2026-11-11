@@ -32,7 +32,7 @@
 //! moved `Close` owner, and a flagged owner returned directly; each is an error.
 
 use crate::ir::*;
-use crate::types::{AltId, Ty};
+use crate::types::{AltId, Std, Ty};
 use crate::verify::{arg_modes, is_raw};
 use std::collections::{HashMap, HashSet};
 
@@ -103,6 +103,11 @@ pub fn run(m: &mut Module) -> Result<(), String> {
         let out = function(m, &mut f, close, discard, shield);
         m.funcs[fi] = f;
         out.map_err(|e| format!("{}: {e}", m.funcs[fi].name))?;
+    }
+    // The helper references are consumed: later passes renumber functions.
+    for f in &mut m.funcs {
+        f.slot_result = None;
+        f.close_exit = None;
     }
     Ok(())
 }
@@ -406,6 +411,10 @@ fn function(
             fparams[b.index()].push((*v, p));
         }
     }
+    let counts_depth = f
+        .blocks
+        .iter()
+        .any(|b| b.insts.iter().any(|i| i.op == Op::DepthEnter));
     let mut em = Em {
         m,
         f,
@@ -413,6 +422,8 @@ fn function(
         flagged,
         flags: HashMap::new(),
         handles: HashMap::new(),
+        pending: None,
+        counts_depth,
     };
     for b in order {
         let Some(e) = entry[b.index()].clone() else {
@@ -486,6 +497,10 @@ struct Em<'a> {
     flags: HashMap<Value, Value>,
     /// The `cleanup.push` handle of each closing owner.
     handles: HashMap<Value, Value>,
+    /// The value the block being rebuilt returns, still to be returned after its scope ends.
+    pending: Option<Value>,
+    /// The function guards its recursion depth (`depth.enter` at its start).
+    counts_depth: bool,
 }
 
 impl Em<'_> {
@@ -529,6 +544,10 @@ impl Em<'_> {
         let old = std::mem::take(&mut self.f.blocks[b]);
         self.f.blocks[b].params = old.params;
         self.flags = fparams[b].iter().copied().collect();
+        self.pending = match &old.term {
+            Term::Ret(Some(v)) => Some(*v),
+            _ => None,
+        };
         let mut st = entry;
         let mut cur = b;
         for p in own_params(self.m, self.f, b) {
@@ -730,6 +749,11 @@ impl Em<'_> {
         let kind = self.cx.tags[&v].1;
         let flag = self.flags.get(&v).copied();
         if kind >= 2 {
+            if self.f.ty(v) == Ty::PTR
+                && let Some(rc) = self.m.funcs[self.closer(v)?.index()].slot_result
+            {
+                return self.cleanup_fallible(at, v, s, rc, outcome);
+            }
             return Ok((self.cleanup_infallible(at, v, s, flag)?, outcome));
         }
         let code = match (s, kind) {
@@ -883,6 +907,92 @@ impl Em<'_> {
         }
     }
 
+    /// Cleans up a memory-slot owner whose close returns a `Result` (`rc` runs it): shielded, on
+    /// the path that still holds it. The first failing close is the outcome (the `Result` it
+    /// returned, owned); later results are dropped.
+    fn cleanup_fallible(
+        &mut self,
+        at: usize,
+        v: Value,
+        s: St,
+        rc: FuncId,
+        outcome: Option<Value>,
+    ) -> Result<(usize, Option<Value>), String> {
+        if s != St::Live {
+            return Err("a memory slot owner with a fallible close that is moved out of".into());
+        }
+        let (enter, exit) = self
+            .cx
+            .shield
+            .ok_or("a closing owner needs the shield calls")?;
+        let rty = self.m.funcs[rc.index()].ret;
+        self.discard(at, v);
+        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::UNIT));
+        let r = self
+            .push(at, Op::Call, &[v], Imm::Func(rc), Some(rty))
+            .expect("close result");
+        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::UNIT));
+        let close = self.closer(v)?;
+        if let Some(ty) = self.m.funcs[close.index()].slot_close {
+            let left = self
+                .push(at, Op::Take, &[v], Imm::Ty(ty), Some(ty))
+                .expect("taken");
+            self.push(at, Op::Drop, &[left], Imm::None, None);
+        }
+        let Some(first) = outcome else {
+            return Ok((at, Some(r)));
+        };
+        // An earlier failure stays the outcome; otherwise this result is.
+        let failed = self.is_error(at, first);
+        let (keep, replace, join) = (self.f.new_block(), self.f.new_block(), self.f.new_block());
+        self.f.blocks[at].term = Term::CondBr {
+            cond: failed,
+            then: Target::to(keep),
+            els: Target::to(replace),
+        };
+        self.drop_owned(keep.index(), r);
+        self.f.blocks[keep.index()].term = Term::Br(Target {
+            block: join,
+            args: vec![first],
+        });
+        self.drop_owned(replace.index(), first);
+        self.f.blocks[replace.index()].term = Term::Br(Target {
+            block: join,
+            args: vec![r],
+        });
+        let p = self.f.new_value(rty);
+        self.f.blocks[join.index()].params.push(BlockParam {
+            value: p,
+            mode: Mode::Move,
+        });
+        Ok((join.index(), Some(p)))
+    }
+
+    /// Drops `v` when its type holds anything to release.
+    fn drop_owned(&mut self, at: usize, v: Value) {
+        if self.m.needs_drop(self.f.ty(v)) {
+            self.push(at, Op::Drop, &[v], Imm::None, None);
+        }
+    }
+
+    /// Whether the `Result` `r` is an error.
+    fn is_error(&mut self, at: usize, r: Value) -> Value {
+        let tag = self
+            .push(at, Op::AltTag, &[r], Imm::None, Some(Ty::INT))
+            .expect("tag");
+        let err = self
+            .push(
+                at,
+                Op::IConst,
+                &[],
+                Imm::Int(Std::ERROR as i64),
+                Some(Ty::INT),
+            )
+            .expect("error tag");
+        self.push(at, Op::ICmp, &[tag, err], Imm::Cc(Cc::Eq), Some(Ty::BOOL))
+            .expect("is error")
+    }
+
     fn close_call(&mut self, at: usize, v: Value) -> Result<Value, String> {
         let close = self.closer(v)?;
         Ok(self
@@ -938,19 +1048,26 @@ impl Em<'_> {
         let Some(first) = outcome else {
             return Ok(cur);
         };
-        let zero = self
-            .push(cur, Op::IConst, &[], Imm::Int(0), Some(Ty::INT))
-            .expect("zero");
-        let failed = self
-            .push(
+        let by_result = self.f.ty(first) != Ty::INT;
+        let failed = if by_result {
+            self.is_error(cur, first)
+        } else {
+            let zero = self
+                .push(cur, Op::IConst, &[], Imm::Int(0), Some(Ty::INT))
+                .expect("zero");
+            self.push(
                 cur,
                 Op::ICmp,
                 &[first, zero],
                 Imm::Cc(Cc::Ne),
                 Some(Ty::BOOL),
             )
-            .expect("flag");
+            .expect("flag")
+        };
         let (err, cont) = (self.f.new_block(), self.f.new_block());
+        if by_result {
+            self.drop_owned(cont.index(), first);
+        }
         self.f.blocks[cur].term = Term::CondBr {
             cond: failed,
             then: Target::to(err),
@@ -966,6 +1083,10 @@ impl Em<'_> {
             scope = self.cx.parents.get(&s).copied();
         }
         for (v, s) in rest.iter().rev() {
+            // A fallible outcome consumes the value the function was about to return.
+            if by_result && self.pending == Some(*v) {
+                continue;
+            }
             match s {
                 St::Live => {
                     self.push(at, Op::Drop, &[*v], Imm::None, None);
@@ -977,7 +1098,28 @@ impl Em<'_> {
                 _ => {}
             }
         }
-        self.f.blocks[at].term = Term::Ret(outcome);
+        let ret = match (by_result, outcome) {
+            (true, Some(out)) => {
+                // The function leaves here: undo its recursion guard like any return.
+                if self.counts_depth {
+                    self.push(at, Op::DepthLeave, &[], Imm::None, None);
+                }
+                let (plain, pending) = self
+                    .f
+                    .close_exit
+                    .ok_or("a fallible close needs the function's close exit")?;
+                let ty = self.f.ret;
+                Some(
+                    match self.pending {
+                        Some(p) => self.push(at, Op::Call, &[out, p], Imm::Func(pending), Some(ty)),
+                        None => self.push(at, Op::Call, &[out], Imm::Func(plain), Some(ty)),
+                    }
+                    .expect("exit value"),
+                )
+            }
+            (_, outcome) => outcome,
+        };
+        self.f.blocks[at].term = Term::Ret(ret);
         Ok(cont.index())
     }
 }

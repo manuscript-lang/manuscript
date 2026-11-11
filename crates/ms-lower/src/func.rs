@@ -1434,11 +1434,13 @@ impl<'a> FnLower<'a> {
     /// `own_raw` with the owner's cleanup `kind` (`scope.own S K v`).
     pub fn own_raw_kind(&mut self, uid: usize, v: Value, kind: u32) {
         let i = self.scope_marks.len() - 1;
-        let mark = &mut self.scope_marks[i];
-        if !mark.begun {
-            mark.begun = true;
-            let imm = ms_mir::ir::Imm::Scope(mark.id, mark.parent);
-            self.b.emit(Op::ScopeBegin, &[], imm, None);
+        // The enclosing scopes begin first: an error exit of the pass walks the chain.
+        for mark in &mut self.scope_marks {
+            if !mark.begun {
+                mark.begun = true;
+                let imm = ms_mir::ir::Imm::Scope(mark.id, mark.parent);
+                self.b.emit(Op::ScopeBegin, &[], imm, None);
+            }
         }
         let imm = ms_mir::ir::Imm::Scope(self.scope_marks[i].id, kind);
         self.b.emit(Op::ScopeOwn, &[v], imm, None);
