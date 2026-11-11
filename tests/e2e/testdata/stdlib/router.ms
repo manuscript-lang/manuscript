@@ -48,11 +48,11 @@ fn allow_of(response: HttpResponse) String:
 
 fn router() Router:
 	var r = Router()
-	r.get("/", say("root")).get()
-	r.get("/users", say("list")).get()
-	r.post("/users", say("create")).get()
-	r.get("/users/:id", show).get()
-	r.get("/files/*rest", show).get()
+	r.get("/", say("root"))
+	r.get("/users", say("list"))
+	r.post("/users", say("create"))
+	r.get("/users/:id", show)
+	r.get("/files/*rest", show)
 	return r
 
 test "literal, parameter and wildcard routes":
@@ -101,7 +101,7 @@ fn stream_parts(var exchange: HttpExchange, params: RouteParams) Unit!:
 
 test "a streaming GET route answers HEAD, dropping the body writes":
 	var r = Router()
-	r.get("/s", stream_parts).get()
+	r.get("/s", stream_parts)
 
 	head := try r.call(request(HttpMethod.Head, "/s"))
 	try expect_equal(head.status, 200)
@@ -120,8 +120,8 @@ test "a streaming GET route answers HEAD, dropping the body writes":
 
 test "the first matching route wins":
 	var r = Router()
-	r.get("/a/:x", say("param")).get()
-	r.get("/a/b", say("literal")).get()
+	r.get("/a/:x", say("param"))
+	r.get("/a/b", say("literal"))
 	try expect_equal(body_of(try r.call(get("/a/b"))), "param")
 
 fn head_reply(var exchange: HttpExchange, params: RouteParams) Unit!:
@@ -129,25 +129,34 @@ fn head_reply(var exchange: HttpExchange, params: RouteParams) Unit!:
 
 test "explicit HEAD routes take precedence over GET fallback":
 	var r = Router()
-	try r.get("/a/:id", say("get"))
-	try r.head("/a/:id", head_reply)
-	try r.head("/a/fixed", say("later"))
+	r.get("/a/:id", say("get"))
+	r.head("/a/:id", head_reply)
+	r.head("/a/fixed", say("later"))
 
 	response := try r.call(request(HttpMethod.Head, "/a/fixed"))
 	try expect_equal(response.status, 202)
 	try expect_equal(response.body.length(), 0)
 	try expect_equal(body_of(try r.call(get("/a/fixed"))), "get")
 
-test "invalid and duplicate patterns are rejected":
+fn rejects(pattern: String) Bool:
 	var r = Router()
-	try expect_true(r.get("users", say("x")).is_error())
-	try expect_true(r.get("/a/:", say("x")).is_error())
-	try expect_true(r.get("/a/*r/b", say("x")).is_error())
-	try expect_true(r.get("/a/:x/:x", say("x")).is_error())
-	try expect_true(r.get("/a//b", say("x")).is_error())
-	r.get("/a/:x", say("x")).get()
-	try expect_true(r.get("/a/:y", say("y")).is_error())
-	r.post("/a/:y", say("y")).get()
+	r.get(pattern, say("x"))
+	return r.check().is_error()
+
+test "invalid and duplicate patterns are rejected":
+	try expect_true(rejects("users"))
+	try expect_true(rejects("/a/:"))
+	try expect_true(rejects("/a/*r/b"))
+	try expect_true(rejects("/a/:x/:x"))
+	try expect_true(rejects("/a//b"))
+
+	var r = Router()
+	r.get("/a/:x", say("x"))
+	r.post("/a/:y", say("y"))
+	try r.check()
+	r.get("/a/:y", say("y"))
+	try expect_true(r.check().is_error())
+	try expect_true(r.call(get("/a/1")).is_error())
 
 fn tag(label: String) fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!:
 	return fn var exchange, next: tagged(label.clone(), var exchange, next)
@@ -170,7 +179,7 @@ test "middleware wraps routes outermost first":
 	var r = Router()
 	r.use(tag("a"))
 	r.use(tag("b"))
-	r.get("/t", trail).get()
+	r.get("/t", trail)
 	try expect_equal(body_of(try r.call(get("/t"))), "a>b")
 
 test "middleware also wraps the 404 answer":
@@ -184,7 +193,7 @@ fn refuse(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!) Unit!:
 test "middleware may answer without calling the rest":
 	var r = Router()
 	r.use(refuse)
-	r.get("/t", say("never")).get()
+	r.get("/t", say("never"))
 
 	response := try r.call(get("/t"))
 	try expect_equal(response.status, 401)
@@ -194,12 +203,12 @@ fn fail(var exchange: HttpExchange, params: RouteParams) Unit!:
 
 test "a handler error comes back from call":
 	var r = Router()
-	r.get("/f", fail).get()
+	r.get("/f", fail)
 	try expect_true((r.call(get("/f"))).is_error())
 
 test "a handler that sends nothing answers 204":
 	var r = Router()
-	r.get("/n", fn var exchange, params: ok(unit)).get()
+	r.get("/n", fn var exchange, params: ok(unit))
 	try expect_equal((try r.call(get("/n"))).status, 204)
 
 fn whole_response(var exchange: HttpExchange, params: RouteParams) Unit!:
@@ -218,8 +227,8 @@ fn whole_response(var exchange: HttpExchange, params: RouteParams) Unit!:
 
 test "a whole in-process response rejects subsequent writes":
 	var r = Router()
-	try r.get("/done", whole_response)
-	try r.get("/empty", whole_response)
+	r.get("/done", whole_response)
+	r.get("/empty", whole_response)
 	try expect_equal(body_of(try r.call(get("/done"))), "done")
 	try expect_equal(body_of(try r.call(get("/empty"))), "")
 
@@ -233,7 +242,7 @@ fn small_reads(var exchange: HttpExchange, params: RouteParams) Unit!:
 
 test "in-process reads retain the unread body after a bounded chunk":
 	var r = Router()
-	try r.post("/", small_reads)
+	r.post("/", small_reads)
 
 	response := try r.call(
 		HttpRequest(
@@ -254,7 +263,7 @@ fn read_sizes(var exchange: HttpExchange, params: RouteParams) Unit!:
 
 test "in-process reads cap default and explicit chunks at 65536 bytes":
 	var r = Router()
-	try r.post("/:mode", read_sizes)
+	r.post("/:mode", read_sizes)
 
 	for mode in ["default", "explicit"]:
 		response := try r.call(
@@ -272,7 +281,7 @@ fn read_empty(var exchange: HttpExchange, params: RouteParams) Unit!:
 
 test "in-process reads report EOF immediately for an empty body":
 	var r = Router()
-	try r.get("/", read_empty)
+	r.get("/", read_empty)
 	try expect_equal(body_of(try r.call(get("/"))), "true|true")
 
 fn invalid_reads(var exchange: HttpExchange, params: RouteParams) Unit!:
@@ -287,7 +296,7 @@ fn invalid_reads(var exchange: HttpExchange, params: RouteParams) Unit!:
 
 test "in-process reads reject nonpositive sizes without consuming input":
 	var r = Router()
-	try r.post("/", invalid_reads)
+	r.post("/", invalid_reads)
 
 	response := try r.call(
 		HttpRequest(
@@ -317,13 +326,13 @@ test "the router serves over a socket":
 test "mount places a router under a prefix with its own middleware":
 	var api = Router()
 	api.use(tag("api"))
-	api.get("/", trail).get()
-	api.get("/items/:id", show).get()
+	api.get("/", trail)
+	api.get("/items/:id", show)
 
 	var r = Router()
 	r.use(tag("top"))
-	r.get("/health", trail).get()
-	r.mount("/api/v1", api).get()
+	r.get("/health", trail)
+	r.mount("/api/v1", api)
 	try expect_equal(body_of(try r.call(get("/api/v1"))), "top>api")
 	try expect_equal(body_of(try r.call(get("/api/v1/items/5"))), "5|-")
 	try expect_equal(body_of(try r.call(get("/health"))), "top")
@@ -331,31 +340,38 @@ test "mount places a router under a prefix with its own middleware":
 
 fn x_router() Router:
 	var api = Router()
-	api.get("/x", say("x")).get()
+	api.get("/x", say("x"))
 	return api
 
 test "mount rejects a trailing slash and a clashing route":
 	var r = Router()
-	try expect_true(r.mount("/api/", x_router()).is_error())
-	r.mount("/api", x_router()).get()
-	try expect_true(r.mount("/api", x_router()).is_error())
-	r.mount("/", x_router()).get()
-	try expect_equal(body_of(try r.call(get("/x"))), "x")
+	r.mount("/api/", x_router())
+	try expect_true(r.check().is_error())
+
+	var ok = Router()
+	ok.mount("/api", x_router())
+	try ok.check()
+	ok.mount("/api", x_router())
+	try expect_true(ok.check().is_error())
+
+	var root = Router()
+	root.mount("/", x_router())
+	try expect_equal(body_of(try root.call(get("/x"))), "x")
 
 test "a mounted router keeps the groups of the routers mounted into it":
 	var inner = Router()
 	inner.use(tag("inner"))
-	inner.get("/", trail).get()
+	inner.get("/", trail)
 
 	var mid = Router()
 	mid.use(tag("mid"))
-	mid.get("/own", trail).get()
-	mid.mount("/inner", inner).get()
+	mid.get("/own", trail)
+	mid.mount("/inner", inner)
 
 	var r = Router()
 	r.use(tag("top"))
-	r.mount("/mid", mid).get()
-	r.get("/plain", trail).get()
+	r.mount("/mid", mid)
+	r.get("/plain", trail)
 	try expect_equal(body_of(try r.call(get("/mid/inner"))), "top>mid>inner")
 	try expect_equal(body_of(try r.call(get("/mid/own"))), "top>mid")
 	try expect_equal(body_of(try r.call(get("/plain"))), "top")
@@ -372,8 +388,8 @@ fn moved(var exchange: HttpExchange, params: RouteParams) Unit!:
 
 test "json and redirect build responses":
 	var r = Router()
-	r.get("/j", answer).get()
-	r.get("/m", moved).get()
+	r.get("/j", answer)
+	r.get("/m", moved)
 
 	sent := try r.call(get("/j"))
 	try expect_equal(sent.status, 201)
@@ -394,7 +410,7 @@ fn id_of(response: HttpResponse) String:
 test "request_id keeps a usable id and makes one otherwise":
 	var r = Router()
 	r.use(request_id())
-	r.get("/i", echo_id).get()
+	r.get("/i", echo_id)
 
 	fresh := try r.call(get("/i"))
 	try expect_equal(id_of(fresh).length(), 36)
@@ -443,7 +459,7 @@ test "access_log writes one record per request":
 	logger := (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
 	var r = Router()
 	r.use(access_log(logger))
-	r.get("/a", say("hello")).get()
+	r.get("/a", say("hello"))
 	try expect_equal((try r.call(get("/a"))).status, 200)
 	try expect_equal((try r.call(get("/nope"))).status, 404)
 
@@ -463,9 +479,9 @@ test "access_log counts only the body bytes that are sent":
 	logger := (create(Sink(path: lines.clone()), LoggerOptions(timestamp: false))).get()
 	var r = Router()
 	r.use(access_log(logger))
-	r.get("/a", say("hello")).get()
-	r.get("/s", stream_parts).get()
-	r.get("/n", no_content).get()
+	r.get("/a", say("hello"))
+	r.get("/s", stream_parts)
+	r.get("/n", no_content)
 
 	head := try r.call(request(HttpMethod.Head, "/a"))
 	try expect_equal(head.body.length(), 0)
@@ -490,10 +506,10 @@ test "access_log counts only the body bytes that are sent":
 
 test "verb helpers register their method":
 	var r = Router()
-	try r.put("/v", say("put"))
-	try r.patch("/v", say("patch"))
-	try r.delete("/v", say("delete"))
-	try r.options("/o", say("options"))
+	r.put("/v", say("put"))
+	r.patch("/v", say("patch"))
+	r.delete("/v", say("delete"))
+	r.options("/o", say("options"))
 	try expect_equal(body_of(try r.call(request(HttpMethod.Put, "/v"))), "put")
 	try expect_equal(body_of(try r.call(request(HttpMethod.Patch, "/v"))), "patch")
 	try expect_equal(body_of(try r.call(request(HttpMethod.Delete, "/v"))), "delete")

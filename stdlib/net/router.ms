@@ -127,71 +127,79 @@ export type Router:
 	middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!] = []
 	// The middleware of each mounted router, in mount order; a route names the groups around it.
 	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]] = []
+	// The first registration error; later routes still register. `check`, `call` and the
+	// `handler` report it, so a bad pattern is not silent.
+	failure: Error? = none
 
 impl Router:
-	// Registers `handler` for `method` and `pattern`.
-	// A route also answers HEAD when `method` is GET and no HEAD route matches. Registering the
-	// same method and pattern shape twice returns Duplicate.
+	// Registers `handler` for `method` and `pattern`; chain-free, so a registration reads as a
+	// statement. A bad pattern or a duplicate method and pattern shape is not registered and is
+	// reported later by `check`, `call` and the `handler` (the first error wins).
+	// A route also answers HEAD when `method` is GET and no HEAD route matches.
 	var fn route(
 		method: HttpMethod,
 		pattern: String,
 		handler: fn(var HttpExchange, RouteParams) Unit!
-	) Unit!:
-		segments := try parse_pattern(pattern.clone())
-		return insert(
-			var self.routes,
-			Route(
-				method: method.text(), pattern: pattern, segments: segments, around: [],
-				handler: handler
-			)
-		)
+	) Unit:
+		outcome := add_route(var self.routes, method, pattern, handler)
+		if outcome.is_error(): self.note(outcome.err().clone())
+
+	// Returns the first error from registering a route or mounting a router, or ok.
+	// Call it once after registering, before `serve`.
+	fn check() Unit!:
+		if failure := self.failure: return error(failure.clone())
+
+	// Remembers the first registration error.
+	var fn note(failure: Error) Unit:
+		if self.failure.is_none(): self.failure = failure
 
 	// Registers `handler` for GET requests to `pattern`; shorthand for `route(HttpMethod.Get, pattern, handler)`.
-	var fn get(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
-		return self.route(HttpMethod.Get, pattern, handler)
+	var fn get(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit:
+		self.route(HttpMethod.Get, pattern, handler)
 
 	// Registers `handler` for HEAD requests to `pattern`; shorthand for `route(HttpMethod.Head, pattern, handler)`.
-	var fn head(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
-		return self.route(HttpMethod.Head, pattern, handler)
+	var fn head(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit:
+		self.route(HttpMethod.Head, pattern, handler)
 
 	// Registers `handler` for POST requests to `pattern`; shorthand for `route(HttpMethod.Post, pattern, handler)`.
-	var fn post(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
-		return self.route(HttpMethod.Post, pattern, handler)
+	var fn post(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit:
+		self.route(HttpMethod.Post, pattern, handler)
 
 	// Registers `handler` for PUT requests to `pattern`; shorthand for `route(HttpMethod.Put, pattern, handler)`.
-	var fn put(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit!:
-		return self.route(HttpMethod.Put, pattern, handler)
+	var fn put(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit:
+		self.route(HttpMethod.Put, pattern, handler)
 
 	// Registers `handler` for PATCH requests to `pattern`; shorthand for `route(HttpMethod.Patch, pattern, handler)`.
-	var fn patch(
-		pattern: String,
-		handler: fn(var HttpExchange, RouteParams) Unit!
-	) Unit!:
-		return self.route(HttpMethod.Patch, pattern, handler)
+	var fn patch(pattern: String, handler: fn(var HttpExchange, RouteParams) Unit!) Unit:
+		self.route(HttpMethod.Patch, pattern, handler)
 
 	// Registers `handler` for DELETE requests to `pattern`; shorthand for `route(HttpMethod.Delete, pattern, handler)`.
 	var fn delete(
 		pattern: String,
 		handler: fn(var HttpExchange, RouteParams) Unit!
-	) Unit!:
-		return self.route(HttpMethod.Delete, pattern, handler)
+	) Unit:
+		self.route(HttpMethod.Delete, pattern, handler)
 
 	// Registers `handler` for OPTIONS requests to `pattern`; shorthand for `route(HttpMethod.Options, pattern, handler)`.
 	var fn options(
 		pattern: String,
 		handler: fn(var HttpExchange, RouteParams) Unit!
-	) Unit!:
-		return self.route(HttpMethod.Options, pattern, handler)
+	) Unit:
+		self.route(HttpMethod.Options, pattern, handler)
 
 	// Moves every route of `routes` under `prefix`, wrapped in that router's own middleware.
 	// The prefix is `/` followed by segments with no trailing slash, and it may hold parameters.
 	// The mounted router's `/` route answers `prefix` itself. A router holds functions, which
 	// have one owner, so `routes` is taken: build it again to mount it elsewhere.
-	var fn mount(prefix: String, routes: Router) Unit!:
-		if prefix.ends_with("/") and prefix != "/":
-			return error(invalid_pattern(prefix))
-
+	var fn mount(prefix: String, routes: Router) Unit:
 		var mounted = routes
+
+		if prefix.ends_with("/") and prefix != "/":
+			self.note(invalid_pattern(prefix))
+			return
+
+		if failure := mounted.failure: self.note(failure.clone())
+
 		base := if prefix == "/": "" else: prefix.clone()
 		offset := self.groups.length()
 		var groups = drain(var mounted.groups)
@@ -205,8 +213,14 @@ impl Router:
 
 		while not sources.is_empty():
 			var route = sources.pop().get()
-			try remount(var route, base, own, offset)
-			try insert(var self.routes, route)
+			moved := remount(var route, base, own, offset)
+
+			if moved.is_error():
+				self.note(moved.err().clone())
+				continue
+
+			inserted := insert(var self.routes, route)
+			if inserted.is_error(): self.note(inserted.err().clone())
 
 	// Adds middleware around every route and around the 404, 405 and OPTIONS answers.
 	// It receives the exchange and a continuation that runs the rest of the chain with the exchange
@@ -218,10 +232,28 @@ impl Router:
 	// Unmatched paths answer 404, a path matched only under other methods answers 405 with
 	// `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *` answers 204 with
 	// the `Allow` of every registered method.
+	// A router with a registration error (see `check`) answers every request with that error.
 	fn handler() fn(var HttpExchange) Unit!:
-		return fn(var exchange: HttpExchange): dispatch(
-			self.routes, self.middleware, self.groups, var exchange
+		return fn(var exchange: HttpExchange): self.answer(var exchange)
+
+	// Answers one exchange through the routes and middleware, or fails with the registration error.
+	fn answer(var exchange: HttpExchange) Unit!:
+		try self.check()
+		return dispatch(self.routes, self.middleware, self.groups, var exchange)
+
+// Parses `pattern` and adds the route unless one with the same method and shape exists.
+fn add_route(
+	var routes: List[Route], method: HttpMethod, pattern: String,
+	handler: fn(var HttpExchange, RouteParams) Unit!
+) Unit!:
+	segments := try parse_pattern(pattern.clone())
+	return insert(
+		var routes,
+		Route(
+			method: method.text(), pattern: pattern, segments: segments, around: [],
+			handler: handler
 		)
+	)
 
 // Adds a route unless one with the same method and shape exists.
 fn insert(var routes: List[Route], route: Route) Unit!:
@@ -510,6 +542,8 @@ impl Router:
 	// A handler error is returned as is; the server would answer it with a 500. A handler that
 	// sends nothing answers 204.
 	fn call(request: HttpRequest) HttpResponse!:
+		try self.check()
+
 		state := new_slot(
 			TestState(
 				status: 0, sent: false, complete: false, closed: false, head: headers(),
