@@ -226,3 +226,23 @@ fn defaulted_bound_arguments_still_reject_mismatching_implementations() {
     assert_eq!(got.len(), 1, "{got:?}");
     assert!(got[0].message.contains("Named"), "{got:?}");
 }
+
+#[test]
+fn defaults_naming_an_earlier_bounded_parameter_keep_its_bounds() {
+    let got = diagnostics(include_str!(
+        "../tests/type_argument_defaults/earlier_bounds.ms"
+    ));
+    assert!(got.is_empty(), "{got:?}");
+}
+
+#[test]
+fn defaults_naming_an_earlier_unbounded_parameter_are_still_rejected() {
+    let got = diagnostics(include_str!(
+        "../tests/type_argument_defaults/earlier_unbounded.ms"
+    ));
+    assert_eq!(got.len(), 1, "{got:?}");
+    assert!(
+        got[0].message.contains("does not satisfy Hashable"),
+        "{got:?}"
+    );
+}
