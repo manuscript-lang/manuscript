@@ -214,6 +214,8 @@ fn exempt() List[String]:
 	return [
 		"List.max: returns a copy of a Comparable and Clonable element, so a resource cannot reach it",
 		"List.min: returns a copy of a Comparable and Clonable element, so a resource cannot reach it",
+		"List.sum: declared T: Numeric, a set of number types, so a resource cannot reach it",
+		"List.zip: declared T: Clonable and U: Clonable, so a resource cannot reach it",
 		"Map.map: the callback borrows each entry and builds new values",
 		"Map.map_keys: declared U: Clonable, so a resource value cannot reach it",
 		"Map.find: declared U: Clonable, so a resource value cannot reach it",
