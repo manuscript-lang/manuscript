@@ -34,6 +34,6 @@ Accept source per the [normative grammar](../../../core-language/basics/grammar.
 | Result propagation | Recognize the canonical `Result`; `?` needs the same exact error type as the current function; never infer missing operand arguments backward |
 | String literals | Validate escapes and scalars, allow universal conversion, keep left-to-right evaluation |
 
-Rules derive from the [core language guide](../../../core-language/_index.md); fixtures are `tests/e2e/testdata/accept/cl-*.ms`. They fix observable inference and compatibility, not checker internals. A module-level `test` body follows `Result[Unit, Error]` return rules, with normal completion succeeding; discovery and running are separate tooling contracts.
+Rules derive from the [core language guide](../../../core-language/_index.md); fixtures are `tests/conformance/fixtures/e2e/accept/cl-*.ms`. They fix observable inference and compatibility, not checker internals. A module-level `test` body follows `Result[Unit, Error]` return rules, with normal completion succeeding; discovery and running are separate tooling contracts.
 
 Type information feeds [typed IR](typed-ir.md) and [generated representations](../lowering/value-representations.md).

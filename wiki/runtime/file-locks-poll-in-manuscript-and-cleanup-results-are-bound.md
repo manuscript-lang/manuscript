@@ -11,5 +11,5 @@ Verified: `FileHandle.try_lock` and `unlock` are the only native lock primitives
 `fs.move` falls back to copy and remove only for the `Failed` error case, because the error type has no distinct cross-device case; other cases (`NotFound`, `PermissionDenied`) return unchanged. Add a dedicated case if the fallback ever needs to be narrower.
 
 Apply when: adding locking, atomic replacement, rotation, or any best-effort cleanup in `.ms`.
-Evidence: [fixture](../../tests/e2e/testdata/stdlib/fs-atomic-lock-move.ms), [rotation test](../../tests/e2e/testdata/stdlib/log.ms).
-Verify: `target/release/ms test tests/e2e/testdata/stdlib/fs-atomic-lock-move.ms`.
+Evidence: [fixture](../../tests/conformance/fixtures/e2e/stdlib/fs-atomic-lock-move.ms), [rotation test](../../tests/conformance/fixtures/e2e/stdlib/log.ms).
+Verify: `target/release/ms test tests/conformance/fixtures/e2e/stdlib/fs-atomic-lock-move.ms`.

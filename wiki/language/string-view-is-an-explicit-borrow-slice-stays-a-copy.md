@@ -7,4 +7,4 @@ Decision (Chinmay, 2026-11-09): O(1) substrings are explicit borrows checked by 
 Verified: a stored `Bytes.view` (`list.append(b.view(0, 2))`) passed `ms check` and then failed in lowering with "implicit copies of a borrow"; `calls.rs` now reports it as a type error for `Bytes` and `String` views of a place. Native borrows such as `Map.get(k).get()` are still copied when stored, which is a separate gap.
 
 Apply when: adding a borrowed accessor to a native type (add it to `native_borrow_receiver`, the `returned_bytes_view` check, lowering, and an e2e plus reject fixture).
-Evidence: `proposals/string-view.md`, `tests/e2e/testdata/{stdlib/string-view.ms,reject/*string-view*.ms}`.
+Evidence: `proposals/string-view.md`, `tests/conformance/fixtures/e2e/{stdlib/string-view.ms,reject/*string-view*.ms}`.

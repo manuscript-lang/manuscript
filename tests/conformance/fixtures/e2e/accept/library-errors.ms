@@ -1,0 +1,100 @@
+// conform: tags=testing,tier-stdlib
+// conform: phase=test
+import (
+	hex_decode from "@std/data/encoding.ms",
+	JsonOptions, parse from "@std/data/json.ms",
+	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
+)
+
+// Library failures are plain Error values: callers branch on `kind`, not on a domain
+// type.
+
+fn describe_error(cause: Error) String:
+	if cause.kind == "EINVAL": return "bad limits"
+	if cause.kind == "EBADMSG": return "malformed input"
+	if cause.kind == "EOVERFLOW": return "bound exceeded"
+
+	return cause.message.clone()
+
+fn decode_generically() Unit!:
+	_bytes := hex_decode(text: "zz", max_bytes: 10)?
+
+fn propagate_generic() Unit!:
+	_completed := decode_generically()?
+
+test "library errors carry a kind callers can branch on":
+	limits := JsonOptions(max_bytes: 100, max_depth: 8, max_values: 32)
+
+	match parse(text: "[", options: limits):
+		ok(_):
+			return fail(message: "malformed JSON succeeded")
+		error(cause):
+			describe_error(cause) | expect_equal("malformed input")?
+			cause.message
+				| expect_equal(
+					"JSON: invalid data: line 1, column 2: unexpected end of input"
+				)?
+
+test "propagation with try forwards the same Error":
+	cause := match propagate_generic():
+		ok(_):
+			return fail(message: "invalid data succeeded")
+		error(cause): cause
+
+	cause.kind | expect_equal("EBADMSG")?
+	cause.message | expect_equal("encoding: invalid data")?
+
+test "an Error built by hand has a message, a kind and details":
+	read := Error(
+		"read failed",
+		kind: "EAGAIN",
+		details: {"path": "settings.json", "attempt": "2"},
+	)
+	read.message | expect_equal("read failed")?
+	read.kind | expect_equal("EAGAIN")?
+	read.details["path"] | expect_equal("settings.json")?
+	read.details["attempt"] | expect_equal("2")?
+
+type ReadError:
+	path: String
+	attempt: Int
+	retryable: Bool
+
+fn failed_read() Unit!ReadError:
+	return error(ReadError(path: "settings.json", attempt: 2, retryable: true))
+
+fn propagate_read() Unit!ReadError:
+	_completed := failed_read()?
+
+test "a domain record is still a legal error value":
+	cause := match propagate_read():
+		ok(_):
+			return fail(message: "failed read succeeded")
+		error(cause): cause
+
+	(
+		(
+			cause.path != "settings.json"
+			or cause.attempt != 2
+			or not cause.retryable
+		) | expect_false?
+	)
+
+fn read_failure(cause: ReadError) Unit!ReadError:
+	return error(cause)
+
+fn general_read(cause: ReadError) Unit!:
+	failed := read_failure(cause)
+	if failed.is_error():
+		return error(
+			Error(
+				"read failed",
+				kind: "EIO",
+				details: {"path": failed.err().path.clone()},
+			)
+		)
+
+test "a domain record converts to Error by an ordinary function":
+	outcome := general_read(ReadError("a.txt", 1, false))
+	outcome.err().kind | expect_equal("EIO")?
+	outcome.err().details["path"] | expect_equal("a.txt")?

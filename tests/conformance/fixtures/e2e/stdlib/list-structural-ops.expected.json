@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "list-structural-ops.ms::zip pairs by position and stops at the shorter list",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "list-structural-ops.ms::chunks splits into copies and the last may be short",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "list-structural-ops.ms::windows overlap and a short list has none",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "list-structural-ops.ms::partition splits by predicate keeping order",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "list-structural-ops.ms::flat_map infers its element type from list literals returned by a callback",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN list-structural-ops.ms::zip pairs by position and stops at the shorter list\nPASS list-structural-ops.ms::zip pairs by position and stops at the shorter list\nRUN list-structural-ops.ms::chunks splits into copies and the last may be short\nPASS list-structural-ops.ms::chunks splits into copies and the last may be short\nRUN list-structural-ops.ms::windows overlap and a short list has none\nPASS list-structural-ops.ms::windows overlap and a short list has none\nRUN list-structural-ops.ms::partition splits by predicate keeping order\nPASS list-structural-ops.ms::partition splits by predicate keeping order\nRUN list-structural-ops.ms::flat_map infers its element type from list literals returned by a callback\nPASS list-structural-ops.ms::flat_map infers its element type from list literals returned by a callback\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

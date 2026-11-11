@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot reassign `text` while `word` borrows it (binding of a part of it, at 7:5); finish using `word` before this, or give `word` its own value by ending its initializer with `.clone()`",
+        "position": {
+          "file": "string-view-source-changed.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 232
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/string-view-source-changed.ms:8:5: type: cannot reassign `text` while `word` borrows it (binding of a part of it, at 7:5); finish using `word` before this, or give `word` its own value by ending its initializer with `.clone()`\n   |\n 8 |     text = \"other\"\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

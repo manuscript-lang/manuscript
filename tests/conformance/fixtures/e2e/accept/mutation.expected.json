@@ -1,0 +1,95 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "mutation.ms::record fields mutate through methods views and var parameters",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "mutation.ms::collection updates mutate in place and clone separates storage",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "mutation.ms::for loop iterates a snapshot while the source changes",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "mutation.ms::callbacks over a snapshot leave the source writable",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "mutation.ms::list growth and saved clone methods preserve current contents",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "mutation.ms::collection clones keep independent lengths",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "mutation.ms::map and set clear affect their owner while copies retain contents",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "mutation.ms::alternative clones retain tags and payloads",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "mutation.ms::mutable recursive graphs compare and clone without recursion failures",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 9,
+        "selected": 9,
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN mutation.ms::record fields mutate through methods views and var parameters\nPASS mutation.ms::record fields mutate through methods views and var parameters\nRUN mutation.ms::collection updates mutate in place and clone separates storage\nPASS mutation.ms::collection updates mutate in place and clone separates storage\nRUN mutation.ms::for loop iterates a snapshot while the source changes\nPASS mutation.ms::for loop iterates a snapshot while the source changes\nRUN mutation.ms::callbacks over a snapshot leave the source writable\nPASS mutation.ms::callbacks over a snapshot leave the source writable\nRUN mutation.ms::list growth and saved clone methods preserve current contents\nPASS mutation.ms::list growth and saved clone methods preserve current contents\nRUN mutation.ms::collection clones keep independent lengths\nPASS mutation.ms::collection clones keep independent lengths\nRUN mutation.ms::map and set clear affect their owner while copies retain contents\nPASS mutation.ms::map and set clear affect their owner while copies retain contents\nRUN mutation.ms::alternative clones retain tags and payloads\nPASS mutation.ms::alternative clones retain tags and payloads\nRUN mutation.ms::mutable recursive graphs compare and clone without recursion failures\nPASS mutation.ms::mutable recursive graphs compare and clone without recursion failures\n9 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

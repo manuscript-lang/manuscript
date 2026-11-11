@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Map[Int, String] does not satisfy Data; it is a Set or a Map whose key is not a String, which has no portable form; send a List, a Map[String, T], or a JsonValue object",
+        "position": {
+          "file": "data-map.ms",
+          "line": 10,
+          "column": 12,
+          "offset": 197
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/data-map.ms:10:12: type: Map[Int, String] does not satisfy Data; it is a Set or a Map whose key is not a String, which has no portable form; send a List, a Map[String, T], or a JsonValue object\n    |\n 10 |     return need(scores)\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

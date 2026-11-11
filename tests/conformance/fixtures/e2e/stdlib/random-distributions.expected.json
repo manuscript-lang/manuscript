@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "random-distributions.ms::seeded distributions repeat for equal seeds",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "random-distributions.ms::normal samples centre on zero with unit spread",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "random-distributions.ms::exponential samples are non-negative with mean one",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "random-distributions.ms::permutation contains each index once",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN random-distributions.ms::seeded distributions repeat for equal seeds\nPASS random-distributions.ms::seeded distributions repeat for equal seeds\nRUN random-distributions.ms::normal samples centre on zero with unit spread\nPASS random-distributions.ms::normal samples centre on zero with unit spread\nRUN random-distributions.ms::exponential samples are non-negative with mean one\nPASS random-distributions.ms::exponential samples are non-negative with mean one\nRUN random-distributions.ms::permutation contains each index once\nPASS random-distributions.ms::permutation contains each index once\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

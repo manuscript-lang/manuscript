@@ -1,0 +1,100 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "optional-or-else-ownership.ms::or_else transfers an owned String Optional call",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "optional-or-else-ownership.ms::or_else transfers a last-use String Optional",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "optional-or-else-ownership.ms::or_else copies a borrowed String Optional at its declared boundary",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "optional-or-else-ownership.ms::or_else transfers an owned List Optional",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "optional-or-else-ownership.ms::or_else copies a borrowed List Optional at its declared boundary",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "optional-or-else-ownership.ms::or_else invokes a missing fallback once and skips a present fallback",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "optional-or-else-ownership.ms::or_else permits a fallback that stays absent",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "optional-or-else-ownership.ms::bound or_else preserves its captured Optional across calls",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "optional-or-else-ownership.ms::owned data receiver keeps its value across a later try",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "optional-or-else-ownership.ms::borrowed data receiver remains borrowed across a later try",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 10,
+        "selected": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN optional-or-else-ownership.ms::or_else transfers an owned String Optional call\nPASS optional-or-else-ownership.ms::or_else transfers an owned String Optional call\nRUN optional-or-else-ownership.ms::or_else transfers a last-use String Optional\nPASS optional-or-else-ownership.ms::or_else transfers a last-use String Optional\nRUN optional-or-else-ownership.ms::or_else copies a borrowed String Optional at its declared boundary\nPASS optional-or-else-ownership.ms::or_else copies a borrowed String Optional at its declared boundary\nRUN optional-or-else-ownership.ms::or_else transfers an owned List Optional\nPASS optional-or-else-ownership.ms::or_else transfers an owned List Optional\nRUN optional-or-else-ownership.ms::or_else copies a borrowed List Optional at its declared boundary\nPASS optional-or-else-ownership.ms::or_else copies a borrowed List Optional at its declared boundary\nRUN optional-or-else-ownership.ms::or_else invokes a missing fallback once and skips a present fallback\nPASS optional-or-else-ownership.ms::or_else invokes a missing fallback once and skips a present fallback\nRUN optional-or-else-ownership.ms::or_else permits a fallback that stays absent\nPASS optional-or-else-ownership.ms::or_else permits a fallback that stays absent\nRUN optional-or-else-ownership.ms::bound or_else preserves its captured Optional across calls\nPASS optional-or-else-ownership.ms::bound or_else preserves its captured Optional across calls\nRUN optional-or-else-ownership.ms::owned data receiver keeps its value across a later try\nPASS optional-or-else-ownership.ms::owned data receiver keeps its value across a later try\nRUN optional-or-else-ownership.ms::borrowed data receiver remains borrowed across a later try\nPASS optional-or-else-ownership.ms::borrowed data receiver remains borrowed across a later try\n10 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "checked-place-evaluation.ms::an earlier list fault prevents a later index",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "checked-place-evaluation.ms::an earlier map fault prevents a later index",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "checked-place-evaluation.ms::an earlier receiver fault precedes a later try exit",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "checked-place-evaluation.ms::a changing source receiver selects its cell once",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "checked-place-evaluation.ms::a changing source receiver runs before its argument",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "checked-place-evaluation.ms::implicit and explicit changing arguments retain their own selections",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "checked-place-evaluation.ms::a native receiver fault precedes its argument",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "checked-place-evaluation.ms::a source receiver fault precedes its argument",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "checked-place-evaluation.ms::a contract var argument retains its changing index",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "checked-place-evaluation.ms::a function value var argument retains its changing index",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "checked-place-evaluation.ms::an indexed map fast path evaluates its receiver before its key",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "checked-place-evaluation.ms::an indexed map fast path faults before evaluating its key",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "checked-place-evaluation.ms::an owned map key survives through changing receiver writeback",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "checked-place-evaluation.ms::a nested mutable call inside an index keeps both selections",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "checked-place-evaluation.ms::a nested field assignment stops at its first invalid receiver",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "checked-place-evaluation.ms::an explicit var argument stops at the first invalid receiver",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "checked-place-evaluation.ms::an implicit nested source receiver stops before its later index",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "checked-place-evaluation.ms::a borrowed key fast path selects its indexed receiver first",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "checked-place-evaluation.ms::a borrowed key fast path faults before its value argument",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 19,
+        "selected": 19,
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN checked-place-evaluation.ms::an earlier list fault prevents a later index\nPASS checked-place-evaluation.ms::an earlier list fault prevents a later index\nRUN checked-place-evaluation.ms::an earlier map fault prevents a later index\nPASS checked-place-evaluation.ms::an earlier map fault prevents a later index\nRUN checked-place-evaluation.ms::an earlier receiver fault precedes a later try exit\nPASS checked-place-evaluation.ms::an earlier receiver fault precedes a later try exit\nRUN checked-place-evaluation.ms::a changing source receiver selects its cell once\nPASS checked-place-evaluation.ms::a changing source receiver selects its cell once\nRUN checked-place-evaluation.ms::a changing source receiver runs before its argument\nPASS checked-place-evaluation.ms::a changing source receiver runs before its argument\nRUN checked-place-evaluation.ms::implicit and explicit changing arguments retain their own selections\nPASS checked-place-evaluation.ms::implicit and explicit changing arguments retain their own selections\nRUN checked-place-evaluation.ms::a native receiver fault precedes its argument\nPASS checked-place-evaluation.ms::a native receiver fault precedes its argument\nRUN checked-place-evaluation.ms::a source receiver fault precedes its argument\nPASS checked-place-evaluation.ms::a source receiver fault precedes its argument\nRUN checked-place-evaluation.ms::a contract var argument retains its changing index\nPASS checked-place-evaluation.ms::a contract var argument retains its changing index\nRUN checked-place-evaluation.ms::a function value var argument retains its changing index\nPASS checked-place-evaluation.ms::a function value var argument retains its changing index\nRUN checked-place-evaluation.ms::an indexed map fast path evaluates its receiver before its key\nPASS checked-place-evaluation.ms::an indexed map fast path evaluates its receiver before its key\nRUN checked-place-evaluation.ms::an indexed map fast path faults before evaluating its key\nPASS checked-place-evaluation.ms::an indexed map fast path faults before evaluating its key\nRUN checked-place-evaluation.ms::an owned map key survives through changing receiver writeback\nPASS checked-place-evaluation.ms::an owned map key survives through changing receiver writeback\nRUN checked-place-evaluation.ms::a nested mutable call inside an index keeps both selections\nPASS checked-place-evaluation.ms::a nested mutable call inside an index keeps both selections\nRUN checked-place-evaluation.ms::a nested field assignment stops at its first invalid receiver\nPASS checked-place-evaluation.ms::a nested field assignment stops at its first invalid receiver\nRUN checked-place-evaluation.ms::an explicit var argument stops at the first invalid receiver\nPASS checked-place-evaluation.ms::an explicit var argument stops at the first invalid receiver\nRUN checked-place-evaluation.ms::an implicit nested source receiver stops before its later index\nPASS checked-place-evaluation.ms::an implicit nested source receiver stops before its later index\nRUN checked-place-evaluation.ms::a borrowed key fast path selects its indexed receiver first\nPASS checked-place-evaluation.ms::a borrowed key fast path selects its indexed receiver first\nRUN checked-place-evaluation.ms::a borrowed key fast path faults before its value argument\nPASS checked-place-evaluation.ms::a borrowed key fast path faults before its value argument\n19 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

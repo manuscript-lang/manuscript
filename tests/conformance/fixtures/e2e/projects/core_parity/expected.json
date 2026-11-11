@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "conformance_test.ms::mapped output keeps lexical Hashable and Equal evidence",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "conformance_test.ms::Result composition retains concrete Error and its local implementation",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "conformance_test.ms::conversions and queries retain scoped generic evidence and Error identity",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "conformance_test.ms::generic folds preserve scoped interface accumulators",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "conformance_test.ms::Map transformations preserve input and output equality evidence",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN conformance_test.ms::mapped output keeps lexical Hashable and Equal evidence\nPASS conformance_test.ms::mapped output keeps lexical Hashable and Equal evidence\nRUN conformance_test.ms::Result composition retains concrete Error and its local implementation\nPASS conformance_test.ms::Result composition retains concrete Error and its local implementation\nRUN conformance_test.ms::conversions and queries retain scoped generic evidence and Error identity\nPASS conformance_test.ms::conversions and queries retain scoped generic evidence and Error identity\nRUN conformance_test.ms::generic folds preserve scoped interface accumulators\nPASS conformance_test.ms::generic folds preserve scoped interface accumulators\nRUN conformance_test.ms::Map transformations preserve input and output equality evidence\nPASS conformance_test.ms::Map transformations preserve input and output equality evidence\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

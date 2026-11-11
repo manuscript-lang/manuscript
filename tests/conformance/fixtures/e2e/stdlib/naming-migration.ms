@@ -1,0 +1,88 @@
+// conform: tags=testing,tier-stdlib
+// conform: phase=test
+import (
+	Bytes, BytesBuilder from "@std/bytes.ms",
+	StringBuilder from "@std/string.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
+)
+
+type Counter:
+	calls: Int
+
+interface Defaults:
+	var fn add_default(key: String, value: Int) Unit
+	var fn add_default_from(key: String, create: fn(String) Int) Unit
+
+type DefaultAdapter:
+	values: Map[String, Int]
+
+fn var DefaultAdapter.add_default(key: String, value: Int) Unit:
+	self.values.add_default(key, value)
+
+fn var DefaultAdapter.add_default_from(key: String, create: fn(String) Int) Unit:
+	self.values.add_default_from(key, create)
+
+fn eager(var counter: Counter) Int:
+	counter.calls += 1
+	return 99
+
+fn key_length(key: String) Int: key.length()
+
+test "default insertion keeps eager and lazy calls and receiver identity":
+	var values = Map[String, Int]()
+	values.add("a", 1)
+
+	var counter = Counter(0)
+	values.add_default("a", eager(var counter))
+	expect_false(counter.calls != 1 or values.get("a") != 1)?
+	values.add("b", 2)
+	expect_equal(values.keys(), ["a", "b"])?
+
+	lazy: fn(String, fn(String) Int) Unit := values.add_default_from
+	lazy("a", key_length)
+	lazy("ccc", key_length)
+	values.add_default("d", 4)
+	expect_equal(values.values(), [1, 2, 3, 4])?
+
+	var view: Defaults = DefaultAdapter(values.clone())
+	view.add_default("a", 88)
+	view.add_default_from("ee", key_length)
+
+	var copy = values.clone()
+	copy.add_default("copy", 6)
+	expect_false(values.contains("copy") or not copy.contains("copy"))?
+	expect_equal(values.keys(), ["a", "b", "ccc", "d"])?
+
+	legacy: fn(String, Int) Unit := values.add_default
+	legacy("a", 100)
+	values.add_default_from("ff", key_length)
+	expect_false(counter.calls != 1 or values.get("a") != 1)?
+	expect_equal(values.keys(), ["a", "b", "ccc", "d", "ff"])?
+
+test "text and byte builders keep Unit mutation function types":
+	var bytes = BytesBuilder()
+	append_byte: fn(UInt8) Unit := bytes.append
+	append_byte(65)
+
+	concat_bytes: fn(Bytes) Unit := bytes.append_bytes
+	concat_bytes("B".to_bytes())
+	expect_false(bytes.build() != "AB".to_bytes())?
+
+	var text = StringBuilder()
+	append_text: fn(String) Unit := text.append
+	append_text("ab")
+	expect_false(text.build() != "ab")?
+
+test "copy names preserve Bytes and collection storage":
+	bytes := Bytes([1, 2, 3])
+	copied := bytes.with_value(0, 9)
+	expect_false(bytes != Bytes([1, 2, 3]) or copied != Bytes([9, 2, 3]))?
+
+	values := [1, 2, 3]
+	var reversed = values.reversed()
+	reversed.set(0, 9)
+	expect_false(values != [1, 2, 3] or reversed != [9, 2, 1])?
+
+	set := Set[Int]([1])
+	set.clone().add(2)
+	expect_equal(set.values(), [1])?

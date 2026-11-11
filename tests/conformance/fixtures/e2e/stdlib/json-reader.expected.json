@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "json-reader.ms::values split at every chunk size are preserved",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "json-reader.ms::typed values decode as parse does",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "json-reader.ms::truncated and malformed input fails the read",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "json-reader.ms::invalid UTF-8 inside a value is InvalidData",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "json-reader.ms::per-value budgets report LimitExceeded",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "json-reader.ms::negative limits fail the first read with EINVAL for every input",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN json-reader.ms::values split at every chunk size are preserved\nPASS json-reader.ms::values split at every chunk size are preserved\nRUN json-reader.ms::typed values decode as parse does\nPASS json-reader.ms::typed values decode as parse does\nRUN json-reader.ms::truncated and malformed input fails the read\nPASS json-reader.ms::truncated and malformed input fails the read\nRUN json-reader.ms::invalid UTF-8 inside a value is InvalidData\nPASS json-reader.ms::invalid UTF-8 inside a value is InvalidData\nRUN json-reader.ms::per-value budgets report LimitExceeded\nPASS json-reader.ms::per-value budgets report LimitExceeded\nRUN json-reader.ms::negative limits fail the first read with EINVAL for every input\nPASS json-reader.ms::negative limits fail the first read with EINVAL for every input\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

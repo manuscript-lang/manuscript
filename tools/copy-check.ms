@@ -32,7 +32,6 @@ fn main() Int:
 	if files.is_empty():
 		for dir in [
 			"tests/conformance/fixtures/e2e", "tests/conformance/fixtures/examples",
-			"tests/e2e/testdata/accept", "tests/e2e/testdata/stdlib",
 			"tests/ownership-counts"
 		]:
 			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get([]):

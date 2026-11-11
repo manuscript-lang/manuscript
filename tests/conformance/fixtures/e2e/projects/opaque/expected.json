@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "conformance_test.ms::module functions and methods work on an opaque value",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "conformance_test.ms::a mutating method changes an opaque value",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "conformance_test.ms::an opaque value copies, clones and compares",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "conformance_test.ms::an opaque value prints only its type name",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "conformance_test.ms::an opaque value lives in collections and optionals",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "conformance_test.ms::an opaque alternative is built and read through the module",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN conformance_test.ms::module functions and methods work on an opaque value\nPASS conformance_test.ms::module functions and methods work on an opaque value\nRUN conformance_test.ms::a mutating method changes an opaque value\nPASS conformance_test.ms::a mutating method changes an opaque value\nRUN conformance_test.ms::an opaque value copies, clones and compares\nPASS conformance_test.ms::an opaque value copies, clones and compares\nRUN conformance_test.ms::an opaque value prints only its type name\nPASS conformance_test.ms::an opaque value prints only its type name\nRUN conformance_test.ms::an opaque value lives in collections and optionals\nPASS conformance_test.ms::an opaque value lives in collections and optionals\nRUN conformance_test.ms::an opaque alternative is built and read through the module\nPASS conformance_test.ms::an opaque alternative is built and read through the module\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

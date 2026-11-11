@@ -1,0 +1,115 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "sse-stream.ms::LF CRLF and CR endings decode identically under every chunk split",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "sse-stream.ms::repeated data lines join with LF and bare data is an empty line",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "sse-stream.ms::comments, unknown fields and a single leading space are handled",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "sse-stream.ms::event type applies to one event and id persists",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "sse-stream.ms::ids containing NUL are ignored",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "sse-stream.ms::events without data are not dispatched and reset the event type",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "sse-stream.ms::events carry the latest valid retry time",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "sse-stream.ms::a byte order mark is dropped only at the start of the stream",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "sse-stream.ms::multi-byte scalars survive every chunk split",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "sse-stream.ms::invalid UTF-8 is InvalidData",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "sse-stream.ms::line and event budgets report LimitExceeded",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "sse-stream.ms::truncated streams fail and clean ends succeed",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "sse-stream.ms::a read failure is the stream's error and events before it arrive",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 13,
+        "selected": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN sse-stream.ms::LF CRLF and CR endings decode identically under every chunk split\nPASS sse-stream.ms::LF CRLF and CR endings decode identically under every chunk split\nRUN sse-stream.ms::repeated data lines join with LF and bare data is an empty line\nPASS sse-stream.ms::repeated data lines join with LF and bare data is an empty line\nRUN sse-stream.ms::comments, unknown fields and a single leading space are handled\nPASS sse-stream.ms::comments, unknown fields and a single leading space are handled\nRUN sse-stream.ms::event type applies to one event and id persists\nPASS sse-stream.ms::event type applies to one event and id persists\nRUN sse-stream.ms::ids containing NUL are ignored\nPASS sse-stream.ms::ids containing NUL are ignored\nRUN sse-stream.ms::events without data are not dispatched and reset the event type\nPASS sse-stream.ms::events without data are not dispatched and reset the event type\nRUN sse-stream.ms::events carry the latest valid retry time\nPASS sse-stream.ms::events carry the latest valid retry time\nRUN sse-stream.ms::a byte order mark is dropped only at the start of the stream\nPASS sse-stream.ms::a byte order mark is dropped only at the start of the stream\nRUN sse-stream.ms::multi-byte scalars survive every chunk split\nPASS sse-stream.ms::multi-byte scalars survive every chunk split\nRUN sse-stream.ms::invalid UTF-8 is InvalidData\nPASS sse-stream.ms::invalid UTF-8 is InvalidData\nRUN sse-stream.ms::line and event budgets report LimitExceeded\nPASS sse-stream.ms::line and event budgets report LimitExceeded\nRUN sse-stream.ms::truncated streams fail and clean ends succeed\nPASS sse-stream.ms::truncated streams fail and clean ends succeed\nRUN sse-stream.ms::a read failure is the stream's error and events before it arrive\nPASS sse-stream.ms::a read failure is the stream's error and events before it arrive\n13 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

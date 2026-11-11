@@ -1,4 +1,4 @@
-//! The shutdown cookbook examples (`tests/e2e/testdata/shutdown`) against the real binary:
+//! The shutdown cookbook examples (`programs/`) against the real binary:
 //! SIGINT and SIGTERM end a native build and an `ms run` launcher with status 128 + signal, and
 //! the server example runs its cleanup before the synchronous farewell reaches the client.
 #![cfg(unix)]
@@ -18,8 +18,8 @@ const SIGINT: i32 = 2;
 const SIGTERM: i32 = 15;
 const WAIT: Duration = Duration::from_secs(20);
 
-const OBSERVER: &str = include_str!("../../../tests/e2e/testdata/shutdown/observer.source");
-const SERVER: &str = include_str!("../../../tests/e2e/testdata/shutdown/server.source");
+const OBSERVER: &str = include_str!("programs/observer.source");
+const SERVER: &str = include_str!("programs/server.source");
 
 /// A disposable child in its own process group, so a failure cannot leave an `ms run` launcher or
 /// its program behind.

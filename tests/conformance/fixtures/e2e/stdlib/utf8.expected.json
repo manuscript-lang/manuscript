@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "utf8.ms::UTF8 validity checks the complete buffer without replacement",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "utf8.ms::UTF8 decodes exact scalar boundaries and widths",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "utf8.ms::UTF8 offsets count bytes and leave adjacent malformed bytes alone",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "utf8.ms::UTF8 distinguishes incomplete prefixes from malformed encodings",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "utf8.ms::UTF8 rejects invalid offsets without negative index wrapping",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "utf8.ms::UTF8 supports forward and reverse walks without normalization",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "utf8.ms::UTF8 selects a bounded prefix or suffix in large inputs",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN utf8.ms::UTF8 validity checks the complete buffer without replacement\nPASS utf8.ms::UTF8 validity checks the complete buffer without replacement\nRUN utf8.ms::UTF8 decodes exact scalar boundaries and widths\nPASS utf8.ms::UTF8 decodes exact scalar boundaries and widths\nRUN utf8.ms::UTF8 offsets count bytes and leave adjacent malformed bytes alone\nPASS utf8.ms::UTF8 offsets count bytes and leave adjacent malformed bytes alone\nRUN utf8.ms::UTF8 distinguishes incomplete prefixes from malformed encodings\nPASS utf8.ms::UTF8 distinguishes incomplete prefixes from malformed encodings\nRUN utf8.ms::UTF8 rejects invalid offsets without negative index wrapping\nPASS utf8.ms::UTF8 rejects invalid offsets without negative index wrapping\nRUN utf8.ms::UTF8 supports forward and reverse walks without normalization\nPASS utf8.ms::UTF8 supports forward and reverse walks without normalization\nRUN utf8.ms::UTF8 selects a bounded prefix or suffix in large inputs\nPASS utf8.ms::UTF8 selects a bounded prefix or suffix in large inputs\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -11,4 +11,4 @@ See [bench/perf/iface](../../bench/perf/iface/README.md).
 
 Apply when: changing how vtables or other data objects reach LLVM, or chasing the cost of an interface call in a release build.
 Evidence: [vtable emission](../../crates/ms-clif/src/cg.rs), [unit text](../../crates/ms-clif/src/llvm_ir.rs), [streams suite](../../bench/perf/streams/README.md).
-Verify: `make e2e`; `bench/perf/streams`.
+Verify: `make conform`; `bench/perf/streams`.

@@ -1,0 +1,145 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "template-exact-numbers.ms::underflow is not zero",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "template-exact-numbers.ms::underflow does not equal zero",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "template-exact-numbers.ms::underflow orders above zero",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "template-exact-numbers.ms::large integer neighbors are distinct",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "template-exact-numbers.ms::large integer neighbors retain order",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "template-exact-numbers.ms::overflow values retain order",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "template-exact-numbers.ms::equivalent overflow numbers compare equal",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "template-exact-numbers.ms::ordinary numbers retain ordering",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "template-exact-numbers.ms::equivalent ordinary numbers compare equal",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "template-exact-numbers.ms::signed zero remains false",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "template-exact-numbers.ms::decimal coefficient and exponent normalizations agree",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "template-exact-numbers.ms::coefficient suffixes and negative values preserve order",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "template-exact-numbers.ms::contains and default use exact numeric semantics",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "template-exact-numbers.ms::numbers do not become objects or strings on overflow",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "template-exact-numbers.ms::exponents larger than machine integers never expand",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "template-exact-numbers.ms::integer fast path agrees with exact decimal path at machine boundaries",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "template-exact-numbers.ms::malformed raw number payloads cannot acquire numeric ordering",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "template-exact-numbers.ms::coefficient spans preserve decimal points and implicit trailing zeros",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "template-exact-numbers.ms::long shared coefficient prefixes retain exact order",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 19,
+        "selected": 19,
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN template-exact-numbers.ms::underflow is not zero\nPASS template-exact-numbers.ms::underflow is not zero\nRUN template-exact-numbers.ms::underflow does not equal zero\nPASS template-exact-numbers.ms::underflow does not equal zero\nRUN template-exact-numbers.ms::underflow orders above zero\nPASS template-exact-numbers.ms::underflow orders above zero\nRUN template-exact-numbers.ms::large integer neighbors are distinct\nPASS template-exact-numbers.ms::large integer neighbors are distinct\nRUN template-exact-numbers.ms::large integer neighbors retain order\nPASS template-exact-numbers.ms::large integer neighbors retain order\nRUN template-exact-numbers.ms::overflow values retain order\nPASS template-exact-numbers.ms::overflow values retain order\nRUN template-exact-numbers.ms::equivalent overflow numbers compare equal\nPASS template-exact-numbers.ms::equivalent overflow numbers compare equal\nRUN template-exact-numbers.ms::ordinary numbers retain ordering\nPASS template-exact-numbers.ms::ordinary numbers retain ordering\nRUN template-exact-numbers.ms::equivalent ordinary numbers compare equal\nPASS template-exact-numbers.ms::equivalent ordinary numbers compare equal\nRUN template-exact-numbers.ms::signed zero remains false\nPASS template-exact-numbers.ms::signed zero remains false\nRUN template-exact-numbers.ms::decimal coefficient and exponent normalizations agree\nPASS template-exact-numbers.ms::decimal coefficient and exponent normalizations agree\nRUN template-exact-numbers.ms::coefficient suffixes and negative values preserve order\nPASS template-exact-numbers.ms::coefficient suffixes and negative values preserve order\nRUN template-exact-numbers.ms::contains and default use exact numeric semantics\nPASS template-exact-numbers.ms::contains and default use exact numeric semantics\nRUN template-exact-numbers.ms::numbers do not become objects or strings on overflow\nPASS template-exact-numbers.ms::numbers do not become objects or strings on overflow\nRUN template-exact-numbers.ms::exponents larger than machine integers never expand\nPASS template-exact-numbers.ms::exponents larger than machine integers never expand\nRUN template-exact-numbers.ms::integer fast path agrees with exact decimal path at machine boundaries\nPASS template-exact-numbers.ms::integer fast path agrees with exact decimal path at machine boundaries\nRUN template-exact-numbers.ms::malformed raw number payloads cannot acquire numeric ordering\nPASS template-exact-numbers.ms::malformed raw number payloads cannot acquire numeric ordering\nRUN template-exact-numbers.ms::coefficient spans preserve decimal points and implicit trailing zeros\nPASS template-exact-numbers.ms::coefficient spans preserve decimal points and implicit trailing zeros\nRUN template-exact-numbers.ms::long shared coefficient prefixes retain exact order\nPASS template-exact-numbers.ms::long shared coefficient prefixes retain exact order\n19 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

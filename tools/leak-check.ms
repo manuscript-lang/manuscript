@@ -2,10 +2,11 @@
 // finish normally against a runtime built with allocation counters (`ms-rt` feature
 // `stats`), which prints the count of live heap blocks at exit. A correct program frees
 // everything it allocated, so any nonzero count is a leak. Faulting and rejected
-// programs print no count and are skipped. The `test` blocks of tests/e2e/testdata run
-// the same way, one count per test. Arguments name the files to sweep instead; a file
-// with test blocks is run with `ms test`. MS names the ms that runs the programs
-// (default target/release/ms). Usage: ms run tools/leak-check.ms [-- files]
+// programs print no count and are skipped. The `test` blocks of
+// tests/conformance/fixtures/e2e run the same way, one count per test. Arguments name
+// the files to sweep instead; a file with test blocks is run with `ms test`. MS names
+// the ms that runs the programs (default target/release/ms). Usage: ms run
+// tools/leak-check.ms [-- files]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	arguments, change_directory, working_directory from "@std/os/env.ms",
@@ -105,8 +106,11 @@ fn main() Int:
 				).contains("fn main"): files.append(path.clone())
 
 	if files.is_empty():
-		for f in glob("tests/e2e/testdata", GlobOptions(patterns: ["**/*.ms"])).get([]):
-			path := "tests/e2e/testdata/{f.path}"
+		for f in glob(
+			"tests/conformance/fixtures/e2e",
+			GlobOptions(patterns: ["**/*.ms"]),
+		).get([]):
+			path := "tests/conformance/fixtures/e2e/{f.path}"
 			if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(
 				path.clone()
 			)

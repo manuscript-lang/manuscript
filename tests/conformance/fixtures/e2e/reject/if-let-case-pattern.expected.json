@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'if let' was removed; write 'if value := optional:' (or 'if var value = optional:' for a mutable binding)",
+        "position": {
+          "file": "if-let-case-pattern.ms",
+          "line": 8,
+          "column": 8,
+          "offset": 141
+        },
+        "end": {
+          "file": "if-let-case-pattern.ms",
+          "line": 8,
+          "column": 11,
+          "offset": 144
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/if-let-case-pattern.ms:8:8: parse: 'if let' was removed; write 'if value := optional:' (or 'if var value = optional:' for a mutable binding)\n   |\n 8 |     if let Circle(radius) = shape: return radius\n   |        ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

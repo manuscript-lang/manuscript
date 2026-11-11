@@ -1,0 +1,120 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "image.ms::ppm round trip",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "image.ms::bmp round trip",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "image.ms::ppm two-byte samples use both bytes and scale by maxval",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "image.ms::bmp alpha survives with explicit masks",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "image.ms::bmp bit fields decode independent layouts and reject malformed masks",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "image.ms::bmp fully transparent image stays transparent",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "image.ms::bmp 24-bit rgb is unchanged",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "image.ms::bmp legacy 32-bit with zero fourth bytes is opaque",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "image.ms::truncated rejected",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "image.ms::png decodes every independent vector",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "image.ms::png encode decodes back",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "image.ms::jpeg decodes libjpeg vectors within tolerance",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "image.ms::jpeg encode round trips close to the source",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "image.ms::jpeg gray round trip and alpha rejection",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 14,
+        "selected": 14,
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN image.ms::ppm round trip\nPASS image.ms::ppm round trip\nRUN image.ms::bmp round trip\nPASS image.ms::bmp round trip\nRUN image.ms::ppm two-byte samples use both bytes and scale by maxval\nPASS image.ms::ppm two-byte samples use both bytes and scale by maxval\nRUN image.ms::bmp alpha survives with explicit masks\nPASS image.ms::bmp alpha survives with explicit masks\nRUN image.ms::bmp bit fields decode independent layouts and reject malformed masks\nPASS image.ms::bmp bit fields decode independent layouts and reject malformed masks\nRUN image.ms::bmp fully transparent image stays transparent\nPASS image.ms::bmp fully transparent image stays transparent\nRUN image.ms::bmp 24-bit rgb is unchanged\nPASS image.ms::bmp 24-bit rgb is unchanged\nRUN image.ms::bmp legacy 32-bit with zero fourth bytes is opaque\nPASS image.ms::bmp legacy 32-bit with zero fourth bytes is opaque\nRUN image.ms::truncated rejected\nPASS image.ms::truncated rejected\nRUN image.ms::png decodes every independent vector\nPASS image.ms::png decodes every independent vector\nRUN image.ms::png encode decodes back\nPASS image.ms::png encode decodes back\nRUN image.ms::jpeg decodes libjpeg vectors within tolerance\nPASS image.ms::jpeg decodes libjpeg vectors within tolerance\nRUN image.ms::jpeg encode round trips close to the source\nPASS image.ms::jpeg encode round trips close to the source\nRUN image.ms::jpeg gray round trip and alpha rejection\nPASS image.ms::jpeg gray round trip and alpha rejection\n14 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

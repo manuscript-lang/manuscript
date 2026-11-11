@@ -1,0 +1,115 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "flow.ms::retry succeeds after failures",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "flow.ms::retry gives up after the last attempt",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "flow.ms::retry stops when the error is not retryable",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "flow.ms::backoff doubles and is capped",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "flow.ms::backoff caps at a representable limit without overflowing",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "flow.ms::backoff reaching the cap exactly returns it",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "flow.ms::rate limiter allows a burst then waits",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "flow.ms::rate limiter refills a full maximum burst without overflowing",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "flow.ms::rate limiter clamps an almost full maximum burst",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "flow.ms::rate limiter refills an empty bucket only up to its burst",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "flow.ms::circuit opens after threshold and recovers after cooldown",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "flow.ms::map_concurrent keeps order and respects the limit",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "flow.ms::throttle allows one action per interval",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 13,
+        "selected": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN flow.ms::retry succeeds after failures\nPASS flow.ms::retry succeeds after failures\nRUN flow.ms::retry gives up after the last attempt\nPASS flow.ms::retry gives up after the last attempt\nRUN flow.ms::retry stops when the error is not retryable\nPASS flow.ms::retry stops when the error is not retryable\nRUN flow.ms::backoff doubles and is capped\nPASS flow.ms::backoff doubles and is capped\nRUN flow.ms::backoff caps at a representable limit without overflowing\nPASS flow.ms::backoff caps at a representable limit without overflowing\nRUN flow.ms::backoff reaching the cap exactly returns it\nPASS flow.ms::backoff reaching the cap exactly returns it\nRUN flow.ms::rate limiter allows a burst then waits\nPASS flow.ms::rate limiter allows a burst then waits\nRUN flow.ms::rate limiter refills a full maximum burst without overflowing\nPASS flow.ms::rate limiter refills a full maximum burst without overflowing\nRUN flow.ms::rate limiter clamps an almost full maximum burst\nPASS flow.ms::rate limiter clamps an almost full maximum burst\nRUN flow.ms::rate limiter refills an empty bucket only up to its burst\nPASS flow.ms::rate limiter refills an empty bucket only up to its burst\nRUN flow.ms::circuit opens after threshold and recovers after cooldown\nPASS flow.ms::circuit opens after threshold and recovers after cooldown\nRUN flow.ms::map_concurrent keeps order and respects the limit\nPASS flow.ms::map_concurrent keeps order and respects the limit\nRUN flow.ms::throttle allows one action per interval\nPASS flow.ms::throttle allows one action per interval\n13 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,15 @@
+// conform: tags=testing,tier-stdlib
+// conform: phase=test
+import expect_equal from "@std/test/test.ms"
+
+fn grown() Int:
+	var o: List[String]? = ["a"]
+
+	if var l = o:
+		l.append("q")
+		return l.length()
+
+	return 0
+
+test "if var on an optional local changes its own value":
+	expect_equal(grown(), 2)?

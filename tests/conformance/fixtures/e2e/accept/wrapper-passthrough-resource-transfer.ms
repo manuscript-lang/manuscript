@@ -1,0 +1,126 @@
+// conform: tags=testing,tier-io
+// conform: phase=test
+import (
+	Closeable from "@std/core.ms",
+	append_file, read_file, temporary from "@std/os/fs.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
+)
+
+type Marker:
+	id: Int
+	log: String
+	closed: Bool = false
+
+fn var Marker.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "{self.id},").wait()?
+
+fn result(id: Int, log: String) Marker!Error: ok(Marker(id, log))
+
+fn optional(id: Int, log: String) Marker?: Marker(id, log)
+
+fn transfer_result_local(log: String) Unit:
+	original := result(1, log)
+	_kept := original.or_else(fn cause: error(cause))
+
+fn transfer_result_temporary(log: String) Unit:
+	_kept := result(2, log).or_else(fn cause: error(cause))
+
+fn transfer_optional_local(log: String) Unit:
+	original := optional(3, log)
+	_kept := original.or_else(fn: none)
+
+fn transfer_optional_temporary(log: String) Unit:
+	_kept := optional(4, log).or_else(fn: none)
+
+test "native wrapper passthrough transfers resources without duplicating owners":
+	tmp := temporary("wrapper-passthrough-") | expect_ok?
+	log := "{tmp.path()}/log"
+	transfer_result_local(log.clone())
+	transfer_result_temporary(log.clone())
+	transfer_optional_local(log.clone())
+	transfer_optional_temporary(log.clone())
+
+	events := read_file(log).wait().get().decode_utf8().get("")
+	expect_equal(events, "1,2,3,4,")?
+
+fn recover_resource_error(log: String) Unit!:
+	original: Int!Marker := error(Marker(5, log))
+	recovered := original.or_else(fn cause: ok(cause.id))
+	expect_equal(original.is_error(), true)?
+	expect_equal(recovered.get(), 5)?
+
+fn bound_resource_error(log: String) Unit!:
+	original: Int!Marker := error(Marker(6, log))
+	recover := original.or_else
+	first := recover(fn cause: ok(cause.id))
+	second := recover(fn cause: ok(cause.id + 1))
+	expect_equal(original.is_error(), true)?
+	expect_equal(first.get(), 6)?
+	expect_equal(second.get(), 7)?
+
+test "or_else only borrows a resource error while preserving copyable successes":
+	tmp := temporary("wrapper-error-borrow-") | expect_ok?
+	log := "{tmp.path()}/log"
+	recover_resource_error(log.clone())?
+	bound_resource_error(log.clone())?
+
+	events := read_file(log).wait().get().decode_utf8().get("")
+	expect_equal(events, "5,6,")?
+
+fn optional_callback(fail: Bool) (fn() Marker?)!:
+	if fail: return error(Error("callback unavailable"))
+	return ok(fn: none)
+
+fn result_callback(fail: Bool) (fn(Error) Marker!Error)!:
+	if fail: return error(Error("callback unavailable"))
+	return ok(fn cause: error(cause))
+
+fn held_result_temporary(id: Int, log: String, fail: Bool) Unit!:
+	_kept := result(id, log).or_else(result_callback(fail)?)
+
+fn held_result_local(id: Int, log: String, fail: Bool) Unit!:
+	original := result(id, log)
+	_kept := original.or_else(result_callback(fail)?)
+
+fn held_optional_temporary(id: Int, log: String, fail: Bool) Unit!:
+	_kept := optional(id, log).or_else(optional_callback(fail)?)
+
+fn held_optional_local(id: Int, log: String, fail: Bool) Unit!:
+	original := optional(id, log)
+	_kept := original.or_else(optional_callback(fail)?)
+
+test "owned native receivers stay closeable until later try arguments succeed":
+	tmp := temporary("wrapper-held-receiver-") | expect_ok?
+	log := "{tmp.path()}/log"
+	held_result_temporary(1, log.clone(), false)?
+	held_result_local(2, log.clone(), false)?
+	held_optional_temporary(3, log.clone(), false)?
+	held_optional_local(4, log.clone(), false)?
+	expect_equal(held_result_temporary(5, log.clone(), true).is_error(), true)?
+	expect_equal(held_result_local(6, log.clone(), true).is_error(), true)?
+	expect_equal(held_optional_temporary(7, log.clone(), true).is_error(), true)?
+	expect_equal(held_optional_local(8, log.clone(), true).is_error(), true)?
+
+	events := read_file(log).wait().get().decode_utf8().get("")
+	expect_equal(events, "1,2,3,4,5,6,7,8,")?
+
+fn borrowed_error_callback(fail: Bool) (fn(Marker) Int!Marker)!:
+	if fail: return error(Error("callback unavailable"))
+	return ok(fn cause: ok(cause.id))
+
+fn borrowed_error_before_try(id: Int, log: String, fail: Bool) Unit!:
+	original: Int!Marker := error(Marker(id, log))
+	recovered := original.or_else(borrowed_error_callback(fail)?)
+	expect_equal(original.is_error(), true)?
+	expect_equal(recovered.get(), id)?
+
+test "later try does not take ownership of a genuinely borrowed native receiver":
+	tmp := temporary("wrapper-borrowed-receiver-") | expect_ok?
+	log := "{tmp.path()}/log"
+	borrowed_error_before_try(9, log.clone(), false)?
+	expect_equal(borrowed_error_before_try(10, log.clone(), true).is_error(), true)?
+
+	events := read_file(log).wait().get().decode_utf8().get("")
+	expect_equal(events, "9,10,")?

@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "interface-borrowed-wrapper-temporary-cleanup.ms::interface borrows intact temporary wrappers in written order",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "interface-borrowed-wrapper-temporary-cleanup.ms::interface arguments retain cleanup through later try and faults",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "interface-borrowed-wrapper-temporary-cleanup.ms::interface callee errors faults and new owners preserve cleanup",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "interface-borrowed-wrapper-temporary-cleanup.ms::interface resource var arguments preserve their owners",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "interface-borrowed-wrapper-temporary-cleanup.ms::interface failed temporary close leaves older owner registered",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "interface-borrowed-wrapper-temporary-cleanup.ms::interface var fault retains the caller cleanup",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "interface-borrowed-wrapper-temporary-cleanup.ms::interface Result temporaries and loop conditions keep cleanup bounded",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN interface-borrowed-wrapper-temporary-cleanup.ms::interface borrows intact temporary wrappers in written order\nPASS interface-borrowed-wrapper-temporary-cleanup.ms::interface borrows intact temporary wrappers in written order\nRUN interface-borrowed-wrapper-temporary-cleanup.ms::interface arguments retain cleanup through later try and faults\nPASS interface-borrowed-wrapper-temporary-cleanup.ms::interface arguments retain cleanup through later try and faults\nRUN interface-borrowed-wrapper-temporary-cleanup.ms::interface callee errors faults and new owners preserve cleanup\nPASS interface-borrowed-wrapper-temporary-cleanup.ms::interface callee errors faults and new owners preserve cleanup\nRUN interface-borrowed-wrapper-temporary-cleanup.ms::interface resource var arguments preserve their owners\nPASS interface-borrowed-wrapper-temporary-cleanup.ms::interface resource var arguments preserve their owners\nRUN interface-borrowed-wrapper-temporary-cleanup.ms::interface failed temporary close leaves older owner registered\nPASS interface-borrowed-wrapper-temporary-cleanup.ms::interface failed temporary close leaves older owner registered\nRUN interface-borrowed-wrapper-temporary-cleanup.ms::interface var fault retains the caller cleanup\nPASS interface-borrowed-wrapper-temporary-cleanup.ms::interface var fault retains the caller cleanup\nRUN interface-borrowed-wrapper-temporary-cleanup.ms::interface Result temporaries and loop conditions keep cleanup bounded\nPASS interface-borrowed-wrapper-temporary-cleanup.ms::interface Result temporaries and loop conditions keep cleanup bounded\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

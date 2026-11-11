@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `o` is not one; read the payload with `if x := value:`, then use `var copy = x.clone()` for an independent mutable copy, or write the changed value back",
+        "position": {
+          "file": "if-var-borrows-only-accessors.ms",
+          "line": 6,
+          "column": 12,
+          "offset": 130
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/if-var-borrows-only-accessors.ms:6:12: type: `if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `o` is not one; read the payload with `if x := value:`, then use `var copy = x.clone()` for an independent mutable copy, or write the changed value back\n   |\n 6 |     if var l = o:\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

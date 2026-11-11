@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "an extern fn has no body; remove the ':'",
+        "position": {
+          "file": "extern-body.ms",
+          "line": 3,
+          "column": 31,
+          "offset": 89
+        },
+        "end": {
+          "file": "extern-body.ms",
+          "line": 3,
+          "column": 32,
+          "offset": 90
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/extern-body.ms:3:31: parse: an extern fn has no body; remove the ':'\n   |\n 3 | extern fn labs(value: Int) Int:\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

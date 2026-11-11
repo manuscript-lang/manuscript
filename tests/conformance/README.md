@@ -19,7 +19,7 @@ A fixture id is its path under `fixtures/` without extension. `<slug>.ms` has `<
 | `snippets/cli/` | CLI behavior programs (`ms check/fmt/lint/test` flags, JSON reports, project discovery). |
 | `snippets/e2e-tests/` | Programs harvested from the old end-to-end tests: fault locations, constant diagnostics, CLI projects. |
 | `snippets/authored/` | Small hand-written fixtures named by topic (`diag-*`, `foreign-*`, `literal-*`, `sized-*`, ...). Add new single-file fixtures here. |
-| `e2e/{accept,reject,stdlib,projects}/` | Harvested from `tests/e2e/testdata`: programs that must be accepted, rejected, exercise a stdlib module, or are multi-file projects. |
+| `e2e/{accept,reject,stdlib,projects}/` | Programs that must be accepted, rejected, exercise a stdlib module, or are multi-file projects. |
 | `examples/`, `bench/` | Harvested from the repository's `examples/` and `bench/` programs. |
 | `docs/` | Fences from the documentation; the slug is the page path plus fence number. |
 | `repo/` | Manuscript files that live elsewhere in the repository (scripts, test data). |
@@ -57,7 +57,7 @@ Tier (what a Rust milestone needs): `tier-core` imports nothing, `tier-stdlib` i
 
 ## Adding and refreshing fixtures
 
-A new behavior test goes in `tests/e2e/testdata` as an in-source `test` with `expect_equal`, not here: a conformance copy of an e2e program is rejected by `make repo-check` (fixture twins). Add a fixture here only for a diagnostic or CLI output that needs its recorded text.
+A new behavior test goes in `e2e/accept` or `e2e/stdlib` as an in-source `test` with `expect_equal` and `phase=test`; a rejected program goes in `e2e/reject` (`phase=check`), and a multi-file program in `e2e/projects/<name>/` with `conform.meta`. Modules that single-file fixtures import live in a `support/` directory beside them (not fixtures). Record expectations with `ms-conform record --only-missing`. This corpus is the one test runner for `.ms` behavior; Rust tests cover Rust internals only.
 
 1. Write the `.ms` file with a header (or run `harvest`), choose tags and phase.
 2. `ms-conform record --ms ./ms --id <slug>` writes the expectation; each fixture runs twice and is refused if the answers differ (`deterministic=true` skips this for time- or random-dependent output you have normalized). `--prune` deletes fixtures that cannot be recorded.

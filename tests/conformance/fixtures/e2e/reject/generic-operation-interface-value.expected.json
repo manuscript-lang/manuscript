@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Picker, found Bag (in the initializer of 'picker'); Picker declares an operation with type parameters of its own, so it bounds a type parameter (`fn f[T: Picker](x: T)`) but cannot type a value",
+        "position": {
+          "file": "generic-operation-interface-value.ms",
+          "line": 17,
+          "column": 23,
+          "offset": 347
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/generic-operation-interface-value.ms:17:23: type: expected Picker, found Bag (in the initializer of 'picker'); Picker declares an operation with type parameters of its own, so it bounds a type parameter (`fn f[T: Picker](x: T)`) but cannot type a value\n    |\n 17 |     picker: Picker := Bag(items: [1])\n    |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -9,7 +9,7 @@
 // and fails too. A hit must reproduce: it is re-run twice, and counts the uncancelled
 // run itself shows over five runs (worker buffers vary with timing) are not hits. A
 // cancel that ends the process (status 143) prints no counts and is not swept.
-// Arguments name the files to sweep (default: tests/e2e/testdata/stdlib).
+// Arguments name the files to sweep (default: tests/conformance/fixtures/e2e/stdlib).
 // SWEEP_MAX_PARKS bounds the parks tried per test (default 64); MS names the ms to run
 // (default target/release/ms). Usage: ms run tools/cancel-sweep.ms [-- files]
 import (
@@ -167,10 +167,11 @@ fn main() Int:
 	for f in arguments(): files.append(f.clone())
 
 	if files.is_empty():
-		for f in glob("tests/e2e/testdata/stdlib", GlobOptions(patterns: ["*.ms"])).get(
-			[]
-		):
-			path := "tests/e2e/testdata/stdlib/{f.path}"
+		for f in glob(
+			"tests/conformance/fixtures/e2e/stdlib",
+			GlobOptions(patterns: ["*.ms"]),
+		).get([]):
+			path := "tests/conformance/fixtures/e2e/stdlib/{f.path}"
 			if has_tests(read_file(path.clone()).wait().get().decode_utf8().get("")): files.append(
 				path.clone()
 			)

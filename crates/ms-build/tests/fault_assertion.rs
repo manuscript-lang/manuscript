@@ -9,7 +9,7 @@ fn fault_assertions_keep_caller_values_outside_the_trap() {
     let syms = ms_syntax::Names::global();
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../tests/e2e/testdata/accept/implicit-close-shielded.ms"
+        "/../../tests/conformance/fixtures/e2e/accept/implicit-close-shielded.ms"
     );
     for level in [Level::None, Level::Speed] {
         let loaded = check_graph(

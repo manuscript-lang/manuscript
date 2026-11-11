@@ -1,0 +1,115 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "varint.ms::unsigned varints have base-128 wire encodings",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "varint.ms::signed varints use zigzag including both extrema",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "varint.ms::unsigned varints round trip every length and group boundary",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "varint.ms::signed varints round trip common values and extrema",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "varint.ms::varint offsets chain through trailing bytes and slices",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "varint.ms::each proper prefix of a minimal multibyte varint is incomplete",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "varint.ms::varint offset errors are distinct from missing input",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "varint.ms::the tenth byte can only be zero or one",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "varint.ms::continuation-only data stops at the representation bound",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "varint.ms::nonminimal encodings are accepted and preserve the next offset",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "varint.ms::unsigned fixed-width codecs cover the entire UInt64 range",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "varint.ms::unsigned fixed-width reads reject missing bytes and extreme offsets",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "varint.ms::varint diagnostics describe the error without echoing input",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 13,
+        "selected": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN varint.ms::unsigned varints have base-128 wire encodings\nPASS varint.ms::unsigned varints have base-128 wire encodings\nRUN varint.ms::signed varints use zigzag including both extrema\nPASS varint.ms::signed varints use zigzag including both extrema\nRUN varint.ms::unsigned varints round trip every length and group boundary\nPASS varint.ms::unsigned varints round trip every length and group boundary\nRUN varint.ms::signed varints round trip common values and extrema\nPASS varint.ms::signed varints round trip common values and extrema\nRUN varint.ms::varint offsets chain through trailing bytes and slices\nPASS varint.ms::varint offsets chain through trailing bytes and slices\nRUN varint.ms::each proper prefix of a minimal multibyte varint is incomplete\nPASS varint.ms::each proper prefix of a minimal multibyte varint is incomplete\nRUN varint.ms::varint offset errors are distinct from missing input\nPASS varint.ms::varint offset errors are distinct from missing input\nRUN varint.ms::the tenth byte can only be zero or one\nPASS varint.ms::the tenth byte can only be zero or one\nRUN varint.ms::continuation-only data stops at the representation bound\nPASS varint.ms::continuation-only data stops at the representation bound\nRUN varint.ms::nonminimal encodings are accepted and preserve the next offset\nPASS varint.ms::nonminimal encodings are accepted and preserve the next offset\nRUN varint.ms::unsigned fixed-width codecs cover the entire UInt64 range\nPASS varint.ms::unsigned fixed-width codecs cover the entire UInt64 range\nRUN varint.ms::unsigned fixed-width reads reject missing bytes and extreme offsets\nPASS varint.ms::unsigned fixed-width reads reject missing bytes and extreme offsets\nRUN varint.ms::varint diagnostics describe the error without echoing input\nPASS varint.ms::varint diagnostics describe the error without echoing input\n13 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

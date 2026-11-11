@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "chacha20poly1305.ms::Poly1305 matches the RFC 8439 vector",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "chacha20poly1305.ms::ChaCha20-Poly1305 matches the RFC 8439 sealed message",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "chacha20poly1305.ms::empty message seals to a bare tag",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "chacha20poly1305.ms::tampering and bad lengths are rejected",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "chacha20poly1305.ms::authentication failures use EAUTH",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "chacha20poly1305.ms::chacha20 rejects data past the 32-bit block counter",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN chacha20poly1305.ms::Poly1305 matches the RFC 8439 vector\nPASS chacha20poly1305.ms::Poly1305 matches the RFC 8439 vector\nRUN chacha20poly1305.ms::ChaCha20-Poly1305 matches the RFC 8439 sealed message\nPASS chacha20poly1305.ms::ChaCha20-Poly1305 matches the RFC 8439 sealed message\nRUN chacha20poly1305.ms::empty message seals to a bare tag\nPASS chacha20poly1305.ms::empty message seals to a bare tag\nRUN chacha20poly1305.ms::tampering and bad lengths are rejected\nPASS chacha20poly1305.ms::tampering and bad lengths are rejected\nRUN chacha20poly1305.ms::authentication failures use EAUTH\nPASS chacha20poly1305.ms::authentication failures use EAUTH\nRUN chacha20poly1305.ms::chacha20 rejects data past the 32-bit block counter\nPASS chacha20poly1305.ms::chacha20 rejects data past the 32-bit block counter\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

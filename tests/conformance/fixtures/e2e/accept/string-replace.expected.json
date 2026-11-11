@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "string-replace.ms::replace changes every nonoverlapping match and replace_first changes one",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "string-replace.ms::empty patterns use Unicode scalar boundaries without normalization",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "string-replace.ms::replace_first handles early and late matches across output sizes",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "string-replace.ms::bound typed and generic calls keep the all-versus-first split",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "string-replace.ms::explicit and bound views retain method contracts and callable field shadowing",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "string-replace.ms::replacing long text with a shorter or equal string trims, shares or inlines the result",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "string-replace.ms::join sizes its result exactly across the inline and heap boundary",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN string-replace.ms::replace changes every nonoverlapping match and replace_first changes one\nPASS string-replace.ms::replace changes every nonoverlapping match and replace_first changes one\nRUN string-replace.ms::empty patterns use Unicode scalar boundaries without normalization\nPASS string-replace.ms::empty patterns use Unicode scalar boundaries without normalization\nRUN string-replace.ms::replace_first handles early and late matches across output sizes\nPASS string-replace.ms::replace_first handles early and late matches across output sizes\nRUN string-replace.ms::bound typed and generic calls keep the all-versus-first split\nPASS string-replace.ms::bound typed and generic calls keep the all-versus-first split\nRUN string-replace.ms::explicit and bound views retain method contracts and callable field shadowing\nPASS string-replace.ms::explicit and bound views retain method contracts and callable field shadowing\nRUN string-replace.ms::replacing long text with a shorter or equal string trims, shares or inlines the result\nPASS string-replace.ms::replacing long text with a shorter or equal string trims, shares or inlines the result\nRUN string-replace.ms::join sizes its result exactly across the inline and heap boundary\nPASS string-replace.ms::join sizes its result exactly across the inline and heap boundary\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

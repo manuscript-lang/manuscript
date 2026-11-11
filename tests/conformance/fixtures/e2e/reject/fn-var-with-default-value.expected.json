@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "push has both a var parameter and a parameter default, so it cannot be a function value; call push from a closure that supplies the default",
+        "position": {
+          "file": "fn-var-with-default-value.ms",
+          "line": 10,
+          "column": 15,
+          "offset": 283
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/fn-var-with-default-value.ms:10:15: type: push has both a var parameter and a parameter default, so it cannot be a function value; call push from a closure that supplies the default\n    |\n 10 |     change := push\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

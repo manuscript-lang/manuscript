@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "conformance_test.ms::Map removal keeps direct bound generic and defining-module key scopes",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "conformance_test.ms::Map lookup clone and clear keep the creator key identity",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "conformance_test.ms::An empty returned Map keeps creator evidence before its first insertion",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "conformance_test.ms::Returned Maps compare using their stored key evidence",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "conformance_test.ms::Returned Map equality keeps creator identity order independence and value checks",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "conformance_test.ms::Returned Sets compare using their stored element evidence",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN conformance_test.ms::Map removal keeps direct bound generic and defining-module key scopes\nPASS conformance_test.ms::Map removal keeps direct bound generic and defining-module key scopes\nRUN conformance_test.ms::Map lookup clone and clear keep the creator key identity\nPASS conformance_test.ms::Map lookup clone and clear keep the creator key identity\nRUN conformance_test.ms::An empty returned Map keeps creator evidence before its first insertion\nPASS conformance_test.ms::An empty returned Map keeps creator evidence before its first insertion\nRUN conformance_test.ms::Returned Maps compare using their stored key evidence\nPASS conformance_test.ms::Returned Maps compare using their stored key evidence\nRUN conformance_test.ms::Returned Map equality keeps creator identity order independence and value checks\nPASS conformance_test.ms::Returned Map equality keeps creator identity order independence and value checks\nRUN conformance_test.ms::Returned Sets compare using their stored element evidence\nPASS conformance_test.ms::Returned Sets compare using their stored element evidence\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

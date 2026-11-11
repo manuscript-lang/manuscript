@@ -1,0 +1,105 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "generic-optional-callbacks.ms::generic callbacks preserve Optional inputs and present zero",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "generic-optional-callbacks.ms::generic callbacks preserve both layers of nested Optional inputs",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "generic-optional-callbacks.ms::generic callbacks keep Optional inputs through nested closures",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "generic-optional-callbacks.ms::generic closure defaults and explicit callable arguments keep their behavior",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "generic-optional-callbacks.ms::Optional closure defaults distinguish omitted and explicitly absent values",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "generic-optional-callbacks.ms::named and bound Optional defaults distinguish omitted and absent arguments",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "generic-optional-callbacks.ms::implicit Optional lambda defaults remain callable through inferred and explicit types",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "generic-optional-callbacks.ms::bound native Optional arguments stay required after explicit function typing",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "generic-optional-callbacks.ms::generic native folds accept Optional accumulators without omission wrappers",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "generic-optional-callbacks.ms::bound generic native defaults preserve concrete and Optional payload types",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "generic-optional-callbacks.ms::bound Error defaults distinguish omission from explicit none",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 11,
+        "selected": 11,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN generic-optional-callbacks.ms::generic callbacks preserve Optional inputs and present zero\nPASS generic-optional-callbacks.ms::generic callbacks preserve Optional inputs and present zero\nRUN generic-optional-callbacks.ms::generic callbacks preserve both layers of nested Optional inputs\nPASS generic-optional-callbacks.ms::generic callbacks preserve both layers of nested Optional inputs\nRUN generic-optional-callbacks.ms::generic callbacks keep Optional inputs through nested closures\nPASS generic-optional-callbacks.ms::generic callbacks keep Optional inputs through nested closures\nRUN generic-optional-callbacks.ms::generic closure defaults and explicit callable arguments keep their behavior\nPASS generic-optional-callbacks.ms::generic closure defaults and explicit callable arguments keep their behavior\nRUN generic-optional-callbacks.ms::Optional closure defaults distinguish omitted and explicitly absent values\nPASS generic-optional-callbacks.ms::Optional closure defaults distinguish omitted and explicitly absent values\nRUN generic-optional-callbacks.ms::named and bound Optional defaults distinguish omitted and absent arguments\nPASS generic-optional-callbacks.ms::named and bound Optional defaults distinguish omitted and absent arguments\nRUN generic-optional-callbacks.ms::implicit Optional lambda defaults remain callable through inferred and explicit types\nPASS generic-optional-callbacks.ms::implicit Optional lambda defaults remain callable through inferred and explicit types\nRUN generic-optional-callbacks.ms::bound native Optional arguments stay required after explicit function typing\nPASS generic-optional-callbacks.ms::bound native Optional arguments stay required after explicit function typing\nRUN generic-optional-callbacks.ms::generic native folds accept Optional accumulators without omission wrappers\nPASS generic-optional-callbacks.ms::generic native folds accept Optional accumulators without omission wrappers\nRUN generic-optional-callbacks.ms::bound generic native defaults preserve concrete and Optional payload types\nPASS generic-optional-callbacks.ms::bound generic native defaults preserve concrete and Optional payload types\nRUN generic-optional-callbacks.ms::bound Error defaults distinguish omission from explicit none\nPASS generic-optional-callbacks.ms::bound Error defaults distinguish omission from explicit none\n11 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

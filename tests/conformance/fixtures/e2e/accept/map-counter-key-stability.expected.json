@@ -1,0 +1,145 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "map-counter-key-stability.ms::a counter retains its explicitly cloned mutable key",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "map-counter-key-stability.ms::a commuted counter lookup can select a new mutable key",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "map-counter-key-stability.ms::a counter reads its old scalar key before the next operand",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "map-counter-key-stability.ms::immutable dynamic keys keep counter arithmetic",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "map-counter-key-stability.ms::immutable scalar and literal keys keep counter updates",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "map-counter-key-stability.ms::stable counter updates keep checked integer overflow",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "map-counter-key-stability.ms::counter keys apply their checked Optional conversion",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "map-counter-key-stability.ms::already Optional counter keys retain their representation",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "map-counter-key-stability.ms::an immutable counter key can be consumed after its lookup",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "map-counter-key-stability.ms::a map add retains its cloned key while its source is consumed",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "map-counter-key-stability.ms::a map add default retains its key while its source is consumed",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "map-counter-key-stability.ms::an indexed key clone survives consuming its container",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "map-counter-key-stability.ms::literal increments keep stable mutable-key counters",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "map-counter-key-stability.ms::counter updates call a source-defined clone method",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "map-counter-key-stability.ms::an owned native argument transfers after a later try succeeds",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "map-counter-key-stability.ms::a moved native argument survives a later try without rereading its source",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "map-counter-key-stability.ms::a later failing try leaves its map unchanged",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "map-counter-key-stability.ms::counter fusion preserves faults from an equal-valued source clone",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "map-counter-key-stability.ms::native borrowers retain owned arguments after a later try",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 19,
+        "selected": 19,
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN map-counter-key-stability.ms::a counter retains its explicitly cloned mutable key\nPASS map-counter-key-stability.ms::a counter retains its explicitly cloned mutable key\nRUN map-counter-key-stability.ms::a commuted counter lookup can select a new mutable key\nPASS map-counter-key-stability.ms::a commuted counter lookup can select a new mutable key\nRUN map-counter-key-stability.ms::a counter reads its old scalar key before the next operand\nPASS map-counter-key-stability.ms::a counter reads its old scalar key before the next operand\nRUN map-counter-key-stability.ms::immutable dynamic keys keep counter arithmetic\nPASS map-counter-key-stability.ms::immutable dynamic keys keep counter arithmetic\nRUN map-counter-key-stability.ms::immutable scalar and literal keys keep counter updates\nPASS map-counter-key-stability.ms::immutable scalar and literal keys keep counter updates\nRUN map-counter-key-stability.ms::stable counter updates keep checked integer overflow\nPASS map-counter-key-stability.ms::stable counter updates keep checked integer overflow\nRUN map-counter-key-stability.ms::counter keys apply their checked Optional conversion\nPASS map-counter-key-stability.ms::counter keys apply their checked Optional conversion\nRUN map-counter-key-stability.ms::already Optional counter keys retain their representation\nPASS map-counter-key-stability.ms::already Optional counter keys retain their representation\nRUN map-counter-key-stability.ms::an immutable counter key can be consumed after its lookup\nPASS map-counter-key-stability.ms::an immutable counter key can be consumed after its lookup\nRUN map-counter-key-stability.ms::a map add retains its cloned key while its source is consumed\nPASS map-counter-key-stability.ms::a map add retains its cloned key while its source is consumed\nRUN map-counter-key-stability.ms::a map add default retains its key while its source is consumed\nPASS map-counter-key-stability.ms::a map add default retains its key while its source is consumed\nRUN map-counter-key-stability.ms::an indexed key clone survives consuming its container\nPASS map-counter-key-stability.ms::an indexed key clone survives consuming its container\nRUN map-counter-key-stability.ms::literal increments keep stable mutable-key counters\nPASS map-counter-key-stability.ms::literal increments keep stable mutable-key counters\nRUN map-counter-key-stability.ms::counter updates call a source-defined clone method\nPASS map-counter-key-stability.ms::counter updates call a source-defined clone method\nRUN map-counter-key-stability.ms::an owned native argument transfers after a later try succeeds\nPASS map-counter-key-stability.ms::an owned native argument transfers after a later try succeeds\nRUN map-counter-key-stability.ms::a moved native argument survives a later try without rereading its source\nPASS map-counter-key-stability.ms::a moved native argument survives a later try without rereading its source\nRUN map-counter-key-stability.ms::a later failing try leaves its map unchanged\nPASS map-counter-key-stability.ms::a later failing try leaves its map unchanged\nRUN map-counter-key-stability.ms::counter fusion preserves faults from an equal-valued source clone\nPASS map-counter-key-stability.ms::counter fusion preserves faults from an equal-valued source clone\nRUN map-counter-key-stability.ms::native borrowers retain owned arguments after a later try\nPASS map-counter-key-stability.ms::native borrowers retain owned arguments after a later try\n19 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

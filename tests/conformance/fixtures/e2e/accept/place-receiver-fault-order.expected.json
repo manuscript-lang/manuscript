@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "place-receiver-fault-order.ms::the receiver of a nested var argument faults before a later index runs",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "place-receiver-fault-order.ms::the receiver of a nested assignment faults before a later index runs",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "place-receiver-fault-order.ms::a missing map key faults before a later index runs",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "place-receiver-fault-order.ms::the receiver of a nested field assignment faults before a later index runs",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "place-receiver-fault-order.ms::a changing source receiver selects its element once",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "place-receiver-fault-order.ms::a resource mutator selects its receiver once, before its arguments",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "place-receiver-fault-order.ms::a map entry mutator selects its receiver once, before its arguments",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN place-receiver-fault-order.ms::the receiver of a nested var argument faults before a later index runs\nPASS place-receiver-fault-order.ms::the receiver of a nested var argument faults before a later index runs\nRUN place-receiver-fault-order.ms::the receiver of a nested assignment faults before a later index runs\nPASS place-receiver-fault-order.ms::the receiver of a nested assignment faults before a later index runs\nRUN place-receiver-fault-order.ms::a missing map key faults before a later index runs\nPASS place-receiver-fault-order.ms::a missing map key faults before a later index runs\nRUN place-receiver-fault-order.ms::the receiver of a nested field assignment faults before a later index runs\nPASS place-receiver-fault-order.ms::the receiver of a nested field assignment faults before a later index runs\nRUN place-receiver-fault-order.ms::a changing source receiver selects its element once\nPASS place-receiver-fault-order.ms::a changing source receiver selects its element once\nRUN place-receiver-fault-order.ms::a resource mutator selects its receiver once, before its arguments\nPASS place-receiver-fault-order.ms::a resource mutator selects its receiver once, before its arguments\nRUN place-receiver-fault-order.ms::a map entry mutator selects its receiver once, before its arguments\nPASS place-receiver-fault-order.ms::a map entry mutator selects its receiver once, before its arguments\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

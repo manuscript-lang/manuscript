@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "terminal_screen.ms::the first draw writes every row and parks the cursor",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "terminal_screen.ms::an unchanged frame rewrites only the cursor",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "terminal_screen.ms::a changed row rewrites from that row down",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "terminal_screen.ms::new rows are added below the last one",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "terminal_screen.ms::a changed row above the viewport clears the screen and scrollback",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "terminal_screen.ms::reset forgets the previous frame",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN terminal_screen.ms::the first draw writes every row and parks the cursor\nPASS terminal_screen.ms::the first draw writes every row and parks the cursor\nRUN terminal_screen.ms::an unchanged frame rewrites only the cursor\nPASS terminal_screen.ms::an unchanged frame rewrites only the cursor\nRUN terminal_screen.ms::a changed row rewrites from that row down\nPASS terminal_screen.ms::a changed row rewrites from that row down\nRUN terminal_screen.ms::new rows are added below the last one\nPASS terminal_screen.ms::new rows are added below the last one\nRUN terminal_screen.ms::a changed row above the viewport clears the screen and scrollback\nPASS terminal_screen.ms::a changed row above the viewport clears the screen and scrollback\nRUN terminal_screen.ms::reset forgets the previous frame\nPASS terminal_screen.ms::reset forgets the previous frame\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

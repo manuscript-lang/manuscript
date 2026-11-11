@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Point does not satisfy Comparable; add 'impl Comparable for Point:' or pass a type that already implements it",
+        "position": {
+          "file": "not-comparable.ms",
+          "line": 9,
+          "column": 17,
+          "offset": 154
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/not-comparable.ms:9:17: type: Point does not satisfy Comparable; add 'impl Comparable for Point:' or pass a type that already implements it\n   |\n 9 |     furthest := max(Point(x: 1), Point(x: 2))\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

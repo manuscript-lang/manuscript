@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Source[Int], found Counted (in argument 's' of drain); Counted does not satisfy Source[Int] by its own methods (next must be declared as fn next() Int?!); declare each operation as a method of Counted with the interface's exact signature, or write 'impl Source[Int] for Counted'",
+        "position": {
+          "file": "shape-interface-mismatch.ms",
+          "line": 19,
+          "column": 11,
+          "offset": 345
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/shape-interface-mismatch.ms:19:11: type: expected Source[Int], found Counted (in argument 's' of drain); Counted does not satisfy Source[Int] by its own methods (next must be declared as fn next() Int?!); declare each operation as a method of Counted with the interface's exact signature, or write 'impl Source[Int] for Counted'\n    |\n 19 |     drain(Counted(\"x\"))\n    |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

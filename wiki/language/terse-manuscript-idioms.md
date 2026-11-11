@@ -15,6 +15,6 @@ Use instead of:
 
 Tests and bench sources follow the same idioms (2026-11-09, Chinmay). Rewriting a conformance fixture shifts recorded line numbers: re-record only the `-fmt` twins (`ms-conform record --ms target/release/ms --id <id>`) and revert any other fixture whose output changes. Leave `tests/ownership-counts` (allocation counts depend on the code), `bench/perf` and `bench/language` kernels (they measure the written loop), fuzz fixtures (generated), and fixtures that exercise the verbose form. `repeated` loops and clones, so keep native `filled` in hot paths.
 Evidence: scan with counts in the project file terse-manuscript/catalog.md (2026-11-09).
-Verify: `ms fmt --check`, `make conform`, `make e2e`, `make repo-check`.
+Verify: `ms fmt --check`, `make conform`, `make repo-check`.
 
 Rewrite hazards found: an `if` expression cannot replace `var x = a; if c: x = b` when `c` or `b` reads `x`, when `x` is reassigned later, or with `if v := x` (not an expression); `.get_or` on a type that defines its own `get_or` recurses. Do not bulk-edit `tests/e2e` fixtures that exist to exercise the verbose form.

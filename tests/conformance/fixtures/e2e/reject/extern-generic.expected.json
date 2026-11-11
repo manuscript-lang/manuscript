@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "an extern fn cannot be generic; declare the concrete types the native symbol takes",
+        "position": {
+          "file": "extern-generic.ms",
+          "line": 3,
+          "column": 1,
+          "offset": 59
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extern parameter value has type T, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them",
+        "position": {
+          "file": "extern-generic.ms",
+          "line": 3,
+          "column": 23,
+          "offset": 81
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "extern result has type T, which cannot cross the native boundary; an extern returns sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them, Unit, or a Result of one",
+        "position": {
+          "file": "extern-generic.ms",
+          "line": 3,
+          "column": 33,
+          "offset": 91
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/extern-generic.ms:3:1: type: an extern fn cannot be generic; declare the concrete types the native symbol takes\n   |\n 3 | extern fn identity[T](value: T) T\n   | ^\n<DIR>/extern-generic.ms:3:23: type: extern parameter value has type T, which cannot cross the native boundary; an extern takes sized numbers, Bool, String, Bytes, extern types this program declares, Lists of them, and functions of them\n   |\n 3 | extern fn identity[T](value: T) T\n   |                       ^\n<DIR>/extern-generic.ms:3:33: type: extern result has type T, which cannot cross the native boundary; an extern returns sized numbers, Bool, String, Bytes, extern types this program declares, and Lists of them, Unit, or a Result of one\n   |\n 3 | extern fn identity[T](value: T) T\n   |                                 ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

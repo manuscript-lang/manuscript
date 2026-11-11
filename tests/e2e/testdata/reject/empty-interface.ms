@@ -1,4 +1,0 @@
-interface Marker: ...
-
-export fn main() Int:
-	return 0
