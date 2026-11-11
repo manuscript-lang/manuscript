@@ -37,6 +37,32 @@ use crate::verify::{arg_modes, is_raw};
 use std::collections::{HashMap, HashSet};
 
 const DISCARD: &str = "msrt_cleanup_discard";
+const SHIELD_ENTER: &str = "msrt_shield_enter";
+const SHIELD_EXIT: &str = "msrt_shield_exit";
+
+/// The runtime function `name`, declared if the module does not have it yet.
+fn runtime(m: &mut Module, name: &str, params: &[Ty], role: ExternRole) -> ExtId {
+    if let Some(i) = m.externs.iter().position(|e| e.name == name) {
+        return ExtId(i as u32);
+    }
+    m.add_extern(ExternDef {
+        name: name.into(),
+        params: params
+            .iter()
+            .map(|ty| Param {
+                ty: *ty,
+                mode: Mode::Borrow,
+            })
+            .collect(),
+        ret: Ty::UNIT,
+        noreturn: false,
+        pure_: false,
+        fresh: false,
+        role,
+        leaf: true,
+        reads: false,
+    })
+}
 
 #[derive(Clone, Copy, PartialEq)]
 enum Marker {
@@ -55,31 +81,26 @@ pub fn run(m: &mut Module) -> Result<(), String> {
     if !m.funcs.iter().any(is_raw) {
         return Ok(());
     }
-    let discard = match m.externs.iter().position(|e| e.name == DISCARD) {
-        Some(i) => Some(ExtId(i as u32)),
-        None if close.is_some() => Some(m.add_extern(ExternDef {
-            name: DISCARD.into(),
-            params: vec![Param {
-                ty: Ty::INT,
-                mode: Mode::Borrow,
-            }],
-            ret: Ty::UNIT,
-            noreturn: false,
-            pure_: false,
-            fresh: false,
-            role: ExternRole::CleanupDiscard,
-            leaf: true,
-            reads: false,
-        })),
-        None => None,
-    };
+    let closes = m.funcs.iter().filter(|f| is_raw(f)).any(|f| {
+        f.blocks
+            .iter()
+            .flat_map(|b| &b.insts)
+            .any(|i| matches!((i.op, i.imm), (Op::ScopeOwn, Imm::Scope(_, k)) if k >= 1))
+    });
+    let discard = closes.then(|| runtime(m, DISCARD, &[Ty::INT], ExternRole::CleanupDiscard));
+    let shield = closes.then(|| {
+        (
+            runtime(m, SHIELD_ENTER, &[], ExternRole::None),
+            runtime(m, SHIELD_EXIT, &[], ExternRole::None),
+        )
+    });
     for fi in 0..m.funcs.len() {
         if !is_raw(&m.funcs[fi]) {
             continue;
         }
         let stand_in = Func::new("", Vec::new(), Ty::UNIT);
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
-        let out = function(m, &mut f, close, discard);
+        let out = function(m, &mut f, close, discard, shield);
         m.funcs[fi] = f;
         out.map_err(|e| format!("{}: {e}", m.funcs[fi].name))?;
     }
@@ -160,6 +181,7 @@ struct Ctx {
     parents: HashMap<i64, i64>,
     close: Option<FuncId>,
     discard: Option<ExtId>,
+    shield: Option<(ExtId, ExtId)>,
 }
 
 fn marker_of(inst: &Inst) -> Option<Marker> {
@@ -308,6 +330,7 @@ fn function(
     f: &mut Func,
     close: Option<FuncId>,
     discard: Option<ExtId>,
+    shield: Option<(ExtId, ExtId)>,
 ) -> Result<(), String> {
     let mut cx = Ctx {
         tags: HashMap::new(),
@@ -315,6 +338,7 @@ fn function(
         parents: HashMap::new(),
         close,
         discard,
+        shield,
     };
     for b in &f.blocks {
         for i in &b.insts {
@@ -521,7 +545,7 @@ impl Em<'_> {
                 Some(Marker::Own) => {
                     let v = inst.args[0];
                     apply(self.m, self.f, self.cx, &mut st, &inst)?;
-                    if self.cx.tags[&v].1 == 1 {
+                    if self.cx.tags[&v].1 >= 1 {
                         self.register(cur, v)?;
                     }
                     continue;
@@ -596,7 +620,7 @@ impl Em<'_> {
             let t = self.bconst(at, true);
             self.flags.insert(v, t);
         }
-        if self.cx.tags.get(&v).is_some_and(|t| t.1 == 1) && !self.handles.contains_key(&v) {
+        if self.cx.tags.get(&v).is_some_and(|t| t.1 >= 1) && !self.handles.contains_key(&v) {
             // A closing owner that arrives as a parameter registers where it is defined.
             if self
                 .f
@@ -610,10 +634,7 @@ impl Em<'_> {
     }
 
     fn register(&mut self, at: usize, v: Value) -> Result<(), String> {
-        let close = self
-            .cx
-            .close
-            .ok_or_else(|| "a closing owner needs a `close` function".to_string())?;
+        let close = self.closer(v)?;
         let h = self
             .push(at, Op::CleanupPush, &[v], Imm::Func(close), Some(Ty::INT))
             .expect("handle");
@@ -708,6 +729,9 @@ impl Em<'_> {
     ) -> Result<(usize, Option<Value>), String> {
         let kind = self.cx.tags[&v].1;
         let flag = self.flags.get(&v).copied();
+        if kind >= 2 {
+            return Ok((self.cleanup_infallible(at, v, s, flag)?, outcome));
+        }
         let code = match (s, kind) {
             (St::Live, 0) => {
                 self.push(at, Op::Drop, &[v], Imm::None, None);
@@ -794,14 +818,75 @@ impl Em<'_> {
         Ok((at, Some(outcome)))
     }
 
+    /// The function that closes `v`: the module's `close` for kind 1 (it returns the failure
+    /// code), else the owner's own function, `fn(borrow T) -> unit`, named by kind - 2.
+    fn closer(&self, v: Value) -> Result<FuncId, String> {
+        match self.cx.tags[&v].1 {
+            1 => self
+                .cx
+                .close
+                .ok_or_else(|| "a closing owner needs a `close` function".to_string()),
+            k => Ok(FuncId((k - 2) as u32)),
+        }
+    }
+
+    /// Cleans up an owner whose close cannot fail: it closes only on the paths that still hold
+    /// it. Returns the block to continue in.
+    fn cleanup_infallible(
+        &mut self,
+        at: usize,
+        v: Value,
+        s: St,
+        flag: Option<Value>,
+    ) -> Result<usize, String> {
+        match s {
+            St::Live => {
+                self.close_infallible(at, v)?;
+                self.push(at, Op::Drop, &[v], Imm::None, None);
+                Ok(at)
+            }
+            St::Part(..) => Err("a partially moved closing owner".into()),
+            St::Moved => {
+                let flag = flag.ok_or("a moved owner without a drop flag")?;
+                self.push(at, Op::DropIf, &[flag, v], Imm::None, None);
+                Ok(at)
+            }
+            St::Maybe => {
+                let flag = flag.ok_or("a moved owner without a drop flag")?;
+                let (yes, join) = (self.f.new_block(), self.f.new_block());
+                self.f.blocks[at].term = Term::CondBr {
+                    cond: flag,
+                    then: Target::to(yes),
+                    els: Target::to(join),
+                };
+                self.close_infallible(yes.index(), v)?;
+                self.f.blocks[yes.index()].term = Term::Br(Target::to(join));
+                self.push(join.index(), Op::DropIf, &[flag, v], Imm::None, None);
+                Ok(join.index())
+            }
+        }
+    }
+
     fn close_call(&mut self, at: usize, v: Value) -> Result<Value, String> {
-        let close = self
-            .cx
-            .close
-            .ok_or_else(|| "a closing owner needs a `close` function".to_string())?;
+        let close = self.closer(v)?;
         Ok(self
             .push(at, Op::Call, &[v], Imm::Func(close), Some(Ty::INT))
             .expect("result"))
+    }
+
+    /// Closes the live `v` of an owner that cannot fail, shielded from a stop request; the
+    /// caller drops what the close leaves behind.
+    fn close_infallible(&mut self, at: usize, v: Value) -> Result<(), String> {
+        let close = self.closer(v)?;
+        let (enter, exit) = self
+            .cx
+            .shield
+            .ok_or("a closing owner needs the shield calls")?;
+        self.discard(at, v);
+        self.push(at, Op::CallRt, &[], Imm::Ext(enter), Some(Ty::UNIT));
+        self.push(at, Op::Call, &[v], Imm::Func(close), Some(Ty::UNIT));
+        self.push(at, Op::CallRt, &[], Imm::Ext(exit), Some(Ty::UNIT));
+        Ok(())
     }
 
     /// Closes or drops the owners of `scope`, last defined first.

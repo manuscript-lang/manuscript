@@ -48,6 +48,9 @@ fn elaborate_and_run_text(body: &str) -> (i64, String, String) {
         out.push_str("~\n");
         Ok(ms_mir::interp::Val::Unit)
     });
+    for name in ["msrt_shield_enter", "msrt_shield_exit"] {
+        it.register(name, |_, _| Ok(ms_mir::interp::Val::Unit));
+    }
     let r = it.run_entry().unwrap_or_else(|f| panic!("{f}"));
     (r, it.stdout().to_string(), text)
 }
@@ -377,4 +380,53 @@ b0:
 "#,
     );
     assert_eq!((kept, out.as_str()), (4, ""));
+}
+
+/// An owner whose close cannot fail names its own function (`scope.own S K v`, K = function
+/// index + 2): the pass closes it shielded and drops what is left, only on the paths that
+/// still hold it.
+fn infallible(keep: bool) -> String {
+    format!(
+        r#"fn @shut(%r: list<int>) -> unit {{
+b0:
+  %z: int = iconst 0
+  %id: int = list.get %r, %z
+  %u: unit = call.rt @msrt_print_int (%id)
+  ret %u
+}}
+fn @sink(%r: move list<int>) -> unit {{
+b0:
+  drop %r
+  %u: unit = unit
+  ret %u
+}}
+fn @main() -> int {{
+b0:
+  scope.begin 1 0
+  %n: int = iconst 7
+  %a: list<int> = call @mk (%n)
+  scope.own 1 4 %a
+  %k: bool = bconst {keep}
+  br_if %k, b1(), b2()
+b1():
+  br b3()
+b2():
+  %u: unit = call @sink (%a)
+  br b3()
+b3():
+  scope.end 1 0
+  %r: int = iconst 0
+  ret %r
+}}
+"#
+    )
+}
+
+#[test]
+fn an_infallible_owner_is_closed_shielded_only_where_it_is_still_held() {
+    let (_, out, text) = elaborate_and_run_text(&infallible(true));
+    assert_eq!(out, "~\n7\n", "{text}");
+    assert!(text.contains("msrt_shield_enter"), "{text}");
+    let (_, out, _) = elaborate_and_run_text(&infallible(false));
+    assert_eq!(out, "~\n", "a moved owner is not closed");
 }
