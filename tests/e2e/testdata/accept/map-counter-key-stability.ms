@@ -60,7 +60,7 @@ test "counter keys apply their checked Optional conversion":
 	try expect_equal(values.length(), 2)
 
 test "already Optional counter keys retain their representation":
-	key: Int? = 1
+	key: Int? := 1
 	var values = Map[Int?, Int]()
 	values.add(key, values.get_or(key, 0) + 2)
 	try expect_equal(values.get_or(1, 0), 2)

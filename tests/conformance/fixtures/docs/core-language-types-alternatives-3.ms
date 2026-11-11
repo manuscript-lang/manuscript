@@ -7,10 +7,10 @@ enum LeftState:
 enum RightState:
     Ready
 
-left: LeftState = LeftState.Ready
+left: LeftState := LeftState.Ready
 // Rejected: two visible Ready cases, even with an annotation.
-annotated: LeftState = Ready
+annotated: LeftState := Ready
 // Rejected: two visible Ready cases.
 ambiguous := Ready
 // Rejected: a different nominal alternative.
-wrong: LeftState = RightState.Ready
+wrong: LeftState := RightState.Ready

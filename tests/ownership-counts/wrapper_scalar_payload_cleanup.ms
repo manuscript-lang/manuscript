@@ -55,11 +55,11 @@ fn transformed_error() Unit:
 	_mapped := failure(8).map_error(fn item: item.id)
 
 fn transformed_then() Unit:
-	_mapped: Int!Int = success(9).and_then(fn item: ok(item.id))
+	_mapped: Int!Int := success(9).and_then(fn item: ok(item.id))
 
 fn bound_map() Unit:
 	value := success(10)
-	transform: fn(fn(Marker) Int) Int!Int = value.map[Int]
+	transform: fn(fn(Marker) Int) Int!Int := value.map[Int]
 	first := transform(fn item: item.id)
 	second := transform(fn item: item.id)
 	print("bound map {first.get()} {second.get()}")
@@ -68,7 +68,7 @@ fn bound_map() Unit:
 
 fn bound_error() Unit:
 	value := failure(11)
-	transform: fn(fn(Marker) Int) Int!Int = value.map_error[Int]
+	transform: fn(fn(Marker) Int) Int!Int := value.map_error[Int]
 	first := transform(fn item: item.id)
 	second := transform(fn item: item.id)
 	print("bound error {first.err()} {second.err()}")
@@ -77,7 +77,7 @@ fn bound_error() Unit:
 
 fn bound_then() Unit:
 	value := success(12)
-	transform: fn(fn(Marker) Int!Int) Int!Int = value.and_then[Int]
+	transform: fn(fn(Marker) Int!Int) Int!Int := value.and_then[Int]
 	first := transform(fn item: ok(item.id))
 	second := transform(fn item: ok(item.id))
 	print("bound then {first.get()} {second.get()}")

@@ -15,7 +15,7 @@ export fn main() Int:
     b2 := "naïve".upper().ends_with("MiXeD CaSe")
     say("b2 = {b2}")
 
-    bad: Bool = 1
+    bad: Bool := 1
     b3 := true
     say("b3 = {b3}")
 

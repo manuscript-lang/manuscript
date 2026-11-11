@@ -49,7 +49,7 @@ fn catch_in_task() Int:
 
 fn faulting_depth(n: Int) Unit:
 	if n == 0:
-		empty: List[Int] = []
+		empty: List[Int] := []
 		print(empty[1])
 		return
 

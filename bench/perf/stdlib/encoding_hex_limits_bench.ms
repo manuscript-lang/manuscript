@@ -39,7 +39,7 @@ fn decode_case(length: Int, limit: Int?, bad: Int = 0) Unit!:
 	try measure(1, work)
 
 fn unicode_case(limit: Int) Unit!:
-	expected: Bytes! = error(
+	expected: Bytes! := error(
 		Error(
 			if limit == 0: "encoding: limit exceeded" else: "encoding: invalid data",
 			kind: if limit == 0: "EOVERFLOW" else: "EBADMSG"
@@ -55,7 +55,7 @@ fn unicode_case(limit: Int) Unit!:
 fn neighbor(which: Int) Unit!:
 	data := zeros(if which == 3 or which == 4: 8192 else: 4096)
 	text := try "\u{0}".repeat(4096)
-	expected_text: String! = ok(text.clone())
+	expected_text: String! := ok(text.clone())
 	hex := try "00".repeat(4096)
 	b64 := (try "A".repeat(5462)) + "=="
 	scalar := "é".to_bytes()

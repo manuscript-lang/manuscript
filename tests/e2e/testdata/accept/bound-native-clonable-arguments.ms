@@ -40,7 +40,7 @@ test "generic bound mutator copies aggregate payload storage independently":
 test "optional native adapter handles supplied and absent payloads":
 	var values: List[String?] = ["first"]
 	set := values.set
-	text: String? = "next-{2}"
+	text: String? := "next-{2}"
 	set(0, text)
 	set(0, none)
 	set(0, text)

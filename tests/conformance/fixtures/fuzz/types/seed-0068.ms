@@ -30,5 +30,5 @@ export fn main() Int:
     say("l2 = {l2} len {l2.length()}")
     say("collatz(705) = {collatz(705)}")
 
-    bad: Int = "text"
+    bad: Int := "text"
     return 0

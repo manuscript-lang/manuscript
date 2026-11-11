@@ -15,7 +15,7 @@ export fn main() Int:
     f2 := (((0.0 * 346.028) * (0.0 + 1.0e5)) + ((403.25 - 328.214) * 260.814))
     say("f2 = {f2}")
 
-    bad: Int = "text"
+    bad: Int := "text"
     b3 := not "  padded  ".contains("alpha")
     say("b3 = {b3}")
 

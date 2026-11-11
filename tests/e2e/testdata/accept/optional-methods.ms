@@ -18,23 +18,23 @@ fn value_or[T](value: T?, fallback: T) T:
 fn increment(value: Int) Int: value + 1
 
 test "Optional presence and extraction preserve false and zero":
-	present: Int? = 0
-	missing: Int? = none
+	present: Int? := 0
+	missing: Int? := none
 	try expect_false(not (present.is_some()))
 	try expect_false(present.is_none())
 	try expect_false(missing.is_some())
 	try expect_false(not (missing.is_none()))
 	try expect_equal(present.get(), 0)
 
-	flag: Bool? = false
+	flag: Bool? := false
 	try expect_false(flag.get())
 	try expect_equal(value_or(missing, 7), 7)
 	try expect_equal(value_or(present, 7), 0)
 	try expect_false(missing.is_some())
 
 test "Optional fallbacks distinguish eager and lazy evaluation":
-	present: Int? = 0
-	missing: Int? = none
+	present: Int? := 0
+	missing: Int? := none
 	var counter = Counter(0)
 	try expect_equal(present.get(fallback(var counter)), 0)
 	try expect_equal(counter.calls, 1)
@@ -44,19 +44,19 @@ test "Optional fallbacks distinguish eager and lazy evaluation":
 	try expect_equal(missing.or_else(create).get(), 42)
 
 test "Optional methods retain generic payload and receiver identity":
-	inner: Int? = none
-	outer: Int?? = inner
+	inner: Int? := none
+	outer: Int?? := inner
 	try expect_false(not (outer.is_some()))
 	try expect_false(not (outer.get().is_none()))
 
 	counter := Counter(3)
-	record: Counter? = counter.clone()
+	record: Counter? := counter.clone()
 	try expect_equal(record.get().calls, 3)
 
 	extract := record.get
 	try expect_equal(extract().calls, 3)
 
-	callback: (fn(Int) Int)? = increment
+	callback: (fn(Int) Int)? := increment
 	try expect_equal(callback.get()(2), 3)
 
 	snapshot := outer.clone()
@@ -64,7 +64,7 @@ test "Optional methods retain generic payload and receiver identity":
 
 test "Optional fallbacks preserve standard option records":
 	limits := JsonOptions(max_bytes: -1)
-	missing: JsonOptions? = none
+	missing: JsonOptions? := none
 	var extracted = missing.get(limits).clone()
 	try expect_equal(extracted.max_bytes.get(), -1)
 	try expect_false(not (extracted.max_depth.is_none()))

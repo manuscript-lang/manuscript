@@ -39,7 +39,7 @@ fn main() Unit:
     _b := stdout().write("{v.sorted(descending)}\n")
     _c := stdout().write("{v.sorted(shifted)}\n")
     _d := stdout().write("{v}\n")
-    none: List[Int] = []
+    none: List[Int] := []
     _e := stdout().write("{none.sorted(ascending)} {[4].sorted(descending)}\n")
     items := [
         Item(key: 2, tag: "a"), Item(key: 1, tag: "b"), Item(key: 2, tag: "c"),

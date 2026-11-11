@@ -31,7 +31,7 @@ fn relay(e: Reportable) Reportable:
     return e
 
 fn held(cause: Cause) String:
-    e: Reportable = cause
+    e: Reportable := cause
     return e.message()
 
 fn through(cause: Cause) Reportable:
@@ -55,7 +55,7 @@ fn either(r: Holder, b: Bool) Reportable:
     return r.cause
 
 fn owned_copy(cause: Cause) List[Reportable]:
-    e: Reportable = cause.clone()
+    e: Reportable := cause.clone()
     return [e]
 
 fn id[T](x: T) T:
@@ -69,24 +69,24 @@ fn lend_id(cause: Cause) Reportable:
     return id(first_error(cause))
 
 fn rebound(cause: Cause) Reportable:
-    e: Reportable = cause
+    e: Reportable := cause
     e2 := e
     return e2
 
 fn rebound_result(cause: Cause) Int!Reportable:
-    r: Int!Reportable = error(cause)
+    r: Int!Reportable := error(cause)
     r2 := r
     return r2
 
 fn rebound_alias_relay(cause: Cause) Reportable:
-    e: Reportable = cause
+    e: Reportable := cause
     e2 := e
     return relay(e2)
 
 fn demo(var c: Cause) String:
     one := first_error(c)
     two := first_failure(c)
-    e: Reportable = c
+    e: Reportable := c
     r := relay(c)
     text := "{one.message()} {two.err().message()} {e.message()} {r.message()} {held(c)} {through(c).message()} {lend_then_relay(c).message()} {lend_id(c).message()} {rebound(c).message()} {rebound_result(c).err().message()} {rebound_alias_relay(c).message()}"
     c.code = 5

@@ -106,7 +106,7 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 			vals.add(v)
 			v += step
 
-	out: List[Int] = vals.values()
+	out: List[Int] := vals.values()
 	return out
 
 fn solve(s: String) String:

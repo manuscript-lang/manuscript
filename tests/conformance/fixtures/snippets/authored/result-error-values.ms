@@ -27,15 +27,15 @@ test "optional Result arguments supply constructor type context":
     optional_result(error("missing")) | try expect_equal(-1)
 
 test "optional failure payloads and nested absence retain their layers":
-    absent: Int?? = none
+    absent: Int?? := none
     absent.is_none() | try expect_true
 
-    inner: Int? = none
-    present: Int?? = inner
+    inner: Int? := none
+    present: Int?? := inner
     present.is_some() | try expect_true
     present.get().is_none() | try expect_true
 
-    failure: Result[Int, String?] = error(none)
+    failure: Result[Int, String?] := error(none)
     failure.is_error() | try expect_true
     failure.err().is_none() | try expect_true
 
@@ -47,11 +47,11 @@ test "named failures propagate without a reporting implementation":
     value | try expect_equal(12)
 
 test "primitive failures work with contextual constructors and assertion aliases":
-    text: Int!String = error("missing")
+    text: Int!String := error("missing")
     message := try expect_error(relay(text))
     message | try expect_equal("missing")
 
-    number: String!Int = error(7)
+    number: String!Int := error(7)
     code := try expect_error(relay(number))
     code | try expect_equal(7)
 
@@ -59,7 +59,7 @@ test "primitive failures work with contextual constructors and assertion aliases
     success | try expect_equal(4)
 
 test "Result transforms preserve primitive errors and map to named cases":
-    failure: Int!String = error("missing")
+    failure: Int!String := error("missing")
     failure.map(fn value: value + 1).err() | try expect_equal("missing")
 
     var calls = 0
@@ -73,7 +73,7 @@ test "Result transforms preserve primitive errors and map to named cases":
     actual(mapped.err()) | try expect_equal(7)
     calls | try expect_equal(1)
 
-    success: Int!String = ok(4)
+    success: Int!String := ok(4)
     success.map_error(
         fn message:
             calls += 1
@@ -105,8 +105,8 @@ test "assertion failures can describe values without a reporting implementation"
     )
 
 test "Optional adapters accept primitive errors and remain lazy":
-    present: Int? = 4
-    missing: Int? = none
+    present: Int? := 4
+    missing: Int? := none
     missing.ok_or("absent").err() | try expect_equal("absent")
     present.ok_or(9).get() | try expect_equal(4)
 

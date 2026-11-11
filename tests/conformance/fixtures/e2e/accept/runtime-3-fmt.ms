@@ -39,10 +39,10 @@ fn describe(outcome: Int!Code) Int!Error:
             return error(Error("Error {cause.number}"))
 
 test "explicit error conversion":
-    failed: Int!Code = error(Code(7))
-    expected: Int!Error = error(Error("Error 7"))
+    failed: Int!Code := error(Code(7))
+    expected: Int!Error := error(Error("Error 7"))
     describe(outcome: failed) | try expect_equal(expected)
 
-    succeeded: Int!Code = ok(3)
-    unchanged: Int!Error = ok(3)
+    succeeded: Int!Code := ok(3)
+    unchanged: Int!Error := ok(3)
     describe(outcome: succeeded) | try expect_equal(unchanged)

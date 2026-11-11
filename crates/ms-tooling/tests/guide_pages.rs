@@ -73,7 +73,7 @@ fn cheatsheet_claims_match_the_compiler() {
         "    m := Map[String, Int]()\n    s := Set[Int]()\n",
         "    var n = 1\n    n = 2\n",
         "    var n = 1\n    n += 2\n    n %= 2\n",
-        "    o: Int? = none\n    v := o.get(3)\n",
+        "    o: Int? := none\n    v := o.get(3)\n",
         "    name := \"x\"\n    text := \"hi {name}\"\n",
         "    var m = Map[String, Int]()\n    for e in m.entries():\n        k := e.key\n    if var n = m[\"k\"]?:\n        n += 1\n",
     ] {

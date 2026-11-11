@@ -58,7 +58,7 @@ pub fn exported_declarations(syms: ms_syntax::Names, source: &str) -> Vec<Export
             .or_else(|| rest.strip_prefix("opaque "))
             .unwrap_or(rest)
             .trim_start();
-        // A declaration keyword, or a constant `NAME := value` / `NAME: Type = value`.
+        // A declaration keyword, or a constant `NAME := value` / `NAME: Type := value`.
         let (keyword, rest) = match rest.split_once(char::is_whitespace) {
             Some((keyword, tail)) if matches!(keyword, "fn" | "type" | "enum" | "interface") => {
                 (keyword, tail.trim_start())

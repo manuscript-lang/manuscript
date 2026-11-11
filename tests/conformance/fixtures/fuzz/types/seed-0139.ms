@@ -18,7 +18,7 @@ export fn main() Int:
     i3 := 28
     say("i3 = {i3}")
 
-    bad: Int = "text"
+    bad: Int := "text"
     l4 := [(-27), 9, (-27), 9, (-25)]
     say("l4 = {l4} len {l4.length()}")
 

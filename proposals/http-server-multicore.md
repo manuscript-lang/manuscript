@@ -58,7 +58,7 @@ import HttpServer, HttpServerOptions, serve_cores from "@std/net/http.ms"
 
 // Named top-level, capture-free: runs once in each serving isolate and returns that isolate's handler.
 fn init(config: AppConfig) fn(HttpExchange) Result[Unit, HttpError]:
-    hits: Shared[Int] = share(0)    // per isolate
+    hits: Shared[Int] := share(0)    // per isolate
     ...
     return buffered(handler)
 

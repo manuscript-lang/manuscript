@@ -27,24 +27,24 @@ fn map_set[T: Hashable, U: Hashable](values: Set[T], transform: fn(T) U) Set[U]:
 	return values.map[U](transform)
 
 test "core parity operations are callable":
-	success: Int!Error = ok(2)
-	failure: Int!Error = error(Error("failed"))
+	success: Int!Error := ok(2)
+	failure: Int!Error := error(Error("failed"))
 	try expect_false(not (success.is_ok()) or success.is_error())
 	try expect_false(success.get() != 2 or failure.err().message != "failed")
 	try expect_equal(failure.get(7), 7)
 	try expect_equal(failure.get_or_else(fn cause: cause.message.scalar_length()), 6)
 	try expect_equal(success.map(fn n: n + 1).get(), 3)
 
-	chained: String!Error = success.and_then(fn n: ok(n.to_string()))
+	chained: String!Error := success.and_then(fn n: ok(n.to_string()))
 	try expect_equal(chained.get(), "2")
 
-	present: Int? = 2
-	missing: Int? = none
+	present: Int? := 2
+	missing: Int? := none
 	try expect_equal(present.map(fn n: n + 1).get(), 3)
 	try expect_equal(present.and_then(fn(n: Int) String?: n.to_string()).get(), "2")
 	try expect_equal(missing.or_else(fn: 4).get(), 4)
 
-	values: Map[String, Int] = {"a": 1, "b": 2}
+	values: Map[String, Int] := {"a": 1, "b": 2}
 	try expect_false(values.is_empty() or values.get_or("absent", 8) != 8)
 	try expect_equal(values.filter(fn k, v: k == "b" and v == 2).length(), 1)
 
@@ -60,8 +60,8 @@ fn unexpected_chain(value: Int) String!Counter:
 
 test "Result preserves unconstrained payloads and success-only composition":
 	counter := Counter(0)
-	failure: Int!Counter = error(counter.clone())
-	success: Int!Counter = ok(0)
+	failure: Int!Counter := error(counter.clone())
+	success: Int!Counter := ok(0)
 	skipped := map_result(failure.clone(), unexpected_text)
 	try expect_false(not (skipped.is_error()) or skipped.is_ok())
 
@@ -92,7 +92,7 @@ test "Result preserves unconstrained payloads and success-only composition":
 	try expect_equal(counter.calls, 0)
 	try expect_equal(produced.err().calls, 0)
 
-	collection_error: Bool!Pending = error(Pending([1]))
+	collection_error: Bool!Pending := error(Pending([1]))
 	var pending = Pending(
 		collection_error.clone().map(fn flag: not flag).err().values.clone()
 	)
@@ -101,7 +101,7 @@ test "Result preserves unconstrained payloads and success-only composition":
 	try expect_equal(collection_error.err().values, [1])
 
 	limits := JsonOptions(max_bytes: -1)
-	record: JsonOptions!Error = ok(limits.clone())
+	record: JsonOptions!Error := ok(limits.clone())
 	var changed = record.clone().map(fn value: value).get().clone()
 	changed.max_values = 7
 	try expect_equal(changed.max_values.get(), 7)
@@ -110,16 +110,16 @@ test "Result preserves unconstrained payloads and success-only composition":
 	nested := success.clone().map(fn(n: Int) Int?: n)
 	try expect_equal(nested.get().get(), 0)
 
-	unit_result: Unit!Error = ok(unit)
+	unit_result: Unit!Error := ok(unit)
 	try expect_false(not (unit_result.is_ok()))
 
-	bool_result: Bool!Error = ok(false)
+	bool_result: Bool!Error := ok(false)
 	try expect_false(bool_result.get(true))
 
 test "Result fallbacks are eager or lazy and bound methods keep receivers":
 	var counter = Counter(0)
-	success: Int!Counter = ok(0)
-	failure: Int!Counter = error(counter.clone())
+	success: Int!Counter := ok(0)
+	failure: Int!Counter := error(counter.clone())
 	try expect_false(success.get(bump(var counter)) != 0 or counter.calls != 1)
 
 	create := fn(cause: Counter) Int: 12
@@ -141,8 +141,8 @@ test "Result fallbacks are eager or lazy and bound methods keep receivers":
 
 test "Optional composition keeps nesting identity and lazy callback counts":
 	counter := Counter(0)
-	present: Counter? = counter.clone()
-	missing: Counter? = none
+	present: Counter? := counter.clone()
+	missing: Counter? := none
 	transform := fn(value: Counter) Counter:
 		return Counter(value.calls + 1)
 	unexpected := fn(value: Counter) Counter: panic("map must not run for none")
@@ -181,7 +181,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 
 test "Map filter copies ordered membership and get_or never inserts":
 	var counter = Counter(0)
-	values: Map[String, Counter] = {
+	values: Map[String, Counter] := {
 		"b": counter.clone(), "a": Counter(2), "c": Counter(3)
 	}
 	var selected = values.clone().filter(fn k, v: k != "a" and v.calls >= 0)
@@ -214,7 +214,7 @@ test "Map filter copies ordered membership and get_or never inserts":
 	bound_filter := values.clone().filter
 	try expect_equal(bound_filter(fn k, v: k == "a").keys(), ["a"])
 
-	snapshot: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
+	snapshot: Map[String, Int] := {"b": 2, "a": 1, "c": 3}
 	copied := snapshot.clone().filter(fn k, v: v != 1)
 	try expect_false(copied.keys() != ["b", "c"] or copied.values() != [2, 3])
 	try expect_equal(snapshot.keys(), ["b", "a", "c"])

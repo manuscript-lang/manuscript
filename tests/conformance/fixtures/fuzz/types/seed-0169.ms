@@ -17,7 +17,7 @@ export fn main() Int:
     i1 := ((-5) + 3)
     say("i1 = {i1}")
 
-    bad: String = 5
+    bad: String := 5
     s2 := "quote\"d"
     say("s2 = [{s2}]")
 

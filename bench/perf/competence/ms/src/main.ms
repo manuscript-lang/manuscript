@@ -53,7 +53,7 @@ fn fib(n: Int) Int:
 	return fib(n - 1) + fib(n - 2)
 
 fn dispatch(n: Int) Int:
-	shapes: List[Shape] = [Sq(3), Rect(2, 5), Tri(4, 6), Sq(7)]
+	shapes: List[Shape] := [Sq(3), Rect(2, 5), Tri(4, 6), Sq(7)]
 	var total = 0
 	var i = 0
 

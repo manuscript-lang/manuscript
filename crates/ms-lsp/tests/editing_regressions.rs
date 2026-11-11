@@ -706,7 +706,7 @@ fn project_exports_are_offered_before_standard_ones() {
 
 #[test]
 fn checker_fixes_become_quick_fixes() {
-    let source = "export fn main() Int:\n    n: Strin = \"a\"\n    return n.length()\n";
+    let source = "export fn main() Int:\n    n: Strin := \"a\"\n    return n.length()\n";
     let (_, found) = actions(source, "quickfix");
     let action = found
         .iter()

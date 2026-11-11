@@ -12,10 +12,10 @@ type Sized:
     items: List[Int32]
 
 fn sample() Sized:
-    maybe: UInt16 = 7
-    single: Float32 = 0.1
-    low: Int32 = -1
-    high: Int32 = 2
+    maybe: UInt16 := 7
+    single: Float32 := 0.1
+    low: Int32 := -1
+    high: Int32 := 2
     return Sized(255, -128, 18446744073709551615, single, maybe, [low, high])
 
 test "JSON writes sized numbers like Int and Float":

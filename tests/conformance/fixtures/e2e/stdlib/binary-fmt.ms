@@ -63,10 +63,10 @@ test "append_bytes appends many and append one":
     try expect_equal(out.build(), Bytes([7, 1, 2, 3, 4]))
 
 test "reads past the end or before the start are out of range":
-    range_error8: UInt8! = error(
+    range_error8: UInt8! := error(
         Error("binary: value out of range", kind: "ERANGE")
     )
-    range_error32: UInt32! = error(
+    range_error32: UInt32! := error(
         Error("binary: value out of range", kind: "ERANGE")
     )
     try expect_equal(Bytes([0]).uint8(-1), range_error8)

@@ -62,12 +62,12 @@ test "indexing and generic applications coexist":
 	(values(var counter)[(try tick(var counter))] != 7 or counter.count != 2) | try expect_false
 	identity[Int](items[0]) | try expect_equal(10)
 
-	callbacks: List[fn(Int) Int] = [identity[Int]]
+	callbacks: List[fn(Int) Int] := [identity[Int]]
 	(callbacks[0](2) != 2 or callbacks[indices[0]](3) != 3) | try expect_false
 
 test "empty list constructors have fresh typed storage":
 	var empty = List[String]()
-	contextual: List[Int] = List()
+	contextual: List[Int] := List()
 	other := List[String]()
 	empty.append("a")
 	(empty[0] != "a" or not other.is_empty() or not contextual.is_empty()) | try expect_false
@@ -94,8 +94,8 @@ test "string concatenation and scalar ordering":
 	sorted | try expect_equal(["a", "b", "z"])
 
 test "match expressions preserve returns and cleanup":
-	present: Int? = 4
-	absent: Int? = none
+	present: Int? := 4
+	absent: Int? := none
 	(early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | try expect_false
 
 	var temporary = temporary("manuscript-match-") | try expect_ok
@@ -119,7 +119,7 @@ test "match expressions preserve returns and cleanup":
 
 	nested | try expect_equal(4)
 
-	contextual: List[Int] = match absent:
+	contextual: List[Int] := match absent:
 		value: [value]
 		none: []
 
@@ -150,7 +150,7 @@ test "indexes read elements and get supplies defaults":
 	List[Int]().get(0, default: 7) | try expect_equal(7)
 
 test "match blocks produce their final value":
-	present: Int? = 5
+	present: Int? := 5
 
 	result := match present:
 		value:
@@ -175,9 +175,9 @@ test "match blocks produce their final value":
 	count | try expect_equal(5)
 
 test "contextual values infer from later arms":
-	present: Int? = 5
+	present: Int? := 5
 
-	optional: Int? = match present:
+	optional: Int? := match present:
 		none: none
 		value: value
 
@@ -190,7 +190,7 @@ test "contextual values infer from later arms":
 	list[0] | try expect_equal(5)
 
 fn returned_argument(var counter: Counter) Int!:
-	absent: Int? = none
+	absent: Int? := none
 	return ok(
 		combine(
 			first: match absent:
@@ -234,8 +234,8 @@ test "expression exits preserve caller boundaries and evaluation order":
 		Result[Int, Error].error(cause: Error("missing"))
 	)
 
-	present: Int? = 1
-	absent: Int? = none
+	present: Int? := 1
+	absent: Int? := none
 	(returned_loop(present) != 23 or returned_loop(absent) != 24) | try expect_false
 
 	var iterations = 0
@@ -266,14 +266,14 @@ fn condition_exit(value: Int?) Int:
 	return 2
 
 test "match in a loop header exits its lexical enclosing loop":
-	absent: Int? = none
+	absent: Int? := none
 	condition_exit(absent) | try expect_equal(2)
 
 test "indexing preserves zero and nested optionals":
 	numbers := [0]
 	(numbers[0] != 0 or numbers.get(0, default: 99) != 0) | try expect_false
 
-	nested: List[Int?] = [none, 0]
+	nested: List[Int?] := [none, 0]
 	(nested[0].is_some() or nested[1].get() != 0) | try expect_false
 
 fn observed_optional(var counter: Counter) Int?:
@@ -298,7 +298,7 @@ fn inline_match(value: Int?) Int: match value:
 	none: 0
 
 test "match composes with inferred callbacks and map literals":
-	values: List[Int?] = [3, none]
+	values: List[Int?] := [3, none]
 	mapped := values.map(
 		fn value: match value:
 			number: number + 1

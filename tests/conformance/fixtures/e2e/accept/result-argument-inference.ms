@@ -37,7 +37,7 @@ fn ordered[T](
     return first
 
 test "infer success and error types from Result arguments":
-    r: Int! = error(Error("eleven", kind: "EBADMSG"))
+    r: Int! := error(Error("eleven", kind: "EBADMSG"))
     inferred := erase(r)
     explicit := erase[Int, Error](r)
     wrapped := optional(r)
@@ -51,14 +51,14 @@ test "infer success and error types from Result arguments":
         try expect_equal(value.err().message, "eleven")
         try expect_equal(value.err().kind, "EBADMSG")
 
-    generic: Result[Int, Failure] = error(Failure(31))
+    generic: Result[Int, Failure] := error(Failure(31))
     failed := erase(generic)
     try expect_false(not failed.is_error())
     try expect_equal(failed.err().code, 31)
 
 test "nested success preserves its domain and inferred errors remain exact":
-    inner: Int!Failure = error(Failure(41))
-    outer: Result[Int!Failure, Failure] = ok(inner)
+    inner: Int!Failure := error(Failure(41))
+    outer: Result[Int!Failure, Failure] := ok(inner)
     value := erase(outer).get()
     try expect_false(not value.is_error())
     try expect_equal(value.err().code, 41)

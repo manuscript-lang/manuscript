@@ -47,7 +47,7 @@ test "match spans use UTF8 byte offsets and existing empty adjacency":
 test "capture spans distinguish no match absent groups and empty captures":
 	re := compile("(a)?()") | try expect_ok
 	first := re.capture_spans("") | try expect_ok | try expect_some
-	expected: List[List[Int]?] = [[0, 0], none, [0, 0]]
+	expected: List[List[Int]?] := [[0, 0], none, [0, 0]]
 	first | slots | try expect_equal(expected)
 
 	absent := compile("(x)") | try expect_ok
@@ -55,7 +55,7 @@ test "capture spans distinguish no match absent groups and empty captures":
 	re.captures("") | try expect_equal(["", "", ""])
 
 	plain := compile("é") | try expect_ok
-	plain_expected: List[List[Int]?] = [[1, 3]]
+	plain_expected: List[List[Int]?] := [[1, 3]]
 	plain.capture_spans(
 		"aé", 1
 	) | try expect_ok | try expect_some | slots | try expect_equal(plain_expected)
@@ -70,12 +70,12 @@ test "capture rows clear absent groups and retain all group indices":
 	rows := re.capture_all_spans("é🙂é", 3, 9) | try expect_ok
 	rows.length() | try expect_equal(3)
 
-	left: List[List[Int]?] = [[0, 2], [0, 2], none]
-	right: List[List[Int]?] = [[2, 6], none, [2, 6]]
+	left: List[List[Int]?] := [[0, 2], [0, 2], none]
+	right: List[List[Int]?] := [[2, 6], none, [2, 6]]
 	rows[0] | slots | try expect_equal(left)
 	rows[1] | slots | try expect_equal(right)
 
-	last: List[List[Int]?] = [[6, 8], [6, 8], none]
+	last: List[List[Int]?] := [[6, 8], [6, 8], none]
 	rows[2] | slots | try expect_equal(last)
 
 	bytes := "é🙂é".to_bytes()

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nfn positives(values: List[Int]) List[Int]:\n\tvar result = values.filter(fn value: value > 0)\n\treturn result\n\ntest \"dynamic mutable data and explicit copies\":\n\ttry expect_equal(positives([3, -1, 2]), [3, 2])\n\n\t_absent: Int? = none\n\ttry expect_equal([1].get(5, default: -1), -1)\n\n\tvar original = Map[String, Int]()\n\toriginal.add(\"a\", 1)\n\n\tvar updated = original.clone()\n\tupdated.add(\"b\", 2)\n\tupdated.add(\"a\", 3)\n\ttry expect_equal(original.get(\"a\"), 1)\n\ttry expect_equal(updated.get(\"a\"), 3)\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\nfn positives(values: List[Int]) List[Int]:\n\tvar result = values.filter(fn value: value > 0)\n\treturn result\n\ntest \"dynamic mutable data and explicit copies\":\n\ttry expect_equal(positives([3, -1, 2]), [3, 2])\n\n\t_absent: Int? := none\n\ttry expect_equal([1].get(5, default: -1), -1)\n\n\tvar original = Map[String, Int]()\n\toriginal.add(\"a\", 1)\n\n\tvar updated = original.clone()\n\tupdated.add(\"b\", 2)\n\tupdated.add(\"a\", 3)\n\ttry expect_equal(original.get(\"a\"), 1)\n\ttry expect_equal(updated.get(\"a\"), 3)\n"
   }
 }

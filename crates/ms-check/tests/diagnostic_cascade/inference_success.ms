@@ -9,10 +9,10 @@ fn identity(value: Int) Int: value
 
 fn exercise() Unit:
     chain := Chain[Chain[Int]](0)
-    _nested: Int = nested(chain)
+    _nested: Int := nested(chain)
     plain := 1
-    option: Int? = plain
-    _retry: Int = optional(plain)
-    _widened: Int? = choose(plain, option)
-    _kept: Int? = choose(option, plain)
-    _callback: Int = callback(identity, plain)
+    option: Int? := plain
+    _retry: Int := optional(plain)
+    _widened: Int? := choose(plain, option)
+    _kept: Int? := choose(option, plain)
+    _callback: Int := callback(identity, plain)

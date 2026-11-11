@@ -31,7 +31,7 @@ export fn main() Int:
     l2 := [5]
     say("l2 = {l2} len {l2.length()}")
 
-    bad: String = 5
+    bad: String := 5
     f3 := 426.898
     say("f3 = {f3}")
 

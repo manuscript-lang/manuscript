@@ -12,7 +12,7 @@ test "List count calls the predicate once per element":
 
 	try expect_false(even != 2 or seen != values)
 
-	empty: List[Int] = []
+	empty: List[Int] := []
 	try expect_equal(empty.count(fn(value: Int) Bool: true), 0)
 
 test "List insert mutates in place":
@@ -69,7 +69,7 @@ test "List distinct keeps the first equal element in order":
 	words := ["b", "a", "b"]
 	try expect_equal(words.distinct(), ["b", "a"])
 
-	empty: List[Int] = []
+	empty: List[Int] := []
 	var copy = empty.distinct()
 	copy.append(1)
 	try expect_false(not (empty.is_empty()))
@@ -84,7 +84,7 @@ test "List parity operations support generic and bound use":
 	insert := values.insert
 	insert(2, 3)
 
-	pop: fn() Int? = values.pop
+	pop: fn() Int? := values.pop
 	popped := pop()
 	count := values.count
 	try expect_false(popped != 3 or count(fn(value: Int) Bool: value > 0) != 2)

@@ -10,7 +10,7 @@ fn bump_if_present(c: Counter?) Int?:
     return c?.bump() // error: parameter `c` is not declared var
 
 fn bump_let() Int?:
-    c: Counter? = Counter(1)
+    c: Counter? := Counter(1)
     return c?.bump() // error: is an immutable binding
 
 fn bump_view(m: Map[String, Counter]) Int?:

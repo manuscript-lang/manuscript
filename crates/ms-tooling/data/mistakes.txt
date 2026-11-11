@@ -49,8 +49,8 @@ right: s.get(0)
 body: s := "abc";;c := {}
 diag: indexing a String
 
-wrong: x: Float = 1
-right: x: Float = 1.0
+wrong: x: Float := 1
+right: x: Float := 1.0
 body: {}
 diag: does not convert to Float implicitly
 
@@ -76,7 +76,7 @@ diag: there is no 'lambda'
 
 wrong: null
 right: none
-body: x: Int? = {}
+body: x: Int? := {}
 diag: no null
 
 wrong: v := try f()

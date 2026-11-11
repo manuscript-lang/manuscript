@@ -520,7 +520,7 @@ pub fn query_editor(
             .map_or(bytes.len(), |at| at + c.start);
         let line = modified.text[line_start..line_end].to_string();
         let trimmed = line.trim();
-        // `var x: T` or a typed immutable `x: T = v` inside a function body; a field or
+        // `var x: T` or a typed immutable `x: T := v` inside a function body; a field or
         // parameter line has the same shape but is not a local binding.
         let in_body = line.starts_with([' ', '\t'])
             && d.text[c.declaration..]

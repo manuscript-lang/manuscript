@@ -152,10 +152,10 @@ fn score(value: Choice) Int:
 test "alternative consumers retain tags and payloads after shrink":
 	for callback in [false, true]:
 		for mode in ["remove", "splice", "clear", "clear_append"]:
-			first: Choice = number(1)
-			second: Choice = label("bb")
-			last: Choice = number(3)
-			fill: List[Choice] = [label("replacement")]
+			first: Choice := number(1)
+			second: Choice := label("bb")
+			last: Choice := number(3)
+			fill: List[Choice] := [label("replacement")]
 			var values = [first.clone(), second.clone(), last.clone()]
 			want := remaining(mode, values.clone(), fill.clone())
 			seen := (try observe(var values, mode, fill, callback))

@@ -38,15 +38,15 @@ fn locate[K: Hashable, V: Clonable](
 	return values.find(predicate)
 
 test "conversions and collection queries are callable":
-	present: Int? = 2
-	missing: Int? = none
+	present: Int? := 2
+	missing: Int? := none
 	present.ok_or(Error("absent")).get() | try expect_equal(2)
 	try expect_equal(missing.ok_or_else(fn: Error("absent")).err().message, "absent")
 
-	failed: Int!Error = error(Error("failed"))
+	failed: Int!Error := error(Error("failed"))
 	(failed.to_optional().is_none()) | try expect_true
 
-	entries: Map[String, Int] = {"b": 2, "a": 1}
+	entries: Map[String, Int] := {"b": 2, "a": 1}
 	try expect_equal(entries.fold(0, fn acc, k, v: acc + v), 3)
 	try expect_equal(entries.find(fn k, v: v == 1).get().key, "a")
 	try expect_true((entries.any(fn k, v: v == 1)))
@@ -60,8 +60,8 @@ test "conversions and collection queries are callable":
 
 test "conversions retain unconstrained payloads nesting and lazy counts":
 	var counter = Counter(0)
-	present: Int? = 0
-	missing: Int? = none
+	present: Int? := 0
+	missing: Int? := none
 	(require_value(present, counted(var counter)).get() != 0 or counter.calls != 1) | try expect_false
 
 	var cause = require_value(missing, counter.clone()).err().clone()
@@ -86,36 +86,36 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	bound_lazy := missing.ok_or_else[Counter]
 	bound_lazy(create).err().calls | try expect_equal(10)
 
-	failure: Counter!Pending = error(Pending([1, 2]))
+	failure: Counter!Pending := error(Pending([1, 2]))
 	(success_only(failure).is_none()) | try expect_true
 
-	success: Counter!Error = ok(counter.clone())
+	success: Counter!Error := ok(counter.clone())
 	extract := success.to_optional
 	var extracted = extract().get().clone()
 	extracted.calls = 7
 	counter.calls | try expect_equal(1)
 
-	nested_none: Int? = none
-	nested: Int?? = nested_none
+	nested_none: Int? := none
+	nested: Int?? := nested_none
 	converted := nested.ok_or(Error("absent"))
 	(not (converted.is_ok()) or not (converted.to_optional().get().is_none())) | try expect_false
 
-	false_value: Bool? = false
+	false_value: Bool? := false
 	false_value.ok_or(Error("absent")).to_optional().get() | try expect_false
 
-	unit_value: Unit? = unit
+	unit_value: Unit? := unit
 	(unit_value.ok_or(Error("absent")).to_optional().is_some()) | try expect_true
 
-	nested_inner: Int!Error = error(Error("nested"))
-	nested_result: Int!Error? = nested_inner
+	nested_inner: Int!Error := error(Error("nested"))
+	nested_result: Int!Error? := nested_inner
 	nested_result.ok_or(
 		Error("absent")
 	).to_optional().get().err().message | try expect_equal("nested")
 
 test "Map fold uses ordered snapshots and returns independent accumulators":
 	var empty_calls: List[Int] = []
-	values: Map[String, Counter] = {"b": Counter(2), "a": Counter(1), "c": Counter(3)}
-	initial: List[String] = []
+	values: Map[String, Counter] := {"b": Counter(2), "a": Counter(1), "c": Counter(3)}
+	initial: List[String] := []
 
 	var visits = reduce_map(
 		values.clone(),
@@ -150,7 +150,7 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
 	initial.length() | try expect_equal(0)
 	untouched | try expect_equal(["empty copy"])
 
-	success: Int!Counter = ok(2)
+	success: Int!Counter := ok(2)
 	var chain_1 = Map[String, Int]()
 	chain_1.add("a", 3)
 
@@ -161,7 +161,7 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
 test "Map find returns fresh entry shells with copied payloads":
 	var empty_calls: List[Int] = []
 	counter := Counter(2)
-	values: Map[String, Counter] = {
+	values: Map[String, Counter] := {
 		"b": counter.clone(), "a": Counter(1), "c": Counter(3)
 	}
 	var visits: List[String] = []
@@ -271,7 +271,7 @@ test "Map predicates short circuit over snapshots including empty receivers":
 		)
 	)
 
-	complete: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
+	complete: Map[String, Int] := {"b": 2, "a": 1, "c": 3}
 	try expect_false(
 		(complete.any(fn k, v: false) or not (complete.all(fn k, v: true)))
 	)
@@ -294,7 +294,7 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 	b := Key(2, "b")
 	c := Key(3, "c")
 	var values = Set[Key]([b.clone(), a.clone(), c.clone()])
-	initial: List[String] = []
+	initial: List[String] := []
 
 	var visits = reduce_set(
 		values.clone(),
@@ -424,7 +424,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 	empty_calls.is_empty() | try expect_true
 
 test "nonmatching queries and all-true predicates visit the complete snapshot":
-	map: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
+	map: Map[String, Int] := {"b": 2, "a": 1, "c": 3}
 	var map_visits: List[String] = []
 	try expect_false(
 		(
@@ -514,15 +514,15 @@ fn find_port(port: Int?) Int!:
 	return ok(value)
 
 test "ok_or without a cause records the calling file and line":
-	absent: Int? = none
-	direct: Int! = absent.ok_or()
+	absent: Int? := none
+	direct: Int! := absent.ok_or()
 	(direct.err().message.contains("conversions-queries.ms:")) | try expect_true
 
 	message := find_port(none).err().message
 	(message.starts_with("missing value at ")) | try expect_true
 	find_port(8080).get() | try expect_equal(8080)
 
-	named: Int!Error = absent.ok_or(Error("port"))
+	named: Int!Error := absent.ok_or(Error("port"))
 	named.err().message | try expect_equal("port")
 
 	missing_port := find_port(none)

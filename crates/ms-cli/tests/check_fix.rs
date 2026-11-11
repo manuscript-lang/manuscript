@@ -174,7 +174,7 @@ fn fix_repairs_habits_and_mutation_and_decimal_import() {
     );
     assert!(fixed.contains("return Red\n"), "{fixed}");
     assert!(fixed.contains("var fixed = 1"), "{fixed}");
-    assert!(fixed.contains("_a: Int? = none"), "{fixed}");
+    assert!(fixed.contains("_a: Int? := none"), "{fixed}");
     assert!(fixed.contains("_b := true"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -215,9 +215,9 @@ fn fix_wraps_expressions_to_convert_types() {
     let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
     assert_eq!(status, Some(0), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
-    assert!(fixed.contains("_a: Float = n.to_float()"), "{fixed}");
-    assert!(fixed.contains("_b: Float = (n + m).to_float()"), "{fixed}");
-    assert!(fixed.contains("_d: Float = 7.0"), "{fixed}");
+    assert!(fixed.contains("_a: Float := n.to_float()"), "{fixed}");
+    assert!(fixed.contains("_b: Float := (n + m).to_float()"), "{fixed}");
+    assert!(fixed.contains("_d: Float := 7.0"), "{fixed}");
     assert!(fixed.contains("1.5 * n.to_float()"), "{fixed}");
     assert!(fixed.contains("say(text: \"{n + 1}\")"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -240,7 +240,7 @@ fn check_json_carries_the_fix_that_fix_applies() {
     let (status, text) = ms(&["check", "a.ms", "--fix"], &dir);
     assert_eq!(status, Some(0), "{text}");
     let fixed = std::fs::read_to_string(dir.join("a.ms")).unwrap();
-    assert!(fixed.contains("_a: Float = n.to_float()"), "{fixed}");
+    assert!(fixed.contains("_a: Float := n.to_float()"), "{fixed}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

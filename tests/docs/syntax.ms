@@ -46,7 +46,7 @@ fn syntax(var items: List[Int], doc: Document, state: State) Int:
 	[first, second] := [1, 2]
 	{value: label} := doc
 	callback := fn value: value + 1
-	typed: fn(Int) Int = fn(value: Int) Int: value * 2
+	typed: fn(Int) Int := fn(value: Int) Int: value * 2
 	specialized := identity[List[Int]](items)
 	mapping := {"count": COUNT, "ratio": RATIO}
 	plain := "Literal \{braces\}, # text, \"quote\", \\, \t, \r, \n, \u{1F642}"

@@ -29,16 +29,16 @@ test "rationals stay in lowest terms and compare with ==":
 	try expect_equal(rat_of_int(4).format(), "4")
 
 test "rational errors and decimal parsing":
-	zero: BigRat! = error(Error("bigrat: invalid input", kind: "EINVAL"))
+	zero: BigRat! := error(Error("bigrat: invalid input", kind: "EINVAL"))
 	try expect_equal(rat(from_int(1), from_int(0)), zero)
 	try expect_equal(rat_of_int(1).divide(rat_of_int(0)), zero)
 
-	bad: BigRat! = error(Error("bigrat: invalid data", kind: "EBADMSG"))
+	bad: BigRat! := error(Error("bigrat: invalid data", kind: "EBADMSG"))
 	try expect_equal(parse_rat("1/2/3"), bad)
 	try expect_equal(parse_rat("abc"), bad)
 	try expect_equal(parse_rat("1.2.3"), bad)
 
-	big: BigRat! = error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
+	big: BigRat! := error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(parse_rat("1e100001"), big)
 	try expect_equal((try parse_rat("1.25")).format(), "5/4")
 	try expect_equal((try parse_rat("-.5")).format(), "-1/2")
@@ -116,20 +116,20 @@ test "big floats add, subtract and compare across magnitudes":
 	)
 
 test "big float errors":
-	zero: BigFloat! = error(Error("bigfloat: invalid input", kind: "EINVAL"))
+	zero: BigFloat! := error(Error("bigfloat: invalid input", kind: "EINVAL"))
 	try expect_equal(big_float_of_int(1, 64).divide(big_float_of_int(0, 64)), zero)
 	try expect_equal(big_float_of_int(-1, 64).sqrt(), zero)
 
-	bad: BigFloat! = error(Error("bigfloat: invalid data", kind: "EBADMSG"))
+	bad: BigFloat! := error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 	try expect_equal(parse_big_float("x", 64), bad)
 	try expect_equal(parse_big_float("1/2", 64), bad)
 
-	limit: BigFloat! = error(Error("bigfloat: limit exceeded", kind: "EOVERFLOW"))
+	limit: BigFloat! := error(Error("bigfloat: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(parse_big_float("1e999999", 64), limit)
 	try expect_true(big_float_of_float(0.0 / 0.0, 64).is_none())
 
 test "decimal text rejects a sign anywhere but the front of the digits and the exponent":
-	bad: BigRat! = error(Error("bigrat: invalid data", kind: "EBADMSG"))
+	bad: BigRat! := error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
 	for text in ["1e++2", "1e+-2", "1e-+2", ".-5", ".+5", "1.-5"]:
 		try expect_equal(parse_rat(text), bad)

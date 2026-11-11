@@ -20,7 +20,7 @@ test "factorial and binomial are exact":
 	)
 
 test "factorial and binomial reject negative inputs":
-	bad: BigInt! = error(Error("big integer: invalid input", kind: "EINVAL"))
+	bad: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	try expect_equal(factorial(-1), bad)
 	try expect_equal(binomial(-1, 0), bad)
 	try expect_equal(binomial(3, -1), bad)
@@ -52,7 +52,7 @@ test "modular square roots":
 	root := (try from_int(10).mod_sqrt(p)).get(from_int(-1))
 	try expect_equal((root * root % p).to_int(), 10)
 
-	absent: BigInt?! = ok(none)
+	absent: BigInt?! := ok(none)
 	try expect_equal(from_int(5).mod_sqrt(p), absent)
 	try expect_equal((try from_int(0).mod_sqrt(p)).get(from_int(-1)).to_int(), 0)
 
@@ -66,7 +66,7 @@ test "modular square roots":
 	big_root := (try square.mod_sqrt(big_p)).get(from_int(-1))
 	try expect_equal((big_root * big_root % big_p).compare(square), 0)
 
-	invalid: BigInt?! = error(Error("big integer: invalid input", kind: "EINVAL"))
+	invalid: BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	try expect_equal(from_int(2).mod_sqrt(from_int(8)), invalid)
 	try expect_equal(from_int(2).mod_sqrt(from_int(2)), invalid)
 
@@ -121,7 +121,7 @@ test "modular square root searches beyond a thousand quadratic residues":
 test "modular square root rejects a composite witnessed during search":
 	// For 1729, candidates 2 through 6 give +1, then its factor 7 gives 742.
 	// Moduli 9 and 25 give nonzero results outside +1 and -1 at candidate 2.
-	invalid: BigInt?! = error(Error("big integer: invalid input", kind: "EINVAL"))
+	invalid: BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	try expect_equal(from_int(1).mod_sqrt(from_int(1729)), invalid)
 	try expect_equal(from_int(1).mod_sqrt(from_int(9)), invalid)
 	try expect_equal(from_int(1).mod_sqrt(from_int(25)), invalid)

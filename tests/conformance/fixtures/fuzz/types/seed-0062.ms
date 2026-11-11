@@ -9,7 +9,7 @@ fn say(text: String) Unit:
     written := stdout().write("{text}\n")
 
 export fn main() Int:
-    bad: String = 5
+    bad: String := 5
     l2 := [10, 5]
     say("l2 = {l2} len {l2.length()}")
 

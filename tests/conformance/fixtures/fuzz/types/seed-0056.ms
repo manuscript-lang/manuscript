@@ -14,7 +14,7 @@ export fn main() Int:
     else:
         say(("  padded  " + "hello world"))
 
-    bad: Bool = 1
+    bad: Bool := 1
     b1 := (((-(-46)) >= 20654) and ("ms".trim() != ("brace\{s\}" + "ms")))
     say("b1 = {b1}")
     return 0

@@ -16,7 +16,7 @@ test "an explicit generic argument can be a function type with a var parameter":
 	try expect_equal(value, 2)
 
 test "a var function type nests inside another generic argument":
-	boxed: List[fn(var Int) Unit] = identity[List[fn(var Int) Unit]]([increment])
+	boxed: List[fn(var Int) Unit] := identity[List[fn(var Int) Unit]]([increment])
 	var value = 1
 	boxed[0](var value)
 	try expect_equal(value, 2)

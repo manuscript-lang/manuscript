@@ -76,7 +76,7 @@ fn text[T](value: T) String:
 
 test "string conversion":
     count := 3
-    convert: fn() String = count.to_string
+    convert: fn() String := count.to_string
     _direct := count.to_string()
     _bound := convert()
     _embedded := "{count}"
@@ -150,7 +150,7 @@ test "explicit byte conversion":
         return panic("check failed")
     if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")
-    invalid: String? = none
+    invalid: String? := none
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
     if not ("-007".parse_int() == -7):

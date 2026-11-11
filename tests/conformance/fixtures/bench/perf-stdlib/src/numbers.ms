@@ -7,7 +7,7 @@ import parse_timestamp from "@std/time.ms"
 import PriorityQueue, Queue from "@std/collections/queue.ms"
 
 export fn bench_numbers() Unit:
-    rate: Decimal = 1.12345d
+    rate: Decimal := 1.12345d
 
     bench(
         "bigint.factorial_1000",

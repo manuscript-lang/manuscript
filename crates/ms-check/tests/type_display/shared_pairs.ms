@@ -24,4 +24,4 @@ fn main() Unit:
     v16 := double(v15)
     v17 := double(v16)
     v18 := double(v17)
-    _bad: Int = v18
+    _bad: Int := v18

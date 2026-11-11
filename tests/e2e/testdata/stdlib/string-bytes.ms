@@ -19,7 +19,7 @@ test "strings honor omitted none zero and explicit output limits":
 	try expect_equal((try "ab".repeat(2)), "abab")
 	try expect_equal((try "ab".repeat(0, 0)), "")
 
-	limited: String! = error(Error("string: limit exceeded", kind: "EOVERFLOW"))
+	limited: String! := error(Error("string: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal("é".repeat(2, 3), limited)
 	try expect_equal("x".pad_start(3, "ab"), "abx")
 	try expect_equal("x".pad_end(3, "ab"), "xab")
@@ -28,10 +28,10 @@ test "strings honor omitted none zero and explicit output limits":
 	try expect_equal("a,,b".split(",", 2), ["a", ""])
 	try expect_equal(" \té \n".trim(), "é")
 
-	invalid: String! = error(Error("string: invalid input", kind: "EINVAL"))
+	invalid: String! := error(Error("string: invalid input", kind: "EINVAL"))
 	try expect_equal("a".normalize("invalid"), invalid)
 
-	scalar_error: String! = error(Error("string: invalid input", kind: "EINVAL"))
+	scalar_error: String! := error(Error("string: invalid input", kind: "EINVAL"))
 	try expect_equal(from_scalars([55296]), scalar_error)
 
 test "bytes copy slice search and UTF8 validation":
@@ -43,7 +43,7 @@ test "bytes copy slice search and UTF8 validation":
 	try expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))
 	try expect_equal(data.slice(-3, -1).get(), Bytes([1, 255]))
 
-	byte_range: Bytes! = error(Error("binary: value out of range", kind: "ERANGE"))
+	byte_range: Bytes! := error(Error("binary: value out of range", kind: "ERANGE"))
 	try expect_equal(data.slice(1, 10), byte_range)
 	try expect_equal(data.slice(-10, 2), byte_range)
 	try expect_equal(data.reversed(), Bytes([1, 255, 1, 0]))
@@ -58,7 +58,7 @@ test "Bytes values direct bound and free calls return independent lists":
 	data := Bytes(input.clone())
 	input.set(0, 42)
 
-	extract: fn() List[UInt8] = data.values
+	extract: fn() List[UInt8] := data.values
 	try expect_false(data.values() != [0, 1, 255] or extract() != values(data))
 
 	var direct = data.values()
@@ -69,14 +69,14 @@ test "Bytes values direct bound and free calls return independent lists":
 	free.reverse()
 	try expect_false(data.values() != [0, 1, 255] or extract() != [0, 1, 255])
 
-	empty: List[UInt8] = []
+	empty: List[UInt8] := []
 	try expect_false(
 		Bytes(empty.clone()).values() != empty or Bytes([255]).values() != [255]
 	)
 
 test "String slice uses Unicode scalars with relative bounds and OutOfRange errors":
 	text := "aé🙂z"
-	out_of_range: String! = error(Error("string: value out of range", kind: "ERANGE"))
+	out_of_range: String! := error(Error("string: value out of range", kind: "ERANGE"))
 	try expect_equal((try text.slice(-2, 4)), "🙂z")
 	try expect_equal((try text.slice(0, -1)), "aé🙂")
 	try expect_equal((try text.slice(4, 4)), "")
@@ -85,7 +85,7 @@ test "String slice uses Unicode scalars with relative bounds and OutOfRange erro
 	try expect_equal(text.slice(3, 1), out_of_range)
 	try expect_false(text.index_of("🙂") != 2 or text.last_index_of("") != 4)
 
-	invalid: String! = error(Error("string: value out of range", kind: "ERANGE"))
+	invalid: String! := error(Error("string: value out of range", kind: "ERANGE"))
 	try expect_equal(text.slice_scalars(-2, 4), invalid)
 	try expect_equal(text.slice_scalars(1, 10), invalid)
 	try expect_equal(text.slice_scalars(3, 1), invalid)
@@ -105,7 +105,7 @@ test "string and bytes builders freeze":
 test "empty text splits into one part and case mapping is full Unicode":
 	try expect_equal("".split(","), [""])
 
-	none_requested: List[String] = []
+	none_requested: List[String] := []
 	try expect_equal("".split(""), none_requested)
 	try expect_equal("".split(",", 0), none_requested)
 	try expect_equal("ß".upper(), "SS")
@@ -157,7 +157,7 @@ test "indexing and slicing long mixed-width text matches scalar positions":
 	try expect_equal((try text.slice_scalars(1199, 1203)), "🙂aé€")
 	try expect_equal((try text.slice_scalars(2399, 2400)), "🙂")
 
-	out_of_range: String! = error(Error("string: value out of range", kind: "ERANGE"))
+	out_of_range: String! := error(Error("string: value out of range", kind: "ERANGE"))
 	try expect_equal(text.slice_scalars(2400, 2401), out_of_range)
 
 test "builder appends literals of every short length across growth":

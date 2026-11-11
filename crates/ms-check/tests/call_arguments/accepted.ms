@@ -14,7 +14,7 @@ fn exercise() Int:
     _explicit := choose[Int](third: 3, second: 2, 1)
     _row := Row(second: 2, 1)
     _sized := choose[Int8](second: 2, 1)
-    _optional: Int? = 1
+    _optional: Int? := 1
     _callback := apply(value: 1, fn x: x + 1)
-    callable: fn(Int, Int, Int) Int = choose[Int]
+    callable: fn(Int, Int, Int) Int := choose[Int]
     return callable(1, 2, 3)

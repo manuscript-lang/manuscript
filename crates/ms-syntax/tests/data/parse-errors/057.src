@@ -14,7 +14,7 @@ test "sealed builders":
     map := MapBuilder[String, Int]()
     map.add("a", 1)
     map.add("a", 2)
-    expected: Int? = 2
+    expected: Int? := 2
     try expect_equal(map.build().get("a"), expected)
     set := SetBuilder[Int]()
     set.add(3)
@@ -23,7 +23,7 @@ test "sealed builders":
     bytes := BytesBuilder()
     bytes.append(65)
     bytes.concat("B".to_bytes())
-    expected_text: String? = "AB"
+    expected_text: String? := "AB"
     try expect_equal(bytes.build().decode_utf8(), expected_text)
     text := StringBuilder()
     text.append("hello")

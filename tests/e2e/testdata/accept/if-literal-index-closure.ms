@@ -36,7 +36,7 @@ test "indexed assignment":
 	try expect_equal(xs, [1, 9, 4])
 
 test "optional wrap":
-	m: Int? = 5
+	m: Int? := 5
 	try expect_equal(first_or(m), 5)
 	try expect_equal(first_or(maybe(3)), 3)
 

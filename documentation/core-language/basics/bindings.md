@@ -37,12 +37,12 @@ A group is only a layout: entries are separate bindings with their own scope rul
 
 ## Local type inference
 
-Parameters and return types are explicit; local annotations are optional. `count := 3` and `count: Int = 3` are the same. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
+Parameters and return types are explicit; local annotations are optional. `count := 3` and `count: Int := 3` are the same: `:=` marks an immutable binding and the annotation only names its type. `var` alone binds with `=`, so `var count: Int = 3` keeps it. Writing `count: Int = 3` is rejected with a fix to `:=`. Constructors also infer types. This continues the `Customer` and `welcome` declarations in [source files](syntax.md):
 
 ```manuscript
 customer := Customer(name: "Ada", active: true)
 greeting := welcome(customer)
-count: Int = 3
+count: Int := 3
 var remaining = count
 remaining -= 1
 ```

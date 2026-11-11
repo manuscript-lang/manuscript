@@ -47,7 +47,7 @@ test "scalars, strings, fields and returns":
 	try expect_equal(run_int(h.f), 3)
 	try expect_equal(run_int(make()), 3)
 
-	g: fn(var Int) Unit = fn(n: Int) Unit: _ := n
+	g: fn(var Int) Unit := fn(n: Int) Unit: _ := n
 	try expect_equal(run_int(g), 3)
 
 fn each_len[T](xs: List[T], f: fn(var T) Unit) Int:

@@ -27,7 +27,7 @@ test "list search callbacks empty identities and folding":
 	try expect_equal(([1, 2]).flat_map(duplicate), [1, 1, 2, 2])
 	try expect_false((list.fold(0, sum) != 4 or list.fold_right(0, sum) != 4))
 
-	empty: List[Int] = []
+	empty: List[Int] := []
 	try expect_false(empty.any(positive) or not empty.all(positive))
 	try expect_false(empty.first().is_some() or empty.last().is_some())
 
@@ -116,10 +116,10 @@ test "collection constructors validate bounds and exact limits":
 	)
 	try expect_equal((try filled("x", 2)), ["x", "x"])
 
-	invalid: List[Int]! = error(Error("collection: invalid input", kind: "EINVAL"))
+	invalid: List[Int]! := error(Error("collection: invalid input", kind: "EINVAL"))
 	try expect_equal(range_by(0, 1, 0), invalid)
 
-	limited: List[Int]! = error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
+	limited: List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(range_by(0, 3, 1, RangeOptions(max_items: 2)), limited)
 
 test "stepped ranges handle full-width spans and minimum negative steps":
@@ -137,7 +137,7 @@ test "stepped ranges handle full-width spans and minimum negative steps":
 		(try range_by(0, minimum, minimum, RangeOptions(max_items: 1))), [0]
 	)
 
-	limited: List[Int]! = error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
+	limited: List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(
 		range_by(minimum, maximum, maximum, RangeOptions(max_items: 2)), limited
 	)
@@ -145,7 +145,7 @@ test "stepped ranges handle full-width spans and minimum negative steps":
 test "range counts up by one":
 	try expect_equal((0..4), [0, 1, 2, 3])
 
-	none_between: List[Int] = []
+	none_between: List[Int] := []
 	try expect_false((2..2) != none_between or (5..1) != none_between)
 	try expect_equal((-2..1), [-2, -1, 0])
 
@@ -191,7 +191,7 @@ test "for over range counts without a list":
 	try expect_equal(callbacks.map(fn call: call()), [0, 1, 2])
 
 test "huge sizes return LimitExceeded instead of exhausting memory":
-	limited: List[Int]! = error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
+	limited: List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(filled(1, 9223372036854775807), limited)
 	try expect_equal(filled(1, 4611686018427387904, 9223372036854775807), limited)
 	try expect_equal(range_by(0, 9223372036854775807, 1), limited)

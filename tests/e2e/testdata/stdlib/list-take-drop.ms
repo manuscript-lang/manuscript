@@ -15,7 +15,7 @@ test "List take and drop clamp positive counts and preserve empty boundaries":
 		)
 	)
 
-	empty: List[Int] = []
+	empty: List[Int] := []
 	try expect_false(not (empty.take(0).is_empty()) or not (empty.drop(7).is_empty()))
 
 test "List take and drop allocate independent outer storage":
@@ -65,13 +65,13 @@ fn copy_window[T: Clonable](values: List[T], first: Int, skip: Int) List[T]:
 test "List take and drop support generic and nested values":
 	try expect_equal(copy_window[String](["a", "b", "c"], 2, 1), ["b"])
 
-	values: List[Int?!Error] = [ok(1), error(Error("cause"))]
+	values: List[Int?!Error] := [ok(1), error(Error("cause"))]
 	try expect_equal(copy_window(values, 2, 1).get(0).err().message, "cause")
 
 test "List take and drop bound methods read the retained receiver":
 	var values = [1, 2, 3, 4]
 	take := values.take
-	drop: fn(Int) List[Int] = values.drop
+	drop: fn(Int) List[Int] := values.drop
 	try expect_false(take(7) != [1, 2, 3, 4] or drop(2) != [3, 4])
 
 	var first = take(2)

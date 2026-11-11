@@ -33,7 +33,7 @@ test "domain equality and hashing select interfaces":
     try expect_equal(values.get(a), "b")
     try expect_false(not ([a.clone()].contains(b)))
 
-    view: Equal = a
+    view: Equal := a
     try expect_false(not (view.equals(b)))
 
 test "stable priority queue and optional capacity":

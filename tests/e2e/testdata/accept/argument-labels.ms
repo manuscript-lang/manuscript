@@ -51,7 +51,7 @@ fn prepare_function(var state: Counter) (fn(Int) Int)!:
 	return ok(increment)
 
 fn absent(value: Int?) Bool:
-	missing: Int? = none
+	missing: Int? := none
 	return value == missing
 
 test "optional labels on single-parameter functions":
@@ -83,7 +83,7 @@ test "optional labels on methods and native functions":
 	offset := Offset(3)
 	offset.apply(4) | try expect_equal(7)
 
-	view: Increment = offset
+	view: Increment := offset
 	view.apply(4) | try expect_equal(7)
 
 	method := view.apply

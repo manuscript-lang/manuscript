@@ -9,16 +9,16 @@ test "compression formats roundtrip and enforce expanded byte budgets":
     for format in ["gzip", "zlib", "deflate"]:
         packed := try compress(input, format, 6)
         try expect_equal((try decompress(packed, format, 17)), input)
-        limited: Result[Bytes, CompressionError] = error(
+        limited: Result[Bytes, CompressionError] := error(
             CompressionError.LimitExceeded
         )
         try expect_equal(decompress(packed, format, 16), limited)
 
-    unsupported: Result[Bytes, CompressionError] = error(
+    unsupported: Result[Bytes, CompressionError] := error(
         CompressionError.Unsupported
     )
     try expect_equal(compress(input, "invalid", 6), unsupported)
-    malformed: Result[Bytes, CompressionError] = error(CompressionError.InvalidData)
+    malformed: Result[Bytes, CompressionError] := error(CompressionError.InvalidData)
     try expect_equal(decompress(input, "gzip"), malformed)
 
 test "ZIP and TAR preserve entries and independently enforce archive limits":
@@ -30,7 +30,7 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
     for format in ["zip", "tar"]:
         packed := try pack(entries, format)
         try expect_equal((try unpack(packed, format)), entries)
-        limited: Result[List[ArchiveEntry], ArchiveError] = error(
+        limited: Result[List[ArchiveEntry], ArchiveError] := error(
             ArchiveError.LimitExceeded
         )
         try expect_equal(unpack(packed, format, ArchiveLimits(1)), limited)
@@ -44,7 +44,7 @@ test "ZIP and TAR preserve entries and independently enforce archive limits":
         )
 
 test "archives reject traversal paths":
-    invalid: Result[Bytes, ArchiveError] = error(ArchiveError.InvalidInput)
+    invalid: Result[Bytes, ArchiveError] := error(ArchiveError.InvalidInput)
 
     for path in ["../escape", "/absolute"]:
         entries := [ArchiveEntry(path, "".to_bytes(), directory: false)]

@@ -18,7 +18,7 @@ fn pick(items: List[String]) String:
 	return items[0]
 
 test "generic and list-field callback results outlive arguments":
-	generic_string: fn(String) String = generic[String]
+	generic_string: fn(String) String := generic[String]
 	first := generic_string("dynamic-{42}")
 	picker := pick
 	second := picker(["dynamic-{17}"])

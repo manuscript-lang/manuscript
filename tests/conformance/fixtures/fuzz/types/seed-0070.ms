@@ -12,7 +12,7 @@ export fn main() Int:
     i1 := ((-2) + (-4))
     say("i1 = {i1}")
 
-    bad: Int = "text"
+    bad: Int := "text"
 
     if false:
         say("Tab\there")

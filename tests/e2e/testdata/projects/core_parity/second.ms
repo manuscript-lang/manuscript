@@ -23,7 +23,7 @@ export fn second_mapped() Set[Key]:
 	return transform_set(values, fn n: Key(0, n.to_string()))
 
 export fn second_failure(cause: Cause) String!:
-	value: Int! = error(describe(cause))
+	value: Int! := error(describe(cause))
 	return value.and_then(fn n: Result[String, Error].ok(n.to_string()))
 
 export fn second_queries() Bool:
@@ -38,7 +38,7 @@ export fn second_queries() Bool:
 	)
 
 export fn second_converted(cause: Cause) Int!:
-	missing: Int? = none
+	missing: Int? := none
 	return convert(missing, fn() Error: describe(cause))
 
 export fn second_folded(cause: Cause) Error:

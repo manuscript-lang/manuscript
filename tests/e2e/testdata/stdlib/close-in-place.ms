@@ -45,7 +45,7 @@ fn holder_part(log: String) Int:
 	return holder.tag
 
 fn optional_part(log: String) Int:
-	maybe: Latch? = latch(log, 3)
+	maybe: Latch? := latch(log, 3)
 	if maybe.is_some(): return 1
 
 	return 0

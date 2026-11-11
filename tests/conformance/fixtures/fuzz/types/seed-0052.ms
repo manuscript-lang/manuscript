@@ -28,7 +28,7 @@ export fn main() Int:
     i3 := (((i2 * i2) + 13) * (i2 - (i2 % (-778135))))
     say("i3 = {i3}")
 
-    bad: Int = "text"
+    bad: Int := "text"
     f4 := (((f1 * f1) * (795.687 - f1)) * ((5.0e18 * 396.150) / (f1 - f1)))
     say("f4 = {f4}")
     return 0

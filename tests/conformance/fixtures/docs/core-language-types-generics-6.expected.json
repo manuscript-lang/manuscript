@@ -13,15 +13,15 @@
         "position": {
           "file": "core-language-types-generics-6.ms",
           "line": 9,
-          "column": 30,
-          "offset": 341
+          "column": 31,
+          "offset": 342
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-generics-6.ms:9:30: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | failed: Result[Int, Error] = fail(\"empty\")\n   |                              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-generics-6.ms:9:31: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 9 | failed: Result[Int, Error] := fail(\"empty\")\n   |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

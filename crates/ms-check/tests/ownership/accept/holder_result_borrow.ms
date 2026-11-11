@@ -16,7 +16,7 @@ fn relay[T](source: T!) T!:
     return source
 
 fn main() Unit:
-    original: String! = error(Error("body", kind: "EBODY"))
+    original: String! := error(Error("body", kind: "EBODY"))
     returned := relay(original)
     print(returned.err().kind.get(""))
     print(original.err().kind.get(""))

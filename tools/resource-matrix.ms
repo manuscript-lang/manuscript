@@ -70,14 +70,14 @@ fn list_setup() String: return "var items = [mk(1)]"
 fn map_setup() String: return "var items = Map[Int, Marker]()\n    items.add(1, mk(1))"
 
 fn optional_setup(present: Bool) String:
-	if present: return "held: Marker? = mk(1)"
+	if present: return "held: Marker? := mk(1)"
 
-	return "held: Marker? = none"
+	return "held: Marker? := none"
 
 fn result_setup(good: Bool) String:
-	if good: return "held: Marker!Error = ok(mk(1))"
+	if good: return "held: Marker!Error := ok(mk(1))"
 
-	return "held: Marker!Error = error(Error(\"x\"))"
+	return "held: Marker!Error := error(Error(\"x\"))"
 
 fn operations() List[Operation]:
 	return [

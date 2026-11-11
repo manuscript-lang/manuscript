@@ -7,5 +7,5 @@ impl Closeable for Marker:
     var fn close() Unit!: ok(unit)
 
 fn bad() Unit:
-    value: Int!Marker = error(Marker(1))
+    value: Int!Marker := error(Marker(1))
     operation := value.map[Int]

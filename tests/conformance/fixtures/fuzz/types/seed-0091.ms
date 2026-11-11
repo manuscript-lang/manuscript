@@ -17,7 +17,7 @@ export fn main() Int:
     else:
         say("brace\{s\}".reverse())
 
-    bad: String = 5
+    bad: String := 5
     i2 := 36
     say("i2 = {i2}")
 

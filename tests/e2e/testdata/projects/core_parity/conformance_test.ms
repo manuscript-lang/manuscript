@@ -70,7 +70,7 @@ test "generic folds preserve scoped interface accumulators":
 	(one.message != "first 4" or two.message != "second 4") | try expect_false
 
 test "Map transformations preserve input and output equality evidence":
-	input: Map[Int, Int] = {1: 10, 2: 20}
+	input: Map[Int, Int] := {1: 10, 2: 20}
 	one := first_key_transform(input)
 	two := second_key_transform(input)
 	(one.length() != 1 or two.length() != 2) | try expect_false

@@ -13,15 +13,15 @@
         "position": {
           "file": "testconstantdiagnostics-9.ms",
           "line": 4,
-          "column": 10,
-          "offset": 146
+          "column": 11,
+          "offset": 147
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testconstantdiagnostics-9.ms:4:10: type: expected Int, found String\n   |\n 4 | A: Int = \"x\"\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testconstantdiagnostics-9.ms:4:11: type: expected Int, found String\n   |\n 4 | A: Int := \"x\"\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -25,7 +25,7 @@ export fn main() Int:
     i1 := 19
     say("i1 = {i1}")
 
-    bad: Bool = 1
+    bad: Bool := 1
     say("fib(22) = {fib(22)}")
 
     i2 := (i1 + (-138927))

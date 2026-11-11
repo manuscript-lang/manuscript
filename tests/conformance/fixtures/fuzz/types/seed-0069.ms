@@ -18,7 +18,7 @@ export fn main() Int:
     s3 := ("{((-12) - 44)}:" + (s1 + "x")).trim()
     say("s3 = [{s3}]")
 
-    bad: Bool = 1
+    bad: Bool := 1
     b4 := s1.is_empty()
     say("b4 = {b4}")
     return 0

@@ -26,7 +26,7 @@ test "elements of a captured list of lists":
 
 test "the closure and its owner share the list":
 	var out: List[Int] = [0, 0]
-	write: fn(Int) Unit = fn r: out[r] = 4
+	write: fn(Int) Unit := fn r: out[r] = 4
 	write(1)
 	out[0] = 3
 	out | try expect_equal([3, 4])

@@ -13,23 +13,23 @@ test "numbers radix and signed boundaries":
     try expect_equal(1.9.truncate_to_int(), 1)
 
 test "numbers reject whitespace separators overflow and invalid radix":
-    invalid: Int! = error(
+    invalid: Int! := error(
         Error("number: invalid data", kind: "EBADMSG")
     )
     for text in [" 1", "1_0", "0x10", "+", "١"]:
         try expect_equal(parse_int(text, 10), invalid)
 
-    overflow: Int! = error(
+    overflow: Int! := error(
         Error("number: value out of range", kind: "ERANGE")
     )
     try expect_equal(parse_int("9223372036854775808", 10), overflow)
 
-    radix_error: Int! = error(
+    radix_error: Int! := error(
         Error("number: invalid input", kind: "EINVAL")
     )
     try expect_equal(parse_int("1", 1), radix_error)
 
-    float_error: Float! = error(
+    float_error: Float! := error(
         Error("number: invalid data", kind: "EBADMSG")
     )
     for text in [" 1.0", "1_0", "1.", "0x1p2"]:

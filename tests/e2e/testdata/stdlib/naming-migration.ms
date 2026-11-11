@@ -37,7 +37,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 	values.add("b", 2)
 	try expect_equal(values.keys(), ["a", "b"])
 
-	lazy: fn(String, fn(String) Int) Unit = values.add_default_from
+	lazy: fn(String, fn(String) Int) Unit := values.add_default_from
 	lazy("a", key_length)
 	lazy("ccc", key_length)
 	values.add_default("d", 4)
@@ -52,7 +52,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 	try expect_false(values.contains("copy") or not copy.contains("copy"))
 	try expect_equal(values.keys(), ["a", "b", "ccc", "d"])
 
-	legacy: fn(String, Int) Unit = values.add_default
+	legacy: fn(String, Int) Unit := values.add_default
 	legacy("a", 100)
 	values.add_default_from("ff", key_length)
 	try expect_false(counter.calls != 1 or values.get("a") != 1)
@@ -60,15 +60,15 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 
 test "text and byte builders keep Unit mutation function types":
 	var bytes = BytesBuilder()
-	append_byte: fn(UInt8) Unit = bytes.append
+	append_byte: fn(UInt8) Unit := bytes.append
 	append_byte(65)
 
-	concat_bytes: fn(Bytes) Unit = bytes.append_bytes
+	concat_bytes: fn(Bytes) Unit := bytes.append_bytes
 	concat_bytes("B".to_bytes())
 	try expect_false(bytes.build() != "AB".to_bytes())
 
 	var text = StringBuilder()
-	append_text: fn(String) Unit = text.append
+	append_text: fn(String) Unit := text.append
 	append_text("ab")
 	try expect_false(text.build() != "ab")
 

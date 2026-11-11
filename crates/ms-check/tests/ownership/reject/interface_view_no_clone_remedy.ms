@@ -8,7 +8,7 @@ fn first_error(cause: Cause) Reportable:
     return cause
 
 fn store_local(cause: Cause) List[Reportable]:
-    e: Reportable = cause
+    e: Reportable := cause
     return [e]  // error: an interface value cannot be cloned (convert a clone of the concrete value instead), so use `e` in place
 
 fn store_call(var xs: List[Reportable], cause: Cause) Unit:

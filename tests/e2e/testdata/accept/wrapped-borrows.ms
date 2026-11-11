@@ -29,17 +29,17 @@ fn make(n: Int) Row:
 test "wrapped parts are references into their arguments":
 	var visits: List[Int] = []
 	r := make(1)
-	o: String? = r.name
-	k: Row!Bad = ok(r)
+	o: String? := r.name
+	k: Row!Bad := ok(r)
 	first_tag(r).get() | try expect_equal("tag-1-with-a-heap-allocated-text")
 	named(r).get() | try expect_equal("row-1-with-a-heap-allocated-name")
 	o.get() | try expect_equal(r.name)
 	k.get().tags.length() | try expect_equal(1)
 
-	good: Row!Bad = ok(make(2))
+	good: Row!Bad := ok(make(2))
 	tail(good, var visits).get() | try expect_equal("row-2-with-a-heap-allocated-name")
 
-	bad: Row!Bad = error(Bad("a failure with a heap allocated reason"))
+	bad: Row!Bad := error(Bad("a failure with a heap allocated reason"))
 	tail(bad, var visits).err().why | try expect_equal(
 		"a failure with a heap allocated reason"
 	)

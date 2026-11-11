@@ -34,9 +34,9 @@ fn checked(r: Row, n: Int) String!Bad:
     return ok(r.name)
 
 fn demo(r: Row, result: Row!Bad) Int:
-    o: String? = r.name
-    k: Row!Bad = ok(r)
-    again: Row!Bad = relay(result)
+    o: String? := r.name
+    k: Row!Bad := ok(r)
+    again: Row!Bad := relay(result)
     return (
         o.get().length()
         + r.name.length()

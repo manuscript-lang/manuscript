@@ -39,7 +39,7 @@ fn consuming_call(log: String) Unit:
 	_kept := pass(Item(3, log.clone()), failing(log))
 
 fn interface_call(log: String) Unit:
-	sink: Sink = Counter(1)
+	sink: Sink := Counter(1)
 	_n := sink.put(Item(4, log.clone()), failing(log))
 
 test "a failing later operand closes a borrowed resource argument":

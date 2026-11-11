@@ -60,7 +60,7 @@ test "a nested read that finishes at once leaves the outer deadline in force":
 
 	var input = ReadStream[Int](ReadyThenStall(queue.reader()))
 	first := try input.next(timeout: milliseconds(600))
-	expected: Int? = 7
+	expected: Int? := 7
 	try expect_equal(first, expected)
 
 	started := monotonic()
@@ -78,5 +78,5 @@ test "a bound does not leak into a later unbounded wait":
 	try gate.write(5)
 
 	value := try input.next()
-	expected: Int? = 5
+	expected: Int? := 5
 	try expect_equal(value, expected)

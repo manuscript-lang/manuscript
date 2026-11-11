@@ -12,27 +12,27 @@ impl Closeable for Marker:
 	var fn close() Unit!: append_file(self.log, "{self.id},").wait()
 
 fn optional_cause(log: String) Unit:
-	value: Marker? = Marker(1, log)
+	value: Marker? := Marker(1, log)
 	_kept := value.ok_or("failure")
 
 fn optional_callback(log: String) Unit:
-	value: Marker? = Marker(2, log)
+	value: Marker? := Marker(2, log)
 	_kept := value.ok_or_else(fn: "failure")
 
 fn result_error_map(log: String) Unit:
-	value: Marker!Int = ok(Marker(3, log))
+	value: Marker!Int := ok(Marker(3, log))
 	_kept := value.map_error(fn cause: cause + 1)
 
 fn result_optional(log: String) Unit:
-	value: Marker!Int = ok(Marker(4, log))
+	value: Marker!Int := ok(Marker(4, log))
 	_kept := value.to_optional()
 
 fn result_map(log: String) Unit:
-	value: Int!Marker = error(Marker(5, log))
+	value: Int!Marker := error(Marker(5, log))
 	_kept := value.map(fn item: item + 1)
 
 fn result_then(log: String) Unit:
-	value: Int!Marker = error(Marker(6, log))
+	value: Int!Marker := error(Marker(6, log))
 	_kept := value.and_then(fn item: ok(item + 1))
 
 fn error_result(id: Int, log: String) Int!Marker: error(Marker(id, log))
@@ -41,20 +41,20 @@ fn discarded_error(log: String) Unit:
 	_kept := error_result(7, log).to_optional()
 
 fn transformed_success(log: String) Unit!:
-	value: Marker!Int = ok(Marker(8, log.clone()))
+	value: Marker!Int := ok(Marker(8, log.clone()))
 	mapped := value.map(fn item: Marker(item.id + 1, log.clone()))
 	try expect_equal(value.get().id, 8)
 	try expect_equal(mapped.get().id, 9)
 
 fn transformed_error(log: String) Unit!:
-	value: Int!Marker = error(Marker(10, log.clone()))
+	value: Int!Marker := error(Marker(10, log.clone()))
 	mapped := value.map_error(fn item: Marker(item.id + 1, log.clone()))
 	try expect_equal(value.is_error(), true)
 	try expect_equal(mapped.is_error(), true)
 
 fn transformed_then(log: String) Unit!:
-	value: Marker!Int = ok(Marker(12, log.clone()))
-	mapped: Marker!Int = value.and_then(fn item: ok(Marker(item.id + 1, log.clone())))
+	value: Marker!Int := ok(Marker(12, log.clone()))
+	mapped: Marker!Int := value.and_then(fn item: ok(Marker(item.id + 1, log.clone())))
 	try expect_equal(value.get().id, 12)
 	try expect_equal(mapped.get().id, 13)
 
@@ -81,8 +81,8 @@ test "preserved resource payloads transfer exactly once":
 	)
 
 fn bound_transform(log: String) Unit!:
-	value: Marker!Int = ok(Marker(20, log.clone()))
-	transform: fn(fn(Marker) Marker) Marker!Int = value.map[Marker]
+	value: Marker!Int := ok(Marker(20, log.clone()))
+	transform: fn(fn(Marker) Marker) Marker!Int := value.map[Marker]
 	first := transform(fn item: Marker(item.id + 1, log.clone()))
 	second := transform(fn item: Marker(item.id + 2, log.clone()))
 	try expect_equal(first.get().id, 21)
@@ -96,22 +96,22 @@ test "callbacks borrow resource inputs while reusable methods copy only retained
 	try bound_transform(log.clone())
 	try expect_equal(read_file(log).wait().get().decode_utf8().get(""), "21,22,20,")
 
-	data: String!Int = ok("payload")
+	data: String!Int := ok("payload")
 	convert := data.to_optional
 	try expect_equal(convert().get(), "payload")
 	try expect_equal(convert().get(), "payload")
 	try expect_equal(data.get(), "payload")
 
 test "empty and transformed branches do not manufacture retained payloads":
-	absent: Int? = none
+	absent: Int? := none
 	try expect_equal(absent.ok_or("failure").is_error(), true)
 	try expect_equal(absent.ok_or_else(fn: "failure").is_error(), true)
 
-	failed: Int!Int = error(3)
+	failed: Int!Int := error(3)
 	try expect_equal(failed.map_error(fn cause: cause + 1).is_error(), true)
 	try expect_equal(failed.to_optional().is_none(), true)
 
-	success: Int!Int = ok(5)
+	success: Int!Int := ok(5)
 	try expect_equal(success.map(fn item: item + 1).get(), 6)
 	try expect_equal(success.and_then(fn item: ok(item + 2)).get(), 7)
 
@@ -140,9 +140,9 @@ fn specialized_error[T](value: Int!T) String!T:
 	return value.map[String](fn item: "{item}")
 
 fn specialized_transfers(log: String) Unit:
-	present: Marker? = Marker(60, log.clone())
+	present: Marker? := Marker(60, log.clone())
 	_first := specialized_optional(present, fn: 0)
-	failed: Int!Marker = error(Marker(61, log))
+	failed: Int!Marker := error(Marker(61, log))
 	_second := specialized_error(failed)
 
 test "specialized direct generic methods transfer instead of retaining reusable captures":

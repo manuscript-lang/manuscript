@@ -28,4 +28,4 @@ impl Equal for Shape:
 
 export LIMIT := 10
 // The default name.
-export NAME: String = "x"
+export NAME: String := "x"

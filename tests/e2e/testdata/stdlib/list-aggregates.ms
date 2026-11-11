@@ -22,8 +22,8 @@ test "sorted orders Int, Float and String ascending without a comparator":
 	try expect_equal(["pear", "apple", "fig"].sorted(), ["apple", "fig", "pear"])
 	try expect_equal(List[Int]().sorted(), List[Int]())
 
-	small: List[Int8] = [3, 1, 2]
-	expected: List[Int8] = [1, 2, 3]
+	small: List[Int8] := [3, 1, 2]
+	expected: List[Int8] := [1, 2, 3]
 	try expect_equal(small.sorted(), expected)
 
 test "sorted puts Float NaN last":
@@ -65,12 +65,12 @@ test "sum adds Int, Float and sized numerics":
 	try expect_equal([0.5, 1.5].sum(), 2.0)
 	try expect_equal(List[Float]().sum(), 0.0)
 
-	small: List[Int8] = [100, 20, -3]
-	total: Int8 = 117
+	small: List[Int8] := [100, 20, -3]
+	total: Int8 := 117
 	try expect_equal(small.sum(), total)
 
-	narrow: List[Float32] = [1.5, 2.5]
-	narrow_total: Float32 = 4.0
+	narrow: List[Float32] := [1.5, 2.5]
+	narrow_total: Float32 := 4.0
 	try expect_equal(narrow.sum(), narrow_total)
 
 test "min and max return the first of equal elements and none when empty":

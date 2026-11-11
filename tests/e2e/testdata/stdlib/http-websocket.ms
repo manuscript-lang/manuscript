@@ -89,7 +89,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 	((body.body.next() | try expect_ok).is_none()) | try expect_true
 	try client.close()
 
-	_limited: Unit! = error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
+	_limited: Unit! := error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
 
 	match request(
 		method: HttpMethod.Get,

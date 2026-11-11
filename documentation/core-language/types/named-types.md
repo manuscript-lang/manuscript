@@ -167,7 +167,7 @@ type OrderId:
 ```manuscript
 customer_id := CustomerId("42")
 // Rejected: equal field shapes do not make nominal types interchangeable.
-order_id: OrderId = customer_id
+order_id: OrderId := customer_id
 ```
 
 Identity is module, declaration, and type arguments; alternate import paths to one module do not create new types. Applications are [invariant](compatibility.md).

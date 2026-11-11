@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 fn main() Unit:
-    r: Equal = none
+    r: Equal := none

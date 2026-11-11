@@ -53,6 +53,6 @@ test "strings, empty and single element lists sort":
         words.sorted(alphabetical), ["apple", "apple", "banana", "fig", "pear"]
     )
 
-    none: List[Int] = []
+    none: List[Int] := []
     try expect_equal(none.sorted(ascending), none)
     try expect_equal([5].sorted(ascending), [5])

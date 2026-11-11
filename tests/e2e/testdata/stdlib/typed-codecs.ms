@@ -51,18 +51,18 @@ test "typed compression preserves bytes limits and errors":
 			try expect_equal((try decompress(encoded, format)), data)
 			try expect_equal((try decompress(encoded, format, data.length())), data)
 
-			limited: Bytes! = error(
+			limited: Bytes! := error(
 				Error("compression: limit exceeded", kind: "EOVERFLOW")
 			)
 			try expect_equal(decompress(encoded, format, data.length() - 1), limited)
 
-		invalid: Bytes! = error(Error("compression: invalid input", kind: "EINVAL"))
+		invalid: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
 		try expect_equal(compress(data, format, CompressOptions(level: -1)), invalid)
 		try expect_equal(
 			compress(data, format, CompressOptions(max_bytes: -1)), invalid
 		)
 
-		zero: Bytes! = error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
+		zero: Bytes! := error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
 		try expect_equal(compress(data, format, CompressOptions(max_bytes: 0)), zero)
 
 	encoded := try compress(
@@ -71,7 +71,7 @@ test "typed compression preserves bytes limits and errors":
 	decoder := decompress
 	try expect_equal((try decoder(encoded, CompressionFormat.Gzip)), data)
 
-	malformed: Bytes! = error(Error("compression: invalid data", kind: "EBADMSG"))
+	malformed: Bytes! := error(Error("compression: invalid data", kind: "EBADMSG"))
 	try expect_equal(decompress(data, CompressionFormat.Gzip), malformed)
 
 test "typed archives retain entry limits and validation":
@@ -82,14 +82,14 @@ test "typed archives retain entry limits and validation":
 		try expect_equal((try unpack(encoded, format)), entries)
 		try expect_equal((try unpack(encoded, format, ArchiveOptions())), entries)
 
-		limited: List[ArchiveEntry]! = error(
+		limited: List[ArchiveEntry]! := error(
 			Error("archive: limit exceeded", kind: "EOVERFLOW")
 		)
 		try expect_equal(
 			unpack(encoded, format, ArchiveOptions(max_entries: 0)), limited
 		)
 
-		invalid: Bytes! = error(Error("archive: invalid input", kind: "EINVAL"))
+		invalid: Bytes! := error(Error("archive: invalid input", kind: "EINVAL"))
 		try expect_equal(
 			pack([ArchiveEntry("../escape", "".to_bytes(), false)], format), invalid
 		)

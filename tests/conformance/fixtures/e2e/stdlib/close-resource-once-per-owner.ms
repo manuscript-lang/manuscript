@@ -44,8 +44,8 @@ fn main() Unit:
     found := collect().get()
     say("--closeable")
 
-    _held: Closeable = Door("closeable")
-    many: List[Closeable] = [Door("list")]
+    _held: Closeable := Door("closeable")
+    many: List[Closeable] := [Door("list")]
     say("--map of records")
 
     var pairs: Map[String, Pair] = {}

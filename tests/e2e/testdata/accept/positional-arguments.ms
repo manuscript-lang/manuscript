@@ -104,7 +104,7 @@ test "generic calls constructors and callback inference":
 test "methods native APIs function values and contextual labels":
 	offset := Offset(3)
 	bound := offset.subtract
-	view: Subtract = offset
+	view: Subtract := offset
 	try expect_false(
 		(
 			offset.subtract(10) != 7
@@ -114,11 +114,11 @@ test "methods native APIs function values and contextual labels":
 	)
 
 	copied := subtract
-	typed: fn(Int, Int) Int = subtract
+	typed: fn(Int, Int) Int := subtract
 	var mutable = subtract
 	try expect_false((copied(10, 3) != 7 or typed(10, 3) != 7 or mutable(10, 3) != 7))
 
-	contextual: fn(Int, Int) Int = fn x, y: x - y
+	contextual: fn(Int, Int) Int := fn x, y: x - y
 	try expect_false(
 		(
 			contextual(10, 3) != 7

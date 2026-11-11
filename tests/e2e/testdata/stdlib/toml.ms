@@ -146,8 +146,8 @@ test "TOML rejects malformed data redefinitions and closed inline tables":
 		((cause.message.starts_with("TOML ")) | try expect_true)
 
 test "TOML optional limits include implicit tables and zero":
-	limited: TomlValue! = error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
-	invalid: TomlValue! = error(Error("invalid TOML input", kind: "EINVAL"))
+	limited: TomlValue! := error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
+	invalid: TomlValue! := error(Error("invalid TOML input", kind: "EINVAL"))
 	try expect_false(
 		(
 			parse(
@@ -240,7 +240,7 @@ test "TOML errors report the offending line and column":
 	failure("x = 1\ny = 1e") | try expect_equal("TOML 2:5: invalid exponent")
 
 test "TOML option fields default to none or the depth and value guards":
-	limited: TomlValue! = error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
+	limited: TomlValue! := error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
 	parse(text: "a=1", options: TomlOptions(max_bytes: 2)) | try expect_equal(limited)
 	parse(text: "a=1", options: TomlOptions()) | try expect_equal(parse(text: "a=1"))
 
@@ -254,14 +254,14 @@ test "TOML stringify round trips scalars tables and arrays of tables":
 	)
 
 test "TOML stringify requires a table root and honors max_bytes":
-	wrong: String! = error(Error("invalid TOML input", kind: "EINVAL"))
-	limited: String! = error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
+	wrong: String! := error(Error("invalid TOML input", kind: "EINVAL"))
+	limited: String! := error(Error("TOML limit exceeded", kind: "EOVERFLOW"))
 	stringify(value: TomlValue.IntValue(1)) | try expect_equal(wrong)
 
 	root := (parse(text: "a = 1") | try expect_ok)
 	stringify(value: root, max_bytes: 3) | try expect_equal(limited)
 
-	exact: String! = ok("a = 1\n")
+	exact: String! := ok("a = 1\n")
 	stringify(value: root, max_bytes: 6) | try expect_equal(exact)
 	stringify(value: root, max_bytes: -1) | try expect_equal(wrong)
 
@@ -286,7 +286,7 @@ test "TOML long strings parse and stringify in linear time":
 	parse(text: text) | try expect_ok | try expect_equal(root)
 
 test "TOML stringify rejects invalid date-time text":
-	invalid: String! = error(Error("invalid TOML input", kind: "EINVAL"))
+	invalid: String! := error(Error("invalid TOML input", kind: "EINVAL"))
 
 	for text in ["bogus", "", "2024-13-01", "1979-05-27T07:32:00 junk"]:
 		var table = Map[String, TomlValue]()

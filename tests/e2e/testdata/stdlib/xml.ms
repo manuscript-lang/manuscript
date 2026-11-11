@@ -78,7 +78,7 @@ test "depth limit":
 	try expect_equal(parse("<a><b/></a>", max_depth: 2).get().tag(), "a")
 
 test "processing instructions require a name and whitespace before data":
-	malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 
 	for instruction in [
 		"<??>", "<? ?>", "<?1bad?>", "<?@?>", "<?p!data?>", "<?p/data?>", "<?p=data?>",
@@ -97,7 +97,7 @@ test "processing instructions require a name and whitespace before data":
 		try expect_equal((try parse("<a>x{instruction}y</a>")).text(), "xy")
 
 test "XML declarations occur only at the document start":
-	malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 	declaration := "<?xml version='1.0'?>"
 
 	for target in ["xml", "XML", "Xml", "xMl", "xmL", "XMl", "xML", "XmL"]:
@@ -112,7 +112,7 @@ test "XML declarations occur only at the document start":
 	try expect_equal((try parse("\u{feff}{declaration}<a/>")).tag(), "a")
 
 test "XML declarations validate ordered literal pseudo attributes":
-	malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 	for declaration in [
 		"<?xml?>", "<?xml ?>", "<?xml encoding='UTF-8'?>", "<?xml version=1.0?>",
 		"<?xml version='1.0?>", "<?xml version='2.0'?>", "<?xml version='1.'?>",
@@ -150,7 +150,7 @@ test "entity decoding is linear in the text":
 	try expect_equal(big.text().scalar_length(), 100000)
 
 test "malformed comments fail inside before and after the root":
-	malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 
 	for comment in [
 		"<!--a--b-->", "<!--a--->", "<!--a\n--b-->", "<!--a---->", "<!--open"
@@ -173,7 +173,7 @@ test "valid comments preserve text and leave other delimited constructs alone":
 	try expect_equal(node.text(), "x--y")
 
 test "literal XML characters obey the same ranges as character references":
-	malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 
 	for invalid in [
 		"\u{0}", "\u{1}", "\u{8}", "\u{b}", "\u{c}", "\u{e}", "\u{1f}", "\u{fffe}",
@@ -206,7 +206,7 @@ test "literal XML characters obey the same ranges as character references":
 	try expect_true(parse("\u{feff}<a/>").is_ok())
 
 test "CDATA terminators are forbidden only in literal character data":
-	malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 
 	for text in ["]]>right", "left]]>", "left]]>right", "]]]>", "]]>"]:
 		try expect_equal(parse("<a>{text}</a>"), malformed)
@@ -237,7 +237,7 @@ test "XML name starts follow every XML 1.0 range boundary":
 			try expect_equal(attribute.attribute(name).get(""), "value")
 
 test "XML continuation-only scalars cannot start a name":
-	malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 
 	for code in [0x2d, 0x2e, 0x30, 0x39, 0xb7, 0x300, 0x36f, 0x203f, 0x2040]:
 		scalar := try from_scalars([code])
@@ -251,7 +251,7 @@ test "XML continuation-only scalars cannot start a name":
 		)
 
 test "XML names reject punctuation and excluded Unicode gaps":
-	malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 
 	for code in [
 		0x23, 0x24, 0x25, 0x2b, 0x40, 0x5b, 0x5c, 0x5d, 0x5e, 0x60, 0x7b, 0x7c, 0x7d,
@@ -302,7 +302,7 @@ test "DOCTYPE skipping honors quoted spans and prolog placement":
 		try expect_true(parse(rejected).is_error())
 
 test "DOCTYPE public identifiers accept only XML PubidChar scalars":
-	malformed: XmlNode! = error(Error("XML: invalid data", kind: "EBADMSG"))
+	malformed: XmlNode! := error(Error("XML: invalid data", kind: "EBADMSG"))
 
 	for quote in ["\"", "'"]:
 		for invalid in ["[", "]", "<", ">", "&", "\t", "é", "😀", "\"", "\\", "\{", "\}"]:

@@ -1,2 +1,2 @@
 fn main() Unit:
-    y: Option[Int] = none
+    y: Option[Int] := none

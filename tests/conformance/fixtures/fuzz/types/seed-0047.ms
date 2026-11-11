@@ -15,7 +15,7 @@ export fn main() Int:
     b2 := false
     say("b2 = {b2}")
 
-    bad: Int = "text"
+    bad: Int := "text"
     f3 := (((3.5 - 616.883) - (494.248 / 0.5)) + 869.847)
     say("f3 = {f3}")
 

@@ -68,9 +68,9 @@ test "records alternatives and collections convert":
 	)
 	(try check(value: Outcome.Waiting.to_string(), expected: "Outcome.Waiting"))
 
-	absent: Int? = none
-	present: Int? = 3
-	result: Int!Error = error(Error("failed"))
+	absent: Int? := none
+	present: Int? := 3
+	result: Int!Error := error(Error("failed"))
 	(try check(value: absent.to_string(), expected: "none"))
 	(try check(value: present.to_string(), expected: "some(3)"))
 	(
@@ -82,7 +82,7 @@ test "records alternatives and collections convert":
 	(try check(value: [1, 2, 3].to_string(), expected: "[1, 2, 3]"))
 	(try check(value: [[1], [2, 3]].to_string(), expected: "[[1], [2, 3]]"))
 
-	empty: List[Int] = []
+	empty: List[Int] := []
 	(try check(value: empty.to_string(), expected: "[]"))
 
 	var map = Map[String, Int]()
@@ -108,11 +108,11 @@ test "generics views bound methods functions and resources":
 	(try check(value: interpolate(person), expected: person.to_string()))
 	(try check(value: bound_stringify(person), expected: person.to_string()))
 
-	view: Named = person.clone()
+	view: Named := person.clone()
 	(try check(value: view.to_string(), expected: person.to_string()))
 	(try check(value: "{view}", expected: person.to_string()))
 
-	convert: fn() String = view.to_string
+	convert: fn() String := view.to_string
 	(try check(value: convert(), expected: person.to_string()))
 	(try check(value: answer.to_string(), expected: "[function]"))
 	(try check(value: "{answer}", expected: "[function]"))

@@ -49,12 +49,12 @@ test "bounds take two values of the bounded type":
 	try expect_equal(total(Version(2), Version(3)), 5)
 
 test "interface values of different types are unequal":
-	a: Equal = CustomerKey(1, "a")
-	b: Equal = CustomerKey(1, "z")
+	a: Equal := CustomerKey(1, "a")
+	b: Equal := CustomerKey(1, "z")
 	try expect_true(a.equals(b))
 	try expect_false(a.equals(1))
 
-	order: Comparable = Version(1)
+	order: Comparable := Version(1)
 	try expect_true(order.compare(Version(3)) < 0)
 
 test "keys use the custom equality":

@@ -64,23 +64,23 @@ test "plain values and explicit optionals share the call contract":
     try expect_equal(number(4), 4)
     try expect_equal(number(value: 0), 0)
 
-    supplied: Int? = 4
+    supplied: Int? := 4
     try expect_equal(number(supplied), 4)
     try expect_equal(number(), -1)
     try expect_equal(number(), -1)
 
-    stored: fn(Int?) Int = number
+    stored: fn(Int?) Int := number
     try expect_equal(stored(5), 5)
     try expect_equal(present(6).get(), 6)
     try expect_equal(present[Int](7).get(), 7)
 
-    generic_supplied: Int? = 8
+    generic_supplied: Int? := 8
     try expect_equal(present(generic_supplied).get(), 8)
 
-    missing: Int? = none
+    missing: Int? := none
     try expect_false(not (nested(missing)))
 
-    outer: Int?? = missing
+    outer: Int?? := missing
     try expect_false(not (nested(outer)))
     try expect_equal(list_size([]), 0)
     try expect_equal(list_size([1, 2]), 2)
@@ -114,7 +114,7 @@ test "constructor fields and methods use optional arguments":
     read := reader.read
     try expect_equal(read(4), 6)
 
-    view: Read = reader
+    view: Read := reader
     try expect_equal(view.read(5), 7)
 
     counter := Counter(9)
@@ -138,7 +138,7 @@ test "queue capacity accepts a plain value or omission":
 
     var unbounded = Queue[Int]()
     var absent = Queue[Int]()
-    capacity: Int? = 4
+    capacity: Int? := 4
     var explicit = Queue[Int](capacity)
 
     for value in [1, 2, 3, 4, 5]:

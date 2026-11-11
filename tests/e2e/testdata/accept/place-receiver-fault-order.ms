@@ -12,7 +12,7 @@ impl Cell:
 
 // Faults with its own message, so a test tells which fault came first.
 fn later() Int:
-	empty: List[Int] = []
+	empty: List[Int] := []
 	return empty[3]
 
 fn bump_int(var x: Int) Unit:
