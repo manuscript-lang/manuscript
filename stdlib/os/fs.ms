@@ -213,7 +213,7 @@ export extern type NativeFile
 
 // An open file supporting sequential and positional I/O. It owns its descriptor: `close` it, or let
 // its binding go out of scope.
-export type FileHandle:
+export opaque type FileHandle:
 	// The runtime handle for the open file; it is released by `close` and owned by this value.
 	native: NativeFile
 
@@ -373,7 +373,7 @@ fn seek_origin(origin: Seek) Int:
 export extern type NativeDirectory
 
 // An open directory that yields one child per read and must be closed.
-export type Directory:
+export opaque type Directory:
 	// The runtime handle for the open directory; it is released by `close` and owned by this value.
 	native: NativeDirectory
 
@@ -409,7 +409,7 @@ impl Source[DirectoryEntry] for Directory:
 export extern type NativeWatcher
 
 // The native watcher a watch operation returns; `watch` wraps it into a stream.
-export type RawWatcher:
+export opaque type RawWatcher:
 	// The runtime handle for the watch; the stream releases it when it closes.
 	native: NativeWatcher
 
@@ -441,7 +441,7 @@ fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
 export extern type NativeTemporary
 
 // A temporary directory whose contents are removed when it is closed.
-export type TemporaryDirectory:
+export opaque type TemporaryDirectory:
 	// The runtime handle for the directory; it is released by `close` and owned by this value.
 	native: NativeTemporary
 

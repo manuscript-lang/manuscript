@@ -511,7 +511,7 @@ export type RawTerminal:
 	handle: RawHandle
 
 // What the native `raw_mode` returns: the runtime handle itself.
-export type RawHandle:
+export opaque type RawHandle:
 	// The runtime terminal handle.
 	native: NativeRawTerminal
 

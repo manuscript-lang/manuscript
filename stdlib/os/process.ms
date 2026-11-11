@@ -108,7 +108,7 @@ A long-lived child process with live stdin, stdout, and stderr streams. Closing 
 kills the child's process group, joins it, and closes all three streams.
 A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so reads and writes return EBADF.
 */
-export type Subprocess:
+export opaque type Subprocess:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeSubprocess
 
