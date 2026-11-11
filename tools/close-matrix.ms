@@ -39,7 +39,7 @@ enum Slot:
     Empty
 
 fn mk_nested(id: Int) List[Marker?]:
-    one: Marker? = mk(id)
+    one: Marker? := mk(id)
     return [one]
 
 fn mk_map(id: Int) Map[Int, Marker]:
@@ -90,38 +90,38 @@ fn only(name: String, shape: String, defs: String, body: String) Construct:
 
 fn constructs() List[Construct]:
 	return [
-		c("scope_end", "", "x: @TY@ = @M1@\n    see(x)"),
+		c("scope_end", "", "x: @TY@ := @M1@\n    see(x)"),
 		c(
 			"early_return", "",
-			"x: @TY@ = @M1@\n    if flag():\n        return ok(unit)\n    see(x)"
+			"x: @TY@ := @M1@\n    if flag():\n        return ok(unit)\n    see(x)"
 		),
-		c("try_error", "", "x: @TY@ = @M1@\n    try fail()\n    see(x)"),
+		c("try_error", "", "x: @TY@ := @M1@\n    try fail()\n    see(x)"),
 		c(
 			"loop_break", "",
-			"for i in 0..3:\n        x: @TY@ = @M1@\n        if i == 1:\n            break\n        see(x)"
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 1:\n            break\n        see(x)"
 		),
 		c(
 			"loop_continue", "",
-			"for i in 0..3:\n        x: @TY@ = @M1@\n        if i == 1:\n            continue\n        see(x)"
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 1:\n            continue\n        see(x)"
 		),
 		c(
 			"while_loop", "",
-			"var i = 0\n    while i < 2:\n        x: @TY@ = @M1@\n        see(x)\n        i += 1"
+			"var i = 0\n    while i < 2:\n        x: @TY@ := @M1@\n        see(x)\n        i += 1"
 		),
 		c(
 			"loop_try_error", "",
-			"for i in 0..3:\n        x: @TY@ = @M1@\n        try fail()\n        see(x)"
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        try fail()\n        see(x)"
 		),
 		c(
-			"nested_scope", "", "if flag():\n        x: @TY@ = @M1@\n        see(x)"
+			"nested_scope", "", "if flag():\n        x: @TY@ := @M1@\n        see(x)"
 		),
 		c(
 			"loop_return", "",
-			"for i in 0..2:\n        x: @TY@ = @M1@\n        if flag():\n            return ok(unit)\n        see(x)"
+			"for i in 0..2:\n        x: @TY@ := @M1@\n        if flag():\n            return ok(unit)\n        see(x)"
 		),
 		c(
 			"two_locals_try", "",
-			"x: @TY@ = @M1@\n    y: @TY@ = @M2@\n    try fail()\n    see(x)\n    see(y)"
+			"x: @TY@ := @M1@\n    y: @TY@ := @M2@\n    try fail()\n    see(x)\n    see(y)"
 		),
 		c(
 			"boxed", "type Box:\n    v: @TY@",
@@ -133,12 +133,12 @@ fn constructs() List[Construct]:
 		),
 		c(
 			"in_list", "",
-			"xs: List[@TY@] = [@M1@, @M2@]\n    try fail()\n    see_all(xs)"
+			"xs: List[@TY@] := [@M1@, @M2@]\n    try fail()\n    see_all(xs)"
 		),
 		c(
 			"cancel_borrowed",
 			"fn hold(x: @TY@) Unit!:\n    try sleep(milliseconds(60000)).wait()\n    return ok(unit)",
-			"x: @TY@ = @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    _ := p.wait()"
+			"x: @TY@ := @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    _ := p.wait()"
 		),
 		c(
 			"cancel_owned",
@@ -147,17 +147,17 @@ fn constructs() List[Construct]:
 		),
 		c(
 			"cancel_local",
-			"fn hold() Unit!:\n    x: @TY@ = @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
+			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
 			"p := promise(fn: hold())\n    p.cancel()\n    _ := p.wait()"
 		),
 		c(
 			"cancel_dropped",
-			"fn hold() Unit!:\n    x: @TY@ = @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
+			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
 			"_ := promise(fn: hold())"
 		),
 		c("fn_value_temporary", "", "f := see\n    f(@M1@)"),
 		c("fn_value_lambda", "", "f := fn (v: @TY@): see(v)\n    f(@M1@)"),
-		c("fn_value_named", "", "f := see\n    x: @TY@ = @M1@\n    f(x)"),
+		c("fn_value_named", "", "f := see\n    x: @TY@ := @M1@\n    f(x)"),
 		c(
 			"method_temporary",
 			"type Sink:\n    n: Int\n\nimpl Sink:\n    fn take(v: @TY@) Unit: return\n    fn take_later(v: @TY@, n: Int) Unit: return",
@@ -187,7 +187,7 @@ fn constructs() List[Construct]:
 		),
 		c(
 			"generic_to_optional_named", "fn opt_of[X](x: X) X?: return x",
-			"x: @TY@ = @M1@\n    r := opt_of[@TY@](x)\n    if r.is_some():\n        return ok(unit)"
+			"x: @TY@ := @M1@\n    r := opt_of[@TY@](x)\n    if r.is_some():\n        return ok(unit)"
 		),
 		c(
 			"generic_to_list", "fn list_of[X](x: X) List[X]: return [x]",
@@ -214,7 +214,7 @@ fn constructs() List[Construct]:
 		),
 		only(
 			"match_enum_return", "enum", "",
-			"x: @TY@ = @M1@\n    match x:\n        Full(m): return ok(unit)\n        Empty: return ok(unit)"
+			"x: @TY@ := @M1@\n    match x:\n        Full(m): return ok(unit)\n        Empty: return ok(unit)"
 		),
 		only(
 			"match_enum_temporary", "enum", "",
@@ -226,18 +226,18 @@ fn constructs() List[Construct]:
 			"var x: @TY@ = @M1@\n    if flag():\n        x = @M2@\n    see(x)"
 		),
 		c("argument_temporary", "", "see(@M1@)"),
-		c("argument_named", "", "x: @TY@ = @M1@\n    see(x)\n    see(x)"),
+		c("argument_named", "", "x: @TY@ := @M1@\n    see(x)\n    see(x)"),
 		c(
 			"two_arguments_try", "fn two(a: @TY@, n: Int) Unit: return",
 			"two(@M1@, try fail_int())"
 		),
 		c(
-			"returned_whole", "fn give() @TY@:\n    x: @TY@ = @M1@\n    return x",
+			"returned_whole", "fn give() @TY@:\n    x: @TY@ := @M1@\n    return x",
 			"y := give()\n    see(y)"
 		),
 		c(
 			"returned_conditional",
-			"fn give(f: Bool) @TY@:\n    x: @TY@ = @M1@\n    z: @TY@ = @M2@\n    if f:\n        return x\n    return z",
+			"fn give(f: Bool) @TY@:\n    x: @TY@ := @M1@\n    z: @TY@ := @M2@\n    if f:\n        return x\n    return z",
 			"y := give(flag())\n    see(y)"
 		),
 		c(
@@ -245,26 +245,26 @@ fn constructs() List[Construct]:
 			"y := give()\n    see(y)"
 		),
 		c("generic_pass_temporary", "", "pass[@TY@](@M1@)"),
-		c("generic_pass_named", "", "x: @TY@ = @M1@\n    pass(x)"),
-		c("generic_ident_temporary", "", "y: @TY@ = ident(@M1@)\n    see(y)"),
+		c("generic_pass_named", "", "x: @TY@ := @M1@\n    pass(x)"),
+		c("generic_ident_temporary", "", "y: @TY@ := ident(@M1@)\n    see(y)"),
 		c(
-			"generic_ident_named", "", "x: @TY@ = @M1@\n    y := ident(x)\n    see(y)"
+			"generic_ident_named", "", "x: @TY@ := @M1@\n    y := ident(x)\n    see(y)"
 		),
-		c("discard_underscore", "", "_: @TY@ = @M1@"),
-		c("closure_borrow", "", "x: @TY@ = @M1@\n    f := fn: see(x)\n    f()"),
+		c("discard_underscore", "", "_: @TY@ := @M1@"),
+		c("closure_borrow", "", "x: @TY@ := @M1@\n    f := fn: see(x)\n    f()"),
 		c(
 			"closure_escape",
-			"fn make() fn() Unit:\n    x: @TY@ = @M1@\n    return fn: see(x)",
+			"fn make() fn() Unit:\n    x: @TY@ := @M1@\n    return fn: see(x)",
 			"f := make()\n    f()"
 		),
 		c(
 			"closure_escape_unused",
-			"fn make() fn() Unit:\n    x: @TY@ = @M1@\n    return fn: see(x)",
+			"fn make() fn() Unit:\n    x: @TY@ := @M1@\n    return fn: see(x)",
 			"f := make()\n    f()"
 		),
 		c(
 			"promise_capture", "",
-			"x: @TY@ = @M1@\n    p := promise(fn: seeok(x))\n    try p.wait()"
+			"x: @TY@ := @M1@\n    p := promise(fn: seeok(x))\n    try p.wait()"
 		),
 		c(
 			"promise_result", "fn produce() @TY@!: return ok(@M1@)",
@@ -287,11 +287,11 @@ fn constructs() List[Construct]:
 		),
 		only(
 			"if_let", "optional", "",
-			"x: @TY@ = @M1@\n    if m := x:\n        see_marker(m)"
+			"x: @TY@ := @M1@\n    if m := x:\n        see_marker(m)"
 		),
 		only(
 			"match_optional", "optional", "",
-			"x: @TY@ = @M1@\n    match x:\n        m: see_marker(m)\n        none: return ok(unit)"
+			"x: @TY@ := @M1@\n    match x:\n        m: see_marker(m)\n        none: return ok(unit)"
 		),
 		only("field_move", "record", "", "h := @M1@\n    see_marker(h.m)"),
 		only(
@@ -306,7 +306,7 @@ fn constructs() List[Construct]:
 		),
 		only(
 			"result_match", "result", "",
-			"r: @TY@ = @M1@\n    match r:\n        ok(m): see_marker(m)\n        error(e): return ok(unit)"
+			"r: @TY@ := @M1@\n    match r:\n        ok(m): see_marker(m)\n        error(e): return ok(unit)"
 		)
 	]
 
