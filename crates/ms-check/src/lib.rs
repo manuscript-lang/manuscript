@@ -26,6 +26,7 @@ mod ownership;
 mod passes;
 mod prelude_imports;
 mod recursion;
+mod std_ops;
 mod stdlib;
 mod stmts;
 mod suggestions;
@@ -114,15 +115,7 @@ pub fn check_in(
         // Value semantics is part of the language: every program that type checks is also
         // checked for ownership and exclusivity.
         let own = program.hir().ownership();
-        program.close_moves = Rc::new(own.close_moves);
-        program.resource_moves = Rc::new(own.resource_moves);
-        program.moves = Rc::new(own.moves);
-        program.borrowed_captures = Rc::new(own.borrowed_captures);
-        program.moving_params = Rc::new(own.moving_params);
-        program.node_facts = Rc::new(own.node_facts);
-        program.binding_facts = Rc::new(own.binding_facts);
-        program.owned_borrows = Rc::new(own.owned_borrows);
-        program.getter_borrows = Rc::new(own.getter_borrows);
+        program.ownership = Rc::new(own.tables);
         program.diagnostics.extend(own.diagnostics);
     }
     if program.diagnostics.is_empty() {

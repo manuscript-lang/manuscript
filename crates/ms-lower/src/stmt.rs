@@ -277,6 +277,7 @@ impl<'a> FnLower<'a> {
             && let Some(b) = self.hir.pattern_binding(pattern)
             && self
                 .cx
+                .ownership
                 .binding_facts
                 .has(b.uid, ms_check::api::ownership::BindingFact::ImplicitClose)
         {
@@ -337,6 +338,7 @@ impl<'a> FnLower<'a> {
                     Some(b)
                         if self
                             .cx
+                            .ownership
                             .binding_facts
                             .has(b.uid, ms_check::api::ownership::BindingFact::ImplicitClose) =>
                     {
@@ -535,7 +537,7 @@ impl<'a> FnLower<'a> {
                 self.found |= self.moves.contains(&e.id);
             }
         }
-        let Some(moves) = self.cx.moves.get(&uid) else {
+        let Some(moves) = self.cx.ownership.moves.get(&uid) else {
             return false;
         };
         let mut scan = Scan {
@@ -1013,6 +1015,7 @@ impl<'a> FnLower<'a> {
                 }
                 let closing = self
                     .cx
+                    .ownership
                     .binding_facts
                     .has(
                         bnd.uid,
@@ -1536,7 +1539,7 @@ impl<'a> FnLower<'a> {
         if !scalars
             && !loop_var.mutable
             && !self.slotted.contains(&loop_var.uid)
-            && !self.cx.moves.contains_key(&loop_var.uid)
+            && !self.cx.ownership.moves.contains_key(&loop_var.uid)
         {
             self.bind_borrow_of(loop_var, ch);
         } else if scalars {
@@ -1573,7 +1576,7 @@ impl<'a> FnLower<'a> {
                 // A loop that moves its element needs the owned snapshot, not a borrowed walk.
                 let borrowed = !loop_var.mutable
                     && !self.slotted.contains(&loop_var.uid)
-                    && !self.cx.moves.contains_key(&loop_var.uid);
+                    && !self.cx.ownership.moves.contains_key(&loop_var.uid);
                 let call_root = match &iter.kind {
                     ExprKind::Call { callee, args } if args.is_empty() => match &callee.kind {
                         ExprKind::Member { left, .. } => Some(&**left),
@@ -1586,7 +1589,7 @@ impl<'a> FnLower<'a> {
                 }
                 // A loop variable the body moves on (an escaping closure, a store) owns its piece:
                 // the split streams borrowed slices of its buffer, so it iterates the owned list.
-                if !self.cx.moves.contains_key(&loop_var.uid) {
+                if !self.cx.ownership.moves.contains_key(&loop_var.uid) {
                     self.split_iter_for = Some(iter as *const Expr);
                 }
                 self.chars_iter_for = Some(iter as *const Expr);
@@ -1681,7 +1684,7 @@ impl<'a> FnLower<'a> {
         let idx = self.b.declare_var(MTy::INT, ms_mir::ir::Mode::Borrow);
         self.b.def_var(idx, start);
         let closing = if list_var.is_some()
-            && self.cx.binding_facts.has(
+            && self.cx.ownership.binding_facts.has(
                 loop_var.uid,
                 ms_check::api::ownership::BindingFact::ImplicitClose,
             ) {

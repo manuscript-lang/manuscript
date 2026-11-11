@@ -105,11 +105,11 @@ fn repeated_checks_keep_storage_bounded_and_live_program_facts_valid() {
     let session = Session::new();
     let source = include_str!("../../tests/binding_flags/repeated.ms");
     let first = check(&session, "repeated.ms", source);
-    let first_facts = first.binding_facts.flags.clone();
-    let storage_limit = first.binding_facts.flags.capacity() * 2;
+    let first_facts = first.ownership.binding_facts.flags.clone();
+    let storage_limit = first.ownership.binding_facts.flags.capacity() * 2;
     let first_alias = alias_id(&first);
     assert_eq!(
-        first.binding_facts.borrow(first_alias),
+        first.ownership.binding_facts.borrow(first_alias),
         Some(crate::ownership::BorrowKind::Shared)
     );
     let csv = session
@@ -126,15 +126,15 @@ fn repeated_checks_keep_storage_bounded_and_live_program_facts_valid() {
     // program IDs; retaining the first program must not make their facts overlap or mutate.
     for _ in 0..40 {
         let later = check(&session, "repeated.ms", source);
-        assert!(later.binding_facts.flags.capacity() <= storage_limit);
-        assert_eq!(first.binding_facts.flags, first_facts);
+        assert!(later.ownership.binding_facts.flags.capacity() <= storage_limit);
+        assert_eq!(first.ownership.binding_facts.flags, first_facts);
         // Fresh source gets fresh session identities; older programs retain their own facts.
         let later_alias = alias_id(&later);
         assert_ne!(later_alias, first_alias);
-        assert_eq!(first.binding_facts.borrow(later_alias), None);
-        assert_eq!(later.binding_facts.borrow(first_alias), None);
+        assert_eq!(first.ownership.binding_facts.borrow(later_alias), None);
+        assert_eq!(later.ownership.binding_facts.borrow(first_alias), None);
         assert_eq!(
-            later.binding_facts.borrow(later_alias),
+            later.ownership.binding_facts.borrow(later_alias),
             Some(crate::ownership::BorrowKind::Shared)
         );
     }

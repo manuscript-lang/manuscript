@@ -661,6 +661,7 @@ impl FnLower<'_> {
         // its own address).
         let places = self
             .cx
+            .ownership
             .resource_moves
             .get(&binding.uid)
             .filter(|p| !p.is_empty())
@@ -668,7 +669,7 @@ impl FnLower<'_> {
         if binding.mutable
             || kind.writes_back()
             || places.is_some()
-            || self.cx.close_moves.contains_key(&binding.uid)
+            || self.cx.ownership.close_moves.contains_key(&binding.uid)
         {
             self.slotted.insert(binding.uid);
         }
@@ -693,14 +694,20 @@ impl FnLower<'_> {
                 Some(MTy::INT),
             )
             .expect("handle");
-        let flag = self.cx.close_moves.contains_key(&binding.uid).then(|| {
-            let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
-            let held = self.b.bconst(true);
-            self.b.def_var(flag, held);
-            flag
-        });
+        let flag = self
+            .cx
+            .ownership
+            .close_moves
+            .contains_key(&binding.uid)
+            .then(|| {
+                let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
+                let held = self.b.bconst(true);
+                self.b.def_var(flag, held);
+                flag
+            });
         let explicit = self
             .cx
+            .ownership
             .binding_facts
             .has(
                 binding.uid,
@@ -760,12 +767,17 @@ impl FnLower<'_> {
             moved: Vec::new(),
         };
         self.split_fields(&ty, root, &[], &[], &tails, &mut split)?;
-        let flag = self.cx.close_moves.contains_key(&binding.uid).then(|| {
-            let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
-            let held = self.b.bconst(true);
-            self.b.def_var(flag, held);
-            flag
-        });
+        let flag = self
+            .cx
+            .ownership
+            .close_moves
+            .contains_key(&binding.uid)
+            .then(|| {
+                let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
+                let held = self.b.bconst(true);
+                self.b.def_var(flag, held);
+                flag
+            });
         let handle = self.b.iconst(0);
         self.closers.insert(
             binding.uid,
@@ -1373,7 +1385,7 @@ impl FnLower<'_> {
     pub(crate) fn capture_closer(&mut self, uid: usize, e: &Expr, ty: MTy) -> Option<FuncId> {
         let closer = self.closers.get(&uid).cloned()?;
         closer.flag?;
-        let moves = self.cx.close_moves.get(&uid)?;
+        let moves = self.cx.ownership.close_moves.get(&uid)?;
         if self.dead || !moves.contains(&e.id) {
             return None;
         }
@@ -1393,6 +1405,7 @@ impl FnLower<'_> {
         if self.dead
             || !self
                 .cx
+                .ownership
                 .close_moves
                 .get(&uid)
                 .is_some_and(|n| n.contains(&e.id))
@@ -1417,6 +1430,7 @@ impl FnLower<'_> {
     fn scope_close(&mut self, uid: usize, closer: &Closer) {
         if self
             .cx
+            .ownership
             .binding_facts
             .has(uid, ms_check::api::ownership::BindingFact::CloseHandled)
         {

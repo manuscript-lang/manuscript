@@ -23,7 +23,7 @@ pub(super) fn lint(
 ) {
     let mut scan = Scan {
         module,
-        moves: &program.close_moves,
+        moves: &program.ownership.close_moves,
         owned: Vec::new(),
         finished: HashSet::new(),
         kept: HashSet::new(),
@@ -32,9 +32,10 @@ pub(super) fn lint(
     let file = module_file(syms, module);
     for (uid, name, pos, ty) in scan.owned {
         // A binding every path moves is left alone: the new owner reports the close.
-        let kept = !program.close_moves.contains_key(&uid) || scan.kept.contains(&uid);
+        let kept = !program.ownership.close_moves.contains_key(&uid) || scan.kept.contains(&uid);
         if scan.finished.contains(&uid)
             || !program
+                .ownership
                 .binding_facts
                 .has(uid, ms_check::api::ownership::BindingFact::ImplicitClose)
             || !kept

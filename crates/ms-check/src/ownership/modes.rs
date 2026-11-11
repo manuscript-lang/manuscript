@@ -1,7 +1,7 @@
 //! How a callee treats its receiver and arguments.
 
-use crate::effects::collection_mutation;
 use crate::hir::*;
+use crate::std_ops::{collection_mutation, is_text_builder};
 use crate::syntax::*;
 use crate::types::*;
 use ms_syntax::Pos;
@@ -620,7 +620,7 @@ fn native_method_modes(
     CallModes {
         receiver: Some(if mutator {
             ParamMode::Mutate
-        } else if crate::effects::is_text_builder(syms, receiver)
+        } else if is_text_builder(syms, receiver)
             && method.name().is_some_and(|n| syms.str(n) == "build")
         {
             ParamMode::Move

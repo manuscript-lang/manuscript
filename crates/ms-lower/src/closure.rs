@@ -76,6 +76,7 @@ impl FnLower<'_> {
             if !changed.contains(&b.uid)
                 && self
                     .cx
+                    .ownership
                     .borrowed_captures
                     .contains(&(self.hir.data.file, e.id, b.uid))
             {
@@ -972,7 +973,7 @@ impl FnLower<'_> {
         if let Some(value) = self.bound_alias_method(e, left, m)? {
             return Ok(value);
         }
-        let changes = ms_check::api::effects::collection_mutation(self.syms, m);
+        let changes = ms_check::api::ownership::collection_mutation(self.syms, m);
         let recv = self.method_receiver(e, left, changes)?;
         if let Receiver::Value(v) = recv
             && self.dead
@@ -1723,7 +1724,7 @@ fn lower_iface_native(
     let ret = fl.ret_ty;
     let args =
         fl.thunk_native_args(job.method.module, func, &job.method.ty.params, &params[1..])?;
-    let out = if ms_check::api::effects::collection_mutation(syms, &job.method) {
+    let out = if ms_check::api::ownership::collection_mutation(syms, &job.method) {
         // The table entry receives the address of the value it changes.
         fl.shared_native_call(&job.method, params[0], job.data, &args, ret)?
     } else {

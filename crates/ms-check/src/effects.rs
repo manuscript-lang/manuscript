@@ -3,6 +3,7 @@
 use crate::checker::Checker;
 use crate::effect_directives::Lines;
 use crate::effect_reach::{ReachNode, resolve};
+use crate::std_ops::{collection_mutation, is_text_builder};
 use crate::syntax::*;
 use crate::types::Method;
 use crate::types::*;
@@ -10,33 +11,6 @@ use ms_syntax::Pos;
 use ms_syntax::ast::*;
 use ms_syntax::visit::{self, Visitor};
 use std::collections::{BTreeSet, HashMap, HashSet};
-
-/// Whether a standard collection method mutates its receiver: `List`, `Map` and `Set`
-/// methods say so with `var fn` in their `@std` declaration; so do `StringBuilder` and `BytesBuilder`.
-pub fn collection_mutation(syms: ms_syntax::Names, method: &Method) -> bool {
-    let receiver = &method.receiver;
-    (receiver.is(Builtin::List)
-        || receiver.is(Builtin::Map)
-        || receiver.is(Builtin::Set)
-        || is_text_builder(syms, receiver))
-        && method
-            .decl
-            .as_ref()
-            .and_then(|d| d.method())
-            .is_some_and(|m| m.mutating)
-}
-
-/// Whether the mutator `name` can discard an entry the receiver holds (`set`, `add`, `remove`,
-/// `clear`, `splice`). A direct call closes a resource entry it discards; a method value cannot,
-/// so the checker rejects one over one-owner elements and lowering closes only at the call.
-pub fn discards_entries(name: &str) -> bool {
-    matches!(name, "set" | "add" | "remove" | "clear" | "splice")
-}
-
-/// `StringBuilder` and `BytesBuilder`: owned values whose `build` moving_params them.
-pub fn is_text_builder(syms: ms_syntax::Names, t: &Ty) -> bool {
-    t.is_std(syms, "StringBuilder") || t.is(Builtin::BytesBuilder)
-}
 
 enum Target {
     Decl(DeclRef),

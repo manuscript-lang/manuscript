@@ -51,7 +51,7 @@ impl<'a> FnLower<'a> {
         {
             return self.format_method(result, m, recv, args.to_vec(), (sym, param, as_text));
         }
-        if ms_check::api::effects::collection_mutation(self.syms, m) {
+        if ms_check::api::ownership::collection_mutation(self.syms, m) {
             // The bound receiver is a copy: the mutated collection is the result.
             let b = self.borrow(recv);
             let old = self.owned_boundary(Val { v: b, own: false });
@@ -603,7 +603,7 @@ impl<'a> FnLower<'a> {
         recv_expr: &Expr,
         name: &str,
     ) -> Result<bool, Error> {
-        if !ms_check::api::effects::discards_entries(name) || !self.is_place(recv_expr) {
+        if !ms_check::api::ownership::discards_entries(name) || !self.is_place(recv_expr) {
             return Ok(false);
         }
         let ty = self.ety(recv_expr);

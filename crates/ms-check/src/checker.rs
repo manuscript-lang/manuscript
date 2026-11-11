@@ -119,27 +119,8 @@ pub struct Program {
     pub diagnostics: Vec<Diagnostic>,
     /// Identities handed out while checking.
     pub serial: usize,
-    /// The name expressions that move a closed resource binding, by binding.
-    pub close_moves: Rc<HashMap<usize, HashSet<NodeId>>>,
-    /// Every move of a whole binding, by binding: the nodes that take its value.
-    pub moves: Rc<HashMap<usize, HashSet<NodeId>>>,
-    /// Resource fields moved out of an owned binding, by binding and member node.
-    pub resource_moves: Rc<HashMap<usize, HashMap<NodeId, Vec<Name>>>>,
-    /// Calls bound with `var` as a mutable borrow of a field path of their argument, by module
-    /// file and node, with the fields. Filled together with `borrows`.
-    pub getter_borrows: Rc<HashMap<(Name, NodeId), Vec<Name>>>,
-    /// Lending calls whose result the caller owns, by module file and call node.
-    pub owned_borrows: Rc<HashMap<(Name, NodeId), crate::ownership::OwnedBorrow>>,
-    /// Captures a non-escaping lambda only reads, by module file, lambda node and binding
-    /// identity. Filled together with `borrows`.
-    pub borrowed_captures: Rc<HashSet<(Name, NodeId, usize)>>,
-    /// Parameters each callable moving_params (moves, stores or returns), by module file and node, for
-    /// lowering. Filled together with `borrows`; only callables with a consumed parameter appear.
-    pub moving_params: Rc<std::collections::HashMap<(Name, NodeId), Vec<bool>>>,
-    /// Boolean per-node ownership facts in a dense table (`ownership::NodeFacts`).
-    pub node_facts: Rc<crate::ownership::NodeFacts>,
-    /// Boolean per-binding ownership facts keyed by session identity (`ownership::BindingFlags`).
-    pub binding_facts: Rc<crate::ownership::BindingFlags>,
+    /// Ownership facts, filled by the ownership stage after the check succeeds.
+    pub ownership: Rc<crate::ownership::OwnershipFacts>,
 }
 
 /// A body-check result retained from an inference probe.
