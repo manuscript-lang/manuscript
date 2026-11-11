@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ninterface Increment:\n\tfn apply(value: Int) Int\n\ntype Offset:\n\tdelta: Int\n\nimpl Increment for Offset:\n\tfn apply(value: Int) Int:\n\t\treturn value + self.delta\n\nfn use_increment(operation: Increment) Int:\n\treturn operation.apply(4)\n\ntest \"explicit contract conversion\":\n\toffset := Offset(1)\n\toperation: Increment := offset\n\tsame_view: Increment := operation\n\texpect_equal(use_increment(same_view), 5)?\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ninterface Increment:\n\tfn apply(value: Int) Int\n\ntype Offset:\n\tdelta: Int\n\nfn Offset.apply(value: Int) Int:\n\treturn value + self.delta\n\nfn use_increment(operation: Increment) Int:\n\treturn operation.apply(4)\n\ntest \"explicit contract conversion\":\n\toffset := Offset(1)\n\toperation: Increment := offset\n\tsame_view: Increment := operation\n\texpect_equal(use_increment(same_view), 5)?\n"
   }
 }

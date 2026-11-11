@@ -106,12 +106,11 @@ fn read_bounded[T](var source: Source[T], bound: Duration) T?!:
 type EndedSource[T]:
 	done: Bool = true
 
-impl Source[T] for EndedSource[T]:
-	var fn next() T?!:
-		return ok(none)
+fn var EndedSource[T].next() T?!:
+	return ok(none)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var EndedSource[T].close() Unit!:
+	return ok(unit)
 
 // Values go out with `write`; `flush` waits for the destination's flush condition. Make
 // one with `WriteStream(sink)`. The stream owns its sink and closes it when its scope
@@ -141,15 +140,14 @@ fn var WriteStream[T].close() Unit!:
 type ClosedSink[T]:
 	done: Bool = true
 
-impl Sink[T] for ClosedSink[T]:
-	var fn write(value: T) Unit!:
-		return error(Error("I/O: resource is closed", kind: "EBADF"))
+fn var ClosedSink[T].write(value: T) Unit!:
+	return error(Error("I/O: resource is closed", kind: "EBADF"))
 
-	var fn flush() Unit!:
-		return ok(unit)
+fn var ClosedSink[T].flush() Unit!:
+	return ok(unit)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var ClosedSink[T].close() Unit!:
+	return ok(unit)
 
 // ---- Descriptors and standard input --------------------------------------------------------------------------------
 
@@ -159,30 +157,34 @@ impl Sink[T] for ClosedSink[T]:
 export type DescriptorSource:
 	// The runtime descriptor read from.
 	id: Int
+	// Set by `close`, so a second close (the owner's scope end) releases nothing.
+	closed: Bool = false
 
-impl Source[Bytes] for DescriptorSource:
-	// Waits for the next chunk of the descriptor; none at its end, `EIO` when the
-	// descriptor failed.
-	var fn next() Bytes?!:
-		p := msrt_streams_read(self.id)
-		code := msrt_promise_wait(p, -1)
+// Waits for the next chunk of the descriptor; none at its end, `EIO` when the
+// descriptor failed.
+fn var DescriptorSource.next() Bytes?!:
+	p := msrt_streams_read(self.id)
+	code := msrt_promise_wait(p, -1)
 
-		if code != 0:
-			msrt_promise_drop(p)
-			return error(Error("stream: read timed out", kind: "ETIMEDOUT"))
-
-		chunk := msrt_promise_take[Bytes](p)
+	if code != 0:
 		msrt_promise_drop(p)
-		if data := chunk: return ok(data)
+		return error(Error("stream: read timed out", kind: "ETIMEDOUT"))
 
-		message := msrt_streams_error(self.id)
-		if not message.is_empty(): return error(Error(message, kind: "EIO"))
+	chunk := msrt_promise_take[Bytes](p)
+	msrt_promise_drop(p)
+	if data := chunk: return ok(data)
 
-		return ok(none)
+	message := msrt_streams_error(self.id)
+	if not message.is_empty(): return error(Error(message, kind: "EIO"))
 
-	// Releases the descriptor without waiting.
-	var fn close() Unit!:
-		msrt_streams_close(self.id)
+	return ok(none)
+
+// Releases the descriptor without waiting.
+fn var DescriptorSource.close() Unit!:
+	if self.closed: return ok(unit)
+
+	self.closed = true
+	msrt_streams_close(self.id)
 
 // Bytes a descriptor may hold queued before `write` waits for it to drain.
 HIGH_WATER := 1048576
@@ -193,32 +195,37 @@ HIGH_WATER := 1048576
 export type DescriptorSink:
 	// The runtime descriptor written to.
 	id: Int
+	// Set by `close`, so a second close (the owner's scope end) releases nothing.
+	closed: Bool = false
 
-impl Sink[Bytes] for DescriptorSink:
-	// Queues the bytes for the descriptor; `EBADF` once it is closed. Back pressure: a
-	// write that leaves more than
-	// `HIGH_WATER` bytes queued waits until the descriptor has taken them, so a slow reader slows the writer.
-	// An OS write failure returns `EIO`; later writes and flushes retain it until the
-	// descriptor closes.
-	var fn write(value: Bytes) Unit!:
-		if msrt_streams_write(self.id, value) != 0:
-			return error(Error("stream: closed", kind: "EBADF"))
+// Queues the bytes for the descriptor; `EBADF` once it is closed. Back pressure: a
+// write that leaves more than
+// `HIGH_WATER` bytes queued waits until the descriptor has taken them, so a slow reader slows the writer.
+// An OS write failure returns `EIO`; later writes and flushes retain it until the
+// descriptor closes.
+fn var DescriptorSink.write(value: Bytes) Unit!:
+	if msrt_streams_write(self.id, value) != 0:
+		return error(Error("stream: closed", kind: "EBADF"))
 
-		descriptor_write_result(self.id)?
-		if msrt_streams_buffered(self.id) > HIGH_WATER: return flush_descriptor(self.id)
+	descriptor_write_result(self.id)?
+	if msrt_streams_buffered(self.id) > HIGH_WATER: return flush_descriptor(self.id)
 
-	// Waits until the queued bytes have been handed to the descriptor; an OS write
-	// failure returns `EIO`.
-	var fn flush() Unit!:
-		return flush_descriptor(self.id)
+// Waits until the queued bytes have been handed to the descriptor; an OS write
+// failure returns `EIO`.
+fn var DescriptorSink.flush() Unit!:
+	return flush_descriptor(self.id)
 
-	// Waits until the queued bytes have been handed to the descriptor, then releases
-	// it. The descriptor is released even when the wait fails or is cancelled, and that
-	// failure is returned.
-	var fn close() Unit!:
-		drained := flush_descriptor(self.id)
-		msrt_streams_close(self.id)
-		return drained
+// Waits until the queued bytes have been handed to the descriptor, then releases
+// it. The descriptor is released even when the wait fails or is cancelled, and that
+// failure is returned.
+fn var DescriptorSink.close() Unit!:
+	if self.closed: return ok(unit)
+
+	self.closed = true
+
+	drained := flush_descriptor(self.id)
+	msrt_streams_close(self.id)
+	return drained
 
 // An OS write failure is terminal: bytes may have been partly written, so later drains
 // must not hide it.
@@ -244,122 +251,126 @@ export fn stdin() ReadStream[Bytes]:
 // is written to standard error. Closing does not flush: `stdout()` makes a fresh stream
 // each call, so a flush on close would turn every `stdout().write(...)` into a system
 // call.
-type Stdout:
+type StdoutText:
 	unused: Bool = false
 
-impl Sink[String] for Stdout:
-	var fn write(value: String) Unit!:
-		msrt_io_write_stdout(value)
+fn var StdoutText.write(value: String) Unit!:
+	msrt_io_write_stdout(value)
 
-	var fn flush() Unit!:
-		msrt_io_flush()
+fn var StdoutText.flush() Unit!:
+	msrt_io_flush()
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var StdoutText.close() Unit!:
+	return ok(unit)
 
-impl Sink[Bytes] for Stdout:
-	var fn write(value: Bytes) Unit!:
-		msrt_io_write_bytes_stdout(value)
+type StdoutBytes:
+	unused: Bool = false
 
-	var fn flush() Unit!:
-		msrt_io_flush()
+fn var StdoutBytes.write(value: Bytes) Unit!:
+	msrt_io_write_bytes_stdout(value)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var StdoutBytes.flush() Unit!:
+	msrt_io_flush()
+
+fn var StdoutBytes.close() Unit!:
+	return ok(unit)
 
 // Standard error, as text or bytes.
-type Stderr:
+type StderrText:
 	unused: Bool = false
 
-impl Sink[String] for Stderr:
-	var fn write(value: String) Unit!:
-		msrt_io_write_stderr(value)
+fn var StderrText.write(value: String) Unit!:
+	msrt_io_write_stderr(value)
 
-	var fn flush() Unit!:
-		return ok(unit)
+fn var StderrText.flush() Unit!:
+	return ok(unit)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var StderrText.close() Unit!:
+	return ok(unit)
 
-impl Sink[Bytes] for Stderr:
-	var fn write(value: Bytes) Unit!:
-		msrt_io_write_bytes_stderr(value)
+type StderrBytes:
+	unused: Bool = false
 
-	var fn flush() Unit!:
-		return ok(unit)
+fn var StderrBytes.write(value: Bytes) Unit!:
+	msrt_io_write_bytes_stderr(value)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var StderrBytes.flush() Unit!:
+	return ok(unit)
+
+fn var StderrBytes.close() Unit!:
+	return ok(unit)
 
 // Standard output as text.
 // ms: effect std.console.write
 export fn stdout() WriteStream[String]:
-	return WriteStream[String](Stdout())
+	return WriteStream[String](StdoutText())
 
 // Standard output as bytes; it shares its buffer with `stdout()`.
 // ms: effect std.console.write
 export fn stdout_bytes() WriteStream[Bytes]:
-	return WriteStream[Bytes](Stdout())
+	return WriteStream[Bytes](StdoutBytes())
 
 // Standard error as text.
 // ms: effect std.console.write
 export fn stderr() WriteStream[String]:
-	return WriteStream[String](Stderr())
+	return WriteStream[String](StderrText())
 
 // Standard error as bytes.
 // ms: effect std.console.write
 export fn stderr_bytes() WriteStream[Bytes]:
-	return WriteStream[Bytes](Stderr())
+	return WriteStream[Bytes](StderrBytes())
 
 // ---- Pipes ---------------------------------------------------------------------------------------------------------
+
+// The next value of pipe `id`, waiting when needed; none once every writer has closed.
+fn pipe_next[T](id: Int) T?!:
+	// Fast path: a queued value or the end needs no promise.
+	if queued := msrt_pipe_try[T](id): return ok(queued)
+	if msrt_pipe_ended(id) == 1: return ok(none)
+
+	p := msrt_pipe_read(id)
+	code := msrt_promise_wait(p, -1)
+
+	if code != 0:
+		msrt_promise_drop(p)
+		return error(Error("pipe: read cancelled", kind: "ECANCELED"))
+
+	value := msrt_promise_take[T](p)
+	msrt_promise_drop(p)
+	return ok(value)
 
 // The reading end of a pipe: the one reader, ended by the last writer closing.
 type PipeSource[T]:
 	id: Int
 
-impl Source[T] for PipeSource[T]:
-	var fn next() T?!:
-		// Fast path: a queued value or the end needs no promise.
-		if queued := msrt_pipe_try[T](self.id): return ok(queued)
-		if msrt_pipe_ended(self.id) == 1: return ok(none)
+fn var PipeSource[T].next() T?!:
+	return pipe_next[T](self.id)
 
-		p := msrt_pipe_read(self.id)
-		code := msrt_promise_wait(p, -1)
-
-		if code != 0:
-			msrt_promise_drop(p)
-			return error(Error("pipe: read cancelled", kind: "ECANCELED"))
-
-		value := msrt_promise_take[T](p)
-		msrt_promise_drop(p)
-		return ok(value)
-
-	var fn close() Unit!:
-		msrt_pipe_close_reader(self.id)
-		self.id = 0
+fn var PipeSource[T].close() Unit!:
+	msrt_pipe_close_reader(self.id)
+	self.id = 0
 
 // One writing end of a pipe; closing it releases that writer.
 type PipeSink[T: Clonable]:
 	id: Int
 	capacity: Int
 
-impl Sink[T] for PipeSink[T]:
-	var fn write(value: T) Unit!:
-		status := msrt_pipe_write[T](self.id, value)
-		if status == 1: return error(Error("pipe: the reader is gone", kind: "EBADF"))
+fn var PipeSink[T].write(value: T) Unit!:
+	status := msrt_pipe_write[T](self.id, value)
+	if status == 1: return error(Error("pipe: the reader is gone", kind: "EBADF"))
 
-		// Back pressure: status 2 says the pipe is above its capacity; the writer waits
-		// for the reader to take it back down.
-		if status == 2: return adopt[Unit](msrt_pipe_flush(self.id)).wait()
+	// Back pressure: status 2 says the pipe is above its capacity; the writer waits
+	// for the reader to take it back down.
+	if status == 2: return adopt[Unit](msrt_pipe_flush(self.id)).wait()
 
-	var fn flush() Unit!:
-		return adopt[Unit](msrt_pipe_flush(self.id)).wait()
+fn var PipeSink[T].flush() Unit!:
+	return adopt[Unit](msrt_pipe_flush(self.id)).wait()
 
-	var fn close() Unit!:
-		// Closing again releases nothing: an owner that closed the writer by hand is
-		// closed again at scope end.
-		msrt_pipe_close_writer(self.id)
-		self.id = 0
+fn var PipeSink[T].close() Unit!:
+	// Closing again releases nothing: an owner that closed the writer by hand is
+	// closed again at scope end.
+	msrt_pipe_close_writer(self.id)
+	self.id = 0
 
 // An in-memory stream of whole values, in order: any number of writers and one reader.
 // A write hands the pipe a copy (the stream interface only lends the argument), so `T`
@@ -394,8 +405,7 @@ fn var Pipe[T].reader() ReadStream[T]:
 // one reader place without taking a stream, for a consumer that only borrows the
 // pipe, such as a promise: use it instead of `reader()`, never beside it.
 fn Pipe[T].receive() T?!:
-	var source = PipeSource[T](self.id)
-	return source.next()
+	return pipe_next[T](self.id)
 
 // Releases the reading end if no one took it.
 fn var Pipe[T].close() Unit!:
@@ -431,33 +441,32 @@ type Through[A, B]:
 	out: List[B]
 	finished: Bool
 
-impl Source[B] for Through[A, B]:
-	var fn next() B?!:
-		while true:
-			if item := self.out.pop(): return ok(item)
-			if self.finished: return ok(none)
+fn var Through[A, B].next() B?!:
+	while true:
+		if item := self.out.pop(): return ok(item)
+		if self.finished: return ok(none)
 
-			step := self.input.next()?
-			var wrote: Unit! = ok(unit)
+		step := self.input.next()?
+		var wrote: Unit! = ok(unit)
 
-			if value := step:
-				wrote = self.transform.step(value, var self.out)
-			else:
-				self.finished = true
-				wrote = self.transform.finish(var self.out)
+		if value := step:
+			wrote = self.transform.step(value, var self.out)
+		else:
+			self.finished = true
+			wrote = self.transform.finish(var self.out)
 
-			// A failed step's partial output is dropped, so the failure is the next
-			// item.
-			if wrote.is_error():
-				self.out = []
-				return error(wrote.err())
+		// A failed step's partial output is dropped, so the failure is the next
+		// item.
+		if wrote.is_error():
+			self.out = []
+			return error(wrote.err())
 
-			if self.out.length() > 1: self.out.reverse()
+		if self.out.length() > 1: self.out.reverse()
 
-		return ok(none)
+	return ok(none)
 
-	var fn close() Unit!:
-		return self.input.close()
+fn var Through[A, B].close() Unit!:
+	return self.input.close()
 
 // A stream of `transform`'s output over `input`; closing it closes `input`.
 export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]:

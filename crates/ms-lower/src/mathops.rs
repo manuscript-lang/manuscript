@@ -44,6 +44,7 @@ impl FnLower<'_> {
     fn user_order(&mut self, concrete: &ct::Ty, a: Value, b: Value) -> Result<Value, Error> {
         let key = self.cx.tys.shape(concrete);
         let tys = &mut self.cx.tys;
+        let compare = |m: &ct::MethodRef| m.name().is_some_and(|n| self.syms.str(n) == "compare");
         let im = self
             .cx
             .methods
@@ -52,8 +53,14 @@ impl FnLower<'_> {
                 m.contract
                     .as_ref()
                     .is_some_and(|c| c.is(Builtin::Comparable))
-                    && m.name().is_some_and(|n| self.syms.str(n) == "compare")
+                    && compare(m)
                     && tys.shape(&m.receiver) == key
+            })
+            // A type's own `compare` orders it without an `impl Comparable`.
+            .or_else(|| {
+                self.cx.methods.iter().find(|m| {
+                    m.is_inherent(self.syms) && compare(m) && tys.shape(&m.receiver) == key
+                })
             })
             .cloned()
             .ok_or_else(|| Error::new("ordering this type is not supported yet"))?;

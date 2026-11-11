@@ -3,9 +3,8 @@ import Closeable from "@std/core.ms"
 type Door:
     n: Int
 
-impl Closeable for Door:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Door.close() Unit!:
+    return ok(unit)
 
 type Bag[U]:
     items: List[U]
@@ -13,9 +12,8 @@ type Bag[U]:
 interface Dup:
     fn dup() Int
 
-impl Dup for Bag[U]:
-    fn dup() Int:
-        return self.items.take(1).length()  // error: take requires U to be Clonable
+fn Bag[U].dup() Int:
+    return self.items.take(1).length()  // error: take requires U to be Clonable
 
 fn via[T: Dup](x: T) Int:
     return x.dup()

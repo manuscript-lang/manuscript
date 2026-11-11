@@ -189,7 +189,41 @@ fn compute_standard_library(syms: ms_syntax::Names) -> Vec<ApiModule> {
                 .collect();
             ApiModule { path, declarations }
         })
-        .collect()
+        .collect::<Vec<_>>()
+        .tap_shape_interfaces()
+}
+
+/// Lists, under `implements`, each plain interface whose operations a type has among its own
+/// methods: a type satisfies an interface by shape, with no `impl` naming it.
+trait ShapeInterfaces {
+    fn tap_shape_interfaces(self) -> Self;
+}
+
+impl ShapeInterfaces for Vec<ApiModule> {
+    fn tap_shape_interfaces(mut self) -> Self {
+        // A generic interface or one with a type parameter of its own has no exact operation text.
+        let interfaces: Vec<(String, BTreeSet<String>)> = self
+            .iter()
+            .flat_map(|m| &m.declarations)
+            .filter(|d| {
+                d.kind == "interface" && d.parameters.is_empty() && !d.operations.is_empty()
+            })
+            .map(|d| (d.name.clone(), d.operations.iter().cloned().collect()))
+            .collect();
+        for d in self.iter_mut().flat_map(|m| &mut m.declarations) {
+            if d.kind == "interface" || d.operations.is_empty() {
+                continue;
+            }
+            let own: BTreeSet<&String> = d.operations.iter().collect();
+            for (name, ops) in &interfaces {
+                if !d.implements.contains(name) && ops.iter().all(|op| own.contains(op)) {
+                    d.implements.push(name.clone());
+                }
+            }
+            d.implements.sort();
+        }
+        self
+    }
 }
 
 fn primitive_symbol(name: &str) -> SymRef {
@@ -242,7 +276,7 @@ pub fn module_documentation(syms: ms_syntax::Names, program: &Program) -> Vec<Ap
         });
     }
     modules.sort_by(|a, b| a.path.cmp(&b.path));
-    modules
+    modules.tap_shape_interfaces()
 }
 
 fn variable_text(syms: ms_syntax::Names, v: &Ty) -> String {
@@ -278,6 +312,24 @@ fn fn_declaration(
     format!(
         "{}{name}{}{} {}:\n",
         if mutating { "var fn " } else { "fn " },
+        render::type_parameters(syms, &f.type_params),
+        render::parameters(syms, &f.params, source),
+        render::type_text(syms, &f.result)
+    )
+}
+
+/// A method declared on `receiver`: `fn var Receiver.name(...)` when it changes `self`.
+fn receiver_declaration(
+    syms: ms_syntax::Names,
+    receiver: &str,
+    name: &str,
+    f: &Func,
+    mutating: bool,
+    source: Option<&Source>,
+) -> String {
+    format!(
+        "fn {}{receiver}.{name}{}{} {}:\n",
+        if mutating { "var " } else { "" },
         render::type_parameters(syms, &f.type_params),
         render::parameters(syms, &f.params, source),
         render::type_text(syms, &f.result)
@@ -322,25 +374,30 @@ fn document_declaration(
         }
         b.push('\n');
     }
+    let receiver = format!("{name}{}", render::type_arguments(syms, decl.type_params()));
     if matches!(keyword, "type" | "enum") && !decl.methods().is_empty() {
-        // A type's own methods are written in an `impl Type:` block.
-        b += &format!(
-            "\nimpl {name}{}:\n",
-            render::type_arguments(syms, decl.type_params())
-        );
+        b.push('\n');
     }
     for method in decl.methods() {
-        let mut header = fn_declaration(
-            syms,
-            syms.str(method.func.name),
-            &method.func,
-            method.mutating,
-            source,
-        );
         if keyword == "interface" {
-            header = header.strip_suffix(":\n").unwrap_or(&header).to_string() + "\n";
+            let header = fn_declaration(
+                syms,
+                syms.str(method.func.name),
+                &method.func,
+                method.mutating,
+                source,
+            );
+            b += &format!("    {}\n", header.strip_suffix(":\n").unwrap_or(&header));
+        } else {
+            b += &receiver_declaration(
+                syms,
+                &receiver,
+                syms.str(method.func.name),
+                &method.func,
+                method.mutating,
+                source,
+            );
         }
-        b += &format!("    {header}");
     }
     b
 }
@@ -647,22 +704,32 @@ fn document_implementations(
         }
         let name = syms.str(f.name);
         let context = receiver_context(syms, method, &ty);
-        let implementation = if inherent {
-            "impl".to_string()
-        } else {
-            format!("impl {contract} for")
-        };
-        d.implementation_declarations.push(format!(
-            "{context}{implementation} {}:\n    {}",
-            method.receiver.display(syms),
-            fn_declaration(
-                syms,
-                name,
-                f,
-                decl.method().is_some_and(|m| m.mutating),
-                None
+        let declaration = if inherent {
+            format!(
+                "{context}{}",
+                receiver_declaration(
+                    syms,
+                    &method.receiver.display(syms).to_string(),
+                    name,
+                    f,
+                    decl.method().is_some_and(|m| m.mutating),
+                    None,
+                )
             )
-        ));
+        } else {
+            format!(
+                "{context}impl {contract} for {}:\n    {}",
+                method.receiver.display(syms),
+                fn_declaration(
+                    syms,
+                    name,
+                    f,
+                    decl.method().is_some_and(|m| m.mutating),
+                    None
+                )
+            )
+        };
+        d.implementation_declarations.push(declaration);
         let operation = format!("{name}: {}", method.ty.display(syms));
         let source = sources.of(method.module);
         d.members.push(ApiMember {

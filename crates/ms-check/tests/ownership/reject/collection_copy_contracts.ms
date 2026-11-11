@@ -4,13 +4,11 @@ import filled, flatten from "@std/collections/collections.ms"
 type Token:
     id: Int
 
-impl Closeable for Token:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Token.close() Unit!:
+    return ok(unit)
 
-impl Equal for Token:
-    fn equals(other: Token) Bool:
-        return self.id == other.id
+fn Token.equals(other: Token) Bool:
+    return self.id == other.id
 
 type Holder:
     token: Token

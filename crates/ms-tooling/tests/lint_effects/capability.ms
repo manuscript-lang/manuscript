@@ -4,9 +4,8 @@ interface Logger:
 type ConsoleLogger:
     prefix: String
 
-impl Logger for ConsoleLogger:
-    fn info(msg: String) Unit:
-        print(msg)
+fn ConsoleLogger.info(msg: String) Unit:
+    print(msg)
 
 fn price(log: Logger, n: Int) Int:
     log.info("pricing")

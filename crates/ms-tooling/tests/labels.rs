@@ -16,7 +16,7 @@ fn check(source: &str) -> Program {
     )
 }
 
-const DECLARATIONS: &str = "type Point:\n    x: Int\n    y: Int\n\nfn bump(map: Int, key: Int, step: Int = 1) Int: map + key + step\n\ntype Counter:\n    total: Int\n\ninterface Adder:\n    fn add(amount: Int, extra: Int) Int\n\nimpl Adder for Counter:\n    fn add(amount: Int, extra: Int) Int: self.total + amount + extra\n\nfn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int:\n";
+const DECLARATIONS: &str = "type Point:\n    x: Int\n    y: Int\n\nfn bump(map: Int, key: Int, step: Int = 1) Int: map + key + step\n\ntype Counter:\n    total: Int\n\ninterface Adder:\n    fn add(amount: Int, extra: Int) Int\n\nfn Counter.add(amount: Int, extra: Int) Int: self.total + amount + extra\n\nfn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int:\n";
 
 #[test]
 fn drops_only_labels_that_bind_the_same_parameter() {

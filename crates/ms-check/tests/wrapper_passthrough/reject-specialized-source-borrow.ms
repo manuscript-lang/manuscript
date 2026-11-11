@@ -1,12 +1,11 @@
 type Box:
     items: List[Int]
 
-impl Box:
-    fn read[T](_tag: T) List[Int]: self.items
+fn Box.read[T](_tag: T) List[Int]: self.items
 
-    var fn change[T](_tag: T) Int:
-        self.items.append(3)
-        return self.items.length()
+fn var Box.change[T](_tag: T) Int:
+    self.items.append(3)
+    return self.items.length()
 
 fn bad() Int:
     var box = Box([1, 2])

@@ -21,7 +21,7 @@ fn imported_default_fault_retains_the_declaration_file() {
 fn method_default_fault_names_the_receiver_type() {
     check_frames(
         "method.ms",
-        "  at method.ms:8 in Number.divide\n  at method.ms:12 in main\n",
+        "  at method.ms:7 in Number.divide\n  at method.ms:11 in main\n",
     );
 }
 

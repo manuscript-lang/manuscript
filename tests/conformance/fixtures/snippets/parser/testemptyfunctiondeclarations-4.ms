@@ -4,6 +4,5 @@
 type Counter:
     value: Int
 
-impl Counter:
-    fn double() Int:
-        return self.value * 2
+fn Counter.double() Int:
+    return self.value * 2

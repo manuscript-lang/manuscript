@@ -33,7 +33,7 @@ fn main() Int:
 	return 1
 ```
 
-Matching receiver methods satisfy interfaces by shape: names, parameter labels/types, mutability and return types must agree. Explicit implementations use `impl Contract for Type:` with methods inside.
+Receiver methods satisfy interfaces by shape: names, parameter labels/types/mutability and return types must match. A read-only receiver method may satisfy a mutable receiver operation. Declare methods at module scope; there are no `impl` blocks.
 
 Enum cases need no `case` keyword. Construct `Choice.Empty` or `Choice.Number(40)`. Match exhaustively; `_:` handles the remainder. Keep matches flat.
 

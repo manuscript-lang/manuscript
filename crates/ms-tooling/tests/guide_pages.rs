@@ -76,7 +76,7 @@ fn cheatsheet_claims_match_the_compiler() {
     ] {
         assert!(!check(body).is_empty(), "claim should be rejected:\n{body}");
     }
-    let inherent = "type T:\n    a: Int\n\nimpl T:\n    fn f(self) Int:\n        return 1\n\nexport fn main() Int:\n    return 0\n";
+    let inherent = "type T:\n    a: Int\n\nfn T.f(self) Int:\n    return 1\n\nexport fn main() Int:\n    return 0\n";
     assert!(
         !issues("claim.ms", inherent).is_empty(),
         "`impl T:` should be rejected"
@@ -304,7 +304,7 @@ fn common_mistakes_stay_short() {
 }
 
 #[test]
-fn enum_reference_declarations_keep_methods_in_impl_blocks() {
+fn enum_reference_declarations_keep_methods_as_receiver_methods() {
     let syms = ms_syntax::Names::global();
     let mut seen = 0;
     for module in standard_library(syms) {
@@ -323,8 +323,13 @@ fn enum_reference_declarations_keep_methods_in_impl_blocks() {
                 declaration.declaration
             );
             // Reference method signatures omit bodies. The enum schema must
-            // parse on its own, and methods must follow in a separate impl.
-            let schema = declaration.declaration.split("\nimpl ").next().unwrap();
+            // parse on its own, and methods must follow as receiver methods.
+            let schema = declaration
+                .declaration
+                .split("\nfn ")
+                .next()
+                .unwrap()
+                .trim_end();
             if declaration.opaque {
                 // Public opaque excerpts deliberately omit the inaccessible cases.
                 assert_eq!(schema.lines().count(), 1, "{schema}");
@@ -342,13 +347,6 @@ fn enum_reference_declarations_keep_methods_in_impl_blocks() {
                     !member.signature.starts_with("case "),
                     "{}",
                     member.signature
-                );
-            }
-            if !declaration.members.is_empty() && declaration.declaration.contains("    fn ") {
-                assert!(
-                    declaration.declaration.contains("\nimpl "),
-                    "{}",
-                    declaration.declaration
                 );
             }
         }

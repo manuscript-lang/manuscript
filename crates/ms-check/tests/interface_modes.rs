@@ -20,34 +20,34 @@ fn diagnostics(source: &str) -> Vec<String> {
     .collect()
 }
 
-const HEAD: &str = "interface Sink:\n    fn put(var xs: List[Int]) Unit\n\ntype A:\n    n: Int\n\nimpl Sink for A:\n";
+const HEAD: &str = "interface Sink:\n    fn put(var xs: List[Int]) Unit\n\ntype A:\n    n: Int\n\nfn use_sink(s: Sink) Unit:\n    return\n\nfn run(a: A) Unit:\n    use_sink(a)\n\n";
 
 #[test]
-fn an_implementation_matching_the_interface_mode_is_accepted() {
+fn a_method_matching_the_interface_mode_is_accepted() {
     let got = diagnostics(&format!(
-        "{HEAD}    fn put(var xs: List[Int]) Unit:\n        xs.append(1)\n"
+        "{HEAD}fn A.put(var xs: List[Int]) Unit:\n    xs.append(1)\n"
     ));
     assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
-fn an_implementation_that_drops_the_var_mode_is_rejected() {
+fn a_method_that_drops_the_var_mode_is_rejected() {
     let got = diagnostics(&format!(
-        "{HEAD}    fn put(xs: List[Int]) Unit:\n        print(\"\")\n"
+        "{HEAD}fn A.put(xs: List[Int]) Unit:\n    print(\"\")\n"
     ));
     assert!(
-        got.iter().any(|d| d.contains("does not match contract")),
+        got.iter().any(|d| d.contains("does not satisfy Sink")),
         "{got:?}"
     );
 }
 
 #[test]
-fn an_implementation_that_adds_a_var_mode_is_rejected() {
+fn a_method_that_adds_a_var_mode_is_rejected() {
     let got = diagnostics(
-        "interface Sink:\n    fn put(xs: List[Int]) Unit\n\ntype A:\n    n: Int\n\nimpl Sink for A:\n    fn put(var xs: List[Int]) Unit:\n        xs.append(1)\n",
+        "interface Sink:\n    fn put(xs: List[Int]) Unit\n\ntype A:\n    n: Int\n\nfn A.put(var xs: List[Int]) Unit:\n    xs.append(1)\n\nfn use_sink(s: Sink) Unit:\n    return\n\nfn run(a: A) Unit:\n    use_sink(a)\n",
     );
     assert!(
-        got.iter().any(|d| d.contains("does not match contract")),
+        got.iter().any(|d| d.contains("does not satisfy Sink")),
         "{got:?}"
     );
 }

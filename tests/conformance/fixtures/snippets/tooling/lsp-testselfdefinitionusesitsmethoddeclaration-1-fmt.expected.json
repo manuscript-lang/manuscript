@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Read:\n\tfn get() Int\n\ntype Box:\n\tvalue: Int\n\nimpl Read for Box:\n\tfn get() Int:\n\t\treturn self.value\n"
+    "fmt": "interface Read:\n\tfn get() Int\n\ntype Box:\n\tvalue: Int\n\nfn Box.get() Int:\n\treturn self.value\n"
   }
 }

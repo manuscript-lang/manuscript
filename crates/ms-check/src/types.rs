@@ -887,6 +887,28 @@ impl Method {
             && is_close_result(syms, &self.ty.result_ty())
     }
 
+    /// Whether the method is a type's own `equals(other: Self) Bool` or `hash() Int`, which
+    /// decides the matching property by shape without an `impl Equal` or `impl Hashable`.
+    pub fn overrides(&self, syms: ms_syntax::Names, property: Builtin) -> bool {
+        if !self.is_inherent(syms) {
+            return false;
+        }
+        let Some(name) = self.name().map(|n| syms.str(n)) else {
+            return false;
+        };
+        match (property, name) {
+            (Builtin::Equal, "equals") => {
+                self.ty.params.len() == 1
+                    && self.ty.params[0].ty.id == self.receiver.id
+                    && self.ty.result_ty().is(Builtin::Bool)
+            }
+            (Builtin::Hashable, "hash") => {
+                self.ty.params.is_empty() && self.ty.result_ty().is(Builtin::Int)
+            }
+            _ => false,
+        }
+    }
+
     /// The operation name.
     pub fn name(&self) -> Option<Name> {
         self.decl.as_ref().map(|d| d.name())

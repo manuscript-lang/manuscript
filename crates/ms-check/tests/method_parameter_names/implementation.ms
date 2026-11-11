@@ -4,6 +4,5 @@ interface Reader:
 type Source:
     number: Int
 
-impl Reader for Source:
-    fn read[PARAMETER](value: PARAMETER) PARAMETER:
-        return value
+fn Source.read[PARAMETER](value: PARAMETER) PARAMETER:
+    return value

@@ -4,13 +4,11 @@ import Closeable from "@std/core.ms"
 type Door:
     count: Int
 
-impl Closeable for Door:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Door.close() Unit!:
+    return ok(unit)
 
-impl Door:
-    var fn knock() Unit:
-        self.count += 1
+fn var Door.knock() Unit:
+    self.count += 1
 
 fn f() Int!:
     var door = Door(count: 0)

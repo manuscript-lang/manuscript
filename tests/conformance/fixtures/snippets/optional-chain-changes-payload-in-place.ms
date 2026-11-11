@@ -8,20 +8,18 @@ type Big:
     b: Int
     s: String
 
-impl Big:
-    var fn inc() Int:
-        self.a += 1
-        self.s = self.s + "x"
-        return self.a
+fn var Big.inc() Int:
+    self.a += 1
+    self.s = self.s + "x"
+    return self.a
 
 type Node:
     v: Int
     next: Node?
 
-impl Node:
-    var fn inc() Int:
-        self.v += 1
-        return self.v
+fn var Node.inc() Int:
+    self.v += 1
+    return self.v
 
 fn main2() Unit:
     var xs: List[Int]? = [1]

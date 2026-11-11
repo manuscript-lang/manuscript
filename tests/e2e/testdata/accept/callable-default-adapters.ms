@@ -73,8 +73,7 @@ interface Reader:
 type ReaderOffset:
 	base: Int
 
-impl Reader for ReaderOffset:
-	fn read(value: Int?) Int: self.base + value.get(5)
+fn ReaderOffset.read(value: Int?) Int: self.base + value.get(5)
 
 test "inherited defaults remain available on immutable bound callables":
 	offset := ReaderOffset(2)

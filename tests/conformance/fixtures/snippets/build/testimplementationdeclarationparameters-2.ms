@@ -10,13 +10,11 @@ interface Read[V]:
 type Box[T: Clonable]:
     value: T
 
-impl Same[T] for Box[T]:
-    fn same(other: T) Bool:
-        return self.value == other
+fn Box[T: Equal].same(other: T) Bool:
+    return self.value == other
 
-impl Read[T] for Box[T]:
-    fn get() T:
-        return self.value.clone()
+fn Box[T].get() T:
+    return self.value.clone()
 
 fn read[T: Clonable](value: Box[T]) T:
     return value.get()

@@ -41,8 +41,7 @@ interface Read:
 type Reader:
     offset: Int
 
-impl Read for Reader:
-    fn read(value: Int?) Int: value.get(0) + self.offset
+fn Reader.read(value: Int?) Int: value.get(0) + self.offset
 
 type Counter:
     calls: Int

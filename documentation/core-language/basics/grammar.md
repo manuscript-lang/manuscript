@@ -17,11 +17,11 @@ The language uses these keywords:
 
 ```manuscript
 and break continue else enum export extern false fixture fn for if
-impl import in interface match not or return self test true try type
+import in interface match not or return self test true try type
 unit var while
 ```
 
-- Most keywords are reserved only where they mean something. After `.`, and as a `name:` label that starts a line or follows `(` or `,` (a record or enum field, a parameter, an argument label), these are ordinary names: `break continue enum export extern fixture for if impl import in interface match ref return test type while`. So `type Options:` can declare `continue: Bool` and `if: Int`, `Options(continue: true)` sets it, and `opts.continue` reads it. A binding or function still cannot use these words, and `and`, `or`, `not`, `else`, `fn`, `try`, `var`, `self`, `unit`, `true` and `false` stay reserved everywhere.
+- Most keywords are reserved only where they mean something. After `.`, and as a `name:` label that starts a line or follows `(` or `,` (a record or enum field, a parameter, an argument label), these are ordinary names: `break continue enum export extern fixture for if import in interface match ref return test type while`. So `type Options:` can declare `continue: Bool` and `if: Int`, `Options(continue: true)` sets it, and `opts.continue` reads it. A binding or function still cannot use these words, and `and`, `or`, `not`, `else`, `fn`, `try`, `var`, `self`, `unit`, `true` and `false` stay reserved everywhere.
 - `try` is reserved only to report that it was replaced: write a postfix `?` (`f(x)?`) to propagate a Result error.
 - `opaque` is contextual: it modifies a `type` declaration only directly before `type` (`export opaque type Name:`), so `opaque := 1` is valid.
 - `from` ends an import's names and `bench` starts a benchmark only before a string literal at a module item; both are contextual, so `from := 2` and `bench := 3` are valid.
@@ -135,10 +135,11 @@ OperationSignature = [ "var" ], "fn", Name, [ TypeParameters ], "(", [ FunctionP
 FunctionDeclaration = "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
                       ResultType, FunctionSuite ;
 ResultType    = Type ;
-Implementation = "impl", NamedType, [ "for", NamedType ], ":", NEWLINE,
-                 [ INDENT, MethodDeclaration, { MethodDeclaration }, DEDENT ] ;
-(* With "for", the first NamedType is the interface and the second the type. Without it, the only NamedType is the type and the block declares its own methods. *)
-MethodDeclaration = [ "var" ], "fn", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")", ResultType, FunctionSuite ;
+MethodDeclaration = "fn", [ "var" ], Receiver, ".", Name, [ TypeParameters ], "(", [ FunctionParameters ], ")",
+                    ResultType, FunctionSuite ;
+Receiver      = Name, [ "[", ReceiverArgument, { ",", ReceiverArgument }, "]" ] ;
+ReceiverArgument = Name, [ ":", Bound ] | Type ;
+(* The receiver names the declared type, with one argument per type parameter: its name, optionally bounded, or a concrete type. *)
 ExternDeclaration = "extern", "fn", Name, "(", [ FunctionParameters ], ")", ResultType, NEWLINE
                   | "extern", "type", Name, [ TypeParameters ], NEWLINE ;
 FunctionSuite = ":", ("...", NEWLINE | Expression | SimpleStatement | NEWLINE, INDENT, { Statement }, DEDENT) ;
@@ -165,14 +166,14 @@ FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", T
 ```
 
 - A type suffix `?` is `Optional[T]`; `!` is `Result[T, Error]`, and `!E` with `E` directly after the bang is `Result[T, E]`. Suffixes apply left to right.
-- A `type` declares record fields; an `enum` declares one or more variants. Their methods go in an `impl` block, `impl Type:` for its own or `impl Interface for Type:` for an interface. An `interface` holds only operation signatures. A payloadless variant is `Ready`, without `()`. Names are unique per scope.
+- A `type` declares record fields; an `enum` declares one or more variants. Their methods are receiver methods, `fn Type.name(...)`, written beside the type; a type satisfies an interface by having methods that match it. An `interface` holds only operation signatures. A payloadless variant is `Ready`, without `()`. Names are unique per scope.
 - A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/named-types.md#construction), and `= none` on Optional interface parameters. Function types and enum payloads have none. Parameter names in a function type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.
 - A named function or method body may be `...` (`fn read_bytes(count: Int) Bytes: ...`), as may a type schema (`type Duration: ...`); the standard library uses this for runtime-bound implementations. In the standard library, a property interface uses `interface Name: ...`; an empty implementation may supply a marker interface. Test, bench, and control-flow suites are nonempty.
 - Imports and declarations may interleave; order does not affect resolution. Import paths, test names, and bench names are plain literals (escapes allowed, no interpolation).
-- `export` applies to records, enums, interfaces, named functions, constants and extern declarations, not tests, benches, or `impl` blocks.
-- `impl` blocks declare no type parameters, and `impl Type:` is accepted only in the module that declares `Type`: in `impl Contract[T] for Data[T]:`, `T` comes from the receiver type and bounds from the declarations. Receiver parameters must occur in the receiver application. Operations and source methods may also declare their own [type parameters](../types/contracts.md#generic-operations). Overlap follows [contracts](../types/contracts.md#generic-implementations).
+- `export` applies to records, enums, interfaces, named functions, constants and extern declarations, not tests, benches, or methods.
+- A receiver method is accepted only in the module that declares its type, and repeats the type's parameters (`fn Box[T].get() T`), optionally bounded (`fn Box[T: Equal].same(...)`) or fixed (`fn List[Int].sum()`). Methods may also declare their own [type parameters](../types/contracts.md#generic-operations). Methods of one name on one receiver form are rejected as [contracts](../types/contracts.md#methods) describe.
 - `&` only combines generic bounds, as in `T: Read & Closeable`; order is irrelevant. There is no intersection or refinement syntax for value types.
 - No module-level statements or `var`; a top-level `:=` is a [constant](../modules/declarations.md#constants). Snippets of local bindings are body fragments. Type paths add no wildcard imports; see [module rules](../modules/declarations.md).
 

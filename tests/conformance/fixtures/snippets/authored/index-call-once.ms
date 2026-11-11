@@ -4,10 +4,9 @@
 type Counter:
     n: Int
 
-impl Counter:
-    var fn next() Int:
-        self.n += 1
-        return self.n
+fn var Counter.next() Int:
+    self.n += 1
+    return self.n
 
 fn main() Unit:
     var c = Counter(0)

@@ -3,9 +3,8 @@ import expect_equal from "@std/test/test.ms"
 type Failure:
 	code: Int
 
-impl Error for Failure:
-	fn message() String:
-		return "failure " + self.code.to_string()
+fn Failure.message() String:
+	return "failure " + self.code.to_string()
 
 fn failing() Result[Int, Failure]:
 	return error(Failure(7))

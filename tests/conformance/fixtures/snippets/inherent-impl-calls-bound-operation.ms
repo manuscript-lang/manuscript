@@ -9,14 +9,12 @@ interface Scorer:
 type Dbl:
     k: Int
 
-impl Scorer for Dbl:
-    fn score(x: Int) Int: x * self.k
+fn Dbl.score(x: Int) Int: x * self.k
 
 type Wrap[T: Scorer]:
     inner: T
 
-impl Wrap[T]:
-    fn run(x: Int) Int: self.inner.score(x)
+fn Wrap[T].run(x: Int) Int: self.inner.score(x)
 
 fn via_param[T: Scorer](w: Wrap[T]) Int: w.inner.score(1)
 

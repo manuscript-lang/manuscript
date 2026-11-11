@@ -9,7 +9,6 @@ interface Counter:
 type Acc:
     total: Int
 
-impl Counter for Acc:
-    fn bump(by: Int) Int:
-        self.total += by
+fn Acc.bump(by: Int) Int:
+    self.total += by
         

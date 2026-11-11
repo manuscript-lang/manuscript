@@ -34,46 +34,45 @@ Headers are an owned value: assignment moves them, mutation needs `var`, and clo
 */
 export extern type HttpHeaders
 
-impl HttpHeaders:
-	// Appends a String value under a valid HTTP name; invalid names return EINVAL.
-	// Transport operations additionally validate framing and field values.
-	var fn append(name: String, value: String) Unit!:
-		return msstd_http_headers_append(self, name, value.to_bytes())
+// Appends a String value under a valid HTTP name; invalid names return EINVAL.
+// Transport operations additionally validate framing and field values.
+fn var HttpHeaders.append(name: String, value: String) Unit!:
+	return msstd_http_headers_append(self, name, value.to_bytes())
 
-	// Appends raw bytes, for the rare field whose value is not UTF-8 text.
-	var fn append_bytes(name: String, value: Bytes) Unit!:
-		return msstd_http_headers_append(self, name, value)
+// Appends raw bytes, for the rare field whose value is not UTF-8 text.
+fn var HttpHeaders.append_bytes(name: String, value: Bytes) Unit!:
+	return msstd_http_headers_append(self, name, value)
 
-	// Returns every value as an owned list, empty for an absent name.
-	// A received value that is not valid UTF-8 is left out; read it with values_bytes.
-	fn values(name: String) List[String]:
-		var out: List[String] = []
-		raw := msstd_http_headers_values(self, name)
-		if found := raw:
-			for item in found:
-				if text := item.decode_utf8(): out.append(text)
-		return out
+// Returns every value as an owned list, empty for an absent name.
+// A received value that is not valid UTF-8 is left out; read it with values_bytes.
+fn HttpHeaders.values(name: String) List[String]:
+	var out: List[String] = []
+	raw := msstd_http_headers_values(self, name)
+	if found := raw:
+		for item in found:
+			if text := item.decode_utf8(): out.append(text)
+	return out
 
-	// Returns the raw bytes of every value as an owned list, or none for an absent
-	// name.
-	fn values_bytes(name: String) List[Bytes]?:
-		return msstd_http_headers_values(self, name)
+// Returns the raw bytes of every value as an owned list, or none for an absent
+// name.
+fn HttpHeaders.values_bytes(name: String) List[Bytes]?:
+	return msstd_http_headers_values(self, name)
 
-	// Reports whether the name has any value, whatever its encoding.
-	fn contains(name: String) Bool:
-		return msstd_http_headers_values(self, name).is_some()
+// Reports whether the name has any value, whatever its encoding.
+fn HttpHeaders.contains(name: String) Bool:
+	return msstd_http_headers_values(self, name).is_some()
 
-	// Returns first-inserted spellings in insertion order.
-	fn names() List[String]:
-		return msstd_http_headers_names(self)
+// Returns first-inserted spellings in insertion order.
+fn HttpHeaders.names() List[String]:
+	return msstd_http_headers_names(self)
 
-	// Removes a name and its values; previously returned value lists remain unchanged.
-	var fn remove(name: String) Bool:
-		return msstd_http_headers_remove(self, name)
+// Removes a name and its values; previously returned value lists remain unchanged.
+fn var HttpHeaders.remove(name: String) Bool:
+	return msstd_http_headers_remove(self, name)
 
-	// Copies every name and value into independent headers.
-	fn clone() HttpHeaders:
-		return msstd_http_headers_clone(self)
+// Copies every name and value into independent headers.
+fn HttpHeaders.clone() HttpHeaders:
+	return msstd_http_headers_clone(self)
 
 // Creates empty mutable headers. No header values are joined or comma-combined.
 export fn headers() HttpHeaders:

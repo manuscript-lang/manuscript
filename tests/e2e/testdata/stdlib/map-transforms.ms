@@ -7,12 +7,10 @@ type Key:
 	id: Int
 	label: String
 
-impl Equal for Key:
-	fn equals(other: Key) Bool:
-		return self.id == other.id
+fn Key.equals(other: Key) Bool:
+	return self.id == other.id
 
-impl Hashable for Key:
-	fn hash() Int: 0
+fn Key.hash() Int: 0
 
 fn map_values[K: Hashable, V, W](values: Map[K, V], transform: fn(K, V) W) Map[K, W]:
 	return values.map[W](transform)

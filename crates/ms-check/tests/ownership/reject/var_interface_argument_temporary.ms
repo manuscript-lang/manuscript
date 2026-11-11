@@ -4,8 +4,7 @@ interface Sink:
 type Items:
     xs: List[Int]
 
-impl Sink for Items:
-    var fn push(x: Int) Unit: self.xs.append(x)
+fn var Items.push(x: Int) Unit: self.xs.append(x)
 
 fn fill(var s: Sink) Unit:
     s.push(1)

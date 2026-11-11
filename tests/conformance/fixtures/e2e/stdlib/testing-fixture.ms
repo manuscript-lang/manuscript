@@ -9,12 +9,11 @@ type Counter:
 fn make_fixture() Counter:
     return Counter(0)
 
-impl TestHooks for Counter:
-    var fn before_each() Unit:
-        self.value = 1
+fn var Counter.before_each() Unit:
+    self.value = 1
 
-    var fn after_each() Unit:
-        self.value = 10
+fn var Counter.after_each() Unit:
+    self.value = 10
 
 test "first fixture use":
     expect_equal(fixture.value, 1)?

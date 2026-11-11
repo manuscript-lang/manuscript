@@ -1,5 +1,5 @@
 {"id":1,"jsonrpc":"2.0","result":{"capabilities":{"codeActionProvider":{"codeActionKinds":["source.fixAll.manuscript","quickfix","source.organizeImports"]},"completionProvider":{"triggerCharacters":[".",":","/"]},"definitionProvider":true,"documentFormattingProvider":true,"documentHighlightProvider":true,"documentSymbolProvider":true,"foldingRangeProvider":true,"hoverProvider":true,"inlayHintProvider":true,"positionEncoding":"utf-16","referencesProvider":true,"renameProvider":{"prepareProvider":true},"semanticTokensProvider":{"full":true,"legend":{"tokenModifiers":[],"tokenTypes":["keyword","variable","number","string","comment","function","type","property","parameter","enumMember","typeParameter"]}},"signatureHelpProvider":{"retriggerCharacters":[","],"triggerCharacters":["(",",",":"]},"textDocumentSync":2,"typeDefinitionProvider":true,"workspaceSymbolProvider":true},"serverInfo":{"name":"manuscript","version":"0.1.0"}}}
-{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL126","message":"Return the value directly instead of binding it first","range":{"end":{"character":9,"line":36},"start":{"character":4,"line":36}},"severity":1,"source":"manuscript-lint"},{"code":"MSL126","message":"Return the value directly instead of binding it first","range":{"end":{"character":10,"line":60},"start":{"character":4,"line":60}},"severity":1,"source":"manuscript-lint"},{"code":"MSL116","message":"`say` reaches std.console.write: say -> stdout; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter","range":{"end":{"character":10,"line":64},"start":{"character":4,"line":64}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}
+{"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MSL102","message":"Import Iterator is never used","range":{"end":{"character":15,"line":0},"start":{"character":7,"line":0}},"severity":2,"source":"manuscript-lint"},{"code":"MSL126","message":"Return the value directly instead of binding it first","range":{"end":{"character":9,"line":33},"start":{"character":4,"line":33}},"severity":1,"source":"manuscript-lint"},{"code":"MSL126","message":"Return the value directly instead of binding it first","range":{"end":{"character":10,"line":57},"start":{"character":4,"line":57}},"severity":1,"source":"manuscript-lint"},{"code":"MSL116","message":"`say` reaches std.console.write: say -> stdout; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter","range":{"end":{"character":10,"line":61},"start":{"character":4,"line":61}},"severity":2,"source":"manuscript-lint"}],"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":2,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":3,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":4,"jsonrpc":"2.0"}
@@ -81,246 +81,230 @@
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":80,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":81,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":82,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":83,"jsonrpc":"2.0"}
-{"id":84,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":10,"line":17},"start":{"character":5,"line":17}}}}
-{"id":85,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":10,"line":17},"start":{"character":5,"line":17}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":86,"jsonrpc":"2.0"}
-{"id":87,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":11,"line":18},"start":{"character":7,"line":18}}}}
-{"id":88,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":11,"line":18},"start":{"character":7,"line":18}}}}
+{"id":83,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":8,"line":17},"start":{"character":3,"line":17}}}}
+{"id":84,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":8,"line":17},"start":{"character":3,"line":17}}}}
+{"id":85,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":13,"line":17},"start":{"character":9,"line":17}}}}
+{"id":86,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":13,"line":17},"start":{"character":9,"line":17}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":87,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":88,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":89,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":90,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":91,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":92,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":93,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":91,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":92,"jsonrpc":"2.0"}
+{"id":93,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":17,"line":18},"start":{"character":16,"line":18}}}}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":94,"jsonrpc":"2.0"}
-{"id":95,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":21,"line":19},"start":{"character":20,"line":19}}}}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":96,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":95,"jsonrpc":"2.0"}
+{"id":96,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":26,"line":18},"start":{"character":25,"line":18}}}}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":97,"jsonrpc":"2.0"}
-{"id":98,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":30,"line":19},"start":{"character":29,"line":19}}}}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":99,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":98,"jsonrpc":"2.0"}
+{"id":99,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":35,"line":18},"start":{"character":34,"line":18}}}}
 {"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":100,"jsonrpc":"2.0"}
-{"id":101,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":39,"line":19},"start":{"character":38,"line":19}}}}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":102,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":103,"jsonrpc":"2.0"}
-{"id":104,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":48,"line":19},"start":{"character":47,"line":19}}}}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":101,"jsonrpc":"2.0"}
+{"id":102,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":44,"line":18},"start":{"character":43,"line":18}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":103,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":104,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":105,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":106,"jsonrpc":"2.0"}
-{"id":107,"jsonrpc":"2.0","result":{"placeholder":"Named","range":{"end":{"character":10,"line":21},"start":{"character":5,"line":21}}}}
-{"id":108,"jsonrpc":"2.0","result":{"placeholder":"Named","range":{"end":{"character":10,"line":21},"start":{"character":5,"line":21}}}}
+{"id":106,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":14,"line":20},"start":{"character":9,"line":20}}}}
+{"id":107,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":14,"line":20},"start":{"character":9,"line":20}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":108,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":109,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":110,"jsonrpc":"2.0"}
-{"id":111,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":21},"start":{"character":15,"line":21}}}}
-{"id":112,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":21},"start":{"character":15,"line":21}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":111,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":112,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":113,"jsonrpc":"2.0"}
-{"id":114,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":12,"line":22},"start":{"character":7,"line":22}}}}
-{"id":115,"jsonrpc":"2.0","result":{"placeholder":"label","range":{"end":{"character":12,"line":22},"start":{"character":7,"line":22}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":116,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":117,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":118,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":114,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":115,"jsonrpc":"2.0"}
+{"id":116,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":12,"line":23},"start":{"character":5,"line":23}}}}
+{"id":117,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":12,"line":23},"start":{"character":5,"line":23}}}}
+{"id":118,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":5,"line":24},"start":{"character":4,"line":24}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":119,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":120,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":121,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":122,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":123,"jsonrpc":"2.0"}
-{"id":124,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":12,"line":25},"start":{"character":5,"line":25}}}}
-{"id":125,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":12,"line":25},"start":{"character":5,"line":25}}}}
-{"id":126,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":5,"line":26},"start":{"character":4,"line":26}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":127,"jsonrpc":"2.0"}
+{"id":124,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":14,"line":26},"start":{"character":7,"line":26}}}}
+{"id":125,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":14,"line":26},"start":{"character":7,"line":26}}}}
+{"id":126,"jsonrpc":"2.0","result":{"placeholder":"next","range":{"end":{"character":19,"line":26},"start":{"character":15,"line":26}}}}
+{"id":127,"jsonrpc":"2.0","result":{"placeholder":"next","range":{"end":{"character":19,"line":26},"start":{"character":15,"line":26}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":128,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":129,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":130,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":131,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":132,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":133,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":131,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":132,"jsonrpc":"2.0"}
+{"id":133,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":13,"line":27},"start":{"character":12,"line":27}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":134,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":135,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":136,"jsonrpc":"2.0"}
-{"id":137,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":30,"line":28},"start":{"character":23,"line":28}}}}
-{"id":138,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":30,"line":28},"start":{"character":23,"line":28}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":139,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":140,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":136,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":137,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":138,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":139,"jsonrpc":"2.0"}
+{"id":140,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":10,"line":29},"start":{"character":9,"line":29}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":141,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":142,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":143,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":144,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":145,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":142,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":143,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":144,"jsonrpc":"2.0"}
+{"id":145,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":17,"line":30},"start":{"character":16,"line":30}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":146,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":147,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":148,"jsonrpc":"2.0"}
-{"id":149,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":17,"line":30},"start":{"character":16,"line":30}}}}
+{"id":147,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":6,"line":32},"start":{"character":3,"line":32}}}}
+{"id":148,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":6,"line":32},"start":{"character":3,"line":32}}}}
+{"id":149,"jsonrpc":"2.0","result":{"placeholder":"a","range":{"end":{"character":8,"line":32},"start":{"character":7,"line":32}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":150,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":151,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":152,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":153,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":154,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":155,"jsonrpc":"2.0"}
-{"id":156,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":14,"line":32},"start":{"character":13,"line":32}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":157,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":158,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":159,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"declaration is external or has no editable source"},"id":160,"jsonrpc":"2.0"}
-{"id":161,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":21,"line":33},"start":{"character":20,"line":33}}}}
+{"id":152,"jsonrpc":"2.0","result":{"placeholder":"b","range":{"end":{"character":16,"line":32},"start":{"character":15,"line":32}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":153,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":154,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":155,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":156,"jsonrpc":"2.0"}
+{"id":157,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":9,"line":33},"start":{"character":4,"line":33}}}}
+{"id":158,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":9,"line":33},"start":{"character":4,"line":33}}}}
+{"id":159,"jsonrpc":"2.0","result":{"placeholder":"a","range":{"end":{"character":14,"line":33},"start":{"character":13,"line":33}}}}
+{"id":160,"jsonrpc":"2.0","result":{"placeholder":"b","range":{"end":{"character":18,"line":33},"start":{"character":17,"line":33}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":161,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":162,"jsonrpc":"2.0"}
-{"id":163,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":6,"line":35},"start":{"character":3,"line":35}}}}
-{"id":164,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":6,"line":35},"start":{"character":3,"line":35}}}}
-{"id":165,"jsonrpc":"2.0","result":{"placeholder":"a","range":{"end":{"character":8,"line":35},"start":{"character":7,"line":35}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":166,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":167,"jsonrpc":"2.0"}
-{"id":168,"jsonrpc":"2.0","result":{"placeholder":"b","range":{"end":{"character":16,"line":35},"start":{"character":15,"line":35}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":169,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":170,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":171,"jsonrpc":"2.0"}
+{"id":163,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":16,"line":34},"start":{"character":11,"line":34}}}}
+{"id":164,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":16,"line":34},"start":{"character":11,"line":34}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":165,"jsonrpc":"2.0"}
+{"id":166,"jsonrpc":"2.0","result":{"placeholder":"area","range":{"end":{"character":7,"line":36},"start":{"character":3,"line":36}}}}
+{"id":167,"jsonrpc":"2.0","result":{"placeholder":"area","range":{"end":{"character":7,"line":36},"start":{"character":3,"line":36}}}}
+{"id":168,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":13,"line":36},"start":{"character":8,"line":36}}}}
+{"id":169,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":13,"line":36},"start":{"character":8,"line":36}}}}
+{"id":170,"jsonrpc":"2.0","result":{"placeholder":"Shape","range":{"end":{"character":20,"line":36},"start":{"character":15,"line":36}}}}
+{"id":171,"jsonrpc":"2.0","result":{"placeholder":"Shape","range":{"end":{"character":20,"line":36},"start":{"character":15,"line":36}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":172,"jsonrpc":"2.0"}
-{"id":173,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":9,"line":36},"start":{"character":4,"line":36}}}}
-{"id":174,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":9,"line":36},"start":{"character":4,"line":36}}}}
-{"id":175,"jsonrpc":"2.0","result":{"placeholder":"a","range":{"end":{"character":14,"line":36},"start":{"character":13,"line":36}}}}
-{"id":176,"jsonrpc":"2.0","result":{"placeholder":"b","range":{"end":{"character":18,"line":36},"start":{"character":17,"line":36}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":177,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":178,"jsonrpc":"2.0"}
-{"id":179,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":16,"line":37},"start":{"character":11,"line":37}}}}
-{"id":180,"jsonrpc":"2.0","result":{"placeholder":"total","range":{"end":{"character":16,"line":37},"start":{"character":11,"line":37}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":173,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":174,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":175,"jsonrpc":"2.0"}
+{"id":176,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":15,"line":37},"start":{"character":10,"line":37}}}}
+{"id":177,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":15,"line":37},"start":{"character":10,"line":37}}}}
+{"id":178,"jsonrpc":"2.0","result":{"placeholder":"Circle","range":{"end":{"character":14,"line":38},"start":{"character":8,"line":38}}}}
+{"id":179,"jsonrpc":"2.0","result":{"placeholder":"Circle","range":{"end":{"character":14,"line":38},"start":{"character":8,"line":38}}}}
+{"id":180,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":16,"line":38},"start":{"character":15,"line":38}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":181,"jsonrpc":"2.0"}
-{"id":182,"jsonrpc":"2.0","result":{"placeholder":"area","range":{"end":{"character":7,"line":39},"start":{"character":3,"line":39}}}}
-{"id":183,"jsonrpc":"2.0","result":{"placeholder":"area","range":{"end":{"character":7,"line":39},"start":{"character":3,"line":39}}}}
-{"id":184,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":13,"line":39},"start":{"character":8,"line":39}}}}
-{"id":185,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":13,"line":39},"start":{"character":8,"line":39}}}}
-{"id":186,"jsonrpc":"2.0","result":{"placeholder":"Shape","range":{"end":{"character":20,"line":39},"start":{"character":15,"line":39}}}}
-{"id":187,"jsonrpc":"2.0","result":{"placeholder":"Shape","range":{"end":{"character":20,"line":39},"start":{"character":15,"line":39}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":182,"jsonrpc":"2.0"}
+{"id":183,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":20,"line":39},"start":{"character":19,"line":39}}}}
+{"id":184,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":24,"line":39},"start":{"character":23,"line":39}}}}
+{"id":185,"jsonrpc":"2.0","result":{"placeholder":"Square","range":{"end":{"character":14,"line":40},"start":{"character":8,"line":40}}}}
+{"id":186,"jsonrpc":"2.0","result":{"placeholder":"Square","range":{"end":{"character":14,"line":40},"start":{"character":8,"line":40}}}}
+{"id":187,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":16,"line":40},"start":{"character":15,"line":40}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":188,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":189,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":190,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":191,"jsonrpc":"2.0"}
-{"id":192,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":15,"line":40},"start":{"character":10,"line":40}}}}
-{"id":193,"jsonrpc":"2.0","result":{"placeholder":"shape","range":{"end":{"character":15,"line":40},"start":{"character":10,"line":40}}}}
-{"id":194,"jsonrpc":"2.0","result":{"placeholder":"Circle","range":{"end":{"character":14,"line":41},"start":{"character":8,"line":41}}}}
-{"id":195,"jsonrpc":"2.0","result":{"placeholder":"Circle","range":{"end":{"character":14,"line":41},"start":{"character":8,"line":41}}}}
-{"id":196,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":16,"line":41},"start":{"character":15,"line":41}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":197,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":198,"jsonrpc":"2.0"}
-{"id":199,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":20,"line":42},"start":{"character":19,"line":42}}}}
-{"id":200,"jsonrpc":"2.0","result":{"placeholder":"r","range":{"end":{"character":24,"line":42},"start":{"character":23,"line":42}}}}
-{"id":201,"jsonrpc":"2.0","result":{"placeholder":"Square","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}
-{"id":202,"jsonrpc":"2.0","result":{"placeholder":"Square","range":{"end":{"character":14,"line":43},"start":{"character":8,"line":43}}}}
-{"id":203,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":16,"line":43},"start":{"character":15,"line":43}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":204,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":205,"jsonrpc":"2.0"}
-{"id":206,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":20,"line":44},"start":{"character":19,"line":44}}}}
-{"id":207,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":24,"line":44},"start":{"character":23,"line":44}}}}
+{"id":190,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":20,"line":41},"start":{"character":19,"line":41}}}}
+{"id":191,"jsonrpc":"2.0","result":{"placeholder":"s","range":{"end":{"character":24,"line":41},"start":{"character":23,"line":41}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":192,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":193,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":194,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":195,"jsonrpc":"2.0"}
+{"id":196,"jsonrpc":"2.0","result":{"placeholder":"describe","range":{"end":{"character":11,"line":45},"start":{"character":3,"line":45}}}}
+{"id":197,"jsonrpc":"2.0","result":{"placeholder":"describe","range":{"end":{"character":11,"line":45},"start":{"character":3,"line":45}}}}
+{"id":198,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":13,"line":45},"start":{"character":12,"line":45}}}}
+{"id":199,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":45},"start":{"character":15,"line":45}}}}
+{"id":200,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":45},"start":{"character":15,"line":45}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":201,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":202,"jsonrpc":"2.0"}
+{"id":203,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":5,"line":46},"start":{"character":4,"line":46}}}}
+{"id":204,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":10,"line":46},"start":{"character":9,"line":46}}}}
+{"id":205,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":15,"line":46},"start":{"character":11,"line":46}}}}
+{"id":206,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":15,"line":46},"start":{"character":11,"line":46}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":207,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":208,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":209,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":210,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":211,"jsonrpc":"2.0"}
-{"id":212,"jsonrpc":"2.0","result":{"placeholder":"describe","range":{"end":{"character":11,"line":48},"start":{"character":3,"line":48}}}}
-{"id":213,"jsonrpc":"2.0","result":{"placeholder":"describe","range":{"end":{"character":11,"line":48},"start":{"character":3,"line":48}}}}
-{"id":214,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":13,"line":48},"start":{"character":12,"line":48}}}}
-{"id":215,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":48},"start":{"character":15,"line":48}}}}
-{"id":216,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":20,"line":48},"start":{"character":15,"line":48}}}}
+{"id":212,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":22,"line":47},"start":{"character":21,"line":47}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":213,"jsonrpc":"2.0"}
+{"id":214,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":29,"line":47},"start":{"character":28,"line":47}}}}
+{"id":215,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":31,"line":47},"start":{"character":30,"line":47}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":216,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":217,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":218,"jsonrpc":"2.0"}
-{"id":219,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":5,"line":49},"start":{"character":4,"line":49}}}}
-{"id":220,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":10,"line":49},"start":{"character":9,"line":49}}}}
-{"id":221,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":15,"line":49},"start":{"character":11,"line":49}}}}
-{"id":222,"jsonrpc":"2.0","result":{"placeholder":"norm","range":{"end":{"character":15,"line":49},"start":{"character":11,"line":49}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":223,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":224,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":225,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":226,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":227,"jsonrpc":"2.0"}
-{"id":228,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":22,"line":50},"start":{"character":21,"line":50}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":229,"jsonrpc":"2.0"}
-{"id":230,"jsonrpc":"2.0","result":{"placeholder":"p","range":{"end":{"character":29,"line":50},"start":{"character":28,"line":50}}}}
-{"id":231,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":31,"line":50},"start":{"character":30,"line":50}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":232,"jsonrpc":"2.0"}
+{"id":219,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":14,"line":49},"start":{"character":10,"line":49}}}}
+{"id":220,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":14,"line":49},"start":{"character":10,"line":49}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":221,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":222,"jsonrpc":"2.0"}
+{"id":223,"jsonrpc":"2.0","result":{"placeholder":"_p","range":{"end":{"character":6,"line":50},"start":{"character":4,"line":50}}}}
+{"id":224,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":15,"line":50},"start":{"character":10,"line":50}}}}
+{"id":225,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":15,"line":50},"start":{"character":10,"line":50}}}}
+{"id":226,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":17,"line":50},"start":{"character":16,"line":50}}}}
+{"id":227,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":23,"line":50},"start":{"character":22,"line":50}}}}
+{"id":228,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":10,"line":51},"start":{"character":4,"line":51}}}}
+{"id":229,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":10,"line":51},"start":{"character":4,"line":51}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":230,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":231,"jsonrpc":"2.0"}
+{"id":232,"jsonrpc":"2.0","result":{"placeholder":"v","range":{"end":{"character":9,"line":52},"start":{"character":8,"line":52}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":233,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":234,"jsonrpc":"2.0"}
-{"id":235,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":14,"line":52},"start":{"character":10,"line":52}}}}
-{"id":236,"jsonrpc":"2.0","result":{"placeholder":"main","range":{"end":{"character":14,"line":52},"start":{"character":10,"line":52}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":237,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":238,"jsonrpc":"2.0"}
-{"id":239,"jsonrpc":"2.0","result":{"placeholder":"_p","range":{"end":{"character":6,"line":53},"start":{"character":4,"line":53}}}}
-{"id":240,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":15,"line":53},"start":{"character":10,"line":53}}}}
-{"id":241,"jsonrpc":"2.0","result":{"placeholder":"Point","range":{"end":{"character":15,"line":53},"start":{"character":10,"line":53}}}}
-{"id":242,"jsonrpc":"2.0","result":{"placeholder":"x","range":{"end":{"character":17,"line":53},"start":{"character":16,"line":53}}}}
-{"id":243,"jsonrpc":"2.0","result":{"placeholder":"y","range":{"end":{"character":23,"line":53},"start":{"character":22,"line":53}}}}
-{"id":244,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":10,"line":54},"start":{"character":4,"line":54}}}}
-{"id":245,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":10,"line":54},"start":{"character":4,"line":54}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":246,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":247,"jsonrpc":"2.0"}
-{"id":248,"jsonrpc":"2.0","result":{"placeholder":"v","range":{"end":{"character":9,"line":55},"start":{"character":8,"line":55}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":249,"jsonrpc":"2.0"}
-{"id":250,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":19,"line":55},"start":{"character":13,"line":55}}}}
-{"id":251,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":19,"line":55},"start":{"character":13,"line":55}}}}
-{"id":252,"jsonrpc":"2.0","result":{"placeholder":"_","range":{"end":{"character":9,"line":56},"start":{"character":8,"line":56}}}}
-{"id":253,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":16,"line":56},"start":{"character":13,"line":56}}}}
-{"id":254,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":16,"line":56},"start":{"character":13,"line":56}}}}
-{"id":255,"jsonrpc":"2.0","result":{"placeholder":"v","range":{"end":{"character":20,"line":56},"start":{"character":19,"line":56}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":256,"jsonrpc":"2.0"}
+{"id":234,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":19,"line":52},"start":{"character":13,"line":52}}}}
+{"id":235,"jsonrpc":"2.0","result":{"placeholder":"values","range":{"end":{"character":19,"line":52},"start":{"character":13,"line":52}}}}
+{"id":236,"jsonrpc":"2.0","result":{"placeholder":"_","range":{"end":{"character":9,"line":53},"start":{"character":8,"line":53}}}}
+{"id":237,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":16,"line":53},"start":{"character":13,"line":53}}}}
+{"id":238,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":16,"line":53},"start":{"character":13,"line":53}}}}
+{"id":239,"jsonrpc":"2.0","result":{"placeholder":"v","range":{"end":{"character":20,"line":53},"start":{"character":19,"line":53}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":240,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":241,"jsonrpc":"2.0"}
+{"id":242,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":12,"line":54},"start":{"character":8,"line":54}}}}
+{"id":243,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":12,"line":54},"start":{"character":8,"line":54}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":244,"jsonrpc":"2.0"}
+{"id":245,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":23,"line":54},"start":{"character":16,"line":54}}}}
+{"id":246,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":23,"line":54},"start":{"character":16,"line":54}}}}
+{"id":247,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":25,"line":54},"start":{"character":24,"line":54}}}}
+{"id":248,"jsonrpc":"2.0","result":{"placeholder":"_","range":{"end":{"character":9,"line":55},"start":{"character":8,"line":55}}}}
+{"id":249,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":16,"line":55},"start":{"character":13,"line":55}}}}
+{"id":250,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":16,"line":55},"start":{"character":13,"line":55}}}}
+{"id":251,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":23,"line":55},"start":{"character":19,"line":55}}}}
+{"id":252,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":23,"line":55},"start":{"character":19,"line":55}}}}
+{"id":253,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":10,"line":57},"start":{"character":4,"line":57}}}}
+{"id":254,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":10,"line":57},"start":{"character":4,"line":57}}}}
+{"id":255,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":17,"line":57},"start":{"character":14,"line":57}}}}
+{"id":256,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":17,"line":57},"start":{"character":14,"line":57}}}}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":257,"jsonrpc":"2.0"}
-{"id":258,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":12,"line":57},"start":{"character":8,"line":57}}}}
-{"id":259,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":12,"line":57},"start":{"character":8,"line":57}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":260,"jsonrpc":"2.0"}
-{"id":261,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":23,"line":57},"start":{"character":16,"line":57}}}}
-{"id":262,"jsonrpc":"2.0","result":{"placeholder":"Counter","range":{"end":{"character":23,"line":57},"start":{"character":16,"line":57}}}}
-{"id":263,"jsonrpc":"2.0","result":{"placeholder":"n","range":{"end":{"character":25,"line":57},"start":{"character":24,"line":57}}}}
-{"id":264,"jsonrpc":"2.0","result":{"placeholder":"_","range":{"end":{"character":9,"line":58},"start":{"character":8,"line":58}}}}
-{"id":265,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":16,"line":58},"start":{"character":13,"line":58}}}}
-{"id":266,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":16,"line":58},"start":{"character":13,"line":58}}}}
-{"id":267,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":23,"line":58},"start":{"character":19,"line":58}}}}
-{"id":268,"jsonrpc":"2.0","result":{"placeholder":"tick","range":{"end":{"character":23,"line":58},"start":{"character":19,"line":58}}}}
-{"id":269,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":10,"line":60},"start":{"character":4,"line":60}}}}
-{"id":270,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":10,"line":60},"start":{"character":4,"line":60}}}}
-{"id":271,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":17,"line":60},"start":{"character":14,"line":60}}}}
-{"id":272,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":17,"line":60},"start":{"character":14,"line":60}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":273,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":274,"jsonrpc":"2.0"}
-{"id":275,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":61},"start":{"character":11,"line":61}}}}
-{"id":276,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":61},"start":{"character":11,"line":61}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":277,"jsonrpc":"2.0"}
-{"id":278,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":6,"line":63},"start":{"character":3,"line":63}}}}
-{"id":279,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":6,"line":63},"start":{"character":3,"line":63}}}}
-{"id":280,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":11,"line":63},"start":{"character":7,"line":63}}}}
-{"id":281,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":11,"line":63},"start":{"character":7,"line":63}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":258,"jsonrpc":"2.0"}
+{"id":259,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":58},"start":{"character":11,"line":58}}}}
+{"id":260,"jsonrpc":"2.0","result":{"placeholder":"result","range":{"end":{"character":17,"line":58},"start":{"character":11,"line":58}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":261,"jsonrpc":"2.0"}
+{"id":262,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":6,"line":60},"start":{"character":3,"line":60}}}}
+{"id":263,"jsonrpc":"2.0","result":{"placeholder":"say","range":{"end":{"character":6,"line":60},"start":{"character":3,"line":60}}}}
+{"id":264,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":11,"line":60},"start":{"character":7,"line":60}}}}
+{"id":265,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":11,"line":60},"start":{"character":7,"line":60}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":266,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":267,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":268,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":269,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":270,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":271,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":272,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":273,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":274,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":275,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":276,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":277,"jsonrpc":"2.0"}
+{"id":278,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":25,"line":61},"start":{"character":21,"line":61}}}}
+{"id":279,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":25,"line":61},"start":{"character":21,"line":61}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":280,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":281,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":282,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":283,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":283,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":284,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":285,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":286,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":286,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":287,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":288,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":289,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":290,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":288,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":289,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":290,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":291,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":292,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":293,"jsonrpc":"2.0"}
-{"id":294,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":25,"line":64},"start":{"character":21,"line":64}}}}
-{"id":295,"jsonrpc":"2.0","result":{"placeholder":"text","range":{"end":{"character":25,"line":64},"start":{"character":21,"line":64}}}}
+{"id":293,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":65},"start":{"character":17,"line":65}}}}
+{"id":294,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":65},"start":{"character":17,"line":65}}}}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":295,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":296,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":297,"jsonrpc":"2.0"}
 {"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":298,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":299,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":300,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":301,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":302,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":303,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":304,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":305,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":306,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":307,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"standard-library declarations are read-only"},"id":308,"jsonrpc":"2.0"}
-{"id":309,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":68},"start":{"character":17,"line":68}}}}
-{"id":310,"jsonrpc":"2.0","result":{"placeholder":"add","range":{"end":{"character":20,"line":68},"start":{"character":17,"line":68}}}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":311,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":312,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":313,"jsonrpc":"2.0"}
-{"id":314,"jsonrpc":"2.0","result":{"documentChanges":[{"edits":[{"newText":"renamed","range":{"end":{"character":14,"line":41},"start":{"character":8,"line":41}}},{"newText":"renamed","range":{"end":{"character":10,"line":10},"start":{"character":4,"line":10}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}]}}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":315,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":316,"jsonrpc":"2.0"}
-{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":317,"jsonrpc":"2.0"}
-{"id":318,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"import (\n\tIterator from \"@std/core.ms\",\n\tstdout from \"@std/io/io.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\n// A point in the plane.\ntype Point:\n\tx: Int\n\ty: Int = 0\n\nenum Shape:\n\tCircle(radius: Int)\n\tSquare(side: Int)\n\tEmpty\n\ninterface Named:\n\tfn label() String\n\nimpl Point:\n\tfn norm() Int:\n\t\treturn self.x * self.x + self.y * self.y\n\nimpl Named for Point:\n\tfn label() String:\n\t\treturn \"point\"\n\ntype Counter:\n\tn: Int\n\nimpl Iterator[Int] for Counter:\n\tvar fn next() Int?:\n\t\tif self.n == 0: return none\n\n\t\tself.n -= 1\n\t\treturn self.n\n\nfn add(a: Int, b: Int) Int:\n\ttotal := a + b\n\treturn total\n\nfn area(shape: Shape) Int:\n\tmatch shape:\n\t\tCircle(r):\n\t\t\treturn r * r * 3\n\t\tSquare(s):\n\t\t\treturn s * s\n\t\t_:\n\t\t\treturn 0\n\nfn describe(p: Point) String:\n\tn := p.norm()\n\treturn \"norm is {n} at {p.x}\"\n\nexport fn main() Int:\n\t_p := Point(x: 1, y: 2)\n\tvalues := [1, 2, 3]\n\tfor v in values:\n\t\t_ := say(\"{v}\")\n\tfor tick in Counter(n: 2):\n\t\t_ := say(\"{tick}\")\n\n\tresult := add(1, 2)\n\treturn result\n\nfn say(text: String) Result[Unit, Error]:\n\tstdout().write(\"{text}\\n\")?\n\treturn stdout().flush()\n\ntest \"addition\":\n\texpect_equal(add(1, 2), 3)?\n","range":{"end":{"character":0,"line":69},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}]},"kind":"source.fixAll.manuscript","title":"Format Manuscript document"}]}
-{"id":319,"jsonrpc":"2.0","result":[{"newText":"import (\n\tIterator from \"@std/core.ms\",\n\tstdout from \"@std/io/io.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\n// A point in the plane.\ntype Point:\n\tx: Int\n\ty: Int = 0\n\nenum Shape:\n\tCircle(radius: Int)\n\tSquare(side: Int)\n\tEmpty\n\ninterface Named:\n\tfn label() String\n\nimpl Point:\n\tfn norm() Int:\n\t\treturn self.x * self.x + self.y * self.y\n\nimpl Named for Point:\n\tfn label() String:\n\t\treturn \"point\"\n\ntype Counter:\n\tn: Int\n\nimpl Iterator[Int] for Counter:\n\tvar fn next() Int?:\n\t\tif self.n == 0: return none\n\n\t\tself.n -= 1\n\t\treturn self.n\n\nfn add(a: Int, b: Int) Int:\n\ttotal := a + b\n\treturn total\n\nfn area(shape: Shape) Int:\n\tmatch shape:\n\t\tCircle(r):\n\t\t\treturn r * r * 3\n\t\tSquare(s):\n\t\t\treturn s * s\n\t\t_:\n\t\t\treturn 0\n\nfn describe(p: Point) String:\n\tn := p.norm()\n\treturn \"norm is {n} at {p.x}\"\n\nexport fn main() Int:\n\t_p := Point(x: 1, y: 2)\n\tvalues := [1, 2, 3]\n\tfor v in values:\n\t\t_ := say(\"{v}\")\n\tfor tick in Counter(n: 2):\n\t\t_ := say(\"{tick}\")\n\n\tresult := add(1, 2)\n\treturn result\n\nfn say(text: String) Result[Unit, Error]:\n\tstdout().write(\"{text}\\n\")?\n\treturn stdout().flush()\n\ntest \"addition\":\n\texpect_equal(add(1, 2), 3)?\n","range":{"end":{"character":0,"line":69},"start":{"character":0,"line":0}}}]}
-{"id":320,"jsonrpc":"2.0","result":[{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":36}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":5,"line":49}},{"kind":1,"label":": Point","paddingLeft":false,"paddingRight":false,"position":{"character":6,"line":53}},{"kind":1,"label":": List[Int]","paddingLeft":false,"paddingRight":false,"position":{"character":10,"line":54}},{"kind":1,"label":": Result[Unit, Error]","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":56}},{"kind":1,"label":": Result[Unit, Error]","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":58}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":10,"line":60}}]}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":299,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":300,"jsonrpc":"2.0"}
+{"error":{"code":-32602,"message":"select a name that refers to a source declaration"},"id":301,"jsonrpc":"2.0"}
+{"id":302,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"import (\n\tIterator from \"@std/core.ms\",\n\tstdout from \"@std/io/io.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\n// A point in the plane.\ntype Point:\n\tx: Int\n\ty: Int = 0\n\nenum Shape:\n\tCircle(radius: Int)\n\tSquare(side: Int)\n\tEmpty\n\ninterface Named:\n\tfn label() String\n\nfn Point.norm() Int:\n\treturn self.x * self.x + self.y * self.y\n\nfn Point.label() String:\n\treturn \"point\"\n\ntype Counter:\n\tn: Int\n\nfn var Counter.next() Int?:\n\tif self.n == 0: return none\n\n\tself.n -= 1\n\treturn self.n\n\nfn add(a: Int, b: Int) Int:\n\ttotal := a + b\n\treturn total\n\nfn area(shape: Shape) Int:\n\tmatch shape:\n\t\tCircle(r):\n\t\t\treturn r * r * 3\n\t\tSquare(s):\n\t\t\treturn s * s\n\t\t_:\n\t\t\treturn 0\n\nfn describe(p: Point) String:\n\tn := p.norm()\n\treturn \"norm is {n} at {p.x}\"\n\nexport fn main() Int:\n\t_p := Point(x: 1, y: 2)\n\tvalues := [1, 2, 3]\n\tfor v in values:\n\t\t_ := say(\"{v}\")\n\tfor tick in Counter(n: 2):\n\t\t_ := say(\"{tick}\")\n\n\tresult := add(1, 2)\n\treturn result\n\nfn say(text: String) Result[Unit, Error]:\n\tstdout().write(\"{text}\\n\")?\n\treturn stdout().flush()\n\ntest \"addition\":\n\texpect_equal(add(1, 2), 3)?\n","range":{"end":{"character":0,"line":66},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}]},"kind":"source.fixAll.manuscript","title":"Format Manuscript document"},{"diagnostics":[{"code":"MSL102","message":"Import Iterator is never used","range":{"end":{"character":0,"line":0},"start":{"character":0,"line":0}},"source":"manuscript-lint"}],"edit":{"documentChanges":[{"edits":[{"newText":"","range":{"end":{"character":0,"line":1},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/main.ms","version":1}}]},"isPreferred":true,"kind":"quickfix","title":"Remove unused import"}]}
+{"id":303,"jsonrpc":"2.0","result":[{"newText":"import (\n\tIterator from \"@std/core.ms\",\n\tstdout from \"@std/io/io.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\n// A point in the plane.\ntype Point:\n\tx: Int\n\ty: Int = 0\n\nenum Shape:\n\tCircle(radius: Int)\n\tSquare(side: Int)\n\tEmpty\n\ninterface Named:\n\tfn label() String\n\nfn Point.norm() Int:\n\treturn self.x * self.x + self.y * self.y\n\nfn Point.label() String:\n\treturn \"point\"\n\ntype Counter:\n\tn: Int\n\nfn var Counter.next() Int?:\n\tif self.n == 0: return none\n\n\tself.n -= 1\n\treturn self.n\n\nfn add(a: Int, b: Int) Int:\n\ttotal := a + b\n\treturn total\n\nfn area(shape: Shape) Int:\n\tmatch shape:\n\t\tCircle(r):\n\t\t\treturn r * r * 3\n\t\tSquare(s):\n\t\t\treturn s * s\n\t\t_:\n\t\t\treturn 0\n\nfn describe(p: Point) String:\n\tn := p.norm()\n\treturn \"norm is {n} at {p.x}\"\n\nexport fn main() Int:\n\t_p := Point(x: 1, y: 2)\n\tvalues := [1, 2, 3]\n\tfor v in values:\n\t\t_ := say(\"{v}\")\n\tfor tick in Counter(n: 2):\n\t\t_ := say(\"{tick}\")\n\n\tresult := add(1, 2)\n\treturn result\n\nfn say(text: String) Result[Unit, Error]:\n\tstdout().write(\"{text}\\n\")?\n\treturn stdout().flush()\n\ntest \"addition\":\n\texpect_equal(add(1, 2), 3)?\n","range":{"end":{"character":0,"line":66},"start":{"character":0,"line":0}}}]}
+{"id":304,"jsonrpc":"2.0","result":[{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":33}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":5,"line":46}},{"kind":1,"label":": Point","paddingLeft":false,"paddingRight":false,"position":{"character":6,"line":50}},{"kind":1,"label":": List[Int]","paddingLeft":false,"paddingRight":false,"position":{"character":10,"line":51}},{"kind":1,"label":": Result[Unit, Error]","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":53}},{"kind":1,"label":": Result[Unit, Error]","paddingLeft":false,"paddingRight":false,"position":{"character":9,"line":55}},{"kind":1,"label":": Int","paddingLeft":false,"paddingRight":false,"position":{"character":10,"line":57}}]}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"diagnostics":[{"code":"MS2002","message":"module does not export unused; @std/data/json.ms exports: JsonEncode, JsonOptions, JsonValue, StringifyOptions, json_reader, json_writer, parse, stringify; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/data/json.ms\"'","range":{"end":{"character":13,"line":2},"start":{"character":7,"line":2}},"severity":1,"source":"manuscript"}],"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}
-{"id":321,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"import (\n\tunused from \"@std/data/json.ms\",\n\tstdout from \"@std/io/io.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\nfn main() Int:\n\treturn 0\n","range":{"end":{"character":0,"line":6},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.fixAll.manuscript","title":"Format Manuscript document"},{"edit":{"documentChanges":[{"edits":[{"newText":"import unused from \"@std/data/json.ms\"\nimport stdout from \"@std/io/io.ms\"\nimport expect_equal from \"@std/test/test.ms\"\n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
-{"id":322,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"import unused from \"@std/data/json.ms\"\nimport stdout from \"@std/io/io.ms\"\nimport expect_equal from \"@std/test/test.ms\"\n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
-{"id":323,"jsonrpc":"2.0","result":[{"newText":"import (\n\tunused from \"@std/data/json.ms\",\n\tstdout from \"@std/io/io.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\nfn main() Int:\n\treturn 0\n","range":{"end":{"character":0,"line":6},"start":{"character":0,"line":0}}}]}
-{"id":324,"jsonrpc":"2.0","result":null}
+{"id":305,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"import (\n\tunused from \"@std/data/json.ms\",\n\tstdout from \"@std/io/io.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\nfn main() Int:\n\treturn 0\n","range":{"end":{"character":0,"line":6},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.fixAll.manuscript","title":"Format Manuscript document"},{"edit":{"documentChanges":[{"edits":[{"newText":"import unused from \"@std/data/json.ms\"\nimport stdout from \"@std/io/io.ms\"\nimport expect_equal from \"@std/test/test.ms\"\n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
+{"id":306,"jsonrpc":"2.0","result":[{"edit":{"documentChanges":[{"edits":[{"newText":"import unused from \"@std/data/json.ms\"\nimport stdout from \"@std/io/io.ms\"\nimport expect_equal from \"@std/test/test.ms\"\n","range":{"end":{"character":0,"line":3},"start":{"character":0,"line":0}}}],"textDocument":{"uri":"file://$TMP/ms-lsp-rename-PID/messy.ms","version":1}}]},"kind":"source.organizeImports","title":"Organize imports"}]}
+{"id":307,"jsonrpc":"2.0","result":[{"newText":"import (\n\tunused from \"@std/data/json.ms\",\n\tstdout from \"@std/io/io.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\nfn main() Int:\n\treturn 0\n","range":{"end":{"character":0,"line":6},"start":{"character":0,"line":0}}}]}
+{"id":308,"jsonrpc":"2.0","result":null}

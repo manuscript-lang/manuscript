@@ -6,8 +6,7 @@ interface Reader[A = Int]:
 type Counter:
 	n: Int
 
-impl Reader[Int] for Counter:
-	fn read() Int: return self.n
+fn Counter.read() Int: return self.n
 
 export fn main() Int:
 	return read_all(Counter(n: 1))

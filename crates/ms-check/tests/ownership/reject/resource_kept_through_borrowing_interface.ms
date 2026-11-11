@@ -3,9 +3,8 @@ import Closeable from "@std/core.ms"
 type Door:
     n: Int
 
-impl Closeable for Door:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Door.close() Unit!:
+    return ok(unit)
 
 interface Sink:
     fn put(d: Door) Int
@@ -13,10 +12,9 @@ interface Sink:
 type Bin:
     count: Int
 
-impl Sink for Bin:
-    fn put(d: Door) Int:
-        var xs = [d]
-        return xs.length()
+fn Bin.put(d: Door) Int:
+    var xs = [d]
+    return xs.length()
 
 fn feed(s: Sink) Int:
     return s.put(Door(1))

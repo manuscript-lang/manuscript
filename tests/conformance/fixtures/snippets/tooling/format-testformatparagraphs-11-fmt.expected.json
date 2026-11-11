@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "// A public contract.\nexport interface Run:\n\tfn first() Int\n\tfn second() Int\n\n// The implementation.\nimpl Run for Runner:\n\tfn first() Int: return 1\n\n\t// Explain the second operation.\n\tfn second() Int:\n\t\tvalue := 2\n\n\t\t// Handle both outcomes.\n\t\t// Keep these comments together.\n\t\tmatch value:\n\t\t\tone: return 1\n\t\t\t// Fallback explanation.\n\t\t\t_:\n\t\t\t\treturn 2\n\n// Application entry.\nfn main() Int: return 0\n"
-  }
-}

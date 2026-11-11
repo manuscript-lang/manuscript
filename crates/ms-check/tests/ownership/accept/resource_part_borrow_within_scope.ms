@@ -7,9 +7,8 @@ type Holder:
     inner: Res
     all: List[Res]
 
-impl Closeable for Res:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Res.close() Unit!:
+    return ok(unit)
 
 // Parts are closed at scope end; borrows of them used before then are fine.
 fn held() Int:

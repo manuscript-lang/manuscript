@@ -8,9 +8,8 @@ import Decimal from "@std/math/decimal.ms"
 type Version:
     major: Int
 
-impl Comparable for Version:
-    fn compare(other: Version) Int:
-        return self.major - other.major
+fn Version.compare(other: Version) Int:
+    return self.major - other.major
 
 fn larger[T: Comparable](left: T, right: T) T:
     return max(left, right)

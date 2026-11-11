@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Named:\n\tfn name() String\n\ntype Box[Named: Named]:\n\tcause: Named\n\nimpl Named for Box[Named]:\n\tfn name() String: self.cause.name()\n\nexport fn main() Int: 0\n"
+    "fmt": "interface Named:\n\tfn name() String\n\ntype Box[Named: Named]:\n\tcause: Named\n\nfn Box[Named].name() String: self.cause.name()\n\nexport fn main() Int: 0\n"
   }
 }

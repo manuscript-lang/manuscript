@@ -21,7 +21,7 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 | Bound | Required property |
 | --- | --- |
 | `Equal` | Values can be compared by their contents with `==` and `!=` |
-| `Comparable` | Values have an order: `a.compare(b)` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with `impl Comparable` |
+| `Comparable` | Values have an order: `a.compare(b)` is negative, zero, or positive. Int, Float, String, Decimal, BigInt, Duration, Instant, and Timestamp qualify; other types opt in with an own `compare` |
 | `Hashable` | Values can be map keys or set elements; also supports equality |
 | `Clonable` | `value.clone()` returns an independent copy, so a generic body can keep a value it only borrows. Every type qualifies except a resource (`Closeable`), a type holding one, a native type without a `clone` of its own (`Regex`, `Pipe`), a function value, and any type holding one of those. Generic code that copies a value of `T` (`xs.take(1)`, `xs.concat(ys)`, keeping a borrowed argument) declares `T: Clonable` |
 | `Data` | Values hold no resource, function, interface value, or runtime handle, so they can cross a byte boundary: `json.parse`, `json.stringify`, and typed JSON stream codecs require it. Promises and pipes do not require this bound. Import it from `@std/core.ms`. Types and enums qualify when every part does; `Closeable` types never do; of the collections `List` qualifies, and a `Map[String, T]` when `T` does (it is a JSON object), never a `Set` or a `Map` with another key type; `JsonValue` is declared `Data`, so a dynamic JSON object travels as one. A type with a `JsonEncode` implementation qualifies; the codec owns its JSON form |
@@ -29,15 +29,14 @@ Declare parameters as `[T, U]` with bounds such as `T: Equal` or `T: Read & Clos
 
 Bounds are checked at every application; `Hashable` implies `Equal`, and `Data` and `Hashable` imply `Clonable`. No sharing bound exists, and sharing adds no synchronization. Contract types gain no equality or hashing.
 
-`Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types, type arguments, and `impl` targets. Their prelude names cannot be redefined by declarations, imports, or type parameters.
+`Equal` and `Hashable` are ordinary [interfaces](equality-and-hashing.md) from `@std/core.ms`: bounds, parameter types and type arguments. Their prelude names cannot be redefined by declarations, imports, or type parameters.
 
 ```manuscript
 type Key:
     id: Int
 
-impl Equal for Key:
-    fn equals(other: Key) Bool:
-        return self.id == other.id
+fn Key.equals(other: Key) Bool:
+    return self.id == other.id
 
 fn same_key(left: Equal, right: Equal) Bool:
     return left.equals(right)
@@ -64,7 +63,7 @@ inferred := identity(1)
 ```
 
 - Parameter names are unique; an application supplies one argument each, except trailing [defaults](#default-type-arguments).
-- Types, enums, interfaces, and named functions may be generic. Anonymous functions cannot declare parameters. Contract operations and methods may declare their own ([generic operations](contracts.md#generic-operations)), and implementations inherit the receiver's ([generic implementations](contracts.md#generic-implementations)).
+- Types, enums, interfaces, and named functions may be generic. Anonymous functions cannot declare parameters. Contract operations and methods may declare their own ([generic operations](contracts.md#generic-operations)), and a receiver names the type's parameters ([generic receivers](contracts.md#generic-receivers)).
 - Higher-kinded parameters, type aliases, and variadic parameters are unsupported.
 - Applications are invariant: `Box[Int]` is not `Box[Float]`.
 - A generic function used as a value must be specialized: `identity[Int]`.

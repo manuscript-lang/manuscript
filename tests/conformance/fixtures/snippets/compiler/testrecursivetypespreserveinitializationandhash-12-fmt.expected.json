@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface I[T]:\n\tfn f(x: I[List[T]]) Int\n\ntype Box[T]:\n\tv: T\n\nimpl I[T] for Box[T]:\n\tfn f(x: I[List[T]]) Int:\n\t\treturn 1\n\nfn main() Unit:\n\tb := Box[Int](v: 1)\n\ti := I[Int](value: b)\n"
+    "fmt": "interface I[T]:\n\tfn f(x: I[List[T]]) Int\n\ntype Box[T]:\n\tv: T\n\nfn Box[T].f(x: I[List[T]]) Int:\n\treturn 1\n\nfn main() Unit:\n\tb := Box[Int](v: 1)\n\ti := I[Int](value: b)\n"
   }
 }

@@ -68,77 +68,26 @@ fn generic_specialization_still_overlaps() {
 }
 
 #[test]
-fn ambiguity_preserves_declaration_order() {
-    let source = include_str!("../tests/method_candidates/ambiguity.ms");
-    let mut checker = Checker::new(&crate::Session::new(), &CheckOptions::default());
-    checker.check_module(&module("ambiguity.ms", source));
-    let receiver = checker.names.borrow()[&n("Item")]
-        .ty
-        .borrow()
-        .clone()
-        .unwrap();
-    let methods = checker.implemented_methods(&receiver, n("read"));
-    assert_eq!(
-        methods
-            .iter()
-            .map(|m| m.contract.as_ref().unwrap().name)
-            .collect::<Vec<_>>(),
-        vec![n("Second"), n("First")]
+fn receiver_methods_belong_to_the_declaring_module() {
+    let p = Checker::new(&crate::Session::new(), &CheckOptions::default()).check_modules(
+        vec![
+            module(
+                "owner.ms",
+                include_str!("../tests/method_candidates/owner.ms"),
+            ),
+            module(
+                "local.ms",
+                include_str!("../tests/method_candidates/local.ms"),
+            ),
+        ],
+        None,
     );
-    assert_eq!(
-        checker.p.diagnostics.len(),
-        1,
-        "{:?}",
-        checker.p.diagnostics
-    );
-    assert!(checker.p.diagnostics[0].message.contains("ambiguous"));
-}
-
-#[test]
-fn local_extensions_stay_local_and_owner_methods_travel() {
-    let syms = ms_syntax::Names::global();
-    let modules = vec![
-        module(
-            "owner.ms",
-            include_str!("../tests/method_candidates/owner.ms"),
-        ),
-        module(
-            "local.ms",
-            include_str!("../tests/method_candidates/local.ms"),
-        ),
-        module(
-            "other.ms",
-            include_str!("../tests/method_candidates/other.ms"),
-        ),
-        module(
-            "user.ms",
-            include_str!("../tests/method_candidates/user.ms"),
-        ),
-    ];
-    let mut checker = Checker::new(&crate::Session::new(), &CheckOptions::default());
-    for m in &modules {
-        for import in &m.imports {
-            checker.imports.insert(m.file, import.id, n(&import.path));
-        }
-        checker.check_module(m);
-        let receiver = checker.names.borrow()[&n("Item")]
-            .ty
-            .borrow()
-            .clone()
-            .unwrap();
-        let read = checker.implemented_methods(&receiver, n("read"));
-        if syms.str(m.file) == "local.ms" || syms.str(m.file) == "other.ms" {
-            assert_eq!(read.len(), 1);
-            assert_eq!(read[0].module, m.file);
-        } else {
-            assert!(read.is_empty());
-        }
-        assert_eq!(checker.implemented_methods(&receiver, n("owned")).len(), 1);
-    }
     assert!(
-        checker.p.diagnostics.is_empty(),
+        p.diagnostics.iter().any(|d| d
+            .message
+            .starts_with("inherent methods belong in the module that declares Item")),
         "{:?}",
-        checker.p.diagnostics
+        p.diagnostics
     );
 }
 
@@ -174,7 +123,7 @@ fn invalid_receivers_do_not_register_methods() {
     assert!(
         p.diagnostics.iter().any(|d| d
             .message
-            .starts_with("implementation receiver must be nominal")),
+            .starts_with("inherent methods belong in the module that declares")),
         "{:?}",
         p.diagnostics
     );
@@ -400,27 +349,27 @@ fn source_calls_keep_receiver_and_argument_diagnostics() {
         got,
         [
             (
-                9,
+                8,
                 33,
                 "expected Int, found String (in argument 'value' of make)"
             ),
             (
-                11,
+                10,
                 41,
                 "unknown argument mystery; parameters of next: amount"
             ),
             (
-                13,
+                12,
                 44,
                 "too many positional arguments; every parameter is already supplied, so remove this argument"
             ),
             (
-                15,
+                14,
                 50,
                 "type name requires a constructor call; write Int(field: value, ...) to build a value"
             ),
             (
-                15,
+                14,
                 45,
                 "indexing requires List[T], Map[K, V] or Bytes; use the receiver's lookup method for other types"
             ),

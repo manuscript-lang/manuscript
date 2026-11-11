@@ -9,9 +9,8 @@ interface Read:
 type Box[T]:
     value: T
 
-impl Read for Box[T]:
-    fn get() Int:
-        return 3
+fn Box[T].get() Int:
+    return 3
 
 test "encoded nominal identity":
     box := Box(value: 1)

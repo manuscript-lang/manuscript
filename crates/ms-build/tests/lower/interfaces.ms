@@ -10,9 +10,8 @@ interface Shape:
 type Sq:
     s: Int
 
-impl Shape for Sq:
-    fn area() Int:
-        return self.s * self.s
+fn Sq.area() Int:
+    return self.s * self.s
 
 fn total(x: Shape) Int:
     return x.area()

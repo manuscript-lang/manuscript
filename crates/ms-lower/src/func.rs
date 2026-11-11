@@ -28,6 +28,8 @@ pub(crate) struct ScopeMark {
     parent: u32,
     /// `scope.begin` was emitted.
     begun: bool,
+    /// A closer of this scope is run by lowering, which closes before the pass does.
+    closes: bool,
 }
 
 impl ScopeMark {
@@ -36,6 +38,7 @@ impl ScopeMark {
             id,
             parent: parent.map_or(0, |p| p + 1),
             begun: false,
+            closes: false,
         }
     }
 }
@@ -1413,6 +1416,23 @@ impl<'a> FnLower<'a> {
     /// drops it wherever a path leaves the scope still holding it. Only for a local of one
     /// definition that nothing moves, flags or closes (the other kinds still drop themselves).
     fn own_raw(&mut self, uid: usize, v: Value) {
+        self.own_raw_kind(uid, v, 0);
+    }
+
+    /// Notes that the current scope has a closer that lowering runs itself.
+    pub fn note_closer(&mut self) {
+        if let Some(m) = self.scope_marks.last_mut() {
+            m.closes = true;
+        }
+    }
+
+    /// Whether the current scope has no closer lowering runs itself.
+    pub fn scope_closes_nothing(&self) -> bool {
+        self.scope_marks.last().is_some_and(|m| !m.closes)
+    }
+
+    /// `own_raw` with the owner's cleanup `kind` (`scope.own S K v`).
+    pub fn own_raw_kind(&mut self, uid: usize, v: Value, kind: u32) {
         let i = self.scope_marks.len() - 1;
         let mark = &mut self.scope_marks[i];
         if !mark.begun {
@@ -1420,7 +1440,7 @@ impl<'a> FnLower<'a> {
             let imm = ms_mir::ir::Imm::Scope(mark.id, mark.parent);
             self.b.emit(Op::ScopeBegin, &[], imm, None);
         }
-        let imm = ms_mir::ir::Imm::Scope(self.scope_marks[i].id, 0);
+        let imm = ms_mir::ir::Imm::Scope(self.scope_marks[i].id, kind);
         self.b.emit(Op::ScopeOwn, &[v], imm, None);
         self.raw_owned.insert(uid);
     }

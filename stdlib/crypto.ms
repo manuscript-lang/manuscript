@@ -37,12 +37,11 @@ import (
 
 extern type NativeHasher
 
-impl Hasher for NativeHasher:
-	fn update(data: Bytes) Unit:
-		msstd_crypto_hasher_update(self, data)
+fn NativeHasher.update(data: Bytes) Unit:
+	msstd_crypto_hasher_update(self, data)
 
-	fn finish() Bytes:
-		return msstd_crypto_hasher_finish(self)
+fn NativeHasher.finish() Bytes:
+	return msstd_crypto_hasher_finish(self)
 
 // Compares byte strings without making the comparison time depend on their contents.
 export fn constant_time_equal(left: Bytes, right: Bytes) Bool:

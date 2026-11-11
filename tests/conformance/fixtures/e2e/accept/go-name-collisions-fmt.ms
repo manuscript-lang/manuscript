@@ -13,12 +13,11 @@ interface Methods:
     fn foo_bar() Int
     fn fooBar() Int
 
-impl Methods for Spelled:
-    fn foo_bar() Int:
-        return self.x_
+fn Spelled.foo_bar() Int:
+    return self.x_
 
-    fn fooBar() Int:
-        return self.x
+fn Spelled.fooBar() Int:
+    return self.x
 
 fn string(value: Int) Int:
     return value + 1
@@ -81,9 +80,8 @@ interface Counter:
 type Tally:
     total: Int
 
-impl Counter for Tally:
-    fn count() Int:
-        return self.total
+fn Tally.count() Int:
+    return self.total
 
 type Counter_Tally:
     other: Int
@@ -102,12 +100,11 @@ interface Reporter:
     fn describe() String
     fn receiver() String
 
-impl Reporter for Tally:
-    fn describe() String:
-        return "describe {self.total}"
+fn Tally.describe() String:
+    return "describe {self.total}"
 
-    fn receiver() String:
-        return "receiver {self.total}"
+fn Tally.receiver() String:
+    return "receiver {self.total}"
 
 test "operations named like generated view methods stay callable":
     reporter: Reporter := Tally(3)

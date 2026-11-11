@@ -6,14 +6,12 @@ import promise from "@std/concurrency/promise.ms"
 type Door:
     names: List[String]
 
-impl Closeable for Door:
-    var fn close() Unit!:
-        print("closed")
+fn var Door.close() Unit!:
+    print("closed")
 
-impl Door:
-    var fn swing() Int:
-        self.names.append("swung")
-        return self.names.length()
+fn var Door.swing() Int:
+    self.names.append("swung")
+    return self.names.length()
 
 fn use(var door: Door) Int!:
     return ok(door.swing())

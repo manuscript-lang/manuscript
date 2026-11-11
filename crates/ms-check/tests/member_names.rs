@@ -21,21 +21,22 @@ fn diagnostics(source: &str) -> Vec<String> {
 
 #[test]
 fn method_named_like_a_field_is_rejected() {
-    let got = diagnostics("type T:\n    n: Int\nimpl T:\n    fn n() Int: 3\n");
+    let got = diagnostics("type T:\n    n: Int\nfn T.n() Int: 3\n");
     assert_eq!(got.len(), 1, "{got:?}");
     assert!(got[0].contains("same name as a field"), "{got:?}");
 }
 
 #[test]
-fn interface_operation_named_like_a_field_is_accepted() {
-    let got = diagnostics(
-        "interface I:\n    fn n() Int\ntype T:\n    n: Int\nimpl I for T:\n    fn n() Int: 3\n",
+fn a_method_that_meets_an_interface_operation_named_like_a_field_is_rejected() {
+    let got = diagnostics("interface I:\n    fn n() Int\ntype T:\n    n: Int\nfn T.n() Int: 3\n");
+    assert!(
+        got.iter().any(|d| d.contains("same name as a field")),
+        "{got:?}"
     );
-    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
 fn distinct_names_are_accepted() {
-    let got = diagnostics("type T:\n    n: Int\nimpl T:\n    fn twice() Int: self.n * 2\n");
+    let got = diagnostics("type T:\n    n: Int\nfn T.twice() Int: self.n * 2\n");
     assert!(got.is_empty(), "{got:?}");
 }

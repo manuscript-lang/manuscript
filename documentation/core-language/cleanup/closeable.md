@@ -12,14 +12,14 @@ interface Closeable:
     var fn close() Unit!
 ```
 
-For a type that implements `Closeable`, cleanup calls its declared operation:
+For a type that satisfies `Closeable`, cleanup calls its declared operation:
 
-- A concrete value with an explicit `Closeable` implementation, or an own `fn var close() Unit!` ([shape](../types/contracts.md#satisfying-an-interface-by-shape)); the compiler registers that `close` when the binding is created.
+- A concrete value whose type has an own `fn var close() Unit!` ([shape](../types/contracts.md#satisfying-an-interface)); the compiler registers that `close` when the binding is created.
 - A generic parameter bounded by `Closeable`; `close` dispatches directly.
 
 A value typed as the standard `Closeable` interface owns its concrete value and closes it automatically. An unrelated interface merely declaring `var fn close() Unit!` does not opt into cleanup; retain a concrete owner or call its `close()` explicitly.
 
-The standard handles a caller owns are nominal types with that implementation, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are types that implement `Closeable`, so a binding of one closes at scope end. Built-in descriptor streams hand queued writes to the runtime on close; they do not wait for delivery. A custom stream calls its source or sink’s `close`, which may wait. Use [`flush()`](scopes.md#close-a-resource-explicitly) to observe the destination’s backpressure or drain result before closing.
+The standard handles a caller owns are nominal types with that method, such as `FileHandle`, so a binding of one is checked and closed like your own. `ReadStream[T]` and `WriteStream[T]` are types with that `close`, so a binding of one closes at scope end. Built-in descriptor streams hand queued writes to the runtime on close; they do not wait for delivery. A custom stream calls its source or sink’s `close`, which may wait. Use [`flush()`](scopes.md#close-a-resource-explicitly) to observe the destination’s backpressure or drain result before closing.
 
 ## Cloning a resource
 
@@ -43,7 +43,7 @@ A `Map` iterates in insertion order, so its close order is the reverse of the or
 
 A holder of values that are not resources adds no code, because a `List[Int]` or a type whose fields are strings is not a resource. A part may already have closed itself, for example in a hand-written `close` that forwards to its fields; closing again is harmless because `close()` is idempotent. A generic holder such as `List[T]` also closes its resource parts: lowering selects cleanup for each concrete instance, and an instance holding only plain data adds no close calls. Overwriting a field, `set` or `remove` on a list, and `add` over an existing key, `remove` or `clear` on a map close the old part first, then store the new one; `xs.pop()` returns the element to a binding, which closes it. `splice` closes the elements it deletes. `fill`, `copy_within`, `merge`, and methods that return a collection or element built from the receiver's (`concat`, `take`, `slice`, `reversed`, `filter`, `find`) would make second owners of resources, so the checker rejects them on a holder of resources; move a list element out with `pop`. `remove` closes the removed element. A `Set` cannot hold resources because its elements must be `Hashable`.
 
-A similarly named method without `impl Closeable` does not opt a concrete type into cleanup.
+A similarly named method whose signature is not `fn var close() Unit!` does not opt a concrete type into cleanup.
 
 `close()` is idempotent, may suspend, and finishes the object's release before returning. Repeated or concurrent calls release the handle once. Implementations coordinate ongoing access with closure and report closed state afterward.
 

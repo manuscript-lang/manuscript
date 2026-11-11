@@ -2,7 +2,6 @@
 export type Box[T]:
     value: T
 
-impl Box[T]:
-    // Reports that this is the other box.
-    fn other() Bool:
-        return true
+// Reports that this is the other box.
+fn Box[T].other() Bool:
+    return true

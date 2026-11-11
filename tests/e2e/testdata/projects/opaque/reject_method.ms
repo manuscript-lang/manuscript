@@ -4,9 +4,8 @@ import (
 	Approved, Mode, approve, safe from "./gate.ms",
 )
 
-impl Approved:
-	fn extra() Int:
-		return 1
+fn Approved.extra() Int:
+	return 1
 
 export fn main() Int:
 	return 0

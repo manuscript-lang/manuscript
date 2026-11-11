@@ -12,13 +12,11 @@ interface SameValue[T: Equal]:
 type Box[T: Clonable]:
     value: T
 
-impl ReadValue[T] for Box[T]:
-    fn get() T:
-        return self.value.clone()
+fn Box[T].get() T:
+    return self.value.clone()
 
-impl SameValue[T] for Box[T]:
-    fn same(other: T) Bool:
-        return self.value == other
+fn Box[T: Equal].same(other: T) Bool:
+    return self.value == other
 
 fn compare[T: Equal & Clonable](box: Box[T], other: T) Bool:
     return box.same(other)

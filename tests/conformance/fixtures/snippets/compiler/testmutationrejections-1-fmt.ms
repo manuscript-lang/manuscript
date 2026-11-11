@@ -11,6 +11,5 @@ interface Read:
 type Val:
     val: Int
 
-impl Read for Val:
-    fn get() Int:
-        return self.val
+fn Val.get() Int:
+    return self.val

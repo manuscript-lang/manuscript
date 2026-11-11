@@ -7,5 +7,4 @@ interface Named:
 type E:
     text: String
 
-impl Named for E:
-    fn name() String: this.text
+fn E.name() String: this.text

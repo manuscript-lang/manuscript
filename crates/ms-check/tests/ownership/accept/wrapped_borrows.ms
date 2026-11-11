@@ -5,8 +5,7 @@ type Row:
 type Bad:
     why: String
 
-impl Reportable for Bad:
-    fn message() String: self.why.clone()
+fn Bad.message() String: self.why.clone()
 
 // A part wrapped into an Optional or a Result on the way out is a reference to it.
 fn first_tag(r: Row) String?:

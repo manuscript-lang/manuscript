@@ -35,12 +35,10 @@ type Link:
 	value: Int
 	next: Link?
 
-impl Equal for Link:
-	fn equals(other: Link) Bool:
-		return self.value == other.value
+fn Link.equals(other: Link) Bool:
+	return self.value == other.value
 
-impl Hashable for Link:
-	fn hash() Int: return self.value
+fn Link.hash() Int: return self.value
 
 test "recursive alternatives construct match compare and clone":
 	expr := Expr.Add(left: Expr.Num(7), right: Expr.Neg(Expr.Num(2)))

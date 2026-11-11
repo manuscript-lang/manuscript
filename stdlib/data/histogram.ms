@@ -30,88 +30,87 @@ export opaque type Histogram:
 	// Largest observation; meaningful only when `total` is above zero.
 	high: Int
 
-impl Histogram:
-	// Adds one observation. A negative value faults: it is a caller error, not data to
-	// clamp.
-	var fn record(value: Int) Unit:
-		if value < 0: panic("Histogram.record: value {value} must be at least 0")
+// Adds one observation. A negative value faults: it is a caller error, not data to
+// clamp.
+fn var Histogram.record(value: Int) Unit:
+	if value < 0: panic("Histogram.record: value {value} must be at least 0")
 
-		index := bucket_of(value)
-		self.counts[index] += 1
-		if self.total == 0 or value < self.low: self.low = value
-		if value > self.high: self.high = value
-		self.total += 1
+	index := bucket_of(value)
+	self.counts[index] += 1
+	if self.total == 0 or value < self.low: self.low = value
+	if value > self.high: self.high = value
+	self.total += 1
 
-		room := 9223372036854775807 - value
+	room := 9223372036854775807 - value
 
-		if self.sum <= room:
-			self.sum += value
-		else:
-			self.sum -= room + 1
-			self.sum_wraps += 1
+	if self.sum <= room:
+		self.sum += value
+	else:
+		self.sum -= room + 1
+		self.sum_wraps += 1
 
-	// Adds one duration as nanoseconds. A negative duration faults like `record`.
-	var fn record_duration(elapsed: Duration) Unit:
-		self.record(elapsed.to_nanoseconds())
+// Adds one duration as nanoseconds. A negative duration faults like `record`.
+fn var Histogram.record_duration(elapsed: Duration) Unit:
+	self.record(elapsed.to_nanoseconds())
 
-	// Runs `work`, records how long it took in nanoseconds on the monotonic clock, and
-	// returns its result. A normal return, including an error Result, is recorded; a
-	// fault or cancellation that prevents returning is not.
-	var fn time[T](work: fn() T) T:
-		started := monotonic()
-		result := work()
-		self.record_duration(monotonic().difference(started))
-		return result
+// Runs `work`, records how long it took in nanoseconds on the monotonic clock, and
+// returns its result. A normal return, including an error Result, is recorded; a
+// fault or cancellation that prevents returning is not.
+fn var Histogram.time[T](work: fn() T) T:
+	started := monotonic()
+	result := work()
+	self.record_duration(monotonic().difference(started))
+	return result
 
-	// Observations recorded so far.
-	fn count() Int:
-		return self.total
+// Observations recorded so far.
+fn Histogram.count() Int:
+	return self.total
 
-	// Smallest observation, or none when empty.
-	fn minimum() Int?:
-		if self.total == 0: return none
-		return self.low
+// Smallest observation, or none when empty.
+fn Histogram.minimum() Int?:
+	if self.total == 0: return none
+	return self.low
 
-	// Largest observation, or none when empty.
-	fn maximum() Int?:
-		if self.total == 0: return none
-		return self.high
+// Largest observation, or none when empty.
+fn Histogram.maximum() Int?:
+	if self.total == 0: return none
+	return self.high
 
-	// Mean of the observations, or 0.0 when empty. It is exact, not bucketed.
-	fn mean() Float:
-		if self.total == 0: return 0.0
+// Mean of the observations, or 0.0 when empty. It is exact, not bucketed.
+fn Histogram.mean() Float:
+	if self.total == 0: return 0.0
 
-		sum := self.sum_wraps.to_float() * 9223372036854775808.0 + self.sum.to_float()
-		return sum / self.total.to_float()
+	sum := self.sum_wraps.to_float() * 9223372036854775808.0 + self.sum.to_float()
+	return sum / self.total.to_float()
 
-	// Value at or below which `p` percent of observations fall, for `p` in 0.0 through
-	// 100.0; none when empty. The answer is the top of the matching bucket, never above
-	// `maximum`. A `p` outside the range faults.
-	fn percentile(p: Float) Int?:
-		if not (p >= 0.0 and p <= 100.0): panic(
-			"Histogram.percentile: p {p} must be within 0.0 and 100.0"
-		)
-		if self.total == 0: return none
+// Value at or below which `p` percent of observations fall, for `p` in 0.0 through
+// 100.0; none when empty. The answer is the top of the matching bucket, never above
+// `maximum`. A `p` outside the range faults.
+fn Histogram.percentile(p: Float) Int?:
+	if not (p >= 0.0 and p <= 100.0): panic(
+		"Histogram.percentile: p {p} must be within 0.0 and 100.0"
+	)
+	if self.total == 0: return none
 
-		var rank = ceil(p * self.total.to_float() / 100.0).truncate_to_int().get(1)
-		if rank < 1: rank = 1
+	var rank = ceil(p * self.total.to_float() / 100.0).truncate_to_int().get(1)
+	if rank < 1: rank = 1
 
-		var seen = 0
+	var seen = 0
 
-		for index in 0..BUCKETS:
-			seen += self.counts[index]
-			if seen >= rank: return bucket_top(index).min(self.high)
+	for index in 0..BUCKETS:
+		seen += self.counts[index]
+		if seen >= rank: return bucket_top(index).min(self.high)
 
-		return self.high
+	return self.high
 
-	// Discards every observation and returns the histogram to its empty state.
-	var fn reset() Unit:
-		self.counts = zeros()
-		self.total = 0
-		self.sum = 0
-		self.sum_wraps = 0
-		self.low = 0
-		self.high = 0
+// Discards every observation and returns the histogram to its empty state.
+fn var Histogram.reset() Unit:
+	self.counts = zeros()
+	self.total = 0
+	self.sum = 0
+	self.sum_wraps = 0
+	self.low = 0
+	self.high = 0
 
 // Creates an empty histogram.
 export fn histogram() Histogram:

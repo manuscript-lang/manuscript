@@ -1011,7 +1011,7 @@ impl Checker {
         {
             let gap = self.shape_gap(actual, expected).unwrap_or_default();
             return format!(
-                "{message}; {actual_t} does not satisfy {expected_t} by its own methods ({gap}); declare each operation as a method of {actual_t} with the interface's exact signature, or write 'impl {expected_t} for {actual_t}'",
+                "{message}; {actual_t} does not satisfy {expected_t} by its own methods ({gap}); declare each operation as a method of {actual_t} with the interface's exact signature",
                 expected_t = expected.display(self.syms),
                 actual_t = actual.display(self.syms)
             );
@@ -1025,7 +1025,7 @@ impl Checker {
     pub(crate) fn interface_construction_message(&mut self, typ: &Ty) -> String {
         self.unknown_type = true;
         format!(
-            "{typ_t} is an interface and cannot be constructed; a type with 'impl {typ_t} for <Type>:' passes wherever {typ_t} is expected, so pass the value directly",
+            "{typ_t} is an interface and cannot be constructed; a type whose methods match {typ_t} passes wherever {typ_t} is expected, so pass the value directly",
             typ_t = typ.display(self.syms)
         )
     }
@@ -1033,7 +1033,7 @@ impl Checker {
     pub(crate) fn interface_type_member(&mut self, typ: &Ty) -> String {
         self.unknown_type = true;
         format!(
-            "{typ_t} is an interface, not an alternative; declare a concrete type and 'impl {typ_t} for <Type>:', then construct that concrete type",
+            "{typ_t} is an interface, not an alternative; declare a concrete type with the methods {typ_t} lists, then construct that concrete type",
             typ_t = typ.display(self.syms)
         )
     }

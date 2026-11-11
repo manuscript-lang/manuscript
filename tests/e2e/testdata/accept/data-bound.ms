@@ -12,9 +12,8 @@ type Plain:
 type Money:
 	cents: Int
 
-impl JsonEncode for Money:
-	fn to_json() JsonValue:
-		return JsonValue.StringValue("usd:{self.cents}")
+fn Money.to_json() JsonValue:
+	return JsonValue.StringValue("usd:{self.cents}")
 
 enum Mode:
 	Fast
