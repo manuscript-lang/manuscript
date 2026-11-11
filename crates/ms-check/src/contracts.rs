@@ -1045,9 +1045,10 @@ impl Checker {
     fn has_json_encoder(&self, t: &Ty) -> bool {
         self.p.methods.iter().any(|m| {
             self.method_visible(m)
-                && m.contract
-                    .as_ref()
-                    .is_some_and(|c| c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode"))
+                && (m.contract.as_ref().is_some_and(|c| {
+                    c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode")
+                }) || (m.is_inherent(self.syms)
+                    && m.name().is_some_and(|n| self.syms.str(n) == "to_json")))
                 && {
                     let mut s = Subst::new();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
@@ -1235,10 +1236,11 @@ impl Checker {
         // Explicit implementations take precedence over structural data semantics.
         for m in &self.p.methods {
             if !self.method_visible(m)
-                || !m
+                || !(m
                     .contract
                     .as_ref()
                     .is_some_and(|c| c.is(property.builtin()))
+                    || m.overrides(self.syms, property.builtin()))
             {
                 continue;
             }
@@ -1255,7 +1257,8 @@ impl Checker {
         if property == Property::Hashable {
             for m in &self.p.methods {
                 if !self.method_visible(m)
-                    || !m.contract.as_ref().is_some_and(|c| c.is(Builtin::Equal))
+                    || !(m.contract.as_ref().is_some_and(|c| c.is(Builtin::Equal))
+                        || m.overrides(self.syms, Builtin::Equal))
                 {
                     continue;
                 }

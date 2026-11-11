@@ -35,9 +35,8 @@ Bounds are checked at every application; `Hashable` implies `Equal`, and `Data` 
 type Key:
     id: Int
 
-impl Equal for Key:
-    fn equals(other: Key) Bool:
-        return self.id == other.id
+fn Key.equals(other: Key) Bool:
+    return self.id == other.id
 
 fn same_key(left: Equal, right: Equal) Bool:
     return left.equals(right)

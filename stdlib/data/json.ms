@@ -217,11 +217,10 @@ enum Event:
     Created(id: Int)
     Deleted(id: Int)
 
-impl JsonEncode for Event:
-    fn to_json() JsonValue:
-        match self:
-            Created(id): return tagged("created", id)
-            Deleted(id): return tagged("deleted", id)
+fn Event.to_json() JsonValue:
+    match self:
+        Created(id): return tagged("created", id)
+        Deleted(id): return tagged("deleted", id)
 
 fn tagged(kind: String, id: Int) JsonValue:
     var fields = Map[String, JsonValue]()

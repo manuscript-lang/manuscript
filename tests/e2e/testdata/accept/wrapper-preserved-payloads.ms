@@ -152,12 +152,11 @@ test "specialized direct generic methods transfer instead of retaining reusable 
 type Box:
 	items: List[Int]
 
-impl Box:
-	fn read[T](_tag: T) List[Int]: self.items
+fn Box.read[T](_tag: T) List[Int]: self.items
 
-	var fn change[T](_tag: T) Int:
-		self.items.append(3)
-		return self.items.length()
+fn var Box.change[T](_tag: T) Int:
+	self.items.append(3)
+	return self.items.length()
 
 test "specialized source methods and indexed function calls keep their receiver paths":
 	var box = Box([1, 2])

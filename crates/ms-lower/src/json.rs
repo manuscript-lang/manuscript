@@ -1214,12 +1214,24 @@ impl FnLower<'_> {
     fn json_encode_impl(&mut self, t: &ct::Ty) -> Option<Rc<ms_check::api::hir::Callable>> {
         let key = self.cx.tys.shape(t);
         let tys = &mut self.cx.tys;
-        let m = self.cx.methods.iter().find(|m| {
-            m.contract
-                .as_ref()
-                .is_some_and(|c| c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode"))
-                && tys.shape(&m.receiver) == key
-        })?;
+        let to_json = |m: &ct::MethodRef| {
+            m.name().is_some_and(|n| self.syms.str(n) == "to_json")
+        };
+        let m = self
+            .cx
+            .methods
+            .iter()
+            .find(|m| {
+                m.contract.as_ref().is_some_and(|c| {
+                    c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode")
+                }) && tys.shape(&m.receiver) == key
+            })
+            // A type's own `to_json` encodes it without an `impl JsonEncode`.
+            .or_else(|| {
+                self.cx.methods.iter().find(|m| {
+                    m.is_inherent(self.syms) && to_json(m) && tys.shape(&m.receiver) == key
+                })
+            })?;
         let decl = m.decl.as_ref()?;
         self.callable_of_decl(m.module, Some(decl.id())).ok()
     }

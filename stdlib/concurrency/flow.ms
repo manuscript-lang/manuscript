@@ -170,29 +170,30 @@ export type CircuitBreaker:
 	// Internal state: when the circuit opened, or `none` while closed.
 	opened: Instant? = none
 
-impl CircuitBreaker:
-	// Whether a call may go ahead now: the circuit is closed, or its cooldown has
-	// passed (the trial call).
-	fn is_open() Bool:
-		if since := self.opened:
-			return monotonic().difference(since).compare(self.cooldown) < 0
-		return false
+// Whether a call may go ahead now: the circuit is closed, or its cooldown has
+// passed (the trial call).
+fn CircuitBreaker.is_open() Bool:
+	if since := self.opened:
+		return monotonic().difference(since).compare(self.cooldown) < 0
+	return false
 
-	// Runs `operation` unless the circuit is open, and records the outcome.
-	var fn call[T: Clonable, E: Clonable](operation: fn() T!E) T!CircuitError[E]:
-		if self.is_open(): return error(CircuitError.Open)
+// Runs `operation` unless the circuit is open, and records the outcome.
+fn var CircuitBreaker.call[T: Clonable, E: Clonable](
+	operation: fn() T!E
+) T!CircuitError[E]:
+	if self.is_open(): return error(CircuitError.Open)
 
-		result := operation()
+	result := operation()
 
-		if value := result:
-			self.failures = 0
-			self.opened = none
-			return ok(value.clone())
+	if value := result:
+		self.failures = 0
+		self.opened = none
+		return ok(value.clone())
 
-		self.failures += 1
-		if self.failures >= self.threshold or self.opened.is_some():
-			self.opened = monotonic()
-		return error(CircuitError.Failed(result.err().clone()))
+	self.failures += 1
+	if self.failures >= self.threshold or self.opened.is_some():
+		self.opened = monotonic()
+	return error(CircuitError.Failed(result.err().clone()))
 
 // Applies `work` to every item with at most `limit` running at once and returns the
 // results in the order of `items`. A failed worker promise cancels the others. If

@@ -15,13 +15,11 @@ type Key:
 	id: Int
 	payload: List[Int]
 
-impl Equal for Key:
-	fn equals(other: Key) Bool:
-		return self.id == other.id
+fn Key.equals(other: Key) Bool:
+	return self.id == other.id
 
-impl Hashable for Key:
-	fn hash() Int:
-		return 0
+fn Key.hash() Int:
+	return 0
 
 test "hash collisions keep the first representative and copy nested payloads":
 	var source: List[Key] = []

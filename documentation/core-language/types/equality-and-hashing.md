@@ -56,12 +56,10 @@ type CustomerKey:
     id: Int
     label: String
 
-impl Equal for CustomerKey:
-    fn equals(other: CustomerKey) Bool:
-        return self.id == other.id
+fn CustomerKey.equals(other: CustomerKey) Bool:
+    return self.id == other.id
 
-impl Hashable for CustomerKey:
-    fn hash() Int: self.id
+fn CustomerKey.hash() Int: self.id
 ```
 
 These apply to operators, collection searches, and key lookup. Overriding equality disables automatic hashing, so provide a matching `hash` before using the type as a key. Visibility follows [contract rules](contracts.md#coherence-and-visibility).
