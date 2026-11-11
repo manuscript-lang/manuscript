@@ -71,6 +71,7 @@ drift-check: build
 # Runs corpus programs against a runtime that counts live heap blocks and fails on any block left at exit.
 count-check: build
 	$(MS) run tools/count-check.ms
+	MS=$(MS) $(MS) run tools/count-check-selftest.ms
 
 # Generated inputs at 1k/10k/100k units; fails when the 100k/10k time ratio of linear work exceeds SCALING_BOUND.
 scaling-check: build

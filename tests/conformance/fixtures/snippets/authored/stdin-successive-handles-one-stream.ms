@@ -1,3 +1,5 @@
+// conform: tags=testing,tier-stdlib
+// conform: phase=run
 import stdin, stdout from "@std/io/io.ms"
 import read_all from "@std/io/streams.ms"
 

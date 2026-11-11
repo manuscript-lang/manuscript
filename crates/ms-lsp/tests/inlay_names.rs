@@ -20,7 +20,7 @@ fn inlay_hints_keep_the_supplied_name_table() {
     );
     let analysis = analyze(
         names.names(),
-        &ms_check::Session::new(),
+        &support::session(),
         &document,
         &Documents::new(),
     );

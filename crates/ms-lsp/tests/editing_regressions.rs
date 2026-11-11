@@ -17,23 +17,16 @@ fn labels(source: &str, line: usize, character: usize) -> Vec<String> {
     let ws = Workspace::new("editing-completion");
     let d = Document::new(ws.uri("case.ms"), source);
     let at = Position { line, character };
-    completion_at(
-        syms,
-        &ms_check::Session::new(),
-        &d,
-        &Documents::new(),
-        at,
-        false,
-    )
-    .expect("completion")
-    .into_iter()
-    .filter_map(|item| {
-        item.json()
-            .get("label")
-            .and_then(|j| j.as_str())
-            .map(str::to_string)
-    })
-    .collect()
+    completion_at(syms, &support::session(), &d, &Documents::new(), at, false)
+        .expect("completion")
+        .into_iter()
+        .filter_map(|item| {
+            item.json()
+                .get("label")
+                .and_then(|j| j.as_str())
+                .map(str::to_string)
+        })
+        .collect()
 }
 
 /// The position between `val` and `ue` of the `return value` line.
@@ -146,7 +139,7 @@ fn actions(source: &str, only: &str) -> (Document, Vec<Json>) {
     let syms = ms_syntax::Names::global();
     let ws = Workspace::new("editing-actions");
     let d = Document::new(ws.uri("main.ms"), source);
-    let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
+    let checked = analyze(syms, &support::session(), &d, &Documents::new());
     let whole = Range {
         start: Position::default(),
         end: text::position(source, source.len()),
@@ -170,7 +163,7 @@ fn title(action: &Json) -> &str {
 #[test]
 fn type_import_actions_exclude_values_and_preserve_usable_repairs() {
     let syms = ms_syntax::Names::global();
-    let session = ms_check::Session::new();
+    let session = support::session();
     for export in [
         include_str!("../../ms-driver/tests/import_hints/function-export.ms"),
         include_str!("../../ms-driver/tests/import_hints/constant-export.ms"),
@@ -234,7 +227,7 @@ fn adding_imports_preserves_grouped_declarations_and_file_directives() {
             let fixed = apply(&source, action);
             ms_syntax::format(&"main.ms".into(), &fixed).expect("fixed source parses");
             let d = Document::new("file:///tmp/import-fix.ms", &fixed);
-            let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
+            let checked = analyze(syms, &support::session(), &d, &Documents::new());
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
             let program = checked.program.as_ref().expect("checked program");
             assert!(
@@ -263,7 +256,7 @@ fn completion_auto_import_preserves_file_effect_directives() {
             let at = text::position(&source, source.find("Bytes").unwrap() + "Bytes".len());
             let completion = completion_at(
                 syms,
-                &ms_check::Session::new(),
+                &support::session(),
                 &d,
                 &Documents::new(),
                 at,
@@ -280,7 +273,7 @@ fn completion_auto_import_preserves_file_effect_directives() {
                 "{fixed}"
             );
             let updated = Document::new(d.uri.clone(), &fixed);
-            let checked = analyze(syms, &ms_check::Session::new(), &updated, &Documents::new());
+            let checked = analyze(syms, &support::session(), &updated, &Documents::new());
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
             assert!(
                 checked
@@ -311,7 +304,7 @@ fn project_completions_quote_paths_and_prefix_dot_filenames() {
             let at = text::position(source, source.find("Gadget").unwrap() + "Gadget".len());
             let item = completion_at(
                 syms,
-                &ms_check::Session::new(),
+                &support::session(),
                 &d,
                 &Documents::new(),
                 at,
@@ -327,7 +320,7 @@ fn project_completions_quote_paths_and_prefix_dot_filenames() {
                 ms_syntax::parser::parse(&"main.ms".into(), &fixed).expect("completion parses");
             assert_eq!(parsed.imports[0].path.as_ref(), format!("./{file}"));
             let updated = Document::new(d.uri.clone(), &fixed);
-            let checked = analyze(syms, &ms_check::Session::new(), &updated, &Documents::new());
+            let checked = analyze(syms, &support::session(), &updated, &Documents::new());
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         }
     }
@@ -423,7 +416,7 @@ fn rename_edit(uri: &str) -> Json {
     };
     let mut docs = Documents::new();
     docs.insert(d.uri.clone(), d.clone());
-    let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
+    let checked = analyze(syms, &support::session(), &d, &docs);
     let at = Position {
         line: 0,
         character: 15,
@@ -475,7 +468,7 @@ fn rename_preserves_unicode_and_original_ranges_when_name_length_changes() {
         for name in ["x", "renamed_value"] {
             let d = Document::new(ws.uri("repeat.ms"), &source);
             let docs = Documents::from([(d.uri.clone(), d.clone())]);
-            let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
+            let checked = analyze(syms, &support::session(), &d, &docs);
             assert!(checked.success(), "{:?}", checked.diagnostics);
             // Select the final use after a supplementary Unicode character.
             let offset = source.rfind("value").unwrap();
@@ -503,7 +496,7 @@ fn rename_ignores_an_unrelated_unread_binding() {
     let source = "fn identity(value: Int) Int:\n    spare := 1\n    return value\n";
     let d = Document::new(ws.uri("unread.ms"), source);
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
-    let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
+    let checked = analyze(syms, &support::session(), &d, &docs);
     assert!(
         !checked.success() && checked.resolves(),
         "{:?}",
@@ -543,7 +536,7 @@ fn prepare_rename_uses_the_checked_declaration_without_scanning_workspace() {
     let source = include_str!("editing_regressions/prepare-local.ms");
     let d = Document::new(ws.uri("project/main.ms"), source);
     let docs = Documents::from([(d.uri.clone(), d.clone())]);
-    let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
+    let checked = analyze(syms, &support::session(), &d, &docs);
     assert!(checked.success(), "{:?}", checked.diagnostics);
     let polls = std::cell::Cell::new(0);
     let cancel = || {
@@ -621,7 +614,7 @@ fn prepare_rename_accepts_imported_declarations_and_bindings_but_not_stdlib() {
     ] {
         let d = Document::new(ws.uri(relative), ws.read(relative));
         let docs = Documents::from([(d.uri.clone(), d.clone())]);
-        let checked = analyze(syms, &ms_check::Session::new(), &d, &docs);
+        let checked = analyze(syms, &support::session(), &d, &docs);
         assert!(checked.success(), "{:?}", checked.diagnostics);
         let file = checked.module_file(syms, &d);
         let entry = checked
@@ -680,7 +673,7 @@ fn project_exports_are_offered_before_standard_ones() {
         std::fs::write(ws.path(file), "export type Bytes:\n    size: Int\n").unwrap();
         let source = "fn size(b: Bytes) Int:\n    return 0\n";
         let d = Document::new(ws.uri("main.ms"), source);
-        let checked = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
+        let checked = analyze(syms, &support::session(), &d, &Documents::new());
         let whole = Range {
             start: Position::default(),
             end: text::position(source, source.len()),
@@ -699,7 +692,7 @@ fn project_exports_are_offered_before_standard_ones() {
             ms_syntax::parser::parse(&"main.ms".into(), &fixed).expect("fixed source parses");
         assert_eq!(parsed.imports[0].path.as_ref(), format!("./{file}"));
         let updated = Document::new(d.uri.clone(), &fixed);
-        let checked = analyze(syms, &ms_check::Session::new(), &updated, &Documents::new());
+        let checked = analyze(syms, &support::session(), &updated, &Documents::new());
         assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
     }
 }
@@ -724,7 +717,7 @@ fn checkout_stdlib_sources_report_no_diagnostics() {
         let path = std::fs::canonicalize(root.join(file)).expect("stdlib file");
         let source = std::fs::read_to_string(&path).expect("read");
         let d = Document::new(ms_lsp::uri::file_uri(path.to_str().unwrap()), &source);
-        let result = analyze(syms, &ms_check::Session::new(), &d, &Documents::new());
+        let result = analyze(syms, &support::session(), &d, &Documents::new());
         let messages: Vec<_> = result
             .diagnostics
             .iter()

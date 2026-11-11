@@ -1,2 +1,2 @@
 export fn main() Int:
-    return 7
+	return 7

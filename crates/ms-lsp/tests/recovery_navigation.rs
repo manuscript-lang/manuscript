@@ -24,12 +24,7 @@ fn recovered_declaration_names_keep_hover_and_definition_ranges() {
             let ws = Workspace::new("recovered-navigation");
             let source = format!("{broken}{SOURCE}").replace('\n', newline);
             let document = Document::new(ws.uri("recovered.ms"), source.clone());
-            let analysis = analyze(
-                syms,
-                &ms_check::Session::new(),
-                &document,
-                &Documents::new(),
-            );
+            let analysis = analyze(syms, &support::session(), &document, &Documents::new());
             assert!(
                 !analysis.diagnostics.is_empty(),
                 "malformed neighbor is retained"
@@ -92,12 +87,7 @@ fn recovered_outline_selects_exact_declaration_names() {
         let ws = Workspace::new("recovered-outline");
         let source = format!("fn broken(\n\n{SOURCE}").replace('\n', newline);
         let document = Document::new(ws.uri("recovered.ms"), source.clone());
-        let analysis = analyze(
-            syms,
-            &ms_check::Session::new(),
-            &document,
-            &Documents::new(),
-        );
+        let analysis = analyze(syms, &support::session(), &document, &Documents::new());
         let outline = document_symbols(syms, &analysis, &document);
         for name in ["Point", "identity", "sample"] {
             let symbol = outline
@@ -125,12 +115,7 @@ fn a_statement_cut_off_mid_expression_keeps_hover_and_definition() {
             )
             .replace('\n', newline);
             let document = Document::new(ws.uri("cut.ms"), source.clone());
-            let analysis = analyze(
-                syms,
-                &ms_check::Session::new(),
-                &document,
-                &Documents::new(),
-            );
+            let analysis = analyze(syms, &support::session(), &document, &Documents::new());
             assert!(!analysis.diagnostics.is_empty());
             let at = text::position(&source, source.find(&format!("return {tail}")).unwrap() + 7);
             for method in [Navigate::Hover, Navigate::Definition] {
