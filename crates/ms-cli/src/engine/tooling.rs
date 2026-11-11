@@ -6,7 +6,9 @@ use std::io::{Read, Write};
 use std::time::{Duration, Instant, SystemTime};
 
 use ms_driver::project::{Overlay, ProjectError, pathops};
-use ms_driver::{CheckRequest, Checked, EditorOptions, LoadOptions, check_graph, load_editor_file};
+use ms_driver::{
+    CheckRequest, Checked, EditorOptions, LoadOptions, check_graph_in, load_editor_file,
+};
 use ms_tooling::collect::collect_facts;
 use ms_tooling::diagram::diagram_ascii;
 use ms_tooling::diff::{DiffFile, parse_diff, reverse_apply};
@@ -31,13 +33,23 @@ use crate::util::{emit_json, file_error, plural, write_output};
 /// Load and check `filename` the way the source tools do: no lowering, and
 /// `main` is required only for a project manifest that has an entry.
 fn analyze(syms: ms_syntax::Names, filename: &str, overlay: &Overlay) -> Checked {
-    analyze_with(syms, filename, overlay, false, true)
+    analyze_with(
+        syms,
+        &ms_check::Session::new(),
+        filename,
+        overlay,
+        false,
+        true,
+    )
 }
 
 /// `project_sources` also checks every source file of a manifest's project
 /// (`ms check`); `entry` allows the entry requirement (never for `ms lint`).
+///
+/// `session` is the caller's, so several files checked together load the standard library once.
 pub(super) fn analyze_with(
     syms: ms_syntax::Names,
+    session: &std::rc::Rc<ms_check::Session>,
     filename: &str,
     overlay: &Overlay,
     project_sources: bool,
@@ -51,13 +63,15 @@ pub(super) fn analyze_with(
     let graph = load_editor_file(syms, filename, LoadOptions::default(), &editor);
     let executable = entry && !graph.library;
     let manifest = executable && pathops::base(filename) == "ms.toml";
-    check_graph(
+    check_graph_in(
         syms,
+        session,
         graph,
         CheckRequest {
             entry: manifest,
             entry_if_declared: executable && !manifest,
         },
+        None,
     )
 }
 
@@ -69,7 +83,14 @@ fn accepted(
     overlay: &Overlay,
     project: bool,
 ) -> Result<Checked, Failure> {
-    let checked = analyze_with(syms, filename, overlay, project, true);
+    let checked = analyze_with(
+        syms,
+        &ms_check::Session::new(),
+        filename,
+        overlay,
+        project,
+        true,
+    );
     if checked.success() && checked.program.is_some() {
         return Ok(checked);
     }
@@ -97,8 +118,19 @@ fn facts_of(syms: ms_syntax::Names, checked: &Checked) -> Facts {
 
 /// `ms check` and `ms lint`; `--watch` repeats the run after each saved change.
 pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) -> BackendResult {
+    if request.each {
+        return Ok(analysis_each(syms, request, io));
+    }
     if !request.watch {
-        return Ok(analysis_once(syms, request, FIX_PASSES, &mut BTreeMap::new(), io).0);
+        return Ok(analysis_once(
+            syms,
+            request,
+            FIX_PASSES,
+            &mut BTreeMap::new(),
+            &ms_check::Session::new(),
+            io,
+        )
+        .0);
     }
     let stops = Stops::catch();
     let mut watched = BTreeMap::new();
@@ -107,7 +139,14 @@ pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) 
         if due.is_some_and(|at| Instant::now() >= at) {
             due = None;
             let started = SystemTime::now();
-            let (_, files) = analysis_once(syms, request, FIX_PASSES, &mut BTreeMap::new(), io);
+            let (_, files) = analysis_once(
+                syms,
+                request,
+                FIX_PASSES,
+                &mut BTreeMap::new(),
+                &ms_check::Session::new(),
+                io,
+            );
             // A file that dropped out of the graph (a broken import loads no modules) stays
             // watched, so repairing it reruns the check.
             watched = observed(
@@ -134,6 +173,51 @@ pub fn analysis(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) 
     }
 }
 
+/// `--each`: every target is checked as its own run, so its document, text, and status match a
+/// separate `ms check <target> --json --with-text`, while the standard library loads once.
+fn analysis_each(syms: ms_syntax::Names, request: &AnalysisRequest, io: &mut Io) -> i32 {
+    let session = ms_check::Session::new();
+    let mut results = Vec::new();
+    for target in &request.targets {
+        let single = AnalysisRequest {
+            targets: vec![target.clone()],
+            each: false,
+            ..request.clone()
+        };
+        let (mut out, mut err, mut stdin) = (Vec::new(), Vec::new(), std::io::empty());
+        let status = {
+            let mut sub = Io {
+                stdin: &mut stdin,
+                stdout: &mut out,
+                stderr: &mut err,
+            };
+            analysis_once(
+                syms,
+                &single,
+                FIX_PASSES,
+                &mut BTreeMap::new(),
+                &session,
+                &mut sub,
+            )
+            .0
+        };
+        // A run that wrote no document (a usage error) leaves null; its stderr is the message.
+        let document = crate::json::parse(&out).unwrap_or(crate::json::Json::Null);
+        results.push(
+            crate::json::Json::object()
+                .with("target", crate::json::Json::str(target.clone()))
+                .with("exit_code", crate::json::Json::int(i64::from(status)))
+                .with("document", document)
+                .with(
+                    "stderr",
+                    crate::json::Json::str(String::from_utf8_lossy(&err).into_owned()),
+                ),
+        );
+    }
+    let document = crate::json::Json::object().with("results", crate::json::Json::Arr(results));
+    emit_json(io, &document, 0)
+}
+
 /// Rounds of `--fix` per run; fixes that regenerate each other stop here.
 const FIX_PASSES: u8 = 8;
 
@@ -143,6 +227,7 @@ fn analysis_once(
     request: &AnalysisRequest,
     fix_passes: u8,
     fix_errors: &mut BTreeMap<String, CommandDiagnostic>,
+    session: &std::rc::Rc<ms_check::Session>,
     io: &mut Io,
 ) -> (i32, Vec<String>) {
     let check = request.command == AnalysisCommand::Check;
@@ -173,7 +258,7 @@ fn analysis_once(
     }
     files.extend(selection.scanned.iter().cloned());
     for input in &selection.inputs {
-        let checked = analyze_with(syms, &input.path, &Overlay::new(), check, check);
+        let checked = analyze_with(syms, session, &input.path, &Overlay::new(), check, check);
         if request.fix {
             fixes.extend(source_fixes(&checked));
         }
@@ -249,7 +334,14 @@ fn analysis_once(
                 fix: fix_passes > 1,
                 ..request.clone()
             };
-            return analysis_once(syms, &rerun, fix_passes.saturating_sub(1), fix_errors, io);
+            return analysis_once(
+                syms,
+                &rerun,
+                fix_passes.saturating_sub(1),
+                fix_errors,
+                session,
+                io,
+            );
         }
     }
     diagnostics.extend(fix_errors.values().cloned().map(|mut issue| {

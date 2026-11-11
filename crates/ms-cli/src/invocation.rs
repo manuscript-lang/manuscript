@@ -79,6 +79,8 @@ pub struct Invocation {
     pub deny_warnings: bool,
     /// `check --json --with-text`: the document also carries the terminal output.
     pub with_text: bool,
+    /// `check --json --with-text --each`: report each input as its own result in one process.
+    pub each: bool,
     pub build_type_name: String,
     pub test_timeout: String,
     pub test_filter: String,
@@ -201,6 +203,7 @@ fn parse_options(
             "--static" => inv.static_libc = true,
             "--deny-warnings" => inv.deny_warnings = true,
             "--with-text" => inv.with_text = true,
+            "--each" => inv.each = true,
             "--check" => inv.format_check = true,
             "--json" => inv.structured = true,
             "--build-type" => {
@@ -633,6 +636,14 @@ pub fn validate(inv: &mut Invocation, io: &mut Io) -> Result<Plan, i32> {
             format!(
                 "--with-text requires check --json, not {command}; use ms check <file> --json --with-text"
             ),
+        ));
+    }
+    if inv.each
+        && !(command == "check" && inv.structured && inv.with_text && !inv.watch && !inv.fix)
+    {
+        return Err(usage_error(
+            io,
+            "--each requires check --json --with-text without --watch or --fix; use ms check a.ms b.ms --json --with-text --each",
         ));
     }
     if inv.deny_warnings && command != "lint" {

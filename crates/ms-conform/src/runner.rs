@@ -139,6 +139,16 @@ pub fn load_expected(fx: &Fixture) -> Result<Json, String> {
 /// Run one fixture on `ctx.ms` and judge it against the recorded expectation.
 pub fn check_one(ctx: &Ctx, fx: &Fixture, allow: &ExpectFail) -> Case {
     let started = std::time::Instant::now();
+    judge(fx, allow, started, |_| observe::observe(ctx, fx))
+}
+
+/// Judge `fx` against its recorded expectation, observing it with `observe` once the expectation loads.
+fn judge(
+    fx: &Fixture,
+    allow: &ExpectFail,
+    started: std::time::Instant,
+    observe: impl FnOnce(&Fixture) -> Json,
+) -> Case {
     let (passed, diff) = match load_expected(fx) {
         Err(e) => {
             return Case {
@@ -151,7 +161,7 @@ pub fn check_one(ctx: &Ctx, fx: &Fixture, allow: &ExpectFail) -> Case {
             };
         }
         Ok(expected) => {
-            let actual = observe::observe(ctx, fx);
+            let actual = observe(fx);
             match compare::diff(&expected, &actual, 8) {
                 None => (true, String::new()),
                 Some(d) => (false, d),
@@ -175,6 +185,29 @@ pub fn check_one(ctx: &Ctx, fx: &Fixture, allow: &ExpectFail) -> Case {
     }
 }
 
+/// Check fixtures observed by one `ms check --each` process. Each load of the standard library
+/// costs more than checking a fixture, so a batch is a few dozen, small enough to spread over the
+/// workers.
+const CHECK_BATCH: usize = 24;
+
+/// Cases of `batch`, which are all check fixtures, from one process.
+fn check_batch(ctx: &Ctx, batch: &[&Fixture], allow: &ExpectFail) -> Vec<Case> {
+    let started = std::time::Instant::now();
+    let observed = observe::observe_check_batch(ctx, batch);
+    let share = started.elapsed() / batch.len().max(1) as u32;
+    batch
+        .iter()
+        .zip(observed)
+        .map(|(fx, actual)| {
+            let mut case = judge(fx, allow, std::time::Instant::now(), |_| actual);
+            if case.outcome != Outcome::Unrecorded {
+                case.millis = share.as_millis();
+            }
+            case
+        })
+        .collect()
+}
+
 /// Run all selected fixtures. `progress` prints one line per finished fixture to stderr.
 pub fn run_all(
     ctx: &Ctx,
@@ -186,14 +219,45 @@ pub fn run_all(
     let total = fixtures.len();
     let done = AtomicUsize::new(0);
     let _ = fs::create_dir_all(&ctx.scratch);
-    let cases = parallel_map(fixtures, jobs, |_, fx| {
-        let case = check_one(ctx, fx, allow);
-        let n = done.fetch_add(1, Ordering::SeqCst) + 1;
-        if progress && (case.outcome != Outcome::Pass || n.is_multiple_of(50)) {
-            eprintln!("[{n}/{total}] {:?} {}", case.outcome, case.id);
+    // One work item is a fixture, or a batch of check fixtures; `at` maps its cases back to
+    // positions in `fixtures`.
+    let mut items: Vec<Vec<usize>> = Vec::new();
+    let mut checks: Vec<usize> = Vec::new();
+    for (i, fx) in fixtures.iter().enumerate() {
+        if fx.phase == Phase::Check {
+            checks.push(i);
+        } else {
+            items.push(vec![i]);
         }
-        case
+    }
+    // A batch is sized so every worker gets some, however few the check fixtures are.
+    let size = checks.len().div_ceil(jobs.max(1)).clamp(1, CHECK_BATCH);
+    items.extend(checks.chunks(size).map(<[usize]>::to_vec));
+    let finished = parallel_map(&items, jobs, |_, at| {
+        let cases: Vec<Case> = if fixtures[at[0]].phase == Phase::Check {
+            let batch: Vec<&Fixture> = at.iter().map(|&i| fixtures[i]).collect();
+            check_batch(ctx, &batch, allow)
+        } else {
+            vec![check_one(ctx, fixtures[at[0]], allow)]
+        };
+        for case in &cases {
+            let n = done.fetch_add(1, Ordering::SeqCst) + 1;
+            if progress && (case.outcome != Outcome::Pass || n.is_multiple_of(50)) {
+                eprintln!("[{n}/{total}] {:?} {}", case.outcome, case.id);
+            }
+        }
+        cases
     });
+    let mut slots: Vec<Option<Case>> = (0..fixtures.len()).map(|_| None).collect();
+    for (at, cases) in items.iter().zip(finished) {
+        for (&i, case) in at.iter().zip(cases) {
+            slots[i] = Some(case);
+        }
+    }
+    let cases: Vec<Case> = slots
+        .into_iter()
+        .map(|c| c.expect("every fixture ran"))
+        .collect();
     let _ = fs::remove_dir_all(&ctx.scratch);
     cases
 }
