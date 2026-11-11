@@ -3,11 +3,11 @@
 // conform: origin=tests/e2e/testdata/accept/primitive-list-storage.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
-fn append_value[T](var values: List[T], value: T) List[T]:
+fn append_value[T: Clonable](var values: List[T], value: T) List[T]:
     values.append(value)
     return values.clone()
 
-fn forwarded[T](values: List[T]) List[T]:
+fn forwarded[T: Clonable](values: List[T]) List[T]:
     return values.clone()
 
 type Lists:

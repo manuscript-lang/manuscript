@@ -4,7 +4,7 @@ fn fallback(var calls: Int) List[Int]?:
     calls += 1
     return [99]
 
-fn choose[T](value: List[T]?, default: List[T]?) List[T]:
+fn choose[T: Clonable](value: List[T]?, default: List[T]?) List[T]:
     return value.get(default).clone()
 
 fn main() Unit:

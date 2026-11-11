@@ -11,7 +11,7 @@ fn roll(i: Int) Int!Error: ok(i)
 
 fn count(values: List[String]) Int: values.length()
 
-fn update[K: Hashable, V](var values: Map[K, V], key: K, value: V) Map[K, V]:
+fn update[K: Hashable, V: Clonable](var values: Map[K, V], key: K, value: V) Map[K, V]:
 	values.add(key, value)
 	return values.clone()
 
