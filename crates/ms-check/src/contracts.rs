@@ -294,6 +294,19 @@ impl DataBlocker {
 
 /// Standard types whose native compare operation satisfies Comparable without
 /// an impl.
+/// Whether `t` is a member of the type set `set`, or a type parameter bounded by a set whose members
+/// are all members of it.
+fn type_set_admits(t: &Ty, set: &Ty) -> bool {
+    if t.kind == Kind::Variable {
+        return t.bounds().iter().any(|b| {
+            b.is(Builtin::TypeSet)
+                && !b.args.is_empty()
+                && b.args.iter().all(|m| set.args.iter().any(|x| same(x, m)))
+        });
+    }
+    set.args.iter().any(|m| same(m, t))
+}
+
 fn builtin_comparable(t: &Ty) -> bool {
     t.builtin.is_some_and(|b| {
         b.is_int()
@@ -832,6 +845,9 @@ impl Checker {
         }
         if let Some(property) = Property::of(contract) {
             return self.property(receiver, property, None);
+        }
+        if contract.is(Builtin::TypeSet) {
+            return type_set_admits(receiver, contract);
         }
         if receiver.kind == Kind::Variable {
             return receiver.bounds().iter().any(|b| same(b, contract));
@@ -1684,6 +1700,19 @@ impl Checker {
             t_t = t.display(self.syms),
             bound_t = bound.display(self.syms)
         );
+        if bound.is(Builtin::TypeSet) {
+            let members: Vec<String> = bound
+                .args
+                .iter()
+                .map(|m| m.display(self.syms).to_string())
+                .collect();
+            return format!(
+                "{t_t} is not a member of the type set {}; its members are {}",
+                self.syms.str(bound.name),
+                members.join(", "),
+                t_t = t.display(self.syms)
+            );
+        }
         if bound.is(Builtin::Data)
             && let Some(blocker) = self.data_blocker(t, &mut Vec::new(), &mut Vec::new())
         {

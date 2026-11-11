@@ -82,11 +82,12 @@ impl DeclRef {
         }
     }
 
-    /// The aliased type expression of a `type Name = Type` declaration.
-    pub fn alias_target(&self) -> Option<&TypeRef> {
+    /// The aliased type expressions of a `type Name = Type | ...` declaration: one for an alias,
+    /// several for a type set.
+    pub fn alias_targets(&self) -> &[TypeRef] {
         match &self.0.decl.kind {
-            DeclKind::Alias(a) => Some(&a.target),
-            _ => None,
+            DeclKind::Alias(a) => &a.targets,
+            _ => &[],
         }
     }
 

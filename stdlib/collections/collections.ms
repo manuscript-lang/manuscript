@@ -115,74 +115,11 @@ fn var List[T].append(value: T) Unit: ...
 // Returns the number of elements.
 fn List[T].length() Int: ...
 
-// Adds the elements left to right with `+`, so integer overflow faults; an empty
-// list sums to 0. Example: `[1, 2, 3].sum()` is `6`.
-fn List[Int].sum() Int:
-	var total: Int = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+` in binary64 arithmetic; an empty list
-// sums to 0.0. Example: `[1.5, 2.5].sum()` is `4.0`.
-fn List[Float].sum() Float:
-	var total: Float = 0.0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so Int8 overflow faults; an empty list
-// sums to 0.
-fn List[Int8].sum() Int8:
-	var total: Int8 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so Int16 overflow faults; an empty list
-// sums to 0.
-fn List[Int16].sum() Int16:
-	var total: Int16 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so Int32 overflow faults; an empty list
-// sums to 0.
-fn List[Int32].sum() Int32:
-	var total: Int32 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so UInt8 overflow faults; an empty list
-// sums to 0.
-fn List[UInt8].sum() UInt8:
-	var total: UInt8 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so UInt16 overflow faults; an empty
-// list sums to 0.
-fn List[UInt16].sum() UInt16:
-	var total: UInt16 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+`, so UInt32 overflow faults; an empty
-// list sums to 0.
-fn List[UInt32].sum() UInt32:
-	var total: UInt32 = 0
-	for x in self:
-		total += x
-	return total
-
-// Adds the elements left to right with `+` in binary32 arithmetic; an empty list
-// sums to 0.0.
-fn List[Float32].sum() Float32:
-	var total: Float32 = 0.0
+// Adds the elements left to right with `+` in the element type's own arithmetic, so
+// integer overflow faults and floats follow their width; an empty list sums to zero.
+// Example: `[1, 2, 3].sum()` is `6`; `[1.5, 2.5].sum()` is `4.0`.
+fn List[T: Numeric].sum() T:
+	var total: T = 0
 	for x in self:
 		total += x
 	return total
@@ -807,33 +744,6 @@ export fn flatten[T: Clonable](lists: List[List[T]]) List[T]:
 // List operations written in Manuscript. Each interface gathers the operations that
 // need a bound on the element type; a List[T] has them only when T meets the bound.
 // They apply wherever List is used, without an import.
-interface ListIntSum:
-	fn sum() Int
-
-interface ListFloatSum:
-	fn sum() Float
-
-interface ListInt8Sum:
-	fn sum() Int8
-
-interface ListInt16Sum:
-	fn sum() Int16
-
-interface ListInt32Sum:
-	fn sum() Int32
-
-interface ListUInt8Sum:
-	fn sum() UInt8
-
-interface ListUInt16Sum:
-	fn sum() UInt16
-
-interface ListUInt32Sum:
-	fn sum() UInt32
-
-interface ListFloat32Sum:
-	fn sum() Float32
-
 // Operations that copy elements. A copy of a resource would be closed twice, so the
 // elements must be Clonable.
 export interface ListCopies[T: Clonable]:
@@ -1016,3 +926,6 @@ interface MapRetain[T: Hashable & Clonable, U]:
 
 interface SetRetain[T: Hashable & Clonable]:
 	var fn retain(keep: fn(T) Bool) Unit
+
+// The built-in integer and float types: the element types `sum` adds.
+export type Numeric = Int | Int8 | Int16 | Int32 | UInt8 | UInt16 | UInt32 | Float | Float32

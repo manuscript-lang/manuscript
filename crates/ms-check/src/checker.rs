@@ -229,6 +229,8 @@ pub struct Checker {
     pub(crate) unknown_type: bool,
     /// Aliases whose target is being resolved, to reject a cycle.
     pub(crate) resolving_aliases: HashSet<Name>,
+    /// Set while a bound or a type-set member is resolved: the only places a set may be named.
+    pub(crate) allow_type_set: bool,
     pub(crate) unresolved_constructors: HashSet<Pos>,
     /// Failed-bound messages reported while resolving written types, so the later
     /// declaration well-formedness pass does not restate them at the declaration.
@@ -289,6 +291,7 @@ impl Checker {
             rejected_names: HashSet::new(),
             unknown_type: false,
             resolving_aliases: HashSet::new(),
+            allow_type_set: false,
             unresolved_constructors: HashSet::new(),
             reported_bounds: HashSet::new(),
             in_declaration_checks: false,
@@ -1056,16 +1059,68 @@ impl Checker {
         }
         let scope = self.variable_scope(&s.variables());
         let old = std::mem::replace(&mut self.scope, scope);
-        let target = self.resolve(decl.alias_target());
+        let targets = decl.alias_targets();
+        let target = if targets.len() > 1 {
+            self.type_set(s, targets)
+        } else {
+            self.resolve(targets.first())
+        };
         self.scope = old;
         self.resolving_aliases.remove(&s.id);
         *s.ty.borrow_mut() = Some(target.clone());
         target
     }
 
+    /// The type set `type Name = A | B`: a bound-only type whose arguments are its members, with
+    /// the members of a member set flattened in.
+    fn type_set(&mut self, s: &SymRef, targets: &[TypeRef]) -> Ty {
+        let mut members: Vec<Ty> = Vec::new();
+        for target in targets {
+            let was = std::mem::replace(&mut self.allow_type_set, true);
+            let member = self.resolve(Some(target));
+            self.allow_type_set = was;
+            let flat = if member.is(Builtin::TypeSet) {
+                member.args.clone()
+            } else {
+                vec![member]
+            };
+            for m in flat {
+                if m.is_invalid() {
+                    continue;
+                }
+                if m.kind == Kind::Variable || m.kind == Kind::Contract {
+                    self.res_error(
+                        target.pos,
+                        "a type set holds concrete types; name a type such as Int, not a type parameter or interface",
+                    );
+                    continue;
+                }
+                if !members.iter().any(|x| same(x, &m)) {
+                    members.push(m);
+                }
+            }
+        }
+        let id = self.unique("typeset");
+        let mut t = Type::new(self.syms, s.name, id, Kind::Contract);
+        t.builtin = Some(Builtin::TypeSet);
+        t.args = members;
+        Rc::new(t)
+    }
+
     /// A written use of an alias: its target with the written arguments substituted.
     fn resolve_alias_use(&mut self, t: &TypeRef, s: &SymRef, args: &[TypeRef]) -> Ty {
         let target = self.alias_target(s);
+        if target.is(Builtin::TypeSet) && !self.allow_type_set {
+            self.type_error(
+                t.pos,
+                format!(
+                    "{} is a type set, which constrains a type parameter and has no values; write fn f[T: {}](...) or use one of its members",
+                    self.syms.str(s.name),
+                    self.syms.str(s.name)
+                ),
+            );
+            return invalid();
+        }
         let vars = s.variables();
         let mut written: Vec<Ty> = args.iter().map(|a| self.resolve(Some(a))).collect();
         let required = required_type_arguments(&vars);
@@ -1506,7 +1561,9 @@ impl Checker {
                     );
                     continue;
                 }
+                let was = std::mem::replace(&mut self.allow_type_set, true);
                 let t = self.resolve(Some(b));
+                self.allow_type_set = was;
                 if t.kind != Kind::Contract {
                     if t.kind == Kind::Variable {
                         self.type_error(

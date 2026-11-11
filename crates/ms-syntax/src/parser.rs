@@ -1442,7 +1442,10 @@ impl<'a> Parser<'a> {
         let name = self.sym(name_tok);
         let type_params = self.type_params()?;
         if token.kind == Tok::Type && self.take(Tok::Assign) {
-            let target = self.typ()?;
+            let mut targets = vec![self.typ()?];
+            while self.take(Tok::Pipe) {
+                targets.push(self.typ()?);
+            }
             self.end()?;
             let id = self.id();
             return Ok(Decl {
@@ -1453,7 +1456,7 @@ impl<'a> Parser<'a> {
                 kind: DeclKind::Alias(AliasDecl {
                     name,
                     type_params,
-                    target,
+                    targets,
                 }),
             });
         }

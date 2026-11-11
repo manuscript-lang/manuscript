@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown or ambiguous member sum on List[String]; available starting with 's': set, slice, sort, sorted, sorted_by_key, splice, swap; 65 members in total",
+        "message": "unknown or ambiguous member sum on List[String]; sum requires String to be Numeric[Int, Int8, Int16, Int32, UInt8, UInt16, UInt32, Float, Float32]; String is not a member of the type set Numeric; its members are Int, Int8, Int16, Int32, UInt8, UInt16, UInt32, Float, Float32",
         "position": {
           "file": "list-sum-strings.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/list-sum-strings.ms:4:23: resolution: unknown or ambiguous member sum on List[String]; available starting with 's': set, slice, sort, sorted, sorted_by_key, splice, swap; 65 members in total\n   |\n 4 |     return [\"a\", \"b\"].sum().length()\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/list-sum-strings.ms:4:23: resolution: unknown or ambiguous member sum on List[String]; sum requires String to be Numeric[Int, Int8, Int16, Int32, UInt8, UInt16, UInt32, Float, Float32]; String is not a member of the type set Numeric; its members are Int, Int8, Int16, Int32, UInt8, UInt16, UInt32, Float, Float32\n   |\n 4 |     return [\"a\", \"b\"].sum().length()\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

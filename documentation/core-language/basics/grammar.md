@@ -122,7 +122,7 @@ ConstantDeclaration = Name, ( ":=", Expression | ":", Type, ":=", Expression ), 
 
 TypeDeclaration = [ "opaque" ], "type", Name, [ TypeParameters ], ":",
                   ("...", NEWLINE | NEWLINE, INDENT, RecordBody, DEDENT) ;
-AliasDeclaration = "type", Name, [ TypeParameters ], "=", Type, NEWLINE ;
+AliasDeclaration = "type", Name, [ TypeParameters ], "=", Type, { "|", Type }, NEWLINE ;
 EnumDeclaration = [ "opaque" ], "enum", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, AlternativeBody, DEDENT ;
 RecordBody    = { Field } ;
@@ -167,7 +167,7 @@ FunctionType  = "fn", "(", [ [ "var" ], Type, { ",", [ "var" ], Type } ], ")", T
 ```
 
 - A type suffix `?` is `Optional[T]`; `!` is `Result[T, Error]`, and `!E` with `E` directly after the bang is `Result[T, E]`. Suffixes apply left to right.
-- A `type Name = Type` declares an [alias](../types/named-types.md#aliases): another name for the same type. A `type Name:` declares record fields; an `enum` declares one or more variants. Their methods are receiver methods, `fn Type.name(...)`, written beside the type; a type satisfies an interface by having methods that match it. An `interface` holds only operation signatures. A payloadless variant is `Ready`, without `()`. Names are unique per scope.
+- A `type Name = Type` declares an [alias](../types/named-types.md#aliases): another name for the same type, or with `|` a [type set](../types/generics.md#type-sets) that bounds a type parameter. A `type Name:` declares record fields; an `enum` declares one or more variants. Their methods are receiver methods, `fn Type.name(...)`, written beside the type; a type satisfies an interface by having methods that match it. An `interface` holds only operation signatures. A payloadless variant is `Ready`, without `()`. Names are unique per scope.
 - A result type follows the parameter list with no arrow (`fn double(value: Int) Int:`); `->` is rejected with the remedy. An anonymous `fn` writes parameters without parentheses when none is typed (`fn value: value * 2`), and with parentheses when it types a parameter or declares a result (`fn(value: Int) Int: value * 2`).
 - Named functions (`fn`) need explicit parameter and result types; anonymous ones may infer them ([callback inference](../functions/function-values-and-closures.md#contextual-callback-inference)).
 - Defaults: [function parameters](../functions/declarations-and-calls.md#default-arguments), [record fields](../types/named-types.md#construction), and `= none` on Optional interface parameters. Function types and enum payloads have none. Parameter names in a function type do not exist: two function types are the same when their parameter types, `var` markers and result type match, and calls through function values are positional. No variadics or parameter patterns.

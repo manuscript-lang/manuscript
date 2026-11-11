@@ -193,6 +193,9 @@ pub enum Builtin {
     BytesBuilder,
     /// `Regex`.
     Regex,
+    /// A closed set of types, `type Name = A | B`; its members are the type arguments. Only a
+    /// bound can name one.
+    TypeSet,
     /// The implicit `Self` variable of an interface.
     SelfType,
     /// `Int`.

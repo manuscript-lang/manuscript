@@ -242,7 +242,12 @@ fn source_and_native_overloads_remain_distinct_without_repeated_implementations(
         .iter()
         .filter(|member| member.name == "sum")
         .collect();
-    assert_eq!(sums.len(), 9, "specialized sum overloads: {sums:?}");
+    assert_eq!(
+        sums.len(),
+        1,
+        "one generic sum over the Numeric set: {sums:?}"
+    );
+    assert!(sums[0].signature.contains("T: Numeric"), "{sums:?}");
     let mut signatures = std::collections::BTreeSet::new();
     for member in &list().members {
         assert!(

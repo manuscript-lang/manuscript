@@ -16,13 +16,10 @@ pub const EXTENSION_MODULES: [&str; 5] = [
 pub fn decl_has_body(d: &Decl) -> bool {
     match &d.kind {
         DeclKind::Fn(f) => !f.body.is_empty() || f.external,
-        DeclKind::Const(_) => true,
+        DeclKind::Const(_) | DeclKind::Alias(_) => true,
         DeclKind::Test(t) => !t.body.is_empty(),
         DeclKind::Impl(i) => i.methods.iter().any(|m| !m.func.body.is_empty()),
-        DeclKind::Record(_)
-        | DeclKind::Alternative(_)
-        | DeclKind::Alias(_)
-        | DeclKind::Interface(_) => false,
+        DeclKind::Record(_) | DeclKind::Alternative(_) | DeclKind::Interface(_) => false,
     }
 }
 

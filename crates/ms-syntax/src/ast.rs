@@ -184,8 +184,9 @@ pub struct AliasDecl {
     pub name: Symbol,
     /// Generic parameters.
     pub type_params: Vec<TypeParam>,
-    /// The aliased type expression.
-    pub target: TypeRef,
+    /// The aliased type expressions: one for an alias, two or more for a type set
+    /// (`type Number = Int | Float`).
+    pub targets: Vec<TypeRef>,
 }
 
 /// `enum Name[T]:` with bare variant declarations.

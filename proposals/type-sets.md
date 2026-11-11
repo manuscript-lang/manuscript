@@ -3,12 +3,12 @@
 ## Summary
 
 - Problem: `List[T].sum` is nine near-identical methods, one per number type, because no bound names "Int or Float". A magic `Numeric` bound was rejected.
-- Change: `type Numeric = Int | Float | ...` declares a closed set of existing types, erased at compile time. `T: Numeric` accepts exactly its members, and the body is checked once per member. `type N = T` is a plain alias.
-- Decision requested: approve the syntax and per-member checking. Runner-up: unbounded `fn List[T].sum() T` checked per call (Alternatives).
+- Change: `type Numeric = Int | Float | ...` declares a closed set of existing types, erased at compile time. `T: Numeric` accepts exactly its members; operators work when every member allows them. `type N = T` is a plain alias.
+- Decision (approved by Chinmay): this syntax. Runner-up: unbounded `fn List[T].sum() T` checked per call (Alternatives).
 
 ## Status
 
-- Proposal, 2026-11-11, against `822e8f9a`. Stage 1 (aliases) implemented; stage 2 (sets) not started.
+- Proposal, 2026-11-11, against `822e8f9a`. Implemented 2026-11-11: aliases, sets, and the `sum` collapse.
 - Direction (Chinmay): "reduce our dependence on magic bounds"; "not runtime, compile time tagged union"; both `type Numeric = Int | Float ...` with `T: Numeric`, and bound-free `fn List[T].sum() T`, were offered. This file takes the first: the signature stays honest.
 
 ## Problem
@@ -31,7 +31,7 @@ fn List[T: Numeric].sum() T:
 
 - `type N = A | B` (`=` after the name) is a set; `type N = T` is an alias; `type N:` stays a record. Members are types, so there is no tag, no layout and no `match` on a set.
 - A set may only bound a type parameter; as a value type it is rejected: `a type set constrains a type parameter; it has no values`.
-- Generic code is monomorphized. A set-bounded body is checked once per member with `T` bound to it, so `0` and `+` mean what they mean for that type. An error names the member: `sum fails for Float32: ...`.
+- Generic code is monomorphized. A set-bounded body is checked once with `T` as a parameter: an operator is allowed when every member allows it, and `0` is the zero of every numeric member. Each instance then lowers with its own arithmetic.
 - An alias target is any type expression, not just these two cases: `type Handler = fn(Request) Response`, `type MaybeRow = Row?`, `type Parsed = Row!Error`, `type Rows = List[Row]`. A set `A | B` is one more type expression, allowed only where a bound is.
 - Generic aliases (`type Pairs[T] = List[Pair[T, T]]`) follow the generic-parameter rules; recommend including them in stage 1.
 - Aliases are transparent: an alias is another name for the same type, not a new type, so the two are interchangeable everywhere.
@@ -69,11 +69,9 @@ ys: Rows := xs.clone()         // accepted, and Rows has every List[Row] method
 ## Stages
 
 1. Aliases only, with docs. Check: alias conformance cases.
-2. Sets and per-member checking; collapse `sum` and similar duplicates. Check: `make conform`, `list-aggregates`, `sum` perf against the latest `bench/perf/` baseline.
+2. Sets; collapse `sum` and similar duplicates. Check: `make conform`, `list-aggregates`, `sum` perf against the latest `bench/perf/` baseline.
 
 ## Open questions
 
-- The target `var total: T = 0` does not check for `Float`: `Int` does not convert to `Float` (`expected Float, found Int`), so per-member checking rejects it. Recommend writing the zero per kind (`Integer` and `Float` sets, two `sum` bodies) or accepting a plain `0` literal where every member of the set is numeric; the second adds an implicit conversion, so it is your call.
-
-- Spelling `type N = A | B` versus a new keyword; recommend `type`, which adds no keyword.
-- Per-member checking can fail on a member the author never tried; recommend accepting it and naming the member in the message.
+- Resolved (Chinmay, 2026-11-11): a plain `0` literal is accepted for a numeric set's parameter, as the zero of every member; no other literal converts.
+- Per-member checking was not needed: the body is checked once with `T` as a parameter whose set members are all numeric, and lowering gives each instance its own arithmetic. A set whose members are not all numeric allows no operators.

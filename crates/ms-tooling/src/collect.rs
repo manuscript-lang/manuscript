@@ -470,7 +470,12 @@ fn declared_slots(syms: ms_syntax::Names, kind: &DeclKind) -> (Vec<Slot>, Option
             f.params.iter().map(|p| slot(syms, p)).collect(),
             Some(type_slot(syms, "", &f.result)),
         ),
-        DeclKind::Alias(a) => (Vec::new(), Some(type_slot(syms, "", &a.target))),
+        DeclKind::Alias(a) => {
+            let targets: Vec<String> = a.targets.iter().map(|t| type_text(syms, t)).collect();
+            let mut slot = type_slot(syms, "", &a.targets[0]);
+            slot.ty = targets.join(" | ");
+            (Vec::new(), Some(slot))
+        }
         _ => (Vec::new(), None),
     }
 }

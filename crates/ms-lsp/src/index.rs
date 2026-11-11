@@ -1201,7 +1201,7 @@ pub fn type_references(m: &ModRef) -> Vec<TypeSite> {
             }
             DeclKind::Alias(a) => {
                 collect_type_params(&a.type_params, &mut out);
-                collect_type(&a.target, &mut out);
+                a.targets.iter().for_each(|t| collect_type(t, &mut out));
             }
             DeclKind::Interface(i) => {
                 collect_type_params(&i.type_params, &mut out);
