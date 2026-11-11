@@ -310,14 +310,6 @@ pub fn optional_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> 
     )
 }
 
-/// Names the fix when a Result is used where its success type is required.
-pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
-    if !actual.is(Builtin::Result) || actual.args.is_empty() || !same(&actual.args[0], expected) {
-        return String::new();
-    }
-    "unwrap it with 'try' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'".to_string()
-}
-
 /// A promise where its result is required: `wait()` gives it.
 pub fn promise_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
     if crate::suggestions::promise_wait_fits(syms, actual, expected) {

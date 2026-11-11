@@ -1800,6 +1800,43 @@ impl Drop for Session {
     }
 }
 
+/// Constructor inputs and omission permissions.
+pub fn constructor_signature(
+    syms: ms_syntax::Names,
+    session: &Rc<crate::stdlib::Session>,
+    t: &Ty,
+) -> Ty {
+    let mut params = fields(t);
+    if t.is(Builtin::Bytes) {
+        params = vec![crate::types::Param::new(
+            n("values"),
+            session.standard("List", vec![primitive("UInt8")]),
+        )];
+    }
+    if t.is(Builtin::Set) && t.args.len() == 1 {
+        params = vec![crate::types::Param::new(
+            n("values"),
+            session.standard("List", vec![t.args[0].clone()]),
+        )];
+    }
+    let mut defaults: HashSet<Name> = HashSet::new();
+    if let Some(sym) = t.symbol()
+        && let Some(decl) = &sym.decl
+    {
+        for f in decl.record_fields() {
+            if f.default.is_some() {
+                defaults.insert(f.name);
+            }
+        }
+    }
+    let defaults = if defaults.is_empty() {
+        None
+    } else {
+        Some(Rc::new(ParameterDefaults::new(defaults)))
+    };
+    function_with(syms, params, t.clone(), defaults)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
