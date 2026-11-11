@@ -1,6 +1,12 @@
-// expect-stdout: body 42 expect-stdout: close 2 expect-stdout: close 1 expect-stdout:
-// false expect-stdout: close 2 expect-stdout: close 1 expect-stdout: true Scalar-backed
-// resources still have cleanup duties while constructor fields are pending.
+// expect-stdout: body 42
+// expect-stdout: close 2
+// expect-stdout: close 1
+// expect-stdout: false
+// expect-stdout: close 2
+// expect-stdout: close 1
+// expect-stdout: true
+// Scalar-backed resources still have cleanup duties while constructor fields are
+// pending.
 import Closeable from "@std/core.ms"
 
 type Token:

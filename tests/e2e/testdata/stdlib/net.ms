@@ -65,8 +65,8 @@ test "a promise that accepts on a listener runs where the listener lives":
 	_accepting := promise(fn: accept_all(listener))
 
 	// Accepts and connects register their connections with one network, which is not
-	// thread safe: running the accepts on another thread raced these connects and
-	// panicked.
+	// thread
+	// safe: running the accepts on another thread raced these connects and panicked.
 	for i in 0..2000:
 		var client = connect(address, timeout: 2.seconds()).wait()?
 		client.close()?

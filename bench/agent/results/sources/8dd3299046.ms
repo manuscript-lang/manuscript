@@ -1,9 +1,7 @@
-// Scheme-like interpreter. Reads a program from stdin and runs its top-level forms in
-// order.
+// Scheme-like interpreter. Reads a program from stdin and runs its top-level forms in order.
 //
-// Values are integer handles into parallel arrays (kind, payload, car, cdr), so every
-// value has a stable identity and pairs can be mutated without ownership trouble.
-// Strings live in
+// Values are integer handles into parallel arrays (kind, payload, car, cdr), so every value
+// has a stable identity and pairs can be mutated without ownership trouble. Strings live in
 // `strs`, symbols in `symn`. Environments are frames (`fr_*`) holding linked bindings (`b_*`);
 // the global frame is frame -1 with values in `gval` indexed by symbol id.
 
@@ -105,11 +103,9 @@ K_PAIR := 6
 K_PRIM := 7
 K_CLOS := 8
 MAX_DEPTH := 10000
-// Limit for calls nested through builtins such as map; keeps the native stack from
-// overflowing.
+// Limit for calls nested through builtins such as map; keeps the native stack from overflowing.
 MAX_BDEPTH := 5000
-// Symbols with ids below NSPECIAL are special-form keywords (interned first, in this
-// order).
+// Symbols with ids below NSPECIAL are special-form keywords (interned first, in this order).
 S_QUOTE := 0
 S_IF := 1
 S_DEFINE := 2
@@ -133,8 +129,7 @@ type Fail:
 	msg: String
 	syntax: Bool
 
-// Result of one evaluation step: either a finished value, or an expression to continue
-// with.
+// Result of one evaluation step: either a finished value, or an expression to continue with.
 type Step:
 	done: Bool = false
 	value: Int = 0
@@ -235,8 +230,7 @@ type Interp:
 	b_sym: List[Int] = []
 	b_val: List[Int] = []
 	b_next: List[Int] = []
-	// Closures: parameter list (may be a bare symbol or dotted), body list, defining
-	// frame, name id (-1 anonymous).
+	// Closures: parameter list (may be a bare symbol or dotted), body list, defining frame, name id (-1 anonymous).
 	cl_params: List[Int] = []
 	cl_body: List[Int] = []
 	cl_env: List[Int] = []
@@ -247,8 +241,7 @@ type Interp:
 	prim_max: List[Int] = []
 	// Current nesting of non-tail procedure calls.
 	depth: Int = 0
-	// Nesting of closure calls made from builtins (each one uses much more native
-	// stack).
+	// Nesting of closure calls made from builtins (each one uses much more native stack).
 	bdepth: Int = 0
 	// Reader state.
 	src: List[String] = []
@@ -410,8 +403,7 @@ impl Interp:
 		else if k == K_STR:
 			if wr:
 				body := self.strs[self.hp[h]].replace("\\", "\\\\").replace(
-					"\"",
-					"\\\"",
+					"\"", "\\\""
 				).replace("\n", "\\n").replace("\t", "\\t")
 				self.pbuf.append("\"" + body + "\"")
 			else:
@@ -597,8 +589,7 @@ impl Interp:
 		self.b_next.append(self.fr_head[f])
 		self.fr_head[f] = self.b_sym.length() - 1
 
-	// define: binds in frame f (or the global table for -1), rebinding an existing name
-	// in that frame.
+	// define: binds in frame f (or the global table for -1), rebinding an existing name in that frame.
 	var fn define_in(f: Int, sym: Int, val: Int) Unit:
 		if f == -1:
 			self.gval[sym] = val
@@ -748,9 +739,8 @@ impl Interp:
 
 		return ok(self.hca[b])
 
-	// Applies f to args as a call in the given position. Closures in tail position
-	// replace the current evaluation (no depth change); others enter a new non-tail
-	// call.
+	// Applies f to args as a call in the given position. Closures in tail position replace the
+	// current evaluation (no depth change); others enter a new non-tail call.
 	var fn apply_step(f: Int, args: List[Int], tail: Bool, added: Int) Step!Fail:
 		k := self.hk[f]
 
@@ -821,9 +811,8 @@ impl Interp:
 	fn go(x: Int, env: Int, tail: Bool, added: Int) Step:
 		return Step(done: false, expr: x, env: env, tail: tail, added: added)
 
-	// Evaluates x in env. `tail` says whether x is in tail position of a closure body
-	// that is already running, so that a closure call here does not add to the call
-	// depth.
+	// Evaluates x in env. `tail` says whether x is in tail position of a closure body that is
+	// already running, so that a closure call here does not add to the call depth.
 	var fn ev(x0: Int, env0: Int, tail0: Bool) Int!Fail:
 		var x = x0
 		var env = env0
@@ -932,10 +921,7 @@ impl Interp:
 				return error(synerr("syntax error: bad form: define"))
 
 			clo := self.make_closure(
-				self.hcd[target],
-				self.hcd[self.hcd[x]],
-				env,
-				self.hp[nm],
+				self.hcd[target], self.hcd[self.hcd[x]], env, self.hp[nm]
 			)
 			self.define_in(env, self.hp[nm], clo)
 			return ok(self.fin(VOID, added))
@@ -1006,10 +992,7 @@ impl Interp:
 
 			loopenv := self.new_frame(env)
 			clo := self.make_closure(
-				self.list_from(vars),
-				body,
-				loopenv,
-				self.hp[second],
+				self.list_from(vars), body, loopenv, self.hp[second]
 			)
 			self.define_in(loopenv, self.hp[second], clo)
 			return self.apply_step(clo, vals, tail, added)

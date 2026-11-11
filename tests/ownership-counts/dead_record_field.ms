@@ -1,7 +1,8 @@
-// expect-debug: allocs=3 alloc_bytes=56 expect-release: allocs=2 alloc_bytes=32 The
-// caller's `p` is dead after the call, but `left_of` reads it borrowed, so its clone
-// still allocates. Passing a dead argument by move to a function that only clones from
-// it should lower both counts.
+// expect-debug: allocs=3 alloc_bytes=56
+// expect-release: allocs=2 alloc_bytes=32
+// The caller's `p` is dead after the call, but `left_of` reads it borrowed, so its
+// clone still allocates. Passing a dead argument by move to a function that only clones
+// from it should lower both counts.
 type Big:
 	name: String
 	items: List[Int]

@@ -12,8 +12,8 @@ fn forever(n: Int) Int:
 	return forever(n + 1) + 1
 
 // A task starts on a 512 KiB stack slot and grows by guarded segments when a recursion
-// passes it: this chain is about 28 MB of frames in a release build, 80 MB in a debug
-// build.
+// passes
+// it: this chain is about 28 MB of frames in a release build, 80 MB in a debug build.
 test "a promise task recurses far past its first stack slot":
 	p := owned_task[Int](fn: ok(depth(200000)))
 	expect_equal(p.wait().get(0), 200000)?

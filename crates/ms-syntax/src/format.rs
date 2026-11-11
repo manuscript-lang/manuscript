@@ -406,6 +406,18 @@ fn wrap_import(parts: &[Token], flat: &str, source: &str) -> Option<String> {
 /// The text of a plain prose comment line (`// text`), or `None` for anything a
 /// reflow must leave alone: code, an empty comment, indented or list or table
 /// text, a code fence, tool metadata, or a block-comment placeholder.
+/// `key: value` lines such as `conform:`, `ms:`, `manuscript:`, `expect-debug:`
+/// are data read by tools, so they are never reflowed.
+fn directive_key(body: &str) -> bool {
+    let word = body.split_whitespace().next().unwrap_or("");
+    word.split_once(':').is_some_and(|(key, _)| {
+        !key.is_empty()
+            && key
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || matches!(c, '-' | '_' | '.'))
+    })
+}
+
 fn prose_comment(line: &str) -> Option<&str> {
     let body = line.trim_start_matches(' ').strip_prefix("// ")?;
     let first = body.chars().next()?;
@@ -414,9 +426,7 @@ fn prose_comment(line: &str) -> Option<&str> {
             first,
             '-' | '*' | '|' | '`' | '#' | '<' | '>' | '\u{e000}'..='\u{f8ff}'
         )
-        || body.starts_with("conform:")
-        || body.starts_with("ms:")
-        || body.starts_with("manuscript:")
+        || directive_key(body)
         || body
             .split_once(". ")
             .is_some_and(|(n, _)| n.chars().all(|c| c.is_ascii_digit()));
