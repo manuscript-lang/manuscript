@@ -63,22 +63,22 @@ const BACK_EDGES: &[(&str, &str, &str)] = &[
     (
         "checker",
         "ownership",
-        "stage 2: Program holds one OwnershipFacts value",
+        "Program holds the one OwnershipFacts value; ends when Program is split from Checker",
     ),
     (
         "checker",
         "effect_reach",
-        "stage 2: Program holds the effect diagnostics",
+        "Program holds the effect diagnostics; ends when Program is split from Checker",
     ),
     (
         "checker",
         "constfaults",
-        "stage 2: literal facts leave Program",
+        "Program names the constant-fault literal facts; ends when Program is split from Checker",
     ),
     (
         "checker",
         "hints",
-        "stage 3: checker-level hints move to typecheck",
+        "the checker emits hint text; moves with the typecheck diagnostics",
     ),
 ];
 
