@@ -4,6 +4,8 @@
 
 Decision: the user evaluated an MCP server (PR #528), judged the CLI the better surface for coding agents, and had it removed. Agents with a shell already get compact output from `check`, `lint`, `fmt`, and `test`; the gaps became `ms search_symbol` and `ms guide`. Navigation is by name, not `file:line:col`, because agents track names better than positions; `ms search_symbol` wraps workspace symbols, definition and references, and the next language-server feature to expose is a checked rename.
 
+Decision: `ms guide` is a short writing reference for agents, not a human tutorial. Prefer inferred locals, flat error propagation and short pipe flows; verify terse spellings against the compiler rather than carrying forward old guide claims. Keep API details discoverable through `search_symbol`.
+
 Apply when: adding agent-facing commands, changing search ranking, or touching the cheat sheet or standard-library index.
 
 Verified: supplemental standard-library matches must share the CLI's result budget with project matches. Reserving a minimum of two library results made `--limit 1` return two matches and a full ten-project-result list grow to twelve. The [CLI limit regression](../../crates/ms-cli/tests/search_symbol.rs) checks library-only and project-filled lists, text output, and the cap at ten.
