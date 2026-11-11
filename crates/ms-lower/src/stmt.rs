@@ -1604,7 +1604,7 @@ impl<'a> FnLower<'a> {
                 let walk = self.map_walk.take();
                 let it = it?;
                 if self.dead {
-                    self.scopes.pop();
+                    self.discard_scope();
                     return Ok(());
                 }
                 let direct = crate::mapset::is_map_or_set(self.b.m, self.ty_of(it.v))
@@ -1677,7 +1677,7 @@ impl<'a> FnLower<'a> {
             }
         };
         if self.dead {
-            self.scopes.pop();
+            self.discard_scope();
             return Ok(());
         }
         let one = self.b.iconst(1);

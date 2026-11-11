@@ -759,6 +759,11 @@ impl<'m> FuncBuilder<'m> {
         self.defs.insert((v, self.cur), val);
     }
 
+    /// Whether `v` was declared with [`Self::declare_single`].
+    pub fn var_is_single(&self, v: Var) -> bool {
+        self.vars[v.index()].is_single
+    }
+
     /// The variable's current value in the current block.
     pub fn use_var(&mut self, v: Var) -> Value {
         let b = self.cur;

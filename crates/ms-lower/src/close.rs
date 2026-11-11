@@ -674,7 +674,9 @@ impl FnLower<'_> {
             self.slotted.insert(binding.uid);
         }
         self.redefined.insert(binding.uid);
+        let raw = std::mem::replace(&mut self.raw_owners, false);
         self.bind_local(binding, x);
+        self.raw_owners = raw;
         let ty = self.locals[&binding.uid].ty;
         let slot = self.locals[&binding.uid].slot;
         if let Some(places) = places {

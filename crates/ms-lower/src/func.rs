@@ -20,6 +20,26 @@ pub(crate) struct Val {
     pub own: bool,
 }
 
+/// The marker state of one lexical scope (`proposals/elaborate-drops.md`).
+#[derive(Clone, Copy)]
+pub(crate) struct ScopeMark {
+    id: u32,
+    /// The enclosing scope's number plus one, 0 for the function's outermost scope.
+    parent: u32,
+    /// `scope.begin` was emitted.
+    begun: bool,
+}
+
+impl ScopeMark {
+    fn new(id: u32, parent: Option<u32>) -> ScopeMark {
+        ScopeMark {
+            id,
+            parent: parent.map_or(0, |p| p + 1),
+            begun: false,
+        }
+    }
+}
+
 /// A source variable bound to an SSA variable.
 #[derive(Clone, Copy)]
 pub(crate) struct Local {
@@ -80,6 +100,15 @@ pub(crate) struct FnLower<'a> {
     pub locals: HashMap<usize, Local>,
     /// Locals needing a drop, per lexical scope.
     pub scopes: Vec<Vec<usize>>,
+    /// Per scope (parallel to `scopes`): its marker number and whether a Raw owner (see
+    /// [`Self::own_raw`]) joined it, so its exits emit `scope.end`.
+    pub scope_marks: Vec<ScopeMark>,
+    /// The next scope marker number.
+    pub next_scope: u32,
+    /// Raw owners are off while a binding is declared with a closer of its own.
+    pub raw_owners: bool,
+    /// Locals whose drop is left to `elaborate`.
+    pub raw_owned: std::collections::HashSet<usize>,
     /// Bindings closed at scope end and how each is closed when its scope is left.
     pub closers: HashMap<usize, crate::close::Closer>,
     /// Loops that own their elements: how an element closes, the list and the loop index, by
@@ -488,7 +517,8 @@ fn drain(syms: ms_check::api::Names, cx: &mut Cx, m: &mut Module) -> Result<(), 
             Some(i) => cx.queue.remove(i),
             None => match cx.queue.pop() {
                 Some(j) => j,
-                None => return Ok(()),
+                // Every function is lowered: place the Raw functions' scope-exit drops.
+                None => return ms_mir::elaborate::run(m).map_err(Error::new),
             },
         };
         lower_job(syms, cx, m, next)?;
@@ -602,6 +632,10 @@ impl<'a> FnLower<'a> {
             file,
             locals: HashMap::new(),
             scopes: vec![Vec::new()],
+            scope_marks: vec![ScopeMark::new(0, None)],
+            next_scope: 1,
+            raw_owners: true,
+            raw_owned: std::collections::HashSet::new(),
             closers: HashMap::new(),
             rest_closers: HashMap::new(),
             hidden_closers: HashMap::new(),
@@ -1093,6 +1127,19 @@ impl<'a> FnLower<'a> {
         if !self.needs_drop(ty) {
             return;
         }
+        if self.raw_owners
+            && !self.dead
+            && !moved
+            && !conditional
+            && !self.locals[&uid].opt
+            && self.locals[&uid].slot.is_none()
+            && self.b.var_is_single(var)
+            && !self.redefined.contains(&uid)
+        {
+            let v = self.b.use_var(var);
+            self.own_raw(uid, v);
+            return;
+        }
         self.scopes.last_mut().expect("scope").push(uid);
         if conditional && !opt {
             let flag = self.b.declare_var(MTy::BOOL, Mode::Borrow);
@@ -1334,7 +1381,42 @@ impl<'a> FnLower<'a> {
     // --------------------------------------------------------------- scopes
 
     pub fn push_scope(&mut self) {
+        let parent = self.scope_marks.last().map(|m| m.id);
         self.scopes.push(Vec::new());
+        self.scope_marks
+            .push(ScopeMark::new(self.next_scope, parent));
+        self.next_scope += 1;
+    }
+
+    /// Removes the innermost scope without dropping anything (control never reached its end).
+    pub fn discard_scope(&mut self) {
+        self.scopes.pop();
+        self.scope_marks.pop();
+    }
+
+    /// Hands the owned `v` of the local `uid` to the innermost scope's Raw cleanup: `elaborate`
+    /// drops it wherever a path leaves the scope still holding it. Only for a local of one
+    /// definition that nothing moves, flags or closes (the other kinds still drop themselves).
+    fn own_raw(&mut self, uid: usize, v: Value) {
+        let i = self.scope_marks.len() - 1;
+        let mark = &mut self.scope_marks[i];
+        if !mark.begun {
+            mark.begun = true;
+            let imm = ms_mir::ir::Imm::Scope(mark.id, mark.parent);
+            self.b.emit(Op::ScopeBegin, &[], imm, None);
+        }
+        let imm = ms_mir::ir::Imm::Scope(self.scope_marks[i].id, 0);
+        self.b.emit(Op::ScopeOwn, &[v], imm, None);
+        self.raw_owned.insert(uid);
+    }
+
+    /// Ends the Raw cleanup of scope `i`: the point `elaborate` places its drops.
+    fn end_raw(&mut self, i: usize) {
+        let mark = self.scope_marks[i];
+        if mark.begun {
+            let imm = ms_mir::ir::Imm::Scope(mark.id, 0);
+            self.b.emit(Op::ScopeEnd, &[], imm, None);
+        }
     }
 
     fn drop_scope_locals(&mut self, depth: usize) {
@@ -1376,6 +1458,7 @@ impl<'a> FnLower<'a> {
                 }
                 self.scope_done.push(*uid);
             }
+            self.end_raw(i);
         }
         self.scope_done = outer_done;
     }
@@ -1386,7 +1469,7 @@ impl<'a> FnLower<'a> {
             let d = self.scopes.len() - 1;
             self.drop_scope_locals(d);
         }
-        self.scopes.pop();
+        self.discard_scope();
     }
 
     /// Drops the locals of every scope at or above `depth` (for `break`, `continue`, `return`).
