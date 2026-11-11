@@ -100,7 +100,7 @@ fn constructs() List[Construct]:
 			"",
 			"x: @TY@ := @M1@\n    if flag():\n        return ok(unit)\n    see(x)",
 		),
-		c("try_error", "", "x: @TY@ := @M1@\n    try fail()\n    see(x)"),
+		c("try_error", "", "x: @TY@ := @M1@\n    fail()?\n    see(x)"),
 		c(
 			"loop_break",
 			"",
@@ -119,7 +119,7 @@ fn constructs() List[Construct]:
 		c(
 			"loop_try_error",
 			"",
-			"for i in 0..3:\n        x: @TY@ := @M1@\n        try fail()\n        see(x)",
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        fail()?\n        see(x)",
 		),
 		c(
 			"nested_scope",
@@ -129,7 +129,7 @@ fn constructs() List[Construct]:
 		c(
 			"loop_condition_try",
 			"",
-			"x: @TY@ := @M1@\n    var i = 0\n    while i < (try fail_int()):\n        see(x)\n        i += 1",
+			"x: @TY@ := @M1@\n    var i = 0\n    while i < (fail_int()?):\n        see(x)\n        i += 1",
 		),
 		c(
 			"break_nested_arms",
@@ -159,12 +159,12 @@ fn constructs() List[Construct]:
 		c(
 			"two_locals_try",
 			"",
-			"x: @TY@ := @M1@\n    y: @TY@ := @M2@\n    try fail()\n    see(x)\n    see(y)",
+			"x: @TY@ := @M1@\n    y: @TY@ := @M2@\n    fail()?\n    see(x)\n    see(y)",
 		),
 		c(
 			"boxed",
 			"type Box:\n    v: @TY@",
-			"b := Box(@M1@)\n    try fail()\n    see(b.v)",
+			"b := Box(@M1@)\n    fail()?\n    see(b.v)",
 		),
 		c(
 			"boxed_overwrite",
@@ -174,26 +174,26 @@ fn constructs() List[Construct]:
 		c(
 			"in_list",
 			"",
-			"xs: List[@TY@] := [@M1@, @M2@]\n    try fail()\n    see_all(xs)",
+			"xs: List[@TY@] := [@M1@, @M2@]\n    fail()?\n    see_all(xs)",
 		),
 		c(
 			"cancel_borrowed",
-			"fn hold(x: @TY@) Unit!:\n    try sleep(milliseconds(60000)).wait()\n    return ok(unit)",
+			"fn hold(x: @TY@) Unit!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
 			"x: @TY@ := @M1@\n    p := promise(fn: hold(x))\n    p.cancel()\n    _ := p.wait()",
 		),
 		c(
 			"cancel_owned",
-			"fn hold(x: @TY@) Unit!:\n    try sleep(milliseconds(60000)).wait()\n    return ok(unit)",
+			"fn hold(x: @TY@) Unit!:\n    sleep(milliseconds(60000)).wait()?\n    return ok(unit)",
 			"p := promise(fn: hold(@M1@))\n    p.cancel()\n    _ := p.wait()",
 		),
 		c(
 			"cancel_local",
-			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
+			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
 			"p := promise(fn: hold())\n    p.cancel()\n    _ := p.wait()",
 		),
 		c(
 			"cancel_dropped",
-			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    try sleep(milliseconds(60000)).wait()\n    see(x)\n    return ok(unit)",
+			"fn hold() Unit!:\n    x: @TY@ := @M1@\n    sleep(milliseconds(60000)).wait()?\n    see(x)\n    return ok(unit)",
 			"_ := promise(fn: hold())",
 		),
 		c("fn_value_temporary", "", "f := see\n    f(@M1@)"),
@@ -207,22 +207,22 @@ fn constructs() List[Construct]:
 		c(
 			"method_later_try",
 			"type Sink:\n    n: Int\n\nimpl Sink:\n    fn take(v: @TY@) Unit: return\n    fn take_later(v: @TY@, n: Int) Unit: return",
-			"Sink(0).take_later(@M1@, try fail_int())",
+			"Sink(0).take_later(@M1@, fail_int()?)",
 		),
 		c(
 			"method_bound_later_try",
 			"type Sink:\n    n: Int\n\nimpl Sink:\n    fn take_later(v: @TY@, n: Int) Unit: return",
-			"s := Sink(0)\n    f := s.take_later\n    f(@M1@, try fail_int())",
+			"s := Sink(0)\n    f := s.take_later\n    f(@M1@, fail_int()?)",
 		),
 		c(
 			"two_resources_try",
 			"fn both(a: @TY@, b: @TY@, n: Int) Unit: return",
-			"both(@M1@, @M2@, try fail_int())",
+			"both(@M1@, @M2@, fail_int()?)",
 		),
 		c(
 			"generic_later_try",
 			"fn gboth[X](a: X, n: Int) Unit: return",
-			"gboth[@TY@](@M1@, try fail_int())",
+			"gboth[@TY@](@M1@, fail_int()?)",
 		),
 		c(
 			"generic_to_optional",
@@ -237,12 +237,12 @@ fn constructs() List[Construct]:
 		c(
 			"generic_to_list",
 			"fn list_of[X](x: X) List[X]: return [x]",
-			"r := list_of[@TY@](@M1@)\n    try fail()\n    see_all(r)",
+			"r := list_of[@TY@](@M1@)\n    fail()?\n    see_all(r)",
 		),
 		c(
 			"generic_to_result",
 			"fn res_of[X](x: X) X!Error: return ok(x)",
-			"r := res_of[@TY@](@M1@)\n    try fail()\n    if r.is_ok():\n        return ok(unit)",
+			"r := res_of[@TY@](@M1@)\n    fail()?\n    if r.is_ok():\n        return ok(unit)",
 		),
 		only(
 			"interface_param",
@@ -254,7 +254,7 @@ fn constructs() List[Construct]:
 			"interface_param_later_try",
 			"bare",
 			"fn via(c: Closeable, n: Int) Unit: return",
-			"via(@M1@, try fail_int())",
+			"via(@M1@, fail_int()?)",
 		),
 		only(
 			"bounded_generic",
@@ -266,7 +266,7 @@ fn constructs() List[Construct]:
 			"destructure",
 			"record",
 			"",
-			"\{m\} := @M1@\n    try fail()\n    see_marker(m)",
+			"\{m\} := @M1@\n    fail()?\n    see_marker(m)",
 		),
 		only(
 			"match_enum_return",
@@ -291,7 +291,7 @@ fn constructs() List[Construct]:
 		c(
 			"two_arguments_try",
 			"fn two(a: @TY@, n: Int) Unit: return",
-			"two(@M1@, try fail_int())",
+			"two(@M1@, fail_int()?)",
 		),
 		c(
 			"returned_whole",
@@ -335,12 +335,12 @@ fn constructs() List[Construct]:
 		c(
 			"promise_capture",
 			"",
-			"x: @TY@ := @M1@\n    p := promise(fn: seeok(x))\n    try p.wait()",
+			"x: @TY@ := @M1@\n    p := promise(fn: seeok(x))\n    p.wait()?",
 		),
 		c(
 			"promise_result",
 			"fn produce() @TY@!: return ok(@M1@)",
-			"p := promise(fn: produce())\n    y := try p.wait()\n    see(y)",
+			"p := promise(fn: produce())\n    y := p.wait()?\n    see(y)",
 		),
 		c(
 			"promise_result_dropped",
@@ -351,19 +351,19 @@ fn constructs() List[Construct]:
 			"explicit_close",
 			"bare",
 			"",
-			"var x = @M1@\n    try x.close()\n    try x.close()",
+			"var x = @M1@\n    x.close()?\n    x.close()?",
 		),
 		only(
 			"explicit_close_reassign",
 			"bare",
 			"",
-			"var x = @M1@\n    try x.close()\n    x = @M2@\n    see(x)",
+			"var x = @M1@\n    x.close()?\n    x = @M2@\n    see(x)",
 		),
 		only(
 			"interface_view",
 			"bare",
 			"",
-			"var x: Closeable = @M1@\n    try x.close()",
+			"var x: Closeable = @M1@\n    x.close()?",
 		),
 		only(
 			"if_let",
