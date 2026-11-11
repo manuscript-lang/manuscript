@@ -1084,6 +1084,28 @@ impl<'a> FnLower<'a> {
     /// binding some path moves out of also gets a flag saying whether the local still holds its
     /// value, so the scope end drops it only on the paths that kept it.
     pub fn own_local(&mut self, uid: usize, var: ms_mir::builder::Var, ty: MTy) {
+        // A local of one definition that nothing closes or shares is owned by its scope's Raw
+        // cleanup: the elaborate pass tracks its moves, so it needs no flag or optional box.
+        if self.raw_owners
+            && !self.dead
+            && self.needs_drop(ty)
+            && self.b.var_is_single(var)
+            && !self.redefined.contains(&uid)
+            && !self.slotted.contains(&uid)
+        {
+            self.locals.insert(
+                uid,
+                Local {
+                    var,
+                    ty,
+                    slot: None,
+                    opt: false,
+                },
+            );
+            let v = self.b.use_var(var);
+            self.own_raw(uid, v);
+            return;
+        }
         let moved = self.needs_drop(ty) && self.cx.ownership.moves.contains_key(&uid);
         let conditional = moved
             && self
@@ -1125,19 +1147,6 @@ impl<'a> FnLower<'a> {
         );
         self.slotify(uid);
         if !self.needs_drop(ty) {
-            return;
-        }
-        if self.raw_owners
-            && !self.dead
-            && !moved
-            && !conditional
-            && !self.locals[&uid].opt
-            && self.locals[&uid].slot.is_none()
-            && self.b.var_is_single(var)
-            && !self.redefined.contains(&uid)
-        {
-            let v = self.b.use_var(var);
-            self.own_raw(uid, v);
             return;
         }
         self.scopes.last_mut().expect("scope").push(uid);
@@ -1538,6 +1547,16 @@ impl<'a> FnLower<'a> {
                 self.drop_temp(t);
             }
             self.end_fixture();
+        }
+        // The returned value leaves its owner before the scopes end, so their cleanup does not
+        // drop it.
+        if let Some(v) = v
+            && !borrowed
+            && self.scope_marks.iter().any(|m| m.begun)
+            && self.needs_drop(self.ty_of(v))
+        {
+            self.b
+                .emit(Op::ScopeDisown, &[v], ms_mir::ir::Imm::None, None);
         }
         let pending = v.map(|v| Val { v, own: !borrowed });
         let outer_pending = std::mem::replace(
