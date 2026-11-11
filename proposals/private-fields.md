@@ -4,7 +4,7 @@
 
 - Problem: a type is either fully exposed or `opaque`; a record cannot hide one field (a cache, a nonce, an invariant-bearing index) and expose the rest.
 - Change: a leading underscore (`_balance`) hides that field or method outside the declaring file (direction from Chinmay, 2026-11-11; replaces a `private` keyword). `opaque type` becomes shorthand for "every field private".
-- Decision requested: spelling (`private`), construction rule for private fields, text/JSON form (see Open questions).
+- Decision requested: text/JSON form (see Open questions). Spelling (`_`) and constructor rule (file-only) are decided.
 
 ## Status
 
@@ -39,7 +39,7 @@ export type Account:
 
 - Visibility is file-level, matching `opaque` ("declaring file"), not type-level. Methods and `impl` in the same file see everything.
 - Outside the file, a private field cannot be read, written, named in a pattern, or passed by name to the constructor. Diagnostic: `field balance is private to account.ms` (same site as today's `opaque_denied`).
-- Construction: a private field needs a default to allow construction outside the file; the default fills it. A private field without a default makes the constructor file-only, with today's `it cannot be constructed here`. Positional and named forms both omit private fields.
+- Construction (Chinmay, 2026-11-11: option 2): a type with any `_` field has a file-only constructor outside which `it cannot be constructed here`; the module exports a factory (`fn open(id, owner) Account`). A defaulted `_` field does not keep the constructor public, so adding one never silently lets outside code skip validation.
 - Patterns: named destructuring of public fields is allowed; a pattern cannot bind a private field.
 - `.clone()`, `==`, and `Hashable` still cover private fields. Skipping them would make equality unsound and clone shallow. Private fields only restrict naming.
 - Memory model: no change. One owner, borrow by default, clone as the only copy. A private field cannot be moved or borrowed out by name outside the file, so partial moves ([field-ownership-dataflow](field-ownership-dataflow.md)) stay file-local. Methods named `_x` are file-private the same way (call outside the file is an error). Methods may return a borrow of a private field as any method does.
@@ -73,6 +73,4 @@ export type Account:
 
 ## Open questions
 
-- Leading `_` already marks discarded bindings (`_oldest := remove(...)` in `stdlib/log.ms:327`). Recommend the same rule everywhere: `_name` is hidden from other files and unused-by-design in a local. Check no existing public stdlib field or method starts with `_`.
-- Text and JSON form: opaque types print only the type name and are never `Data`. For mixed records, recommend the interpolation form omits private fields and the type is not `Data` outside its file (a private field could otherwise leak through `json.stringify`); inside the file it stays `Data`.
-- Should a private field without a default be allowed at all? Recommend yes, with a file-only constructor.
+- Leading `_` today only silences the unused-binding warning (`ms-check/src/unused.rs:106`, `checker.rs:1343`); bare `_` is the discard. Decision: `_` alone is the discard; `_name` is an ordinary name, file-private on a field or method, and no longer exempt from the unused warning. Migrate `_oldest :=` style bindings (`stdlib/log.ms:327-337`) to `_ :=`.
