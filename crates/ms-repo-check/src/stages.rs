@@ -82,6 +82,45 @@ const BACK_EDGES: &[(&str, &str, &str)] = &[
     ),
 ];
 
+/// Lowering's own path-sensitive drop bookkeeping, which the proposal's step 4b would replace
+/// with a checker-computed plan. `(identifier, uses in crates/ms-lower/src)`: the count may only
+/// shrink, so the mechanism cannot grow while the plan is undecided.
+const LOWERING_LEDGER: &[(&str, usize)] = &[
+    ("closed_on_path", 22),
+    ("scope_done", 7),
+    ("rest_closers", 6),
+    ("hidden_closers", 6),
+    ("copy_gaps", 5),
+];
+
+/// Fails when a ledger identifier appears more often than recorded, or less often (the cap
+/// must then be lowered, so progress is kept).
+fn ledger(files: &[String]) -> Vec<String> {
+    let mut counts = vec![0usize; LOWERING_LEDGER.len()];
+    for path in files {
+        if !path.starts_with("crates/ms-lower/src/") || !path.ends_with(".rs") {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(path) else {
+            continue;
+        };
+        for (i, (name, _)) in LOWERING_LEDGER.iter().enumerate() {
+            counts[i] += text.matches(name).count();
+        }
+    }
+    LOWERING_LEDGER
+        .iter()
+        .zip(counts)
+        .filter(|((_, cap), n)| n != cap)
+        .map(|((name, cap), n)| {
+            let verb = if n > *cap { "grew" } else { "shrank" };
+            format!(
+                "stages.rs: `{name}` {verb} in crates/ms-lower/src ({n}, recorded {cap}); set its LOWERING_LEDGER cap in crates/ms-repo-check/src/stages.rs to {n} (it may only go down; proposals/compiler-stage-layering.md step 4b)"
+            )
+        })
+        .collect()
+}
+
 fn stage(module: &str) -> Option<usize> {
     STAGES.iter().position(|(_, mods)| mods.contains(&module))
 }
@@ -128,6 +167,7 @@ pub fn check(files: &[String]) -> Vec<String> {
             }
         }
     }
+    issues.extend(ledger(files));
     for (from, to, why) in BACK_EDGES {
         if !seen_edges.contains(&(from, to)) {
             issues.push(format!(
