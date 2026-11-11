@@ -4,9 +4,9 @@ import lines, collect from "@std/io/streams.ms"
 fn digits(s: String) Bool: return not s.is_empty() and s.scalar_values().all(fn c: c >= 48 and c <= 57)
 
 fn parse_amount(s: String) Int?:
-    let parts = s.split(".")
+    parts := s.split(".")
     if parts.length() > 2 or not digits(parts[0]): return none
-    let whole = parts[0].parse_int().get() * 100
+    whole := parts[0].parse_int().get() * 100
     if parts.length() == 1: return whole
     if not digits(parts[1]) or parts[1].length() > 2: return none
     return whole + parts[1].parse_int().get() * (if parts[1].length() == 1: 10 else: 1)
@@ -17,23 +17,23 @@ type Rec:
 
 // A quoted category may contain commas.
 fn parse_line(line: String) Rec?:
-    let q = line.starts_with("\"")
-    let rest = if q: line.slice(1, line.length()).get() else: line
-    let at = if q: rest.index_of("\"") else: rest.index_of(",")
-    if let i = at:
+    q := line.starts_with("\"")
+    rest := if q: line.slice(1, line.length()).get() else: line
+    at := if q: rest.index_of("\"") else: rest.index_of(",")
+    if i := at:
         if q and not rest.slice(i + 1, rest.length()).get().starts_with(","): return none
-        let cat = rest.slice(0, i).get()
-        let amount = rest.slice(i + (if q: 2 else: 1), rest.length()).get()
+        cat := rest.slice(0, i).get()
+        amount := rest.slice(i + (if q: 2 else: 1), rest.length()).get()
         if cat.is_empty() or cat.contains("\"") or amount.contains(","): return none
-        if let cents = parse_amount(amount): return Rec(cat, cents)
+        if cents := parse_amount(amount): return Rec(cat, cents)
     return none
 
 fn main() Unit:
     var totals = Map[String, Int]()
     var bad = 0
-    if let ls = stdin() | lines | collect(none):
+    if ls := stdin() | lines | collect(none):
         for l in ls.map(fn l: l.replace("\r", "")).filter(fn l: not l.trim().is_empty()):
-            if let r = parse_line(l): totals[r.cat.clone()] = totals.get_or(r.cat, 0) + r.cents
+            if r := parse_line(l): totals[r.cat.clone()] = totals.get_or(r.cat, 0) + r.cents
             else: bad += 1
     for e in totals.entries().sorted(fn a, b: a.key.compare(b.key)): print("{e.key}: {e.value / 100}.{if e.value % 100 < 10: "0" else: ""}{e.value % 100}")
     if bad > 0: print("skipped: {bad}")

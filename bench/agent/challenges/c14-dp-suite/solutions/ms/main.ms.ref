@@ -6,7 +6,7 @@ fn parse_num(s: String) Int?:
     return s.parse_int().get()
 
 fn lcs(a: String, b: String) Int:
-    let y = b.scalar_values()
+    y := b.scalar_values()
     var prev = [0].repeated(y.length() + 1)
     for ch in a.scalar_values():
         var cur = [0]
@@ -15,8 +15,8 @@ fn lcs(a: String, b: String) Int:
     return prev[y.length()]
 
 fn edit(a: String, b: String) Int:
-    let x = a.scalar_values()
-    let y = b.scalar_values()
+    x := a.scalar_values()
+    y := b.scalar_values()
     var prev = (0..y.length() + 1)
     for i in 1..x.length() + 1:
         var cur = [i]
@@ -26,29 +26,29 @@ fn edit(a: String, b: String) Int:
 
 fn knap(t: List[String]) String:
     if t.length() < 2: return "error: bad command"
-    let cap = parse_num(t[1])
+    cap := parse_num(t[1])
     if not cap.is_some(): return "error: bad command"
     var best = [0].repeated(cap.get() + 1)
     for item in t.slice(2, t.length()).get():
-        let p = item.split(":")
+        p := item.split(":")
         if p.length() != 2 or not parse_num(p[0]).is_some() or not parse_num(p[1]).is_some() or p[0].parse_int().get() < 1: return "error: bad command"
-        let w = p[0].parse_int().get()
-        let v = p[1].parse_int().get()
+        w := p[0].parse_int().get()
+        v := p[1].parse_int().get()
         for c in (w..cap.get() + 1).reversed(): best[c] = best[c].max(best[c - w] + v)
     return "{best[cap.get()]}"
 
 fn coins(t: List[String]) String:
     if t.length() < 3: return "error: bad command"
-    let amount = parse_num(t[1])
-    let cs = t.slice(2, t.length()).get().map(fn s: parse_num(s).get(0))
+    amount := parse_num(t[1])
+    cs := t.slice(2, t.length()).get().map(fn s: parse_num(s).get(0))
     if not amount.is_some() or cs.any(fn c: c < 1): return "error: bad command"
-    let inf = 1000000000
+    inf := 1000000000
     var best = [0]
     for a in 1..amount.get() + 1: best.append(cs.filter(fn c: c <= a).map(fn c: best[a - c] + 1).fold(inf, fn m, x: m.min(x)))
     return if best[amount.get()] >= inf: "impossible" else: "{best[amount.get()]}"
 
 fn solve_line(line: String) String:
-    let t = line.split(" ")
+    t := line.split(" ")
     if t[0] == "lcs" or t[0] == "edit":
         if t.length() != 3 or t[1].is_empty() or t[2].is_empty(): return "error: bad command"
         return "{if t[0] == "lcs": lcs(t[1], t[2]) else: edit(t[1], t[2])}"
@@ -56,5 +56,5 @@ fn solve_line(line: String) String:
     return if t[0] == "coins": coins(t) else: "error: bad command"
 
 fn main() Unit:
-    if let ls = stdin() | lines | collect(none):
+    if ls := stdin() | lines | collect(none):
         for l in ls.filter(fn l: not l.replace(" ", "").is_empty()): print(solve_line(l))

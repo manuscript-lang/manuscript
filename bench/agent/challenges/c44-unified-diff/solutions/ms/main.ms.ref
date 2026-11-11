@@ -2,7 +2,7 @@ import stdin from "@std/io/io.ms"
 import lines, collect from "@std/io/streams.ms"
 
 fn range_text(start: Int, len: Int) String:
-    let s = if len > 0: start + 1 else: start
+    s := if len > 0: start + 1 else: start
     return if len == 1: "{s}" else: "{s},{len}"
 
 // Counts script lines in lo..hi that are not marked `skip`.
@@ -10,15 +10,15 @@ fn count(script: List[String], lo: Int, hi: Int, skip: String) Int:
     return script.slice(lo, hi).get().count(fn l: not l.starts_with(skip))
 
 export fn main() Int:
-    let ls = (stdin() | lines | collect(none)).get([])
+    ls := (stdin() | lines | collect(none)).get([])
     if ls.is_empty(): return 0
-    let [name_a, name_b, ctx_text, n_text, m_text] = ls[0].split(" ")
-    let ctx = ctx_text.parse_int().get()
-    let n = n_text.parse_int().get()
-    let m = m_text.parse_int().get()
-    let a = ls.slice(1, 1 + n).get()
-    let b = ls.slice(1 + n, 1 + n + m).get()
-    let w = m + 1
+    [name_a, name_b, ctx_text, n_text, m_text] := ls[0].split(" ")
+    ctx := ctx_text.parse_int().get()
+    n := n_text.parse_int().get()
+    m := m_text.parse_int().get()
+    a := ls.slice(1, 1 + n).get()
+    b := ls.slice(1 + n, 1 + n + m).get()
+    w := m + 1
     var table = [0].repeated((n + 1) * w)
     for i in (0..n).reversed():
         for j in (0..m).reversed(): table[i * w + j] = if a[i] == b[j]: table[(i + 1) * w + j + 1] + 1 else: table[(i + 1) * w + j].max(table[i * w + j + 1])
@@ -36,14 +36,14 @@ export fn main() Int:
         else:
             script.append("+{b[j]}")
             j += 1
-    let changes = (0..script.length()).filter(fn k: not script[k].starts_with(" "))
+    changes := (0..script.length()).filter(fn k: not script[k].starts_with(" "))
     if changes.is_empty(): return 0
     print("--- {name_a}\n+++ {name_b}")
     var first = changes[0]
     for k in 1..changes.length() + 1:
         if k < changes.length() and changes[k] - changes[k - 1] - 1 <= 2 * ctx: continue
-        let lo = (first - ctx).max(0)
-        let hi = (changes[k - 1] + 1 + ctx).min(script.length())
+        lo := (first - ctx).max(0)
+        hi := (changes[k - 1] + 1 + ctx).min(script.length())
         print("@@ -{range_text(count(script, 0, lo, "+"), count(script, lo, hi, "+"))} +{range_text(count(script, 0, lo, "-"), count(script, lo, hi, "-"))} @@")
         for l in script.slice(lo, hi).get(): print(l)
         if k < changes.length(): first = changes[k]
