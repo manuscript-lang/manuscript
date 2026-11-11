@@ -1092,6 +1092,11 @@ impl<'a> FnLower<'a> {
             && self.b.var_is_single(var)
             && !self.redefined.contains(&uid)
             && !self.slotted.contains(&uid)
+            && !self
+                .cx
+                .ownership
+                .binding_facts
+                .has(uid, ms_check::api::ownership::BindingFact::ConditionalMove)
         {
             self.locals.insert(
                 uid,
@@ -1189,6 +1194,7 @@ impl<'a> FnLower<'a> {
             let no = self.b.bconst(false);
             self.b.def_var(flag, no);
         }
+        self.disown_raw(uid, v);
         v
     }
 
