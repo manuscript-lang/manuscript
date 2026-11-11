@@ -20,7 +20,7 @@ pub struct InherentError {
 
 /// The suffix that keeps the interface synthesized for a type's own methods from colliding with
 /// a declared name. Identity is the `synthetic` flag of the impl, never this suffix.
-const INHERENT_SUFFIX: &str = "$methods";
+pub(crate) const INHERENT_SUFFIX: &str = "$methods";
 
 fn named_args(t: &TypeRef) -> &[TypeRef] {
     match &t.kind {

@@ -865,6 +865,48 @@ impl Checker {
             }
         }
         contract.is(Builtin::Comparable) && builtin_comparable(receiver)
+            || self.shape_implements(receiver, contract)
+    }
+
+    /// Whether `receiver`'s own methods supply every operation of `contract` with its exact
+    /// signature, labels and `var`-ness. A type satisfies an interface by having its operations;
+    /// no `impl` names the relationship.
+    fn shape_implements(&self, receiver: &Ty, contract: &Ty) -> bool {
+        if !matches!(receiver.kind, Kind::Record | Kind::Alternative) || contract.kind != Kind::Contract
+        {
+            return false;
+        }
+        let Some(def) = &contract.def else {
+            return false;
+        };
+        let ops = def.operations.borrow();
+        if ops.is_empty() || contract.args.len() != def.arity() {
+            return false;
+        }
+        let mut s = substitution(contract);
+        s.extend(self_binding(self.syms, contract, receiver));
+        let declared = |f: &Option<FuncRef>| {
+            let f = f.as_ref()?;
+            let m = f.decl.methods().get(f.index?)?;
+            Some((m.mutating, m.func.params.iter().map(|p| p.name).collect::<Vec<_>>()))
+        };
+        ops.iter().all(|op| {
+            let key = format!("{}/{}", self.syms.str(contract.id), self.syms.str(op.name));
+            if !self.session.operation_variables(&key).is_empty() {
+                return false;
+            }
+            let own: Vec<MethodRef> = self
+                .implemented_methods(receiver, op.name)
+                .into_iter()
+                .filter(|m| m.is_inherent(self.syms))
+                .collect();
+            let [m] = own.as_slice() else {
+                return false;
+            };
+            m.split_variables().1.is_empty()
+                && same(&m.ty, &sub(&op.ty, &s))
+                && declared(&m.decl) == declared(&op.decl)
+        })
     }
 
     /// Whether `.clone()` is available for `t`: every value but a resource, which has one owner.
@@ -941,9 +983,7 @@ impl Checker {
         seen.push(key);
         let closeable = self.p.methods.iter().any(|m| {
             self.method_visible(m)
-                && m.contract
-                    .as_ref()
-                    .is_some_and(|c| c.is(Builtin::Closeable))
+                && m.closes(self.syms)
                 && unify(
                     &m.receiver,
                     t,

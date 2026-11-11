@@ -54,13 +54,14 @@ pub struct Classifier {
 impl Classifier {
     /// A classifier for the types of one checked program.
     pub fn new(p: &Program) -> Classifier {
+        let syms = ms_syntax::Names::global();
         let mut closeable = HashSet::new();
         let mut copyable = HashSet::new();
         let mut clonable = HashSet::new();
         let mut clone_name = None;
         for method in &p.methods {
             if let Some(contract) = &method.contract {
-                if contract.is(Builtin::Closeable) {
+                if method.closes(syms) {
                     closeable.insert(method.receiver.id);
                 } else if contract.is(Builtin::Copy) {
                     copyable.insert(method.receiver.id);
