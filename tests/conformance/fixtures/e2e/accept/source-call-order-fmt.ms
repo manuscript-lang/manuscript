@@ -7,7 +7,7 @@ fn pair(a: Int, b: Int) Int: a * 10 + b
 
 test "arguments":
     var value = 1
-    option: Int? = 2
+    option: Int? := 2
     result := pair(
         a: value,
         b: match option:

@@ -81,7 +81,7 @@ pub(crate) fn fix_for(message: &str, pos: Pos, len: usize) -> Option<DiagnosticF
     })
 }
 
-/// Turns the immutable binding `name := v` or `name: T = v` declared at `decl` into the
+/// Turns the immutable binding `name := v` or `name: T := v` declared at `decl` into the
 /// `var` form. `None` unless the source reads a plain name there, so patterns and
 /// loop variables get no edit.
 pub(crate) fn binding_to_var(source: &str, decl: Pos) -> Option<DiagnosticFix> {
@@ -98,7 +98,16 @@ pub(crate) fn binding_to_var(source: &str, decl: Pos) -> Option<DiagnosticFix> {
     let (len, replacement) = if after[spaces..].starts_with(":=") {
         (name_len + spaces + 2, format!("var {name} ="))
     } else if after[spaces..].starts_with(':') {
-        (name_len, format!("var {name}"))
+        // `x: T := v` becomes `var x: T = v`: rewrite through the `:=`. A
+        // parameter `x: T` has no `:=` on its line and only gains `var`.
+        let line = after.split('\n').next()?;
+        match line.find(":=").filter(|w| !line[..*w].contains([',', ')'])) {
+            Some(walrus) => (
+                name_len + walrus + 2,
+                format!("var {name}{} =", after[..walrus].trim_end()),
+            ),
+            None => (name_len, format!("var {name}")),
+        }
     } else {
         return None;
     };
@@ -317,8 +326,11 @@ mod tests {
             (fix.pos.offset, fix.end.offset, fix.replacement.as_str()),
             (0, 4, "var x =")
         );
-        let typed = binding_to_var("x: Int = 1", Pos::new(0, 1, 1)).unwrap();
-        assert_eq!((typed.end.offset, typed.replacement.as_str()), (1, "var x"));
+        let typed = binding_to_var("x: Int := 1", Pos::new(0, 1, 1)).unwrap();
+        assert_eq!(
+            (typed.end.offset, typed.replacement.as_str()),
+            (9, "var x: Int =")
+        );
         assert!(binding_to_var("for x in xs", Pos::new(4, 1, 5)).is_none());
     }
 

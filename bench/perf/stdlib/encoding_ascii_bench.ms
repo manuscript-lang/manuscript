@@ -46,7 +46,7 @@ bench "ascii.invalid.first.1":
 	data := bad.concat(good)
 	try expect_equal(data.length(), 1)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -62,7 +62,7 @@ bench "ascii.invalid.last.1":
 	data := good.concat(bad)
 	try expect_equal(data.length(), 1)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -78,7 +78,7 @@ bench "ascii.invalid.first.57":
 	data := bad.concat(good)
 	try expect_equal(data.length(), 57)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -94,7 +94,7 @@ bench "ascii.invalid.last.57":
 	data := good.concat(bad)
 	try expect_equal(data.length(), 57)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -110,7 +110,7 @@ bench "ascii.invalid.first.4096":
 	data := bad.concat(good)
 	try expect_equal(data.length(), 4096)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -126,7 +126,7 @@ bench "ascii.invalid.last.4096":
 	data := good.concat(bad)
 	try expect_equal(data.length(), 4096)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -142,7 +142,7 @@ bench "ascii.invalid.first.1048580":
 	data := bad.concat(good)
 	try expect_equal(data.length(), 1048580)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -158,7 +158,7 @@ bench "ascii.invalid.last.1048580":
 	data := good.concat(bad)
 	try expect_equal(data.length(), 1048580)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -170,7 +170,7 @@ bench "ascii.invalid.last.1048580":
 
 bench "ascii.unicode.accent.1":
 	data := (try "é".repeat(1)).to_bytes()
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -181,7 +181,7 @@ bench "ascii.unicode.accent.1":
 
 bench "ascii.unicode.emoji.1":
 	data := (try "🙂".repeat(1)).to_bytes()
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -192,7 +192,7 @@ bench "ascii.unicode.emoji.1":
 
 bench "ascii.unicode.accent.2048":
 	data := (try "é".repeat(2048)).to_bytes()
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -203,7 +203,7 @@ bench "ascii.unicode.accent.2048":
 
 bench "ascii.unicode.emoji.2048":
 	data := (try "🙂".repeat(2048)).to_bytes()
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -214,7 +214,7 @@ bench "ascii.unicode.emoji.2048":
 
 bench "ascii.unicode.accent.524288":
 	data := (try "é".repeat(524288)).to_bytes()
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -225,7 +225,7 @@ bench "ascii.unicode.accent.524288":
 
 bench "ascii.unicode.emoji.524288":
 	data := (try "🙂".repeat(524288)).to_bytes()
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -239,7 +239,7 @@ bench "ascii.unicode.first.8":
 	data := ("é" + tail).to_bytes()
 	try expect_equal(data.length(), 10)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -253,7 +253,7 @@ bench "ascii.unicode.last.8":
 	data := (tail + "é").to_bytes()
 	try expect_equal(data.length(), 10)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -267,7 +267,7 @@ bench "ascii.unicode.first.524288":
 	data := ("é" + tail).to_bytes()
 	try expect_equal(data.length(), 524290)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:
@@ -281,7 +281,7 @@ bench "ascii.unicode.last.524288":
 	data := (tail + "é").to_bytes()
 	try expect_equal(data.length(), 524290)
 
-	expected: String! = error(Error("encoding: invalid data", kind: "EBADMSG"))
+	expected: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	try expect_equal(ascii_decode(data), expected)
 
 	fn work() Unit!:

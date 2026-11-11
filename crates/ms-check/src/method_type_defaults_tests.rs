@@ -43,7 +43,7 @@ fn sample(value: Int?, flag: Bool) Unit:
     _inherited := _source.convert
     _source_fn := ordinary
     _source_copy := _source_fn
-    _annotated: fn(Error?) Result[Int, Error] = value.ok_or[Error]
+    _annotated: fn(Error?) Result[Int, Error] := value.ok_or[Error]
     var _mutable = value.ok_or[Error]
     _mutable = ordinary
     _forwarded := relay(value.ok_or[Error])
@@ -186,11 +186,11 @@ fn invocation_defaults_do_not_survive_callable_erasure_or_joins() {
 fn ordinary(cause: Error? = none) Result[Int, Error]: ok(if cause.is_none(): 7 else: 8)
 fn relay[T](value: T) T: value
 fn sample(flag: Bool) Unit:
-    absent: Int? = none
+    absent: Int? := none
 "#;
     for body in [
         "    var value = absent.ok_or[Error]\n    value = ordinary\n    result := value()\n",
-        "    value: fn(Error?) Result[Int, Error] = absent.ok_or[Error]\n    result := value()\n",
+        "    value: fn(Error?) Result[Int, Error] := absent.ok_or[Error]\n    result := value()\n",
         "    value := relay(absent.ok_or[Error])\n    result := value()\n",
         "    factory := fn: absent.ok_or[Error]\n    value := factory()\n    result := value()\n",
         "    values := [absent.ok_or[Error]]\n    result := values[0]()\n",

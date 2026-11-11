@@ -24,7 +24,7 @@ test "set construction and methods need no import":
     try expect_equal(values.filter(fn(value: Int) Bool: value > 2).values(), [3])
     try expect_equal(values.map(fn(value: Int) Int: value * 2).values(), [6, 4])
 
-    nested: List[Set[Int]] = [values.clone()]
+    nested: List[Set[Int]] := [values.clone()]
     try expect_equal(nested[0].length(), 2)
     values.clear()
     try expect_false(not values.is_empty() or copy.length() != 3)
@@ -36,5 +36,5 @@ test "set constructor accepts a list":
     inferred := Set(["a", "b"])
     try expect_equal(inferred.length(), 2)
 
-    empty: Set[Int] = Set([])
+    empty: Set[Int] := Set([])
     try expect_false(not empty.is_empty())

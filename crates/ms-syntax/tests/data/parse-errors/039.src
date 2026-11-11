@@ -36,9 +36,9 @@ test "process environment reflects live changes":
     try control().set_environment(name, before)
 
 test "subprocess validation returns expected domain errors":
-    invalid: Result[CommandOutput, CommandError] = error(CommandError.InvalidInput)
+    invalid: Result[CommandOutput, CommandError] := error(CommandError.InvalidInput)
     try expect_equal(commands().run("", [], "".to_bytes()), invalid)
-    unavailable: Result[CommandOutput, CommandError] = error(
+    unavailable: Result[CommandOutput, CommandError] := error(
         CommandError.Unavailable
     )
     try expect_false(

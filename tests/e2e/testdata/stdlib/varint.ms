@@ -55,7 +55,7 @@ test "signed varints use zigzag including both extrema":
 	)
 
 test "unsigned varints round trip every length and group boundary":
-	values: List[UInt64] = [
+	values: List[UInt64] := [
 		0, 1, 126, 127, 128, 129, 255, 300, 16383, 16384, 2097151, 2097152, 268435455,
 		268435456, 34359738367, 34359738368, 4398046511103, 4398046511104,
 		562949953421311, 562949953421312, 72057594037927935, 72057594037927936,
@@ -124,7 +124,7 @@ test "varint offsets chain through trailing bytes and slices":
 	)
 
 test "each proper prefix of a minimal multibyte varint is incomplete":
-	values: List[UInt64] = [
+	values: List[UInt64] := [
 		128, 16384, 2097152, 268435456, 34359738368, 4398046511104, 562949953421312,
 		72057594037927936, 9223372036854775808, 18446744073709551615
 	]
@@ -172,7 +172,7 @@ test "the tenth byte can only be zero or one":
 
 	for byte in 0..2:
 		decoded := try prefix.concat(Bytes([byte.to_uint8().get(0)])).uvarint(0)
-		expected: UInt64 = if byte == 0: 0 else: 9223372036854775808
+		expected: UInt64 := if byte == 0: 0 else: 9223372036854775808
 		try expect_equal(decoded.value, expected)
 		try expect_equal(decoded.next_offset, 10)
 
@@ -206,7 +206,7 @@ test "nonminimal encodings are accepted and preserve the next offset":
 	try expect_equal(negative.next_offset, 3)
 
 test "unsigned fixed-width codecs cover the entire UInt64 range":
-	values: List[UInt64] = [
+	values: List[UInt64] := [
 		0, 1, 255, 256, 4294967295, 4294967296, 9223372036854775807,
 		9223372036854775808, 18446744073709551615
 	]
@@ -239,7 +239,7 @@ test "unsigned fixed-width codecs cover the entire UInt64 range":
 	)
 
 test "unsigned fixed-width reads reject missing bytes and extreme offsets":
-	expected: UInt64! = error(Error("binary: out of range", kind: "ERANGE"))
+	expected: UInt64! := error(Error("binary: out of range", kind: "ERANGE"))
 	data := Bytes([0, 0, 0, 0, 0, 0, 0, 0])
 
 	for at in [-9223372036854775808, -1, 1, 8, 9223372036854775807]:

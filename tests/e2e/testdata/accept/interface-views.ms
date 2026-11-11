@@ -30,7 +30,7 @@ fn relay(e: Reportable) Reportable:
 	return e
 
 fn held(cause: Cause) String:
-	e: Reportable = cause
+	e: Reportable := cause
 	return e.message()
 
 fn through(cause: Cause) Reportable:
@@ -45,7 +45,7 @@ fn cond(cause: Cause, other: Cause, c: Bool) Reportable:
 
 fn looped(cause: Cause) Reportable:
 	for i in 0..3:
-		e: Reportable = cause
+		e: Reportable := cause
 		if i == 2: return e
 
 	return Cause(7, "fell through the loop with heap text")
@@ -61,11 +61,11 @@ fn either(r: Holder, b: Bool) Reportable:
 	return r.cause
 
 fn owned_copy(cause: Cause) List[Reportable]:
-	e: Reportable = cause.clone()
+	e: Reportable := cause.clone()
 	return [e]
 
 fn through_result(cause: Cause) Int!Reportable:
-	r: Int!Reportable = error(cause)
+	r: Int!Reportable := error(cause)
 	return r
 
 fn id[T](x: T) T:
@@ -79,17 +79,17 @@ fn lend_id(cause: Cause) Reportable:
 	return id(first_error(cause))
 
 fn rebound(cause: Cause) Reportable:
-	e: Reportable = cause
+	e: Reportable := cause
 	e2 := e
 	return e2
 
 fn rebound_result(cause: Cause) Int!Reportable:
-	r: Int!Reportable = error(cause)
+	r: Int!Reportable := error(cause)
 	r2 := r
 	return r2
 
 fn rebound_alias_relay(cause: Cause) Reportable:
-	e: Reportable = cause
+	e: Reportable := cause
 	e2 := e
 	return relay(e2)
 
@@ -102,7 +102,7 @@ test "interface values converted from borrowed values are views":
 	)
 	kept := owned_copy(c)
 	one := first_error(c)
-	owned: Reportable = c.clone()
+	owned: Reportable := c.clone()
 	message := one.message()
 	(
 		first_failure(c).err().message() | try expect_equal(

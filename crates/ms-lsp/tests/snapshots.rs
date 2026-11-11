@@ -43,7 +43,7 @@ fn lifecycle_and_diagnostics() {
     let broken = ws.uri("broken.ms");
     s.open(
         &broken,
-        "fn broken() Int:\n    x: String = 1\n    return missing\n",
+        "fn broken() Int:\n    x: String := 1\n    return missing\n",
         1,
     );
     let syntax = ws.uri("syntax.ms");
@@ -536,7 +536,7 @@ fn broken_documents() {
     let ws = Workspace::new("broken");
     let mut s = Script::initialize(&ws.root.to_string_lossy(), true);
     let sources = [
-        "fn broken() Int:\n    x: String = 1\n    return missing\n",
+        "fn broken() Int:\n    x: String := 1\n    return missing\n",
         "fn (:\nfn ok() Int:\n    return 1\n",
         "type T:\n    a: Int\nfn f() T:\n    return T(a: \n",
         "fn f(a: Int) Int:\n  return a\n",

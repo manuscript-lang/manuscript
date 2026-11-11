@@ -26,7 +26,7 @@ export fn main() Int:
     f1 := 182.678
     say("f1 = {f1}")
 
-    bad: Int = "text"
+    bad: Int := "text"
     say("collatz(2195) = {collatz(2195)}")
 
     i2 := (-938389)

@@ -145,8 +145,8 @@ test "finite nested generic composition constructs and extracts values":
 	person := Person(Entry(name: "Ada", nickname: "A"))
 	person.primary.get().nickname.get() | try expect_equal("A")
 
-	four: Int? = 4
-	nested_four: Int?? = four
+	four: Int? := 4
+	nested_four: Int?? := four
 	optional := NestedOptional.Value(nested_four)
 
 	match optional:
@@ -167,6 +167,6 @@ test "finite nested generic composition constructs and extracts values":
 	box := Box(Box(6))
 	box.value.value | try expect_equal(6)
 
-	inner_text: String? = "nested"
-	pair: Pair[Int?, String??] = Pair(first: 7, second: inner_text)
+	inner_text: String? := "nested"
+	pair: Pair[Int?, String??] := Pair(first: 7, second: inner_text)
 	(pair.first.get() != 7 or pair.second.get().get() != "nested") | try expect_false

@@ -62,7 +62,7 @@ test "get on a borrowed result lends the payload":
 	r.get().read() | try expect_equal(7)
 
 test "a native lend beside a none path still lends":
-	slots: List[Counter?] = [counter(8), none]
+	slots: List[Counter?] := [counter(8), none]
 	ring := Ring(slots: slots, size: 2)
 	if c := ring.at(0): c.read() | try expect_equal(8)
 	ring.at(1).is_none() | try expect_true

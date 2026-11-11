@@ -79,7 +79,7 @@ test "secure_int covers wide and empty ranges":
 	low := try secure_int(-9223372036854775807 - 1, -9223372036854775807)
 	try expect_equal(low, -9223372036854775807 - 1)
 
-	empty: List[Int] = []
+	empty: List[Int] := []
 	try expect_equal(try choice(empty), none)
 	try expect_equal(try shuffle([5]), [5])
 

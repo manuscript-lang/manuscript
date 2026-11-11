@@ -21,7 +21,7 @@ Brackets construct mutable lists of values:
 
 ```manuscript
 values := [1, 2, 3]
-empty: List[Int] = []
+empty: List[Int] := []
 also_empty := List[Int]()
 sized := List[Int](reserve: 1000)
 ```
@@ -36,7 +36,7 @@ Braces construct mutable maps:
 
 ```manuscript
 scores := {"Ada": 3, "Lin": 5}
-empty: Map[String, Int] = {}
+empty: Map[String, Int] := {}
 ```
 
 Entries are `key: value`, trailing commas allowed. Keys are expressions: `{name: score}` uses the value of `name`; `{"name": score}` uses a String. Map literals never construct types.
@@ -53,7 +53,7 @@ Lists and map values accept functions, interface values, builders and resources.
 Applications are invariant: `List[Int]` is not a `List[Float]`, and no implicit unions or numeric conversions apply.
 
 ```manuscript
-nested: List[List[Int]] = [[], [1, 2]]
+nested: List[List[Int]] := [[], [1, 2]]
 // Rejected: incompatible Int and Float elements.
 mixed := [1, 2.0]
 // Rejected: no element type can be inferred.

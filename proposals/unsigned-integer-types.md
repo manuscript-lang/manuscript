@@ -39,17 +39,17 @@ Implemented (stages 1 to 4). Deviations from the draft: `truncate_to_uintN()` wa
 
 ```manuscript
 data := Bytes.from_string("hi")
-first: UInt8 = data.get(0, default: 0)
+first: UInt8 := data.get(0, default: 0)
 next := first + 1          // UInt8; faults at 255 + 1
-wide: Int = first.to_int()  // widening is infallible
+wide: Int := first.to_int()  // widening is infallible
 narrow := wide.to_uint8()  // Optional[UInt8]
 ```
 
 Rejected:
 
 ```manuscript
-a: UInt8 = 256   // error: literal 256 is out of range for UInt8 (0 to 255)
-b: UInt8 = -1    // error: literal -1 is out of range for UInt8 (0 to 255)
+a: UInt8 := 256   // error: literal 256 is out of range for UInt8 (0 to 255)
+b: UInt8 := -1    // error: literal -1 is out of range for UInt8 (0 to 255)
 c := -first       // error: unary - is not defined for UInt8
 ```
 

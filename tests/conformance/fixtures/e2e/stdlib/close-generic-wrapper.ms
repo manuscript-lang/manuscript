@@ -19,7 +19,7 @@ fn keep[T](v: T) Int:
     return 0
 
 fn keep_optional[T](v: T) Int:
-    _o: T? = v
+    _o: T? := v
     return 1
 
 fn main() Unit:

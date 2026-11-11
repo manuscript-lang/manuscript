@@ -15,5 +15,5 @@ export fn main() Int:
     i2 := (i1 / i1)
     say("i2 = {i2}")
 
-    bad: Bool = 1
+    bad: Bool := 1
     return 0

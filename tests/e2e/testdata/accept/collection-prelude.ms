@@ -33,7 +33,7 @@ test "issue 187 programs need no collection imports":
 	points.add(Point(1, 2), 7)
 	try expect_equal(points[Point(1, 2)], 7)
 
-	nested: List[Map[String, List[Int]]] = [{}, {"a": []}]
+	nested: List[Map[String, List[Int]]] := [{}, {"a": []}]
 	try expect_equal(nested[1]["a"].length(), 0)
 
 test "map add retains clones and insertion order":

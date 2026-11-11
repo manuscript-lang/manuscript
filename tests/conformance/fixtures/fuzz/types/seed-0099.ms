@@ -27,5 +27,5 @@ export fn main() Int:
     i5 := (((-(-21)) * l2.length()) * (i3 * (i4 - i4)))
     say("i5 = {i5}")
 
-    bad: Bool = 1
+    bad: Bool := 1
     return 0

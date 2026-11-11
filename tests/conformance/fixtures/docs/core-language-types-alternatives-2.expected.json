@@ -24,15 +24,15 @@
         "position": {
           "file": "core-language-types-alternatives-2.ms",
           "line": 5,
-          "column": 21,
-          "offset": 193
+          "column": 22,
+          "offset": 194
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-types-alternatives-2.ms:4:20: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | payment := Payment.Paid(\"receipt-42\")\n   |                    ^\n<DIR>/core-language-types-alternatives-2.ms:5:21: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 5 | declined: Payment = Declined(\"Card rejected\")\n   |                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-types-alternatives-2.ms:4:20: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | payment := Payment.Paid(\"receipt-42\")\n   |                    ^\n<DIR>/core-language-types-alternatives-2.ms:5:22: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 5 | declined: Payment := Declined(\"Card rejected\")\n   |                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

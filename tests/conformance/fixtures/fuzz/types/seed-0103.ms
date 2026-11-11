@@ -17,5 +17,5 @@ export fn main() Int:
     s1 := "日本語".trim().reverse()
     say("s1 = [{s1}]")
 
-    bad: Int = "text"
+    bad: Int := "text"
     return 0

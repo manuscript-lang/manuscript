@@ -4,4 +4,4 @@
 import value from "../src/value.ms"
 
 test "checks source":
-    invalid: Int = "wrong"
+    invalid: Int := "wrong"

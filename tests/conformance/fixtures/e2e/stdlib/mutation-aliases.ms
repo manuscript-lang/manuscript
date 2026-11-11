@@ -36,7 +36,7 @@ test "Map remove evaluates its key after choosing the receiver and keeps convers
     var first = Map[Int?, Int]()
     first.add(1, 10)
 
-    trigger: Int? = 1
+    trigger: Int? := 1
     first.remove(
         match trigger:
             key: key

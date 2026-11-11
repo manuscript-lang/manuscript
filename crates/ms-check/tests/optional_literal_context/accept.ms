@@ -28,7 +28,7 @@ fn argument() Int8?:
     return takes(1 + 2)
 
 fn function_value() Int8?:
-    callable: fn(Int8?) Int8? = takes
+    callable: fn(Int8?) Int8? := takes
     return callable(1 + 2)
 
 fn record_single() Reading:

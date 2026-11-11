@@ -17,7 +17,7 @@ test "an unterminated carriage return remains line content":
 		try expect_equal(found, [text])
 
 test "file and memory line readers agree on endings and byte limits":
-	limits: List[Int?] = [none, 0, 1, 2, 3, 8]
+	limits: List[Int?] := [none, 0, 1, 2, 3, 8]
 	temporary := try temporary("manuscript-line-parity-")
 	path := "{temporary.path()}/lines.txt"
 

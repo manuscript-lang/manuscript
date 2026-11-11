@@ -23,10 +23,10 @@ test "timestamps preserve nanoseconds and shift across epoch":
 	try expect_equal((try later.shift((-2).seconds())), epoch)
 
 test "time rejects invalid timestamps and out of range nanoseconds":
-	invalid: Timestamp! = error(Error("time: invalid data", kind: "EBADMSG"))
+	invalid: Timestamp! := error(Error("time: invalid data", kind: "EBADMSG"))
 	try expect_equal(parse_timestamp("2024-02-30T00:00:00Z"), invalid)
 
-	out_of_range: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
+	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
 	try expect_equal(timestamp(0, 1000000000), out_of_range)
 
 test "timestamp shifts normalize raw fields and preserve wide sums":
@@ -56,7 +56,7 @@ test "timestamp shifts normalize raw fields and preserve wide sums":
 		Timestamp(-1, 999999999)
 	)
 
-	out_of_range: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
+	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
 	try expect_equal(Timestamp(maximum, 0).shift(nanoseconds(maximum)), out_of_range)
 	try expect_equal(Timestamp(minimum, 0).shift(nanoseconds(minimum)), out_of_range)
 
@@ -69,7 +69,7 @@ test "host clocks are usable and zero sleep completes":
 	try expect_equal((try parse_timestamp(current.to_string())), current)
 
 test "parse_timestamp reports offsets that leave years 1 through 9999 as out of range":
-	out_of_range: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
+	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
 	for text in ["0001-01-01T00:00:00+00:01", "9999-12-31T23:59:59-00:01"]:
 		if parse_timestamp(text) != out_of_range: return fail("range {text}")
 
@@ -102,10 +102,10 @@ test "format renders tokens and from_calendar round trips":
 	try expect_equal(back, moment)
 
 test "calendar rejects unknown zones and impossible dates":
-	bad_zone: Timestamp! = error(Error("time: invalid input", kind: "EINVAL"))
+	bad_zone: Timestamp! := error(Error("time: invalid input", kind: "EINVAL"))
 	try expect_equal(from_calendar(2024, 1, 1, 0, 0, 0, 0, "Nowhere/Land"), bad_zone)
 
-	bad_date: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
+	bad_date: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
 	try expect_equal(from_calendar(2023, 2, 29, 0, 0, 0, 0, "UTC"), bad_date)
 	try expect_false(local_zone() == "")
 
@@ -134,7 +134,7 @@ test "timestamp parsing preserves maximum-width precision and offsets":
 		try expect_equal(parsed.nanoseconds(), 123456789)
 		try expect_equal((try parse_timestamp(parsed.to_string())), parsed)
 
-	out_of_range: Timestamp! = error(Error("time: value out of range", kind: "ERANGE"))
+	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
 	try expect_equal(
 		parse_timestamp("0001-01-01T00:00:00.123456789+00:01"), out_of_range
 	)
@@ -143,7 +143,7 @@ test "timestamp parsing preserves maximum-width precision and offsets":
 	)
 
 test "timestamp parsing rejects oversized fractions and suffixes":
-	invalid: Timestamp! = error(Error("time: invalid data", kind: "EBADMSG"))
+	invalid: Timestamp! := error(Error("time: invalid data", kind: "EBADMSG"))
 	for text in [
 		"2024-02-29T12:30:45.1234567890Z", "2024-02-29T12:30:45.1234567890+00:00",
 		"2024-02-29T12:30:45.123456789+00:00Z", "2024-02-29T12:30:45.123456789+00:000",

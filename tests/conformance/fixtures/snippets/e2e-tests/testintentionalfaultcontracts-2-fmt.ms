@@ -5,7 +5,7 @@ import expect_contains, expect_fault from "@std/test/test.ms"
 import panic from "@std/core.ms"
 
 fn failed_initializer() Never:
-    _impossible: Int = panic(message: "initializer cannot return")
+    _impossible: Int := panic(message: "initializer cannot return")
 
 fn returned_failure() Int:
     return panic(message: "result cannot return")

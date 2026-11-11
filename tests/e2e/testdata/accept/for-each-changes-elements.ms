@@ -51,7 +51,7 @@ test "Map.for_each changes record values":
 	try expect_equal(m["a"].n, 6)
 
 test "Map.for_each reads on a let map":
-	m: Map[String, Int] = {"a": 1, "b": 2}
+	m: Map[String, Int] := {"a": 1, "b": 2}
 	var total = 0
 	m.for_each(fn k, v: total += v)
 	try expect_equal(total, 3)

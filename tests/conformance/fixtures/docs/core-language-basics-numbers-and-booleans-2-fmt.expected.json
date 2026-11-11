@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn literals() Unit:\n\tsmallest: Int = -9223372036854775808\n\texponent: Float = 1e3\n\tprecise: Decimal = 1e3d\n\n\t// Rejected: an Int token does not become Float from context.\n\tmismatch: Float = 1\n"
+    "fmt": "fn literals() Unit:\n\tsmallest: Int := -9223372036854775808\n\texponent: Float := 1e3\n\tprecise: Decimal := 1e3d\n\n\t// Rejected: an Int token does not become Float from context.\n\tmismatch: Float := 1\n"
   }
 }

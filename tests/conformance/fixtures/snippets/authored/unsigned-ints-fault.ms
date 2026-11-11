@@ -4,8 +4,8 @@
 import stdout from "@std/io/io.ms"
 
 fn main() Unit:
-    a: UInt8 = 5
-    b: UInt8 = 6
+    a: UInt8 := 5
+    b: UInt8 := 6
     _ := stdout().write("before\n")
     c := a - b
     _ := stdout().write("{c}\n")

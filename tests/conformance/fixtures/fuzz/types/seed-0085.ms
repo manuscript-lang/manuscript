@@ -31,5 +31,5 @@ export fn main() Int:
     b2 := ("x".contains(s1) or ((11 * 1) == ((-13) + 45)))
     say("b2 = {b2}")
 
-    bad: Bool = 1
+    bad: Bool := 1
     return 0

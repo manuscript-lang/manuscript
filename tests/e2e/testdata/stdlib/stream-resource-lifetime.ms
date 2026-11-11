@@ -184,7 +184,7 @@ impl Source[Token?] for OptionalTokens:
 		self.at += 1
 		if self.at > 1: return ok(none)
 
-		inner: Token? = Token(1, self.log.clone())
+		inner: Token? := Token(1, self.log.clone())
 		return ok(inner)
 
 	var fn close() Unit!:
@@ -213,7 +213,7 @@ impl Source[Token!] for ResultTokens:
 		self.at += 1
 		if self.at > 1: return ok(none)
 
-		inner: Token! = ok(Token(1, self.log.clone()))
+		inner: Token! := ok(Token(1, self.log.clone()))
 		return ok(inner)
 
 	var fn close() Unit!:

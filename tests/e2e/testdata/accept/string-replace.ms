@@ -41,7 +41,7 @@ test "bound typed and generic calls keep the all-versus-first split":
 	replace := text.replace
 	try expect_equal(replace("a", "b"), "bbbb")
 
-	typed: fn(String, String) String = text.replace_first
+	typed: fn(String, String) String := text.replace_first
 	try expect_equal(typed("a", "b"), "baaa")
 
 	generic := forward(text.replace)
@@ -62,7 +62,7 @@ test "explicit and bound views retain method contracts and callable field shadow
 	adapter := TextAdapter("aaaa", fn(old: String, new: String) String: "field")
 	try expect_equal(adapter.replace("a", "b"), "field")
 
-	view: Replacement = adapter
+	view: Replacement := adapter
 	try expect_equal(view.replace("a", "b"), "bbbb")
 
 	bound := view.replace
@@ -85,7 +85,7 @@ test "replacing long text with a shorter or equal string trims, shares or inline
 	try expect_equal(wide.replace("-", "").byte_length(), 40)
 
 test "join sizes its result exactly across the inline and heap boundary":
-	empty: List[String] = []
+	empty: List[String] := []
 	try expect_equal(empty.join(","), "")
 	try expect_equal(["a"].join(","), "a")
 	try expect_equal(["", ""].join(""), "")

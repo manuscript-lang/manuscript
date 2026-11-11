@@ -4,7 +4,7 @@
 fn helper() Int: 1
 
 A := 1
-B: Int = A + 1
+B: Int := A + 1
 
 fn main() Unit:
     x := 1

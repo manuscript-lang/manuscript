@@ -25,7 +25,7 @@ fn via_get() Unit:
     print("body {r.name}")
 
 fn via_optional_get() Unit:
-    o: Res? = Res("optional")
+    o: Res? := Res("optional")
     r := o.get(Res("default"))
     print("body {r.name}")
 

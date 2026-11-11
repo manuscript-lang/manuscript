@@ -29,10 +29,10 @@ test "if let takes else when absent and keeps falsy payloads":
     (try check(value: describe(none) == "Hello!", message: "none"))
     (try check(value: describe("Ada") == "Hello, Ada", message: "some"))
 
-    items: List[Int?] = [1, none, 0, 2]
+    items: List[Int?] := [1, none, 0, 2]
     (try check(value: total(items) == 3, message: "total"))
 
-    empty: List[Int] = []
+    empty: List[Int] := []
     if value := empty.first(): return fail(message: "unexpected {value}")
 
 fn parse(text: String) Int!Error:

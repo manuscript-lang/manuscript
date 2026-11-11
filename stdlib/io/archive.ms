@@ -268,7 +268,7 @@ type TarEntries:
 impl TarEntries:
 	// Fails with `EOVERFLOW` when a member of `size` data bytes exceeds `max_entry_bytes` or would take the archive past `max_bytes`.
 	fn check_size(size: Int) Unit!:
-		over: Unit! = error(Error("archive: limit exceeded", kind: "EOVERFLOW"))
+		over: Unit! := error(Error("archive: limit exceeded", kind: "EOVERFLOW"))
 		if most := self.options.max_entry_bytes:
 			if size > most: return over
 		if most := self.options.max_bytes:
@@ -336,7 +336,7 @@ impl TarEntries:
 	// Applies `unpack`'s whole-archive path rules across members: no duplicate path, no file that is
 	// also a directory, and no entry below a file.
 	var fn admit(path: String, directory: Bool) Unit!:
-		invalid: Unit! = error(Error("archive: invalid archive", kind: "EBADMSG"))
+		invalid: Unit! := error(Error("archive: invalid archive", kind: "EBADMSG"))
 		if self.names.contains(path.clone()): return invalid
 		if not directory and self.parents.contains(path.clone()): return invalid
 

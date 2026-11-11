@@ -205,7 +205,7 @@ bench "list.records_map":
 	try measure(100000, work)
 
 bench "list.repeated empty":
-	values: List[Int] = []
+	values: List[Int] := []
 	fn work() Unit!:
 		return keep(values.repeated(1000000).length())
 	try measure(1, work)

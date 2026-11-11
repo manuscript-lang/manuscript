@@ -11,16 +11,16 @@ test "big integers exceed machine range without losing precision":
     try expect_equal(from_int(5).bit_xor(from_int(3)).to_int(), 6)
 
 test "big integers validate digits budgets and zero divisors":
-    invalid: Result[BigInt, BigIntError] = error(BigIntError.InvalidInput)
+    invalid: Result[BigInt, BigIntError] := error(BigIntError.InvalidInput)
     try expect_equal(from_int(1).divide(from_int(0)), invalid)
-    limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
+    limited: Result[BigInt, BigIntError] := error(BigIntError.LimitExceeded)
     try expect_equal(parse("123", 10, 2), limited)
-    malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
+    malformed: Result[BigInt, BigIntError] := error(BigIntError.InvalidData)
     try expect_equal(parse("1_0", 10), malformed)
 
 test "big integer budgets exclude at most one leading sign before validation":
-    limited: Result[BigInt, BigIntError] = error(BigIntError.LimitExceeded)
-    malformed: Result[BigInt, BigIntError] = error(BigIntError.InvalidData)
+    limited: Result[BigInt, BigIntError] := error(BigIntError.LimitExceeded)
+    malformed: Result[BigInt, BigIntError] := error(BigIntError.InvalidData)
 
     for text in ["+-1", "-+1", "++1", "--1"]:
         if parse(text, 10, 1) != limited: return fail(

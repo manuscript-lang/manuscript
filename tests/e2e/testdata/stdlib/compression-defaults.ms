@@ -40,8 +40,8 @@ test "compression omission equals explicit level six for every format":
 
 test "compression defaults retain invalid levels and output budgets":
 	data := "abc".to_bytes()
-	invalid: Bytes! = error(Error("compression: invalid input", kind: "EINVAL"))
-	limited: Bytes! = error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
+	invalid: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
+	limited: Bytes! := error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
 
 	for format in [
 		CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate

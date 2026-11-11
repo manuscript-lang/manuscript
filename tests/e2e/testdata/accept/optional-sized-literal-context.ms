@@ -20,7 +20,7 @@ test "optional sized arithmetic keeps payload values":
 	try expect_equal(large().get().to_string(), "9223372036854775808")
 	try expect_equal(take(1 + 2).get().to_int(), 3)
 
-	callable: fn(Int8?) Int8? = take
+	callable: fn(Int8?) Int8? := take
 	try expect_equal(callable(2 * 3).get().to_int(), 6)
 
 	var reading = Reading(100 + 27)
@@ -28,7 +28,7 @@ test "optional sized arithmetic keeps payload values":
 	reading.value = -(60 + 67)
 	try expect_equal(reading.value.get().to_int(), -127)
 
-	values: List[Int8?] = [1 + 2, none]
+	values: List[Int8?] := [1 + 2, none]
 	try expect_equal(values[0].get().to_int(), 3)
 	try expect_none(values[1])
 

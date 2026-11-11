@@ -20,7 +20,7 @@ fn apply(change: fn(var List[Int]) Unit, var values: List[Int]) Unit:
 
 test "a named function with a var parameter is a function value":
 	var values: List[Int] = []
-	change: fn(var List[Int]) Unit = push_one
+	change: fn(var List[Int]) Unit := push_one
 	change(var values)
 	change(var values)
 	values | try expect_equal([1, 1])
@@ -48,7 +48,7 @@ test "a var parameter passes through a function parameter":
 
 test "a var parameter changes a field in place":
 	var bag = Bag(items: [])
-	change: fn(var List[Int]) Unit = push_one
+	change: fn(var List[Int]) Unit := push_one
 	change(var bag.items)
 	bag.items | try expect_equal([1])
 

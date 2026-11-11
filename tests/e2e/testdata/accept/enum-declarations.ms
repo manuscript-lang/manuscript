@@ -19,7 +19,7 @@ fn score(value: Outcome[Int]) Int:
 		Failure: -1
 
 test "enum cases retain payload construction and exhaustive matching":
-	success: Outcome = Success(7)
+	success: Outcome := Success(7)
 	failure := Outcome[Int].Failure
 	try expect_equal(score(success), 7)
 	try expect_equal(score(failure), -1)

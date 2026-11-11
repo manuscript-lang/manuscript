@@ -23,5 +23,5 @@ export fn main() Int:
     b4 := false
     say("b4 = {b4}")
 
-    bad: Bool = 1
+    bad: Bool := 1
     return 0

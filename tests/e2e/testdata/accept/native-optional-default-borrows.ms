@@ -6,12 +6,12 @@ fn heap_text(seed: Int) String:
 	)
 
 fn missing_temporary(seed: Int) Int!:
-	absent: Int? = none
+	absent: Int? := none
 	convert := absent.ok_or[Error]
 	return convert(Error("missing value at " + heap_text(seed), kind: "ENOENT"))
 
 fn string_temporary(seed: Int) Int!String:
-	absent: Int? = none
+	absent: Int? := none
 	convert := absent.ok_or[String]
 	return convert(heap_text(seed))
 
@@ -41,7 +41,7 @@ test "bound ok_or results own heap-backed temporary causes":
 	try expect_equal(churn.length(), 64)
 
 test "bound ok_or leaves caller causes independent of its result":
-	absent: Int? = none
+	absent: Int? := none
 	convert := absent.ok_or[Error]
 	var cause = Error("missing value at " + heap_text(3), kind: "ENOENT")
 	result := convert(cause)
@@ -49,7 +49,7 @@ test "bound ok_or leaves caller causes independent of its result":
 	try expect_equal(result.err().message, "missing value at " + heap_text(3))
 	try expect_equal(cause.message, "missing value at " + heap_text(4))
 
-	present: Int? = 0
+	present: Int? := 0
 	keep := present.ok_or[Error]
 	try expect_equal(keep(cause).get(), 0)
 	try expect_equal(cause.message, "missing value at " + heap_text(4))
@@ -66,7 +66,7 @@ test "bound native get owns selected heap-backed fallback results":
 	try expect_equal(fallback, heap_text(7))
 
 test "bound interface adapters preserve heap-backed arguments and results":
-	view: Fallback = Choice(heap_text(8))
+	view: Fallback := Choice(heap_text(8))
 	choose := view.choose
 	result := choose(heap_text(9))
 	var argument = heap_text(10)

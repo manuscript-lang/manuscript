@@ -42,7 +42,7 @@ A module-level `:=` names a value usable throughout the module; add `export` to 
 
 ```manuscript
 export MAX_ITEMS := 100
-NAMES: List[String] = ["Ada", "Grace"]
+NAMES: List[String] := ["Ada", "Grace"]
 LIMIT := MAX_ITEMS * 2
 
 fn is_full(count: Int) Bool:

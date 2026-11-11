@@ -266,7 +266,7 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
         ),
         "const" | "val" | "final" | "let" => (
             None,
-            "write 'NAME := value' (or 'NAME: Type = value') for a module constant",
+            "write 'NAME := value' (or 'NAME: Type := value') for a module constant",
         ),
         "pub" | "public" => (
             Some("export"),
@@ -1055,16 +1055,14 @@ impl<'a> Parser<'a> {
 
     // ---- declarations ----
 
-    /// Parses a module constant: `name := value` or `name: Type = value`.
+    /// Parses a module constant: `name := value` or `name: Type := value`.
     fn constant(&mut self) -> PResult<ConstDecl> {
         let name = self.need(Tok::Name)?;
         let mut ty = None;
         if self.take(Tok::Colon) {
             ty = Some(self.typ()?);
-            self.need(Tok::Assign)?;
-        } else {
-            self.need(Tok::ColonAssign)?;
         }
+        self.need_immutable_bind()?;
         // A binary expression's position is its operator, so the statement
         // starts at the first token of the initializer for source tooling.
         let init_pos = self.peek().pos;
@@ -1695,8 +1693,18 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Consumes the `:=` of an immutable binding. A leftover `=` after a
+    /// type annotation gets a fix-it, since `=` binds only after `var`.
+    fn need_immutable_bind(&mut self) -> PResult<()> {
+        if self.kind() == Tok::Assign {
+            let t = self.peek();
+            return self.fail_fix(t, "an immutable binding uses ':=' after its type: write 'x: Type := value'; '=' binds only after 'var'", ":=");
+        }
+        self.need(Tok::ColonAssign).map(|_| ())
+    }
+
     /// Whether the statement at the cursor starts an immutable binding:
-    /// `name := v`, `name: Type = v`, or `[a, b] := v` / `{a, b} := v`.
+    /// `name := v`, `name: Type := v`, or `[a, b] := v` / `{a, b} := v`.
     fn binding_ahead(&self) -> bool {
         match self.kind() {
             Tok::Name | Tok::Underscore => {
@@ -1727,7 +1735,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a binding: `var pattern [: Type] = value` after `var`, or an
-    /// immutable `name := value`, `name: Type = value`, or `pattern := value`.
+    /// immutable `name := value`, `name: Type := value`, or `pattern := value`.
     fn binding(&mut self, mutable: bool, group: Option<Pos>, pos: Pos) -> PResult<Stmt> {
         self.no_ref()?;
         let pattern = self.pattern()?;
@@ -1742,11 +1750,11 @@ impl<'a> Parser<'a> {
                 return self.fail_fix(t, "'var' binds with '=': write 'var x = value'; ':=' declares an immutable binding", "=");
             }
             self.need(Tok::Assign)?;
-        } else if named && self.take(Tok::Colon) {
-            ty = Some(self.typ()?);
-            self.need(Tok::Assign)?;
         } else {
-            self.need(Tok::ColonAssign)?;
+            if named && self.take(Tok::Colon) {
+                ty = Some(self.typ()?);
+            }
+            self.need_immutable_bind()?;
         }
         let value = self.expression(0)?;
         let id = self.id();
@@ -1787,7 +1795,7 @@ impl<'a> Parser<'a> {
                         Tok::Name | Tok::Underscore | Tok::LBracket | Tok::LBrace
                     ) =>
             {
-                return self.fail(t, "'let' was removed; bind with 'x := value' (or 'x: Type = value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding");
+                return self.fail(t, "'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding");
             }
             Tok::Var => {
                 self.at += 1;

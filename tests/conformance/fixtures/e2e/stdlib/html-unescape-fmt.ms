@@ -44,7 +44,7 @@ fn apply[T, U](text: T, operation: fn(T) U) U:
 
 test "HTML unescape stored and generic calls preserve labels":
     convert := unescape
-    typed: fn(String) String = unescape
+    typed: fn(String) String := unescape
     try expect_false(convert("&lt;") != "<" or typed("&gt;") != ">")
     try expect_equal(apply[String, String]("&amp;", unescape), "&")
 

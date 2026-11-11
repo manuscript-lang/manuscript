@@ -138,12 +138,12 @@ test "HTML honors optional byte depth and node limits":
 	)
 	try expect_equal((try parse("é", HtmlOptions())), (try parse("é")))
 
-	limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
+	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(parse("é", HtmlOptions(max_bytes: 1)), limited)
 	try expect_equal(parse("", HtmlOptions(max_depth: 1)), limited)
 	try expect_equal(parse("", HtmlOptions(max_nodes: 3)), limited)
 
-	invalid: HtmlNode! = error(Error("HTML: invalid input", kind: "EINVAL"))
+	invalid: HtmlNode! := error(Error("HTML: invalid input", kind: "EINVAL"))
 	try expect_equal(parse("", HtmlOptions(max_nodes: -1)), invalid)
 	try expect_not_equal(Error("HTML: invalid data", kind: "EBADMSG").message, "")
 
@@ -151,7 +151,7 @@ test "HTML depth limit stops deeply nested input without quadratic work":
 	// 60,000 open divs take tens of seconds when the parser only checks depth afterwards.
 	nested := "<div>".repeat(60000).get()
 	started := monotonic()
-	limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
+	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(parse(nested, HtmlOptions(max_depth: 100)), limited)
 
 	elapsed := monotonic().difference(started).to_milliseconds()
@@ -159,7 +159,7 @@ test "HTML depth limit stops deeply nested input without quadratic work":
 
 test "HTML parse applies default limits and none lifts them":
 	nested := "<div>".repeat(20000).get()
-	limited: HtmlNode! = error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
+	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(parse(nested), limited)
 
 	lifted := parse(nested, HtmlOptions(max_depth: none, max_nodes: none))

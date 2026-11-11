@@ -29,5 +29,5 @@ export fn main() Int:
     f5 := 197.731
     say("f5 = {f5}")
 
-    bad: Int = "text"
+    bad: Int := "text"
     return 0

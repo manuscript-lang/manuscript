@@ -22,7 +22,7 @@ test "direct append preserves checked argument conversions":
     units.append(unit)
     try expect_false(units.get(0).is_none())
 
-    inner: Int? = none
+    inner: Int? := none
     var nested: List[Int??] = []
     nested.append(inner)
     try expect_false((nested.get(0).is_none() or not nested.get(0).get().is_none()))
@@ -36,7 +36,7 @@ test "direct append preserves checked argument conversions":
     try expect_equal(errors.get(0).message, "failure")
 
     var results: List[Int!?] = []
-    failed: Int! = error(Error("failure"))
+    failed: Int! := error(Error("failure"))
     results.append(failed)
 
     widened := results.get(0).get()
@@ -62,8 +62,8 @@ test "direct keyed calls preserve optional keys and values":
     )
 
 test "direct calls capture receiver and arguments in written order":
-    first: List[Int?] = []
-    second: List[Int?] = []
+    first: List[Int?] := []
+    second: List[Int?] := []
     var receiver = first.clone()
     receiver.append(
         (

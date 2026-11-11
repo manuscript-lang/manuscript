@@ -67,9 +67,9 @@ Before and after for an unannotated program:
 
 ```manuscript
 big := 3_000_000_000      // accepted before; compile error after: Int is Int32
-ok: Int64 = 3_000_000_000
-samples: List[Int8] = [1, 2, 3]
-total: Int32 = 0
+ok: Int64 := 3_000_000_000
+samples: List[Int8] := [1, 2, 3]
+total: Int32 := 0
 for s in samples:
     total = total + s.to_int32()   // no implicit widening
 ```
@@ -77,10 +77,10 @@ for s in samples:
 Rejected, with the intended diagnostic:
 
 ```manuscript
-a: Int8 = 200
+a: Int8 := 200
 // error: literal 200 is out of range for Int8 (-128 to 127)
-b: Int32 = 1
-c: Int64 = 2
+b: Int32 := 1
+c: Int64 := 2
 d := b + c
 // error: operands must have the same type: Int32 and Int64; convert with to_int64()
 ```

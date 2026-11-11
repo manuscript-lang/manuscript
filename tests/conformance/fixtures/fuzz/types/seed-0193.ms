@@ -45,5 +45,5 @@ export fn main() Int:
     say("s3 = [{s3}]")
     say("gcd(2465, 787) = {gcd(2465, 787)}")
 
-    bad: Bool = 1
+    bad: Bool := 1
     return 0

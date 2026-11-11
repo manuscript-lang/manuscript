@@ -4,7 +4,7 @@ fn find(m: Map[String, List[Int]], key: String) List[Int]?:
 	return m.get(key)
 
 test "a function returning Map.get reads the entry in place":
-	m: Map[String, List[Int]] = {"a": [1, 2]}
+	m: Map[String, List[Int]] := {"a": [1, 2]}
 	try expect_equal(find(m, "a").get().length(), 2)
 	try expect_equal(find(m, "z").is_none(), true)
 

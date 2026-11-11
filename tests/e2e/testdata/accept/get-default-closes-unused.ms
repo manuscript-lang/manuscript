@@ -19,17 +19,17 @@ fn logged(path: String) String:
 	return ""
 
 fn present(log: String) Int:
-	held: Door? = Door(1, log.clone())
+	held: Door? := Door(1, log.clone())
 	door := held.get(Door(2, log.clone()))
 	return door.id
 
 fn absent(log: String) Int:
-	held: Door? = none
+	held: Door? := none
 	door := held.get(Door(3, log.clone()))
 	return door.id
 
 fn named(log: String) Int:
-	held: Door? = Door(4, log.clone())
+	held: Door? := Door(4, log.clone())
 	spare := Door(5, log.clone())
 	door := held.get(spare)
 	return door.id + 8

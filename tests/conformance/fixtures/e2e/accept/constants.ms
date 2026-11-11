@@ -5,9 +5,9 @@ import expect_equal, expect_false from "@std/test/test.ms"
 
 LIMIT := 10
 DOUBLE := LIMIT * 2
-NAMES: List[String] = ["a", "b"]
+NAMES: List[String] := ["a", "b"]
 GREETING := "limit {LIMIT}"
-NOTHING: Int? = none
+NOTHING: Int? := none
 from := 4
 
 fn limit_plus(extra: Int) Int:
@@ -34,7 +34,7 @@ enum Phase:
     Active(count: Int)
 
 START := Phase.Idle
-NEXT: Phase = Idle
+NEXT: Phase := Idle
 
 fn phase_name(phase: Phase) String:
     match phase:

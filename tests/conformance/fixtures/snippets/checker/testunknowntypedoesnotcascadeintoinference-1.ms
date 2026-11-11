@@ -8,4 +8,4 @@ fn first() Unit:
     result := collect(
         items: [1, 2], step: fn(value: Int) List[Int]!MissingError: ok([value])
     )
-    unrelated: Int = "wrong"
+    unrelated: Int := "wrong"

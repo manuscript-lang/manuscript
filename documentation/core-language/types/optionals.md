@@ -33,11 +33,11 @@ A parameter or field of type `T?` with no default is `none` when omitted, so `= 
 `T?` is an invariant enum. `none` takes its type from the expected type, so the type is written on the binding; a bare `x := 1` is an `Int`, not an `Int?`.
 
 ```manuscript
-explicit: String? = none
+explicit: String? := none
 // Rejected: no type determines the absent payload.
 unknown := none
 // Wrapped: an annotated binding expects an Optional.
-wrapped: String? = "Ada"
+wrapped: String? := "Ada"
 ```
 
 There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Result[T, E]` likewise needs both arguments determined, possibly from the expected type. See [compatibility and expected types](compatibility.md).

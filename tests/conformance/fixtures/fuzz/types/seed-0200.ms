@@ -20,5 +20,5 @@ export fn main() Int:
     s1 := "42".reverse().replace("  padded  ", "gamma").upper()
     say("s1 = [{s1}]")
 
-    bad: Int = "text"
+    bad: Int := "text"
     return 0

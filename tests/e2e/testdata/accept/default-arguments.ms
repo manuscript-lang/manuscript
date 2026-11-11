@@ -83,7 +83,7 @@ test "function values and captures":
 	copied := copy
 	copied() | try expect_equal(4)
 
-	typed: fn(Int) Int = increment
+	typed: fn(Int) Int := increment
 	typed(2) | try expect_equal(3)
 
 	offset := 5
@@ -100,7 +100,7 @@ test "implementation and bound method defaults":
 	bound := offset.add
 	(offset.add() != 8 or bound() != 8 or bound(0) != 4) | try expect_false
 
-	view: Add = offset
+	view: Add := offset
 	view.add(2) | try expect_equal(6)
 
 	box := Box[String]("boxed")

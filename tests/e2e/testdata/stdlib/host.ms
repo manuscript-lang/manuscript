@@ -52,7 +52,7 @@ test "process environment reflects live changes":
 	try set_environment(name, before)
 
 test "subprocess validation returns expected domain errors":
-	invalid: CommandOutput! = error(Error("process: invalid input", kind: "EINVAL"))
+	invalid: CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
 	try expect_equal(run("", [], RunOptions(input: "".to_bytes())).wait(), invalid)
 
 	missing := run(

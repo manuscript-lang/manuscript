@@ -21,7 +21,7 @@ export fn main() Int:
     l2 := [19, 8, (-12), 30]
     say("l2 = {l2} len {l2.length()}")
 
-    bad: String = 5
+    bad: String := 5
     say("gcd(4299, 4413) = {gcd(4299, 4413)}")
 
     i3 := ((-((-23) - (-46))) + (-15))

@@ -29,6 +29,6 @@ fn main() Unit:
     size := open("result").map(fn d: d.name.length())
     say("--fallback")
 
-    failed: Door!Error = error(Error("no"))
+    failed: Door!Error := error(Error("no"))
     fallback := failed.get_or_else(fn cause: Door("fallback"))
     say("end {doors.length()} {name.get()} {size.get()} {fallback.name}")

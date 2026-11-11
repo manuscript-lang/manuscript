@@ -259,7 +259,7 @@ impl BigRat:
 		return "{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
 
 // The largest supported precision in bits.
-export max_big_float_precision: Int = 1000000
+export max_big_float_precision: Int := 1000000
 
 /*
 An arbitrary-precision binary floating-point number, `mantissa * 2^exponent`, whose mantissa holds at most `precision` bits.
@@ -318,7 +318,7 @@ export fn parse_big_float(text: String, precision: Int) BigFloat!:
 		return error(Error("bigfloat: invalid data", kind: "EBADMSG"))
 	if value := parse_rat(text): return ok(big_float_of_rat(value, bits))
 
-	too_large: BigRat! = error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
+	too_large: BigRat! := error(Error("bigrat: limit exceeded", kind: "EOVERFLOW"))
 	if parse_rat(text) == too_large:
 		return error(Error("bigfloat: limit exceeded", kind: "EOVERFLOW"))
 

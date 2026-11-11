@@ -66,7 +66,7 @@ fn call_split(operation: fn(Bytes, Int?) List[Bytes]) List[Bytes]:
 test "Bytes split bound methods and generic forwarding retain contracts":
     var data = Bytes([1, 0, 2])
     split := data.clone().split
-    typed: fn(Bytes, Int?) List[Bytes] = data.clone().split
+    typed: fn(Bytes, Int?) List[Bytes] := data.clone().split
     data = Bytes([9])
     try expect_equal(split(Bytes([0])), [Bytes([1]), Bytes([2])])
     try expect_equal(split(max_parts: 1, Bytes([0])), [Bytes([1])])

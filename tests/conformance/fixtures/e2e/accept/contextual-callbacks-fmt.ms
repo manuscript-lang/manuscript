@@ -45,11 +45,11 @@ test "contextual callbacks and inline returns":
     callback := Callback(fn(item: Int): item + 1)
     try expect_equal(callback.transform(3), 4)
 
-    view: Read = Box(7)
+    view: Read := Box(7)
     try expect_equal(view.get(), 7)
     try expect_false(invoke() != 0 or invoke(fn item: item + 1) != 5)
 
-    functions: List[fn(Int) Int] = [fn item: item + 4]
+    functions: List[fn(Int) Int] := [fn item: item + 4]
     try expect_equal(functions.get(0)(2), 6)
 
     nested := fn(value: Int):
@@ -78,12 +78,12 @@ test "contextual callbacks and inline returns":
 
     try expect_equal(failed, Result[Int, Error].error(Error("expected")))
 
-    subtract: fn(Int, Int) Int = fn a, b: a - b
+    subtract: fn(Int, Int) Int := fn a, b: a - b
     try expect_equal(subtract(7, 2), 5)
 
-    defaulted: fn(Int) Int = fn(item: Int = 4): item + 1
+    defaulted: fn(Int) Int := fn(item: Int = 4): item + 1
     try expect_equal(defaulted(8), 9)
 
-    outer: fn(Int) fn(Int) Int = fn base:
+    outer: fn(Int) fn(Int) Int := fn base:
         return fn extra: base + extra
     try expect_equal(outer(3)(4), 7)

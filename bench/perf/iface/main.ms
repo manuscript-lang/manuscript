@@ -56,7 +56,7 @@ fn main() Unit:
 	// The value is built where it is called.
 	start = monotonic()
 
-	s1: Step = AddOne(unused: 0)
+	s1: Step := AddOne(unused: 0)
 	var t1 = 0
 	for i in 0..n:
 		t1 += s1.apply(i)

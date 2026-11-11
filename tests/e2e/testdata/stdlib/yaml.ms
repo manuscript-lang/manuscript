@@ -169,7 +169,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 		)
 	)
 
-	limited: YamlValue! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
+	limited: YamlValue! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
 	try expect_false(
 		(
 			parse(
@@ -415,8 +415,8 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
 		cause.kind | try expect_equal("ENOTSUP")
 
 test "YAML limits cover root nested nodes aliases and exact bytes":
-	limited: YamlValue! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
-	invalid: YamlValue! = error(Error("invalid YAML input", kind: "EINVAL"))
+	limited: YamlValue! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
+	invalid: YamlValue! := error(Error("invalid YAML input", kind: "EINVAL"))
 	try expect_false(
 		(
 			parse(
@@ -505,7 +505,7 @@ test "YAML merge and block header errors name their own line":
 	)
 
 test "YAML option fields default to none or the depth and value guards":
-	limited: YamlValue! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
+	limited: YamlValue! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
 	parse(text: "a: 1", options: YamlOptions(max_bytes: 2)) | try expect_equal(limited)
 	parse(text: "a: 1", options: YamlOptions()) | try expect_equal(parse(text: "a: 1"))
 
@@ -519,14 +519,14 @@ test "YAML stringify round trips scalars sequences and mappings":
 	)
 
 test "YAML stringify validates numbers and honors max_bytes":
-	invalid: String! = error(Error("invalid YAML input", kind: "EINVAL"))
-	limited: String! = error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
+	invalid: String! := error(Error("invalid YAML input", kind: "EINVAL"))
+	limited: String! := error(Error("YAML limit exceeded", kind: "EOVERFLOW"))
 	stringify(value: YamlValue.NumberValue("not a number")) | try expect_equal(invalid)
 
 	root := (parse(text: "a: 1") | try expect_ok)
 	stringify(value: root, max_bytes: 3) | try expect_equal(limited)
 
-	exact: String! = ok("a: 1\n")
+	exact: String! := ok("a: 1\n")
 	stringify(value: root, max_bytes: 5) | try expect_equal(exact)
 	stringify(value: root, max_bytes: -1) | try expect_equal(invalid)
 

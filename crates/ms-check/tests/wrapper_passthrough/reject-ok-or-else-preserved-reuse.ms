@@ -7,6 +7,6 @@ impl Closeable for Marker:
     var fn close() Unit!: ok(unit)
 
 fn bad() Unit:
-    value: Marker? = Marker(1)
+    value: Marker? := Marker(1)
     kept := value.ok_or_else(fn: "failure")
     again := value.ok_or_else(fn: "failure")

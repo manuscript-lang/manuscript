@@ -15,6 +15,6 @@ impl Read for Box[T]:
 
 test "encoded nominal identity":
     box := Box(value: 1)
-    view: Read = box
+    view: Read := box
     if not (view.get() == 3):
         return fail("check failed")

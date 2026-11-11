@@ -2,5 +2,5 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/hints_test.go:42 TestDiagnosticsStateCauseAndFix
 fn f() Float:
-    x: Float = 3
+    x: Float := 3
     return x

@@ -46,10 +46,10 @@ test "callback modes select their exact implementation in either declaration ord
 test "interface views and method values retain exact callback identity":
 	plain := Box[fn(Int) Int](identity)
 	changing := Box[fn(var Int) Int](increment)
-	first: Forward = plain
-	second: Forward = changing
-	third: Reverse = plain
-	fourth: Reverse = changing
+	first: Forward := plain
+	second: Forward := changing
+	third: Reverse := plain
+	fourth: Reverse := changing
 	try expect_equal(first.forward(), 1)
 	try expect_equal(second.forward(), 2)
 	try expect_equal(third.reverse(), 3)

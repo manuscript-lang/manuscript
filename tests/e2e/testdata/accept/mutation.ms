@@ -117,7 +117,7 @@ test "list growth and saved clone methods preserve current contents":
 		)
 	)
 
-	empty: List[Int] = []
+	empty: List[Int] := []
 	var empty_copy = empty.clone()
 	empty_copy.append(1)
 	try expect_false(not (empty.is_empty() and empty_copy.length() == 1))

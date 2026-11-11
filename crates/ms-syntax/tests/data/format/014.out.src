@@ -39,8 +39,8 @@ test "contract views and callbacks":
 	identity := ReadValue[Int](forwarded)
 	copied := ReadValue[Int](identity)
 	holder := ReaderHolder(identity)
-	_readers: List[ReadValue[Int]] = [holder.reader]
-	_optional: ReadValue[Int]? = forwarded
+	_readers: List[ReadValue[Int]] := [holder.reader]
+	_optional: ReadValue[Int]? := forwarded
 	callback := CallbackReader(seven)
 	callback_view := ReadValue[Int](callback)
 	try expect_equal(first.get(), 7)

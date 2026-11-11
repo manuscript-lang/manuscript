@@ -19,7 +19,7 @@ impl File for ClosedFile:
         return
 
 test "contract-valued cleanup":
-    opened: File = ClosedFile(unit)
+    opened: File := ClosedFile(unit)
     file := opened
     read := file.read(1)
     try expect_false(read.is_ok())

@@ -6,5 +6,5 @@ fn crash() Error:
     return Error((1 / "".byte_length()).to_string())
 
 fn main() Unit:
-    value: Int? = none
+    value: Int? := none
     _result := value.ok_or_else(crash)

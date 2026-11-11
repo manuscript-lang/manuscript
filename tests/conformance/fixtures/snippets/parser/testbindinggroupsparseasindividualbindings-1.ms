@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/parser/group_test.go:11 TestBindingGroupsParseAsIndividualBindings
 A := 1
-B: Int = A + 1
+B: Int := A + 1
 
 fn main() Unit:
     var (

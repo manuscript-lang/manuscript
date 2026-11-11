@@ -17,8 +17,8 @@ fn pair[A, B = A](first: A, second: B) Box[A, B]:
     return Box[A, B](first, second)
 
 test "omitted trailing type arguments use their defaults":
-    same: Box[Int] = Box[Int](1, 2)
-    mixed: Box[Int, String] = Box[Int, String](1, "x")
+    same: Box[Int] := Box[Int](1, 2)
+    mixed: Box[Int, String] := Box[Int, String](1, "x")
     try expect_equal(same.second, 2)
     try expect_equal(mixed.second, "x")
 
@@ -30,7 +30,7 @@ test "calls infer first and only then use the default":
     inferred := make()
     try expect_false(not (inferred.is_none()))
 
-    explicit: Int? = make()
+    explicit: Int? := make()
     try expect_false(not (explicit.is_none()))
     try expect_equal(pick([1, 2, 3]), 3)
     try expect_equal(pair(1, "a").second, "a")

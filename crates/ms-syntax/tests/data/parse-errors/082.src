@@ -1,4 +1,4 @@
 fn main() Int:
-    q: Int? = none
+    q: Int? := none
     a := q ?? 0
     return a

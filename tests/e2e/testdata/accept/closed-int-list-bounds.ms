@@ -73,7 +73,7 @@ test "closed list scalar summaries preserve sums and lengths":
 	conditional_length(flag: true) | try expect_equal(100)
 	conditional_length(flag: false) | try expect_equal(0)
 
-	empty: List[Int] = []
+	empty: List[Int] := []
 	var sum = empty.sum()
 	sum | try expect_equal(0)
 	empty.length() | try expect_equal(0)

@@ -13,21 +13,21 @@
         "position": {
           "file": "testdiagnosticsstatecauseandfix-23.ms",
           "line": 5,
-          "column": 16,
-          "offset": 180
+          "column": 17,
+          "offset": 181
         },
         "fix": {
           "position": {
             "file": "testdiagnosticsstatecauseandfix-23.ms",
             "line": 5,
-            "column": 16,
-            "offset": 180
+            "column": 17,
+            "offset": 181
           },
           "end": {
             "file": "testdiagnosticsstatecauseandfix-23.ms",
             "line": 5,
-            "column": 17,
-            "offset": 181
+            "column": 18,
+            "offset": 182
           },
           "replacement": "3.0"
         }
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-23.ms:5:16: type: expected Float, found Int (in the initializer of 'x'); Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value\n   |\n 5 |     x: Float = 3\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdiagnosticsstatecauseandfix-23.ms:5:17: type: expected Float, found Int (in the initializer of 'x'); Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value\n   |\n 5 |     x: Float := 3\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

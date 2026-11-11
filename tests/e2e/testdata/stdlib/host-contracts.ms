@@ -7,7 +7,9 @@ import (
 
 test "closed normalization forms reject spelling changes with their domain errors":
 	data := "text".to_bytes()
-	normalization_error: String! = error(Error("string: invalid input", kind: "EINVAL"))
+	normalization_error: String! := error(
+		Error("string: invalid input", kind: "EINVAL")
+	)
 	for form in ["nfc", "NFC ", ""]:
 		try expect_equal("text".normalize(form), normalization_error)
 	for form in ["NFC", "NFD", "NFKC", "NFKD"]:
@@ -25,7 +27,7 @@ test "closed normalization forms reject spelling changes with their domain error
 				data
 			)
 
-	level_error: Bytes! = error(Error("compression: invalid input", kind: "EINVAL"))
+	level_error: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
 	for level in [-1, 10]:
 		try expect_equal(
 			compress(
@@ -94,7 +96,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 	try expect_equal((try handle.read_at(2, 4)), "ABZZ".to_bytes())
 	try handle.close()
 
-	closed_read: Bytes! = error(Error("filesystem: resource is closed", kind: "EBADF"))
+	closed_read: Bytes! := error(Error("filesystem: resource is closed", kind: "EBADF"))
 	try expect_equal(handle.read_at(0), closed_read)
 	try reader.close()
 

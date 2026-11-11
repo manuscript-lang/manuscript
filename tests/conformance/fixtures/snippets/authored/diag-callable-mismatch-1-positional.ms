@@ -4,4 +4,4 @@
 fn source(_0: Int) Int: _0
 
 fn exercise() Unit:
-    callback: fn(Int?) Int = source
+    callback: fn(Int?) Int := source

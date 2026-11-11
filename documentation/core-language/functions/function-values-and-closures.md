@@ -37,9 +37,9 @@ fn subtract_one(amount: Int) Int:
     return amount - 1
 
 fn adapt() Unit:
-    ok: fn(Int) Int = subtract_one
+    ok: fn(Int) Int := subtract_one
     // Rejected: the result type differs.
-    invalid: fn(Int) String = subtract_one
+    invalid: fn(Int) String := subtract_one
     result := apply(value: 3, transform: ok)
 ```
 

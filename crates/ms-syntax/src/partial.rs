@@ -261,7 +261,7 @@ fn partial_root_start(source: &str) -> bool {
         })
 }
 
-/// A module constant starts `name :=` or `name: Type =`.
+/// A module constant starts `name :=` or `name: Type :=`.
 fn constant_start(source: &str) -> bool {
     let name = source
         .bytes()

@@ -13,15 +13,15 @@
         "position": {
           "file": "seed-0056.ms",
           "line": 17,
-          "column": 17,
-          "offset": 517
+          "column": 18,
+          "offset": 518
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/seed-0056.ms:17:17: type: expected Bool, found Int (in the initializer of 'bad')\n    |\n 17 |     bad: Bool = 1\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/seed-0056.ms:17:18: type: expected Bool, found Int (in the initializer of 'bad')\n    |\n 17 |     bad: Bool := 1\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

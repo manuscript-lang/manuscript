@@ -34,7 +34,7 @@ fn reverse_set[T: Hashable, A: Clonable](values: Set[T], initial: A, step: fn(A,
 	return values.fold_right(initial.clone(), step)
 
 test "Map transformations and directional queries are callable":
-	source: Map[String, Int] = {"b": 2, "a": 1}
+	source: Map[String, Int] := {"b": 2, "a": 1}
 	mapped := source.map(fn k, v: v.to_string())
 	mapped["b"] | try expect_equal("2")
 
@@ -77,7 +77,7 @@ test "Map value transformation copies ordered snapshots and keeps independent va
 	(not (source.contains(first)) or source.contains(Key(5, "different"))) | try expect_false
 
 test "Map key transformation retains first equal keys and last values":
-	source: Map[Int, Counter] = {
+	source: Map[Int, Counter] := {
 		2: Counter(1), 1: Counter(2), 4: Counter(3), 3: Counter(4)
 	}
 	var created: List[Key] = []
@@ -107,7 +107,7 @@ test "Map key transformation retains first equal keys and last values":
 	source.length() | try expect_equal(4)
 
 test "Map key transformation snapshots callbacks and keeps generic nesting":
-	source: Map[Int, Counter] = {2: Counter(2), 1: Counter(1), 3: Counter(3)}
+	source: Map[Int, Counter] := {2: Counter(2), 1: Counter(1), 3: Counter(3)}
 	var seen: List[Int] = []
 	bound := source.clone().map_keys[String]
 
@@ -121,7 +121,7 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
 	(seen != [2, 1, 3] or mapped.keys() != ["2", "1", "3"]) | try expect_false
 	mapped["3"].count | try expect_equal(3)
 
-	values: Map[String, Int] = {"a": 0}
+	values: Map[String, Int] := {"a": 0}
 	map := values.clone().map[Int?]
 	try expect_true((map(fn k, v: none)["a"].is_none()))
 
@@ -158,8 +158,8 @@ test "empty transformations skip callbacks and allocate independent storage":
 	empty_calls.is_empty() | try expect_true
 
 test "Map reverse fold and last match retain ordered snapshots":
-	source: Map[String, Counter] = {"b": Counter(2), "a": Counter(1), "c": Counter(3)}
-	initial: List[String] = []
+	source: Map[String, Counter] := {"b": Counter(2), "a": Counter(1), "c": Counter(3)}
+	initial: List[String] := []
 
 	var folded = reverse_map(
 		source.clone(),
@@ -201,7 +201,7 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
 	a := Key(1, "a")
 	c := Key(3, "c")
 	source := Set[Key]([b.clone(), a.clone(), c.clone()])
-	initial: List[String] = []
+	initial: List[String] := []
 
 	var folded = reverse_set(
 		source.clone(),
@@ -230,7 +230,7 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
 
 test "empty and nonmatching reverse queries keep fold and predicate contracts":
 	var empty_calls: List[Int] = []
-	initial: List[Int] = []
+	initial: List[Int] := []
 	empty_map := Map[String, Int]()
 	empty_set := Set[Int]()
 	map_fold := empty_map.fold_right[List[Int]]
@@ -292,7 +292,7 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 		)
 	)
 
-	values: Map[String, Int] = {"b": 2, "a": 1, "c": 3}
+	values: Map[String, Int] := {"b": 2, "a": 1, "c": 3}
 	var seen_map: List[String] = []
 	try expect_false(
 		(

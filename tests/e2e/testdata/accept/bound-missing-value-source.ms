@@ -19,7 +19,7 @@ impl Convert for Source:
 
 // Exact expectations deliberately identify invocation lines, not binding lines.
 test "bound Error defaults use each invocation line":
-	absent: Int? = none
+	absent: Int? := none
 	convert := absent.ok_or[Error]
 	first_result := convert()
 	second_result := convert()
@@ -31,7 +31,7 @@ test "bound Error defaults use each invocation line":
 	)
 
 test "immutable copies and captured native values keep invocation defaults":
-	absent: Int? = none
+	absent: Int? := none
 	convert := absent.ok_or[Error]
 	copied := convert
 	copied_result := copied()
@@ -46,7 +46,7 @@ test "immutable copies and captured native values keep invocation defaults":
 	)
 
 test "generic callers and direct calls keep their invocation lines":
-	absent: Int? = none
+	absent: Int? := none
 	try expect_equal(
 		generic_convert(absent).err().message,
 		"missing value at bound-missing-value-source.ms:5"
@@ -57,8 +57,8 @@ test "generic callers and direct calls keep their invocation lines":
 		direct.err().message, "missing value at bound-missing-value-source.ms:55"
 	)
 
-	zero: Int? = 0
-	text: String? = "present"
+	zero: Int? := 0
+	text: String? := "present"
 	try expect_equal(generic_convert(zero).get(), 0)
 	try expect_equal(generic_convert(text).get(), "present")
 
@@ -73,7 +73,7 @@ test "ordinary callable and inherited defaults receive none":
 	try expect_equal(inherited(none).get(), 77)
 
 test "required joins preserve native and source behavior with supplied none":
-	zero: Int? = 0
+	zero: Int? := 0
 
 	for flag in [true, false]:
 		native_first := match flag:
@@ -95,7 +95,7 @@ test "required joins preserve native and source behavior with supplied none":
 		try expect_equal(conditional(none).get(), if flag: 0 else: 77)
 
 test "supplied none remains supplied and nested Optional errors remain intact":
-	absent: Int? = none
+	absent: Int? := none
 	convert := absent.ok_or[Error]
 	bound_fault := try expect_fault(
 		fn:
@@ -112,8 +112,8 @@ test "supplied none remains supplied and nested Optional errors remain intact":
 	try expect_equal(convert(supplied).err().message, supplied.message)
 
 	nested := absent.ok_or[Int?]
-	inner_none: Int? = none
+	inner_none: Int? := none
 	try expect_true(nested(inner_none).err().is_none())
 
-	inner_zero: Int? = 0
+	inner_zero: Int? := 0
 	try expect_equal(nested(inner_zero).err().get(), 0)

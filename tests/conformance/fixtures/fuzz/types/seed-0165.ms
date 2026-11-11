@@ -15,5 +15,5 @@ export fn main() Int:
     i2 := (i1 * (i1 + ((-709890693318) / i1)))
     say("i2 = {i2}")
 
-    bad: String = 5
+    bad: String := 5
     return 0

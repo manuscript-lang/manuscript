@@ -1,5 +1,5 @@
 // conform: tags=aliasing,formatter,optional,parser,strings,tier-core
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/optionals.md:10
-present: String? = "Ada"
-missing: String? = none
+present: String? := "Ada"
+missing: String? := none

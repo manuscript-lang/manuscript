@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/contextual_generics_test.go:45 TestExpectedResultGenericInference
 fn first() Unit:
-    callback: fn() Int? = fn: absent()
+    callback: fn() Int? := fn: absent()

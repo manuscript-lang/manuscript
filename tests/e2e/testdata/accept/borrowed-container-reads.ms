@@ -146,7 +146,7 @@ test "if let over a borrowed optional lends its payload":
 
 	try expect_equal(maybe.is_some(), true)
 
-	text: String? = "hello"
+	text: String? := "hello"
 	if t := text:
 		try expect_equal(t.length(), 5)
 	try expect_equal(text.get(), "hello")

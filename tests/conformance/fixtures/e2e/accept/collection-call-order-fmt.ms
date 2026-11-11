@@ -6,7 +6,7 @@ import expect_equal from "@std/test/test.ms"
 test "receiver before index":
     values := [7]
     var calls = 0
-    index: Int? = 0
+    index: Int? := 0
     result := values.get(
         match index:
             i:

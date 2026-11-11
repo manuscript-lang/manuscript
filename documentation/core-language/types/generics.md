@@ -81,7 +81,7 @@ type Pair[A, B = A]:
 fn parse[T = String](text: String) T?:
     return none
 
-same: Pair[Int] = Pair[Int](1, 2)    // Pair[Int, Int]
+same: Pair[Int] := Pair[Int](1, 2)    // Pair[Int, Int]
 mixed := Pair[Int, String](1, "x")
 ```
 
@@ -106,7 +106,7 @@ The expected result (return type, annotation, field, argument, or callback) fill
 fn fail[T](message: String) Result[T, Error]: error(Error(message))
 
 fn first() Result[Int, Error]: fail("empty")  // T = Int
-failed: Result[Int, Error] = fail("empty")
+failed: Result[Int, Error] := fail("empty")
 ```
 
 Matching adds no numeric conversions, interface conversions, or `Optional` wrapping. Error types, success types, and Optional or collection applications must match exactly. Inferred function types lose default-argument omission.

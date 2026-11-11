@@ -57,11 +57,11 @@ test "statement match returns from the enclosing function":
 	try expect_equal(area(Shape.Dot), 0)
 
 test "statement match controls the nearest loop":
-	values: List[Int?] = [none, 0, 5, 9]
+	values: List[Int?] := [none, 0, 5, 9]
 	try expect_equal(first_positive(values), 5)
 	try expect_equal(first_positive([none, -1]), -1)
 
-	rows: List[List[Int?]] = [[1, none, 100], [2, 3]]
+	rows: List[List[Int?]] := [[1, none, 100], [2, 3]]
 	try expect_equal(nested(rows), 2006)
 
 test "statement match arms assign enclosing locals":
