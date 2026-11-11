@@ -410,7 +410,8 @@ impl Interp:
 		else if k == K_STR:
 			if wr:
 				body := self.strs[self.hp[h]].replace("\\", "\\\\").replace(
-					"\"", "\\\""
+					"\"",
+					"\\\"",
 				).replace("\n", "\\n").replace("\t", "\\t")
 				self.pbuf.append("\"" + body + "\"")
 			else:
@@ -931,7 +932,10 @@ impl Interp:
 				return error(synerr("syntax error: bad form: define"))
 
 			clo := self.make_closure(
-				self.hcd[target], self.hcd[self.hcd[x]], env, self.hp[nm]
+				self.hcd[target],
+				self.hcd[self.hcd[x]],
+				env,
+				self.hp[nm],
 			)
 			self.define_in(env, self.hp[nm], clo)
 			return ok(self.fin(VOID, added))
@@ -1002,7 +1006,10 @@ impl Interp:
 
 			loopenv := self.new_frame(env)
 			clo := self.make_closure(
-				self.list_from(vars), body, loopenv, self.hp[second]
+				self.list_from(vars),
+				body,
+				loopenv,
+				self.hp[second],
 			)
 			self.define_in(loopenv, self.hp[second], clo)
 			return self.apply_step(clo, vals, tail, added)

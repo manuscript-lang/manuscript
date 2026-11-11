@@ -82,7 +82,8 @@ fn sub(s: String, a: Int) String:
 
 fn esc(s: String) String:
 	return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(
-		"\"", "&quot;"
+		"\"",
+		"&quot;",
 	)
 
 fn repeatStr(s: String, n: Int) String:
@@ -218,7 +219,12 @@ fn parseMarker(line: String) Marker:
 	if empty or sp >= 5:
 		w = m + 1
 	return Marker(
-		ok: true, ordered: ordered, delim: delim, num: num, empty: empty, w: w
+		ok: true,
+		ordered: ordered,
+		delim: delim,
+		num: num,
+		empty: empty,
+		w: w,
 	)
 
 fn isDelimCell(c: String) Bool:
@@ -478,10 +484,13 @@ fn parseList(lines: List[String], i: Int, m0: Marker) Step:
 		if not go:
 			return Step(
 				blk: Blk(
-					kind: 4, ordered: m0.ordered, loose: listLoose or anyItemLoose,
-					level: m0.num, items: items
+					kind: 4,
+					ordered: m0.ordered,
+					loose: listLoose or anyItemLoose,
+					level: m0.num,
+					items: items,
 				),
-				next: j
+				next: j,
 			)
 
 	return Step(blk: Blk(kind: 4), next: n)
@@ -663,8 +672,12 @@ fn nDelim(c: String, count: Int, co: Bool, cc: Bool) Node:
 
 fn delimWith(d: Node, count: Int) Node:
 	return Node(
-		kind: 1, ch: d.ch, count: count, orig: d.orig, canOpen: d.canOpen,
-		canClose: d.canClose
+		kind: 1,
+		ch: d.ch,
+		count: count,
+		orig: d.orig,
+		canOpen: d.canOpen,
+		canClose: d.canClose,
 	)
 
 fn nOpener(image: Bool, active: Bool) Node:
@@ -688,11 +701,15 @@ fn nLink(
 	dest: String,
 	title: String,
 	hasTitle: Bool,
-	image: Bool
+	image: Bool,
 ) Node:
 	return Node(
-		kind: 3, children: children, dest: dest, title: title, hasTitle: hasTitle,
-		image: image
+		kind: 3,
+		children: children,
+		dest: dest,
+		title: title,
+		hasTitle: hasTitle,
+		image: image,
 	)
 
 fn failTail() Tail:
@@ -795,7 +812,11 @@ fn parseTail(cs: List[String], p0: Int) Tail:
 		pos += 1
 	if pos < n and cs[pos] == ")":
 		return Tail(
-			ok: true, dest: dest, title: title, hasTitle: hasTitle, end: pos + 1
+			ok: true,
+			dest: dest,
+			title: title,
+			hasTitle: hasTitle,
+			end: pos + 1,
 		)
 
 	return failTail()

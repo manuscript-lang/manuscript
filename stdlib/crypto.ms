@@ -72,7 +72,8 @@ export fn xor_bytes(left: Bytes, right: Bytes) Bytes!:
 	for index in 0..left.length():
 		out.append(
 			bit_xor(
-				left.get(index).to_int(), right.get(index).to_int()
+				left.get(index).to_int(),
+				right.get(index).to_int(),
 			).to_uint8().get(0)
 		)
 	return ok(out.build())
@@ -87,7 +88,7 @@ export fn open(
 	key: Bytes,
 	nonce: Bytes,
 	ciphertext: Bytes,
-	associated_data: Bytes
+	associated_data: Bytes,
 ) Bytes!:
 	return msstd_crypto_open(key, nonce, ciphertext, associated_data)
 
@@ -101,7 +102,7 @@ export fn seal(
 	key: Bytes,
 	nonce: Bytes,
 	plaintext: Bytes,
-	associated_data: Bytes
+	associated_data: Bytes,
 ) Bytes!:
 	return msstd_crypto_seal(key, nonce, plaintext, associated_data)
 
@@ -187,7 +188,7 @@ export fn ecdsa_verify(
 	public_key: Bytes,
 	hash: HashAlgorithm,
 	data: Bytes,
-	signature: Bytes
+	signature: Bytes,
 ) Bool:
 	return msstd_crypto_ecdsa_verify(public_key, hash, data, signature)
 
@@ -209,7 +210,7 @@ export fn rsa_verify(
 	public_key: Bytes,
 	hash: HashAlgorithm,
 	data: Bytes,
-	signature: Bytes
+	signature: Bytes,
 ) Bool:
 	return msstd_crypto_rsa_verify(public_key, hash, data, signature)
 
@@ -222,7 +223,7 @@ export fn rsa_verify_pss(
 	public_key: Bytes,
 	hash: HashAlgorithm,
 	data: Bytes,
-	signature: Bytes
+	signature: Bytes,
 ) Bool:
 	return msstd_crypto_rsa_verify_pss(public_key, hash, data, signature)
 

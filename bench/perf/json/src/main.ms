@@ -40,8 +40,11 @@ fn row_list() List[Row]:
 	for i in 0..10000:
 		rows.append(
 			Row(
-				id: i, name: "user{i}", tags: ["a", "b"], score: i.to_float() + 0.5,
-				ok: i % 2 == 0
+				id: i,
+				name: "user{i}",
+				tags: ["a", "b"],
+				score: i.to_float() + 0.5,
+				ok: i % 2 == 0,
 			)
 		)
 	return rows
@@ -78,7 +81,7 @@ fn bench_text(
 	text: String,
 	size: Int,
 	budget: Int,
-	runs: Int
+	runs: Int,
 ) Unit:
 	if tree := parse(text):
 		if op == "doc":

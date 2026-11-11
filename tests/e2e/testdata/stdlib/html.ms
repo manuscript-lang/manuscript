@@ -51,7 +51,7 @@ test "HTML parses nested elements attributes entities and comments":
 					attributes != [
 						HtmlAttribute("id", "", "main"),
 						HtmlAttribute("title", "", "A & B"),
-						HtmlAttribute("hidden", "", "")
+						HtmlAttribute("hidden", "", ""),
 					]
 				)
 			)
@@ -65,7 +65,10 @@ test "HTML parses nested elements attributes entities and comments":
 			try expect_false(
 				(
 					items.get(4) != HtmlNode.Element(
-						tag: "br", namespace: "", attributes: [], children: []
+						tag: "br",
+						namespace: "",
+						attributes: [],
+						children: [],
 					)
 				)
 			)
@@ -103,7 +106,9 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 	try expect_false(
 		(
 			nodes.get(0) != HtmlNode.Doctype(
-				name: "html", public_id: "public", system_id: "system"
+				name: "html",
+				public_id: "public",
+				system_id: "system",
 			)
 		)
 	)
@@ -123,7 +128,9 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 				(
 					child_namespace != "svg"
 					or attributes.get(0) != HtmlAttribute(
-						"href", "xlink", "#icon"
+						"href",
+						"xlink",
+						"#icon",
 					)
 				)
 			)
@@ -134,7 +141,8 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 test "HTML honors optional byte depth and node limits":
 	empty := try parse("")
 	try expect_equal(
-		(try parse("", HtmlOptions(max_bytes: 0, max_depth: 2, max_nodes: 4))), empty
+		(try parse("", HtmlOptions(max_bytes: 0, max_depth: 2, max_nodes: 4))),
+		empty,
 	)
 	try expect_equal((try parse("é", HtmlOptions())), (try parse("é")))
 

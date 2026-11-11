@@ -105,14 +105,16 @@ test "empty intersections preserve owned string inputs":
 	result.add("new independent owned identifier")
 	try expect_equal(result.values(), ["new independent owned identifier"])
 	try expect_equal(
-		left.values(), ["a long owned document identifier", "another owned identifier"]
+		left.values(),
+		["a long owned document identifier", "another owned identifier"],
 	)
 	try expect_true(right.is_empty())
 	try expect_true(right.intersection(left).is_empty())
 
 test "collection constructors validate bounds and exact limits":
 	try expect_equal(
-		(try range_by(3, -1, -1, RangeOptions(max_items: 4))), [3, 2, 1, 0]
+		(try range_by(3, -1, -1, RangeOptions(max_items: 4))),
+		[3, 2, 1, 0],
 	)
 	try expect_equal((try filled("x", 2)), ["x", "x"])
 
@@ -127,19 +129,21 @@ test "stepped ranges handle full-width spans and minimum negative steps":
 	maximum := 9223372036854775807
 	try expect_equal(
 		(try range_by(minimum, maximum, maximum, RangeOptions(max_items: 3))),
-		[minimum, -1, (maximum - 1)]
+		[minimum, -1, (maximum - 1)],
 	)
 	try expect_equal(
 		(try range_by(maximum, minimum, minimum, RangeOptions(max_items: 2))),
-		[maximum, -1]
+		[maximum, -1],
 	)
 	try expect_equal(
-		(try range_by(0, minimum, minimum, RangeOptions(max_items: 1))), [0]
+		(try range_by(0, minimum, minimum, RangeOptions(max_items: 1))),
+		[0],
 	)
 
 	limited: List[Int]! := error(Error("collection: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(
-		range_by(minimum, maximum, maximum, RangeOptions(max_items: 2)), limited
+		range_by(minimum, maximum, maximum, RangeOptions(max_items: 2)),
+		limited,
 	)
 
 test "range counts up by one":
@@ -217,7 +221,8 @@ test "List join renders any element type":
 	try expect_equal([1.5, 2.5].join(","), "1.5,2.5")
 	try expect_equal([true, false].join("/"), "true/false")
 	try expect_equal(
-		[JoinPoint(1), JoinPoint(2)].join(";"), "JoinPoint(x: 1);JoinPoint(x: 2)"
+		[JoinPoint(1), JoinPoint(2)].join(";"),
+		"JoinPoint(x: 1);JoinPoint(x: 2)",
 	)
 	try expect_equal(List[Int]().join(","), "")
 

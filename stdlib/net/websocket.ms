@@ -104,7 +104,7 @@ export fn web_socket_from(native: NativeWebSocket) WebSocket:
 	return WebSocket(
 		input: ReadStream[WebSocketMessage](WebSocketSource(native)),
 		output: WriteStream[WebSocketMessage](WebSocketSink(other)),
-		subprotocol: subprotocol
+		subprotocol: subprotocol,
 	)
 
 // What a WebSocket client connection is opened with: headers, subprotocols, message

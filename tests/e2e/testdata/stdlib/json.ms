@@ -24,7 +24,8 @@ test "JSON exact numbers Unicode and nested roundtrip":
 	try expect_equal((try parse(text) | try stringify), text)
 	try expect_equal((try parse("\"\\uD83D\\uDE00\"")), JsonValue.StringValue("😀"))
 	try expect_equal(
-		(try parse("null") | try stringify(StringifyOptions(max_bytes: 4))), "null"
+		(try parse("null") | try stringify(StringifyOptions(max_bytes: 4))),
+		"null",
 	)
 
 fn expect_syntax_error[T](actual: T!) Unit!:
@@ -41,12 +42,13 @@ test "JSON decode errors name the failing path":
 	wrong := parse[Profile]("\{\"name\":1\}")
 	try expect_equal(
 		(try expect_error(wrong)).message,
-		"JSON: invalid data: at $.name: expected string, found number"
+		"JSON: invalid data: at $.name: expected string, found number",
 	)
 
 	nested := parse[List[Profile]]("[\{\"name\":\"a\",\"scores\":[]\}, 3]")
 	try expect_contains(
-		(try expect_error(nested)).message, "at $[1]: expected object, found number"
+		(try expect_error(nested)).message,
+		"at $[1]: expected object, found number",
 	)
 
 test "JSON rejects duplicate keys malformed Unicode and trailing values":
@@ -234,14 +236,16 @@ test "JSON stringify encodes standard-library values":
 	expected := "\{\"at\":\"2023-11-14T22:13:20.5Z\",\"took\":1500,\"data\":\"aGk=\",\"link\":\"https://example.com:8080/a?x=1\"\}"
 	try expect_equal((try encoded(item)), expected)
 	try expect_equal(
-		(try encoded(Error("boom"))), "\{\"message\":\"boom\",\"details\":\{\}\}"
+		(try encoded(Error("boom"))),
+		"\{\"message\":\"boom\",\"details\":\{\}\}",
 	)
 
 	ok: Int! := ok(5)
 	try expect_equal((try encoded(ok)), "\{\"ok\":\{\"value\":5\}\}")
 	try expect_equal((try encoded("EBADMSG")), "\"EBADMSG\"")
 	try expect_equal(
-		(try encoded(Tagged.Named("n", none))), "\{\"Named\":\{\"name\":\"n\"\}\}"
+		(try encoded(Tagged.Named("n", none))),
+		"\{\"Named\":\{\"name\":\"n\"\}\}",
 	)
 	try expect_equal((try encoded(Tagged.Plain)), "\"Plain\"")
 
@@ -280,7 +284,7 @@ test "JSON stringify omits a Unit field and rejects a Unit root":
 	failed: Int! := error(Error("JSON: limit exceeded", kind: "EOVERFLOW"))
 	try expect_equal(
 		(try encoded(failed)),
-		"\{\"error\":\{\"cause\":\{\"message\":\"JSON: limit exceeded\",\"kind\":\"EOVERFLOW\",\"details\":\{\}\}\}\}"
+		"\{\"error\":\{\"cause\":\{\"message\":\"JSON: limit exceeded\",\"kind\":\"EOVERFLOW\",\"details\":\{\}\}\}\}",
 	)
 
 enum Event:
@@ -306,7 +310,8 @@ type Feed:
 
 test "JSON stringify lets JsonEncode override the structural encoding of an alternative":
 	try expect_equal(
-		(try encoded(Event.Created(1))), "\{\"type\":\"created\",\"id\":1\}"
+		(try encoded(Event.Created(1))),
+		"\{\"type\":\"created\",\"id\":1\}",
 	)
 
 	feed := Feed([Event.Created(1), Event.Deleted(2)])

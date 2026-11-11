@@ -30,14 +30,14 @@ export extern fn msstd_terminal_raw_terminal_share(
 
 export extern fn msstd_terminal_raw_terminal_read(
 	handle: NativeRawTerminal,
-	quick: Bool
+	quick: Bool,
 ) Unit?!
 
 export extern fn msstd_terminal_input_text() String
 
 export extern fn msstd_terminal_raw_terminal_set_restore(
 	handle: NativeRawTerminal,
-	text: String
+	text: String,
 ) Unit
 
 export extern fn msstd_terminal_raw_terminal_size_status(
@@ -50,5 +50,5 @@ export extern fn msstd_terminal_raw_terminal_size_rows(handle: NativeRawTerminal
 
 export extern fn msstd_terminal_raw_terminal_write(
 	handle: NativeRawTerminal,
-	text: String
+	text: String,
 ) Unit!

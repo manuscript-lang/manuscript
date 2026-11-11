@@ -63,11 +63,29 @@ fn new_pat(src: List[Int]) Pat:
 	var names = List[List[Int]]()
 	names.append(List[Int]())
 	return Pat(
-		pat: src, pos: 0, err: "", icase: false, multi: false, dotall: false,
-		ngroups: 0, gnames: names, nk: List[Int](), na: List[Int](), nb: List[Int](),
-		nc: List[Int](), nd: List[Int](), kids: List[List[Int]](), bits: List[Bool](),
-		brefs: List[Int](), brefnames: List[List[Int]](), qmin: 0, qmax: 0,
-		qgreedy: true, code: List[Int](), nslots: 0, tbase: 0
+		pat: src,
+		pos: 0,
+		err: "",
+		icase: false,
+		multi: false,
+		dotall: false,
+		ngroups: 0,
+		gnames: names,
+		nk: List[Int](),
+		na: List[Int](),
+		nb: List[Int](),
+		nc: List[Int](),
+		nd: List[Int](),
+		kids: List[List[Int]](),
+		bits: List[Bool](),
+		brefs: List[Int](),
+		brefnames: List[List[Int]](),
+		qmin: 0,
+		qmax: 0,
+		qgreedy: true,
+		code: List[Int](),
+		nslots: 0,
+		tbase: 0,
 	)
 
 // ---- character helpers ----------------------------------------------------
@@ -720,7 +738,10 @@ fn build_pattern(src: List[Int]) Pat:
 				if (
 					found < 0
 					and same_name(
-						p.gnames[g], p.brefnames[k], 0, p.brefnames[k].length()
+						p.gnames[g],
+						p.brefnames[k],
+						0,
+						p.brefnames[k].length(),
 					)
 				):
 					found = g
@@ -775,7 +796,7 @@ fn vm_run(
 	var slots: List[Int],
 	start_pc: Int,
 	start_pos: Int,
-	full: Bool
+	full: Bool,
 ) Int:
 	var sk = List[Int]()
 	var sx = List[Int]()
@@ -990,7 +1011,7 @@ fn collect(
 	var slots: List[Int],
 	var ms: List[Int],
 	var me: List[Int],
-	var mc: List[List[Int]]
+	var mc: List[List[Int]],
 ) Unit:
 	n := subj.length()
 	var start = 0
@@ -1066,8 +1087,12 @@ fn find_name(names: List[List[Int]], src: List[Int], from: Int, to: Int) Int:
 	return -1
 
 fn expand(
-	var res: List[Int], repl: List[Int], subj: List[Int], slots: List[Int],
-	ngroups: Int, names: List[List[Int]]
+	var res: List[Int],
+	repl: List[Int],
+	subj: List[Int],
+	slots: List[Int],
+	ngroups: Int,
+	names: List[List[Int]],
 ) Bool:
 	m := repl.length()
 	var i = 0

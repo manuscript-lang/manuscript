@@ -107,7 +107,8 @@ fn merge_context(parent: String?, child: String) String!:
 
 fn encode_error(cause: Error) Error:
 	if cause.kind == "EOVERFLOW": return Error(
-		"logging: limit exceeded", kind: "EOVERFLOW"
+		"logging: limit exceeded",
+		kind: "EOVERFLOW",
 	)
 	return Error("logging: invalid data", kind: "EBADMSG")
 
@@ -310,8 +311,11 @@ export fn create(transport: Transport, options: LoggerOptions = LoggerOptions())
 		if max < 0: return error(Error("logging: invalid input", kind: "EINVAL"))
 	return ok(
 		Logger(
-			level_value(options.level), options.timestamp, options.max_bytes, none,
-			transport
+			level_value(options.level),
+			options.timestamp,
+			options.max_bytes,
+			none,
+			transport,
 		)
 	)
 
@@ -365,8 +369,10 @@ impl Transport for RotatingTransport:
 		if self.closed: return error(log_closed())
 		return ok(
 			RotatingTransport(
-				path: self.path.clone(), max_bytes: self.max_bytes, keep: self.keep,
-				closed: false
+				path: self.path.clone(),
+				max_bytes: self.max_bytes,
+				keep: self.keep,
+				closed: false,
 			)
 		)
 
@@ -405,7 +411,10 @@ export fn rotating_file_transport(path: String, max_bytes: Int, keep: Int) Trans
 			probe.close().get(none)
 			return ok(
 				RotatingTransport(
-					path: path.clone(), max_bytes: max_bytes, keep: keep, closed: false
+					path: path.clone(),
+					max_bytes: max_bytes,
+					keep: keep,
+					closed: false,
 				)
 			)
 		error(cause): return error(cause)

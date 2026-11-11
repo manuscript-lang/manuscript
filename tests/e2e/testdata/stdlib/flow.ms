@@ -43,8 +43,9 @@ test "backoff doubles and is capped":
 test "backoff caps at a representable limit without overflowing":
 	cap := 6000000000000000000
 	policy := RetryPolicy(
-		delay: Duration(nanos: 5000000000000000000), max_delay: Duration(nanos: cap),
-		jitter: false
+		delay: Duration(nanos: 5000000000000000000),
+		max_delay: Duration(nanos: cap),
+		jitter: false,
 	)
 	try expect_equal(policy.wait_after(1).nanos, 5000000000000000000)
 	try expect_equal(policy.wait_after(2).nanos, cap)
@@ -74,16 +75,20 @@ test "rate limiter refills a full maximum burst without overflowing":
 
 test "rate limiter clamps an almost full maximum burst":
 	var limiter = RateLimiter(
-		burst: 9223372036854775807, tokens: 9223372036854775807 - 1,
-		interval: Duration(nanos: 1), stamp: monotonic().unshift(Duration(nanos: 1000))
+		burst: 9223372036854775807,
+		tokens: 9223372036854775807 - 1,
+		interval: Duration(nanos: 1),
+		stamp: monotonic().unshift(Duration(nanos: 1000)),
 	)
 	try expect_true(limiter.try_acquire())
 	try expect_equal(limiter.tokens, 9223372036854775807 - 1)
 
 test "rate limiter refills an empty bucket only up to its burst":
 	var limiter = RateLimiter(
-		burst: 3, tokens: 0, interval: Duration(nanos: 1),
-		stamp: monotonic().unshift(Duration(nanos: 1000))
+		burst: 3,
+		tokens: 0,
+		interval: Duration(nanos: 1),
+		stamp: monotonic().unshift(Duration(nanos: 1000)),
 	)
 	try expect_true(limiter.try_acquire())
 	try expect_equal(limiter.tokens, 2)

@@ -55,18 +55,21 @@ test "subprocess validation returns expected domain errors":
 	try expect_equal(run("", [], RunOptions(input: "".to_bytes())).wait(), invalid)
 
 	missing := run(
-		"manuscript-nonexistent-command-stdlib", [], RunOptions(input: "".to_bytes())
+		"manuscript-nonexistent-command-stdlib",
+		[],
+		RunOptions(input: "".to_bytes()),
 	).wait()
 	try expect_equal(missing.err().kind, "EAGAIN")
 	try expect_equal(
 		missing.err().message,
-		"process: service unavailable: manuscript-nonexistent-command-stdlib"
+		"process: service unavailable: manuscript-nonexistent-command-stdlib",
 	)
 
 test "subprocess streams that are not piped are closed":
 	child := try spawn(
-		"sh", ["-c", "cat; echo done >&2"],
-		SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null)
+		"sh",
+		["-c", "cat; echo done >&2"],
+		SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null),
 	)
 	try expect_equal((try child.wait()), 0)
 
@@ -98,14 +101,16 @@ test "run and spawn pass the environment to the child":
 	env.add("MS_CHILD_VALUE", "from-parent")
 
 	output := try run(
-		"sh", ["-c", "printf %s \"$MS_CHILD_VALUE\""],
-		RunOptions(input: "".to_bytes(), env: env.clone())
+		"sh",
+		["-c", "printf %s \"$MS_CHILD_VALUE\""],
+		RunOptions(input: "".to_bytes(), env: env.clone()),
 	).wait()
 	try expect_equal(output.stdout, "from-parent".to_bytes())
 
 	child := try spawn(
-		"sh", ["-c", "printf %s \"$MS_CHILD_VALUE\" >&2"],
-		SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null, env: env)
+		"sh",
+		["-c", "printf %s \"$MS_CHILD_VALUE\" >&2"],
+		SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null, env: env),
 	)
 	try expect_equal((try child.wait()), 0)
 

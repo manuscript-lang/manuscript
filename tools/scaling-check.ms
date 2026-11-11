@@ -74,7 +74,7 @@ fn measure(
 	command: String,
 	file: String,
 	extra: List[String],
-	limit: Int
+	limit: Int,
 ) Float:
 	var args = [command.clone(), file.clone()]
 	for e in extra: args.append(e.clone())
@@ -180,8 +180,10 @@ fn main() Int:
 			if not big.contains(name.clone()): continue
 
 			ratio := growth(
-				0.0, mid[name.clone()].to_float(), big[name.clone()].to_float(),
-				1000000.0
+				0.0,
+				mid[name.clone()].to_float(),
+				big[name.clone()].to_float(),
+				1000000.0,
 			)
 			say(
 				"{name}: 10k {mid[name.clone()] / 1000}us 100k {big[name.clone()] / 1000}us ratio {show(ratio)}\n"
@@ -205,8 +207,9 @@ fn main() Int:
 fn run_phases(ms: String, program: String, n: Int, limit: Int) Map[String, Int]:
 	var phases = Map[String, Int]()
 	ran := run(
-		ms.clone(), ["run", program.clone(), "--build-type", "Debug", "--", "{n}"],
-		RunOptions(timeout: seconds(limit * 4))
+		ms.clone(),
+		["run", program.clone(), "--build-type", "Debug", "--", "{n}"],
+		RunOptions(timeout: seconds(limit * 4)),
 	).wait()
 	if ran.is_error(): return phases
 	if ran.get().exit_code != 0: return phases

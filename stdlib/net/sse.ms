@@ -167,7 +167,7 @@ must be positive, otherwise the first read fails with `EINVAL`. Closing the resu
 // ms: effect std.net.connect
 export fn sse_events(
 	input: ReadStream[Bytes],
-	limits: SseLimits = SseLimits()
+	limits: SseLimits = SseLimits(),
 ) ReadStream[SseEvent]:
 	var failure: Error? = none
 	if not positive(limits.max_line_bytes) or not positive(limits.max_event_bytes):
@@ -175,11 +175,20 @@ export fn sse_events(
 	return through[Bytes, SseEvent](
 		input,
 		Decoder(
-			limits: limits, retry_ms: none, last_id: none, line: BytesBuilder(),
-			line_bytes: 0, event_bytes: 0, carriage: false, started: false,
-			open_block: false, event_type: "", data: List[String](), failure: failure,
-			closed: false
-		)
+			limits: limits,
+			retry_ms: none,
+			last_id: none,
+			line: BytesBuilder(),
+			line_bytes: 0,
+			event_bytes: 0,
+			carriage: false,
+			started: false,
+			open_block: false,
+			event_type: "",
+			data: List[String](),
+			failure: failure,
+			closed: false,
+		),
 	)
 
 fn positive(limit: Int?) Bool:
@@ -193,7 +202,11 @@ fn exceeds(value: Int, limit: Int?) Bool:
 // Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any
 // bytes held from earlier chunks.
 fn complete(
-	var decoder: Decoder, chunk: Bytes, start: Int, end: Int, var events: List[SseEvent]
+	var decoder: Decoder,
+	chunk: Bytes,
+	start: Int,
+	end: Int,
+	var events: List[SseEvent],
 ) Unit!:
 	if decoder.line_bytes == 0:
 		if exceeds(end - start, decoder.limits.max_line_bytes): return error(
@@ -208,7 +221,11 @@ fn complete(
 	return end_line(var decoder, joined, 0, joined.length(), var events)
 
 fn end_line(
-	var decoder: Decoder, bytes: Bytes, start: Int, end: Int, var events: List[SseEvent]
+	var decoder: Decoder,
+	bytes: Bytes,
+	start: Int,
+	end: Int,
+	var events: List[SseEvent],
 ) Unit!:
 	var from = start
 
@@ -221,7 +238,8 @@ fn end_line(
 		return ok(unit)
 
 	line := try bytes.decode_utf8_range(
-		from, end
+		from,
+		end,
 	).ok_or(Error("SSE line is not valid UTF-8", kind: "EBADMSG"))
 	if line.starts_with(":"): return ok(unit)
 
@@ -245,7 +263,10 @@ fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:
 		if name == "": name = "message"
 		events.append(
 			SseEvent(
-				name, decoder.data.join("\n"), decoder.last_id.clone(), decoder.retry_ms
+				name,
+				decoder.data.join("\n"),
+				decoder.last_id.clone(),
+				decoder.retry_ms,
 			)
 		)
 

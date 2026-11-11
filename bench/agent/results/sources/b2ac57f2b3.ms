@@ -100,7 +100,8 @@ fn strip(s: String) String:
 
 fn esc(s: String) String:
 	return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(
-		"\"", "&quot;"
+		"\"",
+		"&quot;",
 	)
 
 fn isPunct(c: String) Bool:
@@ -390,7 +391,8 @@ fn parseQuote(lines: List[String], i: Int) Step:
 
 	kids := parseBlocks(inner)
 	return Step(
-		node: Block(html: "<blockquote>\n" + htmlOf(kids) + "</blockquote>\n"), next: j
+		node: Block(html: "<blockquote>\n" + htmlOf(kids) + "</blockquote>\n"),
+		next: j,
 	)
 
 fn parseIndented(lines: List[String], i: Int) Step:
@@ -418,7 +420,8 @@ fn parseIndented(lines: List[String], i: Int) Step:
 		k += 1
 
 	return Step(
-		node: Block(html: "<pre><code>" + body + "</code></pre>\n"), next: last + 1
+		node: Block(html: "<pre><code>" + body + "</code></pre>\n"),
+		next: last + 1,
 	)
 
 fn parseTable(lines: List[String], i: Int) Step:
@@ -487,7 +490,8 @@ fn parsePara(lines: List[String], i: Int) Step:
 
 	inl := inlineHtml(text)
 	return Step(
-		node: Block(is_para: true, html: "<p>" + inl + "</p>\n", inl: inl), next: j
+		node: Block(is_para: true, html: "<p>" + inl + "</p>\n", inl: inl),
+		next: j,
 	)
 
 fn parseList(lines: List[String], i: Int) Step:
@@ -597,7 +601,7 @@ fn blockAt(lines: List[String], i: Int) Step:
 			node: Block(
 				html: "<h{hl}>" + inlineHtml(content) + "</h{hl}>\n"
 			),
-			next: i + 1
+			next: i + 1,
 		)
 
 	if isHr(s): return Step(node: Block(html: "<hr />\n"), next: i + 1)
@@ -823,8 +827,12 @@ fn scan(cs: List[String]) List[Inline]:
 
 			nodes.append(
 				Inline(
-					kind: 3, text: c, cnt: r - p, orig: r - p, can_open: can_open,
-					can_close: can_close
+					kind: 3,
+					text: c,
+					cnt: r - p,
+					orig: r - p,
+					can_open: can_open,
+					can_close: can_close,
 				)
 			)
 			p = r
@@ -874,8 +882,11 @@ fn scan(cs: List[String]) List[Inline]:
 						q += 1
 
 					var made = Inline(
-						kind: 7, text: t.dest, title: t.title, has_title: t.has_title,
-						kids: resolve(kids)
+						kind: 7,
+						text: t.dest,
+						title: t.title,
+						has_title: t.has_title,
+						kids: resolve(kids),
 					)
 					if is_img:
 						made.kind = 8

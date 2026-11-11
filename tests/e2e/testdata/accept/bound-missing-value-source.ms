@@ -24,10 +24,12 @@ test "bound Error defaults use each invocation line":
 	first_result := convert()
 	second_result := convert()
 	try expect_equal(
-		first_result.err().message, "missing value at bound-missing-value-source.ms:24"
+		first_result.err().message,
+		"missing value at bound-missing-value-source.ms:24",
 	)
 	try expect_equal(
-		second_result.err().message, "missing value at bound-missing-value-source.ms:25"
+		second_result.err().message,
+		"missing value at bound-missing-value-source.ms:25",
 	)
 
 test "immutable copies and captured native values keep invocation defaults":
@@ -39,22 +41,25 @@ test "immutable copies and captured native values keep invocation defaults":
 		return copied()
 	nested_result := nested()
 	try expect_equal(
-		copied_result.err().message, "missing value at bound-missing-value-source.ms:37"
+		copied_result.err().message,
+		"missing value at bound-missing-value-source.ms:37",
 	)
 	try expect_equal(
-		nested_result.err().message, "missing value at bound-missing-value-source.ms:39"
+		nested_result.err().message,
+		"missing value at bound-missing-value-source.ms:39",
 	)
 
 test "generic callers and direct calls keep their invocation lines":
 	absent: Int? := none
 	try expect_equal(
 		generic_convert(absent).err().message,
-		"missing value at bound-missing-value-source.ms:5"
+		"missing value at bound-missing-value-source.ms:5",
 	)
 
 	direct := absent.ok_or()
 	try expect_equal(
-		direct.err().message, "missing value at bound-missing-value-source.ms:55"
+		direct.err().message,
+		"missing value at bound-missing-value-source.ms:55",
 	)
 
 	zero: Int? := 0

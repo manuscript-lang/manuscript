@@ -52,7 +52,7 @@ test "plain C omits map_count and reports n/a":
 	)
 	try expect_contains(
 		report,
-		"| map_count_2M | 100 | 100 | 1.00x | 100 | 1.00x | 100 | 1.00x | n/a | n/a |"
+		"| map_count_2M | 100 | 100 | 1.00x | 100 | 1.00x | 100 | 1.00x | n/a | n/a |",
 	)
 
 	with_map := trials(versions, "kernels", 100).concat(["c map_count_2M 100 1"])
@@ -92,7 +92,7 @@ test "rejects invalid evidence":
 			good.slice(1, good.length()).get([])
 		),
 		["go # end"].concat(good),
-		good.concat(["unrecognized output"])
+		good.concat(["unrecognized output"]),
 	]
 	for lines in cases:
 		_cause := try expect_error(summarize(lines, "kernels", 1, versions))

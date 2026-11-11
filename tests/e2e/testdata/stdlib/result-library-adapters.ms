@@ -33,23 +33,25 @@ test "library results compose with failure values without a reporting implementa
 	try expect_equal(number, 300)
 	try expect_equal(
 		(try expect_error(read_number(Bytes([128])))),
-		InputFailure.Binary(Error("binary: incomplete varint", kind: "EBADMSG"))
+		InputFailure.Binary(Error("binary: incomplete varint", kind: "EBADMSG")),
 	)
 
 	duration := try expect_ok(read_duration("1.5us"))
 	try expect_equal(duration.to_nanoseconds(), 1500)
 	try expect_equal(
 		(try expect_error(read_duration("invalid"))),
-		InputFailure.Time(Error("time: invalid data", kind: "EBADMSG"))
+		InputFailure.Time(Error("time: invalid data", kind: "EBADMSG")),
 	)
 
 test "absence adapters and sorted lookup retain an explicit failure type":
 	value := try expect_ok(read_prefixed("name=value"))
 	try expect_equal(value, "value")
 	try expect_equal(
-		(try expect_error(read_prefixed("missing"))), InputFailure.MissingPrefix
+		(try expect_error(read_prefixed("missing"))),
+		InputFailure.MissingPrefix,
 	)
 	try expect_equal((try expect_ok(sorted_index([1, 3, 3], 3))), 1)
 	try expect_equal(
-		(try expect_error(sorted_index([1, 3, 3], 2))), InputFailure.MissingKey(2)
+		(try expect_error(sorted_index([1, 3, 3], 2))),
+		InputFailure.MissingKey(2),
 	)

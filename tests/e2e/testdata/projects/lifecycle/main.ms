@@ -57,7 +57,7 @@ fn exercise() Int!:
 	var first_out = stdout()
 	total := select(output: var chosen)(
 		report(output: var second_out, label: "second", value: 2),
-		report(output: var first_out, label: "first", value: 1)
+		report(output: var first_out, label: "first", value: 1),
 	)
 	total | try expect_equal(3)
 
@@ -65,9 +65,11 @@ fn exercise() Int!:
 	var pair_first_out = stdout()
 	pair := Pair(
 		second: report(
-			output: var pair_second_out, label: "pair second", value: 2
+			output: var pair_second_out,
+			label: "pair second",
+			value: 2,
 		),
-		first: report(output: var pair_first_out, label: "pair first", value: 1)
+		first: report(output: var pair_first_out, label: "pair first", value: 1),
 	)
 	(pair.first + pair.second) | try expect_equal(3)
 

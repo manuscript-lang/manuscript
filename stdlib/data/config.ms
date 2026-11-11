@@ -2,7 +2,9 @@
 // `details`.
 fn config_error(line: Int, reason: String) Error:
 	return Error(
-		"config: line {line}: {reason}", kind: "EBADMSG", details: {"line": "{line}"}
+		"config: line {line}: {reason}",
+		kind: "EBADMSG",
+		details: {"line": "{line}"},
 	)
 
 /*

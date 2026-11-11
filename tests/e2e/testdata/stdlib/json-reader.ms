@@ -86,7 +86,8 @@ test "invalid UTF-8 inside a value is InvalidData":
 
 test "per-value budgets report LimitExceeded":
 	try expect_equal(
-		(try decode("[1,2]".to_bytes(), 2, JsonOptions(max_bytes: 5))), ["[1,2]"]
+		(try decode("[1,2]".to_bytes(), 2, JsonOptions(max_bytes: 5))),
+		["[1,2]"],
 	)
 
 	wide := decode("[1,2,3]".to_bytes(), 2, JsonOptions(max_bytes: 5))
@@ -97,8 +98,9 @@ test "per-value budgets report LimitExceeded":
 
 test "negative limits fail the first read with EINVAL for every input":
 	for limits in [
-		JsonOptions(max_bytes: -1), JsonOptions(max_depth: -1),
-		JsonOptions(max_values: -1)
+		JsonOptions(max_bytes: -1),
+		JsonOptions(max_depth: -1),
+		JsonOptions(max_values: -1),
 	]:
 		for input in ["", "  ", "1", "\{\}", "\{\"a\":[1"]:
 			outcome := decode(input.to_bytes(), 2, limits.clone())

@@ -19,7 +19,7 @@ export extern fn msstd_process_command_run(
 	timeout: Duration?,
 	cwd: String?,
 	env_names: List[String],
-	env_values: List[String]
+	env_values: List[String],
 ) CommandOutput!
 
 export extern fn msstd_process_command_spawn(
@@ -30,19 +30,19 @@ export extern fn msstd_process_command_spawn(
 	stderr: Stdio,
 	cwd: String?,
 	env_names: List[String],
-	env_values: List[String]
+	env_values: List[String],
 ) Subprocess!
 
 // The runtime stream-table id of the child's pipe: 0 stdin, 1 stdout, 2 stderr; -1 when
 // there is no pipe.
 export extern fn msstd_process_subprocess_stream_id(
 	handle: NativeSubprocess,
-	which: Int
+	which: Int,
 ) Int
 
 export extern fn msstd_process_subprocess_wait(
 	handle: NativeSubprocess,
-	timeout: Duration?
+	timeout: Duration?,
 ) Int!
 
 export extern fn msstd_process_subprocess_max_resident(handle: NativeSubprocess) Int
@@ -75,7 +75,7 @@ export extern fn msstd_process_umask(mask: Int) Int!
 
 export extern fn msstd_process_watch_signals(
 	signals: List[Int],
-	capacity: Int?
+	capacity: Int?,
 ) NativeSignals!
 
 export extern fn msstd_process_signal_next(signals: NativeSignals) Int!
@@ -90,7 +90,7 @@ export extern fn msstd_process_replace(
 	program: String,
 	arguments: List[String],
 	env_names: List[String],
-	env_values: List[String]
+	env_values: List[String],
 ) Unit!
 
 export extern fn msstd_process_info() ProcessInfo!

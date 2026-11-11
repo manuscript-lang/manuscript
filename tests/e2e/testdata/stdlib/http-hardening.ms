@@ -24,10 +24,13 @@ fn slow_route(request: HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, headers: headers(), body: "late".to_bytes())
 
 test "serve ends a connection that trickles its request head":
-	server := serve(
-		address: "127.0.0.1:0", handler: buffered(ok_route),
-		options: HttpServerOptions(timeout: 400.milliseconds())
-	) | try expect_ok
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: buffered(ok_route),
+			options: HttpServerOptions(timeout: 400.milliseconds()),
+		) | try expect_ok
+	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
 	send(var client, "GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ") | try expect_ok
 
@@ -52,10 +55,13 @@ test "serve ends a connection that trickles its request head":
 		)
 
 test "close cancels a handler that outlives the grace period":
-	var server = serve(
-		address: "127.0.0.1:0", handler: buffered(slow_route),
-		options: HttpServerOptions(grace: 200.milliseconds())
-	) | try expect_ok
+	var server = (
+		serve(
+			address: "127.0.0.1:0",
+			handler: buffered(slow_route),
+			options: HttpServerOptions(grace: 200.milliseconds()),
+		) | try expect_ok
+	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
 	send(var client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | try expect_ok
 
@@ -71,16 +77,24 @@ test "close cancels a handler that outlives the grace period":
 		)
 
 test "close cancels a handler parked on a request body and releases its stream":
-	var server = serve(
-		address: "127.0.0.1:0", handler: buffered(ok_route),
-		options: HttpServerOptions(grace: 0.seconds())
-	) | try expect_ok
+	var server = (
+		serve(
+			address: "127.0.0.1:0",
+			handler: buffered(ok_route),
+			options: HttpServerOptions(grace: 0.seconds()),
+		) | try expect_ok
+	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
 
 	// The head promises a body that never comes, so the handler parks reading it.
 	// Cancelling it must free the stream (`make leak-check` counts a leaked stream as a
 	// live block).
-	send(var client, "POST / HTTP/1.1\r\nHost: t\r\nContent-Length: 100\r\n\r\nab") | try expect_ok
+	(
+		send(
+			var client,
+			"POST / HTTP/1.1\r\nHost: t\r\nContent-Length: 100\r\n\r\nab",
+		) | try expect_ok
+	)
 
 	_ := sleep(100.milliseconds()).wait()
 	try server.close()
@@ -113,11 +127,26 @@ test "serve answers requests while handlers read and write files":
 
 		return HttpResponse(200, headers(), "{read.get().length()}".to_bytes())
 
-	var server = serve(address: "127.0.0.1:0", handler: buffered(io_route)) | try expect_ok
+	var server = (
+		serve(
+			address: "127.0.0.1:0",
+			handler: buffered(io_route),
+		) | try expect_ok
+	)
 	var a = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
 	var b = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
-	send(var a, "GET /io?1 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | try expect_ok
-	send(var b, "GET /io?2 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | try expect_ok
+	(
+		send(
+			var a,
+			"GET /io?1 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
+		) | try expect_ok
+	)
+	(
+		send(
+			var b,
+			"GET /io?2 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
+		) | try expect_ok
+	)
 	try expect_file_reply(var a)
 	try expect_file_reply(var b)
 	try server.close()
@@ -127,12 +156,20 @@ fn oversized(var exchange: HttpExchange) Unit!:
 	return reply(var exchange, text(200, "z".repeat(5000).get("")))
 
 test "serve answers 500 when a whole response exceeds max_response_bytes":
-	server := serve(
-		address: "127.0.0.1:0", handler: oversized,
-		options: HttpServerOptions(max_response_bytes: 100)
-	) | try expect_ok
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: oversized,
+			options: HttpServerOptions(max_response_bytes: 100),
+		) | try expect_ok
+	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
-	send(var client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | try expect_ok
+	(
+		send(
+			var client,
+			"GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
+		) | try expect_ok
+	)
 
 	reply_bytes := recv(var client, 3.seconds()) | try expect_ok
 	head := reply_bytes.get(Bytes([])).decode_utf8().get("")

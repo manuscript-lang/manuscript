@@ -65,9 +65,12 @@ impl Ledger:
 		self.accounts.add(
 			id,
 			Account(
-				limit: limit_text.parse_int().get(0), balance: 0, ops: 0, rejected: 0,
-				frozen: false
-			)
+				limit: limit_text.parse_int().get(0),
+				balance: 0,
+				ops: 0,
+				rejected: 0,
+				frozen: false,
+			),
 		)
 		return "ok"
 

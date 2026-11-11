@@ -20,7 +20,7 @@ fn emit_hunk(
 	var jb: List[Int],
 	start: Int,
 	end: Int,
-	var out: List[String]
+	var out: List[String],
 ) Unit:
 	var la = 0
 	var lb = 0

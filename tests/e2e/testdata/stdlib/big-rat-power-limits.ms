@@ -39,5 +39,6 @@ test "rational powers accept the minimum Int exponent for unit and zero bases":
 	try expect_equal((try expect_error(rat_of_int(0).pow(least))).kind, "EINVAL")
 	try expect_equal((try expect_error(rat_of_int(2).pow(least))).kind, "EOVERFLOW")
 	try expect_equal(
-		(try expect_error(rat_of_int(2).pow(9223372036854775807))).kind, "EOVERFLOW"
+		(try expect_error(rat_of_int(2).pow(9223372036854775807))).kind,
+		"EOVERFLOW",
 	)

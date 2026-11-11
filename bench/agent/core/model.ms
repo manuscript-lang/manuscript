@@ -102,8 +102,12 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 		)
 		if wanted: out.append(
 			Challenge(
-				name.clone(), m.title.clone(), m.category.clone(), m.tier, m.timeout_s,
-				dir
+				name.clone(),
+				m.title.clone(),
+				m.category.clone(),
+				m.tier,
+				m.timeout_s,
+				dir,
 			)
 		)
 
@@ -130,8 +134,14 @@ export fn load_languages(ids: List[String]) List[Lang]:
 		if t := d.get("template"): template = t.as_string().get(entry.key)
 		out.append(
 			Lang(
-				entry.key.clone(), field(d, "name"), field(d, "solution"),
-				field(d, "build"), field(d, "run"), field(d, "notes"), template, context
+				entry.key.clone(),
+				field(d, "name"),
+				field(d, "solution"),
+				field(d, "build"),
+				field(d, "run"),
+				field(d, "notes"),
+				template,
+				context,
 			)
 		)
 
@@ -144,7 +154,7 @@ export fn cost_from_tokens(
 	tokens_in: Int,
 	cached: Int,
 	tokens_out: Int,
-	model: String
+	model: String,
 ) Float:
 	table := parse(text_of("{root()}/pricing.json")).get(JsonValue.Null)
 	var p = table.get("default").get(JsonValue.Null)

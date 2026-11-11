@@ -15,32 +15,42 @@ test "closed normalization forms reject spelling changes with their domain error
 	for form in ["NFC", "NFD", "NFKC", "NFKD"]:
 		try expect_equal((try "text".normalize(form)), "text")
 	for format in [
-		CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+		CompressionFormat.Gzip,
+		CompressionFormat.Zlib,
+		CompressionFormat.Deflate,
 	]:
 		for level in [0, 9]:
 			try expect_equal(
 				(
 					try compress(
-						data, format, CompressOptions(level: level)
+						data,
+						format,
+						CompressOptions(level: level),
 					) | try decompress(format)
 				),
-				data
+				data,
 			)
 
 	level_error: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
 	for level in [-1, 10]:
 		try expect_equal(
 			compress(
-				data, CompressionFormat.Gzip, CompressOptions(level: level)
+				data,
+				CompressionFormat.Gzip,
+				CompressOptions(level: level),
 			),
-			level_error
+			level_error,
 		)
 
 test "every open mode with and without exclusive creation opens":
 	temporary := try temporary("manuscript-open-modes-")
 	modes := [
-		OpenMode.Read, OpenMode.ReadWrite, OpenMode.Write, OpenMode.WriteRead,
-		OpenMode.Append, OpenMode.AppendRead
+		OpenMode.Read,
+		OpenMode.ReadWrite,
+		OpenMode.Write,
+		OpenMode.WriteRead,
+		OpenMode.Append,
+		OpenMode.AppendRead,
 	]
 
 	for index in 0..modes.length():
@@ -60,7 +70,9 @@ test "every open mode with and without exclusive creation opens":
 	try expect_equal(refused.kind, "EEXIST")
 
 	fresh := try open(
-		"{temporary.path()}/fresh", OpenMode.AppendRead, OpenOptions(exclusive: true)
+		"{temporary.path()}/fresh",
+		OpenMode.AppendRead,
+		OpenOptions(exclusive: true),
 	)
 	_fresh_info := try fresh.stat()
 
@@ -106,5 +118,6 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 	)
 	try expect_equal(absent.kind, "ENOENT")
 	try expect_equal(
-		absent.message, "filesystem: file or directory not found: {missing}"
+		absent.message,
+		"filesystem: file or directory not found: {missing}",
 	)

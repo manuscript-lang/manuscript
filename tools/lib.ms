@@ -59,8 +59,10 @@ export fn run_program(program: String, arguments: List[String]) Int:
 		program,
 		arguments,
 		SpawnOptions(
-			stdin: Stdio.Null, stdout: Stdio.Inherit, stderr: Stdio.Inherit
-		)
+			stdin: Stdio.Null,
+			stdout: Stdio.Inherit,
+			stderr: Stdio.Inherit,
+		),
 	):
 		return status(child.wait().get(125))
 
@@ -87,7 +89,8 @@ export fn file_sha256(path: String) String:
 export fn rust_arch() String:
 	for line in capture("rustc", ["-vV"]).split("\n"):
 		if line.starts_with("host: "): return line.slice(
-			6, line.length()
+			6,
+			line.length(),
 		).get("").split("-")[0].clone()
 	return "x86_64"
 
@@ -110,7 +113,8 @@ export fn use_stats_runtime() Int:
 
 		mingw := env("MS_MINGW", "target/llvm-bundle/mingw")
 		set_environment(
-			"CC_{target.replace("-", "_")}", "{mingw}/bin/{arch}-w64-mingw32-clang"
+			"CC_{target.replace("-", "_")}",
+			"{mingw}/bin/{arch}-w64-mingw32-clang",
 		).get()
 
 	set_environment("CARGO_TARGET_DIR", stats_target).get()

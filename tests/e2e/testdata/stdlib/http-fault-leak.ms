@@ -22,7 +22,10 @@ test "a faulting handler releases the values its frames own":
 	before := (memory_usage() | try expect_ok).resident
 
 	for i in 0..60:
-		var client = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
+		var client = (
+			connect(server.address(), timeout: 2.seconds()).wait()
+			| try expect_ok
+		)
 		try send(var client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
 
 		reply_bytes := try recv(var client, 3.seconds())

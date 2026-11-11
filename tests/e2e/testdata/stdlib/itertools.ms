@@ -45,7 +45,8 @@ test "group_runs groups adjacent equal keys":
 
 test "permutations and combinations":
 	try expect_equal(
-		permutations([1, 2, 3], 2), [[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]
+		permutations([1, 2, 3], 2),
+		[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]],
 	)
 	try expect_equal(permutations([1, 2, 3]).length(), 6)
 	try expect_equal(permutations([1, 1]).length(), 2)
@@ -72,7 +73,7 @@ test "combinations of every size keep their order":
 	try expect_equal(combinations(values.clone(), 4), [[10, 20, 30, 40]])
 	try expect_equal(
 		combinations(values.clone(), 3),
-		[[10, 20, 30], [10, 20, 40], [10, 30, 40], [20, 30, 40]]
+		[[10, 20, 30], [10, 20, 40], [10, 30, 40], [20, 30, 40]],
 	)
 	try expect_equal(combinations(values.clone(), 1), [[10], [20], [30], [40]])
 	try expect_equal(combinations(values.clone(), 0), [[]])
@@ -86,13 +87,16 @@ test "combinations of every size keep their order":
 test "product with an empty factor is empty wherever the factor sits":
 	some := [1, 2]
 	try expect_equal(
-		product([List[Int](), some.clone(), some.clone()]), List[List[Int]]()
+		product([List[Int](), some.clone(), some.clone()]),
+		List[List[Int]](),
 	)
 	try expect_equal(
-		product([some.clone(), List[Int](), some.clone()]), List[List[Int]]()
+		product([some.clone(), List[Int](), some.clone()]),
+		List[List[Int]](),
 	)
 	try expect_equal(
-		product([some.clone(), some.clone(), List[Int]()]), List[List[Int]]()
+		product([some.clone(), some.clone(), List[Int]()]),
+		List[List[Int]](),
 	)
 	try expect_equal(product(List[List[Int]]()), [[]])
 	try expect_equal(product([some.clone()]), [[1], [2]])
@@ -145,7 +149,8 @@ test "zero-size permutations preserve shape and validate sizes":
 
 test "nonzero permutations retain position order and own their results":
 	try expect_equal(
-		permutations([1, 1, 2], 2), [[1, 1], [1, 2], [1, 1], [1, 2], [2, 1], [2, 1]]
+		permutations([1, 1, 2], 2),
+		[[1, 1], [1, 2], [1, 1], [1, 2], [2, 1], [2, 1]],
 	)
 	try expect_equal(permutations([10, 20], none), [[10, 20], [20, 10]])
 

@@ -87,13 +87,21 @@ fn main() Unit:
 		measure(Case("small-tail", "x".to_bytes(), chunk, "x", operations: 20000)).get()
 		measure(
 			Case(
-				"malformed", "\"x\"bad\n".to_bytes(), chunk, "", operations: 20000,
-				malformed: true
+				"malformed",
+				"\"x\"bad\n".to_bytes(),
+				chunk,
+				"",
+				operations: 20000,
+				malformed: true,
 			)
 		).get()
 		measure(
 			Case(
-				"unterminated", "\"x".to_bytes(), chunk, "", operations: 20000,
-				malformed: true
+				"unterminated",
+				"\"x".to_bytes(),
+				chunk,
+				"",
+				operations: 20000,
+				malformed: true,
 			)
 		).get()

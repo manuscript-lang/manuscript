@@ -48,15 +48,23 @@ fn main() Int:
 	var triple = ""
 	for line in capture("rustc", ["-vV"]).split("\n"):
 		if line.starts_with("host: "): triple = line.slice(
-			6, line.length()
+			6,
+			line.length(),
 		).get("").trim()
 	set_environment("CARGO_PROFILE_RELEASE_STRIP", "debuginfo").get()
 	code = run_program(
 		"cargo",
 		[
-			"build", "--release", "--locked", "-p", "ms-cli", "--target",
-			triple.clone(), "--target-dir", "target"
-		]
+			"build",
+			"--release",
+			"--locked",
+			"-p",
+			"ms-cli",
+			"--target",
+			triple.clone(),
+			"--target-dir",
+			"target",
+		],
 	)
 	if code != 0: return code
 
@@ -93,15 +101,20 @@ fn main() Int:
 		code = run_program(
 			"7z",
 			[
-				"a", "-tzip", "-bso0", "{root}/dist/{archive_name}", name.clone()
-			]
+				"a",
+				"-tzip",
+				"-bso0",
+				"{root}/dist/{archive_name}",
+				name.clone(),
+			],
 		)
 
 		// The checksum below reads the archive by its repository-relative path.
 		change_directory(root).get()
 	else:
 		code = run_program(
-			"tar", ["-C", staging.path(), "-czf", archive.clone(), name.clone()]
+			"tar",
+			["-C", staging.path(), "-czf", archive.clone(), name.clone()],
 		)
 
 	if code != 0: return code

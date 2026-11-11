@@ -1140,7 +1140,7 @@ fn parse_bindings(
 	h: Heap,
 	bindings: Int,
 	var names: List[Int],
-	var exprs: List[Int]
+	var exprs: List[Int],
 ) Bool:
 	if list_len(h, bindings) < 0: return false
 
@@ -1792,12 +1792,38 @@ fn reg(var h: Heap, name: String, lo: Int, hi: Int, group: Int) Unit:
 
 fn new_heap() Heap:
 	var h = Heap(
-		tags: [], nums: [], cars: [], cdrs: [], strs: [], syms: Map[String, Int](),
-		symnames: [], gval: [], cl_params: [], cl_body: [], cl_env: [], cl_name: [],
-		fparent: [], fhead: [], bsym: [], bval: [], bnext: [], pname: [], plo: [],
-		phi: [], pgroup: [], depth: 0, out: StringBuilder(), nonempty: false,
-		lastnl: false, chars: [], pos: 0, v_begin: 0, tx: 0, tenv: 0, tproc: 0,
-		targs: []
+		tags: [],
+		nums: [],
+		cars: [],
+		cdrs: [],
+		strs: [],
+		syms: Map[String, Int](),
+		symnames: [],
+		gval: [],
+		cl_params: [],
+		cl_body: [],
+		cl_env: [],
+		cl_name: [],
+		fparent: [],
+		fhead: [],
+		bsym: [],
+		bval: [],
+		bnext: [],
+		pname: [],
+		plo: [],
+		phi: [],
+		pgroup: [],
+		depth: 0,
+		out: StringBuilder(),
+		nonempty: false,
+		lastnl: false,
+		chars: [],
+		pos: 0,
+		v_begin: 0,
+		tx: 0,
+		tenv: 0,
+		tproc: 0,
+		targs: [],
 	)
 	_v0 := alloc(var h, T_VOID, 0, 0, 0)
 	_v1 := alloc(var h, T_BOOL, 0, 0, 0)

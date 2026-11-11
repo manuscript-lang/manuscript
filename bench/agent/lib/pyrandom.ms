@@ -36,7 +36,8 @@ export fn seeded(seed: Int) Random:
 		prev := mt[i - 1]
 		mt[i] = u32(
 			bit_xor(
-				mt[i], bit_xor(prev, shift_right(prev, 30)) * 1664525
+				mt[i],
+				bit_xor(prev, shift_right(prev, 30)) * 1664525,
 			) + seed + j
 		)
 		i += 1
@@ -55,7 +56,8 @@ export fn seeded(seed: Int) Random:
 		prev := mt[i - 1]
 		mt[i] = u32(
 			bit_xor(
-				mt[i], bit_xor(prev, shift_right(prev, 30)) * 1566083941
+				mt[i],
+				bit_xor(prev, shift_right(prev, 30)) * 1566083941,
 			) - i
 		)
 		i += 1

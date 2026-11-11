@@ -54,19 +54,26 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 				capture(
 					cli.clone(),
 					[
-						"build", source.clone(), "--build-type", "Release", "-o",
-						"{out}/{name}-{label}"
-					]
-				)
+						"build",
+						source.clone(),
+						"--build-type",
+						"Release",
+						"-o",
+						"{out}/{name}-{label}",
+					],
+				),
 			)
 			_emit := try must(
 				"ms emit {name}",
 				capture(
 					cli.clone(),
 					[
-						"emit", source.clone(), "-o", "{out}/{name}-{label}.go"
-					]
-				)
+						"emit",
+						source.clone(),
+						"-o",
+						"{out}/{name}-{label}.go",
+					],
+				),
 			)
 
 	var results = Map[String, JsonValue]()
@@ -102,7 +109,8 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 		var medians = Map[String, JsonValue]()
 		for label in ["before", "after"]:
 			seconds.add(
-				label.clone(), jlist(samples.get_or(label, []).map(fn s: jfloat(s)))
+				label.clone(),
+				jlist(samples.get_or(label, []).map(fn s: jfloat(s))),
 			)
 		medians.add("before", jfloat(before))
 		medians.add("after", jfloat(after))
@@ -116,7 +124,8 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 	report.add("build_type", jstr("Release"))
 	report.add("runs", jint(runs))
 	report.add(
-		"cpu_affinity", if cpu == "": JsonValue.Null else: jint(cpu.parse_int().get(0))
+		"cpu_affinity",
+		if cpu == "": JsonValue.Null else: jint(cpu.parse_int().get(0)),
 	)
 
 	var names = Map[String, JsonValue]()
@@ -131,8 +140,9 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 
 fn main() Int:
 	parsed := options(
-		arguments(), ["before", "after", "output", "runs", "cpu"],
-		["before", "after", "output"]
+		arguments(),
+		["before", "after", "output", "runs", "cpu"],
+		["before", "after", "output"],
 	)
 	if parsed.is_error(): return fail(parsed.err().message)
 

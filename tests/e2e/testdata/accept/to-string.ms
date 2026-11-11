@@ -63,7 +63,7 @@ test "records alternatives and collections convert":
 	(
 		try check(
 			value: Outcome.Ready(person).to_string(),
-			expected: "Outcome.Ready(Person(age: 37, name: Ada))"
+			expected: "Outcome.Ready(Person(age: 37, name: Ada))",
 		)
 	)
 	(try check(value: Outcome.Waiting.to_string(), expected: "Outcome.Waiting"))
@@ -76,7 +76,7 @@ test "records alternatives and collections convert":
 	(
 		try check(
 			value: result.to_string(),
-			expected: "error(Error(details: Map(), kind: none, message: failed))"
+			expected: "error(Error(details: Map(), kind: none, message: failed))",
 		)
 	)
 	(try check(value: [1, 2, 3].to_string(), expected: "[1, 2, 3]"))
@@ -98,7 +98,7 @@ test "records alternatives and collections convert":
 	(
 		try check(
 			value: "{map}|{set}|{bytes}",
-			expected: "Map(b: 2, a: 1)|Set(2, 1)|Bytes(0, 65, 255)"
+			expected: "Map(b: 2, a: 1)|Set(2, 1)|Bytes(0, 65, 255)",
 		)
 	)
 
@@ -121,7 +121,7 @@ test "generics views bound methods functions and resources":
 	(
 		try check(
 			value: queue.to_string(),
-			expected: "Queue(capacity: some(1), head: 0, items: [])"
+			expected: "Queue(capacity: some(1), head: 0, items: [])",
 		)
 	)
 
@@ -130,7 +130,7 @@ test "interpolation and bound conversion evaluate each receiver once":
 	(
 		try check(
 			value: "{next(var state)}|{next(var state)}",
-			expected: "Person(age: 1, name: Ada)|Person(age: 2, name: Ada)"
+			expected: "Person(age: 1, name: Ada)|Person(age: 2, name: Ada)",
 		)
 	)
 

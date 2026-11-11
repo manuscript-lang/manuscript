@@ -44,16 +44,19 @@ fn dockerfile(lang_id: String) String:
 
 fn task_toml(name: String, ch: Challenge, agent_timeout: Int) String:
 	return read_text("{root()}/harbor/task.toml.tmpl").replace(
-		"\{name\}", name
+		"\{name\}",
+		name,
 	).replace("\{title\}", ch.title).replace("\{category\}", ch.category).replace(
-		"\{tier\}", "{ch.tier}"
+		"\{tier\}",
+		"{ch.tier}",
 	).replace("\{agent_timeout\}", "{agent_timeout}.0")
 
 fn quote(text: String) String: dumps(JsonValue.StringValue(text.clone()), 0)
 
 fn put(from: String, to: String) Unit:
 	create_directory(
-		to.split("/").take(to.split("/").length() - 1).join("/"), recursive: true
+		to.split("/").take(to.split("/").length() - 1).join("/"),
+		recursive: true,
 	).get()
 	copy(from, to, CopyOptions(replace: true)).get()
 
@@ -62,7 +65,7 @@ fn export_one(
 	lang: Lang,
 	out: String,
 	ms_binary: String,
-	agent_timeout: Int
+	agent_timeout: Int,
 ) Unit:
 	name := "{ch.id}-{lang.id}"
 	d := "{out}/{name}"
@@ -91,7 +94,7 @@ fn export_one(
 	put("{ch.dir}/hidden/cases.json", "{d}/tests/cases.json")
 	write_text(
 		"{d}/tests/test.sh",
-		"#!/bin/bash\nms run /tests/grade.ms -- /tests/cases.json {quote(lang.build)} {quote(lang.run)} {ch.timeout_s} {lang.suffix()}\n"
+		"#!/bin/bash\nms run /tests/grade.ms -- /tests/cases.json {quote(lang.build)} {quote(lang.run)} {ch.timeout_s} {lang.suffix()}\n",
 	)
 
 	reference := "{ch.solution(lang.template)}/{lang.reference()}"
@@ -100,14 +103,14 @@ fn export_one(
 		put(reference, "{d}/solution/reference")
 		write_text(
 			"{d}/solution/solve.sh",
-			"#!/bin/bash\nmkdir -p \"$(dirname /app/{lang.solution})\"\ncp \"$(dirname \"$0\")/reference\" /app/{lang.solution}\n"
+			"#!/bin/bash\nmkdir -p \"$(dirname /app/{lang.solution})\"\ncp \"$(dirname \"$0\")/reference\" /app/{lang.solution}\n",
 		)
 	else:
 		// Large challenges are oracle-validated in Go only; the oracle agent has
 		// nothing to apply.
 		write_text(
 			"{d}/solution/solve.sh",
-			"#!/bin/bash\necho 'no reference solution for this language' >&2\nexit 1\n"
+			"#!/bin/bash\necho 'no reference solution for this language' >&2\nexit 1\n",
 		)
 
 	chmod("{d}/tests/test.sh", 493).get()
@@ -134,9 +137,11 @@ fn main() Int:
 		name: "export_harbor.ms",
 		about: "Export agent-bench challenges as Harbor tasks (one per challenge x language)",
 		flags: [
-			Flag("out", required: true), Flag("challenges", default: ""),
-			Flag("languages", default: ""), Flag("ms-binary", default: ""),
-			Flag("agent-timeout", FlagKind.Int, default: "900")
+			Flag("out", required: true),
+			Flag("challenges", default: ""),
+			Flag("languages", default: ""),
+			Flag("ms-binary", default: ""),
+			Flag("agent-timeout", FlagKind.Int, default: "900"),
 		],
 		run: fn o: run_export(o)
 	)

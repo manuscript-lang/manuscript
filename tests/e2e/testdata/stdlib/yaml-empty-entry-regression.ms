@@ -17,16 +17,22 @@ test "YAML flow mappings reject empty comma entries":
 test "YAML flow mappings retain legal trailing commas":
 	var values = Map[String, YamlValue]()
 	values.add("key", YamlValue.StringValue("value"))
-	parse("\{key: value,\}") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(values)
+	(
+		parse("\{key: value,\}") | try expect_ok | try expect_equal(
+			YamlValue.ObjectValue(values)
+		)
 	)
 
 	var nulls = Map[String, YamlValue]()
 	nulls.add("key", YamlValue.Null)
-	parse("\{key,\}") | try expect_ok | try expect_equal(YamlValue.ObjectValue(nulls))
+	(parse("\{key,\}") | try expect_ok | try expect_equal(YamlValue.ObjectValue(nulls)))
 
 test "YAML flow mappings retain existing empty-key forms":
 	for source in ["\{\"\": value\}", "\{: value\}"]:
 		var values = Map[String, YamlValue]()
 		values.add("", YamlValue.StringValue("value"))
-		parse(source) | try expect_ok | try expect_equal(YamlValue.ObjectValue(values))
+		(
+			parse(source) | try expect_ok | try expect_equal(
+				YamlValue.ObjectValue(values)
+			)
+		)

@@ -62,7 +62,9 @@ fn main() Int:
 			continue
 
 		if out := run(
-			ms.clone(), command, RunOptions(timeout: seconds(120), env: env.clone())
+			ms.clone(),
+			command,
+			RunOptions(timeout: seconds(120), env: env.clone()),
 		).wait():
 			swept += 1
 

@@ -154,7 +154,9 @@ fn outcome(id: Int, code: Int) Error:
 
 	report := msrt_promise_fault_report(id)
 	return Error(
-		"promise: fault: " + report, kind: "EIO", details: {"report": report.clone()}
+		"promise: fault: " + report,
+		kind: "EIO",
+		details: {"report": report.clone()},
 	)
 
 // Applies `options` to the promise `id`.
@@ -169,7 +171,7 @@ fn limit(id: Int, options: PromiseOptions) Unit:
 // the previous signal. `with` is the chaining form.
 export fn set_options[T](
 	target: Promise[T],
-	options: PromiseOptions = PromiseOptions()
+	options: PromiseOptions = PromiseOptions(),
 ) Unit:
 	limit(target.id, options)
 

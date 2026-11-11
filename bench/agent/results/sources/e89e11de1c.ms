@@ -148,7 +148,7 @@ fn find_runs(
 	start_day: Int,
 	start_minute: Int,
 	count: Int,
-	schedule: Schedule
+	schedule: Schedule,
 ) List[String]:
 	var runs = List[String]()
 	var year = start_year
@@ -205,10 +205,19 @@ fn describe(line: String, line_no: Int) String:
 	if weekdays.length() == 0: return prefix + "error: bad day-of-week\n"
 
 	schedule := Schedule(
-		minutes: minutes, hours: hours, days: days, months: months, weekdays: weekdays
+		minutes: minutes,
+		hours: hours,
+		days: days,
+		months: months,
+		weekdays: weekdays,
 	)
 	runs := find_runs(
-		start.year, start.month, start.day, start.minute_of_day, count, schedule
+		start.year,
+		start.month,
+		start.day,
+		start.minute_of_day,
+		count,
+		schedule,
 	)
 	if runs.length() == 0: return prefix + "never\n"
 

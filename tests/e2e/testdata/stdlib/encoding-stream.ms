@@ -128,7 +128,7 @@ test "base64 decoding rejects data after padding at every chunk boundary":
 						ReadStream[String](
 							Texts([left, "", right], 0)
 						),
-						url_safe
+						url_safe,
 					)
 				)
 				try expect_equal(got.err().kind, "EBADMSG")
@@ -146,10 +146,10 @@ test "base64 decoding permits empty chunks after terminal padding":
 								[
 									"", left, "", right, "", ""
 								],
-								0
+								0,
 							)
 						),
-						url_safe
+						url_safe,
 					)
 				)
 				try expect_equal(got, try base64_decode(text, url_safe))

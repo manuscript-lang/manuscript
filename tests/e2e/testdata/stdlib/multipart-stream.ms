@@ -52,12 +52,14 @@ fn sample() Bytes:
 		[
 			form_part("title", "hello".to_bytes()),
 			form_part(
-				"file", "line1\r\nline2\r\n--not-a-delimiter".to_bytes(),
-				filename: "a.txt", content_type: "text/plain"
+				"file",
+				"line1\r\nline2\r\n--not-a-delimiter".to_bytes(),
+				filename: "a.txt",
+				content_type: "text/plain",
 			),
-			form_part("empty", "".to_bytes())
+			form_part("empty", "".to_bytes()),
 		],
-		"XyZ"
+		"XyZ",
 	)
 
 test "parts match parse_multipart under every chunk size":
@@ -200,9 +202,10 @@ test "fragmented multipart bodies keep binary bytes and delimiter prefixes":
 	data := payload.build()
 	body := encode_multipart(
 		[
-			form_part("binary", data.clone()), form_part("end", "tail".to_bytes())
+			form_part("binary", data.clone()),
+			form_part("end", "tail".to_bytes()),
 		],
-		"XyZ"
+		"XyZ",
 	)
 
 	for size in [1, 2, 5, 7, 64, 1024]:

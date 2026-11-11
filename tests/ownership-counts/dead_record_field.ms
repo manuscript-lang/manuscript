@@ -17,11 +17,13 @@ fn left_of(p: Pair) Big:
 export fn main() Int:
 	p := Pair(
 		left: Big(
-			name: "a name that is long enough to live on the heap", items: [1, 2, 3]
+			name: "a name that is long enough to live on the heap",
+			items: [1, 2, 3],
 		),
 		right: Big(
-			name: "another name that is long enough to live on the heap", items: [4]
-		)
+			name: "another name that is long enough to live on the heap",
+			items: [4],
+		),
 	)
 	l := left_of(p)
 	return l.items.length() - 3

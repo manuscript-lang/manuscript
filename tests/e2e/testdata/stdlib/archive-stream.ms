@@ -57,7 +57,9 @@ test "compression streams round trip all formats under every chunk size":
 	text := "compress me compress me compress me".to_bytes()
 
 	for format in [
-		CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+		CompressionFormat.Gzip,
+		CompressionFormat.Zlib,
+		CompressionFormat.Deflate,
 	]:
 		for size in [1, 5, 64]:
 			packed := try read_all(compressed(chunked(text.clone(), size), format))
@@ -74,7 +76,9 @@ test "decompressed streams preserve lines across decoder output batches":
 	data := "archive line input\n".repeat(3500).get("").to_bytes()
 
 	for format in [
-		CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+		CompressionFormat.Gzip,
+		CompressionFormat.Zlib,
+		CompressionFormat.Deflate,
 	]:
 		packed := try compress(data.clone(), format)
 		var rows = lines(decompressed(chunked(packed, 32768), format))
@@ -113,14 +117,16 @@ fn sample() List[ArchiveEntry]:
 		ArchiveEntry("dir", "".to_bytes(), directory: true),
 		ArchiveEntry("dir/a.txt", "alpha".to_bytes(), directory: false),
 		ArchiveEntry(
-			"big.bin", "x".repeat(1300).get("").to_bytes(), directory: false
+			"big.bin",
+			"x".repeat(1300).get("").to_bytes(),
+			directory: false,
 		),
-		ArchiveEntry("empty", "".to_bytes(), directory: false)
+		ArchiveEntry("empty", "".to_bytes(), directory: false),
 	]
 
 fn read_entries(
 	input: ReadStream[Bytes],
-	options: ArchiveOptions = ArchiveOptions()
+	options: ArchiveOptions = ArchiveOptions(),
 ) List[ArchiveEntry]!:
 	var entries = tar_entries(input, options)
 	var out: List[ArchiveEntry] = []
@@ -149,12 +155,14 @@ test "tar entries enforce limits and report truncation":
 	try expect_equal(few.err().kind, "EOVERFLOW")
 
 	big := read_entries(
-		chunked(archive.clone(), 700), ArchiveOptions(max_entry_bytes: 100)
+		chunked(archive.clone(), 700),
+		ArchiveOptions(max_entry_bytes: 100),
 	)
 	try expect_equal(big.err().kind, "EOVERFLOW")
 
 	total := read_entries(
-		chunked(archive.clone(), 700), ArchiveOptions(max_bytes: 1000)
+		chunked(archive.clone(), 700),
+		ArchiveOptions(max_bytes: 1000),
 	)
 	try expect_equal(total.err().kind, "EOVERFLOW")
 
@@ -181,27 +189,30 @@ test "tar entries refuse an oversized member from its header":
 	archive := try pack(
 		[
 			ArchiveEntry(
-				"f", "x".repeat(4000).get("").to_bytes(), directory: false
+				"f",
+				"x".repeat(4000).get("").to_bytes(),
+				directory: false,
 			)
 		],
-		ArchiveFormat.Tar
+		ArchiveFormat.Tar,
 	)
 	header := try archive.slice(0, 512)
 	entry := read_entries(
 		ReadStream[Bytes](HeaderThenFail(header.clone(), false)),
-		ArchiveOptions(max_entry_bytes: 10)
+		ArchiveOptions(max_entry_bytes: 10),
 	)
 	try expect_equal(entry.err().kind, "EOVERFLOW")
 
 	total := read_entries(
 		ReadStream[Bytes](HeaderThenFail(header.clone(), false)),
-		ArchiveOptions(max_bytes: 10)
+		ArchiveOptions(max_bytes: 10),
 	)
 	try expect_equal(total.err().kind, "EOVERFLOW")
 
 test "tar entries reject a base-256 size that overflows as invalid":
 	archive := try pack(
-		[ArchiveEntry("f", "hi".to_bytes(), directory: false)], ArchiveFormat.Tar
+		[ArchiveEntry("f", "hi".to_bytes(), directory: false)],
+		ArchiveFormat.Tar,
 	)
 	var bad = BytesBuilder()
 
@@ -217,7 +228,9 @@ test "decompressed streams reject bytes after the payload as decompress does":
 	text := "tail check ".repeat(50).get("").to_bytes()
 
 	for format in [
-		CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+		CompressionFormat.Gzip,
+		CompressionFormat.Zlib,
+		CompressionFormat.Deflate,
 	]:
 		packed := try compress(text.clone(), format)
 		junk := packed.concat("junk".to_bytes())
@@ -249,8 +262,11 @@ fn members(paths: List[String]) Bytes!:
 
 test "tar entries reject duplicate and conflicting paths as unpack does":
 	cases := [
-		["same.txt", "same.txt"], ["a/", "a"], ["a", "a/b"], ["a/b", "a"],
-		["a", "a/b/c/"]
+		["same.txt", "same.txt"],
+		["a/", "a"],
+		["a", "a/b"],
+		["a/b", "a"],
+		["a", "a/b/c/"],
 	]
 
 	for paths in cases:
@@ -350,13 +366,15 @@ test "gzip rejects reserved flags in whole and fragmented member headers":
 
 		if flags < 32:
 			try expect_equal(
-				try decompress(member.clone(), CompressionFormat.Gzip), text
+				try decompress(member.clone(), CompressionFormat.Gzip),
+				text,
 			)
 
 			for size in [1, 9, 4096]:
 				decoded := try read_all(
 					decompressed(
-						chunked(member.clone(), size), CompressionFormat.Gzip
+						chunked(member.clone(), size),
+						CompressionFormat.Gzip,
 					)
 				)
 				try expect_equal(decoded, text)
@@ -370,7 +388,8 @@ test "gzip rejects reserved flags in whole and fragmented member headers":
 			for size in [1, 9, 4096]:
 				streamed := read_all(
 					decompressed(
-						chunked(input.clone(), size), CompressionFormat.Gzip
+						chunked(input.clone(), size),
+						CompressionFormat.Gzip,
 					)
 				)
 				try expect_equal(streamed.err().kind, "EBADMSG")

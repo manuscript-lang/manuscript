@@ -10,7 +10,14 @@ test "Unicode scalar indexing differs from byte length":
 	try expect_equal(text.scalar_values(), [97, 233, 128578])
 	try expect_false(text.get(-1) != "🙂" or text.scalar_at(1) != 233)
 	try expect_equal(text.get(3, default: "none"), "none")
-	try expect_equal((text.scalar_values() | from_scalars | try), text)
+	try expect_equal(
+		(
+			text.scalar_values()
+			| from_scalars
+			| try
+		),
+		text,
+	)
 	try expect_equal((try text.slice_scalars(1, 3)), "é🙂")
 	try expect_equal((try "é".normalize("NFC")), "é")
 

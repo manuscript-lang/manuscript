@@ -24,9 +24,10 @@ export fn fnv1a32(data: Bytes) UInt32:
 	for index in 0..data.length():
 		hash = bit_and(
 			wrapping_multiply(
-				bit_xor(hash, data.get(index).to_int()), 16777619
+				bit_xor(hash, data.get(index).to_int()),
+				16777619,
 			),
-			4294967295
+			4294967295,
 		)
 	return hash.to_uint32().get(0)
 
@@ -37,7 +38,7 @@ export fn fnv1_32(data: Bytes) UInt32:
 	for index in 0..data.length():
 		hash = bit_xor(
 			bit_and(wrapping_multiply(hash, 16777619), 4294967295),
-			data.get(index).to_int()
+			data.get(index).to_int(),
 		)
 	return hash.to_uint32().get(0)
 
@@ -129,15 +130,18 @@ impl MapHash:
 
 		for index in 0..data.length():
 			state = wrapping_multiply(
-				bit_xor(state, data.get(index).to_int()), -7046029254386353131
+				bit_xor(state, data.get(index).to_int()),
+				-7046029254386353131,
 			)
 			state = bit_xor(state, shift_right_unsigned(state, 29))
 
 		state = wrapping_multiply(
-			bit_xor(state, shift_right_unsigned(state, 33)), -49064778989728563
+			bit_xor(state, shift_right_unsigned(state, 33)),
+			-49064778989728563,
 		)
 		state = wrapping_multiply(
-			bit_xor(state, shift_right_unsigned(state, 33)), -4265267296055464877
+			bit_xor(state, shift_right_unsigned(state, 33)),
+			-4265267296055464877,
 		)
 		return unsigned(bit_xor(state, shift_right_unsigned(state, 33)))
 

@@ -20,19 +20,24 @@ fn handler(var exchange: HttpExchange) Unit!:
 
 test "requests cancelled on a shared HTTP/2 connection release their streams":
 	server_tls := TlsOptions(
-		certificate_pem: certificate(), private_key_pem: private_key(),
-		alpn: ["h2", "http/1.1"]
+		certificate_pem: certificate(),
+		private_key_pem: private_key(),
+		alpn: ["h2", "http/1.1"],
 	)
 	client_tls := TlsOptions(roots_pem: certificate(), alpn: ["h2", "http/1.1"])
-	server := serve(
-		address: "127.0.0.1:0", handler: handler,
-		options: HttpServerOptions(tls: server_tls)
-	) | try expect_ok
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: handler,
+			options: HttpServerOptions(tls: server_tls),
+		) | try expect_ok
+	)
 	client := fetcher(FetcherOptions(tls: client_tls)) | try expect_ok
 	base := "https://{server.address()}"
-	first := client.fetch(
-		"{base}/ok", FetchOptions(timeout: none)
-	).wait() | try expect_ok
+	first := (
+		client.fetch("{base}/ok", FetchOptions(timeout: none)).wait()
+		| try expect_ok
+	)
 	first.head.protocol | try expect_equal("HTTP/2.0")
 
 	// Each cancelled request used to stay open on the connection, so the peer's stream
@@ -42,10 +47,11 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 			options: PromiseOptions(timeout: 5.milliseconds())
 		).wait()
 
-	after := client.fetch(
-		"{base}/ok", FetchOptions(timeout: 5.seconds())
-	).wait() | try expect_ok
-	after.text() | try expect_ok | try expect_equal("ok")
+	after := (
+		client.fetch("{base}/ok", FetchOptions(timeout: 5.seconds())).wait()
+		| try expect_ok
+	)
+	(after.text() | try expect_ok | try expect_equal("ok"))
 
 	before := (memory_usage() | try expect_ok).heap_used
 	for i in 0..1000:

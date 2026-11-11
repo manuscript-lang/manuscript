@@ -50,7 +50,11 @@ fn open_account(var ledger: Ledger, id: String, limit_text: String) String:
 	if ledger.accounts.contains(id): return "error: account exists {id}"
 
 	ledger.accounts[id] = Account(
-		balance: 0, limit: limit, ops: 0, rejected: 0, frozen: false
+		balance: 0,
+		limit: limit,
+		ops: 0,
+		rejected: 0,
+		frozen: false,
 	)
 	return "ok"
 
@@ -169,22 +173,35 @@ fn run(var ledger: Ledger, tokens: List[String]) String:
 	cmd := tokens[0]
 	n := tokens.length()
 	if cmd == "open" and n == 3: return open_account(
-		var ledger, tokens[1].clone(), tokens[2].clone()
+		var ledger,
+		tokens[1].clone(),
+		tokens[2].clone(),
 	)
 	if cmd == "freeze" and n == 2: return set_frozen(
-		var ledger, tokens[1].clone(), true
+		var ledger,
+		tokens[1].clone(),
+		true,
 	)
 	if cmd == "unfreeze" and n == 2: return set_frozen(
-		var ledger, tokens[1].clone(), false
+		var ledger,
+		tokens[1].clone(),
+		false,
 	)
 	if cmd == "deposit" and n == 3: return deposit(
-		var ledger, tokens[1].clone(), tokens[2].clone()
+		var ledger,
+		tokens[1].clone(),
+		tokens[2].clone(),
 	)
 	if cmd == "withdraw" and n == 3: return withdraw(
-		var ledger, tokens[1].clone(), tokens[2].clone()
+		var ledger,
+		tokens[1].clone(),
+		tokens[2].clone(),
 	)
 	if cmd == "transfer" and n == 4: return transfer(
-		var ledger, tokens[1].clone(), tokens[2].clone(), tokens[3].clone()
+		var ledger,
+		tokens[1].clone(),
+		tokens[2].clone(),
+		tokens[3].clone(),
 	)
 
 	return "error: bad command"

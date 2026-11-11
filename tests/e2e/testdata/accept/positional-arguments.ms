@@ -21,8 +21,10 @@ fn chosen(var counter: Counter) fn(Int, Int) Int:
 	return subtract
 
 fn ordered(
-	var counter: Counter, first: Int = mark(counter, 3), second: Int = mark(counter, 4),
-	third: Int = 0
+	var counter: Counter,
+	first: Int = mark(counter, 3),
+	second: Int = mark(counter, 4),
+	third: Int = 0,
 ) Int:
 	counter.value = counter.value * 10 + 5
 	return first + second + third

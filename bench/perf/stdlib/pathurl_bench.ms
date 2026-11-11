@@ -9,7 +9,11 @@ bench "path.join_normalize":
 	fn work() Result[Unit, Error]:
 		var n = 0
 		for i in 0..50000:
-			n += join(["/a", "b/../c", "d.txt"]) | normalize | .length()
+			n += (
+				join(["/a", "b/../c", "d.txt"])
+				| normalize
+				| .length()
+			)
 		return keep(n)
 
 	try measure(50000, work)

@@ -18,7 +18,8 @@ fn tiny() Float32:
 test "Float32 literals round once to binary32":
 	try expect_equal(largest().to_float64(), 340282346638528859811704183484516925440.0)
 	try expect_equal(
-		smallest().to_float64(), -340282346638528859811704183484516925440.0
+		smallest().to_float64(),
+		-340282346638528859811704183484516925440.0,
 	)
 	try expect_equal(above_one().to_float64(), 1.0000001192092896)
 	try expect_equal(below_two_steps().to_float64(), 1.0000001192092896)

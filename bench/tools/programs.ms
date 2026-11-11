@@ -19,15 +19,19 @@ import (
 
 fn orders() List[List[String]]:
 	return [
-		["go", "ms", "rust", "rust-checked"], ["ms", "rust-checked", "go", "rust"],
-		["rust-checked", "rust", "ms", "go"], ["rust", "go", "rust-checked", "ms"]
+		["go", "ms", "rust", "rust-checked"],
+		["ms", "rust-checked", "go", "rust"],
+		["rust-checked", "rust", "ms", "go"],
+		["rust", "go", "rust-checked", "ms"],
 	]
 
 fn run(work: String, n: Int) Result[String, Error]:
 	here := "bench/perf/programs"
 	for dir in ["go", "ms", "rust"]:
 		try copy(
-			"{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
+			"{here}/{dir}",
+			"{work}/{dir}",
+			CopyOptions(recursive: true, replace: true),
 		)
 	try create_directory("{work}/rust-checked")
 
@@ -40,7 +44,9 @@ fn run(work: String, n: Int) Result[String, Error]:
 	try build_go("{work}/go", "{work}/go/bench")
 	try build_rust("{work}/rust/main.rs", "{work}/rust/bench", [])
 	try build_rust(
-		"{work}/rust/main.rs", "{work}/rust-checked/bench", ["-C", "overflow-checks=on"]
+		"{work}/rust/main.rs",
+		"{work}/rust-checked/bench",
+		["-C", "overflow-checks=on"],
 	)
 	try build_ms("{work}/ms", "{work}/ms/bench")
 

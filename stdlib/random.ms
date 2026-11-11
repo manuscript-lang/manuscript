@@ -43,7 +43,8 @@ export fn ulid() String!:
 	for place in 0..6:
 		raw.append(
 			bit_and(
-				shift_right_unsigned(millis, 8 * (5 - place)), 255
+				shift_right_unsigned(millis, 8 * (5 - place)),
+				255,
 			).to_uint8().get(0)
 		)
 	raw.append_bytes(noise)
@@ -211,10 +212,12 @@ impl SeededRandom:
 
 		var z = self.state
 		z = wrapping_multiply(
-			bit_xor(z, shift_right_unsigned(z, 30)), -4658895280553007687
+			bit_xor(z, shift_right_unsigned(z, 30)),
+			-4658895280553007687,
 		)
 		z = wrapping_multiply(
-			bit_xor(z, shift_right_unsigned(z, 27)), -7723592293110705685
+			bit_xor(z, shift_right_unsigned(z, 27)),
+			-7723592293110705685,
 		)
 		return bit_xor(z, shift_right_unsigned(z, 31))
 

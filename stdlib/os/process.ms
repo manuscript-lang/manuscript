@@ -100,7 +100,7 @@ export interface Commands:
 	fn run(
 		program: String,
 		arguments: List[String],
-		options: RunOptions = RunOptions()
+		options: RunOptions = RunOptions(),
 	) CommandOutput!
 	// Starts `program` directly, without a shell, searching the PATH, and returns a
 	// live Subprocess that its scope closes. `arguments` follow the program name;
@@ -112,7 +112,7 @@ export interface Commands:
 	fn spawn(
 		program: String,
 		arguments: List[String],
-		options: SpawnOptions = SpawnOptions()
+		options: SpawnOptions = SpawnOptions(),
 	) Subprocess!
 
 // The runtime handle behind a `Subprocess`.
@@ -274,11 +274,17 @@ fn environment_values(environment: Map[String, String]) List[String]:
 fn run_job(
 	program: String,
 	arguments: List[String] = [],
-	options: RunOptions
+	options: RunOptions,
 ) fn() CommandOutput!:
 	return fn: msstd_process_command_run(
-		program, arguments, options.input, options.max_output_bytes, options.timeout,
-		options.cwd, environment_names(options.env), environment_values(options.env)
+		program,
+		arguments,
+		options.input,
+		options.max_output_bytes,
+		options.timeout,
+		options.cwd,
+		environment_names(options.env),
+		environment_values(options.env),
 	)
 
 /*
@@ -290,7 +296,7 @@ Output beyond `options.max_output_bytes` in total across both streams returns EO
 export fn run(
 	program: String,
 	arguments: List[String] = [],
-	options: RunOptions = RunOptions()
+	options: RunOptions = RunOptions(),
 ) Promise[CommandOutput]:
 	return owned_task[CommandOutput](
 		run_job(program.clone(), arguments.clone(), options.clone())
@@ -307,11 +313,17 @@ export fn run(
 export fn spawn(
 	program: String,
 	arguments: List[String] = [],
-	options: SpawnOptions = SpawnOptions()
+	options: SpawnOptions = SpawnOptions(),
 ) Subprocess!:
 	return msstd_process_command_spawn(
-		program, arguments, options.stdin, options.stdout, options.stderr, options.cwd,
-		environment_names(options.env), environment_values(options.env)
+		program,
+		arguments,
+		options.stdin,
+		options.stdout,
+		options.stderr,
+		options.cwd,
+		environment_names(options.env),
+		environment_values(options.env),
 	)
 
 /*
@@ -354,7 +366,7 @@ export fn initialize_groups(username: String, gid: Int) Unit!:
 export fn replace(
 	program: String,
 	arguments: List[String],
-	environment: Map[String, String]
+	environment: Map[String, String],
 ) Unit!:
 	var names: List[String] = []
 	var values: List[String] = []

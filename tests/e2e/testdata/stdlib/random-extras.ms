@@ -20,7 +20,7 @@ test "seeded sample picks distinct items":
 		picked[0] == picked[1] or picked[1] == picked[2] or picked[0] == picked[
 			2
 		],
-		false
+		false,
 	)
 
 	var again = seeded(7)
@@ -35,7 +35,7 @@ test "seeded weighted_choice follows the weights":
 			try expect_some(
 				rng.weighted_choice(["a", "b", "c"], [0.0, 1.0, 0.0])
 			),
-			"b"
+			"b",
 		)
 	try expect_none(rng.weighted_choice(List[String](), List[Float]()))
 
@@ -62,7 +62,8 @@ test "secure sample and weighted_choice":
 
 	_error := try expect_error(sample([1], 2))
 	try expect_equal(
-		try expect_some(try expect_ok(weighted_choice(["a", "b"], [0.0, 2.0]))), "b"
+		try expect_some(try expect_ok(weighted_choice(["a", "b"], [0.0, 2.0]))),
+		"b",
 	)
 
 	_other := try expect_error(weighted_choice(["a"], [0.0]))

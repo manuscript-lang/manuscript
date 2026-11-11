@@ -31,13 +31,15 @@ impl BigRat:
 	// Returns the exact sum.
 	fn add(other: BigRat) BigRat:
 		return reduced(
-			self.num * other.den + other.num * self.den, self.den * other.den
+			self.num * other.den + other.num * self.den,
+			self.den * other.den,
 		)
 
 	// Returns the exact difference.
 	fn subtract(other: BigRat) BigRat:
 		return reduced(
-			self.num * other.den - other.num * self.den, self.den * other.den
+			self.num * other.den - other.num * self.den,
+			self.den * other.den,
 		)
 
 	// Returns the exact product.
@@ -332,9 +334,12 @@ impl BigFloat:
 		bits := larger(self.prec, other.prec)
 		return make(
 			round_to(
-				self.mant * other.mant, self.exp + other.exp, false, bits
+				self.mant * other.mant,
+				self.exp + other.exp,
+				false,
+				bits,
 			),
-			bits
+			bits,
 		)
 
 	// Returns the quotient, rounded once at the larger operand precision; a zero
@@ -353,9 +358,9 @@ impl BigFloat:
 			make(
 				Binary(
 					mant: quotient.mant.clone(),
-					exp: quotient.exp + self.exp - other.exp
+					exp: quotient.exp + self.exp - other.exp,
 				),
-				bits
+				bits,
 			)
 		)
 
@@ -378,9 +383,12 @@ impl BigFloat:
 		return ok(
 			make(
 				round_to(
-					root, (self.exp - padding) / 2, sticky, self.prec
+					root,
+					(self.exp - padding) / 2,
+					sticky,
+					self.prec,
 				),
-				self.prec
+				self.prec,
 			)
 		)
 

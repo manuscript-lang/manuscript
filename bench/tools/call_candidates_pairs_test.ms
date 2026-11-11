@@ -31,7 +31,8 @@ test "paired summaries require complete consistent finite measurements":
 	text := samples()
 	try expect_equal(summarize(text).get().contains("median_candidate_ratio=1"), true)
 	try expect_equal(
-		summarize(text, cpu: true).get().contains("median95_upper=1"), true
+		summarize(text, cpu: true).get().contains("median95_upper=1"),
+		true,
 	)
 	for bad in [
 		text + "1\tbefore\tinput\t100\t0\thash\t80\t20\n",
@@ -42,10 +43,12 @@ test "paired summaries require complete consistent finite measurements":
 		text.replace("\t100\t", "\tInfinity\t"),
 		text.replace("\t100\t", "\t0\t"),
 		text.replace(
-			"6\tafter\tinput\t100\t0\thash", "6\tafter\tinput\t100\t0\tchanged"
-		)
+			"6\tafter\tinput\t100\t0\thash",
+			"6\tafter\tinput\t100\t0\tchanged",
+		),
 	]:
 		try expect_equal(summarize(bad).is_error(), true)
 	try expect_equal(
-		summarize(text.replace("\t80\t20", "\t0\t0"), cpu: true).is_error(), true
+		summarize(text.replace("\t80\t20", "\t0\t0"), cpu: true).is_error(),
+		true,
 	)

@@ -73,18 +73,38 @@ export type Part:
 
 // Extension table behind `media_type_for_extension`.
 TYPES := {
-	"html": "text/html; charset=utf-8", "htm": "text/html; charset=utf-8",
-	"css": "text/css; charset=utf-8", "js": "text/javascript; charset=utf-8",
-	"mjs": "text/javascript; charset=utf-8", "txt": "text/plain; charset=utf-8",
-	"csv": "text/csv; charset=utf-8", "md": "text/markdown; charset=utf-8",
-	"xml": "text/xml; charset=utf-8", "json": "application/json",
-	"pdf": "application/pdf", "zip": "application/zip", "gz": "application/gzip",
-	"tar": "application/x-tar", "wasm": "application/wasm", "toml": "application/toml",
-	"yaml": "application/yaml", "yml": "application/yaml", "png": "image/png",
-	"jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp",
-	"svg": "image/svg+xml", "ico": "image/x-icon", "mp3": "audio/mpeg",
-	"wav": "audio/wav", "mp4": "video/mp4", "webm": "video/webm", "woff": "font/woff",
-	"woff2": "font/woff2", "ttf": "font/ttf"
+	"html": "text/html; charset=utf-8",
+	"htm": "text/html; charset=utf-8",
+	"css": "text/css; charset=utf-8",
+	"js": "text/javascript; charset=utf-8",
+	"mjs": "text/javascript; charset=utf-8",
+	"txt": "text/plain; charset=utf-8",
+	"csv": "text/csv; charset=utf-8",
+	"md": "text/markdown; charset=utf-8",
+	"xml": "text/xml; charset=utf-8",
+	"json": "application/json",
+	"pdf": "application/pdf",
+	"zip": "application/zip",
+	"gz": "application/gzip",
+	"tar": "application/x-tar",
+	"wasm": "application/wasm",
+	"toml": "application/toml",
+	"yaml": "application/yaml",
+	"yml": "application/yaml",
+	"png": "image/png",
+	"jpg": "image/jpeg",
+	"jpeg": "image/jpeg",
+	"gif": "image/gif",
+	"webp": "image/webp",
+	"svg": "image/svg+xml",
+	"ico": "image/x-icon",
+	"mp3": "audio/mpeg",
+	"wav": "audio/wav",
+	"mp4": "video/mp4",
+	"webm": "video/webm",
+	"woff": "font/woff",
+	"woff2": "font/woff2",
+	"ttf": "font/ttf"
 }
 
 // Returns the media type for a file extension with or without the leading dot
@@ -228,7 +248,7 @@ export fn parse_headers(text: String) Headers!:
 			last := fields.length() - 1
 			fields[last] = HeaderField(
 				name: fields[last].name.clone(),
-				value: "{fields[last].value} {line.trim()}"
+				value: "{fields[last].value} {line.trim()}",
 			)
 			continue
 
@@ -240,7 +260,7 @@ export fn parse_headers(text: String) Headers!:
 		fields.append(
 			HeaderField(
 				name: line.take(at.get(0)).trim(),
-				value: line.drop(at.get(0) + 1).trim()
+				value: line.drop(at.get(0) + 1).trim(),
 			)
 		)
 
@@ -292,7 +312,7 @@ fn make_part(section: Bytes) Part!:
 	headers := try parse_headers(header_text.get(""))
 	var part = Part(
 		headers: headers,
-		data: inner.slice(blank + skip, inner.length()).get("".to_bytes())
+		data: inner.slice(blank + skip, inner.length()).get("".to_bytes()),
 	)
 
 	if disposition := part.headers.get("Content-Disposition"):
@@ -369,7 +389,8 @@ impl Transform[Bytes, Part] for MultipartParts:
 					keep := self.delimiter.length() - 1
 					size := self.buffer.length()
 					if size > keep: self.buffer = try self.buffer.slice(
-						size - keep, size
+						size - keep,
+						size,
 					)
 					break
 
@@ -396,7 +417,8 @@ impl Transform[Bytes, Part] for MultipartParts:
 				if limit := self.max_part_bytes:
 					if self.pending_size + end > limit: return error(
 						Error(
-							"MIME: limit exceeded", kind: "EOVERFLOW"
+							"MIME: limit exceeded",
+							kind: "EOVERFLOW",
 						)
 					)
 
@@ -418,7 +440,8 @@ impl Transform[Bytes, Part] for MultipartParts:
 					out.append(part.get())
 
 			self.buffer = try self.buffer.slice(
-				end + self.delimiter.length(), self.buffer.length()
+				end + self.delimiter.length(),
+				self.buffer.length(),
 			)
 			self.in_part = true
 
@@ -435,15 +458,19 @@ delimiter fails with `EBADMSG`. Closing the result closes `body`.
 export fn multipart_parts(
 	body: ReadStream[Bytes],
 	boundary: String,
-	max_part_bytes: Int?
+	max_part_bytes: Int?,
 ) ReadStream[Part]:
 	return through[Bytes, Part](
 		body,
 		MultipartParts(
-			delimiter: "\r\n--{boundary}".to_bytes(), max_part_bytes: max_part_bytes,
-			buffer: "\r\n".to_bytes(), pending: BytesBuilder(), pending_size: 0,
-			in_part: false, done: false
-		)
+			delimiter: "\r\n--{boundary}".to_bytes(),
+			max_part_bytes: max_part_bytes,
+			buffer: "\r\n".to_bytes(),
+			pending: BytesBuilder(),
+			pending_size: 0,
+			in_part: false,
+			done: false,
+		),
 	)
 
 // Encodes parts as a multipart body closed with the final delimiter. Each part's
@@ -464,7 +491,7 @@ export fn form_part(
 	name: String,
 	data: Bytes,
 	filename: String = "",
-	content_type: String = ""
+	content_type: String = "",
 ) Part:
 	var disposition = "form-data; name={quote_value(name)}"
 	if not filename.is_empty(): disposition = "{disposition}; filename={quote_value(filename)}"
@@ -474,5 +501,8 @@ export fn form_part(
 		HeaderField(name: "Content-Type", value: content_type)
 	)
 	return Part(
-		headers: Headers(fields: fields), name: name, filename: filename, data: data
+		headers: Headers(fields: fields),
+		name: name,
+		filename: filename,
+		data: data,
 	)

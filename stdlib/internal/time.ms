@@ -38,7 +38,7 @@ export extern fn msstd_time_timestamp_shift(value: Timestamp, duration: Int) Tim
 
 export extern fn msstd_time_timestamp_difference(
 	value: Timestamp,
-	other: Timestamp
+	other: Timestamp,
 ) Int!
 
 export extern fn msstd_time_timestamp_compare(value: Timestamp, other: Timestamp) Int
@@ -48,7 +48,7 @@ export extern fn msstd_time_timestamp_calendar(value: Timestamp, zone: String) C
 export extern fn msstd_time_timestamp_format(
 	value: Timestamp,
 	pattern: String,
-	zone: String
+	zone: String,
 ) String!
 
 export extern fn msstd_time_parse_timestamp(text: String) Timestamp!
@@ -61,7 +61,7 @@ export extern fn msstd_time_from_calendar(
 	minute: Int,
 	second: Int,
 	nanosecond: Int,
-	zone: String
+	zone: String,
 ) Timestamp!
 
 export extern fn msstd_time_timestamp(seconds: Int, nanoseconds: Int) Timestamp!

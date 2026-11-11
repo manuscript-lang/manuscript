@@ -40,7 +40,7 @@ fn measure(
 	after: String,
 	directory: String,
 	rounds: Int,
-	filter: String
+	filter: String,
 ) Unit!:
 	ensure_directory(directory)
 	ensure_directory("{directory}/inputs")
@@ -62,7 +62,7 @@ fn measure(
 
 	write_text(
 		"{directory}/binaries.txt",
-		"before {before} {file_sha256(before)}\nafter {after} {file_sha256(after)}\n"
+		"before {before} {file_sha256(before)}\nafter {after} {file_sha256(after)}\n",
 	)
 
 	var rows = "round\tlabel\tinput\twall_ns\tmax_resident_bytes\tinput_sha256\tuser_ns\tsystem_ns\n"
@@ -77,8 +77,14 @@ fn measure(
 			for label in order:
 				binary := if label == "before": before else: after
 				command := [
-					"60", "taskset", "-c", "0", binary.clone(), "check", file.clone(),
-					"--json"
+					"60",
+					"taskset",
+					"-c",
+					"0",
+					binary.clone(),
+					"check",
+					file.clone(),
+					"--json",
 				]
 				started := now_ns()
 				measured := try timed("timeout", command)
@@ -110,6 +116,9 @@ export fn main() Unit!:
 		return invalid("expected BEFORE AFTER OUTPUT ROUNDS [FILTER]")
 
 	try measure(
-		absolute(args[0].clone()), absolute(args[1].clone()), absolute(args[2].clone()),
-		args[3].parse_int().get(), if args.length() == 5: args[4].clone() else: ""
+		absolute(args[0].clone()),
+		absolute(args[1].clone()),
+		absolute(args[2].clone()),
+		args[3].parse_int().get(),
+		if args.length() == 5: args[4].clone() else: "",
 	)

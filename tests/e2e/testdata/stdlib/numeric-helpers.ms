@@ -28,7 +28,8 @@ test "bit and byte reversal map every position in a 64-bit pattern":
 		value := shift_left(1, position)
 		try expect_equal(reverse_bits(value), shift_left(1, 63 - position))
 		try expect_equal(
-			reverse_bytes(value), shift_left(1, (7 - position / 8) * 8 + position % 8)
+			reverse_bytes(value),
+			shift_left(1, (7 - position / 8) * 8 + position % 8),
 		)
 
 	var value = 81985529216486895
@@ -37,7 +38,8 @@ test "bit and byte reversal map every position in a 64-bit pattern":
 		try expect_equal(reverse_bits(reverse_bits(value)), value)
 		try expect_equal(reverse_bytes(reverse_bytes(value)), value)
 		value = bit_xor(
-			wrapping_multiply(value, 6364136223846793005), -7046029254386353131
+			wrapping_multiply(value, 6364136223846793005),
+			-7046029254386353131,
 		)
 
 test "base-two exponentiation includes underflow overflow and special values":
@@ -128,7 +130,8 @@ test "big integer square root is exact and rejects negative input":
 
 test "modular exponentiation normalizes results and validates its domain":
 	try expect_equal(
-		(try from_int(2).pow_mod(from_int(10), from_int(1000))), from_int(24)
+		(try from_int(2).pow_mod(from_int(10), from_int(1000))),
+		from_int(24),
 	)
 	try expect_equal((try from_int(-2).pow_mod(from_int(3), from_int(5))), from_int(2))
 	try expect_equal((try from_int(-2).pow_mod(from_int(4), from_int(5))), from_int(1))

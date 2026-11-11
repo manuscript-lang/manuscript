@@ -29,12 +29,14 @@ test "JSON value limits preserve Unicode precedence and byte admission":
 	try expect_equal(parse[String]("\"\\u0041\"", zero), typed_limited)
 	try expect_equal(parse("\"\\uD800\"", JsonOptions(max_bytes: 0)), limited)
 	try expect_equal(
-		parse[String]("\"\\uD800\"", JsonOptions(max_bytes: 0)), typed_limited
+		parse[String]("\"\\uD800\"", JsonOptions(max_bytes: 0)),
+		typed_limited,
 	)
 
 	negative: JsonValue! := error(Error("JSON: invalid input", kind: "EINVAL"))
 	typed_negative: String! := error(Error("JSON: invalid input", kind: "EINVAL"))
 	try expect_equal(parse("\"\\uD800\"", JsonOptions(max_values: -1)), negative)
 	try expect_equal(
-		parse[String]("\"\\uD800\"", JsonOptions(max_values: -1)), typed_negative
+		parse[String]("\"\\uD800\"", JsonOptions(max_values: -1)),
+		typed_negative,
 	)

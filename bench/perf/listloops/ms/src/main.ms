@@ -27,7 +27,7 @@ fn k_base(
 	x: List[Float32],
 	var out: List[Float32],
 	base: Int,
-	n: Int
+	n: Int,
 ) Unit:
 	for i in 0..n:
 		out[i] = w[base + i] * x[i]

@@ -49,8 +49,9 @@ fn background(argv: List[String], out: String) Subprocess!:
 	script := "out=$1; shift; ulimit -n 20000 2>/dev/null; exec \"$@\" >\"$out\" 2>/dev/null"
 	args := ["-c", script, "sh", out.clone()].concat(argv)
 	if child := spawn(
-		"sh", args,
-		SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null, stderr: Stdio.Null)
+		"sh",
+		args,
+		SpawnOptions(stdin: Stdio.Null, stdout: Stdio.Null, stderr: Stdio.Null),
 	):
 		return ok(child)
 
@@ -96,7 +97,8 @@ fn first_pid(pattern: String) String:
 // Total system calls of all threads while strace is attached for `seconds`.
 fn syscalls(pid: String, seconds: Int, file: String) Int:
 	_ := capture(
-		"timeout", ["{seconds}", "strace", "-f", "-c", "-p", pid, "-o", file.clone()]
+		"timeout",
+		["{seconds}", "strace", "-f", "-c", "-p", pid, "-o", file.clone()],
 	)
 
 	for line in read_text(file).split("\n"):
@@ -117,11 +119,12 @@ fn measure_server(
 	name: String,
 	port: Int,
 	seconds: Int,
-	ms_threads: String
+	ms_threads: String,
 ) Unit!:
 	data := "{p.w}/data"
 	var argv = pinned(
-		p.server_cpus.clone(), ["{p.w}/{name}/server", "{port}", data.clone()]
+		p.server_cpus.clone(),
+		["{p.w}/{name}/server", "{port}", data.clone()],
 	)
 	if name == "ms": argv.append(ms_threads.clone())
 
@@ -141,7 +144,8 @@ fn measure_server(
 			say("{name} io {load(p, port, ["64", "{seconds}", "/io?\{c\}"])}")
 
 		var mixed = try background(
-			load_cmd(p, port, ["32", "{seconds}", "/io?\{c\}"]), "{p.w}/mixed"
+			load_cmd(p, port, ["32", "{seconds}", "/io?\{c\}"]),
+			"{p.w}/mixed",
 		)
 		_ := sleep(milliseconds(200)).wait()
 		during := if seconds > 1: seconds - 1 else: 1
@@ -157,10 +161,17 @@ fn measure_server(
 
 		var busy = try background(
 			[
-				"timeout", "4", "strace", "-f", "-c", "-p", pid.clone(), "-o",
-				"{p.w}/busy"
+				"timeout",
+				"4",
+				"strace",
+				"-f",
+				"-c",
+				"-p",
+				pid.clone(),
+				"-o",
+				"{p.w}/busy",
 			],
-			"/dev/null"
+			"/dev/null",
 		)
 		_ := sleep(milliseconds(500)).wait()
 		reqs := (
@@ -185,9 +196,10 @@ fn measure_server(
 
 	var idle = try background(
 		pinned(
-			p.load_cpus.clone(), ["{p.w}/load/load", "idle", "{port}", "10000"]
+			p.load_cpus.clone(),
+			["{p.w}/load/load", "idle", "{port}", "10000"],
 		),
-		"{p.w}/idle.out"
+		"{p.w}/idle.out",
 	)
 	_ := sleep(milliseconds(200)).wait()
 
@@ -224,7 +236,7 @@ fn prepare_run(here: String, w: String) List[String]!:
 				"-c",
 				"cd \"$0\" && cargo build --release --locked -q && cp target/release/web-bench-rust server",
 				"{w}/rust"
-			]
+			],
 		)
 		_ := try must("cargo build", ran)
 		names = ["ms", "go", "rust"]
@@ -261,9 +273,11 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 		capture(
 			"sh",
 			[
-				"-c", "head -c 8388608 /dev/urandom > \"$0/data/big\"", w.clone()
-			]
-		)
+				"-c",
+				"head -c 8388608 /dev/urandom > \"$0/data/big\"",
+				w.clone(),
+			],
+		),
 	)
 	_text := try must(
 		"text",
@@ -272,9 +286,9 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 			[
 				"-c",
 				"yes 'the quick brown fox jumps over the lazy dog 0123456789' | head -c 8388608 > \"$0/data/text\"",
-				w.clone()
-			]
-		)
+				w.clone(),
+			],
+		),
 	)
 	try build_go("{w}/go", "{w}/go/fetch")
 	try build_ms("{w}/ms", "{w}/ms/fetch")
@@ -282,13 +296,18 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 	p := plan(w.clone())
 	var server = try background(
 		pinned(
-			p.server_cpus.clone(), ["{w}/go/fetch", "serve", "18950", "{w}/data"]
+			p.server_cpus.clone(),
+			["{w}/go/fetch", "serve", "18950", "{w}/data"],
 		),
-		"/dev/null"
+		"/dev/null",
 	)
 	_ := sleep(milliseconds(1000)).wait()
 	fetches := [
-		["small", "1"], ["small", "8"], ["small", "64"], ["big", "1"], ["big", "8"]
+		["small", "1"],
+		["small", "8"],
+		["small", "64"],
+		["big", "1"],
+		["big", "8"],
 	]
 
 	for row in fetches:
@@ -315,15 +334,20 @@ fn fetch_all(here: String, seconds: Int) Unit!:
 				pinned(
 					p.load_cpus.clone(),
 					[
-						"{w}/go/fetch", "get", url.clone(), "1", "{seconds}"
-					]
+						"{w}/go/fetch",
+						"get",
+						url.clone(),
+						"1",
+						"{seconds}",
+					],
 				)
 			).stdout
 		)
 		ms := tail(
 			raised(
 				pinned(
-					p.load_cpus.clone(), ["{w}/ms/fetch", url.clone(), "1", "{seconds}"]
+					p.load_cpus.clone(),
+					["{w}/ms/fetch", url.clone(), "1", "{seconds}"],
 				)
 			).stdout
 		)

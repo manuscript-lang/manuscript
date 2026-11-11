@@ -95,26 +95,31 @@ fn run(work: String, n: Int) Result[String, Error]:
 		try copy("{source}/solutions/rust/main.rs.ref", "{dir}/rs/main.rs")
 
 		_mod := try must(
-			"go mod init", run_in("{dir}/go", env("GO", "go"), ["mod", "init", "x"])
+			"go mod init",
+			run_in("{dir}/go", env("GO", "go"), ["mod", "init", "x"]),
 		)
 		_go := try must(
 			"go build",
 			run_in(
-				"{dir}/go", env("GO", "go"),
-				["build", "-buildvcs=false", "-o", "app", "."]
-			)
+				"{dir}/go",
+				env("GO", "go"),
+				["build", "-buildvcs=false", "-o", "app", "."],
+			),
 		)
 		_rs := try must(
 			"rustc",
 			capture(
-				env("RUSTC", "rustc"), ["-O", "-o", "{dir}/rs/app", "{dir}/rs/main.rs"]
-			)
+				env("RUSTC", "rustc"),
+				["-O", "-o", "{dir}/rs/app", "{dir}/rs/main.rs"],
+			),
 		)
 		_ms := try must(
 			"ms build",
 			run_in(
-				"{dir}/ms", ms_binary(), ["build", "ms.toml", "-o", "app"]
-			)
+				"{dir}/ms",
+				ms_binary(),
+				["build", "ms.toml", "-o", "app"],
+			),
 		)
 		input := try largest_input("{source}/hidden/cases.json")
 		measured := try measure(n, name, fn v: sample("{dir}/{v}/app", [], input))

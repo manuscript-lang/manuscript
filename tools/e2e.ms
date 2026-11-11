@@ -97,14 +97,18 @@ fn project_passes(ctx: Context, dir: String) Ran:
 		ran := exec(
 			ctx.ms,
 			[
-				"test", "conformance_test.ms", "--build-type", ctx.build_type.clone()
-			]
+				"test",
+				"conformance_test.ms",
+				"--build-type",
+				ctx.build_type.clone(),
+			],
 		)
 		change_directory(back(dir)).get()
 		return ran
 
 	if access("{dir}/ms.toml", 0).is_ok(): return exec(
-		ctx.ms, ["check", "{dir}/ms.toml"]
+		ctx.ms,
+		["check", "{dir}/ms.toml"],
 	)
 
 	checked := exec(ctx.ms, ["check", "{dir}/main.ms"])
@@ -166,8 +170,11 @@ fn check_test_fixture(ctx: Context, case_path: String) List[String]:
 				exec(
 					ctx.ms,
 					[
-						"test", case_path.clone(), "--build-type", build
-					]
+						"test",
+						case_path.clone(),
+						"--build-type",
+						build,
+					],
 				).code == 0
 			):
 				failures.append("FAIL {case_path}: listed as failing but passes")
@@ -177,9 +184,14 @@ fn check_test_fixture(ctx: Context, case_path: String) List[String]:
 		listing := exec(
 			ctx.ms,
 			[
-				"test", case_path.clone(), "--build-type", build.clone(), "--list",
-				"--match", pattern.clone()
-			]
+				"test",
+				case_path.clone(),
+				"--build-type",
+				build.clone(),
+				"--list",
+				"--match",
+				pattern.clone(),
+			],
 		)
 
 		if listing.code != 0:
@@ -191,9 +203,13 @@ fn check_test_fixture(ctx: Context, case_path: String) List[String]:
 		rest := exec(
 			ctx.ms,
 			[
-				"test", case_path.clone(), "--build-type", build.clone(), "--exclude",
-				pattern.clone()
-			]
+				"test",
+				case_path.clone(),
+				"--build-type",
+				build.clone(),
+				"--exclude",
+				pattern.clone(),
+			],
 		)
 		if rest.code != 0:
 			failures.append("FAIL {case_path}\n{excerpt(rest.output)}")
@@ -201,9 +217,13 @@ fn check_test_fixture(ctx: Context, case_path: String) List[String]:
 			exec(
 				ctx.ms,
 				[
-					"test", case_path.clone(), "--build-type", build.clone(), "--match",
-					pattern.clone()
-				]
+					"test",
+					case_path.clone(),
+					"--build-type",
+					build.clone(),
+					"--match",
+					pattern.clone(),
+				],
 			).code == 0
 		):
 			failures.append(
@@ -237,7 +257,9 @@ fn main() Int:
 	// executable that is running (`make e2e` and CI build it before they start the
 	// tool).
 	ctx := Context(
-		"{root}/target/debug/ms{exe()}", build_type.clone(), read_expected(expect_files)
+		"{root}/target/debug/ms{exe()}",
+		build_type.clone(),
+		read_expected(expect_files),
 	)
 	var fixtures = List[String]()
 	var skipped = 0

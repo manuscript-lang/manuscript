@@ -71,7 +71,9 @@ export fn parse(text: String) List[PemBlock]!:
 
 			blocks.append(
 				PemBlock(
-					label: label.clone(), headers: headers.clone(), data: data.get()
+					label: label.clone(),
+					headers: headers.clone(),
+					data: data.get(),
 				)
 			)
 			open = false

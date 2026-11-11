@@ -10,21 +10,31 @@ test "text conversions and quoting":
 	parse_bool("x") | try expect_equal(none)
 	quote("a\"b\n") | try expect_equal("\"a\\\"b\\n\"")
 	quote_ascii("é🙂") | try expect_equal("\"\\u\{e9\}\\u\{1f642\}\"")
-	unquote("\"a\\tb\\u\{e9\}\"") | try expect_ok | try expect_equal("a\tbé")
-	unquote("abc") | try expect_error | try expect_equal(
-		Error("string: invalid input", kind: "EINVAL")
+	(unquote("\"a\\tb\\u\{e9\}\"") | try expect_ok | try expect_equal("a\tbé"))
+	(
+		unquote("abc") | try expect_error | try expect_equal(
+			Error("string: invalid input", kind: "EINVAL")
+		)
 	)
-	unquote("\"a\"b\"") | try expect_error | try expect_equal(
-		Error("string: invalid input", kind: "EINVAL")
+	(
+		unquote("\"a\"b\"") | try expect_error | try expect_equal(
+			Error("string: invalid input", kind: "EINVAL")
+		)
 	)
-	unquote("\"\\q\"") | try expect_error | try expect_equal(
-		Error("string: invalid input", kind: "EINVAL")
+	(
+		unquote("\"\\q\"") | try expect_error | try expect_equal(
+			Error("string: invalid input", kind: "EINVAL")
+		)
 	)
-	unquote("\"\\u\{d800\}\"") | try expect_error | try expect_equal(
-		Error("string: invalid input", kind: "EINVAL")
+	(
+		unquote("\"\\u\{d800\}\"") | try expect_error | try expect_equal(
+			Error("string: invalid input", kind: "EINVAL")
+		)
 	)
-	unquote(quote("tab\there \"q\" \\ é🙂\u{1}")) | try expect_ok | try expect_equal(
-		"tab\there \"q\" \\ é🙂\u{1}"
+	(
+		unquote(
+			quote("tab\there \"q\" \\ é🙂\u{1}")
+		) | try expect_ok | try expect_equal("tab\there \"q\" \\ é🙂\u{1}")
 	)
 
 test "parse_int radix 0 reads a prefix and others reject it":
@@ -34,7 +44,8 @@ test "parse_int radix 0 reads a prefix and others reject it":
 	try expect_equal(try parse_int("-ff", 16), -255)
 	try expect_equal(try parse_int("+ff", 16), 255)
 	try expect_equal(
-		try parse_int("-9223372036854775808", 10), -9223372036854775807 - 1
+		try parse_int("-9223372036854775808", 10),
+		-9223372036854775807 - 1,
 	)
 	try expect_equal(parse_int(text, 16).is_error(), true)
 	try expect_equal(parse_int(text, 10).is_error(), true)
@@ -45,17 +56,17 @@ test "parse_int radix 0 reads a prefix and others reject it":
 
 test "text quoting escapes interpolation braces and literal controls":
 	quote("\{x\}") | try expect_equal("\"\\\{x\\\}\"")
-	unquote("\"\\\{x\\\}\"") | try expect_ok | try expect_equal("\{x\}")
+	(unquote("\"\\\{x\\\}\"") | try expect_ok | try expect_equal("\{x\}"))
 	quote("\}") | try expect_equal("\"\\\}\"")
-	unquote("\"\\\}\"") | try expect_ok | try expect_equal("\}")
+	(unquote("\"\\\}\"") | try expect_ok | try expect_equal("\}"))
 	quote("\\u\{41\}") | try expect_equal("\"\\\\u\\\{41\\\}\"")
-	unquote("\"\\\\u\\\{41\\\}\"") | try expect_ok | try expect_equal("\\u\{41\}")
+	(unquote("\"\\\\u\\\{41\\\}\"") | try expect_ok | try expect_equal("\\u\{41\}"))
 
 	for scalar in [0, 31, 127, 128, 133, 159, 8232, 8233, 8234, 8238, 8294, 8297]:
 		text := try from_scalars([scalar])
 		expected := "\"\\u\{" + scalar.to_string_radix(16) + "\}\""
 		quote(text) | try expect_equal(expected)
-		unquote(quote(text)) | try expect_ok | try expect_equal(text)
+		(unquote(quote(text)) | try expect_ok | try expect_equal(text))
 
 test "text Unicode escapes reject signs nonhex digits and excess width":
 	for text in [
@@ -64,25 +75,39 @@ test "text Unicode escapes reject signs nonhex digits and excess width":
 		"\"\\u\{00000041\}\"", "\"\\u\{g\}\"", "\"\\u\{d800\}\"", "\"\\u\{110000\}\"",
 		"\"\\u\{ffffffffffffffff\}\""
 	]:
-		unquote(text) | try expect_error | try expect_equal(
-			Error("string: invalid input", kind: "EINVAL")
+		(
+			unquote(text)
+			| try expect_error
+			| try expect_equal(
+				Error("string: invalid input", kind: "EINVAL")
+			)
 		)
 
 test "text Unicode escapes preserve scalar boundaries and leading zeros":
-	unquote("\"\\u\{000000\}\"") | try expect_ok | try expect_equal(
-		try from_scalars([0])
+	(
+		unquote("\"\\u\{000000\}\"")
+		| try expect_ok
+		| try expect_equal(try from_scalars([0]))
 	)
-	unquote("\"\\u\{000041\}\"") | try expect_ok | try expect_equal(
-		try from_scalars([65])
+	(
+		unquote("\"\\u\{000041\}\"") | try expect_ok | try expect_equal(
+			try from_scalars([65])
+		)
 	)
-	unquote("\"\\u\{d7ff\}\"") | try expect_ok | try expect_equal(
-		try from_scalars([55295])
+	(
+		unquote("\"\\u\{d7ff\}\"") | try expect_ok | try expect_equal(
+			try from_scalars([55295])
+		)
 	)
-	unquote("\"\\u\{E000\}\"") | try expect_ok | try expect_equal(
-		try from_scalars([57344])
+	(
+		unquote("\"\\u\{E000\}\"") | try expect_ok | try expect_equal(
+			try from_scalars([57344])
+		)
 	)
-	unquote("\"\\u\{10FFFF\}\"") | try expect_ok | try expect_equal(
-		try from_scalars([1114111])
+	(
+		unquote("\"\\u\{10FFFF\}\"") | try expect_ok | try expect_equal(
+			try from_scalars([1114111])
+		)
 	)
 
 test "text quoting round trips scalar and escape neighbors":
@@ -91,9 +116,13 @@ test "text quoting round trips scalar and escape neighbors":
 		8297, 55295, 57344, 65535, 65536, 1114111
 	]:
 		text := "prefix " + (try from_scalars([scalar])) + " suffix"
-		unquote(quote(text)) | try expect_ok | try expect_equal(text)
+		(
+			unquote(quote(text))
+			| try expect_ok
+			| try expect_equal(text)
+		)
 
 		ascii := quote_ascii(text)
 		for value in ascii.scalar_values():
 			(value < 128) | try expect_equal(true)
-		unquote(ascii) | try expect_ok | try expect_equal(text)
+		(unquote(ascii) | try expect_ok | try expect_equal(text))

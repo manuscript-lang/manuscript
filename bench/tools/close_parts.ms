@@ -58,7 +58,9 @@ fn main() Int:
 		lowers := (
 			ok_status(base, ["emit", "ms.toml", "-o", "{w}/a.mir"], "{w}/p")
 			and ok_status(
-				head, ["emit", "ms.toml", "-o", "{w}/b.mir"], "{w}/p"
+				head,
+				["emit", "ms.toml", "-o", "{w}/b.mir"],
+				"{w}/p",
 			)
 		)
 

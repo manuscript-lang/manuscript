@@ -169,10 +169,15 @@ impl HttpClient:
 		headers: HttpHeaders = headers(),
 		body: Writable = "",
 		max_response_bytes: Int?,
-		timeout: Duration?
+		timeout: Duration?,
 	) StreamingResponse!:
 		raw := try self.request_raw(
-			method, url, headers, body.as_bytes(), max_response_bytes, timeout
+			method,
+			url,
+			headers,
+			body.as_bytes(),
+			max_response_bytes,
+			timeout,
 		)
 		return ok(response(raw))
 
@@ -184,10 +189,16 @@ impl HttpClient:
 		headers: HttpHeaders,
 		body: Bytes,
 		max_response_bytes: Int? = none,
-		timeout: Duration? = none
+		timeout: Duration? = none,
 	) RawResponse!:
 		return msstd_http_client_request_bytes(
-			self.native, method.text(), url, headers, body, max_response_bytes, timeout
+			self.native,
+			method.text(),
+			url,
+			headers,
+			body,
+			max_response_bytes,
+			timeout,
 		)
 
 	// Reads `body` to its end, then sends it as the request body. The upload is
@@ -199,7 +210,7 @@ impl HttpClient:
 		headers: HttpHeaders,
 		body: ReadStream[Bytes],
 		max_response_bytes: Int? = none,
-		timeout: Duration? = none
+		timeout: Duration? = none,
 	) StreamingResponse!:
 		data := try read_all(body, none)
 		return self.request(method, url, headers, data, max_response_bytes, timeout)
@@ -230,8 +241,12 @@ export type HttpClientOptions:
 	// TLS trust and client-certificate settings for `https` requests. The host name is
 	// taken from each URL, so `server_name` is ignored.
 	tls: TlsOptions = TlsOptions(
-		server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
-		alpn: [], require_client_certificate: false
+		server_name: "",
+		roots_pem: "",
+		certificate_pem: "",
+		private_key_pem: "",
+		alpn: [],
+		require_client_certificate: false,
 	)
 
 // One streaming server exchange. Read or write incrementally and close when done.
@@ -276,7 +291,7 @@ export interface HttpExchange:
 	var fn upgrade(
 		allowed_origins: List[String] = [],
 		subprotocols: List[String] = [],
-		max_message_bytes: Int? = none
+		max_message_bytes: Int? = none,
 	) NativeWebSocket!
 	// Writes one chunk of the response body and flushes it.
 	// `send_headers` must come first, and writing beyond `max_response_bytes` returns an `Error` of kind `EIO`. A write on a HEAD request succeeds and drops the bytes, so a handler written for GET needs no HEAD case; statuses 204 and 304 cannot have a body and return EINVAL.
@@ -442,7 +457,8 @@ impl Source[Bytes] for ResponseSource:
 fn response(raw: RawResponse) StreamingResponse:
 	metadata := raw.metadata()
 	return StreamingResponse(
-		metadata: metadata, body: ReadStream[Bytes](ResponseSource(raw))
+		metadata: metadata,
+		body: ReadStream[Bytes](ResponseSource(raw)),
 	)
 
 // Reads the rest of the request body into one value. A body over `max_body_bytes` of
@@ -531,16 +547,22 @@ fn serve_buffered(
 ) Unit!:
 	body := try read_body(var exchange)
 	request := HttpRequest(
-		method: exchange.method(), path: exchange.path(), query: exchange.query(),
-		headers: exchange.headers(), body: body, protocol: exchange.protocol()
+		method: exchange.method(),
+		path: exchange.path(),
+		query: exchange.query(),
+		headers: exchange.headers(),
+		body: body,
+		protocol: exchange.protocol(),
 	)
 	return reply(var exchange, handler(request))
 
 // Switches the exchange's connection to a WebSocket; the rules of
 // `HttpExchange.upgrade` apply.
 export fn upgrade(
-	var exchange: HttpExchange, allowed_origins: List[String] = [],
-	subprotocols: List[String] = [], max_message_bytes: Int? = none
+	var exchange: HttpExchange,
+	allowed_origins: List[String] = [],
+	subprotocols: List[String] = [],
+	max_message_bytes: Int? = none,
 ) WebSocket!:
 	raw := try exchange.upgrade(allowed_origins, subprotocols, max_message_bytes)
 	return ok(web_socket_from(raw))

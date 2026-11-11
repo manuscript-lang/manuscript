@@ -47,9 +47,12 @@ fn parse_entry(line: String) Entry?:
 	if latency.length() < 1 or latency.length() > 9 or not all_digits(latency): return none
 
 	return Entry(
-		ts: ts.clone(), level: level.clone(), method: method.clone(),
-		path: path.clone(), status: status.parse_int().get(0),
-		latency: latency.parse_int().get(0)
+		ts: ts.clone(),
+		level: level.clone(),
+		method: method.clone(),
+		path: path.clone(),
+		status: status.parse_int().get(0),
+		latency: latency.parse_int().get(0),
 	)
 
 fn is_blank(line: String) Bool:

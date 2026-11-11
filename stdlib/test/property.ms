@@ -46,10 +46,12 @@ impl Source:
 
 		var z = self.state
 		z = wrapping_multiply(
-			bit_xor(z, shift_right_unsigned(z, 30)), -4658895280553007687
+			bit_xor(z, shift_right_unsigned(z, 30)),
+			-4658895280553007687,
 		)
 		z = wrapping_multiply(
-			bit_xor(z, shift_right_unsigned(z, 27)), -7723592293110705685
+			bit_xor(z, shift_right_unsigned(z, 27)),
+			-7723592293110705685,
 		)
 		return bit_xor(z, shift_right_unsigned(z, 31))
 
@@ -262,7 +264,7 @@ fn list_draw[T](gen: Gen[T], min_length: Int, max_length: Int, s: Source) Drawn[
 // `alphabet` must not be empty.
 export fn strings(
 	alphabet: String = "abcdefghijklmnopqrstuvwxyz0123456789 ",
-	max_length: Int = 20
+	max_length: Int = 20,
 ) Gen[String]:
 	var letters = List[String]()
 	letters.extend(alphabet.chars())
@@ -472,7 +474,13 @@ export fn check[T](
 		executed += 1
 		if message := outcome.failure:
 			return report(
-				name, gen, property, outcome.source, message, case_seed, executed
+				name,
+				gen,
+				property,
+				outcome.source,
+				message,
+				case_seed,
+				executed,
 			)
 
 	return ok(unit)

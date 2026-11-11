@@ -98,8 +98,11 @@ export fn parse(text: String) Version!:
 
 	return ok(
 		Version(
-			major: values[0], minor: values[1], patch: values[2],
-			prerelease: prerelease, build: build
+			major: values[0],
+			minor: values[1],
+			patch: values[2],
+			prerelease: prerelease,
+			build: build,
 		)
 	)
 

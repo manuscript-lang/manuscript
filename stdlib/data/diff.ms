@@ -87,7 +87,7 @@ Example: `close_matches("appel", ["ape", "apple", "peach"], CloseMatchesOptions(
 export fn close_matches(
 	word: String,
 	candidates: List[String],
-	options: CloseMatchesOptions = CloseMatchesOptions()
+	options: CloseMatchesOptions = CloseMatchesOptions(),
 ) List[String]:
 	limit := options.limit
 	cutoff := options.cutoff
@@ -149,7 +149,10 @@ fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
 		if a < old.length() and b < new.length() and old[a] == new[b]:
 			steps.append(
 				Step(
-					kind: 0, text: old[a].clone(), old_at: a + shift, new_at: b + shift
+					kind: 0,
+					text: old[a].clone(),
+					old_at: a + shift,
+					new_at: b + shift,
 				)
 			)
 			a += 1
@@ -160,14 +163,20 @@ fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
 		):
 			steps.append(
 				Step(
-					kind: 1, text: old[a].clone(), old_at: a + shift, new_at: b + shift
+					kind: 1,
+					text: old[a].clone(),
+					old_at: a + shift,
+					new_at: b + shift,
 				)
 			)
 			a += 1
 		else:
 			steps.append(
 				Step(
-					kind: 2, text: new[b].clone(), old_at: a + shift, new_at: b + shift
+					kind: 2,
+					text: new[b].clone(),
+					old_at: a + shift,
+					new_at: b + shift,
 				)
 			)
 			b += 1
@@ -232,7 +241,7 @@ Example: `unified_diff(["a", "b"], ["a", "c"], UnifiedDiffOptions(context: 1))` 
 export fn unified_diff(
 	old: List[String],
 	new: List[String],
-	options: UnifiedDiffOptions = UnifiedDiffOptions()
+	options: UnifiedDiffOptions = UnifiedDiffOptions(),
 ) String:
 	context := options.context
 	old_name := options.old_name

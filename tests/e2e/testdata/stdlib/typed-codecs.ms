@@ -32,19 +32,23 @@ test "typed SHA selectors match their algorithms and retain bound operations":
 	key := "key".to_bytes()
 	for algorithm in [HashAlgorithm.Sha256, HashAlgorithm.Sha384, HashAlgorithm.Sha512]:
 		try expect_equal(
-			(try algorithm.hmac(key, data)).length(), (algorithm.digest(data).length())
+			(try algorithm.hmac(key, data)).length(),
+			(algorithm.digest(data).length()),
 		)
 
 	hmac_operation := HashAlgorithm.Sha512.hmac
 	try expect_equal(
-		(try hmac_operation(key, data)), (try HashAlgorithm.Sha512.hmac(key, data))
+		(try hmac_operation(key, data)),
+		(try HashAlgorithm.Sha512.hmac(key, data)),
 	)
 
 test "typed compression preserves bytes limits and errors":
 	data := "typed codecs typed codecs".to_bytes()
 
 	for format in [
-		CompressionFormat.Gzip, CompressionFormat.Zlib, CompressionFormat.Deflate
+		CompressionFormat.Gzip,
+		CompressionFormat.Zlib,
+		CompressionFormat.Deflate,
 	]:
 		for level in [0, 9]:
 			encoded := try compress(data, format, CompressOptions(level: level))
@@ -59,14 +63,17 @@ test "typed compression preserves bytes limits and errors":
 		invalid: Bytes! := error(Error("compression: invalid input", kind: "EINVAL"))
 		try expect_equal(compress(data, format, CompressOptions(level: -1)), invalid)
 		try expect_equal(
-			compress(data, format, CompressOptions(max_bytes: -1)), invalid
+			compress(data, format, CompressOptions(max_bytes: -1)),
+			invalid,
 		)
 
 		zero: Bytes! := error(Error("compression: limit exceeded", kind: "EOVERFLOW"))
 		try expect_equal(compress(data, format, CompressOptions(max_bytes: 0)), zero)
 
 	encoded := try compress(
-		data, CompressionFormat.Gzip, CompressOptions(max_bytes: 1024)
+		data,
+		CompressionFormat.Gzip,
+		CompressOptions(max_bytes: 1024),
 	)
 	decoder := decompress
 	try expect_equal((try decoder(encoded, CompressionFormat.Gzip)), data)
@@ -86,11 +93,13 @@ test "typed archives retain entry limits and validation":
 			Error("archive: limit exceeded", kind: "EOVERFLOW")
 		)
 		try expect_equal(
-			unpack(encoded, format, ArchiveOptions(max_entries: 0)), limited
+			unpack(encoded, format, ArchiveOptions(max_entries: 0)),
+			limited,
 		)
 
 		invalid: Bytes! := error(Error("archive: invalid input", kind: "EINVAL"))
 		try expect_equal(
-			pack([ArchiveEntry("../escape", "".to_bytes(), false)], format), invalid
+			pack([ArchiveEntry("../escape", "".to_bytes(), false)], format),
+			invalid,
 		)
 		try expect_equal(pack(entries, format, -1), invalid)

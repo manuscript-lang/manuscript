@@ -48,7 +48,10 @@ fn scalar_omitted() Unit:
 
 fn heap_omitted() Unit:
 	value := NamedFull(
-		NamedToken(4, "first"), NamedToken(5, "second"), NamedToken(6, "third"), 8
+		NamedToken(4, "first"),
+		NamedToken(5, "second"),
+		NamedToken(6, "third"),
+		8,
 	)
 
 	code := match value:

@@ -95,7 +95,7 @@ test "interface values converted from borrowed values are views":
 	other := Cause(2, "another heap allocated text that is long")
 	h := Holder(
 		Cause(3, "held heap text that is long enough"),
-		Cause(4, "held cause heap text long")
+		Cause(4, "held cause heap text long"),
 	)
 	kept := owned_copy(c)
 	one := first_error(c)
@@ -108,31 +108,46 @@ test "interface values converted from borrowed values are views":
 	)
 	relay(c).message() | try expect_equal("cause 1: a heap allocated text that is long")
 	held(c) | try expect_equal("cause 1: a heap allocated text that is long")
-	through(c).message() | try expect_equal(
-		"cause 1: a heap allocated text that is long"
+	(
+		through(c).message() | try expect_equal(
+			"cause 1: a heap allocated text that is long"
+		)
 	)
 	c.code = 5
-	cond(c, other, true).message() | try expect_equal(
-		"cause 5: a heap allocated text that is long"
+	(
+		cond(c, other, true).message()
+		| try expect_equal("cause 5: a heap allocated text that is long")
 	)
-	cond(c, other, false).message() | try expect_equal(
-		"cause 2: another heap allocated text that is long"
+	(
+		cond(c, other, false).message() | try expect_equal(
+			"cause 2: another heap allocated text that is long"
+		)
 	)
-	looped(c).message() | try expect_equal(
-		"cause 5: a heap allocated text that is long"
+	(
+		looped(c).message() | try expect_equal(
+			"cause 5: a heap allocated text that is long"
+		)
 	)
-	fresh(c, false).message() | try expect_equal(
-		"cause 5: a heap allocated text that is long"
+	(
+		fresh(c, false).message() | try expect_equal(
+			"cause 5: a heap allocated text that is long"
+		)
 	)
-	fresh(c, true).message() | try expect_equal(
-		"cause 9: fresh and also heap allocated text"
+	(
+		fresh(c, true).message() | try expect_equal(
+			"cause 9: fresh and also heap allocated text"
+		)
 	)
-	maybe(c, true).get().message() | try expect_equal(
-		"cause 5: a heap allocated text that is long"
+	(
+		maybe(c, true).get().message() | try expect_equal(
+			"cause 5: a heap allocated text that is long"
+		)
 	)
 	maybe(c, false).is_some() | try expect_equal(false)
-	either(h, true).message() | try expect_equal(
-		"cause 3: held heap text that is long enough"
+	(
+		either(h, true).message() | try expect_equal(
+			"cause 3: held heap text that is long enough"
+		)
 	)
 	either(h, false).message() | try expect_equal("cause 4: held cause heap text long")
 	kept[0].message() | try expect_equal("cause 1: a heap allocated text that is long")
@@ -143,20 +158,28 @@ test "interface values converted from borrowed values are views":
 			"cause 5: a heap allocated text that is long"
 		)
 	)
-	lend_then_relay(c).message() | try expect_equal(
-		"cause 5: a heap allocated text that is long"
+	(
+		lend_then_relay(c).message() | try expect_equal(
+			"cause 5: a heap allocated text that is long"
+		)
 	)
-	lend_id(c).message() | try expect_equal(
-		"cause 5: a heap allocated text that is long"
+	(
+		lend_id(c).message() | try expect_equal(
+			"cause 5: a heap allocated text that is long"
+		)
 	)
-	rebound(c).message() | try expect_equal(
-		"cause 5: a heap allocated text that is long"
+	(
+		rebound(c).message() | try expect_equal(
+			"cause 5: a heap allocated text that is long"
+		)
 	)
 	(
 		rebound_result(c).err().message() | try expect_equal(
 			"cause 5: a heap allocated text that is long"
 		)
 	)
-	rebound_alias_relay(c).message() | try expect_equal(
-		"cause 5: a heap allocated text that is long"
+	(
+		rebound_alias_relay(c).message() | try expect_equal(
+			"cause 5: a heap allocated text that is long"
+		)
 	)

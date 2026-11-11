@@ -52,7 +52,7 @@ fn archive_format_name(format: ArchiveFormat) String:
 export fn pack(
 	entries: List[ArchiveEntry],
 	format: ArchiveFormat,
-	max_bytes: Int? = none
+	max_bytes: Int? = none,
 ) Bytes!:
 	return msstd_archive_pack(entries, archive_format_name(format), max_bytes)
 
@@ -60,11 +60,12 @@ export fn pack(
 export fn unpack(
 	data: Bytes,
 	format: ArchiveFormat,
-	options: ArchiveOptions = ArchiveOptions()
+	options: ArchiveOptions = ArchiveOptions(),
 ) List[ArchiveEntry]!:
 	limits := ArchiveLimits(
-		max_entries: options.max_entries, max_entry_bytes: options.max_entry_bytes,
-		max_total_bytes: options.max_bytes
+		max_entries: options.max_entries,
+		max_entry_bytes: options.max_entry_bytes,
+		max_total_bytes: options.max_bytes,
 	)
 	return msstd_archive_unpack(data, archive_format_name(format), limits)
 
@@ -94,10 +95,13 @@ export type CompressOptions:
 export fn compress(
 	data: Bytes,
 	format: CompressionFormat,
-	options: CompressOptions = CompressOptions()
+	options: CompressOptions = CompressOptions(),
 ) Bytes!:
 	return msstd_compress_compress(
-		data, compression_format_name(format), options.level, options.max_bytes
+		data,
+		compression_format_name(format),
+		options.level,
+		options.max_bytes,
 	)
 
 // Decompresses `format`, stopping with EOVERFLOW when `max_bytes` of output is
@@ -105,7 +109,7 @@ export fn compress(
 export fn decompress(
 	data: Bytes,
 	format: CompressionFormat,
-	max_bytes: Int? = none
+	max_bytes: Int? = none,
 ) Bytes!:
 	return msstd_compress_decompress(data, compression_format_name(format), max_bytes)
 
@@ -141,7 +145,7 @@ impl Transform[Bytes, Bytes] for Compressing:
 export fn compressed(
 	input: ReadStream[Bytes],
 	format: CompressionFormat,
-	level: Int = 6
+	level: Int = 6,
 ) ReadStream[Bytes]:
 	made := msstd_compress_encoder_new(compression_format_name(format), level)
 	var step = Compressing(encoder: none, failure: none)
@@ -181,7 +185,7 @@ impl Transform[Bytes, Bytes] for Decompressing:
 export fn decompressed(
 	input: ReadStream[Bytes],
 	format: CompressionFormat,
-	max_bytes: Int? = none
+	max_bytes: Int? = none,
 ) ReadStream[Bytes]:
 	made := msstd_compress_decoder_new(compression_format_name(format), max_bytes)
 	var step = Decompressing(decoder: none, failure: none)
@@ -409,13 +413,15 @@ impl TarEntries:
 			if most := self.options.max_entries:
 				if self.count > most: return error(
 					Error(
-						"archive: limit exceeded", kind: "EOVERFLOW"
+						"archive: limit exceeded",
+						kind: "EOVERFLOW",
 					)
 				)
 			if most := self.options.max_bytes:
 				if self.total > most: return error(
 					Error(
-						"archive: limit exceeded", kind: "EOVERFLOW"
+						"archive: limit exceeded",
+						kind: "EOVERFLOW",
 					)
 				)
 
@@ -444,7 +450,7 @@ impl Transform[Bytes, ArchiveEntry] for TarEntries:
 // `input`.
 export fn tar_entries(
 	input: ReadStream[Bytes],
-	options: ArchiveOptions = ArchiveOptions()
+	options: ArchiveOptions = ArchiveOptions(),
 ) ReadStream[ArchiveEntry]:
 	var zeros = BytesBuilder()
 	for index in 0..1024:
@@ -452,8 +458,14 @@ export fn tar_entries(
 	return through[Bytes, ArchiveEntry](
 		input,
 		TarEntries(
-			options: options, buffer: join([]), count: 0, total: 0, done: false,
-			end: zeros.build(), names: Set[String](), files: Set[String](),
-			parents: Set[String]()
-		)
+			options: options,
+			buffer: join([]),
+			count: 0,
+			total: 0,
+			done: false,
+			end: zeros.build(),
+			names: Set[String](),
+			files: Set[String](),
+			parents: Set[String](),
+		),
 	)

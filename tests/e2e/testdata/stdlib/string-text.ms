@@ -78,7 +78,7 @@ test "char-set trims and find_char agree with a scalar walk across scan windows"
 				try expect_equal(text.trim_end_chars("é"), text.take(expected_end))
 				try expect_equal(
 					text.find_char(fn c: c != "é"),
-					if expected_start == text.length(): none else: expected_start
+					if expected_start == text.length(): none else: expected_start,
 				)
 
 				if expected_start < expected_end:
@@ -86,7 +86,7 @@ test "char-set trims and find_char agree with a scalar walk across scan windows"
 						text.trim_chars("é"),
 						text.take(expected_end).drop(
 							expected_start
-						)
+						),
 					)
 				else:
 					try expect_equal(text.trim_chars("é"), "")
@@ -125,5 +125,6 @@ test "slice bounds from the end agree with the same bounds from the start on non
 				try expect_true(text.slice(start, end).is_error())
 			else:
 				try expect_equal(
-					text.slice(start, end).get(""), text.slice(a, b).get("")
+					text.slice(start, end).get(""),
+					text.slice(a, b).get(""),
 				)

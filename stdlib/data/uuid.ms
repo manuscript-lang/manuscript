@@ -51,7 +51,8 @@ export fn uuid_v7() String!:
 	for place in 0..6:
 		raw.append(
 			bit_and(
-				shift_right_unsigned(millis, 8 * (5 - place)), 255
+				shift_right_unsigned(millis, 8 * (5 - place)),
+				255,
 			).to_uint8().get(0)
 		)
 	raw.append_bytes(noise)

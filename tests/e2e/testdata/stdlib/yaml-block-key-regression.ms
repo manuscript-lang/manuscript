@@ -20,15 +20,19 @@ test "YAML quoted block keys preserve indicator prefixes":
 	for key in ["]key", "\}key", ",key", "@key", "`key", "|key", ">key"]:
 		var values = Map[String, YamlValue]()
 		values.add(key.clone(), YamlValue.StringValue("value"))
-		parse("\"{key}\": value") | try expect_ok | try expect_equal(
-			YamlValue.ObjectValue(values)
+		(
+			parse("\"{key}\": value") | try expect_ok | try expect_equal(
+				YamlValue.ObjectValue(values)
+			)
 		)
 
 test "YAML a question mark followed by a letter is a plain block key":
 	var values = Map[String, YamlValue]()
 	values.add("?key", YamlValue.StringValue("value"))
-	parse("?key: value") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(values)
+	(
+		parse("?key: value") | try expect_ok | try expect_equal(
+			YamlValue.ObjectValue(values)
+		)
 	)
 
 test "YAML explicit and complex mapping keys remain unsupported":

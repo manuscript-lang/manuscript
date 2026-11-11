@@ -91,10 +91,11 @@ test "json layout matches json.dumps":
 	doc := parse("[\{\"a\": \"é\\n\", \"b\": [], \"c\": \{\}\}, 1]").get(JsonValue.Null)
 	try expect_equal(
 		dumps(doc, 1),
-		"[\n \{\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": \{\}\n \},\n 1\n]"
+		"[\n \{\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": \{\}\n \},\n 1\n]",
 	)
 	try expect_equal(
-		dumps(doc, 0), "[\{\"a\": \"\\u00e9\\n\", \"b\": [], \"c\": \{\}\}, 1]"
+		dumps(doc, 0),
+		"[\{\"a\": \"\\u00e9\\n\", \"b\": [], \"c\": \{\}\}, 1]",
 	)
 
 test "number formats match CPython":

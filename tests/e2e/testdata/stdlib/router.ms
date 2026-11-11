@@ -29,7 +29,11 @@ fn get(path: String) HttpRequest:
 
 fn request(method: HttpMethod, path: String) HttpRequest:
 	return HttpRequest(
-		method: method, path: path, query: "", headers: headers(), body: "".to_bytes()
+		method: method,
+		path: path,
+		query: "",
+		headers: headers(),
+		body: "".to_bytes(),
 	)
 
 fn say(label: String) fn(var HttpExchange, RouteParams) Unit!:
@@ -112,7 +116,9 @@ test "a streaming GET route answers HEAD, dropping the body writes":
 	server := try serve("127.0.0.1:0", r.handler(), HttpServerOptions())
 	client := try http_client(HttpClientOptions())
 	var over_socket = try client.request(
-		HttpMethod.Head, "http://{server.address()}/s", headers()
+		HttpMethod.Head,
+		"http://{server.address()}/s",
+		headers(),
 	)
 	try expect_equal(over_socket.metadata.status, 200)
 
@@ -238,8 +244,11 @@ test "in-process reads retain the unread body after a bounded chunk":
 
 	response := try r.call(
 		HttpRequest(
-			method: HttpMethod.Post, path: "/", query: "", headers: headers(),
-			body: "abc".to_bytes()
+			method: HttpMethod.Post,
+			path: "/",
+			query: "",
+			headers: headers(),
+			body: "abc".to_bytes(),
 		)
 	)
 	try expect_equal(body_of(response), "a|bc|true")
@@ -260,8 +269,11 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
 	for mode in ["default", "explicit"]:
 		response := try r.call(
 			HttpRequest(
-				method: HttpMethod.Post, path: "/{mode}", query: "", headers: headers(),
-				body: "x".repeat(65537).get("").to_bytes()
+				method: HttpMethod.Post,
+				path: "/{mode}",
+				query: "",
+				headers: headers(),
+				body: "x".repeat(65537).get("").to_bytes(),
 			)
 		)
 		try expect_equal(body_of(response), "65536|1|true")
@@ -292,8 +304,11 @@ test "in-process reads reject nonpositive sizes without consuming input":
 
 	response := try r.call(
 		HttpRequest(
-			method: HttpMethod.Post, path: "/", query: "", headers: headers(),
-			body: "abc".to_bytes()
+			method: HttpMethod.Post,
+			path: "/",
+			query: "",
+			headers: headers(),
+			body: "abc".to_bytes(),
 		)
 	)
 	try expect_equal(body_of(response), "a|bc|true")
@@ -303,7 +318,9 @@ test "the router serves over a socket":
 	server := try serve("127.0.0.1:0", handler, HttpServerOptions())
 	client := try http_client(HttpClientOptions())
 	var response = try client.request(
-		HttpMethod.Get, "http://{server.address()}/users/9", headers()
+		HttpMethod.Get,
+		"http://{server.address()}/users/9",
+		headers(),
 	)
 	try expect_equal(response.metadata.status, 200)
 
@@ -311,7 +328,9 @@ test "the router serves over a socket":
 	try expect_equal(body.decode_utf8().get(""), "9|-")
 
 	missing := try client.request(
-		HttpMethod.Delete, "http://{server.address()}/users", headers()
+		HttpMethod.Delete,
+		"http://{server.address()}/users",
+		headers(),
 	)
 	try expect_equal(missing.metadata.status, 405)
 

@@ -35,8 +35,9 @@ type LogRow:
 export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 	create_directory(dest, recursive: true).get()
 	copy(
-		"{root()}/templates/{lang.template}", dest,
-		CopyOptions(recursive: true, replace: true)
+		"{root()}/templates/{lang.template}",
+		dest,
+		CopyOptions(recursive: true, replace: true),
 	).get()
 
 	var n = 0
@@ -51,15 +52,17 @@ export fn make_workspace(ch: Challenge, lang: Lang, dest: String) String:
 	write_text("{dest}/TASK.md", ch.spec())
 
 	check := read_text("{root()}/check.sh.tmpl").replace(
-		"\{build\}", lang.build
+		"\{build\}",
+		lang.build,
 	).replace("\{run\}", lang.run)
 	write_text("{dest}/check.sh", check)
 	chmod("{dest}/check.sh", 493).get()
 	for ctx in lang.context:
 		if ctx.starts_with("@repo/"):
 			copy(
-				"{repo()}/{ctx.slice(6, ctx.length()).get("")}", "{dest}/docs",
-				CopyOptions(recursive: true, replace: true)
+				"{repo()}/{ctx.slice(6, ctx.length()).get("")}",
+				"{dest}/docs",
+				CopyOptions(recursive: true, replace: true),
 			).get()
 	return (
 		"Implement the program described in TASK.md in {lang.name}. "
@@ -96,7 +99,7 @@ export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
 	if built.code != 0:
 		tail := built.err.slice(
 			if built.err.length() > 500: built.err.length() - 500 else: 0,
-			built.err.length()
+			built.err.length(),
 		).get("")
 		return Grade(false, 0, cases.length(), false, tail, none, tokens, none)
 
@@ -112,6 +115,12 @@ export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
 			failed.append(c.name.clone())
 
 	return Grade(
-		true, passed, cases.length(), passed == cases.length(), none, failed.take(10),
-		tokens, none
+		true,
+		passed,
+		cases.length(),
+		passed == cases.length(),
+		none,
+		failed.take(10),
+		tokens,
+		none,
 	)

@@ -15,34 +15,51 @@ test "YAML long multiline flow retains every scalar":
 		expected.append(YamlValue.NumberValue(i.to_string()))
 
 	source.append("]")
-	parse(source.build()) | try expect_ok | try expect_equal(
-		YamlValue.ArrayValue(expected)
+	(
+		parse(source.build()) | try expect_ok | try expect_equal(
+			YamlValue.ArrayValue(expected)
+		)
 	)
 
 test "YAML flow scanner carries anchors and quoted markers across lines":
-	parse("[&one\n \"a # kept\", *one]") | try expect_ok | try expect_equal(
-		YamlValue.ArrayValue(
-			[
-				YamlValue.StringValue("a # kept"), YamlValue.StringValue("a # kept")
-			]
+	(
+		parse("[&one\n \"a # kept\", *one]")
+		| try expect_ok
+		| try expect_equal(
+			YamlValue.ArrayValue(
+				[
+					YamlValue.StringValue("a # kept"),
+					YamlValue.StringValue("a # kept"),
+				]
+			)
 		)
 	)
 
 test "YAML multiline quoted nodes keep escapes and doubled quotes":
-	parse("[\"a\\\n b\", 'it''s\n fine']") | try expect_ok | try expect_equal(
-		YamlValue.ArrayValue(
-			[
-				YamlValue.StringValue("ab"), YamlValue.StringValue("it's fine")
-			]
+	(
+		parse("[\"a\\\n b\", 'it''s\n fine']")
+		| try expect_ok
+		| try expect_equal(
+			YamlValue.ArrayValue(
+				[
+					YamlValue.StringValue("ab"),
+					YamlValue.StringValue("it's fine"),
+				]
+			)
 		)
 	)
 
 test "YAML flow comment offsets remain scalar based":
-	parse("[é, # ignored '\"[\n🙂, # ignored ]\n last]") | try expect_ok | try expect_equal(
-		YamlValue.ArrayValue(
-			[
-				YamlValue.StringValue("é"), YamlValue.StringValue("🙂"),
-				YamlValue.StringValue("last")
-			]
+	(
+		parse("[é, # ignored '\"[\n🙂, # ignored ]\n last]")
+		| try expect_ok
+		| try expect_equal(
+			YamlValue.ArrayValue(
+				[
+					YamlValue.StringValue("é"),
+					YamlValue.StringValue("🙂"),
+					YamlValue.StringValue("last"),
+				]
+			)
 		)
 	)

@@ -71,7 +71,8 @@ export fn parse_address(text: String) Address!:
 		)
 
 		name = name.slice(1, name.length() - 1).get("").replace("\\\"", "\"").replace(
-			"\\\\", "\\"
+			"\\\\",
+			"\\",
 		)
 
 	if not valid_address(address): return error(
@@ -197,7 +198,9 @@ export fn decode_words(text: String) String:
 		var decoded: String? = none
 		if index + 4 < fields.length() and fields[index + 4].starts_with("="):
 			decoded = decode_word(
-				fields[index + 1], fields[index + 2], fields[index + 3]
+				fields[index + 1],
+				fields[index + 2],
+				fields[index + 3],
 			)
 
 		if decoded.is_none():

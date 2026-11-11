@@ -536,7 +536,12 @@ fn loop_wrap(var p: Parser, body: List[Instr], mn: Int, mx: Int, greedy: Bool) L
 	out.append(Instr(op: OP_INC, a: cnt))
 	out.append(
 		Instr(
-			op: OP_LOOPCHK, a: mark, b: cnt, c: mn, d: 1 - (3 + hl + nb), e: 1
+			op: OP_LOOPCHK,
+			a: mark,
+			b: cnt,
+			c: mn,
+			d: 1 - (3 + hl + nb),
+			e: 1,
 		)
 	)
 	return out
@@ -677,9 +682,13 @@ fn parse_alt(var p: Parser) List[Instr]:
 
 fn compile_pattern(src: List[Int]) Parser:
 	var p = Parser(
-		src: src.clone(), prog: List[Instr](), sets: List[List[Bool]](),
-		group_regs: [0], group_names: [""], names: Map[String, Int](),
-		refnames: List[String]()
+		src: src.clone(),
+		prog: List[Instr](),
+		sets: List[List[Bool]](),
+		group_regs: [0],
+		group_names: [""],
+		names: Map[String, Int](),
+		refnames: List[String](),
 	)
 	n := src.length()
 
@@ -758,7 +767,7 @@ fn run(
 	var regs: List[Int],
 	start_pc: Int,
 	start_pos: Int,
-	full: Bool
+	full: Bool,
 ) Int:
 	n := subj.length()
 	var stk = List[Int]()

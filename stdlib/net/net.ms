@@ -151,7 +151,7 @@ fn connection(native: NativeConnection) Connection:
 	return Connection(
 		input: ReadStream[Bytes](ConnectionSource(native)),
 		output: WriteStream[Bytes](ConnectionSink(other)),
-		info: ConnectionInfo(local, peer, tls)
+		info: ConnectionInfo(local, peer, tls),
 	)
 
 // One datagram. Received, `address` is where it came from; written, where it goes.
@@ -184,7 +184,10 @@ impl Sink[Datagram] for DatagramSink:
 	// the network's resolver.
 	var fn write(value: Datagram) Unit!:
 		return msstd_net_datagram_send_bytes(
-			self.native, value.data, value.address, none
+			self.native,
+			value.data,
+			value.address,
+			none,
 		)
 
 	var fn flush() Unit!:
@@ -215,7 +218,8 @@ fn datagram_socket(native: NativeDatagramSocket) DatagramSocket:
 	other := msstd_net_datagram_share(native)
 	return DatagramSocket(
 		input: ReadStream[Datagram](DatagramSource(native)),
-		output: WriteStream[Datagram](DatagramSink(other)), address: address
+		output: WriteStream[Datagram](DatagramSink(other)),
+		address: address,
 	)
 
 // The runtime handle behind a `Listener`.
@@ -271,7 +275,8 @@ impl Network:
 		return ok(
 			datagram_socket(
 				try msstd_net_network_bind_datagram(
-					self.native, address
+					self.native,
+					address,
 				)
 			)
 		)
@@ -293,7 +298,7 @@ impl Network:
 	fn connect(
 		address: String,
 		tls: TlsOptions? = none,
-		timeout: Duration? = none
+		timeout: Duration? = none,
 	) Connection!:
 		if options := tls:
 			if options.server_name.is_empty():
@@ -301,7 +306,10 @@ impl Network:
 			return ok(
 				connection(
 					try msstd_net_network_connect_tls_config(
-						self.native, address, options, timeout
+						self.native,
+						address,
+						options,
+						timeout,
 					)
 				)
 			)
@@ -309,7 +317,9 @@ impl Network:
 		return ok(
 			connection(
 				try msstd_net_network_connect(
-					self.native, address, timeout
+					self.native,
+					address,
+					timeout,
 				)
 			)
 		)
@@ -321,7 +331,9 @@ impl Network:
 		return ok(
 			connection(
 				try msstd_net_network_connect_unix(
-					self.native, path, timeout
+					self.native,
+					path,
+					timeout,
 				)
 			)
 		)
@@ -345,7 +357,7 @@ impl Network:
 	fn listen_tls(
 		address: String,
 		options: TlsOptions,
-		timeout: Duration? = none
+		timeout: Duration? = none,
 	) Listener!:
 		return msstd_net_network_listen_tls(self.native, address, options, timeout)
 
@@ -361,7 +373,10 @@ impl Network:
     */
 	fn lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!:
 		return msstd_net_network_lookup(
-			self.native, name, options.max_records, options.timeout
+			self.native,
+			name,
+			options.max_records,
+			options.timeout,
 		)
 
 	// Performs one buffered HTTP request and returns the status, headers, and complete
@@ -372,21 +387,30 @@ impl Network:
 		method: HttpMethod,
 		url: String,
 		body: Writable = "",
-		options: RequestOptions = RequestOptions()
+		options: RequestOptions = RequestOptions(),
 	) ClientResponse!:
 		return msstd_net_network_request_bytes(
-			self.native, method.text(), url, options.headers, body.as_bytes(),
-			options.max_bytes, options.timeout
+			self.native,
+			method.text(),
+			url,
+			options.headers,
+			body.as_bytes(),
+			options.max_bytes,
+			options.timeout,
 		)
 
 	// Resolves the selected supported category, retaining it in each record.
 	fn resolve(
 		name: String,
 		kind: DnsKind,
-		options: DnsOptions = DnsOptions()
+		options: DnsOptions = DnsOptions(),
 	) List[DnsRecord]!:
 		return msstd_net_network_resolve(
-			self.native, name, kind, options.max_records, options.timeout
+			self.native,
+			name,
+			kind,
+			options.max_records,
+			options.timeout,
 		)
 
 	// Returns a derived network limited to the given host names and CIDR ranges. Names
@@ -398,7 +422,7 @@ impl Network:
 	fn restrict(
 		hosts: List[String],
 		cidrs: List[String] = [],
-		allow_listen: Bool = false
+		allow_listen: Bool = false,
 	) Network!:
 		return msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)
 
@@ -408,17 +432,23 @@ impl Network:
 	// that was not offered fails the handshake. Failures are `Error` values.
 	fn web_socket(
 		url: String,
-		options: WebSocketOptions = WebSocketOptions()
+		options: WebSocketOptions = WebSocketOptions(),
 	) WebSocket!:
 		subprotocols := options.subprotocols.clone()
 		wire := WebSocketWire(
-			max_message_bytes: options.max_message_bytes, timeout: options.timeout,
-			tls: options.tls.clone(), compression: options.compression
+			max_message_bytes: options.max_message_bytes,
+			timeout: options.timeout,
+			tls: options.tls.clone(),
+			compression: options.compression,
 		)
 		return ok(
 			web_socket_from(
 				try msstd_net_network_web_socket(
-					self.native, url, options.headers, subprotocols, wire
+					self.native,
+					url,
+					options.headers,
+					subprotocols,
+					wire,
 				)
 			)
 		)
@@ -471,7 +501,7 @@ export fn bind_datagram(address: String) DatagramSocket!:
 export fn connect(
 	address: String,
 	tls: TlsOptions? = none,
-	timeout: Duration? = none
+	timeout: Duration? = none,
 ) Promise[Connection]:
 	return owned_task[Connection](connect_job(address.clone(), tls.clone(), timeout))
 
@@ -512,7 +542,7 @@ export fn listen(address: String) Listener!:
 export fn listen_tls(
 	address: String,
 	options: TlsOptions,
-	timeout: Duration? = none
+	timeout: Duration? = none,
 ) Listener!:
 	return host_network().listen_tls(address, options, timeout)
 
@@ -540,7 +570,7 @@ export fn request(
 	method: HttpMethod,
 	url: String,
 	body: Writable = "",
-	options: RequestOptions = RequestOptions()
+	options: RequestOptions = RequestOptions(),
 ) ClientResponse!:
 	return host_network().request(method, url, body, options)
 
@@ -549,7 +579,7 @@ export fn request(
 export fn resolve_dns(
 	name: String,
 	kind: DnsKind,
-	options: DnsOptions = DnsOptions()
+	options: DnsOptions = DnsOptions(),
 ) List[DnsRecord]!:
 	return host_network().resolve(name, kind, options)
 
@@ -562,7 +592,7 @@ export fn resolve_dns(
 export fn restrict(
 	hosts: List[String],
 	cidrs: List[String] = [],
-	allow_listen: Bool = false
+	allow_listen: Bool = false,
 ) Network!:
 	return host_network().restrict(hosts, cidrs, allow_listen)
 
@@ -655,7 +685,8 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
 		accepting.deals.append(queue.writer())
 
 		mine := ServingHandle(
-			serving: msstd_http_serving_share(listening.serving), listener: false
+			serving: msstd_http_serving_share(listening.serving),
+			listener: false,
 		)
 		accepting.workers.append(promise(fn: serve_worker(mine, queue)))
 		i += 1
@@ -695,7 +726,7 @@ fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
 // ms: effect std.net.connect
 export fn web_socket(
 	url: String,
-	options: WebSocketOptions = WebSocketOptions()
+	options: WebSocketOptions = WebSocketOptions(),
 ) WebSocket!:
 	return host_network().web_socket(url, options)
 

@@ -92,14 +92,20 @@ test "Result transforms preserve primitive errors and map to named cases":
 
 test "assertion failures can describe values without a reporting implementation":
 	expect_ok(checked(3)).err().message | try expect_contains("BelowMinimum")
-	expect_ok(Result[Int, String].error("missing")).err().message | try expect_contains(
-		"missing"
+	(
+		expect_ok(
+			Result[Int, String].error("missing")
+		).err().message | try expect_contains("missing")
 	)
-	expect_error(Result[Int, Int].ok(4)).err().message | try expect_contains(
-		"expected error"
+	(
+		expect_error(
+			Result[Int, Int].ok(4)
+		).err().message | try expect_contains("expected error")
 	)
-	expect_error(Result[Int, String].ok(4)).err().message | try expect_contains(
-		"expected error"
+	(
+		expect_error(
+			Result[Int, String].ok(4)
+		).err().message | try expect_contains("expected error")
 	)
 
 test "Optional adapters accept primitive errors and remain lazy":

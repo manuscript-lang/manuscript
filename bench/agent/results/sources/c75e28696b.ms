@@ -364,16 +364,30 @@ fn parse_labels(val: String) Result[List[String], String]:
 
 fn empty_upd() Upd:
 	return Upd(
-		has_title: false, title: "", has_priority: false, priority: 1,
-		has_assignee: false, assignee: "", has_points: false, points: -1,
-		has_due: false, due: "", has_labels: false, labels: List[String](),
-		has_reporter: false, reporter: ""
+		has_title: false,
+		title: "",
+		has_priority: false,
+		priority: 1,
+		has_assignee: false,
+		assignee: "",
+		has_points: false,
+		points: -1,
+		has_due: false,
+		due: "",
+		has_labels: false,
+		labels: List[String](),
+		has_reporter: false,
+		reporter: "",
 	)
 
 fn empty_wf() WF:
 	return WF(
-		has_initial: false, initial: "", states: List[String](), finals: List[String](),
-		edges: List[Edge](), ntrans: 0
+		has_initial: false,
+		initial: "",
+		states: List[String](),
+		finals: List[String](),
+		edges: List[Edge](),
+		ntrans: 0,
 	)
 
 fn report(bulk: Bool, id: Int, msg: String) Unit:
@@ -699,7 +713,7 @@ fn make_term(
 	app: App,
 	field: String,
 	op: String,
-	alts: List[String]
+	alts: List[String],
 ) Result[Node, String]:
 	if not known_field(field): return error("query: unknown field '{field}'")
 	if not op_ok(field, op):
@@ -839,7 +853,11 @@ fn parse_filter(app: App, text: String) Result[Node, String]:
 	if toks.is_empty():
 		return ok(
 			Node(
-				kind: 1, kids: List[Node](), field: "", op: "", alts: List[String]()
+				kind: 1,
+				kids: List[Node](),
+				field: "",
+				op: "",
+				alts: List[String](),
 			)
 		)
 
@@ -908,8 +926,11 @@ fn split_query(raw: String) Result[QParts, String]:
 
 	return ok(
 		QParts(
-			filter: fl, has_sort: has_sort, sort: sort_text, has_limit: has_limit,
-			limit: lim
+			filter: fl,
+			has_sort: has_sort,
+			sort: sort_text,
+			has_limit: has_limit,
+			limit: lim,
 		)
 	)
 
@@ -1166,7 +1187,10 @@ fn sort_indices(app: App, xs: List[Int], keys: List[SortKey]) List[Int]:
 		while (
 			pos > 0
 			and cmp_issue(
-				app, app.issues[idx], app.issues[out[pos - 1]], keys
+				app,
+				app.issues[idx],
+				app.issues[out[pos - 1]],
+				keys,
 			) < 0
 		):
 			pos -= 1
@@ -1343,7 +1367,10 @@ impl App:
 	var fn log_add(id: Int, detail: String) Unit:
 		self.logs.append(
 			LogEntry(
-				t: self.clock, actor: self.actor.clone(), id: id, detail: detail.clone()
+				t: self.clock,
+				actor: self.actor.clone(),
+				id: id,
+				detail: detail.clone(),
 			)
 		)
 
@@ -1534,7 +1561,9 @@ impl App:
 		if not comment.is_empty():
 			self.issues[idx].comments.append(
 				Comment(
-					t: t, actor: self.actor.clone(), text: comment.clone()
+					t: t,
+					actor: self.actor.clone(),
+					text: comment.clone(),
 				)
 			)
 			self.log_add(id, "comment: {comment}")
@@ -1631,9 +1660,18 @@ impl App:
 		self.next_id += 1
 
 		var it = Issue(
-			id: id, title: title.clone(), state: self.wf.initial.clone(), priority: 1,
-			assignee: "", reporter: self.actor.clone(), points: -1, due: "",
-			labels: List[String](), comments: List[Comment](), created: t, updated: t
+			id: id,
+			title: title.clone(),
+			state: self.wf.initial.clone(),
+			priority: 1,
+			assignee: "",
+			reporter: self.actor.clone(),
+			points: -1,
+			due: "",
+			labels: List[String](),
+			comments: List[Comment](),
+			created: t,
+			updated: t,
 		)
 		var details = List[String]()
 		details.append("created \"{title}\"")
@@ -2213,8 +2251,10 @@ impl App:
 				if g < 0:
 					groups.append(
 						WG(
-							key: key.clone(), name: it.assignee.clone(), count: 0,
-							points: 0
+							key: key.clone(),
+							name: it.assignee.clone(),
+							count: 0,
+							points: 0,
 						)
 					)
 					g = groups.length() - 1
@@ -2366,8 +2406,9 @@ fn split_where(text: String) WS:
 			and (i + 5 == n or is_sp(cs[i + 5]))
 		):
 			return WS(
-				found: true, before: prefix(text, i).trim(),
-				query: after(text, i + 5).trim()
+				found: true,
+				before: prefix(text, i).trim(),
+				query: after(text, i + 5).trim(),
 			)
 
 		i += 1
@@ -2381,8 +2422,14 @@ export fn main() Int:
 	text := data.decode_utf8().get("")
 	lines := text.split("\n")
 	var app = App(
-		actor: "system", today: "1970-01-01", clock: 0, next_id: 1, wf: empty_wf(),
-		issues: List[Issue](), logs: List[LogEntry](), views: List[View]()
+		actor: "system",
+		today: "1970-01-01",
+		clock: 0,
+		next_id: 1,
+		wf: empty_wf(),
+		issues: List[Issue](),
+		logs: List[LogEntry](),
+		views: List[View](),
 	)
 	var i = 0
 

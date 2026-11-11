@@ -81,7 +81,12 @@ fn stdlib_map(xs: List[Int]) Int!:
 
 fn stdlib_map3(xs: List[Int]) Int!:
 	var total = 0
-	for item in from_list(xs) | map(fn x: x + 1) | map(fn x: x * 3) | map(fn x: x - 2):
+	for item in (
+		from_list(xs)
+		| map(fn x: x + 1)
+		| map(fn x: x * 3)
+		| map(fn x: x - 2)
+	):
 		total += item
 	return ok(total)
 

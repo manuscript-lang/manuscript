@@ -19,7 +19,9 @@ impl Closeable for Failing:
 			if self.fail:
 				return error(
 					Error(
-						"close {self.id}", kind: "ECLOSE", details: {"id": "{self.id}"}
+						"close {self.id}",
+						kind: "ECLOSE",
+						details: {"id": "{self.id}"},
 					)
 				)
 
@@ -33,7 +35,9 @@ fn work(log: String, fail: Bool) Int!:
 	if fail:
 		return error(
 			Error(
-				"original body error", kind: "EBODY", details: {"id": "body"}
+				"original body error",
+				kind: "EBODY",
+				details: {"id": "body"},
 			)
 		)
 
@@ -221,7 +225,12 @@ test "a forwarded borrowed error is preserved across a failing close":
 test "generic errors retain their fields across a failing close":
 	dir := temporary("close-generic-error-") | try expect_ok
 	log := "{dir.path()}/events"
-	cause := generic_error(log, Error("generic body", kind: "EGENERIC")) | try expect_error
+	cause := (
+		generic_error(
+			log,
+			Error("generic body", kind: "EGENERIC"),
+		) | try expect_error
+	)
 	try expect_equal(cause.message, "generic body")
 	try expect_equal(cause.kind, "EGENERIC")
 	try expect_equal(events(log), "close 1\n")
@@ -265,7 +274,13 @@ test "a consumed parameter closes on its retained path before borrowed success":
 	dir := temporary("close-consumed-parameter-") | try expect_ok
 	log := "{dir.path()}/events"
 	payload := "still borrowed"
-	cause := consumed_parameter(Failing(log.clone(), 1), payload, false) | try expect_error
+	cause := (
+		consumed_parameter(
+			Failing(log.clone(), 1),
+			payload,
+			false,
+		) | try expect_error
+	)
 	try expect_equal(cause.kind, "ECLOSE")
 	try expect_equal(payload, "still borrowed")
 	try expect_equal(events(log), "close 1\n")
@@ -367,7 +382,8 @@ test "a generic propagating closer consumes its whole Result without a forbidden
 	dir := temporary("close-generic-whole-") | try expect_ok
 	log := "{dir.path()}/events"
 	try expect_equal(
-		try generic_whole[String](log, ok("moved payload")), "moved payload"
+		try generic_whole[String](log, ok("moved payload")),
+		"moved payload",
 	)
 	try expect_equal(events(log), "close 1\n")
 

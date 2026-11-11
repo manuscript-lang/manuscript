@@ -13,8 +13,9 @@ import (
 
 fn run(work: String, n: Int) Result[String, Error]:
 	try copy(
-		"bench/perf/strappend/ms", "{work}/ms",
-		CopyOptions(recursive: true, replace: true)
+		"bench/perf/strappend/ms",
+		"{work}/ms",
+		CopyOptions(recursive: true, replace: true),
 	)
 	try build_ms("{work}/ms", "{work}/ms/bench{exe()}")
 

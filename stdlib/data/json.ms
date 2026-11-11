@@ -188,11 +188,12 @@ record and `parse[JsonValue]` keeps it as a document.
 */
 export fn parse[T: Data = JsonValue](
 	text: String,
-	options: JsonOptions = JsonOptions()
+	options: JsonOptions = JsonOptions(),
 ) T!:
 	limits := JsonLimits(
-		max_bytes: options.max_bytes, max_depth: options.max_depth,
-		max_values: options.max_values
+		max_bytes: options.max_bytes,
+		max_depth: options.max_depth,
+		max_values: options.max_values,
 	)
 	return msstd_json_parse[T](text, limits, options.ignore_unknown_fields)
 
@@ -280,10 +281,13 @@ text := try stringify(Request(model: "example", stream: true, user: none))
 */
 export fn stringify[T: Data](
 	value: T,
-	options: StringifyOptions = StringifyOptions()
+	options: StringifyOptions = StringifyOptions(),
 ) String!:
 	return msstd_json_stringify(
-		value, options.max_bytes, options.indent, options.strict
+		value,
+		options.max_bytes,
+		options.indent,
+		options.strict,
 	)
 
 // The member of `value` at `keys[from:]`, read one object level at a time.
@@ -459,15 +463,22 @@ input fails the read with `EBADMSG`, and negative limits with `EINVAL`. Closing 
 */
 export fn json_reader[T: Data = JsonValue](
 	input: ReadStream[Bytes],
-	options: JsonOptions = JsonOptions()
+	options: JsonOptions = JsonOptions(),
 ) ReadStream[T]:
 	failure := invalid_limits(options)
 	return through[Bytes, T](
 		input,
 		JsonReading[T](
-			options: options, pending: BytesBuilder(), size: 0, depth: 0, mode: 0,
-			in_string: false, escaped: false, finished: false, failure: failure
-		)
+			options: options,
+			pending: BytesBuilder(),
+			size: 0,
+			depth: 0,
+			mode: 0,
+			in_string: false,
+			escaped: false,
+			finished: false,
+			failure: failure,
+		),
 	)
 
 // A sink that encodes each value as one line of JSON (JSON Lines) and puts the bytes
@@ -494,6 +505,6 @@ single line, and ends with a line feed. `max_bytes` bounds one encoded value and
 */
 export fn json_writer[T: Data](
 	output: WriteStream[Bytes],
-	max_bytes: Int? = none
+	max_bytes: Int? = none,
 ) WriteStream[T]:
 	return WriteStream[T](JsonLines[T](output: output, max_bytes: max_bytes))

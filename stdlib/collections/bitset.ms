@@ -37,7 +37,8 @@ impl BitSet:
 
 		word := index / 64
 		self.words.set(
-			word, bit_and(self.words[word], bit_not(shift_left(1, index % 64)))
+			word,
+			bit_and(self.words[word], bit_not(shift_left(1, index % 64))),
 		)
 
 	// Reports whether the index is a member; out-of-range indexes are not members.

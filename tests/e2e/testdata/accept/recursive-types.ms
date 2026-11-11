@@ -47,8 +47,13 @@ test "recursive alternatives construct match compare and clone":
 	(evaluate(expr.clone()) != 5 or expr != expr.clone()) | try expect_false
 
 	tree := Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
-	tree | try expect_equal(
-		Tree[Int].Branch(left: Tree[Int].Leaf(1), right: Tree[Int].Leaf(2))
+	(
+		tree | try expect_equal(
+			Tree[Int].Branch(
+				left: Tree[Int].Leaf(1),
+				right: Tree[Int].Leaf(2),
+			)
+		)
 	)
 
 	forest := Forest.More(MutualTree(value: 3, rest: Forest.Empty))
@@ -69,11 +74,13 @@ test "recursive records clone into independent storage":
 	inner.value = 4
 	copy.next = inner
 	(
-		root.value != 1
-		or alias.value != 3
-		or copy.next.get().value != 4
-		or child.value != 2
-	) | try expect_false
+		(
+			root.value != 1
+			or alias.value != 3
+			or copy.next.get().value != 4
+			or child.value != 2
+		) | try expect_false
+	)
 	copy.next = none
 	root.next.is_none() | try expect_false
 
@@ -88,7 +95,14 @@ test "recursive structural equality checks nested and unequal fields":
 	var inner = copy.next.get().clone()
 	inner.value = 2
 	copy.next = inner
-	(left.value != 1 or copy.value != 1 or left == copy or left != right) | try expect_false
+	(
+		(
+			left.value != 1
+			or copy.value != 1
+			or left == copy
+			or left != right
+		) | try expect_false
+	)
 
 	var a = Node(value: 1, next: none)
 	b := Node(value: 1, next: a.clone())
@@ -106,14 +120,21 @@ test "recursive domain hashing uses explicit implementations":
 	values.add(key: left.clone(), value: 9)
 
 	var members = Set[Link]([left.clone()])
-	(values.get(right.clone()).get() != 9 or not members.contains(right.clone())) | try expect_false
+	(
+		(
+			values.get(right.clone()).get() != 9
+			or not members.contains(right.clone())
+		) | try expect_false
+	)
 	values.add(key: right.clone(), value: 10)
 	members.add(right.clone())
 	(
-		values.length() != 1 or members.length() != 1 or values.get(
-			left.clone()
-		).get() != 10
-	) | try expect_false
+		(
+			values.length() != 1
+			or members.length() != 1
+			or values.get(left.clone()).get() != 10
+		) | try expect_false
+	)
 
 test "recursive defaults construct independent complete objects":
 	var first = DefaultNode(value: 1)

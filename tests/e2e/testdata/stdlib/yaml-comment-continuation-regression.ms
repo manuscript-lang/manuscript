@@ -8,7 +8,8 @@ fn rejects_continuation(text: String) Unit!Error:
 	if cause.kind != "EBADMSG": return fail("expected InvalidData, got {cause}")
 
 	return expect_equal(
-		cause.details["reason"], "unexpected indentation or additional document"
+		cause.details["reason"],
+		"unexpected indentation or additional document",
 	)
 
 test "YAML inline comments end root and mapping plain scalars":
@@ -33,22 +34,29 @@ test "YAML nested compact sequences retain terminating comments":
 test "YAML plain hashes without separation keep folding":
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("first#hash next#hash last"))
-	parse("a: first#hash\n  next#hash\n  last") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(values)
+	(
+		parse(
+			"a: first#hash\n  next#hash\n  last"
+		) | try expect_ok | try expect_equal(YamlValue.ObjectValue(values))
 	)
 
 test "YAML comment-terminated values retain following siblings":
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("first"))
 	values.add("b", YamlValue.StringValue("second"))
-	parse("a: first # comment\nb: second") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(values)
+	(
+		parse(
+			"a: first # comment\nb: second"
+		) | try expect_ok | try expect_equal(YamlValue.ObjectValue(values))
 	)
-	parse("- first # comment\n- second") | try expect_ok | try expect_equal(
-		YamlValue.ArrayValue(
-			[
-				YamlValue.StringValue("first"), YamlValue.StringValue("second")
-			]
+	(
+		parse("- first # comment\n- second") | try expect_ok | try expect_equal(
+			YamlValue.ArrayValue(
+				[
+					YamlValue.StringValue("first"),
+					YamlValue.StringValue("second"),
+				]
+			)
 		)
 	)
 
@@ -56,29 +64,44 @@ test "YAML compact mapping comments preserve Unicode siblings":
 	var values = Map[String, YamlValue]()
 	values.add("clé", YamlValue.StringValue("café"))
 	values.add("next", YamlValue.StringValue("ok"))
-	parse("- clé: café # comment\n  next: ok") | try expect_ok | try expect_equal(
-		YamlValue.ArrayValue([YamlValue.ObjectValue(values)])
+	(
+		parse(
+			"- clé: café # comment\n  next: ok"
+		) | try expect_ok | try expect_equal(
+			YamlValue.ArrayValue([YamlValue.ObjectValue(values)])
+		)
 	)
 
 test "YAML empty values with comments may begin on a later line":
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("next"))
-	parse("a: # comment\n  next") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(values)
+	(
+		parse("a: # comment\n  next") | try expect_ok | try expect_equal(
+			YamlValue.ObjectValue(values)
+		)
 	)
-	parse("- # comment\n  next") | try expect_ok | try expect_equal(
-		YamlValue.ArrayValue([YamlValue.StringValue("next")])
+	(
+		parse("- # comment\n  next") | try expect_ok | try expect_equal(
+			YamlValue.ArrayValue([YamlValue.StringValue("next")])
+		)
 	)
 
 test "YAML quoted and flow hashes retain their scalar behavior":
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("first # hash next"))
-	parse("a: \"first # hash\n  next\"") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(values)
+	(
+		parse("a: \"first # hash\n  next\"") | try expect_ok | try expect_equal(
+			YamlValue.ObjectValue(values)
+		)
 	)
-	parse("[first, # comment\n next]") | try expect_ok | try expect_equal(
-		YamlValue.ArrayValue(
-			[YamlValue.StringValue("first"), YamlValue.StringValue("next")]
+	(
+		parse("[first, # comment\n next]") | try expect_ok | try expect_equal(
+			YamlValue.ArrayValue(
+				[
+					YamlValue.StringValue("first"),
+					YamlValue.StringValue("next"),
+				]
+			)
 		)
 	)
 
@@ -104,50 +127,72 @@ test "YAML flow comments preserve comma and closing boundaries":
 	expected := YamlValue.ArrayValue(
 		[YamlValue.StringValue("first"), YamlValue.StringValue("next")]
 	)
-	parse("[first, # comment\n next]") | try expect_ok | try expect_equal(expected)
-	parse("[first # comment\n ,next]") | try expect_ok | try expect_equal(expected)
-	parse("[first # comment\n ]") | try expect_ok | try expect_equal(
-		YamlValue.ArrayValue([YamlValue.StringValue("first")])
+	(parse("[first, # comment\n next]") | try expect_ok | try expect_equal(expected))
+	(parse("[first # comment\n ,next]") | try expect_ok | try expect_equal(expected))
+	(
+		parse("[first # comment\n ]") | try expect_ok | try expect_equal(
+			YamlValue.ArrayValue([YamlValue.StringValue("first")])
+		)
 	)
 
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("first"))
 	values.add("b", YamlValue.StringValue("next"))
-	parse("\{a: first # comment\n , b: next\}") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(values)
+	(
+		parse(
+			"\{a: first # comment\n , b: next\}"
+		) | try expect_ok | try expect_equal(YamlValue.ObjectValue(values))
 	)
 
 test "YAML comments before flow values preserve empty starts":
-	parse("[ # comment\n first]") | try expect_ok | try expect_equal(
-		YamlValue.ArrayValue([YamlValue.StringValue("first")])
+	(
+		parse("[ # comment\n first]")
+		| try expect_ok
+		| try expect_equal(
+			YamlValue.ArrayValue([YamlValue.StringValue("first")])
+		)
 	)
 
 	var values = Map[String, YamlValue]()
 	values.add("a", YamlValue.StringValue("first"))
-	parse("\{a: # comment\n first\}") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(values)
+	(
+		parse("\{a: # comment\n first\}") | try expect_ok | try expect_equal(
+			YamlValue.ObjectValue(values)
+		)
 	)
 
 	var empty = Map[String, YamlValue]()
 	empty.add("a", YamlValue.Null)
-	parse("\{a: # comment\n\}") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(empty.clone())
+	(
+		parse("\{a: # comment\n\}") | try expect_ok | try expect_equal(
+			YamlValue.ObjectValue(empty.clone())
+		)
 	)
-	parse("\{a # comment\n\}") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(empty.clone())
+	(
+		parse("\{a # comment\n\}") | try expect_ok | try expect_equal(
+			YamlValue.ObjectValue(empty.clone())
+		)
 	)
 	empty.add("b", YamlValue.Null)
-	parse("\{a # comment\n , b\}") | try expect_ok | try expect_equal(
-		YamlValue.ObjectValue(empty)
+	(
+		parse("\{a # comment\n , b\}") | try expect_ok | try expect_equal(
+			YamlValue.ObjectValue(empty)
+		)
 	)
 
 test "YAML flow comment stops follow quoted and alias nodes":
 	expected := YamlValue.ArrayValue(
 		[
-			YamlValue.StringValue("café"), YamlValue.StringValue("quoted # hash"),
-			YamlValue.StringValue("café"), YamlValue.StringValue("last")
+			YamlValue.StringValue("café"),
+			YamlValue.StringValue("quoted # hash"),
+			YamlValue.StringValue("café"),
+			YamlValue.StringValue("last"),
 		]
 	)
-	parse(
-		"&items [&a café # first\n, \"quoted # hash\" # second\n, *a # third\n, last]"
-	) | try expect_ok | try expect_equal(expected)
+	(
+		parse(
+			"&items [&a café # first\n, \"quoted # hash\" # second\n, *a # third\n, last]"
+		)
+		| try expect_ok
+		| try expect_equal(expected)
+	)

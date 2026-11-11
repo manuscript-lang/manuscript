@@ -88,7 +88,8 @@ test "interface borrows intact temporary wrappers in written order":
 	try expect_equal(reader.observe(Resource(1, path.clone()), present(path, 2)), true)
 	try expect_equal(try log_text(path), "2,1,")
 	try expect_equal(
-		reader.observe(second: present(path, 3), first: present(path, 4)), true
+		reader.observe(second: present(path, 3), first: present(path, 4)),
+		true,
 	)
 	try expect_equal(try log_text(path), "2,1,4,3,")
 

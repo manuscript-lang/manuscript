@@ -63,7 +63,9 @@ fn emit(value: JsonValue, indent: Int, level: Int) String:
 			for entry in members.entries():
 				parts.append(
 					quote(entry.key) + ": " + emit(
-						entry.value, indent, level + 1
+						entry.value,
+						indent,
+						level + 1,
 					)
 				)
 			if indent == 0: return "\{" + parts.join(", ") + "\}"

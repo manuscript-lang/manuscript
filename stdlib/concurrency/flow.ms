@@ -138,8 +138,10 @@ export fn rate_limiter(count: Int, burst: Int) RateLimiter:
 			"rate_limiter: count and burst must be at least 1, found {count} and {burst}"
 		)
 	return RateLimiter(
-		burst: burst, interval: seconds(1).divide(count), tokens: burst,
-		stamp: monotonic()
+		burst: burst,
+		interval: seconds(1).divide(count),
+		tokens: burst,
+		stamp: monotonic(),
 	)
 
 // Why a circuit breaker call produced no result.

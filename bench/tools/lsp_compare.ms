@@ -125,7 +125,7 @@ fn compare(
 	after: String,
 	out: String,
 	samples: Int,
-	cpu: String
+	cpu: String,
 ) Result[Unit, Error]:
 	cases := if suite == "hover": hover_cases() else: if suite == "outline": outline_cases() else: semantic_cases()
 	var paths = Map[String, String]()
@@ -158,7 +158,7 @@ fn compare(
 				name.clone(),
 				if want < 1: 1 else: (
 					if want > 100000: 100000 else: want
-				)
+				),
 			)
 
 		var observed = Map[String, List[Float]]()
@@ -200,7 +200,9 @@ fn main() Int:
 		)
 
 	parsed := options(
-		args.slice(3, args.length()).get([]), ["out", "samples", "cpu"], ["out"]
+		args.slice(3, args.length()).get([]),
+		["out", "samples", "cpu"],
+		["out"],
 	)
 	if parsed.is_error(): return fail(parsed.err().message)
 
@@ -210,8 +212,12 @@ fn main() Int:
 	if samples < 5: return fail("--samples must be at least 5")
 
 	result := compare(
-		args[0], absolute(args[1].clone()), absolute(args[2].clone()),
-		opts.get_or("out", ""), samples, opts.get_or("cpu", "")
+		args[0],
+		absolute(args[1].clone()),
+		absolute(args[2].clone()),
+		opts.get_or("out", ""),
+		samples,
+		opts.get_or("cpu", ""),
 	)
 	if result.is_error(): return fail(result.err().message)
 

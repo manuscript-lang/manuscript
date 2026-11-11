@@ -34,10 +34,11 @@ impl Transform[Bytes, String] for Base64Encoding:
 // result closes `input`.
 export fn base64_encoded(
 	input: ReadStream[Bytes],
-	url_safe: Bool = false
+	url_safe: Bool = false,
 ) ReadStream[String]:
 	return through[Bytes, String](
-		input, Base64Encoding(url_safe: url_safe, tail: join([]))
+		input,
+		Base64Encoding(url_safe: url_safe, tail: join([])),
 	)
 
 // Decodes Base64 text in groups of four characters, so a chunk boundary never splits a
@@ -84,7 +85,7 @@ impl Transform[String, Bytes] for Base64Decoding:
 // closes `input`.
 export fn base64_decoded(
 	input: ReadStream[String],
-	url_safe: Bool = false
+	url_safe: Bool = false,
 ) ReadStream[Bytes]:
 	return through[String, Bytes](input, Base64Decoding(url_safe: url_safe, tail: ""))
 

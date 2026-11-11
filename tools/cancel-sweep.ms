@@ -49,13 +49,17 @@ fn counted(text: String) List[Counted]:
 			parks = line.slice(13, line.length()).get("").trim().parse_int().get(0)
 		else if line.starts_with("ms-rt rust heap at exit: blocks="):
 			heap = line.slice(
-				32, line.length()
+				32,
+				line.length(),
 			).get("").split(" ")[0].parse_int().get(0)
 		else if line.starts_with("ms-rt live blocks at exit: "):
 			live := line.slice(27, line.length()).get("").trim().parse_int().get(0)
 			found.append(
 				Counted(
-					name: name.clone(), parks: parks, heap: heap, live: live
+					name: name.clone(),
+					parks: parks,
+					heap: heap,
+					live: live,
 				)
 			)
 
@@ -72,7 +76,9 @@ fn test_run(ms: String, file: String, filter: String, cancel_at: Int) List[Count
 	var arguments = ["test", file.clone()]
 	if filter != "": arguments = arguments.concat(["--test", filter.clone()])
 	if out := run(
-		ms.clone(), arguments, RunOptions(timeout: seconds(120), env: settings)
+		ms.clone(),
+		arguments,
+		RunOptions(timeout: seconds(120), env: settings),
 	).wait(): return counted(
 		out.stdout.decode_utf8().get("") + out.stderr.decode_utf8().get("")
 	)
@@ -128,7 +134,10 @@ fn sweep(ms: String, root: String, files: List[String], most: Int) List[String]:
 						var ran = false
 
 						for r in test_run(
-							ms.clone(), file.clone(), base.name.clone(), k
+							ms.clone(),
+							file.clone(),
+							base.name.clone(),
+							k,
 						):
 							ran = true
 
@@ -191,7 +200,10 @@ fn main() Int:
 			promise(
 				fn: ok(
 					sweep(
-						ms.clone(), root.clone(), chunks[worker], most
+						ms.clone(),
+						root.clone(),
+						chunks[worker],
+						most,
 					)
 				)
 			)

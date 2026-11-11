@@ -56,7 +56,7 @@ export fn run_agent(
 	model: String?,
 	workspace: String,
 	timeout_s: Int,
-	transcript: String
+	transcript: String,
 ) AgentRun:
 	argv := h.command(prompt, model, workspace)
 	wrapper := ["-c", "cd \"$0\" && exec \"$@\"", workspace.clone()].concat(argv)
@@ -67,11 +67,16 @@ export fn run_agent(
 
 	if usage.cost_source == "none" and (usage.tokens_in > 0 or usage.tokens_out > 0):
 		usage.cost_usd = cost_from_tokens(
-			usage.tokens_in, usage.tokens_cached, usage.tokens_out, model.get("default")
+			usage.tokens_in,
+			usage.tokens_cached,
+			usage.tokens_out,
+			model.get("default"),
 		)
 		usage.cost_source = "estimated"
 
 	return AgentRun(
-		usage, round(ran.seconds * 100.0) / 100.0, ran.code,
-		ran.code == 124 and ran.err == "timeout"
+		usage,
+		round(ran.seconds * 100.0) / 100.0,
+		ran.code,
+		ran.code == 124 and ran.err == "timeout",
 	)

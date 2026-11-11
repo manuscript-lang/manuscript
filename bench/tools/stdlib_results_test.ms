@@ -46,7 +46,7 @@ test "invalid numeric fields are rejected":
 		),
 		j(
 			"<'benches':[<'name':'a','status':'passed','stats':<'operations':10,'median_ns':2,'min_ns':1,'max_ns':1>>]>"
-		)
+		),
 	]
 	for text in texts:
 		_cause := try expect_error(read_cases(text))
@@ -69,7 +69,7 @@ test "huge exponents and non-finite constants are rejected, finite zero is not":
 		cases[0].stats.get(
 			Stats(0, none, none, -1.0, none, none, none, none)
 		).median_ns,
-		0.0
+		0.0,
 	)
 
 test "labels disambiguate only collisions":
@@ -89,10 +89,11 @@ test "reads operations and median per case":
 		parse_sample(
 			document(
 				[
-					bench("a", "passed", "10", "2.5"), bench("b", "passed", "1", "0")
+					bench("a", "passed", "10", "2.5"),
+					bench("b", "passed", "1", "0"),
 				]
 			),
-			none
+			none,
 		)
 	)
 	try expect_equal(sample.operations.get_or("m.ms::a", 0), 10)
@@ -111,10 +112,10 @@ test "qualified case identity":
 					bench("a", "passed", "10", "2"),
 					j(
 						"<'name':'other.ms::a','status':'passed','stats':<'operations':10,'median_ns':2>>"
-					)
+					),
 				]
 			),
-			none
+			none,
 		)
 	)
 	try expect_equal(both.operations.length(), 2)
@@ -128,9 +129,10 @@ test "changed cases or operation counts are rejected":
 		document([bench("b", "passed", "10", "2")]),
 		document(
 			[
-				bench("a", "passed", "10", "2"), bench("b", "passed", "1", "2")
+				bench("a", "passed", "10", "2"),
+				bench("b", "passed", "1", "2"),
 			]
-		)
+		),
 	]
 	for text in changes:
 		_cause := try expect_error(parse_sample(text, first.operations.clone()))
@@ -140,11 +142,12 @@ test "failed, duplicate, empty or uncompiled runs are rejected":
 		document([bench("a", "failed", "10", "2")]),
 		document(
 			[
-				bench("a", "passed", "10", "2"), bench("a", "passed", "10", "2")
+				bench("a", "passed", "10", "2"),
+				bench("a", "passed", "10", "2"),
 			]
 		),
 		document([]),
-		j("<'benches':[],'diagnostics':[<'message':'does not compile'>]>")
+		j("<'benches':[],'diagnostics':[<'message':'does not compile'>]>"),
 	]
 	for text in texts:
 		_cause := try expect_error(parse_sample(text, none))
@@ -152,13 +155,16 @@ test "failed, duplicate, empty or uncompiled runs are rejected":
 test "impossible measurements are rejected":
 	for text in [
 		document([bench("a", "passed", "0", "2")]),
-		document([bench("a", "passed", "10", "-1")])
+		document([bench("a", "passed", "10", "-1")]),
 	]:
 		_cause := try expect_error(parse_sample(text, none))
 
 test "a failed producer yields no report":
 	failed := Ran(
-		true, 42, "{document([bench("a", "passed", "10", "2")])}", "producer detail"
+		true,
+		42,
+		"{document([bench("a", "passed", "10", "2")])}",
+		"producer detail",
 	)
 	_cause := try expect_error(must("producer", failed))
 	empty := try expect_error(stdlib_table(document([])))

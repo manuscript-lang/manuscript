@@ -39,7 +39,7 @@ impl Complex:
 	fn multiply(other: Complex) Complex:
 		return Complex(
 			re: self.re * other.re - self.im * other.im,
-			im: self.re * other.im + self.im * other.re
+			im: self.re * other.im + self.im * other.re,
 		)
 
 	// Returns the product with a real factor.
@@ -78,12 +78,12 @@ impl Complex:
 			quotient := smith_divide(
 				Complex(
 					re: ldexp(self.re, -numerator_exponent),
-					im: ldexp(self.im, -numerator_exponent)
+					im: ldexp(self.im, -numerator_exponent),
 				),
 				Complex(
 					re: ldexp(other.re, -divisor_exponent),
-					im: ldexp(other.im, -divisor_exponent)
-				)
+					im: ldexp(other.im, -divisor_exponent),
+				),
 			)
 			shift := numerator_exponent - divisor_exponent
 			return Complex(re: ldexp(quotient.re, shift), im: ldexp(quotient.im, shift))
@@ -137,7 +137,8 @@ impl Complex:
 			var result = Complex(re: cos(self.im), im: sin(self.im))
 			for _step in 0..4:
 				result = Complex(
-					re: product(result.re, quarter), im: product(result.im, quarter)
+					re: product(result.re, quarter),
+					im: product(result.im, quarter),
 				)
 			return result
 
@@ -154,7 +155,7 @@ impl Complex:
 				re: log(
 					hypot(self.re / 2.0, self.im / 2.0)
 				) + 0.6931471805599453,
-				im: self.phase()
+				im: self.phase(),
 			)
 
 		return Complex(re: log(modulus), im: self.phase())
@@ -199,14 +200,14 @@ impl Complex:
 	fn sin() Complex:
 		return Complex(
 			re: hyperbolic_product(sin(self.re), self.im, cosh(self.im)),
-			im: hyperbolic_product(cos(self.re), self.im, sinh(self.im))
+			im: hyperbolic_product(cos(self.re), self.im, sinh(self.im)),
 		)
 
 	// Returns the complex cosine, `cos(a)cosh(b) - sin(a)sinh(b)i` for `a+bi`.
 	fn cos() Complex:
 		return Complex(
 			re: hyperbolic_product(cos(self.re), self.im, cosh(self.im)),
-			im: -hyperbolic_product(sin(self.re), self.im, sinh(self.im))
+			im: -hyperbolic_product(sin(self.re), self.im, sinh(self.im)),
 		)
 
 	// Returns the complex tangent, sine divided by cosine; poles give infinities or
@@ -219,7 +220,7 @@ impl Complex:
 				re: 2.0 * sin_double(self.re) * exp(
 					-2.0 * self.im.abs()
 				),
-				im: copy_sign(1.0, self.im)
+				im: copy_sign(1.0, self.im),
 			)
 		return self.sin().divide(self.cos())
 
@@ -227,14 +228,14 @@ impl Complex:
 	fn sinh() Complex:
 		return Complex(
 			re: hyperbolic_product(cos(self.im), self.re, sinh(self.re)),
-			im: hyperbolic_product(sin(self.im), self.re, cosh(self.re))
+			im: hyperbolic_product(sin(self.im), self.re, cosh(self.re)),
 		)
 
 	// Returns the hyperbolic cosine.
 	fn cosh() Complex:
 		return Complex(
 			re: hyperbolic_product(cos(self.im), self.re, cosh(self.re)),
-			im: hyperbolic_product(sin(self.im), self.re, sinh(self.re))
+			im: hyperbolic_product(sin(self.im), self.re, sinh(self.re)),
 		)
 
 	// Returns the hyperbolic tangent.
@@ -245,7 +246,7 @@ impl Complex:
 				re: copy_sign(1.0, self.re),
 				im: 2.0 * sin_double(self.im) * exp(
 					-2.0 * self.re.abs()
-				)
+				),
 			)
 		return self.sinh().divide(self.cosh())
 
@@ -293,7 +294,8 @@ impl Complex:
 				// log1p(t) is t here. Divide before the factor of four could
 				// round a subnormal result twice.
 				imaginary = copy_sign(
-					self.im.abs() / denominator / scale / scale, self.im
+					self.im.abs() / denominator / scale / scale,
+					self.im,
 				)
 			else:
 				imaginary = copy_sign(log1p(ratio) / 4.0, self.im)
@@ -364,12 +366,12 @@ fn smith_divide(numerator: Complex, other: Complex) Complex:
 		denominator := other.re + other.im * ratio
 		return Complex(
 			re: (numerator.re + numerator.im * ratio) / denominator,
-			im: (numerator.im - numerator.re * ratio) / denominator
+			im: (numerator.im - numerator.re * ratio) / denominator,
 		)
 
 	ratio := other.re / other.im
 	denominator := other.re * ratio + other.im
 	return Complex(
 		re: (numerator.re * ratio + numerator.im) / denominator,
-		im: (numerator.im * ratio - numerator.re) / denominator
+		im: (numerator.im * ratio - numerator.re) / denominator,
 	)

@@ -33,9 +33,10 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 		"CSV {line}:{column}: {reason}",
 		kind: "EBADMSG",
 		details: {
-			"line": line.to_string(), "column": column.to_string(),
+			"line": line.to_string(),
+			"column": column.to_string(),
 			"reason": reason.clone()
-		}
+		},
 	)
 
 // Parses CSV into rows of cells, using fresh default options when omitted.
@@ -53,10 +54,14 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 	bytes := text.to_bytes()
 	total := bytes.length()
 	var reader = Reader(
-		bytes: bytes, total: total,
+		bytes: bytes,
+		total: total,
 		delimiter: options.delimiter.scalar_values()[0].to_uint8().get(0),
-		delimiter_text: options.delimiter.clone(), at: 0, quote: -1, delimiter_at: -1,
-		line_at: -1
+		delimiter_text: options.delimiter.clone(),
+		at: 0,
+		quote: -1,
+		delimiter_at: -1,
+		line_at: -1,
 	)
 	var rows = List[List[String]]()
 	var cells = 0
@@ -123,7 +128,8 @@ impl Reader:
 
 	var fn next_delimiter(from: Int) Int:
 		if self.delimiter_at < from: self.delimiter_at = self.bytes.index_of_byte(
-			self.delimiter, from
+			self.delimiter,
+			from,
 		).get(self.total)
 		return self.delimiter_at
 
@@ -189,7 +195,9 @@ impl Reader:
 					close := self.next_quote(at)
 					if close >= self.total: return error(
 						invalid_at(
-							self.bytes, self.at.to_int(), "unterminated quoted cell"
+							self.bytes,
+							self.at.to_int(),
+							"unterminated quoted cell",
 						)
 					)
 
@@ -223,8 +231,9 @@ impl Reader:
 
 				if self.bytes[at] != self.delimiter: return error(
 					invalid_at(
-						self.bytes, at,
-						"expected a delimiter or line end after the closing quote"
+						self.bytes,
+						at,
+						"expected a delimiter or line end after the closing quote",
 					)
 				)
 
@@ -238,7 +247,9 @@ impl Reader:
 			quote := self.next_quote(at)
 			if quote < end: return error(
 				invalid_at(
-					self.bytes, quote, "quote inside an unquoted cell"
+					self.bytes,
+					quote,
+					"quote inside an unquoted cell",
 				)
 			)
 
@@ -380,20 +391,21 @@ result closes `input`.
 export fn csv_rows(
 	input: ReadStream[Bytes],
 	options: CsvOptions = CsvOptions(),
-	max_record_bytes: Int? = none
+	max_record_bytes: Int? = none,
 ) ReadStream[List[String]]:
 	return through[Bytes, List[String]](
 		input,
 		CsvRows(
 			options: CsvOptions(
-				delimiter: options.delimiter, line_ending: options.line_ending
+				delimiter: options.delimiter,
+				line_ending: options.line_ending,
 			),
 			max_record_bytes: max_record_bytes,
 			pending: [],
 			pending_size: 0,
 			quoted: false,
-			longest: 0
-		)
+			longest: 0,
+		),
 	)
 
 // Encodes rows as CSV with comma delimiters and LF endings by default.
@@ -401,7 +413,7 @@ export fn csv_rows(
 export fn stringify(
 	rows: List[List[String]],
 	options: CsvOptions = CsvOptions(),
-	max_bytes: Int? = none
+	max_bytes: Int? = none,
 ) String!:
 	limit := budget(max_bytes)
 	if limit < 0: return error(Error("CSV: invalid input", kind: "EINVAL"))
@@ -482,6 +494,6 @@ options' line ending). Invalid `options` fail the first write with `EINVAL`. Wri
 */
 export fn csv_writer(
 	output: WriteStream[Bytes],
-	options: CsvOptions = CsvOptions()
+	options: CsvOptions = CsvOptions(),
 ) WriteStream[List[String]]:
 	return WriteStream[List[String]](CsvRowsSink(output: output, options: options))

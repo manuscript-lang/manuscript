@@ -413,7 +413,8 @@ fn lookup_name(var e: Env, name: String) String!Fatal:
 	if e.rstack.contains(name):
 		return error(
 			fatal_at(
-				e, "Recursive variable '{name}' references itself (eventually)"
+				e,
+				"Recursive variable '{name}' references itself (eventually)",
 			)
 		)
 
@@ -731,14 +732,18 @@ fn close_rule(var e: Env) Unit:
 		if has_pct(t):
 			e.prules.append(
 				PRule(
-					pat: t.clone(), normal: nl.clone(), oo: ol.clone(),
-					recipe: rl.clone()
+					pat: t.clone(),
+					normal: nl.clone(),
+					oo: ol.clone(),
+					recipe: rl.clone(),
 				)
 			)
 		else:
 			if not e.explicit.contains(t):
 				e.explicit[t.clone()] = Rule(
-					normal: List[String](), oo: List[String](), recipe: List[RLine]()
+					normal: List[String](),
+					oo: List[String](),
+					recipe: List[RLine](),
 				)
 				e.order.append(t.clone())
 
@@ -752,7 +757,7 @@ fn close_rule(var e: Env) Unit:
 				if not r.recipe.is_empty():
 					emit(
 						var e,
-						"Makefile:{ln}: warning: overriding recipe for target '{t}'"
+						"Makefile:{ln}: warning: overriding recipe for target '{t}'",
 					)
 				r.recipe = rl.clone()
 
@@ -833,7 +838,11 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
 				e.frames.remove(k - 1)
 				e.frames.append(
 					Frame(
-						line: fl, parent: fp, cond: fc, in_else: true, seen_else: true
+						line: fl,
+						parent: fp,
+						cond: fc,
+						in_else: true,
+						seen_else: true,
 					)
 				)
 			else if kw == "ifdef" or kw == "ifndef":
@@ -850,8 +859,11 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
 
 				e.frames.append(
 					Frame(
-						line: ll.num, parent: act, cond: cond, in_else: false,
-						seen_else: false
+						line: ll.num,
+						parent: act,
+						cond: cond,
+						in_else: false,
+						seen_else: false,
 					)
 				)
 			else:
@@ -872,8 +884,11 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
 
 				e.frames.append(
 					Frame(
-						line: ll.num, parent: act, cond: cond, in_else: false,
-						seen_else: false
+						line: ll.num,
+						parent: act,
+						cond: cond,
+						in_else: false,
+						seen_else: false,
 					)
 				)
 
@@ -928,11 +943,13 @@ fn parse(var e: Env, cli: List[String]) Unit!Fatal:
 					if osimple:
 						add := try expand(var e, value)
 						e.vars[name.clone()] = Var(
-							value: joinsp(oval, add), simple: true
+							value: joinsp(oval, add),
+							simple: true,
 						)
 					else:
 						e.vars[name.clone()] = Var(
-							value: joinsp(oval, value), simple: false
+							value: joinsp(oval, value),
+							simple: false,
 						)
 		else if col >= 0:
 			pre := cjoin(cs, 0, col)
@@ -1019,8 +1036,11 @@ fn resolve(e: Env, t: String) Res:
 	if r := e.explicit.get(t):
 		if not r.recipe.is_empty():
 			return Res(
-				has: true, normal: r.normal.clone(), oo: r.oo.clone(),
-				recipe: r.recipe.clone(), stem: ""
+				has: true,
+				normal: r.normal.clone(),
+				oo: r.oo.clone(),
+				recipe: r.recipe.clone(),
+				stem: "",
 			)
 
 	for pr in e.prules:
@@ -1050,19 +1070,28 @@ fn resolve(e: Env, t: String) Res:
 							oo.append(p.clone())
 
 					return Res(
-						has: true, normal: nm, oo: oo, recipe: pr.recipe.clone(),
-						stem: st
+						has: true,
+						normal: nm,
+						oo: oo,
+						recipe: pr.recipe.clone(),
+						stem: st,
 					)
 
 	if r := e.explicit.get(t):
 		return Res(
-			has: true, normal: r.normal.clone(), oo: r.oo.clone(),
-			recipe: List[RLine](), stem: ""
+			has: true,
+			normal: r.normal.clone(),
+			oo: r.oo.clone(),
+			recipe: List[RLine](),
+			stem: "",
 		)
 
 	return Res(
-		has: false, normal: List[String](), oo: List[String](), recipe: List[RLine](),
-		stem: ""
+		has: false,
+		normal: List[String](),
+		oo: List[String](),
+		recipe: List[RLine](),
+		stem: "",
 	)
 
 fn default_goal(e: Env) String?:
@@ -1127,8 +1156,14 @@ fn simulate(var e: Env, cmd: String) Int:
 	return 0
 
 fn run_recipe(
-	var e: Env, t: String, recipe: List[RLine], first: String, dn: List[String],
-	qs: List[String], doo: List[String], stem: String
+	var e: Env,
+	t: String,
+	recipe: List[RLine],
+	first: String,
+	dn: List[String],
+	qs: List[String],
+	doo: List[String],
+	stem: String,
 ) Unit!Fatal:
 	e.ran += 1
 	e.vars["@"] = Var(value: t.clone(), simple: true)
@@ -1439,15 +1474,33 @@ export fn main() Int:
 		reqs = sub_list(all, s2 + 1, n)
 
 	var e = Env(
-		mk: mk, vars: Map[String, Var](), cli: List[String](), out: List[String](),
-		mute: false, line: 0, rstack: List[String](), explicit: Map[String, Rule](),
-		order: List[String](), prules: List[PRule](), phony: List[String](),
-		frames: List[Frame](), has_pend: false, pend_targets: List[String](),
-		pend_normal: List[String](), pend_oo: List[String](),
-		pend_recipe: List[RLine](), pend_line: 0, pend_phony: false,
-		files: Map[String, Int](), clock: 0, memo: Map[String, Bool](),
-		dstack: List[String](), ran: 0, dry: false, dseen: List[String](),
-		dres: List[String]()
+		mk: mk,
+		vars: Map[String, Var](),
+		cli: List[String](),
+		out: List[String](),
+		mute: false,
+		line: 0,
+		rstack: List[String](),
+		explicit: Map[String, Rule](),
+		order: List[String](),
+		prules: List[PRule](),
+		phony: List[String](),
+		frames: List[Frame](),
+		has_pend: false,
+		pend_targets: List[String](),
+		pend_normal: List[String](),
+		pend_oo: List[String](),
+		pend_recipe: List[RLine](),
+		pend_line: 0,
+		pend_phony: false,
+		files: Map[String, Int](),
+		clock: 0,
+		memo: Map[String, Bool](),
+		dstack: List[String](),
+		ran: 0,
+		dry: false,
+		dseen: List[String](),
+		dres: List[String](),
 	)
 
 	for line in ftab:

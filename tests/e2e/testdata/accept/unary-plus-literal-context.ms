@@ -28,9 +28,12 @@ fn negative_minimum() Int8: -(-128)
 fn negative_signed_minimum() Int8: -(+ (-128))
 
 test "nested sign overflow still faults":
-	(try expect_fault(fn: _ignored := negative_minimum())) | try expect_contains(
-		"overflow"
+	(
+		(try expect_fault(fn: _ignored := negative_minimum()))
+		| try expect_contains("overflow")
 	)
-	(try expect_fault(fn: _ignored := negative_signed_minimum())) | try expect_contains(
-		"overflow"
+	(
+		(
+			try expect_fault(fn: _ignored := negative_signed_minimum())
+		) | try expect_contains("overflow")
 	)

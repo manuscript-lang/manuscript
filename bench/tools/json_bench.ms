@@ -58,7 +58,8 @@ fn fetch_corpora() Unit!:
 
 		url := "https://raw.githubusercontent.com/miloyip/nativejson-benchmark/master/data/{f}.json"
 		_ := try must(
-			"curl {f}", capture("curl", ["-sSfL", "-o", "{DATA}/{f}.json", url])
+			"curl {f}",
+			capture("curl", ["-sSfL", "-o", "{DATA}/{f}.json", url]),
 		)
 
 	// Small messages: the shape worker threads and RPC exchange.
@@ -77,7 +78,8 @@ fn load(text: String) Map[String, Rate]:
 		if f.length() != 4: continue
 
 		rows.add(
-			"{f[0]}\t{f[1]}", Rate(f[2].parse_int().get(1), f[3].parse_int().get(0))
+			"{f[0]}\t{f[1]}",
+			Rate(f[2].parse_int().get(1), f[3].parse_int().get(0)),
 		)
 
 	return rows
@@ -92,15 +94,17 @@ fn run(names: List[String]) Result[String, Error]:
 	ms := try must(
 		"ms run",
 		capture(
-			ms_binary(), ["run", "bench/perf/json/ms.toml", "--"].concat(names)
-		)
+			ms_binary(),
+			["run", "bench/perf/json/ms.toml", "--"].concat(names),
+		),
 	)
 	rust := try must(
 		"cargo run",
 		run_in(
-			"bench/perf/json/rust", "cargo",
-			["run", "--release", "--quiet", "--"].concat(names)
-		)
+			"bench/perf/json/rust",
+			"cargo",
+			["run", "--release", "--quiet", "--"].concat(names),
+		),
 	)
 	n := load(node)
 	r := load(rust)
@@ -110,8 +114,9 @@ fn run(names: List[String]) Result[String, Error]:
 	var rows = [
 		"node {output_of("node", ["--version"]).trim()}, {revision}, {host}",
 		left("doc", 14) + left("op", 11) + right("node MB/s", 10) + right(
-			"serde MB/s", 11
-		) + right("ms MB/s", 10) + right("ms/node", 9) + right("ms/serde", 10)
+			"serde MB/s",
+			11,
+		) + right("ms MB/s", 10) + right("ms/node", 9) + right("ms/serde", 10),
 	]
 
 	for key in n.keys():
@@ -123,13 +128,17 @@ fn run(names: List[String]) Result[String, Error]:
 		mr := m.get_or(key, Rate(1, 0))
 		rows.append(
 			left(f[0], 14) + left(f[1], 11) + right(
-				mbps(nr).to_fixed(0), 10
+				mbps(nr).to_fixed(0),
+				10,
 			) + right(mbps(rr).to_fixed(0), 11) + right(
-				mbps(mr).to_fixed(0), 10
+				mbps(mr).to_fixed(0),
+				10,
 			) + right(
-				(nr.nanos.to_float() / mr.nanos.to_float()).to_fixed(2), 8
+				(nr.nanos.to_float() / mr.nanos.to_float()).to_fixed(2),
+				8,
 			) + "x" + right(
-				(rr.nanos.to_float() / mr.nanos.to_float()).to_fixed(2), 9
+				(rr.nanos.to_float() / mr.nanos.to_float()).to_fixed(2),
+				9,
 			) + "x"
 		)
 

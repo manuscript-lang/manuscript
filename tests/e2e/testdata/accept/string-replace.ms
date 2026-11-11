@@ -31,7 +31,8 @@ test "replace_first handles early and late matches across output sizes":
 	try expect_equal("é🙂é".replace_first("🙂", "X"), "éXé")
 	try expect_equal("abcdefghijklmno".replace_first("o", "世界"), "abcdefghijklmn世界")
 	try expect_equal(
-		"abcdefghijklmno".replace_first("missing", "世界"), "abcdefghijklmno"
+		"abcdefghijklmno".replace_first("missing", "世界"),
+		"abcdefghijklmno",
 	)
 
 fn forward[T](value: T) T: value
@@ -73,7 +74,7 @@ test "replacing long text with a shorter or equal string trims, shares or inline
 	try expect_equal(long.replace("word", "w"), "w w w w w w w w w w")
 	try expect_equal(
 		long.replace("word", "WORD"),
-		"WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD"
+		"WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD",
 	)
 	try expect_equal(long.replace("word ", ""), "word")
 	try expect_equal(long.replace("word", "").byte_length(), 9)
@@ -98,5 +99,5 @@ test "join sizes its result exactly across the inline and heap boundary":
 	try expect_equal(["é", "世界", "😀"].join("·"), "é·世界·😀")
 	try expect_equal(
 		["one", "two", "three", "four", "five", "six", "seven"].join("--"),
-		"one--two--three--four--five--six--seven"
+		"one--two--three--four--five--six--seven",
 	)

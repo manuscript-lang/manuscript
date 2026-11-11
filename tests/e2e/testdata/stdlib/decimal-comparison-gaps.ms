@@ -5,8 +5,18 @@ import (
 
 test "decimal comparison orders signs exponent gaps and overlapping digits":
 	ascending := [
-		-1e6144d, -1e34d, -9999999999999999999999999999999999d, -1e33d, -1d, -1e-6176d,
-		0d, 1e-6176d, 1d, 9999999999999999999999999999999999d, 1e34d, 1e6144d
+		-1e6144d,
+		-1e34d,
+		-9999999999999999999999999999999999d,
+		-1e33d,
+		-1d,
+		-1e-6176d,
+		0d,
+		1e-6176d,
+		1d,
+		9999999999999999999999999999999999d,
+		1e34d,
+		1e6144d,
 	]
 
 	for i in 0..ascending.length():

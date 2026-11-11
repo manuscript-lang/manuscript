@@ -34,26 +34,27 @@ test "timestamp shifts normalize raw fields and preserve wide sums":
 	maximum := 9223372036854775807
 	try expect_equal(
 		(try Timestamp(-62135596801, 1000000000).shift(nanoseconds(0))),
-		Timestamp(-62135596800, 0)
+		Timestamp(-62135596800, 0),
 	)
 	try expect_equal(
 		(try Timestamp(253402300800, 0).shift(nanoseconds(-1000000000))),
-		Timestamp(253402300799, 0)
+		Timestamp(253402300799, 0),
 	)
 	try expect_equal(
-		(try Timestamp(0, -1).shift(nanoseconds(0))), Timestamp(-1, 999999999)
+		(try Timestamp(0, -1).shift(nanoseconds(0))),
+		Timestamp(-1, 999999999),
 	)
 	try expect_equal(
 		(try Timestamp(0, maximum).shift(nanoseconds(maximum))),
-		Timestamp(18446744073, 709551614)
+		Timestamp(18446744073, 709551614),
 	)
 	try expect_equal(
 		(try Timestamp(0, minimum).shift(nanoseconds(minimum))),
-		Timestamp(-18446744074, 290448384)
+		Timestamp(-18446744074, 290448384),
 	)
 	try expect_equal(
 		(try Timestamp(0, maximum).shift(nanoseconds(minimum))),
-		Timestamp(-1, 999999999)
+		Timestamp(-1, 999999999),
 	)
 
 	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
@@ -95,7 +96,7 @@ test "format renders tokens and from_calendar round trips":
 	moment := try parse_timestamp("2024-03-10T12:30:15.250Z")
 	try expect_equal(
 		(try moment.format("YYYY-MM-DD HH:mm:ss.SSS ZZ", "+05:30")),
-		"2024-03-10 18:00:15.250 +05:30"
+		"2024-03-10 18:00:15.250 +05:30",
 	)
 
 	back := try from_calendar(2024, 3, 10, 8, 30, 15, 250000000, "America/New_York")
@@ -137,17 +138,21 @@ test "timestamp parsing preserves maximum-width precision and offsets":
 
 	out_of_range: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))
 	try expect_equal(
-		parse_timestamp("0001-01-01T00:00:00.123456789+00:01"), out_of_range
+		parse_timestamp("0001-01-01T00:00:00.123456789+00:01"),
+		out_of_range,
 	)
 	try expect_equal(
-		parse_timestamp("9999-12-31T23:59:59.123456789-00:01"), out_of_range
+		parse_timestamp("9999-12-31T23:59:59.123456789-00:01"),
+		out_of_range,
 	)
 
 test "timestamp parsing rejects oversized fractions and suffixes":
 	invalid: Timestamp! := error(Error("time: invalid data", kind: "EBADMSG"))
 	for text in [
-		"2024-02-29T12:30:45.1234567890Z", "2024-02-29T12:30:45.1234567890+00:00",
-		"2024-02-29T12:30:45.123456789+00:00Z", "2024-02-29T12:30:45.123456789+00:000",
-		"2024-02-29T12:30:45." + "0".repeat(1048576).get() + "Z"
+		"2024-02-29T12:30:45.1234567890Z",
+		"2024-02-29T12:30:45.1234567890+00:00",
+		"2024-02-29T12:30:45.123456789+00:00Z",
+		"2024-02-29T12:30:45.123456789+00:000",
+		"2024-02-29T12:30:45." + "0".repeat(1048576).get() + "Z",
 	]:
 		try expect_equal(parse_timestamp(text), invalid)

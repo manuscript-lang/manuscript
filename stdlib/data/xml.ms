@@ -310,7 +310,8 @@ impl Reader:
 				while not self.looking_at(">"):
 					if self.done(): return error(
 						Error(
-							"XML: invalid data", kind: "EBADMSG"
+							"XML: invalid data",
+							kind: "EBADMSG",
 						)
 					)
 
@@ -358,7 +359,7 @@ impl Reader:
 	// The prolog may also hold one DOCTYPE; it is skipped, never expanded.
 	var fn skip_misc(
 		declaration_allowed: Bool = false,
-		doctype_allowed: Bool = false
+		doctype_allowed: Bool = false,
 	) Unit!:
 		start := self.at
 		var doctype_open = doctype_allowed
@@ -441,7 +442,8 @@ impl Reader:
 				for existing in attributes:
 					if existing.name == attribute_name: return error(
 						Error(
-							"XML: invalid data", kind: "EBADMSG"
+							"XML: invalid data",
+							kind: "EBADMSG",
 						)
 					)
 			else:
@@ -456,7 +458,8 @@ impl Reader:
 
 			attributes.append(
 				XmlAttribute(
-					name: attribute_name, value: try decode(raw)
+					name: attribute_name,
+					value: try decode(raw),
 				)
 			)
 
@@ -652,7 +655,8 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 	// XML 1.0 section 2.11: `\r\n` and a lone `\r` reach the parser as `\n`; `&#13;` is
 	// unaffected.
 	normalized := if text.contains("\r"): text.replace("\r\n", "\n").replace(
-		"\r", "\n"
+		"\r",
+		"\n",
 	) else: text.clone()
 	var reader = Reader(chars: normalized.chars(), at: 0, max_depth: max_depth)
 	if reader.peek() == "\u{feff}": reader.at += 1
@@ -668,13 +672,15 @@ export fn parse(text: String, max_depth: Int = 1000) XmlNode!:
 // back as `\n`.
 export fn escape_text(text: String) String:
 	return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace(
-		"\r", "&#13;"
+		"\r",
+		"&#13;",
 	)
 
 // Escapes text for a double-quoted attribute value.
 export fn escape_attribute(text: String) String:
 	return escape_text(text).replace("\"", "&quot;").replace("\n", "&#10;").replace(
-		"\t", "&#9;"
+		"\t",
+		"&#9;",
 	)
 
 // Writes a node as XML. A non-empty `indent` (such as two spaces) puts each element on

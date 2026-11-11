@@ -52,7 +52,8 @@ test "encoded words decode":
 	try expect_equal(decode_words("=?utf-8?B?SGk=?= =?utf-8?B?IHRoZXJl?="), "Hi there")
 	try expect_equal(decode_words("plain =?x"), "plain =?x")
 	try expect_equal(
-		parse_address("=?utf-8?B?SMOpbGxv?= <h@x.org>").get().name, "Héllo"
+		parse_address("=?utf-8?B?SMOpbGxv?= <h@x.org>").get().name,
+		"Héllo",
 	)
 
 test "encoded words keep literal text and scale linearly":

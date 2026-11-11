@@ -106,20 +106,23 @@ test "rounding functions agree with exact rationals":
 	for x in finite_float_boundaries():
 		exact := rat_of_float(x).get(rat_of_int(0))
 		try expect_equal(
-			rat_of_float(floor(x)).get(rat_of_int(7)).numerator(), exact.floor()
+			rat_of_float(floor(x)).get(rat_of_int(7)).numerator(),
+			exact.floor(),
 		)
 		try expect_equal(
-			rat_of_float(ceil(x)).get(rat_of_int(7)).numerator(), exact.ceil()
+			rat_of_float(ceil(x)).get(rat_of_int(7)).numerator(),
+			exact.ceil(),
 		)
 		try expect_equal(
-			rat_of_float(truncate(x)).get(rat_of_int(7)).numerator(), exact.truncate()
+			rat_of_float(truncate(x)).get(rat_of_int(7)).numerator(),
+			exact.truncate(),
 		)
 
 		// `round` sends ties toward positive infinity, unlike `BigRat.round`, which sends them away from zero.
 		half := try rat(from_int(1), from_int(2))
 		try expect_equal(
 			rat_of_float(round(x)).get(rat_of_int(7)).numerator(),
-			exact.add(half).floor()
+			exact.add(half).floor(),
 		)
 
 test "nonfinite inputs pass through the rounding functions":
@@ -271,7 +274,8 @@ test "divide_wide and remainder_wide match exact division":
 					divisor_big := big_of_word(divisor)
 					remainder := try remainder_wide(high, low, divisor)
 					try expect_equal(
-						big_of_word(remainder), try numerator.remainder(divisor_big)
+						big_of_word(remainder),
+						try numerator.remainder(divisor_big),
 					)
 
 					if high >= divisor:
@@ -282,13 +286,13 @@ test "divide_wide and remainder_wide match exact division":
 							big_of_word(result.quotient),
 							try numerator.divide(
 								divisor_big
-							)
+							),
 						)
 						try expect_equal(
 							big_of_word(result.remainder),
 							try numerator.remainder(
 								divisor_big
-							)
+							),
 						)
 
 test "bit operations match BigInt two's complement":
@@ -306,7 +310,8 @@ test "shifts and rotations agree with exact arithmetic at every count":
 			shifted := try wrap64(try from_int(a).shift_left(count))
 			try expect_equal(from_int(shift_left(a, count)), shifted)
 			try expect_equal(
-				from_int(shift_right(a, count)), try from_int(a).shift_right(count)
+				from_int(shift_right(a, count)),
+				try from_int(a).shift_right(count),
 			)
 
 			rotated := rotate_left(rotate_right(a, count), count)
@@ -315,7 +320,8 @@ test "shifts and rotations agree with exact arithmetic at every count":
 			word := if a < 0: from_int(a) + two_pow(64) else: from_int(a)
 			logical := try word.shift_right(count)
 			try expect_equal(
-				from_int(shift_right_unsigned(a, count)), try wrap64(logical)
+				from_int(shift_right_unsigned(a, count)),
+				try wrap64(logical),
 			)
 
 test "bit counts match the binary expansion":
@@ -392,7 +398,8 @@ test "parse_float rounds like the exact rational at the range edges":
 		if nearest := exact.to_float():
 			try expect_true(
 				same_float(
-					parsed.get(1.5), nearest
+					parsed.get(1.5),
+					nearest,
 				) or nearest == 0.0 and parsed.get(1.5) == 0.0
 			)
 		else:
@@ -413,7 +420,8 @@ test "BigRat and BigFloat arithmetic is exact or correctly rounded on Float boun
 				if nearest := a.add(b).to_float():
 					try expect_true(
 						same_float(
-							sum, nearest
+							sum,
+							nearest,
 						) or nearest == 0.0 and sum == 0.0
 					)
 
@@ -422,7 +430,8 @@ test "BigRat and BigFloat arithmetic is exact or correctly rounded on Float boun
 				if nearest := a.multiply(b).to_float():
 					try expect_true(
 						same_float(
-							product, nearest
+							product,
+							nearest,
 						) or nearest == 0.0 and product == 0.0
 					)
 
@@ -527,7 +536,7 @@ test "to_exponential matches the exact decimal expansion":
 				magnitude := if shown < 0: -shown else: shown
 				try expect_equal(
 					x.to_exponential(digits),
-					"{sign}{mantissa}e{exponent_sign}{magnitude}"
+					"{sign}{mantissa}e{exponent_sign}{magnitude}",
 				)
 
 test "Decimal arithmetic matches BigInt while the result fits 34 digits":
@@ -539,18 +548,19 @@ test "Decimal arithmetic matches BigInt while the result fits 34 digits":
 				(x + y).to_fixed(0),
 				Result.ok(
 					(from_int(a) + from_int(b)).to_string_radix(10)
-				)
+				),
 			)
 			try expect_equal(
 				(x - y).to_fixed(0),
 				Result.ok(
 					(from_int(a) - from_int(b)).to_string_radix(10)
-				)
+				),
 			)
 			try expect_equal(x.compare(y), a.compare(b))
 
 			product := from_int(a) * from_int(b)
 			if product.abs().to_string_radix(10).length() <= 34:
 				try expect_equal(
-					(x * y).to_fixed(0), Result.ok(product.to_string_radix(10))
+					(x * y).to_fixed(0),
+					Result.ok(product.to_string_radix(10)),
 				)

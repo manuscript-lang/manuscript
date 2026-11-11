@@ -818,7 +818,7 @@ export fn range_by(
 	start: Int,
 	end: Int,
 	step: Int,
-	options: RangeOptions = RangeOptions()
+	options: RangeOptions = RangeOptions(),
 ) List[Int]!:
 	return msrt_list_range_by(start, end, step, options.max_items)
 

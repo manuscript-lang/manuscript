@@ -70,14 +70,15 @@ test "preserved resource payloads transfer exactly once":
 	result_then(log.clone())
 	discarded_error(log.clone())
 	try expect_equal(
-		read_file(log).wait().get().decode_utf8().get(""), "1,2,3,4,5,6,7,"
+		read_file(log).wait().get().decode_utf8().get(""),
+		"1,2,3,4,5,6,7,",
 	)
 	try transformed_success(log.clone())
 	try transformed_error(log.clone())
 	try transformed_then(log.clone())
 	try expect_equal(
 		read_file(log).wait().get().decode_utf8().get(""),
-		"1,2,3,4,5,6,7,8,9,11,10,12,13,"
+		"1,2,3,4,5,6,7,8,9,11,10,12,13,",
 	)
 
 fn bound_transform(log: String) Unit!:

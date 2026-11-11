@@ -79,7 +79,7 @@ session := try verify_token[Session](token, secret)
 export fn sign_token[T: Data](
 	claims: T,
 	key: Bytes,
-	algorithm: JwtAlgorithm = JwtAlgorithm.Hs256
+	algorithm: JwtAlgorithm = JwtAlgorithm.Hs256,
 ) String!:
 	header := stringify(JwtHeader(alg: algorithm_name(algorithm), typ: "JWT"))
 	payload := stringify(claims)
@@ -106,7 +106,7 @@ Failures return an `Error` that says which check failed; show a caller one gener
 export fn verify_token[T: Data = JsonValue](
 	token: String,
 	key: Bytes,
-	check: JwtCheck = JwtCheck()
+	check: JwtCheck = JwtCheck(),
 ) T!:
 	if token.byte_length() > check.max_bytes: return error(
 		Error("jwt: malformed token", kind: "EBADMSG")
@@ -117,7 +117,8 @@ export fn verify_token[T: Data = JsonValue](
 
 	header := try decode_json[JsonValue](parts[0], check.max_bytes)
 	if not header_algorithm_matches(
-		header.get("alg").get(JsonValue.Null), check.algorithm
+		header.get("alg").get(JsonValue.Null),
+		check.algorithm,
 	): return error(Error("jwt: wrong algorithm", kind: "EBADMSG"))
 
 	// No critical header extension is supported by this verifier.
@@ -131,7 +132,10 @@ export fn verify_token[T: Data = JsonValue](
 		)
 
 	signature := base64_decode(
-		parts[2], url_safe: true, max_bytes: check.max_bytes, padded: false
+		parts[2],
+		url_safe: true,
+		max_bytes: check.max_bytes,
+		padded: false,
 	)
 	if signature.is_error(): return error(
 		Error("jwt: malformed token", kind: "EBADMSG")
@@ -139,7 +143,10 @@ export fn verify_token[T: Data = JsonValue](
 
 	signing_input := "{parts[0]}.{parts[1]}"
 	genuine := try verify_bytes(
-		check.algorithm, key, signing_input.to_bytes(), signature.get("".to_bytes())
+		check.algorithm,
+		key,
+		signing_input.to_bytes(),
+		signature.get("".to_bytes()),
 	)
 	if not genuine: return error(Error("jwt: bad signature", kind: "EBADMSG"))
 
@@ -208,7 +215,7 @@ fn verify_bytes(
 	algorithm: JwtAlgorithm,
 	key: Bytes,
 	data: Bytes,
-	signature: Bytes
+	signature: Bytes,
 ) Bool!:
 	if hash := hmac_hash(algorithm):
 		mac := hash.hmac(key, data)
@@ -264,14 +271,15 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Unit!:
 			if many := aud.as_list():
 				if many.any(fn item: item.as_string().is_none()): return error(
 					Error(
-						"jwt: aud must hold only strings", kind: "EBADMSG"
+						"jwt: aud must hold only strings",
+						kind: "EBADMSG",
 					)
 				)
 			else:
 				return error(
 					Error(
 						"jwt: aud must be a string or a list of strings",
-						kind: "EBADMSG"
+						kind: "EBADMSG",
 					)
 				)
 

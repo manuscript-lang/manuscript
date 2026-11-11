@@ -7,7 +7,8 @@ test "factorial and binomial are exact":
 	try expect_equal((try factorial(0)).to_string_radix(10), "1")
 	try expect_equal((try factorial(5)).to_string_radix(10), "120")
 	try expect_equal(
-		(try factorial(25)).to_string_radix(10), "15511210043330985984000000"
+		(try factorial(25)).to_string_radix(10),
+		"15511210043330985984000000",
 	)
 	try expect_equal((try factorial(100)).to_string_radix(10).length(), 158)
 	try expect_equal((try factorial(100)) / (try factorial(99)), from_int(100))
@@ -16,7 +17,8 @@ test "factorial and binomial are exact":
 	try expect_equal((try binomial(5, 0)).to_string_radix(10), "1")
 	try expect_equal((try binomial(5, 6)).to_string_radix(10), "0")
 	try expect_equal(
-		(try binomial(100, 50)).to_string_radix(10), "100891344545564193334812497256"
+		(try binomial(100, 50)).to_string_radix(10),
+		"100891344545564193334812497256",
 	)
 
 test "factorial and binomial reject negative inputs":

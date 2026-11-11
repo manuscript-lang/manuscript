@@ -65,12 +65,14 @@ test "generic callbacks preserve both layers of nested Optional inputs":
 	try expect_true(every([absent], fn value: value.is_none()))
 	try expect_true(
 		every(
-			[present_absent], fn value: (value.is_some() and value.get().is_none())
+			[present_absent],
+			fn value: (value.is_some() and value.get().is_none())
 		)
 	)
 	try expect_true(
 		every(
-			[present_zero], fn value: (value.is_some() and value.get().get() == 0)
+			[present_zero],
+			fn value: (value.is_some() and value.get().get() == 0)
 		)
 	)
 

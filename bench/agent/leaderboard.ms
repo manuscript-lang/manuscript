@@ -78,7 +78,7 @@ fn categorize(step: JsonValue) String:
 			c.get("arguments").get(
 				JsonValue.ObjectValue(Map[String, JsonValue]())
 			),
-			0
+			0,
 		)
 	).join(" ")
 	names := calls.map(fn c: text_at(c, "function_name"))
@@ -180,7 +180,7 @@ fn read_trial(dir: String) Trial?:
 				cats[n].clone(),
 				JsonValue.NumberValue(
 					"{round(split[n]).truncate_to_int().get(0)}"
-				)
+				),
 			)
 
 	ex := r.get("agent_execution").get(JsonValue.Null)
@@ -195,11 +195,16 @@ fn read_trial(dir: String) Trial?:
 	score := reward.get(JsonValue.Null).as_float()
 	passed := score.get(0.0) == 1.0
 	return Trial(
-		text_at(r, "trial_name"), cid.clone(), text_at(meta, "category"),
-		meta.get("tier").get(JsonValue.Null).as_int().get(0), lang.clone(),
+		text_at(r, "trial_name"),
+		cid.clone(),
+		text_at(meta, "category"),
+		meta.get("tier").get(JsonValue.Null).as_int().get(0),
+		lang.clone(),
 		agent_cfg.get("name").get(JsonValue.Null).as_string(),
-		agent_cfg.get("model_name").get(JsonValue.Null).as_string(), passed,
-		score.is_none(), detail.get("passed").get(JsonValue.Null).as_int(),
+		agent_cfg.get("model_name").get(JsonValue.Null).as_string(),
+		passed,
+		score.is_none(),
+		detail.get("passed").get(JsonValue.Null).as_int(),
 		detail.get("total").get(JsonValue.Null).as_int(),
 		detail.get("first_build_ok").get(JsonValue.Null).as_bool(),
 		detail.get("code_tokens").get(JsonValue.Null).as_int(),
@@ -207,9 +212,11 @@ fn read_trial(dir: String) Trial?:
 		ar.get("n_input_tokens").get(JsonValue.Null).as_int().get(0),
 		ar.get("n_cache_tokens").get(JsonValue.Null).as_int().get(0),
 		ar.get("n_output_tokens").get(JsonValue.Null).as_int().get(0),
-		ar.get("cost_usd").get(JsonValue.Null).as_float().get(0.0), turns,
-		round(wall * 10.0) / 10.0, JsonValue.ObjectValue(sources),
-		r.get("started_at").get(JsonValue.Null).as_string().get("")
+		ar.get("cost_usd").get(JsonValue.Null).as_float().get(0.0),
+		turns,
+		round(wall * 10.0) / 10.0,
+		JsonValue.ObjectValue(sources),
+		r.get("started_at").get(JsonValue.Null).as_string().get(""),
 	)
 
 fn read_trials(path: String) List[Trial]:
@@ -285,7 +292,7 @@ fn agg(rs: List[Trial]) Agg:
 		mean_of(ok.map(fn r: (r.turns.to_float()))),
 		mean_scaled_opt(ok.map(fn r: r.wall_s), 10.0),
 		mean_of(ok.map(fn r: r.cost_usd)),
-		mean_of(coded.map(fn r: (r.code_tokens.get(0).to_float())))
+		mean_of(coded.map(fn r: (r.code_tokens.get(0).to_float()))),
 	)
 
 fn fmt(v: Float?, kind: String) String:
@@ -313,7 +320,8 @@ fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) S
 	keys := rs.map(key).distinct()
 	var rows = keys.map(fn k: Row(k.clone(), agg(rs.filter(fn t: key(t) == k))))
 	rows = rows.entries().sorted(
-		fn a, b: order(a.value, b.value, a.index, b.index)
+		fn a,
+		b: order(a.value, b.value, a.index, b.index)
 	).map(fn e: (e.value.clone()))
 
 	for i in 0..rows.length():
@@ -372,7 +380,7 @@ fn source_table(rows: List[Trial]) String:
 					ok.map(
 						fn t: source_value(t, c)
 					).sum() / ok.length().to_float() / 1000.0,
-					0
+					0,
 				)
 				+ "k"
 			)
@@ -403,34 +411,45 @@ fn render(src_arg: String?) Int:
 	out.append("")
 	out.append(
 		table(
-			"Languages (all models)", clean, fn t: lang_name(t.language), "language"
+			"Languages (all models)",
+			clean,
+			fn t: lang_name(t.language),
+			"language"
 		)
 	)
 	out.append(
 		table(
-			"Models (all languages)", clean,
-			fn t: "{t.agent.get("None")} / {t.model.get("None")}", "agent / model"
+			"Models (all languages)",
+			clean,
+			fn t: "{t.agent.get("None")} / {t.model.get("None")}",
+			"agent / model"
 		)
 	)
 	out.append(
 		table(
-			"Model x language", clean,
-			fn t: "{t.model.get("None")} / {lang_name(t.language)}", "model / language"
+			"Model x language",
+			clean,
+			fn t: "{t.model.get("None")} / {lang_name(t.language)}",
+			"model / language"
 		)
 	)
 	out.append(source_table(clean))
 	for cat in clean.map(fn t: t.category.clone()).distinct().sorted():
 		out.append(
 			table(
-				"Category: {cat}", clean.filter(fn t: t.category == cat),
-				fn t: lang_name(t.language), "language"
+				"Category: {cat}",
+				clean.filter(fn t: t.category == cat),
+				fn t: lang_name(t.language),
+				"language"
 			)
 		)
 	for tier in clean.map(fn t: t.tier).distinct().sorted():
 		out.append(
 			table(
-				"Tier {tier}", clean.filter(fn t: t.tier == tier),
-				fn t: lang_name(t.language), "language"
+				"Tier {tier}",
+				clean.filter(fn t: t.tier == tier),
+				fn t: lang_name(t.language),
+				"language"
 			)
 		)
 	write_text(board, out.join("\n"))

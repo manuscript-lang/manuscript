@@ -30,7 +30,9 @@ test "one_byte returns single bytes":
 
 test "fail_after delivers a prefix and then fails":
 	var input = fail_after(
-		source(), 4, Error("I/O: service unavailable", kind: "EAGAIN")
+		source(),
+		4,
+		Error("I/O: service unavailable", kind: "EAGAIN"),
 	)
 	all := read_all(input, none)
 	try expect_true(all.is_error())
@@ -40,8 +42,9 @@ test "fail_writer_after writes the prefix that fits and then fails":
 	path := join([dir.path(), "out.bin"])
 	file := try expect_ok(open(path, OpenMode.Write, OpenOptions(permissions: 420)))
 	var out = fail_writer_after(
-		try expect_ok(file.writer()), 3,
-		Error("I/O: service unavailable", kind: "EAGAIN")
+		try expect_ok(file.writer()),
+		3,
+		Error("I/O: service unavailable", kind: "EAGAIN"),
 	)
 	try expect_ok(out.write("ab".to_bytes()))
 	try expect_true(out.write("cdef".to_bytes()).is_error())

@@ -78,8 +78,12 @@ export type FetcherOptions:
 	cookies: Bool = false
 	// TLS trust and client-certificate settings; add `h2` to `alpn` to allow HTTP/2.
 	tls: TlsOptions = TlsOptions(
-		server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
-		alpn: [], require_client_certificate: false
+		server_name: "",
+		roots_pem: "",
+		certificate_pem: "",
+		private_key_pem: "",
+		alpn: [],
+		require_client_certificate: false,
 	)
 
 // A buffered response. Error statuses are ordinary responses; use `check_status` to
@@ -112,8 +116,9 @@ impl FetchResponse:
 		if self.ok(): return ok(unit)
 		return error(
 			Error(
-				"fetch: unexpected status {self.head.status}", kind: "EIO",
-				details: {"status": self.head.status.to_string()}
+				"fetch: unexpected status {self.head.status}",
+				kind: "EIO",
+				details: {"status": self.head.status.to_string()},
 			)
 		)
 
@@ -130,8 +135,9 @@ impl Fetcher:
 	fn fetch(url: String, options: FetchOptions = FetchOptions()) Promise[FetchResponse]:
 		return owned_task[FetchResponse](
 			send_job(
-				msstd_http_client_share(self.client.native), url.clone(),
-				options.clone()
+				msstd_http_client_share(self.client.native),
+				url.clone(),
+				options.clone(),
 			)
 		)
 
@@ -140,8 +146,12 @@ impl Fetcher:
 	fn stream(url: String, options: FetchOptions = FetchOptions()) StreamingResponse!:
 		sent := outgoing(options)
 		return self.client.request(
-			options.method.clone(), url, sent.headers, sent.body,
-			options.max_response_bytes, options.timeout
+			options.method.clone(),
+			url,
+			sent.headers,
+			sent.body,
+			options.max_response_bytes,
+			options.timeout,
 		)
 
 impl Closeable for Fetcher:
@@ -213,11 +223,13 @@ fn outgoing(options: FetchOptions) Outgoing:
 // ms: effect std.net.connect
 export fn fetcher(
 	options: FetcherOptions = FetcherOptions(),
-	net: Network? = none
+	net: Network? = none,
 ) Fetcher!:
 	settings := HttpClientOptions(
-		max_redirects: options.max_redirects, decompress: options.decompress,
-		cookies: options.cookies, tls: options.tls.clone()
+		max_redirects: options.max_redirects,
+		decompress: options.decompress,
+		cookies: options.cookies,
+		tls: options.tls.clone(),
 	)
 
 	if restricted := net:
@@ -234,7 +246,7 @@ export fn fetcher(
 // ms: effect std.net.connect
 export fn fetch(
 	url: String,
-	options: FetchOptions = FetchOptions()
+	options: FetchOptions = FetchOptions(),
 ) Promise[FetchResponse]:
 	return owned_task[FetchResponse](fetch_job(url.clone(), options.clone()))
 
@@ -251,7 +263,7 @@ fn fetched(url: String, options: FetchOptions) FetchResponse!:
 fn send_job(
 	native: NativeHttpClient,
 	url: String,
-	options: FetchOptions
+	options: FetchOptions,
 ) fn() FetchResponse!:
 	return fn: sent(native, url, options)
 
@@ -260,7 +272,12 @@ fn sent(native: NativeHttpClient, url: String, options: FetchOptions) FetchRespo
 	started := monotonic()
 	outbound := outgoing(options.clone())
 	body := try msstd_http_client_request_bytes(
-		native, options.method.text(), url, outbound.headers, outbound.body,
-		options.max_response_bytes, options.timeout
+		native,
+		options.method.text(),
+		url,
+		outbound.headers,
+		outbound.body,
+		options.max_response_bytes,
+		options.timeout,
 	)
 	return drain(body, options, started)

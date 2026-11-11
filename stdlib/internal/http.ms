@@ -23,7 +23,7 @@ export extern fn msstd_http_client_request_bytes(
 	headers: HttpHeaders,
 	body: Bytes,
 	max_response_bytes: Int?,
-	timeout: Duration?
+	timeout: Duration?,
 ) RawResponse!
 
 export extern fn msstd_http_serving_new(
@@ -58,7 +58,7 @@ export extern fn msstd_http_body_metadata(
 
 export extern fn msstd_http_body_read(
 	handle: NativeResponseBody,
-	max_bytes: Int?
+	max_bytes: Int?,
 ) Bytes?!
 
 export extern fn msstd_http_body_read_all(handle: NativeResponseBody) Bytes!
@@ -66,12 +66,12 @@ export extern fn msstd_http_body_read_all(handle: NativeResponseBody) Bytes!
 export extern fn msstd_http_headers_append(
 	headers: HttpHeaders,
 	name: String,
-	value: Bytes
+	value: Bytes,
 ) Unit!
 
 export extern fn msstd_http_headers_values(
 	value: HttpHeaders,
-	name: String
+	name: String,
 ) List[Bytes]?
 
 export extern fn msstd_http_headers_names(value: HttpHeaders) List[String]

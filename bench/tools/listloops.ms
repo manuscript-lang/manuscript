@@ -12,8 +12,9 @@ import (
 
 fn run(work: String, n: Int) Result[String, Error]:
 	try copy(
-		"bench/perf/listloops/ms", "{work}/ms",
-		CopyOptions(recursive: true, replace: true)
+		"bench/perf/listloops/ms",
+		"{work}/ms",
+		CopyOptions(recursive: true, replace: true),
 	)
 	try build_ms("{work}/ms", "{work}/ms/bench")
 
@@ -24,9 +25,13 @@ fn run(work: String, n: Int) Result[String, Error]:
 		capture(
 			cc,
 			[
-				"-O3", "-ffp-contract=off", source.clone(), "-o", "{work}/c-sse2"
-			]
-		)
+				"-O3",
+				"-ffp-contract=off",
+				source.clone(),
+				"-o",
+				"{work}/c-sse2",
+			],
+		),
 	)
 	_avx2 := try must(
 		"cc",
@@ -34,8 +39,8 @@ fn run(work: String, n: Int) Result[String, Error]:
 			cc,
 			[
 				"-O3", "-mavx2", "-ffp-contract=off", source, "-o", "{work}/c-avx2"
-			]
-		)
+			],
+		),
 	)
 	var best = Map[String, Float]()
 
@@ -50,7 +55,8 @@ fn run(work: String, n: Int) Result[String, Error]:
 				key := "{f[0]} {v}"
 				value := f[1].parse_float().get(0.0)
 				if value > best.get_or(key, 0.0) or not best.contains(key): best.add(
-					key.clone(), value
+					key.clone(),
+					value,
 				)
 
 	var rows = best.keys().sorted().map(fn k: "{k} {best.get_or(k, 0.0).to_fixed(2)}")

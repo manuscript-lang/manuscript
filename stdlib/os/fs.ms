@@ -208,7 +208,7 @@ interface FileSystem:
 	fn glob(
 		path: String,
 		options: GlobOptions,
-		exclude: (fn(PathEntry) Bool)?
+		exclude: (fn(PathEntry) Bool)?,
 	) List[PathEntry]!
 	// Copies a file or tree according to the flattened replacement and size policies of
 	// `copy`.
@@ -216,7 +216,7 @@ interface FileSystem:
 		source: String,
 		destination: String,
 		options: NativeCopyOptions,
-		filter: (fn(String, String) Bool)?
+		filter: (fn(String, String) Bool)?,
 	) Unit!
 
 // The runtime handle behind a `FileHandle`.
@@ -633,7 +633,7 @@ sources := try glob(".", GlobOptions(patterns: ["*.ms"]))
 export fn glob(
 	path: String,
 	options: GlobOptions,
-	exclude: (fn(PathEntry) Bool)? = none
+	exclude: (fn(PathEntry) Bool)? = none,
 ) List[PathEntry]!:
 	return host().glob(path, options, exclude)
 
@@ -659,14 +659,18 @@ try copy("a.txt", "b.txt", CopyOptions(replace: true))
 export fn copy(
 	source: String,
 	destination: String,
-	options: CopyOptions = CopyOptions()
+	options: CopyOptions = CopyOptions(),
 ) Unit!:
 	native := NativeCopyOptions(
-		recursive: options.recursive, replace: options.replace, error_on_exists: true,
+		recursive: options.recursive,
+		replace: options.replace,
+		error_on_exists: true,
 		dereference: options.dereference,
 		preserve_timestamps: options.preserve_timestamps,
-		verbatim_symlinks: options.verbatim_symlinks, clone: clone_text(options.clone),
-		max_entries: options.max_entries, max_bytes: options.max_bytes
+		verbatim_symlinks: options.verbatim_symlinks,
+		clone: clone_text(options.clone),
+		max_entries: options.max_entries,
+		max_bytes: options.max_bytes,
 	)
 	return host().copy(source, destination, native, options.filter)
 
@@ -823,7 +827,7 @@ export fn set_times(
 	path: String,
 	accessed: Timestamp,
 	modified: Timestamp,
-	follow_links: Bool = true
+	follow_links: Bool = true,
 ) Unit!:
 	return msstd_fs_set_times(path, accessed, modified, follow: follow_links)
 
@@ -857,7 +861,7 @@ file := try open("out.log", OpenMode.Append)
 export fn open(
 	path: String,
 	mode: OpenMode = OpenMode.Read,
-	options: OpenOptions = OpenOptions()
+	options: OpenOptions = OpenOptions(),
 ) FileHandle!:
 	return msstd_fs_open(path, open_flags(mode, options.exclusive), options.permissions)
 
@@ -914,16 +918,23 @@ fn replace_atomically(link: String, data: Bytes) Unit!:
 
 	while attempt < 16:
 		temporary := temporary_name(
-			path, "{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}"
+			path,
+			"{stamp.unix_seconds()}.{stamp.nanoseconds()}.{attempt}",
 		)
 		attempt += 1
 
 		match open(
-			temporary, OpenMode.Write, OpenOptions(exclusive: true, permissions: mode)
+			temporary,
+			OpenMode.Write,
+			OpenOptions(exclusive: true, permissions: mode),
 		):
 			ok(file):
 				return finish_atomic(
-					file, temporary, path, data, if existing.is_ok(): mode else: none
+					file,
+					temporary,
+					path,
+					data,
+					if existing.is_ok(): mode else: none,
 				)
 			error(cause):
 				if cause.kind != "EEXIST": return error(cause)
@@ -937,7 +948,7 @@ fn finish_atomic(
 	temporary: String,
 	path: String,
 	data: Bytes,
-	mode: Int?
+	mode: Int?,
 ) Unit!:
 	var out = file
 	var prepared = out.write(data)
@@ -982,7 +993,9 @@ fn move_by_copy(source: String, destination: String, cause: Error) Unit!:
 	if stat(destination, follow_links: false).is_ok(): return error(already_exists())
 
 	copied := copy(
-		source, destination, CopyOptions(recursive: info.get().is_directory())
+		source,
+		destination,
+		CopyOptions(recursive: info.get().is_directory()),
 	)
 
 	if copied.is_error():
@@ -1008,7 +1021,7 @@ var watcher = try watch("src", recursive: true, options: WatchOptions(interval: 
 export fn watch(
 	path: String,
 	recursive: Bool = false,
-	options: WatchOptions = WatchOptions()
+	options: WatchOptions = WatchOptions(),
 ) ReadStream[FileEvent]!:
 	if interval := options.interval:
 		if options.max_events.is_some() or options.overflow.is_some(): return error(
@@ -1017,7 +1030,10 @@ export fn watch(
 		return ok(
 			watch_stream(
 				try msstd_fs_watch(
-					path, recursive, interval, options.max_entries
+					path,
+					recursive,
+					interval,
+					options.max_entries,
 				)
 			)
 		)
@@ -1025,8 +1041,11 @@ export fn watch(
 	return ok(
 		watch_stream(
 			try msstd_fs_watch_native(
-				path, recursive, options.max_entries, options.max_events,
-				options.overflow.get("error")
+				path,
+				recursive,
+				options.max_entries,
+				options.max_events,
+				options.overflow.get("error"),
 			)
 		)
 	)

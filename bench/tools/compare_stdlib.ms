@@ -91,12 +91,14 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 	for name in names:
 		before := median(
 			values.get_or("before", Map[String, List[Float]]()).get_or(
-				name, []
+				name,
+				[],
 			)
 		)
 		after := median(
 			values.get_or("after", Map[String, List[Float]]()).get_or(
-				name, []
+				name,
+				[],
 			)
 		)
 		var ratio: Float? = none
@@ -109,7 +111,8 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 		entry.add("before", jfloat(before))
 		entry.add("after", jfloat(after))
 		entry.add(
-			"ratio", if ratio.is_some(): jfloat(ratio.get(0.0)) else: JsonValue.Null
+			"ratio",
+			if ratio.is_some(): jfloat(ratio.get(0.0)) else: JsonValue.Null,
 		)
 		summary.add(label.clone(), jobject(entry))
 
@@ -146,8 +149,9 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 
 fn main() Int:
 	parsed := options(
-		arguments(), ["before", "after", "output", "repeats", "samples", "filter"],
-		["before", "after", "output"]
+		arguments(),
+		["before", "after", "output", "repeats", "samples", "filter"],
+		["before", "after", "output"],
 	)
 	if parsed.is_error(): return fail(parsed.err().message)
 

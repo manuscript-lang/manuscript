@@ -80,14 +80,16 @@ test "word arithmetic matches exact BigInt references at all width boundaries":
 
 			product := multiply_wide(left, right)
 			try expect_equal(
-				big_word(product.high) * radix + big_word(product.low), a * b
+				big_word(product.high) * radix + big_word(product.low),
+				a * b,
 			)
 
 			for divisor in values:
 				if divisor != 0:
 					actual := try remainder_wide(left, right, divisor)
 					try expect_equal(
-						big_word(actual), (a * radix + b) % big_word(divisor)
+						big_word(actual),
+						(a * radix + b) % big_word(divisor),
 					)
 
 			if left != 0:
@@ -117,7 +119,17 @@ test "wide division distinguishes invalid divisor and quotient overflow":
 
 test "binary float decomposition round trips normals subnormals and signed zero":
 	for value in [
-		0.0, -0.0, min_float, -min_float, 1.0, -1.0, 8.0, -8.0, 1e-300, 1e300, max_float
+		0.0,
+		-0.0,
+		min_float,
+		-min_float,
+		1.0,
+		-1.0,
+		8.0,
+		-8.0,
+		1e-300,
+		1e300,
+		max_float,
 	]:
 		parts := frexp(value)
 		rebuilt := ldexp(parts.fraction, parts.exponent)
@@ -195,18 +207,26 @@ test "IEEE remainder uses nearest-even quotient without changing truncating rema
 	try expect_true(ieee_remainder(1.0, nan).is_nan())
 
 test "modular inverse distinguishes absence invalid modulus and the unit modulus":
-	from_int(271).inverse_mod(
-		from_int(383)
-	) | try expect_ok | try expect_some | try expect_equal(from_int(106))
-	from_int(-271).inverse_mod(
-		from_int(383)
-	) | try expect_ok | try expect_some | try expect_equal(from_int(277))
+	(
+		from_int(271).inverse_mod(from_int(383))
+		| try expect_ok
+		| try expect_some
+		| try expect_equal(from_int(106))
+	)
+	(
+		from_int(-271).inverse_mod(
+			from_int(383)
+		) | try expect_ok | try expect_some | try expect_equal(from_int(277))
+	)
 	try expect_true((try from_int(6).inverse_mod(from_int(9))).is_none())
 	try expect_true((try from_int(0).inverse_mod(from_int(2))).is_none())
 	for number in [-5, 0, 5]:
-		from_int(number).inverse_mod(
-			from_int(1)
-		) | try expect_ok | try expect_some | try expect_equal(from_int(0))
+		(
+			from_int(number).inverse_mod(from_int(1))
+			| try expect_ok
+			| try expect_some
+			| try expect_equal(from_int(0))
+		)
 
 	invalid: BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	try expect_equal(from_int(2).inverse_mod(from_int(0)), invalid)

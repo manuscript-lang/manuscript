@@ -231,9 +231,11 @@ export fn metrics() SystemMetrics!:
 			available_memory: snapshot.available_memory,
 			uptime: Duration(nanos: snapshot.uptime_nanos),
 			load_average: [
-				snapshot.load_1, snapshot.load_5, snapshot.load_15
+				snapshot.load_1,
+				snapshot.load_5,
+				snapshot.load_15,
 			],
-			available_parallelism: snapshot.available_parallelism
+			available_parallelism: snapshot.available_parallelism,
 		)
 	)
 

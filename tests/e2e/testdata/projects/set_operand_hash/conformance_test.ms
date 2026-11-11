@@ -14,14 +14,18 @@ test "Set algebra probes each operand with its creator hash":
 	left.union(right).values().map(fn key: key.id) | try expect_equal([1, 2, 3])
 	left.intersection(right).values().map(fn key: key.id) | try expect_equal([1])
 	left.difference(right).values().map(fn key: key.id) | try expect_equal([2])
-	left.symmetric_difference(right).values().map(
-		fn key: key.id
-	) | try expect_equal([2, 3])
+	(
+		left.symmetric_difference(right).values().map(
+			fn key: key.id
+		) | try expect_equal([2, 3])
+	)
 	right.intersection(left).values().map(fn key: key.id) | try expect_equal([11])
 	right.difference(left).values().map(fn key: key.id) | try expect_equal([3])
-	right.symmetric_difference(left).values().map(
-		fn key: key.id
-	) | try expect_equal([3, 2])
+	(
+		right.symmetric_difference(left).values().map(
+			fn key: key.id
+		) | try expect_equal([3, 2])
+	)
 	left.values().map(fn key: key.id) | try expect_equal([1, 2])
 	right.values().map(fn key: key.id) | try expect_equal([11, 3])
 

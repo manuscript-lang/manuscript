@@ -81,30 +81,41 @@ test "closed list scalar summaries preserve sums and lengths":
 test "closed list reads preserve defaults and evaluation order":
 	values := [10, 20]
 	var visits: List[Int] = []
-	values.get(
-		default: effect(var visits, 7), index: effect(var visits, 0)
-	) | try expect_equal(10)
+	(
+		values.get(
+			default: effect(var visits, 7),
+			index: effect(var visits, 0),
+		) | try expect_equal(10)
+	)
 	values.get(-1, effect(var visits, 8)) | try expect_equal(20)
 	values.get(3, effect(var visits, 9)) | try expect_equal(9)
 	visits | try expect_equal([7, 0, 8, 9])
 
 test "recursive appends keep overflow checks":
-	(try expect_fault(fn: _ignored := self_overflow())) | try expect_contains(
-		"Int overflow;"
+	(
+		(try expect_fault(fn: _ignored := self_overflow()))
+		| try expect_contains("Int overflow;")
 	)
-	(try expect_fault(fn: _ignored := peer_overflow())) | try expect_contains(
-		"Int overflow;"
+	(
+		(
+			try expect_fault(fn: _ignored := peer_overflow())
+		) | try expect_contains("Int overflow;")
 	)
 
 test "list prefixes and Optional defaults keep overflow checks":
-	(try expect_fault(fn: _ignored := prefix_overflow())) | try expect_contains(
-		"Int overflow;"
+	(
+		(try expect_fault(fn: _ignored := prefix_overflow()))
+		| try expect_contains("Int overflow;")
 	)
-	(try expect_fault(fn: _ignored := optional_overflow(none))) | try expect_contains(
-		"Int overflow;"
+	(
+		(
+			try expect_fault(fn: _ignored := optional_overflow(none))
+		) | try expect_contains("Int overflow;")
 	)
-	(try expect_fault(fn: _ignored := optional_overflow(0))) | try expect_contains(
-		"Int overflow;"
+	(
+		(
+			try expect_fault(fn: _ignored := optional_overflow(0))
+		) | try expect_contains("Int overflow;")
 	)
 
 test "a changed copy leaves the original list alone":
@@ -163,11 +174,14 @@ fn default_length() Int:
 	return values.length()
 
 test "reordered defaults and scalar append dependencies keep overflow checks":
-	(try expect_fault(fn: _ignored := reordered_default_overflow())) | try expect_contains(
-		"Int overflow;"
+	(
+		(try expect_fault(fn: _ignored := reordered_default_overflow()))
+		| try expect_contains("Int overflow;")
 	)
-	(try expect_fault(fn: _ignored := scalar_append_overflow())) | try expect_contains(
-		"Int overflow;"
+	(
+		(
+			try expect_fault(fn: _ignored := scalar_append_overflow())
+		) | try expect_contains("Int overflow;")
 	)
 
 test "hidden match and default mutations invalidate lengths":

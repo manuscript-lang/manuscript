@@ -15,15 +15,16 @@ test "values paths and filters":
 	try expect_equal(
 		render(
 			"\{\{ user.tags.1 \}\} \{\{ user.tags | join(\"+\") \}\} \{\{ user.tags | length \}\}",
-			d
+			d,
 		).get(),
-		"b a+b 2"
+		"b a+b 2",
 	)
 	try expect_equal(
 		render(
-			"\{\{ missing | default(\"x\") \}\}|\{\{ name | upper | truncate(3) \}\}", d
+			"\{\{ missing | default(\"x\") \}\}|\{\{ name | upper | truncate(3) \}\}",
+			d,
 		).get(),
-		"x|ADA..."
+		"x|ADA...",
 	)
 	try expect_equal(render("\{\{ n \}\} \{\{ \"\{\{\" \}\}", d).get(), "3 \{\{")
 
@@ -31,20 +32,22 @@ test "conditions":
 	d := data("\{\"n\":3,\"s\":\"hi\",\"empty\":[],\"on\":true\}")
 	try expect_equal(
 		render(
-			"\{\{ if n > 2 and on \}\}big\{\{ else \}\}small\{\{ end \}\}", d
+			"\{\{ if n > 2 and on \}\}big\{\{ else \}\}small\{\{ end \}\}",
+			d,
 		).get(),
-		"big"
+		"big",
 	)
 	try expect_equal(
 		render(
 			"\{\{ if empty \}\}a\{\{ else if s == \"hi\" \}\}b\{\{ else \}\}c\{\{ end \}\}",
-			d
+			d,
 		).get(),
-		"b"
+		"b",
 	)
 	try expect_equal(render("\{\{ if not nothing \}\}y\{\{ end \}\}", d).get(), "y")
 	try expect_equal(
-		render("\{\{ if s | length >= 2 \}\}ok\{\{ end \}\}", d).get(), "ok"
+		render("\{\{ if s | length >= 2 \}\}ok\{\{ end \}\}", d).get(),
+		"ok",
 	)
 
 test "loops":
@@ -52,41 +55,47 @@ test "loops":
 	try expect_equal(
 		render(
 			"\{\{ for x in xs \}\}\{\{ x \}\}\{\{ if not loop.last \}\},\{\{ end \}\}\{\{ end \}\}",
-			d
+			d,
 		).get(),
-		"a,b,c"
+		"a,b,c",
 	)
 	try expect_equal(
 		render(
-			"\{\{ for i, x in xs \}\}\{\{ i \}\}\{\{ x \}\}\{\{ end \}\}", d
+			"\{\{ for i, x in xs \}\}\{\{ i \}\}\{\{ x \}\}\{\{ end \}\}",
+			d,
 		).get(),
-		"0a1b2c"
+		"0a1b2c",
 	)
 	try expect_equal(
 		render(
-			"\{\{ for k, v in m \}\}\{\{ k \}\}=\{\{ v \}\};\{\{ end \}\}", d
+			"\{\{ for k, v in m \}\}\{\{ k \}\}=\{\{ v \}\};\{\{ end \}\}",
+			d,
 		).get(),
-		"k=1;j=2;"
+		"k=1;j=2;",
 	)
 	try expect_equal(
-		render("\{\{ for e in m \}\}\{\{ e.key \}\}\{\{ end \}\}", d).get(), "kj"
+		render("\{\{ for e in m \}\}\{\{ e.key \}\}\{\{ end \}\}", d).get(),
+		"kj",
 	)
 	try expect_equal(
 		render(
-			"\{\{ for x in none \}\}x\{\{ else \}\}empty\{\{ end \}\}", d
+			"\{\{ for x in none \}\}x\{\{ else \}\}empty\{\{ end \}\}",
+			d,
 		).get(),
-		"empty"
+		"empty",
 	)
 
 test "html escaping and raw":
 	d := data("\{\"t\":\"<b>&\\\"'\"\}")
 	try expect_equal(
-		render("\{\{ t \}\}", d, html: true).get(), "&lt;b&gt;&amp;&#34;&#39;"
+		render("\{\{ t \}\}", d, html: true).get(),
+		"&lt;b&gt;&amp;&#34;&#39;",
 	)
 	try expect_equal(render("\{\{ t | raw \}\}", d, html: true).get(), "<b>&\"'")
 	try expect_equal(render("\{\{ t \}\}", d).get(), "<b>&\"'")
 	try expect_equal(
-		render("\{\{ t | escape \}\}", d, html: true).get(), "&lt;b&gt;&amp;&#34;&#39;"
+		render("\{\{ t | escape \}\}", d, html: true).get(),
+		"&lt;b&gt;&amp;&#34;&#39;",
 	)
 
 test "trim markers and comments":
@@ -99,9 +108,10 @@ test "partials":
 	partials.add("row", compile("\{\{ a \}\}").get())
 	try expect_equal(
 		page.render(
-			data("\{\"a\":7\}"), RenderOptions(partials: partials)
+			data("\{\"a\":7\}"),
+			RenderOptions(partials: partials),
 		).get(),
-		"[7]"
+		"[7]",
 	)
 	try expect_true(page.render(data("\{\"a\":7\}")).is_error())
 
@@ -115,33 +125,38 @@ test "strict missing values and limits":
 	big := compile("\{\{ for i in xs \}\}abcdefgh\{\{ end \}\}").get()
 	try expect_true(
 		big.render(
-			data("\{\"xs\":[1,2,3,4]\}"), RenderOptions(max_output: 10)
+			data("\{\"xs\":[1,2,3,4]\}"),
+			RenderOptions(max_output: 10),
 		).is_error()
 	)
 
 test "the output limit counts UTF-8 bytes":
 	accent := compile("é").get()
 	try expect_equal(
-		accent.render(data("null"), RenderOptions(max_output: 2)).get(), "é"
+		accent.render(data("null"), RenderOptions(max_output: 2)).get(),
+		"é",
 	)
 	try expect_equal(
 		accent.render(data("null"), RenderOptions(max_output: 1)).err().kind,
-		"EOVERFLOW"
+		"EOVERFLOW",
 	)
 
 	emoji := compile("😀").get()
 	try expect_equal(
-		emoji.render(data("null"), RenderOptions(max_output: 3)).err().kind, "EOVERFLOW"
+		emoji.render(data("null"), RenderOptions(max_output: 3)).err().kind,
+		"EOVERFLOW",
 	)
 	try expect_equal(
-		emoji.render(data("null"), RenderOptions(max_output: 4)).get(), "😀"
+		emoji.render(data("null"), RenderOptions(max_output: 4)).get(),
+		"😀",
 	)
 
 	value := compile("\{\{ v \}\}\{\{ v \}\}").get()
 	input := data("\{\"v\":\"é\"\}")
 	try expect_equal(value.render(input, RenderOptions(max_output: 4)).get(), "éé")
 	try expect_equal(
-		value.render(input, RenderOptions(max_output: 3)).err().kind, "EOVERFLOW"
+		value.render(input, RenderOptions(max_output: 3)).err().kind,
+		"EOVERFLOW",
 	)
 
 test "compile errors name the line":
@@ -178,12 +193,14 @@ test "equality never crosses value kinds":
 	d := data("\{\"one\":1,\"text\":\"1\",\"yes\":true\}")
 	try expect_equal(
 		render(
-			"\{\{ one == text \}\}|\{\{ text == \"1\" \}\}|\{\{ one == 1 \}\}", d
+			"\{\{ one == text \}\}|\{\{ text == \"1\" \}\}|\{\{ one == 1 \}\}",
+			d,
 		).get(),
-		"false|true|true"
+		"false|true|true",
 	)
 	try expect_equal(
-		render("\{\{ yes == \"true\" \}\}|\{\{ one != text \}\}", d).get(), "false|true"
+		render("\{\{ yes == \"true\" \}\}|\{\{ one != text \}\}", d).get(),
+		"false|true",
 	)
 
 test "nested paths resolve through the loop frames and miss cleanly":
@@ -193,10 +210,11 @@ test "nested paths resolve through the loop frames and miss cleanly":
 	try expect_equal(
 		render(
 			"\{\{ a.b.c \}\}|\{\{ a.l.1 \}\}|\{\{ a.zz.c | default(\"none\") \}\}|\{\{ a.b.c.d | default(\"none\") \}\}",
-			d
+			d,
 		).get(),
-		"deep|y|none|none"
+		"deep|y|none|none",
 	)
 	try expect_equal(
-		render("\{\{ for r in rows \}\}\{\{ r.a.b \}\}\{\{ end \}\}", d).get(), "row"
+		render("\{\{ for r in rows \}\}\{\{ r.a.b \}\}\{\{ end \}\}", d).get(),
+		"row",
 	)

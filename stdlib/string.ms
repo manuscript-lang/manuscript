@@ -144,7 +144,7 @@ impl RegexSpanQueries for Regex:
 	fn capture_all_spans(
 		text: String,
 		max_matches: Int?,
-		max_captures: Int?
+		max_captures: Int?,
 	) List[List[RegexSpan?]]!:
 		raw := try msstd_regex_capture_all_spans(self, text, max_matches, max_captures)
 		if raw.is_empty(): return ok(List[List[RegexSpan?]]())
@@ -414,5 +414,5 @@ interface RegexSpanQueries:
 	fn capture_all_spans(
 		text: String,
 		max_matches: Int?,
-		max_captures: Int?
+		max_captures: Int?,
 	) List[List[RegexSpan?]]!

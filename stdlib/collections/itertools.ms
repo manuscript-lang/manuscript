@@ -55,7 +55,7 @@ export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
 // `(2, none)` and `(3, none)`.
 export fn zip_longest[A: Clonable, B: Clonable](
 	left: List[A],
-	right: List[B]
+	right: List[B],
 ) List[Pair[A?, B?]]:
 	var out: List[Pair[A?, B?]] = []
 	longest := left.length().max(right.length())
@@ -118,7 +118,7 @@ fn extend_permutations[T: Clonable](
 	k: Int,
 	var used: List[Bool],
 	var chosen: List[Int],
-	var out: List[List[T]]
+	var out: List[List[T]],
 ) Unit:
 	if chosen.length() == k:
 		out.append(chosen.map(fn i: values[i].clone()))

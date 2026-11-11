@@ -76,7 +76,8 @@ test "big floats round once at their precision":
 	two := big_float_of_int(2, 200)
 	root := try two.sqrt()
 	try expect_equal(
-		try root.to_fixed(40), "1.4142135623730950488016887242096980785697"
+		try root.to_fixed(40),
+		"1.4142135623730950488016887242096980785697",
 	)
 
 	error_bound := try parse_big_float("1e-55", 200)
@@ -85,10 +86,11 @@ test "big floats round once at their precision":
 		try (
 			try big_float_of_int(1, 100).divide(big_float_of_int(3, 100))
 		).to_fixed(30),
-		"0.333333333333333333333333333333"
+		"0.333333333333333333333333333333",
 	)
 	try expect_equal(
-		(try big_float_of_int(2, 53).sqrt()).to_float(), 1.4142135623730951
+		(try big_float_of_int(2, 53).sqrt()).to_float(),
+		1.4142135623730951,
 	)
 	try expect_equal(big_float_of_int(7, 10).precision(), 10)
 	try expect_equal(big_float_of_int(1000, 100).with_precision(3).to_float(), 1024.0)
@@ -105,14 +107,15 @@ test "big floats add, subtract and compare across magnitudes":
 	try expect_equal(huge.negate().add(tiny).compare(huge.negate()), 0)
 	try expect_equal(huge.compare(tiny), 1)
 	try expect_equal(
-		big_float_of_int(5, 64).subtract(big_float_of_int(5, 64)).sign(), 0
+		big_float_of_int(5, 64).subtract(big_float_of_int(5, 64)).sign(),
+		0,
 	)
 	try expect_equal(big_float_of_float(0.5, 53).get(tiny).add(tiny).to_float(), 1.5)
 	try expect_equal(
 		big_float_of_int(-7, 64).divide(big_float_of_int(2, 64)).get(
 			tiny
 		).truncate().to_int(),
-		-3
+		-3,
 	)
 
 test "big float errors":
@@ -170,7 +173,8 @@ test "to_float rounds once, onto the subnormal grid":
 
 	// Normal values and the boundary are unchanged.
 	try expect_equal(
-		rat_of_binary(from_int(1), -1022).to_float(), 2.2250738585072014e-308
+		rat_of_binary(from_int(1), -1022).to_float(),
+		2.2250738585072014e-308,
 	)
 	try expect_equal(rat_of_int(3).to_float(), 3.0)
 	try expect_equal(rat_of_binary(from_int(1), 1024).to_float(), none)

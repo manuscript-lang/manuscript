@@ -174,7 +174,10 @@ fn with_modifiers(event: TerminalEvent, modifier: Int) TerminalEvent:
 	match event:
 		Key(name, _ctrl, _alt, _shift):
 			return key(
-				name.clone(), bits / 4 % 2 == 1, bits / 2 % 2 == 1, bits % 2 == 1
+				name.clone(),
+				bits / 4 % 2 == 1,
+				bits / 2 % 2 == 1,
+				bits % 2 == 1,
 			)
 		Text(_text): return event.clone()
 		Resize(_columns, _rows): return event.clone()
@@ -438,15 +441,17 @@ impl TerminalDecoder:
 // A decoder with nothing pending.
 export fn terminal_decoder() TerminalDecoder:
 	return TerminalDecoder(
-		pending: List[String](), pasting: false, paste: List[String](),
-		discarding: false
+		pending: List[String](),
+		pasting: false,
+		paste: List[String](),
+		discarding: false,
 	)
 
 fn read_size(handle: NativeRawTerminal) TerminalSize?:
 	if msstd_terminal_raw_terminal_size_status(handle).is_error(): return none
 	return TerminalSize(
 		columns: msstd_terminal_raw_terminal_size_columns(handle),
-		rows: msstd_terminal_raw_terminal_size_rows(handle)
+		rows: msstd_terminal_raw_terminal_size_rows(handle),
 	)
 
 fn resized(before: TerminalSize?, now: TerminalSize) Bool:
@@ -530,7 +535,7 @@ impl RawTerminal:
 				),
 				terminal_decoder(),
 				List[TerminalEvent](),
-				read_size(self.handle.native)
+				read_size(self.handle.native),
 			)
 		)
 
@@ -544,7 +549,7 @@ impl RawTerminal:
 				),
 				rows: msstd_terminal_raw_terminal_size_rows(
 					self.handle.native
-				)
+				),
 			)
 		)
 
@@ -624,7 +629,7 @@ export fn terminal_capabilities() TerminalCapabilities:
 		error_is_terminal: msstd_terminal_capabilities_error_is_terminal(),
 		raw_mode: msstd_terminal_capabilities_raw_mode(),
 		resize_events: msstd_terminal_capabilities_resize_events(),
-		colors: msstd_terminal_capabilities_colors()
+		colors: msstd_terminal_capabilities_colors(),
 	)
 
 // Returns the terminal size, or `ENOTTY` when output is redirected.
@@ -633,7 +638,8 @@ export fn terminal_size() TerminalSize!:
 	try msstd_terminal_size_status()
 	return ok(
 		TerminalSize(
-			columns: msstd_terminal_size_columns(), rows: msstd_terminal_size_rows()
+			columns: msstd_terminal_size_columns(),
+			rows: msstd_terminal_size_rows(),
 		)
 	)
 
@@ -649,9 +655,11 @@ export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:
 	// The restore text runs on close, at scope exit and at process exit: cursor, key
 	// protocols, paste, screen.
 	msstd_terminal_raw_terminal_set_restore(
-		native, "{esc}[?25h{esc}[<u{esc}[>4;0m{esc}[?2004l{leave}"
+		native,
+		"{esc}[?25h{esc}[<u{esc}[>4;0m{esc}[?2004l{leave}",
 	)
 	try msstd_terminal_raw_terminal_write(
-		native, "{enter}{esc}[?2004h{esc}[>4;2m{esc}[>1u"
+		native,
+		"{enter}{esc}[?2004h{esc}[>4;2m{esc}[>1u",
 	)
 	return ok(RawTerminal(handle: RawHandle(native)))

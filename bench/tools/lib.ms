@@ -60,12 +60,15 @@ export fn capture(
 	program: String,
 	arguments: List[String],
 	input: String = "",
-	cwd: String? = none
+	cwd: String? = none,
 ) Ran:
 	if out := run(program, arguments, RunOptions(input: input.to_bytes(), cwd: cwd)).wait():
 		return Ran(
-			true, out.exit_code, out.stdout.decode_utf8().get(""),
-			out.stderr.decode_utf8().get(""), out.max_resident_bytes
+			true,
+			out.exit_code,
+			out.stdout.decode_utf8().get(""),
+			out.stderr.decode_utf8().get(""),
+			out.max_resident_bytes,
 		)
 	return Ran(false, 125, "", "cannot start {program}\n")
 
@@ -188,7 +191,7 @@ export fn build_go(dir: String, out: String) Unit!:
 		[
 			"build", "-buildvcs=false", "-trimpath", "-ldflags=-s -w -buildid=", "-o",
 			out, "."
-		]
+		],
 	)
 	_ := try must("go build {dir}", ran)
 
@@ -218,7 +221,7 @@ export fn finish(result: String!) Int:
 export fn options(
 	args: List[String],
 	known: List[String],
-	required: List[String]
+	required: List[String],
 ) Map[String, String]!:
 	var found = Map[String, String]()
 	var i = 0
@@ -327,8 +330,11 @@ export fn run_inherit(dir: String, program: String, arguments: List[String]) Int
 		program,
 		arguments,
 		SpawnOptions(
-			stdin: Stdio.Null, stdout: Stdio.Inherit, stderr: Stdio.Inherit, cwd: dir
-		)
+			stdin: Stdio.Null,
+			stdout: Stdio.Inherit,
+			stderr: Stdio.Inherit,
+			cwd: dir,
+		),
 	):
 		code = child.wait().get(125)
 		if code < 0 or code > 125: code = 125

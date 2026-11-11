@@ -35,8 +35,9 @@ fn save_search_environment() SearchEnvironment!:
 	values := try environment()
 	return ok(
 		SearchEnvironment(
-			saved_variable(values, "PATH"), saved_variable(values, "PATHEXT"),
-			try working_directory()
+			saved_variable(values, "PATH"),
+			saved_variable(values, "PATHEXT"),
+			try working_directory(),
 		)
 	)
 
@@ -63,7 +64,8 @@ test "which preserves PATH order and rejects directories and nonexecutable files
 	try make_program(expected)
 	try make_program(join([second.clone(), "probe{suffix}"]))
 	try set_environment(
-		"PATH", "{separator}{blocked}{separator}{first}{separator}{second}{separator}"
+		"PATH",
+		"{separator}{blocked}{separator}{first}{separator}{second}{separator}",
 	)
 	try set_environment("PATHEXT", ".EXE;.CMD")
 	try expect_equal(which("probe"), expected)

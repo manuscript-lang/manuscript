@@ -140,7 +140,7 @@ fn sorted_keys(m: Map[String, String]) List[String]:
 fn union_names(
 	a: Map[String, String],
 	b: Map[String, String],
-	c: Map[String, String]
+	c: Map[String, String],
 ) List[String]:
 	var s = Set[String]()
 	for n in a.keys():
@@ -179,14 +179,20 @@ fn commit_id(tree: Map[String, String], parents: List[String], message: String) 
 	return hex16(hash_text(text))
 
 fn make_commit(
-	var r: Repo, tree: Map[String, String], parents: List[String], message: String
+	var r: Repo,
+	tree: Map[String, String],
+	parents: List[String],
+	message: String,
 ) String:
 	id := commit_id(tree, parents, message)
 	if r.commits.contains(id): return id
 
 	seq := r.order.length() + 1
 	r.commits[id.clone()] = Commit(
-		tree: tree.clone(), parents: parents.clone(), message: message.clone(), seq: seq
+		tree: tree.clone(),
+		parents: parents.clone(),
+		message: message.clone(),
+		seq: seq,
 	)
 	r.order.append(id.clone())
 	return id
@@ -199,11 +205,19 @@ fn new_repo() Repo:
 	var branches = Map[String, String]()
 	branches["main"] = ""
 	return Repo(
-		working: Map[String, String](), index: Map[String, String](),
-		commits: Map[String, Commit](), order: List[String](), branches: branches,
-		tags: Map[String, String](), attached: true, head_branch: "main",
-		head_commit: "", conflicts: Set[String](), merging: false, merge_other: "",
-		merge_branch: ""
+		working: Map[String, String](),
+		index: Map[String, String](),
+		commits: Map[String, Commit](),
+		order: List[String](),
+		branches: branches,
+		tags: Map[String, String](),
+		attached: true,
+		head_branch: "main",
+		head_commit: "",
+		conflicts: Set[String](),
+		merging: false,
+		merge_other: "",
+		merge_branch: "",
 	)
 
 fn head_id(r: Repo) String:
@@ -388,7 +402,7 @@ fn resolve_chunk(
 	bc: List[String],
 	oc: List[String],
 	tc: List[String],
-	bname: String
+	bname: String,
 ) Merged:
 	be := enc(bc)
 	oe := enc(oc)
@@ -399,14 +413,14 @@ fn resolve_chunk(
 
 	return Merged(
 		text: "<<<<<<< HEAD\n" + oe + "=======\n" + te + ">>>>>>> " + bname + "\n",
-		clean: false
+		clean: false,
 	)
 
 fn merge3(
 	base: List[String],
 	ours: List[String],
 	theirs: List[String],
-	bname: String
+	bname: String,
 ) Merged:
 	bo := matching(base, ours)
 	bt := matching(base, theirs)
@@ -439,8 +453,10 @@ fn merge3(
 	for s in 0..nb:
 		if mo[s] >= 0 and mt[s] >= 0:
 			ch := resolve_chunk(
-				sub(base, pb + 1, s), sub(ours, po + 1, mo[s]),
-				sub(theirs, pt + 1, mt[s]), bname
+				sub(base, pb + 1, s),
+				sub(ours, po + 1, mo[s]),
+				sub(theirs, pt + 1, mt[s]),
+				bname,
 			)
 			text += ch.text
 			if not ch.clean:
@@ -451,8 +467,10 @@ fn merge3(
 			pt = mt[s]
 
 	last := resolve_chunk(
-		sub(base, pb + 1, nb), sub(ours, po + 1, ours.length()),
-		sub(theirs, pt + 1, theirs.length()), bname
+		sub(base, pb + 1, nb),
+		sub(ours, po + 1, ours.length()),
+		sub(theirs, pt + 1, theirs.length()),
+		bname,
 	)
 	text += last.text
 	if not last.clean:

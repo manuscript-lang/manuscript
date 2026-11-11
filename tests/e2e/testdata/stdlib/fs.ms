@@ -37,23 +37,40 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 	root := temporary.path()
 	create_directory(path: "{root}/sub", recursive: false) | try expect_ok
 	for name in ["a.txt", "b.md", ".hidden.txt", "sub/c.txt"]:
-		write_file(path: "{root}/{name}", data: "", replace: false).wait() | try expect_ok
+		(
+			write_file(
+				path: "{root}/{name}",
+				data: "",
+				replace: false,
+			).wait()
+			| try expect_ok
+		)
 
 	all := GlobOptions(patterns: ["**/*.\{txt,md\}"])
 	matches := glob(path: root, options: all.clone()) | try expect_ok
 	matches.map(fn e: e.path.clone()) | try expect_equal(["a.txt", "b.md", "sub/c.txt"])
-	glob(
-		path: root, options: GlobOptions(patterns: ["**/*.\{txt,md\}"], max_results: 2)
-	) | try expect_fs_error(Error("filesystem: limit exceeded", kind: "EOVERFLOW"))
-	glob(path: root, options: GlobOptions(patterns: ["\{a.txt,[\}"])) | try expect_fs_error(
-		Error("filesystem: invalid input", kind: "EINVAL")
+	(
+		glob(
+			path: root,
+			options: GlobOptions(
+				patterns: ["**/*.\{txt,md\}"],
+				max_results: 2,
+			),
+		) | try expect_fs_error(Error("filesystem: limit exceeded", kind: "EOVERFLOW"))
+	)
+	(
+		glob(
+			path: root,
+			options: GlobOptions(patterns: ["\{a.txt,[\}"]),
+		) | try expect_fs_error(Error("filesystem: invalid input", kind: "EINVAL"))
 	)
 
 	options := GlobOptions(patterns: ["*.txt"], exclude: ["sub/**"])
 	entries := (
 		try expect_ok(
 			glob(
-				path: root, options: options.clone(),
+				path: root,
+				options: options.clone(),
 				exclude: fn(entry: PathEntry) Bool: entry.path == "missing.txt"
 			)
 		)
@@ -67,32 +84,52 @@ test "ordinary filesystem misuse retains typed cases":
 	directory := "{temporary.path()}/directory"
 	file := "{temporary.path()}/file"
 	_created := create_directory(path: directory, recursive: false) | try expect_ok
-	_child := write_file(path: "{directory}/child", data: "x", replace: false).wait() | try expect_ok
-	_written := write_file(path: file, data: "abc", replace: false).wait() | try expect_ok
-	remove(path: directory, recursive: false) | try expect_fs_error(
-		Error("filesystem: directory not empty", kind: "ENOTEMPTY")
+	_child := (
+		write_file(path: "{directory}/child", data: "x", replace: false).wait()
+		| try expect_ok
 	)
-	list(path: file) | try expect_fs_error(
-		Error("filesystem: invalid input", kind: "EINVAL")
+	_written := (
+		write_file(path: file, data: "abc", replace: false).wait()
+		| try expect_ok
 	)
-	read_file(path: directory).wait() | try expect_fs_error(
-		Error("filesystem: invalid input", kind: "EINVAL")
+	(
+		remove(path: directory, recursive: false) | try expect_fs_error(
+			Error("filesystem: directory not empty", kind: "ENOTEMPTY")
+		)
 	)
-	create_directory(path: file, recursive: false) | try expect_fs_error(
-		Error("filesystem: already exists", kind: "EEXIST")
+	(
+		list(path: file) | try expect_fs_error(
+			Error("filesystem: invalid input", kind: "EINVAL")
+		)
+	)
+	(
+		read_file(path: directory).wait() | try expect_fs_error(
+			Error("filesystem: invalid input", kind: "EINVAL")
+		)
+	)
+	(
+		create_directory(path: file, recursive: false) | try expect_fs_error(
+			Error("filesystem: already exists", kind: "EEXIST")
+		)
 	)
 
-	var reader = open(file, OpenMode.Read, OpenOptions(permissions: 384)) | try expect_ok
+	var reader = (
+		open(file, OpenMode.Read, OpenOptions(permissions: 384)) | try expect_ok
+	)
 	reader.write("x") | try expect_fs_error(Error("I/O: invalid input", kind: "EINVAL"))
-	reader.seek(
-		offset: -1, origin: Seek.Start
-	) | try expect_fs_error(Error("filesystem: invalid input", kind: "EINVAL"))
+	(
+		reader.seek(offset: -1, origin: Seek.Start) | try expect_fs_error(
+			Error("filesystem: invalid input", kind: "EINVAL")
+		)
+	)
 	try reader.close()
 
 	writer := open(file, OpenMode.Append, OpenOptions(permissions: 384)) | try expect_ok
 	writer.read(1) | try expect_fs_error(Error("I/O: invalid input", kind: "EINVAL"))
-	writer.read_file() | try expect_fs_error(
-		Error("filesystem: invalid input", kind: "EINVAL")
+	(
+		writer.read_file() | try expect_fs_error(
+			Error("filesystem: invalid input", kind: "EINVAL")
+		)
 	)
 
 test "filesystem scoped temporary directories and bounded file reads":
@@ -101,15 +138,29 @@ test "filesystem scoped temporary directories and bounded file reads":
 	directory = temporary.path()
 
 	path := "{directory}/data.txt"
-	_written := write_file(path: path, data: "hello", replace: false).wait() | try expect_ok
-	read_file(path: path, max_bytes: 5).wait() | try expect_ok | try expect_equal(
-		"hello".to_bytes()
+	_written := (
+		write_file(path: path, data: "hello", replace: false).wait()
+		| try expect_ok
 	)
-	read_file(path: path, max_bytes: 4).wait() | try expect_fs_error(
-		Error("filesystem: limit exceeded", kind: "EOVERFLOW")
+	(
+		read_file(
+			path: path,
+			max_bytes: 5,
+		).wait() | try expect_ok | try expect_equal("hello".to_bytes())
 	)
-	write_file(path: path, data: "changed", replace: false).wait() | try expect_fs_error(
-		Error("filesystem: already exists", kind: "EEXIST")
+	(
+		read_file(path: path, max_bytes: 4).wait() | try expect_fs_error(
+			Error("filesystem: limit exceeded", kind: "EOVERFLOW")
+		)
+	)
+	(
+		write_file(
+			path: path,
+			data: "changed",
+			replace: false,
+		).wait() | try expect_fs_error(
+			Error("filesystem: already exists", kind: "EEXIST")
+		)
 	)
 	(stat(path: path) | try expect_ok).size | try expect_equal(5)
 	(list(path: directory) | try expect_ok).length() | try expect_equal(1)
@@ -118,17 +169,31 @@ test "filesystem scoped temporary directories and bounded file reads":
 	var input = opened.reader() | try expect_ok
 	(input.next() | try expect_ok).get() | try expect_equal("hello".to_bytes())
 	try temporary.close()
-	stat(path: directory) | try expect_fs_error(
-		Error("filesystem: file or directory not found", kind: "ENOENT")
+	(
+		stat(path: directory) | try expect_fs_error(
+			Error("filesystem: file or directory not found", kind: "ENOENT")
+		)
 	)
 
 test "file handles positional I/O stream adapters and closed errors":
 	temporary := temporary("manuscript-handles-") | try expect_ok
 	path := "{temporary.path()}/data.txt"
-	_written := write_file(path: path, data: "abcdef", replace: false).wait() | try expect_ok
-	var handle = open(path, OpenMode.ReadWrite, OpenOptions(permissions: 384)) | try expect_ok
-	handle.read_at(offset: 2, max_bytes: 2) | try expect_ok | try expect_equal(
-		"cd".to_bytes()
+	_written := (
+		write_file(path: path, data: "abcdef", replace: false).wait()
+		| try expect_ok
+	)
+	var handle = (
+		open(
+			path,
+			OpenMode.ReadWrite,
+			OpenOptions(permissions: 384),
+		) | try expect_ok
+	)
+	(
+		handle.read_at(
+			offset: 2,
+			max_bytes: 2,
+		) | try expect_ok | try expect_equal("cd".to_bytes())
 	)
 	handle.write_at(offset: 1, data: "XY") | try expect_ok
 

@@ -165,8 +165,9 @@ fn locate(data: Bytes, pos: Int) List[Int]:
 // A malformed-input error at a one-based source position.
 fn toml_invalid(line: Int, column: Int, reason: String) Error:
 	return Error(
-		"TOML {line}:{column}: {reason}", kind: "EBADMSG",
-		details: {"line": line.to_string(), "column": column.to_string()}
+		"TOML {line}:{column}: {reason}",
+		kind: "EBADMSG",
+		details: {"line": line.to_string(), "column": column.to_string()},
 	)
 
 fn invalid_at(reader: Reader, pos: Int, reason: String) Error:
@@ -416,7 +417,8 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 		_: return error(invalid(reader, "key is already a value"))
 
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
-	Unit, Error
+	Unit,
+	Error,
 ]:
 	existing := lookup(reader, parent, key).clone()
 
@@ -434,25 +436,32 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 		_: return error(invalid(reader, "table array conflicts with value"))
 
 fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
-	Unit, Error
+	Unit,
+	Error,
 ]:
 	var current = parent
 	var index = 0
 
 	while index < keys.length() - 1:
 		current = try child(
-			reader: var reader, parent: current, key: (keys[index].clone()),
-			dotted: true
+			reader: var reader,
+			parent: current,
+			key: (keys[index].clone()),
+			dotted: true,
 		)
 		index += 1
 
 	return assign_one(
-		reader: var reader, parent: current, key: keys.last().get(), value: value
+		reader: var reader,
+		parent: current,
+		key: keys.last().get(),
+		value: value,
 	)
 
 // Adds a key that must not exist yet to an open table.
 fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
-	Unit, Error
+	Unit,
+	Error,
 ]:
 	if flags(reader, parent).sealed: return error(
 		invalid(reader, "duplicate or closed key")
@@ -509,7 +518,8 @@ fn seal(var reader: Reader, value: Node) Unit:
 			state.sealed = true
 			store_flags(var reader, id, state)
 			for entry in reader.entries[id].clone(): seal(
-				var reader, entry.value.clone()
+				var reader,
+				entry.value.clone(),
 			)
 		ArrayNode(values):
 			for item in values: seal(var reader, item)
@@ -643,7 +653,8 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 		if (
 			signed
 			or not digits(
-				clean.slice(2, clean.scalar_length()).get(""), alphabet
+				clean.slice(2, clean.scalar_length()).get(""),
+				alphabet,
 			)
 		):
 			return error(invalid_at(reader, at, "invalid integer"))
@@ -654,7 +665,7 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 				.get("")
 				.replace("_", "")
 			),
-			radix
+			radix,
 		): return ok(Node.Leaf(TomlValue.IntValue(value)))
 
 		return error(invalid_at(reader, at, "integer out of range"))
@@ -857,7 +868,7 @@ fn materialize(
 	arrays: List[List[Int]],
 	node: Node,
 	depth: Int,
-	var budget: Budget
+	var budget: Budget,
 ) TomlValue!:
 	if not within(depth, budget.max_depth): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
@@ -876,15 +887,23 @@ fn materialize(
 				entries.add(
 					entry.key.clone(),
 					try materialize(
-						tables, arrays, entry.value, (depth + 1), var budget
-					)
+						tables,
+						arrays,
+						entry.value,
+						(depth + 1),
+						var budget,
+					),
 				)
 			return ok(TomlValue.TableValue(entries))
 		ArrayNode(values):
 			var result: List[TomlValue] = []
 			for value in values: result.append(
 				try materialize(
-					tables, arrays, value, (depth + 1), var budget
+					tables,
+					arrays,
+					value,
+					(depth + 1),
+					var budget,
 				)
 			)
 			return ok(TomlValue.ArrayValue(result))
@@ -892,7 +911,11 @@ fn materialize(
 			var result: List[TomlValue] = []
 			for id in arrays[slot]: result.append(
 				try materialize(
-					tables, arrays, Node.TableNode(id), (depth + 1), var budget
+					tables,
+					arrays,
+					Node.TableNode(id),
+					(depth + 1),
+					var budget,
 				)
 			)
 			return ok(TomlValue.ArrayValue(result))
@@ -918,8 +941,13 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	if text.contains("\r"): normalized = text.replace("\r\n", "\n")
 
 	var reader = Reader(
-		data: normalized.to_bytes(), pos: 0, options: options, values: 0, tables: [],
-		entries: [], arrays: []
+		data: normalized.to_bytes(),
+		pos: 0,
+		options: options,
+		values: 0,
+		tables: [],
+		entries: [],
+		arrays: [],
 	)
 
 	if span := control_pattern().find_span(normalized):
@@ -957,8 +985,10 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 
 			while index < keys.length() - 1:
 				parent = try child(
-					reader: var reader, parent: parent, key: (keys[index].clone()),
-					dotted: false
+					reader: var reader,
+					parent: parent,
+					key: (keys[index].clone()),
+					dotted: false,
 				)
 				index += 1
 
@@ -972,12 +1002,18 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 
 				next := new_table(var reader, explicit: true, dotted: false)
 				try append_table(
-					reader: var reader, parent: parent, key: key.clone(), next: next
+					reader: var reader,
+					parent: parent,
+					key: key.clone(),
+					next: next,
 				)
 				current = next
 			else:
 				current = try child(
-					reader: var reader, parent: parent, key: key.clone(), dotted: false
+					reader: var reader,
+					parent: parent,
+					key: key.clone(),
+					dotted: false,
 				)
 
 				var state = flags(reader, current).clone()
@@ -1002,11 +1038,16 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 		)
 
 	var budget = Budget(
-		max_depth: reader.options.max_depth, max_values: reader.options.max_values,
-		values: 0
+		max_depth: reader.options.max_depth,
+		max_values: reader.options.max_values,
+		values: 0,
 	)
 	return materialize(
-		reader.entries, reader.arrays, Node.TableNode(root), 1, var budget
+		reader.entries,
+		reader.arrays,
+		Node.TableNode(root),
+		1,
+		var budget,
 	)
 
 type Writer:
@@ -1092,11 +1133,14 @@ fn section_kind(value: TomlValue) Int:
 		_: return 0
 
 fn emit_one(
-	var writer: Writer, path: List[String], brackets: String,
-	table: Map[String, TomlValue]
+	var writer: Writer,
+	path: List[String],
+	brackets: String,
+	table: Map[String, TomlValue],
 ) Unit:
 	if brackets == "[[": emit_header(
-		var writer, "[[".concat(dotted(path.clone())).concat("]]")
+		var writer,
+		"[[".concat(dotted(path.clone())).concat("]]"),
 	)
 	else: emit_header(var writer, "[".concat(dotted(path.clone())).concat("]"))
 
@@ -1119,13 +1163,18 @@ fn emit_table(var writer: Writer, path: List[String], values: Map[String, TomlVa
 
 		match entry.value:
 			TableValue(table): emit_one(
-				writer: var writer, path: child, brackets: "[", table: table
+				writer: var writer,
+				path: child,
+				brackets: "[",
+				table: table,
 			)
 			ArrayValue(elements):
 				if section_kind(entry.value.clone()) == 2:
 					for table in table_items(elements.clone()): emit_one(
-						writer: var writer, path: child.clone(), brackets: "[[",
-						table: table
+						writer: var writer,
+						path: child.clone(),
+						brackets: "[[",
+						table: table,
 					)
 			_: unit
 

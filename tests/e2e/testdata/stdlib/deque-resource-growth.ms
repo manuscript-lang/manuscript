@@ -117,7 +117,7 @@ test "grown resource deques close each owner once on error and fault exits":
 	try append_file(other, "").wait()
 	try expect_contains(
 		(try expect_fault(fn: interrupted(other.clone(), true).get())),
-		"after deque growth"
+		"after deque growth",
 	)
 	try expect_once(other, [0, 1, 2, 3, 4, 5])
 

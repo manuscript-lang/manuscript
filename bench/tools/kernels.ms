@@ -31,14 +31,18 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 	here := "bench/perf/{suite}"
 	for dir in ["go", "ms", "rust"]:
 		try copy(
-			"{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
+			"{here}/{dir}",
+			"{work}/{dir}",
+			CopyOptions(recursive: true, replace: true),
 		)
 	for dir in ["rust-checked", "c", "c-ms"]:
 		try create_directory("{work}/{dir}")
 	try build_go("{work}/go", "{work}/go/bench")
 	try build_rust("{work}/rust/main.rs", "{work}/rust/bench", [])
 	try build_rust(
-		"{work}/rust/main.rs", "{work}/rust-checked/bench", ["-C", "overflow-checks=on"]
+		"{work}/rust/main.rs",
+		"{work}/rust-checked/bench",
+		["-C", "overflow-checks=on"],
 	)
 	try build_ms("{work}/ms", "{work}/ms/bench")
 
@@ -56,13 +60,15 @@ fn run(suite: String, n: Int, work: String) Result[String, Error]:
 				["c-ms-no-bounds", "-DMS_NO_BOUNDS"],
 				[
 					"c-ms-unchecked", "-DMS_NO_POLL -DMS_NO_OVERFLOW -DMS_NO_BOUNDS"
-				]
+				],
 			]
 
 			for entry in flags:
 				try create_directory("{work}/{entry[0]}")
 				try build_c(
-					"{here}/c/ms.c", "{work}/{entry[0]}/bench", entry[1].split(" ")
+					"{here}/c/ms.c",
+					"{work}/{entry[0]}/bench",
+					entry[1].split(" "),
 				)
 
 			versions = versions.concat(ablations())

@@ -7,7 +7,8 @@ import (
 test "ASCII85 unframed vectors cover tails zero shorthand and maximum words":
 	for text in ["", "f", "fo", "foo", "foob", "fooba", "foobar", "hello", "Man sure."]:
 		try expect_equal(
-			try ascii85_decode(ascii85_encode(text.to_bytes())), text.to_bytes()
+			try ascii85_decode(ascii85_encode(text.to_bytes())),
+			text.to_bytes(),
 		)
 	try expect_equal(ascii85_encode("hello".to_bytes()), "BOu!rDZ")
 	try expect_equal(ascii85_encode("Man sure.".to_bytes()), "9jqo^F*2M7/c")
@@ -31,7 +32,8 @@ test "ASCII85 ignores every ASCII control and space including after complete gro
 	try expect_equal(try ascii85_decode(spaces, 0), Bytes([]))
 	try expect_equal(try ascii85_decode("z" + spaces), Bytes([0, 0, 0, 0]))
 	try expect_equal(
-		try ascii85_decode(spaces + "s8W-!" + spaces), Bytes([255, 255, 255, 255])
+		try ascii85_decode(spaces + "s8W-!" + spaces),
+		Bytes([255, 255, 255, 255]),
 	)
 	try expect_equal(try ascii85_decode("!" + spaces + "!"), Bytes([0]))
 

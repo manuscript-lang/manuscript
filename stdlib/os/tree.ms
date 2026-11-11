@@ -231,7 +231,9 @@ impl FileTree for MemoryTree:
 			for key in names.values():
 				entries.append(
 					DirectoryEntry(
-						name_of(key), self.directories.contains(key), false
+						name_of(key),
+						self.directories.contains(key),
+						false,
 					)
 				)
 		return limited(entries.sorted(by_name), max_entries)
@@ -297,7 +299,9 @@ impl FileTree for EmbeddedTree:
 			for key in names:
 				entries.append(
 					DirectoryEntry(
-						name_of(key), self.directories.contains(key), false
+						name_of(key),
+						self.directories.contains(key),
+						false,
 					)
 				)
 		return limited(entries.sorted(by_name), max_entries)
@@ -343,7 +347,7 @@ number of entries found, returning `EOVERFLOW` rather than a partial list.
 export fn walk(
 	tree: FileTree,
 	root: String = "",
-	max_entries: Int? = none
+	max_entries: Int? = none,
 ) List[WalkEntry]!:
 	start := try clean(root)
 	var found = List[WalkEntry]()
@@ -375,7 +379,8 @@ fn push_children(tree: FileTree, directory: String, var pending: List[WalkEntry]
 		child := children[i]
 		pending.append(
 			WalkEntry(
-				child_path(directory, child.name), child.directory and not child.symlink
+				child_path(directory, child.name),
+				child.directory and not child.symlink,
 			)
 		)
 

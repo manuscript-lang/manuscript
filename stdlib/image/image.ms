@@ -73,14 +73,22 @@ impl Image:
 		match self.mode:
 			Gray: return Rgba(p[at].to_int(), p[at].to_int(), p[at].to_int(), 255)
 			GrayAlpha: return Rgba(
-				p[at].to_int(), p[at].to_int(), p[at].to_int(), p[at + 1].to_int()
+				p[at].to_int(),
+				p[at].to_int(),
+				p[at].to_int(),
+				p[at + 1].to_int(),
 			)
 			Rgb: return Rgba(
-				p[at].to_int(), p[at + 1].to_int(), p[at + 2].to_int(), 255
+				p[at].to_int(),
+				p[at + 1].to_int(),
+				p[at + 2].to_int(),
+				255,
 			)
 			Rgba: return Rgba(
-				p[at].to_int(), p[at + 1].to_int(), p[at + 2].to_int(),
-				p[at + 3].to_int()
+				p[at].to_int(),
+				p[at + 1].to_int(),
+				p[at + 2].to_int(),
+				p[at + 3].to_int(),
 			)
 
 	// Writes `color` at `(x, y)`, converting to the image's mode; returns false outside
@@ -179,7 +187,10 @@ impl Image:
 	// compositing).
 	fn convert(target: ColorMode) Image:
 		if target == self.mode: return Image(
-			self.width, self.height, self.mode, self.pixels.clone()
+			self.width,
+			self.height,
+			self.mode,
+			self.pixels.clone(),
 		)
 
 		count := self.width * self.height
@@ -214,7 +225,7 @@ impl Image:
 		width: Int,
 		height: Int,
 		method: Resampling = Resampling.Bilinear,
-		max_pixels: Int? = none
+		max_pixels: Int? = none,
 	) Image!:
 		count := try pixel_count(width, height, max_pixels)
 		n := color_channels(self.mode)
@@ -238,7 +249,7 @@ impl Image:
 								(2 * y + 1)
 								* self.height
 								* 128
-							) / height - 128
+							) / height - 128,
 						)
 						x0 := min_of(fx / 256, self.width - 1)
 						y0 := min_of(fy / 256, self.height - 1)
@@ -362,7 +373,7 @@ export fn new_image(
 	width: Int,
 	height: Int,
 	mode: ColorMode,
-	max_pixels: Int? = none
+	max_pixels: Int? = none,
 ) Image!:
 	if width < 1 or height < 1: return error(
 		Error("image: dimensions must be positive", kind: "EINVAL")
@@ -501,7 +512,10 @@ fn decode_ppm(data: Bytes, max_pixels: Int?) Image!:
 
 	return ok(
 		Image(
-			width, height, if n == 3: ColorMode.Rgb else: ColorMode.Gray, pixels
+			width,
+			height,
+			if n == 3: ColorMode.Rgb else: ColorMode.Gray,
+			pixels,
 		)
 	)
 
@@ -510,7 +524,7 @@ fn encode_ppm(image: Image) Bytes!:
 		return error(
 			Error(
 				"image: PNM cannot store alpha; convert to Rgb or Gray first",
-				kind: "EINVAL"
+				kind: "EINVAL",
 			)
 		)
 
@@ -620,8 +634,10 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 	// mask.
 	var masks = [0, 0, 0, 0]
 	if bitfields: masks = [
-		le32(data, 54), le32(data, 58), le32(data, 62),
-		if header >= 56: le32(data, 66) else: 0
+		le32(data, 54),
+		le32(data, 58),
+		le32(data, 62),
+		if header >= 56: le32(data, 66) else: 0,
 	]
 
 	var shifts = [0, 0, 0, 0]
@@ -686,9 +702,10 @@ fn decode_bmp(data: Bytes, max_pixels: Int?) Image!:
 				shift := 8 - bits - bit % 8
 				index := bit_and(
 					shift_right_unsigned(
-						data.get(base + bit / 8).to_int(), shift
+						data.get(base + bit / 8).to_int(),
+						shift,
 					),
-					shift_left(1, bits) - 1
+					shift_left(1, bits) - 1,
 				)
 				if index >= palette_size: return error(
 					bad("BMP palette index out of range")
@@ -796,8 +813,13 @@ fn be32(data: Bytes, at: Int) Int:
 fn png_passes(interlaced: Bool) List[List[Int]]:
 	if not interlaced: return [[0, 0, 1, 1]]
 	return [
-		[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4], [0, 2, 2, 4],
-		[1, 0, 2, 2], [0, 1, 1, 2]
+		[0, 0, 8, 8],
+		[4, 0, 8, 8],
+		[0, 4, 4, 8],
+		[2, 0, 4, 4],
+		[0, 2, 2, 4],
+		[1, 0, 2, 2],
+		[0, 1, 1, 2],
 	]
 
 fn png_channels(color: Int) Int:
@@ -1028,9 +1050,10 @@ fn decode_png(data: Bytes, max_pixels: Int?) Image!:
 						bit := px * depth
 						v = bit_and(
 							shift_right_unsigned(
-								cur[bit / 8], 8 - depth - bit % 8
+								cur[bit / 8],
+								8 - depth - bit % 8,
 							),
-							top
+							top,
 						)
 
 					if color == 3:
@@ -1187,11 +1210,70 @@ zigzag := [
 // Fixed-point (x4096) 8-point transform matrix: row x, column u is c(u)/2 *
 // cos((2x+1)u*pi/16).
 dct_matrix := [
-	1448, 2008, 1892, 1702, 1448, 1138, 784, 400, 1448, 1702, 784, -400, -1448, -2008,
-	-1892, -1138, 1448, 1138, -784, -2008, -1448, 400, 1892, 1702, 1448, 400, -1892,
-	-1138, 1448, 1702, -784, -2008, 1448, -400, -1892, 1138, 1448, -1702, -784, 2008,
-	1448, -1138, -784, 2008, -1448, -400, 1892, -1702, 1448, -1702, 784, 400, -1448,
-	2008, -1892, 1138, 1448, -2008, 1892, -1702, 1448, -1138, 784, -400
+	1448,
+	2008,
+	1892,
+	1702,
+	1448,
+	1138,
+	784,
+	400,
+	1448,
+	1702,
+	784,
+	-400,
+	-1448,
+	-2008,
+	-1892,
+	-1138,
+	1448,
+	1138,
+	-784,
+	-2008,
+	-1448,
+	400,
+	1892,
+	1702,
+	1448,
+	400,
+	-1892,
+	-1138,
+	1448,
+	1702,
+	-784,
+	-2008,
+	1448,
+	-400,
+	-1892,
+	1138,
+	1448,
+	-1702,
+	-784,
+	2008,
+	1448,
+	-1138,
+	-784,
+	2008,
+	-1448,
+	-400,
+	1892,
+	-1702,
+	1448,
+	-1702,
+	784,
+	400,
+	-1448,
+	2008,
+	-1892,
+	1138,
+	1448,
+	-2008,
+	1892,
+	-1702,
+	1448,
+	-1138,
+	784,
+	-400,
 ]
 
 // A canonical Huffman table in the decoding form of JPEG Annex F.
@@ -1324,7 +1406,7 @@ fn jpeg_block(
 	base: Int,
 	dc: JpegHuffman,
 	ac: JpegHuffman,
-	scan: JpegScan
+	scan: JpegScan,
 ) Unit:
 	if not scan.progressive:
 		t := bits.symbol(data, dc)
@@ -1357,7 +1439,8 @@ fn jpeg_block(
 					return
 
 				comp.coef[base + zigzag[zi]] = jpeg_extend(
-					bits.receive(data, size), size
+					bits.receive(data, size),
+					size,
 				)
 				zi += 1
 
@@ -1375,7 +1458,8 @@ fn jpeg_block(
 			comp.coef[base] = comp.pred * shift_left(1, scan.al)
 		else:
 			if bits.bit(data) == 1: comp.coef[base] = bit_or(
-				comp.coef[base], shift_left(1, scan.al)
+				comp.coef[base],
+				shift_left(1, scan.al),
 			)
 
 		return
@@ -1664,8 +1748,15 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 
 					comps.append(
 						JpegComponent(
-							data.get(q).to_int(), h, v, tq, 0, 0, List[Int](),
-							List[Int](), 0
+							data.get(q).to_int(),
+							h,
+							v,
+							tq,
+							0,
+							0,
+							List[Int](),
+							List[Int](),
+							0,
 						)
 					)
 					hmax = max_of(hmax, h)
@@ -1851,8 +1942,13 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 						if ns == 1:
 							base := (uy * comps[c].blocks_wide + ux) * 64
 							jpeg_block(
-								data, var bits, var comps[c], base,
-								dc_tables[dc_ids[m]], ac_tables[ac_ids[m]], scan
+								data,
+								var bits,
+								var comps[c],
+								base,
+								dc_tables[dc_ids[m]],
+								ac_tables[ac_ids[m]],
+								scan,
 							)
 						else:
 							for v in 0..comps[c].v:
@@ -1889,7 +1985,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 												m
 											]
 										],
-										scan
+										scan,
 									)
 
 					if bits.failed: return error(bad("corrupt or truncated JPEG data"))
@@ -1915,7 +2011,8 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 	for c in comps:
 		spans.append(
 			[
-				(width * c.h + hmax - 1) / hmax, (height * c.v + vmax - 1) / vmax
+				(width * c.h + hmax - 1) / hmax,
+				(height * c.v + vmax - 1) / vmax,
 			]
 		)
 
@@ -1949,7 +2046,7 @@ fn decode_jpeg(data: Bytes, max_pixels: Int?) Image!:
 					vmax / comps[c].v,
 					hmax % comps[c].h == 0 and vmax % comps[
 						c
-					].v == 0
+					].v == 0,
 				)
 
 			out := (y * width + x) * m
@@ -2020,7 +2117,7 @@ fn jpeg_sample(
 	x: Int,
 	hr: Int,
 	vr: Int,
-	exact: Bool
+	exact: Bool,
 ) Int:
 	if not exact or (hr == 1 and vr == 1) or hr > 2 or vr > 2:
 		return plane[(y / max_of(vr, 1)) * stride + x / max_of(hr, 1)].to_int()
@@ -2034,7 +2131,8 @@ fn jpeg_sample(
 		here := plane[py * stride + px].to_int()
 		near := plane[
 			py * stride + clamp_to(
-				if x % 2 == 0: px - 1 else: px + 1, last_x
+				if x % 2 == 0: px - 1 else: px + 1,
+				last_x,
 			)
 		].to_int()
 		return (3 * here + near + (if x % 2 == 0: 1 else: 2)) / 4
@@ -2063,7 +2161,7 @@ fn ycc_to_rgb(y: Int, cb: Int, cr: Int) List[Int]:
 	return [
 		y + shift_right(91881 * v + 32768, 16),
 		y - shift_right(22554 * u + 46802 * v + 32768, 16),
-		y + shift_right(116130 * u + 32768, 16)
+		y + shift_right(116130 * u + 32768, 16),
 	]
 
 jpeg_base_luma := [
@@ -2167,7 +2265,7 @@ fn jpeg_forward(
 	stride: Int,
 	x0: Int,
 	y0: Int,
-	quant: List[Int]
+	quant: List[Int],
 ) List[Int]:
 	var tmp = zeroed_ints(64)
 
@@ -2199,7 +2297,11 @@ fn jpeg_forward(
 	return levels
 
 fn jpeg_emit(
-	var w: JpegWriter, levels: List[Int], previous: Int, dc: JpegCodes, ac: JpegCodes
+	var w: JpegWriter,
+	levels: List[Int],
+	previous: Int,
+	dc: JpegCodes,
+	ac: JpegCodes,
 ) Unit:
 	diff := levels[0] - previous
 	size := bit_length(diff)
@@ -2260,7 +2362,7 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
 		return error(
 			Error(
 				"image: JPEG cannot store alpha; convert to Rgb or Gray first",
-				kind: "EINVAL"
+				kind: "EINVAL",
 			)
 		)
 	if options.quality < 1 or options.quality > 100:
@@ -2268,7 +2370,8 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
 	if options.restart_interval < 0 or options.restart_interval > 65535:
 		return error(
 			Error(
-				"image: JPEG restart interval must be 0 to 65535", kind: "EINVAL"
+				"image: JPEG restart interval must be 0 to 65535",
+				kind: "EINVAL",
 			)
 		)
 	if image.width > 65535 or image.height > 65535:
@@ -2299,13 +2402,16 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
 				g := image.pixels[at + 1].to_int()
 				b := image.pixels[at + 2].to_int()
 				luma[y * pw + x] = shift_right(
-					19595 * r + 38470 * g + 7471 * b + 32768, 16
+					19595 * r + 38470 * g + 7471 * b + 32768,
+					16,
 				)
 				cb[y * pw + x] = shift_right(
-					0 - 11059 * r - 21709 * g + 32768 * b + 8421376, 16
+					0 - 11059 * r - 21709 * g + 32768 * b + 8421376,
+					16,
 				)
 				cr[y * pw + x] = shift_right(
-					32768 * r - 27439 * g - 5329 * b + 8421376, 16
+					32768 * r - 27439 * g - 5329 * b + 8421376,
+					16,
 				)
 			else:
 				luma[y * pw + x] = image.pixels[at].to_int()
@@ -2440,8 +2546,11 @@ export fn encode_jpeg(image: Image, options: JpegOptions = JpegOptions()) Bytes!
 			for by in 0..blocks_y:
 				for bx in 0..blocks_y:
 					levels := jpeg_forward(
-						luma, pw, mx * unit_size + bx * 8, my * unit_size + by * 8,
-						q_luma
+						luma,
+						pw,
+						mx * unit_size + bx * 8,
+						my * unit_size + by * 8,
+						q_luma,
 					)
 					jpeg_emit(var w, levels, p_y, dc_luma, ac_luma)
 					p_y = levels[0]

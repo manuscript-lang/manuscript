@@ -91,8 +91,9 @@ export extern type HtmlTree
 // Parses HTML into a normalized tree and applies the resource limits in `options`.
 export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
 	limits := HtmlLimits(
-		max_bytes: options.max_bytes, max_depth: options.max_depth,
-		max_nodes: options.max_nodes
+		max_bytes: options.max_bytes,
+		max_depth: options.max_depth,
+		max_nodes: options.max_nodes,
 	)
 	tree := try msstd_html_parse(text, limits)
 	return ok(node(tree, msstd_html_root(tree)))
@@ -102,15 +103,18 @@ fn node(tree: HtmlTree, id: Int) HtmlNode:
 	kind := msstd_html_kind(tree, id)
 	if kind == 1:
 		return HtmlNode.Element(
-			msstd_html_data(tree, id), msstd_html_namespace(tree, id),
-			attributes(tree, id), children(tree, id)
+			msstd_html_data(tree, id),
+			msstd_html_namespace(tree, id),
+			attributes(tree, id),
+			children(tree, id),
 		)
 	if kind == 2: return HtmlNode.Text(msstd_html_data(tree, id))
 	if kind == 3: return HtmlNode.Comment(msstd_html_data(tree, id))
 	if kind == 4:
 		return HtmlNode.Doctype(
-			msstd_html_data(tree, id), msstd_html_doctype_id(tree, id, 0),
-			msstd_html_doctype_id(tree, id, 1)
+			msstd_html_data(tree, id),
+			msstd_html_doctype_id(tree, id, 0),
+			msstd_html_doctype_id(tree, id, 1),
 		)
 
 	return HtmlNode.Document(children(tree, id))
@@ -132,7 +136,7 @@ fn attributes(tree: HtmlTree, id: Int) List[HtmlAttribute]:
 			HtmlAttribute(
 				name: msstd_html_attr(tree, id, i, 0),
 				namespace: msstd_html_attr(tree, id, i, 1),
-				value: msstd_html_attr(tree, id, i, 2)
+				value: msstd_html_attr(tree, id, i, 2),
 			)
 		)
 	return out

@@ -14,8 +14,10 @@ test "a difference comparator sorts by value":
 
 test "a difference comparator still faults when a subtraction overflows":
 	wide := [9223372036854775807, -9223372036854775807, 0]
-	(try expect_fault(fn: _ignored := ascending(wide))) | try expect_contains(
-		"Int overflow"
+	(
+		(
+			try expect_fault(fn: _ignored := ascending(wide))
+		) | try expect_contains("Int overflow")
 	)
 
 	near := [9223372036854775807, 1, 0]

@@ -27,7 +27,11 @@ type ScalarCase:
 	expected: String
 
 fn scalar(text: String, expected: String) Unit!:
-	root := parse(text: text) | try expect_ok | try entries
+	root := (
+		parse(text: text)
+		| try expect_ok
+		| try entries
+	)
 	if root["a"] != YamlValue.StringValue(expected): return error(
 		Error("scalar folding: {text}")
 	)
@@ -58,11 +62,12 @@ test "YAML quoted folding trims physical whitespace and preserves escapes":
 		ScalarCase(text: "a: \"x \\\n \t\n\n  y\"", expected: "x \n\ny"),
 		ScalarCase(
 			text: "a: 'x\n\n  # hash: text\n\n  it''s y' # outside",
-			expected: "x\n# hash: text\nit's y"
+			expected: "x\n# hash: text\nit's y",
 		),
 		ScalarCase(
-			text: "a: \"x\n\n  \\\"y\\\"\" # outside", expected: "x\n\"y\""
-		)
+			text: "a: \"x\n\n  \\\"y\\\"\" # outside",
+			expected: "x\n\"y\"",
+		),
 	]
 	for example in cases:
 		for ending in ["\n", "\r\n", "\r"]:
@@ -73,16 +78,24 @@ test "YAML quoted folding trims physical whitespace and preserves escapes":
 						.text
 						.replace(old: "\n", new: ending)
 					),
-					expected: example.expected.clone()
+					expected: example.expected.clone(),
 				)
 			)
-	parse(text: "'x\n\n  y'") | try expect_ok | try expect_equal(
-		YamlValue.StringValue("x\ny")
+	(
+		parse(text: "'x\n\n  y'") | try expect_ok | try expect_equal(
+			YamlValue.StringValue("x\ny")
+		)
 	)
 
-	flow := parse(text: "['x\n\n  y', \"z\\\n\n  w\"]") | try expect_ok | try items
-	flow | try expect_equal(
-		[YamlValue.StringValue("x\ny"), YamlValue.StringValue("z\nw")]
+	flow := (
+		parse(text: "['x\n\n  y', \"z\\\n\n  w\"]")
+		| try expect_ok
+		| try items
+	)
+	(
+		flow | try expect_equal(
+			[YamlValue.StringValue("x\ny"), YamlValue.StringValue("z\nw")]
+		)
 	)
 
 test "YAML folded and literal blocks respect paragraphs indentation and chomping":
@@ -92,11 +105,13 @@ test "YAML folded and literal blocks respect paragraphs indentation and chomping
 		ScalarCase(text: "a: >+\n  x\n\n  y\n\n\n", expected: "x\ny\n\n\n"),
 		ScalarCase(text: "a: >2-\n  x\n\n\n  y\n", expected: "x\n\ny"),
 		ScalarCase(
-			text: "a: >\n  x\n\n    y\n\n  z\n", expected: "x\n\n  y\n\nz\n"
+			text: "a: >\n  x\n\n    y\n\n  z\n",
+			expected: "x\n\n  y\n\nz\n",
 		),
 		ScalarCase(text: "a: >2-\n  x\n   \n  y\n", expected: "x\n \ny"),
 		ScalarCase(
-			text: "a: >2-\n  x\n\n  \ty\n\n  z\n", expected: "x\n\n\ty\n\nz"
+			text: "a: >2-\n  x\n\n  \ty\n\n  z\n",
+			expected: "x\n\n\ty\n\nz",
 		),
 		ScalarCase(text: "a: >-\n\n  x\n\n  y\n", expected: "\nx\ny"),
 		ScalarCase(text: "a: |\n  x\n\n  y\n", expected: "x\n\ny\n"),
@@ -110,7 +125,7 @@ test "YAML folded and literal blocks respect paragraphs indentation and chomping
 		ScalarCase(text: "a: >\n   \n", expected: ""),
 		ScalarCase(text: "a: >+\n   \n", expected: "\n"),
 		ScalarCase(text: "a: >2+\n   \n", expected: " \n"),
-		ScalarCase(text: "a: >\n \t\n", expected: "\t\n")
+		ScalarCase(text: "a: >\n \t\n", expected: "\t\n"),
 	]
 	for example in cases:
 		for ending in ["\n", "\r\n", "\r"]:
@@ -121,7 +136,7 @@ test "YAML folded and literal blocks respect paragraphs indentation and chomping
 						.text
 						.replace(old: "\n", new: ending)
 					),
-					expected: example.expected.clone()
+					expected: example.expected.clone(),
 				)
 			)
 
@@ -133,7 +148,8 @@ test "YAML plain paragraphs retain boundaries and nested collections":
 				(
 					parse(
 						text: text.replace(
-							old: "\n", new: ending
+							old: "\n",
+							new: ending,
 						)
 					) | try expect_ok
 				)
@@ -142,11 +158,16 @@ test "YAML plain paragraphs retain boundaries and nested collections":
 		root["a"] | try expect_equal(YamlValue.StringValue("x\n\ny z"))
 		root["b"] | try expect_equal(YamlValue.NumberValue("1"))
 
-	root := parse(text: "a:\n  - x\n\n    y\n  - z\nb: 1\n") | try expect_ok | try entries
+	root := (
+		parse(text: "a:\n  - x\n\n    y\n  - z\nb: 1\n")
+		| try expect_ok
+		| try entries
+	)
 	try expect_false(
 		(
 			(try items(root.get("a").get())) != [
-				YamlValue.StringValue("x\ny"), YamlValue.StringValue("z")
+				YamlValue.StringValue("x\ny"),
+				YamlValue.StringValue("z"),
 			]
 		)
 	)
@@ -162,8 +183,10 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 				parse(
 					text: text,
 					options: limits(
-						bytes: text.byte_length(), depth: 2, values: 2
-					)
+						bytes: text.byte_length(),
+						depth: 2,
+						values: 2,
+					),
 				) | try expect_ok
 			) != expected
 		)
@@ -175,15 +198,18 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 			parse(
 				text: text,
 				options: limits(
-					bytes: text.byte_length() - 1, depth: none, values: none
-				)
+					bytes: text.byte_length() - 1,
+					depth: none,
+					values: none,
+				),
 			) != limited
 		)
 	)
 	try expect_false(
 		(
 			parse(
-				text: text, options: limits(bytes: none, depth: none, values: 1)
+				text: text,
+				options: limits(bytes: none, depth: none, values: 1),
 			) != limited
 		)
 	)
@@ -220,7 +246,11 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 
 test "YAML block mappings sequences exact scalars and core schema":
 	text := "name: é🙂\nlarge: 9007199254740993\nboolean: TRUE\nlegacy: yes\ndate: 2024-02-29\nempty:\nvalues:\n- null\n- false\n- 0xFF\npeople:\n  - name: Ada\n    age: 37\n  - name: Grace\n    skills:\n      - compilers\n"
-	root := parse(text: text) | try expect_ok | try entries
+	root := (
+		parse(text: text)
+		| try expect_ok
+		| try entries
+	)
 	root["name"] | try expect_equal(YamlValue.StringValue("é🙂"))
 	root["large"] | try expect_equal(YamlValue.NumberValue("9007199254740993"))
 	root["boolean"] | try expect_equal(YamlValue.BoolValue(true))
@@ -230,8 +260,9 @@ test "YAML block mappings sequences exact scalars and core schema":
 	try expect_false(
 		(
 			(try items(root.get("values").get())) != [
-				YamlValue.Null, YamlValue.BoolValue(false),
-				YamlValue.NumberValue("0xFF")
+				YamlValue.Null,
+				YamlValue.BoolValue(false),
+				YamlValue.NumberValue("0xFF"),
 			]
 		)
 	)
@@ -263,7 +294,8 @@ test "YAML flow collections quotes escapes comments and multiline values":
 			(
 				parse(
 					text: "flow: \{name: 'it''s # fine', list: [true, 2, \"é\\u263A\",],\}\nurl: https://example.org/#fragment # comment\nquoted: \"hash # colon: brace \{\}\"\nmultiline: [1,\n  2, # comment\n  3]\ntext: a long\n  continued sentence\n"
-				) | try expect_ok
+				)
+				| try expect_ok
 			)
 		)
 	)
@@ -290,8 +322,10 @@ test "YAML flow collections quotes escapes comments and multiline values":
 	)
 	(try items(root.get("multiline").get())).length() | try expect_equal(3)
 	root["text"] | try expect_equal(YamlValue.StringValue("a long continued sentence"))
-	parse(text: "'literal\\n'") | try expect_ok | try expect_equal(
-		YamlValue.StringValue("literal\\n")
+	(
+		parse(text: "'literal\\n'") | try expect_ok | try expect_equal(
+			YamlValue.StringValue("literal\\n")
+		)
 	)
 
 test "YAML literal folded and chomped block scalars preserve content":
@@ -300,7 +334,8 @@ test "YAML literal folded and chomped block scalars preserve content":
 			(
 				parse(
 					text: "literal: |\n  first # text\n  second\nfolded: >-\n  hello\n  world\nkeep: |+\n  line\n\nexplicit: |2-\n  indented\ntabs: |-\n  \tcontent\n"
-				) | try expect_ok
+				)
+				| try expect_ok
 			)
 		)
 	)
@@ -316,7 +351,11 @@ test "YAML literal folded and chomped block scalars preserve content":
 
 test "YAML anchors aliases merge keys and override precedence":
 	text := "defaults: &defaults\n  retries: 3\n  enabled: true\ncopy: *defaults\nconfig:\n  <<: *defaults\n  retries: 5\nscalar: &answer 42\nalias: *answer\nflow: &flow [1, 2]\nflow_alias: *flow\n"
-	root := parse(text: text) | try expect_ok | try entries
+	root := (
+		parse(text: text)
+		| try expect_ok
+		| try entries
+	)
 	root["defaults"] | try expect_equal(root["copy"])
 
 	config := (try entries(root.get("config").get()))
@@ -334,7 +373,8 @@ test "YAML anchors aliases merge keys and override precedence":
 			(
 				parse(
 					text: "a: &a \{x: 1\}\nb: &b \{x: 2, y: 3\}\nc: \{<<: [*a, *b], y: 4\}\n"
-				) | try expect_ok
+				)
+				| try expect_ok
 			)
 		)
 	)
@@ -353,20 +393,28 @@ test "YAML documents BOM CRLF empty input and version directive":
 		) | try expect_ok
 	)
 	(try entries(root))["a"] | try expect_equal(YamlValue.NumberValue("1"))
-	parse(text: "# comment\n") | try expect_ok | try expect_equal(YamlValue.Null)
-	parse(text: "---\n...\n") | try expect_ok | try expect_equal(YamlValue.Null)
-	(try items((parse(text: "- - 1\n  - 2\n- - 3\n") | try expect_ok))).length() | try expect_equal(
-		2
+	(parse(text: "# comment\n") | try expect_ok | try expect_equal(YamlValue.Null))
+	(parse(text: "---\n...\n") | try expect_ok | try expect_equal(YamlValue.Null))
+	(
+		(
+			try items(
+				(parse(text: "- - 1\n  - 2\n- - 3\n") | try expect_ok)
+			)
+		).length() | try expect_equal(2)
 	)
 
 test "YAML document markers end a root plain scalar":
-	parse(text: "x\n...\n") | try expect_ok | try expect_equal(
-		YamlValue.StringValue("x")
+	(
+		parse(text: "x\n...\n")
+		| try expect_ok
+		| try expect_equal(YamlValue.StringValue("x"))
 	)
-	parse(text: "x\ny\n...\n") | try expect_ok | try expect_equal(
-		YamlValue.StringValue("x y")
+	(
+		parse(text: "x\ny\n...\n") | try expect_ok | try expect_equal(
+			YamlValue.StringValue("x y")
+		)
 	)
-	parse(text: "null\n...\n") | try expect_ok | try expect_equal(YamlValue.Null)
+	(parse(text: "null\n...\n") | try expect_ok | try expect_equal(YamlValue.Null))
 	try expect_true(parse(text: "x\n---\ny\n").is_error())
 
 test "YAML plain scalars cannot start with an indicator":
@@ -380,8 +428,10 @@ test "YAML plain scalars cannot start with an indicator":
 	explicit := parse(text: "\{? a : 1\}\n") | try expect_error
 	explicit.kind | try expect_equal("ENOTSUP")
 	explicit.details["line"] | try expect_equal("1")
-	explicit.details["reason"] | try expect_equal(
-		"explicit mapping keys are unsupported"
+	(
+		explicit.details["reason"] | try expect_equal(
+			"explicit mapping keys are unsupported"
+		)
 	)
 
 test "YAML rejects duplicates invalid indentation malformed flow and aliases":
@@ -420,28 +470,32 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
 	try expect_false(
 		(
 			parse(
-				text: "é", options: limits(bytes: 1, depth: none, values: none)
+				text: "é",
+				options: limits(bytes: 1, depth: none, values: none),
 			) != limited
 		)
 	)
 	try expect_false(
 		(
 			parse(
-				text: "[[[]]]", options: limits(bytes: none, depth: 2, values: none)
+				text: "[[[]]]",
+				options: limits(bytes: none, depth: 2, values: none),
 			) != limited
 		)
 	)
 	try expect_false(
 		(
 			parse(
-				text: "a:\n  b: 1", options: limits(bytes: none, depth: 2, values: none)
+				text: "a:\n  b: 1",
+				options: limits(bytes: none, depth: 2, values: none),
 			) != limited
 		)
 	)
 	try expect_false(
 		(
 			parse(
-				text: "[1,2]", options: limits(bytes: none, depth: none, values: 2)
+				text: "[1,2]",
+				options: limits(bytes: none, depth: none, values: 2),
 			) != limited
 		)
 	)
@@ -449,31 +503,37 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
 		(
 			parse(
 				text: "a: &a [1,2]\nb: *a",
-				options: limits(bytes: none, depth: none, values: 6)
+				options: limits(bytes: none, depth: none, values: 6),
 			) != limited
 		)
 	)
 	try expect_false(
 		(
 			parse(
-				text: "", options: limits(bytes: 0, depth: 1, values: 1)
+				text: "",
+				options: limits(bytes: 0, depth: 1, values: 1),
 			) != parse(text: "")
 		)
 	)
-	parse(text: "", options: limits(bytes: none, depth: none, values: 0)) | try expect_equal(
-		limited
+	(
+		parse(
+			text: "",
+			options: limits(bytes: none, depth: none, values: 0),
+		) | try expect_equal(limited)
 	)
 	try expect_false(
 		(
 			parse(
-				text: "", options: limits(bytes: none, depth: -1, values: none)
+				text: "",
+				options: limits(bytes: none, depth: -1, values: none),
 			) != invalid
 		)
 	)
 	try expect_false(
 		(
 			parse(
-				text: "[1,2]", options: limits(bytes: 5, depth: 2, values: 3)
+				text: "[1,2]",
+				options: limits(bytes: 5, depth: 2, values: 3),
 			) != parse(text: "[1,2]")
 		)
 	)
@@ -500,8 +560,10 @@ test "YAML merge and block header errors name their own line":
 	failure("<<: 1") | try expect_equal("YAML 1:1: merge requires mappings")
 	failure("x: 1\ny: 2\n<<: 1") | try expect_equal("YAML 3:1: merge requires mappings")
 	failure("a: |x") | try expect_equal("YAML 1:5: invalid block scalar header")
-	failure("x: 1\ny: |x\nz: 3") | try expect_equal(
-		"YAML 2:5: invalid block scalar header"
+	(
+		failure("x: 1\ny: |x\nz: 3") | try expect_equal(
+			"YAML 2:5: invalid block scalar header"
+		)
 	)
 
 test "YAML option fields default to none or the depth and value guards":
@@ -513,9 +575,11 @@ test "YAML stringify round trips scalars sequences and mappings":
 	source := "title: \"é🙂 \\\"q\\\" \\t tab\"\nnone: null\nflag: true\nint: -42\nfloat: 1.5e3\nlist:\n  - 1\n  - two\n  - [3, 4]\n  - a: 1\n    b: [x, y]\nempty_list: []\nempty_map: \{\}\n\"odd key\": 1\n\"true\": 2\nnested:\n  deep:\n    value: ok\n"
 	parsed := (parse(text: source) | try expect_ok)
 	text := (stringify(value: parsed) | try expect_ok)
-	parse(text: text) | try expect_ok | try expect_equal(parsed)
-	stringify(value: (parse(text: text) | try expect_ok)) | try expect_ok | try expect_equal(
-		text
+	(parse(text: text) | try expect_ok | try expect_equal(parsed))
+	(
+		stringify(
+			value: (parse(text: text) | try expect_ok)
+		) | try expect_ok | try expect_equal(text)
 	)
 
 test "YAML stringify validates numbers and honors max_bytes":
@@ -545,12 +609,25 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
 	)
 	folded["next"] | try expect_equal(YamlValue.NumberValue("1"))
 
-	list := parse(text: "- foo\n  bar\n-\n  baz\n  qux\n") | try expect_ok | try items
-	list | try expect_equal(
-		[YamlValue.StringValue("foo bar"), YamlValue.StringValue("baz qux")]
+	list := (
+		parse(text: "- foo\n  bar\n-\n  baz\n  qux\n")
+		| try expect_ok
+		| try items
+	)
+	(
+		list | try expect_equal(
+			[
+				YamlValue.StringValue("foo bar"),
+				YamlValue.StringValue("baz qux"),
+			]
+		)
 	)
 
-	anchored := parse(text: "a:\n  &x\n  k: 1\nb: *x\n") | try expect_ok | try entries
+	anchored := (
+		parse(text: "a:\n  &x\n  k: 1\nb: *x\n")
+		| try expect_ok
+		| try entries
+	)
 	anchored["a"] | try expect_equal(anchored["b"])
 	try expect_false(
 		(
@@ -561,14 +638,26 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
 	)
 
 test "YAML quoted merge key is an ordinary string key":
-	block := parse(text: "\"<<\": 1\nplain: 3\n") | try expect_ok | try entries
+	block := (
+		parse(text: "\"<<\": 1\nplain: 3\n")
+		| try expect_ok
+		| try entries
+	)
 	block["<<"] | try expect_equal(YamlValue.NumberValue("1"))
 	block.length() | try expect_equal(2)
 
-	single := parse(text: "'<<': 2\n") | try expect_ok | try entries
+	single := (
+		parse(text: "'<<': 2\n")
+		| try expect_ok
+		| try entries
+	)
 	single["<<"] | try expect_equal(YamlValue.NumberValue("2"))
 
-	flow := parse(text: "\{\"<<\": 1, a: 2\}\n") | try expect_ok | try entries
+	flow := (
+		parse(text: "\{\"<<\": 1, a: 2\}\n")
+		| try expect_ok
+		| try entries
+	)
 	flow["<<"] | try expect_equal(YamlValue.NumberValue("1"))
 
 	merged := (
@@ -595,7 +684,7 @@ test "YAML quoted merge key is an ordinary string key":
 				text: (stringify(value: original) | try expect_ok)
 			) | try expect_ok
 		),
-		original
+		original,
 	)
 
 test "YAML plain scalars continued inside flow collections fold their line breaks":
@@ -611,7 +700,8 @@ test "YAML plain scalars continued inside flow collections fold their line break
 	try expect_false(
 		(
 			(try items(root.get("a").get())) != [
-				YamlValue.StringValue("x y"), YamlValue.StringValue("z")
+				YamlValue.StringValue("x y"),
+				YamlValue.StringValue("z"),
 			]
 		)
 	)
@@ -622,17 +712,27 @@ test "YAML plain scalars continued inside flow collections fold their line break
 			).get() != YamlValue.StringValue("one two")
 		)
 	)
-	(try items(root.get("c").get())) | try expect_equal(
-		[YamlValue.StringValue("p q\nr")]
+	(
+		(try items(root.get("c").get())) | try expect_equal(
+			[YamlValue.StringValue("p q\nr")]
+		)
 	)
 
 test "YAML document start marker accepts same-line content":
-	parse(text: "--- a") | try expect_ok | try expect_equal(YamlValue.StringValue("a"))
-	(try items((parse(text: "--- [1, 2]") | try expect_ok))).length() | try expect_equal(
-		2
+	(
+		parse(text: "--- a")
+		| try expect_ok
+		| try expect_equal(YamlValue.StringValue("a"))
 	)
-	parse(text: "--- # note\na: 1") | try expect_ok | try expect_equal(
-		(parse(text: "a: 1") | try expect_ok)
+	(
+		(
+			try items((parse(text: "--- [1, 2]") | try expect_ok))
+		).length() | try expect_equal(2)
+	)
+	(
+		parse(text: "--- # note\na: 1") | try expect_ok | try expect_equal(
+			(parse(text: "a: 1") | try expect_ok)
+		)
 	)
 
 test "YAML compact mapping after a sequence marker follows the marker's spacing":
@@ -660,14 +760,20 @@ fn repeated(text: String, count: Int) String:
 
 test "YAML long plain scalars and large mappings parse in linear time":
 	long := repeated(text: "x", count: 300000)
-	scalar := parse(text: "a: {long}") | try expect_ok | try entries
+	scalar := (
+		parse(text: "a: {long}")
+		| try expect_ok
+		| try entries
+	)
 	scalar["a"] | try expect_equal(YamlValue.StringValue(long))
 
 	var keys = ""
 	for index in 0..30000:
 		keys = keys.concat("k{index}: 1\n")
-	(try entries((parse(text: keys) | try expect_ok))).length() | try expect_equal(
-		30000
+	(
+		(
+			try entries((parse(text: keys) | try expect_ok))
+		).length() | try expect_equal(30000)
 	)
 
 	match parse(text: keys.concat("k7: 2\n")):
@@ -675,7 +781,11 @@ test "YAML long plain scalars and large mappings parse in linear time":
 		error(_): return
 
 test "YAML flow mapping keys without a colon map to null":
-	root := parse(text: "a: \{x, y: 1, z\}\nb: \{\"q\", r: [1]\}") | try expect_ok | try entries
+	root := (
+		parse(text: "a: \{x, y: 1, z\}\nb: \{\"q\", r: [1]\}")
+		| try expect_ok
+		| try entries
+	)
 	first := (try entries(root.get("a").get()))
 	first.length() | try expect_equal(3)
 	first["x"] | try expect_equal(YamlValue.Null)
@@ -697,14 +807,26 @@ test "YAML flow mapping keys without a colon map to null":
 
 test "YAML long quoted block and multi-line scalars decode and stringify in linear time":
 	long := repeated(text: "x", count: 300000)
-	double := parse(text: "a: \"{long}\"") | try expect_ok | try entries
+	double := (
+		parse(text: "a: \"{long}\"")
+		| try expect_ok
+		| try entries
+	)
 	double["a"] | try expect_equal(YamlValue.StringValue(long.clone()))
 
-	single := parse(text: "a: '{long}'") | try expect_ok | try entries
+	single := (
+		parse(text: "a: '{long}'")
+		| try expect_ok
+		| try entries
+	)
 	single["a"] | try expect_equal(YamlValue.StringValue(long.clone()))
 
 	lines := repeated(text: "word\n  ", count: 20000)
-	plain := parse(text: "a: {lines}end") | try expect_ok | try entries
+	plain := (
+		parse(text: "a: {lines}end")
+		| try expect_ok
+		| try entries
+	)
 	try expect_false(
 		(
 			plain["a"] != YamlValue.StringValue(
@@ -714,7 +836,11 @@ test "YAML long quoted block and multi-line scalars decode and stringify in line
 	)
 
 	body := repeated(text: "  line\n", count: 20000)
-	literal := parse(text: "a: |\n{body}") | try expect_ok | try entries
+	literal := (
+		parse(text: "a: |\n{body}")
+		| try expect_ok
+		| try entries
+	)
 	try expect_false(
 		(
 			literal["a"] != YamlValue.StringValue(
@@ -724,8 +850,10 @@ test "YAML long quoted block and multi-line scalars decode and stringify in line
 	)
 
 	root := (parse(text: "a: \"{long}\"") | try expect_ok)
-	parse(text: (stringify(value: root) | try expect_ok)) | try expect_ok | try expect_equal(
-		root
+	(
+		parse(
+			text: (stringify(value: root) | try expect_ok)
+		) | try expect_ok | try expect_equal(root)
 	)
 
 test "YAML block scalar chomping counts every trailing line break":
@@ -742,7 +870,8 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
 			(
 				parse(
 					text: "- - - x\n    - y\n  - z\n- - 1\n  - - 2\n    - 3\n-\n  - -\n    - a: 1\n      b: 2\n"
-				) | try expect_ok
+				)
+				| try expect_ok
 			)
 		)
 	)
@@ -793,5 +922,9 @@ test "YAML plain scalars and keys keep Unicode spaces":
 	(try scalar(text: "a: x\u{a0}\n", expected: "x\u{a0}"))
 	(try scalar(text: "a: \u{3000}x\n", expected: "\u{3000}x"))
 
-	root := parse(text: "k\u{a0}: 1\n") | try expect_ok | try entries
+	root := (
+		parse(text: "k\u{a0}: 1\n")
+		| try expect_ok
+		| try entries
+	)
 	try expect_true(root.contains("k\u{a0}"))

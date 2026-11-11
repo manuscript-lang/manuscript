@@ -39,7 +39,7 @@ test "every trial rotates and retains samples":
 	measured := try expect_ok(measure(3, "workload", fn v: p.run(v)))
 	try expect_equal(
 		p.order,
-		["go", "ms", "rs", "ms", "go", "rs", "go", "rs", "ms", "rs", "ms", "go"]
+		["go", "ms", "rs", "ms", "go", "rs", "go", "rs", "ms", "rs", "ms", "go"],
 	)
 	try expect_equal(measured.samples.length(), 9)
 	try expect_equal(measured.samples.all(fn s: s.elapsed_ns > 0), true)

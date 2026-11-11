@@ -44,7 +44,8 @@ test "named and computed bad bounds close incoming before existing":
 			tmp := try temporary("list-transfer-")
 			log := "{tmp.path()}/log"
 			try expect_contains(
-				(try expect_fault(fn: named(log.clone(), op, index))), "index"
+				(try expect_fault(fn: named(log.clone(), op, index))),
+				"index",
 			)
 			try expect_equal((try events(log)), "2,1,")
 
@@ -56,7 +57,7 @@ test "named and computed bad bounds close incoming before existing":
 						fn: computed(other.clone(), op, index)
 					)
 				),
-				"index"
+				"index",
 			)
 			try expect_equal((try events(other)), "2,1,")
 
@@ -91,7 +92,8 @@ test "later named operand faults and try exits preserve incoming owner":
 	tmp := try temporary("list-later-fault-")
 	log := "{tmp.path()}/log"
 	try expect_contains(
-		(try expect_fault(fn: later_fault(log.clone()))), "later operand"
+		(try expect_fault(fn: later_fault(log.clone()))),
+		"later operand",
 	)
 	try expect_equal((try events(log)), "2,1,")
 
@@ -230,7 +232,8 @@ fn callback_places(log: String, kind: Int) Unit:
 		action()
 	else:
 		[Envelope(1, log.clone(), captured(log.clone(), 3, true))].set(
-			0, Envelope(2, log, fn: 4)
+			0,
+			Envelope(2, log, fn: 4),
 		)
 
 test "old capture drop fault observes updated field indexed slot and computed receivers":
@@ -306,6 +309,7 @@ test "computed receiver closes when payload absent or construction faults":
 	temp := try temporary("list-arg-fault-")
 	other := "{temp.path()}/log"
 	try expect_contains(
-		(try expect_fault(fn: computed_arg_fault(other.clone()))), "incoming failed"
+		(try expect_fault(fn: computed_arg_fault(other.clone()))),
+		"incoming failed",
 	)
 	try expect_equal((try events(other)), "1,")

@@ -29,8 +29,11 @@ fn list_of(token: String) List[String]:
 fn parts_of(token: String) PathParts:
 	f := token.split(" ", none).map(fn item: text(item))
 	return PathParts(
-		root: f[0].clone(), directory: f[1].clone(), base: f[2].clone(),
-		extension: f[3].clone(), name: f[4].clone()
+		root: f[0].clone(),
+		directory: f[1].clone(),
+		base: f[2].clone(),
+		extension: f[3].clone(),
+		name: f[4].clone(),
 	)
 
 fn parts_text(parts: PathParts) String:
@@ -71,9 +74,12 @@ fn answer(rules: PathOperations, f: List[String]) String:
 	return "unknown case {op}"
 
 test "path operations match the recorded corpus":
-	data := files().read("path.tsv", none) | .get(
-		"".to_bytes()
-	) | .decode_utf8() | .get("")
+	data := (
+		files().read("path.tsv", none)
+		| .get("".to_bytes())
+		| .decode_utf8()
+		| .get("")
+	)
 	var checked = 0
 	var failures = List[String]()
 

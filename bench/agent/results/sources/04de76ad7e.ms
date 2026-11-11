@@ -49,8 +49,9 @@ export fn main() Int:
 				table.set(
 					i * width + j,
 					max(
-						table.get((i + 1) * width + j), table.get(i * width + j + 1)
-					)
+						table.get((i + 1) * width + j),
+						table.get(i * width + j + 1),
+					),
 				)
 
 	// The edit script: kind is 0 for unchanged, 1 for deletion, 2 for insertion.

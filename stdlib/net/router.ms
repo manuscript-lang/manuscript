@@ -150,9 +150,12 @@ impl Router:
 		return insert(
 			var self.routes,
 			Route(
-				method: method.text(), pattern: pattern, segments: segments, around: [],
-				handler: handler
-			)
+				method: method.text(),
+				pattern: pattern,
+				segments: segments,
+				around: [],
+				handler: handler,
+			),
 		)
 
 	// Registers `handler` for GET requests to `pattern`; shorthand for
@@ -239,7 +242,10 @@ impl Router:
 	// the `Allow` of every registered method.
 	fn handler() fn(var HttpExchange) Unit!:
 		return fn(var exchange: HttpExchange): dispatch(
-			self.routes, self.middleware, self.groups, var exchange
+			self.routes,
+			self.middleware,
+			self.groups,
+			var exchange,
 		)
 
 impl Router:
@@ -249,12 +255,18 @@ impl Router:
 	fn call(request: HttpRequest) HttpResponse!:
 		state := new_slot(
 			TestState(
-				status: 0, sent: false, complete: false, closed: false, head: headers(),
-				body: BytesBuilder(), unread: request.body.clone()
+				status: 0,
+				sent: false,
+				complete: false,
+				closed: false,
+				head: headers(),
+				body: BytesBuilder(),
+				unread: request.body.clone(),
 			)
 		)
 		var exchange: HttpExchange = TestExchange(
-			request: request.clone(), state: state
+			request: request.clone(),
+			state: state,
 		)
 		ran := dispatch(self.routes, self.middleware, self.groups, var exchange)
 		outcome := finished(state)
@@ -273,8 +285,9 @@ fn insert(var routes: List[Route], route: Route) Unit!:
 					"router: duplicate route {route.method} {route.pattern}",
 					kind: "EEXIST",
 					details: {
-						"method": route.method.clone(), "pattern": route.pattern.clone()
-					}
+						"method": route.method.clone(),
+						"pattern": route.pattern.clone()
+					},
 				)
 			)
 	routes.append(route)
@@ -307,8 +320,9 @@ fn in_order[T](var from: List[T]) List[T]:
 
 fn invalid_pattern(pattern: String) Error:
 	return Error(
-		"router: invalid pattern {pattern}", kind: "EINVAL",
-		details: {"pattern": pattern.clone()}
+		"router: invalid pattern {pattern}",
+		kind: "EINVAL",
+		details: {"pattern": pattern.clone()},
 	)
 
 // Parses `pattern` into segments, rejecting empty or repeated names and a wildcard that
@@ -460,7 +474,7 @@ fn dispatch(
 	routes: List[Route],
 	middleware: List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!],
 	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]],
-	var exchange: HttpExchange
+	var exchange: HttpExchange,
 ) Unit!:
 	method := exchange.method().text()
 	found := lookup(routes, method, split_path(exchange.path()))
@@ -470,7 +484,9 @@ fn dispatch(
 
 	target := Target(method: method, found: found, every: every)
 	return chain(
-		middleware, 0, var exchange,
+		middleware,
+		0,
+		var exchange,
 		fn(var last: HttpExchange): finish(routes, groups, target, var last)
 	)
 
@@ -501,7 +517,11 @@ fn chain_groups(
 		0,
 		var exchange,
 		fn(var next: HttpExchange): chain_groups(
-			groups, around, at + 1, var next, last
+			groups,
+			around,
+			at + 1,
+			var next,
+			last,
 		)
 	)
 
@@ -510,7 +530,7 @@ fn finish(
 	routes: List[Route],
 	groups: List[List[fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!]],
 	target: Target,
-	var exchange: HttpExchange
+	var exchange: HttpExchange,
 ) Unit!:
 	method := target.method
 	found := target.found
@@ -523,7 +543,8 @@ fn finish(
 			0,
 			var exchange,
 			fn(var last: HttpExchange): route.handler(
-				var last, found.params
+				var last,
+				found.params,
 			)
 		)
 
@@ -641,7 +662,7 @@ impl HttpExchange for TestExchange:
 	var fn upgrade(
 		allowed_origins: List[String],
 		subprotocols: List[String],
-		max_message_bytes: Int?
+		max_message_bytes: Int?,
 	) NativeWebSocket!:
 		return error(Error("router: WebSocket upgrades need a server", kind: "ENOTSUP"))
 
@@ -670,8 +691,9 @@ fn finished(state: Int) HttpResponse!:
 
 	return ok(
 		HttpResponse(
-			status: guard.items[0].status, headers: guard.items[0].head.clone(),
-			body: guard.items[0].body.drain()
+			status: guard.items[0].status,
+			headers: guard.items[0].head.clone(),
+			body: guard.items[0].body.drain(),
 		)
 	)
 
@@ -740,14 +762,16 @@ impl HttpExchange for Tap:
 	var fn upgrade(
 		allowed_origins: List[String],
 		subprotocols: List[String],
-		max_message_bytes: Int?
+		max_message_bytes: Int?,
 	) NativeWebSocket!:
 		return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
 
 	var fn write(data: String) Unit!:
 		try self.inner.write(data)
 		counted(
-			self.state, 0, self.sent_length(self.status_so_far(), data.byte_length())
+			self.state,
+			0,
+			self.sent_length(self.status_so_far(), data.byte_length()),
 		)
 
 	var fn write_bytes(data: Bytes) Unit!:
@@ -759,7 +783,7 @@ fn new_tap(
 	inner: HttpExchange,
 	extra: HttpHeaders,
 	request: HttpHeaders,
-	state: Int? = none
+	state: Int? = none,
 ) Tap:
 	return Tap(inner: inner, extra: extra, request: request, state: state)
 
@@ -794,7 +818,8 @@ fn with_extra(sent: HttpHeaders, extra: HttpHeaders) HttpHeaders:
 // read it, and added to the response as `X-Request-Id`.
 export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!:
 	return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!): with_request_id(
-		var exchange, next
+		var exchange,
+		next,
 	)
 
 fn with_request_id(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!) Unit!:
@@ -841,7 +866,9 @@ export fn access_log(
 	logger: Logger
 ) fn(var HttpExchange, fn(var HttpExchange) Unit!) Unit!:
 	return fn(var exchange: HttpExchange, next: fn(var HttpExchange) Unit!): with_access_log(
-		logger, var exchange, next
+		logger,
+		var exchange,
+		next,
 	)
 
 fn with_access_log(
@@ -863,9 +890,12 @@ fn with_access_log(
 
 	status := answered(sent.status, result.is_ok())
 	entry := AccessEntry(
-		method: method, path: path, protocol: protocol, status: status,
+		method: method,
+		path: path,
+		protocol: protocol,
+		status: status,
 		bytes: sent.bytes,
-		duration_ms: monotonic().difference(started).to_milliseconds()
+		duration_ms: monotonic().difference(started).to_milliseconds(),
 	)
 	logged := logger.info("request", entry)
 	return result

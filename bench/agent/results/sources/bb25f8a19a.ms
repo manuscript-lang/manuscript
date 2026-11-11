@@ -505,8 +505,12 @@ fn parse_ref(text: String) CellRef:
 
 	col := code_of(letters.upper()) - 65
 	return CellRef(
-		valid: valid, whole: i == n, col: col, row: row, col_abs: col_abs,
-		row_abs: row_abs
+		valid: valid,
+		whole: i == n,
+		col: col,
+		row: row,
+		col_abs: col_abs,
+		row_abs: row_abs,
 	)
 
 // A cell argument of a command: letter plus row, no $ markers.
@@ -529,8 +533,11 @@ fn parse_range(text: String) Rect:
 	if not a.ok or not b.ok: return bad
 
 	return Rect(
-		ok: true, c1: imin(a.c1, b.c1), r1: imin(a.r1, b.r1), c2: imax(a.c1, b.c1),
-		r2: imax(a.r1, b.r1)
+		ok: true,
+		c1: imin(a.c1, b.c1),
+		r1: imin(a.r1, b.r1),
+		c2: imax(a.c1, b.c1),
+		r2: imax(a.r1, b.r1),
 	)
 
 // Canonical text of a moved reference, or #REF! when it leaves the grid.
@@ -805,8 +812,12 @@ impl Parser:
 			a := parse_ref(parts[0])
 			b := parse_ref(parts[1])
 			return Node(
-				kind: "rng", valid: a.valid and b.valid, c1: imin(a.col, b.col),
-				r1: imin(a.row, b.row), c2: imax(a.col, b.col), r2: imax(a.row, b.row)
+				kind: "rng",
+				valid: a.valid and b.valid,
+				c1: imin(a.col, b.col),
+				r1: imin(a.row, b.row),
+				c2: imax(a.col, b.col),
+				r2: imax(a.row, b.row),
 			)
 
 		if t.kind == "name":
@@ -979,11 +990,12 @@ impl Sheet:
 								Item(
 									v: self.vals.get_or(
 										key_of(
-											c, r
+											c,
+											r,
 										),
-										Val()
+										Val(),
 									),
-									ranged: true
+									ranged: true,
 								)
 							)
 			else:
@@ -1220,7 +1232,8 @@ impl Sheet:
 				return err_val("#REF!")
 
 			return self.vals.get_or(
-				key_of(a.c1 + to_int(cf) - 1, a.r1 + to_int(rf) - 1), Val()
+				key_of(a.c1 + to_int(cf) - 1, a.r1 + to_int(rf) - 1),
+				Val(),
 			)
 
 		if name == "ROW" or name == "COLUMN":
@@ -1866,10 +1879,18 @@ impl Sheet:
 
 fn new_sheet() Sheet:
 	return Sheet(
-		raws: Map[Int, String](), vals: Map[Int, Val](), forms: Map[Int, Node](),
-		precs: Map[Int, List[Int]](), deps: Map[Int, Set[Int]](), evals: 0,
-		index: Map[Int, Int](), low: Map[Int, Int](), onstack: Set[Int](),
-		stack: List[Int](), counter: 0, aff: Set[Int]()
+		raws: Map[Int, String](),
+		vals: Map[Int, Val](),
+		forms: Map[Int, Node](),
+		precs: Map[Int, List[Int]](),
+		deps: Map[Int, Set[Int]](),
+		evals: 0,
+		index: Map[Int, Int](),
+		low: Map[Int, Int](),
+		onstack: Set[Int](),
+		stack: List[Int](),
+		counter: 0,
+		aff: Set[Int](),
 	)
 
 export fn main() Int:

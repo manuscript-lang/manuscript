@@ -10,13 +10,17 @@ export type Operation:
 
 export fn operations() List[Operation]:
 	return [
-		Operation("list_append", 1000000), Operation("list_get_random", 1000000),
-		Operation("list_sort_int", 1000000), Operation("list_sort_cmp", 300000),
-		Operation("map_int_put_get", 2000000), Operation("map_str_put_get", 400000),
+		Operation("list_append", 1000000),
+		Operation("list_get_random", 1000000),
+		Operation("list_sort_int", 1000000),
+		Operation("list_sort_cmp", 300000),
+		Operation("map_int_put_get", 2000000),
+		Operation("map_str_put_get", 400000),
 		Operation("set_int_add_contains", 2000000),
 		Operation("string_build_split_join_replace", 200000),
-		Operation("bytes_append", 4000000), Operation("pq_int_enqueue_dequeue", 600000),
-		Operation("sorted_map_add_contains", 600000)
+		Operation("bytes_append", 4000000),
+		Operation("pq_int_enqueue_dequeue", 600000),
+		Operation("sorted_map_add_contains", 600000),
 	]
 
 export fn versions() List[String]:
@@ -115,8 +119,9 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		"Minimum of {repeats} rotating trials; ns/op. Complete trials and operation counts verified.",
 		"Missing comparisons and zero timings have no ratio. Producers do not report checksums.\n",
 		left("operation", 34) + right("ms", 9) + right("go", 9) + right(
-			"rust", 9
-		) + right("ms/go", 8) + right("ms/rust", 9)
+			"rust",
+			9,
+		) + right("ms/go", 8) + right("ms/rust", 9),
 	]
 
 	for op in operations():
@@ -128,7 +133,8 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		r := best.get_or("{op.name} rs", 0.0) / n
 		rows.append(
 			left(op.name, 34) + cell(m) + cell(g) + cell(r) + right(
-				ratio(m, g), 8
+				ratio(m, g),
+				8,
 			) + right(ratio(m, r), 9)
 		)
 

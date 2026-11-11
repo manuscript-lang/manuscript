@@ -214,8 +214,12 @@ impl Ledger:
 export fn main() Int:
 	lines := read_lines(stdin()).get()
 	var ledger = Ledger(
-		balance: Map[String, Int](), limit: Map[String, Int](), ops: Map[String, Int](),
-		rejected: Map[String, Int](), frozen: Map[String, Bool](), fees: 0
+		balance: Map[String, Int](),
+		limit: Map[String, Int](),
+		ops: Map[String, Int](),
+		rejected: Map[String, Int](),
+		frozen: Map[String, Bool](),
+		fees: 0,
 	)
 
 	for raw in lines:

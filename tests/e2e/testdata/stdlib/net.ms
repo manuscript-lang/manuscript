@@ -26,14 +26,16 @@ test "IP parsing CIDR normalization and containment":
 	try expect_false(
 		not (
 			try contains_ip(
-				try parse_cidr("192.0.2.0/24"), try parse_ip("192.0.2.255")
+				try parse_cidr("192.0.2.0/24"),
+				try parse_ip("192.0.2.255"),
 			)
 		)
 	)
 	try expect_false(
 		(
 			try contains_ip(
-				try parse_cidr("192.0.2.0/24"), try parse_ip("192.0.3.0")
+				try parse_cidr("192.0.2.0/24"),
+				try parse_ip("192.0.3.0"),
 			)
 		)
 	)
@@ -46,7 +48,8 @@ test "TCP loopback writes reads half close and EOF":
 	try client.output.write("hello".to_bytes())
 	try client.output.flush()
 	try expect_equal(
-		(try within(var server.input, 2.seconds())).get(), "hello".to_bytes()
+		(try within(var server.input, 2.seconds())).get(),
+		"hello".to_bytes(),
 	)
 	try expect_equal(server.info.peer_address, client.info.local_address)
 	try client.output.close()
@@ -88,7 +91,8 @@ test "closing the input leaves the output open and closing both ends the connect
 	try client.output.write("still open".to_bytes())
 	try client.output.flush()
 	try expect_equal(
-		(try within(var server.input, 2.seconds())).get(), "still open".to_bytes()
+		(try within(var server.input, 2.seconds())).get(),
+		"still open".to_bytes(),
 	)
 
 	// Closing the output too closes the socket: the peer sees the end of the stream.
@@ -105,11 +109,11 @@ test "host names resolve whatever their case":
 test "an empty Unix socket path is invalid input":
 	try expect_equal(
 		try expect_error(listen_unix("")),
-		Error("network: invalid input", kind: "EINVAL")
+		Error("network: invalid input", kind: "EINVAL"),
 	)
 	try expect_equal(
 		try expect_error(connect_unix("", timeout: 1.seconds()).wait()),
-		Error("network: invalid input", kind: "EINVAL")
+		Error("network: invalid input", kind: "EINVAL"),
 	)
 
 test "UDP loopback preserves datagram data and sender":
@@ -129,7 +133,8 @@ test "network restriction denies admission and close rejects acquisitions":
 	try expect_false(
 		(
 			(try expect_error(scoped.listen("127.0.0.1:0"))) != Error(
-				"network: permission denied", kind: "EACCES"
+				"network: permission denied",
+				kind: "EACCES",
 			)
 		)
 	)
@@ -140,7 +145,8 @@ test "network restriction denies admission and close rejects acquisitions":
 			(
 				try expect_error(
 					closing.connect(
-						"127.0.0.1:1", timeout: 1.seconds()
+						"127.0.0.1:1",
+						timeout: 1.seconds(),
 					)
 				)
 			) != Error("network: resource is closed", kind: "EBADF")
@@ -157,7 +163,7 @@ test "typed addresses preserve normalization and reject zones":
 fn expect_ip_error(input: String) Unit!:
 	try expect_equal(
 		(try expect_error(parse_ip(input))),
-		Error("network: invalid data", kind: "EBADMSG")
+		Error("network: invalid data", kind: "EBADMSG"),
 	)
 
 fn accept_one(l: Listener) Int:
@@ -213,7 +219,8 @@ fn answer_mx(var served: DatagramSocket) Int!:
 	)
 	try served.output.write(
 		Datagram(
-			header.concat(question).concat(record).concat(name), query.address
+			header.concat(question).concat(record).concat(name),
+			query.address,
 		)
 	)
 	try served.output.flush()
@@ -229,7 +236,9 @@ test "resolve returns typed DNS records from the configured resolver":
 	derived := try with_resolver(server.address.clone())
 	asking := promise(
 		fn: derived.resolve(
-			"example.test", DnsKind.MX, DnsOptions(timeout: 2.seconds())
+			"example.test",
+			DnsKind.MX,
+			DnsOptions(timeout: 2.seconds()),
 		)
 	)
 	var answering = server

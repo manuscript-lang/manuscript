@@ -31,7 +31,8 @@ fn run(args: List[String]) String!:
 		for version in order:
 			start := monotonic()
 			ran := capture(
-				args[version], [args[4].clone(), "{n}", "{repeats}", prefix.clone()]
+				args[version],
+				[args[4].clone(), "{n}", "{repeats}", prefix.clone()],
 			)
 			wall := monotonic().difference(start).to_nanoseconds()
 			if not ran.ok or ran.code != 0 or ran.stderr != "": return invalid(

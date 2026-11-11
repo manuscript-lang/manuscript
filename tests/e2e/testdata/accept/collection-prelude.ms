@@ -81,7 +81,7 @@ test "map add captures receivers and arguments in written order":
 				1
 			none: 0
 		,
-		2
+		2,
 	)
 	try expect_false(original[1] != 2 or visits != 1)
 

@@ -55,7 +55,8 @@ test "borrowed source helpers close intact owned wrapper temporaries once":
 	try expect_equal(mapped(present(path, 2)), 2)
 	try expect_equal(generic_map(present(path, 3), fn item: item.id), 3)
 	try expect_equal(
-		generic_then(present(path, 4), fn(item: Resource) Int?: item.id), 4
+		generic_then(present(path, 4), fn(item: Resource) Int?: item.id),
+		4,
 	)
 	try expect_equal(present(path, 5).map(fn item: item.id), 5)
 	try expect_equal(observed(none), false)
@@ -229,7 +230,8 @@ test "named borrowed arguments close in reverse acquisition order":
 	path := "{directory.path()}/log"
 	try write_file(path, "").wait()
 	try expect_equal(
-		pair_observed(second: present(path, 80), first: present(path, 81)), true
+		pair_observed(second: present(path, 80), first: present(path, 81)),
+		true,
 	)
 	try expect_equal(try log_text(path), "81,80,")
 

@@ -38,16 +38,19 @@ fn main() Int:
 	)
 	node := capture("node", ["--version"]).trim()
 	if not say(
-		node == "v{expected_node}", "Node {expected_node}",
-		"Node {expected_node} (install the version in .node-version)"
+		node == "v{expected_node}",
+		"Node {expected_node}",
+		"Node {expected_node} (install the version in .node-version)",
 	): failed += 1
 	if not say(
-		works("cargo", ["--version"]), "cargo",
-		"cargo (install rustup; rust-toolchain.toml pins the toolchain)"
+		works("cargo", ["--version"]),
+		"cargo",
+		"cargo (install rustup; rust-toolchain.toml pins the toolchain)",
 	): failed += 1
 	if not say(
-		works("cargo", ["nextest", "--version"]), "cargo-nextest",
-		"cargo-nextest (cargo install cargo-nextest --locked)"
+		works("cargo", ["nextest", "--version"]),
+		"cargo-nextest",
+		"cargo-nextest (cargo install cargo-nextest --locked)",
 	): failed += 1
 
 	hugo := env("HUGO", "hugo")
@@ -68,7 +71,7 @@ fn main() Int:
 		if not say(
 			works("cc", ["--version"]),
 			"C compiler (building ms from source; running ms needs none on Linux)",
-			"C compiler (building ms from source: ring)"
+			"C compiler (building ms from source: ring)",
 		): failed += 1
 
 	if failed > 0: return 1

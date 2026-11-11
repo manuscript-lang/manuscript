@@ -13,9 +13,10 @@ import (
 fn rotl32(value: Int, count: Int) Int:
 	return bit_and(
 		bit_or(
-			shift_left(value, count), shift_right_unsigned(value, 32 - count)
+			shift_left(value, count),
+			shift_right_unsigned(value, 32 - count),
 		),
-		4294967295
+		4294967295,
 	)
 
 fn le32(data: Bytes, at: Int) Int:
@@ -78,7 +79,8 @@ fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
 		for offset in 0..4:
 			out.append(
 				bit_and(
-					shift_right_unsigned(word, 8 * offset), 255
+					shift_right_unsigned(word, 8 * offset),
+					255,
 				).to_uint8().get(0)
 			)
 	return out.build()
@@ -106,7 +108,8 @@ fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
 					pad := bit_and(shift_right_unsigned(word, 8 * offset), 255)
 					out.append(
 						bit_xor(
-							data.get(position).to_int(), pad
+							data.get(position).to_int(),
+							pad,
 						).to_uint8().get(0)
 					)
 					position += 1
@@ -251,19 +254,22 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
 	var f0 = bit_and(bit_or(h0, shift_left(h1, 26)), word_mask) + le32(key, 16)
 	var f1 = (
 		bit_and(
-			bit_or(shift_right_unsigned(h1, 6), shift_left(h2, 20)), word_mask
+			bit_or(shift_right_unsigned(h1, 6), shift_left(h2, 20)),
+			word_mask,
 		)
 		+ le32(key, 20)
 	)
 	var f2 = (
 		bit_and(
-			bit_or(shift_right_unsigned(h2, 12), shift_left(h3, 14)), word_mask
+			bit_or(shift_right_unsigned(h2, 12), shift_left(h3, 14)),
+			word_mask,
 		)
 		+ le32(key, 24)
 	)
 	var f3 = (
 		bit_and(
-			bit_or(shift_right_unsigned(h3, 18), shift_left(h4, 8)), word_mask
+			bit_or(shift_right_unsigned(h3, 18), shift_left(h4, 8)),
+			word_mask,
 		)
 		+ le32(key, 28)
 	)
@@ -276,7 +282,8 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
 		for offset in 0..4:
 			out.append(
 				bit_and(
-					shift_right_unsigned(word, 8 * offset), 255
+					shift_right_unsigned(word, 8 * offset),
+					255,
 				).to_uint8().get(0)
 			)
 	return ok(out.build())
@@ -290,7 +297,8 @@ fn put_le64(var out: BytesBuilder, value: Int) Unit:
 	for offset in 0..8:
 		out.append(
 			bit_and(
-				shift_right_unsigned(value, 8 * offset), 255
+				shift_right_unsigned(value, 8 * offset),
+				255,
 			).to_uint8().get(0)
 		)
 
@@ -312,7 +320,7 @@ export fn chacha20poly1305_seal(
 	key: Bytes,
 	nonce: Bytes,
 	plaintext: Bytes,
-	associated_data: Bytes
+	associated_data: Bytes,
 ) Bytes!:
 	if not check_key_nonce(key, nonce) or not fits_counter(1, plaintext.length()):
 		return error(Error("crypto: invalid input", kind: "EINVAL"))
@@ -331,7 +339,7 @@ export fn chacha20poly1305_open(
 	key: Bytes,
 	nonce: Bytes,
 	sealed: Bytes,
-	associated_data: Bytes
+	associated_data: Bytes,
 ) Bytes!:
 	if (
 		not check_key_nonce(key, nonce)

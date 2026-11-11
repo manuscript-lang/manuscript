@@ -53,7 +53,11 @@ test "TOML parse never faults on mutated documents and accepted input is stable"
 
 	for seed in 1..301:
 		var rng = Rng(seed)
-		rendered := table(var rng, 0) | stringify | try
+		rendered := (
+			table(var rng, 0)
+			| stringify
+			| try
+		)
 
 		for round in 0..4:
 			mutated := mutate(var rng, rendered)

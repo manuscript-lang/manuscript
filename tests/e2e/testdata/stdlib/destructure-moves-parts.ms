@@ -26,7 +26,9 @@ type Box:
 
 test "a record pattern moves a stream field out of its record":
 	b := Box(
-		label: 1, body: ReadStream[Int](Count(0)), spare: ReadStream[Int](Count(10))
+		label: 1,
+		body: ReadStream[Int](Count(0)),
+		spare: ReadStream[Int](Count(10)),
 	)
 	var {label: _l, body: p} = b
 	a := try p.next()
@@ -34,7 +36,9 @@ test "a record pattern moves a stream field out of its record":
 
 test "a record pattern over a temporary moves its fields":
 	var {body: p} = Box(
-		label: 2, body: ReadStream[Int](Count(0)), spare: ReadStream[Int](Count(10))
+		label: 2,
+		body: ReadStream[Int](Count(0)),
+		spare: ReadStream[Int](Count(10)),
 	)
 	a := try p.next()
 	try expect_equal(a, 1)

@@ -33,8 +33,11 @@ test "hs256 matches the published token":
 	secret := "your-256-bit-secret".to_bytes()
 	claims := Profile(sub: "1234567890", name: "John Doe", iat: 1516239022)
 	token := (sign_token(claims, secret) | try expect_ok)
-	token | try expect_equal(
-		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+	(
+		token
+		| try expect_equal(
+			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+		)
 	)
 
 	back := (verify_token[Profile](token, secret) | try expect_ok)
@@ -44,11 +47,17 @@ test "hs256 matches the published token":
 test "hs384 and hs512 match independent implementations":
 	secret := "secret".to_bytes()
 	claims := session(1900000000)
-	(sign_token(claims, secret, JwtAlgorithm.Hs384) | try expect_ok) | try expect_equal(
-		"eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsImV4cCI6MTkwMDAwMDAwMCwiaXNzIjoibWUifQ.T0nuVj4bcMcyxFsFJy-slqWjCzwA4nXs7yyOuxg3pfL01lWUyI2hcJinI6AxZIYW"
+	(
+		(sign_token(claims, secret, JwtAlgorithm.Hs384) | try expect_ok)
+		| try expect_equal(
+			"eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsImV4cCI6MTkwMDAwMDAwMCwiaXNzIjoibWUifQ.T0nuVj4bcMcyxFsFJy-slqWjCzwA4nXs7yyOuxg3pfL01lWUyI2hcJinI6AxZIYW"
+		)
 	)
-	(sign_token(claims, secret, JwtAlgorithm.Hs512) | try expect_ok) | try expect_equal(
-		"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsImV4cCI6MTkwMDAwMDAwMCwiaXNzIjoibWUifQ.l7ZljlzTyputKNz9OPWJnsqWHe6ypJYHzFT_KgHlG83kxZaLOq2cxM3mM6ipWAiUZXz-Y6XYuGm4IGE64bruOw"
+	(
+		(sign_token(claims, secret, JwtAlgorithm.Hs512) | try expect_ok)
+		| try expect_equal(
+			"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsImV4cCI6MTkwMDAwMDAwMCwiaXNzIjoibWUifQ.l7ZljlzTyputKNz9OPWJnsqWHe6ypJYHzFT_KgHlG83kxZaLOq2cxM3mM6ipWAiUZXz-Y6XYuGm4IGE64bruOw"
+		)
 	)
 
 test "verify returns the claims as a record or as a JSON document":
@@ -63,67 +72,107 @@ test "verify returns the claims as a record or as a JSON document":
 test "verify rejects a wrong key, a tampered body and a different algorithm":
 	secret := "secret".to_bytes()
 	token := (sign_token(session(1900000000), secret) | try expect_ok)
-	(try failure(verify_token[Session](token, "other".to_bytes()))) | try expect_equal(
-		Error("jwt: bad signature", kind: "EBADMSG")
+	(
+		(
+			try failure(verify_token[Session](token, "other".to_bytes()))
+		) | try expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))
 	)
 
 	parts := token.split(".")
 	forged := (
 		sign_token(
-			Session(sub: "1", exp: 1900000000, iss: "me"), secret
+			Session(sub: "1", exp: 1900000000, iss: "me"),
+			secret,
 		) | try expect_ok
 	)
 	swapped := "{parts[0]}.{forged.split(".")[1]}.{parts[2]}"
-	(try failure(verify_token[Session](swapped, secret))) | try expect_equal(
-		Error("jwt: bad signature", kind: "EBADMSG")
+	(
+		(try failure(verify_token[Session](swapped, secret)))
+		| try expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))
 	)
 	(
-		try failure(
-			verify_token[Session](
-				token, secret, JwtCheck(algorithm: JwtAlgorithm.Hs512)
+		(
+			try failure(
+				verify_token[Session](
+					token,
+					secret,
+					JwtCheck(algorithm: JwtAlgorithm.Hs512),
+				)
 			)
-		)
-	) | try expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))
+		) | try expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))
+	)
 
 test "verify rejects the none algorithm and malformed tokens":
 	secret := "secret".to_bytes()
 
 	// {"alg":"none"} . {"sub":"42","exp":1900000000,"iss":"me"} . (empty signature)
 	unsigned := "eyJhbGciOiJub25lIn0.eyJzdWIiOiI0MiIsImV4cCI6MTkwMDAwMDAwMCwiaXNzIjoibWUifQ."
-	(try failure(verify_token[Session](unsigned, secret))) | try expect_equal(
-		Error("jwt: wrong algorithm", kind: "EBADMSG")
+	(
+		(try failure(verify_token[Session](unsigned, secret)))
+		| try expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))
 	)
 	for text in ["", "a.b", "a.b.c.d", "...", "!!!.???.***"]:
-		(try failure(verify_token[Session](text, secret))) | try expect_equal(
-			Error("jwt: malformed token", kind: "EBADMSG")
+		(
+			(try failure(verify_token[Session](text, secret)))
+			| try expect_equal(
+				Error("jwt: malformed token", kind: "EBADMSG")
+			)
 		)
 
 	big := "a".repeat(20000).get("")
-	(try failure(verify_token[Session](big, secret))) | try expect_equal(
-		Error("jwt: malformed token", kind: "EBADMSG")
+	(
+		(try failure(verify_token[Session](big, secret))) | try expect_equal(
+			Error("jwt: malformed token", kind: "EBADMSG")
+		)
 	)
 
 test "verify enforces exp, nbf, iss and aud":
 	secret := "secret".to_bytes()
 	stamp := (sign_token(session(1000), secret) | try expect_ok)
-	(verify_token[Session](stamp, secret, JwtCheck(at: 999)) | try expect_ok).sub | try expect_equal(
-		"42"
-	)
-	(try failure(verify_token[Session](stamp, secret, JwtCheck(at: 1000)))) | try expect_equal(
-		Error("jwt: token expired", kind: "EBADMSG")
+	(
+		(
+			verify_token[Session](
+				stamp,
+				secret,
+				JwtCheck(at: 999),
+			) | try expect_ok
+		).sub | try expect_equal("42")
 	)
 	(
-		verify_token[Session](
-			stamp, secret, JwtCheck(at: 1005, leeway: 10)
-		) | try expect_ok
-	).sub | try expect_equal("42")
+		(
+			try failure(
+				verify_token[Session](stamp, secret, JwtCheck(at: 1000))
+			)
+		) | try expect_equal(Error("jwt: token expired", kind: "EBADMSG"))
+	)
 	(
-		verify_token[Session](
-			stamp, secret, JwtCheck(at: 5, issuer: "me")
-		) | try expect_ok
-	).sub | try expect_equal("42")
-	(try failure(verify_token[Session](stamp, secret, JwtCheck(at: 5, issuer: "you")))) | try expect_equal(
-		Error("jwt: wrong issuer", kind: "EBADMSG")
+		(
+			verify_token[Session](
+				stamp,
+				secret,
+				JwtCheck(at: 1005, leeway: 10),
+			) | try expect_ok
+		).sub | try expect_equal("42")
+	)
+	(
+		(
+			verify_token[Session](
+				stamp,
+				secret,
+				JwtCheck(at: 5, issuer: "me"),
+			) | try expect_ok
+		).sub | try expect_equal("42")
+	)
+	(
+		(
+			try failure(
+				verify_token[Session](
+					stamp,
+					secret,
+					JwtCheck(at: 5, issuer: "you"),
+				)
+			)
+		) | try expect_equal(Error("jwt: wrong issuer", kind: "EBADMSG"))
 	)
 
 	doc := (verify_token(stamp, secret, JwtCheck(at: 5)) | try expect_ok)
@@ -139,24 +188,54 @@ type Audience:
 test "verify checks nbf and audience claims":
 	secret := "secret".to_bytes()
 	later := (sign_token(Timed(nbf: 100, aud: ["a", "b"]), secret) | try expect_ok)
-	(try failure(verify_token[Timed](later, secret, JwtCheck(at: 50)))) | try expect_equal(
-		Error("jwt: token not yet valid", kind: "EBADMSG")
+	(
+		(
+			try failure(
+				verify_token[Timed](later, secret, JwtCheck(at: 50))
+			)
+		) | try expect_equal(Error("jwt: token not yet valid", kind: "EBADMSG"))
 	)
 	(
-		verify_token[Timed](
-			later, secret, JwtCheck(at: 100, audience: "b")
-		) | try expect_ok
-	).nbf | try expect_equal(100)
-	(try failure(verify_token[Timed](later, secret, JwtCheck(at: 100, audience: "c")))) | try expect_equal(
-		Error("jwt: wrong audience", kind: "EBADMSG")
+		(
+			verify_token[Timed](
+				later,
+				secret,
+				JwtCheck(at: 100, audience: "b"),
+			) | try expect_ok
+		).nbf | try expect_equal(100)
+	)
+	(
+		(
+			try failure(
+				verify_token[Timed](
+					later,
+					secret,
+					JwtCheck(at: 100, audience: "c"),
+				)
+			)
+		) | try expect_equal(Error("jwt: wrong audience", kind: "EBADMSG"))
 	)
 
 	single := (sign_token(Audience(aud: "a"), secret) | try expect_ok)
-	(verify_token[Audience](single, secret, JwtCheck(audience: "a")) | try expect_ok).aud | try expect_equal(
-		"a"
+	(
+		(
+			verify_token[Audience](
+				single,
+				secret,
+				JwtCheck(audience: "a"),
+			) | try expect_ok
+		).aud | try expect_equal("a")
 	)
-	(try failure(verify_token[Audience](single, secret, JwtCheck(audience: "b")))) | try expect_equal(
-		Error("jwt: wrong audience", kind: "EBADMSG")
+	(
+		(
+			try failure(
+				verify_token[Audience](
+					single,
+					secret,
+					JwtCheck(audience: "b"),
+				)
+			)
+		) | try expect_equal(Error("jwt: wrong audience", kind: "EBADMSG"))
 	)
 
 test "verify rejects registered claims of the wrong type":
@@ -176,21 +255,27 @@ test "verify rejects registered claims of the wrong type":
 
 	nbf := (
 		sign_token(
-			(parse("\{\"nbf\":\"tomorrow\"\}") | try expect_ok), secret
+			(parse("\{\"nbf\":\"tomorrow\"\}") | try expect_ok),
+			secret,
 		) | try expect_ok
 	)
-	(try failure(verify_token(nbf, secret, JwtCheck(at: 100)))) | try expect_equal(
-		wrong
+	(
+		(
+			try failure(verify_token(nbf, secret, JwtCheck(at: 100)))
+		) | try expect_equal(wrong)
 	)
 
 	fine := (
 		sign_token(
-			(parse("\{\"aud\":[\"wanted\"],\"exp\":200\}") | try expect_ok), secret
+			(parse("\{\"aud\":[\"wanted\"],\"exp\":200\}") | try expect_ok),
+			secret,
 		) | try expect_ok
 	)
 	_ := (
 		verify_token(
-			fine, secret, JwtCheck(at: 100, audience: "wanted")
+			fine,
+			secret,
+			JwtCheck(at: 100, audience: "wanted"),
 		) | try expect_ok
 	)
 
@@ -210,8 +295,11 @@ test "verify rejects signed payloads that are not claim objects":
 		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.W3siZXhwIjowfV0.9JxJ3QGSMH2Ey3kNrUVwlUusIl_VcEEMKXanDqU_piI"
 	]
 	for token in tokens:
-		(try failure(verify_token(token, secret, JwtCheck(at: 100)))) | try expect_equal(
-			Error("jwt: claims must be an object", kind: "EBADMSG")
+		(
+			(try failure(verify_token(token, secret, JwtCheck(at: 100))))
+			| try expect_equal(
+				Error("jwt: claims must be an object", kind: "EBADMSG")
+			)
 		)
 
 test "claim object validation applies before typed payload decoding":
@@ -222,14 +310,17 @@ test "claim object validation applies before typed payload decoding":
 	invalid := Error("jwt: claims must be an object", kind: "EBADMSG")
 	(try failure(verify_token[Int?](null_token, secret))) | try expect_equal(invalid)
 	(try failure(verify_token[Int](number_token, secret))) | try expect_equal(invalid)
-	(try failure(verify_token[List[Int]](array_token, secret))) | try expect_equal(
-		invalid
+	(
+		(
+			try failure(verify_token[List[Int]](array_token, secret))
+		) | try expect_equal(invalid)
 	)
 
 test "claim object validation follows signature verification":
 	token := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bnVsbA.7DWrkJHEM03NP-M-9zlpZJ3Ud49InV9BpM_GlfnVpfM"
-	(try failure(verify_token(token, "other".to_bytes()))) | try expect_equal(
-		Error("jwt: bad signature", kind: "EBADMSG")
+	(
+		(try failure(verify_token(token, "other".to_bytes())))
+		| try expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))
 	)
 
 test "verify accepts empty claim objects and nested values":
@@ -249,17 +340,23 @@ test "rs256 signs with a private key and verifies with the public key":
 	public := (public_key_der(private) | try expect_ok)
 	token := (
 		sign_token(
-			session(1900000000), private, JwtAlgorithm.Rs256
+			session(1900000000),
+			private,
+			JwtAlgorithm.Rs256,
 		) | try expect_ok
 	)
 	check := JwtCheck(algorithm: JwtAlgorithm.Rs256)
-	(verify_token[Session](token, public, check) | try expect_ok).sub | try expect_equal(
-		"42"
+	(
+		(
+			verify_token[Session](token, public, check) | try expect_ok
+		).sub | try expect_equal("42")
 	)
 
 	other := (public_key_der((rsa_generate(2048) | try expect_ok)) | try expect_ok)
-	(try failure(verify_token[Session](token, other, check))) | try expect_equal(
-		Error("jwt: bad signature", kind: "EBADMSG")
+	(
+		(
+			try failure(verify_token[Session](token, other, check))
+		) | try expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))
 	)
 
 test "es256 signatures are raw 64 bytes and verify":
@@ -270,12 +367,20 @@ test "es256 signatures are raw 64 bytes and verify":
 	for round in 0..20:
 		token := (
 			sign_token(
-				session(1900000000 + round), private, JwtAlgorithm.Es256
+				session(1900000000 + round),
+				private,
+				JwtAlgorithm.Es256,
 			) | try expect_ok
 		)
 		token.split(".")[2].length() | try expect_equal(86)
-		(verify_token[Session](token, public, check) | try expect_ok).exp | try expect_equal(
-			1900000000 + round
+		(
+			(
+				verify_token[Session](
+					token,
+					public,
+					check,
+				) | try expect_ok
+			).exp | try expect_equal(1900000000 + round)
 		)
 
 	token := (sign_token(session(1), private, JwtAlgorithm.Es256) | try expect_ok)
@@ -284,8 +389,10 @@ test "es256 signatures are raw 64 bytes and verify":
 			(ecdsa_generate(Curve.P256) | try expect_ok)
 		) | try expect_ok
 	)
-	(try failure(verify_token[Session](token, other, check))) | try expect_equal(
-		Error("jwt: bad signature", kind: "EBADMSG")
+	(
+		(
+			try failure(verify_token[Session](token, other, check))
+		) | try expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))
 	)
 
 test "eddsa signs with a seed and verifies with the public key":
@@ -293,11 +400,15 @@ test "eddsa signs with a seed and verifies with the public key":
 	public := (public_key(seed) | try expect_ok)
 	check := JwtCheck(algorithm: JwtAlgorithm.EdDsa)
 	token := (sign_token(session(1900000000), seed, JwtAlgorithm.EdDsa) | try expect_ok)
-	(verify_token[Session](token, public, check) | try expect_ok).sub | try expect_equal(
-		"42"
+	(
+		(
+			verify_token[Session](token, public, check) | try expect_ok
+		).sub | try expect_equal("42")
 	)
-	(try failure(verify_token[Session](token, public, JwtCheck()))) | try expect_equal(
-		Error("jwt: wrong algorithm", kind: "EBADMSG")
+	(
+		(
+			try failure(verify_token[Session](token, public, JwtCheck()))
+		) | try expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))
 	)
 
 test "sign returns InvalidKey for a key that does not fit":
@@ -335,8 +446,14 @@ test "verify rejects unsupported and malformed critical headers":
 		"eyJhbGciOiJIUzI1NiIsImI2NCI6dHJ1ZSwiY3JpdCI6WyJiNjQiXX0.e30.kKndt9ePg2M-HhRwHLtmeT-Ll926VPZM5GW_Z_HVeWE",
 	]
 	for token in tokens:
-		(try failure(verify_token(token, secret))) | try expect_equal(
-			Error("jwt: unsupported critical header", kind: "EBADMSG")
+		(
+			(try failure(verify_token(token, secret)))
+			| try expect_equal(
+				Error(
+					"jwt: unsupported critical header",
+					kind: "EBADMSG",
+				)
+			)
 		)
 
 test "verify rejects unencoded and malformed payload encoding headers":
@@ -356,8 +473,14 @@ test "verify rejects unencoded and malformed payload encoding headers":
 		"eyJhbGciOiJIUzI1NiIsImI2NCI6e319.e30.CpuY69nnDgJh7Nown0j8JP69DHt7DVidzzU1MfpguRo",
 	]
 	for token in tokens:
-		(try failure(verify_token(token, secret))) | try expect_equal(
-			Error("jwt: unsupported payload encoding", kind: "EBADMSG")
+		(
+			(try failure(verify_token(token, secret)))
+			| try expect_equal(
+				Error(
+					"jwt: unsupported payload encoding",
+					kind: "EBADMSG",
+				)
+			)
 		)
 
 test "verify keeps unknown noncritical and default encoding headers":
@@ -377,19 +500,26 @@ test "verify keeps unknown noncritical and default encoding headers":
 		claims := (verify_token(token, secret) | try expect_ok)
 		try expect_true(claims.as_map().is_some())
 		claims.as_map().get().length() | try expect_equal(0)
-		(try failure(verify_token(token, "other".to_bytes()))) | try expect_equal(
-			Error("jwt: bad signature", kind: "EBADMSG")
+		(
+			(
+				try failure(verify_token(token, "other".to_bytes()))
+			) | try expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))
 		)
 
 test "configured algorithm validation precedes unsupported headers":
 	token := "eyJhbGciOiJIUzI1NiIsImNyaXQiOlsiZXhhbXBsZSJdLCJleGFtcGxlIjp0cnVlfQ.e30.a2vMv_4PubTvFXgyFiBLVpBZSgLLXqx2FsNpqa0WU7k"
 	(
-		try failure(
-			verify_token(
-				token, "secret".to_bytes(), JwtCheck(algorithm: JwtAlgorithm.Hs512)
+		(
+			try failure(
+				verify_token(
+					token,
+					"secret".to_bytes(),
+					JwtCheck(algorithm: JwtAlgorithm.Hs512),
+				)
 			)
 		)
-	) | try expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))
+		| try expect_equal(Error("jwt: wrong algorithm", kind: "EBADMSG"))
+	)
 
 test "verify rejects missing and nonstring algorithm names":
 	tokens := [
@@ -409,8 +539,11 @@ test "verify rejects missing and nonstring algorithm names":
 		"eyJhbGciOiIifQ.e30.eHpAX4gmdcAz1N_XANGlZqo-RN4PiuCyyS6tIel6RDI",
 	]
 	for token in tokens:
-		(try failure(verify_token(token, "secret".to_bytes()))) | try expect_equal(
-			Error("jwt: wrong algorithm", kind: "EBADMSG")
+		(
+			(try failure(verify_token(token, "secret".to_bytes())))
+			| try expect_equal(
+				Error("jwt: wrong algorithm", kind: "EBADMSG")
+			)
 		)
 
 // Sign NumberValue directly so JSON retains every decimal/exponent digit.
@@ -426,15 +559,18 @@ fn expect_date_order(number: String, at: Int, order: Int) Unit!:
 	check := JwtCheck(at: at)
 
 	if order <= 0:
-		(try failure(verify_token(exp, secret, check))) | try expect_equal(
-			Error("jwt: token expired", kind: "EBADMSG")
+		(
+			(try failure(verify_token(exp, secret, check)))
+			| try expect_equal(Error("jwt: token expired", kind: "EBADMSG"))
 		)
 
 		_ := try verify_token(nbf, secret, check)
 	else:
 		_ := try verify_token(exp, secret, check)
-		(try failure(verify_token(nbf, secret, check))) | try expect_equal(
-			Error("jwt: token not yet valid", kind: "EBADMSG")
+		(
+			(
+				try failure(verify_token(nbf, secret, check))
+			) | try expect_equal(Error("jwt: token not yet valid", kind: "EBADMSG"))
 		)
 
 	return ok(unit)
@@ -489,61 +625,78 @@ test "numeric date leeway is exact across Int boundaries":
 
 	exp_limit := try dated_token("exp", "18446744073709551615")
 	(
-		try failure(
-			verify_token(
-				exp_limit,
-				secret,
-				JwtCheck(
-					at: 9223372036854775807, leeway: -9223372036854775808
+		(
+			try failure(
+				verify_token(
+					exp_limit,
+					secret,
+					JwtCheck(
+						at: 9223372036854775807,
+						leeway: -9223372036854775808,
+					),
 				)
 			)
-		)
-	) | try expect_equal(Error("jwt: token expired", kind: "EBADMSG"))
+		) | try expect_equal(Error("jwt: token expired", kind: "EBADMSG"))
+	)
 
 	exp_later := try dated_token("exp", "18446744073709551615.0000001")
 	_ := try verify_token(
-		exp_later, secret,
-		JwtCheck(at: 9223372036854775807, leeway: -9223372036854775808)
+		exp_later,
+		secret,
+		JwtCheck(at: 9223372036854775807, leeway: -9223372036854775808),
 	)
 	nbf_limit := try dated_token("nbf", "-18446744073709551616")
 	_ := try verify_token(
-		nbf_limit, secret,
-		JwtCheck(at: -9223372036854775808, leeway: -9223372036854775808)
+		nbf_limit,
+		secret,
+		JwtCheck(at: -9223372036854775808, leeway: -9223372036854775808),
 	)
 	nbf_later := try dated_token("nbf", "-18446744073709551615.9999999")
 	(
-		try failure(
-			verify_token(
-				nbf_later,
-				secret,
-				JwtCheck(
-					at: -9223372036854775808, leeway: -9223372036854775808
+		(
+			try failure(
+				verify_token(
+					nbf_later,
+					secret,
+					JwtCheck(
+						at: -9223372036854775808,
+						leeway: -9223372036854775808,
+					),
 				)
 			)
-		)
-	) | try expect_equal(Error("jwt: token not yet valid", kind: "EBADMSG"))
+		) | try expect_equal(Error("jwt: token not yet valid", kind: "EBADMSG"))
+	)
 
 	// Positive leeway can also put the boundary outside Int.
 	exp_early := try dated_token("exp", "-18446744073709551615")
 	(
-		try failure(
-			verify_token(
-				exp_early,
-				secret,
-				JwtCheck(
-					at: -9223372036854775808, leeway: 9223372036854775807
+		(
+			try failure(
+				verify_token(
+					exp_early,
+					secret,
+					JwtCheck(
+						at: -9223372036854775808,
+						leeway: 9223372036854775807,
+					),
 				)
 			)
-		)
-	) | try expect_equal(Error("jwt: token expired", kind: "EBADMSG"))
+		) | try expect_equal(Error("jwt: token expired", kind: "EBADMSG"))
+	)
 
 	nbf_late := try dated_token("nbf", "18446744073709551614")
 	_ := try verify_token(
-		nbf_late, secret, JwtCheck(at: 9223372036854775807, leeway: 9223372036854775807)
+		nbf_late,
+		secret,
+		JwtCheck(at: 9223372036854775807, leeway: 9223372036854775807),
 	)
 
 test "numeric date validation still follows signature verification":
 	token := try dated_token("nbf", "1e999999999999999999999")
-	(try failure(verify_token(token, "other".to_bytes(), JwtCheck(at: 0)))) | try expect_equal(
-		Error("jwt: bad signature", kind: "EBADMSG")
+	(
+		(
+			try failure(
+				verify_token(token, "other".to_bytes(), JwtCheck(at: 0))
+			)
+		) | try expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))
 	)

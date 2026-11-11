@@ -95,7 +95,8 @@ impl Source[String] for Lines:
 				if rest > 0:
 					self.pending.append(
 						try self.data.slice(
-							self.start, self.data.length()
+							self.start,
+							self.data.length(),
 						)
 					)
 					self.pending_size += rest

@@ -65,8 +65,11 @@ fn run(args: List[String]) String!:
 						ran := capture(
 							args[version],
 							[
-								mode.clone(), "{n}", "{repeats}", pattern.clone()
-							]
+								mode.clone(),
+								"{n}",
+								"{repeats}",
+								pattern.clone(),
+							],
 						)
 						wall := monotonic().difference(start).to_nanoseconds()
 						if not ran.ok or ran.code != 0 or ran.stderr != "": return invalid(

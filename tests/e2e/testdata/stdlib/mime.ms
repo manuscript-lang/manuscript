@@ -19,7 +19,7 @@ test "media types parse and format":
 	try expect_equal(media.params.get("q").get(""), "a\"b")
 	try expect_equal(
 		format_media_type(parse_media_type("text/plain; charset=utf-8").get()),
-		"text/plain; charset=utf-8"
+		"text/plain; charset=utf-8",
 	)
 	try expect_true(parse_media_type("text").is_error())
 	try expect_true(parse_media_type("a/b; x=\"open").is_error())
@@ -57,9 +57,11 @@ test "multipart round-trips fields and files":
 	parts := [
 		form_part("title", "Hello".to_bytes()),
 		form_part(
-			"upload", "line1\r\nline2".to_bytes(), filename: "a b.txt",
-			content_type: "text/plain"
-		)
+			"upload",
+			"line1\r\nline2".to_bytes(),
+			filename: "a b.txt",
+			content_type: "text/plain",
+		),
 	]
 	body := encode_multipart(parts, "XyZ")
 	back := parse_multipart(body, "XyZ").get()
@@ -74,7 +76,8 @@ test "multipart rejects a missing closing delimiter":
 	try expect_true(parse_multipart("--b\r\n\r\nx".to_bytes(), "b").is_error())
 	try expect_true(parse_multipart("junk".to_bytes(), "b").is_error())
 	try expect_equal(
-		multipart_boundary("multipart/form-data; boundary=abc").get(""), "abc"
+		multipart_boundary("multipart/form-data; boundary=abc").get(""),
+		"abc",
 	)
 	try expect_true(multipart_boundary("text/plain").is_none())
 

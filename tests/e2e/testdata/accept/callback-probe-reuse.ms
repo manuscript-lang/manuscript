@@ -21,7 +21,8 @@ test "callback inference retains captures and contextual metadata":
 	try expect_equal(values, [[11, 12], [12, 13]])
 
 	callable: fn(Int) fn(Int) Int := apply(
-		value: 1, transform: fn base: fn item: fn extra: item + extra + base
+		value: 1,
+		transform: fn base: fn item: fn extra: item + extra + base
 	)
 	try expect_equal(callable(3)(4), 8)
 
@@ -41,7 +42,8 @@ test "callback inference retains captures and contextual metadata":
 	try expect_equal(failure, Result[Int, Error].error(Error("expected")))
 
 	failed: Int!Failure[Int] := apply(
-		value: 9, transform: fn item: error(Failure(item))
+		value: 9,
+		transform: fn item: error(Failure(item))
 	)
 	try expect_false(failed.is_ok())
 	try expect_equal(failed.err().detail, 9)

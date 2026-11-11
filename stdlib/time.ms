@@ -481,10 +481,17 @@ export fn from_calendar(
 	minute: Int,
 	second: Int,
 	nanosecond: Int,
-	zone: String
+	zone: String,
 ) Timestamp!:
 	return msstd_time_from_calendar(
-		year, month, day, hour, minute, second, nanosecond, zone
+		year,
+		month,
+		day,
+		hour,
+		minute,
+		second,
+		nanosecond,
+		zone,
 	)
 
 // Returns the host's local time zone name, or `UTC` when it cannot be determined.

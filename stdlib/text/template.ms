@@ -127,9 +127,13 @@ impl Template:
 		frames.append(root_names(data))
 
 		var run = Run(
-			out: StringBuilder(), written: 0, frames: frames,
-			partials: options.partials.clone(), strict: options.strict,
-			limit: options.max_output, html: self.html
+			out: StringBuilder(),
+			written: 0,
+			frames: frames,
+			partials: options.partials.clone(),
+			strict: options.strict,
+			limit: options.max_output,
+			html: self.html,
 		)
 		try run.nodes(self.nodes.clone(), 0)
 		return ok(run.out.build())
@@ -153,22 +157,30 @@ MAX_DEPTH := 64
 // never echoes values.
 fn syntax_error(line: Int, reason: String) Error:
 	return Error(
-		"template: line {line}: {reason}", kind: "EBADMSG", details: {"line": "{line}"}
+		"template: line {line}: {reason}",
+		kind: "EBADMSG",
+		details: {"line": "{line}"},
 	)
 
 fn missing_value_error(path: String) Error:
 	return Error(
-		"template: no value for {path}", kind: "ENOENT", details: {"path": path}
+		"template: no value for {path}",
+		kind: "ENOENT",
+		details: {"path": path},
 	)
 
 fn invalid_filter_error(name: String, reason: String) Error:
 	return Error(
-		"template: filter {name}: {reason}", kind: "EINVAL", details: {"filter": name}
+		"template: filter {name}: {reason}",
+		kind: "EINVAL",
+		details: {"filter": name},
 	)
 
 fn unknown_partial_error(name: String) Error:
 	return Error(
-		"template: unknown partial {name}", kind: "ENOENT", details: {"partial": name}
+		"template: unknown partial {name}",
+		kind: "ENOENT",
+		details: {"partial": name},
 	)
 
 // Compiles template source. With `html: true`, printed values are HTML-escaped unless
@@ -219,7 +231,7 @@ export fn render_to(
 	template: Template,
 	data: JsonValue,
 	var output: WriteStream[String],
-	options: RenderOptions = RenderOptions()
+	options: RenderOptions = RenderOptions(),
 ) Unit!Error:
 	text := try template.render(data, options)
 	return output.write(text)
@@ -270,7 +282,8 @@ fn tokenize(source: String) List[Token]!Error:
 
 		if not closed: return error(
 			syntax_error(
-				line: line + count_lines(text), reason: "unterminated action"
+				line: line + count_lines(text),
+				reason: "unterminated action",
 			)
 		)
 
@@ -304,7 +317,8 @@ fn tokenize(source: String) List[Token]!Error:
 	tokens.append(
 		Token(
 			action: false,
-			body: if trim_next: literal.trim_start() else: literal.clone(), line: line
+			body: if trim_next: literal.trim_start() else: literal.clone(),
+			line: line,
 		)
 	)
 	return ok(tokens)
@@ -569,7 +583,10 @@ impl Builder:
 			if word == "end":
 				return ok(
 					BlockEnd(
-						nodes: nodes, end: "end", cond: "", line: token.line
+						nodes: nodes,
+						end: "end",
+						cond: "",
+						line: token.line,
 					)
 				)
 
@@ -577,13 +594,18 @@ impl Builder:
 				if first_word(rest) == "if":
 					return ok(
 						BlockEnd(
-							nodes: nodes, end: "else if", cond: after_word(rest),
-							line: token.line
+							nodes: nodes,
+							end: "else if",
+							cond: after_word(rest),
+							line: token.line,
 						)
 					)
 				return ok(
 					BlockEnd(
-						nodes: nodes, end: "else", cond: "", line: token.line
+						nodes: nodes,
+						end: "else",
+						cond: "",
+						line: token.line,
 					)
 				)
 
@@ -629,7 +651,8 @@ impl Builder:
 				tail := try self.block(depth + 1)
 				if tail.end != "end": return error(
 					syntax_error(
-						line: done.line, reason: "if needs end"
+						line: done.line,
+						reason: "if needs end",
 					)
 				)
 
@@ -766,7 +789,8 @@ impl Run:
 			if truthy(input): return ok(input)
 			if args.length() != 2: return error(
 				invalid_filter_error(
-					name: name, reason: "needs one argument"
+					name: name,
+					reason: "needs one argument",
 				)
 			)
 
@@ -788,7 +812,12 @@ impl Run:
 			Emit(expr, escape_output): return self.emit(expr, escape_output)
 			If(branches, otherwise): return self.branch(branches, otherwise, depth)
 			Each(first, second, source, body, otherwise): return self.each(
-				first, second, source, body, otherwise, depth
+				first,
+				second,
+				source,
+				body,
+				otherwise,
+				depth,
 			)
 			Include(name): return self.include(name, depth)
 
@@ -802,7 +831,7 @@ impl Run:
 	var fn branch(
 		branches: List[TemplateBranch],
 		otherwise: List[TemplateNode],
-		depth: Int
+		depth: Int,
 	) Unit!Error:
 		for branch in branches:
 			verdict := try self.eval(branch.cond.clone(), false)
@@ -816,7 +845,7 @@ impl Run:
 		source: TemplateExpr,
 		body: List[TemplateNode],
 		otherwise: List[TemplateNode],
-		depth: Int
+		depth: Int,
 	) Unit!Error:
 		collection := try self.eval(source, false)
 		rows := rows_of(collection, first, second)
@@ -844,7 +873,7 @@ impl Run:
 			partial.get(
 				Template(nodes: List[TemplateNode](), html: false)
 			).nodes.clone(),
-			depth + 1
+			depth + 1,
 		)
 
 // ---- values --------------------------------------------------------------------------------
@@ -883,7 +912,7 @@ fn loop_info(index: Int, length: Int) JsonValue:
 fn rows_of(
 	collection: JsonValue,
 	first: String,
-	second: String
+	second: String,
 ) List[Map[String, JsonValue]]:
 	var rows = List[Map[String, JsonValue]]()
 
@@ -994,7 +1023,8 @@ fn order_compare(a: String, b: String) Int:
 	if an != bn: return if an: -1 else: 1
 
 	comparison := magnitude_compare(
-		if an: a.drop(1) else: a.clone(), if bn: b.drop(1) else: b.clone()
+		if an: a.drop(1) else: a.clone(),
+		if bn: b.drop(1) else: b.clone(),
 	)
 	return if an: -comparison else: comparison
 
@@ -1057,9 +1087,12 @@ fn exact_number(text: String) ExactNumber?:
 		first += 1
 
 	return ExactNumber(
-		negative: negative and first != coefficient_end, coefficient: chars,
-		first: first, end: coefficient_end, offset: before_point - leading_zeros,
-		exponent: exponent
+		negative: negative and first != coefficient_end,
+		coefficient: chars,
+		first: first,
+		end: coefficient_end,
+		offset: before_point - leading_zeros,
+		exponent: exponent,
 	)
 
 fn number_compare(a: ExactNumber, b: ExactNumber) Int:
@@ -1075,7 +1108,8 @@ fn number_compare(a: ExactNumber, b: ExactNumber) Int:
 		order = if a.offset < b.offset: -1 else if a.offset > b.offset: 1 else: 0
 	else:
 		order = order_compare(
-			decimal_order(a.exponent, a.offset), decimal_order(b.exponent, b.offset)
+			decimal_order(a.exponent, a.offset),
+			decimal_order(b.exponent, b.offset),
 		)
 
 	if order == 0: order = coefficient_compare(a, b)
@@ -1101,7 +1135,8 @@ fn coefficient_text(number: ExactNumber) String:
 
 	// The lexical scan already validated ASCII; these byte ranges are UTF-8.
 	return number.coefficient.decode_utf8_range(number.first, end).get("").replace(
-		".", ""
+		".",
+		"",
 	)
 
 // Common integer tokens compare directly without losing precision. Noncanonical

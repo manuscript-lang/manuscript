@@ -65,16 +65,20 @@ test "rotation counts reduce modulo 64 for runtime counts":
 	while count < 200:
 		reduced := (count + 64) % 64
 		try expect_equal(
-			rotate_left(min_int + 5, count), rotate_left(min_int + 5, reduced)
+			rotate_left(min_int + 5, count),
+			rotate_left(min_int + 5, reduced),
 		)
 		try expect_equal(
-			rotate_right(min_int + 5, count), rotate_right(min_int + 5, reduced)
+			rotate_right(min_int + 5, count),
+			rotate_right(min_int + 5, reduced),
 		)
 		try expect_equal(
-			rotate_left(min_int + 5, 0 - count), rotate_right(min_int + 5, reduced)
+			rotate_left(min_int + 5, 0 - count),
+			rotate_right(min_int + 5, reduced),
 		)
 		try expect_equal(
-			rotate_right(min_int + 5, 0 - count), rotate_left(min_int + 5, reduced)
+			rotate_right(min_int + 5, 0 - count),
+			rotate_left(min_int + 5, reduced),
 		)
 		count += 1
 

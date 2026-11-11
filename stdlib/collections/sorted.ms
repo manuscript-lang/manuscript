@@ -77,7 +77,8 @@ impl SortedMap[K, V]:
 	// Records the last key of chunk `c` after the chunk changed.
 	var fn refresh(c: Int) Unit:
 		self.maxes.set(
-			c, self.key_chunks[c].get(self.key_chunks[c].length() - 1).clone()
+			c,
+			self.key_chunks[c].get(self.key_chunks[c].length() - 1).clone(),
 		)
 
 	// Returns the number of entries.
@@ -196,7 +197,8 @@ impl SortedMap[K, V]:
 	fn first() SortedEntry[K, V]?:
 		if self.size == 0: return none
 		return SortedEntry(
-			self.key_chunks[0].get(0).clone(), self.value_chunks[0].get(0).clone()
+			self.key_chunks[0].get(0).clone(),
+			self.value_chunks[0].get(0).clone(),
 		)
 
 	// Returns the entry with the largest key, or none when empty.
@@ -206,7 +208,8 @@ impl SortedMap[K, V]:
 		c := self.key_chunks.length() - 1
 		at := self.key_chunks[c].length() - 1
 		return SortedEntry(
-			self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
+			self.key_chunks[c].get(at).clone(),
+			self.value_chunks[c].get(at).clone(),
 		)
 
 	// Removes and returns the entry with the smallest key, or none when empty.
@@ -235,7 +238,8 @@ impl SortedMap[K, V]:
 		if at >= self.key_chunks[c].length(): return none
 
 		return SortedEntry(
-			self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
+			self.key_chunks[c].get(at).clone(),
+			self.value_chunks[c].get(at).clone(),
 		)
 
 	// Returns the entry with the largest key that is at most `key`, or none.
@@ -249,7 +253,8 @@ impl SortedMap[K, V]:
 			and order(self.key_chunks[c].get(at), key) == 0
 		):
 			return SortedEntry(
-				self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
+				self.key_chunks[c].get(at).clone(),
+				self.value_chunks[c].get(at).clone(),
 			)
 
 		if at == 0:
@@ -260,7 +265,8 @@ impl SortedMap[K, V]:
 
 		at -= 1
 		return SortedEntry(
-			self.key_chunks[c].get(at).clone(), self.value_chunks[c].get(at).clone()
+			self.key_chunks[c].get(at).clone(),
+			self.value_chunks[c].get(at).clone(),
 		)
 
 	// Returns a new list of the entries with `low` <= key < `high`, in ascending order.
@@ -279,7 +285,8 @@ impl SortedMap[K, V]:
 
 				out.append(
 					SortedEntry(
-						keys[at].clone(), self.value_chunks[c].get(at).clone()
+						keys[at].clone(),
+						self.value_chunks[c].get(at).clone(),
 					)
 				)
 				at += 1
@@ -306,7 +313,8 @@ impl SortedMap[K, V]:
 			for at in 0..keys.length():
 				out.append(
 					SortedEntry(
-						keys[at].clone(), self.value_chunks[c].get(at).clone()
+						keys[at].clone(),
+						self.value_chunks[c].get(at).clone(),
 					)
 				)
 

@@ -40,7 +40,7 @@ impl Screen:
 		terminal: RawTerminal,
 		rows: List[String],
 		cursor_row: Int,
-		cursor_column: Int
+		cursor_column: Int,
 	) Unit!:
 		return terminal.write(self.render(rows, cursor_row, cursor_column))
 

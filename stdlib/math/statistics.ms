@@ -181,7 +181,7 @@ export fn stdev(values: List[Float]) Float?:
 fn deviation_from_variance(
 	values: List[Float],
 	spread_squared: Float,
-	correction: Int
+	correction: Int,
 ) Float:
 	ordinary := sqrt(spread_squared)
 	if spread_squared.is_finite() and spread_squared >= 2.2250738585072014e-308:
@@ -334,8 +334,9 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
 		numerator := i * span
 		cuts.append(
 			interpolate_sorted(
-				ordered, numerator / parts,
-				(numerator % parts).to_float() / parts.to_float()
+				ordered,
+				numerator / parts,
+				(numerator % parts).to_float() / parts.to_float(),
 			)
 		)
 
@@ -371,7 +372,9 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
 			if not value.is_finite(): finite = false
 		if finite:
 			return BinCounts(
-				low: low, high: high, counts: exact_bin_counts(values, low, high, bins)
+				low: low,
+				high: high,
+				counts: exact_bin_counts(values, low, high, bins),
 			)
 
 	var counts = [0].repeated(bins)
@@ -561,7 +564,7 @@ fn finite_regression(
 	xs: List[Float],
 	ys: List[Float],
 	x_exponent: Int,
-	y_exponent: Int
+	y_exponent: Int,
 ) Regression?:
 	x := centered(xs, x_exponent)
 	y := centered(ys, y_exponent)
@@ -586,5 +589,5 @@ fn finite_regression(
 	)
 	return Regression(
 		slope: ldexp(ratio, y_unit - x_unit + y_exponent - x_exponent),
-		intercept: ldexp(scaled_intercept, y_exponent)
+		intercept: ldexp(scaled_intercept, y_exponent),
 	)

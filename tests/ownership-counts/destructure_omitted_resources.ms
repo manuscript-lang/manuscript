@@ -56,7 +56,7 @@ fn with_storage() Unit:
 	tokens := NamedTriple(
 		NamedToken(11, "first-heap-allocated-name"),
 		NamedToken(12, "second-heap-allocated-name"),
-		NamedToken(13, "third-heap-allocated-name")
+		NamedToken(13, "third-heap-allocated-name"),
 	)
 	{first: kept} := tokens
 	_ := kept.name.length()

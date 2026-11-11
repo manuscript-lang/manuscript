@@ -457,8 +457,10 @@ type Rect:
 
 fn rect_of_refs(a: Ref, b: Ref) Rect:
 	return Rect(
-		c1: a.col.min(b.col), r1: a.row.min(b.row), c2: a.col.max(b.col),
-		r2: a.row.max(b.row)
+		c1: a.col.min(b.col),
+		r1: a.row.min(b.row),
+		c2: a.col.max(b.col),
+		r2: a.row.max(b.row),
 	)
 
 fn range_arg(t: String) Rect?:
@@ -473,8 +475,10 @@ fn range_arg(t: String) Rect?:
 		if a := cell_arg(parts[0]):
 			if b := cell_arg(parts[1]):
 				return Rect(
-					c1: key_col(a).min(key_col(b)), r1: key_row(a).min(key_row(b)),
-					c2: key_col(a).max(key_col(b)), r2: key_row(a).max(key_row(b))
+					c1: key_col(a).min(key_col(b)),
+					r1: key_row(a).min(key_row(b)),
+					c2: key_col(a).max(key_col(b)),
+					r2: key_row(a).max(key_row(b)),
 				)
 	return none
 
@@ -518,8 +522,14 @@ type Tok:
 
 fn tok(kind: Int, text: String, a: Int, b: Int) Tok:
 	return Tok(
-		kind: kind, text: text, num: 0.0, good: true, r1: no_ref(), r2: no_ref(),
-		start: a, stop: b
+		kind: kind,
+		text: text,
+		num: 0.0,
+		good: true,
+		r1: no_ref(),
+		r2: no_ref(),
+		start: a,
+		stop: b,
 	)
 
 fn scan_number(cs: List[String], i: Int) Int:
@@ -584,8 +594,14 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
 
 			toks.append(
 				Tok(
-					kind: T_NUM, text: text, num: val, good: good, r1: no_ref(),
-					r2: no_ref(), start: i, stop: j
+					kind: T_NUM,
+					text: text,
+					num: val,
+					good: good,
+					r1: no_ref(),
+					r2: no_ref(),
+					start: i,
+					stop: j,
 				)
 			)
 			i = j
@@ -614,8 +630,14 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
 							if r2 := ref_of(cs, j + 1, k):
 								toks.append(
 									Tok(
-										kind: T_RANGE, text: "", num: 0.0, good: true,
-										r1: r1.clone(), r2: r2, start: i, stop: k
+										kind: T_RANGE,
+										text: "",
+										num: 0.0,
+										good: true,
+										r1: r1.clone(),
+										r2: r2,
+										start: i,
+										stop: k,
 									)
 								)
 								i = k
@@ -624,8 +646,14 @@ fn lex(cs: List[String]) Result[List[Tok], String]:
 					if not handled:
 						toks.append(
 							Tok(
-								kind: T_REF, text: "", num: 0.0, good: true, r1: r1,
-								r2: no_ref(), start: i, stop: j
+								kind: T_REF,
+								text: "",
+								num: 0.0,
+								good: true,
+								r1: r1,
+								r2: no_ref(),
+								start: i,
+								stop: j,
 							)
 						)
 						i = j
@@ -720,8 +748,13 @@ type Node:
 
 fn leaf(kind: Int, text: String) Node:
 	return Node(
-		kind: kind, text: text, num: 0.0, flag: false, r1: no_ref(), r2: no_ref(),
-		args: List[Node]()
+		kind: kind,
+		text: text,
+		num: 0.0,
+		flag: false,
+		r1: no_ref(),
+		r2: no_ref(),
+		args: List[Node](),
 	)
 
 fn bin_node(op: String, a: Node, b: Node) Node:
@@ -729,16 +762,26 @@ fn bin_node(op: String, a: Node, b: Node) Node:
 	args.append(a)
 	args.append(b)
 	return Node(
-		kind: N_BIN, text: op, num: 0.0, flag: false, r1: no_ref(), r2: no_ref(),
-		args: args
+		kind: N_BIN,
+		text: op,
+		num: 0.0,
+		flag: false,
+		r1: no_ref(),
+		r2: no_ref(),
+		args: args,
 	)
 
 fn un_node(op: String, a: Node) Node:
 	var args = List[Node]()
 	args.append(a)
 	return Node(
-		kind: N_UNARY, text: op, num: 0.0, flag: false, r1: no_ref(), r2: no_ref(),
-		args: args
+		kind: N_UNARY,
+		text: op,
+		num: 0.0,
+		flag: false,
+		r1: no_ref(),
+		r2: no_ref(),
+		args: args,
 	)
 
 type Parser:
@@ -861,16 +904,26 @@ impl Parser:
 			g := self.toks[self.pos].good
 			self.step()
 			return Node(
-				kind: N_NUM, text: "", num: v, flag: g, r1: no_ref(), r2: no_ref(),
-				args: List[Node]()
+				kind: N_NUM,
+				text: "",
+				num: v,
+				flag: g,
+				r1: no_ref(),
+				r2: no_ref(),
+				args: List[Node](),
 			)
 
 		if k == T_STR:
 			s := self.text_now()
 			self.step()
 			return Node(
-				kind: N_STR, text: s, num: 0.0, flag: false, r1: no_ref(), r2: no_ref(),
-				args: List[Node]()
+				kind: N_STR,
+				text: s,
+				num: 0.0,
+				flag: false,
+				r1: no_ref(),
+				r2: no_ref(),
+				args: List[Node](),
 			)
 
 		if k == T_ERR:
@@ -881,8 +934,13 @@ impl Parser:
 			r := self.toks[self.pos].r1.clone()
 			self.step()
 			return Node(
-				kind: N_REF, text: "", num: 0.0, flag: false, r1: r, r2: no_ref(),
-				args: List[Node]()
+				kind: N_REF,
+				text: "",
+				num: 0.0,
+				flag: false,
+				r1: r,
+				r2: no_ref(),
+				args: List[Node](),
 			)
 
 		if k == T_RANGE:
@@ -890,8 +948,13 @@ impl Parser:
 			b := self.toks[self.pos].r2.clone()
 			self.step()
 			return Node(
-				kind: N_RANGE, text: "", num: 0.0, flag: false, r1: a, r2: b,
-				args: List[Node]()
+				kind: N_RANGE,
+				text: "",
+				num: 0.0,
+				flag: false,
+				r1: a,
+				r2: b,
+				args: List[Node](),
 			)
 
 		if k == T_IDENT:
@@ -906,8 +969,13 @@ impl Parser:
 				if self.kind_now() == T_RP:
 					self.step()
 					return Node(
-						kind: N_CALL, text: name, num: 0.0, flag: false, r1: no_ref(),
-						r2: no_ref(), args: args
+						kind: N_CALL,
+						text: name,
+						num: 0.0,
+						flag: false,
+						r1: no_ref(),
+						r2: no_ref(),
+						args: args,
 					)
 
 				var more = true
@@ -926,19 +994,34 @@ impl Parser:
 						return leaf(N_ERR, "#PARSE!")
 
 				return Node(
-					kind: N_CALL, text: name, num: 0.0, flag: false, r1: no_ref(),
-					r2: no_ref(), args: args
+					kind: N_CALL,
+					text: name,
+					num: 0.0,
+					flag: false,
+					r1: no_ref(),
+					r2: no_ref(),
+					args: args,
 				)
 
 			if name == "TRUE":
 				return Node(
-					kind: N_BOOL, text: "", num: 0.0, flag: true, r1: no_ref(),
-					r2: no_ref(), args: List[Node]()
+					kind: N_BOOL,
+					text: "",
+					num: 0.0,
+					flag: true,
+					r1: no_ref(),
+					r2: no_ref(),
+					args: List[Node](),
 				)
 			if name == "FALSE":
 				return Node(
-					kind: N_BOOL, text: "", num: 0.0, flag: false, r1: no_ref(),
-					r2: no_ref(), args: List[Node]()
+					kind: N_BOOL,
+					text: "",
+					num: 0.0,
+					flag: false,
+					r1: no_ref(),
+					r2: no_ref(),
+					args: List[Node](),
 				)
 
 			return leaf(N_NAME, name)
@@ -996,8 +1079,10 @@ fn make_formula(src: String) Formula:
 			return Formula(root: root, good: true, cells: cells, rects: rects)
 
 	return Formula(
-		root: leaf(N_ERR, "#PARSE!"), good: false, cells: List[Int](),
-		rects: List[Rect]()
+		root: leaf(N_ERR, "#PARSE!"),
+		good: false,
+		cells: List[Int](),
+		rects: List[Rect](),
 	)
 
 // ---------------------------------------------------------------- evaluation
@@ -1717,9 +1802,15 @@ impl Sheet:
 							shead.replace(t, sto.length() - 1)
 
 		var scc = Scc(
-			head: shead, nxt: snx, to: sto, index: filled_int(m, -1),
-			low: filled_int(m, 0), on: filled_bool(m, false), stack: List[Int](),
-			counter: 0, cyc: filled_bool(m, false)
+			head: shead,
+			nxt: snx,
+			to: sto,
+			index: filled_int(m, -1),
+			low: filled_int(m, 0),
+			on: filled_bool(m, false),
+			stack: List[Int](),
+			counter: 0,
+			cyc: filled_bool(m, false),
 		)
 		for i in 0..m:
 			if scc.index[i] < 0:
@@ -1805,8 +1896,13 @@ fn build_index(sh: Sheet) DepIndex:
 				rrect.append(rc.clone())
 
 	return DepIndex(
-		fkeys: fkeys, fidx: fidx, ehead: ehead, enext: enext, efor: efor, rfor: rfor,
-		rrect: rrect
+		fkeys: fkeys,
+		fidx: fidx,
+		ehead: ehead,
+		enext: enext,
+		efor: efor,
+		rfor: rfor,
+		rrect: rrect,
 	)
 
 // Formula cell keys that depend on the start cells, directly or transitively, in

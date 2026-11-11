@@ -153,7 +153,10 @@ impl Tracker:
 	var fn log_add(id: Int, detail: String) Unit:
 		self.log.append(
 			LogEntry(
-				t: self.clock, actor: self.actor.clone(), id: id, detail: detail
+				t: self.clock,
+				actor: self.actor.clone(),
+				id: id,
+				detail: detail,
 			)
 		)
 
@@ -476,10 +479,18 @@ fn show_labels_spaced(l: List[String]) String:
 
 fn new_issue(id: Int, state: String, title: String, actor: String, clock: Int) Issue:
 	return Issue(
-		id: id, title: title.clone(), state: state.clone(), priority: "medium",
-		assignee: none, reporter: actor.clone(), points: none, due: none,
-		labels: List[String](), comments: List[Comment](), created: clock,
-		updated: clock
+		id: id,
+		title: title.clone(),
+		state: state.clone(),
+		priority: "medium",
+		assignee: none,
+		reporter: actor.clone(),
+		points: none,
+		due: none,
+		labels: List[String](),
+		comments: List[Comment](),
+		created: clock,
+		updated: clock,
 	)
 
 fn with_assign(iss: Issue, field: String, value: String) Issue:
@@ -682,7 +693,9 @@ fn parse_workflow(block: List[String]) Wf:
 
 				transitions.append(
 					Transition(
-						src: src.clone(), dst: target.clone(), guards: guards
+						src: src.clone(),
+						dst: target.clone(),
+						guards: guards,
 					)
 				)
 
@@ -701,8 +714,11 @@ fn parse_workflow(block: List[String]) Wf:
 					break
 
 	return Wf(
-		states: states, initial: initial, finals: finals, transitions: transitions,
-		err: err
+		states: states,
+		initial: initial,
+		finals: finals,
+		transitions: transitions,
+		err: err,
 	)
 
 fn cmd_workflow(var t: Tracker, block: List[String]) String:
@@ -923,7 +939,9 @@ fn move_common(var t: Tracker, id_arg: String, dst: String, comment: String) Str
 	if has_c:
 		nw.comments.append(
 			Comment(
-				t: t.clock, actor: t.actor.clone(), text: comment.clone()
+				t: t.clock,
+				actor: t.actor.clone(),
+				text: comment.clone(),
 			)
 		)
 	t.issues[idx] = nw
@@ -1079,7 +1097,8 @@ fn tokenize_filter(text: String) QTokRes:
 
 					if not closed:
 						return QTokRes(
-							toks: List[QTok](), err: "query: unterminated quote"
+							toks: List[QTok](),
+							err: "query: unterminated quote",
 						)
 
 					quoted = true
@@ -1096,8 +1115,12 @@ fn tokenize_filter(text: String) QTokRes:
 
 				toks.append(
 					QTok(
-						kind: "TERM", text: sub(cs, i, p), field: sub(cs, i, j), op: op,
-						value: value, quoted: quoted
+						kind: "TERM",
+						text: sub(cs, i, p),
+						field: sub(cs, i, j),
+						op: op,
+						value: value,
+						quoted: quoted,
 					)
 				)
 				i = p
@@ -1115,13 +1138,22 @@ fn tokenize_filter(text: String) QTokRes:
 
 fn empty_expr() Expr:
 	return Expr(
-		kind: "all", kids: List[Expr](), field: "", op: "", values: List[String](),
-		name: ""
+		kind: "all",
+		kids: List[Expr](),
+		field: "",
+		op: "",
+		values: List[String](),
+		name: "",
 	)
 
 fn mk(kind: String, kids: List[Expr]) Expr:
 	return Expr(
-		kind: kind, kids: kids, field: "", op: "", values: List[String](), name: ""
+		kind: kind,
+		kids: kids,
+		field: "",
+		op: "",
+		values: List[String](),
+		name: "",
 	)
 
 fn pe_err(msg: String) PE:
@@ -1204,10 +1236,14 @@ fn make_term(tok: QTok, states: List[String], views: Map[String, String]) PE:
 		kids.append(inner.e.clone())
 		return PE(
 			e: Expr(
-				kind: "view", kids: kids, field: "", op: "", values: List[String](),
-				name: name
+				kind: "view",
+				kids: kids,
+				field: "",
+				op: "",
+				values: List[String](),
+				name: name,
 			),
-			err: ""
+			err: "",
 		)
 
 	ordered := op != ":" and op != "!=" and op != "~"
@@ -1227,9 +1263,14 @@ fn make_term(tok: QTok, states: List[String], views: Map[String, String]) PE:
 			return pe_err("query: bad value '{a}' for field '{f}'")
 	return PE(
 		e: Expr(
-			kind: "term", kids: List[Expr](), field: f, op: op, values: alts, name: ""
+			kind: "term",
+			kids: List[Expr](),
+			field: f,
+			op: op,
+			values: alts,
+			name: "",
 		),
-		err: ""
+		err: "",
 	)
 
 fn parse_expr(var p: QP, states: List[String], views: Map[String, String]) PE:
@@ -1358,8 +1399,11 @@ fn split_query(text: String) QParts:
 			v := canon_int(arg)
 			if v < 0:
 				return QParts(
-					filter: "", has_sort: false, sort_text: "", limit: -1,
-					err: "bad limit '{arg}'"
+					filter: "",
+					has_sort: false,
+					sort_text: "",
+					limit: -1,
+					err: "bad limit '{arg}'",
 				)
 
 			limit = v
@@ -1383,13 +1427,19 @@ fn split_query(text: String) QParts:
 
 	if sort_at >= 0:
 		return QParts(
-			filter: sub(bc, 0, sort_at).trim(), has_sort: true,
-			sort_text: sub(bc, sort_at + 4, bn), limit: limit, err: ""
+			filter: sub(bc, 0, sort_at).trim(),
+			has_sort: true,
+			sort_text: sub(bc, sort_at + 4, bn),
+			limit: limit,
+			err: "",
 		)
 
 	return QParts(
-		filter: sub(bc, 0, bn).trim(), has_sort: false, sort_text: "", limit: limit,
-		err: ""
+		filter: sub(bc, 0, bn).trim(),
+		has_sort: false,
+		sort_text: "",
+		limit: limit,
+		err: "",
 	)
 
 fn parse_sort(text: String) SortRes:
@@ -1594,7 +1644,7 @@ fn cmp_issues(a: Issue, b: Issue, keys: List[SortKey], states: List[String]) Int
 fn sort_issues(
 	items: List[Issue],
 	keys: List[SortKey],
-	states: List[String]
+	states: List[String],
 ) List[Issue]:
 	var out = List[Issue]()
 
@@ -1615,7 +1665,9 @@ fn sort_issues(
 
 fn select_issues(t: Tracker, e: Expr, keys: List[SortKey], limit: Int) List[Issue]:
 	ctx := EvalCtx(
-		today: t.today.clone(), finals: t.finals.clone(), states: t.states.clone()
+		today: t.today.clone(),
+		finals: t.finals.clone(),
+		states: t.states.clone(),
 	)
 	var hits = List[Issue]()
 	for iss in t.issues:
@@ -1792,7 +1844,9 @@ fn split_where(text: String) Where:
 			and (i + 5 == n or is_space(cs[i + 5]))
 		):
 			return Where(
-				action: sub(cs, 0, i).trim(), query: sub(cs, i + 5, n).trim(), has: true
+				action: sub(cs, 0, i).trim(),
+				query: sub(cs, i + 5, n).trim(),
+				has: true,
 			)
 
 		i += 1
@@ -1838,7 +1892,9 @@ fn cmd_bulk(var t: Tracker, rest: String) String:
 	if pe.err != "": return pe.err.clone()
 
 	ctx := EvalCtx(
-		today: t.today.clone(), finals: t.finals.clone(), states: t.states.clone()
+		today: t.today.clone(),
+		finals: t.finals.clone(),
+		states: t.states.clone(),
 	)
 	var ids = List[Int]()
 	for iss in t.issues:
@@ -2052,7 +2108,9 @@ fn report_labels(t: Tracker, rest: String) String:
 	if pe.err != "": return pe.err.clone()
 
 	ctx := EvalCtx(
-		today: t.today.clone(), finals: t.finals.clone(), states: t.states.clone()
+		today: t.today.clone(),
+		finals: t.finals.clone(),
+		states: t.states.clone(),
 	)
 	var rows = List[WL]()
 
@@ -2156,10 +2214,18 @@ fn read_all() List[String]!Error:
 export fn main() Int:
 	all := read_all().get(List[String]())
 	var t = Tracker(
-		clock: 0, actor: "system", today: "1970-01-01", next_id: 1, ever_created: false,
-		initial: "", states: List[String](), finals: List[String](),
-		transitions: List[Transition](), issues: List[Issue](), log: List[LogEntry](),
-		views: Map[String, String]()
+		clock: 0,
+		actor: "system",
+		today: "1970-01-01",
+		next_id: 1,
+		ever_created: false,
+		initial: "",
+		states: List[String](),
+		finals: List[String](),
+		transitions: List[Transition](),
+		issues: List[Issue](),
+		log: List[LogEntry](),
+		views: Map[String, String](),
 	)
 	n := all.length()
 	var i = 0

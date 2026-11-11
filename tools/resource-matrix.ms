@@ -64,7 +64,7 @@ fn op(
 	method: String,
 	arguments: String,
 	binds: String,
-	uses: String
+	uses: String,
 ) Operation:
 	return Operation(name, setup, receiver, method, arguments, binds, uses)
 
@@ -87,58 +87,125 @@ fn operations() List[Operation]:
 		op("list_insert", list_setup(), "items", "insert", "0, @V@", "", ""),
 		op("list_set", list_setup(), "items", "set", "0, @V@", "", ""),
 		op(
-			"list_replace", list_setup(), "items", "replace", "0, @V@", "r := ",
-			"saw(r)"
+			"list_replace",
+			list_setup(),
+			"items",
+			"replace",
+			"0, @V@",
+			"r := ",
+			"saw(r)",
 		),
 		op("list_pop", list_setup(), "items", "pop", "", "r := ", "saw_opt(r)"),
 		op("list_remove", list_setup(), "items", "remove", "0", "", ""),
 		op(
-			"list_get", list_setup(), "items", "get", "0, @V@", "r := ", "saw(r)"
+			"list_get",
+			list_setup(),
+			"items",
+			"get",
+			"0, @V@",
+			"r := ",
+			"saw(r)",
 		),
 		op(
-			"result_map", result_setup(true), "held", "map", "fn m: m.id", "r := ",
-			"print(\"\{r.is_ok()\}\")"
+			"result_map",
+			result_setup(true),
+			"held",
+			"map",
+			"fn m: m.id",
+			"r := ",
+			"print(\"\{r.is_ok()\}\")",
 		),
 		op("map_add", map_setup(), "items", "add", "1, @V@", "", ""),
 		op(
-			"map_get", map_setup(), "items", "get", "1", "r := ",
-			"print(\"\{r.is_some()\}\")"
+			"map_get",
+			map_setup(),
+			"items",
+			"get",
+			"1",
+			"r := ",
+			"print(\"\{r.is_some()\}\")",
 		),
 		op(
-			"optional_or_else", optional_setup(false), "held", "or_else", "fn: @V@",
-			"r := ", "saw_opt(r)"
+			"optional_or_else",
+			optional_setup(false),
+			"held",
+			"or_else",
+			"fn: @V@",
+			"r := ",
+			"saw_opt(r)",
 		),
 		op(
-			"result_err", result_setup(false), "held", "err", "", "r := ",
-			"print(r.message)"
+			"result_err",
+			result_setup(false),
+			"held",
+			"err",
+			"",
+			"r := ",
+			"print(r.message)",
 		),
 		op(
-			"optional_get_present", optional_setup(true), "held", "get", "@V@", "r := ",
-			"saw(r)"
+			"optional_get_present",
+			optional_setup(true),
+			"held",
+			"get",
+			"@V@",
+			"r := ",
+			"saw(r)",
 		),
 		op(
-			"optional_get_absent", optional_setup(false), "held", "get", "@V@", "r := ",
-			"saw(r)"
+			"optional_get_absent",
+			optional_setup(false),
+			"held",
+			"get",
+			"@V@",
+			"r := ",
+			"saw(r)",
 		),
 		op(
-			"result_get_ok", result_setup(true), "held", "get", "@V@", "r := ", "saw(r)"
+			"result_get_ok",
+			result_setup(true),
+			"held",
+			"get",
+			"@V@",
+			"r := ",
+			"saw(r)",
 		),
 		op(
-			"result_get_error", result_setup(false), "held", "get", "@V@", "r := ",
-			"saw(r)"
+			"result_get_error",
+			result_setup(false),
+			"held",
+			"get",
+			"@V@",
+			"r := ",
+			"saw(r)",
 		),
 		op(
-			"result_to_optional", result_setup(true), "held", "to_optional", "",
-			"r := ", "saw_opt(r)"
+			"result_to_optional",
+			result_setup(true),
+			"held",
+			"to_optional",
+			"",
+			"r := ",
+			"saw_opt(r)",
 		),
 		op(
-			"result_error_ok", result_setup(true), "held", "error", "", "r := ",
-			"print(\"\{r.is_some()\}\")"
+			"result_error_ok",
+			result_setup(true),
+			"held",
+			"error",
+			"",
+			"r := ",
+			"print(\"\{r.is_some()\}\")",
 		),
 		op(
-			"result_error_failed", result_setup(false), "held", "error", "", "r := ",
-			"print(\"\{r.is_some()\}\")"
-		)
+			"result_error_failed",
+			result_setup(false),
+			"held",
+			"error",
+			"",
+			"r := ",
+			"print(\"\{r.is_some()\}\")",
+		),
 	]
 
 // Standard operations that mention a type parameter and need no matrix row, each with
@@ -354,8 +421,11 @@ fn main() Int:
 					ran := run(
 						ms.clone(),
 						[
-							"run", file.clone(), "--build-type", build.clone()
-						]
+							"run",
+							file.clone(),
+							"--build-type",
+							build.clone(),
+						],
 					).wait()
 
 					if ran.is_error():
@@ -391,7 +461,8 @@ fn main() Int:
 					for line in lines:
 						if line.starts_with("made-"): made.append(
 							line.slice(
-								5, line.length()
+								5,
+								line.length(),
 							).get("")
 						)
 						if line.starts_with("closed-"):

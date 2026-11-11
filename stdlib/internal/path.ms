@@ -4,5 +4,5 @@
 export extern fn msstd_path_matches_glob(
 	windows: Bool,
 	path: String,
-	pattern: String
+	pattern: String,
 ) Bool!

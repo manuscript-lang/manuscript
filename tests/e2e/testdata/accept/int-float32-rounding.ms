@@ -33,9 +33,10 @@ test "integer to Float32 rounds once at binary32 midpoints":
 		RoundingCase(-4611686843061108736, -4.611687117939016e+18),
 		RoundingCase(4611686843061108737, 4.611687117939016e+18),
 		RoundingCase(-4611686843061108737, -4.611687117939016e+18),
-		RoundingCase(0, 0.0), RoundingCase(16777217, 16777216.0),
+		RoundingCase(0, 0.0),
+		RoundingCase(16777217, 16777216.0),
 		RoundingCase(9223372036854775807, 9.223372036854776e+18),
-		RoundingCase(-9223372036854775808, -9.223372036854776e+18)
+		RoundingCase(-9223372036854775808, -9.223372036854776e+18),
 	]
 
 	for item in cases:
@@ -47,7 +48,8 @@ test "integer to Float32 rounds once at binary32 midpoints":
 test "constant integer to Float32 rounds directly":
 	try expect_equal(4611686293305294849.to_float32().to_float(), 4611686568183201792.0)
 	try expect_equal(
-		(-4611686293305294849).to_float32().to_float(), -4611686568183201792.0
+		(-4611686293305294849).to_float32().to_float(),
+		-4611686568183201792.0,
 	)
 
 test "smaller integer conversions preserve their value":
@@ -74,8 +76,9 @@ test "unsigned integer to Float32 rounds once at binary32 midpoints":
 		UnsignedRoundingCase(9223373686122217471, 9223373136366403584.0),
 		UnsignedRoundingCase(9223373686122217472, 9223374235878031360.0),
 		UnsignedRoundingCase(9223373686122217473, 9223374235878031360.0),
-		UnsignedRoundingCase(0, 0.0), UnsignedRoundingCase(16777217, 16777216.0),
-		UnsignedRoundingCase(18446744073709551615, 18446744073709551616.0)
+		UnsignedRoundingCase(0, 0.0),
+		UnsignedRoundingCase(16777217, 16777216.0),
+		UnsignedRoundingCase(18446744073709551615, 18446744073709551616.0),
 	]
 
 	for item in cases:

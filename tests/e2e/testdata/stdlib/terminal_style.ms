@@ -16,11 +16,12 @@ test "paint wraps text in the style and a reset":
 	warning := Style(foreground: Color.Ansi(3), bold: true)
 	try expect_equal(paint("careful", warning, 16), "{esc}[1;33mcareful{esc}[0m")
 	try expect_equal(
-		paint("x", Style(background: Color.Ansi(9)), 16), "{esc}[101mx{esc}[0m"
+		paint("x", Style(background: Color.Ansi(9)), 16),
+		"{esc}[101mx{esc}[0m",
 	)
 	try expect_equal(
 		paint("x", Style(underline: true, italic: true, reverse: true), 16),
-		"{esc}[3;4;7mx{esc}[0m"
+		"{esc}[3;4;7mx{esc}[0m",
 	)
 
 test "paint adds nothing without colors, without a style, or without text":
@@ -36,22 +37,25 @@ test "rgb and palette colors downgrade to what the terminal supports":
 	try expect_equal(paint("a", pink, 16), "{esc}[95ma{esc}[0m")
 	try expect_equal(
 		paint("a", Style(foreground: Color.Indexed(196)), 256),
-		"{esc}[38;5;196ma{esc}[0m"
+		"{esc}[38;5;196ma{esc}[0m",
 	)
 	try expect_equal(
-		paint("a", Style(foreground: Color.Indexed(196)), 16), "{esc}[91ma{esc}[0m"
+		paint("a", Style(foreground: Color.Indexed(196)), 16),
+		"{esc}[91ma{esc}[0m",
 	)
 	try expect_equal(
 		paint("a", Style(background: Color.Rgb(10, 10, 10)), 256),
-		"{esc}[48;5;232ma{esc}[0m"
+		"{esc}[48;5;232ma{esc}[0m",
 	)
 	try expect_equal(
-		paint("a", Style(foreground: Color.Indexed(5)), 16), "{esc}[35ma{esc}[0m"
+		paint("a", Style(foreground: Color.Indexed(5)), 16),
+		"{esc}[35ma{esc}[0m",
 	)
 
 test "strip_ansi removes sequences and keeps text":
 	try expect_equal(
-		strip_ansi("{esc}[1;31mred{esc}[0m and {esc}[2Kplain"), "red and plain"
+		strip_ansi("{esc}[1;31mred{esc}[0m and {esc}[2Kplain"),
+		"red and plain",
 	)
 	try expect_equal(strip_ansi("{esc}]2;title\u{7}after"), "after")
 	try expect_equal(strip_ansi("no escapes"), "no escapes")
@@ -68,7 +72,8 @@ test "wrap_text breaks at the width and carries styles across rows":
 
 	styled := "{esc}[31mabcdef{esc}[0m"
 	try expect_equal(
-		wrap_text(styled, 4), ["{esc}[31mabcd{esc}[0m", "{esc}[31mef{esc}[0m"]
+		wrap_text(styled, 4),
+		["{esc}[31mabcd{esc}[0m", "{esc}[31mef{esc}[0m"],
 	)
 
 test "truncate_text keeps the first row":

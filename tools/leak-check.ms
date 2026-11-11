@@ -58,8 +58,9 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 
 		if has_tests(source):
 			if out := run(
-				ms.clone(), ["test", absolute.clone()],
-				RunOptions(timeout: seconds(600))
+				ms.clone(),
+				["test", absolute.clone()],
+				RunOptions(timeout: seconds(600)),
 			).wait():
 				found := leaking_tests(out.stderr.decode_utf8().get(""))
 				lines.append("swept")
@@ -70,7 +71,9 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 			continue
 
 		if out := run(
-			ms.clone(), ["run", absolute.clone()], RunOptions(timeout: seconds(60))
+			ms.clone(),
+			["run", absolute.clone()],
+			RunOptions(timeout: seconds(60)),
 		).wait():
 			counts := live_blocks(out.stderr.decode_utf8().get(""))
 			if counts.is_empty(): continue

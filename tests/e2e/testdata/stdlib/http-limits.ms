@@ -30,10 +30,13 @@ test "serve caps the request header block":
 
 test "serve timeout closes idle connections":
 	handler := ok_route
-	server := serve(
-		address: "127.0.0.1:0", handler: buffered(handler),
-		options: HttpServerOptions(timeout: 300.milliseconds())
-	) | try expect_ok
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: buffered(handler),
+			options: HttpServerOptions(timeout: 300.milliseconds()),
+		) | try expect_ok
+	)
 	var silent = connect(server.address(), timeout: 2.seconds()).wait() | try expect_ok
 	closed := recv(var silent, 3.seconds()) | try expect_ok
 	if _data := closed: return error(Error("silent connection was answered"))
@@ -53,8 +56,9 @@ test "serve timeout closes idle connections":
 test "serve rejects a zero request timeout":
 	failure := try expect_error(
 		serve(
-			address: "127.0.0.1:0", handler: buffered(ok_route),
-			options: HttpServerOptions(timeout: 0.seconds())
+			address: "127.0.0.1:0",
+			handler: buffered(ok_route),
+			options: HttpServerOptions(timeout: 0.seconds()),
 		)
 	)
 	try expect_equal(failure, Error("HTTP: invalid input", kind: "EINVAL"))

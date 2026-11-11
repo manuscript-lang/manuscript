@@ -71,7 +71,7 @@ impl Source[Bytes] for FailAfter:
 export fn fail_after(
 	input: ReadStream[Bytes],
 	after: Int,
-	cause: Error
+	cause: Error,
 ) ReadStream[Bytes]:
 	return ReadStream[Bytes](FailAfter(input, after, cause))
 
@@ -107,7 +107,7 @@ impl Sink[Bytes] for FailingSink:
 export fn fail_writer_after(
 	output: WriteStream[Bytes],
 	after: Int,
-	cause: Error
+	cause: Error,
 ) WriteStream[Bytes]:
 	return WriteStream[Bytes](FailingSink(output, after, cause))
 

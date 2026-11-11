@@ -22,13 +22,15 @@ test "CSV retains single empty fields and distinguishes empty rows":
 				(
 					(
 						try parse(
-							"{ending}\"\"{ending}{ending}\"\"", options
+							"{ending}\"\"{ending}{ending}\"\"",
+							options,
 						)
 					) != [[""], [""]]
 				)
 			)
 			try expect_equal(
-				(try stringify([["", ""]], options)), "{delimiter}{ending}"
+				(try stringify([["", ""]], options)),
+				"{delimiter}{ending}",
 			)
 
 test "CSV quoted empty fields respect exact row cell and byte budgets":
@@ -49,13 +51,16 @@ test "CSV quoted empty fields respect exact row cell and byte budgets":
 		)
 		try expect_equal(parse(text, CsvOptions(",", ending.clone(), 2)), limited_rows)
 		try expect_equal(
-			parse(text, CsvOptions(",", ending.clone(), max_cells: 2)), limited_rows
+			parse(text, CsvOptions(",", ending.clone(), max_cells: 2)),
+			limited_rows,
 		)
 		try expect_equal(
-			parse("\"\"", CsvOptions(",", ending.clone(), 0)), limited_rows
+			parse("\"\"", CsvOptions(",", ending.clone(), 0)),
+			limited_rows,
 		)
 		try expect_equal(
-			parse("\"\"", CsvOptions(",", ending.clone(), max_cells: 0)), limited_rows
+			parse("\"\"", CsvOptions(",", ending.clone(), max_cells: 0)),
+			limited_rows,
 		)
 
 test "CSV preserves whitespace and normalizes quoted CRLF":
@@ -64,7 +69,8 @@ test "CSV preserves whitespace and normalizes quoted CRLF":
 	try expect_equal((try parse(try stringify(rows, options), options)), rows)
 	try expect_false(
 		try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [
-			["line\n\nbreak"], [""]
+			["line\n\nbreak"],
+			[""],
 		]
 	)
 
@@ -83,32 +89,38 @@ fn malformed(line: Int, column: Int, reason: String) List[List[String]]!:
 			"CSV {line}:{column}: {reason}",
 			kind: "EBADMSG",
 			details: {
-				"line": line.to_string(), "column": column.to_string(),
+				"line": line.to_string(),
+				"column": column.to_string(),
 				"reason": reason.clone()
-			}
+			},
 		)
 	)
 
 test "CSV malformed records name their line and column":
 	options := CsvOptions(",", "\n")
 	try expect_equal(
-		parse("\"unterminated", options), malformed(1, 1, "unterminated quoted cell")
+		parse("\"unterminated", options),
+		malformed(1, 1, "unterminated quoted cell"),
 	)
 	try expect_equal(
 		parse("a,b\nc,\"x\"y\n", options),
 		malformed(
-			2, 6, "expected a delimiter or line end after the closing quote"
-		)
+			2,
+			6,
+			"expected a delimiter or line end after the closing quote",
+		),
 	)
 	try expect_equal(
 		parse("a,b\nc,d\"e\n", options),
-		malformed(2, 4, "quote inside an unquoted cell")
+		malformed(2, 4, "quote inside an unquoted cell"),
 	)
 	try expect_equal(
 		parse("é,\"ü\"x", options),
 		malformed(
-			1, 6, "expected a delimiter or line end after the closing quote"
-		)
+			1,
+			6,
+			"expected a delimiter or line end after the closing quote",
+		),
 	)
 
 test "CSV rejects malformed records invalid options and limits":
@@ -136,10 +148,11 @@ test "CSV quoted fields preserve zero one and many escaped quotes":
 				try expect_equal(
 					(
 						try parse(
-							"{encoded}{delimiter}tail{ending}", options
+							"{encoded}{delimiter}tail{ending}",
+							options,
 						)
 					),
-					expected
+					expected,
 				)
 
 	value := try "a\"日".repeat(8000)
@@ -153,9 +166,10 @@ test "CSV escaped fields preserve malformed closing quote locations":
 		try expect_equal(result.err().kind, "EBADMSG")
 
 	try expect_equal(
-		parse("\"a\"\"b").err().message, "CSV 1:1: unterminated quoted cell"
+		parse("\"a\"\"b").err().message,
+		"CSV 1:1: unterminated quoted cell",
 	)
 	try expect_equal(
 		parse("\"é\"\"日\"x").err().message,
-		"CSV 1:7: expected a delimiter or line end after the closing quote"
+		"CSV 1:7: expected a delimiter or line end after the closing quote",
 	)

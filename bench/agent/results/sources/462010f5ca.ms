@@ -162,8 +162,11 @@ impl Cron:
 
 						found.append(
 							Stamp(
-								year: at.year, month: at.month, day: at.day, hour: hour,
-								minute: minute
+								year: at.year,
+								month: at.month,
+								day: at.day,
+								hour: hour,
+								minute: minute,
 							)
 						)
 						if found.length() == count: return found
@@ -222,7 +225,11 @@ fn solve(n: Int, raw: String) String:
 	if weekdays.length() == 0: return head + "error: bad day-of-week"
 
 	cron := Cron(
-		minutes: minutes, hours: hours, days: days, months: months, weekdays: weekdays
+		minutes: minutes,
+		hours: hours,
+		days: days,
+		months: months,
+		weekdays: weekdays,
 	)
 	runs := cron.runs(start, count)
 	if runs.length() == 0: return head + "never"

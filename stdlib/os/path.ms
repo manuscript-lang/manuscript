@@ -308,7 +308,8 @@ fn normalize_core(windows: Bool, text: String) String:
 				if (
 					not stack.is_empty()
 					and not span_is_parent(
-						data, stack[stack.length() - 1]
+						data,
+						stack[stack.length() - 1],
 					)
 				):
 					stack.pop()
@@ -416,7 +417,7 @@ fn parse_core(windows: Bool, text: String, original: String) PathParts:
 		directory: text_of(source, 0, directory_end),
 		base: text_of(source, base_start, base_end),
 		extension: text_of(source, extension_start, base_end),
-		name: text_of(source, base_start, extension_start)
+		name: text_of(source, base_start, extension_start),
 	)
 
 // The text of bytes [start, end) of `data`.

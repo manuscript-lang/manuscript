@@ -47,7 +47,8 @@ test "crypto known SHA256 HMAC and PBKDF2 vectors":
 	)
 
 	mac := try HashAlgorithm.Sha256.hmac(
-		"key".to_bytes(), "The quick brown fox jumps over the lazy dog".to_bytes()
+		"key".to_bytes(),
+		"The quick brown fox jumps over the lazy dog".to_bytes(),
 	)
 	try expect_false(
 		(
@@ -71,7 +72,8 @@ test "authenticated encryption detects wrong associated data":
 	nonce := "012345678901".to_bytes()
 	encrypted := try seal(key, nonce, "secret".to_bytes(), "header".to_bytes())
 	try expect_equal(
-		(try open(key, nonce, encrypted, "header".to_bytes())), "secret".to_bytes()
+		(try open(key, nonce, encrypted, "header".to_bytes())),
+		"secret".to_bytes(),
 	)
 
 	failed: Bytes! := error(Error("cryptography: authentication failed", kind: "EAUTH"))
@@ -79,7 +81,8 @@ test "authenticated encryption detects wrong associated data":
 
 	invalid: Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
 	try expect_equal(
-		seal("short".to_bytes(), nonce, "".to_bytes(), "".to_bytes()), invalid
+		seal("short".to_bytes(), nonce, "".to_bytes(), "".to_bytes()),
+		invalid,
 	)
 
 test "Ed25519 signatures verify only the signed data":
@@ -94,26 +97,30 @@ test "Ed25519 signatures verify only the signed data":
 test "additional hash algorithms match published vectors":
 	abc := "abc".to_bytes()
 	try expect_equal(
-		hex_encode(HashAlgorithm.Md5.digest(abc)), "900150983cd24fb0d6963f7d28e17f72"
+		hex_encode(HashAlgorithm.Md5.digest(abc)),
+		"900150983cd24fb0d6963f7d28e17f72",
 	)
 	try expect_equal(
 		hex_encode(HashAlgorithm.Sha1.digest(abc)),
-		"a9993e364706816aba3e25717850c26c9cd0d89d"
+		"a9993e364706816aba3e25717850c26c9cd0d89d",
 	)
 	try expect_equal(
 		hex_encode(HashAlgorithm.Sha224.digest(abc)),
-		"23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7"
+		"23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7",
 	)
 	try expect_equal(
 		hex_encode(HashAlgorithm.Sha3_256.digest(abc)),
-		"3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532"
+		"3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532",
 	)
 	try expect_equal(HashAlgorithm.Sha3_384.digest(abc).length(), 48)
 	try expect_equal(HashAlgorithm.Sha3_512.digest(abc).length(), 64)
 
 test "key derivation supports PBKDF2 and HKDF across hashes":
 	pbkdf2 := try HashAlgorithm.Sha1.derive_key(
-		"password".to_bytes(), "salt".to_bytes(), 1, 20
+		"password".to_bytes(),
+		"salt".to_bytes(),
+		1,
+		20,
 	)
 	try expect_equal(hex_encode(pbkdf2), "0c60c80f961f0e71f3a9b524af6012062fe037a6")
 
@@ -123,12 +130,13 @@ test "key derivation supports PBKDF2 and HKDF across hashes":
 	okm := try HashAlgorithm.Sha256.hkdf(secret, salt, info, 42)
 	try expect_equal(
 		hex_encode(okm),
-		"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
+		"3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865",
 	)
 
 	invalid: Bytes! := error(Error("cryptography: invalid input", kind: "EINVAL"))
 	try expect_equal(
-		HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1), invalid
+		HashAlgorithm.Sha256.hkdf(secret, salt, info, 255 * 32 + 1),
+		invalid,
 	)
 	try expect_equal(HashAlgorithm.Sha256.derive_key(secret, salt, 0, 16), invalid)
 
@@ -139,7 +147,8 @@ test "AES-GCM accepts 128 and 192 bit keys":
 		key := try "0123456789012345678901234567890123".to_bytes().slice(0, size)
 		boxed := try seal(key, nonce, "secret".to_bytes(), "".to_bytes())
 		try expect_equal(
-			try open(key, nonce, boxed, "".to_bytes()), "secret".to_bytes()
+			try open(key, nonce, boxed, "".to_bytes()),
+			"secret".to_bytes(),
 		)
 
 test "incremental hashers match one-shot digests":
@@ -154,7 +163,7 @@ test "incremental hashers match one-shot digests":
 	mac.update("The quick brown fox jumps over the lazy dog".to_bytes())
 	try expect_equal(
 		hex_encode(mac.finish()),
-		"f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8"
+		"f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
 	)
 
 test "AES CTR and CBC round trip":

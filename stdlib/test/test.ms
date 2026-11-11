@@ -63,7 +63,7 @@ export fn expect_false(actual: Bool, site: String = caller_site()) Unit!:
 export fn expect_equal[T: Equal](
 	actual: T,
 	expected: T,
-	site: String = caller_site()
+	site: String = caller_site(),
 ) Unit!:
 	if actual == expected: return ok(unit)
 	return error(failure("expected {repr(expected)}, got {repr(actual)}", site))
@@ -72,7 +72,7 @@ export fn expect_equal[T: Equal](
 export fn expect_not_equal[T: Equal](
 	actual: T,
 	expected: T,
-	site: String = caller_site()
+	site: String = caller_site(),
 ) Unit!:
 	if actual != expected: return ok(unit)
 	return error(failure("expected different values, got {repr(actual)}", site))
@@ -83,12 +83,13 @@ export fn expect_close(
 	actual: Float,
 	expected: Float,
 	tolerance: Float,
-	site: String = caller_site()
+	site: String = caller_site(),
 ) Unit!:
 	if not (tolerance >= 0.0 and tolerance - tolerance == 0.0):
 		return error(
 			failure(
-				"expect_close: tolerance must be finite and nonnegative", site
+				"expect_close: tolerance must be finite and nonnegative",
+				site,
 			)
 		)
 	if actual == expected: return ok(unit)
@@ -101,7 +102,7 @@ export fn expect_close(
 	return error(
 		failure(
 			"expected {repr(expected)} within {repr(tolerance)}, got {repr(actual)}",
-			site
+			site,
 		)
 	)
 
@@ -109,7 +110,7 @@ export fn expect_close(
 export fn expect_contains(
 	actual: String,
 	expected: String,
-	site: String = caller_site()
+	site: String = caller_site(),
 ) Unit!:
 	if actual.contains(expected): return ok(unit)
 	return error(failure("expected {repr(actual)} to contain {repr(expected)}", site))
@@ -141,7 +142,8 @@ export fn expect_fault(operation: fn() Unit, site: String = caller_site()) Strin
 	if message := catch_fault(operation): return ok(message)
 	return error(
 		failure(
-			"expected a programming fault, operation returned normally", site
+			"expected a programming fault, operation returned normally",
+			site,
 		)
 	)
 

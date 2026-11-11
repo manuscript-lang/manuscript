@@ -168,7 +168,8 @@ test "cleanup remains owned by its source callable":
 	nested("{dir}/nested")
 	try expect_true(closed("{dir}/nested"))
 	try expect_equal(
-		propagate("{dir}/propagated"), Result[Int, Error].error(Error("expected"))
+		propagate("{dir}/propagated"),
+		Result[Int, Error].error(Error("expected")),
 	)
 	try expect_true(closed("{dir}/propagated"))
 	try expect_equal(bare_propagate(), Result[Int, Error].error(Error("expected")))

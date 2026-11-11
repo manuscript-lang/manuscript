@@ -42,7 +42,7 @@ fn unicode_case(limit: Int) Unit!:
 	expected: Bytes! := error(
 		Error(
 			if limit == 0: "encoding: limit exceeded" else: "encoding: invalid data",
-			kind: if limit == 0: "EOVERFLOW" else: "EBADMSG"
+			kind: if limit == 0: "EOVERFLOW" else: "EBADMSG",
 		)
 	)
 
@@ -65,13 +65,16 @@ fn neighbor(which: Int) Unit!:
 		else if which == 1: try expect_equal(base64_encode(data, false), b64)
 		else if which == 2: try expect_equal(ascii_decode(data), expected_text)
 		else if which == 3: try expect_equal(
-			utf16_decode(data, true, 4096), expected_text
+			utf16_decode(data, true, 4096),
+			expected_text,
 		)
 		else if which == 4: try expect_equal(
-			utf16_decode(data, false, 4096), expected_text
+			utf16_decode(data, false, 4096),
+			expected_text,
 		)
 		else if which == 5: try expect_equal(
-			decode_first(scalar, 0), ok(Utf8Scalar(233, 2))
+			decode_first(scalar, 0),
+			ok(Utf8Scalar(233, 2)),
 		)
 		else: try expect_equal(decode_last(scalar, 2), ok(Utf8Scalar(233, 2)))
 

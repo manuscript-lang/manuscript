@@ -45,7 +45,7 @@ export fn summarize(
 	lines: List[String],
 	suite: String,
 	repeats: Int,
-	versions: List[String]
+	versions: List[String],
 ) String!:
 	if repeats < 1: return invalid("repeats must be positive")
 
@@ -53,7 +53,7 @@ export fn summarize(
 	if suite == "kernels":
 		allowed = [
 			base_versions().concat(c_versions()),
-			base_versions().concat(c_versions()).concat(ablations())
+			base_versions().concat(c_versions()).concat(ablations()),
 		]
 	if not allowed.any(fn a: same(a, versions)):
 		return invalid("unexpected versions for {suite}: {versions.join(" ")}")
@@ -133,7 +133,7 @@ export fn summarize(
 	var rows = [
 		"Minimum of {repeats} rotating runs; microseconds. Complete trials and checksums verified.\n",
 		"| kernel | go us | " + head + " | " + extra.join(" | ") + " |",
-		"|---|---:|" + rule + extra.map(fn _e: "---:|").join("")
+		"|---|---:|" + rule + extra.map(fn _e: "---:|").join(""),
 	]
 
 	for name in names:

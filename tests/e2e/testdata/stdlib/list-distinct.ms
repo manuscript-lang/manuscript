@@ -91,6 +91,6 @@ test "distinct preserves owned strings, empty and small lists":
 		[
 			"heap-backed-distinct-key-0", "heap-backed-distinct-key-1",
 			"heap-backed-distinct-key-2"
-		]
+		],
 	)
 	try expect_equal(source.length(), 40)

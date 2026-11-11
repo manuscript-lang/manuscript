@@ -16,7 +16,8 @@ test "an empty stream has no lines":
 
 test "lines drop terminators and keep an unterminated last line":
 	try expect_equal(
-		gather(memory("one\r\ntwo\n\nlast")), ok(["one", "two", "", "last"])
+		gather(memory("one\r\ntwo\n\nlast")),
+		ok(["one", "two", "", "last"]),
 	)
 
 test "a final newline adds no empty line":

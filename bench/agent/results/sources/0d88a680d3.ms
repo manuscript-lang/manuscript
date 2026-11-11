@@ -475,7 +475,8 @@ fn eval(text: String, syms: Map[String, Sym], stack: String) Ev:
 				return Ev(err: "undefined symbol '" + term.name + "'", val: 0)
 
 			s := syms.get_or(
-				term.name, Sym(is_text: false, is_equ: false, value: 0, expr: "")
+				term.name,
+				Sym(is_text: false, is_equ: false, value: 0, expr: ""),
 			)
 
 			if s.is_equ:
@@ -647,7 +648,10 @@ impl Asm:
 			if e != "": return e
 
 			self.syms[name.clone()] = Sym(
-				is_text: false, is_equ: true, value: 0, expr: ops[1].clone()
+				is_text: false,
+				is_equ: true,
+				value: 0,
+				expr: ops[1].clone(),
 			)
 			return ""
 
@@ -662,8 +666,14 @@ impl Asm:
 
 			self.stmts.append(
 				Stmt(
-					line: num, kind: 1, mnem: "", ops: ops.clone(), addr: self.dc,
-					vals: List[Int](), count: 0, fill: ""
+					line: num,
+					kind: 1,
+					mnem: "",
+					ops: ops.clone(),
+					addr: self.dc,
+					vals: List[Int](),
+					count: 0,
+					fill: "",
 				)
 			)
 			self.dc += ops.length()
@@ -681,8 +691,14 @@ impl Asm:
 			cnt := vals.length()
 			self.stmts.append(
 				Stmt(
-					line: num, kind: 2, mnem: "", ops: List[String](), addr: self.dc,
-					vals: vals, count: 0, fill: ""
+					line: num,
+					kind: 2,
+					mnem: "",
+					ops: List[String](),
+					addr: self.dc,
+					vals: vals,
+					count: 0,
+					fill: "",
 				)
 			)
 			self.dc += cnt
@@ -702,8 +718,14 @@ impl Asm:
 			fill := if ops.length() == 2: ops[1].clone() else: "0"
 			self.stmts.append(
 				Stmt(
-					line: num, kind: 3, mnem: "", ops: List[String](), addr: self.dc,
-					vals: List[Int](), count: ev.val, fill: fill
+					line: num,
+					kind: 3,
+					mnem: "",
+					ops: List[String](),
+					addr: self.dc,
+					vals: List[Int](),
+					count: ev.val,
+					fill: fill,
 				)
 			)
 			self.dc += ev.val
@@ -740,8 +762,14 @@ impl Asm:
 
 		self.stmts.append(
 			Stmt(
-				line: num, kind: 0, mnem: word.clone(), ops: ops, addr: 0,
-				vals: List[Int](), count: 0, fill: ""
+				line: num,
+				kind: 0,
+				mnem: word.clone(),
+				ops: ops,
+				addr: 0,
+				vals: List[Int](),
+				count: 0,
+				fill: "",
 			)
 		)
 		self.tc += 1
@@ -773,11 +801,17 @@ impl Asm:
 
 			if self.text:
 				self.syms[name.clone()] = Sym(
-					is_text: true, is_equ: false, value: self.tc, expr: ""
+					is_text: true,
+					is_equ: false,
+					value: self.tc,
+					expr: "",
 				)
 			else:
 				self.syms[name.clone()] = Sym(
-					is_text: false, is_equ: false, value: self.dc, expr: ""
+					is_text: false,
+					is_equ: false,
+					value: self.dc,
+					expr: "",
 				)
 
 			s = sub(cs, j + 1, n).trim_chars(WS)
@@ -924,7 +958,8 @@ fn build(asm: Asm, inputs: List[Int], chartab: List[String]) Vm:
 
 	if asm.syms.contains("main"):
 		m := asm.syms.get_or(
-			"main", Sym(is_text: false, is_equ: false, value: 0, expr: "")
+			"main",
+			Sym(is_text: false, is_equ: false, value: 0, expr: ""),
 		)
 		if m.is_text and not m.is_equ:
 			entry = m.value
@@ -934,11 +969,32 @@ fn build(asm: Asm, inputs: List[Int], chartab: List[String]) Vm:
 		regs.append(0)
 	regs[8] = MEMSIZE
 	return Vm(
-		ops: ops, k1: k1, r1: r1, v1: v1, k2: k2, r2: r2, v2: v2, lines: lines,
-		regs: regs, mem: mem, input: inputs, inpos: 0, zf: false, lf: false, steps: 0,
-		budget: asm.budget, pc: entry, done: false, trapped: false, trapmsg: "",
-		out: List[String](), chartab: chartab, last_nl: false, has_out: false,
-		aerr: aerr, aline: aline
+		ops: ops,
+		k1: k1,
+		r1: r1,
+		v1: v1,
+		k2: k2,
+		r2: r2,
+		v2: v2,
+		lines: lines,
+		regs: regs,
+		mem: mem,
+		input: inputs,
+		inpos: 0,
+		zf: false,
+		lf: false,
+		steps: 0,
+		budget: asm.budget,
+		pc: entry,
+		done: false,
+		trapped: false,
+		trapmsg: "",
+		out: List[String](),
+		chartab: chartab,
+		last_nl: false,
+		has_out: false,
+		aerr: aerr,
+		aline: aline,
 	)
 
 // ---------- the machine ----------
@@ -1221,8 +1277,12 @@ export fn main() Int:
 		chartab.append(from_scalars([c]).get())
 
 	var asm = Asm(
-		text: true, tc: 0, dc: 0, budget: 100000, syms: Map[String, Sym](),
-		stmts: List[Stmt]()
+		text: true,
+		tc: 0,
+		dc: 0,
+		budget: 100000,
+		syms: Map[String, Sym](),
+		stmts: List[Stmt](),
 	)
 	var aerr = ""
 	var aline = 0

@@ -48,8 +48,9 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 	var results = List[JsonValue]()
 
 	for w in [
-		Workload("append", 1000000), Workload("append", 4000000),
-		Workload("sort", 200000)
+		Workload("append", 1000000),
+		Workload("append", 4000000),
+		Workload("sort", 200000),
 	]:
 		label := "{w.name}-{w.n}"
 		program := "{out}/{label}.ms"
@@ -61,16 +62,21 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 			capture(
 				cli.clone(),
 				[
-					"build", program.clone(), "--build-type", "Release", "-o",
-					binary.clone()
-				]
-			)
+					"build",
+					program.clone(),
+					"--build-type",
+					"Release",
+					"-o",
+					binary.clone(),
+				],
+			),
 		)
 		_emit := try must(
 			"ms emit",
 			capture(
-				cli.clone(), ["emit", program.clone(), "-o", "{out}/{label}.mir"]
-			)
+				cli.clone(),
+				["emit", program.clone(), "-o", "{out}/{label}.mir"],
+			),
 		)
 		_warm := try must(label, capture(binary.clone(), []))
 		var seconds = List[Float]()
@@ -80,7 +86,8 @@ fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
 		for i in 0..runs:
 			start := now_ns()
 			measured := if cpu == "": try peak_run(binary.clone(), []) else: try peak_run(
-				"taskset", ["-c", cpu.clone(), binary.clone()]
+				"taskset",
+				["-c", cpu.clone(), binary.clone()],
 			)
 			elapsed := (now_ns() - start).to_float() / 1000000000.0
 			seconds.append(elapsed)

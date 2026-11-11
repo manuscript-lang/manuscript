@@ -161,16 +161,21 @@ impl Ledger:
 		cmd := words[0]
 		n := words.length()
 		if cmd == "open" and n == 3: return self.do_open(
-			words[1].clone(), words[2].clone()
+			words[1].clone(),
+			words[2].clone(),
 		)
 		if cmd == "deposit" and n == 3: return self.do_deposit(
-			words[1].clone(), words[2].clone()
+			words[1].clone(),
+			words[2].clone(),
 		)
 		if cmd == "withdraw" and n == 3: return self.do_withdraw(
-			words[1].clone(), words[2].clone()
+			words[1].clone(),
+			words[2].clone(),
 		)
 		if cmd == "transfer" and n == 4: return self.do_transfer(
-			words[1].clone(), words[2].clone(), words[3].clone()
+			words[1].clone(),
+			words[2].clone(),
+			words[3].clone(),
 		)
 		if cmd == "freeze" and n == 2: return self.do_freeze(words[1].clone(), true)
 		if cmd == "unfreeze" and n == 2: return self.do_freeze(words[1].clone(), false)
@@ -180,8 +185,12 @@ impl Ledger:
 
 export fn main() Int:
 	var ledger = Ledger(
-		balance: Map[String, Int](), limit: Map[String, Int](), ops: Map[String, Int](),
-		rejected: Map[String, Int](), frozen: Map[String, Bool](), fees: 0
+		balance: Map[String, Int](),
+		limit: Map[String, Int](),
+		ops: Map[String, Int](),
+		rejected: Map[String, Int](),
+		frozen: Map[String, Bool](),
+		fees: 0,
 	)
 	var out = ""
 

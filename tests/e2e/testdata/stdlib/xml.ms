@@ -32,7 +32,8 @@ test "stringify round-trips and escapes":
 test "indent puts elements on lines":
 	doc := parse("<a><b><c/></b><d>t</d></a>").get()
 	try expect_equal(
-		stringify(doc, "  "), "<a>\n  <b>\n    <c/>\n  </b>\n  <d>t</d>\n</a>\n"
+		stringify(doc, "  "),
+		"<a>\n  <b>\n    <c/>\n  </b>\n  <d>t</d>\n</a>\n",
 	)
 
 test "stringify preserves compact and mixed content formatting":
@@ -48,7 +49,8 @@ test "stringify preserves compact and mixed content formatting":
 test "stringify leaves comments and descendant text on indented lines":
 	doc := try parse("<a><!--comment--><b>text</b><c/></a>")
 	try expect_equal(
-		stringify(doc, "  "), "<a>\n  <!--comment-->\n  <b>text</b>\n  <c/>\n</a>\n"
+		stringify(doc, "  "),
+		"<a>\n  <!--comment-->\n  <b>text</b>\n  <c/>\n</a>\n",
 	)
 
 	empty := XmlNode.XmlElement("a", [], [XmlNode.XmlText("")])
@@ -247,7 +249,8 @@ test "XML continuation-only scalars cannot start a name":
 		name := "a{scalar}"
 		try expect_equal((try parse("<{name}></{name}>")).tag(), name)
 		try expect_equal(
-			(try parse("<a {name}='value'/>")).attribute(name).get(""), "value"
+			(try parse("<a {name}='value'/>")).attribute(name).get(""),
+			"value",
 		)
 
 test "XML names reject punctuation and excluded Unicode gaps":

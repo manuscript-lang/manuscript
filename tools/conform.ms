@@ -21,7 +21,7 @@ fn main() Int:
 		"cargo",
 		[
 			"build", "--locked", "-q", "-p", "ms-conform", "--target-dir", "target"
-		]
+		],
 	)
 	if code != 0: return code
 
@@ -61,9 +61,21 @@ fn main() Int:
 	backend_only := env("MS_BACKEND", "") == "cranelift"
 	phases := if backend_only: "run,test" else: "run,check,test"
 	main_run := [
-		"run", "--ms", ms.clone(), "--phase", phases, "--exclude-tag", "aliasing",
-		"--expect-fail", allow.clone(), "--strict", "--shard", shard.clone(), "--quiet",
-		"--markdown", ".artifacts/conform.md"
+		"run",
+		"--ms",
+		ms.clone(),
+		"--phase",
+		phases,
+		"--exclude-tag",
+		"aliasing",
+		"--expect-fail",
+		allow.clone(),
+		"--strict",
+		"--shard",
+		shard.clone(),
+		"--quiet",
+		"--markdown",
+		".artifacts/conform.md",
 	]
 	code = run_program(conform, main_run.concat(extra.clone()))
 	if code != 0 or backend_only: return code
@@ -71,8 +83,18 @@ fn main() Int:
 	// Parsing and formatting do not depend on aliasing, so the parse phase replays
 	// every fixture.
 	parse_run := [
-		"run", "--ms", ms.clone(), "--phase", "parse", "--expect-fail", allow.clone(),
-		"--strict", "--shard", shard.clone(), "--quiet", "--markdown",
-		".artifacts/conform-parse.md"
+		"run",
+		"--ms",
+		ms.clone(),
+		"--phase",
+		"parse",
+		"--expect-fail",
+		allow.clone(),
+		"--strict",
+		"--shard",
+		shard.clone(),
+		"--quiet",
+		"--markdown",
+		".artifacts/conform-parse.md",
 	]
 	return run_program(conform, parse_run.concat(extra))

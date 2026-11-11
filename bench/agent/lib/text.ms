@@ -51,7 +51,10 @@ export type Ran:
 // `timeout_s` seconds is killed and reports status 124 with "timeout" on standard error.
 export fn bash(command: String, cwd: String, timeout_s: Int, input: String) Ran:
 	return run_in(
-		"bash", ["-c", "cd \"$0\" && {command}", cwd.clone()], timeout_s, input
+		"bash",
+		["-c", "cd \"$0\" && {command}", cwd.clone()],
+		timeout_s,
+		input,
 	)
 
 // Runs `program` with `arguments` and the same timeout rule as `bash`.
@@ -59,18 +62,21 @@ export fn run_in(
 	program: String,
 	arguments: List[String],
 	timeout_s: Int,
-	input: String
+	input: String,
 ) Ran:
 	start := monotonic()
 	result := run(
-		program, arguments,
-		RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s))
+		program,
+		arguments,
+		RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s)),
 	).wait()
 	elapsed := monotonic().difference(start).nanos.to_float() / 1000000000.0
 	if done := result.to_optional():
 		return Ran(
-			done.exit_code, done.stdout.decode_utf8().get(""),
-			done.stderr.decode_utf8().get(""), elapsed
+			done.exit_code,
+			done.stdout.decode_utf8().get(""),
+			done.stderr.decode_utf8().get(""),
+			elapsed,
 		)
 	if result.err().kind == "ETIMEDOUT": return Ran(124, "", "timeout", elapsed)
 

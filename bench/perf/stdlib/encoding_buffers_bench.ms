@@ -35,9 +35,10 @@ fn base32(length: Int, hex: Bool, padded: Bool) Unit!:
 	expected := base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
 	try expect_equal(
 		try base32_decode(
-			expected, Base32Options(hex_alphabet: hex, padded: padded)
+			expected,
+			Base32Options(hex_alphabet: hex, padded: padded),
 		),
-		data
+		data,
 	)
 
 	fn work() Unit!:
@@ -68,7 +69,9 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Unit!:
 
 	fn work() Unit!:
 		actual := base32_decode(
-			text, Base32Options(hex_alphabet: hex, padded: padded), limit
+			text,
+			Base32Options(hex_alphabet: hex, padded: padded),
+			limit,
 		)
 		try expect_equal(actual, expected)
 		return keep(if mode == 0 or mode == 5 or mode == 6: data.length() else: 1)
@@ -92,7 +95,7 @@ fn decode85(
 	bounded: Bool,
 	under: Bool,
 	zero: Bool = false,
-	bad: Int = 0
+	bad: Int = 0,
 ) Unit!:
 	data := sample(length, zero)
 	var text = ascii85_encode(data)

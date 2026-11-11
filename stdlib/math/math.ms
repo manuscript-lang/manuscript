@@ -462,7 +462,7 @@ export fn add_with_carry(left: UInt64, right: UInt64, carry: Bool = false) WordS
 export fn subtract_with_borrow(
 	left: UInt64,
 	right: UInt64,
-	borrow: Bool = false
+	borrow: Bool = false,
 ) WordDifference:
 	return msstd_math_subtract_with_borrow(left, right, borrow)
 
@@ -750,7 +750,10 @@ fn bigint_probable_prime(n: BigInt, rounds: Int) Bool:
 	fixed := min(rounds, primes.length())
 	for index in 0..fixed:
 		if not bigint_strong_probable(
-			n, msstd_bigint_from_int(primes[index]), odd_part, twos
+			n,
+			msstd_bigint_from_int(primes[index]),
+			odd_part,
+			twos,
 		):
 			return false
 
@@ -825,7 +828,8 @@ fn bigint_mod_sqrt(value: BigInt, modulus: BigInt) BigInt?!:
 
 	if (modulus % msstd_bigint_from_int(4)).compare(msstd_bigint_from_int(3)) == 0:
 		root = target.pow_mod(
-			(modulus + one) / msstd_bigint_from_int(4), modulus
+			(modulus + one) / msstd_bigint_from_int(4),
+			modulus,
 		).get(bigint_zero())
 	else:
 		var odd_part = minus_one.clone()

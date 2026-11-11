@@ -74,7 +74,8 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
 	var rows = [
 		left("size", 12) + " " + right("ms_us", 10) + " " + right(
-			"rust_us", 10
+			"rust_us",
+			10,
 		) + " " + right("ratio", 8)
 	]
 
@@ -83,7 +84,8 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		rust := best.get_or("{name} rust", 1)
 		rows.append(
 			left(name, 12) + " " + right("{ms}", 10) + " " + right(
-				"{rust}", 10
+				"{rust}",
+				10,
 			) + " " + right((ms.to_float() / rust.to_float()).to_fixed(2) + "x", 8)
 		)
 

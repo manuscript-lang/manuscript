@@ -9,12 +9,12 @@ export type JsonLimits:
 export extern fn msstd_json_parse[T](
 	text: String,
 	limits: JsonLimits,
-	ignore_unknown_fields: Bool
+	ignore_unknown_fields: Bool,
 ) T!
 
 export extern fn msstd_json_stringify[T](
 	value: T,
 	max_bytes: Int?,
 	indent: Int?,
-	strict: Bool
+	strict: Bool,
 ) String!

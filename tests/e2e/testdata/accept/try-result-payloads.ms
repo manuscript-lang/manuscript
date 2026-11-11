@@ -24,8 +24,9 @@ test "try preserves empty errors and skips success effects":
 	visits.length() | try expect_equal(1)
 
 test "try can change the success type":
-	text(Result[Int, Error].error(Error("failed"))).err().message | try expect_equal(
-		"failed"
+	(
+		text(Result[Int, Error].error(Error("failed"))).err().message
+		| try expect_equal("failed")
 	)
 	text(Result[Int, Error].ok(42)).get() | try expect_equal("42")
 
@@ -74,13 +75,20 @@ test "tail Results preserve cleanup on success and failure":
 	temporary := temporary("manuscript-tail-") | try expect_ok
 	first := "{temporary.path()}/first"
 	second := "{temporary.path()}/second"
-	tail_cleanup(Result[Int, Error].ok(42), var visits, first.clone()).get() | try expect_equal(
-		42
+	(
+		tail_cleanup(Result[Int, Error].ok(42), var visits, first.clone()).get()
+		| try expect_equal(42)
 	)
 	visits | try expect_equal([1])
 	read_file(first).wait().is_ok() | try expect_true
 	read_file(second).wait().is_ok() | try expect_false
-	tail_cleanup(Result[Int, Error].error(Error("")), var visits, second.clone()).is_error() | try expect_true
+	(
+		tail_cleanup(
+			Result[Int, Error].error(Error("")),
+			var visits,
+			second.clone(),
+		).is_error() | try expect_true
+	)
 	visits | try expect_equal([1, 1])
 	read_file(second).wait().is_ok() | try expect_true
 

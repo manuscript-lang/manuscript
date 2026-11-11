@@ -35,7 +35,8 @@ test "YAML standalone block headers retain their containing mapping base":
 		}
 	)
 	try expect_equal(
-		(try parse("outer:\n  value:\n    >2\n    one\n    two\n")), nested
+		(try parse("outer:\n  value:\n    >2\n    one\n    two\n")),
+		nested,
 	)
 
 test "YAML standalone block headers retain their containing sequence base":
@@ -78,7 +79,7 @@ test "YAML implicit indentation rejects overindented leading empty lines":
 				"value": YamlValue.StringValue(""),
 				"next": YamlValue.StringValue("word")
 			}
-		)
+		),
 	)
 
 test "YAML version directive composes with same-line document content":

@@ -10,7 +10,7 @@ fn measure(
 	source: String,
 	indent: String,
 	expected: String,
-	count: Int
+	count: Int,
 ) Unit:
 	node := parse(source).get()
 	if stringify(node, indent) != expected: panic("wrong untimed output: {name}")
@@ -55,7 +55,10 @@ export fn main() Int:
 	comments := "<!--note-->".repeat(1024).get()
 	measure("comments", "<a>{comments}</a>", "", "<a>{comments}</a>", count)
 	measure(
-		"comments-pretty", "<a>{comments}</a>", "  ",
-		"<a>\n{"  <!--note-->\n".repeat(1024).get()}</a>\n", count
+		"comments-pretty",
+		"<a>{comments}</a>",
+		"  ",
+		"<a>\n{"  <!--note-->\n".repeat(1024).get()}</a>\n",
+		count,
 	)
 	return 0

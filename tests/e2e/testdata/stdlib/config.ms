@@ -41,12 +41,18 @@ test "dotenv later duplicates replace earlier values":
 
 test "dotenv accepts empty text and a byte-order mark":
 	(parse_dotenv("") | try expect_ok).length() | try expect_equal(0)
-	(parse_dotenv("\u{feff}A=1") | try expect_ok).get_or(
-		"A", ""
-	) | try expect_equal("1")
-	(parse_dotenv("\r\nA=1\r\nB=2\r\n") | try expect_ok).get_or(
-		"B", ""
-	) | try expect_equal("2")
+	(
+		(parse_dotenv("\u{feff}A=1") | try expect_ok).get_or(
+			"A",
+			"",
+		) | try expect_equal("1")
+	)
+	(
+		(parse_dotenv("\r\nA=1\r\nB=2\r\n") | try expect_ok).get_or(
+			"B",
+			"",
+		) | try expect_equal("2")
+	)
 
 test "dotenv rejects malformed lines with their line number":
 	bad := ["=x", "A B=1", "1A=2", "A='open", "A='x' junk", "NOEQUALS", "export  =bad"]
@@ -56,11 +62,14 @@ test "dotenv rejects malformed lines with their line number":
 	result := parse_dotenv("A=1\n\nB='x' junk\n")
 	if _ := result: return fail("accepted trailing text")
 
-	result | try expect_equal(
-		error(
-			Error(
-				"config: line 3: unexpected text after quoted value",
-				details: {"line": "3"}, kind: "EBADMSG"
+	(
+		result | try expect_equal(
+			error(
+				Error(
+					"config: line 3: unexpected text after quoted value",
+					details: {"line": "3"},
+					kind: "EBADMSG",
+				)
 			)
 		)
 	)
@@ -87,11 +96,14 @@ test "ini rejects malformed lines":
 	result := parse_ini("a=1\nbad")
 	if _ := result: return fail("accepted")
 
-	result | try expect_equal(
-		error(
-			Error(
-				"config: line 2: expected key = value", details: {"line": "2"},
-				kind: "EBADMSG"
+	(
+		result | try expect_equal(
+			error(
+				Error(
+					"config: line 2: expected key = value",
+					details: {"line": "2"},
+					kind: "EBADMSG",
+				)
 			)
 		)
 	)
@@ -146,7 +158,8 @@ test "INI comments follow quoted values":
 	ini := (
 		parse_ini(
 			"a = \"x # y\" # comment\nb = 'p ; q' ; note\nc = \"plain\" # n\nd = \"k\"#tight\ne = \"q\"\nf = \"w\" tail\""
-		) | try expect_ok
+		)
+		| try expect_ok
 	)
 	top := ini.get("").get(Map[String, String]())
 	try expect_equal(top.get("a").get(""), "x # y")
@@ -160,7 +173,8 @@ test "INI comments after quotes may contain the quote and ignore tab-only marker
 	ini := (
 		parse_ini(
 			"a=\"x\" # note \"\nb='y' ; it's\nc=\"z\"  ;   \"q\"\nd=\"x\"\t#literal\ne='t'\t;literal"
-		) | try expect_ok
+		)
+		| try expect_ok
 	)
 	top := ini.get("").get(Map[String, String]())
 	try expect_equal(top.get("a").get(""), "x")

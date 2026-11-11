@@ -17,7 +17,7 @@ test "regex rejects invalid expressions and exhausted budgets":
 	try expect_equal(invalid.err().kind, "EBADMSG")
 	try expect_equal(
 		invalid.err().message,
-		"regular expression: invalid data: unclosed character class at column 1"
+		"regular expression: invalid data: unclosed character class at column 1",
 	)
 
 	regex := try compile("[0-9]+")
@@ -41,7 +41,7 @@ test "regex captures groups spans and splits":
 	try expect_equal(date.find_span("none").is_none(), true)
 	try expect_equal(
 		(try date.captures_all("2026-10 2027-11")),
-		[["2026-10", "2026", "10"], ["2027-11", "2027", "11"]]
+		[["2026-10", "2026", "10"], ["2027-11", "2027", "11"]],
 	)
 
 	comma := try compile(",\\s*")
@@ -50,7 +50,8 @@ test "regex captures groups spans and splits":
 
 	swap := try compile("(\\w+)@(?P<host>\\w+)")
 	try expect_equal(
-		(try swap.replace_template("me@home x@y", "$\{host\}:$1 $$")), "home:me $ y:x $"
+		(try swap.replace_template("me@home x@y", "$\{host\}:$1 $$")),
+		"home:me $ y:x $",
 	)
 
 	limited: List[String]! := error(
@@ -62,7 +63,7 @@ test "regex repeated captures clear absent groups and preserve budgets":
 	re := try compile("(a)|(b+)")
 	try expect_equal(
 		(try re.captures_all("a bbb a", 3)),
-		[["a", "a", ""], ["bbb", "", "bbb"], ["a", "a", ""]]
+		[["a", "a", ""], ["bbb", "", "bbb"], ["a", "a", ""]],
 	)
 
 	limited: List[List[String]]! := error(
@@ -75,7 +76,7 @@ test "regex repeated template expansion preserves byte budgets":
 	re := try compile("(?P<a>a+)|(b+)")
 	try expect_equal(
 		(try re.replace_template("aaaaaaaa b a", "$\{a\}:$\{2\}$$", 18)),
-		"aaaaaaaa:$ :b$ a:$"
+		"aaaaaaaa:$ :b$ a:$",
 	)
 	try expect_equal((try re.replace_template("a b", "$$", 3)), "$ $")
 
@@ -168,14 +169,17 @@ test "regex collection budgets preserve empty adjacency and exact counts":
 
 test "regex compile errors preserve columns after anchors and numbered lines":
 	for item in [
-		["^(", "unclosed group at column 2"], ["^ (", "unclosed group at column 3"],
-		["é🙂(", "unclosed group at column 3"], ["a\n(", "unclosed group at column 1"],
-		["(?x)\n^(", "unclosed group at column 2"]
+		["^(", "unclosed group at column 2"],
+		["^ (", "unclosed group at column 3"],
+		["é🙂(", "unclosed group at column 3"],
+		["a\n(", "unclosed group at column 1"],
+		["(?x)\n^(", "unclosed group at column 2"],
 	]:
 		invalid := compile(item[0])
 		try expect_equal(invalid.err().kind, "EBADMSG")
 		try expect_equal(
-			invalid.err().message, "regular expression: invalid data: " + item[1]
+			invalid.err().message,
+			"regular expression: invalid data: " + item[1],
 		)
 
 test "regex compile errors point to duplicate flags and group names":
@@ -186,10 +190,11 @@ test "regex compile errors point to duplicate flags and group names":
 		["(?P<word>a)(?P<word>b)", "duplicate capture group name at column 16"],
 		["(?P<名字>a)\n  (?P<名字>b)", "duplicate capture group name at column 7"],
 		["a\n(?ii)", "duplicate flag at column 4"],
-		["a\n(?-i-m)", "flag negation operator repeated at column 5"]
+		["a\n(?-i-m)", "flag negation operator repeated at column 5"],
 	]:
 		invalid := compile(item[0])
 		try expect_equal(invalid.err().kind, "EBADMSG")
 		try expect_equal(
-			invalid.err().message, "regular expression: invalid data: " + item[1]
+			invalid.err().message,
+			"regular expression: invalid data: " + item[1],
 		)

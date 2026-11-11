@@ -11,7 +11,7 @@ export extern fn msstd_crypto_open(
 	key: Bytes,
 	nonce: Bytes,
 	ciphertext: Bytes,
-	associated_data: Bytes
+	associated_data: Bytes,
 ) Bytes!
 
 export extern fn msstd_crypto_public_key(seed: Bytes) Bytes!
@@ -20,7 +20,7 @@ export extern fn msstd_crypto_seal(
 	key: Bytes,
 	nonce: Bytes,
 	plaintext: Bytes,
-	associated_data: Bytes
+	associated_data: Bytes,
 ) Bytes!
 
 export extern fn msstd_crypto_sign(seed: Bytes, data: Bytes) Bytes!
@@ -30,13 +30,13 @@ export extern fn msstd_crypto_aes_ctr(key: Bytes, iv: Bytes, data: Bytes) Bytes!
 export extern fn msstd_crypto_aes_cbc_encrypt(
 	key: Bytes,
 	iv: Bytes,
-	plaintext: Bytes
+	plaintext: Bytes,
 ) Bytes!
 
 export extern fn msstd_crypto_aes_cbc_decrypt(
 	key: Bytes,
 	iv: Bytes,
-	ciphertext: Bytes
+	ciphertext: Bytes,
 ) Bytes!
 
 export extern fn msstd_crypto_ecdsa_generate(curve: Curve) Bytes!
@@ -46,19 +46,19 @@ export extern fn msstd_crypto_public_key_der(private_key: Bytes) Bytes!
 export extern fn msstd_crypto_ecdsa_sign(
 	private_key: Bytes,
 	hash: HashAlgorithm,
-	data: Bytes
+	data: Bytes,
 ) Bytes!
 
 export extern fn msstd_crypto_ecdsa_verify(
 	public_key: Bytes,
 	hash: HashAlgorithm,
 	data: Bytes,
-	signature: Bytes
+	signature: Bytes,
 ) Bool
 
 export extern fn msstd_crypto_ecdh_shared_secret(
 	private_key: Bytes,
-	peer_public_key: Bytes
+	peer_public_key: Bytes,
 ) Bytes!
 
 export extern fn msstd_crypto_rsa_generate(bits: Int) Bytes!
@@ -66,39 +66,39 @@ export extern fn msstd_crypto_rsa_generate(bits: Int) Bytes!
 export extern fn msstd_crypto_rsa_sign(
 	private_key: Bytes,
 	hash: HashAlgorithm,
-	data: Bytes
+	data: Bytes,
 ) Bytes!
 
 export extern fn msstd_crypto_rsa_verify(
 	public_key: Bytes,
 	hash: HashAlgorithm,
 	data: Bytes,
-	signature: Bytes
+	signature: Bytes,
 ) Bool
 
 export extern fn msstd_crypto_rsa_sign_pss(
 	private_key: Bytes,
 	hash: HashAlgorithm,
-	data: Bytes
+	data: Bytes,
 ) Bytes!
 
 export extern fn msstd_crypto_rsa_verify_pss(
 	public_key: Bytes,
 	hash: HashAlgorithm,
 	data: Bytes,
-	signature: Bytes
+	signature: Bytes,
 ) Bool
 
 export extern fn msstd_crypto_rsa_encrypt(
 	public_key: Bytes,
 	hash: HashAlgorithm,
-	message: Bytes
+	message: Bytes,
 ) Bytes!
 
 export extern fn msstd_crypto_rsa_decrypt(
 	private_key: Bytes,
 	hash: HashAlgorithm,
-	ciphertext: Bytes
+	ciphertext: Bytes,
 ) Bytes!
 
 export extern fn msstd_crypto_digest(value: HashAlgorithm, data: Bytes) Bytes
@@ -110,7 +110,7 @@ export extern fn msstd_crypto_derive_key(
 	password: Bytes,
 	salt: Bytes,
 	iterations: Int,
-	length: Int
+	length: Int,
 ) Bytes!
 
 export extern fn msstd_crypto_hkdf(
@@ -118,14 +118,14 @@ export extern fn msstd_crypto_hkdf(
 	secret: Bytes,
 	salt: Bytes,
 	info: Bytes,
-	length: Int
+	length: Int,
 ) Bytes!
 
 export extern fn msstd_crypto_hasher_new(alg: HashAlgorithm) NativeHasher
 
 export extern fn msstd_crypto_hmac_hasher_new(
 	alg: HashAlgorithm,
-	key: Bytes
+	key: Bytes,
 ) NativeHasher
 
 export extern fn msstd_crypto_hasher_update(hasher: NativeHasher, data: Bytes) Unit

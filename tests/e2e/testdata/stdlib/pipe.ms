@@ -63,7 +63,8 @@ test "a write waits while the pipe holds more than its capacity, so the reader s
 	try producer.wait()
 	try gate.close()
 	try expect_equal(
-		seen, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+		seen,
+		[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
 	)
 
 test "a write fails with Closed once the reader is gone":

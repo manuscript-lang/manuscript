@@ -29,7 +29,8 @@ export fn stdlib_table(output: String) String!:
 
 	var rows = [
 		left("case", width) + "  " + right("median ns/op", 12) + "  " + right(
-			"min", 10
+			"min",
+			10,
 		) + "  " + right("max", 10)
 	]
 
@@ -37,9 +38,11 @@ export fn stdlib_table(output: String) String!:
 		s := c.stats.get(Stats(0, none, none, 0.0, none, none, none, none))
 		rows.append(
 			left(labels.get_or(c.name, ""), width) + "  " + right(
-				s.median_ns.to_fixed(2), 12
+				s.median_ns.to_fixed(2),
+				12,
 			) + "  " + right(s.min_ns.get(0.0).to_fixed(2), 10) + "  " + right(
-				s.max_ns.get(0.0).to_fixed(2), 10
+				s.max_ns.get(0.0).to_fixed(2),
+				10,
 			)
 		)
 

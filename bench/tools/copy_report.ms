@@ -23,7 +23,8 @@ fn block_params(line: String, defs: Map[String, String]) Map[String, String]:
 	for part in line.slice(open + 1, close).get("").split(", "):
 		colon := part.index_of(":").get(-1)
 		if colon > 0 and part.starts_with("%"): out.add(
-			part.slice(0, colon).get(""), "param"
+			part.slice(0, colon).get(""),
+			"param",
 		)
 
 	return out

@@ -111,7 +111,7 @@ fn run(paths: Map[String, String], out: String, cpu: String) Result[Unit, Error]
 	record.add("expected_cases", jint(expected.length()))
 	record.add(
 		"executables",
-		binaries_json(names.map(fn n: labeled(n.clone(), paths.get_or(n, ""))))
+		binaries_json(names.map(fn n: labeled(n.clone(), paths.get_or(n, "")))),
 	)
 	record.add("validated_producers", jlist(validated))
 	write_json("{out}/record.json", jobject(record))
@@ -166,7 +166,9 @@ fn main() Int:
 	paths.add("rust", absolute(args[2].clone()))
 
 	result := run(
-		paths, args[3].clone(), parsed.get(Map[String, String]()).get_or("cpu", "")
+		paths,
+		args[3].clone(),
+		parsed.get(Map[String, String]()).get_or("cpu", ""),
 	)
 	if result.is_error(): return fail(result.err().message)
 

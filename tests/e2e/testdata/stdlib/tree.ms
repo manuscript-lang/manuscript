@@ -37,7 +37,8 @@ test "memory tree lists and reads":
 	if top[2].directory: return panic("main.ms is a file")
 	if (
 		(
-			tree.read("docs/./api/../guide.md", none) | try expect_ok
+			tree.read("docs/./api/../guide.md", none)
+			| try expect_ok
 		) != "guide".to_bytes()
 	): return panic("clean path")
 	if (total_size(tree, ["main.ms", "docs/guide.md"]) | try expect_ok) != 9: return panic(
@@ -48,37 +49,44 @@ test "memory tree reports precise errors":
 	var tree = sample()
 	if (
 		tree.read("nope", none).err() != Error(
-			"filesystem: file or directory not found", kind: "ENOENT"
+			"filesystem: file or directory not found",
+			kind: "ENOENT",
 		)
 	): return panic("missing")
 	if (
 		tree.read("docs", none).err() != Error(
-			"filesystem: invalid input", kind: "EINVAL"
+			"filesystem: invalid input",
+			kind: "EINVAL",
 		)
 	): return panic("read directory")
 	if (
 		tree.children("main.ms", none).err() != Error(
-			"filesystem: invalid input", kind: "EINVAL"
+			"filesystem: invalid input",
+			kind: "EINVAL",
 		)
 	): return panic("list file")
 	if (
 		tree.read("../x", none).err() != Error(
-			"filesystem: invalid input", kind: "EINVAL"
+			"filesystem: invalid input",
+			kind: "EINVAL",
 		)
 	): return panic("escape")
 	if (
 		tree.read("main.ms", 2).err() != Error(
-			"filesystem: limit exceeded", kind: "EOVERFLOW"
+			"filesystem: limit exceeded",
+			kind: "EOVERFLOW",
 		)
 	): return panic("limit")
 	if (
 		tree.write_file("main.ms/inner", "x".to_bytes()).err() != Error(
-			"filesystem: invalid input", kind: "EINVAL"
+			"filesystem: invalid input",
+			kind: "EINVAL",
 		)
 	): return panic("parent is file")
 	if (
 		tree.remove("docs").err() != Error(
-			"filesystem: directory not empty", kind: "ENOTEMPTY"
+			"filesystem: directory not empty",
+			kind: "ENOTEMPTY",
 		)
 	): return panic("not empty")
 
@@ -102,7 +110,8 @@ test "walk is depth first and sorted":
 	if paths(docs) != ["api/", "api/index.md", "guide.md"]: return panic("sub root")
 	if (
 		walk(tree, max_entries: 2).err() != Error(
-			"filesystem: limit exceeded", kind: "EOVERFLOW"
+			"filesystem: limit exceeded",
+			kind: "EOVERFLOW",
 		)
 	): return panic("limit")
 
@@ -121,7 +130,8 @@ test "host tree walks the same way":
 	)
 	if (
 		tree.read("../etc", none).err() != Error(
-			"filesystem: invalid input", kind: "EINVAL"
+			"filesystem: invalid input",
+			kind: "EINVAL",
 		)
 	): return panic("host escape")
 

@@ -209,8 +209,9 @@ impl BytesCodecs for Bytes:
 			word = msrt_bits_bit_or(
 				word,
 				msrt_bits_shift_left(
-					msrt_bits_bit_and(byte, 127), i * 7
-				)
+					msrt_bits_bit_and(byte, 127),
+					i * 7,
+				),
 			)
 			if byte < 128: return ok(VarintRead(unsigned_word(word), at + i + 1))
 
@@ -380,7 +381,8 @@ fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
 		place := if little: i else: width - 1 - i
 		out.append(
 			msrt_bits_bit_and(
-				msrt_bits_shift_right(value, 8 * place), 255
+				msrt_bits_shift_right(value, 8 * place),
+				255,
 			).to_uint8().get(0)
 		)
 

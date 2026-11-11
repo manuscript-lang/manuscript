@@ -48,7 +48,8 @@ test "ticker keeps its original cadence when the consumer misses ticks":
 	first := (try ticks.next()).get().clone()
 
 	for pause in [
-		period.multiply(4).add(nanoseconds(1)), period.multiply(7).add(nanoseconds(3))
+		period.multiply(4).add(nanoseconds(1)),
+		period.multiply(7).add(nanoseconds(3)),
 	]:
 		try sleep(pause).wait()
 

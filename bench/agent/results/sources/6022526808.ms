@@ -218,10 +218,14 @@ impl Shop:
 
 export fn main() Int:
 	var shop = Shop(
-		stock: Map[String, Int](), price: Map[String, Int](), skus: List[String](),
-		status: Map[String, Int](), totals: Map[String, Int](),
-		order_skus: Map[String, List[String]](), order_qtys: Map[String, List[Int]](),
-		order_ids: List[String]()
+		stock: Map[String, Int](),
+		price: Map[String, Int](),
+		skus: List[String](),
+		status: Map[String, Int](),
+		totals: Map[String, Int](),
+		order_skus: Map[String, List[String]](),
+		order_qtys: Map[String, List[Int]](),
+		order_ids: List[String](),
 	)
 	var input = lines(stdin())
 

@@ -60,7 +60,12 @@ test "indexing and generic applications coexist":
 	((items[0] != 10 or items[index] != 20 or items[-1] != 20)) | try expect_false
 	(items[indices[index]] != 20 or items[index - 1] != 10) | try expect_false
 	(items[counter.count] != 10 or [items.clone()][0][1] != 20) | try expect_false
-	(values(var counter)[(try tick(var counter))] != 7 or counter.count != 2) | try expect_false
+	(
+		(
+			values(var counter)[(try tick(var counter))] != 7
+			or counter.count != 2
+		) | try expect_false
+	)
 	identity[Int](items[0]) | try expect_equal(10)
 
 	callbacks: List[fn(Int) Int] := [identity[Int]]
@@ -71,7 +76,13 @@ test "empty list constructors have fresh typed storage":
 	contextual: List[Int] := List()
 	other := List[String]()
 	empty.append("a")
-	(empty[0] != "a" or not other.is_empty() or not contextual.is_empty()) | try expect_false
+	(
+		(
+			empty[0] != "a"
+			or not other.is_empty()
+			or not contextual.is_empty()
+		) | try expect_false
+	)
 
 	map := Map[String, Int]()
 	map.length() | try expect_equal(0)
@@ -79,7 +90,17 @@ test "empty list constructors have fresh typed storage":
 test "string concatenation and scalar ordering":
 	lines := ["a", "b"]
 	(lines.join("\n") + "\n") | try expect_equal("a\nb\n")
-	(("" < "a" and "a" < "aa" and "é" > "z" and "a" <= "a" and "a" >= "a")) | try expect_true
+	(
+		(
+			(
+				"" < "a"
+				and "a" < "aa"
+				and "é" > "z"
+				and "a" <= "a"
+				and "a" >= "a"
+			)
+		) | try expect_true
+	)
 	("a" < "a" or "a" > "a" or "b" <= "a" or "a" >= "b") | try expect_false
 	("" + "value" != "value" or "value" + "" != "value") | try expect_false
 	("\u{e000}" < "\u{10000}") | try expect_true
@@ -97,7 +118,13 @@ test "string concatenation and scalar ordering":
 test "match expressions preserve returns and cleanup":
 	present: Int? := 4
 	absent: Int? := none
-	(early(present) != 5 or early(absent) != 9 or all_return(present) != 4) | try expect_false
+	(
+		(
+			early(present) != 5
+			or early(absent) != 9
+			or all_return(present) != 4
+		) | try expect_false
+	)
 
 	var temporary = temporary("manuscript-match-") | try expect_ok
 	dir := temporary.path()
@@ -106,7 +133,13 @@ test "match expressions preserve returns and cleanup":
 	closed("{dir}/parsed") | try expect_true
 
 	invalid := amount(text: "invalid", marker: "{dir}/invalid")
-	(invalid != Result[Int, Error].error(cause: Error("Invalid amount"))) | try expect_false
+	(
+		(
+			invalid != Result[Int, Error].error(
+				cause: Error("Invalid amount")
+			)
+		) | try expect_false
+	)
 	closed("{dir}/invalid") | try expect_true
 	try temporary.close()
 
@@ -198,7 +231,7 @@ fn returned_argument(var counter: Counter) Int!:
 				value: value
 				none: return ok(17)
 			,
-			second: (try tick(var counter))
+			second: (try tick(var counter)),
 		)
 	)
 
@@ -229,10 +262,17 @@ fn returned_loop(value: Int?) Int:
 
 test "expression exits preserve caller boundaries and evaluation order":
 	var counter = Counter(count: 0)
-	((try returned_argument(var counter)) != 17 or counter.count != 0) | try expect_false
+	(
+		(
+			(try returned_argument(var counter)) != 17
+			or counter.count != 0
+		) | try expect_false
+	)
 	propagated("3") | try expect_equal(Result[Int, Error].ok(value: 3))
-	propagated("no") | try expect_equal(
-		Result[Int, Error].error(cause: Error("missing"))
+	(
+		propagated("no") | try expect_equal(
+			Result[Int, Error].error(cause: Error("missing"))
+		)
 	)
 
 	present: Int? := 1

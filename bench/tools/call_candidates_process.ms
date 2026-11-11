@@ -11,8 +11,10 @@ export type Timed:
 
 export fn timed(program: String, arguments: List[String]) Timed!:
 	command := [
-		"-c", "export LC_ALL=C; TIMEFORMAT='CALL_CPU %U %S'; time \"$@\"",
-		"call-candidate-timer", program.clone()
+		"-c",
+		"export LC_ALL=C; TIMEFORMAT='CALL_CPU %U %S'; time \"$@\"",
+		"call-candidate-timer",
+		program.clone(),
 	].concat(arguments)
 	ran := capture("bash", command)
 
@@ -22,9 +24,10 @@ export fn timed(program: String, arguments: List[String]) Timed!:
 		parts := line.split(" ")
 		return ok(
 			Timed(
-				ran, parts[1].parse_float().get() * 1000000000.0,
+				ran,
+				parts[1].parse_float().get() * 1000000000.0,
 				parts[2].parse_float().get() * 1000000000.0,
-				"bash\n" + command.join("\n") + "\n"
+				"bash\n" + command.join("\n") + "\n",
 			)
 		)
 

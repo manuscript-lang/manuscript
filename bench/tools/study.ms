@@ -70,17 +70,19 @@ export fn distribution(values: List[Float]) JsonValue:
 		"min_ns",
 		jfloat(
 			values.fold(
-				values[0], fn(a: Float, v: Float) Float: if v < a: v else: a
+				values[0],
+				fn(a: Float, v: Float) Float: if v < a: v else: a
 			)
-		)
+		),
 	)
 	d.add(
 		"max_ns",
 		jfloat(
 			values.fold(
-				values[0], fn(a: Float, v: Float) Float: if v > a: v else: a
+				values[0],
+				fn(a: Float, v: Float) Float: if v > a: v else: a
 			)
-		)
+		),
 	)
 	return jobject(d)
 

@@ -192,7 +192,7 @@ fn chunk_merge(
 	base: List[String],
 	ours: List[String],
 	theirs: List[String],
-	branch: String
+	branch: String,
 ) Merged:
 	bc := content_of(base)
 	oc := content_of(ours)
@@ -208,7 +208,7 @@ fn merge_lines(
 	base: List[String],
 	ours: List[String],
 	theirs: List[String],
-	branch: String
+	branch: String,
 ) Merged:
 	bo := match_map(base, ours)
 	bt := match_map(base, theirs)
@@ -223,7 +223,10 @@ fn merge_lines(
 			so := bo[s]
 			st := bt[s]
 			mid := chunk_merge(
-				sub(base, pb, s), sub(ours, po, so), sub(theirs, pt, st), branch
+				sub(base, pb, s),
+				sub(ours, po, so),
+				sub(theirs, pt, st),
+				branch,
 			)
 			text = text.concat(mid.text)
 			if not mid.clean:
@@ -234,8 +237,10 @@ fn merge_lines(
 			pt = st + 1
 
 	last := chunk_merge(
-		sub(base, pb, base.length()), sub(ours, po, ours.length()),
-		sub(theirs, pt, theirs.length()), branch
+		sub(base, pb, base.length()),
+		sub(ours, po, ours.length()),
+		sub(theirs, pt, theirs.length()),
+		branch,
 	)
 	text = text.concat(last.text)
 	if not last.clean:
@@ -323,7 +328,7 @@ impl Repo:
 	var fn make_commit(
 		tree: Map[String, String],
 		parents: List[Int],
-		message: String
+		message: String,
 	) Int:
 		var pids = List[String]()
 		for p in parents:
@@ -335,7 +340,10 @@ impl Repo:
 
 		self.clist.append(
 			Commit(
-				id: id.clone(), parents: parents, message: message, tree: tree
+				id: id.clone(),
+				parents: parents,
+				message: message,
+				tree: tree,
 			)
 		)
 
@@ -1091,11 +1099,19 @@ impl Repo:
 export fn main() Int:
 	lines := read_lines(stdin()).get()
 	var repo = Repo(
-		files: Map[String, String](), index: Map[String, String](),
-		clist: List[Commit](), ids: Map[String, Int](), branches: Map[String, Int](),
-		tags: Map[String, Int](), head_branch: "main", head_seq: 0,
-		conflicts: Set[String](), kinds: Map[String, String](), merging: false,
-		merge_other: 0, merge_branch: ""
+		files: Map[String, String](),
+		index: Map[String, String](),
+		clist: List[Commit](),
+		ids: Map[String, Int](),
+		branches: Map[String, Int](),
+		tags: Map[String, Int](),
+		head_branch: "main",
+		head_seq: 0,
+		conflicts: Set[String](),
+		kinds: Map[String, String](),
+		merging: false,
+		merge_other: 0,
+		merge_branch: "",
 	)
 	repo.branches.add("main", 0)
 

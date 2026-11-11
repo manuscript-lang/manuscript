@@ -23,7 +23,7 @@ impl Commands for Capture:
 	fn spawn(
 		program: String,
 		arguments: List[String],
-		options: SpawnOptions
+		options: SpawnOptions,
 	) Subprocess!:
 		return error(Error("process: service unavailable", kind: "EAGAIN"))
 
@@ -37,14 +37,14 @@ impl Commands for Override:
 	fn run(
 		program: String,
 		arguments: List[String],
-		options: RunOptions = RunOptions(input: self.input.clone())
+		options: RunOptions = RunOptions(input: self.input.clone()),
 	) CommandOutput!:
 		return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
 
 	fn spawn(
 		program: String,
 		arguments: List[String],
-		options: SpawnOptions
+		options: SpawnOptions,
 	) Subprocess!:
 		return error(Error("process: service unavailable", kind: "EAGAIN"))
 
@@ -59,7 +59,8 @@ test "concrete implementation defaults and interface defaults stay distinct":
 
 	explicit := "explicit".to_bytes()
 	try expect_equal(
-		(try viewed("fake", [], RunOptions(input: explicit.clone()))).stdout, explicit
+		(try viewed("fake", [], RunOptions(input: explicit.clone()))).stdout,
+		explicit,
 	)
 
 test "CSV defaults are fresh and explicit options retain their meaning":
@@ -152,7 +153,7 @@ test "Commands defaults cross concrete bound view and generic boundaries":
 		(
 			try forwarded("fake", [], RunOptions(input: input.clone()))
 		).stdout.get(0),
-		42
+		42,
 	)
 
 	invalid: CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))

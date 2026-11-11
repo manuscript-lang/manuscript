@@ -31,7 +31,7 @@ test "reused inference preserves evaluation and argument conversions":
 	events := Events([])
 	selected := first(
 		right: identity(identity(record(events, value: 2))),
-		left: identity(identity(record(events, value: 1)))
+		left: identity(identity(record(events, value: 1))),
 	)
 	try expect_equal(selected, 1)
 	try expect_equal(events.values, [2, 1])

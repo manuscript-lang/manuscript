@@ -199,8 +199,9 @@ fn run(var s: Store, t: List[String]) String:
 
 export fn main() Int:
 	var s = Store(
-		stock: Map[String, Int](), price: Map[String, Int](),
-		orders: Map[String, Order]()
+		stock: Map[String, Int](),
+		price: Map[String, Int](),
+		orders: Map[String, Order](),
 	)
 	var out = stdout()
 

@@ -38,8 +38,9 @@ export fn build_oracle(id: String) String:
 	for source in sources:
 		name := source.split("/").last().get("")
 		copy(
-			"{dir(id)}/{source}", "{tmp}/{name.slice(0, name.length() - 4).get("")}",
-			CopyOptions(replace: true)
+			"{dir(id)}/{source}",
+			"{tmp}/{name.slice(0, name.length() - 4).get("")}",
+			CopyOptions(replace: true),
 		).get()
 
 	write_file("{tmp}/go.mod", "module oracle\n\ngo 1.21\n", replace: true).wait().get()

@@ -9,7 +9,8 @@ import (
 // and a seed.
 test "sorting keeps every element":
 	try check(
-		"same elements", lists(ints(-50, 50)),
+		"same elements",
+		lists(ints(-50, 50)),
 		fn xs: expect_equal(insertion_sort(xs).length(), xs.length())
 	)
 
@@ -18,13 +19,15 @@ test "sorting is idempotent":
 		"idempotent",
 		lists(ints(-50, 50)),
 		fn xs: expect_equal(
-			insertion_sort(insertion_sort(xs)), insertion_sort(xs)
+			insertion_sort(insertion_sort(xs)),
+			insertion_sort(xs),
 		)
 	)
 
 test "sorted output is ordered":
 	try check(
-		"ordered", lists(ints(-50, 50)),
+		"ordered",
+		lists(ints(-50, 50)),
 		fn xs: expect_true(is_ordered(insertion_sort(xs)))
 	)
 

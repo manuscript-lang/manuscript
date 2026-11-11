@@ -159,13 +159,13 @@ export fn gen_c05() Unit:
 				"deep-parens",
 				"(".repeat(200).get("") + "7" + ")".repeat(200).get(
 					""
-				) + "\n"
+				) + "\n",
 			),
 			mk(
 				"big-numbers",
-				"9999999999 * 99999999\n9223372036854775807\n-9223372036854775807 - 1\n"
+				"9999999999 * 99999999\n9223372036854775807\n-9223372036854775807 - 1\n",
 			),
-			mk("no-trailing-newline", "1+1")
+			mk("no-trailing-newline", "1+1"),
 		]
 	)
 	write_cases("c05-calculator", examples, hidden)

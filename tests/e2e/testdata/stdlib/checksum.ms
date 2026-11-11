@@ -30,7 +30,7 @@ test "IEEE CRC32 known text vectors retain unsigned results":
 		crc32(
 			"The quick brown fox jumps over the lazy dog".to_bytes()
 		).to_int(),
-		1095738169
+		1095738169,
 	)
 
 test "IEEE CRC32 covers every binary byte and sliced inputs":

@@ -257,13 +257,16 @@ fn help_at(
 	words: List[String],
 	from: Int,
 	names: List[String],
-	inherited: List[Flag]
+	inherited: List[Flag],
 ) String!:
 	if from >= words.length(): return ok(render_help(node, names, inherited))
 	if next := node.child(words[from]):
 		return help_at(
-			next, words, from + 1, names.concat([words[from].clone()]),
-			inherited.concat(persistent_flags(node.flags))
+			next,
+			words,
+			from + 1,
+			names.concat([words[from].clone()]),
+			inherited.concat(persistent_flags(node.flags)),
 		)
 
 	return error(cli_unknown_command(words[from].clone(), names.join(" ")))
@@ -295,7 +298,10 @@ export fn command[T: Data](
 	args: List[Arg] = []
 ) Command:
 	return Command(
-		name: name, about: about, flags: flags, args: args,
+		name: name,
+		about: about,
+		flags: flags,
+		args: args,
 		exec: fn matches: run(try decode[T](matches))
 	)
 
@@ -323,7 +329,7 @@ fn literal(kind: FlagKind, text: String) String:
 fn collect_fields(
 	values: Map[String, List[String]],
 	flags: List[Flag],
-	args: List[Arg]
+	args: List[Arg],
 ) Map[String, String]:
 	var fields = Map[String, String]()
 
@@ -484,7 +490,8 @@ fn find_flag(flags: List[Flag], key: String, long: Bool) Flag?:
 
 // Stores one flag occurrence after checking it against the kind.
 fn store(var values: Map[String, List[String]], flag: Flag, value: String) Result[
-	Unit, Error
+	Unit,
+	Error,
 ]:
 	if not fits(flag, value):
 		return error(cli_invalid_value(flag.name.clone(), value, expected_text(flag)))
@@ -501,7 +508,12 @@ fn store(var values: Map[String, List[String]], flag: Flag, value: String) Resul
 // Resolves subcommands, flags and positionals from `argv`.
 fn walk(root: Command, argv: List[String]) Parsed!:
 	return walk_from(
-		root, argv, 0, [root.name.clone()], [], Map[String, List[String]]()
+		root,
+		argv,
+		0,
+		[root.name.clone()],
+		[],
+		Map[String, List[String]](),
 	)
 
 // Resolves `argv` from `start` on at `node`, reached by `path` with the persistent
@@ -513,7 +525,7 @@ fn walk_from(
 	start: Int,
 	path: List[String],
 	inherited: List[Flag],
-	given: Map[String, List[String]]
+	given: Map[String, List[String]],
 ) Parsed!:
 	var values = given
 	var words: List[String] = []
@@ -563,7 +575,7 @@ fn walk_from(
 						chosen,
 						if cut.is_some(): body.drop(
 							cut.get() + 1
-						) else: "true"
+						) else: "true",
 					)
 
 				continue
@@ -581,8 +593,12 @@ fn walk_from(
 		if words.is_empty():
 			if next := node.child(token):
 				return walk_from(
-					next, argv, index, path.concat([token.clone()]),
-					inherited.concat(persistent_flags(node.flags)), values
+					next,
+					argv,
+					index,
+					path.concat([token.clone()]),
+					inherited.concat(persistent_flags(node.flags)),
+					values,
 				)
 			if token == "help" and not node.children.is_empty():
 				return ok(Parsed.Help(try help_at(node, argv, index, path, inherited)))
@@ -604,7 +620,7 @@ fn bind(
 	node: Command,
 	words: List[String],
 	var values: Map[String, List[String]],
-	path: List[String]
+	path: List[String],
 ) Unit!:
 	var next = 0
 
@@ -670,14 +686,16 @@ fn render_help(node: Command, path: List[String], inherited: List[Flag]) String:
 	if not node.children.is_empty():
 		var commands = Table(columns: [Align.Left, Align.Left], indent: 2)
 		for child in node.children: help_row(
-			var commands, [child.name.clone(), child.about.clone()]
+			var commands,
+			[child.name.clone(), child.about.clone()],
 		)
 		out += "\nCommands:\n{commands.render()}\n"
 
 	if not node.args.is_empty():
 		var arguments = Table(columns: [Align.Left, Align.Left], indent: 2)
 		for arg in node.args: help_row(
-			var arguments, [arg.name.clone(), arg.help.clone()]
+			var arguments,
+			[arg.name.clone(), arg.help.clone()],
 		)
 		out += "\nArguments:\n{arguments.render()}\n"
 

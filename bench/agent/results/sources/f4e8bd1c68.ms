@@ -137,7 +137,7 @@ fn search(
 	hours: List[Bool],
 	doms: List[Bool],
 	months: List[Bool],
-	dows: List[Bool]
+	dows: List[Bool],
 ) List[String]:
 	var res = List[String]()
 	var y = start[0]

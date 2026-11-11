@@ -15,7 +15,8 @@ test "inline flow and scalar document content stays supported":
 	for body in ["word", "\"word\"", "'word'", "&name word"]:
 		try expect_equal((try parse("--- {body}\n")), YamlValue.StringValue("word"))
 	try expect_equal(
-		(try parse("--- \"value: word\"\n")), YamlValue.StringValue("value: word")
+		(try parse("--- \"value: word\"\n")),
+		YamlValue.StringValue("value: word"),
 	)
 	try expect_equal((try parse("--- \"- word\"\n")), YamlValue.StringValue("- word"))
 	try expect_equal((try parse("--- \{value: word\}\n")), (try parse("value: word\n")))
@@ -24,13 +25,15 @@ test "inline flow and scalar document content stays supported":
 
 test "anchored inline flow collection stays supported":
 	try expect_equal(
-		(try parse("--- &name \{value: word\}\n")), (try parse("value: word\n"))
+		(try parse("--- &name \{value: word\}\n")),
+		(try parse("value: word\n")),
 	)
 
 test "block collections following the physical marker line stay supported":
 	for prefix in ["---\n", "--- # comment\n", "--- &name\n", "%YAML 1.2\n--- &name\n"]:
 		try expect_equal(
-			(try parse("{prefix}value: word\n")), (try parse("value: word\n"))
+			(try parse("{prefix}value: word\n")),
+			(try parse("value: word\n")),
 		)
 		try expect_equal((try parse("{prefix}- word\n")), (try parse("- word\n")))
 
@@ -50,7 +53,11 @@ test "document markers cannot continue flow collections or quoted scalars":
 		for suffix in ["", " ", " # boundary", "\t# boundary"]:
 			for prefix in ["[", "[word,", "\{key:", "\"word", "'word"]:
 				closing := if prefix == "'word": "'" else if prefix == "\"word": "\"" else if prefix == "\{key:": "\}" else: "]"
-				cause := parse("{prefix}\n{marker}{suffix}\n{closing}") | try expect_error
+				cause := (
+					parse(
+						"{prefix}\n{marker}{suffix}\n{closing}"
+					) | try expect_error
+				)
 				try expect_equal(cause.kind, "EBADMSG")
 				try expect_equal(cause.details["line"], "2")
 				try expect_equal(cause.details["column"], "1")
@@ -85,21 +92,21 @@ test "indented markers and marker prefixes remain scalar content":
 	for marker in ["---", "..."]:
 		try expect_equal(
 			(try parse("[\n {marker}\n]")),
-			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())])
+			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())]),
 		)
 		for quote in ["'", "\""]:
 			try expect_equal(
 				(try parse("{quote}word\n {marker}\n end{quote}")),
-				YamlValue.StringValue("word {marker} end")
+				YamlValue.StringValue("word {marker} end"),
 			)
 		for suffix in ["word", "#literal", "\u{a0}word"]:
 			try expect_equal(
 				(try parse("[\n{marker}{suffix}\n]")),
 				YamlValue.ArrayValue(
 					[YamlValue.StringValue("{marker}{suffix}")]
-				)
+				),
 			)
 		try expect_equal(
 			(try parse("[\n{marker}]")),
-			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())])
+			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())]),
 		)

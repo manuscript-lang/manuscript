@@ -13,11 +13,11 @@ fn present(var input: ReadStream[String]) Bool!:
 
 test "presence keeps empty CRLF lines and following text":
 	var input = lines(from_bytes("\r\nλ\nlast".to_bytes(), 2))
-	present(var input) | try expect_ok | try expect_true
+	(present(var input) | try expect_ok | try expect_true)
 	(try input.next()) | try expect_equal("λ")
-	present(var input) | try expect_ok | try expect_true
-	present(var input) | try expect_ok | try expect_false
-	present(var input) | try expect_ok | try expect_false
+	(present(var input) | try expect_ok | try expect_true)
+	(present(var input) | try expect_ok | try expect_false)
+	(present(var input) | try expect_ok | try expect_false)
 
 test "presence retains limits":
 	var input = lines(from_bytes("abc\nx\n".to_bytes(), 2), 2)
@@ -29,7 +29,7 @@ test "presence and text reads share buffered consumption":
 	_written := write_file(path, "\nλ\r\nlast").wait() | try expect_ok
 	handle := open(path, OpenMode.Read, OpenOptions(permissions: 384)) | try expect_ok
 	var input = lines(try handle.reader())
-	present(var input) | try expect_ok | try expect_true
+	(present(var input) | try expect_ok | try expect_true)
 	(try input.next()) | try expect_equal("λ")
-	present(var input) | try expect_ok | try expect_true
-	present(var input) | try expect_ok | try expect_false
+	(present(var input) | try expect_ok | try expect_true)
+	(present(var input) | try expect_ok | try expect_false)

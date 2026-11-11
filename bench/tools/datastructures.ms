@@ -20,7 +20,9 @@ fn run(work: String, n: Int) Result[String, Error]:
 	here := "bench/perf/datastructures"
 	for dir in ["go", "ms"]:
 		try copy(
-			"{here}/{dir}", "{work}/{dir}", CopyOptions(recursive: true, replace: true)
+			"{here}/{dir}",
+			"{work}/{dir}",
+			CopyOptions(recursive: true, replace: true),
 		)
 	try build_ms("{work}/ms", "{work}/ms/bench")
 	try build_go("{work}/go", "{work}/go/bench")
