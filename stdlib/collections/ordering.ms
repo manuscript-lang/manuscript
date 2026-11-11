@@ -19,11 +19,6 @@ fn clamped[T: Comparable](value: T, low: T, high: T) T:
 
 	return value
 
-interface Ordered:
-	fn min(other: Self) Self
-	fn max(other: Self) Self
-	fn clamp(low: Self, high: Self) Self
-
 // Returns the lesser of this value and `other`, or this value when they compare
 // equal. Example: `(3).min(2)` is `2`.
 fn Int.min(other: Int) Int:
