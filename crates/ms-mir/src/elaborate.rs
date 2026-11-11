@@ -842,10 +842,26 @@ impl Em<'_> {
         match s {
             St::Live => {
                 self.close_infallible(at, v)?;
-                self.push(at, Op::Drop, &[v], Imm::None, None);
+                if self.f.ty(v) != Ty::PTR {
+                    self.push(at, Op::Drop, &[v], Imm::None, None);
+                    return Ok(at);
+                }
+                // A memory slot owner holds its value in memory, and its close function (an
+                // in-slot cleanup entry, `slot_close`) takes the address: what the close leaves
+                // in the slot is taken out and dropped.
+                let close = self.closer(v)?;
+                if let Some(ty) = self.m.funcs[close.index()].slot_close {
+                    let left = self
+                        .push(at, Op::Take, &[v], Imm::Ty(ty), Some(ty))
+                        .expect("taken");
+                    self.push(at, Op::Drop, &[left], Imm::None, None);
+                }
                 Ok(at)
             }
             St::Part(..) => Err("a partially moved closing owner".into()),
+            St::Moved | St::Maybe if self.f.ty(v) == Ty::PTR => {
+                Err("a memory slot owner that is moved out of".into())
+            }
             St::Moved => {
                 let flag = flag.ok_or("a moved owner without a drop flag")?;
                 self.push(at, Op::DropIf, &[flag, v], Imm::None, None);

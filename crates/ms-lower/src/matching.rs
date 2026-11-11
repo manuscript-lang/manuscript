@@ -101,6 +101,7 @@ impl FnLower<'_> {
             let cty = ms_check::api::types::sub(&self.hir.ty(scrutinee), &self.subst);
             if let Some(kind) = self.part_closer(&cty)? {
                 self.hidden_closers.insert(uid, kind);
+                self.note_closer();
             }
             let parts = matches!(kind, TyKind::Alt(_) | TyKind::Opt(_))
                 && arms

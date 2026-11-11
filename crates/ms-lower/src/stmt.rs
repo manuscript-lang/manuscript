@@ -1700,6 +1700,7 @@ impl<'a> FnLower<'a> {
             // reached, after the one in hand.
             let uid = usize::MAX - self.rest_closers.len() - 1_000_000;
             self.rest_closers.insert(uid, (kind.clone(), list, idx));
+            self.note_closer();
             self.scopes.last_mut().expect("scope").push(uid);
         }
         // A list the loop owns hands each element to the loop variable, which drops (and

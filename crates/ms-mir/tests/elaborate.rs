@@ -430,3 +430,34 @@ fn an_infallible_owner_is_closed_shielded_only_where_it_is_still_held() {
     let (_, out, _) = elaborate_and_run_text(&infallible(false));
     assert_eq!(out, "~\n", "a moved owner is not closed");
 }
+
+/// A resource that lives in memory is owned by its slot's address: the close function takes the
+/// address, and the pass closes it shielded at the scope end.
+#[test]
+fn a_memory_slot_owner_is_closed_in_place_at_the_scope_end() {
+    let (_, out, text) = elaborate_and_run_text(
+        r#"fn @shut(%p: ptr) -> unit {
+b0:
+  %r: list<int> = load list<int> %p
+  %z: int = iconst 0
+  %id: int = list.get %r, %z
+  %u: unit = call.rt @msrt_print_int (%id)
+  ret %u
+}
+fn @main() -> int {
+b0:
+  scope.begin 1 0
+  %n: int = iconst 7
+  %a: list<int> = call @mk (%n)
+  %s: ptr = slot list<int>
+  put %s, %a
+  scope.own 1 4 %s
+  scope.end 1 0
+  %r: int = iconst 0
+  ret %r
+}
+"#,
+    );
+    assert_eq!(out, "~\n7\n", "{text}");
+    assert!(text.contains("msrt_shield_enter"), "{text}");
+}
