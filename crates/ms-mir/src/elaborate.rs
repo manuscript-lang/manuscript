@@ -229,6 +229,16 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
         st.retain(|(v, _)| cx.tags.get(v).is_none_or(|t| t.0 != scope));
         return Ok(());
     }
+    // Lowering releases what an `alt.take` left behind itself: that finishes the owner.
+    if inst.op == Op::AltRelease
+        && let Some(St::Part(..)) = st.get(inst.args[0])
+    {
+        match cx.tags.contains_key(&inst.args[0]) {
+            true => st.set(inst.args[0], St::Moved),
+            false => st.remove(inst.args[0]),
+        }
+        return Ok(());
+    }
     consume_args(m, f, cx, st, &inst.args, &arg_modes(m, inst))?;
     if let (Op::AltTake, Imm::AltField(a, c, i)) = (inst.op, inst.imm)
         && let Some(cur) = st.get(inst.args[0])
