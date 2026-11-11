@@ -1,6 +1,8 @@
-import Source, Sink, ReadStream, WriteStream from "@std/io/io.ms"
-import append_file, read_file, temporary from "@std/os/fs.ms"
-import expect_equal, expect_ok from "@std/test/test.ms"
+import (
+	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
+	append_file, read_file, temporary from "@std/os/fs.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
+)
 
 type Counted:
 	log: String
@@ -22,26 +24,28 @@ fn closes(log: String) String:
 	return ""
 
 test "read stream closes through the one close":
-	dir := temporary("shape-") | try expect_ok
+	dir := temporary("shape-") | expect_ok?
 	log := "{dir.path()}/r.log"
 	_ := append_file(log, "").wait()
 	var by_hand = ReadStream[Int](Counted(log.clone()))
-	try by_hand.close()
-	try expect_equal(closes(log), "x")
+	by_hand.close()?
+	expect_equal(closes(log), "x")?
 
 test "write stream closes through the one close":
-	dir := temporary("shape-") | try expect_ok
+	dir := temporary("shape-") | expect_ok?
 	log := "{dir.path()}/w.log"
 	_ := append_file(log, "").wait()
 	var out = WriteStream[Int](Counted(log.clone()))
-	try out.close()
-	try expect_equal(closes(log), "x")
+	out.close()?
+	expect_equal(closes(log), "x")?
 
 test "a scope closes the value once":
-	dir := temporary("shape-") | try expect_ok
+	dir := temporary("shape-") | expect_ok?
 	log := "{dir.path()}/s.log"
 	_ := append_file(log, "").wait()
+
 	if true:
 		c := Counted(log.clone())
-		try expect_equal(c.log, log)
-	try expect_equal(closes(log), "x")
+		expect_equal(c.log, log)?
+
+	expect_equal(closes(log), "x")?

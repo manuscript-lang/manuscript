@@ -36,7 +36,7 @@ fn main() Unit:
 
 ## Explicit implementations
 
-Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see [explicit implementations](#explicit-implementations). The relationship is always declared, never inferred from matching names.
+Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see [explicit implementations](#explicit-implementations). An interface is also satisfied [by shape](#satisfying-an-interface-by-shape): a type's own methods that match every operation exactly need no `impl Contract for` block.
 
 `impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. A method may declare [type parameters of its own](#generic-operations).
 
@@ -52,6 +52,37 @@ impl Increment for Offset:
     fn apply(amount: Int) Int:
         return amount + self.delta
 ```
+
+## Satisfying an interface by shape
+
+A type's own methods satisfy an interface when each operation has one own method with the same name, parameter labels, `var`-ness, parameter types and result type; the operation declares no type parameters of its own. An own method is declared `impl Type:` or as a receiver method, `fn Type.name(...)` (`fn var Type.name(...)` when it changes `self`; a generic type repeats its parameters, `fn Box[T].get() T`). A type has one method per name, so one `close` serves every interface that declares it.
+
+<!-- manuscript-example: {"mode":"run","stdout":"3\n"} -->
+```manuscript
+interface Increment:
+    fn apply(value: Int) Int
+
+type Offset:
+    delta: Int
+
+fn Offset.apply(value: Int) Int:
+    return value + self.delta
+
+fn adjusted(value: Int, operation: Increment) Int:
+    return operation.apply(value)
+
+fn main() Unit:
+    print(adjusted(1, Offset(2)))
+```
+
+```text
+3
+```
+
+- A written `impl Contract for Type` still wins for that interface. A type that has both an own method and an `impl` operation of one name is [ambiguous](#selecting-an-operation) on a call.
+- A mismatch is not an error until the type is used as the interface; the diagnostic lists the interface's operations.
+- A type with `fn var close() Unit!` satisfies `Closeable` and is closed at scope end, so a type that is also a `Source` and a `Sink` closes once.
+- Properties (`Equal`, `Hashable`, `Clonable`, `Data`) and `Comparable` keep their own rules; a shape does not satisfy them.
 
 ## Coherence and visibility
 
@@ -148,7 +179,7 @@ A call infers the operation's parameters from its arguments, or takes them expli
 
 ## Interface conversion
 
-A value whose type has a declared implementation of an interface converts implicitly wherever that interface is expected: arguments, `:=` with a type annotation, fields, collection entries, and returns. The relationship is still declared (`impl Contract for Type`); matching method names never convert. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
+A value whose type has a declared implementation of an interface converts implicitly wherever that interface is expected: arguments, `:=` with a type annotation, fields, collection entries, and returns. The relationship is declared (`impl Contract for Type`) or [by shape](#satisfying-an-interface-by-shape): a type's own methods match every operation. A method name alone never converts. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
 
 The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (field, collection entry, `:=`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 

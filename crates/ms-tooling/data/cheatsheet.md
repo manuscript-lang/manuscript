@@ -41,7 +41,7 @@ fn main() Unit:
 - Control: `if`/`else if`/`else`, `while c:`, `for i in 0..n:` (excludes `n`; steps `range_by`, `@std/collections/collections.ms`), `break`, `continue`. `if` is a statement; the expression is `if c: a else: b`.
 - Functions: `fn f(a: Int, b: Int = 1) Int:` (no `->`; `Unit` if none), called `f(1, b: 2)`; generics `fn f[T](x: T) T`; closures `fn x: x + 1`, typed `fn(x: Int) Int: x + 1`; types `fn(Int) Int`.
 - Collections: `[1, 2]`, `xs[i] = v`, `List[T](reserve: n)`, `xs.slice(a, b)` is a `Result`; `Map[K, V]()` (`m[k] = v`, `m.add(k, v)`, `m.get(k)` is optional), `Set[T]()` mutate in place; `for e in m.entries():`, `if var n = m.get(k): n += 1`.
-- Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)` or `T(1)`; `enum Choice:` variants `A`, `B(x: Int)`; no `case` keyword. Methods in `impl T:` (`var fn` mutates `self`); `interface I:` contracts, `impl I for T:` conversions.
+- Records: `type T:` fields (`tag: String = "x"`), `T(a: 1)`, `T(1)`; `enum Choice:` variants `A`, `B(x: Int)`; no `case`. Methods `fn T.name()` (`fn var` mutates `self`); `interface I:` met by matching methods or `impl I for T:`.
 - `T?` (Optional): values convert (no `some`); `none` is absent; unwrap with `if x := v:` or `.get(d)`; `a?.b`; `?` rejects one; `v.map(f)` with a Result `f` drops the error.
 - `match v:` only on your own types: `Case(x):`, `_:`, exhaustive. Never match `Result`/`Optional` or nest `match`.
 - Errors: `T!E` (`Result[T, E]`) is `ok(v)` / `error(e)`; E needs no interface. Bare `T!` selects `Error`, whose implementations have `.message()`. `r?` gives the value or returns a compatible error; `if x := r:` handles success.
@@ -55,7 +55,7 @@ fn main() Unit:
 - `export opaque type T:` hides fields; `export opaque enum T:` hides cases outside the file.
 - `var` parameter: `fn add(var xs: List[Int])`, called `add(var xs)`. A closure changing `xs` can't be passed to a method of `xs`.
 - Lints fail only on errors (`--deny-warnings`: warnings too). Unread bindings fail (prefix `_`).
-- `Closeable` (files, `impl Closeable for T:` with `var fn close() Unit!`) closes at scope end unless moved; a failed close is returned or faults.
+- `Closeable` (files; `impl Closeable for T:` or `fn var T.close() Unit!`) closes at scope end unless moved; a failed close is returned or faults.
 - Waiting: `read`, `fetch`, `sleep` return `Promise[T]`; `p.wait()` gives `T!`. Limits: `promise(fn: f(), options: PromiseOptions(timeout: d, cancel: stop.signal()))` or `p.with(options: ...)`; `stop = cancel_switch()`; `stop.cancel()`, `p.cancel()` act at the next wait. `wait_all(ps)`, `wait_first(ps)`. Share state via one owner and `pipe[T](cap)`.
 - Streams: `for x in s:` binds `T`, a failed read leaves with its error; `w.write(v)` waits when full; steps `input | lines | map(f) | collect(none)`. `serve(":8080", h)` uses every core; `server.wait()`.
 - Not Python: no exceptions, classes, `async`, `null`, `pass`, `f""`; `fn` not `def`/`lambda`; `else if`; `none`.

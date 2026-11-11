@@ -1009,8 +1009,16 @@ impl Checker {
             && sym.native == Native::Source
             && matches!(actual.kind, Kind::Record | Kind::Alternative)
         {
+            let operations: Vec<String> = expected.def.as_ref().map_or_else(Vec::new, |d| {
+                d.operations
+                    .borrow()
+                    .iter()
+                    .map(|o| self.syms.str(o.name).to_string())
+                    .collect()
+            });
             return format!(
-                "{message}; no applicable 'impl {expected_t} for {actual_t}' is visible; declare an implementation before passing it as {expected_t}",
+                "{message}; {actual_t} has no matching methods for {expected_t}, which needs {}; declare each as a method of {actual_t} with the interface's exact signature (labels, `var`, types)",
+                list(&operations, 12),
                 expected_t = expected.display(self.syms),
                 actual_t = actual.display(self.syms)
             );

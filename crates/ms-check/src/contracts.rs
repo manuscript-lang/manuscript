@@ -872,7 +872,8 @@ impl Checker {
     /// signature, labels and `var`-ness. A type satisfies an interface by having its operations;
     /// no `impl` names the relationship.
     fn shape_implements(&self, receiver: &Ty, contract: &Ty) -> bool {
-        if !matches!(receiver.kind, Kind::Record | Kind::Alternative) || contract.kind != Kind::Contract
+        if !matches!(receiver.kind, Kind::Record | Kind::Alternative)
+            || contract.kind != Kind::Contract
         {
             return false;
         }
@@ -888,7 +889,10 @@ impl Checker {
         let declared = |f: &Option<FuncRef>| {
             let f = f.as_ref()?;
             let m = f.decl.methods().get(f.index?)?;
-            Some((m.mutating, m.func.params.iter().map(|p| p.name).collect::<Vec<_>>()))
+            Some((
+                m.mutating,
+                m.func.params.iter().map(|p| p.name).collect::<Vec<_>>(),
+            ))
         };
         ops.iter().all(|op| {
             let key = format!("{}/{}", self.syms.str(contract.id), self.syms.str(op.name));
