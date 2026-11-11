@@ -9,7 +9,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export ListBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, RangeOptions, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
+        "message": "module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
         "position": {
           "file": "golden-1288.ms",
           "line": 3,
@@ -70,7 +70,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1288.ms:3:8: resolution: module does not export ListBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, RangeOptions, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 3 | import ListBuilder, List from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^^^^\n<DIR>/golden-1288.ms:3:21: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 3 | import ListBuilder, List from \"@std/collections/collections.ms\"\n   |                     ^^^^\n<DIR>/golden-1288.ms:4:17: resolution: unknown binding ListBuilder; declare it with 'ListBuilder := ...' before use, define 'fn ListBuilder(...) T:', or import it from a module\n   |\n 4 | fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n   |                 ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1288.ms:3:8: resolution: module does not export ListBuilder; @std/collections/collections.ms exports: List, ListEntry, Map, MapEntry, Pair, Partition, RangeOptions, SearchResult, Set, filled, flatten, map_from_entries, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 3 | import ListBuilder, List from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^^^^\n<DIR>/golden-1288.ms:3:21: resolution: redundant prelude import List; remove List from this import and use its prelude declaration directly\n   |\n 3 | import ListBuilder, List from \"@std/collections/collections.ms\"\n   |                     ^^^^\n<DIR>/golden-1288.ms:4:17: resolution: unknown binding ListBuilder; declare it with 'ListBuilder := ...' before use, define 'fn ListBuilder(...) T:', or import it from a module\n   |\n 4 | fn count() Int: ListBuilder[Int]().freeze().length()+List[Int]().length()\n   |                 ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

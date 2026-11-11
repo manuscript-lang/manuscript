@@ -804,113 +804,6 @@ export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K,
 export fn flatten[T: Clonable](lists: List[List[T]]) List[T]:
 	return msrt_list_flatten(lists)
 
-// Operations that copy elements. A copy of a resource would be closed twice, so the
-// elements must be Clonable.
-export interface ListCopies[T: Clonable]:
-	// Returns a deep copy with independent list and nested value storage.
-	fn clone() List[T]
-	// Returns a new owned List containing copies of the elements in [start, end).
-	// Negative bounds are relative to the end; bounds outside 0 <= start <= end <=
-	// length() return an Error of kind ERANGE.
-	fn slice(start: Int, end: Int) List[T]!
-	// Copies the first min(count, length) elements into fresh owned List storage.
-	// Leaves the receiver unchanged; negative count is a programming fault.
-	fn take(count: Int) List[T]
-	// Copies the remainder after min(count, length) into fresh owned List storage.
-	// Leaves the receiver unchanged; negative count is a programming fault.
-	fn drop(count: Int) List[T]
-	// Splits the list into consecutive copies of `size` elements; the last chunk may be
-	// shorter, and an empty list gives an empty list. A `size` of zero or less is a
-	// programming fault.
-	fn chunks(size: Int) List[List[T]]
-	// Returns each run of `size` consecutive elements as an overlapping copy, in order;
-	// a list shorter than `size` gives an empty list. A `size` of zero or less is a
-	// programming fault. Windows are copies: `slice` and `take` do not borrow today.
-	fn windows(size: Int) List[List[T]]
-	// Calls `predicate` once per element in order and splits the elements into those
-	// that matched and the rest, each keeping the original order.
-	fn partition(predicate: fn(T) Bool) Partition[T]
-	// Returns an independent reversed copy, including nested values.
-	fn reversed() List[T]
-	/*
-    Returns a new list ordered by `compare`; the receiver is unchanged. The sort is stable: equal elements keep their order.
-    A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
-    Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
-    */
-	fn sorted(compare: fn(T, T) Int) List[T]
-	// Keeps matching values in their original order.
-	fn filter(predicate: fn(T) Bool) List[T]
-	// Returns the first element for which `predicate` is True, or none; later elements
-	// are not tested after a match.
-	fn find(predicate: fn(T) Bool) T?
-	// Searches from the end and returns the last element for which `predicate` is True,
-	// or none.
-	fn find_last(predicate: fn(T) Bool) T?
-	// Sets elements in [start, end) to `value` in place. Bounds must satisfy 0 <= start
-	// <= end <= length(); negative or larger bounds fault rather than counting from the
-	// end, and an empty range changes nothing.
-	var fn fill(value: T, start: Int, end: Int) Unit
-	// Copies the elements in [start, end) to begin at index `target`, in place. The
-	// list never grows: copying stops at the end of the list. Source bounds must
-	// satisfy 0 <= start <= end <= length() and a target must be within 0 through
-	// length(); otherwise the call faults.
-	var fn copy_within(target: Int, start: Int, end: Int) Unit
-	// Returns a new list of `ListEntry` records pairing each zero-based index with its
-	// element, in order.
-	fn entries() List[ListEntry[T]]
-	// Returns a new list holding this list's elements followed by `other`; neither
-	// operand is changed.
-	fn concat(other: List[T]) List[T]
-
-// Operations that copy elements. A copy of a resource would be closed twice, so the
-// elements must be Clonable. Copying operations with type parameters of their own,
-// apart so `ListCopies` can be a value type.
-export interface ListCopiesGeneric[T: Clonable]:
-	// Pairs elements by position into fresh `Pair` records, stopping at the shorter
-	// list; both lists are unchanged.
-	fn zip[U: Clonable](other: List[U]) List[Pair[T, U]]
-	// Calls `key` once per element in order and returns a map from each distinct key to
-	// the elements that produced it. Keys appear in first-seen order and each group
-	// keeps the original element order.
-	fn group_by[K: Hashable](key: fn(T) K) Map[K, List[T]]
-
-// Copying map operations; keys must be Hashable and values Clonable.
-export interface MapCopies[T: Hashable, U: Clonable]:
-	// Returns a deep copy with independent map and nested value storage.
-	fn clone() Map[T, U]
-	// Copies matching entries and their nested values in insertion order.
-	// Callbacks borrow the receiver; mutating it during traversal is rejected.
-	fn filter(predicate: fn(T, U) Bool) Map[T, U]
-	// Transforms keys in insertion order, copying values.
-	// Equal outputs keep the first key/position and the last input value.
-	fn map_keys[W: Hashable](transform: fn(T, U) W) Map[W, U]
-	// Returns the stored value or an eagerly evaluated fallback without inserting.
-	fn get_or(key: T, fallback: U) U
-	// Returns the first matching entry as an owned record containing copies of the key
-	// and value.
-	fn find(predicate: fn(T, U) Bool) MapEntry[T, U]?
-	// Searches from the end, stopping at the last matching entry.
-	// Returns a fresh entry record containing copies of its key and value.
-	fn find_last(predicate: fn(T, U) Bool) MapEntry[T, U]?
-	// Returns a new list of the values in insertion order.
-	fn values() List[U]
-	// Returns a new list of fresh `MapEntry` records in insertion order; keys and
-	// values keep their original references.
-	fn entries() List[MapEntry[T, U]]
-	// Copies every entry of `other` into this map in place. Existing keys keep their
-	// position and key but take the value from `other`; new keys append in `other`
-	// order. `other` is unchanged.
-	var fn merge(other: Map[T, U]) Unit
-
-// Ordering a list into a fresh copy; the elements must be Comparable and Clonable.
-export interface ListOrderCopy[T: Comparable & Clonable]:
-	/*
-    Returns a new list in ascending natural order; the receiver is unchanged. The sort is stable: equal elements keep their order.
-    Float orders NaN above every other value.
-    Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
-    */
-	fn sorted() List[T]
-
 // Reverses the elements of `items` in [start, end) in place; used by `rotate`.
 fn reverse_span[T](var items: List[T], start: Int, end: Int) Unit:
 	var low = start
@@ -920,11 +813,6 @@ fn reverse_span[T](var items: List[T], start: Int, end: Int) Unit:
 		items.swap(low, high)
 		low += 1
 		high -= 1
-
-// Map operations written in Manuscript. A Map[T, U] has them only when T can be cloned
-// for storage.
-interface MapUpdate[T: Hashable & Clonable, U: Clonable]:
-	var fn update(key: T, initial: U, change: fn(U) U) Unit
 
 import (
 	panic from "@std/core.ms",
