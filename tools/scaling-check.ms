@@ -41,7 +41,7 @@ fn generate(shape: String, n: Int) String:
 	else if shape == "many_impls":
 		for i in 0..n:
 			out.append(
-				"type T{i}:\n    v: Int\nimpl T{i}:\n    fn get() Int:\n        return self.v + {i}\n\n"
+				"type T{i}:\n\tv: Int\nfn T{i}.get() Int:\n\treturn self.v + {i}\n\n"
 			)
 		out.append("export fn main() Int:\n    return T0(1).get() % 256\n")
 	else if shape == "many_functions":
