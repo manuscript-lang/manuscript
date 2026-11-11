@@ -1497,43 +1497,6 @@ pub fn case_of(t: &Ty, name: Name) -> Option<Case> {
     })
 }
 
-/// Constructor inputs and omission permissions.
-pub fn constructor_signature(
-    syms: ms_syntax::Names,
-    session: &Rc<crate::stdlib::Session>,
-    t: &Ty,
-) -> Ty {
-    let mut params = fields(t);
-    if t.is(Builtin::Bytes) {
-        params = vec![Param::new(
-            n("values"),
-            session.standard("List", vec![primitive("UInt8")]),
-        )];
-    }
-    if t.is(Builtin::Set) && t.args.len() == 1 {
-        params = vec![Param::new(
-            n("values"),
-            session.standard("List", vec![t.args[0].clone()]),
-        )];
-    }
-    let mut defaults: HashSet<Name> = HashSet::new();
-    if let Some(sym) = t.symbol()
-        && let Some(decl) = &sym.decl
-    {
-        for f in decl.record_fields() {
-            if f.default.is_some() {
-                defaults.insert(f.name);
-            }
-        }
-    }
-    let defaults = if defaults.is_empty() {
-        None
-    } else {
-        Some(Rc::new(ParameterDefaults::new(defaults)))
-    };
-    function_with(syms, params, t.clone(), defaults)
-}
-
 /// A set of type-variable ids.
 pub type VarSet = HashSet<Name>;
 
@@ -1590,6 +1553,14 @@ fn unify_at(
     true
 }
 
+/// Names the fix when a Result is used where its success type is required.
+pub fn result_use_hint(actual: &Ty, expected: &Ty) -> String {
+    if !actual.is(Builtin::Result) || actual.args.is_empty() || !same(&actual.args[0], expected) {
+        return String::new();
+    }
+    "unwrap it with 'try' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'".to_string()
+}
+
 /// "expected X, found Y" plus a result hint.
 pub fn format_mismatch(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
     let mut message = format!(
@@ -1597,7 +1568,7 @@ pub fn format_mismatch(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> St
         expected_t = expected.display(syms),
         actual_t = actual.display(syms)
     );
-    let hint = crate::hints::result_use_hint(actual, expected);
+    let hint = result_use_hint(actual, expected);
     if !hint.is_empty() {
         message.push_str("; ");
         message.push_str(&hint);

@@ -4,6 +4,7 @@ use crate::checker::Checker;
 use crate::exprs::{callee_name, is_plain_literal};
 use crate::hints::*;
 use crate::inference::*;
+use crate::stdlib::constructor_signature;
 use crate::stmts::case_names;
 use crate::suggestions;
 use crate::syntax::*;

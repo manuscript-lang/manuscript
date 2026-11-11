@@ -672,8 +672,8 @@ impl Checker {
         );
     }
 
-    /// Declaration passes for one module, in order.
-    pub(crate) fn check_module(&mut self, module: &ModRef) {
+    /// Starts a module: fresh symbol table seeded with the primitive types and the standard prelude.
+    fn begin_module(&mut self, module: &ModRef) {
         self.module = Some(module.clone());
         self.names = Rc::new(RefCell::new(HashMap::new()));
         self.p.symbols.insert(module.file, self.names.clone());
@@ -694,6 +694,11 @@ impl Checker {
             self.names.borrow_mut().insert(nm, s);
         }
         self.add_standard_prelude();
+    }
+
+    /// Declaration passes for one module, in order.
+    pub(crate) fn check_module(&mut self, module: &ModRef) {
+        self.begin_module(module);
         self.import_symbols(module);
         self.declare_symbols(module);
         self.declare_type_variables(module);
@@ -723,26 +728,7 @@ impl Checker {
     /// symbols before any module imports, resolves signatures or checks bodies.
     fn check_group(&mut self, group: &[ModRef]) {
         for module in group {
-            self.module = Some(module.clone());
-            self.names = Rc::new(RefCell::new(HashMap::new()));
-            self.p.symbols.insert(module.file, self.names.clone());
-            self.scope = Scope::new(None);
-            for name in PRIMITIVE_NAMES {
-                let nm = n(name);
-                let s = Rc::new(Sym {
-                    name: nm,
-                    id: n(primitive_id(name)),
-                    kind: SymKind::Type,
-                    module: n(""),
-                    native: Native::Source,
-                    export: true,
-                    ty: RefCell::new(Some(primitive(primitive_id(name)))),
-                    variables: RefCell::new(Vec::new()),
-                    decl: None,
-                });
-                self.names.borrow_mut().insert(nm, s);
-            }
-            self.add_standard_prelude();
+            self.begin_module(module);
             self.declare_symbols(module);
         }
         for module in group {
