@@ -2,8 +2,8 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/json_parse_test.go:22 TestParseTypeArgument
 type Request:
-	model: String
+    model: String
 
 fn f(text: String) Request!:
-	request: Request := parse(text)?
-	return ok(request)
+    request: Request := parse(text)?
+    return ok(request)

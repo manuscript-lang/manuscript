@@ -4,10 +4,10 @@
 import expect_equal from "@std/test/test.ms"
 
 fn add(a: Int, b: Int) Int:
-	return a + b
+    return a + b
 
 test "addition":
-	expect_equal(add(1, 2), 3)?
+    expect_equal(add(1, 2), 3)?
 
 test "zero is unchanged":
-	expect_equal(add(0, 7), 7)?
+    expect_equal(add(0, 7), 7)?

@@ -13,7 +13,7 @@ the five predefined and numeric references are rejected). Names keep their prefi
 (`svg:rect`); namespaces are not resolved. `stringify` writes a tree back with escaping.
 
     import parse from "@std/data/xml.ms"
-    doc := try parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")
+    doc := parse("<feed><item id=\"1\">Hi &amp; bye</item></feed>")?
     item := doc.find("item").get()
     print(item.attribute("id").get("")) // "1"
     print(item.text())                  // "Hi & bye"

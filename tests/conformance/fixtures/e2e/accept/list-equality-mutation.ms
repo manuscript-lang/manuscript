@@ -4,75 +4,76 @@
 import fail from "@std/test/test.ms"
 
 type Element:
-	id: Int
-	on_equal: fn() Unit
+    id: Int
+    on_equal: fn() Unit
 
 impl Equal for Element:
-	fn equals(other: Element) Bool:
-		self.on_equal()
-		return self.id == other.id
+    fn equals(other: Element) Bool:
+        self.on_equal()
+        return self.id == other.id
 
 type Visits:
-	count: Int
+    count: Int
 
 fn noop() Unit:
-	return
+    return
 
 fn check_equality(side: String, mutation: String) Unit!:
-	var left: List[Element] = []
-	var right: List[Element] = []
-	calls := Visits(0)
+    var left: List[Element] = []
+    var right: List[Element] = []
+    calls := Visits(0)
 
-	visit := fn:
-		calls.count += 1
-		if calls.count != 1: return
+    visit := fn:
+        calls.count = calls.count + 1
+        if calls.count != 1:
+            return
 
-		target := if side == "right": right else: left
-		next_action := target[1].on_equal
+        target := if side == "right": right else: left
+        next_action := target[1].on_equal
 
-		if mutation == "shrink" or mutation == "shrink_mismatch":
-			target.splice(0, target.length(), [])
-			return
+        if mutation == "shrink" or mutation == "shrink_mismatch":
+            target.splice(0, target.length(), [])
+            return
 
-		if mutation == "append":
-			target.append(Element(7, noop))
-			return
+        if mutation == "append":
+            target.append(Element(7, noop))
+            return
 
-		if mutation == "append_write":
-			target.append(Element(7, noop))
-			target.set(1, Element(77, next_action))
-			return
+        if mutation == "append_write":
+            target.append(Element(7, noop))
+            target.set(1, Element(77, next_action))
+            return
 
-		if mutation == "grow_write":
-			for index in 0..100:
-				target.append(Element(7, noop))
-			target.set(1, Element(77, next_action))
-			return
+        if mutation == "grow_write":
+            for index in 0..100:
+                target.append(Element(7, noop))
+            target.set(1, Element(77, next_action))
+            return
 
-		target.set(1, Element(77, next_action))
+        target.set(1, Element(77, next_action))
 
-	for id in [1, 2, 3]:
-		left.append(Element(id, visit))
-		right.append(Element(id, visit))
+    for id in [1, 2, 3]:
+        left.append(Element(id, visit))
+        right.append(Element(id, visit))
 
-	if mutation == "shrink_mismatch":
-		right.set(2, Element(99, visit))
+    if mutation == "shrink_mismatch":
+        right.set(2, Element(99, visit))
 
-	expected := (
-		mutation != "shrink_mismatch"
-		and mutation != "append_write"
-		and mutation != "overwrite"
-	)
-	expected_calls := if mutation == "append_write" or mutation == "overwrite": 2 else: 3
-	same := left == right
-	if same != expected or calls.count != expected_calls: return fail(
-		"{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
-	)
+    expected := (
+        mutation != "shrink_mismatch"
+        and mutation != "append_write"
+        and mutation != "overwrite"
+    )
+    expected_calls := if mutation == "append_write" or mutation == "overwrite": 2 else: 3
+    same := left == right
+    if same != expected or calls.count != expected_calls: return fail(
+        "{side}/{mutation}: equality {same}/{calls.count}, expected {expected}/{expected_calls}"
+    )
 
 test "element Equal mutating either List retains both captured headers":
-	for side in ["left", "right"]:
-		for mutation in [
-			"shrink", "shrink_mismatch", "append", "append_write", "grow_write",
-			"overwrite"
-		]:
-			(check_equality(side, mutation)?)
+    for side in ["left", "right"]:
+        for mutation in [
+            "shrink", "shrink_mismatch", "append", "append_write", "grow_write",
+            "overwrite"
+        ]:
+            (check_equality(side, mutation)?)

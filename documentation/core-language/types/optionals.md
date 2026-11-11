@@ -118,7 +118,7 @@ fn display_name(name: String?) String:
     return "Anonymous"
 ```
 
-A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. A two-arm match is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `try` propagates only `Result` errors.
+A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. A two-arm match is reported by `ms lint` as MSL108. Use [Result](../errors/results.md) when failure needs an explanation; `?` propagates only `Result` errors.
 
 ## Optional chaining
 
@@ -159,7 +159,7 @@ Through a `:=` or an undeclared-`var` parameter, `counter?.bump()` is rejected l
 - `ok_or[E = Error](cause: E?) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` may be any value type.
 - `ok_or_else[E](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
 
-Omitting the cause yields an `Error` of kind `"ENOENT"` (the [default type argument](generics.md#default-type-arguments)). Its message records the source file and line of the `ok_or()` call, such as `missing value at src/main.ms:12`. Any function whose error type is `Error` can `try` it:
+Omitting the cause yields an `Error` of kind `"ENOENT"` (the [default type argument](generics.md#default-type-arguments)). Its message records the source file and line of the `ok_or()` call, such as `missing value at src/main.ms:12`. Any function whose error type is `Error` can `?` it:
 
 ```manuscript
 fn port_number(text: String) Int!:

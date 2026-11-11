@@ -4,37 +4,37 @@
 import Closeable from "@std/core.ms"
 
 type Res:
-	name: String
+    name: String
 
 impl Closeable for Res:
-	var fn close() Unit!:
-		print("close {self.name}")
+    var fn close() Unit!:
+        print("close {self.name}")
 
 fn make(name: String) Res!Error:
-	return ok(Res(name))
+    return ok(Res(name))
 
 fn keep(r: Res) Res:
-	return r
+    return r
 
 fn via_try() Unit!Error:
-	r := make("try")?
-	print("body {r.name}")
+    r := make("try")?
+    print("body {r.name}")
 
 fn via_get() Unit:
-	r := make("get").get()
-	print("body {r.name}")
+    r := make("get").get()
+    print("body {r.name}")
 
 fn via_optional_get() Unit:
-	o: Res? := Res("optional")
-	r := o.get(Res("default"))
-	print("body {r.name}")
+    o: Res? := Res("optional")
+    r := o.get(Res("default"))
+    print("body {r.name}")
 
 fn via_passthrough() Unit:
-	r := keep(Res("keep"))
-	print("body {r.name}")
+    r := keep(Res("keep"))
+    print("body {r.name}")
 
 fn main() Unit:
-	_ := via_try()
-	via_get()
-	via_optional_get()
-	via_passthrough()
+    _ := via_try()
+    via_get()
+    via_optional_get()
+    via_passthrough()

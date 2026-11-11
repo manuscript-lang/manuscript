@@ -1,14 +1,12 @@
 // conform: tags=control-flow,modules,mutation,stdlib-collections,stdlib-testing,testing,tier-stdlib,try-result
 // conform: phase=test
 // conform: origin=documentation/core-language/control-flow/loops.md:63
-import (
-	range_by from "@std/collections/collections.ms",
-	expect_equal from "@std/test/test.ms",
-)
+import range_by from "@std/collections/collections.ms"
+import expect_equal from "@std/test/test.ms"
 
 test "sum even indexes":
-	indexes := range_by(start: 0, end: 6, step: 2)?
-	var total = 0
-	for index in indexes:
-		total += index
-	expect_equal(total, 6)?
+    indexes := range_by(start: 0, end: 6, step: 2)?
+    var total = 0
+    for index in indexes:
+        total += index
+    expect_equal(total, 6)?

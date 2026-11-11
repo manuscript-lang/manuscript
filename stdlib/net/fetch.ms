@@ -90,12 +90,12 @@ impl FetchResponse:
 		if text := self.body.decode_utf8(): return ok(text)
 		return error(Error("fetch: body is not valid UTF-8", kind: "EBADMSG"))
 
-	// Decodes the body as JSON into `T`, as in `try response.json[User]()`; use `JsonValue` for untyped data.
+	// Decodes the body as JSON into `T`, as in `response.json[User]()?`; use `JsonValue` for untyped data.
 	fn json[T: Data](ignore_unknown_fields: Bool = true) T!:
 		text := self.text()?
 		return parse[T](text, JsonOptions(ignore_unknown_fields: ignore_unknown_fields))
 
-	// Succeeds when the status is 200 through 299 and otherwise returns `Status`, so `try response.check_status()` rejects error responses.
+	// Succeeds when the status is 200 through 299 and otherwise returns `Status`, so `response.check_status()?` rejects error responses.
 	fn check_status() Unit!:
 		if self.ok(): return ok(unit)
 		return error(

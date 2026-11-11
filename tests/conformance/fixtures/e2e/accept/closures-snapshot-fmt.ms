@@ -4,12 +4,12 @@
 import expect_equal, expect_true from "@std/test/test.ms"
 
 test "closures read the variable they borrow":
-	var offset = 3
-	offset = 99
+    var offset = 3
+    offset = 99
 
-	first := fn:
-		return offset
-	second := fn:
-		return true
-	first() | expect_equal(99)?
-	second() | expect_true?
+    first := fn:
+        return offset
+    second := fn:
+        return true
+    first() | expect_equal(99)?
+    second() | expect_true?

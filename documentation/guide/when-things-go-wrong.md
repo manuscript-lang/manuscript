@@ -54,17 +54,17 @@ Nothing is thrown. `total` returned an error value, and `main` decided what to p
 
 - `Int!` means "an `Int`, or an `Error`". It is short for `Result[Int, Error]`, and `Line!` works the same way. A caller cannot use the number without handling the other case.
 - `return ok(value)` and `return error(Error(...))` are ordinary values with no hidden control flow.
-- `try` unwraps a success. If the call failed, the function returns that error immediately. That is the whole error plumbing in `total`: one `try` per call that can fail.
+- `?` unwraps a success. If the call failed, the function returns that error immediately. That is the whole error plumbing in `total`: one `?` per call that can fail.
 - `parse_int()` returns an optional, because the text might not be a number. `.ok_or(error)` turns "nothing" into a specific error, so the message names the bad line.
 - `kind` is a short code a caller can branch on, such as `"EINVAL"`. The standard library uses the same codes, so you never import a per-module error type.
 - `good.get(0)` reads a result with a fallback. For a full branch use `if result.is_error():` as `main` does.
 
 ## Try it
 
-Delete the `try` in front of `parse_line(text)` and run the program. The compiler stops you: `line` is now a `Result[Line, Error]`, which has no `quantity`. You cannot use a result as if it were its success value, and you cannot drop one unseen.
+Delete the `?` after `parse_line(text)` and run the program. The compiler stops you: `line` is now a `Result[Line, Error]`, which has no `quantity`. You cannot use a result as if it were its success value, and you cannot drop one unseen.
 
 ## Absent is not an error
 
 `T?` is an optional: a value or nothing, with no error to explain. A map lookup and `first()` are optionals. Use `T!` when a failure needs a reason the caller can read, and `T?` when absence is normal.
 
-**Next:** [Who owns what](ownership.md). **Exact rules:** [Results](../core-language/errors/results.md), [Propagation with try](../core-language/errors/propagation.md), [Optionals](../core-language/types/optionals.md).
+**Next:** [Who owns what](ownership.md). **Exact rules:** [Results](../core-language/errors/results.md), [Propagation with ?](../core-language/errors/propagation.md), [Optionals](../core-language/types/optionals.md).

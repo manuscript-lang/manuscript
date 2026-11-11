@@ -4,133 +4,133 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 test "Map remove direct and bound preserve order and no-op absence":
-	var values = Map[Int, String]()
-	values.add(1, "one")
-	values.add(2, "two")
-	values.add(3, "three")
+    var values = Map[Int, String]()
+    values.add(1, "one")
+    values.add(2, "two")
+    values.add(3, "three")
 
-	snapshot := values.clone()
-	values.remove(2)
-	values.add(4, "four")
-	expect_equal(values.keys(), [1, 3, 4])?
-	expect_equal(snapshot.keys(), [1, 2, 3])?
-	values.remove(1)
-	values.add(5, "five")
-	expect_equal(values.keys(), [3, 4, 5])?
-	values.remove(99)
-	expect_equal(values.keys(), [3, 4, 5])?
+    snapshot := values.clone()
+    values.remove(2)
+    values.add(4, "four")
+    expect_equal(values.keys(), [1, 3, 4])?
+    expect_equal(snapshot.keys(), [1, 2, 3])?
+    values.remove(1)
+    values.add(5, "five")
+    expect_equal(values.keys(), [3, 4, 5])?
+    values.remove(99)
+    expect_equal(values.keys(), [3, 4, 5])?
 
-	var empty = Map[Int, String]()
-	empty.remove(1)
-	empty.add(2, "two")
-	expect_equal(empty.get(2), "two")?
+    var empty = Map[Int, String]()
+    empty.remove(1)
+    empty.add(2, "two")
+    expect_equal(empty.get(2), "two")?
 
-	var legacy = values.clone()
-	legacy.remove(4)
+    var legacy = values.clone()
+    legacy.remove(4)
 
-	var preferred = values.clone()
-	preferred.remove(4)
-	expect_equal(legacy, preferred)?
+    var preferred = values.clone()
+    preferred.remove(4)
+    expect_equal(legacy, preferred)?
 
 test "Map remove evaluates its key after choosing the receiver and keeps conversions":
-	var first = Map[Int?, Int]()
-	first.add(1, 10)
+    var first = Map[Int?, Int]()
+    first.add(1, 10)
 
-	trigger: Int? := 1
-	first.remove(
-		match trigger:
-			key: key
-			none: 0
-	)
-	expect_false(not first.is_empty())?
+    trigger: Int? := 1
+    first.remove(
+        match trigger:
+            key: key
+            none: 0
+    )
+    expect_false(not first.is_empty())?
 
 interface MapRemoval:
-	var fn remove(key: Int) Unit
-	fn keys() List[Int]
+    var fn remove(key: Int) Unit
+    fn keys() List[Int]
 
 type MapAdapter:
-	values: Map[Int, String]
+    values: Map[Int, String]
 
 impl MapRemoval for MapAdapter:
-	var fn remove(key: Int) Unit:
-		self.values.remove(key)
+    var fn remove(key: Int) Unit:
+        self.values.remove(key)
 
-	fn keys() List[Int]: self.values.keys()
+    fn keys() List[Int]: self.values.keys()
 
 test "Map explicit and bound interface views remove through the adapter":
-	var values = Map[Int, String]()
-	values.add(1, "one")
-	values.add(2, "two")
-	values.add(3, "three")
+    var values = Map[Int, String]()
+    values.add(1, "one")
+    values.add(2, "two")
+    values.add(3, "three")
 
-	var adapter = MapAdapter(values)
-	adapter.remove(1)
-	expect_equal(adapter.values.keys(), [2, 3])?
+    var adapter = MapAdapter(values)
+    adapter.remove(1)
+    expect_equal(adapter.values.keys(), [2, 3])?
 
-	var view: MapRemoval = adapter
-	view.remove(2)
-	expect_equal(view.keys(), [3])?
-	view.remove(3)
-	expect_equal(view.keys(), [])?
+    var view: MapRemoval = adapter
+    view.remove(2)
+    expect_equal(view.keys(), [3])?
+    view.remove(3)
+    expect_equal(view.keys(), [])?
 
 test "List splice direct and bound stage a copy of the receiver as replacement":
-	var values = [1, 2, 3]
-	values.splice(1, 1, values.clone())
-	values.append(4)
-	expect_equal(values, [1, 1, 2, 3, 3, 4])?
-	values.splice(1, 4, [9])
-	values.append(5)
-	expect_equal(values, [1, 9, 4, 5])?
+    var values = [1, 2, 3]
+    values.splice(1, 1, values.clone())
+    values.append(4)
+    expect_equal(values, [1, 1, 2, 3, 3, 4])?
+    values.splice(1, 4, [9])
+    values.append(5)
+    expect_equal(values, [1, 9, 4, 5])?
 
-	var legacy = values.clone()
-	legacy.splice(0, 1, [7])
+    var legacy = values.clone()
+    legacy.splice(0, 1, [7])
 
-	var preferred = values.clone()
-	preferred.splice(0, 1, [7])
-	expect_equal(legacy, preferred)?
-	values.splice(values.length(), 0, [6])
-	expect_equal(values, [1, 9, 4, 5, 6])?
-	values.splice(0, values.length(), [])
-	values.append(8)
-	expect_equal(values, [8])?
+    var preferred = values.clone()
+    preferred.splice(0, 1, [7])
+    expect_equal(legacy, preferred)?
+    values.splice(values.length(), 0, [6])
+    expect_equal(values, [1, 9, 4, 5, 6])?
+    values.splice(0, values.length(), [])
+    values.append(8)
+    expect_equal(values, [8])?
 
-	var empty: List[Int] = []
-	empty.splice(0, 0, [])
-	empty.append(3)
-	expect_equal(empty, [3])?
+    var empty: List[Int] = []
+    empty.splice(0, 0, [])
+    empty.append(3)
+    expect_equal(empty, [3])?
 
 type Item:
-	value: Int
+    value: Int
 
 test "List splice moves replacement elements and handles Optional elements":
-	var values = [Item(2)]
-	values.splice(0, 1, [Item(1)])
-	expect_equal(values[0].value, 1)?
+    var values = [Item(2)]
+    values.splice(0, 1, [Item(1)])
+    expect_equal(values[0].value, 1)?
 
-	var optional: List[Int?] = [1]
-	optional.splice(0, 1, [2])
-	expect_equal(optional[0], 2)?
+    var optional: List[Int?] = [1]
+    optional.splice(0, 1, [2])
+    expect_equal(optional[0], 2)?
 
 interface ListSplicing:
-	var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit
-	fn contents() List[Int]
+    var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit
+    fn contents() List[Int]
 
 type ListAdapter:
-	values: List[Int]
+    values: List[Int]
 
 impl ListSplicing for ListAdapter:
-	var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit:
-		self.values.splice(start, delete_count, replacement)
+    var fn splice(start: Int, delete_count: Int, replacement: List[Int]) Unit:
+        self.values.splice(start, delete_count, replacement)
 
-	fn contents() List[Int]: self.values.clone()
+    fn contents() List[Int]: self.values.clone()
 
 test "List explicit and bound interface views splice through the adapter":
-	var adapter = ListAdapter([1, 2, 3])
-	adapter.splice(0, 1, [7])
-	expect_equal(adapter.values, [7, 2, 3])?
+    var adapter = ListAdapter([1, 2, 3])
+    adapter.splice(0, 1, [7])
+    expect_equal(adapter.values, [7, 2, 3])?
 
-	var view: ListSplicing = adapter
-	view.splice(0, 1, [7])
-	expect_equal(view.contents(), [7, 2, 3])?
-	view.splice(1, 2, [8])
-	expect_equal(view.contents(), [7, 8])?
+    var view: ListSplicing = adapter
+    view.splice(0, 1, [7])
+    expect_equal(view.contents(), [7, 2, 3])?
+    view.splice(1, 2, [8])
+    expect_equal(view.contents(), [7, 8])?

@@ -104,5 +104,5 @@ ms run config.ms -- '{"name":"Sam"}'
 
 - A missing `enabled` takes its default; a missing `name` or wrong type is an error.
 - Unknown members are ignored unless `JsonOptions(ignore_unknown_fields: false)`.
-- Write `parse[Config]` explicitly after `try`.
+- Write `parse[Config]` explicitly after `?`.
 - `stringify` writes fields in declaration order. `StringifyOptions(strict: true)` is opt-in; ordinary `stringify` can omit values without a JSON form. Strict mode still omits `none` fields.

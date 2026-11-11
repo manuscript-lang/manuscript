@@ -37,8 +37,8 @@ PASS server_test.ms::serve a greeting
 In a function returning `Unit!`, keep the server alive with `wait()`:
 
 ```manuscript
-server := try serve("127.0.0.1:8080", handler)
-try server.wait()
+server := serve("127.0.0.1:8080", handler)?
+server.wait()?
 ```
 
 Here `handler` is built as in the test. The wait lasts until shutdown or a server error; SIGINT and SIGTERM initiate shutdown.

@@ -45,7 +45,7 @@ Save it as `totals.ms` and run `ms test totals.ms`.
 
 ## What to notice
 
-- A test is a block with a name. `try expect_equal(actual, expected)` fails it on a mismatch and prints both values.
+- A test is a block with a name. `expect_equal(actual, expected)?` fails it on a mismatch and prints both values.
 - The third test is a property test. `check` generates up to 100 lists of prices, runs the rule on each, and if one fails it shrinks it to a small counterexample with a seed you can replay.
 - `ms test totals.ms --fuzz 30s` keeps generating fresh cases for 30 seconds per property, which turns the same test into a fuzzer.
 - Properties describe what must always hold, so they find cases you would not think to write down.

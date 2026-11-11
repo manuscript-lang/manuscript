@@ -5,5 +5,5 @@
 fn prepare() Result[Unit, Error]: ok(unit)
 
 fn ready_label() Result[String, Error]:
-	prepare()?
-	return ok("ready")
+    prepare()?
+    return ok("ready")

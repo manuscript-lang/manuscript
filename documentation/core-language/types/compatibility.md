@@ -7,7 +7,7 @@ weight = 10
 
 A value's type must match the type required at its position: annotations, assignments, arguments, returns, fields, and collection elements. An `Int` is not a `Float`, and types with equal fields are not interchangeable.
 
-`Never` expressions fit anywhere. `try` needs the same error type as the enclosing function ([error compatibility](../errors/propagation.md#error-compatibility)).
+`Never` expressions fit anywhere. `?` needs the same error type as the enclosing function ([error compatibility](../errors/propagation.md#error-compatibility)).
 
 ## Exact and nominal identity
 
@@ -63,7 +63,7 @@ Expressions whose type cannot be determined are rejected.
 
 A list whose independently typed elements disagree is rejected.
 
-Operators and `try` normally require operands to determine their own types first. The exception is [arithmetic over numeric literals](../basics/numbers-and-booleans.md#sized-numbers): it takes an expected sized numeric type, including the payload of an expected optional, without changing numeric kind or narrowing a named value.
+Operators and `?` normally require operands to determine their own types first. The exception is [arithmetic over numeric literals](../basics/numbers-and-booleans.md#sized-numbers): it takes an expected sized numeric type, including the payload of an expected optional, without changing numeric kind or narrowing a named value.
 
 ```manuscript
 fn known() Result[Int, Error]:
@@ -71,7 +71,7 @@ fn known() Result[Int, Error]:
     return ok(number)
 
 fn unknown() Result[Int, Error]:
-    // Rejected: the try operand's error type is undetermined.
+    // Rejected: the `?` operand's error type is undetermined.
     number: Int := ok(1)?
     return ok(number)
 ```

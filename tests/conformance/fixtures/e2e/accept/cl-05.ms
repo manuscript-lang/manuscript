@@ -4,11 +4,11 @@
 import expect_equal from "@std/test/test.ms"
 
 fn increase(value: Int) Int:
-	return value + 1
+    return value + 1
 
 fn apply(value: Int, transform: fn(Int) Int) Int:
-	return transform(value)
+    return transform(value)
 
 test "function label compatibility":
-	transform: fn(Int) Int := increase
-	expect_equal(apply(4, transform), 5)?
+    transform: fn(Int) Int := increase
+    expect_equal(apply(4, transform), 5)?

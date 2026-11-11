@@ -69,7 +69,7 @@ The branches are one-line expressions on the same line. For statements in a bran
 
 ## Unwrapping an Optional or Result
 
-`if name := expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `none` or an error, where `name` is not visible. A Result's error is not captured; use `try` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
+`if name := expression:` runs its block when an [Optional](../types/optionals.md) holds a value or a [Result](../errors/results.md) is `ok`, binding `name` immutably inside the block. `else` runs for `none` or an error, where `name` is not visible. A Result's error is not captured; use `?` or `err()` when it matters. The expression evaluates once and must be an `Optional` or `Result`.
 
 ```manuscript
 fn greeting(name: String?) String:

@@ -24,8 +24,8 @@ import Align, Table from "@std/cli/table.ms"
 
 fn render() String!:
     var table = Table(columns: [Align.Left, Align.Right])
-    try table.add(["tea", "2"])
-    try table.add(["coffee", "30"])
+    table.add(["tea", "2"])?
+    table.add(["coffee", "30"])?
     return ok(table.render())
 ```
 

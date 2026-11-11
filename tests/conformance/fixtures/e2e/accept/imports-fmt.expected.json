@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntest \"grouped imports\":\n\tvalues: List[Int] := [1, 2]\n\tvar entries = Map[String, Int]()\n\tentries.add(\"count\", values.length())\n\ttry expect_equal(entries.length(), 1)\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntest \"grouped imports\":\n\tvalues: List[Int] := [1, 2]\n\tvar entries = Map[String, Int]()\n\tentries.add(\"count\", values.length())\n\texpect_equal(entries.length(), 1)?\n"
   }
 }

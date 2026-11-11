@@ -56,7 +56,7 @@ Runs `work` repeatedly and writes the statistics line, per operation for `operat
 A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
   bench "sorts":
       data := [3, 1, 2]
-      try measure(1, fn: keep(data.sorted().length()))
+      measure(1, fn: keep(data.sorted().length()))?
 Everything the body does before `measure` runs once, untimed.
 */
 export fn measure(operations: Int, work: fn() Unit!) Unit!:
@@ -102,7 +102,7 @@ export fn run_bench_block(body: fn() Unit!, operations: Int) Unit!:
 
 	return measure(operations, body)
 
-// Checks a bench's Int result so the work that computed it stays observable. Apply `try keep(value)` in the body.
+// Checks a bench's Int result so the work that computed it stays observable. Apply `keep(value)?` in the body.
 // The smallest Int returns an error; choose a different checksum if that value is a valid result of your workload.
 export fn keep(checksum: Int) Unit!:
 	if checksum == -9223372036854775807 - 1:

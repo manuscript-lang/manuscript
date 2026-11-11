@@ -186,7 +186,7 @@ import stdout from "@std/io/io.ms"
 
 fn main() Unit!:
     message := "Arguments: {arguments().length()}\n"
-    try stdout().write(message)
+    stdout().write(message)?
 resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
 resolution	5	29	124	unknown binding arguments; add: import arguments from "@std/os/env.ms"import panic from "@std/faults.ms"
 
@@ -276,7 +276,7 @@ impl Read for Box:
         return value + self.deltaparse	2	9	34	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn apply(item: Int) Int:
         return item + self.deltaparse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4{key, value} := entry
         label: Int = keyparse	2	9	30	unexpected indentation, 8 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itcallback := Callback(increment)
-    callback | try expect_equal(expected: callback)parse	2	5	36	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn value() Int:
+    callback | expect_equal(expected: callback)?parse	2	5	36	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn value() Int:
     return missing
 resolution	2	12	27	unknown binding missing; declare it with 'missing := ...' before use, define 'fn missing(...) T:', or import it from a moduleexport fn main(value: Int) Int:
     return value
@@ -547,14 +547,14 @@ fn call(x: Int?) Int:
 fn f(x: Int?) Result[Unit, Error]:
     match x:
         n:
-            try p()
+            p()?
             return ok(unit)
         none: return ok(unit)
-type	6	13	115	standalone try requires a Unit success value, found Int; use 'name := try ...' to keep the value or 'return try ...' to return itfn p() Result[Int, Error]:
+type	6	13	115	a standalone '?' requires a Unit success value, found Int; use 'name := call()?' to keep the value or 'return call()?' to return itfn p() Result[Int, Error]:
     return ok(1)
 fn f() Int:
     return p()
-type	4	12	67	expected Int, found Result[Int, Error] (in the return value); unwrap it with 'try' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'fn f(x: Int?) Int:
+type	4	12	67	expected Int, found Result[Int, Error] (in the return value); unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'fn f(x: Int?) Int:
     return x
 type	2	12	30	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if value := x', get(default), is_some() before get(), or matchfn f(x: Int?) Int:
     return match x:
@@ -599,7 +599,7 @@ resolution	2	25	60	unknown binding EncodingError; declare it with 'EncodingError
 resolution	1	12	11	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	2	12	33	unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a moduleimport hex_decode from "@std/data/encoding.ms"
 fn wrong() Result[Unit, JsonError]:
-    bytes := try hex_decode(text: "ff", max_bytes: 1)
+    bytes := hex_decode(text: "ff", max_bytes: 1)?
     return ok(value: unit)
 resolution	2	25	71	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import ittype Impostor:
     detail: String
@@ -686,7 +686,7 @@ fn failed() Result[Unit, JsonError]:
 fn forwarded() Result[Unit, Error]:
     return failed()
 fn propagated() Result[Unit, Error]:
-    bytes := try hex_decode(text: "zz")
+    bytes := hex_decode(text: "zz")?
     return ok(value: unit)
 fn constructed() Result[Unit, Error]:
     return error(cause: JsonError.InvalidData)
@@ -694,7 +694,7 @@ fn constructed() Result[Unit, Error]:
 resolution	3	19	107	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	5	26	167	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	6	25	203	unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a module
-resolution	13	25	448	unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a modulefn diagnostic(cause: %s) String:
+resolution	13	25	445	unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a modulefn diagnostic(cause: %s) String:
     return cause.message()
 fn view(cause: %s) Error:
     return cause
@@ -842,7 +842,7 @@ fn main() Unit:
     sleep(nanoseconds(60000000000))
 type	4	20	116	unknown argument data; parameters of write: value
 type	4	14	110	missing argument value: String in call to write; add 'value: <String>'
-type	4	5	101	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposeimport stdout from "@std/io/io.ms"
+type	4	5	101	this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposeimport stdout from "@std/io/io.ms"
 
 fn main() Unit!:
     return stdout().write(data: %q)
@@ -1351,7 +1351,7 @@ resolution	5	9	78	unknown case None of Optional; cases: none, some; did you mean
     return ok(1)
 fn f() Int:
     return p() + 1
-type	4	16	71	operator operands require the same independently known type, found Result[Int, Error] + Int; unwrap it with 'try' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'fn f(n: Int?) Int:
+type	4	16	71	operator operands require the same independently known type, found Result[Int, Error] + Int; unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'fn f(n: Int?) Int:
     return n
 type	2	12	30	expected Int, found Int? (in the return value); Int? may be absent; unwrap it first with 'if value := x', get(default), is_some() before get(), or matchfn f() Float:
     x: Float := 3
@@ -1571,16 +1571,16 @@ fn f(text: String) Result[Request, JsonError]:
 resolution	4	12	90	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
-    request := try parse[Request](text)
+    request := parse[Request](text)?
     return ok(request)
 resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
-resolution	4	20	98	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
+resolution	4	16	94	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
     model: String
 fn f(text: String) Result[Request, JsonError]:
-    request: Request := try parse(text)
+    request: Request := parse(text)?
     return ok(request)
 resolution	3	36	67	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
-resolution	4	29	107	unknown binding parse; add: import parse from "@std/data/csv.ms"fn f[T](text: String) Result[T, JsonError]:
+resolution	4	25	103	unknown binding parse; add: import parse from "@std/data/csv.ms"fn f[T](text: String) Result[T, JsonError]:
     return parse[T](text)
 resolution	1	33	32	unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it
 resolution	2	12	55	unknown binding parse; add: import parse from "@std/data/csv.ms"type Request:
@@ -1887,7 +1887,7 @@ resolution	1	28	27	unknown type Bytes; add: import Bytes from "@std/bytes.ms"fn
         if true: return none
         return 1
     , second: fn(): 2)parse	2	9	37	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4value := choose(first: fn():
-        value := try checked()
+        value := checked()?
         return Result[Int, TextError].ok(value)
     , second: fn(): ok(4))parse	2	9	37	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4offset := 7
     values := [1, 2].map(fn(outer): [3, 4].map(fn(inner): outer + inner + offset))parse	2	5	16	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itfn first() Unit: ...
@@ -1928,7 +1928,7 @@ impl Read for Box[Int]:
 resolution	4	40	209	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	4	62	231	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	5	26	280	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import itvalue := result(fn():
-        n := try checked()
+        n := checked()?
         return ok(n)
     )parse	2	9	30	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn example() Unit: ...
     original := fn(item: Int): item
@@ -2151,7 +2151,7 @@ fn wrong(value: Result[Int, String]) Int?: value.to_optional()resolution	1	1	0	
     var x: Int = 1
     x += try 3
     return x
-type	3	10	40	try requires Result, found Int; apply try only to a call returning Result[T, E]fn wrong(value: Set[Int]) Unit:
+parse	3	10	40	'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try stepfn wrong(value: Set[Int]) Unit:
     output := value.map(fn n: n.to_float())type	2	21	52	Float does not satisfy Hashable; Float has no Hashable implementation, so wrap it in a record with an Int or String key, or use Decimalfn wrong[U](value: Set[Int], transform: fn(Int) U) Unit:
     output := value.map(transform)type	2	21	77	U does not satisfy Hashable; pass a type that already implements itfn wrong(value: Map[String, Int]) Unit:
     output := value.filter(fn k, n: n)type	2	37	76	expected Bool, found Int (in the return value)enum Result[T, E]:
@@ -2917,10 +2917,10 @@ fn affine(n: Int) Result[Int, Cause]:
         return error(Cause("negative"))
     return ok(n + 1)
 fn wrapped(n: Int) Result[Int, Cause]:
-    value := try affine(n)
+    value := affine(n)?
     return ok(value)
 fn twice(n: Int) Result[Int, Cause]:
-    value := try wrapped(n)
+    value := wrapped(n)?
     return ok(value)
 type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'alias := affine
     resolution	1	10	9	unknown binding affine; declare it with 'affine := ...' before use, define 'fn affine(...) T:', or import it from a modulefn probe(value: Int) Int: ...
@@ -3006,38 +3006,35 @@ fn tail(value: Result[parse	2	23	61	unterminated delimiter '[' opened at line 2
 fn tail(value: Result[Int, TextError]) Result[Int, TextError]:
     output := try value
     return ok(output)
-resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-resolution	2	52	90	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import itimport TextError from "@std/errors.ms"
+parse	3	15	116	'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try stepimport TextError from "@std/errors.ms"
 fn tail(value: Result[Int, TextError]) Result[Int, Error]:
     output := try value
     return ok(output)
-resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	28	66	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it.ms"
+parse	3	15	112	'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step.ms"
 fn check() Unit:
     decoded := parse(text: "a: 1")
 parse	1	4	3	unterminated text literal; text must close with '"' on the same line, so add the quote or write \\n for a line breakfn operation() Result[Unit, Error]: ok(unit)
 fn f() Result[Int, Error]:
-    try operation()
+    operation()?
     return ok(1)
 fn operation() Result[Int, Error]: ok(1)
 fn f() Result[Int, Error]:
-    try operation()
+    operation()?
     return ok(1)
-type	3	5	72	standalone try requires a Unit success value, found Int; use 'name := try ...' to keep the value or 'return try ...' to return itfn operation() Result[Unit, Int]: ok(unit)
+type	3	5	72	a standalone '?' requires a Unit success value, found Int; use 'name := call()?' to keep the value or 'return call()?' to return itfn operation() Result[Unit, Int]: ok(unit)
 fn f() Result[Int, Error]:
-    try operation()
+    operation()?
     return ok(1)
-type	3	5	74	try requires the same error type; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or translate the error with map_errorfn operation() Result[Unit, Error]: ok(unit)
+type	3	5	74	'?' requires the same error type; this function returns Result[Int, Error] but the operand fails with Int, so change the return error type or translate the error with map_errorfn operation() Result[Unit, Error]: ok(unit)
 fn f() Unit:
-    try operation()
-type	3	5	62	try requires an enclosing Result; declare this function to return Result[T, E], or use 'if value := x', '.get(default)', or '.get()'fn operation() Unit: unit
+    operation()?
+type	3	5	62	'?' requires an enclosing Result; declare this function to return Result[T, E], or use 'if value := x', '.get(default)', or '.get()'fn operation() Unit: unit
 fn f() Result[Int, Error]:
-    try operation()
+    operation()?
     return ok(1)
-type	3	5	57	try requires Result, found Unit; apply try only to a call returning Result[T, E]fn operation() Result[Unit, Error]: ok(unit)
+type	3	5	57	'?' requires a Result, found Unit; apply '?' only to a call returning Result[T, E], and use '?.', 'if value := x', or '.get(default)' for an Optionalfn operation() Result[Unit, Error]: ok(unit)
 test "valid":
-    try operation()
+    operation()?
 test "bare":
     return
 test "unit":
@@ -3247,7 +3244,7 @@ type	12	9	259	non-exhaustive match on Int; add a final '_:' armexport LIMIT := 
 NAMES: List[String] := ["a"]
 fn f(record: Box) Int:
     var total = 12
-    total parse	3	5	46	only a call, try call, or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a functionfn f() Unit: ...
+    total parse	3	5	46	only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a functionfn f() Unit: ...
     fn f() Unit:
     total + = 1
 parse	2	13	25	expected an expression, found '='; write a value, name, call, or literal herefn f(command: String) Int:
@@ -3371,7 +3368,7 @@ fn g() Int: return 1
 parse	2	10	21	expected an expression, found end of line; write a value, name, call, or literal herefn f() Int:
     1 + 1
     return 1
-parse	2	5	16	only a call, try call, or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a functionfn f() Int:
+parse	2	5	16	only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a functionfn f() Int:
     var i = 0
     i++
     return i
@@ -3582,16 +3579,16 @@ type	4	31	121	expected fn() Unit, found fn() Int (in entry 2 of the literal, who
     Payload(value)
 parse	2	18	30	expected ':', found ')'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodyfn f() Int:
     1
-parse	2	5	16	only a call, try call, or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a functionfn f() Unit:
+parse	2	5	16	only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a functionfn f() Unit:
     if true: 1
-parse	2	14	26	only a call, try call, or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a functionfn f() Unit:
+parse	2	14	26	only a call, a call followed by '?', or match can be a standalone expression statement; use 'name := ...' to keep the value, 'return' to return it, or call a functionfn f() Unit:
     value := parse	2	14	26	expected an expression, found end of line; write a value, name, call, or literal herefn f(x: Int?) Result[Unit, Error]:
     match x:
         n:
-            try g(n)
+            g(n)?
             return ok(unit)
         none: return ok(unit)
-resolution	4	17	75	unknown binding g; declare it with 'g := ...' before use, define 'fn g(...) T:', or import it from a module} from "./module.ms"
+resolution	4	13	71	unknown binding g; declare it with 'g := ...' before use, define 'fn g(...) T:', or import it from a module} from "./module.ms"
 fn broken(
 parse	1	1	0	unmatched closing delimiter '}'; remove it or add the matching opener before itvalues := [
 parse	2	1	12	unterminated delimiter '[' opened at line 1:11; add the matching ']' before the end of the file]
@@ -3985,15 +3982,15 @@ fn example() Int:
         value: 3,
     )
 fn work() Unit:
-    try expect_false(try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [["line\n\nbreak"], [""]])
-resolution	2	9	24	unknown binding expect_false; add: import expect_false from "@std/test/test.ms"fn work() Unit:
-    try expect_false(
-        try parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options) != [
+    expect_false(parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options)? != [["line\n\nbreak"], [""]])?
+resolution	2	5	20	unknown binding expect_false; add: import expect_false from "@std/test/test.ms"fn work() Unit:
+    expect_false(
+        parse("\"line\r\n\r\nbreak\"\r\n\"\"\r\n", options)? != [
             ["line\n\nbreak"],
             [""]
         ]
-    )
-resolution	2	9	24	unknown binding expect_false; add: import expect_false from "@std/test/test.ms"fn work() Unit:
+    )?
+resolution	2	5	20	unknown binding expect_false; add: import expect_false from "@std/test/test.ms"fn work() Unit:
     send_message(condition: account_is_active and payment_is_allowed and remaining_balance > 0)
 resolution	2	5	20	unknown binding send_message; declare it with 'send_message := ...' before use, define 'fn send_message(...) T:', or import it from a modulefn work() Unit:
     send_message(
@@ -4105,7 +4102,7 @@ affordable := (
             none: 10
     )
     return result
-resolution	2	15	39	unknown binding subtract; declare it with 'subtract := ...' before use, define 'fn subtract(...) T:', or import it from a modulefn work(early: Int) Int:
+parse	2	24	48	'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try stepfn work(early: Int) Int:
     result := subtract(
         try match 0:
             _value:
@@ -4113,7 +4110,7 @@ affordable := (
             none: 10
     )
     return result
-resolution	2	15	39	unknown binding subtract; declare it with 'subtract := ...' before use, define 'fn subtract(...) T:', or import it from a modulefn work() Unit:
+parse	3	9	57	'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try stepfn work() Unit:
     send(destination: resolve(name: service, region: region), payload: encode(build(records)))
 resolution	2	5	20	unknown binding send; declare it with 'send := ...' before use, define 'fn send(...) T:', or import it from a modulefn work() Unit:
     send(
@@ -4524,10 +4521,10 @@ fn run(n: Int) Int:
 fn run(n: Int) Int:
     a := n |.size()|try.m()| .k
     return a
-resolution	2	14	33	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, clamp, compare, max, milliseconds, min, minutes, seconds, sign, to_decimal, to_float, to_float32, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8fn run(n: Int) Int:
+parse	2	21	40	'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try stepfn run(n: Int) Int:
     a := n | .size() | try .m() | .k
     return a
-resolution	2	15	34	unknown or ambiguous member size on Int; did you mean 'sign'?; available: abs, clamp, compare, max, milliseconds, min, minutes, seconds, sign, to_decimal, to_float, to_float32, to_int, to_int16, to_int32, to_int64, to_int8, to_string_radix, to_uint16, to_uint32, to_uint64, to_uint8fn f() Int:
+parse	2	24	43	'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try stepfn f() Int:
     for mode in [1]:
         if not (
                 mode == 2
@@ -5456,7 +5453,7 @@ fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int: ...
 resolution	2	5	22	unknown binding operation; declare it with 'operation := ...' before use, define 'fn operation(...) T:', or import it from a modulefn operation() Result[Unit, Error]: ok(unit)
 fn caller() Unit:
     operation()
-type	3	5	67	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposefn caller() Unit:
+type	3	5	67	this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposefn caller() Unit:
     callback := fn() Unit:
         if true:
             operation()
@@ -5485,7 +5482,7 @@ fn caller() Unit:
     _ignored := operation()
 resolution	2	17	34	unknown binding operation; declare it with 'operation := ...' before use, define 'fn operation(...) T:', or import it from a modulefn operation() Result[Unit, Error]: ok(unit)
 fn caller() Result[Int, Error]:
-    try operation()
+    operation()?
     return ok(1)
 fn caller() Result[Int, Error]: operation()
 resolution	1	33	32	unknown binding operation; declare it with 'operation := ...' before use, define 'fn operation(...) T:', or import it from a modulefn operation() Int: 1
@@ -5508,7 +5505,7 @@ fn caller() Unit:
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Result[Unit, Error]:
-    try stdout().write("{text}\n")
+    stdout().write("{text}\n")?
     return stdout().flush()
 
 fn add(a: Int, b: Int) Int:
@@ -5818,13 +5815,13 @@ import stdout from "@std/io/io.ms"
 import stderr from "@std/io/io.ms"
 
 fn write_line(text: String) Result[Unit, Error]:
-    try stdout().write(data: "{text}\n")
+    stdout().write(data: "{text}\n")?
 
 fn exercise() Result[Int, Error]:
     args := arguments()
     var index = 0
     while index < args.length():
-        try write_line(args[index])
+        write_line(args[index])?
         index = index + 1
     return ok(0)
 
@@ -5836,16 +5833,16 @@ export fn main() Int:
             return 1
 
 test "selected=a=b":
-    try write_line("selected")
+    write_line("selected")?
 
 test "unselected":
     write_line("unselected")
 resolution	1	8	7	module does not export arguments; another standard module exports it, so replace this import with: import arguments from "@std/os/env.ms"
-type	6	24	186	unknown argument data; parameters of write: value
-type	6	18	180	missing argument value: String in call to write; add 'value: <String>'
-resolution	9	13	251	unknown binding arguments; add: import arguments from "@std/os/env.ms"
-type	20	47	540	cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead
-type	27	5	653	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposefn f() Int:
+type	6	20	182	unknown argument data; parameters of write: value
+type	6	14	176	missing argument value: String in call to write; add 'value: <String>'
+resolution	9	13	248	unknown binding arguments; add: import arguments from "@std/os/env.ms"
+type	20	47	534	cause.message is not a function (it has type String); only functions and methods can be called, so remove the (...) or call a function instead
+type	27	5	644	this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposefn f() Int:
     return 1
 X := f()
 type	3	6	30	a constant takes literals, operators, collections, and other constants; compute this value in a functionfn f() Int:
@@ -5991,13 +5988,13 @@ test "method fault frame":
 import expect_equal from "@std/test/test.ms"
 
 test "arithmetic":
-    2 + 3 | try expect_equal(expected: 5)
+    2 + 3 | expect_equal(expected: 5)?
 test "fault":
     missing: Int? := none
     impossible := missing.get()
 type	3	5	44	local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore itimport expect_equal from "@std/test/test.ms"
 test "failed assertion":
-    2 + 3 | try expect_equal(expected: 6)
+    2 + 3 | expect_equal(expected: 6)?
 fn sum(value: Int) Int:
     return value + 1
 test "fault":
@@ -6042,7 +6039,7 @@ export fn close_output() Unit:
     stdout().close()
 resolution	2	8	42	module does not export clock; @std/time.ms exports: Calendar, Deadline, Duration, Instant, Timestamp, deadline_after, from_calendar, hours, local_zone, microseconds, milliseconds, minutes, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from "@std/time.ms"'
 resolution	6	12	140	unknown binding clock; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
-type	9	5	190	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposefn private_value() Int:
+type	9	5	190	this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposefn private_value() Int:
     return 7
 export fn defaulted(value: Int = private_value()) Int:
     return value
@@ -6074,7 +6071,7 @@ fn checked(n: Int) Result[Int, TextError]:
         return error(TextError("negative"))
     return ok(n + 1)
 fn chain(n: Int) Result[Int, TextError]:
-    value := try checked(n)
+    value := checked(n)?
     return ok(value)
 export fn main() Int:
     return chain(9223372036854775807).get()
@@ -6301,8 +6298,8 @@ fn discard(value: Int) Unit:
     return
 
 test "return contracts":
-    positive(value: 3) | try expect_equal(expected: 3)
-    discard(value: 1) | try expect_equal(expected: unit)
+    positive(value: 3) | expect_equal(expected: 3)?
+    discard(value: 1) | expect_equal(expected: unit)?
 resolution	2	8	52	unknown standard module @std/faults.ms
 resolution	8	9	167	unknown binding panic; add: import panic from "@std/core.ms"
 type	4	1	81	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)import expect_contains, expect_fault from "@std/test/test.ms"
@@ -6319,29 +6316,29 @@ fn endless() Int:
         continue
 
 test "Never faults propagate through initializers and returned values":
-    try expect_contains(
-        try expect_fault(
+    expect_contains(
+        expect_fault(
             fn:
                 impossible := failed_initializer()
-        ),
+        )?,
         "initializer cannot return"
-    )
-    try expect_contains(
-        try expect_fault(
+    )?
+    expect_contains(
+        expect_fault(
             fn:
                 impossible := returned_failure()
-        ),
+        )?,
         "result cannot return"
-    )
+    )?
 resolution	2	8	69	unknown standard module @std/faults.ms
 resolution	5	24	152	unknown binding panic; add: import panic from "@std/core.ms"
 type	4	1	98	reachable fallthrough in function returning Never; end every path with 'return <Never>' (or make the last branch return)
 resolution	8	12	235	unknown binding panic; add: import panic from "@std/core.ms"import expect_contains, expect_fault from "@std/test/test.ms"
 import panic from "@std/faults.ms"
 test "expect_fault reports the injected fault":
-    try expect_contains(try expect_fault(fn: panic("boom")), "boom")
+    expect_contains(expect_fault(fn: panic("boom"))?, "boom")?
 resolution	2	8	69	unknown standard module @std/faults.ms
-resolution	4	46	190	unknown binding panic; add: import panic from "@std/core.ms"interface Read:
+resolution	4	38	182	unknown binding panic; add: import panic from "@std/core.ms"interface Read:
     fn read() Int
 type Reader:
     operation: fn() Int
@@ -6668,9 +6665,9 @@ impl TestHooks for State:
     fn after_all() Unit:
         println("after_all {self.value}")
 test "first":
-    try expect_equal(fixture.value, 1)
+    expect_equal(fixture.value, 1)?
 test "second":
-    try expect_equal(fixture.value, 2)
+    expect_equal(fixture.value, 2)?
 resolution	3	8	110	unknown standard module @std/faults.msimport TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 fn println(message: String) Unit:
@@ -6685,7 +6682,7 @@ impl TestHooks for State:
 test "one":
     var hooks = TestHooks(value: fixture)
     hooks.before_all()
-    try expect_equal(fixture.value, 7)
+    expect_equal(fixture.value, 7)?
 type	13	17	326	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyimport TestHooks, expect_equal, expect_ok from "@std/test/test.ms"
 import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers from "@std/net/http.ms"
 import network from "@std/net/net.ms"
@@ -6699,26 +6696,26 @@ impl TestHooks for ApiFixture:
     fn after_all() Unit:
         self.server.close()
 test "first request":
-    response := try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
-    try expect_equal(response.metadata().status, 200)
+    response := expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))?
+    expect_equal(response.metadata().status, 200)?
 test "second request uses same server":
-    response := try expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))
-    try expect_equal(response.body, "shared".to_bytes())
+    response := expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))?
+    expect_equal(response.body, "shared".to_bytes())?
 resolution	3	8	164	module does not export network; did you mean 'Network'?
 resolution	9	31	425	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
-resolution	14	31	625	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
-resolution	17	31	865	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
-type	12	9	553	this statement discards Result[Unit, Error], so a failure would be lost; write 'try ...' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposeexport fn helper() Unit:
+resolution	14	27	621	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
+resolution	17	27	855	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
+type	12	9	553	this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposeexport fn helper() Unit:
     return
 test "interruptible":
     println("READY")
     while true:
-        try expect_equal(1, 1)
+        expect_equal(1, 1)?
 test "later":
-    try fail("must not run")
+    fail("must not run")?
 resolution	2	5	26	unknown binding println; there is no println: use print(value), which writes any value and a newline; for write errors or bytes import stdout from "@std/io/io.ms" and call stdout().write("text\\n")
-resolution	4	13	71	unknown binding expect_equal; add: import expect_equal from "@std/test/test.ms"
-resolution	6	9	112	unknown binding fail; add: import fail from "@std/test/test.ms"import TestHooks, expect_equal from "@std/test/test.ms"
+resolution	4	9	67	unknown binding expect_equal; add: import expect_equal from "@std/test/test.ms"
+resolution	6	5	105	unknown binding fail; add: import fail from "@std/test/test.ms"import TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 type UnusedFixture:
     value: Int
@@ -6732,19 +6729,19 @@ impl TestHooks for UnusedFixture:
     fn after_all() Unit:
         written := stdout().write("UNUSED after_all").get()
 test "plain test":
-    try expect_equal(1 + 1, 2)
+    expect_equal(1 + 1, 2)?
 type	7	9	194	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
 type	9	9	282	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
 type	11	9	370	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
 type	13	9	456	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore itimport expect_equal, skip from "@std/test/test.ms"
 test "passing":
-    try expect_equal(2 + 2, 4)
+    expect_equal(2 + 2, 4)?
 test "skipped":
     skip("fixture unavailable")
 test "failing":
-    try expect_equal(1, 2)
+    expect_equal(1, 2)?
 test "later":
-    try expect_equal(true, true)
+    expect_equal(true, true)?
 test "positive unit overflow":
     impossible := (153722868).minutes()
 test "negative unit overflow":

@@ -11,7 +11,7 @@ There is one stream type for memory and for waiting sources. A source that touch
 
 ## Reading
 
-`for item in stream` binds `T`. A failed read leaves the loop with its error, as `try` would, so the enclosing function must return a `Result`; a function that does not calls `next()` itself.
+`for item in stream` binds `T`. A failed read leaves the loop with its error, as `?` would, so the enclosing function must return a `Result`; a function that does not calls `next()` itself.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

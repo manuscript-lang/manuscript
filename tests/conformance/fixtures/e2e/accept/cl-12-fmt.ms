@@ -4,19 +4,19 @@
 import expect_equal from "@std/test/test.ms"
 
 fn map_total(values: Map[String, Int]) Int:
-	var total = 0
+    var total = 0
 
-	for entry in values:
-		{value} := entry
-		total += value
+    for entry in values:
+        {value} := entry
+        total += value
 
-	return total
+    return total
 
 fn set_total(values: Set[Int]) Int:
-	var total = values.sum()
-	return total
+    var total = values.sum()
+    return total
 
 test "map entry type":
-	entry := MapEntry[String, Int]("a", 3)
-	expect_equal(entry.key, "a")?
-	expect_equal(entry.value, 3)?
+    entry := MapEntry[String, Int]("a", 3)
+    expect_equal(entry.key, "a")?
+    expect_equal(entry.value, 3)?

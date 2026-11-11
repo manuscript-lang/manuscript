@@ -4,81 +4,85 @@
 import expect_true, fail from "@std/test/test.ms"
 
 interface Shape:
-	fn area() Int
-	fn scaled(by: Int) Int
-	fn checked(limit: Int) Int!Error
-	fn grow(depth: Int) Int
+    fn area() Int
+    fn scaled(by: Int) Int
+    fn checked(limit: Int) Int!Error
+    fn grow(depth: Int) Int
 
 type Rect:
-	w: Int
-	h: Int
+    w: Int
+    h: Int
 
 enum Sign:
-	Plus(n: Int)
-	Minus(n: Int)
+    Plus(n: Int)
+    Minus(n: Int)
 
 impl Shape for Rect:
-	fn area() Int:
-		return self.w * self.h
+    fn area() Int:
+        return self.w * self.h
 
-	fn scaled(by: Int) Int:
-		return self.area() * by
+    fn scaled(by: Int) Int:
+        return self.area() * by
 
-	fn checked(limit: Int) Int!Error:
-		if self.area() > limit: return error(cause: Error("too big"))
-		return ok(value: self.area())
+    fn checked(limit: Int) Int!Error:
+        if self.area() > limit:
+            return error(cause: Error("too big"))
 
-	fn grow(depth: Int) Int:
-		if depth == 0: return self.w
-		return self.grow(depth: depth - 1) + 1
+        return ok(value: self.area())
+
+    fn grow(depth: Int) Int:
+        if depth == 0:
+            return self.w
+
+        return self.grow(depth: depth - 1) + 1
 
 impl Shape for Sign:
-	fn area() Int:
-		match self:
-			Plus(n): return n
-			Minus(n): return 0 - n
+    fn area() Int:
+        match self:
+            Plus(n): return n
+            Minus(n): return 0 - n
 
-	fn scaled(by: Int) Int:
-		return self.area() * by
+    fn scaled(by: Int) Int:
+        return self.area() * by
 
-	fn checked(limit: Int) Int!Error:
-		return ok(value: self.area())
+    fn checked(limit: Int) Int!Error:
+        return ok(value: self.area())
 
-	fn grow(depth: Int) Int:
-		return depth
+    fn grow(depth: Int) Int:
+        return depth
 
 fn through(shape: Shape) Int:
-	return shape.scaled(by: 2)
+    return shape.scaled(by: 2)
 
 fn tried(rect: Rect, limit: Int) Int!Error:
-	first := rect.checked(limit: limit)?
-	return ok(value: first + (rect.checked(limit: limit + 100)?))
+    first := rect.checked(limit: limit)?
+    return ok(value: first + (rect.checked(limit: limit + 100)?))
 
 fn order(rect: Rect, var log: List[String]) Int:
-	log.append(value: "receiver")
-	return rect.scaled(by: id(log: var log))
+    log.append(value: "receiver")
+    return rect.scaled(by: id(log: var log))
 
 fn id(var log: List[String]) Int:
-	log.append(value: "argument")
-	return 1
+    log.append(value: "argument")
+    return 1
 
 test "direct methods":
-	rect := Rect(w: 3, h: 4)
-	(rect.area() == 12) | expect_true?
-	(rect.scaled(by: 3) == 36) | expect_true?
-	(through(shape: rect) == 24) | expect_true?
-	(through(shape: Plus(n: 5)) == 10) | expect_true?
-	(Minus(n: 4).area() == 0 - 4) | expect_true?
-	(rect.grow(depth: 10) == 13) | expect_true?
+    rect := Rect(w: 3, h: 4)
+    (rect.area() == 12) | expect_true?
+    (rect.scaled(by: 3) == 36) | expect_true?
+    (through(shape: rect) == 24) | expect_true?
+    (through(shape: Plus(n: 5)) == 10) | expect_true?
+    (Minus(n: 4).area() == 0 - 4) | expect_true?
+    (rect.grow(depth: 10) == 13) | expect_true?
 
-	match tried(rect: rect, limit: 12):
-		ok(value): (value == 24) | expect_true?
-		error(cause): return fail(cause.message)
+    match tried(rect: rect, limit: 12):
+        ok(value): (value == 24) | expect_true?
+        error(cause): return fail(cause.message)
 
-	match tried(rect: rect, limit: 11):
-		ok(_value): return fail("expected failure")
-		error(cause): (cause.message == "too big") | expect_true?
+    match tried(rect: rect, limit: 11):
+        ok(_value): return fail("expected failure")
+        error(cause): (cause.message == "too big") | expect_true?
 
-	var log = List[String]()
-	(order(rect: rect, log: var log) == 12) | expect_true?
-	(log.join(separator: ",") == "receiver,argument") | expect_true?
+    var log = List[String]()
+    (order(rect: rect, log: var log) == 12) | expect_true?
+    (log.join(separator: ",") == "receiver,argument") | expect_true?

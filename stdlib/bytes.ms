@@ -339,7 +339,7 @@ impl BytesBuilderCodecs for BytesBuilder:
 		put_word(var self, msrt_float_to_bits(value), 8, false)
 
 // A decoded variable-length integer and the absolute offset of the next byte.
-// Example: `first := try data.uvarint(0); second := try data.varint(first.next_offset)`.
+// Example: `first := data.uvarint(0)?; second := data.varint(first.next_offset)?`.
 export type VarintRead[T]:
 	// The integer decoded as unsigned base-128 or signed zigzag by the read method.
 	value: T

@@ -1,17 +1,16 @@
 // conform: tags=control-flow,faults,formatter,interpolation,modules,parser,stdlib-io,stdlib-process,tier-io,try-result
 // conform: phase=parse
 // conform: origin=documentation/learn/common-tasks.md:150
-import (
-	stdout from "@std/io/io.ms",
-	arguments from "@std/os/env.ms",
-)
+import arguments from "@std/os/env.ms"
+import stdout from "@std/io/io.ms"
 
 fn show(number: Int) Result[Unit, Error]:
-	stdout().write("{number}\n")?
-	return stdout().flush()
+    stdout().write("{number}\n")?
+    return stdout().flush()
 
 export fn main() Int:
-	number := arguments().get(0, default: "42").parse_int()
-	if value := number:
-		if show(value).is_ok(): return 0
-	return 1
+    number := arguments().get(0, default: "42").parse_int()
+    if value := number:
+        if show(value).is_ok():
+            return 0
+    return 1

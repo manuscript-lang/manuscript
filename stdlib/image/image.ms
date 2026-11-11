@@ -15,9 +15,9 @@ Raster images as one flat, interleaved byte buffer, decoded from and encoded to 
 An `Image` owns `pixels`: row-major, `channels` bytes per pixel, no padding. The byte of
 channel `c` at `(x, y)` is `pixels[(y * width + x) * channels + c]`.
 
-    img := try decode_image(read_file("photo.jpg").wait().get())
-    small := try img.resize(img.width / 4, img.height / 4)
-    png := try encode_image(small, ImageFormat.Png)
+    img := decode_image(read_file("photo.jpg").wait().get())?
+    small := img.resize(img.width / 4, img.height / 4)?
+    png := encode_image(small, ImageFormat.Png)?
 
 Decoding never faults on hostile input. Malformed data is an `Error` of kind `EBADMSG`, an unsupported
 feature (arithmetic-coded JPEG, RLE BMP) is `ENOTSUP`, and a size past `max_pixels` or the hard

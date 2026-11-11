@@ -6,4 +6,4 @@ Decision (2026-10-31): `Result[T, E]` accepts any value `E`, with no reporting b
 
 Apply when: adding Result-returning APIs, adapters, examples, or tests.
 Evidence: [Result source](../../stdlib/core.ms), [results guide](../../documentation/core-language/errors/results.md), [regression cases](../../tests/e2e/testdata/accept/result-error-values.ms).
-Verify: records, alternatives and `Int!String` pass; context-free `error("message")` still needs a success type; `try` rejects a different error type.
+Verify: records, alternatives and `Int!String` pass; context-free `error("message")` still needs a success type; `?` rejects a different error type.

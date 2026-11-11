@@ -64,8 +64,8 @@ type Session:
     sub: String
     exp: Int
 
-token := try sign_token(Session(sub: "42", exp: 1900000000), secret)
-session := try verify_token[Session](token, secret)
+token := sign_token(Session(sub: "42", exp: 1900000000), secret)?
+session := verify_token[Session](token, secret)?
 ```
 */
 export fn sign_token[T: Data](

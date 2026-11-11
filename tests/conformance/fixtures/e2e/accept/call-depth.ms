@@ -4,41 +4,45 @@
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
 type Walker:
-	step: Int
-	limit: Int
+    step: Int
+    limit: Int
 
 interface Walk:
-	fn walk(n: Int) Int
+    fn walk(n: Int) Int
 
 impl Walk for Walker:
-	fn walk(n: Int) Int:
-		if n == self.limit: return 0
-		return 1 + self.walk(n: n + self.step)
+    fn walk(n: Int) Int:
+        if n == self.limit:
+            return 0
+
+        return 1 + self.walk(n: n + self.step)
 
 fn runaway(n: Int) Int:
-	return 1 + runaway(n + 1)
+    return 1 + runaway(n + 1)
 
 fn bounded(n: Int, limit: Int) Int:
-	if n == limit: return 0
-	return 1 + bounded(n: n + 1, limit: limit)
+    if n == limit:
+        return 0
+
+    return 1 + bounded(n: n + 1, limit: limit)
 
 test "runaway recursion is a fault":
-	message := expect_fault(
-		fn:
-			_ignored := runaway(0)
-	)?
-	message | expect_contains("call depth limit exceeded")?
+    message := expect_fault(
+        fn:
+            _ignored := runaway(0)
+    )?
+    message | expect_contains("call depth limit exceeded")?
 
 test "runaway method recursion faults like function recursion":
-	walker := Walker(step: 1, limit: -1)
-	message := expect_fault(
-		fn:
-			_ignored := walker.walk(n: 0)
-	)?
-	message | expect_contains("call depth limit exceeded")?
+    walker := Walker(step: 1, limit: -1)
+    message := expect_fault(
+        fn:
+            _ignored := walker.walk(n: 0)
+    )?
+    message | expect_contains("call depth limit exceeded")?
 
 test "recursion below the limit runs normally":
-	(bounded(n: 0, limit: 100000) - 100000) | expect_equal(0)?
+    (bounded(n: 0, limit: 100000) - 100000) | expect_equal(0)?
 
 test "method recursion below the limit runs normally":
-	(Walker(step: 1, limit: 100000).walk(n: 0) - 100000) | expect_equal(0)?
+    (Walker(step: 1, limit: 100000).walk(n: 0) - 100000) | expect_equal(0)?

@@ -1,50 +1,48 @@
 // conform: tags=control-flow,stdlib-system,stdlib-testing,testing,tier-io,try-result
 // conform: phase=test
-import (
-	IpFamily from "@std/net/ip.ms",
-	cpus, metrics, network_interfaces from "@std/os/system.ms",
-	expect_equal, expect_false, expect_true from "@std/test/test.ms",
-)
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
+import cpus, metrics, network_interfaces from "@std/os/system.ms"
+import IpFamily from "@std/net/ip.ms"
 
 test "network interfaces describe each address and include a loopback":
-	found := network_interfaces()
+    found := network_interfaces()
 
-	if items := found:
-		var loopback = false
+    if items := found:
+        var loopback = false
 
-		for item in items:
-			expect_false(item.name.byte_length() == 0)?
-			expect_false(item.address.byte_length() == 0)?
-			expect_false(item.netmask.byte_length() == 0)?
-			expect_true(item.scope_id > 0)?
-			expect_equal(item.family == IpFamily.IPv6, item.address.contains(":"))?
+        for item in items:
+            expect_false(item.name.byte_length() == 0)?
+            expect_false(item.address.byte_length() == 0)?
+            expect_false(item.netmask.byte_length() == 0)?
+            expect_true(item.scope_id > 0)?
+            expect_equal(item.family == IpFamily.IPv6, item.address.contains(":"))?
 
-			if item.internal:
-				loopback = true
-				expect_equal(item.mac, "")?
+            if item.internal:
+                loopback = true
+                expect_equal(item.mac, "")?
 
-		expect_true(loopback)?
+        expect_true(loopback)?
 
 test "cpus report non-negative cumulative times":
-	found := cpus()
+    found := cpus()
 
-	if cpus := found:
-		expect_false(cpus.is_empty())?
+    if cpus := found:
+        expect_false(cpus.is_empty())?
 
-		for cpu in cpus:
-			expect_true(cpu.speed_mhz >= 0)?
-			expect_true(cpu.user >= 0 and cpu.nice >= 0)?
-			expect_true(cpu.system >= 0 and cpu.idle >= 0 and cpu.irq >= 0)?
+        for cpu in cpus:
+            expect_true(cpu.speed_mhz >= 0)?
+            expect_true(cpu.user >= 0 and cpu.nice >= 0)?
+            expect_true(cpu.system >= 0 and cpu.idle >= 0 and cpu.irq >= 0)?
 
 test "metrics report memory, uptime, load averages and parallelism":
-	found := metrics()
+    found := metrics()
 
-	if m := found:
-		expect_true(m.total_memory > 0)?
-		expect_true(m.free_memory <= m.total_memory)?
-		expect_true(m.available_memory <= m.total_memory)?
-		expect_true(m.uptime.to_nanoseconds() > 0)?
-		expect_equal(m.load_average.length(), 3)?
-		for load in m.load_average:
-			expect_true(load >= 0.0)?
-		expect_true(m.available_parallelism >= 1)?
+    if m := found:
+        expect_true(m.total_memory > 0)?
+        expect_true(m.free_memory <= m.total_memory)?
+        expect_true(m.available_memory <= m.total_memory)?
+        expect_true(m.uptime.to_nanoseconds() > 0)?
+        expect_equal(m.load_average.length(), 3)?
+        for load in m.load_average:
+            expect_true(load >= 0.0)?
+        expect_true(m.available_parallelism >= 1)?

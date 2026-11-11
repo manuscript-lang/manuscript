@@ -134,7 +134,7 @@ export fn expect_fault(operation: fn() Unit, site: String = caller_site()) Strin
 		)
 	)
 
-// Returns an error with message; `try fail(message)` fails the current test.
+// Returns an error with message; `fail(message)?` fails the current test.
 export fn fail(message: String, site: String = caller_site()) Unit!:
 	return error(failure(message, site))
 

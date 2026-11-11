@@ -7,7 +7,7 @@ weight = 1
 
 Use `Result[T, E]` when an operation succeeds with `T` or fails with an expected error `E`. `E` may be any value type. Most failures use the prelude type [`Error`](#the-error-type). `Result`, `ok`, `error`, and `Error` are in the prelude.
 
-Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if v := x`, or pass the error back with `try`. Validate runtime input with ordinary conditions before doing the work.
+Return `ok(value: ...)` for success and `error(cause: ...)` for failure. Both are ordinary values. A caller can test it with `is_error()`, read the success path with `if v := x`, or pass the error back with `?`. Validate runtime input with ordinary conditions before doing the work.
 
 ## Validate a value and show the outcome
 
@@ -37,7 +37,7 @@ Quantity: 3
 Quantity must be positive
 ```
 
-Both calls return normally. The second returns an error value, and `show` chooses how to present it. Use [`try`](propagation.md) when the caller should pass that error on instead.
+Both calls return normally. The second returns an error value, and `show` chooses how to present it. Use [`?`](propagation.md) when the caller should pass that error on instead.
 
 ## Shorthand: `T!` and `T!E`
 
@@ -116,7 +116,7 @@ fn discount_message(price: Decimal, percent: Decimal) String:
     return "Discount could not be calculated."
 ```
 
-This caller discards the cause. To use it, call `err()` after `is_error()`, or [propagate it with try](propagation.md).
+This caller discards the cause. To use it, call `err()` after `is_error()`, or [propagate it with `?`](propagation.md).
 
 ## Checking, extracting, and composing
 
@@ -140,7 +140,7 @@ price := discount(price: 20d, percent: 10d).get(0d)
 text := discount(price: 20d, percent: 10d).map(fn value: value.to_string())
 ```
 
-Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` faults with `called Result.get() on error` followed by the error's message; use it only when success is established. Routine failures use a fallback, `if v := x`, or `try`.
+Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` faults with `called Result.get() on error` followed by the error's message; use it only when success is established. Routine failures use a fallback, `if v := x`, or `?`.
 
 ## Converting success to an Optional
 
@@ -155,7 +155,7 @@ To turn absence into an error, use [Optional.ok_or or ok_or_else](../types/optio
 
 ## Discarding a result
 
-A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Unit, E]`. Handle it with `if v := x`, `try`, or return it. To ignore it deliberately, bind it to `_`:
+A standalone call such as `discount(price: 20d, percent: 10d)` discards both outcomes, and the checker rejects it, including for `Result[Unit, E]`. Handle it with `if v := x`, `?`, or return it. To ignore it deliberately, bind it to `_`:
 
 ```manuscript
 _ := discount(price: 20d, percent: 10d)
@@ -165,7 +165,7 @@ The initializer still runs and the outcome is dropped unread. Several `_ :=` may
 
 ## Converting a domain error to Error
 
-`try` forwards the error type unchanged and never converts one. Translate a domain error with an ordinary function or `map_error`:
+`?` forwards the error type unchanged and never converts one. Translate a domain error with an ordinary function or `map_error`:
 
 ```manuscript
 fn discount_error(cause: DiscountError) Error:

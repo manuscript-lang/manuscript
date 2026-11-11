@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "expected Int, found Result[Int, Error] (in the return value); unwrap it with 'try' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'",
+        "message": "expected Int, found Result[Int, Error] (in the return value); unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'",
         "position": {
           "file": "testexpressionconveniencerejections-14.ms",
           "line": 8,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testexpressionconveniencerejections-14.ms:8:12: type: expected Int, found Result[Int, Error] (in the return value); unwrap it with 'try' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'\n   |\n 8 |     return p()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testexpressionconveniencerejections-14.ms:8:12: type: expected Int, found Result[Int, Error] (in the return value); unwrap it with a trailing '?' inside a function that returns a compatible Result, with 'if value := x', or with '.get()'\n   |\n 8 |     return p()\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

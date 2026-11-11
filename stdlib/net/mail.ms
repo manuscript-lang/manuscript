@@ -12,9 +12,9 @@ Internet mail messages (RFC 5322): addresses, address lists, and message parsing
 message into `Headers` and body and decodes RFC 2047 encoded words on request.
 
     import parse_address, parse_message from "@std/net/mail.ms"
-    sender := try parse_address("Ada Lovelace <ada@example.com>")
+    sender := parse_address("Ada Lovelace <ada@example.com>")?
     print(sender.name)              // "Ada Lovelace"
-    mail := try parse_message(raw)
+    mail := parse_message(raw)?
     print(mail.headers.get("Subject").get(""))
 */
 

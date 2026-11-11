@@ -150,7 +150,7 @@ Parses one JSON value and applies the supplied input, depth, and value limits.
 
 With the default `T = JsonValue` the result is the parsed tree. Any other `T` is read from the
 document by the inverse of the `stringify` encoding, so `parse[Request](text)` and `result: Request! = parse(text)`
-return a decoded `Request` in a `Result` (`try` passes no expected type, so write `try parse[Request](text)`). A value whose shape does not match `T` returns
+return a decoded `Request` in a `Result` (`?` passes no expected type, so write `parse[Request](text)?`). A value whose shape does not match `T` returns
 `EBADMSG`; a type that is not `Data` is rejected at compile time. Input, depth and value limits
 apply to the document before decoding.
 
@@ -262,7 +262,7 @@ type Request:
     stream: Bool
     user: String?
 
-text := try stringify(Request(model: "example", stream: true, user: none))
+text := stringify(Request(model: "example", stream: true, user: none))?
 ```
 */
 export fn stringify[T: Data](

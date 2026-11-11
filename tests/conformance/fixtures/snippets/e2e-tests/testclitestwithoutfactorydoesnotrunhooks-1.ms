@@ -1,26 +1,24 @@
 // conform: tags=control-flow,faults,interfaces,modules,records,stdlib-io,stdlib-testing,testing,tier-core,try-result
 // conform: phase=test
 // conform: origin=tests/e2e/test_fixture_test.go:257 TestCLITestWithoutFactoryDoesNotRunHooks
-import (
-	stdout from "@std/io/io.ms",
-	TestHooks, expect_equal from "@std/test/test.ms",
-)
+import TestHooks, expect_equal from "@std/test/test.ms"
+import stdout from "@std/io/io.ms"
 
 type UnusedFixture:
-	value: Int
+    value: Int
 
 impl TestHooks for UnusedFixture:
-	fn before_all() Unit:
-		_written := stdout().write("UNUSED before_all").get()
+    fn before_all() Unit:
+        _written := stdout().write("UNUSED before_all").get()
 
-	fn before_each() Unit:
-		_written := stdout().write("UNUSED before_each").get()
+    fn before_each() Unit:
+        _written := stdout().write("UNUSED before_each").get()
 
-	fn after_each() Unit:
-		_written := stdout().write("UNUSED after_each").get()
+    fn after_each() Unit:
+        _written := stdout().write("UNUSED after_each").get()
 
-	fn after_all() Unit:
-		_written := stdout().write("UNUSED after_all").get()
+    fn after_all() Unit:
+        _written := stdout().write("UNUSED after_all").get()
 
 test "plain test":
-	expect_equal(1 + 1, 2)?
+    expect_equal(1 + 1, 2)?

@@ -4,7 +4,7 @@
 import expect_equal from "@std/test/test.ms"
 
 test "grouped imports":
-	values: List[Int] := [1, 2]
-	var entries = Map[String, Int]()
-	entries.add("count", values.length())
-	expect_equal(entries.length(), 1)?
+    values: List[Int] := [1, 2]
+    var entries = Map[String, Int]()
+    entries.add("count", values.length())
+    expect_equal(entries.length(), 1)?

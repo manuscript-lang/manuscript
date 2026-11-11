@@ -12,7 +12,7 @@ header block (folded lines joined, names kept as written, lookup case-insensitiv
 
     import parse_media_type, media_type_for_extension from "@std/net/mime.ms"
     print(media_type_for_extension(".json").get("")) // "application/json"
-    charset := (try parse_media_type("text/html; charset=utf-8")).params.get("charset")
+    charset := (parse_media_type("text/html; charset=utf-8")?).params.get("charset")
 */
 
 // A parsed media type with lower-cased `essence` and parameters keyed by lower-cased name.

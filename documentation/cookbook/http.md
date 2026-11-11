@@ -45,7 +45,7 @@ hello from a file
 
 The server needs Python 3 and a `notes.txt` (from the file-reading recipe). Transport failures, non-success statuses and invalid UTF-8 exit 1; the body is capped at one mebibyte (1,048,576 bytes). Other `FetchOptions` fields keep their defaults, including the 30-second deadline.
 
-For a JSON response, `try response.json[Config]()` decodes into a type such as the `Config` above. Call `check_status()` first when an error status should fail the operation: `fetch` itself returns error statuses as ordinary responses. For repeated requests, bind a pooled `Fetcher` with `client := try fetcher()`; see the [fetch API](../standard-library/reference/net/fetch.ms.md).
+For a JSON response, `response.json[Config]()?` decodes into a type such as the `Config` above. Call `check_status()` first when an error status should fail the operation: `fetch` itself returns error statuses as ordinary responses. For repeated requests, bind a pooled `Fetcher` with `client := fetcher()?`; see the [fetch API](../standard-library/reference/net/fetch.ms.md).
 
 To answer requests instead, see [serving HTTP](../core-language/concurrency/http-server.md).
 

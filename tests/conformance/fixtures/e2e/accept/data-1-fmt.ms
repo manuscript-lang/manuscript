@@ -4,20 +4,20 @@
 import expect_equal from "@std/test/test.ms"
 
 fn positives(values: List[Int]) List[Int]:
-	var result = values.filter(fn value: value > 0)
-	return result
+    var result = values.filter(fn value: value > 0)
+    return result
 
 test "dynamic mutable data and explicit copies":
-	expect_equal(positives([3, -1, 2]), [3, 2])?
+    expect_equal(positives([3, -1, 2]), [3, 2])?
 
-	_absent: Int? := none
-	expect_equal([1].get(5, default: -1), -1)?
+    _absent: Int? := none
+    expect_equal([1].get(5, default: -1), -1)?
 
-	var original = Map[String, Int]()
-	original.add("a", 1)
+    var original = Map[String, Int]()
+    original.add("a", 1)
 
-	var updated = original.clone()
-	updated.add("b", 2)
-	updated.add("a", 3)
-	expect_equal(original.get("a"), 1)?
-	expect_equal(updated.get("a"), 3)?
+    var updated = original.clone()
+    updated.add("b", 2)
+    updated.add("a", 3)
+    expect_equal(original.get("a"), 1)?
+    expect_equal(updated.get("a"), 3)?

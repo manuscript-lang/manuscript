@@ -4,8 +4,8 @@
 import expect_equal from "@std/test/test.ms"
 
 fn subtract(amount: Int, deduction: Int) Int:
-	return amount - deduction
+    return amount - deduction
 
 test "named multiline call":
-	remaining := subtract(deduction: 2, amount: 9)
-	expect_equal(remaining, 7)?
+    remaining := subtract(deduction: 2, amount: 9)
+    expect_equal(remaining, 7)?

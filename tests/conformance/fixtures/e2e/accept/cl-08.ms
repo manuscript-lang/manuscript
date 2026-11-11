@@ -4,16 +4,18 @@
 import expect_equal from "@std/test/test.ms"
 
 fn selected_sum(values: List[Int]) Int:
-	var total = 0
+    var total = 0
 
-	for value in values:
-		if value == 0: continue
-		if value < 0: break
+    for value in values:
+        if value == 0:
+            continue
+        if value < 0:
+            break
 
-		total += value
+        total += value
 
-	return total
+    return total
 
 test "iteration control":
-	expect_equal(selected_sum([2, 0, 3, -1, 9]), 5)?
-	expect_equal(selected_sum([]), 0)?
+    expect_equal(selected_sum([2, 0, 3, -1, 9]), 5)?
+    expect_equal(selected_sum([]), 0)?

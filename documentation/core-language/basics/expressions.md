@@ -14,7 +14,7 @@ Rows are ordered from highest to lowest precedence.
 | Form | Associativity and restriction |
 | --- | --- |
 | Member access `.`, type application or list indexing `[...]`, call `(...)`, propagation `?` | Left to right; brackets specialize declarations or index lists |
-| Prefix `+`, `-`, `try` | Right to left |
+| Prefix `+`, `-` | Right to left |
 | `*`, `/`, `%` | Left to right |
 | `+`, `-` | Left to right |
 | Range `..` | Non-chainable; Int bounds, excludes the end; see [loops](../control-flow/loops.md) |
@@ -28,7 +28,7 @@ Rows are ordered from highest to lowest precedence.
 ```ebnf
 Expression    = Pipe ;
 Pipe          = OrExpression, { "|", PipeStep } ;
-PipeStep      = [ "try" ], ( Name, { ".", Name }, [ CallArguments ] [ "?" ] | Postfix-from-dot ) | "try" ;
+PipeStep      = ( Name, { ".", Name }, [ CallArguments ] [ "?" ] | Postfix-from-dot ) ;
 OrExpression  = AndExpression, { "or", AndExpression } ;
 AndExpression = NotExpression, { "and", NotExpression } ;
 NotExpression = "not", NotExpression | Comparison ;
@@ -36,7 +36,7 @@ Comparison    = Range, [ ("<" | "<=" | ">" | ">=" | "==" | "!="), Range ] ;
 Range         = Sum, [ "..", Sum ] ;
 Sum           = Product, { ("+" | "-"), Product } ;
 Product       = Prefix, { ("*" | "/" | "%"), Prefix } ;
-Prefix        = ("+" | "-" | "try"), Prefix | Postfix ;
+Prefix        = ("+" | "-"), Prefix | Postfix ;
 Postfix       = Primary, { ".", Name | TypeArguments | "[", Expression, "]" | CallArguments | "?" } ;
 CallArguments = "(", [ Argument, { ",", Argument }, [ "," ] ], ")" ;
 Argument      = [ Name, ":" ], [ "var" ], Expression ;
@@ -57,7 +57,7 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 
 - `a < b == c`, `a == b == c`, and `a < b < c` are syntax errors; `(a < b) == flag` is ordinary Bool equality.
 - `not a == b` means `not (a == b)`.
-- `try read() + 1` means `(try read()) + 1`; write `try (expression)` to propagate a larger expression.
+- `read()? + 1` means `(read()?) + 1`; write `(expression)?` to propagate a larger expression.
 - Brackets after a generic declaration supply types (`identity[Int]`, `Box[String]`); after a list value they look up: `values[index]` equals `values.get(index)`, a `T` accepting negative indexes that faults out of range. `values[index] = x` and `values[index] += x` are the `set` mutator (`values.set(index, x)`); the receiver must be a `var`. Slicing is unsupported.
 - Calls take positional arguments and optional labels ([call rules](../functions/declarations-and-calls.md#argument-names)). Single-payload constructors may omit the label: `Box(3)`, `ok(3)`. An interface is never constructed; see [interface conversion](../types/contracts.md#interface-conversion).
 
@@ -71,8 +71,8 @@ MatchExpression = "match", Expression, ":", NEWLINE, INDENT,
 | `x \| f(a: 1)` | `f(x, a: 1)`: `x` becomes the first positional argument |
 | `x \| m.f(2)` | `m.f(x, 2)` |
 | `x \| .m(2)` | `x.m(2)`: a method, field, or index chain on the value |
-| `x \| try step` | `try` of the step's result |
-| `x \| try` | `try x`: unwrap the value so far |
+| `x \| f?` | `f(x)?`: propagate the step's error |
+| `x \| .m()?` | `x.m()?` |
 
 Save as `port.ms` and run `ms run port.ms`:
 
@@ -95,11 +95,11 @@ fn main() Int:
 8080
 ```
 
-- `|` has the lowest precedence: `a + b | f` is `f(a + b)`. Parenthesize a pipe used as an operand: `(x | f) == y`. A leading `try` binds only the head: `try read(path: path) | f`.
+- `|` has the lowest precedence: `a + b | f` is `f(a + b)`. Parenthesize a pipe used as an operand: `(x | f) == y`. A `?` binds only the expression before it: `read(path: path)? | f`.
 - A step is a name or member path, optionally with one argument list, or a `.` chain. Literals, function expressions, and calls inside the path are not steps; bind the function to a name first.
 - `x | f(...)` always inserts `x` as the first positional argument; it cannot apply a function that `f(...)` returns.
-- `try` before a step unwraps its result under the [propagation rules](../errors/propagation.md). Without `try`, a Result passes through unchanged. A flow may have several `try` steps.
-- `.member`, call, or index directly after a step applies to its result: `x | f(a: 1).size()` is `f(x, a: 1).size()`. A `.member` on the next line is not part of the step: use `x | try .size()` to propagate `x.size()`.
+- A trailing `?` on a step unwraps its result under the [propagation rules](../errors/propagation.md). Without `?`, a Result passes through unchanged. A flow may have several `?` steps.
+- `.member`, call, or index directly after a step applies to its result: `x | f(a: 1).size()` is `f(x, a: 1).size()`. A `.member` on the next line is not part of the step: use `x | .size()?` to propagate `x.size()`.
 - A line starting with `|` or `.` continues the statement; indent it exactly four spaces past the statement's first line.
 
 ## Operand and result types
@@ -115,7 +115,7 @@ fn main() Int:
 | `==`, `!=` | Same exact type satisfying Equal | Bool |
 | `not` | Bool | Bool |
 | `and`, `or` | Both Bool | Bool |
-| `try` | Result[T, E], with a compatible enclosing Result error type | T on success; propagates E on failure |
+| postfix `?` | Result[T, E], with a compatible enclosing Result error type | T on success; propagates E on failure |
 | `+`, `-` | Both Duration | Duration |
 | `+`, `-` | Instant left, Duration right | Instant |
 | `-` | Both Instant | Duration |
@@ -135,12 +135,12 @@ The operand types, not the expected result type, select the operator row.
 
 - Numeric arithmetic, ordering, and equality: the non-Never operands must fix one eligible type; Never fills the rest.
 - Time arithmetic: known operands must select exactly one row.
-- Two Never operands cannot select a numeric, ordering, or equality row; unary signs and `try` need an independently known operand.
+- Two Never operands cannot select a numeric, ordering, or equality row; unary signs and `?` need an independently known operand.
 - `not`, `and`, and `or` take Bool, so Never is fine.
 
 The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `instant - panic(...)` is rejected (Duration or Instant?), as is `x: Int := -panic(message: "stop")`.
 
-See [compatibility](../types/compatibility.md) and [error propagation](../errors/propagation.md) for Never in calls, returns, and `try`.
+See [compatibility](../types/compatibility.md) and [error propagation](../errors/propagation.md) for Never in calls, returns, and `?`.
 
 ## Source location
 

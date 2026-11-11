@@ -7,7 +7,7 @@ import (
 An exact fraction of two arbitrary-precision integers, always in lowest terms with a positive denominator,
 so two equal values compare equal with `==`. Arithmetic uses named methods and never rounds.
 Build values with `rat`, `rat_of_int`, `rat_of_big_int`, `rat_of_float` or `parse_rat`.
-Example: `(try parse_rat("1/3")).add(try parse_rat("1/6")).format()` is `"1/2"`.
+Example: `(parse_rat("1/3")?).add(parse_rat("1/6")?).format()` is `"1/2"`.
 */
 export opaque type BigRat:
 	// The signed numerator in lowest terms.

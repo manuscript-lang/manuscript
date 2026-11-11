@@ -1,102 +1,106 @@
 // conform: tags=control-flow,formatter,generics,interpolation,match,modules,optional,parser,stdlib-http,stdlib-io,stdlib-net,stdlib-testing,stdlib-tls,stdlib-websocket,tier-io,try-result,scope-cleanup
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/projects/networking/main.ms
-import (
-	HttpClientOptions,
-	HttpExchange,
-	HttpMethod,
-	HttpServerOptions,
-	buffered,
-	headers from "@std/net/http.ms",
-	http_client, serve, web_socket from "@std/net/net.ms",
-	TlsOptions from "@std/net/tls.ms",
-	WebSocketOptions from "@std/net/websocket.ms",
-	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
-)
+import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import headers, HttpMethod, buffered from "@std/net/http.ms"
+import http_client, serve, web_socket from "@std/net/net.ms"
+import HttpExchange from "@std/net/http.ms"
+import HttpServerOptions from "@std/net/http.ms"
+import HttpClientOptions from "@std/net/http.ms"
+import TlsOptions from "@std/net/tls.ms"
+import WebSocketOptions from "@std/net/websocket.ms"
 
 fn echo(var exchange: HttpExchange) Unit!:
-	if exchange.path() == "/ws":
-		var socket = exchange.upgrade(
-			allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
-		)?
+    if exchange.path() == "/ws":
+        var socket = exchange.upgrade(
+            allowed_origins: [], subprotocols: ["echo"], max_message_bytes: 1024
+        )?
 
-		match socket.receive()?:
-			message:
-				_sent := socket.send_bytes(data: message.data, text: message.text)?
-			none:
-				return ok(unit)
+        match socket.receive()?:
+            message:
+                _sent := socket.send_bytes(
+                    data: message.data, text: message.text
+                )?
+            none:
+                return ok(unit)
 
-		socket.close()?
-		return ok(unit)
+        socket.close()?
+        return ok(unit)
 
-	var fields = headers()
-	_appended := fields.append("X-Test", "stream")?
-	_started := exchange.send_headers(status: 200, headers: fields)?
+    var fields = headers()
+    _appended := fields.append("X-Test", "stream")?
+    _started := exchange.send_headers(status: 200, headers: fields)?
 
-	match exchange.write("hello from streaming Manuscript"):
-		ok(_):
-			return ok(unit)
-		error(_):
-			return error(Error("write failed", kind: "EIO"))
+    match exchange.write("hello from streaming Manuscript"):
+        ok(_):
+            return ok(unit)
+        error(_):
+            return error(Error("write failed", kind: "EIO"))
 
 fn exercise() Unit!:
-	tls := TlsOptions(
-		server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
-		alpn: [], require_client_certificate: false
-	)
-	server_options := HttpServerOptions(
-		max_requests: 8, max_body_bytes: 1024, max_response_bytes: 1024,
-		max_header_bytes: 65536, timeout: 3.seconds(), grace: 0.milliseconds(),
-		tls: none
-	)
-	var server = serve(address: "127.0.0.1:0", handler: echo, options: server_options)?
-	client_options := HttpClientOptions(
-		max_redirects: 2, max_idle_connections: 4, max_header_bytes: 65536,
-		idle_timeout: 10.seconds(), decompress: true, cookies: true, tls: tls.clone()
-	)
-	var client = http_client(options: client_options)?
-	response := client.request(
-		method: HttpMethod.Get, url: "http://{server.address()}/", headers: headers(),
-		body: "", max_response_bytes: 1024, timeout: 2.seconds()
-	)?
-	response.metadata().status | expect_equal(200)?
+    tls := TlsOptions(
+        server_name: "", roots_pem: "", certificate_pem: "", private_key_pem: "",
+        alpn: [], require_client_certificate: false
+    )
+    server_options := HttpServerOptions(
+        max_requests: 8, max_body_bytes: 1024, max_response_bytes: 1024,
+        max_header_bytes: 65536, timeout: 3.seconds(), grace: 0.milliseconds(),
+        tls: none
+    )
+    var server = serve(
+        address: "127.0.0.1:0", handler: echo, options: server_options
+    )?
+    client_options := HttpClientOptions(
+        max_redirects: 2, max_idle_connections: 4, max_header_bytes: 65536,
+        idle_timeout: 10.seconds(), decompress: true, cookies: true, tls: tls.clone()
+    )
+    var client = http_client(options: client_options)?
+    response := client.request(
+        method: HttpMethod.Get, url: "http://{server.address()}/", headers: headers(),
+        body: "", max_response_bytes: 1024, timeout: 2.seconds()
+    )?
+    response.metadata().status | expect_equal(200)?
 
-	part := match response.read(max_bytes: 1024):
-		ok(part): part
-		error(_):
-			return fail(message: "Unexpected case")
+    part := match response.read(max_bytes: 1024):
+        ok(part): part
+        error(_):
+            return fail(message: "Unexpected case")
 
-	match part:
-		data:
-			expect_false(not (data.decode_utf8() == "hello from streaming Manuscript"))?
-		none:
-			return fail(message: "Unexpected case")
+    match part:
+        data:
+            expect_false(
+                not (
+                    data.decode_utf8() == "hello from streaming Manuscript"
+                )
+            )?
+        none:
+            return fail(message: "Unexpected case")
 
-	client.close()?
+    client.close()?
 
-	websocket_options := WebSocketOptions(
-		max_message_bytes: 1024, timeout: 2.seconds(), tls: tls, compression: false
-	)
-	socket := web_socket(
-		url: "ws://{server.address()}/ws", headers: headers(), subprotocols: ["echo"],
-		options: websocket_options
-	)?
-	socket.subprotocol() | expect_equal("echo")?
+    websocket_options := WebSocketOptions(
+        max_message_bytes: 1024, timeout: 2.seconds(), tls: tls, compression: false
+    )
+    socket := web_socket(
+        url: "ws://{server.address()}/ws", headers: headers(), subprotocols: ["echo"],
+        options: websocket_options
+    )?
+    socket.subprotocol() | expect_equal("echo")?
 
-	_sent := socket.send(data: "echo me")?
+    _sent := socket.send(data: "echo me")?
 
-	match socket.receive()?:
-		message:
-			(message.text) | expect_true?
-			expect_equal(message.data.decode_utf8(), "echo me")?
-		none:
-			return fail(message: "Unexpected case")
+    match socket.receive()?:
+        message:
+            (message.text) | expect_true?
+            expect_equal(message.data.decode_utf8(), "echo me")?
+        none:
+            return fail(message: "Unexpected case")
 
-	server.close()?
+    server.close()?
 
 export fn main() Int:
-	match exercise():
-		ok(_):
-			return 0
-		error(_):
-			return 1
+    match exercise():
+        ok(_):
+            return 0
+        error(_):
+            return 1

@@ -2,7 +2,7 @@
 
 # Sell the language through a story and concrete proof
 
-Decision: preserve the prominent tagline, “The language for the agentic era.”, and lead with agents writing correct, fast programs that are easy to review. The user's October 27 corrections rejected a generic feature inventory, a human-review-led pitch, and a correctness story reduced to `try` beside selected benchmark wins. The approved outline presents the language holistically through correctness, performance and reviewability, followed by how it is built and a short trial action.
+Decision: preserve the prominent tagline, “The language for the agentic era.”, and lead with agents writing correct, fast programs that are easy to review. The user's October 27 corrections rejected a generic feature inventory, a human-review-led pitch, and a correctness story reduced to `?` beside selected benchmark wins. The approved outline presents the language holistically through correctness, performance and reviewability, followed by how it is built and a short trial action.
 
 Decision: the user’s November 5 positioning identifies the simple type system with generics, no `any` and no reflection as the choice to explain, rather than static typing alone. Connect compiler-visible types to useful analysis such as the HTML code map. Describe the shipped library as batteries-included and name what it covers, rather than framing it as perpetually growing. Interface contracts still have checked signatures; do not imply that every dynamic target or runtime outcome is statically determined.
 

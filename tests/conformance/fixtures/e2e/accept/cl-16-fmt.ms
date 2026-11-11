@@ -4,32 +4,32 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Input:
-	names: List[String?]
+    names: List[String?]
 
 fn outcome_value(outcome: Int!Error) Int:
-	return outcome.get(-1)
+    return outcome.get(-1)
 
 test "data constructor context":
-	_input := Input([none, "Ada"])
-	success: Int!Error := ok(3)
-	failure: Int!Error := error(Error("unavailable"))
-	_absent: Int? := none
-	_nested: List[List[Int]] := [[], [1]]
-	expect_equal(outcome_value(success), 3)?
-	expect_equal(outcome_value(failure), -1)?
+    _input := Input([none, "Ada"])
+    success: Int!Error := ok(3)
+    failure: Int!Error := error(Error("unavailable"))
+    _absent: Int? := none
+    _nested: List[List[Int]] := [[], [1]]
+    expect_equal(outcome_value(success), 3)?
+    expect_equal(outcome_value(failure), -1)?
 
 type Box[T]:
-	value: T
+    value: T
 
 type Request:
-	box: Box[Int?]
+    box: Box[Int?]
 
 fn select[T](first: T, second: T) T:
-	return first
+    return first
 
 test "nested constructor arguments receive inferred context":
-	request := Request(Box(none))
-	provided: Int? := 3
-	selected := select(Box(none), Box(provided))
-	expect_false(not selected.value.is_none())?
-	expect_false(not request.box.value.is_none())?
+    request := Request(Box(none))
+    provided: Int? := 3
+    selected := select(Box(none), Box(provided))
+    expect_false(not selected.value.is_none())?
+    expect_false(not request.box.value.is_none())?

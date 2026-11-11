@@ -4,50 +4,50 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 interface Read[V]:
-	fn get() V
+    fn get() V
 
 interface Same[V: Equal]:
-	fn same(other: V) Bool
+    fn same(other: V) Bool
 
 type Box[T: Clonable]:
-	value: T
+    value: T
 
 impl Read[T] for Box[T]:
-	fn get() T:
-		return self.value.clone()
+    fn get() T:
+        return self.value.clone()
 
 impl Same[T] for Box[T]:
-	fn same(other: T) Bool:
-		return self.value == other
+    fn same(other: T) Bool:
+        return self.value == other
 
 type Matching[T: Equal]:
-	value: T
+    value: T
 
 impl Same[T] for Matching[T]:
-	fn same(other: T) Bool:
-		return self.value == other
+    fn same(other: T) Bool:
+        return self.value == other
 
 type Pair[A, B: Read[A]]:
-	left: A
-	right: B
+    left: A
+    right: B
 
 impl Read[Int] for Pair[Int, B]:
-	fn get() Int:
-		return self.right.get()
+    fn get() Int:
+        return self.right.get()
 
 fn identity(value: Int) Int:
-	return value
+    return value
 
 fn read[T: Clonable](box: Box[T]) T:
-	return box.get()
+    return box.get()
 
 test "parameters and bounds belong to interfaces and types":
-	value := Box(7)
-	expect_false(not (value.same(7)))?
-	expect_false(not (Matching(8).same(8)))?
+    value := Box(7)
+    expect_false(not (value.same(7)))?
+    expect_false(not (Matching(8).same(8)))?
 
-	pair := Pair(1, value)
-	expect_equal(pair.get(), 7)?
+    pair := Pair(1, value)
+    expect_equal(pair.get(), 7)?
 
-	text := Box("seven")
-	expect_equal(read(text), "seven")?
+    text := Box("seven")
+    expect_equal(read(text), "seven")?

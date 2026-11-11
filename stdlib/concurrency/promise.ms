@@ -36,8 +36,8 @@ import (
 // words := promise(
 //     fn: count_words(text), options: PromiseOptions(timeout: 5.seconds())
 // )  // may run on another thread, ends with ETIMEDOUT after 5 s
-// bytes := try config.wait()
-// total := try words.wait()
+// bytes := config.wait()?
+// total := words.wait()?
 // ```
 
 // An operation with one result. `wait` takes it once; a stream read may defer work until the wait.

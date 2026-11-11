@@ -53,7 +53,7 @@ export interface Sink[T]:
 	var fn close() Unit!
 
 // A stream of items: `for item in stream:` walks it, and a failed read returns its error from the enclosing function
-// as `try` would. `next` waits inside the source, so a task parks only at a file, socket or pipe. Make one with
+// as `?` would. `next` waits inside the source, so a task parks only at a file, socket or pipe. Make one with
 // `ReadStream(source)`. The stream owns its source; closing or dropping it releases that source and what it owns.
 export type ReadStream[T]:
 	// The source this stream pulls; `close` replaces it with an ended one so what it owned is released at once.

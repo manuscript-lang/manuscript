@@ -5,7 +5,7 @@ weight = 3
 
 # Test your code
 
-A `test "name":` block runs under `ms test` and passes when it finishes normally. For timing, see [Benchmark your code](#benchmark-your-code). Assertions in `@std/test/test.ms` return `Result`s; `try` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
+A `test "name":` block runs under `ms test` and passes when it finishes normally. For timing, see [Benchmark your code](#benchmark-your-code). Assertions in `@std/test/test.ms` return `Result`s; `?` turns a failed check into the test's error. Faults (including `panic`) and timeouts also fail a test.
 
 Save this complete file as `test.ms`:
 
@@ -65,10 +65,10 @@ ms test ms.toml --json
 - Tests run from the manifest's directory (or the file's, for a single file), so relative fixture paths are stable; see [build and test](getting-started.md#build-and-test).
 - Import app code with a relative path, e.g. `import add from "./src/math.ms"` ([modules](../core-language/modules/declarations.md)).
 - `--filter` matches `module::name` substrings; `--timeout` bounds each test (default 60s, `0` disables).
-- A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `try expect_equal(...)`, or `_ := try ...` to drop a returned value.
+- A bare `expect_equal(...)` statement is a check error, because a discarded `Result` checks nothing: write `expect_equal(...)?`, or `_ := ...` to drop a returned value.
 - `--json` emits versioned per-test results, counts, diagnostics, and stdout; it cannot combine with `--watch` ([JSON contract](../developer-tooling/implementation.md#machine-readable-checks-and-tests)).
 
-For each standalone test example below, replace the contents of `test.ms` and run `ms test test.ms`. `try expect_ok` checks success and keeps the payload:
+For each standalone test example below, replace the contents of `test.ms` and run `ms test test.ms`. `expect_ok?` checks success and keeps the payload:
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -91,7 +91,7 @@ PASS test.ms::typed JSON and Optional payloads
 1 tests, 0 failed
 ```
 
-Tests can also propagate an `Error` with `try`. See [Results](../core-language/errors/results.md).
+Tests can also propagate an `Error` with `?`. See [Results](../core-language/errors/results.md).
 
 ## Select and repeat
 
@@ -165,7 +165,7 @@ ms test ms.toml --fuzz 30s           # keep generating fresh cases for 30s per p
 
 `--fuzz` replaces the case count with a time budget for each `check` call and prints the starting seed to standard error, so a fault that kills the process can still be replayed with `--seed`. It disables the default 60s `--timeout` unless you pass one. An explicit `seed:` argument to `check` overrides `--seed`. The [property-testing example](https://github.com/manuscript-lang/manuscript/tree/main/examples/property-testing) shows a project with several properties.
 
-All assertions return `Result`, so use `try`:
+All assertions return `Result`, so use `?`:
 
 - `expect_some`, `expect_ok`, `expect_error` yield the checked payload.
 - `expect_fault(operation)` checks programming faults.
@@ -205,10 +205,10 @@ ms bench ms.toml --filter "sum" --json
 - A project loads `bench.ms` and `*_bench.ms` files; a bench may also sit in any module the command loads. Benches take the same selection options as tests (`--filter`, `--match`, `--exclude`, `--bench`, `--list`, `--repeat`, `--fail-fast`, `--timeout`).
 - `--time` sets the target length of one sample, `--samples` the number of timed samples, and `--iterations` fixes the iteration count and skips calibration.
 - `bench "name" per 1000:` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation. `keep(value)` from `@std/test/bench.ms` checks a computed `Int` so the work stays observable.
-- To keep setup out of the timing, build the data first and time only the work: `try measure(1000, fn: keep(data.sorted().length()))` from `@std/test/bench.ms` runs the work repeatedly and reports per operation, here for 1000 operations per run. Everything before `measure` runs once, untimed.
+- To keep setup out of the timing, build the data first and time only the work: `measure(1000, fn: keep(data.sorted().length()))?` from `@std/test/bench.ms` runs the work repeatedly and reports per operation, here for 1000 operations per run. Everything before `measure` runs once, untimed.
 - Each bench runs in its own process. A body that returns an error, faults, or exceeds `--timeout` (default 10 minutes) fails that bench and the exit status is 1. Standard output written by a bench is discarded.
 - `--json` adds `stats` to each entry of `benches`: `iterations`, `operations`, `samples`, and `min_ns`, `median_ns`, `mean_ns`, `max_ns`, `stddev_ns` in nanoseconds per operation (per iteration when `operations` is 1).
-- Keep the measured work in the body and the setup outside it: a bench has no `fixture` and no hooks. Check a result with `try` so the compiler cannot discard the work; benchmark the default `Release` build.
+- Keep the measured work in the body and the setup outside it: a bench has no `fixture` and no hooks. Check a result with `?` so the compiler cannot discard the work; benchmark the default `Release` build.
 
 ## Profile application work
 

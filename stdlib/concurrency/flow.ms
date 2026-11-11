@@ -84,7 +84,7 @@ A token bucket: holds up to `burst` tokens and gains one every `interval`. Each 
 var limiter = rate_limiter(10, burst: 20)
 for url in urls:
     limiter.acquire()
-    _ := try fetch(url).wait()
+    _ := fetch(url).wait()?
 ```
 */
 export type RateLimiter:
@@ -197,7 +197,7 @@ impl CircuitBreaker:
 //
 // <!-- manuscript-example: {"mode":"fragment"} -->
 // ```manuscript
-// doubled := try map_concurrent([1, 2, 3], 2, fn n: n * 2)  // [2, 4, 6]
+// doubled := map_concurrent([1, 2, 3], 2, fn n: n * 2)?  // [2, 4, 6]
 // ```
 export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U]!:
 	if limit < 1:

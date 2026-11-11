@@ -11,8 +11,8 @@ import (
 Text templates, written and run in Manuscript: compile once, render with `JsonValue` data.
 
     import compile, to_data from "@std/text/template.ms"
-    page := try compile("Hello \{\{ name | title \}\}!")
-    rendered := try page.render(try to_data(user))
+    page := compile("Hello \{\{ name | title \}\}!")?
+    rendered := page.render(to_data(user)?)?
 
 Actions sit between `{{` and `}}`:
 

@@ -11,37 +11,37 @@ NOTHING: Int? := none
 from := 4
 
 fn limit_plus(extra: Int) Int:
-	return LIMIT + extra
+    return LIMIT + extra
 
 test "constants stand for their initializers":
-	expect_equal(DOUBLE, 20)?
-	expect_equal(limit_plus(1), 11)?
-	expect_equal(GREETING, "limit 10")?
-	expect_false(not (NOTHING.is_none()))?
-	expect_equal(from, 4)?
+    expect_equal(DOUBLE, 20)?
+    expect_equal(limit_plus(1), 11)?
+    expect_equal(GREETING, "limit 10")?
+    expect_false(not (NOTHING.is_none()))?
+    expect_equal(from, 4)?
 
 test "each use starts from a fresh collection":
-	var names = NAMES
-	names.append("c")
-	expect_false(not (names.length() == 3 and NAMES.length() == 2))?
+    var names = NAMES
+    names.append("c")
+    expect_false(not (names.length() == 3 and NAMES.length() == 2))?
 
 test "a local binding shadows a constant":
-	LIMIT := 3
-	expect_equal(LIMIT, 3)?
+    LIMIT := 3
+    expect_equal(LIMIT, 3)?
 
 enum Phase:
-	Idle
-	Active(count: Int)
+    Idle
+    Active(count: Int)
 
 START := Phase.Idle
 NEXT: Phase := Idle
 
 fn phase_name(phase: Phase) String:
-	match phase:
-		Idle:
-			return "idle"
-		Active(count):
-			return "active {count}"
+    match phase:
+        Idle:
+            return "idle"
+        Active(count):
+            return "active {count}"
 
 test "a qualified payloadless case is a constant":
-	expect_false(not (phase_name(START) == "idle" and phase_name(NEXT) == "idle"))?
+    expect_false(not (phase_name(START) == "idle" and phase_name(NEXT) == "idle"))?
