@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3060",
+        "phase": "type",
+        "message": "cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it",
+        "position": {
+          "file": "golden-0580.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 127
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0580.ms",
+            "line": 4,
+            "column": 5,
+            "offset": 101
+          },
+          "end": {
+            "file": "golden-0580.ms",
+            "line": 4,
+            "column": 14,
+            "offset": 110
+          },
+          "replacement": "var values ="
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`key` is moved here but used again at 6:23; a value has one owner, so move it only at its last use, or pass `key.clone()` if the original is still needed",
+        "position": {
+          "file": "golden-0580.ms",
+          "line": 5,
+          "column": 16,
+          "offset": 138
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0580.ms:5:5: type: cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it\n   |\n 5 |     values.add(key, value)\n   |     ^\n<DIR>/golden-0580.ms:5:16: type: `key` is moved here but used again at 6:23; a value has one owner, so move it only at its last use, or pass `key.clone()` if the original is still needed\n   |\n 5 |     values.add(key, value)\n   |                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

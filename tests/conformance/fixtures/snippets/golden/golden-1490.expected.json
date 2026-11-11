@@ -1,0 +1,59 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/faults.ms",
+        "position": {
+          "file": "golden-1490.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 122
+        },
+        "end": {
+          "file": "golden-1490.ms",
+          "line": 4,
+          "column": 13,
+          "offset": 127
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
+        "position": {
+          "file": "golden-1490.ms",
+          "line": 6,
+          "column": 38,
+          "offset": 235
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1490.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-1490.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1490.ms:4:8: resolution: unknown standard module @std/faults.ms\n   |\n 4 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-1490.ms:6:38: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 6 |     expect_contains(expect_fault(fn: panic(\"boom\"))?, \"boom\")?\n   |                                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3011",
+        "phase": "type",
+        "message": "implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) Bool",
+        "position": {
+          "file": "golden-0404.ms",
+          "line": 6,
+          "column": 8,
+          "offset": 102
+        }
+      },
+      {
+        "code": "MS3021",
+        "phase": "type",
+        "message": "Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it",
+        "position": {
+          "file": "golden-0404.ms",
+          "line": 7,
+          "column": 33,
+          "offset": 173
+        }
+      },
+      {
+        "code": "MS3021",
+        "phase": "type",
+        "message": "Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it",
+        "position": {
+          "file": "golden-0404.ms",
+          "line": 7,
+          "column": 11,
+          "offset": 151
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0404.ms:6:8: type: implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) Bool\n   |\n 6 |     fn equals(other: Equal) Bool: return true\n   |        ^\n<DIR>/golden-0404.ms:7:33: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n   |\n 7 | fn keys() Map[Key, Int]: return Map[Key, Int]()\n   |                                 ^\n<DIR>/golden-0404.ms:7:11: type: Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it\n   |\n 7 | fn keys() Map[Key, Int]: return Map[Key, Int]()\n   |           ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

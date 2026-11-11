@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface",
+        "position": {
+          "file": "golden-1170.ms",
+          "line": 3,
+          "column": 17,
+          "offset": 69
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+        "position": {
+          "file": "golden-1170.ms",
+          "line": 5,
+          "column": 1,
+          "offset": 94
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member message on Error; this type has no fields or operations",
+        "position": {
+          "file": "golden-1170.ms",
+          "line": 6,
+          "column": 37,
+          "offset": 157
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1170.ms:3:17: type: a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface\n   |\n 3 | type Box[Error: Error]:\n   |                 ^\n<DIR>/golden-1170.ms:5:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n   |\n 5 | impl Error for Box[Error]:\n   | ^\n<DIR>/golden-1170.ms:6:37: resolution: unknown or ambiguous member message on Error; this type has no fields or operations\n   |\n 6 |     fn message() String: self.cause.message()\n   |                                     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

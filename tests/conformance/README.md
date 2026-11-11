@@ -15,6 +15,7 @@ A fixture id is its path under `fixtures/` without extension. `<slug>.ms` has `<
 | directory | contents |
 | --- | --- |
 | `snippets/<area>/` | Single-file programs harvested from the old per-package unit tests, grouped by the area they exercised: `build checker compiler frontend lexer lower parser syntax tooling`. |
+| `snippets/golden/` | Checker diagnostics formerly kept as one Rust-side `golden.txt` (1,084 programs not already in the corpus); the CLI reports every recovered parse error where the old test saw only the first. |
 | `snippets/cli/` | CLI behavior programs (`ms check/fmt/lint/test` flags, JSON reports, project discovery). |
 | `snippets/e2e-tests/` | Programs harvested from the old end-to-end tests: fault locations, constant diagnostics, CLI projects. |
 | `snippets/authored/` | Small hand-written fixtures named by topic (`diag-*`, `foreign-*`, `literal-*`, `sized-*`, ...). Add new single-file fixtures here. |

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot move `self.value` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.value.clone()` only if a second owner is needed",
+        "position": {
+          "file": "golden-0100.ms",
+          "line": 14,
+          "column": 21,
+          "offset": 315
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0100.ms:14:21: type: cannot move `self.value` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.value.clone()` only if a second owner is needed\n    |\n 14 |         return self.value\n    |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

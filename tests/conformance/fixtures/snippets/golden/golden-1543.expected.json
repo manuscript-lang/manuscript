@@ -1,0 +1,79 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding println; there is no println: use print(value), which writes any value and a newline; for write errors or bytes import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")",
+        "position": {
+          "file": "golden-1543.ms",
+          "line": 4,
+          "column": 5,
+          "offset": 79
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding expect_equal; add: import expect_equal from \"@std/test/test.ms\"",
+        "position": {
+          "file": "golden-1543.ms",
+          "line": 6,
+          "column": 9,
+          "offset": 120
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1543.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-1543.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import expect_equal from \"@std/test/test.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding fail; add: import fail from \"@std/test/test.ms\"",
+        "position": {
+          "file": "golden-1543.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 158
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1543.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-1543.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import fail from \"@std/test/test.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1543.ms:4:5: resolution: unknown binding println; there is no println: use print(value), which writes any value and a newline; for write errors or bytes import stdout from \"@std/io/io.ms\" and call stdout().write(\"text\\n\")\n   |\n 4 |     println(\"READY\")\n   |     ^\n<DIR>/golden-1543.ms:6:9: resolution: unknown binding expect_equal; add: import expect_equal from \"@std/test/test.ms\"\n   |\n 6 |         expect_equal(1, 1)?\n   |         ^\n<DIR>/golden-1543.ms:8:5: resolution: unknown binding fail; add: import fail from \"@std/test/test.ms\"\n   |\n 8 |     fail(\"must not run\")?\n   |     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

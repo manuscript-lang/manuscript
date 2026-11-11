@@ -3,18 +3,39 @@
 use ms_syntax::diag::{KINDS, code_for, explain, kind_for};
 use std::collections::HashSet;
 
-/// The (phase, message) pairs of the golden corpus.
+/// The (phase, message) pairs of every diagnostic recorded in the conformance corpus.
 fn corpus() -> Vec<(String, String)> {
-    include_str!("golden.txt")
-        .lines()
-        .filter_map(|line| {
-            let mut cols = line.split('\t');
-            let phase = cols.next()?;
-            let message = cols.nth(3)?;
-            matches!(phase, "parse" | "resolution" | "type" | "lowering")
-                .then(|| (phase.to_string(), message.to_string()))
-        })
-        .collect()
+    fn walk(dir: &std::path::Path, out: &mut Vec<(String, String)>) {
+        let mut entries: Vec<_> = std::fs::read_dir(dir).unwrap().flatten().collect();
+        entries.sort_by_key(|e| e.path());
+        for entry in entries {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(&path, out);
+            } else if path.to_string_lossy().ends_with(".json") {
+                let text = std::fs::read_to_string(&path).unwrap_or_default();
+                let mut phase = String::new();
+                for line in text.lines().map(str::trim) {
+                    if let Some(v) = line.strip_prefix("\"phase\": \"") {
+                        phase = v.trim_end_matches(&['"', ','][..]).to_string();
+                    } else if let Some(v) = line.strip_prefix("\"message\": \"")
+                        && matches!(phase.as_str(), "parse" | "resolution" | "type" | "lowering")
+                    {
+                        let message = v.trim_end_matches(&['"', ','][..]);
+                        let message = message.replace("\\\"", "\"").replace("\\\\", "\\");
+                        out.push((phase.clone(), message));
+                    }
+                }
+            }
+        }
+    }
+    let root = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../tests/conformance/fixtures"
+    );
+    let mut out = Vec::new();
+    walk(std::path::Path::new(root), &mut out);
+    out
 }
 
 #[test]
@@ -47,7 +68,7 @@ fn every_sub_code_is_reached_by_a_real_diagnostic() {
             reached.insert(kind.info.code);
         }
     }
-    // Causes the golden corpus does not exercise: message text taken from the checker.
+    // Causes the conformance corpus does not exercise: message text taken from the checker.
     for (phase, message, expected) in [
         (
             "type",
@@ -92,6 +113,6 @@ fn every_sub_code_is_reached_by_a_real_diagnostic() {
         .collect();
     assert!(
         missing.is_empty(),
-        "no golden diagnostic reaches {missing:?}"
+        "no conformance diagnostic reaches {missing:?}"
     );
 }

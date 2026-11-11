@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unexpected source character '日'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCII",
+        "position": {
+          "file": "golden-0794.ms",
+          "line": 3,
+          "column": 10,
+          "offset": 62
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0794.ms:3:10: parse: unexpected source character '日'; non-ASCII characters are only allowed inside text and comments, and identifiers are ASCII\n   |\n 3 | x := 1 + 日\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

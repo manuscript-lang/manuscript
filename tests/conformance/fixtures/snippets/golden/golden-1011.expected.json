@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Array; declare it with 'type Array:' / 'enum Array:' / 'interface Array:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-1011.ms",
+          "line": 6,
+          "column": 10,
+          "offset": 164
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else",
+        "position": {
+          "file": "golden-1011.ms",
+          "line": 8,
+          "column": 9,
+          "offset": 218
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1011.ms:6:10: resolution: unknown type Array; declare it with 'type Array:' / 'enum Array:' / 'interface Array:', declare it as a type parameter, or import it\n   |\n 6 |     box: Array[Int] := [choose(3)]\n   |          ^\n<DIR>/golden-1011.ms:8:9: type: a match on Int takes literal arms such as 1, \"text\" or true, and a final '_:' arm; to bind or compare computed values use if/else\n   |\n 8 |         Color.Red:\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

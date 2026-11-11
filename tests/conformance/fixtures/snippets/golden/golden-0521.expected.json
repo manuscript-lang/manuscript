@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3040",
+        "phase": "type",
+        "message": "recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])",
+        "position": {
+          "file": "golden-0521.ms",
+          "line": 7,
+          "column": 13,
+          "offset": 151
+        }
+      },
+      {
+        "code": "MS3040",
+        "phase": "type",
+        "message": "recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])",
+        "position": {
+          "file": "golden-0521.ms",
+          "line": 5,
+          "column": 17,
+          "offset": 99
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0521.ms:7:13: type: recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])\n   |\n 7 |     item := Growing(value: value)\n   |             ^\n<DIR>/golden-0521.ms:5:17: type: recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])\n   |\n 5 |     next: Int = grow([value])\n   |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

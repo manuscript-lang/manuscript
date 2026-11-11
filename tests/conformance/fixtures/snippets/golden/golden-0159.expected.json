@@ -1,0 +1,77 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export JsonError; @std/data/json.ms exports: JsonEncode, JsonOptions, JsonValue, StringifyOptions, json_reader, json_writer, parse, stringify; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/data/json.ms\"'",
+        "position": {
+          "file": "golden-0159.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-0159.ms",
+          "line": 3,
+          "column": 17,
+          "offset": 69
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0159.ms",
+          "line": 5,
+          "column": 19,
+          "offset": 160
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0159.ms",
+          "line": 7,
+          "column": 26,
+          "offset": 220
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0159.ms",
+          "line": 8,
+          "column": 25,
+          "offset": 256
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0159.ms",
+          "line": 15,
+          "column": 25,
+          "offset": 498
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0159.ms:3:8: resolution: module does not export JsonError; @std/data/json.ms exports: JsonEncode, JsonOptions, JsonValue, StringifyOptions, json_reader, json_writer, parse, stringify; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/data/json.ms\"'\n   |\n 3 | import JsonError from \"@std/data/json.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-0159.ms:5:19: resolution: unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it\n   |\n 5 | fn general(cause: JsonError) Error:\n   |                   ^\n<DIR>/golden-0159.ms:7:26: resolution: unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it\n   |\n 7 | fn failed() Result[Unit, JsonError]:\n   |                          ^\n<DIR>/golden-0159.ms:8:25: resolution: unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a module\n   |\n 8 |     return error(cause: JsonError.InvalidData)\n   |                         ^\n<DIR>/golden-0159.ms:15:25: resolution: unknown binding JsonError; declare it with 'JsonError := ...' before use, define 'fn JsonError(...) T:', or import it from a module\n    |\n 15 |     return error(cause: JsonError.InvalidData)\n    |                         ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

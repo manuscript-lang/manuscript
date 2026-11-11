@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+        "position": {
+          "file": "golden-1340.ms",
+          "line": 6,
+          "column": 1,
+          "offset": 105
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'",
+        "position": {
+          "file": "golden-1340.ms",
+          "line": 11,
+          "column": 9,
+          "offset": 267
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1340.ms:6:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n   |\n 6 | impl Error for Failure[T]:\n   | ^\n<DIR>/golden-1340.ms:11:9: type: binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'\n    |\n 11 |         ok(value): return value\n    |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding SetBuilder; declare it with 'SetBuilder := ...' before use, define 'fn SetBuilder(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0237.ms",
+          "line": 4,
+          "column": 10,
+          "offset": 74
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding SetBuilder; declare it with 'SetBuilder := ...' before use, define 'fn SetBuilder(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0237.ms",
+          "line": 5,
+          "column": 10,
+          "offset": 101
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Queue; add: import Queue from \"@std/collections/queue.ms\"",
+        "position": {
+          "file": "golden-0237.ms",
+          "line": 6,
+          "column": 10,
+          "offset": 128
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0237.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0237.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Queue from \"@std/collections/queue.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Queue; add: import Queue from \"@std/collections/queue.ms\"",
+        "position": {
+          "file": "golden-0237.ms",
+          "line": 7,
+          "column": 10,
+          "offset": 150
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0237.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0237.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Queue from \"@std/collections/queue.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0237.ms:4:10: resolution: unknown binding SetBuilder; declare it with 'SetBuilder := ...' before use, define 'fn SetBuilder(...) T:', or import it from a module\n   |\n 4 |     a := SetBuilder[Int]()\n   |          ^\n<DIR>/golden-0237.ms:5:10: resolution: unknown binding SetBuilder; declare it with 'SetBuilder := ...' before use, define 'fn SetBuilder(...) T:', or import it from a module\n   |\n 5 |     b := SetBuilder[Int]()\n   |          ^\n<DIR>/golden-0237.ms:6:10: resolution: unknown binding Queue; add: import Queue from \"@std/collections/queue.ms\"\n   |\n 6 |     m := Queue[Int]()\n   |          ^\n<DIR>/golden-0237.ms:7:10: resolution: unknown binding Queue; add: import Queue from \"@std/collections/queue.ms\"\n   |\n 7 |     n := Queue[Int]()\n   |          ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

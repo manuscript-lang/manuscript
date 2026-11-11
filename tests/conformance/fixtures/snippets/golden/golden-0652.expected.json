@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member get on Unit; this type has no fields or operations",
+        "position": {
+          "file": "golden-0652.ms",
+          "line": 6,
+          "column": 54,
+          "offset": 195
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0652.ms:6:54: resolution: unknown or ambiguous member get on Unit; this type has no fields or operations\n   |\n 6 |     return Map[String, Int]().add(\"a\", nested[1][0]).get(\"a\").get()\n   |                                                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

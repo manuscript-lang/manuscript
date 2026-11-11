@@ -1,0 +1,68 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3060",
+        "phase": "type",
+        "message": "cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it",
+        "position": {
+          "file": "golden-1022.ms",
+          "line": 12,
+          "column": 9,
+          "offset": 291
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1022.ms",
+            "line": 10,
+            "column": 5,
+            "offset": 242
+          },
+          "end": {
+            "file": "golden-1022.ms",
+            "line": 10,
+            "column": 14,
+            "offset": 251
+          },
+          "replacement": "var values ="
+        }
+      },
+      {
+        "code": "MS3060",
+        "phase": "type",
+        "message": "cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it",
+        "position": {
+          "file": "golden-1022.ms",
+          "line": 11,
+          "column": 24,
+          "offset": 279
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1022.ms",
+            "line": 10,
+            "column": 5,
+            "offset": 242
+          },
+          "end": {
+            "file": "golden-1022.ms",
+            "line": 10,
+            "column": 14,
+            "offset": 251
+          },
+          "replacement": "var values ="
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1022.ms:12:9: type: cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it\n    |\n 12 |         values.append(1)\n    |         ^\n<DIR>/golden-1022.ms:11:24: type: cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it\n    |\n 11 |     Sequential().start(fn:\n    |                        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

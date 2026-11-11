@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow that",
+        "position": {
+          "file": "golden-1458.ms",
+          "line": 9,
+          "column": 14,
+          "offset": 185
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1458.ms",
+            "line": 8,
+            "column": 5,
+            "offset": 150
+          },
+          "end": {
+            "file": "golden-1458.ms",
+            "line": 8,
+            "column": 5,
+            "offset": 150
+          },
+          "replacement": "var "
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1458.ms:9:14: type: cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow that\n   |\n 9 |         self.total += by\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/faults.ms",
+        "position": {
+          "file": "golden-1382.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-1382.ms",
+          "line": 3,
+          "column": 13,
+          "offset": 65
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'",
+        "position": {
+          "file": "golden-1382.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 95
+        },
+        "end": {
+          "file": "golden-1382.ms",
+          "line": 4,
+          "column": 18,
+          "offset": 105
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
+        "position": {
+          "file": "golden-1382.ms",
+          "line": 7,
+          "column": 29,
+          "offset": 202
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1382.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-1382.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"",
+        "position": {
+          "file": "golden-1382.ms",
+          "line": 8,
+          "column": 16,
+          "offset": 236
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
+        "position": {
+          "file": "golden-1382.ms",
+          "line": 9,
+          "column": 39,
+          "offset": 336
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1382.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-1382.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
+        "position": {
+          "file": "golden-1382.ms",
+          "line": 11,
+          "column": 16,
+          "offset": 389
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1382.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-1382.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1382.ms:3:8: resolution: unknown standard module @std/faults.ms\n   |\n 3 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-1382.ms:4:8: resolution: module does not export filesystem; @std/os/fs.ms exports: CloneMode, CopyOptions, Directory, DirectoryEntry, FileEvent, FileHandle, FileInfo, FileKind, FileSystemInfo, GlobOptions, NativeDirectory, NativeFile, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/os/fs.ms\"'\n   |\n 4 | import filesystem from \"@std/os/fs.ms\"\n   |        ^^^^^^^^^^\n<DIR>/golden-1382.ms:7:29: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 7 |     if other() != 4: return panic(\"bad other\")\n   |                             ^\n<DIR>/golden-1382.ms:8:16: resolution: unknown binding filesystem; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"\n   |\n 8 |     if data := filesystem().read_file(path: \"fixture.txt\", max_bytes: 1024):\n   |                ^\n<DIR>/golden-1382.ms:9:39: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n   |\n 9 |         if data.length() != 7: return panic(\"wrong fixture size\")\n   |                                       ^\n<DIR>/golden-1382.ms:11:16: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 11 |         return panic(\"library fixture cwd changed\")\n    |                ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

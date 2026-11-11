@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "division by zero always faults; guard the divisor or use a nonzero constant",
+        "position": {
+          "file": "golden-1546.ms",
+          "line": 8,
+          "column": 22,
+          "offset": 252
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1546.ms:8:22: type: division by zero always faults; guard the divisor or use a nonzero constant\n   |\n 8 |     impossible := (1 / 0).minutes()\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

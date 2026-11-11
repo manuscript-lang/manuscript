@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/faults.ms",
+        "position": {
+          "file": "golden-0138.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-0138.ms",
+          "line": 3,
+          "column": 13,
+          "offset": 65
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0138.ms",
+          "line": 6,
+          "column": 6,
+          "offset": 127
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0138.ms:3:8: resolution: unknown standard module @std/faults.ms\n   |\n 3 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-0138.ms:6:6: resolution: unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import it\n   |\n 6 | impl FileSystem for Override:\n   |      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

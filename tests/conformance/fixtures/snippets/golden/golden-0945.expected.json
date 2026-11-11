@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "inline bodies require one simple statement; put 'if' on its own line in an indented block",
+        "position": {
+          "file": "golden-0945.ms",
+          "line": 3,
+          "column": 14,
+          "offset": 66
+        },
+        "end": {
+          "file": "golden-0945.ms",
+          "line": 3,
+          "column": 16,
+          "offset": 68
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0945.ms:3:14: parse: inline bodies require one simple statement; put 'if' on its own line in an indented block\n   |\n 3 | fn f() Unit: if true: return\n   |              ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

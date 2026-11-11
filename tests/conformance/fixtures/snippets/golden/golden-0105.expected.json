@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0105.ms",
+          "line": 8,
+          "column": 14,
+          "offset": 149
+        }
+      },
+      {
+        "code": "MS3011",
+        "phase": "type",
+        "message": "implementation operation signature does not match contract; get must be declared as fn get() Int",
+        "position": {
+          "file": "golden-0105.ms",
+          "line": 8,
+          "column": 8,
+          "offset": 143
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0105.ms:8:14: resolution: unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import it\n   |\n 8 |     fn get() T:\n   |              ^\n<DIR>/golden-0105.ms:8:8: type: implementation operation signature does not match contract; get must be declared as fn get() Int\n   |\n 8 |     fn get() T:\n   |        ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

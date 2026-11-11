@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected an expression, found '%'; write a value, name, call, or literal here",
+        "position": {
+          "file": "golden-0820.ms",
+          "line": 3,
+          "column": 41,
+          "offset": 93
+        },
+        "end": {
+          "file": "golden-0820.ms",
+          "line": 3,
+          "column": 42,
+          "offset": 94
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0820.ms:3:41: parse: expected an expression, found '%'; write a value, name, call, or literal here\n   |\n 3 | fn probe(value: Int) Int: return value %% %d\n   |                                         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

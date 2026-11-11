@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant",
+        "position": {
+          "file": "golden-1039.ms",
+          "line": 4,
+          "column": 1,
+          "offset": 72
+        },
+        "end": {
+          "file": "golden-1039.ms",
+          "line": 4,
+          "column": 4,
+          "offset": 75
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "argument labels use a colon; write c: value",
+        "position": {
+          "file": "golden-1039.ms",
+          "line": 16,
+          "column": 10,
+          "offset": 239
+        },
+        "end": {
+          "file": "golden-1039.ms",
+          "line": 16,
+          "column": 11,
+          "offset": 240
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "argument labels use a colon; write d: value",
+        "position": {
+          "file": "golden-1039.ms",
+          "line": 17,
+          "column": 11,
+          "offset": 253
+        },
+        "end": {
+          "file": "golden-1039.ms",
+          "line": 17,
+          "column": 12,
+          "offset": 254
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1039.ms:4:1: parse: 'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 4 | let (\n   | ^^^\n<DIR>/golden-1039.ms:16:10: parse: argument labels use a colon; write c: value\n    |\n 16 |         c=11\n    |          ^\n<DIR>/golden-1039.ms:17:11: parse: argument labels use a colon; write d: value\n    |\n 17 |         d = \"Hi\"\n    |           ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,217 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?",
+        "position": {
+          "file": "golden-0479.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-0479.ms",
+          "line": 3,
+          "column": 16,
+          "offset": 68
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?",
+        "position": {
+          "file": "golden-0479.ms",
+          "line": 3,
+          "column": 18,
+          "offset": 70
+        },
+        "end": {
+          "file": "golden-0479.ms",
+          "line": 3,
+          "column": 35,
+          "offset": 87
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding compress; add: import compress from \"@std/io/archive.ms\"",
+        "position": {
+          "file": "golden-0479.ms",
+          "line": 6,
+          "column": 5,
+          "offset": 162
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import compress from \"@std/io/archive.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding compress; add: import compress from \"@std/io/archive.ms\"",
+        "position": {
+          "file": "golden-0479.ms",
+          "line": 7,
+          "column": 5,
+          "offset": 192
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import compress from \"@std/io/archive.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding compress; add: import compress from \"@std/io/archive.ms\"",
+        "position": {
+          "file": "golden-0479.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 239
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import compress from \"@std/io/archive.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding CompressionFormat; add: import CompressionFormat from \"@std/io/archive.ms\"",
+        "position": {
+          "file": "golden-0479.ms",
+          "line": 9,
+          "column": 5,
+          "offset": 288
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import CompressionFormat from \"@std/io/archive.ms\"\n"
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding CompressionFormat; add: import CompressionFormat from \"@std/io/archive.ms\"",
+        "position": {
+          "file": "golden-0479.ms",
+          "line": 10,
+          "column": 5,
+          "offset": 333
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import CompressionFormat from \"@std/io/archive.ms\"\n"
+        }
+      },
+      {
+        "code": "MS3080",
+        "phase": "type",
+        "message": "cannot infer the type of none; give it a target, e.g. `x: Int? := none`, or pass a value",
+        "position": {
+          "file": "golden-0479.ms",
+          "line": 10,
+          "column": 57,
+          "offset": 385
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding CompressionFormat; add: import CompressionFormat from \"@std/io/archive.ms\"",
+        "position": {
+          "file": "golden-0479.ms",
+          "line": 11,
+          "column": 5,
+          "offset": 395
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0479.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import CompressionFormat from \"@std/io/archive.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0479.ms:3:8: resolution: unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?\n   |\n 3 | import compress, CompressionFormat from \"@std/compress.ms\"\n   |        ^^^^^^^^\n<DIR>/golden-0479.ms:3:18: resolution: unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?\n   |\n 3 | import compress, CompressionFormat from \"@std/compress.ms\"\n   |                  ^^^^^^^^^^^^^^^^^\n<DIR>/golden-0479.ms:6:5: resolution: unknown binding compress; add: import compress from \"@std/io/archive.ms\"\n   |\n 6 |     compress(data, \"gzip\", 6)\n   |     ^\n<DIR>/golden-0479.ms:7:5: resolution: unknown binding compress; add: import compress from \"@std/io/archive.ms\"\n   |\n 7 |     compress(data, \"zlib\", 0, max_bytes: none)\n   |     ^\n<DIR>/golden-0479.ms:8:5: resolution: unknown binding compress; add: import compress from \"@std/io/archive.ms\"\n   |\n 8 |     compress(data, \"deflate\", 9, max_bytes: 100)\n   |     ^\n<DIR>/golden-0479.ms:9:5: resolution: unknown binding CompressionFormat; add: import CompressionFormat from \"@std/io/archive.ms\"\n   |\n 9 |     CompressionFormat.Gzip.compress(data, 6)\n   |     ^\n<DIR>/golden-0479.ms:10:5: resolution: unknown binding CompressionFormat; add: import CompressionFormat from \"@std/io/archive.ms\"\n    |\n 10 |     CompressionFormat.Zlib.compress(data, 0, max_bytes: none)\n    |     ^\n<DIR>/golden-0479.ms:10:57: type: cannot infer the type of none; give it a target, e.g. `x: Int? := none`, or pass a value\n    |\n 10 |     CompressionFormat.Zlib.compress(data, 0, max_bytes: none)\n    |                                                         ^\n<DIR>/golden-0479.ms:11:5: resolution: unknown binding CompressionFormat; add: import CompressionFormat from \"@std/io/archive.ms\"\n    |\n 11 |     CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)\n    |     ^\n9 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

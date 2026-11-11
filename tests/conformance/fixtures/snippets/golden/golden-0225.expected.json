@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Result requires 2 type arguments, found 1; write Result[T1, T2]",
+        "position": {
+          "file": "golden-0225.ms",
+          "line": 6,
+          "column": 9,
+          "offset": 133
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Result requires 2 type arguments, found 1; write Result[T1, T2]",
+        "position": {
+          "file": "golden-0225.ms",
+          "line": 3,
+          "column": 16,
+          "offset": 68
+        }
+      },
+      {
+        "code": "MS3012",
+        "phase": "type",
+        "message": "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types",
+        "position": {
+          "file": "golden-0225.ms",
+          "line": 3,
+          "column": 1,
+          "offset": 53
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Error, found Result[Int] (in argument 'cause' of error)",
+        "position": {
+          "file": "golden-0225.ms",
+          "line": 7,
+          "column": 18,
+          "offset": 183
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0225.ms:6:9: type: Result requires 2 type arguments, found 1; write Result[T1, T2]\n   |\n 6 | fn f(x: Result[Int]) Result[Int, Error]:\n   |         ^\n<DIR>/golden-0225.ms:3:16: type: Result requires 2 type arguments, found 1; write Result[T1, T2]\n   |\n 3 | impl Error for Result[Int]:\n   |                ^\n<DIR>/golden-0225.ms:3:1: type: implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types\n   |\n 3 | impl Error for Result[Int]:\n   | ^\n<DIR>/golden-0225.ms:7:18: type: expected Error, found Result[Int] (in argument 'cause' of error)\n   |\n 7 |     return error(x)\n   |                  ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

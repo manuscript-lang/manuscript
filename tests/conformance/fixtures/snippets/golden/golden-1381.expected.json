@@ -1,0 +1,103 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/faults.ms",
+        "position": {
+          "file": "golden-1381.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 103
+        },
+        "end": {
+          "file": "golden-1381.ms",
+          "line": 4,
+          "column": 13,
+          "offset": 108
+        }
+      },
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument data; parameters of write: value",
+        "position": {
+          "file": "golden-1381.ms",
+          "line": 7,
+          "column": 28,
+          "offset": 176
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument value: String in call to write; add 'value: <String>'",
+        "position": {
+          "file": "golden-1381.ms",
+          "line": 7,
+          "column": 22,
+          "offset": 170
+        }
+      },
+      {
+        "code": "MS3004",
+        "phase": "type",
+        "message": "unknown argument data; parameters of write: value",
+        "position": {
+          "file": "golden-1381.ms",
+          "line": 8,
+          "column": 28,
+          "offset": 236
+        }
+      },
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument value: String in call to write; add 'value: <String>'",
+        "position": {
+          "file": "golden-1381.ms",
+          "line": 8,
+          "column": 22,
+          "offset": 230
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding panic; add: import panic from \"@std/core.ms\"",
+        "position": {
+          "file": "golden-1381.ms",
+          "line": 11,
+          "column": 12,
+          "offset": 284
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1381.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-1381.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import panic from \"@std/core.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1381.ms:4:8: resolution: unknown standard module @std/faults.ms\n   |\n 4 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n<DIR>/golden-1381.ms:7:28: type: unknown argument data; parameters of write: value\n   |\n 7 |     _out := stdout().write(data: \"PASS fake\\nstdout=a=b\\n\")\n   |                            ^\n<DIR>/golden-1381.ms:7:22: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 7 |     _out := stdout().write(data: \"PASS fake\\nstdout=a=b\\n\")\n   |                      ^\n<DIR>/golden-1381.ms:8:28: type: unknown argument data; parameters of write: value\n   |\n 8 |     _err := stderr().write(data: \"stderr=a=b\\n\")\n   |                            ^\n<DIR>/golden-1381.ms:8:22: type: missing argument value: String in call to write; add 'value: <String>'\n   |\n 8 |     _err := stderr().write(data: \"stderr=a=b\\n\")\n   |                      ^\n<DIR>/golden-1381.ms:11:12: resolution: unknown binding panic; add: import panic from \"@std/core.ms\"\n    |\n 11 |     return panic(message: \"distribution failure\")\n    |            ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

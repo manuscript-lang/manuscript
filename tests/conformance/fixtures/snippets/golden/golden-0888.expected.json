@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "'throw' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch",
+        "position": {
+          "file": "golden-0888.ms",
+          "line": 4,
+          "column": 5,
+          "offset": 69
+        },
+        "end": {
+          "file": "golden-0888.ms",
+          "line": 4,
+          "column": 10,
+          "offset": 74
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0888.ms:4:5: parse: 'throw' is not a keyword; failures are values; return error(...) from a fn returning T!, propagate a Result with 'call()?', or handle it with 'if value := result:' and an else branch\n   |\n 4 |     throw \"x\"\n   |     ^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

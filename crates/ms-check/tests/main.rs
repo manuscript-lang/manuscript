@@ -11,7 +11,6 @@ mod diagnostic_wording;
 mod error_values;
 mod follow_on_errors;
 mod generic_recursion;
-mod golden;
 mod impl_parameter_names;
 mod import_collision;
 mod interface_modes;

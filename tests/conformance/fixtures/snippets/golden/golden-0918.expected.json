@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding entries; declare it with 'entries := ...' before use, define 'fn entries(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0918.ms",
+          "line": 4,
+          "column": 25,
+          "offset": 90
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "positional binding requires a list; use [a, b] patterns only with List values",
+        "position": {
+          "file": "golden-0918.ms",
+          "line": 4,
+          "column": 9,
+          "offset": 74
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0918.ms:4:25: resolution: unknown binding entries; declare it with 'entries := ...' before use, define 'fn entries(...) T:', or import it from a module\n   |\n 4 |     for [key, value] in entries:\n   |                         ^\n<DIR>/golden-0918.ms:4:9: type: positional binding requires a list; use [a, b] patterns only with List values\n   |\n 4 |     for [key, value] in entries:\n   |         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

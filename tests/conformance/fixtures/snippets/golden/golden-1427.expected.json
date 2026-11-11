@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "entry must declare fn main; main is a constant, so rename it and declare 'fn main() Unit:'",
+        "position": {
+          "file": "golden-1427.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1427.ms:3:8: type: entry must declare fn main; main is a constant, so rename it and declare 'fn main() Unit:'\n   |\n 3 | export main := 0\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

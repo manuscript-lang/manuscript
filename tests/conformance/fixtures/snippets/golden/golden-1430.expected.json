@@ -1,0 +1,59 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/cleanup.ms",
+        "position": {
+          "file": "golden-1430.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-1430.ms",
+          "line": 3,
+          "column": 17,
+          "offset": 69
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type Closeable; add: import Closeable from \"@std/core.ms\"",
+        "position": {
+          "file": "golden-1430.ms",
+          "line": 6,
+          "column": 6,
+          "offset": 144
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1430.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-1430.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Closeable from \"@std/core.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1430.ms:3:8: resolution: unknown standard module @std/cleanup.ms\n   |\n 3 | import Closeable from \"@std/cleanup.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-1430.ms:6:6: resolution: unknown type Closeable; add: import Closeable from \"@std/core.ms\"\n   |\n 6 | impl Closeable for AggregateResource:\n   |      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

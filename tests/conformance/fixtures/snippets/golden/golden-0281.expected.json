@@ -1,0 +1,59 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?",
+        "position": {
+          "file": "golden-0281.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-0281.ms",
+          "line": 3,
+          "column": 21,
+          "offset": 73
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding PriorityQueue; add: import PriorityQueue from \"@std/collections/queue.ms\"",
+        "position": {
+          "file": "golden-0281.ms",
+          "line": 5,
+          "column": 10,
+          "offset": 117
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0281.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "golden-0281.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import PriorityQueue from \"@std/collections/queue.ms\"\n"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0281.ms:3:8: resolution: unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?\n   |\n 3 | import PriorityQueue from \"@std/queues.ms\"\n   |        ^^^^^^^^^^^^^\n<DIR>/golden-0281.ms:5:10: resolution: unknown binding PriorityQueue; add: import PriorityQueue from \"@std/collections/queue.ms\"\n   |\n 5 |     q := PriorityQueue(compare: fn(left: HttpMethod, right: HttpMethod) Int: return 0)\n   |          ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

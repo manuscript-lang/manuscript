@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+        "position": {
+          "file": "golden-0318.ms",
+          "line": 5,
+          "column": 1,
+          "offset": 78
+        }
+      },
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected Error, found E (in the return value)",
+        "position": {
+          "file": "golden-0318.ms",
+          "line": 7,
+          "column": 25,
+          "offset": 155
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0318.ms:5:1: type: implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'\n   |\n 5 | impl Error for E:\n   | ^\n<DIR>/golden-0318.ms:7:25: type: expected Error, found E (in the return value)\n   |\n 7 | fn error_value() Error: E(\"bad input\")\n   |                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

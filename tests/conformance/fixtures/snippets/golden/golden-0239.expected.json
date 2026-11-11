@@ -1,0 +1,68 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every call",
+        "position": {
+          "file": "golden-0239.ms",
+          "line": 8,
+          "column": 13,
+          "offset": 156
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0239.ms",
+            "line": 3,
+            "column": 6,
+            "offset": 58
+          },
+          "end": {
+            "file": "golden-0239.ms",
+            "line": 3,
+            "column": 6,
+            "offset": 58
+          },
+          "replacement": "var "
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every call",
+        "position": {
+          "file": "golden-0239.ms",
+          "line": 11,
+          "column": 5,
+          "offset": 219
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0239.ms",
+            "line": 3,
+            "column": 6,
+            "offset": 58
+          },
+          "end": {
+            "file": "golden-0239.ms",
+            "line": 3,
+            "column": 6,
+            "offset": 58
+          },
+          "replacement": "var "
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0239.ms:8:13: type: cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every call\n   |\n 8 |             xs.set(index: 0, value: 5)\n   |             ^\n<DIR>/golden-0239.ms:11:5: type: cannot change `xs`: parameter `xs` is not declared var; write `var xs: <Type>` in the signature and pass `var` at every call\n    |\n 11 |     xs.append(n)\n    |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

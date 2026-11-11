@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0729.ms",
+          "line": 3,
+          "column": 27,
+          "offset": 79
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0729.ms",
+          "line": 4,
+          "column": 25,
+          "offset": 121
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0729.ms:3:27: resolution: unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import it\n   |\n 3 | fn domain[T](r: Result[T, E2]) Unit: return\n   |                           ^\n<DIR>/golden-0729.ms:4:25: resolution: unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module\n   |\n 4 | fn first() Unit: domain(f())\n   |                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
