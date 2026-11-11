@@ -1,4 +1,4 @@
-# Manuscript quick guide
+# Manuscript cheat sheet
 
 Alpha: syntax/APIs may change. Indent one tab per level (four spaces also parse); `//` comments.
 
