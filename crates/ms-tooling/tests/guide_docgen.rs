@@ -469,12 +469,13 @@ fn inherent_methods_keep_public_names_and_real_contracts() {
                 .any(|m| m.name == operation && m.contract.is_empty()),
             "{declaration:?}"
         );
-        assert!(render_module(module).contains(&format!("impl {name}")));
+        assert!(render_module(module).contains(&format!(".{operation}(")));
         if name == "Promise" {
             assert!(
                 render_site_module(module)
                     .contains("api-legacy-anchor \"Promise.Promise$methods[T].wait\"")
             );
+            assert!(declaration.implements.iter().any(|c| c == "Closeable"));
         }
     }
 }

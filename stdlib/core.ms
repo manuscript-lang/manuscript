@@ -115,37 +115,36 @@ export enum Optional[T]:
 	// An absent value with no payload; no T needs to be constructed.
 	none
 
-impl T?:
-	// Returns True when a value is present, and False for none.
-	fn is_some() Bool: ...
+// Returns True when a value is present, and False for none.
+fn Optional[T].is_some() Bool: ...
 
-	// Reports whether this value is absent.
-	fn is_none() Bool: ...
+// Reports whether this value is absent.
+fn Optional[T].is_none() Bool: ...
 
-	// Returns the payload, or `default` when this is `none`; pass a default or unwrap
-	// with `if value := optional:` unless absence is a bug. Without a default, `none`
-	// raises a fault.
-	fn get(default: T?) T: ...
+// Returns the payload, or `default` when this is `none`; pass a default or unwrap
+// with `if value := optional:` unless absence is a bug. Without a default, `none`
+// raises a fault.
+fn Optional[T].get(default: T?) T: ...
 
-	// Transforms a present payload; none remains absent.
-	fn map[U](transform: fn(T) U) U?: ...
+// Transforms a present payload; none remains absent.
+fn Optional[T].map[U](transform: fn(T) U) U?: ...
 
-	// Calls transform only when present, returning its Optional unchanged.
-	fn and_then[U](transform: fn(T) U?) U?: ...
+// Calls transform only when present, returning its Optional unchanged.
+fn Optional[T].and_then[U](transform: fn(T) U?) U?: ...
 
-	// Returns the payload, or calls create once and returns its value only when absent.
-	fn get_or_else(create: fn() T) T: ...
+// Returns the payload, or calls create once and returns its value only when absent.
+fn Optional[T].get_or_else(create: fn() T) T: ...
 
-	// Calls create once only when absent, returning its Optional unchanged.
-	fn or_else(create: fn() T?) T?: ...
+// Calls create once only when absent, returning its Optional unchanged.
+fn Optional[T].or_else(create: fn() T?) T?: ...
 
-	// Returns ok with the original payload, or error with the eager cause. Without a
-	// cause, E is Error (kind ENOENT) and the message names the calling source file and
-	// line.
-	fn ok_or[E = Error](cause: E?) T!E: ...
+// Returns ok with the original payload, or error with the eager cause. Without a
+// cause, E is Error (kind ENOENT) and the message names the calling source file and
+// line.
+fn Optional[T].ok_or[E = Error](cause: E?) T!E: ...
 
-	// Constructs an error once only for none; present payloads remain unchanged.
-	fn ok_or_else[E](create: fn() E) T!E: ...
+// Constructs an error once only for none; present payloads remain unchanged.
+fn Optional[T].ok_or_else[E](create: fn() E) T!E: ...
 
 // Holds either a successful value (`ok`) or an expected failure (`error`).
 export enum Result[T, E]:
@@ -160,45 +159,44 @@ export enum Result[T, E]:
 		cause: E
 	)
 
-impl T!E:
-	// Reports whether this result contains a successful value.
-	fn is_ok() Bool: ...
+// Reports whether this result contains a successful value.
+fn Result[T, E].is_ok() Bool: ...
 
-	// Reports whether this result contains an expected error.
-	fn is_error() Bool: ...
+// Reports whether this result contains an expected error.
+fn Result[T, E].is_error() Bool: ...
 
-	// Returns the successful payload, or `default` when this is an error; pass a
-	// default or propagate with `?` unless failure is a bug. Without a default, an
-	// error raises a fault.
-	fn get(default: T?) T: ...
+// Returns the successful payload, or `default` when this is an error; pass a
+// default or propagate with `?` unless failure is a bug. Without a default, an
+// error raises a fault.
+fn Result[T, E].get(default: T?) T: ...
 
-	// Returns the error payload; check `is_error()` first, because a successful result
-	// raises a fault.
-	fn err() E: ...
+// Returns the error payload; check `is_error()` first, because a successful result
+// raises a fault.
+fn Result[T, E].err() E: ...
 
-	// Returns some with the error payload, or none for a success, so a function that
-	// cannot return a Result can handle a failure: `if bad := r.error():`.
-	fn error() E?: ...
+// Returns some with the error payload, or none for a success, so a function that
+// cannot return a Result can handle a failure: `if bad := r.error():`.
+fn Result[T, E].error() E?: ...
 
-	// Returns the successful payload, or calls create once with the original error and
-	// returns its value.
-	fn get_or_else(create: fn(E) T) T: ...
+// Returns the successful payload, or calls create once with the original error and
+// returns its value.
+fn Result[T, E].get_or_else(create: fn(E) T) T: ...
 
-	// Calls create once with the original error only when this is an error, returning
-	// its Result.
-	fn or_else(create: fn(E) T!E) T!E: ...
+// Calls create once with the original error only when this is an error, returning
+// its Result.
+fn Result[T, E].or_else(create: fn(E) T!E) T!E: ...
 
-	// Transforms only an error, preserving a successful payload unchanged.
-	fn map_error[F](transform: fn(E) F) T!F: ...
+// Transforms only an error, preserving a successful payload unchanged.
+fn Result[T, E].map_error[F](transform: fn(E) F) T!F: ...
 
-	// Transforms only a successful payload, preserving an error unchanged.
-	fn map[U](transform: fn(T) U) U!E: ...
+// Transforms only a successful payload, preserving an error unchanged.
+fn Result[T, E].map[U](transform: fn(T) U) U!E: ...
 
-	// Calls transform only on success. Its result keeps the same error type.
-	fn and_then[U](transform: fn(T) U!E) U!E: ...
+// Calls transform only on success. Its result keeps the same error type.
+fn Result[T, E].and_then[U](transform: fn(T) U!E) U!E: ...
 
-	// Returns some with the original success payload, or none for an error.
-	fn to_optional() T?: ...
+// Returns some with the original success payload, or none for an error.
+fn Result[T, E].to_optional() T?: ...
 
 // Equality and hashing are ordinary operation interfaces. Built-in data retains
 // its value semantics; an explicit implementation selects domain identity.
@@ -233,7 +231,7 @@ export interface Data: ...
 
 /*
 A type whose values are plain words in the runtime, so passing one duplicates it with a bit copy and
-the original stays usable. Only an extern type in the standard library declares it, with `impl Copy for T:`;
+the original stays usable. Only an extern type in the standard library declares it, with a `// ms: copy` marker comment above the type;
 records and alternatives are copied when every field is, and every other native moves.
 */
 export interface Copy: ...

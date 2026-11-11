@@ -7,7 +7,6 @@ interface Named:
 type E:
     text: String
 
-impl Named for E:
-    fn name() String: self.text.clone()
+fn E.name() String: self.text.clone()
 
 fn named_value() Named: E("bad input")

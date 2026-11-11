@@ -600,7 +600,6 @@ impl Completer<'_> {
                     "type",
                     "enum",
                     "interface",
-                    "impl",
                     "import",
                     "export",
                     "extern",

@@ -4,9 +4,8 @@ type Point:
 	x: Int
 	y: Int
 
-impl Equal for Point:
-	fn equals(other: Point) Bool:
-		return self.x == other.x
+fn Point.equals(other: Point) Bool:
+	return self.x == other.x
 
 fn contains_generic[T: Equal](values: List[T], value: T) Bool:
 	return values.contains(value)

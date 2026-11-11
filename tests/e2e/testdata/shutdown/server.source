@@ -18,37 +18,35 @@ fn say(text: String) Unit:
 type WorkerCleanup:
     label: String
 
-impl Closeable for WorkerCleanup:
-    fn close() Unit!:
-        say("{self.label} stopped\n")
-        return ok(unit)
+fn var WorkerCleanup.close() Unit!:
+    say("{self.label} stopped\n")
+    return ok(unit)
 
 type Server:
     listener: Listener
     client: Connection
     closed: Bool = false
 
-impl Closeable for Server:
-    var fn close() Unit!:
-        if self.closed:
-            return ok(unit)
-
-        self.closed = true
-        self.listener.close()?
-        _ := sleep(10.milliseconds()).wait()
-
-        var farewell = self.client.output.write("farewell\n".to_bytes())
-        if farewell.is_ok():
-            drained := flush_within(var self.client.output, 1.seconds())
-            farewell = drained
-
-        if farewell.is_error():
-            say("farewell failed: {farewell.err().message}\n")
-        else:
-            say("farewell sent\n")
-
-        self.client.close()?
+fn var Server.close() Unit!:
+    if self.closed:
         return ok(unit)
+
+    self.closed = true
+    self.listener.close()?
+    _ := sleep(10.milliseconds()).wait()
+
+    var farewell = self.client.output.write("farewell\n".to_bytes())
+    if farewell.is_ok():
+        drained := flush_within(var self.client.output, 1.seconds())
+        farewell = drained
+
+    if farewell.is_error():
+        say("farewell failed: {farewell.err().message}\n")
+    else:
+        say("farewell sent\n")
+
+    self.client.close()?
+    return ok(unit)
 
 fn serve() Result[Unit, Error]:
     var signals = watch_signals([2, 15])?

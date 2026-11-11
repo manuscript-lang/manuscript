@@ -7,30 +7,28 @@ interface Picker[T]:
 	fn pick[K: Comparable](key: fn(T) K) T?
 	fn mapped[U](transform: fn(T) U) List[U]
 
-impl Picker[Int] for Bag:
-	fn pick[K: Comparable](key: fn(Int) K) Int?:
-		if self.items.is_empty(): return none
+fn Bag.pick[K: Comparable](key: fn(Int) K) Int?:
+	if self.items.is_empty(): return none
 
-		var at = 0
-		var best = key(self.items[0])
+	var at = 0
+	var best = key(self.items[0])
 
-		for i in 1..self.items.length():
-			k := key(self.items[i])
+	for i in 1..self.items.length():
+		k := key(self.items[i])
 
-			if k.compare(best) > 0:
-				at = i
-				best = k
+		if k.compare(best) > 0:
+			at = i
+			best = k
 
-		return self.items[at]
+	return self.items[at]
 
-	fn mapped[U](transform: fn(Int) U) List[U]:
-		var out = self.items.map(fn x: transform(x))
-		return out
+fn Bag.mapped[U](transform: fn(Int) U) List[U]:
+	var out = self.items.map(fn x: transform(x))
+	return out
 
-impl Bag:
-	fn paired[U: Clonable](other: U) List[U]:
-		var out = self.items.map(fn item: other.clone())
-		return out
+fn Bag.paired[U: Clonable](other: U) List[U]:
+	var out = self.items.map(fn item: other.clone())
+	return out
 
 fn pick_with[B: Picker[Int]](bag: B) Int?:
 	return bag.pick(fn(x: Int) Int: 0 - x)

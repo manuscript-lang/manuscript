@@ -261,7 +261,7 @@ interface Read:
 impl Read for Box:
     fn get() Int:
         return self.value
-transform := fn(item: Int) Int:
+parse	17	1	329	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittransform := fn(item: Int) Int:
         return item
     apply(transform)parse	2	9	40	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4test "labels":
     parse	2	5	19	suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declarationfn call(operation: fn() Int) Int:
@@ -272,7 +272,7 @@ impl Read for Box:
     return item + 1impl Increment for Offset:
     fn apply(value: Int) Int:
         return value + self.delta
-resolution	1	20	19	unknown type Offset; declare it with 'type Offset:' / 'enum Offset:' / 'interface Offset:', declare it as a type parameter, or import itfn apply(value: Int) Int:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn apply(value: Int) Int:
         return value + self.deltaparse	2	9	34	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn apply(item: Int) Int:
         return item + self.deltaparse	2	9	33	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4{key, value} := entry
         label: Int = keyparse	2	9	30	unexpected indentation, 8 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itcallback := Callback(increment)
@@ -310,8 +310,7 @@ export fn read(value: Identity) Int:
 impl Equal for Data:
     fn compare() Unit:
         return
-type	4	8	54	extra operation compare; Equal declares: equals (remove it or add it to the interface)
-type	3	1	26	missing implementation operation equals; add fn equals(other: Data) Bool to this implenum First:
+parse	3	1	26	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itenum First:
     Ready(value: Int)
 enum Second:
     Ready(value: Int)
@@ -327,7 +326,7 @@ impl Read[T] for Box[T]:
 impl Read[Int] for Box[Int]:
     fn get() Int:
         return self.value
-type	8	1	127	duplicate or overlapping implementation; Read[Int] is already implemented for Box[Int] (or an overlapping type), so remove one implfn recurse[T](value: T, count: Int) T:
+parse	5	1	60	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn recurse[T](value: T, count: Int) T:
     if count == 0:
         return value
     return recurse(value: value, count: count - 1)
@@ -355,7 +354,7 @@ impl Read[A] for Pair[A, A]:
 impl Read[A] for Pair[A, List[A]]:
     fn get() Int:
         return 2
-interface Read:
+parse	6	1	78	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Read:
     fn get() Int
 type Box[T]:
     value: T
@@ -365,7 +364,7 @@ impl Read for Box[fn(Int) Int]:
 impl Read for Box[fn(Int) Int]:
     fn get() Int:
         return 2
-type	8	1	126	duplicate or overlapping implementation; Read is already implemented for Box[fn(Int) Int] (or an overlapping type), so remove one implexport fn value() Int:
+parse	5	1	59	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itexport fn value() Int:
     return 1
 import Queue from "@std/queues.ms"
 test "opaque":
@@ -381,7 +380,7 @@ impl Same[T] for Box[T]:
         return self.value == other
 fn compare[T: Equal](value: Box[T], other: T) Bool:
     return value.same(other: other)
-interface Same[V: Equal]:
+parse	5	1	79	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Same[V: Equal]:
     fn same(other: V) Bool
 interface Read[V]:
     fn get() V
@@ -395,14 +394,14 @@ impl Read[T] for Box[T]:
         return self.value
 fn read[T](value: Box[T]) T:
     return value.get()
-type	12	21	262	cannot move `self.value` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.value.clone()` only if a second owner is neededinterface Read[V]:
+parse	7	1	113	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Read[V]:
     fn get() V
 type Box[T]:
     value: T
 impl Read[Int] for Box[Int]:
     fn get() Int:
         return self.value
-interface Read[V]:
+parse	5	1	60	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Read[V]:
     fn get() V
 type Pair[A, B]:
     left: A
@@ -410,32 +409,28 @@ type Pair[A, B]:
 impl Read[B] for Pair[Int, B]:
     fn get() B:
         return self.right
-type	8	21	143	cannot move `self.right` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.right.clone()` only if a second owner is neededinterface Read[V]:
+parse	6	1	76	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Read[V]:
     fn get() V
 type Box[T]:
     value: T
 impl Read[U] for Box[U]:
     fn get() U:
         return self.value
-resolution	5	22	81	unknown type U; declare it with 'type U:' / 'enum U:' / 'interface U:', declare it as a type parameter, or import it
-resolution	5	11	70	unknown type U; declare it with 'type U:' / 'enum U:' / 'interface U:', declare it as a type parameter, or import it
-resolution	6	14	98	unknown type U; declare it with 'type U:' / 'enum U:' / 'interface U:', declare it as a type parameter, or import itinterface Read[V]:
+parse	5	1	60	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Read[V]:
     fn get() V
 type Box[T]:
     value: T
 impl Read[T] for Box[Int]:
     fn get() T:
         return self.value
-resolution	5	11	70	unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import it
-resolution	6	14	100	unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import itinterface Read:
+parse	5	1	60	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Read:
     fn get() Int
 type Box[T]:
     value: T
 impl Read for Box[Int]:
     fn get() T:
         return self.value
-resolution	6	14	96	unknown type T; declare it with 'type T:' / 'enum T:' / 'interface T:', declare it as a type parameter, or import it
-type	6	8	90	implementation operation signature does not match contract; get must be declared as fn get() Intinterface Same[V: Equal]:
+parse	5	1	59	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Same[V: Equal]:
     fn same(other: V) Bool
 type Box[T]:
     value: T
@@ -444,7 +439,7 @@ impl Same[T] for Box[T]:
         return self.value == other
 fn compare[T](value: Box[T], other: T) Bool:
     return value.same(other: other)
-resolution	9	18	229	unknown or ambiguous member same on Box[T]; same requires T to be Equal; declare T: Equal on the enclosing functionexport type Value:
+parse	5	1	79	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itexport type Value:
     value: Int
 export fn read(value: Value) Int:
     return value.value
@@ -464,7 +459,7 @@ fn old(value: Read & Equal) Unit:
     return
 parse	3	20	52	expected ')', found '&'; close the parenthesis, separating items with commasfn invalid(value: fn() Int) Bool:
     return value == value
-type	2	18	51	equality requires Equal operands; fn() Int has no equality, so add 'impl Equal for fn() Int:' or compare fieldsqueue := Queue[Int](capacity: 2)
+type	2	18	51	equality requires Equal operands; fn() Int has no equality, so give it 'fn fn() Int.equals(other: fn() Int) Bool' or compare fieldsqueue := Queue[Int](capacity: 2)
     queue.close()parse	2	5	37	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itqueue := Queue[Int](capacity: 2)
     same := queue == queueparse	2	5	37	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itqueue := Queue[Int](capacity: 2)
     resource := Closeable(value: queue)parse	2	5	37	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport Queue from "@std/queues.ms"
@@ -581,8 +576,7 @@ type	6	46	191	cannot infer the type of none; give it a target, e.g. `x: Int? := 
 type Override:
     received: Bool
 impl FileSystem for Override:
-resolution	1	8	7	unknown standard module @std/faults.ms
-resolution	4	6	74	unknown type FileSystem; declare it with 'type FileSystem:' / 'enum FileSystem:' / 'interface FileSystem:', declare it as a type parameter, or import ittest "filesystem concrete overrides and interface defaults":
+parse	4	1	69	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittest "filesystem concrete overrides and interface defaults":
     item := Override(false)
     view := FileSystem(item)
 resolution	2	13	73	unknown binding Override; declare it with 'Override := ...' before use, define 'fn Override(...) T:', or import it from a module
@@ -622,7 +616,7 @@ impl Diagnostic for LocalError:
         return self.detail
 fn wrong(value: LocalError) Diagnostic:
     return value
-type	7	21	159	cannot move `self.detail` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.detail.clone()` only if a second owner is neededtype Impostor:
+parse	5	1	82	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Impostor:
     detail: String
 fn wrong(value: Impostor) Error:
     return Error(value: value)
@@ -676,8 +670,7 @@ fn wrong(cause: Error) String:
             return value.message()
         _:
             return cause.message()
-type	3	1	25	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	7	5	129	match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/elseimport JsonError from "@std/data/json.ms"
+parse	3	1	25	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport JsonError from "@std/data/json.ms"
 import hex_decode from "@std/data/encoding.ms"
 fn general(cause: JsonError) Error:
     return cause
@@ -867,14 +860,11 @@ impl Error for Cause[T]:
 fn identity[T](value: T) T: value
 fn consume[T](value: T, cause: Error, optional: T?) Unit: return
 fn first() Unit: consume(value: 1, cause: identity(Cause(2)), optional: identity(3))
-type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	7	43	244	expected Error, found Cause[Int] (in argument 'cause' of consume)type Box[Error: Error]:
+parse	3	1	29	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Box[Error: Error]:
     cause: Error
 impl Error for Box[Error]:
     fn message() String: self.cause.message()
-type	1	17	16	a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface
-type	3	1	41	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-resolution	4	37	104	unknown or ambiguous member message on Error; this type has no fields or operationsfn recursive[T: T](value: T) Unit: return
+parse	3	1	41	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn recursive[T: T](value: T) Unit: return
 type	1	17	16	a bound must be an interface, but T resolves to a type parameter; rename the type parameter or name an interfacefn mutual[T: U, U: T](value: T) Unit: return
 type	1	14	13	a bound must be an interface, but U resolves to a type parameter; rename the type parameter or name an interface
 type	1	20	19	a bound must be an interface, but T resolves to a type parameter; rename the type parameter or name an interfacefn primitive[T: Int](value: T) Unit: return
@@ -919,9 +909,7 @@ impl Error for Failure:
     fn message() String: self.detail
 fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
 fn first() Result[Int, Error]: fail_cause(Failure("empty"))
-type	5	21	114	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
-type	3	1	33	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	6	32	189	conflicting generic inference; expected result type Result[Int, Error] does not match Result[T, Failure]; give consistent argument and result types or specify the type argumentsfn from_callback[T](factory: fn() T) T: factory()
+parse	3	1	33	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn from_callback[T](factory: fn() T) T: factory()
 fn first() Unit:
     callback: fn(Int) Int := from_callback(fn: fn(value: Int = 4): value)
 type	3	5	71	local binding callback is never read; remove it, use it, or name it with a leading '_' to ignore itimport TextError from "@std/errors.ms"
@@ -937,9 +925,7 @@ impl Error for Failure:
 fn failing() Result[Int, Failure]: error(Failure(code: 1))
 fn count[T](r: Result[T, Error]) Int: 1
 fn use() Int: count(r: failing())
-type	3	1	28	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	7	21	206	conflicting generic inference; arguments imply different types for one type parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)
-type	7	15	200	cannot infer type argument T for count; write count[T](...) with an explicit type for T; call arguments and the expected result must determine every type parametertype Pair[A, B = A]:
+parse	3	1	28	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Pair[A, B = A]:
     first: A
     second: B
 fn use() Pair[Int]: Pair[Int](1, 2)
@@ -1017,7 +1003,7 @@ impl Add for Offset:
         return value
 fn call(value: Add) Int:
     return value.add()
-type	9	18	195	missing argument value: Int in call to value.add; add 'value: <Int>'fn run[T](operation: fn() T) T:
+parse	5	1	70	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn run[T](operation: fn() T) T:
     return operation()
 fn f(value: Int = 1) Int:
     return value
@@ -1064,18 +1050,12 @@ fn call() Int:
         return "x"
 fn general(value: Result) Error:
     return value
-type	4	19	85	Result requires 2 type arguments, found 0; write Result[T1, T2]
-type	1	16	15	Result requires 2 type arguments, found 0; write Result[T1, T2]
-type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types
-type	5	12	111	expected Error, found Result (in the return value)impl Error for Result[Int]:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl Error for Result[Int]:
     fn message() String:
         return "x"
 fn f(x: Result[Int]) Result[Int, Error]:
     return error(x)
-type	4	9	80	Result requires 2 type arguments, found 1; write Result[T1, T2]
-type	1	16	15	Result requires 2 type arguments, found 1; write Result[T1, T2]
-type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types
-type	5	18	130	expected Error, found Result[Int] (in argument 'cause' of error)fn f[Equal](a: Equal) Unit:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn f[Equal](a: Equal) Unit:
     return
 resolution	1	6	5	duplicate or intrinsic type parameter Equal; choose a different type parameter nametype Box[Hashable]:
     v: Hashable
@@ -1093,8 +1073,7 @@ impl Equal for K:
 fn f() Int:
     s := Set[K]()
     return 0
-type	4	8	46	implementation operation signature does not match contract; equals must be declared as fn equals(other: K) Bool
-type	7	10	114	K does not satisfy Hashable; add 'impl Hashable for K:' or use a type that implements itfn helper() Int:
+parse	3	1	21	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn helper() Int:
     return 1
 fn f() Int:
     helper = 2
@@ -1125,7 +1104,7 @@ impl I for Pair[A, A]:
         return 1
 export fn main() Int:
     return I(value: Pair[Int, String](a: 1, b: "x")).n()
-type	10	12	152	I is an interface and cannot be constructed; a type with 'impl I for <Type>:' passes wherever I is expected, so pass the value directlytype Int:
+parse	6	1	63	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Int:
     x: Int
 fn f() Int:
     t := Int(x: 2)
@@ -1195,8 +1174,8 @@ impl Countable for Counter:
 type Hidden:
     // Hidden member documentation.
     value: Int
-
-impl parse	2	6	6	expected a name, found end of lineinterface DatagramSocket:
+parse	25	1	494	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it
+impl parse	2	1	1	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface DatagramSocket:
     fn address() String
     fn close() Unit
     fn receive(max_bytes: Int? = none, timeout: Duration? = none) Result[Datagram, NetworkError]
@@ -1228,11 +1207,7 @@ impl T?:
     fn or_else(create: fn() T?) T?: ...
     fn ok_or[E: Error = MissingValue](cause: E? = none) Result[T, E]: ...
     fn ok_or_else[E: Error](create: fn() E) Result[T, E]: ...
-resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
-type	12	17	281	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
-resolution	12	25	289	unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it
-type	13	22	360	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
-type	5	1	34	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesfn helper(left: Int, right: Int) Int:
+parse	5	1	34	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn helper(left: Int, right: Int) Int:
     return left + right
 export fn defaults(first: Int = -3, second: Int = helper(left: first, right: 2), text: String = "literal, )", callback: fn(Int) Int = (fn(value: Int) Int:
     return value + 1
@@ -1296,7 +1271,7 @@ impl J for A:
     fn m() Int: return 2
 fn f(a: A) Int:
     return a.m()
-resolution	12	14	182	ambiguous member m on A; it is provided by I, J, so bind it to the interface first, e.g. view: I = value; view.m()fn id[T](x: T) T:
+parse	7	1	75	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn id[T](x: T) T:
     return x
 fn f() Int:
     g := id
@@ -1447,11 +1422,11 @@ export fn format_cents() String: "0"
     fn m() Int
 impl I for Missing:
     fn m() Int: return 1
-resolution	3	12	39	unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import ittype S:
+parse	3	1	28	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype S:
     x: Int
 impl Missing for S:
     fn m() Int: return 1
-resolution	3	6	24	unknown type Missing; declare it with 'type Missing:' / 'enum Missing:' / 'interface Missing:', declare it as a type parameter, or import itfn boxed(value: SetBuilder[Int]) Unit: return
+parse	3	1	19	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn boxed(value: SetBuilder[Int]) Unit: return
 resolution	1	17	16	unknown type SetBuilder; declare it with 'type SetBuilder:' / 'enum SetBuilder:' / 'interface SetBuilder:', declare it as a type parameter, or import itresult: Result[Int, TextError] = fail("empty")
     return resultparse	2	5	51	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itimport TextError from "@std/errors.ms"
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
@@ -1487,7 +1462,7 @@ type Sq:
     s: Int
 impl Shape for Sq:
     fn area() Int: self.s * self.s
-resolution	1	16	15	unknown type Sq; declare it with 'type Sq:' / 'enum Sq:' / 'interface Sq:', declare it as a type parameter, or import itfn shape() Shape: Sq(2)
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn shape() Shape: Sq(2)
 resolution	1	12	11	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	1	19	18	unknown binding Sq; declare it with 'Sq := ...' before use, define 'fn Sq(...) T:', or import it from a modulefn shapes() List[Shape]: [Sq(2)]
 resolution	1	18	17	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
@@ -1501,12 +1476,11 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T: self.item
 fn read() Read[Int]: Box(1)
-type	6	22	105	cannot move `self.item` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.item.clone()` only if a second owner is neededtype E:
+parse	5	1	59	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype E:
     text: String
 impl Error for E:
     fn message() String: this.text
-type	3	1	25	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-resolution	4	26	68	unknown binding this; the receiver in an impl method is 'self'; write self instead of thisfn error_method() Unit:
+parse	3	1	25	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn error_method() Unit:
     method := Error.message
 resolution	2	21	44	Error has no member message; a type name is followed only by an enum casefn error_value() Error: Error.message("bad input")
 resolution	1	31	30	Error has no cases or static members, so `Error.message(...)` does not exist; if message is a module function, import it and call message(...); if it is a method, call it on a valueinterface Shape:
@@ -1515,7 +1489,7 @@ type Sq:
     s: Int
 impl Shape for Sq:
     fn area() Int: self.s * self.s
-fn shape() Shape: Shape(value: Sq(2))
+parse	5	1	55	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn shape() Shape: Shape(value: Sq(2))
 resolution	1	12	11	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
 resolution	1	19	18	unknown binding Shape; did you mean 'shape'?fn shape() Shape: Shape(Sq(2))
 resolution	1	12	11	unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it
@@ -1524,8 +1498,7 @@ resolution	1	19	18	unknown binding Shape; did you mean 'shape'?type E:
 impl Error for E:
     fn message() String: self.text
 fn error_value() Error: E("bad input")
-type	3	1	25	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	5	25	102	expected Error, found E (in the return value)fn identity(this: Int) Int: this
+parse	3	1	25	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn identity(this: Int) Int: this
 fn f() Int: this
 resolution	1	13	12	unknown binding this; there is no 'this'; inside an impl method the receiver is 'self'export type Sq:
     s: Int
@@ -1759,9 +1732,7 @@ fn one() Int:
 impl Equal for Key:
     fn equals(other: Equal) Bool: return true
 fn keys() Map[Key, Int]: return Map[Key, Int]()
-type	4	8	49	implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) Bool
-type	5	33	120	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements it
-type	5	11	98	Key does not satisfy Hashable; add 'impl Hashable for Key:' or use a type that implements itimport TestHooks from "@std/test/test.ms"
+parse	3	1	22	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport TestHooks from "@std/test/test.ms"
 type State:
     value: Int
 impl TestHooks for State:
@@ -1769,11 +1740,7 @@ fn make_fixture() State:
     return State(value: 1)
 test "reads fixture":
     value: Int := fixture.value
-resolution	2	19	44	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
-resolution	3	12	62	unknown binding State; declare it with 'State := ...' before use, define 'fn State(...) T:', or import it from a module
-resolution	5	19	118	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileimpl TestHooks for State:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl TestHooks for State:
     fn before_each() Unit:
         self.value = self.value + 1
 fn make_fixture() State:
@@ -1781,59 +1748,40 @@ fn make_fixture() State:
 test "closure captures fixture":
     read := fn() Int: fixture.value
     value: Int := read()
-resolution	4	19	107	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-type	4	1	89	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
-resolution	5	12	125	unknown binding State; declare it with 'State := ...' before use, define 'fn State(...) T:', or import it from a module
-resolution	7	23	196	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileimpl TestHooks for State:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl TestHooks for State:
     fn before_each(value: Int) Unit:
         return
 fn make_fixture() State:
     return State(value: 1)
 test "test":
     return
-resolution	4	19	96	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-type	4	1	78	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
-resolution	5	12	114	unknown binding State; declare it with 'State := ...' before use, define 'fn State(...) T:', or import it from a moduleimpl TestHooks for State:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl TestHooks for State:
 fn make_fixture(value: Int) State:
     return State(value)
 test "test":
     return
-resolution	2	29	54	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture
-resolution	3	12	72	unknown binding State; declare it with 'State := ...' before use, define 'fn State(...) T:', or import it from a moduleimpl TestHooks for State:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl TestHooks for State:
 fn make_fixture[T]() State:
     return State(1)
 test "test":
     return
-resolution	2	22	47	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must be a nongeneric zero-argument function; declare fn make_fixture() ConcreteFixture
-resolution	3	12	65	unknown binding State; declare it with 'State := ...' before use, define 'fn State(...) T:', or import it from a moduleimpl TestHooks for State:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl TestHooks for State:
 fn make_fixture() TestHooks:
     return State(1)
 test "test":
     return
-resolution	2	19	44	unknown type TestHooks; add: import TestHooks from "@std/test/test.ms"
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
-resolution	3	12	66	unknown binding State; declare it with 'State := ...' before use, define 'fn State(...) T:', or import it from a modulefn make_fixture() State:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn make_fixture() State:
     return State(1)
 test "test":
     return
 resolution	1	19	18	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-type	1	1	0	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
+type	1	1	0	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and declare any of fn var Fixture.before_all(), before_each(), after_each() and after_all() with no arguments and no result
 resolution	2	12	36	unknown binding State; declare it with 'State := ...' before use, define 'fn State(...) T:', or import it from a moduleimpl TestHooks for State:
 fn make_fixture() State:
     return State(fixture.value)
 test "test":
     return
-resolution	2	19	44	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-resolution	1	20	19	unknown type State; declare it with 'type State:' / 'enum State:' / 'interface State:', declare it as a type parameter, or import it
-type	2	1	26	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it
-resolution	3	12	62	unknown binding State; declare it with 'State := ...' before use, define 'fn State(...) T:', or import it from a moduletest "test":
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittest "test":
     value := fixture.value
 resolution	2	14	26	fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this fileinterface TestHooks:
     fn after_all() Unit
@@ -1846,7 +1794,7 @@ fn make_fixture() State:
     return State(1)
 test "test":
     return
-type	8	1	138	make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for italias := b
+parse	5	1	72	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares italias := b
     resolution	1	10	9	unknown binding b; declare it with 'b := ...' before use, define 'fn b(...) T:', or import it from a moduleread := fn() String: b.freeze()
     type	1	9	8	a constant takes literals, operators, collections, and other constants; compute this value in a functionread := fn(value: String = b.freeze()) String: value
     type	1	9	8	a constant takes literals, operators, collections, and other constants; compute this value in a functionfrozen := b.freeze()
@@ -1924,10 +1872,7 @@ interface Read:
     fn get() Int
 impl Read for Box[Int]:
     fn get() Int: self.value
-resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	4	40	209	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-resolution	4	62	231	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-resolution	5	26	280	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import itvalue := result(fn():
+parse	21	1	652	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itvalue := result(fn():
         n := checked()?
         return ok(n)
     )parse	2	9	30	a suite must begin exactly four spaces after its header; the header is at 0 spaces, so indent this line to 4fn example() Unit: ...
@@ -2109,13 +2054,7 @@ type Failure:
 impl Error for Failure:
     fn message() String: self.detail
 fn consume(value: Int?) Unit: return
-resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	8	46	unknown standard module @std/faults.ms
-type	4	21	170	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
-resolution	3	39	112	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
-type	20	1	627	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-resolution	3	57	130	unknown binding TextError; declare it with 'TextError := ...' before use, define 'fn TextError(...) T:', or import it from a module
-resolution	10	30	443	unknown binding panic; add: import panic from "@std/core.ms"fn first() Unit:
+parse	20	1	627	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn first() Unit:
     result: Result[Int, TextError] := fail("empty")resolution	2	25	41	unknown type TextError; declare it with 'type TextError:' / 'enum TextError:' / 'interface TextError:', declare it as a type parameter, or import it
 resolution	2	39	55	unknown binding fail; add: import fail from "@std/test/test.ms"fn first() Unit:
     callback: fn() Int? := fn: absent()resolution	2	32	48	unknown binding absent; declare it with 'absent := ...' before use, define 'fn absent(...) T:', or import it from a modulefn failed[T]() Result[T, Failure]: error(Failure("empty"))
@@ -2126,7 +2065,7 @@ type Box:
     value: Int
 impl Read for Box:
     fn get() Int: self.value
-fn first() Read: identity(Box(1))resolution	7	18	123	unknown binding identity; declare it with 'identity := ...' before use, define 'fn identity(...) T:', or import it from a modulefn first() fn(Int) Int:
+fn first() Read: identity(Box(1))parse	5	1	58	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn first() fn(Int) Int:
     callback := fn(item: Int): item
     return identity(callback)resolution	3	12	71	unknown binding identity; declare it with 'identity := ...' before use, define 'fn identity(...) T:', or import it from a modulefn first() Unit:
     callback: fn(Int) Int := from_callback(fn: fn(value: Int = 4): value)
@@ -2230,7 +2169,7 @@ fn grow[T](value: T) Int:
 type	3	17	46	recursive generic applications must preserve their parameters; a type may refer to itself only with the same type arguments (e.g. List[Node[T]] inside Node[T])fn missing() Int: ...
 type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)type Handle:
     fn read() Int:
-parse	2	5	17	a type declares only record fields; write its methods in an 'impl Handle:' block, or implement an interface with 'impl <Interface> for Handle:'fn wrong() String:
+parse	2	5	17	a type declares only record fields; write its methods after it as 'fn Handle.name(...)'fn wrong() String:
     convert := unescape
     return convert(value: "&amp;")resolution	2	16	34	unknown binding unescape; add: import unescape from "@std/data/html.ms"fn identity[T](value: T) T: value
 fn first() Int: ... type	2	1	34	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)x := match 0:
@@ -2340,7 +2279,7 @@ export fn invoke[T: Read[Int]](value: T) Int:
 impl Read[T] for Box[T]:
     fn get() T:
         return self.value
-resolution	1	18	17	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itfn use(value: Box[Int]) Int:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn use(value: Box[Int]) Int:
     return value.get()
 resolution	1	15	14	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itfn use(value: Box[Int]) Read[Int]:
     return Read[Int](value: value)
@@ -2352,29 +2291,28 @@ impl Closeable for Box[T]:
         return
 export fn loaded() Int:
     return 1
-resolution	1	8	7	unknown standard module @std/cleanup.ms
-resolution	2	20	59	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
+parse	2	1	40	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl Read[Int] for Box[Int]:
     fn get() Int:
         return 0
-resolution	1	20	19	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[T] for Box[T]:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl Read[T] for Box[T]:
     fn get() T:
         return missing
-resolution	1	18	17	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl Read[Int] for Box[Int]:
     fn get() String:
         return "wrong"
-resolution	1	20	19	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Box[Int]:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl Read[Int] for Box[Int]:
     fn extra() Int:
         return 0
-resolution	1	20	19	unknown type Box; declare it with 'type Box:' / 'enum Box:' / 'interface Box:', declare it as a type parameter, or import itimpl Read[Int] for Int:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl Read[Int] for Int:
     fn get() Int:
         return self
-type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesimpl Read[Int] for List[Int]:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl Read[Int] for List[Int]:
     fn get() Int:
         return 0
-type	1	1	0	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesimpl Read[Int] for Read[Int]:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimpl Read[Int] for Read[Int]:
     fn get() Int:
         return 0
-resolution	1	20	19	unknown type Read; declare it with 'type Read:' / 'enum Read:' / 'interface Read:', declare it as a type parameter, or import itexport interface Read:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itexport interface Read:
     fn original() Int
 export type Box[T: Read]:
     value: T
@@ -2418,7 +2356,7 @@ fn probe() Int:
     values.add(Key(1), 10)
     values.add(Key(2), 20)
     return values.length()
-type	4	8	52	implementation operation signature does not match contract; equals must be declared as fn equals(other: Key) Boolfn lookup[T: Hashable](key: T, value: T) T:
+parse	3	1	25	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn lookup[T: Hashable](key: T, value: T) T:
     values := Map[T, T]()
     values.add(key, value)
     return values.get(key).get()
@@ -2506,8 +2444,7 @@ type Val:
 impl Read for Val:
     fn get() Int:
         return self.val
-resolution	2	8	42	module does not export File; did you mean 'Pipe'?
-resolution	3	8	75	unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?fn f(value: Val) Unit:
+parse	8	1	159	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn f(value: Val) Unit:
     value.val = true
 resolution	1	13	12	unknown type Val; declare it with 'type Val:' / 'enum Val:' / 'interface Val:', declare it as a type parameter, or import it
 type	2	11	33	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'fn f(value: Val) Unit:
@@ -2741,8 +2678,7 @@ impl Counter for Cell:
         self.total -= by
         return self.total
 fn take(value: Cell) Int: return value.total
-type	8	14	158	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow that
-type	11	14	236	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatcell := Cell(0)
+parse	6	1	96	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itcell := Cell(0)
     peer := Cell(0)parse	2	5	20	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itcell := Cell(0)
     var sum = 0parse	2	5	20	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itcell := Cell(0)
     alias := cellparse	2	5	20	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itcell := Cell(0)
@@ -2761,7 +2697,7 @@ type	11	14	236	cannot change `self.total`: this method does not change its recei
 type Cell:
     total: Int
 impl Counter for Cell:
-    type	5	1	70	missing implementation operation bump; add fn bump(by: Int) Int to this impl
+    parse	5	1	70	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it
 fn probe() Int:
     cell := Cell(0)
     var i = 0
@@ -2784,7 +2720,7 @@ fn probe() Int:
         cell.bump(1)
         i += 1
     return cell.total
-type	7	14	138	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatfn count[T](value: T) Int:
+parse	5	1	73	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn count[T](value: T) Int:
     cell := Cell(0)
     var i = 0
     while i < 1000:
@@ -2824,8 +2760,7 @@ impl I[T] for Box[T]:
 fn main() Unit:
     b := Box[Int](v: 1)
     i := I[Int](value: b)
-type	11	10	184	I[Int] is an interface and cannot be constructed; a type with 'impl I[Int] for <Type>:' passes wherever I[Int] is expected, so pass the value directly
-type	2	8	23	recursive generic applications must preserve their parameters in I.f; keep the same type arguments in the same positions along a recursive cycleenum Expr:
+parse	6	1	67	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itenum Expr:
     Num(value: Int)
     Add(left: Expr, right: Expr)
 fn value(expr: Expr) Int:
@@ -2872,13 +2807,7 @@ fn optional[T](r: Result[T, Error]?) Unit: return
 fn convert[T, U](r: Result[T, Error]) U?: none
 fn apply[T, U](r: Result[T, Error], callback: fn(T) U) U: callback(h(r))
 fn exact[T, E: Error](r: Result[T, E]) Result[T, E]: r
-resolution	1	8	7	unknown standard module @std/errors.ms
-resolution	2	8	46	unknown standard module @std/faults.ms
-type	28	16	865	a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'
-type	5	1	97	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	9	1	169	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	15	1	288	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-resolution	23	26	589	unknown binding panic; did you mean 'pair'?fn first() Int:
+parse	5	1	97	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn first() Int:
     r: Result[Int, Error] := f()
     return h(r)resolution	2	30	45	unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a module
 resolution	3	12	60	unknown binding h; declare it with 'h := ...' before use, define 'fn h(...) T:', or import it from a modulefn bounded[T: Equal](r: Result[T, Error]) Unit: return
@@ -2907,8 +2836,7 @@ fn first(r: Result[fn(Int) Int, E1]) Unit: callback(r)resolution	2	33	89	unknow
 impl Read for E1:
     fn get() Int: self.code
 fn read[T](r: Result[T, Read]) Unit: return
-fn first() Unit: read(f())resolution	3	15	47	unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it
-resolution	6	23	145	unknown binding f; declare it with 'f := ...' before use, define 'fn f(...) T:', or import it from a moduletype Cause:
+fn first() Unit: read(f())parse	3	1	33	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Cause:
     text: String
 impl Error for Cause:
     fn message() String: self.text
@@ -2922,7 +2850,7 @@ fn wrapped(n: Int) Result[Int, Cause]:
 fn twice(n: Int) Result[Int, Cause]:
     value := wrapped(n)?
     return ok(value)
-type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'alias := affine
+parse	3	1	29	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares italias := affine
     resolution	1	10	9	unknown binding affine; declare it with 'affine := ...' before use, define 'fn affine(...) T:', or import it from a modulefn probe(value: Int) Int: ...
     type	1	1	0	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)var sum = 0
     var i = 0
@@ -2959,7 +2887,7 @@ resolution	2	28	65	unknown binding Cause; declare it with 'Cause := ...' before 
     text: String
 impl Error for Cause:
     fn message() String: self.text
-type	3	1	29	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'fn probe() Int:
+parse	3	1	29	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn probe() Int:
     var sum = 0
     var i = -1
     while i < 1000:
@@ -3136,7 +3064,7 @@ impl Counter for Cell:
         return self.total
 fn probe() Int:
     var sum = 0
-type	9	1	170	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)    let list%d = [1, 2, 3]
+parse	5	1	70	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it    let list%d = [1, 2, 3]
     let cell%d = Cell(0)
     var i%d = 0
     while i%d < 1000:
@@ -3263,23 +3191,21 @@ type	2	5	39	non-exhaustive match; missing cases: error, or add a final '_:' arm;
 impl List[T]:
     fn map[U](transform: fn(T) U) List[U]: ...
     fn length() Int: ...
-resolution	1	1	0	declaration List reuses a prelude name; rename it, because List always refers to the standard declaration
-type	2	1	18	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typesenum Optional[T]:
+parse	2	1	18	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itenum Optional[T]:
     none
     T
 impl T?:
     fn get() T: ...
-resolution	1	1	0	declaration Optional reuses a prelude name; rename it, because Optional always refers to the standard declaration
-type	4	1	33	implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function typestype Counter:
+parse	4	1	33	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Counter:
     value: Int
 impl Counter:
     fn double() Int:
         return self.value * 2
-interface Read:
+parse	3	1	29	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Read:
     fn read(limit: Int? = none) Int
 impl Error for Failure:
     fn message() String: ...
-resolution	1	16	15	unknown type Failure; declare it with 'type Failure:' / 'enum Failure:' / 'interface Failure:', declare it as a type parameter, or import ittype Options:
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Options:
     count: Int = 3
     total: Int = count + 1
 fn empty() Unit: ...
@@ -3289,15 +3215,15 @@ fn answer() Int: return 3
 parse	1	30	29	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodytype List[T]:
 impl List[T]:
     fn get() T
-parse	3	15	42	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodytype List[T]:
+parse	2	1	14	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype List[T]:
     fn get() T:
-parse	2	5	18	a type declares only record fields; write its methods in an 'impl List[T]:' block, or implement an interface with 'impl <Interface> for List[T]:'type A:
+parse	2	5	18	a type declares only record fields; write its methods after it as 'fn List[T].name(...)'type A:
     x: Int
     fn f() Int:
         return x
-parse	3	5	23	a type declares only record fields; write its methods in an 'impl A:' block, or implement an interface with 'impl <Interface> for A:'impl Show Point:
+parse	3	5	23	a type declares only record fields; write its methods after it as 'fn A.name(...)'impl Show Point:
     fn show() String:
-parse	1	11	10	expected ':', found name 'Point'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodytype Duration
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Duration
 parse	1	14	13	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodynative fn commands() Commands
 parse	1	1	0	expected a module declaration or import, found name 'native'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fnfn f() Unit:
     if true:
@@ -3523,9 +3449,9 @@ type Box[T]:
 impl Read[T] for Box[T]:
     fn get() T:
         return self.value
-type	7	21	135	cannot move `self.value` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.value.clone()` only if a second owner is neededtype Read:
+parse	5	1	74	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Read:
     fn get() Int
-parse	2	5	15	a type declares only record fields; write its methods in an 'impl Read:' block, or implement an interface with 'impl <Interface> for Read:'interface Read:
+parse	2	5	15	a type declares only record fields; write its methods after it as 'fn Read.name(...)'interface Read:
     value: Int
 parse	2	5	20	an interface contains only operation signatures; write 'fn name(...) Type' and put method bodies in an 'impl' blockinterface Read:
     case Ready
@@ -3636,7 +3562,7 @@ value: Int,
 parse	3	1	22	unterminated delimiter '(' opened at line 1:9; add the matching ')' before the end of the fileimpl Box:
     fn value(self) Int:
         return 1
-parse	2	14	23	expected a name, found 'self'; 'self' is reserved: a method's receiver is implicit, so leave it out of the parameter list and write self.field in the bodyinvalid := = 1
+parse	1	1	0	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinvalid := = 1
 parse	1	12	11	expected an expression, found '='; write a value, name, call, or literal herevalue := 1
     bad := = 1
     return 1
@@ -3749,7 +3675,7 @@ type	3	13	50	cannot infer callback parameter x; provide a type or a known functi
     value: Int
 impl Box:
     fn get() Int: self.value
-fn f() Unit:
+parse	3	1	25	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn f() Unit:
     g := fn(x: Int) Result[Int, String]: ok(x)
     return unit
 type	2	5	17	local binding g is never read; remove it, use it, or name it with a leading '_' to ignore itfn f() Int: 1
@@ -3782,8 +3708,7 @@ interface Read:
 impl Read for Box:
     fn read(value: Int = choose(8)) Int:
         return choose(9)
-resolution	4	10	111	unknown type Array; declare it with 'type Array:' / 'enum Array:' / 'interface Array:', declare it as a type parameter, or import it
-type	6	9	165	a match on Int takes literal arms such as 1, "text" or true, and a final '_:' arm; to bind or compare computed values use if/elsefn choose(value: Int) Int:
+parse	14	1	326	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn choose(value: Int) Int:
     return value
 fn collect(fallback: Int = choose(1)) String:
     callbacks := [
@@ -3804,8 +3729,7 @@ type Box:
 impl Read for Box:
     fn read(value: Int = choose(8)) Int:
         return choose(9)
-type	4	5	94	local binding callbacks is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	11	5	269	local binding text is never read; remove it, use it, or name it with a leading '_' to ignore itfn update() Unit:
+parse	19	1	436	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn update() Unit:
     owner().value = replacement()
 resolution	2	5	22	unknown binding owner; declare it with 'owner := ...' before use, define 'fn owner(...) T:', or import it from a module
 type	2	13	30	assignment requires a record field; only fields of a record value can be assigned with 'x.field = ...'
@@ -3854,8 +3778,7 @@ fn run() Unit:
     Sequential().start(fn:
         values.append(1)
     )
-type	10	9	238	cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change it
-type	9	24	226	cannot change `values`: `values` is an immutable binding, immutable including its contents; declare it `var values` to change itimport network from "@std/net/net.ms"
+parse	4	1	80	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport network from "@std/net/net.ms"
 import HttpResponse, HttpServerOptions from "@std/net/http.ms"
 import panic from "@std/faults.ms"
 fn run() Unit:
@@ -4403,7 +4326,7 @@ impl Run for Runner:
                 return 2
 // Application entry.
 fn main() Int: return 0
-resolution	6	14	119	unknown type Runner; declare it with 'type Runner:' / 'enum Runner:' / 'interface Runner:', declare it as a type parameter, or import it// A public contract.
+parse	6	1	106	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it// A public contract.
 export interface Run:
     fn first() Int
     fn second() Int
@@ -4426,7 +4349,7 @@ impl Run for Runner:
 
 // Application entry.
 fn main() Int: return 0
-resolution	7	14	120	unknown type Runner; declare it with 'type Runner:' / 'enum Runner:' / 'interface Runner:', declare it as a type parameter, or import itfn example() Int:
+parse	7	1	107	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn example() Int:
     result := apply(
         value: 3,
         transform: (
@@ -4635,7 +4558,7 @@ impl T:
         return 1
 
 fn main() Unit!:
-parse	5	10	37	expected a name, found 'self'; 'self' is reserved: a method's receiver is implicit, so leave it out of the parameter list and write self.field in the bodyLIMIT := 10
+parse	4	1	20	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itLIMIT := 10
 fn size() Int:
     return LIMIT
 export interface Read[T]:
@@ -4702,7 +4625,7 @@ type Box:
 impl Read for Box:
     fn get() Int:
         return self.value
-export fn answer() String:
+parse	5	1	58	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itexport fn answer() String:
     return "changed"
 fn answer() Int:
     number := 42
@@ -4733,9 +4656,7 @@ impl Error for Box[Error]:
 type Neighbor:
     value: Int
 fn read(item: Neighbor) Int: item.value
-type	1	17	16	a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface
-type	3	1	41	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-resolution	4	37	104	unknown or ambiguous member message on Error; this type has no fields or operationsinterface Compare[T]:
+parse	3	1	41	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Compare[T]:
     fn compare(other: T) Int
 fn compare[T: Compare[T]](first: T, second: T) Int: first.|
 parse	3	59	109	expected a name, found '|'type Item:
@@ -4883,7 +4804,7 @@ fn make_fixture() State:
 impl TestHooks for State:
 test "one":
     fixture.|
-parse	8	13	164	expected a name, found '|'// max items
+parse	6	1	114	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it// max items
 export MAX_ITEMS := 100
 NAMES: List[String] := ["a"]
 LIMIT := MAX_ITEMS * 2
@@ -4999,7 +4920,7 @@ fn message(value: Reader) String:
     return value.read()
 fn make() Box:
     return Box(label: "value")
-type	7	21	130	cannot move `self.label` out of `self`: only a whole variable can move; borrow it in place or restructure to avoid the copy, and use `self.label.clone()` only if a second owner is neededfn answer() Int:
+parse	5	1	67	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn answer() Int:
     number := 42
     return number
 fn later() Int:
@@ -5120,7 +5041,7 @@ impl Read for Box:
     fn get() Int:
         return self.value
 fn neighbor() Int: 1
-fn subtract(amount: Int, deduction: Int) Int: amount - deduction
+parse	6	1	78	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn subtract(amount: Int, deduction: Int) Int: amount - deduction
 fn run() Int:
     return type	3	5	83	bare return requires Unit; this function returns Int, so write 'return <value>'fn subtract(amount: Int, deduction: Int) Int: amount - deduction
 fn run() Int:
@@ -5309,7 +5230,7 @@ fn classify(result: Result[Int, Failure]) Int:
     match result:
         error(NotFound): return 1
         ok(value): return value
-type	4	1	54	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'enum Failure:
+parse	4	1	54	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itenum Failure:
     NotFound
     Denied
 enum Envelope:
@@ -5350,8 +5271,7 @@ fn use[T](value: Result[Int, Failure[T]]) Int:
     match value:
         error(NotFound): return 1
         ok(value): return value
-type	4	1	52	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-type	9	9	214	binding value shadows an outer binding of the same name; rename one of them, or assign to the outer 'var'interface Describe:
+parse	4	1	52	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itinterface Describe:
     fn describe() String
 enum State:
     Ready
@@ -5362,7 +5282,7 @@ fn use(value: Describe) Int:
     match value:
         State(Ready): return 1
         _: return 0
-type Box[T]:
+parse	6	1	79	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Box[T]:
     value: T
 fn use[T](value: Box[T]?) T:
     match value:
@@ -5402,7 +5322,7 @@ fn classify(result: Result[Int, Failure]) Int:
     match result:
         error(cause): return failure_code(cause)
         ok(value): return value
-type	4	1	54	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'export enum Failure:
+parse	4	1	54	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itexport enum Failure:
     NotFound
     Denied(reason: String)
 impl Error for Failure:
@@ -5410,7 +5330,7 @@ impl Error for Failure:
 export type Item:
     value: Int
 export fn fail() Result[Int, Failure]: error(Failure.Denied("denied"))
-type	4	1	61	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'"
+parse	4	1	61	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it"
 fn use() Int:
     match fail():
         error(NotFound): return 1
@@ -5441,7 +5361,7 @@ impl Adder for Counter:
     fn add(amount: Int, extra: Int) Int: self.total + amount + extra
 
 fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int: ...
-type	16	1	283	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)amount := key
+parse	13	1	189	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itamount := key
     extra := y
     return counter.add(amount: amount, extra: extra)parse	2	5	18	unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, impl headers), otherwise align this line with itamount := key
     extra := y
@@ -5667,12 +5587,12 @@ type TabStyle int
     count: Int = 3
 impl Data:
     fn read() Int: ...
-type	4	8	48	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)type Data:
+parse	3	1	30	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Data:
 impl Data:
     fn read() Int
-parse	3	18	39	expected ':', found end of line; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented bodytype Data:
+parse	2	1	11	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype Data:
     fn read() Int:
-parse	2	5	15	a type declares only record fields; write its methods in an 'impl Data:' block, or implement an interface with 'impl <Interface> for Data:'type Data:
+parse	2	5	15	a type declares only record fields; write its methods after it as 'fn Data.name(...)'type Data:
     count Int
 parse	2	10	20	expected ':' between 'count' and its type; parameters and fields are written name: Typetype Data:
     count: Int =
@@ -5688,17 +5608,14 @@ fn use() String: "match match"
 impl Error for Box[Error]:
     fn message() String: self.cause.message()
 export fn main() Int: 0
-type	1	17	16	a bound must be an interface, but Error resolves to a type parameter; rename the type parameter or name an interface
-type	3	1	41	implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'
-resolution	4	37	104	unknown or ambiguous member message on Error; this type has no fields or operationsimport StringBuilder from "@std/string.ms"
+parse	3	1	41	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport StringBuilder from "@std/string.ms"
 import Closeable from "@std/cleanup.ms"
 type Resource:
     visits: List[Int]
 impl Closeable for Resource:
     fn close() Unit:
         self.visits.append(1)
-resolution	2	8	50	unknown standard module @std/cleanup.ms
-resolution	5	6	125	unknown type Closeable; add: import Closeable from "@std/core.ms"fn %s(visits: List[Int], scoped: Bool) String:
+parse	5	1	120	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn %s(visits: List[Int], scoped: Bool) String:
     b := StringBuilder()
     var i = 0
     if scoped:
@@ -5897,8 +5814,7 @@ impl AggregateCounter for AggregateCell:
         self.total -= by
         return self.total
 fn identity[T](value: T) T: return value
-resolution	1	8	7	unknown standard module @std/cleanup.ms
-resolution	4	6	91	unknown type Closeable; add: import Closeable from "@std/core.ms"fn %s(visits: List[Int], scoped: Bool) Int:
+parse	4	1	86	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn %s(visits: List[Int], scoped: Bool) Int:
     %s
     var i = %d
     if scoped:
@@ -5938,8 +5854,7 @@ type Resource:
 impl Closeable for Resource:
     fn close() Unit:
         self.visits.append(1)
-resolution	1	8	7	unknown standard module @std/cleanup.ms
-resolution	4	6	82	unknown type Closeable; add: import Closeable from "@std/core.ms"fn probe%d(visits: List[Int]) Int:
+parse	4	1	77	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn probe%d(visits: List[Int]) Int:
     var sum = 0
     var i = %d
     with resource = Resource(visits):
@@ -5985,7 +5900,7 @@ impl Shape for Rect:
 test "method fault frame":
     rect := Rect(w: 9223372036854775807, h: 2)
     rect.area()
-import expect_equal from "@std/test/test.ms"
+parse	8	1	70	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport expect_equal from "@std/test/test.ms"
 
 test "arithmetic":
     2 + 3 | expect_equal(expected: 5)?
@@ -6028,7 +5943,7 @@ test "encoded nominal identity":
     view := Read(value: box)
     if not (view.get() == 3):
         return fail("check failed")
-type	12	13	237	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyimport stdout from "@std/io/io.ms"
+parse	7	1	110	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport stdout from "@std/io/io.ms"
 import clock from "@std/time.ms"
 import Instant from "@std/time.ms"
 
@@ -6093,7 +6008,7 @@ fn probe(value: Int) Int:
     return cell.total
 export fn main() Int:
     return probe(9223372036854775807)
-type	7	14	132	cannot change `self.total`: this method does not change its receiver; declare it `var fn` to allow thatimport read_line, ReadStream, stdin from "@std/io/io.ms"
+parse	5	1	70	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport read_line, ReadStream, stdin from "@std/io/io.ms"
 fn limit() Int:
     return 1 / 0
 fn probe(input: ReadStream) Bool:
@@ -6215,7 +6130,7 @@ export fn main() Int:
     item := Item(0)
     run := item.run
     return run()
-fn empty() List[Int]:
+parse	5	1	60	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn empty() List[Int]:
     return []
 export fn main() Int:
     [value] := empty()
@@ -6249,30 +6164,30 @@ impl Counter:
 
 test "inherent fault frame":
     Counter(value: 9223372036854775807).overflow()
-type A:
+parse	4	1	30	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype A:
     x: Int
     fn f() Int:
         return 1
-parse	3	5	23	a type declares only record fields; write its methods in an 'impl A:' block, or implement an interface with 'impl <Interface> for A:'interface I:
+parse	3	5	23	a type declares only record fields; write its methods after it as 'fn A.name(...)'interface I:
     fn f() Int
 impl I:
     fn f() Int:
         return 1
-type	3	1	28	I is an interface; 'impl I:' declares a type's own methods, so write 'impl I for <Type>:' to implement the interfaceimport Duration from "@std/time.ms"
+parse	3	1	28	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport Duration from "@std/time.ms"
 impl Duration:
     fn f() Int:
         return 1
-type	2	1	36	inherent methods belong in the module that declares Duration; to add operations to another module's type, declare an interface and write 'impl <Interface> for Duration:'type B[T]:
+parse	2	1	36	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype B[T]:
     x: T
 impl B:
     fn f() Int:
         return 1
-type	3	1	20	impl must repeat the type parameters of B as its receiver arguments, as in 'impl B[T]:'type B:
+parse	3	1	20	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype B:
     x: Int
 impl B:
     fn m[U](u: U) U:
         return u
-type B:
+parse	3	1	19	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype B:
     x: Int
 impl B:
     fn m() Int:
@@ -6280,12 +6195,11 @@ impl B:
 impl B:
     fn m() Int:
         return 2
-type	7	8	75	duplicate operation m; rename or remove one of them
-type	7	8	75	duplicate implementation operation m; define each operation once per impltype B:
+parse	3	1	19	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares ittype B:
     x: Int
 impl B:
     fn m() Int: ...
-type	4	8	34	reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)import expect_equal from "@std/test/test.ms"
+parse	3	1	19	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport expect_equal from "@std/test/test.ms"
 import panic from "@std/faults.ms"
 
 fn positive(value: Int) Int:
@@ -6348,7 +6262,7 @@ impl Read for Reader:
 export fn main() Int:
     view := Read(Reader(fn() Int: 1))
     return view.read()
-type	9	13	178	Read is an interface and cannot be constructed; a type with 'impl Read for <Type>:' passes wherever Read is expected, so pass the value directlyfn prepare() fn() Int:
+parse	5	1	71	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itfn prepare() fn() Int:
     invalid := 1 / 0
     return fn() Int: 1
 export fn main()parse	4	17	83	every fn declares its result type after the parameter list, e.g. fn f() Unit:import fail from "@std/test/test.ms"
@@ -6668,7 +6582,7 @@ test "first":
     expect_equal(fixture.value, 1)?
 test "second":
     expect_equal(fixture.value, 2)?
-resolution	3	8	110	unknown standard module @std/faults.msimport TestHooks, expect_equal from "@std/test/test.ms"
+parse	12	1	319	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 fn println(message: String) Unit:
     written := stdout().write("{message}\n").get()
@@ -6683,7 +6597,7 @@ test "one":
     var hooks = TestHooks(value: fixture)
     hooks.before_all()
     expect_equal(fixture.value, 7)?
-type	13	17	326	TestHooks is an interface and cannot be constructed; a type with 'impl TestHooks for <Type>:' passes wherever TestHooks is expected, so pass the value directlyimport TestHooks, expect_equal, expect_ok from "@std/test/test.ms"
+parse	11	1	272	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport TestHooks, expect_equal, expect_ok from "@std/test/test.ms"
 import HttpServer, HttpRequest, HttpResponse, HttpMethod, headers from "@std/net/http.ms"
 import network from "@std/net/net.ms"
 type ApiFixture:
@@ -6701,11 +6615,7 @@ test "first request":
 test "second request uses same server":
     response := expect_ok(network().request(method: HttpMethod.Get, url: "http://{fixture.server.address()}/", headers: headers(), body: ""))?
     expect_equal(response.body, "shared".to_bytes())?
-resolution	3	8	164	module does not export network; did you mean 'Network'?
-resolution	9	31	425	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
-resolution	14	27	621	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
-resolution	17	27	855	unknown binding network; host handle getters were removed: import the operation itself, e.g. read_file from "@std/os/fs.ms", connect from "@std/net/net.ms", run from "@std/os/process.ms", now from "@std/time.ms"
-type	12	9	553	this statement discards Result[Unit, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or '_ := ...' to drop it on purposeexport fn helper() Unit:
+parse	10	1	489	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itexport fn helper() Unit:
     return
 test "interruptible":
     println("READY")
@@ -6730,10 +6640,7 @@ impl TestHooks for UnusedFixture:
         written := stdout().write("UNUSED after_all").get()
 test "plain test":
     expect_equal(1 + 1, 2)?
-type	7	9	194	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	9	9	282	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	11	9	370	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore it
-type	13	9	456	local binding written is never read; remove it, use it, or name it with a leading '_' to ignore itimport expect_equal, skip from "@std/test/test.ms"
+parse	5	1	126	'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares itimport expect_equal, skip from "@std/test/test.ms"
 test "passing":
     expect_equal(2 + 2, 4)?
 test "skipped":

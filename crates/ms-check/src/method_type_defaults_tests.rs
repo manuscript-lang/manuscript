@@ -28,10 +28,8 @@ interface Convert:
     fn convert(cause: Error? = none) Result[Int, Error]
 type Source:
     value: Int
-impl Convert for Source:
-    fn convert(cause: Error?) Result[Int, Error]: ok(if cause.is_none(): self.value else: 8)
-impl Source:
-    fn ok_or(cause: Error? = none) Result[Int, Error]: ok(if cause.is_none(): self.value else: 8)
+fn Source.convert(cause: Error?) Result[Int, Error]: ok(if cause.is_none(): self.value else: 8)
+fn Source.ok_or(cause: Error? = none) Result[Int, Error]: ok(if cause.is_none(): self.value else: 8)
 fn generic[T](value: T?) Unit:
     _generic_native := value.ok_or[Error]
 fn sample(value: Int?, flag: Bool) Unit:

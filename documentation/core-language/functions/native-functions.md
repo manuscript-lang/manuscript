@@ -81,7 +81,7 @@ uint8_t lib_count(const ms_str *path, int64_t *out, int64_t *code_out, ms_str *m
 
 ## Extern types
 
-`extern type Name` declares an opaque handle that a native makes with `ms_object_new(size, drop)`: `size` zeroed payload bytes at a stable address (`ms_payload`), and a `drop` (or NULL) that runs once when its owner drops it. A handle has one owner and cannot be copied (`.clone()` is rejected and `ms_object_clone` of one faults); a native that made a handle and does not return it drops it with `ms_object_drop`. An extern type has no fields and cannot be generic. Pair it with private externs and an `impl` block so the public API is plain Manuscript.
+`extern type Name` declares an opaque handle that a native makes with `ms_object_new(size, drop)`: `size` zeroed payload bytes at a stable address (`ms_payload`), and a `drop` (or NULL) that runs once when its owner drops it. A handle has one owner and cannot be copied (`.clone()` is rejected and `ms_object_clone` of one faults); a native that made a handle and does not return it drops it with `ms_object_drop`. An extern type has no fields and cannot be generic. Pair it with private externs and receiver methods so the public API is plain Manuscript.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript

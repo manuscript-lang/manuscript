@@ -9,7 +9,7 @@ const COLLECTIONS: &str = include_str!("../../../stdlib/collections/collections.
 fn declares_mutator(name: &str) -> bool {
     COLLECTIONS
         .lines()
-        .any(|l| l.trim_start().starts_with(&format!("var fn {name}(")))
+        .any(|l| l.starts_with("fn var ") && l.contains(&format!(".{name}(")))
 }
 
 #[test]
@@ -18,7 +18,7 @@ fn every_discarding_name_is_a_declared_mutator() {
         assert!(discards_entries(name), "{name} should discard");
         assert!(
             declares_mutator(name),
-            "`{name}` is listed as discarding but collections.ms declares no `var fn {name}`"
+            "`{name}` is listed as discarding but collections.ms declares no `fn var _.{name}`"
         );
     }
 }

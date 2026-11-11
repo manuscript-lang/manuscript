@@ -3,8 +3,7 @@ import Closeable from "@std/core.ms"
 type Marker:
     id: Int
 
-impl Closeable for Marker:
-    var fn close() Unit!: ok(unit)
+fn var Marker.close() Unit!: ok(unit)
 
 fn transfer_ok_or() Unit:
     value: Marker? := Marker(1)
@@ -86,12 +85,11 @@ fn direct_specialized_result[T, E, U](value: T!E, transform: fn(T) U) U!E:
 type Box:
     items: List[Int]
 
-impl Box:
-    fn read[T](_tag: T) List[Int]: self.items
+fn Box.read[T](_tag: T) List[Int]: self.items
 
-    var fn change[T](_tag: T) Int:
-        self.items.append(3)
-        return self.items.length()
+fn var Box.change[T](_tag: T) Int:
+    self.items.append(3)
+    return self.items.length()
 
 fn specialized_source_and_indexed_call() Int:
     var box = Box([1, 2])

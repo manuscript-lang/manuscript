@@ -26,9 +26,8 @@ fn identity[Named](item: Named) Named:
 fn echo(item: Item) Item:
     return item
 
-impl Box:
-    fn first() Item:
-        return self.items[0]
+fn Box.first() Item:
+    return self.items[0]
 
 fn main() Unit:
     print(b_item())

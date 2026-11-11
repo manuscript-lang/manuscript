@@ -6,12 +6,11 @@ import stdout from "@std/io/io.ms"
 type C:
     n: Int
 
-impl C:
-    var fn bump() Int:
-        self.n += 1
-        return self.n
+fn var C.bump() Int:
+    self.n += 1
+    return self.n
 
-    fn get() Int: self.n
+fn C.get() Int: self.n
 
 fn show(x: Int?) Unit:
     stdout().write("{x.get(-1)}\n").get()

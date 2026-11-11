@@ -94,33 +94,32 @@ export type FetchResponse:
 	// The complete body, within the request's `max_response_bytes`.
 	body: Bytes
 
-impl FetchResponse:
-	// Returns whether the status is 200 through 299.
-	fn ok() Bool:
-		return self.head.status >= 200 and self.head.status < 300
+// Returns whether the status is 200 through 299.
+fn FetchResponse.ok() Bool:
+	return self.head.status >= 200 and self.head.status < 300
 
-	// Decodes the body as UTF-8.
-	fn text() String!:
-		if text := self.body.decode_utf8(): return ok(text)
-		return error(Error("fetch: body is not valid UTF-8", kind: "EBADMSG"))
+// Decodes the body as UTF-8.
+fn FetchResponse.text() String!:
+	if text := self.body.decode_utf8(): return ok(text)
+	return error(Error("fetch: body is not valid UTF-8", kind: "EBADMSG"))
 
-	// Decodes the body as JSON into `T`, as in `response.json[User]()?`; use
-	// `JsonValue` for untyped data.
-	fn json[T: Data](ignore_unknown_fields: Bool = true) T!:
-		text := self.text()?
-		return parse[T](text, JsonOptions(ignore_unknown_fields: ignore_unknown_fields))
+// Decodes the body as JSON into `T`, as in `response.json[User]()?`; use
+// `JsonValue` for untyped data.
+fn FetchResponse.json[T: Data](ignore_unknown_fields: Bool = true) T!:
+	text := self.text()?
+	return parse[T](text, JsonOptions(ignore_unknown_fields: ignore_unknown_fields))
 
-	// Succeeds when the status is 200 through 299 and otherwise returns `Status`, so
-	// `response.check_status()?` rejects error responses.
-	fn check_status() Unit!:
-		if self.ok(): return ok(unit)
-		return error(
-			Error(
-				"fetch: unexpected status {self.head.status}",
-				kind: "EIO",
-				details: {"status": self.head.status.to_string()},
-			)
+// Succeeds when the status is 200 through 299 and otherwise returns `Status`, so
+// `response.check_status()?` rejects error responses.
+fn FetchResponse.check_status() Unit!:
+	if self.ok(): return ok(unit)
+	return error(
+		Error(
+			"fetch: unexpected status {self.head.status}",
+			kind: "EIO",
+			details: {"status": self.head.status.to_string()},
 		)
+	)
 
 // A reusable client with connection pooling. Bind it to a local and its scope closes
 // it, or close it when done.

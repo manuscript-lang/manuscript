@@ -1,1 +1,1 @@
-error parse 4:12:91 "expected ':', found name 'forCause'; block headers (fn, if, else, for, while, match, type, enum, impl, test) end with ':' before their indented body"
+error parse 4:1:80 "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it"

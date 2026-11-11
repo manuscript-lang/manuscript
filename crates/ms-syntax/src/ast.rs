@@ -206,6 +206,8 @@ pub struct ImplDecl {
     pub contract: Option<TypeRef>,
     /// The implementing type.
     pub receiver: TypeRef,
+    /// Bounds a receiver method writes on the receiver's type arguments (`fn List[T: Clonable].f`).
+    pub bounds: Vec<TypeParam>,
     /// Methods, each with a body.
     pub methods: Vec<Method>,
 }

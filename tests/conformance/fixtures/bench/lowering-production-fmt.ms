@@ -6,8 +6,7 @@ import Closeable from "@std/core.ms"
 type Resource:
     value: Int
 
-impl Closeable for Resource:
-    fn close() Unit!: return ok(unit)
+fn Resource.close() Unit!: return ok(unit)
 
 fn empty(value: Int) Int: value
 

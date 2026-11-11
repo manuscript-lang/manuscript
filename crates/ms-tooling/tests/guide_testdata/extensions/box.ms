@@ -2,23 +2,20 @@
 export type Box[T]:
     value: T
 
-impl Box[T]:
-    // Reports whether an argument was supplied.
-    fn accepts(flag: Bool = true) Bool:
-        return flag
+// Reports whether an argument was supplied.
+fn Box[T].accepts(flag: Bool = true) Bool:
+    return flag
 
 interface OrderedBox[T: Comparable]:
     fn precedes(other: T) Bool
 
-impl OrderedBox[T] for Box[T]:
-    // Compares the stored value using its element's declared order.
-    fn precedes(other: T) Bool:
-        return self.value.compare(other) < 0
+// Compares the stored value using its element's declared order.
+fn Box[T: Comparable].precedes(other: T) Bool:
+    return self.value.compare(other) < 0
 
-interface IntBoxSourceMethods:
+export interface IntBoxSourceMethods:
     fn number() Int
 
-impl IntBoxSourceMethods for Box[Int]:
-    // Returns the stored integer.
-    fn number() Int:
-        return self.value
+// Returns the stored integer.
+fn Box[Int].number() Int:
+    return self.value

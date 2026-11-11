@@ -15,9 +15,8 @@ fn send(var conn: Connection, text: String) Unit!:
 type Reporter:
     name: String
 
-impl Closeable for Reporter:
-    var fn close() Unit!:
-        _line := stdout().write("{self.name} cleanup ran\n")
+fn var Reporter.close() Unit!:
+    _line := stdout().write("{self.name} cleanup ran\n")
 
 fn handle(request: HttpRequest) HttpResponse:
     var _reporter = Reporter("handler")

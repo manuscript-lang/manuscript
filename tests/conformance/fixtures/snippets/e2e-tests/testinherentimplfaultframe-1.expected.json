@@ -13,7 +13,7 @@
           "index": 0,
           "name": "testinherentimplfaultframe-1.ms::inherent fault frame",
           "status": "failed",
-          "failure": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at testinherentimplfaultframe-1.ms:9 in Counter.overflow\n  at testinherentimplfaultframe-1.ms:12 in test inherent fault frame"
+          "failure": "Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at testinherentimplfaultframe-1.ms:8 in Counter.overflow\n  at testinherentimplfaultframe-1.ms:11 in test inherent fault frame"
         }
       ],
       "summary": {
@@ -26,7 +26,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN testinherentimplfaultframe-1.ms::inherent fault frame\nFAIL testinherentimplfaultframe-1.ms::inherent fault frame: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at testinherentimplfaultframe-1.ms:9 in Counter.overflow\n  at testinherentimplfaultframe-1.ms:12 in test inherent fault frame\n1 tests, 1 failed\n",
+      "stdout": "RUN testinherentimplfaultframe-1.ms::inherent fault frame\nFAIL testinherentimplfaultframe-1.ms::inherent fault frame: Int overflow; the result does not fit in signed 64 bits, so bound the operands or use BigInt\n  at testinherentimplfaultframe-1.ms:8 in Counter.overflow\n  at testinherentimplfaultframe-1.ms:11 in test inherent fault frame\n1 tests, 1 failed\n",
       "diagnostics": []
     },
     "shape": [

@@ -42,18 +42,34 @@ pub struct ContractMethods<'a> {
     by_receiver: HashMap<(Name, Name), Vec<&'a MethodRef>>,
     /// Receivers that are type variables match any source type.
     by_variable: HashMap<Name, Vec<&'a MethodRef>>,
+    /// Receiver methods match a contract by shape: they are candidates for every contract.
+    inherent: HashMap<Name, Vec<&'a MethodRef>>,
+    inherent_variable: Vec<&'a MethodRef>,
 }
 
 impl<'a> ContractMethods<'a> {
-    pub fn new(methods: &'a [MethodRef]) -> Self {
+    pub fn new(syms: ms_syntax::Names, methods: &'a [MethodRef]) -> Self {
         let mut index = ContractMethods {
             by_receiver: HashMap::new(),
             by_variable: HashMap::new(),
+            inherent: HashMap::new(),
+            inherent_variable: Vec::new(),
         };
         for m in methods {
             let Some(contract) = &m.contract else {
                 continue;
             };
+            if m.is_inherent(syms) {
+                if m.decl.is_none() {
+                    continue;
+                }
+                if m.variables.iter().any(|v| v.id == m.receiver.id) {
+                    index.inherent_variable.push(m);
+                } else {
+                    index.inherent.entry(m.receiver.id).or_default().push(m);
+                }
+                continue;
+            }
             if m.variables.iter().any(|v| v.id == m.receiver.id) {
                 index.by_variable.entry(contract.id).or_default().push(m);
             } else {
@@ -71,7 +87,14 @@ impl<'a> ContractMethods<'a> {
     pub fn of(&self, contract: Name, receiver: Name) -> impl Iterator<Item = &'a MethodRef> + '_ {
         let exact = self.by_receiver.get(&(contract, receiver));
         let variable = self.by_variable.get(&contract);
-        exact.into_iter().chain(variable).flatten().copied()
+        let own = self.inherent.get(&receiver);
+        exact
+            .into_iter()
+            .chain(variable)
+            .chain(own)
+            .flatten()
+            .chain(&self.inherent_variable)
+            .copied()
     }
 }
 

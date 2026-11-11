@@ -8,13 +8,12 @@ export fn observe(values: List[Int], amount: Int = 1) Int:
 type Updater:
     amount: Int
 
-impl Updater:
-    fn adjust(values: List[Int], amount: Int = 1) Int:
-        return values.length() + self.amount + amount
+fn Updater.adjust(values: List[Int], amount: Int = 1) Int:
+    return values.length() + self.amount + amount
 
-    fn modify(var values: List[Int]) Int:
-        values.append(self.amount)
-        return values.length()
+fn Updater.modify(var values: List[Int]) Int:
+    values.append(self.amount)
+    return values.length()
 
 fn direct() Int:
     var values = [1]

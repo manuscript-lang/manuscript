@@ -19,19 +19,18 @@ interface Runner:
 type Capture:
     calls: Int
 
-impl Runner for Capture:
-    var fn run(
-        program: String,
-        arguments: List[String],
-        input: Bytes,
-        max_output_bytes: Int?,
-        timeout: Duration?
-    ) Result[CommandOutput, Error]:
-        self.calls += 1
-        return ok(CommandOutput(0, input, "".to_bytes(), 0))
+fn var Capture.run(
+    program: String,
+    arguments: List[String],
+    input: Bytes,
+    max_output_bytes: Int?,
+    timeout: Duration?
+) Result[CommandOutput, Error]:
+    self.calls += 1
+    return ok(CommandOutput(0, input, "".to_bytes(), 0))
 
-    fn spawn(program: String, arguments: List[String]) Result[Subprocess, Error]:
-        return error(Error("process: service unavailable", kind: "EAGAIN"))
+fn Capture.spawn(program: String, arguments: List[String]) Result[Subprocess, Error]:
+    return error(Error("process: service unavailable", kind: "EAGAIN"))
 
 fn main() Unit:
     var capture = Capture(0)

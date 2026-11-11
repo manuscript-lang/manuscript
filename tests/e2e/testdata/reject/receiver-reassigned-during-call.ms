@@ -6,8 +6,7 @@ interface Subtract:
 type Offset:
 	value: Int
 
-impl Subtract for Offset:
-	fn subtract(amount: Int) Int: amount - self.value
+fn Offset.subtract(amount: Int) Int: amount - self.value
 
 fn present[T](value: T) T?:
 	return value

@@ -17,14 +17,12 @@ export type Box[T]:
     value: T
     count: Int = 1
 
-impl Measured for Box[Int]:
-    // Reports the count.
-    fn size() Int:
-        return self.count
+// Reports the count.
+fn Box[Int].size() Int:
+    return self.count
 
-impl Equal for Shape:
-    fn equals(other: Shape) Bool:
-        return true
+fn Shape.equals(other: Shape) Bool:
+    return true
 
 export LIMIT := 10
 // The default name.

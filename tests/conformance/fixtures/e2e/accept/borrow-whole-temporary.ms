@@ -18,8 +18,7 @@ fn id(b: Big) Big: b
 
 fn pass[T](x: T) T: x
 
-impl Big:
-    fn me() Big: return self
+fn Big.me() Big: return self
 
 fn first_of(b: Big) Int:
     return b.items[0]

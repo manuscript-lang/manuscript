@@ -205,118 +205,114 @@ export type SeededRandom:
 	// Internal state: the SplitMix64 counter, advanced on every draw.
 	state: Int
 
-impl SeededRandom:
-	// Returns the next 64 random bits as a signed Int.
-	var fn next_bits() Int:
-		self.state = wrapping_add(self.state, -7046029254386353131)
+// Returns the next 64 random bits as a signed Int.
+fn var SeededRandom.next_bits() Int:
+	self.state = wrapping_add(self.state, -7046029254386353131)
 
-		var z = self.state
-		z = wrapping_multiply(
-			bit_xor(z, shift_right_unsigned(z, 30)),
-			-4658895280553007687,
+	var z = self.state
+	z = wrapping_multiply(bit_xor(z, shift_right_unsigned(z, 30)), -4658895280553007687)
+	z = wrapping_multiply(bit_xor(z, shift_right_unsigned(z, 27)), -7723592293110705685)
+	return bit_xor(z, shift_right_unsigned(z, 31))
+
+// Returns an Int at least `min` and below `max_exclusive`, uniformly. A `min` not
+// below `max_exclusive`, or a range wider than the largest Int, faults.
+fn var SeededRandom.int(min: Int, max_exclusive: Int) Int:
+	if min >= max_exclusive:
+		panic("random int: min must be below max_exclusive")
+
+	// Checked before subtracting: `max_exclusive - min` overflows exactly when the
+	// range is wider than the largest Int.
+	if min < 0 and max_exclusive > max_int + min:
+		panic("random int: the range is wider than the largest Int")
+
+	span := max_exclusive - min
+
+	while true:
+		bits := shift_right_unsigned(self.next_bits(), 1)
+		rest := bits % span
+
+		// Redraw the few values past the last whole multiple of `span`, so none is
+		// likelier.
+		if bits - rest <= max_int - (span - 1): return min + rest
+
+	return min
+
+// Returns a Float at least 0.0 and below 1.0 with 53 random bits.
+fn var SeededRandom.float() Float:
+	bits := shift_right_unsigned(self.next_bits(), 11)
+	return bits.to_float() / 9007199254740992.0
+
+// Shuffles `values` with an unbiased Fisher-Yates shuffle and returns it.
+fn var SeededRandom.shuffle[T](values: List[T]) List[T]:
+	var out = values
+	var index = out.length() - 1
+
+	while index > 0:
+		out.swap(index, self.int(0, index + 1))
+		index -= 1
+
+	return out
+
+// Returns a uniformly chosen item, or none for an empty list.
+fn var SeededRandom.choice[T](values: List[T]) T?:
+	if values.is_empty(): return none
+	return values.get(self.int(0, values.length()))
+
+// Returns `count` items chosen uniformly without replacement, in random order, as
+// copies; `values` is unchanged. A `count` outside 0 through the list length
+// faults.
+fn var SeededRandom.sample[T: Clonable](values: List[T], count: Int) List[T]:
+	if count < 0 or count > values.length():
+		panic("random sample: count must be from 0 to the list length")
+
+	var order = positions(if count == 0: 0 else: values.length())
+	var out: List[T] = []
+
+	for i in 0..count:
+		order.swap(i, self.int(i, values.length()))
+		out.append(values[order[i]].clone())
+
+	return out
+
+// Returns an item chosen with probability proportional to its weight, or none for
+// an empty list.
+// `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this faults.
+fn var SeededRandom.weighted_choice[T: Clonable](
+	values: List[T],
+	weights: List[Float],
+) T?:
+	if values.is_empty() and weights.is_empty(): return none
+
+	total := weight_total(values.length(), weights)
+	if total == 0.0:
+		panic(
+			"random weighted_choice: weights must match the values, be finite and non-negative, and not all be zero"
 		)
-		z = wrapping_multiply(
-			bit_xor(z, shift_right_unsigned(z, 27)),
-			-7723592293110705685,
-		)
-		return bit_xor(z, shift_right_unsigned(z, 31))
 
-	// Returns an Int at least `min` and below `max_exclusive`, uniformly. A `min` not
-	// below `max_exclusive`, or a range wider than the largest Int, faults.
-	var fn int(min: Int, max_exclusive: Int) Int:
-		if min >= max_exclusive:
-			panic("random int: min must be below max_exclusive")
+	point := self.float()
+	return values[weighted_position(weights, point, total)].clone()
 
-		// Checked before subtracting: `max_exclusive - min` overflows exactly when the
-		// range is wider than the largest Int.
-		if min < 0 and max_exclusive > max_int + min:
-			panic("random int: the range is wider than the largest Int")
+// Returns a standard normal Float (mean 0, standard deviation 1) using the
+// Box-Muller transform.
+fn var SeededRandom.normal() Float:
+	radius := sqrt(-2.0 * log(1.0 - self.float()))
+	return radius * cos(6.283185307179586 * self.float())
 
-		span := max_exclusive - min
+// Returns an exponentially distributed Float with rate 1 (mean 1), always positive
+// or zero.
+fn var SeededRandom.exponential() Float:
+	return -log(1.0 - self.float())
 
-		while true:
-			bits := shift_right_unsigned(self.next_bits(), 1)
-			rest := bits % span
+// Returns a shuffled list of the Ints 0 through `count - 1`. A negative `count`
+// faults.
+fn var SeededRandom.permutation(count: Int) List[Int]:
+	if count < 0:
+		panic("random permutation: count must not be negative")
 
-			// Redraw the few values past the last whole multiple of `span`, so none is
-			// likelier.
-			if bits - rest <= max_int - (span - 1): return min + rest
-
-		return min
-
-	// Returns a Float at least 0.0 and below 1.0 with 53 random bits.
-	var fn float() Float:
-		bits := shift_right_unsigned(self.next_bits(), 11)
-		return bits.to_float() / 9007199254740992.0
-
-	// Shuffles `values` with an unbiased Fisher-Yates shuffle and returns it.
-	var fn shuffle[T](values: List[T]) List[T]:
-		var out = values
-		var index = out.length() - 1
-
-		while index > 0:
-			out.swap(index, self.int(0, index + 1))
-			index -= 1
-
-		return out
-
-	// Returns a uniformly chosen item, or none for an empty list.
-	var fn choice[T](values: List[T]) T?:
-		if values.is_empty(): return none
-		return values.get(self.int(0, values.length()))
-
-	// Returns `count` items chosen uniformly without replacement, in random order, as
-	// copies; `values` is unchanged. A `count` outside 0 through the list length
-	// faults.
-	var fn sample[T: Clonable](values: List[T], count: Int) List[T]:
-		if count < 0 or count > values.length():
-			panic("random sample: count must be from 0 to the list length")
-
-		var order = positions(if count == 0: 0 else: values.length())
-		var out: List[T] = []
-
-		for i in 0..count:
-			order.swap(i, self.int(i, values.length()))
-			out.append(values[order[i]].clone())
-
-		return out
-
-	// Returns an item chosen with probability proportional to its weight, or none for
-	// an empty list.
-	// `weights` must match `values` in length, hold no negative or non-finite weight, and not all be zero; otherwise this faults.
-	var fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?:
-		if values.is_empty() and weights.is_empty(): return none
-
-		total := weight_total(values.length(), weights)
-		if total == 0.0:
-			panic(
-				"random weighted_choice: weights must match the values, be finite and non-negative, and not all be zero"
-			)
-
-		point := self.float()
-		return values[weighted_position(weights, point, total)].clone()
-
-	// Returns a standard normal Float (mean 0, standard deviation 1) using the
-	// Box-Muller transform.
-	var fn normal() Float:
-		radius := sqrt(-2.0 * log(1.0 - self.float()))
-		return radius * cos(6.283185307179586 * self.float())
-
-	// Returns an exponentially distributed Float with rate 1 (mean 1), always positive
-	// or zero.
-	var fn exponential() Float:
-		return -log(1.0 - self.float())
-
-	// Returns a shuffled list of the Ints 0 through `count - 1`. A negative `count`
-	// faults.
-	var fn permutation(count: Int) List[Int]:
-		if count < 0:
-			panic("random permutation: count must not be negative")
-
-		var items: List[Int] = []
-		for index in 0..count:
-			items.append(index)
-		return self.shuffle(items)
+	var items: List[Int] = []
+	for index in 0..count:
+		items.append(index)
+	return self.shuffle(items)
 
 // Returns a generator that starts from `seed`; equal seeds give equal sequences
 // (SplitMix64).

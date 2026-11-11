@@ -7,15 +7,14 @@ type C:
     n: Int
     log: List[String]
 
-impl C:
-    var fn bump() Int:
-        self.n += 1
-        return self.n
+fn var C.bump() Int:
+    self.n += 1
+    return self.n
 
-    var fn note(s: String) Unit:
-        self.log.append(s)
+fn var C.note(s: String) Unit:
+    self.log.append(s)
 
-    fn get() Int: self.n
+fn C.get() Int: self.n
 
 type H:
     c: C?

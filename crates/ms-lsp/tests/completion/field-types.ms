@@ -19,9 +19,8 @@ packet: Payload
 type Box[A]:
     value: A
 
-impl Box[A]:
-    fn receive[T](data: T) Int:
-        return 0
+fn Box[A].receive[T](data: T) Int:
+    return 0
 
-    fn owned(data: A) Int:
-        return 0
+fn Box[A].owned(data: A) Int:
+    return 0

@@ -222,11 +222,11 @@ This runs the application entry point, not its test blocks. Put the workload you
 
 ## Shared setup and teardown
 
-Without `make_fixture`, no hooks run. Define `fn make_fixture() T` where `T` implements `TestHooks` from `@std/test/test.ms`; tests then read it as `fixture`.
+Without `make_fixture`, no hooks run. Define `fn make_fixture() T` for a record or enum `T` and give it any of the hook methods `before_all`, `before_each`, `after_each` and `after_all`; tests then read it as `fixture`.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import TestHooks, expect_equal from "@std/test/test.ms"
+import expect_equal from "@std/test/test.ms"
 
 type Counter:
     count: Int
@@ -234,9 +234,8 @@ type Counter:
 fn make_fixture() Counter:
     return Counter(0)
 
-impl TestHooks for Counter:
-    var fn before_each() Unit:
-        self.count = 0
+fn var Counter.before_each() Unit:
+    self.count = 0
 
 test "increments":
     fixture.count += 1
@@ -281,7 +280,7 @@ test "unix permission bits":
 To skip every test in a file, call `skip` from a fixture hook. `before_all` and `before_each` both work; `after_all` and `after_each` still run, and each test is reported as `SKIP` with your reason:
 
 ```manuscript
-import TestHooks, skip from "@std/test/test.ms"
+import skip from "@std/test/test.ms"
 import os, Os from "@std/os/system.ms"
 
 type WindowsOnly:
@@ -290,10 +289,9 @@ type WindowsOnly:
 fn make_fixture() WindowsOnly:
     return WindowsOnly(os() == Os.Windows)
 
-impl TestHooks for WindowsOnly:
-    var fn before_all() Unit:
-        if not self.ok:
-            skip("Windows only")
+fn var WindowsOnly.before_all() Unit:
+    if not self.ok:
+        skip("Windows only")
 ```
 
 Skipped tests are counted in the `ms test` summary, so a platform that runs nothing stays visible.

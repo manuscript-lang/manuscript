@@ -6,9 +6,8 @@ interface Starter:
 
 type Sequential: ...
 
-impl Starter for Sequential:
-    fn start(operation: fn() Unit) Unit:
-        operation()
+fn Sequential.start(operation: fn() Unit) Unit:
+    operation()
 
 fn run() Unit:
     var values = [0]

@@ -27,12 +27,18 @@
       "match": "\\bfrom\\b(?=[ \\t]*\")"
     },
     {
-      "match": "\\b(fn)[ \\t]+([A-Za-z_][A-Za-z0-9_]*)",
+      "match": "\\b(fn)[ \\t]+(?:(var)[ \\t]+)?(?:([A-Z][A-Za-z0-9_]*)(?:\\[[^(\\n]*?\\])?\\.)?([A-Za-z_][A-Za-z0-9_]*)",
       "captures": {
         "1": {
           "name": "keyword.control.manuscript"
         },
         "2": {
+          "name": "keyword.control.manuscript"
+        },
+        "3": {
+          "name": "entity.name.type.manuscript"
+        },
+        "4": {
           "name": "entity.name.function.manuscript"
         }
       }

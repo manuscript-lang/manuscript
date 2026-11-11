@@ -13,9 +13,8 @@ type Failure:
     code: Int
 
 // Cleanup runs on a moved copy, so the marker file is the only way to observe it.
-impl Closeable for State:
-    var fn close() Unit!:
-        _written := write_file(self.marker, "closed", true).wait()
+fn var State.close() Unit!:
+    _written := write_file(self.marker, "closed", true).wait()
 
 fn operation(var state: State, fail: Bool) Unit!Failure:
     state.calls += 1

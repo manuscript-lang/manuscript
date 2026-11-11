@@ -10,12 +10,11 @@ type Walker:
 interface Walk:
     fn walk(n: Int) Int
 
-impl Walk for Walker:
-    fn walk(n: Int) Int:
-        if n == self.limit:
-            return 0
+fn Walker.walk(n: Int) Int:
+    if n == self.limit:
+        return 0
 
-        return 1 + self.walk(n: n + self.step)
+    return 1 + self.walk(n: n + self.step)
 
 fn runaway(n: Int) Int:
     return 1 + runaway(n + 1)

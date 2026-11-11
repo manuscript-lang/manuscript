@@ -1859,11 +1859,11 @@ impl Checker {
         let result = t.result_ty();
         let hooks = self.session.test_hooks();
         if !matches!(result.kind, Kind::Record | Kind::Alternative)
-            || !self.implements(&result, &hooks)
+            || self.shape_gap_with(&result, &hooks, true).as_deref() != Some("")
         {
             self.type_error(
                 decl.pos(),
-                "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and add impl TestHooks for it",
+                "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and declare any of fn var Fixture.before_all(), before_each(), after_each() and after_all() with no arguments and no result",
             );
             return;
         }

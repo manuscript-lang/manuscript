@@ -1,11 +1,10 @@
 type Counter:
     n: Int
 
-impl Counter:
-    var fn bump() Int:
-        self.n += 1
-        return self.n
-    fn get() Int: self.n
+fn var Counter.bump() Int:
+    self.n += 1
+    return self.n
+fn Counter.get() Int: self.n
 
 type Holder:
     c: Counter?

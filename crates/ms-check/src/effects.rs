@@ -39,6 +39,9 @@ struct Scan<'a> {
     conversions: &'a HashMap<(Name, Name), Vec<Name>>,
     /// Interface-implementing method ids per concrete type id.
     by_receiver: &'a HashMap<Name, Vec<Name>>,
+    /// A type's own methods as (operation name, id): converting to an interface hands out the
+    /// ones its operations name, with no impl to say so.
+    own_methods: &'a HashMap<Name, Vec<(Name, Name)>>,
 }
 
 impl Scan<'_> {
@@ -144,6 +147,17 @@ impl Visitor for Scan<'_> {
             for id in ids.clone() {
                 if self.ids.contains(&id) {
                     self.edge(id, e.pos);
+                }
+            }
+        }
+        if let Some(info) = self.info(e)
+            && let (Some(source), Some(target)) = (&info.interface_source, &info.ty)
+            && let (Some(def), Some(own)) = (&target.def, self.own_methods.get(&source.id))
+        {
+            let operations: Vec<Name> = def.operations.borrow().iter().map(|o| o.name).collect();
+            for (name, id) in own {
+                if operations.contains(name) && self.ids.contains(id) {
+                    self.edge(*id, e.pos);
                 }
             }
         }
@@ -253,10 +267,19 @@ impl Checker {
         let ids: HashSet<Name> = nodes.keys().copied().collect();
         let mut conversions: HashMap<(Name, Name), Vec<Name>> = HashMap::new();
         let mut by_receiver: HashMap<Name, Vec<Name>> = HashMap::new();
+        let mut own_methods: HashMap<Name, Vec<(Name, Name)>> = HashMap::new();
         for m in &self.p.methods {
             if let Some(contract) = &m.contract
                 && !ms_syntax::Names::global().str(m.id).is_empty()
             {
+                if m.is_inherent(ms_syntax::Names::global())
+                    && let Some(decl) = &m.decl
+                {
+                    own_methods
+                        .entry(m.receiver.id)
+                        .or_default()
+                        .push((decl.name(), m.id));
+                }
                 conversions
                     .entry((contract.id, m.receiver.id))
                     .or_default()
@@ -277,6 +300,7 @@ impl Checker {
                 edge_pos: Vec::new(),
                 conversions: &conversions,
                 by_receiver: &by_receiver,
+                own_methods: &own_methods,
             };
             match &node.target {
                 Target::Decl(d) => {

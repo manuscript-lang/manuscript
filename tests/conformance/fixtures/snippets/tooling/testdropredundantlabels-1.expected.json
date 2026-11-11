@@ -12,16 +12,16 @@
         "message": "reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)",
         "position": {
           "file": "testdropredundantlabels-1.ms",
-          "line": 19,
+          "line": 18,
           "column": 1,
-          "offset": 461
+          "offset": 441
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testdropredundantlabels-1.ms:19:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n    |\n 19 | fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int: ...\n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testdropredundantlabels-1.ms:18:1: type: reachable fallthrough in function returning Int; end every path with 'return <Int>' (or make the last branch return)\n    |\n 18 | fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int: ...\n    | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

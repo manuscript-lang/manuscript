@@ -8,9 +8,8 @@ type Row[A, B]:
     nested: Box[B?]
     to_string: Int
 
-impl Row[A, B]:
-    fn count() Int:
-        return 1
+fn Row[A, B].count() Int:
+    return 1
 
 fn first(row: Row[Int, String]) Int:
     return row.first

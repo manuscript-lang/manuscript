@@ -15,23 +15,20 @@ enum Shape:
 interface Named:
     fn label() String
 
-impl Point:
-    fn norm() Int:
-        return self.x * self.x + self.y * self.y
+fn Point.norm() Int:
+    return self.x * self.x + self.y * self.y
 
-impl Named for Point:
-    fn label() String:
-        return "point"
+fn Point.label() String:
+    return "point"
 
 type Counter:
     n: Int
 
-impl Iterator[Int] for Counter:
-    var fn next() Int?:
-        if self.n == 0: return none
+fn var Counter.next() Int?:
+    if self.n == 0: return none
 
-        self.n -= 1
-        return self.n
+    self.n -= 1
+    return self.n
 
 fn add(a: Int, b: Int) Int:
     total := a + b

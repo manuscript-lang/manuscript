@@ -7,9 +7,8 @@ type Box[T]:
 interface Named:
     fn name() String
 
-impl Named for Box[T]:
-    fn name() String:
-        return "box"
+fn Box[T].name() String:
+    return "box"
 
 fn wrong(item: Named) String:
     match item:

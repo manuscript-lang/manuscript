@@ -31,7 +31,6 @@ fn opaque_types_reject_outside_use() {
         ("cases", "cases cannot be matched here"),
         ("case_build", "case Safe cannot be built here"),
         ("method", "inherent methods belong in the module"),
-        ("iface", "takes no new methods or interfaces here"),
         ("parse", "Approved does not satisfy Data; it is opaque"),
         ("stringify", "Approved does not satisfy Data; it is opaque"),
         ("generic", "T does not satisfy Data"),

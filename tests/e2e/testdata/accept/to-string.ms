@@ -14,11 +14,10 @@ enum Outcome:
 	Waiting
 
 interface Named:
-	fn name() String
+	fn title() String
 
-impl Named for Person:
-	fn name() String:
-		return self.name.clone()
+fn Person.title() String:
+	return self.name.clone()
 
 fn stringify[T](value: T) String:
 	return value.to_string()

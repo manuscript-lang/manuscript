@@ -996,7 +996,7 @@ fn ownership_labels_follow_checked_value_classes_and_return_borrows() {
         ),
         ("named", vec!["returns Named  owned view"]),
         // An interface operation fixes no passing mode, so none is claimed.
-        ("Named", vec!["name() String  self borrow"]),
+        ("Named", vec!["label() String  self borrow"]),
         (
             "maybe_count",
             vec!["returns Result[Int, Error]  owned; borrowed error"],

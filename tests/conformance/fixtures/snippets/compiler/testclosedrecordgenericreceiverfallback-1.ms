@@ -7,10 +7,9 @@ interface Counter:
 type Cell[T]:
     total: Int
 
-impl Counter for Cell[T]:
-    var fn bump(by: Int) Int:
-        self.total += by
-        return self.total
+fn var Cell[T].bump(by: Int) Int:
+    self.total += by
+    return self.total
 
 fn probe() Int:
     var cell = Cell[String](0)

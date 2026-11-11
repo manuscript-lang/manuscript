@@ -4,9 +4,8 @@ interface Sink:
 type Out:
     n: Int
 
-impl Sink for Out:
-    fn put(s: String) Unit:
-        print(s)
+fn Out.put(s: String) Unit:
+    print(s)
 
 fn run[T: Sink](s: T) Unit:
     s.put("x")

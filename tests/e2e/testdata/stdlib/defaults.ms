@@ -16,16 +16,19 @@ fn forward[T](item: T) T: item
 type Capture:
 	tag: Bytes
 
-impl Commands for Capture:
-	fn run(program: String, arguments: List[String], options: RunOptions) CommandOutput!:
-		return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
+fn Capture.run(
+	program: String,
+	arguments: List[String],
+	options: RunOptions = RunOptions(),
+) CommandOutput!:
+	return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
 
-	fn spawn(
-		program: String,
-		arguments: List[String],
-		options: SpawnOptions,
-	) Subprocess!:
-		return error(Error("process: service unavailable", kind: "EAGAIN"))
+fn Capture.spawn(
+	program: String,
+	arguments: List[String],
+	options: SpawnOptions,
+) Subprocess!:
+	return error(Error("process: service unavailable", kind: "EAGAIN"))
 
 fn generic_run[T: Commands](service: T) Bytes!:
 	return ok((service.run("fake", [])?).stdout)
@@ -33,20 +36,19 @@ fn generic_run[T: Commands](service: T) Bytes!:
 type Override:
 	input: Bytes
 
-impl Commands for Override:
-	fn run(
-		program: String,
-		arguments: List[String],
-		options: RunOptions = RunOptions(input: self.input.clone()),
-	) CommandOutput!:
-		return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
+fn Override.run(
+	program: String,
+	arguments: List[String],
+	options: RunOptions = RunOptions(input: self.input.clone()),
+) CommandOutput!:
+	return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
 
-	fn spawn(
-		program: String,
-		arguments: List[String],
-		options: SpawnOptions,
-	) Subprocess!:
-		return error(Error("process: service unavailable", kind: "EAGAIN"))
+fn Override.spawn(
+	program: String,
+	arguments: List[String],
+	options: SpawnOptions,
+) Subprocess!:
+	return error(Error("process: service unavailable", kind: "EAGAIN"))
 
 test "concrete implementation defaults and interface defaults stay distinct":
 	service := Override("custom".to_bytes())

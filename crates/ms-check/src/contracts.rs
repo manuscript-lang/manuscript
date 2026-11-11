@@ -406,7 +406,7 @@ impl Checker {
             if !receiver.is_invalid() {
                 self.type_error(
                     d.pos(),
-                    "implementation receiver must be nominal source data; implement interfaces for a type or alternative you declare, such as 'impl Show for Point:', not for built-in or function types",
+                    "implementation receiver must be nominal source data; declare methods on a type or enum you declare, such as 'fn Point.show() String:', not on built-in or function types",
                 );
             }
             // An impl whose receiver is not valid nominal data must not become
@@ -450,7 +450,7 @@ impl Checker {
         if contract.kind != Kind::Contract && !contract.is_invalid() {
             self.type_error(
                 d.pos(),
-                "implementation target must be an interface; write 'impl <Interface> for <Type>:' where the interface is declared with 'interface'",
+                "implementation target must be an interface declared with 'interface'",
             );
         }
         // An interface argument that is a receiver parameter carries the interface's
@@ -879,8 +879,21 @@ impl Checker {
     /// Why `receiver`'s own methods do not satisfy `contract` by shape: the first operation that is
     /// missing or differs. `Some("")` when they satisfy it; `None` when shape does not apply.
     pub(crate) fn shape_gap(&self, receiver: &Ty, contract: &Ty) -> Option<String> {
-        if !matches!(receiver.kind, Kind::Record | Kind::Alternative)
-            || contract.kind != Kind::Contract
+        self.shape_gap_with(receiver, contract, false)
+    }
+
+    /// [`Self::shape_gap`], where `optional` lets the receiver leave operations out (the optional
+    /// `TestHooks`); the ones it declares must still match.
+    pub(crate) fn shape_gap_with(
+        &self,
+        receiver: &Ty,
+        contract: &Ty,
+        optional: bool,
+    ) -> Option<String> {
+        if !matches!(
+            receiver.kind,
+            Kind::Record | Kind::Alternative | Kind::Native | Kind::Primitive
+        ) || contract.kind != Kind::Contract
         {
             return None;
         }
@@ -902,20 +915,50 @@ impl Checker {
         for op in ops.iter() {
             let name = self.syms.str(op.name);
             let key = format!("{}/{}", self.syms.str(contract.id), name);
-            if !self.session.operation_variables(&key).is_empty() {
-                return Some(format!("{name} declares type parameters of its own"));
-            }
+            let op_variables = self.session.operation_variables(&key);
             let own: Vec<MethodRef> = self
                 .implemented_methods(receiver, op.name)
                 .into_iter()
                 .filter(|m| m.is_inherent(self.syms))
                 .collect();
-            let [m] = own.as_slice() else {
-                return Some(format!("{name} is missing"));
-            };
-            if !m.split_variables().1.is_empty() {
-                return Some(format!("{name} declares type parameters of its own"));
+            if optional && own.is_empty() {
+                continue;
             }
+            // An operation's own type parameters are met by the method's, position by position.
+            let mut s = s.clone();
+            let mut own_variables_match = true;
+            if let [m] = own.as_slice() {
+                let own_variables = m.split_variables().1;
+                if own_variables.len() != op_variables.len() {
+                    return Some(format!(
+                        "{name} must declare the same type parameters as the interface"
+                    ));
+                }
+                for (ov, mv) in op_variables.iter().zip(own_variables) {
+                    s.insert(ov.id, mv.clone());
+                }
+                own_variables_match = op_variables.iter().zip(own_variables).all(|(ov, mv)| {
+                    let (want, have) = (ov.bounds(), mv.bounds());
+                    want.len() == have.len()
+                        && want.iter().zip(&have).all(|(w, h)| same(&sub(w, &s), h))
+                });
+            } else if !op_variables.is_empty() {
+                return Some(format!("{name} is missing"));
+            }
+            if !own_variables_match {
+                return Some(format!(
+                    "{name} must bound its type parameters like the interface"
+                ));
+            }
+            // Methods of one name may differ by their receiver's bounds (`sorted()` and
+            // `sorted(compare)`): the one whose signature the interface asks for is the match.
+            let wanted = sub(&op.ty, &s);
+            let fits: Vec<&MethodRef> = own.iter().filter(|m| same(&m.ty, &wanted)).collect();
+            let m = match (fits.as_slice(), own.as_slice()) {
+                ([m], _) => *m,
+                (_, [m]) => m,
+                _ => return Some(format!("{name} is missing")),
+            };
             if !same(&m.ty, &sub(&op.ty, &s)) {
                 return Some(format!(
                     "{name} must be declared as fn {name}{}",
@@ -1045,9 +1088,10 @@ impl Checker {
     fn has_json_encoder(&self, t: &Ty) -> bool {
         self.p.methods.iter().any(|m| {
             self.method_visible(m)
-                && m.contract
-                    .as_ref()
-                    .is_some_and(|c| c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode"))
+                && (m.contract.as_ref().is_some_and(|c| {
+                    c.is_source_type(self.syms, "@std/data/json.ms", "JsonEncode")
+                }) || (m.is_inherent(self.syms)
+                    && m.name().is_some_and(|n| self.syms.str(n) == "to_json")))
                 && {
                     let mut s = Subst::new();
                     unify(&m.receiver, t, &variable_set(&m.variables), &mut s)
@@ -1235,10 +1279,11 @@ impl Checker {
         // Explicit implementations take precedence over structural data semantics.
         for m in &self.p.methods {
             if !self.method_visible(m)
-                || !m
+                || !(m
                     .contract
                     .as_ref()
                     .is_some_and(|c| c.is(property.builtin()))
+                    || m.overrides(self.syms, property.builtin()))
             {
                 continue;
             }
@@ -1255,7 +1300,8 @@ impl Checker {
         if property == Property::Hashable {
             for m in &self.p.methods {
                 if !self.method_visible(m)
-                    || !m.contract.as_ref().is_some_and(|c| c.is(Builtin::Equal))
+                    || !(m.contract.as_ref().is_some_and(|c| c.is(Builtin::Equal))
+                        || m.overrides(self.syms, Builtin::Equal))
                 {
                     continue;
                 }
@@ -1678,7 +1724,7 @@ impl Checker {
             && (symbol.native == Native::Source || self.standard_declarations)
         {
             return format!(
-                "{prefix}add 'impl {bound_t} for {t_t}:' or {alternative}",
+                "{prefix}give {t_t} the methods {bound_t} declares, or {alternative}",
                 bound_t = bound.display(self.syms),
                 t_t = t.display(self.syms)
             );

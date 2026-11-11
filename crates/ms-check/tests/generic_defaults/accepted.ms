@@ -5,12 +5,11 @@ interface Reader[A]:
 type Source:
     number: Int
 
-impl Reader[String] for Source:
-    fn read[T](value: T?, fallback: String?) Int:
-        return self.number
+fn Source.read[T](value: T? = none, fallback: String? = none) Int:
+    return self.number
 
-    fn implicit[U](value: U?) Int:
-        return self.number
+fn Source.implicit[U](value: U?) Int:
+    return self.number
 
 fn from_bound[S: Reader[String]](source: S) Int:
     return source.read[Int]()

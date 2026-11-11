@@ -8,4 +8,4 @@ Legacy `type` alternatives and `enum` members prefixed with `case` are rejected.
 
 Apply when: writing alternatives or changing declaration parsing, recovery, editor completion, or generated declaration text. Preserve the existing [documentation route](../../documentation/core-language/types/alternatives.md).
 
-Verify: focused enum syntax/recovery and source execution tests, plus `make verify-full`. In generated declarations, enum methods still belong in a separate `impl` block.
+Verify: focused enum syntax/recovery and source execution tests, plus `make verify-full`. In generated declarations, enum methods are receiver methods (`fn Enum.name`) after the enum.

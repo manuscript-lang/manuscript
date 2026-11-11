@@ -2,8 +2,7 @@ type Cause:
     code: Int
     text: String
 
-impl Reportable for Cause:
-    fn message() String: "cause {self.code}: {self.text}"
+fn Cause.message() String: "cause {self.code}: {self.text}"
 
 fn first_error(cause: Cause) Reportable:
     return cause
@@ -20,7 +19,7 @@ fn store_local(cause: Cause) List[Reportable]:
 
 fn change_held(var cause: Cause) Reportable:
     e: Reportable := cause
-    cause.code = 2  // error: cannot change `cause.code` while `e` borrows it (binding of a view of it, at 22:5)
+    cause.code = 2  // error: cannot change `cause.code` while `e` borrows it (binding of a view of it, at 21:5)
     return e
 
 fn store_call(var xs: List[Reportable], cause: Cause) Unit:
@@ -32,7 +31,7 @@ fn pass_on(var xs: List[Reportable], cause: Cause) Unit:
 fn caller_change() String:
     var c = Cause(1, "x")
     e := first_error(c)
-    c.code = 3  // error: cannot change `c.code` while `e` borrows it (binding of a part of it, at 34:5)
+    c.code = 3  // error: cannot change `c.code` while `e` borrows it (binding of a part of it, at 33:5)
     return e.message()
 
 fn rebound_still_used(cause: Cause) Reportable:

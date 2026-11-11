@@ -24,6 +24,5 @@ interface Read:
 type Box:
     value: Int = choose(7)
 
-impl Read for Box:
-    fn read(value: Int = choose(8)) Int:
-        return choose(9)
+fn Box.read(value: Int = choose(8)) Int:
+    return choose(9)

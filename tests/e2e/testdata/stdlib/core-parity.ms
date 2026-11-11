@@ -225,12 +225,10 @@ type Key:
 	id: Int
 	label: String
 
-impl Equal for Key:
-	fn equals(other: Key) Bool:
-		return self.id == other.id
+fn Key.equals(other: Key) Bool:
+	return self.id == other.id
 
-impl Hashable for Key:
-	fn hash() Int: 0
+fn Key.hash() Int: 0
 
 test "Set filter and map copy snapshots and deduplicate in first-result order":
 	values := Set[Int]([3, 1, 2])

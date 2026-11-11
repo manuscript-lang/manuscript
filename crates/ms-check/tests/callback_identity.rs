@@ -42,7 +42,7 @@ fn receiver_callbacks_remain_distinct_inside_parameters_and_results() {
         ("fn() fn(Int) Int", "fn() fn(var Int) Int"),
     ] {
         let source = format!(
-            "interface Read:\n    fn read() Int\ntype Box[T]:\n    value: T\nimpl Read for Box[{changing}]:\n    fn read() Int: 1\nfn exercise(value: Box[{plain}]) Int: value.read()\n"
+            "interface Read:\n    fn read() Int\ntype Box[T]:\n    value: T\nfn Box[{changing}].read() Int: 1\nfn exercise(value: Box[{plain}]) Int: value.read()\n"
         );
         let got = diagnostics(&source);
         assert_eq!(got.len(), 1, "{source}: {got:?}");
@@ -55,7 +55,7 @@ fn receiver_callbacks_remain_distinct_inside_parameters_and_results() {
 
 #[test]
 fn generic_receiver_patterns_still_detect_overlapping_callbacks() {
-    let source = "interface Read:\n    fn read() Int\ntype Box[T]:\n    value: T\nimpl Read for Box[fn(T) T]:\n    fn read() Int: 1\nimpl Read for Box[fn(Int) Int]:\n    fn read() Int: 2\n";
+    let source = "interface Read:\n    fn read() Int\ntype Box[T]:\n    value: T\nfn Box[fn(T) T].read() Int: 1\nfn Box[fn(Int) Int].read() Int: 2\n";
     let got = diagnostics(source);
     assert_eq!(got.len(), 1, "{got:?}");
     assert!(

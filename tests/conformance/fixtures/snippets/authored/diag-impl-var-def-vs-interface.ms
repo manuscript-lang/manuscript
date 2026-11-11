@@ -7,9 +7,8 @@ interface Sink:
 type Buf:
     n: Int
 
-impl Sink for Buf:
-    var fn put(x: Int) Unit:
-        self.n = x
+fn var Buf.put(x: Int) Unit:
+    self.n = x
 
 fn main() Unit:
     return

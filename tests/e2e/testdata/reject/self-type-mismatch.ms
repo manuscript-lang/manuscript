@@ -4,9 +4,8 @@ type Key:
 type Other:
 	id: Int
 
-impl Equal for Key:
-	fn equals(other: Key) Bool:
-		return self.id == other.id
+fn Key.equals(other: Key) Bool:
+	return self.id == other.id
 
 fn same[T: Equal](left: T, right: T) Bool:
 	return left.equals(right)

@@ -10,14 +10,13 @@ interface Counter:
 type Cell:
     total: Int
 
-impl Counter for Cell:
-    var fn bump(by: Int) Int:
-        self.total += by
-        return self.total
+fn var Cell.bump(by: Int) Int:
+    self.total += by
+    return self.total
 
-    var fn lower(by: Int) Int:
-        self.total -= by
-        return self.total
+fn var Cell.lower(by: Int) Int:
+    self.total -= by
+    return self.total
 
 fn sum() Int:
     var cell = Cell(0)

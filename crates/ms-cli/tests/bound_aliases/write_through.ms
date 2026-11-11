@@ -7,18 +7,17 @@ type Lists:
 type Counter:
     count: Int
 
-impl Counter:
-    var fn bump(amount: Int = 1) Unit:
-        self.count += amount
+fn var Counter.bump(amount: Int = 1) Unit:
+    self.count += amount
 
-    var fn around(action: fn() Unit) Unit:
-        self.count += 1
-        action()
-        self.count += 1
+fn var Counter.around(action: fn() Unit) Unit:
+    self.count += 1
+    action()
+    self.count += 1
 
-    var fn label() String:
-        self.count += 1
-        return "count-{self.count}"
+fn var Counter.label() String:
+    self.count += 1
+    return "count-{self.count}"
 
 type Counters:
     left: Counter

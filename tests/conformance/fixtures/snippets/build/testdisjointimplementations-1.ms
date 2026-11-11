@@ -8,10 +8,8 @@ type Pair[A, B]:
     left: A
     right: B
 
-impl Read[A] for Pair[A, A]:
-    fn get() Int:
-        return 1
+fn Pair[A, A].get() Int:
+    return 1
 
-impl Read[A] for Pair[A, List[A]]:
-    fn get() Int:
-        return 2
+fn Pair[A, List[A]].get() Int:
+    return 2
