@@ -120,6 +120,14 @@ impl Fixture {
             FixtureRoot::File(path) => {
                 let name = path.file_name().expect("fixture file name");
                 fs::copy(path, work.join(name))?;
+                // Modules a single-file fixture imports as `./support/<name>.ms`.
+                if let Some(support) = path
+                    .parent()
+                    .map(|d| d.join(SUPPORT))
+                    .filter(|d| d.is_dir())
+                {
+                    copy_tree(&support, &work.join(SUPPORT))?;
+                }
             }
             FixtureRoot::Dir(dir) => copy_tree(dir, work)?,
         }
@@ -162,6 +170,9 @@ pub struct Meta {
 }
 
 const PREFIX: &str = "// conform:";
+
+/// A directory beside single-file fixtures holding modules they import; its files are not fixtures.
+const SUPPORT: &str = "support";
 
 /// Number of leading header lines in `source` (including none).
 pub fn header_len(source: &str) -> usize {
@@ -259,6 +270,9 @@ fn walk(root: &Path, dir: &Path, out: &mut Vec<Fixture>, warnings: &mut Vec<Stri
         let path = entry.path();
         let name = entry.file_name().to_string_lossy().into_owned();
         if path.is_dir() {
+            if name == SUPPORT {
+                continue;
+            }
             if path.join("conform.meta").exists() {
                 match load_dir(root, &path) {
                     Ok(f) => out.push(f),

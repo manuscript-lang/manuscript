@@ -6,5 +6,5 @@ Verified: a runner that reports `0 tests, 0 failed` is a failure. Any new runner
 
 Apply when: adding test entrypoints, sharding, or report parsers.
 Evidence: [conformance runner](../../crates/ms-conform/src/runner.rs), [Makefile](../../Makefile).
-Evidence: [e2e runner](../../tools/e2e.ms), which fails when no fixture ran.
+Evidence: [e2e runner](../../tools/conform.ms), which fails when no fixture ran.
 Verify: an injected discovery failure exits nonzero.

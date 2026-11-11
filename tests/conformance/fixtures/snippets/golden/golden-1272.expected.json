@@ -1,0 +1,61 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "module does not export ListBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, RangeOptions, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'",
+        "position": {
+          "file": "golden-1272.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-1272.ms",
+          "line": 3,
+          "column": 19,
+          "offset": 71
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/system.ms; did you mean '@std/os/system.ms'?",
+        "position": {
+          "file": "golden-1272.ms",
+          "line": 4,
+          "column": 8,
+          "offset": 118
+        },
+        "end": {
+          "file": "golden-1272.ms",
+          "line": 4,
+          "column": 14,
+          "offset": 124
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding system; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"",
+        "position": {
+          "file": "golden-1272.ms",
+          "line": 8,
+          "column": 12,
+          "offset": 240
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1272.ms:3:8: resolution: module does not export ListBuilder; @std/collections/collections.ms exports: List, ListCopies, ListCopiesGeneric, ListEntry, ListOrderCopy, Map, MapCopies, MapEntry, Pair, Partition, RangeOptions, SearchResult, ...; namespace imports are unsupported, so import individual exports with 'import Name, OtherName from \"@std/collections/collections.ms\"'\n   |\n 3 | import ListBuilder from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^^^^\n<DIR>/golden-1272.ms:4:8: resolution: unknown standard module @std/system.ms; did you mean '@std/os/system.ms'?\n   |\n 4 | import system from \"@std/system.ms\"\n   |        ^^^^^^\n<DIR>/golden-1272.ms:8:12: resolution: unknown binding system; host handle getters were removed: import the operation itself, e.g. read_file from \"@std/os/fs.ms\", connect from \"@std/net/net.ms\", run from \"@std/os/process.ms\", now from \"@std/time.ms\"\n   |\n 8 |     return system().info().os\n   |            ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

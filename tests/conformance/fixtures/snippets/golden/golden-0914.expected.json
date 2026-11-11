@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1001",
+        "phase": "parse",
+        "message": "unknown text escape \\q; valid escapes are \\n \\t \\r \\\\ \\\" \\{ \\} and \\u{H}",
+        "position": {
+          "file": "golden-0914.ms",
+          "line": 6,
+          "column": 14,
+          "offset": 114
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0914.ms:6:14: parse: unknown text escape \\q; valid escapes are \\n \\t \\r \\\\ \\\" \\{ \\} and \\u{H}\n   |\n 6 |     if not (\"\\q\" == \"\"):\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform drift-check e2e leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: runtime doctor verify verify-full check repo-check workflow-check unit test build conform drift-check leak-check cancel-sweep scaling-check count-check resource-matrix close-matrix copy-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -25,7 +25,7 @@ vscode-install: vscode-package
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
 verify: check repo-check workflow-check bench-check unit docs-check licenses-check
 
-verify-full: verify conform e2e book-check dist-check
+verify-full: verify conform book-check dist-check
 
 # Builds the native runtime (ms-native) into target/ms-native; every build of ms-cli embeds it.
 runtime:
@@ -68,14 +68,10 @@ drift-check: build
 	cargo build --release --locked -q -p ms-conform
 	target/release/ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test --quiet
 
-# Every `tests/e2e/testdata` fixture: accept fixtures pass `ms test`, reject fixtures fail `ms check`.
-# E2E_BUILD_TYPE picks the build type (default Release).
-e2e: build
-	$(MS) run tools/e2e.ms
-
 # Runs corpus programs against a runtime that counts live heap blocks and fails on any block left at exit.
 count-check: build
 	$(MS) run tools/count-check.ms
+	MS=$(MS) $(MS) run tools/count-check-selftest.ms
 
 # Generated inputs at 1k/10k/100k units; fails when the 100k/10k time ratio of linear work exceeds SCALING_BOUND.
 scaling-check: build

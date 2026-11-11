@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "random-weight-ranges.ms::seeded weighted choices retain ratios across the Float range",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "random-weight-ranges.ms::ordinary weighted choices keep direct draws",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "random-weight-ranges.ms::secure weighted choices accept finite extreme weights",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "random-weight-ranges.ms::weighted choices retain zero exclusions and caller values",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "random-weight-ranges.ms::weighted choices preserve invalid input and empty behavior",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN random-weight-ranges.ms::seeded weighted choices retain ratios across the Float range\nPASS random-weight-ranges.ms::seeded weighted choices retain ratios across the Float range\nRUN random-weight-ranges.ms::ordinary weighted choices keep direct draws\nPASS random-weight-ranges.ms::ordinary weighted choices keep direct draws\nRUN random-weight-ranges.ms::secure weighted choices accept finite extreme weights\nPASS random-weight-ranges.ms::secure weighted choices accept finite extreme weights\nRUN random-weight-ranges.ms::weighted choices retain zero exclusions and caller values\nPASS random-weight-ranges.ms::weighted choices retain zero exclusions and caller values\nRUN random-weight-ranges.ms::weighted choices preserve invalid input and empty behavior\nPASS random-weight-ranges.ms::weighted choices preserve invalid input and empty behavior\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

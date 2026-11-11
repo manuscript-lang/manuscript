@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "optional-chaining.ms::a chain is none at the first absent link",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "optional-chaining.ms::an optional field flattens instead of nesting",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "optional-chaining.ms::a plain field makes the chain optional",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "optional-chaining.ms::a call's arguments run only when the receiver is present",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN optional-chaining.ms::a chain is none at the first absent link\nPASS optional-chaining.ms::a chain is none at the first absent link\nRUN optional-chaining.ms::an optional field flattens instead of nesting\nPASS optional-chaining.ms::an optional field flattens instead of nesting\nRUN optional-chaining.ms::a plain field makes the chain optional\nPASS optional-chaining.ms::a plain field makes the chain optional\nRUN optional-chaining.ms::a call's arguments run only when the receiver is present\nPASS optional-chaining.ms::a call's arguments run only when the receiver is present\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

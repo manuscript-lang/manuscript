@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3003",
+        "phase": "type",
+        "message": "missing argument compare: fn(Plain, Plain) Int in call to items.sort; add 'compare: <fn(Plain, Plain) Int>'",
+        "position": {
+          "file": "list-sort-not-comparable.ms",
+          "line": 8,
+          "column": 11,
+          "offset": 147
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/list-sort-not-comparable.ms:8:11: type: missing argument compare: fn(Plain, Plain) Int in call to items.sort; add 'compare: <fn(Plain, Plain) Int>'\n   |\n 8 |     items.sort()\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

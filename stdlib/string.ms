@@ -16,10 +16,6 @@ import (
 fn String.as_bytes() Bytes:
 	return self.to_bytes()
 
-interface StringAffixCuts:
-	fn cut_prefix(prefix: String) String?
-	fn cut_suffix(suffix: String) String?
-
 // Removes one exact prefix, or returns none when absent; an empty prefix succeeds
 // unchanged.
 fn String.cut_prefix(prefix: String) String?:
@@ -180,21 +176,6 @@ fn String.fields() List[String]:
 // terminal. Controls (tabs, CR/LF, ESC, C1), U+2028 and U+2029 return EBADMSG.
 fn String.display_width() Int!:
 	return msstd_unicode_display_width(self)
-
-interface StringTextOperations:
-	fn fields_by(is_separator: fn(String) Bool) List[String]
-	fn equal_fold(other: String) Bool
-	fn trim_chars(set: String) String
-	fn trim_start_chars(set: String) String
-	fn trim_end_chars(set: String) String
-	fn contains_any(set: String) Bool
-	fn index_any(set: String) Int?
-	fn split_after(separator: String) List[String]
-	fn capitalize() String
-	fn title() String
-	fn map_chars(transform: fn(String) String) String
-	fn find_char(predicate: fn(String) Bool) Int?
-	fn replace_each(pairs: Map[String, String]) String
 
 // Scalars read per step by the prefix scans below; each step doubles, so a scan costs
 // its distance.
@@ -399,12 +380,3 @@ fn capture_slots(raw: List[Int], start: Int, count: Int) List[RegexSpan?]:
 			out.append(RegexSpan(raw[at], raw[at + 1]))
 
 	return out
-
-interface RegexSpanQueries:
-	fn find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!
-	fn capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!
-	fn capture_all_spans(
-		text: String,
-		max_matches: Int?,
-		max_captures: Int?,
-	) List[List[RegexSpan?]]!

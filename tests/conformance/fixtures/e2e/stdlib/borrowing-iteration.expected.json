@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "borrowing-iteration.ms::deque iterates front to back by borrow",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "borrowing-iteration.ms::queue iterates oldest first and skips consumed slots",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "borrowing-iteration.ms::priority queue iterates every value and peek borrows",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "borrowing-iteration.ms::break and continue work in a borrowing loop",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "borrowing-iteration.ms::empty container and temporary iterable",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "borrowing-iteration.ms::nested loops over one container",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "borrowing-iteration.ms::callbacks are called through the borrow",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN borrowing-iteration.ms::deque iterates front to back by borrow\nPASS borrowing-iteration.ms::deque iterates front to back by borrow\nRUN borrowing-iteration.ms::queue iterates oldest first and skips consumed slots\nPASS borrowing-iteration.ms::queue iterates oldest first and skips consumed slots\nRUN borrowing-iteration.ms::priority queue iterates every value and peek borrows\nPASS borrowing-iteration.ms::priority queue iterates every value and peek borrows\nRUN borrowing-iteration.ms::break and continue work in a borrowing loop\nPASS borrowing-iteration.ms::break and continue work in a borrowing loop\nRUN borrowing-iteration.ms::empty container and temporary iterable\nPASS borrowing-iteration.ms::empty container and temporary iterable\nRUN borrowing-iteration.ms::nested loops over one container\nPASS borrowing-iteration.ms::nested loops over one container\nRUN borrowing-iteration.ms::callbacks are called through the borrow\nPASS borrowing-iteration.ms::callbacks are called through the borrow\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

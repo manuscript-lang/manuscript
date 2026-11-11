@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "fs-atomic-lock-move.ms::write_atomic replaces contents, keeps mode, and leaves no temporary file",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "fs-atomic-lock-move.ms::write_atomic writes through a symbolic link and keeps the link",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "fs-atomic-lock-move.ms::write_atomic replaces a link that names nothing",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "fs-atomic-lock-move.ms::write_atomic fails without touching the target when the directory is missing",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "fs-atomic-lock-move.ms::advisory locks exclude other handles until unlocked or closed",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "fs-atomic-lock-move.ms::move renames files and trees",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "fs-atomic-lock-move.ms::which finds executables on PATH and rejects missing names",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "fs-atomic-lock-move.ms::write_atomic replaces a file whose name is near the name length limit",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN fs-atomic-lock-move.ms::write_atomic replaces contents, keeps mode, and leaves no temporary file\nPASS fs-atomic-lock-move.ms::write_atomic replaces contents, keeps mode, and leaves no temporary file\nRUN fs-atomic-lock-move.ms::write_atomic writes through a symbolic link and keeps the link\nPASS fs-atomic-lock-move.ms::write_atomic writes through a symbolic link and keeps the link\nRUN fs-atomic-lock-move.ms::write_atomic replaces a link that names nothing\nPASS fs-atomic-lock-move.ms::write_atomic replaces a link that names nothing\nRUN fs-atomic-lock-move.ms::write_atomic fails without touching the target when the directory is missing\nPASS fs-atomic-lock-move.ms::write_atomic fails without touching the target when the directory is missing\nRUN fs-atomic-lock-move.ms::advisory locks exclude other handles until unlocked or closed\nPASS fs-atomic-lock-move.ms::advisory locks exclude other handles until unlocked or closed\nRUN fs-atomic-lock-move.ms::move renames files and trees\nPASS fs-atomic-lock-move.ms::move renames files and trees\nRUN fs-atomic-lock-move.ms::which finds executables on PATH and rejects missing names\nPASS fs-atomic-lock-move.ms::which finds executables on PATH and rejects missing names\nRUN fs-atomic-lock-move.ms::write_atomic replaces a file whose name is near the name length limit\nPASS fs-atomic-lock-move.ms::write_atomic replaces a file whose name is near the name length limit\n8 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

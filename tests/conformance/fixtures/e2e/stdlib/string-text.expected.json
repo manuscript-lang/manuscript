@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "string-text.ms::string text helpers",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "string-text.ms::replace_each without replacements preserves exact text",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "string-text.ms::char-set trims and find_char agree with a scalar walk across scan windows",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "string-text.ms::take and drop clamp on ASCII and non-ASCII text",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "string-text.ms::negative get and scalar_at index from the end on non-ASCII text",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "string-text.ms::slice bounds from the end agree with the same bounds from the start on non-ASCII text",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN string-text.ms::string text helpers\nPASS string-text.ms::string text helpers\nRUN string-text.ms::replace_each without replacements preserves exact text\nPASS string-text.ms::replace_each without replacements preserves exact text\nRUN string-text.ms::char-set trims and find_char agree with a scalar walk across scan windows\nPASS string-text.ms::char-set trims and find_char agree with a scalar walk across scan windows\nRUN string-text.ms::take and drop clamp on ASCII and non-ASCII text\nPASS string-text.ms::take and drop clamp on ASCII and non-ASCII text\nRUN string-text.ms::negative get and scalar_at index from the end on non-ASCII text\nPASS string-text.ms::negative get and scalar_at index from the end on non-ASCII text\nRUN string-text.ms::slice bounds from the end agree with the same bounds from the start on non-ASCII text\nPASS string-text.ms::slice bounds from the end agree with the same bounds from the start on non-ASCII text\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

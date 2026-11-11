@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected ')', found ':'; close the parenthesis, separating items with commas",
+        "position": {
+          "file": "golden-0857.ms",
+          "line": 3,
+          "column": 24,
+          "offset": 76
+        },
+        "end": {
+          "file": "golden-0857.ms",
+          "line": 3,
+          "column": 25,
+          "offset": 77
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0857.ms:3:24: parse: expected ')', found ':'; close the parenthesis, separating items with commas\n   |\n 3 | fn f(callback: fn(value: Int = 3) Int) Unit: return unit\n   |                        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

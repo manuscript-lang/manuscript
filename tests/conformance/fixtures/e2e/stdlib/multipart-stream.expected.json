@@ -1,0 +1,110 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "multipart-stream.ms::parts match parse_multipart under every chunk size",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "multipart-stream.ms::a body without the closing delimiter is InvalidData",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "multipart-stream.ms::the part budget reports LimitExceeded",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "multipart-stream.ms::a preamble longer than the part budget is ignored under every chunk size",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "multipart-stream.ms::a non-UTF-8 header block is InvalidData in both parsers",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "multipart-stream.ms::an Int-max part limit does not overflow on a partial part",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "multipart-stream.ms::transport padded multipart delimiters survive every chunk size",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "multipart-stream.ms::transport padding does not bypass streaming part budget",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "multipart-stream.ms::padded multipart sections retain exact raw budget boundary",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "multipart-stream.ms::parts and parse_multipart agree on corrupted and truncated bodies",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "multipart-stream.ms::fragmented multipart bodies keep binary bytes and delimiter prefixes",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "multipart-stream.ms::retrying an invalid fragmented multipart section retains the error",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 12,
+        "selected": 12,
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN multipart-stream.ms::parts match parse_multipart under every chunk size\nPASS multipart-stream.ms::parts match parse_multipart under every chunk size\nRUN multipart-stream.ms::a body without the closing delimiter is InvalidData\nPASS multipart-stream.ms::a body without the closing delimiter is InvalidData\nRUN multipart-stream.ms::the part budget reports LimitExceeded\nPASS multipart-stream.ms::the part budget reports LimitExceeded\nRUN multipart-stream.ms::a preamble longer than the part budget is ignored under every chunk size\nPASS multipart-stream.ms::a preamble longer than the part budget is ignored under every chunk size\nRUN multipart-stream.ms::a non-UTF-8 header block is InvalidData in both parsers\nPASS multipart-stream.ms::a non-UTF-8 header block is InvalidData in both parsers\nRUN multipart-stream.ms::an Int-max part limit does not overflow on a partial part\nPASS multipart-stream.ms::an Int-max part limit does not overflow on a partial part\nRUN multipart-stream.ms::transport padded multipart delimiters survive every chunk size\nPASS multipart-stream.ms::transport padded multipart delimiters survive every chunk size\nRUN multipart-stream.ms::transport padding does not bypass streaming part budget\nPASS multipart-stream.ms::transport padding does not bypass streaming part budget\nRUN multipart-stream.ms::padded multipart sections retain exact raw budget boundary\nPASS multipart-stream.ms::padded multipart sections retain exact raw budget boundary\nRUN multipart-stream.ms::parts and parse_multipart agree on corrupted and truncated bodies\nPASS multipart-stream.ms::parts and parse_multipart agree on corrupted and truncated bodies\nRUN multipart-stream.ms::fragmented multipart bodies keep binary bytes and delimiter prefixes\nPASS multipart-stream.ms::fragmented multipart bodies keep binary bytes and delimiter prefixes\nRUN multipart-stream.ms::retrying an invalid fragmented multipart section retains the error\nPASS multipart-stream.ms::retrying an invalid fragmented multipart section retains the error\n12 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

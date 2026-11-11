@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "expected '(', found '%'; a call or parameter list starts with '('",
+        "position": {
+          "file": "golden-1277.ms",
+          "line": 3,
+          "column": 13,
+          "offset": 65
+        },
+        "end": {
+          "file": "golden-1277.ms",
+          "line": 3,
+          "column": 14,
+          "offset": 66
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1277.ms:3:13: parse: expected '(', found '%'; a call or parameter list starts with '('\n   |\n 3 | export fn f_%d_%d(value: Int) Int: value + %d\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

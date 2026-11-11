@@ -94,7 +94,7 @@ fn fixtures_lower_and_match_their_expectations() {
 fn rsa_source_calls_and_function_values() {
     let syms = ms_syntax::Names::global();
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/e2e/testdata/stdlib/crypto-rsa.ms");
+        .join("../../tests/conformance/fixtures/e2e/stdlib/crypto-rsa.ms");
     let loaded = check_graph(
         syms,
         load_file(syms, &path.to_string_lossy(), Default::default()),

@@ -1,0 +1,105 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "regex.ms::regex receivers execute matching replacement and empty results",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "regex.ms::regex rejects invalid expressions and exhausted budgets",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "regex.ms::regex captures groups spans and splits",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "regex.ms::regex repeated captures clear absent groups and preserve budgets",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "regex.ms::regex repeated template expansion preserves byte budgets",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "regex.ms::regex capped templates preserve Unicode references and malformed syntax",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "regex.ms::regex named captures preserve unnamed gaps and absent groups",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "regex.ms::regex capture methods preserve whole match only patterns",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "regex.ms::regex collection budgets preserve empty adjacency and exact counts",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "regex.ms::regex compile errors preserve columns after anchors and numbered lines",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "regex.ms::regex compile errors point to duplicate flags and group names",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 11,
+        "selected": 11,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN regex.ms::regex receivers execute matching replacement and empty results\nPASS regex.ms::regex receivers execute matching replacement and empty results\nRUN regex.ms::regex rejects invalid expressions and exhausted budgets\nPASS regex.ms::regex rejects invalid expressions and exhausted budgets\nRUN regex.ms::regex captures groups spans and splits\nPASS regex.ms::regex captures groups spans and splits\nRUN regex.ms::regex repeated captures clear absent groups and preserve budgets\nPASS regex.ms::regex repeated captures clear absent groups and preserve budgets\nRUN regex.ms::regex repeated template expansion preserves byte budgets\nPASS regex.ms::regex repeated template expansion preserves byte budgets\nRUN regex.ms::regex capped templates preserve Unicode references and malformed syntax\nPASS regex.ms::regex capped templates preserve Unicode references and malformed syntax\nRUN regex.ms::regex named captures preserve unnamed gaps and absent groups\nPASS regex.ms::regex named captures preserve unnamed gaps and absent groups\nRUN regex.ms::regex capture methods preserve whole match only patterns\nPASS regex.ms::regex capture methods preserve whole match only patterns\nRUN regex.ms::regex collection budgets preserve empty adjacency and exact counts\nPASS regex.ms::regex collection budgets preserve empty adjacency and exact counts\nRUN regex.ms::regex compile errors preserve columns after anchors and numbered lines\nPASS regex.ms::regex compile errors preserve columns after anchors and numbered lines\nRUN regex.ms::regex compile errors point to duplicate flags and group names\nPASS regex.ms::regex compile errors point to duplicate flags and group names\n11 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

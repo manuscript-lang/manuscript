@@ -1,0 +1,125 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "borrowed-scalar-optional-get.ms::a borrowed scalar Optional getter leaves its owner alive",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "borrowed-scalar-optional-get.ms::a scalar collection lend leaves its owner alive",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "borrowed-scalar-optional-get.ms::owned scalar getter results still close their temporary",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "borrowed-scalar-optional-get.ms::heap resource Optional getters retain their existing borrow",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "borrowed-scalar-optional-get.ms::an inline last lend leaves its scalar owner alive",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "borrowed-scalar-optional-get.ms::an inline map lend leaves its scalar owner alive",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "borrowed-scalar-optional-get.ms::named and inline scalar collection lends keep the same borrow",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "borrowed-scalar-optional-get.ms::missing collection lends still report Optional get faults",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "borrowed-scalar-optional-get.ms::generic inline collection reads lend to their callback",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "borrowed-scalar-optional-get.ms::Clonable results survive their temporary collection",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "borrowed-scalar-optional-get.ms::a labeled map lend leaves its scalar owner alive",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "borrowed-scalar-optional-get.ms::a labeled map binding leaves its scalar owner alive",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "borrowed-scalar-optional-get.ms::a missing labeled map lend still reports the Optional fault",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "borrowed-scalar-optional-get.ms::labeled map lends evaluate receiver and key once in order",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "borrowed-scalar-optional-get.ms::labeled map keys retain their checked conversion",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 15,
+        "selected": 15,
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN borrowed-scalar-optional-get.ms::a borrowed scalar Optional getter leaves its owner alive\nPASS borrowed-scalar-optional-get.ms::a borrowed scalar Optional getter leaves its owner alive\nRUN borrowed-scalar-optional-get.ms::a scalar collection lend leaves its owner alive\nPASS borrowed-scalar-optional-get.ms::a scalar collection lend leaves its owner alive\nRUN borrowed-scalar-optional-get.ms::owned scalar getter results still close their temporary\nPASS borrowed-scalar-optional-get.ms::owned scalar getter results still close their temporary\nRUN borrowed-scalar-optional-get.ms::heap resource Optional getters retain their existing borrow\nPASS borrowed-scalar-optional-get.ms::heap resource Optional getters retain their existing borrow\nRUN borrowed-scalar-optional-get.ms::an inline last lend leaves its scalar owner alive\nPASS borrowed-scalar-optional-get.ms::an inline last lend leaves its scalar owner alive\nRUN borrowed-scalar-optional-get.ms::an inline map lend leaves its scalar owner alive\nPASS borrowed-scalar-optional-get.ms::an inline map lend leaves its scalar owner alive\nRUN borrowed-scalar-optional-get.ms::named and inline scalar collection lends keep the same borrow\nPASS borrowed-scalar-optional-get.ms::named and inline scalar collection lends keep the same borrow\nRUN borrowed-scalar-optional-get.ms::missing collection lends still report Optional get faults\nPASS borrowed-scalar-optional-get.ms::missing collection lends still report Optional get faults\nRUN borrowed-scalar-optional-get.ms::generic inline collection reads lend to their callback\nPASS borrowed-scalar-optional-get.ms::generic inline collection reads lend to their callback\nRUN borrowed-scalar-optional-get.ms::Clonable results survive their temporary collection\nPASS borrowed-scalar-optional-get.ms::Clonable results survive their temporary collection\nRUN borrowed-scalar-optional-get.ms::a labeled map lend leaves its scalar owner alive\nPASS borrowed-scalar-optional-get.ms::a labeled map lend leaves its scalar owner alive\nRUN borrowed-scalar-optional-get.ms::a labeled map binding leaves its scalar owner alive\nPASS borrowed-scalar-optional-get.ms::a labeled map binding leaves its scalar owner alive\nRUN borrowed-scalar-optional-get.ms::a missing labeled map lend still reports the Optional fault\nPASS borrowed-scalar-optional-get.ms::a missing labeled map lend still reports the Optional fault\nRUN borrowed-scalar-optional-get.ms::labeled map lends evaluate receiver and key once in order\nPASS borrowed-scalar-optional-get.ms::labeled map lends evaluate receiver and key once in order\nRUN borrowed-scalar-optional-get.ms::labeled map keys retain their checked conversion\nPASS borrowed-scalar-optional-get.ms::labeled map keys retain their checked conversion\n15 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

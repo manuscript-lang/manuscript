@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "io-line-endings.ms::an unterminated carriage return remains line content",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "io-line-endings.ms::file and memory line readers agree on endings and byte limits",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "io-line-endings.ms::a carriage return split from its newline does not count toward the limit",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "io-line-endings.ms::an unterminated carriage return counts toward the limit at the end",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "io-line-endings.ms::a line that is not valid UTF-8 is an error, not an empty line",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "io-line-endings.ms::lines decode in place across chunks with non-ASCII text and a final unterminated line",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "io-line-endings.ms::long lines cross small chunks without changing output",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "io-line-endings.ms::empty chunks preserve pending carriage returns and byte budgets",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN io-line-endings.ms::an unterminated carriage return remains line content\nPASS io-line-endings.ms::an unterminated carriage return remains line content\nRUN io-line-endings.ms::file and memory line readers agree on endings and byte limits\nPASS io-line-endings.ms::file and memory line readers agree on endings and byte limits\nRUN io-line-endings.ms::a carriage return split from its newline does not count toward the limit\nPASS io-line-endings.ms::a carriage return split from its newline does not count toward the limit\nRUN io-line-endings.ms::an unterminated carriage return counts toward the limit at the end\nPASS io-line-endings.ms::an unterminated carriage return counts toward the limit at the end\nRUN io-line-endings.ms::a line that is not valid UTF-8 is an error, not an empty line\nPASS io-line-endings.ms::a line that is not valid UTF-8 is an error, not an empty line\nRUN io-line-endings.ms::lines decode in place across chunks with non-ASCII text and a final unterminated line\nPASS io-line-endings.ms::lines decode in place across chunks with non-ASCII text and a final unterminated line\nRUN io-line-endings.ms::long lines cross small chunks without changing output\nPASS io-line-endings.ms::long lines cross small chunks without changing output\nRUN io-line-endings.ms::empty chunks preserve pending carriage returns and byte budgets\nPASS io-line-endings.ms::empty chunks preserve pending carriage returns and byte budgets\n8 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

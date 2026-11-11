@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "Manuscript has no '--' operator; write 'i -= 1'",
+        "position": {
+          "file": "golden-0878.ms",
+          "line": 5,
+          "column": 6,
+          "offset": 84
+        },
+        "end": {
+          "file": "golden-0878.ms",
+          "line": 5,
+          "column": 7,
+          "offset": 85
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0878.ms:5:6: parse: Manuscript has no '--' operator; write 'i -= 1'\n   |\n 5 |     i--\n   |      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

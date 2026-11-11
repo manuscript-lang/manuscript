@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "http-websocket.ms::HTTP buffered and streaming clients call a Manuscript handler",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "http-websocket.ms::WebSocket negotiates a protocol and echoes a text frame",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "http-websocket.ms::WebSocket upgrades need HTTP/1.1 and one key",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "http-websocket.ms::HTTP streaming handlers see the Host request header",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "http-websocket.ms::HTTP requests reject an empty method",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "http-websocket.ms::a WebSocket read cancelled by its timeout leaves the socket closable",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "http-websocket.ms::a promise cancelled while it owns a WebSocket closes it without ending the program",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN http-websocket.ms::HTTP buffered and streaming clients call a Manuscript handler\nPASS http-websocket.ms::HTTP buffered and streaming clients call a Manuscript handler\nRUN http-websocket.ms::WebSocket negotiates a protocol and echoes a text frame\nPASS http-websocket.ms::WebSocket negotiates a protocol and echoes a text frame\nRUN http-websocket.ms::WebSocket upgrades need HTTP/1.1 and one key\nPASS http-websocket.ms::WebSocket upgrades need HTTP/1.1 and one key\nRUN http-websocket.ms::HTTP streaming handlers see the Host request header\nPASS http-websocket.ms::HTTP streaming handlers see the Host request header\nRUN http-websocket.ms::HTTP requests reject an empty method\nPASS http-websocket.ms::HTTP requests reject an empty method\nRUN http-websocket.ms::a WebSocket read cancelled by its timeout leaves the socket closable\nPASS http-websocket.ms::a WebSocket read cancelled by its timeout leaves the socket closable\nRUN http-websocket.ms::a promise cancelled while it owns a WebSocket closes it without ending the program\nPASS http-websocket.ms::a promise cancelled while it owns a WebSocket closes it without ending the program\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "the 'fn' block header on line 3 does not end with ':'; add ':' at the end of that line so the indented lines below become its body",
+        "position": {
+          "file": "golden-0867.ms",
+          "line": 3,
+          "column": 11,
+          "offset": 63
+        },
+        "end": {
+          "file": "golden-0867.ms",
+          "line": 3,
+          "column": 11,
+          "offset": 63
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0867.ms",
+            "line": 3,
+            "column": 11,
+            "offset": 63
+          },
+          "end": {
+            "file": "golden-0867.ms",
+            "line": 3,
+            "column": 11,
+            "offset": 63
+          },
+          "replacement": ":"
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0867.ms:3:11: parse: the 'fn' block header on line 3 does not end with ':'; add ':' at the end of that line so the indented lines below become its body\n   |\n 3 | fn f() Int\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

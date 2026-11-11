@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "a type declares only record fields; write its methods after it as 'fn List[T].name(...)'",
+        "position": {
+          "file": "golden-0849.ms",
+          "line": 4,
+          "column": 5,
+          "offset": 71
+        },
+        "end": {
+          "file": "golden-0849.ms",
+          "line": 4,
+          "column": 7,
+          "offset": 73
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0849.ms:4:5: parse: a type declares only record fields; write its methods after it as 'fn List[T].name(...)'\n   |\n 4 |     fn get() T:\n   |     ^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

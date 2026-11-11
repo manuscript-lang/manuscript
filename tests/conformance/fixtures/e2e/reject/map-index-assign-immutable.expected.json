@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3060",
+        "phase": "type",
+        "message": "cannot change `scores`: `scores` is an immutable binding, immutable including its contents; declare it `var scores` to change it",
+        "position": {
+          "file": "map-index-assign-immutable.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 102
+        },
+        "fix": {
+          "position": {
+            "file": "map-index-assign-immutable.ms",
+            "line": 4,
+            "column": 5,
+            "offset": 82
+          },
+          "end": {
+            "file": "map-index-assign-immutable.ms",
+            "line": 4,
+            "column": 14,
+            "offset": 91
+          },
+          "replacement": "var scores ="
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/map-index-assign-immutable.ms:5:5: type: cannot change `scores`: `scores` is an immutable binding, immutable including its contents; declare it `var scores` to change it\n   |\n 5 |     scores[\"b\"] = 2\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

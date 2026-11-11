@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "self-type.ms::implementations take their own type",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "self-type.ms::bounds take two values of the bounded type",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "self-type.ms::interface values of different types are unequal",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "self-type.ms::keys use the custom equality",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN self-type.ms::implementations take their own type\nPASS self-type.ms::implementations take their own type\nRUN self-type.ms::bounds take two values of the bounded type\nPASS self-type.ms::bounds take two values of the bounded type\nRUN self-type.ms::interface values of different types are unequal\nPASS self-type.ms::interface values of different types are unequal\nRUN self-type.ms::keys use the custom equality\nPASS self-type.ms::keys use the custom equality\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

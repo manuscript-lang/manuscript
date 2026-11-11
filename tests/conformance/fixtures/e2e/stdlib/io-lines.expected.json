@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "io-lines.ms::an empty stream has no lines",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "io-lines.ms::lines drop terminators and keep an unterminated last line",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "io-lines.ms::a final newline adds no empty line",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "io-lines.ms::an over-budget line fails the read after the lines before it",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "io-lines.ms::a closed stream fails the first read with its error",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "io-lines.ms::break and continue work in a stream loop",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "io-lines.ms::any Iterator implementation works, including a temporary",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "io-lines.ms::an iterator behind the Iterator interface works",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN io-lines.ms::an empty stream has no lines\nPASS io-lines.ms::an empty stream has no lines\nRUN io-lines.ms::lines drop terminators and keep an unterminated last line\nPASS io-lines.ms::lines drop terminators and keep an unterminated last line\nRUN io-lines.ms::a final newline adds no empty line\nPASS io-lines.ms::a final newline adds no empty line\nRUN io-lines.ms::an over-budget line fails the read after the lines before it\nPASS io-lines.ms::an over-budget line fails the read after the lines before it\nRUN io-lines.ms::a closed stream fails the first read with its error\nPASS io-lines.ms::a closed stream fails the first read with its error\nRUN io-lines.ms::break and continue work in a stream loop\nPASS io-lines.ms::break and continue work in a stream loop\nRUN io-lines.ms::any Iterator implementation works, including a temporary\nPASS io-lines.ms::any Iterator implementation works, including a temporary\nRUN io-lines.ms::an iterator behind the Iterator interface works\nPASS io-lines.ms::an iterator behind the Iterator interface works\n8 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

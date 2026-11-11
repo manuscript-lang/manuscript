@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`?.` needs an optional receiver, found P; write `.` to read a member of a value that is always present",
+        "position": {
+          "file": "optional-chain-needs-optional.ms",
+          "line": 8,
+          "column": 10,
+          "offset": 129
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/optional-chain-needs-optional.ms:8:10: type: `?.` needs an optional receiver, found P; write `.` to read a member of a value that is always present\n   |\n 8 |     n := p?.name\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

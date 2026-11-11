@@ -6,8 +6,8 @@ domains:
     paths:
       - "crates/ms-syntax/**"
       - "documentation/core-language/**"
-      - "tests/e2e/testdata/accept/**"
-      - "tests/e2e/testdata/reject/**"
+      - "tests/conformance/fixtures/e2e/accept/**"
+      - "tests/conformance/fixtures/e2e/reject/**"
   - id: compiler
     file: compiler/index.md
     topics: [checking, lowering, MIR, Cranelift, build, module loading, fault sites, compile-time scaling]
@@ -30,7 +30,7 @@ domains:
       - "stdlib/**"
       - "documentation/core-language/cleanup/**"
       - "documentation/core-language/types/references.md"
-      - "tests/e2e/testdata/projects/**"
+      - "tests/conformance/fixtures/e2e/projects/**"
   - id: tooling-and-docs
     file: tooling-and-docs/index.md
     topics: [documentation, generated references, editor tooling, navigation, CLI, diagnostics]
@@ -60,7 +60,7 @@ domains:
     topics: [stdlib API shape, failure modes, Result and Error, write and write_bytes, Set construction, module consolidation]
     paths:
       - "stdlib/**"
-      - "tests/e2e/testdata/stdlib/**"
+      - "tests/conformance/fixtures/e2e/stdlib/**"
   - id: testing-and-conformance
     file: testing-and-conformance/index.md
     topics: [test layers, conformance corpus, ms test, fuzzing, fixture migration]

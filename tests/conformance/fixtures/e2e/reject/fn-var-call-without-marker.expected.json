@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "argument 1 of `change` is var in its type `fn(var List[Int]) Unit`, so the call must say so; write `var values`",
+        "position": {
+          "file": "fn-var-call-without-marker.ms",
+          "line": 11,
+          "column": 12,
+          "offset": 292
+        },
+        "fix": {
+          "position": {
+            "file": "fn-var-call-without-marker.ms",
+            "line": 11,
+            "column": 12,
+            "offset": 292
+          },
+          "end": {
+            "file": "fn-var-call-without-marker.ms",
+            "line": 11,
+            "column": 12,
+            "offset": 292
+          },
+          "replacement": "var "
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/fn-var-call-without-marker.ms:11:12: type: argument 1 of `change` is var in its type `fn(var List[Int]) Unit`, so the call must say so; write `var values`\n    |\n 11 |     change(values)\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding n; declare it with 'n := ...' before use, define 'fn n(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0130.ms",
+          "line": 7,
+          "column": 12,
+          "offset": 130
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0130.ms:7:12: resolution: unknown binding n; declare it with 'n := ...' before use, define 'fn n(...) T:', or import it from a module\n   |\n 7 |     return n\n   |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

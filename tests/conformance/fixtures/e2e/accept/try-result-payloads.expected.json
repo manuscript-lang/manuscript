@@ -1,0 +1,80 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "try-result-payloads.ms::try preserves empty errors and skips success effects",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "try-result-payloads.ms::try can change the success type",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "try-result-payloads.ms::try retains aliases and error views",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "try-result-payloads.ms::tail Results evaluate once and retain payload identity",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "try-result-payloads.ms::tail Results preserve cleanup on success and failure",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "try-result-payloads.ms::function Result payloads keep their calling convention",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN try-result-payloads.ms::try preserves empty errors and skips success effects\nPASS try-result-payloads.ms::try preserves empty errors and skips success effects\nRUN try-result-payloads.ms::try can change the success type\nPASS try-result-payloads.ms::try can change the success type\nRUN try-result-payloads.ms::try retains aliases and error views\nPASS try-result-payloads.ms::try retains aliases and error views\nRUN try-result-payloads.ms::tail Results evaluate once and retain payload identity\nPASS try-result-payloads.ms::tail Results evaluate once and retain payload identity\nRUN try-result-payloads.ms::tail Results preserve cleanup on success and failure\nPASS try-result-payloads.ms::tail Results preserve cleanup on success and failure\nRUN try-result-payloads.ms::function Result payloads keep their calling convention\nPASS try-result-payloads.ms::function Result payloads keep their calling convention\n6 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

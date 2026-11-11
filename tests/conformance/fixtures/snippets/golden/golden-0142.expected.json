@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it",
+        "position": {
+          "file": "golden-0142.ms",
+          "line": 3,
+          "column": 25,
+          "offset": 77
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding EncodingError; declare it with 'EncodingError := ...' before use, define 'fn EncodingError(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-0142.ms",
+          "line": 4,
+          "column": 25,
+          "offset": 113
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0142.ms:3:25: resolution: unknown type JsonError; declare it with 'type JsonError:' / 'enum JsonError:' / 'interface JsonError:', declare it as a type parameter, or import it\n   |\n 3 | fn wrong() Result[Unit, JsonError]:\n   |                         ^\n<DIR>/golden-0142.ms:4:25: resolution: unknown binding EncodingError; declare it with 'EncodingError := ...' before use, define 'fn EncodingError(...) T:', or import it from a module\n   |\n 4 |     return error(cause: EncodingError.InvalidData)\n   |                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

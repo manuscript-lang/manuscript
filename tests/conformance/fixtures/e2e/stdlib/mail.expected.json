@@ -1,0 +1,90 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "mail.ms::addresses parse in each form",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "mail.ms::bad addresses are errors",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "mail.ms::address lists honor quoted commas",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "mail.ms::messages split headers from body",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "mail.ms::encoded words decode",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "mail.ms::encoded words keep literal text and scale linearly",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "mail.ms::address lists keep escaped quotes and backslashes inside names",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "mail.ms::the first blank line ends the headers whatever its line ending",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 8,
+        "selected": 8,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN mail.ms::addresses parse in each form\nPASS mail.ms::addresses parse in each form\nRUN mail.ms::bad addresses are errors\nPASS mail.ms::bad addresses are errors\nRUN mail.ms::address lists honor quoted commas\nPASS mail.ms::address lists honor quoted commas\nRUN mail.ms::messages split headers from body\nPASS mail.ms::messages split headers from body\nRUN mail.ms::encoded words decode\nPASS mail.ms::encoded words decode\nRUN mail.ms::encoded words keep literal text and scale linearly\nPASS mail.ms::encoded words keep literal text and scale linearly\nRUN mail.ms::address lists keep escaped quotes and backslashes inside names\nPASS mail.ms::address lists keep escaped quotes and backslashes inside names\nRUN mail.ms::the first blank line ends the headers whatever its line ending\nPASS mail.ms::the first blank line ends the headers whatever its line ending\n8 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

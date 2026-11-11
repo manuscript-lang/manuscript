@@ -1,0 +1,180 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "xml.ms::parse reads elements attributes and text",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "xml.ms::CDATA and comments",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "xml.ms::stringify round-trips and escapes",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "xml.ms::indent puts elements on lines",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "xml.ms::stringify preserves compact and mixed content formatting",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "xml.ms::stringify leaves comments and descendant text on indented lines",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "xml.ms::malformed documents are errors",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "xml.ms::invalid character references and unseparated attributes are errors",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "xml.ms::depth limit",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "xml.ms::processing instructions require a name and whitespace before data",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "xml.ms::XML declarations occur only at the document start",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "xml.ms::XML declarations validate ordered literal pseudo attributes",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "xml.ms::entity decoding is linear in the text",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "xml.ms::malformed comments fail inside before and after the root",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "xml.ms::valid comments preserve text and leave other delimited constructs alone",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "xml.ms::literal XML characters obey the same ranges as character references",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "xml.ms::CDATA terminators are forbidden only in literal character data",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "xml.ms::XML name starts follow every XML 1.0 range boundary",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "xml.ms::XML continuation-only scalars cannot start a name",
+          "status": "passed"
+        },
+        {
+          "index": 19,
+          "name": "xml.ms::XML names reject punctuation and excluded Unicode gaps",
+          "status": "passed"
+        },
+        {
+          "index": 20,
+          "name": "xml.ms::line ends normalize to newline and attribute whitespace to spaces",
+          "status": "passed"
+        },
+        {
+          "index": 21,
+          "name": "xml.ms::character references keep whitespace that normalization would change",
+          "status": "passed"
+        },
+        {
+          "index": 22,
+          "name": "xml.ms::carriage returns survive a stringify and parse round trip",
+          "status": "passed"
+        },
+        {
+          "index": 23,
+          "name": "xml.ms::DOCTYPE skipping honors quoted spans and prolog placement",
+          "status": "passed"
+        },
+        {
+          "index": 24,
+          "name": "xml.ms::DOCTYPE public identifiers accept only XML PubidChar scalars",
+          "status": "passed"
+        },
+        {
+          "index": 25,
+          "name": "xml.ms::elements with many attributes keep their order and reject duplicates at any position",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 26,
+        "selected": 26,
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN xml.ms::parse reads elements attributes and text\nPASS xml.ms::parse reads elements attributes and text\nRUN xml.ms::CDATA and comments\nPASS xml.ms::CDATA and comments\nRUN xml.ms::stringify round-trips and escapes\nPASS xml.ms::stringify round-trips and escapes\nRUN xml.ms::indent puts elements on lines\nPASS xml.ms::indent puts elements on lines\nRUN xml.ms::stringify preserves compact and mixed content formatting\nPASS xml.ms::stringify preserves compact and mixed content formatting\nRUN xml.ms::stringify leaves comments and descendant text on indented lines\nPASS xml.ms::stringify leaves comments and descendant text on indented lines\nRUN xml.ms::malformed documents are errors\nPASS xml.ms::malformed documents are errors\nRUN xml.ms::invalid character references and unseparated attributes are errors\nPASS xml.ms::invalid character references and unseparated attributes are errors\nRUN xml.ms::depth limit\nPASS xml.ms::depth limit\nRUN xml.ms::processing instructions require a name and whitespace before data\nPASS xml.ms::processing instructions require a name and whitespace before data\nRUN xml.ms::XML declarations occur only at the document start\nPASS xml.ms::XML declarations occur only at the document start\nRUN xml.ms::XML declarations validate ordered literal pseudo attributes\nPASS xml.ms::XML declarations validate ordered literal pseudo attributes\nRUN xml.ms::entity decoding is linear in the text\nPASS xml.ms::entity decoding is linear in the text\nRUN xml.ms::malformed comments fail inside before and after the root\nPASS xml.ms::malformed comments fail inside before and after the root\nRUN xml.ms::valid comments preserve text and leave other delimited constructs alone\nPASS xml.ms::valid comments preserve text and leave other delimited constructs alone\nRUN xml.ms::literal XML characters obey the same ranges as character references\nPASS xml.ms::literal XML characters obey the same ranges as character references\nRUN xml.ms::CDATA terminators are forbidden only in literal character data\nPASS xml.ms::CDATA terminators are forbidden only in literal character data\nRUN xml.ms::XML name starts follow every XML 1.0 range boundary\nPASS xml.ms::XML name starts follow every XML 1.0 range boundary\nRUN xml.ms::XML continuation-only scalars cannot start a name\nPASS xml.ms::XML continuation-only scalars cannot start a name\nRUN xml.ms::XML names reject punctuation and excluded Unicode gaps\nPASS xml.ms::XML names reject punctuation and excluded Unicode gaps\nRUN xml.ms::line ends normalize to newline and attribute whitespace to spaces\nPASS xml.ms::line ends normalize to newline and attribute whitespace to spaces\nRUN xml.ms::character references keep whitespace that normalization would change\nPASS xml.ms::character references keep whitespace that normalization would change\nRUN xml.ms::carriage returns survive a stringify and parse round trip\nPASS xml.ms::carriage returns survive a stringify and parse round trip\nRUN xml.ms::DOCTYPE skipping honors quoted spans and prolog placement\nPASS xml.ms::DOCTYPE skipping honors quoted spans and prolog placement\nRUN xml.ms::DOCTYPE public identifiers accept only XML PubidChar scalars\nPASS xml.ms::DOCTYPE public identifiers accept only XML PubidChar scalars\nRUN xml.ms::elements with many attributes keep their order and reject duplicates at any position\nPASS xml.ms::elements with many attributes keep their order and reject duplicates at any position\n26 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

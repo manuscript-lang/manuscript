@@ -132,7 +132,7 @@ runs:
           report="$NATIVE_REPORTS/rsa-$build_type.json"
           stderr="$NATIVE_REPORTS/rsa-$build_type.stderr"
           status=0
-          "$ms" test tests/e2e/testdata/stdlib/crypto-rsa.ms --build-type "$build_type" --json > "$report" 2> "$stderr" || status=$?
+          "$ms" test tests/conformance/fixtures/e2e/stdlib/crypto-rsa.ms --build-type "$build_type" --json > "$report" 2> "$stderr" || status=$?
           cat "$report"
           cat "$stderr" >&2
           if [ "$status" -ne 0 ]; then exit "$status"; fi
@@ -159,26 +159,18 @@ runs:
         CONFORM_LEAKS: '1'
       shell: bash
       run: target/debug/ms run tools/conform.ms
-    - name: End-to-end fixtures (LLVM)
-      if: env.CONFORM == 'true'
-      shell: bash
-      run: target/debug/ms run tools/e2e.ms
     - name: Conformance corpus (Cranelift)
       if: env.CRANELIFT == 'true'
       env:
         MS_BACKEND: cranelift
       shell: bash
       run: target/debug/ms run tools/conform.ms
-    - name: End-to-end fixtures (Cranelift)
-      if: env.CRANELIFT == 'true'
-      env:
-        MS_BACKEND: cranelift
-      shell: bash
-      run: target/debug/ms run tools/e2e.ms
     - name: Ownership counts and cleanup order hold
       if: env.GATES == 'true'
       shell: bash
-      run: MS=target/debug/ms target/debug/ms run tools/count-check.ms
+      run: |
+        MS=target/debug/ms target/debug/ms run tools/count-check.ms
+        MS=target/debug/ms target/debug/ms run tools/count-check-selftest.ms
     - name: Every accepted resource operation closes each resource once
       if: env.GATES == 'true'
       shell: bash

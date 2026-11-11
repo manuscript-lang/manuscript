@@ -1,0 +1,135 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::borrowed source helpers close intact owned wrapper temporaries once",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::whole borrowed results transfer temporary ownership and named borrows do not close",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::borrowed wrapper temporaries close on expected errors and source faults",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::whole transfer keeps newer argument cleanups active until statement end",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::borrowed parts are copied before their temporary owner closes",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::nested whole transfers stay path local across branches and loops",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::scalar wrapper payloads retain their source-call close obligation",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::later successful try preserves source temporary ownership",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::whole transferred locals retain their fault cleanup",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::retiring a borrowed input does not erase an unrelated result owner",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::source-reader temporaries finish on each loop condition and short circuit",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::later argument errors and default faults close acquired wrapper owners",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::named borrowed arguments close in reverse acquisition order",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::a failed temporary close leaves older lexical cleanup registered",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::borrowed payload optional conversions do not acquire close duty",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::borrowed optional transport copies leave fault cleanup with original owner",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "source-borrowed-wrapper-temporary-cleanup.ms::optional conversion provenance distinguishes retained moves from borrowed defaults",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 17,
+        "selected": 17,
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN source-borrowed-wrapper-temporary-cleanup.ms::borrowed source helpers close intact owned wrapper temporaries once\nPASS source-borrowed-wrapper-temporary-cleanup.ms::borrowed source helpers close intact owned wrapper temporaries once\nRUN source-borrowed-wrapper-temporary-cleanup.ms::whole borrowed results transfer temporary ownership and named borrows do not close\nPASS source-borrowed-wrapper-temporary-cleanup.ms::whole borrowed results transfer temporary ownership and named borrows do not close\nRUN source-borrowed-wrapper-temporary-cleanup.ms::borrowed wrapper temporaries close on expected errors and source faults\nPASS source-borrowed-wrapper-temporary-cleanup.ms::borrowed wrapper temporaries close on expected errors and source faults\nRUN source-borrowed-wrapper-temporary-cleanup.ms::whole transfer keeps newer argument cleanups active until statement end\nPASS source-borrowed-wrapper-temporary-cleanup.ms::whole transfer keeps newer argument cleanups active until statement end\nRUN source-borrowed-wrapper-temporary-cleanup.ms::borrowed parts are copied before their temporary owner closes\nPASS source-borrowed-wrapper-temporary-cleanup.ms::borrowed parts are copied before their temporary owner closes\nRUN source-borrowed-wrapper-temporary-cleanup.ms::nested whole transfers stay path local across branches and loops\nPASS source-borrowed-wrapper-temporary-cleanup.ms::nested whole transfers stay path local across branches and loops\nRUN source-borrowed-wrapper-temporary-cleanup.ms::scalar wrapper payloads retain their source-call close obligation\nPASS source-borrowed-wrapper-temporary-cleanup.ms::scalar wrapper payloads retain their source-call close obligation\nRUN source-borrowed-wrapper-temporary-cleanup.ms::later successful try preserves source temporary ownership\nPASS source-borrowed-wrapper-temporary-cleanup.ms::later successful try preserves source temporary ownership\nRUN source-borrowed-wrapper-temporary-cleanup.ms::whole transferred locals retain their fault cleanup\nPASS source-borrowed-wrapper-temporary-cleanup.ms::whole transferred locals retain their fault cleanup\nRUN source-borrowed-wrapper-temporary-cleanup.ms::retiring a borrowed input does not erase an unrelated result owner\nPASS source-borrowed-wrapper-temporary-cleanup.ms::retiring a borrowed input does not erase an unrelated result owner\nRUN source-borrowed-wrapper-temporary-cleanup.ms::source-reader temporaries finish on each loop condition and short circuit\nPASS source-borrowed-wrapper-temporary-cleanup.ms::source-reader temporaries finish on each loop condition and short circuit\nRUN source-borrowed-wrapper-temporary-cleanup.ms::later argument errors and default faults close acquired wrapper owners\nPASS source-borrowed-wrapper-temporary-cleanup.ms::later argument errors and default faults close acquired wrapper owners\nRUN source-borrowed-wrapper-temporary-cleanup.ms::named borrowed arguments close in reverse acquisition order\nPASS source-borrowed-wrapper-temporary-cleanup.ms::named borrowed arguments close in reverse acquisition order\nRUN source-borrowed-wrapper-temporary-cleanup.ms::a failed temporary close leaves older lexical cleanup registered\nPASS source-borrowed-wrapper-temporary-cleanup.ms::a failed temporary close leaves older lexical cleanup registered\nRUN source-borrowed-wrapper-temporary-cleanup.ms::borrowed payload optional conversions do not acquire close duty\nPASS source-borrowed-wrapper-temporary-cleanup.ms::borrowed payload optional conversions do not acquire close duty\nRUN source-borrowed-wrapper-temporary-cleanup.ms::borrowed optional transport copies leave fault cleanup with original owner\nPASS source-borrowed-wrapper-temporary-cleanup.ms::borrowed optional transport copies leave fault cleanup with original owner\nRUN source-borrowed-wrapper-temporary-cleanup.ms::optional conversion provenance distinguishes retained moves from borrowed defaults\nPASS source-borrowed-wrapper-temporary-cleanup.ms::optional conversion provenance distinguishes retained moves from borrowed defaults\n17 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "positional binding requires a list; use [a, b] patterns only with List values",
+        "position": {
+          "file": "for-destructuring.ms",
+          "line": 8,
+          "column": 9,
+          "offset": 258
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding a; declare it with 'a := ...' before use, define 'fn a(...) T:', or import it from a module",
+        "position": {
+          "file": "for-destructuring.ms",
+          "line": 9,
+          "column": 15,
+          "offset": 331
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "record binding requires a record; destructure only record values, or bind the whole value to one name",
+        "position": {
+          "file": "for-destructuring.ms",
+          "line": 11,
+          "column": 9,
+          "offset": 369
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding x; declare it with 'x := ...' before use, define 'fn x(...) T:', or import it from a module",
+        "position": {
+          "file": "for-destructuring.ms",
+          "line": 12,
+          "column": 15,
+          "offset": 438
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding b; declare it with 'b := ...' before use, define 'fn b(...) T:', or import it from a module",
+        "position": {
+          "file": "for-destructuring.ms",
+          "line": 17,
+          "column": 11,
+          "offset": 519
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/for-destructuring.ms:8:9: type: positional binding requires a list; use [a, b] patterns only with List values\n   |\n 8 |     for [a, b] in numbers:  // error: positional binding requires a list\n   |            ^\n<DIR>/for-destructuring.ms:9:15: resolution: unknown binding a; declare it with 'a := ...' before use, define 'fn a(...) T:', or import it from a module\n   |\n 9 |         print(a)  // error: unknown binding a\n   |                     ^\n<DIR>/for-destructuring.ms:11:9: type: record binding requires a record; destructure only record values, or bind the whole value to one name\n    |\n 11 |     for {x} in [[1, 2]]:  // error: record binding requires a record\n    |            ^\n<DIR>/for-destructuring.ms:12:15: resolution: unknown binding x; declare it with 'x := ...' before use, define 'fn x(...) T:', or import it from a module\n    |\n 12 |         print(x)  // error: unknown binding x\n    |                     ^\n<DIR>/for-destructuring.ms:17:11: resolution: unknown binding b; declare it with 'b := ...' before use, define 'fn b(...) T:', or import it from a module\n    |\n 17 |     print(b)  // error: unknown binding b\n    |              ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

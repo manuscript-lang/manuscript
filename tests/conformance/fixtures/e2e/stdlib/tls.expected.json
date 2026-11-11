@@ -1,0 +1,85 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "tls.ms::TLS certificate parsing verification hostname and expiration",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "tls.ms::TLS rejects malformed PEM and certificate budgets",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "tls.ms::HTTPS trusts only the explicitly supplied local test root",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "tls.ms::HTTP/2 negotiates through ALPN and reports the protocol on both sides",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "tls.ms::raw TLS listeners and clients handshake and report negotiated details",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "tls.ms::connect_tls trusts only the system roots and tls_info rejects plain TCP",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "tls.ms::raw TLS client that writes a large payload and closes at once loses no bytes",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 7,
+        "selected": 7,
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN tls.ms::TLS certificate parsing verification hostname and expiration\nPASS tls.ms::TLS certificate parsing verification hostname and expiration\nRUN tls.ms::TLS rejects malformed PEM and certificate budgets\nPASS tls.ms::TLS rejects malformed PEM and certificate budgets\nRUN tls.ms::HTTPS trusts only the explicitly supplied local test root\nPASS tls.ms::HTTPS trusts only the explicitly supplied local test root\nRUN tls.ms::HTTP/2 negotiates through ALPN and reports the protocol on both sides\nPASS tls.ms::HTTP/2 negotiates through ALPN and reports the protocol on both sides\nRUN tls.ms::raw TLS listeners and clients handshake and report negotiated details\nPASS tls.ms::raw TLS listeners and clients handshake and report negotiated details\nRUN tls.ms::connect_tls trusts only the system roots and tls_info rejects plain TCP\nPASS tls.ms::connect_tls trusts only the system roots and tls_info rejects plain TCP\nRUN tls.ms::raw TLS client that writes a large payload and closes at once loses no bytes\nPASS tls.ms::raw TLS client that writes a large payload and closes at once loses no bytes\n7 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

@@ -6,4 +6,4 @@ Decision (Chinmay, 2026-11-09 audit): `opt.get()` and `result.get()` with no def
 
 Text conversion (`print`, interpolation, `to_string`, test `repr`) shows `some(v)`, `none`, `ok(v)`, `error(e)`, the source spellings, not `Optional.some(v)`. Other enums keep `Type.Case`.
 
-Check: `ms run tools/e2e.ms` (CI's conformance job runs it; `ms-conform` alone missed five e2e fixtures), `crates/ms-check/tests/ownership/accept/try_owned_result_local_moves_payload.ms`, `crates/ms-check/tests/ownership/reject/var_borrow_of_result_get.ms`, `tests/e2e/testdata/accept/to-string.ms`.
+Check: `ms run tools/conform.ms` (CI's conformance job runs it; `ms-conform` alone missed five e2e fixtures), `crates/ms-check/tests/ownership/accept/try_owned_result_local_moves_payload.ms`, `crates/ms-check/tests/ownership/reject/var_borrow_of_result_get.ms`, `tests/conformance/fixtures/e2e/accept/to-string.ms`.

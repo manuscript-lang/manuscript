@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?",
+        "position": {
+          "file": "golden-0474.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        },
+        "end": {
+          "file": "golden-0474.ms",
+          "line": 3,
+          "column": 16,
+          "offset": 68
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?",
+        "position": {
+          "file": "golden-0474.ms",
+          "line": 3,
+          "column": 18,
+          "offset": 70
+        },
+        "end": {
+          "file": "golden-0474.ms",
+          "line": 3,
+          "column": 35,
+          "offset": 87
+        }
+      },
+      {
+        "code": "MS2002",
+        "phase": "resolution",
+        "message": "unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?",
+        "position": {
+          "file": "golden-0474.ms",
+          "line": 3,
+          "column": 37,
+          "offset": 89
+        },
+        "end": {
+          "file": "golden-0474.ms",
+          "line": 3,
+          "column": 53,
+          "offset": 105
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0474.ms:3:8: resolution: unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?\n   |\n 3 | import compress, CompressionFormat, CompressionError from \"@std/compress.ms\"\n   |        ^^^^^^^^\n<DIR>/golden-0474.ms:3:18: resolution: unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?\n   |\n 3 | import compress, CompressionFormat, CompressionError from \"@std/compress.ms\"\n   |                  ^^^^^^^^^^^^^^^^^\n<DIR>/golden-0474.ms:3:37: resolution: unknown standard module @std/compress.ms; did you mean '@std/math/complex.ms'?\n   |\n 3 | import compress, CompressionFormat, CompressionError from \"@std/compress.ms\"\n   |                                     ^^^^^^^^^^^^^^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

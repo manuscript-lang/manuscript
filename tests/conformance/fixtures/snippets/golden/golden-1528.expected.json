@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
+        "position": {
+          "file": "golden-1528.ms",
+          "line": 20,
+          "column": 27,
+          "offset": 416
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
+        "position": {
+          "file": "golden-1528.ms",
+          "line": 22,
+          "column": 33,
+          "offset": 472
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
+        "position": {
+          "file": "golden-1528.ms",
+          "line": 25,
+          "column": 21,
+          "offset": 549
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown or ambiguous member remove on Unit; this type has no fields or operations",
+        "position": {
+          "file": "golden-1528.ms",
+          "line": 27,
+          "column": 29,
+          "offset": 599
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1528.ms:20:27: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 20 |     \"a\".replace(\"a\", \"b\", -1)\n    |                           ^\n<DIR>/golden-1528.ms:22:33: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 22 |     \"a\".replace_first(\"a\", \"b\", -1)\n    |                                 ^\n<DIR>/golden-1528.ms:25:21: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 25 |     first(\"a\", \"b\", -1)\n    |                     ^\n<DIR>/golden-1528.ms:27:29: resolution: unknown or ambiguous member remove on Unit; this type has no fields or operations\n    |\n 27 |     result := [1].set(0, 2).remove(0)\n    |                             ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

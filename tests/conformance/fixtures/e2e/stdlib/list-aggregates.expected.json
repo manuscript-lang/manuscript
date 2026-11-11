@@ -1,0 +1,105 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "list-aggregates.ms::sorted orders Int, Float and String ascending without a comparator",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "list-aggregates.ms::sorted puts Float NaN last",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "list-aggregates.ms::sorted with a comparator",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "list-aggregates.ms::sorted is stable for user Comparable types",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "list-aggregates.ms::sorted works through a generic Comparable bound",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "list-aggregates.ms::sort orders the list in place",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "list-aggregates.ms::sum adds Int, Float and sized numerics",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "list-aggregates.ms::min and max return the first of equal elements and none when empty",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "list-aggregates.ms::min and max over user Comparable types keep the first equal element",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "list-aggregates.ms::min and max copy the element",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "list-aggregates.ms::Float compare orders NaN above every value and equal to itself",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 11,
+        "selected": 11,
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN list-aggregates.ms::sorted orders Int, Float and String ascending without a comparator\nPASS list-aggregates.ms::sorted orders Int, Float and String ascending without a comparator\nRUN list-aggregates.ms::sorted puts Float NaN last\nPASS list-aggregates.ms::sorted puts Float NaN last\nRUN list-aggregates.ms::sorted with a comparator\nPASS list-aggregates.ms::sorted with a comparator\nRUN list-aggregates.ms::sorted is stable for user Comparable types\nPASS list-aggregates.ms::sorted is stable for user Comparable types\nRUN list-aggregates.ms::sorted works through a generic Comparable bound\nPASS list-aggregates.ms::sorted works through a generic Comparable bound\nRUN list-aggregates.ms::sort orders the list in place\nPASS list-aggregates.ms::sort orders the list in place\nRUN list-aggregates.ms::sum adds Int, Float and sized numerics\nPASS list-aggregates.ms::sum adds Int, Float and sized numerics\nRUN list-aggregates.ms::min and max return the first of equal elements and none when empty\nPASS list-aggregates.ms::min and max return the first of equal elements and none when empty\nRUN list-aggregates.ms::min and max over user Comparable types keep the first equal element\nPASS list-aggregates.ms::min and max over user Comparable types keep the first equal element\nRUN list-aggregates.ms::min and max copy the element\nPASS list-aggregates.ms::min and max copy the element\nRUN list-aggregates.ms::Float compare orders NaN above every value and equal to itself\nPASS list-aggregates.ms::Float compare orders NaN above every value and equal to itself\n11 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

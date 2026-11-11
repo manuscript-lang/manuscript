@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "declaration List reuses a prelude name; rename it, because List always refers to the standard declaration",
+        "position": {
+          "file": "golden-0468.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "declaration Set reuses a prelude name; rename it, because Set always refers to the standard declaration",
+        "position": {
+          "file": "golden-0468.ms",
+          "line": 5,
+          "column": 8,
+          "offset": 94
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "declaration ListEntry reuses a prelude name; rename it, because ListEntry always refers to the standard declaration",
+        "position": {
+          "file": "golden-0468.ms",
+          "line": 7,
+          "column": 8,
+          "offset": 127
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0468.ms:3:8: resolution: declaration List reuses a prelude name; rename it, because List always refers to the standard declaration\n   |\n 3 | export type List[T]:\n   |        ^\n<DIR>/golden-0468.ms:5:8: resolution: declaration Set reuses a prelude name; rename it, because Set always refers to the standard declaration\n   |\n 5 | export type Set[T]:\n   |        ^\n<DIR>/golden-0468.ms:7:8: resolution: declaration ListEntry reuses a prelude name; rename it, because ListEntry always refers to the standard declaration\n   |\n 7 | export type ListEntry[T]:\n   |        ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

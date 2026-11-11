@@ -9,5 +9,5 @@ Verified: `cli/terminal.ms` is in the `io` import cycle, so it cannot import `@s
 On Windows a blocking `ReadFile` on the console hangs on a resize or focus record: read `ReadConsoleInputW` only when `GetNumberOfConsoleInputEvents` is nonzero and keep the key characters (virtual-terminal input makes them the same escape bytes Unix delivers). Raw mode switches on bracketed paste, modifyOtherKeys and the kitty keyboard flag so Shift-Enter and pastes decode; the restore string undoes them and shows the cursor.
 
 Apply when: adding a terminal feature (mouse, focus, another key protocol) or a platform.
-Evidence: [terminal.ms](../../stdlib/cli/terminal.ms), [raw](../../crates/ms-std-terminal/src/raw.rs), [decoder test](../../tests/e2e/testdata/stdlib/terminal_decoder.ms), [pty test](../../crates/ms-cli/tests/terminal.rs).
+Evidence: [terminal.ms](../../stdlib/cli/terminal.ms), [raw](../../crates/ms-std-terminal/src/raw.rs), [decoder test](../../tests/conformance/fixtures/e2e/stdlib/terminal_decoder.ms), [pty test](../../crates/ms-cli/tests/terminal.rs).
 Verify: `cargo test -p ms-std-terminal`, `cargo check -p ms-std-terminal --target x86_64-pc-windows-msvc`, the decoder e2e test, and Windows and macOS CI dispatched on the branch.

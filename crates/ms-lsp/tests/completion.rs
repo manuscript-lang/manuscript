@@ -18,7 +18,7 @@ fn numeric_imports_preserve_main_fuzzy_completions() {
     for snippets in [false, true] {
         let items: Vec<_> = completion_at(
             syms,
-            &ms_check::Session::new(),
+            &support::session(),
             &document,
             &Documents::new(),
             Position {
@@ -147,7 +147,7 @@ fn checksum_imports_preserve_numeric_fuzzy_completions() {
     for snippets in [false, true] {
         let items: Vec<_> = completion_at(
             syms,
-            &ms_check::Session::new(),
+            &support::session(),
             &document,
             &Documents::new(),
             Position {
@@ -304,7 +304,7 @@ fn for_snippet_inserts_a_checked_loop() {
         };
         let item = completion_at(
             syms,
-            &ms_check::Session::new(),
+            &support::session(),
             &document,
             &Documents::new(),
             at,
@@ -334,12 +334,7 @@ fn for_snippet_inserts_a_checked_loop() {
             .replace("$0", "return unit")
             .replace('\n', "\n    ");
         document.text.replace_range(start..end, &insertion);
-        let checked = analyze(
-            syms,
-            &ms_check::Session::new(),
-            &document,
-            &Documents::new(),
-        );
+        let checked = analyze(syms, &support::session(), &document, &Documents::new());
         assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         assert!(checked.program.is_some(), "inserted source must check");
         assert_eq!(Path::new(&checked.source_root), workspace.root.as_path());
@@ -359,12 +354,7 @@ fn a_native_document_uri_checks_unsaved_text_instead_of_disk() {
         let document = Document::new(workspace.uri(name), source);
         assert!(Path::new(&document.path()).is_absolute());
         assert_eq!(std::fs::read_to_string(document.path()).unwrap(), stale);
-        let checked = analyze(
-            syms,
-            &ms_check::Session::new(),
-            &document,
-            &Documents::new(),
-        );
+        let checked = analyze(syms, &support::session(), &document, &Documents::new());
         assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         assert!(checked.program.is_some(), "unsaved source must check");
         assert_eq!(Path::new(&checked.source_root), workspace.root.as_path());
@@ -387,7 +377,7 @@ fn an_opaque_record_offers_no_fields_outside_its_file() {
         let document = Document::new(workspace.uri(name), source.to_string());
         completion_at(
             syms,
-            &ms_check::Session::new(),
+            &support::session(),
             &document,
             &Documents::new(),
             Position { line, character },
@@ -433,7 +423,7 @@ fn alternative_cases_complete_bare_unless_opaque_elsewhere() {
         let document = Document::new(workspace.uri("main.ms"), source.to_string());
         completion_at(
             syms,
-            &ms_check::Session::new(),
+            &support::session(),
             &document,
             &Documents::new(),
             Position { line, character },
@@ -471,12 +461,7 @@ fn callable_snippets_preserve_mutable_arguments() {
     for newline in ["\n", "\r\n"] {
         let fixture = fixture.replace('\n', newline);
         let baseline = Document::new(workspace.uri("mutable.ms"), fixture.clone());
-        let checked = analyze(
-            syms,
-            &ms_check::Session::new(),
-            &baseline,
-            &Documents::new(),
-        );
+        let checked = analyze(syms, &support::session(), &baseline, &Documents::new());
         assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         for (call, prefix, label, expected) in [
             (
@@ -525,7 +510,7 @@ fn callable_snippets_preserve_mutable_arguments() {
             let mut document = Document::new(workspace.uri("mutable.ms"), source);
             let item = completion_at(
                 syms,
-                &ms_check::Session::new(),
+                &support::session(),
                 &document,
                 &Documents::new(),
                 ms_lsp::text::position(&document.text, offset),
@@ -552,12 +537,7 @@ fn callable_snippets_preserve_mutable_arguments() {
                 .replace("${3:value}", "2")
                 .replace("$0", "");
             document.text.replace_range(start..end, &insertion);
-            let checked = analyze(
-                syms,
-                &ms_check::Session::new(),
-                &document,
-                &Documents::new(),
-            );
+            let checked = analyze(syms, &support::session(), &document, &Documents::new());
             assert!(
                 checked.diagnostics.is_empty(),
                 "{call}: {:?}",
@@ -590,7 +570,7 @@ fn imported_callable_snippets_preserve_mutation_and_auto_imports() {
             let mut document = Document::new(workspace.uri("use.ms"), source);
             let item = completion_at(
                 syms,
-                &ms_check::Session::new(),
+                &support::session(),
                 &document,
                 &Documents::new(),
                 ms_lsp::text::position(&document.text, offset),
@@ -633,12 +613,7 @@ fn imported_callable_snippets_preserve_mutation_and_auto_imports() {
             } else {
                 assert!(item.get("additionalTextEdits").is_none());
             }
-            let checked = analyze(
-                syms,
-                &ms_check::Session::new(),
-                &document,
-                &Documents::new(),
-            );
+            let checked = analyze(syms, &support::session(), &document, &Documents::new());
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
             assert!(checked.program.is_some());
         }
@@ -658,7 +633,7 @@ fn argument_completion_and_signature_help_preserve_mutation() {
             let mut document = Document::new(workspace.uri("mutable.ms"), source);
             let item = completion_at(
                 syms,
-                &ms_check::Session::new(),
+                &support::session(),
                 &document,
                 &Documents::new(),
                 ms_lsp::text::position(&document.text, offset),
@@ -688,12 +663,7 @@ fn argument_completion_and_signature_help_preserve_mutation() {
             let start = ms_lsp::text::offset(&document.text, range.start).unwrap();
             let end = ms_lsp::text::offset(&document.text, range.end).unwrap();
             document.text.replace_range(start..end, &insertion);
-            let checked = analyze(
-                syms,
-                &ms_check::Session::new(),
-                &document,
-                &Documents::new(),
-            );
+            let checked = analyze(syms, &support::session(), &document, &Documents::new());
             assert!(checked.diagnostics.is_empty(), "{:?}", checked.diagnostics);
         }
         let document = Document::new(workspace.uri("mutable.ms"), fixture.clone());
@@ -711,7 +681,7 @@ fn argument_completion_and_signature_help_preserve_mutation() {
             let offset = fixture.find(prefix).unwrap() + prefix.len();
             let help = signature_help(
                 syms,
-                &ms_check::Session::new(),
+                &support::session(),
                 &document,
                 &Documents::new(),
                 ms_lsp::text::position(&fixture, offset),
@@ -742,7 +712,7 @@ fn mutable_positional_arguments_complete_local_bindings() {
                 let mut document = Document::new(workspace.uri("mutable.ms"), source);
                 let item = completion_at(
                     syms,
-                    &ms_check::Session::new(),
+                    &support::session(),
                     &document,
                     &Documents::new(),
                     ms_lsp::text::position(&document.text, offset),
@@ -760,12 +730,7 @@ fn mutable_positional_arguments_complete_local_bindings() {
                 let start = ms_lsp::text::offset(&document.text, range.start).unwrap();
                 let end = ms_lsp::text::offset(&document.text, range.end).unwrap();
                 document.text.replace_range(start..end, insertion);
-                let checked = analyze(
-                    syms,
-                    &ms_check::Session::new(),
-                    &document,
-                    &Documents::new(),
-                );
+                let checked = analyze(syms, &support::session(), &document, &Documents::new());
                 assert!(
                     checked.diagnostics.is_empty(),
                     "{argument}: {:?}",

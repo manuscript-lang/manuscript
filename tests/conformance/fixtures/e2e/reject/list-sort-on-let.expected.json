@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3060",
+        "phase": "type",
+        "message": "cannot change `items`: `items` is an immutable binding, immutable including its contents; declare it `var items` to change it",
+        "position": {
+          "file": "list-sort-on-let.ms",
+          "line": 5,
+          "column": 5,
+          "offset": 99
+        },
+        "fix": {
+          "position": {
+            "file": "list-sort-on-let.ms",
+            "line": 4,
+            "column": 5,
+            "offset": 82
+          },
+          "end": {
+            "file": "list-sort-on-let.ms",
+            "line": 4,
+            "column": 13,
+            "offset": 90
+          },
+          "replacement": "var items ="
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/list-sort-on-let.ms:5:5: type: cannot change `items`: `items` is an immutable binding, immutable including its contents; declare it `var items` to change it\n   |\n 5 |     items.sort()\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

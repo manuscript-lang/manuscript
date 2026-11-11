@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/else",
+        "position": {
+          "file": "golden-0155.ms",
+          "line": 6,
+          "column": 5,
+          "offset": 119
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-0155.ms:6:5: type: match requires an alternative, contract view, Int, String or Bool, found Error; match on a type with cases, or use if/else\n   |\n 6 |     match cause:\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

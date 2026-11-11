@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "local binding labels is never read; remove it, use it, or name it with a leading '_' to ignore it",
+        "position": {
+          "file": "golden-1273.ms",
+          "line": 6,
+          "column": 5,
+          "offset": 123
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "local binding convert is never read; remove it, use it, or name it with a leading '_' to ignore it",
+        "position": {
+          "file": "golden-1273.ms",
+          "line": 7,
+          "column": 5,
+          "offset": 163
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "local binding text is never read; remove it, use it, or name it with a leading '_' to ignore it",
+        "position": {
+          "file": "golden-1273.ms",
+          "line": 8,
+          "column": 5,
+          "offset": 194
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1273.ms:6:5: type: local binding labels is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 6 |     labels := [1].map(transform: label)\n   |     ^\n<DIR>/golden-1273.ms:7:5: type: local binding convert is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 7 |     convert := [2].map[String]\n   |     ^\n<DIR>/golden-1273.ms:8:5: type: local binding text is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 8 |     text := \" hello \".trim()\n   |     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

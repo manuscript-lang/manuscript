@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected fn(P) Unit, found fn(var P) Unit (in argument 'f' of run)",
+        "position": {
+          "file": "var-function-for-reader-function.ms",
+          "line": 13,
+          "column": 9,
+          "offset": 231
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/var-function-for-reader-function.ms:13:9: type: expected fn(P) Unit, found fn(var P) Unit (in argument 'f' of run)\n    |\n 13 |     run(changes)\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

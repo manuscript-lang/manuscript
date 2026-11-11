@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding account_is_active; declare it with 'account_is_active := ...' before use, define 'fn account_is_active(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1079.ms",
+          "line": 4,
+          "column": 12,
+          "offset": 80
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding payment_is_allowed; declare it with 'payment_is_allowed := ...' before use, define 'fn payment_is_allowed(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1079.ms",
+          "line": 4,
+          "column": 34,
+          "offset": 102
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding remaining_balance; declare it with 'remaining_balance := ...' before use, define 'fn remaining_balance(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1079.ms",
+          "line": 4,
+          "column": 57,
+          "offset": 125
+        }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding minimum_balance; declare it with 'minimum_balance := ...' before use, define 'fn minimum_balance(...) T:', or import it from a module",
+        "position": {
+          "file": "golden-1079.ms",
+          "line": 4,
+          "column": 77,
+          "offset": 145
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1079.ms:4:12: resolution: unknown binding account_is_active; declare it with 'account_is_active := ...' before use, define 'fn account_is_active(...) T:', or import it from a module\n   |\n 4 |     return account_is_active and payment_is_allowed and remaining_balance > minimum_balance\n   |            ^\n<DIR>/golden-1079.ms:4:34: resolution: unknown binding payment_is_allowed; declare it with 'payment_is_allowed := ...' before use, define 'fn payment_is_allowed(...) T:', or import it from a module\n   |\n 4 |     return account_is_active and payment_is_allowed and remaining_balance > minimum_balance\n   |                                  ^\n<DIR>/golden-1079.ms:4:57: resolution: unknown binding remaining_balance; declare it with 'remaining_balance := ...' before use, define 'fn remaining_balance(...) T:', or import it from a module\n   |\n 4 |     return account_is_active and payment_is_allowed and remaining_balance > minimum_balance\n   |                                                         ^\n<DIR>/golden-1079.ms:4:77: resolution: unknown binding minimum_balance; declare it with 'minimum_balance := ...' before use, define 'fn minimum_balance(...) T:', or import it from a module\n   |\n 4 |     return account_is_active and payment_is_allowed and remaining_balance > minimum_balance\n   |                                                                             ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

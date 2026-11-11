@@ -64,24 +64,32 @@ fn same_names_from_different_modules_keep_resource_cleanup() {
     let sources = [
         (
             "inner.ms",
-            include_str!("../../../tests/e2e/testdata/projects/nominal_cycle_identity/inner.ms"),
+            include_str!(
+                "../../../tests/conformance/fixtures/e2e/projects/nominal_cycle_identity/inner.ms"
+            ),
         ),
         (
             "bridge.ms",
-            include_str!("../../../tests/e2e/testdata/projects/nominal_cycle_identity/bridge.ms"),
+            include_str!(
+                "../../../tests/conformance/fixtures/e2e/projects/nominal_cycle_identity/bridge.ms"
+            ),
         ),
         (
             "outer.ms",
-            include_str!("../../../tests/e2e/testdata/projects/nominal_cycle_identity/outer.ms"),
+            include_str!(
+                "../../../tests/conformance/fixtures/e2e/projects/nominal_cycle_identity/outer.ms"
+            ),
         ),
         (
             "shared.ms",
-            include_str!("../../../tests/e2e/testdata/projects/nominal_cycle_identity/shared.ms"),
+            include_str!(
+                "../../../tests/conformance/fixtures/e2e/projects/nominal_cycle_identity/shared.ms"
+            ),
         ),
         (
             "conformance_test.ms",
             include_str!(
-                "../../../tests/e2e/testdata/projects/nominal_cycle_identity/conformance_test.ms"
+                "../../../tests/conformance/fixtures/e2e/projects/nominal_cycle_identity/conformance_test.ms"
             ),
         ),
     ];

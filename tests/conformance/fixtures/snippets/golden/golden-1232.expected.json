@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3001",
+        "phase": "type",
+        "message": "expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"",
+        "position": {
+          "file": "golden-1232.ms",
+          "line": 4,
+          "column": 20,
+          "offset": 106
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1232.ms",
+            "line": 4,
+            "column": 20,
+            "offset": 106
+          },
+          "end": {
+            "file": "golden-1232.ms",
+            "line": 4,
+            "column": 31,
+            "offset": 117
+          },
+          "replacement": "\"{identity(1)}\""
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/golden-1232.ms:4:20: type: expected String, found Int (in the return value); Int does not convert to String implicitly; interpolate it into text, e.g. \"{value}\"\n   |\n 4 | fn first() String: identity(1)\n   |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -321,7 +321,7 @@ fn run(args: List[String]) String!:
 			binaries,
 			repeats,
 			"e2e-driver",
-			absolute("tools/e2e.ms"),
+			absolute("tools/conform.ms"),
 			"check",
 			0,
 		)?

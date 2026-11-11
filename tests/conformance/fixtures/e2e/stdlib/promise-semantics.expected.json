@@ -1,0 +1,145 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "promise-semantics.ms::a fault inside a promise ends only that promise",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "promise-semantics.ms::promises faulting on several threads each report their own fault",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "promise-semantics.ms::a timed out wait reports Timeout and cancels the work",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "promise-semantics.ms::wait_all keeps order and wait_first returns the first result",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "promise-semantics.ms::wait_all ends at the first failure in time, not list order",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "promise-semantics.ms::wait_all keeps order when later promises finish first",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "promise-semantics.ms::a second wait reports that the result was taken",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "promise-semantics.ms::a negative timeout waits no time instead of waiting forever",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "promise-semantics.ms::a timeout counts from construction, so a late wait still reports Timeout",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "promise-semantics.ms::a promise from another call takes its limit with with",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "promise-semantics.ms::a result that arrives before the limit is kept",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "promise-semantics.ms::cancel ends unfinished work and wait reports Cancelled",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "promise-semantics.ms::one Cancel switch cancels every promise made with its signal",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "promise-semantics.ms::a promise made with a signal that already fired is cancelled at once",
+          "status": "passed"
+        },
+        {
+          "index": 14,
+          "name": "promise-semantics.ms::a signal reports whether its switch fired, and a finished promise keeps its result",
+          "status": "passed"
+        },
+        {
+          "index": 15,
+          "name": "promise-semantics.ms::dropping the switch cancels nothing",
+          "status": "passed"
+        },
+        {
+          "index": 16,
+          "name": "promise-semantics.ms::a replacement cancel signal detaches the previous switch",
+          "status": "passed"
+        },
+        {
+          "index": 17,
+          "name": "promise-semantics.ms::a promise that ends holding an unfinished promise cancels it instead of hanging",
+          "status": "passed"
+        },
+        {
+          "index": 18,
+          "name": "promise-semantics.ms::waiting in creation, reverse and interleaved order returns every promise's own value",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 19,
+        "selected": 19,
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN promise-semantics.ms::a fault inside a promise ends only that promise\nPASS promise-semantics.ms::a fault inside a promise ends only that promise\nRUN promise-semantics.ms::promises faulting on several threads each report their own fault\nPASS promise-semantics.ms::promises faulting on several threads each report their own fault\nRUN promise-semantics.ms::a timed out wait reports Timeout and cancels the work\nPASS promise-semantics.ms::a timed out wait reports Timeout and cancels the work\nRUN promise-semantics.ms::wait_all keeps order and wait_first returns the first result\nPASS promise-semantics.ms::wait_all keeps order and wait_first returns the first result\nRUN promise-semantics.ms::wait_all ends at the first failure in time, not list order\nPASS promise-semantics.ms::wait_all ends at the first failure in time, not list order\nRUN promise-semantics.ms::wait_all keeps order when later promises finish first\nPASS promise-semantics.ms::wait_all keeps order when later promises finish first\nRUN promise-semantics.ms::a second wait reports that the result was taken\nPASS promise-semantics.ms::a second wait reports that the result was taken\nRUN promise-semantics.ms::a negative timeout waits no time instead of waiting forever\nPASS promise-semantics.ms::a negative timeout waits no time instead of waiting forever\nRUN promise-semantics.ms::a timeout counts from construction, so a late wait still reports Timeout\nPASS promise-semantics.ms::a timeout counts from construction, so a late wait still reports Timeout\nRUN promise-semantics.ms::a promise from another call takes its limit with with\nPASS promise-semantics.ms::a promise from another call takes its limit with with\nRUN promise-semantics.ms::a result that arrives before the limit is kept\nPASS promise-semantics.ms::a result that arrives before the limit is kept\nRUN promise-semantics.ms::cancel ends unfinished work and wait reports Cancelled\nPASS promise-semantics.ms::cancel ends unfinished work and wait reports Cancelled\nRUN promise-semantics.ms::one Cancel switch cancels every promise made with its signal\nPASS promise-semantics.ms::one Cancel switch cancels every promise made with its signal\nRUN promise-semantics.ms::a promise made with a signal that already fired is cancelled at once\nPASS promise-semantics.ms::a promise made with a signal that already fired is cancelled at once\nRUN promise-semantics.ms::a signal reports whether its switch fired, and a finished promise keeps its result\nPASS promise-semantics.ms::a signal reports whether its switch fired, and a finished promise keeps its result\nRUN promise-semantics.ms::dropping the switch cancels nothing\nPASS promise-semantics.ms::dropping the switch cancels nothing\nRUN promise-semantics.ms::a replacement cancel signal detaches the previous switch\nPASS promise-semantics.ms::a replacement cancel signal detaches the previous switch\nRUN promise-semantics.ms::a promise that ends holding an unfinished promise cancels it instead of hanging\nPASS promise-semantics.ms::a promise that ends holding an unfinished promise cancels it instead of hanging\nRUN promise-semantics.ms::waiting in creation, reverse and interleaved order returns every promise's own value\nPASS promise-semantics.ms::waiting in creation, reverse and interleaved order returns every promise's own value\n19 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

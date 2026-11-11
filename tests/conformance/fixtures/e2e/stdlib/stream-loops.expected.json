@@ -1,0 +1,75 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "stream-loops.ms::a loop that breaks hands the source back to its stream",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "stream-loops.ms::an error ends the loop and the stream reads on",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "stream-loops.ms::closing the stream inside its loop still closes the source once",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "stream-loops.ms::stages pull directly and keep their results",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "stream-loops.ms::copy moves every item",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 5,
+        "selected": 5,
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN stream-loops.ms::a loop that breaks hands the source back to its stream\nPASS stream-loops.ms::a loop that breaks hands the source back to its stream\nRUN stream-loops.ms::an error ends the loop and the stream reads on\nPASS stream-loops.ms::an error ends the loop and the stream reads on\nRUN stream-loops.ms::closing the stream inside its loop still closes the source once\nPASS stream-loops.ms::closing the stream inside its loop still closes the source once\nRUN stream-loops.ms::stages pull directly and keep their results\nPASS stream-loops.ms::stages pull directly and keep their results\nRUN stream-loops.ms::copy moves every item\nPASS stream-loops.ms::copy moves every item\n5 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

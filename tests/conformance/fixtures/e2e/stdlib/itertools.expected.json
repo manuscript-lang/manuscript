@@ -1,0 +1,120 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "itertools.ms::pairwise pairs neighbors",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "itertools.ms::accumulate and cycle",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "itertools.ms::zip_longest pads with none",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "itertools.ms::group_runs groups adjacent equal keys",
+          "status": "passed"
+        },
+        {
+          "index": 4,
+          "name": "itertools.ms::permutations and combinations",
+          "status": "passed"
+        },
+        {
+          "index": 5,
+          "name": "itertools.ms::product is the cartesian product",
+          "status": "passed"
+        },
+        {
+          "index": 6,
+          "name": "itertools.ms::invalid sizes fault",
+          "status": "passed"
+        },
+        {
+          "index": 7,
+          "name": "itertools.ms::combinations of every size keep their order",
+          "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "itertools.ms::product with an empty factor is empty wherever the factor sits",
+          "status": "passed"
+        },
+        {
+          "index": 9,
+          "name": "itertools.ms::cycle empty input skips repetition after validating count",
+          "status": "passed"
+        },
+        {
+          "index": 10,
+          "name": "itertools.ms::full-size combinations do not consume call depth",
+          "status": "passed"
+        },
+        {
+          "index": 11,
+          "name": "itertools.ms::combinations distinguish equal positions and own nested copies",
+          "status": "passed"
+        },
+        {
+          "index": 12,
+          "name": "itertools.ms::zero-size permutations preserve shape and validate sizes",
+          "status": "passed"
+        },
+        {
+          "index": 13,
+          "name": "itertools.ms::nonzero permutations retain position order and own their results",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 14,
+        "selected": 14,
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN itertools.ms::pairwise pairs neighbors\nPASS itertools.ms::pairwise pairs neighbors\nRUN itertools.ms::accumulate and cycle\nPASS itertools.ms::accumulate and cycle\nRUN itertools.ms::zip_longest pads with none\nPASS itertools.ms::zip_longest pads with none\nRUN itertools.ms::group_runs groups adjacent equal keys\nPASS itertools.ms::group_runs groups adjacent equal keys\nRUN itertools.ms::permutations and combinations\nPASS itertools.ms::permutations and combinations\nRUN itertools.ms::product is the cartesian product\nPASS itertools.ms::product is the cartesian product\nRUN itertools.ms::invalid sizes fault\nPASS itertools.ms::invalid sizes fault\nRUN itertools.ms::combinations of every size keep their order\nPASS itertools.ms::combinations of every size keep their order\nRUN itertools.ms::product with an empty factor is empty wherever the factor sits\nPASS itertools.ms::product with an empty factor is empty wherever the factor sits\nRUN itertools.ms::cycle empty input skips repetition after validating count\nPASS itertools.ms::cycle empty input skips repetition after validating count\nRUN itertools.ms::full-size combinations do not consume call depth\nPASS itertools.ms::full-size combinations do not consume call depth\nRUN itertools.ms::combinations distinguish equal positions and own nested copies\nPASS itertools.ms::combinations distinguish equal positions and own nested copies\nRUN itertools.ms::zero-size permutations preserve shape and validate sizes\nPASS itertools.ms::zero-size permutations preserve shape and validate sizes\nRUN itertools.ms::nonzero permutations retain position order and own their results\nPASS itertools.ms::nonzero permutations retain position order and own their results\n14 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

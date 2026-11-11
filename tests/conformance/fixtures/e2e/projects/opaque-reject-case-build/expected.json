@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 0.1.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "Mode is opaque outside gate.ms: case Safe cannot be built here; use the functions gate.ms exports",
+        "position": {
+          "file": "main.ms",
+          "line": 8,
+          "column": 15,
+          "offset": 139
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/main.ms:8:15: type: Mode is opaque outside gate.ms: case Safe cannot be built here; use the functions gate.ms exports\n   |\n 8 |     m := Mode.Safe\n   |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
