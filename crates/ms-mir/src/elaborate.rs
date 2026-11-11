@@ -2,15 +2,18 @@
 //! scope-exit cleanup of a *Raw* function, one that leaves every owned value of a scope to the
 //! markers below instead of dropping it.
 //!
-//! Markers are calls to three runtime declarations, so Raw MIR needs no new ops yet:
+//! Markers are real ops (`Op::ScopeBegin`, `ScopeOwn`, `ScopeEnd`, `ScopeDisown`), present only in
+//! Raw functions (`verify::is_raw`):
 //!
-//! * `msrt_raw_begin(scope, parent)`: opens `scope`, nested in `parent` (`-1` for the root).
-//! * `msrt_raw_own(value, scope, kind)`: the owned `value` belongs to `scope`; `kind` 0 drops it,
-//!   1 closes it with the module's `close` function (`fn(move T) -> int`, nonzero is an error).
-//! * `msrt_raw_end(scope)`: the point where `scope`'s cleanup runs, on the fallthrough end and on
-//!   every early exit that leaves it.
+//! * `scope.begin S P`: opens scope `S`, nested in `P - 1` (`P` is 0 for the root).
+//! * `scope.own S K v`: the owned `v` belongs to `S`; `K` 0 drops it, 1 closes it with the
+//!   module's `close` function (`fn(move T) -> int`, nonzero is an error).
+//! * `scope.disown v`: `v` left its owner without an op that consumes it (a view moving into the
+//!   result); the pass stops tracking it on this path.
+//! * `scope.end S`: the point where `S`'s cleanup runs, on the fallthrough end and on every early
+//!   exit that leaves it.
 //!
-//! At each `raw_end` the pass drops the owned values of the scope that are still live, in
+//! At each `scope.end` the pass drops the owned values of the scope that are still live, in
 //! reverse definition order. Because the live set follows the consuming operands, a value an
 //! earlier path moved or closed is simply absent: nothing remembers "already dropped on this
 //! path". A failing close (first error wins) leaves through an error edge the pass builds: it
@@ -30,12 +33,9 @@
 
 use crate::ir::*;
 use crate::types::{AltId, Ty};
-use crate::verify::arg_modes;
+use crate::verify::{arg_modes, is_raw};
 use std::collections::{HashMap, HashSet};
 
-const BEGIN: &str = "msrt_raw_begin";
-const OWN: &str = "msrt_raw_own";
-const END: &str = "msrt_raw_end";
 const DISCARD: &str = "msrt_cleanup_discard";
 
 #[derive(Clone, Copy, PartialEq)]
@@ -45,28 +45,14 @@ enum Marker {
     End,
 }
 
-/// Elaborates every function of `m` that uses markers.
+/// Elaborates every Raw function of `m`.
 pub fn run(m: &mut Module) -> Result<(), String> {
     let close = m
         .funcs
         .iter()
         .position(|f| f.name == "close")
         .map(|i| FuncId(i as u32));
-    let markers: HashMap<u32, Marker> = m
-        .externs
-        .iter()
-        .enumerate()
-        .filter_map(|(i, e)| {
-            let kind = match e.name.as_str() {
-                BEGIN => Marker::Begin,
-                OWN => Marker::Own,
-                END => Marker::End,
-                _ => return None,
-            };
-            Some((i as u32, kind))
-        })
-        .collect();
-    if markers.is_empty() {
+    if !m.funcs.iter().any(is_raw) {
         return Ok(());
     }
     let discard = match m.externs.iter().position(|e| e.name == DISCARD) {
@@ -88,9 +74,12 @@ pub fn run(m: &mut Module) -> Result<(), String> {
         None => None,
     };
     for fi in 0..m.funcs.len() {
+        if !is_raw(&m.funcs[fi]) {
+            continue;
+        }
         let stand_in = Func::new("", Vec::new(), Ty::UNIT);
         let mut f = std::mem::replace(&mut m.funcs[fi], stand_in);
-        let out = function(m, &mut f, &markers, close, discard);
+        let out = function(m, &mut f, close, discard);
         m.funcs[fi] = f;
         out.map_err(|e| format!("{}: {e}", m.funcs[fi].name))?;
     }
@@ -109,21 +98,84 @@ enum St {
 }
 
 /// The owners in scope, in definition order. Untagged values are tracked while live only.
-type State = Vec<(Value, St)>;
+#[derive(Clone, Default)]
+struct State {
+    seq: std::collections::BTreeMap<u32, (Value, St)>,
+    at: HashMap<Value, u32>,
+    next: u32,
+}
+
+impl PartialEq for State {
+    fn eq(&self, other: &State) -> bool {
+        self.seq.len() == other.seq.len() && self.iter().eq(other.iter())
+    }
+}
+
+impl State {
+    fn push(&mut self, v: Value, s: St) {
+        self.at.insert(v, self.next);
+        self.seq.insert(self.next, (v, s));
+        self.next += 1;
+    }
+
+    fn get(&self, v: Value) -> Option<St> {
+        self.at.get(&v).map(|n| self.seq[n].1)
+    }
+
+    fn set(&mut self, v: Value, s: St) {
+        if let Some(n) = self.at.get(&v) {
+            self.seq.get_mut(n).expect("owner").1 = s;
+        }
+    }
+
+    fn remove(&mut self, v: Value) {
+        if let Some(n) = self.at.remove(&v) {
+            self.seq.remove(&n);
+        }
+    }
+
+    fn retain(&mut self, mut keep: impl FnMut(&(Value, St)) -> bool) {
+        let gone: Vec<Value> = self
+            .seq
+            .values()
+            .filter(|e| !keep(e))
+            .map(|e| e.0)
+            .collect();
+        for v in gone {
+            self.remove(v);
+        }
+    }
+
+    /// Definition order.
+    fn iter(&self) -> impl DoubleEndedIterator<Item = &(Value, St)> {
+        self.seq.values()
+    }
+}
 
 struct Ctx {
     /// Owner value to `(scope, kind)`.
     tags: HashMap<Value, (i64, i64)>,
+    /// The owners of each scope.
+    owners: HashMap<i64, Vec<Value>>,
     parents: HashMap<i64, i64>,
     close: Option<FuncId>,
     discard: Option<ExtId>,
-    markers: HashMap<u32, Marker>,
 }
 
-fn marker_of(cx: &Ctx, inst: &Inst) -> Option<Marker> {
-    match (inst.op, inst.imm) {
-        (Op::CallRt, Imm::Ext(e)) => cx.markers.get(&(e.index() as u32)).copied(),
+fn marker_of(inst: &Inst) -> Option<Marker> {
+    match inst.op {
+        Op::ScopeBegin => Some(Marker::Begin),
+        Op::ScopeOwn => Some(Marker::Own),
+        Op::ScopeEnd => Some(Marker::End),
         _ => None,
+    }
+}
+
+/// The scope number a marker names.
+fn scope_of(inst: &Inst) -> i64 {
+    match inst.imm {
+        Imm::Scope(s, _) => i64::from(s),
+        _ => unreachable!("the verifier checks scope markers carry scope numbers"),
     }
 }
 
@@ -136,19 +188,13 @@ fn own_params(m: &Module, f: &Func, b: usize) -> Vec<Value> {
         .collect()
 }
 
-fn find(st: &State, v: Value) -> Option<usize> {
-    st.iter().position(|(x, _)| *x == v)
-}
-
 fn consume_value(cx: &Ctx, st: &mut State, v: Value) -> Result<(), String> {
-    let Some(i) = find(st, v) else {
+    let Some(state) = st.get(v) else {
         return Ok(());
     };
-    match st[i].1 {
-        St::Live if cx.tags.contains_key(&v) => st[i].1 = St::Moved,
-        St::Live => {
-            st.remove(i);
-        }
+    match state {
+        St::Live if cx.tags.contains_key(&v) => st.set(v, St::Moved),
+        St::Live => st.remove(v),
         St::Moved => return Err(format!("%{} is consumed after it was moved", v.0)),
         St::Maybe => return Err(format!("%{} is consumed but moved on some path", v.0)),
         St::Part(..) => return Err(format!("%{} is consumed after a partial move", v.0)),
@@ -174,18 +220,39 @@ fn consume_args(
 
 /// The move state after `inst`.
 fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<(), String> {
-    if marker_of(cx, inst) == Some(Marker::End) {
-        let scope = konst(f, inst.args[0])?;
+    if inst.op == Op::ScopeDisown {
+        st.remove(inst.args[0]);
+        return Ok(());
+    }
+    // A disowned view that moves into another local is owned again by that local's scope.
+    if inst.op == Op::ScopeOwn {
+        if st.get(inst.args[0]).is_none() {
+            st.push(inst.args[0], St::Live);
+        }
+        return Ok(());
+    }
+    if marker_of(inst) == Some(Marker::End) {
+        let scope = scope_of(inst);
         st.retain(|(v, _)| cx.tags.get(v).is_none_or(|t| t.0 != scope));
+        return Ok(());
+    }
+    // Lowering releases what an `alt.take` left behind itself: that finishes the owner.
+    if inst.op == Op::AltRelease
+        && let Some(St::Part(..)) = st.get(inst.args[0])
+    {
+        match cx.tags.contains_key(&inst.args[0]) {
+            true => st.set(inst.args[0], St::Moved),
+            false => st.remove(inst.args[0]),
+        }
         return Ok(());
     }
     consume_args(m, f, cx, st, &inst.args, &arg_modes(m, inst))?;
     if let (Op::AltTake, Imm::AltField(a, c, i)) = (inst.op, inst.imm)
-        && let Some(k) = find(st, inst.args[0])
+        && let Some(cur) = st.get(inst.args[0])
         && cx.tags.contains_key(&inst.args[0])
     {
         let bit = 1u32 << i;
-        st[k].1 = match st[k].1 {
+        let next = match cur {
             St::Live => St::Part(a, c, bit),
             St::Part(pa, pc, mask) if (pa, pc) == (a, c) => St::Part(a, c, mask | bit),
             _ => {
@@ -195,11 +262,12 @@ fn apply(m: &Module, f: &Func, cx: &Ctx, st: &mut State, inst: &Inst) -> Result<
                 ));
             }
         };
+        st.set(inst.args[0], next);
     }
     if m.result_mode(f, inst) == Some(Mode::Move)
         && let Some(r) = inst.res
     {
-        st.push((r, St::Live));
+        st.push(r, St::Live);
     }
     Ok(())
 }
@@ -216,72 +284,57 @@ fn edge_state(m: &Module, f: &Func, cx: &Ctx, st: &State, t: &Target) -> Result<
 }
 
 fn merge(old: &State, new: &State) -> Result<State, String> {
-    let mut out = Vec::new();
-    for (v, a) in old {
-        let Some((_, b)) = new.iter().find(|(x, _)| x == v) else {
+    let mut out = State::default();
+    for (v, a) in old.iter() {
+        let Some(b) = new.get(*v) else {
             continue;
         };
-        out.push((
+        out.push(
             *v,
-            match (a, b) {
-                _ if a == b => *a,
+            match (a, &b) {
+                _ if *a == b => *a,
                 (St::Part(..), _) | (_, St::Part(..)) => {
                     return Err(format!("%{} is partially moved on only some paths", v.0));
                 }
                 _ => St::Maybe,
             },
-        ));
+        );
     }
     Ok(out)
-}
-
-fn konst(f: &Func, v: Value) -> Result<i64, String> {
-    for b in &f.blocks {
-        for i in &b.insts {
-            if let (Op::IConst, Imm::Int(n), Some(r)) = (i.op, i.imm, i.res)
-                && r == v
-            {
-                return Ok(n);
-            }
-        }
-    }
-    Err("a marker operand is not an integer constant".to_string())
 }
 
 fn function(
     m: &Module,
     f: &mut Func,
-    markers: &HashMap<u32, Marker>,
     close: Option<FuncId>,
     discard: Option<ExtId>,
 ) -> Result<(), String> {
     let mut cx = Ctx {
         tags: HashMap::new(),
+        owners: HashMap::new(),
         parents: HashMap::new(),
         close,
         discard,
-        markers: markers.clone(),
     };
-    let mut any = false;
     for b in &f.blocks {
         for i in &b.insts {
-            match marker_of(&cx, i) {
-                Some(Marker::Begin) => {
-                    any = true;
-                    cx.parents
-                        .insert(konst(f, i.args[0])?, konst(f, i.args[1])?);
+            match (i.op, i.imm) {
+                (Op::ScopeBegin, Imm::Scope(s, parent)) => {
+                    cx.parents.insert(i64::from(s), i64::from(parent) - 1);
                 }
-                Some(Marker::Own) => {
-                    any = true;
-                    cx.tags
-                        .insert(i.args[0], (konst(f, i.args[1])?, konst(f, i.args[2])?));
+                (Op::ScopeOwn, Imm::Scope(s, kind)) => {
+                    // A value owned again by a later scope leaves the earlier scope's list.
+                    if let Some((old, _)) =
+                        cx.tags.insert(i.args[0], (i64::from(s), i64::from(kind)))
+                        && let Some(list) = cx.owners.get_mut(&old)
+                    {
+                        list.retain(|v| *v != i.args[0]);
+                    }
+                    cx.owners.entry(i64::from(s)).or_default().push(i.args[0]);
                 }
                 _ => {}
             }
         }
-    }
-    if !any {
-        return Ok(());
     }
     // A value that flows through a moving block parameter keeps its scope.
     loop {
@@ -289,10 +342,17 @@ fn function(
         for b in &f.blocks {
             b.term.for_each_target(|t| {
                 for (a, p) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
+                    // A disowned value left its scope: the parameter it feeds is the new owner's.
+                    let disowned = b
+                        .insts
+                        .iter()
+                        .any(|i| i.op == Op::ScopeDisown && i.args[0] == *a);
                     if p.mode == Mode::Move
+                        && !disowned
                         && let Some(tag) = cx.tags.get(a).copied()
                         && cx.tags.insert(p.value, tag).is_none()
                     {
+                        cx.owners.entry(tag.0).or_default().push(p.value);
                         changed = true;
                     }
                 }
@@ -342,18 +402,16 @@ fn function(
 /// The move state on entry to every reachable block, to a fixpoint (loops included).
 fn analyze(m: &Module, f: &Func, cx: &Ctx, order: &[Block]) -> Result<Vec<Option<State>>, String> {
     let mut entry: Vec<Option<State>> = vec![None; f.blocks.len()];
-    entry[0] = Some(Vec::new());
+    entry[0] = Some(State::default());
     for _ in 0..=(4 * f.blocks.len() + 4) {
         let mut changed = false;
         for b in order {
             let Some(mut st) = entry[b.index()].clone() else {
                 continue;
             };
-            st.extend(
-                own_params(m, f, b.index())
-                    .into_iter()
-                    .map(|p| (p, St::Live)),
-            );
+            for p in own_params(m, f, b.index()) {
+                st.push(p, St::Live);
+            }
             for inst in &f.blocks[b.index()].insts {
                 apply(m, f, cx, &mut st, inst)?;
             }
@@ -450,21 +508,26 @@ impl Em<'_> {
         let mut st = entry;
         let mut cur = b;
         for p in own_params(self.m, self.f, b) {
-            st.push((p, St::Live));
+            st.push(p, St::Live);
             self.birth(cur, p);
         }
         for mut inst in old.insts {
-            match marker_of(self.cx, &inst) {
+            if inst.op == Op::ScopeDisown {
+                apply(self.m, self.f, self.cx, &mut st, &inst)?;
+                continue;
+            }
+            match marker_of(&inst) {
                 Some(Marker::Begin) => continue,
                 Some(Marker::Own) => {
                     let v = inst.args[0];
+                    apply(self.m, self.f, self.cx, &mut st, &inst)?;
                     if self.cx.tags[&v].1 == 1 {
                         self.register(cur, v)?;
                     }
                     continue;
                 }
                 Some(Marker::End) => {
-                    let scope = konst(self.f, inst.args[0])?;
+                    let scope = scope_of(&inst);
                     cur = self.exit(cur, &mut st, scope)?;
                     continue;
                 }
@@ -749,14 +812,17 @@ impl Em<'_> {
         scope: i64,
         mut outcome: Option<Value>,
     ) -> Result<(usize, Option<Value>), String> {
-        let owners: Vec<(Value, St)> = st
-            .iter()
-            .rev()
-            .filter(|(v, _)| self.cx.tags.get(v).is_some_and(|t| t.0 == scope))
-            .copied()
+        let mut owners: Vec<(Value, St)> = self
+            .cx
+            .owners
+            .get(&scope)
+            .into_iter()
+            .flatten()
+            .filter_map(|v| st.get(*v).map(|s| (*v, s)))
             .collect();
+        owners.sort_by_key(|(v, _)| std::cmp::Reverse(st.at[v]));
         for (v, s) in owners {
-            st.retain(|(x, _)| *x != v);
+            st.remove(v);
             if s == St::Moved && !self.flagged.contains(&v) {
                 continue;
             }

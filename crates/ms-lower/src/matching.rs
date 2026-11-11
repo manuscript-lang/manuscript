@@ -496,7 +496,7 @@ impl FnLower<'_> {
         let uid = b.uid;
         let plain = !hidden
             && self.locals.contains_key(&uid)
-            && self.scopes.iter().any(|s| s.contains(&uid))
+            && (self.raw_owned.contains(&uid) || self.scopes.iter().any(|s| s.contains(&uid)))
             && !self.slotted.contains(&uid)
             && !self.aliases.contains_key(&uid)
             && !self.must_move.contains(&uid)

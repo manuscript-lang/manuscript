@@ -1135,6 +1135,16 @@ fn parse_line(
             ))
         }
         ImmKind::Ty => Imm::Ty(parse_ty(c, m)?),
+        ImmKind::Scope => {
+            let mut n = || {
+                c.num()?.parse().map_err(|_| ParseError {
+                    line: c.line,
+                    message: "bad scope number".into(),
+                })
+            };
+            let a = n()?;
+            Imm::Scope(a, n()?)
+        }
         ImmKind::Idx => Imm::Idx(c.num()?.parse().map_err(|_| ParseError {
             line: c.line,
             message: "bad index".into(),

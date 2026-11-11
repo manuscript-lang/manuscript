@@ -413,6 +413,7 @@ fn print_inst(m: &Module, i: &Inst, n: &dyn Fn(Value) -> String) -> String {
             String::new()
         }
         Imm::Idx(k) => k.to_string(),
+        Imm::Scope(a, b) => format!("{a} {b}"),
     };
     if !imm.is_empty() {
         s.push(' ');

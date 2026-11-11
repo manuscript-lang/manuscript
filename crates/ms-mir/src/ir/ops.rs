@@ -21,7 +21,7 @@ impl Op {
         Op::Clone, Op::Drop, Op::DropIf, Op::MoveOut, Op::Slot, Op::Load, Op::Take, Op::Store, Op::Put, Op::ListAddr, Op::ListAddrU, Op::PtrField, Op::PtrIsNull,
         Op::Call, Op::CallInd, Op::CallRt, Op::CallMethod,
         Op::TypeDesc, Op::FuncAddr, Op::Poll, Op::DepthEnter, Op::DepthLeave, Op::CleanupPush, Op::CleanupRun,
-        Op::GlobalGet, Op::GlobalSet,
+        Op::GlobalGet, Op::GlobalSet, Op::ScopeBegin, Op::ScopeOwn, Op::ScopeEnd, Op::ScopeDisown,
     ];
 
     /// The static description of this opcode.
@@ -161,6 +161,10 @@ impl Op {
             Op::CleanupRun => ("cleanup.run", K::None, false, effects!(io)),
             Op::GlobalGet => ("global.get", K::Global, true, effects!(reads)),
             Op::GlobalSet => ("global.set", K::Global, false, effects!(writes, ownership)),
+            Op::ScopeBegin => ("scope.begin", K::Scope, false, effects!(io)),
+            Op::ScopeOwn => ("scope.own", K::Scope, false, effects!(io)),
+            Op::ScopeEnd => ("scope.end", K::Scope, false, effects!(io)),
+            Op::ScopeDisown => ("scope.disown", K::None, false, effects!(io)),
         };
         OpInfo { name, imm, has_result, effects }
     }

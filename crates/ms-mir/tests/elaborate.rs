@@ -10,9 +10,6 @@ use ms_mir::verify::verify_module;
 const HEAD: &str = r#"module "raw"
 alt Msg { Pair(a: list<int>, b: list<int>), Empty }
 extern @msrt_print_int(int)
-extern @msrt_raw_begin(int, int)
-extern @msrt_raw_own(list<int>, int, int)
-extern @msrt_raw_end(int)
 entry @main
 fn @mk(%id: int) -> list<int> {
 b0:
@@ -60,19 +57,15 @@ fn nested(n1: i64, n2: i64) -> String {
     format!(
         r#"fn @f(%n1: int, %n2: int) -> int {{
 b0:
-  %c1: int = iconst 1
-  %c2: int = iconst 2
-  %root: int = iconst -1
-  %k: int = iconst 1
-  %u1: unit = call.rt @msrt_raw_begin (%c1, %root)
+  scope.begin 1 0
   %a: list<int> = call @mk (%n1)
-  %u2: unit = call.rt @msrt_raw_own (%a, %c1, %k)
-  %u3: unit = call.rt @msrt_raw_begin (%c2, %c1)
+  scope.own 1 1 %a
+  scope.begin 2 2
   %b: list<int> = call @mk (%n2)
-  %u4: unit = call.rt @msrt_raw_own (%b, %c2, %k)
+  scope.own 2 1 %b
   %r: int = iconst 7
-  %u5: unit = call.rt @msrt_raw_end (%c2)
-  %u6: unit = call.rt @msrt_raw_end (%c1)
+  scope.end 2 0
+  scope.end 1 0
   ret %r
 }}
 fn @main() -> int {{
@@ -101,25 +94,22 @@ fn arms(flag: i64) -> String {
     format!(
         r#"fn @g(%flag: int) -> int {{
 b0:
-  %c1: int = iconst 1
-  %root: int = iconst -1
-  %k: int = iconst 1
   %zero: int = iconst 0
   %one: int = iconst 1
-  %u1: unit = call.rt @msrt_raw_begin (%c1, %root)
+  scope.begin 1 0
   %a: list<int> = call @mk (%flag)
-  %u2: unit = call.rt @msrt_raw_own (%a, %c1, %k)
+  scope.own 1 1 %a
   %c: bool = icmp.eq %flag, %zero
   br_if %c, take(), keep()
 take:
   %x: list<int> = list.push %a, %one
   drop %x
   %r10: int = iconst 10
-  %u3: unit = call.rt @msrt_raw_end (%c1)
+  scope.end 1 0
   ret %r10
 keep:
   %r20: int = iconst 20
-  %u4: unit = call.rt @msrt_raw_end (%c1)
+  scope.end 1 0
   ret %r20
 }}
 fn @main() -> int {{
@@ -145,14 +135,11 @@ fn joined(flag: i64, kind: i64) -> String {
     format!(
         r#"fn @h(%flag: int) -> int {{
 b0:
-  %c1: int = iconst 1
-  %root: int = iconst -1
-  %k: int = iconst {kind}
   %zero: int = iconst 0
   %one: int = iconst 1
-  %u1: unit = call.rt @msrt_raw_begin (%c1, %root)
+  scope.begin 1 0
   %a: list<int> = call @mk (%flag)
-  %u2: unit = call.rt @msrt_raw_own (%a, %c1, %k)
+  scope.own 1 {kind} %a
   %c: bool = icmp.eq %flag, %zero
   br_if %c, take(), keep()
 take:
@@ -163,7 +150,7 @@ keep:
   br join()
 join:
   %r: int = iconst 10
-  %u3: unit = call.rt @msrt_raw_end (%c1)
+  scope.end 1 0
   ret %r
 }}
 fn @main() -> int {{
@@ -200,36 +187,32 @@ fn looped(stop: i64) -> String {
     format!(
         r#"fn @lp(%stop: int) -> int {{
 b0:
-  %c1: int = iconst 1
-  %c2: int = iconst 2
-  %root: int = iconst -1
-  %k: int = iconst 1
   %zero: int = iconst 0
-  %u1: unit = call.rt @msrt_raw_begin (%c1, %root)
+  scope.begin 1 0
   %a: list<int> = call @mk (%zero)
-  %u2: unit = call.rt @msrt_raw_own (%a, %c1, %k)
+  scope.own 1 1 %a
   br loop(%zero)
 loop(%i: int):
   %three: int = iconst 3
   %more: bool = icmp.lt %i, %three
   br_if %more, body(), done()
 body:
-  %u3: unit = call.rt @msrt_raw_begin (%c2, %c1)
+  scope.begin 2 2
   %b: list<int> = call @mk (%zero)
-  %u4: unit = call.rt @msrt_raw_own (%b, %c2, %k)
+  scope.own 2 1 %b
   %hit: bool = icmp.eq %i, %stop
   br_if %hit, leave(), next()
 leave:
-  %u5: unit = call.rt @msrt_raw_end (%c2)
+  scope.end 2 0
   br done()
 next:
-  %u6: unit = call.rt @msrt_raw_end (%c2)
+  scope.end 2 0
   %one: int = iconst 1
   %j: int = iadd %i, %one
   br loop(%j)
 done:
   %r: int = iconst 9
-  %u7: unit = call.rt @msrt_raw_end (%c1)
+  scope.end 1 0
   ret %r
 }}
 fn @main() -> int {{
@@ -258,13 +241,10 @@ fn moved_then_break(stop: i64) -> String {
     format!(
         r#"fn @mb(%stop: int) -> int {{
 b0:
-  %c1: int = iconst 1
-  %root: int = iconst -1
-  %k: int = iconst 1
   %zero: int = iconst 0
-  %u1: unit = call.rt @msrt_raw_begin (%c1, %root)
+  scope.begin 1 0
   %a: list<int> = call @mk (%zero)
-  %u2: unit = call.rt @msrt_raw_own (%a, %c1, %k)
+  scope.own 1 1 %a
   br loop(%zero)
 loop(%i: int):
   %three: int = iconst 3
@@ -284,7 +264,7 @@ next:
   br loop(%j)
 done:
   %r: int = iconst 9
-  %u3: unit = call.rt @msrt_raw_end (%c1)
+  scope.end 1 0
   ret %r
 }}
 fn @main() -> int {{
@@ -321,18 +301,15 @@ fn partial(empty: bool) -> String {
     format!(
         r#"fn @pm() -> int {{
 b0:
-  %c1: int = iconst 1
-  %root: int = iconst -1
-  %k: int = iconst 0
   %zero: int = iconst 0
-  %u1: unit = call.rt @msrt_raw_begin (%c1, %root)
+  scope.begin 1 0
   %p: list<int> = call @mk (%zero)
   %q: list<int> = call @mk (%zero)
   {make}
-  %u2: unit = call.rt @msrt_raw_own (%m, %c1, %k)
+  scope.own 1 0 %m
   {take}
   %r: int = iconst 4
-  %u3: unit = call.rt @msrt_raw_end (%c1)
+  scope.end 1 0
   ret %r
 }}
 fn @main() -> int {{
@@ -360,4 +337,44 @@ fn unsupported_shapes_are_reported_not_miscompiled() {
     let mut m = parse_module(&format!("{HEAD}{src}")).unwrap();
     let e = ms_mir::elaborate::run(&mut m).unwrap_err();
     assert!(e.contains("moved"), "{e}");
+}
+
+#[test]
+fn markers_round_trip_and_raw_ownership_is_checked_only_after_elaboration() {
+    let mut m = parse_module(&format!("{HEAD}{}", nested(0, 0))).expect("parse");
+    let text = print_module(&m);
+    assert!(text.contains("scope.own 2 1 %"), "{text}");
+    let again = parse_module(&text).expect("reparse");
+    assert_eq!(print_module(&again), text);
+    // Raw: the owners are live at `ret`, which only an elaborated function may not do.
+    verify_module(&m).expect("raw verifies");
+    ms_mir::elaborate::run(&mut m).expect("elaborate");
+    assert!(!print_module(&m).contains("scope."));
+    verify_module(&m).expect("elaborated verifies");
+}
+
+#[test]
+fn a_disowned_value_is_not_dropped_at_the_scope_end() {
+    let (kept, out) = elaborate_and_run(
+        r#"fn @h() -> int {
+b0:
+  %n: int = iconst 4
+  scope.begin 1 0
+  %a: list<int> = call @mk (%n)
+  scope.own 1 0 %a
+  %z: int = iconst 0
+  %v: int = list.get %a, %z
+  scope.disown %a
+  drop %a
+  scope.end 1 0
+  ret %v
+}
+fn @main() -> int {
+b0:
+  %r: int = call @h ()
+  ret %r
+}
+"#,
+    );
+    assert_eq!((kept, out.as_str()), (4, ""));
 }

@@ -1061,6 +1061,9 @@ impl<'a, 'm> Lower<'a, 'm> {
             | Op::CleanupRun
             | Op::GlobalGet
             | Op::GlobalSet => self.runtime_services(f, inst),
+            Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd | Op::ScopeDisown => {
+                unreachable!("scope markers are removed by elaborate before codegen")
+            }
         };
         let out = match res_ty {
             Some(t) => {

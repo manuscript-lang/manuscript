@@ -150,6 +150,16 @@ fn verify_func_in(
     }
 }
 
+/// Whether `f` still carries scope markers: it is in the Raw phase until `elaborate` runs.
+pub fn is_raw(f: &Func) -> bool {
+    f.blocks.iter().flat_map(|b| &b.insts).any(|i| {
+        matches!(
+            i.op,
+            Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd | Op::ScopeDisown
+        )
+    })
+}
+
 /// For each argument of `inst`, whether the position moving_params an owned value.
 pub fn arg_modes(m: &Module, inst: &Inst) -> Vec<Mode> {
     let n = inst.args.len();
@@ -395,7 +405,8 @@ impl Verifier<'_> {
         for &b in &rpo {
             self.check_block(b.index(), &def, &idom);
         }
-        if self.errs.is_empty() {
+        // A Raw function leaves its drops to `elaborate`, so its ownership is checked after it.
+        if self.errs.is_empty() && !is_raw(self.f) {
             self.check_ownership(&rpo);
         }
     }
