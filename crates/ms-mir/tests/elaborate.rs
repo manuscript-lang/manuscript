@@ -461,3 +461,92 @@ b0:
     assert_eq!(out, "~\n7\n", "{text}");
     assert!(text.contains("msrt_shield_enter"), "{text}");
 }
+
+/// A memory-slot owner whose close returns a `Result`: the close runs shielded, its error becomes
+/// the function's return value through the function's close exit, and a close that succeeds
+/// leaves the normal return alone.
+fn fallible(code: i64) -> String {
+    format!(
+        r#"alt Res {{ Ok(v: list<int>), Error(e: list<int>) }} result
+fn @shutr(%p: ptr) -> Res {{
+b0:
+  %r: list<int> = load list<int> %p
+  %z: int = iconst 0
+  %id: int = list.get %r, %z
+  %u: unit = call.rt @msrt_print_int (%id)
+  %bad: bool = icmp.ne %id, %z
+  br_if %bad, b1(), b2()
+b1():
+  %pe: list<int> = call @mk (%id)
+  %e: Res = alt.new Res.Error %pe
+  ret %e
+b2():
+  %po: list<int> = call @mk (%z)
+  %o: Res = alt.new Res.Ok %po
+  ret %o
+}}
+fn @thunk(%p: ptr) -> unit {{
+b0:
+  %u: unit = unit
+  ret %u
+}}
+fn @exit0(%e: move Res) -> Res {{
+b0:
+  ret %e
+}}
+fn @exit1(%e: move Res, %p: move Res) -> Res {{
+b0:
+  drop %p
+  ret %e
+}}
+fn @work() -> Res {{
+b0:
+  scope.begin 1 0
+  %n: int = iconst {code}
+  %a: list<int> = call @mk (%n)
+  %s: ptr = slot list<int>
+  put %s, %a
+  scope.own 1 5 %s
+  %z: int = iconst 0
+  %pf: list<int> = call @mk (%z)
+  %fine: Res = alt.new Res.Ok %pf
+  scope.end 1 0
+  ret %fine
+}}
+fn @main() -> int {{
+b0:
+  %r: Res = call @work ()
+  %t: int = alt.tag %r
+  %u: unit = call.rt @msrt_print_int (%t)
+  drop %r
+  %z: int = iconst 0
+  ret %z
+}}
+"#
+    )
+}
+
+#[test]
+fn a_fallible_slot_close_returns_its_error_through_the_close_exit() {
+    for (code, tag) in [(0, "0"), (7, "1")] {
+        let mut m =
+            parse_module(&format!("{HEAD}{}", fallible(code))).unwrap_or_else(|e| panic!("{e}"));
+        let list = m.funcs[0].ret;
+        m.funcs[3].slot_close = Some(list);
+        m.funcs[3].slot_result = Some(ms_mir::ir::FuncId(2));
+        m.funcs[6].close_exit = Some((ms_mir::ir::FuncId(4), ms_mir::ir::FuncId(5)));
+        ms_mir::elaborate::run(&mut m).unwrap_or_else(|e| panic!("{e}"));
+        let text = print_module(&m);
+        if let Err(e) = verify_module(&m) {
+            panic!("{e:?}\n{text}");
+        }
+        let mut it = Interp::new(&m);
+        it.register("msrt_cleanup_discard", |_, _| Ok(ms_mir::interp::Val::Unit));
+        for name in ["msrt_shield_enter", "msrt_shield_exit"] {
+            it.register(name, |_, _| Ok(ms_mir::interp::Val::Unit));
+        }
+        it.run_entry().unwrap_or_else(|f| panic!("{f}"));
+        let want = format!("{code}\n{tag}\n");
+        assert_eq!(it.stdout(), want, "{text}");
+    }
+}
