@@ -817,7 +817,7 @@ impl FnLower<'_> {
                 .has(uid, ms_check::api::ownership::BindingFact::ConditionalMove);
         owned
             && !self.dead
-            && !binding.mutable
+            && !(binding.mutable && moves)
             && self.scope_closes_nothing()
             && !own
                 .binding_facts
@@ -1469,8 +1469,20 @@ impl FnLower<'_> {
     /// and hands back what the close leaves for the caller to drop. The binding's cleanup entry
     /// stays: it closes whatever the binding holds when its scope ends.
     fn close_replaced(&mut self, closer: &Closer, old: Value, ty: MTy) -> Value {
+        self.close_replaced_kind(&closer.kind, closer.explicit, old, ty)
+    }
+
+    /// `close_replaced` for a close `kind` and the flag that says the program already closed
+    /// the value.
+    pub(crate) fn close_replaced_kind(
+        &mut self,
+        kind: &CloseKind,
+        explicit: Option<ms_mir::builder::Var>,
+        old: Value,
+        ty: MTy,
+    ) -> Value {
         let _ = self.call_runtime("msrt_shield_enter", &[], MTy::UNIT);
-        let out = if let Some(explicit) = closer.explicit {
+        let out = if let Some(explicit) = explicit {
             // The program already closed `old` and handled the result: closing it again
             // releases what is left, and its result is dropped.
             let out = self.owned_var(ty);
@@ -1480,19 +1492,19 @@ impl FnLower<'_> {
             self.b.seal_block(again);
             self.b.seal_block(first);
             self.b.switch_to(again);
-            let (v, r) = close_owned_result(&mut self.b, &closer.kind, old, ty);
+            let (v, r) = close_owned_result(&mut self.b, kind, old, ty);
             self.drop_value(r);
             self.b.def_var(out, v);
             self.b.br(join, &[]);
             self.b.switch_to(first);
-            let v = close_owned(&mut self.b, &closer.kind, old, ty);
+            let v = close_owned(&mut self.b, kind, old, ty);
             self.b.def_var(out, v);
             self.b.br(join, &[]);
             self.b.seal_block(join);
             self.b.switch_to(join);
             self.b.use_var(out)
         } else {
-            close_owned(&mut self.b, &closer.kind, old, ty)
+            close_owned(&mut self.b, kind, old, ty)
         };
         let _ = self.call_runtime("msrt_shield_exit", &[], MTy::UNIT);
         out
