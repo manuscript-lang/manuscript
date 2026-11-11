@@ -342,7 +342,13 @@ fn function(
         for b in &f.blocks {
             b.term.for_each_target(|t| {
                 for (a, p) in t.args.iter().zip(&f.blocks[t.block.index()].params) {
+                    // A disowned value left its scope: the parameter it feeds is the new owner's.
+                    let disowned = b
+                        .insts
+                        .iter()
+                        .any(|i| i.op == Op::ScopeDisown && i.args[0] == *a);
                     if p.mode == Mode::Move
+                        && !disowned
                         && let Some(tag) = cx.tags.get(a).copied()
                         && cx.tags.insert(p.value, tag).is_none()
                     {
