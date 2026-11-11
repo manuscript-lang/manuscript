@@ -56,7 +56,7 @@ pub fn mistake_entries() -> Vec<Mistake> {
     entries
 }
 
-/// The mistakes section of `ms guide`: each wrong form beside its fix.
+/// The legacy cheat sheet mistakes section: each wrong form beside its fix.
 pub fn mistakes() -> String {
     let show = |text: &str| text.replace(";;", "; ");
     let mut out = String::from("\n## Common mistakes\n\n");

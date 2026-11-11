@@ -1,4 +1,4 @@
-//! Every lint code the rules emit has a `ms guide` entry.
+//! Every lint code the rules emit has a `ms explain` entry.
 
 use std::collections::BTreeSet;
 use std::path::Path;

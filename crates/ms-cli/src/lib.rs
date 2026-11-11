@@ -74,7 +74,7 @@ pub fn run<L: Lower>(
         "lsp" => commands::run_lsp(syms, args, io),
         "review" => commands::run_review(syms, args, io),
         "search_symbol" => commands::run_search_symbol(syms, args, io),
-        "guide" => commands::run_guide(args, io),
+        "explain" => commands::run_explain(args, io),
         _ => run_source_command(syms, args, &usage, engine, io),
     }
 }

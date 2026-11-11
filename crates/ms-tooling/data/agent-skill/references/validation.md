@@ -1,15 +1,8 @@
-# Validate before delivering
+# Validation
 
-1. Save complete `.ms` files, including imports.
-2. Run `ms check app.ms` to check syntax, types, ownership and effects.
-3. Run `ms run app.ms`; compare output and exit status with the intended behavior.
-4. Run `ms test` for the project's test blocks, and `ms verify` for project checks. `--deny-warnings` makes warnings fail validation.
+After the final edit, run `ms check app.ms`, then `ms run app.ms` and verify behavior. `ms test` runs tests; `ms verify` checks projects. `--deny-warnings` rejects warnings.
 
-Use `ms check app.ms --json` for structured diagnostics. Follow the reported location and concrete fix. `ms check app.ms --fix` applies machine-applicable fixes; always recheck afterward. `ms guide <code>` explains a diagnostic code. These are repair tools, not substitutes for checking whether the program does the right thing.
-
-Tests use `test "name":` with an indented body; benches similarly use `bench "name":`. Keep tests deterministic and exercise failure branches, empty inputs and ownership-sensitive paths as well as success. For expected errors, inspect Results rather than expecting exceptions. Run the relevant command after the final edit, not only before it.
-
-Save as `arithmetic.ms`:
+`ms check app.ms --json` gives structured diagnostics. Apply indicated repairs; `--fix` applies machine fixes, then recheck. `ms explain <code>` explains diagnostics. Acceptance does not prove runtime behavior or speed.
 
 <!-- complete-test: arithmetic.ms -->
 ```manuscript
@@ -21,14 +14,8 @@ test "twice":
     expect_equal(twice(21), 42)?
 ```
 
-`ms test arithmetic.ms` reports one passing test. Assertions return Results; the trailing `?` makes a failed assertion fail the test.
+`ms test arithmetic.ms` reports `1 tests, 0 failed`. Assertions return Results; `?` fails the test on error. Tests need no main. `bench "name":` introduces benchmark bodies.
 
-Common habits to avoid:
+Test success, failure and boundary inputs. Never expect exceptions. Avoid undeclared assignment, `try`/`await`, unwrap-style calls, `def`, enum `case`, or methods inside type bodies. Use `:=`, postfix `?`, `fn Type.method` and explicit returns instead.
 
-- Bind immutable locals with `:=`, not an assignment to an undeclared name.
-- Use `?` for Result propagation, not `try`, `await`, exceptions or unwrap-style calls.
-- Do not write methods inside `type`; use `fn Type.method` and `fn var Type.method`.
-- Do not use `case` declarations inside enums, Python `def`, or hidden GC assumptions.
-- Match named-function return types to actual control flow; a multiline non-Unit function must return its value.
-
-A check proves acceptance, not runtime correctness or performance. Report separately what compiled, what ran and what remains untested. Use `ms search_symbol` only for additional APIs beyond these references; inspect the returned signature and import path instead of inventing one.
+For additional APIs, inspect `ms search_symbol` signatures/imports. Report compiled, executed and untested checks separately.

@@ -1,10 +1,8 @@
 # Values and control
 
-`x := value` binds an immutable value; `x: Int := value` adds a type. `var x = value` permits assignment and mutation. Immutable collections cannot have their contents changed. Prefix intentionally unused names with `_`.
+Immutable: `x := value`, or `x: Int := value`. Mutable: `var x = value`; assignments require var. Prefix deliberately unused names with `_`.
 
-Core types are `Int`, `Float`, `Bool`, `String` and `Unit`. `true` and `false` are Bool literals; `unit` is the Unit value. Numeric conversions are explicit. Strings interpolate with `"hello {name}"`; escape literal braces with `\{` and `\}`. Raw text such as `r"\d+"` treats backslashes literally; it does not make a backslash escape a closing quote.
-
-Save as `control.ms`:
+Types: Int, Float, Bool, String, Unit. Literals: `true`, `false`, `unit`. Numeric conversions are explicit. `"hello {name}"` interpolates; `\{`/`\}` escape braces. Raw `r"\d+"` keeps backslashes literal, including before a quote.
 
 <!-- complete: control.ms -->
 ```manuscript
@@ -21,9 +19,8 @@ fn main() Int:
     return 1
 ```
 
-`ms run control.ms` prints nothing and exits 0.
+`ms run control.ms` exits 0, without output.
 
-- `0..n` excludes n. Use `break` to leave a loop and `continue` for its next iteration.
-- Boolean operators are `and`, `or`, `not`. Branches use `if`, `else if`, `else`.
+`0..n` excludes n. `break` exits a loop; `continue` advances it. Boolean operators: `and`, `or`, `not`.
 
-A one-line `if condition: return value` is a terse early exit. Statement `else` aligns with its `if` on a new line; an expression can use `if condition: left else: right` on one line. `+=`, `-=`, and similar assignments require a mutable target.
+Statements use `if`/`else if`/`else`; align else with if. Inline `if c: return x` exits early. Expressions use `if c: a else: b`. `+=`, `-=` and other assignments require mutable targets.

@@ -7,39 +7,21 @@ description: Write, check, test, and revise idiomatic Manuscript programs. Use f
 
 Generated for Manuscript {{MS_VERSION}}. Compare with `ms --version`; regenerate this skill with the matching compiler when stale. Manuscript is in alpha: syntax and APIs may change.
 
-## Start correctly
+## Defaults
 
-- Use four-space indentation. `:` opens a body; dedent ends it. No braces or semicolons for blocks.
-- Prefer inferred immutable `name := value`. Use `var name = value` only for mutation.
-- Write explicit parameter and return types on named functions. Use early returns, short pipelines, and small methods.
-- Handle every Result: propagate with postfix `?` in a compatible Result-returning function, or handle success and failure. There are no exceptions or `async`/`await` keywords.
-- Values have one owner. Reads can borrow; storage can move. Clone only when another independent owner is needed.
+Use four-space indents, `:=` for immutable locals, `var` for mutation, and explicit named-function types. Prefer early returns and short pipelines. Handle Results with `?` or explicit branches; clone only for an independent owner.
 
-Save as `hello.ms`:
+## References
 
-<!-- complete: hello.ms -->
-```manuscript
-// ms: allow_effect std.console.write
-fn main() Unit:
-    answer := 6 * 7
-    print(answer)
-```
+- [Program structure](references/program-structure.md) covers modules, imports and main. Shows indentation, types and receiver methods. Read when structuring a program.
+- [Values and control](references/values-and-control.md) covers bindings and literals. Shows branches, loops and range bounds. Read when writing computations.
+- [Types and functions](references/types-and-functions.md) covers signatures, generics and callbacks. Shows enums and interfaces. Read when designing reusable operations.
+- [Errors and optionals](references/errors-and-optionals.md) separates absence from failure. Shows propagation and explicit handling. Read before using fallible APIs.
+- [Ownership and cleanup](references/ownership-and-cleanup.md) explains borrows, moves and clones. Shows mutation and cleanup. Read when storing values or managing resources.
+- [Collections and pipelines](references/collections-and-pipelines.md) covers construction, lookup and mutation. Distinguishes method and function pipelines. Read when transforming data.
+- [Effects and concurrency](references/effects-and-concurrency.md) covers effects, promises and streams. Explains waiting and capture rules. Read before concurrent or streaming work.
+- [Validation](references/validation.md) covers checks, tests and diagnostics. Includes a complete assertion. Read before delivering or repairing code.
 
-Run `ms check hello.ms`, then `ms run hello.ms`. Output: `42`.
+## Verify
 
-## Read the relevant concept before writing
-
-These bundled references teach the syntax and operations directly; they are not links to another guide.
-
-- [Program structure](references/program-structure.md): files, imports, indentation, entry point, types and methods.
-- [Values and control](references/values-and-control.md): bindings, numbers, text, branches and loops.
-- [Types and functions](references/types-and-functions.md): signatures, generics, closures, enums and interfaces.
-- [Errors and optionals](references/errors-and-optionals.md): `T!`, `T?`, propagation and explicit handling.
-- [Ownership and cleanup](references/ownership-and-cleanup.md): borrowing, moving, cloning, mutation and scope-end cleanup.
-- [Collections and pipelines](references/collections-and-pipelines.md): lists, maps, sets and method versus function pipelines.
-- [Effects and concurrency](references/effects-and-concurrency.md): effects, promises, streams and their imports.
-- [Validation](references/validation.md): checking, tests, diagnostics and the edit/run loop.
-
-## Before returning code
-
-Run the applicable `ms check`, `ms run`, or `ms test` command. Verify actual output, not only acceptance by the checker. Keep all imports in complete examples; prelude names (`List`, `Map`, `Set`, `Optional`, `Result`, `Error`) and `print` need none. For APIs not covered here, `ms search_symbol <words>` returns declarations and import paths; do not guess signatures. Never claim a check passed if it was not run.
+Run applicable `ms check`, `ms run` and `ms test` commands after editing. Check behavior, not just compilation; report unrun checks. Include imports. Prelude collections, Optional, Result, Error and print need none. For additional APIs, `ms search_symbol <words>` supplies signatures/imports; do not guess.

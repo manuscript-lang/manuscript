@@ -1,10 +1,8 @@
 # Program structure
 
-A file is a module. Put imports first, followed by module-level types, functions and methods. An executable entry file declares `fn main()` with no parameters; `export` is optional on main.
+A file is a module: imports, then types, functions and methods. `fn main()` takes no parameters; export is optional.
 
-Use four spaces per nested level. A trailing `:` introduces an indented body; dedent ends it. Fields go inside `type`; receiver methods sit beside the type, not inside it. `self` is implicit, not a declared parameter. `fn var Type.method` may mutate self.
-
-Save as `counter.ms`:
+Four spaces indent a body after `:`; dedent ends it. Fields belong inside `type`; receiver methods sit beside it. `self` is implicit. `fn var` mutates the receiver.
 
 <!-- complete: counter.ms -->
 ```manuscript
@@ -22,15 +20,10 @@ fn main() Int:
     return counter.value() - 42
 ```
 
-`ms check counter.ms` succeeds; `ms run counter.ms` prints nothing and exits 0.
+`ms run counter.ms` exits 0, without output.
 
-- An inline function body returns its expression. A multiline value-returning body uses `return`. `Unit` and `Unit!` functions may fall through.
-- `main` returning `Int` sets the exit status. `Unit` succeeds with status 0. `Unit!` succeeds on `ok` and reports an error with status 1 on `error`.
+Inline functions return their expression; multiline value-returning functions use `return`. Unit/Unit! may fall through. Main returns Unit (status 0), Int (exit status), or Unit! (error prints and exits 1).
 
-## Files and visibility
+Import exported names with `import a, b from "./other.ms"`; standard paths start `@std/`. `export fn`/`export type` share declarations. Names are case-sensitive; signatures resolve before bodies.
 
-`import name from "./other.ms"` imports an exported declaration; `export fn` and `export type` share it. Multiple imports use `import a, b from "./other.ms"`. Standard-library paths start with `@std/`. Names are case-sensitive. Imports do not put every declaration from that module in scope.
-
-Record constructors accept positional or labeled arguments, such as `Counter(2)` or `Counter(n: 2)`; fields with defaults can be omitted. `export opaque` hides a type's fields or an enum's cases outside its file.
-
-Function/type declarations have no required ordering relative to calls; module signatures are collected before bodies. Keep executable work in functions, with main coordinating the program.
+Construct records positionally or by label: `Counter(2)`, `Counter(n: 2)`. Defaults permit omission. `export opaque` hides fields/cases outside the file.

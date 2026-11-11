@@ -78,6 +78,6 @@ Each diagnostic's `position`, `end`, and `fix` boundaries use the same source-pa
 | MS3070, MS3080 | Numeric literals, generic inference |
 | MS4000 | Lowering |
 
-`ms guide <code>` prints a code's or sub-code's family and usual repair (`--json` for structured output), for example `ms guide MS3000.1`.
+`ms explain <code>` prints a code's or sub-code's family and usual repair (`--json` for structured output), for example `ms explain MS3000.1`.
 
 For the language rules behind a diagnostic, start with [variables](../../core-language/basics/bindings.md) and [values and references](../../core-language/types/references.md).

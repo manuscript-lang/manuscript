@@ -22,8 +22,8 @@ Commands:
   init           Create a new project with a manifest, entry, test, and .gitignore
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
-  skill          Write the bundled Manuscript agent skill and references
-  guide          Print the legacy cheat sheet, or explain diagnostic codes
+  skill          Print the Manuscript agent skill, or write its files with -o
+  explain        Explain diagnostic codes and their usual repairs
   help           Show help for a command
   version        Print the compiler version
 
@@ -77,7 +77,7 @@ Check source hygiene and semantic lint rules in independent inputs and their imp
 A project directory selects ms.toml; standalone directories discover .ms files recursively.
 Discovery skips hidden/vendor/node_modules directories, directory symlinks, and nested projects.
 Each input retains its own import root; pass nested projects explicitly. Use -- before flag-like filenames.
-Each rule is a warning or an error (`severity` in --json; `ms guide MSL110` shows it). Warnings are reported
+Each rule is a warning or an error (`severity` in --json; `ms explain MSL110` shows it). Warnings are reported
 without failing; exit status is 1 when any input fails checking or has an error finding, or any finding with --deny-warnings.
 
 Options:
@@ -391,35 +391,34 @@ Examples:
 
 pub const HELP_SKILL: &str = r#"Usage: ms skill [-o <directory>]
 
-Write the bundled Manuscript agent skill into <directory>/manuscript/.
-Includes SKILL.md and concept references; works offline without this repository.
-Existing manuscript directories are never overwritten.
+Print the versioned Manuscript agent skill with all references inlined as one
+Markdown document. Pipe it to an agent or redirect it to a file.
+With -o, write SKILL.md and reference files into <directory>/manuscript/ instead.
+Works offline without this repository; existing skill directories are never overwritten.
 
 Options:
-  -o, --output <directory>  Parent skill directory (default .agents/skills)
+  -o, --output <directory>  Parent directory for the skill files
   -h, --help               Show this help without writing files
 
 Examples:
   ms skill
+  ms skill > manuscript-skill.md
   ms skill -o ./agents/skills
 "#;
 
-pub const HELP_GUIDE: &str = r#"Usage: ms guide [code...] [--json]
+pub const HELP_EXPLAIN: &str = r#"Usage: ms explain <code...> [--json]
 
-Print the language cheat sheet: syntax, types, errors, a checked example
-program, and common mistakes beside their fixes. Look symbols up with ms search_symbol.
-
-With diagnostic codes from ms check --json or ms lint --json (MS and MSL), print each code's rule family and
-usual repair instead. Apply the diagnostic's own fix field first when it has one.
+For diagnostic codes from ms check --json or ms lint --json (MS and MSL),
+print each code's rule family and usual repair. Apply the diagnostic's own
+fix field first when it has one.
 
 Options:
-  --json      Emit versioned JSON (with codes)
+  --json      Emit versioned JSON
   -h, --help  Show this help
 
 Examples:
-  ms guide
-  ms guide MS3060
-  ms guide MS2001 MS3050 --json
+  ms explain MS3060
+  ms explain MS2001 MS3050 --json
 "#;
 
 pub const HELP_HELP: &str = r#"Usage: ms help [command]

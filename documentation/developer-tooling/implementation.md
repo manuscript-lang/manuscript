@@ -157,8 +157,8 @@ These commands answer what the compiler commands do not and print only what is n
 | Command | Behavior |
 | --- | --- |
 | `ms search_symbol [<name or words>... \| <path>]` | Fuzzy, case-insensitive lookup over project and standard-library symbols (`--limit n`, default 5, max 10 total matches; `--json`). Project matches come first and print `file:line:column`, type, description, and up to five uses; standard matches fill remaining places and print signature and path. A lone module or declaration path (`json`, `prelude.List`, `prelude.List.sorted`) prints that page, capped near 3.5 KB; no argument lists modules |
-| `ms skill -o <directory>` | Install the versioned, bundled agent writing skill at `<directory>/manuscript/`, with `SKILL.md` and concept references; defaults to `.agents/skills`, never overwrites an existing skill |
-| `ms guide` | The legacy language cheat sheet with a checked example program, then common mistakes beside their fixes (`crates/ms-tooling/data/mistakes.txt`, verified against the compiler by `guide_pages`) |
+| `ms skill [-o <directory>]` | Print the complete versioned agent skill as one Markdown document for piping; with `-o`, export `SKILL.md` and reference files to `<directory>/manuscript/` without overwriting an existing skill |
+| `ms explain <code...> [--json]` | Explain diagnostic families, severity and usual repairs |
 
 Pair them with `ms check`, `ms fmt --check`, `ms lint`, and `ms test`, which print compact diagnostics (`--json` for complete documents).
 
@@ -256,7 +256,7 @@ The language server provides incremental sync with validated UTF-16 ranges, diag
 
 ## Linting and formatting
 
-Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source file fails checking or has an error finding, and 0 otherwise: warnings are printed (with a count) but do not fail the command. `--deny-warnings` makes warnings fail too, for CI. `--json` findings carry `severity` (`warning` or `error`); the language server reports warnings and errors with the matching LSP severity. `ms guide <code>` prints a rule's severity. Run `ms check` for correctness errors.
+Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source file fails checking or has an error finding, and 0 otherwise: warnings are printed (with a count) but do not fail the command. `--deny-warnings` makes warnings fail too, for CI. `--json` findings carry `severity` (`warning` or `error`); the language server reports warnings and errors with the matching LSP severity. `ms explain <code>` prints a rule's severity. Run `ms check` for correctness errors.
 
 | Code | Severity | Finding |
 | --- | --- | --- |

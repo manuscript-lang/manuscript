@@ -1,4 +1,4 @@
-//! Install the compiler's self-contained agent skill in a chosen directory.
+//! Print a self-contained agent skill, or install its files in a chosen directory.
 
 use std::io::Write;
 use std::path::Path;
@@ -6,11 +6,10 @@ use std::path::Path;
 use crate::backend::Io;
 
 pub fn run_skill(args: &[String], io: &mut Io) -> i32 {
-    let mut output = ".agents/skills";
-    let mut seen_output = false;
+    let mut output = None;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
-        if !matches!(arg.as_str(), "-o" | "--output") || seen_output {
+        if !matches!(arg.as_str(), "-o" | "--output") || output.is_some() {
             return crate::util::usage_error(
                 io,
                 "ms skill takes only -o <directory>; run ms skill --help",
@@ -25,9 +24,21 @@ pub fn run_skill(args: &[String], io: &mut Io) -> i32 {
                 "ms skill -o needs a nonempty parent directory; prefix a leading dash with ./",
             );
         }
-        output = directory;
-        seen_output = true;
+        output = Some(directory);
     }
+    let Some(output) = output else {
+        let text = ms_tooling::guide::skill::document(crate::VERSION);
+        if let Err(error) = write!(io.stdout, "{text}")
+            && error.kind() != std::io::ErrorKind::BrokenPipe
+        {
+            let _ = writeln!(
+                io.stderr,
+                "ms skill: cannot write stdout: {error}; check the output destination and re-run"
+            );
+            return 1;
+        }
+        return 0;
+    };
     let destination = Path::new(output).join("manuscript");
     if let Err(error) = install(Path::new(output), &destination) {
         let _ = writeln!(

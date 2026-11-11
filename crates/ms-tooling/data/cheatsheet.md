@@ -25,7 +25,7 @@ fn main() Unit!:
 `ms check total.ms` checks it; `ms run total.ms` prints `42`.
 
 - Find APIs/imports: `ms search_symbol <words>` or `<module>.<Name>`. Follow signatures, not guesses. Prelude (`List Map Set Optional Result Error`) and `print` need no import.
-- Repair with `ms check total.ms --json`; follow its message/fix. `ms guide <code>` explains the rule. `ms check total.ms --fix` applies fixes; recheck.
+- Repair with `ms check total.ms --json`; follow its message/fix. `ms explain <code>` explains the rule. `ms check total.ms --fix` applies fixes; recheck.
 - Validate: `ms test` runs `test "name":` blocks; `ms verify` checks projects. `ms bench` runs `bench "name":` blocks. Add `--deny-warnings` to reject warnings.
 
 ## Program structure

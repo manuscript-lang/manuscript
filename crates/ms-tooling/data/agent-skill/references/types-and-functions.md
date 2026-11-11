@@ -1,8 +1,6 @@
 # Types and functions
 
-Named functions declare parameter and return types: `fn f(value: Int, offset: Int = 1) Int:`. Labels are optional at calls: `f(2, offset: 3)`. Generic parameters follow the name, as in `fn identity[T](value: T) T`. A callback type is `fn(Int) Int`; closures can be `fn x: x + 1` or `fn(x: Int) Int: x + 1`.
-
-Save as `types.ms`:
+Declare parameter/return types: `fn f(value: Int, offset: Int = 1) Int:`. Call labels are optional: `f(2, offset: 3)`. Generics follow the name. Callback type: `fn(Int) Int`; closures: `fn x: x + 1` or `fn(x: Int) Int: x + 1`.
 
 <!-- complete: types.ms -->
 ```manuscript
@@ -35,9 +33,10 @@ fn main() Int:
     return 1
 ```
 
-`ms run types.ms` prints nothing and exits 0.
+`ms run types.ms` exits 0, without output.
 
-- Own receiver methods with matching names, parameter labels/types, mutability and result types satisfy an interface by shape. Explicit implementations use `impl Contract for Type:` with method declarations inside.
-- Enum cases are declared directly, without a `case` keyword. Construct with `Choice.Empty` or `Choice.Number(40)`. Match arms must be exhaustive; `_:` is the fallback.
+Matching receiver methods satisfy interfaces by shape: names, parameter labels/types, mutability and return types must agree. Explicit implementations use `impl Contract for Type:` with methods inside.
 
-Keep match flow flat: return early or extract a payload before the next decision. Use Optional/Result methods and conditional bindings for their normal control flow. Generic operations need appropriate bounds, for example `T: Clonable` when copying T; do not assume every value can be cloned.
+Enum cases need no `case` keyword. Construct `Choice.Empty` or `Choice.Number(40)`. Match exhaustively; `_:` handles the remainder. Keep matches flat.
+
+Generic operations need bounds, such as `T: Clonable` for copying T. Not every type is cloneable.
