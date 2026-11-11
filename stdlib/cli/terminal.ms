@@ -638,8 +638,9 @@ export fn terminal_size() TerminalSize!:
 	)
 
 // Acquires raw input with an optional alternate screen; returns `EBUSY` while another
-// raw terminal is open and `ENOTTY` when streams are redirected. ms: effect
-// std.console.read ms: effect std.console.write
+// raw terminal is open and `ENOTTY` when streams are redirected.
+// ms: effect std.console.read
+// ms: effect std.console.write
 export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:
 	native := try msstd_terminal_raw_mode()
 	leave := if alternate_screen: "{esc}[?1049l" else: ""

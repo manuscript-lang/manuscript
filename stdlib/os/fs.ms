@@ -711,7 +711,8 @@ fn invalid_input() Error:
 	return Error("filesystem: invalid input", kind: "EINVAL")
 
 // Starts reading a file fully into memory and returns its promise. Supply `max_bytes`
-// for untrusted or large files. ms: effect std.fs.read
+// for untrusted or large files.
+// ms: effect std.fs.read
 export fn read_file(path: String, max_bytes: Int? = none) Promise[Bytes]:
 	return owned_task[Bytes](read_job(path.clone(), max_bytes))
 
@@ -728,19 +729,22 @@ export fn read_symlink(path: String) String!:
 
 // Removes a file or empty directory; recursive defaults to False, retaining nonempty
 // trees. A missing path returns ENOENT, except that a recursive removal of a missing
-// path succeeds. ms: effect std.fs.delete
+// path succeeds.
+// ms: effect std.fs.delete
 export fn remove(path: String, recursive: Bool = false) Unit!:
 	return msstd_fs_remove(path, recursive)
 
 // Moves `source` to `destination` using the operating system's rename, applying its
 // rules for replacing an existing destination. It never falls back to copying, so a
-// move across devices returns an error. ms: effect std.fs.write ms: effect
-// std.fs.delete
+// move across devices returns an error.
+// ms: effect std.fs.write
+// ms: effect std.fs.delete
 export fn rename(source: String, destination: String) Unit!:
 	return msstd_fs_rename(source, destination)
 
 // Returns metadata for `path`. `follow_links` True (the default) describes the link
-// target and False describes the link itself. ms: effect std.fs.read
+// target and False describes the link itself.
+// ms: effect std.fs.read
 export fn stat(path: String, follow_links: Bool = true) FileInfo!:
 	return msstd_fs_stat(path, follow_links)
 
@@ -773,14 +777,15 @@ fn write_job(path: String, data: Bytes, replace: Bool, held: Bool) fn() Unit!:
 		return msstd_fs_write_file(path, data, replace)
 
 // Checks access with mode 0..7: existence 0, read 4, write 2, execute 1, or combined
-// bits. Native permissions and Windows access policy still apply. ms: effect
-// std.fs.read
+// bits. Native permissions and Windows access policy still apply.
+// ms: effect std.fs.read
 export fn access(path: String, mode: Int) Unit!:
 	return msstd_fs_access(path, mode)
 
 // Starts appending `data` (text or `Bytes`) to the end of the file and returns its
 // promise, creating the file with mode 0600 when absent. Writes every byte or fails,
-// possibly leaving a partial append. ms: effect std.fs.write
+// possibly leaving a partial append.
+// ms: effect std.fs.write
 export fn append_file(path: String, data: Writable) Promise[Unit]:
 	payload := data.as_bytes()
 	held := msstd_fs_admit(payload.length())
@@ -793,7 +798,8 @@ fn append_job(path: String, data: Bytes, held: Bool) fn() Unit!:
 
 // Changes target permissions with mode 0..4095. `follow_links` True (the default)
 // follows a final symbolic link; False changes the link itself, which returns ENOTSUP
-// on hosts lacking this operation. ms: effect std.fs.write
+// on hosts lacking this operation.
+// ms: effect std.fs.write
 export fn chmod(path: String, mode: Int, follow_links: Bool = true) Unit!:
 	return msstd_fs_chmod(path, mode, follow: follow_links)
 
@@ -811,7 +817,8 @@ export fn truncate(path: String, size: Int) Unit!:
 
 // Sets the access and modification times of `path`. `follow_links` True (the default)
 // follows a final symbolic link; False updates the link itself, with ENOTSUP where the
-// host lacks it, such as Windows. ms: effect std.fs.write
+// host lacks it, such as Windows.
+// ms: effect std.fs.write
 export fn set_times(
 	path: String,
 	accessed: Timestamp,
@@ -821,8 +828,8 @@ export fn set_times(
 	return msstd_fs_set_times(path, accessed, modified, follow: follow_links)
 
 // Creates `destination` as another name for the file at `source`. An existing
-// destination returns EEXIST; it must be on the same filesystem as `source`. ms: effect
-// std.fs.write
+// destination returns EEXIST; it must be on the same filesystem as `source`.
+// ms: effect std.fs.write
 export fn create_hard_link(source: String, destination: String) Unit!:
 	return msstd_fs_hard_link(source, destination)
 
@@ -857,7 +864,8 @@ export fn open(
 // Opens `path` as a directory cursor that yields one child per `read` in native order;
 // close it when done. It is also a stream source:
 // `stream[DirectoryEntry](try open_directory(path))`. A path that is not a directory
-// returns EINVAL. ms: effect std.fs.read
+// returns EINVAL.
+// ms: effect std.fs.read
 export fn open_directory(path: String) Directory!:
 	return msstd_fs_directory_open(path)
 
@@ -956,8 +964,9 @@ fn finish_atomic(
 // renames when it can. When the rename fails with a host error other than a missing or
 // protected path, as a move across devices does, it copies the tree, then removes
 // `source`, and removes the partial copy if copying fails. A destination that already
-// exists is not replaced by the copy fallback and returns EEXIST. ms: effect
-// std.fs.write ms: effect std.fs.delete
+// exists is not replaced by the copy fallback and returns EEXIST.
+// ms: effect std.fs.write
+// ms: effect std.fs.delete
 export fn move(source: String, destination: String) Unit!:
 	renamed := rename(source, destination)
 	if renamed.is_ok(): return renamed
@@ -1023,8 +1032,8 @@ export fn watch(
 	)
 
 // Creates a new temp directory whose contents are removed by scoped close. Prefix has
-// the same validation as temporary_directory; this does not query the temp root. ms:
-// effect std.fs.write
+// the same validation as temporary_directory; this does not query the temp root.
+// ms: effect std.fs.write
 export fn temporary(prefix: String) TemporaryDirectory!:
 	return msstd_fs_temporary_open(prefix)
 

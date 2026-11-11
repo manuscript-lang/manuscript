@@ -109,7 +109,8 @@ impl Screen:
 		self.height = rows
 
 // A screen that starts drawing at the current cursor row; the height is the terminal's,
-// or 24 when unknown. ms: effect std.console.read
+// or 24 when unknown.
+// ms: effect std.console.read
 export fn new_screen() Screen:
 	size := terminal_size()
 	rows := if size.is_error(): 24 else: size.get(none).rows

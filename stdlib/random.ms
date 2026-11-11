@@ -23,7 +23,8 @@ import (
 )
 
 // Returns a secure integer at least `min` and below `max_exclusive` when supplied, from
-// the operating system's entropy. ms: effect std.random.read
+// the operating system's entropy.
+// ms: effect std.random.read
 export fn secure_int(min: Int, max_exclusive: Int?) Int!:
 	return draw_int(min, max_exclusive)
 
@@ -76,7 +77,8 @@ export fn token(size: Int = 32) String!:
 	return ok(base64_encode(data, url_safe: true, padded: false))
 
 // Returns a secure Float at least 0.0 and below 1.0 with 53 random bits from the
-// operating system's entropy. ms: effect std.random.read
+// operating system's entropy.
+// ms: effect std.random.read
 export fn float() Float!:
 	return draw_float()
 
@@ -92,7 +94,8 @@ export fn choice[T](values: List[T]) T?!:
 
 // Returns `count` distinct positions' items chosen uniformly without replacement, in
 // random order, as copies; the input is unchanged. A `count` outside 0 through the list
-// length returns EINVAL. ms: effect std.random.read
+// length returns EINVAL.
+// ms: effect std.random.read
 export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 	if count < 0 or count > values.length():
 		return error(Error("random: invalid input", kind: "EINVAL"))
@@ -187,8 +190,8 @@ fn scaled_weighted_position(weights: List[Float], unit_draw: Float) Int:
 
 // Returns exactly `count` unpredictable bytes from the operating system, with `count`
 // from 0 through 16 MiB (16777216). A negative or larger count returns EINVAL; a source
-// failure returns EIO. The call observes task cancellation between 64 KiB chunks. ms:
-// effect std.random.read
+// failure returns EIO. The call observes task cancellation between 64 KiB chunks.
+// ms: effect std.random.read
 export fn random_bytes(count: Int) Bytes!:
 	return msstd_random_os_bytes(count)
 

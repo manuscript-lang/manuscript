@@ -333,15 +333,16 @@ export fn title() String!:
 	return msstd_process_title()
 
 // Sets the process title shown by tools such as `ps`. A title with NUL or newline
-// returns EINVAL, and platforms that cannot rename a process return ENOTSUP. ms: effect
-// std.process.write
+// returns EINVAL, and platforms that cannot rename a process return ENOTSUP.
+// ms: effect std.process.write
 export fn set_title(title: String) Unit!:
 	return msstd_process_set_title(title)
 
 // Replaces the supplementary group list with the groups of `username` from the account
 // database plus `gid` first. Requires privilege. A failed user lookup returns EIO, a
 // `gid` outside 0 through 2147483647 returns EINVAL, and a lack of privilege returns
-// EACCES. ms: effect std.process.write
+// EACCES.
+// ms: effect std.process.write
 export fn initialize_groups(username: String, gid: Int) Unit!:
 	return msstd_process_initialize_groups(username, gid)
 
@@ -365,8 +366,8 @@ export fn replace(
 	return msstd_process_replace(program, arguments, names, values)
 
 // Returns the process id, parent id, executable path, arguments, platform, and real and
-// effective user and group ids. Text that is not valid UTF-8 returns ENOTSUP. ms:
-// effect std.process.read
+// effective user and group ids. Text that is not valid UTF-8 returns ENOTSUP.
+// ms: effect std.process.read
 export fn process_info() ProcessInfo!:
 	return msstd_process_info()
 
@@ -378,8 +379,8 @@ export fn cpu_usage() CpuUsage!:
 
 // Validates a signed 32-bit PID and signal 0..64; the OS decides supported
 // numbers/permissions. Signal 0 checks existence; Windows positive PIDs support 0 and
-// forced INT/KILL/TERM termination. A pid that names no process returns ENOENT. ms:
-// effect std.process.signal
+// forced INT/KILL/TERM termination. A pid that names no process returns ENOENT.
+// ms: effect std.process.signal
 export fn send_signal(pid: Int, signal: Int) Unit!:
 	return msstd_process_send_signal(pid, signal)
 
@@ -401,8 +402,8 @@ export fn umask(mask: Int) Int!:
 	return msstd_process_umask(mask)
 
 // Sets the real or effective user or group id to `id`, 0..2147483647; other ids return
-// EINVAL. Identity changes require OS permission and are ENOTSUP on Windows. ms: effect
-// std.process.write
+// EINVAL. Identity changes require OS permission and are ENOTSUP on Windows.
+// ms: effect std.process.write
 export fn set_identity(kind: IdentityKind, id: Int) Unit!:
 	if kind == IdentityKind.Uid: return msstd_process_set_identity("uid", id)
 	if kind == IdentityKind.Gid: return msstd_process_set_identity("gid", id)
@@ -412,14 +413,16 @@ export fn set_identity(kind: IdentityKind, id: Int) Unit!:
 
 // Replaces the supplementary group list with the given numeric ids, each 0 through
 // 2147483647. Requires privilege. Invalid ids return EINVAL, a lack of privilege
-// returns EACCES, and Windows returns ENOTSUP. ms: effect std.process.write
+// returns EACCES, and Windows returns ENOTSUP.
+// ms: effect std.process.write
 export fn set_groups(groups: List[Int]) Unit!:
 	return msstd_process_set_groups(groups)
 
 // Returns the scheduling priority of process `pid` (0 means the calling process) as a
 // nice-style value, from -20 for highest to 19 for lowest. Windows maps its priority
 // classes onto this range. A pid outside 0 through 2147483647 returns EINVAL, and
-// platforms without priorities return ENOTSUP. ms: effect std.process.read
+// platforms without priorities return ENOTSUP.
+// ms: effect std.process.read
 export fn get_priority(pid: Int) Int!:
 	return msstd_system_get_priority(pid)
 

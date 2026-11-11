@@ -494,7 +494,8 @@ export fn local_zone() String:
 
 // Starts a timer for the requested duration and returns its promise; `wait()` it to
 // pause the current task for at least that long. The timer has no task of its own, and
-// dropping the promise cancels it. ms: effect std.clock.sleep
+// dropping the promise cancels it.
+// ms: effect std.clock.sleep
 export fn sleep(duration: Duration) Promise[Unit]:
 	return adopt[Unit](msrt_promise_sleep(duration.nanos))
 
@@ -504,7 +505,8 @@ export fn timestamp(seconds: Int, nanoseconds: Int) Timestamp!:
 
 // Returns the current reading of the monotonic clock, for measuring elapsed time.
 // Readings are only comparable with others from this clock and do not correspond to a
-// calendar date. ms: effect std.clock.read
+// calendar date.
+// ms: effect std.clock.read
 export fn monotonic() Instant:
 	return msstd_time_clock_now()
 
@@ -569,7 +571,8 @@ impl Source[Instant] for TickSource:
 		return ok(unit)
 
 // Returns a ticker whose first tick comes one `period` from now. A period of zero or
-// less is a programming fault. ms: effect std.clock.sleep
+// less is a programming fault.
+// ms: effect std.clock.sleep
 export fn ticker(period: Duration) ReadStream[Instant]:
 	if period.compare(nanoseconds(0)) <= 0:
 		panic("ticker: period must be positive")

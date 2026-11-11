@@ -209,7 +209,8 @@ fn outgoing(options: FetchOptions) Outgoing:
 	return Outgoing(headers: fields, body: data)
 
 // Creates a reusable fetcher on `net`, whose restrictions apply to every request and
-// redirect; none uses the host network. ms: effect std.net.connect
+// redirect; none uses the host network.
+// ms: effect std.net.connect
 export fn fetcher(
 	options: FetcherOptions = FetcherOptions(),
 	net: Network? = none
@@ -229,7 +230,8 @@ export fn fetcher(
 // Starts one buffered request on a one-shot client and returns its promise; requests
 // started together are in flight together. Redirects are followed up to 20 times, the
 // body is limited to 16 MiB, and the exchange to 30 seconds; override them in
-// `options`. ms: effect std.net.connect
+// `options`.
+// ms: effect std.net.connect
 export fn fetch(
 	url: String,
 	options: FetchOptions = FetchOptions()

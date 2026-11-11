@@ -457,7 +457,8 @@ fn host_network() Network:
 
 // Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A restricted
 // network without listening permission, or an address outside its CIDRs, returns
-// EACCES. ms: effect std.net.listen
+// EACCES.
+// ms: effect std.net.listen
 export fn bind_datagram(address: String) DatagramSocket!:
 	return host_network().bind_datagram(address)
 
@@ -476,7 +477,8 @@ export fn connect(
 
 // Starts connecting to the Unix domain socket at `path` and returns its promise. Any
 // restricted network gives EACCES because Unix sockets bypass host and CIDR checks, and
-// an empty path gives EINVAL. `timeout` bounds the attempt. ms: effect std.net.connect
+// an empty path gives EINVAL. `timeout` bounds the attempt.
+// ms: effect std.net.connect
 export fn connect_unix(path: String, timeout: Duration? = none) Promise[Connection]:
 	return owned_task[Connection](connect_unix_job(path.clone(), timeout))
 
@@ -490,15 +492,16 @@ fn connect_unix_job(path: String, timeout: Duration?) fn() Connection!:
 
 // Creates a reusable HTTP client with connection pooling that dials through this
 // network, so its restrictions and resolver apply to every request and redirect.
-// Invalid or negative options return EINVAL. Closing the network closes the client. ms:
-// effect std.net.connect
+// Invalid or negative options return EINVAL. Closing the network closes the client.
+// ms: effect std.net.connect
 export fn http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
 	return host_network().http_client(options)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port). A
 // restricted network needs `allow_listen` and an IP-literal address inside its CIDRs,
 // otherwise EACCES is returned. An address that is not an IP literal with a port
-// returns EINVAL. ms: effect std.net.listen
+// returns EINVAL.
+// ms: effect std.net.listen
 export fn listen(address: String) Listener!:
 	return host_network().listen(address)
 
@@ -531,8 +534,8 @@ export fn lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!
 // Performs one buffered HTTP request and returns the status, headers, and complete
 // body. Only `http` and `https` URLs without user info are accepted. Redirects are
 // returned, not followed, and no cookies or proxy settings apply. A body over
-// `options.max_bytes` returns EOVERFLOW; error statuses are ordinary responses. ms:
-// effect std.net.connect
+// `options.max_bytes` returns EOVERFLOW; error statuses are ordinary responses.
+// ms: effect std.net.connect
 export fn request(
 	method: HttpMethod,
 	url: String,
@@ -576,7 +579,8 @@ export fn restrict(
 // resource cleanup runs. A client that half-closes its end after sending the request
 // counts as disconnected. A faulting handler's frames release the heap values they own,
 // as a cancelled handler's do. Return an error response for expected failures instead
-// of faulting. ms: effect std.net.listen
+// of faulting.
+// ms: effect std.net.listen
 export fn serve(
 	address: String,
 	handler: fn(var HttpExchange) Unit!,
@@ -687,7 +691,8 @@ fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
 // Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and
 // subprotocols in `options`. Handshake headers such as `Upgrade`, `Connection`, `Host`,
 // and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not
-// offered fails the handshake. Failures are `Error` values. ms: effect std.net.connect
+// offered fails the handshake. Failures are `Error` values.
+// ms: effect std.net.connect
 export fn web_socket(
 	url: String,
 	options: WebSocketOptions = WebSocketOptions()
@@ -697,6 +702,7 @@ export fn web_socket(
 // Returns a derived network that resolves names through the DNS server at `address`, an
 // IP literal with port, instead of the system resolver. The address must be allowed by
 // this network's restrictions, otherwise EACCES is returned. An address that is not an
-// IP literal with a port returns EINVAL. ms: effect std.net.connect
+// IP literal with a port returns EINVAL.
+// ms: effect std.net.connect
 export fn with_resolver(address: String) Network!:
 	return host_network().with_resolver(address)
