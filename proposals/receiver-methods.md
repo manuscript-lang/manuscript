@@ -69,4 +69,4 @@ fn var Counted.close() Unit!:
 ## Open questions
 - **Specialized receivers.** `stdlib/collections/collections.ms` has nine `impl ListXSum for List[X]` blocks (`Int`, `Float`, `Int8`...). One-per-type forbids them. Recommend a single `fn List[T: Numeric].sum() T` with a stdlib `Numeric` bound (zero and `+`), declared in Manuscript; the alternative is free functions per type.
 - **Local extensions** (`tests/e2e/testdata/projects/local_extensions`: modules add `Read` for another module's `Item`). Receiver methods in the declaring module only removes them; other modules write a wrapper type or free function. Recommend removing; it also deletes the per-module `Equal`/`Hashable` map behavior.
-- **Accidental `close`.** Any `fn var close() Unit!` auto-closes. Recommend accepting it as the convention and documenting it in `closeable.md`.
+- **Accidental `close`.** Any `fn var close() Unit!` auto-closes, which broke the stream drivers in `stdlib/io/io.ms` (closed again by their wrapper); those stay `impl Source`/`Sink`. Document the convention in `closeable.md`.
