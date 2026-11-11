@@ -659,7 +659,7 @@ impl FnLower<'_> {
         owned
             && !self.dead
             && !binding.mutable
-            && !self.scope_marks.is_empty()
+            && self.scope_closes_nothing()
             && self.b.m.funcs[fid.index()].ret == MTy::UNIT
             && !own.moves.contains_key(&uid)
             && !own.close_moves.contains_key(&uid)
@@ -669,13 +669,6 @@ impl FnLower<'_> {
             && !own
                 .binding_facts
                 .has(uid, ms_check::api::ownership::BindingFact::ConditionalMove)
-            && self.scopes.last().is_none_or(|s| {
-                s.iter().all(|u| {
-                    !self.closers.contains_key(u)
-                        && !self.rest_closers.contains_key(u)
-                        && !self.hidden_closers.contains_key(u)
-                })
-            })
     }
 
     pub(crate) fn bind_closing_kind(
@@ -769,6 +762,7 @@ impl FnLower<'_> {
             self.b.def_var(entry, handle);
             entry
         });
+        self.note_closer();
         self.closers.insert(
             binding.uid,
             Closer {
@@ -824,6 +818,7 @@ impl FnLower<'_> {
                 flag
             });
         let handle = self.b.iconst(0);
+        self.note_closer();
         self.closers.insert(
             binding.uid,
             Closer {

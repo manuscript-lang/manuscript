@@ -28,6 +28,8 @@ pub(crate) struct ScopeMark {
     parent: u32,
     /// `scope.begin` was emitted.
     begun: bool,
+    /// A closer of this scope is run by lowering, which closes before the pass does.
+    closes: bool,
 }
 
 impl ScopeMark {
@@ -36,6 +38,7 @@ impl ScopeMark {
             id,
             parent: parent.map_or(0, |p| p + 1),
             begun: false,
+            closes: false,
         }
     }
 }
@@ -1414,6 +1417,18 @@ impl<'a> FnLower<'a> {
     /// definition that nothing moves, flags or closes (the other kinds still drop themselves).
     fn own_raw(&mut self, uid: usize, v: Value) {
         self.own_raw_kind(uid, v, 0);
+    }
+
+    /// Notes that the current scope has a closer that lowering runs itself.
+    pub fn note_closer(&mut self) {
+        if let Some(m) = self.scope_marks.last_mut() {
+            m.closes = true;
+        }
+    }
+
+    /// Whether the current scope has no closer lowering runs itself.
+    pub fn scope_closes_nothing(&self) -> bool {
+        self.scope_marks.last().is_some_and(|m| !m.closes)
     }
 
     /// `own_raw` with the owner's cleanup `kind` (`scope.own S K v`).
