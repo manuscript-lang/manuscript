@@ -173,6 +173,7 @@ impl InstCheck<'_, '_> {
             | Op::CleanupPush
             | Op::GlobalGet
             | Op::GlobalSet => self.runtime_services(),
+            Op::ScopeBegin | Op::ScopeOwn | Op::ScopeEnd => self.scope_markers(),
         }
     }
 
@@ -1167,6 +1168,25 @@ impl InstCheck<'_, '_> {
     }
 
     /// Runtime services: polling, cleanup stack, globals.
+    /// Scope markers: `begin S P` (P is the parent scope plus one, 0 for none), `own v S K`
+    /// (K 0 drops, 1 closes), `end S`.
+    fn scope_markers(&self) -> Result<(), String> {
+        let Imm::Scope(..) = self.inst.imm else {
+            return Err("a scope marker takes scope numbers".into());
+        };
+        self.want(self.res.is_none(), "a scope marker has no result")?;
+        match self.inst.op {
+            Op::ScopeOwn => {
+                self.arity(1)?;
+                self.want(
+                    self.v.needs_drop(self.t(0)),
+                    "scope.own takes a value that needs a drop",
+                )
+            }
+            _ => self.arity(0),
+        }
+    }
+
     fn runtime_services(&self) -> Result<(), String> {
         match self.inst.op {
             Op::Poll | Op::DepthEnter | Op::DepthLeave => self.arity(0),

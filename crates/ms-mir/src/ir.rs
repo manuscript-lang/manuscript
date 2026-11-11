@@ -297,6 +297,8 @@ pub enum Op {
     Call, CallInd, CallRt, CallMethod,
     // Runtime services.
     TypeDesc, FuncAddr, Poll, DepthEnter, DepthLeave, CleanupPush, CleanupRun, GlobalGet, GlobalSet,
+    // Raw-phase scope markers, consumed by `elaborate`.
+    ScopeBegin, ScopeOwn, ScopeEnd,
 }
 
 /// How an instruction touches machine state; used by optimization passes.
@@ -374,6 +376,8 @@ pub enum ImmKind {
     Cc,
     /// Unsigned index.
     Idx,
+    /// A scope marker: the scope, and a second number whose meaning the op sets.
+    Scope,
 }
 
 /// Static facts about an [`Op`].
@@ -431,6 +435,8 @@ pub enum Imm {
     Cc(Cc),
     /// An index.
     Idx(u32),
+    /// A scope marker's two numbers.
+    Scope(u32, u32),
 }
 
 impl Imm {
