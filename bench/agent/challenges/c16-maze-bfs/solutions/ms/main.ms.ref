@@ -7,22 +7,22 @@ fn solve(rows: List[List[String]]) String:
         for c in 0..rows[r].length():
             if not "#.SE".contains(rows[r][c]): return "error: bad character at {r + 1},{c + 1}"
     if rows.any(fn r: r.length() != rows[0].length()): return "error: ragged grid"
-    let flat = flatten(rows)
-    let s = flat.count(fn x: x == "S")
-    let e = flat.count(fn x: x == "E")
+    flat := flatten(rows)
+    s := flat.count(fn x: x == "S")
+    e := flat.count(fn x: x == "E")
     if s != 1: return if s == 0: "error: no start" else: "error: multiple starts"
     if e != 1: return if e == 0: "error: no end" else: "error: multiple ends"
-    let w = rows[0].length()
+    w := rows[0].length()
     var dist = [-1].repeated(flat.length())
     var q = [flat.index_of("S").get()]
     dist[q[0]] = 0
     for h in 0..flat.length():
         if h >= q.length(): break
-        let cur = q[h]
+        cur := q[h]
         if flat[cur] == "E": return "{dist[cur]}"
         for d in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
-            let r = cur / w + d[0]
-            let c = cur % w + d[1]
+            r := cur / w + d[0]
+            c := cur % w + d[1]
             if r < 0 or r >= rows.length() or c < 0 or c >= w or flat[r * w + c] == "#" or dist[r * w + c] >= 0: continue
             dist[r * w + c] = dist[cur] + 1
             q.append(r * w + c)

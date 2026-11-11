@@ -12,7 +12,7 @@ fn peek(var p: Parser) Int:
     return p.s.get(p.pos, 0)
 
 fn atom(var p: Parser) Int!:
-    let c = peek(var p)
+    c := peek(var p)
     if c >= 48 and c <= 57:
         var v = 0
         while p.pos < p.s.length() and p.s[p.pos] >= 48 and p.s[p.pos] <= 57:
@@ -21,7 +21,7 @@ fn atom(var p: Parser) Int!:
         return ok(v)
     if c != 40: return error(Error("syntax"))
     p.pos += 1
-    let v = try expr(var p)
+    v := try expr(var p)
     if peek(var p) != 41: return error(Error("syntax"))
     p.pos += 1
     return ok(v)
@@ -34,9 +34,9 @@ fn unary(var p: Parser) Int!:
 fn term(var p: Parser) Int!:
     var v = try unary(var p)
     while peek(var p) == 42 or peek(var p) == 47:
-        let op = peek(var p)
+        op := peek(var p)
         p.pos += 1
-        let r = try unary(var p)
+        r := try unary(var p)
         if op == 42: v *= r
         else if r == 0:
             p.div_zero = true
@@ -47,19 +47,19 @@ fn term(var p: Parser) Int!:
 fn expr(var p: Parser) Int!:
     var v = try term(var p)
     while peek(var p) == 43 or peek(var p) == 45:
-        let op = peek(var p)
+        op := peek(var p)
         p.pos += 1
-        let r = try term(var p)
+        r := try term(var p)
         v += if op == 43: r else: -r
     return ok(v)
 
 fn evaluate(line: String) String:
     var p = Parser(line.scalar_values(), 0, false)
-    if let v = expr(var p):
+    if v := expr(var p):
         if peek(var p) != 0: return "error: syntax"
         return if p.div_zero: "error: division by zero" else: "{v}"
     return "error: syntax"
 
 fn main() Unit:
-    if let ls = stdin() | lines | collect(none):
+    if ls := stdin() | lines | collect(none):
         for l in ls.map(fn l: l.replace("\r", "")).filter(fn l: not l.trim().is_empty()): print(evaluate(l))

@@ -2,6 +2,7 @@
 //! crate links once instead of once per file.
 
 mod copies;
+mod elaborate;
 mod intern;
 mod interp;
 mod opt_copyelim;

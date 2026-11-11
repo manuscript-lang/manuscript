@@ -8,7 +8,7 @@ type Stat:
     total: Int
 
 fn main() Unit:
-    let data = read_all(stdin(), none).get()
+    data := read_all(stdin(), none).get()
     var valid = 0
     var bad = 0
     var classes = [0].repeated(5)
@@ -18,21 +18,21 @@ fn main() Unit:
     var levels = Map[String, Int]()
     var stats = Map[String, Stat]()
     for line in data.decode_utf8().get("").split("\n").filter(fn l: not l.trim().is_empty()):
-        let f = line.split(" ")
+        f := line.split(" ")
         if f.length() != 6 or f[0].is_empty() or not ["DEBUG", "INFO", "WARN", "ERROR"].contains(f[1]) or not ["GET", "POST", "PUT", "DELETE"].contains(f[2]) or not f[3].starts_with("/") or f[4].length() != 3 or not digits(f[4]) or not digits(f[5]) or f[5].length() > 9:
             bad += 1
             continue
         valid += 1
         levels[f[1].clone()] = levels.get_or(f[1], 0) + 1
-        let first = f[4].scalar_at(0)
-        let cls = if first >= 50 and first <= 53: first - 50 else: 4
+        first := f[4].scalar_at(0)
+        cls := if first >= 50 and first <= 53: first - 50 else: 4
         classes[cls] += 1
-        let lat = f[5].parse_int().get()
+        lat := f[5].parse_int().get()
         lats.append(lat)
         if lat > slowest:
             slowest = lat
             slow = "{lat} {f[2]} {f[3]} {f[0]}"
-        let old = stats.get_or(f[3], Stat(0, 0))
+        old := stats.get_or(f[3], Stat(0, 0))
         stats[f[3].clone()] = Stat(old.count + 1, old.total + lat)
     lats = lats.sorted(fn a, b: a - b)
     print("valid: {valid}\nmalformed: {bad}")
@@ -41,6 +41,6 @@ fn main() Unit:
     print("p95: {if lats.is_empty(): 0 else: lats[(95 * lats.length() + 99) / 100 - 1]}")
     if slowest >= 0: print("slowest: {slow}")
     print("top:")
-    let ranked = stats.entries().sorted(fn a, b: if a.value.count != b.value.count: b.value.count - a.value.count else: a.key.compare(b.key))
+    ranked := stats.entries().sorted(fn a, b: if a.value.count != b.value.count: b.value.count - a.value.count else: a.key.compare(b.key))
     for e in ranked.slice(0, ranked.length().min(3)).get():
         print("{e.key} {e.value.count} avg={e.value.total / e.value.count}")

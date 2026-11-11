@@ -23,22 +23,22 @@ fn valid_oid(s: String) Bool: return not s.is_empty() and s.scalar_values().all(
 // 1 to 7 ASCII digits within lo..hi.
 fn number(s: String, lo: Int, hi: Int) Int?:
     if s.length() < 1 or s.length() > 7 or not s.scalar_values().all(fn c: c >= 48 and c <= 57): return none
-    let n = s.parse_int().get()
+    n := s.parse_int().get()
     return if n >= lo and n <= hi: n else: none
 
 fn place_order(var w: Warehouse, t: List[String]) String:
-    let id = t[1]
+    id := t[1]
     if not valid_oid(id): return "error: bad order id"
     if w.orders.contains(id): return "error: order {id} already exists"
     var items = List[Item]()
     for token in t.slice(2, t.length()).get():
-        let p = token.split(":")
+        p := token.split(":")
         if p.length() != 2 or not valid_sku(p[0]) or not number(p[1], 1, 100000).is_some(): return "error: bad item {token}"
         items.append(Item(p[0].clone(), number(p[1], 1, 100000).get()))
     var seen = Set[String]()
     for it in items:
         if seen.contains(it.sku): return "error: duplicate sku {it.sku}"
-        let have = w.stock.get(it.sku).get(-1)
+        have := w.stock.get(it.sku).get(-1)
         if have < 0: return "error: unknown sku {it.sku}"
         if it.qty > have: return "error: insufficient stock for {it.sku} (have {have}, need {it.qty})"
         seen.add(it.sku.clone())
@@ -51,18 +51,18 @@ fn place_order(var w: Warehouse, t: List[String]) String:
 
 fn report(w: Warehouse) String:
     var reserved = Map[String, Int]()
-    let orders = w.orders.values()
+    orders := w.orders.values()
     for o in orders.filter(fn o: o.status == "placed"):
         for it in o.items: reserved[it.sku.clone()] = reserved.get_or(it.sku, 0) + it.qty
-    let count = fn(s: String) Int: orders.count(fn o: o.status == s)
-    let rows = w.stock.keys().sorted(fn a, b: a.compare(b)).map(fn k: "{k} stock={w.stock.get(k).get()} price={money(w.price.get(k).get())} reserved={reserved.get_or(k, 0)}")
-    let revenue = orders.filter(fn o: o.status == "shipped").map(fn o: o.total).sum()
+    count := fn(s: String) Int: orders.count(fn o: o.status == s)
+    rows := w.stock.keys().sorted(fn a, b: a.compare(b)).map(fn k: "{k} stock={w.stock.get(k).get()} price={money(w.price.get(k).get())} reserved={reserved.get_or(k, 0)}")
+    revenue := orders.filter(fn o: o.status == "shipped").map(fn o: o.total).sum()
     return "{rows.join("\n")}{if rows.is_empty(): "" else: "\n"}orders placed={count("placed")} shipped={count("shipped")} cancelled={count("cancelled")}\nrevenue={money(revenue)}"
 
 fn run_command(var w: Warehouse, line: String) String:
-    let t = line.split(" ")
-    let name = t[0]
-    let arity = {"stock": 3, "price": 3, "cancel": 2, "ship": 2, "report": 1}.get(name).get(0)
+    t := line.split(" ")
+    name := t[0]
+    arity := {"stock": 3, "price": 3, "cancel": 2, "ship": 2, "report": 1}.get(name).get(0)
     if arity == 0 and name != "order": return "error: unknown command"
     if (if name == "order": t.length() < 3 else: t.length() != arity): return "error: usage"
     if name == "order": return place_order(var w, t)
@@ -70,7 +70,7 @@ fn run_command(var w: Warehouse, line: String) String:
     if name == "stock":
         if not valid_sku(t[1]): return "error: bad sku"
         if not number(t[2], 1, 100000).is_some(): return "error: bad quantity"
-        let now = w.stock.get_or(t[1], 0) + number(t[2], 1, 100000).get()
+        now := w.stock.get_or(t[1], 0) + number(t[2], 1, 100000).get()
         w.stock[t[1].clone()] = now
         w.price.add_default(t[1].clone(), 0)
         return "ok {t[1]} stock={now}"
@@ -93,5 +93,5 @@ fn run_command(var w: Warehouse, line: String) String:
 
 fn main() Unit:
     var w = Warehouse(Map[String, Int](), Map[String, Int](), Map[String, Order]())
-    if let ls = stdin() | lines | collect(none):
+    if ls := stdin() | lines | collect(none):
         for l in ls.filter(fn l: not l.replace(" ", "").is_empty()): print(run_command(var w, l))

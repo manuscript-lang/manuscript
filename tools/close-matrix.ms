@@ -117,15 +117,15 @@ fn constructs() List[Construct]:
 		),
 		c(
 			"loop_condition_try", "",
-			"x: @TY@ = @M1@\n    var i = 0\n    while i < (try fail_int()):\n        see(x)\n        i += 1"
+			"x: @TY@ := @M1@\n    var i = 0\n    while i < (try fail_int()):\n        see(x)\n        i += 1"
 		),
 		c(
 			"break_nested_arms", "",
-			"for i in 0..3:\n        x: @TY@ = @M1@\n        if i == 0:\n            if flag():\n                break\n            continue\n        see(x)"
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 0:\n            if flag():\n                break\n            continue\n        see(x)"
 		),
 		c(
 			"continue_nested_arms", "",
-			"for i in 0..3:\n        x: @TY@ = @M1@\n        if i == 0:\n            if flag():\n                continue\n            break\n        see(x)"
+			"for i in 0..3:\n        x: @TY@ := @M1@\n        if i == 0:\n            if flag():\n                continue\n            break\n        see(x)"
 		),
 		c(
 			"moved_in_one_branch_back_edge", "",
@@ -133,7 +133,7 @@ fn constructs() List[Construct]:
 		),
 		c(
 			"moved_in_one_branch_exit", "",
-			"x: @TY@ = @M1@\n    for i in 0..2:\n        if i == 1:\n            pass(x)\n            return ok(unit)\n    see(x)"
+			"x: @TY@ := @M1@\n    for i in 0..2:\n        if i == 1:\n            pass(x)\n            return ok(unit)\n    see(x)"
 		),
 		c(
 			"loop_return", "",
