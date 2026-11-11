@@ -217,31 +217,6 @@ export opaque type FileHandle:
 	// The runtime handle for the open file; it is released by `close` and owned by this value.
 	native: NativeFile
 
-// Chunks of a file from its current position, until the end.
-type FileSource:
-	file: FileHandle
-
-impl Source[Bytes] for FileSource:
-	var fn next() Bytes?!:
-		return self.file.read(none)
-
-	var fn close() Unit!:
-		return self.file.close()
-
-// Complete writes to a file; `flush` synchronizes it.
-type FileSink:
-	file: FileHandle
-
-impl Sink[Bytes] for FileSink:
-	var fn write(value: Bytes) Unit!:
-		return self.file.write(value)
-
-	var fn flush() Unit!:
-		return self.file.sync()
-
-	var fn close() Unit!:
-		return self.file.close()
-
 impl Closeable for FileHandle:
 	// Closes the file, interrupts calls in progress, and waits for them to stop.
 	// Safe to call repeatedly; later operations return EBADF.
@@ -362,6 +337,31 @@ impl FileHandle:
 	// Invalid UTF-8 returns EBADMSG, and more bytes than `max_bytes` or lines than `max_lines` returns EOVERFLOW. A negative `max_bytes` or `max_lines` returns EINVAL.
 	fn read_lines(max_bytes: Int?, max_lines: Int?) List[String]!:
 		return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
+
+// Chunks of a file from its current position, until the end.
+type FileSource:
+	file: FileHandle
+
+impl Source[Bytes] for FileSource:
+	var fn next() Bytes?!:
+		return self.file.read(none)
+
+	var fn close() Unit!:
+		return self.file.close()
+
+// Complete writes to a file; `flush` synchronizes it.
+type FileSink:
+	file: FileHandle
+
+impl Sink[Bytes] for FileSink:
+	var fn write(value: Bytes) Unit!:
+		return self.file.write(value)
+
+	var fn flush() Unit!:
+		return self.file.sync()
+
+	var fn close() Unit!:
+		return self.file.close()
 
 fn seek_origin(origin: Seek) Int:
 	match origin:

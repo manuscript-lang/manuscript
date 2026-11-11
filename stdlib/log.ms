@@ -322,20 +322,6 @@ type RotatingTransport:
 	keep: Int
 	closed: Bool
 
-// Shifts `path.1` to `path.2` and so on (dropping the oldest), then moves `path` to `path.1`.
-fn rotate(path: String, keep: Int) Unit:
-	_oldest := remove("{path}.{keep}", recursive: false)
-	var index = keep - 1
-
-	while index >= 1:
-		_shifted := rename("{path}.{index}", "{path}.{index + 1}")
-		index -= 1
-
-	if keep >= 1:
-		_aside := rename(path, "{path}.1")
-	else:
-		_discarded := remove(path, recursive: false)
-
 impl Transport for RotatingTransport:
 	fn write(data: String) Unit!:
 		return self.write_bytes(data.to_bytes())
@@ -368,6 +354,20 @@ impl Transport for RotatingTransport:
 
 	var fn close() Unit:
 		self.closed = true
+
+// Shifts `path.1` to `path.2` and so on (dropping the oldest), then moves `path` to `path.1`.
+fn rotate(path: String, keep: Int) Unit:
+	_oldest := remove("{path}.{keep}", recursive: false)
+	var index = keep - 1
+
+	while index >= 1:
+		_shifted := rename("{path}.{index}", "{path}.{index + 1}")
+		index -= 1
+
+	if keep >= 1:
+		_aside := rename(path, "{path}.1")
+	else:
+		_discarded := remove(path, recursive: false)
 
 /*
 Appends log records to the file at `path` and rotates it by size.
