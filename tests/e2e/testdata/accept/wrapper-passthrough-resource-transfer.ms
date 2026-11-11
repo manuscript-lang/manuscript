@@ -70,12 +70,10 @@ test "or_else only borrows a resource error while preserving copyable successes"
 
 fn optional_callback(fail: Bool) (fn() Marker?)!:
 	if fail: return error(Error("callback unavailable"))
-
 	return ok(fn: none)
 
 fn result_callback(fail: Bool) (fn(Error) Marker!Error)!:
 	if fail: return error(Error("callback unavailable"))
-
 	return ok(fn cause: error(cause))
 
 fn held_result_temporary(id: Int, log: String, fail: Bool) Unit!:
@@ -109,7 +107,6 @@ test "owned native receivers stay closeable until later try arguments succeed":
 
 fn borrowed_error_callback(fail: Bool) (fn(Marker) Int!Marker)!:
 	if fail: return error(Error("callback unavailable"))
-
 	return ok(fn cause: ok(cause.id))
 
 fn borrowed_error_before_try(id: Int, log: String, fail: Bool) Unit!:

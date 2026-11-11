@@ -1,8 +1,8 @@
 import (
-	expect_equal, expect_error, expect_false from "@std/test/test.ms",
-	OpenMode, OpenOptions, Seek, open, temporary, write_file from "@std/os/fs.ms",
-	compress, decompress, CompressionFormat, CompressOptions from "@std/io/archive.ms",
 	Bytes from "@std/bytes.ms",
+	CompressOptions, CompressionFormat, compress, decompress from "@std/io/archive.ms",
+	OpenMode, OpenOptions, Seek, open, temporary, write_file from "@std/os/fs.ms",
+	expect_equal, expect_error, expect_false from "@std/test/test.ms",
 )
 
 test "closed normalization forms reject spelling changes with their domain errors":

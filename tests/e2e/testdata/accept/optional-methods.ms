@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_false from "@std/test/test.ms",
 	JsonOptions from "@std/data/json.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
 )
 
 type Counter:
@@ -12,7 +12,6 @@ fn fallback(var counter: Counter) Int:
 
 fn value_or[T](value: T?, fallback: T) T:
 	if inner := value: return inner
-
 	return fallback
 
 fn increment(value: Int) Int: value + 1

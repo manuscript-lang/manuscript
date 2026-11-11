@@ -1,8 +1,9 @@
 // Generator for c09-ciphers. Deterministic; run: ms run bench/agent/gen.ms -- c09
 import (
+	from_scalars from "@std/string.ms",
+
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
 	seeded from "../../lib/pyrandom.ms",
-	from_scalars from "@std/string.ms",
 	split_max, strip_spaces from "../../lib/text.ms",
 )
 
@@ -50,7 +51,6 @@ fn solve_line(line: String) String:
 
 	if cipher == "caesar":
 		if not caesar_key(key): return "error: bad key"
-
 		return shift(text, [], key.parse_int().get(0), false, sign)
 
 	if key.is_empty() or not key.chars().all(fn c: LETTERS.contains(c)): return "error: bad key"

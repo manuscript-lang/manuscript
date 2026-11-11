@@ -1,9 +1,9 @@
 import (
+	promise from "@std/concurrency/promise.ms",
 	Closeable, panic from "@std/core.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
-	promise from "@std/concurrency/promise.ms",
-	milliseconds, sleep from "@std/time.ms",
 	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+	milliseconds, sleep from "@std/time.ms",
 )
 
 type Token:
@@ -25,7 +25,6 @@ fn token(log: String, id: Int, fail: Bool = false) Token:
 
 fn events(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
-
 	return ""
 
 fn check(log: String, action: Int) Int!:

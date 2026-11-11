@@ -8,7 +8,6 @@ export fn suite_names(suite: String) List[String]:
 		"sieve_5M", "nbody_200k", "life_128x128_50", "matmul_200", "trees_d16_x20",
 		"collatz_1M", "map_count_2M"
 	]
-
 	return [
 		"call_fib_36", "dispatch_100M", "closure_100M", "sort_1M", "text_1M",
 		"strmap_10M", "errors_50M", "records_1M_x20", "grid2d_500x20", "struct_100M",
@@ -25,7 +24,6 @@ export fn c_versions() List[String]:
 // table is not a like-for-like comparison with the general insertion-ordered `Map`.
 export fn omitted(version: String) List[String]:
 	if version == "c": return ["map_count_2M"]
-
 	return []
 
 export fn ablations() List[String]:

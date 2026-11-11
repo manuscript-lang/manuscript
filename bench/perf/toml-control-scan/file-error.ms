@@ -1,8 +1,8 @@
 import (
 	parse from "@std/data/toml.ms",
+	stdout from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
 	read_file, write_file from "@std/os/fs.ms",
-	stdout from "@std/io/io.ms",
 	monotonic from "@std/time.ms",
 )
 

@@ -8,11 +8,12 @@
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/count-check.ms [-- files]
 import (
-	tool_ms, use_stats_runtime from "./lib.ms",
-	glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
-	run from "@std/os/process.ms",
-	arguments, change_directory, working_directory from "@std/os/env.ms",
 	stdout from "@std/io/io.ms",
+	arguments, change_directory, working_directory from "@std/os/env.ms",
+	GlobOptions, glob, read_file, temporary from "@std/os/fs.ms",
+	run from "@std/os/process.ms",
+
+	tool_ms, use_stats_runtime from "./lib.ms",
 )
 
 // The text after `prefix` on every line that starts with it.

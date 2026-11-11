@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_true from "@std/test/test.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 )
 
 fn unsigned(value: UInt64) Bytes:

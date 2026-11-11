@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_true, expect_false from "@std/test/test.ms",
-	wrap_error, join_errors from "@std/core.ms",
-	sleep, deadline_after, ticker, monotonic, nanoseconds from "@std/time.ms",
+	join_errors, wrap_error from "@std/core.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+	deadline_after, monotonic, nanoseconds, sleep, ticker from "@std/time.ms",
 )
 
 test "wrap_error adds context and keeps the kind":

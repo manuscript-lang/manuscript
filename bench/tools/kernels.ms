@@ -3,6 +3,9 @@
 // kernels: c-ms is the C a no-GC Manuscript backend would emit; ABLATE=1 adds c-ms builds with one runtime check removed each.
 // MS, GO, RUSTC and CC pick the tools.
 import (
+	arguments from "@std/os/env.ms",
+	CopyOptions, copy, create_directory, temporary from "@std/os/fs.ms",
+
 	ablations, base_versions, c_versions, summarize from "./kernels_table.ms",
 	build_go,
 	build_ms,
@@ -15,8 +18,6 @@ import (
 	repeats,
 	rotate,
 	sample from "./lib.ms",
-	copy, CopyOptions, create_directory, temporary from "@std/os/fs.ms",
-	arguments from "@std/os/env.ms",
 )
 
 fn build_c(source: String, out: String, flags: List[String]) Result[Unit, Error]:

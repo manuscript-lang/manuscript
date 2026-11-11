@@ -1,6 +1,6 @@
 import (
-	expect_contains, expect_equal from "@std/test/test.ms",
 	compile from "@std/string.ms",
+	expect_contains, expect_equal from "@std/test/test.ms",
 )
 
 test "regex hexadecimal escapes reject signed numbers":

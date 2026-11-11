@@ -4,10 +4,10 @@
 // `ms run bench/perf/tasks/main.ms -- 1000000 sleep`. Linux only for the report
 // (it reads /proc/self/status); the tasks themselves are portable.
 import (
-	owned_task, Promise from "@std/concurrency/promise.ms",
-	monotonic, seconds, sleep from "@std/time.ms",
-	read_file from "@std/os/fs.ms",
+	Promise, owned_task from "@std/concurrency/promise.ms",
 	arguments from "@std/os/env.ms",
+	read_file from "@std/os/fs.ms",
+	monotonic, seconds, sleep from "@std/time.ms",
 )
 
 fn status(label: String) Unit:

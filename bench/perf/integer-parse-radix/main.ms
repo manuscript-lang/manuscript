@@ -1,7 +1,7 @@
 import (
+	parse_int from "@std/math/math.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
-	parse_int from "@std/math/math.ms",
 )
 
 fn main() Int:

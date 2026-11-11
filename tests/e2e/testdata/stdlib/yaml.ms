@@ -1,12 +1,12 @@
 import (
+	YamlOptions, YamlValue, parse, stringify from "@std/data/yaml.ms",
+	from_scalars from "@std/string.ms",
 	expect_equal,
 	expect_error,
 	expect_false,
 	expect_ok,
 	expect_true,
 	fail from "@std/test/test.ms",
-	from_scalars from "@std/string.ms",
-	parse, stringify, YamlValue, YamlOptions from "@std/data/yaml.ms",
 )
 
 fn entries(value: YamlValue) Map[String, YamlValue]!:

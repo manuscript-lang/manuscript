@@ -1,16 +1,16 @@
 // Data loading shared by the runner: challenges, languages, pricing. Paths are relative to the repository
 // root, where every command in README.md runs.
 import (
-	JsonValue, parse from "@std/data/json.ms",
 	panic from "@std/core.ms",
+	JsonValue, parse from "@std/data/json.ms",
 	access, list, read_file from "@std/os/fs.ms",
+
 	env from "../lib/text.ms",
 )
 
 // `bench/agent` when the command runs from the repository root, `.` when it runs inside this directory (as `ms test` does).
 export fn root() String:
 	if access("bench/agent/languages.json", 0).is_ok(): return "bench/agent"
-
 	return "."
 
 // Documentation for the Manuscript context bundle comes from here; override to pin a different checkout.
@@ -79,7 +79,6 @@ fn text_of(file: String) String:
 
 fn field(doc: JsonValue, key: String) String:
 	if value := doc.get(key): return value.as_string().get("")
-
 	return ""
 
 // Challenges whose id equals, or starts with, one of `ids` (all when `ids` is empty), in id order.

@@ -1,6 +1,9 @@
 // Building blocks for the per-experiment paired-trial drivers under bench/tools (names ending in a study topic). A study runs prebuilt
 // producer binaries in rotating order, validates every record, and keeps samples, environment and a summary.
 import (
+	JsonValue, parse, stringify from "@std/data/json.ms",
+	append_file, create_directory from "@std/os/fs.ms",
+
 	absolute,
 	dump,
 	exists,
@@ -14,8 +17,6 @@ import (
 	read_text,
 	sample,
 	write_text from "./lib.ms",
-	append_file, create_directory from "@std/os/fs.ms",
-	JsonValue, parse, stringify from "@std/data/json.ms",
 )
 
 // A labeled prebuilt binary.
@@ -129,7 +130,6 @@ export fn platform_name() String:
 // Runs `binary args` and returns its standard output, pinned to one CPU with `taskset` (Linux) when `cpu` is not empty.
 export fn run_pinned(binary: String, args: List[String], cpu: String) String!:
 	if cpu == "": return sample(binary, args)
-
 	return sample("taskset", ["--cpu-list", cpu.clone(), binary.clone()].concat(args))
 
 // Parses `values` as integers or fails.

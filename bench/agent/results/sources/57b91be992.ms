@@ -1,26 +1,27 @@
 import (
-    stdout from "@std/io.ms",
-    Val, str_cps from "./vals.ms",
-    FnDef from "./ast.ms",
-    parse_main, parse_defs from "./parse.ms",
+	stdout from "@std/io.ms",
+
+	FnDef from "./ast.ms",
+	parse_defs, parse_main from "./parse.ms",
+	Val, str_cps from "./vals.ms",
 )
 
 fn pl(s: String) Unit:
-    stdout().write("{s}\n").get()
+	stdout().write("{s}\n").get()
 
 export fn main() Int:
-    d := parse_defs(str_cps("def f(a; $b): a + b;"), List[FnDef](), 0)
-    pl("defs ok={d.ok} n={d.fns.length()}")
+	d := parse_defs(str_cps("def f(a; $b): a + b;"), List[FnDef](), 0)
+	pl("defs ok={d.ok} n={d.fns.length()}")
 
-    r := parse_main(
-        str_cps(
-            ".a[0] | map(select(. > 1)) as $x | \{a: 1, $x, \"b\": .c, (.d): 2\} | reduce .[] as [$a, \{b: $c\}] (0; . + 1)"
-        ),
-        d.fns,
-        d.nid
-    )
-    pl("main ok={r.ok}")
+	r := parse_main(
+		str_cps(
+			".a[0] | map(select(. > 1)) as $x | \{a: 1, $x, \"b\": .c, (.d): 2\} | reduce .[] as [$a, \{b: $c\}] (0; . + 1)"
+		),
+		d.fns,
+		d.nid
+	)
+	pl("main ok={r.ok}")
 
-    bad := parse_main(str_cps("1 +"), List[FnDef](), 0)
-    pl("bad ok={bad.ok}")
-    return 0
+	bad := parse_main(str_cps("1 +"), List[FnDef](), 0)
+	pl("bad ok={bad.ok}")
+	return 0

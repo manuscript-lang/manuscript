@@ -1,141 +1,138 @@
 import (
-    stdin, stdout from "@std/io/io.ms",
-    read_all from "@std/io/streams.ms",
+	stdin, stdout from "@std/io/io.ms",
+	read_all from "@std/io/streams.ms",
 )
 
 // A parsed input line. `ok` is false when the line is invalid.
 type Record:
-    ok: Bool
-    category: String
-    amount: String  // digits of the amount in cents, no sign, no leading zero rules
+	ok: Bool
+	category: String
+	amount: String  // digits of the amount in cents, no sign, no leading zero rules
 
 fn bad() Record:
-    return Record(ok: false, category: "", amount: "")
+	return Record(ok: false, category: "", amount: "")
 
 fn is_digit(c: String) Bool:
-    return c.length() == 1 and c.compare("0") >= 0 and c.compare("9") <= 0
+	return c.length() == 1 and c.compare("0") >= 0 and c.compare("9") <= 0
 
 fn digit_value(c: String) Int:
-    return c.parse_int().get(0)
+	return c.parse_int().get(0)
 
 // Returns the amount as a string of cents digits ("12.5" -> "1250"), or "" when invalid.
 fn amount_cents(s: String) String:
-    n := s.length()
-    if n == 0: return ""
+	n := s.length()
+	if n == 0: return ""
 
-    var int_len = 0
-    while int_len < n and s.get(int_len) != ".":
-        int_len += 1
-    if int_len == 0: return ""
+	var int_len = 0
+	while int_len < n and s.get(int_len) != ".":
+		int_len += 1
+	if int_len == 0: return ""
 
+	for k in 0..int_len:
+		if not is_digit(s.get(k)): return ""
+	if int_len == n: return "{s}00"
 
-    for k in 0..int_len:
-        if not is_digit(s.get(k)): return ""
+	// there is a dot at int_len
+	frac := s.slice(int_len + 1, n).get()
+	fl := frac.length()
+	if fl == 0 or fl > 2: return ""
 
-    if int_len == n: return "{s}00"
+	for m in 0..fl:
+		if not is_digit(frac.get(m)): return ""
 
-    // there is a dot at int_len
-    frac := s.slice(int_len + 1, n).get()
-    fl := frac.length()
-    if fl == 0 or fl > 2: return ""
-
-
-    for m in 0..fl:
-        if not is_digit(frac.get(m)): return ""
-
-    var padded = "{frac}"
-    if fl == 1:
-        padded = "{frac}0"
-    return "{s.slice(0, int_len).get()}{padded}"
+	var padded = "{frac}"
+	if fl == 1:
+		padded = "{frac}0"
+	return "{s.slice(0, int_len).get()}{padded}"
 
 // Parses one non-blank line into a record.
 fn parse_line(line: String) Record:
-    n := line.length()
-    if n == 0: return bad()
+	n := line.length()
+	if n == 0: return bad()
 
-    var category = ""
-    var amount = ""
+	var category = ""
+	var amount = ""
 
-    if line.get(0) == "\"":
-        var i = 1
-        while i < n and line.get(i) != "\"":
-            i += 1
-        if i >= n: return bad()
+	if line.get(0) == "\"":
+		var i = 1
+		while i < n and line.get(i) != "\"":
+			i += 1
+		if i >= n: return bad()
 
-        // closing quote at i; must be followed by a comma
-        if i + 1 >= n or line.get(i + 1) != ",": return bad()
+		// closing quote at i; must be followed by a comma
+		if i + 1 >= n or line.get(i + 1) != ",": return bad()
 
-        category = line.slice(1, i).get()
-        amount = line.slice(i + 2, n).get()
-    else:
-        var j = 0
-        while j < n and line.get(j) != ",":
-            j += 1
-        if j >= n: return bad()
+		category = line.slice(1, i).get()
+		amount = line.slice(i + 2, n).get()
+	else:
+		var j = 0
+		while j < n and line.get(j) != ",":
+			j += 1
+		if j >= n: return bad()
 
-        category = line.slice(0, j).get()
-        amount = line.slice(j + 1, n).get()
+		category = line.slice(0, j).get()
+		amount = line.slice(j + 1, n).get()
 
-    if category.is_empty(): return bad()
+	if category.is_empty(): return bad()
 
-    cents := amount_cents(amount)
-    if cents.is_empty(): return bad()
+	cents := amount_cents(amount)
+	if cents.is_empty(): return bad()
 
-    return Record(ok: true, category: category, amount: cents)
+	return Record(ok: true, category: category, amount: cents)
 
 // Adds two non-negative decimal digit strings exactly.
 fn add_digits(a: String, b: String) String:
-    var i = a.length() - 1
-    var j = b.length() - 1
-    var carry = 0
-    var out = ""
+	var i = a.length() - 1
+	var j = b.length() - 1
+	var carry = 0
+	var out = ""
 
-    while i >= 0 or j >= 0 or carry > 0:
-        var d = carry
+	while i >= 0 or j >= 0 or carry > 0:
+		var d = carry
 
-        if i >= 0:
-            d += digit_value(a.get(i))
-            i -= 1
+		if i >= 0:
+			d += digit_value(a.get(i))
+			i -= 1
 
-        if j >= 0:
-            d += digit_value(b.get(j))
-            j -= 1
+		if j >= 0:
+			d += digit_value(b.get(j))
+			j -= 1
 
-        out = "{d % 10}{out}"
-        carry = d / 10
+		out = "{d % 10}{out}"
+		carry = d / 10
 
-    return out
+	return out
 
 // Formats cents digits as "<int>.<2 digits>", removing leading zeros.
 fn format_total(cents: String) String:
-    var s = cents
-    while s.length() > 1 and s.get(0) == "0":
-        s = s.slice(1, s.length()).get()
-    while s.length() < 3:
-        s = "0{s}"
+	var s = cents
+	while s.length() > 1 and s.get(0) == "0":
+		s = s.slice(1, s.length()).get()
+	while s.length() < 3:
+		s = "0{s}"
 
-    cut := s.length() - 2
-    return "{s.slice(0, cut).get()}.{s.slice(cut, s.length()).get()}"
+	cut := s.length() - 2
+	return "{s.slice(0, cut).get()}.{s.slice(cut, s.length()).get()}"
 
 export fn main() Int:
-    var totals = Map[String, String]()
-    var skipped = 0
-    text := read_all(stdin()).get().decode_utf8().get()
+	var totals = Map[String, String]()
+	var skipped = 0
+	text := read_all(stdin()).get().decode_utf8().get()
 
-    for line in text.lines():
-        if line.trim_chars(" \t") == "": continue
+	for line in text.lines():
+		if line.trim_chars(" \t") == "": continue
 
-        rec := parse_line(line)
+		rec := parse_line(line)
 
-        if not rec.ok:
-            skipped += 1
-            continue
+		if not rec.ok:
+			skipped += 1
+			continue
 
-        prev := totals.get_or(rec.category, "0")
-        totals[rec.category] = add_digits(prev, rec.amount)
+		prev := totals.get_or(rec.category, "0")
+		totals[rec.category] = add_digits(prev, rec.amount)
 
-    for key in totals.keys().sorted():
-        stdout().write("{key}: {format_total(totals[key].clone())}\n").get()
-    if skipped > 0:
-        stdout().write("skipped: {skipped}\n").get()
-    return 0
+	for key in totals.keys().sorted():
+		stdout().write("{key}: {format_total(totals[key].clone())}\n").get()
+	if skipped > 0:
+		stdout().write("skipped: {skipped}\n").get()
+	return 0

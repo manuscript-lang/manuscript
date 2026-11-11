@@ -29,7 +29,6 @@ test "callable identity uses ordered types rather than parameter names":
 
 	factory := fn(flag: Bool):
 		if flag: return first
-
 		return second
 
 	try expect_equal(factory(true)(3), 4)

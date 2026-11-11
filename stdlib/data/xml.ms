@@ -1,6 +1,6 @@
 import (
-	StringBuilder, from_scalars from "@std/string.ms",
 	parse_int from "@std/math/math.ms",
+	StringBuilder, from_scalars from "@std/string.ms",
 )
 
 // An element with fewer attributes than this checks duplicate names by scanning them.
@@ -605,7 +605,6 @@ fn digits(text: String, radix: Int) Int?:
 // Whether a code point is in XML 1.0's Char production, which excludes NUL, most controls, and U+FFFE and U+FFFF.
 fn is_xml_char(code: Int) Bool:
 	if code == 9 or code == 10 or code == 13: return true
-
 	return (
 		(code >= 32 and code <= 55295)
 		or (code >= 57344 and code <= 65533)

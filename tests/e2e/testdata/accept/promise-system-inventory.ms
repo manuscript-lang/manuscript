@@ -1,7 +1,7 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	promise, wait_all from "@std/concurrency/promise.ms",
 	cpus, network_interfaces from "@std/os/system.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 fn counts() Int!:

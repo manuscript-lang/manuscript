@@ -1,13 +1,13 @@
 import (
 	Closeable from "@std/core.ms",
-	chmod, create_directory, temporary, write_file from "@std/os/fs.ms",
-	join from "@std/os/path.ms",
 	change_directory,
 	environment,
 	set_environment,
 	which,
 	working_directory from "@std/os/env.ms",
-	os, Os from "@std/os/system.ms",
+	chmod, create_directory, temporary, write_file from "@std/os/fs.ms",
+	join from "@std/os/path.ms",
+	Os, os from "@std/os/system.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

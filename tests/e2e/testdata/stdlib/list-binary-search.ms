@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_ok, expect_true from "@std/test/test.ms",
 	SearchResult from "@std/collections/collections.ms",
 	append_file, read_file, temporary, write_file from "@std/os/fs.ms",
+	expect_equal, expect_ok, expect_true from "@std/test/test.ms",
 )
 
 fn linear_search[T: Comparable](values: List[T], target: T) SearchResult:

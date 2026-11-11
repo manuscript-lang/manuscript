@@ -1,8 +1,8 @@
 import (
-	expect_equal, expect_false, fail from "@std/test/test.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	ReadStream, Source from "@std/io/io.ms",
-	sse_events, SseEvent, SseLimits from "@std/net/sse.ms",
+	SseEvent, SseLimits, sse_events from "@std/net/sse.ms",
+	expect_equal, expect_false, fail from "@std/test/test.ms",
 )
 
 // Hands out the chunks in order, then fails with `failure` if set, else ends.

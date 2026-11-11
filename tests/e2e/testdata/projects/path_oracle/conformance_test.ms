@@ -1,8 +1,9 @@
 import (
-	files from "@oracle",
-	hex_encode, hex_decode from "@std/data/encoding.ms",
+	hex_decode, hex_encode from "@std/data/encoding.ms",
 	PathOperations, PathParts, posix, win32 from "@std/os/path.ms",
 	fail from "@std/test/test.ms",
+
+	files from "@oracle",
 )
 
 // Replays data/path.tsv, the corpus recorded from the original path implementation (the Go oracle,
@@ -38,7 +39,6 @@ fn parts_text(parts: PathParts) String:
 
 fn result(outcome: String!) String:
 	if value := outcome: return "ok {hex(value)}"
-
 	return "err InvalidInput"
 
 fn answer(rules: PathOperations, f: List[String]) String:
@@ -65,7 +65,6 @@ fn answer(rules: PathOperations, f: List[String]) String:
 	if op == "glob":
 		if matched := rules.matches_glob(text(f[2]), text(f[3])):
 			return "ok {if matched: 1 else: 0}"
-
 		return "err InvalidInput"
 
 	return "unknown case {op}"

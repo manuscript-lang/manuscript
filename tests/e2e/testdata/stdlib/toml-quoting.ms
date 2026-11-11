@@ -1,7 +1,7 @@
 import (
-	stringify, parse, TomlValue from "@std/data/toml.ms",
-	expect_equal from "@std/test/test.ms",
+	TomlValue, parse, stringify from "@std/data/toml.ms",
 	from_scalars from "@std/string.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 fn table(text: String) TomlValue:

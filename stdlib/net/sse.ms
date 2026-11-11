@@ -178,12 +178,10 @@ export fn sse_events(
 
 fn positive(limit: Int?) Bool:
 	if maximum := limit: return maximum > 0
-
 	return true
 
 fn exceeds(value: Int, limit: Int?) Bool:
 	if maximum := limit: return value > maximum
-
 	return false
 
 // Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any bytes held from earlier chunks.
@@ -194,7 +192,6 @@ fn complete(
 		if exceeds(end - start, decoder.limits.max_line_bytes): return error(
 			Error("SSE limit exceeded", kind: "EOVERFLOW")
 		)
-
 		return end_line(var decoder, chunk, start, end, var events)
 
 	try decoder.hold(chunk.slice(start, end).get())
@@ -233,7 +230,6 @@ fn end_line(
 // The value after the colon, skipping one leading space when `spaced`.
 fn value_after(line: String, colon_end: Int, spaced: Bool) String:
 	if spaced: return line.slice(colon_end + 1, line.length()).get()
-
 	return line.slice(colon_end, line.length()).get()
 
 fn dispatch(var decoder: Decoder, var events: List[SseEvent]) Unit:

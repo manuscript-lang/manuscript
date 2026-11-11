@@ -1,7 +1,7 @@
 import (
 	Closeable from "@std/core.ms",
 	append_file, read_file, temporary, write_file from "@std/os/fs.ms",
-	expect_equal, expect_some, expect_fault from "@std/test/test.ms",
+	expect_equal, expect_fault, expect_some from "@std/test/test.ms",
 )
 
 type Resource:
@@ -44,7 +44,6 @@ fn later_fault(reader: fn(Resource?, Resource?, Int) Bool, path: String) Unit:
 fn new_owner_fault(path: String) Unit:
 	create := fn(value: Resource?, target: String) Resource:
 		if value.is_some(): return Resource(50, target.clone())
-
 		return Resource(51, target.clone())
 
 	owner := create(present(path, 49), path)
@@ -93,7 +92,6 @@ test "function dispatch errors and faults retain temporary cleanup":
 
 	reject := fn(value: Resource?) Unit!:
 		if value.is_some(): return error(Error("expected"))
-
 		return ok(unit)
 
 	broken := fn(value: Resource?) Unit:

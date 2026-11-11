@@ -1,8 +1,8 @@
 import (
 	stdout from "@std/io/io.ms",
-	monotonic from "@std/time.ms",
-	StringBuilder from "@std/string.ms",
 	parse_int from "@std/math/math.ms",
+	StringBuilder from "@std/string.ms",
+	monotonic from "@std/time.ms",
 )
 
 interface Shape:
@@ -49,7 +49,6 @@ fn say(text: String) Unit:
 
 fn fib(n: Int) Int:
 	if n < 2: return n
-
 	return fib(n - 1) + fib(n - 2)
 
 fn dispatch(n: Int) Int:
@@ -127,7 +126,6 @@ fn word_map(n: Int) Int:
 
 fn check(i: Int) Result[Int, Fail]:
 	if i % 1000 == 999: return error(Fail(i))
-
 	return ok(i)
 
 fn step(i: Int) Result[Int, Fail]:

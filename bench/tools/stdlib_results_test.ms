@@ -1,9 +1,10 @@
 import (
+	expect_contains, expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+
 	parse_sample from "./compare_stdlib.ms",
+	Ran, must from "./lib.ms",
 	stdlib_table from "./stdlib_bench.ms",
 	Stats, case_labels, read_cases from "./stdlib_results.ms",
-	must, Ran from "./lib.ms",
-	expect_contains, expect_equal, expect_error, expect_ok from "@std/test/test.ms",
 )
 
 fn bench(name: String, status: String, ops: String, median: String) String:

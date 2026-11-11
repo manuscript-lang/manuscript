@@ -1,9 +1,10 @@
 import (
 	Bytes from "@std/bytes.ms",
 	ReadStream from "@std/io/io.ms",
+
+	msstd_checksum_adler32_update,
 	msstd_checksum_crc32,
-	msstd_checksum_crc32_update,
-	msstd_checksum_adler32_update from "@std/internal/checksum.ms",
+	msstd_checksum_crc32_update from "@std/internal/checksum.ms",
 )
 
 /*

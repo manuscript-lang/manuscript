@@ -1,35 +1,36 @@
 import (
+	Promise, adopt from "@std/concurrency/promise.ms",
 	Data, panic from "@std/core.ms",
 	ReadStream, Source from "@std/io/io.ms",
-	Promise, adopt from "@std/concurrency/promise.ms",
-	msstd_time_duration_add,
-	msstd_time_duration_subtract,
-	msstd_time_duration_multiply,
-	msstd_time_duration_divide,
-	msstd_time_duration_negate,
+
+	msrt_promise_sleep from "@std/internal/promises.ms",
+	msstd_time_clock_now,
 	msstd_time_duration_abs,
+	msstd_time_duration_add,
+	msstd_time_duration_divide,
+	msstd_time_duration_multiply,
+	msstd_time_duration_negate,
+	msstd_time_duration_subtract,
+	msstd_time_duration_to_hours,
 	msstd_time_duration_to_microseconds,
 	msstd_time_duration_to_milliseconds,
-	msstd_time_duration_to_seconds,
 	msstd_time_duration_to_minutes,
-	msstd_time_duration_to_hours,
-	msstd_time_local_zone,
+	msstd_time_duration_to_seconds,
+	msstd_time_from_calendar,
+	msstd_time_instant_compare,
+	msstd_time_instant_difference,
 	msstd_time_instant_shift,
 	msstd_time_instant_unshift,
-	msstd_time_instant_difference,
-	msstd_time_instant_compare,
-	msstd_time_timestamp_to_string,
-	msstd_time_timestamp_shift,
-	msstd_time_timestamp_difference,
-	msstd_time_timestamp_compare,
-	msstd_time_timestamp_calendar,
-	msstd_time_timestamp_format,
+	msstd_time_local_zone,
 	msstd_time_parse_timestamp,
-	msstd_time_from_calendar,
 	msstd_time_timestamp,
-	msstd_time_clock_now,
+	msstd_time_timestamp_calendar,
+	msstd_time_timestamp_compare,
+	msstd_time_timestamp_difference,
+	msstd_time_timestamp_format,
+	msstd_time_timestamp_shift,
+	msstd_time_timestamp_to_string,
 	msstd_time_wall_clock_now from "@std/internal/time.ms",
-	msrt_promise_sleep from "@std/internal/promises.ms",
 )
 
 // A span of elapsed time, counted in signed nanoseconds.
@@ -72,13 +73,11 @@ impl Duration:
 	// Returns the lesser of this value and `other`, or this value when they compare equal.
 	fn min(other: Duration) Duration:
 		if other.compare(self) < 0: return other
-
 		return self
 
 	// Returns the greater of this value and `other`, or this value when they compare equal.
 	fn max(other: Duration) Duration:
 		if other.compare(self) > 0: return other
-
 		return self
 
 	// Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
@@ -164,13 +163,11 @@ impl Instant:
 	// Returns the lesser of this value and `other`, or this value when they compare equal.
 	fn min(other: Instant) Instant:
 		if other.compare(self) < 0: return other
-
 		return self
 
 	// Returns the greater of this value and `other`, or this value when they compare equal.
 	fn max(other: Instant) Instant:
 		if other.compare(self) > 0: return other
-
 		return self
 
 	// Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
@@ -218,13 +215,11 @@ impl Timestamp:
 	// Returns the lesser of this value and `other`, or this value when they compare equal.
 	fn min(other: Timestamp) Timestamp:
 		if other.compare(self) < 0: return other
-
 		return self
 
 	// Returns the greater of this value and `other`, or this value when they compare equal.
 	fn max(other: Timestamp) Timestamp:
 		if other.compare(self) > 0: return other
-
 		return self
 
 	// Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.

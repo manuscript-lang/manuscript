@@ -125,7 +125,7 @@ fn interpolation_errors_point_into_the_right_line() {
 #[test]
 fn formatting_is_idempotent_and_keeps_text() {
     let file: Arc<str> = Arc::from("m.ms");
-    let source = "fn f(n: Int) String:\n\tif n > 0:\n\t\treturn \"\"\"\n            a {n}\n              b\n            \"\"\"\n\n\treturn r\"\"\"\n        {\"x\": 1}\n        \"\"\"\n";
+    let source = "fn f(n: Int) String:\n\tif n > 0:\n\t\treturn \"\"\"\n            a {n}\n              b\n            \"\"\"\n\treturn r\"\"\"\n        {\"x\": 1}\n        \"\"\"\n";
     let once = format(&file, source).unwrap();
     assert_eq!(once, source);
     assert_eq!(format(&file, &once).unwrap(), once);

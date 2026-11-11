@@ -1,5 +1,6 @@
 import (
 	expect_equal from "@std/test/test.ms",
+
 	first from "./first.ms",
 	second from "./second.ms",
 )

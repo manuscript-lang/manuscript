@@ -22,7 +22,6 @@ type Wrapped:
 
 fn check(fail: Bool) Int!:
 	if fail: return error(Error("field failed"))
-
 	return ok(42)
 
 fn build(fail: Bool) Unit!:

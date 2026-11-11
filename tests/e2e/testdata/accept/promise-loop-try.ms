@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	promise from "@std/concurrency/promise.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "try inside a loop over a list of promises":

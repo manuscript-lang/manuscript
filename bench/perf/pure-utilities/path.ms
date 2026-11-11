@@ -1,8 +1,8 @@
 import (
-	arguments from "@std/os/env.ms",
-	monotonic from "@std/time.ms",
 	stdout from "@std/io/io.ms",
+	arguments from "@std/os/env.ms",
 	extension, normalize, parse from "@std/os/path.ms",
+	monotonic from "@std/time.ms",
 )
 
 fn main() Int:

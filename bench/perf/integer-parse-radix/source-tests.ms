@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	parse_int from "@std/math/math.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "integer radix parsing preserves signed boundaries in every base":

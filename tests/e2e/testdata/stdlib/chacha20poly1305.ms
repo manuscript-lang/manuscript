@@ -1,10 +1,10 @@
 import (
-	hex_decode, hex_encode from "@std/data/encoding.ms",
+	Bytes from "@std/bytes.ms",
 	chacha20,
 	chacha20poly1305_open,
 	chacha20poly1305_seal,
 	poly1305 from "@std/crypto/chacha20poly1305.ms",
-	Bytes from "@std/bytes.ms",
+	hex_decode, hex_encode from "@std/data/encoding.ms",
 	expect_equal, expect_error, expect_true from "@std/test/test.ms",
 )
 

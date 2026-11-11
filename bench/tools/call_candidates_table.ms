@@ -1,7 +1,8 @@
 // Summarize process-cold samples; round 0 is retained but excluded as warm-up.
 import (
-	median, read_text from "./lib.ms",
 	arguments from "@std/os/env.ms",
+
+	median, read_text from "./lib.ms",
 )
 
 export fn main() Unit:

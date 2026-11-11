@@ -1,8 +1,8 @@
 import (
+	PromiseOptions, cancel_switch, promise from "@std/concurrency/promise.ms",
+	ReadStream, pipe from "@std/io/io.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
-	pipe, ReadStream from "@std/io/io.ms",
-	promise, PromiseOptions, cancel_switch from "@std/concurrency/promise.ms",
-	sleep, milliseconds from "@std/time.ms",
+	milliseconds, sleep from "@std/time.ms",
 )
 
 // Sums a stream that never delivers: the loop waits inside the source.

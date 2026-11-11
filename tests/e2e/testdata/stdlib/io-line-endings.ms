@@ -1,7 +1,8 @@
 import (
+	collect, from_bytes, from_list, lines from "@std/io/streams.ms",
 	OpenMode, OpenOptions, open, temporary, write_file from "@std/os/fs.ms",
-	lines, collect, from_list, from_bytes from "@std/io/streams.ms",
 	expect_equal from "@std/test/test.ms",
+
 	memory from "./support/streams.ms",
 )
 

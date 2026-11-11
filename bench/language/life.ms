@@ -5,7 +5,6 @@ import (
 
 fn make_cells() List[Int]:
 	if values := filled(0, 16384): return values
-
 	return panic("fill failure")
 
 fn main() Int:

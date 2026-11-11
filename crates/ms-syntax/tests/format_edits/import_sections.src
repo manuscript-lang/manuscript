@@ -1,0 +1,9 @@
+import b, a from "./local.ms"
+import Z from "@std/internal/z.ms"
+import y, x from "@std/io/io.ms"
+import a, c from "./local.ms"
+
+fn f(x: Int) Int:
+	if x < 0: return 0
+
+	return x

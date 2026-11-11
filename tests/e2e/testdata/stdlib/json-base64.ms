@@ -1,6 +1,6 @@
 import (
-	parse, stringify from "@std/data/json.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	parse, stringify from "@std/data/json.ms",
 	expect_equal, expect_error from "@std/test/test.ms",
 )
 

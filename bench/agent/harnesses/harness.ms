@@ -3,9 +3,10 @@
 // A harness drives one coding agent CLI inside a workspace. To add one, implement `Harness` in its own file
 // next to this one and register it in `all.ms`.
 import (
-	write_file from "@std/os/fs.ms",
 	JsonValue, parse from "@std/data/json.ms",
 	round from "@std/math/math.ms",
+	write_file from "@std/os/fs.ms",
+
 	cost_from_tokens from "../core/model.ms",
 	run_in from "../lib/text.ms",
 )
@@ -44,7 +45,6 @@ export fn events(transcript: String) List[JsonValue]:
 
 export fn int_at(doc: JsonValue, key: String) Int:
 	if value := doc.get(key): return value.as_int().get(0)
-
 	return 0
 
 // Runs the agent in `workspace`, saves its output to `transcript` and returns the measured run.

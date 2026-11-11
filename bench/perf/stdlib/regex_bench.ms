@@ -1,8 +1,9 @@
 import (
-	keep, measure from "@std/test/bench.ms",
-	words from "./src/harness.ms",
 	compile from "@std/string.ms",
+	keep, measure from "@std/test/bench.ms",
 	expect_equal from "@std/test/test.ms",
+
+	words from "./src/harness.ms",
 )
 
 fn captures_bench(count: Int) Result[Unit, Error]:

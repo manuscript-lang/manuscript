@@ -87,13 +87,11 @@ impl Histogram:
 	// Smallest observation, or none when empty.
 	fn minimum() Int?:
 		if self.total == 0: return none
-
 		return self.low
 
 	// Largest observation, or none when empty.
 	fn maximum() Int?:
 		if self.total == 0: return none
-
 		return self.high
 
 	// Mean of the observations, or 0.0 when empty. It is exact, not bucketed.

@@ -1,12 +1,13 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	from_scalars, StringBuilder from "@std/string.ms",
-	msstd_encoding_ascii85_encode,
+	StringBuilder, from_scalars from "@std/string.ms",
+
 	msstd_encoding_ascii85_decode,
-	msstd_encoding_base64_encode_unpadded,
-	msstd_encoding_base64_decode_unpadded,
+	msstd_encoding_ascii85_encode,
+	msstd_encoding_base32_decode,
 	msstd_encoding_base32_encode,
-	msstd_encoding_base32_decode from "@std/internal/encoding.ms",
+	msstd_encoding_base64_decode_unpadded,
+	msstd_encoding_base64_encode_unpadded from "@std/internal/encoding.ms",
 )
 
 fn encoding_invalid_data() Error:
@@ -140,7 +141,6 @@ fn base64_table(url_safe: Bool) List[UInt8]:
 		.to_bytes()
 		.values()
 	)
-
 	return (
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 		.to_bytes()
@@ -150,7 +150,6 @@ fn base64_table(url_safe: Bool) List[UInt8]:
 // The budget as a count, with no budget as a very large one and a negative budget as -1.
 fn budget(max_bytes: Int?) Int:
 	if limit := max_bytes: return limit
-
 	return 9223372036854775807
 
 // Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text and `padded: false` to omit `=`.
@@ -272,7 +271,6 @@ fn byte_of(n: Int) UInt8:
 
 fn text_of(scalars: List[Int]) String:
 	if text := from_scalars(scalars): return text
-
 	return ""
 
 // Decodes UTF-16 bytes, little-endian unless `little_endian` is false.

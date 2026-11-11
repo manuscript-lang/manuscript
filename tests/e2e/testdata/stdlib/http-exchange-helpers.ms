@@ -1,15 +1,15 @@
 import (
-	expect_equal from "@std/test/test.ms",
+	HttpExchange,
+	HttpMethod,
+	HttpRequest,
+	HttpResponse,
 	buffered,
 	headers,
 	read_body,
 	reply,
-	text,
-	HttpExchange,
-	HttpMethod,
-	HttpRequest,
-	HttpResponse from "@std/net/http.ms",
+	text from "@std/net/http.ms",
 	http_client, serve from "@std/net/net.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 fn echo(request: HttpRequest) HttpResponse:

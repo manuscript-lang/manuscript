@@ -1,11 +1,12 @@
 import (
 	Copy, Data, panic from "@std/core.ms",
+
 	msstd_decimal_compare,
-	msstd_decimal_to_string,
-	msstd_decimal_to_float,
-	msstd_decimal_truncate_to_int,
 	msstd_decimal_round,
-	msstd_decimal_to_fixed from "@std/internal/decimal.ms",
+	msstd_decimal_to_fixed,
+	msstd_decimal_to_float,
+	msstd_decimal_to_string,
+	msstd_decimal_truncate_to_int from "@std/internal/decimal.ms",
 )
 
 // How a Decimal rounds to a multiple of the requested power of ten.
@@ -35,13 +36,11 @@ impl Decimal:
 	// Returns the lesser of this value and `other`, or this value when they compare equal.
 	fn min(other: Decimal) Decimal:
 		if other.compare(self) < 0: return other
-
 		return self
 
 	// Returns the greater of this value and `other`, or this value when they compare equal.
 	fn max(other: Decimal) Decimal:
 		if other.compare(self) > 0: return other
-
 		return self
 
 	// Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.

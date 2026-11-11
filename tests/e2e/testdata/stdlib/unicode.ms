@@ -1,13 +1,13 @@
 import (
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 	is_alphabetic,
 	is_alphanumeric,
-	is_numeric,
-	is_lowercase,
-	is_uppercase,
-	is_whitespace,
+	is_ascii,
 	is_control,
-	is_ascii from "@std/unicode.ms",
-	expect_equal, expect_true, expect_false from "@std/test/test.ms",
+	is_lowercase,
+	is_numeric,
+	is_uppercase,
+	is_whitespace from "@std/unicode.ms",
 )
 
 test "Unicode properties distinguish letters numbers marks and symbols":

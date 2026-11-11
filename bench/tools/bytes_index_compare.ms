@@ -3,7 +3,10 @@
 // Programs print the string-lines CSV (see string_lines_compare.ms). Expected checksums come from a straightforward search of a
 // buffer of `a` bytes holding one 0xFF byte, an oracle independent of the programs. --cpu pins every run with `taskset`.
 import (
-	Identity, run_rows from "./string_lines_compare.ms",
+	JsonValue from "@std/data/json.ms",
+	stdout from "@std/io/io.ms",
+	arguments from "@std/os/env.ms",
+
 	absolute,
 	fail,
 	jbool,
@@ -16,10 +19,8 @@ import (
 	permutations,
 	platform,
 	write_text from "./lib.ms",
+	Identity, run_rows from "./string_lines_compare.ms",
 	binaries_json, fresh_directory, labeled, write_json from "./study.ms",
-	arguments from "@std/os/env.ms",
-	JsonValue from "@std/data/json.ms",
-	stdout from "@std/io/io.ms",
 )
 
 fn sizes() List[Int]:

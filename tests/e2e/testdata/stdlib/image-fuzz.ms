@@ -1,16 +1,17 @@
 import (
-	decode_image,
-	encode_image,
-	new_image,
+	Bytes, BytesBuilder from "@std/bytes.ms",
+	crc32 from "@std/data/checksum.ms",
+	hex_decode from "@std/data/encoding.ms",
 	ColorMode,
 	ImageFormat,
-	Rgba from "@std/image/image.ms",
-	hex_decode from "@std/data/encoding.ms",
-	Bytes, BytesBuilder from "@std/bytes.ms",
-	vectors from "./image-png-vectors.ms",
-	jpeg_vectors from "./image-jpeg-vectors.ms",
-	crc32 from "@std/data/checksum.ms",
+	Rgba,
+	decode_image,
+	encode_image,
+	new_image from "@std/image/image.ms",
 	expect_equal, fail from "@std/test/test.ms",
+
+	jpeg_vectors from "./image-jpeg-vectors.ms",
+	vectors from "./image-png-vectors.ms",
 )
 
 // Deterministic generator (Numerical Recipes LCG); the fuzz is reproducible from the seed.

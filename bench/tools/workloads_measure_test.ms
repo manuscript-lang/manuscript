@@ -1,7 +1,8 @@
 import (
+	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+
 	invalid, repeats from "./lib.ms",
 	measure, versions from "./workloads_measure.ms",
-	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
 )
 
 // A producer for `version` that prints "correct" unless `mode` says otherwise for `bad`. Calls are counted per version.

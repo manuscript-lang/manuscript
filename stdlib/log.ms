@@ -1,9 +1,9 @@
 import (
-	Closeable, Data from "@std/core.ms",
 	Bytes from "@std/bytes.ms",
-	FileHandle, OpenMode, OpenOptions, open, remove, rename, stat from "@std/os/fs.ms",
-	stdout, stdout_bytes from "@std/io/io.ms",
+	Closeable, Data from "@std/core.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
+	stdout, stdout_bytes from "@std/io/io.ms",
+	FileHandle, OpenMode, OpenOptions, open, remove, rename, stat from "@std/os/fs.ms",
 	now from "@std/time.ms",
 )
 
@@ -104,7 +104,6 @@ fn encode_error(cause: Error) Error:
 	if cause.kind == "EOVERFLOW": return Error(
 		"logging: limit exceeded", kind: "EOVERFLOW"
 	)
-
 	return Error("logging: invalid data", kind: "EBADMSG")
 
 // Appends to an open file. Each logger owns its handle (`duplicate` dups it), so loggers on several threads write without sharing state.
@@ -118,17 +117,14 @@ impl Transport for FileTransport:
 
 	fn write_bytes(data: Bytes) Unit!:
 		if self.closed: return error(log_closed())
-
 		return self.file.write(data)
 
 	fn flush() Unit!:
 		if self.closed: return error(log_closed())
-
 		return self.file.sync()
 
 	fn duplicate() Transport!:
 		if self.closed: return error(log_closed())
-
 		return ok(FileTransport(file: try self.file.clone(), closed: false))
 
 	var fn close() Unit:
@@ -162,7 +158,6 @@ impl Transport for StdoutTransport:
 
 	fn duplicate() Transport!:
 		if self.closed: return error(log_closed())
-
 		return ok(StdoutTransport(closed: false))
 
 	var fn close() Unit:
@@ -344,7 +339,6 @@ impl Transport for RotatingTransport:
 
 	fn duplicate() Transport!:
 		if self.closed: return error(log_closed())
-
 		return ok(
 			RotatingTransport(
 				path: self.path.clone(), max_bytes: self.max_bytes, keep: self.keep,

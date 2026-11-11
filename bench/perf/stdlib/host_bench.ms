@@ -1,11 +1,11 @@
 import (
-	keep, measure from "@std/test/bench.ms",
 	Bytes from "@std/bytes.ms",
-	pack, unpack, ArchiveEntry, ArchiveFormat from "@std/io/archive.ms",
-	sse_events from "@std/net/sse.ms",
-	ReadStream, Source from "@std/io/io.ms",
-	parse_timestamp from "@std/time.ms",
 	uuid_v4 from "@std/data/uuid.ms",
+	ArchiveEntry, ArchiveFormat, pack, unpack from "@std/io/archive.ms",
+	ReadStream, Source from "@std/io/io.ms",
+	sse_events from "@std/net/sse.ms",
+	keep, measure from "@std/test/bench.ms",
+	parse_timestamp from "@std/time.ms",
 )
 
 fn entries(count: Int) List[ArchiveEntry]:
@@ -58,7 +58,6 @@ bench "archive.zip_pack":
 
 	fn work() Result[Unit, Error]:
 		if b := pack(list, ArchiveFormat.Zip): return keep(b.length())
-
 		return keep(0)
 
 	try measure(2000, work)
@@ -68,7 +67,6 @@ bench "archive.tar_pack":
 
 	fn work() Result[Unit, Error]:
 		if b := pack(list, ArchiveFormat.Tar): return keep(b.length())
-
 		return keep(0)
 
 	try measure(2000, work)
@@ -77,7 +75,6 @@ bench "archive.zip_unpack":
 	if packed := pack(entries(2000), ArchiveFormat.Zip):
 		fn work() Result[Unit, Error]:
 			if e := unpack(packed, ArchiveFormat.Zip): return keep(e.length())
-
 			return keep(0)
 
 		try measure(2000, work)

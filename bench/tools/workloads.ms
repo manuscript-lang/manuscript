@@ -4,6 +4,12 @@
 // parsing/string/map programs.
 // Usage: ms run bench/tools/workloads.ms [-- repeats]; MS picks the compiler; BENCH_OUTPUT keeps the evidence directory.
 import (
+	sha256 from "@std/crypto.ms",
+	hex_encode from "@std/data/encoding.ms",
+	JsonValue, parse from "@std/data/json.ms",
+	arguments from "@std/os/env.ms",
+	copy, create_directory, list, temporary from "@std/os/fs.ms",
+
 	absolute,
 	capture,
 	dump,
@@ -16,8 +22,8 @@ import (
 	jlist,
 	jobject,
 	jstr,
-	must,
 	ms_binary,
+	must,
 	read_text,
 	repeats,
 	run_in,
@@ -25,12 +31,6 @@ import (
 	usage,
 	write_text from "./lib.ms",
 	Measured, header, measure, row, versions from "./workloads_measure.ms",
-	hex_encode from "@std/data/encoding.ms",
-	sha256 from "@std/crypto.ms",
-	JsonValue from "@std/data/json.ms",
-	copy, create_directory, list, temporary from "@std/os/fs.ms",
-	arguments from "@std/os/env.ms",
-	parse from "@std/data/json.ms",
 )
 
 type Case:

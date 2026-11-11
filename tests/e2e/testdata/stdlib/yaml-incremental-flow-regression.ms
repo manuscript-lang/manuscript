@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_ok from "@std/test/test.ms",
-	parse, YamlValue from "@std/data/yaml.ms",
+	YamlValue, parse from "@std/data/yaml.ms",
 	StringBuilder from "@std/string.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
 test "YAML long multiline flow retains every scalar":

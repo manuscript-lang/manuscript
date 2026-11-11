@@ -1,25 +1,26 @@
 import (
-	MetricsSnapshot from "@std/internal/system.ms",
-	Duration from "@std/time.ms",
 	IpFamily from "@std/net/ip.ms",
-	msstd_system_endianness,
-	msstd_system_end_of_line,
-	msstd_system_dev_null,
-	msstd_system_os,
-	msstd_system_constants,
-	msstd_system_info,
-	msstd_system_user_info,
-	msstd_system_network_interfaces,
-	msstd_system_cpus,
-	msstd_system_metrics,
-	msstd_system_hostname,
-	msstd_system_machine,
-	msstd_system_os_release,
-	msstd_system_os_version,
+	Duration from "@std/time.ms",
+
+	MetricsSnapshot,
 	msstd_process_available_memory,
 	msstd_process_constrained_memory,
 	msstd_process_elapsed,
-	msstd_process_memory_usage from "@std/internal/system.ms",
+	msstd_process_memory_usage,
+	msstd_system_constants,
+	msstd_system_cpus,
+	msstd_system_dev_null,
+	msstd_system_end_of_line,
+	msstd_system_endianness,
+	msstd_system_hostname,
+	msstd_system_info,
+	msstd_system_machine,
+	msstd_system_metrics,
+	msstd_system_network_interfaces,
+	msstd_system_os,
+	msstd_system_os_release,
+	msstd_system_os_version,
+	msstd_system_user_info from "@std/internal/system.ms",
 )
 
 // The operating system family the program was built for. A host outside the three named families reads as `Other`.
@@ -123,7 +124,6 @@ export enum Endianness:
 // Returns the host's native byte order.
 export fn endianness() Endianness:
 	if msstd_system_endianness() == "BE": return Endianness.Big
-
 	return Endianness.Little
 
 // Returns the host's line-ending sequence.

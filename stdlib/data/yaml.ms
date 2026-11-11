@@ -1,9 +1,9 @@
 // Configuration-oriented YAML 1.2 parser implemented in Manuscript.
 import (
 	Bytes from "@std/bytes.ms",
-	parse_int from "@std/math/math.ms",
-	from_scalars, StringBuilder from "@std/string.ms",
 	quote_text from "@std/data/quote.ms",
+	parse_int from "@std/math/math.ms",
+	StringBuilder, from_scalars from "@std/string.ms",
 )
 
 // A YAML value represented as null, boolean, number text, string, array, or object.
@@ -115,7 +115,6 @@ fn blank_trim(text: String) String:
 
 fn within(value: Int, limit: Int?) Bool:
 	if maximum := limit: return value <= maximum
-
 	return true
 
 // Number of containers and leaves in a value, excluding keys.
@@ -156,7 +155,6 @@ fn count(var context: Context, depth: Int) Unit!:
 
 fn source_line(context: Context, row: Int) Int:
 	if context.split_line >= 0 and row > context.split_line: return row
-
 	return row + 1
 
 fn source_column(context: Context, row: Int, column: Int) Int:
@@ -485,7 +483,6 @@ fn fold_plain(text: String) String:
 // Whether the character following a colon ends a plain scalar in this context.
 fn separates_colon(next: Int, delimited: Bool) Bool:
 	if next == 0 or next == 9 or next == 10 or next == 32: return true
-
 	return (
 		delimited
 		and (
@@ -543,7 +540,6 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool) YamlValue!:
 			)
 		):
 			if key: break
-
 			return error(flow_invalid(flow, "unexpected mapping colon"))
 
 		flow.pos += 1
@@ -1119,20 +1115,17 @@ fn document_marker(text: String) Bool:
 
 fn sequence(text: String) Bool:
 	if text.scalar_at(0, default: 0) != 45: return false
-
 	return (text == "-" or text.starts_with("- ") or text.starts_with("-\t"))
 
 // A flow collection or quoted scalar can continue across physical lines.
 fn complete(text: String) Bool:
 	if not quoted_or_nested(text): return true
-
 	return scan_structure(text, "").closed
 
 // Whether a value starting with this scalar is a flow collection, quote, anchor, alias or tag
 // (or, with `blank`, whitespace) rather than a plain scalar.
 fn structured_lead(code: Int, blank: Bool = false) Bool:
 	if blank and (code == 32 or code == 9 or code == 10): return true
-
 	return (
 		code == 91
 		or code == 39
@@ -2010,15 +2003,12 @@ fn scalar_text(value: YamlValue) String!:
 			if not valid_number(text.clone()): return error(
 				Error("invalid YAML input", kind: "EINVAL")
 			)
-
 			return ok(text)
 		ArrayValue(values):
 			if values.is_empty(): return ok("[]")
-
 			return ok("")
 		ObjectValue(values):
 			if values.is_empty(): return ok("\{\}")
-
 			return ok("")
 
 fn is_block(value: YamlValue) Bool:

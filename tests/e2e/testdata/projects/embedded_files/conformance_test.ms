@@ -1,7 +1,8 @@
 import (
-	files from "@assets",
 	walk from "@std/os/tree.ms",
 	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+
+	files from "@assets",
 )
 
 test "embedded files read back byte for byte":

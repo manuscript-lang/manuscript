@@ -1,6 +1,6 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	ascii85_encode, ascii85_decode from "@std/data/encoding.ms",
+	ascii85_decode, ascii85_encode from "@std/data/encoding.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

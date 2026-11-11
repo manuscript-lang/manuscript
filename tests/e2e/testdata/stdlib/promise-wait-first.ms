@@ -1,11 +1,11 @@
 import (
-	deferred,
+	PromiseOptions,
 	complete,
+	deferred,
 	promise,
-	wait_first,
-	PromiseOptions from "@std/concurrency/promise.ms",
-	milliseconds, sleep, monotonic from "@std/time.ms",
+	wait_first from "@std/concurrency/promise.ms",
 	expect_equal, expect_error, expect_true from "@std/test/test.ms",
+	milliseconds, monotonic, sleep from "@std/time.ms",
 )
 
 fn immediate(id: Int) Unit:

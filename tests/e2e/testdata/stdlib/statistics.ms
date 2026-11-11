@@ -1,14 +1,8 @@
 import (
 	sqrt from "@std/math/math.ms",
-	BinCounts from "@std/math/statistics.ms",
-	expect_close,
-	expect_equal,
-	expect_fault,
-	expect_none,
-	expect_some,
-	expect_true from "@std/test/test.ms",
-	correlation,
+	BinCounts,
 	bin_counts,
+	correlation,
 	linear_regression,
 	mean,
 	median,
@@ -19,6 +13,12 @@ import (
 	quantiles,
 	stdev,
 	variance from "@std/math/statistics.ms",
+	expect_close,
+	expect_equal,
+	expect_fault,
+	expect_none,
+	expect_some,
+	expect_true from "@std/test/test.ms",
 )
 
 test "mean median and mode":

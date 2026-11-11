@@ -1,7 +1,7 @@
 import (
+	parse from "@std/data/csv.ms",
 	stdout from "@std/io/io.ms",
 	monotonic from "@std/time.ms",
-	parse from "@std/data/csv.ms",
 )
 
 // Parses 5000 rows 200 times and prints the best run in microseconds.

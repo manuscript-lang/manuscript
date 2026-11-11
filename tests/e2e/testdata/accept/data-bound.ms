@@ -1,7 +1,7 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	Data from "@std/core.ms",
 	JsonEncode, JsonValue, stringify from "@std/data/json.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 type Plain:

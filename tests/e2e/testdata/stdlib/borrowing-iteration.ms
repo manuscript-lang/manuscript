@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_true from "@std/test/test.ms",
 	Deque from "@std/collections/deque.ms",
 	PriorityQueue, Queue from "@std/collections/queue.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 )
 
 // `for item in container` over an `Iterable` container borrows each item: the lambdas below are

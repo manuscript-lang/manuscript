@@ -1,9 +1,9 @@
 import (
-	expect_equal, fail from "@std/test/test.ms",
-	csv_rows, parse, CsvOptions from "@std/data/csv.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	CsvOptions, csv_rows, parse from "@std/data/csv.ms",
 	ReadStream, Source from "@std/io/io.ms",
-	from_list, collect from "@std/io/streams.ms",
+	collect, from_list from "@std/io/streams.ms",
+	expect_equal, fail from "@std/test/test.ms",
 )
 
 // Hands out the chunks in order, then ends.

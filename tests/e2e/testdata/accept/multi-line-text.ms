@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	parse from "@std/data/json.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 fn banner(name: String, count: Int) String:

@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_true, expect_false from "@std/test/test.ms",
-	parse, JsonValue from "@std/data/json.ms",
+	JsonValue, parse from "@std/data/json.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 fn doc() JsonValue:
@@ -14,7 +14,6 @@ fn user_field(d: JsonValue, key: String) JsonValue?:
 
 fn string_of(value: JsonValue) String?:
 	if text := value.as_string(): return text.clone()
-
 	return none
 
 fn has_map(value: JsonValue) Bool:
@@ -92,7 +91,6 @@ test "JSON is_null distinguishes null from absent and other values":
 // `get_in` returns a clone of the member it reaches.
 fn user_name(d: JsonValue) String?:
 	if name := d.get_in(["user", "name"]): return name.as_string()
-
 	return none
 
 test "JSON get_in reads a chain of members in place":

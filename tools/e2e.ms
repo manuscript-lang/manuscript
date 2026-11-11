@@ -7,14 +7,15 @@
 // fixtures need to finish quickly); E2E_JOBS the number of parallel workers.
 // Usage: ms run tools/e2e.ms [-- fixture paths to run instead]
 import (
-	env, exe, host, note, run_program from "./lib.ms",
+	Promise, promise from "@std/concurrency/promise.ms",
+	stdout from "@std/io/io.ms",
+	arguments, change_directory, working_directory from "@std/os/env.ms",
 	DirectoryEntry, access, list, read_file, stat from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
-	arguments, change_directory, working_directory from "@std/os/env.ms",
 	system_info from "@std/os/system.ms",
-	Promise, promise from "@std/concurrency/promise.ms",
 	Instant, monotonic from "@std/time.ms",
-	stdout from "@std/io/io.ms",
+
+	env, exe, host, note, run_program from "./lib.ms",
 )
 
 // The exit status and combined output of one `ms` invocation.

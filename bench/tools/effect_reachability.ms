@@ -3,10 +3,28 @@
 // SIZES and MODES are comma-separated; ACTION is check, lint, build, or projects.
 // Set MS_CACHE=off for build measurements. Pin the driver externally when supported.
 import (
-	absolute, capture, dump, ensure_directory, exe, file_sha256, finish, invalid,
-	jfloat, jint, jlist, jobject, jstr, median, now_ns, output_of, platform, read_text, write_text from "./lib.ms",
-	arguments from "@std/os/env.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
+	arguments from "@std/os/env.ms",
+
+	absolute,
+	capture,
+	dump,
+	ensure_directory,
+	exe,
+	file_sha256,
+	finish,
+	invalid,
+	jfloat,
+	jint,
+	jlist,
+	jobject,
+	jstr,
+	median,
+	now_ns,
+	output_of,
+	platform,
+	read_text,
+	write_text from "./lib.ms",
 )
 
 type Diagnostic:

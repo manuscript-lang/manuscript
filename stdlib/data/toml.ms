@@ -1,10 +1,9 @@
 // TOML 1.0 parser implemented in Manuscript.
 import (
-	parse_int, parse_float from "@std/math/math.ms",
-	from_scalars, StringBuilder, Regex, compile from "@std/string.ms",
 	Bytes from "@std/bytes.ms",
-	log, sqrt from "@std/math/math.ms",
 	quote_text from "@std/data/quote.ms",
+	log, parse_float, parse_int, sqrt from "@std/math/math.ms",
+	Regex, StringBuilder, compile, from_scalars from "@std/string.ms",
 )
 
 // A TOML value. Date and time values retain their original TOML text.
@@ -125,7 +124,6 @@ RIGHT_BRACE := 125
 // The byte at `pos` as an Int, or -1 past either end of the document.
 fn byte_at(data: Bytes, pos: Int) Int:
 	if pos < 0 or pos >= data.length(): return -1
-
 	return data.get(pos).to_int()
 
 // The cursor as its own value, which stays valid while the reader moves.
@@ -198,7 +196,6 @@ fn space(var reader: Reader, multiline: Bool) Unit:
 
 fn within(value: Int, limit: Int?) Bool:
 	if maximum := limit: return value <= maximum
-
 	return true
 
 fn allocate(var reader: Reader) Unit!:
@@ -218,7 +215,6 @@ fn string_control(b: Int, multiline: Bool) Bool:
 
 fn quote_char(quote: Int) String:
 	if quote == DOUBLE_QUOTE: return "\""
-
 	return "'"
 
 // Basic and literal strings, including multiline delimiters and escaped newline folding.
@@ -411,7 +407,6 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 			return ok(value)
 		TableArray(slot):
 			if dotted: return error(invalid(reader, "dotted key extends a table array"))
-
 			return ok(reader.arrays[slot].last().get())
 		_: return error(invalid(reader, "key is already a value"))
 
@@ -1025,7 +1020,6 @@ fn format_float(value: Float) String:
 
 	if not value.is_finite():
 		if value < 0.0: return "-inf"
-
 		return "inf"
 
 	text := value.to_string()
@@ -1086,7 +1080,6 @@ fn section_kind(value: TomlValue) Int:
 					elements.clone()
 				).length() == elements.length()
 			): return 2
-
 			return 0
 		_: return 0
 

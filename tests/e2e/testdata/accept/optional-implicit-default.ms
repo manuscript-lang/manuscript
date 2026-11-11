@@ -6,7 +6,6 @@ type Config:
 
 fn find(name: String, limit: Int?, tag: String?) Int:
 	if l := limit: return l
-
 	return name.length()
 
 test "defaults":

@@ -4,9 +4,10 @@
 // the budget. Set RAW=1 for the unoptimized lowering. Loop membership is not reported.
 // Usage: ms run bench/tools/copy_report.ms -- <project ms.toml|file.ms>...   (MS picks the compiler)
 import (
-	capture, env, finish, ms_binary, must, read_text, right, usage from "./lib.ms",
-	temporary from "@std/os/fs.ms",
 	arguments, set_environment from "@std/os/env.ms",
+	temporary from "@std/os/fs.ms",
+
+	capture, env, finish, ms_binary, must, read_text, right, usage from "./lib.ms",
 )
 
 // The type text of every `%N: type` block parameter on a `b<N>(...)` header line, keyed by `%N`.

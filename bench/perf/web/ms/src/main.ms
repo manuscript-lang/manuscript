@@ -1,16 +1,16 @@
 // Benchmark server: main <port> <data-dir> [threads]. `serve` places each connection on one of that many scheduler threads. The Go server in ../go answers the same requests.
 import (
 	Bytes from "@std/bytes.ms",
-	read_file, write_file from "@std/os/fs.ms",
-	HttpServerOptions,
-	headers,
+	max from "@std/math/math.ms",
 	HttpExchange,
 	HttpRequest,
 	HttpResponse,
-	buffered from "@std/net/http.ms",
+	HttpServerOptions,
+	buffered,
+	headers from "@std/net/http.ms",
 	lookup, serve from "@std/net/net.ms",
-	max from "@std/math/math.ms",
 	arguments from "@std/os/env.ms",
+	read_file, write_file from "@std/os/fs.ms",
 )
 
 fn score(id: Int) Int:

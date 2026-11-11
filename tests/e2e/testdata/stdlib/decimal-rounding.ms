@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	Decimal, RoundingMode from "@std/math/decimal.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "decimal cents stay exact and fixed places retain zeros":

@@ -1,7 +1,7 @@
 import (
+	infinity, nan from "@std/math/math.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
-	infinity, nan from "@std/math/math.ms",
 )
 
 fn main() Int:

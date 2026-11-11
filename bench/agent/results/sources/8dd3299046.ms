@@ -6,8 +6,8 @@
 // the global frame is frame -1 with values in `gval` indexed by symbol id.
 
 import (
-    read_all from "@std/io/streams.ms",
-    stdin, stdout, WriteStream from "@std/io/io.ms",
+	WriteStream, stdin, stdout from "@std/io/io.ms",
+	read_all from "@std/io/streams.ms",
 )
 
 // Primitive ids, in the order they are registered in `setup`.
@@ -126,1754 +126,1741 @@ S_ELSE := 15
 
 // A failure. `syntax` failures are never caught by `try`.
 type Fail:
-    msg: String
-    syntax: Bool
+	msg: String
+	syntax: Bool
 
 // Result of one evaluation step: either a finished value, or an expression to continue with.
 type Step:
-    done: Bool = false
-    value: Int = 0
-    expr: Int = 0
-    env: Int = -1
-    tail: Bool = false
-    added: Int = 0
+	done: Bool = false
+	value: Int = 0
+	expr: Int = 0
+	env: Int = -1
+	tail: Bool = false
+	added: Int = 0
 
 fn rt(msg: String) Fail:
-    return Fail(msg: msg, syntax: false)
+	return Fail(msg: msg, syntax: false)
 
 fn synerr(msg: String) Fail:
-    return Fail(msg: msg, syntax: true)
+	return Fail(msg: msg, syntax: true)
 
 fn has(xs: List[Int], v: Int) Bool:
-    for x in xs:
-        if x == v: return true
-    return false
+	for x in xs:
+		if x == v: return true
+	return false
 
 fn is_delim(c: String) Bool:
-    return (
-        c == " "
-        or c == "\n"
-        or c == "\t"
-        or c == "\r"
-        or c == "("
-        or c == ")"
-        or c == "\""
-        or c == ";"
-    )
+	return (
+		c == " "
+		or c == "\n"
+		or c == "\t"
+		or c == "\r"
+		or c == "("
+		or c == ")"
+		or c == "\""
+		or c == ";"
+	)
 
 fn is_int_text(t: String) Bool:
-    cs := t.chars()
-    if cs.is_empty(): return false
+	cs := t.chars()
+	if cs.is_empty(): return false
 
-    var i = 0
-    if cs[0] == "-":
-        i = 1
-    if i >= cs.length(): return false
+	var i = 0
+	if cs[0] == "-":
+		i = 1
+	if i >= cs.length(): return false
 
-    while i < cs.length():
-        if not "0123456789".contains(cs[i]): return false
+	while i < cs.length():
+		if not "0123456789".contains(cs[i]): return false
 
-        i += 1
+		i += 1
 
-    return true
+	return true
 
 fn add_ok(a: Int, b: Int) Bool:
-    if b > 0: return a <= INT_MAX - b
-    if b < 0: return a >= INT_MIN - b
+	if b > 0: return a <= INT_MAX - b
+	if b < 0: return a >= INT_MIN - b
 
-    return true
+	return true
 
 fn sub_ok(a: Int, b: Int) Bool:
-    if b > 0: return a >= INT_MIN + b
-    if b < 0: return a <= INT_MAX + b
+	if b > 0: return a >= INT_MIN + b
+	if b < 0: return a <= INT_MAX + b
 
-    return true
+	return true
 
 fn mul_ok(a: Int, b: Int) Bool:
-    if a == 0 or b == 0: return true
-    if a == INT_MIN or b == INT_MIN: return a == 1 or b == 1
+	if a == 0 or b == 0: return true
+	if a == INT_MIN or b == INT_MIN: return a == 1 or b == 1
 
-    var ua = a
-    if ua < 0:
-        ua = -ua
+	var ua = a
+	if ua < 0:
+		ua = -ua
 
-    var ub = b
-    if ub < 0:
-        ub = -ub
-    if ua <= INT_MAX / ub: return true
-    if (a < 0) == (b < 0): return false
+	var ub = b
+	if ub < 0:
+		ub = -ub
+	if ua <= INT_MAX / ub: return true
+	if (a < 0) == (b < 0): return false
 
-    return ub % 2 == 0 and ua == 4611686018427387904 / (ub / 2)
+	return ub % 2 == 0 and ua == 4611686018427387904 / (ub / 2)
 
 fn cmp_holds(pid: Int, a: Int, b: Int) Bool:
-    if pid == P_NUMEQ: return a == b
-    if pid == P_LT: return a < b
-    if pid == P_GT: return a > b
-    if pid == P_LE: return a <= b
+	if pid == P_NUMEQ: return a == b
+	if pid == P_LT: return a < b
+	if pid == P_GT: return a > b
+	if pid == P_LE: return a <= b
 
-    return a >= b
+	return a >= b
 
 type Interp:
-    out: WriteStream[String]
-    // Value heap: kind, payload, car and cdr per handle.
-    hk: List[Int] = [0, 1, 2, 2]
-    hp: List[Int] = [0, 0, 0, 1]
-    hca: List[Int] = [0, 0, 0, 0]
-    hcd: List[Int] = [0, 0, 0, 0]
-    strs: List[String] = []
-    symn: List[String] = []
-    symmap: Map[String, Int] = Map[String, Int]()
-    gval: List[Int] = []
-    // Frames and bindings.
-    fr_parent: List[Int] = []
-    fr_head: List[Int] = []
-    b_sym: List[Int] = []
-    b_val: List[Int] = []
-    b_next: List[Int] = []
-    // Closures: parameter list (may be a bare symbol or dotted), body list, defining frame, name id (-1 anonymous).
-    cl_params: List[Int] = []
-    cl_body: List[Int] = []
-    cl_env: List[Int] = []
-    cl_name: List[Int] = []
-    // Builtins: name, minimum and maximum arity (-1 means no maximum).
-    prim_name: List[String] = []
-    prim_min: List[Int] = []
-    prim_max: List[Int] = []
-    // Current nesting of non-tail procedure calls.
-    depth: Int = 0
-    // Nesting of closure calls made from builtins (each one uses much more native stack).
-    bdepth: Int = 0
-    // Reader state.
-    src: List[String] = []
-    pos: Int = 0
-    // Output state.
-    at_bol: Bool = true
-    pbuf: List[String] = []
+	out: WriteStream[String]
+	// Value heap: kind, payload, car and cdr per handle.
+	hk: List[Int] = [0, 1, 2, 2]
+	hp: List[Int] = [0, 0, 0, 1]
+	hca: List[Int] = [0, 0, 0, 0]
+	hcd: List[Int] = [0, 0, 0, 0]
+	strs: List[String] = []
+	symn: List[String] = []
+	symmap: Map[String, Int] = Map[String, Int]()
+	gval: List[Int] = []
+	// Frames and bindings.
+	fr_parent: List[Int] = []
+	fr_head: List[Int] = []
+	b_sym: List[Int] = []
+	b_val: List[Int] = []
+	b_next: List[Int] = []
+	// Closures: parameter list (may be a bare symbol or dotted), body list, defining frame, name id (-1 anonymous).
+	cl_params: List[Int] = []
+	cl_body: List[Int] = []
+	cl_env: List[Int] = []
+	cl_name: List[Int] = []
+	// Builtins: name, minimum and maximum arity (-1 means no maximum).
+	prim_name: List[String] = []
+	prim_min: List[Int] = []
+	prim_max: List[Int] = []
+	// Current nesting of non-tail procedure calls.
+	depth: Int = 0
+	// Nesting of closure calls made from builtins (each one uses much more native stack).
+	bdepth: Int = 0
+	// Reader state.
+	src: List[String] = []
+	pos: Int = 0
+	// Output state.
+	at_bol: Bool = true
+	pbuf: List[String] = []
 
 impl Interp:
-    // ---------- output ----------
+	// ---------- output ----------
 
-    var fn emit(s: String) Unit:
-        if s.is_empty(): return
+	var fn emit(s: String) Unit:
+		if s.is_empty(): return
 
-        self.out.write(s).get()
-        self.at_bol = s.ends_with("\n")
+		self.out.write(s).get()
+		self.at_bol = s.ends_with("\n")
 
-    var fn report(msg: String) Unit:
-        if not self.at_bol:
-            self.emit("\n")
-        self.emit("error: " + msg + "\n")
+	var fn report(msg: String) Unit:
+		if not self.at_bol:
+			self.emit("\n")
+		self.emit("error: " + msg + "\n")
 
-    // ---------- heap ----------
+	// ---------- heap ----------
 
-    var fn mk(k: Int, p: Int) Int:
-        self.hk.append(k)
-        self.hp.append(p)
-        self.hca.append(0)
-        self.hcd.append(0)
-        return self.hk.length() - 1
+	var fn mk(k: Int, p: Int) Int:
+		self.hk.append(k)
+		self.hp.append(p)
+		self.hca.append(0)
+		self.hcd.append(0)
+		return self.hk.length() - 1
 
-    var fn mkint(n: Int) Int:
-        return self.mk(K_INT, n)
+	var fn mkint(n: Int) Int:
+		return self.mk(K_INT, n)
 
-    var fn mkbool(b: Bool) Int:
-        if b: return TRUE
+	var fn mkbool(b: Bool) Int:
+		if b: return TRUE
+		return FALSE
 
-        return FALSE
+	var fn mkstr(s: String) Int:
+		self.strs.append(s)
+		return self.mk(K_STR, self.strs.length() - 1)
 
-    var fn mkstr(s: String) Int:
-        self.strs.append(s)
-        return self.mk(K_STR, self.strs.length() - 1)
+	var fn mksym(id: Int) Int:
+		return self.mk(K_SYM, id)
 
-    var fn mksym(id: Int) Int:
-        return self.mk(K_SYM, id)
+	var fn cons(a: Int, d: Int) Int:
+		h := self.mk(K_PAIR, 0)
+		self.hca[h] = a
+		self.hcd[h] = d
+		return h
 
-    var fn cons(a: Int, d: Int) Int:
-        h := self.mk(K_PAIR, 0)
-        self.hca[h] = a
-        self.hcd[h] = d
-        return h
+	var fn build(items: List[Int], tail: Int) Int:
+		var r = tail
+		var i = items.length() - 1
+
+		while i >= 0:
+			r = self.cons(items[i], r)
+			i -= 1
+
+		return r
+
+	var fn list_from(items: List[Int]) Int:
+		return self.build(items, NIL)
+
+	// Elements of a list; the caller has checked that it is proper.
+	fn to_list(h: Int) List[Int]:
+		var out: List[Int] = []
+		var p = h
+
+		while self.hk[p] == K_PAIR:
+			out.append(self.hca[p])
+			p = self.hcd[p]
+
+		return out
+
+	// Number of pairs in a proper list, or -1 when the list is improper.
+	fn proper_len(h: Int) Int:
+		var n = 0
+		var p = h
+
+		while self.hk[p] == K_PAIR:
+			n += 1
+			p = self.hcd[p]
+
+		if self.hk[p] == K_NIL: return n
+
+		return -1
+
+	fn is_proper(h: Int) Bool:
+		return self.proper_len(h) >= 0
+
+	fn is_proc(h: Int) Bool:
+		return self.hk[h] == K_PRIM or self.hk[h] == K_CLOS
+
+	var fn intern(name: String) Int:
+		if id := self.symmap.get(name): return id
+
+		id := self.symn.length()
+		self.symn.append(name.clone())
+		self.symmap[name.clone()] = id
+		self.gval.append(-1)
+		return id
+
+	fn sym_name(id: Int) String:
+		return self.symn[id].clone()
+
+	// eq?: true only for same integer, boolean, symbol, or empty list.
+	fn eqv(a: Int, b: Int) Bool:
+		ka := self.hk[a]
+		if ka == K_STR or ka == K_PAIR or ka == K_PRIM or ka == K_CLOS or ka == K_VOID:
+			return false
+		if ka != self.hk[b]: return false
+
+		return self.hp[a] == self.hp[b]
+
+	// equal?: structural on pairs and strings.
+	fn equal_v(a0: Int, b0: Int) Bool:
+		var a = a0
+		var b = b0
+
+		while true:
+			ka := self.hk[a]
+
+			if ka == K_PAIR and self.hk[b] == K_PAIR:
+				if not self.equal_v(self.hca[a], self.hca[b]): return false
+
+				a = self.hcd[a]
+				b = self.hcd[b]
+			else if ka == K_STR:
+				return (
+					self.hk[b] == K_STR
+					and self.strs[self.hp[a]] == self.strs[
+						self.hp[b]
+					]
+				)
+			else if ka == K_PRIM or ka == K_CLOS:
+				return self.hk[b] == ka and self.hp[b] == self.hp[a]
+			else:
+				return self.eqv(a, b)
+
+		return false
+
+	// ---------- printing ----------
+
+	var fn pr(h: Int, wr: Bool) Unit:
+		k := self.hk[h]
+
+		if k == K_NIL:
+			self.pbuf.append("()")
+		else if k == K_VOID:
+			self.pbuf.append("#<void>")
+		else if k == K_BOOL:
+			if h == TRUE:
+				self.pbuf.append("#t")
+			else:
+				self.pbuf.append("#f")
+		else if k == K_INT:
+			self.pbuf.append(self.hp[h].to_string())
+		else if k == K_STR:
+			if wr:
+				body := self.strs[self.hp[h]].replace("\\", "\\\\").replace(
+					"\"", "\\\""
+				).replace("\n", "\\n").replace("\t", "\\t")
+				self.pbuf.append("\"" + body + "\"")
+			else:
+				self.pbuf.append(self.strs[self.hp[h]].clone())
+		else if k == K_SYM:
+			self.pbuf.append(self.sym_name(self.hp[h]))
+		else if k == K_PAIR:
+			self.pbuf.append("(")
+			self.pr(self.hca[h], wr)
+
+			var p = self.hcd[h]
+
+			while self.hk[p] == K_PAIR:
+				self.pbuf.append(" ")
+				self.pr(self.hca[p], wr)
+				p = self.hcd[p]
+
+			if self.hk[p] != K_NIL:
+				self.pbuf.append(" . ")
+				self.pr(p, wr)
+
+			self.pbuf.append(")")
+		else if k == K_PRIM:
+			self.pbuf.append("#<builtin " + self.prim_name[self.hp[h]].clone() + ">")
+		else:
+			cid := self.hp[h]
+
+			if self.cl_name[cid] == -1:
+				self.pbuf.append("#<procedure>")
+			else:
+				self.pbuf.append(
+					"#<procedure " + self.sym_name(
+						self.cl_name[cid]
+					) + ">"
+				)
+
+	var fn to_text(h: Int, wr: Bool) String:
+		self.pbuf = []
+		self.pr(h, wr)
+		return self.pbuf.join("")
+
+	// ---------- reader ----------
+
+	fn at_dot() Bool:
+		if self.pos >= self.src.length(): return false
+		if self.src[self.pos] != ".": return false
+		if self.pos + 1 >= self.src.length(): return true
+
+		return is_delim(self.src[self.pos + 1])
+
+	var fn skip_ws() Unit:
+		while self.pos < self.src.length():
+			c := self.src[self.pos].clone()
+
+			if c == ";":
+				while self.pos < self.src.length() and self.src[self.pos] != "\n":
+					self.pos += 1
+			else if c == " " or c == "\n" or c == "\t" or c == "\r":
+				self.pos += 1
+			else:
+				break
+
+	var fn read_datum() Int!Fail:
+		self.skip_ws()
+		if self.pos >= self.src.length():
+			return error(synerr("syntax error: unexpected end of input"))
+
+		c := self.src[self.pos].clone()
+
+		if c == "(":
+			self.pos += 1
+			return self.read_list()
+
+		if c == ")": return error(synerr("syntax error: unexpected )"))
+
+		if c == "'":
+			self.pos += 1
+
+			d := try self.read_datum()
+			return ok(self.cons(self.mksym(S_QUOTE), self.cons(d, NIL)))
+
+		if c == "\"":
+			self.pos += 1
+			return self.read_string()
+
+		var tok = ""
+
+		while self.pos < self.src.length() and not is_delim(self.src[self.pos]):
+			tok += self.src[self.pos]
+			self.pos += 1
+
+		return self.atom(tok)
+
+	var fn read_list() Int!Fail:
+		var items: List[Int] = []
+
+		while true:
+			self.skip_ws()
+			if self.pos >= self.src.length():
+				return error(synerr("syntax error: unexpected end of input"))
+
+			if self.src[self.pos] == ")":
+				self.pos += 1
+				return ok(self.build(items, NIL))
+
+			if self.at_dot():
+				if items.is_empty():
+					return error(synerr("syntax error: bad dotted list"))
+
+				self.pos += 1
+				self.skip_ws()
+				if self.pos >= self.src.length():
+					return error(synerr("syntax error: unexpected end of input"))
+				if self.src[self.pos] == ")":
+					return error(synerr("syntax error: bad dotted list"))
+
+				tail := try self.read_datum()
+				self.skip_ws()
+				if self.pos >= self.src.length():
+					return error(synerr("syntax error: unexpected end of input"))
+				if self.src[self.pos] != ")":
+					return error(synerr("syntax error: bad dotted list"))
+
+				self.pos += 1
+				return ok(self.build(items, tail))
+
+			d := try self.read_datum()
+			items.append(d)
+
+		return ok(NIL)
+
+	var fn read_string() Int!Fail:
+		var s = ""
+
+		while self.pos < self.src.length():
+			c := self.src[self.pos].clone()
+			self.pos += 1
+			if c == "\"": return ok(self.mkstr(s))
+
+			if c == "\\":
+				if self.pos >= self.src.length(): break
+
+				e := self.src[self.pos].clone()
+				self.pos += 1
+
+				if e == "n":
+					s += "\n"
+				else if e == "t":
+					s += "\t"
+				else if e == "\\":
+					s += "\\"
+				else if e == "\"":
+					s += "\""
+				else:
+					return error(synerr("syntax error: bad escape"))
+			else:
+				s += c
+
+		return error(synerr("syntax error: unterminated string"))
+
+	var fn atom(tok: String) Int!Fail:
+		if tok == "#t": return ok(TRUE)
+		if tok == "#f": return ok(FALSE)
+		if tok.starts_with("#"): return error(synerr("syntax error: bad token: " + tok))
+		if tok == ".": return error(synerr("syntax error: unexpected ."))
+
+		if is_int_text(tok):
+			if n := tok.parse_int(): return ok(self.mkint(n))
+			return error(synerr("syntax error: integer out of range"))
+
+		return ok(self.mksym(self.intern(tok)))
+
+	// ---------- environments ----------
+
+	var fn new_frame(parent: Int) Int:
+		self.fr_parent.append(parent)
+		self.fr_head.append(-1)
+		return self.fr_parent.length() - 1
+
+	var fn bind_new(f: Int, sym: Int, val: Int) Unit:
+		self.b_sym.append(sym)
+		self.b_val.append(val)
+		self.b_next.append(self.fr_head[f])
+		self.fr_head[f] = self.b_sym.length() - 1
+
+	// define: binds in frame f (or the global table for -1), rebinding an existing name in that frame.
+	var fn define_in(f: Int, sym: Int, val: Int) Unit:
+		if f == -1:
+			self.gval[sym] = val
+			return
+
+		var b = self.fr_head[f]
+
+		while b != -1:
+			if self.b_sym[b] == sym:
+				self.b_val[b] = val
+				return
+
+			b = self.b_next[b]
+
+		self.bind_new(f, sym, val)
+
+	fn lookup(env: Int, sym: Int) Int!Fail:
+		var f = env
+
+		while f != -1:
+			var b = self.fr_head[f]
+
+			while b != -1:
+				if self.b_sym[b] == sym: return ok(self.b_val[b])
+
+				b = self.b_next[b]
+
+			f = self.fr_parent[f]
+
+		g := self.gval[sym]
+		if g == -1: return error(rt("unbound variable: " + self.sym_name(sym)))
+
+		return ok(g)
+
+	var fn set_var(env: Int, sym: Int, val: Int) Bool:
+		var f = env
+
+		while f != -1:
+			var b = self.fr_head[f]
+
+			while b != -1:
+				if self.b_sym[b] == sym:
+					self.b_val[b] = val
+					return true
+
+				b = self.b_next[b]
+
+			f = self.fr_parent[f]
+
+		if self.gval[sym] == -1: return false
+
+		self.gval[sym] = val
+		return true
+
+	// ---------- closures ----------
+
+	var fn make_closure(params: Int, body: Int, env: Int, name: Int) Int:
+		self.cl_params.append(params)
+		self.cl_body.append(body)
+		self.cl_env.append(env)
+		self.cl_name.append(name)
+		return self.mk(K_CLOS, self.cl_params.length() - 1)
+
+	fn params_ok(p: Int) Bool:
+		var seen: List[Int] = []
+		var t = p
+
+		while self.hk[t] == K_PAIR:
+			a := self.hca[t]
+			if self.hk[a] != K_SYM: return false
+			if has(seen, self.hp[a]): return false
+
+			seen.append(self.hp[a])
+			t = self.hcd[t]
+
+		if self.hk[t] == K_NIL: return true
+		if self.hk[t] != K_SYM: return false
+
+		return not has(seen, self.hp[t])
+
+	var fn make_lambda(x: Int, env: Int, name: Int) Int!Fail:
+		if self.proper_len(x) < 3:
+			return error(synerr("syntax error: bad form: lambda"))
+
+		params := self.hca[self.hcd[x]]
+		if not self.params_ok(params):
+			return error(synerr("syntax error: bad form: lambda"))
+
+		return ok(self.make_closure(params, self.hcd[self.hcd[x]], env, name))
+
+	fn clo_name(cid: Int) String:
+		if self.cl_name[cid] == -1: return "lambda"
+		return self.sym_name(self.cl_name[cid])
+
+	// Builds the frame for a call of closure cid, checking the argument count.
+	var fn bind_args(cid: Int, args: List[Int]) Int!Fail:
+		var fixed = 0
+		var t = self.cl_params[cid]
+
+		while self.hk[t] == K_PAIR:
+			fixed += 1
+			t = self.hcd[t]
+
+		has_rest := self.hk[t] == K_SYM
+		n := args.length()
+
+		if n < fixed or (n > fixed and not has_rest):
+			var ex = fixed.to_string()
+			if has_rest:
+				ex = "at least " + fixed.to_string()
+			return error(
+				rt(
+					"wrong number of arguments to " + self.clo_name(
+						cid
+					) + ": expected " + ex + ", got " + n.to_string()
+				)
+			)
+
+		env := self.new_frame(self.cl_env[cid])
+		var p = self.cl_params[cid]
+		var i = 0
 
-    var fn build(items: List[Int], tail: Int) Int:
-        var r = tail
-        var i = items.length() - 1
+		while self.hk[p] == K_PAIR:
+			self.bind_new(env, self.hp[self.hca[p]], args[i])
+			i += 1
+			p = self.hcd[p]
+
+		if has_rest:
+			var rest = NIL
+			var j = n - 1
+
+			while j >= fixed:
+				rest = self.cons(args[j], rest)
+				j -= 1
+
+			self.bind_new(env, self.hp[t], rest)
+
+		return ok(env)
+
+	// Evaluates all body expressions but the last; returns the last one unevaluated.
+	var fn eval_prefix(body: Int, env: Int) Int!Fail:
+		var b = body
+
+		while self.hcd[b] != NIL:
+			_v := try self.ev(self.hca[b], env, false)
+			b = self.hcd[b]
+
+		return ok(self.hca[b])
+
+	// Applies f to args as a call in the given position. Closures in tail position replace the
+	// current evaluation (no depth change); others enter a new non-tail call.
+	var fn apply_step(f: Int, args: List[Int], tail: Bool, added: Int) Step!Fail:
+		k := self.hk[f]
+
+		if k == K_PRIM:
+			v := try self.call_prim(self.hp[f], args)
+			return ok(Step(done: true, value: v, added: added))
+
+		if k == K_CLOS:
+			cid := self.hp[f]
+			env2 := try self.bind_args(cid, args)
+			var t2 = tail
+			var add2 = added
+
+			if not tail:
+				if self.depth + 1 > MAX_DEPTH:
+					return error(rt("recursion limit exceeded"))
+
+				self.depth += 1
+				add2 += 1
+				t2 = true
+
+			last := try self.eval_prefix(self.cl_body[cid], env2)
+			return ok(Step(done: false, expr: last, env: env2, tail: t2, added: add2))
+
+		return error(rt("not a procedure: " + self.to_text(f, true)))
+
+	// Applies f to args from builtin code (always a non-tail call).
+	var fn apply_value(f: Int, args: List[Int]) Int!Fail:
+		k := self.hk[f]
+		if k == K_PRIM: return self.call_prim(self.hp[f], args)
 
-        while i >= 0:
-            r = self.cons(items[i], r)
-            i -= 1
-
-        return r
-
-    var fn list_from(items: List[Int]) Int:
-        return self.build(items, NIL)
-
-    // Elements of a list; the caller has checked that it is proper.
-    fn to_list(h: Int) List[Int]:
-        var out: List[Int] = []
-        var p = h
-
-        while self.hk[p] == K_PAIR:
-            out.append(self.hca[p])
-            p = self.hcd[p]
-
-        return out
-
-    // Number of pairs in a proper list, or -1 when the list is improper.
-    fn proper_len(h: Int) Int:
-        var n = 0
-        var p = h
-
-        while self.hk[p] == K_PAIR:
-            n += 1
-            p = self.hcd[p]
-
-        if self.hk[p] == K_NIL: return n
-
-        return -1
-
-    fn is_proper(h: Int) Bool:
-        return self.proper_len(h) >= 0
-
-    fn is_proc(h: Int) Bool:
-        return self.hk[h] == K_PRIM or self.hk[h] == K_CLOS
-
-    var fn intern(name: String) Int:
-        if id := self.symmap.get(name): return id
-
-        id := self.symn.length()
-        self.symn.append(name.clone())
-        self.symmap[name.clone()] = id
-        self.gval.append(-1)
-        return id
-
-    fn sym_name(id: Int) String:
-        return self.symn[id].clone()
-
-    // eq?: true only for same integer, boolean, symbol, or empty list.
-    fn eqv(a: Int, b: Int) Bool:
-        ka := self.hk[a]
-        if ka == K_STR or ka == K_PAIR or ka == K_PRIM or ka == K_CLOS or ka == K_VOID:
-            return false
-        if ka != self.hk[b]: return false
-
-        return self.hp[a] == self.hp[b]
-
-    // equal?: structural on pairs and strings.
-    fn equal_v(a0: Int, b0: Int) Bool:
-        var a = a0
-        var b = b0
-
-        while true:
-            ka := self.hk[a]
-
-            if ka == K_PAIR and self.hk[b] == K_PAIR:
-                if not self.equal_v(self.hca[a], self.hca[b]): return false
-
-                a = self.hcd[a]
-                b = self.hcd[b]
-            else if ka == K_STR:
-                return (
-                    self.hk[b] == K_STR
-                    and self.strs[self.hp[a]] == self.strs[
-                        self.hp[b]
-                    ]
-                )
-            else if ka == K_PRIM or ka == K_CLOS:
-                return self.hk[b] == ka and self.hp[b] == self.hp[a]
-            else:
-                return self.eqv(a, b)
-
-        return false
-
-    // ---------- printing ----------
-
-    var fn pr(h: Int, wr: Bool) Unit:
-        k := self.hk[h]
-
-        if k == K_NIL:
-            self.pbuf.append("()")
-        else if k == K_VOID:
-            self.pbuf.append("#<void>")
-        else if k == K_BOOL:
-            if h == TRUE:
-                self.pbuf.append("#t")
-            else:
-                self.pbuf.append("#f")
-        else if k == K_INT:
-            self.pbuf.append(self.hp[h].to_string())
-        else if k == K_STR:
-            if wr:
-                body := self.strs[self.hp[h]].replace("\\", "\\\\").replace(
-                    "\"", "\\\""
-                ).replace("\n", "\\n").replace("\t", "\\t")
-                self.pbuf.append("\"" + body + "\"")
-            else:
-                self.pbuf.append(self.strs[self.hp[h]].clone())
-        else if k == K_SYM:
-            self.pbuf.append(self.sym_name(self.hp[h]))
-        else if k == K_PAIR:
-            self.pbuf.append("(")
-            self.pr(self.hca[h], wr)
-
-            var p = self.hcd[h]
-
-            while self.hk[p] == K_PAIR:
-                self.pbuf.append(" ")
-                self.pr(self.hca[p], wr)
-                p = self.hcd[p]
-
-            if self.hk[p] != K_NIL:
-                self.pbuf.append(" . ")
-                self.pr(p, wr)
-
-            self.pbuf.append(")")
-        else if k == K_PRIM:
-            self.pbuf.append("#<builtin " + self.prim_name[self.hp[h]].clone() + ">")
-        else:
-            cid := self.hp[h]
-
-            if self.cl_name[cid] == -1:
-                self.pbuf.append("#<procedure>")
-            else:
-                self.pbuf.append(
-                    "#<procedure " + self.sym_name(
-                        self.cl_name[cid]
-                    ) + ">"
-                )
-
-    var fn to_text(h: Int, wr: Bool) String:
-        self.pbuf = []
-        self.pr(h, wr)
-        return self.pbuf.join("")
-
-    // ---------- reader ----------
-
-    fn at_dot() Bool:
-        if self.pos >= self.src.length(): return false
-        if self.src[self.pos] != ".": return false
-        if self.pos + 1 >= self.src.length(): return true
-
-        return is_delim(self.src[self.pos + 1])
-
-    var fn skip_ws() Unit:
-        while self.pos < self.src.length():
-            c := self.src[self.pos].clone()
-
-            if c == ";":
-                while self.pos < self.src.length() and self.src[self.pos] != "\n":
-                    self.pos += 1
-            else if c == " " or c == "\n" or c == "\t" or c == "\r":
-                self.pos += 1
-            else:
-                break
-
-    var fn read_datum() Int!Fail:
-        self.skip_ws()
-        if self.pos >= self.src.length():
-            return error(synerr("syntax error: unexpected end of input"))
-
-        c := self.src[self.pos].clone()
-
-        if c == "(":
-            self.pos += 1
-            return self.read_list()
-
-        if c == ")": return error(synerr("syntax error: unexpected )"))
-
-        if c == "'":
-            self.pos += 1
-
-            d := try self.read_datum()
-            return ok(self.cons(self.mksym(S_QUOTE), self.cons(d, NIL)))
-
-        if c == "\"":
-            self.pos += 1
-            return self.read_string()
-
-        var tok = ""
-
-        while self.pos < self.src.length() and not is_delim(self.src[self.pos]):
-            tok += self.src[self.pos]
-            self.pos += 1
-
-        return self.atom(tok)
-
-    var fn read_list() Int!Fail:
-        var items: List[Int] = []
-
-        while true:
-            self.skip_ws()
-            if self.pos >= self.src.length():
-                return error(synerr("syntax error: unexpected end of input"))
-
-            if self.src[self.pos] == ")":
-                self.pos += 1
-                return ok(self.build(items, NIL))
-
-            if self.at_dot():
-                if items.is_empty():
-                    return error(synerr("syntax error: bad dotted list"))
-
-                self.pos += 1
-                self.skip_ws()
-                if self.pos >= self.src.length():
-                    return error(synerr("syntax error: unexpected end of input"))
-                if self.src[self.pos] == ")":
-                    return error(synerr("syntax error: bad dotted list"))
-
-                tail := try self.read_datum()
-                self.skip_ws()
-                if self.pos >= self.src.length():
-                    return error(synerr("syntax error: unexpected end of input"))
-                if self.src[self.pos] != ")":
-                    return error(synerr("syntax error: bad dotted list"))
-
-                self.pos += 1
-                return ok(self.build(items, tail))
-
-            d := try self.read_datum()
-            items.append(d)
-
-        return ok(NIL)
-
-    var fn read_string() Int!Fail:
-        var s = ""
-
-        while self.pos < self.src.length():
-            c := self.src[self.pos].clone()
-            self.pos += 1
-            if c == "\"": return ok(self.mkstr(s))
-
-            if c == "\\":
-                if self.pos >= self.src.length(): break
-
-                e := self.src[self.pos].clone()
-                self.pos += 1
-
-                if e == "n":
-                    s += "\n"
-                else if e == "t":
-                    s += "\t"
-                else if e == "\\":
-                    s += "\\"
-                else if e == "\"":
-                    s += "\""
-                else:
-                    return error(synerr("syntax error: bad escape"))
-            else:
-                s += c
-
-        return error(synerr("syntax error: unterminated string"))
-
-    var fn atom(tok: String) Int!Fail:
-        if tok == "#t": return ok(TRUE)
-        if tok == "#f": return ok(FALSE)
-        if tok.starts_with("#"): return error(synerr("syntax error: bad token: " + tok))
-        if tok == ".": return error(synerr("syntax error: unexpected ."))
-
-        if is_int_text(tok):
-            if n := tok.parse_int(): return ok(self.mkint(n))
-
-            return error(synerr("syntax error: integer out of range"))
-
-        return ok(self.mksym(self.intern(tok)))
-
-    // ---------- environments ----------
-
-    var fn new_frame(parent: Int) Int:
-        self.fr_parent.append(parent)
-        self.fr_head.append(-1)
-        return self.fr_parent.length() - 1
-
-    var fn bind_new(f: Int, sym: Int, val: Int) Unit:
-        self.b_sym.append(sym)
-        self.b_val.append(val)
-        self.b_next.append(self.fr_head[f])
-        self.fr_head[f] = self.b_sym.length() - 1
-
-    // define: binds in frame f (or the global table for -1), rebinding an existing name in that frame.
-    var fn define_in(f: Int, sym: Int, val: Int) Unit:
-        if f == -1:
-            self.gval[sym] = val
-            return
-
-        var b = self.fr_head[f]
-
-        while b != -1:
-            if self.b_sym[b] == sym:
-                self.b_val[b] = val
-                return
-
-            b = self.b_next[b]
-
-        self.bind_new(f, sym, val)
-
-    fn lookup(env: Int, sym: Int) Int!Fail:
-        var f = env
-
-        while f != -1:
-            var b = self.fr_head[f]
-
-            while b != -1:
-                if self.b_sym[b] == sym: return ok(self.b_val[b])
-
-                b = self.b_next[b]
-
-            f = self.fr_parent[f]
-
-        g := self.gval[sym]
-        if g == -1: return error(rt("unbound variable: " + self.sym_name(sym)))
-
-        return ok(g)
-
-    var fn set_var(env: Int, sym: Int, val: Int) Bool:
-        var f = env
-
-        while f != -1:
-            var b = self.fr_head[f]
-
-            while b != -1:
-                if self.b_sym[b] == sym:
-                    self.b_val[b] = val
-                    return true
-
-                b = self.b_next[b]
-
-            f = self.fr_parent[f]
-
-        if self.gval[sym] == -1: return false
-
-        self.gval[sym] = val
-        return true
-
-    // ---------- closures ----------
-
-    var fn make_closure(params: Int, body: Int, env: Int, name: Int) Int:
-        self.cl_params.append(params)
-        self.cl_body.append(body)
-        self.cl_env.append(env)
-        self.cl_name.append(name)
-        return self.mk(K_CLOS, self.cl_params.length() - 1)
-
-    fn params_ok(p: Int) Bool:
-        var seen: List[Int] = []
-        var t = p
-
-        while self.hk[t] == K_PAIR:
-            a := self.hca[t]
-            if self.hk[a] != K_SYM: return false
-            if has(seen, self.hp[a]): return false
-
-            seen.append(self.hp[a])
-            t = self.hcd[t]
-
-        if self.hk[t] == K_NIL: return true
-        if self.hk[t] != K_SYM: return false
-
-        return not has(seen, self.hp[t])
-
-    var fn make_lambda(x: Int, env: Int, name: Int) Int!Fail:
-        if self.proper_len(x) < 3:
-            return error(synerr("syntax error: bad form: lambda"))
-
-        params := self.hca[self.hcd[x]]
-        if not self.params_ok(params):
-            return error(synerr("syntax error: bad form: lambda"))
-
-        return ok(self.make_closure(params, self.hcd[self.hcd[x]], env, name))
-
-    fn clo_name(cid: Int) String:
-        if self.cl_name[cid] == -1: return "lambda"
-
-        return self.sym_name(self.cl_name[cid])
-
-    // Builds the frame for a call of closure cid, checking the argument count.
-    var fn bind_args(cid: Int, args: List[Int]) Int!Fail:
-        var fixed = 0
-        var t = self.cl_params[cid]
-
-        while self.hk[t] == K_PAIR:
-            fixed += 1
-            t = self.hcd[t]
-
-        has_rest := self.hk[t] == K_SYM
-        n := args.length()
-
-        if n < fixed or (n > fixed and not has_rest):
-            var ex = fixed.to_string()
-            if has_rest:
-                ex = "at least " + fixed.to_string()
-            return error(
-                rt(
-                    "wrong number of arguments to " + self.clo_name(
-                        cid
-                    ) + ": expected " + ex + ", got " + n.to_string()
-                )
-            )
+		if k == K_CLOS:
+			cid := self.hp[f]
+			if self.depth + 1 > MAX_DEPTH or self.bdepth >= MAX_BDEPTH:
+				return error(rt("recursion limit exceeded"))
+
+			self.depth += 1
+			self.bdepth += 1
+
+			env2 := try self.bind_args(cid, args)
+			last := try self.eval_prefix(self.cl_body[cid], env2)
+			v := try self.ev(last, env2, true)
+			self.depth -= 1
+			self.bdepth -= 1
+			return ok(v)
+
+		return error(rt("not a procedure: " + self.to_text(f, true)))
+
+	fn bindings_ok(bl: Int) Bool:
+		if not self.is_proper(bl): return false
+
+		var b = bl
+
+		while self.hk[b] == K_PAIR:
+			bind := self.hca[b]
+			if self.proper_len(bind) != 2: return false
+			if self.hk[self.hca[bind]] != K_SYM: return false
+
+			b = self.hcd[b]
+
+		return true
+
+	// ---------- evaluator ----------
+
+	fn fin(v: Int, added: Int) Step:
+		return Step(done: true, value: v, added: added)
+
+	fn go(x: Int, env: Int, tail: Bool, added: Int) Step:
+		return Step(done: false, expr: x, env: env, tail: tail, added: added)
+
+	// Evaluates x in env. `tail` says whether x is in tail position of a closure body that is
+	// already running, so that a closure call here does not add to the call depth.
+	var fn ev(x0: Int, env0: Int, tail0: Bool) Int!Fail:
+		var x = x0
+		var env = env0
+		var tail = tail0
+		var added = 0
+
+		while true:
+			k := self.hk[x]
+
+			if k == K_SYM:
+				v := try self.lookup(env, self.hp[x])
+				self.depth -= added
+				return ok(v)
+
+			if k == K_NIL: return error(synerr("syntax error: empty application"))
+
+			if k != K_PAIR:
+				self.depth -= added
+				return ok(x)
+
+			var st = Step()
+
+			if self.hk[self.hca[x]] == K_SYM and self.hp[self.hca[x]] < NSPECIAL:
+				st = try self.special(x, env, tail, added)
+			else:
+				st = try self.application(x, env, tail, added)
+
+			if st.done:
+				self.depth -= st.added
+				return ok(st.value)
+
+			x = st.expr
+			env = st.env
+			tail = st.tail
+			added = st.added
+
+		return error(rt("internal error"))
+
+	// A call (f arg...): operator, then operands left to right, then apply.
+	var fn application(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
+		if self.proper_len(x) < 0: return error(synerr("syntax error: bad application"))
+
+		f := try self.ev(self.hca[x], env, false)
+		var args: List[Int] = []
+		var a = self.hcd[x]
+
+		while self.hk[a] == K_PAIR:
+			v := try self.ev(self.hca[a], env, false)
+			args.append(v)
+			a = self.hcd[a]
+
+		if self.hk[f] == K_PRIM:
+			pv := try self.call_prim(self.hp[f], args)
+			return ok(self.fin(pv, added))
+
+		return self.apply_step(f, args, tail, added)
+
+	var fn special(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
+		sid := self.hp[self.hca[x]]
+		if self.proper_len(x) < 0:
+			return error(synerr("syntax error: bad form: " + self.sym_name(sid)))
+		if sid == S_QUOTE: return self.sf_quote(x, added)
+		if sid == S_IF: return self.sf_if(x, env, tail, added)
+		if sid == S_DEFINE: return self.sf_define(x, env, added)
+		if sid == S_SET: return self.sf_set(x, env, added)
+		if sid == S_LAMBDA: return self.sf_lambda(x, env, added)
+		if sid == S_BEGIN: return self.sf_begin(x, env, tail, added)
+		if sid == S_LET: return self.sf_let(x, env, tail, added)
+		if sid == S_LETSTAR or sid == S_LETREC:
+			return self.sf_letstar(x, env, tail, added, sid)
+		if sid == S_COND: return self.sf_cond(x, env, tail, added)
+		if sid == S_AND: return self.sf_and(x, env, tail, added)
+		if sid == S_OR: return self.sf_or(x, env, tail, added)
+		if sid == S_WHEN or sid == S_UNLESS:
+			return self.sf_when(x, env, tail, added, sid)
+		if sid == S_TRY: return self.sf_try(x, env, added)
+
+		return error(synerr("syntax error: bad form"))
+
+	var fn sf_quote(x: Int, added: Int) Step!Fail:
+		if self.proper_len(x) != 2:
+			return error(synerr("syntax error: bad form: quote"))
+		return ok(self.fin(self.hca[self.hcd[x]], added))
+
+	var fn sf_if(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
+		n := self.proper_len(x)
+		if n != 3 and n != 4: return error(synerr("syntax error: bad form: if"))
+
+		tv := try self.ev(self.hca[self.hcd[x]], env, false)
+		rest := self.hcd[self.hcd[x]]
+		if tv != FALSE: return ok(self.go(self.hca[rest], env, tail, added))
+		if self.hcd[rest] != NIL:
+			return ok(self.go(self.hca[self.hcd[rest]], env, tail, added))
+
+		return ok(self.fin(VOID, added))
+
+	var fn sf_define(x: Int, env: Int, added: Int) Step!Fail:
+		n := self.proper_len(x)
+		if n < 3: return error(synerr("syntax error: bad form: define"))
+
+		target := self.hca[self.hcd[x]]
+
+		if self.hk[target] == K_PAIR:
+			nm := self.hca[target]
+			if self.hk[nm] != K_SYM or not self.params_ok(self.hcd[target]):
+				return error(synerr("syntax error: bad form: define"))
+
+			clo := self.make_closure(
+				self.hcd[target], self.hcd[self.hcd[x]], env, self.hp[nm]
+			)
+			self.define_in(env, self.hp[nm], clo)
+			return ok(self.fin(VOID, added))
+
+		if self.hk[target] != K_SYM or n != 3:
+			return error(synerr("syntax error: bad form: define"))
+
+		vexpr := self.hca[self.hcd[self.hcd[x]]]
+		var v = 0
+
+		if (
+			self.hk[vexpr] == K_PAIR
+			and self.hk[self.hca[vexpr]] == K_SYM
+			and self.hp[self.hca[vexpr]] == S_LAMBDA
+		):
+			v = try self.make_lambda(vexpr, env, self.hp[target])
+		else:
+			v = try self.ev(vexpr, env, false)
+
+		self.define_in(env, self.hp[target], v)
+		return ok(self.fin(VOID, added))
+
+	var fn sf_set(x: Int, env: Int, added: Int) Step!Fail:
+		if self.proper_len(x) != 3 or self.hk[self.hca[self.hcd[x]]] != K_SYM:
+			return error(synerr("syntax error: bad form: set!"))
+
+		sym := self.hp[self.hca[self.hcd[x]]]
+		v := try self.ev(self.hca[self.hcd[self.hcd[x]]], env, false)
+		if not self.set_var(env, sym, v):
+			return error(rt("unbound variable: " + self.sym_name(sym)))
+
+		return ok(self.fin(VOID, added))
+
+	var fn sf_lambda(x: Int, env: Int, added: Int) Step!Fail:
+		clo := try self.make_lambda(x, env, -1)
+		return ok(self.fin(clo, added))
+
+	var fn sf_begin(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
+		if self.hcd[x] == NIL: return ok(self.fin(VOID, added))
+
+		last := try self.eval_prefix(self.hcd[x], env)
+		return ok(self.go(last, env, tail, added))
+
+	var fn sf_let(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
+		n := self.proper_len(x)
+		if n < 3: return error(synerr("syntax error: bad form: let"))
+
+		second := self.hca[self.hcd[x]]
+
+		if self.hk[second] == K_SYM:
+			// Named let: the loop procedure lives in a frame of its own.
+			if n < 4 or not self.bindings_ok(self.hca[self.hcd[self.hcd[x]]]):
+				return error(synerr("syntax error: bad form: let"))
+
+			bl := self.hca[self.hcd[self.hcd[x]]]
+			body := self.hcd[self.hcd[self.hcd[x]]]
+			var vars: List[Int] = []
+			var vals: List[Int] = []
+			var b = bl
+
+			while self.hk[b] == K_PAIR:
+				bind := self.hca[b]
+				vars.append(self.hca[bind])
+
+				iv := try self.ev(self.hca[self.hcd[bind]], env, false)
+				vals.append(iv)
+				b = self.hcd[b]
+
+			loopenv := self.new_frame(env)
+			clo := self.make_closure(
+				self.list_from(vars), body, loopenv, self.hp[second]
+			)
+			self.define_in(loopenv, self.hp[second], clo)
+			return self.apply_step(clo, vals, tail, added)
+
+		if not self.bindings_ok(second):
+			return error(synerr("syntax error: bad form: let"))
+
+		newf := self.new_frame(env)
+		var b = second
+
+		while self.hk[b] == K_PAIR:
+			bind := self.hca[b]
+			iv := try self.ev(self.hca[self.hcd[bind]], env, false)
+			self.bind_new(newf, self.hp[self.hca[bind]], iv)
+			b = self.hcd[b]
+
+		last := try self.eval_prefix(self.hcd[self.hcd[x]], newf)
+		return ok(self.go(last, newf, tail, added))
+
+	var fn sf_letstar(x: Int, env: Int, tail: Bool, added: Int, sid: Int) Step!Fail:
+		n := self.proper_len(x)
+		if n < 3 or not self.bindings_ok(self.hca[self.hcd[x]]):
+			return error(synerr("syntax error: bad form: " + self.sym_name(sid)))
+
+		newf := self.new_frame(env)
+		var b = self.hca[self.hcd[x]]
 
-        env := self.new_frame(self.cl_env[cid])
-        var p = self.cl_params[cid]
-        var i = 0
+		while self.hk[b] == K_PAIR:
+			bind := self.hca[b]
+			iv := try self.ev(self.hca[self.hcd[bind]], newf, false)
+			self.define_in(newf, self.hp[self.hca[bind]], iv)
+			b = self.hcd[b]
+
+		last := try self.eval_prefix(self.hcd[self.hcd[x]], newf)
+		return ok(self.go(last, newf, tail, added))
 
-        while self.hk[p] == K_PAIR:
-            self.bind_new(env, self.hp[self.hca[p]], args[i])
-            i += 1
-            p = self.hcd[p]
+	var fn sf_cond(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
+		var cl = self.hcd[x]
+		var body = NIL
+		var found = false
 
-        if has_rest:
-            var rest = NIL
-            var j = n - 1
+		while self.hk[cl] == K_PAIR:
+			clause := self.hca[cl]
+			if self.hk[clause] != K_PAIR:
+				return error(synerr("syntax error: bad form: cond"))
 
-            while j >= fixed:
-                rest = self.cons(args[j], rest)
-                j -= 1
+			if (
+				self.hk[self.hca[clause]] == K_SYM
+				and self.hp[self.hca[clause]] == S_ELSE
+			):
+				if self.hcd[cl] != NIL or self.hcd[clause] == NIL:
+					return error(synerr("syntax error: bad form: cond"))
 
-            self.bind_new(env, self.hp[t], rest)
-
-        return ok(env)
+				body = self.hcd[clause]
+				found = true
+				break
 
-    // Evaluates all body expressions but the last; returns the last one unevaluated.
-    var fn eval_prefix(body: Int, env: Int) Int!Fail:
-        var b = body
+			v := try self.ev(self.hca[clause], env, false)
 
-        while self.hcd[b] != NIL:
-            _v := try self.ev(self.hca[b], env, false)
-            b = self.hcd[b]
+			if v != FALSE:
+				if self.hcd[clause] == NIL: return ok(self.fin(v, added))
 
-        return ok(self.hca[b])
+				body = self.hcd[clause]
+				found = true
+				break
 
-    // Applies f to args as a call in the given position. Closures in tail position replace the
-    // current evaluation (no depth change); others enter a new non-tail call.
-    var fn apply_step(f: Int, args: List[Int], tail: Bool, added: Int) Step!Fail:
-        k := self.hk[f]
+			cl = self.hcd[cl]
 
-        if k == K_PRIM:
-            v := try self.call_prim(self.hp[f], args)
-            return ok(Step(done: true, value: v, added: added))
+		if not found: return ok(self.fin(VOID, added))
 
-        if k == K_CLOS:
-            cid := self.hp[f]
-            env2 := try self.bind_args(cid, args)
-            var t2 = tail
-            var add2 = added
+		last := try self.eval_prefix(body, env)
+		return ok(self.go(last, env, tail, added))
 
-            if not tail:
-                if self.depth + 1 > MAX_DEPTH:
-                    return error(rt("recursion limit exceeded"))
+	var fn sf_and(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
+		if self.hcd[x] == NIL: return ok(self.fin(TRUE, added))
 
-                self.depth += 1
-                add2 += 1
-                t2 = true
+		var a = self.hcd[x]
 
-            last := try self.eval_prefix(self.cl_body[cid], env2)
-            return ok(Step(done: false, expr: last, env: env2, tail: t2, added: add2))
+		while self.hk[self.hcd[a]] == K_PAIR:
+			v := try self.ev(self.hca[a], env, false)
+			if v == FALSE: return ok(self.fin(v, added))
 
-        return error(rt("not a procedure: " + self.to_text(f, true)))
+			a = self.hcd[a]
 
-    // Applies f to args from builtin code (always a non-tail call).
-    var fn apply_value(f: Int, args: List[Int]) Int!Fail:
-        k := self.hk[f]
-        if k == K_PRIM: return self.call_prim(self.hp[f], args)
+		return ok(self.go(self.hca[a], env, tail, added))
 
-        if k == K_CLOS:
-            cid := self.hp[f]
-            if self.depth + 1 > MAX_DEPTH or self.bdepth >= MAX_BDEPTH:
-                return error(rt("recursion limit exceeded"))
+	var fn sf_or(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
+		if self.hcd[x] == NIL: return ok(self.fin(FALSE, added))
 
-            self.depth += 1
-            self.bdepth += 1
-
-            env2 := try self.bind_args(cid, args)
-            last := try self.eval_prefix(self.cl_body[cid], env2)
-            v := try self.ev(last, env2, true)
-            self.depth -= 1
-            self.bdepth -= 1
-            return ok(v)
-
-        return error(rt("not a procedure: " + self.to_text(f, true)))
-
-    fn bindings_ok(bl: Int) Bool:
-        if not self.is_proper(bl): return false
-
-        var b = bl
-
-        while self.hk[b] == K_PAIR:
-            bind := self.hca[b]
-            if self.proper_len(bind) != 2: return false
-            if self.hk[self.hca[bind]] != K_SYM: return false
-
-            b = self.hcd[b]
-
-        return true
-
-    // ---------- evaluator ----------
-
-    fn fin(v: Int, added: Int) Step:
-        return Step(done: true, value: v, added: added)
-
-    fn go(x: Int, env: Int, tail: Bool, added: Int) Step:
-        return Step(done: false, expr: x, env: env, tail: tail, added: added)
-
-    // Evaluates x in env. `tail` says whether x is in tail position of a closure body that is
-    // already running, so that a closure call here does not add to the call depth.
-    var fn ev(x0: Int, env0: Int, tail0: Bool) Int!Fail:
-        var x = x0
-        var env = env0
-        var tail = tail0
-        var added = 0
-
-        while true:
-            k := self.hk[x]
-
-            if k == K_SYM:
-                v := try self.lookup(env, self.hp[x])
-                self.depth -= added
-                return ok(v)
-
-            if k == K_NIL: return error(synerr("syntax error: empty application"))
-
-            if k != K_PAIR:
-                self.depth -= added
-                return ok(x)
-
-            var st = Step()
-
-            if self.hk[self.hca[x]] == K_SYM and self.hp[self.hca[x]] < NSPECIAL:
-                st = try self.special(x, env, tail, added)
-            else:
-                st = try self.application(x, env, tail, added)
-
-            if st.done:
-                self.depth -= st.added
-                return ok(st.value)
-
-            x = st.expr
-            env = st.env
-            tail = st.tail
-            added = st.added
-
-        return error(rt("internal error"))
-
-    // A call (f arg...): operator, then operands left to right, then apply.
-    var fn application(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        if self.proper_len(x) < 0: return error(synerr("syntax error: bad application"))
-
-        f := try self.ev(self.hca[x], env, false)
-        var args: List[Int] = []
-        var a = self.hcd[x]
-
-        while self.hk[a] == K_PAIR:
-            v := try self.ev(self.hca[a], env, false)
-            args.append(v)
-            a = self.hcd[a]
-
-        if self.hk[f] == K_PRIM:
-            pv := try self.call_prim(self.hp[f], args)
-            return ok(self.fin(pv, added))
-
-        return self.apply_step(f, args, tail, added)
-
-    var fn special(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        sid := self.hp[self.hca[x]]
-        if self.proper_len(x) < 0:
-            return error(synerr("syntax error: bad form: " + self.sym_name(sid)))
-        if sid == S_QUOTE: return self.sf_quote(x, added)
-        if sid == S_IF: return self.sf_if(x, env, tail, added)
-        if sid == S_DEFINE: return self.sf_define(x, env, added)
-        if sid == S_SET: return self.sf_set(x, env, added)
-        if sid == S_LAMBDA: return self.sf_lambda(x, env, added)
-        if sid == S_BEGIN: return self.sf_begin(x, env, tail, added)
-        if sid == S_LET: return self.sf_let(x, env, tail, added)
-        if sid == S_LETSTAR or sid == S_LETREC:
-            return self.sf_letstar(x, env, tail, added, sid)
-        if sid == S_COND: return self.sf_cond(x, env, tail, added)
-        if sid == S_AND: return self.sf_and(x, env, tail, added)
-        if sid == S_OR: return self.sf_or(x, env, tail, added)
-        if sid == S_WHEN or sid == S_UNLESS:
-            return self.sf_when(x, env, tail, added, sid)
-        if sid == S_TRY: return self.sf_try(x, env, added)
-
-        return error(synerr("syntax error: bad form"))
-
-    var fn sf_quote(x: Int, added: Int) Step!Fail:
-        if self.proper_len(x) != 2:
-            return error(synerr("syntax error: bad form: quote"))
-
-        return ok(self.fin(self.hca[self.hcd[x]], added))
-
-    var fn sf_if(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        n := self.proper_len(x)
-        if n != 3 and n != 4: return error(synerr("syntax error: bad form: if"))
-
-        tv := try self.ev(self.hca[self.hcd[x]], env, false)
-        rest := self.hcd[self.hcd[x]]
-        if tv != FALSE: return ok(self.go(self.hca[rest], env, tail, added))
-        if self.hcd[rest] != NIL:
-            return ok(self.go(self.hca[self.hcd[rest]], env, tail, added))
-
-        return ok(self.fin(VOID, added))
-
-    var fn sf_define(x: Int, env: Int, added: Int) Step!Fail:
-        n := self.proper_len(x)
-        if n < 3: return error(synerr("syntax error: bad form: define"))
-
-        target := self.hca[self.hcd[x]]
-
-        if self.hk[target] == K_PAIR:
-            nm := self.hca[target]
-            if self.hk[nm] != K_SYM or not self.params_ok(self.hcd[target]):
-                return error(synerr("syntax error: bad form: define"))
-
-            clo := self.make_closure(
-                self.hcd[target], self.hcd[self.hcd[x]], env, self.hp[nm]
-            )
-            self.define_in(env, self.hp[nm], clo)
-            return ok(self.fin(VOID, added))
-
-        if self.hk[target] != K_SYM or n != 3:
-            return error(synerr("syntax error: bad form: define"))
-
-        vexpr := self.hca[self.hcd[self.hcd[x]]]
-        var v = 0
-
-        if (
-            self.hk[vexpr] == K_PAIR
-            and self.hk[self.hca[vexpr]] == K_SYM
-            and self.hp[self.hca[vexpr]] == S_LAMBDA
-        ):
-            v = try self.make_lambda(vexpr, env, self.hp[target])
-        else:
-            v = try self.ev(vexpr, env, false)
-
-        self.define_in(env, self.hp[target], v)
-        return ok(self.fin(VOID, added))
-
-    var fn sf_set(x: Int, env: Int, added: Int) Step!Fail:
-        if self.proper_len(x) != 3 or self.hk[self.hca[self.hcd[x]]] != K_SYM:
-            return error(synerr("syntax error: bad form: set!"))
-
-        sym := self.hp[self.hca[self.hcd[x]]]
-        v := try self.ev(self.hca[self.hcd[self.hcd[x]]], env, false)
-        if not self.set_var(env, sym, v):
-            return error(rt("unbound variable: " + self.sym_name(sym)))
-
-        return ok(self.fin(VOID, added))
-
-    var fn sf_lambda(x: Int, env: Int, added: Int) Step!Fail:
-        clo := try self.make_lambda(x, env, -1)
-        return ok(self.fin(clo, added))
-
-    var fn sf_begin(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        if self.hcd[x] == NIL: return ok(self.fin(VOID, added))
-
-        last := try self.eval_prefix(self.hcd[x], env)
-        return ok(self.go(last, env, tail, added))
-
-    var fn sf_let(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        n := self.proper_len(x)
-        if n < 3: return error(synerr("syntax error: bad form: let"))
-
-        second := self.hca[self.hcd[x]]
-
-        if self.hk[second] == K_SYM:
-            // Named let: the loop procedure lives in a frame of its own.
-            if n < 4 or not self.bindings_ok(self.hca[self.hcd[self.hcd[x]]]):
-                return error(synerr("syntax error: bad form: let"))
-
-            bl := self.hca[self.hcd[self.hcd[x]]]
-            body := self.hcd[self.hcd[self.hcd[x]]]
-            var vars: List[Int] = []
-            var vals: List[Int] = []
-            var b = bl
-
-            while self.hk[b] == K_PAIR:
-                bind := self.hca[b]
-                vars.append(self.hca[bind])
+		var o = self.hcd[x]
 
-                iv := try self.ev(self.hca[self.hcd[bind]], env, false)
-                vals.append(iv)
-                b = self.hcd[b]
+		while self.hk[self.hcd[o]] == K_PAIR:
+			v := try self.ev(self.hca[o], env, false)
+			if v != FALSE: return ok(self.fin(v, added))
 
-            loopenv := self.new_frame(env)
-            clo := self.make_closure(
-                self.list_from(vars), body, loopenv, self.hp[second]
-            )
-            self.define_in(loopenv, self.hp[second], clo)
-            return self.apply_step(clo, vals, tail, added)
+			o = self.hcd[o]
 
-        if not self.bindings_ok(second):
-            return error(synerr("syntax error: bad form: let"))
+		return ok(self.go(self.hca[o], env, tail, added))
 
-        newf := self.new_frame(env)
-        var b = second
+	var fn sf_when(x: Int, env: Int, tail: Bool, added: Int, sid: Int) Step!Fail:
+		if self.proper_len(x) < 3:
+			return error(synerr("syntax error: bad form: " + self.sym_name(sid)))
 
-        while self.hk[b] == K_PAIR:
-            bind := self.hca[b]
-            iv := try self.ev(self.hca[self.hcd[bind]], env, false)
-            self.bind_new(newf, self.hp[self.hca[bind]], iv)
-            b = self.hcd[b]
+		c := try self.ev(self.hca[self.hcd[x]], env, false)
+		var fires = c != FALSE
+		if sid == S_UNLESS:
+			fires = c == FALSE
+		if not fires: return ok(self.fin(VOID, added))
 
-        last := try self.eval_prefix(self.hcd[self.hcd[x]], newf)
-        return ok(self.go(last, newf, tail, added))
+		last := try self.eval_prefix(self.hcd[self.hcd[x]], env)
+		return ok(self.go(last, env, tail, added))
 
-    var fn sf_letstar(x: Int, env: Int, tail: Bool, added: Int, sid: Int) Step!Fail:
-        n := self.proper_len(x)
-        if n < 3 or not self.bindings_ok(self.hca[self.hcd[x]]):
-            return error(synerr("syntax error: bad form: " + self.sym_name(sid)))
+	var fn sf_try(x: Int, env: Int, added: Int) Step!Fail:
+		if self.proper_len(x) != 3: return error(synerr("syntax error: bad form: try"))
 
-        newf := self.new_frame(env)
-        var b = self.hca[self.hcd[x]]
+		saved := self.depth
+		saved_b := self.bdepth
+		r := self.ev(self.hca[self.hcd[x]], env, false)
+		if r.is_ok(): return ok(self.fin(r.get(0), added))
 
-        while self.hk[b] == K_PAIR:
-            bind := self.hca[b]
-            iv := try self.ev(self.hca[self.hcd[bind]], newf, false)
-            self.define_in(newf, self.hp[self.hca[bind]], iv)
-            b = self.hcd[b]
+		e := r.err()
+		if e.syntax: return error(e)
 
-        last := try self.eval_prefix(self.hcd[self.hcd[x]], newf)
-        return ok(self.go(last, newf, tail, added))
+		self.depth = saved
+		self.bdepth = saved_b
 
-    var fn sf_cond(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        var cl = self.hcd[x]
-        var body = NIL
-        var found = false
+		h := try self.ev(self.hca[self.hcd[self.hcd[x]]], env, false)
+		var argv: List[Int] = []
+		argv.append(self.mkstr(e.msg))
 
-        while self.hk[cl] == K_PAIR:
-            clause := self.hca[cl]
-            if self.hk[clause] != K_PAIR:
-                return error(synerr("syntax error: bad form: cond"))
+		v := try self.apply_value(h, argv)
+		return ok(self.fin(v, added))
 
-            if (
-                self.hk[self.hca[clause]] == K_SYM
-                and self.hp[self.hca[clause]] == S_ELSE
-            ):
-                if self.hcd[cl] != NIL or self.hcd[clause] == NIL:
-                    return error(synerr("syntax error: bad form: cond"))
+	// ---------- builtin helpers ----------
 
-                body = self.hcd[clause]
-                found = true
-                break
+	var fn kind_err(name: String, kind: String, h: Int) Fail:
+		return rt(name + ": expected " + kind + ", got " + self.to_text(h, true))
 
-            v := try self.ev(self.hca[clause], env, false)
+	var fn ints_of(name: String, args: List[Int]) List[Int]!Fail:
+		var out: List[Int] = []
 
-            if v != FALSE:
-                if self.hcd[clause] == NIL: return ok(self.fin(v, added))
+		for a in args:
+			if self.hk[a] != K_INT: return error(self.kind_err(name, "integer", a))
 
-                body = self.hcd[clause]
-                found = true
-                break
+			out.append(self.hp[a])
 
-            cl = self.hcd[cl]
+		return ok(out)
+
+	var fn int1(name: String, h: Int) Int!Fail:
+		if self.hk[h] != K_INT: return error(self.kind_err(name, "integer", h))
+		return ok(self.hp[h])
+
+	var fn str_of(name: String, h: Int) String!Fail:
+		if self.hk[h] != K_STR: return error(self.kind_err(name, "string", h))
+		return ok(self.strs[self.hp[h]].clone())
+
+	var fn list_of(name: String, h: Int) List[Int]!Fail:
+		if not self.is_proper(h): return error(self.kind_err(name, "list", h))
+		return ok(self.to_list(h))
+
+	var fn proc_of(name: String, h: Int) Int!Fail:
+		if not self.is_proc(h): return error(self.kind_err(name, "procedure", h))
+		return ok(h)
+
+	var fn cxr(name: String, path: String, h: Int) Int!Fail:
+		var v = h
+		var i = path.length() - 1
+
+		while i >= 0:
+			if self.hk[v] != K_PAIR: return error(self.kind_err(name, "pair", v))
+
+			if path.drop(i).take(1) == "a":
+				v = self.hca[v]
+			else:
+				v = self.hcd[v]
+
+			i -= 1
+
+		return ok(v)
+
+	var fn all_pairs(cur: List[Int]) Bool:
+		for c in cur:
+			if self.hk[c] != K_PAIR: return false
+		return true
+
+	var fn msort(xs: List[Int], less: Int) List[Int]!Fail:
+		n := xs.length()
+		if n <= 1: return ok(xs)
+
+		var left: List[Int] = []
+		var right: List[Int] = []
+		mid := n / 2
+		for i in 0..mid:
+			left.append(xs[i])
+		for i in mid..n:
+			right.append(xs[i])
+
+		ls := try self.msort(left, less)
+		rs := try self.msort(right, less)
+		var out: List[Int] = []
+		var i = 0
+		var j = 0
 
-        if not found: return ok(self.fin(VOID, added))
+		while i < ls.length() and j < rs.length():
+			var pa: List[Int] = []
+			pa.append(rs[j])
+			pa.append(ls[i])
 
-        last := try self.eval_prefix(body, env)
-        return ok(self.go(last, env, tail, added))
+			t := try self.apply_value(less, pa)
 
-    var fn sf_and(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        if self.hcd[x] == NIL: return ok(self.fin(TRUE, added))
+			if t != FALSE:
+				out.append(rs[j])
+				j += 1
+			else:
+				out.append(ls[i])
+				i += 1
 
-        var a = self.hcd[x]
+		while i < ls.length():
+			out.append(ls[i])
+			i += 1
 
-        while self.hk[self.hcd[a]] == K_PAIR:
-            v := try self.ev(self.hca[a], env, false)
-            if v == FALSE: return ok(self.fin(v, added))
+		while j < rs.length():
+			out.append(rs[j])
+			j += 1
 
-            a = self.hcd[a]
+		return ok(out)
 
-        return ok(self.go(self.hca[a], env, tail, added))
+	var fn defprim(name: String, mn: Int, mx: Int) Unit:
+		pid := self.prim_name.length()
+		self.prim_name.append(name.clone())
+		self.prim_min.append(mn)
+		self.prim_max.append(mx)
 
-    var fn sf_or(x: Int, env: Int, tail: Bool, added: Int) Step!Fail:
-        if self.hcd[x] == NIL: return ok(self.fin(FALSE, added))
+		sym := self.intern(name.clone())
+		pv := self.mk(K_PRIM, pid)
+		self.gval[sym] = pv
 
-        var o = self.hcd[x]
+	// ---------- builtins ----------
 
-        while self.hk[self.hcd[o]] == K_PAIR:
-            v := try self.ev(self.hca[o], env, false)
-            if v != FALSE: return ok(self.fin(v, added))
+	var fn call_prim(pid: Int, args: List[Int]) Int!Fail:
+		n := args.length()
+		mn := self.prim_min[pid]
+		mx := self.prim_max[pid]
+		if n < mn or (mx != -1 and n > mx): return error(self.arity_err(pid, n))
+		if pid <= P_MAX: return self.prim_arith(pid, args)
+		if pid <= P_ODDP: return self.prim_cmp(pid, args)
+		if pid <= P_EQUALP: return self.prim_pred(pid, args)
+		if pid <= P_MEMBER: return self.prim_list(pid, args)
+		if pid <= P_SORT: return self.prim_hof(pid, args)
+		if pid <= P_STRCONTAINS: return self.prim_str(pid, args)
 
-            o = self.hcd[o]
+		return self.prim_io(pid, args)
 
-        return ok(self.go(self.hca[o], env, tail, added))
+	var fn arity_err(pid: Int, n: Int) Fail:
+		mn := self.prim_min[pid]
+		mx := self.prim_max[pid]
+		var ex = ""
 
-    var fn sf_when(x: Int, env: Int, tail: Bool, added: Int, sid: Int) Step!Fail:
-        if self.proper_len(x) < 3:
-            return error(synerr("syntax error: bad form: " + self.sym_name(sid)))
+		if mx == -1:
+			ex = "at least " + mn.to_string()
+		else if mn == mx:
+			ex = mn.to_string()
+		else:
+			ex = mn.to_string() + " to " + mx.to_string()
 
-        c := try self.ev(self.hca[self.hcd[x]], env, false)
-        var fires = c != FALSE
-        if sid == S_UNLESS:
-            fires = c == FALSE
-        if not fires: return ok(self.fin(VOID, added))
+		return rt(
+			"wrong number of arguments to " + self.prim_name[
+				pid
+			].clone() + ": expected " + ex + ", got " + n.to_string()
+		)
 
-        last := try self.eval_prefix(self.hcd[self.hcd[x]], env)
-        return ok(self.go(last, env, tail, added))
+	var fn prim_arith(pid: Int, args: List[Int]) Int!Fail:
+		// Arithmetic.
+		if pid == P_ADD:
+			xs := try self.ints_of("+", args)
+			var acc = 0
 
-    var fn sf_try(x: Int, env: Int, added: Int) Step!Fail:
-        if self.proper_len(x) != 3: return error(synerr("syntax error: bad form: try"))
+			for v in xs:
+				if not add_ok(acc, v): return error(rt("integer overflow"))
 
-        saved := self.depth
-        saved_b := self.bdepth
-        r := self.ev(self.hca[self.hcd[x]], env, false)
-        if r.is_ok(): return ok(self.fin(r.get(0), added))
+				acc += v
 
-        e := r.err()
-        if e.syntax: return error(e)
+			return ok(self.mkint(acc))
 
-        self.depth = saved
-        self.bdepth = saved_b
+		if pid == P_SUB:
+			xs := try self.ints_of("-", args)
 
-        h := try self.ev(self.hca[self.hcd[self.hcd[x]]], env, false)
-        var argv: List[Int] = []
-        argv.append(self.mkstr(e.msg))
+			if xs.length() == 1:
+				if xs[0] == INT_MIN: return error(rt("integer overflow"))
+				return ok(self.mkint(-xs[0]))
 
-        v := try self.apply_value(h, argv)
-        return ok(self.fin(v, added))
+			var acc = xs[0]
+			var i = 1
 
-    // ---------- builtin helpers ----------
+			while i < xs.length():
+				if not sub_ok(acc, xs[i]): return error(rt("integer overflow"))
 
-    var fn kind_err(name: String, kind: String, h: Int) Fail:
-        return rt(name + ": expected " + kind + ", got " + self.to_text(h, true))
+				acc -= xs[i]
+				i += 1
+
+			return ok(self.mkint(acc))
 
-    var fn ints_of(name: String, args: List[Int]) List[Int]!Fail:
-        var out: List[Int] = []
+		if pid == P_MUL:
+			xs := try self.ints_of("*", args)
+			var acc = 1
 
-        for a in args:
-            if self.hk[a] != K_INT: return error(self.kind_err(name, "integer", a))
+			for v in xs:
+				if not mul_ok(acc, v): return error(rt("integer overflow"))
 
-            out.append(self.hp[a])
+				acc *= v
 
-        return ok(out)
+			return ok(self.mkint(acc))
 
-    var fn int1(name: String, h: Int) Int!Fail:
-        if self.hk[h] != K_INT: return error(self.kind_err(name, "integer", h))
+		if pid == P_QUOT or pid == P_REM or pid == P_MOD:
+			xs := try self.ints_of(self.prim_name[pid].clone(), args)
+			a := xs[0]
+			b := xs[1]
+			if b == 0: return error(rt("division by zero"))
 
-        return ok(self.hp[h])
+			if pid == P_QUOT:
+				if a == INT_MIN and b == -1: return error(rt("integer overflow"))
+				return ok(self.mkint(a / b))
 
-    var fn str_of(name: String, h: Int) String!Fail:
-        if self.hk[h] != K_STR: return error(self.kind_err(name, "string", h))
+			if b == -1: return ok(self.mkint(0))
 
-        return ok(self.strs[self.hp[h]].clone())
+			var m = a % b
+			if pid == P_MOD and m != 0 and ((m < 0) != (b < 0)):
+				m += b
+			return ok(self.mkint(m))
 
-    var fn list_of(name: String, h: Int) List[Int]!Fail:
-        if not self.is_proper(h): return error(self.kind_err(name, "list", h))
+		if pid == P_ABS:
+			xs := try self.ints_of("abs", args)
+			if xs[0] == INT_MIN: return error(rt("integer overflow"))
+			if xs[0] < 0: return ok(self.mkint(-xs[0]))
 
-        return ok(self.to_list(h))
+			return ok(self.mkint(xs[0]))
 
-    var fn proc_of(name: String, h: Int) Int!Fail:
-        if not self.is_proc(h): return error(self.kind_err(name, "procedure", h))
+		if pid == P_MIN or pid == P_MAX:
+			xs := try self.ints_of(self.prim_name[pid].clone(), args)
+			var best = xs[0]
 
-        return ok(h)
+			for v in xs:
+				if pid == P_MIN and v < best:
+					best = v
+				if pid == P_MAX and v > best:
+					best = v
 
-    var fn cxr(name: String, path: String, h: Int) Int!Fail:
-        var v = h
-        var i = path.length() - 1
+			return ok(self.mkint(best))
 
-        while i >= 0:
-            if self.hk[v] != K_PAIR: return error(self.kind_err(name, "pair", v))
+		return error(rt("internal error: unknown builtin"))
 
-            if path.drop(i).take(1) == "a":
-                v = self.hca[v]
-            else:
-                v = self.hcd[v]
+	var fn prim_cmp(pid: Int, args: List[Int]) Int!Fail:
+		if pid == P_NUMEQ or pid == P_LT or pid == P_GT or pid == P_LE or pid == P_GE:
+			xs := try self.ints_of(self.prim_name[pid].clone(), args)
+			var i = 0
+			var holds = true
 
-            i -= 1
+			while i + 1 < xs.length():
+				if not cmp_holds(pid, xs[i], xs[i + 1]):
+					holds = false
+				i += 1
 
-        return ok(v)
+			return ok(self.mkbool(holds))
 
-    var fn all_pairs(cur: List[Int]) Bool:
-        for c in cur:
-            if self.hk[c] != K_PAIR: return false
-        return true
+		if pid == P_ZEROP or pid == P_EVENP or pid == P_ODDP:
+			xs := try self.ints_of(self.prim_name[pid].clone(), args)
+			v := xs[0]
+			if pid == P_ZEROP: return ok(self.mkbool(v == 0))
+			if pid == P_EVENP: return ok(self.mkbool(v % 2 == 0))
 
-    var fn msort(xs: List[Int], less: Int) List[Int]!Fail:
-        n := xs.length()
-        if n <= 1: return ok(xs)
+			return ok(self.mkbool(v % 2 != 0))
 
-        var left: List[Int] = []
-        var right: List[Int] = []
-        mid := n / 2
-        for i in 0..mid:
-            left.append(xs[i])
-        for i in mid..n:
-            right.append(xs[i])
+		return error(rt("internal error: unknown builtin"))
 
-        ls := try self.msort(left, less)
-        rs := try self.msort(right, less)
-        var out: List[Int] = []
-        var i = 0
-        var j = 0
+	var fn prim_pred(pid: Int, args: List[Int]) Int!Fail:
+		// Predicates and equality.
+		if pid == P_NOT: return ok(self.mkbool(args[0] == FALSE))
+		if pid == P_NULLP: return ok(self.mkbool(self.hk[args[0]] == K_NIL))
+		if pid == P_PAIRP: return ok(self.mkbool(self.hk[args[0]] == K_PAIR))
+		if pid == P_LISTP: return ok(self.mkbool(self.is_proper(args[0])))
+		if pid == P_NUMBERP: return ok(self.mkbool(self.hk[args[0]] == K_INT))
+		if pid == P_STRINGP: return ok(self.mkbool(self.hk[args[0]] == K_STR))
+		if pid == P_SYMBOLP: return ok(self.mkbool(self.hk[args[0]] == K_SYM))
+		if pid == P_BOOLEANP: return ok(self.mkbool(self.hk[args[0]] == K_BOOL))
+		if pid == P_PROCP: return ok(self.mkbool(self.is_proc(args[0])))
+		if pid == P_EQP: return ok(self.mkbool(self.eqv(args[0], args[1])))
+		if pid == P_EQUALP: return ok(self.mkbool(self.equal_v(args[0], args[1])))
 
-        while i < ls.length() and j < rs.length():
-            var pa: List[Int] = []
-            pa.append(rs[j])
-            pa.append(ls[i])
+		return error(rt("internal error: unknown builtin"))
 
-            t := try self.apply_value(less, pa)
+	var fn prim_list(pid: Int, args: List[Int]) Int!Fail:
+		n := args.length()
 
-            if t != FALSE:
-                out.append(rs[j])
-                j += 1
-            else:
-                out.append(ls[i])
-                i += 1
+		// Pairs and lists.
+		if pid == P_CONS: return ok(self.cons(args[0], args[1]))
+		if pid == P_CAR: return self.cxr("car", "a", args[0])
+		if pid == P_CDR: return self.cxr("cdr", "d", args[0])
+		if pid == P_CADR: return self.cxr("cadr", "ad", args[0])
+		if pid == P_CDDR: return self.cxr("cddr", "dd", args[0])
+		if pid == P_CADDR: return self.cxr("caddr", "add", args[0])
 
-        while i < ls.length():
-            out.append(ls[i])
-            i += 1
+		if pid == P_SETCAR:
+			if self.hk[args[0]] != K_PAIR:
+				return error(self.kind_err("set-car!", "pair", args[0]))
 
-        while j < rs.length():
-            out.append(rs[j])
-            j += 1
+			self.hca[args[0]] = args[1]
+			return ok(VOID)
 
-        return ok(out)
+		if pid == P_SETCDR:
+			if self.hk[args[0]] != K_PAIR:
+				return error(self.kind_err("set-cdr!", "pair", args[0]))
 
-    var fn defprim(name: String, mn: Int, mx: Int) Unit:
-        pid := self.prim_name.length()
-        self.prim_name.append(name.clone())
-        self.prim_min.append(mn)
-        self.prim_max.append(mx)
+			self.hcd[args[0]] = args[1]
+			return ok(VOID)
 
-        sym := self.intern(name.clone())
-        pv := self.mk(K_PRIM, pid)
-        self.gval[sym] = pv
+		if pid == P_LIST: return ok(self.list_from(args))
 
-    // ---------- builtins ----------
+		if pid == P_LENGTH:
+			items := try self.list_of("length", args[0])
+			return ok(self.mkint(items.length()))
 
-    var fn call_prim(pid: Int, args: List[Int]) Int!Fail:
-        n := args.length()
-        mn := self.prim_min[pid]
-        mx := self.prim_max[pid]
-        if n < mn or (mx != -1 and n > mx): return error(self.arity_err(pid, n))
-        if pid <= P_MAX: return self.prim_arith(pid, args)
-        if pid <= P_ODDP: return self.prim_cmp(pid, args)
-        if pid <= P_EQUALP: return self.prim_pred(pid, args)
-        if pid <= P_MEMBER: return self.prim_list(pid, args)
-        if pid <= P_SORT: return self.prim_hof(pid, args)
-        if pid <= P_STRCONTAINS: return self.prim_str(pid, args)
+		if pid == P_APPEND:
+			if n == 0: return ok(NIL)
 
-        return self.prim_io(pid, args)
+			var result = args[n - 1]
+			var i = n - 2
 
-    var fn arity_err(pid: Int, n: Int) Fail:
-        mn := self.prim_min[pid]
-        mx := self.prim_max[pid]
-        var ex = ""
+			while i >= 0:
+				items := try self.list_of("append", args[i])
+				result = self.build(items, result)
+				i -= 1
 
-        if mx == -1:
-            ex = "at least " + mn.to_string()
-        else if mn == mx:
-            ex = mn.to_string()
-        else:
-            ex = mn.to_string() + " to " + mx.to_string()
+			return ok(result)
 
-        return rt(
-            "wrong number of arguments to " + self.prim_name[
-                pid
-            ].clone() + ": expected " + ex + ", got " + n.to_string()
-        )
+		if pid == P_REVERSE:
+			items := try self.list_of("reverse", args[0])
+			var r = NIL
+			for v in items:
+				r = self.cons(v, r)
+			return ok(r)
 
-    var fn prim_arith(pid: Int, args: List[Int]) Int!Fail:
-        // Arithmetic.
-        if pid == P_ADD:
-            xs := try self.ints_of("+", args)
-            var acc = 0
+		if pid == P_LISTREF:
+			items := try self.list_of("list-ref", args[0])
+			k := try self.int1("list-ref", args[1])
+			if k < 0 or k >= items.length():
+				return error(rt("list-ref: index out of range"))
 
-            for v in xs:
-                if not add_ok(acc, v): return error(rt("integer overflow"))
+			return ok(items[k])
 
-                acc += v
+		if pid == P_LISTTAIL:
+			if not self.is_proper(args[0]):
+				return error(self.kind_err("list-tail", "list", args[0]))
 
-            return ok(self.mkint(acc))
+			k := try self.int1("list-tail", args[1])
+			if k < 0: return error(rt("list-tail: index out of range"))
 
-        if pid == P_SUB:
-            xs := try self.ints_of("-", args)
+			var p = args[0]
 
-            if xs.length() == 1:
-                if xs[0] == INT_MIN: return error(rt("integer overflow"))
+			for i in 0..k:
+				if self.hk[p] != K_PAIR:
+					return error(rt("list-tail: index out of range"))
 
-                return ok(self.mkint(-xs[0]))
+				p = self.hcd[p]
 
-            var acc = xs[0]
-            var i = 1
+			return ok(p)
 
-            while i < xs.length():
-                if not sub_ok(acc, xs[i]): return error(rt("integer overflow"))
+		if pid == P_RANGE:
+			xs := try self.ints_of("range", args)
+			var r = NIL
+			var i = xs[1] - 1
 
-                acc -= xs[i]
-                i += 1
+			while i >= xs[0]:
+				r = self.cons(self.mkint(i), r)
+				i -= 1
 
-            return ok(self.mkint(acc))
+			return ok(r)
 
-        if pid == P_MUL:
-            xs := try self.ints_of("*", args)
-            var acc = 1
+		if pid == P_ASSOC:
+			var p = args[1]
 
-            for v in xs:
-                if not mul_ok(acc, v): return error(rt("integer overflow"))
+			while self.hk[p] == K_PAIR:
+				e := self.hca[p]
+				if self.hk[e] != K_PAIR: return error(self.kind_err("assoc", "pair", e))
+				if self.equal_v(args[0], self.hca[e]): return ok(e)
 
-                acc *= v
+				p = self.hcd[p]
 
-            return ok(self.mkint(acc))
+			if self.hk[p] != K_NIL:
+				return error(self.kind_err("assoc", "list", args[1]))
 
-        if pid == P_QUOT or pid == P_REM or pid == P_MOD:
-            xs := try self.ints_of(self.prim_name[pid].clone(), args)
-            a := xs[0]
-            b := xs[1]
-            if b == 0: return error(rt("division by zero"))
+			return ok(FALSE)
 
-            if pid == P_QUOT:
-                if a == INT_MIN and b == -1: return error(rt("integer overflow"))
+		if pid == P_MEMBER:
+			if not self.is_proper(args[1]):
+				return error(self.kind_err("member", "list", args[1]))
 
-                return ok(self.mkint(a / b))
+			var p = args[1]
 
-            if b == -1: return ok(self.mkint(0))
+			while self.hk[p] == K_PAIR:
+				if self.equal_v(args[0], self.hca[p]): return ok(p)
 
-            var m = a % b
-            if pid == P_MOD and m != 0 and ((m < 0) != (b < 0)):
-                m += b
-            return ok(self.mkint(m))
+				p = self.hcd[p]
 
-        if pid == P_ABS:
-            xs := try self.ints_of("abs", args)
-            if xs[0] == INT_MIN: return error(rt("integer overflow"))
-            if xs[0] < 0: return ok(self.mkint(-xs[0]))
+			return ok(FALSE)
 
-            return ok(self.mkint(xs[0]))
+		return error(rt("internal error: unknown builtin"))
 
-        if pid == P_MIN or pid == P_MAX:
-            xs := try self.ints_of(self.prim_name[pid].clone(), args)
-            var best = xs[0]
+	var fn prim_map(pid: Int, args: List[Int]) Int!Fail:
+		n := args.length()
+		nm := self.prim_name[pid].clone()
+		f := try self.proc_of(nm, args[0])
+		var cur: List[Int] = []
 
-            for v in xs:
-                if pid == P_MIN and v < best:
-                    best = v
-                if pid == P_MAX and v > best:
-                    best = v
+		for i in 1..n:
+			if not self.is_proper(args[i]):
+				return error(self.kind_err(nm, "list", args[i]))
 
-            return ok(self.mkint(best))
+			cur.append(args[i])
 
-        return error(rt("internal error: unknown builtin"))
+		var results: List[Int] = []
 
-    var fn prim_cmp(pid: Int, args: List[Int]) Int!Fail:
-        if pid == P_NUMEQ or pid == P_LT or pid == P_GT or pid == P_LE or pid == P_GE:
-            xs := try self.ints_of(self.prim_name[pid].clone(), args)
-            var i = 0
-            var holds = true
+		while self.all_pairs(cur):
+			var argv: List[Int] = []
 
-            while i + 1 < xs.length():
-                if not cmp_holds(pid, xs[i], xs[i + 1]):
-                    holds = false
-                i += 1
+			for j in 0..cur.length():
+				argv.append(self.hca[cur[j]])
+				cur[j] = self.hcd[cur[j]]
 
-            return ok(self.mkbool(holds))
+			v := try self.apply_value(f, argv)
+			if pid == P_MAP:
+				results.append(v)
 
-        if pid == P_ZEROP or pid == P_EVENP or pid == P_ODDP:
-            xs := try self.ints_of(self.prim_name[pid].clone(), args)
-            v := xs[0]
-            if pid == P_ZEROP: return ok(self.mkbool(v == 0))
-            if pid == P_EVENP: return ok(self.mkbool(v % 2 == 0))
+		if pid == P_FOREACH: return ok(VOID)
 
-            return ok(self.mkbool(v % 2 != 0))
+		return ok(self.list_from(results))
 
-        return error(rt("internal error: unknown builtin"))
+	var fn prim_hof(pid: Int, args: List[Int]) Int!Fail:
+		n := args.length()
+		if pid == P_MAP or pid == P_FOREACH: return self.prim_map(pid, args)
 
-    var fn prim_pred(pid: Int, args: List[Int]) Int!Fail:
-        // Predicates and equality.
-        if pid == P_NOT: return ok(self.mkbool(args[0] == FALSE))
-        if pid == P_NULLP: return ok(self.mkbool(self.hk[args[0]] == K_NIL))
-        if pid == P_PAIRP: return ok(self.mkbool(self.hk[args[0]] == K_PAIR))
-        if pid == P_LISTP: return ok(self.mkbool(self.is_proper(args[0])))
-        if pid == P_NUMBERP: return ok(self.mkbool(self.hk[args[0]] == K_INT))
-        if pid == P_STRINGP: return ok(self.mkbool(self.hk[args[0]] == K_STR))
-        if pid == P_SYMBOLP: return ok(self.mkbool(self.hk[args[0]] == K_SYM))
-        if pid == P_BOOLEANP: return ok(self.mkbool(self.hk[args[0]] == K_BOOL))
-        if pid == P_PROCP: return ok(self.mkbool(self.is_proc(args[0])))
-        if pid == P_EQP: return ok(self.mkbool(self.eqv(args[0], args[1])))
-        if pid == P_EQUALP: return ok(self.mkbool(self.equal_v(args[0], args[1])))
+		if pid == P_FILTER:
+			f := try self.proc_of("filter", args[0])
+			items := try self.list_of("filter", args[1])
+			var keep: List[Int] = []
 
-        return error(rt("internal error: unknown builtin"))
+			for v in items:
+				var argv: List[Int] = []
+				argv.append(v)
 
-    var fn prim_list(pid: Int, args: List[Int]) Int!Fail:
-        n := args.length()
+				t := try self.apply_value(f, argv)
+				if t != FALSE:
+					keep.append(v)
 
-        // Pairs and lists.
-        if pid == P_CONS: return ok(self.cons(args[0], args[1]))
-        if pid == P_CAR: return self.cxr("car", "a", args[0])
-        if pid == P_CDR: return self.cxr("cdr", "d", args[0])
-        if pid == P_CADR: return self.cxr("cadr", "ad", args[0])
-        if pid == P_CDDR: return self.cxr("cddr", "dd", args[0])
-        if pid == P_CADDR: return self.cxr("caddr", "add", args[0])
+			return ok(self.list_from(keep))
 
-        if pid == P_SETCAR:
-            if self.hk[args[0]] != K_PAIR:
-                return error(self.kind_err("set-car!", "pair", args[0]))
+		if pid == P_FOLD:
+			f := try self.proc_of("fold", args[0])
+			items := try self.list_of("fold", args[2])
+			var acc = args[1]
 
-            self.hca[args[0]] = args[1]
-            return ok(VOID)
+			for v in items:
+				var argv: List[Int] = []
+				argv.append(acc)
+				argv.append(v)
+				acc = try self.apply_value(f, argv)
 
-        if pid == P_SETCDR:
-            if self.hk[args[0]] != K_PAIR:
-                return error(self.kind_err("set-cdr!", "pair", args[0]))
+			return ok(acc)
 
-            self.hcd[args[0]] = args[1]
-            return ok(VOID)
+		if pid == P_FOLDR:
+			f := try self.proc_of("foldr", args[0])
+			items := try self.list_of("foldr", args[2])
+			var acc = args[1]
+			var i = items.length() - 1
 
-        if pid == P_LIST: return ok(self.list_from(args))
+			while i >= 0:
+				var argv: List[Int] = []
+				argv.append(items[i])
+				argv.append(acc)
+				acc = try self.apply_value(f, argv)
+				i -= 1
 
-        if pid == P_LENGTH:
-            items := try self.list_of("length", args[0])
-            return ok(self.mkint(items.length()))
+			return ok(acc)
 
-        if pid == P_APPEND:
-            if n == 0: return ok(NIL)
+		if pid == P_APPLY:
+			f := try self.proc_of("apply", args[0])
+			tail_items := try self.list_of("apply", args[n - 1])
+			var argv: List[Int] = []
+			var i = 1
 
-            var result = args[n - 1]
-            var i = n - 2
+			while i < n - 1:
+				argv.append(args[i])
+				i += 1
 
-            while i >= 0:
-                items := try self.list_of("append", args[i])
-                result = self.build(items, result)
-                i -= 1
+			for v in tail_items:
+				argv.append(v)
+			return self.apply_value(f, argv)
 
-            return ok(result)
+		if pid == P_SORT:
+			less := try self.proc_of("sort", args[1])
+			items := try self.list_of("sort", args[0])
+			sorted := try self.msort(items, less)
+			return ok(self.list_from(sorted))
 
-        if pid == P_REVERSE:
-            items := try self.list_of("reverse", args[0])
-            var r = NIL
-            for v in items:
-                r = self.cons(v, r)
-            return ok(r)
+		return error(rt("internal error: unknown builtin"))
 
-        if pid == P_LISTREF:
-            items := try self.list_of("list-ref", args[0])
-            k := try self.int1("list-ref", args[1])
-            if k < 0 or k >= items.length():
-                return error(rt("list-ref: index out of range"))
+	var fn prim_str(pid: Int, args: List[Int]) Int!Fail:
+		// Strings and symbols.
+		if pid == P_STRLEN:
+			s := try self.str_of("string-length", args[0])
+			return ok(self.mkint(s.length()))
 
-            return ok(items[k])
+		if pid == P_STRAPPEND:
+			var acc = ""
 
-        if pid == P_LISTTAIL:
-            if not self.is_proper(args[0]):
-                return error(self.kind_err("list-tail", "list", args[0]))
+			for a in args:
+				s := try self.str_of("string-append", a)
+				acc += s
 
-            k := try self.int1("list-tail", args[1])
-            if k < 0: return error(rt("list-tail: index out of range"))
+			return ok(self.mkstr(acc))
 
-            var p = args[0]
+		if pid == P_SUBSTR:
+			s := try self.str_of("substring", args[0])
+			st := try self.int1("substring", args[1])
+			en := try self.int1("substring", args[2])
+			if st < 0 or st > en or en > s.length():
+				return error(rt("substring: index out of range"))
 
-            for i in 0..k:
-                if self.hk[p] != K_PAIR:
-                    return error(rt("list-tail: index out of range"))
+			return ok(self.mkstr(s.drop(st).take(en - st)))
 
-                p = self.hcd[p]
+		if pid == P_STRREF:
+			s := try self.str_of("string-ref", args[0])
+			i := try self.int1("string-ref", args[1])
+			if i < 0 or i >= s.length():
+				return error(rt("string-ref: index out of range"))
 
-            return ok(p)
+			return ok(self.mkstr(s.drop(i).take(1)))
 
-        if pid == P_RANGE:
-            xs := try self.ints_of("range", args)
-            var r = NIL
-            var i = xs[1] - 1
+		if pid == P_STREQ:
+			a := try self.str_of("string=?", args[0])
+			b := try self.str_of("string=?", args[1])
+			return ok(self.mkbool(a == b))
 
-            while i >= xs[0]:
-                r = self.cons(self.mkint(i), r)
-                i -= 1
+		if pid == P_STRLT:
+			a := try self.str_of("string<?", args[0])
+			b := try self.str_of("string<?", args[1])
+			return ok(self.mkbool(a.compare(b) < 0))
 
-            return ok(r)
+		if pid == P_STRUP:
+			s := try self.str_of("string-upcase", args[0])
+			return ok(self.mkstr(s.upper()))
 
-        if pid == P_ASSOC:
-            var p = args[1]
+		if pid == P_STRDOWN:
+			s := try self.str_of("string-downcase", args[0])
+			return ok(self.mkstr(s.lower()))
 
-            while self.hk[p] == K_PAIR:
-                e := self.hca[p]
-                if self.hk[e] != K_PAIR: return error(self.kind_err("assoc", "pair", e))
-                if self.equal_v(args[0], self.hca[e]): return ok(e)
+		if pid == P_STR2NUM:
+			s := try self.str_of("string->number", args[0])
+			if is_int_text(s):
+				if v := s.parse_int(): return ok(self.mkint(v))
+			return ok(FALSE)
 
-                p = self.hcd[p]
+		if pid == P_NUM2STR:
+			v := try self.int1("number->string", args[0])
+			return ok(self.mkstr(v.to_string()))
 
-            if self.hk[p] != K_NIL:
-                return error(self.kind_err("assoc", "list", args[1]))
+		if pid == P_STR2SYM:
+			s := try self.str_of("string->symbol", args[0])
+			return ok(self.mksym(self.intern(s)))
 
-            return ok(FALSE)
+		if pid == P_SYM2STR:
+			if self.hk[args[0]] != K_SYM:
+				return error(self.kind_err("symbol->string", "symbol", args[0]))
+			return ok(self.mkstr(self.sym_name(self.hp[args[0]])))
 
-        if pid == P_MEMBER:
-            if not self.is_proper(args[1]):
-                return error(self.kind_err("member", "list", args[1]))
+		if pid == P_STR2LIST:
+			s := try self.str_of("string->list", args[0])
+			var items: List[Int] = []
+			for ch in s.chars():
+				items.append(self.mkstr(ch.clone()))
+			return ok(self.list_from(items))
 
-            var p = args[1]
+		if pid == P_LIST2STR:
+			items := try self.list_of("list->string", args[0])
+			var acc = ""
 
-            while self.hk[p] == K_PAIR:
-                if self.equal_v(args[0], self.hca[p]): return ok(p)
-
-                p = self.hcd[p]
-
-            return ok(FALSE)
-
-        return error(rt("internal error: unknown builtin"))
-
-    var fn prim_map(pid: Int, args: List[Int]) Int!Fail:
-        n := args.length()
-        nm := self.prim_name[pid].clone()
-        f := try self.proc_of(nm, args[0])
-        var cur: List[Int] = []
-
-        for i in 1..n:
-            if not self.is_proper(args[i]):
-                return error(self.kind_err(nm, "list", args[i]))
-
-            cur.append(args[i])
-
-        var results: List[Int] = []
-
-        while self.all_pairs(cur):
-            var argv: List[Int] = []
-
-            for j in 0..cur.length():
-                argv.append(self.hca[cur[j]])
-                cur[j] = self.hcd[cur[j]]
-
-            v := try self.apply_value(f, argv)
-            if pid == P_MAP:
-                results.append(v)
-
-        if pid == P_FOREACH: return ok(VOID)
-
-        return ok(self.list_from(results))
-
-    var fn prim_hof(pid: Int, args: List[Int]) Int!Fail:
-        n := args.length()
-        if pid == P_MAP or pid == P_FOREACH: return self.prim_map(pid, args)
-
-        if pid == P_FILTER:
-            f := try self.proc_of("filter", args[0])
-            items := try self.list_of("filter", args[1])
-            var keep: List[Int] = []
-
-            for v in items:
-                var argv: List[Int] = []
-                argv.append(v)
-
-                t := try self.apply_value(f, argv)
-                if t != FALSE:
-                    keep.append(v)
-
-            return ok(self.list_from(keep))
-
-        if pid == P_FOLD:
-            f := try self.proc_of("fold", args[0])
-            items := try self.list_of("fold", args[2])
-            var acc = args[1]
-
-            for v in items:
-                var argv: List[Int] = []
-                argv.append(acc)
-                argv.append(v)
-                acc = try self.apply_value(f, argv)
-
-            return ok(acc)
-
-        if pid == P_FOLDR:
-            f := try self.proc_of("foldr", args[0])
-            items := try self.list_of("foldr", args[2])
-            var acc = args[1]
-            var i = items.length() - 1
-
-            while i >= 0:
-                var argv: List[Int] = []
-                argv.append(items[i])
-                argv.append(acc)
-                acc = try self.apply_value(f, argv)
-                i -= 1
-
-            return ok(acc)
-
-        if pid == P_APPLY:
-            f := try self.proc_of("apply", args[0])
-            tail_items := try self.list_of("apply", args[n - 1])
-            var argv: List[Int] = []
-            var i = 1
-
-            while i < n - 1:
-                argv.append(args[i])
-                i += 1
-
-            for v in tail_items:
-                argv.append(v)
-            return self.apply_value(f, argv)
-
-        if pid == P_SORT:
-            less := try self.proc_of("sort", args[1])
-            items := try self.list_of("sort", args[0])
-            sorted := try self.msort(items, less)
-            return ok(self.list_from(sorted))
-
-        return error(rt("internal error: unknown builtin"))
-
-    var fn prim_str(pid: Int, args: List[Int]) Int!Fail:
-        // Strings and symbols.
-        if pid == P_STRLEN:
-            s := try self.str_of("string-length", args[0])
-            return ok(self.mkint(s.length()))
-
-        if pid == P_STRAPPEND:
-            var acc = ""
-
-            for a in args:
-                s := try self.str_of("string-append", a)
-                acc += s
-
-            return ok(self.mkstr(acc))
-
-        if pid == P_SUBSTR:
-            s := try self.str_of("substring", args[0])
-            st := try self.int1("substring", args[1])
-            en := try self.int1("substring", args[2])
-            if st < 0 or st > en or en > s.length():
-                return error(rt("substring: index out of range"))
-
-            return ok(self.mkstr(s.drop(st).take(en - st)))
-
-        if pid == P_STRREF:
-            s := try self.str_of("string-ref", args[0])
-            i := try self.int1("string-ref", args[1])
-            if i < 0 or i >= s.length():
-                return error(rt("string-ref: index out of range"))
-
-            return ok(self.mkstr(s.drop(i).take(1)))
-
-        if pid == P_STREQ:
-            a := try self.str_of("string=?", args[0])
-            b := try self.str_of("string=?", args[1])
-            return ok(self.mkbool(a == b))
-
-        if pid == P_STRLT:
-            a := try self.str_of("string<?", args[0])
-            b := try self.str_of("string<?", args[1])
-            return ok(self.mkbool(a.compare(b) < 0))
-
-        if pid == P_STRUP:
-            s := try self.str_of("string-upcase", args[0])
-            return ok(self.mkstr(s.upper()))
-
-        if pid == P_STRDOWN:
-            s := try self.str_of("string-downcase", args[0])
-            return ok(self.mkstr(s.lower()))
-
-        if pid == P_STR2NUM:
-            s := try self.str_of("string->number", args[0])
-            if is_int_text(s):
-                if v := s.parse_int(): return ok(self.mkint(v))
-            return ok(FALSE)
-
-        if pid == P_NUM2STR:
-            v := try self.int1("number->string", args[0])
-            return ok(self.mkstr(v.to_string()))
-
-        if pid == P_STR2SYM:
-            s := try self.str_of("string->symbol", args[0])
-            return ok(self.mksym(self.intern(s)))
-
-        if pid == P_SYM2STR:
-            if self.hk[args[0]] != K_SYM:
-                return error(self.kind_err("symbol->string", "symbol", args[0]))
-
-            return ok(self.mkstr(self.sym_name(self.hp[args[0]])))
-
-        if pid == P_STR2LIST:
-            s := try self.str_of("string->list", args[0])
-            var items: List[Int] = []
-            for ch in s.chars():
-                items.append(self.mkstr(ch.clone()))
-            return ok(self.list_from(items))
-
-        if pid == P_LIST2STR:
-            items := try self.list_of("list->string", args[0])
-            var acc = ""
-
-            for v in items:
-                if self.hk[v] != K_STR:
-                    return error(self.kind_err("list->string", "string", v))
-
-                acc += self.strs[self.hp[v]]
-
-            return ok(self.mkstr(acc))
-
-        if pid == P_STRJOIN:
-            items := try self.list_of("string-join", args[0])
-            sep := try self.str_of("string-join", args[1])
-            var parts: List[String] = []
-
-            for v in items:
-                if self.hk[v] != K_STR:
-                    return error(self.kind_err("string-join", "string", v))
-
-                parts.append(self.strs[self.hp[v]].clone())
-
-            return ok(self.mkstr(parts.join(sep)))
-
-        if pid == P_STRSPLIT:
-            s := try self.str_of("string-split", args[0])
-            sep := try self.str_of("string-split", args[1])
-            if sep.length() != 1:
-                return error(rt("string-split: separator must be one character"))
-
-            var items: List[Int] = []
-
-            if s.is_empty():
-                items.append(self.mkstr(""))
-            else:
-                for part in s.split(sep, none):
-                    items.append(self.mkstr(part.clone()))
-
-            return ok(self.list_from(items))
-
-        if pid == P_STRCONTAINS:
-            s := try self.str_of("string-contains?", args[0])
-            sub := try self.str_of("string-contains?", args[1])
-            return ok(self.mkbool(s.contains(sub)))
-
-        return error(rt("internal error: unknown builtin"))
-
-    var fn prim_io(pid: Int, args: List[Int]) Int!Fail:
-        n := args.length()
-
-        // Output and misc.
-        if pid == P_DISPLAY:
-            self.emit(self.to_text(args[0], false))
-            return ok(VOID)
-
-        if pid == P_WRITE:
-            self.emit(self.to_text(args[0], true))
-            return ok(VOID)
-
-        if pid == P_NEWLINE:
-            self.emit("\n")
-            return ok(VOID)
-
-        if pid == P_VOID: return ok(VOID)
-
-        if pid == P_ERROR:
-            var msg = try self.str_of("error", args[0])
-
-            for i in 1..n:
-                msg = msg + " " + self.to_text(args[i], true)
-
-            return error(rt(msg))
-
-        return error(rt("internal error: unknown builtin"))
-
-    var fn setup() Unit:
-        specials := [
-            "quote", "if", "define", "set!", "lambda", "begin", "let", "let*", "letrec",
-            "cond", "and", "or", "when", "unless", "try", "else"
-        ]
-        for nm in specials:
-            _s := self.intern(nm)
-        self.defprim("+", 0, -1)
-        self.defprim("-", 1, -1)
-        self.defprim("*", 0, -1)
-        self.defprim("quotient", 2, 2)
-        self.defprim("remainder", 2, 2)
-        self.defprim("modulo", 2, 2)
-        self.defprim("abs", 1, 1)
-        self.defprim("min", 1, -1)
-        self.defprim("max", 1, -1)
-        self.defprim("=", 2, -1)
-        self.defprim("<", 2, -1)
-        self.defprim(">", 2, -1)
-        self.defprim("<=", 2, -1)
-        self.defprim(">=", 2, -1)
-        self.defprim("zero?", 1, 1)
-        self.defprim("even?", 1, 1)
-        self.defprim("odd?", 1, 1)
-        self.defprim("not", 1, 1)
-        self.defprim("null?", 1, 1)
-        self.defprim("pair?", 1, 1)
-        self.defprim("list?", 1, 1)
-        self.defprim("number?", 1, 1)
-        self.defprim("string?", 1, 1)
-        self.defprim("symbol?", 1, 1)
-        self.defprim("boolean?", 1, 1)
-        self.defprim("procedure?", 1, 1)
-        self.defprim("eq?", 2, 2)
-        self.defprim("equal?", 2, 2)
-        self.defprim("cons", 2, 2)
-        self.defprim("car", 1, 1)
-        self.defprim("cdr", 1, 1)
-        self.defprim("cadr", 1, 1)
-        self.defprim("cddr", 1, 1)
-        self.defprim("caddr", 1, 1)
-        self.defprim("set-car!", 2, 2)
-        self.defprim("set-cdr!", 2, 2)
-        self.defprim("list", 0, -1)
-        self.defprim("length", 1, 1)
-        self.defprim("append", 0, -1)
-        self.defprim("reverse", 1, 1)
-        self.defprim("list-ref", 2, 2)
-        self.defprim("list-tail", 2, 2)
-        self.defprim("range", 2, 2)
-        self.defprim("assoc", 2, 2)
-        self.defprim("member", 2, 2)
-        self.defprim("map", 2, -1)
-        self.defprim("for-each", 2, -1)
-        self.defprim("filter", 2, 2)
-        self.defprim("fold", 3, 3)
-        self.defprim("foldr", 3, 3)
-        self.defprim("apply", 2, -1)
-        self.defprim("sort", 2, 2)
-        self.defprim("string-length", 1, 1)
-        self.defprim("string-append", 0, -1)
-        self.defprim("substring", 3, 3)
-        self.defprim("string-ref", 2, 2)
-        self.defprim("string=?", 2, 2)
-        self.defprim("string<?", 2, 2)
-        self.defprim("string-upcase", 1, 1)
-        self.defprim("string-downcase", 1, 1)
-        self.defprim("string->number", 1, 1)
-        self.defprim("number->string", 1, 1)
-        self.defprim("string->symbol", 1, 1)
-        self.defprim("symbol->string", 1, 1)
-        self.defprim("string->list", 1, 1)
-        self.defprim("list->string", 1, 1)
-        self.defprim("string-join", 2, 2)
-        self.defprim("string-split", 2, 2)
-        self.defprim("string-contains?", 2, 2)
-        self.defprim("display", 1, 1)
-        self.defprim("write", 1, 1)
-        self.defprim("newline", 0, 0)
-        self.defprim("void", 0, 0)
-        self.defprim("error", 1, -1)
-
-    // ---------- reader driver ----------
-
-    var fn run_form(form: Int) Bool:
-        self.depth = 0
-        self.bdepth = 0
-
-        r := self.ev(form, -1, false)
-
-        if r.is_error():
-            self.report(r.err().msg)
-            return false
-
-        return true
+			for v in items:
+				if self.hk[v] != K_STR:
+					return error(self.kind_err("list->string", "string", v))
+
+				acc += self.strs[self.hp[v]]
+
+			return ok(self.mkstr(acc))
+
+		if pid == P_STRJOIN:
+			items := try self.list_of("string-join", args[0])
+			sep := try self.str_of("string-join", args[1])
+			var parts: List[String] = []
+
+			for v in items:
+				if self.hk[v] != K_STR:
+					return error(self.kind_err("string-join", "string", v))
+
+				parts.append(self.strs[self.hp[v]].clone())
+
+			return ok(self.mkstr(parts.join(sep)))
+
+		if pid == P_STRSPLIT:
+			s := try self.str_of("string-split", args[0])
+			sep := try self.str_of("string-split", args[1])
+			if sep.length() != 1:
+				return error(rt("string-split: separator must be one character"))
+
+			var items: List[Int] = []
+
+			if s.is_empty():
+				items.append(self.mkstr(""))
+			else:
+				for part in s.split(sep, none):
+					items.append(self.mkstr(part.clone()))
+
+			return ok(self.list_from(items))
+
+		if pid == P_STRCONTAINS:
+			s := try self.str_of("string-contains?", args[0])
+			sub := try self.str_of("string-contains?", args[1])
+			return ok(self.mkbool(s.contains(sub)))
+
+		return error(rt("internal error: unknown builtin"))
+
+	var fn prim_io(pid: Int, args: List[Int]) Int!Fail:
+		n := args.length()
+
+		// Output and misc.
+		if pid == P_DISPLAY:
+			self.emit(self.to_text(args[0], false))
+			return ok(VOID)
+
+		if pid == P_WRITE:
+			self.emit(self.to_text(args[0], true))
+			return ok(VOID)
+
+		if pid == P_NEWLINE:
+			self.emit("\n")
+			return ok(VOID)
+
+		if pid == P_VOID: return ok(VOID)
+
+		if pid == P_ERROR:
+			var msg = try self.str_of("error", args[0])
+			for i in 1..n:
+				msg = msg + " " + self.to_text(args[i], true)
+			return error(rt(msg))
+
+		return error(rt("internal error: unknown builtin"))
+
+	var fn setup() Unit:
+		specials := [
+			"quote", "if", "define", "set!", "lambda", "begin", "let", "let*", "letrec",
+			"cond", "and", "or", "when", "unless", "try", "else"
+		]
+		for nm in specials:
+			_s := self.intern(nm)
+		self.defprim("+", 0, -1)
+		self.defprim("-", 1, -1)
+		self.defprim("*", 0, -1)
+		self.defprim("quotient", 2, 2)
+		self.defprim("remainder", 2, 2)
+		self.defprim("modulo", 2, 2)
+		self.defprim("abs", 1, 1)
+		self.defprim("min", 1, -1)
+		self.defprim("max", 1, -1)
+		self.defprim("=", 2, -1)
+		self.defprim("<", 2, -1)
+		self.defprim(">", 2, -1)
+		self.defprim("<=", 2, -1)
+		self.defprim(">=", 2, -1)
+		self.defprim("zero?", 1, 1)
+		self.defprim("even?", 1, 1)
+		self.defprim("odd?", 1, 1)
+		self.defprim("not", 1, 1)
+		self.defprim("null?", 1, 1)
+		self.defprim("pair?", 1, 1)
+		self.defprim("list?", 1, 1)
+		self.defprim("number?", 1, 1)
+		self.defprim("string?", 1, 1)
+		self.defprim("symbol?", 1, 1)
+		self.defprim("boolean?", 1, 1)
+		self.defprim("procedure?", 1, 1)
+		self.defprim("eq?", 2, 2)
+		self.defprim("equal?", 2, 2)
+		self.defprim("cons", 2, 2)
+		self.defprim("car", 1, 1)
+		self.defprim("cdr", 1, 1)
+		self.defprim("cadr", 1, 1)
+		self.defprim("cddr", 1, 1)
+		self.defprim("caddr", 1, 1)
+		self.defprim("set-car!", 2, 2)
+		self.defprim("set-cdr!", 2, 2)
+		self.defprim("list", 0, -1)
+		self.defprim("length", 1, 1)
+		self.defprim("append", 0, -1)
+		self.defprim("reverse", 1, 1)
+		self.defprim("list-ref", 2, 2)
+		self.defprim("list-tail", 2, 2)
+		self.defprim("range", 2, 2)
+		self.defprim("assoc", 2, 2)
+		self.defprim("member", 2, 2)
+		self.defprim("map", 2, -1)
+		self.defprim("for-each", 2, -1)
+		self.defprim("filter", 2, 2)
+		self.defprim("fold", 3, 3)
+		self.defprim("foldr", 3, 3)
+		self.defprim("apply", 2, -1)
+		self.defprim("sort", 2, 2)
+		self.defprim("string-length", 1, 1)
+		self.defprim("string-append", 0, -1)
+		self.defprim("substring", 3, 3)
+		self.defprim("string-ref", 2, 2)
+		self.defprim("string=?", 2, 2)
+		self.defprim("string<?", 2, 2)
+		self.defprim("string-upcase", 1, 1)
+		self.defprim("string-downcase", 1, 1)
+		self.defprim("string->number", 1, 1)
+		self.defprim("number->string", 1, 1)
+		self.defprim("string->symbol", 1, 1)
+		self.defprim("symbol->string", 1, 1)
+		self.defprim("string->list", 1, 1)
+		self.defprim("list->string", 1, 1)
+		self.defprim("string-join", 2, 2)
+		self.defprim("string-split", 2, 2)
+		self.defprim("string-contains?", 2, 2)
+		self.defprim("display", 1, 1)
+		self.defprim("write", 1, 1)
+		self.defprim("newline", 0, 0)
+		self.defprim("void", 0, 0)
+		self.defprim("error", 1, -1)
+
+	// ---------- reader driver ----------
+
+	var fn run_form(form: Int) Bool:
+		self.depth = 0
+		self.bdepth = 0
+
+		r := self.ev(form, -1, false)
+
+		if r.is_error():
+			self.report(r.err().msg)
+			return false
+
+		return true
 
 export fn main() Int:
-    data := read_all(stdin(), none).get()
-    text := data.decode_utf8().get()
-    var it = Interp(out: stdout(), src: text.chars())
-    it.setup()
+	data := read_all(stdin(), none).get()
+	text := data.decode_utf8().get()
+	var it = Interp(out: stdout(), src: text.chars())
+	it.setup()
 
-    while true:
-        it.skip_ws()
-        if it.pos >= it.src.length(): break
+	while true:
+		it.skip_ws()
+		if it.pos >= it.src.length(): break
 
-        r := it.read_datum()
+		r := it.read_datum()
 
-        if r.is_error():
-            it.report(r.err().msg)
-            break
+		if r.is_error():
+			it.report(r.err().msg)
+			break
 
-        if not it.run_form(r.get(NIL)): break
+		if not it.run_form(r.get(NIL)): break
 
-    it.out.flush().get()
-    return 0
+	it.out.flush().get()
+	return 0

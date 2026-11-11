@@ -1,7 +1,7 @@
 import (
+	JsonValue, parse from "@std/data/json.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
-	parse, JsonValue from "@std/data/json.ms",
-	compile, render, to_data, Template, RenderOptions from "@std/text/template.ms",
+	RenderOptions, Template, compile, render, to_data from "@std/text/template.ms",
 )
 
 fn data(text: String) JsonValue:

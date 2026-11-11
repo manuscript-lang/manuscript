@@ -1,11 +1,11 @@
 // Small helpers shared by the benchmark tools: environment, files, shell commands.
 import (
+	environment from "@std/os/env.ms",
 	create_directory, read_file, write_file from "@std/os/fs.ms",
 	dirname from "@std/os/path.ms",
+	RunOptions, run from "@std/os/process.ms",
 	compile from "@std/string.ms",
 	monotonic, seconds from "@std/time.ms",
-	RunOptions, run from "@std/os/process.ms",
-	environment from "@std/os/env.ms",
 )
 
 // The value of environment variable `name`, or `fallback`.
@@ -18,7 +18,6 @@ export fn env(name: String, fallback: String) String:
 // The text of the file at `path`; empty when it cannot be read.
 export fn read_text(path: String) String:
 	if data := read_file(path).wait().to_optional(): return data.decode_utf8().get("")
-
 	return ""
 
 // The text of the file at `path`; a missing file stops the program.
@@ -33,7 +32,6 @@ export fn write_text(path: String, text: String) Unit:
 // Trailing whitespace removed from every line and from the whole text, as the graders compare output.
 export fn norm(text: String) String:
 	if text.trim().is_empty(): return ""
-
 	return text.trim_end().split("\n").map(fn line: line.trim_end()).join("\n")
 
 // The nonblank lines of `text`.
@@ -102,7 +100,6 @@ export fn strip_spaces(text: String) String:
 // Whether the regular expression `pattern` matches all of `text`, as Python's `re.fullmatch`.
 export fn full_match(pattern: String, text: String) Bool:
 	if re := compile("^(?:{pattern})$").to_optional(): return re.matches(text)
-
 	return false
 
 // `text.split()`: the words between runs of whitespace.

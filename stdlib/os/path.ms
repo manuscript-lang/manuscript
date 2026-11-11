@@ -12,9 +12,10 @@ name := basename(config)
 ```
 */
 import (
-	msstd_path_matches_glob from "@std/internal/path.ms",
-	Os, os from "@std/os/system.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	Os, os from "@std/os/system.ms",
+
+	msstd_path_matches_glob from "@std/internal/path.ms",
 )
 
 // Parsed path components using the familiar root, directory, base, extension, and name fields.
@@ -127,13 +128,11 @@ fn is_letter(c: String) Bool:
 // The path with every backslash read as a slash under Windows rules; POSIX text is unchanged.
 fn slash(windows: Bool, text: String) String:
 	if windows: return text.replace("\\", "/")
-
 	return text.clone()
 
 // The path with slashes written as the dialect's separator.
 fn native(windows: Bool, text: String) String:
 	if windows: return text.replace("/", "\\")
-
 	return text.clone()
 
 // Removes every trailing slash.
@@ -168,7 +167,6 @@ fn root_of(windows: Bool, text: String) String:
 			and text.scalar_at(1, none) == 58
 		):
 			if count > 2 and text.scalar_at(2, none) == 47: return text.take(3)
-
 			return text.take(2)
 
 		if text.starts_with("//"):
@@ -226,7 +224,6 @@ fn span_is_parent(data: Bytes, packed: Int) Bool:
 
 fn normalize_in(windows: Bool, raw: String) String:
 	if windows: return normalize_core(true, slash(true, raw))
-
 	return normalize_core(false, raw)
 
 // A POSIX path that normalizing would leave unchanged: no empty, `.` or `..` segment and no trailing separator
@@ -347,7 +344,6 @@ fn extension_of_base(base: String) String:
 
 fn parse_in(windows: Bool, original: String) PathParts:
 	if windows: return parse_core(true, slash(true, original), original)
-
 	return parse_core(false, original, original)
 
 // Splits by byte positions, so every field is one view of `original` decoded; `text` is `original` with
@@ -403,7 +399,6 @@ fn parse_core(windows: Bool, text: String, original: String) PathParts:
 // The text of bytes [start, end) of `data`.
 fn text_of(data: Bytes, start: Int, end: Int) String:
 	if start >= end: return ""
-
 	return data.view(start, end).decode_utf8().get("")
 
 fn extension_in(windows: Bool, text: String) String:
@@ -416,14 +411,12 @@ fn extension_in(windows: Bool, text: String) String:
 
 fn equal_fold(left: String, right: String) Bool:
 	if left == right: return true
-
 	return lowercase_path(left) == lowercase_path(right)
 
 // Path comparisons retain the original per-scalar lowercase mapping. Whole-string lowercasing
 // makes a capital sigma contextual (Σ -> ς at word end), unlike that mapping (Σ -> σ).
 fn lowercase_path(text: String) String:
 	if text.contains("Σ"): return text.replace("Σ", "σ").lower()
-
 	return text.lower()
 
 // Resolves `parts` against the absolute `base`; none when `base` is not absolute or any text holds NUL.
@@ -485,7 +478,6 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 
 fn resolve_in(windows: Bool, base: String, parts: List[String]) String!:
 	if value := resolve_inner(windows, base, parts): return ok(value)
-
 	return error(invalid_input())
 
 fn basename_in(windows: Bool, raw: String) String:
@@ -527,7 +519,6 @@ fn dirname_in(windows: Bool, original: String) String:
 
 	if at.is_none():
 		if root.is_empty(): return "."
-
 		return original.take(root.length())
 
 	if at.get(0) < root.length(): return original.take(root.length())
@@ -592,7 +583,6 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 
 fn same_text(windows: Bool, left: String, right: String) Bool:
 	if windows: return equal_fold(left, right)
-
 	return left == right
 
 // The slash-separated components of `text` after its `root`; an empty remainder has none.

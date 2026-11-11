@@ -207,7 +207,6 @@ fn matmul(n: Int) Float:
 
 fn make(depth: Int) Tree:
 	if depth == 0: return Leaf
-
 	return Node(make(depth - 1), make(depth - 1))
 
 fn check(t: Tree) Int:

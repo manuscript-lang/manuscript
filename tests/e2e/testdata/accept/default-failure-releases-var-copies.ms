@@ -15,7 +15,6 @@ test "a failed default releases its earlier var copy":
 
 fn default_count(values: List[Int]) Int!:
 	if values.length() > 1: return error(Error("default-error"))
-
 	return ok(values.length())
 
 fn recursive(var values: List[Int], remaining: Int = try default_count(values)) Int!:

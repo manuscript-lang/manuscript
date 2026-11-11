@@ -1,5 +1,12 @@
 import (
-	Color, Style, paint, strip_ansi, style_start, truncate_text, visible_width, wrap_text from "@std/cli/style.ms",
+	Color,
+	Style,
+	paint,
+	strip_ansi,
+	style_start,
+	truncate_text,
+	visible_width,
+	wrap_text from "@std/cli/style.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

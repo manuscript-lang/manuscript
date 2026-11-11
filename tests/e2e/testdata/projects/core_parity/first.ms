@@ -1,12 +1,12 @@
 import (
-	Key, Cause from "./domain.ms",
-	transform_set,
-	lookup,
+	Cause, Key from "./domain.ms",
+	convert,
 	locate_map,
 	locate_set,
-	convert,
+	lookup,
 	remap_keys,
-	remap_values from "./helpers.ms",
+	remap_values,
+	transform_set from "./helpers.ms",
 )
 
 impl Equal for Key:

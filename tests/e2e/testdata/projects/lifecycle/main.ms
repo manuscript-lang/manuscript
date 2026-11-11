@@ -1,9 +1,7 @@
 import (
-	expect_equal, fail from "@std/test/test.ms",
-	stderr from "@std/io/io.ms",
-	stdout from "@std/io/io.ms",
-	WriteStream from "@std/io/io.ms",
 	Closeable from "@std/core.ms",
+	WriteStream, stderr, stdout from "@std/io/io.ms",
+	expect_equal, fail from "@std/test/test.ms",
 )
 
 type Resource:

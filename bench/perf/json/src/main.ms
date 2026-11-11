@@ -1,8 +1,8 @@
 import (
-	read_file from "@std/os/fs.ms",
+	JsonValue, parse, stringify from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",
-	parse, stringify, JsonValue from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
+	read_file from "@std/os/fs.ms",
 	monotonic from "@std/time.ms",
 )
 
@@ -48,7 +48,6 @@ fn row_list() List[Row]:
 fn records_body(rows: List[Row]) fn() Int:
 	return fn() Int:
 		if out := stringify(rows): return out.byte_length()
-
 		return 0
 
 fn bench_records(budget: Int, runs: Int) Unit:
@@ -102,19 +101,16 @@ type Nothing:
 fn doc_body(text: String) fn() Int:
 	return fn() Int:
 		if _v := parse[Nothing](text): return 1
-
 		return 0
 
 fn parse_body(text: String) fn() Int:
 	return fn() Int:
 		if _v := parse(text): return 1
-
 		return 0
 
 fn stringify_body(tree: JsonValue) fn() Int:
 	return fn() Int:
 		if out := stringify(tree): return out.byte_length()
-
 		return 0
 
 // Arguments are `name` or `name:op` (op is parse or stringify); a leading `quick` makes it 5 runs, no time floor.

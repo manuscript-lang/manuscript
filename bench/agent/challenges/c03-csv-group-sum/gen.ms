@@ -1,7 +1,6 @@
 // Generator for c03-csv-group-sum. Deterministic; run: ms run bench/agent/gen.ms -- c03
 import (
-	make_case, write_cases from "../../lib/gen.ms",
-	GenCase from "../../lib/gen.ms",
+	GenCase, make_case, write_cases from "../../lib/gen.ms",
 	seeded from "../../lib/pyrandom.ms",
 )
 

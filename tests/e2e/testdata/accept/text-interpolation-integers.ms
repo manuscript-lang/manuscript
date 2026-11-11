@@ -1,6 +1,6 @@
 import (
+	max_int, min_int from "@std/math/math.ms",
 	expect_equal from "@std/test/test.ms",
-	min_int, max_int from "@std/math/math.ms",
 )
 
 // Integer interpolations are written straight into the joined text (the `strfuse` pass passes the

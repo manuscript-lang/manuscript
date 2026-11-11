@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_true from "@std/test/test.ms",
-	infinity, sign_bit from "@std/math/math.ms",
 	Complex, complex, complex_polar, imaginary_unit from "@std/math/complex.ms",
+	infinity, sign_bit from "@std/math/math.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 )
 
 fn near(left: Complex, right: Complex) Bool:
@@ -9,7 +9,6 @@ fn near(left: Complex, right: Complex) Bool:
 
 fn component_close(actual: Float, expected: Float) Unit!:
 	if expected.is_finite(): return expect_true((actual / expected - 1.0).abs() < 1e-12)
-
 	return expect_equal(actual, expected)
 
 test "complex arithmetic":

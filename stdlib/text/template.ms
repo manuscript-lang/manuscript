@@ -1,10 +1,10 @@
 import (
-	Data from "@std/core.ms",
 	Bytes from "@std/bytes.ms",
-	StringBuilder from "@std/string.ms",
-	WriteStream from "@std/io/io.ms",
-	JsonValue, parse, stringify from "@std/data/json.ms",
+	Data from "@std/core.ms",
 	escape from "@std/data/html.ms",
+	JsonValue, parse, stringify from "@std/data/json.ms",
+	WriteStream from "@std/io/io.ms",
+	StringBuilder from "@std/string.ms",
 )
 
 /*
@@ -219,7 +219,6 @@ export fn render_to(
 
 fn root_names(data: JsonValue) Map[String, JsonValue]:
 	if members := data.as_map(): return members
-
 	return Map[String, JsonValue]()
 
 // ---- lexing -------------------------------------------------------------------------------
@@ -573,7 +572,6 @@ impl Builder:
 							line: token.line
 						)
 					)
-
 				return ok(
 					BlockEnd(
 						nodes: nodes, end: "else", cond: "", line: token.line
@@ -716,7 +714,6 @@ impl Run:
 		while i >= 0:
 			if found := self.frames[i].get(parts[0]):
 				if parts.length() == 1: return found.clone()
-
 				return descend(found, parts)
 
 			i -= 1
@@ -926,7 +923,6 @@ fn unsigned_digits(text: String) String:
 
 fn magnitude_compare(a: String, b: String) Int:
 	if a.length() != b.length(): return if a.length() < b.length(): -1 else: 1
-
 	return a.compare(b)
 
 // Add or subtract unsigned decimal magnitudes. Subtraction requires a >= b.
@@ -1178,7 +1174,6 @@ fn invalid(name: String, reason: String) Error:
 
 fn arg_text(name: String, args: List[JsonValue], at: Int) String!Error:
 	if at >= args.length(): return error(invalid(name.clone(), "missing argument"))
-
 	return ok(to_text(args[at]))
 
 fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue!Error:
@@ -1200,7 +1195,6 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
 
 	if name == "contains":
 		if args.is_empty(): return error(invalid(name.clone(), "missing argument"))
-
 		return ok(JsonValue.BoolValue(contains_value(input, args[0])))
 
 	if name == "replace":
@@ -1229,13 +1223,11 @@ fn length_of(value: JsonValue) Int:
 
 fn reverse_value(value: JsonValue) JsonValue!Error:
 	if list := value.as_list(): return ok(JsonValue.ArrayValue(list.reversed()))
-
 	return ok(text_value(to_text(value).reverse()))
 
 fn end_of(value: JsonValue, first: Bool) JsonValue:
 	if list := value.as_list():
 		if list.is_empty(): return JsonValue.Null
-
 		return list[if first: 0 else: list.length() - 1].clone()
 
 	return JsonValue.Null

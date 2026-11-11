@@ -1,6 +1,6 @@
 import (
-	Timestamp, nanoseconds, monotonic, parse_timestamp from "@std/time.ms",
 	arguments from "@std/os/env.ms",
+	Timestamp, monotonic, nanoseconds, parse_timestamp from "@std/time.ms",
 )
 
 type Input:

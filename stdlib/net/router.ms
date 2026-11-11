@@ -1,27 +1,28 @@
 // Request routing and middleware over `HttpExchange`, implemented in Manuscript.
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	headers,
+	Closeable from "@std/core.ms",
+	uuid_v4 from "@std/data/uuid.ms",
+	Logger from "@std/log.ms",
 	HttpExchange,
 	HttpHeaders,
 	HttpMethod,
 	HttpRequest,
 	HttpResponse,
+	headers,
 	reply,
 	text from "@std/net/http.ms",
 	NativeWebSocket from "@std/net/websocket.ms",
-	Logger from "@std/log.ms",
-	uuid_v4 from "@std/data/uuid.ms",
 	monotonic from "@std/time.ms",
-	Closeable from "@std/core.ms",
-	msrt_promise_drop,
-	msrt_promise_take,
-	msrt_promise_wait,
+
 	msrt_pipe_close_reader,
 	msrt_pipe_close_writer,
 	msrt_pipe_new,
 	msrt_pipe_read,
-	msrt_pipe_write from "@std/internal/promises.ms",
+	msrt_pipe_write,
+	msrt_promise_drop,
+	msrt_promise_take,
+	msrt_promise_wait from "@std/internal/promises.ms",
 )
 
 // A value with one holder at a time, kept in a one-message in-memory pipe whose id is the slot: `take_slot` moves it out
@@ -76,7 +77,6 @@ impl RouteParams:
 	// Returns the text captured for `name`, or none when the pattern has no such parameter.
 	fn get(name: String) String?:
 		if index := self.names.index_of(name): return self.values[index].clone()
-
 		return none
 
 	// Returns the text captured for `name`, or `fallback` when the pattern has no such parameter.
@@ -313,7 +313,6 @@ fn parse_pattern(pattern: String) List[Segment]!:
 // The segments of an absolute path; "/" has none.
 fn split_path(path: String) List[String]:
 	if path == "/": return []
-
 	return path.drop(1).split("/")
 
 fn segment_of(part: String) Segment:
@@ -390,7 +389,6 @@ fn names_of(segments: List[Segment]) List[String]:
 
 fn name_list(segment: Segment) List[String]:
 	if name := segment_name(segment): return [name]
-
 	return []
 
 // The captured values when `parts` match `segments`.
@@ -461,7 +459,6 @@ fn chain(
 	last: fn(var HttpExchange) Unit!
 ) Unit!:
 	if at >= middleware.length(): return last(var exchange)
-
 	return middleware[at](
 		var exchange,
 		fn(var next: HttpExchange): chain(middleware, at + 1, var next, last)
@@ -476,7 +473,6 @@ fn chain_groups(
 	last: fn(var HttpExchange) Unit!
 ) Unit!:
 	if at >= around.length(): return last(var exchange)
-
 	return chain(
 		groups[around[at]],
 		0,
@@ -675,7 +671,6 @@ impl Tap:
 	// The body bytes the exchange transmits: none for HEAD or a status that forbids a body.
 	fn sent_length(status: Int, length: Int) Int:
 		if self.inner.method() == HttpMethod.Head or not has_body(status): return 0
-
 		return length
 
 	// The status the response headers went out with, or 200 before any are sent.

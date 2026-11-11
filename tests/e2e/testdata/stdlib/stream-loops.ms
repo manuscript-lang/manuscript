@@ -1,7 +1,7 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	ReadStream, Source, WriteStream, pipe from "@std/io/io.ms",
-	from_list, map, collect, copy from "@std/io/streams.ms",
+	collect, copy, from_list, map from "@std/io/streams.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 // Counts up to `stop`, fails once at `fail_at`, and reports where it was when closed.

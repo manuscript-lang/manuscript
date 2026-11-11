@@ -1,8 +1,8 @@
 import (
-	OpenMode, OpenOptions, open, temporary, write_file from "@std/os/fs.ms",
-	ReadStream from "@std/io/io.ms",
 	Bytes from "@std/bytes.ms",
-	expect_true, expect_ok from "@std/test/test.ms",
+	ReadStream from "@std/io/io.ms",
+	OpenMode, OpenOptions, open, temporary, write_file from "@std/os/fs.ms",
+	expect_ok, expect_true from "@std/test/test.ms",
 )
 
 // `FileHandle` is a nominal type with `impl Closeable`, so a binding of one owns the file.

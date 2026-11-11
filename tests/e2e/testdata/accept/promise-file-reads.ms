@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_ok from "@std/test/test.ms",
 	promise, wait_all from "@std/concurrency/promise.ms",
 	read_file, temporary, write_file from "@std/os/fs.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
 fn size(path: String) Int!:

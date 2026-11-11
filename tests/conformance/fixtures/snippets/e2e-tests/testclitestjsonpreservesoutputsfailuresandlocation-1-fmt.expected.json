@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tstdout, stderr from \"@std/io/io.ms\",\n\tfail from \"@std/test/test.ms\",\n)\n\ntest \"first=pass\":\n\t_out := stdout().write(\"PASS fake test\\nuser stdout\\n\")\n\t_err := stderr().write(\"user stderr\\n\")\n\ntest \"second=fails\":\n\treturn fail(\"expected failure\")\n\ntest \"third=after\":\n\treturn unit\n"
+    "fmt": "import (\n\tstderr, stdout from \"@std/io/io.ms\",\n\tfail from \"@std/test/test.ms\",\n)\n\ntest \"first=pass\":\n\t_out := stdout().write(\"PASS fake test\\nuser stdout\\n\")\n\t_err := stderr().write(\"user stderr\\n\")\n\ntest \"second=fails\":\n\treturn fail(\"expected failure\")\n\ntest \"third=after\":\n\treturn unit\n"
   }
 }

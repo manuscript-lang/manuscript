@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_ok from "@std/test/test.ms",
-	Source, Sink, ReadStream, WriteStream from "@std/io/io.ms",
+	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
 // A stream closes its source or sink once, whether the stream is closed by hand or dropped.
@@ -27,7 +27,6 @@ impl Sink[Int] for Counted:
 
 fn closes(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
-
 	return ""
 
 test "a read stream closes its source once":

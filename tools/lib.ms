@@ -1,13 +1,13 @@
 // Shared helpers for the repository tools in this directory. Run a tool from the repository root
 // with `ms run tools/<name>.ms [-- arguments]`.
 import (
-	SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
-	environment, set_environment from "@std/os/env.ms",
-	os, Os from "@std/os/system.ms",
-	canonicalize, read_file from "@std/os/fs.ms",
-	stderr from "@std/io/io.ms",
-	hex_encode from "@std/data/encoding.ms",
 	sha256 from "@std/crypto.ms",
+	hex_encode from "@std/data/encoding.ms",
+	stderr from "@std/io/io.ms",
+	environment, set_environment from "@std/os/env.ms",
+	canonicalize, read_file from "@std/os/fs.ms",
+	SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
+	Os, os from "@std/os/system.ms",
 )
 
 // `linux`, `macos` or `windows`.
@@ -21,13 +21,11 @@ export fn host() String:
 // `.exe` on Windows, else empty.
 export fn exe() String:
 	if host() == "windows": return ".exe"
-
 	return ""
 
 // The distribution OS name used by archives: `linux`, `darwin` or `windows`.
 export fn dist_os() String:
 	if host() == "macos": return "darwin"
-
 	return host()
 
 // The distribution architecture name: `amd64` or `arm64`.
@@ -51,7 +49,6 @@ export fn env(name: String, fallback: String) String:
 // A process exit status limited to what `main` may return.
 export fn status(code: Int) Int:
 	if code < 0 or code > 125: return 125
-
 	return code
 
 // Runs `program` with the parent's streams and returns its exit status; the PATH is searched.
@@ -78,7 +75,6 @@ export fn capture(program: String, arguments: List[String]) String:
 // Whether `program` runs and exits zero with `arguments`.
 export fn works(program: String, arguments: List[String]) Bool:
 	if out := run(program, arguments).wait(): return out.exit_code == 0
-
 	return false
 
 // The SHA-256 of the file at `path` as lowercase hex.

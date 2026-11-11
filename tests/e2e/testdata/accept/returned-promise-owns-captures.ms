@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	Promise, promise from "@std/concurrency/promise.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 type Target:

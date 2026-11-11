@@ -1,7 +1,7 @@
 import (
 	panic from "@std/core.ms",
-	expect_equal, expect_false from "@std/test/test.ms",
 	JsonOptions from "@std/data/json.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
 )
 
 type Counter:

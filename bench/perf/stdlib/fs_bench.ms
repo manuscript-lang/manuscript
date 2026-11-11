@@ -1,8 +1,8 @@
 import (
-	keep, measure from "@std/test/bench.ms",
 	Bytes from "@std/bytes.ms",
+	LoggerOptions, create, file_transport from "@std/log.ms",
 	list, read_file, stat, temporary, write_file from "@std/os/fs.ms",
-	create, file_transport, LoggerOptions from "@std/log.ms",
+	keep, measure from "@std/test/bench.ms",
 )
 
 fn block() Bytes:
@@ -67,7 +67,6 @@ bench "fs.list_200":
 
 		fn work() Result[Unit, Error]:
 			if entries := list(root): return keep(entries.length())
-
 			return keep(0)
 
 		try measure(1, work)

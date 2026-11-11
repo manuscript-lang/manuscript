@@ -1,6 +1,6 @@
 import (
+	YamlValue, parse from "@std/data/yaml.ms",
 	expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms",
-	parse, YamlValue from "@std/data/yaml.ms",
 )
 
 fn object(keys: List[String], values: List[YamlValue]) YamlValue:

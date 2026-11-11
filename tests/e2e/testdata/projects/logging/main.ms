@@ -1,8 +1,9 @@
 import (
-	Logger, LoggerOptions, create, stdout_transport, file_transport from "@std/log.ms",
 	JsonValue from "@std/data/json.ms",
-	arguments from "@std/os/env.ms",
 	stderr from "@std/io/io.ms",
+	Logger, LoggerOptions, create, file_transport, stdout_transport from "@std/log.ms",
+	arguments from "@std/os/env.ms",
+
 	emit from "./records.ms",
 )
 

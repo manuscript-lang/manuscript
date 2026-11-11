@@ -1,9 +1,9 @@
 import (
 	Promise,
 	PromiseOptions,
-	promise,
 	complete,
 	deferred,
+	promise,
 	wait_all,
 	wait_first from "@std/concurrency/promise.ms",
 	expect_equal from "@std/test/test.ms",

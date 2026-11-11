@@ -1,7 +1,7 @@
 import (
-	compile from "@std/text/template.ms",
-	parse, JsonValue from "@std/data/json.ms",
+	JsonValue, parse from "@std/data/json.ms",
 	expect_equal from "@std/test/test.ms",
+	compile from "@std/text/template.ms",
 )
 
 fn check(expression: String, data: String, expected: String) Unit!:

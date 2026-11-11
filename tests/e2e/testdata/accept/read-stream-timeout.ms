@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	pipe from "@std/io/io.ms",
+	expect_equal from "@std/test/test.ms",
 	milliseconds from "@std/time.ms",
 )
 

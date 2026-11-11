@@ -1,7 +1,7 @@
 import (
+	XmlAttribute, XmlNode, escape_text, parse, stringify from "@std/data/xml.ms",
 	from_scalars from "@std/string.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
-	parse, stringify, escape_text, XmlNode, XmlAttribute from "@std/data/xml.ms",
 )
 
 test "parse reads elements attributes and text":

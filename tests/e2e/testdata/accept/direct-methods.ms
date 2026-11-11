@@ -30,7 +30,6 @@ fn through_view(b: Bumper, by: Int) Int:
 
 fn guarded(c: Counter, by: Int) Int:
 	if by < 0: return 0
-
 	return c.bump(by)
 
 test "method calls on concrete receivers":
@@ -62,7 +61,6 @@ interface Parse:
 impl Parse for Parser:
 	fn parse(n: Int) Int!Error:
 		if n < 0: return error(Error("negative"))
-
 		return ok(self.base + n)
 
 type Chain:

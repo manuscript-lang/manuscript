@@ -1,17 +1,17 @@
 import (
 	HtmlLimits,
+	msstd_html_attr,
+	msstd_html_attr_count,
+	msstd_html_data,
+	msstd_html_doctype_id,
 	msstd_html_escape,
-	msstd_html_unescape,
+	msstd_html_first_child,
+	msstd_html_kind,
+	msstd_html_namespace,
+	msstd_html_next_sibling,
 	msstd_html_parse,
 	msstd_html_root,
-	msstd_html_kind,
-	msstd_html_data,
-	msstd_html_namespace,
-	msstd_html_doctype_id,
-	msstd_html_first_child,
-	msstd_html_next_sibling,
-	msstd_html_attr_count,
-	msstd_html_attr
+	msstd_html_unescape
 ) from "@std/internal/html.ms"
 
 // Bounds for HTML input bytes, tree depth, and node count.

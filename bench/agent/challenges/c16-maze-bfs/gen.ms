@@ -1,8 +1,7 @@
 // Generator for c16-maze-bfs. Deterministic; run: ms run bench/agent/gen.ms -- c16
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
-	seeded from "../../lib/pyrandom.ms",
-	Random from "../../lib/pyrandom.ms",
+	Random, seeded from "../../lib/pyrandom.ms",
 )
 
 fn count(text: String, ch: String) Int: text.chars().count(fn c: c == ch)

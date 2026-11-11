@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	promise, wait_all from "@std/concurrency/promise.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 fn total(xs: List[Int]) Int!:

@@ -1,17 +1,17 @@
 // Shared helpers for the benchmark drivers under bench/. Run a driver from the repository root with
 // `ms run bench/tools/<name>.ms [-- arguments]`.
 import (
-	RunOptions, SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
-	environment, set_environment, working_directory from "@std/os/env.ms",
-	os, system_info, Os from "@std/os/system.ms",
-	monotonic from "@std/time.ms",
-	access, create_directory, read_file, remove, write_file from "@std/os/fs.ms",
-	is_absolute, join from "@std/os/path.ms",
+	sha256 from "@std/crypto.ms",
+	hex_encode from "@std/data/encoding.ms",
+	JsonValue, StringifyOptions, stringify from "@std/data/json.ms",
 	stderr, stdin from "@std/io/io.ms",
 	read_all from "@std/io/streams.ms",
-	JsonValue, StringifyOptions, stringify from "@std/data/json.ms",
-	hex_encode from "@std/data/encoding.ms",
-	sha256 from "@std/crypto.ms",
+	environment, set_environment, working_directory from "@std/os/env.ms",
+	access, create_directory, read_file, remove, write_file from "@std/os/fs.ms",
+	is_absolute, join from "@std/os/path.ms",
+	RunOptions, SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
+	Os, os, system_info from "@std/os/system.ms",
+	monotonic from "@std/time.ms",
 )
 
 // Prints `message` and a newline to standard error.
@@ -63,7 +63,6 @@ export fn capture(
 			true, out.exit_code, out.stdout.decode_utf8().get(""),
 			out.stderr.decode_utf8().get(""), out.max_resident_bytes
 		)
-
 	return Ran(false, 125, "", "cannot start {program}\n")
 
 // Runs `program` and returns its stdout, or fails the driver by returning an empty string when it does not exit zero.
@@ -150,7 +149,6 @@ export fn repeats(text: String) Int!:
 // The absolute form of `path`, relative to the working directory.
 export fn absolute(path: String) String:
 	if is_absolute(path): return path.clone()
-
 	return join([working_directory().get("."), path])
 
 // Runs `program` in directory `dir`; the caller's working directory is untouched, so tasks may run children in different directories.
@@ -160,7 +158,6 @@ export fn run_in(dir: String, program: String, arguments: List[String]) Ran:
 // Fails with the program's stderr unless `ran` exited zero.
 export fn must(what: String, ran: Ran) String!:
 	if ran.ok and ran.code == 0: return ok(ran.stdout.clone())
-
 	return invalid("{what} failed ({ran.code}): {ran.stderr}")
 
 // The `ms` binary: $MS, else target/release/ms, as an absolute path.
@@ -271,7 +268,6 @@ export fn usage(message: String) Int:
 // `.exe` on Windows, else empty.
 export fn exe() String:
 	if host() == "windows": return ".exe"
-
 	return ""
 
 // A short platform description such as `linux-amd64`.

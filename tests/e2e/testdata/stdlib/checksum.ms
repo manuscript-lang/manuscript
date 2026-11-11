@@ -1,6 +1,6 @@
 import (
-	crc32 from "@std/data/checksum.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	crc32 from "@std/data/checksum.ms",
 	bit_xor, shift_right_unsigned from "@std/math/math.ms",
 	expect_equal from "@std/test/test.ms",
 )

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\texpect_equal from \"@std/test/test.ms\",\n\tstderr from \"@std/io/io.ms\",\n\tRunOptions, run from \"@std/os/process.ms\",\n\tstdout_bytes from \"@std/io/io.ms\",\n)\n\nfn exercise() Int!:\n\tmatch run(\n\t\tprogram: \"/bin/printf\",\n\t\targuments: [\"hello\"],\n\t\tRunOptions(\n\t\t\tinput: \"\".to_bytes(), max_output_bytes: 64, timeout: 1.seconds()\n\t\t)\n\t).wait():\n\t\terror(_):\n\t\t\treturn ok(1)\n\t\tok(output):\n\t\t\toutput.exit_code | try expect_equal(0)\n\n\t\t\t_ := stdout_bytes().write(value: output.stdout)\n\t\t\treturn ok(0)\n\nexport fn main() Int:\n\tmatch exercise():\n\t\tok(status): return status\n\t\terror(cause):\n\t\t\t_written := stderr().write(\"{cause.message}\\n\")\n\t\t\treturn 1\n"
+    "fmt": "import (\n\tstderr, stdout_bytes from \"@std/io/io.ms\",\n\tRunOptions, run from \"@std/os/process.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\nfn exercise() Int!:\n\tmatch run(\n\t\tprogram: \"/bin/printf\",\n\t\targuments: [\"hello\"],\n\t\tRunOptions(\n\t\t\tinput: \"\".to_bytes(), max_output_bytes: 64, timeout: 1.seconds()\n\t\t)\n\t).wait():\n\t\terror(_):\n\t\t\treturn ok(1)\n\t\tok(output):\n\t\t\toutput.exit_code | try expect_equal(0)\n\n\t\t\t_ := stdout_bytes().write(value: output.stdout)\n\t\t\treturn ok(0)\n\nexport fn main() Int:\n\tmatch exercise():\n\t\tok(status): return status\n\t\terror(cause):\n\t\t\t_written := stderr().write(\"{cause.message}\\n\")\n\t\t\treturn 1\n"
   }
 }

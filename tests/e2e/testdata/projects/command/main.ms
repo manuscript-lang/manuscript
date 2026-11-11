@@ -1,8 +1,7 @@
 import (
-	expect_equal from "@std/test/test.ms",
-	stderr from "@std/io/io.ms",
+	stderr, stdout_bytes from "@std/io/io.ms",
 	RunOptions, run from "@std/os/process.ms",
-	stdout_bytes from "@std/io/io.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 fn exercise() Int!:

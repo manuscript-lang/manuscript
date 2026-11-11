@@ -1,6 +1,6 @@
 import (
-	Key from "./key.ms",
 	remove_generic from "./generic.ms",
+	Key from "./key.ms",
 )
 
 impl Equal for Key:

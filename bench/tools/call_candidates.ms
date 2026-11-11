@@ -2,6 +2,9 @@
 // ms run bench/tools/call_candidates.ms -- BEFORE AFTER OUTPUT ROUNDS
 // Linux measurement host: taskset CPU 0; child peak RSS is retained.
 import (
+	arguments from "@std/os/env.ms",
+
+	timed from "./call_candidates_process.ms",
 	absolute,
 	ensure_directory,
 	file_sha256,
@@ -9,8 +12,6 @@ import (
 	now_ns,
 	read_text,
 	write_text from "./lib.ms",
-	arguments from "@std/os/env.ms",
-	timed from "./call_candidates_process.ms",
 )
 
 fn source(count: Int, mode: String) String:

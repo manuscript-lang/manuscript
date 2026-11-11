@@ -1,6 +1,6 @@
 import (
-	hex_decode, hex_encode from "@std/data/encoding.ms",
 	Bytes from "@std/bytes.ms",
+	hex_decode, hex_encode from "@std/data/encoding.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

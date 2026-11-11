@@ -1,5 +1,6 @@
 import (
 	keep, measure from "@std/test/bench.ms",
+
 	words from "./src/harness.ms",
 )
 

@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_ok from "@std/test/test.ms",
 	OpenMode, OpenOptions, open, read_file, temporary from "@std/os/fs.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
 // `clone` copies a resource: each copy owns its own descriptor and closes on its own. A `Connection` has no clone: its
