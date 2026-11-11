@@ -240,32 +240,36 @@ export enum HashAlgorithm:
 	Sha3_384  // SHA3-384, producing a 48-byte digest or HMAC.
 	Sha3_512  // SHA3-512, producing a 64-byte digest or HMAC.
 
-impl HashAlgorithm:
-	// Computes this algorithm's digest, checking cancellation between chunks.
-	fn digest(data: Bytes) Bytes:
-		return msstd_crypto_digest(self, data)
+// Computes this algorithm's digest, checking cancellation between chunks.
+fn HashAlgorithm.digest(data: Bytes) Bytes:
+	return msstd_crypto_digest(self, data)
 
-	// Computes HMAC with this algorithm and returns `Error` results.
-	fn hmac(key: Bytes, data: Bytes) Bytes!:
-		return msstd_crypto_hmac(self, key, data)
+// Computes HMAC with this algorithm and returns `Error` results.
+fn HashAlgorithm.hmac(key: Bytes, data: Bytes) Bytes!:
+	return msstd_crypto_hmac(self, key, data)
 
-	// Derives a key with PBKDF2-HMAC using this algorithm, the iteration count and length.
-	// Fails with EINVAL for non-positive iterations or a length outside 1..1048576.
-	fn derive_key(password: Bytes, salt: Bytes, iterations: Int, length: Int) Bytes!:
-		return msstd_crypto_derive_key(self, password, salt, iterations, length)
+// Derives a key with PBKDF2-HMAC using this algorithm, the iteration count and length.
+// Fails with EINVAL for non-positive iterations or a length outside 1..1048576.
+fn HashAlgorithm.derive_key(
+	password: Bytes,
+	salt: Bytes,
+	iterations: Int,
+	length: Int
+) Bytes!:
+	return msstd_crypto_derive_key(self, password, salt, iterations, length)
 
-	/*
-    Expands secret into length bytes with HKDF (RFC 5869) using this algorithm.
-    An empty salt uses the algorithm's zero-filled default. Fails with EINVAL when
-    length is not positive or exceeds 255 times the digest size.
-    */
-	fn hkdf(secret: Bytes, salt: Bytes, info: Bytes, length: Int) Bytes!:
-		return msstd_crypto_hkdf(self, secret, salt, info, length)
+/*
+Expands secret into length bytes with HKDF (RFC 5869) using this algorithm.
+An empty salt uses the algorithm's zero-filled default. Fails with EINVAL when
+length is not positive or exceeds 255 times the digest size.
+*/
+fn HashAlgorithm.hkdf(secret: Bytes, salt: Bytes, info: Bytes, length: Int) Bytes!:
+	return msstd_crypto_hkdf(self, secret, salt, info, length)
 
-	// Creates an incremental hasher for this algorithm.
-	fn hasher() Hasher:
-		return msstd_crypto_hasher_new(self)
+// Creates an incremental hasher for this algorithm.
+fn HashAlgorithm.hasher() Hasher:
+	return msstd_crypto_hasher_new(self)
 
-	// Creates an incremental HMAC with this algorithm and key.
-	fn hmac_hasher(key: Bytes) Hasher:
-		return msstd_crypto_hmac_hasher_new(self, key)
+// Creates an incremental HMAC with this algorithm and key.
+fn HashAlgorithm.hmac_hasher(key: Bytes) Hasher:
+	return msstd_crypto_hmac_hasher_new(self, key)

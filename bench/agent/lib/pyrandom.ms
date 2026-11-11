@@ -75,65 +75,64 @@ fn twist(var mt: List[Int]) Unit:
 		if bit_and(y, 1) == 1: next = bit_xor(next, 0x9908B0DF)
 		mt[kk] = next
 
-impl Random:
-	var fn next_u32() Int:
-		if self.index >= N:
-			twist(var self.state)
-			self.index = 0
+fn var Random.next_u32() Int:
+	if self.index >= N:
+		twist(var self.state)
+		self.index = 0
 
-		word := self.state[self.index]
-		self.index += 1
+	word := self.state[self.index]
+	self.index += 1
 
-		y1 := bit_xor(word, shift_right(word, 11))
-		y2 := bit_xor(y1, bit_and(shift_left(y1, 7), 0x9D2C5680))
-		y3 := bit_xor(y2, bit_and(shift_left(y2, 15), 0xEFC60000))
-		return bit_xor(y3, shift_right(y3, 18))
+	y1 := bit_xor(word, shift_right(word, 11))
+	y2 := bit_xor(y1, bit_and(shift_left(y1, 7), 0x9D2C5680))
+	y3 := bit_xor(y2, bit_and(shift_left(y2, 15), 0xEFC60000))
+	return bit_xor(y3, shift_right(y3, 18))
 
-	// A uniform integer in `0..n` by rejection, as CPython's `_randbelow`.
-	var fn below(n: Int) Int:
-		if n <= 0: return 0
+// A uniform integer in `0..n` by rejection, as CPython's `_randbelow`.
+fn var Random.below(n: Int) Int:
+	if n <= 0: return 0
 
-		var bits = 0
-		var m = n
+	var bits = 0
+	var m = n
 
-		while m > 0:
-			bits += 1
-			m = shift_right(m, 1)
+	while m > 0:
+		bits += 1
+		m = shift_right(m, 1)
 
-		var r = shift_right(self.next_u32(), 32 - bits)
-		while r >= n: r = shift_right(self.next_u32(), 32 - bits)
-		return r
+	var r = shift_right(self.next_u32(), 32 - bits)
+	while r >= n: r = shift_right(self.next_u32(), 32 - bits)
+	return r
 
-	// A uniform integer in `low..=high`.
-	var fn randint(low: Int, high: Int) Int: low + self.below(high - low + 1)
+// A uniform integer in `low..=high`.
+fn var Random.randint(low: Int, high: Int) Int: low + self.below(high - low + 1)
 
-	// A uniform integer in `low..high`.
-	var fn randrange(low: Int, high: Int) Int: low + self.below(high - low)
+// A uniform integer in `low..high`.
+fn var Random.randrange(low: Int, high: Int) Int: low + self.below(high - low)
 
-	// A uniform float in `0.0..1.0` from 53 random bits.
-	var fn random() Float:
-		a := shift_right(self.next_u32(), 5)
-		b := shift_right(self.next_u32(), 6)
-		return (a.to_float() * 67108864.0 + b.to_float()) / 9007199254740992.0
+// A uniform float in `0.0..1.0` from 53 random bits.
+fn var Random.random() Float:
+	a := shift_right(self.next_u32(), 5)
+	b := shift_right(self.next_u32(), 6)
+	return (a.to_float() * 67108864.0 + b.to_float()) / 9007199254740992.0
 
-	// A uniformly chosen item, as `random.choice`. The index is bound before the element is cloned because
-	// `items[f()].clone()` evaluates `f()` twice (https://github.com/manuscript-lang/manuscript/issues/2161).
-	var fn choice(items: List[String]) String:
-		at := self.below(items.length())
-		return items[at].clone()
+// A uniformly chosen item, as `random.choice`. The index is bound before the element is cloned because
+// `items[f()].clone()` evaluates `f()` twice (https://github.com/manuscript-lang/manuscript/issues/2161).
+fn var Random.choice(items: List[String]) String:
+	at := self.below(items.length())
+	return items[at].clone()
 
-	// `k` distinct items in random order, as `random.sample` picks them from a population of at most 21 items
-	// (CPython's pool method; larger populations use a different algorithm that is not implemented here).
-	var fn sample(items: List[String], k: Int) List[String]:
-		n := items.length()
-		if n > 21: panic("sample: only the pool method is implemented")
+// `k` distinct items in random order, as `random.sample` picks them from a population of at most 21 items
+// (CPython's pool method; larger populations use a different algorithm that is not implemented here).
+fn var Random.sample(items: List[String], k: Int) List[String]:
+	n := items.length()
+	if n > 21: panic("sample: only the pool method is implemented")
 
-		var pool = items.clone()
-		var out = List[String]()
+	var pool = items.clone()
+	var out = List[String]()
 
-		for i in 0..k:
-			j := self.below(n - i)
-			out.append(pool[j].clone())
-			pool[j] = pool[n - i - 1].clone()
+	for i in 0..k:
+		j := self.below(n - i)
+		out.append(pool[j].clone())
+		pool[j] = pool[n - i - 1].clone()
 
-		return out
+	return out

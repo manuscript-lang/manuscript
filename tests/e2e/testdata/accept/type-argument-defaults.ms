@@ -51,8 +51,7 @@ type Holder[T: Mark = Value]:
 interface Factory:
 	fn create[T: Mark = Value](value: T) Int
 
-impl Mark for Value:
-	fn mark() Int: return self.number
+fn Value.mark() Int: return self.number
 
 impl Value:
 	fn read[T: Mark = Value](value: T) Int: return value.mark()
@@ -60,8 +59,7 @@ impl Value:
 interface Relation[T]:
 	fn relation(value: T) Int
 
-impl Relation[Value] for Value:
-	fn relation(value: Value) Int: return value.number
+fn Value.relation(value: Value) Int: return value.number
 
 fn related[T: Relation[T] = Value](value: T) Int:
 	return value.relation(value)

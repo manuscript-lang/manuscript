@@ -11,9 +11,8 @@ type Resource:
 	marker: String
 
 // Cleanup runs on the resource's own copy, so a marker file is how a caller observes it.
-impl Closeable for Resource:
-	var fn close() Unit!:
-		_written := write_file(self.marker, "closed", true).wait()
+fn var Resource.close() Unit!:
+	_written := write_file(self.marker, "closed", true).wait()
 
 fn closed(marker: String) Bool: read_file(marker).wait().is_ok()
 

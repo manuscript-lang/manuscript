@@ -10,10 +10,9 @@ fn consume(key: String, value: Int) Int:
 type Box:
 	text: String
 
-impl Box:
-	fn consume(value: Int) Int:
-		boxes := [self]
-		return boxes.length() + value
+fn Box.consume(value: Int) Int:
+	boxes := [self]
+	return boxes.length() + value
 
 test "source consuming argument remains owned after later try":
 	key := "long-dynamic-map-key-{1}"

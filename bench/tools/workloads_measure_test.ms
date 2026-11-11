@@ -12,23 +12,20 @@ type Producer:
 	counts: Map[String, Int]
 	order: List[String]
 
-impl Producer:
-	var fn run(version: String) String!:
-		count := self.counts.get_or(version, 0)
-		self.counts.add(version.clone(), count + 1)
-		self.order.append(version.clone())
+fn var Producer.run(version: String) String!:
+	count := self.counts.get_or(version, 0)
+	self.counts.add(version.clone(), count + 1)
+	self.order.append(version.clone())
 
-		mine := version == self.bad
-		if mine and self.mode == "failed": return invalid("{version} exited 42")
-		if mine and self.mode == "failed_first_trial" and count == 1: return invalid(
-			"{version} exited 42"
-		)
-		if mine and self.mode == "wrong": return ok("WRONG!!")
-		if mine and self.mode == "wrong_first_trial" and count == 1: return ok(
-			"WRONG!!"
-		)
+	mine := version == self.bad
+	if mine and self.mode == "failed": return invalid("{version} exited 42")
+	if mine and self.mode == "failed_first_trial" and count == 1: return invalid(
+		"{version} exited 42"
+	)
+	if mine and self.mode == "wrong": return ok("WRONG!!")
+	if mine and self.mode == "wrong_first_trial" and count == 1: return ok("WRONG!!")
 
-		return ok("correct")
+	return ok("correct")
 
 fn producer(bad: String, mode: String) Producer:
 	return Producer(bad, mode, Map[String, Int](), List[String]())

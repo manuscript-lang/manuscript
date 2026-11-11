@@ -10,12 +10,11 @@ type Door:
 	closed: Bool = false
 	fail: Bool = false
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		if not self.closed:
-			self.closed = true
-			append_file(self.log, "{self.id},").wait()?
-			if self.fail: return error(Error("close failed"))
+fn var Door.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "{self.id},").wait()?
+		if self.fail: return error(Error("close failed"))
 
 fn replace(log: String) Unit:
 	var doors = [Door(1, log.clone(), fail: true)]

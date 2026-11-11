@@ -34,28 +34,27 @@ export type Headers:
 	// Fields in the order they appeared; repeated names stay separate entries.
 	fields: List[HeaderField] = List[HeaderField]()
 
-impl Headers:
-	// Returns the first value for `name`, ignoring case, or none.
-	fn get(name: String) String?:
-		wanted := name.lower()
-		for field in self.fields:
-			if field.name.lower() == wanted: return field.value.clone()
-		return none
+// Returns the first value for `name`, ignoring case, or none.
+fn Headers.get(name: String) String?:
+	wanted := name.lower()
+	for field in self.fields:
+		if field.name.lower() == wanted: return field.value.clone()
+	return none
 
-	// Returns every value for `name`, ignoring case, in order.
-	fn get_all(name: String) List[String]:
-		wanted := name.lower()
-		var values = List[String]()
-		for field in self.fields:
-			if field.name.lower() == wanted: values.append(field.value.clone())
-		return values
+// Returns every value for `name`, ignoring case, in order.
+fn Headers.get_all(name: String) List[String]:
+	wanted := name.lower()
+	var values = List[String]()
+	for field in self.fields:
+		if field.name.lower() == wanted: values.append(field.value.clone())
+	return values
 
-	// Writes the block as `Name: value` lines with CRLF endings.
-	fn to_text() String:
-		var out = StringBuilder()
-		for field in self.fields:
-			out.append("{field.name}: {field.value}\r\n")
-		return out.build()
+// Writes the block as `Name: value` lines with CRLF endings.
+fn Headers.to_text() String:
+	var out = StringBuilder()
+	for field in self.fields:
+		out.append("{field.name}: {field.value}\r\n")
+	return out.build()
 
 // One multipart part: its headers, the decoded `name` and `filename` from Content-Disposition, and body bytes.
 export type Part:
@@ -332,85 +331,82 @@ type MultipartParts:
 	in_part: Bool
 	done: Bool
 
-impl Transform[Bytes, Part] for MultipartParts:
-	var fn step(value: Bytes, var out: List[Part]) Unit!:
-		if self.done: return ok(unit)
+fn var MultipartParts.step(value: Bytes, var out: List[Part]) Unit!:
+	if self.done: return ok(unit)
 
-		self.buffer = self.buffer.concat(value)
+	self.buffer = self.buffer.concat(value)
 
-		while true:
-			if (
-				self.in_part
-				and self.pending_size == 0
-				and self.buffer.length() >= 2
-				and self.buffer.starts_with("--".to_bytes())
-			):
-				self.done = true
-				self.buffer = "".to_bytes()
+	while true:
+		if (
+			self.in_part
+			and self.pending_size == 0
+			and self.buffer.length() >= 2
+			and self.buffer.starts_with("--".to_bytes())
+		):
+			self.done = true
+			self.buffer = "".to_bytes()
+			break
+
+		if self.in_part and self.buffer.length() < 2: break
+
+		at := self.buffer.index_of(self.delimiter)
+
+		if at.is_none():
+			if not self.in_part:
+				// Preamble text is ignored; keep only a tail that could start the delimiter.
+				keep := self.delimiter.length() - 1
+				size := self.buffer.length()
+				if size > keep: self.buffer = self.buffer.slice(size - keep, size)?
 				break
 
-			if self.in_part and self.buffer.length() < 2: break
+			if limit := self.max_part_bytes:
+				if (
+					self.pending_size + self.buffer.length() - self.delimiter.length() > limit
+				):
+					return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
 
-			at := self.buffer.index_of(self.delimiter)
+			// Only the trailing delimiter-length minus one bytes can match a future chunk.
+			stop := self.buffer.length() - self.delimiter.length() + 1
 
-			if at.is_none():
-				if not self.in_part:
-					// Preamble text is ignored; keep only a tail that could start the delimiter.
-					keep := self.delimiter.length() - 1
-					size := self.buffer.length()
-					if size > keep: self.buffer = self.buffer.slice(size - keep, size)?
-					break
+			if stop > 0:
+				self.pending.append_bytes(self.buffer.view(0, stop))
+				self.pending_size += stop
+				self.buffer = self.buffer.slice(stop, self.buffer.length())?
 
-				if limit := self.max_part_bytes:
-					if (
-						self.pending_size + self.buffer.length() - self.delimiter.length() > limit
-					):
-						return error(Error("MIME: limit exceeded", kind: "EOVERFLOW"))
+			break
 
-				// Only the trailing delimiter-length minus one bytes can match a future chunk.
-				stop := self.buffer.length() - self.delimiter.length() + 1
+		end := at.get()
 
-				if stop > 0:
-					self.pending.append_bytes(self.buffer.view(0, stop))
-					self.pending_size += stop
-					self.buffer = self.buffer.slice(stop, self.buffer.length())?
+		if self.in_part:
+			if limit := self.max_part_bytes:
+				if self.pending_size + end > limit: return error(
+					Error("MIME: limit exceeded", kind: "EOVERFLOW")
+				)
 
-				break
+			if self.pending_size == 0:
+				out.append(make_part(self.buffer.view(0, end))?)
+			else:
+				self.pending.append_bytes(self.buffer.view(0, end))
 
-			end := at.get()
+				section := self.pending.drain()
+				part := make_part(section)
 
-			if self.in_part:
-				if limit := self.max_part_bytes:
-					if self.pending_size + end > limit: return error(
-						Error(
-							"MIME: limit exceeded", kind: "EOVERFLOW"
-						)
-					)
+				if part.is_error():
+					// A caller may read again after a failed step; preserve its held bytes.
+					self.pending.append_bytes(section.view(0, self.pending_size))
+					return error(part.err())
 
-				if self.pending_size == 0:
-					out.append(make_part(self.buffer.view(0, end))?)
-				else:
-					self.pending.append_bytes(self.buffer.view(0, end))
+				self.pending_size = 0
+				out.append(part.get())
 
-					section := self.pending.drain()
-					part := make_part(section)
+		self.buffer = self.buffer.slice(
+			end + self.delimiter.length(), self.buffer.length()
+		)?
+		self.in_part = true
 
-					if part.is_error():
-						// A caller may read again after a failed step; preserve its held bytes.
-						self.pending.append_bytes(section.view(0, self.pending_size))
-						return error(part.err())
-
-					self.pending_size = 0
-					out.append(part.get())
-
-			self.buffer = self.buffer.slice(
-				end + self.delimiter.length(), self.buffer.length()
-			)?
-			self.in_part = true
-
-	var fn finish(var out: List[Part]) Unit!:
-		if self.done: return ok(unit)
-		return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
+fn var MultipartParts.finish(var out: List[Part]) Unit!:
+	if self.done: return ok(unit)
+	return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
 
 /*
 Reads the parts of a multipart body from a byte stream, one at a time, for uploads too big to hold in memory.

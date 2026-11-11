@@ -26,31 +26,29 @@ type ListSource:
 	items: List[Int]
 	at: Int
 
-impl Source[Int] for ListSource:
-	var fn next() Int?!:
-		if self.at >= self.items.length(): return ok(none)
+fn var ListSource.next() Int?!:
+	if self.at >= self.items.length(): return ok(none)
 
-		v := self.items[self.at]
-		self.at += 1
-		return ok(v)
+	v := self.items[self.at]
+	self.at += 1
+	return ok(v)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var ListSource.close() Unit!:
+	return ok(unit)
 
 // `f` over another `Source`, called through the interface.
 type MapSource:
 	up: Source[Int]
 	f: fn(Int) Int
 
-impl Source[Int] for MapSource:
-	var fn next() Int?!:
-		step := self.up.next()?
-		if v := step: return ok(self.f(v))
+fn var MapSource.next() Int?!:
+	step := self.up.next()?
+	if v := step: return ok(self.f(v))
 
-		return ok(none)
+	return ok(none)
 
-	var fn close() Unit!:
-		return self.up.close()
+fn var MapSource.close() Unit!:
+	return self.up.close()
 
 fn plain(xs: List[Int]) Int:
 	var total = 0

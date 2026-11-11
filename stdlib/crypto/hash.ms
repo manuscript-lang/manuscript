@@ -63,12 +63,11 @@ export enum Crc64Polynomial:
 	// CRC-64/GO-ISO (reflected 0xD800000000000000), Go's `crc64.ISO`.
 	Iso
 
-impl Crc64Polynomial:
-	// The reflected polynomial as an Int bit pattern.
-	fn reflected() Int:
-		match self:
-			Ecma: return -3932672073523589310
-			Iso: return -2882303761517117440
+// The reflected polynomial as an Int bit pattern.
+fn Crc64Polynomial.reflected() Int:
+	match self:
+		Ecma: return -3932672073523589310
+		Iso: return -2882303761517117440
 
 /*
 A 64-bit CRC built from ordered chunks, retaining no input bytes. Initial register and final XOR are all ones.
@@ -81,26 +80,25 @@ export type Crc64:
 	// Register state, stored complemented so the empty checksum is zero.
 	state: Int = 0
 
-impl Crc64:
-	// Appends these bytes to the checksum; an empty chunk leaves it unchanged.
-	var fn update(data: Bytes) Unit:
-		poly := self.polynomial.reflected()
-		var crc = bit_xor(self.state, -1)
+// Appends these bytes to the checksum; an empty chunk leaves it unchanged.
+fn var Crc64.update(data: Bytes) Unit:
+	poly := self.polynomial.reflected()
+	var crc = bit_xor(self.state, -1)
 
-		for index in 0..data.length():
-			crc = bit_xor(crc, data.get(index).to_int())
+	for index in 0..data.length():
+		crc = bit_xor(crc, data.get(index).to_int())
 
-			for bit in 0..8:
-				low := bit_and(crc, 1)
-				crc = shift_right_unsigned(crc, 1)
-				if low == 1:
-					crc = bit_xor(crc, poly)
+		for bit in 0..8:
+			low := bit_and(crc, 1)
+			crc = shift_right_unsigned(crc, 1)
+			if low == 1:
+				crc = bit_xor(crc, poly)
 
-		self.state = bit_xor(crc, -1)
+	self.state = bit_xor(crc, -1)
 
-	// Returns the current checksum without resetting or otherwise changing it.
-	fn value() UInt64:
-		return unsigned(self.state)
+// Returns the current checksum without resetting or otherwise changing it.
+fn Crc64.value() UInt64:
+	return unsigned(self.state)
 
 // Computes the CRC-64 of `data` for `polynomial`.
 // `crc64(Crc64Polynomial.Ecma, "123456789".to_bytes())` returns 11051210869376104954 (0x995DC9BBDF1939FA).
@@ -119,28 +117,27 @@ export type MapHash:
 	// The seed mixed into every hash.
 	seed: Int
 
-impl MapHash:
-	// Hashes the bytes with this seed, finishing with a 64-bit avalanche so every output bit depends on all input bits.
-	fn hash(data: Bytes) UInt64:
-		var state = bit_xor(self.seed, -3750763034362895579)
+// Hashes the bytes with this seed, finishing with a 64-bit avalanche so every output bit depends on all input bits.
+fn MapHash.hash(data: Bytes) UInt64:
+	var state = bit_xor(self.seed, -3750763034362895579)
 
-		for index in 0..data.length():
-			state = wrapping_multiply(
-				bit_xor(state, data.get(index).to_int()), -7046029254386353131
-			)
-			state = bit_xor(state, shift_right_unsigned(state, 29))
-
+	for index in 0..data.length():
 		state = wrapping_multiply(
-			bit_xor(state, shift_right_unsigned(state, 33)), -49064778989728563
+			bit_xor(state, data.get(index).to_int()), -7046029254386353131
 		)
-		state = wrapping_multiply(
-			bit_xor(state, shift_right_unsigned(state, 33)), -4265267296055464877
-		)
-		return unsigned(bit_xor(state, shift_right_unsigned(state, 33)))
+		state = bit_xor(state, shift_right_unsigned(state, 29))
 
-	// Hashes a string's UTF-8 bytes with this seed.
-	fn hash_string(text: String) UInt64:
-		return self.hash(text.to_bytes())
+	state = wrapping_multiply(
+		bit_xor(state, shift_right_unsigned(state, 33)), -49064778989728563
+	)
+	state = wrapping_multiply(
+		bit_xor(state, shift_right_unsigned(state, 33)), -4265267296055464877
+	)
+	return unsigned(bit_xor(state, shift_right_unsigned(state, 33)))
+
+// Hashes a string's UTF-8 bytes with this seed.
+fn MapHash.hash_string(text: String) UInt64:
+	return self.hash(text.to_bytes())
 
 // Returns an unpredictable seed from the operating system.
 export fn random_seed() Int:

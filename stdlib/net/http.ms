@@ -94,10 +94,9 @@ export type ClientResponse:
 	// The complete response payload within the supplied byte bound.
 	body: Bytes
 
-impl ClientResponse:
-	// Returns an independent owned copy of the current response metadata, including its headers.
-	fn metadata() HttpResponseMetadata:
-		return self.head.clone()
+// Returns an independent owned copy of the current response metadata, including its headers.
+fn ClientResponse.metadata() HttpResponseMetadata:
+	return self.head.clone()
 
 // Known HTTP methods, plus extension tokens validated by outgoing operations.
 export enum HttpMethod:
@@ -125,20 +124,19 @@ export enum HttpMethod:
 		value: String
 	)
 
-impl HttpMethod:
-	// Returns the method token; outgoing requests reject malformed Custom tokens.
-	fn text() String:
-		match self:
-			Get: return "GET"
-			Head: return "HEAD"
-			Post: return "POST"
-			Put: return "PUT"
-			Patch: return "PATCH"
-			Delete: return "DELETE"
-			Connect: return "CONNECT"
-			Options: return "OPTIONS"
-			Trace: return "TRACE"
-			Custom(value): return value.clone()
+// Returns the method token; outgoing requests reject malformed Custom tokens.
+fn HttpMethod.text() String:
+	match self:
+		Get: return "GET"
+		Head: return "HEAD"
+		Post: return "POST"
+		Put: return "PUT"
+		Patch: return "PATCH"
+		Delete: return "DELETE"
+		Connect: return "CONNECT"
+		Options: return "OPTIONS"
+		Trace: return "TRACE"
+		Custom(value): return value.clone()
 
 // The runtime handle behind a `HttpClient`.
 export extern type NativeHttpClient
@@ -149,52 +147,50 @@ export type HttpClient:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeHttpClient
 
-impl Closeable for HttpClient:
-	// Cancels in-flight requests, closes open response bodies, and drops idle pooled connections.
-	// Safe to call repeatedly; later requests return EBADF.
-	var fn close() Unit!:
-		msstd_http_client_close(self.native)
+// Cancels in-flight requests, closes open response bodies, and drops idle pooled connections.
+// Safe to call repeatedly; later requests return EBADF.
+fn var HttpClient.close() Unit!:
+	msstd_http_client_close(self.native)
 
-impl HttpClient:
-	// Sends the body (text or `Bytes`) and returns the response with its body as a stream.
-	fn request(
-		method: HttpMethod,
-		url: String,
-		headers: HttpHeaders = headers(),
-		body: Writable = "",
-		max_response_bytes: Int?,
-		timeout: Duration?
-	) StreamingResponse!:
-		raw := self.request_raw(
-			method, url, headers, body.as_bytes(), max_response_bytes, timeout
-		)?
-		return ok(response(raw))
+// Sends the body (text or `Bytes`) and returns the response with its body as a stream.
+fn HttpClient.request(
+	method: HttpMethod,
+	url: String,
+	headers: HttpHeaders = headers(),
+	body: Writable = "",
+	max_response_bytes: Int?,
+	timeout: Duration?
+) StreamingResponse!:
+	raw := self.request_raw(
+		method, url, headers, body.as_bytes(), max_response_bytes, timeout
+	)?
+	return ok(response(raw))
 
-	// Sends immutable Bytes and returns the native response, for callers that buffer the whole body.
-	fn request_raw(
-		method: HttpMethod,
-		url: String,
-		headers: HttpHeaders,
-		body: Bytes,
-		max_response_bytes: Int? = none,
-		timeout: Duration? = none
-	) RawResponse!:
-		return msstd_http_client_request_bytes(
-			self.native, method.text(), url, headers, body, max_response_bytes, timeout
-		)
+// Sends immutable Bytes and returns the native response, for callers that buffer the whole body.
+fn HttpClient.request_raw(
+	method: HttpMethod,
+	url: String,
+	headers: HttpHeaders,
+	body: Bytes,
+	max_response_bytes: Int? = none,
+	timeout: Duration? = none
+) RawResponse!:
+	return msstd_http_client_request_bytes(
+		self.native, method.text(), url, headers, body, max_response_bytes, timeout
+	)
 
-	// Reads `body` to its end, then sends it as the request body. The upload is buffered until the request can
-	// return a `WriteStream` for the body to be written into.
-	fn request_stream(
-		method: HttpMethod,
-		url: String,
-		headers: HttpHeaders,
-		body: ReadStream[Bytes],
-		max_response_bytes: Int? = none,
-		timeout: Duration? = none
-	) StreamingResponse!:
-		data := read_all(body, none)?
-		return self.request(method, url, headers, data, max_response_bytes, timeout)
+// Reads `body` to its end, then sends it as the request body. The upload is buffered until the request can
+// return a `WriteStream` for the body to be written into.
+fn HttpClient.request_stream(
+	method: HttpMethod,
+	url: String,
+	headers: HttpHeaders,
+	body: ReadStream[Bytes],
+	max_response_bytes: Int? = none,
+	timeout: Duration? = none
+) StreamingResponse!:
+	data := read_all(body, none)?
+	return self.request(method, url, headers, data, max_response_bytes, timeout)
 
 // Connection, redirect, cookie, decompression, and TLS settings for an HTTP client.
 export type HttpClientOptions:
@@ -295,25 +291,23 @@ export type HttpServer:
 	// Whether `close` has been called, so `wait` reports a normal stop.
 	stopped: Bool
 
-impl Closeable for HttpServer:
-	// Stops accepting and asks every connection to finish: idle ones close at once, requests in flight finish within `grace`, then the rest are cancelled. It returns without waiting; `wait` or dropping the server joins. Safe to call repeatedly.
-	var fn close() Unit!:
-		self.stopped = true
-		self.accepting.cancel()
+// Stops accepting and asks every connection to finish: idle ones close at once, requests in flight finish within `grace`, then the rest are cancelled. It returns without waiting; `wait` or dropping the server joins. Safe to call repeatedly.
+fn var HttpServer.close() Unit!:
+	self.stopped = true
+	self.accepting.cancel()
 
-impl HttpServer:
-	// Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
-	fn address() String:
-		return self.bound.clone()
+// Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
+fn HttpServer.address() String:
+	return self.bound.clone()
 
-	// Waits until the server has stopped. Returns Ok after `close`, or the error that ended accepting (`EIO` with the host's text). `timeout` bounds the wait and cancels the server when it passes.
-	fn wait(timeout: Duration? = none) Unit!:
-		set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
+// Waits until the server has stopped. Returns Ok after `close`, or the error that ended accepting (`EIO` with the host's text). `timeout` bounds the wait and cancels the server when it passes.
+fn HttpServer.wait(timeout: Duration? = none) Unit!:
+	set_options(self.accepting, PromiseOptions(timeout: timeout.clone()))
 
-		ended := self.accepting.wait()
-		if self.stopped: return ok(unit)
+	ended := self.accepting.wait()
+	if self.stopped: return ok(unit)
 
-		return ended
+	return ended
 
 // Request and response limits, deadlines, graceful shutdown, and TLS server settings.
 export type HttpServerOptions:
@@ -343,21 +337,19 @@ export opaque type RawResponse:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeResponseBody
 
-impl Closeable for RawResponse:
-	// Cancels the rest of the response and releases its connection.
-	// Safe to call repeatedly; reads afterwards return EBADF. A fully read body lets the connection be reused.
-	var fn close() Unit!:
-		msstd_http_body_close(self.native)
+// Cancels the rest of the response and releases its connection.
+// Safe to call repeatedly; reads afterwards return EBADF. A fully read body lets the connection be reused.
+fn var RawResponse.close() Unit!:
+	msstd_http_body_close(self.native)
 
-impl RawResponse:
-	// Returns an independent copy of the response head (status and headers), including after close.
-	fn metadata() HttpResponseMetadata:
-		return msstd_http_body_metadata(self.native)
+// Returns an independent copy of the response head (status and headers), including after close.
+fn RawResponse.metadata() HttpResponseMetadata:
+	return msstd_http_body_metadata(self.native)
 
-	// Reads the rest of the body into one value, bounded by the request's `max_response_bytes`.
-	// A plain HTTP/1.1 body of known length arrives straight into the result without intermediate copies.
-	fn read_all() Bytes!:
-		return msstd_http_body_read_all(self.native)
+// Reads the rest of the body into one value, bounded by the request's `max_response_bytes`.
+// A plain HTTP/1.1 body of known length arrives straight into the result without intermediate copies.
+fn RawResponse.read_all() Bytes!:
+	return msstd_http_body_read_all(self.native)
 
 // A client response: the head and the body as a stream. Closing or dropping the body cancels the rest of the
 // response and releases its connection; a fully read body lets the connection be reused.
@@ -367,20 +359,18 @@ export type StreamingResponse:
 	// The body, at most 64 KiB per item. Reading past the request's `max_response_bytes` is an `Error` of kind `EIO`.
 	body: ReadStream[Bytes]
 
-impl Closeable for StreamingResponse:
-	// Closes the body, which cancels what is unread and releases the connection.
-	var fn close() Unit!:
-		return self.body.close()
+// Closes the body, which cancels what is unread and releases the connection.
+fn var StreamingResponse.close() Unit!:
+	return self.body.close()
 
 type ResponseSource:
 	raw: RawResponse
 
-impl Source[Bytes] for ResponseSource:
-	var fn next() Bytes?!:
-		return msstd_http_body_read(self.raw.native, none)
+fn var ResponseSource.next() Bytes?!:
+	return msstd_http_body_read(self.raw.native, none)
 
-	var fn close() Unit!:
-		return self.raw.close()
+fn var ResponseSource.close() Unit!:
+	return self.raw.close()
 
 fn response(raw: RawResponse) StreamingResponse:
 	metadata := raw.metadata()

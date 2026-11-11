@@ -8,20 +8,18 @@ type Marker:
 	id: Int
 	path: String
 
-impl Closeable for Marker:
-	var fn close() Unit!:
-		append_file(self.path, "{self.id},").wait()?
-		self.path = "closed"
+fn var Marker.close() Unit!:
+	append_file(self.path, "{self.id},").wait()?
+	self.path = "closed"
 
 type Held:
 	id: Int
 	path: String
 	label: String
 
-impl Closeable for Held:
-	var fn close() Unit!:
-		append_file(self.path, "{self.id},").wait()?
-		self.path = "closed"
+fn var Held.close() Unit!:
+	append_file(self.path, "{self.id},").wait()?
+	self.path = "closed"
 
 fn log_text(path: String) String!:
 	bytes := read_file(path).wait()?

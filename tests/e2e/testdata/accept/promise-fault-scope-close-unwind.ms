@@ -11,24 +11,21 @@ interface Src:
 type Probe:
 	action: Int
 
-impl Src for Probe:
-	var fn read(max: Int) Int?!Error:
-		if self.action == 2: panic("source read failed")
-		return ok(none)
+fn var Probe.read(max: Int) Int?!Error:
+	if self.action == 2: panic("source read failed")
+	return ok(none)
 
-	var fn close() Unit:
-		return unit
+fn var Probe.close() Unit:
+	return unit
 
 type Wrapper:
 	input: Src
 
-impl Closeable for Wrapper:
-	var fn close() Unit!:
-		self.input.close()
+fn var Wrapper.close() Unit!:
+	self.input.close()
 
-impl Wrapper:
-	var fn read() Int?!Error:
-		return self.input.read(0)
+fn var Wrapper.read() Int?!Error:
+	return self.input.read(0)
 
 fn run_wrapped(action: Int) Int!:
 	_first := Wrapper(Probe(0))

@@ -9,9 +9,8 @@ fn first_row(rows: List[List[Int]]) List[Int]:
 type Grid:
 	rows: List[List[Int]]
 
-impl Grid:
-	fn first() List[Int]:
-		return self.rows[0]
+fn Grid.first() List[Int]:
+	return self.rows[0]
 
 fn total(rows: List[List[Int]]) Int:
 	var sum = row(rows, 0).sum()

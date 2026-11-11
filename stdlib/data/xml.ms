@@ -48,54 +48,53 @@ export enum XmlNode:
 		text: String
 	)
 
-impl XmlNode:
-	// The tag name of an element, or empty text for text and comments.
-	fn tag() String:
-		match self:
-			XmlElement(name, _, _): return name.clone()
-			_: return ""
+// The tag name of an element, or empty text for text and comments.
+fn XmlNode.tag() String:
+	match self:
+		XmlElement(name, _, _): return name.clone()
+		_: return ""
 
-	// Returns the value of an attribute of an element, or none.
-	fn attribute(name: String) String?:
-		match self:
-			XmlElement(_, attributes, _):
-				for attribute in attributes:
-					if attribute.name == name: return attribute.value.clone()
-				return none
-			_: return none
+// Returns the value of an attribute of an element, or none.
+fn XmlNode.attribute(name: String) String?:
+	match self:
+		XmlElement(_, attributes, _):
+			for attribute in attributes:
+				if attribute.name == name: return attribute.value.clone()
+			return none
+		_: return none
 
-	// Returns the child nodes of an element, or an empty list. The result is an owned copy.
-	fn children() List[XmlNode]:
-		match self:
-			XmlElement(_, _, children): return children.clone()
-			_: return List[XmlNode]()
+// Returns the child nodes of an element, or an empty list. The result is an owned copy.
+fn XmlNode.children() List[XmlNode]:
+	match self:
+		XmlElement(_, _, children): return children.clone()
+		_: return List[XmlNode]()
 
-	// Returns all descendant text joined in document order, without comments.
-	fn text() String:
-		var out = StringBuilder()
-		collect_text(self, var out)
-		return out.build()
+// Returns all descendant text joined in document order, without comments.
+fn XmlNode.text() String:
+	var out = StringBuilder()
+	collect_text(self, var out)
+	return out.build()
 
-	// Returns the first direct child element named `name`, or none. The result is an owned copy.
-	fn find(name: String) XmlNode?:
-		match self:
-			XmlElement(_, _, children):
-				for child in children:
-					if child.tag() == name: return child.clone()
-				return none
-			_: return none
+// Returns the first direct child element named `name`, or none. The result is an owned copy.
+fn XmlNode.find(name: String) XmlNode?:
+	match self:
+		XmlElement(_, _, children):
+			for child in children:
+				if child.tag() == name: return child.clone()
+			return none
+		_: return none
 
-	// Returns every direct child element named `name`, in order.
-	fn find_all(name: String) List[XmlNode]:
-		var found = List[XmlNode]()
+// Returns every direct child element named `name`, in order.
+fn XmlNode.find_all(name: String) List[XmlNode]:
+	var found = List[XmlNode]()
 
-		match self:
-			XmlElement(_, _, children):
-				for child in children:
-					if child.tag() == name: found.append(child.clone())
-			_: return found
+	match self:
+		XmlElement(_, _, children):
+			for child in children:
+				if child.tag() == name: found.append(child.clone())
+		_: return found
 
-		return found
+	return found
 
 fn collect_text(node: XmlNode, var out: StringBuilder) Unit:
 	match node:
@@ -111,89 +110,294 @@ type Reader:
 	at: Int
 	max_depth: Int
 
-impl Reader:
-	fn peek(offset: Int = 0) String:
-		return self.chars.get(self.at + offset, "")
+fn Reader.peek(offset: Int = 0) String:
+	return self.chars.get(self.at + offset, "")
 
-	fn looking_at(literal: String) Bool:
-		wanted := literal.chars()
-		for k in 0..wanted.length():
-			if self.peek(k) != wanted[k]: return false
-		return true
+fn Reader.looking_at(literal: String) Bool:
+	wanted := literal.chars()
+	for k in 0..wanted.length():
+		if self.peek(k) != wanted[k]: return false
+	return true
 
-	fn done() Bool:
-		return self.at >= self.chars.length()
+fn Reader.done() Bool:
+	return self.at >= self.chars.length()
 
-	var fn skip_space() Unit:
-		while not self.done() and is_space(self.peek()):
+fn var Reader.skip_space() Unit:
+	while not self.done() and is_space(self.peek()):
+		self.at += 1
+
+// Consumes `literal` or fails.
+fn var Reader.expect(literal: String) Unit!:
+	if not self.looking_at(literal): return error(
+		Error("XML: invalid data", kind: "EBADMSG")
+	)
+
+	self.at += literal.chars().length()
+
+// Returns the text up to `stop` and consumes it, or fails when `stop` never appears.
+fn var Reader.take_until(stop: String) String!:
+	var out = StringBuilder()
+
+	while not self.done():
+		if self.looking_at(stop):
+			self.at += stop.chars().length()
+			return ok(out.build())
+
+		out.append(self.peek())
+		self.at += 1
+
+	return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+// XML comments cannot contain a double hyphen or end with a hyphen.
+fn var Reader.comment() String!:
+	self.expect("<!--")?
+
+	text := self.take_until("-->")?
+	if text.contains("--") or text.ends_with("-"): return error(
+		Error("XML: invalid data", kind: "EBADMSG")
+	)
+
+	return ok(text)
+
+fn var Reader.name() String!:
+	var out = StringBuilder()
+	var first = true
+
+	while not self.done():
+		c := self.peek()
+		if not is_name_char(c, first): break
+
+		out.append(c)
+		first = false
+		self.at += 1
+
+	if first: return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+	return ok(out.build())
+
+// The reserved target `xml` belongs to a declaration, never a processing instruction.
+fn var Reader.instruction() Unit!:
+	self.expect("<?")?
+
+	target := self.name()?
+	if target.length() == 3 and target.lower() == "xml": return error(
+		Error("XML: invalid data", kind: "EBADMSG")
+	)
+	if not self.looking_at("?>") and not is_space(self.peek()): return error(
+		Error("XML: invalid data", kind: "EBADMSG")
+	)
+
+	_data := self.take_until("?>")?
+
+// Declaration values are literals, not entity-decoded XML attribute values.
+fn var Reader.declaration_attribute() XmlAttribute!:
+	name := self.name()?
+	self.skip_space()
+	self.expect("=")?
+	self.skip_space()
+
+	quote := self.peek()
+	if quote != "\"" and quote != "'": return error(
+		Error("XML: invalid data", kind: "EBADMSG")
+	)
+
+	self.at += 1
+	return ok(XmlAttribute(name, self.take_until(quote)?))
+
+// XMLDecl: mandatory version, optional encoding, optional standalone, in that order.
+fn var Reader.declaration() Unit!:
+	self.expect("<?xml")?
+	if not is_space(self.peek()): return error(
+		Error("XML: invalid data", kind: "EBADMSG")
+	)
+
+	self.skip_space()
+
+	version := self.declaration_attribute()?
+	if version.name != "version" or not is_version(version.value): return error(
+		Error("XML: invalid data", kind: "EBADMSG")
+	)
+
+	var encoding_seen = false
+	var standalone_seen = false
+
+	while true:
+		before := self.at
+		self.skip_space()
+
+		if self.looking_at("?>"):
+			self.at += 2
+			return ok(unit)
+
+		if self.at == before: return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+		attribute := self.declaration_attribute()?
+
+		if (attribute.name == "encoding" and not encoding_seen and not standalone_seen):
+			if not is_encoding_name(attribute.value): return error(
+				Error("XML: invalid data", kind: "EBADMSG")
+			)
+
+			encoding_seen = true
+		else if attribute.name == "standalone" and not standalone_seen:
+			if attribute.value != "yes" and attribute.value != "no": return error(
+				Error("XML: invalid data", kind: "EBADMSG")
+			)
+
+			standalone_seen = true
+		else:
+			return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+// Skips a quoted literal; its contents never delimit markup.
+fn var Reader.quoted(public_id: Bool = false) Unit!:
+	quote := self.peek()
+	if quote != "\"" and quote != "'": return error(
+		Error("XML: invalid data", kind: "EBADMSG")
+	)
+
+	self.at += 1
+
+	text := self.take_until(quote)?
+
+	if public_id:
+		for c in text.chars():
+			code := c.scalar_at(0)
+			alphanumeric := (
+				(code >= 0x41 and code <= 0x5a)
+				or (code >= 0x61 and code <= 0x7a)
+				or (code >= 0x30 and code <= 0x39)
+			)
+			if not alphanumeric and not " \r\n-'()+,./:=?;!*#@$_%".contains(c):
+				return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+// Requires at least one whitespace scalar.
+fn var Reader.require_space() Unit!:
+	before := self.at
+	self.skip_space()
+	if self.at == before: return error(Error("XML: invalid data", kind: "EBADMSG"))
+
+// XML 1.0 section 2.8 `intSubset`: declarations, comments, instructions and parameter
+// references, with quoted spans skipped so `]` and `>` inside them are plain text.
+fn var Reader.internal_subset() Unit!:
+	while true:
+		self.skip_space()
+
+		if self.looking_at("]"):
 			self.at += 1
+			return ok(unit)
 
-	// Consumes `literal` or fails.
-	var fn expect(literal: String) Unit!:
-		if not self.looking_at(literal): return error(
-			Error("XML: invalid data", kind: "EBADMSG")
-		)
+		if self.looking_at("<!--"):
+			_comment := self.comment()?
+		else if self.looking_at("<?"):
+			self.instruction()?
+		else if self.looking_at("<!"):
+			self.at += 2
 
-		self.at += literal.chars().length()
+			while not self.looking_at(">"):
+				if self.done(): return error(
+					Error("XML: invalid data", kind: "EBADMSG")
+				)
 
-	// Returns the text up to `stop` and consumes it, or fails when `stop` never appears.
-	var fn take_until(stop: String) String!:
-		var out = StringBuilder()
+				if self.peek() == "\"" or self.peek() == "'":
+					self.quoted()?
+				else:
+					self.at += 1
 
-		while not self.done():
-			if self.looking_at(stop):
-				self.at += stop.chars().length()
-				return ok(out.build())
-
-			out.append(self.peek())
 			self.at += 1
+		else if self.looking_at("%"):
+			_reference := self.take_until(";")?
+		else:
+			return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-		return error(Error("XML: invalid data", kind: "EBADMSG"))
+// XML 1.0 section 2.8 `doctypedecl`: name, optional external identifier, optional internal subset.
+fn var Reader.doctype() Unit!:
+	self.expect("<!DOCTYPE")?
+	self.require_space()?
 
-	// XML comments cannot contain a double hyphen or end with a hyphen.
-	var fn comment() String!:
-		self.expect("<!--")?
+	_name := self.name()?
+	self.skip_space()
 
-		text := self.take_until("-->")?
-		if text.contains("--") or text.ends_with("-"): return error(
-			Error("XML: invalid data", kind: "EBADMSG")
-		)
+	if self.looking_at("SYSTEM"):
+		self.at += 6
+		self.require_space()?
+		self.quoted()?
+		self.skip_space()
+	else if self.looking_at("PUBLIC"):
+		self.at += 6
+		self.require_space()?
+		self.quoted(public_id: true)?
+		self.require_space()?
+		self.quoted()?
+		self.skip_space()
 
-		return ok(text)
+	if self.looking_at("["):
+		self.at += 1
+		self.internal_subset()?
+		self.skip_space()
 
-	var fn name() String!:
-		var out = StringBuilder()
-		var first = true
+	self.expect(">")?
 
-		while not self.done():
-			c := self.peek()
-			if not is_name_char(c, first): break
+// Only the prolog may have a declaration, before any whitespace or other markup.
+// The prolog may also hold one DOCTYPE; it is skipped, never expanded.
+fn var Reader.skip_misc(
+	declaration_allowed: Bool = false,
+	doctype_allowed: Bool = false
+) Unit!:
+	start := self.at
+	var doctype_open = doctype_allowed
 
-			out.append(c)
-			first = false
+	while true:
+		self.skip_space()
+
+		if self.looking_at("<?"):
+			if (
+				declaration_allowed
+				and self.at == start
+				and self.looking_at("<?xml")
+				and is_space(self.peek(5))
+			):
+				self.declaration()?
+			else:
+				self.instruction()?
+		else if self.looking_at("<!--"):
+			_comment := self.comment()?
+		else if doctype_open and self.looking_at("<!DOCTYPE"):
+			self.doctype()?
+			doctype_open = false
+		else:
+			break
+
+	return ok(unit)
+
+fn var Reader.element(depth: Int) XmlNode!:
+	if depth > self.max_depth: return error(
+		Error("XML: limit exceeded", kind: "EOVERFLOW")
+	)
+
+	self.expect("<")?
+
+	name := self.name()?
+	var attributes = List[XmlAttribute]()
+	var seen = Set[String]()
+
+	while true:
+		before := self.at
+		self.skip_space()
+
+		separated := self.at > before
+
+		if self.looking_at("/>"):
+			self.at += 2
+			return ok(XmlElement(name, attributes, List[XmlNode]()))
+
+		if self.looking_at(">"):
 			self.at += 1
+			break
 
-		if first: return error(Error("XML: invalid data", kind: "EBADMSG"))
+		// Attributes are separated by whitespace, so `a="1"b="2"` is malformed.
+		if not separated: return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-		return ok(out.build())
-
-	// The reserved target `xml` belongs to a declaration, never a processing instruction.
-	var fn instruction() Unit!:
-		self.expect("<?")?
-
-		target := self.name()?
-		if target.length() == 3 and target.lower() == "xml": return error(
-			Error("XML: invalid data", kind: "EBADMSG")
-		)
-		if not self.looking_at("?>") and not is_space(self.peek()): return error(
-			Error("XML: invalid data", kind: "EBADMSG")
-		)
-
-		_data := self.take_until("?>")?
-
-	// Declaration values are literals, not entity-decoded XML attribute values.
-	var fn declaration_attribute() XmlAttribute!:
-		name := self.name()?
+		attribute_name := self.name()?
 		self.skip_space()
 		self.expect("=")?
 		self.skip_space()
@@ -204,288 +408,72 @@ impl Reader:
 		)
 
 		self.at += 1
-		return ok(XmlAttribute(name, self.take_until(quote)?))
 
-	// XMLDecl: mandatory version, optional encoding, optional standalone, in that order.
-	var fn declaration() Unit!:
-		self.expect("<?xml")?
-		if not is_space(self.peek()): return error(
+		source := self.take_until(quote)?
+		if source.contains("<"): return error(
 			Error("XML: invalid data", kind: "EBADMSG")
 		)
 
-		self.skip_space()
+		// XML 1.0 section 3.3.3: literal tabs and line ends in a value become spaces; references are decoded afterwards.
+		raw := source.replace("\n", " ").replace("\t", " ")
 
-		version := self.declaration_attribute()?
-		if version.name != "version" or not is_version(version.value): return error(
-			Error("XML: invalid data", kind: "EBADMSG")
-		)
-
-		var encoding_seen = false
-		var standalone_seen = false
-
-		while true:
-			before := self.at
-			self.skip_space()
-
-			if self.looking_at("?>"):
-				self.at += 2
-				return ok(unit)
-
-			if self.at == before: return error(
-				Error("XML: invalid data", kind: "EBADMSG")
-			)
-
-			attribute := self.declaration_attribute()?
-
-			if (
-				attribute.name == "encoding"
-				and not encoding_seen
-				and not standalone_seen
-			):
-				if not is_encoding_name(attribute.value): return error(
+		// A short list is scanned; a long one moves to a set so names are checked in constant time.
+		if attributes.length() < ATTRIBUTE_SCAN_LIMIT:
+			for existing in attributes:
+				if existing.name == attribute_name: return error(
 					Error("XML: invalid data", kind: "EBADMSG")
 				)
-
-				encoding_seen = true
-			else if attribute.name == "standalone" and not standalone_seen:
-				if attribute.value != "yes" and attribute.value != "no": return error(
-					Error("XML: invalid data", kind: "EBADMSG")
-				)
-
-				standalone_seen = true
-			else:
-				return error(Error("XML: invalid data", kind: "EBADMSG"))
-
-	// Skips a quoted literal; its contents never delimit markup.
-	var fn quoted(public_id: Bool = false) Unit!:
-		quote := self.peek()
-		if quote != "\"" and quote != "'": return error(
-			Error("XML: invalid data", kind: "EBADMSG")
-		)
-
-		self.at += 1
-
-		text := self.take_until(quote)?
-
-		if public_id:
-			for c in text.chars():
-				code := c.scalar_at(0)
-				alphanumeric := (
-					(code >= 0x41 and code <= 0x5a)
-					or (code >= 0x61 and code <= 0x7a)
-					or (code >= 0x30 and code <= 0x39)
-				)
-				if not alphanumeric and not " \r\n-'()+,./:=?;!*#@$_%".contains(c):
-					return error(Error("XML: invalid data", kind: "EBADMSG"))
-
-	// Requires at least one whitespace scalar.
-	var fn require_space() Unit!:
-		before := self.at
-		self.skip_space()
-		if self.at == before: return error(Error("XML: invalid data", kind: "EBADMSG"))
-
-	// XML 1.0 section 2.8 `intSubset`: declarations, comments, instructions and parameter
-	// references, with quoted spans skipped so `]` and `>` inside them are plain text.
-	var fn internal_subset() Unit!:
-		while true:
-			self.skip_space()
-
-			if self.looking_at("]"):
-				self.at += 1
-				return ok(unit)
-
-			if self.looking_at("<!--"):
-				_comment := self.comment()?
-			else if self.looking_at("<?"):
-				self.instruction()?
-			else if self.looking_at("<!"):
-				self.at += 2
-
-				while not self.looking_at(">"):
-					if self.done(): return error(
-						Error(
-							"XML: invalid data", kind: "EBADMSG"
-						)
-					)
-
-					if self.peek() == "\"" or self.peek() == "'":
-						self.quoted()?
-					else:
-						self.at += 1
-
-				self.at += 1
-			else if self.looking_at("%"):
-				_reference := self.take_until(";")?
-			else:
-				return error(Error("XML: invalid data", kind: "EBADMSG"))
-
-	// XML 1.0 section 2.8 `doctypedecl`: name, optional external identifier, optional internal subset.
-	var fn doctype() Unit!:
-		self.expect("<!DOCTYPE")?
-		self.require_space()?
-
-		_name := self.name()?
-		self.skip_space()
-
-		if self.looking_at("SYSTEM"):
-			self.at += 6
-			self.require_space()?
-			self.quoted()?
-			self.skip_space()
-		else if self.looking_at("PUBLIC"):
-			self.at += 6
-			self.require_space()?
-			self.quoted(public_id: true)?
-			self.require_space()?
-			self.quoted()?
-			self.skip_space()
-
-		if self.looking_at("["):
-			self.at += 1
-			self.internal_subset()?
-			self.skip_space()
-
-		self.expect(">")?
-
-	// Only the prolog may have a declaration, before any whitespace or other markup.
-	// The prolog may also hold one DOCTYPE; it is skipped, never expanded.
-	var fn skip_misc(
-		declaration_allowed: Bool = false,
-		doctype_allowed: Bool = false
-	) Unit!:
-		start := self.at
-		var doctype_open = doctype_allowed
-
-		while true:
-			self.skip_space()
-
-			if self.looking_at("<?"):
-				if (
-					declaration_allowed
-					and self.at == start
-					and self.looking_at("<?xml")
-					and is_space(self.peek(5))
-				):
-					self.declaration()?
-				else:
-					self.instruction()?
-			else if self.looking_at("<!--"):
-				_comment := self.comment()?
-			else if doctype_open and self.looking_at("<!DOCTYPE"):
-				self.doctype()?
-				doctype_open = false
-			else:
-				break
-
-		return ok(unit)
-
-	var fn element(depth: Int) XmlNode!:
-		if depth > self.max_depth: return error(
-			Error("XML: limit exceeded", kind: "EOVERFLOW")
-		)
-
-		self.expect("<")?
-
-		name := self.name()?
-		var attributes = List[XmlAttribute]()
-		var seen = Set[String]()
-
-		while true:
-			before := self.at
-			self.skip_space()
-
-			separated := self.at > before
-
-			if self.looking_at("/>"):
-				self.at += 2
-				return ok(XmlElement(name, attributes, List[XmlNode]()))
-
-			if self.looking_at(">"):
-				self.at += 1
-				break
-
-			// Attributes are separated by whitespace, so `a="1"b="2"` is malformed.
-			if not separated: return error(Error("XML: invalid data", kind: "EBADMSG"))
-
-			attribute_name := self.name()?
-			self.skip_space()
-			self.expect("=")?
-			self.skip_space()
-
-			quote := self.peek()
-			if quote != "\"" and quote != "'": return error(
-				Error("XML: invalid data", kind: "EBADMSG")
-			)
-
-			self.at += 1
-
-			source := self.take_until(quote)?
-			if source.contains("<"): return error(
-				Error("XML: invalid data", kind: "EBADMSG")
-			)
-
-			// XML 1.0 section 3.3.3: literal tabs and line ends in a value become spaces; references are decoded afterwards.
-			raw := source.replace("\n", " ").replace("\t", " ")
-
-			// A short list is scanned; a long one moves to a set so names are checked in constant time.
-			if attributes.length() < ATTRIBUTE_SCAN_LIMIT:
+		else:
+			if seen.is_empty():
 				for existing in attributes:
-					if existing.name == attribute_name: return error(
-						Error(
-							"XML: invalid data", kind: "EBADMSG"
-						)
-					)
-			else:
-				if seen.is_empty():
-					for existing in attributes:
-						seen.add(existing.name.clone())
-				if seen.contains(attribute_name): return error(
-					Error("XML: invalid data", kind: "EBADMSG")
-				)
+					seen.add(existing.name.clone())
+			if seen.contains(attribute_name): return error(
+				Error("XML: invalid data", kind: "EBADMSG")
+			)
 
-				seen.add(attribute_name.clone())
+			seen.add(attribute_name.clone())
 
-			attributes.append(XmlAttribute(name: attribute_name, value: decode(raw)?))
+		attributes.append(XmlAttribute(name: attribute_name, value: decode(raw)?))
 
-		var children = List[XmlNode]()
+	var children = List[XmlNode]()
 
-		while true:
-			if self.done(): return error(Error("XML: invalid data", kind: "EBADMSG"))
+	while true:
+		if self.done(): return error(Error("XML: invalid data", kind: "EBADMSG"))
 
-			if self.looking_at("</"):
-				self.at += 2
+		if self.looking_at("</"):
+			self.at += 2
 
-				closing := self.name()?
-				if closing != name: return error(
-					Error("XML: invalid data", kind: "EBADMSG")
-				)
+			closing := self.name()?
+			if closing != name: return error(
+				Error("XML: invalid data", kind: "EBADMSG")
+			)
 
-				self.skip_space()
-				self.expect(">")?
-				return ok(XmlElement(name, attributes, children))
+			self.skip_space()
+			self.expect(">")?
+			return ok(XmlElement(name, attributes, children))
 
-			if self.looking_at("<!--"):
-				children.append(XmlComment(self.comment()?))
-			else if self.looking_at("<![CDATA["):
-				self.at += 9
-				children.append(XmlText(self.take_until("]]>")?))
-			else if self.looking_at("<?"):
-				self.instruction()?
-			else if self.looking_at("<"):
-				children.append(self.element(depth + 1)?)
-			else:
-				var text = StringBuilder()
+		if self.looking_at("<!--"):
+			children.append(XmlComment(self.comment()?))
+		else if self.looking_at("<![CDATA["):
+			self.at += 9
+			children.append(XmlText(self.take_until("]]>")?))
+		else if self.looking_at("<?"):
+			self.instruction()?
+		else if self.looking_at("<"):
+			children.append(self.element(depth + 1)?)
+		else:
+			var text = StringBuilder()
 
-				while not self.done() and self.peek() != "<":
-					text.append(self.peek())
-					self.at += 1
+			while not self.done() and self.peek() != "<":
+				text.append(self.peek())
+				self.at += 1
 
-				raw := text.build()
-				if raw.contains("]]>"): return error(
-					Error("XML: invalid data", kind: "EBADMSG")
-				)
+			raw := text.build()
+			if raw.contains("]]>"): return error(
+				Error("XML: invalid data", kind: "EBADMSG")
+			)
 
-				children.append(XmlText(decode(raw)?))
+			children.append(XmlText(decode(raw)?))
 
 fn is_space(c: String) Bool:
 	return c == " " or c == "\t" or c == "\n" or c == "\r"

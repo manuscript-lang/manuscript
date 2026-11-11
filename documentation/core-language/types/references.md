@@ -34,9 +34,8 @@ A borrow is a handle to a value another binding owns: many readers, or one write
 type Box:
     items: List[Int]
 
-impl Box:
-    fn list() List[Int]:
-        return self.items
+fn Box.list() List[Int]:
+    return self.items
 
 fn grow(var b: Box) Int:
     var xs = b.list()

@@ -17,9 +17,8 @@ interface Increment:
 type Offset:
     delta: Int
 
-impl Increment for Offset:
-    fn apply(value: Int) Int:
-        return value + self.delta
+fn Offset.apply(value: Int) Int:
+    return value + self.delta
 
 fn adjusted(value: Int, operation: Increment) Int:
     return operation.apply(value)
@@ -131,9 +130,8 @@ interface ReadValue[T]:
 type Box[T: Clonable]:
     value: T
 
-impl ReadValue[T] for Box[T]:
-    fn get() T:
-        return self.value.clone()
+fn Box[T].get() T:
+    return self.value.clone()
 ```
 
 This covers `Box[Int]`, `Box[String]`, and every other well-formed application. Bounds are inherited from the receiver declaration and, for interface arguments that are receiver parameters, the interface declaration. The body is checked once under them with `self: Box[T]`, and they must prove every nested application and operation legal. At a use, the matched arguments must satisfy them; a concretely specialized parameter is substituted into other bounds (`Pair[A, B: ReadValue[A]]` with receiver `Pair[Int, B]` gives `B: ReadValue[Int]`).

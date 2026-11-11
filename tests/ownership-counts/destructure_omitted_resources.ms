@@ -21,9 +21,8 @@ import (
 type Token:
 	id: Int
 
-impl Closeable for Token:
-	var fn close() Unit!:
-		return stdout().write("close {self.id}\n")
+fn var Token.close() Unit!:
+	return stdout().write("close {self.id}\n")
 
 type Triple:
 	first: Token
@@ -38,9 +37,8 @@ type NamedToken:
 	id: Int
 	name: String
 
-impl Closeable for NamedToken:
-	var fn close() Unit!:
-		return stdout().write("close {self.id}\n")
+fn var NamedToken.close() Unit!:
+	return stdout().write("close {self.id}\n")
 
 type NamedTriple:
 	first: NamedToken

@@ -14,9 +14,8 @@ type Tag:
 fn tag_log(id: Int) String!:
 	return ok("{ temporary_root()?}/ms-result-get-tag-{id}")
 
-impl Closeable for Tag:
-	var fn close() Unit!:
-		append_file(tag_log(self.id)?, "closed,").wait()?
+fn var Tag.close() Unit!:
+	append_file(tag_log(self.id)?, "closed,").wait()?
 
 fn success(id: Int) Tag!Int:
 	return ok(Tag(id))

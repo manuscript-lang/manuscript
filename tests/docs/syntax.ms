@@ -26,9 +26,8 @@ impl Reader for Document:
 	fn text() String:
 		return self.value
 
-impl Document:
-	var fn replace(value: String) Unit:
-		self.value = value
+fn var Document.replace(value: String) Unit:
+	self.value = value
 
 export fn identity[T](value: T) T:
 	return value

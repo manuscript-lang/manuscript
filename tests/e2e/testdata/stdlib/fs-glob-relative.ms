@@ -13,9 +13,8 @@ import (
 type RestoreDirectory:
 	path: String
 
-impl Closeable for RestoreDirectory:
-	var fn close() Unit!:
-		return change_directory(self.path)
+fn var RestoreDirectory.close() Unit!:
+	return change_directory(self.path)
 
 fn matched_paths(root: String, options: GlobOptions) List[String]!:
 	entries := glob(root, options)?

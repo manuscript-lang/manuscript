@@ -14,27 +14,24 @@ interface Step:
 type Doubler:
 	count: Int
 
-impl Step for Doubler:
-	var fn step(value: Int, var out: Acc) Unit!:
-		self.count += 1
-		out.items.append(value * 2)
+fn var Doubler.step(value: Int, var out: Acc) Unit!:
+	self.count += 1
+	out.items.append(value * 2)
 
 // Declares `var` but only reads it: the caller's value is unchanged.
 type Reader:
 	seen: Int
 
-impl Step for Reader:
-	var fn step(value: Int, var out: Acc) Unit!:
-		self.seen += out.items.length() + value
+fn var Reader.step(value: Int, var out: Acc) Unit!:
+	self.seen += out.items.length() + value
 
 type Holder:
 	step: Step
 	acc: Acc
 
-impl Holder:
-	// The argument is a field of the receiver's owner: it changes in place.
-	var fn run(value: Int) Unit!:
-		return self.step.step(value, var self.acc)
+// The argument is a field of the receiver's owner: it changes in place.
+fn var Holder.run(value: Int) Unit!:
+	return self.step.step(value, var self.acc)
 
 test "a var parameter on an interface operation writes back to a local":
 	var acc = Acc([])
@@ -55,14 +52,13 @@ test "a var field argument writes back to its record":
 type Words:
 	count: Int
 
-impl Transform[String, String] for Words:
-	var fn step(value: String, var out: List[String]) Unit!:
-		for word in value.split(" "):
-			self.count += 1
-			out.append(word)
+fn var Words.step(value: String, var out: List[String]) Unit!:
+	for word in value.split(" "):
+		self.count += 1
+		out.append(word)
 
-	var fn finish(var out: List[String]) Unit!:
-		out.append("{self.count}")
+fn var Words.finish(var out: List[String]) Unit!:
+	out.append("{self.count}")
 
 test "a transform writes zero or more items per input and more at the end":
 	words := through[String, String](from_list(["a b", "", "c"]), Words(0))
@@ -72,13 +68,12 @@ test "a transform writes zero or more items per input and more at the end":
 type Checked:
 	unused: Bool = false
 
-impl Transform[Int, Int] for Checked:
-	var fn step(value: Int, var out: List[Int]) Unit!:
-		out.append(value)
-		if value < 0: return error(Error("negative", kind: "EBADMSG"))
+fn var Checked.step(value: Int, var out: List[Int]) Unit!:
+	out.append(value)
+	if value < 0: return error(Error("negative", kind: "EBADMSG"))
 
-	var fn finish(var out: List[Int]) Unit!:
-		return ok(unit)
+fn var Checked.finish(var out: List[Int]) Unit!:
+	return ok(unit)
 
 test "a failed step's partial output is dropped and the failure is the next item":
 	var s = through[Int, Int](from_list([1, -2, 3]), Checked())

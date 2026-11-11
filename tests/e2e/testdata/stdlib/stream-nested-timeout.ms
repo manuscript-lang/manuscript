@@ -9,25 +9,23 @@ type Forward:
 	input: ReadStream[Int]
 	limit: Int
 
-impl Source[Int] for Forward:
-	var fn next() Int?!:
-		return self.input.next(timeout: milliseconds(self.limit))
+fn var Forward.next() Int?!:
+	return self.input.next(timeout: milliseconds(self.limit))
 
-	var fn close() Unit!:
-		return self.input.close()
+fn var Forward.close() Unit!:
+	return self.input.close()
 
 // Reads one value that is ready, then waits for a second that never comes.
 type ReadyThenStall:
 	input: ReadStream[Int]
 	reads: Int = 0
 
-impl Source[Int] for ReadyThenStall:
-	var fn next() Int?!:
-		self.reads += 1
-		return self.input.next(timeout: milliseconds(600))
+fn var ReadyThenStall.next() Int?!:
+	self.reads += 1
+	return self.input.next(timeout: milliseconds(600))
 
-	var fn close() Unit!:
-		return self.input.close()
+fn var ReadyThenStall.close() Unit!:
+	return self.input.close()
 
 test "an outer deadline bounds a longer nested read":
 	var queue = pipe[Int](4)

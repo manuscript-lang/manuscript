@@ -93,9 +93,8 @@ export extern type Connection
 extern fn lib_connect(address: String) Connection
 extern fn lib_disconnect(connection: Connection) Unit
 
-impl Closeable for Connection:
-    var fn close() Unit!:
-        lib_disconnect(self)
+fn var Connection.close() Unit!:
+    lib_disconnect(self)
 ```
 
 ## Calling back into Manuscript

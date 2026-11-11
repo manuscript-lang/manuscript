@@ -503,12 +503,23 @@ impl Checker {
     /// The item type of `t` when it implements `Iterator[T]`.
     fn iterator_item(&self, t: &Ty) -> Option<Ty> {
         self.methods(t, n("next")).into_iter().find_map(|m| {
-            let contract = m.contract.as_ref()?;
-            if !contract.is(Builtin::Iterator) || !m.ty.params.is_empty() {
+            if !m.ty.params.is_empty() {
                 return None;
             }
             let result = m.ty.result_ty();
-            (result.is(Builtin::Optional) && result.args.len() == 1).then(|| result.args[0].clone())
+            if !result.is(Builtin::Optional) || result.args.len() != 1 {
+                return None;
+            }
+            let item = result.args[0].clone();
+            let written = m
+                .contract
+                .as_ref()
+                .is_some_and(|contract| contract.is(Builtin::Iterator));
+            // A type's own `var fn next() T?` satisfies `Iterator[T]` by shape.
+            (written
+                || (m.is_inherent(self.syms)
+                    && self.implements(t, &self.session.standard("Iterator", vec![item.clone()]))))
+            .then_some(item)
         })
     }
 
@@ -647,9 +658,23 @@ impl Checker {
     /// Whether `t` implements `Iterable[T]`, the contract of iterating a container by position.
     fn is_iterable(&self, t: &Ty) -> bool {
         self.methods(t, n("at")).into_iter().any(|m| {
-            m.contract
+            if m.contract
                 .as_ref()
                 .is_some_and(|contract| contract.is(Builtin::Iterable))
+            {
+                return true;
+            }
+            // Own `length` and `at` methods satisfy `Iterable[T]` by shape.
+            let result = m.ty.result_ty();
+            m.is_inherent(self.syms)
+                && result.is(Builtin::Optional)
+                && result.args.len() == 1
+                && self.implements(
+                    t,
+                    &self
+                        .session
+                        .standard("Iterable", vec![result.args[0].clone()]),
+                )
         })
     }
 

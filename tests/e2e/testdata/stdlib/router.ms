@@ -416,21 +416,20 @@ test "request_id keeps a usable id and makes one otherwise":
 type Sink:
 	path: String
 
-impl Transport for Sink:
-	fn write(data: String) Unit!:
-		return append_file(self.path, data).wait()
+fn Sink.write(data: String) Unit!:
+	return append_file(self.path, data).wait()
 
-	fn write_bytes(data: Bytes) Unit!:
-		return self.write(data.decode_utf8().get(""))
+fn Sink.write_bytes(data: Bytes) Unit!:
+	return self.write(data.decode_utf8().get(""))
 
-	fn flush() Unit!:
-		return ok(unit)
+fn Sink.flush() Unit!:
+	return ok(unit)
 
-	fn duplicate() Transport!:
-		return ok(Sink(self.path.clone()))
+fn Sink.duplicate() Transport!:
+	return ok(Sink(self.path.clone()))
 
-	fn close() Unit:
-		return unit
+fn Sink.close() Unit:
+	return unit
 
 fn logged(path: String) String:
 	read := read_file(path).wait()

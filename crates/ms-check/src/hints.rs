@@ -1009,16 +1009,9 @@ impl Checker {
             && sym.native == Native::Source
             && matches!(actual.kind, Kind::Record | Kind::Alternative)
         {
-            let operations: Vec<String> = expected.def.as_ref().map_or_else(Vec::new, |d| {
-                d.operations
-                    .borrow()
-                    .iter()
-                    .map(|o| self.syms.str(o.name).to_string())
-                    .collect()
-            });
+            let gap = self.shape_gap(actual, expected).unwrap_or_default();
             return format!(
-                "{message}; {actual_t} has no matching methods for {expected_t}, which needs {}; declare each as a method of {actual_t} with the interface's exact signature (labels, `var`, types)",
-                list(&operations, 12),
+                "{message}; {actual_t} does not satisfy {expected_t} by its own methods ({gap}); declare each operation as a method of {actual_t} with the interface's exact signature, or write 'impl {expected_t} for {actual_t}'",
                 expected_t = expected.display(self.syms),
                 actual_t = actual.display(self.syms)
             );

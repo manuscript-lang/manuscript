@@ -115,42 +115,41 @@ export type Matches:
 	// The JSON literal for each supplied value by field name (dashes in names become underscores); decoded by `command`.
 	fields: Map[String, String] = Map[String, String]()
 
-impl Matches:
-	// Returns the text of a flag or argument.
-	fn string(name: String) String:
-		return self.values.get(name).get()[0].clone()
+// Returns the text of a flag or argument.
+fn Matches.string(name: String) String:
+	return self.values.get(name).get()[0].clone()
 
-	// Returns an Int flag or argument value.
-	fn int(name: String) Int:
-		return self.string(name).parse_int().get()
+// Returns an Int flag or argument value.
+fn Matches.int(name: String) Int:
+	return self.string(name).parse_int().get()
 
-	// Returns a Float flag or argument value.
-	fn float(name: String) Float:
-		return self.string(name).parse_float().get()
+// Returns a Float flag or argument value.
+fn Matches.float(name: String) Float:
+	return self.string(name).parse_float().get()
 
-	// Returns a Bool flag value; absent is false.
-	fn bool(name: String) Bool:
-		return self.string(name) == "true"
+// Returns a Bool flag value; absent is false.
+fn Matches.bool(name: String) Bool:
+	return self.string(name) == "true"
 
-	// Returns every value of a List flag or rest argument, in order; empty when absent.
-	fn list(name: String) List[String]:
-		return self.values.get_or(name, []).clone()
+// Returns every value of a List flag or rest argument, in order; empty when absent.
+fn Matches.list(name: String) List[String]:
+	return self.values.get_or(name, []).clone()
 
-	// Returns the text, or none for an optional argument or flag that was not supplied.
-	fn string_or_none(name: String) String?:
-		if items := self.values.get(name):
-			if not items.is_empty(): return items[0].clone()
-		return none
+// Returns the text, or none for an optional argument or flag that was not supplied.
+fn Matches.string_or_none(name: String) String?:
+	if items := self.values.get(name):
+		if not items.is_empty(): return items[0].clone()
+	return none
 
-	// Returns an Int value, or none when absent.
-	fn int_or_none(name: String) Int?:
-		if text := self.string_or_none(name): return text.parse_int()
-		return none
+// Returns an Int value, or none when absent.
+fn Matches.int_or_none(name: String) Int?:
+	if text := self.string_or_none(name): return text.parse_int()
+	return none
 
-	// Returns a Float value, or none when absent.
-	fn float_or_none(name: String) Float?:
-		if text := self.string_or_none(name): return text.parse_float()
-		return none
+// Returns a Float value, or none when absent.
+fn Matches.float_or_none(name: String) Float?:
+	if text := self.string_or_none(name): return text.parse_float()
+	return none
 
 /*
 A command or command group: its schema, subcommands and handler.
@@ -171,56 +170,55 @@ export type Command:
 	// Runs after a successful parse; the returned Int is the exit status.
 	exec: fn(Matches) Int! = fn m: ok(0)
 
-impl Command:
-	// Checks the tree, resolves the subcommand chain, and validates flags and arguments.
-	// Returns `Help` for `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
-	fn parse(argv: List[String]) Parsed!:
-		check_schema(self, [], [self.name.clone()])?
-		return walk(self, argv)
+// Checks the tree, resolves the subcommand chain, and validates flags and arguments.
+// Returns `Help` for `-h`, `--help`, a leading `help` word, or a group invoked without a subcommand.
+fn Command.parse(argv: List[String]) Parsed!:
+	check_schema(self, [], [self.name.clone()])?
+	return walk(self, argv)
 
-	// Parses `argv`, writes help to stdout or the error plus a usage hint to stderr, and runs the handler.
-	// Returns the handler's status, 0 after help, 1 when the handler fails and 2 for a usage error.
-	fn execute(argv: List[String]) Int:
-		parsed := self.parse(argv)
+// Parses `argv`, writes help to stdout or the error plus a usage hint to stderr, and runs the handler.
+// Returns the handler's status, 0 after help, 1 when the handler fails and 2 for a usage error.
+fn Command.execute(argv: List[String]) Int:
+	parsed := self.parse(argv)
 
-		if parsed.is_error():
-			stderr().write(
-				parsed.err().message + "\nRun '{self.name} --help' for usage.\n"
-			).get()
-			return 2
+	if parsed.is_error():
+		stderr().write(
+			parsed.err().message + "\nRun '{self.name} --help' for usage.\n"
+		).get()
+		return 2
 
-		match parsed.get():
-			Help(text):
-				stdout().write(text).get()
-				return 0
-			Run(matches):
-				result := self.run(matches)
+	match parsed.get():
+		Help(text):
+			stdout().write(text).get()
+			return 0
+		Run(matches):
+			result := self.run(matches)
 
-				if result.is_error():
-					stderr().write(result.err().message + "\n").get()
-					return 1
+			if result.is_error():
+				stderr().write(result.err().message + "\n").get()
+				return 1
 
-				return result.get()
+			return result.get()
 
-	// Runs the handler of the command `matches.path` names, as `parse` resolved it, and returns its exit status.
-	// The path starts at this node's name; an unknown path is an `EINVAL` error.
-	fn run(matches: Matches) Int!:
-		if matches.path.length() > 0 and matches.path[0] == self.name:
-			if node := node_at(self, matches.path, 1): return node.exec(matches)
-		return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
+// Runs the handler of the command `matches.path` names, as `parse` resolved it, and returns its exit status.
+// The path starts at this node's name; an unknown path is an `EINVAL` error.
+fn Command.run(matches: Matches) Int!:
+	if matches.path.length() > 0 and matches.path[0] == self.name:
+		if node := node_at(self, matches.path, 1): return node.exec(matches)
+	return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
 
-	// Returns the help text for the command reached by following `path` from this node, or none for an unknown path.
-	fn help(path: List[String] = []) String?:
-		rendered := help_at(self, path, 0, [self.name.clone()], [])
-		if rendered.is_error(): return none
+// Returns the help text for the command reached by following `path` from this node, or none for an unknown path.
+fn Command.help(path: List[String] = []) String?:
+	rendered := help_at(self, path, 0, [self.name.clone()], [])
+	if rendered.is_error(): return none
 
-		return rendered.get()
+	return rendered.get()
 
-	// Returns the child named `word`, or none; the result reads the child in place.
-	fn child(word: String) Command?:
-		for candidate in self.children:
-			if candidate.name == word: return candidate
-		return none
+// Returns the child named `word`, or none; the result reads the child in place.
+fn Command.child(word: String) Command?:
+	for candidate in self.children:
+		if candidate.name == word: return candidate
+	return none
 
 // The outcome of parsing: help text to show, or a node ready to run.
 export enum Parsed:

@@ -8,9 +8,8 @@ type Resource:
 	id: Int
 	path: String
 
-impl Closeable for Resource:
-	var fn close() Unit!:
-		append_file(self.path, "{self.id},").wait()?
+fn var Resource.close() Unit!:
+	append_file(self.path, "{self.id},").wait()?
 
 fn accepted() Int!: ok(1)
 

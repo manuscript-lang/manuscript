@@ -11,39 +11,38 @@ export type Version:
 	// Dot-separated build metadata identifiers in input order; ignored by compare.
 	build: List[String] = []
 
-impl Version:
-	// Compares two versions by SemVer precedence, returning -1, 0 or 1.
-	// Build metadata is ignored, and a pre-release sorts before its release.
-	fn compare(other: Version) Int:
-		core := compare_ints(self.major, other.major)
-		if core != 0: return core
+// Compares two versions by SemVer precedence, returning -1, 0 or 1.
+// Build metadata is ignored, and a pre-release sorts before its release.
+fn Version.compare(other: Version) Int:
+	core := compare_ints(self.major, other.major)
+	if core != 0: return core
 
-		minor := compare_ints(self.minor, other.minor)
-		if minor != 0: return minor
+	minor := compare_ints(self.minor, other.minor)
+	if minor != 0: return minor
 
-		patch := compare_ints(self.patch, other.patch)
-		if patch != 0: return patch
-		if self.prerelease.is_empty() and other.prerelease.is_empty(): return 0
-		if self.prerelease.is_empty(): return 1
-		if other.prerelease.is_empty(): return -1
+	patch := compare_ints(self.patch, other.patch)
+	if patch != 0: return patch
+	if self.prerelease.is_empty() and other.prerelease.is_empty(): return 0
+	if self.prerelease.is_empty(): return 1
+	if other.prerelease.is_empty(): return -1
 
-		shared := compare_ints(self.prerelease.length(), other.prerelease.length())
-		limit := self.prerelease.length()
-		other_length := other.prerelease.length()
-		count := if other_length < limit: other_length else: limit
+	shared := compare_ints(self.prerelease.length(), other.prerelease.length())
+	limit := self.prerelease.length()
+	other_length := other.prerelease.length()
+	count := if other_length < limit: other_length else: limit
 
-		for index in 0..count:
-			order := compare_identifier(self.prerelease[index], other.prerelease[index])
-			if order != 0: return order
+	for index in 0..count:
+		order := compare_identifier(self.prerelease[index], other.prerelease[index])
+		if order != 0: return order
 
-		return shared
+	return shared
 
-	// Formats a version as `major.minor.patch[-prerelease][+build]`.
-	fn format() String:
-		var text = "{self.major}.{self.minor}.{self.patch}"
-		if not self.prerelease.is_empty(): text = "{text}-{self.prerelease.join(".")}"
-		if not self.build.is_empty(): text = "{text}+{self.build.join(".")}"
-		return text
+// Formats a version as `major.minor.patch[-prerelease][+build]`.
+fn Version.format() String:
+	var text = "{self.major}.{self.minor}.{self.patch}"
+	if not self.prerelease.is_empty(): text = "{text}-{self.prerelease.join(".")}"
+	if not self.build.is_empty(): text = "{text}+{self.build.join(".")}"
+	return text
 
 // Parses strict Semantic Versioning 2.0.0 text. A leading `v` and surrounding space are rejected.
 export fn parse(text: String) Version!:

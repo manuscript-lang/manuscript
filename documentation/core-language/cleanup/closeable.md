@@ -57,11 +57,10 @@ import Closeable from "@std/core.ms"
 type Gate:
     fails: Bool
 
-impl Closeable for Gate:
-    var fn close() Unit!:
-        if self.fails:
-            self.fails = false
-            return error(Error("gate stuck"))
+fn var Gate.close() Unit!:
+    if self.fails:
+        self.fails = false
+        return error(Error("gate stuck"))
 
 fn use_gate(fails: Bool) Unit!:
     _gate := Gate(fails)

@@ -16,11 +16,10 @@ type SearchEnvironment:
 	extensions: String?
 	directory: String
 
-impl Closeable for SearchEnvironment:
-	var fn close() Unit!:
-		set_environment("PATH", self.path.clone())?
-		set_environment("PATHEXT", self.extensions.clone())?
-		change_directory(self.directory)?
+fn var SearchEnvironment.close() Unit!:
+	set_environment("PATH", self.path.clone())?
+	set_environment("PATHEXT", self.extensions.clone())?
+	change_directory(self.directory)?
 
 fn saved_variable(values: Map[String, String], name: String) String?:
 	windows := os() == Os.Windows

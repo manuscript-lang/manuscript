@@ -14,10 +14,9 @@ fn unexpected_texts() List[String]?: panic("present Optional must not call fallb
 type Fallback:
 	calls: Int
 
-impl Fallback:
-	var fn create() String?:
-		self.calls += 1
-		return "fallback {self.calls}"
+fn var Fallback.create() String?:
+	self.calls += 1
+	return "fallback {self.calls}"
 
 test "or_else transfers an owned String Optional call":
 	kept := text(1).or_else(unexpected_text)

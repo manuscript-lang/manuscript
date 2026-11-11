@@ -14,15 +14,14 @@ type Point:
 type Echo:
 	out: WriteStream[String]
 
-impl Sink[Bytes] for Echo:
-	var fn write(value: Bytes) Unit!:
-		return self.out.write(value.decode_utf8().get(""))
+fn var Echo.write(value: Bytes) Unit!:
+	return self.out.write(value.decode_utf8().get(""))
 
-	var fn flush() Unit!:
-		return self.out.flush()
+fn var Echo.flush() Unit!:
+	return self.out.flush()
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Echo.close() Unit!:
+	return ok(unit)
 
 fn echo() WriteStream[Bytes]:
 	return WriteStream[Bytes](Echo(stdout()))

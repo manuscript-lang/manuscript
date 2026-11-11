@@ -110,30 +110,33 @@ export type Fetcher:
 	// Internal state: the pooled HTTP client every request goes through.
 	client: HttpClient
 
-impl Fetcher:
-	// Sends the request and buffers the response body.
-	// A `Raw` or `Text` body is resent on redirects that keep it.
-	// Returns the promise of the response; requests started together are in flight together.
-	fn fetch(url: String, options: FetchOptions = FetchOptions()) Promise[FetchResponse]:
-		return owned_task[FetchResponse](
-			send_job(
-				msstd_http_client_share(self.client.native), url.clone(),
-				options.clone()
-			)
+// Sends the request and buffers the response body.
+// A `Raw` or `Text` body is resent on redirects that keep it.
+// Returns the promise of the response; requests started together are in flight together.
+fn Fetcher.fetch(
+	url: String,
+	options: FetchOptions = FetchOptions()
+) Promise[FetchResponse]:
+	return owned_task[FetchResponse](
+		send_job(
+			msstd_http_client_share(self.client.native), url.clone(), options.clone()
 		)
+	)
 
-	// Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
-	fn stream(url: String, options: FetchOptions = FetchOptions()) StreamingResponse!:
-		sent := outgoing(options)
-		return self.client.request(
-			options.method.clone(), url, sent.headers, sent.body,
-			options.max_response_bytes, options.timeout
-		)
+// Sends the request and returns the streaming body. `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
+fn Fetcher.stream(
+	url: String,
+	options: FetchOptions = FetchOptions()
+) StreamingResponse!:
+	sent := outgoing(options)
+	return self.client.request(
+		options.method.clone(), url, sent.headers, sent.body,
+		options.max_response_bytes, options.timeout
+	)
 
-impl Closeable for Fetcher:
-	// Cancels in-flight requests and drops pooled connections; later calls return `EBADF`.
-	var fn close() Unit!:
-		return self.client.close()
+// Cancels in-flight requests and drops pooled connections; later calls return `EBADF`.
+fn var Fetcher.close() Unit!:
+	return self.client.close()
 
 // Reads the body to its end within the options' size limit, then closes it.
 fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchResponse!:

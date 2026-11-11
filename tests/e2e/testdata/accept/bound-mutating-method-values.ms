@@ -6,18 +6,16 @@ import (
 type Counter:
 	n: Int
 
-impl Counter:
-	var fn bump(by: Int = 1) Int:
-		self.n += by
-		return self.n
+fn var Counter.bump(by: Int = 1) Int:
+	self.n += by
+	return self.n
 
 interface Stepper:
 	var fn step() Int
 
-impl Stepper for Counter:
-	var fn step() Int:
-		self.n += 10
-		return self.n
+fn var Counter.step() Int:
+	self.n += 10
+	return self.n
 
 fn drain(var xs: List[Int]) Unit:
 	push := xs.append

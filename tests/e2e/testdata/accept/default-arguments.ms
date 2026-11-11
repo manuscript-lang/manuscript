@@ -41,9 +41,8 @@ interface Add:
 type Offset:
 	value: Int
 
-impl Add for Offset:
-	fn add(value: Int = self.value) Int:
-		return self.value + value
+fn Offset.add(value: Int = self.value) Int:
+	return self.value + value
 
 interface Read[T]:
 	fn read(value: T) T
@@ -51,9 +50,8 @@ interface Read[T]:
 type Box[T: Clonable]:
 	value: T
 
-impl Read[T] for Box[T]:
-	fn read(value: T = self.value.clone()) T:
-		return value
+fn Box[T].read(value: T = self.value.clone()) T:
+	return value
 
 test "omitted and explicit defaults":
 	(increment() != 4 or increment(7) != 8 or increment(value: 0) != 1) | expect_false?

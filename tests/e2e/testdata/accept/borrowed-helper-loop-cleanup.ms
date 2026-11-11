@@ -8,9 +8,8 @@ type Door:
 	id: Int
 	log: String
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		append_file(self.log, "{self.id},").wait()?
+fn var Door.close() Unit!:
+	append_file(self.log, "{self.id},").wait()?
 
 fn first[T](rows: List[List[T]]) List[T]:
 	return rows.get(0)

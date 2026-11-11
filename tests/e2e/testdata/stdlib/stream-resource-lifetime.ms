@@ -12,27 +12,25 @@ type Token:
 	log: String
 	closed: Bool = false
 
-impl Closeable for Token:
-	var fn close() Unit!:
-		if not self.closed:
-			self.closed = true
-			append_file(self.log, "close {self.id}\n").wait()?
+fn var Token.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "close {self.id}\n").wait()?
 
 type Tokens:
 	log: String
 	at: Int = 0
 	fail_at: Int = 0
 
-impl Source[Token] for Tokens:
-	var fn next() Token?!:
-		self.at += 1
-		if self.at == self.fail_at: return error(Error("source failed", kind: "EIO"))
-		if self.at <= 2: return ok(Token(self.at, self.log.clone()))
+fn var Tokens.next() Token?!:
+	self.at += 1
+	if self.at == self.fail_at: return error(Error("source failed", kind: "EIO"))
+	if self.at <= 2: return ok(Token(self.at, self.log.clone()))
 
-		return ok(none)
+	return ok(none)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Tokens.close() Unit!:
+	return ok(unit)
 
 fn events(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
@@ -157,12 +155,11 @@ type PlainTokens:
 	log: String
 	at: Int = 0
 
-impl Iterator[Token] for PlainTokens:
-	var fn next() Token?:
-		self.at += 1
-		if self.at <= 2: return Token(self.at, self.log.clone())
+fn var PlainTokens.next() Token?:
+	self.at += 1
+	if self.at <= 2: return Token(self.at, self.log.clone())
 
-		return none
+	return none
 
 fn plain(log: String) Unit!:
 	for token in PlainTokens(log.clone()):
@@ -178,16 +175,15 @@ type OptionalTokens:
 	log: String
 	at: Int = 0
 
-impl Source[Token?] for OptionalTokens:
-	var fn next() Token??!:
-		self.at += 1
-		if self.at > 1: return ok(none)
+fn var OptionalTokens.next() Token??!:
+	self.at += 1
+	if self.at > 1: return ok(none)
 
-		inner: Token? := Token(1, self.log.clone())
-		return ok(inner)
+	inner: Token? := Token(1, self.log.clone())
+	return ok(inner)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var OptionalTokens.close() Unit!:
+	return ok(unit)
 
 fn optional_payload(log: String) Unit!:
 	var input = ReadStream[Token?](OptionalTokens(log.clone()))
@@ -207,16 +203,15 @@ type ResultTokens:
 	log: String
 	at: Int = 0
 
-impl Source[Token!] for ResultTokens:
-	var fn next() Result[Result[Token, Error]?, Error]:
-		self.at += 1
-		if self.at > 1: return ok(none)
+fn var ResultTokens.next() Result[Result[Token, Error]?, Error]:
+	self.at += 1
+	if self.at > 1: return ok(none)
 
-		inner: Token! := ok(Token(1, self.log.clone()))
-		return ok(inner)
+	inner: Token! := ok(Token(1, self.log.clone()))
+	return ok(inner)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var ResultTokens.close() Unit!:
+	return ok(unit)
 
 fn result_payload(log: String) Unit!:
 	var input = ReadStream[Token!](ResultTokens(log.clone()))
@@ -263,16 +258,15 @@ test "cancelling an active body closes the delivered item once":
 type PendingTokens:
 	log: String
 
-impl Source[Token] for PendingTokens:
-	var fn next() Token?!:
-		token := Token(1, self.log.clone())
-		append_file(self.log, "ready\n").wait()?
+fn var PendingTokens.next() Token?!:
+	token := Token(1, self.log.clone())
+	append_file(self.log, "ready\n").wait()?
 
-		_ := sleep(milliseconds(60000)).wait()
-		return ok(token)
+	_ := sleep(milliseconds(60000)).wait()
+	return ok(token)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var PendingTokens.close() Unit!:
+	return ok(unit)
 
 fn next_cancelled(log: String) Unit!:
 	var input = ReadStream[Token](PendingTokens(log.clone()))

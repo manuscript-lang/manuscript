@@ -48,12 +48,11 @@ test "a write stream closes its sink once":
 type Failing:
 	unused: Int
 
-impl Source[Int] for Failing:
-	var fn next() Int?!:
-		return ok(none)
+fn var Failing.next() Int?!:
+	return ok(none)
 
-	var fn close() Unit!:
-		return error(Error("close failed", kind: "EIO"))
+fn var Failing.close() Unit!:
+	return error(Error("close failed", kind: "EIO"))
 
 test "an explicit close returns the source's close error":
 	var input = ReadStream[Int](Failing(0))

@@ -33,76 +33,75 @@ export type Screen:
 	// Terminal height in rows, used to tell whether a changed row is still in view.
 	height: Int
 
-impl Screen:
-	// Draws `rows` on `terminal` and leaves the cursor at `cursor_row` (an index into `rows`, negative for the first) and `cursor_column`.
-	var fn draw(
-		terminal: RawTerminal,
-		rows: List[String],
-		cursor_row: Int,
-		cursor_column: Int
-	) Unit!:
-		return terminal.write(self.render(rows, cursor_row, cursor_column))
+// Draws `rows` on `terminal` and leaves the cursor at `cursor_row` (an index into `rows`, negative for the first) and `cursor_column`.
+fn var Screen.draw(
+	terminal: RawTerminal,
+	rows: List[String],
+	cursor_row: Int,
+	cursor_column: Int
+) Unit!:
+	return terminal.write(self.render(rows, cursor_row, cursor_column))
 
-	// The bytes that turn what was drawn last into `rows`, which also become what was drawn last. `draw` writes them; tests and custom outputs can use them directly.
-	var fn render(rows: List[String], cursor_row: Int, cursor_column: Int) String:
-		var diff = first_difference(self.previous, rows)
-		last := self.previous.length() - 1
-		unreachable := (
-			not self.previous.is_empty()
-			and diff < self.previous.length() - self.height
-		)
-		var out = "{esc}[?2026h"
-		var at = self.cursor_row
+// The bytes that turn what was drawn last into `rows`, which also become what was drawn last. `draw` writes them; tests and custom outputs can use them directly.
+fn var Screen.render(rows: List[String], cursor_row: Int, cursor_column: Int) String:
+	var diff = first_difference(self.previous, rows)
+	last := self.previous.length() - 1
+	unreachable := (
+		not self.previous.is_empty()
+		and diff < self.previous.length() - self.height
+	)
+	var out = "{esc}[?2026h"
+	var at = self.cursor_row
 
-		if unreachable:
-			// A changed row scrolled out of reach: clear screen and scrollback and draw everything.
-			out = "{out}{esc}[2J{esc}[3J{esc}[H"
-			at = 0
-			diff = 0
-		else:
-			target := if diff > last: last else: diff
-			target_row := if target < 0: 0 else: target
-			out = "{out}{vertical(at, target_row)}"
-			at = target_row
+	if unreachable:
+		// A changed row scrolled out of reach: clear screen and scrollback and draw everything.
+		out = "{out}{esc}[2J{esc}[3J{esc}[H"
+		at = 0
+		diff = 0
+	else:
+		target := if diff > last: last else: diff
+		target_row := if target < 0: 0 else: target
+		out = "{out}{vertical(at, target_row)}"
+		at = target_row
 
-			if diff > last and last >= 0 and diff < rows.length():
-				// Only new rows: step below the last drawn one.
-				out = "{out}\r\n"
-				at = diff
+		if diff > last and last >= 0 and diff < rows.length():
+			// Only new rows: step below the last drawn one.
+			out = "{out}\r\n"
+			at = diff
 
-		var i = diff
+	var i = diff
 
-		while i < rows.length():
-			out = "{out}{esc}[2K{rows[i]}"
-			at = i
+	while i < rows.length():
+		out = "{out}{esc}[2K{rows[i]}"
+		at = i
 
-			if i < rows.length() - 1:
-				out = "{out}\r\n"
-				at = i + 1
+		if i < rows.length() - 1:
+			out = "{out}\r\n"
+			at = i + 1
 
-			i += 1
+		i += 1
 
-		out = "{out}{esc}[J"
+	out = "{out}{esc}[J"
 
-		goal := if cursor_row < 0: 0 else: cursor_row
-		out = "{out}{vertical(at, goal)}"
-		if cursor_column > 0: out = "{out}{esc}[{cursor_column}C"
-		out = "{out}{esc}[?2026l"
-		self.previous = rows.clone()
-		self.cursor_row = goal
-		return out
+	goal := if cursor_row < 0: 0 else: cursor_row
+	out = "{out}{vertical(at, goal)}"
+	if cursor_column > 0: out = "{out}{esc}[{cursor_column}C"
+	out = "{out}{esc}[?2026l"
+	self.previous = rows.clone()
+	self.cursor_row = goal
+	return out
 
-	// Forgets what was drawn, for use after something wrote to the terminal behind the screen; the next draw starts at the cursor.
-	var fn reset() Unit:
-		self.previous = List[String]()
-		self.cursor_row = 0
+// Forgets what was drawn, for use after something wrote to the terminal behind the screen; the next draw starts at the cursor.
+fn var Screen.reset() Unit:
+	self.previous = List[String]()
+	self.cursor_row = 0
 
-		size := terminal_size()
-		if size.is_ok(): self.height = size.get(none).rows
+	size := terminal_size()
+	if size.is_ok(): self.height = size.get(none).rows
 
-	// Updates the terminal height after a `Resize` event.
-	var fn resize(rows: Int) Unit:
-		self.height = rows
+// Updates the terminal height after a `Resize` event.
+fn var Screen.resize(rows: Int) Unit:
+	self.height = rows
 
 // A screen that starts drawing at the current cursor row; the height is the terminal's, or 24 when unknown.
 // ms: effect std.console.read

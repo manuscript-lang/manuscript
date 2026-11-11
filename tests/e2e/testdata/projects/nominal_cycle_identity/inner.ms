@@ -6,9 +6,8 @@ import (
 export type Door:
 	path: String
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		write_file(self.path, "1", true).wait()?
+fn var Door.close() Unit!:
+	write_file(self.path, "1", true).wait()?
 
 export type Node:
 	door: Door

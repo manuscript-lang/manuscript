@@ -11,9 +11,8 @@ import Closeable from "@std/core.ms"
 type Token:
 	id: Int
 
-impl Closeable for Token:
-	var fn close() Unit!:
-		print("close {self.id}")
+fn var Token.close() Unit!:
+	print("close {self.id}")
 
 type Wrapped:
 	first: Token?

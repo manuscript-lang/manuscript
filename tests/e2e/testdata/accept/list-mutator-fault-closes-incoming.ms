@@ -8,9 +8,8 @@ type Item:
 	id: Int
 	log: String
 
-impl Closeable for Item:
-	var fn close() Unit!:
-		append_file(self.log, "{self.id},").wait()?
+fn var Item.close() Unit!:
+	append_file(self.log, "{self.id},").wait()?
 
 fn set_out(log: String) Unit:
 	var items = [Item(1, log.clone())]

@@ -137,8 +137,7 @@ interface Shape:
 type Square:
     side: Int
 
-impl Shape for Square:
-    fn area() Int: return self.side * self.side
+fn Square.area() Int: return self.side * self.side
 
 fn describe(shape: Shape) String:
     match shape:

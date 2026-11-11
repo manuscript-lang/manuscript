@@ -12,12 +12,11 @@ type Token:
 	closed: Bool = false
 	fail: Bool = false
 
-impl Closeable for Token:
-	var fn close() Unit!:
-		if not self.closed:
-			self.closed = true
-			append_file(self.log, "close {self.id}\n").wait()?
-			if self.fail: return error(Error("close failed", kind: "ECLOSE"))
+fn var Token.close() Unit!:
+	if not self.closed:
+		self.closed = true
+		append_file(self.log, "close {self.id}\n").wait()?
+		if self.fail: return error(Error("close failed", kind: "ECLOSE"))
 
 fn token(log: String, id: Int, fail: Bool = false) Token:
 	append_file(log, "acquire {id}\n").wait().get()

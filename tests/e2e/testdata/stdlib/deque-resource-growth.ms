@@ -9,9 +9,8 @@ type Door:
 	id: Int
 	log: String
 
-impl Closeable for Door:
-	var fn close() Unit!:
-		append_file(self.log, "{self.id},").wait()?
+fn var Door.close() Unit!:
+	append_file(self.log, "{self.id},").wait()?
 
 fn events(log: String) String!:
 	return ok((read_file(log).wait()?).decode_utf8().get(""))

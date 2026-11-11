@@ -25,22 +25,21 @@ export type RetryPolicy:
 	// Whether each wait is a random share (0 to 1) of its computed length.
 	jitter: Bool = true
 
-impl RetryPolicy:
-	// The wait after failed attempt number `attempt` (1 for the first), before jitter.
-	fn wait_after(attempt: Int) Duration:
-		var wait = Duration(nanos: self.delay.nanos)
+// The wait after failed attempt number `attempt` (1 for the first), before jitter.
+fn RetryPolicy.wait_after(attempt: Int) Duration:
+	var wait = Duration(nanos: self.delay.nanos)
 
-		for round in 1..attempt:
-			if wait.compare(self.max_delay) >= 0: break
+	for round in 1..attempt:
+		if wait.compare(self.max_delay) >= 0: break
 
-			// Doubling would reach the cap: stop before the product can overflow.
-			if self.max_delay.nanos > 0 and wait.nanos > self.max_delay.nanos / 2:
-				wait = Duration(nanos: self.max_delay.nanos)
-				break
+		// Doubling would reach the cap: stop before the product can overflow.
+		if self.max_delay.nanos > 0 and wait.nanos > self.max_delay.nanos / 2:
+			wait = Duration(nanos: self.max_delay.nanos)
+			break
 
-			wait = wait.multiply(2)
+		wait = wait.multiply(2)
 
-		return Duration(nanos: wait.nanos.min(self.max_delay.nanos))
+	return Duration(nanos: wait.nanos.min(self.max_delay.nanos))
 
 /*
 Runs `operation` until it succeeds, `retryable` rejects its error, or `policy.attempts` is used up, and returns the last result.
@@ -97,36 +96,33 @@ export type RateLimiter:
 	// Internal state: the reading up to which refills are counted.
 	stamp: Instant
 
-impl RateLimiter:
-	// Adds the tokens earned since the last refill.
-	var fn refill() Unit:
-		now := monotonic()
-		earned := now.difference(self.stamp).nanos / self.interval.nanos.max(1)
-		if earned <= 0: return unit
+// Adds the tokens earned since the last refill.
+fn var RateLimiter.refill() Unit:
+	now := monotonic()
+	earned := now.difference(self.stamp).nanos / self.interval.nanos.max(1)
+	if earned <= 0: return unit
 
-		// Compare with remaining room before adding: a valid large burst can overflow the sum.
-		if earned >= self.burst - self.tokens:
-			self.tokens = self.burst
-			self.stamp = now
-		else:
-			self.tokens += earned
-			self.stamp = self.stamp.shift(self.interval.multiply(earned))
+	// Compare with remaining room before adding: a valid large burst can overflow the sum.
+	if earned >= self.burst - self.tokens:
+		self.tokens = self.burst
+		self.stamp = now
+	else:
+		self.tokens += earned
+		self.stamp = self.stamp.shift(self.interval.multiply(earned))
 
-	// Takes a token if one is available and reports whether it did. Never waits.
-	var fn try_acquire() Bool:
-		self.refill()
-		if self.tokens < 1: return false
+// Takes a token if one is available and reports whether it did. Never waits.
+fn var RateLimiter.try_acquire() Bool:
+	self.refill()
+	if self.tokens < 1: return false
 
-		self.tokens -= 1
-		return true
+	self.tokens -= 1
+	return true
 
-	// Waits until a token is available, then takes it. The wait ends when the task is cancelled.
-	var fn acquire() Unit:
-		while not self.try_acquire():
-			ready := self.stamp.shift(self.interval)
-			sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(
-				unit
-			)
+// Waits until a token is available, then takes it. The wait ends when the task is cancelled.
+fn var RateLimiter.acquire() Unit:
+	while not self.try_acquire():
+		ready := self.stamp.shift(self.interval)
+		sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(unit)
 
 // A rate limiter that allows `count` uses per second with room for `burst` at once; it starts full. `count` and `burst` must be at least 1.
 export fn rate_limiter(count: Int, burst: Int) RateLimiter:
@@ -248,20 +244,19 @@ export type Throttle:
 	// Internal state: when the last action was allowed, or `none` before the first.
 	last: Instant? = none
 
-impl Throttle:
-	// Reports whether an action may happen now, and if so counts it. Never waits.
-	var fn allow() Bool:
-		now := monotonic()
-		if previous := self.last:
-			if now.difference(previous).compare(self.interval) < 0: return false
-		self.last = now
-		return true
+// Reports whether an action may happen now, and if so counts it. Never waits.
+fn var Throttle.allow() Bool:
+	now := monotonic()
+	if previous := self.last:
+		if now.difference(previous).compare(self.interval) < 0: return false
+	self.last = now
+	return true
 
-	// Waits until an action may happen, then counts it. The wait ends when the task is cancelled.
-	var fn wait() Unit:
-		if previous := self.last:
-			remaining := self.interval.subtract(monotonic().difference(previous))
-			if remaining.nanos > 0:
-				sleep(remaining).wait().get(unit)
+// Waits until an action may happen, then counts it. The wait ends when the task is cancelled.
+fn var Throttle.wait() Unit:
+	if previous := self.last:
+		remaining := self.interval.subtract(monotonic().difference(previous))
+		if remaining.nanos > 0:
+			sleep(remaining).wait().get(unit)
 
-		self.last = monotonic()
+	self.last = monotonic()

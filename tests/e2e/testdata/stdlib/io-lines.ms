@@ -60,12 +60,11 @@ test "break and continue work in a stream loop":
 type Countdown:
 	left: Int
 
-impl Iterator[Int] for Countdown:
-	var fn next() Int?:
-		if self.left == 0: return none
+fn var Countdown.next() Int?:
+	if self.left == 0: return none
 
-		self.left -= 1
-		return (self.left + 1)
+	self.left -= 1
+	return (self.left + 1)
 
 test "any Iterator implementation works, including a temporary":
 	var total = 0

@@ -14,12 +14,11 @@ interface Defaults:
 type DefaultAdapter:
 	values: Map[String, Int]
 
-impl Defaults for DefaultAdapter:
-	var fn add_default(key: String, value: Int) Unit:
-		self.values.add_default(key, value)
+fn var DefaultAdapter.add_default(key: String, value: Int) Unit:
+	self.values.add_default(key, value)
 
-	var fn add_default_from(key: String, create: fn(String) Int) Unit:
-		self.values.add_default_from(key, create)
+fn var DefaultAdapter.add_default_from(key: String, create: fn(String) Int) Unit:
+	self.values.add_default_from(key, create)
 
 fn eager(var counter: Counter) Int:
 	counter.calls += 1

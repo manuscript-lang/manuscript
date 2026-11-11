@@ -80,9 +80,8 @@ interface Counter:
 type Val:
     val: Int
 
-impl Counter for Val:
-    var fn increment() Unit:
-        self.val = self.val + 1
+fn var Val.increment() Unit:
+    self.val = self.val + 1
 ```
 
 Field writes keep the declared type; the receiver evaluates once, before the new value. Types follow the move and borrow rules of every container; only primitives copy implicitly. Closures borrow or own their captures. A function changes its caller's value through a `var` parameter.
@@ -136,9 +135,8 @@ import Closeable from "@std/core.ms"
 type Door:
     id: Int
 
-impl Closeable for Door:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Door.close() Unit!:
+    return ok(unit)
 
 type Room:
     door: Door

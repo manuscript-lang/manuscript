@@ -179,18 +179,17 @@ export type FileInfo:
 	// Numeric id of the owning group; 0 where unavailable.
 	gid: Int
 
-impl FileInfo:
-	// True for an ordinary file.
-	fn is_file() Bool:
-		return self.kind == FileKind.File
+// True for an ordinary file.
+fn FileInfo.is_file() Bool:
+	return self.kind == FileKind.File
 
-	// True for a directory.
-	fn is_directory() Bool:
-		return self.kind == FileKind.Directory
+// True for a directory.
+fn FileInfo.is_directory() Bool:
+	return self.kind == FileKind.Directory
 
-	// True for a symbolic link itself, which only happens when links were not followed.
-	fn is_symlink() Bool:
-		return self.kind == FileKind.Symlink
+// True for a symbolic link itself, which only happens when links were not followed.
+fn FileInfo.is_symlink() Bool:
+	return self.kind == FileKind.Symlink
 
 // The directory walks that run natively, so the runtime can call the caller's predicate closures.
 interface FileSystem:
@@ -217,151 +216,147 @@ export opaque type FileHandle:
 	// The runtime handle for the open file; it is released by `close` and owned by this value.
 	native: NativeFile
 
-impl Closeable for FileHandle:
-	// Closes the file, interrupts calls in progress, and waits for them to stop.
-	// Safe to call repeatedly; later operations return EBADF.
-	var fn close() Unit!:
-		return msstd_io_close(self.native)
+// Closes the file, interrupts calls in progress, and waits for them to stop.
+// Safe to call repeatedly; later operations return EBADF.
+fn var FileHandle.close() Unit!:
+	return msstd_io_close(self.native)
 
-impl FileHandle:
-	/*
-    Returns a second handle over a duplicate of the file's descriptor, which closes on its own.
-    Both share the file position, so a read or write through one moves the other; bytes this handle already read ahead stay with it.
-    A closed handle returns EBADF.
-    */
-	fn clone() FileHandle!:
-		return msstd_fs_file_clone(self.native)
+/*
+Returns a second handle over a duplicate of the file's descriptor, which closes on its own.
+Both share the file position, so a read or write through one moves the other; bytes this handle already read ahead stay with it.
+A closed handle returns EBADF.
+*/
+fn FileHandle.clone() FileHandle!:
+	return msstd_fs_file_clone(self.native)
 
-	// Duplicates this handle for chunk reads; the stream closes its own descriptor independently and shares the file position.
-	fn reader() ReadStream[Bytes]!:
-		own := self.clone()?
-		return ok(ReadStream[Bytes](FileSource(own)))
+// Duplicates this handle for chunk reads; the stream closes its own descriptor independently and shares the file position.
+fn FileHandle.reader() ReadStream[Bytes]!:
+	own := self.clone()?
+	return ok(ReadStream[Bytes](FileSource(own)))
 
-	// Adapts complete writes to `Error`/Unit; flush synchronizes the file.
-	fn writer() WriteStream[Bytes]!:
-		own := self.clone()?
-		return ok(WriteStream[Bytes](FileSink(own)))
+// Adapts complete writes to `Error`/Unit; flush synchronizes the file.
+fn FileHandle.writer() WriteStream[Bytes]!:
+	own := self.clone()?
+	return ok(WriteStream[Bytes](FileSink(own)))
 
-	// Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
-	fn read(max_bytes: Int?) Bytes?!:
-		return msstd_io_read(self.native, max_bytes)
+// Returns a positive chunk (at most 64 KiB), or none at EOF; a supplied size must be positive.
+fn FileHandle.read(max_bytes: Int?) Bytes?!:
+	return msstd_io_read(self.native, max_bytes)
 
-	// Writes all of `data` (text as UTF-8) at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
-	// Writes at the end only when the handle was opened in an append mode.
-	fn write(data: Writable) Unit!:
-		return msstd_io_write_bytes(self.native, data.as_bytes())
+// Writes all of `data` (text as UTF-8) at the current position; errors can leave a prefix. Does not truncate or reposition this handle.
+// Writes at the end only when the handle was opened in an append mode.
+fn FileHandle.write(data: Writable) Unit!:
+	return msstd_io_write_bytes(self.native, data.as_bytes())
 
-	// Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
-	fn read_at(offset: Int, max_bytes: Int?) Bytes!:
-		return msstd_fs_file_read_at(self.native, offset, max_bytes)
+// Reads at a nonnegative byte offset without moving the position; short/empty Bytes mark EOF.
+fn FileHandle.read_at(offset: Int, max_bytes: Int?) Bytes!:
+	return msstd_fs_file_read_at(self.native, offset, max_bytes)
 
-	// Writes all of `data` (text as UTF-8) at a nonnegative offset without moving the position; a handle opened for append returns EINVAL because the host would ignore the offset; errors can leave a prefix.
-	fn write_at(offset: Int, data: Writable) Unit!:
-		return msstd_fs_file_write_at(self.native, offset, data.as_bytes())
+// Writes all of `data` (text as UTF-8) at a nonnegative offset without moving the position; a handle opened for append returns EINVAL because the host would ignore the offset; errors can leave a prefix.
+fn FileHandle.write_at(offset: Int, data: Writable) Unit!:
+	return msstd_fs_file_write_at(self.native, offset, data.as_bytes())
 
-	// Reads remaining bytes from the current position; EOF returns empty Bytes.
-	fn read_file(max_bytes: Int?) Bytes!:
-		return msstd_fs_file_read_file(self.native, max_bytes)
+// Reads remaining bytes from the current position; EOF returns empty Bytes.
+fn FileHandle.read_file(max_bytes: Int?) Bytes!:
+	return msstd_fs_file_read_file(self.native, max_bytes)
 
-	// Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all together up to 16 MiB, and returns the bytes obtained for each.
-	// `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns EINVAL.
-	fn read_vectors(sizes: List[Int], offset: Int) List[Bytes]!:
-		return msstd_fs_file_read_vectors(self.native, sizes, offset)
+// Reads consecutive buffers of the given `sizes` in bytes, each up to 65536 and all together up to 16 MiB, and returns the bytes obtained for each.
+// `offset` -1 reads from the current position; other offsets read without moving it. A buffer is shorter than requested at end of file. A negative size or offset below -1 returns EINVAL.
+fn FileHandle.read_vectors(sizes: List[Int], offset: Int) List[Bytes]!:
+	return msstd_fs_file_read_vectors(self.native, sizes, offset)
 
-	// Writes every buffer; offset -1 uses the current position. A nonnegative offset on a handle opened for append returns EINVAL.
-	fn write_vectors(buffers: List[Bytes], offset: Int) Unit!:
-		return msstd_fs_file_write_vectors(self.native, buffers, offset)
+// Writes every buffer; offset -1 uses the current position. A nonnegative offset on a handle opened for append returns EINVAL.
+fn FileHandle.write_vectors(buffers: List[Bytes], offset: Int) Unit!:
+	return msstd_fs_file_write_vectors(self.native, buffers, offset)
 
-	// Moves the position to `offset` bytes from `origin` and returns the new position; the OS validates the resulting offset.
-	fn seek(offset: Int, origin: Seek = Seek.Start) Int!:
-		return msstd_fs_file_seek(self.native, offset, seek_origin(origin))
+// Moves the position to `offset` bytes from `origin` and returns the new position; the OS validates the resulting offset.
+fn FileHandle.seek(offset: Int, origin: Seek = Seek.Start) Int!:
+	return msstd_fs_file_seek(self.native, offset, seek_origin(origin))
 
-	// Returns metadata for the open file.
-	fn stat() FileInfo!:
-		return msstd_fs_file_stat(self.native)
+// Returns metadata for the open file.
+fn FileHandle.stat() FileInfo!:
+	return msstd_fs_file_stat(self.native)
 
-	// Sets the file length to `size` bytes, discarding the excess or extending with zero bytes. The current position is not moved.
-	// A negative size returns EINVAL.
-	fn truncate(size: Int) Unit!:
-		return msstd_fs_file_truncate(self.native, size)
+// Sets the file length to `size` bytes, discarding the excess or extending with zero bytes. The current position is not moved.
+// A negative size returns EINVAL.
+fn FileHandle.truncate(size: Int) Unit!:
+	return msstd_fs_file_truncate(self.native, size)
 
-	// Flushes the file's data and metadata to stable storage.
-	fn sync() Unit!:
-		return msstd_fs_file_sync(self.native)
+// Flushes the file's data and metadata to stable storage.
+fn FileHandle.sync() Unit!:
+	return msstd_fs_file_sync(self.native)
 
-	// Flushes the file's data to stable storage, skipping metadata that is not needed to read it back where the host allows.
-	// Hosts without a separate data sync perform a full sync.
-	fn data_sync() Unit!:
-		return msstd_fs_file_data_sync(self.native)
+// Flushes the file's data to stable storage, skipping metadata that is not needed to read it back where the host allows.
+// Hosts without a separate data sync perform a full sync.
+fn FileHandle.data_sync() Unit!:
+	return msstd_fs_file_data_sync(self.native)
 
-	/*
-    Tries to take an advisory lock on the whole file without waiting: shared (many readers) or `exclusive` (one writer).
-    Returns False when another handle holds a conflicting lock. The lock is advisory: it only excludes other lockers (`flock` on Unix, `LockFileEx` on Windows), and closing the handle releases it.
-    Handles made by `clone` share one lock, and locking a handle that already holds one converts it. A closed handle returns EBADF.
-    */
-	fn try_lock(exclusive: Bool) Bool!:
-		taken := msstd_fs_file_try_lock(self.native, exclusive)?
-		return ok(taken == 1)
+/*
+Tries to take an advisory lock on the whole file without waiting: shared (many readers) or `exclusive` (one writer).
+Returns False when another handle holds a conflicting lock. The lock is advisory: it only excludes other lockers (`flock` on Unix, `LockFileEx` on Windows), and closing the handle releases it.
+Handles made by `clone` share one lock, and locking a handle that already holds one converts it. A closed handle returns EBADF.
+*/
+fn FileHandle.try_lock(exclusive: Bool) Bool!:
+	taken := msstd_fs_file_try_lock(self.native, exclusive)?
+	return ok(taken == 1)
 
-	// Takes an advisory lock like `try_lock`, retrying every few milliseconds for up to `timeout`; none waits until it is granted.
-	// Returns False when the timeout passes first. The wait is a cancellable sleep, so task cancellation ends it.
-	fn lock(exclusive: Bool, timeout: Duration?) Bool!:
-		started := monotonic()
+// Takes an advisory lock like `try_lock`, retrying every few milliseconds for up to `timeout`; none waits until it is granted.
+// Returns False when the timeout passes first. The wait is a cancellable sleep, so task cancellation ends it.
+fn FileHandle.lock(exclusive: Bool, timeout: Duration?) Bool!:
+	started := monotonic()
 
-		while true:
-			if self.try_lock(exclusive)?: return ok(true)
+	while true:
+		if self.try_lock(exclusive)?: return ok(true)
 
-			if limit := timeout:
-				if monotonic().difference(started).compare(limit) >= 0: return ok(false)
-			sleep(milliseconds(5)).wait()?
+		if limit := timeout:
+			if monotonic().difference(started).compare(limit) >= 0: return ok(false)
+		sleep(milliseconds(5)).wait()?
 
-		return ok(false)
+	return ok(false)
 
-	// Releases the advisory lock this handle holds; releasing when none is held succeeds.
-	fn unlock() Unit!:
-		return msstd_fs_file_unlock(self.native)
+// Releases the advisory lock this handle holds; releasing when none is held succeeds.
+fn FileHandle.unlock() Unit!:
+	return msstd_fs_file_unlock(self.native)
 
-	// Sets the permission bits of the open file to `mode` (0 through 4095).
-	fn chmod(mode: Int) Unit!:
-		return msstd_fs_file_chmod(self.native, mode)
+// Sets the permission bits of the open file to `mode` (0 through 4095).
+fn FileHandle.chmod(mode: Int) Unit!:
+	return msstd_fs_file_chmod(self.native, mode)
 
-	// Sets the owner and group of the open file by numeric id; -1 leaves that id unchanged. Usually needs privilege.
-	fn chown(uid: Int, gid: Int) Unit!:
-		return msstd_fs_file_chown(self.native, uid, gid)
+// Sets the owner and group of the open file by numeric id; -1 leaves that id unchanged. Usually needs privilege.
+fn FileHandle.chown(uid: Int, gid: Int) Unit!:
+	return msstd_fs_file_chown(self.native, uid, gid)
 
-	// Sets the access and modification times of the open file. Returns ENOTSUP on hosts without descriptor timestamps.
-	fn set_times(accessed: Timestamp, modified: Timestamp) Unit!:
-		return msstd_fs_file_set_times(self.native, accessed, modified)
+// Sets the access and modification times of the open file. Returns ENOTSUP on hosts without descriptor timestamps.
+fn FileHandle.set_times(accessed: Timestamp, modified: Timestamp) Unit!:
+	return msstd_fs_file_set_times(self.native, accessed, modified)
 
-	// Reads from the current position to the end and returns the lines with their `\n` or `\r\n` terminators removed.
-	// Invalid UTF-8 returns EBADMSG, and more bytes than `max_bytes` or lines than `max_lines` returns EOVERFLOW. A negative `max_bytes` or `max_lines` returns EINVAL.
-	fn read_lines(max_bytes: Int?, max_lines: Int?) List[String]!:
-		return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
+// Reads from the current position to the end and returns the lines with their `\n` or `\r\n` terminators removed.
+// Invalid UTF-8 returns EBADMSG, and more bytes than `max_bytes` or lines than `max_lines` returns EOVERFLOW. A negative `max_bytes` or `max_lines` returns EINVAL.
+fn FileHandle.read_lines(max_bytes: Int?, max_lines: Int?) List[String]!:
+	return msstd_fs_file_read_lines(self.native, max_bytes, max_lines)
 
 // Chunks of a file from its current position, until the end.
 type FileSource:
 	file: FileHandle
 
-impl Source[Bytes] for FileSource:
-	var fn next() Bytes?!:
-		return self.file.read(none)
+fn var FileSource.next() Bytes?!:
+	return self.file.read(none)
 
-	var fn close() Unit!:
-		return self.file.close()
+fn var FileSource.close() Unit!:
+	return self.file.close()
 
 // Complete writes to a file; `flush` synchronizes it.
 type FileSink:
 	file: FileHandle
 
-impl Sink[Bytes] for FileSink:
-	var fn write(value: Bytes) Unit!:
-		return self.file.write(value)
+fn var FileSink.write(value: Bytes) Unit!:
+	return self.file.write(value)
 
-	var fn flush() Unit!:
-		return self.file.sync()
+fn var FileSink.flush() Unit!:
+	return self.file.sync()
 
-	var fn close() Unit!:
-		return self.file.close()
+fn var FileSink.close() Unit!:
+	return self.file.close()
 
 fn seek_origin(origin: Seek) Int:
 	match origin:
@@ -384,15 +379,14 @@ impl Closeable for Directory:
 	var fn close() Unit!:
 		msstd_fs_directory_close(self.native)
 
-impl Directory:
-	// Returns the path this cursor was opened with.
-	fn path() String:
-		return msstd_fs_directory_path(self.native)
+// Returns the path this cursor was opened with.
+fn Directory.path() String:
+	return msstd_fs_directory_path(self.native)
 
-	// Returns the next child in native directory order, or none after the last one.
-	// The order is not sorted.
-	fn read() DirectoryEntry?!:
-		return msstd_fs_directory_read(self.native)
+// Returns the next child in native directory order, or none after the last one.
+// The order is not sorted.
+fn Directory.read() DirectoryEntry?!:
+	return msstd_fs_directory_read(self.native)
 
 // A directory is a stream source: `ReadStream[DirectoryEntry](open_directory(path))` yields its children in native
 // order, so steps compose: `... | filter(...) | collect(none)`. Closing the stream closes the directory.
@@ -418,21 +412,20 @@ type WatchSource:
 	watcher: RawWatcher
 	pending: List[FileEvent]
 
-impl Source[FileEvent] for WatchSource:
-	// Waits for the next change. A closed watcher is `EBADF`; a native watcher that overflowed with policy `error` is `EOVERFLOW`.
-	var fn next() FileEvent?!:
-		while true:
-			if event := self.pending.pop(): return ok(event)
+// Waits for the next change. A closed watcher is `EBADF`; a native watcher that overflowed with policy `error` is `EOVERFLOW`.
+fn var WatchSource.next() FileEvent?!:
+	while true:
+		if event := self.pending.pop(): return ok(event)
 
-			var batch = msstd_fs_watch_next(self.watcher.native)?
-			batch.reverse()
-			self.pending = batch
+		var batch = msstd_fs_watch_next(self.watcher.native)?
+		batch.reverse()
+		self.pending = batch
 
-		return ok(none)
+	return ok(none)
 
-	// Stops the watcher and waits for its worker to stop.
-	var fn close() Unit!:
-		msstd_fs_watch_close(self.watcher.native)
+// Stops the watcher and waits for its worker to stop.
+fn var WatchSource.close() Unit!:
+	msstd_fs_watch_close(self.watcher.native)
 
 fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
 	return ReadStream[FileEvent](WatchSource(watcher, []))
@@ -445,16 +438,14 @@ export opaque type TemporaryDirectory:
 	// The runtime handle for the directory; it is released by `close` and owned by this value.
 	native: NativeTemporary
 
-impl Closeable for TemporaryDirectory:
-	// Removes the directory and everything inside it.
-	// Safe to call repeatedly.
-	var fn close() Unit!:
-		_ := msstd_fs_temporary_close(self.native)
+// Removes the directory and everything inside it.
+// Safe to call repeatedly.
+fn var TemporaryDirectory.close() Unit!:
+	_ := msstd_fs_temporary_close(self.native)
 
-impl TemporaryDirectory:
-	// Returns the absolute path of the directory, created under the host's temporary root.
-	fn path() String:
-		return msstd_fs_temporary_path(self.native)
+// Returns the absolute path of the directory, created under the host's temporary root.
+fn TemporaryDirectory.path() String:
+	return msstd_fs_temporary_path(self.native)
 
 // One filesystem change and the affected path.
 export type FileEvent:
@@ -639,11 +630,10 @@ export fn list(path: String, max_entries: Int? = none) List[DirectoryEntry]!:
 type WritePermit:
 	held: Bool
 
-impl Closeable for WritePermit:
-	var fn close() Unit!:
-		if self.held:
-			self.held = false
-			msstd_fs_release()
+fn var WritePermit.close() Unit!:
+	if self.held:
+		self.held = false
+		msstd_fs_release()
 
 fn already_exists() Error:
 	return Error("filesystem: already exists", kind: "EEXIST")

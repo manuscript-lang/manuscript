@@ -9,34 +9,31 @@ type Token:
 	log: String
 	id: Int
 
-impl Closeable for Token:
-	var fn close() Unit!:
-		append_file(self.log, "close {self.id}\n").wait()?
+fn var Token.close() Unit!:
+	append_file(self.log, "close {self.id}\n").wait()?
 
 type Tokens:
 	log: String
 	at: Int = 0
 
-impl Source[Token] for Tokens:
-	var fn next() Token?!:
-		self.at += 1
-		if self.at <= 2: return ok(Token(self.log.clone(), self.at))
+fn var Tokens.next() Token?!:
+	self.at += 1
+	if self.at <= 2: return ok(Token(self.log.clone(), self.at))
 
-		return ok(none)
+	return ok(none)
 
-	var fn close() Unit!:
-		return ok(unit)
+fn var Tokens.close() Unit!:
+	return ok(unit)
 
 type Forward[T]:
 	source: Source[T]
 
-impl Iterator[T!] for Forward[T]:
-	var fn next() T!?:
-		result := self.source.next()
-		if result.is_error(): return error(result.err())
-		if item := result.get(): return ok(item)
+fn var Forward[T].next() T!?:
+	result := self.source.next()
+	if result.is_error(): return error(result.err())
+	if item := result.get(): return ok(item)
 
-		return none
+	return none
 
 fn first_body(log: String) Unit!:
 	for item in Forward[Token](Tokens(log.clone())):

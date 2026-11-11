@@ -23,9 +23,8 @@ interface Duplicator:
 type Token:
 	id: Int
 
-impl Duplicator for Token:
-	fn duplicate() Token:
-		return Token(id: self.id)
+fn Token.duplicate() Token:
+	return Token(id: self.id)
 
 fn duplicated[T: Duplicator](value: T) T:
 	return value.duplicate()
