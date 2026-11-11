@@ -1,1640 +1,1630 @@
 import (
-    stdout from "@std/io.ms",
-    stdin from "@std/io.ms",
-    read_lines from "@std/streams.ms",
+	stdin, stdout from "@std/io.ms",
+	read_lines from "@std/streams.ms",
 )
 
 // ---------------------------------------------------------------- types
 
 type Fatal:
-    msg: String
+	msg: String
 
 impl Error for Fatal:
-    fn message() String:
-        return self.msg.clone()
+	fn message() String:
+		return self.msg.clone()
 
 type Var:
-    value: String
-    recursive: Bool
+	value: String
+	recursive: Bool
 
 type Recipe:
-    line: Int
-    text: String
+	line: Int
+	text: String
 
 type Rule:
-    normal: List[String]
-    order: List[String]
-    recipe: List[Recipe]
+	normal: List[String]
+	order: List[String]
+	recipe: List[Recipe]
 
 type PRule:
-    pat: String
-    rule: Rule
+	pat: String
+	rule: Rule
 
 type Cond:
-    parent: Bool
-    cond: Bool
-    act: Bool
-    inelse: Bool
-    line: Int
+	parent: Bool
+	cond: Bool
+	act: Bool
+	inelse: Bool
+	line: Int
 
 type Env:
-    line: Int
-    recipe: Bool
-    autos: Map[String, String]
-    binds: Map[String, String]
-    stack: List[String]
+	line: Int
+	recipe: Bool
+	autos: Map[String, String]
+	binds: Map[String, String]
+	stack: List[String]
 
 type Res:
-    found: Bool
-    normal: List[String]
-    order: List[String]
-    recipe: List[Recipe]
-    stem: String
+	found: Bool
+	normal: List[String]
+	order: List[String]
+	recipe: List[Recipe]
+	stem: String
 
 type Line:
-    num: Int
-    recipe: Bool
-    text: String
+	num: Int
+	recipe: Bool
+	text: String
 
 type St:
-    files: Map[String, Int]
-    clock: Int
-    vars: Map[String, Var]
-    locked: Map[String, Bool]
-    explicit: Map[String, Rule]
-    names: List[String]
-    pats: List[PRule]
-    phony: List[String]
-    conds: List[Cond]
-    isopen: Bool
-    otargets: List[String]
-    onormal: List[String]
-    oorder: List[String]
-    orecipe: List[Recipe]
-    oline: Int
-    ophony: Bool
-    memo: Map[String, Bool]
-    stackp: List[String]
-    dry: Bool
-    ran: Int
+	files: Map[String, Int]
+	clock: Int
+	vars: Map[String, Var]
+	locked: Map[String, Bool]
+	explicit: Map[String, Rule]
+	names: List[String]
+	pats: List[PRule]
+	phony: List[String]
+	conds: List[Cond]
+	isopen: Bool
+	otargets: List[String]
+	onormal: List[String]
+	oorder: List[String]
+	orecipe: List[Recipe]
+	oline: Int
+	ophony: Bool
+	memo: Map[String, Bool]
+	stackp: List[String]
+	dry: Bool
+	ran: Int
 
 FUNCS := [
-    "subst", "patsubst", "strip", "findstring", "filter", "filter-out", "sort", "word",
-    "wordlist", "words", "firstword", "lastword", "dir", "notdir", "suffix", "basename",
-    "addprefix", "addsuffix", "wildcard", "foreach", "if", "info", "error"
+	"subst", "patsubst", "strip", "findstring", "filter", "filter-out", "sort", "word",
+	"wordlist", "words", "firstword", "lastword", "dir", "notdir", "suffix", "basename",
+	"addprefix", "addsuffix", "wildcard", "foreach", "if", "info", "error"
 ]
 
 // ---------------------------------------------------------------- output and string helpers
 
 fn out(s: String) Unit:
-    stdout().write("{s}\n").get()
+	stdout().write("{s}\n").get()
 
 fn sub(cs: List[String], a: Int, b: Int) String:
-    var acc = ""
-    var i = a
+	var acc = ""
+	var i = a
 
-    while i < b:
-        acc += cs[i]
-        i += 1
+	while i < b:
+		acc += cs[i]
+		i += 1
 
-    return acc
+	return acc
 
 fn ssub(s: String, a: Int, b: Int) String:
-    return sub(s.chars(), a, b)
+	return sub(s.chars(), a, b)
 
 fn index_of(cs: List[String], c: String, from: Int) Int:
-    var i = from
+	var i = from
 
-    while i < cs.length():
-        if cs[i] == c: return i
+	while i < cs.length():
+		if cs[i] == c: return i
 
-        i += 1
+		i += 1
 
-    return -1
+	return -1
 
 fn is_sp(c: String) Bool:
-    return c == " " or c == "\t"
+	return c == " " or c == "\t"
 
 fn is_wsp(c: String) Bool:
-    return c == " " or c == "\t" or c == "\r" or c == "\n"
+	return c == " " or c == "\t" or c == "\r" or c == "\n"
 
 fn words(s: String) List[String]:
-    var res = List[String]()
-    var cur = ""
+	var res = List[String]()
+	var cur = ""
 
-    for c in s.chars():
-        if is_wsp(c):
-            if cur != "":
-                res.append(cur)
-                cur = ""
-        else:
-            cur += c
+	for c in s.chars():
+		if is_wsp(c):
+			if cur != "":
+				res.append(cur)
+				cur = ""
+		else:
+			cur += c
 
-    if cur != "":
-        res.append(cur)
-    return res
+	if cur != "":
+		res.append(cur)
+	return res
 
 fn join_sp(a: String, b: String) String:
-    if a == "": return b.clone()
-    if b == "": return a.clone()
+	if a == "": return b.clone()
+	if b == "": return a.clone()
 
-    return a + " " + b
+	return a + " " + b
 
 fn dedupe(xs: List[String]) List[String]:
-    var res = List[String]()
-    for x in xs:
-        if not res.contains(x):
-            res.append(x.clone())
-    return res
+	var res = List[String]()
+	for x in xs:
+		if not res.contains(x):
+			res.append(x.clone())
+	return res
 
 fn chomp(s: String) String:
-    cs := s.chars()
-    if cs.length() > 0 and cs[cs.length() - 1] == "\r":
-        return sub(cs, 0, cs.length() - 1)
+	cs := s.chars()
+	if cs.length() > 0 and cs[cs.length() - 1] == "\r":
+		return sub(cs, 0, cs.length() - 1)
 
-    return s.clone()
+	return s.clone()
 
 fn ltrim_sp(s: String) String:
-    cs := s.chars()
-    var a = 0
+	cs := s.chars()
+	var a = 0
 
-    while a < cs.length():
-        if is_sp(cs[a]):
-            a += 1
-        else:
-            break
+	while a < cs.length():
+		if is_sp(cs[a]):
+			a += 1
+		else:
+			break
 
-    return sub(cs, a, cs.length())
+	return sub(cs, a, cs.length())
 
 fn rtrim_sp(s: String) String:
-    cs := s.chars()
-    var b = cs.length()
+	cs := s.chars()
+	var b = cs.length()
 
-    while b > 0:
-        if is_sp(cs[b - 1]):
-            b -= 1
-        else:
-            break
+	while b > 0:
+		if is_sp(cs[b - 1]):
+			b -= 1
+		else:
+			break
 
-    return sub(cs, 0, b)
+	return sub(cs, 0, b)
 
 fn strip_tabs(s: String) String:
-    cs := s.chars()
-    var a = 0
+	cs := s.chars()
+	var a = 0
 
-    while a < cs.length():
-        if cs[a] == "\t":
-            a += 1
-        else:
-            break
+	while a < cs.length():
+		if cs[a] == "\t":
+			a += 1
+		else:
+			break
 
-    return sub(cs, a, cs.length())
+	return sub(cs, a, cs.length())
 
 fn fatal(line: Int, msg: String) Fatal:
-    if line > 0: return Fatal(msg: "Makefile:{line}: *** {msg}.  Stop.")
-
-    return Fatal(msg: "make: *** {msg}.  Stop.")
+	if line > 0: return Fatal(msg: "Makefile:{line}: *** {msg}.  Stop.")
+	return Fatal(msg: "make: *** {msg}.  Stop.")
 
 fn errtext(r: Result[Unit, Fatal]) String:
-    if _v := r: return ""
-
-    return r.err().message()
+	if _v := r: return ""
+	return r.err().message()
 
 fn bracket(r: Result[String, Fatal]) String:
-    if v := r: return "[{v}]"
-
-    return r.err().message()
+	if v := r: return "[{v}]"
+	return r.err().message()
 
 fn env(line: Int) Env:
-    return Env(
-        line: line, recipe: false, autos: Map[String, String](),
-        binds: Map[String, String](), stack: List[String]()
-    )
+	return Env(
+		line: line, recipe: false, autos: Map[String, String](),
+		binds: Map[String, String](), stack: List[String]()
+	)
 
 // ---------------------------------------------------------------- logical lines
 
 fn strip_comment(s: String) String:
-    cs := s.chars()
-    n := cs.length()
-    var acc = ""
-    var i = 0
+	cs := s.chars()
+	n := cs.length()
+	var acc = ""
+	var i = 0
 
-    while i < n:
-        if cs[i] == "\\" and i + 1 < n and cs[i + 1] == "#":
-            acc += "#"
-            i += 2
-        else if cs[i] == "#":
-            return acc
-        else:
-            acc += cs[i]
-            i += 1
+	while i < n:
+		if cs[i] == "\\" and i + 1 < n and cs[i + 1] == "#":
+			acc += "#"
+			i += 2
+		else if cs[i] == "#":
+			return acc
+		else:
+			acc += cs[i]
+			i += 1
 
-    return acc
+	return acc
 
 fn ends_bs(s: String) Bool:
-    cs := s.chars()
-    return cs.length() > 0 and cs[cs.length() - 1] == "\\"
+	cs := s.chars()
+	return cs.length() > 0 and cs[cs.length() - 1] == "\\"
 
 fn logical_lines(phys: List[String]) List[Line]:
-    var res = List[Line]()
-    n := phys.length()
-    var i = 0
+	var res = List[Line]()
+	n := phys.length()
+	var i = 0
 
-    while i < n:
-        start := i + 1
-        var cur = phys[i].clone()
+	while i < n:
+		start := i + 1
+		var cur = phys[i].clone()
 
-        while ends_bs(cur) and i + 1 < n:
-            cs := cur.chars()
-            base := rtrim_sp(sub(cs, 0, cs.length() - 1))
-            i += 1
-            cur = base + " " + ltrim_sp(phys[i])
+		while ends_bs(cur) and i + 1 < n:
+			cs := cur.chars()
+			base := rtrim_sp(sub(cs, 0, cs.length() - 1))
+			i += 1
+			cur = base + " " + ltrim_sp(phys[i])
 
-        if cur.starts_with("\t"):
-            body := strip_tabs(cur)
-            if body.trim() != "":
-                res.append(Line(num: start, recipe: true, text: body))
-        else:
-            body := strip_comment(cur).trim()
-            if body != "":
-                res.append(Line(num: start, recipe: false, text: body))
+		if cur.starts_with("\t"):
+			body := strip_tabs(cur)
+			if body.trim() != "":
+				res.append(Line(num: start, recipe: true, text: body))
+		else:
+			body := strip_comment(cur).trim()
+			if body != "":
+				res.append(Line(num: start, recipe: false, text: body))
 
-        i += 1
+		i += 1
 
-    return res
+	return res
 
 // ---------------------------------------------------------------- patterns
 
 fn pmatch(pat: String, t: String) Bool:
-    pc := pat.chars()
-    p := index_of(pc, "%", 0)
-    if p < 0: return pat == t
+	pc := pat.chars()
+	p := index_of(pc, "%", 0)
+	if p < 0: return pat == t
 
-    pre := sub(pc, 0, p)
-    suf := sub(pc, p + 1, pc.length())
-    return (
-        t.starts_with(pre)
-        and t.ends_with(suf)
-        and t.length() >= pre.length() + suf.length()
-    )
+	pre := sub(pc, 0, p)
+	suf := sub(pc, p + 1, pc.length())
+	return (
+		t.starts_with(pre)
+		and t.ends_with(suf)
+		and t.length() >= pre.length() + suf.length()
+	)
 
 fn stem_of(pat: String, t: String) String:
-    pc := pat.chars()
-    p := index_of(pc, "%", 0)
-    suf_len := pc.length() - p - 1
-    return ssub(t, p, t.length() - suf_len)
+	pc := pat.chars()
+	p := index_of(pc, "%", 0)
+	suf_len := pc.length() - p - 1
+	return ssub(t, p, t.length() - suf_len)
 
 fn rule_stem(pat: String, t: String) String:
-    if not pmatch(pat, t): return ""
-
-    return stem_of(pat, t)
+	if not pmatch(pat, t): return ""
+	return stem_of(pat, t)
 
 fn subst_stem(p: String, stem: String) String:
-    pc := p.chars()
-    idx := index_of(pc, "%", 0)
-    if idx < 0: return p.clone()
+	pc := p.chars()
+	idx := index_of(pc, "%", 0)
+	if idx < 0: return p.clone()
 
-    return sub(pc, 0, idx) + stem + sub(pc, idx + 1, pc.length())
+	return sub(pc, 0, idx) + stem + sub(pc, idx + 1, pc.length())
 
 fn patsubst_words(pat: String, rep: String, text: String) String:
-    var res = List[String]()
-    has_pct := pat.contains("%")
+	var res = List[String]()
+	has_pct := pat.contains("%")
 
-    for w in words(text):
-        if pmatch(pat, w):
-            var r = rep.clone()
-            if has_pct:
-                r = subst_stem(rep, stem_of(pat, w))
-            if r != "":
-                res.append(r)
-        else:
-            res.append(w.clone())
+	for w in words(text):
+		if pmatch(pat, w):
+			var r = rep.clone()
+			if has_pct:
+				r = subst_stem(rep, stem_of(pat, w))
+			if r != "":
+				res.append(r)
+		else:
+			res.append(w.clone())
 
-    return res.join(" ")
+	return res.join(" ")
 
 fn glob_match(p: List[String], pi: Int, s: List[String], si: Int) Bool:
-    if pi == p.length(): return si == s.length()
+	if pi == p.length(): return si == s.length()
 
-    c := p[pi]
+	c := p[pi]
 
-    if c == "*":
-        if glob_match(p, pi + 1, s, si): return true
-        if si < s.length() and s[si] != "/": return glob_match(p, pi, s, si + 1)
+	if c == "*":
+		if glob_match(p, pi + 1, s, si): return true
+		if si < s.length() and s[si] != "/": return glob_match(p, pi, s, si + 1)
 
-        return false
+		return false
 
-    if si >= s.length(): return false
+	if si >= s.length(): return false
 
-    if c == "?":
-        if s[si] == "/": return false
+	if c == "?":
+		if s[si] == "/": return false
+		return glob_match(p, pi + 1, s, si + 1)
 
-        return glob_match(p, pi + 1, s, si + 1)
+	if c != s[si]: return false
 
-    if c != s[si]: return false
-
-    return glob_match(p, pi + 1, s, si + 1)
+	return glob_match(p, pi + 1, s, si + 1)
 
 fn last_slash(w: String) Int:
-    cs := w.chars()
-    var i = cs.length() - 1
+	cs := w.chars()
+	var i = cs.length() - 1
 
-    while i >= 0:
-        if cs[i] == "/": return i
+	while i >= 0:
+		if cs[i] == "/": return i
 
-        i -= 1
+		i -= 1
 
-    return -1
+	return -1
 
 fn dot_index(w: String) Int:
-    cs := w.chars()
-    s := last_slash(w)
-    var i = cs.length() - 1
+	cs := w.chars()
+	s := last_slash(w)
+	var i = cs.length() - 1
 
-    while i > s:
-        if cs[i] == ".": return i
+	while i > s:
+		if cs[i] == ".": return i
 
-        i -= 1
+		i -= 1
 
-    return -1
+	return -1
 
 // ---------------------------------------------------------------- expansion
 
 fn is_auto(name: String) Bool:
-    return (
-        name == "@"
-        or name == "<"
-        or name == "^"
-        or name == "?"
-        or name == "|"
-        or name == "*"
-    )
+	return (
+		name == "@"
+		or name == "<"
+		or name == "^"
+		or name == "?"
+		or name == "|"
+		or name == "*"
+	)
 
 fn lookup(name: String, e: Env, st: St) Result[String, Fatal]:
-    if b := e.binds.get(name): return ok(b)
+	if b := e.binds.get(name): return ok(b)
 
-    if is_auto(name):
-        if e.recipe and e.autos.contains(name): return ok(e.autos.get(name).get(""))
+	if is_auto(name):
+		if e.recipe and e.autos.contains(name): return ok(e.autos.get(name).get(""))
+		return ok("")
 
-        return ok("")
+	if v := st.vars.get(name):
+		if v.recursive:
+			if e.stack.contains(name):
+				return error(
+					fatal(
+						e.line,
+						"Recursive variable '{name}' references itself (eventually)"
+					)
+				)
 
-    if v := st.vars.get(name):
-        if v.recursive:
-            if e.stack.contains(name):
-                return error(
-                    fatal(
-                        e.line,
-                        "Recursive variable '{name}' references itself (eventually)"
-                    )
-                )
+			var stk = e.stack.clone()
+			stk.append(name.clone())
 
-            var stk = e.stack.clone()
-            stk.append(name.clone())
+			e2 := Env(
+				line: e.line, recipe: e.recipe, autos: e.autos.clone(),
+				binds: e.binds.clone(), stack: stk
+			)
+			return expand(v.value, e2, st)
 
-            e2 := Env(
-                line: e.line, recipe: e.recipe, autos: e.autos.clone(),
-                binds: e.binds.clone(), stack: stk
-            )
-            return expand(v.value, e2, st)
+		return ok(v.value.clone())
 
-        return ok(v.value.clone())
-
-    return ok("")
+	return ok("")
 
 fn find_close(cs: List[String], start: Int, open: String, close: String) Int:
-    var depth = 1
-    var i = start
+	var depth = 1
+	var i = start
 
-    while i < cs.length():
-        if cs[i] == open:
-            depth += 1
-        else if cs[i] == close:
-            depth -= 1
-            if depth == 0: return i
+	while i < cs.length():
+		if cs[i] == open:
+			depth += 1
+		else if cs[i] == close:
+			depth -= 1
+			if depth == 0: return i
 
-        i += 1
+		i += 1
 
-    return -1
+	return -1
 
 fn expand(s: String, e: Env, st: St) Result[String, Fatal]:
-    cs := s.chars()
-    n := cs.length()
-    var acc = ""
-    var i = 0
+	cs := s.chars()
+	n := cs.length()
+	var acc = ""
+	var i = 0
 
-    while i < n:
-        c := cs[i]
+	while i < n:
+		c := cs[i]
 
-        if c != "$":
-            acc += c
-            i += 1
-        else if i + 1 >= n:
-            i += 1
-        else if cs[i + 1] == "$":
-            acc += "$"
-            i += 2
-        else if cs[i + 1] == "(" or cs[i + 1] == "\{":
-            var closer = ")"
-            if cs[i + 1] == "\{":
-                closer = "\}"
+		if c != "$":
+			acc += c
+			i += 1
+		else if i + 1 >= n:
+			i += 1
+		else if cs[i + 1] == "$":
+			acc += "$"
+			i += 2
+		else if cs[i + 1] == "(" or cs[i + 1] == "\{":
+			var closer = ")"
+			if cs[i + 1] == "\{":
+				closer = "\}"
 
-            j := find_close(cs, i + 2, cs[i + 1], closer)
-            if j < 0: return error(fatal(e.line, "unterminated variable reference"))
+			j := find_close(cs, i + 2, cs[i + 1], closer)
+			if j < 0: return error(fatal(e.line, "unterminated variable reference"))
 
-            inner := sub(cs, i + 2, j)
-            v := try ref_value(inner, e, st)
-            acc += v
-            i = j + 1
-        else:
-            v := try lookup(cs[i + 1], e, st)
-            acc += v
-            i += 2
+			inner := sub(cs, i + 2, j)
+			v := try ref_value(inner, e, st)
+			acc += v
+			i = j + 1
+		else:
+			v := try lookup(cs[i + 1], e, st)
+			acc += v
+			i += 2
 
-    return ok(acc)
+	return ok(acc)
 
 fn fn_name_of(s: String) String:
-    cs := s.chars()
-    var i = 0
+	cs := s.chars()
+	var i = 0
 
-    while i < cs.length():
-        if is_sp(cs[i]): break
+	while i < cs.length():
+		if is_sp(cs[i]): break
 
-        i += 1
+		i += 1
 
-    if i == 0 or i >= cs.length(): return ""
+	if i == 0 or i >= cs.length(): return ""
 
-    name := sub(cs, 0, i)
-    if FUNCS.contains(name): return name
+	name := sub(cs, 0, i)
+	if FUNCS.contains(name): return name
 
-    return ""
+	return ""
 
 fn ref_value(inner: String, e: Env, st: St) Result[String, Fatal]:
-    fname := fn_name_of(inner)
+	fname := fn_name_of(inner)
 
-    if fname != "":
-        ics := inner.chars()
-        args := split_args(sub(ics, fname.length() + 1, ics.length()))
-        return call_fn(fname, args, e, st)
+	if fname != "":
+		ics := inner.chars()
+		args := split_args(sub(ics, fname.length() + 1, ics.length()))
+		return call_fn(fname, args, e, st)
 
-    full := try expand(inner, e, st)
-    name := full.trim()
-    cs := name.chars()
-    colon := index_of(cs, ":", 1)
+	full := try expand(inner, e, st)
+	name := full.trim()
+	cs := name.chars()
+	colon := index_of(cs, ":", 1)
 
-    if colon > 0:
-        eqi := index_of(cs, "=", colon + 1)
+	if colon > 0:
+		eqi := index_of(cs, "=", colon + 1)
 
-        if eqi > colon:
-            vname := sub(cs, 0, colon)
-            from := sub(cs, colon + 1, eqi)
-            to := sub(cs, eqi + 1, cs.length())
-            val := try lookup(vname, e, st)
-            var pat = "%" + from
-            var rep = "%" + to
+		if eqi > colon:
+			vname := sub(cs, 0, colon)
+			from := sub(cs, colon + 1, eqi)
+			to := sub(cs, eqi + 1, cs.length())
+			val := try lookup(vname, e, st)
+			var pat = "%" + from
+			var rep = "%" + to
 
-            if from.contains("%"):
-                pat = from.clone()
-                rep = to.clone()
+			if from.contains("%"):
+				pat = from.clone()
+				rep = to.clone()
 
-            return ok(patsubst_words(pat, rep, val))
+			return ok(patsubst_words(pat, rep, val))
 
-    return lookup(name, e, st)
+	return lookup(name, e, st)
 
 fn split_args(s: String) List[String]:
-    var res = List[String]()
-    var cur = ""
-    var depth = 0
+	var res = List[String]()
+	var cur = ""
+	var depth = 0
 
-    for c in s.chars():
-        if c == "(" or c == "\{":
-            depth += 1
-            cur += c
-        else if c == ")" or c == "\}":
-            depth -= 1
-            cur += c
-        else if c == "," and depth == 0:
-            res.append(cur)
-            cur = ""
-        else:
-            cur += c
+	for c in s.chars():
+		if c == "(" or c == "\{":
+			depth += 1
+			cur += c
+		else if c == ")" or c == "\}":
+			depth -= 1
+			cur += c
+		else if c == "," and depth == 0:
+			res.append(cur)
+			cur = ""
+		else:
+			cur += c
 
-    res.append(cur)
-    return res
+	res.append(cur)
+	return res
 
 fn arg_raw(args: List[String], i: Int) String:
-    if i < args.length(): return args[i].trim()
-
-    return ""
+	if i < args.length(): return args[i].trim()
+	return ""
 
 fn xa(args: List[String], i: Int, e: Env, st: St) Result[String, Fatal]:
-    return expand(arg_raw(args, i), e, st)
+	return expand(arg_raw(args, i), e, st)
 
 fn nonempty(xs: List[String]) String:
-    var res = List[String]()
-    for x in xs:
-        if x != "":
-            res.append(x.clone())
-    return res.join(" ")
+	var res = List[String]()
+	for x in xs:
+		if x != "":
+			res.append(x.clone())
+	return res.join(" ")
 
 fn call_fn(name: String, args: List[String], e: Env, st: St) Result[String, Fatal]:
-    if name == "info":
-        t := try xa(args, 0, e, st)
-        out(t)
-        return ok("")
+	if name == "info":
+		t := try xa(args, 0, e, st)
+		out(t)
+		return ok("")
 
-    if name == "error":
-        t := try xa(args, 0, e, st)
-        return error(fatal(e.line, t))
+	if name == "error":
+		t := try xa(args, 0, e, st)
+		return error(fatal(e.line, t))
 
-    if name == "if":
-        c := try xa(args, 0, e, st)
+	if name == "if":
+		c := try xa(args, 0, e, st)
 
-        if c.trim() != "":
-            if args.length() > 1: return xa(args, 1, e, st)
+		if c.trim() != "":
+			if args.length() > 1: return xa(args, 1, e, st)
+			return ok("")
 
-            return ok("")
+		if args.length() > 2: return xa(args, 2, e, st)
 
-        if args.length() > 2: return xa(args, 2, e, st)
+		return ok("")
 
-        return ok("")
+	if name == "foreach":
+		vn := (try xa(args, 0, e, st)).trim()
+		lst := try xa(args, 1, e, st)
+		text := arg_raw(args, 2)
+		var items = List[String]()
 
-    if name == "foreach":
-        vn := (try xa(args, 0, e, st)).trim()
-        lst := try xa(args, 1, e, st)
-        text := arg_raw(args, 2)
-        var items = List[String]()
+		for w in words(lst):
+			var b = e.binds.clone()
+			b[vn.clone()] = w.clone()
 
-        for w in words(lst):
-            var b = e.binds.clone()
-            b[vn.clone()] = w.clone()
+			e2 := Env(
+				line: e.line, recipe: e.recipe, autos: e.autos.clone(), binds: b,
+				stack: e.stack.clone()
+			)
+			item := try expand(text, e2, st)
+			items.append(item)
 
-            e2 := Env(
-                line: e.line, recipe: e.recipe, autos: e.autos.clone(), binds: b,
-                stack: e.stack.clone()
-            )
-            item := try expand(text, e2, st)
-            items.append(item)
+		return ok(items.join(" "))
 
-        return ok(items.join(" "))
+	if name == "subst":
+		fr := try xa(args, 0, e, st)
+		to := try xa(args, 1, e, st)
+		tx := try xa(args, 2, e, st)
+		if fr == "": return ok(tx)
 
-    if name == "subst":
-        fr := try xa(args, 0, e, st)
-        to := try xa(args, 1, e, st)
-        tx := try xa(args, 2, e, st)
-        if fr == "": return ok(tx)
+		return ok(tx.replace(fr, to))
 
-        return ok(tx.replace(fr, to))
+	if name == "patsubst":
+		pat := try xa(args, 0, e, st)
+		rep := try xa(args, 1, e, st)
+		tx := try xa(args, 2, e, st)
+		return ok(patsubst_words(pat, rep, tx))
 
-    if name == "patsubst":
-        pat := try xa(args, 0, e, st)
-        rep := try xa(args, 1, e, st)
-        tx := try xa(args, 2, e, st)
-        return ok(patsubst_words(pat, rep, tx))
+	if name == "strip":
+		tx := try xa(args, 0, e, st)
+		return ok(words(tx).join(" "))
 
-    if name == "strip":
-        tx := try xa(args, 0, e, st)
-        return ok(words(tx).join(" "))
+	if name == "findstring":
+		f := try xa(args, 0, e, st)
+		tx := try xa(args, 1, e, st)
+		if tx.contains(f): return ok(f)
 
-    if name == "findstring":
-        f := try xa(args, 0, e, st)
-        tx := try xa(args, 1, e, st)
-        if tx.contains(f): return ok(f)
+		return ok("")
 
-        return ok("")
+	if name == "filter" or name == "filter-out":
+		pats := words(try xa(args, 0, e, st))
+		ws := words(try xa(args, 1, e, st))
+		var res = List[String]()
 
-    if name == "filter" or name == "filter-out":
-        pats := words(try xa(args, 0, e, st))
-        ws := words(try xa(args, 1, e, st))
-        var res = List[String]()
+		for w in ws:
+			var m = false
+			for p in pats:
+				if pmatch(p, w):
+					m = true
+			if (name == "filter") == m:
+				res.append(w.clone())
 
-        for w in ws:
-            var m = false
-            for p in pats:
-                if pmatch(p, w):
-                    m = true
-            if (name == "filter") == m:
-                res.append(w.clone())
+		return ok(res.join(" "))
 
-        return ok(res.join(" "))
+	if name == "sort":
+		var ws = words(try xa(args, 0, e, st))
+		ws.sort()
+		return ok(dedupe(ws).join(" "))
 
-    if name == "sort":
-        var ws = words(try xa(args, 0, e, st))
-        ws.sort()
-        return ok(dedupe(ws).join(" "))
+	if name == "word":
+		kx := try xa(args, 0, e, st)
+		k := kx.parse_int().get(0)
+		ws := words(try xa(args, 1, e, st))
+		if k < 1 or k > ws.length(): return ok("")
 
-    if name == "word":
-        kx := try xa(args, 0, e, st)
-        k := kx.parse_int().get(0)
-        ws := words(try xa(args, 1, e, st))
-        if k < 1 or k > ws.length(): return ok("")
+		return ok(ws[k - 1].clone())
 
-        return ok(ws[k - 1].clone())
+	if name == "wordlist":
+		sx := try xa(args, 0, e, st)
+		ex := try xa(args, 1, e, st)
+		s := sx.parse_int().get(0)
+		hi := ex.parse_int().get(0)
+		ws := words(try xa(args, 2, e, st))
+		if s < 1 or hi < s or s > ws.length(): return ok("")
 
-    if name == "wordlist":
-        sx := try xa(args, 0, e, st)
-        ex := try xa(args, 1, e, st)
-        s := sx.parse_int().get(0)
-        hi := ex.parse_int().get(0)
-        ws := words(try xa(args, 2, e, st))
-        if s < 1 or hi < s or s > ws.length(): return ok("")
+		var stop = hi
+		if stop > ws.length():
+			stop = ws.length()
 
-        var stop = hi
-        if stop > ws.length():
-            stop = ws.length()
+		var res = List[String]()
+		var i = s - 1
 
-        var res = List[String]()
-        var i = s - 1
+		while i < stop:
+			res.append(ws[i].clone())
+			i += 1
 
-        while i < stop:
-            res.append(ws[i].clone())
-            i += 1
+		return ok(res.join(" "))
 
-        return ok(res.join(" "))
+	if name == "words":
+		ws := words(try xa(args, 0, e, st))
+		return ok("{ws.length()}")
 
-    if name == "words":
-        ws := words(try xa(args, 0, e, st))
-        return ok("{ws.length()}")
+	if name == "firstword":
+		ws := words(try xa(args, 0, e, st))
+		if ws.length() == 0: return ok("")
 
-    if name == "firstword":
-        ws := words(try xa(args, 0, e, st))
-        if ws.length() == 0: return ok("")
+		return ok(ws[0].clone())
 
-        return ok(ws[0].clone())
+	if name == "lastword":
+		ws := words(try xa(args, 0, e, st))
+		if ws.length() == 0: return ok("")
 
-    if name == "lastword":
-        ws := words(try xa(args, 0, e, st))
-        if ws.length() == 0: return ok("")
+		return ok(ws[ws.length() - 1].clone())
 
-        return ok(ws[ws.length() - 1].clone())
+	if name == "dir" or name == "notdir" or name == "suffix" or name == "basename":
+		ws := words(try xa(args, 0, e, st))
+		var res = List[String]()
 
-    if name == "dir" or name == "notdir" or name == "suffix" or name == "basename":
-        ws := words(try xa(args, 0, e, st))
-        var res = List[String]()
+		for w in ws:
+			s := last_slash(w)
+			d := dot_index(w)
 
-        for w in ws:
-            s := last_slash(w)
-            d := dot_index(w)
+			if name == "dir":
+				if s < 0:
+					res.append("./")
+				else:
+					res.append(ssub(w, 0, s + 1))
+			else if name == "notdir":
+				if s < 0:
+					res.append(w.clone())
+				else:
+					res.append(ssub(w, s + 1, w.length()))
+			else if name == "suffix":
+				if d >= 0:
+					res.append(ssub(w, d, w.length()))
+			else:
+				if d >= 0:
+					res.append(ssub(w, 0, d))
+				else:
+					res.append(w.clone())
 
-            if name == "dir":
-                if s < 0:
-                    res.append("./")
-                else:
-                    res.append(ssub(w, 0, s + 1))
-            else if name == "notdir":
-                if s < 0:
-                    res.append(w.clone())
-                else:
-                    res.append(ssub(w, s + 1, w.length()))
-            else if name == "suffix":
-                if d >= 0:
-                    res.append(ssub(w, d, w.length()))
-            else:
-                if d >= 0:
-                    res.append(ssub(w, 0, d))
-                else:
-                    res.append(w.clone())
+		return ok(nonempty(res))
 
-        return ok(nonempty(res))
+	if name == "addprefix" or name == "addsuffix":
+		x := try xa(args, 0, e, st)
+		ws := words(try xa(args, 1, e, st))
+		var res = List[String]()
 
-    if name == "addprefix" or name == "addsuffix":
-        x := try xa(args, 0, e, st)
-        ws := words(try xa(args, 1, e, st))
-        var res = List[String]()
+		for w in ws:
+			if name == "addprefix":
+				res.append(x + w)
+			else:
+				res.append(w + x)
 
-        for w in ws:
-            if name == "addprefix":
-                res.append(x + w)
-            else:
-                res.append(w + x)
+		return ok(res.join(" "))
 
-        return ok(res.join(" "))
+	if name == "wildcard":
+		pats := words(try xa(args, 0, e, st))
+		var res = List[String]()
 
-    if name == "wildcard":
-        pats := words(try xa(args, 0, e, st))
-        var res = List[String]()
+		for p in pats:
+			var hits = List[String]()
+			for k in st.files.keys():
+				if glob_match(p.chars(), 0, k.chars(), 0):
+					hits.append(k.clone())
+			hits.sort()
+			for h in hits:
+				res.append(h.clone())
 
-        for p in pats:
-            var hits = List[String]()
-            for k in st.files.keys():
-                if glob_match(p.chars(), 0, k.chars(), 0):
-                    hits.append(k.clone())
-            hits.sort()
-            for h in hits:
-                res.append(h.clone())
+		return ok(res.join(" "))
 
-        return ok(res.join(" "))
-
-    return ok("")
+	return ok("")
 
 // ---------------------------------------------------------------- Makefile parsing
 
 fn directive_kw(text: String) String:
-    cs := text.chars()
-    var i = 0
+	cs := text.chars()
+	var i = 0
 
-    while i < cs.length():
-        if "abcdefghijklmnopqrstuvwxyz".contains(cs[i]):
-            i += 1
-        else:
-            break
+	while i < cs.length():
+		if "abcdefghijklmnopqrstuvwxyz".contains(cs[i]):
+			i += 1
+		else:
+			break
 
-    kw := sub(cs, 0, i)
-    if (
-        kw != "ifdef"
-        and kw != "ifndef"
-        and kw != "ifeq"
-        and kw != "ifneq"
-        and kw != "else"
-        and kw != "endif"
-    ):
-        return ""
-    if i < cs.length() and not (is_wsp(cs[i]) or cs[i] == "("): return ""
+	kw := sub(cs, 0, i)
+	if (
+		kw != "ifdef"
+		and kw != "ifndef"
+		and kw != "ifeq"
+		and kw != "ifneq"
+		and kw != "else"
+		and kw != "endif"
+	):
+		return ""
+	if i < cs.length() and not (is_wsp(cs[i]) or cs[i] == "("): return ""
 
-    return kw
+	return kw
 
 fn is_active(st: St) Bool:
-    n := st.conds.length()
-    if n == 0: return true
+	n := st.conds.length()
+	if n == 0: return true
 
-    return st.conds[n - 1].act
+	return st.conds[n - 1].act
 
 fn eval_ifeq(eq: Bool, rest: String, num: Int, st: St) Result[Bool, Fatal]:
-    cs := rest.chars()
-    n := cs.length()
-    if n < 2 or cs[0] != "(" or cs[n - 1] != ")":
-        return error(fatal(num, "invalid syntax in conditional"))
+	cs := rest.chars()
+	n := cs.length()
+	if n < 2 or cs[0] != "(" or cs[n - 1] != ")":
+		return error(fatal(num, "invalid syntax in conditional"))
 
-    ic := sub(cs, 1, n - 1).chars()
-    var depth = 0
-    var count = 0
-    var comma = -1
-    var i = 0
+	ic := sub(cs, 1, n - 1).chars()
+	var depth = 0
+	var count = 0
+	var comma = -1
+	var i = 0
 
-    while i < ic.length():
-        c := ic[i]
+	while i < ic.length():
+		c := ic[i]
 
-        if c == "(" or c == "\{":
-            depth += 1
-        else if c == ")" or c == "\}":
-            depth -= 1
-        else if c == "," and depth == 0:
-            count += 1
-            comma = i
+		if c == "(" or c == "\{":
+			depth += 1
+		else if c == ")" or c == "\}":
+			depth -= 1
+		else if c == "," and depth == 0:
+			count += 1
+			comma = i
 
-        i += 1
+		i += 1
 
-    if count != 1: return error(fatal(num, "invalid syntax in conditional"))
+	if count != 1: return error(fatal(num, "invalid syntax in conditional"))
 
-    a := try expand(sub(ic, 0, comma).trim(), env(num), st)
-    b := try expand(sub(ic, comma + 1, ic.length()).trim(), env(num), st)
-    same := a.trim() == b.trim()
-    if eq: return ok(same)
+	a := try expand(sub(ic, 0, comma).trim(), env(num), st)
+	b := try expand(sub(ic, comma + 1, ic.length()).trim(), env(num), st)
+	same := a.trim() == b.trim()
+	if eq: return ok(same)
 
-    return ok(not same)
+	return ok(not same)
 
 fn do_directive(var st: St, num: Int, text: String, kw: String) Result[Unit, Fatal]:
-    kwlen := kw.length()
-    rest := ssub(text, kwlen, text.length()).trim()
-    parent := is_active(st)
+	kwlen := kw.length()
+	rest := ssub(text, kwlen, text.length()).trim()
+	parent := is_active(st)
 
-    if kw == "else":
-        k := st.conds.length() - 1
-        if k < 0: return error(fatal(num, "extraneous 'else'"))
+	if kw == "else":
+		k := st.conds.length() - 1
+		if k < 0: return error(fatal(num, "extraneous 'else'"))
 
-        c := st.conds[k]
-        if c.inelse: return error(fatal(num, "extraneous 'else'"))
+		c := st.conds[k]
+		if c.inelse: return error(fatal(num, "extraneous 'else'"))
 
-        st.conds[k] = Cond(
-            parent: c.parent, cond: c.cond, act: c.parent and not c.cond, inelse: true,
-            line: c.line
-        )
-        return ok(unit)
+		st.conds[k] = Cond(
+			parent: c.parent, cond: c.cond, act: c.parent and not c.cond, inelse: true,
+			line: c.line
+		)
+		return ok(unit)
 
-    if kw == "endif":
-        if st.conds.length() == 0: return error(fatal(num, "extraneous 'endif'"))
+	if kw == "endif":
+		if st.conds.length() == 0: return error(fatal(num, "extraneous 'endif'"))
 
-        _p := st.conds.pop()
-        return ok(unit)
+		_p := st.conds.pop()
+		return ok(unit)
 
-    var cnd = false
+	var cnd = false
 
-    if parent:
-        if kw == "ifdef" or kw == "ifndef":
-            nm := (try expand(rest, env(num), st)).trim()
-            var defined = false
-            if v := st.vars.get(nm):
-                if v.value != "":
-                    defined = true
-            cnd = defined
-            if kw == "ifndef":
-                cnd = not defined
-        else:
-            cnd = try eval_ifeq(kw == "ifeq", rest, num, st)
+	if parent:
+		if kw == "ifdef" or kw == "ifndef":
+			nm := (try expand(rest, env(num), st)).trim()
+			var defined = false
+			if v := st.vars.get(nm):
+				if v.value != "":
+					defined = true
+			cnd = defined
+			if kw == "ifndef":
+				cnd = not defined
+		else:
+			cnd = try eval_ifeq(kw == "ifeq", rest, num, st)
 
-    st.conds.append(
-        Cond(
-            parent: parent, cond: cnd, act: parent and cnd, inelse: false, line: num
-        )
-    )
-    return ok(unit)
+	st.conds.append(
+		Cond(
+			parent: parent, cond: cnd, act: parent and cnd, inelse: false, line: num
+		)
+	)
+	return ok(unit)
 
 fn find_col(cs: List[String]) Int:
-    var i = 0
-    var depth = 0
-    n := cs.length()
+	var i = 0
+	var depth = 0
+	n := cs.length()
 
-    while i < n:
-        c := cs[i]
+	while i < n:
+		c := cs[i]
 
-        if depth > 0:
-            if c == "(" or c == "\{":
-                depth += 1
-            else if c == ")" or c == "\}":
-                depth -= 1
+		if depth > 0:
+			if c == "(" or c == "\{":
+				depth += 1
+			else if c == ")" or c == "\}":
+				depth -= 1
 
-            i += 1
-        else if c == "$" and i + 1 < n and (cs[i + 1] == "(" or cs[i + 1] == "\{"):
-            depth = 1
-            i += 2
-        else if c == "$" and i + 1 < n:
-            i += 2
-        else if c == ";":
-            return -1
-        else if c == ":":
-            return i
-        else:
-            i += 1
+			i += 1
+		else if c == "$" and i + 1 < n and (cs[i + 1] == "(" or cs[i + 1] == "\{"):
+			depth = 1
+			i += 2
+		else if c == "$" and i + 1 < n:
+			i += 2
+		else if c == ";":
+			return -1
+		else if c == ":":
+			return i
+		else:
+			i += 1
 
-    return -1
+	return -1
 
 fn join_names(var st: St, names: List[String]) Unit:
-    for x in names:
-        if not st.phony.contains(x):
-            st.phony.append(x.clone())
+	for x in names:
+		if not st.phony.contains(x):
+			st.phony.append(x.clone())
 
 fn do_assign(var st: St, num: Int, cs: List[String], eq: Int) Result[Unit, Fatal]:
-    n := cs.length()
-    var name_end = eq
-    var op = "="
+	n := cs.length()
+	var name_end = eq
+	var op = "="
 
-    if eq > 0:
-        p := cs[eq - 1]
+	if eq > 0:
+		p := cs[eq - 1]
 
-        if p == ":":
-            op = ":="
-            name_end = eq - 1
-        else if p == "?":
-            op = "?="
-            name_end = eq - 1
-        else if p == "+":
-            op = "+="
-            name_end = eq - 1
+		if p == ":":
+			op = ":="
+			name_end = eq - 1
+		else if p == "?":
+			op = "?="
+			name_end = eq - 1
+		else if p == "+":
+			op = "+="
+			name_end = eq - 1
 
-    nm := try expand(sub(cs, 0, name_end), env(num), st)
-    name := nm.trim()
-    if name == "": return error(fatal(num, "empty variable name"))
+	nm := try expand(sub(cs, 0, name_end), env(num), st)
+	name := nm.trim()
+	if name == "": return error(fatal(num, "empty variable name"))
 
-    raw := sub(cs, eq + 1, n).trim()
-    if st.locked.contains(name): return ok(unit)
+	raw := sub(cs, eq + 1, n).trim()
+	if st.locked.contains(name): return ok(unit)
 
-    if op == "=":
-        st.vars[name.clone()] = Var(value: raw, recursive: true)
-    else if op == ":=":
-        v := try expand(raw, env(num), st)
-        st.vars[name.clone()] = Var(value: v, recursive: false)
-    else if op == "?=":
-        if not st.vars.contains(name):
-            st.vars[name.clone()] = Var(value: raw, recursive: true)
-    else:
-        exists := st.vars.contains(name)
-        old := st.vars.get(name).get(Var(value: "", recursive: true))
+	if op == "=":
+		st.vars[name.clone()] = Var(value: raw, recursive: true)
+	else if op == ":=":
+		v := try expand(raw, env(num), st)
+		st.vars[name.clone()] = Var(value: v, recursive: false)
+	else if op == "?=":
+		if not st.vars.contains(name):
+			st.vars[name.clone()] = Var(value: raw, recursive: true)
+	else:
+		exists := st.vars.contains(name)
+		old := st.vars.get(name).get(Var(value: "", recursive: true))
 
-        if not exists:
-            st.vars[name.clone()] = Var(value: raw, recursive: true)
-        else if old.recursive:
-            st.vars[name.clone()] = Var(value: join_sp(old.value, raw), recursive: true)
-        else:
-            add := try expand(raw, env(num), st)
-            st.vars[name.clone()] = Var(
-                value: join_sp(old.value, add), recursive: false
-            )
+		if not exists:
+			st.vars[name.clone()] = Var(value: raw, recursive: true)
+		else if old.recursive:
+			st.vars[name.clone()] = Var(value: join_sp(old.value, raw), recursive: true)
+		else:
+			add := try expand(raw, env(num), st)
+			st.vars[name.clone()] = Var(
+				value: join_sp(old.value, add), recursive: false
+			)
 
-    return ok(unit)
+	return ok(unit)
 
 fn open_rule(var st: St, num: Int, cs: List[String], col: Int) Result[Unit, Fatal]:
-    n := cs.length()
-    var semi = -1
-    var i = col + 1
+	n := cs.length()
+	var semi = -1
+	var i = col + 1
 
-    while i < n:
-        if cs[i] == ";":
-            semi = i
-            break
+	while i < n:
+		if cs[i] == ";":
+			semi = i
+			break
 
-        i += 1
+		i += 1
 
-    var pend = n
-    if semi >= 0:
-        pend = semi
+	var pend = n
+	if semi >= 0:
+		pend = semi
 
-    prereq_raw := sub(cs, col + 1, pend)
-    e := env(num)
-    tg := words(try expand(sub(cs, 0, col), e, st))
-    pre := try expand(prereq_raw, e, st)
-    pc := pre.chars()
-    bar := index_of(pc, "|", 0)
-    var nrm = List[String]()
-    var ord = List[String]()
+	prereq_raw := sub(cs, col + 1, pend)
+	e := env(num)
+	tg := words(try expand(sub(cs, 0, col), e, st))
+	pre := try expand(prereq_raw, e, st)
+	pc := pre.chars()
+	bar := index_of(pc, "|", 0)
+	var nrm = List[String]()
+	var ord = List[String]()
 
-    if bar >= 0:
-        nrm = words(sub(pc, 0, bar))
-        ord = words(sub(pc, bar + 1, pc.length()))
-    else:
-        nrm = words(pre)
+	if bar >= 0:
+		nrm = words(sub(pc, 0, bar))
+		ord = words(sub(pc, bar + 1, pc.length()))
+	else:
+		nrm = words(pre)
 
-    st.isopen = true
-    st.otargets = tg.clone()
-    st.onormal = nrm.clone()
-    st.oorder = ord.clone()
-    st.orecipe = List[Recipe]()
-    st.oline = num
-    st.ophony = false
-    if tg.length() == 1:
-        if tg[0] == ".PHONY":
-            st.ophony = true
+	st.isopen = true
+	st.otargets = tg.clone()
+	st.onormal = nrm.clone()
+	st.oorder = ord.clone()
+	st.orecipe = List[Recipe]()
+	st.oline = num
+	st.ophony = false
+	if tg.length() == 1:
+		if tg[0] == ".PHONY":
+			st.ophony = true
 
-    if st.ophony:
-        join_names(var st, nrm)
-        join_names(var st, ord)
+	if st.ophony:
+		join_names(var st, nrm)
+		join_names(var st, ord)
 
-    if semi >= 0:
-        c := sub(cs, semi + 1, n).trim()
-        if c != "":
-            st.orecipe.append(Recipe(line: num, text: c))
+	if semi >= 0:
+		c := sub(cs, semi + 1, n).trim()
+		if c != "":
+			st.orecipe.append(Recipe(line: num, text: c))
 
-    return ok(unit)
+	return ok(unit)
 
 fn rule_or_empty(st: St, t: String) Rule:
-    if r := st.explicit.get(t):
-        return Rule(
-            normal: r.normal.clone(), order: r.order.clone(), recipe: r.recipe.clone()
-        )
-
-    return Rule(normal: List[String](), order: List[String](), recipe: List[Recipe]())
+	if r := st.explicit.get(t):
+		return Rule(
+			normal: r.normal.clone(), order: r.order.clone(), recipe: r.recipe.clone()
+		)
+	return Rule(normal: List[String](), order: List[String](), recipe: List[Recipe]())
 
 fn close_rule(var st: St) Unit:
-    if not st.isopen: return
+	if not st.isopen: return
 
-    st.isopen = false
-    if st.ophony: return
+	st.isopen = false
+	if st.ophony: return
 
-    tl := st.otargets.clone()
+	tl := st.otargets.clone()
 
-    for t in tl:
-        if t.contains("%"):
-            st.pats.append(
-                PRule(
-                    pat: t.clone(),
-                    rule: Rule(
-                        normal: st.onormal.clone(), order: st.oorder.clone(),
-                        recipe: st.orecipe.clone()
-                    )
-                )
-            )
-        else:
-            old := rule_or_empty(st, t)
-            var rec = old.recipe.clone()
+	for t in tl:
+		if t.contains("%"):
+			st.pats.append(
+				PRule(
+					pat: t.clone(),
+					rule: Rule(
+						normal: st.onormal.clone(), order: st.oorder.clone(),
+						recipe: st.orecipe.clone()
+					)
+				)
+			)
+		else:
+			old := rule_or_empty(st, t)
+			var rec = old.recipe.clone()
 
-            if st.orecipe.length() > 0:
-                if old.recipe.length() > 0:
-                    out(
-                        "Makefile:{st.oline}: warning: overriding recipe for target '{t}'"
-                    )
-                rec = st.orecipe.clone()
+			if st.orecipe.length() > 0:
+				if old.recipe.length() > 0:
+					out(
+						"Makefile:{st.oline}: warning: overriding recipe for target '{t}'"
+					)
+				rec = st.orecipe.clone()
 
-            var nn = old.normal.clone()
-            for p in st.onormal:
-                nn.append(p.clone())
+			var nn = old.normal.clone()
+			for p in st.onormal:
+				nn.append(p.clone())
 
-            var oo = old.order.clone()
-            for p in st.oorder:
-                oo.append(p.clone())
-            if not st.explicit.contains(t):
-                st.names.append(t.clone())
-            st.explicit[t.clone()] = Rule(normal: nn, order: oo, recipe: rec)
+			var oo = old.order.clone()
+			for p in st.oorder:
+				oo.append(p.clone())
+			if not st.explicit.contains(t):
+				st.names.append(t.clone())
+			st.explicit[t.clone()] = Rule(normal: nn, order: oo, recipe: rec)
 
-    return
+	return
 
 fn handle_line(var st: St, num: Int, text: String) Result[Unit, Fatal]:
-    cs := text.chars()
-    eq := index_of(cs, "=", 0)
-    col := find_col(cs)
-    is_assign := eq >= 0 and (col < 0 or col > eq or col == eq - 1)
-    if is_assign: return do_assign(var st, num, cs, eq)
-    if col >= 0: return open_rule(var st, num, cs, col)
+	cs := text.chars()
+	eq := index_of(cs, "=", 0)
+	col := find_col(cs)
+	is_assign := eq >= 0 and (col < 0 or col > eq or col == eq - 1)
+	if is_assign: return do_assign(var st, num, cs, eq)
+	if col >= 0: return open_rule(var st, num, cs, col)
 
-    t := try expand(text, env(num), st)
-    if t.trim() != "": return error(fatal(num, "missing separator"))
+	t := try expand(text, env(num), st)
+	if t.trim() != "": return error(fatal(num, "missing separator"))
 
-    return ok(unit)
+	return ok(unit)
 
 fn parse_all(var st: St, lines: List[Line]) Result[Unit, Fatal]:
-    for ln in lines:
-        if ln.recipe:
-            if is_active(st):
-                if not st.isopen:
-                    return error(fatal(ln.num, "recipe commences before first target"))
+	for ln in lines:
+		if ln.recipe:
+			if is_active(st):
+				if not st.isopen:
+					return error(fatal(ln.num, "recipe commences before first target"))
 
-                st.orecipe.append(Recipe(line: ln.num, text: ln.text.clone()))
-        else:
-            close_rule(var st)
+				st.orecipe.append(Recipe(line: ln.num, text: ln.text.clone()))
+		else:
+			close_rule(var st)
 
-            kw := directive_kw(ln.text)
+			kw := directive_kw(ln.text)
 
-            if kw != "":
-                _d := try do_directive(var st, ln.num, ln.text, kw)
-            else if is_active(st):
-                _h := try handle_line(var st, ln.num, ln.text)
+			if kw != "":
+				_d := try do_directive(var st, ln.num, ln.text, kw)
+			else if is_active(st):
+				_h := try handle_line(var st, ln.num, ln.text)
 
-    close_rule(var st)
+	close_rule(var st)
 
-    nc := st.conds.length()
-    if nc > 0: return error(fatal(st.conds[nc - 1].line, "missing 'endif'"))
+	nc := st.conds.length()
+	if nc > 0: return error(fatal(st.conds[nc - 1].line, "missing 'endif'"))
 
-    return ok(unit)
+	return ok(unit)
 
 // ---------------------------------------------------------------- rule resolution
 
 fn can_make(st: St, name: String, depth: Int) Bool:
-    if st.files.contains(name) or st.explicit.contains(name) or st.phony.contains(name):
-        return true
-    if depth > 8: return false
+	if st.files.contains(name) or st.explicit.contains(name) or st.phony.contains(name):
+		return true
+	if depth > 8: return false
 
-    for pr in st.pats:
-        if pr.rule.recipe.length() > 0:
-            stem := rule_stem(pr.pat, name)
+	for pr in st.pats:
+		if pr.rule.recipe.length() > 0:
+			stem := rule_stem(pr.pat, name)
 
-            if stem != "":
-                var good = true
-                for p in pr.rule.normal:
-                    if not can_make(st, subst_stem(p, stem), depth + 1):
-                        good = false
-                for p in pr.rule.order:
-                    if not can_make(st, subst_stem(p, stem), depth + 1):
-                        good = false
-                if good: return true
+			if stem != "":
+				var good = true
+				for p in pr.rule.normal:
+					if not can_make(st, subst_stem(p, stem), depth + 1):
+						good = false
+				for p in pr.rule.order:
+					if not can_make(st, subst_stem(p, stem), depth + 1):
+						good = false
+				if good: return true
 
-    return false
+	return false
 
 fn resolve(st: St, t: String) Res:
-    if ex := st.explicit.get(t):
-        if ex.recipe.length() > 0:
-            return Res(
-                found: true, normal: ex.normal.clone(), order: ex.order.clone(),
-                recipe: ex.recipe.clone(), stem: ""
-            )
+	if ex := st.explicit.get(t):
+		if ex.recipe.length() > 0:
+			return Res(
+				found: true, normal: ex.normal.clone(), order: ex.order.clone(),
+				recipe: ex.recipe.clone(), stem: ""
+			)
 
-    for pr in st.pats:
-        if pr.rule.recipe.length() > 0:
-            stem := rule_stem(pr.pat, t)
+	for pr in st.pats:
+		if pr.rule.recipe.length() > 0:
+			stem := rule_stem(pr.pat, t)
 
-            if stem != "":
-                var good = true
-                for p in pr.rule.normal:
-                    if not can_make(st, subst_stem(p, stem), 1):
-                        good = false
-                for p in pr.rule.order:
-                    if not can_make(st, subst_stem(p, stem), 1):
-                        good = false
+			if stem != "":
+				var good = true
+				for p in pr.rule.normal:
+					if not can_make(st, subst_stem(p, stem), 1):
+						good = false
+				for p in pr.rule.order:
+					if not can_make(st, subst_stem(p, stem), 1):
+						good = false
 
-                if good:
-                    var nn = List[String]()
-                    for p in pr.rule.normal:
-                        nn.append(subst_stem(p, stem))
+				if good:
+					var nn = List[String]()
+					for p in pr.rule.normal:
+						nn.append(subst_stem(p, stem))
 
-                    var oo = List[String]()
-                    for p in pr.rule.order:
-                        oo.append(subst_stem(p, stem))
+					var oo = List[String]()
+					for p in pr.rule.order:
+						oo.append(subst_stem(p, stem))
 
-                    if ex := st.explicit.get(t):
-                        for p in ex.normal:
-                            nn.append(p.clone())
-                        for p in ex.order:
-                            oo.append(p.clone())
+					if ex := st.explicit.get(t):
+						for p in ex.normal:
+							nn.append(p.clone())
+						for p in ex.order:
+							oo.append(p.clone())
 
-                    return Res(
-                        found: true, normal: nn, order: oo,
-                        recipe: pr.rule.recipe.clone(), stem: stem
-                    )
+					return Res(
+						found: true, normal: nn, order: oo,
+						recipe: pr.rule.recipe.clone(), stem: stem
+					)
 
-    if ex := st.explicit.get(t):
-        return Res(
-            found: true, normal: ex.normal.clone(), order: ex.order.clone(),
-            recipe: List[Recipe](), stem: ""
-        )
+	if ex := st.explicit.get(t):
+		return Res(
+			found: true, normal: ex.normal.clone(), order: ex.order.clone(),
+			recipe: List[Recipe](), stem: ""
+		)
 
-    return Res(
-        found: false, normal: List[String](), order: List[String](),
-        recipe: List[Recipe](), stem: ""
-    )
+	return Res(
+		found: false, normal: List[String](), order: List[String](),
+		recipe: List[Recipe](), stem: ""
+	)
 
 fn default_goal(st: St) String:
-    for n in st.names:
-        if not n.starts_with("."): return n.clone()
-    return ""
+	for n in st.names:
+		if not n.starts_with("."): return n.clone()
+	return ""
 
 // ---------------------------------------------------------------- running recipes
 
 fn remove_quotes(s: String) String:
-    var acc = ""
-    for c in s.chars():
-        if c != "'" and c != "\"":
-            acc += c
-    return acc
+	var acc = ""
+	for c in s.chars():
+		if c != "'" and c != "\"":
+			acc += c
+	return acc
 
 fn run_cmd(var st: St, cmd: String) Int:
-    w := words(cmd)
-    if w.length() == 0: return 0
+	w := words(cmd)
+	if w.length() == 0: return 0
 
-    w0 := w[0].clone()
-    var rest = List[String]()
-    var i = 1
+	w0 := w[0].clone()
+	var rest = List[String]()
+	var i = 1
 
-    while i < w.length():
-        rest.append(w[i].clone())
-        i += 1
+	while i < w.length():
+		rest.append(w[i].clone())
+		i += 1
 
-    if w0 == "false": return 1
+	if w0 == "false": return 1
 
-    if w0 == "exit":
-        if rest.length() == 0: return 0
-        if v := rest[0].parse_int(): return v
+	if w0 == "exit":
+		if rest.length() == 0: return 0
+		if v := rest[0].parse_int(): return v
 
-        return 2
+		return 2
 
-    if w0 == "touch":
-        for f in rest:
-            if not f.starts_with("-"):
-                st.clock += 1
-                st.files[f.clone()] = st.clock
+	if w0 == "touch":
+		for f in rest:
+			if not f.starts_with("-"):
+				st.clock += 1
+				st.files[f.clone()] = st.clock
 
-        return 0
+		return 0
 
-    if w0 == "rm":
-        for f in rest:
-            if not f.starts_with("-"):
-                st.files.remove(f)
-        return 0
+	if w0 == "rm":
+		for f in rest:
+			if not f.starts_with("-"):
+				st.files.remove(f)
+		return 0
 
-    if w0 == "cp":
-        if rest.length() == 2:
-            if not st.files.contains(rest[0]):
-                out("cp: cannot stat '{rest[0]}': No such file or directory")
-                return 1
+	if w0 == "cp":
+		if rest.length() == 2:
+			if not st.files.contains(rest[0]):
+				out("cp: cannot stat '{rest[0]}': No such file or directory")
+				return 1
 
-            st.clock += 1
-            st.files[rest[1].clone()] = st.clock
+			st.clock += 1
+			st.files[rest[1].clone()] = st.clock
 
-        return 0
+		return 0
 
-    if w0 == "echo":
-        var parts = List[String]()
-        for a in rest:
-            parts.append(remove_quotes(a))
-        out(parts.join(" "))
-        return 0
+	if w0 == "echo":
+		var parts = List[String]()
+		for a in rest:
+			parts.append(remove_quotes(a))
+		out(parts.join(" "))
+		return 0
 
-    return 0
+	return 0
 
 fn run_recipe(
-    var st: St, t: String, r: Res, dn: List[String], dord: List[String], q: List[String]
+	var st: St, t: String, r: Res, dn: List[String], dord: List[String], q: List[String]
 ) Result[Unit, Fatal]:
-    st.ran += 1
+	st.ran += 1
 
-    var autos = Map[String, String]()
-    var first = ""
-    if r.normal.length() > 0:
-        first = r.normal[0].clone()
-    autos["@"] = t.clone()
-    autos["<"] = first
-    autos["^"] = dn.join(" ")
-    autos["?"] = q.join(" ")
-    autos["|"] = dord.join(" ")
-    autos["*"] = r.stem.clone()
+	var autos = Map[String, String]()
+	var first = ""
+	if r.normal.length() > 0:
+		first = r.normal[0].clone()
+	autos["@"] = t.clone()
+	autos["<"] = first
+	autos["^"] = dn.join(" ")
+	autos["?"] = q.join(" ")
+	autos["|"] = dord.join(" ")
+	autos["*"] = r.stem.clone()
 
-    for rl in r.recipe:
-        e := Env(
-            line: rl.line, recipe: true, autos: autos.clone(),
-            binds: Map[String, String](), stack: List[String]()
-        )
-        ex := try expand(rl.text, e, st)
-        cs := ex.chars()
-        n := cs.length()
-        var i = 0
-        var silent = false
-        var ign = false
+	for rl in r.recipe:
+		e := Env(
+			line: rl.line, recipe: true, autos: autos.clone(),
+			binds: Map[String, String](), stack: List[String]()
+		)
+		ex := try expand(rl.text, e, st)
+		cs := ex.chars()
+		n := cs.length()
+		var i = 0
+		var silent = false
+		var ign = false
 
-        while i < n:
-            c := cs[i]
+		while i < n:
+			c := cs[i]
 
-            if c == "@" or c == "-" or c == "+" or is_sp(c):
-                if c == "@":
-                    silent = true
-                if c == "-":
-                    ign = true
-                i += 1
-            else:
-                break
+			if c == "@" or c == "-" or c == "+" or is_sp(c):
+				if c == "@":
+					silent = true
+				if c == "-":
+					ign = true
+				i += 1
+			else:
+				break
 
-        cmd := sub(cs, i, n).trim()
+		cmd := sub(cs, i, n).trim()
 
-        if st.dry:
-            if cmd != "":
-                out(cmd)
-        else if cmd != "":
-            if not silent:
-                out(cmd)
+		if st.dry:
+			if cmd != "":
+				out(cmd)
+		else if cmd != "":
+			if not silent:
+				out(cmd)
 
-            status := run_cmd(var st, cmd)
+			status := run_cmd(var st, cmd)
 
-            if status != 0:
-                if ign:
-                    out("make: [Makefile:{rl.line}: {t}] Error {status} (ignored)")
-                else:
-                    return error(
-                        Fatal(
-                            msg: "make: *** [Makefile:{rl.line}: {t}] Error {status}"
-                        )
-                    )
+			if status != 0:
+				if ign:
+					out("make: [Makefile:{rl.line}: {t}] Error {status} (ignored)")
+				else:
+					return error(
+						Fatal(
+							msg: "make: *** [Makefile:{rl.line}: {t}] Error {status}"
+						)
+					)
 
-    if not st.dry:
-        if not st.phony.contains(t):
-            st.clock += 1
-            st.files[t.clone()] = st.clock
+	if not st.dry:
+		if not st.phony.contains(t):
+			st.clock += 1
+			st.files[t.clone()] = st.clock
 
-    return ok(unit)
+	return ok(unit)
 
 fn index_in(xs: List[String], t: String) Int:
-    var i = 0
+	var i = 0
 
-    while i < xs.length():
-        if xs[i] == t: return i
+	while i < xs.length():
+		if xs[i] == t: return i
 
-        i += 1
+		i += 1
 
-    return -1
+	return -1
 
 fn cycle_error(stk: List[String], t: String, idx: Int) Fatal:
-    var parts = List[String]()
-    var i = idx
+	var parts = List[String]()
+	var i = idx
 
-    while i < stk.length():
-        parts.append(stk[i].clone())
-        i += 1
+	while i < stk.length():
+		parts.append(stk[i].clone())
+		i += 1
 
-    parts.append(t.clone())
-    return Fatal(
-        msg: "make: *** Circular dependency detected: {parts.join(" -> ")}.  Stop."
-    )
+	parts.append(t.clone())
+	return Fatal(
+		msg: "make: *** Circular dependency detected: {parts.join(" -> ")}.  Stop."
+	)
 
 fn update(var st: St, t: String, needed: String) Result[Bool, Fatal]:
-    if m := st.memo.get(t): return ok(m)
+	if m := st.memo.get(t): return ok(m)
 
-    idx := index_in(st.stackp, t)
-    if idx >= 0: return error(cycle_error(st.stackp, t, idx))
+	idx := index_in(st.stackp, t)
+	if idx >= 0: return error(cycle_error(st.stackp, t, idx))
 
-    r := resolve(st, t)
-    existed := st.files.contains(t)
-    var oldm = 0
-    if existed:
-        oldm = st.files.get(t).get(0)
+	r := resolve(st, t)
+	existed := st.files.contains(t)
+	var oldm = 0
+	if existed:
+		oldm = st.files.get(t).get(0)
 
-    if not r.found:
-        if existed:
-            st.memo[t.clone()] = false
-            return ok(false)
+	if not r.found:
+		if existed:
+			st.memo[t.clone()] = false
+			return ok(false)
 
-        if st.phony.contains(t):
-            st.memo[t.clone()] = true
-            return ok(true)
+		if st.phony.contains(t):
+			st.memo[t.clone()] = true
+			return ok(true)
 
-        if needed == "":
-            return error(Fatal(msg: "make: *** No rule to make target '{t}'.  Stop."))
+		if needed == "":
+			return error(Fatal(msg: "make: *** No rule to make target '{t}'.  Stop."))
 
-        return error(
-            Fatal(
-                msg: "make: *** No rule to make target '{t}', needed by '{needed}'.  Stop."
-            )
-        )
+		return error(
+			Fatal(
+				msg: "make: *** No rule to make target '{t}', needed by '{needed}'.  Stop."
+			)
+		)
 
-    dn := dedupe(r.normal)
-    dord := dedupe(r.order)
-    st.stackp.append(t.clone())
+	dn := dedupe(r.normal)
+	dord := dedupe(r.order)
+	st.stackp.append(t.clone())
 
-    var anychg = false
-    var newer = false
-    var chg = List[String]()
+	var anychg = false
+	var newer = false
+	var chg = List[String]()
 
-    for p in dn:
-        c := try update(var st, p.clone(), t.clone())
+	for p in dn:
+		c := try update(var st, p.clone(), t.clone())
 
-        if c:
-            anychg = true
-            chg.append(p.clone())
+		if c:
+			anychg = true
+			chg.append(p.clone())
 
-        if existed and st.files.contains(p):
-            if st.files.get(p).get(0) > oldm:
-                newer = true
+		if existed and st.files.contains(p):
+			if st.files.get(p).get(0) > oldm:
+				newer = true
 
-    for p in dord:
-        _c := try update(var st, p.clone(), t.clone())
+	for p in dord:
+		_c := try update(var st, p.clone(), t.clone())
 
-    _s := st.stackp.pop()
-    rebuild := st.phony.contains(t) or not st.files.contains(t) or anychg or newer
-    var changed = false
+	_s := st.stackp.pop()
+	rebuild := st.phony.contains(t) or not st.files.contains(t) or anychg or newer
+	var changed = false
 
-    if rebuild:
-        changed = true
+	if rebuild:
+		changed = true
 
-        if r.recipe.length() > 0:
-            var q = List[String]()
+		if r.recipe.length() > 0:
+			var q = List[String]()
 
-            for p in dn:
-                var inq = not existed or chg.contains(p)
-                if st.files.contains(p) and existed:
-                    if st.files.get(p).get(0) > oldm:
-                        inq = true
-                if inq:
-                    q.append(p.clone())
+			for p in dn:
+				var inq = not existed or chg.contains(p)
+				if st.files.contains(p) and existed:
+					if st.files.get(p).get(0) > oldm:
+						inq = true
+				if inq:
+					q.append(p.clone())
 
-            _rr := try run_recipe(var st, t.clone(), r, dn, dord, q)
+			_rr := try run_recipe(var st, t.clone(), r, dn, dord, q)
 
-    st.memo[t.clone()] = changed
-    return ok(changed)
+	st.memo[t.clone()] = changed
+	return ok(changed)
 
 fn cmd_build(var st: St, goals: List[String]) Result[Unit, Fatal]:
-    var gs = List[String]()
-    for g in goals:
-        gs.append(g.clone())
+	var gs = List[String]()
+	for g in goals:
+		gs.append(g.clone())
 
-    if gs.length() == 0:
-        d := default_goal(st)
-        if d == "": return error(Fatal(msg: "make: *** No targets.  Stop."))
+	if gs.length() == 0:
+		d := default_goal(st)
+		if d == "": return error(Fatal(msg: "make: *** No targets.  Stop."))
 
-        gs.append(d)
+		gs.append(d)
 
-    for g in gs:
-        before := st.ran
-        _c := try update(var st, g.clone(), "")
+	for g in gs:
+		before := st.ran
+		_c := try update(var st, g.clone(), "")
 
-        if st.ran == before:
-            r := resolve(st, g.clone())
+		if st.ran == before:
+			r := resolve(st, g.clone())
 
-            if (
-                r.recipe.length() > 0
-                or (not st.phony.contains(g) and st.files.contains(g))
-            ):
-                out("make: '{g}' is up to date.")
-            else:
-                out("make: Nothing to be done for '{g}'.")
+			if (
+				r.recipe.length() > 0
+				or (not st.phony.contains(g) and st.files.contains(g))
+			):
+				out("make: '{g}' is up to date.")
+			else:
+				out("make: Nothing to be done for '{g}'.")
 
-    return ok(unit)
+	return ok(unit)
 
 fn dfs(
-    st: St,
-    t: String,
-    var stk: List[String],
-    var done: Map[String, Bool],
-    var outl: List[String]
+	st: St,
+	t: String,
+	var stk: List[String],
+	var done: Map[String, Bool],
+	var outl: List[String]
 ) Result[Unit, Fatal]:
-    if done.contains(t): return ok(unit)
+	if done.contains(t): return ok(unit)
 
-    idx := index_in(stk, t)
-    if idx >= 0: return error(cycle_error(stk, t, idx))
+	idx := index_in(stk, t)
+	if idx >= 0: return error(cycle_error(stk, t, idx))
 
-    top := stk.length() == 0
-    stk.append(t.clone())
+	top := stk.length() == 0
+	stk.append(t.clone())
 
-    r := resolve(st, t)
-    for p in dedupe(r.normal):
-        _a := try dfs(st, p.clone(), var stk, var done, var outl)
-    for p in dedupe(r.order):
-        _b := try dfs(st, p.clone(), var stk, var done, var outl)
+	r := resolve(st, t)
+	for p in dedupe(r.normal):
+		_a := try dfs(st, p.clone(), var stk, var done, var outl)
+	for p in dedupe(r.order):
+		_b := try dfs(st, p.clone(), var stk, var done, var outl)
 
-    _s := stk.pop()
-    done[t.clone()] = true
-    if not top:
-        outl.append(t.clone())
-    return ok(unit)
+	_s := stk.pop()
+	done[t.clone()] = true
+	if not top:
+		outl.append(t.clone())
+	return ok(unit)
 
 fn cmd_deps(st: St, target: String) Result[Unit, Fatal]:
-    var stk = List[String]()
-    var done = Map[String, Bool]()
-    var outl = List[String]()
-    _d := try dfs(st, target.clone(), var stk, var done, var outl)
-    if outl.length() == 0:
-        out("(no prerequisites)")
-    for x in outl:
-        out(x)
-    return ok(unit)
+	var stk = List[String]()
+	var done = Map[String, Bool]()
+	var outl = List[String]()
+	_d := try dfs(st, target.clone(), var stk, var done, var outl)
+	if outl.length() == 0:
+		out("(no prerequisites)")
+	for x in outl:
+		out(x)
+	return ok(unit)
 
 fn rule_line(head: String, normal: List[String], order: List[String]) String:
-    var s = head + ":"
-    if normal.length() > 0:
-        s += " " + normal.join(" ")
-    if order.length() > 0:
-        s += " | " + order.join(" ")
-    return s
+	var s = head + ":"
+	if normal.length() > 0:
+		s += " " + normal.join(" ")
+	if order.length() > 0:
+		s += " | " + order.join(" ")
+	return s
 
 fn cmd_targets(st: St) Unit:
-    d := default_goal(st)
-    if d != "":
-        out("default: {d}")
+	d := default_goal(st)
+	if d != "":
+		out("default: {d}")
 
-    for n in st.names:
-        r := rule_or_empty(st, n)
-        out(rule_line(n, r.normal, r.order))
+	for n in st.names:
+		r := rule_or_empty(st, n)
+		out(rule_line(n, r.normal, r.order))
 
-    for pr in st.pats:
-        out(rule_line("pattern " + pr.pat, pr.rule.normal, pr.rule.order))
-    if st.phony.length() > 0:
-        out("phony: " + st.phony.join(" "))
-    return
+	for pr in st.pats:
+		out(rule_line("pattern " + pr.pat, pr.rule.normal, pr.rule.order))
+	if st.phony.length() > 0:
+		out("phony: " + st.phony.join(" "))
+	return
 
 // ---------------------------------------------------------------- requests
 
 fn reset_parse(var st: St, cmdv: Map[String, String], dry: Bool) Unit:
-    st.vars = Map[String, Var]()
-    st.locked = Map[String, Bool]()
+	st.vars = Map[String, Var]()
+	st.locked = Map[String, Bool]()
 
-    for k in cmdv.keys():
-        v := cmdv.get(k).get("")
-        st.vars[k.clone()] = Var(value: v, recursive: true)
-        st.locked[k.clone()] = true
+	for k in cmdv.keys():
+		v := cmdv.get(k).get("")
+		st.vars[k.clone()] = Var(value: v, recursive: true)
+		st.locked[k.clone()] = true
 
-    st.explicit = Map[String, Rule]()
-    st.names = List[String]()
-    st.pats = List[PRule]()
-    st.phony = List[String]()
-    st.conds = List[Cond]()
-    st.isopen = false
-    st.otargets = List[String]()
-    st.onormal = List[String]()
-    st.oorder = List[String]()
-    st.orecipe = List[Recipe]()
-    st.oline = 0
-    st.ophony = false
-    st.memo = Map[String, Bool]()
-    st.stackp = List[String]()
-    st.dry = dry
-    st.ran = 0
-    return
+	st.explicit = Map[String, Rule]()
+	st.names = List[String]()
+	st.pats = List[PRule]()
+	st.phony = List[String]()
+	st.conds = List[Cond]()
+	st.isopen = false
+	st.otargets = List[String]()
+	st.onormal = List[String]()
+	st.oorder = List[String]()
+	st.orecipe = List[Recipe]()
+	st.oline = 0
+	st.ophony = false
+	st.memo = Map[String, Bool]()
+	st.stackp = List[String]()
+	st.dry = dry
+	st.ran = 0
+	return
 
 fn handle(var st: St, mk: List[String], line: String) Unit:
-    ws := words(line)
-    cmd := ws[0].clone()
-    var args = List[String]()
-    var i = 1
+	ws := words(line)
+	cmd := ws[0].clone()
+	var args = List[String]()
+	var i = 1
 
-    while i < ws.length():
-        args.append(ws[i].clone())
-        i += 1
+	while i < ws.length():
+		args.append(ws[i].clone())
+		i += 1
 
-    if (
-        cmd == "build"
-        or cmd == "dry"
-        or cmd == "deps"
-        or cmd == "targets"
-        or cmd == "expand"
-    ):
-        var cmdv = Map[String, String]()
-        var tg = List[String]()
-        var text = ""
+	if (
+		cmd == "build"
+		or cmd == "dry"
+		or cmd == "deps"
+		or cmd == "targets"
+		or cmd == "expand"
+	):
+		var cmdv = Map[String, String]()
+		var tg = List[String]()
+		var text = ""
 
-        if cmd == "expand":
-            t := line.trim()
-            text = ssub(t, 6, t.length()).trim()
-        else:
-            for a in args:
-                p := index_of(a.chars(), "=", 1)
+		if cmd == "expand":
+			t := line.trim()
+			text = ssub(t, 6, t.length()).trim()
+		else:
+			for a in args:
+				p := index_of(a.chars(), "=", 1)
 
-                if p >= 1:
-                    cmdv[ssub(a, 0, p)] = ssub(a, p + 1, a.length())
-                else:
-                    tg.append(a.clone())
+				if p >= 1:
+					cmdv[ssub(a, 0, p)] = ssub(a, p + 1, a.length())
+				else:
+					tg.append(a.clone())
 
-        reset_parse(var st, cmdv, cmd == "dry")
+		reset_parse(var st, cmdv, cmd == "dry")
 
-        pe := errtext(parse_all(var st, logical_lines(mk)))
+		pe := errtext(parse_all(var st, logical_lines(mk)))
 
-        if pe != "":
-            out(pe)
-            return
+		if pe != "":
+			out(pe)
+			return
 
-        if cmd == "expand":
-            out(bracket(expand(text, env(0), st)))
-        else if cmd == "build" or cmd == "dry":
-            e1 := errtext(cmd_build(var st, tg))
-            if e1 != "":
-                out(e1)
-        else if cmd == "deps":
-            if tg.length() != 1:
-                out("usage: deps TARGET")
-            else:
-                e2 := errtext(cmd_deps(st, tg[0].clone()))
-                if e2 != "":
-                    out(e2)
-        else:
-            cmd_targets(st)
-    else if cmd == "files":
-        var ks = st.files.keys()
-        ks.sort()
-        if ks.length() == 0:
-            out("(no files)")
-        for k in ks:
-            out("{k} {st.files.get(k).get(0)}")
-    else if cmd == "touch":
-        if args.length() == 1:
-            st.clock += 1
-            st.files[args[0].clone()] = st.clock
-        else if args.length() == 2:
-            if n := args[1].parse_int():
-                st.files[args[0].clone()] = n
-                if n > st.clock:
-                    st.clock = n
-            else:
-                out("bad request")
-        else:
-            out("bad request")
-    else if cmd == "rm":
-        for a in args:
-            st.files.remove(a)
-    else:
-        out("unknown request: {cmd}")
+		if cmd == "expand":
+			out(bracket(expand(text, env(0), st)))
+		else if cmd == "build" or cmd == "dry":
+			e1 := errtext(cmd_build(var st, tg))
+			if e1 != "":
+				out(e1)
+		else if cmd == "deps":
+			if tg.length() != 1:
+				out("usage: deps TARGET")
+			else:
+				e2 := errtext(cmd_deps(st, tg[0].clone()))
+				if e2 != "":
+					out(e2)
+		else:
+			cmd_targets(st)
+	else if cmd == "files":
+		var ks = st.files.keys()
+		ks.sort()
+		if ks.length() == 0:
+			out("(no files)")
+		for k in ks:
+			out("{k} {st.files.get(k).get(0)}")
+	else if cmd == "touch":
+		if args.length() == 1:
+			st.clock += 1
+			st.files[args[0].clone()] = st.clock
+		else if args.length() == 2:
+			if n := args[1].parse_int():
+				st.files[args[0].clone()] = n
+				if n > st.clock:
+					st.clock = n
+			else:
+				out("bad request")
+		else:
+			out("bad request")
+	else if cmd == "rm":
+		for a in args:
+			st.files.remove(a)
+	else:
+		out("unknown request: {cmd}")
 
-    return
+	return
 
 fn slice_list(xs: List[String], a: Int, b: Int) List[String]:
-    var res = List[String]()
-    var i = a
+	var res = List[String]()
+	var i = a
 
-    while i < b and i < xs.length():
-        res.append(xs[i].clone())
-        i += 1
+	while i < b and i < xs.length():
+		res.append(xs[i].clone())
+		i += 1
 
-    return res
+	return res
 
 export fn main() Int:
-    raw := read_lines(stdin()).get()
-    var lines = List[String]()
-    for l in raw:
-        lines.append(chomp(l))
+	raw := read_lines(stdin()).get()
+	var lines = List[String]()
+	for l in raw:
+		lines.append(chomp(l))
 
-    var seps = List[Int]()
-    var i = 0
+	var seps = List[Int]()
+	var i = 0
 
-    while i < lines.length() and seps.length() < 2:
-        if lines[i] == "====":
-            seps.append(i)
-        i += 1
+	while i < lines.length() and seps.length() < 2:
+		if lines[i] == "====":
+			seps.append(i)
+		i += 1
 
-    n := lines.length()
-    var mk = List[String]()
-    var tab = List[String]()
-    var reqs = List[String]()
+	n := lines.length()
+	var mk = List[String]()
+	var tab = List[String]()
+	var reqs = List[String]()
 
-    if seps.length() == 0:
-        mk = slice_list(lines, 0, n)
-    else if seps.length() == 1:
-        mk = slice_list(lines, 0, seps[0])
-        tab = slice_list(lines, seps[0] + 1, n)
-    else:
-        mk = slice_list(lines, 0, seps[0])
-        tab = slice_list(lines, seps[0] + 1, seps[1])
-        reqs = slice_list(lines, seps[1] + 1, n)
+	if seps.length() == 0:
+		mk = slice_list(lines, 0, n)
+	else if seps.length() == 1:
+		mk = slice_list(lines, 0, seps[0])
+		tab = slice_list(lines, seps[0] + 1, n)
+	else:
+		mk = slice_list(lines, 0, seps[0])
+		tab = slice_list(lines, seps[0] + 1, seps[1])
+		reqs = slice_list(lines, seps[1] + 1, n)
 
-    var st = St(
-        files: Map[String, Int](), clock: 0, vars: Map[String, Var](),
-        locked: Map[String, Bool](), explicit: Map[String, Rule](),
-        names: List[String](), pats: List[PRule](), phony: List[String](),
-        conds: List[Cond](), isopen: false, otargets: List[String](),
-        onormal: List[String](), oorder: List[String](), orecipe: List[Recipe](),
-        oline: 0, ophony: false, memo: Map[String, Bool](), stackp: List[String](),
-        dry: false, ran: 0
-    )
+	var st = St(
+		files: Map[String, Int](), clock: 0, vars: Map[String, Var](),
+		locked: Map[String, Bool](), explicit: Map[String, Rule](),
+		names: List[String](), pats: List[PRule](), phony: List[String](),
+		conds: List[Cond](), isopen: false, otargets: List[String](),
+		onormal: List[String](), oorder: List[String](), orecipe: List[Recipe](),
+		oline: 0, ophony: false, memo: Map[String, Bool](), stackp: List[String](),
+		dry: false, ran: 0
+	)
 
-    for l in tab:
-        w := words(l)
+	for l in tab:
+		w := words(l)
 
-        if w.length() == 2:
-            if m := w[1].parse_int():
-                if m >= 0:
-                    st.files[w[0].clone()] = m
-                    if m > st.clock:
-                        st.clock = m
+		if w.length() == 2:
+			if m := w[1].parse_int():
+				if m >= 0:
+					st.files[w[0].clone()] = m
+					if m > st.clock:
+						st.clock = m
 
-    for rq in reqs:
-        if rq.trim() != "" and not rq.trim().starts_with("#"):
-            out("> " + rq.trim_end())
-            handle(var st, mk, rq.clone())
+	for rq in reqs:
+		if rq.trim() != "" and not rq.trim().starts_with("#"):
+			out("> " + rq.trim_end())
+			handle(var st, mk, rq.clone())
 
-    return 0
+	return 0

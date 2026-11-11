@@ -1,7 +1,8 @@
 import (
-	insertion_sort from "./src/main.ms",
 	check, ints, lists from "@std/test/property.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
+
+	insertion_sort from "./src/main.ms",
 )
 
 // Each property runs on 100 generated lists. A failure prints a shrunk counterexample and a seed.

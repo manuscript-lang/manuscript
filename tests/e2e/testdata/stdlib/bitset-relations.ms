@@ -1,6 +1,6 @@
 import (
 	BitSet from "@std/collections/bitset.ms",
-	expect_equal, expect_true, expect_false from "@std/test/test.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 test "bitset predicates agree with algebra for unequal and trailing zero words":

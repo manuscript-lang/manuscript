@@ -3,6 +3,10 @@
 // OUT keeps the generated sources; MS picks the compiler; SKIP_LLVM=1 skips the release build; SKIP_RUST=1 skips the Rust builds (CARGO picks cargo).
 // Generated Manuscript and Go source contains many braces; `q` writes them as ‹ and › so the generator reads as source.
 import (
+	arguments, set_environment from "@std/os/env.ms",
+	create_directory, remove, temporary from "@std/os/fs.ms",
+	SeededRandom, seeded from "@std/random.ms",
+
 	absolute,
 	env,
 	fail,
@@ -12,9 +16,6 @@ import (
 	run_in,
 	usage,
 	write_text from "./lib.ms",
-	create_directory, remove, temporary from "@std/os/fs.ms",
-	arguments, set_environment from "@std/os/env.ms",
-	SeededRandom, seeded from "@std/random.ms",
 )
 
 fn q(text: String) String:

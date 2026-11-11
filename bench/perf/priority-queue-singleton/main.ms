@@ -1,9 +1,9 @@
 import (
 	Deque from "@std/collections/deque.ms",
-	Queue, PriorityQueue from "@std/collections/queue.ms",
+	PriorityQueue, Queue from "@std/collections/queue.ms",
 	arguments from "@std/os/env.ms",
-	monotonic from "@std/time.ms",
 	keep from "@std/test/bench.ms",
+	monotonic from "@std/time.ms",
 )
 
 fn main() Unit:

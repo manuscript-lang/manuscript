@@ -1,7 +1,8 @@
 import (
-	keep, measure from "@std/test/bench.ms",
-	words from "./src/harness.ms",
 	StringBuilder from "@std/string.ms",
+	keep, measure from "@std/test/bench.ms",
+
+	words from "./src/harness.ms",
 )
 
 bench "string.append_builder":

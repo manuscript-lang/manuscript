@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_fault, expect_contains from "@std/test/test.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
+	expect_contains, expect_equal, expect_fault from "@std/test/test.ms",
 )
 
 test "bound list mutators copy named string inputs without consuming callers":

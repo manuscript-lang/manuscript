@@ -1,4 +1,5 @@
 import (
+	Bytes from "@std/bytes.ms",
 	Crc64,
 	Crc64Polynomial,
 	MapHash,
@@ -7,7 +8,6 @@ import (
 	fnv1_64,
 	fnv1a32,
 	fnv1a64 from "@std/crypto/hash.ms",
-	Bytes from "@std/bytes.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
 )
 

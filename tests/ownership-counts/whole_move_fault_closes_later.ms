@@ -3,10 +3,9 @@
 // expect-stdout: waited: true
 // A guarded task faults after moving one resource: the cleanup stack still closes the binding registered after it.
 import (
-	stdout from "@std/io/io.ms",
-	Closeable from "@std/core.ms",
-	panic from "@std/core.ms",
 	promise from "@std/concurrency/promise.ms",
+	Closeable, panic from "@std/core.ms",
+	stdout from "@std/io/io.ms",
 )
 
 type Door:

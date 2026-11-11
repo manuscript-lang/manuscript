@@ -1,6 +1,6 @@
 import (
-	keep, measure from "@std/test/bench.ms",
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
+	keep, measure from "@std/test/bench.ms",
 )
 
 bench "promise.spawn_wait_all_1000":

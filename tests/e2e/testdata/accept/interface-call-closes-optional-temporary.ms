@@ -1,7 +1,7 @@
 import (
 	Closeable from "@std/core.ms",
 	append_file, read_file, temporary, write_file from "@std/os/fs.ms",
-	expect_equal, expect_some, expect_fault from "@std/test/test.ms",
+	expect_equal, expect_fault, expect_some from "@std/test/test.ms",
 )
 
 type Resource:

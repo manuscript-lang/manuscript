@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
 	Closeable from "@std/core.ms",
 	read_file, temporary, write_file from "@std/os/fs.ms",
+	expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
 )
 
 type Counter:

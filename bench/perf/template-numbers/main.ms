@@ -1,7 +1,7 @@
 import (
-	compile from "@std/text/template.ms",
 	parse from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
+	compile from "@std/text/template.ms",
 )
 
 // Arguments: left JSON number, right JSON number, comparison, repetitions.

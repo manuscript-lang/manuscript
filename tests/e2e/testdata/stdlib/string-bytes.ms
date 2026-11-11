@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_false from "@std/test/test.ms",
-	from_scalars, StringBuilder from "@std/string.ms",
 	Bytes, BytesBuilder, values from "@std/bytes.ms",
+	StringBuilder, from_scalars from "@std/string.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
 )
 
 test "Unicode scalar indexing differs from byte length":

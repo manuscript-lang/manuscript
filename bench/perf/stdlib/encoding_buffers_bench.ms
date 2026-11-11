@@ -1,11 +1,11 @@
 import (
-	base64_encode,
-	base32_encode,
-	Base32Options,
-	base32_decode,
-	ascii85_encode,
-	ascii85_decode from "@std/data/encoding.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	Base32Options,
+	ascii85_decode,
+	ascii85_encode,
+	base32_decode,
+	base32_encode,
+	base64_encode from "@std/data/encoding.ms",
 	keep, measure from "@std/test/bench.ms",
 	expect_equal from "@std/test/test.ms",
 )

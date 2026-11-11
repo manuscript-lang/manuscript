@@ -1,11 +1,11 @@
 import (
 	panic from "@std/core.ms",
 	bit_and,
+	bit_not,
 	bit_or,
 	bit_xor,
-	bit_not,
-	shift_left,
 	count_ones,
+	shift_left,
 	trailing_zeros from "@std/math/math.ms",
 )
 
@@ -42,7 +42,6 @@ impl BitSet:
 	// Reports whether the index is a member; out-of-range indexes are not members.
 	fn contains(index: Int) Bool:
 		if index < 0 or index / 64 >= self.words.length(): return false
-
 		return bit_and(self.words[index / 64], shift_left(1, index % 64)) != 0
 
 	// Returns the number of members.

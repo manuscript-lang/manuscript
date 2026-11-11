@@ -1,12 +1,15 @@
 import (
-	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
-	headers, HttpMethod, buffered, upgrade from "@std/net/http.ms",
+	HttpClientOptions,
+	HttpExchange,
+	HttpMethod,
+	HttpServerOptions,
+	buffered,
+	headers,
+	upgrade from "@std/net/http.ms",
 	http_client, serve, web_socket from "@std/net/net.ms",
-	HttpExchange from "@std/net/http.ms",
-	HttpServerOptions from "@std/net/http.ms",
-	HttpClientOptions from "@std/net/http.ms",
 	TlsOptions from "@std/net/tls.ms",
-	WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms",
+	WebSocketKind, WebSocketMessage, WebSocketOptions from "@std/net/websocket.ms",
+	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
 fn echo(var exchange: HttpExchange) Unit!:

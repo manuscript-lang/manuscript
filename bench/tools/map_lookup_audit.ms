@@ -1,8 +1,9 @@
 // Longer paired trials for one flagged case from set-empty-relations/maps-control.ms.
 import (
-	capture, ensure_directory, finish, invalid, write_text from "./lib.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
+
+	capture, ensure_directory, finish, invalid, write_text from "./lib.ms",
 )
 
 fn run(args: List[String]) String!:

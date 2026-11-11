@@ -46,7 +46,6 @@ fn first_body(log: String) Unit!:
 
 fn events(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
-
 	return ""
 
 test "a generic adapter forwards a resource through Result.get once":

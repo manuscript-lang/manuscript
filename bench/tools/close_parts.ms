@@ -3,15 +3,16 @@
 // the linked binaries must be byte for byte the same. Prints one line per project and exits 1 on a difference.
 // Usage: ms run bench/tools/close_parts.ms -- BASE_MS HEAD_MS
 import (
-	absolute, run_in, usage from "./lib.ms",
-	copy,
+	arguments from "@std/os/env.ms",
 	CopyOptions,
-	glob,
 	GlobOptions,
+	copy,
+	glob,
 	read_file,
 	remove,
 	temporary from "@std/os/fs.ms",
-	arguments from "@std/os/env.ms",
+
+	absolute, run_in, usage from "./lib.ms",
 )
 
 fn same_bytes(a: String, b: String) Bool:

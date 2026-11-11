@@ -30,8 +30,8 @@
 // expect-stdout: close a2
 // A resource field moves out of an owned record: the new owner closes it once, and the record closes only the other fields, last declared first.
 import (
-	stdout from "@std/io/io.ms",
 	Closeable from "@std/core.ms",
+	stdout from "@std/io/io.ms",
 )
 
 type Door:

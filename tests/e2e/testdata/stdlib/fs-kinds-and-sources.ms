@@ -1,5 +1,6 @@
 import (
-	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+	ReadStream from "@std/io/io.ms",
+	collect from "@std/io/streams.ms",
 	DirectoryEntry,
 	FileKind,
 	OpenMode,
@@ -13,8 +14,7 @@ import (
 	temporary,
 	write_atomic,
 	write_file from "@std/os/fs.ms",
-	ReadStream from "@std/io/io.ms",
-	collect from "@std/io/streams.ms",
+	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
 )
 
 test "whole-file writes take text or bytes and complete through promises":

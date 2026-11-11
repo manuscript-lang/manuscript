@@ -1,6 +1,6 @@
 import (
+	BigInt, from_int from "@std/math/math.ms",
 	expect_equal from "@std/test/test.ms",
-	from_int, BigInt from "@std/math/math.ms",
 )
 
 test "zero shifts have zero result bits at every nonnegative count":

@@ -1,15 +1,15 @@
 import (
+	Bytes from "@std/bytes.ms",
 	HashAlgorithm,
 	public_key_der,
+	rsa_decrypt,
+	rsa_encrypt,
 	rsa_generate,
 	rsa_sign,
-	rsa_verify,
 	rsa_sign_pss,
-	rsa_verify_pss,
-	rsa_encrypt,
-	rsa_decrypt from "@std/crypto.ms",
-	Bytes from "@std/bytes.ms",
-	expect_equal, expect_true, expect_false from "@std/test/test.ms",
+	rsa_verify,
+	rsa_verify_pss from "@std/crypto.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 fn widened_sign(key: Bytes) Bytes!:

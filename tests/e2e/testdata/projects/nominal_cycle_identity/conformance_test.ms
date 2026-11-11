@@ -1,8 +1,9 @@
 import (
-	exercise from "./outer.ms",
-	exercise_shared from "./shared.ms",
 	read_file, remove, temporary_directory, temporary_root from "@std/os/fs.ms",
 	expect_equal from "@std/test/test.ms",
+
+	exercise from "./outer.ms",
+	exercise_shared from "./shared.ms",
 )
 
 test "same display names keep nested resource cleanup":

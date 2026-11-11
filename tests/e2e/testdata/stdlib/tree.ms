@@ -1,12 +1,12 @@
 import (
+	panic from "@std/core.ms",
+	create_directory, temporary, write_file from "@std/os/fs.ms",
 	FileTree,
 	MemoryTree,
-	memory_tree,
+	WalkEntry,
 	host_tree,
-	walk,
-	WalkEntry from "@std/os/tree.ms",
-	create_directory, write_file, temporary from "@std/os/fs.ms",
-	panic from "@std/core.ms",
+	memory_tree,
+	walk from "@std/os/tree.ms",
 	expect_ok from "@std/test/test.ms",
 )
 

@@ -1,6 +1,6 @@
 import (
-	adler32, crc32, Adler32, Crc32 from "@std/data/checksum.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	Adler32, Crc32, adler32, crc32 from "@std/data/checksum.ms",
 	CompressionFormat, compress from "@std/io/archive.ms",
 	expect_equal from "@std/test/test.ms",
 )

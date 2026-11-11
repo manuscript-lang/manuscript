@@ -1,7 +1,7 @@
 import (
 	Closeable, panic from "@std/core.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
-	expect_equal, expect_contains, expect_fault from "@std/test/test.ms",
+	expect_contains, expect_equal, expect_fault from "@std/test/test.ms",
 )
 
 type Door:

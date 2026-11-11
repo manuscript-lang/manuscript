@@ -1,6 +1,6 @@
 import (
+	max, min from "@std/math/math.ms",
 	expect_equal, expect_false from "@std/test/test.ms",
-	min, max from "@std/math/math.ms",
 )
 
 test "min max and clamp on Int and the sized integers":

@@ -1,6 +1,7 @@
 import (
-	median_interval, summarize from "./call_candidates_pairs.ms",
 	expect_equal from "@std/test/test.ms",
+
+	median_interval, summarize from "./call_candidates_pairs.ms",
 )
 
 test "median intervals use binomial ranks and retain ties":

@@ -1,23 +1,24 @@
 // Fetch-style HTTP client implemented in Manuscript over `@std/net/http.ms` and `@std/data/json.ms`.
 import (
 	Bytes from "@std/bytes.ms",
+	Promise, owned_task from "@std/concurrency/promise.ms",
 	Closeable, Data from "@std/core.ms",
+	JsonOptions, parse, stringify from "@std/data/json.ms",
 	HttpClient,
 	HttpClientOptions,
-	NativeHttpClient,
 	HttpHeaders,
 	HttpMethod,
 	HttpResponseMetadata,
-	StreamingResponse,
+	NativeHttpClient,
 	RawResponse,
+	StreamingResponse,
 	headers from "@std/net/http.ms",
-	parse, stringify, JsonOptions from "@std/data/json.ms",
 	Network, http_client from "@std/net/net.ms",
 	TlsOptions from "@std/net/tls.ms",
-	Duration, Instant, seconds, monotonic from "@std/time.ms",
+	Duration, Instant, monotonic, seconds from "@std/time.ms",
+
 	msstd_http_client_request_bytes,
 	msstd_http_client_share from "@std/internal/http.ms",
-	Promise, owned_task from "@std/concurrency/promise.ms",
 )
 
 // The request body: empty, text, raw bytes, or JSON text; `fetch` derives a default `Content-Type` from the case.
@@ -87,7 +88,6 @@ impl FetchResponse:
 	// Decodes the body as UTF-8.
 	fn text() String!:
 		if text := self.body.decode_utf8(): return ok(text)
-
 		return error(Error("fetch: body is not valid UTF-8", kind: "EBADMSG"))
 
 	// Decodes the body as JSON into `T`, as in `try response.json[User]()`; use `JsonValue` for untyped data.
@@ -98,7 +98,6 @@ impl FetchResponse:
 	// Succeeds when the status is 200 through 299 and otherwise returns `Status`, so `try response.check_status()` rejects error responses.
 	fn check_status() Unit!:
 		if self.ok(): return ok(unit)
-
 		return error(
 			Error(
 				"fetch: unexpected status {self.head.status}", kind: "EIO",
@@ -154,7 +153,6 @@ fn drain(body: RawResponse, options: FetchOptions, started: Instant) FetchRespon
 fn read_failure(cause: Error, options: FetchOptions, started: Instant) Error:
 	if expired(options.timeout, started):
 		return Error("HTTP: operation timed out", kind: "ETIMEDOUT")
-
 	return cause.clone()
 
 type Outgoing:
@@ -163,12 +161,10 @@ type Outgoing:
 
 fn limit_exceeded(limit: Int?, total: Int) Bool:
 	if max := limit: return total > max
-
 	return false
 
 fn expired(timeout: Duration?, started: Instant) Bool:
 	if limit := timeout: return monotonic().difference(started).compare(limit) >= 0
-
 	return false
 
 // Copies the caller's headers and adds a default `Content-Type` for the body.

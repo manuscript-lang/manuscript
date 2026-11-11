@@ -4,6 +4,12 @@
 //        ms run bench/tools/web_bench.ms -- fetch [SECONDS]  Manuscript's fetch and Go's net/http client against one Go file server
 // Environment: MS, GO, SERVER_CPUS (0,1), LOAD_CPUS (2,3), MS_THREADS (2). Without taskset or with fewer than 4 CPUs nothing is pinned.
 import (
+	arguments from "@std/os/env.ms",
+	CopyOptions, copy, create_directory, list, temporary from "@std/os/fs.ms",
+	SpawnOptions, Stdio, Subprocess, spawn from "@std/os/process.ms",
+	milliseconds, sleep from "@std/time.ms",
+
+	Ran,
 	absolute,
 	build_go,
 	build_ms,
@@ -11,16 +17,12 @@ import (
 	env,
 	fail,
 	fixed,
+	invalid,
 	must,
 	platform,
 	read_text,
 	usage,
 	write_text from "./lib.ms",
-	Ran, invalid from "./lib.ms",
-	SpawnOptions, Stdio, Subprocess, spawn from "@std/os/process.ms",
-	arguments from "@std/os/env.ms",
-	copy, CopyOptions, create_directory, list, temporary from "@std/os/fs.ms",
-	milliseconds, sleep from "@std/time.ms",
 )
 
 fn say(text: String) Unit:
@@ -32,7 +34,6 @@ fn tail(text: String) String:
 // The command line with CPU pinning when `cpus` is set.
 fn pinned(cpus: String, argv: List[String]) List[String]:
 	if cpus == "": return argv.clone()
-
 	return ["taskset", "-c", cpus].concat(argv)
 
 // Runs `argv` after raising the open-file limit, as the shell scripts did.

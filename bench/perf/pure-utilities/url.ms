@@ -1,8 +1,8 @@
 import (
+	stdout from "@std/io/io.ms",
+	decode_component, encode_component, parse from "@std/net/url.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
-	stdout from "@std/io/io.ms",
-	parse, encode_component, decode_component from "@std/net/url.ms",
 )
 
 fn main() Int:

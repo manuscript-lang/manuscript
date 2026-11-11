@@ -1,19 +1,18 @@
 import (
-	RetryPolicy,
-	retry,
-	rate_limiter,
-	RateLimiter,
 	CircuitBreaker,
 	CircuitError,
+	RateLimiter,
+	RetryPolicy,
+	Throttle,
 	map_concurrent,
-	Throttle from "@std/concurrency/flow.ms",
-	expect_equal, expect_true, expect_error, expect_ok from "@std/test/test.ms",
-	Duration, milliseconds, sleep, monotonic from "@std/time.ms",
+	rate_limiter,
+	retry from "@std/concurrency/flow.ms",
+	expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
+	Duration, milliseconds, monotonic, sleep from "@std/time.ms",
 )
 
 fn flaky(attempt: Int) Int!String:
 	if attempt < 3: return error("try again")
-
 	return ok(attempt)
 
 fn never_retry(failure: String) Bool:

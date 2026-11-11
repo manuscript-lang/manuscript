@@ -1,7 +1,7 @@
 import (
+	Bytes from "@std/bytes.ms",
 	ReadStream, Source from "@std/io/io.ms",
 	from_bytes from "@std/io/streams.ms",
-	Bytes from "@std/bytes.ms",
 )
 
 // A reader over `text` in chunks of `chunk` bytes, so line and scalar boundaries fall inside reads.

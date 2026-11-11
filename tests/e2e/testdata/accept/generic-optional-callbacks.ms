@@ -1,4 +1,4 @@
-import expect_true, expect_false, expect_equal, expect_fault from "@std/test/test.ms"
+import expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms"
 
 fn every[T](values: List[T], predicate: fn(T) Bool) Bool:
 	return values.all(fn value: predicate(value))

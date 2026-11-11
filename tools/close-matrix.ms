@@ -9,11 +9,12 @@
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/close-matrix.ms [-- name-filter]
 import (
-	tool_ms from "./lib.ms",
+	stdout from "@std/io/io.ms",
+	arguments, working_directory from "@std/os/env.ms",
 	temporary, write_file from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
-	arguments, working_directory from "@std/os/env.ms",
-	stdout from "@std/io/io.ms",
+
+	tool_ms from "./lib.ms",
 )
 
 HEADER := """

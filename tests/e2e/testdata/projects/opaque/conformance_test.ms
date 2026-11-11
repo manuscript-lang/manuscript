@@ -1,15 +1,16 @@
 import (
-	expect_equal, expect_true, expect_false from "@std/test/test.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+
 	Approved,
 	Counter,
 	Mode,
 	approve,
-	entity,
-	nonce_of,
 	counter,
+	entity,
+	level,
+	nonce_of,
 	safe,
-	wild,
-	level from "./gate.ms",
+	wild from "./gate.ms",
 )
 
 fn show[T](value: T) String:

@@ -1,8 +1,8 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	promise from "@std/concurrency/promise.ms",
 	Closeable from "@std/core.ms",
-	append_file, remove, temporary_directory, read_file from "@std/os/fs.ms",
+	append_file, read_file, remove, temporary_directory from "@std/os/fs.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 type Door:

@@ -1,9 +1,10 @@
 import (
-	keep, measure from "@std/test/bench.ms",
-	words from "./src/harness.ms",
-	base64_encode, base64_decode, hex_encode from "@std/data/encoding.ms",
-	sha256 from "@std/crypto.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	sha256 from "@std/crypto.ms",
+	base64_decode, base64_encode, hex_encode from "@std/data/encoding.ms",
+	keep, measure from "@std/test/bench.ms",
+
+	words from "./src/harness.ms",
 )
 
 fn build_packed() Bytes:
@@ -22,7 +23,6 @@ bench "encoding.base64_decode":
 
 	fn work() Result[Unit, Error]:
 		if b := base64_decode(b64): return keep(b.length())
-
 		return keep(0)
 
 	try measure(blob.length(), work)

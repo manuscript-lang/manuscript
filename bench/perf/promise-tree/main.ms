@@ -1,12 +1,11 @@
 import (
-	promise, Promise, wait_all from "@std/concurrency/promise.ms",
+	Promise, promise, wait_all from "@std/concurrency/promise.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
 )
 
 fn fib(n: Int) Int:
 	if n < 2: return n
-
 	return fib(n - 1) + fib(n - 2)
 
 // promise-per-level fib: spawn one half as a promise, compute other inline

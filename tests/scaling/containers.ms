@@ -2,11 +2,11 @@
 // size is the first argument. Each phase prints `<name> <nanoseconds>`; the gate compares the same phase at two
 // sizes, so a phase that should be linear cannot silently become quadratic.
 import (
+	SortedMap from "@std/collections/sorted.ms",
 	stdout from "@std/io/io.ms",
-	Instant, monotonic from "@std/time.ms",
 	arguments from "@std/os/env.ms",
 	StringBuilder from "@std/string.ms",
-	SortedMap from "@std/collections/sorted.ms",
+	Instant, monotonic from "@std/time.ms",
 )
 
 fn say(text: String) Unit:

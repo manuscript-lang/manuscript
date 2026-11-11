@@ -1,5 +1,5 @@
 import (
-	parse, JsonValue, JsonOptions from "@std/data/json.ms",
+	JsonOptions, JsonValue, parse from "@std/data/json.ms",
 	expect_contains, expect_equal, expect_error from "@std/test/test.ms",
 )
 

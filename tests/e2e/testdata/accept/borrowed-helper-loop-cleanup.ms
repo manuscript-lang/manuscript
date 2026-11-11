@@ -17,7 +17,6 @@ fn first[T](rows: List[List[T]]) List[T]:
 
 fn logged(path: String) String:
 	if bytes := read_file(path).wait(): return bytes.decode_utf8().get("")
-
 	return ""
 
 fn break_borrowed(log: String) Unit!:

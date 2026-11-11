@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_ok, expect_true from "@std/test/test.ms",
 	spawn from "@std/os/process.ms",
+	expect_equal, expect_ok, expect_true from "@std/test/test.ms",
 	milliseconds, monotonic from "@std/time.ms",
 )
 

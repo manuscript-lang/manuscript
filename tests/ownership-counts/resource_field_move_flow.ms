@@ -31,8 +31,8 @@
 // expect-stdout: close b1
 // A resource field moves out of an owned record: the new owner closes it once, and the record closes only the other fields, last declared first.
 import (
-	stdout from "@std/io/io.ms",
 	Closeable from "@std/core.ms",
+	stdout from "@std/io/io.ms",
 )
 
 type Door:
@@ -54,7 +54,6 @@ fn say(s: String) Unit:
 
 fn check(fail: Bool) Int!Oops:
 	if fail: return error(Oops("no"))
-
 	return ok(1)
 
 fn after_move(r: Room, fail: Bool) List[Door]!Oops:

@@ -234,12 +234,27 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
     Ok(result)
 }
 
-/// Merges each run of two or more adjacent top-level imports (nothing but
-/// whitespace between them) into one grouped `import (...)` statement, one
-/// `names from "path"` clause per line. A lone import keeps its own form.
+/// Import section of a module path: public standard library, standard-library
+/// internals, then everything else.
+fn import_section(path: &str) -> u8 {
+    if path.starts_with("\"@std/internal/") {
+        1
+    } else if path.starts_with("\"@std/") {
+        0
+    } else {
+        2
+    }
+}
+
+/// Rewrites each run of adjacent top-level imports (nothing but whitespace
+/// between them) into one canonical form: clauses merged per module, names
+/// sorted, clauses ordered by section (standard library, internals, other) and
+/// path, with a blank line between sections. A single clause that fits on a
+/// line is a bare `import names from "path"`; anything else is a grouped
+/// `import (...)` with one `names from "path"` clause per line. An import with
+/// a comment, inside or after it, stays as written.
 fn group_imports(source: &str, tokens: &[Token]) -> Option<String> {
     let text = |t: &Token| &source[t.lo as usize..t.hi as usize];
-    // (start, end, clauses) for each import statement.
     type Clause<'a> = (Vec<&'a str>, &'a str);
     let mut statements: Vec<(usize, usize, Vec<Clause>)> = Vec::new();
     let mut i = 0;
@@ -258,7 +273,10 @@ fn group_imports(source: &str, tokens: &[Token]) -> Option<String> {
         let mut at = i + 1;
         while at < end {
             let t = &tokens[at];
-            if t.kind == Tok::Name && text(t) == "from" && at + 1 < end {
+            if t.kind == Tok::Name
+                && text(t) == "from"
+                && tokens.get(at + 1).is_some_and(|n| n.kind == Tok::String)
+            {
                 clauses.push((std::mem::take(&mut names), text(&tokens[at + 1])));
                 at += 1;
             } else if t.kind == Tok::Name {
@@ -267,13 +285,18 @@ fn group_imports(source: &str, tokens: &[Token]) -> Option<String> {
             at += 1;
         }
         let last = &tokens[end - 1];
-        statements.push((tokens[i].lo as usize, last.hi as usize, clauses));
+        let (lo, hi) = (tokens[i].lo as usize, last.hi as usize);
+        if !source[lo..hi].contains("//") {
+            statements.push((lo, hi, clauses));
+        } else {
+            // A commented import splits the runs around it.
+            statements.push((lo, hi, Vec::new()));
+        }
         i = end;
     }
     let mut out = String::new();
     let mut copied = 0;
     let mut k = 0;
-    let mut changed = false;
     while k < statements.len() {
         let mut run = k + 1;
         while run < statements.len()
@@ -283,34 +306,66 @@ fn group_imports(source: &str, tokens: &[Token]) -> Option<String> {
         {
             run += 1;
         }
-        if run - k >= 2 {
-            out.push_str(&source[copied..statements[k].0]);
-            out.push_str("import (\n");
+        let (start, end) = (statements[k].0, statements[run - 1].1);
+        let commented = statements[k..run].iter().any(|s| s.2.is_empty());
+        if !commented {
+            let mut merged: Vec<(&str, Vec<&str>)> = Vec::new();
             for (names, path) in statements[k..run].iter().flat_map(|s| &s.2) {
-                let flat = format!("    {} from {path},", names.join(", "));
-                if flat.chars().count() <= WIDTH {
-                    out.push_str(&flat);
-                    out.push('\n');
-                    continue;
-                }
-                // A clause too wide for a line puts one name on each line.
-                for (n, name) in names.iter().enumerate() {
-                    let tail = if n + 1 == names.len() {
-                        format!(" from {path}")
-                    } else {
-                        String::new()
-                    };
-                    out.push_str(&format!("    {name}{tail},\n"));
+                match merged.iter_mut().find(|(p, _)| p == path) {
+                    Some((_, all)) => all.extend(names),
+                    None => merged.push((path, names.clone())),
                 }
             }
-            out.push(')');
-            copied = statements[run - 1].1;
-            changed = true;
+            for (_, names) in &mut merged {
+                names.sort_unstable();
+                names.dedup();
+            }
+            merged.sort_by_key(|(path, _)| (import_section(path), *path));
+            let rendered = render_imports(&merged);
+            if source[start..end] != rendered {
+                out.push_str(&source[copied..start]);
+                out.push_str(&rendered);
+                copied = end;
+            }
         }
         k = run;
     }
+    if copied == 0 {
+        return None;
+    }
     out.push_str(&source[copied..]);
-    changed.then_some(out)
+    Some(out)
+}
+
+fn render_imports(merged: &[(&str, Vec<&str>)]) -> String {
+    if let [(path, names)] = merged {
+        let flat = format!("import {} from {path}", names.join(", "));
+        if flat.chars().count() <= WIDTH {
+            return flat;
+        }
+        let rows: String = names.iter().map(|name| format!("    {name},\n")).collect();
+        return format!("import (\n{rows}) from {path}");
+    }
+    let mut out = String::from("import (\n");
+    for (path, names) in merged {
+        let flat = format!("    {} from {path},", names.join(", "));
+        if flat.chars().count() <= WIDTH {
+            out.push_str(&flat);
+            out.push('\n');
+            continue;
+        }
+        // A clause too wide for a line puts one name on each line.
+        for (i, name) in names.iter().enumerate() {
+            let tail = if i + 1 == names.len() {
+                format!(" from {path}")
+            } else {
+                String::new()
+            };
+            out.push_str(&format!("    {name}{tail},\n"));
+        }
+    }
+    out.push(')');
+    out
 }
 
 /// A bare import list wider than the line wraps into the parenthesized form,
@@ -643,7 +698,9 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
                 }
                 if paragraph_block(previous)
                     || paragraph_block(current)
-                    || (guard_statement(previous) && !guard_statement(current))
+                    || (guard_statement(previous)
+                        && !guard_statement(current)
+                        && !(body.len() == 2 && matches!(current.kind, StmtKind::Return(_))))
                     || (!matches!(previous.kind, StmtKind::Bind { .. })
                         && matches!(current.kind, StmtKind::Bind { .. }))
                     || self.leading_comment(line)
@@ -681,6 +738,16 @@ fn paragraph_breaks(module: &Module, lines: &[String]) -> HashSet<usize> {
         let (a, b) = (groups.get(&top_level[i - 1]), groups.get(&top_level[i]));
         if a.is_none() || a != b {
             p.before(top_level[i]);
+        }
+    }
+    // Clauses of a grouped import are separated by section.
+    for pair in module.imports.windows(2) {
+        let (a, b) = (&pair[0], &pair[1]);
+        if a.pos == b.pos
+            && a.clause != b.clause
+            && import_section(&format!("\"{}", a.path)) != import_section(&format!("\"{}", b.path))
+        {
+            p.before(b.clause.line as usize);
         }
     }
     for d in &module.decls {

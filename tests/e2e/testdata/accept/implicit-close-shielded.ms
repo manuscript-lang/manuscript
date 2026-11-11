@@ -1,7 +1,7 @@
 import (
+	PromiseOptions, promise from "@std/concurrency/promise.ms",
 	Closeable, panic from "@std/core.ms",
 	read_file, temporary, write_file from "@std/os/fs.ms",
-	promise, PromiseOptions from "@std/concurrency/promise.ms",
 	expect_equal,
 	expect_error,
 	expect_fault,

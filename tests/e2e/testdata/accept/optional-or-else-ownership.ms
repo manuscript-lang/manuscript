@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 fn text(value: Int) String?: "dynamic optional payload {value}"
@@ -68,7 +68,6 @@ test "bound or_else preserves its captured Optional across calls":
 
 fn text_callback(fail: Bool) (fn() String?)!:
 	if fail: return error(Error("callback unavailable"))
-
 	return ok(unexpected_text)
 
 test "owned data receiver keeps its value across a later try":

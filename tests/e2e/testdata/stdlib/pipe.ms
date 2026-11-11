@@ -1,8 +1,8 @@
 import (
-	expect_equal, expect_false, expect_true, expect_error from "@std/test/test.ms",
-	Pipe, pipe, ReadStream, WriteStream from "@std/io/io.ms",
 	Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
-	sleep, milliseconds from "@std/time.ms",
+	Pipe, ReadStream, WriteStream, pipe from "@std/io/io.ms",
+	expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms",
+	milliseconds, sleep from "@std/time.ms",
 )
 
 fn drain(var input: ReadStream[Int]) List[Int]!:

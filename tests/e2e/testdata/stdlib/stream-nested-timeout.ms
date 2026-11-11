@@ -1,7 +1,7 @@
 import (
-	Source, ReadStream, pipe from "@std/io/io.ms",
-	milliseconds, monotonic, sleep from "@std/time.ms",
+	ReadStream, Source, pipe from "@std/io/io.ms",
 	expect_equal, expect_true from "@std/test/test.ms",
+	milliseconds, monotonic, sleep from "@std/time.ms",
 )
 
 // Forwards one read of `input`, itself bounded by `limit`.

@@ -1,18 +1,19 @@
 import (
-	send, recv, send_bytes, read_to_end from "./support/conn.ms",
-	expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
-	buffered,
-	headers,
+	Bytes from "@std/bytes.ms",
+	HttpClient,
+	HttpClientOptions,
+	HttpExchange,
 	HttpHeaders,
 	HttpMethod,
 	HttpRequest,
 	HttpResponse,
-	HttpExchange,
-	HttpClient,
-	HttpClientOptions,
-	HttpServerOptions from "@std/net/http.ms",
+	HttpServerOptions,
+	buffered,
+	headers from "@std/net/http.ms",
 	RequestOptions, http_client, request, serve from "@std/net/net.ms",
-	Bytes from "@std/bytes.ms",
+	expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
+
+	read_to_end, recv, send, send_bytes from "./support/conn.ms",
 )
 
 fn repeated_headers() HttpHeaders!:

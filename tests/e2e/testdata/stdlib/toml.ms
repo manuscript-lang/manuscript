@@ -1,6 +1,6 @@
 import (
+	TomlOptions, TomlValue, parse, stringify from "@std/data/toml.ms",
 	expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
-	parse, stringify, TomlValue, TomlOptions from "@std/data/toml.ms",
 	monotonic from "@std/time.ms",
 )
 

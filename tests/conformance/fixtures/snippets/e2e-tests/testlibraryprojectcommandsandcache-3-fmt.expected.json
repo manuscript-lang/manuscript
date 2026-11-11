@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tvalue from \"@lib/value.ms\",\n\tread_file from \"@std/os/fs.ms\",\n\tfail from \"@std/test/test.ms\",\n)\n\ntest \"root\":\n\tif value() != 3: return fail(\"bad value\")\n\n\tdata := try read_file(path: \"golden/input.txt\", max_bytes: 1024).wait()\n\tif data.length() != 7: return fail(\"wrong fixture size\")\n"
+    "fmt": "import (\n\tread_file from \"@std/os/fs.ms\",\n\tfail from \"@std/test/test.ms\",\n\n\tvalue from \"@lib/value.ms\",\n)\n\ntest \"root\":\n\tif value() != 3: return fail(\"bad value\")\n\n\tdata := try read_file(path: \"golden/input.txt\", max_bytes: 1024).wait()\n\tif data.length() != 7: return fail(\"wrong fixture size\")\n"
   }
 }

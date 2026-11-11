@@ -8,12 +8,13 @@
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/resource-matrix.ms [-- name-filter]
 import (
-	tool_ms from "./lib.ms",
+	JsonValue, parse from "@std/data/json.ms",
+	stdout from "@std/io/io.ms",
+	arguments, working_directory from "@std/os/env.ms",
 	temporary, write_file from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
-	arguments, working_directory from "@std/os/env.ms",
-	stdout from "@std/io/io.ms",
-	JsonValue, parse from "@std/data/json.ms",
+
+	tool_ms from "./lib.ms",
 )
 
 HEADER := """
@@ -71,12 +72,10 @@ fn map_setup() String: return "var items = Map[Int, Marker]()\n    items.add(1, 
 
 fn optional_setup(present: Bool) String:
 	if present: return "held: Marker? := mk(1)"
-
 	return "held: Marker? := none"
 
 fn result_setup(good: Bool) String:
 	if good: return "held: Marker!Error := ok(mk(1))"
-
 	return "held: Marker!Error := error(Error(\"x\"))"
 
 fn operations() List[Operation]:
@@ -200,7 +199,6 @@ fn mentions_parameter(signature: String, names: List[String]) Bool:
 
 fn field(entry: JsonValue, key: String) String:
 	if value := entry.get(key): return value.as_string().get("")
-
 	return ""
 
 // Every `Type.operation` of the standard type whose declaration mentions a type parameter.

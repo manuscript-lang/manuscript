@@ -1,7 +1,7 @@
 import (
 	parse from "@std/data/json.ms",
-	StringBuilder from "@std/string.ms",
 	arguments from "@std/os/env.ms",
+	StringBuilder from "@std/string.ms",
 	monotonic from "@std/time.ms",
 )
 

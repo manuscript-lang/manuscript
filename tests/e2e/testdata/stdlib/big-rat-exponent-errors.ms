@@ -1,5 +1,5 @@
 import (
-	parse_rat, parse_big_float from "@std/math/big.ms",
+	parse_big_float, parse_rat from "@std/math/big.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

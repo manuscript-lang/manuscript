@@ -1,12 +1,12 @@
 import (
+	HtmlAttribute,
+	HtmlNode,
+	HtmlOptions,
+	escape,
+	parse,
+	unescape from "@std/data/html.ms",
 	expect_equal, expect_false, expect_not_equal, fail from "@std/test/test.ms",
 	monotonic from "@std/time.ms",
-	escape,
-	unescape,
-	parse,
-	HtmlNode,
-	HtmlAttribute,
-	HtmlOptions from "@std/data/html.ms",
 )
 
 fn children(node: HtmlNode) List[HtmlNode]:

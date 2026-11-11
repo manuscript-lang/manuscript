@@ -1,6 +1,6 @@
 import (
+	PemBlock, encode_all, parse from "@std/data/pem.ms",
 	expect_equal, expect_ok, expect_true from "@std/test/test.ms",
-	parse, encode_all, PemBlock from "@std/data/pem.ms",
 )
 
 SAMPLE := "noise\n-----BEGIN NOTE-----\naGVsbG8gd29ybGQ=\n-----END NOTE-----\n-----BEGIN EMPTY-----\n-----END EMPTY-----\n"

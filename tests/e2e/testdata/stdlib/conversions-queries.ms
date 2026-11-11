@@ -18,7 +18,6 @@ fn require_lazy[T, E](value: T?, create: fn() E) T!E:
 
 fn success_only[T, E](value: T!E) T?:
 	if item := value: return item
-
 	return none
 
 fn reduce_map[K: Hashable, V, A: Clonable](

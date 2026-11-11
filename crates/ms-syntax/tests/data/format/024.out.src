@@ -1,8 +1,8 @@
 import (
 	TextError from "@std/core.ms",
-	stdout, stdin, read_line, ReadStream from "@std/io/io.ms",
-	clock, Instant from "@std/time.ms",
+	ReadStream, read_line, stdin, stdout from "@std/io/io.ms",
 	StringBuilder from "@std/string.ms",
+	Instant, clock from "@std/time.ms",
 )
 
 interface Counter:

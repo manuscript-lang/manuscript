@@ -1,6 +1,6 @@
 import (
-	Instant, monotonic from "@std/time.ms",
 	stdout from "@std/io/io.ms",
+	Instant, monotonic from "@std/time.ms",
 )
 
 fn measure(start: Int) Int:

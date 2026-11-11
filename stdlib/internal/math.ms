@@ -1,11 +1,11 @@
 import (
 	BigInt,
-	WordSum,
-	WordDifference,
-	WideProduct,
-	WordDivision,
 	BinaryFloatParts,
-	FloatParts
+	FloatParts,
+	WideProduct,
+	WordDifference,
+	WordDivision,
+	WordSum
 ) from "@std/math/math.ms"
 
 export extern fn msstd_math_add_with_carry(

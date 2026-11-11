@@ -1,7 +1,8 @@
 import (
+	YamlValue, parse, stringify from "@std/data/yaml.ms",
 	expect_not_equal, fail from "@std/test/test.ms",
-	parse, stringify, YamlValue from "@std/data/yaml.ms",
-	Rng, next, text, mutate from "./support/generator.ms",
+
+	Rng, mutate, next, text from "./support/generator.ms",
 )
 
 fn generated(var rng: Rng, depth: Int) YamlValue:

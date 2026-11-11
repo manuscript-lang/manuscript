@@ -2,7 +2,6 @@ import expect_equal from "@std/test/test.ms"
 
 fn describe(r: Int!) String:
 	if bad := r.error(): return "failed: {bad.message}"
-
 	return "ok"
 
 test "error is some for a failure and none for a success":

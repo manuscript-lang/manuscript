@@ -1,7 +1,7 @@
 import (
-    stdin, stdout from "@std/io.ms",
-    read_lines from "@std/streams.ms",
-    bit_and, bit_or, bit_xor, bit_not, shift_left, shift_right from "@std/math.ms",
+	stdin, stdout from "@std/io.ms",
+	bit_and, bit_not, bit_or, bit_xor, shift_left, shift_right from "@std/math.ms",
+	read_lines from "@std/streams.ms",
 )
 
 MASK32 := 4294967295
@@ -9,1183 +9,1182 @@ MOD32 := 4294967296
 HALF32 := 2147483648
 MEM_SIZE := 4096
 OP_NAMES := [
-    "mov", "add", "sub", "mul", "div", "mod", "and", "or", "xor", "shl", "shr", "sar",
-    "cmp", "neg", "not", "inc", "dec", "lea", "push", "pop", "jmp", "je", "jne", "jl",
-    "jle", "jg", "jge", "call", "ret", "in", "out", "outc", "halt", "nop"
+	"mov", "add", "sub", "mul", "div", "mod", "and", "or", "xor", "shl", "shr", "sar",
+	"cmp", "neg", "not", "inc", "dec", "lea", "push", "pop", "jmp", "je", "jne", "jl",
+	"jle", "jg", "jge", "call", "ret", "in", "out", "outc", "halt", "nop"
 ]
 REG_NAMES := ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "sp", "bp"]
 
 type Sym:
-    kind: Int
-    value: Int
-    expr: String
-    busy: Bool
+	kind: Int
+	value: Int
+	expr: String
+	busy: Bool
 
 type Opnd:
-    kind: Int
-    reg: Int
-    text: String
-    base: Int
-    val: Int
+	kind: Int
+	reg: Int
+	text: String
+	base: Int
+	val: Int
 
 type Ins:
-    op: Int
-    line: Int
-    nops: Int
-    a: Opnd
-    b: Opnd
+	op: Int
+	line: Int
+	nops: Int
+	a: Opnd
+	b: Opnd
 
 type Item:
-    line: Int
-    addr: Int
-    count: Int
-    text: String
+	line: Int
+	addr: Int
+	count: Int
+	text: String
 
 type Prog:
-    ins: List[Ins]
-    items: List[Item]
-    dsize: Int
-    in_data: Bool
-    budget: Int
+	ins: List[Ins]
+	items: List[Item]
+	dsize: Int
+	in_data: Bool
+	budget: Int
 
 type Ev:
-    good: Bool
-    val: Int
-    reg: Int
-    err: String
+	good: Bool
+	val: Int
+	reg: Int
+	err: String
 
 type StrRes:
-    good: Bool
-    bytes: List[Int]
+	good: Bool
+	bytes: List[Int]
 
 type Machine:
-    regs: List[Int]
-    mem: List[Int]
-    z: Bool
-    l: Bool
-    trap: String
-    halted: Bool
-    out: List[String]
-    last_nl: Bool
-    input: List[Int]
-    inpos: Int
-    chars: List[String]
+	regs: List[Int]
+	mem: List[Int]
+	z: Bool
+	l: Bool
+	trap: String
+	halted: Bool
+	out: List[String]
+	last_nl: Bool
+	input: List[Int]
+	inpos: Int
+	chars: List[String]
 
 fn wrap32(x: Int) Int:
-    u := bit_and(x, MASK32)
-    if u >= HALF32: return u - MOD32
+	u := bit_and(x, MASK32)
+	if u >= HALF32: return u - MOD32
 
-    return u
+	return u
 
 fn cc(c: String) Int:
-    return c.to_bytes().values()[0].to_int()
+	return c.to_bytes().values()[0].to_int()
 
 fn is_digit(k: Int) Bool:
-    return k >= 48 and k <= 57
+	return k >= 48 and k <= 57
 
 fn is_ident_start(k: Int) Bool:
-    return (k >= 65 and k <= 90) or (k >= 97 and k <= 122) or k == 95
+	return (k >= 65 and k <= 90) or (k >= 97 and k <= 122) or k == 95
 
 fn is_ident_char(k: Int) Bool:
-    return is_ident_start(k) or is_digit(k) or k == 46
+	return is_ident_start(k) or is_digit(k) or k == 46
 
 fn is_ws(k: Int) Bool:
-    return k == 32 or k == 9 or k == 13
+	return k == 32 or k == 9 or k == 13
 
 fn is_ident(s: String) Bool:
-    cs := s.chars()
-    n := cs.length()
-    if n == 0: return false
-    if not is_ident_start(cc(cs[0])): return false
+	cs := s.chars()
+	n := cs.length()
+	if n == 0: return false
+	if not is_ident_start(cc(cs[0])): return false
 
-    for i in 1..n:
-        if not is_ident_char(cc(cs[i])): return false
-    return true
+	for i in 1..n:
+		if not is_ident_char(cc(cs[i])): return false
+	return true
 
 fn reg_of(s: String) Int:
-    names := REG_NAMES
-    for i in 0..names.length():
-        if names[i] == s: return i
-    return -1
+	names := REG_NAMES
+	for i in 0..names.length():
+		if names[i] == s: return i
+	return -1
 
 fn join_range(cs: List[String], a: Int, b: Int) String:
-    var s = ""
-    var i = a
+	var s = ""
+	var i = a
 
-    while i < b:
-        s = s.concat(cs[i])
-        i += 1
+	while i < b:
+		s = s.concat(cs[i])
+		i += 1
 
-    return s
+	return s
 
 fn lit_len(cs: List[String], i: Int) Int:
-    n := cs.length()
-    if cs[i] != "'": return 0
-    if i + 2 < n and cs[i + 1] != "\\" and cs[i + 1] != "'" and cs[i + 2] == "'":
-        return 3
-    if i + 3 < n and cs[i + 1] == "\\" and cs[i + 3] == "'": return 4
+	n := cs.length()
+	if cs[i] != "'": return 0
+	if i + 2 < n and cs[i + 1] != "\\" and cs[i + 1] != "'" and cs[i + 2] == "'":
+		return 3
+	if i + 3 < n and cs[i + 1] == "\\" and cs[i + 3] == "'": return 4
 
-    return 0
+	return 0
 
 fn esc_value(c: String) Int:
-    if c == "n": return 10
-    if c == "t": return 9
-    if c == "0": return 0
-    if c == "\\": return 92
-    if c == "'": return 39
-    if c == "\"": return 34
+	if c == "n": return 10
+	if c == "t": return 9
+	if c == "0": return 0
+	if c == "\\": return 92
+	if c == "'": return 39
+	if c == "\"": return 34
 
-    return -1
+	return -1
 
 fn strip_comment(cs: List[String]) String:
-    n := cs.length()
-    var out = ""
-    var i = 0
+	n := cs.length()
+	var out = ""
+	var i = 0
 
-    while i < n:
-        c := cs[i]
-        if c == ";": break
+	while i < n:
+		c := cs[i]
+		if c == ";": break
 
-        if c == "\"":
-            var j = i + 1
+		if c == "\"":
+			var j = i + 1
 
-            while j < n:
-                if cs[j] == "\\" and j + 1 < n:
-                    j += 2
-                else if cs[j] == "\"":
-                    j += 1
-                    break
-                else:
-                    j += 1
+			while j < n:
+				if cs[j] == "\\" and j + 1 < n:
+					j += 2
+				else if cs[j] == "\"":
+					j += 1
+					break
+				else:
+					j += 1
 
-            out = out.concat(join_range(cs, i, j))
-            i = j
-            continue
+			out = out.concat(join_range(cs, i, j))
+			i = j
+			continue
 
-        L := lit_len(cs, i)
+		L := lit_len(cs, i)
 
-        if L > 0:
-            out = out.concat(join_range(cs, i, i + L))
-            i += L
-            continue
+		if L > 0:
+			out = out.concat(join_range(cs, i, i + L))
+			i += L
+			continue
 
-        out = out.concat(c)
-        i += 1
+		out = out.concat(c)
+		i += 1
 
-    return out
+	return out
 
 fn split_operands(s: String) List[String]:
-    var res = List[String]()
-    if s.trim() == "": return res
+	var res = List[String]()
+	if s.trim() == "": return res
 
-    cs := s.chars()
-    n := cs.length()
-    var depth = 0
-    var cur = ""
-    var i = 0
+	cs := s.chars()
+	n := cs.length()
+	var depth = 0
+	var cur = ""
+	var i = 0
 
-    while i < n:
-        L := lit_len(cs, i)
+	while i < n:
+		L := lit_len(cs, i)
 
-        if L > 0:
-            cur = cur.concat(join_range(cs, i, i + L))
-            i += L
-            continue
+		if L > 0:
+			cur = cur.concat(join_range(cs, i, i + L))
+			i += L
+			continue
 
-        c := cs[i]
-        if c == "[":
-            depth += 1
-        if c == "]":
-            depth -= 1
+		c := cs[i]
+		if c == "[":
+			depth += 1
+		if c == "]":
+			depth -= 1
 
-        if c == "," and depth == 0:
-            res.append(cur.trim())
-            cur = ""
-        else:
-            cur = cur.concat(c)
+		if c == "," and depth == 0:
+			res.append(cur.trim())
+			cur = ""
+		else:
+			cur = cur.concat(c)
 
-        i += 1
+		i += 1
 
-    res.append(cur.trim())
-    return res
+	res.append(cur.trim())
+	return res
 
 // Splits an expression into signed terms, each encoded as sign char + trimmed body.
 // Returns an empty list when the text is malformed.
 fn split_terms(cs: List[String]) List[String]:
-    var res = List[String]()
-    n := cs.length()
-    var sign = "+"
-    var sign_set = false
-    var cur = ""
-    var i = 0
+	var res = List[String]()
+	n := cs.length()
+	var sign = "+"
+	var sign_set = false
+	var cur = ""
+	var i = 0
 
-    while i < n:
-        L := lit_len(cs, i)
+	while i < n:
+		L := lit_len(cs, i)
 
-        if L > 0:
-            cur = cur.concat(join_range(cs, i, i + L))
-            i += L
-            continue
+		if L > 0:
+			cur = cur.concat(join_range(cs, i, i + L))
+			i += L
+			continue
 
-        c := cs[i]
+		c := cs[i]
 
-        if c == "+" or c == "-":
-            if cur.trim() == "":
-                if res.length() > 0 or sign_set: return List[String]()
+		if c == "+" or c == "-":
+			if cur.trim() == "":
+				if res.length() > 0 or sign_set: return List[String]()
 
-                sign = c.clone()
-                sign_set = true
-            else:
-                res.append(sign.concat(cur.trim()))
-                sign = c.clone()
-                cur = ""
-        else:
-            cur = cur.concat(c)
+				sign = c.clone()
+				sign_set = true
+			else:
+				res.append(sign.concat(cur.trim()))
+				sign = c.clone()
+				cur = ""
+		else:
+			cur = cur.concat(c)
 
-        i += 1
+		i += 1
 
-    if cur.trim() == "": return List[String]()
+	if cur.trim() == "": return List[String]()
 
-    res.append(sign.concat(cur.trim()))
-    return res
+	res.append(sign.concat(cur.trim()))
+	return res
 
 fn body_of(t: String) String:
-    cs := t.chars()
-    return join_range(cs, 1, cs.length())
+	cs := t.chars()
+	return join_range(cs, 1, cs.length())
 
 fn is_neg(t: String) Bool:
-    return t.get(0) == "-"
+	return t.get(0) == "-"
 
 fn mem_content(t: String) String:
-    cs := t.chars()
-    return join_range(cs, 1, cs.length() - 1)
+	cs := t.chars()
+	return join_range(cs, 1, cs.length() - 1)
 
 fn check_mem(t: String) Bool:
-    cs := t.chars()
-    n := cs.length()
-    if n < 2 or cs[n - 1] != "]": return false
+	cs := t.chars()
+	n := cs.length()
+	if n < 2 or cs[n - 1] != "]": return false
 
-    inner := join_range(cs, 1, n - 1)
-    if inner.contains("[") or inner.contains("]"): return false
+	inner := join_range(cs, 1, n - 1)
+	if inner.contains("[") or inner.contains("]"): return false
 
-    terms := split_terms(inner.chars())
-    if terms.length() == 0: return false
+	terms := split_terms(inner.chars())
+	if terms.length() == 0: return false
 
-    var regs = 0
+	var regs = 0
 
-    for term in terms:
-        if reg_of(body_of(term)) >= 0:
-            if is_neg(term): return false
+	for term in terms:
+		if reg_of(body_of(term)) >= 0:
+			if is_neg(term): return false
 
-            regs += 1
+			regs += 1
 
-    return regs <= 1
+	return regs <= 1
 
 fn parse_string(s: String) StrRes:
-    cs := s.chars()
-    n := cs.length()
-    var out = List[Int]()
-    if n < 2 or cs[0] != "\"" or cs[n - 1] != "\"":
-        return StrRes(good: false, bytes: out)
+	cs := s.chars()
+	n := cs.length()
+	var out = List[Int]()
+	if n < 2 or cs[0] != "\"" or cs[n - 1] != "\"":
+		return StrRes(good: false, bytes: out)
 
-    var i = 1
+	var i = 1
 
-    while i < n - 1:
-        c := cs[i]
-        if c == "\"": return StrRes(good: false, bytes: out)
+	while i < n - 1:
+		c := cs[i]
+		if c == "\"": return StrRes(good: false, bytes: out)
 
-        if c == "\\":
-            if i + 1 >= n - 1: return StrRes(good: false, bytes: out)
+		if c == "\\":
+			if i + 1 >= n - 1: return StrRes(good: false, bytes: out)
 
-            v := esc_value(cs[i + 1])
-            if v < 0: return StrRes(good: false, bytes: out)
+			v := esc_value(cs[i + 1])
+			if v < 0: return StrRes(good: false, bytes: out)
 
-            out.append(v)
-            i += 2
-        else:
-            for b in c.to_bytes().values():
-                out.append(b.to_int())
-            i += 1
+			out.append(v)
+			i += 2
+		else:
+			for b in c.to_bytes().values():
+				out.append(b.to_int())
+			i += 1
 
-    return StrRes(good: true, bytes: out)
+	return StrRes(good: true, bytes: out)
 
 fn parse_budget(s: String) Int:
-    cs := s.chars()
-    n := cs.length()
-    if n == 0 or n > 8: return -1
+	cs := s.chars()
+	n := cs.length()
+	if n == 0 or n > 8: return -1
 
-    var v = 0
+	var v = 0
 
-    for c in cs:
-        k := cc(c)
-        if not is_digit(k): return -1
+	for c in cs:
+		k := cc(c)
+		if not is_digit(k): return -1
 
-        v = v * 10 + (k - 48)
+		v = v * 10 + (k - 48)
 
-    if v < 1 or v > 10000000: return -1
+	if v < 1 or v > 10000000: return -1
 
-    return v
+	return v
 
 fn ev_ok(v: Int) Ev:
-    return Ev(good: true, val: v, reg: -1, err: "")
+	return Ev(good: true, val: v, reg: -1, err: "")
 
 fn ev_err(e: String) Ev:
-    return Ev(good: false, val: 0, reg: -1, err: e)
+	return Ev(good: false, val: 0, reg: -1, err: e)
 
 fn digit_val(k: Int, base: Int) Int:
-    if k >= 48 and k <= 57:
-        d := k - 48
-        if d < base: return d
+	if k >= 48 and k <= 57:
+		d := k - 48
+		if d < base: return d
 
-        return -1
+		return -1
 
-    if base == 16:
-        if k >= 97 and k <= 102: return k - 87
-        if k >= 65 and k <= 70: return k - 55
+	if base == 16:
+		if k >= 97 and k <= 102: return k - 87
+		if k >= 65 and k <= 70: return k - 55
 
-    return -1
+	return -1
 
 fn eval_number(body: String, ctx: String) Ev:
-    cs := body.chars()
-    n := cs.length()
-    var base = 10
-    var start = 0
+	cs := body.chars()
+	n := cs.length()
+	var base = 10
+	var start = 0
 
-    if n > 2 and cs[0] == "0" and cs[1] == "x":
-        base = 16
-        start = 2
-    else if n > 2 and cs[0] == "0" and cs[1] == "b":
-        base = 2
-        start = 2
+	if n > 2 and cs[0] == "0" and cs[1] == "x":
+		base = 16
+		start = 2
+	else if n > 2 and cs[0] == "0" and cs[1] == "b":
+		base = 2
+		start = 2
 
-    var v = 0
-    var i = start
+	var v = 0
+	var i = start
 
-    while i < n:
-        d := digit_val(cc(cs[i]), base)
-        if d < 0: return ev_err("invalid expression '{ctx}'")
+	while i < n:
+		d := digit_val(cc(cs[i]), base)
+		if d < 0: return ev_err("invalid expression '{ctx}'")
 
-        v = v * base + d
-        if v > MASK32:
-            v = MASK32 + 1
-        i += 1
+		v = v * base + d
+		if v > MASK32:
+			v = MASK32 + 1
+		i += 1
 
-    if v > MASK32: return ev_err("immediate out of range")
+	if v > MASK32: return ev_err("immediate out of range")
 
-    return ev_ok(wrap32(v))
+	return ev_ok(wrap32(v))
 
 fn eval_term(body: String, ctx: String, var syms: Map[String, Sym]) Ev:
-    cs := body.chars()
-    n := cs.length()
-    if n == 0: return ev_err("invalid expression '{ctx}'")
+	cs := body.chars()
+	n := cs.length()
+	if n == 0: return ev_err("invalid expression '{ctx}'")
 
-    k := cc(cs[0])
-    if is_digit(k): return eval_number(body, ctx)
+	k := cc(cs[0])
+	if is_digit(k): return eval_number(body, ctx)
 
-    if cs[0] == "'":
-        L := lit_len(cs, 0)
-        if L == 0 or L != n: return ev_err("invalid expression '{ctx}'")
+	if cs[0] == "'":
+		L := lit_len(cs, 0)
+		if L == 0 or L != n: return ev_err("invalid expression '{ctx}'")
 
-        var v = -1
-        if L == 3 and cc(cs[1]) < 128:
-            v = cc(cs[1])
-        if L == 4:
-            v = esc_value(cs[2])
-        if v < 0: return ev_err("invalid expression '{ctx}'")
+		var v = -1
+		if L == 3 and cc(cs[1]) < 128:
+			v = cc(cs[1])
+		if L == 4:
+			v = esc_value(cs[2])
+		if v < 0: return ev_err("invalid expression '{ctx}'")
 
-        return ev_ok(v)
+		return ev_ok(v)
 
-    if is_ident_start(k):
-        if not is_ident(body): return ev_err("invalid expression '{ctx}'")
+	if is_ident_start(k):
+		if not is_ident(body): return ev_err("invalid expression '{ctx}'")
 
-        if s := syms.get(body):
-            if s.kind == 2:
-                if s.busy: return ev_err("circular definition '{body}'")
+		if s := syms.get(body):
+			if s.kind == 2:
+				if s.busy: return ev_err("circular definition '{body}'")
 
-                e := s.expr.clone()
-                syms.remove(body.clone())
-                syms.add(
-                    body.clone(),
-                    Sym(
-                        kind: 2, value: 0, expr: e.clone(), busy: true
-                    )
-                )
+				e := s.expr.clone()
+				syms.remove(body.clone())
+				syms.add(
+					body.clone(),
+					Sym(
+						kind: 2, value: 0, expr: e.clone(), busy: true
+					)
+				)
 
-                r := eval_expr(e.clone(), var syms)
-                syms.remove(body.clone())
-                syms.add(body.clone(), Sym(kind: 2, value: 0, expr: e, busy: false))
-                return r
+				r := eval_expr(e.clone(), var syms)
+				syms.remove(body.clone())
+				syms.add(body.clone(), Sym(kind: 2, value: 0, expr: e, busy: false))
+				return r
 
-            return ev_ok(s.value)
+			return ev_ok(s.value)
 
-        return ev_err("undefined symbol '{body}'")
+		return ev_err("undefined symbol '{body}'")
 
-    return ev_err("invalid expression '{ctx}'")
+	return ev_err("invalid expression '{ctx}'")
 
 fn eval_expr(text: String, var syms: Map[String, Sym]) Ev:
-    t := text.trim()
-    terms := split_terms(t.chars())
-    if terms.length() == 0: return ev_err("invalid expression '{t}'")
+	t := text.trim()
+	terms := split_terms(t.chars())
+	if terms.length() == 0: return ev_err("invalid expression '{t}'")
 
-    var acc = 0
+	var acc = 0
 
-    for term in terms:
-        r := eval_term(body_of(term), t, var syms)
-        if not r.good: return r
+	for term in terms:
+		r := eval_term(body_of(term), t, var syms)
+		if not r.good: return r
 
-        if is_neg(term):
-            acc -= r.val
-        else:
-            acc += r.val
+		if is_neg(term):
+			acc -= r.val
+		else:
+			acc += r.val
 
-    return ev_ok(wrap32(acc))
+	return ev_ok(wrap32(acc))
 
 fn resolve_mem(t: String, var syms: Map[String, Sym]) Ev:
-    terms := split_terms(mem_content(t).chars())
-    var base = -1
-    var off = 0
+	terms := split_terms(mem_content(t).chars())
+	var base = -1
+	var off = 0
 
-    for term in terms:
-        body := body_of(term)
-        rr := reg_of(body)
+	for term in terms:
+		body := body_of(term)
+		rr := reg_of(body)
 
-        if rr >= 0:
-            base = rr
-        else:
-            r := eval_term(body.clone(), body, var syms)
-            if not r.good: return r
+		if rr >= 0:
+			base = rr
+		else:
+			r := eval_term(body.clone(), body, var syms)
+			if not r.good: return r
 
-            if is_neg(term):
-                off -= r.val
-            else:
-                off += r.val
+			if is_neg(term):
+				off -= r.val
+			else:
+				off += r.val
 
-    return Ev(good: true, val: wrap32(off), reg: base, err: "")
+	return Ev(good: true, val: wrap32(off), reg: base, err: "")
 
 fn opcode(w: String) Int:
-    names := OP_NAMES
-    for i in 0..names.length():
-        if names[i] == w: return i
-    if w == "jz": return 21
-    if w == "jnz": return 22
+	names := OP_NAMES
+	for i in 0..names.length():
+		if names[i] == w: return i
+	if w == "jz": return 21
+	if w == "jnz": return 22
 
-    return -1
+	return -1
 
 fn nops(op: Int) Int:
-    if op == 28 or op == 32 or op == 33: return 0
-    if (
-        (op >= 13 and op <= 16)
-        or op == 18
-        or op == 19
-        or (op >= 20 and op <= 27)
-        or op == 29
-        or op == 30
-        or op == 31
-    ):
-        return 1
+	if op == 28 or op == 32 or op == 33: return 0
+	if (
+		(op >= 13 and op <= 16)
+		or op == 18
+		or op == 19
+		or (op >= 20 and op <= 27)
+		or op == 29
+		or op == 30
+		or op == 31
+	):
+		return 1
 
-    return 2
+	return 2
 
 fn valid_classes(op: Int, k0: Int, k1: Int, want: Int) Bool:
-    if want == 0: return true
+	if want == 0: return true
 
-    if want == 1:
-        if op == 13 or op == 14 or op == 15 or op == 16 or op == 19 or op == 29:
-            return k0 == 1
-        if op == 18 or op == 30 or op == 31: return k0 == 1 or k0 == 2 or k0 == 3
+	if want == 1:
+		if op == 13 or op == 14 or op == 15 or op == 16 or op == 19 or op == 29:
+			return k0 == 1
+		if op == 18 or op == 30 or op == 31: return k0 == 1 or k0 == 2 or k0 == 3
 
-        return k0 == 2
+		return k0 == 2
 
-    if op == 0:
-        return (
-            (k0 == 1 and (k1 == 1 or k1 == 2 or k1 == 3))
-            or (k0 == 3 and (k1 == 1 or k1 == 2))
-        )
-    if op == 17: return k0 == 1 and k1 == 3
+	if op == 0:
+		return (
+			(k0 == 1 and (k1 == 1 or k1 == 2 or k1 == 3))
+			or (k0 == 3 and (k1 == 1 or k1 == 2))
+		)
+	if op == 17: return k0 == 1 and k1 == 3
 
-    return k0 == 1 and (k1 == 1 or k1 == 2 or k1 == 3)
+	return k0 == 1 and (k1 == 1 or k1 == 2 or k1 == 3)
 
 fn classify(t: String) Int:
-    if t.starts_with("["): return 3
-    if reg_of(t) >= 0: return 1
+	if t.starts_with("["): return 3
+	if reg_of(t) >= 0: return 1
 
-    return 2
+	return 2
 
 fn mk_opnd(t: String, k: Int) Opnd:
-    return Opnd(kind: k, reg: reg_of(t), text: t, base: -1, val: 0)
+	return Opnd(kind: k, reg: reg_of(t), text: t, base: -1, val: 0)
 
 fn empty_opnd() Opnd:
-    return Opnd(kind: 0, reg: -1, text: "", base: -1, val: 0)
+	return Opnd(kind: 0, reg: -1, text: "", base: -1, val: 0)
 
 fn define(var syms: Map[String, Sym], name: String, kind: Int, value: Int, expr: String) String:
-    if reg_of(name) >= 0: return "reserved name '{name}'"
-    if syms.contains(name): return "duplicate symbol '{name}'"
+	if reg_of(name) >= 0: return "reserved name '{name}'"
+	if syms.contains(name): return "duplicate symbol '{name}'"
 
-    syms.add(name, Sym(kind: kind, value: value, expr: expr, busy: false))
-    return ""
+	syms.add(name, Sym(kind: kind, value: value, expr: expr, busy: false))
+	return ""
 
 fn pass1_ins(var prog: Prog, lineno: Int, word: String, args: String) String:
-    if prog.in_data: return "instruction in data section"
+	if prog.in_data: return "instruction in data section"
 
-    op := opcode(word)
-    if op < 0: return "unknown mnemonic '{word}'"
+	op := opcode(word)
+	if op < 0: return "unknown mnemonic '{word}'"
 
-    ops := split_operands(args)
+	ops := split_operands(args)
 
-    for t in ops:
-        if t == "": return "invalid operand ''"
-        if t.starts_with("[") and not check_mem(t): return "invalid operand '{t}'"
+	for t in ops:
+		if t == "": return "invalid operand ''"
+		if t.starts_with("[") and not check_mem(t): return "invalid operand '{t}'"
 
-    want := nops(op)
-    if ops.length() != want: return "wrong number of operands for '{word}'"
+	want := nops(op)
+	if ops.length() != want: return "wrong number of operands for '{word}'"
 
-    var k0 = 0
-    var k1 = 0
-    var a = empty_opnd()
-    var b = empty_opnd()
+	var k0 = 0
+	var k1 = 0
+	var a = empty_opnd()
+	var b = empty_opnd()
 
-    if want >= 1:
-        t0 := ops[0]
-        k0 = classify(t0)
-        a = mk_opnd(t0.clone(), k0)
+	if want >= 1:
+		t0 := ops[0]
+		k0 = classify(t0)
+		a = mk_opnd(t0.clone(), k0)
 
-    if want == 2:
-        t1 := ops[1]
-        k1 = classify(t1)
-        b = mk_opnd(t1.clone(), k1)
+	if want == 2:
+		t1 := ops[1]
+		k1 = classify(t1)
+		b = mk_opnd(t1.clone(), k1)
 
-    if not valid_classes(op, k0, k1, want): return "invalid operands for '{word}'"
+	if not valid_classes(op, k0, k1, want): return "invalid operands for '{word}'"
 
-    prog.ins.append(Ins(op: op, line: lineno, nops: want, a: a, b: b))
-    return ""
+	prog.ins.append(Ins(op: op, line: lineno, nops: want, a: a, b: b))
+	return ""
 
 fn data_dir(
-    var syms: Map[String, Sym], var mem: List[Int], var prog: Prog, lineno: Int,
-    word: String, args: String
+	var syms: Map[String, Sym], var mem: List[Int], var prog: Prog, lineno: Int,
+	word: String, args: String
 ) String:
-    if word == ".word":
-        ops := split_operands(args)
-        if ops.length() == 0: return "wrong number of operands for '.word'"
-        if prog.dsize + ops.length() > MEM_SIZE: return "data section too large"
+	if word == ".word":
+		ops := split_operands(args)
+		if ops.length() == 0: return "wrong number of operands for '.word'"
+		if prog.dsize + ops.length() > MEM_SIZE: return "data section too large"
 
-        for t in ops:
-            prog.items.append(Item(line: lineno, addr: prog.dsize, count: 1, text: t))
-            prog.dsize += 1
+		for t in ops:
+			prog.items.append(Item(line: lineno, addr: prog.dsize, count: 1, text: t))
+			prog.dsize += 1
 
-        return ""
+		return ""
 
-    if word == ".ascii" or word == ".asciz":
-        sr := parse_string(args)
-        if not sr.good: return "invalid string"
+	if word == ".ascii" or word == ".asciz":
+		sr := parse_string(args)
+		if not sr.good: return "invalid string"
 
-        var bytes = sr.bytes.clone()
-        if word == ".asciz":
-            bytes.append(0)
-        if prog.dsize + bytes.length() > MEM_SIZE: return "data section too large"
+		var bytes = sr.bytes.clone()
+		if word == ".asciz":
+			bytes.append(0)
+		if prog.dsize + bytes.length() > MEM_SIZE: return "data section too large"
 
-        for b in bytes:
-            mem[prog.dsize] = b
-            prog.dsize += 1
+		for b in bytes:
+			mem[prog.dsize] = b
+			prog.dsize += 1
 
-        return ""
+		return ""
 
-    ops := split_operands(args)
-    if ops.length() != 1 and ops.length() != 2:
-        return "wrong number of operands for '.space'"
+	ops := split_operands(args)
+	if ops.length() != 1 and ops.length() != 2:
+		return "wrong number of operands for '.space'"
 
-    count_text := ops[0].clone()
-    r := eval_expr(count_text, var syms)
-    if not r.good: return r.err
-    if r.val < 0: return "invalid operand '{count_text}'"
-    if prog.dsize + r.val > MEM_SIZE: return "data section too large"
+	count_text := ops[0].clone()
+	r := eval_expr(count_text, var syms)
+	if not r.good: return r.err
+	if r.val < 0: return "invalid operand '{count_text}'"
+	if prog.dsize + r.val > MEM_SIZE: return "data section too large"
 
-    var fill = "0"
-    if ops.length() == 2:
-        fill = ops[1].clone()
-    prog.items.append(Item(line: lineno, addr: prog.dsize, count: r.val, text: fill))
-    prog.dsize += r.val
-    return ""
+	var fill = "0"
+	if ops.length() == 2:
+		fill = ops[1].clone()
+	prog.items.append(Item(line: lineno, addr: prog.dsize, count: r.val, text: fill))
+	prog.dsize += r.val
+	return ""
 
 fn pass1_dir(
-    var syms: Map[String, Sym], var mem: List[Int], var prog: Prog, lineno: Int,
-    word: String, args: String
+	var syms: Map[String, Sym], var mem: List[Int], var prog: Prog, lineno: Int,
+	word: String, args: String
 ) String:
-    if word == ".text":
-        if args != "": return "invalid operand '{args}'"
+	if word == ".text":
+		if args != "": return "invalid operand '{args}'"
 
-        prog.in_data = false
-        return ""
+		prog.in_data = false
+		return ""
 
-    if word == ".data":
-        if args != "": return "invalid operand '{args}'"
+	if word == ".data":
+		if args != "": return "invalid operand '{args}'"
 
-        prog.in_data = true
-        return ""
+		prog.in_data = true
+		return ""
 
-    if word == ".equ":
-        ops := split_operands(args)
-        if ops.length() != 2: return "wrong number of operands for '.equ'"
+	if word == ".equ":
+		ops := split_operands(args)
+		if ops.length() != 2: return "wrong number of operands for '.equ'"
 
-        name := ops[0]
-        if not is_ident(name): return "invalid operand '{name}'"
+		name := ops[0]
+		if not is_ident(name): return "invalid operand '{name}'"
 
-        return define(var syms, name.clone(), 2, 0, ops[1].clone())
+		return define(var syms, name.clone(), 2, 0, ops[1].clone())
 
-    if word == ".budget":
-        v := parse_budget(args)
-        if v < 0: return "invalid operand '{args}'"
+	if word == ".budget":
+		v := parse_budget(args)
+		if v < 0: return "invalid operand '{args}'"
 
-        prog.budget = v
-        return ""
+		prog.budget = v
+		return ""
 
-    if word == ".word" or word == ".ascii" or word == ".asciz" or word == ".space":
-        if not prog.in_data: return "data directive in text section"
+	if word == ".word" or word == ".ascii" or word == ".asciz" or word == ".space":
+		if not prog.in_data: return "data directive in text section"
+		return data_dir(var syms, var mem, var prog, lineno, word, args)
 
-        return data_dir(var syms, var mem, var prog, lineno, word, args)
-
-    return "unknown directive '{word}'"
+	return "unknown directive '{word}'"
 
 fn pass1_line(
-    var syms: Map[String, Sym], var mem: List[Int], var prog: Prog, lineno: Int,
-    line: String
+	var syms: Map[String, Sym], var mem: List[Int], var prog: Prog, lineno: Int,
+	line: String
 ) String:
-    s := strip_comment(line.chars())
-    cs := s.chars()
-    n := cs.length()
-    var i = 0
-    var going = true
+	s := strip_comment(line.chars())
+	cs := s.chars()
+	n := cs.length()
+	var i = 0
+	var going = true
 
-    while going:
-        going = false
-        while i < n and is_ws(cc(cs[i])):
-            i += 1
+	while going:
+		going = false
+		while i < n and is_ws(cc(cs[i])):
+			i += 1
 
-        if i < n and is_ident_start(cc(cs[i])):
-            var j = i + 1
-            while j < n and is_ident_char(cc(cs[j])):
-                j += 1
+		if i < n and is_ident_start(cc(cs[i])):
+			var j = i + 1
+			while j < n and is_ident_char(cc(cs[j])):
+				j += 1
 
-            if j < n and cs[j] == ":":
-                name := join_range(cs, i, j)
-                var e = ""
+			if j < n and cs[j] == ":":
+				name := join_range(cs, i, j)
+				var e = ""
 
-                if prog.in_data:
-                    e = define(var syms, name, 1, prog.dsize, "")
-                else:
-                    e = define(var syms, name, 0, prog.ins.length(), "")
+				if prog.in_data:
+					e = define(var syms, name, 1, prog.dsize, "")
+				else:
+					e = define(var syms, name, 0, prog.ins.length(), "")
 
-                if e != "": return e
+				if e != "": return e
 
-                i = j + 1
-                going = true
+				i = j + 1
+				going = true
 
-    rest := join_range(cs, i, n).trim()
-    if rest == "": return ""
+	rest := join_range(cs, i, n).trim()
+	if rest == "": return ""
 
-    rcs := rest.chars()
-    rn := rcs.length()
-    var w = 0
-    while w < rn and not is_ws(cc(rcs[w])):
-        w += 1
+	rcs := rest.chars()
+	rn := rcs.length()
+	var w = 0
+	while w < rn and not is_ws(cc(rcs[w])):
+		w += 1
 
-    word := join_range(rcs, 0, w)
-    args := join_range(rcs, w, rn).trim()
-    if word.starts_with("."):
-        return pass1_dir(var syms, var mem, var prog, lineno, word, args)
+	word := join_range(rcs, 0, w)
+	args := join_range(rcs, w, rn).trim()
+	if word.starts_with("."):
+		return pass1_dir(var syms, var mem, var prog, lineno, word, args)
 
-    return pass1_ins(var prog, lineno, word, args)
+	return pass1_ins(var prog, lineno, word, args)
 
 fn pass2_item(it: Item, var syms: Map[String, Sym], var mem: List[Int]) String:
-    r := eval_expr(it.text, var syms)
-    if not r.good: return r.err
+	r := eval_expr(it.text, var syms)
+	if not r.good: return r.err
 
-    var k = 0
+	var k = 0
 
-    while k < it.count:
-        mem[it.addr + k] = r.val
-        k += 1
+	while k < it.count:
+		mem[it.addr + k] = r.val
+		k += 1
 
-    return ""
+	return ""
 
 fn resolve_op(o: Opnd, var syms: Map[String, Sym]) Ev:
-    if o.kind == 2: return eval_expr(o.text, var syms)
-    if o.kind == 3: return resolve_mem(o.text, var syms)
+	if o.kind == 2: return eval_expr(o.text, var syms)
+	if o.kind == 3: return resolve_mem(o.text, var syms)
 
-    return ev_ok(0)
+	return ev_ok(0)
 
 fn pass2_ins(ins: Ins, var syms: Map[String, Sym], n: Int, var code: List[Ins]) String:
-    ra := resolve_op(ins.a, var syms)
-    if not ra.good: return ra.err
+	ra := resolve_op(ins.a, var syms)
+	if not ra.good: return ra.err
 
-    rb := resolve_op(ins.b, var syms)
-    if not rb.good: return rb.err
+	rb := resolve_op(ins.b, var syms)
+	if not rb.good: return rb.err
 
-    a := Opnd(
-        kind: ins.a.kind, reg: ins.a.reg, text: ins.a.text, base: ra.reg, val: ra.val
-    )
-    b := Opnd(
-        kind: ins.b.kind, reg: ins.b.reg, text: ins.b.text, base: rb.reg, val: rb.val
-    )
-    if ins.op >= 20 and ins.op <= 27:
-        if a.val < 0 or a.val >= n: return "invalid jump target"
-    code.append(Ins(op: ins.op, line: ins.line, nops: ins.nops, a: a, b: b))
-    return ""
+	a := Opnd(
+		kind: ins.a.kind, reg: ins.a.reg, text: ins.a.text, base: ra.reg, val: ra.val
+	)
+	b := Opnd(
+		kind: ins.b.kind, reg: ins.b.reg, text: ins.b.text, base: rb.reg, val: rb.val
+	)
+	if ins.op >= 20 and ins.op <= 27:
+		if a.val < 0 or a.val >= n: return "invalid jump target"
+	code.append(Ins(op: ins.op, line: ins.line, nops: ins.nops, a: a, b: b))
+	return ""
 
 fn char_of(code: Int) String:
-    b := "A".to_bytes().with_value(0, code.to_uint8().get(0))
-    return b.decode_utf8().get("?")
+	b := "A".to_bytes().with_value(0, code.to_uint8().get(0))
+	return b.decode_utf8().get("?")
 
 fn rd(var m: Machine, o: Opnd) Int:
-    if o.kind == 1: return m.regs[o.reg]
-    if o.kind == 2: return o.val
+	if o.kind == 1: return m.regs[o.reg]
+	if o.kind == 2: return o.val
 
-    addr := ea(var m, o)
-    if m.trap != "": return 0
+	addr := ea(var m, o)
+	if m.trap != "": return 0
 
-    return m.mem[addr]
+	return m.mem[addr]
 
 fn ea(var m: Machine, o: Opnd) Int:
-    var base = 0
-    if o.base >= 0:
-        base = m.regs[o.base]
+	var base = 0
+	if o.base >= 0:
+		base = m.regs[o.base]
 
-    addr := wrap32(base + o.val)
-    if addr < 0 or addr >= MEM_SIZE:
-        m.trap = "memory access out of range: {addr}"
-    return addr
+	addr := wrap32(base + o.val)
+	if addr < 0 or addr >= MEM_SIZE:
+		m.trap = "memory access out of range: {addr}"
+	return addr
 
 fn wr(var m: Machine, o: Opnd, v: Int) Unit:
-    if o.kind == 1:
-        m.regs[o.reg] = v
-        return
+	if o.kind == 1:
+		m.regs[o.reg] = v
+		return
 
-    addr := ea(var m, o)
-    if m.trap != "": return
+	addr := ea(var m, o)
+	if m.trap != "": return
 
-    m.mem[addr] = v
+	m.mem[addr] = v
 
 fn exec(var m: Machine, ins: Ins, pc: Int) Int:
-    a := ins.a
-    b := ins.b
-    op := ins.op
+	a := ins.a
+	b := ins.b
+	op := ins.op
 
-    if op == 0:
-        v := rd(var m, b)
-        if m.trap != "": return pc
+	if op == 0:
+		v := rd(var m, b)
+		if m.trap != "": return pc
 
-        wr(var m, a, v)
-        return pc + 1
+		wr(var m, a, v)
+		return pc + 1
 
-    if op >= 1 and op <= 11:
-        s := rd(var m, b)
-        if m.trap != "": return pc
+	if op >= 1 and op <= 11:
+		s := rd(var m, b)
+		if m.trap != "": return pc
 
-        d := m.regs[a.reg]
-        var r = 0
+		d := m.regs[a.reg]
+		var r = 0
 
-        if op == 1:
-            r = wrap32(d + s)
-        else if op == 2:
-            r = wrap32(d - s)
-        else if op == 3:
-            r = wrap32(d * s)
-        else if op == 4 or op == 5:
-            if s == 0:
-                m.trap = "division by zero"
-                return pc
+		if op == 1:
+			r = wrap32(d + s)
+		else if op == 2:
+			r = wrap32(d - s)
+		else if op == 3:
+			r = wrap32(d * s)
+		else if op == 4 or op == 5:
+			if s == 0:
+				m.trap = "division by zero"
+				return pc
 
-            if op == 4:
-                r = wrap32(d / s)
-            else:
-                r = wrap32(d % s)
-        else if op == 6:
-            r = bit_and(d, s)
-        else if op == 7:
-            r = bit_or(d, s)
-        else if op == 8:
-            r = bit_xor(d, s)
-        else if op == 9:
-            r = wrap32(shift_left(d, bit_and(s, 31)))
-        else if op == 10:
-            r = wrap32(shift_right(bit_and(d, MASK32), bit_and(s, 31)))
-        else:
-            r = wrap32(shift_right(d, bit_and(s, 31)))
+			if op == 4:
+				r = wrap32(d / s)
+			else:
+				r = wrap32(d % s)
+		else if op == 6:
+			r = bit_and(d, s)
+		else if op == 7:
+			r = bit_or(d, s)
+		else if op == 8:
+			r = bit_xor(d, s)
+		else if op == 9:
+			r = wrap32(shift_left(d, bit_and(s, 31)))
+		else if op == 10:
+			r = wrap32(shift_right(bit_and(d, MASK32), bit_and(s, 31)))
+		else:
+			r = wrap32(shift_right(d, bit_and(s, 31)))
 
-        m.regs[a.reg] = r
-        return pc + 1
+		m.regs[a.reg] = r
+		return pc + 1
 
-    if op == 12:
-        x := m.regs[a.reg]
-        y := rd(var m, b)
-        if m.trap != "": return pc
+	if op == 12:
+		x := m.regs[a.reg]
+		y := rd(var m, b)
+		if m.trap != "": return pc
 
-        m.z = x == y
-        m.l = x < y
-        return pc + 1
+		m.z = x == y
+		m.l = x < y
+		return pc + 1
 
-    if op >= 13 and op <= 16:
-        d := m.regs[a.reg]
-        var r = 0
+	if op >= 13 and op <= 16:
+		d := m.regs[a.reg]
+		var r = 0
 
-        if op == 13:
-            r = wrap32(0 - d)
-        else if op == 14:
-            r = bit_not(d)
-        else if op == 15:
-            r = wrap32(d + 1)
-        else:
-            r = wrap32(d - 1)
+		if op == 13:
+			r = wrap32(0 - d)
+		else if op == 14:
+			r = bit_not(d)
+		else if op == 15:
+			r = wrap32(d + 1)
+		else:
+			r = wrap32(d - 1)
 
-        m.regs[a.reg] = r
-        return pc + 1
+		m.regs[a.reg] = r
+		return pc + 1
 
-    if op == 17:
-        var base = 0
-        if b.base >= 0:
-            base = m.regs[b.base]
-        m.regs[a.reg] = wrap32(base + b.val)
-        return pc + 1
+	if op == 17:
+		var base = 0
+		if b.base >= 0:
+			base = m.regs[b.base]
+		m.regs[a.reg] = wrap32(base + b.val)
+		return pc + 1
 
-    if op == 18:
-        v := rd(var m, a)
-        if m.trap != "": return pc
+	if op == 18:
+		v := rd(var m, a)
+		if m.trap != "": return pc
 
-        sp := m.regs[8]
+		sp := m.regs[8]
 
-        if sp <= 0:
-            m.trap = "stack overflow"
-            return pc
+		if sp <= 0:
+			m.trap = "stack overflow"
+			return pc
 
-        ns := sp - 1
-        m.regs[8] = ns
+		ns := sp - 1
+		m.regs[8] = ns
 
-        if ns < 0 or ns >= MEM_SIZE:
-            m.trap = "memory access out of range: {ns}"
-            return pc
+		if ns < 0 or ns >= MEM_SIZE:
+			m.trap = "memory access out of range: {ns}"
+			return pc
 
-        m.mem[ns] = v
-        return pc + 1
+		m.mem[ns] = v
+		return pc + 1
 
-    if op == 19:
-        sp := m.regs[8]
+	if op == 19:
+		sp := m.regs[8]
 
-        if sp >= MEM_SIZE:
-            m.trap = "stack underflow"
-            return pc
+		if sp >= MEM_SIZE:
+			m.trap = "stack underflow"
+			return pc
 
-        if sp < 0:
-            m.trap = "memory access out of range: {sp}"
-            return pc
+		if sp < 0:
+			m.trap = "memory access out of range: {sp}"
+			return pc
 
-        v := m.mem[sp]
-        m.regs[8] = sp + 1
-        m.regs[a.reg] = v
-        return pc + 1
+		v := m.mem[sp]
+		m.regs[8] = sp + 1
+		m.regs[a.reg] = v
+		return pc + 1
 
-    if op >= 20 and op <= 27:
-        if op == 27:
-            sp := m.regs[8]
+	if op >= 20 and op <= 27:
+		if op == 27:
+			sp := m.regs[8]
 
-            if sp <= 0:
-                m.trap = "stack overflow"
-                return pc
+			if sp <= 0:
+				m.trap = "stack overflow"
+				return pc
 
-            ns := sp - 1
-            m.regs[8] = ns
+			ns := sp - 1
+			m.regs[8] = ns
 
-            if ns < 0 or ns >= MEM_SIZE:
-                m.trap = "memory access out of range: {ns}"
-                return pc
+			if ns < 0 or ns >= MEM_SIZE:
+				m.trap = "memory access out of range: {ns}"
+				return pc
 
-            m.mem[ns] = pc + 1
-            return a.val
+			m.mem[ns] = pc + 1
+			return a.val
 
-        var take = false
+		var take = false
 
-        if op == 20:
-            take = true
-        else if op == 21:
-            take = m.z
-        else if op == 22:
-            take = not m.z
-        else if op == 23:
-            take = m.l
-        else if op == 24:
-            take = m.l or m.z
-        else if op == 25:
-            take = (not m.l) and (not m.z)
-        else:
-            take = not m.l
+		if op == 20:
+			take = true
+		else if op == 21:
+			take = m.z
+		else if op == 22:
+			take = not m.z
+		else if op == 23:
+			take = m.l
+		else if op == 24:
+			take = m.l or m.z
+		else if op == 25:
+			take = (not m.l) and (not m.z)
+		else:
+			take = not m.l
 
-        if take: return a.val
+		if take: return a.val
 
-        return pc + 1
+		return pc + 1
 
-    if op == 28:
-        sp := m.regs[8]
+	if op == 28:
+		sp := m.regs[8]
 
-        if sp >= MEM_SIZE:
-            m.trap = "stack underflow"
-            return pc
+		if sp >= MEM_SIZE:
+			m.trap = "stack underflow"
+			return pc
 
-        if sp < 0:
-            m.trap = "memory access out of range: {sp}"
-            return pc
+		if sp < 0:
+			m.trap = "memory access out of range: {sp}"
+			return pc
 
-        v := m.mem[sp]
-        m.regs[8] = sp + 1
-        return v
+		v := m.mem[sp]
+		m.regs[8] = sp + 1
+		return v
 
-    if op == 29:
-        if m.inpos >= m.input.length():
-            m.trap = "input exhausted"
-            return pc
+	if op == 29:
+		if m.inpos >= m.input.length():
+			m.trap = "input exhausted"
+			return pc
 
-        v := m.input[m.inpos]
-        m.inpos += 1
-        m.regs[a.reg] = v
-        return pc + 1
+		v := m.input[m.inpos]
+		m.inpos += 1
+		m.regs[a.reg] = v
+		return pc + 1
 
-    if op == 30:
-        v := rd(var m, a)
-        if m.trap != "": return pc
+	if op == 30:
+		v := rd(var m, a)
+		if m.trap != "": return pc
 
-        m.out.append("{v}\n")
-        m.last_nl = true
-        return pc + 1
+		m.out.append("{v}\n")
+		m.last_nl = true
+		return pc + 1
 
-    if op == 31:
-        v := rd(var m, a)
-        if m.trap != "": return pc
+	if op == 31:
+		v := rd(var m, a)
+		if m.trap != "": return pc
 
-        if v < 0 or v > 127:
-            m.trap = "invalid character"
-            return pc
+		if v < 0 or v > 127:
+			m.trap = "invalid character"
+			return pc
 
-        m.out.append(m.chars[v].clone())
-        m.last_nl = v == 10
-        return pc + 1
+		m.out.append(m.chars[v].clone())
+		m.last_nl = v == 10
+		return pc + 1
 
-    if op == 32:
-        m.halted = true
-        return pc
+	if op == 32:
+		m.halted = true
+		return pc
 
-    return pc + 1
+	return pc + 1
 
 fn input_value(tok: String) Int:
-    cs := tok.chars()
-    n := cs.length()
-    var start = 0
-    var neg = false
+	cs := tok.chars()
+	n := cs.length()
+	var start = 0
+	var neg = false
 
-    if n > 0 and cs[0] == "-":
-        neg = true
-        start = 1
+	if n > 0 and cs[0] == "-":
+		neg = true
+		start = 1
 
-    if start >= n: return 0
+	if start >= n: return 0
 
-    var u = 0
-    var i = start
+	var u = 0
+	var i = start
 
-    while i < n:
-        k := cc(cs[i])
-        if not is_digit(k): return 0
+	while i < n:
+		k := cc(cs[i])
+		if not is_digit(k): return 0
 
-        u = (u * 10 + (k - 48)) % MOD32
-        i += 1
+		u = (u * 10 + (k - 48)) % MOD32
+		i += 1
 
-    if neg: return wrap32(0 - u)
+	if neg: return wrap32(0 - u)
 
-    return wrap32(u)
+	return wrap32(u)
 
 fn is_valid_token(tok: String) Bool:
-    cs := tok.chars()
-    n := cs.length()
-    var start = 0
-    if n > 0 and cs[0] == "-":
-        start = 1
-    if start >= n: return false
+	cs := tok.chars()
+	n := cs.length()
+	var start = 0
+	if n > 0 and cs[0] == "-":
+		start = 1
+	if start >= n: return false
 
-    var i = start
+	var i = start
 
-    while i < n:
-        if not is_digit(cc(cs[i])): return false
+	while i < n:
+		if not is_digit(cc(cs[i])): return false
 
-        i += 1
+		i += 1
 
-    return true
+	return true
 
 fn strip_cr(l: String) String:
-    cs := l.chars()
-    n := cs.length()
-    if n > 0 and cc(cs[n - 1]) == 13: return join_range(cs, 0, n - 1)
+	cs := l.chars()
+	n := cs.length()
+	if n > 0 and cc(cs[n - 1]) == 13: return join_range(cs, 0, n - 1)
 
-    return l
+	return l
 
 fn parse_input_lines(lines: List[String]) List[Int]:
-    var res = List[Int]()
+	var res = List[Int]()
 
-    for l in lines:
-        var tok = ""
+	for l in lines:
+		var tok = ""
 
-        for c in l.chars():
-            if is_ws(cc(c)):
-                if tok != "" and is_valid_token(tok):
-                    res.append(input_value(tok))
-                tok = ""
-            else:
-                tok = tok.concat(c)
+		for c in l.chars():
+			if is_ws(cc(c)):
+				if tok != "" and is_valid_token(tok):
+					res.append(input_value(tok))
+				tok = ""
+			else:
+				tok = tok.concat(c)
 
-        if tok != "" and is_valid_token(tok):
-            res.append(input_value(tok))
+		if tok != "" and is_valid_token(tok):
+			res.append(input_value(tok))
 
-    return res
+	return res
 
 export fn main() Int:
-    raw := read_lines(stdin()).get()
-    var src = List[String]()
-    var inp = List[String]()
-    var seen_sep = false
+	raw := read_lines(stdin()).get()
+	var src = List[String]()
+	var inp = List[String]()
+	var seen_sep = false
 
-    for l in raw:
-        t := strip_cr(l)
+	for l in raw:
+		t := strip_cr(l)
 
-        if seen_sep:
-            inp.append(t)
-        else if t == "====":
-            seen_sep = true
-        else:
-            src.append(t)
+		if seen_sep:
+			inp.append(t)
+		else if t == "====":
+			seen_sep = true
+		else:
+			src.append(t)
 
-    var syms = Map[String, Sym]()
-    var mem = List[Int]()
-    for i in 0..MEM_SIZE:
-        mem.append(0)
+	var syms = Map[String, Sym]()
+	var mem = List[Int]()
+	for i in 0..MEM_SIZE:
+		mem.append(0)
 
-    var prog = Prog(
-        ins: List[Ins](), items: List[Item](), dsize: 0, in_data: false, budget: 100000
-    )
-    var ln = 0
+	var prog = Prog(
+		ins: List[Ins](), items: List[Item](), dsize: 0, in_data: false, budget: 100000
+	)
+	var ln = 0
 
-    for l in src:
-        ln += 1
+	for l in src:
+		ln += 1
 
-        e := pass1_line(var syms, var mem, var prog, ln, l)
+		e := pass1_line(var syms, var mem, var prog, ln, l)
 
-        if e != "":
-            stdout().write("asm error line {ln}: {e}\n").get()
-            return 0
+		if e != "":
+			stdout().write("asm error line {ln}: {e}\n").get()
+			return 0
 
-    var code = List[Ins]()
-    n := prog.ins.length()
-    var ii = 0
-    var di = 0
+	var code = List[Ins]()
+	n := prog.ins.length()
+	var ii = 0
+	var di = 0
 
-    while ii < n or di < prog.items.length():
-        if (
-            di >= prog.items.length()
-            or (ii < n and prog.ins[ii].line < prog.items[di].line)
-        ):
-            ins := prog.ins[ii].clone()
-            e := pass2_ins(ins.clone(), var syms, n, var code)
+	while ii < n or di < prog.items.length():
+		if (
+			di >= prog.items.length()
+			or (ii < n and prog.ins[ii].line < prog.items[di].line)
+		):
+			ins := prog.ins[ii].clone()
+			e := pass2_ins(ins.clone(), var syms, n, var code)
 
-            if e != "":
-                stdout().write("asm error line {ins.line}: {e}\n").get()
-                return 0
+			if e != "":
+				stdout().write("asm error line {ins.line}: {e}\n").get()
+				return 0
 
-            ii += 1
-        else:
-            it := prog.items[di].clone()
-            e := pass2_item(it, var syms, var mem)
+			ii += 1
+		else:
+			it := prog.items[di].clone()
+			e := pass2_item(it, var syms, var mem)
 
-            if e != "":
-                stdout().write("asm error line {it.line}: {e}\n").get()
-                return 0
+			if e != "":
+				stdout().write("asm error line {it.line}: {e}\n").get()
+				return 0
 
-            di += 1
+			di += 1
 
-    var entry = 0
-    if s := syms.get("main"):
-        if s.kind == 0:
-            entry = s.value
+	var entry = 0
+	if s := syms.get("main"):
+		if s.kind == 0:
+			entry = s.value
 
-    var chars = List[String]()
-    for i in 0..128:
-        chars.append(char_of(i))
+	var chars = List[String]()
+	for i in 0..128:
+		chars.append(char_of(i))
 
-    var regs = List[Int]()
-    for i in 0..10:
-        regs.append(0)
-    regs[8] = MEM_SIZE
+	var regs = List[Int]()
+	for i in 0..10:
+		regs.append(0)
+	regs[8] = MEM_SIZE
 
-    var m = Machine(
-        regs: regs, mem: mem, z: false, l: false, trap: "", halted: false,
-        out: List[String](), last_nl: false, input: parse_input_lines(inp), inpos: 0,
-        chars: chars
-    )
-    var pc = entry
-    var steps = 0
-    var is_trap = false
-    var trap_msg = ""
-    var trap_pc = 0
-    var trap_line = "-"
-    var done = false
+	var m = Machine(
+		regs: regs, mem: mem, z: false, l: false, trap: "", halted: false,
+		out: List[String](), last_nl: false, input: parse_input_lines(inp), inpos: 0,
+		chars: chars
+	)
+	var pc = entry
+	var steps = 0
+	var is_trap = false
+	var trap_msg = ""
+	var trap_pc = 0
+	var trap_line = "-"
+	var done = false
 
-    while not done:
-        if pc < 0 or pc >= n:
-            is_trap = true
-            trap_msg = "pc out of range"
-            trap_pc = pc
-            trap_line = "-"
-            break
+	while not done:
+		if pc < 0 or pc >= n:
+			is_trap = true
+			trap_msg = "pc out of range"
+			trap_pc = pc
+			trap_line = "-"
+			break
 
-        ins := code[pc]
+		ins := code[pc]
 
-        if steps == prog.budget:
-            is_trap = true
-            trap_msg = "budget exceeded"
-            trap_pc = pc
-            trap_line = "{ins.line}"
-            break
+		if steps == prog.budget:
+			is_trap = true
+			trap_msg = "budget exceeded"
+			trap_pc = pc
+			trap_line = "{ins.line}"
+			break
 
-        next := exec(var m, ins, pc)
+		next := exec(var m, ins, pc)
 
-        if m.trap != "":
-            is_trap = true
-            trap_msg = m.trap
-            trap_pc = pc
-            trap_line = "{ins.line}"
-            break
+		if m.trap != "":
+			is_trap = true
+			trap_msg = m.trap
+			trap_pc = pc
+			trap_line = "{ins.line}"
+			break
 
-        steps += 1
-        if m.halted: break
+		steps += 1
+		if m.halted: break
 
-        pc = next
+		pc = next
 
-    var text = m.out.join("")
-    if m.out.length() > 0 and not m.last_nl:
-        text = text.concat("\n")
+	var text = m.out.join("")
+	if m.out.length() > 0 and not m.last_nl:
+		text = text.concat("\n")
 
-    if is_trap:
-        text = text.concat(
-            "-- trap: {trap_msg} (pc={trap_pc} line={trap_line}) after {steps} steps\n"
-        )
-    else:
-        text = text.concat("-- halted after {steps} steps\n")
+	if is_trap:
+		text = text.concat(
+			"-- trap: {trap_msg} (pc={trap_pc} line={trap_line}) after {steps} steps\n"
+		)
+	else:
+		text = text.concat("-- halted after {steps} steps\n")
 
-    names := REG_NAMES
-    var line = "regs:"
-    for i in 0..10:
-        line = line.concat(" {names[i]}={m.regs[i]}")
-    text = text.concat(line + "\n")
+	names := REG_NAMES
+	var line = "regs:"
+	for i in 0..10:
+		line = line.concat(" {names[i]}={m.regs[i]}")
+	text = text.concat(line + "\n")
 
-    var zb = 0
-    if m.z:
-        zb = 1
+	var zb = 0
+	if m.z:
+		zb = 1
 
-    var lb = 0
-    if m.l:
-        lb = 1
-    text = text.concat("flags: Z={zb} L={lb}\n")
-    stdout().write(text).get()
-    return 0
+	var lb = 0
+	if m.l:
+		lb = 1
+	text = text.concat("flags: Z={zb} L={lb}\n")
+	stdout().write(text).get()
+	return 0

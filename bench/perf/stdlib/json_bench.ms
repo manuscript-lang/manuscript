@@ -1,7 +1,7 @@
 import (
-	keep, measure from "@std/test/bench.ms",
+	JsonValue, parse, stringify from "@std/data/json.ms",
 	StringBuilder from "@std/string.ms",
-	parse, stringify, JsonValue from "@std/data/json.ms",
+	keep, measure from "@std/test/bench.ms",
 )
 
 fn json_doc(count: Int) String:
@@ -19,7 +19,6 @@ fn json_doc(count: Int) String:
 
 fn encoded_length(value: JsonValue) Int:
 	if text := stringify(value): return text.length()
-
 	return 0
 
 // Reads three nested fields of one row in place, without copying any subtree.
@@ -41,7 +40,6 @@ bench "json.parse":
 
 	fn work() Result[Unit, Error]:
 		if parse(doc).is_ok(): return keep(1)
-
 		return keep(0)
 
 	try measure(5000, work)
@@ -51,7 +49,6 @@ bench "json.roundtrip":
 
 	fn work() Result[Unit, Error]:
 		if v := parse(doc): return keep(encoded_length(v))
-
 		return keep(0)
 
 	try measure(5000, work)

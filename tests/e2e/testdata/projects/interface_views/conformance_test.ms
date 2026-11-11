@@ -1,8 +1,9 @@
 import (
+	expect_equal from "@std/test/test.ms",
+
 	invoke from "./domain.ms",
 	left from "./left.ms",
 	right from "./right.ms",
-	expect_equal from "@std/test/test.ms",
 )
 
 test "each module keeps its own view implementation":

@@ -1,7 +1,7 @@
 import (
 	Data from "@std/core.ms",
-	FileHandle from "@std/os/fs.ms",
 	stringify from "@std/data/json.ms",
+	FileHandle from "@std/os/fs.ms",
 )
 
 fn show[T: Data](value: T) String:

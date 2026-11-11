@@ -1,6 +1,7 @@
 import (
 	keep, measure from "@std/test/bench.ms",
-	ints, Point from "./src/harness.ms",
+
+	Point, ints from "./src/harness.ms",
 )
 
 // Index of the greatest key; `key` is a known lambda at every call site (see proposals/specialize-closure-args.md).

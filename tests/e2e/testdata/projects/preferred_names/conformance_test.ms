@@ -1,7 +1,8 @@
 import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+
 	Key from "./domain.ms",
-	first_run, first_add, first_remove, first_empty from "./first.ms",
+	first_add, first_empty, first_remove, first_run from "./first.ms",
 	second_run from "./second.ms",
 )
 

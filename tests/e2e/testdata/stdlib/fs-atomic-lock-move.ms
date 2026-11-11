@@ -1,5 +1,5 @@
 import (
-	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+	which from "@std/os/env.ms",
 	OpenMode,
 	chmod,
 	create_directory,
@@ -13,9 +13,9 @@ import (
 	temporary,
 	write_atomic,
 	write_file from "@std/os/fs.ms",
+	Os, os from "@std/os/system.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 	milliseconds from "@std/time.ms",
-	which from "@std/os/env.ms",
-	os, Os from "@std/os/system.ms",
 )
 
 fn text_of(path: String) String!:

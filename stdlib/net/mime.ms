@@ -1,7 +1,7 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	StringBuilder from "@std/string.ms",
 	ReadStream, Transform, through from "@std/io/io.ms",
+	StringBuilder from "@std/string.ms",
 )
 
 /*
@@ -195,7 +195,6 @@ fn unquote(raw: String) String?:
 
 fn is_token(value: String) Bool:
 	if value.is_empty(): return false
-
 	return not value.contains_any(" \t\"(),/:;<=>?@[\\]\{\}")
 
 fn quote_value(value: String) String:
@@ -413,7 +412,6 @@ impl Transform[Bytes, Part] for MultipartParts:
 
 	var fn finish(var out: List[Part]) Unit!:
 		if self.done: return ok(unit)
-
 		return error(Error("MIME: invalid multipart body", kind: "EBADMSG"))
 
 /*

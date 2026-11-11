@@ -35,7 +35,6 @@ test "callback inference retains captures and contextual metadata":
 	failure := with_result(
 		fn:
 			if true: return error(Error("expected"))
-
 			return ok(4)
 	)
 
@@ -65,7 +64,6 @@ test "later returns repair incomplete and convertible evidence":
 	cause := from_callback(
 		fn:
 			if false: return Failure(1)
-
 			return Failure(2)
 	)
 

@@ -1,8 +1,8 @@
 import (
-	parse, stringify from "@std/data/xml.ms",
 	panic from "@std/core.ms",
-	monotonic from "@std/time.ms",
+	parse, stringify from "@std/data/xml.ms",
 	arguments from "@std/os/env.ms",
+	monotonic from "@std/time.ms",
 )
 
 fn measure(

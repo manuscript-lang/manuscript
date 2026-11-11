@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tList, Set, ListEntry from \"@types\",\n\tMap, MapEntry from \"@domain/types.ms\",\n)\n\nfn get() Int: (\n\tList(1).value\n\t+ Set(2).value\n\t+ Map[String, Int](3).value\n\t+ ListEntry(4).value\n\t+ MapEntry[String, Int](5).value\n)\n\nfn cause() CollectionError: CollectionError(\"local\")\n\nexport fn main() Int: get() - 15\n"
+    "fmt": "import (\n\tMap, MapEntry from \"@domain/types.ms\",\n\tList, ListEntry, Set from \"@types\",\n)\n\nfn get() Int: (\n\tList(1).value\n\t+ Set(2).value\n\t+ Map[String, Int](3).value\n\t+ ListEntry(4).value\n\t+ MapEntry[String, Int](5).value\n)\n\nfn cause() CollectionError: CollectionError(\"local\")\n\nexport fn main() Int: get() - 15\n"
   }
 }

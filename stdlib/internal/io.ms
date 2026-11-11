@@ -1,6 +1,4 @@
-import (
-	NativeRawTerminal from "@std/cli/terminal.ms",
-)
+import NativeRawTerminal from "@std/cli/terminal.ms"
 
 export extern fn msstd_io_redirect_null(which: Int) Unit!
 

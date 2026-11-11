@@ -3,9 +3,10 @@
 // -O3 with strict IEEE semantics (no -ffast-math, no FMA contraction), so neither side may reorder floating-point reductions.
 // Usage: ms run bench/tools/listloops.ms [-- repeats]; MS and CC pick the tools.
 import (
-	build_ms, capture, env, finish, must, repeats, sample, usage from "./lib.ms",
-	copy, CopyOptions, temporary from "@std/os/fs.ms",
 	arguments from "@std/os/env.ms",
+	CopyOptions, copy, temporary from "@std/os/fs.ms",
+
+	build_ms, capture, env, finish, must, repeats, sample, usage from "./lib.ms",
 )
 
 fn run(work: String, n: Int) Result[String, Error]:

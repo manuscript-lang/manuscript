@@ -1,10 +1,10 @@
 import (
-	expect_equal, expect_true from "@std/test/test.ms",
+	Address,
+	decode_words,
 	parse_address,
 	parse_address_list,
-	parse_message,
-	decode_words,
-	Address from "@std/net/mail.ms",
+	parse_message from "@std/net/mail.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 )
 
 test "addresses parse in each form":

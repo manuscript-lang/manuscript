@@ -1,7 +1,7 @@
 import (
-	encode_multipart, form_part, multipart_parts, Part from "@std/net/mime.ms",
-	from_bytes from "@std/io/streams.ms",
 	Bytes from "@std/bytes.ms",
+	from_bytes from "@std/io/streams.ms",
+	Part, encode_multipart, form_part, multipart_parts from "@std/net/mime.ms",
 	keep, measure from "@std/test/bench.ms",
 )
 

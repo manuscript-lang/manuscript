@@ -1,8 +1,7 @@
 import (
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
-	sleep, milliseconds from "@std/time.ms",
 	arguments from "@std/os/env.ms",
-	monotonic from "@std/time.ms",
+	milliseconds, monotonic, sleep from "@std/time.ms",
 )
 
 fn work(i: Int, jitter: Bool) Int!:

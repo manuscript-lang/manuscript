@@ -1,13 +1,14 @@
 import (
-	certificate, private_key from "./support/certificates.ms",
-	expect_equal, expect_ok from "@std/test/test.ms",
+	PromiseOptions from "@std/concurrency/promise.ms",
+	FetchOptions, FetcherOptions, fetcher from "@std/net/fetch.ms",
 	HttpExchange, HttpServerOptions, reply, text from "@std/net/http.ms",
 	serve from "@std/net/net.ms",
-	memory_usage from "@std/os/system.ms",
-	PromiseOptions from "@std/concurrency/promise.ms",
-	fetcher, FetcherOptions, FetchOptions from "@std/net/fetch.ms",
-	sleep from "@std/time.ms",
 	TlsOptions from "@std/net/tls.ms",
+	memory_usage from "@std/os/system.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
+	sleep from "@std/time.ms",
+
+	certificate, private_key from "./support/certificates.ms",
 )
 
 fn handler(var exchange: HttpExchange) Unit!:

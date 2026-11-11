@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	infinity, nan from "@std/math/math.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "Float shortest strings keep notation boundaries and special values":

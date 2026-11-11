@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	parse_float from "@std/math/math.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "precision formatting preserves signed zero significant padding and special values":

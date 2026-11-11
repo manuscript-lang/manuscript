@@ -1,4 +1,4 @@
-import expect_equal, expect_fault, expect_contains from "@std/test/test.ms"
+import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
 fn replace_text(var key: String) Int:
 	key = "long-dynamic-map-key-2"

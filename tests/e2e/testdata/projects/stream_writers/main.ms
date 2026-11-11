@@ -1,8 +1,8 @@
 import (
 	Bytes from "@std/bytes.ms",
-	Sink, WriteStream, stdout from "@std/io/io.ms",
+	CsvOptions, csv_writer from "@std/data/csv.ms",
 	json_writer from "@std/data/json.ms",
-	csv_writer, CsvOptions from "@std/data/csv.ms",
+	Sink, WriteStream, stdout from "@std/io/io.ms",
 	compile, render_to, to_data from "@std/text/template.ms",
 )
 
