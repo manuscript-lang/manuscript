@@ -712,6 +712,14 @@ pub struct Func {
     /// A cleanup thunk that takes the address of a value of this type and closes it in place:
     /// the value is still there after the close, for the unwinding that registered it to drop.
     pub slot_close: Option<Ty>,
+    /// On a `slot_close` thunk whose close can fail: the function that runs the same close and
+    /// returns its `Result`, for `elaborate` to propagate (consumed there).
+    pub slot_result: Option<FuncId>,
+    /// On a function with fallible closing owners: how an error from a scope-end close becomes
+    /// the function's return value, `(plain, pending)`: `fn(move close error) -> ret` and
+    /// `fn(move close error, move pending return) -> ret`, the latter keeping an error the
+    /// function was already returning (consumed by `elaborate`).
+    pub close_exit: Option<(FuncId, FuncId)>,
 }
 
 impl Func {
@@ -737,6 +745,8 @@ impl Func {
             unwind_only: false,
             capture_closers: Vec::new(),
             slot_close: None,
+            slot_result: None,
+            close_exit: None,
         };
         for p in params {
             let v = f.new_value(p.ty);
