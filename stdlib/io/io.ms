@@ -8,6 +8,7 @@ import (
 	msrt_promise_drop,
 	msrt_streams_open,
 	msrt_task_read_limit,
+	msrt_task_read_limit_restore,
 	msrt_streams_read,
 	msrt_streams_error,
 	msrt_streams_close,
@@ -85,10 +86,9 @@ fn read_bounded[T](var source: Source[T], bound: Duration) T?!:
 	if nanos < 0: nanos = 0
 
 	started := monotonic()
-	msrt_task_read_limit(nanos)
-
+	previous := msrt_task_read_limit(nanos)
 	got := source.next()
-	msrt_task_read_limit(-1)
+	msrt_task_read_limit_restore(previous)
 	if got.is_error() and monotonic().difference(started).compare(bound) >= 0:
 		return error(Error("I/O: read timed out", kind: "ETIMEDOUT"))
 
