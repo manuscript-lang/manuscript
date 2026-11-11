@@ -392,7 +392,10 @@ impl Parser:
 			try self.need_op(")")
 			return ok(
 				Call(
-					name: name.upper(), args: args, distinct: distinct, star: true
+					name: name.upper(),
+					args: args,
+					distinct: distinct,
+					star: true,
 				)
 			)
 
@@ -683,9 +686,16 @@ impl Parser:
 
 		return ok(
 			Sel(
-				distinct: distinct, items: items, from_: from_, joins: joins,
-				where_e: where_e, group: group, having: having, order: order,
-				limit: limit, offset: offset
+				distinct: distinct,
+				items: items,
+				from_: from_,
+				joins: joins,
+				where_e: where_e,
+				group: group,
+				having: having,
+				order: order,
+				limit: limit,
+				offset: offset,
 			)
 		)
 
@@ -1122,7 +1132,7 @@ fn scalar_call(
 	args: List[Expr],
 	sc: List[SCol],
 	row: List[Value],
-	grp: List[List[Value]]
+	grp: List[List[Value]],
 ) Value!String:
 	var vals = List[Value]()
 
@@ -1181,7 +1191,7 @@ fn agg_val(
 	distinct: Bool,
 	star: Bool,
 	sc: List[SCol],
-	grp: List[List[Value]]
+	grp: List[List[Value]],
 ) Value!String:
 	if name == "COUNT" and star: return ok(VInt(v: grp.length()))
 
@@ -1712,8 +1722,12 @@ fn do_create(var tables: List[TableDef], name: String, cols: List[ColDef]) List[
 
 	tables.append(
 		TableDef(
-			name: name, cols: names, types: types, notnull: nn, pk: pkidx,
-			rows: List[List[Value]]()
+			name: name,
+			cols: names,
+			types: types,
+			notnull: nn,
+			pk: pkidx,
+			rows: List[List[Value]](),
 		)
 	)
 
@@ -1732,16 +1746,22 @@ fn do_drop(var tables: List[TableDef], name: String) List[String]!String:
 	return ok(out)
 
 fn do_insert(
-	var tables: List[TableDef], name: String, cols: List[String], has_cols: Bool,
-	rows: List[List[Expr]]
+	var tables: List[TableDef],
+	name: String,
+	cols: List[String],
+	has_cols: Bool,
+	rows: List[List[Expr]],
 ) List[String]!String:
 	ti := find_table(tables, name)
 	if ti < 0: return error("no such table: " + name)
 
 	t := TableDef(
-		name: tables[ti].name.clone(), cols: tables[ti].cols.clone(),
-		types: tables[ti].types.clone(), notnull: tables[ti].notnull.clone(),
-		pk: tables[ti].pk, rows: List[List[Value]]()
+		name: tables[ti].name.clone(),
+		cols: tables[ti].cols.clone(),
+		types: tables[ti].types.clone(),
+		notnull: tables[ti].notnull.clone(),
+		pk: tables[ti].pk,
+		rows: List[List[Value]](),
 	)
 	var pos = List[Int]()
 
@@ -1797,7 +1817,10 @@ fn do_insert(
 	return ok(out)
 
 fn do_update(
-	var tables: List[TableDef], name: String, sets: List[AssignDef], where_e: Expr?
+	var tables: List[TableDef],
+	name: String,
+	sets: List[AssignDef],
+	where_e: Expr?,
 ) List[String]!String:
 	ti := find_table(tables, name)
 	if ti < 0: return error("no such table: " + name)

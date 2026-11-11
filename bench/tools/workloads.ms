@@ -1,8 +1,10 @@
-// Realistic-program benchmark: builds the reference solutions of the small agent challenges (bench/agent/challenges/*/solutions)
-// in Manuscript, Go and Rust, feeds each ~3 MB of its largest hidden stdin (repeated), checks that all three print identical
-// output, and reports the minimum wall time in ms. Needs go and rustc on PATH. Unlike the kernels suite, these are ordinary
-// parsing/string/map programs.
-// Usage: ms run bench/tools/workloads.ms [-- repeats]; MS picks the compiler; BENCH_OUTPUT keeps the evidence directory.
+// Realistic-program benchmark: builds the reference solutions of the small agent
+// challenges (bench/agent/challenges/*/solutions) in Manuscript, Go and Rust, feeds
+// each ~3 MB of its largest hidden stdin (repeated), checks that all three print
+// identical output, and reports the minimum wall time in ms. Needs go and rustc on
+// PATH. Unlike the kernels suite, these are ordinary parsing/string/map programs.
+// Usage: ms run bench/tools/workloads.ms [-- repeats]; MS picks the compiler;
+// BENCH_OUTPUT keeps the evidence directory.
 import (
 	sha256 from "@std/crypto.ms",
 	hex_encode from "@std/data/encoding.ms",
@@ -93,26 +95,31 @@ fn run(work: String, n: Int) Result[String, Error]:
 		copy("{source}/solutions/rust/main.rs.ref", "{dir}/rs/main.rs")?
 
 		_mod := must(
-			"go mod init", run_in("{dir}/go", env("GO", "go"), ["mod", "init", "x"])
+			"go mod init",
+			run_in("{dir}/go", env("GO", "go"), ["mod", "init", "x"]),
 		)?
 		_go := must(
 			"go build",
 			run_in(
-				"{dir}/go", env("GO", "go"),
-				["build", "-buildvcs=false", "-o", "app", "."]
-			)
+				"{dir}/go",
+				env("GO", "go"),
+				["build", "-buildvcs=false", "-o", "app", "."],
+			),
 		)?
 		_rs := must(
 			"rustc",
 			capture(
-				env("RUSTC", "rustc"), ["-O", "-o", "{dir}/rs/app", "{dir}/rs/main.rs"]
-			)
+				env("RUSTC", "rustc"),
+				["-O", "-o", "{dir}/rs/app", "{dir}/rs/main.rs"],
+			),
 		)?
 		_ms := must(
 			"ms build",
 			run_in(
-				"{dir}/ms", ms_binary(), ["build", "ms.toml", "-o", "app"]
-			)
+				"{dir}/ms",
+				ms_binary(),
+				["build", "ms.toml", "-o", "app"],
+			),
 		)?
 		input := largest_input("{source}/hidden/cases.json")?
 		measured := measure(n, name, fn v: sample("{dir}/{v}/app", [], input))?

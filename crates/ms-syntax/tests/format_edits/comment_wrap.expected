@@ -1,0 +1,9 @@
+// A long summary line that runs well past the formatter width so it has to be wrapped
+// onto a second line. Short follow-up.
+//
+// - A list item stays exactly as written even when it is long enough to exceed the formatter width by far.
+// ms: status 99 EXAMPLE a data comment that is long enough to exceed the formatter width but must never be reflowed
+fn f() Int:
+	// A `code span` stays whole when the line wraps, so inline code is never split
+	// across two lines of text.
+	return 1

@@ -94,7 +94,7 @@ test "interface values converted from borrowed values are views":
 	other := Cause(2, "another heap allocated text that is long")
 	h := Holder(
 		Cause(3, "held heap text that is long enough"),
-		Cause(4, "held cause heap text long")
+		Cause(4, "held cause heap text long"),
 	)
 	kept := owned_copy(c)
 	one := first_error(c)
@@ -109,49 +109,56 @@ test "interface values converted from borrowed values are views":
 	held(c) | expect_equal("cause 1: a heap allocated text that is long")?
 	through(c).message() | expect_equal("cause 1: a heap allocated text that is long")?
 	c.code = 5
-	cond(c, other, true).message() | expect_equal(
-		"cause 5: a heap allocated text that is long"
-	)?
-	cond(c, other, false).message() | expect_equal(
-		"cause 2: another heap allocated text that is long"
-	)?
+	(
+		cond(c, other, true).message()
+		| expect_equal("cause 5: a heap allocated text that is long")?
+	)
+	(
+		cond(c, other, false).message() | expect_equal(
+			"cause 2: another heap allocated text that is long"
+		)?
+	)
 	looped(c).message() | expect_equal("cause 5: a heap allocated text that is long")?
-	fresh(c, false).message() | expect_equal(
-		"cause 5: a heap allocated text that is long"
-	)?
-	fresh(c, true).message() | expect_equal(
-		"cause 9: fresh and also heap allocated text"
-	)?
-	maybe(c, true).get().message() | expect_equal(
-		"cause 5: a heap allocated text that is long"
-	)?
+	(
+		fresh(c, false).message()
+		| expect_equal("cause 5: a heap allocated text that is long")?
+	)
+	(
+		fresh(c, true).message() | expect_equal(
+			"cause 9: fresh and also heap allocated text"
+		)?
+	)
+	(
+		maybe(c, true).get().message() | expect_equal(
+			"cause 5: a heap allocated text that is long"
+		)?
+	)
 	maybe(c, false).is_some() | expect_equal(false)?
-	either(h, true).message() | expect_equal(
-		"cause 3: held heap text that is long enough"
-	)?
+	(
+		either(h, true).message()
+		| expect_equal("cause 3: held heap text that is long enough")?
+	)
 	either(h, false).message() | expect_equal("cause 4: held cause heap text long")?
 	kept[0].message() | expect_equal("cause 1: a heap allocated text that is long")?
 	owned.message() | expect_equal("cause 1: a heap allocated text that is long")?
 	message | expect_equal("cause 1: a heap allocated text that is long")?
 	(
-		through_result(c)
-		.err()
-		.message() | expect_equal(
+		through_result(c).err().message()
+		| expect_equal("cause 5: a heap allocated text that is long")?
+	)
+	(
+		lend_then_relay(c).message() | expect_equal(
 			"cause 5: a heap allocated text that is long"
 		)?
 	)
-	lend_then_relay(c).message() | expect_equal(
-		"cause 5: a heap allocated text that is long"
-	)?
 	lend_id(c).message() | expect_equal("cause 5: a heap allocated text that is long")?
 	rebound(c).message() | expect_equal("cause 5: a heap allocated text that is long")?
 	(
-		rebound_result(c)
-		.err()
-		.message() | expect_equal(
+		rebound_result(c).err().message()
+		| expect_equal("cause 5: a heap allocated text that is long")?
+	)
+	(
+		rebound_alias_relay(c).message() | expect_equal(
 			"cause 5: a heap allocated text that is long"
 		)?
 	)
-	rebound_alias_relay(c).message() | expect_equal(
-		"cause 5: a heap allocated text that is long"
-	)?

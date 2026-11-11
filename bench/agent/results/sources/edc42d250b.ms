@@ -362,7 +362,7 @@ fn eval_term(
 	x: String,
 	labels: Map[String, Int],
 	equs: Map[String, EquDef],
-	stack: String
+	stack: String,
 ) Val:
 	cs := x.trim().chars()
 	n := cs.length()
@@ -429,7 +429,7 @@ fn eval_expr(
 	text: String,
 	labels: Map[String, Int],
 	equs: Map[String, EquDef],
-	stack: String
+	stack: String,
 ) Val:
 	t := text.trim()
 	var acc = 0
@@ -559,7 +559,7 @@ fn pass1(
 	lines: List[Pl],
 	equs: Map[String, EquDef],
 	var labels: Map[String, Int],
-	var stmts: List[Stmt]
+	var stmts: List[Stmt],
 ) P1:
 	var sec = 0
 	var ninstr = 0
@@ -633,8 +633,13 @@ fn pass1(
 					daddr += cnt
 					stmts.append(
 						Stmt(
-							line: num, sec: 1, kind: 1, op: 0, name: word.clone(),
-							args: a, count: cnt
+							line: num,
+							sec: 1,
+							kind: 1,
+							op: 0,
+							name: word.clone(),
+							args: a,
+							count: cnt,
 						)
 					)
 				else if word == ".space":
@@ -653,8 +658,13 @@ fn pass1(
 					daddr += nv.v
 					stmts.append(
 						Stmt(
-							line: num, sec: 1, kind: 3, op: 0, name: word.clone(),
-							args: a, count: nv.v
+							line: num,
+							sec: 1,
+							kind: 3,
+							op: 0,
+							name: word.clone(),
+							args: a,
+							count: nv.v,
 						)
 					)
 				else:
@@ -672,8 +682,13 @@ fn pass1(
 					one.append(argtext.clone())
 					stmts.append(
 						Stmt(
-							line: num, sec: 1, kind: 2, op: 0, name: word.clone(),
-							args: one, count: cnt
+							line: num,
+							sec: 1,
+							kind: 2,
+							op: 0,
+							name: word.clone(),
+							args: one,
+							count: cnt,
 						)
 					)
 			else:
@@ -703,14 +718,24 @@ fn pass1(
 
 			stmts.append(
 				Stmt(
-					line: num, sec: 0, kind: 0, op: op, name: word.clone(), args: args,
-					count: 0
+					line: num,
+					sec: 0,
+					kind: 0,
+					op: op,
+					name: word.clone(),
+					args: args,
+					count: 0,
 				)
 			)
 			ninstr += 1
 
 	return P1(
-		err: "", line: 0, ninstr: ninstr, daddr: daddr, budget: budget, entry: entry
+		err: "",
+		line: 0,
+		ninstr: ninstr,
+		daddr: daddr,
+		budget: budget,
+		entry: entry,
 	)
 
 fn pass2(
@@ -719,7 +744,7 @@ fn pass2(
 	equs: Map[String, EquDef],
 	ninstr: Int,
 	var code: List[Ins],
-	var data: List[Int]
+	var data: List[Int],
 ) P2:
 	for st in stmts:
 		if st.kind == 0:
@@ -751,8 +776,14 @@ fn pass2(
 					return P2(err: "invalid jump target", line: st.line)
 			code.append(
 				Ins(
-					op: st.op, ak: ak, av: av, ab: ab, bk: bk, bv: bv, bb: bb,
-					line: st.line
+					op: st.op,
+					ak: ak,
+					av: av,
+					ab: ab,
+					bk: bk,
+					bv: bv,
+					bb: bb,
+					line: st.line,
 				)
 			)
 		else if st.kind == 1:
@@ -839,7 +870,7 @@ fn run(
 	input: List[Int],
 	budget: Int,
 	entry: Int,
-	chtab: List[String]
+	chtab: List[String],
 ) String:
 	var mem = List[Int]()
 	for i0 in 0..4096:

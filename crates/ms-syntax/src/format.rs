@@ -17,6 +17,8 @@ use std::sync::Arc;
 mod compact;
 
 const WIDTH: usize = 88;
+/// A flow of three or more stages stays on one line only up to this column.
+const FLOW_WIDTH: usize = 50;
 
 /// Formats `source`. Invalid syntax never produces output.
 pub fn format(file: &Arc<str>, source: &str) -> PResult<String> {
@@ -225,8 +227,12 @@ fn format_lines(file: &Arc<str>, source: &str) -> PResult<String> {
     if output.is_empty() {
         return Ok(String::new());
     }
+    let output = wrap_comments(output);
     let result = output.join("\n") + "\n";
     let result = format_expression_layout(file, &result)?;
+    if parse(file, &result).is_err() && std::env::var_os("MS_FMT_DEBUG").is_some() {
+        eprintln!("{result}");
+    }
     parse(file, &result)?;
     if realigned && result != source {
         return format_lines(file, &result);
@@ -395,6 +401,114 @@ fn wrap_import(parts: &[Token], flat: &str, source: &str) -> Option<String> {
     }
     out.push_str(&format!("{indent}) from {}", text(parts.get(from + 1)?)));
     Some(out)
+}
+
+/// The text of a plain prose comment line (`// text`), or `None` for anything a
+/// reflow must leave alone: code, an empty comment, indented or list or table
+/// text, a code fence, tool metadata, or a block-comment placeholder.
+/// `key: value` lines such as `conform:`, `ms:`, `manuscript:`, `expect-debug:`
+/// are data read by tools, so they are never reflowed.
+fn directive_key(body: &str) -> bool {
+    let word = body.split_whitespace().next().unwrap_or("");
+    word.split_once(':').is_some_and(|(key, _)| {
+        !key.is_empty()
+            && key
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || matches!(c, '-' | '_' | '.'))
+    })
+}
+
+fn prose_comment(line: &str) -> Option<&str> {
+    let body = line.trim_start_matches(' ').strip_prefix("// ")?;
+    let first = body.chars().next()?;
+    let special = first.is_whitespace()
+        || matches!(
+            first,
+            '-' | '*' | '|' | '`' | '#' | '<' | '>' | '\u{e000}'..='\u{f8ff}'
+        )
+        || directive_key(body)
+        || body
+            .split_once(". ")
+            .is_some_and(|(n, _)| n.chars().all(|c| c.is_ascii_digit()));
+    (!special).then_some(body)
+}
+
+/// Rewraps each paragraph of consecutive prose `//` lines that has a line wider
+/// than the formatter width, filling lines greedily up to the width. Paragraphs
+/// that already fit, and everything that is not plain prose, are unchanged.
+fn wrap_comments(lines: Vec<String>) -> Vec<String> {
+    let mut out = Vec::with_capacity(lines.len());
+    let mut fenced = false;
+    let mut i = 0;
+    while i < lines.len() {
+        let trimmed = lines[i].trim_start_matches(' ');
+        if trimmed.starts_with("// ```") {
+            fenced = !fenced;
+        }
+        let Some(first) = prose_comment(&lines[i]).filter(|_| !fenced) else {
+            out.push(lines[i].clone());
+            i += 1;
+            continue;
+        };
+        let indent = lines[i].len() - trimmed.len();
+        let mut end = i + 1;
+        while end < lines.len()
+            && lines[end].len() - lines[end].trim_start_matches(' ').len() == indent
+            && prose_comment(&lines[end]).is_some()
+        {
+            end += 1;
+        }
+        let paragraph = &lines[i..end];
+        if !paragraph.iter().any(|l| l.chars().count() > WIDTH) {
+            out.extend(paragraph.iter().cloned());
+            i = end;
+            continue;
+        }
+        let prefix = format!("{}// ", " ".repeat(indent));
+        let room = WIDTH.saturating_sub(prefix.chars().count());
+        let mut row = String::new();
+        let mut words: Vec<String> = Vec::new();
+        for text in
+            std::iter::once(first).chain(paragraph[1..].iter().filter_map(|l| prose_comment(l)))
+        {
+            words.extend(comment_words(text));
+        }
+        for word in words {
+            let width = row.chars().count() + usize::from(!row.is_empty()) + word.chars().count();
+            if !row.is_empty() && width > room {
+                out.push(format!("{prefix}{row}"));
+                row.clear();
+            }
+            if !row.is_empty() {
+                row.push(' ');
+            }
+            row.push_str(&word);
+        }
+        out.push(format!("{prefix}{row}"));
+        i = end;
+    }
+    out
+}
+
+/// Splits comment text into words, keeping a short backtick span whole so code
+/// is not broken across lines.
+fn comment_words(text: &str) -> Vec<String> {
+    let mut words: Vec<String> = Vec::new();
+    let mut open = false;
+    for word in text.split_whitespace() {
+        let ticks = word.matches('`').count();
+        match words.last_mut() {
+            Some(last) if open && last.chars().count() < 60 => {
+                last.push(' ');
+                last.push_str(word);
+            }
+            _ => words.push(word.to_string()),
+        }
+        if ticks % 2 == 1 {
+            open = !open;
+        }
+    }
+    words
 }
 
 /// Replaces each tab in a code line's leading whitespace with four spaces,
@@ -846,6 +960,8 @@ struct Group {
     force: bool,
     parameters: bool,
     items: bool,
+    /// Opened by a call, index or literal rather than by a bare parenthesis.
+    callee: bool,
     list: bool,
 }
 
@@ -1218,6 +1334,7 @@ impl<'a> Layout<'a> {
                     force,
                     parameters: false,
                     items,
+                    callee: items,
                     list: false,
                 });
                 node.group = Some(gid);
@@ -1287,6 +1404,20 @@ impl<'a> Layout<'a> {
             operator = None; // Keep each comparison together as one operand.
         }
         force = force || nodes.iter().any(|n| n.tok.kind == Tok::Comment);
+        // A flow of three or more stages that is not short reads one stage per line.
+        let flow = !g.callee
+            && !g.parameters
+            && g.open.kind == Tok::LParen
+            && nodes
+                .iter()
+                .filter(|n| n.group.is_none() && n.tok.kind == Tok::Pipe)
+                .count()
+                >= 2
+            && column + flat.chars().count() > FLOW_WIDTH;
+        if flow {
+            force = true;
+            operator = Some(Tok::Pipe);
+        }
         let mut parts = split_layout(nodes, Tok::Comma);
         if parts.is_empty() {
             out.push_str(&flat);
@@ -1321,16 +1452,6 @@ impl<'a> Layout<'a> {
             out.push_str(&self.packed(g, &parts, indent));
             return;
         }
-        if g.items
-            && !g.parameters
-            && !g.force
-            && comma_separated
-            && parts.len() > 1
-            && let Some(packed) = self.packed_arguments(g, &parts, indent)
-        {
-            out.push_str(&packed);
-            return;
-        }
         // Keep an opener's trailing comment on its original line.
         out.push_str(self.text(&g.open));
         if !nodes.is_empty()
@@ -1347,12 +1468,25 @@ impl<'a> Layout<'a> {
                 parts = split_layout(remaining, op);
             }
         }
-        for part in &parts {
+        let trailing = comma_separated
+            && !flow
+            && (g.items || g.parameters || g.list)
+            && matches!(g.open.kind, Tok::LParen | Tok::LBracket)
+            // A comma after a callback body would belong to the body.
+            && !nodes
+                .iter()
+                .any(|n| matches!(n.tok.kind, Tok::Comment | Tok::Fn));
+        for (i, part) in parts.iter().enumerate() {
             let start = out.len();
             out.push('\n');
             self.item(part, indent + 4, out);
             if out.len() == start + 1 {
                 out.truncate(start);
+            } else if trailing
+                && i + 1 == parts.len()
+                && !part.iter().any(|n| layout_token(n.tok.kind))
+            {
+                out.push(',');
             }
         }
         out.push('\n');
@@ -1393,6 +1527,7 @@ impl<'a> Layout<'a> {
                 continue;
             }
             let p = match node.tok.kind {
+                Tok::Pipe => 0,
                 Tok::Or => 1,
                 Tok::And => 2,
                 Tok::EqEq | Tok::NotEq | Tok::Lt | Tok::Gt | Tok::Le | Tok::Ge => 3,
@@ -1408,42 +1543,6 @@ impl<'a> Layout<'a> {
             }
         }
         (selected, count)
-    }
-
-    /// Fills call arguments or list elements line by line when every one prints
-    /// on a single line; any argument that must itself break keeps one per line.
-    fn packed_arguments(&self, g: &Group, parts: &[&[Node]], indent: usize) -> Option<String> {
-        let mut texts = Vec::with_capacity(parts.len());
-        for part in parts {
-            if part.iter().any(|n| n.tok.kind == Tok::Comment) {
-                return None;
-            }
-            let mut text = String::new();
-            self.item(part, indent + 4, &mut text);
-            if text.is_empty() || text.contains('\n') {
-                return None;
-            }
-            texts.push(text);
-        }
-        let mut out = String::from(self.text(&g.open));
-        let mut column = 0usize;
-        for text in &texts {
-            let width = text.trim_start().chars().count();
-            if column == 0 || column + 1 + width > WIDTH {
-                out.push('\n');
-                out.push_str(&" ".repeat(indent + 4));
-                column = indent + 4;
-            } else {
-                out.push(' ');
-                column += 1;
-            }
-            out.push_str(text.trim_start());
-            column += width;
-        }
-        out.push('\n');
-        out.push_str(&" ".repeat(indent));
-        out.push_str(self.text(&g.close));
-        Some(out)
     }
 
     fn packed(&self, g: &Group, parts: &[&[Node]], indent: usize) -> String {
@@ -1861,7 +1960,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                 return;
             }
             let tokens = self.tokens;
-            let (mut end, mut booleans, mut dots, mut operators) = (start, 0, 0, 0);
+            let (mut end, mut booleans, mut dots, mut operators, mut pipes) = (start, 0, 0, 0, 0);
             let mut calls: Vec<(usize, usize)> = Vec::new();
             while end < tokens.len() && tokens[end].pos.offset < limit {
                 if let Some(&close) = self.pairs.get(&end) {
@@ -1879,7 +1978,23 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                 }
                 match kind {
                     Tok::And | Tok::Or => booleans += 1,
-                    Tok::Dot => dots += 1,
+                    Tok::Dot => {
+                        // A line starting with `.` after a flow step applies to the whole
+                        // flow, which `| .name` spells out as a stage of its own.
+                        if pipes > 0
+                            && end > start
+                            && tokens[end].pos.line != tokens[end - 1].pos.line
+                            && !matches!(tokens[end - 1].kind, Tok::Pipe | Tok::Try)
+                        {
+                            self.insert
+                                .entry(tokens[end].lo as usize)
+                                .or_default()
+                                .push_str("| ");
+                            pipes += 1;
+                        }
+                        dots += 1;
+                    }
+                    Tok::Pipe => pipes += 1,
                     Tok::Plus | Tok::Minus | Tok::Star | Tok::Slash | Tok::Percent => {
                         operators += 1
                     }
@@ -1912,7 +2027,7 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
             }
             // A chain breaks inside a call whose opening parenthesis still fits
             // on the first line, rather than wrapping the whole chain.
-            let hugs = booleans + operators == 0
+            let hugs = booleans + operators + pipes == 0
                 && calls.iter().any(|&(open, _)| {
                     let mut head = column;
                     let mut code: Vec<Token> = Vec::new();
@@ -1928,7 +2043,9 @@ fn group_statement_expressions(file: &Arc<str>, source: &str, strip: bool) -> PR
                     }
                     head <= WIDTH
                 });
-            if width > WIDTH && !hugs && (booleans + operators > 0 || dots >= 2) {
+            if (pipes >= 2 && width > FLOW_WIDTH)
+                || (width > WIDTH && !hugs && (booleans + operators + pipes > 0 || dots >= 2))
+            {
                 self.insert.entry(from).or_default().push('(');
                 self.insert.entry(to).or_default().insert(0, ')');
             }

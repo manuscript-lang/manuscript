@@ -1,7 +1,9 @@
-// Count lexical tokens in the source an agent produced (language-neutral, dependency-free).
+// Count lexical tokens in the source an agent produced (language-neutral,
+// dependency-free).
 //
-// A token is an identifier or keyword, a number, a string literal, or one punctuation/operator character.
-// Comments are excluded. This is a size measure of the final program, not any model's tokenizer count.
+// A token is an identifier or keyword, a number, a string literal, or one
+// punctuation/operator character. Comments are excluded. This is a size measure of the
+// final program, not any model's tokenizer count.
 import (
 	GlobOptions, glob from "@std/os/fs.ms",
 	compile from "@std/string.ms",
@@ -23,7 +25,8 @@ export fn count_text(text: String) Int:
 	bare := comments.replace_all(text, " ", none).get(text)
 	return token.find_all(bare, none).get([]).length()
 
-// Tokens over every `*suffix` file under `root`, skipping build output and the bundled docs.
+// Tokens over every `*suffix` file under `root`, skipping build output and the bundled
+// docs.
 export fn count_workspace(root: String, suffix: String) Int:
 	var total = 0
 

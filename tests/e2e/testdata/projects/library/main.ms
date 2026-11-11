@@ -47,7 +47,11 @@ fn exercise(path: String) Unit!:
 	(random >= -2 and random < 3) | expect_true?
 
 	now := now()
-	(common_result(result: parse_timestamp(text: now.to_string()))?) | expect_equal(now)?
+	(
+		(
+			common_result(result: parse_timestamp(text: now.to_string()))?
+		) | expect_equal(now)?
+	)
 	(system_info().cpu_count > 0) | expect_true?
 
 	var file = common_result(
@@ -72,8 +76,10 @@ fn exercise(path: String) Unit!:
 			path: path,
 			recursive: false,
 			options: WatchOptions(
-				max_entries: 4, max_events: 16, overflow: "error"
-			)
+				max_entries: 4,
+				max_events: 16,
+				overflow: "error",
+			),
 		)
 	)?
 	_appended := common_result(result: append_file(path: path, data: "!").wait())?
@@ -86,7 +92,8 @@ fn exercise(path: String) Unit!:
 		not (
 			common_result(
 				result: paths.resolve(
-					base: "/work", parts: ["a", "../b"]
+					base: "/work",
+					parts: ["a", "../b"],
 				)
 			)? == "/work/b"
 		)

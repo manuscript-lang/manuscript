@@ -62,7 +62,8 @@ test "iterator keeps resource open through the body and closes once":
 	expect_equal(events(log), "body 1\nclose 1\n")?
 
 // A body uses the external log as well as the value's state: a duplicated resource can
-// have `closed == false` while another copy already released the same external resource.
+// have `closed == false` while another copy already released the same external
+// resource.
 fn use_token(token: Token) Unit!:
 	expect_equal(token.closed, false)?
 	expect_equal(events(token.log).contains("close {token.id}\n"), false)?
@@ -226,7 +227,8 @@ test "a nested result payload transfers its resource":
 	result_payload(log)?
 	expect_equal(events(log), "body 1\nclose 1\n")?
 
-// Wait for the exact acquisition/body event before cancelling; the deadline bounds a failed handshake.
+// Wait for the exact acquisition/body event before cancelling; the deadline bounds a
+// failed handshake.
 fn wait_for_event(log: String, expected: String) Unit!:
 	for attempt in 0..1000:
 		if events(log).contains(expected): return ok(unit)

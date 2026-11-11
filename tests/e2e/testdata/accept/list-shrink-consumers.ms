@@ -16,8 +16,12 @@ fn mutate[T: Clonable](var values: List[T], mode: String, fill: List[T]) Unit:
 		values.splice(start: 0, delete_count: 0, replacement: fill)
 
 fn step[T: Clonable](
-	var seen: List[T], var visits: Visits, var values: List[T], value: T, mode: String,
-	fill: List[T]
+	var seen: List[T],
+	var visits: Visits,
+	var values: List[T],
+	value: T,
+	mode: String,
+	fill: List[T],
 ) Unit:
 	seen.append(value)
 	if visits.count == 0:
@@ -25,7 +29,10 @@ fn step[T: Clonable](
 	visits.count += 1
 
 fn observe[T: Clonable](
-	var values: List[T], mode: String, fill: List[T], callback: Bool
+	var values: List[T],
+	mode: String,
+	fill: List[T],
+	callback: Bool,
 ) List[T]!:
 	var seen: List[T] = []
 	var visits = Visits(0)
@@ -36,7 +43,12 @@ fn observe[T: Clonable](
 			.clone()
 			.for_each(
 				fn(value: T): step(
-					var seen, var visits, var values, value.clone(), mode, fill.clone()
+					var seen,
+					var visits,
+					var values,
+					value.clone(),
+					mode,
+					fill.clone(),
 				)
 			)
 		)
@@ -51,10 +63,14 @@ fn remaining[T: Clonable](mode: String, items: List[T], fill: List[T]) List[T]:
 	var out = items
 	if mode == "remove": out.remove(0)
 	if mode == "splice": out.splice(
-		start: 1, delete_count: 2, replacement: fill.clone()
+		start: 1,
+		delete_count: 2,
+		replacement: fill.clone(),
 	)
 	if mode == "clear" or mode == "clear_append": out.splice(
-		start: 0, delete_count: 3, replacement: []
+		start: 0,
+		delete_count: 3,
+		replacement: [],
 	)
 
 	if mode == "clear_append":
@@ -75,13 +91,15 @@ test "Int consumers see the full snapshot while the live list shrinks":
 			for value in seen: total += value
 			for value in clone: wanted += value
 			(
-				not (
-					total == wanted
-					and seen == clone
-					and values == want
-					and clone == [1, 2, 3]
-				)
-			) | expect_false?
+				(
+					not (
+						total == wanted
+						and seen == clone
+						and values == want
+						and clone == [1, 2, 3]
+					)
+				) | expect_false?
+			)
 
 test "Float consumers see the full snapshot while the live list shrinks":
 	for callback in [false, true]:
@@ -95,13 +113,15 @@ test "Float consumers see the full snapshot while the live list shrinks":
 			for value in seen: total += value
 			for value in clone: wanted += value
 			(
-				not (
-					total == wanted
-					and seen == clone
-					and values == want
-					and clone == [1.5, 2.5, 3.5]
-				)
-			) | expect_false?
+				(
+					not (
+						total == wanted
+						and seen == clone
+						and values == want
+						and clone == [1.5, 2.5, 3.5]
+					)
+				) | expect_false?
+			)
 
 test "String consumers see the full snapshot while the live list shrinks":
 	for callback in [false, true]:
@@ -113,13 +133,15 @@ test "String consumers see the full snapshot while the live list shrinks":
 			var text = ""
 			for value in seen: text += value
 			(
-				not (
-					text == clone.join("")
-					and seen == clone
-					and values == want
-					and clone == ["a", "bb", "ccc"]
-				)
-			) | expect_false?
+				(
+					not (
+						text == clone.join("")
+						and seen == clone
+						and values == want
+						and clone == ["a", "bb", "ccc"]
+					)
+				) | expect_false?
+			)
 
 type Payload:
 	value: Int
@@ -138,7 +160,15 @@ test "record consumers keep independent copies after shrink":
 			for value in clone: wanted += value.value
 			(not (total == wanted and seen == clone and values == want)) | expect_false?
 			last.value = 11
-			(not (seen.last().get().value == 3 and clone.last().get().value == 3)) | expect_false?
+			(
+				(
+					not (
+						seen.last().get().value == 3
+						and clone.last().get().value == 3
+					)
+				)
+				| expect_false?
+			)
 
 enum Choice:
 	number(value: Int)
@@ -164,7 +194,15 @@ test "alternative consumers retain tags and payloads after shrink":
 			var wanted = 0
 			for value in seen: total += score(value.clone())
 			for value in snapshot.clone(): wanted += score(value)
-			(not (total == wanted and seen == snapshot and values == want)) | expect_false?
+			(
+				(
+					not (
+						total == wanted
+						and seen == snapshot
+						and values == want
+					)
+				) | expect_false?
+			)
 
 test "nested list consumers keep independent inner lists after shrink":
 	for callback in [false, true]:
@@ -210,7 +248,9 @@ test "map and folds consume snapshots of the live list":
 			fn accumulator,
 			value:
 				if visits.count == 0: folded.splice(
-					start: 0, delete_count: 3, replacement: []
+					start: 0,
+					delete_count: 3,
+					replacement: [],
 				)
 				visits.count += 1
 				return accumulator + value
@@ -256,7 +296,15 @@ test "interface view consumers dispatch after shrink":
 			for value in clone.clone(): wanted += value.read()
 			(not (total == wanted and values.length() == want.length())) | expect_false?
 			last_record.value = 11
-			(not (seen.last().get().read() == 3 and clone.last().get().read() == 3)) | expect_false?
+			(
+				(
+					not (
+						seen.last().get().read() == 3
+						and clone.last().get().read() == 3
+					)
+				)
+				| expect_false?
+			)
 
 test "find returns the value passed to a mutating predicate":
 	var forward = [1, 2, 3]
@@ -351,12 +399,14 @@ test "find returns the value passed to a mutating predicate":
 		.get()
 	)
 	(
-		not (
-			retained.value == 1
-			and record.value == 1
-			and records.first().get().value == 9
-		)
-	) | expect_false?
+		(
+			not (
+				retained.value == 1
+				and record.value == 1
+				and records.first().get().value == 9
+			)
+		) | expect_false?
+	)
 
 test "preferred List mutators and explicit reversed copy iterate snapshots":
 	var values = [1, 2, 3]

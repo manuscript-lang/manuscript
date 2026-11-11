@@ -1,5 +1,5 @@
-// Data loading shared by the runner: challenges, languages, pricing. Paths are relative to the repository
-// root, where every command in README.md runs.
+// Data loading shared by the runner: challenges, languages, pricing. Paths are relative
+// to the repository root, where every command in README.md runs.
 import (
 	panic from "@std/core.ms",
 	JsonValue, parse from "@std/data/json.ms",
@@ -13,7 +13,8 @@ export fn root() String:
 	if access("bench/agent/languages.json", 0).is_ok(): return "bench/agent"
 	return "."
 
-// Documentation for the Manuscript context bundle comes from here; override to pin a different checkout.
+// Documentation for the Manuscript context bundle comes from here; override to pin a
+// different checkout.
 export fn repo() String: env("MSBENCH_REPO", if root() == ".": "../.." else: ".")
 
 // One input and the exact output expected for it.
@@ -81,7 +82,8 @@ fn field(doc: JsonValue, key: String) String:
 	if value := doc.get(key): return value.as_string().get("")
 	return ""
 
-// Challenges whose id equals, or starts with, one of `ids` (all when `ids` is empty), in id order.
+// Challenges whose id equals, or starts with, one of `ids` (all when `ids` is empty),
+// in id order.
 export fn load_challenges(ids: List[String]) List[Challenge]:
 	var out = List[Challenge]()
 	var names = List[String]()
@@ -100,14 +102,19 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 		)
 		if wanted: out.append(
 			Challenge(
-				name.clone(), m.title.clone(), m.category.clone(), m.tier, m.timeout_s,
-				dir
+				name.clone(),
+				m.title.clone(),
+				m.category.clone(),
+				m.tier,
+				m.timeout_s,
+				dir,
 			)
 		)
 
 	return out
 
-// Languages named in `ids` (all when empty), in file order; an unknown id stops the program.
+// Languages named in `ids` (all when empty), in file order; an unknown id stops the
+// program.
 export fn load_languages(ids: List[String]) List[Lang]:
 	doc := parse(text_of("{root()}/languages.json")).get(JsonValue.Null)
 	var out = List[Lang]()
@@ -127,8 +134,14 @@ export fn load_languages(ids: List[String]) List[Lang]:
 		if t := d.get("template"): template = t.as_string().get(entry.key)
 		out.append(
 			Lang(
-				entry.key.clone(), field(d, "name"), field(d, "solution"),
-				field(d, "build"), field(d, "run"), field(d, "notes"), template, context
+				entry.key.clone(),
+				field(d, "name"),
+				field(d, "solution"),
+				field(d, "build"),
+				field(d, "run"),
+				field(d, "notes"),
+				template,
+				context,
 			)
 		)
 
@@ -141,7 +154,7 @@ export fn cost_from_tokens(
 	tokens_in: Int,
 	cached: Int,
 	tokens_out: Int,
-	model: String
+	model: String,
 ) Float:
 	table := parse(text_of("{root()}/pricing.json")).get(JsonValue.Null)
 	var p = table.get("default").get(JsonValue.Null)

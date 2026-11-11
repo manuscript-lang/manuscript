@@ -18,7 +18,9 @@ fn var Failing.close() Unit!:
 		if self.fail:
 			return error(
 				Error(
-					"close {self.id}", kind: "ECLOSE", details: {"id": "{self.id}"}
+					"close {self.id}",
+					kind: "ECLOSE",
+					details: {"id": "{self.id}"},
 				)
 			)
 
@@ -32,7 +34,9 @@ fn work(log: String, fail: Bool) Int!:
 	if fail:
 		return error(
 			Error(
-				"original body error", kind: "EBODY", details: {"id": "body"}
+				"original body error",
+				kind: "EBODY",
+				details: {"id": "body"},
 			)
 		)
 

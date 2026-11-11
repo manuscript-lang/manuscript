@@ -8,25 +8,30 @@ import (
 	JsonLimits, msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms",
 )
 
-// Settings for `parse` and `json_reader`: optional bounds on input bytes, nesting depth and parsed
-// values, and how object members that are not fields are treated.
+// Settings for `parse` and `json_reader`: optional bounds on input bytes, nesting depth
+// and parsed values, and how object members that are not fields are treated.
 export type JsonOptions:
 	// Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
 	max_bytes: Int? = none
-	// Maximum container nesting; a root scalar has depth zero, and a root container depth one.
+	// Maximum container nesting; a root scalar has depth zero, and a root container
+	// depth one.
 	max_depth: Int? = none
-	// Maximum parsed containers and scalar values, excluding object keys; none adds no count budget.
+	// Maximum parsed containers and scalar values, excluding object keys; none adds no
+	// count budget.
 	max_values: Int? = none
-	// True ignores object members that are not fields of `T`; false makes them return `EBADMSG`.
+	// True ignores object members that are not fields of `T`; false makes them return
+	// `EBADMSG`.
 	ignore_unknown_fields: Bool = true
 
-// Settings for `stringify`: an output byte budget, pretty-print indentation, and strict rejection of values without a JSON form.
+// Settings for `stringify`: an output byte budget, pretty-print indentation, and strict
+// rejection of values without a JSON form.
 export type StringifyOptions:
 	// Maximum encoded UTF-8 bytes; none adds no output budget.
 	max_bytes: Int? = none
 	// Spaces per indentation level; none writes compact JSON.
 	indent: Int? = none
-	// True makes any value without a JSON form, anywhere in the document, return `EBADMSG`.
+	// True makes any value without a JSON form, anywhere in the document, return
+	// `EBADMSG`.
 	strict: Bool = false
 
 /*
@@ -69,16 +74,19 @@ export enum JsonValue:
 		// Element values in source order; the array owns its elements.
 		values: List[JsonValue]
 	)
-	// A JSON object retaining insertion order and rejecting duplicate keys during parsing.
+	// A JSON object retaining insertion order and rejecting duplicate keys during
+	// parsing.
 	ObjectValue(
-		// String-keyed members in insertion order; stringify reads their current values.
+		// String-keyed members in insertion order; stringify reads their current
+		// values.
 		values: Map[String, JsonValue]
 	)
 
 // A JSON document is Data, including its string-keyed object members.
 impl Data for JsonValue:
 
-// Returns the object member for `key`, or `none` for an absent key or a value that is not an object. The result borrows from the receiver.
+// Returns the object member for `key`, or `none` for an absent key or a value that
+// is not an object. The result borrows from the receiver.
 fn JsonValue.get(key: String) JsonValue?:
 	match self:
 		ObjectValue(values): return values.get(key)
@@ -92,8 +100,9 @@ from the receiver.
 fn JsonValue.get_in(keys: List[String]) JsonValue?:
 	return member_path(self, keys, 0)
 
-// Returns the array element at `index`, counting a negative index from the end. An index out of
-// range, or a value that is not an array, returns `none`. The result borrows from the receiver.
+// Returns the array element at `index`, counting a negative index from the end. An
+// index out of range, or a value that is not an array, returns `none`. The result
+// borrows from the receiver.
 fn JsonValue.at(index: Int) JsonValue?:
 	match self:
 		ArrayValue(values):
@@ -101,20 +110,22 @@ fn JsonValue.at(index: Int) JsonValue?:
 			return values.get(index)
 		_: return none
 
-// Returns the text of a string value, or `none` for any other value. The result is an owned copy.
+// Returns the text of a string value, or `none` for any other value. The result is
+// an owned copy.
 fn JsonValue.as_string() String?:
 	match self:
 		StringValue(value): return value.clone()
 		_: return none
 
-// Returns a number value as an Int, or `none` when the value is not a number or its text has a
-// fraction, an exponent, or digits that do not fit in Int.
+// Returns a number value as an Int, or `none` when the value is not a number or its
+// text has a fraction, an exponent, or digits that do not fit in Int.
 fn JsonValue.as_int() Int?:
 	match self:
 		NumberValue(text): return text.parse_int()
 		_: return none
 
-// Returns a number value as a Float, or `none` when the value is not a number or its text is not finite.
+// Returns a number value as a Float, or `none` when the value is not a number or
+// its text is not finite.
 fn JsonValue.as_float() Float?:
 	match self:
 		NumberValue(text): return parse_float(text).to_optional()
@@ -126,13 +137,15 @@ fn JsonValue.as_bool() Bool?:
 		BoolValue(value): return value
 		_: return none
 
-// Returns the elements of an array value, or `none` for any other value. The result is an owned copy.
+// Returns the elements of an array value, or `none` for any other value. The result
+// is an owned copy.
 fn JsonValue.as_list() List[JsonValue]?:
 	match self:
 		ArrayValue(values): return values.clone()
 		_: return none
 
-// Returns the members of an object value, or `none` for any other value. The result is an owned copy.
+// Returns the members of an object value, or `none` for any other value. The result
+// is an owned copy.
 fn JsonValue.as_map() Map[String, JsonValue]?:
 	match self:
 		ObjectValue(values): return values.clone()
@@ -174,11 +187,12 @@ record and `parse[JsonValue]` keeps it as a document.
 */
 export fn parse[T: Data = JsonValue](
 	text: String,
-	options: JsonOptions = JsonOptions()
+	options: JsonOptions = JsonOptions(),
 ) T!:
 	limits := JsonLimits(
-		max_bytes: options.max_bytes, max_depth: options.max_depth,
-		max_values: options.max_values
+		max_bytes: options.max_bytes,
+		max_depth: options.max_depth,
+		max_values: options.max_values,
 	)
 	return msstd_json_parse[T](text, limits, options.ignore_unknown_fields)
 
@@ -266,10 +280,13 @@ text := stringify(Request(model: "example", stream: true, user: none))?
 */
 export fn stringify[T: Data](
 	value: T,
-	options: StringifyOptions = StringifyOptions()
+	options: StringifyOptions = StringifyOptions(),
 ) String!:
 	return msstd_json_stringify(
-		value, options.max_bytes, options.indent, options.strict
+		value,
+		options.max_bytes,
+		options.indent,
+		options.strict,
 	)
 
 // The member of `value` at `keys[from:]`, read one object level at a time.
@@ -441,18 +458,26 @@ input fails the read with `EBADMSG`, and negative limits with `EINVAL`. Closing 
 */
 export fn json_reader[T: Data = JsonValue](
 	input: ReadStream[Bytes],
-	options: JsonOptions = JsonOptions()
+	options: JsonOptions = JsonOptions(),
 ) ReadStream[T]:
 	failure := invalid_limits(options)
 	return through[Bytes, T](
 		input,
 		JsonReading[T](
-			options: options, pending: BytesBuilder(), size: 0, depth: 0, mode: 0,
-			in_string: false, escaped: false, finished: false, failure: failure
-		)
+			options: options,
+			pending: BytesBuilder(),
+			size: 0,
+			depth: 0,
+			mode: 0,
+			in_string: false,
+			escaped: false,
+			finished: false,
+			failure: failure,
+		),
 	)
 
-// A sink that encodes each value as one line of JSON (JSON Lines) and puts the bytes into `output`.
+// A sink that encodes each value as one line of JSON (JSON Lines) and puts the bytes
+// into `output`.
 type JsonLines[T: Data]:
 	output: WriteStream[Bytes]
 	max_bytes: Int?
@@ -474,6 +499,6 @@ single line, and ends with a line feed. `max_bytes` bounds one encoded value and
 */
 export fn json_writer[T: Data](
 	output: WriteStream[Bytes],
-	max_bytes: Int? = none
+	max_bytes: Int? = none,
 ) WriteStream[T]:
 	return WriteStream[T](JsonLines[T](output: output, max_bytes: max_bytes))

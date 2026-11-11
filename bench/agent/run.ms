@@ -1,5 +1,5 @@
-// Agent-effectiveness benchmark runner. See README.md.
-// Usage (from the repository root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
+// Agent-effectiveness benchmark runner. See README.md. Usage (from the repository
+// root): ms run bench/agent/run.ms -- <list|run|oracle> [options]
 import (
 	Command, Flag, FlagKind, command from "@std/cli/command.ms",
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
@@ -61,7 +61,8 @@ type Options:
 fn split_ids(text: String) List[String]:
 	return text.split(",").filter(fn x: not x.is_empty())
 
-// Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none without tiktoken.
+// Source size in LLM tokens (tiktoken o200k_base, a proxy for Claude's tokenizer); none
+// without tiktoken.
 fn llm_tokens(path: String) Int?:
 	program := "import sys, tiktoken; print(len(tiktoken.get_encoding('o200k_base').encode(open(sys.argv[1], errors='replace').read(), disallowed_special=())))"
 	ran := bash("python3 -c \"{program}\" \"{path}\"", ".", 60, "")
@@ -80,7 +81,7 @@ fn run_one(
 	timeout_s: Int,
 	keep: Bool,
 	out_file: String,
-	tag: String
+	tag: String,
 ) RunRecord:
 	run_id := uuid_v4().get("").replace("-", "").take(10)
 	base := temporary_directory("agent-bench-").get()
@@ -97,7 +98,7 @@ fn run_one(
 		size := stat(src).to_optional()
 		create_directory(
 			"{ws}/{lang.solution.split("/").take(lang.solution.split("/").length() - 1).join("/")}",
-			recursive: true
+			recursive: true,
 		).get()
 		if size.is_some(): copy(src, "{ws}/{lang.solution}", CopyOptions(replace: true)).get()
 	else:
@@ -105,7 +106,8 @@ fn run_one(
 
 	log := read_log(ws)
 
-	// Cheap leak guard: flag runs whose transcript mentions the benchmark's own challenge tree.
+	// Cheap leak guard: flag runs whose transcript mentions the benchmark's own
+	// challenge tree.
 	said := read_text(transcript)
 	peeked := (
 		said.contains("bench/agent/challenges")
@@ -121,10 +123,26 @@ fn run_one(
 		g.llm_tokens = llm_tokens(sol)
 
 	rec := RunRecord(
-		run_id.clone(), now().unix_seconds(), tag.clone(), ch.id.clone(),
-		ch.category.clone(), ch.tier, lang.id.clone(), h.name(), model.clone(),
-		agent.usage.clone(), agent.wall_s, agent.exit_code, agent.timed_out, log.builds,
-		log.first_build_ok, log.checks, log.examples_pass, peeked, g.clone(), g.pass
+		run_id.clone(),
+		now().unix_seconds(),
+		tag.clone(),
+		ch.id.clone(),
+		ch.category.clone(),
+		ch.tier,
+		lang.id.clone(),
+		h.name(),
+		model.clone(),
+		agent.usage.clone(),
+		agent.wall_s,
+		agent.exit_code,
+		agent.timed_out,
+		log.builds,
+		log.first_build_ok,
+		log.checks,
+		log.examples_pass,
+		peeked,
+		g.clone(),
+		g.pass,
 	)
 	append_file(out_file, dumps_data(rec, 0) + "\n").wait().get()
 
@@ -146,7 +164,14 @@ fn work(items: List[Job], harness: String, o: Options, tag: String) Int:
 
 	for item in items:
 		rec := run_one(
-			item.challenge, item.language, h, o.model, o.timeout, o.keep, o.out, tag
+			item.challenge,
+			item.language,
+			h,
+			o.model,
+			o.timeout,
+			o.keep,
+			o.out,
+			tag,
 		)
 		verdict := if rec.pass: "PASS" else: "FAIL"
 		(
@@ -216,7 +241,7 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 				),
 				h.name(),
 				o.clone(),
-				tag.clone()
+				tag.clone(),
 			)
 		)
 	for n in wait_all(running).get([]): bad += n
@@ -229,10 +254,11 @@ fn spawn(mine: List[Job], me: String, own: Options, label: String) Promise[Int]:
 fn main() Int:
 	flags := [
 		Flag(
-			"challenges", help: "comma list of ids or prefixes (default all)",
-			default: ""
+			"challenges",
+			help: "comma list of ids or prefixes (default all)",
+			default: "",
 		),
-		Flag("languages", help: "comma list (default all)", default: "")
+		Flag("languages", help: "comma list (default all)", default: ""),
 	]
 	run_flags := flags.concat(
 		[
@@ -240,17 +266,24 @@ fn main() Int:
 			Flag("model"),
 			Flag("repeat", FlagKind.Int, default: "1"),
 			Flag(
-				"jobs", FlagKind.Int, help: "runs in parallel", default: "1"
+				"jobs",
+				FlagKind.Int,
+				help: "runs in parallel",
+				default: "1",
 			),
 			Flag(
-				"timeout", FlagKind.Int, help: "agent wall-clock limit, seconds",
-				default: "900"
+				"timeout",
+				FlagKind.Int,
+				help: "agent wall-clock limit, seconds",
+				default: "900",
 			),
 			Flag("keep", FlagKind.Bool, help: "keep workspaces"),
 			Flag(
-				"tag", help: "free-form label stored with each run", default: ""
+				"tag",
+				help: "free-form label stored with each run",
+				default: "",
 			),
-			Flag("out", default: "{root()}/results/runs.jsonl")
+			Flag("out", default: "{root()}/results/runs.jsonl"),
 		]
 	)
 	root := Command(
@@ -258,18 +291,22 @@ fn main() Int:
 		about: "Agent-effectiveness benchmark runner",
 		children: [
 			command[Options](
-				name: "list", about: "list challenges and languages",
+				name: "list",
+				about: "list challenges and languages",
 				run: fn o: cmd_list(o)
 			),
 			command[Options](
-				name: "run", about: "run agents on challenges", flags: run_flags,
+				name: "run",
+				about: "run agents on challenges",
+				flags: run_flags,
 				run: fn o: cmd_run(o, false)
 			),
 			command[Options](
 				name: "oracle",
 				about: "run reference solutions through the grader (validates tests)",
-				flags: flags, run: fn o: cmd_run(o, true)
-			)
-		]
+				flags: flags,
+				run: fn o: cmd_run(o, true)
+			),
+		],
 	)
 	return root.execute(arguments())

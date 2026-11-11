@@ -3,7 +3,8 @@ import (
 	read_lines from "@std/streams.ms",
 )
 
-// Stands in for a hard break inside paragraph text. Input is ASCII, so it cannot clash with source text.
+// Stands in for a hard break inside paragraph text. Input is ASCII, so it cannot clash
+// with source text.
 HARD := "\u{E000}"
 DIGITS := "0123456789"
 PUNCT := "!\"#$%&'()*+,-./:;<=>?@[\\]^_`\{|\}~"
@@ -242,18 +243,30 @@ fn marker_of(s: String) Marker:
 	column := ind + m
 	if m + sp == t.length():
 		return Marker(
-			ok: true, ordered: ordered, ch: ch, num: num, width: column + 1,
-			blank_item: true
+			ok: true,
+			ordered: ordered,
+			ch: ch,
+			num: num,
+			width: column + 1,
+			blank_item: true,
 		)
 	if sp >= 5:
 		return Marker(
-			ok: true, ordered: ordered, ch: ch, num: num, width: column + 1,
-			blank_item: false
+			ok: true,
+			ordered: ordered,
+			ch: ch,
+			num: num,
+			width: column + 1,
+			blank_item: false,
 		)
 
 	return Marker(
-		ok: true, ordered: ordered, ch: ch, num: num, width: column + sp,
-		blank_item: false
+		ok: true,
+		ordered: ordered,
+		ch: ch,
+		num: num,
+		width: column + sp,
+		blank_item: false,
 	)
 
 fn same_list(s: String, first: Marker) Bool:
@@ -392,7 +405,7 @@ fn parse_quote(lines: List[String], i: Int) Block:
 		"<blockquote>\n" + render_blocks(
 			parse_blocks(inner)
 		) + "</blockquote>\n",
-		j
+		j,
 	)
 
 fn parse_indented(lines: List[String], i: Int) Block:
@@ -524,8 +537,12 @@ fn parse_list(lines: List[String], i: Int) Block:
 			going = false
 
 	return Block(
-		kind: 2, children: items, ordered: first.ordered, start: first.num,
-		loose: loose, next_line: next
+		kind: 2,
+		children: items,
+		ordered: first.ordered,
+		start: first.num,
+		loose: loose,
+		next_line: next,
 	)
 
 // ---- block rendering ----
@@ -605,8 +622,13 @@ fn delim_node(c: String, run: Int, before: String, after: String) Node:
 		can_close = right and (not left or is_punct(after))
 
 	return Node(
-		kind: 4, ch: c, count: run, orig: run, can_open: can_open, can_close: can_close,
-		children: List[Node]()
+		kind: 4,
+		ch: c,
+		count: run,
+		orig: run,
+		can_open: can_open,
+		can_close: can_close,
+		children: List[Node](),
 	)
 
 fn find_run(cs: List[String], from: Int, k: Int) Int:
@@ -708,7 +730,11 @@ fn parse_tail(cs: List[String], p: Int) Tail:
 		q += 1
 	if q < n and cs[q] == ")":
 		return Tail(
-			ok: true, dest: dest, title: title, has_title: has_title, end: q + 1
+			ok: true,
+			dest: dest,
+			title: title,
+			has_title: has_title,
+			end: q + 1,
 		)
 
 	return Tail()
@@ -826,9 +852,11 @@ fn scan(text: String) List[Node]:
 						kind = 7
 					nodes.append(
 						Node(
-							kind: kind, text: tail.dest.clone(),
-							title: tail.title.clone(), has_title: tail.has_title,
-							children: resolve_emphasis(kids)
+							kind: kind,
+							text: tail.dest.clone(),
+							title: tail.title.clone(),
+							has_title: tail.has_title,
+							children: resolve_emphasis(kids),
 						)
 					)
 					i = tail.end

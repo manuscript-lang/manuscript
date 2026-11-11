@@ -140,40 +140,40 @@ export fn gen_c14() Unit:
 	examples := [
 		mk(
 			"basic",
-			"lcs AGGTAB GXTXAYB\nedit kitten sitting\nknap 10 5:10 4:40 6:30 3:50\ncoins 11 1 2 5\ncoins 3 2\nedit a\nknap 5 0:3\n"
+			"lcs AGGTAB GXTXAYB\nedit kitten sitting\nknap 10 5:10 4:40 6:30 3:50\ncoins 11 1 2 5\ncoins 3 2\nedit a\nknap 5 0:3\n",
 		),
-		mk("small", "lcs abc abc\nedit abc xyz\ncoins 0 7\nknap 0 1:1\n")
+		mk("small", "lcs abc abc\nedit abc xyz\ncoins 0 7\nknap 0 1:1\n"),
 	]
 	big_strings := "lcs {word(var rnd, 300, acgt)} {word(var rnd, 300, acgt)}\nedit {word(var rnd, 250, acgt)} {word(var rnd, 250, acgt)}\nedit {word(var rnd, 300, ab)} {word(var rnd, 10, ab)}\n"
 	hidden := examples.concat(
 		[
 			mk(
 				"lcs-edge",
-				"lcs a b\nlcs a a\nlcs abc cba\nlcs aaaa aa\nlcs abcdef fedcba\nlcs ab ba\n"
+				"lcs a b\nlcs a a\nlcs abc cba\nlcs aaaa aa\nlcs abcdef fedcba\nlcs ab ba\n",
 			),
 			mk(
 				"edit-edge",
-				"edit a a\nedit a b\nedit abc a\nedit a abc\nedit intention execution\nedit sunday saturday\nedit flaw lawn\n"
+				"edit a a\nedit a b\nedit abc a\nedit a abc\nedit intention execution\nedit sunday saturday\nedit flaw lawn\n",
 			),
 			mk(
 				"knap-edge",
-				"knap 0 1:5 2:6\nknap 100\nknap 1 1:0\nknap 3 3:7 1:3 2:5\nknap 50 10:60 20:100 30:120\nknap 4 5:100\nknap 5 5:100 5:100\n"
+				"knap 0 1:5 2:6\nknap 100\nknap 1 1:0\nknap 3 3:7 1:3 2:5\nknap 50 10:60 20:100 30:120\nknap 4 5:100\nknap 5 5:100 5:100\n",
 			),
 			mk(
 				"coins-edge",
-				"coins 7 2 4\ncoins 7 2 4 7\ncoins 6 1 3 4\ncoins 100 1 5 10 25\ncoins 1 2 3\ncoins 12 12\ncoins 13 4 3\n"
+				"coins 7 2 4\ncoins 7 2 4 7\ncoins 6 1 3 4\ncoins 100 1 5 10 25\ncoins 1 2 3\ncoins 12 12\ncoins 13 4 3\n",
 			),
 			mk(
 				"bad-lcs-edit",
-				"lcs a\nlcs a b c\nedit \nedit  b\nedit a  b\nLCS a b\nlcs\n"
+				"lcs a\nlcs a b c\nedit \nedit  b\nedit a  b\nLCS a b\nlcs\n",
 			),
 			mk(
 				"bad-knap",
-				"knap\nknap x 1:1\nknap 5 1\nknap 5 1:\nknap 5 :1\nknap 5 1:1:1\nknap 5 -1:1\nknap 5 1:-1\nknap 5 0:1\nknap 1234567 1:1\nknap 5 1:1234567\nknap 5 1:1  2:2\n"
+				"knap\nknap x 1:1\nknap 5 1\nknap 5 1:\nknap 5 :1\nknap 5 1:1:1\nknap 5 -1:1\nknap 5 1:-1\nknap 5 0:1\nknap 1234567 1:1\nknap 5 1:1234567\nknap 5 1:1  2:2\n",
 			),
 			mk(
 				"bad-coins",
-				"coins\ncoins 5\ncoins x 1\ncoins 5 0\ncoins 5 1 0\ncoins 5 a\ncoins -5 1\ncoins 5 1  2\n"
+				"coins\ncoins 5\ncoins x 1\ncoins 5 0\ncoins 5 1 0\ncoins 5 a\ncoins -5 1\ncoins 5 1  2\n",
 			),
 			mk("unknown", "foo a b\nfib 10\n lcs a b\n"),
 			mk("blank-lines", "\n  \nlcs ab ab\n\n  \nedit a b\n"),
@@ -181,9 +181,9 @@ export fn gen_c14() Unit:
 			mk("big-knap", "knap 800 {items}\nknap 3000 {items}\n"),
 			mk(
 				"big-coins",
-				"coins 9999 7 13 29 101\ncoins 10000 3 7 11 17 23\ncoins 99999 1000 3\n"
+				"coins 9999 7 13 29 101\ncoins 10000 3 7 11 17 23\ncoins 99999 1000 3\n",
 			),
-			mk("no-trailing-newline", "lcs a a\ncoins 4 2")
+			mk("no-trailing-newline", "lcs a a\ncoins 4 2"),
 		]
 	)
 	write_cases("c14-dp-suite", examples, hidden)

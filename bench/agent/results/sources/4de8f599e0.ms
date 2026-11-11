@@ -67,7 +67,11 @@ fn solve(text: String) String:
 		c := cur % width
 		if r > 0: visit(cur - width, dist[cur] + 1, passable, var dist, var queue)
 		if r + 1 < grid.length(): visit(
-			cur + width, dist[cur] + 1, passable, var dist, var queue
+			cur + width,
+			dist[cur] + 1,
+			passable,
+			var dist,
+			var queue,
 		)
 		if c > 0: visit(cur - 1, dist[cur] + 1, passable, var dist, var queue)
 		if c + 1 < width: visit(cur + 1, dist[cur] + 1, passable, var dist, var queue)
@@ -79,7 +83,7 @@ fn visit(
 	d: Int,
 	passable: List[Bool],
 	var dist: List[Int],
-	var queue: List[Int]
+	var queue: List[Int],
 ) Unit:
 	if passable[next] and dist[next] == -1:
 		dist[next] = d

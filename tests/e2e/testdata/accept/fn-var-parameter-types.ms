@@ -1,7 +1,7 @@
 import expect_equal from "@std/test/test.ms"
 
-// A function type may take a parameter `var`: a call through the value passes the caller's
-// variable by address, and the callee changes it in place.
+// A function type may take a parameter `var`: a call through the value passes the
+// caller's variable by address, and the callee changes it in place.
 
 fn push_one(var values: List[Int]) Unit:
 	values.append(1)

@@ -11,7 +11,8 @@ A violated precondition (a percentile outside 0 to 100, mismatched list lengths,
 `statistics.mean([1.0, 2.0, 6.0])` is `3.0`.
 */
 
-// Equal-width counts over a range of values, from `bin_counts`. (`@std/data/histogram.ms` has the recording `Histogram`.)
+// Equal-width counts over a range of values, from `bin_counts`.
+// (`@std/data/histogram.ms` has the recording `Histogram`.)
 export type BinCounts:
 	// The least value counted, which is the lower edge of the first bin.
 	low: Float
@@ -36,11 +37,13 @@ export fn mean(values: List[Float]) Float?:
 	ordinary := sum / values.length().to_float()
 	if sum.is_finite(): return ordinary
 
-	// Keep the existing NaN/infinity behavior; only a finite-input overflow needs repair.
+	// Keep the existing NaN/infinity behavior; only a finite-input overflow needs
+	// repair.
 	for value in values:
 		if not value.is_finite(): return ordinary
 
-	// Exact accumulation preserves small cancellation residuals that scaling would discard.
+	// Exact accumulation preserves small cancellation residuals that scaling would
+	// discard.
 	var total = rat_of_int(0)
 
 	for value in values:
@@ -55,8 +58,8 @@ export fn mean(values: List[Float]) Float?:
 	// The exact average of finite inputs lies between their finite extrema.
 	panic("statistics: finite mean could not be represented")
 
-// Returns the median, the middle value of the sorted list or the mean of the two middle values, or none for an empty list.
-// Example: `median([5.0, 1.0, 3.0, 2.0])` is `2.5`.
+// Returns the median, the middle value of the sorted list or the mean of the two middle
+// values, or none for an empty list. Example: `median([5.0, 1.0, 3.0, 2.0])` is `2.5`.
 export fn median(values: List[Float]) Float?:
 	if values.is_empty(): return none
 
@@ -68,14 +71,16 @@ export fn median(values: List[Float]) Float?:
 	high := ordered[middle]
 	sum := low + high
 
-	// Only overflowing finite sums need halves; halving tiny values would lose precision.
+	// Only overflowing finite sums need halves; halving tiny values would lose
+	// precision.
 	if not sum.is_finite() and low.is_finite() and high.is_finite():
 		return low / 2.0 + high / 2.0
 
 	return sum / 2.0
 
-// Returns the most frequent value, or none for an empty list. When several values are equally frequent the least one wins.
-// Example: `mode([2.0, 1.0, 2.0, 1.0, 3.0])` is `1.0`.
+// Returns the most frequent value, or none for an empty list. When several values are
+// equally frequent the least one wins. Example: `mode([2.0, 1.0, 2.0, 1.0, 3.0])` is
+// `1.0`.
 export fn mode(values: List[Float]) Float?:
 	if values.is_empty(): return none
 
@@ -94,13 +99,16 @@ export fn mode(values: List[Float]) Float?:
 
 	return best
 
-// The sum of squared deviations from the mean as `squares * 2^(2 * exponent)`, so a representable variance never overflows or underflows on the way.
+// The sum of squared deviations from the mean as `squares * 2^(2 * exponent)`, so a
+// representable variance never overflows or underflows on the way.
 type Moments:
 	squares: Float
 	exponent: Int
 
-// Returns the centered second moment, or none for an empty list or any nonfinite value (which keeps plain Float rules).
-// Values are scaled by a power of two to at most 1 in magnitude, shifted by the first value, then summed with compensation, so a large common offset keeps its variation.
+// Returns the centered second moment, or none for an empty list or any nonfinite value
+// (which keeps plain Float rules). Values are scaled by a power of two to at most 1 in
+// magnitude, shifted by the first value, then summed with compensation, so a large
+// common offset keeps its variation.
 fn centered_moments(values: List[Float]) Moments?:
 	if values.is_empty(): return none
 
@@ -128,7 +136,8 @@ fn centered_moments(values: List[Float]) Moments?:
 
 	return Moments(squares: squares.value(), exponent: exponent)
 
-// Returns the sum of squared distances from the mean divided by `divisor`, or none for an empty list.
+// Returns the sum of squared distances from the mean divided by `divisor`, or none for
+// an empty list.
 fn spread_variance(values: List[Float], divisor: Int) Float?:
 	if moments := centered_moments(values):
 		result := moments.squares / divisor.to_float()
@@ -148,8 +157,8 @@ fn spread_variance(values: List[Float], divisor: Int) Float?:
 export fn population_variance(values: List[Float]) Float?:
 	return spread_variance(values, values.length())
 
-// Returns the sample variance (divide by n - 1), or none when the list has fewer than two values.
-// Example: `variance([1.0, 2.0, 3.0, 4.0])` is `1.6666666666666667`.
+// Returns the sample variance (divide by n - 1), or none when the list has fewer than
+// two values. Example: `variance([1.0, 2.0, 3.0, 4.0])` is `1.6666666666666667`.
 export fn variance(values: List[Float]) Float?:
 	if values.length() < 2: return none
 	return spread_variance(values, values.length() - 1)
@@ -160,18 +169,19 @@ export fn population_stdev(values: List[Float]) Float?:
 		return deviation_from_variance(values, spread_squared, 0)
 	return none
 
-// Returns the sample standard deviation, or none when the list has fewer than two values.
-// Example: `stdev([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])` is about `2.138`.
+// Returns the sample standard deviation, or none when the list has fewer than two
+// values. Example: `stdev([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])` is about `2.138`.
 export fn stdev(values: List[Float]) Float?:
 	if spread_squared := variance(values):
 		return deviation_from_variance(values, spread_squared, 1)
 	return none
 
-// Preserve ordinary rounding; avoid requiring the squared result to fit for extreme finite inputs.
+// Preserve ordinary rounding; avoid requiring the squared result to fit for extreme
+// finite inputs.
 fn deviation_from_variance(
 	values: List[Float],
 	spread_squared: Float,
-	correction: Int
+	correction: Int,
 ) Float:
 	ordinary := sqrt(spread_squared)
 	if spread_squared.is_finite() and spread_squared >= 2.2250738585072014e-308:
@@ -269,8 +279,9 @@ export fn percentile(values: List[Float], percent: Float) Float?:
 
 	return percentile_sorted(values.sorted(), percent)
 
-// Interpolates the percentile of an already sorted, non-empty list.
-// The rank is `percent * (n - 1) / 100`, so an integer percent at an exact rank is not displaced by an earlier rounding of `percent / 100`.
+// Interpolates the percentile of an already sorted, non-empty list. The rank is
+// `percent * (n - 1) / 100`, so an integer percent at an exact rank is not displaced by
+// an earlier rounding of `percent / 100`.
 fn percentile_sorted(ordered: List[Float], percent: Float) Float:
 	position := percent * (ordered.length() - 1).to_float() / 100.0
 	below := position.truncate_to_int().get(0)
@@ -283,7 +294,8 @@ fn interpolate_sorted(ordered: List[Float], below: Int, fraction: Float) Float:
 	low := ordered[below]
 	high := ordered[below + 1]
 
-	// An exact position or equal neighbors return the neighbor; interpolating would turn `inf - inf` or `inf * 0` into NaN.
+	// An exact position or equal neighbors return the neighbor; interpolating would
+	// turn `inf - inf` or `inf * 0` into NaN.
 	if fraction == 0.0 or low == high: return low
 
 	// A lone infinite neighbor stays the result of the weighted blend.
@@ -291,8 +303,9 @@ fn interpolate_sorted(ordered: List[Float], below: Int, fraction: Float) Float:
 
 	span := high - low
 
-	// Finite opposite-sign endpoints can overflow their difference, not their weighted mean.
-	// Keep the original formula for finite spans to preserve small/subnormal rounding.
+	// Finite opposite-sign endpoints can overflow their difference, not their weighted
+	// mean. Keep the original formula for finite spans to preserve small/subnormal
+	// rounding.
 	if not span.is_finite() and low.is_finite() and high.is_finite():
 		return low * (1.0 - fraction) + high * fraction
 
@@ -312,15 +325,17 @@ export fn quantiles(values: List[Float], parts: Int) List[Float]:
 
 	ordered := values.sorted()
 
-	// The rank `i * (n - 1) / parts` is split in integers, so cut points at exact ranks return the element.
+	// The rank `i * (n - 1) / parts` is split in integers, so cut points at exact ranks
+	// return the element.
 	span := ordered.length() - 1
 
 	for i in 1..parts:
 		numerator := i * span
 		cuts.append(
 			interpolate_sorted(
-				ordered, numerator / parts,
-				(numerator % parts).to_float() / parts.to_float()
+				ordered,
+				numerator / parts,
+				(numerator % parts).to_float() / parts.to_float(),
 			)
 		)
 
@@ -339,7 +354,8 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
 	low := values.min().get(0.0)
 	high := values.max().get(0.0)
 
-	// A range beyond the Float maximum (or an infinite end) is measured in halves so the width stays finite where it can.
+	// A range beyond the Float maximum (or an infinite end) is measured in halves so
+	// the width stays finite where it can.
 	halved := not (high - low).is_finite()
 	origin := if halved: low / 2.0 else: low
 	width := (if halved: high / 2.0 - origin else: high - low) / bins.to_float()
@@ -355,7 +371,9 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
 			if not value.is_finite(): finite = false
 		if finite:
 			return BinCounts(
-				low: low, high: high, counts: exact_bin_counts(values, low, high, bins)
+				low: low,
+				high: high,
+				counts: exact_bin_counts(values, low, high, bins),
 			)
 
 	var counts = [0].repeated(bins)
@@ -406,7 +424,8 @@ fn finite_bin_rat(value: Float) BigRat:
 
 	panic("statistics: finite bin input could not be converted")
 
-// Returns the sum of products of deviations of two lists of equal length, with both sums of squares, or none when there are fewer than two pairs.
+// Returns the sum of products of deviations of two lists of equal length, with both
+// sums of squares, or none when there are fewer than two pairs.
 type Spread:
 	xy: Float
 	xx: Float
@@ -443,14 +462,16 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 	if xs.length() != ys.length():
 		panic("statistics: the lists must have the same length")
 
-	// Correlation is unchanged by scaling each list, so power-of-two scaling keeps every square and product in range.
+	// Correlation is unchanged by scaling each list, so power-of-two scaling keeps
+	// every square and product in range.
 	if s := spread(unit_scaled(xs), unit_scaled(ys)):
 		if s.xx == 0.0 or s.yy == 0.0: return none
 		return s.xy / (sqrt(s.xx) * sqrt(s.yy))
 
 	return none
 
-// Returns the values multiplied by the power of two that brings the greatest magnitude into [0.5, 1); lists with a nonfinite value or only zeros are unchanged.
+// Returns the values multiplied by the power of two that brings the greatest magnitude
+// into [0.5, 1); lists with a nonfinite value or only zeros are unchanged.
 fn unit_scaled(values: List[Float]) List[Float]:
 	var scale = 0.0
 
@@ -501,7 +522,8 @@ fn well_conditioned(mean: Float, squares: Float, count: Int, allow_flat: Bool) B
 
 	return squares > mean * mean * count.to_float() * 9.5367431640625e-7
 
-// The exponent that brings the greatest magnitude into [0.5, 1), or none when a value is not finite; zeros give 0.
+// The exponent that brings the greatest magnitude into [0.5, 1), or none when a value
+// is not finite; zeros give 0.
 fn unit_exponent(values: List[Float]) Int?:
 	var scale = 0.0
 
@@ -514,7 +536,8 @@ fn unit_exponent(values: List[Float]) Int?:
 
 	return frexp(scale).exponent
 
-// Values scaled by a power of two, as offsets from the first one and then from their center.
+// Values scaled by a power of two, as offsets from the first one and then from their
+// center.
 type Centered:
 	origin: Float
 	center: Float
@@ -540,7 +563,7 @@ fn finite_regression(
 	xs: List[Float],
 	ys: List[Float],
 	x_exponent: Int,
-	y_exponent: Int
+	y_exponent: Int,
 ) Regression?:
 	x := centered(xs, x_exponent)
 	y := centered(ys, y_exponent)
@@ -565,5 +588,5 @@ fn finite_regression(
 	)
 	return Regression(
 		slope: ldexp(ratio, y_unit - x_unit + y_exponent - x_exponent),
-		intercept: ldexp(scaled_intercept, y_exponent)
+		intercept: ldexp(scaled_intercept, y_exponent),
 	)

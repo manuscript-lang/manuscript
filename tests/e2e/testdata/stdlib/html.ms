@@ -51,7 +51,7 @@ test "HTML parses nested elements attributes entities and comments":
 					attributes != [
 						HtmlAttribute("id", "", "main"),
 						HtmlAttribute("title", "", "A & B"),
-						HtmlAttribute("hidden", "", "")
+						HtmlAttribute("hidden", "", ""),
 					]
 				)
 			)?
@@ -65,7 +65,10 @@ test "HTML parses nested elements attributes entities and comments":
 			expect_false(
 				(
 					items.get(4) != HtmlNode.Element(
-						tag: "br", namespace: "", attributes: [], children: []
+						tag: "br",
+						namespace: "",
+						attributes: [],
+						children: [],
 					)
 				)
 			)?
@@ -103,7 +106,9 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 	expect_false(
 		(
 			nodes.get(0) != HtmlNode.Doctype(
-				name: "html", public_id: "public", system_id: "system"
+				name: "html",
+				public_id: "public",
+				system_id: "system",
 			)
 		)
 	)?
@@ -123,7 +128,9 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 				(
 					child_namespace != "svg"
 					or attributes.get(0) != HtmlAttribute(
-						"href", "xlink", "#icon"
+						"href",
+						"xlink",
+						"#icon",
 					)
 				)
 			)?
@@ -134,7 +141,8 @@ test "HTML preserves doctypes foreign namespaces and raw script text":
 test "HTML honors optional byte depth and node limits":
 	empty := parse("")?
 	expect_equal(
-		(parse("", HtmlOptions(max_bytes: 0, max_depth: 2, max_nodes: 4))?), empty
+		(parse("", HtmlOptions(max_bytes: 0, max_depth: 2, max_nodes: 4))?),
+		empty,
 	)?
 	expect_equal((parse("é", HtmlOptions())?), (parse("é")?))?
 
@@ -148,7 +156,8 @@ test "HTML honors optional byte depth and node limits":
 	expect_not_equal(Error("HTML: invalid data", kind: "EBADMSG").message, "")?
 
 test "HTML depth limit stops deeply nested input without quadratic work":
-	// 60,000 open divs take tens of seconds when the parser only checks depth afterwards.
+	// 60,000 open divs take tens of seconds when the parser only checks depth
+	// afterwards.
 	nested := "<div>".repeat(60000).get()
 	started := monotonic()
 	limited: HtmlNode! := error(Error("HTML: limit exceeded", kind: "EOVERFLOW"))

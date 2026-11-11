@@ -5,8 +5,16 @@ import (
 
 test "bitset predicates agree with algebra for unequal and trailing zero words":
 	cases: List[List[Int]] := [
-		[], [0], [1], [-1], [-9223372036854775808], [1, 0], [0, 1],
-		[0, -9223372036854775808], [1, -1, 0], [0, 0, 0]
+		[],
+		[0],
+		[1],
+		[-1],
+		[-9223372036854775808],
+		[1, 0],
+		[0, 1],
+		[0, -9223372036854775808],
+		[1, -1, 0],
+		[0, 0, 0],
 	]
 
 	for a in cases:
@@ -16,7 +24,8 @@ test "bitset predicates agree with algebra for unequal and trailing zero words":
 			expect_equal(left.is_subset_of(right), left.difference(right).is_empty())?
 			expect_equal(left.is_superset_of(right), right.difference(left).is_empty())?
 			expect_equal(
-				left.is_disjoint_from(right), left.intersection(right).is_empty()
+				left.is_disjoint_from(right),
+				left.intersection(right).is_empty(),
 			)?
 			expect_equal(left.words, a)?
 			expect_equal(right.words, b)?

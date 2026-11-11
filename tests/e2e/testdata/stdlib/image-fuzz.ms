@@ -14,7 +14,8 @@ import (
 	vectors from "./image-png-vectors.ms",
 )
 
-// Deterministic generator (Numerical Recipes LCG); the fuzz is reproducible from the seed.
+// Deterministic generator (Numerical Recipes LCG); the fuzz is reproducible from the
+// seed.
 type Rng:
 	state: Int
 
@@ -22,7 +23,8 @@ fn var Rng.next(limit: Int) Int:
 	self.state = (self.state * 1103515245 + 12345) % 2147483648
 	return (self.state / 65536) % limit
 
-// One random mutation of `data`: byte flips, truncation, extreme field values, or a spliced range.
+// One random mutation of `data`: byte flips, truncation, extreme field values, or a
+// spliced range.
 fn mutate(data: Bytes, var rng: Rng) Bytes:
 	n := data.length()
 	if n == 0: return data.clone()
@@ -109,12 +111,14 @@ fn seeds() List[Bytes]:
 	out.append(encode_image(img, ImageFormat.Bmp).get())
 	out.append(
 		encode_image(
-			new_image(5, 4, ColorMode.Rgb).get(), ImageFormat.Ppm
+			new_image(5, 4, ColorMode.Rgb).get(),
+			ImageFormat.Ppm,
 		).get()
 	)
 	out.append(
 		encode_image(
-			new_image(3, 3, ColorMode.Gray).get(), ImageFormat.Ppm
+			new_image(3, 3, ColorMode.Gray).get(),
+			ImageFormat.Ppm,
 		).get()
 	)
 	return out
@@ -132,7 +136,8 @@ test "decoders never fault on mutated input":
 				mutated
 			)
 
-			// The decoder must return a value, whatever the bytes. A fault aborts this test.
+			// The decoder must return a value, whatever the bytes. A fault aborts this
+			// test.
 			result := decode_image(mutated, max_pixels: 4000000)
 
 			if result.is_ok():
@@ -157,11 +162,12 @@ test "hostile headers fail before allocating":
 
 	// PNG IHDR 2^31-1 square, valid CRC, no pixel data.
 	ihdr := hex_decode(
-		"89504e470d0a1a0a0000000d494844527fffffff7fffffff0806000000", none
+		"89504e470d0a1a0a0000000d494844527fffffff7fffffff0806000000",
+		none,
 	).get()
 	expect_error(
 		fix_png_crcs(ihdr.concat(Bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))),
-		"EOVERFLOW"
+		"EOVERFLOW",
 	)?
 
 	// JPEG SOF 65535x65535 with a scan header and almost no data.
@@ -169,7 +175,7 @@ test "hostile headers fail before allocating":
 		"ffd8ffdb004300"
 		+ "01".repeat(64, none).get()
 		+ "ffc0000b08ffffffff0101110000ffc400150000010000000000000000000000000000000000ffda0008010100003f00ffd9",
-		none
+		none,
 	).get()
 	result := decode_image(jpeg)
 	if result.is_ok(): fail("hostile JPEG decoded")?
@@ -177,7 +183,7 @@ test "hostile headers fail before allocating":
 	// BMP with a gigapixel header and no pixel data.
 	bmp := hex_decode(
 		"424d3600000000000000360000002800000000ca9a3b00ca9a3b0100180000000000000000000000000000000000000000000000",
-		none
+		none,
 	).get()
 	bmp_result := decode_image(bmp)
 	if bmp_result.is_ok(): fail("hostile BMP decoded")?

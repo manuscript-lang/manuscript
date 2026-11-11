@@ -15,7 +15,9 @@ test "blocking file reads work from promises on any thread":
 
 	all := wait_all(
 		[
-			promise(fn: size(path)), promise(fn: size(path)), promise(fn: size(path))
+			promise(fn: size(path)),
+			promise(fn: size(path)),
+			promise(fn: size(path)),
 		]
 	)
 	for n in all.get([]):

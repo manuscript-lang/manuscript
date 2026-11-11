@@ -113,7 +113,17 @@ test "wide division distinguishes invalid divisor and quotient overflow":
 
 test "binary float decomposition round trips normals subnormals and signed zero":
 	for value in [
-		0.0, -0.0, min_float, -min_float, 1.0, -1.0, 8.0, -8.0, 1e-300, 1e300, max_float
+		0.0,
+		-0.0,
+		min_float,
+		-min_float,
+		1.0,
+		-1.0,
+		8.0,
+		-8.0,
+		1e-300,
+		1e300,
+		max_float,
 	]:
 		parts := frexp(value)
 		rebuilt := ldexp(parts.fraction, parts.exponent)
@@ -191,18 +201,26 @@ test "IEEE remainder uses nearest-even quotient without changing truncating rema
 	expect_true(ieee_remainder(1.0, nan).is_nan())?
 
 test "modular inverse distinguishes absence invalid modulus and the unit modulus":
-	from_int(271).inverse_mod(
-		from_int(383)
-	) | expect_ok? | expect_some? | expect_equal(from_int(106))?
-	from_int(-271).inverse_mod(
-		from_int(383)
-	) | expect_ok? | expect_some? | expect_equal(from_int(277))?
+	(
+		from_int(271).inverse_mod(from_int(383))
+		| expect_ok?
+		| expect_some?
+		| expect_equal(from_int(106))?
+	)
+	(
+		from_int(-271).inverse_mod(
+			from_int(383)
+		) | expect_ok? | expect_some? | expect_equal(from_int(277))?
+	)
 	expect_true((from_int(6).inverse_mod(from_int(9))?).is_none())?
 	expect_true((from_int(0).inverse_mod(from_int(2))?).is_none())?
 	for number in [-5, 0, 5]:
-		from_int(number).inverse_mod(
-			from_int(1)
-		) | expect_ok? | expect_some? | expect_equal(from_int(0))?
+		(
+			from_int(number).inverse_mod(from_int(1))
+			| expect_ok?
+			| expect_some?
+			| expect_equal(from_int(0))?
+		)
 
 	invalid: BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(from_int(2).inverse_mod(from_int(0)), invalid)?
@@ -218,9 +236,8 @@ test "modular inverse scales to 4096 bits and retains canonical residues":
 		expect_equal(inverse, base)?
 		expect_equal(base * inverse % modulus, one)?
 		(
-			base
-			.negate()
-			.inverse_mod(
-				modulus
-			) | expect_ok? | expect_some? | expect_equal(one)?
+			base.negate().inverse_mod(modulus)
+			| expect_ok?
+			| expect_some?
+			| expect_equal(one)?
 		)

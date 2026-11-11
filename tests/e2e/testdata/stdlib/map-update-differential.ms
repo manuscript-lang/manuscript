@@ -20,7 +20,8 @@ fn append_length(xs: List[Int]) List[Int]:
 	out.append(xs.length())
 	return out
 
-// Each pair below spells one update twice: `Map.update`, which looks the key up once, and the
+// Each pair below spells one update twice: `Map.update`, which looks the key up once,
+// and the
 // `get_or` plus `add` pair, which looks it up twice. The maps must stay equal after every step.
 
 test "update matches get_or and add for String keys":

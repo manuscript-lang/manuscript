@@ -25,10 +25,11 @@ import (
 // Promises: operations whose results are taken once with `wait()`.
 //
 // `promise(fn: ...)` starts work eagerly on a thread the runtime picks; `wait()` takes its result. Stream reads may
-// defer work until the wait. Any function can wait internally, even if it returns a value directly.
-// Dropping a promise that has not finished cancels it and waits for it to end, so work you start never outlives
-// the values it uses. A promise only reads what it captures: concurrent code never changes a shared value (to change
-// shared state, give it one owner and send it values over a `pipe`).
+// defer work until the wait. Any function can wait internally, even if it returns a
+// value directly. Dropping a promise that has not finished cancels it and waits for it
+// to end, so work you start never outlives the values it uses. A promise only reads
+// what it captures: concurrent code never changes a shared value (to change shared
+// state, give it one owner and send it values over a `pipe`).
 //
 // <!-- manuscript-example: {"mode":"fragment"} -->
 // ```manuscript
@@ -40,14 +41,17 @@ import (
 // total := words.wait()?
 // ```
 
-// An operation with one result. `wait` takes it once; a stream read may defer work until the wait.
-// Dropping an unfinished promise cancels it and waits for it to end; an unused promise is a warning.
+// An operation with one result. `wait` takes it once; a stream read may defer work
+// until the wait. Dropping an unfinished promise cancels it and waits for it to end; an
+// unused promise is a warning.
 export opaque type Promise[T]:
-	// The runtime slot of this promise: a generation and an index, never reused while this id is live.
+	// The runtime slot of this promise: a generation and an index, never reused while
+	// this id is live.
 	id: Int
 
-// Waits for the result and moves it out. Errors: the operation's own error; `EIO` (a fault inside, with its
-// report in `details["report"]`); `ECANCELED`; `EBADF` (an earlier wait already took the result); `ETIMEDOUT` once the promise's
+// Waits for the result and moves it out. Errors: the operation's own error; `EIO`
+// (a fault inside, with its report in `details["report"]`); `ECANCELED`; `EBADF`
+// (an earlier wait already took the result); `ETIMEDOUT` once the promise's
 // `timeout` option has passed, which also cancelled the work.
 fn Promise[T].wait() T!:
 	code := msrt_promise_wait(self.id, -1)
@@ -55,15 +59,17 @@ fn Promise[T].wait() T!:
 
 	return error(failure(self.id, code))
 
-// Applies `options` to a promise made elsewhere (`read_file`, `fetch`, `sleep`, `exec`) and returns it, so
+// Applies `options` to a promise made elsewhere (`read_file`, `fetch`, `sleep`,
+// `exec`) and returns it, so
 // `read_file(path).with(options: PromiseOptions(timeout: 5.seconds())).wait()` bounds the read. The timeout counts from now.
 // A provided cancel signal replaces the previous signal.
 fn Promise[T].with(options: PromiseOptions = PromiseOptions()) Promise[T]:
 	limit(self.id, options)
 	return self
 
-// Asks the work to stop at its next wait; `wait` then reports `ECANCELED`. It returns at once, and dropping the promise
-// joins the work. A finished promise is unchanged.
+// Asks the work to stop at its next wait; `wait` then reports `ECANCELED`. It
+// returns at once, and dropping the promise joins the work. A finished promise is
+// unchanged.
 fn Promise[T].cancel() Unit:
 	msrt_promise_cancel(self.id)
 
@@ -71,21 +77,25 @@ fn Promise[T].cancel() Unit:
 fn Promise[T].done() Bool:
 	return msrt_promise_done(self.id)
 
-// Dropping a promise ends it: unfinished work is cancelled and waited for, and a result nobody took is dropped.
+// Dropping a promise ends it: unfinished work is cancelled and waited for, and a
+// result nobody took is dropped.
 fn var Promise[T].close() Unit!:
 	msrt_promise_drop(self.id)
 
-// What bounds a promise, fixed when it is made: `timeout` counts from construction and is enforced whether or not anyone
-// waits; when it passes the work is cancelled and `wait` reports `ETIMEDOUT`. A negative timeout is no time at all.
+// What bounds a promise, fixed when it is made: `timeout` counts from construction and
+// is enforced whether or not anyone waits; when it passes the work is cancelled and
+// `wait` reports `ETIMEDOUT`. A negative timeout is no time at all.
 export type PromiseOptions:
 	// How long the work may run, counted from construction; none means no limit.
 	timeout: Duration? = none
-	// When this signal's `Cancel` fires, the work is cancelled and `wait` reports `ECANCELED`.
-	// Applying a signal to an existing promise replaces its previous signal; none leaves it unchanged.
+	// When this signal's `Cancel` fires, the work is cancelled and `wait` reports
+	// `ECANCELED`. Applying a signal to an existing promise replaces its previous
+	// signal; none leaves it unchanged.
 	cancel: Signal? = none
 
-// One switch that cancels every promise made with its `signal()`. `cancel()` never waits; the work stops at its next wait
-// and `wait` reports `ECANCELED`. Dropping the switch does not cancel anything: promises made with its signals keep running.
+// One switch that cancels every promise made with its `signal()`. `cancel()` never
+// waits; the work stops at its next wait and `wait` reports `ECANCELED`. Dropping the
+// switch does not cancel anything: promises made with its signals keep running.
 export opaque type Cancel:
 	// The runtime slot of this switch: a generation and an index.
 	id: Int
@@ -94,11 +104,13 @@ export opaque type Cancel:
 fn Cancel.signal() Signal:
 	return Signal(id: self.id)
 
-// Cancels every promise made with a signal of this switch, now and later. Safe to call again.
+// Cancels every promise made with a signal of this switch, now and later. Safe to
+// call again.
 fn Cancel.cancel() Unit:
 	msrt_cancel_fire(self.id)
 
-// Frees the switch. Promises made with its signals keep running; they just cannot be cancelled by it any more.
+// Frees the switch. Promises made with its signals keep running; they just cannot
+// be cancelled by it any more.
 fn var Cancel.close() Unit!:
 	msrt_cancel_free(self.id)
 
@@ -106,7 +118,9 @@ fn var Cancel.close() Unit!:
 export fn cancel_switch() Cancel:
 	return Cancel(id: msrt_cancel_new())
 
-// A copyable handle to a `Cancel`, passed in `PromiseOptions`. Once its `Cancel` fires it reads as cancelled for good, even after the `Cancel` is closed or dropped; a `Cancel` that never fired reads as not cancelled once it is gone.
+// A copyable handle to a `Cancel`, passed in `PromiseOptions`. Once its `Cancel` fires
+// it reads as cancelled for good, even after the `Cancel` is closed or dropped; a
+// `Cancel` that never fired reads as not cancelled once it is gone.
 export opaque type Signal:
 	// The slot of the `Cancel` it belongs to; a freed slot never matches.
 	id: Int
@@ -115,7 +129,8 @@ export opaque type Signal:
 fn Signal.cancelled() Bool:
 	return msrt_cancel_fired(self.id)
 
-// A limit in nanoseconds, or -1 for none. A negative duration is no time at all, not "none".
+// A limit in nanoseconds, or -1 for none. A negative duration is no time at all, not
+// "none".
 fn nanos(limit: Duration?) Int:
 	if own := limit:
 		total := own.to_nanoseconds()
@@ -125,7 +140,8 @@ fn nanos(limit: Duration?) Int:
 
 	return -1
 
-// The error a `wait` that did not produce a result reports, from the runtime outcome code of the promise `id`.
+// The error a `wait` that did not produce a result reports, from the runtime outcome
+// code of the promise `id`.
 fn outcome(id: Int, code: Int) Error:
 	if code == 2: return Error("promise: timed out", kind: "ETIMEDOUT")
 	if code == 3: return Error("promise: cancelled", kind: "ECANCELED")
@@ -133,7 +149,9 @@ fn outcome(id: Int, code: Int) Error:
 
 	report := msrt_promise_fault_report(id)
 	return Error(
-		"promise: fault: " + report, kind: "EIO", details: {"report": report.clone()}
+		"promise: fault: " + report,
+		kind: "EIO",
+		details: {"report": report.clone()},
 	)
 
 // Applies `options` to the promise `id`.
@@ -143,11 +161,12 @@ fn limit(id: Int, options: PromiseOptions) Unit:
 	if signal := options.cancel:
 		msrt_promise_on_cancel(id, signal.id)
 
-// Applies `options` to a promise in place, for an owner that keeps the promise (a server's accept loop). The timeout counts
-// from now; a provided cancel signal replaces the previous signal. `with` is the chaining form.
+// Applies `options` to a promise in place, for an owner that keeps the promise (a
+// server's accept loop). The timeout counts from now; a provided cancel signal replaces
+// the previous signal. `with` is the chaining form.
 export fn set_options[T](
 	target: Promise[T],
-	options: PromiseOptions = PromiseOptions()
+	options: PromiseOptions = PromiseOptions(),
 ) Unit:
 	limit(target.id, options)
 
@@ -161,9 +180,9 @@ fn taken_error(id: Int) Error:
 	if cause := msrt_promise_take[Error](id): return cause
 	return outcome(id, 4)
 
-// The error of a `wait` whose runtime outcome `code` is not success: the operation's own error for code 1, else the
-// outcome's. One function for every failure keeps the error construction out of `wait`, whose frame stays on the stack
-// while a task parks.
+// The error of a `wait` whose runtime outcome `code` is not success: the operation's
+// own error for code 1, else the outcome's. One function for every failure keeps the
+// error construction out of `wait`, whose frame stays on the stack while a task parks.
 fn failure(id: Int, code: Int) Error:
 	if code == 1: return taken_error(id)
 	return outcome(id, code)
@@ -176,9 +195,10 @@ export fn complete[U](id: Int, result: U!) Unit:
 		error(cause):
 			msrt_promise_put(id, cause, 1)
 
-// Runs `entry` on a thread the runtime picks and returns its promise. The promise reads what `entry` captures, so the
-// values it reads must outlive it and cannot change while it lives; nothing the entry captures can be changed from
-// inside it. A fault inside ends only this promise: `wait` reports it as `EIO`.
+// Runs `entry` on a thread the runtime picks and returns its promise. The promise reads
+// what `entry` captures, so the values it reads must outlive it and cannot change while
+// it lives; nothing the entry captures can be changed from inside it. A fault inside
+// ends only this promise: `wait` reports it as `EIO`.
 export fn promise[U](
 	entry: fn() U!,
 	options: PromiseOptions = PromiseOptions()
@@ -188,10 +208,12 @@ export fn promise[U](
 	limit(id, options)
 	return Promise[U](id: id)
 
-// Like `promise`, but the entry runs as a task on the calling thread, so it may use values that belong to that thread (a
-// network handle, a connection, a socket) which `promise` would fault on if it ran elsewhere. It reads what `entry`
-// captures the same way, so wait for it before those values change or go out of scope. The entry should only wait (on a
-// file, a socket, a child process): a task that computes blocks its thread.
+// Like `promise`, but the entry runs as a task on the calling thread, so it may use
+// values that belong to that thread (a network handle, a connection, a socket) which
+// `promise` would fault on if it ran elsewhere. It reads what `entry` captures the same
+// way, so wait for it before those values change or go out of scope. The entry should
+// only wait (on a file, a socket, a child process): a task that computes blocks its
+// thread.
 export fn local_promise[U](
 	entry: fn() U!,
 	options: PromiseOptions = PromiseOptions()
@@ -201,20 +223,23 @@ export fn local_promise[U](
 	limit(id, options)
 	return Promise[U](id: id)
 
-// Runs `work` as a promise that owns everything it captured, so it borrows nothing from the caller and may outlive
-// the caller's values. Bind owned copies first (`owned := path.clone()`) and capture those. It is for operations that only wait
-// (on a file, a socket, a child process), so its task stays on the calling thread.
+// Runs `work` as a promise that owns everything it captured, so it borrows nothing from
+// the caller and may outlive the caller's values. Bind owned copies first
+// (`owned := path.clone()`) and capture those. It is for operations that only wait (on
+// a file, a socket, a child process), so its task stays on the calling thread.
 export fn owned_task[U](work: fn() U!) Promise[U]:
 	id := msrt_promise_new()
 	msrt_promise_start_here(id, owned_task_job[U](id, work))
 	return Promise[U](id: id)
 
-// The entry of an owning task: a closure that owns `work`, since a closure that is returned owns its captures.
+// The entry of an owning task: a closure that owns `work`, since a closure that is
+// returned owns its captures.
 fn owned_task_job[U](id: Int, work: fn() U!) fn() Unit:
 	return fn: complete(id, work())
 
-// Waits for every promise and returns the results in order. The first promise to fail, in time rather than list order,
-// ends the wait: the promises still running are cancelled and waited for before `wait_all` returns its error.
+// Waits for every promise and returns the results in order. The first promise to fail,
+// in time rather than list order, ends the wait: the promises still running are
+// cancelled and waited for before `wait_all` returns its error.
 export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 	var pending = promises
 	count := pending.length()
@@ -225,8 +250,9 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 		slots.append(error(Error("promise: not finished")))
 		taken.append(false)
 
-	// In list order, take what is finished. When the next one is not, block until anything finishes and take
-	// everything that has, so a failure behind a slow promise ends the wait without waiting for the slow one.
+	// In list order, take what is finished. When the next one is not, block until
+	// anything finishes and take everything that has, so a failure behind a slow
+	// promise ends the wait without waiting for the slow one.
 	var head = 0
 
 	while head < count:
@@ -261,7 +287,8 @@ export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
 			results.append(value)
 	return ok(results)
 
-// Waits for the first promise to finish and returns its result; the others are cancelled and waited for. Errors as
+// Waits for the first promise to finish and returns its result; the others are
+// cancelled and waited for. Errors as
 // `wait` does; an empty list is an error.
 export fn wait_first[T](promises: List[Promise[T]]) T!:
 	var pending = promises
@@ -271,14 +298,16 @@ export fn wait_first[T](promises: List[Promise[T]]) T!:
 	which := msrt_promise_wait_any(ids, -1)
 	return pending[which].wait()
 
-// A promise whose work runs in the task that first waits on it, on that task's stack, with no task of its own.
-// The work may wait itself. `make` receives the new promise's id and returns the work; it ends with `complete(id, ...)`.
-// For stream implementations: dropping the promise first discards the work unrun.
+// A promise whose work runs in the task that first waits on it, on that task's stack,
+// with no task of its own. The work may wait itself. `make` receives the new promise's
+// id and returns the work; it ends with `complete(id, ...)`. For stream
+// implementations: dropping the promise first discards the work unrun.
 export fn deferred[U](work: fn(Int) Unit) Promise[U]:
 	id := msrt_promise_new()
 	msrt_promise_defer(id, fn: work(id))
 	return Promise[U](id: id)
 
-// A promise over the runtime promise `id` that a native operation completes (a stream read or flush).
+// A promise over the runtime promise `id` that a native operation completes (a stream
+// read or flush).
 export fn adopt[U](id: Int) Promise[U]:
 	return Promise[U](id: id)

@@ -3,7 +3,8 @@ import (
 	read_lines from "@std/streams.ms",
 )
 
-// Returns line `index`, or "" when the input ended early (a final empty line may lack its terminator).
+// Returns line `index`, or "" when the input ended early (a final empty line may lack
+// its terminator).
 fn line_at(lines: List[String], index: Int) String:
 	if index < lines.length(): return lines[index].clone()
 	return ""
@@ -56,7 +57,8 @@ export fn main() Int:
 				right := table[i * width + j + 1]
 				table[i * width + j] = if down >= right: down else: right
 
-	// Edit script: kind 0 is unchanged, 1 is a deletion from a, 2 is an insertion from b.
+	// Edit script: kind 0 is unchanged, 1 is a deletion from a, 2 is an insertion from
+	// b.
 	var kinds = List[Int]()
 	var texts = List[String]()
 	var i = 0
@@ -87,7 +89,8 @@ export fn main() Int:
 
 	total := kinds.length()
 
-	// pre_a[k] and pre_b[k] count the lines of a and b consumed before script position k.
+	// pre_a[k] and pre_b[k] count the lines of a and b consumed before script position
+	// k.
 	var pre_a = List[Int]()
 	var pre_b = List[Int]()
 	var count_a = 0
@@ -104,7 +107,8 @@ export fn main() Int:
 	pre_a.append(count_a)
 	pre_b.append(count_b)
 
-	// Group changes into hunks, each widened by up to `context` unchanged lines on either side.
+	// Group changes into hunks, each widened by up to `context` unchanged lines on
+	// either side.
 	var hunk_lo = List[Int]()
 	var hunk_hi = List[Int]()
 	var first = -1

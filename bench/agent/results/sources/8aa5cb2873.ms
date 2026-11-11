@@ -217,10 +217,16 @@ fn is_blank(line: String) Bool:
 
 export fn main() Int:
 	var st = Store(
-		stk: Map[String, Int](), prc: Map[String, Int](), resv: Map[String, Int](),
-		state: Map[String, Int](), tot: Map[String, Int](),
-		items: Map[String, String](), placed_n: 0, shipped_n: 0, cancelled_n: 0,
-		revenue: 0
+		stk: Map[String, Int](),
+		prc: Map[String, Int](),
+		resv: Map[String, Int](),
+		state: Map[String, Int](),
+		tot: Map[String, Int](),
+		items: Map[String, String](),
+		placed_n: 0,
+		shipped_n: 0,
+		cancelled_n: 0,
+		revenue: 0,
 	)
 	var out = List[String]()
 

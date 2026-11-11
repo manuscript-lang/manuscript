@@ -4,7 +4,8 @@ import (
 	read_lines from "@std/streams.ms",
 )
 
-// One script line: kind 0 is unchanged, 1 is a deletion from A, 2 is an insertion from B.
+// One script line: kind 0 is unchanged, 1 is a deletion from A, 2 is an insertion from
+// B.
 type Op:
 	kind: Int
 	text: String
@@ -105,7 +106,8 @@ export fn main() Int:
 		apre.append(apre[p] + da)
 		bpre.append(bpre[p] + db)
 
-	// Group changes into runs: a gap of unchanged lines above 2 * ctx starts a new hunk.
+	// Group changes into runs: a gap of unchanged lines above 2 * ctx starts a new
+	// hunk.
 	var starts: List[Int] = []
 	var ends: List[Int] = []
 	var first = -1

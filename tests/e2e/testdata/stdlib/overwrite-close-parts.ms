@@ -121,8 +121,10 @@ test "clear closes every value, last inserted first":
 
 fn splices_elements(log: String) Int:
 	var xs = [
-		track(log.clone(), 1), track(log.clone(), 2), track(log.clone(), 3),
-		track(log.clone(), 4)
+		track(log.clone(), 1),
+		track(log.clone(), 2),
+		track(log.clone(), 3),
+		track(log.clone(), 4),
 	]
 	xs.splice(1, 2, [track(log, 5)])
 	return xs.length()

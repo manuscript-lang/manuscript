@@ -102,7 +102,8 @@ fn var RateLimiter.refill() Unit:
 	earned := now.difference(self.stamp).nanos / self.interval.nanos.max(1)
 	if earned <= 0: return unit
 
-	// Compare with remaining room before adding: a valid large burst can overflow the sum.
+	// Compare with remaining room before adding: a valid large burst can overflow
+	// the sum.
 	if earned >= self.burst - self.tokens:
 		self.tokens = self.burst
 		self.stamp = now
@@ -118,21 +119,25 @@ fn var RateLimiter.try_acquire() Bool:
 	self.tokens -= 1
 	return true
 
-// Waits until a token is available, then takes it. The wait ends when the task is cancelled.
+// Waits until a token is available, then takes it. The wait ends when the task is
+// cancelled.
 fn var RateLimiter.acquire() Unit:
 	while not self.try_acquire():
 		ready := self.stamp.shift(self.interval)
 		sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait().get(unit)
 
-// A rate limiter that allows `count` uses per second with room for `burst` at once; it starts full. `count` and `burst` must be at least 1.
+// A rate limiter that allows `count` uses per second with room for `burst` at once; it
+// starts full. `count` and `burst` must be at least 1.
 export fn rate_limiter(count: Int, burst: Int) RateLimiter:
 	if count < 1 or burst < 1:
 		panic(
 			"rate_limiter: count and burst must be at least 1, found {count} and {burst}"
 		)
 	return RateLimiter(
-		burst: burst, interval: seconds(1).divide(count), tokens: burst,
-		stamp: monotonic()
+		burst: burst,
+		interval: seconds(1).divide(count),
+		tokens: burst,
+		stamp: monotonic(),
 	)
 
 // Why a circuit breaker call produced no result.
@@ -166,7 +171,8 @@ export type CircuitBreaker:
 	opened: Instant? = none
 
 impl CircuitBreaker:
-	// Whether a call may go ahead now: the circuit is closed, or its cooldown has passed (the trial call).
+	// Whether a call may go ahead now: the circuit is closed, or its cooldown has
+	// passed (the trial call).
 	fn is_open() Bool:
 		if since := self.opened:
 			return monotonic().difference(since).compare(self.cooldown) < 0
@@ -188,8 +194,10 @@ impl CircuitBreaker:
 			self.opened = monotonic()
 		return error(CircuitError.Failed(result.err().clone()))
 
-// Applies `work` to every item with at most `limit` running at once and returns the results in the order of `items`.
-// A failed worker promise cancels the others. If `work` returns a Result, that Result is an item in the returned list; inspect each outcome.
+// Applies `work` to every item with at most `limit` running at once and returns the
+// results in the order of `items`. A failed worker promise cancels the others. If
+// `work` returns a Result, that Result is an item in the returned list; inspect each
+// outcome.
 //
 // <!-- manuscript-example: {"mode":"fragment"} -->
 // ```manuscript
@@ -252,7 +260,8 @@ fn var Throttle.allow() Bool:
 	self.last = now
 	return true
 
-// Waits until an action may happen, then counts it. The wait ends when the task is cancelled.
+// Waits until an action may happen, then counts it. The wait ends when the task is
+// cancelled.
 fn var Throttle.wait() Unit:
 	if previous := self.last:
 		remaining := self.interval.subtract(monotonic().difference(previous))

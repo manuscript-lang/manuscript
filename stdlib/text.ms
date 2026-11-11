@@ -19,7 +19,8 @@ Scalar classification lives in `@std/unicode.ms`; whole-string operations such a
         if at.read().get() == "ö": break
 */
 
-// Parses `true`/`false` ignoring case, and `1`/`0`, `t`/`f`, `yes`/`no`, `on`/`off`; anything else is none.
+// Parses `true`/`false` ignoring case, and `1`/`0`, `t`/`f`, `yes`/`no`, `on`/`off`;
+// anything else is none.
 export fn parse_bool(text: String) Bool?:
 	word := text.trim().lower()
 	if ["true", "t", "1", "yes", "on"].contains(word): return true
@@ -35,7 +36,8 @@ Braces are escaped so the result stays literal instead of starting interpolation
 export fn quote(text: String) String:
 	return quote_with(text, false)
 
-// Like quote, but every non-ASCII scalar is written as `\u{..}`, so the result is pure ASCII.
+// Like quote, but every non-ASCII scalar is written as `\u{..}`, so the result is pure
+// ASCII.
 export fn quote_ascii(text: String) String:
 	return quote_with(text, true)
 
@@ -189,7 +191,8 @@ fn var TextCursor.seek(mark: Int) Unit:
 		panic("TextCursor.seek: mark is not on a scalar boundary")
 	self.at = mark
 
-// The text from a mark returned by `offset()` up to the current position; a mark after here faults.
+// The text from a mark returned by `offset()` up to the current position; a mark
+// after here faults.
 fn TextCursor.since(mark: Int) String:
 	if mark < 0 or mark > self.at:
 		panic("TextCursor.since: mark must be an earlier offset of this cursor")

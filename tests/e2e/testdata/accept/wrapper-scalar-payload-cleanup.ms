@@ -43,7 +43,10 @@ fn transformed_then() Unit:
 
 test "scalar retained wrapper branches retain their cleanup duty":
 	(expect_fault(optional_cause)?) | expect_contains("resource could not be closed")?
-	(expect_fault(optional_callback)?) | expect_contains("resource could not be closed")?
+	(
+		(expect_fault(optional_callback)?)
+		| expect_contains("resource could not be closed")?
+	)
 	(expect_fault(result_error_map)?) | expect_contains("resource could not be closed")?
 	(expect_fault(result_optional)?) | expect_contains("resource could not be closed")?
 	(expect_fault(result_map)?) | expect_contains("resource could not be closed")?
@@ -51,7 +54,10 @@ test "scalar retained wrapper branches retain their cleanup duty":
 
 test "direct transforming callbacks close their owned scalar input":
 	(expect_fault(transformed_map)?) | expect_contains("resource could not be closed")?
-	(expect_fault(transformed_error)?) | expect_contains("resource could not be closed")?
+	(
+		(expect_fault(transformed_error)?)
+		| expect_contains("resource could not be closed")?
+	)
 	(expect_fault(transformed_then)?) | expect_contains("resource could not be closed")?
 
 fn optional_or_else() Unit:

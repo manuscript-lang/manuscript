@@ -116,7 +116,8 @@ test "a propagated resource argument preserves receiver effects and cleanup":
 
 fn failing_remove(log: String, var calls: Int) Unit:
 	var rows = [
-		[Door(1, log.clone(), fail: true), Door(2, log.clone())], [Door(3, log)]
+		[Door(1, log.clone(), fail: true), Door(2, log.clone())],
+		[Door(3, log)],
 	]
 	rows[next(var calls)].remove(0)
 

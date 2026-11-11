@@ -39,14 +39,15 @@ test "complex polar form and elementary functions":
 	expect_true(
 		near(
 			complex(0.3, 0.4).sinh().divide(complex(0.3, 0.4).cosh()),
-			complex(0.3, 0.4).tanh()
+			complex(0.3, 0.4).tanh(),
 		)
 	)?
 
 test "complex division by zero follows float rules":
 	expect_true(
 		complex(1.0, 1.0).divide(complex(0.0, 0.0)).is_nan() or complex(
-			1.0, 1.0
+			1.0,
+			1.0,
 		).divide(complex(0.0, 0.0)).is_infinite()
 	)?
 	expect_equal(complex(0.0, 0.0).pow(complex(0.0, 0.0)), complex(1.0, 0.0))?
@@ -73,8 +74,10 @@ test "complex exp keeps finite components when the radius overflows":
 
 test "complex exp preserves tiny phase components after radius overflow":
 	inputs := [
-		complex(710.0, 5e-324), complex(1000.0, 1e-300), complex(1420.0, 5e-324),
-		complex(1450.0, 5e-324)
+		complex(710.0, 5e-324),
+		complex(1000.0, 1e-300),
+		complex(1420.0, 5e-324),
+		complex(1450.0, 5e-324),
 	]
 	expected := [
 		1.1037400669496503e-15, 1.970071114017047e134, 2.4657495327684952e293,
@@ -158,7 +161,8 @@ test "complex trig keeps subnormal phases beyond a half exponential":
 				hyperbolic_cosine := complex(argument, phase).cosh()
 				expect_equal(hyperbolic_cosine.re, infinity)?
 				component_close(
-					hyperbolic_cosine.im, direction * sign * expected[index]
+					hyperbolic_cosine.im,
+					direction * sign * expected[index],
 				)?
 
 test "complex trig range fallback retains signed zeros and nonfinite controls":
@@ -197,11 +201,13 @@ test "complex divide keeps a finite quotient when the operands are near the Floa
 	tiny := complex(5.0e-324, 5.0e-324)
 	expect_equal(tiny.divide(tiny), complex(1.0, 0.0))?
 	expect_equal(
-		complex(1.0e308, 0.0).divide(complex(0.0, 1.0e308)), complex(0.0, -1.0)
+		complex(1.0e308, 0.0).divide(complex(0.0, 1.0e308)),
+		complex(0.0, -1.0),
 	)?
 	expect_equal(complex(1.0e308, 0.0).divide(complex(1.0e308, 0.0)), complex(1.0, 0.0))?
 	expect_equal(
-		complex(0.0, 1.0e308).divide(complex(0.0, -1.0e308)), complex(-1.0, 0.0)
+		complex(0.0, 1.0e308).divide(complex(0.0, -1.0e308)),
+		complex(-1.0, 0.0),
 	)?
 
 test "complex log is finite when the magnitude overflows":
@@ -255,9 +261,13 @@ test "complex tangent handles the largest finite phase":
 // complex-distance check would accept zero for every small component here.
 test "complex inverse tangent preserves small imaginary components":
 	inputs := [
-		complex(1.0, 1e-30), complex(0.0, 1e-30), complex(2.0, 1e-300),
-		complex(1e200, 1e200), complex(1e308, 1e308), complex(1e200, 1e100),
-		complex(0.0, 1e200)
+		complex(1.0, 1e-30),
+		complex(0.0, 1e-30),
+		complex(2.0, 1e-300),
+		complex(1e200, 1e200),
+		complex(1e308, 1e308),
+		complex(1e200, 1e100),
+		complex(0.0, 1e200),
 	]
 	expected := [5e-31, 1e-30, 2e-301, 5e-201, 5e-309, 1e-300, 1e-200]
 
@@ -289,7 +299,8 @@ test "complex inverse tangent preserves poles and ordinary controls":
 	expect_true((near_pole.im / 345.7343375393868 - 1.0).abs() < 1e-12)?
 	expect_true(
 		near(
-			complex(1.0, 0.5).atan(), complex(0.847575660670829, 0.2388778612568591)
+			complex(1.0, 0.5).atan(),
+			complex(0.847575660670829, 0.2388778612568591),
 		)
 	)?
 	expect_true(near(complex(0.3, 0.4).tan().atan(), complex(0.3, 0.4)))?
@@ -312,7 +323,8 @@ test "inverse sine keeps large imaginary parts finite and conjugate-symmetric":
 	component_close(complex(0.0, 1e10).asin().im, 23.7189981105004)?
 	expect_true(
 		near(
-			complex(0.0, 1e10).acos(), complex(1.5707963267948966, -23.7189981105004)
+			complex(0.0, 1e10).acos(),
+			complex(1.5707963267948966, -23.7189981105004),
 		)
 	)?
 	component_close(complex(0.5, 1e6).asin().im, 14.508657738524594)?
@@ -324,7 +336,8 @@ test "inverse sine keeps large imaginary parts finite and conjugate-symmetric":
 	expect_true(near(z.conjugate().asin(), z.asin().conjugate()))?
 	expect_true(
 		near(
-			z.multiply(complex(-1.0, 0.0)).asin(), z.asin().multiply(complex(-1.0, 0.0))
+			z.multiply(complex(-1.0, 0.0)).asin(),
+			z.asin().multiply(complex(-1.0, 0.0)),
 		)
 	)?
 
@@ -336,6 +349,6 @@ test "complex divide keeps a small part beside a part near the Float limit":
 	expect_equal(swapped.divide(complex(1.0, 0.0)), swapped)?
 	expect_equal(
 		complex(-1.0e308, 1.0e-100).divide(complex(1.0, 0.0)),
-		complex(-1.0e308, 1.0e-100)
+		complex(-1.0e308, 1.0e-100),
 	)?
 	expect_equal(z.divide(complex(2.0, 0.0)), complex(5.0e307, 5.0e-101))?

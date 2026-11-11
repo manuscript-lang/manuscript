@@ -15,7 +15,8 @@ test "inline flow and scalar document content stays supported":
 	for body in ["word", "\"word\"", "'word'", "&name word"]:
 		expect_equal((parse("--- {body}\n")?), YamlValue.StringValue("word"))?
 	expect_equal(
-		(parse("--- \"value: word\"\n")?), YamlValue.StringValue("value: word")
+		(parse("--- \"value: word\"\n")?),
+		YamlValue.StringValue("value: word"),
 	)?
 	expect_equal((parse("--- \"- word\"\n")?), YamlValue.StringValue("- word"))?
 	expect_equal((parse("--- \{value: word\}\n")?), (parse("value: word\n")?))?
@@ -81,21 +82,21 @@ test "indented markers and marker prefixes remain scalar content":
 	for marker in ["---", "..."]:
 		expect_equal(
 			(parse("[\n {marker}\n]")?),
-			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())])
+			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())]),
 		)?
 		for quote in ["'", "\""]:
 			expect_equal(
 				(parse("{quote}word\n {marker}\n end{quote}")?),
-				YamlValue.StringValue("word {marker} end")
+				YamlValue.StringValue("word {marker} end"),
 			)?
 		for suffix in ["word", "#literal", "\u{a0}word"]:
 			expect_equal(
 				(parse("[\n{marker}{suffix}\n]")?),
 				YamlValue.ArrayValue(
 					[YamlValue.StringValue("{marker}{suffix}")]
-				)
+				),
 			)?
 		expect_equal(
 			(parse("[\n{marker}]")?),
-			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())])
+			YamlValue.ArrayValue([YamlValue.StringValue(marker.clone())]),
 		)?

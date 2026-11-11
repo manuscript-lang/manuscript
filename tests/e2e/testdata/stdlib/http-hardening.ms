@@ -24,10 +24,13 @@ fn slow_route(request: HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, headers: headers(), body: "late".to_bytes())
 
 test "serve ends a connection that trickles its request head":
-	server := serve(
-		address: "127.0.0.1:0", handler: buffered(ok_route),
-		options: HttpServerOptions(timeout: 400.milliseconds())
-	) | expect_ok?
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: buffered(ok_route),
+			options: HttpServerOptions(timeout: 400.milliseconds()),
+		) | expect_ok?
+	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	send(var client, "GET / HTTP/1.1\r\nHost: t\r\nX-Slow: ") | expect_ok?
 
@@ -52,17 +55,21 @@ test "serve ends a connection that trickles its request head":
 		)
 
 test "close cancels a handler that outlives the grace period":
-	var server = serve(
-		address: "127.0.0.1:0", handler: buffered(slow_route),
-		options: HttpServerOptions(grace: 200.milliseconds())
-	) | expect_ok?
+	var server = (
+		serve(
+			address: "127.0.0.1:0",
+			handler: buffered(slow_route),
+			options: HttpServerOptions(grace: 200.milliseconds()),
+		) | expect_ok?
+	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	send(var client, "GET / HTTP/1.1\r\nHost: t\r\n\r\n") | expect_ok?
 
 	_ := sleep(100.milliseconds()).wait()
 	server.close()?
 
-	// An error here is the connection ending (a reset on macOS); only a served reply fails.
+	// An error here is the connection ending (a reset on macOS); only a served reply
+	// fails.
 	if reply := recv(var client, 5.seconds()):
 		text := reply.get(Bytes([])).decode_utf8().get("")
 		if text.starts_with("HTTP/1.1 200"): return error(
@@ -70,15 +77,24 @@ test "close cancels a handler that outlives the grace period":
 		)
 
 test "close cancels a handler parked on a request body and releases its stream":
-	var server = serve(
-		address: "127.0.0.1:0", handler: buffered(ok_route),
-		options: HttpServerOptions(grace: 0.seconds())
-	) | expect_ok?
+	var server = (
+		serve(
+			address: "127.0.0.1:0",
+			handler: buffered(ok_route),
+			options: HttpServerOptions(grace: 0.seconds()),
+		) | expect_ok?
+	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 
-	// The head promises a body that never comes, so the handler parks reading it. Cancelling it
-	// must free the stream (`make leak-check` counts a leaked stream as a live block).
-	send(var client, "POST / HTTP/1.1\r\nHost: t\r\nContent-Length: 100\r\n\r\nab") | expect_ok?
+	// The head promises a body that never comes, so the handler parks reading it.
+	// Cancelling it must free the stream (`make leak-check` counts a leaked stream as a
+	// live block).
+	(
+		send(
+			var client,
+			"POST / HTTP/1.1\r\nHost: t\r\nContent-Length: 100\r\n\r\nab",
+		) | expect_ok?
+	)
 
 	_ := sleep(100.milliseconds()).wait()
 	server.close()?
@@ -114,8 +130,18 @@ test "serve answers requests while handlers read and write files":
 	var server = serve(address: "127.0.0.1:0", handler: buffered(io_route)) | expect_ok?
 	var a = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	var b = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
-	send(var a, "GET /io?1 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | expect_ok?
-	send(var b, "GET /io?2 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | expect_ok?
+	(
+		send(
+			var a,
+			"GET /io?1 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
+		) | expect_ok?
+	)
+	(
+		send(
+			var b,
+			"GET /io?2 HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
+		) | expect_ok?
+	)
 	expect_file_reply(var a)?
 	expect_file_reply(var b)?
 	server.close()?
@@ -125,12 +151,20 @@ fn oversized(var exchange: HttpExchange) Unit!:
 	return reply(var exchange, text(200, "z".repeat(5000).get("")))
 
 test "serve answers 500 when a whole response exceeds max_response_bytes":
-	server := serve(
-		address: "127.0.0.1:0", handler: oversized,
-		options: HttpServerOptions(max_response_bytes: 100)
-	) | expect_ok?
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: oversized,
+			options: HttpServerOptions(max_response_bytes: 100),
+		) | expect_ok?
+	)
 	var client = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
-	send(var client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n") | expect_ok?
+	(
+		send(
+			var client,
+			"GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n",
+		) | expect_ok?
+	)
 
 	reply_bytes := recv(var client, 3.seconds()) | expect_ok?
 	head := reply_bytes.get(Bytes([])).decode_utf8().get("")

@@ -174,7 +174,10 @@ fn with_modifiers(event: TerminalEvent, modifier: Int) TerminalEvent:
 	match event:
 		Key(name, _ctrl, _alt, _shift):
 			return key(
-				name.clone(), bits / 4 % 2 == 1, bits / 2 % 2 == 1, bits % 2 == 1
+				name.clone(),
+				bits / 4 % 2 == 1,
+				bits / 2 % 2 == 1,
+				bits % 2 == 1,
 			)
 		Text(_text): return event.clone()
 		Resize(_columns, _rows): return event.clone()
@@ -201,7 +204,8 @@ fn first_number(part: String) Int:
 	head := part.split(":")[0]
 	return head.parse_int().get(0)
 
-// The key a CSI sequence with parameters `params` and final byte `last` reports, if any.
+// The key a CSI sequence with parameters `params` and final byte `last` reports, if
+// any.
 fn csi_key(params: String, last: Int) TerminalEvent?:
 	numbers := params.split(";").map(first_number)
 	modifier := numbers.get(1, default: 1)
@@ -234,8 +238,8 @@ fn decoded(event: TerminalEvent, used: Int) Parsed:
 fn code_of(c: String) Int:
 	return c.scalar_at(0, -1)
 
-// Concatenates `parts` in order. Pairwise merging keeps a long paste linear-ish without a string builder,
-// which would make this module import a cycle.
+// Concatenates `parts` in order. Pairwise merging keeps a long paste linear-ish without
+// a string builder, which would make this module import a cycle.
 fn concat_all(parts: List[String]) String:
 	var level = parts.clone()
 
@@ -340,7 +344,8 @@ export type TerminalDecoder:
 fn TerminalDecoder.partial() Bool:
 	return not self.pending.is_empty() and not self.pasting
 
-// Resolves a held lone escape into the Escape key and drops any other unfinished sequence.
+// Resolves a held lone escape into the Escape key and drops any other unfinished
+// sequence.
 fn var TerminalDecoder.flush() List[TerminalEvent]:
 	var out = List[TerminalEvent]()
 	if not self.partial(): return out
@@ -353,7 +358,7 @@ fn var TerminalDecoder.flush() List[TerminalEvent]:
 fn var TerminalDecoder.take_paste(
 	buf: List[String],
 	at: Int,
-	var out: List[TerminalEvent]
+	var out: List[TerminalEvent],
 ) Int:
 	old := self.paste.length()
 	var taken = at
@@ -439,15 +444,17 @@ fn var TerminalDecoder.decode(text: String) List[TerminalEvent]:
 // A decoder with nothing pending.
 export fn terminal_decoder() TerminalDecoder:
 	return TerminalDecoder(
-		pending: List[String](), pasting: false, paste: List[String](),
-		discarding: false
+		pending: List[String](),
+		pasting: false,
+		paste: List[String](),
+		discarding: false,
 	)
 
 fn read_size(handle: NativeRawTerminal) TerminalSize?:
 	if msstd_terminal_raw_terminal_size_status(handle).is_error(): return none
 	return TerminalSize(
 		columns: msstd_terminal_raw_terminal_size_columns(handle),
-		rows: msstd_terminal_raw_terminal_size_rows(handle)
+		rows: msstd_terminal_raw_terminal_size_rows(handle),
 	)
 
 fn resized(before: TerminalSize?, now: TerminalSize) Bool:
@@ -515,8 +522,9 @@ export type RawTerminal:
 fn var RawTerminal.close() Unit!:
 	msstd_terminal_raw_terminal_close(self.handle.native)
 
-// Input events as a stream: keys, text and resizes, one per read. Waits honor cancellation and promise timeouts.
-// The stream ends with an error once the terminal is closed; closing the stream leaves the terminal open.
+// Input events as a stream: keys, text and resizes, one per read. Waits honor
+// cancellation and promise timeouts. The stream ends with an error once the
+// terminal is closed; closing the stream leaves the terminal open.
 fn RawTerminal.events() ReadStream[TerminalEvent]:
 	return ReadStream[TerminalEvent](
 		TerminalEvents(
@@ -525,7 +533,7 @@ fn RawTerminal.events() ReadStream[TerminalEvent]:
 			),
 			terminal_decoder(),
 			List[TerminalEvent](),
-			read_size(self.handle.native)
+			read_size(self.handle.native),
 		)
 	)
 
@@ -537,21 +545,24 @@ fn RawTerminal.size() TerminalSize!:
 			columns: msstd_terminal_raw_terminal_size_columns(
 				self.handle.native
 			),
-			rows: msstd_terminal_raw_terminal_size_rows(self.handle.native)
+			rows: msstd_terminal_raw_terminal_size_rows(self.handle.native),
 		)
 	)
 
-// Writes text or escape sequences to the terminal, after any buffered program output. Fails with `EBADF` after close.
+// Writes text or escape sequences to the terminal, after any buffered program
+// output. Fails with `EBADF` after close.
 fn RawTerminal.write(text: String) Unit!:
 	return msstd_terminal_raw_terminal_write(self.handle.native, text)
 
-// Moves the cursor to a zero-based row and column; negative or very large values return `EINVAL`.
+// Moves the cursor to a zero-based row and column; negative or very large values
+// return `EINVAL`.
 fn RawTerminal.move_cursor(row: Int, column: Int) Unit!:
 	if row < 0 or column < 0 or row > max_position or column > max_position:
 		return error(Error("terminal: position out of range", kind: "EINVAL"))
 	return self.write("{esc}[{row + 1};{column + 1}H")
 
-// Moves the cursor down by `rows` and right by `columns`; negative values move up and left. The cursor stops at the screen edge.
+// Moves the cursor down by `rows` and right by `columns`; negative values move up
+// and left. The cursor stops at the screen edge.
 fn RawTerminal.move_by(rows: Int, columns: Int) Unit!:
 	var out = ""
 	if rows < 0: out = "{out}{esc}[{0 - rows}A"
@@ -614,7 +625,7 @@ export fn terminal_capabilities() TerminalCapabilities:
 		error_is_terminal: msstd_terminal_capabilities_error_is_terminal(),
 		raw_mode: msstd_terminal_capabilities_raw_mode(),
 		resize_events: msstd_terminal_capabilities_resize_events(),
-		colors: msstd_terminal_capabilities_colors()
+		colors: msstd_terminal_capabilities_colors(),
 	)
 
 // Returns the terminal size, or `ENOTTY` when output is redirected.
@@ -623,11 +634,13 @@ export fn terminal_size() TerminalSize!:
 	msstd_terminal_size_status()?
 	return ok(
 		TerminalSize(
-			columns: msstd_terminal_size_columns(), rows: msstd_terminal_size_rows()
+			columns: msstd_terminal_size_columns(),
+			rows: msstd_terminal_size_rows(),
 		)
 	)
 
-// Acquires raw input with an optional alternate screen; returns `EBUSY` while another raw terminal is open and `ENOTTY` when streams are redirected.
+// Acquires raw input with an optional alternate screen; returns `EBUSY` while another
+// raw terminal is open and `ENOTTY` when streams are redirected.
 // ms: effect std.console.read
 // ms: effect std.console.write
 export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:
@@ -635,9 +648,11 @@ export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:
 	leave := if alternate_screen: "{esc}[?1049l" else: ""
 	enter := if alternate_screen: "{esc}[?1049h" else: ""
 
-	// The restore text runs on close, at scope exit and at process exit: cursor, key protocols, paste, screen.
+	// The restore text runs on close, at scope exit and at process exit: cursor, key
+	// protocols, paste, screen.
 	msstd_terminal_raw_terminal_set_restore(
-		native, "{esc}[?25h{esc}[<u{esc}[>4;0m{esc}[?2004l{leave}"
+		native,
+		"{esc}[?25h{esc}[<u{esc}[>4;0m{esc}[?2004l{leave}",
 	)
 	msstd_terminal_raw_terminal_write(native, "{enter}{esc}[?2004h{esc}[>4;2m{esc}[>1u")?
 	return ok(RawTerminal(handle: RawHandle(native)))

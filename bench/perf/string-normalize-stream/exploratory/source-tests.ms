@@ -27,36 +27,40 @@ test "normalization preserves all four forms and literal replacement characters"
 
 test "normalization keeps exact exceeded zero negative and invalid form budgets":
 	for normalization in [
-		BudgetCase("NFC", "e\u{301}", "é"), BudgetCase("NFD", "é", "e\u{301}"),
-		BudgetCase("NFKC", "ﬁ①", "fi1"), BudgetCase("NFKD", "ﬁ①", "fi1")
+		BudgetCase("NFC", "e\u{301}", "é"),
+		BudgetCase("NFD", "é", "e\u{301}"),
+		BudgetCase("NFKC", "ﬁ①", "fi1"),
+		BudgetCase("NFKD", "ﬁ①", "fi1"),
 	]:
 		size := normalization.expected.byte_length()
 		expect_equal(
 			normalization.text.normalize(normalization.form, size).get(),
-			normalization.expected.clone()
+			normalization.expected.clone(),
 		)?
 		expect_equal(
 			normalization.text.normalize(
-				normalization.form, size - 1
+				normalization.form,
+				size - 1,
 			).err(),
-			Error("string: limit exceeded", kind: "EOVERFLOW")
+			Error("string: limit exceeded", kind: "EOVERFLOW"),
 		)?
 		expect_equal(
 			normalization.text.normalize(normalization.form, 0).err(),
-			Error("string: limit exceeded", kind: "EOVERFLOW")
+			Error("string: limit exceeded", kind: "EOVERFLOW"),
 		)?
 		expect_equal(
 			normalization.text.normalize(normalization.form, -1).err(),
-			Error("string: invalid input", kind: "EINVAL")
+			Error("string: invalid input", kind: "EINVAL"),
 		)?
 
 	for form in ["", "nfc", "NFC\u{0}", "UNKNOWN"]:
 		expect_equal(
-			"é".normalize(form).err(), Error("string: invalid input", kind: "EINVAL")
+			"é".normalize(form).err(),
+			Error("string: invalid input", kind: "EINVAL"),
 		)?
 		expect_equal(
 			"é".normalize(form, -1).err(),
-			Error("string: invalid input", kind: "EINVAL")
+			Error("string: invalid input", kind: "EINVAL"),
 		)?
 
 test "normalization retains lookahead across a complete combining segment":
@@ -69,5 +73,5 @@ test "normalization retains lookahead across a complete combining segment":
 	expect_equal(text.normalize("NFKD").get(), decomposed)?
 	expect_equal(
 		text.normalize("NFC", 0).err(),
-		Error("string: limit exceeded", kind: "EOVERFLOW")
+		Error("string: limit exceeded", kind: "EOVERFLOW"),
 	)?

@@ -41,13 +41,15 @@ test "deadline expires and ticker paces":
 	expect_true(monotonic().difference(start).to_milliseconds() >= 29)?
 
 test "ticker keeps its original cadence when the consumer misses ticks":
-	// Alignment is exact even on a loaded runner; no upper bound on elapsed time is assumed.
+	// Alignment is exact even on a loaded runner; no upper bound on elapsed time is
+	// assumed.
 	period := nanoseconds(10000019)
 	var ticks = ticker(period.clone())
 	first := (ticks.next()?).get().clone()
 
 	for pause in [
-		period.multiply(4).add(nanoseconds(1)), period.multiply(7).add(nanoseconds(3))
+		period.multiply(4).add(nanoseconds(1)),
+		period.multiply(7).add(nanoseconds(3)),
 	]:
 		sleep(pause).wait()?
 

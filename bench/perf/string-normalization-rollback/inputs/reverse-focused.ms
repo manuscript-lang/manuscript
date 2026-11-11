@@ -65,7 +65,7 @@ fn main() Int:
 
 	for pattern in [
 		Pattern("ascii_mixed", "abcDE09_", "_90EDcba"),
-		Pattern("ascii_controls", "a\u{0}b\tc\nd!", "!d\nc\tb\u{0}a")
+		Pattern("ascii_controls", "a\u{0}b\tc\nd!", "!d\nc\tb\u{0}a"),
 	]:
 		for length in [0, 1, 2, 7, 8, 15, 16, 17, 31, 32, 63, 64, 128, 4096, 1048576]:
 			copies := length / 8
@@ -85,11 +85,13 @@ fn main() Int:
 		Pattern("three_byte", "日漢€☃", "☃€漢日"),
 		Pattern("four_byte", "😀🙂🚀🌍", "🌍🚀🙂😀"),
 		Pattern(
-			"mixed", "aé日😀\u{0}e\u{301}\u{fffd}", "\u{fffd}\u{301}e\u{0}😀日éa"
+			"mixed",
+			"aé日😀\u{0}e\u{301}\u{fffd}",
+			"\u{fffd}\u{301}e\u{0}😀日éa",
 		),
 		Pattern("combining", "e\u{301}a\u{308}", "\u{308}a\u{301}e"),
 		Pattern("zwj", "👩\u{200d}🚀", "🚀\u{200d}👩"),
-		Pattern("replacement", "\u{fffd}", "\u{fffd}")
+		Pattern("replacement", "\u{fffd}", "\u{fffd}"),
 	]:
 		for copies in [1, 2, 8, 32, 256, 4096, 65536]:
 			text := pattern.forward.repeat(copies).get()

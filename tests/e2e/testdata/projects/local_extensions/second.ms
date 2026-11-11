@@ -45,11 +45,23 @@ export fn second_generic() fn(Item) Int:
 
 test "second local extensions":
 	item := Item(2)
-	(item.get() != 22 or invoke(item) != 22 or relay(item.clone()) != 22) | expect_false?
+	(
+		(
+			item.get() != 22
+			or invoke(item) != 22
+			or relay(item.clone()) != 22
+		) | expect_false?
+	)
 	as_view(item).get() | expect_equal(22)?
 
 	holder := Holder(item)
-	(holder.get() != 22 or invoke(holder) != 22 or holder.extract() != 22) | expect_false?
+	(
+		(
+			holder.get() != 22
+			or invoke(holder) != 22
+			or holder.extract() != 22
+		) | expect_false?
+	)
 	Box("hello").get() | expect_equal("hello")?
 	Choice.Some(2).get() | expect_equal(22)?
 

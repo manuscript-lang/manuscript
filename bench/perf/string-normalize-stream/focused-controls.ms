@@ -53,7 +53,7 @@ fn normalize_sum(
 	has_max: Bool,
 	max: Int,
 	expected: String,
-	status: Int
+	status: Int,
 ) Int:
 	if has_max: return consume(text.normalize(form, max), expected, status)
 	return consume(text.normalize(form), expected, status)
@@ -66,7 +66,7 @@ fn measure(
 	max: Int,
 	expected: String,
 	status: Int,
-	iterations: Int
+	iterations: Int,
 ) Int:
 	var expected_sum = 17
 	if status == 0: expected_sum += expected.byte_length()
@@ -105,50 +105,98 @@ fn main() Int:
 	if measure("invalid_negative", "é", "UNKNOWN", true, -1, "", 2, 5000000) != 0: return 1
 	if (
 		measure(
-			"canonical_scale_65536_NFC_full", "é".repeat(65536).get(), "NFC", false, 0,
-			"é".repeat(65536).get(), 0, 64
+			"canonical_scale_65536_NFC_full",
+			"é".repeat(65536).get(),
+			"NFC",
+			false,
+			0,
+			"é".repeat(65536).get(),
+			0,
+			64,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"canonical_scale_65536_NFD_full", "é".repeat(65536).get(), "NFD", false, 0,
-			"é".repeat(65536).get(), 0, 64
+			"canonical_scale_65536_NFD_full",
+			"é".repeat(65536).get(),
+			"NFD",
+			false,
+			0,
+			"é".repeat(65536).get(),
+			0,
+			64,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"canonical_scale_65536_NFKC_full", "é".repeat(65536).get(), "NFKC", false,
-			0, "é".repeat(65536).get(), 0, 64
+			"canonical_scale_65536_NFKC_full",
+			"é".repeat(65536).get(),
+			"NFKC",
+			false,
+			0,
+			"é".repeat(65536).get(),
+			0,
+			64,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"canonical_scale_65536_NFKD_full", "é".repeat(65536).get(), "NFKD", false,
-			0, "é".repeat(65536).get(), 0, 64
+			"canonical_scale_65536_NFKD_full",
+			"é".repeat(65536).get(),
+			"NFKD",
+			false,
+			0,
+			"é".repeat(65536).get(),
+			0,
+			64,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"compatibility_scale_4096_NFKC_full", "ﬁ①".repeat(4096).get(), "NFKC",
-			false, 0, "fi1".repeat(4096).get(), 0, 1024
+			"compatibility_scale_4096_NFKC_full",
+			"ﬁ①".repeat(4096).get(),
+			"NFKC",
+			false,
+			0,
+			"fi1".repeat(4096).get(),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"compatibility_scale_4096_NFKD_full", "ﬁ①".repeat(4096).get(), "NFKD",
-			false, 0, "fi1".repeat(4096).get(), 0, 1024
+			"compatibility_scale_4096_NFKD_full",
+			"ﬁ①".repeat(4096).get(),
+			"NFKD",
+			false,
+			0,
+			"fi1".repeat(4096).get(),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"combining_segment_NFD_full", ("a" + "̀̕".repeat(256).get()), "NFD", false,
-			0, ("a" + "̀".repeat(256).get() + "̕".repeat(256).get()), 0, 1024
+			"combining_segment_NFD_full",
+			("a" + "̀̕".repeat(256).get()),
+			"NFD",
+			false,
+			0,
+			("a" + "̀".repeat(256).get() + "̕".repeat(256).get()),
+			0,
+			1024,
 		) != 0
 	): return 1
 	if (
 		measure(
-			"combining_segment_NFKD_full", ("a" + "̀̕".repeat(256).get()), "NFKD",
-			false, 0, ("a" + "̀".repeat(256).get() + "̕".repeat(256).get()), 0, 1024
+			"combining_segment_NFKD_full",
+			("a" + "̀̕".repeat(256).get()),
+			"NFKD",
+			false,
+			0,
+			("a" + "̀".repeat(256).get() + "̕".repeat(256).get()),
+			0,
+			1024,
 		) != 0
 	): return 1
 

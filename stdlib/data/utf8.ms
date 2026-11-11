@@ -13,8 +13,9 @@ The scalar decoders examine at most four input bytes; is_valid checks the whole 
 No normalization or replacement is applied.
 */
 
-// Tests the entire byte sequence for strict, shortest UTF-8 without allocating decoded text.
-// Empty bytes are valid. Surrogates, overlong sequences, out-of-range scalars and incomplete sequences are invalid.
+// Tests the entire byte sequence for strict, shortest UTF-8 without allocating decoded
+// text. Empty bytes are valid. Surrogates, overlong sequences, out-of-range scalars and
+// incomplete sequences are invalid.
 export fn is_valid(data: Bytes) Bool:
 	return msstd_utf8_is_valid(data)
 
@@ -23,7 +24,8 @@ export fn is_valid(data: Bytes) Bool:
 export type Utf8Scalar:
 	// Unicode scalar value, excluding surrogates, from zero through U+10FFFF.
 	scalar: Int
-	// Number of consumed bytes, from one through four; not a scalar index or grapheme count.
+	// Number of consumed bytes, from one through four; not a scalar index or grapheme
+	// count.
 	width: Int
 
 // Distinguishes text that needs more bytes from text that cannot form a valid scalar.
@@ -38,7 +40,8 @@ export enum Utf8Error:
 INCOMPLETE := -1
 INVALID := -2
 
-// Lowest and highest allowed second byte for a lead byte; the other continuation bytes span 128 through 191.
+// Lowest and highest allowed second byte for a lead byte; the other continuation bytes
+// span 128 through 191.
 fn second_low(lead: Int) Int:
 	if lead == 224: return 160
 	if lead == 240: return 144
@@ -84,7 +87,8 @@ fn scalar_width(value: Int) Int:
 
 	return 4
 
-// Finds the scalar that ends at stop by trying each possible start, shortest suffix first.
+// Finds the scalar that ends at stop by trying each possible start, shortest suffix
+// first.
 fn decode_ending(data: Bytes, stop: Int) Int:
 	var incomplete = stop == 0
 

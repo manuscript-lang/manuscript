@@ -28,7 +28,8 @@ test "bit and byte reversal map every position in a 64-bit pattern":
 		value := shift_left(1, position)
 		expect_equal(reverse_bits(value), shift_left(1, 63 - position))?
 		expect_equal(
-			reverse_bytes(value), shift_left(1, (7 - position / 8) * 8 + position % 8)
+			reverse_bytes(value),
+			shift_left(1, (7 - position / 8) * 8 + position % 8),
 		)?
 
 	var value = 81985529216486895
@@ -37,7 +38,8 @@ test "bit and byte reversal map every position in a 64-bit pattern":
 		expect_equal(reverse_bits(reverse_bits(value)), value)?
 		expect_equal(reverse_bytes(reverse_bytes(value)), value)?
 		value = bit_xor(
-			wrapping_multiply(value, 6364136223846793005), -7046029254386353131
+			wrapping_multiply(value, 6364136223846793005),
+			-7046029254386353131,
 		)
 
 test "base-two exponentiation includes underflow overflow and special values":

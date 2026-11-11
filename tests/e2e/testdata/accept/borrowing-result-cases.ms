@@ -1,7 +1,8 @@
 import expect_equal from "@std/test/test.ms"
 
-// A function that relays the error of a borrowed Result but builds its own ok payload returns a
-// borrowing result: the error case borrows the argument (no copy), the ok case is owned.
+// A function that relays the error of a borrowed Result but builds its own ok payload
+// returns a borrowing result: the error case borrows the argument (no copy), the ok
+// case is owned.
 fn grow(value: String!String) String!String:
 	output := value?
 	return ok(output + "x")

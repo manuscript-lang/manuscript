@@ -53,7 +53,11 @@ test "a directory is a stream source of entries and seek takes an origin":
 	(handle.seek(-1, Seek.End)?) | expect_equal(10)?
 
 	entries := open_directory(root) | expect_ok?
-	all := ReadStream[DirectoryEntry](entries) | collect(none) | expect_ok?
+	all := (
+		ReadStream[DirectoryEntry](entries)
+		| collect(none)
+		| expect_ok?
+	)
 	all.length() | expect_equal(2)?
 
 test "opening a directory classifies invalid and missing paths":

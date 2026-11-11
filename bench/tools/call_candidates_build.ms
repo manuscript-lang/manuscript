@@ -1,5 +1,5 @@
-// End-to-end uncached Release builds plus exact native output checks.
-// MS_CACHE=off ms run bench/tools/call_candidates_build.ms -- BEFORE AFTER INPUTS OUTPUT ROUNDS
+// End-to-end uncached Release builds plus exact native output checks. MS_CACHE=off ms
+// run bench/tools/call_candidates_build.ms -- BEFORE AFTER INPUTS OUTPUT ROUNDS
 import (
 	arguments, set_environment from "@std/os/env.ms",
 
@@ -19,7 +19,7 @@ fn measure(
 	inputs: String,
 	directory: String,
 	rounds: Int,
-	filter: String
+	filter: String,
 ) Unit!:
 	ensure_directory(directory)
 	set_environment("MS_CACHE", "off")?
@@ -38,9 +38,17 @@ fn measure(
 					binary := if label == "before": before else: after
 					prefix := "{directory}/round-{round}-{label}-{mode}-{count}"
 					command := [
-						"60", "taskset", "-c", "0", binary.clone(), "build",
-						file.clone(), "--build-type", "Release", "-o",
-						"{directory}/program"
+						"60",
+						"taskset",
+						"-c",
+						"0",
+						binary.clone(),
+						"build",
+						file.clone(),
+						"--build-type",
+						"Release",
+						"-o",
+						"{directory}/program",
 					]
 					started := now_ns()
 					measured := timed("timeout", command)?
@@ -75,7 +83,10 @@ export fn main() Unit!:
 		return invalid("expected BEFORE AFTER INPUTS OUTPUT ROUNDS [FILTER]")
 
 	measure(
-		absolute(args[0].clone()), absolute(args[1].clone()), absolute(args[2].clone()),
-		absolute(args[3].clone()), args[4].parse_int().get(),
-		if args.length() == 6: args[5].clone() else: ""
+		absolute(args[0].clone()),
+		absolute(args[1].clone()),
+		absolute(args[2].clone()),
+		absolute(args[3].clone()),
+		args[4].parse_int().get(),
+		if args.length() == 6: args[5].clone() else: "",
 	)?

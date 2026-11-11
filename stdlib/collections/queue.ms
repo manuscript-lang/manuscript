@@ -3,17 +3,21 @@ import (
 	panic from "@std/core.ms",
 )
 
-// A mutable first-in, first-out queue. Assigning it transfers ownership; `.clone()` makes an independent queue when its elements are Clonable.
-// Omitted or none capacity grows as needed and adds no fixed queue limit.
+// A mutable first-in, first-out queue. Assigning it transfers ownership; `.clone()`
+// makes an independent queue when its elements are Clonable. Omitted or none capacity
+// grows as needed and adds no fixed queue limit.
 export type Queue[T]:
-	// Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
+	// Constructor capacity in items; omission/none is unbounded, and supplied values
+	// must be positive.
 	capacity: Int?
-	// Pending values from `head`; `none` marks consumed slots. Internal state: use the operations, not this field.
+	// Pending values from `head`; `none` marks consumed slots. Internal state: use the
+	// operations, not this field.
 	items: List[T?] = []
 	// Index in `items` of the oldest value. Internal state.
 	head: Int = 0
 
-// Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
+// Adds a value, returning False when a bounded queue is full. A non-positive
+// capacity faults.
 fn var Queue[T].enqueue(value: T) Bool:
 	if limit := self.capacity:
 		if limit <= 0:
@@ -60,23 +64,30 @@ fn Queue[T].is_empty() Bool:
 fn Queue[T].length() Int:
 	return self.items.length() - self.head
 
-// Returns the value `index` places after the oldest, or none when out of range; negative indexes are out of range.
+// Returns the value `index` places after the oldest, or none when out of range;
+// negative indexes are out of range.
 fn Queue[T].at(index: Int) T?:
 	if index < 0 or index >= self.length(): return none
 	return self.items.get(self.head + index)
 
-// Orders two values: negative when `left` dequeues first, zero when equal, positive when `right` dequeues first.
+// Orders two values: negative when `left` dequeues first, zero when equal, positive
+// when `right` dequeues first.
 fn order[T: Comparable](left: T, right: T) Int:
 	return left.compare(right)
 
-// Values dequeue in their `Comparable` order, smallest first; equal priorities remain FIFO. Wrap a value in a record with `impl Comparable` to order by anything else.
-// Assigning a priority queue transfers ownership; `.clone()` makes an independent queue when its elements are Clonable.
+// Values dequeue in their `Comparable` order, smallest first; equal priorities remain
+// FIFO. Wrap a value in a record with `impl Comparable` to order by anything else.
+// Assigning a priority queue transfers ownership; `.clone()` makes an independent queue
+// when its elements are Clonable.
 export type PriorityQueue[T: Comparable]:
-	// Constructor capacity in items; omission/none is unbounded, and supplied values must be positive.
+	// Constructor capacity in items; omission/none is unbounded, and supplied values
+	// must be positive.
 	capacity: Int?
-	// Binary heap of waiting values. Internal state: use the operations, not this field.
+	// Binary heap of waiting values. Internal state: use the operations, not this
+	// field.
 	heap: List[T] = []
-	// Enqueue sequence number of each heap value, in step with `heap`; the smaller breaks ties between equal priorities. Internal state.
+	// Enqueue sequence number of each heap value, in step with `heap`; the smaller
+	// breaks ties between equal priorities. Internal state.
 	orders: List[Int] = []
 	// Next enqueue sequence number. Internal state.
 	next_order: Int = 0
@@ -91,7 +102,8 @@ fn var PriorityQueue[T].swap_entries(a: Int, b: Int) Unit:
 	self.heap.swap(a, b)
 	self.orders.swap(a, b)
 
-// Moves the entry at `start` up, but no higher than `floor`, while it dequeues before its parent.
+// Moves the entry at `start` up, but no higher than `floor`, while it dequeues
+// before its parent.
 fn var PriorityQueue[T].sift_up(start: Int, floor: Int) Unit:
 	var at = start
 
@@ -125,7 +137,8 @@ fn var PriorityQueue[T].sift_down(start: Int) Unit:
 
 	self.sift_up(at, start)
 
-// Adds a value, returning False when a bounded queue is full. A non-positive capacity faults.
+// Adds a value, returning False when a bounded queue is full. A non-positive
+// capacity faults.
 fn var PriorityQueue[T].enqueue(value: T) Bool:
 	if limit := self.capacity:
 		if limit <= 0:
@@ -165,8 +178,8 @@ fn PriorityQueue[T].is_empty() Bool:
 fn PriorityQueue[T].length() Int:
 	return self.heap.length()
 
-// Returns the value at `index` in heap order, or none when out of range; only index 0 is known to be the next to dequeue.
-// Negative indexes are out of range.
+// Returns the value at `index` in heap order, or none when out of range; only index
+// 0 is known to be the next to dequeue. Negative indexes are out of range.
 fn PriorityQueue[T].at(index: Int) T?:
 	if index < 0 or index >= self.heap.length(): return none
 	return self.heap.get(index)

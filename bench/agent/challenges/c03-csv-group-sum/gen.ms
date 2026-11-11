@@ -4,7 +4,8 @@ import (
 	seeded from "../../lib/pyrandom.ms",
 )
 
-// The amount in cents, or none when `amt` is not digits with an optional fraction of one or two digits.
+// The amount in cents, or none when `amt` is not digits with an optional fraction of
+// one or two digits.
 fn cents(amt: String) Int?:
 	parts := amt.split(".")
 	if parts.length() > 2: return none
@@ -107,15 +108,17 @@ export fn gen_c03() Unit:
 			mk("big-sum", "a,99999999999.99\na,0.01\n"),
 			mk("byte-order", "b,1\nB,1\na,1\n"),
 			mk(
-				"amount-forms", "a,1.\na,.5\na,1.234\na,-1\na,+1\na, 1\na,1\n"
+				"amount-forms",
+				"a,1.\na,.5\na,1.234\na,-1\na,+1\na, 1\na,1\n",
 			),
 			mk(
-				"quoted-cat", "\"x,y,z\",1\n\"x,y,z\",2.25\n\"\",1\n\"a\"b\",1\n"
+				"quoted-cat",
+				"\"x,y,z\",1\n\"x,y,z\",2.25\n\"\",1\n\"a\"b\",1\n",
 			),
 			mk("no-trailing-newline", "a,1\na,2"),
 			mk("crlf", "a,1\r\nb,2\r\n"),
 			mk("big", big),
-			mk("unicode", "café,1\ncafe,2\n")
+			mk("unicode", "café,1\ncafe,2\n"),
 		]
 	)
 	write_cases("c03-csv-group-sum", examples, hidden)

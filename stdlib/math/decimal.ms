@@ -25,25 +25,30 @@ impl Data for Decimal:
 impl Copy for Decimal:
 
 impl Decimal:
-	// Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`; trailing zeros do not matter.
+	// Returns -1, 0 or 1 as this value is less than, equal to or greater than `other`;
+	// trailing zeros do not matter.
 	fn compare(other: Decimal) Int:
 		return msstd_decimal_compare(self, other)
 
-	// Returns the text of this value: its coefficient and exponent as a plain decimal number.
+	// Returns the text of this value: its coefficient and exponent as a plain decimal
+	// number.
 	fn to_string() String:
 		return msstd_decimal_to_string(self)
 
-	// Returns the lesser of this value and `other`, or this value when they compare equal.
+	// Returns the lesser of this value and `other`, or this value when they compare
+	// equal.
 	fn min(other: Decimal) Decimal:
 		if other.compare(self) < 0: return other
 		return self
 
-	// Returns the greater of this value and `other`, or this value when they compare equal.
+	// Returns the greater of this value and `other`, or this value when they compare
+	// equal.
 	fn max(other: Decimal) Decimal:
 		if other.compare(self) > 0: return other
 		return self
 
-	// Returns this value limited to `low` through `high`; `low` greater than `high` is a programming fault.
+	// Returns this value limited to `low` through `high`; `low` greater than `high` is
+	// a programming fault.
 	fn clamp(low: Decimal, high: Decimal) Decimal:
 		if low.compare(high) > 0:
 			panic("clamp: low must not be greater than high")
@@ -52,16 +57,17 @@ impl Decimal:
 
 		return self
 
-	// Converts to the nearest Float, which can lose precision because binary floats cannot represent most decimal fractions exactly.
-	// Returns none when the value is beyond the Float range.
+	// Converts to the nearest Float, which can lose precision because binary floats
+	// cannot represent most decimal fractions exactly. Returns none when the value is
+	// beyond the Float range.
 	fn to_float() Float?:
 		value := msstd_decimal_to_float(self)
 		if value.is_finite(): return value
 
 		return none
 
-	// Discards the fractional part toward zero and returns the integer, so -2.9 gives -2.
-	// Returns none when the integer part does not fit in the platform's Int.
+	// Discards the fractional part toward zero and returns the integer, so -2.9 gives
+	// -2. Returns none when the integer part does not fit in the platform's Int.
 	fn truncate_to_int() Int?:
 		return msstd_decimal_truncate_to_int(self)
 

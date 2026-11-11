@@ -1,10 +1,11 @@
-// Leak sweep (`make leak-check`): runs the programs of the conformance corpus that finish normally against a runtime
-// built with allocation counters (`ms-rt` feature `stats`), which prints the count of live heap blocks at exit. A
-// correct program frees everything it allocated, so any nonzero count is a leak. Faulting and rejected programs print
-// no count and are skipped. The `test` blocks of tests/e2e/testdata run the same way, one count per test. Arguments name
-// the files to sweep instead; a file with test blocks is run with `ms test`.
-// MS names the ms that runs the programs (default target/release/ms).
-// Usage: ms run tools/leak-check.ms [-- files]
+// Leak sweep (`make leak-check`): runs the programs of the conformance corpus that
+// finish normally against a runtime built with allocation counters (`ms-rt` feature
+// `stats`), which prints the count of live heap blocks at exit. A correct program frees
+// everything it allocated, so any nonzero count is a leak. Faulting and rejected
+// programs print no count and are skipped. The `test` blocks of tests/e2e/testdata run
+// the same way, one count per test. Arguments name the files to sweep instead; a file
+// with test blocks is run with `ms test`. MS names the ms that runs the programs
+// (default target/release/ms). Usage: ms run tools/leak-check.ms [-- files]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	arguments, change_directory, working_directory from "@std/os/env.ms",
@@ -16,8 +17,9 @@ import (
 	env, tool_ms, use_stats_runtime from "./lib.ms",
 )
 
-// The live block counts the runtime printed on standard error; a program that starts child
-// processes prints one per process, and their sum is what leaked. Empty when none was printed.
+// The live block counts the runtime printed on standard error; a program that starts
+// child processes prints one per process, and their sum is what leaked. Empty when none
+// was printed.
 fn live_blocks(text: String) List[Int]:
 	var counts = List[Int]()
 	for line in text.split("\n"):
@@ -27,8 +29,9 @@ fn live_blocks(text: String) List[Int]:
 			)
 	return counts
 
-// The tests of one `ms test` run that left live blocks, as "name: count" lines: each test prints RUN before it
-// starts, and the runtime prints its count as the process exits or after the test.
+// The tests of one `ms test` run that left live blocks, as "name: count" lines: each
+// test prints RUN before it starts, and the runtime prints its count as the process
+// exits or after the test.
 fn leaking_tests(text: String) List[String]:
 	var leaks = List[String]()
 	var current = ""
@@ -44,8 +47,8 @@ fn leaking_tests(text: String) List[String]:
 fn has_tests(source: String) Bool:
 	return source.starts_with("test \"") or source.contains("\ntest \"")
 
-// Sweeps `files` and returns one line per swept program (`swept`), followed by one report per
-// leak that starts with `leak:`.
+// Sweeps `files` and returns one line per swept program (`swept`), followed by one
+// report per leak that starts with `leak:`.
 fn sweep(ms: String, root: String, files: List[String]) List[String]:
 	var lines = List[String]()
 
@@ -55,8 +58,9 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 
 		if has_tests(source):
 			if out := run(
-				ms.clone(), ["test", absolute.clone()],
-				RunOptions(timeout: seconds(600))
+				ms.clone(),
+				["test", absolute.clone()],
+				RunOptions(timeout: seconds(600)),
 			).wait():
 				found := leaking_tests(out.stderr.decode_utf8().get(""))
 				lines.append("swept")
@@ -67,7 +71,9 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 			continue
 
 		if out := run(
-			ms.clone(), ["run", absolute.clone()], RunOptions(timeout: seconds(60))
+			ms.clone(),
+			["run", absolute.clone()],
+			RunOptions(timeout: seconds(60)),
 		).wait():
 			counts := live_blocks(out.stderr.decode_utf8().get(""))
 			if counts.is_empty(): continue
@@ -109,14 +115,15 @@ fn main() Int:
 	scratch := temporary("ms-leak-").get()
 	change_directory(scratch.path()).get()
 
-	// Each program runs in its own process, so the sweep splits across one worker per CPU
-	// (LEAK_JOBS overrides). Workers share the scratch directory, which is only the working
-	// directory of the child processes.
+	// Each program runs in its own process, so the sweep splits across one worker per
+	// CPU (LEAK_JOBS overrides). Workers share the scratch directory, which is only the
+	// working directory of the child processes.
 	var jobs = system_info().cpu_count
 	if n := env("LEAK_JOBS", "").parse_int(): jobs = n
 	if jobs < 1: jobs = 1
 
-	// A promise reads its captures until it is dropped, so the chunks outlive the loop that starts them.
+	// A promise reads its captures until it is dropped, so the chunks outlive the loop
+	// that starts them.
 	var chunks = List[List[String]]()
 
 	for worker in 0..jobs:

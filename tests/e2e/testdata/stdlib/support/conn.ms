@@ -16,7 +16,8 @@ export fn send_bytes(var connection: Connection, data: Bytes) Unit!:
 	connection.output.write(data)?
 	return connection.output.flush()
 
-// The next chunk, or none at the peer's end of stream; a read that waits longer than `timeout` fails.
+// The next chunk, or none at the peer's end of stream; a read that waits longer than
+// `timeout` fails.
 export fn recv(var connection: Connection, timeout: Duration) Bytes?!:
 	return within(var connection.input, timeout)
 

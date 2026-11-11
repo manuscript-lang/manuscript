@@ -45,11 +45,23 @@ export fn first_generic() fn(Item) Int:
 
 test "first local extensions":
 	item := Item(2)
-	(item.get() != 12 or invoke(item) != 12 or relay(item.clone()) != 12) | expect_false?
+	(
+		(
+			item.get() != 12
+			or invoke(item) != 12
+			or relay(item.clone()) != 12
+		) | expect_false?
+	)
 	as_view(item).get() | expect_equal(12)?
 
 	holder := Holder(item)
-	(holder.get() != 12 or invoke(holder) != 12 or holder.extract() != 12) | expect_false?
+	(
+		(
+			holder.get() != 12
+			or invoke(holder) != 12
+			or holder.extract() != 12
+		) | expect_false?
+	)
 	Box("hello").get() | expect_equal("hello")?
 	Choice.Some(2).get() | expect_equal(12)?
 

@@ -22,30 +22,35 @@ test "similarity_ratio runs from 0 to 1":
 test "close_matches ranks candidates":
 	expect_equal(
 		close_matches(
-			"appel", ["ape", "apple", "peach"],
-			CloseMatchesOptions(limit: 2, cutoff: 0.6)
+			"appel",
+			["ape", "apple", "peach"],
+			CloseMatchesOptions(limit: 2, cutoff: 0.6),
 		),
-		["apple", "ape"]
+		["apple", "ape"],
 	)?
 	expect_equal(
 		close_matches(
-			"appel", ["ape", "apple", "peach"], CloseMatchesOptions(limit: 1)
+			"appel",
+			["ape", "apple", "peach"],
+			CloseMatchesOptions(limit: 1),
 		),
-		["apple"]
+		["apple"],
 	)?
 	expect_equal(close_matches("zzz", ["abc"]), List[String]())?
 
 test "unified_diff formats hunks":
 	expect_equal(
 		unified_diff(["a", "b"], ["a", "c"], UnifiedDiffOptions(context: 1)),
-		"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"
+		"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n",
 	)?
 	expect_equal(unified_diff(["a"], ["a"]), "")?
 	expect_equal(
-		unified_diff(List[String](), ["x"]), "--- a\n+++ b\n@@ -0,0 +1 @@\n+x\n"
+		unified_diff(List[String](), ["x"]),
+		"--- a\n+++ b\n@@ -0,0 +1 @@\n+x\n",
 	)?
 	expect_equal(
-		unified_diff(["x"], List[String]()), "--- a\n+++ b\n@@ -1 +0,0 @@\n-x\n"
+		unified_diff(["x"], List[String]()),
+		"--- a\n+++ b\n@@ -1 +0,0 @@\n-x\n",
 	)?
 
 test "unified_diff splits distant changes and names headers":
@@ -57,42 +62,50 @@ test "unified_diff splits distant changes and names headers":
 			old,
 			new,
 			UnifiedDiffOptions(
-				context: 1, old_name: "old.txt", new_name: "new.txt"
-			)
+				context: 1,
+				old_name: "old.txt",
+				new_name: "new.txt",
+			),
 		),
-		expected
+		expected,
 	)?
 
 test "unified_diff keeps offsets across shared leading and trailing lines":
 	expect_equal(
 		unified_diff(
-			["a", "b", "c", "d", "e"], ["a", "b", "x", "d", "e"],
-			UnifiedDiffOptions(context: 1)
+			["a", "b", "c", "d", "e"],
+			["a", "b", "x", "d", "e"],
+			UnifiedDiffOptions(context: 1),
 		),
-		"--- a\n+++ b\n@@ -2,3 +2,3 @@\n b\n-c\n+x\n d\n"
+		"--- a\n+++ b\n@@ -2,3 +2,3 @@\n b\n-c\n+x\n d\n",
 	)?
 	expect_equal(unified_diff(["a", "b"], ["a", "b"]), "")?
 	expect_equal(
 		unified_diff([], ["a"], UnifiedDiffOptions(context: 0)),
-		"--- a\n+++ b\n@@ -0,0 +1 @@\n+a\n"
+		"--- a\n+++ b\n@@ -0,0 +1 @@\n+a\n",
 	)?
 
 test "unified_diff clamps a context larger than the input":
 	expected := "--- a\n+++ b\n@@ -1 +1 @@\n-before\n+after\n"
 	expect_equal(
-		unified_diff(["before"], ["after"], UnifiedDiffOptions(context: 3)), expected
+		unified_diff(["before"], ["after"], UnifiedDiffOptions(context: 3)),
+		expected,
 	)?
 	expect_equal(
 		unified_diff(
-			["before"], ["after"], UnifiedDiffOptions(context: 9223372036854775807)
+			["before"],
+			["after"],
+			UnifiedDiffOptions(context: 9223372036854775807),
 		),
-		expected
+		expected,
 	)?
 	expect_equal(
 		unified_diff(
-			["same"], ["same"], UnifiedDiffOptions(context: 9223372036854775807)
+			["same"],
+			["same"],
+			UnifiedDiffOptions(context: 9223372036854775807),
 		),
-		""
+		"",
 	)?
 
 test "identical text comparisons preserve scalar semantics":
@@ -114,7 +127,7 @@ test "unified_diff joins overlapping context without losing earlier changes":
 	expect_equal(unified_diff(old, new, UnifiedDiffOptions(context: 2)), merged)?
 	expect_equal(
 		unified_diff(old, new, UnifiedDiffOptions(context: 0)),
-		"--- a\n+++ b\n@@ -2 +2 @@\n-a\n+A\n@@ -4 +4 @@\n-b\n+B\n@@ -6 +6 @@\n-c\n+C\n"
+		"--- a\n+++ b\n@@ -2 +2 @@\n-a\n+A\n@@ -4 +4 @@\n-b\n+B\n@@ -6 +6 @@\n-c\n+C\n",
 	)?
 
 test "unified_diff handles dense changes with full-file context":
@@ -126,8 +139,10 @@ test "unified_diff handles dense changes with full-file context":
 	removed := lines.map(fn line: "-{line}").join("\n")
 	full := UnifiedDiffOptions(context: 9223372036854775807)
 	expect_equal(
-		unified_diff([], lines, full), "--- a\n+++ b\n@@ -0,0 +1,4000 @@\n{inserted}\n"
+		unified_diff([], lines, full),
+		"--- a\n+++ b\n@@ -0,0 +1,4000 @@\n{inserted}\n",
 	)?
 	expect_equal(
-		unified_diff(lines, [], full), "--- a\n+++ b\n@@ -1,4000 +0,0 @@\n{removed}\n"
+		unified_diff(lines, [], full),
+		"--- a\n+++ b\n@@ -1,4000 +0,0 @@\n{removed}\n",
 	)?

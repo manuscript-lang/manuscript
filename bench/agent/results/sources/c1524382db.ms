@@ -50,9 +50,13 @@ fn parse_line(line: String) Rec?:
 	if lat.length() < 1 or lat.length() > 9 or not all_digits(lat): return none
 
 	return Rec(
-		timestamp: parts[0].clone(), level: level.clone(), method: method.clone(),
-		path: parts[3].clone(), status: parts[4].clone(), latency_text: lat.clone(),
-		latency: digits_value(lat)
+		timestamp: parts[0].clone(),
+		level: level.clone(),
+		method: method.clone(),
+		path: parts[3].clone(),
+		status: parts[4].clone(),
+		latency_text: lat.clone(),
+		latency: digits_value(lat),
 	)
 
 fn path_order(a: PathStat, b: PathStat) Int:
@@ -141,7 +145,9 @@ export fn main() Int:
 	for p in counts.keys():
 		stats.append(
 			PathStat(
-				path: p.clone(), count: counts.get_or(p, 0), total: totals.get_or(p, 0)
+				path: p.clone(),
+				count: counts.get_or(p, 0),
+				total: totals.get_or(p, 0),
 			)
 		)
 	stats.sort(fn(a: PathStat, b: PathStat) Int: path_order(a, b))

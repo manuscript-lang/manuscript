@@ -48,7 +48,8 @@ export type Table:
 	// Internal state: the widest cell of each column.
 	widths: List[Int] = []
 
-// Appends a row of exactly one cell per column. A wrong cell count or a cell with controls returns EBADMSG.
+// Appends a row of exactly one cell per column. A wrong cell count or a cell with
+// controls returns EBADMSG.
 fn var Table.add(row: List[String]) Unit!:
 	count := self.columns.length()
 	if row.length() != count:

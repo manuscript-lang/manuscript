@@ -26,7 +26,8 @@ import (
 
 fn hello(var exchange: HttpExchange) Unit!:
 	_started := exchange.send_headers(
-		status: 200, headers: (list_headers(Map[String, List[String]]())?)
+		status: 200,
+		headers: (list_headers(Map[String, List[String]]())?),
 	)?
 	_written := (http_result(exchange.write("secure"))?)
 
@@ -44,16 +45,20 @@ test "TLS certificate parsing verification hostname and expiration":
 	now := (timestamp(seconds: 1893456000, nanoseconds: 0) | expect_ok?)
 	_verified := (
 		verify_certificates(
-			chain_pem: certificate(), roots_pem: certificate(),
-			server_name: "stdlib.test", now: now
+			chain_pem: certificate(),
+			roots_pem: certificate(),
+			server_name: "stdlib.test",
+			now: now,
 		) | expect_ok?
 	)
 	failed: Unit! := error(Error("TLS: authentication failed", kind: "EAUTH"))
 	expect_false(
 		(
 			verify_certificates(
-				chain_pem: certificate(), roots_pem: certificate(),
-				server_name: "wrong.test", now: now
+				chain_pem: certificate(),
+				roots_pem: certificate(),
+				server_name: "wrong.test",
+				now: now,
 			) != failed
 		)
 	)?
@@ -62,8 +67,10 @@ test "TLS certificate parsing verification hostname and expiration":
 	expect_false(
 		(
 			verify_certificates(
-				chain_pem: certificate(), roots_pem: certificate(),
-				server_name: "stdlib.test", now: expired
+				chain_pem: certificate(),
+				roots_pem: certificate(),
+				server_name: "stdlib.test",
+				now: expired,
 			) != failed
 		)
 	)?
@@ -81,25 +88,52 @@ test "TLS rejects malformed PEM and certificate budgets":
 
 test "HTTPS trusts only the explicitly supplied local test root":
 	server_tls := TlsOptions(
-		server_name: "", roots_pem: "", certificate_pem: certificate(),
-		private_key_pem: private_key(), alpn: ["http/1.1"],
-		require_client_certificate: false
+		server_name: "",
+		roots_pem: "",
+		certificate_pem: certificate(),
+		private_key_pem: private_key(),
+		alpn: ["http/1.1"],
+		require_client_certificate: false,
 	)
 	server_options := HttpServerOptions(
-		timeout: 3.seconds(), grace: 0.seconds(), tls: server_tls
+		timeout: 3.seconds(),
+		grace: 0.seconds(),
+		tls: server_tls,
 	)
-	server := serve(address: "127.0.0.1:0", handler: hello, options: server_options) | expect_ok?
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: hello,
+			options: server_options,
+		) | expect_ok?
+	)
 	client_tls := TlsOptions(
-		server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
-		private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
+		server_name: "stdlib.test",
+		roots_pem: certificate(),
+		certificate_pem: "",
+		private_key_pem: "",
+		alpn: ["http/1.1"],
+		require_client_certificate: false,
 	)
-	client := http_client(
-		HttpClientOptions(decompress: false, cookies: false, tls: client_tls)
-	) | expect_ok?
-	var response = client.request(
-		method: HttpMethod.Get, url: "https://{server.address()}/",
-		headers: (text_headers(Map[String, String]())?), body: "", timeout: 2.seconds()
-	) | expect_ok?
+	client := (
+		http_client(
+			HttpClientOptions(
+				decompress: false,
+				cookies: false,
+				tls: client_tls,
+			)
+		) | expect_ok?
+	)
+	var response = (
+		client.request(
+			method: HttpMethod.Get,
+			url: "https://{server.address()}/",
+			headers: (text_headers(Map[String, String]())?),
+			body: "",
+			timeout: 2.seconds(),
+		)
+		| expect_ok?
+	)
 	expect_false(
 		(
 			response.metadata.status != 200
@@ -111,7 +145,8 @@ test "HTTPS trusts only the explicitly supplied local test root":
 
 fn report_protocol(var exchange: HttpExchange) Unit!:
 	_started := exchange.send_headers(
-		status: 200, headers: (list_headers(Map[String, List[String]]())?)
+		status: 200,
+		headers: (list_headers(Map[String, List[String]]())?),
 	)?
 	_written := (http_result(exchange.write(exchange.protocol()))?)
 
@@ -120,25 +155,48 @@ test "HTTP/2 negotiates through ALPN and reports the protocol on both sides":
 		timeout: 3.seconds(),
 		grace: 0.seconds(),
 		tls: TlsOptions(
-			server_name: "", roots_pem: "", certificate_pem: certificate(),
-			private_key_pem: private_key(), alpn: ["h2", "http/1.1"],
-			require_client_certificate: false
-		)
+			server_name: "",
+			roots_pem: "",
+			certificate_pem: certificate(),
+			private_key_pem: private_key(),
+			alpn: ["h2", "http/1.1"],
+			require_client_certificate: false,
+		),
 	)
-	server := serve(
-		address: "127.0.0.1:0", handler: report_protocol, options: server_options
-	) | expect_ok?
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: report_protocol,
+			options: server_options,
+		) | expect_ok?
+	)
 	client_tls := TlsOptions(
-		server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
-		private_key_pem: "", alpn: ["h2", "http/1.1"], require_client_certificate: false
+		server_name: "stdlib.test",
+		roots_pem: certificate(),
+		certificate_pem: "",
+		private_key_pem: "",
+		alpn: ["h2", "http/1.1"],
+		require_client_certificate: false,
 	)
-	client := http_client(
-		HttpClientOptions(decompress: false, cookies: false, tls: client_tls)
-	) | expect_ok?
-	var response = client.request(
-		method: HttpMethod.Get, url: "https://{server.address()}/",
-		headers: (text_headers(Map[String, String]())?), body: "", timeout: 2.seconds()
-	) | expect_ok?
+	client := (
+		http_client(
+			HttpClientOptions(
+				decompress: false,
+				cookies: false,
+				tls: client_tls,
+			)
+		) | expect_ok?
+	)
+	var response = (
+		client.request(
+			method: HttpMethod.Get,
+			url: "https://{server.address()}/",
+			headers: (text_headers(Map[String, String]())?),
+			body: "",
+			timeout: 2.seconds(),
+		)
+		| expect_ok?
+	)
 	expect_equal(response.metadata.protocol, "HTTP/2.0")?
 	expect_equal(read_to_end(var response.body)?, "HTTP/2.0".to_bytes())?
 
@@ -159,13 +217,20 @@ fn serve_one_tls(listener: Listener) Int:
 
 test "raw TLS listeners and clients handshake and report negotiated details":
 	server_tls := TlsOptions(
-		server_name: "", roots_pem: "", certificate_pem: certificate(),
-		private_key_pem: private_key(), alpn: ["http/1.1"],
-		require_client_certificate: false
+		server_name: "",
+		roots_pem: "",
+		certificate_pem: certificate(),
+		private_key_pem: private_key(),
+		alpn: ["http/1.1"],
+		require_client_certificate: false,
 	)
 	client_tls := TlsOptions(
-		server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
-		private_key_pem: "", alpn: ["http/1.1"], require_client_certificate: false
+		server_name: "stdlib.test",
+		roots_pem: certificate(),
+		certificate_pem: "",
+		private_key_pem: "",
+		alpn: ["http/1.1"],
+		require_client_certificate: false,
 	)
 	listener := listen_tls("127.0.0.1:0", server_tls, 3.seconds())?
 	address := listener.address()
@@ -190,16 +255,21 @@ test "raw TLS listeners and clients handshake and report negotiated details":
 
 test "connect_tls trusts only the system roots and tls_info rejects plain TCP":
 	server_tls := TlsOptions(
-		server_name: "", roots_pem: "", certificate_pem: certificate(),
-		private_key_pem: private_key(), alpn: [], require_client_certificate: false
+		server_name: "",
+		roots_pem: "",
+		certificate_pem: certificate(),
+		private_key_pem: private_key(),
+		alpn: [],
+		require_client_certificate: false,
 	)
 	listener := listen_tls("127.0.0.1:0", server_tls, 3.seconds())?
 	address := listener.address()
 	served := promise(fn: ok(serve_one_tls(listener)))
 	_failure := expect_error(
 		connect(
-			address.clone(), tls: TlsOptions(server_name: "stdlib.test"),
-			timeout: 3.seconds()
+			address.clone(),
+			tls: TlsOptions(server_name: "stdlib.test"),
+			timeout: 3.seconds(),
 		).wait()
 	)?
 	_served := wait_all([served])?
@@ -229,12 +299,20 @@ fn count_until_eof(listener: Listener) Int:
 
 test "raw TLS client that writes a large payload and closes at once loses no bytes":
 	server_tls := TlsOptions(
-		server_name: "", roots_pem: "", certificate_pem: certificate(),
-		private_key_pem: private_key(), alpn: [], require_client_certificate: false
+		server_name: "",
+		roots_pem: "",
+		certificate_pem: certificate(),
+		private_key_pem: private_key(),
+		alpn: [],
+		require_client_certificate: false,
 	)
 	client_tls := TlsOptions(
-		server_name: "stdlib.test", roots_pem: certificate(), certificate_pem: "",
-		private_key_pem: "", alpn: [], require_client_certificate: false
+		server_name: "stdlib.test",
+		roots_pem: certificate(),
+		certificate_pem: "",
+		private_key_pem: "",
+		alpn: [],
+		require_client_certificate: false,
 	)
 	listener := listen_tls("127.0.0.1:0", server_tls, 5.seconds())?
 	address := listener.address()

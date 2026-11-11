@@ -231,8 +231,11 @@ fn process_line(line: String, n: Int) String:
 	if not load_field(toks[6], 0, 6, var dows): return error_line(n, "bad day-of-week")
 
 	sp := Spec(
-		minutes: to_values(mins), hours: to_values(hrs), doms: doms, months: mons,
-		dows: dows
+		minutes: to_values(mins),
+		hours: to_values(hrs),
+		doms: doms,
+		months: mons,
+		dows: dows,
 	)
 	runs := find_runs(sp, st, cnt)
 	if runs.is_empty(): return "line {n}: never\n"

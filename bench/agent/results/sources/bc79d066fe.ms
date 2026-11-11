@@ -536,7 +536,12 @@ fn loop_wrap(var p: Parser, body: List[Instr], mn: Int, mx: Int, greedy: Bool) L
 	out.append(Instr(op: OP_INC, a: cnt))
 	out.append(
 		Instr(
-			op: OP_LOOPCHK, a: mark, b: cnt, c: mn, d: 1 - (3 + hl + nb), e: 1
+			op: OP_LOOPCHK,
+			a: mark,
+			b: cnt,
+			c: mn,
+			d: 1 - (3 + hl + nb),
+			e: 1,
 		)
 	)
 	return out
@@ -677,9 +682,13 @@ fn parse_alt(var p: Parser) List[Instr]:
 
 fn compile_pattern(src: List[Int]) Parser:
 	var p = Parser(
-		src: src.clone(), prog: List[Instr](), sets: List[List[Bool]](),
-		group_regs: [0], group_names: [""], names: Map[String, Int](),
-		refnames: List[String]()
+		src: src.clone(),
+		prog: List[Instr](),
+		sets: List[List[Bool]](),
+		group_regs: [0],
+		group_names: [""],
+		names: Map[String, Int](),
+		refnames: List[String](),
 	)
 	n := src.length()
 
@@ -748,8 +757,8 @@ fn restore(var xs: List[Int], src: List[Int]) Unit:
 	for i in 0..xs.length():
 		xs[i] = src[i]
 
-// Runs the program from start_pc at start_pos. Returns the end position on success or -1.
-// caps and regs are restored to their entry values on failure.
+// Runs the program from start_pc at start_pos. Returns the end position on success or
+// -1. caps and regs are restored to their entry values on failure.
 fn run(
 	prog: List[Instr],
 	sets: List[List[Bool]],
@@ -758,7 +767,7 @@ fn run(
 	var regs: List[Int],
 	start_pc: Int,
 	start_pos: Int,
-	full: Bool
+	full: Bool,
 ) Int:
 	n := subj.length()
 	var stk = List[Int]()
@@ -1033,7 +1042,8 @@ fn append_group(var out: List[Int], subj: List[Int], c: List[Int], g: Int) Unit:
 		for k in s..e:
 			out.append(subj[k])
 
-// Name bytes as a String; anything that is not an identifier byte gives "" (never a group name).
+// Name bytes as a String; anything that is not an identifier byte gives "" (never a
+// group name).
 fn name_of(repl: List[Int], s: Int, e: Int) String:
 	for i in s..e:
 		if not is_word(repl[i]): return ""

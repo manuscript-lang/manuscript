@@ -29,7 +29,7 @@ test "blank lines and a trailing newline survive":
 test "raw text keeps braces quotes and backslashes":
 	expect_equal(
 		payload(),
-		"\{\"name\": \"ada\", \"tags\": [\"a\", \"b\"], \"path\": \"C:\\dir\", \"n\": 1\}"
+		"\{\"name\": \"ada\", \"tags\": [\"a\", \"b\"], \"path\": \"C:\\dir\", \"n\": 1\}",
 	)?
 
 type Person:

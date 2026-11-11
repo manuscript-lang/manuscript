@@ -92,22 +92,25 @@ fn var ConnectionSink.write(value: Bytes) Unit!:
 fn var ConnectionSink.flush() Unit!:
 	return ok(unit)
 
-// Half-closes the connection so the peer sees the end of the stream; the socket closes once the input is closed too.
+// Half-closes the connection so the peer sees the end of the stream; the socket
+// closes once the input is closed too.
 fn var ConnectionSink.close() Unit!:
 	_ := msstd_net_connection_shutdown_write(self.native)
 	msstd_net_connection_close_if_last(self.native)
 
 // What is known about a connection, available after its streams are moved elsewhere.
 export type ConnectionInfo:
-	// This end's address as `host:port` text, with IPv6 hosts in brackets; for Unix sockets it is the socket path.
+	// This end's address as `host:port` text, with IPv6 hosts in brackets; for Unix
+	// sockets it is the socket path.
 	local_address: String
 	// The remote end's address as `host:port` text, with IPv6 hosts in brackets.
 	peer_address: String
-	// The negotiated TLS version, cipher suite, protocol, and peer certificates; none when the connection is not TLS.
+	// The negotiated TLS version, cipher suite, protocol, and peer certificates; none
+	// when the connection is not TLS.
 	tls: TlsInfo?
 
-// Returns the negotiated TLS version, cipher suite, protocol, and peer certificates.
-// A connection that is not TLS returns EINVAL.
+// Returns the negotiated TLS version, cipher suite, protocol, and peer
+// certificates. A connection that is not TLS returns EINVAL.
 fn ConnectionInfo.tls_info() TlsInfo!:
 	if info := self.tls: return ok(info.clone())
 	return error(Error("network: invalid input", kind: "EINVAL"))
@@ -144,7 +147,7 @@ fn connection(native: NativeConnection) Connection:
 	return Connection(
 		input: ReadStream[Bytes](ConnectionSource(native)),
 		output: WriteStream[Bytes](ConnectionSink(other)),
-		info: ConnectionInfo(local, peer, tls)
+		info: ConnectionInfo(local, peer, tls),
 	)
 
 // One datagram. Received, `address` is where it came from; written, where it goes.
@@ -160,7 +163,8 @@ export extern type NativeDatagramSocket
 type DatagramSource:
 	native: NativeDatagramSocket
 
-// Waits for one datagram, at most 65535 bytes; a larger one is an error of kind `EOVERFLOW` and is discarded.
+// Waits for one datagram, at most 65535 bytes; a larger one is an error of kind
+// `EOVERFLOW` and is discarded.
 fn var DatagramSource.next() Datagram?!:
 	return ok(msstd_net_datagram_receive(self.native, none, none)?)
 
@@ -170,7 +174,8 @@ fn var DatagramSource.close() Unit!:
 type DatagramSink:
 	native: NativeDatagramSocket
 
-// Sends `value.data` as one datagram to `value.address`, resolving a host name with the network's resolver.
+// Sends `value.data` as one datagram to `value.address`, resolving a host name with
+// the network's resolver.
 fn var DatagramSink.write(value: Datagram) Unit!:
 	return msstd_net_datagram_send_bytes(self.native, value.data, value.address, none)
 
@@ -180,13 +185,15 @@ fn var DatagramSink.flush() Unit!:
 fn var DatagramSink.close() Unit!:
 	msstd_net_datagram_close_if_last(self.native)
 
-// A connectionless socket for sending and receiving datagrams. Closing it closes both streams.
+// A connectionless socket for sending and receiving datagrams. Closing it closes both
+// streams.
 export type DatagramSocket:
 	// Datagrams received, with the sender's address.
 	input: ReadStream[Datagram]
 	// Datagrams to send; each carries its destination.
 	output: WriteStream[Datagram]
-	// The bound local address as `host:port` text, which reveals the port chosen when binding port 0.
+	// The bound local address as `host:port` text, which reveals the port chosen when
+	// binding port 0.
 	address: String
 
 // Closes both streams, and with them the socket.
@@ -199,14 +206,16 @@ fn datagram_socket(native: NativeDatagramSocket) DatagramSocket:
 	other := msstd_net_datagram_share(native)
 	return DatagramSocket(
 		input: ReadStream[Datagram](DatagramSource(native)),
-		output: WriteStream[Datagram](DatagramSink(other)), address: address
+		output: WriteStream[Datagram](DatagramSink(other)),
+		address: address,
 	)
 
 // The runtime handle behind a `Listener`.
 export extern type NativeListener
 
-// A listening socket that accepts incoming connections.
-// Several tasks may call `accept` on one listener (an accept pool); each incoming connection goes to exactly one of them.
+// A listening socket that accepts incoming connections. Several tasks may call `accept`
+// on one listener (an accept pool); each incoming connection goes to exactly one of
+// them.
 export opaque type Listener:
 	// The runtime handle; it is released by `close` and owned by this value.
 	native: NativeListener
@@ -216,47 +225,58 @@ export opaque type Listener:
 fn var Listener.close() Unit!:
 	msstd_net_listener_close(self.native)
 
-// Starts waiting for the next incoming connection and returns its promise. A timeout gives ETIMEDOUT and a closed listener gives EBADF from `wait`.
-// On a TLS listener the handshake completes before the connection is returned; a failed handshake drops that connection and gives EIO.
+// Starts waiting for the next incoming connection and returns its promise. A
+// timeout gives ETIMEDOUT and a closed listener gives EBADF from `wait`. On a TLS
+// listener the handshake completes before the connection is returned; a failed
+// handshake drops that connection and gives EIO.
 fn Listener.accept(timeout: Duration? = none) Promise[Connection]:
 	return owned_task[Connection](
 		accept_job(msstd_net_listener_share(self.native), timeout)
 	)
 
-// Returns the bound local address as `host:port` text, which reveals the port chosen when listening on port 0.
+// Returns the bound local address as `host:port` text, which reveals the port
+// chosen when listening on port 0.
 fn Listener.address() String:
 	return msstd_net_listener_address(self.native)
 
-// The work of `accept`: a returned closure owns its own handle on the listener and the time it waits.
+// The work of `accept`: a returned closure owns its own handle on the listener and the
+// time it waits.
 fn accept_job(native: NativeListener, timeout: Duration?) fn() Connection!:
 	return fn: ok(connection(msstd_net_listener_accept(native, timeout)?))
 
 // The runtime handle behind a `Network`.
 export extern type NativeNetwork
 
-// A set of network permissions and a resolver for the connections, listeners, sockets, clients and servers opened through it. Nothing restricts the host network.
+// A set of network permissions and a resolver for the connections, listeners, sockets,
+// clients and servers opened through it. Nothing restricts the host network.
 export opaque type Network:
 	// The runtime handle; it is released when the last reference to this network ends.
 	native: NativeNetwork
 
-// Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
-// A restricted network without listening permission, or an address outside its CIDRs, returns EACCES.
+// Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A
+// restricted network without listening permission, or an address outside its CIDRs,
+// returns EACCES.
 fn Network.bind_datagram(address: String) DatagramSocket!:
 	return ok(datagram_socket(msstd_net_network_bind_datagram(self.native, address)?))
 
-// Cancels in-flight calls and closes every connection, listener, socket, HTTP client, and server this network opened, including those of derived networks.
-// Safe to call repeatedly. A request handler of a server on this network cannot close it and faults.
+// Cancels in-flight calls and closes every connection, listener, socket, HTTP
+// client, and server this network opened, including those of derived networks. Safe
+// to call repeatedly. A request handler of a server on this network cannot close it
+// and faults.
 fn Network.close() Unit:
 	msstd_net_network_close(self.native)
 
-// Resolves `address` (`host:port`) and opens a TCP connection to the first reachable permitted address, completing a TLS handshake with `tls` when given.
-// The wait happens in the calling task; the module-level `connect` starts the same work as a promise.
-// Returns EACCES for names or addresses a restricted network disallows, ETIMEDOUT when `timeout` elapses, and EIO when every address refuses or the handshake or verification fails.
+// Resolves `address` (`host:port`) and opens a TCP connection to the first
+// reachable permitted address, completing a TLS handshake with `tls` when given.
+// The wait happens in the calling task; the module-level `connect` starts the same
+// work as a promise. Returns EACCES for names or addresses a restricted network
+// disallows, ETIMEDOUT when `timeout` elapses, and EIO when every address refuses
+// or the handshake or verification fails.
 // `tls` verifies the server certificate against `tls.roots_pem` (the system roots when empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or invalid options return EINVAL. `timeout` bounds the whole attempt.
 fn Network.connect(
 	address: String,
 	tls: TlsOptions? = none,
-	timeout: Duration? = none
+	timeout: Duration? = none,
 ) Connection!:
 	if options := tls:
 		if options.server_name.is_empty():
@@ -264,34 +284,42 @@ fn Network.connect(
 		return ok(
 			connection(
 				msstd_net_network_connect_tls_config(
-					self.native, address, options, timeout
+					self.native,
+					address,
+					options,
+					timeout,
 				)?
 			)
 		)
 
 	return ok(connection(msstd_net_network_connect(self.native, address, timeout)?))
 
-// Connects to the Unix domain socket at `path`.
-// Any restricted network returns EACCES because Unix sockets bypass host and CIDR checks, and an empty path returns EINVAL. `timeout` bounds the attempt.
+// Connects to the Unix domain socket at `path`. Any restricted network returns
+// EACCES because Unix sockets bypass host and CIDR checks, and an empty path
+// returns EINVAL. `timeout` bounds the attempt.
 fn Network.connect_unix(path: String, timeout: Duration? = none) Connection!:
 	return ok(connection(msstd_net_network_connect_unix(self.native, path, timeout)?))
 
-// Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
+// Creates a reusable HTTP client with connection pooling that dials through this
+// network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.
 fn Network.http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
 	return msstd_net_network_http_client(self.native, options)
 
 // Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
-// A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
+// A restricted network needs `allow_listen` and an IP-literal address inside its
+// CIDRs, otherwise EACCES is returned. An address that is not an IP literal with a
+// port returns EINVAL.
 fn Network.listen(address: String) Listener!:
 	return msstd_net_network_listen(self.native, address)
 
-// Listens for TCP connections on `address` and completes a TLS handshake for each accepted connection, within `timeout` when supplied.
+// Listens for TCP connections on `address` and completes a TLS handshake for each
+// accepted connection, within `timeout` when supplied.
 // `options` must hold a certificate and key, otherwise EINVAL is returned.
 fn Network.listen_tls(
 	address: String,
 	options: TlsOptions,
-	timeout: Duration? = none
+	timeout: Duration? = none,
 ) Listener!:
 	return msstd_net_network_listen_tls(self.native, address, options, timeout)
 
@@ -307,62 +335,90 @@ System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`
 */
 fn Network.lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!:
 	return msstd_net_network_lookup(
-		self.native, name, options.max_records, options.timeout
+		self.native,
+		name,
+		options.max_records,
+		options.timeout,
 	)
 
-// Performs one buffered HTTP request and returns the status, headers, and complete body.
-// Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `options.max_bytes` returns EOVERFLOW; error statuses are ordinary responses.
+// Performs one buffered HTTP request and returns the status, headers, and complete
+// body. Only `http` and `https` URLs without user info are accepted. Redirects are
+// returned, not followed, and no cookies or proxy settings apply. A body over
+// `options.max_bytes` returns EOVERFLOW; error statuses are ordinary responses.
 fn Network.request(
 	method: HttpMethod,
 	url: String,
 	body: Writable = "",
-	options: RequestOptions = RequestOptions()
+	options: RequestOptions = RequestOptions(),
 ) ClientResponse!:
 	return msstd_net_network_request_bytes(
-		self.native, method.text(), url, options.headers, body.as_bytes(),
-		options.max_bytes, options.timeout
+		self.native,
+		method.text(),
+		url,
+		options.headers,
+		body.as_bytes(),
+		options.max_bytes,
+		options.timeout,
 	)
 
 // Resolves the selected supported category, retaining it in each record.
 fn Network.resolve(
 	name: String,
 	kind: DnsKind,
-	options: DnsOptions = DnsOptions()
+	options: DnsOptions = DnsOptions(),
 ) List[DnsRecord]!:
 	return msstd_net_network_resolve(
-		self.native, name, kind, options.max_records, options.timeout
+		self.native,
+		name,
+		kind,
+		options.max_records,
+		options.timeout,
 	)
 
-// Returns a derived network limited to the given host names and CIDR ranges.
-// Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns EINVAL.
+// Returns a derived network limited to the given host names and CIDR ranges. Names
+// match case-insensitively without a trailing dot, and IP-literal hosts also match
+// through `cidrs`. With `cidrs`, every resolved address must be inside one of them.
+// `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A
+// derived restriction can only narrow its parent, and closing the parent closes the
+// child. Invalid host or CIDR text returns EINVAL.
 fn Network.restrict(
 	hosts: List[String],
 	cidrs: List[String] = [],
-	allow_listen: Bool = false
+	allow_listen: Bool = false,
 ) Network!:
 	return msstd_net_network_restrict(self.native, hosts, cidrs, allow_listen)
 
-// Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and subprotocols in `options`.
-// Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures are `Error` values.
+// Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and
+// subprotocols in `options`. Handshake headers such as `Upgrade`, `Connection`,
+// `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol
+// that was not offered fails the handshake. Failures are `Error` values.
 fn Network.web_socket(
 	url: String,
-	options: WebSocketOptions = WebSocketOptions()
+	options: WebSocketOptions = WebSocketOptions(),
 ) WebSocket!:
 	subprotocols := options.subprotocols.clone()
 	wire := WebSocketWire(
-		max_message_bytes: options.max_message_bytes, timeout: options.timeout,
-		tls: options.tls.clone(), compression: options.compression
+		max_message_bytes: options.max_message_bytes,
+		timeout: options.timeout,
+		tls: options.tls.clone(),
+		compression: options.compression,
 	)
 	return ok(
 		web_socket_from(
 			msstd_net_network_web_socket(
-				self.native, url, options.headers, subprotocols, wire
+				self.native,
+				url,
+				options.headers,
+				subprotocols,
+				wire,
 			)?
 		)
 	)
 
-// Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
-// The address must be allowed by this network's restrictions, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
+// Returns a derived network that resolves names through the DNS server at
+// `address`, an IP literal with port, instead of the system resolver. The address
+// must be allowed by this network's restrictions, otherwise EACCES is returned. An
+// address that is not an IP literal with a port returns EINVAL.
 fn Network.with_resolver(address: String) Network!:
 	return msstd_net_network_with_resolver(self.native, address)
 
@@ -370,11 +426,14 @@ fn Network.with_resolver(address: String) Network!:
 Per-call settings of a buffered `request`: the headers to send, a bound on the response body, and a time budget.
 */
 export type RequestOptions:
-	// The header fields to send with the request; empty by default. Transport headers such as `Host` and `Content-Length` are set by the request itself.
+	// The header fields to send with the request; empty by default. Transport headers
+	// such as `Host` and `Content-Length` are set by the request itself.
 	headers: HttpHeaders = headers()
-	// Largest accepted response body in bytes. A longer body returns EOVERFLOW; none sets no limit.
+	// Largest accepted response body in bytes. A longer body returns EOVERFLOW; none
+	// sets no limit.
 	max_bytes: Int? = none
-	// Time budget for the whole request; ETIMEDOUT when it elapses. none waits indefinitely.
+	// Time budget for the whole request; ETIMEDOUT when it elapses. none waits
+	// indefinitely.
 	timeout: Duration? = none
 
 // Per-call settings of a DNS query: how many records to accept and a time budget.
@@ -388,55 +447,64 @@ export type DnsOptions:
 fn host_network() Network:
 	return Network(native: msstd_net_network())
 
-// Binds a UDP socket to `address` (`host:port`; port 0 picks a free port).
-// A restricted network without listening permission, or an address outside its CIDRs, returns EACCES.
+// Binds a UDP socket to `address` (`host:port`; port 0 picks a free port). A restricted
+// network without listening permission, or an address outside its CIDRs, returns
+// EACCES.
 // ms: effect std.net.listen
 export fn bind_datagram(address: String) DatagramSocket!:
 	return host_network().bind_datagram(address)
 
-// Starts resolving `address` (`host:port`) and opening a TCP connection to the first reachable permitted address, and returns its promise. With `tls`, it then completes a TLS handshake.
+// Starts resolving `address` (`host:port`) and opening a TCP connection to the first
+// reachable permitted address, and returns its promise. With `tls`, it then completes a
+// TLS handshake.
 // `wait` gives EACCES for names or addresses a restricted network disallows, ETIMEDOUT when `timeout` elapses, and EIO when every address refuses or the handshake or verification fails.
 // `tls` verifies the server certificate against `tls.roots_pem` (the system roots when empty) for `tls.server_name`, with at least TLS 1.2; an empty `server_name` or invalid options give EINVAL. `timeout` bounds the whole attempt.
 // ms: effect std.net.connect
 export fn connect(
 	address: String,
 	tls: TlsOptions? = none,
-	timeout: Duration? = none
+	timeout: Duration? = none,
 ) Promise[Connection]:
 	return owned_task[Connection](connect_job(address.clone(), tls.clone(), timeout))
 
-// Starts connecting to the Unix domain socket at `path` and returns its promise.
-// Any restricted network gives EACCES because Unix sockets bypass host and CIDR checks, and an empty path gives EINVAL. `timeout` bounds the attempt.
+// Starts connecting to the Unix domain socket at `path` and returns its promise. Any
+// restricted network gives EACCES because Unix sockets bypass host and CIDR checks, and
+// an empty path gives EINVAL. `timeout` bounds the attempt.
 // ms: effect std.net.connect
 export fn connect_unix(path: String, timeout: Duration? = none) Promise[Connection]:
 	return owned_task[Connection](connect_unix_job(path.clone(), timeout))
 
-// The work of `connect` and `connect_unix`: a returned closure owns its address (or socket path), TLS settings and time.
+// The work of `connect` and `connect_unix`: a returned closure owns its address (or
+// socket path), TLS settings and time.
 fn connect_job(address: String, tls: TlsOptions?, timeout: Duration?) fn() Connection!:
 	return fn: host_network().connect(address, tls, timeout)
 
 fn connect_unix_job(path: String, timeout: Duration?) fn() Connection!:
 	return fn: host_network().connect_unix(path, timeout)
 
-// Creates a reusable HTTP client with connection pooling that dials through this network, so its restrictions and resolver apply to every request and redirect.
+// Creates a reusable HTTP client with connection pooling that dials through this
+// network, so its restrictions and resolver apply to every request and redirect.
 // Invalid or negative options return EINVAL. Closing the network closes the client.
 // ms: effect std.net.connect
 export fn http_client(options: HttpClientOptions = HttpClientOptions()) HttpClient!:
 	return host_network().http_client(options)
 
-// Listens for TCP connections on `address` (`host:port`; port 0 picks a free port).
-// A restricted network needs `allow_listen` and an IP-literal address inside its CIDRs, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
+// Listens for TCP connections on `address` (`host:port`; port 0 picks a free port). A
+// restricted network needs `allow_listen` and an IP-literal address inside its CIDRs,
+// otherwise EACCES is returned. An address that is not an IP literal with a port
+// returns EINVAL.
 // ms: effect std.net.listen
 export fn listen(address: String) Listener!:
 	return host_network().listen(address)
 
-// Listens for TCP connections on `address` and completes a TLS handshake for each accepted connection, within `timeout` when supplied.
+// Listens for TCP connections on `address` and completes a TLS handshake for each
+// accepted connection, within `timeout` when supplied.
 // `options` must hold a certificate and key, otherwise EINVAL is returned.
 // ms: effect std.net.listen
 export fn listen_tls(
 	address: String,
 	options: TlsOptions,
-	timeout: Duration? = none
+	timeout: Duration? = none,
 ) Listener!:
 	return host_network().listen_tls(address, options, timeout)
 
@@ -455,14 +523,16 @@ System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`
 export fn lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!:
 	return host_network().lookup(name, options)
 
-// Performs one buffered HTTP request and returns the status, headers, and complete body.
-// Only `http` and `https` URLs without user info are accepted. Redirects are returned, not followed, and no cookies or proxy settings apply. A body over `options.max_bytes` returns EOVERFLOW; error statuses are ordinary responses.
+// Performs one buffered HTTP request and returns the status, headers, and complete
+// body. Only `http` and `https` URLs without user info are accepted. Redirects are
+// returned, not followed, and no cookies or proxy settings apply. A body over
+// `options.max_bytes` returns EOVERFLOW; error statuses are ordinary responses.
 // ms: effect std.net.connect
 export fn request(
 	method: HttpMethod,
 	url: String,
 	body: Writable = "",
-	options: RequestOptions = RequestOptions()
+	options: RequestOptions = RequestOptions(),
 ) ClientResponse!:
 	return host_network().request(method, url, body, options)
 
@@ -471,25 +541,37 @@ export fn request(
 export fn resolve_dns(
 	name: String,
 	kind: DnsKind,
-	options: DnsOptions = DnsOptions()
+	options: DnsOptions = DnsOptions(),
 ) List[DnsRecord]!:
 	return host_network().resolve(name, kind, options)
 
-// Returns a derived network limited to the given host names and CIDR ranges.
-// Names match case-insensitively without a trailing dot, and IP-literal hosts also match through `cidrs`. With `cidrs`, every resolved address must be inside one of them. `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A derived restriction can only narrow its parent, and closing the parent closes the child. Invalid host or CIDR text returns EINVAL.
+// Returns a derived network limited to the given host names and CIDR ranges. Names
+// match case-insensitively without a trailing dot, and IP-literal hosts also match
+// through `cidrs`. With `cidrs`, every resolved address must be inside one of them.
+// `allow_listen` permits listening within the CIDRs. Unix sockets are refused. A
+// derived restriction can only narrow its parent, and closing the parent closes the
+// child. Invalid host or CIDR text returns EINVAL.
 export fn restrict(
 	hosts: List[String],
 	cidrs: List[String] = [],
-	allow_listen: Bool = false
+	allow_listen: Bool = false,
 ) Network!:
 	return host_network().restrict(hosts, cidrs, allow_listen)
 
-// Starts an HTTP server on `address` whose handler receives each request as an exchange: read the body and write the response incrementally, or use `read_body`, `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts, and TLS come from `options`.
-// A request beyond `max_requests` concurrent requests is answered with 503, an oversized header block with 431, and a handler fault with 500. An address that cannot be bound returns EIO.
-// Returns EINVAL for invalid options (`cores` below 1 included). Close the server, or drop it, to stop it.
+// Starts an HTTP server on `address` whose handler receives each request as an
+// exchange: read the body and write the response incrementally, or use `read_body`,
+// `reply`, and `buffered` from `@std/net/http.ms` for whole messages. Limits, timeouts,
+// and TLS come from `options`. A request beyond `max_requests` concurrent requests is
+// answered with 503, an oversized header block with 431, and a handler fault with 500.
+// An address that cannot be bound returns EIO. Returns EINVAL for invalid options
+// (`cores` below 1 included). Close the server, or drop it, to stop it.
 // `serve` binds a plain TCP listener and runs the accept loop as a promise. Each accepted connection becomes a promise of its own, which the runtime places on the least busy thread, where it stays; HTTP/1.1, HTTP/2 and the TLS handshake of `options.tls` run there. `handler` is built once and only read by every thread. `options.cores` limits the runtime to that many threads (none: every core).
-// A handler is cancelled when its request times out or its client disconnects (an HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end and its resource cleanup runs. A client that half-closes its end after sending the request counts as disconnected.
-// A faulting handler's frames release the heap values they own, as a cancelled handler's do. Return an error response for expected failures instead of faulting.
+// A handler is cancelled when its request times out or its client disconnects (an
+// HTTP/1 connection closes or an HTTP/2 stream is reset): its waits end and its
+// resource cleanup runs. A client that half-closes its end after sending the request
+// counts as disconnected. A faulting handler's frames release the heap values they own,
+// as a cancelled handler's do. Return an error response for expected failures instead
+// of faulting.
 // ms: effect std.net.listen
 export fn serve(
 	address: String,
@@ -505,7 +587,8 @@ export fn serve(
 	if cores := options.cores:
 		msrt_runtime_set_threads(cores)
 
-	// The accept loop owns the listener; each worker owns a share of the serving and a pipe of accepted connections.
+	// The accept loop owns the listener; each worker owns a share of the serving and a
+	// pipe of accepted connections.
 	workers := workers_for(options)
 	accepting := promise(fn: accept_loop(listening, workers))
 	return ok(HttpServer(accepting: accepting, bound: bound, stopped: false))
@@ -514,7 +597,8 @@ export fn serve(
 fn workers_for(options: HttpServerOptions) Int:
 	return options.cores.get(msrt_runtime_limit())
 
-// A handle on a serving, which a promise owns and closes when it ends. The accept loop's handle also releases the listener.
+// A handle on a serving, which a promise owns and closes when it ends. The accept
+// loop's handle also releases the listener.
 type ServingHandle:
 	serving: NativeServing
 	listener: Bool
@@ -523,14 +607,17 @@ fn var ServingHandle.close() Unit!:
 	if self.listener:
 		msstd_http_serving_release(self.serving)
 
-// One worker's HTTP engine, which owns its connections as poller registrations rather than as tasks. Closing it drains them.
+// One worker's HTTP engine, which owns its connections as poller registrations rather
+// than as tasks. Closing it drains them.
 type WorkerHandle:
 	worker: NativeWorker
 
 fn var WorkerHandle.close() Unit!:
 	msstd_http_worker_close(self.worker)
 
-// The accept loop's pipes and workers. Its close, which runs when the loop returns, is cancelled or faults, ends the pipes so the workers drain side by side, then joins them.
+// The accept loop's pipes and workers. Its close, which runs when the loop returns, is
+// cancelled or faults, ends the pipes so the workers drain side by side, then joins
+// them.
 type Accepting:
 	deals: List[WriteStream[Int]]
 	workers: List[Promise[Unit]]
@@ -545,7 +632,9 @@ fn var Accepting.close() Unit!:
 		worker.cancel()
 	self.workers = []
 
-// Accepts until the listener fails, dealing each connection to the next worker. An accept that fails for lack of descriptors or memory pauses briefly instead of ending the server.
+// Accepts until the listener fails, dealing each connection to the next worker. An
+// accept that fails for lack of descriptors or memory pauses briefly instead of ending
+// the server.
 fn accept_loop(listening: ServingHandle, count: Int) Unit!:
 	var accepting = Accepting(deals: [], workers: [])
 	var i = 0
@@ -555,7 +644,8 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
 		accepting.deals.append(queue.writer())
 
 		mine := ServingHandle(
-			serving: msstd_http_serving_share(listening.serving), listener: false
+			serving: msstd_http_serving_share(listening.serving),
+			listener: false,
 		)
 		accepting.workers.append(promise(fn: serve_worker(mine, queue)))
 		i += 1
@@ -574,7 +664,8 @@ fn accept_loop(listening: ServingHandle, count: Int) Unit!:
 		_ := accepting.deals[next].write(accepted.get())
 		next = (next + 1) % count
 
-// Runs one worker on the thread the runtime placed this promise on: it adopts each connection it is dealt, and the poller drives them from there.
+// Runs one worker on the thread the runtime placed this promise on: it adopts each
+// connection it is dealt, and the poller drives them from there.
 fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
 	engine := WorkerHandle(worker: msstd_http_serving_worker(handle.serving)?)
 
@@ -587,17 +678,21 @@ fn serve_worker(handle: ServingHandle, input: Pipe[Int]) Unit!:
 		else:
 			break
 
-// Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and subprotocols in `options`.
-// Handshake headers such as `Upgrade`, `Connection`, `Host`, and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not offered fails the handshake. Failures are `Error` values.
+// Opens a WebSocket client connection to a `ws` or `wss` URL with the headers and
+// subprotocols in `options`. Handshake headers such as `Upgrade`, `Connection`, `Host`,
+// and `Sec-WebSocket-*` cannot be set. A server that selects a subprotocol that was not
+// offered fails the handshake. Failures are `Error` values.
 // ms: effect std.net.connect
 export fn web_socket(
 	url: String,
-	options: WebSocketOptions = WebSocketOptions()
+	options: WebSocketOptions = WebSocketOptions(),
 ) WebSocket!:
 	return host_network().web_socket(url, options)
 
-// Returns a derived network that resolves names through the DNS server at `address`, an IP literal with port, instead of the system resolver.
-// The address must be allowed by this network's restrictions, otherwise EACCES is returned. An address that is not an IP literal with a port returns EINVAL.
+// Returns a derived network that resolves names through the DNS server at `address`, an
+// IP literal with port, instead of the system resolver. The address must be allowed by
+// this network's restrictions, otherwise EACCES is returned. An address that is not an
+// IP literal with a port returns EINVAL.
 // ms: effect std.net.connect
 export fn with_resolver(address: String) Network!:
 	return host_network().with_resolver(address)

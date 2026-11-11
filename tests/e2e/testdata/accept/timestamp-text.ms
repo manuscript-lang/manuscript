@@ -15,5 +15,5 @@ test "timestamp text pads and trims fractions across UTC boundaries":
 	expect_equal(timestamp(0, 100000000).get().to_string(), "1970-01-01T00:00:00.1Z")?
 	expect_equal(
 		timestamp(253402300799, 999999999).get().to_string(),
-		"9999-12-31T23:59:59.999999999Z"
+		"9999-12-31T23:59:59.999999999Z",
 	)?

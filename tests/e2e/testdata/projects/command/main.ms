@@ -9,8 +9,10 @@ fn exercise() Int!:
 		program: "/bin/printf",
 		arguments: ["hello"],
 		RunOptions(
-			input: "".to_bytes(), max_output_bytes: 64, timeout: 1.seconds()
-		)
+			input: "".to_bytes(),
+			max_output_bytes: 64,
+			timeout: 1.seconds(),
+		),
 	).wait():
 		error(_):
 			return ok(1)

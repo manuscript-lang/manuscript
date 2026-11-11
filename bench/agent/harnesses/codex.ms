@@ -13,8 +13,13 @@ impl Harness for Codex:
 
 	fn command(prompt: String, model: String?, workspace: String) List[String]:
 		var cmd = [
-			"codex", "exec", "--json", "--dangerously-bypass-approvals-and-sandbox",
-			"--skip-git-repo-check", "-C", workspace.clone()
+			"codex",
+			"exec",
+			"--json",
+			"--dangerously-bypass-approvals-and-sandbox",
+			"--skip-git-repo-check",
+			"-C",
+			workspace.clone(),
 		]
 		if m := model: cmd = cmd.concat(["-m", m.clone()])
 		return cmd.concat([prompt.clone()])

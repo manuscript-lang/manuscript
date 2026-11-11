@@ -18,7 +18,8 @@ impl Result[T, E]:
 	// Reports whether this result contains an expected error.
 	fn is_error() Bool: ...
 
-	// Returns the successful payload, or `default` when this is an error. Without a default, an error raises a fault.
+	// Returns the successful payload, or `default` when this is an error. Without a
+	// default, an error raises a fault.
 	fn get(default: T? = none) T: ...
 
 	// Returns the error payload; faults when this is successful.

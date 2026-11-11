@@ -13,8 +13,12 @@ test "UTF8 validity checks the complete buffer without replacement":
 	for data in [Bytes([]), "aé🙂e\u{301}\u{0}".to_bytes(), Bytes([239, 191, 189])]:
 		is_valid(data) | expect_equal(true)?
 	for data in [
-		Bytes([97, 255]), Bytes([194]), Bytes([128]), Bytes([192, 128]),
-		Bytes([237, 160, 128]), Bytes([244, 144, 128, 128])
+		Bytes([97, 255]),
+		Bytes([194]),
+		Bytes([128]),
+		Bytes([192, 128]),
+		Bytes([237, 160, 128]),
+		Bytes([244, 144, 128, 128]),
 	]:
 		is_valid(data) | expect_equal(false)?
 
@@ -48,30 +52,55 @@ test "UTF8 offsets count bytes and leave adjacent malformed bytes alone":
 
 test "UTF8 distinguishes incomplete prefixes from malformed encodings":
 	for data in [Bytes([]), Bytes([194]), Bytes([226, 130]), Bytes([240, 144, 128])]:
-		decode_first(data) | expect_error? | expect_equal(Utf8Error.Incomplete)?
-		decode_last(data) | expect_error? | expect_equal(Utf8Error.Incomplete)?
+		(
+			decode_first(data)
+			| expect_error?
+			| expect_equal(Utf8Error.Incomplete)?
+		)
+		(decode_last(data) | expect_error? | expect_equal(Utf8Error.Incomplete)?)
 
 	for data in [
-		Bytes([128]), Bytes([192, 128]), Bytes([193, 191]), Bytes([224, 128]),
-		Bytes([237, 160, 128]), Bytes([244, 144]), Bytes([245, 128, 128, 128]),
-		Bytes([255])
+		Bytes([128]),
+		Bytes([192, 128]),
+		Bytes([193, 191]),
+		Bytes([224, 128]),
+		Bytes([237, 160, 128]),
+		Bytes([244, 144]),
+		Bytes([245, 128, 128, 128]),
+		Bytes([255]),
 	]:
-		decode_first(data) | expect_error? | expect_equal(Utf8Error.InvalidData)?
-		decode_last(data) | expect_error? | expect_equal(Utf8Error.InvalidData)?
+		(
+			decode_first(data)
+			| expect_error?
+			| expect_equal(Utf8Error.InvalidData)?
+		)
+		(decode_last(data) | expect_error? | expect_equal(Utf8Error.InvalidData)?)
 
-	decode_last(Bytes([194, 162, 128])) | expect_error? | expect_equal(
-		Utf8Error.InvalidData
-	)?
-	decode_first("🙂".to_bytes(), 1) | expect_error? | expect_equal(
-		Utf8Error.InvalidData
-	)?
-	decode_last("🙂".to_bytes(), 3) | expect_error? | expect_equal(Utf8Error.Incomplete)?
-	decode_last(Bytes([255, 226, 130])) | expect_error? | expect_equal(
-		Utf8Error.Incomplete
-	)?
-	decode_first(Bytes([240, 128, 128, 128])) | expect_error? | expect_equal(
-		Utf8Error.InvalidData
-	)?
+	(
+		decode_last(Bytes([194, 162, 128])) | expect_error? | expect_equal(
+			Utf8Error.InvalidData
+		)?
+	)
+	(
+		decode_first("🙂".to_bytes(), 1) | expect_error? | expect_equal(
+			Utf8Error.InvalidData
+		)?
+	)
+	(
+		decode_last("🙂".to_bytes(), 3) | expect_error? | expect_equal(
+			Utf8Error.Incomplete
+		)?
+	)
+	(
+		decode_last(Bytes([255, 226, 130])) | expect_error? | expect_equal(
+			Utf8Error.Incomplete
+		)?
+	)
+	(
+		decode_first(
+			Bytes([240, 128, 128, 128])
+		) | expect_error? | expect_equal(Utf8Error.InvalidData)?
+	)
 
 test "UTF8 rejects invalid offsets without negative index wrapping":
 	data := "é".to_bytes()
@@ -81,15 +110,23 @@ test "UTF8 rejects invalid offsets without negative index wrapping":
 			_ignored := decode_first(data, offset)
 		last_fault := fn:
 			_ignored := decode_last(data, offset)
-		expect_fault(first_fault) | expect_ok? | expect_contains(
-			"utf8.decode_first: at"
-		)?
-		expect_fault(last_fault) | expect_ok? | expect_contains("utf8.decode_last: end")?
+		(
+			expect_fault(first_fault) | expect_ok? | expect_contains(
+				"utf8.decode_first: at"
+			)?
+		)
+		(
+			expect_fault(last_fault) | expect_ok? | expect_contains(
+				"utf8.decode_last: end"
+			)?
+		)
 
-	decode_first(data, data.length()) | expect_error? | expect_equal(
-		Utf8Error.Incomplete
-	)?
-	decode_last(data, 0) | expect_error? | expect_equal(Utf8Error.Incomplete)?
+	(
+		decode_first(data, data.length()) | expect_error? | expect_equal(
+			Utf8Error.Incomplete
+		)?
+	)
+	(decode_last(data, 0) | expect_error? | expect_equal(Utf8Error.Incomplete)?)
 
 test "UTF8 supports forward and reverse walks without normalization":
 	data := "é🙂e\u{301}\u{0}".to_bytes()

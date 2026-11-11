@@ -23,7 +23,8 @@ import (
 	msstd_system_user_info from "@std/internal/system.ms",
 )
 
-// The operating system family the program was built for. A host outside the three named families reads as `Other`.
+// The operating system family the program was built for. A host outside the three named
+// families reads as `Other`.
 export enum Os:
 	Linux  // The program runs on a Linux kernel of any distribution.
 	Macos  // The program runs on Apple macOS, which `uname` reports as Darwin.
@@ -38,14 +39,17 @@ export type MemoryUsage:
 	heap_total: Int
 	// Bytes of heap memory obtained from the operating system, including idle spans.
 	heap_system: Int
-	// Bytes the runtime obtained from the operating system outside the heap, such as stacks and internal tables.
+	// Bytes the runtime obtained from the operating system outside the heap, such as
+	// stacks and internal tables.
 	external: Int
-	// Bytes of physical memory the operating system reports as resident for the process.
+	// Bytes of physical memory the operating system reports as resident for the
+	// process.
 	resident: Int
 
 // Operating system and processor architecture for the current host.
 export type SystemInfo:
-	// Operating system identifier, such as linux, darwin, or windows; an open host identifier set. `os()` names the supported families as an enum.
+	// Operating system identifier, such as linux, darwin, or windows; an open host
+	// identifier set. `os()` names the supported families as an enum.
 	os: String
 	// The processor architecture in common naming, such as `amd64`, `arm64`, or `386`.
 	architecture: String
@@ -58,7 +62,8 @@ export type UserInfo:
 	username: String
 	// Numeric user id of the current user; -1 on Windows, where ids are not numeric.
 	uid: Int
-	// Numeric primary group id of the current user; -1 on Windows, where ids are not numeric.
+	// Numeric primary group id of the current user; -1 on Windows, where ids are not
+	// numeric.
 	gid: Int
 	// Absolute path of the user's home directory from the account database.
 	home: String
@@ -67,37 +72,45 @@ export type UserInfo:
 
 // Address and link metadata for one host network interface.
 export type NetworkInterface:
-	// Host name of the interface, such as `eth0` or `lo0`. Interfaces with several addresses appear once per address.
+	// Host name of the interface, such as `eth0` or `lo0`. Interfaces with several
+	// addresses appear once per address.
 	name: String
 	// The interface's IP address in textual form, such as `192.168.1.5` or `fe80::1`.
 	address: String
-	// The address's network mask in the same textual form as `address`, such as `255.255.255.0`.
+	// The address's network mask in the same textual form as `address`, such as
+	// `255.255.255.0`.
 	netmask: String
 	// The IPv4/IPv6 alternative for the native address record.
 	family: IpFamily
-	// Hardware address as colon-separated lowercase hexadecimal, or an empty string for interfaces without one such as loopback.
+	// Hardware address as colon-separated lowercase hexadecimal, or an empty string for
+	// interfaces without one such as loopback.
 	mac: String
 	// True for a loopback interface, which only reaches the local host.
 	internal: Bool
-	// The operating system's numeric index for the interface, as used to select an interface for link-local IPv6 addresses.
+	// The operating system's numeric index for the interface, as used to select an
+	// interface for link-local IPv6 addresses.
 	scope_id: Int
 
-// Model, integer MHz speed (fractional MHz truncated), and cumulative integer millisecond
-// counters for one logical CPU. irq includes hardware and software interrupt time.
+// Model, integer MHz speed (fractional MHz truncated), and cumulative integer
+// millisecond counters for one logical CPU. irq includes hardware and software
+// interrupt time.
 export type CpuInfo:
-	// Marketing name of the processor, such as `Intel(R) Core(TM) i7`; it can be empty where the host does not report one.
+	// Marketing name of the processor, such as `Intel(R) Core(TM) i7`; it can be empty
+	// where the host does not report one.
 	model: String
 	// Integer megahertz, not a time interval.
 	speed_mhz: Int
 	// The user, nice, system, idle, and irq fields are cumulative milliseconds.
 	user: Int
-	// Cumulative milliseconds this logical CPU spent running low-priority (niced) user processes.
+	// Cumulative milliseconds this logical CPU spent running low-priority (niced) user
+	// processes.
 	nice: Int
 	// Cumulative milliseconds this logical CPU spent running kernel code.
 	system: Int
 	// Cumulative milliseconds this logical CPU spent idle.
 	idle: Int
-	// Cumulative milliseconds this logical CPU spent servicing hardware and software interrupts.
+	// Cumulative milliseconds this logical CPU spent servicing hardware and software
+	// interrupts.
 	irq: Int
 
 // Host measurements: memory fields are bytes; load_average is 1/5/15-minute load
@@ -105,15 +118,20 @@ export type CpuInfo:
 export type SystemMetrics:
 	// Installed physical memory in bytes.
 	total_memory: Int
-	// Physical memory in bytes that is completely unused; caches count as used, so it is usually smaller than `available_memory`.
+	// Physical memory in bytes that is completely unused; caches count as used, so it
+	// is usually smaller than `available_memory`.
 	free_memory: Int
-	// Estimated physical memory in bytes that new work can use without swapping, including reclaimable caches.
+	// Estimated physical memory in bytes that new work can use without swapping,
+	// including reclaimable caches.
 	available_memory: Int
-	// Host boot uptime as a Duration with whole-second native resolution; not process uptime.
+	// Host boot uptime as a Duration with whole-second native resolution; not process
+	// uptime.
 	uptime: Duration
-	// Three Floats for the 1, 5, and 15 minute system load averages; all 0.0 on Windows.
+	// Three Floats for the 1, 5, and 15 minute system load averages; all 0.0 on
+	// Windows.
 	load_average: List[Float]
-	// Logical processors this process may run on, which can be fewer than `SystemInfo.cpu_count` under CPU affinity limits.
+	// Logical processors this process may run on, which can be fewer than
+	// `SystemInfo.cpu_count` under CPU affinity limits.
 	available_parallelism: Int
 
 // The byte order of the host's native integers.
@@ -143,17 +161,19 @@ export fn os() Os:
 
 	return Os.Other
 
-// Returns native signal/error/loader/priority constants by name.
-// Names and values vary by host; missing entries do not imply a portable numeric default.
+// Returns native signal/error/loader/priority constants by name. Names and values vary
+// by host; missing entries do not imply a portable numeric default.
 export fn constants() Map[String, Int]:
 	return msstd_system_constants()
 
-// Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0 when no limit applies or the platform has no such limit.
+// Returns the memory limit in bytes imposed on this process by its Linux cgroup, or 0
+// when no limit applies or the platform has no such limit.
 // ms: effect std.system.read
 export fn constrained_memory() Int!:
 	return msstd_process_constrained_memory()
 
-// Returns bytes available to new allocations: the host's available memory, reduced to the remaining headroom when a Linux cgroup memory limit applies.
+// Returns bytes available to new allocations: the host's available memory, reduced to
+// the remaining headroom when a Linux cgroup memory limit applies.
 // ms: effect std.system.read
 export fn available_memory() Int!:
 	return msstd_process_available_memory()
@@ -168,7 +188,8 @@ export fn memory_usage() MemoryUsage!:
 export fn uptime() Duration!:
 	return msstd_process_elapsed()
 
-// Returns the operating system name, processor architecture, and logical CPU count for this host.
+// Returns the operating system name, processor architecture, and logical CPU count for
+// this host.
 // ms: effect std.system.read
 export fn system_info() SystemInfo:
 	return msstd_system_info()
@@ -179,25 +200,27 @@ export fn system_info() SystemInfo:
 export fn hostname() String!:
 	return msstd_system_hostname()
 
-// Returns the current user's name, numeric ids, home directory, and login shell.
-// The shell is empty when the host does not record one, and text that is not valid UTF-8 returns ENOTSUP.
+// Returns the current user's name, numeric ids, home directory, and login shell. The
+// shell is empty when the host does not record one, and text that is not valid UTF-8
+// returns ENOTSUP.
 // ms: effect std.system.read
 export fn user_info() UserInfo!:
 	return msstd_system_user_info()
 
-// Returns one NetworkInterface for every address on every interface, including loopback.
-// An interface name that is not valid UTF-8 returns ENOTSUP.
+// Returns one NetworkInterface for every address on every interface, including
+// loopback. An interface name that is not valid UTF-8 returns ENOTSUP.
 // ms: effect std.system.read
 export fn network_interfaces() List[NetworkInterface]!:
 	return msstd_system_network_interfaces()
 
-// Returns one CpuInfo per logical CPU with its model, clock speed, and cumulative time counters.
+// Returns one CpuInfo per logical CPU with its model, clock speed, and cumulative time
+// counters.
 // ms: effect std.system.read
 export fn cpus() List[CpuInfo]!:
 	return msstd_system_cpus()
 
-// Returns memory sizes in bytes, host uptime, load averages, and available parallelism in one snapshot.
-// A host query failure returns an `Error` describing it.
+// Returns memory sizes in bytes, host uptime, load averages, and available parallelism
+// in one snapshot. A host query failure returns an `Error` describing it.
 // ms: effect std.system.read
 export fn metrics() SystemMetrics!:
 	snapshot := msstd_system_metrics()?
@@ -208,25 +231,28 @@ export fn metrics() SystemMetrics!:
 			available_memory: snapshot.available_memory,
 			uptime: Duration(nanos: snapshot.uptime_nanos),
 			load_average: [
-				snapshot.load_1, snapshot.load_5, snapshot.load_15
+				snapshot.load_1,
+				snapshot.load_5,
+				snapshot.load_15,
 			],
-			available_parallelism: snapshot.available_parallelism
+			available_parallelism: snapshot.available_parallelism,
 		)
 	)
 
-// Returns the kernel release string, such as `6.1.0-18-amd64`, with surrounding whitespace removed.
-// Returns ENOTSUP where the host does not expose it.
+// Returns the kernel release string, such as `6.1.0-18-amd64`, with surrounding
+// whitespace removed. Returns ENOTSUP where the host does not expose it.
 // ms: effect std.system.read
 export fn os_release() String!:
 	return msstd_system_os_release()
 
-// Returns the kernel build or version string, such as `#1 SMP Debian`, with surrounding whitespace removed.
-// Returns ENOTSUP where the host does not expose it.
+// Returns the kernel build or version string, such as `#1 SMP Debian`, with surrounding
+// whitespace removed. Returns ENOTSUP where the host does not expose it.
 // ms: effect std.system.read
 export fn os_version() String!:
 	return msstd_system_os_version()
 
-// Returns the hardware architecture in `uname -m` style, such as `x86_64`, `aarch64`, or `i686`; other architectures use the target's architecture name.
+// Returns the hardware architecture in `uname -m` style, such as `x86_64`, `aarch64`,
+// or `i686`; other architectures use the target's architecture name.
 // ms: effect std.system.read
 export fn machine() String!:
 	return msstd_system_machine()

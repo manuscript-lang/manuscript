@@ -21,8 +21,11 @@ fn serve(options: ServeOptions) Int!:
 fn common_flags() List[Flag]:
 	return [
 		Flag(
-			name: "verbose", kind: FlagKind.Bool, short: "v", persistent: true,
-			help: "Print more"
+			name: "verbose",
+			kind: FlagKind.Bool,
+			short: "v",
+			persistent: true,
+			help: "Print more",
 		)
 	]
 
@@ -33,9 +36,12 @@ fn serve_command() Command:
 		flags: [
 			Flag("port", FlagKind.Int, "p", "8080", "Listen port"),
 			Flag(
-				"mode", FlagKind.String, default: "dev", choices: ["dev", "prod"]
+				"mode",
+				FlagKind.String,
+				default: "dev",
+				choices: ["dev", "prod"],
 			),
-			Flag("tags", FlagKind.List)
+			Flag("tags", FlagKind.List),
 		],
 		args: [Arg("root", "Directory to serve")],
 		run: fn options: serve(options)
@@ -52,8 +58,9 @@ fn remote_group() Command:
 		name: "add",
 		flags: [Flag("dry-run", FlagKind.Bool)],
 		args: [
-			Arg("name"), Arg("url", required: false),
-			Arg("extra", required: false, rest: true)
+			Arg("name"),
+			Arg("url", required: false),
+			Arg("extra", required: false, rest: true),
 		],
 		run: fn options: ok(
 			options.extra.length() + (if options.dry_run: 100 else: 0) + (
@@ -67,8 +74,10 @@ fn remote_group() Command:
 
 fn app() Command:
 	return Command(
-		name: "tool", about: "Manage projects", flags: common_flags(),
-		children: [serve_command(), remote_group()]
+		name: "tool",
+		about: "Manage projects",
+		flags: common_flags(),
+		children: [serve_command(), remote_group()],
 	)
 
 fn run(argv: List[String]) Matches!:
@@ -134,23 +143,31 @@ test "optional and rest arguments":
 test "usage errors name the problem":
 	(failure(["serve"])?) | expect_equal("cli: missing required root")?
 	(failure(["serve", "a", "b"])?) | expect_equal("cli: unexpected argument b")?
-	(failure(["serve", "a", "--port", "x"])?) | expect_equal(
-		"cli: flag port: x is not an integer"
-	)?
-	(failure(["serve", "a", "--port", "1.5"])?) | expect_equal(
-		"cli: flag port: 1.5 is not an integer"
-	)?
-	(failure(["serve", "a", "--mode", "x"])?) | expect_equal(
-		"cli: flag mode: x is not one of dev, prod"
-	)?
-	(failure(["serve", "a", "--port"])?) | expect_equal(
-		"cli: flag --port needs a value"
-	)?
+	(
+		(failure(["serve", "a", "--port", "x"])?)
+		| expect_equal("cli: flag port: x is not an integer")?
+	)
+	(
+		(failure(["serve", "a", "--port", "1.5"])?) | expect_equal(
+			"cli: flag port: 1.5 is not an integer"
+		)?
+	)
+	(
+		(failure(["serve", "a", "--mode", "x"])?) | expect_equal(
+			"cli: flag mode: x is not one of dev, prod"
+		)?
+	)
+	(
+		(failure(["serve", "a", "--port"])?) | expect_equal(
+			"cli: flag --port needs a value"
+		)?
+	)
 	(failure(["serve", "a", "--nope"])?) | expect_equal("cli: unknown flag --nope")?
 	(failure(["bogus"])?) | expect_equal("cli: unknown command bogus for tool")?
-	(failure(["remote", "bogus"])?) | expect_equal(
-		"cli: unknown command bogus for tool remote"
-	)?
+	(
+		(failure(["remote", "bogus"])?)
+		| expect_equal("cli: unknown command bogus for tool remote")?
+	)
 
 test "help is generated for groups, leaves and the help word":
 	root := app().help() | expect_some?
@@ -176,33 +193,41 @@ test "help is generated for groups, leaves and the help word":
 test "float flags reject NaN and infinities":
 	ratio := Command(name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float)])
 	for text in ["NaN", "Infinity", "-Infinity"]:
-		(ratio.parse(["--ratio", text.clone()]) | expect_error?).message | expect_equal(
-			"cli: flag ratio: {text} is not a number"
-		)?
+		(
+			(ratio.parse(["--ratio", text.clone()]) | expect_error?).message
+			| expect_equal("cli: flag ratio: {text} is not a number")?
+		)
 
 	_ := expect_ok(ratio.parse(["--ratio", "1e5"]))?
 	bad_default := Command(
-		name: "x", flags: [Flag(name: "ratio", kind: FlagKind.Float, default: "NaN")]
+		name: "x",
+		flags: [Flag(name: "ratio", kind: FlagKind.Float, default: "NaN")],
 	)
-	(bad_default.parse([]) | expect_error?).message | expect_contains(
-		"default NaN does not fit"
-	)?
+	(
+		(bad_default.parse([]) | expect_error?).message | expect_contains(
+			"default NaN does not fit"
+		)?
+	)
 
 test "schema mistakes are reported before parsing":
 	duplicate := Command(
 		name: "x",
 		flags: [
-			Flag(name: "a", kind: FlagKind.Bool), Flag(name: "a", kind: FlagKind.String)
-		]
+			Flag(name: "a", kind: FlagKind.Bool),
+			Flag(name: "a", kind: FlagKind.String),
+		],
 	)
 	(duplicate.parse([]) | expect_error?).message | expect_contains("duplicate flag a")?
 
 	bad_default := Command(
-		name: "x", flags: [Flag(name: "n", kind: FlagKind.Int, default: "z")]
+		name: "x",
+		flags: [Flag(name: "n", kind: FlagKind.Int, default: "z")],
 	)
-	(bad_default.parse([]) | expect_error?).message | expect_contains(
-		"default z does not fit"
-	)?
+	(
+		(bad_default.parse([]) | expect_error?).message | expect_contains(
+			"default z does not fit"
+		)?
+	)
 
 	rest_first := Command(name: "x", args: [Arg(name: "a", rest: true), Arg(name: "b")])
 	(rest_first.parse([]) | expect_error?).message | expect_contains("must be last")?
@@ -211,9 +236,11 @@ test "schema mistakes are reported before parsing":
 	(order.parse([]) | expect_error?).message | expect_contains("follows an optional")?
 
 	reserved := Command(name: "x", children: [Command(name: "help")])
-	(reserved.parse([]) | expect_error?).message | expect_contains(
-		"bad command name help"
-	)?
+	(
+		(reserved.parse([]) | expect_error?).message | expect_contains(
+			"bad command name help"
+		)?
+	)
 
 fn handled(argv: List[String]) Int!:
 	tool := app()
@@ -231,9 +258,14 @@ test "handlers receive the decoded options record":
 
 test "optional, rest and dashed names decode into record fields":
 	(handled(["remote", "add", "o"]) | expect_ok?) | expect_equal(0)?
-	(handled(["remote", "add", "o", "u", "x", "y", "--dry-run"]) | expect_ok?) | expect_equal(
-		112
-	)?
+	(
+		(
+			handled(
+				["remote", "add", "o", "u", "x", "y", "--dry-run"]
+			) | expect_ok?
+		)
+		| expect_equal(112)?
+	)
 
 test "a record that does not match the schema is reported when the handler runs":
 	mismatched := command[ServeOptions](name: "bad", run: fn options: ok(0))
@@ -252,8 +284,9 @@ test "help rows without text carry no trailing spaces":
 		name: "t",
 		args: [Arg("file")],
 		children: [
-			Command(name: "sub"), Command(name: "other-long", about: "Other")
-		]
+			Command(name: "sub"),
+			Command(name: "other-long", about: "Other"),
+		],
 	)
 	text := quiet.help() | expect_some?
 	text | expect_contains("  sub        \n".trim_end() + "\n")?

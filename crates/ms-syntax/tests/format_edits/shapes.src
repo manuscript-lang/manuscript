@@ -1,0 +1,10 @@
+fn flows(text: String) Int!:
+	root := parse_something(text: text) | expect_ok_with_long_name? | entries_of_things? | third?
+	short := a | b? | c?
+	one := a | b?
+	check("same elements", lists(ints(-50, 50)), fn xs: expect_equal(insertion_sort(xs).length(), xs.length()))?
+	wrapped("first argument is long enough", "second argument is long enough", third_argument)?
+	return root
+
+fn parameters(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: Int, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb: Int) Int:
+	return aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

@@ -33,16 +33,18 @@ export type Screen:
 	// Terminal height in rows, used to tell whether a changed row is still in view.
 	height: Int
 
-// Draws `rows` on `terminal` and leaves the cursor at `cursor_row` (an index into `rows`, negative for the first) and `cursor_column`.
+// Draws `rows` on `terminal` and leaves the cursor at `cursor_row` (an index into
+// `rows`, negative for the first) and `cursor_column`.
 fn var Screen.draw(
 	terminal: RawTerminal,
 	rows: List[String],
 	cursor_row: Int,
-	cursor_column: Int
+	cursor_column: Int,
 ) Unit!:
 	return terminal.write(self.render(rows, cursor_row, cursor_column))
 
-// The bytes that turn what was drawn last into `rows`, which also become what was drawn last. `draw` writes them; tests and custom outputs can use them directly.
+// The bytes that turn what was drawn last into `rows`, which also become what was
+// drawn last. `draw` writes them; tests and custom outputs can use them directly.
 fn var Screen.render(rows: List[String], cursor_row: Int, cursor_column: Int) String:
 	var diff = first_difference(self.previous, rows)
 	last := self.previous.length() - 1
@@ -54,7 +56,8 @@ fn var Screen.render(rows: List[String], cursor_row: Int, cursor_column: Int) St
 	var at = self.cursor_row
 
 	if unreachable:
-		// A changed row scrolled out of reach: clear screen and scrollback and draw everything.
+		// A changed row scrolled out of reach: clear screen and scrollback and draw
+		// everything.
 		out = "{out}{esc}[2J{esc}[3J{esc}[H"
 		at = 0
 		diff = 0
@@ -91,7 +94,8 @@ fn var Screen.render(rows: List[String], cursor_row: Int, cursor_column: Int) St
 	self.cursor_row = goal
 	return out
 
-// Forgets what was drawn, for use after something wrote to the terminal behind the screen; the next draw starts at the cursor.
+// Forgets what was drawn, for use after something wrote to the terminal behind the
+// screen; the next draw starts at the cursor.
 fn var Screen.reset() Unit:
 	self.previous = List[String]()
 	self.cursor_row = 0
@@ -103,7 +107,8 @@ fn var Screen.reset() Unit:
 fn var Screen.resize(rows: Int) Unit:
 	self.height = rows
 
-// A screen that starts drawing at the current cursor row; the height is the terminal's, or 24 when unknown.
+// A screen that starts drawing at the current cursor row; the height is the terminal's,
+// or 24 when unknown.
 // ms: effect std.console.read
 export fn new_screen() Screen:
 	size := terminal_size()
@@ -116,7 +121,8 @@ fn first_difference(before: List[String], after: List[String]) Int:
 	while i < limit and before[i] == after[i]: i += 1
 	return i
 
-// The sequence moving the cursor from row `from` to row `to` within the block, then to the line start.
+// The sequence moving the cursor from row `from` to row `to` within the block, then to
+// the line start.
 fn vertical(from: Int, to: Int) String:
 	if from > to: return "{esc}[{from - to}A\r"
 	if from < to: return "{esc}[{to - from}B\r"

@@ -19,14 +19,16 @@ fn collection(values: List[Marker]) Unit:
 	panic("collection owner remains alive")
 
 test "a borrowed scalar Optional getter leaves its owner alive":
-	(expect_fault(fn: inspect(Marker(1)))?) | expect_contains(
-		"borrowed owner remains alive"
-	)?
+	(
+		(expect_fault(fn: inspect(Marker(1)))?)
+		| expect_contains("borrowed owner remains alive")?
+	)
 
 test "a scalar collection lend leaves its owner alive":
-	(expect_fault(fn: collection([Marker(2)]))?) | expect_contains(
-		"collection owner remains alive"
-	)?
+	(
+		(expect_fault(fn: collection([Marker(2)]))?)
+		| expect_contains("collection owner remains alive")?
+	)
 
 fn owned_result() Unit:
 	value: Marker!Int := ok(Marker(3))
@@ -52,9 +54,10 @@ fn inspect_heap(value: HeapMarker?) Unit:
 	panic("heap owner remains alive")
 
 test "heap resource Optional getters retain their existing borrow":
-	(expect_fault(fn: inspect_heap(HeapMarker("heap")))?) | expect_contains(
-		"heap owner remains alive"
-	)?
+	(
+		(expect_fault(fn: inspect_heap(HeapMarker("heap")))?)
+		| expect_contains("heap owner remains alive")?
+	)
 
 fn collection_last(values: List[Marker]) Unit:
 	_id := values.last().get().id
@@ -97,32 +100,39 @@ fn temporary_text() String:
 	return ["temporary payload"].first().get()
 
 test "an inline last lend leaves its scalar owner alive":
-	(expect_fault(fn: collection_last([Marker(7)]))?) | expect_contains(
-		"last owner remains alive"
-	)?
+	(
+		(expect_fault(fn: collection_last([Marker(7)]))?)
+		| expect_contains("last owner remains alive")?
+	)
 
 test "an inline map lend leaves its scalar owner alive":
-	(expect_fault(fn: map_entry(make_map()))?) | expect_contains(
-		"map owner remains alive"
-	)?
+	(
+		(expect_fault(fn: map_entry(make_map()))?)
+		| expect_contains("map owner remains alive")?
+	)
 
 test "named and inline scalar collection lends keep the same borrow":
-	(expect_fault(fn: collection_named([Marker(9)]))?) | expect_contains(
-		"named owner remains alive"
-	)?
+	(
+		(expect_fault(fn: collection_named([Marker(9)]))?)
+		| expect_contains("named owner remains alive")?
+	)
 
 test "missing collection lends still report Optional get faults":
-	(expect_fault(fn: collection_missing(List[Marker]()))?) | expect_contains(
-		"called Optional.get() on none"
-	)?
-	(expect_fault(fn: map_missing(Map[String, Marker]()))?) | expect_contains(
-		"called Optional.get() on none"
-	)?
+	(
+		(expect_fault(fn: collection_missing(List[Marker]()))?)
+		| expect_contains("called Optional.get() on none")?
+	)
+	(
+		(
+			expect_fault(fn: map_missing(Map[String, Marker]()))?
+		) | expect_contains("called Optional.get() on none")?
+	)
 
 test "generic inline collection reads lend to their callback":
-	(expect_fault(fn: generic_collection([Marker(10)]))?) | expect_contains(
-		"generic owner remains alive"
-	)?
+	(
+		(expect_fault(fn: generic_collection([Marker(10)]))?)
+		| expect_contains("generic owner remains alive")?
+	)
 
 test "Clonable results survive their temporary collection":
 	text := temporary_text()
@@ -145,19 +155,22 @@ fn labeled_map_missing(values: Map[String, Marker]) Unit:
 	_still_present := values.length()
 
 test "a labeled map lend leaves its scalar owner alive":
-	(expect_fault(fn: labeled_map_entry(make_map()))?) | expect_contains(
-		"labeled map owner remains alive"
-	)?
+	(
+		(expect_fault(fn: labeled_map_entry(make_map()))?)
+		| expect_contains("labeled map owner remains alive")?
+	)
 
 test "a labeled map binding leaves its scalar owner alive":
-	(expect_fault(fn: labeled_map_binding(make_map()))?) | expect_contains(
-		"labeled binding owner remains alive"
-	)?
+	(
+		(expect_fault(fn: labeled_map_binding(make_map()))?)
+		| expect_contains("labeled binding owner remains alive")?
+	)
 
 test "a missing labeled map lend still reports the Optional fault":
-	(expect_fault(fn: labeled_map_missing(make_map()))?) | expect_contains(
-		"called Optional.get() on none"
-	)?
+	(
+		(expect_fault(fn: labeled_map_missing(make_map()))?)
+		| expect_contains("called Optional.get() on none")?
+	)
 
 fn map_index(var events: List[Int]) Int:
 	events.append(1)

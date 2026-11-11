@@ -24,16 +24,16 @@ test "affix cuts work as bound methods and labeled calls":
 	text := "é=🙂=中"
 	cut_prefix := text.cut_prefix
 	cut_suffix := text.cut_suffix
-	cut_prefix("é=") | expect_some? | expect_equal("🙂=中")?
-	text.cut_suffix(suffix: "=中") | expect_some? | expect_equal("é=🙂")?
-	cut_suffix("=中") | expect_some? | expect_equal("é=🙂")?
+	(cut_prefix("é=") | expect_some? | expect_equal("🙂=中")?)
+	(text.cut_suffix(suffix: "=中") | expect_some? | expect_equal("é=🙂")?)
+	(cut_suffix("=中") | expect_some? | expect_equal("é=🙂")?)
 	text | expect_equal("é=🙂=中")?
 
 test "large affix cuts preserve text and reject missing affixes":
 	middle := "é🙂".repeat(32768) | expect_ok?
 	text := "start:".concat(middle).concat(":end")
-	text.cut_prefix("start:") | expect_some? | expect_equal(middle.concat(":end"))?
-	text.cut_suffix(":end") | expect_some? | expect_equal("start:".concat(middle))?
+	(text.cut_prefix("start:") | expect_some? | expect_equal(middle.concat(":end"))?)
+	(text.cut_suffix(":end") | expect_some? | expect_equal("start:".concat(middle))?)
 	text.cut_prefix("absent") | expect_none?
 	text.cut_suffix("absent") | expect_none?
 
@@ -50,7 +50,11 @@ fn check_affix(text: String, affix: String, prefix: Bool) Unit!:
 	kept_start := if prefix: affix.length() else: 0
 	kept_end := if prefix: text.length() else: start
 	expected := text.slice_scalars(kept_start, kept_end) | expect_ok?
-	return actual | expect_some? | expect_equal(expected)
+	return (
+		actual
+		| expect_some?
+		| expect_equal(expected)
+	)
 
 test "affix cuts agree with an independent scalar oracle":
 	alphabet := ["a", "é", "🙂", "\u{301}", "\u{0}"]

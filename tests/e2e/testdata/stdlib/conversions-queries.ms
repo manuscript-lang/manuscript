@@ -61,7 +61,12 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	var counter = Counter(0)
 	present: Int? := 0
 	missing: Int? := none
-	(require_value(present, counted(var counter)).get() != 0 or counter.calls != 1) | expect_false?
+	(
+		(
+			require_value(present, counted(var counter)).get() != 0
+			or counter.calls != 1
+		) | expect_false?
+	)
 
 	var cause = require_value(missing, counter.clone()).err().clone()
 	cause.calls = 2
@@ -97,7 +102,12 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	nested_none: Int? := none
 	nested: Int?? := nested_none
 	converted := nested.ok_or(Error("absent"))
-	(not (converted.is_ok()) or not (converted.to_optional().get().is_none())) | expect_false?
+	(
+		(
+			not (converted.is_ok())
+			or not (converted.to_optional().get().is_none())
+		) | expect_false?
+	)
 
 	false_value: Bool? := false
 	false_value.ok_or(Error("absent")).to_optional().get() | expect_false?
@@ -107,9 +117,11 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 
 	nested_inner: Int!Error := error(Error("nested"))
 	nested_result: Int!Error? := nested_inner
-	nested_result.ok_or(
-		Error("absent")
-	).to_optional().get().err().message | expect_equal("nested")?
+	(
+		nested_result.ok_or(
+			Error("absent")
+		).to_optional().get().err().message | expect_equal("nested")?
+	)
 
 test "Map fold uses ordered snapshots and returns independent accumulators":
 	var empty_calls: List[Int] = []
@@ -142,7 +154,7 @@ test "Map fold uses ordered snapshots and returns independent accumulators":
 				empty_calls.append(1)
 				return acc.clone()
 		),
-		initial: initial.clone()
+		initial: initial.clone(),
 	)
 
 	untouched.append("empty copy")
@@ -161,7 +173,9 @@ test "Map find returns fresh entry shells with copied payloads":
 	var empty_calls: List[Int] = []
 	counter := Counter(2)
 	values: Map[String, Counter] := {
-		"b": counter.clone(), "a": Counter(1), "c": Counter(3)
+		"b": counter.clone(),
+		"a": Counter(1),
+		"c": Counter(3)
 	}
 	var visits: List[String] = []
 	found := locate(
@@ -316,7 +330,7 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 			v:
 				empty_calls.append(1)
 				return acc.clone()
-		)
+		),
 	)
 
 	empty_result.append("empty copy")

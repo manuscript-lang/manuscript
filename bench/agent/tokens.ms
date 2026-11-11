@@ -1,8 +1,10 @@
-// Source size in LLM tokens (tiktoken o200k_base) per language over the reference solutions.
+// Source size in LLM tokens (tiktoken o200k_base) per language over the reference
+// solutions.
 //
-// Usage (from the repository root): ms run bench/agent/tokens.ms   # needs `pip install tiktoken`
-// The reference table shows how verbose each language is when the same program is written by hand;
-// agent-written sizes come from `llm_tokens` in results/runs.jsonl (see README).
+// Usage (from the repository root): ms run bench/agent/tokens.ms # needs
+// `pip install tiktoken` The reference table shows how verbose each language is when
+// the same program is written by hand; agent-written sizes come from `llm_tokens` in
+// results/runs.jsonl (see README).
 import (
 	stderr, stdout from "@std/io/io.ms",
 	GlobOptions, glob from "@std/os/fs.ms",
@@ -25,7 +27,8 @@ fn count_tokens(paths: List[String]) List[Int]?:
 fn ratio(top: Int, bottom: Int) String: (top.to_float() / bottom.to_float()).to_fixed(2)
 
 fn main() Int:
-	// Each challenge with a reference solution in every language, as a row of file paths in LANGS order.
+	// Each challenge with a reference solution in every language, as a row of file
+	// paths in LANGS order.
 	var names = List[String]()
 	var paths = List[String]()
 

@@ -20,12 +20,14 @@ test "invalid evidence":
 	valid := sample(0, "ms", 100).concat(sample(0, "rust", 100))
 	rest := valid.slice(1, valid.length()).get([])
 	cases := [
-		List[String](), valid.slice(0, valid.length() - 1).get([]),
-		valid.concat([valid[0].clone()]), sample(0, "ms", 100),
+		List[String](),
+		valid.slice(0, valid.length() - 1).get([]),
+		valid.concat([valid[0].clone()]),
+		sample(0, "ms", 100),
 		[valid[0].replace("# 40000000", "# -1")].concat(rest),
 		sample(0, "ms", 0).concat(sample(0, "rust", 100)),
 		sample(0, "ms", -1).concat(sample(0, "rust", 100)),
-		[valid[0].replace("100 #", "nan #")].concat(rest)
+		[valid[0].replace("100 #", "nan #")].concat(rest),
 	]
 	for lines in cases:
 		_cause := expect_error(summarize(lines, 1))?

@@ -200,7 +200,7 @@ export fn gen_c36() Unit:
 	examples := [
 		mk(
 			"basic",
-			"open a 20\nopen b 0\ndeposit a 10\nwithdraw a 25\nwithdraw a 10\ntransfer a b 3\nfreeze b\ndeposit b 1\nreport\n"
+			"open a 20\nopen b 0\ndeposit a 10\nwithdraw a 25\nwithdraw a 10\ntransfer a b 3\nfreeze b\ndeposit b 1\nreport\n",
 		)
 	]
 	small := rand_script(var rnd, 60, ["a", "b", "c"])
@@ -213,42 +213,42 @@ export fn gen_c36() Unit:
 			mk("empty-report", "report\n"),
 			mk(
 				"open-errors",
-				"open a 5\nopen a 9\nopen b -1\nopen c\nopen d x\nopen e 0x1\nopen f 007\nreport\n"
+				"open a 5\nopen a 9\nopen b -1\nopen c\nopen d x\nopen e 0x1\nopen f 007\nreport\n",
 			),
 			mk(
 				"amount-forms",
-				"open a 0\ndeposit a 007\ndeposit a 0\ndeposit a +5\ndeposit a 1.5\ndeposit a\ndeposit a  3\nwithdraw a -2\nreport\n"
+				"open a 0\ndeposit a 007\ndeposit a 0\ndeposit a +5\ndeposit a 1.5\ndeposit a\ndeposit a  3\nwithdraw a -2\nreport\n",
 			),
 			mk(
 				"fee-once",
-				"open a 100\nwithdraw a 10\nwithdraw a 10\ndeposit a 30\nwithdraw a 5\ndeposit a 5\nwithdraw a 1\nreport\n"
+				"open a 100\nwithdraw a 10\nwithdraw a 10\ndeposit a 30\nwithdraw a 5\ndeposit a 5\nwithdraw a 1\nreport\n",
 			),
 			mk(
 				"fee-boundary",
-				"open a 15\nwithdraw a 10\nwithdraw a 11\nwithdraw a 10\nopen b 0\nwithdraw b 1\ndeposit b 7\nwithdraw b 7\nwithdraw b 1\nreport\n"
+				"open a 15\nwithdraw a 10\nwithdraw a 11\nwithdraw a 10\nopen b 0\nwithdraw b 1\ndeposit b 7\nwithdraw b 7\nwithdraw b 1\nreport\n",
 			),
 			mk(
 				"transfer-order",
-				"open a 0\nopen b 0\nfreeze a\nfreeze b\ntransfer x y 1\ntransfer x a 1\ntransfer a y 1\ntransfer a a 1\ntransfer a a 0\ntransfer a b 0\ntransfer b a 1\ntransfer a b 1\nreport\n"
+				"open a 0\nopen b 0\nfreeze a\nfreeze b\ntransfer x y 1\ntransfer x a 1\ntransfer a y 1\ntransfer a a 1\ntransfer a a 0\ntransfer a b 0\ntransfer b a 1\ntransfer a b 1\nreport\n",
 			),
 			mk(
 				"transfer-fee",
-				"open a 30\nopen b 0\ntransfer a b 10\ntransfer a b 10\ntransfer a b 10\ntransfer b a 2\nreport\n"
+				"open a 30\nopen b 0\ntransfer a b 10\ntransfer a b 10\ntransfer a b 10\ntransfer b a 2\nreport\n",
 			),
 			mk(
 				"frozen-lifecycle",
-				"open a 10\ndeposit a 5\nfreeze a\nwithdraw a 1\ndeposit a 1\nunfreeze a\nunfreeze zz\nfreeze zz\nwithdraw a 1\nreport\n"
+				"open a 10\ndeposit a 5\nfreeze a\nwithdraw a 1\ndeposit a 1\nunfreeze a\nunfreeze zz\nfreeze zz\nwithdraw a 1\nreport\n",
 			),
 			mk(
 				"whitespace-bad",
-				"\n  open   a\t10  \n\n\tdeposit a 4\nOPEN b 1\nwithdraw a 1 2\nreport extra\n   report   \n"
+				"\n  open   a\t10  \n\n\tdeposit a 4\nOPEN b 1\nwithdraw a 1 2\nreport extra\n   report   \n",
 			),
 			mk(
 				"byte-order",
-				"open b 0\nopen B 0\nopen a 0\nopen _ 0\nopen 10 0\nopen 9 0\nreport\n"
+				"open b 0\nopen B 0\nopen a 0\nopen _ 0\nopen 10 0\nopen 9 0\nreport\n",
 			),
 			mk("random-small", small),
-			mk("random-large", large)
+			mk("random-large", large),
 		]
 	)
 	write_cases("c36-bank-ledger", examples, hidden)

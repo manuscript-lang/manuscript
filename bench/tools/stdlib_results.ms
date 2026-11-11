@@ -1,4 +1,5 @@
-// Validates the shared `ms bench --json` result protocol before rendering comparisons (bench/perf/stdlib).
+// Validates the shared `ms bench --json` result protocol before rendering comparisons
+// (bench/perf/stdlib).
 import (
 	parse from "@std/data/json.ms",
 

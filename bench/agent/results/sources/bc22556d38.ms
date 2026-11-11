@@ -92,8 +92,12 @@ fn cmd_open(var led: Ledger, toks: List[String]) String:
 	led.accts.add(
 		id.clone(),
 		Acct(
-			limit: value_of(lim), balance: 0, ops: 0, rejected: 0, frozen: false
-		)
+			limit: value_of(lim),
+			balance: 0,
+			ops: 0,
+			rejected: 0,
+			frozen: false,
+		),
 	)
 	return "ok"
 
@@ -140,7 +144,9 @@ fn cmd_transfer(var led: Ledger, toks: List[String]) String:
 	if from == to: return reject(var led, from, "error: same account")
 	if not valid_amount(toks[3]): return reject(var led, from, "error: invalid amount")
 	if is_frozen(led, from): return reject(
-		var led, from, "error: account frozen {from}"
+		var led,
+		from,
+		"error: account frozen {from}",
 	)
 	if is_frozen(led, to): return reject(var led, to, "error: account frozen {to}")
 

@@ -23,7 +23,8 @@
 // expect-stdout: generic 11
 // expect-stdout: empty 0
 // A match that moves named fields closes omitted resource payloads last declared first,
-// including resources with no heap storage. Borrowed matches keep the owner's close duty.
+// including resources with no heap storage. Borrowed matches keep the owner's close
+// duty.
 import Closeable from "@std/core.ms"
 
 type Token:
@@ -62,7 +63,10 @@ fn scalar_omitted() Unit:
 
 fn heap_omitted() Unit:
 	value := NamedFull(
-		NamedToken(4, "first"), NamedToken(5, "second"), NamedToken(6, "third"), 8
+		NamedToken(4, "first"),
+		NamedToken(5, "second"),
+		NamedToken(6, "third"),
+		8,
 	)
 
 	code := match value:

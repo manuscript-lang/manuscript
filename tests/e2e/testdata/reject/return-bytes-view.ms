@@ -1,5 +1,5 @@
-// A returned `Bytes` is owned, but `view` only borrows its receiver, so returning one (of a local
-// or of a parameter) is rejected; copy it with `.clone()` after the view.
+// A returned `Bytes` is owned, but `view` only borrows its receiver, so returning one
+// (of a local or of a parameter) is rejected; copy it with `.clone()` after the view.
 import Bytes from "@std/bytes.ms"
 
 fn result() Bytes:

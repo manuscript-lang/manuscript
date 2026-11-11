@@ -17,8 +17,9 @@ export extern fn msstd_random_os_bytes(count: Int) Bytes!
 export fn invalid_input() Error:
 	return Error("random: invalid input", kind: "EINVAL")
 
-// Returns an unbiased integer from `min` up to `min + width`, where `width` is the 64-bit pattern of a positive count.
-// Draws big-endian bytes masked to the width's bit length and redraws those at or past the width.
+// Returns an unbiased integer from `min` up to `min + width`, where `width` is the
+// 64-bit pattern of a positive count. Draws big-endian bytes masked to the width's bit
+// length and redraws those at or past the width.
 fn draw_below(min: Int, width: Int) Int!:
 	var bits = 0
 	var rest = width
@@ -40,13 +41,15 @@ fn draw_below(min: Int, width: Int) Int!:
 				byte = bit_and(byte, mask)
 			n = bit_or(shift_left(n, 8), byte)
 
-		// Unsigned comparison: flipping the sign bit orders the 64-bit patterns as signed Ints.
+		// Unsigned comparison: flipping the sign bit orders the 64-bit patterns as
+		// signed Ints.
 		if bit_xor(n, min_int) < bit_xor(width, min_int):
 			return ok(wrapping_add(min, n))
 
 	return ok(min)
 
-// An integer at least `min` and below `max_exclusive` (below the largest Int when none).
+// An integer at least `min` and below `max_exclusive` (below the largest Int when
+// none).
 export fn draw_int(min: Int, max_exclusive: Int?) Int!:
 	max := max_exclusive.get(max_int)
 	if min >= max: return error(invalid_input())

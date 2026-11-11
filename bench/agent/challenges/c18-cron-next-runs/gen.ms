@@ -1,4 +1,5 @@
-// Generator for c18-cron-next-runs. Deterministic; run: ms run bench/agent/gen.ms -- c18
+// Generator for c18-cron-next-runs. Deterministic; run: ms run bench/agent/gen.ms --
+// c18
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
 	Random, seeded from "../../lib/pyrandom.ms",
@@ -14,8 +15,11 @@ type Range:
 
 fn ranges() List[Range]:
 	return [
-		Range("minute", 0, 59), Range("hour", 0, 23), Range("day-of-month", 1, 31),
-		Range("month", 1, 12), Range("day-of-week", 0, 6)
+		Range("minute", 0, 59),
+		Range("hour", 0, 23),
+		Range("day-of-month", 1, 31),
+		Range("month", 1, 12),
+		Range("day-of-week", 0, 6),
 	]
 
 // Days since 1970-01-01 of a proleptic Gregorian date.
@@ -66,12 +70,14 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 		if (
 			slash.is_some()
 			and full_match(
-				NUM2, item.slice(slash.get(0) + 1, item.length()).get("")
+				NUM2,
+				item.slice(slash.get(0) + 1, item.length()).get(""),
 			)
 		):
 			body = item.slice(0, slash.get(0)).get("")
 			step = item.slice(
-				slash.get(0) + 1, item.length()
+				slash.get(0) + 1,
+				item.length(),
 			).get("").parse_int().get(0)
 			stepped = true
 			if step < 1: return none
@@ -246,9 +252,9 @@ export fn gen_c18() Unit:
 	examples := [
 		mk(
 			"basic",
-			"2024-02-28T23:59 3 0 0 * * *\n2024-01-31T12:00 2 30 8 29 2 *\n2024-03-01T00:00 2 0 12 * * 1-5/2\n"
+			"2024-02-28T23:59 3 0 0 * * *\n2024-01-31T12:00 2 30 8 29 2 *\n2024-03-01T00:00 2 0 12 * * 1-5/2\n",
 		),
-		mk("weekdays", "2024-02-28T23:59 3 */15 9-17 * * 1-5\n")
+		mk("weekdays", "2024-02-28T23:59 3 */15 9-17 * * 1-5\n"),
 	]
 	var random_lines = List[String]()
 	for _i in 0..40: random_lines.append(rand_line(var rnd))
@@ -257,46 +263,46 @@ export fn gen_c18() Unit:
 		[
 			mk(
 				"start-excluded",
-				"2024-05-05T10:30 3 30 10 * * *\n2024-05-05T10:29 1 30 10 * * *\n"
+				"2024-05-05T10:30 3 30 10 * * *\n2024-05-05T10:29 1 30 10 * * *\n",
 			),
 			mk("every-minute-rollover", "2023-12-31T23:58 4 * * * * *\n"),
 			mk("leap-day", "2023-03-01T00:00 5 0 0 29 2 *\n"),
 			mk(
 				"never",
-				"2024-01-01T00:00 3 0 0 31 2 *\n2024-01-01T00:00 3 0 0 31 4,6,9,11 *\n"
+				"2024-01-01T00:00 3 0 0 31 2 *\n2024-01-01T00:00 3 0 0 31 4,6,9,11 *\n",
 			),
 			mk("window-limit", "2024-01-01T00:00 10 0 0 29 2 *\n"),
 			mk(
 				"lists-and-steps",
-				"2024-01-01T00:00 8 0,30 8-10,14 * * *\n2024-01-01T00:00 6 5-25/10 */6 1,15 * *\n"
+				"2024-01-01T00:00 8 0,30 8-10,14 * * *\n2024-01-01T00:00 6 5-25/10 */6 1,15 * *\n",
 			),
 			mk("dow-and-dom-both", "2024-01-01T00:00 4 0 0 13 * 5\n"),
 			mk("sunday-saturday", "2024-02-24T00:00 4 0 12 * * 0,6\n"),
 			mk(
 				"month-names-rejected-and-fields",
-				"2024-01-01T00:00 1 0 0 * JAN *\n2024-01-01T00:00 1 60 0 * * *\n2024-01-01T00:00 1 0 24 * * *\n2024-01-01T00:00 1 0 0 0 * *\n2024-01-01T00:00 1 0 0 32 * *\n2024-01-01T00:00 1 0 0 * 13 *\n2024-01-01T00:00 1 0 0 * * 7\n"
+				"2024-01-01T00:00 1 0 0 * JAN *\n2024-01-01T00:00 1 60 0 * * *\n2024-01-01T00:00 1 0 24 * * *\n2024-01-01T00:00 1 0 0 0 * *\n2024-01-01T00:00 1 0 0 32 * *\n2024-01-01T00:00 1 0 0 * 13 *\n2024-01-01T00:00 1 0 0 * * 7\n",
 			),
 			mk(
 				"bad-syntax",
-				"2024-01-01T00:00 1 */0 * * * *\n2024-01-01T00:00 1 5/2 * * * *\n2024-01-01T00:00 1 5-3 * * * *\n2024-01-01T00:00 1 1,,2 * * * *\n2024-01-01T00:00 1 1, * * * * *\n2024-01-01T00:00 1 -1 * * * *\n2024-01-01T00:00 1 *-5 * * * *\n2024-01-01T00:00 1 1-2-3 * * * *\n2024-01-01T00:00 1 */1/2 * * * *\n2024-01-01T00:00 1 001 * * * *\n2024-01-01T00:00 1 * 1 - * * *\n"
+				"2024-01-01T00:00 1 */0 * * * *\n2024-01-01T00:00 1 5/2 * * * *\n2024-01-01T00:00 1 5-3 * * * *\n2024-01-01T00:00 1 1,,2 * * * *\n2024-01-01T00:00 1 1, * * * * *\n2024-01-01T00:00 1 -1 * * * *\n2024-01-01T00:00 1 *-5 * * * *\n2024-01-01T00:00 1 1-2-3 * * * *\n2024-01-01T00:00 1 */1/2 * * * *\n2024-01-01T00:00 1 001 * * * *\n2024-01-01T00:00 1 * 1 - * * *\n",
 			),
 			mk(
 				"bad-start-count-tokens",
-				"2024-02-30T00:00 1 * * * * *\n2024-01-01 00:00 1 * * * * *\n1969-12-31T23:59 1 * * * * *\n2100-01-01T00:00 1 * * * * *\n2024-01-01T24:00 1 * * * * *\n2024-1-1T00:00 1 * * * * *\n2024-01-01T00:00 0 * * * * *\n2024-01-01T00:00 21 * * * * *\n2024-01-01T00:00 x * * * * *\n2024-01-01T00:00 001 * * * * *\n2024-01-01T00:00 1 * * * *\n2024-01-01T00:00 1 * * * * * *\n2024-01-01T00:00  1 * * * * *\n"
+				"2024-02-30T00:00 1 * * * * *\n2024-01-01 00:00 1 * * * * *\n1969-12-31T23:59 1 * * * * *\n2100-01-01T00:00 1 * * * * *\n2024-01-01T24:00 1 * * * * *\n2024-1-1T00:00 1 * * * * *\n2024-01-01T00:00 0 * * * * *\n2024-01-01T00:00 21 * * * * *\n2024-01-01T00:00 x * * * * *\n2024-01-01T00:00 001 * * * * *\n2024-01-01T00:00 1 * * * *\n2024-01-01T00:00 1 * * * * * *\n2024-01-01T00:00  1 * * * * *\n",
 			),
 			mk(
 				"check-order",
-				"x y z\nx 99 bad bad bad bad bad\n2024-01-01T00:00 99 bad bad bad bad bad\n2024-01-01T00:00 1 bad bad bad bad bad\n2024-01-01T00:00 1 0 bad bad bad bad\n"
+				"x y z\nx 99 bad bad bad bad bad\n2024-01-01T00:00 99 bad bad bad bad bad\n2024-01-01T00:00 1 bad bad bad bad bad\n2024-01-01T00:00 1 0 bad bad bad bad\n",
 			),
 			mk(
 				"blank-lines-numbering",
-				"\n  \n2024-01-01T00:00 1 0 12 * * *\n\n2024-01-01T00:00 1 bad\n"
+				"\n  \n2024-01-01T00:00 1 0 12 * * *\n\n2024-01-01T00:00 1 bad\n",
 			),
 			mk(
 				"year-edges",
-				"1970-01-01T00:00 2 0 0 * * 4\n2099-12-31T23:59 3 * * * * *\n2099-12-31T23:58 2 59 23 31 12 *\n"
+				"1970-01-01T00:00 2 0 0 * * 4\n2099-12-31T23:59 3 * * * * *\n2099-12-31T23:58 2 59 23 31 12 *\n",
 			),
-			mk("random", random_lines.join("\n") + "\n")
+			mk("random", random_lines.join("\n") + "\n"),
 		]
 	)
 	write_cases("c18-cron-next-runs", examples, hidden)

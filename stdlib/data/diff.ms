@@ -9,8 +9,9 @@ Strings are compared by Unicode scalar, lines by exact equality.
 `diff.edit_distance("kitten", "sitting")` is `3`.
 */
 
-// Returns the number of single-scalar insertions, deletions and substitutions that turn `left` into `right` (Levenshtein distance).
-// Example: `edit_distance("kitten", "sitting")` is `3`; equal strings give 0.
+// Returns the number of single-scalar insertions, deletions and substitutions that turn
+// `left` into `right` (Levenshtein distance). Example:
+// `edit_distance("kitten", "sitting")` is `3`; equal strings give 0.
 export fn edit_distance(left: String, right: String) Int:
 	if left == right: return 0
 
@@ -86,7 +87,7 @@ Example: `close_matches("appel", ["ape", "apple", "peach"], CloseMatchesOptions(
 export fn close_matches(
 	word: String,
 	candidates: List[String],
-	options: CloseMatchesOptions = CloseMatchesOptions()
+	options: CloseMatchesOptions = CloseMatchesOptions(),
 ) List[String]:
 	limit := options.limit
 	cutoff := options.cutoff
@@ -111,7 +112,8 @@ fn compare_scores(left: Float, right: Float) Int:
 
 	return 0
 
-// One step of a line diff: a line kept (0), removed from the old text (1) or added in the new text (2).
+// One step of a line diff: a line kept (0), removed from the old text (1) or added in
+// the new text (2).
 type Step:
 	kind: Int
 	text: String
@@ -120,7 +122,8 @@ type Step:
 	// Lines of the new text consumed before this step.
 	new_at: Int
 
-// Walks the longest common subsequence table to list the steps that turn `old` into `new`, deletions before insertions within a change.
+// Walks the longest common subsequence table to list the steps that turn `old` into
+// `new`, deletions before insertions within a change.
 fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
 	var table = (0..old.length() + 1).map(fn _row: [0].repeated(new.length() + 1))
 	var i = old.length() - 1
@@ -146,7 +149,10 @@ fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
 		if a < old.length() and b < new.length() and old[a] == new[b]:
 			steps.append(
 				Step(
-					kind: 0, text: old[a].clone(), old_at: a + shift, new_at: b + shift
+					kind: 0,
+					text: old[a].clone(),
+					old_at: a + shift,
+					new_at: b + shift,
 				)
 			)
 			a += 1
@@ -157,22 +163,29 @@ fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
 		):
 			steps.append(
 				Step(
-					kind: 1, text: old[a].clone(), old_at: a + shift, new_at: b + shift
+					kind: 1,
+					text: old[a].clone(),
+					old_at: a + shift,
+					new_at: b + shift,
 				)
 			)
 			a += 1
 		else:
 			steps.append(
 				Step(
-					kind: 2, text: new[b].clone(), old_at: a + shift, new_at: b + shift
+					kind: 2,
+					text: new[b].clone(),
+					old_at: a + shift,
+					new_at: b + shift,
 				)
 			)
 			b += 1
 
 	return steps
 
-// Formats a hunk range like unified diff: the 1-based start and length, with an empty range counted from the line before it.
-// Matches common leading and trailing lines directly, so only the differing middle pays for the quadratic table.
+// Formats a hunk range like unified diff: the 1-based start and length, with an empty
+// range counted from the line before it. Matches common leading and trailing lines
+// directly, so only the differing middle pays for the quadratic table.
 fn line_steps(old: List[String], new: List[String]) List[Step]:
 	var head = 0
 	while head < old.length() and head < new.length() and old[head] == new[head]:
@@ -228,7 +241,7 @@ Example: `unified_diff(["a", "b"], ["a", "c"], UnifiedDiffOptions(context: 1))` 
 export fn unified_diff(
 	old: List[String],
 	new: List[String],
-	options: UnifiedDiffOptions = UnifiedDiffOptions()
+	options: UnifiedDiffOptions = UnifiedDiffOptions(),
 ) String:
 	context := options.context
 	old_name := options.old_name

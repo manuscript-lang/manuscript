@@ -19,9 +19,11 @@ import (
 export type HtmlOptions:
 	// Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
 	max_bytes: Int? = none
-	// Maximum normalized node depth; the document is depth zero and direct children depth one.
+	// Maximum normalized node depth; the document is depth zero and direct children
+	// depth one.
 	max_depth: Int? = 10000
-	// Maximum returned nodes, including document/text/comment/doctype and implied element nodes.
+	// Maximum returned nodes, including document/text/comment/doctype and implied
+	// element nodes.
 	max_nodes: Int? = 1000000
 
 // An HTML attribute, including its namespace and decoded value.
@@ -48,7 +50,8 @@ export enum HtmlNode:
 		namespace: String,
 		// Attributes in parser order, with decoded values and namespace information.
 		attributes: List[HtmlAttribute],
-		// Direct child nodes in normalized tree order; mutable list storage is retained.
+		// Direct child nodes in normalized tree order; mutable list storage is
+		// retained.
 		children: List[HtmlNode]
 	)
 	// Text node contents after HTML entity decoding and tree normalization.
@@ -81,14 +84,16 @@ export fn escape(text: String) String:
 export fn unescape(text: String) String:
 	return msstd_html_unescape(text)
 
-// A parse tree owned by the runtime; node ids are valid only for the tree that issued them, and -1 is no node.
+// A parse tree owned by the runtime; node ids are valid only for the tree that issued
+// them, and -1 is no node.
 export extern type HtmlTree
 
 // Parses HTML into a normalized tree and applies the resource limits in `options`.
 export fn parse(text: String, options: HtmlOptions = HtmlOptions()) HtmlNode!:
 	limits := HtmlLimits(
-		max_bytes: options.max_bytes, max_depth: options.max_depth,
-		max_nodes: options.max_nodes
+		max_bytes: options.max_bytes,
+		max_depth: options.max_depth,
+		max_nodes: options.max_nodes,
 	)
 	tree := msstd_html_parse(text, limits)?
 	return ok(node(tree, msstd_html_root(tree)))
@@ -98,15 +103,18 @@ fn node(tree: HtmlTree, id: Int) HtmlNode:
 	kind := msstd_html_kind(tree, id)
 	if kind == 1:
 		return HtmlNode.Element(
-			msstd_html_data(tree, id), msstd_html_namespace(tree, id),
-			attributes(tree, id), children(tree, id)
+			msstd_html_data(tree, id),
+			msstd_html_namespace(tree, id),
+			attributes(tree, id),
+			children(tree, id),
 		)
 	if kind == 2: return HtmlNode.Text(msstd_html_data(tree, id))
 	if kind == 3: return HtmlNode.Comment(msstd_html_data(tree, id))
 	if kind == 4:
 		return HtmlNode.Doctype(
-			msstd_html_data(tree, id), msstd_html_doctype_id(tree, id, 0),
-			msstd_html_doctype_id(tree, id, 1)
+			msstd_html_data(tree, id),
+			msstd_html_doctype_id(tree, id, 0),
+			msstd_html_doctype_id(tree, id, 1),
 		)
 
 	return HtmlNode.Document(children(tree, id))
@@ -128,7 +136,7 @@ fn attributes(tree: HtmlTree, id: Int) List[HtmlAttribute]:
 			HtmlAttribute(
 				name: msstd_html_attr(tree, id, i, 0),
 				namespace: msstd_html_attr(tree, id, i, 1),
-				value: msstd_html_attr(tree, id, i, 2)
+				value: msstd_html_attr(tree, id, i, 2),
 			)
 		)
 	return out

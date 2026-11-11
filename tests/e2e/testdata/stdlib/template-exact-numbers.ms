@@ -19,14 +19,16 @@ test "underflow orders above zero":
 
 test "large integer neighbors are distinct":
 	check(
-		"left == right", "\{\"left\":9007199254740992,\"right\":9007199254740993\}",
-		"no"
+		"left == right",
+		"\{\"left\":9007199254740992,\"right\":9007199254740993\}",
+		"no",
 	)?
 
 test "large integer neighbors retain order":
 	check(
-		"left < right", "\{\"left\":9007199254740992,\"right\":9007199254740993\}",
-		"yes"
+		"left < right",
+		"\{\"left\":9007199254740992,\"right\":9007199254740993\}",
+		"yes",
 	)?
 
 test "overflow values retain order":
@@ -55,7 +57,7 @@ test "decimal coefficient and exponent normalizations agree":
 		],
 		[
 			"1e-999999999999999999999999999999", "0.1e-999999999999999999999999999998"
-		]
+		],
 	]
 
 	for pair in pairs:
@@ -65,8 +67,10 @@ test "decimal coefficient and exponent normalizations agree":
 
 test "coefficient suffixes and negative values preserve order":
 	pairs := [
-		["1.001", "1.01"], ["-1.01", "-1.001"], ["-1e9999", "-1e9998"],
-		["-1e-9999", "0"]
+		["1.001", "1.01"],
+		["-1.01", "-1.001"],
+		["-1e9999", "-1e9998"],
+		["-1e-9999", "0"],
 	]
 
 	for pair in pairs:
@@ -99,13 +103,15 @@ test "exponents larger than machine integers never expand":
 test "integer fast path agrees with exact decimal path at machine boundaries":
 	pairs := [
 		["9223372036854775807", "9223372036854775807.0"],
-		["-9223372036854775808", "-9223372036854775808.0"], ["0", "-0"]
+		["-9223372036854775808", "-9223372036854775808.0"],
+		["0", "-0"],
 	]
 	for pair in pairs:
 		check("left == right", "\{\"left\":{pair[0]},\"right\":{pair[1]}\}", "yes")?
 	check(
 		"left < right",
-		"\{\"left\":9223372036854775807,\"right\":9223372036854775808\}", "yes"
+		"\{\"left\":9223372036854775807,\"right\":9223372036854775808\}",
+		"yes",
 	)?
 
 test "malformed raw number payloads cannot acquire numeric ordering":
@@ -127,13 +133,17 @@ test "malformed raw number payloads cannot acquire numeric ordering":
 
 test "coefficient spans preserve decimal points and implicit trailing zeros":
 	pairs := [
-		["1.2", "1.2000"], ["0.01200", "0.012"], ["120.000", "1.2e2"], ["-0.000", "0"],
-		["-0.00e99", "0.0"]
+		["1.2", "1.2000"],
+		["0.01200", "0.012"],
+		["120.000", "1.2e2"],
+		["-0.000", "0"],
+		["-0.00e99", "0.0"],
 	]
 	for pair in pairs:
 		check(
 			"left == right and left <= right and right <= left",
-			"\{\"left\":{pair[0]},\"right\":{pair[1]}\}", "yes"
+			"\{\"left\":{pair[0]},\"right\":{pair[1]}\}",
+			"yes",
 		)?
 	check("left < right", "\{\"left\":1.2,\"right\":1.2001\}", "yes")?
 	check("left > right", "\{\"left\":-1.2,\"right\":-1.2001\}", "yes")?
