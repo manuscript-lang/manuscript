@@ -33,8 +33,8 @@ fn main() Int:
 import (
 	Align, Table from "@std/cli/table.ms",
 	Data from "@std/core.ms",
-	stderr, stdout from "@std/io/io.ms",
 	parse, stringify from "@std/data/json.ms",
+	stderr, stdout from "@std/io/io.ms",
 )
 
 fn cli_unknown_flag(name: String) Error:
@@ -145,13 +145,11 @@ impl Matches:
 	// Returns an Int value, or none when absent.
 	fn int_or_none(name: String) Int?:
 		if text := self.string_or_none(name): return text.parse_int()
-
 		return none
 
 	// Returns a Float value, or none when absent.
 	fn float_or_none(name: String) Float?:
 		if text := self.string_or_none(name): return text.parse_float()
-
 		return none
 
 /*
@@ -387,7 +385,6 @@ fn fits(flag: Flag, value: String) Bool:
 		Int: return value.parse_int().is_some()
 		Float:
 			if number := value.parse_float(): return number.is_finite()
-
 			return false
 		_: return true
 
@@ -623,7 +620,6 @@ fn bind(
 	if next < words.length():
 		if node.args.is_empty() and not node.children.is_empty():
 			return error(cli_unknown_command(words[next].clone(), path.join(" ")))
-
 		return error(cli_too_many_arguments(words[next].clone()))
 
 	return ok(unit)

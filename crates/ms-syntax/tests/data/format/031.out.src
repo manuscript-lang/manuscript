@@ -1,17 +1,16 @@
 import (
 	Bytes from "@std/bytes.ms",
-	Connection from "@std/net/net.ms",
-	DatagramSocket from "@std/net/net.ms",
-	DnsRecord from "@std/net/net.ms",
-	Duration from "@std/time.ms",
-	IoError from "@std/io/io.ms",
-	Listener from "@std/net/net.ms",
-	NetworkError from "@std/net/net.ms",
-	ReadStream from "@std/io/io.ms",
-	TlsOptions from "@std/net/net.ms",
-	WebSocket from "@std/net/net.ms",
-	WebSocketError from "@std/net/net.ms",
+	IoError, ReadStream from "@std/io/io.ms",
+	Connection,
+	DatagramSocket,
+	DnsRecord,
+	Listener,
+	NetworkError,
+	TlsOptions,
+	WebSocket,
+	WebSocketError,
 	WebSocketOptions from "@std/net/net.ms",
+	Duration from "@std/time.ms",
 )
 
 // Errors returned for invalid requests, transport failures, timeouts, and limits.

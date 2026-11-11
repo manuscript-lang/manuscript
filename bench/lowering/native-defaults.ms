@@ -1,12 +1,12 @@
 import (
-	Promise from "@std/concurrency/promise.ms",
-	base64_encode from "@std/data/encoding.ms",
-	CsvOptions from "@std/data/csv.ms",
 	Bytes from "@std/bytes.ms",
+	Promise from "@std/concurrency/promise.ms",
+	Writable from "@std/core.ms",
+	CsvOptions from "@std/data/csv.ms",
+	base64_encode from "@std/data/encoding.ms",
+	write_file from "@std/os/fs.ms",
 	CommandOutput, RunOptions, run from "@std/os/process.ms",
 	Duration from "@std/time.ms",
-	Writable from "@std/core.ms",
-	write_file from "@std/os/fs.ms",
 )
 
 fn direct_explicit(data: Bytes) String: base64_encode(data, false)

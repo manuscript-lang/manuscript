@@ -1,6 +1,8 @@
 // Compares two already-built revisions against shared handwritten Go samples.
 // Usage: ms run bench/tools/programs_compare.ms -- --before B --after A --go G --input I --output DIR [--repeats 30]
 import (
+	arguments from "@std/os/env.ms",
+
 	absolute,
 	ensure_directory,
 	fail,
@@ -11,7 +13,6 @@ import (
 	sample,
 	write_text from "./lib.ms",
 	summarize from "./programs_table.ms",
-	arguments from "@std/os/env.ms",
 )
 
 fn lines_of(version: String, content: String) List[String]:

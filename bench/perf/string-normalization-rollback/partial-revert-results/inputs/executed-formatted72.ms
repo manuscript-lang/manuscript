@@ -34,7 +34,6 @@ fn normalize_sum(
 	status: Int
 ) Int:
 	if has_max: return consume(text.normalize(form, max), expected, status)
-
 	return consume(text.normalize(form), expected, status)
 
 fn measure(

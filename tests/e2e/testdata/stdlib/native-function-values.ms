@@ -1,14 +1,14 @@
 import (
-	expect_equal, expect_true from "@std/test/test.ms",
-	parse from "@std/data/html.ms",
-	sha256, sha512 from "@std/crypto.ms",
-	uuid_v4 from "@std/data/uuid.ms",
-	secure_int, shuffle, choice, float from "@std/random.ms",
-	map_from_entries from "@std/collections/collections.ms",
-	stdout, stderr from "@std/io/io.ms",
-	monotonic, now from "@std/time.ms",
-	max from "@std/math/math.ms",
 	Bytes from "@std/bytes.ms",
+	map_from_entries from "@std/collections/collections.ms",
+	sha256, sha512 from "@std/crypto.ms",
+	parse from "@std/data/html.ms",
+	uuid_v4 from "@std/data/uuid.ms",
+	stderr, stdout from "@std/io/io.ms",
+	max from "@std/math/math.ms",
+	choice, float, secure_int, shuffle from "@std/random.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
+	monotonic, now from "@std/time.ms",
 )
 
 test "stdlib natives bound to a name behave like the call":

@@ -1,6 +1,6 @@
 import (
-	ascii_decode from "@std/data/encoding.ms",
 	Bytes from "@std/bytes.ms",
+	ascii_decode from "@std/data/encoding.ms",
 	keep, measure from "@std/test/bench.ms",
 	expect_equal from "@std/test/test.ms",
 )

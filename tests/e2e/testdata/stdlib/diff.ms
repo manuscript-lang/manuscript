@@ -1,11 +1,11 @@
 import (
-	expect_close, expect_equal from "@std/test/test.ms",
-	close_matches,
 	CloseMatchesOptions,
 	UnifiedDiffOptions,
+	close_matches,
 	edit_distance,
 	similarity_ratio,
 	unified_diff from "@std/data/diff.ms",
+	expect_close, expect_equal from "@std/test/test.ms",
 )
 
 test "edit_distance counts scalar edits":

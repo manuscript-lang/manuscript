@@ -1,7 +1,6 @@
 import (
-	stdout from "@std/io/io.ms",
-	WriteStream from "@std/io/io.ms",
 	Closeable from "@std/core.ms",
+	WriteStream, stdout from "@std/io/io.ms",
 )
 
 type Resource:

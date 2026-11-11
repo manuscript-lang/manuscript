@@ -1,12 +1,15 @@
 import (
 	Bytes from "@std/bytes.ms",
 	Writable from "@std/core.ms",
-	msrt_string_from_scalars, msstd_regex_compile from "@std/internal/string.ms",
-	msstd_unicode_display_width, msstd_unicode_fields from "@std/internal/unicode.ms",
-	msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms",
-	msstd_regex_find_all_spans,
+
+	msrt_string_from_scalars,
+	msstd_regex_capture_all_spans,
 	msstd_regex_capture_spans,
-	msstd_regex_capture_all_spans from "@std/internal/string.ms",
+	msstd_regex_compile,
+	msstd_regex_find_all_spans from "@std/internal/string.ms",
+	msstd_unicode_display_width,
+	msstd_unicode_fields,
+	msstd_unicode_is_alphanumeric from "@std/internal/unicode.ms",
 )
 
 impl Writable for String:
@@ -22,13 +25,11 @@ impl StringAffixCuts for String:
 	// Removes one exact prefix, or returns none when absent; an empty prefix succeeds unchanged.
 	fn cut_prefix(prefix: String) String?:
 		if self.starts_with(prefix): return self.drop(prefix.length())
-
 		return none
 
 	// Removes one exact suffix, or returns none when absent; an empty suffix succeeds unchanged.
 	fn cut_suffix(suffix: String) String?:
 		if self.ends_with(suffix): return self.take(self.length() - suffix.length())
-
 		return none
 
 // The four Unicode normalization forms, selected without runtime string spelling errors.

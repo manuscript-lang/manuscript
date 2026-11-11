@@ -2,12 +2,12 @@ import (
 	msstd_unicode_in_category from "@std/internal/string.ms",
 	msstd_unicode_is_alphabetic,
 	msstd_unicode_is_alphanumeric,
-	msstd_unicode_is_numeric,
-	msstd_unicode_is_lowercase,
-	msstd_unicode_is_uppercase,
-	msstd_unicode_is_whitespace,
+	msstd_unicode_is_ascii,
 	msstd_unicode_is_control,
-	msstd_unicode_is_ascii from "@std/internal/unicode.ms",
+	msstd_unicode_is_lowercase,
+	msstd_unicode_is_numeric,
+	msstd_unicode_is_uppercase,
+	msstd_unicode_is_whitespace from "@std/internal/unicode.ms",
 )
 
 /*

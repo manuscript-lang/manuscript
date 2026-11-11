@@ -3,16 +3,17 @@
 // Usage: ms run bench/tools/stdlib_bench.ms [-- samples [name-prefix]]
 // With `--table` as the first argument it reads an `ms bench --json` document from standard input instead of running it.
 import (
+	arguments from "@std/os/env.ms",
+
 	finish,
-	ms_binary,
 	left,
+	ms_binary,
 	read_stdin,
 	repeats,
 	right,
 	stdlib_bench,
 	usage from "./lib.ms",
 	Stats, case_labels, read_cases from "./stdlib_results.ms",
-	arguments from "@std/os/env.ms",
 )
 
 export fn stdlib_table(output: String) String!:

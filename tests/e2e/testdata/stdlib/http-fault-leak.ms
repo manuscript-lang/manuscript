@@ -1,13 +1,14 @@
 import (
-	send, recv from "./support/conn.ms",
-	expect_ok from "@std/test/test.ms",
-	HttpExchange from "@std/net/http.ms",
-	connect, serve from "@std/net/net.ms",
 	Bytes from "@std/bytes.ms",
-	memory_usage from "@std/os/system.ms",
 	PromiseOptions from "@std/concurrency/promise.ms",
 	fetch from "@std/net/fetch.ms",
+	HttpExchange from "@std/net/http.ms",
+	connect, serve from "@std/net/net.ms",
+	memory_usage from "@std/os/system.ms",
+	expect_ok from "@std/test/test.ms",
 	sleep from "@std/time.ms",
+
+	recv, send from "./support/conn.ms",
 )
 
 fn faulting(var exchange: HttpExchange) Unit!:

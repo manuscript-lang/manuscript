@@ -1,6 +1,6 @@
 import (
-	msstd_url_encode_component,
 	msstd_url_decode_component,
+	msstd_url_encode_component,
 	msstd_url_format,
 	msstd_url_format_query,
 	msstd_url_parse,

@@ -23,17 +23,14 @@ type Ring:
 impl Ring:
 	fn at(index: Int) Counter?:
 		if index < 0 or index >= self.size: return none
-
 		return self.slots.get(index)
 
 fn maybe(n: Int) Counter?:
 	if n < 0: return none
-
 	return counter(n)
 
 fn make(n: Int) Counter!:
 	if n < 0: return error(Error("negative"))
-
 	return ok(counter(n))
 
 fn total(counters: List[Counter], scale: Int = 1) Int:

@@ -1,12 +1,12 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	crc32 from "@std/data/checksum.ms",
+	CompressionFormat, compress, decompress from "@std/io/archive.ms",
 	bit_and,
 	bit_or,
 	shift_left,
 	shift_right,
 	shift_right_unsigned from "@std/math/math.ms",
-	crc32 from "@std/data/checksum.ms",
-	compress, decompress, CompressionFormat from "@std/io/archive.ms",
 )
 
 /*
@@ -781,7 +781,6 @@ fn be32(data: Bytes, at: Int) Int:
 // The seven Adam7 passes as [x start, y start, x step, y step]; non-interlaced is one pass.
 fn png_passes(interlaced: Bool) List[List[Int]]:
 	if not interlaced: return [[0, 0, 1, 1]]
-
 	return [
 		[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4], [0, 2, 2, 4],
 		[1, 0, 2, 2], [0, 1, 1, 2]

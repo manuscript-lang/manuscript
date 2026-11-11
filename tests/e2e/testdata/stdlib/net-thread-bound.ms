@@ -2,10 +2,10 @@
 // promise is a named fault rather than a data race (#3047). The main thread stays busy so an idle thread takes
 // the promise. A `Network` is shared between threads on purpose (see `net.ms`, "resolve returns typed DNS records").
 import (
-	expect_error, expect_contains, expect_true, expect_ok from "@std/test/test.ms",
-	with_resolver, Network from "@std/net/net.ms",
-	headers, HttpHeaders from "@std/net/http.ms",
 	promise from "@std/concurrency/promise.ms",
+	HttpHeaders, headers from "@std/net/http.ms",
+	Network, with_resolver from "@std/net/net.ms",
+	expect_contains, expect_error, expect_ok, expect_true from "@std/test/test.ms",
 )
 
 fn open_one(net: Network) String!:

@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	parse_float from "@std/math/math.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "float parsing keeps ASCII signs decimals and exponents":

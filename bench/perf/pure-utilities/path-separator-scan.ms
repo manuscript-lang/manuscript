@@ -1,9 +1,9 @@
 // Build once with each compiler, then pass one case name to each executable.
 import (
-	posix, win32 from "@std/os/path.ms",
-	arguments from "@std/os/env.ms",
-	monotonic from "@std/time.ms",
 	print from "@std/core.ms",
+	arguments from "@std/os/env.ms",
+	posix, win32 from "@std/os/path.ms",
+	monotonic from "@std/time.ms",
 )
 
 fn work(mode: String, path: String) String:

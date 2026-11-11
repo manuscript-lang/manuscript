@@ -1,9 +1,15 @@
 import (
-	expect_equal, expect_error from "@std/test/test.ms",
-	compress, decompress, CompressionFormat from "@std/io/archive.ms",
-	pack, unpack, ArchiveEntry, ArchiveFormat, ArchiveOptions from "@std/io/archive.ms",
 	Bytes from "@std/bytes.ms",
 	hex_decode from "@std/data/encoding.ms",
+	ArchiveEntry,
+	ArchiveFormat,
+	ArchiveOptions,
+	CompressionFormat,
+	compress,
+	decompress,
+	pack,
+	unpack from "@std/io/archive.ms",
+	expect_equal, expect_error from "@std/test/test.ms",
 )
 
 test "compression formats roundtrip and enforce expanded byte budgets":

@@ -2,6 +2,9 @@
 // Usage: ms run bench/tools/json_bench.ms   (NAMES="twitter canada" selects documents; MS picks the compiler)
 // The corpora are downloaded into bench/perf/json/data (not committed).
 import (
+	JsonValue, stringify from "@std/data/json.ms",
+	create_directory from "@std/os/fs.ms",
+
 	capture,
 	env,
 	exists,
@@ -18,8 +21,6 @@ import (
 	right,
 	run_in,
 	write_text from "./lib.ms",
-	create_directory from "@std/os/fs.ms",
-	JsonValue, stringify from "@std/data/json.ms",
 )
 
 DATA := "bench/perf/json/data"

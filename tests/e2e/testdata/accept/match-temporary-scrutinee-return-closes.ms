@@ -25,7 +25,6 @@ fn early(log: String) Int:
 	match open(1, log.clone()):
 		d:
 			if d.id == 1: return 10
-
 			return 20
 		none:
 			return 0

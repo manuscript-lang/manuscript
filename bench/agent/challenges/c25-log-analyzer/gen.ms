@@ -1,8 +1,7 @@
 // Generator for c25-log-analyzer. Deterministic; run: ms run bench/agent/gen.ms -- c25
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
-	seeded from "../../lib/pyrandom.ms",
-	Random from "../../lib/pyrandom.ms",
+	Random, seeded from "../../lib/pyrandom.ms",
 )
 
 LEVELS := ["DEBUG", "INFO", "WARN", "ERROR"]

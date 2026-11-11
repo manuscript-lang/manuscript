@@ -1,6 +1,6 @@
 import (
-	keep, measure from "@std/test/bench.ms",
 	parse, stringify from "@std/data/csv.ms",
+	keep, measure from "@std/test/bench.ms",
 )
 
 bench "csv.stringify":
@@ -10,7 +10,6 @@ bench "csv.stringify":
 
 	fn work() Result[Unit, Error]:
 		if s := stringify(rows): return keep(s.length())
-
 		return keep(0)
 
 	try measure(5000, work)
@@ -24,7 +23,6 @@ bench "csv.parse":
 
 	fn work() Result[Unit, Error]:
 		if r := parse(csv_text): return keep(r.length())
-
 		return keep(0)
 
 	try measure(5000, work)

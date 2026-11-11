@@ -3,6 +3,9 @@
 // Usage: ms run bench/tools/string_lines_compare.ms -- BEFORE AFTER OUTPUT.csv [--pairs 7] [--identity-file FILE.json]
 // A program prints CSV `case,input_bytes,iterations,elapsed_ns,checksum`; the identity file is `{case: [input bytes, iterations, checksum]}`.
 import (
+	JsonValue, parse from "@std/data/json.ms",
+	arguments from "@std/os/env.ms",
+
 	absolute,
 	fail,
 	finish,
@@ -12,8 +15,6 @@ import (
 	read_text,
 	write_text from "./lib.ms",
 	all_ints, run_pinned from "./study.ms",
-	arguments from "@std/os/env.ms",
-	JsonValue, parse from "@std/data/json.ms",
 )
 
 export type Identity:

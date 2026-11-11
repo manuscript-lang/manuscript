@@ -10,7 +10,6 @@ interface Walk:
 impl Walk for Walker:
 	fn walk(n: Int) Int:
 		if n == self.limit: return 0
-
 		return 1 + self.walk(n: n + self.step)
 
 fn runaway(n: Int) Int:
@@ -18,7 +17,6 @@ fn runaway(n: Int) Int:
 
 fn bounded(n: Int, limit: Int) Int:
 	if n == limit: return 0
-
 	return 1 + bounded(n: n + 1, limit: limit)
 
 test "runaway recursion is a fault":

@@ -1,6 +1,6 @@
 import (
 	expect_equal from "@std/test/test.ms",
-	Duration, parse_duration, nanoseconds from "@std/time.ms",
+	Duration, nanoseconds, parse_duration from "@std/time.ms",
 )
 
 test "duration parser accepts units, signs, components and Unicode microseconds":

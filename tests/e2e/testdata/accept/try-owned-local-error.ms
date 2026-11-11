@@ -10,7 +10,6 @@ fn heap(label: String, n: Int) String:
 
 fn open(name: String, fail: Bool) Door!String:
 	if fail: return error(heap("failed", 1))
-
 	return ok(Door(name))
 
 fn length_of(name: String, fail: Bool) Int!String:

@@ -1,6 +1,7 @@
 import (
-	Approved, Mode, approve, safe from "./gate.ms",
 	parse, stringify from "@std/data/json.ms",
+
+	Approved, Mode, approve, safe from "./gate.ms",
 )
 
 impl Approved:

@@ -2,14 +2,14 @@
 // in an AlmaLinux 8 container: threads, the resolver pool, file metadata, child processes, entropy and libm
 // all reach glibc through the versions the link-time stubs bind.
 import (
+	promise from "@std/concurrency/promise.ms",
 	stdout from "@std/io/io.ms",
+	exp, hypot, log, pow from "@std/math/math.ms",
+	lookup from "@std/net/net.ms",
 	stat from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
 	secure_int from "@std/random.ms",
-	exp, hypot, log, pow from "@std/math/math.ms",
-	lookup from "@std/net/net.ms",
 	nanoseconds, sleep from "@std/time.ms",
-	promise from "@std/concurrency/promise.ms",
 )
 
 fn square(n: Int) Int:

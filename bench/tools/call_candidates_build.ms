@@ -1,6 +1,9 @@
 // End-to-end uncached Release builds plus exact native output checks.
 // MS_CACHE=off ms run bench/tools/call_candidates_build.ms -- BEFORE AFTER INPUTS OUTPUT ROUNDS
 import (
+	arguments, set_environment from "@std/os/env.ms",
+
+	timed from "./call_candidates_process.ms",
 	absolute,
 	capture,
 	ensure_directory,
@@ -8,8 +11,6 @@ import (
 	invalid,
 	now_ns,
 	write_text from "./lib.ms",
-	arguments, set_environment from "@std/os/env.ms",
-	timed from "./call_candidates_process.ms",
 )
 
 fn measure(

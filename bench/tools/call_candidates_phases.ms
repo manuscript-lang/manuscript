@@ -1,7 +1,8 @@
 // Native-build phase deltas and wall residual from MS_TIMINGS=1, excluding round0.
 import (
-	median, read_text from "./lib.ms",
 	arguments from "@std/os/env.ms",
+
+	median, read_text from "./lib.ms",
 )
 
 export fn main() Unit:

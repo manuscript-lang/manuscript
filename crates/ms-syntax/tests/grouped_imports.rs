@@ -102,7 +102,7 @@ fn format_wraps_a_wide_clause_one_name_per_line() {
     let once = format(&source);
     assert!(once.contains("\tlong_imported_name_0,\n"), "{once}");
     assert!(
-        once.contains("\tlong_imported_name_11 from \"./wide.ms\",\n"),
+        once.contains("\tlong_imported_name_9 from \"./wide.ms\",\n"),
         "{once}"
     );
     assert_eq!(format(&once), once);

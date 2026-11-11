@@ -3,12 +3,12 @@ import (
 	bit_and,
 	bit_or,
 	bit_xor,
+	max_int,
+	min_int,
 	shift_left,
 	shift_right_unsigned,
 	wrapping_add,
-	wrapping_subtract,
-	max_int,
-	min_int from "@std/math/math.ms",
+	wrapping_subtract from "@std/math/math.ms",
 )
 
 // The operating system's entropy: exactly `count` bytes, `count` from 0 through 16 MiB.

@@ -187,7 +187,6 @@ impl SortedMap[K, V]:
 	// Returns the entry with the smallest key, or none when empty.
 	fn first() SortedEntry[K, V]?:
 		if self.size == 0: return none
-
 		return SortedEntry(
 			self.key_chunks[0].get(0).clone(), self.value_chunks[0].get(0).clone()
 		)
@@ -345,37 +344,31 @@ impl SortedSet[T]:
 	// Returns the smallest member, or none when empty.
 	fn first() T?:
 		if entry := self.members.first(): return entry.key.clone()
-
 		return none
 
 	// Returns the largest member, or none when empty.
 	fn last() T?:
 		if entry := self.members.last(): return entry.key.clone()
-
 		return none
 
 	// Removes and returns the smallest member, or none when empty.
 	var fn pop_first() T?:
 		if entry := self.members.pop_first(): return entry.key.clone()
-
 		return none
 
 	// Removes and returns the largest member, or none when empty.
 	var fn pop_last() T?:
 		if entry := self.members.pop_last(): return entry.key.clone()
-
 		return none
 
 	// Returns the smallest member that is at least `value`, or none.
 	fn ceiling(value: T) T?:
 		if entry := self.members.ceiling(value): return entry.key.clone()
-
 		return none
 
 	// Returns the largest member that is at most `value`, or none.
 	fn floor(value: T) T?:
 		if entry := self.members.floor(value): return entry.key.clone()
-
 		return none
 
 	// Returns a new list of the members with `low` <= member < `high`, in ascending order.

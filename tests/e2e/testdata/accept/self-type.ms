@@ -1,4 +1,4 @@
-import expect_true, expect_false, expect_equal from "@std/test/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
 type CustomerKey:
 	id: Int

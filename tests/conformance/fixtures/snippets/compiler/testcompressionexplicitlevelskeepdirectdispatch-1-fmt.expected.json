@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import compress, CompressionFormat from \"@std/io/archive.ms\"\n\nfn explicit() Unit:\n\tdata := \"\".to_bytes()\n\t_ := compress(data, \"gzip\", 6)\n\t_ := compress(data, \"zlib\", 0, max_bytes: none)\n\t_ := compress(data, \"deflate\", 9, max_bytes: 100)\n\t_ := CompressionFormat.Gzip.compress(data, 6)\n\t_ := CompressionFormat.Zlib.compress(data, 0, max_bytes: none)\n\t_ := CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)\n"
+    "fmt": "import CompressionFormat, compress from \"@std/io/archive.ms\"\n\nfn explicit() Unit:\n\tdata := \"\".to_bytes()\n\t_ := compress(data, \"gzip\", 6)\n\t_ := compress(data, \"zlib\", 0, max_bytes: none)\n\t_ := compress(data, \"deflate\", 9, max_bytes: 100)\n\t_ := CompressionFormat.Gzip.compress(data, 6)\n\t_ := CompressionFormat.Zlib.compress(data, 0, max_bytes: none)\n\t_ := CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)\n"
   }
 }

@@ -1,8 +1,8 @@
 import (
+	parse from "@std/data/toml.ms",
 	stdout from "@std/io/io.ms",
 	StringBuilder from "@std/string.ms",
 	monotonic from "@std/time.ms",
-	parse from "@std/data/toml.ms",
 )
 
 fn document(count: Int) String:
@@ -13,7 +13,6 @@ fn document(count: Int) String:
 
 fn parse_ok(text: String) Int:
 	if parse(text).is_ok(): return 1
-
 	return 0
 
 // Parses the document 200 times and prints the best run in microseconds.

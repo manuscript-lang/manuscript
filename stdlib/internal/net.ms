@@ -1,17 +1,17 @@
 import (
 	Bytes from "@std/bytes.ms",
+	ClientResponse, HttpClient, HttpClientOptions, HttpHeaders from "@std/net/http.ms",
+	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
 	Datagram,
+	Listener,
 	NativeConnection,
 	NativeDatagramSocket,
 	NativeListener,
 	NativeNetwork,
-	Listener,
 	Network from "@std/net/net.ms",
-	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
 	CertificateInfo, TlsInfo, TlsOptions from "@std/net/tls.ms",
 	QueryEntry, Url from "@std/net/url.ms",
 	NativeWebSocket, RawWebSocketMessage, WebSocketWire from "@std/net/websocket.ms",
-	ClientResponse, HttpClient, HttpClientOptions, HttpHeaders from "@std/net/http.ms",
 	Duration, Timestamp from "@std/time.ms",
 )
 

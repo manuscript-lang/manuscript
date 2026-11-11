@@ -1,7 +1,7 @@
 import (
-	keep, measure from "@std/test/bench.ms",
+	YamlValue, parse, stringify from "@std/data/yaml.ms",
 	StringBuilder from "@std/string.ms",
-	parse, stringify, YamlValue from "@std/data/yaml.ms",
+	keep, measure from "@std/test/bench.ms",
 )
 
 fn yaml_doc(count: Int) String:
@@ -12,7 +12,6 @@ fn yaml_doc(count: Int) String:
 
 fn yaml_length(value: YamlValue) Int:
 	if text := stringify(value): return text.length()
-
 	return 0
 
 bench "yaml.parse":
@@ -20,7 +19,6 @@ bench "yaml.parse":
 
 	fn work() Result[Unit, Error]:
 		if parse(yaml).is_ok(): return keep(1)
-
 		return keep(0)
 
 	try measure(2000, work)
@@ -30,7 +28,6 @@ bench "yaml.roundtrip":
 
 	fn work() Result[Unit, Error]:
 		if v := parse(yaml): return keep(yaml_length(v))
-
 		return keep(0)
 
 	try measure(2000, work)

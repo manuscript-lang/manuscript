@@ -1,8 +1,7 @@
 // Generator for c18-cron-next-runs. Deterministic; run: ms run bench/agent/gen.ms -- c18
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
-	seeded from "../../lib/pyrandom.ms",
-	Random from "../../lib/pyrandom.ms",
+	Random, seeded from "../../lib/pyrandom.ms",
 	full_match from "../../lib/text.ms",
 )
 
@@ -43,7 +42,6 @@ fn civil_from_days(days: Int) List[Int]:
 
 fn days_in_month(year: Int, month: Int) Int:
 	if month == 2: return if (year % 4 == 0 and year % 100 != 0) or year % 400 == 0: 29 else: 28
-
 	return if month == 4 or month == 6 or month == 9 or month == 11: 30 else: 31
 
 fn pad(n: Int, width: Int) String: "{n}".pad_start(width, "0")

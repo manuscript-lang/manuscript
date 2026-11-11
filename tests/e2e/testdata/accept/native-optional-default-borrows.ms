@@ -29,7 +29,6 @@ type Choice:
 impl Fallback for Choice:
 	fn choose(value: String?) String:
 		if present := value: return present.clone()
-
 		return self.fallback.clone()
 
 test "bound ok_or results own heap-backed temporary causes":

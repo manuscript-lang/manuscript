@@ -1,11 +1,11 @@
 import (
 	expect_equal from "@std/test/test.ms",
-	nanoseconds,
+	hours,
 	microseconds,
 	milliseconds,
-	seconds,
 	minutes,
-	hours from "@std/time.ms",
+	nanoseconds,
+	seconds from "@std/time.ms",
 )
 
 test "unit constructors build exact nanosecond counts":

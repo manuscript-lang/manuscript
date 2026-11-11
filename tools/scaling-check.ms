@@ -9,13 +9,14 @@
 // MS names the ms to measure (default target/release/ms); SCALING_BOUND and SCALING_TIMEOUT override the limits.
 // Usage: ms run tools/scaling-check.ms [-- shape...]
 import (
-	tool_ms, env from "./lib.ms",
-	temporary, write_file from "@std/os/fs.ms",
-	run, RunOptions from "@std/os/process.ms",
-	arguments, working_directory from "@std/os/env.ms",
 	stdout from "@std/io/io.ms",
-	monotonic, seconds from "@std/time.ms",
+	arguments, working_directory from "@std/os/env.ms",
+	temporary, write_file from "@std/os/fs.ms",
+	RunOptions, run from "@std/os/process.ms",
 	StringBuilder from "@std/string.ms",
+	monotonic, seconds from "@std/time.ms",
+
+	env, tool_ms from "./lib.ms",
 )
 
 // Source of `shape` with `n` units.

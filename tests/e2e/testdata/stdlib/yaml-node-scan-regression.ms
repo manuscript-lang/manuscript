@@ -1,6 +1,6 @@
 import (
+	YamlValue, parse from "@std/data/yaml.ms",
 	expect_equal, expect_error, expect_ok, fail from "@std/test/test.ms",
-	parse, YamlValue from "@std/data/yaml.ms",
 )
 
 test "YAML quotes inside a plain scalar do not hide comments":

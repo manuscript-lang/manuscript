@@ -1,6 +1,6 @@
 import (
+	Version, parse from "@std/data/semver.ms",
 	expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms",
-	parse, Version from "@std/data/semver.ms",
 )
 
 fn failure(result: Version!) Error!:

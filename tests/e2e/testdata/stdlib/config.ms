@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms",
 	parse_dotenv, parse_ini from "@std/data/config.ms",
+	expect_equal, expect_ok, expect_true, fail from "@std/test/test.ms",
 )
 
 test "dotenv reads names, quotes, comments and export":

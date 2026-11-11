@@ -51,7 +51,6 @@ fn clean(path: String) String!:
 
 fn child_path(directory: String, name: String) String:
 	if directory == "": return name.clone()
-
 	return "{directory}/{name}"
 
 fn parent_of(path: String) String:
@@ -368,5 +367,4 @@ fn push_children(tree: FileTree, directory: String, var pending: List[WalkEntry]
 
 fn relative(path: String, start: String) String:
 	if start == "": return path.clone()
-
 	return path.slice(start.length() + 1, path.length()).get().clone()

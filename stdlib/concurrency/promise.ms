@@ -1,24 +1,25 @@
 import (
 	Closeable from "@std/core.ms",
 	Duration from "@std/time.ms",
-	msrt_promise_new,
-	msrt_promise_put,
-	msrt_promise_take,
-	msrt_promise_done,
-	msrt_promise_start,
-	msrt_promise_start_here,
-	msrt_promise_defer,
-	msrt_promise_wait,
-	msrt_promise_limit,
-	msrt_promise_cancel,
-	msrt_promise_on_cancel,
-	msrt_cancel_new,
+
 	msrt_cancel_fire,
 	msrt_cancel_fired,
 	msrt_cancel_free,
-	msrt_promise_wait_any,
+	msrt_cancel_new,
+	msrt_promise_cancel,
+	msrt_promise_defer,
+	msrt_promise_done,
+	msrt_promise_drop,
 	msrt_promise_fault_report,
-	msrt_promise_drop from "@std/internal/promises.ms",
+	msrt_promise_limit,
+	msrt_promise_new,
+	msrt_promise_on_cancel,
+	msrt_promise_put,
+	msrt_promise_start,
+	msrt_promise_start_here,
+	msrt_promise_take,
+	msrt_promise_wait,
+	msrt_promise_wait_any from "@std/internal/promises.ms",
 )
 
 // Promises: operations whose results are taken once with `wait()`.
@@ -127,13 +128,11 @@ export fn set_options[T](
 // The result in the slot of `id`, moved out; `EBADF` when it is gone.
 fn taken_result[V](id: Int) V!:
 	if value := msrt_promise_take[V](id): return ok(value)
-
 	return error(outcome(id, 4))
 
 // The error in the slot of `id`, moved out.
 fn taken_error(id: Int) Error:
 	if cause := msrt_promise_take[Error](id): return cause
-
 	return outcome(id, 4)
 
 // The error of a `wait` whose runtime outcome `code` is not success: the operation's own error for code 1, else the
@@ -141,7 +140,6 @@ fn taken_error(id: Int) Error:
 // while a task parks.
 fn failure(id: Int, code: Int) Error:
 	if code == 1: return taken_error(id)
-
 	return outcome(id, code)
 
 impl Promise[T]:

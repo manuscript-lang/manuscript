@@ -9,7 +9,7 @@ Each `.ms` file is a module with its own boundary. `export` makes a declaration 
 
 ## Names and declaration order
 
-Import several symbols with `import Name, OtherName from "./module.ms"`: a nonempty comma-separated list on one line. To wrap across lines, parenthesize the list (`import (Name, OtherName) from "./module.ms"`); a trailing comma is allowed there. `ms fmt` wraps a bare list wider than 88 columns into the parenthesized form, one name per line, and leaves parenthesized lists that fit on their line as written. Single-symbol `import Name from "./module.ms"` also works. Braces are rejected. Duplicate names and collisions are errors.
+Import several symbols with `import Name, OtherName from "./module.ms"`: a nonempty comma-separated list on one line. To wrap across lines, parenthesize the list (`import (Name, OtherName) from "./module.ms"`); a trailing comma is allowed there. `ms fmt` sorts the names, writes a list that fits on one line bare, and wraps a wider list into the parenthesized form, one name per line. Single-symbol `import Name from "./module.ms"` also works. Braces are rejected. Duplicate names and collisions are errors.
 
 One statement can import from several modules: parenthesize comma-separated `names from "path"` clauses.
 
@@ -20,7 +20,7 @@ import (
 )
 ```
 
-A group is the same as the separate imports it replaces. Inside the parentheses, `from` after the names starts a clause; `)` after the names is the single-module form above. `ms fmt` merges consecutive imports into one group with a clause per line, puts a clause wider than 88 columns one name per line, and leaves a lone import as written; an import with a trailing comment stays separate.
+A group is the same as the separate imports it replaces. Inside the parentheses, `from` after the names starts a clause; `)` after the names is the single-module form above. `ms fmt` merges consecutive imports into one group with one clause per module, names sorted. Clauses are ordered by path within three sections separated by a blank line: public `@std/` modules, `@std/internal/` modules, then everything else. A clause wider than 88 columns puts one name on each line, and a single clause that fits stays a bare import. An import with a comment is left as written.
 
 Types, interfaces, functions, and imports share one module namespace. Duplicates, import/declaration collisions, and overloads are rejected. Two modules that export the same name (for example `parse` in `@std/data/csv.ms` and `@std/data/toml.ms`) cannot both be imported into one module, and imports cannot be renamed. Import one, and wrap the other in a small module that exports it under a new name. Order does not matter: names and signatures are collected before bodies are checked, so forward references and mutual recursion work. Type layout cycles follow the [recursive data rule](../types/named-types.md#recursive-data).
 

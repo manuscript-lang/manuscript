@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	Bytes from "@std/bytes.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "explicit byte conversion":

@@ -6,25 +6,26 @@ Terminal detection, size, and raw input with cursor and screen control, on Linux
 import (
 	Closeable from "@std/core.ms",
 	ReadStream, Source from "@std/io/io.ms",
-	msstd_terminal_raw_terminal_read,
-	msstd_terminal_input_text,
-	msstd_terminal_raw_terminal_set_restore,
-	msstd_terminal_raw_terminal_close,
-	msstd_terminal_raw_terminal_share,
-	msstd_terminal_raw_terminal_size_status,
-	msstd_terminal_raw_terminal_size_columns,
-	msstd_terminal_raw_terminal_size_rows,
-	msstd_terminal_raw_terminal_write,
+
+	msstd_terminal_capabilities_colors,
+	msstd_terminal_capabilities_error_is_terminal,
 	msstd_terminal_capabilities_input_is_terminal,
 	msstd_terminal_capabilities_output_is_terminal,
-	msstd_terminal_capabilities_error_is_terminal,
 	msstd_terminal_capabilities_raw_mode,
 	msstd_terminal_capabilities_resize_events,
-	msstd_terminal_capabilities_colors,
-	msstd_terminal_size_status,
+	msstd_terminal_input_text,
+	msstd_terminal_raw_mode,
+	msstd_terminal_raw_terminal_close,
+	msstd_terminal_raw_terminal_read,
+	msstd_terminal_raw_terminal_set_restore,
+	msstd_terminal_raw_terminal_share,
+	msstd_terminal_raw_terminal_size_columns,
+	msstd_terminal_raw_terminal_size_rows,
+	msstd_terminal_raw_terminal_size_status,
+	msstd_terminal_raw_terminal_write,
 	msstd_terminal_size_columns,
 	msstd_terminal_size_rows,
-	msstd_terminal_raw_mode from "@std/internal/io.ms",
+	msstd_terminal_size_status from "@std/internal/io.ms",
 )
 
 // Character columns and rows of a terminal window.
@@ -441,7 +442,6 @@ impl TerminalDecoder:
 
 fn read_size(handle: NativeRawTerminal) TerminalSize?:
 	if msstd_terminal_raw_terminal_size_status(handle).is_error(): return none
-
 	return TerminalSize(
 		columns: msstd_terminal_raw_terminal_size_columns(handle),
 		rows: msstd_terminal_raw_terminal_size_rows(handle)
@@ -449,7 +449,6 @@ fn read_size(handle: NativeRawTerminal) TerminalSize?:
 
 fn resized(before: TerminalSize?, now: TerminalSize) Bool:
 	if last := before: return last.columns != now.columns or last.rows != now.rows
-
 	return false
 
 // Reads text from a raw terminal's native handle and decodes it into events.
@@ -559,7 +558,6 @@ impl RawTerminal:
 	fn move_cursor(row: Int, column: Int) Unit!:
 		if row < 0 or column < 0 or row > max_position or column > max_position:
 			return error(Error("terminal: position out of range", kind: "EINVAL"))
-
 		return self.write("{esc}[{row + 1};{column + 1}H")
 
 	// Moves the cursor down by `rows` and right by `columns`; negative values move up and left. The cursor stops at the screen edge.
@@ -577,7 +575,6 @@ impl RawTerminal:
 	fn move_to_column(column: Int) Unit!:
 		if column < 0 or column > max_position:
 			return error(Error("terminal: position out of range", kind: "EINVAL"))
-
 		return self.write("{esc}[{column + 1}G")
 
 	// Remembers the cursor position for `restore_cursor`.

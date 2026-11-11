@@ -1,12 +1,11 @@
 import (
-	expect_equal, expect_fault, expect_true from "@std/test/test.ms",
 	Promise, owned_task, promise, wait_all from "@std/concurrency/promise.ms",
+	expect_equal, expect_fault, expect_true from "@std/test/test.ms",
 	microseconds, sleep from "@std/time.ms",
 )
 
 fn depth(n: Int) Int:
 	if n == 0: return 0
-
 	return depth(n - 1) + 1
 
 fn forever(n: Int) Int:

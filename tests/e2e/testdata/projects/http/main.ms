@@ -1,11 +1,11 @@
 import (
-	buffered,
-	headers,
+	stdout from "@std/io/io.ms",
 	HttpRequest,
 	HttpResponse,
-	HttpServerOptions from "@std/net/http.ms",
+	HttpServerOptions,
+	buffered,
+	headers from "@std/net/http.ms",
 	serve from "@std/net/net.ms",
-	stdout from "@std/io/io.ms",
 )
 
 fn handle(request: HttpRequest) HttpResponse:

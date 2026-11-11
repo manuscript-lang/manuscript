@@ -1,7 +1,6 @@
 import (
-	Closeable from "@std/core.ms",
+	Closeable, panic from "@std/core.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
-	panic from "@std/core.ms",
 	expect_contains, expect_equal, expect_fault from "@std/test/test.ms",
 )
 

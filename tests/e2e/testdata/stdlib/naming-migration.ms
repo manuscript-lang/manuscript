@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_false from "@std/test/test.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	StringBuilder from "@std/string.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
 )
 
 type Counter:

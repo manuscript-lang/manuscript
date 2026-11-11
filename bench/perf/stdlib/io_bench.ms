@@ -1,8 +1,8 @@
 import (
-	from_list, from_bytes, fold, lines, map from "@std/io/streams.ms",
-	keep, measure from "@std/test/bench.ms",
 	Bytes from "@std/bytes.ms",
-	Source, ReadStream from "@std/io/io.ms",
+	ReadStream, Source from "@std/io/io.ms",
+	fold, from_bytes, from_list, lines, map from "@std/io/streams.ms",
+	keep, measure from "@std/test/bench.ms",
 )
 
 type MemorySource:

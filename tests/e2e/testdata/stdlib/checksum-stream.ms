@@ -1,10 +1,10 @@
 import (
-	expect_equal, fail from "@std/test/test.ms",
-	crc32, crc32_of, adler32, adler32_of from "@std/data/checksum.ms",
-	crc64, crc64_of, Crc64Polynomial from "@std/crypto/hash.ms",
-	digest, HashAlgorithm from "@std/crypto.ms",
 	Bytes from "@std/bytes.ms",
+	HashAlgorithm, digest from "@std/crypto.ms",
+	Crc64Polynomial, crc64, crc64_of from "@std/crypto/hash.ms",
+	adler32, adler32_of, crc32, crc32_of from "@std/data/checksum.ms",
 	ReadStream, Source from "@std/io/io.ms",
+	expect_equal, fail from "@std/test/test.ms",
 )
 
 // Hands out the chunks in order, then ends.

@@ -1,6 +1,6 @@
 import (
+	BigInt, from_int, parse from "@std/math/math.ms",
 	expect_equal, expect_false, fail from "@std/test/test.ms",
-	parse, from_int, BigInt from "@std/math/math.ms",
 )
 
 test "big integers exceed machine range without losing precision":

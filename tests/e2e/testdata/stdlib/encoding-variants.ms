@@ -1,10 +1,10 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	base64_encode,
-	base64_decode,
-	base32_encode,
+	Base32Options,
 	base32_decode,
-	Base32Options from "@std/data/encoding.ms",
+	base32_encode,
+	base64_decode,
+	base64_encode from "@std/data/encoding.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

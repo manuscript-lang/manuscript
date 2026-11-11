@@ -1,5 +1,6 @@
 import (
 	expect_equal from "@std/test/test.ms",
+
 	Echo from "./first.ms",
 	Quiet from "./second.ms",
 )

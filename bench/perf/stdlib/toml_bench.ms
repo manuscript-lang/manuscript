@@ -1,7 +1,7 @@
 import (
-	keep, measure from "@std/test/bench.ms",
-	StringBuilder from "@std/string.ms",
 	parse from "@std/data/toml.ms",
+	StringBuilder from "@std/string.ms",
+	keep, measure from "@std/test/bench.ms",
 )
 
 fn toml_doc(count: Int) String:
@@ -15,7 +15,6 @@ bench "toml.parse":
 
 	fn work() Result[Unit, Error]:
 		if parse(toml).is_ok(): return keep(1)
-
 		return keep(0)
 
 	try measure(2000, work)

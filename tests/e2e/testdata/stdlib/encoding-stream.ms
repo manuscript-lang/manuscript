@@ -1,13 +1,12 @@
 import (
-	expect_equal, fail from "@std/test/test.ms",
-	base64_encode, base64_decode, hex_encode from "@std/data/encoding.ms",
-	base64_encoded,
+	Bytes, join from "@std/bytes.ms",
+	base64_decode, base64_encode, hex_encode from "@std/data/encoding.ms",
 	base64_decoded,
-	hex_encoded,
-	hex_decoded from "@std/data/encoding_stream.ms",
-	join from "@std/bytes.ms",
-	Bytes from "@std/bytes.ms",
+	base64_encoded,
+	hex_decoded,
+	hex_encoded from "@std/data/encoding_stream.ms",
 	ReadStream, Source from "@std/io/io.ms",
+	expect_equal, fail from "@std/test/test.ms",
 )
 
 // Hands out the chunks in order, then ends.

@@ -1,9 +1,6 @@
 import (
-	expect_equal, expect_false, expect_true from "@std/test/test.ms",
-	process_info from "@std/os/process.ms",
-	memory_usage from "@std/os/system.ms",
+	uuid_v4 from "@std/data/uuid.ms",
 	arguments from "@std/os/env.ms",
-	random_bytes from "@std/random.ms",
 	OpenMode,
 	OpenOptions,
 	WatchOptions,
@@ -14,13 +11,12 @@ import (
 	stat,
 	watch,
 	write_file from "@std/os/fs.ms",
-	system_info from "@std/os/system.ms",
-	now from "@std/time.ms",
-	uuid_v4 from "@std/data/uuid.ms",
-	secure_int from "@std/random.ms",
-	parse_timestamp from "@std/time.ms",
-	posix from "@std/os/path.ms",
-	win32 from "@std/os/path.ms",
+	posix, win32 from "@std/os/path.ms",
+	process_info from "@std/os/process.ms",
+	memory_usage, system_info from "@std/os/system.ms",
+	random_bytes, secure_int from "@std/random.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+	now, parse_timestamp from "@std/time.ms",
 )
 
 fn common_result[T](result: T!) T!: result

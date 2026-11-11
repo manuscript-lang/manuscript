@@ -1,24 +1,25 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	base64_encode from "@std/data/encoding.ms",
-	now from "@std/time.ms",
 	panic from "@std/core.ms",
+	base64_encode from "@std/data/encoding.ms",
 	bit_and,
 	bit_xor,
-	shift_left,
-	shift_right_unsigned,
-	wrapping_add,
-	wrapping_multiply,
 	cos,
 	log,
 	max_int,
-	sqrt from "@std/math/math.ms",
-	msstd_random_os_bytes,
-	draw_int,
-	draw_float,
-	draw_shuffle,
+	shift_left,
+	shift_right_unsigned,
+	sqrt,
+	wrapping_add,
+	wrapping_multiply from "@std/math/math.ms",
+	now from "@std/time.ms",
+
 	draw_choice,
-	invalid_input from "@std/internal/random.ms",
+	draw_float,
+	draw_int,
+	draw_shuffle,
+	invalid_input,
+	msstd_random_os_bytes from "@std/internal/random.ms",
 )
 
 // Returns a secure integer at least `min` and below `max_exclusive` when supplied, from the operating system's entropy.
@@ -253,7 +254,6 @@ impl SeededRandom:
 	// Returns a uniformly chosen item, or none for an empty list.
 	var fn choice[T](values: List[T]) T?:
 		if values.is_empty(): return none
-
 		return values.get(self.int(0, values.length()))
 
 	// Returns `count` items chosen uniformly without replacement, in random order, as copies; `values` is unchanged.

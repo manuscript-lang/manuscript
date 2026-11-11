@@ -30,7 +30,6 @@ fn both(b: Big) Int:
 
 fn branch(b: Big, flag: Bool) Int:
 	if flag: return size(b.items)
-
 	return b.name.length() + b.items.length()
 
 fn reinit(b: Big) Int:

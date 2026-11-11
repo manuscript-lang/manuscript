@@ -20,7 +20,6 @@ fn logged(path: String) String:
 
 fn keep_if(d: Door, keep: Bool) Door?:
 	if keep: return d
-
 	return none
 
 test "a parameter the callee drops on some path is closed there":

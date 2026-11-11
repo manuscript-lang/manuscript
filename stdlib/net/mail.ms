@@ -1,9 +1,9 @@
 import (
-	StringBuilder from "@std/string.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	parse_int from "@std/math/math.ms",
 	base64_decode, latin1_decode from "@std/data/encoding.ms",
+	parse_int from "@std/math/math.ms",
 	Headers, parse_headers from "@std/net/mime.ms",
+	StringBuilder from "@std/string.ms",
 )
 
 /*

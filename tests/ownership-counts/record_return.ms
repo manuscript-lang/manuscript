@@ -19,7 +19,6 @@ fn wrap(n: Int) Big:
 
 fn pick(n: Int, c: Bool) Big:
 	if c: return mk(n)
-
 	return wrap(n)
 
 export fn main() Int:

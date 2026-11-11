@@ -6,8 +6,8 @@ import (
 	exp,
 	frexp,
 	hypot,
-	ldexp,
 	infinity,
+	ldexp,
 	log,
 	log1p,
 	sign_bit,
@@ -68,7 +68,6 @@ fn hyperbolic_product(factor: Float, argument: Float, value: Float) Float:
 // Computes sin(2*x) without overflowing a finite phase when doubling it.
 fn sin_double(phase: Float) Float:
 	if phase.abs() > 8.988465674311579e307: return 2.0 * sin(phase) * cos(phase)
-
 	return sin(2.0 * phase)
 
 // Divides by the larger part of the divisor (Smith's algorithm).
@@ -178,7 +177,6 @@ impl Complex:
 	// True when either part is infinite and neither is NaN.
 	fn is_infinite() Bool:
 		if self.is_nan(): return false
-
 		return (
 			not self.re.is_finite() and not self.re.is_nan()
 			or not self.im.is_finite() and not self.im.is_nan()
@@ -223,7 +221,6 @@ impl Complex:
 	fn sqrt() Complex:
 		if self.im == 0.0:
 			if self.re >= 0.0: return Complex(re: sqrt(self.re), im: self.im)
-
 			return Complex(re: 0.0, im: copy_sign(sqrt(-self.re), self.im))
 
 		modulus := self.abs()
@@ -277,7 +274,6 @@ impl Complex:
 				),
 				im: copy_sign(1.0, self.im)
 			)
-
 		return self.sin().divide(self.cos())
 
 	// Returns the hyperbolic sine.
@@ -304,7 +300,6 @@ impl Complex:
 					-2.0 * self.re.abs()
 				)
 			)
-
 		return self.sinh().divide(self.cosh())
 
 	// Returns the principal inverse sine, `-i * log(i*z + sqrt(1 - z^2))`.
@@ -359,5 +354,4 @@ impl Complex:
 	// Formats as `a+bi` or `a-bi` using the Float text of each part, e.g. `1.5-2i`.
 	fn format() String:
 		if sign_bit(self.im): return "{self.re}-{(-self.im)}i"
-
 		return "{self.re}+{self.im}i"

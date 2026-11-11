@@ -1,4 +1,4 @@
-import expect_equal, expect_true, expect_fault from "@std/test/test.ms"
+import expect_equal, expect_fault, expect_true from "@std/test/test.ms"
 
 fn generic_convert[T: Clonable](value: T?) T!Error:
 	convert := value.ok_or[Error]

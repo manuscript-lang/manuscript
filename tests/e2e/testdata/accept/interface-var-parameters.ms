@@ -1,7 +1,7 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
-	from_list, collect from "@std/io/streams.ms",
+	collect, from_list from "@std/io/streams.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 type Acc:

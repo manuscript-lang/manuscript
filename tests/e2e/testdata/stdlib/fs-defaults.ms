@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
-	copy,
+	Bytes from "@std/bytes.ms",
 	CopyOptions,
+	copy,
 	create_directory,
 	list,
 	read_file,
@@ -9,7 +9,7 @@ import (
 	stat,
 	temporary,
 	write_file from "@std/os/fs.ms",
-	Bytes from "@std/bytes.ms",
+	expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
 )
 
 fn expect_limit(outcome: Unit!) Unit!:

@@ -1,8 +1,8 @@
 import (
-	expect_equal, expect_false, fail from "@std/test/test.ms",
-	json_reader, stringify, JsonValue, JsonOptions from "@std/data/json.ms",
 	Bytes from "@std/bytes.ms",
+	JsonOptions, JsonValue, json_reader, stringify from "@std/data/json.ms",
 	ReadStream, Source from "@std/io/io.ms",
+	expect_equal, expect_false, fail from "@std/test/test.ms",
 )
 
 // Hands out the chunks in order, then ends.

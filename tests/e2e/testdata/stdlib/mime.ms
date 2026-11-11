@@ -1,15 +1,15 @@
 import (
-	expect_equal, expect_true from "@std/test/test.ms",
-	parse_media_type,
+	MediaType,
+	encode_multipart,
+	extension_for_media_type,
+	form_part,
 	format_media_type,
 	media_type_for_extension,
-	extension_for_media_type,
-	parse_headers,
-	parse_multipart,
-	encode_multipart,
-	form_part,
 	multipart_boundary,
-	MediaType from "@std/net/mime.ms",
+	parse_headers,
+	parse_media_type,
+	parse_multipart from "@std/net/mime.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 )
 
 test "media types parse and format":

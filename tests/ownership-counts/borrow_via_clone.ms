@@ -15,7 +15,6 @@ fn build(depth: Int) Node:
 
 fn first_kid(n: Node) Node?:
 	if n.kids.length() == 0: return none
-
 	return n.kids[0].clone()
 
 fn descend(n: Node, d: Int) Int:

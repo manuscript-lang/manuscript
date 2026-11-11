@@ -32,7 +32,6 @@ fn by_binding(orders: Map[String, Order], id: String) Int:
 
 fn by_if_let(orders: Map[String, Order], id: String) Int:
 	if o := orders.get(id): return o.items.length() + o.status.length()
-
 	return 0
 
 fn by_chain(orders: Map[String, Order], id: String) Int:
@@ -47,7 +46,6 @@ fn returned(orders: Map[String, Order], id: String) Order?:
 
 fn take_optional(o: Order?) Int:
 	if v := o: return v.items.length()
-
 	return -1
 
 fn build() Map[String, Order]:

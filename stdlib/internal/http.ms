@@ -1,13 +1,13 @@
 import (
 	Bytes from "@std/bytes.ms",
+	HttpExchange,
 	HttpHeaders,
 	HttpResponseMetadata,
-	NativeHttpClient,
-	HttpExchange,
 	HttpServerOptions,
+	NativeHttpClient,
+	NativeResponseBody,
 	NativeServing,
 	NativeWorker,
-	NativeResponseBody,
 	RawResponse from "@std/net/http.ms",
 	Duration from "@std/time.ms",
 )

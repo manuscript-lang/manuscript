@@ -1,17 +1,18 @@
 import (
 	Bytes, BytesBuilder, join from "@std/bytes.ms",
 	ReadStream, Transform, WriteStream, through from "@std/io/io.ms",
+
 	ArchiveLimits,
-	msstd_compress_encoder_new,
-	msstd_compress_encoder_push,
-	msstd_compress_encoder_end,
-	msstd_compress_decoder_new,
-	msstd_compress_decoder_push,
-	msstd_compress_decoder_end,
 	msstd_archive_pack,
 	msstd_archive_unpack,
 	msstd_compress_compress,
-	msstd_compress_decompress from "@std/internal/archive.ms",
+	msstd_compress_decoder_end,
+	msstd_compress_decoder_new,
+	msstd_compress_decoder_push,
+	msstd_compress_decompress,
+	msstd_compress_encoder_end,
+	msstd_compress_encoder_new,
+	msstd_compress_encoder_push from "@std/internal/archive.ms",
 )
 
 // One file or directory in an archive. Paths use forward slashes.

@@ -1,10 +1,10 @@
 import (
-	stdout from "@std/io/io.ms",
-	Instant, monotonic from "@std/time.ms",
-	StringBuilder from "@std/string.ms",
 	BytesBuilder from "@std/bytes.ms",
 	PriorityQueue from "@std/collections/queue.ms",
 	SortedMap from "@std/collections/sorted.ms",
+	stdout from "@std/io/io.ms",
+	StringBuilder from "@std/string.ms",
+	Instant, monotonic from "@std/time.ms",
 )
 
 type Rec:

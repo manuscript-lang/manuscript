@@ -4,14 +4,18 @@
 // `json-failure` harness: `size rounds shape` -> `size rounds shape rounds_checksum wall_ns cpu_ns`.
 // Pair -1 is an untimed warm-up and is excluded from the printed summary.
 import (
+	JsonValue from "@std/data/json.ms",
+	stdout from "@std/io/io.ms",
+	arguments from "@std/os/env.ms",
+
 	absolute,
 	fail,
 	invalid,
+	jbool,
 	jfloat,
 	jint,
 	jobject,
 	jstr,
-	jbool,
 	median,
 	options,
 	write_text from "./lib.ms",
@@ -22,9 +26,6 @@ import (
 	labeled,
 	run_pinned,
 	write_json from "./study.ms",
-	arguments from "@std/os/env.ms",
-	JsonValue from "@std/data/json.ms",
-	stdout from "@std/io/io.ms",
 )
 
 type Decode:

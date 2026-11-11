@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	SortedMap from "@std/collections/sorted.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "map update counts and transforms":

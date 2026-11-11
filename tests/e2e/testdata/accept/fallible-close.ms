@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_error, expect_fault from "@std/test/test.ms",
 	Closeable from "@std/core.ms",
+	expect_equal, expect_error, expect_fault from "@std/test/test.ms",
 )
 
 type Gate:

@@ -1,7 +1,8 @@
 // Validates the shared `ms bench --json` result protocol before rendering comparisons (bench/perf/stdlib).
 import (
-	invalid from "./lib.ms",
 	parse from "@std/data/json.ms",
+
+	invalid from "./lib.ms",
 )
 
 export type Stats:
@@ -32,7 +33,6 @@ fn finite(value: Float) Bool:
 
 fn valid_optional(value: Float?) Bool:
 	if v := value: return finite(v)
-
 	return true
 
 // The passed cases of one `ms bench --json` document, in order.

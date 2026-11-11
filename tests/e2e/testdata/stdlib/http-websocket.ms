@@ -1,21 +1,25 @@
 import (
-	send, recv, within from "./support/conn.ms",
-	expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
 	Bytes from "@std/bytes.ms",
-	http_result from "./support/http.ms",
-	headers, HttpMethod, upgrade from "@std/net/http.ms",
-	text_headers, list_headers from "./support/http.ms",
+	PromiseOptions, promise from "@std/concurrency/promise.ms",
+	HttpClientOptions,
+	HttpExchange,
+	HttpMethod,
+	HttpServerOptions,
+	headers,
+	upgrade from "@std/net/http.ms",
 	RequestOptions,
 	connect,
 	http_client,
 	request,
 	serve,
 	web_socket from "@std/net/net.ms",
-	HttpExchange, HttpServerOptions, HttpClientOptions from "@std/net/http.ms",
-	WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms",
 	TlsOptions from "@std/net/tls.ms",
+	WebSocketKind, WebSocketMessage, WebSocketOptions from "@std/net/websocket.ms",
+	expect_equal, expect_false, expect_ok, expect_true, fail from "@std/test/test.ms",
 	sleep from "@std/time.ms",
-	promise, PromiseOptions from "@std/concurrency/promise.ms",
+
+	recv, send, within from "./support/conn.ms",
+	http_result, list_headers, text_headers from "./support/http.ms",
 )
 
 fn tls_options() TlsOptions:

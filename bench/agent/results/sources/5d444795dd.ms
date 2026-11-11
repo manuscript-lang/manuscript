@@ -1,138 +1,138 @@
 import (
-    stdin, stdout from "@std/io/io.ms",
-    lines, collect from "@std/io/streams.ms",
+	stdin, stdout from "@std/io/io.ms",
+	collect, lines from "@std/io/streams.ms",
 )
 
 type Rec:
-    cat: String
-    amt: String
+	cat: String
+	amt: String
 
 fn all_digits(s: String) Bool:
-    for i in 0..s.length():
-        if not "0123456789".contains(s.get(i)): return false
-    return true
+	for i in 0..s.length():
+		if not "0123456789".contains(s.get(i)): return false
+	return true
 
 // Accepts digits, optionally followed by '.' and one or two digits.
 fn valid_amount(s: String) Bool:
-    parts := s.split(".")
-    if parts.length() == 1: return not parts[0].is_empty() and all_digits(parts[0])
+	parts := s.split(".")
+	if parts.length() == 1: return not parts[0].is_empty() and all_digits(parts[0])
 
-    if parts.length() == 2:
-        ip := parts[0]
-        fp := parts[1]
-        return (
-            not ip.is_empty()
-            and all_digits(ip)
-            and (fp.length() == 1 or fp.length() == 2)
-            and all_digits(fp)
-        )
+	if parts.length() == 2:
+		ip := parts[0]
+		fp := parts[1]
+		return (
+			not ip.is_empty()
+			and all_digits(ip)
+			and (fp.length() == 1 or fp.length() == 2)
+			and all_digits(fp)
+		)
 
-    return false
+	return false
 
 fn parse_line(line: String) Rec?:
-    var cat = ""
-    var amt = ""
+	var cat = ""
+	var amt = ""
 
-    if line.starts_with("\""):
-        rest := line.slice(1, line.length()).get()
+	if line.starts_with("\""):
+		rest := line.slice(1, line.length()).get()
 
-        if close := rest.find_char(fn(c: String) Bool: c == "\""):
-            cat = rest.slice(0, close).get()
+		if close := rest.find_char(fn(c: String) Bool: c == "\""):
+			cat = rest.slice(0, close).get()
 
-            after := rest.slice(close + 1, rest.length()).get()
-            if not after.starts_with(","): return none
+			after := rest.slice(close + 1, rest.length()).get()
+			if not after.starts_with(","): return none
 
-            amt = after.slice(1, after.length()).get()
-        else:
-            return none
-    else:
-        parts := line.split(",")
-        if parts.length() != 2: return none
+			amt = after.slice(1, after.length()).get()
+		else:
+			return none
+	else:
+		parts := line.split(",")
+		if parts.length() != 2: return none
 
-        cat = parts[0].clone()
-        amt = parts[1].clone()
+		cat = parts[0].clone()
+		amt = parts[1].clone()
 
-    if cat.is_empty() or not valid_amount(amt): return none
+	if cat.is_empty() or not valid_amount(amt): return none
 
-    return Rec(cat: cat, amt: amt)
+	return Rec(cat: cat, amt: amt)
 
 // Removes leading zeros but keeps at least one digit.
 fn strip_zeros(s: String) String:
-    var k = 0
-    while k < s.length() - 1 and s.get(k) == "0":
-        k += 1
-    return s.slice(k, s.length()).get()
+	var k = 0
+	while k < s.length() - 1 and s.get(k) == "0":
+		k += 1
+	return s.slice(k, s.length()).get()
 
 // Converts a valid amount to a digit string of hundredths.
 fn to_cents(amt: String) String:
-    parts := amt.split(".")
-    ip := parts[0]
-    if parts.length() == 1: return strip_zeros("{ip}00")
+	parts := amt.split(".")
+	ip := parts[0]
+	if parts.length() == 1: return strip_zeros("{ip}00")
 
-    fp := parts[1]
-    if fp.length() == 1: return strip_zeros("{ip}{fp}0")
+	fp := parts[1]
+	if fp.length() == 1: return strip_zeros("{ip}{fp}0")
 
-    return strip_zeros("{ip}{fp}")
+	return strip_zeros("{ip}{fp}")
 
 // Exact addition of two non-negative digit strings.
 fn add_digits(a: String, b: String) String:
-    var i = a.length() - 1
-    var j = b.length() - 1
-    var carry = 0
-    var out = ""
+	var i = a.length() - 1
+	var j = b.length() - 1
+	var carry = 0
+	var out = ""
 
-    while i >= 0 or j >= 0 or carry > 0:
-        var s = carry
+	while i >= 0 or j >= 0 or carry > 0:
+		var s = carry
 
-        if i >= 0:
-            s += a.get(i).parse_int().get(0)
-            i -= 1
+		if i >= 0:
+			s += a.get(i).parse_int().get(0)
+			i -= 1
 
-        if j >= 0:
-            s += b.get(j).parse_int().get(0)
-            j -= 1
+		if j >= 0:
+			s += b.get(j).parse_int().get(0)
+			j -= 1
 
-        out = "{s % 10}{out}"
-        carry = s / 10
+		out = "{s % 10}{out}"
+		carry = s / 10
 
-    return strip_zeros(out)
+	return strip_zeros(out)
 
 export fn main() Int:
-    rows := collect(lines(stdin())).get()
-    var totals = Map[String, String]()
-    var cats = List[String]()
-    var skipped = 0
+	rows := collect(lines(stdin())).get()
+	var totals = Map[String, String]()
+	var cats = List[String]()
+	var skipped = 0
 
-    for row in rows:
-        if row.trim().is_empty(): continue
+	for row in rows:
+		if row.trim().is_empty(): continue
 
-        if r := parse_line(row):
-            c := to_cents(r.amt)
-            key := r.cat.clone()
-            old := totals.get_or(key, "").clone()
+		if r := parse_line(row):
+			c := to_cents(r.amt)
+			key := r.cat.clone()
+			old := totals.get_or(key, "").clone()
 
-            if old.is_empty():
-                cats.append(key.clone())
-                totals.add(key, c)
-            else:
-                sum := add_digits(old, c)
-                totals.add(key, sum)
-        else:
-            skipped += 1
+			if old.is_empty():
+				cats.append(key.clone())
+				totals.add(key, c)
+			else:
+				sum := add_digits(old, c)
+				totals.add(key, sum)
+		else:
+			skipped += 1
 
-    cats.sort()
+	cats.sort()
 
-    var out = stdout()
+	var out = stdout()
 
-    for cat in cats:
-        t := totals.get_or(cat, "0")
-        padded := t.pad_start(3, "0")
-        n := padded.length()
-        ip := padded.slice(0, n - 2).get()
-        fp := padded.slice(n - 2, n).get()
-        out.write("{cat}: {ip}.{fp}\n").get()
+	for cat in cats:
+		t := totals.get_or(cat, "0")
+		padded := t.pad_start(3, "0")
+		n := padded.length()
+		ip := padded.slice(0, n - 2).get()
+		fp := padded.slice(n - 2, n).get()
+		out.write("{cat}: {ip}.{fp}\n").get()
 
-    if skipped > 0:
-        out.write("skipped: {skipped}\n").get()
-    out.flush().get()
-    return 0
+	if skipped > 0:
+		out.write("skipped: {skipped}\n").get()
+	out.flush().get()
+	return 0

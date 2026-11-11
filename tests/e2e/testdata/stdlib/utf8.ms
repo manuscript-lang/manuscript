@@ -1,12 +1,12 @@
 import (
 	Bytes from "@std/bytes.ms",
+	Utf8Error, Utf8Scalar, decode_first, decode_last, is_valid from "@std/data/utf8.ms",
 	from_scalars from "@std/string.ms",
-	decode_first, decode_last, is_valid, Utf8Scalar, Utf8Error from "@std/data/utf8.ms",
+	expect_contains,
 	expect_equal,
-	expect_ok,
 	expect_error,
 	expect_fault,
-	expect_contains from "@std/test/test.ms",
+	expect_ok from "@std/test/test.ms",
 )
 
 test "UTF8 validity checks the complete buffer without replacement":

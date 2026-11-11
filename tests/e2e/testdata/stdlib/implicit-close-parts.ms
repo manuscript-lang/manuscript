@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_ok from "@std/test/test.ms",
 	Closeable from "@std/core.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
 // Close appends the id to a log file, so the log is the order in which the closes ran.
@@ -18,7 +18,6 @@ fn track(log: String, id: Int) Tracked:
 
 fn closed(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
-
 	return ""
 
 type Pair:

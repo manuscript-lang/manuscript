@@ -1,136 +1,135 @@
 import (
-    lines from "@std/io/streams.ms",
-    stdin from "@std/io/io.ms",
+	stdin from "@std/io/io.ms",
+	lines from "@std/io/streams.ms",
 )
 
 // Token codes: 0 '+', 1 '-', 2 '*', 3 '/', 4 '(', 5 ')', 6 number, -1 invalid.
 type Ps:
-    codes: List[Int]
-    vals: List[Int]
-    pos: Int
-    div0: Bool
-    bad: Bool
+	codes: List[Int]
+	vals: List[Int]
+	pos: Int
+	div0: Bool
+	bad: Bool
 
 fn cur(p: Ps) Int:
-    if p.pos < p.codes.length(): return p.codes[p.pos]
-
-    return -2
+	if p.pos < p.codes.length(): return p.codes[p.pos]
+	return -2
 
 fn primary(var p: Ps) Int:
-    c := cur(p)
+	c := cur(p)
 
-    if c == 6:
-        v := p.vals[p.pos]
-        p.pos += 1
-        return v
+	if c == 6:
+		v := p.vals[p.pos]
+		p.pos += 1
+		return v
 
-    if c == 4:
-        p.pos += 1
+	if c == 4:
+		p.pos += 1
 
-        v := expr(var p)
+		v := expr(var p)
 
-        if cur(p) == 5:
-            p.pos += 1
-        else:
-            p.bad = true
+		if cur(p) == 5:
+			p.pos += 1
+		else:
+			p.bad = true
 
-        return v
+		return v
 
-    p.bad = true
-    return 0
+	p.bad = true
+	return 0
 
 fn unary(var p: Ps) Int:
-    if cur(p) == 1:
-        p.pos += 1
-        return -unary(var p)
+	if cur(p) == 1:
+		p.pos += 1
+		return -unary(var p)
 
-    return primary(var p)
+	return primary(var p)
 
 fn term(var p: Ps) Int:
-    var v = unary(var p)
+	var v = unary(var p)
 
-    while cur(p) == 2 or cur(p) == 3:
-        op := cur(p)
-        p.pos += 1
+	while cur(p) == 2 or cur(p) == 3:
+		op := cur(p)
+		p.pos += 1
 
-        r := unary(var p)
+		r := unary(var p)
 
-        if op == 2:
-            v *= r
-        else if r == 0:
-            p.div0 = true
-            v = 0
-        else:
-            v /= r
+		if op == 2:
+			v *= r
+		else if r == 0:
+			p.div0 = true
+			v = 0
+		else:
+			v /= r
 
-    return v
+	return v
 
 fn expr(var p: Ps) Int:
-    var v = term(var p)
+	var v = term(var p)
 
-    while cur(p) == 0 or cur(p) == 1:
-        op := cur(p)
-        p.pos += 1
+	while cur(p) == 0 or cur(p) == 1:
+		op := cur(p)
+		p.pos += 1
 
-        r := term(var p)
+		r := term(var p)
 
-        if op == 0:
-            v += r
-        else:
-            v -= r
+		if op == 0:
+			v += r
+		else:
+			v -= r
 
-    return v
+	return v
 
 fn op_code(ch: String) Int:
-    if ch == "+": return 0
-    if ch == "-": return 1
-    if ch == "*": return 2
-    if ch == "/": return 3
-    if ch == "(": return 4
-    if ch == ")": return 5
-    if ch == " " or ch == "\t": return -3
+	if ch == "+": return 0
+	if ch == "-": return 1
+	if ch == "*": return 2
+	if ch == "/": return 3
+	if ch == "(": return 4
+	if ch == ")": return 5
+	if ch == " " or ch == "\t": return -3
 
-    return -1
+	return -1
 
 fn eval_line(line: String) String:
-    var codes = List[Int]()
-    var vals = List[Int]()
-    var num = 0
-    var in_num = false
+	var codes = List[Int]()
+	var vals = List[Int]()
+	var num = 0
+	var in_num = false
 
-    for ch in line.chars():
-        if d := ch.parse_int():
-            num = num * 10 + d
-            in_num = true
-        else:
-            if in_num:
-                codes.append(6)
-                vals.append(num)
-                num = 0
-                in_num = false
+	for ch in line.chars():
+		if d := ch.parse_int():
+			num = num * 10 + d
+			in_num = true
+		else:
+			if in_num:
+				codes.append(6)
+				vals.append(num)
+				num = 0
+				in_num = false
 
-            code := op_code(ch)
+			code := op_code(ch)
 
-            if code != -3:
-                codes.append(code)
-                vals.append(0)
+			if code != -3:
+				codes.append(code)
+				vals.append(0)
 
-    if in_num:
-        codes.append(6)
-        vals.append(num)
+	if in_num:
+		codes.append(6)
+		vals.append(num)
 
-    var p = Ps(codes: codes, vals: vals, pos: 0, div0: false, bad: false)
-    v := expr(var p)
-    if p.bad or p.pos != p.codes.length(): return "error: syntax"
-    if p.div0: return "error: division by zero"
+	var p = Ps(codes: codes, vals: vals, pos: 0, div0: false, bad: false)
+	v := expr(var p)
+	if p.bad or p.pos != p.codes.length(): return "error: syntax"
+	if p.div0: return "error: division by zero"
 
-    return "{v}"
+	return "{v}"
 
 fn run() Unit!:
-    for line in stdin() | lines:
-        if not line.trim().is_empty():
-            print(eval_line(line))
+	for line in stdin() | lines:
+		if not line.trim().is_empty():
+			print(eval_line(line))
 
 export fn main() Int:
-    run().get()
-    return 0
+	run().get()
+	return 0

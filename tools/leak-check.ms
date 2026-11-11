@@ -6,13 +6,14 @@
 // MS names the ms that runs the programs (default target/release/ms).
 // Usage: ms run tools/leak-check.ms [-- files]
 import (
-	env, tool_ms, use_stats_runtime from "./lib.ms",
-	glob, GlobOptions, read_file, temporary from "@std/os/fs.ms",
-	RunOptions, run from "@std/os/process.ms",
-	arguments, change_directory, working_directory from "@std/os/env.ms",
-	system_info from "@std/os/system.ms",
 	Promise, promise from "@std/concurrency/promise.ms",
+	arguments, change_directory, working_directory from "@std/os/env.ms",
+	GlobOptions, glob, read_file, temporary from "@std/os/fs.ms",
+	RunOptions, run from "@std/os/process.ms",
+	system_info from "@std/os/system.ms",
 	seconds from "@std/time.ms",
+
+	env, tool_ms, use_stats_runtime from "./lib.ms",
 )
 
 // The live block counts the runtime printed on standard error; a program that starts child

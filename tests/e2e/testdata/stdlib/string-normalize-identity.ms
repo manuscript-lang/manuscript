@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	NormalizationForm from "@std/string.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "ASCII identity covers every byte and preserves exact byte budgets":

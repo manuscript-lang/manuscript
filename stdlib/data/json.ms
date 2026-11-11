@@ -1,9 +1,10 @@
 import (
-	Data from "@std/core.ms",
-	parse_float from "@std/math/math.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms",
 	Promise from "@std/concurrency/promise.ms",
+	Data from "@std/core.ms",
+	ReadStream, Sink, Transform, WriteStream, through from "@std/io/io.ms",
+	parse_float from "@std/math/math.ms",
+
 	JsonLimits, msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms",
 )
 
@@ -98,7 +99,6 @@ impl JsonValue:
 		match self:
 			ArrayValue(values):
 				if index >= values.length() or index < 0 - values.length(): return none
-
 				return values.get(index)
 			_: return none
 
@@ -429,7 +429,6 @@ fn invalid_limits(options: JsonOptions) Error?:
 		or options.max_values.get(0) < 0
 	):
 		return Error("JSON: invalid options", kind: "EINVAL")
-
 	return none
 
 /*

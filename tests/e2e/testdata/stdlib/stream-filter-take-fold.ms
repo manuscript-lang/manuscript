@@ -1,7 +1,7 @@
 import (
+	ReadStream, Source from "@std/io/io.ms",
+	collect, filter, fold, from_list, map, take from "@std/io/streams.ms",
 	expect_equal, expect_error from "@std/test/test.ms",
-	Source, ReadStream from "@std/io/io.ms",
-	from_list, filter, take, fold, collect, map from "@std/io/streams.ms",
 )
 
 // An endless source that counts how many items were pulled.

@@ -56,12 +56,10 @@ export fn rat_of_float(value: Float) BigRat?:
 // Returns the exact value `mantissa * 2^exponent`. A result needing more than 16777216 bits faults.
 export fn rat_of_binary(mantissa: BigInt, exponent: Int) BigRat:
 	if exponent >= 0: return BigRat(num: shl(mantissa, exponent), den: big(1))
-
 	return reduced(mantissa.clone(), shl(big(1), -exponent))
 
 fn parse_digits(text: String) BigInt!:
 	if value := parse_big(text): return ok(value)
-
 	return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
 // Parses `a/b`, an integer, or a decimal with an optional exponent: `3/4`, `-12`, `1.25`, `6.02e23`, `5e-3`.
@@ -176,13 +174,11 @@ impl BigRat:
 	// Returns the lesser value, or this value when they compare equal.
 	fn min(other: BigRat) BigRat:
 		if other.compare(self) < 0: return other.clone()
-
 		return self.clone()
 
 	// Returns the greater value, or this value when they compare equal.
 	fn max(other: BigRat) BigRat:
 		if other.compare(self) > 0: return other.clone()
-
 		return self.clone()
 
 	// Returns the exact power. A negative exponent returns the reciprocal power, so zero with a negative exponent returns EINVAL.
@@ -255,7 +251,6 @@ impl BigRat:
 	// Formats as `a/b`, or just `a` for an integer; `parse_rat` reads the result back.
 	fn format() String:
 		if self.is_integer(): return self.num.to_string_radix(10)
-
 		return "{self.num.to_string_radix(10)}/{self.den.to_string_radix(10)}"
 
 // The largest supported precision in bits.
@@ -446,13 +441,11 @@ impl BigFloat:
 	// Returns the lesser value, or this value when they compare equal.
 	fn min(other: BigFloat) BigFloat:
 		if other.compare(self) < 0: return other.clone()
-
 		return self.clone()
 
 	// Returns the greater value, or this value when they compare equal.
 	fn max(other: BigFloat) BigFloat:
 		if other.compare(self) > 0: return other.clone()
-
 		return self.clone()
 
 	// Returns the exact value as a fraction.
@@ -476,17 +469,14 @@ impl BigFloat:
 	// A negative digit count returns EINVAL.
 	fn to_fixed(digits: Int) String!:
 		if text := self.to_rat().to_fixed(digits): return ok(text)
-
 		return error(Error("bigfloat: invalid input", kind: "EINVAL"))
 
 fn larger(left: Int, right: Int) Int:
 	if left >= right: return left
-
 	return right
 
 fn smaller(left: Int, right: Int) Int:
 	if left <= right: return left
-
 	return right
 
 // Adds a nonzero value too small to reach `prec` bits of `leading`: nudges `leading` by a quarter unit toward the small value's sign.
@@ -512,7 +502,6 @@ fn big(value: Int) BigInt:
 
 fn parse_big(text: String) BigInt?:
 	if value := parse(text, 10): return value
-
 	return none
 
 fn shl(value: BigInt, count: Int) BigInt:
@@ -533,7 +522,6 @@ fn pow10(count: Int) BigInt:
 // Returns the number of bits in the magnitude, 0 for zero.
 fn bit_length(value: BigInt) Int:
 	if value.sign() == 0: return 0
-
 	return value.abs().to_string_radix(2).length()
 
 // Returns the floor of `numerator / denominator` for a positive denominator.

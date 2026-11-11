@@ -15,8 +15,8 @@ fn main() Unit!:
 ```
 */
 import (
-	Regex, compile from "@std/string.ms",
 	terminal_capabilities from "@std/cli/terminal.ms",
+	Regex, compile from "@std/string.ms",
 )
 
 // A terminal color: the terminal default, a 16-color index, a 256-color palette index, or a 24-bit RGB value. `paint` downgrades richer colors to what the terminal supports.
@@ -196,7 +196,6 @@ fn escape_pattern() Regex:
 // Removes escape sequences from `text`.
 export fn strip_ansi(text: String) String:
 	if not text.contains(esc): return text.clone()
-
 	return escape_pattern().replace_all(text, "").get(text.clone())
 
 // The number of terminal columns `text` occupies, ignoring escape sequences.
