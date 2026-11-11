@@ -1,9 +1,8 @@
 type Counter:
     count: Int
 
-impl Counter:
-    var fn around(action: fn() Unit) Unit:
-        action()
+fn var Counter.around(action: fn() Unit) Unit:
+    action()
 
 export fn main() Int:
     var counts = [Counter(count: 1)]

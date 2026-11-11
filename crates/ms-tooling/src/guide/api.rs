@@ -318,6 +318,24 @@ fn fn_declaration(
     )
 }
 
+/// A method declared on `receiver`: `fn var Receiver.name(...)` when it changes `self`.
+fn receiver_declaration(
+    syms: ms_syntax::Names,
+    receiver: &str,
+    name: &str,
+    f: &Func,
+    mutating: bool,
+    source: Option<&Source>,
+) -> String {
+    format!(
+        "fn {}{receiver}.{name}{}{} {}:\n",
+        if mutating { "var " } else { "" },
+        render::type_parameters(syms, &f.type_params),
+        render::parameters(syms, &f.params, source),
+        render::type_text(syms, &f.result)
+    )
+}
+
 /// Keeps source names and declaration order, omitting function bodies.
 fn document_declaration(
     syms: ms_syntax::Names,
@@ -356,25 +374,30 @@ fn document_declaration(
         }
         b.push('\n');
     }
+    let receiver = format!("{name}{}", render::type_arguments(syms, decl.type_params()));
     if matches!(keyword, "type" | "enum") && !decl.methods().is_empty() {
-        // A type's own methods are written in an `impl Type:` block.
-        b += &format!(
-            "\nimpl {name}{}:\n",
-            render::type_arguments(syms, decl.type_params())
-        );
+        b.push('\n');
     }
     for method in decl.methods() {
-        let mut header = fn_declaration(
-            syms,
-            syms.str(method.func.name),
-            &method.func,
-            method.mutating,
-            source,
-        );
         if keyword == "interface" {
-            header = header.strip_suffix(":\n").unwrap_or(&header).to_string() + "\n";
+            let header = fn_declaration(
+                syms,
+                syms.str(method.func.name),
+                &method.func,
+                method.mutating,
+                source,
+            );
+            b += &format!("    {}\n", header.strip_suffix(":\n").unwrap_or(&header));
+        } else {
+            b += &receiver_declaration(
+                syms,
+                &receiver,
+                syms.str(method.func.name),
+                &method.func,
+                method.mutating,
+                source,
+            );
         }
-        b += &format!("    {header}");
     }
     b
 }
@@ -681,22 +704,32 @@ fn document_implementations(
         }
         let name = syms.str(f.name);
         let context = receiver_context(syms, method, &ty);
-        let implementation = if inherent {
-            "impl".to_string()
-        } else {
-            format!("impl {contract} for")
-        };
-        d.implementation_declarations.push(format!(
-            "{context}{implementation} {}:\n    {}",
-            method.receiver.display(syms),
-            fn_declaration(
-                syms,
-                name,
-                f,
-                decl.method().is_some_and(|m| m.mutating),
-                None
+        let declaration = if inherent {
+            format!(
+                "{context}{}",
+                receiver_declaration(
+                    syms,
+                    &method.receiver.display(syms).to_string(),
+                    name,
+                    f,
+                    decl.method().is_some_and(|m| m.mutating),
+                    None,
+                )
             )
-        ));
+        } else {
+            format!(
+                "{context}impl {contract} for {}:\n    {}",
+                method.receiver.display(syms),
+                fn_declaration(
+                    syms,
+                    name,
+                    f,
+                    decl.method().is_some_and(|m| m.mutating),
+                    None
+                )
+            )
+        };
+        d.implementation_declarations.push(declaration);
         let operation = format!("{name}: {}", method.ty.display(syms));
         let source = sources.of(method.module);
         d.members.push(ApiMember {

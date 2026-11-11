@@ -4,6 +4,5 @@ export type DomainFailure:
 export type BoxFailure[T: Error]:
     cause: 'T
 
-impl Error for BoxFailure[T]:
-    fn message() String:
-        return self.cause.message()
+fn BoxFailure[T].message() String:
+    return self.cause.message()

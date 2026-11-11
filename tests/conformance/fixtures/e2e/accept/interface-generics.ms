@@ -12,28 +12,24 @@ interface Same[V: Equal]:
 type Box[T: Clonable]:
     value: T
 
-impl Read[T] for Box[T]:
-    fn get() T:
-        return self.value.clone()
+fn Box[T].get() T:
+    return self.value.clone()
 
-impl Same[T] for Box[T]:
-    fn same(other: T) Bool:
-        return self.value == other
+fn Box[T: Equal].same(other: T) Bool:
+    return self.value == other
 
 type Matching[T: Equal]:
     value: T
 
-impl Same[T] for Matching[T]:
-    fn same(other: T) Bool:
-        return self.value == other
+fn Matching[T: Equal].same(other: T) Bool:
+    return self.value == other
 
 type Pair[A, B: Read[A]]:
     left: A
     right: B
 
-impl Read[Int] for Pair[Int, B]:
-    fn get() Int:
-        return self.right.get()
+fn Pair[Int, B].get() Int:
+    return self.right.get()
 
 fn identity(value: Int) Int:
     return value

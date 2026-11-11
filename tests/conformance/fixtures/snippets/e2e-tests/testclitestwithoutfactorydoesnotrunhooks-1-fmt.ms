@@ -7,18 +7,17 @@ import stdout from "@std/io/io.ms"
 type UnusedFixture:
     value: Int
 
-impl TestHooks for UnusedFixture:
-    fn before_all() Unit:
-        _written := stdout().write("UNUSED before_all").get()
+fn UnusedFixture.before_all() Unit:
+    _written := stdout().write("UNUSED before_all").get()
 
-    fn before_each() Unit:
-        _written := stdout().write("UNUSED before_each").get()
+fn UnusedFixture.before_each() Unit:
+    _written := stdout().write("UNUSED before_each").get()
 
-    fn after_each() Unit:
-        _written := stdout().write("UNUSED after_each").get()
+fn UnusedFixture.after_each() Unit:
+    _written := stdout().write("UNUSED after_each").get()
 
-    fn after_all() Unit:
-        _written := stdout().write("UNUSED after_all").get()
+fn UnusedFixture.after_all() Unit:
+    _written := stdout().write("UNUSED after_all").get()
 
 test "plain test":
     expect_equal(1 + 1, 2)?

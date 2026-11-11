@@ -4,5 +4,4 @@
 type B:
     x: Int
 
-impl B:
-    fn m() Int: ...
+fn B.m() Int: ...

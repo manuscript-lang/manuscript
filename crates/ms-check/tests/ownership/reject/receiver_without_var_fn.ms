@@ -1,6 +1,5 @@
 type Counter:
     values: List[Int]
 
-impl Counter:
-    fn bump() Unit:
-        self.values.append(1)  // error: does not change its receiver
+fn Counter.bump() Unit:
+    self.values.append(1)  // error: does not change its receiver

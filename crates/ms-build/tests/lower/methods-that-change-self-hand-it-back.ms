@@ -8,10 +8,9 @@ interface Counter:
 type C:
     n: Int
 
-impl Counter for C:
-    var fn next() Int:
-        self.n += 1
-        return self.n
+fn var C.next() Int:
+    self.n += 1
+    return self.n
 
 export fn main() Int:
     var c: Counter = C(0)

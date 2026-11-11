@@ -44,9 +44,8 @@ fn IpFamily.text() String:
 		IPv6: return "IPv6"
 
 // A validated numeric IPv4/IPv6 address without a port or zone.
+// ms: data
 export extern type IpAddress
-
-impl Data for IpAddress:
 
 // Returns canonical text; mapped IPv6 input is normalized to IPv4.
 fn IpAddress.text() String:
@@ -58,9 +57,8 @@ fn IpAddress.family() IpFamily:
 	return IPv4
 
 // A validated, masked numeric CIDR range.
+// ms: data
 export extern type Cidr
-
-impl Data for Cidr:
 
 // Returns the canonical masked prefix without reparsing.
 fn Cidr.text() String:

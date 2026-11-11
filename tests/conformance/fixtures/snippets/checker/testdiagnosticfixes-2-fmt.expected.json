@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "phase": "parse",
-  "oracle": "Manuscript 0.1.0",
-  "expected": {
-    "diagnostics": [],
-    "fmt": "interface Named:\n\tfn name() String\n\nimpl Named for Result[Int]:\n\tfn name() String:\n\t\treturn \"x\"\n\nfn f(x: Result[Int]) Int!:\n\treturn error(x)\n"
-  }
-}

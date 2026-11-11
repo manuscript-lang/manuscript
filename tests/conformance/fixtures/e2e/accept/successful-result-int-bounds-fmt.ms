@@ -84,9 +84,8 @@ fn hidden_success() Int:
 type BoundedResultCleanup:
     visits: List[Int]
 
-impl Closeable for BoundedResultCleanup:
-    var fn close() Unit!:
-        self.visits.append(7)
+fn var BoundedResultCleanup.close() Unit!:
+    self.visits.append(7)
 
 fn cleanup(visits: List[Int]) Int:
     _resource := BoundedResultCleanup(visits)

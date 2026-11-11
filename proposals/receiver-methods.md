@@ -6,7 +6,7 @@
 - Decision requested: approve the language change (reverses "the relationship is always declared, never inferred") and the three open questions.
 
 ## Status
-Stages 1 and 2 implemented (parser; shape matching and `Closeable` by shape, `impl` still accepted), 2026-11-11. Proposal, 2026-11-10, checked against `3e2ee9ab`. Skeptical review: build only if the specialized-receiver and local-extension questions below are settled; the smallest alternative alone fixes the leak. Direction (Chinmay): methods are receiver functions like Go with implicit interface matching; the same type cannot have two methods of one name; swap `var` and `fn` (`fn var Held[T].close()`); no overlap, one function per type.
+Implemented, 2026-11-11: receiver methods (with receiver bounds and specialized receivers), shape matching for every interface plus `Comparable`, `Equal`, `Hashable`, `JsonEncode` and `TestHooks`, API docs that list shape-satisfied interfaces, and removal of `impl` (the parser reports the receiver form). `stdlib/`, tests, docs and bench programs were migrated. Open questions resolved: specialized receivers stay (`fn List[Int].sum()`), local extensions were removed with their e2e projects, and the accidental `close` rule is documented in `closeable.md` and the wiki. Proposal, 2026-11-10, checked against `3e2ee9ab`. Direction (Chinmay): methods are receiver functions like Go with implicit interface matching; the same type cannot have two methods of one name; swap `var` and `fn` (`fn var Held[T].close()`); no overlap, one function per type.
 
 ## Problem
 Verified with `ms run` on `3e2ee9ab`, using `Counted` from `tests/e2e/testdata/stdlib/stream-close-once.ms` (`Source[Int]` and `Sink[Int]`, each with its own `close`):

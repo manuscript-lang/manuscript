@@ -1,6 +1,5 @@
 export opaque type Tok:
     id: Int
 
-impl Tok:
-    fn show() Int:
-        return self.
+fn Tok.show() Int:
+    return self.

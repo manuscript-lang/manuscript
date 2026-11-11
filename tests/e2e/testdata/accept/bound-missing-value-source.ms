@@ -13,9 +13,8 @@ interface Convert:
 type Source:
 	sentinel: Int
 
-impl Convert for Source:
-	fn convert(cause: Error?) Int!Error:
-		return ok(if cause.is_none(): self.sentinel else: 88)
+fn Source.convert(cause: Error? = none) Int!Error:
+	return ok(if cause.is_none(): self.sentinel else: 88)
 
 // Exact expectations deliberately identify invocation lines, not binding lines.
 test "bound Error defaults use each invocation line":
@@ -25,11 +24,11 @@ test "bound Error defaults use each invocation line":
 	second_result := convert()
 	expect_equal(
 		first_result.err().message,
-		"missing value at bound-missing-value-source.ms:24",
+		"missing value at bound-missing-value-source.ms:23",
 	)?
 	expect_equal(
 		second_result.err().message,
-		"missing value at bound-missing-value-source.ms:25",
+		"missing value at bound-missing-value-source.ms:24",
 	)?
 
 test "immutable copies and captured native values keep invocation defaults":
@@ -42,11 +41,11 @@ test "immutable copies and captured native values keep invocation defaults":
 	nested_result := nested()
 	expect_equal(
 		copied_result.err().message,
-		"missing value at bound-missing-value-source.ms:39",
+		"missing value at bound-missing-value-source.ms:38",
 	)?
 	expect_equal(
 		nested_result.err().message,
-		"missing value at bound-missing-value-source.ms:41",
+		"missing value at bound-missing-value-source.ms:40",
 	)?
 
 test "generic callers and direct calls keep their invocation lines":
@@ -59,7 +58,7 @@ test "generic callers and direct calls keep their invocation lines":
 	direct := absent.ok_or()
 	expect_equal(
 		direct.err().message,
-		"missing value at bound-missing-value-source.ms:59",
+		"missing value at bound-missing-value-source.ms:58",
 	)?
 
 	zero: Int? := 0

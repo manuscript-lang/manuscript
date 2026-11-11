@@ -7,9 +7,8 @@ interface Crash:
 type Item:
     value: Int
 
-impl Crash for Item:
-    fn run() Int:
-        return 1 / self.value
+fn Item.run() Int:
+    return 1 / self.value
 
 export fn main() Int:
     item := Item(0)

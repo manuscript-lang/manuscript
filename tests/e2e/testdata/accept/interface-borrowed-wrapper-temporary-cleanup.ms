@@ -26,27 +26,26 @@ interface Observer:
 type Reader:
 	tag: Int
 
-impl Observer for Reader:
-	fn observe(first: Resource?, second: Resource?, tail: Int? = none) Bool:
-		return first.is_some() or second.is_some() or tail.get(0) > 0
+fn Reader.observe(first: Resource?, second: Resource?, tail: Int? = none) Bool:
+	return first.is_some() or second.is_some() or tail.get(0) > 0
 
-	fn reject(value: Resource?) Unit!:
-		if value.is_some(): return error(Error("expected"))
+fn Reader.reject(value: Resource?) Unit!:
+	if value.is_some(): return error(Error("expected"))
 
-	fn broken(value: Resource?) Unit:
-		if value.is_some(): _bad := [1].get(3)
+fn Reader.broken(value: Resource?) Unit:
+	if value.is_some(): _bad := [1].get(3)
 
-	fn create(value: Resource?, path: String) Resource:
-		if value.is_some(): return Resource(50, path.clone())
-		return Resource(51, path.clone())
+fn Reader.create(value: Resource?, path: String) Resource:
+	if value.is_some(): return Resource(50, path.clone())
+	return Resource(51, path.clone())
 
-	fn change(var value: Resource) Unit:
-		value.id += 1
+fn Reader.change(var value: Resource) Unit:
+	value.id += 1
 
-	fn fault_with_var(var value: Resource) Unit:
-		_bad := [value.id].get(3)
+fn Reader.fault_with_var(var value: Resource) Unit:
+	_bad := [value.id].get(3)
 
-	fn result(value: Result[Resource, String]) Bool: value.is_ok()
+fn Reader.result(value: Result[Resource, String]) Bool: value.is_ok()
 
 fn present(path: String, id: Int) Resource?: Resource(id, path.clone())
 

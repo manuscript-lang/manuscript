@@ -73,15 +73,3 @@ fn any_fault_in_an_argument_is_the_only_error() {
     assert_eq!(found.len(), 1, "{found:?}");
     assert!(found[0].starts_with("indexing a String"), "{found:?}");
 }
-
-#[test]
-fn an_impl_target_that_is_not_an_interface_does_not_also_report_extra_operations() {
-    let found = messages(include_str!(
-        "follow_on_errors/impl_target_not_interface.ms"
-    ));
-    assert_eq!(found.len(), 1, "{found:?}");
-    assert!(
-        found[0].starts_with("implementation target must be an interface"),
-        "{found:?}"
-    );
-}

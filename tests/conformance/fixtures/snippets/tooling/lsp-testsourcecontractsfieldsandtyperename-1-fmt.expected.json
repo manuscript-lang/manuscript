@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface Reader:\n\tfn read() String\n\ntype Box:\n\tlabel: String\n\nimpl Reader for Box:\n\tfn read() String:\n\t\treturn self.label\n\nfn message(value: Reader) String:\n\treturn value.read()\n\nfn make() Box:\n\treturn Box(label: \"value\")\n"
+    "fmt": "interface Reader:\n\tfn read() String\n\ntype Box:\n\tlabel: String\n\nfn Box.read() String:\n\treturn self.label\n\nfn message(value: Reader) String:\n\treturn value.read()\n\nfn make() Box:\n\treturn Box(label: \"value\")\n"
   }
 }

@@ -500,9 +500,8 @@ An arbitrary-precision signed integer. Use the operators + - * / % and unary - f
 both operands must be BigInt (convert an Int with from_int), and / or % by zero is a fault. The named methods below are the same operations;
 divide and remainder return a Result for callers that want an error value instead of a fault.
 */
+// ms: data
 export extern type BigInt
-
-impl Data for BigInt:
 
 // Returns an independent copy, so `var acc = base.clone()` starts an accumulator.
 fn BigInt.clone() BigInt:

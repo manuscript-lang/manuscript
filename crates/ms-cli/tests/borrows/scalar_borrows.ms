@@ -9,14 +9,13 @@ fn bump(var b: Box) Unit:
     _n += 1
     _n = _n * 2
 
-impl Box:
-    // A `var` copy of a scalar field in a `var fn` is a copy too (#2193).
-    var fn mixed() Int:
-        self.n = self.n + 1
+// A `var` copy of a scalar field in a `var fn` is a copy too (#2193).
+fn var Box.mixed() Int:
+    self.n = self.n + 1
 
-        var z = self.n
-        z = z * 10
-        return z
+    var z = self.n
+    z = z * 10
+    return z
 
 fn main() Unit:
     var b = Box(n: 1, xs: [1])

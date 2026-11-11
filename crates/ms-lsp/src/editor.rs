@@ -275,23 +275,40 @@ fn function_parameters_at(tokens: &[EditorToken], at: usize) -> bool {
     if at > 0 && tokens[at - 1].text == "fn" {
         return true;
     }
-    let mut previous = at as isize - 1;
-    if previous >= 0 && tokens[previous as usize].is(b']') {
-        let mut depth = 1;
-        previous -= 1;
-        while previous >= 0 && depth > 0 {
-            if tokens[previous as usize].is(b']') {
-                depth += 1;
+    // `fn name(`, `fn name[T](`, and the receiver forms `fn Type.name(` and `fn var Type[A].name(`.
+    let skip_brackets = |mut at: isize| {
+        if at >= 0 && tokens[at as usize].is(b']') {
+            let mut depth = 1;
+            at -= 1;
+            while at >= 0 && depth > 0 {
+                if tokens[at as usize].is(b']') {
+                    depth += 1;
+                }
+                if tokens[at as usize].is(b'[') {
+                    depth -= 1;
+                }
+                at -= 1;
             }
-            if tokens[previous as usize].is(b'[') {
-                depth -= 1;
-            }
-            previous -= 1;
+        }
+        at
+    };
+    let name = skip_brackets(at as isize - 1);
+    if name <= 0 || tokens[name as usize].kind != EditorKind::Name {
+        return false;
+    }
+    let mut before = name - 1;
+    if before >= 1 && tokens[before as usize].is(b'.') {
+        // The receiver: a name with optional type arguments.
+        let receiver = skip_brackets(before - 1);
+        if receiver < 0 || tokens[receiver as usize].kind != EditorKind::Name {
+            return false;
+        }
+        before = receiver - 1;
+        if before >= 0 && tokens[before as usize].text == "var" {
+            before -= 1;
         }
     }
-    previous > 0
-        && tokens[previous as usize].kind == EditorKind::Name
-        && tokens[previous as usize - 1].text == "fn"
+    before >= 0 && tokens[before as usize].text == "fn"
 }
 
 /// A result type follows the parameter list and ends at the suite's colon,

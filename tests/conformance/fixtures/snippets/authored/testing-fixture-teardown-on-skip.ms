@@ -10,19 +10,18 @@ type Hooks:
 fn make_fixture() Hooks:
     return Hooks(runs: 0)
 
-impl TestHooks for Hooks:
-    var fn before_all() Unit:
-        stdout().write("before_all\n").get()
+fn var Hooks.before_all() Unit:
+    stdout().write("before_all\n").get()
 
-    var fn before_each() Unit:
-        self.runs += 1
-        stdout().write("before_each {self.runs}\n").get()
+fn var Hooks.before_each() Unit:
+    self.runs += 1
+    stdout().write("before_each {self.runs}\n").get()
 
-    var fn after_each() Unit:
-        stdout().write("after_each {self.runs}\n").get()
+fn var Hooks.after_each() Unit:
+    stdout().write("after_each {self.runs}\n").get()
 
-    var fn after_all() Unit:
-        stdout().write("after_all\n").get()
+fn var Hooks.after_all() Unit:
+    stdout().write("after_all\n").get()
 
 test "a skipped test still tears down":
     skip("not today")

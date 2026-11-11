@@ -85,7 +85,7 @@ export fn issue() PrivateToken:
 
 Exporting a type exposes every field and its constructor; an enum, every case and payload; an `interface`, every operation. `export opaque type` hides fields and `export opaque enum` hides enum cases outside the declaring file; selective per-field visibility is unsupported ([public data surfaces](../types/named-types.md#public-data-surfaces)).
 
-An `impl` in a source type's defining module is available wherever the type is used. An `impl` for an imported type stays local to the declaring module. Both follow the [coherence and visibility rules](../types/contracts.md#coherence-and-visibility).
+A method declared in its type's module is available wherever the type is used; a module cannot add methods to an imported type. See the [coherence and visibility rules](../types/contracts.md#coherence-and-visibility).
 
 ## Standard-library imports
 

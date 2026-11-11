@@ -19,10 +19,10 @@
           "index": 1,
           "name": "testing-fixture-teardown-on-skip.ms::a failed assertion still tears down",
           "status": "failed",
-          "failure": "expected failure\n  at testing-fixture-teardown-on-skip.ms:31:5",
+          "failure": "expected failure\n  at testing-fixture-teardown-on-skip.ms:30:5",
           "position": {
             "file": "testing-fixture-teardown-on-skip.ms",
-            "line": 31,
+            "line": 30,
             "column": 5,
             "offset": 0
           }
@@ -31,7 +31,7 @@
           "index": 2,
           "name": "testing-fixture-teardown-on-skip.ms::a fault still tears down",
           "status": "failed",
-          "failure": "index 1 out of range for length 0; pass a default: get(index:, default: ...)\n  at testing-fixture-teardown-on-skip.ms:35 in test a fault still tears down"
+          "failure": "index 1 out of range for length 0; pass a default: get(index:, default: ...)\n  at testing-fixture-teardown-on-skip.ms:34 in test a fault still tears down"
         }
       ],
       "summary": {
@@ -44,7 +44,7 @@
       },
       "completed": true,
       "exit_code": 1,
-      "stdout": "RUN testing-fixture-teardown-on-skip.ms::a skipped test still tears down\nbefore_all\nbefore_each 1\nafter_each 1\nafter_all\nSKIP testing-fixture-teardown-on-skip.ms::a skipped test still tears down: not today\nRUN testing-fixture-teardown-on-skip.ms::a failed assertion still tears down\nbefore_all\nbefore_each 1\nafter_each 1\nafter_all\nFAIL testing-fixture-teardown-on-skip.ms::a failed assertion still tears down: expected failure\n  at testing-fixture-teardown-on-skip.ms:31:5\nRUN testing-fixture-teardown-on-skip.ms::a fault still tears down\nbefore_all\nbefore_each 1\nafter_each 1\nafter_all\nFAIL testing-fixture-teardown-on-skip.ms::a fault still tears down: index 1 out of range for length 0; pass a default: get(index:, default: ...)\n  at testing-fixture-teardown-on-skip.ms:35 in test a fault still tears down\n3 tests, 2 failed, 1 skipped\n",
+      "stdout": "RUN testing-fixture-teardown-on-skip.ms::a skipped test still tears down\nbefore_all\nbefore_each 1\nafter_each 1\nafter_all\nSKIP testing-fixture-teardown-on-skip.ms::a skipped test still tears down: not today\nRUN testing-fixture-teardown-on-skip.ms::a failed assertion still tears down\nbefore_all\nbefore_each 1\nafter_each 1\nafter_all\nFAIL testing-fixture-teardown-on-skip.ms::a failed assertion still tears down: expected failure\n  at testing-fixture-teardown-on-skip.ms:30:5\nRUN testing-fixture-teardown-on-skip.ms::a fault still tears down\nbefore_all\nbefore_each 1\nafter_each 1\nafter_all\nFAIL testing-fixture-teardown-on-skip.ms::a fault still tears down: index 1 out of range for length 0; pass a default: get(index:, default: ...)\n  at testing-fixture-teardown-on-skip.ms:34 in test a fault still tears down\n3 tests, 2 failed, 1 skipped\n",
       "diagnostics": []
     },
     "shape": [

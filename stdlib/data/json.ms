@@ -51,6 +51,8 @@ if user := doc.get("user"):
 
 `get_in` reads a chain of object members in one call and lends the result: `doc.get_in(["user", "name"])`.
 */
+// A JSON document is Data, including its string-keyed object members.
+// ms: data
 export enum JsonValue:
 	// JSON null, represented without a payload value.
 	Null
@@ -81,9 +83,6 @@ export enum JsonValue:
 		// values.
 		values: Map[String, JsonValue]
 	)
-
-// A JSON document is Data, including its string-keyed object members.
-impl Data for JsonValue:
 
 // Returns the object member for `key`, or `none` for an absent key or a value that
 // is not an object. The result borrows from the receiver.

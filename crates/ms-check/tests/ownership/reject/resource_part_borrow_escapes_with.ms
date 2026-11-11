@@ -3,9 +3,8 @@ import Closeable from "@std/core.ms"
 type Res:
     name: String
 
-impl Closeable for Res:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Res.close() Unit!:
+    return ok(unit)
 
 // A value derived from the `with` resource cannot be stored where it outlives the block.
 fn main() Int:

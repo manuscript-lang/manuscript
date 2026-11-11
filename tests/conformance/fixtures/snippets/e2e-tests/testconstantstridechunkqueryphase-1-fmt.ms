@@ -6,6 +6,5 @@ import Closeable from "@std/core.ms"
 type Resource:
     visits: List[Int]
 
-impl Closeable for Resource:
-    var fn close() Unit!:
-        self.visits.append(1)
+fn var Resource.close() Unit!:
+    self.visits.append(1)

@@ -7,8 +7,7 @@ interface Named:
 type Box[Named: Named]:
     cause: Named
 
-impl Named for Box[Named]:
-    fn name() String: self.cause.name()
+fn Box[Named].name() String: self.cause.name()
 
 type Neighbor:
     value: Int

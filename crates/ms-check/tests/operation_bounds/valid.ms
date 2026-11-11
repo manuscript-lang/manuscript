@@ -7,6 +7,5 @@ interface Reader[A]:
 type Source:
     number: Int
 
-impl Source:
-    fn read[T: Relation[T]](value: T) Int:
-        return self.number
+fn Source.read[T: Relation[T]](value: T) Int:
+    return self.number

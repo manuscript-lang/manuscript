@@ -7,9 +7,8 @@ interface I[T]:
 type Box[T]:
     v: T
 
-impl I[T] for Box[T]:
-    fn f(x: I[List[T]]) Int:
-        return 1
+fn Box[T].f(x: I[List[T]]) Int:
+    return 1
 
 fn main() Unit:
     b := Box[Int](v: 1)

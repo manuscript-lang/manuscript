@@ -19,32 +19,22 @@ fn diagnostics(source: &str) -> Vec<String> {
     .collect()
 }
 
-const SHAPE: &str =
-    "interface Shape:\n    fn scaled(factor: Int) Int\ntype S:\n    n: Int\nimpl Shape for S:\n";
+const SHAPE: &str = "interface Shape:\n    fn scaled(factor: Int) Int\ntype S:\n    n: Int\nfn use_shape(s: Shape) Unit:\n    return\nfn run(s: S) Unit:\n    use_shape(s)\n";
 
 #[test]
 fn renamed_parameter_is_rejected() {
-    let got = diagnostics(&format!("{SHAPE}    fn scaled(k: Int) Int: self.n * k\n"));
+    let got = diagnostics(&format!("{SHAPE}fn S.scaled(k: Int) Int: self.n * k\n"));
     assert_eq!(got.len(), 1, "{got:?}");
     assert!(
-        got[0].contains("parameter names do not match contract"),
+        got[0].contains("must name its parameters like the interface"),
         "{got:?}"
     );
-    assert!(got[0].contains("(factor)"), "{got:?}");
 }
 
 #[test]
 fn matching_parameter_is_accepted() {
     let got = diagnostics(&format!(
-        "{SHAPE}    fn scaled(factor: Int) Int: self.n * factor\n"
+        "{SHAPE}fn S.scaled(factor: Int) Int: self.n * factor\n"
     ));
     assert!(got.is_empty(), "{got:?}");
-}
-
-#[test]
-fn standard_contract_names_are_checked() {
-    let got = diagnostics(
-        "type P:\n    x: Int\nimpl Equal for P:\n    fn equals(o: P) Bool: self.x == o.x\n",
-    );
-    assert_eq!(got.len(), 1, "{got:?}");
 }

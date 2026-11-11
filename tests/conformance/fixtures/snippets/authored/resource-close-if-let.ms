@@ -10,9 +10,8 @@ fn say(s: String) Unit:
 type Res:
     name: String
 
-impl Closeable for Res:
-    var fn close() Unit!:
-        say("close {self.name}")
+fn var Res.close() Unit!:
+    say("close {self.name}")
 
 fn maybe(name: String, present: Bool) Res?:
     return if present: Res(name) else: none

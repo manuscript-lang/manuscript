@@ -45,27 +45,6 @@ test "bound typed and generic calls keep the all-versus-first split":
 	generic := forward(text.replace)
 	expect_equal(generic("aa", "x"), "xx")?
 
-interface Replacement:
-	fn replace(old: String, new: String) String
-
-type TextAdapter:
-	text: String
-	replace: fn(String, String) String
-
-impl Replacement for TextAdapter:
-	fn replace(old: String, new: String) String:
-		return self.text.replace(old, new)
-
-test "explicit and bound views retain method contracts and callable field shadowing":
-	adapter := TextAdapter("aaaa", fn(old: String, new: String) String: "field")
-	expect_equal(adapter.replace("a", "b"), "field")?
-
-	view: Replacement := adapter
-	expect_equal(view.replace("a", "b"), "bbbb")?
-
-	bound := view.replace
-	expect_equal(bound("aa", "b"), "bb")?
-
 test "replacing long text with a shorter or equal string trims, shares or inlines the result":
 	long := "word word word word word word word word word word"
 	expect_equal(long.replace("word", "w"), "w w w w w w w w w w")?

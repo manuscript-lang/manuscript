@@ -13,7 +13,6 @@ type Counter:
 interface Adder:
     fn add(amount: Int, extra: Int) Int
 
-impl Adder for Counter:
-    fn add(amount: Int, extra: Int) Int: self.total + amount + extra
+fn Counter.add(amount: Int, extra: Int) Int: self.total + amount + extra
 
 fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int: ...

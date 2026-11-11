@@ -1,11 +1,10 @@
 type Bag[T]:
     items: List[T]
 
-impl Bag[T]:
-    fn at(index: Int) T?:
-        if index < 0 or index >= self.items.length(): return none
+fn Bag[T].at(index: Int) T?:
+    if index < 0 or index >= self.items.length(): return none
 
-        return self.items.get(index)
+    return self.items.get(index)
 
 fn nth[T](xs: List[T], index: Int) T?:
     return xs.get(index)

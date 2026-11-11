@@ -7,9 +7,8 @@ import max from "@std/math/math.ms"
 type Version:
     major: Int
 
-impl Comparable for Version:
-    fn compare(other: Version) Int:
-        return self.major - other.major
+fn Version.compare(other: Version) Int:
+    return self.major - other.major
 
 fn main() Unit:
     a := Version(1)

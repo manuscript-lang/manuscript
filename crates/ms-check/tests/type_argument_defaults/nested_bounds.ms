@@ -6,5 +6,4 @@ type Holder[T = Map[List[Int], Int]]:
 interface Reader[A]:
     fn read[B = Map[A, Int]](value: B) Int
 
-impl Holder[T]:
-    fn read[U = Map[List[Int], Int]](value: U) Int: return 0
+fn Holder[T].read[U = Map[List[Int], Int]](value: U) Int: return 0

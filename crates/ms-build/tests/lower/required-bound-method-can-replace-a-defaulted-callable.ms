@@ -2,10 +2,9 @@
 type Offset:
     base: Int
 
-impl Offset:
-    fn original(value: Int = 7) Int: self.base + value
+fn Offset.original(value: Int = 7) Int: self.base + value
 
-    fn replacement(value: Int) Int: self.base + value + 1
+fn Offset.replacement(value: Int) Int: self.base + value + 1
 
 export fn main() Int:
     offset := Offset(2)

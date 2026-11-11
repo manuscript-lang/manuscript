@@ -11,9 +11,8 @@ type Pair:
     left: List[Int]
     right: List[Int]
 
-impl Box:
-    var fn bump() Unit:
-        self.count += 1
+fn var Box.bump() Unit:
+    self.count += 1
 
 fn add(var values: List[Int]) Unit:
     values.append(12)

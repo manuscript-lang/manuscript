@@ -14,6 +14,7 @@ pub const MAX_NESTING: usize = 1000;
 /// Bounds left-nested operator, member, call and index chains.
 pub const MAX_CHAIN: usize = 10000;
 
+const IMPL_REMOVED: &str = "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it";
 const TRY_REMOVED: &str = "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step";
 
 /// Parses `source` strictly. The first error aborts the parse.
@@ -256,7 +257,7 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
         ),
         "class" | "struct" | "record" | "data" => (
             Some("type"),
-            "declare a record with 'type Name:' and 'field: Type' lines, then add methods in 'impl Name:'",
+            "declare a record with 'type Name:' and 'field: Type' lines, then add methods as 'fn Name.method(...)' after it",
         ),
         "union" | "variant" | "sealed" => (
             Some("enum"),
@@ -264,7 +265,7 @@ fn foreign_declaration(t: Token, text: &str) -> Option<(String, Option<&'static 
         ),
         "trait" | "protocol" | "abstract" => (
             Some("interface"),
-            "declare a contract with 'interface Name:' and method signatures, then implement it with 'impl Name for Type:'",
+            "declare a contract with 'interface Name:' and method signatures, then give a type methods that match it, 'fn Type.operation(...)'",
         ),
         "const" | "val" | "final" | "let" => (
             None,
@@ -1232,7 +1233,25 @@ impl<'a> Parser<'a> {
                 // The receiver is a plain name with optional arguments: `named_type` would read
                 // `Type.name` as a module-qualified type.
                 let receiver_name = self.need(Tok::Name)?;
-                let args = if self.take(Tok::LBracket) {
+                // `[T: Bound]` names the receiver's arguments and bounds them in one list.
+                let bounded = self.kind() == Tok::LBracket
+                    && self.ahead(1).kind == Tok::Name
+                    && self.ahead(2).kind == Tok::Colon;
+                let mut bounds = Vec::new();
+                let args = if bounded {
+                    bounds = self.type_params()?;
+                    bounds
+                        .iter()
+                        .map(|p| TypeRef {
+                            id: self.id(),
+                            pos: p.pos,
+                            kind: TypeKind::Named {
+                                name: p.name,
+                                args: Vec::new(),
+                            },
+                        })
+                        .collect()
+                } else if self.take(Tok::LBracket) {
                     self.type_args()?
                 } else {
                     Vec::new()
@@ -1251,6 +1270,7 @@ impl<'a> Parser<'a> {
                 DeclKind::Impl(ImplDecl {
                     contract: None,
                     receiver,
+                    bounds,
                     methods: vec![method],
                 })
             }
@@ -1323,49 +1343,7 @@ impl<'a> Parser<'a> {
                 self.at += 1;
                 self.test_block(true)?
             }
-            Tok::Impl => {
-                self.at += 1;
-                // `impl Contract for Type:` implements a contract; `impl Type:`
-                // declares the type's own methods.
-                let first = self.named_type()?;
-                let first = self.type_suffix(first)?;
-                let (contract, receiver) = if self.take(Tok::For) {
-                    let receiver = self.named_type()?;
-                    (Some(first), self.type_suffix(receiver)?)
-                } else {
-                    (None, first)
-                };
-                self.need(Tok::Colon)?;
-                self.need(Tok::Newline)?;
-                self.newlines();
-                let mut methods = Vec::new();
-                if self.take(Tok::Indent) {
-                    while self.kind() != Tok::Dedent {
-                        self.newlines();
-                        if self.kind() == Tok::Dedent {
-                            break;
-                        }
-                        if self.kind() == Tok::Export {
-                            let t = self.peek();
-                            return self.fail_fix(
-                                t,
-                                "a method is not exported by itself; it is visible wherever its type is, so remove 'export' and export the type",
-                                "",
-                            );
-                        }
-                        let mutating = self.take(Tok::Var);
-                        self.need(Tok::Fn)?;
-                        let name = self.need(Tok::Name)?;
-                        methods.push(self.method_signature(name, true, true, mutating)?);
-                    }
-                    self.need(Tok::Dedent)?;
-                }
-                DeclKind::Impl(ImplDecl {
-                    contract,
-                    receiver,
-                    methods,
-                })
-            }
+            Tok::Impl => return self.fail(token, IMPL_REMOVED),
             Tok::Type | Tok::Enum | Tok::Interface => return self.type_declaration(token),
             Tok::Name
                 if self.text(token) == "opaque"
@@ -1571,7 +1549,7 @@ impl<'a> Parser<'a> {
                 if token.kind == Tok::Type {
                     let t = self.previous();
                     let names = type_param_names(self.names, &type_params);
-                    return self.fail(t, format!("a type declares only record fields; write its methods in an 'impl {name_t}{names}:' block, or implement an interface with 'impl <Interface> for {name_t}{names}:'", name_t = self.names.str(name)));
+                    return self.fail(t, format!("a type declares only record fields; write its methods after it as 'fn {name_t}{names}.name(...)'", name_t = self.names.str(name)));
                 }
                 let mname = self.need(Tok::Name)?;
                 let m = self.method_signature(mname, true, false, mutating)?;

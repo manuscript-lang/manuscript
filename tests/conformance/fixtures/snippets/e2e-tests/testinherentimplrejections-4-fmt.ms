@@ -4,6 +4,5 @@
 type B[T]:
     x: T
 
-impl B:
-    fn f() Int:
-        return 1
+fn B.f() Int:
+    return 1

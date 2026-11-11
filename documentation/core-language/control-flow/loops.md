@@ -96,7 +96,7 @@ fn total(values: Map[String, Int]) Int:
     return sum
 ```
 
-`for [key, value] in values:` is a type error: a `MapEntry` is a record, so write `for {key, value} in values:`. Numbers, text, optionals, functions, and types that merely have a `next` method without `impl Iterator` are not iterable. Each iteration has a new scope; assigning to the loop variable is rejected, but an outer `var` can change.
+`for [key, value] in values:` is a type error: a `MapEntry` is a record, so write `for {key, value} in values:`. Numbers, text, optionals, functions, and types without a `next` method of the `Iterator` shape are not iterable. Each iteration has a new scope; assigning to the loop variable is rejected, but an outer `var` can change.
 
 ## Destructuring the element
 

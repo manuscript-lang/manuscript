@@ -126,13 +126,24 @@ impl FnLower<'_> {
     fn fixture_hook(&mut self, fixture: &ct::Ty, name: &str) -> Option<Rc<Callable>> {
         let key = self.cx.tys.shape(fixture);
         let tys = &mut self.cx.tys;
-        let m = self.cx.methods.iter().find(|m| {
-            m.contract
-                .as_ref()
-                .is_some_and(|c| c.is_test_hooks(self.syms))
-                && tys.shape(&m.receiver) == key
-                && m.name().is_some_and(|n| self.syms.str(n) == name)
-        })?;
+        let named = |m: &ct::MethodRef| m.name().is_some_and(|n| self.syms.str(n) == name);
+        let m =
+            self.cx
+                .methods
+                .iter()
+                .find(|m| {
+                    m.contract
+                        .as_ref()
+                        .is_some_and(|c| c.is_test_hooks(self.syms))
+                        && tys.shape(&m.receiver) == key
+                        && named(m)
+                })
+                // A fixture's own hook of that name needs no `impl TestHooks`.
+                .or_else(|| {
+                    self.cx.methods.iter().find(|m| {
+                        m.is_inherent(self.syms) && named(m) && tys.shape(&m.receiver) == key
+                    })
+                })?;
         let decl = m.decl.as_ref()?;
         self.callable_of_decl(m.module, Some(decl.id())).ok()
     }

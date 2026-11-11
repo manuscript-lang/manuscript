@@ -11,8 +11,7 @@ fn compare[T: Compare[T]](first: T, second: T) Int: first.compare(second)
 type Key:
     value: Int
 
-impl Compare[Key] for Key:
-    fn compare(other: Key) Int: self.value - other.value
+fn Key.compare(other: Key) Int: self.value - other.value
 
 test "interface bounds may reference their parameter":
     expect_equal(compare(Key(7), Key(4)), 3)?

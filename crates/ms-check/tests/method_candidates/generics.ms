@@ -4,20 +4,17 @@ interface Value[T]:
 type Box[T]:
     value: T
 
-impl Value[T] for Box[T]:
-    fn read() T:
-        return self.value
+fn Box[T].read() T:
+    return self.value
 
-impl Box[T]:
-    fn pick[U](other: U) U:
-        return other
+fn Box[T].pick[U](other: U) U:
+    return other
 
 type Bounded[T: Equal]:
     value: T
 
-impl Bounded[T]:
-    fn read() T:
-        return self.value
+fn Bounded[T].read() T:
+    return self.value
 
 fn exercise(x: Box[Int], y: Box[String], z: Bounded[Int]) Int:
     a := x.read()

@@ -3,9 +3,8 @@ import other from "./other.ms"
 type Box:
     value: Int
 
-impl Box:
-    fn read() Int:
-        return self.value
+fn Box.read() Int:
+    return self.value
 
 type Item:
     value: Int

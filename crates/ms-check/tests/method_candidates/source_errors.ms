@@ -1,8 +1,7 @@
 type Counter:
 	value: Int
 
-impl Counter:
-	fn next(amount: Int = 1) Counter: Counter(self.value + amount)
+fn Counter.next(amount: Int = 1) Counter: Counter(self.value + amount)
 
 fn make(value: Int) Counter: Counter(value)
 

@@ -7,9 +7,8 @@ interface Add:
 type Offset:
     value: Int
 
-impl Add for Offset:
-    fn add(value: Int = self.value) Int:
-        return value
+fn Offset.add(value: Int = self.value) Int:
+    return value
 
 fn call(value: Add) Int:
     return value.add()

@@ -9,5 +9,4 @@ type Holder[T: Equal = Callback]:
 interface Factory:
     fn create[T: Equal = Callback](value: T) Int
 
-impl Callback:
-    fn read[T: Equal = Callback](value: T) Int: return 0
+fn Callback.read[T: Equal = Callback](value: T) Int: return 0

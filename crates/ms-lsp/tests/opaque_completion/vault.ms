@@ -1,9 +1,8 @@
 export opaque type Vault[T]:
     secret: T
 
-impl Vault[T]:
-    fn size() Int:
-        return 1
+fn Vault[T].size() Int:
+    return 1
 
 export type Open[T]:
     value: T

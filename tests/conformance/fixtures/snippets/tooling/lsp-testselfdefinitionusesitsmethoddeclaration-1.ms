@@ -7,6 +7,5 @@ interface Read:
 type Box:
     value: Int
 
-impl Read for Box:
-    fn get() Int:
-        return self.value
+fn Box.get() Int:
+    return self.value

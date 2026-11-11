@@ -9,13 +9,11 @@ interface SameValue[T: Equal]:
 type Box[T]:
 	value: T
 
-impl ReadValue[T] for Box[T]:
-	fn get() T:
-		return self.value
+fn Box[T].get() T:
+	return self.value
 
-impl SameValue[T] for Box[T]:
-	fn same(other: T) Bool:
-		return self.value == other
+fn Box[T: Equal].same(other: T) Bool:
+	return self.value == other
 
 fn compare[T: Equal](box: Box[T], other: T) Bool:
 	return box.same(other)

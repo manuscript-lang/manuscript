@@ -38,7 +38,7 @@ fn main() Unit!:
 - A line-ending `:` needs an indented body. Inline `if c: return x` exits early; align `else` on a new line. Leading `|` or `.` continues a line.
 - Imports: `import a, b from "x.ms"`; `export` shares declarations.
 - Records: `type T:` with fields (`tag: String = "x"`); construct `T(a: 1)` or `T(1)`. `enum Choice:` declares `A`, `B(x: Int)`; no `case` keyword.
-- Methods: `fn T.name() Unit`; `fn var` mutates self. An `interface I:` is met by matching methods or `impl I for T:`. `export opaque` hides fields/cases outside the file.
+- Methods: `fn T.name() Unit`; `fn var` mutates self. An `interface I:` is met by a type with matching methods. `export opaque` hides fields/cases outside the file.
 - Collections: `[1, 2]`, `List[T](reserve: n)`, `Map[K, V]()`, `Set[T]()`. Use `var` for `xs[i] = v`, `m[k] = v`. `xs.slice(a, b)` returns a Result. `m.get(k)` returns an Optional; `m.get_or(k, d)` supplies a default. Iterate `for e in m.entries():`; `if var n = m[k]?: n += 1` updates a present value in place.
 - List methods: `xs | .filter(fn x: x > 0) | .map(fn x: x * 2) | .sum()`. `x | f(a: 1) | g? | .m()` means `(g(f(x, a: 1))?).m()`.
 
@@ -57,7 +57,7 @@ fn main() Unit!:
 - Storing in a collection/record moves ownership, invalidating the old name. Use `.clone()` for another owner. Copy borrowed parts before storage: `names.append(u.name.clone())`.
 - Return parts by borrow: `fn name(u: User) String: return u.name`. Clone for a new owner, including borrowed paths mixed with owned returns.
 - Mutate: `fn add(var xs: List[Int]) Unit`, called `add(var xs)`. A closure mutating xs cannot go to a method of xs.
-- Closeable closes at scope end unless moved. Use `impl Closeable for T:` or `fn var T.close() Unit!`; a failed close is returned or faults.
+- Closeable closes at scope end unless moved. Give it `fn var T.close() Unit!`; a failed close is returned or faults.
 
 ## Effects, promises and streams
 

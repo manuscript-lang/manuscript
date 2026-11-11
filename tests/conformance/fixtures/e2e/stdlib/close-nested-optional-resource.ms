@@ -7,9 +7,8 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-impl Closeable for Door:
-    var fn close() Unit!:
-        print("closed {self.name}")
+fn var Door.close() Unit!:
+    print("closed {self.name}")
 
 fn nested(n: String) Door??:
     inner: Door? := Door(n)

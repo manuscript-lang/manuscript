@@ -3,9 +3,8 @@ import Closeable from "@std/core.ms"
 type Gate:
     id: Int
 
-impl Closeable for Gate:
-    var fn close() Unit!:
-        print("close {self.id}")
+fn var Gate.close() Unit!:
+    print("close {self.id}")
 
 type Holder:
     gate: Gate

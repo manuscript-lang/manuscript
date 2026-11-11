@@ -3,9 +3,8 @@ import Closeable from "@std/core.ms"
 type Res:
     id: Int
 
-impl Closeable for Res:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Res.close() Unit!:
+    return ok(unit)
 
 enum Holder:
     Has(r: Res)

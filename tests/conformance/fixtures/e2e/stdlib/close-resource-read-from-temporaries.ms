@@ -7,16 +7,14 @@ import Closeable from "@std/core.ms"
 type Door:
     name: String
 
-impl Closeable for Door:
-    var fn close() Unit!:
-        print("closed {self.name}")
+fn var Door.close() Unit!:
+    print("closed {self.name}")
 
 interface Labeled:
     fn label() String
 
-impl Labeled for Door:
-    fn label() String:
-        return self.name.clone()
+fn Door.label() String:
+    return self.name.clone()
 
 type Pair:
     a: Door

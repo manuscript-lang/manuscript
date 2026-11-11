@@ -31,26 +31,25 @@ fn read_to_end(var input: ReadStream[Bytes]) Bytes!:
 // Hands out its parts one chunk at a time, then reports the end of the stream.
 type Chunks:
     parts: List[String]
-    next: Int = 0
+    at: Int = 0
     failure: String?
 
-impl Source[Bytes] for Chunks:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Chunks.close() Unit!:
+    return ok(unit)
 
-    var fn next() Bytes?!:
-        if self.next == self.parts.length():
-            match self.failure:
-                message: return error(
-                    Error(
-                        message.clone(), kind: "EIO"
-                    )
+fn var Chunks.next() Bytes?!:
+    if self.at == self.parts.length():
+        match self.failure:
+            message: return error(
+                Error(
+                    message.clone(), kind: "EIO"
                 )
-                none: return ok(none)
+            )
+            none: return ok(none)
 
-        chunk := self.parts[self.next]
-        self.next += 1
-        return ok(chunk.to_bytes())
+    chunk := self.parts[self.at]
+    self.at += 1
+    return ok(chunk.to_bytes())
 
 fn echo(request: HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: request.body.clone())

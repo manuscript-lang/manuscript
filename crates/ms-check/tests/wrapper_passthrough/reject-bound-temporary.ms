@@ -3,11 +3,9 @@ import Closeable from "@std/core.ms"
 type Marker:
     id: Int
 
-impl Closeable for Marker:
-    var fn close() Unit!: ok(unit)
+fn var Marker.close() Unit!: ok(unit)
 
-impl Marker:
-    fn identity() Marker: self
+fn Marker.identity() Marker: self
 
 fn marker() Marker!Error: ok(Marker(1))
 

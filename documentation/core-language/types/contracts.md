@@ -5,7 +5,7 @@ weight = 7
 
 # Interfaces and implementations
 
-An interface is an operation contract: implementations must supply the declared operations and signatures. Use it when callers should depend on behavior, not a data type. Signatures follow the ordinary [function rules](../functions/declarations-and-calls.md).
+An interface is an operation contract: a type satisfies it by having methods with the declared operations and signatures. Use it when callers should depend on behavior, not a data type. Signatures follow the ordinary [function rules](../functions/declarations-and-calls.md).
 
 Save as `adjust.ms` and run `ms run adjust.ms`:
 
@@ -31,30 +31,23 @@ fn main() Unit:
 12
 ```
 
-`adjusted` knows the operation it can call. `Offset` supplies that operation through its explicit implementation; another type can supply a different one without changing `adjusted`.
+`adjusted` knows the operation it can call. `Offset` supplies it with an ordinary method, and another type can supply a different one without changing `adjusted`.
 
-## Explicit implementations
+## Methods
 
-Methods are written in `impl` blocks, never inside the `type`. `impl DataType:` declares the type's own methods and `impl Contract for DataType:` implements an interface; without `for` the one name is the type, with it the interface comes first. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`; see [explicit implementations](#explicit-implementations). An interface is also satisfied [by shape](#satisfying-an-interface-by-shape): a type's own methods that match every operation exactly need no `impl Contract for` block.
+A type's methods are declared beside it, never inside the `type`. A receiver method is `fn Type.name(...)`; one that changes `self` is `fn var Type.name(...)`. A generic type repeats its parameters, `fn Box[T].get() T`. `self` is an implicit binding of the receiver type in each method; it is not a parameter and cannot be redeclared. A method may declare [type parameters of its own](#generic-operations).
 
-`impl DataType:` is accepted only in the module that declares the type; to add operations to another module's type, declare an interface and use a [local extension](#coherence-and-visibility). Several own-method blocks merge, and method names must be unique across them. The standard library declares its methods the same way. A method may declare [type parameters of its own](#generic-operations).
+A method is declared in the module that declares its type, and travels with the type wherever the type is used. To add operations to another module's type, write a free function or a wrapper type. There is no inheritance and no default implementation. A free function `fn reset(counter: Counter)` is called `reset(counter)`, never `counter.reset()`.
 
-In the example above, `impl Increment for Offset` supplies `apply` and reads the offset's `delta` through `self`.
+A type has one method per name. A second method of the same name on one receiver is an error, so one `close` or one `read` serves every interface that asks for it.
 
-`self` is an implicit binding of the concrete receiver type in each method; it is not a parameter and cannot be redeclared.
+A receiver may add bounds, `fn Box[T: Equal].same(other: T) Bool`, so the method exists only where the arguments satisfy them, or fix an argument, `fn List[Int].sum() Int`. Methods of one name on receivers with different bounds or arguments are separate declarations; a call picks the one whose receiver matches.
 
-After substituting generic arguments, an implementation must match the contract exactly: every operation once, with the same name, parameter labels, order, and types, and result type. Missing, extra, duplicate, or mismatched operations are compile errors; interface implementations preserve argument labels even though labels are not part of [function-value type identity](../functions/function-values-and-closures.md#function-type-compatibility). An operation that changes its receiver is `var fn` in the interface and in every impl; a mismatch in either direction is a compile error. A `var` parameter is the same: an operation that changes a caller's value declares it `var` in the interface and in every impl, and a call marks the argument `var` as for any [function](../functions/function-values-and-closures.md). A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) for calls on the concrete receiver, but view calls use the interface signature. An operation may declare [type parameters of its own](#generic-operations); the implementation repeats them with the same bounds.
+A method may add [defaults](../functions/declarations-and-calls.md#default-arguments) to its parameters. A call on the concrete receiver uses them; a call through an interface value uses the interface signature, which carries the interface's own defaults.
 
-```manuscript
-// Rejected: amount does not match the contract's value label.
-impl Increment for Offset:
-    fn apply(amount: Int) Int:
-        return amount + self.delta
-```
+## Satisfying an interface
 
-## Satisfying an interface by shape
-
-A type's own methods satisfy an interface when each operation has one own method with the same name, parameter labels, `var`-ness, parameter types and result type; the operation declares no type parameters of its own. An own method is declared `impl Type:` or as a receiver method, `fn Type.name(...)` (`fn var Type.name(...)` when it changes `self`; a generic type repeats its parameters, `fn Box[T].get() T`). A type has one method per name, so one `close` serves every interface that declares it.
+A type satisfies an interface when each operation has one own method with the same name, parameter labels, `var`-ness, parameter types and result type. Nothing is declared: the methods are the declaration. After substituting generic arguments the methods must match the interface exactly: every operation once, under the same labels, order, types and result. An operation that changes its receiver is `var fn` in the interface and `fn var Type.name` on the type, though a method that does not change `self` also meets it. A `var` parameter is the same: an operation that changes a caller's value declares it `var` in both, and a call marks the argument `var` as for any [function](../functions/function-values-and-closures.md). Interface implementations preserve argument labels even though labels are not part of [function-value type identity](../functions/function-values-and-closures.md#function-type-compatibility).
 
 <!-- manuscript-example: {"mode":"run","stdout":"3\n"} -->
 ```manuscript
@@ -78,51 +71,31 @@ fn main() Unit:
 3
 ```
 
-- A written `impl Contract for Type` still wins for that interface. A type that has both an own method and an `impl` operation of one name is [ambiguous](#selecting-an-operation) on a call.
-- A mismatch is not an error until the type is used as the interface; the diagnostic lists the interface's operations.
-- A type with `fn var close() Unit!` satisfies `Closeable` and is closed at scope end, so a type that is also a `Source` and a `Sink` closes once.
-- Properties (`Equal`, `Hashable`, `Clonable`, `Data`) and `Comparable` keep their own rules; a shape does not satisfy them.
+- A mismatch is not an error until the type is used as the interface; the diagnostic lists the first operation that is missing or differs.
+- A type with `fn var close() Unit!` satisfies `Closeable` and is closed at scope end, so a type that is also a `Source` and a `Sink` closes once. Make such a `close` safe to call again when an owner also closes the value.
+- `Comparable`, `Equal`, `Hashable` and `JsonEncode` are met by an own `compare`, `equals`, `hash` or `to_json` of the exact signature. `Clonable`, `Data` and `Copy` are properties the compiler derives from a type's fields; they are not declared.
+- Operations with type parameters of their own are met by a method that repeats them with the same bounds ([generic operations](#generic-operations)).
+
+```text
+// Rejected: amount does not match the interface's value label.
+fn Offset.apply(amount: Int) Int:
+    return amount + self.delta
+```
 
 ## Coherence and visibility
 
-An implementation in the type's defining module is available wherever the type is used. One declared for an imported source type is a **local extension**, visible only in the declaring module. The interface may be local or imported. For example, `offset.ms` exports a type:
+A method is available wherever its type is used, and satisfying an interface follows from the methods, so it is the same in every module. There are no per-module extensions: a module cannot add methods to a type it imports, and a `Map` or `Set` always uses its key type's own `equals` and `hash`, or structural equality when it has none.
 
-```text
-export type Offset:
-    delta: Int
-```
+- Receivers must be source-defined types or enums declared in the same module. The standard library gives its own types and the built-in scalars their methods the same way.
+- Interfaces may be generic but have at least one operation and no fields, cases, default bodies, associated types, or static operations.
+- Exported interfaces expose every operation, under the [public surface rules](named-types.md#public-data-surfaces).
+- A type exports its methods by being exported; a method is never exported by itself.
 
-Another module can add its own implementation:
+## Generic receivers
 
-```text
-import Offset from "./offset.ms"
+A receiver names its declaration's generic parameters; matching the receiver determines every argument.
 
-export interface Double:
-    fn doubled() Int
-
-impl Double for Offset:
-    fn doubled() Int:
-        return self.delta * 2
-
-export fn double_view(value: Offset) Double:
-    return value
-```
-
-Here `Offset(delta: 3).doubled()` returns `6`, but importing `double_view` or `Double` elsewhere does not add `doubled` to raw `Offset` values. `double_view(Offset(delta: 3)).doubled()` works anywhere because the returned interface value retains the implementation.
-
-- Each module sees the defining module's implementations plus its own extensions. Duplicate or overlapping receiver/contract pairs in that set are rejected, including replacing a defining-module implementation.
-- Separate modules may define the same local pair; extensions never propagate through imports.
-- Views, bound methods, and specialized generics keep the implementation selected where they were created; a raw concrete value carries no extra conformance into another module.
-- A `Map` or `Set` whose key type has a local `Equal` or `Hashable` keeps the implementations of the module that created it, including when another module adds, removes, or looks up keys; a collection created where the type has none keeps structural equality.
-- Receivers must be source-defined nominal types or enums. Standard-library receivers, interfaces, bare type parameters, specialization, and implementation inheritance are unsupported.
-- Contracts may be generic but have at least one operation and no fields, cases, default bodies, associated types, or static operations.
-- Implementations re-export neither their type nor their contract. Exported contracts expose every operation, under the [public surface rules](named-types.md#public-data-surfaces).
-- Same-named operations from different interfaces need an [interface-typed binding](#selecting-an-operation).
-
-## Generic implementations
-
-An implementation uses its receiver declaration's generic parameters; only those occurring in the receiver application are in scope, and matching the receiver determines every argument. Interface parameter substitution is positional. Undeclared names are rejected: `impl ReadValue[U] for Box[U]` fails when `Box` declares only `T`.
-
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 interface ReadValue[T]:
     fn get() T
@@ -134,50 +107,41 @@ fn Box[T].get() T:
     return self.value.clone()
 ```
 
-This covers `Box[Int]`, `Box[String]`, and every other well-formed application. Bounds are inherited from the receiver declaration and, for interface arguments that are receiver parameters, the interface declaration. The body is checked once under them with `self: Box[T]`, and they must prove every nested application and operation legal. At a use, the matched arguments must satisfy them; a concretely specialized parameter is substituted into other bounds (`Pair[A, B: ReadValue[A]]` with receiver `Pair[Int, B]` gives `B: ReadValue[Int]`).
+This covers `Box[Int]`, `Box[String]`, and every other well-formed application. Bounds are inherited from the receiver declaration and from any bound written on the receiver. The body is checked once under them with `self: Box[T]`, and they must prove every nested application and operation legal. At a use, the matched arguments must satisfy them.
 
-Interface parameter bounds can restrict an implementation without restricting the data type:
+A bound written on the receiver restricts one method without restricting the data type:
 
+<!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 interface SameValue[T: Equal]:
     fn same(other: T) Bool
 
-impl SameValue[T] for Box[T]:
-    fn same(other: T) Bool:
-        return self.value == other
+type Box[T]:
+    value: T
+
+fn Box[T: Equal].same(other: T) Bool:
+    return self.value == other
 ```
 
-A `Box[T]` without `T: Equal` cannot use this implementation.
-
-Two blocks overlap if their receiver and contract applications can match the same pair, found by structural unification with distinct variables per block; bounds are ignored. Overlap among implementations visible in a module is rejected at declaration, used or not. There is no most-specific selection.
-
-```manuscript
-// Rejected alongside the generic block above: both apply to Box[Int].
-impl ReadValue[Int] for Box[Int]:
-    fn get() Int:
-        return self.value
-```
-
-`ReadValue[Int]` and `ReadValue[String]` on one receiver are distinct pairs but share `get`, so dispatch needs an interface-typed binding. Specialization follows the [finite-application rules](generics.md#finite-recursive-applications).
+A `Box[T]` without `T: Equal` has no `same`. A receiver may also fix an argument, `fn Box[Int].total() Int`; it applies to `Box[Int]` only. Two receiver forms that could match the same application and declare one name are rejected, as are two methods of one name on the same form.
 
 ## Generic operations
 
-An interface operation, an implementation method and an inherent method may declare type parameters after their name. The implementation repeats the interface operation's parameters in the same order with the same bounds, and its signature must match once they are renamed.
+An interface operation and a method may declare type parameters after their name. The method repeats the operation's parameters in the same order with the same bounds, and its signature must match once they are renamed.
 
-```manuscript
+```text
 interface Ranked[T]:
     fn best_by[K: Comparable](key: fn(T) K) T?
 
-impl Ranked[Int] for Scores:
-    fn best_by[K: Comparable](key: fn(Int) K) Int?:
-        ...
+fn Scores.best_by[K: Comparable](key: fn(Int) K) Int?:
+    ...
 ```
 
 A call infers the operation's parameters from its arguments, or takes them explicitly: `scores.best_by[Int](key)`. Dispatch is static and each use is monomorphized, so the operation works on a concrete receiver and through a type parameter bounded by the interface. An interface with a generic operation cannot be the type of a value, because a method table has no entry for an operation whose types are not yet known; converting to it is rejected. The standard `List` uses this for `max_by` and `min_by` (`stdlib/collections/collections.ms`).
 
 ## Interface conversion
 
-A value whose type has a declared implementation of an interface converts implicitly wherever that interface is expected: arguments, `:=` with a type annotation, fields, collection entries, and returns. The relationship is declared (`impl Contract for Type`) or [by shape](#satisfying-an-interface-by-shape): a type's own methods match every operation. A method name alone never converts. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
+A value whose type satisfies an interface converts implicitly wherever that interface is expected: arguments, `:=` with a type annotation, fields, collection entries, and returns. The type's own methods [match every operation](#satisfying-an-interface); a method name alone never converts. Existing views of the same application are identity, and other interface-to-interface conversions and unchecked downcasts are rejected; a [contract type match](../control-flow/pattern-matching.md#contract-type-patterns) can recover the concrete receiver by runtime nominal check.
 
 The conversion follows the [ownership rules](https://github.com/manuscript-lang/manuscript/blob/main/crates/ms-check/OWNERSHIP.md) of its position: a read-only argument borrows the operand, so it stays usable afterwards, while a stored position (field, collection entry, `:=`, return) moves it at its last use or needs `.clone()` otherwise. A borrowed operand becomes a view: the interface value points at the operand without copying it, and the operand stays unchangeable while the view is used ([references](references.md#borrowing)). Only an interface with a `var fn` operation copies a borrowed operand, since a call through it may change the value.
 
@@ -195,9 +159,9 @@ An interface is never constructed: `Increment(value: offset)` is rejected, so an
 
 ### Selecting an operation
 
-A receiver or generic parameter may call an operation directly when exactly one implemented or bounded contract supplies that name. Otherwise bind the value to one interface and call through it: `view: Increment = offset` then `view.apply(value: 1)`; arguments and result types never disambiguate. A bound method keeps its receiver and has the operation's ordinary function type.
+A type has one method per name, so a call on a concrete receiver, a generic parameter or an interface value names one operation. Interfaces that declare the same name and signature are met by that one method. A bound method keeps its receiver and has the operation's ordinary function type.
 
-A contract type satisfies its own exact generic bound without an `impl`: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
+An interface type satisfies its own exact generic bound: `Converter[Int]` satisfies `T: Converter[Int]`, not `T: Converter[String]`.
 
 ```manuscript
 fn invoke[T: Increment](operation: T) Int:

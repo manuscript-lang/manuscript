@@ -3,9 +3,8 @@ import Closeable from "@std/core.ms"
 type Door:
     id: Int
 
-impl Closeable for Door:
-    var fn close() Unit!:
-        return ok(unit)
+fn var Door.close() Unit!:
+    return ok(unit)
 
 fn dupe[T](xs: List[T]) Int:
     ys := xs.reversed()  // error: reversed requires T to be Clonable

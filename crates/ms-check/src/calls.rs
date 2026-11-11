@@ -1063,12 +1063,12 @@ mod argument_tests {
     #[test]
     fn generic_source_method_value_needs_type_arguments() {
         let syms = ms_syntax::Names::global();
-        let source = "type Out:\n    n: Int\nimpl Out:\n    fn put[F](value: F) Int:\n        return 1\nfn bare(o: Out) Unit:\n    g := o.put\nfn fixed(o: Out) Unit:\n    g := o.put[Int]\n    n := o.put(1)\n";
+        let source = "type Out:\n    n: Int\nfn Out.put[F](value: F) Int:\n    return 1\nfn bare(o: Out) Unit:\n    g := o.put\nfn fixed(o: Out) Unit:\n    g := o.put[Int]\n    n := o.put(1)\n";
         let p = check(syms, source);
         let messages: Vec<_> = p.diagnostics.iter().map(|d| d.message.as_str()).collect();
         assert_eq!(messages.len(), 1, "{messages:?}");
         assert!(messages[0].starts_with("a generic method value requires"));
-        assert_eq!(p.diagnostics[0].pos.line, 7);
+        assert_eq!(p.diagnostics[0].pos.line, 6);
     }
 
     #[test]

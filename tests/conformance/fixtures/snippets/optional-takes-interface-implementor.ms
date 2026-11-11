@@ -9,8 +9,7 @@ interface Shape:
 type Sq:
     n: Int
 
-impl Shape for Sq:
-    fn area() Int: self.n * self.n
+fn Sq.area() Int: self.n * self.n
 
 type Holder:
     s: Shape?

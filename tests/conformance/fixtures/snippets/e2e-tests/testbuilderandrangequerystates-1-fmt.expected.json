@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tCloseable from \"@std/core.ms\",\n\tStringBuilder from \"@std/string.ms\",\n)\n\ntype Resource:\n\tvisits: List[Int]\n\nimpl Closeable for Resource:\n\tvar fn close() Unit!:\n\t\tself.visits.append(1)\n"
+    "fmt": "import (\n\tCloseable from \"@std/core.ms\",\n\tStringBuilder from \"@std/string.ms\",\n)\n\ntype Resource:\n\tvisits: List[Int]\n\nfn var Resource.close() Unit!:\n\tself.visits.append(1)\n"
   }
 }

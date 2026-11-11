@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "interface I:\n\tfn n() Int\n\ntype Pair[A, B]:\n\ta: A\n\tb: B\n\nimpl I for Pair[A, A]:\n\tfn n() Int:\n\t\treturn 1\n\nexport fn main() Int:\n\treturn I(value: Pair[Int, String](a: 1, b: \"x\")).n()\n"
+    "fmt": "interface I:\n\tfn n() Int\n\ntype Pair[A, B]:\n\ta: A\n\tb: B\n\nfn Pair[A, A].n() Int:\n\treturn 1\n\nexport fn main() Int:\n\treturn I(value: Pair[Int, String](a: 1, b: \"x\")).n()\n"
   }
 }

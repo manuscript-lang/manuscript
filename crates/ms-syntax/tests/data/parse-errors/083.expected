@@ -1,1 +1,1 @@
-error parse 5:5:32 "a method is not exported by itself; it is visible wherever its type is, so remove 'export' and export the type"
+error parse 4:1:20 "'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it"
