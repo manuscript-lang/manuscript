@@ -463,7 +463,7 @@ impl FnLower<'_> {
         // moving a resource part out of a computed value). A wrapper (`Result`, `Optional`) may
         // have had its payload moved out already, so it closes only when it is itself one.
         if self.cx.classes.class(self.syms, &ty) != ms_check::api::ownership::Class::Resource
-            || (self.closeable_impl(&ty).is_none()
+            || (self.closeable_method(&ty).is_none()
                 && (ty.is(Builtin::Optional) || ty.is(Builtin::Result)))
         {
             return v;
@@ -1200,7 +1200,7 @@ impl FnLower<'_> {
                 .map(Some)
                 .ok_or_else(|| Error::new("interface without close"));
         }
-        let own = match cleanup.cloned().or_else(|| self.closeable_impl(&ty)) {
+        let own = match cleanup.cloned().or_else(|| self.closeable_method(&ty)) {
             Some(c) => Some(self.own_closer(&c, &ty)?),
             None => None,
         };
@@ -1257,8 +1257,8 @@ impl FnLower<'_> {
         Ok(CloseKind::Func { fid, writes_back })
     }
 
-    /// The `Closeable` implementation of a concrete type, if it has one.
-    fn closeable_impl(&self, ty: &ct::Ty) -> Option<ct::MethodRef> {
+    /// The `close` method of a concrete type that meets `Closeable`, if it has one.
+    fn closeable_method(&self, ty: &ct::Ty) -> Option<ct::MethodRef> {
         self.cx
             .methods
             .iter()
@@ -1285,7 +1285,7 @@ impl FnLower<'_> {
         if let TyKind::Iface(iface) = self.b.m.types.kind(mt).clone() {
             return Ok(self.iface_closer(iface));
         }
-        let own = match self.closeable_impl(ty) {
+        let own = match self.closeable_method(ty) {
             Some(m) => Some(self.own_closer(&m, ty)?),
             None => None,
         };
