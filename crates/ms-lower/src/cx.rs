@@ -85,6 +85,11 @@ pub enum HelperKey {
         in_slot: bool,
     },
     Thunk(FuncId),
+    /// How a failed scope-end close becomes the return of a function of the given type: the
+    /// close's `Result` type, the function's return type, and whether a pending return is held.
+    CloseExit(MTy, MTy, bool),
+    /// The function that runs a slot close and returns its `Result`.
+    CloseResult(FuncId),
     DefaultThunk {
         fid: FuncId,
         fty: MTy,

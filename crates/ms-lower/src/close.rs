@@ -647,20 +647,155 @@ impl FnLower<'_> {
     }
 
     /// [`Self::bind_closing`] with the close operation already chosen.
+    /// The `Result` type a close function returns, when its close can fail.
+    fn close_result_ty(&self, kind: &CloseKind) -> Option<MTy> {
+        let CloseKind::Func { fid, .. } = kind else {
+            return None;
+        };
+        let r = self.b.m.funcs[fid.index()].ret;
+        matches!(self.b.m.types.kind(r), TyKind::Alt(a) if self.b.m.alts[a.index()].std == Std::Result)
+            .then_some(r)
+    }
+
+    /// Whether the elaborate pass can return a failed close of this function: the function
+    /// leaves by a plain return, with no frame work that only `emit_return` does.
+    fn fallible_close_ok(&mut self, kind: &CloseKind) -> bool {
+        self.close_result_ty(kind).is_some()
+            && !self.b.func_mut().ret_borrowed
+            && !self.b.func_mut().ret_view
+            && self.var_slots.is_empty()
+            && self.default_frames.is_empty()
+            && self.fixture.is_none()
+    }
+
+    /// Gives the slot close `thunk` the function that returns its `Result`, and this function
+    /// the exit that turns a failed close into its return value.
+    fn fallible_slot_close(&mut self, kind: &CloseKind, ty: MTy, thunk: FuncId) {
+        let Some(rty) = self.close_result_ty(kind) else {
+            return;
+        };
+        if self.b.m.funcs[thunk.index()].slot_result.is_none() {
+            let key = HelperKey::CloseResult(thunk);
+            let rc = match self.cx.helpers.get(&key) {
+                Some(f) => *f,
+                None => {
+                    let ps = vec![Param {
+                        ty: MTy::PTR,
+                        mode: Mode::Borrow,
+                    }];
+                    let mut b = FuncBuilder::new(self.b.m, "close", ps, rty);
+                    b.func_mut().linkage = Linkage::Internal;
+                    b.func_mut().kind = FuncKind::Normal;
+                    let p = b.params()[0];
+                    let r = close_at_result(&mut b, kind, p, ty);
+                    b.ret(Some(r));
+                    let f = b.into_func();
+                    let id = self.b.m.add_func(f);
+                    self.cx.helpers.insert(key, id);
+                    id
+                }
+            };
+            self.b.m.funcs[thunk.index()].slot_result = Some(rc);
+        }
+        let exit = (self.close_exit(rty, false), self.close_exit(rty, true));
+        self.b.func_mut().close_exit = Some(exit);
+    }
+
+    /// The function that returns a failed close `e` of type `rty` as this function's result;
+    /// with `pending`, it also takes the value the function was already returning, which stays
+    /// when it is an error (the first error wins).
+    fn close_exit(&mut self, rty: MTy, pending: bool) -> FuncId {
+        let ret = self.ret_ty;
+        let key = HelperKey::CloseExit(rty, ret, pending);
+        if let Some(f) = self.cx.helpers.get(&key) {
+            return *f;
+        }
+        let mut ps = vec![Param {
+            ty: rty,
+            mode: Mode::Move,
+        }];
+        if pending {
+            ps.push(Param {
+                ty: ret,
+                mode: Mode::Move,
+            });
+        }
+        let mut b = FuncBuilder::new(self.b.m, "close_exit", ps, ret);
+        b.func_mut().linkage = Linkage::Internal;
+        b.func_mut().kind = FuncKind::Normal;
+        let e = b.params()[0];
+        if pending {
+            let held = b.params()[1];
+            let is_result = matches!(b.m.types.kind(ret), TyKind::Alt(a)
+                if b.m.alts[a.index()].std == Std::Result);
+            if is_result {
+                let tag = b.alt_tag(held);
+                let error = b.iconst(Std::ERROR as i64);
+                let is_error = b.icmp(Cc::Eq, tag, error);
+                let (keep, replace) = (b.new_block(), b.new_block());
+                b.br_if(is_error, keep, &[], replace, &[]);
+                b.seal_block(keep);
+                b.seal_block(replace);
+                b.switch_to(keep);
+                if b.m.needs_drop(rty) {
+                    b.emit(Op::Drop, &[e], Imm::None, None);
+                }
+                b.ret(Some(held));
+                b.switch_to(replace);
+            }
+            if b.m.needs_drop(ret) {
+                b.emit(Op::Drop, &[held], Imm::None, None);
+            }
+        }
+        let TyKind::Alt(a) = b.m.types.kind(rty).clone() else {
+            unreachable!("a fallible close returns a Result")
+        };
+        let err = Std::ERROR;
+        let returned = match b.m.types.kind(ret).clone() {
+            TyKind::Alt(ra)
+                if b.m.alts[ra.index()].std == Std::Result
+                    && b.m.alts[ra.index()].cases[err].fields[0].1
+                        == b.m.alts[a.index()].cases[err].fields[0].1 =>
+            {
+                Some(ra)
+            }
+            _ => None,
+        };
+        match returned {
+            Some(ra) => {
+                let po = b.alt_take(a, err as u32, 0, e);
+                b.alt_release(a, err as u32, 1, e);
+                let out = b.alt_new(ra, err as u32, &[po]);
+                b.ret(Some(out));
+            }
+            None => {
+                close_error_fault(&mut b, e);
+                b.unreachable();
+            }
+        }
+        let f = b.into_func();
+        let id = self.b.m.add_func(f);
+        self.cx.helpers.insert(key, id);
+        id
+    }
+
     /// Whether the elaborate pass can close the owned binding that lives in memory: nothing moves
     /// or closes it by hand, its close cannot fail, and no closer of its scope was declared
     /// before it (the pass closes at the scope end, after the scope's other closers).
-    fn raw_closable(&self, binding: &ct::BindingRef, kind: &CloseKind, owned: bool) -> bool {
+    fn raw_closable(&mut self, binding: &ct::BindingRef, kind: &CloseKind, owned: bool) -> bool {
         let uid = binding.uid;
-        let own = &self.cx.ownership;
         let CloseKind::Func { fid, .. } = kind else {
             return false;
         };
+        let unit_close = self.b.m.funcs[fid.index()].ret == MTy::UNIT;
+        if !unit_close && !self.fallible_close_ok(kind) {
+            return false;
+        }
+        let own = &self.cx.ownership;
         owned
             && !self.dead
             && !binding.mutable
             && self.scope_closes_nothing()
-            && self.b.m.funcs[fid.index()].ret == MTy::UNIT
             && !own.moves.contains_key(&uid)
             && !own.close_moves.contains_key(&uid)
             && !own
@@ -712,6 +847,9 @@ impl FnLower<'_> {
         {
             // The elaborate pass closes it where its scope ends, shielded, and drops what is left.
             let thunk = self.close_thunk(&kind, ty, true);
+            if self.close_result_ty(&kind).is_some() {
+                self.fallible_slot_close(&kind, ty, thunk);
+            }
             if let Some(scope) = self.scopes.last_mut() {
                 scope.retain(|u| *u != binding.uid);
             }
