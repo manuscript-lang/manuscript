@@ -37,6 +37,22 @@ abi_record! {
     }
 }
 
+abi_record! {
+    /// `BinaryFloatParts`, in declaration order.
+    pub struct BinaryFloatPartsOut {
+        pub fraction: f64,
+        pub exponent: i64,
+    }
+}
+
+abi_record! {
+    /// `FloatParts`, in declaration order.
+    pub struct FloatPartsOut {
+        pub integer: f64,
+        pub fraction: f64,
+    }
+}
+
 macro_rules! unary {
     ($($sym:ident => $f:path),* $(,)?) => {$(
         native! { safe fn $sym(v: f64) -> f64 { $f(v) } }
@@ -142,6 +158,18 @@ native! {
     }
 
     // ms: leaf
+    fn msstd_math_frexp(value: f64) -> out BinaryFloatPartsOut {
+        let (fraction, exponent) = libm::frexp(value);
+        BinaryFloatPartsOut { fraction, exponent: i64::from(exponent) }
+    }
+
+    // ms: leaf
+    fn msstd_math_modf(value: f64) -> out FloatPartsOut {
+        let (fraction, integer) = libm::modf(value);
+        FloatPartsOut { integer, fraction }
+    }
+
+    // ms: leaf
     safe fn msstd_math_ldexp(fraction: f64, exponent: i64) -> f64 {
         // Beyond i32's range every nonzero finite binary64 overflows or underflows.
         // Clamping preserves that result and all zero, infinity and NaN cases.
@@ -151,6 +179,29 @@ native! {
     // ms: leaf
     safe fn msstd_math_ieee_remainder(left: f64, right: f64) -> f64 {
         libm::remainder(left, right)
+    }
+
+    // ms: leaf
+    safe fn msstd_math_copy_sign(value: f64, sign: f64) -> f64 {
+        value.copysign(sign)
+    }
+
+    // ms: leaf
+    safe fn msstd_math_sign_bit(value: f64) -> bool {
+        value.is_sign_negative()
+    }
+
+    // ms: leaf
+    safe fn msstd_math_next_after(value: f64, toward: f64) -> f64 {
+        if value.is_nan() || toward.is_nan() {
+            f64::NAN
+        } else if value == toward {
+            toward
+        } else if value < toward {
+            value.next_up()
+        } else {
+            value.next_down()
+        }
     }
 
     // ms: leaf
@@ -179,6 +230,15 @@ native! {
         left % right
     }
 
+    // ms: leaf
+    safe fn msstd_math_is_integer(v: f64) -> bool {
+        is_integer(v)
+    }
+
+    // ms: leaf
+    safe fn msstd_math_is_safe_integer(v: f64) -> bool {
+        is_integer(v) && v.abs() <= MAX_SAFE_INTEGER as f64
+    }
 }
 
 /// `Math.round`: ties toward positive infinity, signed zero preserved.
@@ -204,3 +264,9 @@ fn sign(v: f64) -> f64 {
         v.signum()
     }
 }
+
+fn is_integer(v: f64) -> bool {
+    v.is_finite() && v == v.trunc()
+}
+
+const MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;

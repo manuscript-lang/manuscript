@@ -16,4 +16,6 @@ fn special_values() {
     assert_eq!(msstd_math_log(0.0), f64::NEG_INFINITY);
     assert_eq!(msstd_math_remainder(5.5, 2.0), 1.5);
     assert_eq!(msstd_math_hypot(3.0, 4.0), 5.0);
+    assert_eq!(msstd_math_is_integer(3.0), 1);
+    assert_eq!(msstd_math_is_integer(f64::INFINITY), 0);
 }

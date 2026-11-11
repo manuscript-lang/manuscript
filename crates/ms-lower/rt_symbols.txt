@@ -358,6 +358,9 @@ msstd_bigint_equal(handle a: *const ObjCell<Big>, handle other: *const ObjCell<B
 msstd_bigint_from_int(value: i64) -> *mut ObjCell<Big> @handle @domain=big integer @leaf
 msstd_bigint_from_seconds_nanos(seconds: i64, nanoseconds: i64) -> *mut ObjCell<Big> @handle @domain=big integer @leaf
 msstd_bigint_from_u64(value: i64) -> *mut ObjCell<Big> @handle @domain=big integer @leaf
+msstd_bigint_gcd(handle a: *const ObjCell<Big>, handle other: *const ObjCell<Big>) -> *mut ObjCell<Big> @handle @domain=big integer @leaf
+msstd_bigint_inverse_mod(handle a: *const ObjCell<Big>, handle modulus: *const ObjCell<Big>, out: *mut *mut ObjCell<Big>) -> u8 @domain=big integer @leaf
+msstd_bigint_lcm(handle a: *const ObjCell<Big>, handle other: *const ObjCell<Big>) -> *mut ObjCell<Big> @handle @domain=big integer @leaf
 msstd_bigint_modulo(handle a: *const ObjCell<Big>, handle other: *const ObjCell<Big>) -> *mut ObjCell<Big> @handle @domain=big integer @leaf
 msstd_bigint_multiply(handle a: *const ObjCell<Big>, handle other: *const ObjCell<Big>) -> *mut ObjCell<Big> @handle @domain=big integer @leaf
 msstd_bigint_negate(handle a: *const ObjCell<Big>) -> *mut ObjCell<Big> @handle @domain=big integer @leaf
@@ -369,6 +372,7 @@ msstd_bigint_remainder(handle a: *const ObjCell<Big>, handle other: *const ObjCe
 msstd_bigint_shift_left(handle a: *const ObjCell<Big>, count: i64, out: *mut *mut ObjCell<Big>) -> u8 @domain=big integer @leaf
 msstd_bigint_shift_right(handle a: *const ObjCell<Big>, count: i64, out: *mut *mut ObjCell<Big>) -> u8 @domain=big integer @leaf
 msstd_bigint_sign(handle a: *const ObjCell<Big>) -> i64 @domain=big integer @leaf
+msstd_bigint_sqrt(handle a: *const ObjCell<Big>, out: *mut *mut ObjCell<Big>) -> u8 @domain=big integer @leaf
 msstd_bigint_subtract(handle a: *const ObjCell<Big>, handle other: *const ObjCell<Big>) -> *mut ObjCell<Big> @handle @domain=big integer @leaf
 msstd_bigint_to_float(handle a: *const ObjCell<Big>) -> f64 @domain=big integer @leaf
 msstd_bigint_to_int(handle a: *const ObjCell<Big>, out: *mut i64) -> u8 @domain=big integer @leaf
@@ -591,6 +595,7 @@ msstd_math_atan2(y: f64, x: f64) -> f64 @domain=number @leaf
 msstd_math_atanh(v: f64) -> f64 @domain=number @leaf
 msstd_math_cbrt(v: f64) -> f64 @domain=number @leaf
 msstd_math_ceil(v: f64) -> f64 @domain=number @leaf @op=fceil
+msstd_math_copy_sign(value: f64, sign: f64) -> f64 @domain=number @leaf
 msstd_math_cos(v: f64) -> f64 @domain=number @leaf
 msstd_math_cosh(v: f64) -> f64 @domain=number @leaf
 msstd_math_divide_wide(high: u64, low: u64, divisor: u64, out: *mut WordDivisionOut) -> u8 @domain=number @leaf
@@ -599,20 +604,26 @@ msstd_math_exp2(v: f64) -> f64 @domain=number @leaf
 msstd_math_expm1(v: f64) -> f64 @domain=number @leaf
 msstd_math_floor(v: f64) -> f64 @domain=number @leaf @op=ffloor
 msstd_math_fma(left: f64, right: f64, addend: f64) -> f64 @domain=number @leaf
+msstd_math_frexp(value: f64, out: *mut BinaryFloatPartsOut) @domain=number @leaf
 msstd_math_hypot(left: f64, right: f64) -> f64 @domain=number @leaf
 msstd_math_ieee_remainder(left: f64, right: f64) -> f64 @domain=number @leaf
+msstd_math_is_integer(v: f64) -> u8 @domain=number @leaf
+msstd_math_is_safe_integer(v: f64) -> u8 @domain=number @leaf
 msstd_math_ldexp(fraction: f64, exponent: i64) -> f64 @domain=number @leaf
 msstd_math_log(v: f64) -> f64 @domain=number @leaf
 msstd_math_log10(v: f64) -> f64 @domain=number @leaf
 msstd_math_log1p(v: f64) -> f64 @domain=number @leaf
 msstd_math_log2(v: f64) -> f64 @domain=number @leaf
+msstd_math_modf(value: f64, out: *mut FloatPartsOut) @domain=number @leaf
 msstd_math_multiply_wide(left: u64, right: u64, out: *mut WideProductOut) @domain=number @leaf
+msstd_math_next_after(value: f64, toward: f64) -> f64 @domain=number @leaf
 msstd_math_pow(base: f64, exponent: f64) -> f64 @domain=number @leaf
 msstd_math_remainder(left: f64, right: f64) -> f64 @domain=number @leaf
 msstd_math_remainder_wide(high: u64, low: u64, divisor: u64, out: *mut u64) -> u8 @domain=number @leaf
 msstd_math_round(v: f64) -> f64 @domain=number @leaf
 msstd_math_round_to_even(v: f64) -> f64 @domain=number @leaf
 msstd_math_sign(v: f64) -> f64 @domain=number @leaf
+msstd_math_sign_bit(value: f64) -> u8 @domain=number @leaf
 msstd_math_sin(v: f64) -> f64 @domain=number @leaf
 msstd_math_sinh(v: f64) -> f64 @domain=number @leaf
 msstd_math_sqrt(v: f64) -> f64 @domain=number @leaf @op=fsqrt

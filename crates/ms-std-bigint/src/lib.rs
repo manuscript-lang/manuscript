@@ -17,7 +17,7 @@ use ms_rt::ffi::{Has, ObjRef, Object, Out, Status, abi_handle, native};
 use ms_rt::glue::{FaultKind, fault_fmt, fault_fmt_kind, poll_cancel};
 use ms_rt_abi::{STATUS_INVALID_DATA, STATUS_INVALID_INPUT, STATUS_LIMIT_EXCEEDED};
 use num_bigint::{BigInt, Sign};
-use num_traits::{Signed, ToPrimitive, Zero};
+use num_traits::{One, Signed, ToPrimitive, Zero};
 
 /// The value behind a `BigInt` runtime object.
 #[derive(Clone)]
@@ -35,6 +35,25 @@ impl Status for Code {
 
 /// Result size ceiling in bits for `pow` and `shift_left`.
 const MAX_BITS: i64 = 1 << 24;
+
+/// Greatest common divisor of the magnitudes (never negative; `gcd(0, 0)` is 0).
+fn gcd(a: &BigInt, b: &BigInt) -> BigInt {
+    let (mut a, mut b) = (a.magnitude().clone(), b.magnitude().clone());
+    while b.bits() != 0 {
+        let r = &a % &b;
+        a = core::mem::replace(&mut b, r);
+    }
+    BigInt::from(a)
+}
+
+/// Least common multiple of the magnitudes (never negative; 0 when either is 0).
+fn lcm(a: &BigInt, b: &BigInt) -> BigInt {
+    let g = gcd(a, b);
+    if g.sign() == Sign::NoSign {
+        return g;
+    }
+    BigInt::from(a.magnitude() / g.magnitude() * b.magnitude())
+}
 
 fn make(n: BigInt) -> Object<Big> {
     Object(Big(n))
@@ -144,6 +163,27 @@ native! {
     }
 
     // ms: leaf
+    fn msstd_bigint_gcd(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        poll_cancel();
+        make(gcd(n(&a), n(&other)))
+    }
+
+    // ms: leaf
+    fn msstd_bigint_lcm(a: ObjRef<Big>, other: ObjRef<Big>) -> Object<Big> {
+        poll_cancel();
+        make(lcm(n(&a), n(&other)))
+    }
+
+    // ms: leaf
+    fn msstd_bigint_sqrt(a: ObjRef<Big>) -> Result<Object<Big>, Code> {
+        if n(&a).is_negative() {
+            return Err(Code(STATUS_INVALID_INPUT));
+        }
+        poll_cancel();
+        Ok(make(n(&a).sqrt()))
+    }
+
+    // ms: leaf
     fn msstd_bigint_pow_mod(
         a: ObjRef<Big>,
         exponent: ObjRef<Big>,
@@ -154,6 +194,25 @@ native! {
         }
         poll_cancel();
         Ok(make(n(&a).modpow(n(&exponent), n(&modulus))))
+    }
+
+    // ms: leaf
+    fn msstd_bigint_inverse_mod(a: ObjRef<Big>, modulus: ObjRef<Big>, out: Out<Object<Big>>) -> bool {
+        if !n(&modulus).is_positive() {
+            return false;
+        }
+        poll_cancel();
+        // The only residue modulo one is zero, including for negative receivers.
+        if n(&modulus).is_one() {
+            out.write(make(BigInt::zero()));
+            return true;
+        }
+        if let Some(inverse) = n(&a).modinv(n(&modulus)) {
+            out.write(make(inverse));
+            true
+        } else {
+            false
+        }
     }
 
     // ms: leaf
