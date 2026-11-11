@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_false from "@std/test/test.ms",
 	Bytes from "@std/bytes.ms",
-	compile, Regex from "@std/string.ms",
+	Regex, compile from "@std/string.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
 )
 
 interface ListMutation:

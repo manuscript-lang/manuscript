@@ -1,7 +1,7 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	Deque from "@std/collections/deque.ms",
 	Queue from "@std/collections/queue.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 test "reading string elements while iterating does not change the container":

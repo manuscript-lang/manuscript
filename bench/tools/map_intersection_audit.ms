@@ -1,9 +1,10 @@
 // Paired runtime Set intersection/algebra controls. Producers verify exact ordered members.
 // Usage: ms run bench/tools/map_intersection_audit.ms -- BEFORE AFTER_OR_DASH OUTPUT PAIRS WORK [MODE [PATTERN [SIZE]]]
 import (
-	capture, ensure_directory, finish, invalid, write_text from "./lib.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
+
+	capture, ensure_directory, finish, invalid, write_text from "./lib.ms",
 )
 
 fn checksum(mode: String, pattern: String, n: Int) Int:

@@ -1,8 +1,9 @@
 // Generator for c58-mini-vcs. The expected outputs come from the Go oracle in oracle/*.ref (built with the
 // local Go toolchain); this file only supplies the inputs. Deterministic; run: ms run bench/agent/gen.ms -- c58
 import (
-	Cases, build_oracle, write_cases, solve_with from "../../lib/gen.ms",
 	compile from "@std/string.ms",
+
+	Cases, build_oracle, solve_with, write_cases from "../../lib/gen.ms",
 )
 
 // The `{cN}` placeholders stand for the short id of the N-th commit; a dry run with a dummy id finds them.
@@ -41,7 +42,6 @@ fn strip_nl(text: String) String:
 
 fn W(name: String, lines: List[String] = []) String:
 	if lines.is_empty(): return "write {name}\n.\n"
-
 	return "write {name}\n" + lines.join("\n") + "\n.\n"
 
 export fn gen_c58() Unit:

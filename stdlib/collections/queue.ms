@@ -1,6 +1,6 @@
 import (
-	panic from "@std/core.ms",
 	Iterable from "@std/collections/iterable.ms",
+	panic from "@std/core.ms",
 )
 
 // A mutable first-in, first-out queue. Assigning it transfers ownership; `.clone()` makes an independent queue when its elements are Clonable.
@@ -51,7 +51,6 @@ impl Queue[T]:
 	// Returns the oldest value without removing it, or none when the queue is empty.
 	fn peek() T?:
 		if self.head >= self.items.length(): return none
-
 		return self.items.get(self.head)
 
 	// Reports whether dequeue and peek would return none.
@@ -66,7 +65,6 @@ impl Iterable[T] for Queue[T]:
 	// Returns the value `index` places after the oldest, or none when out of range; negative indexes are out of range.
 	fn at(index: Int) T?:
 		if index < 0 or index >= self.length(): return none
-
 		return self.items.get(self.head + index)
 
 // Orders two values: negative when `left` dequeues first, zero when equal, positive when `right` dequeues first.
@@ -160,7 +158,6 @@ impl PriorityQueue[T]:
 	// Returns the next value by priority without removing it, or none when empty.
 	fn peek() T?:
 		if self.heap.is_empty(): return none
-
 		return self.heap.get(0)
 
 	// Reports whether the queue has no values to peek or dequeue.
@@ -176,5 +173,4 @@ impl Iterable[T] for PriorityQueue[T]:
 	// Negative indexes are out of range.
 	fn at(index: Int) T?:
 		if index < 0 or index >= self.heap.length(): return none
-
 		return self.heap.get(index)

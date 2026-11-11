@@ -1,8 +1,8 @@
 import (
-	fail from "@std/test/test.ms",
 	Bytes from "@std/bytes.ms",
-	Decimal from "@std/math/decimal.ms",
 	Queue from "@std/collections/queue.ms",
+	Decimal from "@std/math/decimal.ms",
+	fail from "@std/test/test.ms",
 )
 
 type Person:

@@ -1,18 +1,19 @@
 // Unit tests for the runner's core. Run from the repository root: ms test bench/agent/core_test.ms
 import (
-	access, glob, GlobOptions from "@std/os/fs.ms",
 	JsonValue, parse from "@std/data/json.ms",
+	GlobOptions, access, glob from "@std/os/fs.ms",
 	expect_close,
 	expect_equal,
 	expect_false,
 	expect_true,
 	fail from "@std/test/test.ms",
-	cost_from_tokens, load_challenges, load_languages from "./core/model.ms",
+
 	count_text from "./core/codetokens.ms",
+	cost_from_tokens, load_challenges, load_languages from "./core/model.ms",
 	ClaudeCode from "./harnesses/claude_code.ms",
 	Codex from "./harnesses/codex.ms",
+	fixed, fmt_g, pct0 from "./lib/pyfmt.ms",
 	dumps from "./lib/pyjson.ms",
-	fmt_g, fixed, pct0 from "./lib/pyfmt.ms",
 	seeded from "./lib/pyrandom.ms",
 	norm from "./lib/text.ms",
 )

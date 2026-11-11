@@ -1,16 +1,15 @@
 import (
-	keep, measure from "@std/test/bench.ms",
 	Bytes from "@std/bytes.ms",
+	PriorityQueue, Queue from "@std/collections/queue.ms",
+	CompressionFormat, compress, decompress from "@std/io/archive.ms",
 	Decimal from "@std/math/decimal.ms",
 	from_int from "@std/math/math.ms",
-	compress, decompress, CompressionFormat from "@std/io/archive.ms",
+	keep, measure from "@std/test/bench.ms",
 	parse_timestamp from "@std/time.ms",
-	PriorityQueue, Queue from "@std/collections/queue.ms",
 )
 
 fn unpacked_length(data: Bytes) Int:
 	if b := decompress(data, CompressionFormat.Gzip): return b.length()
-
 	return 0
 
 bench "bigint.factorial_1000":
@@ -55,7 +54,6 @@ bench "compress.gzip":
 
 	fn work() Result[Unit, Error]:
 		if b := compress(blob, CompressionFormat.Gzip): return keep(b.length())
-
 		return keep(0)
 
 	try measure(size, work)
@@ -71,7 +69,6 @@ bench "compress.roundtrip":
 
 	fn work() Result[Unit, Error]:
 		if b := compress(blob, CompressionFormat.Gzip): return keep(unpacked_length(b))
-
 		return keep(0)
 
 	try measure(size, work)

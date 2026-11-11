@@ -1,18 +1,17 @@
 import (
-	panic from "@std/core.ms",
 	Promise,
+	PromiseOptions,
+	cancel_switch,
 	promise,
 	wait_all,
-	wait_first,
-	PromiseOptions,
-	cancel_switch from "@std/concurrency/promise.ms",
+	wait_first from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
 	milliseconds, nanoseconds, sleep from "@std/time.ms",
 )
 
 fn report(reason: Error) String:
 	if reason.kind == "EIO": return reason.details["report"].split("\n").get(0).clone()
-
 	return reason.message.clone()
 
 fn forever() Int:

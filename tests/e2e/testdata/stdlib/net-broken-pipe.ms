@@ -1,8 +1,9 @@
 import (
-	send from "./support/conn.ms",
-	expect_ok from "@std/test/test.ms",
 	connect, listen from "@std/net/net.ms",
+	expect_ok from "@std/test/test.ms",
 	sleep from "@std/time.ms",
+
+	send from "./support/conn.ms",
 )
 
 // A write to a peer that has gone away must return an error. Without SIGPIPE ignored the

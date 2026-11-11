@@ -1,8 +1,8 @@
 import (
-	stdout from "@std/io/io.ms",
 	Queue from "@std/collections/queue.ms",
-	total from "@math",
-	compute from "@math",
+	stdout from "@std/io/io.ms",
+
+	compute, total from "@math",
 )
 
 type Package:

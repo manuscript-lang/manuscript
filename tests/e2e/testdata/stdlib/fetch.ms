@@ -1,6 +1,4 @@
 import (
-	read_to_end from "./support/conn.ms",
-	expect_equal from "@std/test/test.ms",
 	FetchBody,
 	FetchOptions,
 	FetcherOptions,
@@ -11,10 +9,13 @@ import (
 	HttpMethod,
 	HttpRequest,
 	HttpResponse,
-	headers,
-	buffered from "@std/net/http.ms",
+	buffered,
+	headers from "@std/net/http.ms",
 	serve from "@std/net/net.ms",
+	expect_equal from "@std/test/test.ms",
 	milliseconds, sleep from "@std/time.ms",
+
+	read_to_end from "./support/conn.ms",
 )
 
 type Greeting:

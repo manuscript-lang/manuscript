@@ -1,6 +1,4 @@
-import (
-	Iterable from "@std/collections/iterable.ms",
-)
+import Iterable from "@std/collections/iterable.ms"
 
 /*
 A growable double-ended queue: O(1) amortized push and pop at both ends and O(1) indexed reads.
@@ -83,13 +81,11 @@ impl Deque[T]:
 	// Returns the first value without removing it, or `none` when empty.
 	fn front() T?:
 		if self.size == 0: return none
-
 		return self.slots.get(self.start)
 
 	// Returns the last value without removing it, or `none` when empty.
 	fn back() T?:
 		if self.size == 0: return none
-
 		return self.slots.get(self.slot_of(self.size - 1))
 
 	// Removes every value and releases the storage.
@@ -145,7 +141,6 @@ impl Iterable[T] for Deque[T]:
 	// Negative indexes are out of range.
 	fn at(index: Int) T?:
 		if index < 0 or index >= self.size: return none
-
 		return self.slots.get(self.slot_of(index))
 
 interface DequeCopy[T: Clonable]:

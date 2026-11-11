@@ -1,8 +1,8 @@
 // JSON text laid out like CPython's `json.dumps` (ASCII-only output, `", "` and `": "` separators, or one
 // item per line with `indent` spaces), so regenerated challenge files and result lines stay byte-identical.
 import (
-	JsonValue, parse, stringify from "@std/data/json.ms",
 	Data from "@std/core.ms",
+	JsonValue, parse, stringify from "@std/data/json.ms",
 	from_scalars from "@std/string.ms",
 )
 

@@ -3,8 +3,8 @@
 // expect-stdout: close 1
 // Fields close last-declared first; the record's own close would run before them.
 import (
-	stdout from "@std/io/io.ms",
 	Closeable from "@std/core.ms",
+	stdout from "@std/io/io.ms",
 )
 
 type Res:

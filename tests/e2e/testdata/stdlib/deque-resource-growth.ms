@@ -1,7 +1,7 @@
 import (
-	Closeable, panic from "@std/core.ms",
 	Deque from "@std/collections/deque.ms",
-	append_file, read_file, temporary, open, FileHandle, OpenMode from "@std/os/fs.ms",
+	Closeable, panic from "@std/core.ms",
+	FileHandle, OpenMode, append_file, open, read_file, temporary from "@std/os/fs.ms",
 	expect_contains, expect_equal, expect_error, expect_fault from "@std/test/test.ms",
 )
 

@@ -1,7 +1,7 @@
 import (
 	panic from "@std/core.ms",
-	sqrt, frexp, ldexp from "@std/math/math.ms",
 	BigRat, rat_of_float, rat_of_int from "@std/math/big.ms",
+	frexp, ldexp, sqrt from "@std/math/math.ms",
 )
 
 /*
@@ -152,14 +152,12 @@ export fn population_variance(values: List[Float]) Float?:
 // Example: `variance([1.0, 2.0, 3.0, 4.0])` is `1.6666666666666667`.
 export fn variance(values: List[Float]) Float?:
 	if values.length() < 2: return none
-
 	return spread_variance(values, values.length() - 1)
 
 // Returns the population standard deviation, or none for an empty list.
 export fn population_stdev(values: List[Float]) Float?:
 	if spread_squared := population_variance(values):
 		return deviation_from_variance(values, spread_squared, 0)
-
 	return none
 
 // Returns the sample standard deviation, or none when the list has fewer than two values.
@@ -167,7 +165,6 @@ export fn population_stdev(values: List[Float]) Float?:
 export fn stdev(values: List[Float]) Float?:
 	if spread_squared := variance(values):
 		return deviation_from_variance(values, spread_squared, 1)
-
 	return none
 
 // Preserve ordinary rounding; avoid requiring the squared result to fit for extreme finite inputs.
@@ -213,7 +210,6 @@ fn deviation_from_variance(
 	// can cross Float's overflow midpoint; decide that boundary exactly.
 	if scale > 1.7976931348623157e308 / 2.0:
 		if sample_deviation_overflows(values): return 1.0 / 0.0
-
 		return result.min(1.7976931348623157e308)
 
 	return result
@@ -451,7 +447,6 @@ export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 	// Correlation is unchanged by scaling each list, so power-of-two scaling keeps every square and product in range.
 	if s := spread(unit_scaled(xs), unit_scaled(ys)):
 		if s.xx == 0.0 or s.yy == 0.0: return none
-
 		return s.xy / (sqrt(s.xx) * sqrt(s.yy))
 
 	return none

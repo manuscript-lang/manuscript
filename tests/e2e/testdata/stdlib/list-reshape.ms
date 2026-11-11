@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_true, expect_false, expect_fault from "@std/test/test.ms",
 	Deque from "@std/collections/deque.ms",
+	expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms",
 )
 
 type Person:

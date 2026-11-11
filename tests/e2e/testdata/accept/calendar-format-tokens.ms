@@ -1,6 +1,6 @@
 import (
-	timestamp from "@std/time.ms",
 	expect_equal from "@std/test/test.ms",
+	timestamp from "@std/time.ms",
 )
 
 test "calendar format keeps token boundaries and literal text":

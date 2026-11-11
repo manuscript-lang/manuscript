@@ -1,7 +1,8 @@
 import (
+	expect_equal from "@std/test/test.ms",
+
 	Key from "./domain.ms",
 	insert, insert_bound from "./helper.ms",
-	expect_equal from "@std/test/test.ms",
 )
 
 impl Equal for Key:

@@ -1,7 +1,7 @@
 import (
 	Bytes from "@std/bytes.ms",
-	Duration, parse_duration from "@std/time.ms",
 	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+	Duration, parse_duration from "@std/time.ms",
 )
 
 enum InputFailure:

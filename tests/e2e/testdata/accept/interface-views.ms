@@ -23,7 +23,6 @@ fn first_failure(cause: Cause) Int!Reportable:
 
 fn fresh(cause: Cause, make: Bool) Reportable:
 	if make: return Cause(9, "fresh and also heap allocated text")
-
 	return cause
 
 fn relay(e: Reportable) Reportable:
@@ -52,12 +51,10 @@ fn looped(cause: Cause) Reportable:
 
 fn maybe(cause: Cause, b: Bool) Reportable?:
 	if b: return cause
-
 	return none
 
 fn either(r: Holder, b: Bool) Reportable:
 	if b: return r.err
-
 	return r.cause
 
 fn owned_copy(cause: Cause) List[Reportable]:

@@ -1,6 +1,6 @@
 import (
 	stdout from "@std/io/io.ms",
-	monotonic, Instant from "@std/time.ms",
+	Instant, monotonic from "@std/time.ms",
 )
 
 // ns per interface call. One line per case: `name ns checksum`.

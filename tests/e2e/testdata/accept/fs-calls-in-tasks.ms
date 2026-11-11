@@ -1,4 +1,5 @@
 import (
+	promise from "@std/concurrency/promise.ms",
 	append_file,
 	copy,
 	create_directory,
@@ -8,7 +9,6 @@ import (
 	rename,
 	temporary_directory,
 	write_file from "@std/os/fs.ms",
-	promise from "@std/concurrency/promise.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

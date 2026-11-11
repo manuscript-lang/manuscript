@@ -1,5 +1,5 @@
 import (
-	unified_diff, UnifiedDiffOptions from "@std/data/diff.ms",
+	UnifiedDiffOptions, unified_diff from "@std/data/diff.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
 )

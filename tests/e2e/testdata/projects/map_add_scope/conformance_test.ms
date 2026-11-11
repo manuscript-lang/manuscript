@@ -1,7 +1,8 @@
 import (
+	expect_equal from "@std/test/test.ms",
+
 	first from "./first.ms",
 	second from "./second.ms",
-	expect_equal from "@std/test/test.ms",
 )
 
 test "map add generic and bound calls retain lexical key evidence":

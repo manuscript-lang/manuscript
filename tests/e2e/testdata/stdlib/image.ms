@@ -1,17 +1,18 @@
 import (
-	decode_image,
-	encode_image,
-	encode_jpeg,
-	new_image,
+	hex_decode from "@std/data/encoding.ms",
+	Chroma,
 	ColorMode,
 	ImageFormat,
 	JpegOptions,
-	Chroma,
-	Rgba from "@std/image/image.ms",
-	hex_decode from "@std/data/encoding.ms",
-	vectors from "./image-png-vectors.ms",
-	jpeg_vectors from "./image-jpeg-vectors.ms",
+	Rgba,
+	decode_image,
+	encode_image,
+	encode_jpeg,
+	new_image from "@std/image/image.ms",
 	expect_equal, fail from "@std/test/test.ms",
+
+	jpeg_vectors from "./image-jpeg-vectors.ms",
+	vectors from "./image-png-vectors.ms",
 )
 
 test "ppm round trip":

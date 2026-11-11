@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\texpect_equal from \"@std/test/test.ms\",\n\tparse from \"@std/net/url.ms\",\n\tformat from \"@std/net/url.ms\",\n\tencode_component from \"@std/net/url.ms\",\n\tdecode_component from \"@std/net/url.ms\",\n\tresolve from \"@std/net/url.ms\",\n)\n\nfn verify_url() Unit!:\n\turl := try parse(text: \"https://EXAMPLE.COM/a%2Fb?q=x#frag\")\n\t(try format(value: url)) | try expect_equal(\"https://example.com/a%2Fb?q=x#frag\")\n\n\tnext := try resolve(base: url, reference: \"../next\")\n\t(try format(value: next)) | try expect_equal(\"https://example.com/next\")\n\tencode_component(text: \"a+b/@\") | try expect_equal(\"a%2Bb%2F%40\")\n\t(try decode_component(text: \"%C3%A9\")) | try expect_equal(\"é\")\n\ntest \"URLs preserve escaped path structure\":\n\ttry verify_url()\n"
+    "fmt": "import (\n\tdecode_component, encode_component, format, parse, resolve from \"@std/net/url.ms\",\n\texpect_equal from \"@std/test/test.ms\",\n)\n\nfn verify_url() Unit!:\n\turl := try parse(text: \"https://EXAMPLE.COM/a%2Fb?q=x#frag\")\n\t(try format(value: url)) | try expect_equal(\"https://example.com/a%2Fb?q=x#frag\")\n\n\tnext := try resolve(base: url, reference: \"../next\")\n\t(try format(value: next)) | try expect_equal(\"https://example.com/next\")\n\tencode_component(text: \"a+b/@\") | try expect_equal(\"a%2Bb%2F%40\")\n\t(try decode_component(text: \"%C3%A9\")) | try expect_equal(\"é\")\n\ntest \"URLs preserve escaped path structure\":\n\ttry verify_url()\n"
   }
 }

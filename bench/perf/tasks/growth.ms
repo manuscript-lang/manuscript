@@ -2,13 +2,12 @@
 // without a crossing, both on the main task, then a 900k-frame recursion. See README.md.
 import (
 	owned_task from "@std/concurrency/promise.ms",
-	monotonic from "@std/time.ms",
 	read_file from "@std/os/fs.ms",
+	monotonic from "@std/time.ms",
 )
 
 fn depth(n: Int) Int:
 	if n == 0: return 0
-
 	return depth(n - 1) + 1
 
 fn loop_depth(n: Int, rounds: Int) Int:

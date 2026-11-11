@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
-	from_scalars from "@std/string.ms",
 	parse_int from "@std/math/math.ms",
+	from_scalars from "@std/string.ms",
+	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
 	parse_bool, quote, quote_ascii, unquote from "@std/text.ms",
 )
 

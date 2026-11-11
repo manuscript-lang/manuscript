@@ -1,10 +1,11 @@
 import (
-	expect_equal, expect_false, expect_ok from "@std/test/test.ms",
-	first_view, first_method, first_generic, first_resource from "./first.ms",
-	second_view, second_method, second_generic, second_resource from "./second.ms",
-	Item, Resource from "./domain.ms",
-	read_view from "./contracts.ms",
 	read_file, temporary from "@std/os/fs.ms",
+	expect_equal, expect_false, expect_ok from "@std/test/test.ms",
+
+	read_view from "./contracts.ms",
+	Item, Resource from "./domain.ms",
+	first_generic, first_method, first_resource, first_view from "./first.ms",
+	second_generic, second_method, second_resource, second_view from "./second.ms",
 )
 
 fn close_first(resource: Resource) Unit:

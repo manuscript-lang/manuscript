@@ -9,11 +9,11 @@ import (
 	FileInfo,
 	FileSystem,
 	FileSystemInfo,
-	RawWatcher,
 	NativeDirectory,
 	NativeFile,
 	NativeTemporary,
 	NativeWatcher,
+	RawWatcher,
 	TemporaryDirectory from "@std/os/fs.ms",
 	Duration, Timestamp from "@std/time.ms",
 )

@@ -1,8 +1,8 @@
 import (
-	panic from "@std/core.ms",
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
-	Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/time.ms",
+	panic from "@std/core.ms",
 	float from "@std/random.ms",
+	Duration, Instant, milliseconds, monotonic, seconds, sleep from "@std/time.ms",
 )
 
 /*
@@ -174,7 +174,6 @@ impl CircuitBreaker:
 	fn is_open() Bool:
 		if since := self.opened:
 			return monotonic().difference(since).compare(self.cooldown) < 0
-
 		return false
 
 	// Runs `operation` unless the circuit is open, and records the outcome.

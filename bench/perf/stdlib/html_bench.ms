@@ -1,8 +1,9 @@
 import (
-	keep, measure from "@std/test/bench.ms",
-	words from "./src/harness.ms",
+	escape, parse, unescape from "@std/data/html.ms",
 	StringBuilder from "@std/string.ms",
-	parse, escape, unescape from "@std/data/html.ms",
+	keep, measure from "@std/test/bench.ms",
+
+	words from "./src/harness.ms",
 )
 
 fn html_doc(count: Int) String:
@@ -18,7 +19,6 @@ bench "html.parse":
 
 	fn work() Result[Unit, Error]:
 		if parse(html).is_ok(): return keep(1)
-
 		return keep(0)
 
 	try measure(2000, work)

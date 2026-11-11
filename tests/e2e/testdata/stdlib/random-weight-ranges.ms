@@ -1,6 +1,6 @@
 import (
-	seeded, weighted_choice from "@std/random.ms",
 	infinity, max_float, min_float, nan from "@std/math/math.ms",
+	seeded, weighted_choice from "@std/random.ms",
 	expect_equal,
 	expect_error,
 	expect_fault,

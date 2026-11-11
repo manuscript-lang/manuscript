@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_fault, expect_ok from "@std/test/test.ms",
 	Closeable, panic from "@std/core.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
+	expect_equal, expect_fault, expect_ok from "@std/test/test.ms",
 )
 
 // A close that changes its receiver works on the value where it lives: a holder, a part, a
@@ -24,7 +24,6 @@ fn latch(log: String, id: Int) Latch:
 
 fn closed(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
-
 	return ""
 
 type Holder:

@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_true from "@std/test/test.ms",
 	infinity, parse_float from "@std/math/math.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 )
 
 test "parse_float reads integers decimals and exponents":

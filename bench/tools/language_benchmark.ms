@@ -2,6 +2,10 @@
 // Usage: ms run bench/tools/language_benchmark.ms -- --before MS --after MS --output DIR [--runs 3] [--cpu N]
 // --cpu pins every execution to one CPU through `taskset` (Linux).
 import (
+	JsonValue from "@std/data/json.ms",
+	stdout from "@std/io/io.ms",
+	arguments from "@std/os/env.ms",
+
 	absolute,
 	capture,
 	dump,
@@ -19,9 +23,6 @@ import (
 	options,
 	platform,
 	write_text from "./lib.ms",
-	arguments from "@std/os/env.ms",
-	JsonValue from "@std/data/json.ms",
-	stdout from "@std/io/io.ms",
 )
 
 fn execute(binary: String, cpu: String) Result[Unit, Error]:

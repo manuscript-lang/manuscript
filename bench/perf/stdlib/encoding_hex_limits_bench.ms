@@ -1,13 +1,13 @@
 import (
+	Bytes, BytesBuilder from "@std/bytes.ms",
+	ascii_decode,
+	base64_encode,
 	hex_decode,
 	hex_encode,
-	base64_encode,
-	ascii_decode,
 	utf16_decode from "@std/data/encoding.ms",
-	decode_first, decode_last, Utf8Scalar, Utf8Error from "@std/data/utf8.ms",
-	Bytes, BytesBuilder from "@std/bytes.ms",
+	Utf8Error, Utf8Scalar, decode_first, decode_last from "@std/data/utf8.ms",
+	keep, measure from "@std/test/bench.ms",
 	expect_equal from "@std/test/test.ms",
-	measure, keep from "@std/test/bench.ms",
 )
 
 fn zeros(count: Int) Bytes:

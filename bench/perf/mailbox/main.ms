@@ -4,7 +4,7 @@
 // finished tasks in the pool, so stack setup does not hide the mail cost.
 // `ms run bench/perf/mailbox/main.ms -- 100000 5 [window]`: promises per round, rounds, window (default 64).
 import (
-	promise, Promise from "@std/concurrency/promise.ms",
+	Promise, promise from "@std/concurrency/promise.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
 )

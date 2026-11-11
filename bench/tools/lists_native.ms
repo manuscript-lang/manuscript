@@ -2,7 +2,11 @@
 // Usage: ms run bench/tools/lists_native.ms -- --cli MS --output DIR [--runs 3] [--cpu N]
 // --cpu pins executions with `taskset` (Linux).
 import (
+	JsonValue from "@std/data/json.ms",
+	arguments from "@std/os/env.ms",
+
 	absolute,
+	capture,
 	dump,
 	ensure_directory,
 	fail,
@@ -15,14 +19,11 @@ import (
 	jstr,
 	median,
 	must,
-	capture,
 	now_ns,
 	options,
 	peak_run,
 	read_text,
 	write_text from "./lib.ms",
-	arguments from "@std/os/env.ms",
-	JsonValue from "@std/data/json.ms",
 )
 
 type Workload:

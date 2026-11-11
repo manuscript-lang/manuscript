@@ -4,12 +4,10 @@ import panic from "@std/core.ms"
 // defined once over `compare` so every numeric width and String agree. The methods apply to every program.
 fn lesser[T: Comparable](left: T, right: T) T:
 	if right.compare(left) < 0: return right
-
 	return left
 
 fn greater[T: Comparable](left: T, right: T) T:
 	if right.compare(left) > 0: return right
-
 	return left
 
 fn clamped[T: Comparable](value: T, low: T, high: T) T:

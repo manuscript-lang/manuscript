@@ -1,6 +1,6 @@
 import (
-	base64_encode, base64_decode from "@std/data/encoding.ms",
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	base64_decode, base64_encode from "@std/data/encoding.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

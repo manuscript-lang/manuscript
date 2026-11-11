@@ -1,5 +1,6 @@
 import (
-	expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms",
+	Bytes from "@std/bytes.ms",
+	read_all from "@std/io/streams.ms",
 	GlobOptions,
 	OpenMode,
 	OpenOptions,
@@ -16,8 +17,7 @@ import (
 	stat,
 	temporary,
 	write_file from "@std/os/fs.ms",
-	read_all from "@std/io/streams.ms",
-	Bytes from "@std/bytes.ms",
+	expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms",
 )
 
 fn expect_fs_error[T](outcome: T!, expected: Error) Unit!:

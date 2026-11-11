@@ -4,8 +4,9 @@
 // The reference table shows how verbose each language is when the same program is written by hand;
 // agent-written sizes come from `llm_tokens` in results/runs.jsonl (see README).
 import (
-	glob, GlobOptions from "@std/os/fs.ms",
-	stdout, stderr from "@std/io/io.ms",
+	stderr, stdout from "@std/io/io.ms",
+	GlobOptions, glob from "@std/os/fs.ms",
+
 	load_challenges from "./core/model.ms",
 	bash from "./lib/text.ms",
 )

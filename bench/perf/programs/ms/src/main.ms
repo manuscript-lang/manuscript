@@ -1,8 +1,8 @@
 import (
-	stdout, stdin, ReadStream from "@std/io/io.ms",
+	ReadStream, stdin, stdout from "@std/io/io.ms",
 	lines from "@std/io/streams.ms",
-	Instant, monotonic from "@std/time.ms",
 	StringBuilder from "@std/string.ms",
+	Instant, monotonic from "@std/time.ms",
 )
 
 interface Counter:
@@ -23,7 +23,6 @@ enum Shape:
 
 fn got_line(var input: ReadStream[String]) Bool:
 	if line := input.next(): return line.is_some()
-
 	return false
 
 fn say(text: String) Unit:
@@ -40,7 +39,6 @@ fn ident[T](x: T) T:
 
 fn checked(n: Int) Result[Int, Error]:
 	if n < 0: return error(Error("negative"))
-
 	return ok(n + 1)
 
 fn chain(n: Int) Result[Int, Error]:

@@ -1,6 +1,6 @@
 import (
-	keep, measure from "@std/test/bench.ms",
 	compile from "@std/string.ms",
+	keep, measure from "@std/test/bench.ms",
 	expect_equal from "@std/test/test.ms",
 )
 

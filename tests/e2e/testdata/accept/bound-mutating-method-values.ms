@@ -1,6 +1,6 @@
 import (
-	expect_equal from "@std/test/test.ms",
 	StringBuilder from "@std/string.ms",
+	expect_equal from "@std/test/test.ms",
 )
 
 type Counter:

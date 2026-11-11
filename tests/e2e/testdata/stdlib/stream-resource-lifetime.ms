@@ -1,10 +1,10 @@
 import (
+	promise from "@std/concurrency/promise.ms",
 	Closeable, Iterator from "@std/core.ms",
 	ReadStream, Source from "@std/io/io.ms",
-	promise from "@std/concurrency/promise.ms",
-	milliseconds, sleep from "@std/time.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
-	expect_equal, expect_ok, expect_error from "@std/test/test.ms",
+	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
+	milliseconds, sleep from "@std/time.ms",
 )
 
 type Token:
@@ -36,7 +36,6 @@ impl Source[Token] for Tokens:
 
 fn events(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
-
 	return ""
 
 fn read_one(input: ReadStream[Token]) Unit!:

@@ -1,6 +1,6 @@
 import (
-	timestamp, parse_timestamp from "@std/time.ms",
 	expect_equal from "@std/test/test.ms",
+	parse_timestamp, timestamp from "@std/time.ms",
 )
 
 test "timestamp text pads and trims fractions across UTC boundaries":

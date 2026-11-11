@@ -1,6 +1,6 @@
 import (
-	quote_text from "@std/data/quote.ms",
 	histogram from "@std/data/histogram.ms",
+	quote_text from "@std/data/quote.ms",
 	ClientResponse, HttpResponseMetadata, headers from "@std/net/http.ms",
 	expect_equal from "@std/test/test.ms",
 )

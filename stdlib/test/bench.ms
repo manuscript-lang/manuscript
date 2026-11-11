@@ -1,6 +1,6 @@
 import (
-	max, min, sqrt from "@std/math/math.ms",
 	stdout from "@std/io/io.ms",
+	max, min, sqrt from "@std/math/math.ms",
 	environment, set_environment from "@std/os/env.ms",
 	fail from "@std/test/test.ms",
 	monotonic from "@std/time.ms",

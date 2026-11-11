@@ -1,12 +1,12 @@
 import (
-	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
+	Bytes from "@std/bytes.ms",
+	RangeOptions,
+	filled,
+	map_from_entries,
+	range_by from "@std/collections/collections.ms",
 	from_int from "@std/math/math.ms",
 	compile from "@std/string.ms",
-	filled,
-	range_by,
-	RangeOptions,
-	map_from_entries from "@std/collections/collections.ms",
-	Bytes from "@std/bytes.ms",
+	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
 fn positive(value: Int) Bool:
@@ -359,7 +359,6 @@ fn parity(value: Int) Int:
 
 fn default_value(key: String) Int:
 	if key != "c": return -1
-
 	return 3
 
 test "grouping and lazy map defaults":

@@ -1,7 +1,7 @@
 import (
-	StringBuilder from "@std/string.ms",
 	Bytes, join from "@std/bytes.ms",
-	ReadStream, WriteStream, Sink, Transform, through from "@std/io/io.ms",
+	ReadStream, Sink, Transform, WriteStream, through from "@std/io/io.ms",
+	StringBuilder from "@std/string.ms",
 )
 
 // Delimiter and line ending used when parsing or writing CSV, and the row and cell bounds for `parse`.
@@ -79,7 +79,6 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 // The budget as a count, with no budget as a very large one and a negative budget as -1.
 fn budget(limit: Int?) Int:
 	if value := limit: return value
-
 	return 9223372036854775807
 
 // Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
@@ -132,7 +131,6 @@ impl Reader:
 
 	fn text_between(start: Int, end: Int) String:
 		if text := self.bytes.decode_utf8_range(start, end): return text
-
 		return ""
 
 	// The offset just past the line ending at the cursor, or the cursor when the cursor is not at one.

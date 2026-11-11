@@ -1,8 +1,9 @@
 import (
 	range from "@std/collections/collections.ms",
-	bench from "./harness.ms",
+	JsonValue, parse, stringify from "@std/data/json.ms",
 	StringBuilder from "@std/string.ms",
-	parse, stringify, JsonValue from "@std/data/json.ms",
+
+	bench from "./harness.ms",
 )
 
 fn json_doc(count: Int) String:
@@ -20,7 +21,6 @@ fn json_doc(count: Int) String:
 
 fn encoded_length(value: JsonValue) Int:
 	if text := stringify(value): return text.length()
-
 	return 0
 
 export fn bench_json() Unit:
@@ -31,7 +31,6 @@ export fn bench_json() Unit:
 		5000,
 		fn() Int:
 			if parse(doc).is_ok(): return 1
-
 			return 0
 	)
 
@@ -40,6 +39,5 @@ export fn bench_json() Unit:
 		5000,
 		fn() Int:
 			if v := parse(doc): return encoded_length(v)
-
 			return 0
 	)

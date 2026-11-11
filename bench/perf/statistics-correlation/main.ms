@@ -1,9 +1,8 @@
 import (
 	stdout from "@std/io/io.ms",
+	correlation, linear_regression from "@std/math/statistics.ms",
 	monotonic from "@std/time.ms",
-	correlation,
-	linear_regression,
-) from "@std/math/statistics.ms"
+)
 
 fn say(text: String) Unit:
 	_ignored := stdout().write(text)

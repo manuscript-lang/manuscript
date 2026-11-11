@@ -1,9 +1,9 @@
 import (
 	Bytes, join from "@std/bytes.ms",
-	local_promise, PromiseOptions from "@std/concurrency/promise.ms",
+	PromiseOptions, local_promise from "@std/concurrency/promise.ms",
+	ReadStream from "@std/io/io.ms",
 	Connection from "@std/net/net.ms",
 	Duration from "@std/time.ms",
-	ReadStream from "@std/io/io.ms",
 )
 
 // Writes `text` to the connection and waits until it is handed to the socket.

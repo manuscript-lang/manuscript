@@ -1,14 +1,15 @@
 import (
 	Data, Writable from "@std/core.ms",
+
+	msrt_bits_bit_and,
+	msrt_bits_shift_right,
 	msrt_bytes_join,
-	msrt_bytes_values,
 	msrt_bytes_read_word,
-	msrt_float_from_bits,
-	msrt_float_to_bits,
+	msrt_bytes_values,
 	msrt_float32_from_bits,
 	msrt_float32_to_bits,
-	msrt_bits_bit_and,
-	msrt_bits_shift_right from "@std/internal/bytes.ms",
+	msrt_float_from_bits,
+	msrt_float_to_bits from "@std/internal/bytes.ms",
 	msrt_bits_bit_or, msrt_bits_shift_left from "@std/internal/math.ms",
 )
 
@@ -358,13 +359,11 @@ fn put_word(var out: BytesBuilder, value: Int, width: Int, little: Bool) Unit:
 // Reads a signed value from its unsigned bit pattern: `half` is 2 to the power `bits - 1`.
 fn signed(raw: Int, half: Int) Int:
 	if raw >= half: return raw - half * 2
-
 	return raw
 
 // Converts a 64-bit word without narrowing its unsigned upper half.
 fn unsigned_word(raw: Int) UInt64:
 	if raw >= 0: return raw.to_uint64().get(0)
-
 	return (raw + 9223372036854775807 + 1).to_uint64().get(0) + 9223372036854775808
 
 // Reads two unsigned halves so the top bit never passes through a signed conversion.

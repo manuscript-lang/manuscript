@@ -1,8 +1,8 @@
 import (
-	expect_equal, expect_false from "@std/test/test.ms",
 	Decimal from "@std/math/decimal.ms",
-	nanoseconds from "@std/time.ms",
 	BigInt, from_int from "@std/math/math.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
+	nanoseconds from "@std/time.ms",
 )
 
 test "integer division retains signed boundary and remainder rules":

@@ -85,7 +85,6 @@ test "inherited defaults remain available on immutable bound callables":
 test "inferred callable returns use required arguments consistently":
 	factory := fn(flag: Bool):
 		if flag: return original
-
 		return replacement
 
 	try expect_equal(factory(true)(3), 4)

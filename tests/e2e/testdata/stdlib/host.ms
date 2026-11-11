@@ -1,13 +1,6 @@
 import (
-	expect_equal, expect_false, expect_not_equal, expect_true from "@std/test/test.ms",
-	arguments from "@std/os/env.ms",
-	endianness,
-	end_of_line,
-	os,
-	dev_null,
-	system_info,
-	Endianness,
-	Os from "@std/os/system.ms",
+	lines from "@std/io/streams.ms",
+	arguments, environment, set_environment from "@std/os/env.ms",
 	CommandOutput,
 	RunOptions,
 	SpawnOptions,
@@ -15,8 +8,14 @@ import (
 	process_info,
 	run,
 	spawn from "@std/os/process.ms",
-	environment, set_environment from "@std/os/env.ms",
-	lines from "@std/io/streams.ms",
+	Endianness,
+	Os,
+	dev_null,
+	end_of_line,
+	endianness,
+	os,
+	system_info from "@std/os/system.ms",
+	expect_equal, expect_false, expect_not_equal, expect_true from "@std/test/test.ms",
 )
 
 test "CLI test roots have empty arguments and host metadata agrees":

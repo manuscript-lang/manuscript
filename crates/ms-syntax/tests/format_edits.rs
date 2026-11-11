@@ -219,3 +219,16 @@ fn tab_indented_dot_and_pipe_continuations_match_four_space_source() {
         assert_eq!(strip(dump(tabbed)), strip(dump(spaced)), "{tabbed:?}");
     }
 }
+
+#[test]
+fn imports_merge_sort_and_split_into_sections() {
+    let file: Arc<str> = Arc::from("edits.ms");
+    for name in ["import_sections", "import_lone", "import_commented"] {
+        let dir = format!("{}/tests/format_edits", env!("CARGO_MANIFEST_DIR"));
+        let source = std::fs::read_to_string(format!("{dir}/{name}.src")).unwrap();
+        let expected = std::fs::read_to_string(format!("{dir}/{name}.expected")).unwrap();
+        let actual = ms_syntax::format(&file, &source).unwrap();
+        assert_eq!(actual, expected, "{name}");
+        assert_eq!(ms_syntax::format(&file, &actual).unwrap(), actual, "{name}");
+    }
+}

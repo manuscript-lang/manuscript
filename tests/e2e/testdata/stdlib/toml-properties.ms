@@ -1,7 +1,8 @@
 import (
+	TomlValue, parse, stringify from "@std/data/toml.ms",
 	expect_not_equal, fail from "@std/test/test.ms",
-	parse, stringify, TomlValue from "@std/data/toml.ms",
-	Rng, next, text, mutate from "./support/generator.ms",
+
+	Rng, mutate, next, text from "./support/generator.ms",
 )
 
 fn generated(var rng: Rng, depth: Int) TomlValue:

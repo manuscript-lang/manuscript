@@ -1,17 +1,17 @@
 import (
-	expect_equal, expect_true from "@std/test/test.ms",
-	BigRat,
 	BigFloat,
-	parse_rat,
-	rat,
-	rat_of_float,
-	rat_of_int,
+	BigRat,
+	big_float_of_float,
 	big_float_of_int,
 	big_float_of_rat,
+	parse_big_float,
+	parse_rat,
+	rat,
 	rat_of_binary,
-	big_float_of_float,
-	parse_big_float from "@std/math/big.ms",
+	rat_of_float,
+	rat_of_int from "@std/math/big.ms",
 	from_int from "@std/math/math.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
 )
 
 test "rationals stay in lowest terms and compare with ==":

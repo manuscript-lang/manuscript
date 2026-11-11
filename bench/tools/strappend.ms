@@ -3,10 +3,11 @@
 // Usage: ms run bench/tools/strappend.ms [-- repeats]; MS, RUSTC pick tools; RUSTC_LINKER names the linker when PATH has the
 // wrong one (Git's `link` shadows MSVC's on Windows runners).
 import (
+	arguments from "@std/os/env.ms",
+	CopyOptions, copy, temporary from "@std/os/fs.ms",
+
 	build_ms, build_rust, env, exe, finish, repeats, sample, usage from "./lib.ms",
 	summarize from "./strappend_table.ms",
-	copy, CopyOptions, temporary from "@std/os/fs.ms",
-	arguments from "@std/os/env.ms",
 )
 
 fn run(work: String, n: Int) Result[String, Error]:

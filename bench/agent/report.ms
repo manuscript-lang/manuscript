@@ -5,8 +5,9 @@
 // Usage (from the repository root): ms run bench/agent/report.ms [-- path/to/runs.jsonl]
 import (
 	parse from "@std/data/json.ms",
-	stdout, stderr from "@std/io/io.ms",
+	stderr, stdout from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
+
 	root from "./core/model.ms",
 	fmt_g, mean_scaled, pct0 from "./lib/pyfmt.ms",
 	nonblank_lines, read_text from "./lib/text.ms",
@@ -33,12 +34,10 @@ fn mean(values: List[Float]) Float: values.sum() / values.length().to_float()
 
 fn average(ok: List[Run], value: fn(Run) Float) String:
 	if ok.is_empty(): return "-"
-
 	return fmt_g(mean(ok.map(value)), 3)
 
 fn wall_mean(ok: List[Run]) String:
 	if ok.is_empty(): return "-"
-
 	return fmt_g(mean_scaled(ok.map(fn r: r.wall_s), 100.0), 3)
 
 fn table(runs: List[Run], title: String, key: fn(Run) String) String:

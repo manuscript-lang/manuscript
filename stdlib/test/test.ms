@@ -1,5 +1,6 @@
 import (
 	panic from "@std/core.ms",
+
 	msstd_test_catch_fault, msstd_test_repr from "@std/internal/test.ms",
 )
 
@@ -42,13 +43,11 @@ export fn catch_fault(operation: fn() Unit) String?:
 // Fails unless actual is True. `site` names the call in the failure and defaults to the caller's position.
 export fn expect_true(actual: Bool, site: String = caller_site()) Unit!:
 	if actual: return ok(unit)
-
 	return error(failure("expected true, got false", site))
 
 // Fails unless actual is False. `site` names the call in the failure and defaults to the caller's position.
 export fn expect_false(actual: Bool, site: String = caller_site()) Unit!:
 	if not actual: return ok(unit)
-
 	return error(failure("expected false, got true", site))
 
 // Compares using ordinary Equal semantics; reports expected and actual values on failure.
@@ -58,7 +57,6 @@ export fn expect_equal[T: Equal](
 	site: String = caller_site()
 ) Unit!:
 	if actual == expected: return ok(unit)
-
 	return error(failure("expected {repr(expected)}, got {repr(actual)}", site))
 
 // Fails when values are equal under ordinary Equal semantics.
@@ -68,7 +66,6 @@ export fn expect_not_equal[T: Equal](
 	site: String = caller_site()
 ) Unit!:
 	if actual != expected: return ok(unit)
-
 	return error(failure("expected different values, got {repr(actual)}", site))
 
 // Checks absolute difference against a finite nonnegative tolerance. NaN fails; identical infinities pass.
@@ -105,13 +102,11 @@ export fn expect_contains(
 	site: String = caller_site()
 ) Unit!:
 	if actual.contains(expected): return ok(unit)
-
 	return error(failure("expected {repr(actual)} to contain {repr(expected)}", site))
 
 // Requires some and returns its original payload; fails on none.
 export fn expect_some[T](actual: T?, site: String = caller_site()) T!:
 	if value := actual: return ok(value)
-
 	return error(failure("expected some, got none", site))
 
 // Requires none; fails when a payload is present.
@@ -128,13 +123,11 @@ export fn expect_ok[T, E](actual: T!E, site: String = caller_site()) T!:
 // Requires error and returns its original cause; fails on success.
 export fn expect_error[T, E: Clonable](actual: T!E, site: String = caller_site()) E!:
 	if actual.is_error(): return ok(actual.err().clone())
-
 	return error(failure("expected error, got {repr(actual)}", site))
 
 // Calls operation once, requires a programming fault, and returns its message. Cancellation and skip propagate.
 export fn expect_fault(operation: fn() Unit, site: String = caller_site()) String!:
 	if message := catch_fault(operation): return ok(message)
-
 	return error(
 		failure(
 			"expected a programming fault, operation returned normally", site

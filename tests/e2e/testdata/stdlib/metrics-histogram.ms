@@ -1,7 +1,7 @@
 import (
-	expect_equal, expect_true, expect_fault from "@std/test/test.ms",
-	nan, infinity from "@std/math/math.ms",
 	histogram from "@std/data/histogram.ms",
+	infinity, nan from "@std/math/math.ms",
+	expect_equal, expect_fault, expect_true from "@std/test/test.ms",
 	milliseconds from "@std/time.ms",
 )
 

@@ -1,7 +1,7 @@
 import (
-	expect_contains, expect_fault, expect_true from "@std/test/test.ms",
 	ListCopies from "@std/collections/collections.ms",
 	StringBuilder from "@std/string.ms",
+	expect_contains, expect_fault, expect_true from "@std/test/test.ms",
 )
 
 type Folded:

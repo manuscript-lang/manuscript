@@ -1,6 +1,6 @@
 import (
-	expect_equal, expect_true, expect_false from "@std/test/test.ms",
 	BigInt, binomial, factorial, from_int, parse from "@std/math/math.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 test "factorial and binomial are exact":

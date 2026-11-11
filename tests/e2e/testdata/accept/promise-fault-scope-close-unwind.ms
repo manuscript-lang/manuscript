@@ -1,7 +1,7 @@
 import (
+	promise from "@std/concurrency/promise.ms",
 	Closeable, panic from "@std/core.ms",
 	expect_equal from "@std/test/test.ms",
-	promise from "@std/concurrency/promise.ms",
 )
 
 interface Src:

@@ -1,8 +1,7 @@
 // Generator for c05-calculator. Deterministic; run: ms run bench/agent/gen.ms -- c05
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
-	seeded from "../../lib/pyrandom.ms",
-	Random from "../../lib/pyrandom.ms",
+	Random, seeded from "../../lib/pyrandom.ms",
 )
 
 // A token: `n` with a value, or `o` with the operator character.
@@ -46,7 +45,6 @@ type Parser:
 impl Parser:
 	fn at_op(text: String) Bool:
 		if self.bad or self.pos >= self.toks.length(): return false
-
 		return self.toks[self.pos].kind == "o" and self.toks[self.pos].text == text
 
 	var fn expr() Int:

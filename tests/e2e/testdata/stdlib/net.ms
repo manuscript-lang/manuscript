@@ -1,8 +1,12 @@
 import (
-	expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms",
 	Bytes from "@std/bytes.ms",
-	within from "./support/conn.ms",
+	promise from "@std/concurrency/promise.ms",
+	DnsKind, IpFamily, contains_ip, parse_cidr, parse_ip from "@std/net/ip.ms",
+	Connection,
+	Datagram,
+	DatagramSocket,
 	DnsOptions,
+	Listener,
 	bind_datagram,
 	connect,
 	connect_unix,
@@ -10,13 +14,10 @@ import (
 	listen_unix,
 	resolve_dns,
 	restrict,
-	with_resolver,
-	Datagram,
-	DatagramSocket,
-	Listener,
-	Connection from "@std/net/net.ms",
-	parse_ip, parse_cidr, contains_ip, DnsKind, IpFamily from "@std/net/ip.ms",
-	promise from "@std/concurrency/promise.ms",
+	with_resolver from "@std/net/net.ms",
+	expect_equal, expect_error, expect_false, expect_true from "@std/test/test.ms",
+
+	within from "./support/conn.ms",
 )
 
 test "IP parsing CIDR normalization and containment":

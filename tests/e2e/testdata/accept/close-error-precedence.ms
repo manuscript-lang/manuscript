@@ -1,8 +1,8 @@
 import (
+	promise from "@std/concurrency/promise.ms",
 	Closeable from "@std/core.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
-	expect_equal, expect_ok, expect_error from "@std/test/test.ms",
-	promise from "@std/concurrency/promise.ms",
+	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
 )
 
 type Failing:
@@ -25,7 +25,6 @@ impl Closeable for Failing:
 
 fn events(log: String) String:
 	if bytes := read_file(log).wait(): return bytes.decode_utf8().get("")
-
 	return ""
 
 fn work(log: String, fail: Bool) Int!:

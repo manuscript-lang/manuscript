@@ -1,10 +1,11 @@
 // Shared pieces of the challenge generators: the case record, the committed file layout and the Go oracle.
 import (
 	panic from "@std/core.ms",
-	copy, CopyOptions, temporary_directory, write_file from "@std/os/fs.ms",
+	CopyOptions, copy, temporary_directory, write_file from "@std/os/fs.ms",
+
+	root from "../core/model.ms",
 	dumps_data from "./pyjson.ms",
 	bash, write_text from "./text.ms",
-	root from "../core/model.ms",
 )
 
 // One input and the exact output expected for it.

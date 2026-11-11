@@ -1,8 +1,7 @@
 // Generator for c36-bank-ledger. Deterministic; run: ms run bench/agent/gen.ms -- c36
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
-	seeded from "../../lib/pyrandom.ms",
-	Random from "../../lib/pyrandom.ms",
+	Random, seeded from "../../lib/pyrandom.ms",
 	words from "../../lib/text.ms",
 )
 

@@ -41,7 +41,6 @@ fn ratio(num: Float?, den: Float?) String:
 
 fn cell(value: Float?) String:
 	if v := value: return right(v.to_fixed(1), 9)
-
 	return right("-", 9)
 
 export fn summarize(lines: List[String], repeats: Int) String!:

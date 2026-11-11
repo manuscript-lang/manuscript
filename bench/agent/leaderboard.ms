@@ -8,14 +8,15 @@
 // output. Turns are agent steps in the Harbor trajectory. Ranking: pass rate, then mean cost of passing trials.
 import (
 	JsonValue, parse from "@std/data/json.ms",
-	access, glob, GlobOptions, stat from "@std/os/fs.ms",
 	stderr from "@std/io/io.ms",
-	arguments from "@std/os/env.ms",
-	parse_timestamp, now from "@std/time.ms",
 	round from "@std/math/math.ms",
+	arguments from "@std/os/env.ms",
+	GlobOptions, access, glob, stat from "@std/os/fs.ms",
+	now, parse_timestamp from "@std/time.ms",
+
 	root from "./core/model.ms",
-	dumps, dumps_data from "./lib/pyjson.ms",
 	fixed, mean_scaled, pct0 from "./lib/pyfmt.ms",
+	dumps, dumps_data from "./lib/pyjson.ms",
 	must_read, nonblank_lines, read_text, write_text from "./lib/text.ms",
 )
 
@@ -260,12 +261,10 @@ type Agg:
 
 fn mean_of(values: List[Float]) Float?:
 	if values.is_empty(): return none
-
 	return values.sum() / values.length().to_float()
 
 fn mean_scaled_opt(values: List[Float], scale: Float) Float?:
 	if values.is_empty(): return none
-
 	return mean_scaled(values, scale)
 
 fn agg(rs: List[Trial]) Agg:

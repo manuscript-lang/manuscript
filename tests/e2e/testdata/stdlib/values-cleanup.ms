@@ -1,12 +1,12 @@
 import (
+	Bytes from "@std/bytes.ms",
+	Closeable from "@std/core.ms",
+	read_file, temporary, write_file from "@std/os/fs.ms",
 	expect_equal,
 	expect_false,
 	expect_not_equal,
 	expect_ok,
 	fail from "@std/test/test.ms",
-	Closeable from "@std/core.ms",
-	read_file, temporary, write_file from "@std/os/fs.ms",
-	Bytes from "@std/bytes.ms",
 )
 
 type Key:

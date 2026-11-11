@@ -1,8 +1,8 @@
 import (
-	expect_equal, expect_ok from "@std/test/test.ms",
+	Bytes from "@std/bytes.ms",
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
 	read_file, temporary, write_file from "@std/os/fs.ms",
-	Bytes from "@std/bytes.ms",
+	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
 fn write_one(path: String, data: Bytes) fn() Unit!:

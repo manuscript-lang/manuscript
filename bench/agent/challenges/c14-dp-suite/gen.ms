@@ -1,8 +1,7 @@
 // Generator for c14-dp-suite. Deterministic; run: ms run bench/agent/gen.ms -- c14
 import (
 	GenCase, make_case, write_cases from "../../lib/gen.ms",
-	seeded from "../../lib/pyrandom.ms",
-	Random from "../../lib/pyrandom.ms",
+	Random, seeded from "../../lib/pyrandom.ms",
 	full_match from "../../lib/text.ms",
 )
 
@@ -80,7 +79,6 @@ fn solve_line(line: String) String:
 
 	if cmd == "lcs" or cmd == "edit":
 		if t.length() != 3 or t[1] == "" or t[2] == "": return bad
-
 		return "{if cmd == "lcs": lcs(t[1], t[2]) else: edit(t[1], t[2])}"
 
 	if cmd == "knap":

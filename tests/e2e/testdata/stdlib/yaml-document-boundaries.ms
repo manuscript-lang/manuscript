@@ -1,5 +1,5 @@
 import (
-	parse, YamlValue from "@std/data/yaml.ms",
+	YamlValue, parse from "@std/data/yaml.ms",
 	expect_equal, expect_error from "@std/test/test.ms",
 )
 

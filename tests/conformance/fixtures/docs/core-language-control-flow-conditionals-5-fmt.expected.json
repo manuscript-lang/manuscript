@@ -4,6 +4,6 @@
   "oracle": "Manuscript 0.1.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "\nfn port(lookup: Result[Int, Error]) Int:\n\tif value := lookup: return value\n\n\treturn 8080\n"
+    "fmt": "\nfn port(lookup: Result[Int, Error]) Int:\n\tif value := lookup: return value\n\treturn 8080\n"
   }
 }

@@ -1,7 +1,8 @@
 // Matched ratios, excluding round0: FILE [forward|swap] [wall|cpu].
 import (
-	median, read_text, invalid from "./lib.ms",
 	arguments from "@std/os/env.ms",
+
+	invalid, median, read_text from "./lib.ms",
 )
 
 // At least95% binomial coverage for the median, assuming independent pairs.

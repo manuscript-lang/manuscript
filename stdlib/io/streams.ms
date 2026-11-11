@@ -1,6 +1,6 @@
 import (
 	Bytes, BytesBuilder, join from "@std/bytes.ms",
-	ReadStream, WriteStream, Source from "@std/io/io.ms",
+	ReadStream, Source, WriteStream from "@std/io/io.ms",
 )
 
 // Steps for streams. Each takes its input first, so a pipeline is the `|` operator. A step pulls its input only
@@ -28,7 +28,6 @@ impl Lines:
 	// Decodes the held bytes in `[start, stop)` as one line, or fails with `EBADMSG` rather than turning bytes that are not UTF-8 into an empty line. The range is decoded in place, with no `Bytes` copy of the line first.
 	fn decode(start: Int, stop: Int) String!:
 		if text := self.data.decode_utf8_range(start, stop): return ok(text)
-
 		return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 
 impl Lines:
@@ -77,7 +76,6 @@ impl Source[String] for Lines:
 			if self.ended:
 				if self.pending_size > 0 or self.start < self.data.length():
 					return ok(try self.take(self.data.length(), false))
-
 				return ok(none)
 
 			// A trailing CR may belong to a split CRLF, so defer counting it until the next chunk or EOF.

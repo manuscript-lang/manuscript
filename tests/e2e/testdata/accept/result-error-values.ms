@@ -11,7 +11,6 @@ enum ValidationError:
 
 fn checked(value: Int) Int!ValidationError:
 	if value < 10: return error(BelowMinimum(value, 10))
-
 	return ok(value)
 
 fn relay[T, E](outcome: T!E) T!E:

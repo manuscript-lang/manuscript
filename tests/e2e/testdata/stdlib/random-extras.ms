@@ -1,4 +1,5 @@
 import (
+	choice, sample, secure_int, seeded, shuffle, weighted_choice from "@std/random.ms",
 	expect_equal,
 	expect_error,
 	expect_fault,
@@ -6,7 +7,6 @@ import (
 	expect_ok,
 	expect_some,
 	expect_true from "@std/test/test.ms",
-	choice, secure_int, sample, seeded, shuffle, weighted_choice from "@std/random.ms",
 )
 
 test "seeded sample picks distinct items":

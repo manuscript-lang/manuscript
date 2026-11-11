@@ -1,7 +1,7 @@
 import (
 	Closeable from "@std/core.ms",
 	append_file, read_file, temporary, write_file from "@std/os/fs.ms",
-	expect_equal, expect_some, expect_fault from "@std/test/test.ms",
+	expect_equal, expect_fault, expect_some from "@std/test/test.ms",
 )
 
 type Resource:
@@ -27,7 +27,6 @@ fn identity[T](value: T) T: value
 
 fn checked(value: Resource?) Int!:
 	if value.is_some(): return error(Error("expected failure"))
-
 	return ok(0)
 
 fn broken(value: Resource?) Unit:
@@ -80,7 +79,6 @@ test "borrowed wrapper temporaries close on expected errors and source faults":
 
 fn pick(first: Resource?, second: Resource?) Resource?:
 	if second.is_some(): return first
-
 	return first
 
 fn transferred_then_faulted(path: String) Unit:

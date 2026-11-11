@@ -1,6 +1,7 @@
 import (
-	SINK, ops, summarize from "./programs_table.ms",
 	expect_contains, expect_equal, expect_error from "@std/test/test.ms",
+
+	SINK, ops, summarize from "./programs_table.ms",
 )
 
 fn sample(version: String) List[String]:

@@ -9,11 +9,12 @@
 // image carries the binary given by --ms-binary. The output is generated; do not commit it.
 import (
 	Flag, FlagKind, command from "@std/cli/command.ms",
-	chmod, copy, CopyOptions, create_directory, remove, stat from "@std/os/fs.ms",
 	JsonValue from "@std/data/json.ms",
 	stderr from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
-	Challenge, Lang, root, load_challenges, load_languages from "./core/model.ms",
+	CopyOptions, chmod, copy, create_directory, remove, stat from "@std/os/fs.ms",
+
+	Challenge, Lang, load_challenges, load_languages, root from "./core/model.ms",
 	make_workspace from "./core/workspace.ms",
 	dumps from "./lib/pyjson.ms",
 	read_text, write_text from "./lib/text.ms",
