@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Promise; there is no free Promise: start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\" and wait on it with timeout: seconds(...)",
+        "message": "unknown binding Promise; there is no free Promise: start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\" and call wait() on the returned Promise",
         "position": {
           "file": "foreign-promise.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/foreign-promise.ms:5:10: resolution: unknown binding Promise; there is no free Promise: start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\" and wait on it with timeout: seconds(...)\n   |\n 5 |     p := Promise()\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/foreign-promise.ms:5:10: resolution: unknown binding Promise; there is no free Promise: start concurrent work with promise(fn: ...) from \"@std/concurrency/promise.ms\" and call wait() on the returned Promise\n   |\n 5 |     p := Promise()\n   |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
