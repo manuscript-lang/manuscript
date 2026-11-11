@@ -411,6 +411,10 @@ fn function(
             fparams[b.index()].push((*v, p));
         }
     }
+    let counts_depth = f
+        .blocks
+        .iter()
+        .any(|b| b.insts.iter().any(|i| i.op == Op::DepthEnter));
     let mut em = Em {
         m,
         f,
@@ -419,6 +423,7 @@ fn function(
         flags: HashMap::new(),
         handles: HashMap::new(),
         pending: None,
+        counts_depth,
     };
     for b in order {
         let Some(e) = entry[b.index()].clone() else {
@@ -494,6 +499,8 @@ struct Em<'a> {
     handles: HashMap<Value, Value>,
     /// The value the block being rebuilt returns, still to be returned after its scope ends.
     pending: Option<Value>,
+    /// The function guards its recursion depth (`depth.enter` at its start).
+    counts_depth: bool,
 }
 
 impl Em<'_> {
@@ -943,12 +950,12 @@ impl Em<'_> {
             then: Target::to(keep),
             els: Target::to(replace),
         };
-        self.push(keep.index(), Op::Drop, &[r], Imm::None, None);
+        self.drop_owned(keep.index(), r);
         self.f.blocks[keep.index()].term = Term::Br(Target {
             block: join,
             args: vec![first],
         });
-        self.push(replace.index(), Op::Drop, &[first], Imm::None, None);
+        self.drop_owned(replace.index(), first);
         self.f.blocks[replace.index()].term = Term::Br(Target {
             block: join,
             args: vec![r],
@@ -959,6 +966,13 @@ impl Em<'_> {
             mode: Mode::Move,
         });
         Ok((join.index(), Some(p)))
+    }
+
+    /// Drops `v` when its type holds anything to release.
+    fn drop_owned(&mut self, at: usize, v: Value) {
+        if self.m.needs_drop(self.f.ty(v)) {
+            self.push(at, Op::Drop, &[v], Imm::None, None);
+        }
     }
 
     /// Whether the `Result` `r` is an error.
@@ -1052,7 +1066,7 @@ impl Em<'_> {
         };
         let (err, cont) = (self.f.new_block(), self.f.new_block());
         if by_result {
-            self.push(cont.index(), Op::Drop, &[first], Imm::None, None);
+            self.drop_owned(cont.index(), first);
         }
         self.f.blocks[cur].term = Term::CondBr {
             cond: failed,
@@ -1086,6 +1100,10 @@ impl Em<'_> {
         }
         let ret = match (by_result, outcome) {
             (true, Some(out)) => {
+                // The function leaves here: undo its recursion guard like any return.
+                if self.counts_depth {
+                    self.push(at, Op::DepthLeave, &[], Imm::None, None);
+                }
                 let (plain, pending) = self
                     .f
                     .close_exit

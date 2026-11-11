@@ -658,9 +658,15 @@ impl FnLower<'_> {
     }
 
     /// Whether the elaborate pass can return a failed close of this function: the function
-    /// leaves by a plain return, with no frame work that only `emit_return` does.
-    fn fallible_close_ok(&mut self, kind: &CloseKind) -> bool {
-        self.close_result_ty(kind).is_some()
+    /// leaves by a plain return, with no frame work that only `emit_return` does and no cleanup
+    /// that lowering still has to run on the way out.
+    fn fallible_close_ok(&mut self, kind: &CloseKind, uid: usize) -> bool {
+        // The error exit returns at once, so no cleanup that lowering still runs may be pending:
+        // every enclosing scope holds nothing else to drop or close.
+        let nothing_else = self.scopes.iter().all(|s| s.iter().all(|u| *u == uid));
+        nothing_else
+            && self.temps.is_empty()
+            && self.close_result_ty(kind).is_some()
             && !self.b.func_mut().ret_borrowed
             && !self.b.func_mut().ret_view
             && self.var_slots.is_empty()
@@ -788,7 +794,7 @@ impl FnLower<'_> {
             return false;
         };
         let unit_close = self.b.m.funcs[fid.index()].ret == MTy::UNIT;
-        if !unit_close && !self.fallible_close_ok(kind) {
+        if !unit_close && !self.fallible_close_ok(kind, uid) {
             return false;
         }
         let own = &self.cx.ownership;
