@@ -4,11 +4,11 @@
 
 - Problem: `try` is a prefix, so nested calls stack it (`try expect_equal(try collect(...), [1, 2])`), and the leading `try` hides the call.
 - Change: postfix `expr?` means `try expr`. It is a language change, not tooling.
-- Decision requested: `?` replaces prefix `try` (owner direction); approve the `?.` rule below.
+- Decision: `?` replaces prefix `try` (owner direction); a gapless `?.` stays Optional chaining.
 
 ## Status
 
-Proposal, 2026-11-10, checked against `origin/main`. Owner approved reversing the old `?` rule and removing `try`. Not yet reviewed by a skeptical reviewer.
+Implemented 2026-11-10 in #3575. The owner approved option A for `?.`, reversing the old `?` rule, and removing `try`; `try` is now a reserved word that reports the replacement. Fable advised keeping A and adding the Optional diagnostic. No skeptical reviewer subagent was run.
 
 ## Problem
 
@@ -58,7 +58,7 @@ check(n)?
 | `crates/ms-check` | none: lowers to the existing `Try` | conformance fixture using `?` |
 | `documentation/core-language/{errors/propagation,basics/grammar,basics/expressions}.md` | grammar and precedence row | `make docs-check` |
 | `ms fmt` | no space before `?` | formatter round trip |
-| stdlib, tests, docs | stage 2 migration | `make verify` |
+| stdlib, tests, docs, fixtures | parser-driven rewrite of every `try` | `make verify`, e2e, conformance |
 
 ## Alternatives
 
@@ -69,9 +69,4 @@ check(n)?
 
 ## Stages
 
-1. Parser, formatter, checker, docs, fixtures: `?` works and `try` still parses.
-2. Mechanical migration of every `.ms` file, doc and diagnostic from `try` to `?` with `ms fmt`-style tooling, then remove the `try` keyword and its diagnostics.
-
-## Open questions
-
-- `?.` on a Result: A (error with hint, proposed) or B (type-directed propagate then access).
+Landed together: `?` added, every source migrated by a parser-driven rewrite, `try` removed.
