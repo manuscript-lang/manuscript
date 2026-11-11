@@ -10,13 +10,13 @@
 
 </div>
 
-I built Manuscript to make agent-generated code practical to work with. It's designed so agents get it right: the common footguns are gone, and the syntax is token-efficient and readable at a glance. Built-in diagrams and an interactive code map let you explore what an agent built without reading it line by line.
+Manuscript makes agent-generated code practical to work with. It is designed so agents get it right: the common footguns are gone, and the syntax is token-efficient and readable at a glance. Built-in diagrams and an interactive code map let you explore what an agent built without reading it line by line.
 
 Under the hood, the compiler enforces one owner per value with no GC. Programs run close to C speed and scale across all cores, and a simple effects system tracks what your code is allowed to do.
 
-The whole toolchain is tuned for agents. Errors tell you how to fix them, and built-in commands let you verify, test, fuzz, benchmark and profile. I use agent benchmarks to evolve the language and toolchain together, and I probe the compiler and standard library adversarially to find and fix correctness and performance bugs.
+The whole toolchain is tuned for agents. Errors tell you how to fix them, and built-in commands let you verify, test, fuzz, benchmark and profile. Agent benchmarks drive the evolution of the language and toolchain together, and adversarial probing of the compiler and standard library finds and fixes correctness and performance bugs.
 
-Here's a simple HTTP server:
+A simple HTTP server:
 
 ```rust
 import buffered, headers, HttpRequest, HttpResponse from "@std/net/http.ms"
